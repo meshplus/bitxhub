@@ -1,0 +1,62 @@
+package order
+
+import (
+	"bytes"
+
+	"github.com/meshplus/bitxhub/pkg/storage"
+	"github.com/sirupsen/logrus"
+	"github.com/willf/bloom"
+)
+
+const (
+	filterDbKey = "bloom_filter"
+	m           = 10000000 //bits
+	k           = 4        //calc hash times
+)
+
+type ReqLookUp struct {
+	filter  *bloom.BloomFilter
+	storage storage.Storage
+	buffer  bytes.Buffer
+	logger  logrus.FieldLogger //logger
+}
+
+func NewReqLookUp(storage storage.Storage, logger logrus.FieldLogger) (*ReqLookUp, error) {
+	filter := bloom.New(m, k)
+	filterDB, _ := storage.Get([]byte(filterDbKey))
+	if filterDB != nil {
+		var b bytes.Buffer
+		if _, err := b.Write(filterDB); err != nil {
+			return nil, err
+		}
+		if _, err := filter.ReadFrom(&b); err != nil {
+			return nil, err
+		}
+	}
+	return &ReqLookUp{
+		filter:  filter,
+		storage: storage,
+		logger:  logger,
+	}, nil
+
+}
+
+func (r *ReqLookUp) Add(key []byte) {
+	r.filter.Add(key)
+}
+
+func (r *ReqLookUp) LookUp(key []byte) bool {
+	return r.filter.TestAndAdd(key)
+}
+
+func (r *ReqLookUp) Build() error {
+	if _, err := r.filter.WriteTo(&r.buffer); err != nil {
+		return err
+	}
+	//r.logger.Debugln("bloom filter bytes length:", r.buffer.Len())
+	if err := r.storage.Put([]byte(filterDbKey), r.buffer.Bytes()); err != nil {
+		return err
+	}
+	r.buffer.Reset()
+	return nil
+}

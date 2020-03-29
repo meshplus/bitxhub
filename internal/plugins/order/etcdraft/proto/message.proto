@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package proto;
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+message RaftMessage {
+    enum Type {
+        CONSENSUS = 0;
+        BROADCAST_TX = 1;
+        GET_TX = 2;
+        GET_TX_ACK = 3;
+    }
+    Type type = 1;
+    uint64 fromId = 2;
+    bytes data = 3;
+}
+
+message Ready {
+    repeated bytes txHashes = 1 [(gogoproto.customtype) = "github.com/meshplus/bitxhub-kit/types.Hash", (gogoproto.nullable) = false];
+    uint64 height = 2;
+}

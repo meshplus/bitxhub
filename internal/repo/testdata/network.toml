@@ -1,0 +1,18 @@
+id = 1 # self id
+N = 4 # the number of cluster nodes
+
+[[nodes]]
+id = 1
+addr = "/ip4/127.0.0.1/tcp/4001/p2p/QmYkQxwC3cj8HqxAnsgM1cSK5yPjkL8UySc21b1AhVF2Wf"
+
+[[nodes]]
+id = 2
+addr = "/ip4/127.0.0.1/tcp/4002/p2p/QmfHtWy4uqu3JvUUDpAq7oHXkpq5qkuY1Ffb6zngqXtpMi"
+
+[[nodes]]
+id = 3
+addr = "/ip4/127.0.0.1/tcp/4003/p2p/QmcpUhepA4tgkVvzW6WnxHCCk163CTLSiKatQeVSF8ro9z"
+
+[[nodes]]
+id = 4
+addr = "/ip4/127.0.0.1/tcp/4004/p2p/QmT3ghgJFboqYYM9B6p6ehJFGHoEqpaRCJBByWCCYgHHZt"
