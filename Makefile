@@ -61,7 +61,7 @@ build:
 ## make linter: Run golanci-lint
 linter:
 	golangci-lint run --enable-all \
-		-D lll -D gochecknoglobals -D maligned -D funlen \
+		-D lll -D gochecknoglobals -D maligned -D funlen -D gomnd -D whitespace -D wsl -D golint -D stylecheck -D godox -D gosec \
 		--skip-dirs-use-default \
  		--skip-dirs internal/plugins
 

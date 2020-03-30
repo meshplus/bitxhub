@@ -9,13 +9,15 @@ require (
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/ethereum/go-ethereum v1.9.7
-	github.com/fatih/color v1.7.0 // indirect
 	github.com/gobuffalo/envy v1.9.0 // indirect
 	github.com/gobuffalo/packd v1.0.0
 	github.com/gobuffalo/packr v1.30.1
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/mock v1.4.3
 	github.com/golang/protobuf v1.3.3
+	github.com/golangci/go-tools v0.0.0-20190318055746-e32c54105b7c // indirect
+	github.com/golangci/golangci-lint v1.23.0 // indirect
+	github.com/golangci/gosec v0.0.0-20190211064107-66fb7fc33547 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.13.0
 	github.com/hashicorp/go-version v1.2.0 // indirect
 	github.com/hokaccha/go-prettyjson v0.0.0-20190818114111-108c894c2c0e
@@ -25,7 +27,6 @@ require (
 	github.com/libp2p/go-libp2p v0.5.0
 	github.com/libp2p/go-libp2p-core v0.3.0
 	github.com/magiconair/properties v1.8.1
-	github.com/mattn/go-colorable v0.1.4 // indirect
 	github.com/mattn/go-isatty v0.0.10 // indirect
 	github.com/meshplus/bitxhub-kit v1.0.0-rc1
 	github.com/meshplus/bitxhub-model v1.0.0-rc1
@@ -38,8 +39,7 @@ require (
 	github.com/rs/cors v1.7.0
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/cast v1.3.0
-	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/spf13/viper v1.4.0
+	github.com/spf13/viper v1.6.1
 	github.com/stretchr/testify v1.4.0
 	github.com/sykesm/zap-logfmt v0.0.3 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20190318030020-c3a204f8e965
@@ -54,6 +54,8 @@ require (
 	github.com/wonderivan/logger v1.0.0
 	golang.org/x/sys v0.0.0-20200301040627-c5d0d7b4ec88 // indirect
 	google.golang.org/grpc v1.27.1
+	gopkg.in/airbrake/gobrake.v2 v2.0.9 // indirect
+	gopkg.in/gemnasium/logrus-airbrake-hook.v2 v2.1.2 // indirect
 )
 
 go 1.13

@@ -14,7 +14,7 @@ fi
 
 print_blue "===> 2. Install golangci-lint"
 if ! type golanci-lint >/dev/null 2>&1; then
-  go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.18.0
+  go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.23.0
 fi
 
 print_blue "===> 3. Install go mock tool"
