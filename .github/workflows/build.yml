@@ -27,5 +27,11 @@ jobs:
         go get -v -t -d ./...
         bash scripts/prepare.sh
 
+    - name: Run golangci-lint
+      uses: actions-contrib/golangci-lint@v1
+      with:
+        # golangci-lint docker release tag
+        golangci_lint_version: v1.23
+        
     - name: Build
       run: go build -v ./cmd/bitxhub
