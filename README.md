@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/meshplus/bitxhub/master/docs/logo.png" />
 </p>
 
-![build](https://github.com/meshplus/bitxhub/workflows/Go/badge.svg)
+![build](https://github.com/meshplus/bitxhub/workflows/build/badge.svg)
 
 BitXHub is committed to building a scalable, robust, and pluggable inter-blockchain
 reference implementation, that can provide reliable technical support for the formation
