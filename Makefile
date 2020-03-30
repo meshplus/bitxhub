@@ -34,7 +34,7 @@ prepare:
 ## make test: Run go unittest
 test:
 	go generate ./...
-	@$(GO) test ${TEST_PKGS} -race -count=1
+	@$(GO) test ${TEST_PKGS} -count=1
 
 ## make test-coverage: Test project with cover
 test-coverage:

@@ -1,4 +1,6 @@
-![BitXHub-Logo](https://raw.githubusercontent.com/meshplus/bitxhub/master/docs/logo.png)
+<p align="center">
+  <img src="https://raw.githubusercontent.com/meshplus/bitxhub/master/docs/logo.png" />
+</p>
 
 BitXHub is committed to building a scalable, robust, and pluggable inter-blockchain
 reference implementation, that can provide reliable technical support for the formation
@@ -16,7 +18,7 @@ See [Quick start](https://github.com/meshplus/bitxhub/wiki/Quick-start) in the w
 
 ## Dependencies
 
-This project uses [golang](https://golang.org/), [tmux](https://github.com/tmux/tmux/wiki) and libc6. Go check them out if you don't have them locally installed.
+This project uses [golang](https://golang.org/) and [tmux](https://github.com/tmux/tmux/wiki). Go check them out if you don't have them locally installed.
 
 This project also depends on [packr](https://github.com/gobuffalo/packr/), [golangci-lint](github.com/golangci/golangci-lint), [gomock](github.com/golang/mock) and [mockgen](github.com/golang/mock), Installing them by follow command:
 
@@ -24,15 +26,21 @@ This project also depends on [packr](https://github.com/gobuffalo/packr/), [gola
 bash scripts/prepare.sh
 ```
 
-## Install
+## Usage
 
-Installation guide can be found in wiki.
+Usage guide can be found in [wiki](https://github.com/meshplus/bitxhub/wiki/%E4%BD%BF%E7%94%A8%E6%96%87%E6%A1%A3).
 
 ## Contributing
 
 See [CONTRIBUTING.md](https://github.com/meshplus/bitxhub/blob/master/CONTRIBUTING.md).
 
+## Contact
 
+Email: bitxhub@hyperchain.cn
+
+Wechat:
+
+<img src="https://github.com/meshplus/bitxhub/blob/master/docs/wechat.png" width="200" height="200" />
 
 ## License
 

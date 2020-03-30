@@ -269,9 +269,9 @@ func mockTxData(t *testing.T, dataType pb.TransactionData_Type, vmType pb.Transa
 
 func mockIBTP(t *testing.T, index uint64, typ pb.IBTP_Type) *pb.IBTP {
 	ibtppd, err := json.Marshal(pb.Payload{
-		FID:  from,
-		TID:  from,
-		Func: "set",
+		SrcContractId: from,
+		DstContractId: from,
+		Func:          "set",
 	})
 	assert.Nil(t, err)
 	return &pb.IBTP{
