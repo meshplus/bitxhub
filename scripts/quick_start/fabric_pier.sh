@@ -44,7 +44,7 @@ function prepare() {
   cd "${CURRENT_PATH}"
   if [ ! -d pier ]; then
     print_blue "===> Clone pier"
-    git clone git@git.hyperchain.cn:dmlab/pier.git
+    git clone git@github.com:meshplus/pier.git
   fi
 
   print_blue "===> Compile pier"
@@ -54,7 +54,7 @@ function prepare() {
   cd "${CURRENT_PATH}"
   if [ ! -d pier-client-fabric ]; then
     print_blue "===> Clone pier-client-fabric"
-    git clone git@git.hyperchain.cn:dmlab/pier-client-fabric.git
+    git clone git@github.com:meshplus/pier-client-fabric.git
   fi
 
   print_blue "===> Compile pier-client-fabric"
