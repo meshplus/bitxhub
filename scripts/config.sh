@@ -2,63 +2,97 @@
 
 set -e
 
-source x.sh
-
 CURRENT_PATH=$(pwd)
 PROJECT_PATH=$(dirname "${CURRENT_PATH}")
-BUILD_PATH=${CURRENT_PATH}/build
 CONFIG_PATH=${PROJECT_PATH}/config
+BUILD_PATH=${CURRENT_PATH}/build
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+NC='\033[0m'
 N=$1
 
+function print_blue() {
+  printf "${BLUE}%s${NC}\n" "$1"
+}
+
+function print_red() {
+  printf "${RED}%s${NC}\n" "$1"
+}
+
+# The sed commend with system judging
+# Examples:
+# sed -i 's/a/b/g' bob.txt => x_replace 's/a/b/g' bob.txt
+function x_replace() {
+  system=$(uname)
+
+  if [ "${system}" = "Linux" ]; then
+    sed -i "$@"
+  else
+    sed -i '' "$@"
+  fi
+}
+
 function prepare() {
+  cd "${PROJECT_PATH}"
+  make build
+
   rm -rf "${BUILD_PATH}"
   mkdir "${BUILD_PATH}"
-  mkdir "${BUILD_PATH}"/certs
+
+  cd "${PROJECT_PATH}"/internal/plugins
+  make raft
 }
 
-function generate_certs() {
-  for ((i = 1; i < N + 1; i = i + 1)); do
-    if [[ $i -le 4 ]]; then
-      cp -rf "${CURRENT_PATH}"/certs/node${i} "${BUILD_PATH}"/certs
-    else
-      certs_path=${BUILD_PATH}/certs/node${i}/certs
-      mkdir -p "${certs_path}"
-      cp "${CURRENT_PATH}"/certs/ca.cert "${CURRENT_PATH}"/certs/agency.cert "${certs_path}"
-      premo cert priv --name node --target "${certs_path}"
-      premo cert csr --key "${certs_path}"/node.priv --org Node${i} --target "${certs_path}"
-      premo cert issue --csr "${certs_path}"/node.csr \
-        --key "${CURRENT_PATH}"/certs/ca.priv \
-        --cert "${CURRENT_PATH}"/certs/ca.cert \
-        --target "${certs_path}"
-
-      premo key convert --path "${certs_path}"/node.priv --target "${BUILD_PATH}"/certs/node${i}
-    fi
-  done
-}
-
-# Generate config
 function generate() {
+  cd "${BUILD_PATH}"
+  cp "${PROJECT_PATH}"/bin/bitxhub "${BUILD_PATH}"
+  cp -rf "${PROJECT_PATH}"/internal/plugins/build/raft.so "${BUILD_PATH}"
+
+  bitxhub cert ca
+  bitxhub cert priv --name agency
+  bitxhub cert csr --key ./agency.priv --org Agency
+  bitxhub cert issue --key ./ca.priv --cert ./ca.cert --csr ./agency.csr --is_ca true
+  rm agency.csr
+
   for ((i = 1; i < N + 1; i = i + 1)); do
-    root=${BUILD_PATH}/node${i}
-    mkdir -p "${root}"
-    cp -rf "${BUILD_PATH}"/certs/node${i}/* "${root}"
-    cp -rf "${CONFIG_PATH}"/* "${root}"
+    repo=${BUILD_PATH}/node${i}
+    mkdir -p "${repo}"
+    bitxhub --repo="${repo}" init
 
-    echo "#!/usr/bin/env bash" >"${root}"/start.sh
-    echo "./bitxhub --root \$(pwd)" start >>"${root}"/start.sh
+    mkdir -p "${repo}"/plugins
+    mkdir -p "${repo}"/certs
 
-    bitxhubConfig=${root}/bitxhub.toml
-    networkConfig=${root}/network.toml
-    x_replace "s/60011/6001${i}/g" "${bitxhubConfig}"
-    x_replace "s/60011/6001${i}/g" "${bitxhubConfig}"
-    x_replace "s/9091/909${i}/g" "${bitxhubConfig}"
-    x_replace "s/53121/5312${i}/g" "${bitxhubConfig}"
-    x_replace "s/9091/909${i}/g" "${root}"/api
-    x_replace "1s/1/${i}/" "${networkConfig}"
+    cd "${repo}"/certs
+    bitxhub cert priv --name node
+    bitxhub cert csr --key ./node.priv --org Node${i}
+    bitxhub cert issue --key "${BUILD_PATH}"/agency.priv --cert "${BUILD_PATH}"/agency.cert --csr ./node.csr
+    cp "${BUILD_PATH}"/ca.cert "${repo}"/certs
+    cp "${BUILD_PATH}"/agency.cert "${repo}"/certs
+    rm "${repo}"/certs/node.csr
+
+    id=$(bitxhub --repo="${repo}" key pid --path "${repo}"/certs/node.priv)
+    addr=$(bitxhub --repo="${repo}" key address --path "${repo}"/certs/node.priv)
+
+    echo "${id}" >>"${BUILD_PATH}"/pids
+    echo "${addr}" >>"${BUILD_PATH}"/addresses
+
+    echo "#!/usr/bin/env bash" >"${repo}"/start.sh
+    echo "./bitxhub --repo \$(pwd)" start >>"${repo}"/start.sh
   done
 }
 
-print_green "Generating $1 nodes configuration..."
+function printHelp() {
+  print_blue "Usage:  "
+  echo "  config.sh <number>"
+  echo "    <number> - node number"
+  echo "  config.sh -h (print this message)"
+}
+
+if [ ! $1 ]; then
+  printHelp
+  exit 1
+fi
+
 prepare
-generate_certs
 generate

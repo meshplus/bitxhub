@@ -14,14 +14,14 @@ solo = false
     allowed_origins = ["*"]
 
 [log]
-  level = "debug"
+  level = "info"
   dir = "logs"
   filename = "bitxhub.log"
-  report_caller = true
+  report_caller = false
   [log.module]
-    p2p = "debug"
-    consensus = "debug"
-    executor = "debug"
+    p2p = "info"
+    consensus = "info"
+    executor = "info"
     router = "info"
     api = "info"
     coreapi = "info"

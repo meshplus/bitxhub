@@ -46,7 +46,7 @@ func New(logger logrus.FieldLogger, repo *repo.Repo, ledger ledger.Ledger, peerM
 }
 
 func (router *InterchainRouter) Start() error {
-	router.logger.Infof("router module started")
+	router.logger.Infof("Router module started")
 
 	return nil
 }
@@ -54,7 +54,7 @@ func (router *InterchainRouter) Start() error {
 func (router *InterchainRouter) Stop() error {
 	router.cancel()
 
-	router.logger.Infof("router module stopped")
+	router.logger.Infof("Router module stopped")
 
 	return nil
 }

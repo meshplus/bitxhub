@@ -51,13 +51,12 @@ install:
 	$(GO) install -ldflags '${LDFLAGS}' ./cmd/${APP_NAME}
 	@printf "${GREEN}Build bitxhub successfully!${NC}\n"
 
-## make build-linux: Go build linux executable file
-build-linux:
-	cd scripts && sh cross_compile.sh linux-amd64 ${CURRENT_PATH}
-
-## make docs-build: Build vuepress docs
-docs-build:
-	cd docs && sudo vuepress build
+build:
+	cd internal/repo && packr
+	@mkdir -p bin
+	$(GO) build -ldflags '${LDFLAGS}' ./cmd/${APP_NAME}
+	@mv ./bitxhub bin
+	@printf "${GREEN}Build bitxhub successfully!${NC}\n"
 
 ## make linter: Run golanci-lint
 linter:
@@ -68,6 +67,6 @@ linter:
 
 ## make cluster: Run cluster including 4 nodes
 cluster:
-	cd scripts && sh cluster.sh 4
+	@cd scripts && bash cluster.sh
 
 .PHONY: tester
