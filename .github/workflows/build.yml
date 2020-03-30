@@ -28,7 +28,7 @@ jobs:
         bash scripts/prepare.sh
 
     - name: Run golangci-lint
-      run: make linter
+      uses: Mushus/golangci-linter@v1
 
     - name: Build
       run: go build -v ./cmd/bitxhub
