@@ -29,7 +29,7 @@ help: Makefile
 
 ## make prepare: Preparation before development
 prepare:
-	@cd scripts && sh prepare.sh
+	@cd scripts && bash prepare.sh
 
 ## make test: Run go unittest
 test:
@@ -38,8 +38,9 @@ test:
 
 ## make test-coverage: Test project with cover
 test-coverage:
-	@$(GO) test -coverprofile cover.out ${TEST_PKGS}
-	$(GO) tool cover -html=cover.out -o cover.html
+	go generate ./...
+	@go test -short -coverprofile cover.out -covermode=atomic ${TEST_PKGS}
+	@cat cover.out >> coverage.txt
 
 ## make tester: Run integration test
 tester:

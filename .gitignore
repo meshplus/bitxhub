@@ -13,10 +13,10 @@ build_solo
 build.tar.gz
 cover.out
 coverage.out
-cover.html
 pid
 scripts/prepare
 docs/.vuepress/dist
 logs
 mock_*/
 .fabric-samples
+coverage.txt
