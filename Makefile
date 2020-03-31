@@ -2,7 +2,7 @@
 SHELL := /bin/bash
 CURRENT_PATH = $(shell pwd)
 APP_NAME = bitxhub
-APP_VERSION = 1.0.0
+APP_VERSION = 1.0.0-rc1
 
 # build with verison infos
 VERSION_DIR = github.com/meshplus/${APP_NAME}
@@ -60,10 +60,7 @@ build:
 
 ## make linter: Run golanci-lint
 linter:
-	golangci-lint run --enable-all \
-		-D lll -D gochecknoglobals -D maligned -D funlen -D gomnd -D whitespace -D wsl -D golint -D stylecheck -D godox -D gosec \
-		--skip-dirs-use-default \
- 		--skip-dirs internal/plugins
+	golangci-lint run
 
 ## make cluster: Run cluster including 4 nodes
 cluster:

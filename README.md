@@ -13,24 +13,22 @@ of a blockchain internet and intercommunication of value islands.
 
 See [Quick start](https://github.com/meshplus/bitxhub/wiki/Quick-start) in the wiki.
 
-## Documentations
 
-[Whitepaper](https://upload.hyperchain.cn/bitxhub_whitepaper.pdf) | [白皮书](https://upload.hyperchain.cn/BitXHub%E7%99%BD%E7%9A%AE%E4%B9%A6.pdf)
+## Architecture
+
+<p>
+    <img src="https://github.com/meshplus/bitxhub/blob/master/docs/arch.png" />
+</p>
+
+The diagram above shows the overall architecture and basic interchain processing workflow of BitXHub. BitXHub consists of relay-chain, Pier (interchain gateway) and app-chain, which is a service platform to handle the interaction among cross-layer heterogeneous chains.
+
+For more details please visit our [whitepaper](https://upload.hyperchain.cn/BitXHub%20Whitepaper.pdf) | [白皮书](https://upload.hyperchain.cn/BitXHub%E7%99%BD%E7%9A%AE%E4%B9%A6.pdf).
 
 
-## Dependencies
-
-This project uses [golang](https://golang.org/) and [tmux](https://github.com/tmux/tmux/wiki). Go check them out if you don't have them locally installed.
-
-This project also depends on [packr](https://github.com/gobuffalo/packr/), [golangci-lint](github.com/golangci/golangci-lint), [gomock](github.com/golang/mock) and [mockgen](github.com/golang/mock), Installing them by follow command:
-
-```bash
-bash scripts/prepare.sh
-```
 
 ## Usage
 
-Usage guide can be found in [wiki](https://github.com/meshplus/bitxhub/wiki/%E4%BD%BF%E7%94%A8%E6%96%87%E6%A1%A3).
+Usage guide can be found in [wiki](https://github.com/meshplus/bitxhub/wiki).
 
 ## Contributing
 
@@ -40,9 +38,11 @@ See [CONTRIBUTING.md](https://github.com/meshplus/bitxhub/blob/master/CONTRIBUTI
 
 Email: bitxhub@hyperchain.cn
 
-Wechat:
+Wechat: If you‘re interested in BitXHub, please add the assistant to join our community group.
 
 <img src="https://github.com/meshplus/bitxhub/blob/master/docs/wechat.png" width="200" height="200" />
+
+<img src="https://github.com/meshplus/bitxhub/blob/master/docs/official.jpg" width="200" height="200" />
 
 ## License
 
