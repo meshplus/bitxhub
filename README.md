@@ -40,9 +40,7 @@ Email: bitxhub@hyperchain.cn
 
 Wechat: If you‘re interested in BitXHub, please add the assistant to join our community group.
 
-<img src="https://github.com/meshplus/bitxhub/blob/master/docs/wechat.png" width="200" height="200" />
-
-<img src="https://github.com/meshplus/bitxhub/blob/master/docs/official.jpg" width="200" height="200" />
+<img src="https://github.com/meshplus/bitxhub/blob/master/docs/wechat.png" width="188" height="188" /><img src="https://github.com/meshplus/bitxhub/blob/master/docs/official.jpg" width="202" height="202" />
 
 ## License
 
