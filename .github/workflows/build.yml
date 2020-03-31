@@ -22,6 +22,10 @@ jobs:
       - name: Run golangci-lint
         uses: Mushus/golangci-linter@v1
 
+      - name: Go report card
+        uses: creekorful/goreportcard-action@v1.0
+
+
   test:
     name: Run unittest
     runs-on: ubuntu-latest
