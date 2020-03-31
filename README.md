@@ -4,6 +4,7 @@
 
 ![build](https://github.com/meshplus/bitxhub/workflows/build/badge.svg)
 [![codecov](https://codecov.io/gh/meshplus/bitxhub/branch/master/graph/badge.svg)](https://codecov.io/gh/meshplus/bitxhub)
+[![Go Report Card](https://goreportcard.com/badge/github.com/meshplus/bitxhub)](https://goreportcard.com/report/github.com/meshplus/bitxhub)
 
 BitXHub is committed to building a scalable, robust, and pluggable inter-blockchain
 reference implementation, that can provide reliable technical support for the formation
