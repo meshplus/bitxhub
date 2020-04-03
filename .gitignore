@@ -10,7 +10,7 @@ node_modules
 dump
 build
 build_solo
-build.tar.gz
+build*.tar.gz
 cover.out
 coverage.out
 pid
