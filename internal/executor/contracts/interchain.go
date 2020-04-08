@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/meshplus/bitxhub/internal/constant"
 
@@ -236,6 +237,16 @@ func (x *Interchain) Appchains() *boltvm.Response {
 }
 
 func (x *Interchain) DeleteAppchain(cid string) *boltvm.Response {
+	ret := x.CrossInvoke(constant.RoleContractAddr.String(), "IsAdmin", pb.String(x.Caller()))
+	is, err := strconv.ParseBool(string(ret.Result))
+	if err != nil {
+		return boltvm.Error(fmt.Errorf("judge caller type: %w", err).Error())
+	}
+
+	if !is {
+		return boltvm.Error("caller is not an admin account")
+	}
+
 	x.Delete(prefix + cid)
 	x.Logger().Infof("delete appchain:%s", cid)
 
@@ -336,6 +347,17 @@ func (x *Interchain) HandleIBTP(data []byte) *boltvm.Response {
 }
 
 func (x *Interchain) GetIBTPByID(id string) *boltvm.Response {
+	arr := strings.Split(id, "-")
+	if len(arr) != 3 {
+		return boltvm.Error("wrong ibtp id")
+	}
+
+	caller := x.Caller()
+
+	if caller != arr[0] || caller != arr[1] {
+		return boltvm.Error("The caller does not have access to this ibtp")
+	}
+
 	var hash types.Hash
 	exist := x.GetObject(x.indexMapKey(id), &hash)
 	if !exist {
