@@ -3,7 +3,6 @@
 set -e
 
 CURRENT_PATH=$(pwd)
-PIER_ROOT=${CURRENT_PATH}/.pier
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
@@ -32,13 +31,20 @@ function print_red() {
 
 function printHelp() {
   print_blue "Usage:  "
-  echo "  fabric_pier.sh <mode>"
-  echo "    <mode> - one of 'start', 'restart'"
-  echo "      - 'start <bitxhub_addr> <fabric_ip> <pprof_port>' - bring up the fabric pier"
-  echo "      - 'restart <bitxhub_addr> <fabric_ip> <pprof_port>' - restart the fabric pier"
+  echo "  fabric_pier.sh <mode> [-r <pier_root>] [-c <crypto_config_path>] [-g <config_path>] [-p <pier_port>] [-b <bitxhub_addr>] [-o <pprof_port>]"
+  echo "    <mode> - one of 'start', 'restart', 'id'"
+  echo "      - 'start - bring up the fabric pier"
+  echo "      - 'restart' - restart the fabric pier"
   echo "      - 'id' - print pier id"
+  echo "    -r <pier_root> - pier repo path (default \".pier\")"
+  echo "    -c <crypto_config_path> - specify which crypto-config dir use (default \"./crypto-config\")"
+  echo "    -g <config_path> - config path (default \"./config.yaml\")"
+  echo "    -p <pier_port> - pier port (default \"8987\")"
+  echo "    -b <bitxhub_addr> - bitxhub addr(default \"localhost:60011\")"
+  echo "    -o <pprof_port> - pier pprof port(default \"44555\")"
   echo "  fabric_pier.sh -h (print this message)"
 }
+
 
 function prepare() {
   cd "${CURRENT_PATH}"
@@ -63,7 +69,12 @@ function prepare() {
 
   cd "${CURRENT_PATH}"
   if [ ! -d crypto-config ]; then
-    print_red "===> Please provide the 'crypto-config'"
+    print_red "===> Please provide the 'crypto-config'(first fabric network)"
+    exit 1
+  fi
+
+  if [ ! -d crypto-configB ]; then
+    print_red "===> Please provide the 'crypto-configB'(second fabric network)"
     exit 1
   fi
 
@@ -71,8 +82,21 @@ function prepare() {
     print_blue "===> Download config-template.yaml"
     wget https://raw.githubusercontent.com/meshplus/bitxhub/master/scripts/quick_start/config-template.yaml
   fi
-  rm -rf "${CURRENT_PATH}"/config.yaml
-  cp "${CURRENT_PATH}"/config-template.yaml "${CURRENT_PATH}"/config.yaml
+
+  if [ ! -f config.yaml ]; then
+    cp "${CURRENT_PATH}"/config-template.yaml "${CURRENT_PATH}"/config.yaml
+  fi
+
+  if [ ! -f configB.yaml ]; then
+    cp "${CURRENT_PATH}"/config-template.yaml "${CURRENT_PATH}"/configB.yaml
+    x_replace 's/7050/7055/g' "${CURRENT_PATH}"/configB.yaml
+    x_replace 's/7051/7052/g' "${CURRENT_PATH}"/configB.yaml
+    x_replace 's/8051/8052/g' "${CURRENT_PATH}"/configB.yaml
+    x_replace 's/9051/9052/g' "${CURRENT_PATH}"/configB.yaml
+    x_replace 's/10051/10052/g' "${CURRENT_PATH}"/configB.yaml
+    x_replace 's/crypto-config/crypto-configB/g' "${CURRENT_PATH}"/configB.yaml
+    x_replace 's/example/example1/g' "${CURRENT_PATH}"/configB.yaml
+  fi
 
   if [ ! -f fabric-rule.wasm ]; then
     print_blue "===> Download fabric-rule.wasm"
@@ -87,32 +111,21 @@ function start() {
   mkdir -p "${PIER_ROOT}"/plugins
   cp "${CURRENT_PATH}"/pier-client-fabric/build/fabric-client-1.4.so "${PIER_ROOT}"/plugins/
   cp -rf "${CURRENT_PATH}"/pier-client-fabric/config "${PIER_ROOT}"/fabric
-  cp -rf "${CURRENT_PATH}"/crypto-config "${PIER_ROOT}"/fabric/
-  cp -rf "${CURRENT_PATH}"/config.yaml "${PIER_ROOT}"/fabric/
-  cp "${PIER_ROOT}"/fabric/crypto-config/peerOrganizations/org2.example.com/peers/peer1.org2.example.com/msp/signcerts/peer1.org2.example.com-cert.pem \
-    "${PIER_ROOT}"/fabric/fabric.validators
-
-  BITXHUB_ADDR="localhost:60011"
-  FABRIC_IP=localhost
-  PPROF_PORT=44555
-
-  if [ $1 ]; then
-    BITXHUB_ADDR=$1
+  rm -rf "${PIER_ROOT}"/fabric/crypto-config
+  cp -rf "${CRYPTO_CONFIG}" "${PIER_ROOT}"/fabric/crypto-config
+  cp -rf "${CONFIG}" "${PIER_ROOT}"/fabric/config.yaml
+  x_replace 's/crypto-configB/crypto-config/g' "${PIER_ROOT}"/fabric/config.yaml
+  PEM_PATH="${PIER_ROOT}"/fabric/crypto-config/peerOrganizations/org2.example.com/peers/peer1.org2.example.com/msp/signcerts/peer1.org2.example.com-cert.pem
+  if [ ! -f "${PEM_PATH}" ]; then
+    PEM_PATH="${PIER_ROOT}"/fabric/crypto-config/peerOrganizations/org2.example1.com/peers/peer1.org2.example1.com/msp/signcerts/peer1.org2.example1.com-cert.pem
   fi
+  cp "${PEM_PATH}" "${PIER_ROOT}"/fabric/fabric.validators
 
-  if [ $2 ]; then
-    FABRIC_IP=$2
-  fi
-
-  if [ $3 ]; then
-    PPROF_PORT=$3
-  fi
-
+  x_replace "s/8987/${PIER_PORT}/g" "${PIER_ROOT}"/pier.toml
   x_replace "s/44555/${PPROF_PORT}/g" "${PIER_ROOT}"/pier.toml
   x_replace "s/localhost:60011/${BITXHUB_ADDR}/g" "${PIER_ROOT}"/pier.toml
-  x_replace "s/localhost/${FABRIC_IP}/g" "${PIER_ROOT}"/fabric/fabric.toml
 
-  print_blue "===> bitxhub_addr: $BITXHUB_ADDR, fabric_ip: $FABRIC_IP, pprof: $PPROF_PORT"
+  print_blue "===> pier_root: $PIER_ROOT, pier_port: $PIER_PORT, bitxhub_addr: $BITXHUB_ADDR, pprof: $PPROF_PORT"
 
   print_blue "===> Register pier to bitxhub"
   pier --repo "${PIER_ROOT}" appchain register \
@@ -128,7 +141,6 @@ function start() {
   print_blue "===> Start pier"
   cd "${CURRENT_PATH}"
   export CONFIG_PATH=${PIER_ROOT}/fabric
-  x_replace "s/localhost/${FABRIC_IP}/g" config.yaml
 
   pier --repo "${PIER_ROOT}" start
 }
@@ -136,32 +148,15 @@ function start() {
 function restart() {
   prepare
 
-  BITXHUB_ADDR="localhost:60011"
-  FABRIC_IP=localhost
-  PPROF_PORT=44555
-
-  if [ $1 ]; then
-    BITXHUB_ADDR=$1
-  fi
-
-  if [ $2 ]; then
-    FABRIC_IP=$2
-  fi
-
-  if [ $3 ]; then
-    PPROF_PORT=$3
-  fi
-
-  print_blue "===> bitxhub_addr: $BITXHUB_ADDR, fabric_ip: $FABRIC_IP, pprof: $PPROF_PORT"
+  print_blue "===> pier_root: $PIER_ROOT,bitxhub_addr: $BITXHUB_ADDR, pprof: $PPROF_PORT"
 
   cd "${CURRENT_PATH}"
   export CONFIG_PATH=${PIER_ROOT}/fabric
-  x_replace "s/localhost/${FABRIC_IP}/g" config.yaml
   pier --repo "${PIER_ROOT}" start
 }
 
 function printID() {
-  if [ ! -d $PIER_ROOT ]; then
+  if [ ! -d "$PIER_ROOT" ]; then
     print_red "Please start pier firstly"
     exit 1
   fi
@@ -169,14 +164,47 @@ function printID() {
   pier --repo "${PIER_ROOT}" id
 }
 
+PIER_ROOT=${CURRENT_PATH}/.pier
+CRYPTO_CONFIG="${CURRENT_PATH}"/crypto-config
+CONFIG="${CURRENT_PATH}"/config.yaml
+PIER_PORT=8987
+BITXHUB_ADDR="localhost:60011"
+PPROF_PORT=44555
+
 MODE=$1
+shift
+
+while getopts "h?r:c:g:p:b:o:" opt; do
+  case "$opt" in
+  h | \?)
+    printHelp
+    exit 0
+    ;;
+  r)
+    PIER_ROOT=$OPTARG
+    ;;
+  c)
+    CRYPTO_CONFIG=$OPTARG
+    ;;
+  g)
+    CONFIG=$OPTARG
+    ;;
+  p)
+    PIER_PORT=$OPTARG
+    ;;
+  b)
+    BITXHUB_ADDR=$OPTARG
+    ;;
+  o)
+    PPROF_PORT=$OPTARG
+    ;;
+  esac
+done
 
 if [ "$MODE" == "start" ]; then
-  shift
-  start $1 $2 $3
+  start
 elif [ "$MODE" == "restart" ]; then
-  shift
-  restart $1 $2 $3
+  restart
 elif [ "$MODE" == "id" ]; then
   printID
 else
