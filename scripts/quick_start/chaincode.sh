@@ -31,15 +31,18 @@ function print_red() {
 
 function printHelp() {
   print_blue "Usage:  "
-  echo "  chaincode.sh <mode>"
-  echo "    <mode> - one of 'up', 'down', 'restart'"
-  echo "      - 'install <fabric_ip>' - install broker, transfer and data_swapper chaincode"
-  echo "      - 'upgrade <fabric_ip> <chaincode_version(default: v1)>' - upgrade broker, transfer and data_swapper chaincode"
-  echo "      - 'init <fabric_ip>' - init broker"
-  echo "      - 'get_balance <fabric_ip>' - get Alice balance from transfer chaincode"
-  echo "      - 'get_data <fabric_ip>' - get path value from data_swapper chaincode"
-  echo "      - 'interchain_transfer <fabric_ip> <target_appchain_id>' - interchain transfer"
-  echo "      - 'interchain_get <fabric_ip> <target_appchain_id>' - interchain get data"
+  echo "  chaincode.sh <mode> [-c <config_path>] [-v <chaincode_version>] [-t <target_appchain_id>]"
+  echo "    <mode> - one of 'install', 'upgrade', 'init','get_balance','get_data','interchain_transfer','interchain_get'"
+  echo "      - 'install' - install broker, transfer and data_swapper chaincode"
+  echo "      - 'upgrade <chaincode_version(default: v1)>' - upgrade broker, transfer and data_swapper chaincode"
+  echo "      - 'init' - init broker"
+  echo "      - 'get_balance' - get Alice balance from transfer chaincode"
+  echo "      - 'get_data' - get path value from data_swapper chaincode"
+  echo "      - 'interchain_transfer' - interchain transfer"
+  echo "      - 'interchain_get' - interchain get data"
+  echo "    -c <config_path> - specify which config.yaml file use (default \"./config.yaml\")"
+  echo "    -v <chaincode_version> - upgrade fabric chaincode version (default \"v1\")"
+  echo "    -t <target_appchain_id> - when inter-chain interaction is required"
   echo "  chaincode.sh -h (print this message)"
 }
 
@@ -60,11 +63,30 @@ function prepare() {
     print_blue "===> Download config-template.yaml"
     wget https://raw.githubusercontent.com/meshplus/bitxhub/master/scripts/quick_start/config-template.yaml
   fi
-  rm -rf "${CURRENT_PATH}"/config.yaml
-  cp "${CURRENT_PATH}"/config-template.yaml "${CURRENT_PATH}"/config.yaml
+
+  if [ ! -f config.yaml ]; then
+    cp "${CURRENT_PATH}"/config-template.yaml "${CURRENT_PATH}"/config.yaml
+  fi
+
+  if [ ! -f configB.yaml ]; then
+    cp "${CURRENT_PATH}"/config-template.yaml "${CURRENT_PATH}"/configB.yaml
+    x_replace 's/7050/7055/g' "${CURRENT_PATH}"/configB.yaml
+    x_replace 's/7051/7052/g' "${CURRENT_PATH}"/configB.yaml
+    x_replace 's/8051/8052/g' "${CURRENT_PATH}"/configB.yaml
+    x_replace 's/9051/9052/g' "${CURRENT_PATH}"/configB.yaml
+    x_replace 's/10051/10052/g' "${CURRENT_PATH}"/configB.yaml
+    x_replace 's/crypto-config/crypto-configB/g' "${CURRENT_PATH}"/configB.yaml
+    x_replace 's/example/example1/g' "${CURRENT_PATH}"/configB.yaml
+  fi
+
 
   if [ ! -d crypto-config ]; then
-    print_red "===> Please provide the 'crypto-config'"
+    print_red "===> Please provide the 'crypto-config'(first fabric network)"
+    exit 1
+  fi
+
+  if [ ! -d crypto-configB ]; then
+    print_red "===> Please provide the 'crypto-configB'(second fabric network)"
     exit 1
   fi
 }
@@ -72,261 +94,229 @@ function prepare() {
 function installChaincode() {
   prepare
 
-  FABRIC_IP=localhost
-  if [ $1 ]; then
-    FABRIC_IP=$1
-  fi
-
-  print_blue "===> Install chaincode at $FABRIC_IP"
+  print_blue "===> Install chaincode"
 
   cd "${CURRENT_PATH}"
   export CONFIG_PATH=${CURRENT_PATH}
-  x_replace "s/localhost/${FABRIC_IP}/g" config.yaml
 
   print_blue "===> 1. Deploying broker, transfer and data_swapper chaincode"
-  fabric-cli chaincode install --gopath ./contracts --ccp broker --ccid broker --config ./config.yaml --orgid org2 --user Admin --cid mychannel
-  fabric-cli chaincode instantiate --ccp broker --ccid broker --config ./config.yaml --orgid org2 --user Admin --cid mychannel
-  fabric-cli chaincode install --gopath ./contracts --ccp transfer --ccid transfer --config ./config.yaml --orgid org2 --user Admin --cid mychannel
-  fabric-cli chaincode instantiate --ccp transfer --ccid transfer --config ./config.yaml --orgid org2 --user Admin --cid mychannel
-  fabric-cli chaincode install --gopath ./contracts --ccp data_swapper --ccid data_swapper --config ./config.yaml --orgid org2 --user Admin --cid mychannel
-  fabric-cli chaincode instantiate --ccp data_swapper --ccid data_swapper --config ./config.yaml --orgid org2 --user Admin --cid mychannel
+  fabric-cli chaincode install --gopath ./contracts --ccp broker --ccid broker --config "${CONFIG_YAML}" --orgid org2 --user Admin --cid mychannel
+  fabric-cli chaincode instantiate --ccp broker --ccid broker --config "${CONFIG_YAML}" --orgid org2 --user Admin --cid mychannel
+  fabric-cli chaincode install --gopath ./contracts --ccp transfer --ccid transfer --config "${CONFIG_YAML}" --orgid org2 --user Admin --cid mychannel
+  fabric-cli chaincode instantiate --ccp transfer --ccid transfer --config "${CONFIG_YAML}" --orgid org2 --user Admin --cid mychannel
+  fabric-cli chaincode install --gopath ./contracts --ccp data_swapper --ccid data_swapper --config "${CONFIG_YAML}" --orgid org2 --user Admin --cid mychannel
+  fabric-cli chaincode instantiate --ccp data_swapper --ccid data_swapper --config "${CONFIG_YAML}" --orgid org2 --user Admin --cid mychannel
 
   print_blue "===> 2. Set Alice 10000 amout in transfer chaincode"
   fabric-cli chaincode invoke --cid mychannel --ccid=transfer \
     --args='{"Func":"setBalance","Args":["Alice", "10000"]}' \
-    --user Admin --orgid org2 --payload --config ./config.yaml
+    --user Admin --orgid org2 --payload --config "${CONFIG_YAML}"
 
   print_blue "===> 3. Set (key: path, value: ${CURRENT_PATH}) in data_swapper chaincode"
   fabric-cli chaincode invoke --cid mychannel --ccid=data_swapper \
     --args='{"Func":"set","Args":["path", "'"${CURRENT_PATH}"'"]}' \
-    --user Admin --orgid org2 --payload --config ./config.yaml
+    --user Admin --orgid org2 --payload --config "${CONFIG_YAML}"
 
   print_blue "===> 4. Register transfer and data_swapper chaincode to broker chaincode"
   fabric-cli chaincode invoke --cid mychannel --ccid=transfer \
-    --args='{"Func":"register"}' --user Admin --orgid org2 --payload --config ./config.yaml
+    --args='{"Func":"register"}' --user Admin --orgid org2 --payload --config "${CONFIG_YAML}"
   fabric-cli chaincode invoke --cid mychannel --ccid=data_swapper \
-    --args='{"Func":"register"}' --user Admin --orgid org2 --payload --config ./config.yaml
+    --args='{"Func":"register"}' --user Admin --orgid org2 --payload --config "${CONFIG_YAML}"
 
   print_blue "===> 6. Audit transfer and data_swapper chaincode"
   fabric-cli chaincode invoke --cid mychannel --ccid=broker \
     --args='{"Func":"audit", "Args":["mychannel", "transfer", "1"]}' \
-    --user Admin --orgid org2 --payload --config ./config.yaml
+    --user Admin --orgid org2 --payload --config "${CONFIG_YAML}"
   fabric-cli chaincode invoke --cid mychannel --ccid=broker \
     --args='{"Func":"audit", "Args":["mychannel", "data_swapper", "1"]}' \
-    --user Admin --orgid org2 --payload --config ./config.yaml
+    --user Admin --orgid org2 --payload --config "${CONFIG_YAML}"
 
 }
 
 function upgradeChaincode() {
   prepare
 
-  FABRIC_IP=localhost
-  if [ $1 ]; then
-    FABRIC_IP=$1
-  fi
-
-  CHAINCODE_VERSION=v1
-  if [ $2 ]; then
-    CHAINCODE_VERSION=$2
-  fi
-
-  print_blue "Upgrade chaincode at $FABRIC_IP"
   print_blue "Upgrade to version: $CHAINCODE_VERSION"
 
   cd "${CURRENT_PATH}"
   export CONFIG_PATH=${CURRENT_PATH}
-  x_replace "s/localhost/${FABRIC_IP}/g" config.yaml
+
 
   print_blue "===> 1. Deploying broker, transfer and data_swapper chaincode"
   fabric-cli chaincode install --gopath ./contracts --ccp broker --ccid broker \
     --v $CHAINCODE_VERSION \
-    --config ./config.yaml --orgid org2 --user Admin --cid mychannel
+    --config "${CONFIG_YAML}" --orgid org2 --user Admin --cid mychannel
   fabric-cli chaincode upgrade --ccp broker --ccid broker \
     --v $CHAINCODE_VERSION \
-    --config ./config.yaml --orgid org2 --user Admin --cid mychannel
+    --config "${CONFIG_YAML}" --orgid org2 --user Admin --cid mychannel
 
   fabric-cli chaincode install --gopath ./contracts --ccp transfer --ccid transfer \
     --v $CHAINCODE_VERSION \
-    --config ./config.yaml --orgid org2 --user Admin --cid mychannel
+    --config "${CONFIG_YAML}" --orgid org2 --user Admin --cid mychannel
   fabric-cli chaincode upgrade --ccp transfer --ccid transfer \
     --v $CHAINCODE_VERSION \
-    --config ./config.yaml --orgid org2 --user Admin --cid mychannel
+    --config "${CONFIG_YAML}" --orgid org2 --user Admin --cid mychannel
 
   fabric-cli chaincode install --gopath ./contracts --ccp data_swapper --ccid data_swapper \
     --v $CHAINCODE_VERSION \
-    --config ./config.yaml --orgid org2 --user Admin --cid mychannel
+    --config "${CONFIG_YAML}" --orgid org2 --user Admin --cid mychannel
   fabric-cli chaincode upgrade --ccp data_swapper --ccid data_swapper \
     --v $CHAINCODE_VERSION \
-    --config ./config.yaml --orgid org2 --user Admin --cid mychannel
+    --config "${CONFIG_YAML}" --orgid org2 --user Admin --cid mychannel
 
   print_blue "===> 2. Set Alice 10000 amout in transfer chaincode"
   fabric-cli chaincode invoke --cid mychannel --ccid=transfer \
     --args='{"Func":"setBalance","Args":["Alice", "10000"]}' \
-    --user Admin --orgid org2 --payload --config ./config.yaml
+    --user Admin --orgid org2 --payload --config "${CONFIG_YAML}"
 
   print_blue "===> 3. Set (key: path, value: ${CURRENT_PATH}) in data_swapper chaincode"
   fabric-cli chaincode invoke --cid mychannel --ccid=data_swapper \
     --args='{"Func":"set","Args":["path", "'"${CURRENT_PATH}"'"]}' \
-    --user Admin --orgid org2 --payload --config ./config.yaml
+    --user Admin --orgid org2 --payload --config "${CONFIG_YAML}"
 
   print_blue "===> 4. Register transfer and data_swapper chaincode to broker chaincode"
   fabric-cli chaincode invoke --cid mychannel --ccid=transfer \
-    --args='{"Func":"register"}' --user Admin --orgid org2 --payload --config ./config.yaml
+    --args='{"Func":"register"}' --user Admin --orgid org2 --payload --config "${CONFIG_YAML}"
   fabric-cli chaincode invoke --cid mychannel --ccid=data_swapper \
-    --args='{"Func":"register"}' --user Admin --orgid org2 --payload --config ./config.yaml
+    --args='{"Func":"register"}' --user Admin --orgid org2 --payload --config "${CONFIG_YAML}"
 
   print_blue "===> 6. Audit transfer and data_swapper chaincode"
   fabric-cli chaincode invoke --cid mychannel --ccid=broker \
     --args='{"Func":"audit", "Args":["mychannel", "transfer", "1"]}' \
-    --user Admin --orgid org2 --payload --config ./config.yaml
+    --user Admin --orgid org2 --payload --config "${CONFIG_YAML}"
   fabric-cli chaincode invoke --cid mychannel --ccid=broker \
     --args='{"Func":"audit", "Args":["mychannel", "data_swapper", "1"]}' \
-    --user Admin --orgid org2 --payload --config ./config.yaml
+    --user Admin --orgid org2 --payload --config "${CONFIG_YAML}"
 }
 
 function initBroker() {
   prepare
 
-  FABRIC_IP=localhost
-  if [ $1 ]; then
-    FABRIC_IP=$1
-  fi
-
-  print_blue "===> Init broker chaincode at $FABRIC_IP"
+  print_blue "===> Init broker chaincode"
 
   cd "${CURRENT_PATH}"
   export CONFIG_PATH=${CURRENT_PATH}
-  x_replace "s/localhost/${FABRIC_IP}/g" config.yaml
+
 
   fabric-cli chaincode invoke --cid mychannel --ccid=broker \
     --args='{"Func":"initialize"}' \
-    --user Admin --orgid org2 --payload --config ./config.yaml
+    --user Admin --orgid org2 --payload --config "${CONFIG_YAML}"
 }
 
 function getBalance() {
   prepare
 
-  FABRIC_IP=localhost
-  if [ $1 ]; then
-    FABRIC_IP=$1
-  fi
-
-  print_blue "===> Query Alice balance at $FABRIC_IP"
+  print_blue "===> Query Alice balance"
 
   cd "${CURRENT_PATH}"
   export CONFIG_PATH=${CURRENT_PATH}
-  x_replace "s/localhost/${FABRIC_IP}/g" config.yaml
+
 
   fabric-cli chaincode invoke --ccid=transfer \
     --args '{"Func":"getBalance","Args":["Alice"]}' \
-    --config ./config.yaml --payload \
+    --config "${CONFIG_YAML}" --payload \
     --orgid=org2 --user=Admin --cid=mychannel
 }
 
 function getData() {
   prepare
 
-  FABRIC_IP=localhost
-  if [ $1 ]; then
-    FABRIC_IP=$1
-  fi
-
-  print_blue "===> Query data at $FABRIC_IP"
-
   cd "${CURRENT_PATH}"
   export CONFIG_PATH=${CURRENT_PATH}
-  x_replace "s/localhost/${FABRIC_IP}/g" config.yaml
+
 
   fabric-cli chaincode invoke --ccid=data_swapper \
     --args '{"Func":"get","Args":["path"]}' \
-    --config ./config.yaml --payload \
+    --config "${CONFIG_YAML}" --payload \
     --orgid=org2 --user=Admin --cid=mychannel
 }
 
 function interchainTransfer() {
   prepare
 
-  FABRIC_IP=localhost
-  if [ $1 ]; then
-    FABRIC_IP=$1
-  fi
-
-  if [ ! $2 ]; then
+  if [ ! $TARGET_APPCHAIN_ID ]; then
     echo "Please input target appchain"
     exit 1
   fi
 
-  TARGET_APPCHAIN_ID=$2
-
-  print_blue "===> Invoke at $FABRIC_IP"
-
   cd "${CURRENT_PATH}"
   export CONFIG_PATH=${CURRENT_PATH}
-  x_replace "s/localhost/${FABRIC_IP}/g" config.yaml
+
 
   echo "===> Alice transfer token from one chain to another chain"
   echo "===> Target appchain id: $TARGET_APPCHAIN_ID"
 
   fabric-cli chaincode invoke --ccid transfer \
     --args '{"Func":"transfer","Args":["'"${TARGET_APPCHAIN_ID}"'", "mychannel&transfer", "Alice","Alice","1"]}' \
-    --config ./config.yaml --payload \
+    --config "${CONFIG_YAML}" --payload \
     --orgid=org2 --user=Admin --cid=mychannel
 }
 
 function interchainGet() {
   prepare
 
-  FABRIC_IP=localhost
-  if [ $1 ]; then
-    FABRIC_IP=$1
-  fi
-
-  if [ ! $2 ]; then
+  if [ ! $TARGET_APPCHAIN_ID ]; then
     echo "Please input target appchain"
     exit 1
   fi
 
-  TARGET_APPCHAIN_ID=$2
-
-  print_blue "===> Invoke at $FABRIC_IP"
-
   cd "${CURRENT_PATH}"
   export CONFIG_PATH=${CURRENT_PATH}
-  x_replace "s/localhost/${FABRIC_IP}/g" config.yaml
+
 
   echo "===> Get path value from other appchain"
   echo "===> Target appchain id: $TARGET_APPCHAIN_ID"
 
   fabric-cli chaincode invoke --ccid data_swapper \
     --args '{"Func":"get","Args":["'"${TARGET_APPCHAIN_ID}"'", "mychannel&data_swapper", "path"]}' \
-    --config ./config.yaml --payload \
+    --config "${CONFIG_YAML}" --payload \
     --orgid=org2 --user=Admin --cid=mychannel
 }
 
+
+CONFIG_YAML=./config.yaml
+CHAINCODE_VERSION=v1
+TARGET_APPCHAIN_ID=""
+
+
+
 MODE=$1
+shift
+
+while getopts "h?c:v:t:" opt; do
+  case "$opt" in
+  h | \?)
+    printHelp
+    exit 0
+    ;;
+  c)
+    CONFIG_YAML=$OPTARG
+    ;;
+  v)
+    CHAINCODE_VERSION=$OPTARG
+    ;;
+  t)
+    TARGET_APPCHAIN_ID=$OPTARG
+    ;;
+  esac
+done
 
 if [ "$MODE" == "install" ]; then
-  shift
-  installChaincode $1
+  installChaincode
 elif [ "$MODE" == "upgrade" ]; then
-  shift
-  upgradeChaincode $1 $2
+  upgradeChaincode
 elif [ "$MODE" == "init" ]; then
-  shift
-  initBroker $1
+  initBroker
 elif [ "$MODE" == "get_balance" ]; then
-  shift
-  getBalance $1
+  getBalance
 elif [ "$MODE" == "get_data" ]; then
-  shift
-  getData $1
+  getData
 elif [ "$MODE" == "interchain_transfer" ]; then
-  shift
-  interchainTransfer $1 $2
+  interchainTransfer
 elif [ "$MODE" == "interchain_get" ]; then
-  shift
-  interchainGet $1 $2
+  interchainGet
 else
   printHelp
   exit 1
 fi
+
