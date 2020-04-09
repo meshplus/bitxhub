@@ -230,7 +230,7 @@ func (exec *BlockExecutor) applyTransaction(i int, tx *pb.Transaction) ([]byte, 
 		switch tx.Data.VmType {
 		case pb.TransactionData_BVM:
 			ctx := vm.NewContext(tx, uint64(i), tx.Data, exec.ledger, exec.logger)
-			instance = boltvm.New(ctx, exec.validator)
+			instance = boltvm.New(ctx, exec.validationEngine)
 		case pb.TransactionData_XVM:
 			ctx := vm.NewContext(tx, uint64(i), tx.Data, exec.ledger, exec.logger)
 			var err error

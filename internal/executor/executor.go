@@ -28,7 +28,7 @@ type BlockExecutor struct {
 	blockC            chan *pb.Block
 	pendingBlockQ     *cache.Cache
 	interchainCounter map[string][]uint64
-	validator         validator.Validator
+	validationEngine  validator.Engine
 	currentHeight     uint64
 	currentBlockHash  types.Hash
 
@@ -45,7 +45,7 @@ func New(ledger ledger.Ledger, logger logrus.FieldLogger) (*BlockExecutor, error
 		return nil, fmt.Errorf("create cache: %w", err)
 	}
 
-	vlt := validator.NewWasmValidator(ledger, logger)
+	ve := validator.NewValidationEngine(ledger, logger)
 
 	registerBoltContracts()
 
@@ -59,7 +59,7 @@ func New(ledger ledger.Ledger, logger logrus.FieldLogger) (*BlockExecutor, error
 		cancel:            cancel,
 		blockC:            make(chan *pb.Block, blockChanNumber),
 		pendingBlockQ:     pendingBlockQ,
-		validator:         vlt,
+		validationEngine:  ve,
 		currentHeight:     ledger.GetChainMeta().Height,
 		currentBlockHash:  ledger.GetChainMeta().BlockHash,
 	}, nil

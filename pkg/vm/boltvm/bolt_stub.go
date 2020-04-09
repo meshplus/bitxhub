@@ -15,7 +15,7 @@ var _ Stub = (*BoltStubImpl)(nil)
 type BoltStubImpl struct {
 	bvm *BoltVM
 	ctx *vm.Context
-	vlt validator.Validator
+	ve  validator.Engine
 }
 
 func (b *BoltStubImpl) Caller() string {
@@ -122,7 +122,7 @@ func (b *BoltStubImpl) CrossInvoke(address, method string, args ...*pb.Arg) *Res
 	if err != nil {
 		return Error(err.Error())
 	}
-	bvm := New(ctx, b.vlt)
+	bvm := New(ctx, b.ve)
 	ret, err := bvm.Run(data)
 	if err != nil {
 		return Error(err.Error())
@@ -131,6 +131,6 @@ func (b *BoltStubImpl) CrossInvoke(address, method string, args ...*pb.Arg) *Res
 	return Success(ret)
 }
 
-func (b *BoltStubImpl) Validator() validator.Validator {
-	return b.vlt
+func (b *BoltStubImpl) ValidationEngine() validator.Engine {
+	return b.ve
 }

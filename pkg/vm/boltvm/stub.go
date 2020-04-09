@@ -39,7 +39,7 @@ type Stub interface {
 	// PostInterchainEvent posts interchain event to external
 	PostInterchainEvent(interface{})
 	// Validator returns the instance of validator
-	Validator() validator.Validator
+	ValidationEngine() validator.Engine
 	// CrossInvoke cross contract invoke
 	CrossInvoke(address, method string, args ...*pb.Arg) *Response
 }

@@ -14,14 +14,14 @@ var _ vm.VM = (*BoltVM)(nil)
 
 type BoltVM struct {
 	ctx *vm.Context
-	vlt validator.Validator
+	ve  validator.Engine
 }
 
 // New creates a blot vm object
-func New(ctx *vm.Context, vlt validator.Validator) *BoltVM {
+func New(ctx *vm.Context, ve validator.Engine) *BoltVM {
 	return &BoltVM{
 		ctx: ctx,
-		vlt: vlt,
+		ve:  ve,
 	}
 }
 
@@ -47,7 +47,7 @@ func (bvm *BoltVM) Run(input []byte) (ret []byte, err error) {
 	stub := &BoltStubImpl{
 		bvm: bvm,
 		ctx: bvm.ctx,
-		vlt: bvm.vlt,
+		ve:  bvm.ve,
 	}
 
 	if stubField.CanSet() {

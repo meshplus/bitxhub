@@ -292,7 +292,7 @@ func (x *Interchain) HandleIBTP(data []byte) *boltvm.Response {
 	}
 
 	// handle validation
-	isValid, err := x.Validator().Verify(string(res.Result), ibtp.From, ibtp.Proof, app.Validators)
+	isValid, err := x.ValidationEngine().Validate(string(res.Result), ibtp.From, ibtp.Proof, app.Validators)
 	if err != nil {
 		return boltvm.Error(err.Error())
 	}
