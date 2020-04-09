@@ -71,22 +71,6 @@ func TestNode_Start(t *testing.T) {
 	require.Equal(t, 1, len(block.Transactions))
 
 	order.Stop()
-	err = order.Start()
-	require.Nil(t, err)
-	for {
-		time.Sleep(200 * time.Millisecond)
-		if order.Ready() {
-			break
-		}
-	}
-	tx1 := generateTx()
-	err = order.Prepare(tx1)
-	require.Nil(t, err)
-
-	block1 := <-order.Commit()
-	require.Equal(t, uint64(2), block1.BlockHeader.Number)
-	require.Equal(t, 1, len(block.Transactions))
-	order.Stop()
 }
 
 func generateTx() *pb.Transaction {

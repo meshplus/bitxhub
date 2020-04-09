@@ -16,6 +16,7 @@ type RAFTConfig struct {
 type TxPoolConfig struct {
 	PackSize  int           `mapstructure:"pack_size"`
 	BlockTick time.Duration `mapstructure:"block_tick"`
+	PoolSize  int           `mapstructure:"pool_size"`
 }
 
 type RAFT struct {
@@ -36,15 +37,16 @@ func defaultRaftConfig() raft.Config {
 		MaxSizePerMsg:             1024 * 1024, //1024*1024, MaxSizePerMsg limits the max size of each append message.
 		MaxInflightMsgs:           500,         //MaxInflightMsgs limits the max number of in-flight append messages during optimistic replication phase.
 		PreVote:                   true,        // PreVote prevents reconnected node from disturbing network.
-		CheckQuorum:               false,       // Leader steps down when quorum is not active for an electionTimeout.
+		CheckQuorum:               true,        // Leader steps down when quorum is not active for an electionTimeout.
 		DisableProposalForwarding: true,        // This prevents blocks from being accidentally proposed by followers
 	}
 }
 
 func defaultTxPoolConfig() TxPoolConfig {
 	return TxPoolConfig{
-		PackSize:  500,                    //Maximum number of transaction packages.
+		PackSize:  500,                    // How many transactions should the primary pack.
 		BlockTick: 500 * time.Millisecond, //Block packaging time period.
+		PoolSize:  50000,                  //How many transactions could the txPool stores in total.
 	}
 }
 
@@ -86,6 +88,9 @@ func generateTxPoolConfig(repoRoot string) (*TxPoolConfig, error) {
 	}
 	if readConfig.RAFT.TxPoolConfig.PackSize > 0 {
 		defaultTxPoolConfig.PackSize = readConfig.RAFT.TxPoolConfig.PackSize
+	}
+	if readConfig.RAFT.TxPoolConfig.PoolSize > 0 {
+		defaultTxPoolConfig.PoolSize = readConfig.RAFT.TxPoolConfig.PoolSize
 	}
 	return &defaultTxPoolConfig, nil
 }

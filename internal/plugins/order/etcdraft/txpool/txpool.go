@@ -4,7 +4,6 @@ import (
 	"container/list"
 	"context"
 	"fmt"
-	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -21,28 +20,36 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type TxPool struct {
-	sync.RWMutex
-	nodeId             uint64     //node id
-	height             uint64     //current block height
-	pendingTxs         *list.List //pending tx pool
-	presenceTxs        sync.Map   //tx cache
-	readyC             chan *raftproto.Ready
-	peerMgr            peermgr.PeerManager //network manager
-	logger             logrus.FieldLogger  //logger
-	reqLookUp          *order.ReqLookUp    // bloom filter
-	storage            storage.Storage     // storage pending tx
-	getTransactionFunc func(hash types.Hash) (*pb.Transaction, error)
-	isExecuting        bool          //only raft leader can execute
-	packSize           int           //maximum number of transaction packages
-	blockTick          time.Duration //block packed period
+type getTransactionFunc func(hash types.Hash) (*pb.Transaction, error)
 
-	ctx    context.Context
-	cancel context.CancelFunc
+type TxPool struct {
+	sync.RWMutex                             //lock for the pendingTxs
+	nodeId             uint64                //node id
+	height             uint64                //current block height
+	isExecuting        bool                  //only raft leader can execute
+	pendingTxs         *list.List            //pending tx pool
+	presenceTxs        sync.Map              //tx cache
+	ackTxs             map[types.Hash]bool   //ack tx means get tx by pb.RaftMessage_GET_TX_ACK
+	readyC             chan *raftproto.Ready //ready channel, receive by raft Propose channel
+	peerMgr            peermgr.PeerManager   //network manager
+	logger             logrus.FieldLogger    //logger
+	reqLookUp          *order.ReqLookUp      //bloom filter
+	storage            storage.Storage       //storage pending tx
+	config             *Config               //tx pool config
+	ctx                context.Context       //context
+	cancel             context.CancelFunc    //stop Execute
+	getTransactionFunc getTransactionFunc    //get transaction by ledger
+}
+
+type Config struct {
+	PackSize  int           //how many transactions should the primary pack
+	BlockTick time.Duration //block packaging time period
+	PoolSize  int           //how many transactions could the txPool stores in total
+	SetSize   int           //how many transactions should the node broadcast at once
 }
 
 //New txpool
-func New(config *order.Config, storage storage.Storage, packSize int, blockTick time.Duration) (*TxPool, chan *raftproto.Ready) {
+func New(config *order.Config, storage storage.Storage, txPoolConfig *Config) (*TxPool, chan *raftproto.Ready) {
 	readyC := make(chan *raftproto.Ready)
 	reqLookUp, err := order.NewReqLookUp(storage, config.Logger)
 	if err != nil {
@@ -56,18 +63,22 @@ func New(config *order.Config, storage storage.Storage, packSize int, blockTick 
 		readyC:             readyC,
 		height:             config.Applied,
 		pendingTxs:         list.New(),
+		ackTxs:             make(map[types.Hash]bool),
 		reqLookUp:          reqLookUp,
 		storage:            storage,
-		packSize:           packSize,
-		blockTick:          blockTick,
 		getTransactionFunc: config.GetTransactionFunc,
+		config:             txPoolConfig,
 		ctx:                ctx,
 		cancel:             cancel,
 	}, readyC
 }
 
-//Add pending transaction into txpool
-func (tp *TxPool) AddPendingTx(tx *pb.Transaction) error {
+//AddPendingTx add pending transaction into txpool
+func (tp *TxPool) AddPendingTx(tx *pb.Transaction, isAckTx bool) error {
+	if tp.PoolSize() >= tp.config.PoolSize {
+		tp.logger.Debugf("Tx pool size: %d is full", tp.PoolSize())
+		return nil
+	}
 	hash := tx.TransactionHash
 	if e := tp.get(hash); e != nil {
 		return nil
@@ -80,7 +91,7 @@ func (tp *TxPool) AddPendingTx(tx *pb.Transaction) error {
 		}
 	}
 	//add pending tx
-	tp.pushBack(hash, tx)
+	tp.pushBack(hash, tx, isAckTx)
 	return nil
 }
 
@@ -91,31 +102,29 @@ func (tp *TxPool) PoolSize() int {
 	return tp.pendingTxs.Len()
 }
 
-//Remove stored transactions
+//RemoveTxs remove txs from the cache
 func (tp *TxPool) RemoveTxs(hashes []types.Hash, isLeader bool) {
-	if isLeader {
-		tp.BatchDelete(hashes)
-	}
+	tp.Lock()
+	defer tp.Unlock()
 	for _, hash := range hashes {
 		if !isLeader {
 			if e := tp.get(hash); e != nil {
-				tp.Lock()
 				tp.pendingTxs.Remove(e)
-				tp.Unlock()
 			}
 		}
 		tp.presenceTxs.Delete(hash)
 	}
+
 }
 
-//Store the bloom filter
+//BuildReqLookUp store the bloom filter
 func (tp *TxPool) BuildReqLookUp() {
 	if err := tp.reqLookUp.Build(); err != nil {
 		tp.logger.Errorf("bloom filter persistence error：", err)
 	}
 }
 
-//Check the txpool status, only leader node can run Execute()
+//CheckExecute check the txpool status, only leader node can run Execute()
 func (tp *TxPool) CheckExecute(isLeader bool) {
 	if isLeader {
 		if !tp.isExecuting {
@@ -128,12 +137,20 @@ func (tp *TxPool) CheckExecute(isLeader bool) {
 	}
 }
 
-// Schedule to collect txs to the ready channel
-func (tp *TxPool) execute() {
+//execute init
+func (tp *TxPool) executeInit() {
+	tp.Lock()
+	defer tp.Unlock()
 	tp.isExecuting = true
 	tp.pendingTxs.Init()
 	tp.presenceTxs = sync.Map{}
-	ticker := time.NewTicker(tp.blockTick)
+	tp.logger.Debugln("start txpool execute")
+}
+
+//execute schedule to collect txs to the ready channel
+func (tp *TxPool) execute() {
+	tp.executeInit()
+	ticker := time.NewTicker(tp.config.BlockTick)
 	defer ticker.Stop()
 
 	for {
@@ -143,19 +160,17 @@ func (tp *TxPool) execute() {
 			if ready == nil {
 				continue
 			}
-			tp.logger.WithFields(logrus.Fields{
-				"height": ready.Height,
-			}).Debugln("block will be generated")
 			tp.readyC <- ready
 		case <-tp.ctx.Done():
 			tp.isExecuting = false
-			tp.logger.Infoln("Done txpool execute")
+			tp.logger.Infoln("done txpool execute")
 			return
 		}
 	}
 
 }
 
+//ready pack the block
 func (tp *TxPool) ready() *raftproto.Ready {
 	tp.Lock()
 	defer tp.Unlock()
@@ -165,8 +180,8 @@ func (tp *TxPool) ready() *raftproto.Ready {
 	}
 
 	var size int
-	if l > tp.packSize {
-		size = tp.packSize
+	if l > tp.config.PackSize {
+		size = tp.config.PackSize
 	} else {
 		size = l
 	}
@@ -174,8 +189,17 @@ func (tp *TxPool) ready() *raftproto.Ready {
 	for i := 0; i < size; i++ {
 		front := tp.pendingTxs.Front()
 		tx := front.Value.(*pb.Transaction)
-		hashes = append(hashes, tx.TransactionHash)
+		hash := tx.TransactionHash
 		tp.pendingTxs.Remove(front)
+		if _, ok := tp.ackTxs[hash]; ok {
+			delete(tp.ackTxs, hash)
+			continue
+		}
+		hashes = append(hashes, hash)
+
+	}
+	if len(hashes) == 0 {
+		return nil
 	}
 	height := tp.UpdateHeight()
 	return &raftproto.Ready{
@@ -184,17 +208,17 @@ func (tp *TxPool) ready() *raftproto.Ready {
 	}
 }
 
-//Add the block height
+//UpdateHeight add the block height
 func (tp *TxPool) UpdateHeight() uint64 {
 	return atomic.AddUint64(&tp.height, 1)
 }
 
-//Get current block height
+//GetHeight get current block height
 func (tp *TxPool) GetHeight() uint64 {
 	return atomic.LoadUint64(&tp.height)
 }
 
-//Get the transaction by txpool or ledger
+//GetTx get the transaction by txpool or ledger
 func (tp *TxPool) GetTx(hash types.Hash, findByStore bool) (*pb.Transaction, bool) {
 	if e := tp.get(hash); e != nil {
 		return e.Value.(*pb.Transaction), true
@@ -239,7 +263,7 @@ func (tp *TxPool) Broadcast(tx *pb.Transaction) error {
 			continue
 		}
 		if err := tp.peerMgr.Send(id, msg); err != nil {
-			tp.logger.Debugln("send transaction error:", err)
+			tp.logger.Debugf("send tx to:%d %s", id, err.Error())
 			continue
 		}
 	}
@@ -247,7 +271,7 @@ func (tp *TxPool) Broadcast(tx *pb.Transaction) error {
 }
 
 // Fetch tx by local txpool or network
-func (tp *TxPool) FetchTx(hash types.Hash) *pb.Transaction {
+func (tp *TxPool) FetchTx(hash types.Hash, height uint64) *pb.Transaction {
 	if tx, ok := tp.GetTx(hash, false); ok {
 		return tx
 	}
@@ -266,18 +290,13 @@ func (tp *TxPool) FetchTx(hash types.Hash) *pb.Transaction {
 	}
 
 	asyncGet := func() (tx *pb.Transaction, err error) {
-		for id := range tp.peerMgr.Peers() {
-			if id == tp.nodeId {
-				continue
-			}
-			if tx, ok := tp.GetTx(hash, false); ok {
-				return tx, nil
-			}
-			if err := tp.peerMgr.Send(id, m); err != nil {
-				return nil, err
-			}
+		if tx, ok := tp.GetTx(hash, false); ok {
+			return tx, nil
 		}
-		return nil, fmt.Errorf("can't get transaction: %s", hash.String())
+		if err := tp.peerMgr.Broadcast(m); err != nil {
+			tp.logger.Debugln(err)
+		}
+		return nil, fmt.Errorf("can't get tx: %s, block_height:%d", hash.String(), height)
 	}
 
 	var tx *pb.Transaction
@@ -291,57 +310,10 @@ func (tp *TxPool) FetchTx(hash types.Hash) *pb.Transaction {
 			return err
 		}
 		return nil
-	}, strategy.Wait(200*time.Millisecond)); err != nil {
+	}, strategy.Wait(50*time.Millisecond)); err != nil {
 		tp.logger.Errorln(err)
 	}
 	return tx
-}
-
-// Fetch tx by local txpool or network
-func (tp *TxPool) FetchBlock(height uint64) (*pb.Block, error) {
-	get := func(height uint64) (block *pb.Block, err error) {
-		for id := range tp.peerMgr.Peers() {
-			block, err = tp.getBlock(id, int(height))
-			if err != nil {
-				continue
-			}
-			return block, nil
-		}
-		return nil, fmt.Errorf("can't get block: %d", height)
-	}
-
-	var block *pb.Block
-	if err := retry.Retry(func(attempt uint) (err error) {
-		block, err = get(height)
-		if err != nil {
-			tp.logger.Debugln(err)
-			return err
-		}
-		return nil
-	}, strategy.Wait(200*time.Millisecond), strategy.Limit(1)); err != nil {
-		return nil, err
-	}
-	return block, nil
-}
-
-//Get block by network
-func (tp *TxPool) getBlock(id uint64, i int) (*pb.Block, error) {
-	m := &pb.Message{
-		Type: pb.Message_GET_BLOCK,
-		Data: []byte(strconv.Itoa(i)),
-	}
-
-	res, err := tp.peerMgr.SyncSend(id, m)
-	if err != nil {
-		return nil, err
-	}
-
-	block := &pb.Block{}
-	if err := block.Unmarshal(res.Data); err != nil {
-		return nil, err
-	}
-
-	return block, nil
 }
 
 func (tp *TxPool) get(key types.Hash) *list.Element {
@@ -352,28 +324,35 @@ func (tp *TxPool) get(key types.Hash) *list.Element {
 	return nil
 }
 
-func (tp *TxPool) pushBack(key types.Hash, value interface{}) *list.Element {
+func (tp *TxPool) pushBack(key types.Hash, value interface{}, isAckTx bool) *list.Element {
 	tp.Lock()
 	defer tp.Unlock()
+	if e := tp.get(key); e != nil {
+		return nil
+	}
+	if isAckTx {
+		tp.ackTxs[key] = true
+	}
 	e := tp.pendingTxs.PushBack(value)
 	tp.presenceTxs.Store(key, e)
 	return e
 }
 
-var transactionKey = []byte("tx-")
-
-func compositeKey(prefix []byte, value interface{}) []byte {
+func compositeKey(value interface{}) []byte {
+	var prefix = []byte("tx-")
 	return append(prefix, []byte(fmt.Sprintf("%v", value))...)
 }
+
 func (tp *TxPool) store(tx *pb.Transaction) {
-	txKey := compositeKey(transactionKey, tx.TransactionHash.Bytes())
+	txKey := compositeKey(tx.TransactionHash.Bytes())
 	txData, _ := tx.Marshal()
 	if err := tp.storage.Put(txKey, txData); err != nil {
 		tp.logger.Error("store tx error:", err)
 	}
 }
+
 func (tp *TxPool) load(hash types.Hash) (*pb.Transaction, bool) {
-	txKey := compositeKey(transactionKey, hash.Bytes())
+	txKey := compositeKey(hash.Bytes())
 	txData, err := tp.storage.Get(txKey)
 	if err != nil {
 		return nil, false
@@ -386,16 +365,17 @@ func (tp *TxPool) load(hash types.Hash) (*pb.Transaction, bool) {
 	return &tx, true
 }
 
-//batch store txs
+//BatchStore batch store txs
 func (tp *TxPool) BatchStore(hashes []types.Hash) {
 	batch := tp.storage.NewBatch()
 	for _, hash := range hashes {
 		e := tp.get(hash)
 		if e == nil {
+			tp.logger.Debugln("BatchStore not found tx:", hash.String())
 			continue
 		}
 		tx := e.Value.(*pb.Transaction)
-		txKey := compositeKey(transactionKey, hash.Bytes())
+		txKey := compositeKey(hash.Bytes())
 		txData, _ := tx.Marshal()
 		batch.Put(txKey, txData)
 	}
@@ -404,11 +384,11 @@ func (tp *TxPool) BatchStore(hashes []types.Hash) {
 	}
 }
 
-//batch delete txs
+//BatchDelete batch delete txs
 func (tp *TxPool) BatchDelete(hashes []types.Hash) {
 	batch := tp.storage.NewBatch()
 	for _, hash := range hashes {
-		txKey := compositeKey(transactionKey, hash.Bytes())
+		txKey := compositeKey(hash.Bytes())
 		batch.Delete(txKey)
 	}
 	if err := batch.Commit(); err != nil {
