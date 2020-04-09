@@ -2,6 +2,7 @@ package order
 
 import (
 	"bytes"
+	"sync"
 
 	"github.com/meshplus/bitxhub/pkg/storage"
 	"github.com/sirupsen/logrus"
@@ -15,6 +16,7 @@ const (
 )
 
 type ReqLookUp struct {
+	sync.Mutex
 	filter  *bloom.BloomFilter
 	storage storage.Storage
 	buffer  bytes.Buffer
@@ -50,10 +52,11 @@ func (r *ReqLookUp) LookUp(key []byte) bool {
 }
 
 func (r *ReqLookUp) Build() error {
+	r.Lock()
+	defer r.Unlock()
 	if _, err := r.filter.WriteTo(&r.buffer); err != nil {
 		return err
 	}
-	//r.logger.Debugln("bloom filter bytes length:", r.buffer.Len())
 	if err := r.storage.Put([]byte(filterDbKey), r.buffer.Bytes()); err != nil {
 		return err
 	}
