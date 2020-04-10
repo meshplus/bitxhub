@@ -82,7 +82,12 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 	if err != nil {
 		return nil, fmt.Errorf("generate raft txpool config: %w", err)
 	}
-	txPool, proposeC := txpool.New(config, dbStorage, tpc.PackSize, tpc.BlockTick)
+	txPoolConfig := &txpool.Config{
+		PackSize:  tpc.PackSize,
+		BlockTick: tpc.BlockTick,
+		PoolSize:  tpc.PoolSize,
+	}
+	txPool, proposeC := txpool.New(config, dbStorage, txPoolConfig)
 
 	readyPool := &sync.Pool{New: func() interface{} {
 		return new(raftproto.Ready)
@@ -134,7 +139,10 @@ func (n *Node) Stop() {
 
 //Add the transaction into txpool and broadcast it to other nodes
 func (n *Node) Prepare(tx *pb.Transaction) error {
-	if err := n.tp.AddPendingTx(tx); err != nil {
+	if !n.Ready() {
+		return nil
+	}
+	if err := n.tp.AddPendingTx(tx, false); err != nil {
 		return err
 	}
 	if err := n.tp.Broadcast(tx); err != nil {
@@ -149,6 +157,12 @@ func (n *Node) Commit() chan *pb.Block {
 }
 
 func (n *Node) ReportState(height uint64, hash types.Hash) {
+	if height%10 == 0 {
+		n.logger.WithFields(logrus.Fields{
+			"height": height,
+			"hash":   hash.ShortString(),
+		}).Info("Report checkpoint")
+	}
 	appliedIndex, ok := n.blockAppliedIndex.Load(height)
 	if !ok {
 		n.logger.Errorf("can not found appliedIndex:", height)
@@ -165,16 +179,11 @@ func (n *Node) ReportState(height uint64, hash types.Hash) {
 		n.logger.Errorf("can not found ready:", height)
 		return
 	}
+	hashes := ready.(*raftproto.Ready).TxHashes
 	// remove redundant tx
-	n.tp.RemoveTxs(ready.(*raftproto.Ready).TxHashes, n.IsLeader())
-	n.readyCache.Delete(height)
+	n.tp.BatchDelete(hashes)
 
-	if height%10 == 0 {
-		n.logger.WithFields(logrus.Fields{
-			"height": height,
-			"hash":   hash.ShortString(),
-		}).Info("Report checkpoint")
-	}
+	n.readyCache.Delete(height)
 }
 
 func (n *Node) Quorum() uint64 {
@@ -220,13 +229,17 @@ func (n *Node) Step(ctx context.Context, msg []byte) error {
 		}
 		return n.peerMgr.Send(rm.FromId, m)
 	case raftproto.RaftMessage_GET_TX_ACK:
-		fallthrough
+		tx := &pb.Transaction{}
+		if err := tx.Unmarshal(rm.Data); err != nil {
+			return err
+		}
+		return n.tp.AddPendingTx(tx, true)
 	case raftproto.RaftMessage_BROADCAST_TX:
 		tx := &pb.Transaction{}
 		if err := tx.Unmarshal(rm.Data); err != nil {
 			return err
 		}
-		return n.tp.AddPendingTx(tx)
+		return n.tp.AddPendingTx(tx, false)
 	default:
 		return fmt.Errorf("unexpected raft message received")
 	}
@@ -265,6 +278,10 @@ func (n *Node) run() {
 				if !ok {
 					n.proposeC = nil
 				} else {
+					if !n.IsLeader() {
+						n.tp.CheckExecute(false)
+						continue
+					}
 					data, err := ready.Marshal()
 					if err != nil {
 						n.logger.Panic(err)
@@ -357,9 +374,6 @@ func (n *Node) send(messages []raftpb.Message) {
 
 		err = n.peerMgr.Send(msg.To, p2pMsg)
 		if err != nil {
-			n.logger.WithFields(logrus.Fields{
-				"mgs_to": msg.To,
-			}).Debugln("message consensus error")
 			n.node.ReportUnreachable(msg.To)
 			status = raft.SnapshotFailure
 		}
@@ -393,11 +407,12 @@ func (n *Node) publishEntries(ents []raftpb.Entry) bool {
 			//        https://github.com/coreos/etcd/pull/7899). In this
 			//        scenario, when the node comes back up, we will re-apply
 			//        a few entries.
-			if n.getBlockAppliedIndex() >= ents[i].Index {
-				// after commit, update appliedIndex
+			blockAppliedIndex := n.getBlockAppliedIndex()
+			if blockAppliedIndex >= ents[i].Index {
 				n.appliedIndex = ents[i].Index
 				continue
 			}
+
 			n.mint(ready)
 			n.blockAppliedIndex.Store(ready.Height, ents[i].Index)
 		case raftpb.EntryConfChange:
@@ -436,6 +451,14 @@ func (n *Node) publishEntries(ents []raftpb.Entry) bool {
 
 //mint the block
 func (n *Node) mint(ready *raftproto.Ready) {
+	n.logger.WithFields(logrus.Fields{
+		"height": ready.Height,
+		"count":  len(ready.TxHashes),
+	}).Debugln("block will be generated")
+	//follower node update the block height
+	if n.tp.GetHeight() == ready.Height-1 {
+		n.tp.UpdateHeight()
+	}
 	loseTxs := make([]types.Hash, 0)
 	txs := make([]*pb.Transaction, 0, len(ready.TxHashes))
 	for _, hash := range ready.TxHashes {
@@ -445,14 +468,14 @@ func (n *Node) mint(ready *raftproto.Ready) {
 		}
 	}
 
-	//handler missing tx
+	//handle missing txs
 	if len(loseTxs) != 0 {
 		var wg sync.WaitGroup
 		wg.Add(len(loseTxs))
 		for _, hash := range loseTxs {
 			go func(hash types.Hash) {
 				defer wg.Done()
-				n.tp.FetchTx(hash)
+				n.tp.FetchTx(hash, ready.Height)
 			}(hash)
 		}
 		wg.Wait()
@@ -462,10 +485,7 @@ func (n *Node) mint(ready *raftproto.Ready) {
 		tx, _ := n.tp.GetTx(hash, false)
 		txs = append(txs, tx)
 	}
-	//follower node update the block height
-	if !n.IsLeader() {
-		n.tp.UpdateHeight()
-	}
+	n.tp.RemoveTxs(ready.TxHashes, n.IsLeader())
 	block := &pb.Block{
 		BlockHeader: &pb.BlockHeader{
 			Version:   []byte("1.0.0"),
@@ -474,7 +494,6 @@ func (n *Node) mint(ready *raftproto.Ready) {
 		},
 		Transactions: txs,
 	}
-
 	n.logger.WithFields(logrus.Fields{
 		"txpool_size": n.tp.PoolSize(),
 	}).Debugln("current tx pool size")
@@ -551,7 +570,7 @@ func (n *Node) getBlockAppliedIndex() uint64 {
 	return appliedIndex.(uint64)
 }
 
-//Load the lastAppliedIndex of
+//Load the lastAppliedIndex of block height
 func (n *Node) loadAppliedIndex() uint64 {
 	dat, err := n.storage.Get(appliedDbKey)
 	var lastAppliedIndex uint64
