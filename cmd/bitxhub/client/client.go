@@ -27,6 +27,7 @@ var clientCMD = cli.Command{
 		ruleCMD(),
 		txCMD(),
 		interchainCMD(),
+		validatorsCMD(),
 	},
 }
 
