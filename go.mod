@@ -28,8 +28,8 @@ require (
 	github.com/mattn/go-colorable v0.1.4 // indirect
 	github.com/mattn/go-isatty v0.0.10 // indirect
 	github.com/meshplus/bitxhub-kit v1.0.0-rc1
-	github.com/meshplus/bitxhub-model v1.0.0-rc2
-	github.com/meshplus/go-bitxhub-client v1.0.0-rc2
+	github.com/meshplus/bitxhub-model v1.0.0-rc3
+	github.com/meshplus/go-bitxhub-client v1.0.0-rc3
 	github.com/miekg/pkcs11 v1.0.3 // indirect
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-multiaddr v0.2.0

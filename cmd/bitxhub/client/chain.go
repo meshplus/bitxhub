@@ -42,7 +42,7 @@ func getChainMeta(ctx *cli.Context) error {
 }
 
 func getChainStatus(ctx *cli.Context) error {
-	url, err := getURL(ctx, "chain_status")
+	url, err := getURL(ctx, "info?type=0")
 	if err != nil {
 		return err
 	}
