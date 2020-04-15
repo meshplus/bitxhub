@@ -354,7 +354,7 @@ func (x *Interchain) GetIBTPByID(id string) *boltvm.Response {
 
 	caller := x.Caller()
 
-	if caller != arr[0] || caller != arr[1] {
+	if caller != arr[0] && caller != arr[1] {
 		return boltvm.Error("The caller does not have access to this ibtp")
 	}
 
