@@ -274,12 +274,13 @@ func (x *Interchain) HandleIBTP(data []byte) *boltvm.Response {
 	}
 
 	if ibtp.To == "" {
-		return boltvm.Error("target appchain is empty")
+		return boltvm.Error("empty destination chain id")
 	}
 
 	ok = x.Has(x.appchainKey(ibtp.To))
 	if !ok {
-		return boltvm.Error("target appchain does not exist")
+		x.Logger().WithField("chain_id", ibtp.To).Warn("target appchain does not exist")
+		return boltvm.Success(nil)
 	}
 
 	app := &appchain{}
