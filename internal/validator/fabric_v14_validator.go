@@ -2,7 +2,7 @@ package validator
 
 import (
 	"github.com/meshplus/bitxhub/internal/ledger"
-	"github.com/meshplus/bitxhub/pkg/vm/wasm/wasmlib"
+	"github.com/meshplus/bitxhub/internal/validator/validatorlib"
 	"github.com/sirupsen/logrus"
 )
 
@@ -22,11 +22,11 @@ func NewFabV14Validator(ledger ledger.Ledger, logger logrus.FieldLogger) *FabV14
 
 // Verify will check whether the transaction info is valid
 func (vlt *FabV14Validator) Verify(address, from string, proof []byte, validators string) (bool, error) {
-	vInfo, err := wasmlib.UnmarshalValidatorInfo([]byte(validators))
+	vInfo, err := validatorlib.UnmarshalValidatorInfo([]byte(validators))
 	if err != nil {
 		return false, err
 	}
-	err = wasmlib.ValidateV14(proof, []byte(vInfo.Policy), vInfo.ConfByte, vInfo.Cid)
+	err = validatorlib.ValidateV14(proof, []byte(vInfo.Policy), vInfo.ConfByte, vInfo.Cid)
 	if err != nil {
 		return false, err
 	}

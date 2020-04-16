@@ -1,4 +1,4 @@
-package wasmlib
+package validatorlib
 
 // #include <stdlib.h>
 //

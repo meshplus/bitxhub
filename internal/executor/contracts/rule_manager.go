@@ -3,6 +3,7 @@ package contracts
 import (
 	"fmt"
 
+	"github.com/meshplus/bitxhub/internal/validator"
 	"github.com/meshplus/bitxhub/pkg/vm/boltvm"
 )
 
@@ -36,12 +37,16 @@ func (r *RuleManager) RegisterRule(id string, address string) *boltvm.Response {
 	return boltvm.Success(nil)
 }
 
-func (r *RuleManager) GetRuleAddress(id string) *boltvm.Response {
+func (r *RuleManager) GetRuleAddress(id, chainType string) *boltvm.Response {
 	rl := &rule{}
 
 	ok := r.GetObject(r.ruleKey(id), rl)
 	if ok {
 		return boltvm.Success([]byte(rl.Address))
+	}
+
+	if chainType == "fabric" {
+		return boltvm.Success([]byte(validator.FabricRuleAddr))
 	}
 
 	return boltvm.Error("")

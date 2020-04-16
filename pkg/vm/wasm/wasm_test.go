@@ -13,6 +13,7 @@ import (
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/ledger"
+	"github.com/meshplus/bitxhub/internal/validator/validatorlib"
 	"github.com/meshplus/bitxhub/pkg/storage/leveldb"
 	"github.com/meshplus/bitxhub/pkg/vm"
 	"github.com/stretchr/testify/assert"
@@ -117,7 +118,9 @@ func initFabricContext(t *testing.T, name string) *vm.Context {
 
 func TestDeploy(t *testing.T) {
 	ctx := initCreateContext(t, "create")
-	wasm, err := New(ctx)
+	imports, err := EmptyImports()
+	require.Nil(t, err)
+	wasm, err := New(ctx, imports)
 	require.Nil(t, err)
 
 	_, err = wasm.deploy()
@@ -126,7 +129,9 @@ func TestDeploy(t *testing.T) {
 
 func TestExecute(t *testing.T) {
 	ctx := initCreateContext(t, "execute")
-	wasm, err := New(ctx)
+	imports, err := EmptyImports()
+	require.Nil(t, err)
+	wasm, err := New(ctx, imports)
 	require.Nil(t, err)
 
 	ret, err := wasm.deploy()
@@ -150,7 +155,9 @@ func TestExecute(t *testing.T) {
 		TransactionData: data,
 		Ledger:          ctx.Ledger,
 	}
-	wasm1, err := New(ctx1)
+	imports1, err := validatorlib.New()
+	require.Nil(t, err)
+	wasm1, err := New(ctx1, imports1)
 	require.Nil(t, err)
 
 	result, err := wasm1.Run(payload)
@@ -160,7 +167,9 @@ func TestExecute(t *testing.T) {
 
 func TestWasm_RunFabValidation(t *testing.T) {
 	ctx := initFabricContext(t, "execute")
-	wasm, err := New(ctx)
+	imports, err := EmptyImports()
+	require.Nil(t, err)
+	wasm, err := New(ctx, imports)
 	require.Nil(t, err)
 
 	ret, err := wasm.deploy()
@@ -188,7 +197,9 @@ func TestWasm_RunFabValidation(t *testing.T) {
 		TransactionData: data,
 		Ledger:          ctx.Ledger,
 	}
-	wasm1, err := New(ctx1)
+	imports1, err := validatorlib.New()
+	require.Nil(t, err)
+	wasm1, err := New(ctx1, imports1)
 	require.Nil(t, err)
 
 	result, err := wasm1.Run(payload)
@@ -220,7 +231,9 @@ func BenchmarkRunFabValidation(b *testing.B) {
 		TransactionData: data,
 		Ledger:          ldg,
 	}
-	wasm, err := New(ctx)
+	imports, err := EmptyImports()
+	require.Nil(b, err)
+	wasm, err := New(ctx, imports)
 	require.Nil(b, err)
 
 	ret, err := wasm.deploy()
@@ -246,7 +259,9 @@ func BenchmarkRunFabValidation(b *testing.B) {
 		Ledger:          ctx.Ledger,
 	}
 	for i := 0; i < b.N; i++ {
-		wasm1, err := New(ctx1)
+		imports1, err := validatorlib.New()
+		require.Nil(b, err)
+		wasm1, err := New(ctx1, imports1)
 		require.Nil(b, err)
 
 		result, err := wasm1.Run(payload)
@@ -259,7 +274,9 @@ func BenchmarkRunFabValidation(b *testing.B) {
 
 func TestWasm_RunValidation(t *testing.T) {
 	ctx := initValidationContext(t, "execute")
-	wasm, err := New(ctx)
+	imports, err := EmptyImports()
+	require.Nil(t, err)
+	wasm, err := New(ctx, imports)
 	require.Nil(t, err)
 
 	ret, err := wasm.deploy()
@@ -285,7 +302,9 @@ func TestWasm_RunValidation(t *testing.T) {
 		TransactionData: data,
 		Ledger:          ctx.Ledger,
 	}
-	wasm1, err := New(ctx1)
+	imports1, err := validatorlib.New()
+	require.Nil(t, err)
+	wasm1, err := New(ctx1, imports1)
 	require.Nil(t, err)
 
 	result, err := wasm1.Run(payload)
@@ -295,7 +314,9 @@ func TestWasm_RunValidation(t *testing.T) {
 
 func TestWasm_RunWithoutMethod(t *testing.T) {
 	ctx := initCreateContext(t, "execute_without_method")
-	wasm, err := New(ctx)
+	imports, err := EmptyImports()
+	require.Nil(t, err)
+	wasm, err := New(ctx, imports)
 	require.Nil(t, err)
 
 	ret, err := wasm.deploy()
@@ -319,7 +340,9 @@ func TestWasm_RunWithoutMethod(t *testing.T) {
 		TransactionData: data,
 		Ledger:          ctx.Ledger,
 	}
-	wasm1, err := New(ctx1)
+	imports1, err := validatorlib.New()
+	require.Nil(t, err)
+	wasm1, err := New(ctx1, imports1)
 	require.Nil(t, err)
 
 	_, err = wasm1.Run(payload)

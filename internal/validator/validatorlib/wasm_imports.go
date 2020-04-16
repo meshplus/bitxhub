@@ -1,4 +1,4 @@
-package wasmlib
+package validatorlib
 
 import (
 	"github.com/wasmerio/go-ext-wasm/wasmer"

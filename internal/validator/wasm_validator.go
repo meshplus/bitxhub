@@ -7,6 +7,7 @@ import (
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/ledger"
+	"github.com/meshplus/bitxhub/internal/validator/validatorlib"
 	"github.com/meshplus/bitxhub/pkg/vm"
 	"github.com/meshplus/bitxhub/pkg/vm/wasm"
 	"github.com/sirupsen/logrus"
@@ -60,7 +61,11 @@ func (vlt *WasmValidator) initRule(address, from string, proof []byte, validator
 	}
 
 	wasmCtx := vm.NewContext(vlt.tx, 0, vlt.tx.Data, vlt.ledger, vlt.logger)
-	wasm, err := wasm.New(wasmCtx)
+	imports, err := validatorlib.New()
+	if err != nil {
+		return err
+	}
+	wasm, err := wasm.New(wasmCtx, imports)
 	if err != nil {
 		return err
 	}
