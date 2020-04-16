@@ -160,7 +160,7 @@ func (suite *Interchain) TestGetIBTPByID() {
 	ib.Index = 2
 	ret, err := c1.InvokeBVMContract(rpcx.InterchainContractAddr, "GetIBTPByID", rpcx.String(ib.ID()))
 	suite.Assert().Nil(err)
-	suite.Assert().Equal(ret.Status.String(), "SUCCESS")
+	suite.Assert().Equal(true, ret.IsSuccess(), string(ret.Ret))
 }
 
 func (suite *Interchain) TestAudit() {

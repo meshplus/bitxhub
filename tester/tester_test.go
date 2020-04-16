@@ -17,7 +17,7 @@ import (
 
 func TestTester(t *testing.T) {
 	err := retry.Retry(func(attempt uint) error {
-		resp, err := http.Get(host + "chain_status")
+		resp, err := http.Get(host + "info?type=0")
 		if err != nil {
 			fmt.Println(err)
 			return err

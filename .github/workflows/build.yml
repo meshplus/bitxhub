@@ -50,10 +50,30 @@ jobs:
           token: ${{secrets.CODECOV_TOKEN}}
           file: ./coverage.txt
 
+  integration-test:
+    name: Run integration test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Go 1.13
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.13
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+
+      - name: Run test
+        run: |
+          export PATH=$PATH:$(go env GOPATH)/bin
+          make prepare
+          cd scripts
+          bash integration.sh
+          cd ..
+          make tester
+
   build:
     name: Build project
     runs-on: ubuntu-latest
-    needs: [lint, test]
     steps:
       - name: Set up Go 1.13
         uses: actions/setup-go@v1
@@ -65,3 +85,4 @@ jobs:
 
       - name: Go build
         run: go build -v ./cmd/bitxhub
+
