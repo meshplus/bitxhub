@@ -11,7 +11,6 @@ import (
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/pkg/vm"
-	"github.com/meshplus/bitxhub/pkg/vm/wasm/wasmlib"
 	"github.com/wasmerio/go-ext-wasm/wasmer"
 )
 
@@ -23,16 +22,11 @@ var _ vm.VM = (*Wasm)(nil)
 
 var instances = make(map[string]wasmer.Instance)
 
-func getInstance(code []byte) (wasmer.Instance, error) {
+func getInstance(code []byte, imports *wasmer.Imports) (wasmer.Instance, error) {
 	ret := sha256.Sum256(code)
 	v, ok := instances[string(ret[:])]
 	if ok {
 		return v, nil
-	}
-
-	imports, err := wasmlib.New()
-	if err != nil {
-		return wasmer.Instance{}, err
 	}
 
 	instance, err := wasmer.NewInstanceWithImports(code, imports)
@@ -66,7 +60,7 @@ type Contract struct {
 }
 
 // New creates a wasm vm instance
-func New(ctx *vm.Context) (*Wasm, error) {
+func New(ctx *vm.Context, imports *wasmer.Imports) (*Wasm, error) {
 	wasm := &Wasm{
 		ctx: ctx,
 	}
@@ -90,7 +84,7 @@ func New(ctx *vm.Context) (*Wasm, error) {
 		return wasm, fmt.Errorf("contract byte is empty")
 	}
 
-	instance, err := getInstance(contract.Code)
+	instance, err := getInstance(contract.Code, imports)
 	if err != nil {
 		return nil, err
 	}
@@ -99,6 +93,10 @@ func New(ctx *vm.Context) (*Wasm, error) {
 	wasm.argMap = make(map[int]int)
 
 	return wasm, nil
+}
+
+func EmptyImports() (*wasmer.Imports, error) {
+	return wasmer.NewImports(), nil
 }
 
 // Run let the wasm vm excute or deploy the smart contract which depends on whether the callee is empty

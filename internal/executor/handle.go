@@ -233,8 +233,11 @@ func (exec *BlockExecutor) applyTransaction(i int, tx *pb.Transaction) ([]byte, 
 			instance = boltvm.New(ctx, exec.validationEngine)
 		case pb.TransactionData_XVM:
 			ctx := vm.NewContext(tx, uint64(i), tx.Data, exec.ledger, exec.logger)
-			var err error
-			instance, err = wasm.New(ctx)
+			imports, err := wasm.EmptyImports()
+			if err != nil {
+				return nil, err
+			}
+			instance, err = wasm.New(ctx, imports)
 			if err != nil {
 				return nil, err
 			}
