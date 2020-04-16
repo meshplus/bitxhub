@@ -286,7 +286,7 @@ func (x *Interchain) HandleIBTP(data []byte) *boltvm.Response {
 	x.GetObject(x.appchainKey(ibtp.From), &app)
 
 	// get validation rule contract address
-	res := x.CrossInvoke(constant.RuleManagerContractAddr.String(), "GetRuleAddress", pb.String(ibtp.From))
+	res := x.CrossInvoke(constant.RuleManagerContractAddr.String(), "GetRuleAddress", pb.String(ibtp.From), pb.String(app.ChainType))
 	if !res.Ok {
 		return boltvm.Error("this appchain don't register rule")
 	}
