@@ -280,7 +280,6 @@ func (x *Interchain) HandleIBTP(data []byte) *boltvm.Response {
 	ok = x.Has(x.appchainKey(ibtp.To))
 	if !ok {
 		x.Logger().WithField("chain_id", ibtp.To).Warn("target appchain does not exist")
-		return boltvm.Success(nil)
 	}
 
 	app := &appchain{}
