@@ -24,6 +24,7 @@ var defaultSnapshotCount uint64 = 10000
 
 type Node struct {
 	id      uint64              // raft id
+	leader  uint64              // leader id
 	node    raft.Node           // raft node
 	peerMgr peermgr.PeerManager // network manager
 	peers   []raft.Peer         // raft peers
@@ -246,11 +247,11 @@ func (n *Node) Step(ctx context.Context, msg []byte) error {
 }
 
 func (n *Node) IsLeader() bool {
-	return n.node.Status().SoftState.Lead == n.id
+	return n.leader == n.id
 }
 
 func (n *Node) Ready() bool {
-	return n.node.Status().SoftState.Lead != 0
+	return n.leader != 0
 }
 
 // main work loop
@@ -323,15 +324,18 @@ func (n *Node) run() {
 			}
 
 			// 2: Apply Snapshot (if any) and CommittedEntries to the state machine.
-			if len(rd.CommittedEntries) != 0 || rd.SoftState != nil {
-				n.tp.CheckExecute(n.IsLeader())
+			if len(rd.CommittedEntries) != 0 {
 				if ok := n.publishEntries(n.entriesToApply(rd.CommittedEntries)); !ok {
 					n.Stop()
 					return
 				}
 			}
+			if rd.SoftState != nil {
+				n.leader = rd.SoftState.Lead
+				n.tp.CheckExecute(n.IsLeader())
+			}
 			// 3: Send all Messages to the nodes named in the To field.
-			n.send(rd.Messages)
+			go n.send(rd.Messages)
 
 			n.maybeTriggerSnapshot()
 
