@@ -3,6 +3,8 @@
 set -e
 
 CURRENT_PATH=$(pwd)
+PIER_VERSION=v1.0.0-rc1
+PIER_CLIENT_FABRIC_VERSION=v1.0.0-rc1
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
@@ -45,26 +47,25 @@ function printHelp() {
   echo "  fabric_pier.sh -h (print this message)"
 }
 
-
 function prepare() {
   cd "${CURRENT_PATH}"
   if [ ! -d pier ]; then
-    print_blue "===> Clone pier"
-    git clone git@github.com:meshplus/pier.git
+    print_blue "===> Cloning meshplus/pier repo and checkout ${PIER_VERSION}"
+    git clone https://github.com/meshplus/pier.git &&
+      cd pier && git checkout ${PIER_VERSION}
   fi
 
-  print_blue "===> Compile pier"
-  cd pier
+  print_blue "===> Compiling meshplus/pier"
   make install
 
   cd "${CURRENT_PATH}"
   if [ ! -d pier-client-fabric ]; then
-    print_blue "===> Clone pier-client-fabric"
-    git clone git@github.com:meshplus/pier-client-fabric.git
+    print_blue "===> Cloning meshplus/pier-client-fabric repo and checkout ${PIER_CLIENT_FABRIC_VERSION}"
+    git clone https://github.com/meshplus/pier-client-fabric.git &&
+      cd pier-client-fabric && git checkout ${PIER_CLIENT_FABRIC_VERSION}
   fi
 
-  print_blue "===> Compile pier-client-fabric"
-  cd pier-client-fabric
+  print_blue "===> Compiling meshplus/pier-client-fabric"
   make fabric1.4
 
   cd "${CURRENT_PATH}"
@@ -79,7 +80,7 @@ function prepare() {
   fi
 
   if [ ! -f config-template.yaml ]; then
-    print_blue "===> Download config-template.yaml"
+    print_blue "===> Downloading config-template.yaml"
     wget https://raw.githubusercontent.com/meshplus/bitxhub/master/scripts/quick_start/config-template.yaml
   fi
 
@@ -99,7 +100,7 @@ function prepare() {
   fi
 
   if [ ! -f fabric-rule.wasm ]; then
-    print_blue "===> Download fabric-rule.wasm"
+    print_blue "===> Downloading fabric-rule.wasm"
     wget https://raw.githubusercontent.com/meshplus/bitxhub/master/scripts/quick_start/fabric-rule.wasm
   fi
 }
