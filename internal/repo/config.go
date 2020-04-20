@@ -28,7 +28,7 @@ const (
 
 type Config struct {
 	RepoRoot string `json:"repo_root"`
-	Title    string `json:"tile"`
+	Title    string `json:"title"`
 	Solo     bool   `json:"solo"`
 	Port     `json:"port"`
 	PProf    `json:"pprof"`
