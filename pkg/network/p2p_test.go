@@ -1,4 +1,4 @@
-package p2p
+package network
 
 import (
 	"context"
@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
-	net "github.com/meshplus/bitxhub/pkg/network"
-
 	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
+	"github.com/meshplus/bitxhub/pkg/network/pb"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -43,6 +43,15 @@ func TestP2P_Send(t *testing.T) {
 	p1, addr1 := generateNetwork(t, 6005)
 	p2, addr2 := generateNetwork(t, 6006)
 
+	msg := []byte("hello")
+
+	ch := make(chan struct{})
+
+	p2.SetMessageHandler(func(s network.Stream, data []byte) {
+		assert.EqualValues(t, msg, data)
+		close(ch)
+	})
+
 	err := p1.Start()
 	assert.Nil(t, err)
 	err = p2.Start()
@@ -53,23 +62,18 @@ func TestP2P_Send(t *testing.T) {
 	err = p2.Connect(addr1)
 	assert.Nil(t, err)
 
-	msg := []byte("hello")
-	err = p1.AsyncSend(addr2, net.Message(msg))
+	err = p1.AsyncSend(addr2, &pb.Message{Data: msg})
 	assert.Nil(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	ch := p2.Receive()
-	for {
-		select {
-		case c := <-ch:
-			assert.EqualValues(t, msg, c.Message.Data)
-			return
-		case <-ctx.Done():
-			assert.Error(t, fmt.Errorf("timeout"))
-			return
-		}
+	select {
+	case <-ch:
+		return
+	case <-ctx.Done():
+		assert.Error(t, fmt.Errorf("timeout"))
+		return
 	}
 }
 
@@ -89,12 +93,22 @@ func TestP2p_MultiSend(t *testing.T) {
 
 	N := 50
 	msg := []byte("hello")
-	ch := p2.Receive()
+	count := 0
+	ch := make(chan struct{})
+
+	p2.SetMessageHandler(func(s network.Stream, data []byte) {
+		assert.EqualValues(t, msg, data)
+		count++
+		if count == N {
+			close(ch)
+			return
+		}
+	})
 
 	go func() {
 		for i := 0; i < N; i++ {
 			time.Sleep(200 * time.Microsecond)
-			err = p1.AsyncSend(addr2, net.Message(msg))
+			err = p1.AsyncSend(addr2, &pb.Message{Data: msg})
 			assert.Nil(t, err)
 		}
 
@@ -102,22 +116,16 @@ func TestP2p_MultiSend(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	count := 0
-	for {
-		select {
-		case c := <-ch:
-			assert.EqualValues(t, msg, c.Message.Data)
-		case <-ctx.Done():
-			assert.Error(t, fmt.Errorf("timeout"))
-		}
-		count++
-		if count == N {
-			return
-		}
+
+	select {
+	case <-ch:
+		return
+	case <-ctx.Done():
+		assert.Error(t, fmt.Errorf("timeout"))
 	}
 }
 
-func generateNetwork(t *testing.T, port int) (net.Network, *peer.AddrInfo) {
+func generateNetwork(t *testing.T, port int) (Network, *peer.AddrInfo) {
 	privKey, pubKey, err := crypto.GenerateECDSAKeyPair(rand.Reader)
 	assert.Nil(t, err)
 

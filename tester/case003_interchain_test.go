@@ -148,8 +148,9 @@ func (suite *Interchain) TestGetIBTPByID() {
 	ib.Index = 2
 	data, err = ib.Marshal()
 	suite.Assert().Nil(err)
-	_, err = c1.InvokeBVMContract(rpcx.InterchainContractAddr, "HandleIBTP", rpcx.Bytes(data))
+	receipt, err := c1.InvokeBVMContract(rpcx.InterchainContractAddr, "HandleIBTP", rpcx.Bytes(data))
 	suite.Assert().Nil(err)
+	suite.Assert().EqualValues(true, receipt.IsSuccess(), string(receipt.Ret))
 
 	ib.Index = 3
 	data, err = ib.Marshal()

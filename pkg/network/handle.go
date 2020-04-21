@@ -1,4 +1,4 @@
-package p2p
+package network
 
 import (
 	"context"
@@ -8,8 +8,7 @@ import (
 
 	ggio "github.com/gogo/protobuf/io"
 	"github.com/libp2p/go-libp2p-core/network"
-	net "github.com/meshplus/bitxhub/pkg/network"
-	"github.com/meshplus/bitxhub/pkg/network/proto"
+	"github.com/meshplus/bitxhub/pkg/network/pb"
 )
 
 // handle newly connected stream
@@ -20,41 +19,44 @@ func (p2p *P2P) handleNewStream(s network.Stream) {
 	}
 
 	reader := ggio.NewDelimitedReader(s, network.MessageSizeMax)
+
 	for {
-		msg := &proto.Message{}
+		msg := &pb.Message{}
 		if err := reader.ReadMsg(msg); err != nil {
 			if err != io.EOF {
 				if err := s.Reset(); err != nil {
 					p2p.logger.WithField("error", err).Error("Reset stream")
 				}
 			}
+
 			return
 		}
 
-		p2p.recvQ <- &net.MessageStream{
-			Message: msg,
-			Stream:  s,
+		if p2p.handleMessage != nil {
+			p2p.handleMessage(s, msg.Data)
 		}
 	}
 }
 
 // waitMsg wait the incoming messages within time duration.
-func waitMsg(stream io.Reader, timeout time.Duration) *proto.Message {
+func waitMsg(stream io.Reader, timeout time.Duration) *pb.Message {
 	reader := ggio.NewDelimitedReader(stream, network.MessageSizeMax)
-	rs := make(chan *proto.Message)
+
+	ch := make(chan *pb.Message)
+
 	go func() {
-		msg := &proto.Message{}
+		msg := &pb.Message{}
 		if err := reader.ReadMsg(msg); err == nil {
-			rs <- msg
+			ch <- msg
 		} else {
-			rs <- nil
+			ch <- nil
 		}
 	}()
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
 	select {
-	case r := <-rs:
+	case r := <-ch:
 		cancel()
 		return r
 	case <-ctx.Done():
@@ -63,7 +65,7 @@ func waitMsg(stream io.Reader, timeout time.Duration) *proto.Message {
 	}
 }
 
-func (p2p *P2P) send(s network.Stream, message *proto.Message) error {
+func (p2p *P2P) send(s network.Stream, msg *pb.Message) error {
 	deadline := time.Now().Add(sendTimeout)
 
 	if err := s.SetWriteDeadline(deadline); err != nil {
@@ -71,7 +73,7 @@ func (p2p *P2P) send(s network.Stream, message *proto.Message) error {
 	}
 
 	writer := ggio.NewDelimitedWriter(s)
-	if err := writer.WriteMsg(message); err != nil {
+	if err := writer.WriteMsg(msg); err != nil {
 		return fmt.Errorf("write msg: %w", err)
 	}
 

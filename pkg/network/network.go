@@ -3,10 +3,12 @@ package network
 import (
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/meshplus/bitxhub/pkg/network/proto"
+	"github.com/meshplus/bitxhub/pkg/network/pb"
 )
 
 type ConnectCallback func(*peer.AddrInfo) error
+
+type MessageHandler func(network.Stream, []byte)
 
 type Network interface {
 	// Start start the network service.
@@ -21,21 +23,21 @@ type Network interface {
 	// Disconnect peer with id
 	Disconnect(*peer.AddrInfo) error
 
-	// SetConnectionCallback Sets the callback after connecting
+	// SetConnectionCallback sets the callback after connecting
 	SetConnectCallback(ConnectCallback)
 
+	// SetMessageHandler sets message handler
+	SetMessageHandler(MessageHandler)
+
 	// AsyncSend sends message to peer with peer info.
-	AsyncSend(*peer.AddrInfo, *proto.Message) error
+	AsyncSend(*peer.AddrInfo, *pb.Message) error
 
 	// Send message using existed stream
-	SendWithStream(s network.Stream, msg *proto.Message) error
+	SendWithStream(network.Stream, *pb.Message) error
 
 	// Send sends message waiting response
-	Send(*peer.AddrInfo, *proto.Message) (*proto.Message, error)
+	Send(*peer.AddrInfo, *pb.Message) (*pb.Message, error)
 
 	// Broadcast message to all node
-	Broadcast([]*peer.AddrInfo, *proto.Message) error
-
-	// Receive message from the channel
-	Receive() <-chan *MessageStream
+	Broadcast([]*peer.AddrInfo, *pb.Message) error
 }

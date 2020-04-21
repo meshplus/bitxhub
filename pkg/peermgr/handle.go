@@ -5,36 +5,46 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/meshplus/bitxhub/internal/model"
-
 	"github.com/libp2p/go-libp2p-core/network"
 	network2 "github.com/libp2p/go-libp2p-core/network"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub/internal/model"
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/pkg/cert"
-	proto2 "github.com/meshplus/bitxhub/pkg/network/proto"
+	"github.com/sirupsen/logrus"
 )
 
-func (swarm *Swarm) handleMessage(s network2.Stream, msg *proto2.Message) error {
+func (swarm *Swarm) handleMessage(s network.Stream, data []byte) {
 	m := &pb.Message{}
-	if err := m.Unmarshal(msg.Data); err != nil {
-		return err
+	if err := m.Unmarshal(data); err != nil {
+		swarm.logger.Error(err)
+		return
 	}
 
-	switch m.Type {
-	case pb.Message_GET_BLOCK:
-		return swarm.handleGetBlockPack(s, m)
-	case pb.Message_FETCH_CERT:
-		return swarm.handleFetchCertMessage(s)
-	case pb.Message_CONSENSUS:
-		go swarm.orderMessageFeed.Send(events.OrderMessageEvent{Data: m.Data})
-	case pb.Message_FETCH_BLOCK_SIGN:
-		swarm.handleFetchBlockSignMessage(s, m.Data)
-	default:
-		swarm.logger.WithField("module", "p2p").Errorf("can't handle msg[type: %v]", m.Type)
+	handler := func() error {
+		switch m.Type {
+		case pb.Message_GET_BLOCK:
+			return swarm.handleGetBlockPack(s, m)
+		case pb.Message_FETCH_CERT:
+			return swarm.handleFetchCertMessage(s)
+		case pb.Message_CONSENSUS:
+			go swarm.orderMessageFeed.Send(events.OrderMessageEvent{Data: m.Data})
+		case pb.Message_FETCH_BLOCK_SIGN:
+			swarm.handleFetchBlockSignMessage(s, m.Data)
+		default:
+			swarm.logger.WithField("module", "p2p").Errorf("can't handle msg[type: %v]", m.Type)
+			return nil
+		}
+
+		return nil
 	}
 
-	return nil
+	if err := handler(); err != nil {
+		swarm.logger.WithFields(logrus.Fields{
+			"error": err,
+			"type":  m.Type.String(),
+		}).Error("Handle message")
+	}
 }
 
 func (swarm *Swarm) handleGetBlockPack(s network.Stream, msg *pb.Message) error {

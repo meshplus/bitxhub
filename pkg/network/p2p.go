@@ -1,4 +1,4 @@
-package p2p
+package network
 
 import (
 	"context"
@@ -10,13 +10,12 @@ import (
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
-	net "github.com/meshplus/bitxhub/pkg/network"
-	"github.com/meshplus/bitxhub/pkg/network/proto"
+	"github.com/meshplus/bitxhub/pkg/network/pb"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/sirupsen/logrus"
 )
 
-var _ net.Network = (*P2P)(nil)
+var _ Network = (*P2P)(nil)
 
 var (
 	connectTimeout = 10 * time.Second
@@ -27,16 +26,16 @@ var (
 type P2P struct {
 	config          *Config
 	host            host.Host // manage all connections
-	recvQ           chan *net.MessageStream
 	streamMng       *streamMgr
-	connectCallback net.ConnectCallback
+	connectCallback ConnectCallback
+	handleMessage   MessageHandler
 	logger          logrus.FieldLogger
 
 	ctx    context.Context
 	cancel context.CancelFunc
 }
 
-func New(opts ...Option) (net.Network, error) {
+func New(opts ...Option) (*P2P, error) {
 	config, err := generateConfig(opts...)
 	if err != nil {
 		return nil, fmt.Errorf("generate config: %w", err)
@@ -55,7 +54,6 @@ func New(opts ...Option) (net.Network, error) {
 	p2p := &P2P{
 		config:    config,
 		host:      h,
-		recvQ:     make(chan *net.MessageStream),
 		streamMng: newStreamMng(ctx, h, config.protocolID),
 		logger:    config.logger,
 		ctx:       ctx,
@@ -92,12 +90,16 @@ func (p2p *P2P) Connect(addr *peer.AddrInfo) error {
 	return nil
 }
 
-func (p2p *P2P) SetConnectCallback(callback net.ConnectCallback) {
+func (p2p *P2P) SetConnectCallback(callback ConnectCallback) {
 	p2p.connectCallback = callback
 }
 
+func (p2p *P2P) SetMessageHandler(handler MessageHandler) {
+	p2p.handleMessage = handler
+}
+
 // AsyncSend message to peer with specific id.
-func (p2p *P2P) AsyncSend(addr *peer.AddrInfo, msg *proto.Message) error {
+func (p2p *P2P) AsyncSend(addr *peer.AddrInfo, msg *pb.Message) error {
 	s, err := p2p.streamMng.get(addr.ID)
 	if err != nil {
 		return fmt.Errorf("get stream: %w", err)
@@ -111,11 +113,11 @@ func (p2p *P2P) AsyncSend(addr *peer.AddrInfo, msg *proto.Message) error {
 	return nil
 }
 
-func (p2p *P2P) SendWithStream(s network.Stream, msg *proto.Message) error {
+func (p2p *P2P) SendWithStream(s network.Stream, msg *pb.Message) error {
 	return p2p.send(s, msg)
 }
 
-func (p2p *P2P) Send(addr *peer.AddrInfo, msg *proto.Message) (*proto.Message, error) {
+func (p2p *P2P) Send(addr *peer.AddrInfo, msg *pb.Message) (*pb.Message, error) {
 	s, err := p2p.streamMng.get(addr.ID)
 	if err != nil {
 		return nil, fmt.Errorf("get stream: %w", err)
@@ -134,7 +136,7 @@ func (p2p *P2P) Send(addr *peer.AddrInfo, msg *proto.Message) (*proto.Message, e
 	return recvMsg, nil
 }
 
-func (p2p *P2P) Broadcast(ids []*peer.AddrInfo, msg *proto.Message) error {
+func (p2p *P2P) Broadcast(ids []*peer.AddrInfo, msg *pb.Message) error {
 	for _, id := range ids {
 		if err := p2p.AsyncSend(id, msg); err != nil {
 			p2p.logger.WithFields(logrus.Fields{
@@ -146,10 +148,6 @@ func (p2p *P2P) Broadcast(ids []*peer.AddrInfo, msg *proto.Message) error {
 	}
 
 	return nil
-}
-
-func (p2p *P2P) Receive() <-chan *net.MessageStream {
-	return p2p.recvQ
 }
 
 // Stop stop the network service.
