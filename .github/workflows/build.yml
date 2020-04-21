@@ -45,9 +45,9 @@ jobs:
           make test-coverage
 
       - name: Upload Coverage report to CodeCov
-        uses: codecov/codecov-action@v1.0.0
+        uses: codecov/codecov-action@v1.0.6
         with:
-          token: ${{secrets.CODECOV_TOKEN}}
+#          token: ${{secrets.CODECOV_TOKEN}}
           file: ./coverage.txt
 
   integration-test:
@@ -70,6 +70,7 @@ jobs:
           bash integration.sh
           cd ..
           make tester
+
 
   build:
     name: Build project
