@@ -16,14 +16,14 @@ type PeerManager interface {
 	// Stop
 	Stop() error
 
-	// Send message to peer with peer info.
-	Send(uint64, *pb.Message) error
+	// AsyncSend sends message to peer with peer info.
+	AsyncSend(uint64, *pb.Message) error
 
-	// Send message using existed stream
+	// SendWithStream sends message using existed stream
 	SendWithStream(network.Stream, *pb.Message) error
 
-	// Sync Send message
-	SyncSend(uint64, *pb.Message) (*pb.Message, error)
+	// Send sends message waiting response
+	Send(uint64, *pb.Message) (*pb.Message, error)
 
 	// Broadcast message to all node
 	Broadcast(*pb.Message) error

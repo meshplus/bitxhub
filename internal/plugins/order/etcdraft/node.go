@@ -228,7 +228,7 @@ func (n *Node) Step(ctx context.Context, msg []byte) error {
 			Type: pb.Message_CONSENSUS,
 			Data: txAckData,
 		}
-		return n.peerMgr.Send(rm.FromId, m)
+		return n.peerMgr.AsyncSend(rm.FromId, m)
 	case raftproto.RaftMessage_GET_TX_ACK:
 		tx := &pb.Transaction{}
 		if err := tx.Unmarshal(rm.Data); err != nil {
@@ -334,7 +334,7 @@ func (n *Node) run() {
 				n.leader = rd.SoftState.Lead
 				n.tp.CheckExecute(n.IsLeader())
 			}
-			// 3: Send all Messages to the nodes named in the To field.
+			// 3: AsyncSend all Messages to the nodes named in the To field.
 			go n.send(rd.Messages)
 
 			n.maybeTriggerSnapshot()
@@ -376,7 +376,7 @@ func (n *Node) send(messages []raftpb.Message) {
 			Data: rmData,
 		}
 
-		err = n.peerMgr.Send(msg.To, p2pMsg)
+		err = n.peerMgr.AsyncSend(msg.To, p2pMsg)
 		if err != nil {
 			n.node.ReportUnreachable(msg.To)
 			status = raft.SnapshotFailure

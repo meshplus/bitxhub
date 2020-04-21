@@ -6,7 +6,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/meshplus/bitxhub-kit/log"
-	net "github.com/meshplus/bitxhub/pkg/network"
 	"github.com/sirupsen/logrus"
 )
 
@@ -15,7 +14,6 @@ type Config struct {
 	privKey    crypto.PrivKey
 	protocolID protocol.ID
 	logger     logrus.FieldLogger
-	idStore    net.IDStore
 }
 
 type Option func(*Config)
@@ -41,12 +39,6 @@ func WithProtocolID(id protocol.ID) Option {
 func WithLogger(logger logrus.FieldLogger) Option {
 	return func(config *Config) {
 		config.logger = logger
-	}
-}
-
-func WithIDStore(store net.IDStore) Option {
-	return func(config *Config) {
-		config.idStore = store
 	}
 }
 
