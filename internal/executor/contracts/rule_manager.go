@@ -3,7 +3,7 @@ package contracts
 import (
 	"fmt"
 
-	"github.com/meshplus/bitxhub/internal/validator"
+	"github.com/meshplus/bitxhub-core/validator"
 	"github.com/meshplus/bitxhub/pkg/vm/boltvm"
 )
 
