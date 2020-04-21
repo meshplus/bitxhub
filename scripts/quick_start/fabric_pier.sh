@@ -56,6 +56,7 @@ function prepare() {
   fi
 
   print_blue "===> Compiling meshplus/pier"
+  cd "${CURRENT_PATH}"/pier
   make install
 
   cd "${CURRENT_PATH}"
@@ -66,6 +67,7 @@ function prepare() {
   fi
 
   print_blue "===> Compiling meshplus/pier-client-fabric"
+  cd "${CURRENT_PATH}"/pier-client-fabric
   make fabric1.4
 
   cd "${CURRENT_PATH}"

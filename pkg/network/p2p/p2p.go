@@ -13,13 +13,10 @@ import (
 	net "github.com/meshplus/bitxhub/pkg/network"
 	"github.com/meshplus/bitxhub/pkg/network/proto"
 	ma "github.com/multiformats/go-multiaddr"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
 var _ net.Network = (*P2P)(nil)
-
-var ErrorPeerNotFound = errors.New("peer not found")
 
 var (
 	connectTimeout = 10 * time.Second
@@ -34,7 +31,6 @@ type P2P struct {
 	streamMng       *streamMgr
 	connectCallback net.ConnectCallback
 	logger          logrus.FieldLogger
-	idStore         net.IDStore
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -59,16 +55,11 @@ func New(opts ...Option) (net.Network, error) {
 	p2p := &P2P{
 		config:    config,
 		host:      h,
-		idStore:   config.idStore,
 		recvQ:     make(chan *net.MessageStream),
 		streamMng: newStreamMng(ctx, h, config.protocolID),
 		logger:    config.logger,
 		ctx:       ctx,
 		cancel:    cancel,
-	}
-
-	if config.idStore == nil {
-		p2p.idStore = NewIDStore()
 	}
 
 	return p2p, nil
@@ -82,23 +73,18 @@ func (p2p *P2P) Start() error {
 }
 
 // Connect peer.
-func (p2p *P2P) Connect(id net.ID) error {
+func (p2p *P2P) Connect(addr *peer.AddrInfo) error {
 	ctx, cancel := context.WithTimeout(p2p.ctx, connectTimeout)
 	defer cancel()
 
-	pid := p2p.idStore.Addr(id)
-	if pid == nil {
-		return ErrorPeerNotFound
-	}
-
-	if err := p2p.host.Connect(ctx, *pid); err != nil {
+	if err := p2p.host.Connect(ctx, *addr); err != nil {
 		return err
 	}
 
-	p2p.host.Peerstore().AddAddrs(pid.ID, pid.Addrs, peerstore.PermanentAddrTTL)
+	p2p.host.Peerstore().AddAddrs(addr.ID, addr.Addrs, peerstore.PermanentAddrTTL)
 
 	if p2p.connectCallback != nil {
-		if err := p2p.connectCallback(id); err != nil {
+		if err := p2p.connectCallback(addr); err != nil {
 			return err
 		}
 	}
@@ -110,13 +96,8 @@ func (p2p *P2P) SetConnectCallback(callback net.ConnectCallback) {
 	p2p.connectCallback = callback
 }
 
-// Send message to peer with specific id.
-func (p2p *P2P) Send(id net.ID, msg *proto.Message) error {
-	addr := p2p.idStore.Addr(id)
-	if addr == nil {
-		return ErrorPeerNotFound
-	}
-
+// AsyncSend message to peer with specific id.
+func (p2p *P2P) AsyncSend(addr *peer.AddrInfo, msg *proto.Message) error {
 	s, err := p2p.streamMng.get(addr.ID)
 	if err != nil {
 		return fmt.Errorf("get stream: %w", err)
@@ -134,12 +115,7 @@ func (p2p *P2P) SendWithStream(s network.Stream, msg *proto.Message) error {
 	return p2p.send(s, msg)
 }
 
-func (p2p *P2P) SyncSend(id net.ID, msg *proto.Message) (*proto.Message, error) {
-	addr := p2p.idStore.Addr(id)
-	if addr == nil {
-		return nil, ErrorPeerNotFound
-	}
-
+func (p2p *P2P) Send(addr *peer.AddrInfo, msg *proto.Message) (*proto.Message, error) {
 	s, err := p2p.streamMng.get(addr.ID)
 	if err != nil {
 		return nil, fmt.Errorf("get stream: %w", err)
@@ -152,19 +128,19 @@ func (p2p *P2P) SyncSend(id net.ID, msg *proto.Message) (*proto.Message, error) 
 
 	recvMsg := waitMsg(s, waitTimeout)
 	if recvMsg == nil {
-		return nil, fmt.Errorf("sync send msg to node%d timeout", id)
+		return nil, fmt.Errorf("sync send msg to node[%s] timeout", addr.ID)
 	}
 
 	return recvMsg, nil
 }
 
-func (p2p *P2P) Broadcast(ids []net.ID, msg *proto.Message) error {
+func (p2p *P2P) Broadcast(ids []*peer.AddrInfo, msg *proto.Message) error {
 	for _, id := range ids {
-		if err := p2p.Send(id, msg); err != nil {
+		if err := p2p.AsyncSend(id, msg); err != nil {
 			p2p.logger.WithFields(logrus.Fields{
 				"error": err,
 				"id":    id,
-			}).Error("Send message")
+			}).Error("Async Send message")
 			continue
 		}
 	}
@@ -194,15 +170,6 @@ func AddrToPeerInfo(multiAddr string) (*peer.AddrInfo, error) {
 	return peer.AddrInfoFromP2pAddr(maddr)
 }
 
-func (p2p *P2P) Disconnect(id net.ID) error {
-	addr := p2p.idStore.Addr(id)
-	if addr == nil {
-		return ErrorPeerNotFound
-	}
-
+func (p2p *P2P) Disconnect(addr *peer.AddrInfo) error {
 	return p2p.host.Network().ClosePeer(addr.ID)
-}
-
-func (p2p *P2P) IDStore() net.IDStore {
-	return p2p.idStore
 }

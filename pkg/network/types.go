@@ -2,11 +2,8 @@ package network
 
 import (
 	"github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/meshplus/bitxhub/pkg/network/proto"
 )
-
-type OnConnectCallback func(*peer.AddrInfo, ID)
 
 type MessageStream struct {
 	Message *proto.Message

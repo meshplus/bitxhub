@@ -262,7 +262,7 @@ func (tp *TxPool) Broadcast(tx *pb.Transaction) error {
 		if id == tp.nodeId {
 			continue
 		}
-		if err := tp.peerMgr.Send(id, msg); err != nil {
+		if err := tp.peerMgr.AsyncSend(id, msg); err != nil {
 			tp.logger.Debugf("send tx to:%d %s", id, err.Error())
 			continue
 		}
