@@ -7,13 +7,14 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/gogo/protobuf/proto"
+	"github.com/meshplus/bitxhub-core/validator/validatorlib"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/crypto/asym/ecdsa"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/ledger"
-	"github.com/meshplus/bitxhub/internal/validator/validatorlib"
 	"github.com/meshplus/bitxhub/pkg/storage/leveldb"
 	"github.com/meshplus/bitxhub/pkg/vm"
 	"github.com/stretchr/testify/assert"
@@ -175,15 +176,20 @@ func TestWasm_RunFabValidation(t *testing.T) {
 	ret, err := wasm.deploy()
 	require.Nil(t, err)
 
-	proof, err := ioutil.ReadFile("./testdata/proof")
+	ibtpBytes, err := ioutil.ReadFile("./testdata/ibtp")
 	require.Nil(t, err)
+	ibtp := &pb.IBTP{}
+	err = proto.Unmarshal(ibtpBytes, ibtp)
+	require.Nil(t, err)
+
 	validator, err := ioutil.ReadFile("./testdata/validator")
 	require.Nil(t, err)
 	invokePayload := &pb.InvokePayload{
 		Method: "start_verify",
 		Args: []*pb.Arg{
-			{Type: pb.Arg_Bytes, Value: proof},
+			{Type: pb.Arg_Bytes, Value: ibtp.Proof},
 			{Type: pb.Arg_Bytes, Value: validator},
+			{Type: pb.Arg_Bytes, Value: ibtp.Payload},
 		},
 	}
 	payload, err := invokePayload.Marshal()
@@ -204,7 +210,7 @@ func TestWasm_RunFabValidation(t *testing.T) {
 
 	result, err := wasm1.Run(payload)
 	require.Nil(t, err)
-	require.Equal(t, "1", string(result))
+	require.Equal(t, "0", string(result))
 }
 
 func BenchmarkRunFabValidation(b *testing.B) {
@@ -266,7 +272,7 @@ func BenchmarkRunFabValidation(b *testing.B) {
 
 		result, err := wasm1.Run(payload)
 		require.Nil(b, err)
-		require.Equal(b, "1", string(result))
+		require.Equal(b, "0", string(result))
 	}
 	ctx.Ledger.Close()
 	store.Close()

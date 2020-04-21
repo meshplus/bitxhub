@@ -139,7 +139,7 @@ func (suite *Interchain) TestGetIBTPByID() {
 
 	proof, err := ioutil.ReadFile("./test_data/proof")
 	suite.Assert().Nil(err)
-	ib := &pb.IBTP{From: f.Hex(), To: t.Hex(), Index: 1, Timestamp: time.Now().UnixNano(), Proof: proof}
+	ib := &pb.IBTP{From: f.Hex(), To: t.Hex(), Index: 1, Payload: []byte("111"), Timestamp: time.Now().UnixNano(), Proof: proof}
 	data, err := ib.Marshal()
 	suite.Assert().Nil(err)
 	_, err = c1.InvokeBVMContract(rpcx.InterchainContractAddr, "HandleIBTP", rpcx.Bytes(data))
@@ -148,8 +148,9 @@ func (suite *Interchain) TestGetIBTPByID() {
 	ib.Index = 2
 	data, err = ib.Marshal()
 	suite.Assert().Nil(err)
-	_, err = c1.InvokeBVMContract(rpcx.InterchainContractAddr, "HandleIBTP", rpcx.Bytes(data))
+	receipt, err := c1.InvokeBVMContract(rpcx.InterchainContractAddr, "HandleIBTP", rpcx.Bytes(data))
 	suite.Assert().Nil(err)
+	suite.Assert().EqualValues(true, receipt.IsSuccess(), string(receipt.Ret))
 
 	ib.Index = 3
 	data, err = ib.Marshal()

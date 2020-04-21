@@ -5,8 +5,8 @@ import (
 	"reflect"
 	"strconv"
 
+	"github.com/meshplus/bitxhub-core/validator"
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/internal/validator"
 	"github.com/meshplus/bitxhub/pkg/vm"
 )
 
