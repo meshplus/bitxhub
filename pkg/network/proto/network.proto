@@ -1,8 +1,0 @@
-syntax = "proto3";
-
-package proto;
-
-message Message {
-    bytes Data = 1;
-    string Version = 2;
-}
