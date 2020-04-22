@@ -63,12 +63,14 @@ func (b *BrokerAPI) GetBlock(mode string, value string) (*pb.Block, error) {
 	}
 }
 
-func (b *BrokerAPI) GetBlocks(offset uint64, length uint64) ([]*pb.Block, error) {
+func (b *BrokerAPI) GetBlocks(start uint64, end uint64) ([]*pb.Block, error) {
 	meta := b.bxh.Ledger.GetChainMeta()
 
 	var blocks []*pb.Block
-	for i := meta.Height - offset; i > 0 && length > 0; i-- {
-		length--
+	if meta.Height < end {
+		end = meta.Height
+	}
+	for i := start; i > 0 && i <= end; i++ {
 		b, err := b.GetBlock("HEIGHT", strconv.Itoa(int(i)))
 		if err != nil {
 			continue

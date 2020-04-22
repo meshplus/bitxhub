@@ -72,7 +72,7 @@ func (cbs *ChainBrokerService) GetBlock(ctx context.Context, req *pb.GetBlockReq
 }
 
 func (cbs *ChainBrokerService) GetBlocks(ctx context.Context, req *pb.GetBlocksRequest) (*pb.GetBlocksResponse, error) {
-	blocks, err := cbs.api.Broker().GetBlocks(req.Offset, req.Length)
+	blocks, err := cbs.api.Broker().GetBlocks(req.Start, req.End)
 	if err != nil {
 		return nil, err
 	}

@@ -23,7 +23,7 @@ type BrokerAPI interface {
 	GetTransactionMeta(types.Hash) (*pb.TransactionMeta, error)
 	GetReceipt(types.Hash) (*pb.Receipt, error)
 	GetBlock(mode string, key string) (*pb.Block, error)
-	GetBlocks(offset uint64, length uint64) ([]*pb.Block, error)
+	GetBlocks(start uint64, end uint64) ([]*pb.Block, error)
 
 	// AddPier
 	AddPier(pid string) (chan *pb.MerkleWrapper, error)
