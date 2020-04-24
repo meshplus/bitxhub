@@ -10,6 +10,8 @@ const (
 	transactionKey     = "tx-"
 	transactionMetaKey = "tx-meta-"
 	chainMetaKey       = "chain-meta"
+	accountKey         = "account-"
+	codeKey            = "code-"
 )
 
 func compositeKey(prefix string, value interface{}) []byte {

@@ -7,7 +7,6 @@ import (
 	"github.com/meshplus/bitxhub-kit/bytesutil"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/pkg/storage/leveldb"
 	"github.com/stretchr/testify/assert"
 )
@@ -24,22 +23,36 @@ func TestLedger_Commit(t *testing.T) {
 	account := types.Bytes2Address(bytesutil.LeftPadBytes([]byte{100}, 20))
 
 	ledger.SetState(account, []byte("a"), []byte("b"))
-	hash, err := ledger.Commit()
+	hash, err := ledger.Commit(1)
 	assert.Nil(t, err)
 	assert.Equal(t, uint64(1), ledger.Version())
-	assert.Equal(t, "0x711ba7e0fbb4011960870c9c98fdf930809a384243f580aae3b5d9d0d3f19f50", hash.Hex())
+	assert.Equal(t, "0xe5ace5cd035b4c3d9d73a3f4a4a64e6e306010c75c35558283847c7c6473d66c", hash.Hex())
 
-	hash, err = ledger.Commit()
+	hash, err = ledger.Commit(2)
 	assert.Nil(t, err)
 	assert.Equal(t, uint64(2), ledger.Version())
-	assert.Equal(t, "0x711ba7e0fbb4011960870c9c98fdf930809a384243f580aae3b5d9d0d3f19f50", hash.Hex())
+	assert.Equal(t, "0x4204720214cb812d802b2075c5fed85cd5dfe8a6065627489b6296108f0fedc2", hash.Hex())
 
 	ledger.SetState(account, []byte("a"), []byte("3"))
 	ledger.SetState(account, []byte("a"), []byte("2"))
-	hash, err = ledger.Commit()
+	hash, err = ledger.Commit(3)
 	assert.Nil(t, err)
 	assert.Equal(t, uint64(3), ledger.Version())
-	assert.Equal(t, "0x102f75930e478956e0cc1ae4f79d24723d893bdf40e65186b6bb109c6f17131e", hash.Hex())
+	assert.Equal(t, "0xf08cc4b2da3f277202dc50a094ff2021300375915c14894a53fe02540feb3411", hash.Hex())
+
+	ledger.SetBalance(account, 100)
+	hash, err = ledger.Commit(4)
+	assert.Nil(t, err)
+	assert.Equal(t, uint64(4), ledger.Version())
+	assert.Equal(t, "0x8ef7f408372406532c7060045d77fb67d322cea7aa49afdc3a741f4f340dc6d5", hash.Hex())
+
+	code := bytesutil.RightPadBytes([]byte{100}, 100)
+	ledger.SetCode(account, code)
+	ledger.SetState(account, []byte("b"), []byte("3"))
+	ledger.SetState(account, []byte("c"), []byte("2"))
+	hash, err = ledger.Commit(5)
+	assert.Nil(t, err)
+	assert.Equal(t, uint64(5), ledger.Version())
 
 	ledger.Close()
 
@@ -50,73 +63,18 @@ func TestLedger_Commit(t *testing.T) {
 	ok, value := ldg.GetState(account, []byte("a"))
 	assert.True(t, ok)
 	assert.Equal(t, []byte("2"), value)
+
+	ok, value = ldg.GetState(account, []byte("b"))
+	assert.True(t, ok)
+	assert.Equal(t, []byte("3"), value)
+
+	ok, value = ldg.GetState(account, []byte("c"))
+	assert.True(t, ok)
+	assert.Equal(t, []byte("2"), value)
+
+	assert.Equal(t, uint64(100), ldg.GetBalance(account))
+	assert.Equal(t, code, ldg.GetCode(account))
+
 	ver := ldg.Version()
-	assert.Equal(t, uint64(3), ver)
-	assert.Equal(t, "0x102f75930e478956e0cc1ae4f79d24723d893bdf40e65186b6bb109c6f17131e", hash.Hex())
-}
-
-func TestLedger_Rollback(t *testing.T) {
-	repoRoot, err := ioutil.TempDir("", "ledger_rollback")
-	assert.Nil(t, err)
-	blockStorage, err := leveldb.New(repoRoot)
-	assert.Nil(t, err)
-	ledger, err := New(repoRoot, blockStorage, log.NewWithModule("executor"))
-	assert.Nil(t, err)
-
-	// create an account
-	account := types.Bytes2Address(bytesutil.LeftPadBytes([]byte{100}, 20))
-
-	ledger.SetState(account, []byte("a"), []byte("b"))
-	_, err = ledger.Commit()
-	assert.Nil(t, err)
-	ledger.SetState(account, []byte("a"), []byte("c"))
-	_, err = ledger.Commit()
-	assert.Nil(t, err)
-	ledger.SetState(account, []byte("a"), []byte("d"))
-	_, err = ledger.Commit()
-	assert.Nil(t, err)
-
-	block1 := &pb.Block{BlockHeader: &pb.BlockHeader{Number: 1}}
-	block1.BlockHash = block1.Hash()
-	block2 := &pb.Block{BlockHeader: &pb.BlockHeader{Number: 2}}
-	block2.BlockHash = block2.Hash()
-	block3 := &pb.Block{BlockHeader: &pb.BlockHeader{Number: 3}}
-	block3.BlockHash = block3.Hash()
-	err = ledger.PutBlock(1, block1)
-	assert.Nil(t, err)
-	err = ledger.PutBlock(2, block2)
-	assert.Nil(t, err)
-	err = ledger.PutBlock(3, block3)
-	assert.Nil(t, err)
-
-	ledger.UpdateChainMeta(&pb.ChainMeta{
-		Height:    3,
-		BlockHash: types.Hash{},
-	})
-
-	err = ledger.Rollback(1)
-	assert.Nil(t, err)
-	assert.Equal(t, uint64(1), ledger.Version())
-	err = ledger.Rollback(2)
-	assert.Equal(t, ErrorRollbackTohigherNumber, err)
-
-	ok, value := ledger.GetState(account, []byte("a"))
-	assert.True(t, ok)
-	assert.Equal(t, []byte("b"), value)
-
-	ledger.SetState(account, []byte("a"), []byte("c"))
-	_, err = ledger.Commit()
-	assert.Nil(t, err)
-	ledger.SetState(account, []byte("a"), []byte("d"))
-	_, err = ledger.Commit()
-	assert.Nil(t, err)
-	err = ledger.PutBlock(2, block2)
-	assert.Nil(t, err)
-	err = ledger.PutBlock(3, block3)
-	assert.Nil(t, err)
-
-	ok, value = ledger.GetState(account, []byte("a"))
-	assert.True(t, ok)
-	assert.Equal(t, []byte("d"), value)
-	assert.Equal(t, uint64(3), ledger.Version())
+	assert.Equal(t, uint64(5), ver)
 }

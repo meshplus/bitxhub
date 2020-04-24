@@ -1,6 +1,10 @@
 package ledger
 
 import (
+	"crypto/sha256"
+	"encoding/json"
+	"fmt"
+	"github.com/syndtr/goleveldb/leveldb/errors"
 	"sort"
 
 	"github.com/meshplus/bitxhub-kit/types"
@@ -9,26 +13,16 @@ import (
 
 var _ Ledger = (*ChainLedger)(nil)
 
-const (
-	accountKey = "account-"
-)
-
 // GetOrCreateAccount get the account, if not exist, create a new account
 func (l *ChainLedger) GetOrCreateAccount(addr types.Address) *Account {
-	h := addr.Hex()
-	value, ok := l.accounts[h]
-	if ok {
-		return value
-	}
+	obj := l.GetAccount(addr)
 
-	obj := newAccount(l, l.ldb, addr)
-
-	l.accounts[h] = obj
+	l.accounts[addr.Hex()] = obj
 
 	return obj
 }
 
-// GetAccount get account info using account address
+// GetAccount get account info using account address, if not found, create a new account
 func (l *ChainLedger) GetAccount(addr types.Address) *Account {
 	h := addr.Hex()
 	value, ok := l.accounts[h]
@@ -36,10 +30,14 @@ func (l *ChainLedger) GetAccount(addr types.Address) *Account {
 		return value
 	}
 
-	account := &Account{}
-	_, data := l.tree.Get(compositeKey(accountKey, addr.Hex()))
+	account := newAccount(l.ldb, addr)
+	data, err := l.ldb.Get(compositeKey(accountKey, addr.Hex()))
+	if err != nil && err != errors.ErrNotFound {
+		panic(err)
+	}
 	if data != nil {
-		if err := account.Unmarshal(data); err != nil {
+		account.originAccount = &innerAccount{}
+		if err := account.originAccount.Unmarshal(data); err != nil {
 			panic(err)
 		}
 	}
@@ -50,45 +48,31 @@ func (l *ChainLedger) GetAccount(addr types.Address) *Account {
 // GetBalanec get account balance using account address
 func (l *ChainLedger) GetBalance(addr types.Address) uint64 {
 	account := l.GetOrCreateAccount(addr)
-
-	return account.Balance
+	return account.GetBalance()
 }
 
 // SetBalance set account balance
 func (l *ChainLedger) SetBalance(addr types.Address, value uint64) {
-	h := addr.Hex()
 	account := l.GetOrCreateAccount(addr)
-	account.Balance = value
-
-	l.accounts[h] = account
-	l.modifiedAccount[h] = true
+	account.SetBalance(value)
 }
 
 // GetState get account state value using account address and key
 func (l *ChainLedger) GetState(addr types.Address, key []byte) (bool, []byte) {
 	account := l.GetOrCreateAccount(addr)
-
 	return account.GetState(key)
 }
 
 // SetState set account state value using account address and key
 func (l *ChainLedger) SetState(addr types.Address, key []byte, v []byte) {
-	h := addr.Hex()
 	account := l.GetOrCreateAccount(addr)
 	account.SetState(key, v)
-
-	l.accounts[h] = account
-	l.modifiedAccount[h] = true
 }
 
 // SetCode set contract code
 func (l *ChainLedger) SetCode(addr types.Address, code []byte) {
-	h := addr.Hex()
 	account := l.GetOrCreateAccount(addr)
 	account.SetCodeAndHash(code)
-
-	l.accounts[h] = account
-	l.modifiedAccount[h] = true
 }
 
 // GetCode get contract code
@@ -105,12 +89,8 @@ func (l *ChainLedger) GetNonce(addr types.Address) uint64 {
 
 // SetNonce set account nonce
 func (l *ChainLedger) SetNonce(addr types.Address, nonce uint64) {
-	h := addr.Hex()
 	account := l.GetOrCreateAccount(addr)
 	account.SetNonce(nonce)
-
-	l.accounts[h] = account
-	l.modifiedAccount[h] = true
 }
 
 // QueryByPrefix query value using key
@@ -122,48 +102,58 @@ func (l *ChainLedger) QueryByPrefix(addr types.Address, prefix string) (bool, []
 func (l *ChainLedger) Clear() {
 	l.events = make(map[string][]*pb.Event, 10)
 	l.accounts = make(map[string]*Account)
-	l.modifiedAccount = make(map[string]bool)
 }
 
 // Commit commit the state
-func (l *ChainLedger) Commit() (types.Hash, error) {
-	sk := make([]string, 0, len(l.modifiedAccount))
-	for id := range l.modifiedAccount {
-		sk = append(sk, id)
+func (l *ChainLedger) Commit(height uint64) (types.Hash, error) {
+	var dirtyAccountData []byte
+	var journalEntries []journalEntry
+	sortedAddr := make([]string, 0, len(l.accounts))
+	accountData := make(map[string][]byte)
+	ldbBatch := l.ldb.NewBatch()
+
+	for addr, account := range l.accounts {
+		entries := account.getJournalIfModified(ldbBatch)
+		if len(entries) != 0 {
+			sortedAddr = append(sortedAddr, addr)
+			accountData[addr] = account.getDirtyData()
+			journalEntries = append(journalEntries, entries...)
+		}
 	}
 
-	sort.Strings(sk)
+	sort.Strings(sortedAddr)
+	for _, addr := range sortedAddr {
+		dirtyAccountData = append(dirtyAccountData, accountData[addr]...)
+	}
+	dirtyAccountData = append(dirtyAccountData, l.prevJournalHash[:]...)
+	journalHash := sha256.Sum256(dirtyAccountData)
 
-	for _, id := range sk {
-		obj := l.accounts[id]
-		hash, err := obj.Commit()
-		if err != nil {
-			return types.Hash{}, err
-		}
-
-		obj.SetStateRoot(hash)
-
-		data, err := obj.Marshal()
-		if err != nil {
-			return types.Hash{}, err
-		}
-
-		l.tree.Set(compositeKey(accountKey, id), data)
+	blockJournal := BlockJournal{
+		journals:    journalEntries,
+		changedHash: journalHash,
 	}
 
-	hash, height, err := l.tree.SaveVersion()
+	data, err := json.Marshal(blockJournal)
 	if err != nil {
-		return types.Hash{}, err
+		return [32]byte{}, err
 	}
 
-	l.height = uint64(height)
+	if err := l.jdb.Put([]byte(fmt.Sprintf("%v", height)), data); err != nil {
+		panic(err)
+	}
 
+	if err := ldbBatch.Commit(); err != nil {
+		panic(err)
+	}
+
+	l.height = height
+	l.prevJournalHash = journalHash
 	l.Clear()
 
-	return types.Bytes2Hash(hash), nil
+	return journalHash, nil
 }
 
 // Version returns the current version
 func (l *ChainLedger) Version() uint64 {
-	return uint64(l.tree.Version())
+	return l.height
 }

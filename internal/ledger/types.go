@@ -59,7 +59,7 @@ type StateAccessor interface {
 	QueryByPrefix(address types.Address, prefix string) (bool, [][]byte)
 
 	// Commit commits the state data
-	Commit() (types.Hash, error)
+	Commit(height uint64) (types.Hash, error)
 
 	// Version
 	Version() uint64

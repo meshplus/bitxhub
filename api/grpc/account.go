@@ -20,18 +20,18 @@ func (cbs *ChainBrokerService) GetAccountBalance(ctx context.Context, req *pb.Ad
 
 	account := cbs.api.Account().GetAccount(addr)
 
-	hash := types.Bytes2Hash(account.CodeHash)
+	hash := types.Bytes2Hash(account.CodeHash())
 
 	typ := "normal"
 
-	if account.CodeHash != nil {
+	if account.CodeHash() != nil {
 		typ = "contract"
 	}
 
 	ret := &Account{
 		Type:          typ,
-		Balance:       account.Balance,
-		ContractCount: account.Nonce,
+		Balance:       account.GetBalance(),
+		ContractCount: account.GetNonce(),
 		CodeHash:      hash,
 	}
 
