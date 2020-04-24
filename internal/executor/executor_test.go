@@ -55,7 +55,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	evs = append(evs, ev)
 	mockLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
 	mockLedger.EXPECT().Events(gomock.Any()).Return(evs).AnyTimes()
-	mockLedger.EXPECT().Commit().Return(types.String2Hash(from), nil).AnyTimes()
+	mockLedger.EXPECT().Commit(gomock.Any()).Return(types.String2Hash(from), nil).AnyTimes()
 	mockLedger.EXPECT().Clear().AnyTimes()
 	mockLedger.EXPECT().GetState(gomock.Any(), gomock.Any()).Return(true, []byte("10")).AnyTimes()
 	mockLedger.EXPECT().SetState(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
@@ -178,7 +178,7 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 	_, from := loadAdminKey(t)
 
 	ledger.SetBalance(from, 100000000)
-	_, err = ledger.Commit()
+	_, err = ledger.Commit(1)
 	require.Nil(t, err)
 	err = ledger.PersistExecutionResult(mockBlock(1, nil), nil)
 	require.Nil(t, err)
