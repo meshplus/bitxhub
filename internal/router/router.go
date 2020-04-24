@@ -13,11 +13,13 @@ type Router interface {
 	PutBlock(*pb.Block)
 
 	// AddPier
-	AddPier(id string) (chan *pb.MerkleWrapper, error)
+	AddPier(id string) (chan *pb.InterchainTxWrapper, error)
 
 	// RemovePier
 	RemovePier(id string)
 
-	// GetMerkleWrapper
-	GetMerkleWrapper(pid string, begin, end uint64, ch chan<- *pb.MerkleWrapper) error
+	// GetBlockHeader
+	GetBlockHeader(begin, end uint64, ch chan<- *pb.BlockHeader) error
+
+	GetInterchainTxWrapper(pid string, begin, end uint64, ch chan<- *pb.InterchainTxWrapper) error
 }

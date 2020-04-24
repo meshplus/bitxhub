@@ -24,6 +24,8 @@ func (cbs *ChainBrokerService) Subscribe(req *pb.SubscriptionRequest, server pb.
 		return cbs.handleNewBlockSubscription(server)
 	case pb.SubscriptionRequest_BLOCK_HEADER.String():
 		return cbs.handleBlockHeaderSubscription(server)
+	case pb.SubscriptionRequest_INTERCHAIN_TX_WRAPPER.String():
+		return cbs.handleInterchainTxWrapperSubscription(server, string(req.Extra))
 	}
 
 	return nil
@@ -100,6 +102,36 @@ func (cbs *ChainBrokerService) handleInterchainTxSubscription(server pb.ChainBro
 			}); err != nil {
 				cbs.logger.Warnf("Send new interchain tx event failed %s", err.Error())
 				return fmt.Errorf("send new interchain tx event failed")
+			}
+		case <-server.Context().Done():
+			return nil
+		}
+	}
+}
+
+func (cbs *ChainBrokerService) handleInterchainTxWrapperSubscription(server pb.ChainBroker_SubscribeServer, pid string) error {
+	ch, err := cbs.api.Broker().AddPier(pid)
+	if err != nil {
+		return err
+	}
+
+	for {
+		select {
+		case wrapper, ok := <-ch:
+			// if channel is unexpected closed, return
+			if !ok {
+				return nil
+			}
+			data, err := wrapper.Marshal()
+			if err != nil {
+				return err
+			}
+
+			if err := server.Send(&pb.Response{
+				Data: data,
+			}); err != nil {
+				cbs.logger.Warnf("Send new interchain tx wrapper failed %s", err.Error())
+				return fmt.Errorf("send new interchain tx wrapper failed")
 			}
 		case <-server.Context().Done():
 			return nil

@@ -69,7 +69,7 @@ func (suite *Pier) TestSyncMerkleWrapper() {
 	suite.Require().EqualValues("SUCCESS", ret.Status.String())
 
 	go func() {
-		w, err := client.SyncMerkleWrapper(context.Background(), address.Hex(), 1)
+		w, err := client.Subscribe(context.Background(), pb.SubscriptionRequest_INTERCHAIN_TX_WRAPPER, address.Bytes())
 		suite.Require().Nil(err)
 		fmt.Println(<-w)
 	}()

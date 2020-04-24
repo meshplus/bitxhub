@@ -26,12 +26,14 @@ type BrokerAPI interface {
 	GetBlocks(start uint64, end uint64) ([]*pb.Block, error)
 
 	// AddPier
-	AddPier(pid string) (chan *pb.MerkleWrapper, error)
+	AddPier(pid string) (chan *pb.InterchainTxWrapper, error)
 
 	// RemovePier
 	RemovePier(pid string)
 
-	GetMerkleWrapper(pid string, begin, end uint64, ch chan<- *pb.MerkleWrapper) error
+	GetBlockHeader(begin, end uint64, ch chan<- *pb.BlockHeader) error
+
+	GetInterchainTxWrapper(pid string, begin, end uint64, ch chan<- *pb.InterchainTxWrapper) error
 
 	// OrderReady
 	OrderReady() bool

@@ -40,12 +40,16 @@ func (b *BrokerAPI) GetReceipt(hash types.Hash) (*pb.Receipt, error) {
 	return b.bxh.Ledger.GetReceipt(hash)
 }
 
-func (b *BrokerAPI) AddPier(key string) (chan *pb.MerkleWrapper, error) {
+func (b *BrokerAPI) AddPier(key string) (chan *pb.InterchainTxWrapper, error) {
 	return b.bxh.Router.AddPier(key)
 }
 
-func (b *BrokerAPI) GetMerkleWrapper(pid string, begin, end uint64, ch chan<- *pb.MerkleWrapper) error {
-	return b.bxh.Router.GetMerkleWrapper(pid, begin, end, ch)
+func (b *BrokerAPI) GetBlockHeader(begin, end uint64, ch chan<- *pb.BlockHeader) error {
+	return b.bxh.Router.GetBlockHeader(begin, end, ch)
+}
+
+func (b *BrokerAPI) GetInterchainTxWrapper(pid string, begin, end uint64, ch chan<- *pb.InterchainTxWrapper) error {
+	return b.bxh.Router.GetInterchainTxWrapper(pid, begin, end, ch)
 }
 
 func (b *BrokerAPI) GetBlock(mode string, value string) (*pb.Block, error) {
