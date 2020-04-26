@@ -101,9 +101,9 @@ function prepare() {
     x_replace 's/example/example1/g' "${CURRENT_PATH}"/configB.yaml
   fi
 
-  if [ ! -f fabric-rule.wasm ]; then
-    print_blue "===> Downloading fabric-rule.wasm"
-    wget https://raw.githubusercontent.com/meshplus/bitxhub/master/scripts/quick_start/fabric-rule.wasm
+  if [ ! -f fabric_rule.wasm ]; then
+    print_blue "===> Downloading fabric_rule.wasm"
+    wget https://raw.githubusercontent.com/meshplus/bitxhub/master/scripts/quick_start/fabric_rule.wasm
   fi
 }
 
@@ -139,7 +139,7 @@ function start() {
     --validators "${PIER_ROOT}"/fabric/fabric.validators
 
   print_blue "===> Deploy rule in bitxhub"
-  pier --repo "${PIER_ROOT}" rule deploy --path "${CURRENT_PATH}"/fabric-rule.wasm
+  pier --repo "${PIER_ROOT}" rule deploy --path "${CURRENT_PATH}"/fabric_rule.wasm
 
   print_blue "===> Start pier"
   cd "${CURRENT_PATH}"
