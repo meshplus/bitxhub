@@ -10,10 +10,10 @@ BUILD_DATE = $(shell date +%FT%T)
 GIT_COMMIT = $(shell git log --pretty=format:'%h' -n 1)
 GIT_BRANCH = $(shell git rev-parse --abbrev-ref HEAD)
 
-LDFLAGS += -X "${VERSION_DIR}.BuildDate=${BUILD_DATE}"
-LDFLAGS += -X "${VERSION_DIR}.CurrentCommit=${GIT_COMMIT}"
-LDFLAGS += -X "${VERSION_DIR}.CurrentBranch=${GIT_BRANCH}"
-LDFLAGS += -X "${VERSION_DIR}.CurrentVersion=${APP_VERSION}"
+GOLDFLAGS += -X "${VERSION_DIR}.BuildDate=${BUILD_DATE}"
+GOLDFLAGS += -X "${VERSION_DIR}.CurrentCommit=${GIT_COMMIT}"
+GOLDFLAGS += -X "${VERSION_DIR}.CurrentBranch=${GIT_BRANCH}"
+GOLDFLAGS += -X "${VERSION_DIR}.CurrentVersion=${APP_VERSION}"
 
 GO  = GO111MODULE=on go
 TEST_PKGS := $(shell $(GO) list ./... | grep -v 'mock_*' | grep -v 'tester')
@@ -49,13 +49,13 @@ tester:
 ## make install: Go install the project
 install:
 	cd internal/repo && packr
-	$(GO) install -ldflags '${LDFLAGS}' ./cmd/${APP_NAME}
+	$(GO) install -ldflags '${GOLDFLAGS}' ./cmd/${APP_NAME}
 	@printf "${GREEN}Build bitxhub successfully!${NC}\n"
 
 build:
 	cd internal/repo && packr
 	@mkdir -p bin
-	$(GO) build -ldflags '${LDFLAGS}' ./cmd/${APP_NAME}
+	$(GO) build -ldflags '${GOLDFLAGS}' ./cmd/${APP_NAME}
 	@mv ./bitxhub bin
 	@printf "${GREEN}Build bitxhub successfully!${NC}\n"
 
