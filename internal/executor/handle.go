@@ -68,7 +68,7 @@ func (exec *BlockExecutor) processExecuteEvent(block *pb.Block) {
 	}
 
 	block.BlockHeader.InterchainIndex = idx
-	hash, err := exec.ledger.Commit()
+	hash, err := exec.ledger.Commit(block.BlockHeader.Number)
 	if err != nil {
 		panic(err)
 	}

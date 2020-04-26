@@ -28,7 +28,7 @@ func Initialize(config *repo.Config, ledger ledger.Ledger) error {
 
 	ledger.SetState(roleAddr, []byte("admin-roles"), body)
 
-	hash, err := ledger.Commit()
+	hash, err := ledger.Commit(1)
 	if err != nil {
 		return err
 	}

@@ -3,13 +3,15 @@ package ledger
 import "fmt"
 
 const (
-	ledgerTreePrefix   = "ChainLedger"
 	blockKey           = "block-"
 	blockHashKey       = "block-hash-"
 	receiptKey         = "receipt-"
 	transactionKey     = "tx-"
 	transactionMetaKey = "tx-meta-"
 	chainMetaKey       = "chain-meta"
+	accountKey         = "account-"
+	codeKey            = "code-"
+	journalKey         = "journal-"
 )
 
 func compositeKey(prefix string, value interface{}) []byte {

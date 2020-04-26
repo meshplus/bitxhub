@@ -1,7 +1,6 @@
 package ledger
 
 import (
-	"bytes"
 	"fmt"
 	"sync"
 
@@ -9,10 +8,8 @@ import (
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/bitxhub/pkg/storage"
+	"github.com/meshplus/bitxhub/pkg/storage/leveldb"
 	"github.com/sirupsen/logrus"
-	"github.com/tendermint/iavl"
-	db "github.com/tendermint/tm-db"
-	"github.com/wonderivan/logger"
 )
 
 var _ Ledger = (*ChainLedger)(nil)
@@ -21,19 +18,14 @@ var (
 	ErrorRollbackTohigherNumber = fmt.Errorf("rollback to higher blockchain height")
 )
 
-const (
-	defaultIAVLCacheSize = 10000
-)
-
 type ChainLedger struct {
 	logger          logrus.FieldLogger
 	blockchainStore storage.Storage
-	ldb             db.DB
-	tree            *iavl.MutableTree
+	ldb             storage.Storage
 	height          uint64
 	events          map[string][]*pb.Event
 	accounts        map[string]*Account
-	modifiedAccount map[string]bool
+	prevJournalHash types.Hash
 
 	chainMutex sync.RWMutex
 	chainMeta  *pb.ChainMeta
@@ -41,7 +33,7 @@ type ChainLedger struct {
 
 // New create a new ledger instance
 func New(repoRoot string, blockchainStore storage.Storage, logger logrus.FieldLogger) (*ChainLedger, error) {
-	ldb, err := db.NewGoLevelDB("ledger", repo.GetStoragePath(repoRoot))
+	ldb, err := leveldb.New(repo.GetStoragePath(repoRoot, "ledger"))
 	if err != nil {
 		return nil, fmt.Errorf("create tm-leveldb: %w", err)
 	}
@@ -51,13 +43,12 @@ func New(repoRoot string, blockchainStore storage.Storage, logger logrus.FieldLo
 		return nil, fmt.Errorf("load chain meta: %w", err)
 	}
 
-	tree := iavl.NewMutableTree(db.NewPrefixDB(ldb, []byte(ledgerTreePrefix)), defaultIAVLCacheSize)
-	height, err := tree.LoadVersionForOverwriting(int64(chainMeta.Height))
+	height, err := getHeightFromJournal(ldb)
 	if err != nil {
-		return nil, fmt.Errorf("load state tree: %w", err)
+		return nil, fmt.Errorf("get journal height: %w", err)
 	}
 
-	if uint64(height) < chainMeta.Height {
+	if height < chainMeta.Height {
 		// TODO(xcc): how to handle this case
 		panic("state tree height is less than blockchain height")
 	}
@@ -67,10 +58,9 @@ func New(repoRoot string, blockchainStore storage.Storage, logger logrus.FieldLo
 		chainMeta:       chainMeta,
 		blockchainStore: blockchainStore,
 		ldb:             ldb,
-		tree:            tree,
+		height:          height,
 		events:          make(map[string][]*pb.Event, 10),
 		accounts:        make(map[string]*Account),
-		modifiedAccount: make(map[string]bool),
 	}, nil
 }
 
@@ -99,34 +89,7 @@ func (l *ChainLedger) Rollback(height uint64) error {
 	// clean cache account
 	l.Clear()
 
-	_, err = l.tree.LoadVersionForOverwriting(int64(height))
-	if err != nil {
-		return err
-	}
-
-	begin, end := bytesPrefix([]byte(accountKey))
-	l.tree.IterateRange(begin, end, false, func(key []byte, value []byte) bool {
-		arr := bytes.Split(key, []byte("-"))
-		if len(arr) != 2 {
-			logger.Info("wrong account key")
-		}
-
-		a := newAccount(l, l.ldb, types.String2Address(string(arr[1])))
-		if err := a.Unmarshal(value); err != nil {
-			logger.Error(err)
-		}
-
-		if _, err := a.tree.LoadVersionForOverwriting(a.Version); err != nil {
-			logger.Error(err)
-		}
-
-		_, err = a.Commit()
-		if err != nil {
-			logger.Error(err)
-		}
-
-		return false
-	})
+	// TODO
 
 	return nil
 }
