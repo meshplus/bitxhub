@@ -22,7 +22,7 @@ func (l *ChainLedger) GetOrCreateAccount(addr types.Address) *Account {
 	return obj
 }
 
-// GetAccount get account info using account address, if not found, create a new account
+// GetAccount get account info using account Address, if not found, create a new account
 func (l *ChainLedger) GetAccount(addr types.Address) *Account {
 	h := addr.Hex()
 	value, ok := l.accounts[h]
@@ -45,7 +45,7 @@ func (l *ChainLedger) GetAccount(addr types.Address) *Account {
 	return account
 }
 
-// GetBalanec get account balance using account address
+// GetBalanec get account balance using account Address
 func (l *ChainLedger) GetBalance(addr types.Address) uint64 {
 	account := l.GetOrCreateAccount(addr)
 	return account.GetBalance()
@@ -57,13 +57,13 @@ func (l *ChainLedger) SetBalance(addr types.Address, value uint64) {
 	account.SetBalance(value)
 }
 
-// GetState get account state value using account address and key
+// GetState get account state value using account Address and key
 func (l *ChainLedger) GetState(addr types.Address, key []byte) (bool, []byte) {
 	account := l.GetOrCreateAccount(addr)
 	return account.GetState(key)
 }
 
-// SetState set account state value using account address and key
+// SetState set account state value using account Address and key
 func (l *ChainLedger) SetState(addr types.Address, key []byte, v []byte) {
 	account := l.GetOrCreateAccount(addr)
 	account.SetState(key, v)
@@ -107,17 +107,17 @@ func (l *ChainLedger) Clear() {
 // Commit commit the state
 func (l *ChainLedger) Commit(height uint64) (types.Hash, error) {
 	var dirtyAccountData []byte
-	var journalEntries []journalEntry
+	var journals []*journal
 	sortedAddr := make([]string, 0, len(l.accounts))
 	accountData := make(map[string][]byte)
 	ldbBatch := l.ldb.NewBatch()
 
 	for addr, account := range l.accounts {
-		entries := account.getJournalIfModified(ldbBatch)
-		if len(entries) != 0 {
+		journal := account.getJournalIfModified(ldbBatch)
+		if journal != nil {
 			sortedAddr = append(sortedAddr, addr)
 			accountData[addr] = account.getDirtyData()
-			journalEntries = append(journalEntries, entries...)
+			journals = append(journals, journal)
 		}
 	}
 
@@ -129,8 +129,8 @@ func (l *ChainLedger) Commit(height uint64) (types.Hash, error) {
 	journalHash := sha256.Sum256(dirtyAccountData)
 
 	blockJournal := BlockJournal{
-		journals:    journalEntries,
-		changedHash: journalHash,
+		Journals:    journals,
+		ChangedHash: journalHash,
 	}
 
 	data, err := json.Marshal(blockJournal)

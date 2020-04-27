@@ -1,84 +1,77 @@
 package ledger
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub/pkg/storage"
 )
 
-type journalEntry interface {
-	revert(batch storage.Batch)
+type journal struct {
+	Address        types.Address
+	PrevAccount    *innerAccount
+	AccountChanged bool
+	PrevStates     map[string][]byte
+	PrevCode       []byte
+	CodeChanged    bool
 }
-
-type (
-	accountChange struct {
-		address     types.Address
-		prevAccount *innerAccount
-	}
-
-	stateChange struct {
-		address    types.Address
-		prevStates map[string][]byte
-	}
-
-	codeChange struct {
-		address  types.Address
-		prevCode []byte
-	}
-)
 
 type BlockJournal struct {
-	journals    []journalEntry
-	changedHash types.Hash
+	Journals    []*journal
+	ChangedHash types.Hash
 }
 
-func (journal accountChange) revert(batch storage.Batch) {
-	if journal.prevAccount != nil {
-		data, err := journal.prevAccount.Marshal()
-		if err != nil {
-			panic(err)
-		}
-		batch.Put(compositeKey(accountKey, journal.address.Hex()), data)
-	} else {
-		batch.Delete(compositeKey(accountKey, journal.address.Hex()))
-	}
-}
-
-func (journal stateChange) revert(batch storage.Batch) {
-	for key, val := range journal.prevStates {
-		if val != nil {
-			batch.Put(compositeKey(journal.address.Hex(), key), val)
+func (journal *journal) revert(batch storage.Batch) {
+	if journal.AccountChanged {
+		if journal.PrevAccount != nil {
+			data, err := journal.PrevAccount.Marshal()
+			if err != nil {
+				panic(err)
+			}
+			batch.Put(compositeKey(accountKey, journal.Address.Hex()), data)
 		} else {
-			batch.Delete(compositeKey(journal.address.Hex(), key))
+			batch.Delete(compositeKey(accountKey, journal.Address.Hex()))
+		}
+	}
+
+	for key, val := range journal.PrevStates {
+		if val != nil {
+			batch.Put(compositeKey(journal.Address.Hex(), key), val)
+		} else {
+			batch.Delete(compositeKey(journal.Address.Hex(), key))
+		}
+	}
+
+	if journal.CodeChanged {
+		if journal.PrevCode != nil {
+			batch.Put(compositeKey(codeKey, journal.Address.Hex()), journal.PrevCode)
+		} else {
+			batch.Delete(compositeKey(codeKey, journal.Address.Hex()))
 		}
 	}
 }
 
-func (journal codeChange) revert(batch storage.Batch) {
-	if journal.prevCode != nil {
-		batch.Put(compositeKey(codeKey, journal.address.Hex()), journal.prevCode)
-	} else {
-		batch.Delete(compositeKey(codeKey, journal.address.Hex()))
-	}
-}
-
-func getHeightFromJournal(ldb storage.Storage) (uint64, error) {
-	height := uint64(0)
+func getLatestJournal(ldb storage.Storage) (uint64, *BlockJournal, error) {
+	maxHeight := uint64(0)
+	journal := &BlockJournal{}
 	begin, end := bytesPrefix([]byte(journalKey))
 	it := ldb.Iterator(begin, end)
 
 	for it.Next() {
-		h := uint64(0)
-		_, e := fmt.Sscanf(string(it.Key()), journalKey+"%d", &h)
-		if e != nil {
-			return 0, e
+		height := uint64(0)
+		_, err := fmt.Sscanf(string(it.Key()), journalKey+"%d", &height)
+		if err != nil {
+			return 0, nil, err
 		}
 
-		if h > height {
-			height = h
+		if height > maxHeight {
+			maxHeight = height
+			if err := json.Unmarshal(it.Value(), journal); err != nil {
+				panic(err)
+			}
 		}
 	}
 
-	return height, nil
+	return maxHeight, journal, nil
 }
