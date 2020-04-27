@@ -1,6 +1,7 @@
 package ledger
 
 import (
+	"crypto/sha256"
 	"encoding/hex"
 	"io/ioutil"
 	"testing"
@@ -99,4 +100,76 @@ func TestLedger_Commit(t *testing.T) {
 
 	ver := ldg.Version()
 	assert.Equal(t, uint64(5), ver)
+}
+
+func TestChainLedger_Rollback(t *testing.T) {
+	repoRoot, err := ioutil.TempDir("", "ledger_rollback")
+	assert.Nil(t, err)
+	blockStorage, err := leveldb.New(repoRoot)
+	assert.Nil(t, err)
+	ledger, err := New(repoRoot, blockStorage, log.NewWithModule("executor"))
+	assert.Nil(t, err)
+
+	// create an addr0
+	addr0 := types.Bytes2Address(bytesutil.LeftPadBytes([]byte{100}, 20))
+	addr1 := types.Bytes2Address(bytesutil.LeftPadBytes([]byte{101}, 20))
+
+	code := sha256.Sum256([]byte("code"))
+	codeHash := sha256.Sum256(code[:])
+
+	ledger.SetBalance(addr0, 1)
+	ledger.SetCode(addr0, code[:])
+
+	hash1, err := ledger.Commit(1)
+	assert.Nil(t, err)
+
+	ledger.SetBalance(addr0, 2)
+	ledger.SetState(addr0, []byte("a"), []byte("2"))
+
+	code1 := sha256.Sum256([]byte("code1"))
+	codeHash1 := sha256.Sum256(code1[:])
+	ledger.SetCode(addr0, code1[:])
+
+	hash2, err := ledger.Commit(2)
+	assert.Nil(t, err)
+
+	ledger.SetBalance(addr1, 3)
+	ledger.SetBalance(addr0, 4)
+	ledger.SetState(addr0, []byte("a"), []byte("3"))
+	ledger.SetState(addr0, []byte("b"), []byte("4"))
+
+	hash3, err := ledger.Commit(3)
+	assert.Nil(t, err)
+	assert.Equal(t, hash3, ledger.prevJournalHash)
+
+	err = ledger.Rollback(2)
+	assert.Nil(t, err)
+	assert.Equal(t, hash2, ledger.prevJournalHash)
+
+	account0 := ledger.GetAccount(addr0)
+	assert.Equal(t, uint64(2), account0.GetBalance())
+	assert.Equal(t, uint64(0), account0.GetNonce())
+	assert.Equal(t, codeHash1[:], account0.CodeHash())
+	assert.Equal(t, code1[:], account0.Code())
+	ok, val := account0.GetState([]byte("a"))
+	assert.True(t, ok)
+	assert.Equal(t, []byte("2"), val)
+
+	account1 := ledger.GetAccount(addr1)
+	assert.Equal(t, uint64(0), account1.GetBalance())
+	assert.Equal(t, uint64(0), account1.GetNonce())
+	assert.Nil(t, account1.CodeHash())
+	assert.Nil(t, account1.Code())
+
+	err = ledger.Rollback(1)
+	assert.Nil(t, err)
+	assert.Equal(t, hash1, ledger.prevJournalHash)
+
+	account0 = ledger.GetAccount(addr0)
+	assert.Equal(t, uint64(1), account0.GetBalance())
+	assert.Equal(t, uint64(0), account0.GetNonce())
+	assert.Equal(t, codeHash[:], account0.CodeHash())
+	assert.Equal(t, code[:], account0.Code())
+	ok, _ = account0.GetState([]byte("a"))
+	assert.False(t, ok)
 }

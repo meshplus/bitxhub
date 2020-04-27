@@ -52,8 +52,13 @@ func (o *Account) GetState(key []byte) (bool, []byte) {
 	}
 
 	val, err := o.ldb.Get(append(o.Addr.Bytes(), key...))
-	if err != nil && err != errors.ErrNotFound {
-		panic(err)
+	if err != nil {
+		if err != errors.ErrNotFound {
+			panic(err)
+		} else {
+			o.originState[hexKey] = nil
+			return false, nil
+		}
 	}
 
 	o.originState[hexKey] = val
@@ -63,6 +68,7 @@ func (o *Account) GetState(key []byte) (bool, []byte) {
 
 // SetState Set account state
 func (o *Account) SetState(key []byte, value []byte) {
+	o.GetState(key)
 	o.dirtyState[hex.EncodeToString(key)] = value
 }
 
@@ -91,12 +97,17 @@ func (o *Account) Code() []byte {
 	}
 
 	code, err := o.ldb.Get(compositeKey(codeKey, o.Addr.Hex()))
-	if err != nil && err != errors.ErrNotFound {
-		panic(err)
+	if err != nil {
+		if err != errors.ErrNotFound {
+			panic(err)
+		} else {
+			o.originCode = nil
+			o.dirtyCode = nil
+		}
+	} else {
+		o.originCode = code
+		o.dirtyCode = code
 	}
-
-	o.originCode = code
-	o.dirtyCode = code
 
 	return code
 }
@@ -175,6 +186,19 @@ func (o *Account) getJournalIfModified(ldbBatch storage.Batch) *journal {
 		ldbBatch.Put(compositeKey(accountKey, o.Addr.Hex()), data)
 		entry.AccountChanged = true
 		entry.PrevAccount = o.originAccount
+	}
+
+	if o.originCode == nil && !(o.originAccount == nil || o.originAccount.CodeHash == nil) {
+		code, err := o.ldb.Get(compositeKey(codeKey, o.Addr.Hex()))
+		if err != nil {
+			if err != errors.ErrNotFound {
+				panic(err)
+			} else {
+				o.originCode = nil
+			}
+		} else {
+			o.originCode = code
+		}
 	}
 
 	if !bytes.Equal(o.originCode, o.dirtyCode) {
