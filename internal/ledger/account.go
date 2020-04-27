@@ -164,46 +164,49 @@ func (o *Account) Query(prefix string) (bool, [][]byte) {
 	return len(ret) != 0, ret
 }
 
-func (o *Account) getJournalIfModified(ldbBatch storage.Batch) []journalEntry {
-	var entries []journalEntry
+func (o *Account) getJournalIfModified(ldbBatch storage.Batch) *journal {
+	entry := &journal{Address: o.Addr}
 
-	if !innerAccountChanged(o.originAccount, o.dirtyAccount) {
+	if innerAccountChanged(o.originAccount, o.dirtyAccount) {
 		data, err := o.dirtyAccount.Marshal()
 		if err != nil {
 			panic(err)
 		}
 		ldbBatch.Put(compositeKey(accountKey, o.Addr.Hex()), data)
-		entries = append(entries, accountChange{address: o.Addr, prevAccount: o.originAccount})
+		entry.AccountChanged = true
+		entry.PrevAccount = o.originAccount
 	}
 
-	if bytes.Compare(o.originCode, o.dirtyCode) != 0 {
+	if !bytes.Equal(o.originCode, o.dirtyCode) {
 		if o.dirtyCode != nil {
 			ldbBatch.Put(compositeKey(codeKey, o.Addr.Hex()), o.dirtyCode)
 		} else {
 			ldbBatch.Delete(compositeKey(codeKey, o.Addr.Hex()))
 		}
-		entries = append(entries, codeChange{address: o.Addr, prevCode: o.originCode})
+		entry.CodeChanged = true
+		entry.PrevCode = o.originCode
 	}
 
-	stateJournal := o.getStateJournalAndComputeHash(ldbBatch)
-	if len(stateJournal.prevStates) != 0 {
-		entries = append(entries, stateJournal)
+	prevStates := o.getStateJournalAndComputeHash(ldbBatch)
+	if len(prevStates) != 0 {
+		entry.PrevStates = prevStates
 	}
 
-	return entries
+	if entry.AccountChanged || entry.CodeChanged || len(entry.PrevStates) != 0 {
+		return entry
+	}
+
+	return nil
 }
 
-func (o *Account) getStateJournalAndComputeHash(ldbBatch storage.Batch) stateChange {
-	stateJournal := stateChange{
-		address:    o.Addr,
-		prevStates: make(map[string][]byte),
-	}
+func (o *Account) getStateJournalAndComputeHash(ldbBatch storage.Batch) map[string][]byte {
+	prevStates := make(map[string][]byte)
 	var dirtyStateKeys []string
 	var dirtyStateData []byte
 
 	for key, val := range o.dirtyState {
 		origVal := o.originState[key]
-		if bytes.Compare(origVal, val) != 0 {
+		if !bytes.Equal(origVal, val) {
 			dirtyStateKeys = append(dirtyStateKeys, key)
 			byteKey, err := hex.DecodeString(key)
 			if err != nil {
@@ -215,7 +218,7 @@ func (o *Account) getStateJournalAndComputeHash(ldbBatch storage.Batch) stateCha
 			} else {
 				ldbBatch.Delete(append(o.Addr.Bytes(), byteKey...))
 			}
-			stateJournal.prevStates[key] = origVal
+			prevStates[key] = origVal
 		}
 	}
 
@@ -227,7 +230,7 @@ func (o *Account) getStateJournalAndComputeHash(ldbBatch storage.Batch) stateCha
 	}
 	o.dirtyStateHash = sha256.Sum256(dirtyStateData)
 
-	return stateJournal
+	return prevStates
 }
 
 func (o *Account) getDirtyData() []byte {
@@ -247,15 +250,20 @@ func (o *Account) getDirtyData() []byte {
 }
 
 func innerAccountChanged(account0 *innerAccount, account1 *innerAccount) bool {
-	if account1 == nil ||
-		account0 != nil &&
-			account0.Nonce == account1.Nonce &&
-			account0.Balance == account1.Balance &&
-			bytes.Compare(account0.CodeHash, account1.CodeHash) == 0 {
-		return true
+	// If account1 is nil, the account does not change whatever account0 is.
+	if account1 == nil {
+		return false
 	}
 
-	return false
+	// If account already exists, account0 is not nil. We should compare account0 and account1 to get the result.
+	if account0 != nil &&
+		account0.Nonce == account1.Nonce &&
+		account0.Balance == account1.Balance &&
+		bytes.Equal(account0.CodeHash, account1.CodeHash) {
+		return false
+	}
+
+	return true
 }
 
 // Marshal Marshal the account into byte

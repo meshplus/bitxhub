@@ -28,7 +28,8 @@ func TestChainLedger_QueryByPrefix(t *testing.T) {
 	ledger.SetState(addr, key1, []byte("1"))
 	ledger.SetState(addr, key2, []byte("2"))
 
-	ledger.Commit(1)
+	_, err = ledger.Commit(1)
+	assert.Nil(t, err)
 
 	ok, vals := ledger.QueryByPrefix(addr, string([]byte{100}))
 	assert.True(t, ok)
@@ -59,7 +60,8 @@ func TestChainLedger_GetAccount(t *testing.T) {
 	account.SetState(key0, key1)
 	account.SetState(key1, key0)
 
-	ledger.Commit(1)
+	_, err = ledger.Commit(1)
+	assert.Nil(t, err)
 
 	account1 := ledger.GetAccount(addr)
 
@@ -79,11 +81,14 @@ func TestChainLedger_GetAccount(t *testing.T) {
 	ledger.SetState(addr, key0, val0)
 	ledger.SetState(addr, key2, val2)
 	ledger.SetState(addr, key0, val1)
-	ledger.Commit(2)
+	_, err = ledger.Commit(2)
+	assert.Nil(t, err)
 
 	ledger.SetState(addr, key0, val0)
 	ledger.SetState(addr, key0, val1)
-	ledger.Commit(3)
+	_, err = ledger.Commit(3)
+	assert.Nil(t, err)
+
 	ok, val := ledger.GetState(addr, key0)
 	assert.True(t, ok)
 	assert.Equal(t, val1, val)
@@ -109,12 +114,14 @@ func TestChainLedger_GetCode(t *testing.T) {
 	code := bytesutil.LeftPadBytes([]byte{10}, 120)
 	ledger.SetCode(addr, code)
 
-	ledger.Commit(1)
+	_, err = ledger.Commit(1)
+	assert.Nil(t, err)
 
 	vals := ledger.GetCode(addr)
 	assert.Equal(t, code, vals)
 
-	ledger.Commit(2)
+	_, err = ledger.Commit(2)
+	assert.Nil(t, err)
 
 	vals = ledger.GetCode(addr)
 	assert.Equal(t, code, vals)

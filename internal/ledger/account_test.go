@@ -37,4 +37,5 @@ func TestAccount_GetState(t *testing.T) {
 	account.SetState([]byte("a"), nil)
 	ok, v = account.GetState([]byte("a"))
 	assert.False(t, ok)
+	assert.Nil(t, v)
 }

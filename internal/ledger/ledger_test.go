@@ -1,6 +1,7 @@
 package ledger
 
 import (
+	"encoding/hex"
 	"io/ioutil"
 	"testing"
 
@@ -42,6 +43,7 @@ func TestLedger_Commit(t *testing.T) {
 
 	ledger.SetBalance(account, 100)
 	hash, err = ledger.Commit(4)
+	assert.Equal(t, uint64(4), ledger.height)
 	assert.Nil(t, err)
 	assert.Equal(t, uint64(4), ledger.Version())
 	assert.Equal(t, "0x8ef7f408372406532c7060045d77fb67d322cea7aa49afdc3a741f4f340dc6d5", hash.Hex())
@@ -53,12 +55,32 @@ func TestLedger_Commit(t *testing.T) {
 	hash, err = ledger.Commit(5)
 	assert.Nil(t, err)
 	assert.Equal(t, uint64(5), ledger.Version())
+	assert.Equal(t, uint64(5), ledger.height)
+
+	height, journal, err := getLatestJournal(ledger.ldb)
+	assert.Nil(t, err)
+	assert.Equal(t, uint64(5), height)
+	assert.Equal(t, hash, journal.ChangedHash)
+	assert.Equal(t, 1, len(journal.Journals))
+	entry := journal.Journals[0]
+	assert.Equal(t, account, entry.Address)
+	assert.True(t, entry.AccountChanged)
+	assert.Equal(t, uint64(100), entry.PrevAccount.Balance)
+	assert.Equal(t, uint64(0), entry.PrevAccount.Nonce)
+	assert.Nil(t, entry.PrevAccount.CodeHash)
+	assert.Equal(t, 2, len(entry.PrevStates))
+	assert.Nil(t, entry.PrevStates[hex.EncodeToString([]byte("b"))])
+	assert.Nil(t, entry.PrevStates[hex.EncodeToString([]byte("c"))])
+	assert.True(t, entry.CodeChanged)
+	assert.Nil(t, entry.PrevCode)
 
 	ledger.Close()
 
 	// load ChainLedger from db
 	ldg, err := New(repoRoot, blockStorage, log.NewWithModule("executor"))
 	assert.Nil(t, err)
+	assert.Equal(t, uint64(5), ldg.height)
+	assert.Equal(t, hash, ldg.prevJournalHash)
 
 	ok, value := ldg.GetState(account, []byte("a"))
 	assert.True(t, ok)

@@ -43,7 +43,7 @@ func New(repoRoot string, blockchainStore storage.Storage, logger logrus.FieldLo
 		return nil, fmt.Errorf("load chain meta: %w", err)
 	}
 
-	height, err := getHeightFromJournal(ldb)
+	height, blockJournal, err := getLatestJournal(ldb)
 	if err != nil {
 		return nil, fmt.Errorf("get journal height: %w", err)
 	}
@@ -61,6 +61,7 @@ func New(repoRoot string, blockchainStore storage.Storage, logger logrus.FieldLo
 		height:          height,
 		events:          make(map[string][]*pb.Event, 10),
 		accounts:        make(map[string]*Account),
+		prevJournalHash: blockJournal.ChangedHash,
 	}, nil
 }
 
