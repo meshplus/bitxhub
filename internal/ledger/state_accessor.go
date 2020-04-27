@@ -32,8 +32,12 @@ func (l *ChainLedger) GetAccount(addr types.Address) *Account {
 
 	account := newAccount(l.ldb, addr)
 	data, err := l.ldb.Get(compositeKey(accountKey, addr.Hex()))
-	if err != nil && err != errors.ErrNotFound {
-		panic(err)
+	if err != nil {
+		if err != errors.ErrNotFound {
+			panic(err)
+		} else {
+			return account
+		}
 	}
 	if data != nil {
 		account.originAccount = &innerAccount{}

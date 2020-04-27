@@ -1,6 +1,7 @@
 package ledger
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 
@@ -36,10 +37,15 @@ func (journal *journal) revert(batch storage.Batch) {
 	}
 
 	for key, val := range journal.PrevStates {
+		byteKey, err := hex.DecodeString(key)
+		if err != nil {
+			panic(err)
+		}
+
 		if val != nil {
-			batch.Put(compositeKey(journal.Address.Hex(), key), val)
+			batch.Put(append(journal.Address.Bytes(), byteKey...), val)
 		} else {
-			batch.Delete(compositeKey(journal.Address.Hex(), key))
+			batch.Delete(append(journal.Address.Bytes(), byteKey...))
 		}
 	}
 
@@ -74,4 +80,18 @@ func getLatestJournal(ldb storage.Storage) (uint64, *BlockJournal, error) {
 	}
 
 	return maxHeight, journal, nil
+}
+
+func getBlockJournal(height uint64, ldb storage.Storage) *BlockJournal {
+	data, err := ldb.Get(compositeKey(journalKey, height))
+	if err != nil {
+		panic(err)
+	}
+
+	journal := &BlockJournal{}
+	if err := json.Unmarshal(data, journal); err != nil {
+		panic(err)
+	}
+
+	return journal
 }

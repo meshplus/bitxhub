@@ -65,32 +65,44 @@ func New(repoRoot string, blockchainStore storage.Storage, logger logrus.FieldLo
 	}, nil
 }
 
-// Rollback rollback to history version
+// Rollback rollback ledger to history version
 func (l *ChainLedger) Rollback(height uint64) error {
-	if l.chainMeta.Height <= height {
+	if l.height < height {
 		return ErrorRollbackTohigherNumber
 	}
 
-	block, err := l.GetBlock(height)
-	if err != nil {
-		return err
+	if l.height == height {
+		return nil
 	}
-
-	count, err := getInterchainTxCount(block.BlockHeader)
-	if err != nil {
-		return err
-	}
-
-	l.UpdateChainMeta(&pb.ChainMeta{
-		Height:            height,
-		BlockHash:         block.BlockHash,
-		InterchainTxCount: count,
-	})
 
 	// clean cache account
 	l.Clear()
 
-	// TODO
+	for i := l.height; i > height; i-- {
+		batch := l.ldb.NewBatch()
+		blockJournal := getBlockJournal(i, l.ldb)
+
+		for _, journal := range blockJournal.Journals {
+			journal.revert(batch)
+		}
+
+		if err := batch.Commit(); err != nil {
+			panic(err)
+		}
+
+		if err := l.ldb.Delete(compositeKey(journalKey, i)); err != nil {
+			panic(err)
+		}
+	}
+
+	height, journal, err := getLatestJournal(l.ldb)
+	if err != nil {
+		return fmt.Errorf("get journal during rollback: %w", err)
+	}
+
+	l.prevJournalHash = journal.ChangedHash
+
+	l.height = height
 
 	return nil
 }
