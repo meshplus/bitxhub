@@ -14,7 +14,7 @@ import (
 	"github.com/Rican7/retry/strategy"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
-	raftproto "github.com/meshplus/bitxhub/internal/plugins/order/etcdraft/proto"
+	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
 	"github.com/meshplus/bitxhub/pkg/storage"
 	"github.com/sirupsen/logrus"
