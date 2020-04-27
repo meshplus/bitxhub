@@ -9,7 +9,6 @@ import (
 
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub/pkg/storage"
-	"github.com/syndtr/goleveldb/leveldb/errors"
 )
 
 type Account struct {
@@ -51,15 +50,7 @@ func (o *Account) GetState(key []byte) (bool, []byte) {
 		return val != nil, val
 	}
 
-	val, err := o.ldb.Get(append(o.Addr.Bytes(), key...))
-	if err != nil {
-		if err != errors.ErrNotFound {
-			panic(err)
-		} else {
-			o.originState[hexKey] = nil
-			return false, nil
-		}
-	}
+	val := o.ldb.Get(append(o.Addr.Bytes(), key...))
 
 	o.originState[hexKey] = val
 
@@ -96,18 +87,9 @@ func (o *Account) Code() []byte {
 		return nil
 	}
 
-	code, err := o.ldb.Get(compositeKey(codeKey, o.Addr.Hex()))
-	if err != nil {
-		if err != errors.ErrNotFound {
-			panic(err)
-		} else {
-			o.originCode = nil
-			o.dirtyCode = nil
-		}
-	} else {
-		o.originCode = code
-		o.dirtyCode = code
-	}
+	code := o.ldb.Get(compositeKey(codeKey, o.Addr.Hex()))
+	o.originCode = code
+	o.dirtyCode = code
 
 	return code
 }
@@ -189,16 +171,7 @@ func (o *Account) getJournalIfModified(ldbBatch storage.Batch) *journal {
 	}
 
 	if o.originCode == nil && !(o.originAccount == nil || o.originAccount.CodeHash == nil) {
-		code, err := o.ldb.Get(compositeKey(codeKey, o.Addr.Hex()))
-		if err != nil {
-			if err != errors.ErrNotFound {
-				panic(err)
-			} else {
-				o.originCode = nil
-			}
-		} else {
-			o.originCode = code
-		}
+		o.originCode = o.ldb.Get(compositeKey(codeKey, o.Addr.Hex()))
 	}
 
 	if !bytes.Equal(o.originCode, o.dirtyCode) {

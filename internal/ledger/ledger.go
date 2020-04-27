@@ -15,7 +15,8 @@ import (
 var _ Ledger = (*ChainLedger)(nil)
 
 var (
-	ErrorRollbackTohigherNumber = fmt.Errorf("rollback to higher blockchain height")
+	ErrorRollbackToHigherNumber = fmt.Errorf("rollback to higher blockchain height")
+	ErrorRollbackWithoutJournal = fmt.Errorf("rollback to blockchain height without journal")
 )
 
 type ChainLedger struct {
@@ -68,7 +69,7 @@ func New(repoRoot string, blockchainStore storage.Storage, logger logrus.FieldLo
 // Rollback rollback ledger to history version
 func (l *ChainLedger) Rollback(height uint64) error {
 	if l.height < height {
-		return ErrorRollbackTohigherNumber
+		return ErrorRollbackToHigherNumber
 	}
 
 	if l.height == height {
@@ -81,18 +82,17 @@ func (l *ChainLedger) Rollback(height uint64) error {
 	for i := l.height; i > height; i-- {
 		batch := l.ldb.NewBatch()
 		blockJournal := getBlockJournal(i, l.ldb)
+		if blockJournal == nil {
+			return ErrorRollbackWithoutJournal
+		}
 
 		for _, journal := range blockJournal.Journals {
 			journal.revert(batch)
 		}
 
-		if err := batch.Commit(); err != nil {
-			panic(err)
-		}
+		batch.Commit()
 
-		if err := l.ldb.Delete(compositeKey(journalKey, i)); err != nil {
-			panic(err)
-		}
+		l.ldb.Delete(compositeKey(journalKey, i))
 	}
 
 	height, journal, err := getLatestJournal(l.ldb)

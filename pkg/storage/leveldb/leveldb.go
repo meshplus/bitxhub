@@ -3,6 +3,7 @@ package leveldb
 import (
 	"github.com/meshplus/bitxhub/pkg/storage"
 	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb/errors"
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
@@ -21,20 +22,31 @@ func New(path string) (storage.Storage, error) {
 	}, nil
 }
 
-func (l *ldb) Put(key, value []byte) error {
-	return l.db.Put(key, value, nil)
+func (l *ldb) Put(key, value []byte) {
+	if err := l.db.Put(key, value, nil); err != nil {
+		panic(err)
+	}
 }
 
-func (l *ldb) Delete(key []byte) error {
-	return l.db.Delete(key, nil)
+func (l *ldb) Delete(key []byte) {
+	if err := l.db.Delete(key, nil); err != nil {
+		panic(err)
+	}
 }
 
-func (l *ldb) Get(key []byte) (value []byte, err error) {
-	return l.db.Get(key, nil)
+func (l *ldb) Get(key []byte) []byte {
+	val, err := l.db.Get(key, nil)
+	if err != nil {
+		if err == errors.ErrNotFound {
+			return nil
+		}
+		panic(err)
+	}
+	return val
 }
 
-func (l *ldb) Has(key []byte) (exists bool, err error) {
-	return l.db.Has(key, nil)
+func (l *ldb) Has(key []byte) bool {
+	return l.Get(key) != nil
 }
 
 func (l *ldb) Iterator(start, end []byte) storage.Iterator {
@@ -77,6 +89,8 @@ func (l *ldbBatch) Delete(key []byte) {
 	l.batch.Delete(key)
 }
 
-func (l *ldbBatch) Commit() error {
-	return l.ldb.Write(l.batch, nil)
+func (l *ldbBatch) Commit() {
+	if err := l.ldb.Write(l.batch, nil); err != nil {
+		panic(err)
+	}
 }

@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"sort"
 
-	"github.com/syndtr/goleveldb/leveldb/errors"
-
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 )
@@ -31,15 +29,7 @@ func (l *ChainLedger) GetAccount(addr types.Address) *Account {
 	}
 
 	account := newAccount(l.ldb, addr)
-	data, err := l.ldb.Get(compositeKey(accountKey, addr.Hex()))
-	if err != nil {
-		if err != errors.ErrNotFound {
-			panic(err)
-		} else {
-			return account
-		}
-	}
-	if data != nil {
+	if data := l.ldb.Get(compositeKey(accountKey, addr.Hex())); data != nil {
 		account.originAccount = &innerAccount{}
 		if err := account.originAccount.Unmarshal(data); err != nil {
 			panic(err)
@@ -144,9 +134,7 @@ func (l *ChainLedger) Commit(height uint64) (types.Hash, error) {
 
 	ldbBatch.Put(compositeKey(journalKey, height), data)
 
-	if err := ldbBatch.Commit(); err != nil {
-		panic(err)
-	}
+	ldbBatch.Commit()
 
 	l.height = height
 	l.prevJournalHash = journalHash

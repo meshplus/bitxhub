@@ -576,9 +576,9 @@ func (n *Node) getBlockAppliedIndex() uint64 {
 
 //Load the lastAppliedIndex of block height
 func (n *Node) loadAppliedIndex() uint64 {
-	dat, err := n.storage.Get(appliedDbKey)
+	dat := n.storage.Get(appliedDbKey)
 	var lastAppliedIndex uint64
-	if err != nil {
+	if dat == nil {
 		lastAppliedIndex = 0
 	} else {
 		lastAppliedIndex = binary.LittleEndian.Uint64(dat)
@@ -591,7 +591,5 @@ func (n *Node) loadAppliedIndex() uint64 {
 func (n *Node) writeAppliedIndex(index uint64) {
 	buf := make([]byte, 8)
 	binary.LittleEndian.PutUint64(buf, index)
-	if err := n.storage.Put(appliedDbKey, buf); err != nil {
-		n.logger.Errorf("persisted the latest applied index: %s", err)
-	}
+	n.storage.Put(appliedDbKey, buf)
 }

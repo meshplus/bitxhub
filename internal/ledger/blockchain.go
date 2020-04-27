@@ -6,11 +6,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/meshplus/bitxhub/pkg/storage"
-
-	"github.com/gogo/protobuf/proto"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub/pkg/storage"
 )
 
 // PutBlock put block into store
@@ -20,18 +18,20 @@ func (l *ChainLedger) PutBlock(height uint64, block *pb.Block) error {
 		return err
 	}
 
-	return l.blockchainStore.Put(compositeKey(blockKey, height), data)
+	l.blockchainStore.Put(compositeKey(blockKey, height), data)
+
+	return nil
 }
 
 // GetBlock get block with height
 func (l *ChainLedger) GetBlock(height uint64) (*pb.Block, error) {
-	data, err := l.blockchainStore.Get(compositeKey(blockKey, height))
-	if err != nil {
-		return nil, err
+	data := l.blockchainStore.Get(compositeKey(blockKey, height))
+	if data == nil {
+		return nil, storage.ErrorNotFound
 	}
 
 	block := &pb.Block{}
-	if err = block.Unmarshal(data); err != nil {
+	if err := block.Unmarshal(data); err != nil {
 		return nil, err
 	}
 
@@ -50,9 +50,9 @@ func (l *ChainLedger) GetBlockSign(height uint64) ([]byte, error) {
 
 // GetBlockByHash get the block using block hash
 func (l *ChainLedger) GetBlockByHash(hash types.Hash) (*pb.Block, error) {
-	data, err := l.blockchainStore.Get(compositeKey(blockHashKey, hash.Hex()))
-	if err != nil {
-		return nil, err
+	data := l.blockchainStore.Get(compositeKey(blockHashKey, hash.Hex()))
+	if data == nil {
+		return nil, storage.ErrorNotFound
 	}
 
 	height, err := strconv.Atoi(string(data))
@@ -60,9 +60,9 @@ func (l *ChainLedger) GetBlockByHash(hash types.Hash) (*pb.Block, error) {
 		return nil, fmt.Errorf("wrong height, %w", err)
 	}
 
-	v, err := l.blockchainStore.Get(compositeKey(blockKey, height))
-	if err != nil {
-		return nil, fmt.Errorf("get block: %w", err)
+	v := l.blockchainStore.Get(compositeKey(blockKey, height))
+	if v == nil {
+		return nil, fmt.Errorf("get block: %w", storage.ErrorNotFound)
 	}
 
 	block := &pb.Block{}
@@ -75,13 +75,12 @@ func (l *ChainLedger) GetBlockByHash(hash types.Hash) (*pb.Block, error) {
 
 // GetTransaction get the transaction using transaction hash
 func (l *ChainLedger) GetTransaction(hash types.Hash) (*pb.Transaction, error) {
-	v, err := l.blockchainStore.Get(compositeKey(transactionKey, hash.Hex()))
-	if err != nil {
-		return nil, err
+	v := l.blockchainStore.Get(compositeKey(transactionKey, hash.Hex()))
+	if v == nil {
+		return nil, storage.ErrorNotFound
 	}
 	tx := &pb.Transaction{}
-	err = proto.Unmarshal(v, tx)
-	if err != nil {
+	if err := tx.Unmarshal(v); err != nil {
 		return nil, err
 	}
 
@@ -90,9 +89,9 @@ func (l *ChainLedger) GetTransaction(hash types.Hash) (*pb.Transaction, error) {
 
 // GetTransactionMeta get the transaction meta data
 func (l *ChainLedger) GetTransactionMeta(hash types.Hash) (*pb.TransactionMeta, error) {
-	data, err := l.blockchainStore.Get(compositeKey(transactionMetaKey, hash.Hex()))
-	if err != nil {
-		return nil, err
+	data := l.blockchainStore.Get(compositeKey(transactionMetaKey, hash.Hex()))
+	if data == nil {
+		return nil, storage.ErrorNotFound
 	}
 
 	meta := &pb.TransactionMeta{}
@@ -105,9 +104,9 @@ func (l *ChainLedger) GetTransactionMeta(hash types.Hash) (*pb.TransactionMeta, 
 
 // GetReceipt get the transaction receipt
 func (l *ChainLedger) GetReceipt(hash types.Hash) (*pb.Receipt, error) {
-	data, err := l.blockchainStore.Get(compositeKey(receiptKey, hash.Hex()))
-	if err != nil {
-		return nil, err
+	data := l.blockchainStore.Get(compositeKey(receiptKey, hash.Hex()))
+	if data == nil {
+		return nil, storage.ErrorNotFound
 	}
 
 	r := &pb.Receipt{}
@@ -156,9 +155,7 @@ func (l *ChainLedger) PersistExecutionResult(block *pb.Block, receipts []*pb.Rec
 		return err
 	}
 
-	if err := batcher.Commit(); err != nil {
-		return err
-	}
+	batcher.Commit()
 
 	l.UpdateChainMeta(meta)
 

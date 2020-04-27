@@ -12,17 +12,11 @@ var (
 )
 
 func loadChainMeta(store storage.Storage) (*pb.ChainMeta, error) {
-	ok, err := store.Has(chainKey)
-	if err != nil {
-		return nil, fmt.Errorf("judge chain meta: %w", err)
-	}
+	ok := store.Has(chainKey)
 
 	chain := &pb.ChainMeta{}
 	if ok {
-		body, err := store.Get(chainKey)
-		if err != nil {
-			return nil, fmt.Errorf("get chain meta: %w", err)
-		}
+		body := store.Get(chainKey)
 
 		if err := chain.Unmarshal(body); err != nil {
 			return nil, fmt.Errorf("unmarshal chain meta: %w", err)
