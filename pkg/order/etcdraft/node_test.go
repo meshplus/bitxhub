@@ -1,4 +1,4 @@
-package main
+package etcdraft
 
 import (
 	"io/ioutil"
@@ -32,7 +32,7 @@ func TestNode_Start(t *testing.T) {
 	nodes := make(map[uint64]types.Address)
 	nodes[ID] = types.String2Address("")
 
-	fileData, err := ioutil.ReadFile("../../../../config/order.toml")
+	fileData, err := ioutil.ReadFile("../../../config/order.toml")
 	require.Nil(t, err)
 	err = ioutil.WriteFile(filepath.Join(repoRoot, "order.toml"), fileData, 0644)
 	require.Nil(t, err)

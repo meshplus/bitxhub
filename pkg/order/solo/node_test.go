@@ -1,4 +1,4 @@
-package main
+package solo
 
 import (
 	"io/ioutil"

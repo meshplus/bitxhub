@@ -5,12 +5,13 @@ package proto
 
 import (
 	fmt "fmt"
-	_ "github.com/gogo/protobuf/gogoproto"
-	proto "github.com/gogo/protobuf/proto"
-	github_com_meshplus_bitxhub_kit_types "github.com/meshplus/bitxhub-kit/types"
 	io "io"
 	math "math"
 	math_bits "math/bits"
+
+	_ "github.com/gogo/protobuf/gogoproto"
+	proto "github.com/gogo/protobuf/proto"
+	github_com_meshplus_bitxhub_kit_types "github.com/meshplus/bitxhub-kit/types"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
