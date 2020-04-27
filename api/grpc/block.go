@@ -6,9 +6,18 @@ import (
 	"github.com/meshplus/bitxhub-model/pb"
 )
 
-func (cbs *ChainBrokerService) SyncMerkleWrapper(req *pb.SyncMerkleWrapperRequest, server pb.ChainBroker_SyncMerkleWrapperServer) error {
-	c, err := cbs.api.Broker().AddPier(req.AppchainId)
+func (cbs *ChainBrokerService) GetInterchainTxWrapper(req *pb.GetInterchainTxWrapperRequest, server pb.ChainBroker_GetInterchainTxWrapperServer) error {
+	meta, err := cbs.api.Chain().Meta()
 	if err != nil {
+		return err
+	}
+
+	if meta.Height < req.End {
+		req.End = meta.Height
+	}
+
+	ch := make(chan *pb.InterchainTxWrapper, req.End-req.Begin+1)
+	if err := cbs.api.Broker().GetInterchainTxWrapper(req.Pid, req.Begin, req.End, ch); err != nil {
 		return err
 	}
 
@@ -16,30 +25,30 @@ func (cbs *ChainBrokerService) SyncMerkleWrapper(req *pb.SyncMerkleWrapperReques
 		select {
 		case <-cbs.ctx.Done():
 			break
-		case bw, ok := <-c:
+		case bw, ok := <-ch:
 			if !ok {
 				return nil
 			}
 
-			bs, err := bw.Marshal()
-			if err != nil {
-				cbs.api.Broker().RemovePier(req.AppchainId)
-				break
-			}
-
-			if err := server.Send(&pb.Response{
-				Data: bs,
-			}); err != nil {
-				cbs.api.Broker().RemovePier(req.AppchainId)
-				break
+			if err := server.Send(bw); err != nil {
+				return err
 			}
 		}
 	}
 }
 
-func (cbs *ChainBrokerService) GetMerkleWrapper(req *pb.GetMerkleWrapperRequest, server pb.ChainBroker_GetMerkleWrapperServer) error {
-	ch := make(chan *pb.MerkleWrapper, req.End-req.Begin+1)
-	if err := cbs.api.Broker().GetMerkleWrapper(req.Pid, req.Begin, req.End, ch); err != nil {
+func (cbs *ChainBrokerService) GetBlockHeader(req *pb.GetBlockHeaderRequest, server pb.ChainBroker_GetBlockHeaderServer) error {
+	meta, err := cbs.api.Chain().Meta()
+	if err != nil {
+		return err
+	}
+
+	if meta.Height < req.End {
+		req.End = meta.Height
+	}
+
+	ch := make(chan *pb.BlockHeader, req.End-req.Begin+1)
+	if err := cbs.api.Broker().GetBlockHeader(req.Begin, req.End, ch); err != nil {
 		return err
 	}
 
@@ -47,19 +56,17 @@ func (cbs *ChainBrokerService) GetMerkleWrapper(req *pb.GetMerkleWrapperRequest,
 		select {
 		case <-cbs.ctx.Done():
 			break
-		case w := <-ch:
-			data, err := w.Marshal()
-			if err != nil {
+		case w, ok := <-ch:
+			// if channel is unexpected closed, return
+			if !ok {
+				return nil
+			}
+
+			if err := server.Send(w); err != nil {
 				return err
 			}
 
-			if err := server.Send(&pb.Response{
-				Data: data,
-			}); err != nil {
-				return err
-			}
-
-			if w.BlockHeader.Number == req.End {
+			if w.Number == req.End {
 				return nil
 			}
 

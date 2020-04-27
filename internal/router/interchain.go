@@ -59,8 +59,8 @@ func (router *InterchainRouter) Stop() error {
 	return nil
 }
 
-func (router *InterchainRouter) AddPier(key string) (chan *pb.MerkleWrapper, error) {
-	c := make(chan *pb.MerkleWrapper, blockChanNumber)
+func (router *InterchainRouter) AddPier(key string) (chan *pb.InterchainTxWrapper, error) {
+	c := make(chan *pb.InterchainTxWrapper, blockChanNumber)
 	router.piers.Store(key, c)
 	router.count++
 	router.logger.WithFields(logrus.Fields{
@@ -80,56 +80,46 @@ func (router *InterchainRouter) PutBlock(block *pb.Block) {
 		return
 	}
 
-	signed, err := router.fetchSigns(block.BlockHeader.Number)
-	if err != nil {
-		router.logger.Errorf("fetch signs: %w", err)
-	}
-
 	ret := router.classify(block)
 
 	router.piers.Range(func(k, value interface{}) bool {
 		key := k.(string)
-		w := value.(chan *pb.MerkleWrapper)
+		w := value.(chan *pb.InterchainTxWrapper)
 		_, ok := ret[key]
 		if ok {
-			ret[key].Signatures = signed
 			w <- ret[key]
 			return true
-		}
-
-		w <- &pb.MerkleWrapper{
-			BlockHeader: block.BlockHeader,
-			BlockHash:   block.BlockHash,
-			Signatures:  signed,
 		}
 
 		return true
 	})
 }
 
-func (router *InterchainRouter) GetMerkleWrapper(pid string, begin, end uint64, ch chan<- *pb.MerkleWrapper) error {
+func (router *InterchainRouter) GetBlockHeader(begin, end uint64, ch chan<- *pb.BlockHeader) error {
 	for i := begin; i <= end; i++ {
 		block, err := router.ledger.GetBlock(i)
 		if err != nil {
 			return fmt.Errorf("get block: %w", err)
 		}
 
-		signed, err := router.fetchSigns(i)
+		// TODO: fetch signatures to block header
+		ch <- block.GetBlockHeader()
+	}
+
+	return nil
+}
+
+func (router *InterchainRouter) GetInterchainTxWrapper(pid string, begin, end uint64, ch chan<- *pb.InterchainTxWrapper) error {
+	for i := begin; i <= end; i++ {
+		block, err := router.ledger.GetBlock(i)
 		if err != nil {
-			return fmt.Errorf("fetch signs: %w", err)
+			return fmt.Errorf("get block: %w", err)
 		}
 
 		ret := router.classify(block)
 		if ret[pid] != nil {
-			ret[pid].Signatures = signed
 			ch <- ret[pid]
 			continue
-		}
-
-		ch <- &pb.MerkleWrapper{
-			BlockHeader: block.BlockHeader,
-			BlockHash:   block.BlockHash,
-			Signatures:  signed,
 		}
 	}
 
@@ -141,14 +131,14 @@ func (router *InterchainRouter) fetchSigns(height uint64) (map[string][]byte, er
 	return nil, nil
 }
 
-func (router *InterchainRouter) classify(block *pb.Block) map[string]*pb.MerkleWrapper {
+func (router *InterchainRouter) classify(block *pb.Block) map[string]*pb.InterchainTxWrapper {
 	hashes := make([]types.Hash, 0, len(block.Transactions))
 	for _, tx := range block.Transactions {
 		hashes = append(hashes, tx.TransactionHash)
 	}
 
 	if block.BlockHeader.InterchainIndex == nil {
-		return make(map[string]*pb.MerkleWrapper)
+		return make(map[string]*pb.InterchainTxWrapper)
 	}
 	idx := make(map[string][]uint64)
 	m := make(map[string][]*pb.Transaction)
@@ -165,13 +155,12 @@ func (router *InterchainRouter) classify(block *pb.Block) map[string]*pb.MerkleW
 		m[k] = txs
 	}
 
-	target := make(map[string]*pb.MerkleWrapper)
+	target := make(map[string]*pb.InterchainTxWrapper)
 	for dest, txs := range m {
-		wrapper := &pb.MerkleWrapper{
-			BlockHeader:       block.BlockHeader,
+		wrapper := &pb.InterchainTxWrapper{
+			Height:            block.BlockHeader.Number,
 			TransactionHashes: hashes,
 			Transactions:      txs,
-			BlockHash:         block.BlockHash,
 		}
 		target[dest] = wrapper
 	}
