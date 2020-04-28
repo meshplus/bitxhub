@@ -91,11 +91,24 @@ func (router *InterchainRouter) PutBlock(block *pb.Block) {
 			return true
 		}
 
+		// empty interchain tx in this block
+		hashes := make([]types.Hash, 0, len(block.Transactions))
+		for _, tx := range block.Transactions {
+			hashes = append(hashes, tx.TransactionHash)
+		}
+
+		w <- &pb.InterchainTxWrapper{
+			Height:            block.Height(),
+			TransactionHashes: hashes,
+		}
+
 		return true
 	})
 }
 
 func (router *InterchainRouter) GetBlockHeader(begin, end uint64, ch chan<- *pb.BlockHeader) error {
+	defer close(ch)
+
 	for i := begin; i <= end; i++ {
 		block, err := router.ledger.GetBlock(i)
 		if err != nil {
@@ -110,6 +123,8 @@ func (router *InterchainRouter) GetBlockHeader(begin, end uint64, ch chan<- *pb.
 }
 
 func (router *InterchainRouter) GetInterchainTxWrapper(pid string, begin, end uint64, ch chan<- *pb.InterchainTxWrapper) error {
+	defer close(ch)
+
 	for i := begin; i <= end; i++ {
 		block, err := router.ledger.GetBlock(i)
 		if err != nil {
@@ -120,6 +135,17 @@ func (router *InterchainRouter) GetInterchainTxWrapper(pid string, begin, end ui
 		if ret[pid] != nil {
 			ch <- ret[pid]
 			continue
+		}
+
+		// empty interchain tx in this block
+		hashes := make([]types.Hash, 0, len(block.Transactions))
+		for _, tx := range block.Transactions {
+			hashes = append(hashes, tx.TransactionHash)
+		}
+
+		ch <- &pb.InterchainTxWrapper{
+			Height:            block.Height(),
+			TransactionHashes: hashes,
 		}
 	}
 

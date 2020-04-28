@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/model/events"
 )
@@ -25,7 +26,7 @@ func (cbs *ChainBrokerService) Subscribe(req *pb.SubscriptionRequest, server pb.
 	case pb.SubscriptionRequest_BLOCK_HEADER.String():
 		return cbs.handleBlockHeaderSubscription(server)
 	case pb.SubscriptionRequest_INTERCHAIN_TX_WRAPPER.String():
-		return cbs.handleInterchainTxWrapperSubscription(server, string(req.Extra))
+		return cbs.handleInterchainTxWrapperSubscription(server, types.Bytes2Address(req.Extra).String())
 	}
 
 	return nil
@@ -111,6 +112,7 @@ func (cbs *ChainBrokerService) handleInterchainTxSubscription(server pb.ChainBro
 
 func (cbs *ChainBrokerService) handleInterchainTxWrapperSubscription(server pb.ChainBroker_SubscribeServer, pid string) error {
 	ch, err := cbs.api.Broker().AddPier(pid)
+	defer cbs.api.Broker().RemovePier(pid)
 	if err != nil {
 		return err
 	}
