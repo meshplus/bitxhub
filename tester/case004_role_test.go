@@ -15,6 +15,7 @@ import (
 type Role struct {
 	suite.Suite
 	privKey crypto.PrivateKey
+	pubKey  crypto.PublicKey
 	client  rpcx.Client
 }
 
@@ -22,6 +23,8 @@ func (suite *Role) SetupSuite() {
 	var err error
 	suite.privKey, err = ecdsa.GenerateKey(ecdsa.Secp256r1)
 	suite.Assert().Nil(err)
+
+	suite.pubKey = suite.privKey.PublicKey()
 
 	suite.client, err = rpcx.New(
 		rpcx.WithPrivateKey(suite.privKey),
@@ -36,13 +39,16 @@ func (suite *Role) SetupSuite() {
 }
 
 func (suite *Role) TestGetRole() {
-	_, err := suite.client.InvokeBVMContract(constant.InterchainContractAddr.Address(), "Register",
+	pubKey, err := suite.pubKey.Bytes()
+	suite.Assert().Nil(err)
+	_, err = suite.client.InvokeBVMContract(constant.InterchainContractAddr.Address(), "Register",
 		rpcx.String(""),
 		rpcx.Int32(0),
 		rpcx.String("hyperchain"),
 		rpcx.String("婚姻链"),
 		rpcx.String("趣链婚姻链"),
 		rpcx.String("1.8"),
+		rpcx.String(string(pubKey)),
 	)
 	suite.Assert().Nil(err)
 

@@ -17,6 +17,7 @@ import (
 type Pier struct {
 	suite.Suite
 	privKey crypto.PrivateKey
+	pubKey  crypto.PublicKey
 	address types.Address
 	client  rpcx.Client // bitxhub admin
 }
@@ -38,6 +39,7 @@ func (suite *Pier) SetupSuite() {
 	suite.Require().Nil(err)
 
 	suite.privKey = privKey
+	suite.pubKey = suite.privKey.PublicKey()
 	suite.address = address
 	suite.client = client
 }
@@ -55,6 +57,8 @@ func (suite *Pier) TestSyncMerkleWrapper() {
 	)
 	suite.Require().Nil(err)
 
+	pubKey, err := privKey.PublicKey().Bytes()
+	suite.Require().Nil(err)
 	args := []*pb.Arg{
 		rpcx.String(""),
 		rpcx.Int32(0),
@@ -62,6 +66,7 @@ func (suite *Pier) TestSyncMerkleWrapper() {
 		rpcx.String("税务链"),
 		rpcx.String("趣链税务链"),
 		rpcx.String("1.8"),
+		rpcx.String(string(pubKey)),
 	}
 
 	ret, err := client.InvokeBVMContract(rpcx.InterchainContractAddr, "Register", args...)
