@@ -22,12 +22,12 @@ func New(opts ...order.Option) (order.Order, error) {
 
 	p, err := plugin.Open(pluginPath)
 	if err != nil {
-		return nil, fmt.Errorf("plugin open error: %s", err)
+		return nil, fmt.Errorf("plugin open: %s", err)
 	}
 
 	m, err := p.Lookup("NewNode")
 	if err != nil {
-		return nil, fmt.Errorf("plugin lookup error: %s", err)
+		return nil, fmt.Errorf("plugin lookup: %s", err)
 	}
 
 	NewNode, ok := m.(func(...order.Option) (order.Order, error))

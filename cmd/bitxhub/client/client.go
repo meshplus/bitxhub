@@ -19,14 +19,11 @@ var clientCMD = cli.Command{
 	},
 	Subcommands: cli.Commands{
 		accountCMD(),
-		appchainCMD(),
 		chainCMD(),
 		blockCMD(),
 		networkCMD(),
 		receiptCMD(),
-		ruleCMD(),
 		txCMD(),
-		interchainCMD(),
 		validatorsCMD(),
 	},
 }

@@ -65,9 +65,6 @@ jobs:
         run: |
           export PATH=$PATH:$(go env GOPATH)/bin
           make prepare
-          cd scripts
-          bash integration.sh
-          cd ..
           make tester
 
   build:

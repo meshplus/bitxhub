@@ -1,0 +1,41 @@
+title = "BitXHub configuration file"
+
+solo = false
+
+[port]
+  grpc = 60012
+  gateway = 9092
+  pprof = 53122
+
+[pprof]
+  enable = true
+
+[gateway]
+    allowed_origins = ["*"]
+
+[log]
+  level = "info"
+  dir = "logs"
+  filename = "bitxhub.log"
+  report_caller = false
+  [log.module]
+    p2p = "info"
+    consensus = "info"
+    executor = "info"
+    router = "info"
+    api = "info"
+    coreapi = "info"
+
+[cert]
+  verify = true
+
+[order]
+  plugin = "plugins/raft.so"
+
+[genesis]
+    addresses = [
+        "0xe6f8c9cf6e38bd506fae93b73ee5e80cc8f73667",
+        "0x8374bb1e41d4a4bb4ac465e74caa37d242825efc",
+        "0x759801eab44c9a9bbc3e09cb7f1f85ac57298708",
+        "0xf2d66e2c27e93ff083ee3999acb678a36bb349bb"
+    ]
