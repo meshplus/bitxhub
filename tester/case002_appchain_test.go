@@ -15,6 +15,7 @@ import (
 type RegisterAppchain struct {
 	suite.Suite
 	privKey crypto.PrivateKey
+	pubKey  crypto.PublicKey
 	client  rpcx.Client
 }
 
@@ -22,6 +23,8 @@ func (suite *RegisterAppchain) SetupSuite() {
 	var err error
 	suite.privKey, err = ecdsa.GenerateKey(ecdsa.Secp256r1)
 	suite.Assert().Nil(err)
+
+	suite.pubKey = suite.privKey.PublicKey()
 
 	suite.client, err = rpcx.New(
 		rpcx.WithPrivateKey(suite.privKey),
@@ -33,6 +36,8 @@ func (suite *RegisterAppchain) SetupSuite() {
 // Appchain registers in bitxhub
 func (suite *RegisterAppchain) TestRegisterAppchain() {
 	suite.client.SetPrivateKey(suite.privKey)
+	pubKey, err := suite.pubKey.Bytes()
+	suite.Assert().Nil(err)
 	args := []*pb.Arg{
 		rpcx.String(""),
 		rpcx.Int32(0),
@@ -40,6 +45,7 @@ func (suite *RegisterAppchain) TestRegisterAppchain() {
 		rpcx.String("税务链"),
 		rpcx.String("趣链税务链"),
 		rpcx.String("1.8"),
+		rpcx.String(string(pubKey)),
 	}
 	ret, err := suite.client.InvokeBVMContract(rpcx.InterchainContractAddr, "Register", args...)
 	suite.Assert().Nil(err)
@@ -53,6 +59,8 @@ func (suite *RegisterAppchain) TestFetchAppchains() {
 	suite.Assert().Nil(err)
 
 	suite.client.SetPrivateKey(k1)
+	pk1, err := k1.PublicKey().Bytes()
+	suite.Assert().Nil(err)
 	args := []*pb.Arg{
 		rpcx.String(""),
 		rpcx.Int32(0),
@@ -60,11 +68,14 @@ func (suite *RegisterAppchain) TestFetchAppchains() {
 		rpcx.String("税务链"),
 		rpcx.String("趣链税务链"),
 		rpcx.String("1.8"),
+		rpcx.String(string(pk1)),
 	}
 	_, err = suite.client.InvokeBVMContract(rpcx.InterchainContractAddr, "Register", args...)
 	suite.Assert().Nil(err)
 
 	suite.client.SetPrivateKey(k2)
+	pk2, err := k2.PublicKey().Bytes()
+	suite.Assert().Nil(err)
 	args = []*pb.Arg{
 		rpcx.String(""),
 		rpcx.Int32(0),
@@ -72,6 +83,7 @@ func (suite *RegisterAppchain) TestFetchAppchains() {
 		rpcx.String("政务链"),
 		rpcx.String("fabric政务"),
 		rpcx.String("1.4"),
+		rpcx.String(string(pk2)),
 	}
 	_, err = suite.client.InvokeBVMContract(rpcx.InterchainContractAddr, "Register", args...)
 

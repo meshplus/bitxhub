@@ -35,6 +35,7 @@ type appchain struct {
 	ChainType            string            `json:"chain_type"`
 	Desc                 string            `json:"desc"`
 	Version              string            `json:"version"`
+	PublicKey            string            `json:"public_key"`
 	InterchainCounter    map[string]uint64 `json:"interchain_counter,omitempty"`
 	ReceiptCounter       map[string]uint64 `json:"receipt_counter,omitempty"`
 	SourceReceiptCounter map[string]uint64 `json:"source_receipt_counter,omitempty"`
@@ -71,7 +72,7 @@ func (chain *appchain) UnmarshalJSON(data []byte) error {
 
 // Register appchain manager registers appchain info caller is the appchain
 // manager address return appchain id and error
-func (x *Interchain) Register(validators string, consensusType int32, chainType, name, desc, version string) *boltvm.Response {
+func (x *Interchain) Register(validators string, consensusType int32, chainType, name, desc, version, pubkey string) *boltvm.Response {
 	chain := &appchain{
 		ID:            x.Caller(),
 		Name:          name,
@@ -80,6 +81,7 @@ func (x *Interchain) Register(validators string, consensusType int32, chainType,
 		ChainType:     chainType,
 		Desc:          desc,
 		Version:       version,
+		PublicKey:     pubkey,
 	}
 
 	ok := x.Has(x.appchainKey(x.Caller()))
@@ -103,7 +105,7 @@ func (x *Interchain) Register(validators string, consensusType int32, chainType,
 	return boltvm.Success(body)
 }
 
-func (x *Interchain) UpdateAppchain(validators string, consensusType int32, chainType, name, desc, version string) *boltvm.Response {
+func (x *Interchain) UpdateAppchain(validators string, consensusType int32, chainType, name, desc, version, pubkey string) *boltvm.Response {
 	ok := x.Has(x.appchainKey(x.Caller()))
 	if !ok {
 		return boltvm.Error("register appchain firstly")
@@ -124,6 +126,7 @@ func (x *Interchain) UpdateAppchain(validators string, consensusType int32, chai
 		ChainType:     chainType,
 		Desc:          desc,
 		Version:       version,
+		PublicKey:     pubkey,
 	}
 
 	x.SetObject(x.appchainKey(x.Caller()), chain)

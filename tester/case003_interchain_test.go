@@ -52,6 +52,8 @@ func (suite *Interchain) TestHandleIBTP() {
 	)
 	suite.Assert().Nil(err)
 
+	pk1, err := k1.PublicKey().Bytes()
+	suite.Assert().Nil(err)
 	_, err = c1.InvokeBVMContract(constant.InterchainContractAddr.Address(), "Register",
 		rpcx.String(""),
 		rpcx.Int32(0),
@@ -59,7 +61,10 @@ func (suite *Interchain) TestHandleIBTP() {
 		rpcx.String("婚姻链"),
 		rpcx.String("趣链婚姻链"),
 		rpcx.String("1.8"),
+		rpcx.String(string(pk1)),
 	)
+	suite.Assert().Nil(err)
+	pk2, err := k2.PublicKey().Bytes()
 	suite.Assert().Nil(err)
 	_, err = c2.InvokeBVMContract(constant.InterchainContractAddr.Address(), "Register",
 		rpcx.String(""),
@@ -68,6 +73,7 @@ func (suite *Interchain) TestHandleIBTP() {
 		rpcx.String("税务链"),
 		rpcx.String("fabric婚姻链"),
 		rpcx.String("1.4"),
+		rpcx.String(string(pk2)),
 	)
 	suite.Assert().Nil(err)
 
@@ -110,6 +116,8 @@ func (suite *Interchain) TestGetIBTPByID() {
 
 	confByte, err := ioutil.ReadFile("./test_data/validator")
 	suite.Assert().Nil(err)
+	pk1, err := k1.PublicKey().Bytes()
+	suite.Assert().Nil(err)
 	_, err = c1.InvokeBVMContract(rpcx.InterchainContractAddr, "Register",
 		rpcx.String(string(confByte)),
 		rpcx.Int32(0),
@@ -117,7 +125,10 @@ func (suite *Interchain) TestGetIBTPByID() {
 		rpcx.String("婚姻链"),
 		rpcx.String("趣链婚姻链"),
 		rpcx.String("1.8"),
+		rpcx.String(string(pk1)),
 	)
+	suite.Assert().Nil(err)
+	pk2, err := k2.PublicKey().Bytes()
 	suite.Assert().Nil(err)
 	_, err = c2.InvokeBVMContract(rpcx.InterchainContractAddr, "Register",
 		rpcx.String(""),
@@ -126,6 +137,7 @@ func (suite *Interchain) TestGetIBTPByID() {
 		rpcx.String("税务链"),
 		rpcx.String("fabric税务链"),
 		rpcx.String("1.8"),
+		rpcx.String(string(pk2)),
 	)
 	suite.Assert().Nil(err)
 
