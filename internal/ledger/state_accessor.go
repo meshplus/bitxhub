@@ -13,22 +13,22 @@ var _ Ledger = (*ChainLedger)(nil)
 
 // GetOrCreateAccount get the account, if not exist, create a new account
 func (l *ChainLedger) GetOrCreateAccount(addr types.Address) *Account {
-	obj := l.GetAccount(addr)
-
-	l.accounts[addr.Hex()] = obj
-
-	return obj
-}
-
-// GetAccount get account info using account Address, if not found, create a new account
-func (l *ChainLedger) GetAccount(addr types.Address) *Account {
 	h := addr.Hex()
 	value, ok := l.accounts[h]
 	if ok {
 		return value
 	}
 
+	account := l.GetAccount(addr)
+	l.accounts[addr.Hex()] = account
+
+	return account
+}
+
+// GetAccount get account info using account Address, if not found, create a new account
+func (l *ChainLedger) GetAccount(addr types.Address) *Account {
 	account := newAccount(l.ldb, addr)
+
 	if data := l.ldb.Get(compositeKey(accountKey, addr.Hex())); data != nil {
 		account.originAccount = &innerAccount{}
 		if err := account.originAccount.Unmarshal(data); err != nil {
