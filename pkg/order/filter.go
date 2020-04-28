@@ -25,7 +25,7 @@ type ReqLookUp struct {
 
 func NewReqLookUp(storage storage.Storage, logger logrus.FieldLogger) (*ReqLookUp, error) {
 	filter := bloom.New(m, k)
-	filterDB, _ := storage.Get([]byte(filterDbKey))
+	filterDB := storage.Get([]byte(filterDbKey))
 	if filterDB != nil {
 		var b bytes.Buffer
 		if _, err := b.Write(filterDB); err != nil {
@@ -57,9 +57,7 @@ func (r *ReqLookUp) Build() error {
 	if _, err := r.filter.WriteTo(&r.buffer); err != nil {
 		return err
 	}
-	if err := r.storage.Put([]byte(filterDbKey), r.buffer.Bytes()); err != nil {
-		return err
-	}
+	r.storage.Put([]byte(filterDbKey), r.buffer.Bytes())
 	r.buffer.Reset()
 	return nil
 }

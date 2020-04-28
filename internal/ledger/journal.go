@@ -83,9 +83,9 @@ func getLatestJournal(ldb storage.Storage) (uint64, *BlockJournal, error) {
 }
 
 func getBlockJournal(height uint64, ldb storage.Storage) *BlockJournal {
-	data, err := ldb.Get(compositeKey(journalKey, height))
-	if err != nil {
-		panic(err)
+	data := ldb.Get(compositeKey(journalKey, height))
+	if data == nil {
+		return nil
 	}
 
 	journal := &BlockJournal{}

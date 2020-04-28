@@ -346,15 +346,13 @@ func compositeKey(value interface{}) []byte {
 func (tp *TxPool) store(tx *pb.Transaction) {
 	txKey := compositeKey(tx.TransactionHash.Bytes())
 	txData, _ := tx.Marshal()
-	if err := tp.storage.Put(txKey, txData); err != nil {
-		tp.logger.Error("store tx error:", err)
-	}
+	tp.storage.Put(txKey, txData)
 }
 
 func (tp *TxPool) load(hash types.Hash) (*pb.Transaction, bool) {
 	txKey := compositeKey(hash.Bytes())
-	txData, err := tp.storage.Get(txKey)
-	if err != nil {
+	txData := tp.storage.Get(txKey)
+	if txData == nil {
 		return nil, false
 	}
 	var tx pb.Transaction
@@ -379,9 +377,7 @@ func (tp *TxPool) BatchStore(hashes []types.Hash) {
 		txData, _ := tx.Marshal()
 		batch.Put(txKey, txData)
 	}
-	if err := batch.Commit(); err != nil {
-		tp.logger.Fatalf("storage batch tx error:", err)
-	}
+	batch.Commit()
 }
 
 //BatchDelete batch delete txs
@@ -391,7 +387,5 @@ func (tp *TxPool) BatchDelete(hashes []types.Hash) {
 		txKey := compositeKey(hash.Bytes())
 		batch.Delete(txKey)
 	}
-	if err := batch.Commit(); err != nil {
-		tp.logger.Fatalf("storage batch tx error:", err)
-	}
+	batch.Commit()
 }

@@ -1,14 +1,20 @@
 package storage
 
+import "fmt"
+
+var (
+	ErrorNotFound = fmt.Errorf("not found in DB")
+)
+
 type Storage interface {
 	Write
 
 	// Get retrieves the object `value` named by `key`.
-	// Get will return ErrNotFound if the key is not mapped to a value.
-	Get(key []byte) (value []byte, err error)
+	// Get will return nil if the key is not mapped to a value.
+	Get(key []byte) []byte
 
 	// Has returns whether the `key` is mapped to a `value`.
-	Has(key []byte) (exists bool, err error)
+	Has(key []byte) bool
 
 	// Iterator iterates over a DB's key/value pairs in key order.
 	Iterator(start, end []byte) Iterator
@@ -24,11 +30,10 @@ type Storage interface {
 // Write is the write-side of the storage interface.
 type Write interface {
 	// Put stores the object `value` named by `key`.
-	Put(key, value []byte) error
+	Put(key, value []byte)
 
-	// Delete removes the value for given `key`. If the key is not in the
-	// datastore, this method returns no error.
-	Delete(key []byte) error
+	// Delete removes the value for given `key`.
+	Delete(key []byte)
 }
 
 type Iterator interface {
@@ -57,5 +62,5 @@ type Iterator interface {
 type Batch interface {
 	Put(key, value []byte)
 	Delete(key []byte)
-	Commit() error
+	Commit()
 }
