@@ -119,7 +119,7 @@ func (l *ChainLedger) Commit(height uint64) (types.Hash, error) {
 	for _, addr := range sortedAddr {
 		dirtyAccountData = append(dirtyAccountData, accountData[addr]...)
 	}
-	dirtyAccountData = append(dirtyAccountData, l.prevJournalHash[:]...)
+	dirtyAccountData = append(dirtyAccountData, l.prevJnlHash[:]...)
 	journalHash := sha256.Sum256(dirtyAccountData)
 
 	blockJournal := BlockJournal{
@@ -133,11 +133,17 @@ func (l *ChainLedger) Commit(height uint64) (types.Hash, error) {
 	}
 
 	ldbBatch.Put(compositeKey(journalKey, height), data)
+	ldbBatch.Put(compositeKey(journalKey, maxHeightStr), marshalHeight(height))
+
+	if l.minJnlHeight == 0 {
+		l.minJnlHeight = height
+		ldbBatch.Put(compositeKey(journalKey, minHeightStr), marshalHeight(height))
+	}
 
 	ldbBatch.Commit()
 
-	l.height = height
-	l.prevJournalHash = journalHash
+	l.maxJnlHeight = height
+	l.prevJnlHash = journalHash
 	l.Clear()
 
 	return journalHash, nil
@@ -145,5 +151,5 @@ func (l *ChainLedger) Commit(height uint64) (types.Hash, error) {
 
 // Version returns the current version
 func (l *ChainLedger) Version() uint64 {
-	return l.height
+	return l.maxJnlHeight
 }

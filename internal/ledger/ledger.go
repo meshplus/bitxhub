@@ -15,18 +15,21 @@ import (
 var _ Ledger = (*ChainLedger)(nil)
 
 var (
-	ErrorRollbackToHigherNumber = fmt.Errorf("rollback to higher blockchain height")
-	ErrorRollbackWithoutJournal = fmt.Errorf("rollback to blockchain height without journal")
+	ErrorRollbackToHigherNumber  = fmt.Errorf("rollback to higher blockchain height")
+	ErrorRollbackWithoutJournal  = fmt.Errorf("rollback to blockchain height without journal")
+	ErrorRollbackTooMuch         = fmt.Errorf("rollback too much block")
+	ErrorRemoveJournalOutOfRange = fmt.Errorf("remove journal out of range")
 )
 
 type ChainLedger struct {
 	logger          logrus.FieldLogger
 	blockchainStore storage.Storage
 	ldb             storage.Storage
-	height          uint64
+	minJnlHeight    uint64
+	maxJnlHeight    uint64
 	events          map[string][]*pb.Event
 	accounts        map[string]*Account
-	prevJournalHash types.Hash
+	prevJnlHash     types.Hash
 
 	chainMutex sync.RWMutex
 	chainMeta  *pb.ChainMeta
@@ -44,14 +47,17 @@ func New(repoRoot string, blockchainStore storage.Storage, logger logrus.FieldLo
 		return nil, fmt.Errorf("load chain meta: %w", err)
 	}
 
-	height, blockJournal, err := getLatestJournal(ldb)
-	if err != nil {
-		return nil, fmt.Errorf("get journal height: %w", err)
-	}
+	minJnlHeight, maxJnlHeight := getJournalRange(ldb)
 
-	if height < chainMeta.Height {
+	if maxJnlHeight < chainMeta.Height {
 		// TODO(xcc): how to handle this case
 		panic("state tree height is less than blockchain height")
+	}
+
+	prevJnlHash := types.Hash{}
+	if maxJnlHeight != 0 {
+		blockJournal := getBlockJournal(maxJnlHeight, ldb)
+		prevJnlHash = blockJournal.ChangedHash
 	}
 
 	return &ChainLedger{
@@ -59,28 +65,34 @@ func New(repoRoot string, blockchainStore storage.Storage, logger logrus.FieldLo
 		chainMeta:       chainMeta,
 		blockchainStore: blockchainStore,
 		ldb:             ldb,
-		height:          height,
+		minJnlHeight:    minJnlHeight,
+		maxJnlHeight:    maxJnlHeight,
 		events:          make(map[string][]*pb.Event, 10),
 		accounts:        make(map[string]*Account),
-		prevJournalHash: blockJournal.ChangedHash,
+		prevJnlHash:     prevJnlHash,
 	}, nil
 }
 
 // Rollback rollback ledger to history version
 func (l *ChainLedger) Rollback(height uint64) error {
-	if l.height < height {
+	if l.maxJnlHeight < height {
 		return ErrorRollbackToHigherNumber
 	}
 
-	if l.height == height {
+	if l.minJnlHeight > height {
+		return ErrorRollbackTooMuch
+	}
+
+	if l.maxJnlHeight == height {
 		return nil
 	}
 
 	// clean cache account
 	l.Clear()
 
-	for i := l.height; i > height; i-- {
+	for i := l.maxJnlHeight; i > height; i-- {
 		batch := l.ldb.NewBatch()
+
 		blockJournal := getBlockJournal(i, l.ldb)
 		if blockJournal == nil {
 			return ErrorRollbackWithoutJournal
@@ -90,19 +102,37 @@ func (l *ChainLedger) Rollback(height uint64) error {
 			journal.revert(batch)
 		}
 
+		batch.Delete(compositeKey(journalKey, i))
+		batch.Put(compositeKey(journalKey, maxHeightStr), marshalHeight(i-1))
 		batch.Commit()
-
-		l.ldb.Delete(compositeKey(journalKey, i))
 	}
 
-	height, journal, err := getLatestJournal(l.ldb)
-	if err != nil {
-		return fmt.Errorf("get journal during rollback: %w", err)
+	journal := getBlockJournal(height, l.ldb)
+
+	l.maxJnlHeight = height
+	l.prevJnlHash = journal.ChangedHash
+
+	return nil
+}
+
+// RemoveJournalsBeforeBlock removes ledger journals whose block number < height
+func (l *ChainLedger) RemoveJournalsBeforeBlock(height uint64) error {
+	if height > l.maxJnlHeight {
+		return ErrorRemoveJournalOutOfRange
 	}
 
-	l.prevJournalHash = journal.ChangedHash
+	if height <= l.minJnlHeight {
+		return nil
+	}
 
-	l.height = height
+	batch := l.ldb.NewBatch()
+	for i := l.minJnlHeight; i < height; i++ {
+		batch.Delete(compositeKey(journalKey, i))
+	}
+	batch.Put(compositeKey(journalKey, minHeightStr), marshalHeight(height))
+	batch.Commit()
+
+	l.minJnlHeight = height
 
 	return nil
 }

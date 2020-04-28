@@ -44,7 +44,7 @@ func TestLedger_Commit(t *testing.T) {
 
 	ledger.SetBalance(account, 100)
 	hash, err = ledger.Commit(4)
-	assert.Equal(t, uint64(4), ledger.height)
+	assert.Equal(t, uint64(4), ledger.maxJnlHeight)
 	assert.Nil(t, err)
 	assert.Equal(t, uint64(4), ledger.Version())
 	assert.Equal(t, "0x8ef7f408372406532c7060045d77fb67d322cea7aa49afdc3a741f4f340dc6d5", hash.Hex())
@@ -56,11 +56,13 @@ func TestLedger_Commit(t *testing.T) {
 	hash, err = ledger.Commit(5)
 	assert.Nil(t, err)
 	assert.Equal(t, uint64(5), ledger.Version())
-	assert.Equal(t, uint64(5), ledger.height)
+	assert.Equal(t, uint64(5), ledger.maxJnlHeight)
 
-	height, journal, err := getLatestJournal(ledger.ldb)
+	minHeight, maxHeight := getJournalRange(ledger.ldb)
+	journal := getBlockJournal(maxHeight, ledger.ldb)
 	assert.Nil(t, err)
-	assert.Equal(t, uint64(5), height)
+	assert.Equal(t, uint64(1), minHeight)
+	assert.Equal(t, uint64(5), maxHeight)
 	assert.Equal(t, hash, journal.ChangedHash)
 	assert.Equal(t, 1, len(journal.Journals))
 	entry := journal.Journals[0]
@@ -80,8 +82,8 @@ func TestLedger_Commit(t *testing.T) {
 	// load ChainLedger from db
 	ldg, err := New(repoRoot, blockStorage, log.NewWithModule("executor"))
 	assert.Nil(t, err)
-	assert.Equal(t, uint64(5), ldg.height)
-	assert.Equal(t, hash, ldg.prevJournalHash)
+	assert.Equal(t, uint64(5), ldg.maxJnlHeight)
+	assert.Equal(t, hash, ldg.prevJnlHash)
 
 	ok, value := ldg.GetState(account, []byte("a"))
 	assert.True(t, ok)
@@ -114,6 +116,9 @@ func TestChainLedger_Rollback(t *testing.T) {
 	addr0 := types.Bytes2Address(bytesutil.LeftPadBytes([]byte{100}, 20))
 	addr1 := types.Bytes2Address(bytesutil.LeftPadBytes([]byte{101}, 20))
 
+	hash0 := types.Hash{}
+	assert.Equal(t, hash0, ledger.prevJnlHash)
+
 	code := sha256.Sum256([]byte("code"))
 	codeHash := sha256.Sum256(code[:])
 
@@ -140,11 +145,13 @@ func TestChainLedger_Rollback(t *testing.T) {
 
 	hash3, err := ledger.Commit(3)
 	assert.Nil(t, err)
-	assert.Equal(t, hash3, ledger.prevJournalHash)
+	assert.Equal(t, hash3, ledger.prevJnlHash)
 
 	err = ledger.Rollback(2)
 	assert.Nil(t, err)
-	assert.Equal(t, hash2, ledger.prevJournalHash)
+	assert.Equal(t, hash2, ledger.prevJnlHash)
+	assert.Equal(t, uint64(1), ledger.minJnlHeight)
+	assert.Equal(t, uint64(2), ledger.maxJnlHeight)
 
 	account0 := ledger.GetAccount(addr0)
 	assert.Equal(t, uint64(2), account0.GetBalance())
@@ -161,9 +168,15 @@ func TestChainLedger_Rollback(t *testing.T) {
 	assert.Nil(t, account1.CodeHash())
 	assert.Nil(t, account1.Code())
 
+	ledger.Close()
+	ledger, err = New(repoRoot, blockStorage, log.NewWithModule("executor"))
+	assert.Nil(t, err)
+	assert.Equal(t, uint64(1), ledger.minJnlHeight)
+	assert.Equal(t, uint64(2), ledger.maxJnlHeight)
+
 	err = ledger.Rollback(1)
 	assert.Nil(t, err)
-	assert.Equal(t, hash1, ledger.prevJournalHash)
+	assert.Equal(t, hash1, ledger.prevJnlHash)
 
 	account0 = ledger.GetAccount(addr0)
 	assert.Equal(t, uint64(1), account0.GetBalance())
@@ -172,4 +185,80 @@ func TestChainLedger_Rollback(t *testing.T) {
 	assert.Equal(t, code[:], account0.Code())
 	ok, _ = account0.GetState([]byte("a"))
 	assert.False(t, ok)
+
+	err = ledger.Rollback(0)
+	assert.Equal(t, ErrorRollbackTooMuch, err)
+
+}
+
+func TestChainLedger_RemoveJournalsBeforeBlock(t *testing.T) {
+	repoRoot, err := ioutil.TempDir("", "ledger_removeJournal")
+	assert.Nil(t, err)
+	blockStorage, err := leveldb.New(repoRoot)
+	assert.Nil(t, err)
+	ledger, err := New(repoRoot, blockStorage, log.NewWithModule("executor"))
+	assert.Nil(t, err)
+
+	assert.Equal(t, uint64(0), ledger.minJnlHeight)
+	assert.Equal(t, uint64(0), ledger.maxJnlHeight)
+
+	_, _ = ledger.Commit(1)
+	_, _ = ledger.Commit(2)
+	_, _ = ledger.Commit(3)
+	hash, _ := ledger.Commit(4)
+
+	assert.Equal(t, uint64(1), ledger.minJnlHeight)
+	assert.Equal(t, uint64(4), ledger.maxJnlHeight)
+
+	minHeight, maxHeight := getJournalRange(ledger.ldb)
+	journal := getBlockJournal(maxHeight, ledger.ldb)
+	assert.Equal(t, uint64(1), minHeight)
+	assert.Equal(t, uint64(4), maxHeight)
+	assert.Equal(t, hash, journal.ChangedHash)
+
+	err = ledger.RemoveJournalsBeforeBlock(5)
+	assert.Equal(t, ErrorRemoveJournalOutOfRange, err)
+
+	err = ledger.RemoveJournalsBeforeBlock(2)
+	assert.Nil(t, err)
+	assert.Equal(t, uint64(2), ledger.minJnlHeight)
+	assert.Equal(t, uint64(4), ledger.maxJnlHeight)
+
+	minHeight, maxHeight = getJournalRange(ledger.ldb)
+	journal = getBlockJournal(maxHeight, ledger.ldb)
+	assert.Equal(t, uint64(2), minHeight)
+	assert.Equal(t, uint64(4), maxHeight)
+	assert.Equal(t, hash, journal.ChangedHash)
+
+	err = ledger.RemoveJournalsBeforeBlock(2)
+	assert.Nil(t, err)
+
+	assert.Equal(t, uint64(2), ledger.minJnlHeight)
+	assert.Equal(t, uint64(4), ledger.maxJnlHeight)
+
+	err = ledger.RemoveJournalsBeforeBlock(1)
+	assert.Nil(t, err)
+
+	assert.Equal(t, uint64(2), ledger.minJnlHeight)
+	assert.Equal(t, uint64(4), ledger.maxJnlHeight)
+
+	err = ledger.RemoveJournalsBeforeBlock(4)
+	assert.Nil(t, err)
+
+	assert.Equal(t, uint64(4), ledger.minJnlHeight)
+	assert.Equal(t, uint64(4), ledger.maxJnlHeight)
+	assert.Equal(t, hash, ledger.prevJnlHash)
+
+	minHeight, maxHeight = getJournalRange(ledger.ldb)
+	journal = getBlockJournal(maxHeight, ledger.ldb)
+	assert.Equal(t, uint64(4), minHeight)
+	assert.Equal(t, uint64(4), maxHeight)
+	assert.Equal(t, hash, journal.ChangedHash)
+
+	ledger.Close()
+	ledger, err = New(repoRoot, blockStorage, log.NewWithModule("executor"))
+	assert.Nil(t, err)
+	assert.Equal(t, uint64(4), ledger.minJnlHeight)
+	assert.Equal(t, uint64(4), ledger.maxJnlHeight)
+	assert.Equal(t, hash, ledger.prevJnlHash)
 }

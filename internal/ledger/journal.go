@@ -3,10 +3,15 @@ package ledger
 import (
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
+	"strconv"
 
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub/pkg/storage"
+)
+
+var (
+	minHeightStr = "minHeight"
+	maxHeightStr = "maxHeight"
 )
 
 type journal struct {
@@ -58,28 +63,21 @@ func (journal *journal) revert(batch storage.Batch) {
 	}
 }
 
-func getLatestJournal(ldb storage.Storage) (uint64, *BlockJournal, error) {
+func getJournalRange(ldb storage.Storage) (uint64, uint64) {
+	minHeight := uint64(0)
 	maxHeight := uint64(0)
-	journal := &BlockJournal{}
-	begin, end := bytesPrefix([]byte(journalKey))
-	it := ldb.Iterator(begin, end)
 
-	for it.Next() {
-		height := uint64(0)
-		_, err := fmt.Sscanf(string(it.Key()), journalKey+"%d", &height)
-		if err != nil {
-			return 0, nil, err
-		}
-
-		if height > maxHeight {
-			maxHeight = height
-			if err := json.Unmarshal(it.Value(), journal); err != nil {
-				panic(err)
-			}
-		}
+	data := ldb.Get(compositeKey(journalKey, minHeightStr))
+	if data != nil {
+		minHeight = unmarshalHeight(data)
 	}
 
-	return maxHeight, journal, nil
+	data = ldb.Get(compositeKey(journalKey, maxHeightStr))
+	if data != nil {
+		maxHeight = unmarshalHeight(data)
+	}
+
+	return minHeight, maxHeight
 }
 
 func getBlockJournal(height uint64, ldb storage.Storage) *BlockJournal {
@@ -94,4 +92,17 @@ func getBlockJournal(height uint64, ldb storage.Storage) *BlockJournal {
 	}
 
 	return journal
+}
+
+func marshalHeight(height uint64) []byte {
+	return []byte(strconv.FormatUint(height, 10))
+}
+
+func unmarshalHeight(data []byte) uint64 {
+	height, err := strconv.ParseUint(string(data), 10, 64)
+	if err != nil {
+		panic(err)
+	}
+
+	return height
 }
