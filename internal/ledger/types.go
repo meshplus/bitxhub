@@ -19,6 +19,9 @@ type Ledger interface {
 	// Rollback
 	Rollback(height uint64) error
 
+	// RemoveJournalsBeforeBlock
+	RemoveJournalsBeforeBlock(height uint64) error
+
 	// Close release resource
 	Close()
 }
