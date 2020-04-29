@@ -1,70 +1,60 @@
 package tester
 
 import (
-	"encoding/base64"
-	"fmt"
-	"io/ioutil"
-	"log"
-	"net/http"
 	"testing"
 	"time"
 
-	"github.com/Rican7/retry"
-	"github.com/Rican7/retry/strategy"
+	"github.com/meshplus/bitxhub/internal/app"
+	"github.com/meshplus/bitxhub/internal/coreapi"
+	"github.com/meshplus/bitxhub/internal/coreapi/api"
+	"github.com/meshplus/bitxhub/internal/loggers"
+	"github.com/meshplus/bitxhub/internal/repo"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"github.com/tidwall/gjson"
 )
 
 func TestTester(t *testing.T) {
-	err := retry.Retry(func(attempt uint) error {
-		resp, err := http.Get(host + "info?type=0")
-		if err != nil {
-			fmt.Println(err)
-			return err
+	node1 := setupNode(t, "./test_data/config/node1")
+	node2 := setupNode(t, "./test_data/config/node2")
+	node3 := setupNode(t, "./test_data/config/node3")
+	node4 := setupNode(t, "./test_data/config/node4")
+
+	for {
+		if node1.Broker().OrderReady() &&
+			node2.Broker().OrderReady() &&
+			node3.Broker().OrderReady() &&
+			node4.Broker().OrderReady() {
+			break
 		}
 
-		c, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			fmt.Println(err)
-			return err
-		}
-
-		if err := resp.Body.Close(); err != nil {
-			return err
-		}
-
-		res := gjson.Get(string(c), "data")
-
-		ret, err := base64.StdEncoding.DecodeString(res.String())
-		if err != nil {
-			fmt.Println(err)
-			return err
-		}
-
-		if string(ret) != "normal" {
-			fmt.Println("abnormal")
-			return fmt.Errorf("abnormal")
-		}
-
-		return nil
-	}, strategy.Wait(1*time.Second), strategy.Limit(60))
-
-	if err != nil {
-		log.Fatal(err)
+		time.Sleep(500 * time.Millisecond)
 	}
 
-	suite.Run(t, &API{})
-	suite.Run(t, &RegisterAppchain{})
-	suite.Run(t, &Interchain{})
-	suite.Run(t, &Role{})
-	suite.Run(t, &Gateway{})
+	suite.Run(t, &API{api: node1})
+	suite.Run(t, &RegisterAppchain{api: node2})
+	suite.Run(t, &Interchain{api: node3})
+	suite.Run(t, &Role{api: node4})
 }
 
-func grpcAddresses() []string {
-	return []string{
-		"localhost:60011",
-		"localhost:60012",
-		"localhost:60013",
-		"localhost:60014",
-	}
+func setupNode(t *testing.T, path string) api.CoreAPI {
+	repoRoot, err := repo.PathRootWithDefault(path)
+	require.Nil(t, err)
+
+	repo, err := repo.Load(repoRoot)
+	require.Nil(t, err)
+
+	loggers.Initialize(repo.Config)
+
+	bxh, err := app.NewTesterBitXHub(repo)
+	require.Nil(t, err)
+
+	api, err := coreapi.New(bxh)
+	require.Nil(t, err)
+
+	go func() {
+		err = bxh.Start()
+		require.Nil(t, err)
+	}()
+
+	return api
 }

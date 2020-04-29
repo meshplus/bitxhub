@@ -1,0 +1,12 @@
+[raft]
+election_tick               = 10 # ElectionTick is the number of Node.Tick invocations that must pass between elections.
+heartbeat_tick              = 1 # HeartbeatTick is the number of Node.Tick invocations that must pass between heartbeats.
+max_size_per_msg            = 1048576 # 1024*1024, MaxSizePerMsg limits the max size of each append message.
+max_inflight_msgs           = 500 # MaxInflightMsgs limits the max number of in-flight append messages during optimistic replication phase.
+check_quorum                = true # Leader steps down when quorum is not active for an electionTimeout.
+pre_vote                    = true # PreVote prevents reconnected node from disturbing network.
+disable_proposal_forwarding = true # This prevents blocks from being accidentally proposed by followers.
+    [raft.tx_pool]
+        pack_size           = 500 # How many transactions should the primary pack.
+        pool_size           = 50000 # How many transactions could the txPool stores in total.
+        block_tick          = "500ms" # Block packaging time period.

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/meshplus/bitxhub/pkg/order/etcdraft"
+
 	"github.com/meshplus/bitxhub/pkg/order"
 
 	"github.com/common-nighthawk/go-figure"
@@ -37,6 +39,56 @@ type BitXHub struct {
 
 func NewBitXHub(rep *repo.Repo) (*BitXHub, error) {
 	repoRoot := rep.Config.RepoRoot
+
+	bxh, err := generateBitXHubWithoutOrder(rep)
+	if err != nil {
+		return nil, err
+	}
+
+	chainMeta := bxh.Ledger.GetChainMeta()
+
+	m := make(map[uint64]types.Address)
+
+	if !rep.Config.Solo {
+		for i, node := range rep.NetworkConfig.Nodes {
+			m[node.ID] = types.String2Address(rep.Config.Genesis.Addresses[i])
+		}
+	}
+
+	order, err := orderplg.New(
+		order.WithRepoRoot(repoRoot),
+		order.WithStoragePath(repo.GetStoragePath(repoRoot, "order")),
+		order.WithPluginPath(rep.Config.Plugin),
+		order.WithNodes(m),
+		order.WithID(rep.NetworkConfig.ID),
+		order.WithPeerManager(bxh.PeerMgr),
+		order.WithLogger(loggers.Logger(loggers.Order)),
+		order.WithApplied(chainMeta.Height),
+		order.WithDigest(chainMeta.BlockHash.Hex()),
+		order.WithGetChainMetaFunc(bxh.Ledger.GetChainMeta),
+		order.WithGetTransactionFunc(bxh.Ledger.GetTransaction),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	r, err := router.New(loggers.Logger(loggers.Router), rep, bxh.Ledger, bxh.PeerMgr, order.Quorum())
+	if err != nil {
+		return nil, fmt.Errorf("create InterchainRouter: %w", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	bxh.ctx = ctx
+	bxh.cancel = cancel
+	bxh.Order = order
+	bxh.Router = r
+
+	return bxh, nil
+}
+
+func generateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
+	repoRoot := rep.Config.RepoRoot
 	logger := loggers.Logger(loggers.App)
 
 	if err := storages.Initialize(repoRoot); err != nil {
@@ -67,12 +119,29 @@ func NewBitXHub(rep *repo.Repo) (*BitXHub, error) {
 		return nil, fmt.Errorf("create BlockExecutor: %w", err)
 	}
 
-	chainMeta := ldg.GetChainMeta()
-
 	peerMgr, err := peermgr.New(rep, loggers.Logger(loggers.P2P), ldg)
 	if err != nil {
 		return nil, fmt.Errorf("create peer manager: %w", err)
 	}
+
+	return &BitXHub{
+		repo:     rep,
+		logger:   logger,
+		Ledger:   ldg,
+		Executor: exec,
+		PeerMgr:  peerMgr,
+	}, nil
+}
+
+func NewTesterBitXHub(rep *repo.Repo) (*BitXHub, error) {
+	repoRoot := rep.Config.RepoRoot
+
+	bxh, err := generateBitXHubWithoutOrder(rep)
+	if err != nil {
+		return nil, err
+	}
+
+	chainMeta := bxh.Ledger.GetChainMeta()
 
 	m := make(map[uint64]types.Address)
 
@@ -81,42 +150,38 @@ func NewBitXHub(rep *repo.Repo) (*BitXHub, error) {
 			m[node.ID] = types.String2Address(rep.Config.Genesis.Addresses[i])
 		}
 	}
-	order, err := orderplg.New(
+
+	order, err := etcdraft.NewNode(
 		order.WithRepoRoot(repoRoot),
 		order.WithStoragePath(repo.GetStoragePath(repoRoot, "order")),
 		order.WithPluginPath(rep.Config.Plugin),
 		order.WithNodes(m),
 		order.WithID(rep.NetworkConfig.ID),
-		order.WithPeerManager(peerMgr),
-		order.WithPrivKey(nil),
+		order.WithPeerManager(bxh.PeerMgr),
 		order.WithLogger(loggers.Logger(loggers.Order)),
 		order.WithApplied(chainMeta.Height),
 		order.WithDigest(chainMeta.BlockHash.Hex()),
-		order.WithGetChainMetaFunc(ldg.GetChainMeta),
-		order.WithGetTransactionFunc(ldg.GetTransaction),
+		order.WithGetChainMetaFunc(bxh.Ledger.GetChainMeta),
+		order.WithGetTransactionFunc(bxh.Ledger.GetTransaction),
 	)
+
 	if err != nil {
 		return nil, err
 	}
 
-	r, err := router.New(loggers.Logger(loggers.Router), rep, ldg, peerMgr, order.Quorum())
+	r, err := router.New(loggers.Logger(loggers.Router), rep, bxh.Ledger, bxh.PeerMgr, order.Quorum())
 	if err != nil {
 		return nil, fmt.Errorf("create InterchainRouter: %w", err)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	return &BitXHub{
-		repo:     rep,
-		logger:   logger,
-		Ledger:   ldg,
-		Executor: exec,
-		Router:   r,
-		Order:    order,
-		PeerMgr:  peerMgr,
-		ctx:      ctx,
-		cancel:   cancel,
-	}, nil
+	bxh.ctx = ctx
+	bxh.cancel = cancel
+	bxh.Order = order
+	bxh.Router = r
+
+	return bxh, nil
 }
 
 func (bxh *BitXHub) Start() error {
