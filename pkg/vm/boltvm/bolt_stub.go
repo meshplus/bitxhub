@@ -122,7 +122,7 @@ func (b *BoltStubImpl) CrossInvoke(address, method string, args ...*pb.Arg) *Res
 	if err != nil {
 		return Error(err.Error())
 	}
-	bvm := New(ctx, b.ve)
+	bvm := New(ctx, b.ve, b.bvm.contracts)
 	ret, err := bvm.Run(data)
 	if err != nil {
 		return Error(err.Error())

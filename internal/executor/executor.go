@@ -15,6 +15,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/pkg/vm/boltvm"
 	"github.com/sirupsen/logrus"
+	"github.com/wasmerio/go-ext-wasm/wasmer"
 )
 
 const blockChanNumber = 1024
@@ -31,6 +32,8 @@ type BlockExecutor struct {
 	validationEngine  validator.Engine
 	currentHeight     uint64
 	currentBlockHash  types.Hash
+	boltContracts     map[string]boltvm.Contract
+	wasmInstances     map[string]wasmer.Instance
 
 	blockFeed event.Feed
 
@@ -47,7 +50,7 @@ func New(ledger ledger.Ledger, logger logrus.FieldLogger) (*BlockExecutor, error
 
 	ve := validator.NewValidationEngine(ledger, logger)
 
-	registerBoltContracts()
+	boltContracts := registerBoltContracts()
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -62,6 +65,8 @@ func New(ledger ledger.Ledger, logger logrus.FieldLogger) (*BlockExecutor, error
 		validationEngine:  ve,
 		currentHeight:     ledger.GetChainMeta().Height,
 		currentBlockHash:  ledger.GetChainMeta().BlockHash,
+		boltContracts:     boltContracts,
+		wasmInstances:     make(map[string]wasmer.Instance),
 	}, nil
 }
 
@@ -111,7 +116,7 @@ func (exec *BlockExecutor) listenExecuteEvent() {
 	}
 }
 
-func registerBoltContracts() {
+func registerBoltContracts() map[string]boltvm.Contract {
 	boltContracts := []*boltvm.BoltContract{
 		{
 			Enabled:  true,
@@ -139,5 +144,5 @@ func registerBoltContracts() {
 		},
 	}
 
-	boltvm.Register(boltContracts)
+	return boltvm.Register(boltContracts)
 }

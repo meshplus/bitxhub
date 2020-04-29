@@ -19,6 +19,7 @@ import (
 	"github.com/meshplus/bitxhub/pkg/vm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/wasmerio/go-ext-wasm/wasmer"
 )
 
 const cert1 = `-----BEGIN CERTIFICATE-----
@@ -119,9 +120,10 @@ func initFabricContext(t *testing.T, name string) *vm.Context {
 
 func TestDeploy(t *testing.T) {
 	ctx := initCreateContext(t, "create")
+	instances := make(map[string]wasmer.Instance)
 	imports, err := EmptyImports()
 	require.Nil(t, err)
-	wasm, err := New(ctx, imports)
+	wasm, err := New(ctx, imports, instances)
 	require.Nil(t, err)
 
 	_, err = wasm.deploy()
@@ -130,9 +132,10 @@ func TestDeploy(t *testing.T) {
 
 func TestExecute(t *testing.T) {
 	ctx := initCreateContext(t, "execute")
+	instances := make(map[string]wasmer.Instance)
 	imports, err := EmptyImports()
 	require.Nil(t, err)
-	wasm, err := New(ctx, imports)
+	wasm, err := New(ctx, imports, instances)
 	require.Nil(t, err)
 
 	ret, err := wasm.deploy()
@@ -158,7 +161,7 @@ func TestExecute(t *testing.T) {
 	}
 	imports1, err := validatorlib.New()
 	require.Nil(t, err)
-	wasm1, err := New(ctx1, imports1)
+	wasm1, err := New(ctx1, imports1, instances)
 	require.Nil(t, err)
 
 	result, err := wasm1.Run(payload)
@@ -168,9 +171,10 @@ func TestExecute(t *testing.T) {
 
 func TestWasm_RunFabValidation(t *testing.T) {
 	ctx := initFabricContext(t, "execute")
+	instances := make(map[string]wasmer.Instance)
 	imports, err := EmptyImports()
 	require.Nil(t, err)
-	wasm, err := New(ctx, imports)
+	wasm, err := New(ctx, imports, instances)
 	require.Nil(t, err)
 
 	ret, err := wasm.deploy()
@@ -205,7 +209,7 @@ func TestWasm_RunFabValidation(t *testing.T) {
 	}
 	imports1, err := validatorlib.New()
 	require.Nil(t, err)
-	wasm1, err := New(ctx1, imports1)
+	wasm1, err := New(ctx1, imports1, instances)
 	require.Nil(t, err)
 
 	result, err := wasm1.Run(payload)
@@ -237,9 +241,10 @@ func BenchmarkRunFabValidation(b *testing.B) {
 		TransactionData: data,
 		Ledger:          ldg,
 	}
+	instances := make(map[string]wasmer.Instance)
 	imports, err := EmptyImports()
 	require.Nil(b, err)
-	wasm, err := New(ctx, imports)
+	wasm, err := New(ctx, imports, instances)
 	require.Nil(b, err)
 
 	ret, err := wasm.deploy()
@@ -267,7 +272,7 @@ func BenchmarkRunFabValidation(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		imports1, err := validatorlib.New()
 		require.Nil(b, err)
-		wasm1, err := New(ctx1, imports1)
+		wasm1, err := New(ctx1, imports1, instances)
 		require.Nil(b, err)
 
 		result, err := wasm1.Run(payload)
@@ -280,9 +285,10 @@ func BenchmarkRunFabValidation(b *testing.B) {
 
 func TestWasm_RunValidation(t *testing.T) {
 	ctx := initValidationContext(t, "execute")
+	instances := make(map[string]wasmer.Instance)
 	imports, err := EmptyImports()
 	require.Nil(t, err)
-	wasm, err := New(ctx, imports)
+	wasm, err := New(ctx, imports, instances)
 	require.Nil(t, err)
 
 	ret, err := wasm.deploy()
@@ -310,7 +316,7 @@ func TestWasm_RunValidation(t *testing.T) {
 	}
 	imports1, err := validatorlib.New()
 	require.Nil(t, err)
-	wasm1, err := New(ctx1, imports1)
+	wasm1, err := New(ctx1, imports1, instances)
 	require.Nil(t, err)
 
 	result, err := wasm1.Run(payload)
@@ -320,9 +326,10 @@ func TestWasm_RunValidation(t *testing.T) {
 
 func TestWasm_RunWithoutMethod(t *testing.T) {
 	ctx := initCreateContext(t, "execute_without_method")
+	instances := make(map[string]wasmer.Instance)
 	imports, err := EmptyImports()
 	require.Nil(t, err)
-	wasm, err := New(ctx, imports)
+	wasm, err := New(ctx, imports, instances)
 	require.Nil(t, err)
 
 	ret, err := wasm.deploy()
@@ -348,7 +355,7 @@ func TestWasm_RunWithoutMethod(t *testing.T) {
 	}
 	imports1, err := validatorlib.New()
 	require.Nil(t, err)
-	wasm1, err := New(ctx1, imports1)
+	wasm1, err := New(ctx1, imports1, instances)
 	require.Nil(t, err)
 
 	_, err = wasm1.Run(payload)
