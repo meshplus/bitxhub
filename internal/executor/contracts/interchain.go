@@ -370,6 +370,18 @@ func (x *Interchain) GetIBTPByID(id string) *boltvm.Response {
 	return boltvm.Success(hash.Bytes())
 }
 
+// GetPubKeyByChainID can get aim chain's public key using aim chain ID
+func (x *Interchain) GetPubKeyByChainID(id string) *boltvm.Response {
+	ok := x.Has(x.appchainKey(id))
+	if !ok {
+		return boltvm.Error("chain is not existed")
+	} else {
+		chain := &appchain{}
+		x.GetObject(x.appchainKey(id), chain)
+		return boltvm.Success([]byte(chain.PublicKey))
+	}
+}
+
 func (x *Interchain) appchainKey(id string) string {
 	return prefix + id
 }
