@@ -37,7 +37,7 @@ type Contract struct {
 }
 
 // New creates a wasm vm instance
-func New(ctx *vm.Context, imports *wasmer.Imports) (*WasmVM, error) {
+func New(ctx *vm.Context, imports *wasmer.Imports, instances map[string]wasmer.Instance) (*WasmVM, error) {
 	wasmVM := &WasmVM{
 		ctx: ctx,
 	}
@@ -48,7 +48,7 @@ func New(ctx *vm.Context, imports *wasmer.Imports) (*WasmVM, error) {
 
 	contractByte := ctx.Ledger.GetCode(ctx.Callee)
 
-	w, err := wasm.New(contractByte, imports)
+	w, err := wasm.New(contractByte, imports, instances)
 	if err != nil {
 		return nil, err
 	}

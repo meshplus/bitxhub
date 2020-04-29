@@ -13,15 +13,17 @@ import (
 var _ vm.VM = (*BoltVM)(nil)
 
 type BoltVM struct {
-	ctx *vm.Context
-	ve  validator.Engine
+	ctx       *vm.Context
+	ve        validator.Engine
+	contracts map[string]Contract
 }
 
 // New creates a blot vm object
-func New(ctx *vm.Context, ve validator.Engine) *BoltVM {
+func New(ctx *vm.Context, ve validator.Engine, contracts map[string]Contract) *BoltVM {
 	return &BoltVM{
-		ctx: ctx,
-		ve:  ve,
+		ctx:       ctx,
+		ve:        ve,
+		contracts: contracts,
 	}
 }
 
@@ -37,7 +39,7 @@ func (bvm *BoltVM) Run(input []byte) (ret []byte, err error) {
 		return nil, fmt.Errorf("unmarshal invoke payload: %w", err)
 	}
 
-	contract, err := GetBoltContract(bvm.ctx.Callee.Hex())
+	contract, err := GetBoltContract(bvm.ctx.Callee.Hex(), bvm.contracts)
 	if err != nil {
 		return nil, fmt.Errorf("get bolt contract: %w", err)
 	}
