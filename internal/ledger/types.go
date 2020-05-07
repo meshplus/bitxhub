@@ -10,6 +10,9 @@ type Ledger interface {
 	BlockchainLedger
 	StateAccessor
 
+	// PersistBlockData
+	PersistBlockData(blockData *BlockData)
+
 	// AddEvent
 	AddEvent(*pb.Event)
 
@@ -62,7 +65,10 @@ type StateAccessor interface {
 	QueryByPrefix(address types.Address, prefix string) (bool, [][]byte)
 
 	// Commit commits the state data
-	Commit(height uint64) (types.Hash, error)
+	Commit(height uint64, accounts map[string]*Account, blockJournal *BlockJournal) error
+
+	// FlushDirtyDataAndComputeJournal flushes the dirty data and computes block journal
+	FlushDirtyDataAndComputeJournal() (map[string]*Account, *BlockJournal)
 
 	// Version
 	Version() uint64

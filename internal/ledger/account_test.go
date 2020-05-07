@@ -23,14 +23,16 @@ func TestAccount_GetState(t *testing.T) {
 	ledger, err := New(repoRoot, blockStorage, log.NewWithModule("ChainLedger"))
 	assert.Nil(t, err)
 
-	ldb := ledger.ldb
-
 	h := hexutil.Encode(bytesutil.LeftPadBytes([]byte{11}, 20))
 	addr := types.String2Address(h)
-	account := newAccount(ldb, addr)
+	account := newAccount(ledger.ldb, ledger.accountCache, addr)
 
 	account.SetState([]byte("a"), []byte("b"))
 	ok, v := account.GetState([]byte("a"))
+	assert.True(t, ok)
+	assert.Equal(t, []byte("b"), v)
+
+	ok, v = account.GetState([]byte("a"))
 	assert.True(t, ok)
 	assert.Equal(t, []byte("b"), v)
 

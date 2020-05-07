@@ -1,6 +1,10 @@
 package ledger
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/meshplus/bitxhub-kit/types"
+)
 
 const (
 	blockKey           = "block-"
@@ -16,4 +20,8 @@ const (
 
 func compositeKey(prefix string, value interface{}) []byte {
 	return append([]byte(prefix), []byte(fmt.Sprintf("%v", value))...)
+}
+
+func composeStateKey(addr types.Address, key []byte) []byte {
+	return append(addr.Bytes(), key...)
 }

@@ -19,7 +19,10 @@ import (
 	"github.com/wasmerio/go-ext-wasm/wasmer"
 )
 
-const blockChanNumber = 1024
+const (
+	blockChanNumber   = 1024
+	persistChanNumber = 1024
+)
 
 var _ Executor = (*BlockExecutor)(nil)
 
@@ -28,6 +31,7 @@ type BlockExecutor struct {
 	ledger            ledger.Ledger
 	logger            logrus.FieldLogger
 	blockC            chan *pb.Block
+	persistC          chan *ledger.BlockData
 	pendingBlockQ     *cache.Cache
 	interchainCounter map[string][]uint64
 	validationEngine  validator.Engine
@@ -43,29 +47,30 @@ type BlockExecutor struct {
 }
 
 // New creates executor instance
-func New(ledger ledger.Ledger, logger logrus.FieldLogger) (*BlockExecutor, error) {
+func New(chainLedger ledger.Ledger, logger logrus.FieldLogger) (*BlockExecutor, error) {
 	pendingBlockQ, err := cache.NewCache()
 	if err != nil {
 		return nil, fmt.Errorf("create cache: %w", err)
 	}
 
-	ve := validator.NewValidationEngine(ledger, logger)
+	ve := validator.NewValidationEngine(chainLedger, logger)
 
 	boltContracts := registerBoltContracts()
 
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &BlockExecutor{
-		ledger:            ledger,
+		ledger:            chainLedger,
 		logger:            logger,
 		interchainCounter: make(map[string][]uint64),
 		ctx:               ctx,
 		cancel:            cancel,
 		blockC:            make(chan *pb.Block, blockChanNumber),
+		persistC:          make(chan *ledger.BlockData, persistChanNumber),
 		pendingBlockQ:     pendingBlockQ,
 		validationEngine:  ve,
-		currentHeight:     ledger.GetChainMeta().Height,
-		currentBlockHash:  ledger.GetChainMeta().BlockHash,
+		currentHeight:     chainLedger.GetChainMeta().Height,
+		currentBlockHash:  chainLedger.GetChainMeta().BlockHash,
 		boltContracts:     boltContracts,
 		wasmInstances:     make(map[string]wasmer.Instance),
 	}, nil
@@ -74,6 +79,8 @@ func New(ledger ledger.Ledger, logger logrus.FieldLogger) (*BlockExecutor, error
 // Start starts executor
 func (exec *BlockExecutor) Start() error {
 	go exec.listenExecuteEvent()
+
+	go exec.persistData()
 
 	exec.logger.WithFields(logrus.Fields{
 		"height": exec.currentHeight,
@@ -112,8 +119,15 @@ func (exec *BlockExecutor) listenExecuteEvent() {
 		case block := <-exec.blockC:
 			exec.handleExecuteEvent(block)
 		case <-exec.ctx.Done():
+			close(exec.persistC)
 			return
 		}
+	}
+}
+
+func (exec *BlockExecutor) persistData() {
+	for data := range exec.persistC {
+		exec.ledger.PersistBlockData(data)
 	}
 }
 

@@ -1,7 +1,6 @@
 package ledger
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"strconv"
 
@@ -42,15 +41,10 @@ func (journal *journal) revert(batch storage.Batch) {
 	}
 
 	for key, val := range journal.PrevStates {
-		byteKey, err := hex.DecodeString(key)
-		if err != nil {
-			panic(err)
-		}
-
 		if val != nil {
-			batch.Put(append(journal.Address.Bytes(), byteKey...), val)
+			batch.Put(composeStateKey(journal.Address, []byte(key)), val)
 		} else {
-			batch.Delete(append(journal.Address.Bytes(), byteKey...))
+			batch.Delete(composeStateKey(journal.Address, []byte(key)))
 		}
 	}
 
