@@ -45,7 +45,7 @@ func (suite *RegisterAppchain) TestRegisterAppchain() {
 		pb.String(string(pub)),
 	}
 
-	ret, err := invokeBVMContract(suite.api, suite.privKey, constant.InterchainContractAddr.Address(), "Register", args...)
+	ret, err := invokeBVMContract(suite.api, suite.privKey, constant.AppchainMgrContractAddr.Address(), "Register", args...)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	suite.Require().Equal("hyperchain", gjson.Get(string(ret.Ret), "chain_type").String())
@@ -71,7 +71,7 @@ func (suite *RegisterAppchain) TestFetchAppchains() {
 		pb.String("1.8"),
 		pb.String(string(pub1)),
 	}
-	ret, err := invokeBVMContract(suite.api, k1, constant.InterchainContractAddr.Address(), "Register", args...)
+	ret, err := invokeBVMContract(suite.api, k1, constant.AppchainMgrContractAddr.Address(), "Register", args...)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 
@@ -85,15 +85,15 @@ func (suite *RegisterAppchain) TestFetchAppchains() {
 		pb.String(string(pub2)),
 	}
 
-	ret, err = invokeBVMContract(suite.api, k2, constant.InterchainContractAddr.Address(), "Register", args...)
+	ret, err = invokeBVMContract(suite.api, k2, constant.AppchainMgrContractAddr.Address(), "Register", args...)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	suite.Require().Nil(err)
 
-	ret, err = invokeBVMContract(suite.api, k2, constant.InterchainContractAddr.Address(), "Appchains")
+	ret, err = invokeBVMContract(suite.api, k2, constant.AppchainMgrContractAddr.Address(), "Appchains")
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess())
 
-	rec, err := invokeBVMContract(suite.api, k2, constant.InterchainContractAddr.Address(), "CountAppchains")
+	rec, err := invokeBVMContract(suite.api, k2, constant.AppchainMgrContractAddr.Address(), "CountAppchains")
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess())
 	num, err := strconv.Atoi(string(rec.Ret))
@@ -101,7 +101,7 @@ func (suite *RegisterAppchain) TestFetchAppchains() {
 	result := gjson.Parse(string(ret.Ret))
 	suite.Require().GreaterOrEqual(num, len(result.Array()))
 
-	ret, err = invokeBVMContract(suite.api, k2, constant.InterchainContractAddr.Address(), "CountApprovedAppchains")
+	ret, err = invokeBVMContract(suite.api, k2, constant.AppchainMgrContractAddr.Address(), "CountApprovedAppchains")
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess())
 	num, err = strconv.Atoi(string(ret.Ret))

@@ -35,7 +35,7 @@ func (suite *Interchain) TestHandleIBTP() {
 	pub2, err := k2.PublicKey().Bytes()
 	suite.Require().Nil(err)
 
-	ret, err := invokeBVMContract(suite.api, k1, constant.InterchainContractAddr.Address(), "Register",
+	ret, err := invokeBVMContract(suite.api, k1, constant.AppchainMgrContractAddr.Address(), "Register",
 		pb.String(""),
 		pb.Int32(0),
 		pb.String("hyperchain"),
@@ -47,7 +47,7 @@ func (suite *Interchain) TestHandleIBTP() {
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 
-	ret, err = invokeBVMContract(suite.api, k2, constant.InterchainContractAddr.Address(), "Register",
+	ret, err = invokeBVMContract(suite.api, k2, constant.AppchainMgrContractAddr.Address(), "Register",
 		pb.String(""),
 		pb.Int32(0),
 		pb.String("fabric"),
@@ -97,7 +97,7 @@ func (suite *Interchain) TestGetIBTPByID() {
 	confByte, err := ioutil.ReadFile("./test_data/validator")
 	suite.Require().Nil(err)
 
-	ret, err := invokeBVMContract(suite.api, k1, constant.InterchainContractAddr.Address(), "Register",
+	ret, err := invokeBVMContract(suite.api, k1, constant.AppchainMgrContractAddr.Address(), "Register",
 		pb.String(string(confByte)),
 		pb.Int32(0),
 		pb.String("hyperchain"),
@@ -109,7 +109,7 @@ func (suite *Interchain) TestGetIBTPByID() {
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 
-	ret, err = invokeBVMContract(suite.api, k2, constant.InterchainContractAddr.Address(), "Register",
+	ret, err = invokeBVMContract(suite.api, k2, constant.AppchainMgrContractAddr.Address(), "Register",
 		pb.String(""),
 		pb.Int32(0),
 		pb.String("fabric"),
@@ -161,7 +161,7 @@ func (suite *Interchain) TestAudit() {
 	k, err := ecdsa.GenerateKey(ecdsa.Secp256r1)
 	suite.Require().Nil(err)
 
-	ret, err := invokeBVMContract(suite.api, k, constant.InterchainContractAddr.Address(), "Audit",
+	ret, err := invokeBVMContract(suite.api, k, constant.AppchainMgrContractAddr.Address(), "Audit",
 		pb.String("0x123"),
 		pb.Int32(1),
 		pb.String("通过"),

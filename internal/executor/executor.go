@@ -4,13 +4,14 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/meshplus/bitxhub/internal/executor/contracts"
+
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/meshplus/bitxhub-core/validator"
 	"github.com/meshplus/bitxhub-kit/cache"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/constant"
-	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/pkg/vm/boltvm"
@@ -120,9 +121,9 @@ func registerBoltContracts() map[string]boltvm.Contract {
 	boltContracts := []*boltvm.BoltContract{
 		{
 			Enabled:  true,
-			Name:     "appchain manager contract",
+			Name:     "interchain manager contract",
 			Address:  constant.InterchainContractAddr.String(),
-			Contract: &contracts.Interchain{},
+			Contract: &contracts.InterchainManager{},
 		},
 		{
 			Enabled:  true,
@@ -141,6 +142,12 @@ func registerBoltContracts() map[string]boltvm.Contract {
 			Name:     "role manager service",
 			Address:  constant.RoleContractAddr.String(),
 			Contract: &contracts.Role{},
+		},
+		{
+			Enabled:  true,
+			Name:     "appchain manager service",
+			Address:  constant.AppchainMgrContractAddr.String(),
+			Contract: &contracts.AppchainManager{},
 		},
 	}
 

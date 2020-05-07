@@ -30,7 +30,7 @@ func (suite *Role) SetupSuite() {
 func (suite *Role) TestGetRole() {
 	pubKey, err := suite.pubKey.Bytes()
 	suite.Assert().Nil(err)
-	_, err = invokeBVMContract(suite.api, suite.privKey, constant.InterchainContractAddr.Address(), "Register",
+	_, err = invokeBVMContract(suite.api, suite.privKey, constant.AppchainMgrContractAddr.Address(), "Register",
 		pb.String(""),
 		pb.Int32(0),
 		pb.String("hyperchain"),
