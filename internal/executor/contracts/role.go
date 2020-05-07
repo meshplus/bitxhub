@@ -5,7 +5,6 @@ import (
 	"strconv"
 
 	"github.com/meshplus/bitxhub/internal/constant"
-
 	"github.com/meshplus/bitxhub/pkg/vm/boltvm"
 )
 
@@ -27,7 +26,7 @@ func (r *Role) GetRole() *boltvm.Response {
 		}
 	}
 
-	res := r.CrossInvoke(constant.InterchainContractAddr.String(), "Appchain")
+	res := r.CrossInvoke(constant.AppchainMgrContractAddr.String(), "Appchain")
 	if !res.Ok {
 		return boltvm.Success([]byte("none"))
 	}

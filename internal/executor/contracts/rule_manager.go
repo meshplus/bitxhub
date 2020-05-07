@@ -3,7 +3,9 @@ package contracts
 import (
 	"fmt"
 
+	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/validator"
+
 	"github.com/meshplus/bitxhub/pkg/vm/boltvm"
 )
 
@@ -62,7 +64,7 @@ func (r *RuleManager) Audit(id string, isApproved int32, desc string) *boltvm.Re
 
 	record := &ruleRecord{
 		Rule:       rl,
-		IsApproved: isApproved == approved,
+		IsApproved: isApproved == appchainMgr.APPROVED,
 		Desc:       desc,
 	}
 

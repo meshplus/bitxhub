@@ -15,14 +15,12 @@ require (
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/mock v1.4.3
 	github.com/grpc-ecosystem/grpc-gateway v1.13.0
-	github.com/hashicorp/go-version v1.2.0 // indirect
 	github.com/hokaccha/go-prettyjson v0.0.0-20190818114111-108c894c2c0e
 	github.com/libp2p/go-libp2p-core v0.3.0
 	github.com/magiconair/properties v1.8.1
-	github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20200429064226-95effbd4b140
+	github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20200507061023-08d568ad983d
 	github.com/meshplus/bitxhub-kit v1.0.1-0.20200429033154-8736253c8460
 	github.com/meshplus/bitxhub-model v1.0.0-rc4.0.20200427024612-57b479c1d610
-	github.com/miekg/pkcs11 v1.0.3 // indirect
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-multiaddr v0.2.0
 	github.com/pkg/errors v0.9.1

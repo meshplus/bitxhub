@@ -3,52 +3,29 @@ package contracts
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 
-	"github.com/meshplus/bitxhub/internal/constant"
-
+	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
+
+	"github.com/meshplus/bitxhub/internal/constant"
 	"github.com/meshplus/bitxhub/pkg/vm/boltvm"
-	"github.com/sirupsen/logrus"
 )
 
-const (
-	prefix = "appchain-"
-
-	registered = 0
-	approved   = 1
-)
-
-type Interchain struct {
+type InterchainManager struct {
 	boltvm.Stub
 }
 
-type appchain struct {
-	ID            string `json:"id"`
-	Name          string `json:"name"`
-	Validators    string `json:"validators"`
-	ConsensusType int32  `json:"consensus_type"`
-	// 0 => registered, 1 => approved, -1 => rejected
-	Status               int32             `json:"status"`
-	ChainType            string            `json:"chain_type"`
-	Desc                 string            `json:"desc"`
-	Version              string            `json:"version"`
-	PublicKey            string            `json:"public_key"`
+type Interchain struct {
+	ID                   string            `json:"id"`
 	InterchainCounter    map[string]uint64 `json:"interchain_counter,omitempty"`
 	ReceiptCounter       map[string]uint64 `json:"receipt_counter,omitempty"`
 	SourceReceiptCounter map[string]uint64 `json:"source_receipt_counter,omitempty"`
 }
 
-type auditRecord struct {
-	Appchain   *appchain `json:"appchain"`
-	IsApproved bool      `json:"is_approved"`
-	Desc       string    `json:"desc"`
-}
-
-func (chain *appchain) UnmarshalJSON(data []byte) error {
-	type alias appchain
+func (i *Interchain) UnmarshalJSON(data []byte) error {
+	type alias Interchain
 	t := &alias{}
 	if err := json.Unmarshal(data, t); err != nil {
 		return err
@@ -66,38 +43,19 @@ func (chain *appchain) UnmarshalJSON(data []byte) error {
 		t.SourceReceiptCounter = make(map[string]uint64)
 	}
 
-	*chain = appchain(*t)
+	*i = Interchain(*t)
 	return nil
 }
 
-// Register appchain manager registers appchain info caller is the appchain
-// manager address return appchain id and error
-func (x *Interchain) Register(validators string, consensusType int32, chainType, name, desc, version, pubkey string) *boltvm.Response {
-	chain := &appchain{
-		ID:            x.Caller(),
-		Name:          name,
-		Validators:    validators,
-		ConsensusType: consensusType,
-		ChainType:     chainType,
-		Desc:          desc,
-		Version:       version,
-		PublicKey:     pubkey,
-	}
-
+func (x *InterchainManager) Register() *boltvm.Response {
+	interchain := &Interchain{ID: x.Caller()}
 	ok := x.Has(x.appchainKey(x.Caller()))
 	if ok {
-		x.Stub.Logger().WithFields(logrus.Fields{
-			"id": x.Caller(),
-		}).Debug("Appchain has registered")
-		x.GetObject(x.appchainKey(x.Caller()), chain)
+		x.GetObject(x.appchainKey(x.Caller()), interchain)
 	} else {
-		// logger.Info(x.Caller())
-		x.SetObject(x.appchainKey(x.Caller()), chain)
-		x.Logger().WithFields(logrus.Fields{
-			"id": x.Caller(),
-		}).Info("Appchain register successfully")
+		x.SetObject(x.appchainKey(x.Caller()), interchain)
 	}
-	body, err := json.Marshal(chain)
+	body, err := json.Marshal(interchain)
 	if err != nil {
 		return boltvm.Error(err.Error())
 	}
@@ -105,167 +63,12 @@ func (x *Interchain) Register(validators string, consensusType int32, chainType,
 	return boltvm.Success(body)
 }
 
-func (x *Interchain) UpdateAppchain(validators string, consensusType int32, chainType, name, desc, version, pubkey string) *boltvm.Response {
-	ok := x.Has(x.appchainKey(x.Caller()))
-	if !ok {
-		return boltvm.Error("register appchain firstly")
-	}
-
-	chain := &appchain{}
-	x.GetObject(x.appchainKey(x.Caller()), chain)
-
-	if chain.Status == registered {
-		return boltvm.Error("this appchain is being audited")
-	}
-
-	chain = &appchain{
-		ID:            x.Caller(),
-		Name:          name,
-		Validators:    validators,
-		ConsensusType: consensusType,
-		ChainType:     chainType,
-		Desc:          desc,
-		Version:       version,
-		PublicKey:     pubkey,
-	}
-
-	x.SetObject(x.appchainKey(x.Caller()), chain)
-
+func (x *InterchainManager) DeleteInterchain(id string) *boltvm.Response {
+	x.Delete(x.appchainKey(id))
 	return boltvm.Success(nil)
 }
 
-// Audit bitxhub manager audit appchain register info
-// caller is the bitxhub manager address
-// proposer is the appchain manager address
-func (x *Interchain) Audit(proposer string, isApproved int32, desc string) *boltvm.Response {
-	ret := x.CrossInvoke(constant.RoleContractAddr.String(), "IsAdmin", pb.String(x.Caller()))
-	is, err := strconv.ParseBool(string(ret.Result))
-	if err != nil {
-		return boltvm.Error(fmt.Errorf("judge caller type: %w", err).Error())
-	}
-
-	if !is {
-		return boltvm.Error("caller is not an admin account")
-	}
-
-	chain := &appchain{}
-	ok := x.GetObject(x.appchainKey(proposer), chain)
-	if !ok {
-		return boltvm.Error(fmt.Errorf("this appchain does not exist").Error())
-	}
-
-	chain.Status = isApproved
-
-	record := &auditRecord{
-		Appchain:   chain,
-		IsApproved: isApproved == approved,
-		Desc:       desc,
-	}
-
-	var records []*auditRecord
-	x.GetObject(x.auditRecordKey(proposer), &records)
-	records = append(records, record)
-
-	x.SetObject(x.auditRecordKey(proposer), records)
-	x.SetObject(x.appchainKey(proposer), chain)
-
-	return boltvm.Success([]byte(fmt.Sprintf("audit %s successfully", proposer)))
-}
-
-func (x *Interchain) FetchAuditRecords(id string) *boltvm.Response {
-	var records []*auditRecord
-	x.GetObject(x.auditRecordKey(id), &records)
-
-	body, err := json.Marshal(records)
-	if err != nil {
-		return boltvm.Error(err.Error())
-	}
-
-	return boltvm.Success(body)
-}
-
-// CountApprovedAppchains counts all approved appchains
-func (x *Interchain) CountApprovedAppchains() *boltvm.Response {
-	ok, value := x.Query(prefix)
-	if !ok {
-		return boltvm.Success([]byte("0"))
-	}
-
-	count := 0
-	for _, v := range value {
-		a := &appchain{}
-		if err := json.Unmarshal(v, a); err != nil {
-			return boltvm.Error(fmt.Sprintf("unmarshal json error: %v", err))
-		}
-		if a.Status == approved {
-			count++
-		}
-	}
-
-	return boltvm.Success([]byte(strconv.Itoa(count)))
-}
-
-// CountAppchains counts all appchains including approved, rejected or registered
-func (x *Interchain) CountAppchains() *boltvm.Response {
-	ok, value := x.Query(prefix)
-	if !ok {
-		return boltvm.Success([]byte("0"))
-	}
-
-	return boltvm.Success([]byte(strconv.Itoa(len(value))))
-}
-
-// Appchains returns all appchains
-func (x *Interchain) Appchains() *boltvm.Response {
-	ok, value := x.Query(prefix)
-	if !ok {
-		return boltvm.Success(nil)
-	}
-
-	ret := make([]*appchain, 0)
-	for _, data := range value {
-		chain := &appchain{}
-		if err := json.Unmarshal(data, chain); err != nil {
-			return boltvm.Error(err.Error())
-		}
-		ret = append(ret, chain)
-	}
-
-	data, err := json.Marshal(ret)
-	if err != nil {
-		return boltvm.Error(err.Error())
-	}
-
-	return boltvm.Success(data)
-}
-
-func (x *Interchain) DeleteAppchain(cid string) *boltvm.Response {
-	ret := x.CrossInvoke(constant.RoleContractAddr.String(), "IsAdmin", pb.String(x.Caller()))
-	is, err := strconv.ParseBool(string(ret.Result))
-	if err != nil {
-		return boltvm.Error(fmt.Errorf("judge caller type: %w", err).Error())
-	}
-
-	if !is {
-		return boltvm.Error("caller is not an admin account")
-	}
-
-	x.Delete(prefix + cid)
-	x.Logger().Infof("delete appchain:%s", cid)
-
-	return boltvm.Success(nil)
-}
-
-func (x *Interchain) Appchain() *boltvm.Response {
-	ok, data := x.Get(x.appchainKey(x.Caller()))
-	if !ok {
-		return boltvm.Error(fmt.Errorf("this appchain does not exist").Error())
-	}
-
-	return boltvm.Success(data)
-}
-
-func (x *Interchain) HandleIBTP(data []byte) *boltvm.Response {
+func (x *InterchainManager) HandleIBTP(data []byte) *boltvm.Response {
 	ok := x.Has(x.appchainKey(x.Caller()))
 	if !ok {
 		return boltvm.Error("this appchain does not exist")
@@ -279,17 +82,22 @@ func (x *Interchain) HandleIBTP(data []byte) *boltvm.Response {
 	if ibtp.To == "" {
 		return boltvm.Error("empty destination chain id")
 	}
-
 	ok = x.Has(x.appchainKey(ibtp.To))
 	if !ok {
 		x.Logger().WithField("chain_id", ibtp.To).Warn("target appchain does not exist")
 	}
 
-	app := &appchain{}
-	x.GetObject(x.appchainKey(ibtp.From), &app)
+	interchain := &Interchain{}
+	x.GetObject(x.appchainKey(ibtp.From), &interchain)
 
+	app := &appchainMgr.Appchain{}
+	res := x.CrossInvoke(constant.AppchainMgrContractAddr.String(), "GetAppchain", pb.String(ibtp.From))
+	err := json.Unmarshal(res.Result, app)
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
 	// get validation rule contract address
-	res := x.CrossInvoke(constant.RuleManagerContractAddr.String(), "GetRuleAddress", pb.String(ibtp.From), pb.String(app.ChainType))
+	res = x.CrossInvoke(constant.RuleManagerContractAddr.String(), "GetRuleAddress", pb.String(ibtp.From), pb.String(app.ChainType))
 	if !res.Ok {
 		return boltvm.Error("this appchain don't register rule")
 	}
@@ -310,13 +118,13 @@ func (x *Interchain) HandleIBTP(data []byte) *boltvm.Response {
 			return boltvm.Error("ibtp from != caller")
 		}
 
-		idx := app.InterchainCounter[ibtp.To]
+		idx := interchain.InterchainCounter[ibtp.To]
 		if idx+1 != ibtp.Index {
 			return boltvm.Error(fmt.Sprintf("wrong index, required %d, but %d", idx+1, ibtp.Index))
 		}
 
-		app.InterchainCounter[ibtp.To]++
-		x.SetObject(x.appchainKey(ibtp.From), app)
+		interchain.InterchainCounter[ibtp.To]++
+		x.SetObject(x.appchainKey(ibtp.From), interchain)
 		x.SetObject(x.indexMapKey(ibtp.ID()), x.GetTxHash())
 		m := make(map[string]uint64)
 		m[ibtp.To] = x.GetTxIndex()
@@ -326,22 +134,22 @@ func (x *Interchain) HandleIBTP(data []byte) *boltvm.Response {
 			return boltvm.Error("ibtp from != caller")
 		}
 
-		idx := app.ReceiptCounter[ibtp.To]
+		idx := interchain.ReceiptCounter[ibtp.To]
 		if idx+1 != ibtp.Index {
-			if app.SourceReceiptCounter[ibtp.To]+1 != ibtp.Index {
+			if interchain.SourceReceiptCounter[ibtp.To]+1 != ibtp.Index {
 				return boltvm.Error(fmt.Sprintf("wrong receipt index, required %d, but %d", idx+1, ibtp.Index))
 			}
 		}
 
-		app.ReceiptCounter[ibtp.To] = ibtp.Index
-		x.SetObject(x.appchainKey(ibtp.From), app)
+		interchain.ReceiptCounter[ibtp.To] = ibtp.Index
+		x.SetObject(x.appchainKey(ibtp.From), interchain)
 		m := make(map[string]uint64)
 		m[ibtp.From] = x.GetTxIndex()
 
-		ac := &appchain{}
-		x.GetObject(x.appchainKey(ibtp.To), &ac)
-		ac.SourceReceiptCounter[ibtp.From] = ibtp.Index
-		x.SetObject(x.appchainKey(ibtp.To), ac)
+		ic := &Interchain{}
+		x.GetObject(x.appchainKey(ibtp.To), &ic)
+		ic.SourceReceiptCounter[ibtp.From] = ibtp.Index
+		x.SetObject(x.appchainKey(ibtp.To), ic)
 
 		x.PostInterchainEvent(m)
 	}
@@ -349,7 +157,7 @@ func (x *Interchain) HandleIBTP(data []byte) *boltvm.Response {
 	return boltvm.Success(nil)
 }
 
-func (x *Interchain) GetIBTPByID(id string) *boltvm.Response {
+func (x *InterchainManager) GetIBTPByID(id string) *boltvm.Response {
 	arr := strings.Split(id, "-")
 	if len(arr) != 3 {
 		return boltvm.Error("wrong ibtp id")
@@ -370,26 +178,10 @@ func (x *Interchain) GetIBTPByID(id string) *boltvm.Response {
 	return boltvm.Success(hash.Bytes())
 }
 
-// GetPubKeyByChainID can get aim chain's public key using aim chain ID
-func (x *Interchain) GetPubKeyByChainID(id string) *boltvm.Response {
-	ok := x.Has(x.appchainKey(id))
-	if !ok {
-		return boltvm.Error("chain is not existed")
-	} else {
-		chain := &appchain{}
-		x.GetObject(x.appchainKey(id), chain)
-		return boltvm.Success([]byte(chain.PublicKey))
-	}
+func (x *InterchainManager) appchainKey(id string) string {
+	return appchainMgr.PREFIX + id
 }
 
-func (x *Interchain) appchainKey(id string) string {
-	return prefix + id
-}
-
-func (x *Interchain) auditRecordKey(id string) string {
-	return "audit-record-" + id
-}
-
-func (x *Interchain) indexMapKey(id string) string {
+func (x *InterchainManager) indexMapKey(id string) string {
 	return fmt.Sprintf("index-tx-%s", id)
 }

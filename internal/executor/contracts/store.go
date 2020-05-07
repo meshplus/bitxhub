@@ -16,7 +16,7 @@ func (s *Store) Set(key string, value string) *boltvm.Response {
 
 func (s *Store) Get(key string) *boltvm.Response {
 	var v string
-	ok := s.Stub.GetObject(key, &v)
+	ok := s.GetObject(key, &v)
 	if !ok {
 		return boltvm.Error("there is not exist key")
 	}
