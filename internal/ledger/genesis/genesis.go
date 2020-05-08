@@ -3,10 +3,9 @@ package genesis
 import (
 	"encoding/json"
 
-	"github.com/meshplus/bitxhub-model/pb"
-
 	"github.com/meshplus/bitxhub-kit/bytesutil"
 	"github.com/meshplus/bitxhub-kit/types"
+	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/repo"
 )
@@ -16,9 +15,9 @@ var (
 )
 
 // Initialize initialize block
-func Initialize(config *repo.Config, ledger ledger.Ledger) error {
+func Initialize(config *repo.Config, lg ledger.Ledger) error {
 	for _, addr := range config.Addresses {
-		ledger.SetBalance(types.String2Address(addr), 100000000)
+		lg.SetBalance(types.String2Address(addr), 100000000)
 	}
 
 	body, err := json.Marshal(config.Genesis.Addresses)
@@ -26,21 +25,24 @@ func Initialize(config *repo.Config, ledger ledger.Ledger) error {
 		return err
 	}
 
-	ledger.SetState(roleAddr, []byte("admin-roles"), body)
+	lg.SetState(roleAddr, []byte("admin-roles"), body)
 
-	hash, err := ledger.Commit(1)
-	if err != nil {
-		return err
-	}
-
+	accounts, journal := lg.FlushDirtyDataAndComputeJournal()
 	block := &pb.Block{
 		BlockHeader: &pb.BlockHeader{
 			Number:    1,
-			StateRoot: hash,
+			StateRoot: journal.ChangedHash,
 		},
 	}
-
 	block.BlockHash = block.Hash()
+	blockData := &ledger.BlockData{
+		Block:    block,
+		Receipts: nil,
+		Accounts: accounts,
+		Journal:  journal,
+	}
 
-	return ledger.PersistExecutionResult(block, nil)
+	lg.PersistBlockData(blockData)
+
+	return nil
 }

@@ -268,3 +268,68 @@ func (l *ChainLedger) persistChainMeta(batcher storage.Batch, meta *pb.ChainMeta
 
 	return nil
 }
+
+func (l *ChainLedger) removeChainDataOnBlock(batch storage.Batch, height uint64) (uint64, error) {
+	block, err := l.GetBlock(height)
+	if err != nil {
+		return 0, err
+	}
+
+	batch.Delete(compositeKey(blockKey, height))
+	batch.Delete(compositeKey(blockHashKey, block.BlockHash.Hex()))
+
+	for _, tx := range block.Transactions {
+		batch.Delete(compositeKey(transactionKey, tx.TransactionHash.Hex()))
+		batch.Delete(compositeKey(transactionMetaKey, tx.TransactionHash.Hex()))
+		batch.Delete(compositeKey(receiptKey, tx.TransactionHash.Hex()))
+	}
+
+	return getInterchainTxCount(block.BlockHeader)
+}
+
+func (l *ChainLedger) rollbackBlockChain(height uint64) error {
+	meta := l.GetChainMeta()
+
+	if meta.Height < height {
+		return ErrorRollbackToHigherNumber
+	}
+
+	if meta.Height == height {
+		return nil
+	}
+
+	batch := l.blockchainStore.NewBatch()
+
+	for i := meta.Height; i > height; i-- {
+		count, err := l.removeChainDataOnBlock(batch, i)
+		if err != nil {
+			return err
+		}
+		meta.InterchainTxCount -= count
+	}
+
+	if height == 0 {
+		batch.Delete([]byte(chainMetaKey))
+		meta = &pb.ChainMeta{}
+	} else {
+		block, err := l.GetBlock(height)
+		if err != nil {
+			return err
+		}
+		meta = &pb.ChainMeta{
+			Height:            block.BlockHeader.Number,
+			BlockHash:         block.BlockHash,
+			InterchainTxCount: meta.InterchainTxCount,
+		}
+
+		if err := l.persistChainMeta(batch, meta); err != nil {
+			return err
+		}
+	}
+
+	batch.Commit()
+
+	l.UpdateChainMeta(meta)
+
+	return nil
+}

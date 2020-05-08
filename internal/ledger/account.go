@@ -3,7 +3,6 @@ package ledger
 import (
 	"bytes"
 	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"sort"
 
@@ -21,6 +20,7 @@ type Account struct {
 	dirtyCode      []byte
 	dirtyStateHash types.Hash
 	ldb            storage.Storage
+	cache          *AccountCache
 }
 
 type innerAccount struct {
@@ -29,30 +29,32 @@ type innerAccount struct {
 	CodeHash []byte `json:"code_hash"`
 }
 
-func newAccount(ldb storage.Storage, addr types.Address) *Account {
+func newAccount(ldb storage.Storage, cache *AccountCache, addr types.Address) *Account {
 	return &Account{
 		Addr:        addr,
 		originState: make(map[string][]byte),
 		dirtyState:  make(map[string][]byte),
 		ldb:         ldb,
+		cache:       cache,
 	}
 }
 
 // GetState Get state from local cache, if not found, then get it from DB
 func (o *Account) GetState(key []byte) (bool, []byte) {
-	hexKey := hex.EncodeToString(key)
-
-	if val, exist := o.dirtyState[hexKey]; exist {
+	if val, exist := o.dirtyState[string(key)]; exist {
 		return val != nil, val
 	}
 
-	if val, exist := o.originState[hexKey]; exist {
+	if val, exist := o.originState[string(key)]; exist {
 		return val != nil, val
 	}
 
-	val := o.ldb.Get(append(o.Addr.Bytes(), key...))
+	val, ok := o.cache.getState(o.Addr.Hex(), string(key))
+	if !ok {
+		val = o.ldb.Get(composeStateKey(o.Addr, key))
+	}
 
-	o.originState[hexKey] = val
+	o.originState[string(key)] = val
 
 	return val != nil, val
 }
@@ -60,7 +62,7 @@ func (o *Account) GetState(key []byte) (bool, []byte) {
 // SetState Set account state
 func (o *Account) SetState(key []byte, value []byte) {
 	o.GetState(key)
-	o.dirtyState[hex.EncodeToString(key)] = value
+	o.dirtyState[string(key)] = value
 }
 
 // SetCodeAndHash Set the contract code and hash
@@ -87,7 +89,11 @@ func (o *Account) Code() []byte {
 		return nil
 	}
 
-	code := o.ldb.Get(compositeKey(codeKey, o.Addr.Hex()))
+	code, ok := o.cache.getCode(o.Addr.Hex())
+	if !ok {
+		code = o.ldb.Get(compositeKey(codeKey, o.Addr.Hex()))
+	}
+
 	o.originCode = code
 	o.dirtyCode = code
 
@@ -145,27 +151,39 @@ func (o *Account) SetBalance(balance uint64) {
 // Query Query the value using key
 func (o *Account) Query(prefix string) (bool, [][]byte) {
 	var ret [][]byte
+	stored := make(map[string][]byte)
+
 	begin, end := bytesPrefix(append(o.Addr.Bytes(), prefix...))
 	it := o.ldb.Iterator(begin, end)
 
 	for it.Next() {
+		key := make([]byte, len(it.Key()))
 		val := make([]byte, len(it.Value()))
+		copy(key, it.Key())
 		copy(val, it.Value())
+		stored[string(key)] = val
+	}
+
+	cached := o.cache.query(o.Addr.Hex(), prefix)
+	for key, val := range cached {
+		stored[key] = val
+	}
+
+	for _, val := range stored {
 		ret = append(ret, val)
 	}
+
+	sort.Slice(ret, func(i, j int) bool {
+		return bytes.Compare(ret[i], ret[j]) < 0
+	})
 
 	return len(ret) != 0, ret
 }
 
-func (o *Account) getJournalIfModified(ldbBatch storage.Batch) *journal {
+func (o *Account) getJournalIfModified() *journal {
 	entry := &journal{Address: o.Addr}
 
 	if innerAccountChanged(o.originAccount, o.dirtyAccount) {
-		data, err := o.dirtyAccount.Marshal()
-		if err != nil {
-			panic(err)
-		}
-		ldbBatch.Put(compositeKey(accountKey, o.Addr.Hex()), data)
 		entry.AccountChanged = true
 		entry.PrevAccount = o.originAccount
 	}
@@ -175,16 +193,11 @@ func (o *Account) getJournalIfModified(ldbBatch storage.Batch) *journal {
 	}
 
 	if !bytes.Equal(o.originCode, o.dirtyCode) {
-		if o.dirtyCode != nil {
-			ldbBatch.Put(compositeKey(codeKey, o.Addr.Hex()), o.dirtyCode)
-		} else {
-			ldbBatch.Delete(compositeKey(codeKey, o.Addr.Hex()))
-		}
 		entry.CodeChanged = true
 		entry.PrevCode = o.originCode
 	}
 
-	prevStates := o.getStateJournalAndComputeHash(ldbBatch)
+	prevStates := o.getStateJournalAndComputeHash()
 	if len(prevStates) != 0 {
 		entry.PrevStates = prevStates
 	}
@@ -196,7 +209,7 @@ func (o *Account) getJournalIfModified(ldbBatch storage.Batch) *journal {
 	return nil
 }
 
-func (o *Account) getStateJournalAndComputeHash(ldbBatch storage.Batch) map[string][]byte {
+func (o *Account) getStateJournalAndComputeHash() map[string][]byte {
 	prevStates := make(map[string][]byte)
 	var dirtyStateKeys []string
 	var dirtyStateData []byte
@@ -204,18 +217,8 @@ func (o *Account) getStateJournalAndComputeHash(ldbBatch storage.Batch) map[stri
 	for key, val := range o.dirtyState {
 		origVal := o.originState[key]
 		if !bytes.Equal(origVal, val) {
-			dirtyStateKeys = append(dirtyStateKeys, key)
-			byteKey, err := hex.DecodeString(key)
-			if err != nil {
-				panic(err)
-			}
-
-			if val != nil {
-				ldbBatch.Put(append(o.Addr.Bytes(), byteKey...), val)
-			} else {
-				ldbBatch.Delete(append(o.Addr.Bytes(), byteKey...))
-			}
 			prevStates[key] = origVal
+			dirtyStateKeys = append(dirtyStateKeys, key)
 		}
 	}
 

@@ -55,7 +55,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	evs = append(evs, ev)
 	mockLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
 	mockLedger.EXPECT().Events(gomock.Any()).Return(evs).AnyTimes()
-	mockLedger.EXPECT().Commit(gomock.Any()).Return(types.String2Hash(from), nil).AnyTimes()
+	mockLedger.EXPECT().Commit(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	mockLedger.EXPECT().Clear().AnyTimes()
 	mockLedger.EXPECT().GetState(gomock.Any(), gomock.Any()).Return(true, []byte("10")).AnyTimes()
 	mockLedger.EXPECT().SetState(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
@@ -66,6 +66,8 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	mockLedger.EXPECT().SetCode(gomock.Any(), gomock.Any()).AnyTimes()
 	mockLedger.EXPECT().GetCode(gomock.Any()).Return([]byte("10")).AnyTimes()
 	mockLedger.EXPECT().PersistExecutionResult(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	mockLedger.EXPECT().FlushDirtyDataAndComputeJournal().Return(make(map[string]*ledger.Account), &ledger.BlockJournal{}).AnyTimes()
+	mockLedger.EXPECT().PersistBlockData(gomock.Any()).AnyTimes()
 	logger := log.NewWithModule("executor")
 
 	exec, err := New(mockLedger, logger)
@@ -178,7 +180,8 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 	_, from := loadAdminKey(t)
 
 	ledger.SetBalance(from, 100000000)
-	_, err = ledger.Commit(1)
+	account, journal := ledger.FlushDirtyDataAndComputeJournal()
+	err = ledger.Commit(1, account, journal)
 	require.Nil(t, err)
 	err = ledger.PersistExecutionResult(mockBlock(1, nil), nil)
 	require.Nil(t, err)

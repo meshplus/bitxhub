@@ -11,6 +11,7 @@ import (
 	"github.com/meshplus/bitxhub-kit/merkle/merkletree"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/pkg/vm"
 	"github.com/meshplus/bitxhub/pkg/vm/boltvm"
@@ -53,8 +54,9 @@ func (exec *BlockExecutor) processExecuteEvent(block *pb.Block) {
 
 	validTxs, invalidReceipts := exec.verifySign(block)
 	receipts := exec.applyTransactions(validTxs)
+	receipts = append(receipts, invalidReceipts...)
 
-	root, receiptRoot, err := exec.calcMerkleRoots(block.Transactions, append(receipts, invalidReceipts...))
+	root, receiptRoot, err := exec.calcMerkleRoots(block.Transactions, receipts)
 	if err != nil {
 		panic(err)
 	}
@@ -68,11 +70,9 @@ func (exec *BlockExecutor) processExecuteEvent(block *pb.Block) {
 	}
 
 	block.BlockHeader.InterchainIndex = idx
-	hash, err := exec.ledger.Commit(block.BlockHeader.Number)
-	if err != nil {
-		panic(err)
-	}
-	block.BlockHeader.StateRoot = hash
+	accounts, journal := exec.ledger.FlushDirtyDataAndComputeJournal()
+
+	block.BlockHeader.StateRoot = journal.ChangedHash
 	block.BlockHash = block.Hash()
 
 	exec.logger.WithFields(logrus.Fields{
@@ -81,23 +81,18 @@ func (exec *BlockExecutor) processExecuteEvent(block *pb.Block) {
 		"state_root":   block.BlockHeader.StateRoot.ShortString(),
 	}).Debug("block meta")
 
-	// persist execution result
-	receipts = append(receipts, invalidReceipts...)
-	if err := exec.ledger.PersistExecutionResult(block, receipts); err != nil {
-		panic(err)
-	}
-
-	exec.logger.WithFields(logrus.Fields{
-		"height": block.BlockHeader.Number,
-		"hash":   block.BlockHash.ShortString(),
-		"count":  len(block.Transactions),
-	}).Info("Persist block")
-
 	exec.postBlockEvent(block)
 	exec.clear()
 
 	exec.currentHeight = block.BlockHeader.Number
 	exec.currentBlockHash = block.BlockHash
+
+	exec.persistC <- &ledger.BlockData{
+		Block:    block,
+		Receipts: receipts,
+		Accounts: accounts,
+		Journal:  journal,
+	}
 }
 
 func (exec *BlockExecutor) verifySign(block *pb.Block) ([]*pb.Transaction, []*pb.Receipt) {
