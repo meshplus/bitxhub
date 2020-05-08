@@ -3,6 +3,7 @@ package peermgr
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/Rican7/retry"
@@ -30,7 +31,7 @@ type Swarm struct {
 	p2p            network.Network
 	logger         logrus.FieldLogger
 	peers          map[uint64]*peer.AddrInfo
-	connectedPeers map[uint64]*peer.AddrInfo
+	connectedPeers sync.Map
 	ledger         ledger.Ledger
 
 	orderMessageFeed event.Feed
@@ -59,7 +60,7 @@ func New(repo *repo.Repo, logger logrus.FieldLogger, ledger ledger.Ledger) (*Swa
 		logger:         logger,
 		ledger:         ledger,
 		peers:          repo.NetworkConfig.OtherNodes,
-		connectedPeers: make(map[uint64]*peer.AddrInfo, len(repo.NetworkConfig.OtherNodes)),
+		connectedPeers: sync.Map{},
 		ctx:            ctx,
 		cancel:         cancel,
 	}, nil
@@ -98,7 +99,7 @@ func (swarm *Swarm) Start() error {
 					"node": id,
 				}).Info("Connect successfully")
 
-				swarm.connectedPeers[id] = addr
+				swarm.connectedPeers.Store(id, addr)
 
 				return nil
 			},
