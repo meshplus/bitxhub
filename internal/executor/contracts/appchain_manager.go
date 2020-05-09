@@ -24,13 +24,13 @@ func (am *AppchainManager) Register(validators string, consensusType int32, chai
 	if !res.Ok {
 		return res
 	}
-	return responseWrapper(am.AppchainManager.Register(validators, consensusType, chainType, name, desc, version, pubkey))
+	return responseWrapper(am.AppchainManager.Register(am.Caller(), validators, consensusType, chainType, name, desc, version, pubkey))
 }
 
 // UpdateAppchain updates approved appchain
 func (am *AppchainManager) UpdateAppchain(validators string, consensusType int32, chainType, name, desc, version, pubkey string) *boltvm.Response {
 	am.AppchainManager.Persister = am.Stub
-	return responseWrapper(am.AppchainManager.UpdateAppchain(validators, consensusType, chainType, name, desc, version, pubkey))
+	return responseWrapper(am.AppchainManager.UpdateAppchain(am.Caller(), validators, consensusType, chainType, name, desc, version, pubkey))
 }
 
 //FetchAuditRecords fetches audit records by appchain id
@@ -63,6 +63,7 @@ func (am *AppchainManager) Appchain() *boltvm.Response {
 	return responseWrapper(am.AppchainManager.Appchain())
 }
 
+// GetAppchain returns appchain info by appchain id
 func (am *AppchainManager) GetAppchain(id string) *boltvm.Response {
 	am.AppchainManager.Persister = am.Stub
 	return responseWrapper(am.AppchainManager.GetAppchain(id))
