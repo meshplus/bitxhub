@@ -68,6 +68,15 @@ func (x *InterchainManager) DeleteInterchain(id string) *boltvm.Response {
 	return boltvm.Success(nil)
 }
 
+// Interchain returns information of the interchain count, Receipt count and SourceReceipt count
+func (x *InterchainManager) Interchain() *boltvm.Response {
+	ok, data := x.Get(x.appchainKey(x.Caller()))
+	if !ok {
+		return boltvm.Error(fmt.Errorf("this appchain does not exist").Error())
+	}
+	return boltvm.Success(data)
+}
+
 func (x *InterchainManager) HandleIBTP(data []byte) *boltvm.Response {
 	ok := x.Has(x.appchainKey(x.Caller()))
 	if !ok {
