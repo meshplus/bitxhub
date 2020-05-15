@@ -1,0 +1,16 @@
+[package]
+name = "contract_demo"
+version = "0.1.0"
+authors = ["xialiwei <xialiwei@hyperchain.cn>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+path = "src/lib.rs"
+crate-type = ["cdylib"]
+
+[dependencies]
+protobuf = "2.10.1"
+sha2 = "0.8.1"
+x509-parser = "0.6.0"
+pem = "0.7.0"
