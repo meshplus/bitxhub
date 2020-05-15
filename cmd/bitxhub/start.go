@@ -19,6 +19,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/coreapi"
 	"github.com/meshplus/bitxhub/internal/loggers"
 	"github.com/meshplus/bitxhub/internal/repo"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/urfave/cli"
 )
 
@@ -60,6 +61,10 @@ func start(ctx *cli.Context) error {
 
 	if repo.Config.PProf.Enable {
 		runPProf(repo.Config.Port.PProf)
+	}
+
+	if repo.Config.Monitor.Enable {
+		runMonitor(repo.Config.Port.Monitor)
 	}
 
 	printVersion()
@@ -135,6 +140,24 @@ func runPProf(port int64) {
 		addr := fmt.Sprintf(":%d", port)
 		logger.WithField("port", port).Info("Start pprof")
 		err := http.ListenAndServe(addr, nil)
+		if err != nil {
+			fmt.Println(err)
+		}
+	}()
+}
+
+// runMonitor runs prometheus handler
+func runMonitor(port int64) {
+	go func() {
+		mux := http.NewServeMux()
+		mux.Handle("/metrics", promhttp.Handler())
+		addr := fmt.Sprintf(":%d", port)
+		server := http.Server{
+			Addr:    addr,
+			Handler: mux,
+		}
+		logger.WithField("port", port).Info("Start monitor")
+		err := server.ListenAndServe()
 		if err != nil {
 			fmt.Println(err)
 		}

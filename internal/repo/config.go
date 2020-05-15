@@ -32,6 +32,7 @@ type Config struct {
 	Solo     bool   `json:"solo"`
 	Port     `json:"port"`
 	PProf    `json:"pprof"`
+	Monitor  `json:"monitor"`
 	Gateway  `json:"gateway"`
 	Log      `json:"log"`
 	Cert     `json:"cert"`
@@ -44,6 +45,11 @@ type Port struct {
 	Grpc    int64 `toml:"grpc" json:"grpc"`
 	Gateway int64 `toml:"gateway" json:"gateway"`
 	PProf   int64 `toml:"pprof" json:"pprof"`
+	Monitor int64 `toml:"monitor" json:"monitor"`
+}
+
+type Monitor struct {
+	Enable bool
 }
 
 type PProf struct {
@@ -105,6 +111,7 @@ func DefaultConfig() (*Config, error) {
 			Grpc:    60011,
 			Gateway: 9091,
 			PProf:   53121,
+			Monitor: 40011,
 		},
 		PProf:   PProf{Enable: false},
 		Gateway: Gateway{AllowedOrigins: []string{"*"}},
