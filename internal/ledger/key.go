@@ -9,6 +9,7 @@ import (
 const (
 	blockKey           = "block-"
 	blockHashKey       = "block-hash-"
+	l2TxRootsKey       = "l2-tx-roots-"
 	receiptKey         = "receipt-"
 	transactionKey     = "tx-"
 	transactionMetaKey = "tx-meta-"

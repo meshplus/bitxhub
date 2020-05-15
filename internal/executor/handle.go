@@ -1,14 +1,15 @@
 package executor
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"sort"
 	"sync"
 	"time"
 
+	"github.com/cbergoon/merkletree"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
-	"github.com/meshplus/bitxhub-kit/merkle/merkletree"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/ledger"
@@ -57,12 +58,20 @@ func (exec *BlockExecutor) processExecuteEvent(block *pb.Block) {
 	receipts := exec.applyTransactions(validTxs)
 	receipts = append(receipts, invalidReceipts...)
 
-	root, receiptRoot, err := exec.calcMerkleRoots(block.Transactions, receipts)
+	calcMerkleStart := time.Now()
+	l1Root, l2Roots, err := exec.buildTxMerkleTree(block.Transactions)
 	if err != nil {
 		panic(err)
 	}
 
-	block.BlockHeader.TxRoot = root
+	receiptRoot, err := exec.calcReceiptMerkleRoot(receipts)
+	if err != nil {
+		panic(err)
+	}
+
+	calcMerkleDuration.Observe(float64(time.Since(calcMerkleStart)) / float64(time.Second))
+
+	block.BlockHeader.TxRoot = l1Root
 	block.BlockHeader.ReceiptRoot = receiptRoot
 	block.BlockHeader.ParentHash = exec.currentBlockHash
 	idx, err := json.Marshal(exec.interchainCounter)
@@ -90,11 +99,78 @@ func (exec *BlockExecutor) processExecuteEvent(block *pb.Block) {
 	exec.currentBlockHash = block.BlockHash
 
 	exec.persistC <- &ledger.BlockData{
-		Block:    block,
-		Receipts: receipts,
-		Accounts: accounts,
-		Journal:  journal,
+		Block:     block,
+		Receipts:  receipts,
+		Accounts:  accounts,
+		Journal:   journal,
+		L2TxRoots: l2Roots,
 	}
+}
+
+func (exec *BlockExecutor) buildTxMerkleTree(txs []*pb.Transaction) (types.Hash, []types.Hash, error) {
+	var (
+		groupCnt = len(exec.interchainCounter) + 1
+		wg       = sync.WaitGroup{}
+		lock     = sync.Mutex{}
+		l2Roots  = make([]types.Hash, 0, groupCnt)
+		errorC   = make(chan error, groupCnt)
+	)
+
+	wg.Add(groupCnt - 1)
+	for addr, txIndexes := range exec.interchainCounter {
+		go func(addr string, txIndexes []uint64) {
+			defer wg.Done()
+
+			txHashes := make([]merkletree.Content, 0, len(txIndexes))
+			for _, txIndex := range txIndexes {
+				txHashes = append(txHashes, pb.TransactionHash(txs[txIndex].TransactionHash.Bytes()))
+			}
+
+			hash, err := calcMerkleRoot(txHashes)
+			if err != nil {
+				errorC <- err
+				return
+			}
+
+			lock.Lock()
+			defer lock.Unlock()
+			l2Roots = append(l2Roots, hash)
+		}(addr, txIndexes)
+	}
+
+	txHashes := make([]merkletree.Content, 0, len(exec.normalTxs))
+	for _, txHash := range exec.normalTxs {
+		txHashes = append(txHashes, pb.TransactionHash(txHash.Bytes()))
+	}
+
+	hash, err := calcMerkleRoot(txHashes)
+	if err != nil {
+		errorC <- err
+	}
+
+	lock.Lock()
+	l2Roots = append(l2Roots, hash)
+	lock.Unlock()
+
+	wg.Wait()
+	if len(errorC) != 0 {
+		return types.Hash{}, nil, <-errorC
+	}
+
+	sort.Slice(l2Roots, func(i, j int) bool {
+		return bytes.Compare(l2Roots[i].Bytes(), l2Roots[j].Bytes()) < 0
+	})
+
+	contents := make([]merkletree.Content, 0, groupCnt)
+	for _, l2Root := range l2Roots {
+		contents = append(contents, pb.TransactionHash(l2Root.Bytes()))
+	}
+	root, err := calcMerkleRoot(contents)
+	if err != nil {
+		return types.Hash{}, nil, err
+	}
+
+	return root, l2Roots, nil
 }
 
 func (exec *BlockExecutor) verifySign(block *pb.Block) ([]*pb.Transaction, []*pb.Receipt) {
@@ -161,6 +237,8 @@ func (exec *BlockExecutor) applyTransactions(txs []*pb.Transaction) []*pb.Receip
 			TxHash:  tx.TransactionHash,
 		}
 
+		normalTx := true
+
 		ret, err := exec.applyTransaction(i, tx)
 		if err != nil {
 			receipt.Status = pb.Receipt_FAILED
@@ -184,8 +262,13 @@ func (exec *BlockExecutor) applyTransactions(txs []*pb.Transaction) []*pb.Receip
 					for k, v := range m {
 						exec.interchainCounter[k] = append(exec.interchainCounter[k], v)
 					}
+					normalTx = false
 				}
 			}
+		}
+
+		if normalTx {
+			exec.normalTxs = append(exec.normalTxs, tx.TransactionHash)
 		}
 
 		receipts = append(receipts, receipt)
@@ -247,42 +330,6 @@ func (exec *BlockExecutor) applyTransaction(i int, tx *pb.Transaction) ([]byte, 
 	}
 }
 
-func (exec *BlockExecutor) calcMerkleRoot(txs []*pb.Transaction) (types.Hash, error) {
-	if len(txs) == 0 {
-		return types.Hash{}, nil
-	}
-
-	hashes := make([]interface{}, 0, len(txs))
-	for _, tx := range txs {
-		hashes = append(hashes, pb.TransactionHash(tx.TransactionHash.Bytes()))
-	}
-	tree := merkletree.NewMerkleTree()
-	err := tree.InitMerkleTree(hashes)
-	if err != nil {
-		return types.Hash{}, err
-	}
-
-	return types.Bytes2Hash(tree.GetMerkleRoot()), nil
-}
-
-func (exec *BlockExecutor) calcReceiptMerkleRoot(receipts []*pb.Receipt) (types.Hash, error) {
-	if len(receipts) == 0 {
-		return types.Hash{}, nil
-	}
-
-	hashes := make([]interface{}, 0, len(receipts))
-	for _, receipt := range receipts {
-		hashes = append(hashes, pb.TransactionHash(receipt.Hash().Bytes()))
-	}
-	tree := merkletree.NewMerkleTree()
-	err := tree.InitMerkleTree(hashes)
-	if err != nil {
-		return types.Hash{}, err
-	}
-
-	return types.Bytes2Hash(tree.GetMerkleRoot()), nil
-}
-
 func (exec *BlockExecutor) clear() {
 	exec.interchainCounter = make(map[string][]uint64)
 	exec.ledger.Clear()
@@ -306,19 +353,32 @@ func (exec *BlockExecutor) transfer(from, to types.Address, value uint64) error 
 	return nil
 }
 
-func (exec *BlockExecutor) calcMerkleRoots(txs []*pb.Transaction, receipts []*pb.Receipt) (types.Hash, types.Hash, error) {
+func (exec *BlockExecutor) calcReceiptMerkleRoot(receipts []*pb.Receipt) (types.Hash, error) {
 	current := time.Now()
-	root, err := exec.calcMerkleRoot(txs)
+
+	receiptHashes := make([]merkletree.Content, 0, len(receipts))
+	for _, receipt := range receipts {
+		receiptHashes = append(receiptHashes, pb.TransactionHash(receipt.Hash().Bytes()))
+	}
+	receiptRoot, err := calcMerkleRoot(receiptHashes)
 	if err != nil {
-		return types.Hash{}, types.Hash{}, err
+		return types.Hash{}, err
 	}
 
-	receiptRoot, err := exec.calcReceiptMerkleRoot(receipts)
-	if err != nil {
-		return types.Hash{}, types.Hash{}, err
+	exec.logger.WithField("time", time.Since(current)).Debug("calculate receipt merkle roots")
+
+	return receiptRoot, nil
+}
+
+func calcMerkleRoot(contents []merkletree.Content) (types.Hash, error) {
+	if len(contents) == 0 {
+		return types.Hash{}, nil
 	}
 
-	exec.logger.WithField("time", time.Since(current)).Debug("calculate merkle roots")
-	calcMerkleDuration.Observe(float64(time.Since(current)) / float64(time.Second))
-	return root, receiptRoot, nil
+	tree, err := merkletree.NewTree(contents)
+	if err != nil {
+		return types.Hash{}, err
+	}
+
+	return types.Bytes2Hash(tree.MerkleRoot()), nil
 }
