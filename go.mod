@@ -24,6 +24,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-multiaddr v0.2.0
 	github.com/pkg/errors v0.9.1
+	github.com/prometheus/client_golang v1.5.0
 	github.com/rogpeppe/go-internal v1.5.2 // indirect
 	github.com/rs/cors v1.7.0
 	github.com/sirupsen/logrus v1.5.0

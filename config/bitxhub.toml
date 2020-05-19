@@ -6,8 +6,12 @@ solo = false
   grpc = 60011
   gateway = 9091
   pprof = 53121
+  monitor = 40011
 
 [pprof]
+  enable = true
+
+[monitor]
   enable = true
 
 [gateway]
