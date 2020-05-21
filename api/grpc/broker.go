@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
 	"github.com/meshplus/bitxhub/internal/loggers"
@@ -25,12 +26,15 @@ type ChainBrokerService struct {
 
 func NewChainBrokerService(api api.CoreAPI, config *repo.Config) (*ChainBrokerService, error) {
 	ctx, cancel := context.WithCancel(context.Background())
-
+	server := grpc.NewServer(
+		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
+		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
+		grpc.MaxConcurrentStreams(1000))
 	return &ChainBrokerService{
 		logger: loggers.Logger(loggers.API),
 		config: config,
 		api:    api,
-		server: grpc.NewServer(grpc.MaxConcurrentStreams(1000)),
+		server: server,
 		ctx:    ctx,
 		cancel: cancel,
 	}, nil

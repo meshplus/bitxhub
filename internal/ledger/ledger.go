@@ -3,6 +3,7 @@ package ledger
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -92,6 +93,7 @@ func New(repoRoot string, blockchainStore storage.Storage, logger logrus.FieldLo
 
 // PersistBlockData persists block data
 func (l *ChainLedger) PersistBlockData(blockData *BlockData) {
+	current := time.Now()
 	block := blockData.Block
 	receipts := blockData.Receipts
 	accounts := blockData.Accounts
@@ -110,6 +112,8 @@ func (l *ChainLedger) PersistBlockData(blockData *BlockData) {
 		"hash":   block.BlockHash.ShortString(),
 		"count":  len(block.Transactions),
 	}).Info("Persist block")
+	PersistBlockDuration.Observe(float64(time.Since(current)) / float64(time.Second))
+
 }
 
 // Rollback rollback ledger to history version

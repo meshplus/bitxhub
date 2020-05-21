@@ -47,6 +47,7 @@ func (exec *BlockExecutor) fetchPendingExecuteEvent(num uint64) *pb.Block {
 }
 
 func (exec *BlockExecutor) processExecuteEvent(block *pb.Block) {
+	current := time.Now()
 	exec.logger.WithFields(logrus.Fields{
 		"height": block.BlockHeader.Number,
 		"count":  len(block.Transactions),
@@ -80,7 +81,8 @@ func (exec *BlockExecutor) processExecuteEvent(block *pb.Block) {
 		"receipt_root": block.BlockHeader.ReceiptRoot.ShortString(),
 		"state_root":   block.BlockHeader.StateRoot.ShortString(),
 	}).Debug("block meta")
-
+	calcBlockSize.Observe(float64(block.Size()))
+	executeBlockDuration.Observe(float64(time.Since(current)) / float64(time.Second))
 	exec.postBlockEvent(block)
 	exec.clear()
 
@@ -189,6 +191,7 @@ func (exec *BlockExecutor) applyTransactions(txs []*pb.Transaction) []*pb.Receip
 		receipts = append(receipts, receipt)
 	}
 
+	applyTxsDuration.Observe(float64(time.Since(current)) / float64(time.Second))
 	exec.logger.WithFields(logrus.Fields{
 		"time":  time.Since(current),
 		"count": len(txs),
@@ -316,6 +319,6 @@ func (exec *BlockExecutor) calcMerkleRoots(txs []*pb.Transaction, receipts []*pb
 	}
 
 	exec.logger.WithField("time", time.Since(current)).Debug("calculate merkle roots")
-
+	calcMerkleDuration.Observe(float64(time.Since(current)) / float64(time.Second))
 	return root, receiptRoot, nil
 }
