@@ -35,7 +35,7 @@ func AddrToPeerInfo(multiAddr string) (*peer.AddrInfo, error) {
 
 func loadNetworkConfig(repoRoot string) (*NetworkConfig, error) {
 	networkConfig := &NetworkConfig{}
-	if err := ReadConfig(filepath.Join(repoRoot, "network.toml"), networkConfig); err != nil {
+	if err := ReadConfig(filepath.Join(repoRoot, "network.toml"), "toml", networkConfig); err != nil {
 		return nil, err
 	}
 

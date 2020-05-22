@@ -5,10 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/meshplus/bitxhub/pkg/order/etcdraft"
-
-	"github.com/meshplus/bitxhub/pkg/order"
-
 	"github.com/common-nighthawk/go-figure"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub/internal/executor"
@@ -19,6 +15,8 @@ import (
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/bitxhub/internal/router"
 	"github.com/meshplus/bitxhub/internal/storages"
+	"github.com/meshplus/bitxhub/pkg/order"
+	"github.com/meshplus/bitxhub/pkg/order/etcdraft"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
 	"github.com/sirupsen/logrus"
 )
@@ -51,7 +49,7 @@ func NewBitXHub(rep *repo.Repo) (*BitXHub, error) {
 
 	if !rep.Config.Solo {
 		for i, node := range rep.NetworkConfig.Nodes {
-			m[node.ID] = types.String2Address(rep.Config.Genesis.Addresses[i])
+			m[node.ID] = types.String2Address(rep.Genesis.Addresses[i])
 		}
 	}
 
@@ -107,7 +105,7 @@ func generateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 	}
 
 	if ldg.GetChainMeta().Height == 0 {
-		if err := genesis.Initialize(rep.Config, ldg); err != nil {
+		if err := genesis.Initialize(rep.Genesis, ldg); err != nil {
 			return nil, err
 		}
 		logger.Info("Initialize genesis")
@@ -147,7 +145,7 @@ func NewTesterBitXHub(rep *repo.Repo) (*BitXHub, error) {
 
 	if !rep.Config.Solo {
 		for i, node := range rep.NetworkConfig.Nodes {
-			m[node.ID] = types.String2Address(rep.Config.Genesis.Addresses[i])
+			m[node.ID] = types.String2Address(rep.Genesis.Addresses[i])
 		}
 	}
 

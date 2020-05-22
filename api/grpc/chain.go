@@ -18,7 +18,7 @@ func GetChainStatus(cbs *ChainBrokerService) (*pb.Response, error) {
 }
 
 func GetValidators(cbs *ChainBrokerService) (*pb.Response, error) {
-	addresses := cbs.config.Genesis.Addresses
+	addresses := cbs.genesis.Addresses
 	v, err := prettyjson.Marshal(addresses)
 	if err != nil {
 		return nil, err

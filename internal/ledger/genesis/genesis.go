@@ -15,12 +15,12 @@ var (
 )
 
 // Initialize initialize block
-func Initialize(config *repo.Config, lg ledger.Ledger) error {
-	for _, addr := range config.Addresses {
+func Initialize(genesis *repo.Genesis, lg ledger.Ledger) error {
+	for _, addr := range genesis.Addresses {
 		lg.SetBalance(types.String2Address(addr), 100000000)
 	}
 
-	body, err := json.Marshal(config.Genesis.Addresses)
+	body, err := json.Marshal(genesis.Addresses)
 	if err != nil {
 		return err
 	}

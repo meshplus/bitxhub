@@ -15,28 +15,30 @@ import (
 )
 
 type ChainBrokerService struct {
-	config *repo.Config
-	api    api.CoreAPI
-	server *grpc.Server
-	logger logrus.FieldLogger
+	config  *repo.Config
+	genesis *repo.Genesis
+	api     api.CoreAPI
+	server  *grpc.Server
+	logger  logrus.FieldLogger
 
 	ctx    context.Context
 	cancel context.CancelFunc
 }
 
-func NewChainBrokerService(api api.CoreAPI, config *repo.Config) (*ChainBrokerService, error) {
+func NewChainBrokerService(api api.CoreAPI, config *repo.Config, genesis *repo.Genesis) (*ChainBrokerService, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	server := grpc.NewServer(
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
 		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
 		grpc.MaxConcurrentStreams(1000))
 	return &ChainBrokerService{
-		logger: loggers.Logger(loggers.API),
-		config: config,
-		api:    api,
-		server: server,
-		ctx:    ctx,
-		cancel: cancel,
+		logger:  loggers.Logger(loggers.API),
+		config:  config,
+		genesis: genesis,
+		api:     api,
+		server:  server,
+		ctx:     ctx,
+		cancel:  cancel,
 	}, nil
 }
 
