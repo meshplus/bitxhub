@@ -9,7 +9,7 @@ import (
 func TestReadConfig(t *testing.T) {
 	path := "../../config/network.toml"
 	cfg := &NetworkConfig{}
-	err := ReadConfig(path, cfg)
+	err := ReadConfig(path, "toml", cfg)
 	assert.Nil(t, err)
 
 	assert.True(t, 1 == cfg.ID)

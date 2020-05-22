@@ -2,6 +2,7 @@ package repo
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -36,7 +37,6 @@ type Config struct {
 	Gateway  `json:"gateway"`
 	Log      `json:"log"`
 	Cert     `json:"cert"`
-	Genesis  `json:"genesis"`
 	Txpool   `json:"txpool"`
 	Order    `json:"order"`
 }
@@ -164,10 +164,10 @@ func UnmarshalConfig(repoRoot string) (*Config, error) {
 	return config, nil
 }
 
-func ReadConfig(path string, config interface{}) error {
+func ReadConfig(path, configType string, config interface{}) error {
 	v := viper.New()
 	v.SetConfigFile(path)
-	v.SetConfigType("toml")
+	v.SetConfigType(configType)
 	if err := v.ReadInConfig(); err != nil {
 		return err
 	}
@@ -194,4 +194,17 @@ func PathRootWithDefault(path string) (string, error) {
 	}
 
 	return path, nil
+}
+
+func loadGenesis(repoRoot string) (*Genesis, error) {
+	genesis := &Genesis{}
+	if err := ReadConfig(filepath.Join(repoRoot, "genesis.json"), "json", genesis); err != nil {
+		return nil, err
+	}
+
+	if len(genesis.Addresses) == 0 {
+		return nil, fmt.Errorf("wrong genesis address number")
+	}
+
+	return genesis, nil
 }
