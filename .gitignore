@@ -8,7 +8,9 @@ bin/*
 datastore
 node_modules
 dump
-build
+pkg/order/build
+internal/plugins/build
+scripts/build
 build_solo
 build*.tar.gz
 cover.out
