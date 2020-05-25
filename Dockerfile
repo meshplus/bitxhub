@@ -15,16 +15,22 @@ COPY . .
 
 RUN go get -u github.com/gobuffalo/packr/packr
 
+# Build bitxhub node
 RUN make install
+
+# Build raft plugin
+RUN cd internal/plugins && make raft
+
 
 # Final image
 FROM frolvlad/alpine-glibc
-
+RUN mkdir -p /root/.bitxhub/plugins
 WORKDIR /
 
 # Copy over binaries from the builder
 COPY --from=builder /go/bin/bitxhub /usr/local/bin
 COPY --from=builder /go/bin/packr /usr/local/bin
+COPY --from=builder /go/src/github.com/meshplus/bitxhub/internal/plugins/build/raft.so /root/.bitxhub/plugins/
 
 COPY ./build/libwasmer.so /lib
 
@@ -34,8 +40,6 @@ EXPOSE 60011
 EXPOSE 9091
 EXPOSE 53121
 EXPOSE 40011
-
-RUN ["bitxhub", "init"]
 
 ENTRYPOINT ["bitxhub", "start"]
 
