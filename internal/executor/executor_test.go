@@ -9,22 +9,20 @@ import (
 	"testing"
 	"time"
 
-	"github.com/meshplus/bitxhub-kit/crypto"
-
-	"github.com/meshplus/bitxhub-kit/key"
-	"github.com/meshplus/bitxhub/internal/ledger"
-	"github.com/meshplus/bitxhub/pkg/storage/leveldb"
-	"github.com/stretchr/testify/require"
-
 	"github.com/gogo/protobuf/proto"
 	"github.com/golang/mock/gomock"
+	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym/ecdsa"
+	"github.com/meshplus/bitxhub-kit/key"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/ledger/mock_ledger"
 	"github.com/meshplus/bitxhub/internal/model/events"
+	"github.com/meshplus/bitxhub/pkg/storage/leveldb"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -111,16 +109,6 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 
 	assert.Nil(t, exec.Start())
 
-	// send blocks to executor
-	block2 := mockBlock(uint64(2), txs)
-	block4 := mockBlock(uint64(4), txs)
-	block3 := mockBlock(uint64(3), txs)
-	block6 := mockBlock(uint64(6), txs)
-	exec.ExecuteBlock(block2)
-	exec.ExecuteBlock(block4)
-	exec.ExecuteBlock(block6)
-	exec.ExecuteBlock(block3)
-
 	done := make(chan bool)
 	ch := make(chan events.NewBlockEvent)
 	blockSub := exec.SubscribeBlockEvent(ch)
@@ -130,6 +118,16 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(3)
 	go listenBlock(&wg, done, ch)
+
+	// send blocks to executor
+	block2 := mockBlock(uint64(2), txs)
+	block4 := mockBlock(uint64(4), txs)
+	block3 := mockBlock(uint64(3), txs)
+	block6 := mockBlock(uint64(6), txs)
+	exec.ExecuteBlock(block2)
+	exec.ExecuteBlock(block4)
+	exec.ExecuteBlock(block6)
+	exec.ExecuteBlock(block3)
 
 	wg.Wait()
 	done <- true
@@ -191,16 +189,16 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 	err = executor.Start()
 	require.Nil(t, err)
 
+	ch := make(chan events.NewBlockEvent)
+	sub := executor.SubscribeBlockEvent(ch)
+	defer sub.Unsubscribe()
+
 	var txs []*pb.Transaction
 	txs = append(txs, mockTransferTx(t))
 	txs = append(txs, mockTransferTx(t))
 	txs = append(txs, mockTransferTx(t))
 	executor.ExecuteBlock(mockBlock(2, txs))
 	require.Nil(t, err)
-
-	ch := make(chan events.NewBlockEvent)
-	sub := executor.SubscribeBlockEvent(ch)
-	defer sub.Unsubscribe()
 
 	block := <-ch
 	require.EqualValues(t, 2, block.Block.Height())
