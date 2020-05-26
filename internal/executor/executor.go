@@ -34,6 +34,7 @@ type BlockExecutor struct {
 	persistC          chan *ledger.BlockData
 	pendingBlockQ     *cache.Cache
 	interchainCounter map[string][]uint64
+	normalTxs         []types.Hash
 	validationEngine  validator.Engine
 	currentHeight     uint64
 	currentBlockHash  types.Hash

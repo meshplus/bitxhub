@@ -101,7 +101,7 @@ type BlockchainLedger interface {
 	GetReceipt(hash types.Hash) (*pb.Receipt, error)
 
 	// PersistExecutionResult persist the execution result
-	PersistExecutionResult(block *pb.Block, receipts []*pb.Receipt) error
+	PersistExecutionResult(block *pb.Block, receipts []*pb.Receipt, l2Roots []types.Hash) error
 
 	// GetChainMeta get chain meta data
 	GetChainMeta() *pb.ChainMeta

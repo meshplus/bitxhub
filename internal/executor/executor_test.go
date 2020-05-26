@@ -63,7 +63,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	mockLedger.EXPECT().GetNonce(gomock.Any()).Return(uint64(0)).AnyTimes()
 	mockLedger.EXPECT().SetCode(gomock.Any(), gomock.Any()).AnyTimes()
 	mockLedger.EXPECT().GetCode(gomock.Any()).Return([]byte("10")).AnyTimes()
-	mockLedger.EXPECT().PersistExecutionResult(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	mockLedger.EXPECT().PersistExecutionResult(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	mockLedger.EXPECT().FlushDirtyDataAndComputeJournal().Return(make(map[string]*ledger.Account), &ledger.BlockJournal{}).AnyTimes()
 	mockLedger.EXPECT().PersistBlockData(gomock.Any()).AnyTimes()
 	logger := log.NewWithModule("executor")
@@ -181,7 +181,7 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 	account, journal := ledger.FlushDirtyDataAndComputeJournal()
 	err = ledger.Commit(1, account, journal)
 	require.Nil(t, err)
-	err = ledger.PersistExecutionResult(mockBlock(1, nil), nil)
+	err = ledger.PersistExecutionResult(mockBlock(1, nil), nil, nil)
 	require.Nil(t, err)
 
 	executor, err := New(ledger, log.NewWithModule("executor"))
@@ -269,12 +269,21 @@ func mockTxData(t *testing.T, dataType pb.TransactionData_Type, vmType pb.Transa
 }
 
 func mockIBTP(t *testing.T, index uint64, typ pb.IBTP_Type) *pb.IBTP {
-	ibtppd, err := json.Marshal(pb.Payload{
+	content := pb.Content{
 		SrcContractId: from,
 		DstContractId: from,
 		Func:          "set",
+	}
+
+	bytes, err := content.Marshal()
+	assert.Nil(t, err)
+
+	ibtppd, err := json.Marshal(pb.Payload{
+		Encrypted: false,
+		Content:   bytes,
 	})
 	assert.Nil(t, err)
+
 	return &pb.IBTP{
 		From:      from,
 		To:        from,

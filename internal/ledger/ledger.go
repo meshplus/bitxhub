@@ -40,10 +40,11 @@ type ChainLedger struct {
 }
 
 type BlockData struct {
-	Block    *pb.Block
-	Receipts []*pb.Receipt
-	Accounts map[string]*Account
-	Journal  *BlockJournal
+	Block     *pb.Block
+	Receipts  []*pb.Receipt
+	Accounts  map[string]*Account
+	Journal   *BlockJournal
+	L2TxRoots []types.Hash
 }
 
 // New create a new ledger instance
@@ -98,12 +99,13 @@ func (l *ChainLedger) PersistBlockData(blockData *BlockData) {
 	receipts := blockData.Receipts
 	accounts := blockData.Accounts
 	journal := blockData.Journal
+	l2Roots := blockData.L2TxRoots
 
 	if err := l.Commit(block.BlockHeader.Number, accounts, journal); err != nil {
 		panic(err)
 	}
 
-	if err := l.PersistExecutionResult(block, receipts); err != nil {
+	if err := l.PersistExecutionResult(block, receipts, l2Roots); err != nil {
 		panic(err)
 	}
 
