@@ -18,27 +18,33 @@ RUN go get -u github.com/gobuffalo/packr/packr
 # Build bitxhub node
 RUN make install
 
-# Build raft plugin
-RUN cd internal/plugins && make raft
+# Build solo plugin
+RUN cd internal/plugins && make solo
 
 
 # Final image
 FROM frolvlad/alpine-glibc
-RUN mkdir -p /root/.bitxhub/plugins
+
 WORKDIR /
 
 # Copy over binaries from the builder
 COPY --from=builder /go/bin/bitxhub /usr/local/bin
 COPY --from=builder /go/bin/packr /usr/local/bin
-COPY --from=builder /go/src/github.com/meshplus/bitxhub/internal/plugins/build/raft.so /root/.bitxhub/plugins/
 
 COPY ./build/libwasmer.so /lib
 
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/lib
 
+# Init bitxhub config
+RUN bitxhub --repo=/root/.bitxhub init \
+    && sed -i "s/solo = false/solo = true/g" /root/.bitxhub/bitxhub.toml \
+    && sed -i "s/raft.so/solo.so/g" /root/.bitxhub/bitxhub.toml
+
+# Copy certs and plugin
+COPY --from=builder /go/src/github.com/meshplus/bitxhub/scripts/certs/node1/certs/* /root/.bitxhub/certs/
+COPY --from=builder /go/src/github.com/meshplus/bitxhub/internal/plugins/build/solo.so /root/.bitxhub/plugins/
 
 EXPOSE 60011 9091 53121 40011
 
 ENTRYPOINT ["bitxhub", "start"]
-
 
