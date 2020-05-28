@@ -9,7 +9,7 @@ raft:
 	@mkdir -p build
 	$(GO) build --buildmode=plugin -o build/raft.so order/etcdraft/*.go
 
-## make raft: build plugin (make plugin type= <solo>)
+## make solo: build plugin (make plugin type= <solo>)
 solo:
 	@mkdir -p build
 	$(GO) build --buildmode=plugin -o build/solo.so order/solo/*.go
