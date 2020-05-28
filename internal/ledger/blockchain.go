@@ -118,7 +118,7 @@ func (l *ChainLedger) GetReceipt(hash types.Hash) (*pb.Receipt, error) {
 }
 
 // PersistExecutionResult persist the execution result
-func (l *ChainLedger) PersistExecutionResult(block *pb.Block, receipts []*pb.Receipt) error {
+func (l *ChainLedger) PersistExecutionResult(block *pb.Block, receipts []*pb.Receipt, l2Roots []types.Hash) error {
 	current := time.Now()
 
 	if block == nil {
@@ -136,6 +136,10 @@ func (l *ChainLedger) PersistExecutionResult(block *pb.Block, receipts []*pb.Rec
 	}
 
 	if err := l.persistBlock(batcher, block); err != nil {
+		return err
+	}
+
+	if err := l.persistL2TxRoots(batcher, l2Roots, block.BlockHeader.Number); err != nil {
 		return err
 	}
 
@@ -254,6 +258,17 @@ func (l *ChainLedger) persistBlock(batcher storage.Batch, block *pb.Block) error
 
 	hash := block.BlockHash.Hex()
 	batcher.Put(compositeKey(blockHashKey, hash), []byte(fmt.Sprintf("%d", height)))
+
+	return nil
+}
+
+func (l *ChainLedger) persistL2TxRoots(batcher storage.Batch, l2Roots []types.Hash, height uint64) error {
+	roots, err := json.Marshal(l2Roots)
+	if err != nil {
+		return err
+	}
+
+	batcher.Put(compositeKey(l2TxRootsKey, height), roots)
 
 	return nil
 }
