@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/meshplus/bitxhub/master/docs/logo.png" />
+  <img src="https://bitxhub.hyperchain.cn/assets/images/logo.png" />
 </p>
 
 ![build](https://github.com/meshplus/bitxhub/workflows/build/badge.svg)
@@ -19,7 +19,7 @@ See [Quick start](https://github.com/meshplus/bitxhub/wiki/Quick-start) in the w
 ## Architecture
 
 <p>
-    <img src="https://github.com/meshplus/bitxhub/blob/master/docs/arch.png" />
+    <img src="https://bitxhub.hyperchain.cn/assets/images/arch.png" />
 </p>
 
 The diagram above shows the overall architecture and basic interchain processing workflow of BitXHub. BitXHub consists of relay-chain, Pier (interchain gateway) and app-chain, which is a service platform to handle the interaction among cross-layer heterogeneous chains.
@@ -42,7 +42,7 @@ Email: bitxhub@hyperchain.cn
 
 Wechat: If you‘re interested in BitXHub, please add the assistant to join our community group.
 
-<img src="https://github.com/meshplus/bitxhub/blob/master/docs/wechat.png" width="200" /><img src="https://github.com/meshplus/bitxhub/blob/master/docs/official.png" width="206" />
+<img src="https://bitxhub.hyperchain.cn/assets/images/wechat.png" width="200" /><img src="https://bitxhub.hyperchain.cn/assets/images/official.png" width="206" />
 
 ## License
 
