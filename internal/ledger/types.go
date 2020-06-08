@@ -100,8 +100,11 @@ type BlockchainLedger interface {
 	// GetReceipt get the transaction receipt
 	GetReceipt(hash types.Hash) (*pb.Receipt, error)
 
+	// GetInterchainMeta get interchain meta data
+	GetInterchainMeta(height uint64) (*pb.InterchainMeta, error)
+
 	// PersistExecutionResult persist the execution result
-	PersistExecutionResult(block *pb.Block, receipts []*pb.Receipt, l2Roots []types.Hash) error
+	PersistExecutionResult(block *pb.Block, receipts []*pb.Receipt, meta *pb.InterchainMeta) error
 
 	// GetChainMeta get chain meta data
 	GetChainMeta() *pb.ChainMeta

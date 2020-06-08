@@ -84,8 +84,7 @@ func (cbs *ChainBrokerService) handleInterchainTxSubscription(server pb.ChainBro
 	for {
 		select {
 		case ev := <-blockCh:
-			block := ev.Block
-			interStatus, err := cbs.interStatus(block)
+			interStatus, err := cbs.interStatus(ev.Block, ev.InterchainMeta)
 			if err != nil {
 				cbs.logger.Fatal(err)
 				return fmt.Errorf("wrap interchain tx status error")
@@ -149,18 +148,9 @@ type interchainEvent struct {
 	BlockHeight       uint64              `json:"block_height"`
 }
 
-func (cbs *ChainBrokerService) interStatus(block *pb.Block) (*interchainEvent, error) {
-	if block.BlockHeader.InterchainIndex == nil {
-		return nil, nil
-	}
-	interchainIndexM := make(map[string][]uint64)
-	err := json.Unmarshal(block.BlockHeader.InterchainIndex, &interchainIndexM)
-	if err != nil {
-		return nil, fmt.Errorf("unmarshal interchainIndex: %w", err)
-	}
-
+func (cbs *ChainBrokerService) interStatus(block *pb.Block, interchainMeta *pb.InterchainMeta) (*interchainEvent, error) {
 	// empty interchain tx
-	if len(interchainIndexM) == 0 {
+	if len(interchainMeta.Counter) == 0 {
 		return nil, nil
 	}
 
@@ -177,8 +167,8 @@ func (cbs *ChainBrokerService) interStatus(block *pb.Block) (*interchainEvent, e
 	}
 	txs := block.Transactions
 
-	for _, indices := range interchainIndexM {
-		for _, idx := range indices {
+	for _, indices := range interchainMeta.Counter {
+		for _, idx := range indices.Slice {
 			ibtp, err := txs[idx].GetIBTP()
 			if err != nil {
 				return nil, err

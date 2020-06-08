@@ -1,7 +1,6 @@
 package ledger
 
 import (
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
@@ -118,7 +117,7 @@ func (l *ChainLedger) GetReceipt(hash types.Hash) (*pb.Receipt, error) {
 }
 
 // PersistExecutionResult persist the execution result
-func (l *ChainLedger) PersistExecutionResult(block *pb.Block, receipts []*pb.Receipt, l2Roots []types.Hash) error {
+func (l *ChainLedger) PersistExecutionResult(block *pb.Block, receipts []*pb.Receipt, interchainMeta *pb.InterchainMeta) error {
 	current := time.Now()
 
 	if block == nil {
@@ -139,14 +138,14 @@ func (l *ChainLedger) PersistExecutionResult(block *pb.Block, receipts []*pb.Rec
 		return err
 	}
 
-	if err := l.persistL2TxRoots(batcher, l2Roots, block.BlockHeader.Number); err != nil {
+	if err := l.persistInterChainMeta(batcher, interchainMeta, block.BlockHeader.Number); err != nil {
 		return err
 	}
 
 	// update chain meta in cache
-	count, err := getInterchainTxCount(block.BlockHeader)
-	if err != nil {
-		return err
+	var count uint64
+	for _, v := range interchainMeta.Counter {
+		count += uint64(len(v.Slice))
 	}
 
 	meta := &pb.ChainMeta{
@@ -189,23 +188,18 @@ func (l *ChainLedger) GetChainMeta() *pb.ChainMeta {
 	}
 }
 
-func getInterchainTxCount(header *pb.BlockHeader) (uint64, error) {
-	if header.InterchainIndex == nil {
-		return 0, nil
+func (l *ChainLedger) GetInterchainMeta(height uint64) (*pb.InterchainMeta, error) {
+	data := l.blockchainStore.Get(compositeKey(interchainMetaKey, height))
+	if data == nil {
+		return nil, storage.ErrorNotFound
 	}
 
-	txCount := make(map[string][]uint64)
-	err := json.Unmarshal(header.InterchainIndex, &txCount)
-	if err != nil {
-		return 0, fmt.Errorf("get interchain tx count: %w", err)
+	meta := &pb.InterchainMeta{}
+	if err := meta.Unmarshal(data); err != nil {
+		return nil, err
 	}
 
-	var ret uint64
-	for _, v := range txCount {
-		ret += uint64(len(v))
-	}
-
-	return ret, nil
+	return meta, nil
 }
 
 func (l *ChainLedger) persistReceipts(batcher storage.Batch, receipts []*pb.Receipt) error {
@@ -262,13 +256,13 @@ func (l *ChainLedger) persistBlock(batcher storage.Batch, block *pb.Block) error
 	return nil
 }
 
-func (l *ChainLedger) persistL2TxRoots(batcher storage.Batch, l2Roots []types.Hash, height uint64) error {
-	roots, err := json.Marshal(l2Roots)
+func (l *ChainLedger) persistInterChainMeta(batcher storage.Batch, meta *pb.InterchainMeta, height uint64) error {
+	data, err := meta.Marshal()
 	if err != nil {
 		return err
 	}
 
-	batcher.Put(compositeKey(l2TxRootsKey, height), roots)
+	batcher.Put(compositeKey(interchainMetaKey, height), data)
 
 	return nil
 }
@@ -289,9 +283,14 @@ func (l *ChainLedger) removeChainDataOnBlock(batch storage.Batch, height uint64)
 	if err != nil {
 		return 0, err
 	}
+	interchainMeta, err := l.GetInterchainMeta(height)
+	if err != nil {
+		return 0, err
+	}
 
 	batch.Delete(compositeKey(blockKey, height))
 	batch.Delete(compositeKey(blockHashKey, block.BlockHash.Hex()))
+	batch.Delete(compositeKey(interchainMetaKey, height))
 
 	for _, tx := range block.Transactions {
 		batch.Delete(compositeKey(transactionKey, tx.TransactionHash.Hex()))
@@ -299,7 +298,7 @@ func (l *ChainLedger) removeChainDataOnBlock(batch storage.Batch, height uint64)
 		batch.Delete(compositeKey(receiptKey, tx.TransactionHash.Hex()))
 	}
 
-	return getInterchainTxCount(block.BlockHeader)
+	return getInterchainTxCount(interchainMeta), nil
 }
 
 func (l *ChainLedger) rollbackBlockChain(height uint64) error {
@@ -347,4 +346,13 @@ func (l *ChainLedger) rollbackBlockChain(height uint64) error {
 	l.UpdateChainMeta(meta)
 
 	return nil
+}
+
+func getInterchainTxCount(interchainMeta *pb.InterchainMeta) uint64 {
+	var ret uint64
+	for _, v := range interchainMeta.Counter {
+		ret += uint64(len(v.Slice))
+	}
+
+	return ret
 }

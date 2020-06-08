@@ -6,14 +6,14 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/meshplus/bitxhub/pkg/storage"
-
 	"github.com/meshplus/bitxhub-kit/bytesutil"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub/pkg/storage"
 	"github.com/meshplus/bitxhub/pkg/storage/leveldb"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLedger_Commit(t *testing.T) {
@@ -496,6 +496,48 @@ func TestChainLedger_AddAccountsToCache(t *testing.T) {
 	assert.False(t, ok)
 }
 
+func TestChainLedger_GetInterchainMeta(t *testing.T) {
+	repoRoot, err := ioutil.TempDir("", "ledger_GetInterchainMeta")
+	require.Nil(t, err)
+	blockStorage, err := leveldb.New(repoRoot)
+	require.Nil(t, err)
+	ledger, err := New(repoRoot, blockStorage, log.NewWithModule("executor"))
+	require.Nil(t, err)
+
+	// create an account
+	account := types.Bytes2Address(bytesutil.LeftPadBytes([]byte{100}, 20))
+	ledger.SetState(account, []byte("a"), []byte("b"))
+	accounts, journal := ledger.FlushDirtyDataAndComputeJournal()
+
+	meta, err := ledger.GetInterchainMeta(1)
+	require.Equal(t, storage.ErrorNotFound, err)
+	require.Nil(t, meta)
+
+	ledger.PersistBlockData(genBlockData(1, accounts, journal))
+	require.Equal(t, uint64(1), ledger.Version())
+
+	meta, err = ledger.GetInterchainMeta(1)
+	require.Nil(t, err)
+	require.Equal(t, 0, len(meta.Counter))
+
+	meta = &pb.InterchainMeta{
+		Counter: make(map[string]*pb.Uint64Slice),
+		L2Roots: make([]types.Hash, 0),
+	}
+	meta.Counter["a"] = &pb.Uint64Slice{}
+	meta.L2Roots = append(meta.L2Roots, [32]byte{})
+	batch := ledger.blockchainStore.NewBatch()
+	err = ledger.persistInterChainMeta(batch, meta, 2)
+	require.Nil(t, err)
+	batch.Commit()
+
+	meta2, err := ledger.GetInterchainMeta(2)
+	require.Nil(t, err)
+	require.Equal(t, len(meta.Counter), len(meta2.Counter))
+	require.Equal(t, meta.Counter["a"], meta2.Counter["a"])
+	require.Equal(t, len(meta.L2Roots), len(meta2.Counter))
+}
+
 func genBlockData(height uint64, accounts map[string]*Account, journal *BlockJournal) *BlockData {
 	return &BlockData{
 		Block: &pb.Block{
@@ -505,8 +547,9 @@ func genBlockData(height uint64, accounts map[string]*Account, journal *BlockJou
 			BlockHash:    sha256.Sum256([]byte{1}),
 			Transactions: []*pb.Transaction{{}},
 		},
-		Receipts: nil,
-		Accounts: accounts,
-		Journal:  journal,
+		Receipts:       nil,
+		Accounts:       accounts,
+		Journal:        journal,
+		InterchainMeta: &pb.InterchainMeta{},
 	}
 }

@@ -75,12 +75,7 @@ func (exec *BlockExecutor) processExecuteEvent(block *pb.Block) {
 	block.BlockHeader.TxRoot = l1Root
 	block.BlockHeader.ReceiptRoot = receiptRoot
 	block.BlockHeader.ParentHash = exec.currentBlockHash
-	idx, err := json.Marshal(exec.interchainCounter)
-	if err != nil {
-		panic(err)
-	}
 
-	block.BlockHeader.InterchainIndex = idx
 	accounts, journal := exec.ledger.FlushDirtyDataAndComputeJournal()
 
 	block.BlockHeader.StateRoot = journal.ChangedHash
@@ -93,18 +88,27 @@ func (exec *BlockExecutor) processExecuteEvent(block *pb.Block) {
 	}).Debug("block meta")
 	calcBlockSize.Observe(float64(block.Size()))
 	executeBlockDuration.Observe(float64(time.Since(current)) / float64(time.Second))
-	exec.postBlockEvent(block)
+
+	counter := make(map[string]*pb.Uint64Slice)
+	for k, v := range exec.interchainCounter {
+		counter[k] = &pb.Uint64Slice{Slice: v}
+	}
+	interchainMeta := &pb.InterchainMeta{
+		Counter: counter,
+		L2Roots: l2Roots,
+	}
+	exec.postBlockEvent(block, interchainMeta)
 	exec.clear()
 
 	exec.currentHeight = block.BlockHeader.Number
 	exec.currentBlockHash = block.BlockHash
 
 	exec.persistC <- &ledger.BlockData{
-		Block:     block,
-		Receipts:  receipts,
-		Accounts:  accounts,
-		Journal:   journal,
-		L2TxRoots: l2Roots,
+		Block:          block,
+		Receipts:       receipts,
+		Accounts:       accounts,
+		Journal:        journal,
+		InterchainMeta: interchainMeta,
 	}
 }
 
@@ -284,9 +288,8 @@ func (exec *BlockExecutor) applyTransactions(txs []*pb.Transaction) []*pb.Receip
 	return receipts
 }
 
-func (exec *BlockExecutor) postBlockEvent(block *pb.Block) {
-	go exec.blockFeed.Send(events.NewBlockEvent{Block: block})
-
+func (exec *BlockExecutor) postBlockEvent(block *pb.Block, interchainMeta *pb.InterchainMeta) {
+	go exec.blockFeed.Send(events.NewBlockEvent{Block: block, InterchainMeta: interchainMeta})
 }
 
 func (exec *BlockExecutor) handlePendingExecuteEvent() {

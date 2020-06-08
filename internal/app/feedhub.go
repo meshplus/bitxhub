@@ -39,7 +39,7 @@ func (bxh *BitXHub) listenEvent() {
 		select {
 		case ev := <-blockCh:
 			go bxh.Order.ReportState(ev.Block.BlockHeader.Number, ev.Block.BlockHash)
-			go bxh.Router.PutBlock(ev.Block)
+			go bxh.Router.PutBlockAndMeta(ev.Block, ev.InterchainMeta)
 		case ev := <-orderMsgCh:
 			go func() {
 				if err := bxh.Order.Step(context.Background(), ev.Data); err != nil {

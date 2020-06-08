@@ -181,7 +181,7 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 	account, journal := ledger.FlushDirtyDataAndComputeJournal()
 	err = ledger.Commit(1, account, journal)
 	require.Nil(t, err)
-	err = ledger.PersistExecutionResult(mockBlock(1, nil), nil, nil)
+	err = ledger.PersistExecutionResult(mockBlock(1, nil), nil, &pb.InterchainMeta{})
 	require.Nil(t, err)
 
 	executor, err := New(ledger, log.NewWithModule("executor"))
