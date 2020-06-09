@@ -117,9 +117,12 @@ func generateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 		return nil, fmt.Errorf("create BlockExecutor: %w", err)
 	}
 
-	peerMgr, err := peermgr.New(rep, loggers.Logger(loggers.P2P), ldg)
-	if err != nil {
-		return nil, fmt.Errorf("create peer manager: %w", err)
+	peerMgr := &peermgr.Swarm{}
+	if !rep.Config.Solo {
+		peerMgr, err = peermgr.New(rep, loggers.Logger(loggers.P2P), ldg)
+		if err != nil {
+			return nil, fmt.Errorf("create peer manager: %w", err)
+		}
 	}
 
 	return &BitXHub{
