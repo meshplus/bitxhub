@@ -67,4 +67,4 @@ linter:
 cluster:
 	@cd scripts && bash cluster.sh
 
-.PHONY: tester
+.PHONY: tester build
