@@ -36,10 +36,11 @@ func Initialize(genesis *repo.Genesis, lg ledger.Ledger) error {
 	}
 	block.BlockHash = block.Hash()
 	blockData := &ledger.BlockData{
-		Block:    block,
-		Receipts: nil,
-		Accounts: accounts,
-		Journal:  journal,
+		Block:          block,
+		Receipts:       nil,
+		Accounts:       accounts,
+		Journal:        journal,
+		InterchainMeta: &pb.InterchainMeta{},
 	}
 
 	lg.PersistBlockData(blockData)

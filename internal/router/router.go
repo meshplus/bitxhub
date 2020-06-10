@@ -10,7 +10,7 @@ type Router interface {
 	Stop() error
 
 	// PutBlock
-	PutBlock(*pb.Block)
+	PutBlockAndMeta(*pb.Block, *pb.InterchainMeta)
 
 	// AddPier
 	AddPier(id string) (chan *pb.InterchainTxWrapper, error)

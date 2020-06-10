@@ -6,7 +6,8 @@ import (
 )
 
 type NewBlockEvent struct {
-	Block *pb.Block
+	Block          *pb.Block
+	InterchainMeta *pb.InterchainMeta
 }
 
 type CheckpointEvent struct {

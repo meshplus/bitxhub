@@ -2,7 +2,6 @@ package router
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sync"
 
@@ -75,12 +74,12 @@ func (router *InterchainRouter) RemovePier(key string) {
 	router.count--
 }
 
-func (router *InterchainRouter) PutBlock(block *pb.Block) {
+func (router *InterchainRouter) PutBlockAndMeta(block *pb.Block, meta *pb.InterchainMeta) {
 	if router.count == 0 {
 		return
 	}
 
-	ret := router.classify(block)
+	ret := router.classify(block, meta)
 
 	router.piers.Range(func(k, value interface{}) bool {
 		key := k.(string)
@@ -92,14 +91,9 @@ func (router *InterchainRouter) PutBlock(block *pb.Block) {
 		}
 
 		// empty interchain tx in this block
-		hashes := make([]types.Hash, 0, len(block.Transactions))
-		for _, tx := range block.Transactions {
-			hashes = append(hashes, tx.TransactionHash)
-		}
-
 		w <- &pb.InterchainTxWrapper{
-			Height:            block.Height(),
-			TransactionHashes: hashes,
+			Height:  block.Height(),
+			L2Roots: meta.L2Roots,
 		}
 
 		return true
@@ -131,21 +125,21 @@ func (router *InterchainRouter) GetInterchainTxWrapper(pid string, begin, end ui
 			return fmt.Errorf("get block: %w", err)
 		}
 
-		ret := router.classify(block)
+		meta, err := router.ledger.GetInterchainMeta(i)
+		if err != nil {
+			return fmt.Errorf("get interchain meta data: %w", err)
+		}
+
+		ret := router.classify(block, meta)
 		if ret[pid] != nil {
 			ch <- ret[pid]
 			continue
 		}
 
 		// empty interchain tx in this block
-		hashes := make([]types.Hash, 0, len(block.Transactions))
-		for _, tx := range block.Transactions {
-			hashes = append(hashes, tx.TransactionHash)
-		}
-
 		ch <- &pb.InterchainTxWrapper{
-			Height:            block.Height(),
-			TransactionHashes: hashes,
+			Height:  block.Height(),
+			L2Roots: meta.L2Roots,
 		}
 	}
 
@@ -157,36 +151,28 @@ func (router *InterchainRouter) fetchSigns(height uint64) (map[string][]byte, er
 	return nil, nil
 }
 
-func (router *InterchainRouter) classify(block *pb.Block) map[string]*pb.InterchainTxWrapper {
-	hashes := make([]types.Hash, 0, len(block.Transactions))
-	for _, tx := range block.Transactions {
-		hashes = append(hashes, tx.TransactionHash)
-	}
+func (router *InterchainRouter) classify(block *pb.Block, meta *pb.InterchainMeta) map[string]*pb.InterchainTxWrapper {
+	txsM := make(map[string][]*pb.Transaction)
+	hashesM := make(map[string][]types.Hash)
 
-	if block.BlockHeader.InterchainIndex == nil {
-		return make(map[string]*pb.InterchainTxWrapper)
-	}
-	idx := make(map[string][]uint64)
-	m := make(map[string][]*pb.Transaction)
-	err := json.Unmarshal(block.BlockHeader.InterchainIndex, &idx)
-	if err != nil {
-		panic(err)
-	}
-
-	for k, vs := range idx {
+	for k, vs := range meta.Counter {
 		var txs []*pb.Transaction
-		for _, i := range vs {
+		var hashes []types.Hash
+		for _, i := range vs.Slice {
 			txs = append(txs, block.Transactions[i])
+			hashes = append(hashes, block.Transactions[i].TransactionHash)
 		}
-		m[k] = txs
+		txsM[k] = txs
+		hashesM[k] = hashes
 	}
 
 	target := make(map[string]*pb.InterchainTxWrapper)
-	for dest, txs := range m {
+	for dest, txs := range txsM {
 		wrapper := &pb.InterchainTxWrapper{
 			Height:            block.BlockHeader.Number,
-			TransactionHashes: hashes,
+			TransactionHashes: hashesM[dest],
 			Transactions:      txs,
+			L2Roots:           meta.L2Roots,
 		}
 		target[dest] = wrapper
 	}
