@@ -153,6 +153,8 @@ func (o *Account) Query(prefix string) (bool, [][]byte) {
 	var ret [][]byte
 	stored := make(map[string][]byte)
 
+	cached := o.cache.query(o.Addr.Hex(), prefix)
+
 	begin, end := bytesPrefix(append(o.Addr.Bytes(), prefix...))
 	it := o.ldb.Iterator(begin, end)
 
@@ -164,7 +166,6 @@ func (o *Account) Query(prefix string) (bool, [][]byte) {
 		stored[string(key)] = val
 	}
 
-	cached := o.cache.query(o.Addr.Hex(), prefix)
 	for key, val := range cached {
 		stored[key] = val
 	}
