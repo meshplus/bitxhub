@@ -14,9 +14,8 @@ import (
 )
 
 const (
-	networkConfigFile    = "network.toml"
-	networkConfigFileNew = "network2.toml"
-	nodePrivFile         = "certs/node.priv"
+	networkConfigFile = "network.toml"
+	nodePrivFile      = "certs/node.priv"
 )
 
 // NetworkConfig .
@@ -38,6 +37,11 @@ type NetworkNode struct {
 	ID    uint64
 	Addr  string // the optimal address of a node
 	Addrs []string
+}
+
+// ReadinNetworkConfig is used for read in toml file
+type ReadinNetworkConfig struct {
+	Addrs [][]string
 }
 
 // AddrToPeerInfo transfer addr to PeerInfo
@@ -67,57 +71,59 @@ func AddrsToPeerInfo(multiAddrs []string) ([]peer.AddrInfo, error) {
 
 // loadNetworkConfig is compatible with old network.toml and support new network.toml config file
 func loadNetworkConfig(repoRoot string) (*NetworkConfig, error) {
-	networkConfig := &NetworkConfig{}
-	if err := ReadConfig(filepath.Join(repoRoot, networkConfigFileNew), "toml", networkConfig); err != nil {
+
+	rdiNetworkConfig := &ReadinNetworkConfig{}
+	if err := ReadConfig(filepath.Join(repoRoot, networkConfigFile), "toml", rdiNetworkConfig); err != nil {
 		return nil, err
 	}
 
+	networkConfig := &NetworkConfig{}
+	for _, node := range rdiNetworkConfig.Addrs {
+		networkConfig.Nodes = append(networkConfig.Nodes, &NetworkNode{Addrs: node})
+	}
+
 	// whether new network format is new
-	formatIsNew := false
 	if networkConfig.N == 0 { // judge whether new network format is new
 		networkConfig.N = uint64(len(networkConfig.Nodes))
-		formatIsNew = true
 	}
 
 	if uint64(len(networkConfig.Nodes)) != networkConfig.N {
 		return nil, fmt.Errorf("wrong nodes number")
 	}
 
-	if formatIsNew == true {
-		// use the first address of node as its default addr
-		for _, node := range networkConfig.Nodes {
-			if node.Addr == "" {
-				node.Addr = node.Addrs[0]
-			}
+	// use the first address of node as its default addr
+	for _, node := range networkConfig.Nodes {
+		if node.Addr == "" {
+			node.Addr = node.Addrs[0]
 		}
-		// read private key to get PeerID
-		PeerID, err := GetPidFromPrivFile(filepath.Join(repoRoot, nodePrivFile))
+	}
+	// read private key to get PeerID
+	PeerID, err := GetPidFromPrivFile(filepath.Join(repoRoot, nodePrivFile))
+	if err != nil {
+		return nil, err
+	}
+	// sort PeerId of nodes to produce IDs:
+	sort.Sort(networkConfig)
+
+	findSelf := false
+
+	for i, node := range networkConfig.Nodes {
+		// write ID into node struct:
+		node.ID = uint64(i + 1)
+
+		pid, err := MultiaddrToPeerID(networkConfig.Nodes[i].Addrs[0])
 		if err != nil {
 			return nil, err
 		}
-		// sort PeerId of nodes to produce IDs:
-		sort.Sort(networkConfig)
-
-		findSelf := false
-
-		for i, node := range networkConfig.Nodes {
-			// write ID into node struct:
-			node.ID = uint64(i + 1)
-
-			pid, err := MultiaddrToPeerID(networkConfig.Nodes[i].Addrs[0])
-			if err != nil {
-				return nil, err
-			}
-			if pid == PeerID {
-				// match PeerID to know node's self ID:
-				networkConfig.ID = node.ID
-				findSelf = true
-			}
+		if pid == PeerID {
+			// match PeerID to know node's self ID:
+			networkConfig.ID = node.ID
+			findSelf = true
 		}
+	}
 
-		if findSelf == false {
-			return nil, fmt.Errorf("PeerID of this node was not matched to any of these nodes")
-		}
+	if findSelf == false {
+		return nil, fmt.Errorf("PeerID of this node was not matched to any of these nodes")
 	}
 
 	for _, node := range networkConfig.Nodes {
@@ -141,21 +147,15 @@ func loadNetworkConfig(repoRoot string) (*NetworkConfig, error) {
 	m := make(map[uint64]*peer.AddrInfo)
 	for _, node := range nodes {
 		if node.ID != networkConfig.ID {
-			addr, err := AddrToPeerInfo(node.Addr)
+			addrs, err := AddrsToPeerInfo(node.Addrs)
 			if err != nil {
 				return nil, fmt.Errorf("wrong network addr: %w", err)
 			}
-			if formatIsNew == true {
-				addrs, err := AddrsToPeerInfo(node.Addrs)
-				if err != nil {
-					return nil, fmt.Errorf("wrong network addr: %w", err)
-				}
-				if len(addrs) != 1 {
-					return nil, fmt.Errorf("different PeerIDs in the same node")
-				}
-				// overwrite addr if formatIsNew is true
-				addr = &addrs[0]
+			if len(addrs) != 1 {
+				return nil, fmt.Errorf("different PeerIDs in the same node")
 			}
+			// overwrite addr if formatIsNew is true.
+			addr := &addrs[0]
 			m[node.ID] = addr
 		}
 	}
@@ -230,45 +230,4 @@ func MultiaddrToPeerID(multiAddr string) (string, error) {
 		return "", err
 	}
 	return PeerID.String(), nil
-}
-
-// PrintPeerIDs .
-func PrintPeerIDs(networkConfig *NetworkConfig) []string {
-	fmt.Println("Peer IDs are:")
-	peerIDs := []string{}
-	for i, node := range networkConfig.Nodes {
-		multiAddr := node.Addrs[0] // to get peerid you only need one address
-		maddr, err := ma.NewMultiaddr(multiAddr)
-		if err != nil {
-			fmt.Println("err:", err)
-		}
-		_, id := peer.SplitAddr(maddr)
-		if id == "" {
-			fmt.Println("err:", fmt.Errorf("invalid p2p multiaddr"))
-			panic(err)
-		}
-		fmt.Println(i, ":", id.String())
-		peerIDs = append(peerIDs, id.String())
-	}
-	return peerIDs
-}
-
-// PrintNetworkConfig .
-func PrintNetworkConfig(networkConfig *NetworkConfig) {
-	fmt.Println("ID:", networkConfig.ID)
-	fmt.Println("N:", networkConfig.N)
-	fmt.Println("LocalAddr:", networkConfig.LocalAddr)
-	fmt.Println("Nodes")
-	for i, node := range networkConfig.Nodes {
-		fmt.Println("|- node[", i, "]:")
-		fmt.Println("|- - node.ID:", node.ID)
-		fmt.Println("|- - node.Addr:", node.Addr)
-		fmt.Println("|- - node.Addrs:", node.Addrs)
-	}
-	fmt.Println("OtherNodes")
-	for id, peerInfo := range networkConfig.OtherNodes {
-		fmt.Println("|- OtherNodes-", id, ":")
-		fmt.Println("|- - peerInfo.ID:", peerInfo.ID)
-		fmt.Println("|- - peerInfo.Addrs:", peerInfo.Addrs)
-	}
 }

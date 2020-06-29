@@ -6,9 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/meshplus/bitxhub-kit/key"
-
 	"github.com/meshplus/bitxhub-kit/crypto/asym/ecdsa"
+	"github.com/meshplus/bitxhub-kit/key"
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/bitxhub/pkg/cert"
 	"github.com/urfave/cli"
