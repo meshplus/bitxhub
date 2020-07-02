@@ -43,6 +43,7 @@ require (
 	github.com/wasmerio/go-ext-wasm v0.3.1
 	github.com/willf/bitset v1.1.10 // indirect
 	github.com/willf/bloom v2.0.3+incompatible
+	go.uber.org/atomic v1.6.0
 	google.golang.org/grpc v1.27.1
 )
 
