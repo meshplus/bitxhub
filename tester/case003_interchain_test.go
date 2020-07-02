@@ -1,6 +1,8 @@
 package tester
 
 import (
+	"encoding/json"
+	"github.com/tidwall/gjson"
 	"io/ioutil"
 	"testing"
 	"time"
@@ -168,6 +170,48 @@ func (suite *Interchain) TestAudit() {
 	)
 	suite.Require().Nil(err)
 	suite.Contains(string(ret.Ret), "caller is not an admin account")
+}
+
+func (suite *Interchain) TestInterchain() {
+	k1, err := ecdsa.GenerateKey(ecdsa.Secp256r1)
+	suite.Require().Nil(err)
+
+	pub1, err := k1.PublicKey().Bytes()
+	suite.Require().Nil(err)
+
+	ret, err := invokeBVMContract(suite.api, k1, constant.AppchainMgrContractAddr.Address(), "Register",
+		pb.String(""),
+		pb.Int32(0),
+		pb.String("hyperchain"),
+		pb.String("婚姻链"),
+		pb.String("趣链婚姻链"),
+		pb.String("1.8"),
+		pb.String(string(pub1)),
+	)
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+
+	appchain := Appchain{}
+	err = json.Unmarshal(ret.Ret, &appchain)
+	suite.Require().Nil(err)
+	id1 := appchain.ID
+
+	ret, err = invokeBVMContract(suite.api, k1, constant.InterchainContractAddr.Address(), "Interchain")
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	suite.Require().Equal(id1, gjson.Get(string(ret.Ret), "id").String())
+	suite.Require().Equal("", gjson.Get(string(ret.Ret), "interchain_counter").String())
+	suite.Require().Equal("", gjson.Get(string(ret.Ret), "receipt_counter").String())
+	suite.Require().Equal("", gjson.Get(string(ret.Ret), "source_receipt_counter").String())
+}
+
+func (suite *Interchain) TestRegister() {
+	k1, err := ecdsa.GenerateKey(ecdsa.Secp256r1)
+	suite.Require().Nil(err)
+
+	ret, err := invokeBVMContract(suite.api, k1, constant.InterchainContractAddr.Address(), "Register")
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 }
 
 func TestInterchain(t *testing.T) {
