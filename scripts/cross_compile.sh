@@ -33,7 +33,7 @@ linux-amd64)
         cd /code/bitxhub &&
         make install &&
         cd internal/plugins &&
-        make raft &&
+        make plugins &&
         mkdir -p /code/bitxhub/bin &&
         cp /go/bin/bitxhub /code/bitxhub/bin/bitxhub_linux-amd64"
   fi
