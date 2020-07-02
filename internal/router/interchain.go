@@ -11,6 +11,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
 	"github.com/sirupsen/logrus"
+	"go.uber.org/atomic"
 )
 
 var _ Router = (*InterchainRouter)(nil)
@@ -21,7 +22,7 @@ type InterchainRouter struct {
 	logger  logrus.FieldLogger
 	repo    *repo.Repo
 	piers   sync.Map
-	count   uint64
+	count   atomic.Int64
 	ledger  ledger.Ledger
 	peerMgr peermgr.PeerManager
 	quorum  uint64
@@ -61,7 +62,7 @@ func (router *InterchainRouter) Stop() error {
 func (router *InterchainRouter) AddPier(key string) (chan *pb.InterchainTxWrapper, error) {
 	c := make(chan *pb.InterchainTxWrapper, blockChanNumber)
 	router.piers.Store(key, c)
-	router.count++
+	router.count.Inc()
 	router.logger.WithFields(logrus.Fields{
 		"id": key,
 	}).Infof("Add pier")
@@ -71,11 +72,11 @@ func (router *InterchainRouter) AddPier(key string) (chan *pb.InterchainTxWrappe
 
 func (router *InterchainRouter) RemovePier(key string) {
 	router.piers.Delete(key)
-	router.count--
+	router.count.Dec()
 }
 
 func (router *InterchainRouter) PutBlockAndMeta(block *pb.Block, meta *pb.InterchainMeta) {
-	if router.count == 0 {
+	if router.count.Load() == 0 {
 		return
 	}
 
