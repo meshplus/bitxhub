@@ -2,7 +2,6 @@ package tester
 
 import (
 	"encoding/json"
-	"github.com/tidwall/gjson"
 	"io/ioutil"
 	"testing"
 	"time"
@@ -12,6 +11,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/constant"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
 	"github.com/stretchr/testify/suite"
+	"github.com/tidwall/gjson"
 )
 
 type Interchain struct {
