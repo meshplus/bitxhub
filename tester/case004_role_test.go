@@ -2,13 +2,13 @@ package tester
 
 import (
 	"encoding/json"
-	"github.com/meshplus/bitxhub-kit/key"
 	"io/ioutil"
 	"path/filepath"
 	"strconv"
 
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym/ecdsa"
+	"github.com/meshplus/bitxhub-kit/key"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/constant"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
