@@ -6,11 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/meshplus/bitxhub-kit/key"
-
-	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/meshplus/bitxhub-kit/crypto/asym/ecdsa"
+	"github.com/meshplus/bitxhub-kit/key"
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/bitxhub/pkg/cert"
 	"github.com/urfave/cli"
@@ -138,27 +135,12 @@ func showKey(ctx *cli.Context) error {
 func getPid(ctx *cli.Context) error {
 	privPath := ctx.String("path")
 
-	data, err := ioutil.ReadFile(privPath)
-	if err != nil {
-		return fmt.Errorf("read private key: %w", err)
-	}
-	stdPriv, err := cert.ParsePrivateKey(data)
-	if err != nil {
-		return err
-	}
-
-	_, pk, err := crypto.KeyPairFromStdKey(stdPriv)
-	if err != nil {
-		return err
-	}
-
-	pid, err := peer.IDFromPublicKey(pk)
+	pid, err := repo.GetPidFromPrivFile(privPath)
 	if err != nil {
 		return err
 	}
 
 	fmt.Println(pid)
-
 	return nil
 }
 
