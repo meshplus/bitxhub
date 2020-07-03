@@ -17,7 +17,6 @@ cover.out
 coverage.out
 pid
 scripts/prepare
-docs/.vuepress/dist
 logs
 mock_*/
 .fabric-samples
