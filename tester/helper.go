@@ -119,6 +119,8 @@ func deployContract(api api.CoreAPI, privateKey crypto.PrivateKey, contract []by
 		Nonce:     rand.Int63(),
 	}
 
+	tx.TransactionHash = tx.Hash()
+
 	if err := tx.Sign(privateKey); err != nil {
 		return types.Address{}, fmt.Errorf("tx sign: %w", err)
 	}
