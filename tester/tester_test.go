@@ -34,6 +34,7 @@ func TestTester(t *testing.T) {
 	suite.Run(t, &RegisterAppchain{api: node2})
 	suite.Run(t, &Interchain{api: node3})
 	suite.Run(t, &Role{api: node4})
+	suite.Run(t, &Store{api: node1})
 }
 
 func setupNode(t *testing.T, path string) api.CoreAPI {
