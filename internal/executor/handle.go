@@ -55,6 +55,7 @@ func (exec *BlockExecutor) processExecuteEvent(block *pb.Block) {
 		"count":  len(block.Transactions),
 	}).Infof("Execute block")
 
+	exec.normalTxs = make([]types.Hash, 0)
 	validTxs, invalidReceipts := exec.verifySign(block)
 	receipts := exec.applyTransactions(validTxs)
 	receipts = append(receipts, invalidReceipts...)
