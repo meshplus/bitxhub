@@ -42,7 +42,7 @@ Email: bitxhub@hyperchain.cn
 
 Wechat: If you‘re interested in BitXHub, please add the assistant to join our community group.
 
-<img src="https://bitxhub.hyperchain.cn/assets/images/wechat.png" width="200" /><img src="https://bitxhub.hyperchain.cn/assets/images/official.png" width="206" />
+<img src="https://bitxhub.hyperchain.cn/assets/images/wechat.png" width="200" /><img src="https://raw.githubusercontent.com/meshplus/bitxhub/master/docs/official.png" width="206" />
 
 ## License
 
