@@ -11,5 +11,5 @@ type FeedAPI CoreAPI
 var _ api.FeedAPI = (*FeedAPI)(nil)
 
 func (api *FeedAPI) SubscribeNewBlockEvent(ch chan<- events.NewBlockEvent) event.Subscription {
-	return api.bxh.Executor.SubscribeBlockEvent(ch)
+	return api.bxh.BlockExecutor.SubscribeBlockEvent(ch)
 }

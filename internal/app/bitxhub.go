@@ -22,11 +22,12 @@ import (
 )
 
 type BitXHub struct {
-	Ledger   ledger.Ledger
-	Executor executor.Executor
-	Router   router.Router
-	Order    order.Order
-	PeerMgr  peermgr.PeerManager
+	Ledger        ledger.Ledger
+	BlockExecutor executor.Executor
+	ViewExecutor  executor.Executor
+	Router        router.Router
+	Order         order.Order
+	PeerMgr       peermgr.PeerManager
 
 	repo   *repo.Repo
 	logger logrus.FieldLogger
@@ -99,38 +100,51 @@ func generateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 	}
 
 	// 0. load ledger
-	ldg, err := ledger.New(repoRoot, bcStorage, loggers.Logger(loggers.Executor))
+	accountCache := ledger.NewAccountCache()
+	rwLdg, err := ledger.New(repoRoot, bcStorage, accountCache, loggers.Logger(loggers.Executor), false)
 	if err != nil {
-		return nil, fmt.Errorf("create ledger: %w", err)
+		return nil, fmt.Errorf("create RW ledger: %w", err)
 	}
 
-	if ldg.GetChainMeta().Height == 0 {
-		if err := genesis.Initialize(rep.Genesis, ldg); err != nil {
+	if rwLdg.GetChainMeta().Height == 0 {
+		if err := genesis.Initialize(rep.Genesis, rwLdg); err != nil {
 			return nil, err
 		}
 		logger.Info("Initialize genesis")
 	}
 
-	// 1. create executor
-	exec, err := executor.New(ldg, loggers.Logger(loggers.Executor))
+	// create read only ledger
+	viewLdg, err := ledger.New(repoRoot, bcStorage, accountCache, loggers.Logger(loggers.Executor), true)
+	if err != nil {
+		return nil, fmt.Errorf("create readonly ledger: %w", err)
+	}
+
+	// 1. create executor and view executor
+	txExec, err := executor.New(rwLdg, loggers.Logger(loggers.Executor))
 	if err != nil {
 		return nil, fmt.Errorf("create BlockExecutor: %w", err)
 	}
 
+	viewExec, err := executor.New(viewLdg, loggers.Logger(loggers.Executor))
+	if err != nil {
+		return nil, fmt.Errorf("create ViewExecutor: %w", err)
+	}
+
 	peerMgr := &peermgr.Swarm{}
 	if !rep.Config.Solo {
-		peerMgr, err = peermgr.New(rep, loggers.Logger(loggers.P2P), ldg)
+		peerMgr, err = peermgr.New(rep, loggers.Logger(loggers.P2P), rwLdg)
 		if err != nil {
 			return nil, fmt.Errorf("create peer manager: %w", err)
 		}
 	}
 
 	return &BitXHub{
-		repo:     rep,
-		logger:   logger,
-		Ledger:   ldg,
-		Executor: exec,
-		PeerMgr:  peerMgr,
+		repo:          rep,
+		logger:        logger,
+		Ledger:        rwLdg,
+		BlockExecutor: txExec,
+		ViewExecutor:  viewExec,
+		PeerMgr:       peerMgr,
 	}, nil
 }
 
@@ -196,8 +210,12 @@ func (bxh *BitXHub) Start() error {
 		return fmt.Errorf("order start: %w", err)
 	}
 
-	if err := bxh.Executor.Start(); err != nil {
-		return fmt.Errorf("executor start: %w", err)
+	if err := bxh.BlockExecutor.Start(); err != nil {
+		return fmt.Errorf("block executor start: %w", err)
+	}
+
+	if err := bxh.ViewExecutor.Start(); err != nil {
+		return fmt.Errorf("view executor start: %w", err)
 	}
 
 	if err := bxh.Router.Start(); err != nil {
@@ -212,8 +230,12 @@ func (bxh *BitXHub) Start() error {
 }
 
 func (bxh *BitXHub) Stop() error {
-	if err := bxh.Executor.Stop(); err != nil {
-		return fmt.Errorf("executor stop: %w", err)
+	if err := bxh.BlockExecutor.Stop(); err != nil {
+		return fmt.Errorf("block executor stop: %w", err)
+	}
+
+	if err := bxh.ViewExecutor.Stop(); err != nil {
+		return fmt.Errorf("view executor stop: %w", err)
 	}
 
 	if err := bxh.Router.Stop(); err != nil {

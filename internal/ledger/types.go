@@ -11,10 +11,10 @@ type Ledger interface {
 	StateAccessor
 
 	// PersistBlockData
-	PersistBlockData(blockData *BlockData)
+	PersistBlockData(blockData *BlockData) error
 
 	// AddEvent
-	AddEvent(*pb.Event)
+	AddEvent(*pb.Event) error
 
 	// Events
 	Events(txHash string) []*pb.Event
@@ -41,22 +41,22 @@ type StateAccessor interface {
 	GetBalance(types.Address) uint64
 
 	// SetBalance
-	SetBalance(types.Address, uint64)
+	SetBalance(types.Address, uint64) error
 
 	// GetState
 	GetState(types.Address, []byte) (bool, []byte)
 
 	// SetState
-	SetState(types.Address, []byte, []byte)
+	SetState(types.Address, []byte, []byte) error
 
 	// SetCode
-	SetCode(types.Address, []byte)
+	SetCode(types.Address, []byte) error
 
 	// GetCode
 	GetCode(types.Address) []byte
 
 	// SetNonce
-	SetNonce(types.Address, uint64)
+	SetNonce(types.Address, uint64) error
 
 	// GetNonce
 	GetNonce(types.Address) uint64
@@ -68,13 +68,13 @@ type StateAccessor interface {
 	Commit(height uint64, accounts map[string]*Account, blockJournal *BlockJournal) error
 
 	// FlushDirtyDataAndComputeJournal flushes the dirty data and computes block journal
-	FlushDirtyDataAndComputeJournal() (map[string]*Account, *BlockJournal)
+	FlushDirtyDataAndComputeJournal() (map[string]*Account, *BlockJournal, error)
 
 	// Version
 	Version() uint64
 
 	// Clear
-	Clear()
+	Clear() error
 }
 
 // BlockchainLedger handles block, transaction and receipt data.
@@ -110,5 +110,5 @@ type BlockchainLedger interface {
 	GetChainMeta() *pb.ChainMeta
 
 	// UpdateChainMeta update the chain meta data
-	UpdateChainMeta(*pb.ChainMeta)
+	UpdateChainMeta(*pb.ChainMeta) error
 }

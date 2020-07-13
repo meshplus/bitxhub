@@ -19,15 +19,13 @@ require (
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway v1.13.0
 	github.com/hokaccha/go-prettyjson v0.0.0-20190818114111-108c894c2c0e
-	github.com/libp2p/go-libp2p v0.5.0
 	github.com/libp2p/go-libp2p-core v0.3.0
 	github.com/magiconair/properties v1.8.1
 	github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20200526060151-b0efad4a2046
 	github.com/meshplus/bitxhub-kit v1.0.1-0.20200525060338-39d86f7542ae
-	github.com/meshplus/bitxhub-model v1.0.0-rc4.0.20200608065824-2fbc63639e92
+	github.com/meshplus/bitxhub-model v1.0.0-rc4.0.20200707045101-18b88b80efb1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-multiaddr v0.2.0
-	github.com/pelletier/go-toml v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.5.0
 	github.com/rogpeppe/go-internal v1.5.2 // indirect

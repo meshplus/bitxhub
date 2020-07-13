@@ -19,6 +19,7 @@ type CoreAPI interface {
 
 type BrokerAPI interface {
 	HandleTransaction(tx *pb.Transaction) error
+	HandleView(tx *pb.Transaction) ([]byte, error)
 	GetTransaction(types.Hash) (*pb.Transaction, error)
 	GetTransactionMeta(types.Hash) (*pb.TransactionMeta, error)
 	GetReceipt(types.Hash) (*pb.Receipt, error)

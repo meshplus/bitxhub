@@ -86,9 +86,14 @@ func (w *WasmVM) deploy() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	w.ctx.Ledger.SetCode(contractAddr, wasmByte)
 
-	w.ctx.Ledger.SetNonce(w.ctx.Caller, contractNonce+1)
+	if err := w.ctx.Ledger.SetCode(contractAddr, wasmByte); err != nil {
+		return nil, err
+	}
+
+	if err := w.ctx.Ledger.SetNonce(w.ctx.Caller, contractNonce+1); err != nil {
+		return nil, err
+	}
 
 	return contractAddr.Bytes(), nil
 }

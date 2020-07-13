@@ -18,7 +18,7 @@ func (bxh *BitXHub) start() {
 					"height": block.BlockHeader.Number,
 					"count":  len(block.Transactions),
 				}).Info("Generate block")
-				bxh.Executor.ExecuteBlock(block)
+				bxh.BlockExecutor.ExecuteBlock(block)
 			case <-bxh.ctx.Done():
 				return
 			}
@@ -29,7 +29,7 @@ func (bxh *BitXHub) start() {
 func (bxh *BitXHub) listenEvent() {
 	blockCh := make(chan events.NewBlockEvent)
 	orderMsgCh := make(chan events.OrderMessageEvent)
-	blockSub := bxh.Executor.SubscribeBlockEvent(blockCh)
+	blockSub := bxh.BlockExecutor.SubscribeBlockEvent(blockCh)
 	orderMsgSub := bxh.PeerMgr.SubscribeOrderMessage(orderMsgCh)
 
 	defer blockSub.Unsubscribe()

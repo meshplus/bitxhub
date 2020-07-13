@@ -26,3 +26,7 @@ func compositeKey(prefix string, value interface{}) []byte {
 func composeStateKey(addr types.Address, key []byte) []byte {
 	return append(addr.Bytes(), key...)
 }
+
+func writeToReadOnlyErr() error {
+	return fmt.Errorf("have no access to write readonly ledger")
+}

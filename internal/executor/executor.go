@@ -86,7 +86,7 @@ func (exec *BlockExecutor) Start() error {
 	exec.logger.WithFields(logrus.Fields{
 		"height": exec.currentHeight,
 		"hash":   exec.currentBlockHash.ShortString(),
-	}).Infof("Executor started")
+	}).Infof("BlockExecutor started")
 
 	return nil
 }
@@ -95,7 +95,7 @@ func (exec *BlockExecutor) Start() error {
 func (exec *BlockExecutor) Stop() error {
 	exec.cancel()
 
-	exec.logger.Info("Executor stopped")
+	exec.logger.Info("BlockExecutor stopped")
 
 	return nil
 }
@@ -114,6 +114,11 @@ func (exec *BlockExecutor) SubscribeBlockEvent(ch chan<- events.NewBlockEvent) e
 	return exec.blockFeed.Subscribe(ch)
 }
 
+func (exec *BlockExecutor) ApplyReadonlyTransactions(txs []*pb.Transaction) []*pb.Receipt {
+	receipts := exec.applyTransactions(txs)
+	return receipts
+}
+
 func (exec *BlockExecutor) listenExecuteEvent() {
 	for {
 		select {
@@ -128,7 +133,10 @@ func (exec *BlockExecutor) listenExecuteEvent() {
 
 func (exec *BlockExecutor) persistData() {
 	for data := range exec.persistC {
-		exec.ledger.PersistBlockData(data)
+		if err := exec.ledger.PersistBlockData(data); err != nil {
+			exec.logger.Errorf("persist block data: %s", err.Error())
+			return
+		}
 	}
 }
 

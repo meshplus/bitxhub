@@ -12,6 +12,10 @@ import (
 
 // PutBlock put block into store
 func (l *ChainLedger) PutBlock(height uint64, block *pb.Block) error {
+	if l.readOnly {
+		return writeToReadOnlyErr()
+	}
+
 	data, err := block.Marshal()
 	if err != nil {
 		return err
@@ -118,6 +122,10 @@ func (l *ChainLedger) GetReceipt(hash types.Hash) (*pb.Receipt, error) {
 
 // PersistExecutionResult persist the execution result
 func (l *ChainLedger) PersistExecutionResult(block *pb.Block, receipts []*pb.Receipt, interchainMeta *pb.InterchainMeta) error {
+	if l.readOnly {
+		return writeToReadOnlyErr()
+	}
+
 	current := time.Now()
 
 	if block == nil {
@@ -160,7 +168,9 @@ func (l *ChainLedger) PersistExecutionResult(block *pb.Block, receipts []*pb.Rec
 
 	batcher.Commit()
 
-	l.UpdateChainMeta(meta)
+	if err := l.UpdateChainMeta(meta); err != nil {
+		return err
+	}
 
 	l.logger.WithField("time", time.Since(current)).Debug("persist execution result elapsed")
 
@@ -168,12 +178,17 @@ func (l *ChainLedger) PersistExecutionResult(block *pb.Block, receipts []*pb.Rec
 }
 
 // UpdateChainMeta update the chain meta data
-func (l *ChainLedger) UpdateChainMeta(meta *pb.ChainMeta) {
+func (l *ChainLedger) UpdateChainMeta(meta *pb.ChainMeta) error {
+	if l.readOnly {
+		return writeToReadOnlyErr()
+	}
+
 	l.chainMutex.Lock()
 	defer l.chainMutex.Unlock()
 	l.chainMeta.Height = meta.Height
 	l.chainMeta.BlockHash = meta.BlockHash
 	l.chainMeta.InterchainTxCount = meta.InterchainTxCount
+	return nil
 }
 
 // GetChainMeta get chain meta data
@@ -343,7 +358,9 @@ func (l *ChainLedger) rollbackBlockChain(height uint64) error {
 
 	batch.Commit()
 
-	l.UpdateChainMeta(meta)
+	if err := l.UpdateChainMeta(meta); err != nil {
+		return err
+	}
 
 	return nil
 }

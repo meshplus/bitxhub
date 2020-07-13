@@ -37,6 +37,7 @@ type ChainLedger struct {
 	chainMeta  *pb.ChainMeta
 
 	journalMutex sync.RWMutex
+	readOnly     bool
 }
 
 type BlockData struct {
@@ -48,7 +49,7 @@ type BlockData struct {
 }
 
 // New create a new ledger instance
-func New(repoRoot string, blockchainStore storage.Storage, logger logrus.FieldLogger) (*ChainLedger, error) {
+func New(repoRoot string, blockchainStore storage.Storage, accountCache *AccountCache, logger logrus.FieldLogger, readOnly bool) (*ChainLedger, error) {
 	ldb, err := leveldb.New(repo.GetStoragePath(repoRoot, "ledger"))
 	if err != nil {
 		return nil, fmt.Errorf("create tm-leveldb: %w", err)
@@ -76,8 +77,9 @@ func New(repoRoot string, blockchainStore storage.Storage, logger logrus.FieldLo
 		maxJnlHeight:    maxJnlHeight,
 		events:          make(map[string][]*pb.Event, 10),
 		accounts:        make(map[string]*Account),
-		accountCache:    NewAccountCache(),
+		accountCache:    accountCache,
 		prevJnlHash:     prevJnlHash,
+		readOnly:        readOnly,
 	}
 
 	height := maxJnlHeight
@@ -93,7 +95,11 @@ func New(repoRoot string, blockchainStore storage.Storage, logger logrus.FieldLo
 }
 
 // PersistBlockData persists block data
-func (l *ChainLedger) PersistBlockData(blockData *BlockData) {
+func (l *ChainLedger) PersistBlockData(blockData *BlockData) error {
+	if l.readOnly {
+		return writeToReadOnlyErr()
+	}
+
 	current := time.Now()
 	block := blockData.Block
 	receipts := blockData.Receipts
@@ -116,10 +122,15 @@ func (l *ChainLedger) PersistBlockData(blockData *BlockData) {
 	}).Info("Persist block")
 	PersistBlockDuration.Observe(float64(time.Since(current)) / float64(time.Second))
 
+	return nil
 }
 
 // Rollback rollback ledger to history version
 func (l *ChainLedger) Rollback(height uint64) error {
+	if l.readOnly {
+		return writeToReadOnlyErr()
+	}
+
 	if err := l.rollbackState(height); err != nil {
 		return err
 	}
@@ -133,6 +144,10 @@ func (l *ChainLedger) Rollback(height uint64) error {
 
 // RemoveJournalsBeforeBlock removes ledger journals whose block number < height
 func (l *ChainLedger) RemoveJournalsBeforeBlock(height uint64) error {
+	if l.readOnly {
+		return writeToReadOnlyErr()
+	}
+
 	l.journalMutex.Lock()
 	defer l.journalMutex.Unlock()
 
@@ -157,9 +172,15 @@ func (l *ChainLedger) RemoveJournalsBeforeBlock(height uint64) error {
 }
 
 // AddEvent add ledger event
-func (l *ChainLedger) AddEvent(event *pb.Event) {
+func (l *ChainLedger) AddEvent(event *pb.Event) error {
+	if l.readOnly {
+		return writeToReadOnlyErr()
+	}
+
 	hash := event.TxHash.Hex()
 	l.events[hash] = append(l.events[hash], event)
+
+	return nil
 }
 
 // Events return ledger events

@@ -20,7 +20,9 @@ func TestAccount_GetState(t *testing.T) {
 	assert.Nil(t, err)
 	blockStorage, err := leveldb.New(repoRoot)
 	assert.Nil(t, err)
-	ledger, err := New(repoRoot, blockStorage, log.NewWithModule("ChainLedger"))
+
+	accountCache := NewAccountCache()
+	ledger, err := New(repoRoot, blockStorage, accountCache, log.NewWithModule("ChainLedger"), false)
 	assert.Nil(t, err)
 
 	h := hexutil.Encode(bytesutil.LeftPadBytes([]byte{11}, 20))

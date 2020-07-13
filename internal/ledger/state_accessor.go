@@ -52,9 +52,14 @@ func (l *ChainLedger) GetBalance(addr types.Address) uint64 {
 }
 
 // SetBalance set account balance
-func (l *ChainLedger) SetBalance(addr types.Address, value uint64) {
+func (l *ChainLedger) SetBalance(addr types.Address, value uint64) error {
+	if l.readOnly {
+		return writeToReadOnlyErr()
+	}
+
 	account := l.GetOrCreateAccount(addr)
 	account.SetBalance(value)
+	return nil
 }
 
 // GetState get account state value using account Address and key
@@ -64,15 +69,25 @@ func (l *ChainLedger) GetState(addr types.Address, key []byte) (bool, []byte) {
 }
 
 // SetState set account state value using account Address and key
-func (l *ChainLedger) SetState(addr types.Address, key []byte, v []byte) {
+func (l *ChainLedger) SetState(addr types.Address, key []byte, v []byte) error {
+	if l.readOnly {
+		return writeToReadOnlyErr()
+	}
+
 	account := l.GetOrCreateAccount(addr)
 	account.SetState(key, v)
+	return nil
 }
 
 // SetCode set contract code
-func (l *ChainLedger) SetCode(addr types.Address, code []byte) {
+func (l *ChainLedger) SetCode(addr types.Address, code []byte) error {
+	if l.readOnly {
+		return writeToReadOnlyErr()
+	}
+
 	account := l.GetOrCreateAccount(addr)
 	account.SetCodeAndHash(code)
+	return nil
 }
 
 // GetCode get contract code
@@ -88,9 +103,14 @@ func (l *ChainLedger) GetNonce(addr types.Address) uint64 {
 }
 
 // SetNonce set account nonce
-func (l *ChainLedger) SetNonce(addr types.Address, nonce uint64) {
+func (l *ChainLedger) SetNonce(addr types.Address, nonce uint64) error {
+	if l.readOnly {
+		return writeToReadOnlyErr()
+	}
+
 	account := l.GetOrCreateAccount(addr)
 	account.SetNonce(nonce)
+	return nil
 }
 
 // QueryByPrefix query value using key
@@ -99,13 +119,22 @@ func (l *ChainLedger) QueryByPrefix(addr types.Address, prefix string) (bool, []
 	return account.Query(prefix)
 }
 
-func (l *ChainLedger) Clear() {
+func (l *ChainLedger) Clear() error {
+	if l.readOnly {
+		return writeToReadOnlyErr()
+	}
+
 	l.events = make(map[string][]*pb.Event, 10)
 	l.accounts = make(map[string]*Account)
+	return nil
 }
 
 // FlushDirtyDataAndComputeJournal gets dirty accounts and computes block journal
-func (l *ChainLedger) FlushDirtyDataAndComputeJournal() (map[string]*Account, *BlockJournal) {
+func (l *ChainLedger) FlushDirtyDataAndComputeJournal() (map[string]*Account, *BlockJournal, error) {
+	if l.readOnly {
+		return nil, nil, writeToReadOnlyErr()
+	}
+
 	dirtyAccounts := make(map[string]*Account)
 	var dirtyAccountData []byte
 	var journals []*journal
@@ -135,14 +164,20 @@ func (l *ChainLedger) FlushDirtyDataAndComputeJournal() (map[string]*Account, *B
 	}
 
 	l.prevJnlHash = journalHash
-	l.Clear()
+	if err := l.Clear(); err != nil {
+		return nil, nil, err
+	}
 	l.accountCache.add(dirtyAccounts)
 
-	return dirtyAccounts, blockJournal
+	return dirtyAccounts, blockJournal, nil
 }
 
 // Commit commit the state
 func (l *ChainLedger) Commit(height uint64, accounts map[string]*Account, blockJournal *BlockJournal) error {
+	if l.readOnly {
+		return writeToReadOnlyErr()
+	}
+
 	ldbBatch := l.ldb.NewBatch()
 
 	for _, account := range accounts {
@@ -225,7 +260,9 @@ func (l *ChainLedger) rollbackState(height uint64) error {
 	}
 
 	// clean cache account
-	l.Clear()
+	if err := l.Clear(); err != nil {
+		return err
+	}
 	l.accountCache.clear()
 
 	for i := l.maxJnlHeight; i > height; i-- {

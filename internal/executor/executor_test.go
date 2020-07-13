@@ -64,7 +64,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	mockLedger.EXPECT().SetCode(gomock.Any(), gomock.Any()).AnyTimes()
 	mockLedger.EXPECT().GetCode(gomock.Any()).Return([]byte("10")).AnyTimes()
 	mockLedger.EXPECT().PersistExecutionResult(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-	mockLedger.EXPECT().FlushDirtyDataAndComputeJournal().Return(make(map[string]*ledger.Account), &ledger.BlockJournal{}).AnyTimes()
+	mockLedger.EXPECT().FlushDirtyDataAndComputeJournal().Return(make(map[string]*ledger.Account), &ledger.BlockJournal{}, nil).AnyTimes()
 	mockLedger.EXPECT().PersistBlockData(gomock.Any()).AnyTimes()
 	logger := log.NewWithModule("executor")
 
@@ -172,13 +172,15 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 	blockchainStorage, err := leveldb.New(filepath.Join(repoRoot, "storage"))
 	require.Nil(t, err)
 
-	ledger, err := ledger.New(repoRoot, blockchainStorage, log.NewWithModule("ledger"))
+	accountCache := ledger.NewAccountCache()
+	ledger, err := ledger.New(repoRoot, blockchainStorage, accountCache, log.NewWithModule("ledger"), false)
 	require.Nil(t, err)
 
 	_, from := loadAdminKey(t)
 
-	ledger.SetBalance(from, 100000000)
-	account, journal := ledger.FlushDirtyDataAndComputeJournal()
+	require.Nil(t, ledger.SetBalance(from, 100000000))
+	account, journal, err := ledger.FlushDirtyDataAndComputeJournal()
+	require.Nil(t, err)
 	err = ledger.Commit(1, account, journal)
 	require.Nil(t, err)
 	err = ledger.PersistExecutionResult(mockBlock(1, nil), nil, &pb.InterchainMeta{})
