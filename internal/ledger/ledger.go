@@ -7,9 +7,7 @@ import (
 
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/bitxhub/pkg/storage"
-	"github.com/meshplus/bitxhub/pkg/storage/leveldb"
 	"github.com/sirupsen/logrus"
 )
 
@@ -20,6 +18,7 @@ var (
 	ErrorRollbackWithoutJournal  = fmt.Errorf("rollback to blockchain height without journal")
 	ErrorRollbackTooMuch         = fmt.Errorf("rollback too much block")
 	ErrorRemoveJournalOutOfRange = fmt.Errorf("remove journal out of range")
+	ErrWriteToViewLedger         = fmt.Errorf("have no access to write readonly ledger")
 )
 
 type ChainLedger struct {
@@ -49,12 +48,7 @@ type BlockData struct {
 }
 
 // New create a new ledger instance
-func New(repoRoot string, blockchainStore storage.Storage, accountCache *AccountCache, logger logrus.FieldLogger, readOnly bool) (*ChainLedger, error) {
-	ldb, err := leveldb.New(repo.GetStoragePath(repoRoot, "ledger"))
-	if err != nil {
-		return nil, fmt.Errorf("create tm-leveldb: %w", err)
-	}
-
+func New(blockchainStore storage.Storage, ldb storage.Storage, accountCache *AccountCache, logger logrus.FieldLogger, readOnly bool) (*ChainLedger, error) {
 	chainMeta, err := loadChainMeta(blockchainStore)
 	if err != nil {
 		return nil, fmt.Errorf("load chain meta: %w", err)
@@ -87,8 +81,10 @@ func New(repoRoot string, blockchainStore storage.Storage, accountCache *Account
 		height = chainMeta.Height
 	}
 
-	if err := ledger.Rollback(height); err != nil {
-		return nil, err
+	if !readOnly {
+		if err := ledger.Rollback(height); err != nil {
+			return nil, err
+		}
 	}
 
 	return ledger, nil
@@ -97,7 +93,7 @@ func New(repoRoot string, blockchainStore storage.Storage, accountCache *Account
 // PersistBlockData persists block data
 func (l *ChainLedger) PersistBlockData(blockData *BlockData) error {
 	if l.readOnly {
-		return writeToReadOnlyErr()
+		return ErrWriteToViewLedger
 	}
 
 	current := time.Now()
@@ -128,7 +124,7 @@ func (l *ChainLedger) PersistBlockData(blockData *BlockData) error {
 // Rollback rollback ledger to history version
 func (l *ChainLedger) Rollback(height uint64) error {
 	if l.readOnly {
-		return writeToReadOnlyErr()
+		return ErrWriteToViewLedger
 	}
 
 	if err := l.rollbackState(height); err != nil {
@@ -145,7 +141,7 @@ func (l *ChainLedger) Rollback(height uint64) error {
 // RemoveJournalsBeforeBlock removes ledger journals whose block number < height
 func (l *ChainLedger) RemoveJournalsBeforeBlock(height uint64) error {
 	if l.readOnly {
-		return writeToReadOnlyErr()
+		return ErrWriteToViewLedger
 	}
 
 	l.journalMutex.Lock()
@@ -174,7 +170,7 @@ func (l *ChainLedger) RemoveJournalsBeforeBlock(height uint64) error {
 // AddEvent add ledger event
 func (l *ChainLedger) AddEvent(event *pb.Event) error {
 	if l.readOnly {
-		return writeToReadOnlyErr()
+		return ErrWriteToViewLedger
 	}
 
 	hash := event.TxHash.Hex()

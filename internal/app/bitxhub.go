@@ -18,6 +18,7 @@ import (
 	"github.com/meshplus/bitxhub/pkg/order"
 	"github.com/meshplus/bitxhub/pkg/order/etcdraft"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
+	"github.com/meshplus/bitxhub/pkg/storage/leveldb"
 	"github.com/sirupsen/logrus"
 )
 
@@ -99,9 +100,14 @@ func generateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 		return nil, fmt.Errorf("create blockchain storage: %w", err)
 	}
 
+	ldb, err := leveldb.New(repo.GetStoragePath(repoRoot, "ledger"))
+	if err != nil {
+		return nil, fmt.Errorf("create tm-leveldb: %w", err)
+	}
+
 	// 0. load ledger
 	accountCache := ledger.NewAccountCache()
-	rwLdg, err := ledger.New(repoRoot, bcStorage, accountCache, loggers.Logger(loggers.Executor), false)
+	rwLdg, err := ledger.New(bcStorage, ldb, accountCache, loggers.Logger(loggers.Executor), false)
 	if err != nil {
 		return nil, fmt.Errorf("create RW ledger: %w", err)
 	}
@@ -114,7 +120,7 @@ func generateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 	}
 
 	// create read only ledger
-	viewLdg, err := ledger.New(repoRoot, bcStorage, accountCache, loggers.Logger(loggers.Executor), true)
+	viewLdg, err := ledger.New(bcStorage, ldb, accountCache, loggers.Logger(loggers.Executor), true)
 	if err != nil {
 		return nil, fmt.Errorf("create readonly ledger: %w", err)
 	}

@@ -54,7 +54,7 @@ func (l *ChainLedger) GetBalance(addr types.Address) uint64 {
 // SetBalance set account balance
 func (l *ChainLedger) SetBalance(addr types.Address, value uint64) error {
 	if l.readOnly {
-		return writeToReadOnlyErr()
+		return ErrWriteToViewLedger
 	}
 
 	account := l.GetOrCreateAccount(addr)
@@ -71,7 +71,7 @@ func (l *ChainLedger) GetState(addr types.Address, key []byte) (bool, []byte) {
 // SetState set account state value using account Address and key
 func (l *ChainLedger) SetState(addr types.Address, key []byte, v []byte) error {
 	if l.readOnly {
-		return writeToReadOnlyErr()
+		return ErrWriteToViewLedger
 	}
 
 	account := l.GetOrCreateAccount(addr)
@@ -82,7 +82,7 @@ func (l *ChainLedger) SetState(addr types.Address, key []byte, v []byte) error {
 // SetCode set contract code
 func (l *ChainLedger) SetCode(addr types.Address, code []byte) error {
 	if l.readOnly {
-		return writeToReadOnlyErr()
+		return ErrWriteToViewLedger
 	}
 
 	account := l.GetOrCreateAccount(addr)
@@ -105,7 +105,7 @@ func (l *ChainLedger) GetNonce(addr types.Address) uint64 {
 // SetNonce set account nonce
 func (l *ChainLedger) SetNonce(addr types.Address, nonce uint64) error {
 	if l.readOnly {
-		return writeToReadOnlyErr()
+		return ErrWriteToViewLedger
 	}
 
 	account := l.GetOrCreateAccount(addr)
@@ -121,7 +121,7 @@ func (l *ChainLedger) QueryByPrefix(addr types.Address, prefix string) (bool, []
 
 func (l *ChainLedger) Clear() error {
 	if l.readOnly {
-		return writeToReadOnlyErr()
+		return ErrWriteToViewLedger
 	}
 
 	l.events = make(map[string][]*pb.Event, 10)
@@ -132,7 +132,7 @@ func (l *ChainLedger) Clear() error {
 // FlushDirtyDataAndComputeJournal gets dirty accounts and computes block journal
 func (l *ChainLedger) FlushDirtyDataAndComputeJournal() (map[string]*Account, *BlockJournal, error) {
 	if l.readOnly {
-		return nil, nil, writeToReadOnlyErr()
+		return nil, nil, ErrWriteToViewLedger
 	}
 
 	dirtyAccounts := make(map[string]*Account)
@@ -175,7 +175,7 @@ func (l *ChainLedger) FlushDirtyDataAndComputeJournal() (map[string]*Account, *B
 // Commit commit the state
 func (l *ChainLedger) Commit(height uint64, accounts map[string]*Account, blockJournal *BlockJournal) error {
 	if l.readOnly {
-		return writeToReadOnlyErr()
+		return ErrWriteToViewLedger
 	}
 
 	ldbBatch := l.ldb.NewBatch()

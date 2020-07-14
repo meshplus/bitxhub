@@ -28,7 +28,7 @@ func (cbs *ChainBrokerService) SendTransaction(ctx context.Context, tx *pb.SendT
 	return &pb.TransactionHashMsg{TxHash: hash}, nil
 }
 
-func (cbs *ChainBrokerService) SendView(ctx context.Context, tx *pb.SendTransactionRequest) ([]byte, error) {
+func (cbs *ChainBrokerService) SendView(ctx context.Context, tx *pb.SendTransactionRequest) (*pb.Response, error) {
 	if err := cbs.checkTransaction(tx); err != nil {
 		return nil, err
 	}
@@ -38,7 +38,7 @@ func (cbs *ChainBrokerService) SendView(ctx context.Context, tx *pb.SendTransact
 		return nil, err
 	}
 
-	return result, nil
+	return &pb.Response{Data: result}, nil
 }
 
 func (cbs *ChainBrokerService) checkTransaction(tx *pb.SendTransactionRequest) error {
