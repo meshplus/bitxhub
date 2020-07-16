@@ -10,6 +10,8 @@ type Ledger interface {
 	BlockchainLedger
 	StateAccessor
 
+	AccountCache() *AccountCache
+
 	// PersistBlockData
 	PersistBlockData(blockData *BlockData)
 

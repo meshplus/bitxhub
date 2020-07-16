@@ -7,9 +7,7 @@ import (
 
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/bitxhub/pkg/storage"
-	"github.com/meshplus/bitxhub/pkg/storage/leveldb"
 	"github.com/sirupsen/logrus"
 )
 
@@ -48,12 +46,7 @@ type BlockData struct {
 }
 
 // New create a new ledger instance
-func New(repoRoot string, blockchainStore storage.Storage, logger logrus.FieldLogger) (*ChainLedger, error) {
-	ldb, err := leveldb.New(repo.GetStoragePath(repoRoot, "ledger"))
-	if err != nil {
-		return nil, fmt.Errorf("create tm-leveldb: %w", err)
-	}
-
+func New(blockchainStore storage.Storage, ldb storage.Storage, accountCache *AccountCache, logger logrus.FieldLogger) (*ChainLedger, error) {
 	chainMeta, err := loadChainMeta(blockchainStore)
 	if err != nil {
 		return nil, fmt.Errorf("load chain meta: %w", err)
@@ -67,6 +60,10 @@ func New(repoRoot string, blockchainStore storage.Storage, logger logrus.FieldLo
 		prevJnlHash = blockJournal.ChangedHash
 	}
 
+	if accountCache == nil {
+		accountCache = NewAccountCache()
+	}
+
 	ledger := &ChainLedger{
 		logger:          logger,
 		chainMeta:       chainMeta,
@@ -76,7 +73,7 @@ func New(repoRoot string, blockchainStore storage.Storage, logger logrus.FieldLo
 		maxJnlHeight:    maxJnlHeight,
 		events:          make(map[string][]*pb.Event, 10),
 		accounts:        make(map[string]*Account),
-		accountCache:    NewAccountCache(),
+		accountCache:    accountCache,
 		prevJnlHash:     prevJnlHash,
 	}
 
@@ -90,6 +87,10 @@ func New(repoRoot string, blockchainStore storage.Storage, logger logrus.FieldLo
 	}
 
 	return ledger, nil
+}
+
+func (l *ChainLedger) AccountCache() *AccountCache {
+	return l.accountCache
 }
 
 // PersistBlockData persists block data
@@ -115,7 +116,6 @@ func (l *ChainLedger) PersistBlockData(blockData *BlockData) {
 		"count":  len(block.Transactions),
 	}).Info("Persist block")
 	PersistBlockDuration.Observe(float64(time.Since(current)) / float64(time.Second))
-
 }
 
 // Rollback rollback ledger to history version

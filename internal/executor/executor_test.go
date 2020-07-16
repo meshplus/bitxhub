@@ -171,20 +171,23 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 
 	blockchainStorage, err := leveldb.New(filepath.Join(repoRoot, "storage"))
 	require.Nil(t, err)
+	ldb, err := leveldb.New(filepath.Join(repoRoot, "ledger"))
+	require.Nil(t, err)
 
-	ledger, err := ledger.New(repoRoot, blockchainStorage, log.NewWithModule("ledger"))
+	accountCache := ledger.NewAccountCache()
+	ldg, err := ledger.New(blockchainStorage, ldb, accountCache, log.NewWithModule("ledger"))
 	require.Nil(t, err)
 
 	_, from := loadAdminKey(t)
 
-	ledger.SetBalance(from, 100000000)
-	account, journal := ledger.FlushDirtyDataAndComputeJournal()
-	err = ledger.Commit(1, account, journal)
+	ldg.SetBalance(from, 100000000)
+	account, journal := ldg.FlushDirtyDataAndComputeJournal()
+	err = ldg.Commit(1, account, journal)
 	require.Nil(t, err)
-	err = ledger.PersistExecutionResult(mockBlock(1, nil), nil, &pb.InterchainMeta{})
+	err = ldg.PersistExecutionResult(mockBlock(1, nil), nil, &pb.InterchainMeta{})
 	require.Nil(t, err)
 
-	executor, err := New(ledger, log.NewWithModule("executor"))
+	executor, err := New(ldg, log.NewWithModule("executor"))
 	require.Nil(t, err)
 	err = executor.Start()
 	require.Nil(t, err)
@@ -202,7 +205,20 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 
 	block := <-ch
 	require.EqualValues(t, 2, block.Block.Height())
-	require.EqualValues(t, 99999997, ledger.GetBalance(from))
+	require.EqualValues(t, 99999997, ldg.GetBalance(from))
+
+	// test executor with readonly ledger
+	viewLedger, err := ledger.New(blockchainStorage, ldb, accountCache, log.NewWithModule("ledger"))
+	require.Nil(t, err)
+
+	exec, err := New(viewLedger, log.NewWithModule("executor"))
+	require.Nil(t, err)
+
+	tx := mockTransferTx(t)
+	receipts := exec.ApplyReadonlyTransactions([]*pb.Transaction{tx})
+	require.NotNil(t, receipts)
+	require.Equal(t, pb.Receipt_SUCCESS, receipts[0].Status)
+	require.Nil(t, receipts[0].Ret)
 }
 
 func mockTransferTx(t *testing.T) *pb.Transaction {

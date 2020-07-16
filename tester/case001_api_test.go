@@ -1,10 +1,11 @@
 package tester
 
 import (
-	"math/rand"
 	"testing"
 	"time"
 
+	"github.com/Rican7/retry"
+	"github.com/Rican7/retry/strategy"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/types"
@@ -12,6 +13,10 @@ import (
 	"github.com/meshplus/bitxhub/internal/constant"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
 	"github.com/stretchr/testify/suite"
+)
+
+const (
+	value = "value"
 )
 
 type API struct {
@@ -32,36 +37,39 @@ func (suite *API) SetupSuite() {
 	suite.from = from
 }
 
-func (suite *API) TestSendTransaction() {
-	pl := &pb.InvokePayload{
-		Method: "Set",
-		Args: []*pb.Arg{
-			pb.String("key"),
-			pb.String("value"),
-		},
+func (suite *API) TestSend() {
+	hash := testSendTransaction(suite)
+	if err := retry.Retry(func(attempt uint) error {
+		receipt, err := suite.api.Broker().GetReceipt(hash)
+		if err != nil {
+			return err
+		}
+		if receipt.IsSuccess() {
+			return nil
+		}
+		return nil
+	}, strategy.Wait(2*time.Second)); err != nil {
 	}
 
-	data, err := pl.Marshal()
-	suite.Assert().Nil(err)
+	testSendView(suite)
+}
 
-	tx := &pb.Transaction{
-		From:      suite.from,
-		To:        constant.StoreContractAddr.Address(),
-		Timestamp: time.Now().UnixNano(),
-		Data: &pb.TransactionData{
-			Type:    pb.TransactionData_INVOKE,
-			VmType:  pb.TransactionData_BVM,
-			Payload: data,
-		},
-		Nonce: rand.Int63(),
-	}
-	err = tx.Sign(suite.privKey)
+func testSendTransaction(suite *API) types.Hash {
+	tx, err := genContractTransaction(pb.TransactionData_BVM, suite.privKey,
+		constant.StoreContractAddr.Address(), "Set", pb.String("key"), pb.String(value))
 	suite.Nil(err)
 
-	tx.TransactionHash = tx.Hash()
+	suite.Nil(suite.api.Broker().HandleTransaction(tx))
+	return tx.TransactionHash
+}
 
-	err = suite.api.Broker().HandleTransaction(tx)
+func testSendView(suite *API) {
+	tx, err := genContractTransaction(pb.TransactionData_BVM, suite.privKey,
+		constant.StoreContractAddr.Address(), "Get", pb.String("key"))
+
+	receipt, err := suite.api.Broker().HandleView(tx)
 	suite.Nil(err)
+	suite.Equal(value, string(receipt.Data))
 }
 
 func TestAPI(t *testing.T) {

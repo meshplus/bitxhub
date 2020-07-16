@@ -54,7 +54,11 @@ func initCreateContext(t *testing.T, name string) *vm.Context {
 
 	store, err := leveldb.New(filepath.Join(dir, "wasm"))
 	assert.Nil(t, err)
-	ldg, err := ledger.New(dir, store, log.NewWithModule("executor"))
+
+	ldb, err := leveldb.New(filepath.Join(dir, "ledger"))
+	assert.Nil(t, err)
+
+	ldg, err := ledger.New(store, ldb, ledger.NewAccountCache(), log.NewWithModule("executor"))
 	assert.Nil(t, err)
 
 	return &vm.Context{
@@ -81,7 +85,10 @@ func initValidationContext(t *testing.T, name string) *vm.Context {
 
 	store, err := leveldb.New(filepath.Join(dir, "validation"))
 	assert.Nil(t, err)
-	ldg, err := ledger.New(dir, store, log.NewWithModule("executor"))
+	ldb, err := leveldb.New(filepath.Join(dir, "ledger"))
+	assert.Nil(t, err)
+
+	ldg, err := ledger.New(store, ldb, ledger.NewAccountCache(), log.NewWithModule("executor"))
 	require.Nil(t, err)
 
 	return &vm.Context{
@@ -108,7 +115,10 @@ func initFabricContext(t *testing.T, name string) *vm.Context {
 
 	store, err := leveldb.New(filepath.Join(dir, "validation_farbic"))
 	assert.Nil(t, err)
-	ldg, err := ledger.New(dir, store, log.NewWithModule("executor"))
+	ldb, err := leveldb.New(filepath.Join(dir, "ledger"))
+	assert.Nil(t, err)
+
+	ldg, err := ledger.New(store, ldb, ledger.NewAccountCache(), log.NewWithModule("executor"))
 	require.Nil(t, err)
 
 	return &vm.Context{
@@ -234,7 +244,10 @@ func BenchmarkRunFabValidation(b *testing.B) {
 
 	store, err := leveldb.New(filepath.Join(dir, "111"))
 	assert.Nil(b, err)
-	ldg, err := ledger.New(dir, store, log.NewWithModule("executor"))
+	ldb, err := leveldb.New(filepath.Join(dir, "ledger"))
+	assert.Nil(b, err)
+
+	ldg, err := ledger.New(store, ldb, ledger.NewAccountCache(), log.NewWithModule("executor"))
 	require.Nil(b, err)
 	ctx := &vm.Context{
 		Caller:          caller,

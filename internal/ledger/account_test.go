@@ -2,6 +2,7 @@ package ledger
 
 import (
 	"io/ioutil"
+	"path/filepath"
 	"testing"
 
 	"github.com/meshplus/bitxhub-kit/bytesutil"
@@ -18,9 +19,13 @@ func TestAccount_GetState(t *testing.T) {
 	assert.Nil(t, err)
 	repoRoot, err := ioutil.TempDir("", "ledger_commit")
 	assert.Nil(t, err)
-	blockStorage, err := leveldb.New(repoRoot)
+	blockStorage, err := leveldb.New(filepath.Join(repoRoot, "storage"))
 	assert.Nil(t, err)
-	ledger, err := New(repoRoot, blockStorage, log.NewWithModule("ChainLedger"))
+	ldb, err := leveldb.New(filepath.Join(repoRoot, "ledger"))
+	assert.Nil(t, err)
+
+	accountCache := NewAccountCache()
+	ledger, err := New(blockStorage, ldb, accountCache, log.NewWithModule("ChainLedger"))
 	assert.Nil(t, err)
 
 	h := hexutil.Encode(bytesutil.LeftPadBytes([]byte{11}, 20))
