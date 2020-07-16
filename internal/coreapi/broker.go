@@ -17,7 +17,7 @@ var _ api.BrokerAPI = (*BrokerAPI)(nil)
 func (b *BrokerAPI) HandleTransaction(tx *pb.Transaction) error {
 	b.logger.WithFields(logrus.Fields{
 		"hash": tx.TransactionHash.String(),
-	}).Debugf("receive tx")
+	}).Debugf("Receive tx")
 
 	go func() {
 		if err := b.bxh.Order.Prepare(tx); err != nil {
@@ -28,14 +28,14 @@ func (b *BrokerAPI) HandleTransaction(tx *pb.Transaction) error {
 	return nil
 }
 
-func (b *BrokerAPI) HandleView(tx *pb.Transaction) ([]byte, error) {
+func (b *BrokerAPI) HandleView(tx *pb.Transaction) (*pb.Response, error) {
 	b.logger.WithFields(logrus.Fields{
 		"hash": tx.TransactionHash.String(),
-	}).Debugf("receive view")
+	}).Debugf("Receive view")
 
 	receipts := b.bxh.ViewExecutor.ApplyReadonlyTransactions([]*pb.Transaction{tx})
 
-	return receipts[0].Ret, nil
+	return &pb.Response{Data: receipts[0].Ret}, nil
 }
 
 func (b *BrokerAPI) GetTransaction(hash types.Hash) (*pb.Transaction, error) {

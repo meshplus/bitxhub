@@ -67,9 +67,9 @@ func testSendView(suite *API) {
 	tx, err := genContractTransaction(pb.TransactionData_BVM, suite.privKey,
 		constant.StoreContractAddr.Address(), "Get", pb.String("key"))
 
-	result, err := suite.api.Broker().HandleView(tx)
+	receipt, err := suite.api.Broker().HandleView(tx)
 	suite.Nil(err)
-	suite.Equal(value, string(result))
+	suite.Equal(value, string(receipt.Data))
 }
 
 func TestAPI(t *testing.T) {

@@ -77,11 +77,7 @@ func (exec *BlockExecutor) processExecuteEvent(block *pb.Block) {
 	block.BlockHeader.ReceiptRoot = receiptRoot
 	block.BlockHeader.ParentHash = exec.currentBlockHash
 
-	accounts, journal, err := exec.ledger.FlushDirtyDataAndComputeJournal()
-	if err != nil {
-		exec.logger.Errorf("flush dirty data and compute journal: %s", err.Error())
-		return
-	}
+	accounts, journal := exec.ledger.FlushDirtyDataAndComputeJournal()
 
 	block.BlockHeader.StateRoot = journal.ChangedHash
 	block.BlockHash = block.Hash()
@@ -341,9 +337,7 @@ func (exec *BlockExecutor) applyTransaction(i int, tx *pb.Transaction) ([]byte, 
 
 func (exec *BlockExecutor) clear() {
 	exec.interchainCounter = make(map[string][]uint64)
-	if err := exec.ledger.Clear(); err != nil {
-		exec.logger.Errorf("clear data: %s", err.Error())
-	}
+	exec.ledger.Clear()
 }
 
 func (exec *BlockExecutor) transfer(from, to types.Address, value uint64) error {
@@ -358,12 +352,8 @@ func (exec *BlockExecutor) transfer(from, to types.Address, value uint64) error 
 
 	tv := exec.ledger.GetBalance(to)
 
-	if err := exec.ledger.SetBalance(from, fv-value); err != nil {
-		return err
-	}
-	if err := exec.ledger.SetBalance(to, tv+value); err != nil {
-		return err
-	}
+	exec.ledger.SetBalance(from, fv-value)
+	exec.ledger.SetBalance(to, tv+value)
 
 	return nil
 }

@@ -64,10 +64,7 @@ func (b *BoltStubImpl) GetObject(key string, ret interface{}) bool {
 }
 
 func (b *BoltStubImpl) Set(key string, value []byte) {
-	err := b.ctx.Ledger.SetState(b.ctx.Callee, []byte(key), value)
-	if err != nil {
-		b.Logger().Errorf("flush dirty data and compute journal: %s", err.Error())
-	}
+	b.ctx.Ledger.SetState(b.ctx.Callee, []byte(key), value)
 }
 
 func (b *BoltStubImpl) SetObject(key string, value interface{}) {
@@ -97,15 +94,11 @@ func (b *BoltStubImpl) postEvent(interchain bool, event interface{}) {
 		panic(err)
 	}
 
-	err = b.ctx.Ledger.AddEvent(&pb.Event{
+	b.ctx.Ledger.AddEvent(&pb.Event{
 		Interchain: interchain,
 		Data:       data,
 		TxHash:     b.GetTxHash(),
 	})
-	if err != nil {
-		b.Logger().Errorf("flush dirty data and compute journal: %s", err.Error())
-		return
-	}
 }
 
 func (b *BoltStubImpl) CrossInvoke(address, method string, args ...*pb.Arg) *Response {

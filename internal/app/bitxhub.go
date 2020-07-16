@@ -106,8 +106,7 @@ func generateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 	}
 
 	// 0. load ledger
-	accountCache := ledger.NewAccountCache()
-	rwLdg, err := ledger.New(bcStorage, ldb, accountCache, loggers.Logger(loggers.Executor), false)
+	rwLdg, err := ledger.New(bcStorage, ldb, nil, loggers.Logger(loggers.Executor))
 	if err != nil {
 		return nil, fmt.Errorf("create RW ledger: %w", err)
 	}
@@ -120,7 +119,7 @@ func generateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 	}
 
 	// create read only ledger
-	viewLdg, err := ledger.New(bcStorage, ldb, accountCache, loggers.Logger(loggers.Executor), true)
+	viewLdg, err := ledger.New(bcStorage, ldb, rwLdg.AccountCache(), loggers.Logger(loggers.Executor))
 	if err != nil {
 		return nil, fmt.Errorf("create readonly ledger: %w", err)
 	}

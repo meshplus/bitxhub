@@ -3,6 +3,7 @@ package executor
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
 
@@ -115,7 +116,34 @@ func (exec *BlockExecutor) SubscribeBlockEvent(ch chan<- events.NewBlockEvent) e
 }
 
 func (exec *BlockExecutor) ApplyReadonlyTransactions(txs []*pb.Transaction) []*pb.Receipt {
-	receipts := exec.applyTransactions(txs)
+	current := time.Now()
+	receipts := make([]*pb.Receipt, 0, len(txs))
+
+	for i, tx := range txs {
+		receipt := &pb.Receipt{
+			Version: tx.Version,
+			TxHash:  tx.TransactionHash,
+		}
+
+		ret, err := exec.applyTransaction(i, tx)
+		if err != nil {
+			receipt.Status = pb.Receipt_FAILED
+			receipt.Ret = []byte(err.Error())
+		} else {
+			receipt.Status = pb.Receipt_SUCCESS
+			receipt.Ret = ret
+		}
+
+		receipts = append(receipts, receipt)
+		// clear potential write to ledger
+		exec.ledger.Clear()
+	}
+
+	exec.logger.WithFields(logrus.Fields{
+		"time":  time.Since(current),
+		"count": len(txs),
+	}).Debug("Apply readonly transactions elapsed")
+
 	return receipts
 }
 
@@ -133,10 +161,7 @@ func (exec *BlockExecutor) listenExecuteEvent() {
 
 func (exec *BlockExecutor) persistData() {
 	for data := range exec.persistC {
-		if err := exec.ledger.PersistBlockData(data); err != nil {
-			exec.logger.Errorf("persist block data: %s", err.Error())
-			return
-		}
+		exec.ledger.PersistBlockData(data)
 	}
 }
 

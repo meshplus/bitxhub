@@ -18,7 +18,6 @@ var (
 	ErrorRollbackWithoutJournal  = fmt.Errorf("rollback to blockchain height without journal")
 	ErrorRollbackTooMuch         = fmt.Errorf("rollback too much block")
 	ErrorRemoveJournalOutOfRange = fmt.Errorf("remove journal out of range")
-	ErrWriteToViewLedger         = fmt.Errorf("have no access to write readonly ledger")
 )
 
 type ChainLedger struct {
@@ -36,7 +35,6 @@ type ChainLedger struct {
 	chainMeta  *pb.ChainMeta
 
 	journalMutex sync.RWMutex
-	readOnly     bool
 }
 
 type BlockData struct {
@@ -48,7 +46,7 @@ type BlockData struct {
 }
 
 // New create a new ledger instance
-func New(blockchainStore storage.Storage, ldb storage.Storage, accountCache *AccountCache, logger logrus.FieldLogger, readOnly bool) (*ChainLedger, error) {
+func New(blockchainStore storage.Storage, ldb storage.Storage, accountCache *AccountCache, logger logrus.FieldLogger) (*ChainLedger, error) {
 	chainMeta, err := loadChainMeta(blockchainStore)
 	if err != nil {
 		return nil, fmt.Errorf("load chain meta: %w", err)
@@ -62,6 +60,10 @@ func New(blockchainStore storage.Storage, ldb storage.Storage, accountCache *Acc
 		prevJnlHash = blockJournal.ChangedHash
 	}
 
+	if accountCache == nil {
+		accountCache = NewAccountCache()
+	}
+
 	ledger := &ChainLedger{
 		logger:          logger,
 		chainMeta:       chainMeta,
@@ -73,7 +75,6 @@ func New(blockchainStore storage.Storage, ldb storage.Storage, accountCache *Acc
 		accounts:        make(map[string]*Account),
 		accountCache:    accountCache,
 		prevJnlHash:     prevJnlHash,
-		readOnly:        readOnly,
 	}
 
 	height := maxJnlHeight
@@ -81,21 +82,19 @@ func New(blockchainStore storage.Storage, ldb storage.Storage, accountCache *Acc
 		height = chainMeta.Height
 	}
 
-	if !readOnly {
-		if err := ledger.Rollback(height); err != nil {
-			return nil, err
-		}
+	if err := ledger.Rollback(height); err != nil {
+		return nil, err
 	}
 
 	return ledger, nil
 }
 
-// PersistBlockData persists block data
-func (l *ChainLedger) PersistBlockData(blockData *BlockData) error {
-	if l.readOnly {
-		return ErrWriteToViewLedger
-	}
+func (l *ChainLedger) AccountCache() *AccountCache {
+	return l.accountCache
+}
 
+// PersistBlockData persists block data
+func (l *ChainLedger) PersistBlockData(blockData *BlockData) {
 	current := time.Now()
 	block := blockData.Block
 	receipts := blockData.Receipts
@@ -117,16 +116,10 @@ func (l *ChainLedger) PersistBlockData(blockData *BlockData) error {
 		"count":  len(block.Transactions),
 	}).Info("Persist block")
 	PersistBlockDuration.Observe(float64(time.Since(current)) / float64(time.Second))
-
-	return nil
 }
 
 // Rollback rollback ledger to history version
 func (l *ChainLedger) Rollback(height uint64) error {
-	if l.readOnly {
-		return ErrWriteToViewLedger
-	}
-
 	if err := l.rollbackState(height); err != nil {
 		return err
 	}
@@ -140,10 +133,6 @@ func (l *ChainLedger) Rollback(height uint64) error {
 
 // RemoveJournalsBeforeBlock removes ledger journals whose block number < height
 func (l *ChainLedger) RemoveJournalsBeforeBlock(height uint64) error {
-	if l.readOnly {
-		return ErrWriteToViewLedger
-	}
-
 	l.journalMutex.Lock()
 	defer l.journalMutex.Unlock()
 
@@ -168,15 +157,9 @@ func (l *ChainLedger) RemoveJournalsBeforeBlock(height uint64) error {
 }
 
 // AddEvent add ledger event
-func (l *ChainLedger) AddEvent(event *pb.Event) error {
-	if l.readOnly {
-		return ErrWriteToViewLedger
-	}
-
+func (l *ChainLedger) AddEvent(event *pb.Event) {
 	hash := event.TxHash.Hex()
 	l.events[hash] = append(l.events[hash], event)
-
-	return nil
 }
 
 // Events return ledger events

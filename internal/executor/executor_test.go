@@ -64,7 +64,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	mockLedger.EXPECT().SetCode(gomock.Any(), gomock.Any()).AnyTimes()
 	mockLedger.EXPECT().GetCode(gomock.Any()).Return([]byte("10")).AnyTimes()
 	mockLedger.EXPECT().PersistExecutionResult(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-	mockLedger.EXPECT().FlushDirtyDataAndComputeJournal().Return(make(map[string]*ledger.Account), &ledger.BlockJournal{}, nil).AnyTimes()
+	mockLedger.EXPECT().FlushDirtyDataAndComputeJournal().Return(make(map[string]*ledger.Account), &ledger.BlockJournal{}).AnyTimes()
 	mockLedger.EXPECT().PersistBlockData(gomock.Any()).AnyTimes()
 	logger := log.NewWithModule("executor")
 
@@ -175,14 +175,13 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 	require.Nil(t, err)
 
 	accountCache := ledger.NewAccountCache()
-	ldg, err := ledger.New(blockchainStorage, ldb, accountCache, log.NewWithModule("ledger"), false)
+	ldg, err := ledger.New(blockchainStorage, ldb, accountCache, log.NewWithModule("ledger"))
 	require.Nil(t, err)
 
 	_, from := loadAdminKey(t)
 
-	require.Nil(t, ldg.SetBalance(from, 100000000))
-	account, journal, err := ldg.FlushDirtyDataAndComputeJournal()
-	require.Nil(t, err)
+	ldg.SetBalance(from, 100000000)
+	account, journal := ldg.FlushDirtyDataAndComputeJournal()
 	err = ldg.Commit(1, account, journal)
 	require.Nil(t, err)
 	err = ldg.PersistExecutionResult(mockBlock(1, nil), nil, &pb.InterchainMeta{})
@@ -209,7 +208,7 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 	require.EqualValues(t, 99999997, ldg.GetBalance(from))
 
 	// test executor with readonly ledger
-	viewLedger, err := ledger.New(blockchainStorage, ldb, accountCache, log.NewWithModule("ledger"), true)
+	viewLedger, err := ledger.New(blockchainStorage, ldb, accountCache, log.NewWithModule("ledger"))
 	require.Nil(t, err)
 
 	exec, err := New(viewLedger, log.NewWithModule("executor"))
@@ -218,8 +217,8 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 	tx := mockTransferTx(t)
 	receipts := exec.ApplyReadonlyTransactions([]*pb.Transaction{tx})
 	require.NotNil(t, receipts)
-	require.Equal(t, pb.Receipt_FAILED, receipts[0].Status)
-	require.Equal(t, ledger.ErrWriteToViewLedger.Error(), string(receipts[0].Ret))
+	require.Equal(t, pb.Receipt_SUCCESS, receipts[0].Status)
+	require.Nil(t, receipts[0].Ret)
 }
 
 func mockTransferTx(t *testing.T) *pb.Transaction {
