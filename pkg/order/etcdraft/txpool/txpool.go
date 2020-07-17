@@ -92,7 +92,25 @@ func (tp *TxPool) AddPendingTx(tx *pb.Transaction, isAckTx bool) error {
 	}
 	//add pending tx
 	tp.pushBack(hash, tx, isAckTx)
+
+	//immediately pack if it is greater than the total amount of block transactions
+	if tp.isExecuting {
+		tp.packFullBlock()
+	}
 	return nil
+}
+
+//packFullBlock immediately pack if it is greater than the total amount of block transactions
+func (tp *TxPool) packFullBlock() {
+	tp.Lock()
+	defer tp.Unlock()
+	l := tp.pendingTxs.Len()
+	if l < tp.config.PackSize {
+		return
+	}
+	if r := tp.ready(tp.config.PackSize); r != nil {
+		tp.readyC <- r
+	}
 }
 
 //Current txpool's size
@@ -124,7 +142,7 @@ func (tp *TxPool) BuildReqLookUp() {
 	}
 }
 
-//CheckExecute check the txpool status, only leader node can run Execute()
+//CheckExecute checks the txpool status, only leader node can run Execute()
 func (tp *TxPool) CheckExecute(isLeader bool) {
 	if isLeader {
 		if !tp.isExecuting {
@@ -144,7 +162,7 @@ func (tp *TxPool) executeInit() {
 	tp.isExecuting = true
 	tp.pendingTxs.Init()
 	tp.presenceTxs = sync.Map{}
-	tp.logger.Debugln("start txpool execute")
+	tp.logger.Infoln("start txpool execute")
 }
 
 //execute schedule to collect txs to the ready channel
@@ -156,11 +174,7 @@ func (tp *TxPool) execute() {
 	for {
 		select {
 		case <-ticker.C:
-			ready := tp.ready()
-			if ready == nil {
-				continue
-			}
-			tp.readyC <- ready
+			tp.periodPackBlock()
 		case <-tp.ctx.Done():
 			tp.isExecuting = false
 			tp.logger.Infoln("done txpool execute")
@@ -170,13 +184,12 @@ func (tp *TxPool) execute() {
 
 }
 
-//ready pack the block
-func (tp *TxPool) ready() *raftproto.Ready {
+func (tp *TxPool) periodPackBlock() {
 	tp.Lock()
 	defer tp.Unlock()
 	l := tp.pendingTxs.Len()
 	if l == 0 {
-		return nil
+		return
 	}
 
 	var size int
@@ -185,6 +198,13 @@ func (tp *TxPool) ready() *raftproto.Ready {
 	} else {
 		size = l
 	}
+	if r := tp.ready(size); r != nil {
+		tp.readyC <- r
+	}
+}
+
+//ready pack the block
+func (tp *TxPool) ready(size int) *raftproto.Ready {
 	hashes := make([]types.Hash, 0, size)
 	for i := 0; i < size; i++ {
 		front := tp.pendingTxs.Front()

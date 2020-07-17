@@ -47,7 +47,19 @@ func (n *Node) Prepare(tx *pb.Transaction) error {
 		}
 	}
 	n.pushBack(tx)
+	if n.PoolSize() >= n.packSize {
+		if r := n.ready(); r != nil {
+			n.commitC <- r
+		}
+	}
 	return nil
+}
+
+//Current txpool's size
+func (n *Node) PoolSize() int {
+	n.RLock()
+	defer n.RUnlock()
+	return n.pendingTxs.Len()
 }
 
 func (n *Node) Commit() chan *pb.Block {
@@ -114,44 +126,48 @@ func (n *Node) execute() {
 	for {
 		select {
 		case <-ticker.C:
-			n.Lock()
-			l := n.pendingTxs.Len()
-			if l == 0 {
-				n.Unlock()
-				continue
+			if r := n.ready(); r != nil {
+				n.commitC <- r
 			}
-
-			var size int
-			if l > n.packSize {
-				size = n.packSize
-			} else {
-				size = l
-			}
-			txs := make([]*pb.Transaction, 0, size)
-			for i := 0; i < size; i++ {
-				front := n.pendingTxs.Front()
-				tx := front.Value.(*pb.Transaction)
-				txs = append(txs, tx)
-				n.pendingTxs.Remove(front)
-			}
-			n.height++
-			n.Unlock()
-
-			block := &pb.Block{
-				BlockHeader: &pb.BlockHeader{
-					Version:   []byte("1.0.0"),
-					Number:    n.height,
-					Timestamp: time.Now().UnixNano(),
-				},
-				Transactions: txs,
-			}
-			n.commitC <- block
 		case <-n.ctx.Done():
 			n.logger.Infoln("Done txpool execute")
 			return
 		}
 	}
 
+}
+
+func (n *Node) ready() *pb.Block {
+	n.Lock()
+	defer n.Unlock()
+	l := n.pendingTxs.Len()
+	if l == 0 {
+		return nil
+	}
+	var size int
+	if l > n.packSize {
+		size = n.packSize
+	} else {
+		size = l
+	}
+	txs := make([]*pb.Transaction, 0, size)
+	for i := 0; i < size; i++ {
+		front := n.pendingTxs.Front()
+		tx := front.Value.(*pb.Transaction)
+		txs = append(txs, tx)
+		n.pendingTxs.Remove(front)
+	}
+	n.height++
+
+	block := &pb.Block{
+		BlockHeader: &pb.BlockHeader{
+			Version:   []byte("1.0.0"),
+			Number:    n.height,
+			Timestamp: time.Now().UnixNano(),
+		},
+		Transactions: txs,
+	}
+	return block
 }
 
 func (n *Node) pushBack(value interface{}) *list.Element {
