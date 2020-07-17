@@ -182,7 +182,9 @@ func (cbs *ChainBrokerService) interStatus(block *pb.Block, interchainMeta *pb.I
 			switch ibtp.Type {
 			case pb.IBTP_INTERCHAIN:
 				ev.InterchainTx = append(ev.InterchainTx, status)
-			case pb.IBTP_RECEIPT:
+			case pb.IBTP_RECEIPT_SUCCESS:
+				ev.InterchainReceipt = append(ev.InterchainReceipt, status)
+			case pb.IBTP_RECEIPT_FAILURE:
 				ev.InterchainReceipt = append(ev.InterchainReceipt, status)
 			}
 		}

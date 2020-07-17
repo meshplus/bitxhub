@@ -137,13 +137,14 @@ func (suite *Interchain) TestGetIBTPByID() {
 	ib := &pb.IBTP{From: f.Hex(), To: t.Hex(), Index: 1, Payload: []byte("111"), Timestamp: time.Now().UnixNano(), Proof: proof}
 	data, err := ib.Marshal()
 	suite.Require().Nil(err)
-	_, err = invokeBVMContract(suite.api, k1, constant.InterchainContractAddr.Address(), "HandleIBTP", pb.Bytes(data))
+	receipt, err := invokeBVMContract(suite.api, k1, constant.InterchainContractAddr.Address(), "HandleIBTP", pb.Bytes(data))
 	suite.Require().Nil(err)
+	suite.Require().EqualValues(true, receipt.IsSuccess(), string(receipt.Ret))
 
 	ib.Index = 2
 	data, err = ib.Marshal()
 	suite.Require().Nil(err)
-	receipt, err := invokeBVMContract(suite.api, k1, constant.InterchainContractAddr.Address(), "HandleIBTP", pb.Bytes(data))
+	receipt, err = invokeBVMContract(suite.api, k1, constant.InterchainContractAddr.Address(), "HandleIBTP", pb.Bytes(data))
 	suite.Require().Nil(err)
 	suite.Require().EqualValues(true, receipt.IsSuccess(), string(receipt.Ret))
 
