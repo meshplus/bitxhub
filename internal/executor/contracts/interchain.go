@@ -88,82 +88,167 @@ func (x *InterchainManager) HandleIBTP(data []byte) *boltvm.Response {
 		return boltvm.Error(err.Error())
 	}
 
-	if ibtp.To == "" {
-		return boltvm.Error("empty destination chain id")
-	}
-	ok = x.Has(x.appchainKey(ibtp.To))
-	if !ok {
-		x.Logger().WithField("chain_id", ibtp.To).Warn("target appchain does not exist")
-	}
-
 	interchain := &Interchain{}
 	x.GetObject(x.appchainKey(ibtp.From), &interchain)
 
-	app := &appchainMgr.Appchain{}
-	res := x.CrossInvoke(constant.AppchainMgrContractAddr.String(), "GetAppchain", pb.String(ibtp.From))
-	err := json.Unmarshal(res.Result, app)
-	if err != nil {
+	if err := x.checkIBTP(ibtp, interchain); err != nil {
 		return boltvm.Error(err.Error())
 	}
+
+	res := boltvm.Success(nil)
+
+	if pb.IBTP_INTERCHAIN == ibtp.Type {
+		res = x.beginTransaction(ibtp)
+	} else {
+		res = x.reportTransaction(ibtp)
+	}
+
+	if !res.Ok {
+		return res
+	}
+
+	x.ProcessIBTP(ibtp, interchain)
+
+	return res
+}
+
+func (x *InterchainManager) HandleIBTPs(data []byte) *boltvm.Response {
+	ok := x.Has(x.appchainKey(x.Caller()))
+	if !ok {
+		return boltvm.Error("this appchain does not exist")
+	}
+
+	ibtps := &pb.IBTPs{}
+	if err := ibtps.Unmarshal(data); err != nil {
+		return boltvm.Error(err.Error())
+	}
+
+	interchain := &Interchain{}
+	x.GetObject(x.appchainKey(x.Caller()), &interchain)
+
+	for _, ibtp := range ibtps.Iptp {
+		if err := x.checkIBTP(ibtp, interchain); err != nil {
+			return boltvm.Error(err.Error())
+		}
+	}
+
+	if res := x.beginMultiTargetsTransaction(ibtps); !res.Ok {
+		return res
+	}
+
+	for _, ibtp := range ibtps.Iptp {
+		x.ProcessIBTP(ibtp, interchain)
+	}
+
+	return boltvm.Success(nil)
+}
+
+func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP, interchain *Interchain) error {
+	if ibtp.To == "" {
+		return fmt.Errorf("empty destination chain id")
+	}
+	if ok := x.Has(x.appchainKey(ibtp.To)); !ok {
+		x.Logger().WithField("chain_id", ibtp.To).Warn("target appchain does not exist")
+	}
+
+	app := &appchainMgr.Appchain{}
+	res := x.CrossInvoke(constant.AppchainMgrContractAddr.String(), "GetAppchain", pb.String(ibtp.From))
+	if err := json.Unmarshal(res.Result, app); err != nil {
+		return err
+	}
+
 	// get validation rule contract address
 	res = x.CrossInvoke(constant.RuleManagerContractAddr.String(), "GetRuleAddress", pb.String(ibtp.From), pb.String(app.ChainType))
 	if !res.Ok {
-		return boltvm.Error("this appchain don't register rule")
+		return fmt.Errorf("this appchain does not register rule")
 	}
 
 	// handle validation
 	isValid, err := x.ValidationEngine().Validate(string(res.Result), ibtp.From, ibtp.Proof, ibtp.Payload, app.Validators)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return err
 	}
 
 	if !isValid {
-		return boltvm.Error("invalid interchain transaction")
+		return fmt.Errorf("invalid interchain transaction")
 	}
 
-	switch ibtp.Type {
-	case pb.IBTP_INTERCHAIN:
+	if pb.IBTP_INTERCHAIN == ibtp.Type {
 		if ibtp.From != x.Caller() {
-			return boltvm.Error("ibtp from != caller")
+			return fmt.Errorf("ibtp from != caller")
 		}
 
 		idx := interchain.InterchainCounter[ibtp.To]
 		if idx+1 != ibtp.Index {
-			return boltvm.Error(fmt.Sprintf("wrong index, required %d, but %d", idx+1, ibtp.Index))
+			return fmt.Errorf(fmt.Sprintf("wrong index, required %d, but %d", idx+1, ibtp.Index))
 		}
-
-		interchain.InterchainCounter[ibtp.To]++
-		x.SetObject(x.appchainKey(ibtp.From), interchain)
-		x.SetObject(x.indexMapKey(ibtp.ID()), x.GetTxHash())
-		m := make(map[string]uint64)
-		m[ibtp.To] = x.GetTxIndex()
-		x.PostInterchainEvent(m)
-	case pb.IBTP_RECEIPT:
+	} else {
 		if ibtp.To != x.Caller() {
-			return boltvm.Error("ibtp from != caller")
+			return fmt.Errorf("ibtp from != caller")
 		}
 
 		idx := interchain.ReceiptCounter[ibtp.To]
 		if idx+1 != ibtp.Index {
 			if interchain.SourceReceiptCounter[ibtp.To]+1 != ibtp.Index {
-				return boltvm.Error(fmt.Sprintf("wrong receipt index, required %d, but %d", idx+1, ibtp.Index))
+				return fmt.Errorf("wrong receipt index, required %d, but %d", idx+1, ibtp.Index)
 			}
 		}
+	}
 
+	return nil
+}
+
+func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *Interchain) {
+	m := make(map[string]uint64)
+
+	if pb.IBTP_INTERCHAIN == ibtp.Type {
+		interchain.InterchainCounter[ibtp.To]++
+		x.SetObject(x.appchainKey(ibtp.From), interchain)
+		x.SetObject(x.indexMapKey(ibtp.ID()), x.GetTxHash())
+		m[ibtp.To] = x.GetTxIndex()
+	} else {
 		interchain.ReceiptCounter[ibtp.To] = ibtp.Index
 		x.SetObject(x.appchainKey(ibtp.From), interchain)
-		m := make(map[string]uint64)
 		m[ibtp.From] = x.GetTxIndex()
 
 		ic := &Interchain{}
 		x.GetObject(x.appchainKey(ibtp.To), &ic)
 		ic.SourceReceiptCounter[ibtp.From] = ibtp.Index
 		x.SetObject(x.appchainKey(ibtp.To), ic)
-
-		x.PostInterchainEvent(m)
 	}
 
-	return boltvm.Success(nil)
+	x.PostInterchainEvent(m)
+}
+
+func (x *InterchainManager) beginMultiTargetsTransaction(ibtps *pb.IBTPs) *boltvm.Response {
+	args := make([]*pb.Arg, 0)
+	globalId := fmt.Sprintf("%s-%s", x.Caller(), x.GetTxHash())
+	args = append(args, pb.String(globalId))
+
+	for _, ibtp := range ibtps.Iptp {
+		if ibtp.Type != pb.IBTP_INTERCHAIN {
+			return boltvm.Error("ibtp type != IBTP_INTERCHAIN")
+		}
+
+		childTxId := fmt.Sprintf("%s-%s-%d", ibtp.From, ibtp.To, ibtp.Index)
+		args = append(args, pb.String(childTxId))
+	}
+
+	return x.CrossInvoke(constant.TransactionMgrContractAddr.String(), "Begin", args...)
+}
+
+func (x *InterchainManager) beginTransaction(ibtp *pb.IBTP) *boltvm.Response {
+	txId := fmt.Sprintf("%s-%s-%d", ibtp.From, ibtp.To, ibtp.Index)
+	return x.CrossInvoke(constant.TransactionMgrContractAddr.String(), "Begin", pb.String(txId))
+}
+
+func (x *InterchainManager) reportTransaction(ibtp *pb.IBTP) *boltvm.Response {
+	txId := fmt.Sprintf("%s-%s-%d", ibtp.To, ibtp.From, ibtp.Index)
+	result := int32(0)
+	if ibtp.Type == pb.IBTP_RECEIPT_FAILURE {
+		result = 1
+	}
+	return x.CrossInvoke(constant.TransactionMgrContractAddr.String(), "Report", pb.String(txId), pb.Int32(result))
 }
 
 func (x *InterchainManager) GetIBTPByID(id string) *boltvm.Response {
