@@ -88,7 +88,6 @@ function start() {
   for ((i = 0; i < N; i = i + 1)); do
     tmux selectw -t $(($i / 4))
     tmux selectp -t $(($i % 4))
-    tmux send-keys "ulimit -n 20000" C-m
     tmux send-keys "bitxhub --repo=${BUILD_PATH}/node$(($i + 1)) start" C-m
   done
   tmux selectw -t 0
