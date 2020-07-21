@@ -3,9 +3,11 @@ package app
 import (
 	"context"
 	"fmt"
+	"syscall"
 	"time"
 
 	"github.com/common-nighthawk/go-figure"
+	"github.com/ethereum/go-ethereum/common/fdlimit"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub/internal/executor"
 	"github.com/meshplus/bitxhub/internal/ledger"
@@ -205,6 +207,11 @@ func NewTesterBitXHub(rep *repo.Repo) (*BitXHub, error) {
 }
 
 func (bxh *BitXHub) Start() error {
+
+	if err := bxh.raiseUlimit(2048); err != nil {
+		return fmt.Errorf("raise ulimit: %w", err)
+	}
+
 	if !bxh.repo.Config.Solo {
 		if err := bxh.PeerMgr.Start(); err != nil {
 			return fmt.Errorf("peer manager start: %w", err)
@@ -279,4 +286,22 @@ func (bxh *BitXHub) printLogo() {
 			return
 		}
 	}
+}
+
+func (bxh *BitXHub) raiseUlimit(limitNew uint64) error {
+	_, err := fdlimit.Raise(limitNew)
+	if err != nil {
+		return err
+	}
+
+	var limit syscall.Rlimit
+	if err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &limit); err != nil {
+		return err
+	}
+
+	if limit.Cur != limitNew && limit.Cur != limit.Max {
+		return fmt.Errorf("failed to raise ulimit")
+	}
+
+	return nil
 }
