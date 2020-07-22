@@ -303,5 +303,9 @@ func (bxh *BitXHub) raiseUlimit(limitNew uint64) error {
 		return fmt.Errorf("failed to raise ulimit")
 	}
 
+	bxh.logger.WithFields(logrus.Fields{
+		"ulimit": limit.Cur,
+	}).Infof("Ulimit raised")
+
 	return nil
 }
