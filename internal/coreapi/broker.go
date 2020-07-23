@@ -28,14 +28,14 @@ func (b *BrokerAPI) HandleTransaction(tx *pb.Transaction) error {
 	return nil
 }
 
-func (b *BrokerAPI) HandleView(tx *pb.Transaction) (*pb.Response, error) {
+func (b *BrokerAPI) HandleView(tx *pb.Transaction) (*pb.Receipt, error) {
 	b.logger.WithFields(logrus.Fields{
 		"hash": tx.TransactionHash.String(),
 	}).Debugf("Receive view")
 
 	receipts := b.bxh.ViewExecutor.ApplyReadonlyTransactions([]*pb.Transaction{tx})
 
-	return &pb.Response{Data: receipts[0].Ret}, nil
+	return receipts[0], nil
 }
 
 func (b *BrokerAPI) GetTransaction(hash types.Hash) (*pb.Transaction, error) {

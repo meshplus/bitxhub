@@ -69,7 +69,8 @@ func testSendView(suite *API) {
 
 	receipt, err := suite.api.Broker().HandleView(tx)
 	suite.Nil(err)
-	suite.Equal(value, string(receipt.Data))
+	suite.Equal(receipt.Status, pb.Receipt_SUCCESS)
+	suite.Equal(value, string(receipt.Ret))
 }
 
 func TestAPI(t *testing.T) {
