@@ -2,12 +2,15 @@ package peermgr
 
 import (
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
 	"strconv"
 
 	"github.com/libp2p/go-libp2p-core/network"
 	network2 "github.com/libp2p/go-libp2p-core/network"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub/internal/constant"
+	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/model"
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/pkg/cert"
@@ -31,6 +34,8 @@ func (swarm *Swarm) handleMessage(s network.Stream, data []byte) {
 			go swarm.orderMessageFeed.Send(events.OrderMessageEvent{Data: m.Data})
 		case pb.Message_FETCH_BLOCK_SIGN:
 			swarm.handleFetchBlockSignMessage(s, m.Data)
+		case pb.Message_FETCH_ASSET_EXCHANEG_SIGN:
+			swarm.handleFetchAssetExchangeSignMessage(s, m.Data)
 		default:
 			swarm.logger.WithField("module", "p2p").Errorf("can't handle msg[type: %v]", m.Type)
 			return nil
@@ -152,5 +157,57 @@ func (swarm *Swarm) handleFetchBlockSignMessage(s network2.Stream, data []byte) 
 
 	if err := swarm.SendWithStream(s, msg); err != nil {
 		swarm.logger.Errorf("send block sign back: %s", err)
+	}
+}
+
+func (swarm *Swarm) handleFetchAssetExchangeSignMessage(s network2.Stream, data []byte) {
+	handle := func(id string) (string, []byte, error) {
+		swarm.logger.WithField("asset exchange id", id).Debug("Handle fetching asset exchange sign message")
+
+		ok, record := swarm.ledger.GetState(constant.AssetExchangeContractAddr.Address(), []byte(contracts.AssetExchangeKey(id)))
+		if !ok {
+			return "", nil, fmt.Errorf("cannot find asset exchange record with id %s", id)
+		}
+
+		aer := contracts.AssetExchangeRecord{}
+		if err := json.Unmarshal(record, &aer); err != nil {
+			return "", nil, err
+		}
+
+		result := fmt.Sprintf("%s-%d", id, aer.Status)
+
+		key := swarm.repo.Key
+		sign, err := key.PrivKey.Sign([]byte(result))
+		if err != nil {
+			return "", nil, fmt.Errorf("fetch asset exchange sign: %w", err)
+		}
+
+		return key.Address, sign, nil
+	}
+
+	address, signed, err := handle(string(data))
+	if err != nil {
+		swarm.logger.Errorf("handle fetch-asset-exchange-sign: %s", err)
+		return
+	}
+
+	m := model.MerkleWrapperSign{
+		Address:   address,
+		Signature: signed,
+	}
+
+	body, err := m.Marshal()
+	if err != nil {
+		swarm.logger.Errorf("marshal merkle wrapper sign: %s", err)
+		return
+	}
+
+	msg := &pb.Message{
+		Type: pb.Message_FETCH_ASSET_EXCHANGE_SIGN_ACK,
+		Data: body,
+	}
+
+	if err := swarm.SendWithStream(s, msg); err != nil {
+		swarm.logger.Errorf("send asset exchange sign back: %s", err)
 	}
 }

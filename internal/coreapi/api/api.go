@@ -38,6 +38,9 @@ type BrokerAPI interface {
 
 	// OrderReady
 	OrderReady() bool
+
+	FetchAssetExchangeSignsFromOtherPeers(id string) map[string][]byte
+	GetAssetExchangeSign(id string) (string, []byte, error)
 }
 
 type NetworkAPI interface {

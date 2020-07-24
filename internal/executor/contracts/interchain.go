@@ -99,8 +99,12 @@ func (x *InterchainManager) HandleIBTP(data []byte) *boltvm.Response {
 
 	if pb.IBTP_INTERCHAIN == ibtp.Type {
 		res = x.beginTransaction(ibtp)
-	} else {
+	} else if pb.IBTP_RECEIPT_SUCCESS == ibtp.Type || pb.IBTP_RECEIPT_FAILURE == ibtp.Type {
 		res = x.reportTransaction(ibtp)
+	} else if pb.IBTP_ASSET_EXCHANGE_INIT == ibtp.Type ||
+		pb.IBTP_ASSET_EXCHANGE_REDEEM == ibtp.Type ||
+		pb.IBTP_ASSET_EXCHANGE_REFUND == ibtp.Type {
+		res = x.handleAssetExchange(ibtp)
 	}
 
 	if !res.Ok {
@@ -173,7 +177,10 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP, interchain *Interchain) err
 		return fmt.Errorf("invalid interchain transaction")
 	}
 
-	if pb.IBTP_INTERCHAIN == ibtp.Type {
+	if pb.IBTP_INTERCHAIN == ibtp.Type ||
+		pb.IBTP_ASSET_EXCHANGE_INIT == ibtp.Type ||
+		pb.IBTP_ASSET_EXCHANGE_REDEEM == ibtp.Type ||
+		pb.IBTP_ASSET_EXCHANGE_REFUND == ibtp.Type {
 		if ibtp.From != x.Caller() {
 			return fmt.Errorf("ibtp from != caller")
 		}
@@ -201,7 +208,10 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP, interchain *Interchain) err
 func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *Interchain) {
 	m := make(map[string]uint64)
 
-	if pb.IBTP_INTERCHAIN == ibtp.Type {
+	if pb.IBTP_INTERCHAIN == ibtp.Type ||
+		pb.IBTP_ASSET_EXCHANGE_INIT == ibtp.Type ||
+		pb.IBTP_ASSET_EXCHANGE_REDEEM == ibtp.Type ||
+		pb.IBTP_ASSET_EXCHANGE_REFUND == ibtp.Type {
 		interchain.InterchainCounter[ibtp.To]++
 		x.SetObject(x.appchainKey(ibtp.From), interchain)
 		x.SetObject(x.indexMapKey(ibtp.ID()), x.GetTxHash())
@@ -249,6 +259,24 @@ func (x *InterchainManager) reportTransaction(ibtp *pb.IBTP) *boltvm.Response {
 		result = 1
 	}
 	return x.CrossInvoke(constant.TransactionMgrContractAddr.String(), "Report", pb.String(txId), pb.Int32(result))
+}
+
+func (x *InterchainManager) handleAssetExchange(ibtp *pb.IBTP) *boltvm.Response {
+	var method string
+
+	switch ibtp.Type {
+	case pb.IBTP_ASSET_EXCHANGE_INIT:
+		method = "Init"
+	case pb.IBTP_ASSET_EXCHANGE_REDEEM:
+		method = "Redeem"
+	case pb.IBTP_ASSET_EXCHANGE_REFUND:
+		method = "Refund"
+	default:
+		return boltvm.Error("unsupported asset exchange type")
+	}
+
+	return x.CrossInvoke(constant.AssetExchangeContractAddr.String(), method, pb.String(ibtp.From),
+		pb.String(ibtp.To), pb.Bytes(ibtp.Extra))
 }
 
 func (x *InterchainManager) GetIBTPByID(id string) *boltvm.Response {
