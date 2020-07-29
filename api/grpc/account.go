@@ -3,6 +3,7 @@ package grpc
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -16,6 +17,10 @@ type Account struct {
 }
 
 func (cbs *ChainBrokerService) GetAccountBalance(ctx context.Context, req *pb.Address) (*pb.Response, error) {
+	if !types.IsValidAddressByte([]byte(req.Address)) {
+		return nil, fmt.Errorf("invalid account address: %v", req.Address)
+	}
+
 	addr := types.String2Address(req.Address)
 
 	account := cbs.api.Account().GetAccount(addr)
