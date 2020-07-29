@@ -5,7 +5,8 @@ import (
 
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/validator"
-
+	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub/internal/constant"
 	"github.com/meshplus/bitxhub/pkg/vm/boltvm"
 )
 
@@ -31,6 +32,11 @@ type ruleRecord struct {
 
 // SetRule can map the validation rule address with the chain id
 func (r *RuleManager) RegisterRule(id string, address string) *boltvm.Response {
+
+	if res := r.CrossInvoke(constant.AppchainMgrContractAddr.String(), "GetAppchain", pb.String(id)); !res.Ok {
+		return boltvm.Error("this appchain does not exist")
+	}
+
 	rl := &rule{
 		Address: address,
 		Status:  0,
