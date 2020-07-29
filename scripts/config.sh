@@ -49,30 +49,30 @@ function generate() {
   cp "${PROJECT_PATH}"/bin/bitxhub "${BUILD_PATH}"
   cp -rf "${PROJECT_PATH}"/internal/plugins/build/raft.so "${BUILD_PATH}"
 
-  bitxhub cert ca
-  bitxhub cert priv --name agency
-  bitxhub cert csr --key ./agency.priv --org Agency
-  bitxhub cert issue --key ./ca.priv --cert ./ca.cert --csr ./agency.csr --is_ca true
+  "${BUILD_PATH}"/bitxhub cert ca
+  "${BUILD_PATH}"/bitxhub cert priv --name agency
+  "${BUILD_PATH}"/bitxhub cert csr --key ./agency.priv --org Agency
+  "${BUILD_PATH}"/bitxhub cert issue --key ./ca.priv --cert ./ca.cert --csr ./agency.csr --is_ca true
   rm agency.csr
 
   for ((i = 1; i < N + 1; i = i + 1)); do
     repo=${BUILD_PATH}/node${i}
     mkdir -p "${repo}"
-    bitxhub --repo="${repo}" init
+   "${BUILD_PATH}"/bitxhub --repo="${repo}" init
 
     mkdir -p "${repo}"/plugins
     mkdir -p "${repo}"/certs
 
     cd "${repo}"/certs
-    bitxhub cert priv --name node
-    bitxhub cert csr --key ./node.priv --org Node${i}
-    bitxhub cert issue --key "${BUILD_PATH}"/agency.priv --cert "${BUILD_PATH}"/agency.cert --csr ./node.csr
+    "${BUILD_PATH}"/bitxhub cert priv --name node
+    "${BUILD_PATH}"/bitxhub cert csr --key ./node.priv --org Node${i}
+    "${BUILD_PATH}"/bitxhub cert issue --key "${BUILD_PATH}"/agency.priv --cert "${BUILD_PATH}"/agency.cert --csr ./node.csr
     cp "${BUILD_PATH}"/ca.cert "${repo}"/certs
     cp "${BUILD_PATH}"/agency.cert "${repo}"/certs
     rm "${repo}"/certs/node.csr
 
-    id=$(bitxhub --repo="${repo}" key pid --path "${repo}"/certs/node.priv)
-    addr=$(bitxhub --repo="${repo}" key address --path "${repo}"/certs/node.priv)
+    id=$("${BUILD_PATH}"/bitxhub --repo="${repo}" key pid --path "${repo}"/certs/node.priv)
+    addr=$("${BUILD_PATH}"/bitxhub --repo="${repo}" key address --path "${repo}"/certs/node.priv)
 
     echo "${id}" >>"${BUILD_PATH}"/pids
     echo "${addr}" >>"${BUILD_PATH}"/addresses
