@@ -116,6 +116,26 @@ func (t *TransactionManager) Report(txId string, result int32) *boltvm.Response 
 	return boltvm.Success(nil)
 }
 
+func (t *TransactionManager) GetStatus(txId string) *boltvm.Response {
+	ok, val := t.Get(t.txInfoKey(txId))
+	if ok {
+		status := TransactionStatus(val)
+		return boltvm.Success([]byte(status))
+	}
+	ok, val = t.Get(txId)
+	if !ok {
+		return boltvm.Error(fmt.Sprintf("cannot get global id of child tx id %s", txId))
+	}
+
+	globalId := string(val)
+	txInfo := &TransactionInfo{}
+	if !t.GetObject(t.txInfoKey(globalId), &txInfo) {
+		return boltvm.Error(fmt.Sprintf("transaction info for global id %s does not exist", globalId))
+	}
+
+	return boltvm.Success([]byte(txInfo.globalState))
+}
+
 func (t *TransactionManager) txInfoKey(id string) string {
 	return fmt.Sprintf("%s-%s", PREFIX, id)
 }
