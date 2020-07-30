@@ -8,7 +8,6 @@ import (
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
-
 	"github.com/meshplus/bitxhub/internal/constant"
 	"github.com/meshplus/bitxhub/pkg/vm/boltvm"
 )
@@ -191,7 +190,7 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP, interchain *Interchain) err
 		}
 	} else {
 		if ibtp.To != x.Caller() {
-			return fmt.Errorf("ibtp from != caller")
+			return fmt.Errorf("ibtp to != caller")
 		}
 
 		idx := interchain.ReceiptCounter[ibtp.To]
@@ -244,7 +243,7 @@ func (x *InterchainManager) beginMultiTargetsTransaction(ibtps *pb.IBTPs) *boltv
 		args = append(args, pb.String(childTxId))
 	}
 
-	return x.CrossInvoke(constant.TransactionMgrContractAddr.String(), "Begin", args...)
+	return x.CrossInvoke(constant.TransactionMgrContractAddr.String(), "BeginMultiTXs", args...)
 }
 
 func (x *InterchainManager) beginTransaction(ibtp *pb.IBTP) *boltvm.Response {
@@ -253,7 +252,7 @@ func (x *InterchainManager) beginTransaction(ibtp *pb.IBTP) *boltvm.Response {
 }
 
 func (x *InterchainManager) reportTransaction(ibtp *pb.IBTP) *boltvm.Response {
-	txId := fmt.Sprintf("%s-%s-%d", ibtp.To, ibtp.From, ibtp.Index)
+	txId := fmt.Sprintf("%s-%s-%d", ibtp.From, ibtp.To, ibtp.Index)
 	result := int32(0)
 	if ibtp.Type == pb.IBTP_RECEIPT_FAILURE {
 		result = 1

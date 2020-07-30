@@ -2,6 +2,7 @@ package contracts
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/pkg/vm/boltvm"
@@ -18,8 +19,7 @@ type AssetExchangeRecord struct {
 	Chain0 string
 	Chain1 string
 	Status AssetExchangeStatus
-	Req    pb.AssetExchangeInfo
-	Resp   pb.AssetExchangeInfo
+	Info   pb.AssetExchangeInfo
 }
 
 const (
@@ -47,7 +47,7 @@ func (t *AssetExchange) Init(from, to string, info []byte) *boltvm.Response {
 		Chain0: from,
 		Chain1: to,
 		Status: AssetExchangeInit,
-		Req:    aei,
+		Info:   aei,
 	}
 	t.SetObject(AssetExchangeKey(aei.Id), aer)
 
@@ -55,60 +55,43 @@ func (t *AssetExchange) Init(from, to string, info []byte) *boltvm.Response {
 }
 
 func (t *AssetExchange) Redeem(from, to string, info []byte) *boltvm.Response {
-	aei := pb.AssetExchangeInfo{}
-	if err := aei.Unmarshal(info); err != nil {
+	if err := t.confirm(from, to, info, AssetExchangeRedeem); err != nil {
 		return boltvm.Error(err.Error())
 	}
-
-	aer := AssetExchangeRecord{}
-	ok := t.GetObject(AssetExchangeKey(aei.Id), &aer)
-	if !ok {
-		return boltvm.Error(fmt.Sprintf("counterparty's asset exchange info does not exist"))
-	}
-
-	if aer.Chain0 != to || aer.Chain1 != from {
-		return boltvm.Error(fmt.Sprintf("invalid chain info for current asset exchange id"))
-	}
-
-	if aer.Status != AssetExchangeInit {
-		return boltvm.Error(fmt.Sprintf("asset exchange status for this id is not 'Init'"))
-	}
-
-	if err := checkAssetExchangeInfo(&aei); err != nil {
-		return boltvm.Error(err.Error())
-	}
-
-	if err := checkAssetExchangeInfoPair(&aer.Req, &aei); err != nil {
-		return boltvm.Error(err.Error())
-	}
-
-	aer.Resp = aei
-	aer.Status = AssetExchangeRedeem
-	t.SetObject(AssetExchangeKey(aei.Id), aer)
 
 	return boltvm.Success(nil)
 }
 
-func (t *AssetExchange) Refund(from, to string, payload []byte) *boltvm.Response {
+func (t *AssetExchange) Refund(from, to string, info []byte) *boltvm.Response {
+	if err := t.confirm(from, to, info, AssetExchangeRefund); err != nil {
+		return boltvm.Error(err.Error())
+	}
+
+	return boltvm.Success(nil)
+}
+
+func (t *AssetExchange) confirm(from, to string, payload []byte, status AssetExchangeStatus) error {
 	id := string(payload)
 	aer := AssetExchangeRecord{}
 	ok := t.GetObject(AssetExchangeKey(id), &aer)
 	if !ok {
-		return boltvm.Error(fmt.Sprintf("asset exchange record does not exist"))
+		return fmt.Errorf("asset exchange record does not exist")
 	}
 
 	if aer.Status != AssetExchangeInit {
-		return boltvm.Error(fmt.Sprintf("asset exchange status for this id is not 'Init'"))
+		return fmt.Errorf("asset exchange status for this id is not 'Init'")
 	}
 
 	if !(aer.Chain0 == from && aer.Chain1 == to) && !(aer.Chain0 == to && aer.Chain1 == from) {
-		return boltvm.Error(fmt.Sprintf("invalid participator of asset exchange id %s", id))
+		return fmt.Errorf("invalid participator of asset exchange id %s", id)
 	}
 
-	aer.Status = AssetExchangeRefund
+	// TODO: verify proof
+
+	aer.Status = status
 	t.SetObject(AssetExchangeKey(id), aer)
 
-	return boltvm.Success(nil)
+	return nil
 }
 
 func (t *AssetExchange) GetStatus(id string) *boltvm.Response {
@@ -118,7 +101,7 @@ func (t *AssetExchange) GetStatus(id string) *boltvm.Response {
 		return boltvm.Error(fmt.Sprintf("asset exchange record does not exist"))
 	}
 
-	return boltvm.Success([]byte(fmt.Sprintf("%s-%d", id, aer.Status)))
+	return boltvm.Success([]byte(strconv.Itoa(int(aer.Status))))
 }
 
 func AssetExchangeKey(id string) string {

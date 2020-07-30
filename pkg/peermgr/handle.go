@@ -1,6 +1,7 @@
 package peermgr
 
 import (
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
@@ -174,10 +175,9 @@ func (swarm *Swarm) handleFetchAssetExchangeSignMessage(s network2.Stream, data 
 			return "", nil, err
 		}
 
-		result := fmt.Sprintf("%s-%d", id, aer.Status)
-
+		hash := sha256.Sum256([]byte(fmt.Sprintf("%s-%d", id, aer.Status)))
 		key := swarm.repo.Key
-		sign, err := key.PrivKey.Sign([]byte(result))
+		sign, err := key.PrivKey.Sign(hash[:])
 		if err != nil {
 			return "", nil, fmt.Errorf("fetch asset exchange sign: %w", err)
 		}

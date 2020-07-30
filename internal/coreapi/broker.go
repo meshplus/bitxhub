@@ -1,6 +1,7 @@
 package coreapi
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -148,7 +149,7 @@ func (b *BrokerAPI) requestAssetExchangeSignFromPeer(peerId uint64, assetExchang
 	if err != nil {
 		return "", nil, err
 	}
-	if resp == nil || resp.Type != pb.Message_FETCH_ASSET_EXCHANEG_SIGN {
+	if resp == nil || resp.Type != pb.Message_FETCH_ASSET_EXCHANGE_SIGN_ACK {
 		return "", nil, fmt.Errorf("invalid asset exchange sign resp")
 	}
 
@@ -171,10 +172,9 @@ func (b *BrokerAPI) GetAssetExchangeSign(id string) (string, []byte, error) {
 		return "", nil, err
 	}
 
-	result := fmt.Sprintf("%s-%d", id, aer.Status)
-
+	hash := sha256.Sum256([]byte(fmt.Sprintf("%s-%d", id, aer.Status)))
 	key := b.bxh.GetPrivKey()
-	sign, err := key.PrivKey.Sign([]byte(result))
+	sign, err := key.PrivKey.Sign(hash[:])
 	if err != nil {
 		return "", nil, fmt.Errorf("fetch asset exchange sign: %w", err)
 	}

@@ -23,7 +23,7 @@ require (
 	github.com/magiconair/properties v1.8.1
 	github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20200728032028-8dba332fa0ed
 	github.com/meshplus/bitxhub-kit v1.0.1-0.20200729105047-4407a5e4e168
-	github.com/meshplus/bitxhub-model v1.0.0-rc4.0.20200729120451-6ff9eb7fe8fc
+	github.com/meshplus/bitxhub-model v1.0.0-rc4.0.20200730072219-49561408ef50
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-multiaddr v0.2.0
 	github.com/pkg/errors v0.9.1

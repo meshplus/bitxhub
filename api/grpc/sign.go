@@ -16,7 +16,9 @@ func (cbs *ChainBrokerService) GetAssetExchangeSigns(ctx context.Context, req *p
 
 	wg.Add(1)
 	go func(result map[string][]byte) {
-		result = cbs.api.Broker().FetchAssetExchangeSignsFromOtherPeers(req.Id)
+		for k, v := range cbs.api.Broker().FetchAssetExchangeSignsFromOtherPeers(req.Id) {
+			result[k] = v
+		}
 		wg.Done()
 	}(result)
 
