@@ -2,13 +2,13 @@ package grpc
 
 import (
 	"context"
-	"encoding/json"
 	"sync"
 
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/sirupsen/logrus"
 )
 
-func (cbs *ChainBrokerService) GetAssetExchangeSigns(ctx context.Context, req *pb.AssetExchangeSignsRequest) (*pb.Response, error) {
+func (cbs *ChainBrokerService) GetAssetExchangeSigns(ctx context.Context, req *pb.AssetExchangeSignsRequest) (*pb.SignResponse, error) {
 	var (
 		wg     = sync.WaitGroup{}
 		result = make(map[string][]byte)
@@ -25,15 +25,16 @@ func (cbs *ChainBrokerService) GetAssetExchangeSigns(ctx context.Context, req *p
 	address, sign, err := cbs.api.Broker().GetAssetExchangeSign(req.Id)
 	wg.Wait()
 
-	result[address] = sign
-	data, err := json.Marshal(result)
 	if err != nil {
-		return nil, err
+		cbs.logger.WithFields(logrus.Fields{
+			"id":  req.Id,
+			"err": err.Error(),
+		}).Warnf("Get asset exchange sign on current node")
+	} else {
+		result[address] = sign
 	}
 
-	resp := &pb.Response{
-		Data: data,
-	}
-
-	return resp, err
+	return &pb.SignResponse{
+		Sign: result,
+	}, nil
 }
