@@ -1,12 +1,18 @@
 package coreapi
 
 import (
+	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"strconv"
+	"sync"
 
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub/internal/constant"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
+	"github.com/meshplus/bitxhub/internal/executor/contracts"
+	"github.com/meshplus/bitxhub/internal/model"
 	"github.com/sirupsen/logrus"
 )
 
@@ -101,4 +107,77 @@ func (b *BrokerAPI) RemovePier(key string) {
 
 func (b *BrokerAPI) OrderReady() bool {
 	return b.bxh.Order.Ready()
+}
+
+func (b *BrokerAPI) FetchAssetExchangeSignsFromOtherPeers(id string) map[string][]byte {
+	var (
+		result = make(map[string][]byte)
+		wg     = sync.WaitGroup{}
+		lock   = sync.Mutex{}
+	)
+
+	wg.Add(len(b.bxh.PeerMgr.OtherPeers()))
+	for pid := range b.bxh.PeerMgr.OtherPeers() {
+		go func(pid uint64, result map[string][]byte, wg *sync.WaitGroup, lock *sync.Mutex) {
+			address, sign, err := b.requestAssetExchangeSignFromPeer(pid, id)
+			if err != nil {
+				b.logger.WithFields(logrus.Fields{
+					"pid": pid,
+					"err": err.Error(),
+				}).Warnf("Get asset exchange sign with error")
+			} else {
+				lock.Lock()
+				result[address] = sign
+				lock.Unlock()
+			}
+			wg.Done()
+		}(pid, result, &wg, &lock)
+	}
+
+	wg.Wait()
+
+	return result
+}
+
+func (b *BrokerAPI) requestAssetExchangeSignFromPeer(peerId uint64, assetExchangeId string) (string, []byte, error) {
+	req := pb.Message{
+		Type: pb.Message_FETCH_ASSET_EXCHANEG_SIGN,
+		Data: []byte(assetExchangeId),
+	}
+
+	resp, err := b.bxh.PeerMgr.Send(peerId, &req)
+	if err != nil {
+		return "", nil, err
+	}
+	if resp == nil || resp.Type != pb.Message_FETCH_ASSET_EXCHANGE_SIGN_ACK {
+		return "", nil, fmt.Errorf("invalid asset exchange sign resp")
+	}
+
+	data := model.MerkleWrapperSign{}
+	if err := data.Unmarshal(resp.Data); err != nil {
+		return "", nil, err
+	}
+
+	return data.Address, data.Signature, nil
+}
+
+func (b *BrokerAPI) GetAssetExchangeSign(id string) (string, []byte, error) {
+	ok, record := b.bxh.Ledger.GetState(constant.AssetExchangeContractAddr.Address(), []byte(contracts.AssetExchangeKey(id)))
+	if !ok {
+		return "", nil, fmt.Errorf("cannot find asset exchange record with id %s", id)
+	}
+
+	aer := contracts.AssetExchangeRecord{}
+	if err := json.Unmarshal(record, &aer); err != nil {
+		return "", nil, err
+	}
+
+	hash := sha256.Sum256([]byte(fmt.Sprintf("%s-%d", id, aer.Status)))
+	key := b.bxh.GetPrivKey()
+	sign, err := key.PrivKey.Sign(hash[:])
+	if err != nil {
+		return "", nil, fmt.Errorf("fetch asset exchange sign: %w", err)
+	}
+
+	return key.Address, sign, nil
 }

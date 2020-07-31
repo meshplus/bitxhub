@@ -309,3 +309,7 @@ func (bxh *BitXHub) raiseUlimit(limitNew uint64) error {
 
 	return nil
 }
+
+func (bxh *BitXHub) GetPrivKey() *repo.Key {
+	return bxh.repo.Key
+}

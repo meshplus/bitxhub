@@ -266,8 +266,10 @@ github.com/huin/goupnp v0.0.0-20161224104101-679507af18f3/go.mod h1:MZ2ZmwcBpvOo
 github.com/huin/goupnp v1.0.0 h1:wg75sLpL6DZqwHQN6E1Cfk6mtfzS45z8OV+ic+DtHRo=
 github.com/huin/goupnp v1.0.0/go.mod h1:n9v9KO1tAxYH82qOn+UTIFQDmx5n1Zxd/ClZDMX7Bnc=
 github.com/huin/goutil v0.0.0-20170803182201-1ca381bf3150/go.mod h1:PpLOETDnJ0o3iZrZfqZzyLl6l7F3c6L1oWn7OICBi6o=
+github.com/hyperledger/fabric v1.4.8 h1:G0PeG/WHHAApO/PXkDAcwjur5L5+FNiVbhKidzNX4Z4=
 github.com/hyperledger/fabric v2.0.1+incompatible h1:7W+yG0gLKTC7NLcWPT3vfpnaseztPpH9wXGfAW7yvBs=
 github.com/hyperledger/fabric v2.0.1+incompatible/go.mod h1:tGFAOCT696D3rG0Vofd2dyWYLySHlh0aQjf7Q1HAju0=
+github.com/hyperledger/fabric v2.1.1+incompatible h1:cYYRv3vVg4kA6DmrixLxwn1nwBEUuYda8DsMwlaMKbY=
 github.com/hyperledger/fabric-amcl v0.0.0-20200128223036-d1aa2665426a h1:HgdNn3UYz8PdcZrLEk0IsSU4LRHp7yY2rgjIKcSiJaA=
 github.com/hyperledger/fabric-amcl v0.0.0-20200128223036-d1aa2665426a/go.mod h1:X+DIyUsaTmalOpmpQfIvFZjKHQedrURQ5t4YqquX7lE=
 github.com/hyperledger/fabric-protos-go v0.0.0-20200330074707-cfe579e86986 h1:g9tgYXQPZcxRryp2/rutvfSCiiJzHNoyX7JaoXeGkZ8=
@@ -513,6 +515,14 @@ github.com/meshplus/bitxhub-model v1.0.0-rc4.0.20200514093243-7e8ae60d1c19 h1:D0
 github.com/meshplus/bitxhub-model v1.0.0-rc4.0.20200514093243-7e8ae60d1c19/go.mod h1:QK8aACbxtZEA3Hk1BOCirW0uxMWLsMrLDpWz9FweIKM=
 github.com/meshplus/bitxhub-model v1.0.0-rc4.0.20200724062514-baa44473e4d8 h1:FlD+ETNIVTJ3gyceEdqqo6wvBkrYiTfLB6XM0tGH1Yw=
 github.com/meshplus/bitxhub-model v1.0.0-rc4.0.20200724062514-baa44473e4d8/go.mod h1:QK8aACbxtZEA3Hk1BOCirW0uxMWLsMrLDpWz9FweIKM=
+github.com/meshplus/bitxhub-model v1.0.0-rc4.0.20200727092616-7a2b838ab1ab h1:9g/sk6C/VPQSO42ySFxOcwvcCopmH+mqXsJlLaoILEw=
+github.com/meshplus/bitxhub-model v1.0.0-rc4.0.20200727092616-7a2b838ab1ab/go.mod h1:QK8aACbxtZEA3Hk1BOCirW0uxMWLsMrLDpWz9FweIKM=
+github.com/meshplus/bitxhub-model v1.0.0-rc4.0.20200729120451-6ff9eb7fe8fc h1:40lbdmb9YKeEEhGHZH7Z6BqsapGVu1H262d7K/UWGV4=
+github.com/meshplus/bitxhub-model v1.0.0-rc4.0.20200729120451-6ff9eb7fe8fc/go.mod h1:QK8aACbxtZEA3Hk1BOCirW0uxMWLsMrLDpWz9FweIKM=
+github.com/meshplus/bitxhub-model v1.0.0-rc4.0.20200730072219-49561408ef50 h1:VKUeib9kwPkfCXxJVX8/RgbkyyKSi0ixu4rhzlB+7E4=
+github.com/meshplus/bitxhub-model v1.0.0-rc4.0.20200730072219-49561408ef50/go.mod h1:QK8aACbxtZEA3Hk1BOCirW0uxMWLsMrLDpWz9FweIKM=
+github.com/meshplus/bitxhub-model v1.0.0-rc4.0.20200731025300-2bb1717059e0 h1:HICOZKS7qw4++eT0EXioutryV0O+v6aPp1jdhjlfJyU=
+github.com/meshplus/bitxhub-model v1.0.0-rc4.0.20200731025300-2bb1717059e0/go.mod h1:QK8aACbxtZEA3Hk1BOCirW0uxMWLsMrLDpWz9FweIKM=
 github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b/go.mod h1:01TrycV0kFyexm33Z7vhZRXopbI8J3TDReVlkTgMUxE=
 github.com/miekg/dns v1.1.12/go.mod h1:W1PPwlIAgtquWBMBEV9nkV9Cazfe8ScdGz/Lj7v3Nrg=
 github.com/miekg/pkcs11 v1.0.3 h1:iMwmD7I5225wv84WxIG/bmxz9AXjWvTWIbM/TYHvWtw=
