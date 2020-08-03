@@ -5,17 +5,19 @@ source x.sh
 CURRENT_PATH=$(pwd)
 PROJECT_PATH=$(dirname "${CURRENT_PATH}")
 BUILD_PATH=${CURRENT_PATH}/build
-APP_VERSION=$(git describe --tag)
+
 
 # help prompt message
 function printHelp() {
   print_blue "Usage:  "
-  echo "  build_release.sh [-m <os_type>][-n <node_num>]"
-  echo "  - 'n' - node number to be deployed in one server"
+  echo "  build_release.sh [-n <node_num>] [-v <bitxhub_version>]"
+  echo "  -'n' - node number to be deployed in one server"
+  echo "  -'v' - the version of bitxhub checkout"
   echo "  build_release.sh -h (print this message)"
 }
 
 function build_release() {
+  git checkout "$APP_VERSION"
   print_blue "Generate config"
   bash config.sh "$NODE_NUM"
   build_linux
@@ -53,8 +55,9 @@ function build_darwin() {
 }
 
 NODE_NUM=4
+APP_VERSION=v1.0.0-rc1
 
-while getopts "h?n:" opt; do
+while getopts "h?n:v:" opt; do
   case "$opt" in
   h | \?)
     printHelp
@@ -62,6 +65,9 @@ while getopts "h?n:" opt; do
     ;;
   n)
     NODE_NUM=$OPTARG
+    ;;
+  v)
+    APP_VERSION=$OPTARG
     ;;
   esac
 done
