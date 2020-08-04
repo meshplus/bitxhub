@@ -77,18 +77,19 @@ $ make raft
 
 ```shell
 $ ssh bitxhub@node1
+$ mkdir $HOME/.bitxhub
 # 在Mac环境下
 $ wget https://github.com/meshplus/bitxhub/releases/download/v1.0.0-rc1/build_macos_x86_64_v1.0.0-rc1.tar.gz
-$ tar xvf build_macos_x86_64_v1.0.0-rc1.tar.gz
+$ tar xvf build_macos_x86_64_v1.0.0-rc1.tar.gz -C $HOME/.bitxhub
 # 在Linux环境下
 $ wget https://github.com/meshplus/bitxhub/releases/download/v1.0.0-rc1/build_linux-amd64_v1.0.0-rc1.tar.gz
-$ tar xvf build_linux-amd64_v1.0.0-rc1.tar.gz
+$ tar xvf build_linux-amd64_v1.0.0-rc1.tar.gz -C $HOME/.bitxhub
 
 # bitxhub运行需要libwasmer.so动态链接库
-$ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:build/
+$ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/.bitxhub/build
 ```
 
-解压完成之后，会看到如下build目录
+解压完成之后，会在 `$HOME/.bitxhub` 下看到如下build目录
 
 ```javascript
 .
@@ -144,6 +145,8 @@ $ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:build/
 └── solo.so
 ```
 
+该部署包已经包含了四个节点的配置目录，如果是在多台服务器上部署，每台服务器上操作时只需要修改其中一个节点的配置目录即可。
+
 #### 3.2 修改配置文件
 
 下面以node1为例介绍如何修改配置文件
@@ -155,7 +158,7 @@ title = "BitXHub configuration file"
 # 是否按照单结点模式启动BitXHub
 solo = false
 
-# BitXHub提供服务的端口，确保和系统不冲突
+# BitXHub提供服务的端口，确保和已占用的端口不冲突
 [port]
   grpc = 60011
   gateway = 9091
@@ -228,7 +231,7 @@ id = 1
 按照上面配置的注释相应的进行修改，其中需要注意的是：每个节点的 `addr` 的最后一段ID需要进行修改。
 
 ```shell
- $ ./bitxhub-nodes/bitxhub key pid --path node1/certs/node.priv
+ $ $HOME/.bitxhub/build/bitxhub key pid --path $HOME/.bitxhub/build/node1/certs/node.priv
 ```
 
 运行上面的命令会得到类似于 `QmP62PJJBSZCYLDdfFEraxG4pACAR2k83JEDY59zsM4HD2` 的一个ID，将此ID替换 `network.toml` 中 `node1` 的 `addr` 后缀即可，比如：
@@ -265,8 +268,9 @@ disable_proposal_forwarding = true # This prevents blocks from being accidentall
  将bitxhub和raft.so二进制放到各自的node目录下，再执行下面的命令
 
 ```shell
-$ cp ~/build/bitxhub ~/build/node/
-$ cp ~/build/raft.so ~/build/node/plugins/
+$ cp $HOME/.bitxhub/build/bitxhub $HOME/.bitxhub/build/node/
+$ cp $HOME/.bitxhub/build/raft.so $HOME/.bitxhub/build/node/plugins/
+$ cd $HOME/.bitxhub/build/node1
 $ bash start.sh
 ```
 
@@ -383,9 +387,13 @@ $ mkdir pier-binary && tar xvf pier-macos-x86-64.tar.gz -C pier-binary
 $ wget https://github.com/meshplus/pier/releases/download/v1.0.0-rc1/pier-linux-amd64.tar.gz
 $ mkdir pier-binary && tar xvf pier-linux-amd64.tar.gz -C pier-binary
 
-# pier运行需要libwasmer.so动态链接库
+# pier运行需要libwasmer.so动态链接库(Linux下)或者 libwasmer.dylib（Mac下）
+# Linux下
 $ wget https://raw.githubusercontent.com/meshplus/bitxhub/master/build/libwasmer.so -O pier-binary/libwasmer.so
-$ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:pier-binary/
+# Mac下
+$ wget https://raw.githubusercontent.com/meshplus/bitxhub/master/build/libwasmer.dylib -O pier-binary/libwasmer.dylib
+# 两个平台都要执行
+$ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)/pier-binary/
 ```
 
 解压后可以看到下面的文件
@@ -605,4 +613,94 @@ $ pier --repo $HOME/.pier2 start
 ```
 
 根据跨链网关打印的相应日志信息可以判断跨链网关的运行情况。
+
+## 发送跨链交易
+
+按照上面的步骤，在你的两条Fabric上应该已经部署了一个 `broker` 合约，一个`transfer `合约。
+
+`broker `合约管理所有从应用链上发出的跨链交易，并抛出跨链事件。transfer合约是应用合约，负责具体的应用逻辑。该合约实现了一个简单的模拟账户，能够记录账号名和对应的账户余额，作为一个简单的应用合约。
+
+由于不是所有的应用合约都能随便调用broker合约的接口进行跨链，因此 broker 要对进行跨链的应用合约进行权限控制，我们利用broker来审核应用合约地址的方式进行控制。
+
+### broker 审核 应用合约
+
+在chaincode的broker合约中，也提供了一个 `audit` 方法进行审核，函数的参数依次为应用合约（在此样例中就是 `transfer` 合约）所在的通道名，应用合约 chaincode名称，`status` 是最后的审核状态，1表示审核通过，2表示拒绝。如 `audit(mychannel,  transfer, 1) `。
+
+```go
+func (broker *Broker) audit(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+	channel := args[0]
+	chaincodeName := args[1]
+	status := args[2]	
+	...
+}
+```
+
+调用此方法即可进行审核。
+
+### 跨链准备
+
+进行跨链转账之前，我们先在样例合约中设置一个账户，并给定余额。
+
+在chaincode 的 transfer 合约中，我们提供了 `setBalance` 方法设置账户余额。`name` 是账户名称，`amount` 是账户余额。如 `setBalance(Bob, 10000) `。
+
+```go
+func (t *Transfer) setBalance(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+	...
+	name := args[0]
+	amount := args[1]
+	...
+}
+```
+
+同样的，也提供了 `getBalance` 方法来查询账户余额，id 是账户名称。
+
+```go
+func (t *Transfer) getBalance(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+	...
+	name := args[0]
+	...
+}
+```
+
+设置账户余额之后，再调用该接口查询一下设置的账户余额值，以确保操作成功。
+
+### 调用跨链转账接口
+
+要进行跨链操作的话，需要通过应用合约调用 broker 合约相应跨链接口。我们提供的样例合约 transfer 中已经写好了方法来进行跨链转账。
+
+```go
+func (t *Transfer) transfer(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+	...
+	destChainID := args[0]
+	destAddr := args[1]
+	sender := args[2]
+	receiver := args[3]
+	amount := args[4]
+}
+```
+
+其中 `destChainID` 是跨链目的链的 ID，可以通过下面的命令，根据配置目录获相应取应用链的ID：
+
+```shell
+$ pier --repo ~/.pier1 id # 如果你在其他路径下初始化的跨链网关，--repo指定的路径相应替换
+```
+
+`destAddr ` 是目的链上的合约唯一ID，对于Fabric上的 chaincode（没有合约地址的概念），使用 "{channel}&​{chaincodename}"（比如将 transfer的chaincode部署在你的 mychannel上，chaincode部署的名称是 transfer，那么这个chaincode的唯一ID为(“mychannel&transfer" )；
+
+`sender` 为来源链上账户的名称（按照上面的设置为Alice或者Bob）;
+
+`receiver` 为目的链上的账户名称（按照上面的设置为Alice或者Bob）;
+
+`amount` 为要转账的金额。
+
+**FabricA -> FabricB的跨链转账：**
+
+调用 chaincode 的 transfer合约的transfer方法，例如：
+
+```shell
+#                destChainID(FabricB应用链的ID              destAddr        sender receiver amount
+transfer(0x9f5cf4b97965ababe19fcf3f1f12bb794a7dc279, "mychannel&transfer", Alice,    Bob,    1)
+```
+
+**提示：具体的用来调用Fabric合约的工具我们不做要求，可以根据你的使用习惯来指定。Fabric部署和调用合约来说，可以参考Fabric官方教程，也可以使用其他开源的工具。**
 
