@@ -12,8 +12,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/golang/mock/gomock"
 	"github.com/meshplus/bitxhub-kit/crypto"
-	"github.com/meshplus/bitxhub-kit/crypto/asym/ecdsa"
-	"github.com/meshplus/bitxhub-kit/key"
+	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -73,7 +72,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 
 	// mock data for block
 	var txs []*pb.Transaction
-	privKey, err := ecdsa.GenerateKey(ecdsa.Secp256r1)
+	privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	assert.Nil(t, err)
 	pubKey := privKey.PublicKey()
 
@@ -205,7 +204,7 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 
 	block := <-ch
 	require.EqualValues(t, 2, block.Block.Height())
-	require.EqualValues(t, 99999997, ldg.GetBalance(from))
+	require.EqualValues(t, uint64(99999997), ldg.GetBalance(from))
 
 	// test executor with readonly ledger
 	viewLedger, err := ledger.New(blockchainStorage, ldb, accountCache, log.NewWithModule("ledger"))
@@ -244,10 +243,7 @@ func mockTransferTx(t *testing.T) *pb.Transaction {
 }
 
 func loadAdminKey(t *testing.T) (crypto.PrivateKey, types.Address) {
-	k, err := key.LoadKey(filepath.Join("testdata", "key.json"))
-	require.Nil(t, err)
-
-	privKey, err := k.GetPrivateKey(keyPassword)
+	privKey, err := asym.RestorePrivateKey(filepath.Join("testdata", "key.json"), keyPassword)
 	require.Nil(t, err)
 
 	from, err := privKey.PublicKey().Address()
@@ -257,7 +253,7 @@ func loadAdminKey(t *testing.T) (crypto.PrivateKey, types.Address) {
 }
 
 func randAddress(t *testing.T) types.Address {
-	privKey, err := ecdsa.GenerateKey(ecdsa.Secp256r1)
+	privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	require.Nil(t, err)
 	address, err := privKey.PublicKey().Address()
 	require.Nil(t, err)

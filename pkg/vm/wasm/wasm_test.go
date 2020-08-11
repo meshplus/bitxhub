@@ -9,8 +9,8 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/meshplus/bitxhub-core/validator/validatorlib"
+	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
-	"github.com/meshplus/bitxhub-kit/crypto/asym/ecdsa"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -38,7 +38,7 @@ L6FMy96mi64g37R0i/I+T4MC5p2mzZIHvRJ8Rg==
 -----END CERTIFICATE-----`
 
 func initCreateContext(t *testing.T, name string) *vm.Context {
-	privKey, err := asym.GenerateKey(asym.ECDSASecp256r1)
+	privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	assert.Nil(t, err)
 	dir := filepath.Join(os.TempDir(), "wasm", name)
 
@@ -73,7 +73,7 @@ func initValidationContext(t *testing.T, name string) *vm.Context {
 
 	bytes, err := ioutil.ReadFile("./testdata/validation_test.wasm")
 	require.Nil(t, err)
-	privKey, err := ecdsa.GenerateKey(ecdsa.Secp256r1)
+	privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	require.Nil(t, err)
 
 	data := &pb.TransactionData{
@@ -103,7 +103,7 @@ func initFabricContext(t *testing.T, name string) *vm.Context {
 
 	bytes, err := ioutil.ReadFile("./testdata/fabric_policy.wasm")
 	require.Nil(t, err)
-	privKey, err := ecdsa.GenerateKey(ecdsa.Secp256r1)
+	privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	require.Nil(t, err)
 
 	data := &pb.TransactionData{
@@ -232,7 +232,7 @@ func BenchmarkRunFabValidation(b *testing.B) {
 
 	bytes, err := ioutil.ReadFile("./testdata/fabric_policy.wasm")
 	require.Nil(b, err)
-	privKey, err := ecdsa.GenerateKey(ecdsa.Secp256r1)
+	privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	require.Nil(b, err)
 
 	data := &pb.TransactionData{

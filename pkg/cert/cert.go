@@ -11,6 +11,9 @@ import (
 	"fmt"
 	"math/big"
 	"time"
+
+	"github.com/meshplus/bitxhub-kit/crypto"
+	ecdsa2 "github.com/meshplus/bitxhub-kit/crypto/asym/ecdsa"
 )
 
 func VerifySign(subCert *x509.Certificate, caCert *x509.Certificate) error {
@@ -25,7 +28,7 @@ func VerifySign(subCert *x509.Certificate, caCert *x509.Certificate) error {
 	return nil
 }
 
-func ParsePrivateKey(data []byte) (*ecdsa.PrivateKey, error) {
+func ParsePrivateKey(data []byte, opt crypto.KeyType) (*ecdsa2.PrivateKey, error) {
 	if data == nil {
 		return nil, fmt.Errorf("empty data")
 	}
@@ -35,7 +38,7 @@ func ParsePrivateKey(data []byte) (*ecdsa.PrivateKey, error) {
 		return nil, fmt.Errorf("empty block")
 	}
 
-	return x509.ParseECPrivateKey(block.Bytes)
+	return ecdsa2.UnmarshalPrivateKey(block.Bytes, opt)
 }
 
 func ParseCert(data []byte) (*x509.Certificate, error) {

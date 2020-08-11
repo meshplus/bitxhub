@@ -10,6 +10,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/types"
@@ -74,7 +75,7 @@ func TestNode_Start(t *testing.T) {
 }
 
 func generateTx() *pb.Transaction {
-	privKey, _ := asym.GenerateKey(asym.ECDSASecp256r1)
+	privKey, _ := asym.GenerateKeyPair(crypto.Secp256k1)
 
 	from, _ := privKey.PublicKey().Address()
 

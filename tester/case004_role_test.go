@@ -7,8 +7,7 @@ import (
 	"strconv"
 
 	"github.com/meshplus/bitxhub-kit/crypto"
-	"github.com/meshplus/bitxhub-kit/crypto/asym/ecdsa"
-	"github.com/meshplus/bitxhub-kit/key"
+	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/constant"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
@@ -25,7 +24,7 @@ type Role struct {
 
 func (suite *Role) SetupSuite() {
 	var err error
-	suite.privKey, err = ecdsa.GenerateKey(ecdsa.Secp256r1)
+	suite.privKey, err = asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Assert().Nil(err)
 
 	suite.pubKey = suite.privKey.PublicKey()
@@ -49,7 +48,7 @@ func (suite *Role) TestGetRole() {
 	suite.Require().Nil(err)
 	suite.Equal("appchain_admin", string(receipt.Ret))
 
-	k, err := ecdsa.GenerateKey(ecdsa.Secp256r1)
+	k, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
 
 	r, err := invokeBVMContract(suite.api, k, constant.RoleContractAddr.Address(), "GetRole")
@@ -58,7 +57,7 @@ func (suite *Role) TestGetRole() {
 }
 
 func (suite *Role) TestGetAdminRoles() {
-	k, err := ecdsa.GenerateKey(ecdsa.Secp256r1)
+	k, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
 
 	r, err := invokeBVMContract(suite.api, k, constant.RoleContractAddr.Address(), "GetAdminRoles")
@@ -69,7 +68,7 @@ func (suite *Role) TestGetAdminRoles() {
 
 func (suite *Role) TestIsAdmin() {
 	// Not Admin Chain
-	k, err := ecdsa.GenerateKey(ecdsa.Secp256r1)
+	k, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
 	from, err := k.PublicKey().Address()
 	suite.Require().Nil(err)
@@ -83,9 +82,7 @@ func (suite *Role) TestIsAdmin() {
 	// Admin Chain
 	path := "./test_data/config/node1/key.json"
 	keyPath := filepath.Join(path)
-	key, err := key.LoadKey(keyPath)
-	suite.Require().Nil(err)
-	priAdmin, err := key.GetPrivateKey("bitxhub")
+	priAdmin, err := asym.RestorePrivateKey(keyPath, "bitxhub")
 	suite.Require().Nil(err)
 	fromAdmin, err := priAdmin.PublicKey().Address()
 	suite.Require().Nil(err)
@@ -99,9 +96,9 @@ func (suite *Role) TestIsAdmin() {
 }
 
 func (suite *Role) TestGetRuleAddress() {
-	k1, err := ecdsa.GenerateKey(ecdsa.Secp256r1)
+	k1, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
-	k2, err := ecdsa.GenerateKey(ecdsa.Secp256r1)
+	k2, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
 
 	pub1, err := k1.PublicKey().Bytes()
@@ -187,10 +184,7 @@ func (suite *Role) TestSetAdminRoles() {
 	// admin chain
 	path1 := "./test_data/config/node1/key.json"
 	keyPath1 := filepath.Join(path1)
-	key1, err := key.LoadKey(keyPath1)
-	suite.Require().Nil(err)
-
-	priAdmin, err := key1.GetPrivateKey("bitxhub")
+	priAdmin, err := asym.RestorePrivateKey(keyPath1, "bitxhub")
 	suite.Require().Nil(err)
 	fromAdmin, err := priAdmin.PublicKey().Address()
 	suite.Require().Nil(err)
@@ -246,18 +240,11 @@ func (suite *Role) TestSetAdminRoles() {
 	keyPath3 := filepath.Join(path3)
 	keyPath4 := filepath.Join(path4)
 
-	key2, err := key.LoadKey(keyPath2)
+	priAdmin2, err := asym.RestorePrivateKey(keyPath2, "bitxhub")
 	suite.Require().Nil(err)
-	key3, err := key.LoadKey(keyPath3)
+	priAdmin3, err := asym.RestorePrivateKey(keyPath3, "bitxhub")
 	suite.Require().Nil(err)
-	key4, err := key.LoadKey(keyPath4)
-	suite.Require().Nil(err)
-
-	priAdmin2, err := key2.GetPrivateKey("bitxhub")
-	suite.Require().Nil(err)
-	priAdmin3, err := key3.GetPrivateKey("bitxhub")
-	suite.Require().Nil(err)
-	priAdmin4, err := key4.GetPrivateKey("bitxhub")
+	priAdmin4, err := asym.RestorePrivateKey(keyPath4, "bitxhub")
 	suite.Require().Nil(err)
 
 	fromAdmin2, err := priAdmin2.PublicKey().Address()
