@@ -6,7 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/meshplus/bitxhub-kit/crypto/asym/ecdsa"
+	"github.com/meshplus/bitxhub-kit/crypto"
+	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/constant"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
@@ -23,9 +24,9 @@ func (suite *Interchain) SetupSuite() {
 }
 
 func (suite *Interchain) TestHandleIBTP() {
-	k1, err := ecdsa.GenerateKey(ecdsa.Secp256r1)
+	k1, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
-	k2, err := ecdsa.GenerateKey(ecdsa.Secp256r1)
+	k2, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
 	f, err := k1.PublicKey().Address()
 	suite.Require().Nil(err)
@@ -82,9 +83,9 @@ func (suite *Interchain) TestHandleIBTP() {
 }
 
 func (suite *Interchain) TestGetIBTPByID() {
-	k1, err := ecdsa.GenerateKey(ecdsa.Secp256r1)
+	k1, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
-	k2, err := ecdsa.GenerateKey(ecdsa.Secp256r1)
+	k2, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
 	f, err := k1.PublicKey().Address()
 	suite.Require().Nil(err)
@@ -161,7 +162,7 @@ func (suite *Interchain) TestGetIBTPByID() {
 }
 
 func (suite *Interchain) TestAudit() {
-	k, err := ecdsa.GenerateKey(ecdsa.Secp256r1)
+	k, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
 
 	ret, err := invokeBVMContract(suite.api, k, constant.AppchainMgrContractAddr.Address(), "Audit",
@@ -174,7 +175,7 @@ func (suite *Interchain) TestAudit() {
 }
 
 func (suite *Interchain) TestInterchain() {
-	k1, err := ecdsa.GenerateKey(ecdsa.Secp256r1)
+	k1, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
 
 	pub1, err := k1.PublicKey().Bytes()
@@ -207,7 +208,7 @@ func (suite *Interchain) TestInterchain() {
 }
 
 func (suite *Interchain) TestRegister() {
-	k1, err := ecdsa.GenerateKey(ecdsa.Secp256r1)
+	k1, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
 
 	ret, err := invokeBVMContract(suite.api, k1, constant.InterchainContractAddr.Address(), "Register")

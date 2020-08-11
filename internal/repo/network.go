@@ -9,6 +9,7 @@ import (
 
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
+	crypto2 "github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub/pkg/cert"
 	ma "github.com/multiformats/go-multiaddr"
 )
@@ -196,17 +197,16 @@ func (p NetworkConfig) Swap(i, j int) { p.Nodes[i], p.Nodes[j] = p.Nodes[j], p.N
 
 // GetPidFromPrivFile gets pid from libp2p node priv file
 func GetPidFromPrivFile(privPath string) (string, error) {
-
 	data, err := ioutil.ReadFile(privPath)
 	if err != nil {
 		return "", fmt.Errorf("read private key: %w", err)
 	}
-	stdPriv, err := cert.ParsePrivateKey(data)
+	privKey, err := cert.ParsePrivateKey(data, crypto2.ECDSA_P256)
 	if err != nil {
 		return "", err
 	}
 
-	_, pk, err := crypto.KeyPairFromStdKey(stdPriv)
+	_, pk, err := crypto.KeyPairFromStdKey(privKey.K)
 	if err != nil {
 		return "", err
 	}
