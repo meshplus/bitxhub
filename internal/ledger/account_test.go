@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/meshplus/bitxhub-kit/bytesutil"
-	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/hexutil"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/types"
@@ -15,8 +14,6 @@ import (
 )
 
 func TestAccount_GetState(t *testing.T) {
-	_, err := asym.GenerateKey(asym.ECDSASecp256r1)
-	assert.Nil(t, err)
 	repoRoot, err := ioutil.TempDir("", "ledger_commit")
 	assert.Nil(t, err)
 	blockStorage, err := leveldb.New(filepath.Join(repoRoot, "storage"))

@@ -1,5 +1,7 @@
 {
-	"address": "0x759801eab44c9a9bbc3e09cb7f1f85ac57298708",
-	"private_key": "ad69b589b7c218381b117382aea1003f4cdc6f32bcad41a4a5528bd48b486e0285e4a2fc0f64080c5d49082963fccb04",
-	"encrypted": true
+ "type": 3,
+ "cipher": {
+  "data": "de229ae3db9430070171fc37d242ac66e21c5c6e9f9cbefd6536345789fb444b8ec1d16bfe5eff8f3ccf1d0c28a92ffa667a919424f98324057910998a4d8f99",
+  "cipher": "AES-256"
+ }
 }

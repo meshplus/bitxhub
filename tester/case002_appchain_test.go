@@ -7,8 +7,7 @@ import (
 	"testing"
 
 	"github.com/meshplus/bitxhub-kit/crypto"
-	"github.com/meshplus/bitxhub-kit/crypto/asym/ecdsa"
-	"github.com/meshplus/bitxhub-kit/key"
+	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/constant"
@@ -39,7 +38,7 @@ type Appchain struct {
 
 func (suite *RegisterAppchain) SetupSuite() {
 	var err error
-	suite.privKey, err = ecdsa.GenerateKey(ecdsa.Secp256r1)
+	suite.privKey, err = asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
 
 	suite.from, err = suite.privKey.PublicKey().Address()
@@ -68,9 +67,9 @@ func (suite *RegisterAppchain) TestRegisterAppchain() {
 }
 
 func (suite *RegisterAppchain) TestFetchAppchains() {
-	k1, err := ecdsa.GenerateKey(ecdsa.Secp256r1)
+	k1, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
-	k2, err := ecdsa.GenerateKey(ecdsa.Secp256r1)
+	k2, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
 
 	pub1, err := k1.PublicKey().Bytes()
@@ -146,9 +145,9 @@ func (suite *RegisterAppchain) TestFetchAppchains() {
 }
 
 func (suite *RegisterAppchain) TestGetPubKeyByChainID() {
-	k1, err := ecdsa.GenerateKey(ecdsa.Secp256r1)
+	k1, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
-	k2, err := ecdsa.GenerateKey(ecdsa.Secp256r1)
+	k2, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
 
 	pub1, err := k1.PublicKey().Bytes()
@@ -195,7 +194,7 @@ func (suite *RegisterAppchain) TestGetPubKeyByChainID() {
 }
 
 func (suite *RegisterAppchain) TestUpdateAppchains() {
-	k1, err := ecdsa.GenerateKey(ecdsa.Secp256r1)
+	k1, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
 	pub1, err := k1.PublicKey().Bytes()
 	suite.Require().Nil(err)
@@ -221,9 +220,7 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 	//Admin Chain
 	path := "./test_data/config/node1/key.json"
 	keyPath := filepath.Join(path)
-	key, err := key.LoadKey(keyPath)
-	suite.Require().Nil(err)
-	priAdmin, err := key.GetPrivateKey("bitxhub")
+	priAdmin, err := asym.RestorePrivateKey(keyPath, "bitxhub")
 	suite.Require().Nil(err)
 	pubAdmin, err := priAdmin.PublicKey().Bytes()
 	suite.Require().Nil(err)

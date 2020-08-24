@@ -2,7 +2,7 @@ package tester
 
 import (
 	"github.com/meshplus/bitxhub-kit/crypto"
-	"github.com/meshplus/bitxhub-kit/crypto/asym/ecdsa"
+	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/constant"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
@@ -18,14 +18,14 @@ type Store struct {
 
 func (suite *Store) SetupSuite() {
 	var err error
-	suite.privKey, err = ecdsa.GenerateKey(ecdsa.Secp256r1)
+	suite.privKey, err = asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Assert().Nil(err)
 
 	suite.pubKey = suite.privKey.PublicKey()
 }
 
 func (suite *Store) TestStore() {
-	k, err := ecdsa.GenerateKey(ecdsa.Secp256r1)
+	k, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
 
 	args := []*pb.Arg{

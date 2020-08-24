@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/cbergoon/merkletree"
+	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -199,7 +200,7 @@ func (exec *BlockExecutor) verifySign(block *pb.Block) ([]*pb.Transaction, []*pb
 	for i, tx := range txs {
 		go func(i int, tx *pb.Transaction) {
 			defer wg.Done()
-			ok, _ := asym.Verify(asym.ECDSASecp256r1, tx.Signature, tx.SignHash().Bytes(), tx.From)
+			ok, _ := asym.Verify(crypto.Secp256k1, tx.Signature, tx.SignHash().Bytes(), tx.From)
 			mutex.Lock()
 			defer mutex.Unlock()
 			if !ok {
