@@ -6,7 +6,7 @@ import (
 	"github.com/meshplus/bitxhub-model/pb"
 )
 
-func (cbs *ChainBrokerService) GetInterchainTxWrapper(req *pb.GetInterchainTxWrapperRequest, server pb.ChainBroker_GetInterchainTxWrapperServer) error {
+func (cbs *ChainBrokerService) GetInterchainTxWrappers(req *pb.GetInterchainTxWrappersRequest, server pb.ChainBroker_GetInterchainTxWrappersServer) error {
 	meta, err := cbs.api.Chain().Meta()
 	if err != nil {
 		return err
@@ -16,8 +16,8 @@ func (cbs *ChainBrokerService) GetInterchainTxWrapper(req *pb.GetInterchainTxWra
 		req.End = meta.Height
 	}
 
-	ch := make(chan *pb.InterchainTxWrapper, req.End-req.Begin+1)
-	if err := cbs.api.Broker().GetInterchainTxWrapper(req.Pid, req.Begin, req.End, ch); err != nil {
+	ch := make(chan *pb.InterchainTxWrappers, req.End-req.Begin+1)
+	if err := cbs.api.Broker().GetInterchainTxWrappers(req.Pid, req.Begin, req.End, ch); err != nil {
 		return err
 	}
 

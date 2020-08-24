@@ -56,16 +56,16 @@ func (b *BrokerAPI) GetReceipt(hash types.Hash) (*pb.Receipt, error) {
 	return b.bxh.Ledger.GetReceipt(hash)
 }
 
-func (b *BrokerAPI) AddPier(key string) (chan *pb.InterchainTxWrapper, error) {
-	return b.bxh.Router.AddPier(key)
+func (b *BrokerAPI) AddPier(pid string, isUnion bool) (chan *pb.InterchainTxWrappers, error) {
+	return b.bxh.Router.AddPier(pid, isUnion)
 }
 
 func (b *BrokerAPI) GetBlockHeader(begin, end uint64, ch chan<- *pb.BlockHeader) error {
 	return b.bxh.Router.GetBlockHeader(begin, end, ch)
 }
 
-func (b *BrokerAPI) GetInterchainTxWrapper(pid string, begin, end uint64, ch chan<- *pb.InterchainTxWrapper) error {
-	return b.bxh.Router.GetInterchainTxWrapper(pid, begin, end, ch)
+func (b *BrokerAPI) GetInterchainTxWrappers(pid string, begin, end uint64, ch chan<- *pb.InterchainTxWrappers) error {
+	return b.bxh.Router.GetInterchainTxWrappers(pid, begin, end, ch)
 }
 
 func (b *BrokerAPI) GetBlock(mode string, value string) (*pb.Block, error) {
@@ -101,15 +101,15 @@ func (b *BrokerAPI) GetBlocks(start uint64, end uint64) ([]*pb.Block, error) {
 	return blocks, nil
 }
 
-func (b *BrokerAPI) RemovePier(key string) {
-	b.bxh.Router.RemovePier(key)
+func (b *BrokerAPI) RemovePier(pid string, isUnion bool) {
+	b.bxh.Router.RemovePier(pid, isUnion)
 }
 
 func (b *BrokerAPI) OrderReady() bool {
 	return b.bxh.Order.Ready()
 }
 
-func (b *BrokerAPI) FetchAssetExchangeSignsFromOtherPeers(id string) map[string][]byte {
+func (b *BrokerAPI) FetchSignsFromOtherPeers(id string, typ pb.GetMultiSignsRequest_Type) map[string][]byte {
 	var (
 		result = make(map[string][]byte)
 		wg     = sync.WaitGroup{}
@@ -119,7 +119,18 @@ func (b *BrokerAPI) FetchAssetExchangeSignsFromOtherPeers(id string) map[string]
 	wg.Add(len(b.bxh.PeerMgr.OtherPeers()))
 	for pid := range b.bxh.PeerMgr.OtherPeers() {
 		go func(pid uint64, result map[string][]byte, wg *sync.WaitGroup, lock *sync.Mutex) {
-			address, sign, err := b.requestAssetExchangeSignFromPeer(pid, id)
+			var (
+				address string
+				sign    []byte
+				err     error
+			)
+			switch typ {
+			case pb.GetMultiSignsRequest_ASSET_EXCHANGE:
+				address, sign, err = b.requestAssetExchangeSignFromPeer(pid, id)
+			case pb.GetMultiSignsRequest_IBTP:
+				address, sign, err = b.requestIBTPSignPeer(pid, id)
+			}
+
 			if err != nil {
 				b.logger.WithFields(logrus.Fields{
 					"pid": pid,
@@ -161,23 +172,65 @@ func (b *BrokerAPI) requestAssetExchangeSignFromPeer(peerId uint64, assetExchang
 	return data.Address, data.Signature, nil
 }
 
-func (b *BrokerAPI) GetAssetExchangeSign(id string) (string, []byte, error) {
-	ok, record := b.bxh.Ledger.GetState(constant.AssetExchangeContractAddr.Address(), []byte(contracts.AssetExchangeKey(id)))
-	if !ok {
-		return "", nil, fmt.Errorf("cannot find asset exchange record with id %s", id)
+func (b *BrokerAPI) requestIBTPSignPeer(pid uint64, ibtpHash string) (string, []byte, error) {
+	req := pb.Message{
+		Type: pb.Message_FETCH_IBTP_SIGN,
+		Data: []byte(ibtpHash),
 	}
 
-	aer := contracts.AssetExchangeRecord{}
-	if err := json.Unmarshal(record, &aer); err != nil {
+	resp, err := b.bxh.PeerMgr.Send(pid, &req)
+	if err != nil {
+		return "", nil, err
+	}
+	if resp == nil || resp.Type != pb.Message_FETCH_IBTP_SIGN_ACK {
+		return "", nil, fmt.Errorf("invalid fetch ibtp sign resp")
+	}
+
+	data := model.MerkleWrapperSign{}
+	if err := data.Unmarshal(resp.Data); err != nil {
 		return "", nil, err
 	}
 
-	hash := sha256.Sum256([]byte(fmt.Sprintf("%s-%d", id, aer.Status)))
+	return data.Address, data.Signature, nil
+}
+
+func (b *BrokerAPI) GetSign(content string, typ pb.GetMultiSignsRequest_Type) (string, []byte, error) {
+	switch typ {
+	case pb.GetMultiSignsRequest_ASSET_EXCHANGE:
+		id := content
+		ok, record := b.bxh.Ledger.GetState(constant.AssetExchangeContractAddr.Address(), []byte(contracts.AssetExchangeKey(id)))
+		if !ok {
+			return "", nil, fmt.Errorf("cannot find asset exchange record with id %s", id)
+		}
+
+		aer := contracts.AssetExchangeRecord{}
+		if err := json.Unmarshal(record, &aer); err != nil {
+			return "", nil, err
+		}
+
+		addr, sign, err := b.getSign(fmt.Sprintf("%s-%d", id, aer.Status))
+		if err != nil {
+			return "", nil, fmt.Errorf("fetch asset exchange sign: %w", err)
+		}
+		return addr, sign, nil
+	case pb.GetMultiSignsRequest_IBTP:
+		addr, sign, err := b.getSign(content)
+		if err != nil {
+			return "", nil, fmt.Errorf("get ibtp sign: %w", err)
+		}
+		return addr, sign, nil
+	default:
+		return "", nil, fmt.Errorf("unsupported get sign type")
+	}
+
+}
+
+func (b *BrokerAPI) getSign(content string) (string, []byte, error) {
+	hash := sha256.Sum256([]byte(content))
 	key := b.bxh.GetPrivKey()
 	sign, err := key.PrivKey.Sign(hash[:])
 	if err != nil {
-		return "", nil, fmt.Errorf("fetch asset exchange sign: %w", err)
+		return "", nil, fmt.Errorf("bitxhub sign: %w", err)
 	}
-
 	return key.Address, sign, nil
 }

@@ -19,13 +19,14 @@ var _ Router = (*InterchainRouter)(nil)
 const blockChanNumber = 1024
 
 type InterchainRouter struct {
-	logger  logrus.FieldLogger
-	repo    *repo.Repo
-	piers   sync.Map
-	count   atomic.Int64
-	ledger  ledger.Ledger
-	peerMgr peermgr.PeerManager
-	quorum  uint64
+	logger     logrus.FieldLogger
+	repo       *repo.Repo
+	piers      sync.Map
+	unionPiers sync.Map
+	count      atomic.Int64
+	ledger     ledger.Ledger
+	peerMgr    peermgr.PeerManager
+	quorum     uint64
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -47,7 +48,6 @@ func New(logger logrus.FieldLogger, repo *repo.Repo, ledger ledger.Ledger, peerM
 
 func (router *InterchainRouter) Start() error {
 	router.logger.Infof("Router module started")
-
 	return nil
 }
 
@@ -59,19 +59,30 @@ func (router *InterchainRouter) Stop() error {
 	return nil
 }
 
-func (router *InterchainRouter) AddPier(key string) (chan *pb.InterchainTxWrapper, error) {
-	c := make(chan *pb.InterchainTxWrapper, blockChanNumber)
-	router.piers.Store(key, c)
+func (router *InterchainRouter) AddPier(key string, isUnion bool) (chan *pb.InterchainTxWrappers, error) {
+	c := make(chan *pb.InterchainTxWrappers, blockChanNumber)
+	if isUnion {
+		router.unionPiers.Store(key, c)
+	} else {
+		router.piers.Store(key, c)
+	}
+
 	router.count.Inc()
 	router.logger.WithFields(logrus.Fields{
-		"id": key,
+		"id":       key,
+		"is_union": isUnion,
 	}).Infof("Add pier")
 
 	return c, nil
 }
 
-func (router *InterchainRouter) RemovePier(key string) {
-	router.piers.Delete(key)
+func (router *InterchainRouter) RemovePier(key string, isUnion bool) {
+	if isUnion {
+		router.unionPiers.Delete(key)
+	} else {
+		router.piers.Delete(key)
+	}
+
 	router.count.Dec()
 }
 
@@ -81,24 +92,39 @@ func (router *InterchainRouter) PutBlockAndMeta(block *pb.Block, meta *pb.Interc
 	}
 
 	ret := router.classify(block, meta)
-
 	router.piers.Range(func(k, value interface{}) bool {
 		key := k.(string)
-		w := value.(chan *pb.InterchainTxWrapper)
+		w := value.(chan *pb.InterchainTxWrappers)
+		wrappers := make([]*pb.InterchainTxWrapper, 0)
 		_, ok := ret[key]
 		if ok {
-			w <- ret[key]
+			wrappers = append(wrappers, ret[key])
+			w <- &pb.InterchainTxWrappers{
+				InterchainTxWrappers: wrappers,
+			}
 			return true
 		}
 
 		// empty interchain tx in this block
-		w <- &pb.InterchainTxWrapper{
+		emptyWrapper := &pb.InterchainTxWrapper{
 			Height:  block.Height(),
 			L2Roots: meta.L2Roots,
+		}
+		wrappers = append(wrappers, emptyWrapper)
+		w <- &pb.InterchainTxWrappers{
+			InterchainTxWrappers: wrappers,
 		}
 
 		return true
 	})
+
+	interchainTxWrappers := router.generateUnionInterchainTxWrappers(ret, block, meta)
+	router.unionPiers.Range(func(k, v interface{}) bool {
+		w := v.(chan *pb.InterchainTxWrappers)
+		w <- interchainTxWrappers
+		return true
+	})
+
 }
 
 func (router *InterchainRouter) GetBlockHeader(begin, end uint64, ch chan<- *pb.BlockHeader) error {
@@ -117,7 +143,7 @@ func (router *InterchainRouter) GetBlockHeader(begin, end uint64, ch chan<- *pb.
 	return nil
 }
 
-func (router *InterchainRouter) GetInterchainTxWrapper(pid string, begin, end uint64, ch chan<- *pb.InterchainTxWrapper) error {
+func (router *InterchainRouter) GetInterchainTxWrappers(pid string, begin, end uint64, ch chan<- *pb.InterchainTxWrappers) error {
 	defer close(ch)
 
 	for i := begin; i <= end; i++ {
@@ -132,16 +158,31 @@ func (router *InterchainRouter) GetInterchainTxWrapper(pid string, begin, end ui
 		}
 
 		ret := router.classify(block, meta)
+		wrappers := make([]*pb.InterchainTxWrapper, 0)
 		if ret[pid] != nil {
-			ch <- ret[pid]
+			wrappers = append(wrappers, ret[pid])
+			ch <- &pb.InterchainTxWrappers{
+				InterchainTxWrappers: wrappers,
+			}
 			continue
+		} else {
+			_, ok := router.unionPiers.Load(pid)
+			if !ok {
+				// empty interchain tx in this block
+				emptyWrapper := &pb.InterchainTxWrapper{
+					Height:  block.Height(),
+					L2Roots: meta.L2Roots,
+				}
+				wrappers = append(wrappers, emptyWrapper)
+				ch <- &pb.InterchainTxWrappers{
+					InterchainTxWrappers: wrappers,
+				}
+				continue
+			}
+
+			ch <- router.generateUnionInterchainTxWrappers(ret, block, meta)
 		}
 
-		// empty interchain tx in this block
-		ch <- &pb.InterchainTxWrapper{
-			Height:  block.Height(),
-			L2Roots: meta.L2Roots,
-		}
 	}
 
 	return nil

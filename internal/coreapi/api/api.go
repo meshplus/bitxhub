@@ -27,20 +27,20 @@ type BrokerAPI interface {
 	GetBlocks(start uint64, end uint64) ([]*pb.Block, error)
 
 	// AddPier
-	AddPier(pid string) (chan *pb.InterchainTxWrapper, error)
+	AddPier(pid string, isUnion bool) (chan *pb.InterchainTxWrappers, error)
 
 	// RemovePier
-	RemovePier(pid string)
+	RemovePier(pid string, isUnion bool)
 
 	GetBlockHeader(begin, end uint64, ch chan<- *pb.BlockHeader) error
 
-	GetInterchainTxWrapper(pid string, begin, end uint64, ch chan<- *pb.InterchainTxWrapper) error
+	GetInterchainTxWrappers(pid string, begin, end uint64, ch chan<- *pb.InterchainTxWrappers) error
 
 	// OrderReady
 	OrderReady() bool
 
-	FetchAssetExchangeSignsFromOtherPeers(id string) map[string][]byte
-	GetAssetExchangeSign(id string) (string, []byte, error)
+	FetchSignsFromOtherPeers(content string, typ pb.GetMultiSignsRequest_Type) map[string][]byte
+	GetSign(content string, typ pb.GetMultiSignsRequest_Type) (string, []byte, error)
 }
 
 type NetworkAPI interface {
