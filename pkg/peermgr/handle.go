@@ -7,14 +7,13 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/libp2p/go-libp2p-core/network"
-	network2 "github.com/libp2p/go-libp2p-core/network"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/constant"
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/model"
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/pkg/cert"
+	network "github.com/meshplus/go-lightp2p"
 	"github.com/sirupsen/logrus"
 )
 
@@ -37,6 +36,8 @@ func (swarm *Swarm) handleMessage(s network.Stream, data []byte) {
 			swarm.handleFetchBlockSignMessage(s, m.Data)
 		case pb.Message_FETCH_ASSET_EXCHANEG_SIGN:
 			swarm.handleFetchAssetExchangeSignMessage(s, m.Data)
+		case pb.Message_FETCH_IBTP_SIGN:
+			swarm.handleFetchIBTPSignMessage(s, m.Data)
 		default:
 			swarm.logger.WithField("module", "p2p").Errorf("can't handle msg[type: %v]", m.Type)
 			return nil
@@ -117,7 +118,7 @@ func verifyCerts(nodeCert *x509.Certificate, agencyCert *x509.Certificate, caCer
 	return nil
 }
 
-func (swarm *Swarm) handleFetchBlockSignMessage(s network2.Stream, data []byte) {
+func (swarm *Swarm) handleFetchBlockSignMessage(s network.Stream, data []byte) {
 	handle := func(data []byte) ([]byte, error) {
 		height, err := strconv.ParseUint(string(data), 10, 64)
 		if err != nil {
@@ -161,7 +162,7 @@ func (swarm *Swarm) handleFetchBlockSignMessage(s network2.Stream, data []byte) 
 	}
 }
 
-func (swarm *Swarm) handleFetchAssetExchangeSignMessage(s network2.Stream, data []byte) {
+func (swarm *Swarm) handleFetchAssetExchangeSignMessage(s network.Stream, data []byte) {
 	handle := func(id string) (string, []byte, error) {
 		swarm.logger.WithField("asset exchange id", id).Debug("Handle fetching asset exchange sign message")
 
@@ -204,6 +205,45 @@ func (swarm *Swarm) handleFetchAssetExchangeSignMessage(s network2.Stream, data 
 
 	msg := &pb.Message{
 		Type: pb.Message_FETCH_ASSET_EXCHANGE_SIGN_ACK,
+		Data: body,
+	}
+
+	if err := swarm.SendWithStream(s, msg); err != nil {
+		swarm.logger.Errorf("send asset exchange sign back: %s", err)
+	}
+}
+
+func (swarm *Swarm) handleFetchIBTPSignMessage(s network.Stream, data []byte) {
+	handle := func(id string) (string, []byte, error) {
+		hash := sha256.Sum256([]byte(id))
+		key := swarm.repo.Key
+		sign, err := key.PrivKey.Sign(hash[:])
+		if err != nil {
+			return "", nil, fmt.Errorf("fetch ibtp sign: %w", err)
+		}
+
+		return key.Address, sign, nil
+	}
+
+	address, signed, err := handle(string(data))
+	if err != nil {
+		swarm.logger.Errorf("handle fetch-ibtp-sign: %s", err)
+		return
+	}
+
+	m := model.MerkleWrapperSign{
+		Address:   address,
+		Signature: signed,
+	}
+
+	body, err := m.Marshal()
+	if err != nil {
+		swarm.logger.Errorf("marshal merkle wrapper sign: %s", err)
+		return
+	}
+
+	msg := &pb.Message{
+		Type: pb.Message_FETCH_IBTP_SIGN_ACK,
 		Data: body,
 	}
 
