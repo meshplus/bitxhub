@@ -1,9 +1,14 @@
 package contracts
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"strings"
+
+	"github.com/meshplus/bitxhub-kit/crypto"
+
+	"github.com/meshplus/bitxhub-kit/crypto/asym"
 
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-kit/types"
@@ -21,6 +26,10 @@ type Interchain struct {
 	InterchainCounter    map[string]uint64 `json:"interchain_counter,omitempty"`
 	ReceiptCounter       map[string]uint64 `json:"receipt_counter,omitempty"`
 	SourceReceiptCounter map[string]uint64 `json:"source_receipt_counter,omitempty"`
+}
+
+type BxhValidators struct {
+	Addresses []string `json:"addresses"`
 }
 
 func (i *Interchain) UnmarshalJSON(data []byte) error {
@@ -77,14 +86,18 @@ func (x *InterchainManager) Interchain() *boltvm.Response {
 }
 
 func (x *InterchainManager) HandleIBTP(data []byte) *boltvm.Response {
-	ok := x.Has(x.appchainKey(x.Caller()))
-	if !ok {
-		return boltvm.Error("this appchain does not exist")
-	}
-
 	ibtp := &pb.IBTP{}
 	if err := ibtp.Unmarshal(data); err != nil {
 		return boltvm.Error(err.Error())
+	}
+
+	if len(strings.Split(ibtp.From, "-")) == 2 {
+		return x.handleUnionIBTP(ibtp)
+	}
+
+	ok := x.Has(x.appchainKey(x.Caller()))
+	if !ok {
+		return boltvm.Error("this appchain does not exist")
 	}
 
 	interchain := &Interchain{}
@@ -151,7 +164,7 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP, interchain *Interchain) err
 		return fmt.Errorf("empty destination chain id")
 	}
 	if ok := x.Has(x.appchainKey(ibtp.To)); !ok {
-		x.Logger().WithField("chain_id", ibtp.To).Warn("target appchain does not exist")
+		x.Logger().WithField("chain_id", ibtp.To).Debug("target appchain does not exist")
 	}
 
 	app := &appchainMgr.Appchain{}
@@ -297,6 +310,80 @@ func (x *InterchainManager) GetIBTPByID(id string) *boltvm.Response {
 	}
 
 	return boltvm.Success(hash.Bytes())
+}
+
+func (x *InterchainManager) handleUnionIBTP(ibtp *pb.IBTP) *boltvm.Response {
+	srcRelayChainID := strings.Split(ibtp.From, "-")[0]
+	ok := x.Has(x.appchainKey(srcRelayChainID))
+	if !ok {
+		return boltvm.Error("this relay chain does not exist")
+	}
+
+	if ibtp.To == "" {
+		return boltvm.Error("empty destination chain id")
+	}
+	if ok := x.Has(x.appchainKey(ibtp.To)); !ok {
+		return boltvm.Error(fmt.Sprintf("target appchain does not exist: %s", ibtp.To))
+	}
+
+	app := &appchainMgr.Appchain{}
+	res := x.CrossInvoke(constant.AppchainMgrContractAddr.String(), "GetAppchain", pb.String(srcRelayChainID))
+	if err := json.Unmarshal(res.Result, app); err != nil {
+		return boltvm.Error(err.Error())
+	}
+
+	if !x.verifyUnionIBTP(app, ibtp) {
+		return boltvm.Error("invalid interchain transaction")
+	}
+
+	ibtp.From = srcRelayChainID
+	interchain := &Interchain{
+		ID: srcRelayChainID,
+	}
+	x.GetObject(x.appchainKey(srcRelayChainID), &interchain)
+	x.ProcessIBTP(ibtp, interchain)
+	return boltvm.Success(nil)
+}
+
+func (x *InterchainManager) verifyUnionIBTP(app *appchainMgr.Appchain, ibtp *pb.IBTP) bool {
+	if "" == app.Validators {
+		return false
+	}
+	var validators BxhValidators
+	if err := json.Unmarshal([]byte(app.Validators), &validators); err != nil {
+		return false
+	}
+
+	m := make(map[string]struct{}, 0)
+	for _, validator := range validators.Addresses {
+		m[validator] = struct{}{}
+	}
+
+	var signs pb.SignResponse
+	if err := signs.Unmarshal(ibtp.Proof); err != nil {
+		return false
+	}
+
+	threshold := (len(validators.Addresses) - 1) / 3
+	counter := 0
+
+	hash := sha256.Sum256([]byte(ibtp.Hash().String()))
+	for v, sign := range signs.Sign {
+		if _, ok := m[v]; !ok {
+			return false
+		}
+		delete(m, v)
+		addr := types.String2Address(v)
+		ok, _ := asym.Verify(crypto.Secp256k1, sign, hash[:], addr)
+		if ok {
+			counter++
+		}
+		if counter > threshold {
+			return true
+		}
+	}
+	return false
+
 }
 
 func (x *InterchainManager) appchainKey(id string) string {
