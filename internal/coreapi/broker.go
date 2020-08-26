@@ -129,6 +129,8 @@ func (b *BrokerAPI) FetchSignsFromOtherPeers(id string, typ pb.GetMultiSignsRequ
 				address, sign, err = b.requestAssetExchangeSignFromPeer(pid, id)
 			case pb.GetMultiSignsRequest_IBTP:
 				address, sign, err = b.requestIBTPSignPeer(pid, id)
+			case pb.GetMultiSignsRequest_BLOCK_HEADER:
+				address, sign, err = b.requestBlockHeaderSignFromPeer(pid, id)
 			}
 
 			if err != nil {
@@ -194,6 +196,29 @@ func (b *BrokerAPI) requestIBTPSignPeer(pid uint64, ibtpHash string) (string, []
 	return data.Address, data.Signature, nil
 }
 
+func (b *BrokerAPI) requestBlockHeaderSignFromPeer(pid uint64, height string) (string, []byte, error) {
+	req := pb.Message{
+		Type: pb.Message_FETCH_BLOCK_SIGN,
+		Data: []byte(height),
+	}
+
+	resp, err := b.bxh.PeerMgr.Send(pid, &req)
+	if err != nil {
+		return "", nil, err
+	}
+
+	if resp == nil || resp.Type != pb.Message_FETCH_BLOCK_SIGN_ACK {
+		return "", nil, fmt.Errorf("invalid fetch block header sign resp")
+	}
+
+	data := model.MerkleWrapperSign{}
+	if err := data.Unmarshal(resp.Data); err != nil {
+		return "", nil, err
+	}
+
+	return data.Address, data.Signature, nil
+}
+
 func (b *BrokerAPI) GetSign(content string, typ pb.GetMultiSignsRequest_Type) (string, []byte, error) {
 	switch typ {
 	case pb.GetMultiSignsRequest_ASSET_EXCHANGE:
@@ -219,6 +244,18 @@ func (b *BrokerAPI) GetSign(content string, typ pb.GetMultiSignsRequest_Type) (s
 			return "", nil, fmt.Errorf("get ibtp sign: %w", err)
 		}
 		return addr, sign, nil
+	case pb.GetMultiSignsRequest_BLOCK_HEADER:
+		height, err := strconv.ParseUint(content, 10, 64)
+		if err != nil {
+			return "", nil, fmt.Errorf("get block header sign: %w", err)
+		}
+
+		sign, err := b.bxh.Ledger.GetBlockSign(height)
+		if err != nil {
+			return "", nil, fmt.Errorf("get block sign: %w", err)
+		}
+
+		return b.bxh.GetPrivKey().Address, sign, nil
 	default:
 		return "", nil, fmt.Errorf("unsupported get sign type")
 	}

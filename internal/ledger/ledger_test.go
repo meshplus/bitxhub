@@ -8,9 +8,12 @@ import (
 	"testing"
 
 	"github.com/meshplus/bitxhub-kit/bytesutil"
+	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub/internal/repo"
+	"github.com/meshplus/bitxhub/pkg/cert"
 	"github.com/meshplus/bitxhub/pkg/storage"
 	"github.com/meshplus/bitxhub/pkg/storage/leveldb"
 	"github.com/stretchr/testify/assert"
@@ -26,7 +29,7 @@ func TestLedger_Commit(t *testing.T) {
 	assert.Nil(t, err)
 
 	accountCache := NewAccountCache()
-	ledger, err := New(blockStorage, ldb, accountCache, log.NewWithModule("executor"))
+	ledger, err := New(createMockRepo(t), blockStorage, ldb, accountCache, log.NewWithModule("executor"))
 	assert.Nil(t, err)
 
 	// create an account
@@ -91,7 +94,7 @@ func TestLedger_Commit(t *testing.T) {
 	ldb, err = leveldb.New(filepath.Join(repoRoot, "ledger"))
 	assert.Nil(t, err)
 
-	ldg, err := New(blockStorage, ldb, accountCache, log.NewWithModule("executor"))
+	ldg, err := New(createMockRepo(t), blockStorage, ldb, accountCache, log.NewWithModule("executor"))
 	assert.Nil(t, err)
 	assert.Equal(t, uint64(5), ldg.maxJnlHeight)
 	assert.Equal(t, journal.ChangedHash, ldg.prevJnlHash)
@@ -124,7 +127,7 @@ func TestChainLedger_Rollback(t *testing.T) {
 	assert.Nil(t, err)
 
 	accountCache := NewAccountCache()
-	ledger, err := New(blockStorage, ldb, accountCache, log.NewWithModule("executor"))
+	ledger, err := New(createMockRepo(t), blockStorage, ldb, accountCache, log.NewWithModule("executor"))
 	assert.Nil(t, err)
 
 	// create an addr0
@@ -226,7 +229,7 @@ func TestChainLedger_Rollback(t *testing.T) {
 	ldb, err = leveldb.New(filepath.Join(repoRoot, "ledger"))
 	assert.Nil(t, err)
 
-	ledger, err = New(blockStorage, ldb, NewAccountCache(), log.NewWithModule("executor"))
+	ledger, err = New(createMockRepo(t), blockStorage, ldb, NewAccountCache(), log.NewWithModule("executor"))
 	assert.Nil(t, err)
 	assert.Equal(t, uint64(2), ledger.minJnlHeight)
 	assert.Equal(t, uint64(2), ledger.maxJnlHeight)
@@ -244,7 +247,7 @@ func TestChainLedger_RemoveJournalsBeforeBlock(t *testing.T) {
 	assert.Nil(t, err)
 
 	accountCache := NewAccountCache()
-	ledger, err := New(blockStorage, ldb, accountCache, log.NewWithModule("executor"))
+	ledger, err := New(createMockRepo(t), blockStorage, ldb, accountCache, log.NewWithModule("executor"))
 	assert.Nil(t, err)
 
 	assert.Equal(t, uint64(0), ledger.minJnlHeight)
@@ -309,7 +312,7 @@ func TestChainLedger_RemoveJournalsBeforeBlock(t *testing.T) {
 
 	ledger.Close()
 	ldb, err = leveldb.New(filepath.Join(repoRoot, "ledger"))
-	ledger, err = New(blockStorage, ldb, accountCache, log.NewWithModule("executor"))
+	ledger, err = New(createMockRepo(t), blockStorage, ldb, accountCache, log.NewWithModule("executor"))
 	assert.Nil(t, err)
 	assert.Equal(t, uint64(4), ledger.minJnlHeight)
 	assert.Equal(t, uint64(4), ledger.maxJnlHeight)
@@ -325,7 +328,7 @@ func TestChainLedger_QueryByPrefix(t *testing.T) {
 	assert.Nil(t, err)
 
 	accountCache := NewAccountCache()
-	ledger, err := New(blockStorage, ldb, accountCache, log.NewWithModule("executor"))
+	ledger, err := New(createMockRepo(t), blockStorage, ldb, accountCache, log.NewWithModule("executor"))
 	assert.Nil(t, err)
 
 	addr := types.Bytes2Address(bytesutil.LeftPadBytes([]byte{1}, 20))
@@ -369,7 +372,7 @@ func TestChainLedger_GetAccount(t *testing.T) {
 	assert.Nil(t, err)
 
 	accountCache := NewAccountCache()
-	ledger, err := New(blockStorage, ldb, accountCache, log.NewWithModule("executor"))
+	ledger, err := New(createMockRepo(t), blockStorage, ldb, accountCache, log.NewWithModule("executor"))
 	assert.Nil(t, err)
 
 	addr := types.Bytes2Address(bytesutil.LeftPadBytes([]byte{1}, 20))
@@ -436,7 +439,7 @@ func TestChainLedger_GetCode(t *testing.T) {
 	assert.Nil(t, err)
 
 	accountCache := NewAccountCache()
-	ledger, err := New(blockStorage, ldb, accountCache, log.NewWithModule("executor"))
+	ledger, err := New(createMockRepo(t), blockStorage, ldb, accountCache, log.NewWithModule("executor"))
 	assert.Nil(t, err)
 
 	addr := types.Bytes2Address(bytesutil.LeftPadBytes([]byte{1}, 20))
@@ -474,7 +477,7 @@ func TestChainLedger_AddAccountsToCache(t *testing.T) {
 	assert.Nil(t, err)
 
 	accountCache := NewAccountCache()
-	ledger, err := New(blockStorage, ldb, accountCache, log.NewWithModule("executor"))
+	ledger, err := New(createMockRepo(t), blockStorage, ldb, accountCache, log.NewWithModule("executor"))
 	assert.Nil(t, err)
 
 	addr := types.Bytes2Address(bytesutil.LeftPadBytes([]byte{1}, 20))
@@ -542,7 +545,7 @@ func TestChainLedger_GetInterchainMeta(t *testing.T) {
 	assert.Nil(t, err)
 
 	accountCache := NewAccountCache()
-	ledger, err := New(blockStorage, ldb, accountCache, log.NewWithModule("executor"))
+	ledger, err := New(createMockRepo(t), blockStorage, ldb, accountCache, log.NewWithModule("executor"))
 	require.Nil(t, err)
 
 	// create an account
@@ -592,5 +595,24 @@ func genBlockData(height uint64, accounts map[string]*Account, journal *BlockJou
 		Accounts:       accounts,
 		Journal:        journal,
 		InterchainMeta: &pb.InterchainMeta{},
+	}
+}
+
+func createMockRepo(t *testing.T) *repo.Repo {
+	key := `-----BEGIN EC PRIVATE KEY-----
+BcNwjTDCxyxLNjFKQfMAc6sY6iJs+Ma59WZyC/4uhjE=
+-----END EC PRIVATE KEY-----`
+
+	privKey, err := cert.ParsePrivateKey([]byte(key), crypto.Secp256k1)
+	require.Nil(t, err)
+
+	address, err := privKey.PublicKey().Address()
+	require.Nil(t, err)
+
+	return &repo.Repo{
+		Key: &repo.Key{
+			PrivKey: privKey,
+			Address: address.Hex(),
+		},
 	}
 }
