@@ -15,6 +15,8 @@ import (
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/ledger"
+	"github.com/meshplus/bitxhub/internal/repo"
+	"github.com/meshplus/bitxhub/pkg/cert"
 	"github.com/meshplus/bitxhub/pkg/storage/leveldb"
 	"github.com/meshplus/bitxhub/pkg/vm"
 	"github.com/stretchr/testify/assert"
@@ -58,7 +60,7 @@ func initCreateContext(t *testing.T, name string) *vm.Context {
 	ldb, err := leveldb.New(filepath.Join(dir, "ledger"))
 	assert.Nil(t, err)
 
-	ldg, err := ledger.New(store, ldb, ledger.NewAccountCache(), log.NewWithModule("executor"))
+	ldg, err := ledger.New(createMockRepo(t), store, ldb, ledger.NewAccountCache(), log.NewWithModule("executor"))
 	assert.Nil(t, err)
 
 	return &vm.Context{
@@ -88,7 +90,7 @@ func initValidationContext(t *testing.T, name string) *vm.Context {
 	ldb, err := leveldb.New(filepath.Join(dir, "ledger"))
 	assert.Nil(t, err)
 
-	ldg, err := ledger.New(store, ldb, ledger.NewAccountCache(), log.NewWithModule("executor"))
+	ldg, err := ledger.New(createMockRepo(t), store, ldb, ledger.NewAccountCache(), log.NewWithModule("executor"))
 	require.Nil(t, err)
 
 	return &vm.Context{
@@ -118,7 +120,7 @@ func initFabricContext(t *testing.T, name string) *vm.Context {
 	ldb, err := leveldb.New(filepath.Join(dir, "ledger"))
 	assert.Nil(t, err)
 
-	ldg, err := ledger.New(store, ldb, ledger.NewAccountCache(), log.NewWithModule("executor"))
+	ldg, err := ledger.New(createMockRepo(t), store, ldb, ledger.NewAccountCache(), log.NewWithModule("executor"))
 	require.Nil(t, err)
 
 	return &vm.Context{
@@ -247,7 +249,7 @@ func BenchmarkRunFabValidation(b *testing.B) {
 	ldb, err := leveldb.New(filepath.Join(dir, "ledger"))
 	assert.Nil(b, err)
 
-	ldg, err := ledger.New(store, ldb, ledger.NewAccountCache(), log.NewWithModule("executor"))
+	ldg, err := ledger.New(&repo.Repo{Key: &repo.Key{PrivKey: privKey}}, store, ldb, ledger.NewAccountCache(), log.NewWithModule("executor"))
 	require.Nil(b, err)
 	ctx := &vm.Context{
 		Caller:          caller,
@@ -373,4 +375,23 @@ func TestWasm_RunWithoutMethod(t *testing.T) {
 
 	_, err = wasm1.Run(payload)
 	assert.Equal(t, errorLackOfMethod, err)
+}
+
+func createMockRepo(t *testing.T) *repo.Repo {
+	key := `-----BEGIN EC PRIVATE KEY-----
+BcNwjTDCxyxLNjFKQfMAc6sY6iJs+Ma59WZyC/4uhjE=
+-----END EC PRIVATE KEY-----`
+
+	privKey, err := cert.ParsePrivateKey([]byte(key), crypto.Secp256k1)
+	require.Nil(t, err)
+
+	address, err := privKey.PublicKey().Address()
+	require.Nil(t, err)
+
+	return &repo.Repo{
+		Key: &repo.Key{
+			PrivKey: privKey,
+			Address: address.Hex(),
+		},
+	}
 }

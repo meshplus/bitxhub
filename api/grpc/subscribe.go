@@ -26,7 +26,9 @@ func (cbs *ChainBrokerService) Subscribe(req *pb.SubscriptionRequest, server pb.
 	case pb.SubscriptionRequest_BLOCK_HEADER.String():
 		return cbs.handleBlockHeaderSubscription(server)
 	case pb.SubscriptionRequest_INTERCHAIN_TX_WRAPPER.String():
-		return cbs.handleInterchainTxWrapperSubscription(server, types.Bytes2Address(req.Extra).String())
+		return cbs.handleInterchainTxWrapperSubscription(server, types.Bytes2Address(req.Extra).String(), false)
+	case pb.SubscriptionRequest_UNION_INTERCHAIN_TX_WRAPPER.String():
+		return cbs.handleInterchainTxWrapperSubscription(server, types.Bytes2Address(req.Extra).String(), true)
 	}
 
 	return nil
@@ -109,9 +111,9 @@ func (cbs *ChainBrokerService) handleInterchainTxSubscription(server pb.ChainBro
 	}
 }
 
-func (cbs *ChainBrokerService) handleInterchainTxWrapperSubscription(server pb.ChainBroker_SubscribeServer, pid string) error {
-	ch, err := cbs.api.Broker().AddPier(pid)
-	defer cbs.api.Broker().RemovePier(pid)
+func (cbs *ChainBrokerService) handleInterchainTxWrapperSubscription(server pb.ChainBroker_SubscribeServer, pid string, isUnion bool) error {
+	ch, err := cbs.api.Broker().AddPier(pid, isUnion)
+	defer cbs.api.Broker().RemovePier(pid, isUnion)
 	if err != nil {
 		return err
 	}

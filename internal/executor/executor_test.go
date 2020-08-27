@@ -19,6 +19,8 @@ import (
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/ledger/mock_ledger"
 	"github.com/meshplus/bitxhub/internal/model/events"
+	"github.com/meshplus/bitxhub/internal/repo"
+	"github.com/meshplus/bitxhub/pkg/cert"
 	"github.com/meshplus/bitxhub/pkg/storage/leveldb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -173,8 +175,9 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 	ldb, err := leveldb.New(filepath.Join(repoRoot, "ledger"))
 	require.Nil(t, err)
 
+	repo.DefaultConfig()
 	accountCache := ledger.NewAccountCache()
-	ldg, err := ledger.New(blockchainStorage, ldb, accountCache, log.NewWithModule("ledger"))
+	ldg, err := ledger.New(createMockRepo(t), blockchainStorage, ldb, accountCache, log.NewWithModule("ledger"))
 	require.Nil(t, err)
 
 	_, from := loadAdminKey(t)
@@ -207,7 +210,7 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 	require.EqualValues(t, uint64(99999997), ldg.GetBalance(from))
 
 	// test executor with readonly ledger
-	viewLedger, err := ledger.New(blockchainStorage, ldb, accountCache, log.NewWithModule("ledger"))
+	viewLedger, err := ledger.New(createMockRepo(t), blockchainStorage, ldb, accountCache, log.NewWithModule("ledger"))
 	require.Nil(t, err)
 
 	exec, err := New(viewLedger, log.NewWithModule("executor"))
@@ -303,5 +306,24 @@ func mockIBTP(t *testing.T, index uint64, typ pb.IBTP_Type) *pb.IBTP {
 		Index:     index,
 		Type:      typ,
 		Timestamp: time.Now().UnixNano(),
+	}
+}
+
+func createMockRepo(t *testing.T) *repo.Repo {
+	key := `-----BEGIN EC PRIVATE KEY-----
+BcNwjTDCxyxLNjFKQfMAc6sY6iJs+Ma59WZyC/4uhjE=
+-----END EC PRIVATE KEY-----`
+
+	privKey, err := cert.ParsePrivateKey([]byte(key), crypto.Secp256k1)
+	require.Nil(t, err)
+
+	address, err := privKey.PublicKey().Address()
+	require.Nil(t, err)
+
+	return &repo.Repo{
+		Key: &repo.Key{
+			PrivKey: privKey,
+			Address: address.Hex(),
+		},
 	}
 }

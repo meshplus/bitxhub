@@ -9,16 +9,15 @@ import (
 	"github.com/Rican7/retry"
 	"github.com/Rican7/retry/strategy"
 	"github.com/ethereum/go-ethereum/event"
-	network2 "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
-	"github.com/meshplus/bitxhub-kit/network"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/model"
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/bitxhub/pkg/cert"
+	network "github.com/meshplus/go-lightp2p"
 	"github.com/sirupsen/logrus"
 )
 
@@ -41,10 +40,11 @@ type Swarm struct {
 }
 
 func New(repo *repo.Repo, logger logrus.FieldLogger, ledger ledger.Ledger) (*Swarm, error) {
+	var protocolIDs = []string{string(protocolID)}
 	p2p, err := network.New(
 		network.WithLocalAddr(repo.NetworkConfig.LocalAddr),
 		network.WithPrivateKey(repo.Key.Libp2pPrivKey),
-		network.WithProtocolID(protocolID),
+		network.WithProtocolIDs(protocolIDs),
 		network.WithLogger(logger),
 	)
 
@@ -76,7 +76,7 @@ func (swarm *Swarm) Start() error {
 	for id, addr := range swarm.peers {
 		go func(id uint64, addr *peer.AddrInfo) {
 			if err := retry.Retry(func(attempt uint) error {
-				if err := swarm.p2p.Connect(addr); err != nil {
+				if err := swarm.p2p.Connect(*addr); err != nil {
 					swarm.logger.WithFields(logrus.Fields{
 						"node":  id,
 						"error": err,
@@ -128,17 +128,17 @@ func (swarm *Swarm) AsyncSend(id uint64, msg *pb.Message) error {
 	if err != nil {
 		return err
 	}
-
-	return swarm.p2p.AsyncSend(swarm.peers[id], network.Message(data))
+	addr := swarm.peers[id].ID.String()
+	return swarm.p2p.AsyncSend(addr, data)
 }
 
-func (swarm *Swarm) SendWithStream(s network2.Stream, msg *pb.Message) error {
+func (swarm *Swarm) SendWithStream(s network.Stream, msg *pb.Message) error {
 	data, err := msg.Marshal()
 	if err != nil {
 		return err
 	}
 
-	return swarm.p2p.SendWithStream(s, network.Message(data))
+	return s.AsyncSend(data)
 }
 
 func (swarm *Swarm) Send(id uint64, msg *pb.Message) (*pb.Message, error) {
@@ -151,13 +151,14 @@ func (swarm *Swarm) Send(id uint64, msg *pb.Message) (*pb.Message, error) {
 		return nil, err
 	}
 
-	ret, err := swarm.p2p.Send(swarm.peers[id], network.Message(data))
+	addr := swarm.peers[id].ID.String()
+	ret, err := swarm.p2p.Send(addr, data)
 	if err != nil {
 		return nil, fmt.Errorf("sync send: %w", err)
 	}
 
 	m := &pb.Message{}
-	if err := m.Unmarshal(ret.Data); err != nil {
+	if err := m.Unmarshal(ret); err != nil {
 		return nil, err
 	}
 
@@ -165,9 +166,9 @@ func (swarm *Swarm) Send(id uint64, msg *pb.Message) (*pb.Message, error) {
 }
 
 func (swarm *Swarm) Broadcast(msg *pb.Message) error {
-	addrs := make([]*peer.AddrInfo, 0, len(swarm.peers))
+	addrs := make([]string, 0, len(swarm.peers))
 	for _, addr := range swarm.peers {
-		addrs = append(addrs, addr)
+		addrs = append(addrs, addr.ID.String())
 	}
 
 	data, err := msg.Marshal()
@@ -175,7 +176,7 @@ func (swarm *Swarm) Broadcast(msg *pb.Message) error {
 		return err
 	}
 
-	return swarm.p2p.Broadcast(addrs, network.Message(data))
+	return swarm.p2p.Broadcast(addrs, data)
 }
 
 func (swarm *Swarm) Peers() map[uint64]*peer.AddrInfo {
@@ -231,7 +232,7 @@ func (swarm *Swarm) verifyCert(id uint64) error {
 		return fmt.Errorf("verify certs: %w", err)
 	}
 
-	err = swarm.p2p.Disconnect(swarm.peers[id])
+	err = swarm.p2p.Disconnect(swarm.peers[id].ID.String())
 	if err != nil {
 		return fmt.Errorf("disconnect peer: %w", err)
 	}

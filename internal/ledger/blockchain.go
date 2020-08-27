@@ -242,6 +242,14 @@ func (l *ChainLedger) persistTransactions(batcher storage.Batch, block *pb.Block
 }
 
 func (l *ChainLedger) persistBlock(batcher storage.Batch, block *pb.Block) error {
+	// Generate block header signature
+	signed, err := l.repo.Key.PrivKey.Sign(block.BlockHash.Bytes())
+	if err != nil {
+		return err
+	}
+
+	block.Signature = signed
+
 	bs, err := block.Marshal()
 	if err != nil {
 		return err

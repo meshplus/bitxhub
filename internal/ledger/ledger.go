@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/meshplus/bitxhub/internal/repo"
+
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/pkg/storage"
@@ -30,6 +32,7 @@ type ChainLedger struct {
 	accounts        map[string]*Account
 	accountCache    *AccountCache
 	prevJnlHash     types.Hash
+	repo            *repo.Repo
 
 	chainMutex sync.RWMutex
 	chainMeta  *pb.ChainMeta
@@ -46,7 +49,7 @@ type BlockData struct {
 }
 
 // New create a new ledger instance
-func New(blockchainStore storage.Storage, ldb storage.Storage, accountCache *AccountCache, logger logrus.FieldLogger) (*ChainLedger, error) {
+func New(repo *repo.Repo, blockchainStore storage.Storage, ldb storage.Storage, accountCache *AccountCache, logger logrus.FieldLogger) (*ChainLedger, error) {
 	chainMeta, err := loadChainMeta(blockchainStore)
 	if err != nil {
 		return nil, fmt.Errorf("load chain meta: %w", err)
@@ -65,6 +68,7 @@ func New(blockchainStore storage.Storage, ldb storage.Storage, accountCache *Acc
 	}
 
 	ledger := &ChainLedger{
+		repo:            repo,
 		logger:          logger,
 		chainMeta:       chainMeta,
 		blockchainStore: blockchainStore,
