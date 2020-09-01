@@ -1,7 +1,14 @@
 module.exports = {
     title: 'BitXHub文档',
     description: 'BitXHub部署文档、使用文档、设计文档站',
+    base: '/bitxhub/',
     themeConfig: {
+        logo: '/images/logo.png',
+        nav: [
+            {text: '官网', link: 'https://bitxhub.hyperchain.cn'},
+            {text: 'Github', link: 'https://github.com/meshplus/bitxhub'},
+        ],
+
         sidebar: [
             {
                 title: '快速开始',
