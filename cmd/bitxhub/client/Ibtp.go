@@ -18,7 +18,7 @@ func getIBTPByID(ctx *cli.Context) error {
 		return fmt.Errorf("please input ibtp id")
 	}
 
-	url, err := getURL(ctx, "iptp/"+ctx.Args().Get(0))
+	url, err := getURL(ctx, "ibtp/"+ctx.Args().Get(0))
 	if err != nil {
 		return err
 	}
@@ -28,7 +28,12 @@ func getIBTPByID(ctx *cli.Context) error {
 		return err
 	}
 
-	fmt.Println(string(data))
+	ret, err := parseResponse(data)
+	if err != nil {
+		return fmt.Errorf("wrong response: %w", err)
+	}
+
+	fmt.Println(ret)
 
 	return nil
 }
