@@ -28,7 +28,7 @@ type ChainLedger struct {
 	ldb             storage.Storage
 	minJnlHeight    uint64
 	maxJnlHeight    uint64
-	events          map[string][]*pb.Event
+	events          sync.Map
 	accounts        map[string]*Account
 	accountCache    *AccountCache
 	prevJnlHash     types.Hash
@@ -38,6 +38,7 @@ type ChainLedger struct {
 	chainMeta  *pb.ChainMeta
 
 	journalMutex sync.RWMutex
+	lock         sync.RWMutex
 }
 
 type BlockData struct {
@@ -75,7 +76,6 @@ func New(repo *repo.Repo, blockchainStore storage.Storage, ldb storage.Storage, 
 		ldb:             ldb,
 		minJnlHeight:    minJnlHeight,
 		maxJnlHeight:    maxJnlHeight,
-		events:          make(map[string][]*pb.Event, 10),
 		accounts:        make(map[string]*Account),
 		accountCache:    accountCache,
 		prevJnlHash:     prevJnlHash,
@@ -162,13 +162,23 @@ func (l *ChainLedger) RemoveJournalsBeforeBlock(height uint64) error {
 
 // AddEvent add ledger event
 func (l *ChainLedger) AddEvent(event *pb.Event) {
+	var events []*pb.Event
 	hash := event.TxHash.Hex()
-	l.events[hash] = append(l.events[hash], event)
+	value, ok := l.events.Load(hash)
+	if ok {
+		events = value.([]*pb.Event)
+	}
+	events = append(events, event)
+	l.events.Store(hash, events)
 }
 
 // Events return ledger events
 func (l *ChainLedger) Events(txHash string) []*pb.Event {
-	return l.events[txHash]
+	events, ok := l.events.Load(txHash)
+	if !ok {
+		return nil
+	}
+	return events.([]*pb.Event)
 }
 
 // Close close the ledger instance

@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"sort"
+	"sync"
 
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub/pkg/storage"
@@ -14,13 +15,14 @@ type Account struct {
 	Addr           types.Address
 	originAccount  *innerAccount
 	dirtyAccount   *innerAccount
-	originState    map[string][]byte
-	dirtyState     map[string][]byte
+	originState    sync.Map
+	dirtyState     sync.Map
 	originCode     []byte
 	dirtyCode      []byte
 	dirtyStateHash types.Hash
 	ldb            storage.Storage
 	cache          *AccountCache
+	lock           sync.RWMutex
 }
 
 type innerAccount struct {
@@ -31,22 +33,22 @@ type innerAccount struct {
 
 func newAccount(ldb storage.Storage, cache *AccountCache, addr types.Address) *Account {
 	return &Account{
-		Addr:        addr,
-		originState: make(map[string][]byte),
-		dirtyState:  make(map[string][]byte),
-		ldb:         ldb,
-		cache:       cache,
+		Addr:  addr,
+		ldb:   ldb,
+		cache: cache,
 	}
 }
 
 // GetState Get state from local cache, if not found, then get it from DB
 func (o *Account) GetState(key []byte) (bool, []byte) {
-	if val, exist := o.dirtyState[string(key)]; exist {
-		return val != nil, val
+	if val, exist := o.dirtyState.Load(string(key)); exist {
+		value := val.([]byte)
+		return value != nil, value
 	}
 
-	if val, exist := o.originState[string(key)]; exist {
-		return val != nil, val
+	if val, exist := o.originState.Load(string(key)); exist {
+		value := val.([]byte)
+		return value != nil, value
 	}
 
 	val, ok := o.cache.getState(o.Addr.Hex(), string(key))
@@ -54,7 +56,7 @@ func (o *Account) GetState(key []byte) (bool, []byte) {
 		val = o.ldb.Get(composeStateKey(o.Addr, key))
 	}
 
-	o.originState[string(key)] = val
+	o.originState.Store(string(key), val)
 
 	return val != nil, val
 }
@@ -62,7 +64,7 @@ func (o *Account) GetState(key []byte) (bool, []byte) {
 // SetState Set account state
 func (o *Account) SetState(key []byte, value []byte) {
 	o.GetState(key)
-	o.dirtyState[string(key)] = value
+	o.dirtyState.Store(string(key), value)
 }
 
 // SetCodeAndHash Set the contract code and hash
@@ -77,6 +79,9 @@ func (o *Account) SetCodeAndHash(code []byte) {
 
 // Code return the contract code
 func (o *Account) Code() []byte {
+	o.lock.Lock()
+	defer o.lock.Unlock()
+
 	if o.dirtyCode != nil {
 		return o.dirtyCode
 	}
@@ -215,19 +220,26 @@ func (o *Account) getStateJournalAndComputeHash() map[string][]byte {
 	var dirtyStateKeys []string
 	var dirtyStateData []byte
 
-	for key, val := range o.dirtyState {
-		origVal := o.originState[key]
-		if !bytes.Equal(origVal, val) {
-			prevStates[key] = origVal
-			dirtyStateKeys = append(dirtyStateKeys, key)
+	o.dirtyState.Range(func(key, value interface{}) bool {
+		origVal, ok := o.originState.Load(key)
+		var origValBytes []byte
+		if ok {
+			origValBytes = origVal.([]byte)
 		}
-	}
+		valBytes := value.([]byte)
+		if !bytes.Equal(origValBytes, valBytes) {
+			prevStates[key.(string)] = origValBytes
+			dirtyStateKeys = append(dirtyStateKeys, key.(string))
+		}
+		return true
+	})
 
 	sort.Strings(dirtyStateKeys)
 
 	for _, key := range dirtyStateKeys {
 		dirtyStateData = append(dirtyStateData, key...)
-		dirtyStateData = append(dirtyStateData, o.dirtyState[key]...)
+		dirtyVal, _ := o.dirtyState.Load(key)
+		dirtyStateData = append(dirtyStateData, dirtyVal.([]byte)...)
 	}
 	o.dirtyStateHash = sha256.Sum256(dirtyStateData)
 

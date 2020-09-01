@@ -5,15 +5,18 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"sort"
+	"sync"
 
 	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub-model/pb"
 )
 
 var _ Ledger = (*ChainLedger)(nil)
 
 // GetOrCreateAccount get the account, if not exist, create a new account
 func (l *ChainLedger) GetOrCreateAccount(addr types.Address) *Account {
+	l.lock.Lock()
+	defer l.lock.Unlock()
+
 	h := addr.Hex()
 	value, ok := l.accounts[h]
 	if ok {
@@ -100,7 +103,7 @@ func (l *ChainLedger) QueryByPrefix(addr types.Address, prefix string) (bool, []
 }
 
 func (l *ChainLedger) Clear() {
-	l.events = make(map[string][]*pb.Event, 10)
+	l.events = sync.Map{}
 	l.accounts = make(map[string]*Account)
 }
 
@@ -109,7 +112,7 @@ func (l *ChainLedger) FlushDirtyDataAndComputeJournal() (map[string]*Account, *B
 	dirtyAccounts := make(map[string]*Account)
 	var dirtyAccountData []byte
 	var journals []*journal
-	sortedAddr := make([]string, 0, len(l.accounts))
+	var sortedAddr []string
 	accountData := make(map[string][]byte)
 
 	for addr, account := range l.accounts {
@@ -162,16 +165,24 @@ func (l *ChainLedger) Commit(height uint64, accounts map[string]*Account, blockJ
 			}
 		}
 
-		for key, val := range account.dirtyState {
-			origVal := account.originState[key]
-			if !bytes.Equal(origVal, val) {
-				if val != nil {
-					ldbBatch.Put(composeStateKey(account.Addr, []byte(key)), val)
+		account.dirtyState.Range(func(key, value interface{}) bool {
+			valBytes := value.([]byte)
+			origVal, ok := account.originState.Load(key)
+			var origValBytes []byte
+			if ok {
+				origValBytes = origVal.([]byte)
+			}
+
+			if !bytes.Equal(origValBytes, valBytes) {
+				if valBytes != nil {
+					ldbBatch.Put(composeStateKey(account.Addr, []byte(key.(string))), valBytes)
 				} else {
-					ldbBatch.Delete(composeStateKey(account.Addr, []byte(key)))
+					ldbBatch.Delete(composeStateKey(account.Addr, []byte(key.(string))))
 				}
 			}
-		}
+
+			return true
+		})
 	}
 
 	data, err := json.Marshal(blockJournal)
