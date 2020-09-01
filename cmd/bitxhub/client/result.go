@@ -11,7 +11,7 @@ import (
 
 const (
 	empty = ""
-	tab   = "\t"
+	tab   = "  "
 )
 
 func parseResponse(data []byte) (string, error) {
