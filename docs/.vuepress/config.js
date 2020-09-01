@@ -3,38 +3,44 @@ module.exports = {
     description: 'BitXHub部署文档、使用文档、设计文档站',
     themeConfig: {
         sidebar: [
-            // {
-            //     title: '版本信息',
-            //     path: '/version/'
-            // },
             {
                 title: '快速开始',
-                path: '/quick/'
+                path: '/quick/',
             },
-            // {
-            //     title: '使用文档',
-            //     path: '/usage/',
-            //     children: [
-            //         {
-            //             title: '部署文档',
-            //             path: '/usage/deploy',
-            //         }
-            //     ],
-            // },
+            {
+                title: '部署文档',
+                path: '/deploy/',
+            },
+            {
+                title: '使用文档',
+                path: '/usage/',
+            },
+            {
+                title: '开发文档',
+                path: '/develop/',
+                children: [
+                    {
+                        title: '共识算法插件化使用文档',
+                        path: '/develop/consensus_usage'
+                    },
+                    {
+                        title: '共识算法插件化设计文档',
+                        path: '/develop/consensus_design'
+                    },
+                    {
+                        title: '跨链合约编写规范',
+                        path: '/develop/interchain_contract'
+                    },
+                    {
+                        title: '验证引擎规则编写规范',
+                        path: '/develop/rule'
+                    }
+                ],
+            },
             {
                 title: 'FAQ',
                 path: '/faq/',
             },
-            // {
-            //     title: '开发文档',
-            //     path: '/develop/',
-            //     children: [
-            //         {
-            //             title: '共识模块开发',
-            //             path: '/develop/order'
-            //         }
-            //     ]
-            // }
         ]
 
     }
