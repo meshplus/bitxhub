@@ -34,7 +34,12 @@ func getAccount(ctx *cli.Context) error {
 		return fmt.Errorf("wrong response: %w", err)
 	}
 
-	fmt.Println(ret)
+	retJson, err := prettyJson(ret)
+	if err != nil {
+		return fmt.Errorf("wrong response: %w", err)
+	}
+
+	fmt.Println(retJson)
 
 	return nil
 }

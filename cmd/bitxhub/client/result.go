@@ -1,10 +1,17 @@
 package client
 
 import (
+	"bytes"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 
 	"github.com/tidwall/gjson"
+)
+
+const (
+	empty = ""
+	tab   = "\t"
 )
 
 func parseResponse(data []byte) (string, error) {
@@ -16,4 +23,13 @@ func parseResponse(data []byte) (string, error) {
 	}
 
 	return string(ret), nil
+}
+
+func prettyJson(data string) (string, error) {
+	var out bytes.Buffer
+	err := json.Indent(&out, []byte(data), empty, tab)
+	if err != nil {
+		return "", fmt.Errorf("wrong data: %w", err)
+	}
+	return out.String(), nil
 }
