@@ -13,6 +13,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/ledger/genesis"
 	"github.com/meshplus/bitxhub/internal/loggers"
+	"github.com/meshplus/bitxhub/internal/mempool"
 	orderplg "github.com/meshplus/bitxhub/internal/plugins"
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/bitxhub/internal/router"
@@ -30,6 +31,7 @@ type BitXHub struct {
 	ViewExecutor  executor.Executor
 	Router        router.Router
 	Order         order.Order
+	MemPool       mempool.MemPool
 	PeerMgr       peermgr.PeerManager
 
 	repo   *repo.Repo
@@ -145,6 +147,9 @@ func generateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 		}
 	}
 
+	// create mempool instance
+	mp := mempool.New()
+
 	return &BitXHub{
 		repo:          rep,
 		logger:        logger,
@@ -152,6 +157,7 @@ func generateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 		BlockExecutor: txExec,
 		ViewExecutor:  viewExec,
 		PeerMgr:       peerMgr,
+		MemPool:       mp,
 	}, nil
 }
 
