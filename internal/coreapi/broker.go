@@ -26,7 +26,7 @@ func (b *BrokerAPI) HandleTransaction(tx *pb.Transaction) error {
 	}).Debugf("Receive tx")
 
 	go func() {
-		if err := b.bxh.MemPool.RecvTransaction(tx); err != nil {
+		if err := b.bxh.MemPool.RecvTransactions([]*pb.Transaction{tx}); err != nil {
 			b.logger.Error(err)
 		}
 	}()

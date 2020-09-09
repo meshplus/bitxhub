@@ -1,8 +1,6 @@
 package mempool
 
 import (
-	"sync"
-
 	"github.com/google/btree"
 	"github.com/meshplus/bitxhub-model/pb"
 )
@@ -10,7 +8,7 @@ import (
 type transactionStore struct {
 	txHashMap       map[string]bool
 	allTxs          map[string]*txSortedMap
-	nonceCache      *sync.Map
+	nonceCache      map[string]uint64
 	parkingLotIndex *btreeIndex
 	priorityIndex   *btreeIndex
 }
@@ -19,27 +17,34 @@ func newTransactionStore() *transactionStore {
 	return &transactionStore{
 		txHashMap:       make(map[string]bool, 0),
 		allTxs:          make(map[string]*txSortedMap),
-		nonceCache:      &sync.Map{},
+		nonceCache:      make(map[string]uint64),
 		parkingLotIndex: newBtreeIndex(),
 		priorityIndex:   newBtreeIndex(),
 	}
 }
 
-func (txStore *transactionStore) findLatestNonce(tx *pb.Transaction) uint64 {
-	raw, ok := txStore.nonceCache.Load(tx.From.Hex())
+func (txStore *transactionStore) getPendingNonce(account string) uint64 {
+	nonce, ok := txStore.nonceCache[account]
 	if !ok {
 		return 0
 	}
-	return raw.(uint64)
+	return nonce
 }
 
-func (txStore *transactionStore) hashOccurred(tx *pb.Transaction) bool {
-	return txStore.txHashMap[tx.Hash().Hex()]
+func (txStore *transactionStore) setPendingNonce(account string, nonce uint64) {
+	txStore.nonceCache[account] = nonce
 }
 
 type txSortedMap struct {
 	items map[uint64]*pb.Transaction // map nonce to transaction
 	index *btreeIndex                // index for tx
+}
+
+func newTxSortedMap() *txSortedMap {
+	return &txSortedMap{
+		items: make(map[uint64]*pb.Transaction),
+		index: newBtreeIndex(),
+	}
 }
 
 func (m *txSortedMap) filterReady(demandKey *orderedQueueKey) ([]*pb.Transaction, []*pb.Transaction, uint64) {
