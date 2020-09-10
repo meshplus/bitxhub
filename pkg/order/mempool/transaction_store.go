@@ -26,7 +26,7 @@ func newTransactionStore() *transactionStore {
 func (txStore *transactionStore) getPendingNonce(account string) uint64 {
 	nonce, ok := txStore.nonceCache[account]
 	if !ok {
-		return 0
+		return 1
 	}
 	return nonce
 }

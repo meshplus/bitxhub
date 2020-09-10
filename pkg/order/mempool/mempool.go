@@ -33,10 +33,10 @@ func (mp *CoreMemPool) RecvTransactions(txs []*pb.Transaction) error {
 		}
 
 		// check the sequence number of tx
-		account := tx.From.Hex()
+		account := string(tx.Extra)
 		currentSeqNo := mp.transactionStore.getPendingNonce(account)
-		if uint64(tx.Nonce) <= currentSeqNo {
-			return fmt.Errorf("current sequence number is %d, required %d", tx.Nonce, currentSeqNo+1)
+		if uint64(tx.Nonce) < currentSeqNo {
+			return fmt.Errorf("current sequence number is %d, required %d", tx.Nonce, currentSeqNo)
 		}
 
 		// check the existence of hash of this tx
