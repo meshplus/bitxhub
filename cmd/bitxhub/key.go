@@ -3,11 +3,10 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 
-	"github.com/meshplus/bitxhub-kit/crypto/asym/ecdsa"
-	"github.com/meshplus/bitxhub-kit/key"
+	"github.com/meshplus/bitxhub-kit/crypto"
+	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/bitxhub/pkg/cert"
 	"github.com/urfave/cli"
@@ -20,7 +19,25 @@ func keyCMD() cli.Command {
 		Subcommands: []cli.Command{
 			{
 				Name:  "gen",
-				Usage: "Create new key file from private key",
+				Usage: "Create new Secp256k1 private key",
+				Flags: []cli.Flag{
+					cli.StringFlag{
+						Name:     "name",
+						Usage:    "Specific private key name",
+						Required: true,
+					},
+					cli.StringFlag{
+						Name:  "target",
+						Usage: "Specific target directory",
+					},
+				},
+				Action: func(ctx *cli.Context) error {
+					return generatePrivKey(ctx, crypto.Secp256k1)
+				},
+			},
+			{
+				Name:  "convert",
+				Usage: "Convert new key file from private key",
 				Flags: []cli.Flag{
 					cli.BoolFlag{
 						Name:  "save,s",
@@ -32,7 +49,7 @@ func keyCMD() cli.Command {
 						Required: true,
 					},
 				},
-				Action: generateKey,
+				Action: convertKey,
 			},
 			{
 				Name:   "show",
@@ -46,20 +63,8 @@ func keyCMD() cli.Command {
 				},
 			},
 			{
-				Name:   "pid",
-				Usage:  "Show pid from private key",
-				Action: getPid,
-				Flags: []cli.Flag{
-					cli.StringFlag{
-						Name:     "path",
-						Usage:    "Private Key Path",
-						Required: true,
-					},
-				},
-			},
-			{
 				Name:   "address",
-				Usage:  "Show address from private",
+				Usage:  "Show address from private key",
 				Action: getAddress,
 				Flags: []cli.Flag{
 					cli.StringFlag{
@@ -73,26 +78,15 @@ func keyCMD() cli.Command {
 	}
 }
 
-func generateKey(ctx *cli.Context) error {
+func convertKey(ctx *cli.Context) error {
 	privPath := ctx.String("priv")
 
 	data, err := ioutil.ReadFile(privPath)
 	if err != nil {
 		return fmt.Errorf("read private key: %w", err)
 	}
-	stdPriv, err := cert.ParsePrivateKey(data)
-	if err != nil {
-		return err
-	}
 
-	privKey := &ecdsa.PrivateKey{K: stdPriv}
-
-	act, err := key.NewWithPrivateKey(privKey, "bitxhub")
-	if err != nil {
-		return fmt.Errorf("create account error: %s", err)
-	}
-
-	out, err := act.Pretty()
+	privKey, err := cert.ParsePrivateKey(data, crypto.Secp256k1)
 	if err != nil {
 		return err
 	}
@@ -104,12 +98,21 @@ func generateKey(ctx *cli.Context) error {
 		}
 
 		keyPath := filepath.Join(repoRoot, repo.KeyName)
-		err = ioutil.WriteFile(keyPath, []byte(out), os.ModePerm)
-		if err != nil {
-			return fmt.Errorf("write key file: %w", err)
+		if err := asym.StorePrivateKey(privKey, keyPath, "bitxhub"); err != nil {
+			return err
 		}
 	} else {
-		fmt.Println(out)
+		keyStore, err := asym.GenKeyStore(privKey, "bitxhub")
+		if err != nil {
+			return err
+		}
+
+		pretty, err := keyStore.Pretty()
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(pretty)
 	}
 
 	return nil
@@ -132,18 +135,6 @@ func showKey(ctx *cli.Context) error {
 	return nil
 }
 
-func getPid(ctx *cli.Context) error {
-	privPath := ctx.String("path")
-
-	pid, err := repo.GetPidFromPrivFile(privPath)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println(pid)
-	return nil
-}
-
 func getAddress(ctx *cli.Context) error {
 	privPath := ctx.String("path")
 
@@ -152,19 +143,17 @@ func getAddress(ctx *cli.Context) error {
 		return fmt.Errorf("read private key: %w", err)
 	}
 
-	stdPriv, err := cert.ParsePrivateKey(data)
+	privKey, err := cert.ParsePrivateKey(data, crypto.Secp256k1)
 	if err != nil {
 		return err
 	}
 
-	privKey := &ecdsa.PrivateKey{K: stdPriv}
-
-	act, err := key.NewWithPrivateKey(privKey, "bitxhub")
+	addr, err := privKey.PublicKey().Address()
 	if err != nil {
-		return fmt.Errorf("create account error: %s", err)
+		return err
 	}
 
-	fmt.Println(act.Address)
+	fmt.Println(addr.String())
 
 	return nil
 }

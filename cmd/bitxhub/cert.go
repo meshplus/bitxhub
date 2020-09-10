@@ -16,6 +16,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/meshplus/bitxhub-kit/crypto"
+	"github.com/meshplus/bitxhub-kit/crypto/asym"
+	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/bitxhub/pkg/cert"
 	"github.com/urfave/cli"
 )
@@ -291,44 +294,48 @@ var parseCMD = cli.Command{
 
 var privCMD = cli.Command{
 	Name:  "priv",
-	Usage: "Generate private key",
-	Flags: []cli.Flag{
-		cli.StringFlag{
-			Name:     "name",
-			Usage:    "Specific private key name",
-			Required: true,
+	Usage: "Generate and show private key for certificate",
+	Subcommands: []cli.Command{
+		{
+			Name:  "gen",
+			Usage: "Create new private key",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:     "name",
+					Usage:    "Specific private key name",
+					Required: true,
+				},
+				cli.StringFlag{
+					Name:  "target",
+					Usage: "Specific target directory",
+				},
+			},
+			Action: func(ctx *cli.Context) error {
+				return generatePrivKey(ctx, crypto.ECDSA_P256)
+			},
 		},
-		cli.StringFlag{
-			Name:  "target",
-			Usage: "Specific target directory",
+		{
+			Name:  "pid",
+			Usage: "Show pid from private key",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:     "path",
+					Usage:    "Specific private key path",
+					Required: true,
+				},
+			},
+			Action: func(ctx *cli.Context) error {
+				privPath := ctx.String("path")
+
+				pid, err := repo.GetPidFromPrivFile(privPath)
+				if err != nil {
+					return err
+				}
+
+				fmt.Println(pid)
+				return nil
+			},
 		},
-	},
-	Action: func(ctx *cli.Context) error {
-		name := ctx.String("name")
-		target := ctx.String("target")
-
-		privKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-		if err != nil {
-			return fmt.Errorf("generate key: %w", err)
-		}
-
-		priKeyEncode, err := x509.MarshalECPrivateKey(privKey)
-		if err != nil {
-			return fmt.Errorf("marshal key: %w", err)
-		}
-
-		path := filepath.Join(target, fmt.Sprintf("%s.priv", name))
-		f, err := os.Create(path)
-		if err != nil {
-			return fmt.Errorf("create file: %w", err)
-		}
-
-		err = pem.Encode(f, &pem.Block{Type: "EC PRIVATE KEY", Bytes: priKeyEncode})
-		if err != nil {
-			return fmt.Errorf("pem encode: %w", err)
-		}
-
-		return nil
 	},
 }
 
@@ -384,4 +391,32 @@ func getFileName(path string) string {
 	}
 
 	return bs[0]
+}
+
+func generatePrivKey(ctx *cli.Context, opt crypto.KeyType) error {
+	name := ctx.String("name")
+	target := ctx.String("target")
+
+	privKey, err := asym.GenerateKeyPair(opt)
+	if err != nil {
+		return fmt.Errorf("generate key: %w", err)
+	}
+
+	priKeyEncode, err := privKey.Bytes()
+	if err != nil {
+		return fmt.Errorf("marshal key: %w", err)
+	}
+
+	path := filepath.Join(target, fmt.Sprintf("%s.priv", name))
+	f, err := os.Create(path)
+	if err != nil {
+		return fmt.Errorf("create file: %w", err)
+	}
+
+	err = pem.Encode(f, &pem.Block{Type: "EC PRIVATE KEY", Bytes: priKeyEncode})
+	if err != nil {
+		return fmt.Errorf("pem encode: %w", err)
+	}
+
+	return nil
 }

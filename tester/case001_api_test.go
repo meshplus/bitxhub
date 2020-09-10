@@ -27,7 +27,7 @@ type API struct {
 }
 
 func (suite *API) SetupSuite() {
-	privKey, err := asym.GenerateKey(asym.ECDSASecp256r1)
+	privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Assert().Nil(err)
 
 	from, err := privKey.PublicKey().Address()
