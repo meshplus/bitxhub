@@ -19,13 +19,13 @@ type RuleManager struct {
 	boltvm.Stub
 }
 
-type rule struct {
+type Rule struct {
 	Address string `json:"address"`
 	Status  int32  `json:"status"` // 0 => registered, 1 => approved, -1 => rejected
 }
 
 type ruleRecord struct {
-	Rule       *rule  `json:"rule"`
+	Rule       *Rule  `json:"rule"`
 	IsApproved bool   `json:"is_approved"`
 	Desc       string `json:"desc"`
 }
@@ -37,18 +37,18 @@ func (r *RuleManager) RegisterRule(id string, address string) *boltvm.Response {
 		return boltvm.Error("this appchain does not exist")
 	}
 
-	rl := &rule{
+	rl := &Rule{
 		Address: address,
 		Status:  0,
 	}
-	r.SetObject(r.ruleKey(id), rl)
+	r.SetObject(RuleKey(id), rl)
 	return boltvm.Success(nil)
 }
 
 func (r *RuleManager) GetRuleAddress(id, chainType string) *boltvm.Response {
-	rl := &rule{}
+	rl := &Rule{}
 
-	ok := r.GetObject(r.ruleKey(id), rl)
+	ok := r.GetObject(RuleKey(id), rl)
 	if ok {
 		return boltvm.Success([]byte(rl.Address))
 	}
@@ -61,8 +61,8 @@ func (r *RuleManager) GetRuleAddress(id, chainType string) *boltvm.Response {
 }
 
 func (r *RuleManager) Audit(id string, isApproved int32, desc string) *boltvm.Response {
-	rl := &rule{}
-	ok := r.GetObject(r.ruleKey(id), rl)
+	rl := &Rule{}
+	ok := r.GetObject(RuleKey(id), rl)
 	if !ok {
 		return boltvm.Error(fmt.Errorf("this rule does not exist").Error())
 	}
@@ -79,12 +79,12 @@ func (r *RuleManager) Audit(id string, isApproved int32, desc string) *boltvm.Re
 	records = append(records, record)
 
 	r.SetObject(r.ruleRecordKey(id), records)
-	r.SetObject(r.ruleKey(id), rl)
+	r.SetObject(RuleKey(id), rl)
 
 	return boltvm.Success(nil)
 }
 
-func (r *RuleManager) ruleKey(id string) string {
+func RuleKey(id string) string {
 	return rulePrefix + id
 }
 

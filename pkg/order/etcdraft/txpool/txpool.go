@@ -8,6 +8,11 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/meshplus/bitxhub-core/validator"
+	"github.com/meshplus/bitxhub-kit/log"
+
+	"github.com/meshplus/bitxhub/internal/ledger"
+
 	"github.com/meshplus/bitxhub/pkg/order"
 
 	"github.com/Rican7/retry"
@@ -29,6 +34,7 @@ type TxPool struct {
 	isExecuting        bool                  //only raft leader can execute
 	pendingTxs         *list.List            //pending tx pool
 	presenceTxs        sync.Map              //tx cache
+	ledger             ledger.Ledger         //ledger
 	ackTxs             map[types.Hash]bool   //ack tx means get tx by pb.RaftMessage_GET_TX_ACK
 	readyC             chan *raftproto.Ready //ready channel, receive by raft Propose channel
 	peerMgr            peermgr.PeerManager   //network manager
@@ -36,9 +42,10 @@ type TxPool struct {
 	reqLookUp          *order.ReqLookUp      //bloom filter
 	storage            storage.Storage       //storage pending tx
 	config             *Config               //tx pool config
-	ctx                context.Context       //context
-	cancel             context.CancelFunc    //stop Execute
 	getTransactionFunc getTransactionFunc    //get transaction by ledger
+	proofPool          *ProofPool
+	ctx                context.Context    //context
+	cancel             context.CancelFunc //stop Execute
 }
 
 type Config struct {
@@ -55,6 +62,13 @@ func New(config *order.Config, storage storage.Storage, txPoolConfig *Config) (*
 	if err != nil {
 		return nil, nil
 	}
+
+	proofPool := &ProofPool{
+		ledger: config.Ledger,
+		logger: config.Logger,
+		ve:     validator.NewValidationEngine(config.Ledger, log.NewWithModule("validator")),
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	return &TxPool{
 		nodeId:             config.ID,
@@ -66,6 +80,7 @@ func New(config *order.Config, storage storage.Storage, txPoolConfig *Config) (*
 		ackTxs:             make(map[types.Hash]bool),
 		reqLookUp:          reqLookUp,
 		storage:            storage,
+		proofPool:          proofPool,
 		getTransactionFunc: config.GetTransactionFunc,
 		config:             txPoolConfig,
 		ctx:                ctx,
@@ -76,7 +91,7 @@ func New(config *order.Config, storage storage.Storage, txPoolConfig *Config) (*
 //AddPendingTx add pending transaction into txpool
 func (tp *TxPool) AddPendingTx(tx *pb.Transaction, isAckTx bool) error {
 	if tp.PoolSize() >= tp.config.PoolSize {
-		tp.logger.Debugf("Tx pool size: %d is full", tp.PoolSize())
+		tp.logger.Debugf("Tx pool size: {} is full", tp.PoolSize())
 		return nil
 	}
 	hash := tx.TransactionHash
@@ -90,6 +105,12 @@ func (tp *TxPool) AddPendingTx(tx *pb.Transaction, isAckTx bool) error {
 			return nil
 		}
 	}
+
+	_, err := tp.checkIBTP(tx)
+	if err != nil {
+		return err
+	}
+
 	//add pending tx
 	tp.pushBack(hash, tx, isAckTx)
 
@@ -98,6 +119,23 @@ func (tp *TxPool) AddPendingTx(tx *pb.Transaction, isAckTx bool) error {
 		tp.packFullBlock()
 	}
 	return nil
+}
+
+func (tp *TxPool) checkIBTP(tx *pb.Transaction) (bool, error) {
+	if ibtp := tp.proofPool.extractIBTP(tx); ibtp != nil {
+		ok, err := tp.proofPool.verifyProof(tx.TransactionHash, ibtp, tx.Extra)
+		if err != nil {
+			return false, err
+		}
+		if ok {
+			hash := types.Bytes2Hash(ibtp.Proof)
+			tp.proofPool.putProofHash(tx.TransactionHash, hash)
+		}
+		if !ok {
+			return false, fmt.Errorf("ibtp verify fail:%s", ibtp.ID())
+		}
+	}
+	return true, nil
 }
 
 //packFullBlock immediately pack if it is greater than the total amount of block transactions
@@ -131,6 +169,7 @@ func (tp *TxPool) RemoveTxs(hashes []types.Hash, isLeader bool) {
 			}
 		}
 		tp.presenceTxs.Delete(hash)
+		tp.proofPool.deleteProofHash(hash)
 	}
 
 }
@@ -205,26 +244,32 @@ func (tp *TxPool) periodPackBlock() {
 
 //ready pack the block
 func (tp *TxPool) ready(size int) *raftproto.Ready {
-	hashes := make([]types.Hash, 0, size)
+	txHashes := make([]types.Hash, 0, size)
+	proofHashes := make([]types.Hash, 0, size)
 	for i := 0; i < size; i++ {
 		front := tp.pendingTxs.Front()
 		tx := front.Value.(*pb.Transaction)
-		hash := tx.TransactionHash
+		txHash := tx.TransactionHash
 		tp.pendingTxs.Remove(front)
-		if _, ok := tp.ackTxs[hash]; ok {
-			delete(tp.ackTxs, hash)
+		if _, ok := tp.ackTxs[txHash]; ok {
+			delete(tp.ackTxs, txHash)
 			continue
 		}
-		hashes = append(hashes, hash)
 
+		proofHash := tp.proofPool.getProofHash(txHash)
+
+		txHashes = append(txHashes, txHash)
+		proofHashes = append(proofHashes, proofHash)
 	}
-	if len(hashes) == 0 {
+	if len(txHashes) == 0 {
 		return nil
 	}
 	height := tp.UpdateHeight()
+
 	return &raftproto.Ready{
-		TxHashes: hashes,
-		Height:   height,
+		TxHashes:    txHashes,
+		ProofHashes: proofHashes,
+		Height:      height,
 	}
 }
 

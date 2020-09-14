@@ -3,6 +3,8 @@ package order
 import (
 	"fmt"
 
+	"github.com/meshplus/bitxhub/internal/ledger"
+
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -21,6 +23,7 @@ type Config struct {
 	Nodes              map[uint64]types.Address
 	Applied            uint64
 	Digest             string
+	Ledger             ledger.Ledger
 	GetTransactionFunc func(hash types.Hash) (*pb.Transaction, error)
 	GetChainMetaFunc   func() *pb.ChainMeta
 }
@@ -95,6 +98,12 @@ func WithGetChainMetaFunc(f func() *pb.ChainMeta) Option {
 func WithGetTransactionFunc(f func(hash types.Hash) (*pb.Transaction, error)) Option {
 	return func(config *Config) {
 		config.GetTransactionFunc = f
+	}
+}
+
+func WithLedger(l ledger.Ledger) Option {
+	return func(config *Config) {
+		config.Ledger = l
 	}
 }
 

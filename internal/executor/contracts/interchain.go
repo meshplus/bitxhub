@@ -57,11 +57,11 @@ func (i *Interchain) UnmarshalJSON(data []byte) error {
 
 func (x *InterchainManager) Register() *boltvm.Response {
 	interchain := &Interchain{ID: x.Caller()}
-	ok := x.Has(x.appchainKey(x.Caller()))
+	ok := x.Has(AppchainKey(x.Caller()))
 	if ok {
-		x.GetObject(x.appchainKey(x.Caller()), interchain)
+		x.GetObject(AppchainKey(x.Caller()), interchain)
 	} else {
-		x.SetObject(x.appchainKey(x.Caller()), interchain)
+		x.SetObject(AppchainKey(x.Caller()), interchain)
 	}
 	body, err := json.Marshal(interchain)
 	if err != nil {
@@ -72,13 +72,13 @@ func (x *InterchainManager) Register() *boltvm.Response {
 }
 
 func (x *InterchainManager) DeleteInterchain(id string) *boltvm.Response {
-	x.Delete(x.appchainKey(id))
+	x.Delete(AppchainKey(id))
 	return boltvm.Success(nil)
 }
 
 // Interchain returns information of the interchain count, Receipt count and SourceReceipt count
 func (x *InterchainManager) Interchain() *boltvm.Response {
-	ok, data := x.Get(x.appchainKey(x.Caller()))
+	ok, data := x.Get(AppchainKey(x.Caller()))
 	if !ok {
 		return boltvm.Error(fmt.Errorf("this appchain does not exist").Error())
 	}
@@ -87,7 +87,7 @@ func (x *InterchainManager) Interchain() *boltvm.Response {
 
 // GetInterchain returns information of the interchain count, Receipt count and SourceReceipt count by id
 func (x *InterchainManager) GetInterchain(id string) *boltvm.Response {
-	ok, data := x.Get(x.appchainKey(id))
+	ok, data := x.Get(AppchainKey(id))
 	if !ok {
 		return boltvm.Error(fmt.Errorf("this appchain does not exist").Error())
 	}
@@ -104,13 +104,13 @@ func (x *InterchainManager) HandleIBTP(data []byte) *boltvm.Response {
 		return x.handleUnionIBTP(ibtp)
 	}
 
-	ok := x.Has(x.appchainKey(x.Caller()))
+	ok := x.Has(AppchainKey(x.Caller()))
 	if !ok {
 		return boltvm.Error("this appchain does not exist")
 	}
 
 	interchain := &Interchain{}
-	x.GetObject(x.appchainKey(ibtp.From), &interchain)
+	x.GetObject(AppchainKey(ibtp.From), &interchain)
 
 	if err := x.checkIBTP(ibtp, interchain); err != nil {
 		return boltvm.Error(err.Error())
@@ -138,7 +138,7 @@ func (x *InterchainManager) HandleIBTP(data []byte) *boltvm.Response {
 }
 
 func (x *InterchainManager) HandleIBTPs(data []byte) *boltvm.Response {
-	ok := x.Has(x.appchainKey(x.Caller()))
+	ok := x.Has(AppchainKey(x.Caller()))
 	if !ok {
 		return boltvm.Error("this appchain does not exist")
 	}
@@ -149,7 +149,7 @@ func (x *InterchainManager) HandleIBTPs(data []byte) *boltvm.Response {
 	}
 
 	interchain := &Interchain{}
-	x.GetObject(x.appchainKey(x.Caller()), &interchain)
+	x.GetObject(AppchainKey(x.Caller()), &interchain)
 
 	for _, ibtp := range ibtps.Iptp {
 		if err := x.checkIBTP(ibtp, interchain); err != nil {
@@ -172,31 +172,31 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP, interchain *Interchain) err
 	if ibtp.To == "" {
 		return fmt.Errorf("empty destination chain id")
 	}
-	if ok := x.Has(x.appchainKey(ibtp.To)); !ok {
+	if ok := x.Has(AppchainKey(ibtp.To)); !ok {
 		x.Logger().WithField("chain_id", ibtp.To).Debug("target appchain does not exist")
 	}
 
-	app := &appchainMgr.Appchain{}
-	res := x.CrossInvoke(constant.AppchainMgrContractAddr.String(), "GetAppchain", pb.String(ibtp.From))
-	if err := json.Unmarshal(res.Result, app); err != nil {
-		return err
-	}
-
-	// get validation rule contract address
-	res = x.CrossInvoke(constant.RuleManagerContractAddr.String(), "GetRuleAddress", pb.String(ibtp.From), pb.String(app.ChainType))
-	if !res.Ok {
-		return fmt.Errorf("this appchain does not register rule")
-	}
-
-	// handle validation
-	isValid, err := x.ValidationEngine().Validate(string(res.Result), ibtp.From, ibtp.Proof, ibtp.Payload, app.Validators)
-	if err != nil {
-		return err
-	}
-
-	if !isValid {
-		return fmt.Errorf("invalid interchain transaction")
-	}
+	//app := &appchainMgr.Appchain{}
+	//res := x.CrossInvoke(constant.AppchainMgrContractAddr.String(), "GetAppchain", pb.String(ibtp.From))
+	//if err := json.Unmarshal(res.Result, app); err != nil {
+	//	return err
+	//}
+	//
+	//// get validation rule contract address
+	//res = x.CrossInvoke(constant.RuleManagerContractAddr.String(), "GetRuleAddress", pb.String(ibtp.From), pb.String(app.ChainType))
+	//if !res.Ok {
+	//	return fmt.Errorf("this appchain does not register rule")
+	//}
+	//
+	//// handle validation
+	//isValid, err := x.ValidationEngine().Validate(string(res.Result), ibtp.From, ibtp.Proof, ibtp.Payload, app.Validators)
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//if !isValid {
+	//	return fmt.Errorf("invalid interchain transaction")
+	//}
 
 	if pb.IBTP_INTERCHAIN == ibtp.Type ||
 		pb.IBTP_ASSET_EXCHANGE_INIT == ibtp.Type ||
@@ -206,21 +206,21 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP, interchain *Interchain) err
 			return fmt.Errorf("ibtp from != caller")
 		}
 
-		idx := interchain.InterchainCounter[ibtp.To]
-		if idx+1 != ibtp.Index {
-			return fmt.Errorf(fmt.Sprintf("wrong index, required %d, but %d", idx+1, ibtp.Index))
-		}
+		//idx := interchain.InterchainCounter[ibtp.To]
+		//if idx+1 != ibtp.Index {
+		//	return fmt.Errorf(fmt.Sprintf("wrong index, required %d, but %d", idx+1, ibtp.Index))
+		//}
 	} else {
 		if ibtp.To != x.Caller() {
 			return fmt.Errorf("ibtp to != caller")
 		}
 
-		idx := interchain.ReceiptCounter[ibtp.To]
-		if idx+1 != ibtp.Index {
-			if interchain.SourceReceiptCounter[ibtp.To]+1 != ibtp.Index {
-				return fmt.Errorf("wrong receipt index, required %d, but %d", idx+1, ibtp.Index)
-			}
-		}
+		//idx := interchain.ReceiptCounter[ibtp.To]
+		//if idx+1 != ibtp.Index {
+		//	if interchain.SourceReceiptCounter[ibtp.To]+1 != ibtp.Index {
+		//		return fmt.Errorf("wrong receipt index, required %d, but %d", idx+1, ibtp.Index)
+		//	}
+		//}
 	}
 
 	return nil
@@ -234,18 +234,18 @@ func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *Interchain) {
 		pb.IBTP_ASSET_EXCHANGE_REDEEM == ibtp.Type ||
 		pb.IBTP_ASSET_EXCHANGE_REFUND == ibtp.Type {
 		interchain.InterchainCounter[ibtp.To]++
-		x.SetObject(x.appchainKey(ibtp.From), interchain)
+		x.SetObject(AppchainKey(ibtp.From), interchain)
 		x.SetObject(x.indexMapKey(ibtp.ID()), x.GetTxHash())
 		m[ibtp.To] = x.GetTxIndex()
 	} else {
 		interchain.ReceiptCounter[ibtp.To] = ibtp.Index
-		x.SetObject(x.appchainKey(ibtp.From), interchain)
+		x.SetObject(AppchainKey(ibtp.From), interchain)
 		m[ibtp.From] = x.GetTxIndex()
 
 		ic := &Interchain{}
-		x.GetObject(x.appchainKey(ibtp.To), &ic)
+		x.GetObject(AppchainKey(ibtp.To), &ic)
 		ic.SourceReceiptCounter[ibtp.From] = ibtp.Index
-		x.SetObject(x.appchainKey(ibtp.To), ic)
+		x.SetObject(AppchainKey(ibtp.To), ic)
 	}
 
 	x.PostInterchainEvent(m)
@@ -323,7 +323,7 @@ func (x *InterchainManager) GetIBTPByID(id string) *boltvm.Response {
 
 func (x *InterchainManager) handleUnionIBTP(ibtp *pb.IBTP) *boltvm.Response {
 	srcRelayChainID := strings.Split(ibtp.From, "-")[0]
-	ok := x.Has(x.appchainKey(srcRelayChainID))
+	ok := x.Has(AppchainKey(srcRelayChainID))
 	if !ok {
 		return boltvm.Error("this relay chain does not exist")
 	}
@@ -331,7 +331,7 @@ func (x *InterchainManager) handleUnionIBTP(ibtp *pb.IBTP) *boltvm.Response {
 	if ibtp.To == "" {
 		return boltvm.Error("empty destination chain id")
 	}
-	if ok := x.Has(x.appchainKey(ibtp.To)); !ok {
+	if ok := x.Has(AppchainKey(ibtp.To)); !ok {
 		return boltvm.Error(fmt.Sprintf("target appchain does not exist: %s", ibtp.To))
 	}
 
@@ -344,11 +344,11 @@ func (x *InterchainManager) handleUnionIBTP(ibtp *pb.IBTP) *boltvm.Response {
 	interchain := &Interchain{
 		ID: ibtp.From,
 	}
-	ok = x.Has(x.appchainKey(ibtp.From))
+	ok = x.Has(AppchainKey(ibtp.From))
 	if !ok {
-		x.SetObject(x.appchainKey(ibtp.From), interchain)
+		x.SetObject(AppchainKey(ibtp.From), interchain)
 	}
-	x.GetObject(x.appchainKey(ibtp.From), &interchain)
+	x.GetObject(AppchainKey(ibtp.From), &interchain)
 
 	if err := x.checkUnionIBTP(app, ibtp, interchain); err != nil {
 		return boltvm.Error(err.Error())
@@ -417,7 +417,7 @@ func (x *InterchainManager) checkUnionIBTP(app *appchainMgr.Appchain, ibtp *pb.I
 
 }
 
-func (x *InterchainManager) appchainKey(id string) string {
+func AppchainKey(id string) string {
 	return appchainMgr.PREFIX + id
 }
 

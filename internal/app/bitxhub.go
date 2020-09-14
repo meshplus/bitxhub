@@ -13,7 +13,6 @@ import (
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/ledger/genesis"
 	"github.com/meshplus/bitxhub/internal/loggers"
-	orderplg "github.com/meshplus/bitxhub/internal/plugins"
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/bitxhub/internal/router"
 	"github.com/meshplus/bitxhub/internal/storages"
@@ -57,7 +56,7 @@ func NewBitXHub(rep *repo.Repo) (*BitXHub, error) {
 		}
 	}
 
-	order, err := orderplg.New(
+	order, err := etcdraft.NewNode(
 		order.WithRepoRoot(repoRoot),
 		order.WithStoragePath(repo.GetStoragePath(repoRoot, "order")),
 		order.WithPluginPath(rep.Config.Plugin),
@@ -67,6 +66,7 @@ func NewBitXHub(rep *repo.Repo) (*BitXHub, error) {
 		order.WithLogger(loggers.Logger(loggers.Order)),
 		order.WithApplied(chainMeta.Height),
 		order.WithDigest(chainMeta.BlockHash.Hex()),
+		order.WithLedger(bxh.Ledger),
 		order.WithGetChainMetaFunc(bxh.Ledger.GetChainMeta),
 		order.WithGetTransactionFunc(bxh.Ledger.GetTransaction),
 	)

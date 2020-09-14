@@ -17,5 +17,7 @@ message RaftMessage {
 
 message Ready {
     repeated bytes txHashes = 1 [(gogoproto.customtype) = "github.com/meshplus/bitxhub-kit/types.Hash", (gogoproto.nullable) = false];
-    uint64 height = 2;
+    repeated bytes proofHashes = 2 [(gogoproto.customtype) = "github.com/meshplus/bitxhub-kit/types.Hash", (gogoproto.nullable) = false];
+    uint64 height = 3;
 }
+
