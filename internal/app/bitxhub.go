@@ -6,6 +6,8 @@ import (
 	"syscall"
 	"time"
 
+	orderplg "github.com/meshplus/bitxhub/internal/plugins"
+
 	"github.com/common-nighthawk/go-figure"
 	"github.com/ethereum/go-ethereum/common/fdlimit"
 	"github.com/meshplus/bitxhub-kit/types"
@@ -56,7 +58,7 @@ func NewBitXHub(rep *repo.Repo) (*BitXHub, error) {
 		}
 	}
 
-	order, err := etcdraft.NewNode(
+	order, err := orderplg.New(
 		order.WithRepoRoot(repoRoot),
 		order.WithStoragePath(repo.GetStoragePath(repoRoot, "order")),
 		order.WithPluginPath(rep.Config.Plugin),
@@ -66,7 +68,6 @@ func NewBitXHub(rep *repo.Repo) (*BitXHub, error) {
 		order.WithLogger(loggers.Logger(loggers.Order)),
 		order.WithApplied(chainMeta.Height),
 		order.WithDigest(chainMeta.BlockHash.Hex()),
-		order.WithLedger(bxh.Ledger),
 		order.WithGetChainMetaFunc(bxh.Ledger.GetChainMeta),
 		order.WithGetTransactionFunc(bxh.Ledger.GetTransaction),
 	)

@@ -1,4 +1,4 @@
-package txpool
+package proof
 
 import (
 	"bytes"
@@ -7,26 +7,54 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/sirupsen/logrus"
-
-	"github.com/meshplus/bitxhub-kit/types"
-
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/validator"
+	"github.com/meshplus/bitxhub-kit/log"
+	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/constant"
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/ledger"
+	"github.com/sirupsen/logrus"
 )
 
-type ProofPool struct {
+type VerifyPool struct {
 	proofs sync.Map //ibtp proof cache
 	ledger ledger.Ledger
 	ve     *validator.ValidationEngine
 	logger logrus.FieldLogger
 }
 
-func (pl *ProofPool) extractIBTP(tx *pb.Transaction) *pb.IBTP {
+func New(ledger ledger.Ledger, logger logrus.FieldLogger) Verify {
+	ve := validator.NewValidationEngine(ledger, &sync.Map{}, log.NewWithModule("validator"))
+	proofPool := &VerifyPool{
+		ledger: ledger,
+		logger: logger,
+		ve:     ve,
+	}
+	return proofPool
+}
+
+func (pl *VerifyPool) ValidationEngine() *validator.ValidationEngine {
+	return pl.ve
+}
+
+func (pl *VerifyPool) CheckProof(tx *pb.Transaction) (bool, error) {
+	if ibtp := pl.extractIBTP(tx); ibtp != nil {
+		ok, err := pl.verifyProof(ibtp, tx.Extra)
+		if err != nil {
+			return false, err
+		}
+		if !ok {
+			pl.logger.WithFields(logrus.Fields{"hash": tx.TransactionHash.String(), "id": ibtp.ID()}).Debug("ibtp verify fail")
+			return false, nil
+		}
+		tx.Extra = nil
+	}
+	return true, nil
+}
+
+func (pl *VerifyPool) extractIBTP(tx *pb.Transaction) *pb.IBTP {
 	if strings.ToLower(tx.To.String()) != constant.InterchainContractAddr.String() {
 		return nil
 	}
@@ -52,7 +80,7 @@ func (pl *ProofPool) extractIBTP(tx *pb.Transaction) *pb.IBTP {
 	return ibtp
 }
 
-func (pl *ProofPool) verifyProof(txHash types.Hash, ibtp *pb.IBTP, proof []byte) (bool, error) {
+func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, error) {
 	if proof == nil {
 		return false, nil
 	}
@@ -92,22 +120,23 @@ func (pl *ProofPool) verifyProof(txHash types.Hash, ibtp *pb.IBTP, proof []byte)
 	return ok, nil
 }
 
-func (pl *ProofPool) getAccountState(address constant.BoltContractAddress, key string) (bool, []byte) {
-	return pl.ledger.GetAccount(address.Address()).GetState([]byte(key))
+func (pl *VerifyPool) getAccountState(address constant.BoltContractAddress, key string) (bool, []byte) {
+	account := pl.ledger.GetAccount(address.Address())
+	return account.GetState([]byte(key))
 }
 
-func (pl *ProofPool) putProofHash(txHash types.Hash, proofHash types.Hash) {
-	pl.proofs.Store(txHash, proofHash)
+func (pl *VerifyPool) putProof(proofHash types.Hash, proof []byte) {
+	pl.proofs.Store(proofHash, proof)
 }
 
-func (pl *ProofPool) getProofHash(txHash types.Hash) types.Hash {
-	proofHash, ok := pl.proofs.Load(txHash)
+func (pl *VerifyPool) GetProof(txHash types.Hash) ([]byte, bool) {
+	proof, ok := pl.proofs.Load(txHash)
 	if !ok {
-		return types.Hash{}
+		return nil, ok
 	}
-	return proofHash.(types.Hash)
+	return proof.([]byte), ok
 }
 
-func (pl *ProofPool) deleteProofHash(txHash types.Hash) {
+func (pl *VerifyPool) DeleteProof(txHash types.Hash) {
 	pl.proofs.Delete(txHash)
 }

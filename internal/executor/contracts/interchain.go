@@ -176,28 +176,6 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP, interchain *Interchain) err
 		x.Logger().WithField("chain_id", ibtp.To).Debug("target appchain does not exist")
 	}
 
-	//app := &appchainMgr.Appchain{}
-	//res := x.CrossInvoke(constant.AppchainMgrContractAddr.String(), "GetAppchain", pb.String(ibtp.From))
-	//if err := json.Unmarshal(res.Result, app); err != nil {
-	//	return err
-	//}
-	//
-	//// get validation rule contract address
-	//res = x.CrossInvoke(constant.RuleManagerContractAddr.String(), "GetRuleAddress", pb.String(ibtp.From), pb.String(app.ChainType))
-	//if !res.Ok {
-	//	return fmt.Errorf("this appchain does not register rule")
-	//}
-	//
-	//// handle validation
-	//isValid, err := x.ValidationEngine().Validate(string(res.Result), ibtp.From, ibtp.Proof, ibtp.Payload, app.Validators)
-	//if err != nil {
-	//	return err
-	//}
-	//
-	//if !isValid {
-	//	return fmt.Errorf("invalid interchain transaction")
-	//}
-
 	if pb.IBTP_INTERCHAIN == ibtp.Type ||
 		pb.IBTP_ASSET_EXCHANGE_INIT == ibtp.Type ||
 		pb.IBTP_ASSET_EXCHANGE_REDEEM == ibtp.Type ||
@@ -206,21 +184,21 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP, interchain *Interchain) err
 			return fmt.Errorf("ibtp from != caller")
 		}
 
-		//idx := interchain.InterchainCounter[ibtp.To]
-		//if idx+1 != ibtp.Index {
-		//	return fmt.Errorf(fmt.Sprintf("wrong index, required %d, but %d", idx+1, ibtp.Index))
-		//}
+		idx := interchain.InterchainCounter[ibtp.To]
+		if idx+1 != ibtp.Index {
+			return fmt.Errorf(fmt.Sprintf("wrong index, required %d, but %d", idx+1, ibtp.Index))
+		}
 	} else {
 		if ibtp.To != x.Caller() {
 			return fmt.Errorf("ibtp to != caller")
 		}
 
-		//idx := interchain.ReceiptCounter[ibtp.To]
-		//if idx+1 != ibtp.Index {
-		//	if interchain.SourceReceiptCounter[ibtp.To]+1 != ibtp.Index {
-		//		return fmt.Errorf("wrong receipt index, required %d, but %d", idx+1, ibtp.Index)
-		//	}
-		//}
+		idx := interchain.ReceiptCounter[ibtp.To]
+		if idx+1 != ibtp.Index {
+			if interchain.SourceReceiptCounter[ibtp.To]+1 != ibtp.Index {
+				return fmt.Errorf("wrong receipt index, required %d, but %d", idx+1, ibtp.Index)
+			}
+		}
 	}
 
 	return nil

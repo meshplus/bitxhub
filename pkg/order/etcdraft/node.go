@@ -180,9 +180,9 @@ func (n *Node) ReportState(height uint64, hash types.Hash) {
 		n.logger.Errorf("can not found ready:", height)
 		return
 	}
-	txHashes := ready.(*raftproto.Ready).TxHashes
+	hashes := ready.(*raftproto.Ready).TxHashes
 	// remove redundant tx
-	n.tp.BatchDelete(txHashes)
+	n.tp.BatchDelete(hashes)
 
 	n.readyCache.Delete(height)
 }
@@ -287,7 +287,6 @@ func (n *Node) run() {
 					if err != nil {
 						n.logger.Panic(err)
 					}
-
 					n.tp.BatchStore(ready.TxHashes)
 					if err := n.node.Propose(n.ctx, data); err != nil {
 						n.logger.Panic("Failed to propose block [%d] to raft: %s", ready.Height, err)
@@ -464,11 +463,9 @@ func (n *Node) mint(ready *raftproto.Ready) {
 	if n.tp.GetHeight() == ready.Height-1 {
 		n.tp.UpdateHeight()
 	}
-
-	txHashes := ready.TxHashes
 	loseTxs := make([]types.Hash, 0)
-	txs := make([]*pb.Transaction, 0, len(txHashes))
-	for _, hash := range txHashes {
+	txs := make([]*pb.Transaction, 0, len(ready.TxHashes))
+	for _, hash := range ready.TxHashes {
 		_, ok := n.tp.GetTx(hash, false)
 		if !ok {
 			loseTxs = append(loseTxs, hash)
@@ -488,15 +485,11 @@ func (n *Node) mint(ready *raftproto.Ready) {
 		wg.Wait()
 	}
 
-	for i, hash := range txHashes {
+	for _, hash := range ready.TxHashes {
 		tx, _ := n.tp.GetTx(hash, false)
-		if ready.ProofHashes[i] != (types.Hash{}) {
-			tx.Extra = nil
-		}
 		txs = append(txs, tx)
 	}
-
-	n.tp.RemoveTxs(txHashes, n.IsLeader())
+	n.tp.RemoveTxs(ready.TxHashes, n.IsLeader())
 	block := &pb.Block{
 		BlockHeader: &pb.BlockHeader{
 			Version:   []byte("1.0.0"),
@@ -508,6 +501,10 @@ func (n *Node) mint(ready *raftproto.Ready) {
 	n.logger.WithFields(logrus.Fields{
 		"txpool_size": n.tp.PoolSize(),
 	}).Debugln("current tx pool size")
+
+	if len(loseTxs) == len(ready.TxHashes) {
+		block.Extra = []byte("updateState")
+	}
 	n.readyCache.Store(ready.Height, ready)
 	n.commitC <- block
 }

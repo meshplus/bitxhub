@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"sync"
 
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/meshplus/bitxhub-kit/types"
@@ -48,7 +49,12 @@ func New(ctx *vm.Context, imports *wasmer.Imports, instances map[string]wasmer.I
 
 	contractByte := ctx.Ledger.GetCode(ctx.Callee)
 
-	w, err := wasm.New(contractByte, imports, instances)
+	syncInstances := sync.Map{}
+	for k, instance := range instances {
+		syncInstances.Store(k, instance)
+	}
+
+	w, err := wasm.New(contractByte, imports, &syncInstances)
 	if err != nil {
 		return nil, err
 	}
