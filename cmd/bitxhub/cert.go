@@ -174,7 +174,7 @@ var issueCMD = cli.Command{
 		},
 	},
 	Action: func(ctx *cli.Context) error {
-		crsPath := ctx.String("csr")
+		csrPath := ctx.String("csr")
 		isCA := ctx.Bool("is_ca")
 		privPath := ctx.String("key")
 		certPath := ctx.String("cert")
@@ -200,19 +200,19 @@ var issueCMD = cli.Command{
 			return fmt.Errorf("parse ca cert: %w", err)
 		}
 
-		crsData, err := ioutil.ReadFile(crsPath)
+		csrData, err := ioutil.ReadFile(csrPath)
 		if err != nil {
-			return fmt.Errorf("read crs: %w", err)
+			return fmt.Errorf("read csr: %w", err)
 		}
 
-		block, _ = pem.Decode(crsData)
+		block, _ = pem.Decode(csrData)
 
-		crs, err := x509.ParseCertificateRequest(block.Bytes)
+		csr, err := x509.ParseCertificateRequest(block.Bytes)
 		if err != nil {
 			return fmt.Errorf("parse csr: %w", err)
 		}
 
-		if err := crs.CheckSignature(); err != nil {
+		if err := csr.CheckSignature(); err != nil {
 			return fmt.Errorf("wrong csr sign: %w", err)
 		}
 
@@ -223,10 +223,10 @@ var issueCMD = cli.Command{
 
 		notBefore := time.Now().Add(-5 * time.Minute).UTC()
 		template := &x509.Certificate{
-			Signature:             crs.Signature,
-			SignatureAlgorithm:    crs.SignatureAlgorithm,
-			PublicKey:             crs.PublicKey,
-			PublicKeyAlgorithm:    crs.PublicKeyAlgorithm,
+			Signature:             csr.Signature,
+			SignatureAlgorithm:    csr.SignatureAlgorithm,
+			PublicKey:             csr.PublicKey,
+			PublicKeyAlgorithm:    csr.PublicKeyAlgorithm,
 			SerialNumber:          sn,
 			NotBefore:             notBefore,
 			NotAfter:              notBefore.Add(50 * 365 * 24 * time.Hour).UTC(),
@@ -237,15 +237,15 @@ var issueCMD = cli.Command{
 				x509.KeyUsageKeyEncipherment | x509.KeyUsageCertSign |
 				x509.KeyUsageCRLSign,
 			ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
-			Subject:     crs.Subject,
+			Subject:     csr.Subject,
 		}
 
-		x509certEncode, err := x509.CreateCertificate(rand.Reader, template, caCert, crs.PublicKey, privKey)
+		x509certEncode, err := x509.CreateCertificate(rand.Reader, template, caCert, csr.PublicKey, privKey)
 		if err != nil {
 			return fmt.Errorf("create cert: %w", err)
 		}
 
-		name := getFileName(crsPath)
+		name := getFileName(csrPath)
 
 		path := filepath.Join(target, fmt.Sprintf("%s.cert", name))
 		f, err := os.Create(path)
