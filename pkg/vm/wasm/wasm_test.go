@@ -298,46 +298,8 @@ func BenchmarkRunFabValidation(b *testing.B) {
 	store.Close()
 }
 
-func TestWasm_RunValidation(t *testing.T) {
-	ctx := initValidationContext(t, "execute")
-	instances := make(map[string]wasmer.Instance)
-	imports, err := EmptyImports()
-	require.Nil(t, err)
-	wasm, err := New(ctx, imports, instances)
-	require.Nil(t, err)
-
-	ret, err := wasm.deploy()
-	require.Nil(t, err)
-
-	bytes, err := ioutil.ReadFile("./testdata/fab_test")
-	require.Nil(t, err)
-	invokePayload := &pb.InvokePayload{
-		Method: "start_verify",
-		Args: []*pb.Arg{
-			{Type: pb.Arg_Bytes, Value: bytes},
-			{Type: pb.Arg_Bytes, Value: []byte(cert1)},
-		},
-	}
-	payload, err := invokePayload.Marshal()
-	require.Nil(t, err)
-	data := &pb.TransactionData{
-		Payload: payload,
-	}
-	ctx1 := &vm.Context{
-		Caller:          ctx.Caller,
-		Callee:          types.Bytes2Address(ret),
-		TransactionData: data,
-		Ledger:          ctx.Ledger,
-	}
-	imports1, err := validatorlib.New()
-	require.Nil(t, err)
-	wasm1, err := New(ctx1, imports1, instances)
-	require.Nil(t, err)
-
-	result, err := wasm1.Run(payload)
-	require.Nil(t, err)
-	require.Equal(t, "1", string(result))
-}
+// TestWasm_RunValidation has been deprecated. See test in BitXHub-Core instead
+func TestWasm_RunValidation(t *testing.T) {}
 
 func TestWasm_RunWithoutMethod(t *testing.T) {
 	ctx := initCreateContext(t, "execute_without_method")
