@@ -14,15 +14,19 @@ var _ Ledger = (*ChainLedger)(nil)
 
 // GetOrCreateAccount get the account, if not exist, create a new account
 func (l *ChainLedger) GetOrCreateAccount(addr types.Address) *Account {
-	l.lock.Lock()
-	defer l.lock.Unlock()
-
 	h := addr.Hex()
+	l.lock.RLock()
 	value, ok := l.accounts[h]
+	l.lock.RUnlock()
 	if ok {
 		return value
 	}
 
+	l.lock.Lock()
+	defer l.lock.Unlock()
+	if value, ok := l.accounts[h]; ok {
+		return value
+	}
 	account := l.GetAccount(addr)
 	l.accounts[h] = account
 

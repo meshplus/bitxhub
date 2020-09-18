@@ -70,7 +70,7 @@ function deploy() {
   i=1
   cd "${CURRENT_PATH}"
   for ip in $ips; do
-    scp -r build/node${i} ${USERNAME}@$ip:~/
+    scp -r build/node${i} ${USERNAME}@$ip:/opt/
     ((i = i + 1))
   done
 
@@ -87,7 +87,7 @@ function deploy() {
     tmux selectw -t $(($i / 4))
     tmux selectp -t $(($i % 4))
     ((i = i + 1))
-    tmux send-keys "ssh -t $USERNAME@$ip 'cd node${i} && bash start.sh'" C-m
+    tmux send-keys "ssh -t $USERNAME@$ip 'export LD_LIBRARY_PATH=\${LD_LIBRARY_PATH}:\${HOME} && cd /opt/node${i} && bash start.sh'" C-m
   done
   tmux selectw -t 0
   tmux attach-session -t deploy

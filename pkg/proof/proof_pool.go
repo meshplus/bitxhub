@@ -121,8 +121,7 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, error) {
 }
 
 func (pl *VerifyPool) getAccountState(address constant.BoltContractAddress, key string) (bool, []byte) {
-	account := pl.ledger.GetAccount(address.Address())
-	return account.GetState([]byte(key))
+	return pl.ledger.GetState(address.Address(), []byte(key))
 }
 
 func (pl *VerifyPool) putProof(proofHash types.Hash, proof []byte) {

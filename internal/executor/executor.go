@@ -2,24 +2,20 @@ package executor
 
 import (
 	"context"
-	"fmt"
 	"sort"
 	"sync"
 	"time"
 
-	"github.com/meshplus/bitxhub-kit/log"
-	"github.com/meshplus/bitxhub/pkg/proof"
-
-	"github.com/meshplus/bitxhub/internal/executor/contracts"
-
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/meshplus/bitxhub-core/validator"
-	"github.com/meshplus/bitxhub-kit/cache"
+	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/constant"
+	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/model/events"
+	"github.com/meshplus/bitxhub/pkg/proof"
 	"github.com/meshplus/bitxhub/pkg/vm/boltvm"
 	"github.com/sirupsen/logrus"
 	"github.com/wasmerio/go-ext-wasm/wasmer"
@@ -37,8 +33,8 @@ type BlockExecutor struct {
 	ledger            ledger.Ledger
 	logger            logrus.FieldLogger
 	blockC            chan *pb.Block
+	preBlockC         chan *pb.Block
 	persistC          chan *ledger.BlockData
-	pendingBlockQ     *cache.Cache
 	interchainCounter map[string][]uint64
 	normalTxs         []types.Hash
 	ibtpVerify        proof.Verify
@@ -56,11 +52,6 @@ type BlockExecutor struct {
 
 // New creates executor instance
 func New(chainLedger ledger.Ledger, logger logrus.FieldLogger) (*BlockExecutor, error) {
-	pendingBlockQ, err := cache.NewCache()
-	if err != nil {
-		return nil, fmt.Errorf("create cache: %w", err)
-	}
-
 	ibtpVerify := proof.New(chainLedger, log.NewWithModule("proof"))
 
 	boltContracts := registerBoltContracts()
@@ -74,8 +65,8 @@ func New(chainLedger ledger.Ledger, logger logrus.FieldLogger) (*BlockExecutor, 
 		ctx:               ctx,
 		cancel:            cancel,
 		blockC:            make(chan *pb.Block, blockChanNumber),
+		preBlockC:         make(chan *pb.Block, blockChanNumber),
 		persistC:          make(chan *ledger.BlockData, persistChanNumber),
-		pendingBlockQ:     pendingBlockQ,
 		ibtpVerify:        ibtpVerify,
 		validationEngine:  ibtpVerify.ValidationEngine(),
 		currentHeight:     chainLedger.GetChainMeta().Height,
@@ -88,6 +79,8 @@ func New(chainLedger ledger.Ledger, logger logrus.FieldLogger) (*BlockExecutor, 
 // Start starts executor
 func (exec *BlockExecutor) Start() error {
 	go exec.listenExecuteEvent()
+
+	go exec.listenPreExecuteEvent()
 
 	go exec.persistData()
 
@@ -110,11 +103,11 @@ func (exec *BlockExecutor) Stop() error {
 
 // ExecuteBlock executes block from order
 func (exec *BlockExecutor) ExecuteBlock(block *pb.Block) {
-	exec.blockC <- block
+	exec.preBlockC <- block
 }
 
 func (exec *BlockExecutor) SyncExecuteBlock(block *pb.Block) {
-	exec.handleExecuteEvent(block)
+	exec.processExecuteEvent(block)
 }
 
 // SubscribeBlockEvent registers a subscription of NewBlockEvent.
@@ -158,10 +151,15 @@ func (exec *BlockExecutor) listenExecuteEvent() {
 	for {
 		select {
 		case block := <-exec.blockC:
-			block = exec.verifyProofs(block)
-			exec.handleExecuteEvent(block)
+			now := time.Now()
+			blockData := exec.processExecuteEvent(block)
+			exec.logger.WithFields(logrus.Fields{
+				"height": block.BlockHeader.Number,
+				"count":  len(block.Transactions),
+				"elapse": time.Since(now),
+			}).Infof("Executed block")
+			exec.persistC <- blockData
 		case <-exec.ctx.Done():
-			close(exec.persistC)
 			return
 		}
 	}
@@ -176,44 +174,48 @@ func (exec *BlockExecutor) verifyProofs(block *pb.Block) *pb.Block {
 		return block
 	}
 
-	txM := make(map[int]*pb.Transaction, 0)
 	var (
-		txs   []*pb.Transaction
 		index []int
 		wg    sync.WaitGroup
 		lock  sync.Mutex
 	)
+	txs := block.Transactions
 
-	wg.Add(len(block.Transactions))
-
-	for i, tx := range block.Transactions {
+	wg.Add(len(txs))
+	for i, tx := range txs {
 		go func(i int, tx *pb.Transaction) {
 			defer wg.Done()
 			ok, _ := exec.ibtpVerify.CheckProof(tx)
-			lock.Lock()
-			defer lock.Unlock()
-			if ok {
-				txM[i] = tx
+			if !ok {
+				lock.Lock()
+				defer lock.Unlock()
 				index = append(index, i)
 			}
 		}(i, tx)
 	}
-
 	wg.Wait()
 
 	if len(index) > 0 {
-		sort.Ints(index)
+		sort.Sort(sort.Reverse(sort.IntSlice(index)))
 		for _, idx := range index {
-			txs = append(txs, txM[idx])
+			txs = append(txs[:idx], txs[idx+1:]...)
 		}
+		block.Transactions = txs
 	}
-	block.Transactions = txs
+
 	return block
 }
 
 func (exec *BlockExecutor) persistData() {
 	for data := range exec.persistC {
+		now := time.Now()
 		exec.ledger.PersistBlockData(data)
+		exec.logger.WithFields(logrus.Fields{
+			"height": data.Block.BlockHeader.Number,
+			"hash":   data.Block.BlockHash.ShortString(),
+			"count":  len(data.Block.Transactions),
+			"elapse": time.Since(now),
+		}).Info("Persisted block")
 	}
 }
 
