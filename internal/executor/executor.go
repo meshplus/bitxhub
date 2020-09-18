@@ -3,7 +3,12 @@ package executor
 import (
 	"context"
 	"fmt"
+	"sort"
+	"sync"
 	"time"
+
+	"github.com/meshplus/bitxhub-kit/log"
+	"github.com/meshplus/bitxhub/pkg/proof"
 
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
 
@@ -36,6 +41,7 @@ type BlockExecutor struct {
 	pendingBlockQ     *cache.Cache
 	interchainCounter map[string][]uint64
 	normalTxs         []types.Hash
+	ibtpVerify        proof.Verify
 	validationEngine  validator.Engine
 	currentHeight     uint64
 	currentBlockHash  types.Hash
@@ -55,7 +61,7 @@ func New(chainLedger ledger.Ledger, logger logrus.FieldLogger) (*BlockExecutor, 
 		return nil, fmt.Errorf("create cache: %w", err)
 	}
 
-	ve := validator.NewValidationEngine(chainLedger, logger)
+	ibtpVerify := proof.New(chainLedger, log.NewWithModule("proof"))
 
 	boltContracts := registerBoltContracts()
 
@@ -70,7 +76,8 @@ func New(chainLedger ledger.Ledger, logger logrus.FieldLogger) (*BlockExecutor, 
 		blockC:            make(chan *pb.Block, blockChanNumber),
 		persistC:          make(chan *ledger.BlockData, persistChanNumber),
 		pendingBlockQ:     pendingBlockQ,
-		validationEngine:  ve,
+		ibtpVerify:        ibtpVerify,
+		validationEngine:  ibtpVerify.ValidationEngine(),
 		currentHeight:     chainLedger.GetChainMeta().Height,
 		currentBlockHash:  chainLedger.GetChainMeta().BlockHash,
 		boltContracts:     boltContracts,
@@ -151,12 +158,57 @@ func (exec *BlockExecutor) listenExecuteEvent() {
 	for {
 		select {
 		case block := <-exec.blockC:
+			block = exec.verifyProofs(block)
 			exec.handleExecuteEvent(block)
 		case <-exec.ctx.Done():
 			close(exec.persistC)
 			return
 		}
 	}
+}
+
+func (exec *BlockExecutor) verifyProofs(block *pb.Block) *pb.Block {
+	if block.BlockHeader.Number == 1 {
+		return block
+	}
+	if block.Extra != nil {
+		block.Extra = nil
+		return block
+	}
+
+	txM := make(map[int]*pb.Transaction, 0)
+	var (
+		txs   []*pb.Transaction
+		index []int
+		wg    sync.WaitGroup
+		lock  sync.Mutex
+	)
+
+	wg.Add(len(block.Transactions))
+
+	for i, tx := range block.Transactions {
+		go func(i int, tx *pb.Transaction) {
+			defer wg.Done()
+			ok, _ := exec.ibtpVerify.CheckProof(tx)
+			lock.Lock()
+			defer lock.Unlock()
+			if ok {
+				txM[i] = tx
+				index = append(index, i)
+			}
+		}(i, tx)
+	}
+
+	wg.Wait()
+
+	if len(index) > 0 {
+		sort.Ints(index)
+		for _, idx := range index {
+			txs = append(txs, txM[idx])
+		}
+	}
+	block.Transactions = txs
+	return block
 }
 
 func (exec *BlockExecutor) persistData() {

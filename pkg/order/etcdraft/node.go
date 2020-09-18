@@ -501,6 +501,10 @@ func (n *Node) mint(ready *raftproto.Ready) {
 	n.logger.WithFields(logrus.Fields{
 		"txpool_size": n.tp.PoolSize(),
 	}).Debugln("current tx pool size")
+
+	if len(loseTxs) == len(ready.TxHashes) {
+		block.Extra = []byte("updateState")
+	}
 	n.readyCache.Store(ready.Height, ready)
 	n.commitC <- block
 }

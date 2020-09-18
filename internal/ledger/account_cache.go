@@ -28,16 +28,20 @@ func (ac *AccountCache) add(accounts map[string]*Account) {
 
 	for addr, account := range accounts {
 		ac.innerAccounts[addr] = account.dirtyAccount
-		if len(account.dirtyState) != 0 {
-			stateMap, ok := ac.states[addr]
-			if !ok {
-				stateMap = make(map[string][]byte)
-				ac.states[addr] = stateMap
-			}
-			for key, val := range account.dirtyState {
-				stateMap[key] = val
-			}
+		stateMap, ok := ac.states[addr]
+		if !ok {
+			stateMap = make(map[string][]byte)
 		}
+
+		account.dirtyState.Range(func(key, value interface{}) bool {
+			stateMap[key.(string)] = value.([]byte)
+			return true
+		})
+
+		if !ok && len(stateMap) != 0 {
+			ac.states[addr] = stateMap
+		}
+
 		if !bytes.Equal(account.originCode, account.dirtyCode) {
 			ac.codes[addr] = account.dirtyCode
 		}
@@ -55,18 +59,17 @@ func (ac *AccountCache) remove(accounts map[string]*Account) {
 			}
 		}
 
-		if len(account.dirtyState) != 0 {
-			if stateMap, ok := ac.states[addr]; ok {
-				for key, val := range account.dirtyState {
-					if v, ok := stateMap[key]; ok {
-						if bytes.Equal(v, val) {
-							delete(stateMap, key)
-						}
+		if stateMap, ok := ac.states[addr]; ok {
+			account.dirtyState.Range(func(key, value interface{}) bool {
+				if v, ok := stateMap[key.(string)]; ok {
+					if bytes.Equal(v, value.([]byte)) {
+						delete(stateMap, key.(string))
 					}
 				}
-				if len(stateMap) == 0 {
-					delete(ac.states, addr)
-				}
+				return true
+			})
+			if len(stateMap) == 0 {
+				delete(ac.states, addr)
 			}
 		}
 

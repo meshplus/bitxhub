@@ -1,6 +1,7 @@
 package tester
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"io/ioutil"
 	"testing"
@@ -73,11 +74,17 @@ func (suite *Interchain) TestHandleIBTP() {
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess())
 
-	ib := &pb.IBTP{From: f.Hex(), To: t.Hex(), Index: 1, Timestamp: time.Now().UnixNano()}
+	proof := []byte("true")
+	proofHash := sha256.Sum256(proof)
+	ib := &pb.IBTP{From: f.Hex(), To: t.Hex(), Index: 1, Timestamp: time.Now().UnixNano(), Proof: proofHash[:]}
 	data, err := ib.Marshal()
 	suite.Require().Nil(err)
 
-	ret, err = invokeBVMContract(suite.api, k1, constant.InterchainContractAddr.Address(), "HandleIBTP", pb.Bytes(data))
+	tx, err := genBVMContractTransaction(k1, constant.InterchainContractAddr.Address(), "HandleIBTP", pb.Bytes(data))
+	suite.Require().Nil(err)
+
+	tx.Extra = proof
+	ret, err = sendTransactionWithReceipt(suite.api, tx)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 }
@@ -135,24 +142,38 @@ func (suite *Interchain) TestGetIBTPByID() {
 
 	proof, err := ioutil.ReadFile("./test_data/proof")
 	suite.Require().Nil(err)
-	ib := &pb.IBTP{From: f.Hex(), To: t.Hex(), Index: 1, Payload: []byte("111"), Timestamp: time.Now().UnixNano(), Proof: proof}
+
+	proofHash := sha256.Sum256(proof)
+	ib := &pb.IBTP{From: f.Hex(), To: t.Hex(), Index: 1, Payload: []byte("111"), Timestamp: time.Now().UnixNano(), Proof: proofHash[:]}
 	data, err := ib.Marshal()
 	suite.Require().Nil(err)
-	receipt, err := invokeBVMContract(suite.api, k1, constant.InterchainContractAddr.Address(), "HandleIBTP", pb.Bytes(data))
+
+	tx, err := genBVMContractTransaction(k1, constant.InterchainContractAddr.Address(), "HandleIBTP", pb.Bytes(data))
+	suite.Require().Nil(err)
+	tx.Extra = proof
+	receipt, err := sendTransactionWithReceipt(suite.api, tx)
 	suite.Require().Nil(err)
 	suite.Require().EqualValues(true, receipt.IsSuccess(), string(receipt.Ret))
 
 	ib.Index = 2
 	data, err = ib.Marshal()
 	suite.Require().Nil(err)
-	receipt, err = invokeBVMContract(suite.api, k1, constant.InterchainContractAddr.Address(), "HandleIBTP", pb.Bytes(data))
+
+	tx, err = genBVMContractTransaction(k1, constant.InterchainContractAddr.Address(), "HandleIBTP", pb.Bytes(data))
+	suite.Require().Nil(err)
+	tx.Extra = proof
+	receipt, err = sendTransactionWithReceipt(suite.api, tx)
 	suite.Require().Nil(err)
 	suite.Require().EqualValues(true, receipt.IsSuccess(), string(receipt.Ret))
 
 	ib.Index = 3
 	data, err = ib.Marshal()
 	suite.Assert().Nil(err)
-	_, err = invokeBVMContract(suite.api, k1, constant.InterchainContractAddr.Address(), "HandleIBTP", pb.Bytes(data))
+
+	tx, err = genBVMContractTransaction(k1, constant.InterchainContractAddr.Address(), "HandleIBTP", pb.Bytes(data))
+	suite.Require().Nil(err)
+	tx.Extra = proof
+	receipt, err = sendTransactionWithReceipt(suite.api, tx)
 	suite.Assert().Nil(err)
 
 	ib.Index = 2
