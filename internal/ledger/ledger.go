@@ -114,11 +114,6 @@ func (l *ChainLedger) PersistBlockData(blockData *BlockData) {
 		panic(err)
 	}
 
-	l.logger.WithFields(logrus.Fields{
-		"height": block.BlockHeader.Number,
-		"hash":   block.BlockHash.ShortString(),
-		"count":  len(block.Transactions),
-	}).Info("Persist block")
 	PersistBlockDuration.Observe(float64(time.Since(current)) / float64(time.Second))
 }
 

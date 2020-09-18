@@ -1,6 +1,7 @@
 package ledger
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
@@ -34,6 +35,26 @@ func (l *ChainLedger) GetBlock(height uint64) (*pb.Block, error) {
 		return nil, err
 	}
 
+	txHashesData := l.blockchainStore.Get(compositeKey(blockTxSetKey, height))
+	if txHashesData == nil {
+		return nil, fmt.Errorf("cannot get tx hashes of block")
+	}
+	txHashes := make([]types.Hash, 0)
+	if err := json.Unmarshal(txHashesData, &txHashes); err != nil {
+		return nil, err
+	}
+
+	var txs []*pb.Transaction
+	for _, hash := range txHashes {
+		tx, err := l.GetTransaction(hash)
+		if err != nil {
+			return nil, fmt.Errorf("cannot get tx with hash %s", hash.String())
+		}
+		txs = append(txs, tx)
+	}
+
+	block.Transactions = txs
+
 	return block, nil
 }
 
@@ -59,17 +80,7 @@ func (l *ChainLedger) GetBlockByHash(hash types.Hash) (*pb.Block, error) {
 		return nil, fmt.Errorf("wrong height, %w", err)
 	}
 
-	v := l.blockchainStore.Get(compositeKey(blockKey, height))
-	if v == nil {
-		return nil, fmt.Errorf("get block: %w", storage.ErrorNotFound)
-	}
-
-	block := &pb.Block{}
-	if err := block.Unmarshal(v); err != nil {
-		return nil, fmt.Errorf("unmarshal block: %w", err)
-	}
-
-	return block, nil
+	return l.GetBlock(uint64(height))
 }
 
 // GetTransaction get the transaction using transaction hash
@@ -250,13 +261,32 @@ func (l *ChainLedger) persistBlock(batcher storage.Batch, block *pb.Block) error
 
 	block.Signature = signed
 
-	bs, err := block.Marshal()
+	storedBlock := &pb.Block{
+		BlockHeader:  block.BlockHeader,
+		Transactions: nil,
+		BlockHash:    block.BlockHash,
+		Signature:    block.Signature,
+		Extra:        block.Extra,
+	}
+	bs, err := storedBlock.Marshal()
 	if err != nil {
 		return err
 	}
 
 	height := block.BlockHeader.Number
 	batcher.Put(compositeKey(blockKey, height), bs)
+
+	var txHashes []types.Hash
+	for _, tx := range block.Transactions {
+		txHashes = append(txHashes, tx.TransactionHash)
+	}
+
+	data, err := json.Marshal(txHashes)
+	if err != nil {
+		return err
+	}
+
+	batcher.Put(compositeKey(blockTxSetKey, height), data)
 
 	hash := block.BlockHash.Hex()
 	batcher.Put(compositeKey(blockHashKey, hash), []byte(fmt.Sprintf("%d", height)))

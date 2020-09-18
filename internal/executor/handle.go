@@ -22,44 +22,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func (exec *BlockExecutor) handleExecuteEvent(block *pb.Block) {
-	if !exec.isDemandNumber(block.BlockHeader.Number) {
-		exec.addPendingExecuteEvent(block)
-		return
-	}
-	exec.processExecuteEvent(block)
-	exec.handlePendingExecuteEvent()
-}
-
-func (exec *BlockExecutor) addPendingExecuteEvent(block *pb.Block) {
-	exec.logger.WithFields(logrus.Fields{
-		"received": block.BlockHeader.Number,
-		"required": exec.currentHeight + 1,
-	}).Warnf("Save wrong block into cache")
-
-	exec.pendingBlockQ.Add(block.BlockHeader.Number, block)
-}
-
-func (exec *BlockExecutor) fetchPendingExecuteEvent(num uint64) *pb.Block {
-	res, ok := exec.pendingBlockQ.Get(num)
-	if !ok {
-		return nil
-	}
-
-	return res.(*pb.Block)
-}
-
-func (exec *BlockExecutor) processExecuteEvent(block *pb.Block) {
+func (exec *BlockExecutor) processExecuteEvent(block *pb.Block) *ledger.BlockData {
 	current := time.Now()
-	exec.logger.WithFields(logrus.Fields{
-		"height": block.BlockHeader.Number,
-		"count":  len(block.Transactions),
-	}).Infof("Execute block")
-
 	exec.normalTxs = make([]types.Hash, 0)
-	validTxs, invalidReceipts := exec.verifySign(block)
-	receipts := exec.applyTransactions(validTxs)
-	receipts = append(receipts, invalidReceipts...)
+	block = exec.verifyProofs(block)
+	receipts := exec.applyTransactions(block.Transactions)
 
 	calcMerkleStart := time.Now()
 	l1Root, l2Roots, err := exec.buildTxMerkleTree(block.Transactions)
@@ -105,12 +72,30 @@ func (exec *BlockExecutor) processExecuteEvent(block *pb.Block) {
 	exec.currentHeight = block.BlockHeader.Number
 	exec.currentBlockHash = block.BlockHash
 
-	exec.persistC <- &ledger.BlockData{
+	return &ledger.BlockData{
 		Block:          block,
 		Receipts:       receipts,
 		Accounts:       accounts,
 		Journal:        journal,
 		InterchainMeta: interchainMeta,
+	}
+}
+
+func (exec *BlockExecutor) listenPreExecuteEvent() {
+	for {
+		select {
+		case block := <-exec.preBlockC:
+			now := time.Now()
+			block = exec.verifySign(block)
+			exec.logger.WithFields(logrus.Fields{
+				"height": block.BlockHeader.Number,
+				"count":  len(block.Transactions),
+				"elapse": time.Since(now),
+			}).Infof("Verified signature")
+			exec.blockC <- block
+		case <-exec.ctx.Done():
+			return
+		}
 	}
 }
 
@@ -180,58 +165,41 @@ func (exec *BlockExecutor) buildTxMerkleTree(txs []*pb.Transaction) (types.Hash,
 	return root, l2Roots, nil
 }
 
-func (exec *BlockExecutor) verifySign(block *pb.Block) ([]*pb.Transaction, []*pb.Receipt) {
+func (exec *BlockExecutor) verifySign(block *pb.Block) *pb.Block {
 	if block.BlockHeader.Number == 1 {
-		return block.Transactions, nil
+		return block
 	}
 
-	txs := block.Transactions
-
 	var (
-		wg       sync.WaitGroup
-		receipts []*pb.Receipt
-		mutex    sync.Mutex
-		index    []int
+		wg    sync.WaitGroup
+		mutex sync.Mutex
+		index []int
 	)
-
-	receiptsM := make(map[int]*pb.Receipt)
+	txs := block.Transactions
 
 	wg.Add(len(txs))
 	for i, tx := range txs {
 		go func(i int, tx *pb.Transaction) {
 			defer wg.Done()
 			ok, _ := asym.Verify(crypto.Secp256k1, tx.Signature, tx.SignHash().Bytes(), tx.From)
-			mutex.Lock()
-			defer mutex.Unlock()
 			if !ok {
-				receiptsM[i] = &pb.Receipt{
-					Version: tx.Version,
-					TxHash:  tx.TransactionHash,
-					Ret:     []byte("invalid signature"),
-					Status:  pb.Receipt_FAILED,
-				}
-
+				mutex.Lock()
+				defer mutex.Unlock()
 				index = append(index, i)
 			}
 		}(i, tx)
-
 	}
-
 	wg.Wait()
 
 	if len(index) > 0 {
-		sort.Ints(index)
-		count := 0
+		sort.Sort(sort.Reverse(sort.IntSlice(index)))
 		for _, idx := range index {
-			receipts = append(receipts, receiptsM[idx])
-			idx -= count
 			txs = append(txs[:idx], txs[idx+1:]...)
-			count++
-
 		}
+		block.Transactions = txs
 	}
 
-	return txs, receipts
+	return block
 }
 
 func (exec *BlockExecutor) applyTransactions(txs []*pb.Transaction) []*pb.Receipt {
@@ -292,15 +260,6 @@ func (exec *BlockExecutor) applyTransactions(txs []*pb.Transaction) []*pb.Receip
 
 func (exec *BlockExecutor) postBlockEvent(block *pb.Block, interchainMeta *pb.InterchainMeta) {
 	go exec.blockFeed.Send(events.NewBlockEvent{Block: block, InterchainMeta: interchainMeta})
-}
-
-func (exec *BlockExecutor) handlePendingExecuteEvent() {
-	if exec.pendingBlockQ.Len() > 0 {
-		for exec.pendingBlockQ.Contains(exec.getDemandNumber()) {
-			block := exec.fetchPendingExecuteEvent(exec.getDemandNumber())
-			exec.processExecuteEvent(block)
-		}
-	}
 }
 
 func (exec *BlockExecutor) applyTransaction(i int, tx *pb.Transaction) ([]byte, error) {

@@ -17,7 +17,7 @@ func (bxh *BitXHub) start() {
 				bxh.logger.WithFields(logrus.Fields{
 					"height": block.BlockHeader.Number,
 					"count":  len(block.Transactions),
-				}).Info("Generate block")
+				}).Info("Generated block")
 				bxh.BlockExecutor.ExecuteBlock(block)
 			case <-bxh.ctx.Done():
 				return

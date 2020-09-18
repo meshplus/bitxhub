@@ -133,8 +133,6 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	wg.Wait()
 	done <- true
 	assert.Nil(t, exec.Stop())
-	assert.Equal(t, 2, exec.pendingBlockQ.Len())
-	assert.Equal(t, uint64(5), exec.getDemandNumber())
 }
 
 func listenBlock(wg *sync.WaitGroup, done chan bool, blockCh chan events.NewBlockEvent) {
