@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"path/filepath"
+	"sort"
 	"sync"
 	"time"
 
@@ -557,6 +558,9 @@ func GenerateRaftPeers(config *order.Config) ([]raft.Peer, error) {
 	for id, node := range nodes {
 		peers = append(peers, raft.Peer{ID: id, Context: node.Bytes()})
 	}
+	sort.Slice(peers, func(i, j int) bool {
+		return peers[i].ID < peers[j].ID
+	})
 	return peers, nil
 }
 
