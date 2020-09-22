@@ -50,6 +50,7 @@ type NetworkAPI interface {
 type ChainAPI interface {
 	Status() string
 	Meta() (*pb.ChainMeta, error)
+	TPS(begin, end uint64) (uint64, error)
 }
 
 type FeedAPI interface {

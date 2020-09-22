@@ -28,7 +28,7 @@ func NewContext(tx *pb.Transaction, txIndex uint64, data *pb.TransactionData, le
 		TransactionIndex: txIndex,
 		TransactionHash:  tx.TransactionHash,
 		TransactionData:  data,
-		Nonce:            tx.Nonce,
+		Nonce:            int64(tx.Nonce),
 		Logger:           logger,
 	}
 }

@@ -160,7 +160,7 @@ func mockBlock(blockNumber uint64, txs []*pb.Transaction) *pb.Block {
 func mockTx(data *pb.TransactionData) *pb.Transaction {
 	return &pb.Transaction{
 		Data:  data,
-		Nonce: rand.Int63(),
+		Nonce: uint64(rand.Int63()),
 	}
 }
 
@@ -233,7 +233,7 @@ func mockTransferTx(t *testing.T) *pb.Transaction {
 			Type:   pb.TransactionData_NORMAL,
 			Amount: 1,
 		},
-		Nonce: rand.Int63(),
+		Nonce: uint64(rand.Int63()),
 	}
 
 	err := tx.Sign(privKey)

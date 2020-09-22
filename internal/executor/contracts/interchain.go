@@ -151,7 +151,7 @@ func (x *InterchainManager) HandleIBTPs(data []byte) *boltvm.Response {
 	interchain := &Interchain{}
 	x.GetObject(AppchainKey(x.Caller()), &interchain)
 
-	for _, ibtp := range ibtps.Iptp {
+	for _, ibtp := range ibtps.Ibtps {
 		if err := x.checkIBTP(ibtp, interchain); err != nil {
 			return boltvm.Error(err.Error())
 		}
@@ -161,7 +161,7 @@ func (x *InterchainManager) HandleIBTPs(data []byte) *boltvm.Response {
 		return res
 	}
 
-	for _, ibtp := range ibtps.Iptp {
+	for _, ibtp := range ibtps.Ibtps {
 		x.ProcessIBTP(ibtp, interchain)
 	}
 
@@ -234,7 +234,7 @@ func (x *InterchainManager) beginMultiTargetsTransaction(ibtps *pb.IBTPs) *boltv
 	globalId := fmt.Sprintf("%s-%s", x.Caller(), x.GetTxHash())
 	args = append(args, pb.String(globalId))
 
-	for _, ibtp := range ibtps.Iptp {
+	for _, ibtp := range ibtps.Ibtps {
 		if ibtp.Type != pb.IBTP_INTERCHAIN {
 			return boltvm.Error("ibtp type != IBTP_INTERCHAIN")
 		}
