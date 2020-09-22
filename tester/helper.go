@@ -88,7 +88,7 @@ func genContractTransaction(vmType pb.TransactionData_VMType, privateKey crypto.
 		To:        address,
 		Data:      td,
 		Timestamp: time.Now().UnixNano(),
-		Nonce:     rand.Int63(),
+		Nonce:     uint64(rand.Int63()),
 	}
 
 	if err := tx.Sign(privateKey); err != nil {
@@ -116,7 +116,7 @@ func deployContract(api api.CoreAPI, privateKey crypto.PrivateKey, contract []by
 		From:      from,
 		Data:      td,
 		Timestamp: time.Now().UnixNano(),
-		Nonce:     rand.Int63(),
+		Nonce:     uint64(rand.Int63()),
 	}
 
 	tx.TransactionHash = tx.Hash()

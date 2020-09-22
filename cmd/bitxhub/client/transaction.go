@@ -113,7 +113,7 @@ func sendTransaction(ctx *cli.Context) error {
 		From:      from,
 		To:        to,
 		Timestamp: req.Timestamp,
-		Nonce:     req.Nonce,
+		Nonce:     uint64(req.Nonce),
 		Data:      req.Data,
 	}
 

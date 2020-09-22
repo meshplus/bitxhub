@@ -86,7 +86,7 @@ func (cbs *ChainBrokerService) sendTransaction(req *pb.SendTransactionRequest) (
 		To:        req.To,
 		Timestamp: req.Timestamp,
 		Data:      req.Data,
-		Nonce:     req.Nonce,
+		Nonce:     uint64(req.Nonce),
 		Signature: req.Signature,
 		Extra:     req.Extra,
 	}
@@ -107,7 +107,7 @@ func (cbs *ChainBrokerService) sendView(req *pb.SendTransactionRequest) (*pb.Rec
 		To:        req.To,
 		Timestamp: req.Timestamp,
 		Data:      req.Data,
-		Nonce:     req.Nonce,
+		Nonce:     uint64(req.Nonce),
 		Signature: req.Signature,
 		Extra:     req.Extra,
 	}

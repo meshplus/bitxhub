@@ -48,7 +48,7 @@ func TestNode_Start(t *testing.T) {
 			Amount: 10,
 		},
 		Timestamp: time.Now().UnixNano(),
-		Nonce:     rand.Int63(),
+		Nonce:     uint64(rand.Int63()),
 	}
 	err = tx.Sign(privKey)
 	require.Nil(t, err)

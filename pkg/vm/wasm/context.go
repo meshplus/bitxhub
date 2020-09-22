@@ -24,7 +24,7 @@ func NewContext(tx *pb.Transaction, data *pb.TransactionData, ledger ledger.Ledg
 		callee:          tx.To,
 		ledger:          ledger,
 		transactionData: data,
-		nonce:           tx.Nonce,
+		nonce:           int64(tx.Nonce),
 		logger:          logger,
 	}
 }
