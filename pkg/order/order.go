@@ -32,4 +32,7 @@ type Order interface {
 
 	// Quorum means minimum number of nodes in the cluster that can work
 	Quorum() uint64
+
+	// GetPendingNonce will return the latest pending nonce of a given account
+	GetPendingNonceByAccount(account string) uint64
 }

@@ -600,3 +600,7 @@ func (n *Node) writeAppliedIndex(index uint64) {
 	binary.LittleEndian.PutUint64(buf, index)
 	n.storage.Put(appliedDbKey, buf)
 }
+
+func (n *Node) GetPendingNonceByAccount(account string) uint64 {
+	return n.mempool.PendingNonceAt(account)
+}

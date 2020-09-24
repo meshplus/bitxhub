@@ -40,6 +40,9 @@ type MemPool interface {
 
 	// Remove committed transactions from mempool
 	CommitTransactions(ready *raftproto.Ready)
+
+	// GetPendingNonce will return the latest pending nonce of a given account
+	PendingNonceAt(account string) uint64
 }
 
 // NewMempool return the mempool instance.
@@ -118,4 +121,8 @@ func (mpi *mempoolImpl) GetBlock(ready *raftproto.Ready) (missingTxnHashList map
 
 func (mpi *mempoolImpl) CommitTransactions(ready *raftproto.Ready) {
 	mpi.subscribe.commitTxnC <- ready
+}
+
+func (mpi *mempoolImpl) PendingNonceAt(account string) uint64 {
+	return mpi.txStore.nonceCache.getPendingNonce(account)
 }

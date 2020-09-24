@@ -4,14 +4,15 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	cmap "github.com/orcaman/concurrent-map"
 	"strconv"
 	"sync/atomic"
 	"time"
 
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub/internal/constant"
 	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
+	cmap "github.com/orcaman/concurrent-map"
 )
 
 func (mpi *mempoolImpl) getBatchSeqNo() uint64 {
@@ -130,6 +131,9 @@ func newTimer(d time.Duration) *timerManager {
 }
 
 func getAccount(tx *pb.Transaction) (string, error) {
+	if tx.To != constant.InterchainContractAddr.Address() {
+		return tx.From.Hex(), nil
+	}
 	payload := &pb.InvokePayload{}
 	if err := payload.Unmarshal(tx.Data.Payload); err != nil {
 		return "", fmt.Errorf("unmarshal invoke payload: %s", err.Error())
@@ -139,7 +143,7 @@ func getAccount(tx *pb.Transaction) (string, error) {
 		if err := ibtp.Unmarshal(payload.Args[0].Value); err != nil {
 			return "", fmt.Errorf("unmarshal ibtp from tx :%w", err)
 		}
-		account := fmt.Sprintf("%s-%s", ibtp.From, ibtp.To)
+		account := fmt.Sprintf("%s-%s-%d", ibtp.From, ibtp.To, ibtp.Type)
 		return account, nil
 	}
 	return tx.From.Hex(), nil
