@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"sync"
 
@@ -43,10 +44,16 @@ func (pl *VerifyPool) CheckProof(tx *pb.Transaction) (bool, error) {
 	if ibtp := pl.extractIBTP(tx); ibtp != nil {
 		ok, err := pl.verifyProof(ibtp, tx.Extra)
 		if err != nil {
+			pl.logger.WithFields(logrus.Fields{
+				"hash":  tx.TransactionHash.String(),
+				"id":    ibtp.ID(),
+				"error": err}).Error("ibtp verify error")
 			return false, err
 		}
 		if !ok {
-			pl.logger.WithFields(logrus.Fields{"hash": tx.TransactionHash.String(), "id": ibtp.ID()}).Debug("ibtp verify fail")
+			pl.logger.WithFields(logrus.Fields{
+				"hash": tx.TransactionHash.String(),
+				"id":   ibtp.ID()}).Error("ibtp verify fail")
 			return false, nil
 		}
 		tx.Extra = nil
@@ -82,21 +89,21 @@ func (pl *VerifyPool) extractIBTP(tx *pb.Transaction) *pb.IBTP {
 
 func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, error) {
 	if proof == nil {
-		return false, nil
+		return false, fmt.Errorf("empty proof")
 	}
 	proofHash := sha256.Sum256(proof)
 	if !bytes.Equal(proofHash[:], ibtp.Proof) {
-		return false, nil
+		return false, fmt.Errorf("proof hash is not correct")
 	}
 
 	app := &appchainMgr.Appchain{}
 	ok, data := pl.getAccountState(constant.AppchainMgrContractAddr, contracts.AppchainKey(ibtp.From))
 	if !ok {
-		return false, nil
+		return false, fmt.Errorf("cannot get registered appchain")
 	}
 	err := json.Unmarshal(data, app)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("unmarshal appchain data fail: %w", err)
 	}
 
 	validateAddr := validator.FabricRuleAddr
@@ -104,13 +111,11 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, error) {
 	ok, data = pl.getAccountState(constant.RuleManagerContractAddr, contracts.RuleKey(ibtp.From))
 	if ok {
 		if err := json.Unmarshal(data, rl); err != nil {
-			return false, err
+			return false, fmt.Errorf("unmarshal rule data error: %w", err)
 		}
 		validateAddr = rl.Address
 	} else {
-		if app.ChainType != "fabric" {
-			return false, nil
-		}
+		return false, fmt.Errorf("appchain didn't register rule")
 	}
 
 	ok, err = pl.ve.Validate(validateAddr, ibtp.From, proof, ibtp.Payload, app.Validators)
