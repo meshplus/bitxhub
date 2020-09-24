@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package mempool;
+
+import "github.com/meshplus/bitxhub-model/pb/transaction.proto";
+
+message tx_slice {
+	 repeated pb.Transaction TxList = 1;
+}
+
+message fetch_txn_request {
+     uint64 replicaId = 1;
+     uint64 height = 2;
+     map<uint64, string> missing_tx_hashes = 3;
+}
+
+message fetch_txn_response {
+     uint64 replicaId = 1;
+     uint64 height = 2;
+     map<uint64, pb.Transaction> missing_txn_list = 3;
+}
+
+

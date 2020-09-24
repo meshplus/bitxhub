@@ -5,19 +5,21 @@ import (
 	"encoding/binary"
 	"fmt"
 	"path/filepath"
-	"sort"
 	"sync"
+	"sync/atomic"
 	"time"
 
-	"github.com/coreos/etcd/raft"
-	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/pkg/order"
 	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
-	"github.com/meshplus/bitxhub/pkg/order/etcdraft/txpool"
+	"github.com/meshplus/bitxhub/pkg/order/mempool"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
 	"github.com/meshplus/bitxhub/pkg/storage"
+
+	"github.com/coreos/etcd/raft"
+	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/gogo/protobuf/sortkeys"
 	"github.com/sirupsen/logrus"
 )
 
@@ -37,11 +39,11 @@ type Node struct {
 	errorC      chan<- error             // errors from raft session
 
 	raftStorage *RaftStorage    // the raft backend storage system
-	tp          *txpool.TxPool  // transaction pool
 	storage     storage.Storage // db
+	mempool mempool.MemPool // transaction pool
 
-	repoRoot string             //project path
-	logger   logrus.FieldLogger //logger
+	repoRoot string             // project path
+	logger   logrus.FieldLogger // logger
 
 	blockAppliedIndex sync.Map // mapping of block height and apply index in raft log
 	appliedIndex      uint64   // current apply index in raft log
@@ -50,7 +52,7 @@ type Node struct {
 	lastIndex         uint64   // last apply index in raft log
 
 	readyPool  *sync.Pool      // ready pool, avoiding memory growth fast
-	readyCache sync.Map        //ready cache
+	readyCache sync.Map        // ready cache
 	ctx        context.Context // context
 	haltC      chan struct{}   // exit signal
 }
@@ -73,34 +75,42 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 		return nil, err
 	}
 
-	//generate raft peers
+	// generate raft peers
 	peers, err := GenerateRaftPeers(config)
+
 	if err != nil {
 		return nil, fmt.Errorf("generate raft peers: %w", err)
 	}
 
-	//generate txpool config
-	tpc, err := generateTxPoolConfig(repoRoot)
+	batchC := make(chan *raftproto.Ready)
+	memConfig, err := generateMempoolConfig(repoRoot)
 	if err != nil {
 		return nil, fmt.Errorf("generate raft txpool config: %w", err)
 	}
-	txPoolConfig := &txpool.Config{
-		PackSize:  tpc.PackSize,
-		BlockTick: tpc.BlockTick,
-		PoolSize:  tpc.PoolSize,
+	mempoolConf := &mempool.Config{
+		ID:                 config.ID,
+		PeerMgr:            config.PeerMgr,
+		ChainHeight:        config.Applied,
+		GetTransactionFunc: config.GetTransactionFunc,
+
+		BatchSize:          memConfig.BatchSize,
+		BatchTick:          memConfig.BatchTick,
+		PoolSize:           memConfig.PoolSize,
+		TxSliceSize:        memConfig.TxSliceSize,
+		FetchTimeout:       memConfig.FetchTimeout,
+		TxSliceTimeout:     memConfig.TxSliceTimeout,
 	}
-	txPool, proposeC := txpool.New(config, dbStorage, txPoolConfig)
+	mempoolInst := mempool.NewMempool(mempoolConf, dbStorage, batchC)
 
 	readyPool := &sync.Pool{New: func() interface{} {
 		return new(raftproto.Ready)
 	}}
 	return &Node{
 		id:          config.ID,
-		proposeC:    proposeC,
+		proposeC:    batchC,
 		confChangeC: make(chan raftpb.ConfChange),
 		commitC:     make(chan *pb.Block, 1024),
 		errorC:      make(chan<- error),
-		tp:          txPool,
 		repoRoot:    repoRoot,
 		snapCount:   defaultSnapshotCount,
 		peerMgr:     config.PeerMgr,
@@ -110,12 +120,13 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 		raftStorage: raftStorage,
 		readyPool:   readyPool,
 		ctx:         context.Background(),
+		mempool:     mempoolInst,
 	}, nil
 }
 
-//Start or restart raft node
+// Start or restart raft node
 func (n *Node) Start() error {
-	n.blockAppliedIndex.Store(n.tp.GetHeight(), n.loadAppliedIndex())
+	n.blockAppliedIndex.Store(n.mempool.GetChainHeight(), n.loadAppliedIndex())
 	rc, err := generateRaftConfig(n.id, n.repoRoot, n.logger, n.raftStorage.ram)
 	if err != nil {
 		return fmt.Errorf("generate raft config: %w", err)
@@ -127,31 +138,25 @@ func (n *Node) Start() error {
 	}
 
 	go n.run()
+	n.mempool.Start()
 	n.logger.Info("Consensus module started")
 
 	return nil
 }
 
-//Stop the raft node
+// Stop the raft node
 func (n *Node) Stop() {
-	n.tp.CheckExecute(false)
+	n.mempool.Stop()
 	n.node.Stop()
 	n.logger.Infof("Consensus stopped")
 }
 
-//Add the transaction into txpool and broadcast it to other nodes
+// Add the transaction into txpool and broadcast it to other nodes
 func (n *Node) Prepare(tx *pb.Transaction) error {
 	if !n.Ready() {
 		return nil
 	}
-	if err := n.tp.AddPendingTx(tx, false); err != nil {
-		return err
-	}
-	if err := n.tp.Broadcast(tx); err != nil {
-		return err
-	}
-
-	return nil
+	return n.mempool.RecvTransaction(tx)
 }
 
 func (n *Node) Commit() chan *pb.Block {
@@ -170,20 +175,20 @@ func (n *Node) ReportState(height uint64, hash types.Hash) {
 		n.logger.Errorf("can not found appliedIndex:", height)
 		return
 	}
-	//block already persisted, record the apply index in db
+	// block already persisted, record the apply index in db
 	n.writeAppliedIndex(appliedIndex.(uint64))
 	n.blockAppliedIndex.Delete(height)
 
-	n.tp.BuildReqLookUp() //store bloom filter
-
-	ready, ok := n.readyCache.Load(height)
+	// TODO: delete readyCache
+	readyBytes, ok := n.readyCache.Load(height)
 	if !ok {
 		n.logger.Errorf("can not found ready:", height)
 		return
 	}
-	hashes := ready.(*raftproto.Ready).TxHashes
-	// remove redundant tx
-	n.tp.BatchDelete(hashes)
+	ready := readyBytes.(*raftproto.Ready)
+
+	// clean related mempool info
+	n.mempool.CommitTransactions(ready)
 
 	n.readyCache.Delete(height)
 }
@@ -204,47 +209,32 @@ func (n *Node) Step(ctx context.Context, msg []byte) error {
 			return err
 		}
 		return n.node.Step(ctx, *msg)
+
 	case raftproto.RaftMessage_GET_TX:
-		hash := types.Hash{}
-		if err := hash.Unmarshal(rm.Data); err != nil {
+		fetchTxnRequest := &mempool.FetchTxnRequest{}
+		if err := fetchTxnRequest.Unmarshal(rm.Data); err != nil {
 			return err
 		}
-		tx, ok := n.tp.GetTx(hash, true)
-		if !ok {
-			return nil
-		}
-		v, err := tx.Marshal()
-		if err != nil {
-			return err
-		}
-		txAck := &raftproto.RaftMessage{
-			Type: raftproto.RaftMessage_GET_TX_ACK,
-			Data: v,
-		}
-		txAckData, err := txAck.Marshal()
-		if err != nil {
-			return err
-		}
-		m := &pb.Message{
-			Type: pb.Message_CONSENSUS,
-			Data: txAckData,
-		}
-		return n.peerMgr.AsyncSend(rm.FromId, m)
+		n.mempool.RecvFetchTxnRequest(fetchTxnRequest)
+
 	case raftproto.RaftMessage_GET_TX_ACK:
-		tx := &pb.Transaction{}
-		if err := tx.Unmarshal(rm.Data); err != nil {
+		fetchTxnResponse := &mempool.FetchTxnResponse{}
+		if err := fetchTxnResponse.Unmarshal(rm.Data); err != nil {
 			return err
 		}
-		return n.tp.AddPendingTx(tx, true)
+		n.mempool.RecvFetchTxnResponse(fetchTxnResponse)
+
 	case raftproto.RaftMessage_BROADCAST_TX:
-		tx := &pb.Transaction{}
-		if err := tx.Unmarshal(rm.Data); err != nil {
+		txSlice := &mempool.TxSlice{}
+		if err := txSlice.Unmarshal(rm.Data); err != nil {
 			return err
 		}
-		return n.tp.AddPendingTx(tx, false)
+		n.mempool.RecvForwardTxs(txSlice)
+
 	default:
 		return fmt.Errorf("unexpected raft message received")
 	}
+	return nil
 }
 
 func (n *Node) IsLeader() bool {
@@ -281,14 +271,14 @@ func (n *Node) run() {
 					n.proposeC = nil
 				} else {
 					if !n.IsLeader() {
-						n.tp.CheckExecute(false)
+						n.logger.Warn("Follower node can't propose a proposal")
+						n.mempool.UpdateLeader(n.leader)
 						continue
 					}
 					data, err := ready.Marshal()
 					if err != nil {
 						n.logger.Panic(err)
 					}
-					n.tp.BatchStore(ready.TxHashes)
 					if err := n.node.Propose(n.ctx, data); err != nil {
 						n.logger.Panic("Failed to propose block [%d] to raft: %s", ready.Height, err)
 					}
@@ -332,16 +322,16 @@ func (n *Node) run() {
 				}
 			}
 			if rd.SoftState != nil {
-				n.leader = rd.SoftState.Lead
-				n.tp.CheckExecute(n.IsLeader())
+				newLeader := atomic.LoadUint64(&rd.SoftState.Lead)
+				n.leader = newLeader
+				n.mempool.UpdateLeader(newLeader)
 			}
 			// 3: AsyncSend all Messages to the nodes named in the To field.
 			go n.send(rd.Messages)
 
 			n.maybeTriggerSnapshot()
 
-			// 4: Call Node.Advance() to signal readiness for the next batch of
-			// updates.
+			// 4: Call Node.Advance() to signal readiness for the next batch of updates.
 			n.node.Advance()
 		case <-n.ctx.Done():
 			n.Stop()
@@ -454,57 +444,61 @@ func (n *Node) publishEntries(ents []raftpb.Entry) bool {
 	return true
 }
 
-//mint the block
+// mint the block
 func (n *Node) mint(ready *raftproto.Ready) {
 	n.logger.WithFields(logrus.Fields{
 		"height": ready.Height,
 		"count":  len(ready.TxHashes),
 	}).Debugln("block will be generated")
-	//follower node update the block height
-	if n.tp.GetHeight() == ready.Height-1 {
-		n.tp.UpdateHeight()
-	}
-	loseTxs := make([]types.Hash, 0)
-	txs := make([]*pb.Transaction, 0, len(ready.TxHashes))
-	for _, hash := range ready.TxHashes {
-		_, ok := n.tp.GetTx(hash, false)
-		if !ok {
-			loseTxs = append(loseTxs, hash)
+
+	// follower node update the block height
+	expectHeight := n.mempool.GetChainHeight()
+	if !n.IsLeader() {
+		if expectHeight != ready.Height-1 {
+			n.logger.Warningf("Receive batch %d, but not match, expect height: %d", ready.Height, expectHeight+1)
+			return
 		}
+		n.mempool.IncreaseChainHeight()
 	}
 
-	//handle missing txs
-	if len(loseTxs) != 0 {
-		var wg sync.WaitGroup
-		wg.Add(len(loseTxs))
-		for _, hash := range loseTxs {
-			go func(hash types.Hash) {
-				defer wg.Done()
-				n.tp.FetchTx(hash, ready.Height)
-			}(hash)
+	missingTxsHash, txList := n.mempool.GetBlock(ready)
+	// handle missing txs
+	if len(missingTxsHash) != 0 {
+		waitLostTxnC := make(chan bool)
+		lostTxnEvent := &mempool.LocalMissingTxnEvent{
+			Height:             ready.Height,
+			WaitC:              waitLostTxnC,
+			MissingTxnHashList: missingTxsHash,
 		}
-		wg.Wait()
-	}
 
-	for _, hash := range ready.TxHashes {
-		tx, _ := n.tp.GetTx(hash, false)
-		txs = append(txs, tx)
+		// NOTE!!! block until finishing fetching the missing txs
+		n.mempool.FetchTxn(lostTxnEvent)
+		select {
+		case isSuccess := <-waitLostTxnC:
+			if !isSuccess {
+				n.logger.Error("Fetch missing txn failed")
+				return
+			}
+			n.logger.Debug("Fetch missing transactions success")
+
+		case <-time.After(mempool.DefaultFetchTxnTimeout):
+			// TODO: add fetch request resend timer
+			n.logger.Debugf("Fetch missing transactions timeout, block height: %d", ready.Height)
+			return
+		}
+
+		if missingTxsHash, txList = n.mempool.GetBlock(ready); len(missingTxsHash) != 0 {
+			n.logger.Error("Still missing transaction")
+			return
+		}
 	}
-	n.tp.RemoveTxs(ready.TxHashes, n.IsLeader())
 	block := &pb.Block{
 		BlockHeader: &pb.BlockHeader{
 			Version:   []byte("1.0.0"),
 			Number:    ready.Height,
 			Timestamp: time.Now().UnixNano(),
 		},
-		Transactions: txs,
-	}
-	n.logger.WithFields(logrus.Fields{
-		"txpool_size": n.tp.PoolSize(),
-	}).Debugln("current tx pool size")
-
-	if len(loseTxs) == len(ready.TxHashes) {
-		block.Extra = []byte("updateState")
+		Transactions: txList,
 	}
 	n.readyCache.Store(ready.Height, ready)
 	n.commitC <- block
@@ -555,12 +549,17 @@ func (n *Node) maybeTriggerSnapshot() {
 func GenerateRaftPeers(config *order.Config) ([]raft.Peer, error) {
 	nodes := config.Nodes
 	peers := make([]raft.Peer, 0, len(nodes))
-	for id, node := range nodes {
-		peers = append(peers, raft.Peer{ID: id, Context: node.Bytes()})
+	// sort by node id
+	idSlice := make([]uint64, len(nodes))
+	for id := range nodes {
+		idSlice = append(idSlice, id)
 	}
-	sort.Slice(peers, func(i, j int) bool {
-		return peers[i].ID < peers[j].ID
-	})
+	sortkeys.Uint64s(idSlice)
+
+	for _, id := range idSlice {
+		addr := nodes[id]
+		peers = append(peers, raft.Peer{ID: id, Context: addr.Bytes()})
+	}
 	return peers, nil
 }
 
