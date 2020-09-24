@@ -8,7 +8,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/meshplus/bitxhub-core/validator"
-	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/constant"
@@ -52,7 +51,7 @@ type BlockExecutor struct {
 
 // New creates executor instance
 func New(chainLedger ledger.Ledger, logger logrus.FieldLogger) (*BlockExecutor, error) {
-	ibtpVerify := proof.New(chainLedger, log.NewWithModule("proof"))
+	ibtpVerify := proof.New(chainLedger, logger)
 
 	boltContracts := registerBoltContracts()
 
