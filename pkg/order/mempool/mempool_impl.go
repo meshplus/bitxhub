@@ -11,7 +11,6 @@ import (
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/internal/loggers"
 	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
 	"github.com/meshplus/bitxhub/pkg/storage"
@@ -44,12 +43,12 @@ func newMempoolImpl(config *Config, storage storage.Storage, batchC chan *raftpr
 		peerMgr:      config.PeerMgr,
 		batchSeqNo:   config.ChainHeight,
 		ledgerHelper: config.GetTransactionFunc,
-		logger:       loggers.Logger(loggers.Order),
+		logger:       config.Logger,
 		batchC:       batchC,
 		storage:      storage,
 	}
 	mpi.txStore = newTransactionStore()
-	mpi.txCache = newTxCache(config.TxSliceTimeout)
+	mpi.txCache = newTxCache(config.TxSliceTimeout, config.Logger)
 	mpi.subscribe = newSubscribe()
 	if config.BatchSize == 0 {
 		mpi.batchSize = DefaultBatchSize

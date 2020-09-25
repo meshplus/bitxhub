@@ -4,8 +4,6 @@ import (
 	"time"
 
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/internal/loggers"
-
 	"github.com/sirupsen/logrus"
 )
 
@@ -21,7 +19,7 @@ type TxCache struct {
 	txSetTick  time.Duration
 }
 
-func newTxCache(txSliceTimeout time.Duration) *TxCache {
+func newTxCache(txSliceTimeout time.Duration, logger logrus.FieldLogger) *TxCache {
 	txCache := &TxCache{}
 	txCache.recvTxC = make(chan *pb.Transaction, DefaultTxCacheSize)
 	txCache.close = make(chan bool)
@@ -29,7 +27,7 @@ func newTxCache(txSliceTimeout time.Duration) *TxCache {
 	txCache.timerC = make(chan bool)
 	txCache.stopTimerC = make(chan bool)
 	txCache.txSet = make([]*pb.Transaction, 0)
-	txCache.logger = loggers.Logger(loggers.Order)
+	txCache.logger = logger
 	if txSliceTimeout == 0 {
 		txCache.txSetTick = DefaultTxSetTick
 	} else {
@@ -43,6 +41,7 @@ func (tc *TxCache) listenEvent() {
 		select {
 		case <-tc.close:
 			tc.logger.Info("Exit transaction cache")
+			return
 
 		case tx := <-tc.recvTxC:
 			tc.appendTx(tx)

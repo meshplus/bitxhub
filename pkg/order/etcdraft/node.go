@@ -92,6 +92,7 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 		PeerMgr:            config.PeerMgr,
 		ChainHeight:        config.Applied,
 		GetTransactionFunc: config.GetTransactionFunc,
+		Logger:             config.Logger,
 
 		BatchSize:      memConfig.BatchSize,
 		BatchTick:      memConfig.BatchTick,
@@ -551,8 +552,10 @@ func GenerateRaftPeers(config *order.Config) ([]raft.Peer, error) {
 	peers := make([]raft.Peer, 0, len(nodes))
 	// sort by node id
 	idSlice := make([]uint64, len(nodes))
+	i := 0
 	for id := range nodes {
-		idSlice = append(idSlice, id)
+		idSlice[i] = id
+		i++
 	}
 	sortkeys.Uint64s(idSlice)
 
