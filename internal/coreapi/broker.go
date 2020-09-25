@@ -271,3 +271,7 @@ func (b *BrokerAPI) getSign(content string) (string, []byte, error) {
 	}
 	return key.Address, sign, nil
 }
+
+func (b BrokerAPI) GetPendingNonceByAccount(account string) uint64 {
+	return b.bxh.Order.GetPendingNonceByAccount(account)
+}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"strconv"
 
 	"github.com/meshplus/bitxhub-model/pb"
 )
@@ -31,4 +32,11 @@ func (cbs *ChainBrokerService) GetTPS(ctx context.Context, req *pb.GetTPSRequest
 	binary.LittleEndian.PutUint64(data, tps)
 
 	return &pb.Response{Data: data}, nil
+}
+
+func (cbs *ChainBrokerService) GetPendingNonceByAccount(ctx context.Context, in *pb.Address) (*pb.Response, error) {
+	nonce := cbs.api.Broker().GetPendingNonceByAccount(in.Address)
+	return &pb.Response{
+		Data: []byte(strconv.FormatUint(nonce, 10)),
+	}, nil
 }
