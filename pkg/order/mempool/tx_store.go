@@ -97,7 +97,7 @@ func (m *txSortedMap) forward(commitNonce uint64) map[string][]*pb.Transaction {
 		nonce := i.(*sortedNonceKey).nonce
 		txItem := m.items[nonce]
 		account := txItem.account
-		if _, ok := removedTxs[account]; ! ok {
+		if _, ok := removedTxs[account]; !ok {
 			removedTxs[account] = make([]*pb.Transaction, 0)
 		}
 		removedTxs[account] = append(removedTxs[account], txItem.tx)

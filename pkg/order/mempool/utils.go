@@ -99,7 +99,7 @@ func (mpi *mempoolImpl) isBatchTimerActive() bool {
 func (mpi *mempoolImpl) startBatchTimer(reason string) {
 	// stop old timer
 	mpi.stopBatchTimer(StopReason3)
-	mpi.logger.Debugf("Start batch timer, reason: %s",reason)
+	mpi.logger.Debugf("Start batch timer, reason: %s", reason)
 	timestamp := time.Now().UnixNano()
 	key := strconv.FormatInt(timestamp, 10)
 	mpi.batchTimerMgr.isActive.Set(key, true)
@@ -132,14 +132,14 @@ func newTimer(d time.Duration) *timerManager {
 func getAccount(tx *pb.Transaction) (string, error) {
 	payload := &pb.InvokePayload{}
 	if err := payload.Unmarshal(tx.Data.Payload); err != nil {
-		return "",fmt.Errorf("unmarshal invoke payload: %s", err.Error())
+		return "", fmt.Errorf("unmarshal invoke payload: %s", err.Error())
 	}
 	if payload.Method == IBTPMethod1 || payload.Method == IBTPMethod2 {
 		ibtp := &pb.IBTP{}
 		if err := ibtp.Unmarshal(payload.Args[0].Value); err != nil {
 			return "", fmt.Errorf("unmarshal ibtp from tx :%w", err)
 		}
-		account := fmt.Sprintf("%s-%s",ibtp.From,ibtp.To)
+		account := fmt.Sprintf("%s-%s", ibtp.From, ibtp.To)
 		return account, nil
 	}
 	return tx.From.Hex(), nil
