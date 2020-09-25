@@ -17,14 +17,14 @@ import (
 type Node struct {
 	sync.RWMutex
 	height             uint64             // current block height
-	pendingTxs         *list.List         //pending tx pool
-	commitC            chan *pb.Block     //block channel
-	logger             logrus.FieldLogger //logger
-	reqLookUp          *order.ReqLookUp   //bloom filter
+	pendingTxs         *list.List         // pending tx pool
+	commitC            chan *pb.Block     // block channel
+	logger             logrus.FieldLogger // logger
+	reqLookUp          *order.ReqLookUp   // bloom filter
 	getTransactionFunc func(hash types.Hash) (*pb.Transaction, error)
 
-	packSize  int           //maximum number of transaction packages
-	blockTick time.Duration //block packed period
+	packSize  int           // maximum number of transaction packages
+	blockTick time.Duration // block packed period
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -37,6 +37,11 @@ func (n *Node) Start() error {
 
 func (n *Node) Stop() {
 	n.cancel()
+}
+
+func (n *Node) GetPendingNonceByAccount(account string) uint64 {
+	// TODO: implement me
+	return 0
 }
 
 func (n *Node) Prepare(tx *pb.Transaction) error {

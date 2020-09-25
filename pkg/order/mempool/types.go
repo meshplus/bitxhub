@@ -56,6 +56,7 @@ type subscribeEvent struct {
 	getBlockC            chan *constructBatchEvent
 	commitTxnC           chan *raftproto.Ready
 	updateLeaderC        chan uint64
+	pendingNonceC        chan *getNonceRequest
 }
 
 type mempoolBatch struct {
@@ -92,4 +93,9 @@ type timerManager struct {
 type txItem struct {
 	account string
 	tx      *pb.Transaction
+}
+
+type getNonceRequest struct {
+	account string
+	waitC   chan uint64
 }

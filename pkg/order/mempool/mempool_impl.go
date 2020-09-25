@@ -116,7 +116,7 @@ func (mpi *mempoolImpl) listenEvent() {
 					}
 					mpi.batchC <- ready
 				} else {
-					mpi.logger.Debug("The length of priorityIndex is 0, ")
+					mpi.logger.Debug("The length of priorityIndex is 0, skip the batch timer")
 				}
 			}
 
@@ -146,6 +146,10 @@ func (mpi *mempoolImpl) listenEvent() {
 				continue
 			}
 			waitC <- true
+
+		case getNonceRequest := <-mpi.subscribe.pendingNonceC:
+			pendingNonce := mpi.txStore.nonceCache.getPendingNonce(getNonceRequest.account)
+			getNonceRequest.waitC <- pendingNonce
 		}
 	}
 }
@@ -168,7 +172,7 @@ func (mpi *mempoolImpl) processTransactions(txs []*pb.Transaction) error {
 		currentSeqNo := mpi.txStore.nonceCache.getPendingNonce(txAccount)
 		if tx.Nonce < currentSeqNo {
 			mpi.logger.Warningf("account %s current sequence number is %d, required %d", txAccount, tx.Nonce, currentSeqNo+1)
-			return nil
+			continue
 		}
 		// check the existence of hash of this tx
 		txHash := tx.TransactionHash.Hex()

@@ -35,7 +35,7 @@ func (snk *sortedNonceKey) Less(item btree.Item) bool {
 func makeOrderedIndexKey(account string, tx *pb.Transaction) *orderedIndexKey {
 	return &orderedIndexKey{
 		account: account,
-		nonce:   uint64(tx.Nonce),
+		nonce:   tx.Nonce,
 	}
 }
 
@@ -56,13 +56,13 @@ func newBtreeIndex() *btreeIndex {
 }
 
 func (idx *btreeIndex) insert(tx *pb.Transaction) {
-	idx.data.ReplaceOrInsert(makeSortedNonceKeyKey(uint64(tx.Nonce)))
+	idx.data.ReplaceOrInsert(makeSortedNonceKeyKey(tx.Nonce))
 }
 
 func (idx *btreeIndex) remove(txs map[string][]*pb.Transaction) {
 	for _, list := range txs {
 		for _, tx := range list {
-			idx.data.Delete(makeSortedNonceKeyKey(uint64(tx.Nonce)))
+			idx.data.Delete(makeSortedNonceKeyKey(tx.Nonce))
 		}
 	}
 }
@@ -80,6 +80,6 @@ func (idx *btreeIndex) removeByOrderedQueueKey(txs map[string][]*pb.Transaction)
 }
 
 // Size returns the size of the index
-func (idx *btreeIndex) size() uint64 {
-	return uint64(idx.data.Len())
+func (idx *btreeIndex) size() int {
+	return idx.data.Len()
 }
