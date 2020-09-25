@@ -602,5 +602,5 @@ func (n *Node) writeAppliedIndex(index uint64) {
 }
 
 func (n *Node) GetPendingNonceByAccount(account string) uint64 {
-	return n.mempool.PendingNonceAt(account)
+	return n.mempool.GetPendingNonceByAccount(account)
 }

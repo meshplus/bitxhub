@@ -39,6 +39,11 @@ func (n *Node) Stop() {
 	n.cancel()
 }
 
+func (n *Node) GetPendingNonceByAccount(account string) uint64 {
+	// TODO: implement me
+	return 0
+}
+
 func (n *Node) Prepare(tx *pb.Transaction) error {
 	hash := tx.TransactionHash
 	if ok := n.reqLookUp.LookUp(hash.Bytes()); ok {
