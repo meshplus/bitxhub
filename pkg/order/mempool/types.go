@@ -7,8 +7,8 @@ import (
 	"github.com/meshplus/bitxhub-model/pb"
 	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
-
 	cmap "github.com/orcaman/concurrent-map"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -82,6 +82,7 @@ type Config struct {
 	PeerMgr            peermgr.PeerManager
 	GetTransactionFunc func(hash types.Hash) (*pb.Transaction, error)
 	ChainHeight        uint64
+	Logger             logrus.FieldLogger
 }
 
 type timerManager struct {

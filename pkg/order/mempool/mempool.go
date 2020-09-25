@@ -127,8 +127,8 @@ func (mpi *mempoolImpl) GetPendingNonceByAccount(account string) uint64 {
 	waitC := make(chan uint64)
 	getNonceRequest := &getNonceRequest{
 		account: account,
-		waitC: waitC,
+		waitC:   waitC,
 	}
 	mpi.subscribe.pendingNonceC <- getNonceRequest
-	return <- waitC
+	return <-waitC
 }
