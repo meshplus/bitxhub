@@ -29,13 +29,13 @@ type mempoolImpl struct {
 	batchC     chan *raftproto.Ready
 	close      chan bool
 
-	txStore      *transactionStore // store all transactions info
-	txCache      *TxCache          // cache the transactions received from api
-	subscribe    *subscribeEvent
-	storage      storage.Storage
-	peerMgr      peermgr.PeerManager //network manager
+	txStore       *transactionStore // store all transactions info
+	txCache       *TxCache          // cache the transactions received from api
+	subscribe     *subscribeEvent
+	storage       storage.Storage
+	peerMgr       peermgr.PeerManager //network manager
 	batchTimerMgr *timerManager
-	ledgerHelper func(hash types.Hash) (*pb.Transaction, error)
+	ledgerHelper  func(hash types.Hash) (*pb.Transaction, error)
 }
 
 func newMempoolImpl(config *Config, storage storage.Storage, batchC chan *raftproto.Ready) *mempoolImpl {
@@ -104,7 +104,7 @@ func (mpi *mempoolImpl) listenEvent() {
 			result := mpi.getBlock(res.ready)
 			res.result <- result
 
-		case <- mpi.batchTimerMgr.timeoutEventC:
+		case <-mpi.batchTimerMgr.timeoutEventC:
 			if mpi.isBatchTimerActive() {
 				mpi.stopBatchTimer(StopReason1)
 				mpi.logger.Debug("Batch timer expired, try to create a batch")
@@ -161,7 +161,7 @@ func (mpi *mempoolImpl) processTransactions(txs []*pb.Transaction) error {
 		}
 		// check the sequence number of tx
 		// TODO refactor Transaction
-		txAccount, err  := getAccount(tx)
+		txAccount, err := getAccount(tx)
 		if err != nil {
 			return fmt.Errorf("get tx account failed, err: %s", err.Error())
 		}
@@ -227,7 +227,7 @@ func (txStore *transactionStore) InsertTxs(txs map[string][]*pb.Transaction) map
 			list = txStore.allTxs[account]
 			txItem := &txItem{
 				account: account,
-				tx: tx,
+				tx:      tx,
 			}
 			list.items[tx.Nonce] = txItem
 			list.index.insert(tx)
@@ -432,7 +432,7 @@ func (mpi *mempoolImpl) processCommitTransactions(ready *raftproto.Ready) {
 	mpi.batchDelete(ready.TxHashes)
 	delete(mpi.txStore.batchedCache, ready.Height)
 	// restart batch timer for remain txs.
-	if mpi.isLeader(){
+	if mpi.isLeader() {
 		mpi.startBatchTimer(StartReason2)
 	}
 	mpi.logger.Debugf("Replica removes batch %d in mempool, and now there are %d batches, "+

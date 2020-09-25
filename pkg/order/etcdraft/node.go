@@ -40,7 +40,7 @@ type Node struct {
 
 	raftStorage *RaftStorage    // the raft backend storage system
 	storage     storage.Storage // db
-	mempool mempool.MemPool // transaction pool
+	mempool     mempool.MemPool // transaction pool
 
 	repoRoot string             // project path
 	logger   logrus.FieldLogger // logger
@@ -93,12 +93,12 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 		ChainHeight:        config.Applied,
 		GetTransactionFunc: config.GetTransactionFunc,
 
-		BatchSize:          memConfig.BatchSize,
-		BatchTick:          memConfig.BatchTick,
-		PoolSize:           memConfig.PoolSize,
-		TxSliceSize:        memConfig.TxSliceSize,
-		FetchTimeout:       memConfig.FetchTimeout,
-		TxSliceTimeout:     memConfig.TxSliceTimeout,
+		BatchSize:      memConfig.BatchSize,
+		BatchTick:      memConfig.BatchTick,
+		PoolSize:       memConfig.PoolSize,
+		TxSliceSize:    memConfig.TxSliceSize,
+		FetchTimeout:   memConfig.FetchTimeout,
+		TxSliceTimeout: memConfig.TxSliceTimeout,
 	}
 	mempoolInst := mempool.NewMempool(mempoolConf, dbStorage, batchC)
 

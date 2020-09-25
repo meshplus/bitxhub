@@ -83,4 +83,3 @@ func (idx *btreeIndex) removeByOrderedQueueKey(txs map[string][]*pb.Transaction)
 func (idx *btreeIndex) size() uint64 {
 	return uint64(idx.data.Len())
 }
-
