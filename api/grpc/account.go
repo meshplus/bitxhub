@@ -49,3 +49,7 @@ func (cbs *ChainBrokerService) GetAccountBalance(ctx context.Context, req *pb.Ad
 		Data: data,
 	}, nil
 }
+
+func (cbs *ChainBrokerService) GetPendingNonceByAccount(ctx context.Context, req *pb.Address) (*pb.Response, error) {
+	return nil, nil
+}
