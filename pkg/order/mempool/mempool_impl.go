@@ -170,7 +170,7 @@ func (mpi *mempoolImpl) processTransactions(txs []*pb.Transaction) error {
 		}
 		currentSeqNo := mpi.txStore.nonceCache.getPendingNonce(txAccount)
 		if tx.Nonce < currentSeqNo {
-			mpi.logger.Warningf("account %s current sequence number is %d, required %d", txAccount, tx.Nonce, currentSeqNo+1)
+			mpi.logger.Warningf("Account %s, current sequence number is %d, required %d", txAccount, tx.Nonce, currentSeqNo+1)
 			continue
 		}
 		// check the existence of hash of this tx
