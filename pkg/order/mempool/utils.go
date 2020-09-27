@@ -57,6 +57,7 @@ func newSubscribe() *subscribeEvent {
 		fetchTxnResponseC:    make(chan *FetchTxnResponse),
 		commitTxnC:           make(chan *raftproto.Ready),
 		getBlockC:            make(chan *constructBatchEvent),
+		pendingNonceC:        make(chan *getNonceRequest),
 	}
 }
 
