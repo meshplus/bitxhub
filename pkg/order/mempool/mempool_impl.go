@@ -397,6 +397,11 @@ func (mpi *mempoolImpl) processCommitTransactions(ready *raftproto.Ready) {
 	for _, txHash := range ready.TxHashes {
 		txHashStr := txHash.Hex()
 		txPointer := mpi.txStore.txHashMap[txHashStr]
+		txPointer, ok := mpi.txStore.txHashMap[txHashStr]
+		if !ok {
+			mpi.logger.Warningf("Remove transaction %s failed, Can't find it from txHashMap", txHashStr)
+			continue
+		}
 		preCommitNonce := mpi.txStore.nonceCache.getCommitNonce(txPointer.account)
 		newCommitNonce := txPointer.nonce + 1
 		if preCommitNonce < newCommitNonce {
