@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-
 	"github.com/meshplus/bitxhub-model/pb"
 )
 

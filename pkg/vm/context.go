@@ -15,7 +15,7 @@ type Context struct {
 	TransactionIndex uint64
 	TransactionHash  types.Hash
 	TransactionData  *pb.TransactionData
-	Nonce            int64
+	Nonce            uint64
 	Logger           logrus.FieldLogger
 }
 
@@ -28,7 +28,7 @@ func NewContext(tx *pb.Transaction, txIndex uint64, data *pb.TransactionData, le
 		TransactionIndex: txIndex,
 		TransactionHash:  tx.TransactionHash,
 		TransactionData:  data,
-		Nonce:            int64(tx.Nonce),
+		Nonce:            tx.Nonce,
 		Logger:           logger,
 	}
 }

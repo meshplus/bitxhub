@@ -25,6 +25,7 @@ type BrokerAPI interface {
 	GetReceipt(types.Hash) (*pb.Receipt, error)
 	GetBlock(mode string, key string) (*pb.Block, error)
 	GetBlocks(start uint64, end uint64) ([]*pb.Block, error)
+	GetPendingNonceByAccount(account string) uint64
 
 	// AddPier
 	AddPier(pid string, isUnion bool) (chan *pb.InterchainTxWrappers, error)

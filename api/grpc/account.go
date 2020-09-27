@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -50,6 +51,10 @@ func (cbs *ChainBrokerService) GetAccountBalance(ctx context.Context, req *pb.Ad
 	}, nil
 }
 
+
 func (cbs *ChainBrokerService) GetPendingNonceByAccount(ctx context.Context, req *pb.Address) (*pb.Response, error) {
-	return nil, nil
+	nonce := cbs.api.Broker().GetPendingNonceByAccount(req.Address)
+	return &pb.Response{
+		Data: []byte(strconv.FormatUint(nonce, 10)),
+	}, nil
 }

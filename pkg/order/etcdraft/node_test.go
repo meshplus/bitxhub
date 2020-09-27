@@ -2,7 +2,6 @@ package etcdraft
 
 import (
 	"io/ioutil"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"testing"
@@ -86,7 +85,7 @@ func generateTx() *pb.Transaction {
 			Amount: 10,
 		},
 		Timestamp: time.Now().UnixNano(),
-		Nonce:     uint64(rand.Int63()),
+		Nonce:     1,
 	}
 	_ = tx.Sign(privKey)
 	tx.TransactionHash = tx.Hash()
