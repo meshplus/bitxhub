@@ -24,21 +24,31 @@ type MemPool interface {
 	// RecvForwardTxs receives transactions from other vp nodes.
 	RecvForwardTxs(txSlice *TxSlice)
 
+	// UpdateLeader updates the leader node info when the consensus module updates the leader status.
 	UpdateLeader(uint64)
 
+	// FetchTxn sends the fetching missing transactions request.
 	FetchTxn(lostTxnEvent *LocalMissingTxnEvent)
 
+	// RecvFetchTxnRequest receives the fetching missing transactions request,
+	// and load the related transactions from its mempool or storage.
 	RecvFetchTxnRequest(fetchTxnRequest *FetchTxnRequest)
 
+	// RecvFetchTxnResponse receives the fetching missing transactions response,
+	// and posts to consensus module.
 	RecvFetchTxnResponse(fetchTxnResponse *FetchTxnResponse)
 
+	// GetChainHeight gets the sequence number of block.
 	GetChainHeight() uint64
 
+	// IncreaseChainHeight increases the sequence number of block.
 	IncreaseChainHeight()
 
+	// GetBlock return the transactions list by given ready.
+	// If the corresponding transaction cannot be found, a list of missing transactions will be returned.
 	GetBlock(ready *raftproto.Ready) (map[uint64]string, []*pb.Transaction)
 
-	// Remove committed transactions from mempool
+	// Remove removes the committed transactions from mempool
 	CommitTransactions(ready *raftproto.Ready)
 
 	// GetPendingNonceByAccount will return the latest pending nonce of a given account

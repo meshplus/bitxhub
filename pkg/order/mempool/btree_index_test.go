@@ -17,9 +17,6 @@ func TestLess(t *testing.T) {
 	tx.Nonce = 2
 	orderedIndexKey1 := makeOrderedIndexKey("bitxhub", tx)
 	isLess := orderedIndexKey.Less(orderedIndexKey1)
-	if "bitxhub" < "dccount" {
-		t.Log("yes")
-	}
 	ast.Equal(true, isLess)
 }
 
