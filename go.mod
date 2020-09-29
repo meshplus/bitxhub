@@ -1,6 +1,7 @@
 module github.com/meshplus/bitxhub
 
 require (
+	code.cloudfoundry.org/clock v1.0.0 // indirect
 	github.com/Rican7/retry v0.1.0
 	github.com/cbergoon/merkletree v0.2.0
 	github.com/common-nighthawk/go-figure v0.0.0-20190529165535-67e0ed34491a
@@ -37,6 +38,7 @@ require (
 	github.com/urfave/cli v1.22.1
 	github.com/wasmerio/go-ext-wasm v0.3.1
 	github.com/willf/bloom v2.0.3+incompatible
+	go.etcd.io/etcd v3.3.25+incompatible // indirect
 	go.uber.org/atomic v1.6.0
 	google.golang.org/grpc v1.27.1
 )

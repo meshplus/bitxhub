@@ -370,6 +370,9 @@ func (n *Node) send(messages []raftpb.Message) {
 
 		err = n.peerMgr.AsyncSend(msg.To, p2pMsg)
 		if err != nil {
+			n.logger.WithFields(logrus.Fields{
+				"from": msg.From,
+			}).Error(err)
 			n.node.ReportUnreachable(msg.To)
 			status = raft.SnapshotFailure
 		}
