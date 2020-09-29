@@ -27,18 +27,21 @@ func (suite *Store) SetupSuite() {
 func (suite *Store) TestStore() {
 	k, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
+	kNonce := uint64(1)
 
 	args := []*pb.Arg{
 		pb.String("123"),
 		pb.String("abc"),
 	}
 
-	ret, err := invokeBVMContract(suite.api, k, constant.StoreContractAddr.Address(), "Set", args...)
+	ret, err := invokeBVMContract(suite.api, k, kNonce, constant.StoreContractAddr.Address(), "Set", args...)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess())
+	kNonce++
 
-	ret2, err := invokeBVMContract(suite.api, k, constant.StoreContractAddr.Address(), "Get", pb.String("123"))
+	ret2, err := invokeBVMContract(suite.api, k, kNonce, constant.StoreContractAddr.Address(), "Get", pb.String("123"))
 	suite.Require().Nil(err)
 	suite.Require().True(ret2.IsSuccess())
 	suite.Require().Equal("abc", string(ret2.Ret))
+	kNonce++
 }

@@ -55,7 +55,7 @@ func (suite *API) TestSend() {
 }
 
 func testSendTransaction(suite *API) types.Hash {
-	tx, err := genContractTransaction(pb.TransactionData_BVM, suite.privKey,
+	tx, err := genContractTransaction(pb.TransactionData_BVM, suite.privKey, 1,
 		constant.StoreContractAddr.Address(), "Set", pb.String("key"), pb.String(value))
 	suite.Nil(err)
 
@@ -64,7 +64,7 @@ func testSendTransaction(suite *API) types.Hash {
 }
 
 func testSendView(suite *API) {
-	tx, err := genContractTransaction(pb.TransactionData_BVM, suite.privKey,
+	tx, err := genContractTransaction(pb.TransactionData_BVM, suite.privKey, 1,
 		constant.StoreContractAddr.Address(), "Get", pb.String("key"))
 
 	receipt, err := suite.api.Broker().HandleView(tx)
