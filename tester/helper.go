@@ -3,7 +3,6 @@ package tester
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"strings"
 	"time"
 
@@ -14,16 +13,16 @@ import (
 	"github.com/meshplus/bitxhub-model/pb"
 )
 
-func genBVMContractTransaction(privateKey crypto.PrivateKey, address types.Address, method string, args ...*pb.Arg) (*pb.Transaction, error) {
-	return genContractTransaction(pb.TransactionData_BVM, privateKey, address, method, args...)
+func genBVMContractTransaction(privateKey crypto.PrivateKey, nonce uint64, address types.Address, method string, args ...*pb.Arg) (*pb.Transaction, error) {
+	return genContractTransaction(pb.TransactionData_BVM, privateKey, nonce, address, method, args...)
 }
 
-func genXVMContractTransaction(privateKey crypto.PrivateKey, address types.Address, method string, args ...*pb.Arg) (*pb.Transaction, error) {
-	return genContractTransaction(pb.TransactionData_XVM, privateKey, address, method, args...)
+func genXVMContractTransaction(privateKey crypto.PrivateKey, nonce uint64, address types.Address, method string, args ...*pb.Arg) (*pb.Transaction, error) {
+	return genContractTransaction(pb.TransactionData_XVM, privateKey, nonce, address, method, args...)
 }
 
-func invokeBVMContract(api api.CoreAPI, privateKey crypto.PrivateKey, address types.Address, method string, args ...*pb.Arg) (*pb.Receipt, error) {
-	tx, err := genBVMContractTransaction(privateKey, address, method, args...)
+func invokeBVMContract(api api.CoreAPI, privateKey crypto.PrivateKey, nonce uint64, address types.Address, method string, args ...*pb.Arg) (*pb.Receipt, error) {
+	tx, err := genBVMContractTransaction(privateKey, nonce, address, method, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +60,7 @@ func sendTransactionWithReceipt(api api.CoreAPI, tx *pb.Transaction) (*pb.Receip
 
 }
 
-func genContractTransaction(vmType pb.TransactionData_VMType, privateKey crypto.PrivateKey, address types.Address, method string, args ...*pb.Arg) (*pb.Transaction, error) {
+func genContractTransaction(vmType pb.TransactionData_VMType, privateKey crypto.PrivateKey, nonce uint64, address types.Address, method string, args ...*pb.Arg) (*pb.Transaction, error) {
 	from, err := privateKey.PublicKey().Address()
 	if err != nil {
 		return nil, err
@@ -88,7 +87,7 @@ func genContractTransaction(vmType pb.TransactionData_VMType, privateKey crypto.
 		To:        address,
 		Data:      td,
 		Timestamp: time.Now().UnixNano(),
-		Nonce:     uint64(rand.Int63()),
+		Nonce:     nonce,
 	}
 
 	if err := tx.Sign(privateKey); err != nil {
@@ -100,7 +99,7 @@ func genContractTransaction(vmType pb.TransactionData_VMType, privateKey crypto.
 	return tx, nil
 }
 
-func deployContract(api api.CoreAPI, privateKey crypto.PrivateKey, contract []byte) (types.Address, error) {
+func deployContract(api api.CoreAPI, privateKey crypto.PrivateKey, nonce uint64, contract []byte) (types.Address, error) {
 	from, err := privateKey.PublicKey().Address()
 	if err != nil {
 		return types.Address{}, err
@@ -116,7 +115,7 @@ func deployContract(api api.CoreAPI, privateKey crypto.PrivateKey, contract []by
 		From:      from,
 		Data:      td,
 		Timestamp: time.Now().UnixNano(),
-		Nonce:     uint64(rand.Int63()),
+		Nonce:     nonce,
 	}
 
 	tx.TransactionHash = tx.Hash()
