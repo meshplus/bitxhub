@@ -60,6 +60,9 @@ func New(repo *repo.Repo, blockchainStore storage.Storage, ldb storage.Storage, 
 	prevJnlHash := types.Hash{}
 	if maxJnlHeight != 0 {
 		blockJournal := getBlockJournal(maxJnlHeight, ldb)
+		if blockJournal == nil {
+			return nil, fmt.Errorf("get empty block journal for block: %d", maxJnlHeight)
+		}
 		prevJnlHash = blockJournal.ChangedHash
 	}
 
@@ -181,4 +184,5 @@ func (l *ChainLedger) Events(txHash string) []*pb.Event {
 // Close close the ledger instance
 func (l *ChainLedger) Close() {
 	l.ldb.Close()
+	l.blockchainStore.Close()
 }

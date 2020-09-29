@@ -44,3 +44,7 @@ func TestAccount_GetState(t *testing.T) {
 	assert.False(t, ok)
 	assert.Nil(t, v)
 }
+
+func TestAccount_AddState(t *testing.T) {
+
+}
