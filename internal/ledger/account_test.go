@@ -21,7 +21,8 @@ func TestAccount_GetState(t *testing.T) {
 	ldb, err := leveldb.New(filepath.Join(repoRoot, "ledger"))
 	assert.Nil(t, err)
 
-	accountCache := NewAccountCache()
+	accountCache, err := NewAccountCache()
+	assert.Nil(t, err)
 	ledger, err := New(createMockRepo(t), blockStorage, ldb, accountCache, log.NewWithModule("ChainLedger"))
 	assert.Nil(t, err)
 

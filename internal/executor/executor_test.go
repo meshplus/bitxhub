@@ -65,7 +65,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	mockLedger.EXPECT().SetCode(gomock.Any(), gomock.Any()).AnyTimes()
 	mockLedger.EXPECT().GetCode(gomock.Any()).Return([]byte("10")).AnyTimes()
 	mockLedger.EXPECT().PersistExecutionResult(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-	mockLedger.EXPECT().FlushDirtyDataAndComputeJournal().Return(make(map[string]*ledger.Account), &ledger.BlockJournal{}).AnyTimes()
+	mockLedger.EXPECT().FlushDirtyDataAndComputeJournal().Return(make(map[types.Address]*ledger.Account), &ledger.BlockJournal{}).AnyTimes()
 	mockLedger.EXPECT().PersistBlockData(gomock.Any()).AnyTimes()
 	logger := log.NewWithModule("executor")
 
@@ -174,7 +174,8 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 	require.Nil(t, err)
 
 	repo.DefaultConfig()
-	accountCache := ledger.NewAccountCache()
+	accountCache, err := ledger.NewAccountCache()
+	assert.Nil(t, err)
 	ldg, err := ledger.New(createMockRepo(t), blockchainStorage, ldb, accountCache, log.NewWithModule("ledger"))
 	require.Nil(t, err)
 

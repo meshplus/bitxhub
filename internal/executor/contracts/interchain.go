@@ -21,49 +21,22 @@ type InterchainManager struct {
 	boltvm.Stub
 }
 
-type Interchain struct {
-	ID                   string            `json:"id"`
-	InterchainCounter    map[string]uint64 `json:"interchain_counter,omitempty"`
-	ReceiptCounter       map[string]uint64 `json:"receipt_counter,omitempty"`
-	SourceReceiptCounter map[string]uint64 `json:"source_receipt_counter,omitempty"`
-}
-
 type BxhValidators struct {
 	Addresses []string `json:"addresses"`
 }
 
-func (i *Interchain) UnmarshalJSON(data []byte) error {
-	type alias Interchain
-	t := &alias{}
-	if err := json.Unmarshal(data, t); err != nil {
-		return err
-	}
-
-	if t.InterchainCounter == nil {
-		t.InterchainCounter = make(map[string]uint64)
-	}
-
-	if t.ReceiptCounter == nil {
-		t.ReceiptCounter = make(map[string]uint64)
-	}
-
-	if t.SourceReceiptCounter == nil {
-		t.SourceReceiptCounter = make(map[string]uint64)
-	}
-
-	*i = Interchain(*t)
-	return nil
-}
-
 func (x *InterchainManager) Register() *boltvm.Response {
-	interchain := &Interchain{ID: x.Caller()}
-	ok := x.Has(AppchainKey(x.Caller()))
-	if ok {
-		x.GetObject(AppchainKey(x.Caller()), interchain)
-	} else {
-		x.SetObject(AppchainKey(x.Caller()), interchain)
+	interchain, ok := x.getInterchain(x.Caller())
+	if !ok {
+		interchain = &pb.Interchain{
+			ID:                   x.Caller(),
+			InterchainCounter:    make(map[string]uint64),
+			ReceiptCounter:       make(map[string]uint64),
+			SourceReceiptCounter: make(map[string]uint64),
+		}
+		x.setInterchain(x.Caller(), interchain)
 	}
-	body, err := json.Marshal(interchain)
+	body, err := interchain.Marshal()
 	if err != nil {
 		return boltvm.Error(err.Error())
 	}
@@ -74,6 +47,43 @@ func (x *InterchainManager) Register() *boltvm.Response {
 func (x *InterchainManager) DeleteInterchain(id string) *boltvm.Response {
 	x.Delete(AppchainKey(id))
 	return boltvm.Success(nil)
+}
+
+// GetInterchain returns information of the interchain count, Receipt count and SourceReceipt count by id
+func (x *InterchainManager) getInterchain(id string) (*pb.Interchain, bool) {
+	interchain := &pb.Interchain{}
+	ok, data := x.Get(AppchainKey(id))
+	if !ok {
+		return nil, false
+	}
+
+	if err := interchain.Unmarshal(data); err != nil {
+		panic(err)
+	}
+
+	if interchain.InterchainCounter == nil {
+		interchain.InterchainCounter = make(map[string]uint64)
+	}
+
+	if interchain.ReceiptCounter == nil {
+		interchain.ReceiptCounter = make(map[string]uint64)
+	}
+
+	if interchain.SourceReceiptCounter == nil {
+		interchain.SourceReceiptCounter = make(map[string]uint64)
+	}
+
+	return interchain, true
+}
+
+// GetInterchain returns information of the interchain count, Receipt count and SourceReceipt count by id
+func (x *InterchainManager) setInterchain(id string, interchain *pb.Interchain) {
+	data, err := interchain.Marshal()
+	if err != nil {
+		panic(err)
+	}
+
+	x.Set(AppchainKey(id), data)
 }
 
 // Interchain returns information of the interchain count, Receipt count and SourceReceipt count
@@ -104,13 +114,10 @@ func (x *InterchainManager) HandleIBTP(data []byte) *boltvm.Response {
 		return x.handleUnionIBTP(ibtp)
 	}
 
-	ok := x.Has(AppchainKey(x.Caller()))
+	interchain, ok := x.getInterchain(ibtp.From)
 	if !ok {
 		return boltvm.Error("this appchain does not exist")
 	}
-
-	interchain := &Interchain{}
-	x.GetObject(AppchainKey(ibtp.From), &interchain)
 
 	if err := x.checkIBTP(ibtp, interchain); err != nil {
 		return boltvm.Error(err.Error())
@@ -148,7 +155,7 @@ func (x *InterchainManager) HandleIBTPs(data []byte) *boltvm.Response {
 		return boltvm.Error(err.Error())
 	}
 
-	interchain := &Interchain{}
+	interchain := &pb.Interchain{}
 	x.GetObject(AppchainKey(x.Caller()), &interchain)
 
 	for _, ibtp := range ibtps.Ibtps {
@@ -168,11 +175,12 @@ func (x *InterchainManager) HandleIBTPs(data []byte) *boltvm.Response {
 	return boltvm.Success(nil)
 }
 
-func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP, interchain *Interchain) error {
+func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP, interchain *pb.Interchain) error {
 	if ibtp.To == "" {
 		return fmt.Errorf("empty destination chain id")
 	}
-	if ok := x.Has(AppchainKey(ibtp.To)); !ok {
+
+	if _, ok := x.getInterchain(ibtp.To); !ok {
 		x.Logger().WithField("chain_id", ibtp.To).Debug("target appchain does not exist")
 	}
 
@@ -204,7 +212,7 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP, interchain *Interchain) err
 	return nil
 }
 
-func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *Interchain) {
+func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *pb.Interchain) {
 	m := make(map[string]uint64)
 
 	if pb.IBTP_INTERCHAIN == ibtp.Type ||
@@ -212,18 +220,17 @@ func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *Interchain) {
 		pb.IBTP_ASSET_EXCHANGE_REDEEM == ibtp.Type ||
 		pb.IBTP_ASSET_EXCHANGE_REFUND == ibtp.Type {
 		interchain.InterchainCounter[ibtp.To]++
-		x.SetObject(AppchainKey(ibtp.From), interchain)
-		x.SetObject(x.indexMapKey(ibtp.ID()), x.GetTxHash())
+		x.setInterchain(ibtp.From, interchain)
+		x.AddObject(x.indexMapKey(ibtp.ID()), x.GetTxHash())
 		m[ibtp.To] = x.GetTxIndex()
 	} else {
 		interchain.ReceiptCounter[ibtp.To] = ibtp.Index
-		x.SetObject(AppchainKey(ibtp.From), interchain)
+		x.setInterchain(ibtp.From, interchain)
 		m[ibtp.From] = x.GetTxIndex()
 
-		ic := &Interchain{}
-		x.GetObject(AppchainKey(ibtp.To), &ic)
+		ic, _ := x.getInterchain(ibtp.To)
 		ic.SourceReceiptCounter[ibtp.From] = ibtp.Index
-		x.SetObject(AppchainKey(ibtp.To), ic)
+		x.setInterchain(ibtp.To, ic)
 	}
 
 	x.PostInterchainEvent(m)
@@ -319,14 +326,13 @@ func (x *InterchainManager) handleUnionIBTP(ibtp *pb.IBTP) *boltvm.Response {
 		return boltvm.Error(err.Error())
 	}
 
-	interchain := &Interchain{
-		ID: ibtp.From,
-	}
-	ok = x.Has(AppchainKey(ibtp.From))
+	interchain, ok := x.getInterchain(AppchainKey(ibtp.From))
 	if !ok {
-		x.SetObject(AppchainKey(ibtp.From), interchain)
+		interchain = &pb.Interchain{
+			ID: ibtp.From,
+		}
+		x.setInterchain(ibtp.From, interchain)
 	}
-	x.GetObject(AppchainKey(ibtp.From), &interchain)
 
 	if err := x.checkUnionIBTP(app, ibtp, interchain); err != nil {
 		return boltvm.Error(err.Error())
@@ -336,7 +342,7 @@ func (x *InterchainManager) handleUnionIBTP(ibtp *pb.IBTP) *boltvm.Response {
 	return boltvm.Success(nil)
 }
 
-func (x *InterchainManager) checkUnionIBTP(app *appchainMgr.Appchain, ibtp *pb.IBTP, interchain *Interchain) error {
+func (x *InterchainManager) checkUnionIBTP(app *appchainMgr.Appchain, ibtp *pb.IBTP, interchain *pb.Interchain) error {
 	if pb.IBTP_INTERCHAIN == ibtp.Type ||
 		pb.IBTP_ASSET_EXCHANGE_INIT == ibtp.Type ||
 		pb.IBTP_ASSET_EXCHANGE_REDEEM == ibtp.Type ||

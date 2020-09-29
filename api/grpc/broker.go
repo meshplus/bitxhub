@@ -30,7 +30,9 @@ func NewChainBrokerService(api api.CoreAPI, config *repo.Config, genesis *repo.G
 	server := grpc.NewServer(
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
 		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
-		grpc.MaxConcurrentStreams(1000))
+		grpc.MaxConcurrentStreams(1000),
+		grpc.InitialWindowSize(10*1024*1024),
+		grpc.InitialConnWindowSize(100*1024*1024))
 	return &ChainBrokerService{
 		logger:  loggers.Logger(loggers.API),
 		config:  config,

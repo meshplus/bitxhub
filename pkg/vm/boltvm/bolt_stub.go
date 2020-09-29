@@ -67,6 +67,10 @@ func (b *BoltStubImpl) Set(key string, value []byte) {
 	b.ctx.Ledger.SetState(b.ctx.Callee, []byte(key), value)
 }
 
+func (b *BoltStubImpl) Add(key string, value []byte) {
+	b.ctx.Ledger.AddState(b.ctx.Callee, []byte(key), value)
+}
+
 func (b *BoltStubImpl) SetObject(key string, value interface{}) {
 	data, err := json.Marshal(value)
 	if err != nil {
@@ -74,6 +78,15 @@ func (b *BoltStubImpl) SetObject(key string, value interface{}) {
 	}
 
 	b.Set(key, data)
+}
+
+func (b *BoltStubImpl) AddObject(key string, value interface{}) {
+	data, err := json.Marshal(value)
+	if err != nil {
+		panic(err)
+	}
+
+	b.Add(key, data)
 }
 
 func (b *BoltStubImpl) Query(prefix string) (bool, [][]byte) {
