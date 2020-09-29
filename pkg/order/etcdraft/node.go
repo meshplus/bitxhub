@@ -454,12 +454,10 @@ func (n *Node) mint(ready *raftproto.Ready) {
 
 	// follower node update the block height
 	expectHeight := n.mempool.GetChainHeight()
-	if !n.IsLeader() {
-		if expectHeight != ready.Height-1 {
-			n.logger.Warningf("Receive batch %d, but not match, expect height: %d", ready.Height, expectHeight+1)
-			return
-		}
-		n.mempool.IncreaseChainHeight()
+	isLeader := n.IsLeader()
+	if !isLeader && expectHeight != ready.Height-1 {
+		n.logger.Warningf("Receive batch %d, but not match, expect height: %d", ready.Height, expectHeight+1)
+		return
 	}
 
 	missingTxsHash, txList := n.mempool.GetBlock(ready)
@@ -492,6 +490,9 @@ func (n *Node) mint(ready *raftproto.Ready) {
 			n.logger.Error("Still missing transaction")
 			return
 		}
+	}
+	if !isLeader {
+		n.mempool.IncreaseChainHeight()
 	}
 	block := &pb.Block{
 		BlockHeader: &pb.BlockHeader{

@@ -384,10 +384,13 @@ func (mpi *mempoolImpl) constructSameBatch(ready *raftproto.Ready) *mempoolBatch
 	}
 	res.missingTxnHashList = missingTxList
 	res.txList = txList
-	// store the batch to cache
-	mpi.txStore.batchedCache[ready.Height] = txList
-	// store the batch to db
-	mpi.batchStore(txList)
+	// persist the correct batch
+	if len(res.missingTxnHashList) == 0 {
+		// store the batch to cache
+		mpi.txStore.batchedCache[ready.Height] = txList
+		// store the batch to db
+		mpi.batchStore(txList)
+	}
 	return res
 }
 
@@ -474,7 +477,8 @@ func (mpi *mempoolImpl) processFetchTxnRequest(fetchTxnRequest *FetchTxnRequest)
 	if txList, err = mpi.loadTxnFromCache(fetchTxnRequest); err != nil {
 		if txList, err = mpi.loadTxnFromStorage(fetchTxnRequest); err != nil {
 			if txList, err = mpi.loadTxnFromLedger(fetchTxnRequest); err != nil {
-				mpi.logger.Error("Process fetch txn request failed.")
+				mpi.logger.Errorf("Process fetch txn request [peer: %s, block height: %d] failed",
+					fetchTxnRequest.ReplicaId, fetchTxnRequest.Height)
 				return err
 			}
 		}
@@ -489,7 +493,7 @@ func (mpi *mempoolImpl) processFetchTxnRequest(fetchTxnRequest *FetchTxnRequest)
 		return err
 	}
 	pbMsg := mpi.msgToConsensusPbMsg(resBytes, raftproto.RaftMessage_GET_TX_ACK)
-	mpi.logger.Debugf("Send fetch transactions response to replica %d", fetchTxnRequest.ReplicaId)
+	mpi.logger.Debugf("Send fetch missing transactions response to replica %d", fetchTxnRequest.ReplicaId)
 	mpi.unicast(fetchTxnRequest.ReplicaId, pbMsg)
 	return nil
 }
