@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/meshplus/bitxhub-kit/types"
@@ -179,6 +180,13 @@ func (o *Account) Query(prefix string) (bool, [][]byte) {
 	for key, val := range cached {
 		stored[key] = val
 	}
+
+	o.dirtyState.Range(func(key, value interface{}) bool {
+		if strings.HasPrefix(key.(string), prefix) {
+			stored[key.(string)] = value.([]byte)
+		}
+		return true
+	})
 
 	for _, val := range stored {
 		ret = append(ret, val)
