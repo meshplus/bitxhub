@@ -13,7 +13,6 @@ import (
 	"github.com/meshplus/bitxhub/internal/constant"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
 	"github.com/stretchr/testify/suite"
-	"github.com/tidwall/gjson"
 )
 
 type Interchain struct {
@@ -244,11 +243,15 @@ func (suite *Interchain) TestInterchain() {
 
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.InterchainContractAddr.Address(), "Interchain")
 	suite.Require().Nil(err)
-	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
-	suite.Require().Equal(id1, gjson.Get(string(ret.Ret), "id").String())
-	suite.Require().Equal("", gjson.Get(string(ret.Ret), "interchain_counter").String())
-	suite.Require().Equal("", gjson.Get(string(ret.Ret), "receipt_counter").String())
-	suite.Require().Equal("", gjson.Get(string(ret.Ret), "source_receipt_counter").String())
+	suite.Require().True(ret.IsSuccess())
+
+	ic := &pb.Interchain{}
+	err = ic.Unmarshal(ret.Ret)
+	suite.Require().Nil(err)
+	suite.Require().Equal(id1, ic.ID)
+	suite.Require().Equal(0, len(ic.InterchainCounter))
+	suite.Require().Equal(0, len(ic.ReceiptCounter))
+	suite.Require().Equal(0, len(ic.SourceReceiptCounter))
 	k1Nonce++
 }
 
