@@ -12,6 +12,7 @@ import (
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/constant"
 	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
+
 	cmap "github.com/orcaman/concurrent-map"
 )
 
@@ -21,14 +22,6 @@ func (mpi *mempoolImpl) getBatchSeqNo() uint64 {
 
 func (mpi *mempoolImpl) increaseBatchSeqNo() {
 	atomic.AddUint64(&mpi.batchSeqNo, 1)
-}
-
-// getTxByTxPointer returns the tx stored in allTxs by given TxPointer.
-func (mpi *mempoolImpl) getTxByTxPointer(txPointer orderedIndexKey) *pb.Transaction {
-	if txnMap, ok := mpi.txStore.allTxs[txPointer.account]; ok {
-		return txnMap.items[txPointer.nonce].tx
-	}
-	return nil
 }
 
 func (mpi *mempoolImpl) msgToConsensusPbMsg(data []byte, tyr raftproto.RaftMessage_Type) *pb.Message {
@@ -69,6 +62,7 @@ func newNonceCache() *nonceCache {
 	}
 }
 
+// TODO (YH): refactor the tx struct
 func hex2Hash(hash string) (types.Hash, error) {
 	var (
 		hubHash   types.Hash
@@ -137,7 +131,7 @@ func getAccount(tx *pb.Transaction) (string, error) {
 	}
 	payload := &pb.InvokePayload{}
 	if err := payload.Unmarshal(tx.Data.Payload); err != nil {
-		return "", fmt.Errorf("unmarshal invoke payload: %s", err.Error())
+		return "", fmt.Errorf("unmarshal invoke payload failed: %s", err.Error())
 	}
 	if payload.Method == IBTPMethod1 || payload.Method == IBTPMethod2 {
 		ibtp := &pb.IBTP{}
