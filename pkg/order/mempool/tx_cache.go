@@ -17,9 +17,10 @@ type TxCache struct {
 	stopTimerC chan bool
 	close      chan bool
 	txSetTick  time.Duration
+	txSetSize uint64
 }
 
-func newTxCache(txSliceTimeout time.Duration, logger logrus.FieldLogger) *TxCache {
+func newTxCache(txSliceTimeout time.Duration, txSetSize uint64, logger logrus.FieldLogger) *TxCache {
 	txCache := &TxCache{}
 	txCache.recvTxC = make(chan *pb.Transaction, DefaultTxCacheSize)
 	txCache.close = make(chan bool)
@@ -32,6 +33,11 @@ func newTxCache(txSliceTimeout time.Duration, logger logrus.FieldLogger) *TxCach
 		txCache.txSetTick = DefaultTxSetTick
 	} else {
 		txCache.txSetTick = txSliceTimeout
+	}
+	if txSetSize == 0 {
+		txCache.txSetSize = DefaultTxSetSize
+	} else {
+		txCache.txSetSize = txSetSize
 	}
 	return txCache
 }
@@ -62,7 +68,7 @@ func (tc *TxCache) appendTx(tx *pb.Transaction) {
 		tc.startTxSetTimer()
 	}
 	tc.txSet = append(tc.txSet, tx)
-	if len(tc.txSet) >= DefaultTxSetSize {
+	if uint64(len(tc.txSet)) >= tc.txSetSize {
 		tc.stopTxSetTimer()
 		tc.postTxSet()
 	}

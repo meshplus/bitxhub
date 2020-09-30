@@ -9,7 +9,7 @@ solo = false
   monitor = 40011
 
 [pprof]
-  enable = false
+  enable = true
 
 [monitor]
   enable = true

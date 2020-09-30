@@ -7,7 +7,7 @@ import (
 	"github.com/meshplus/bitxhub-model/pb"
 )
 
-// batchStore persists batch into DB, which
+// batchStore persists batch into DB, only be called by leader.
 func (mpi *mempoolImpl) batchStore(txList []*pb.Transaction) {
 	batch := mpi.storage.NewBatch()
 	for _, tx := range txList {
@@ -18,7 +18,7 @@ func (mpi *mempoolImpl) batchStore(txList []*pb.Transaction) {
 	batch.Commit()
 }
 
-// batchDelete batch delete txs
+// batchDelete delete txs from DB by given hash list.
 func (mpi *mempoolImpl) batchDelete(hashes []types.Hash) {
 	batch := mpi.storage.NewBatch()
 	for _, hash := range hashes {
@@ -26,12 +26,6 @@ func (mpi *mempoolImpl) batchDelete(hashes []types.Hash) {
 		batch.Delete(txKey)
 	}
 	batch.Commit()
-}
-
-func (mpi *mempoolImpl) store(tx *pb.Transaction) {
-	txKey := compositeKey(tx.TransactionHash.Bytes())
-	txData, _ := tx.Marshal()
-	mpi.storage.Put(txKey, txData)
 }
 
 func (mpi *mempoolImpl) load(hash types.Hash) (*pb.Transaction, bool) {

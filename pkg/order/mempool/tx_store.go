@@ -13,7 +13,7 @@ type transactionStore struct {
 	// track the commit nonce and pending nonce of each account.
 	nonceCache *nonceCache
 	// keeps track of "non-ready" txs (txs that can't be included in next block)
-	// only used to help remove some txs if pool is full.
+	// only used to help removeBySortedNonceKey some txs if pool is full.
 	parkingLotIndex *btreeIndex
 	// keeps track of "ready" txs
 	priorityIndex *btreeIndex
@@ -72,7 +72,7 @@ func (m *txSortedMap) filterReady(demandNonce uint64) ([]*pb.Transaction, []*pb.
 	if m.index.data.Len() == 0 {
 		return nil, nil, demandNonce
 	}
-	demandKey := makeSortedNonceKeyKey(demandNonce)
+	demandKey := makeSortedNonceKey(demandNonce)
 	m.index.data.AscendGreaterOrEqual(demandKey, func(i btree.Item) bool {
 		nonce := i.(*sortedNonceKey).nonce
 		if nonce == demandNonce {
@@ -91,7 +91,7 @@ func (m *txSortedMap) filterReady(demandNonce uint64) ([]*pb.Transaction, []*pb.
 // provided commitNonce.
 func (m *txSortedMap) forward(commitNonce uint64) map[string][]*pb.Transaction {
 	removedTxs := make(map[string][]*pb.Transaction)
-	commitNonceKey := makeSortedNonceKeyKey(commitNonce)
+	commitNonceKey := makeSortedNonceKey(commitNonce)
 	m.index.data.AscendLessThan(commitNonceKey, func(i btree.Item) bool {
 		// delete tx from map.
 		nonce := i.(*sortedNonceKey).nonce

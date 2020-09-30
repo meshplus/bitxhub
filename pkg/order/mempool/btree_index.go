@@ -39,7 +39,7 @@ func makeOrderedIndexKey(account string, tx *pb.Transaction) *orderedIndexKey {
 	}
 }
 
-func makeSortedNonceKeyKey(nonce uint64) *sortedNonceKey {
+func makeSortedNonceKey(nonce uint64) *sortedNonceKey {
 	return &sortedNonceKey{
 		nonce: nonce,
 	}
@@ -55,14 +55,14 @@ func newBtreeIndex() *btreeIndex {
 	}
 }
 
-func (idx *btreeIndex) insert(tx *pb.Transaction) {
-	idx.data.ReplaceOrInsert(makeSortedNonceKeyKey(tx.Nonce))
+func (idx *btreeIndex) insertBySortedNonceKey(tx *pb.Transaction) {
+	idx.data.ReplaceOrInsert(makeSortedNonceKey(tx.Nonce))
 }
 
-func (idx *btreeIndex) remove(txs map[string][]*pb.Transaction) {
+func (idx *btreeIndex) removeBySortedNonceKey(txs map[string][]*pb.Transaction) {
 	for _, list := range txs {
 		for _, tx := range list {
-			idx.data.Delete(makeSortedNonceKeyKey(tx.Nonce))
+			idx.data.Delete(makeSortedNonceKey(tx.Nonce))
 		}
 	}
 }
