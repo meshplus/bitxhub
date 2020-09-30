@@ -115,7 +115,9 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, error) {
 		}
 		validateAddr = rl.Address
 	} else {
-		return false, fmt.Errorf("appchain didn't register rule")
+		if app.ChainType != "fabric" {
+			return false, fmt.Errorf("appchain didn't register rule")
+		}
 	}
 
 	ok, err = pl.ve.Validate(validateAddr, ibtp.From, proof, ibtp.Payload, app.Validators)
