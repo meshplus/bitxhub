@@ -51,6 +51,9 @@ type StateAccessor interface {
 	// SetState
 	SetState(types.Address, []byte, []byte)
 
+	// AddState
+	AddState(types.Address, []byte, []byte)
+
 	// SetCode
 	SetCode(types.Address, []byte)
 
@@ -67,10 +70,10 @@ type StateAccessor interface {
 	QueryByPrefix(address types.Address, prefix string) (bool, [][]byte)
 
 	// Commit commits the state data
-	Commit(height uint64, accounts map[string]*Account, blockJournal *BlockJournal) error
+	Commit(height uint64, accounts map[types.Address]*Account, blockJournal *BlockJournal) error
 
 	// FlushDirtyDataAndComputeJournal flushes the dirty data and computes block journal
-	FlushDirtyDataAndComputeJournal() (map[string]*Account, *BlockJournal)
+	FlushDirtyDataAndComputeJournal() (map[types.Address]*Account, *BlockJournal)
 
 	// Version
 	Version() uint64
@@ -113,4 +116,7 @@ type BlockchainLedger interface {
 
 	// UpdateChainMeta update the chain meta data
 	UpdateChainMeta(*pb.ChainMeta)
+
+	// GetTxCountInBlock get the transaction count in a block
+	GetTransactionCount(height uint64) (uint64, error)
 }

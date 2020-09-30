@@ -3,6 +3,7 @@ package ledger
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
@@ -20,17 +21,101 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestLedger_Commit(t *testing.T) {
-	repoRoot, err := ioutil.TempDir("", "ledger_commit")
-	assert.Nil(t, err)
+func TestNew001(t *testing.T) {
+	repoRoot, err := ioutil.TempDir("", "TestChainLedger")
+	require.Nil(t, err)
+
 	blockStorage, err := leveldb.New(filepath.Join(repoRoot, "storage"))
 	assert.Nil(t, err)
 	ldb, err := leveldb.New(filepath.Join(repoRoot, "ledger"))
 	assert.Nil(t, err)
 
-	accountCache := NewAccountCache()
-	ledger, err := New(createMockRepo(t), blockStorage, ldb, accountCache, log.NewWithModule("executor"))
+	ledger, err := New(createMockRepo(t), blockStorage, ldb, nil, log.NewWithModule("executor"))
+	require.Nil(t, err)
+	require.NotNil(t, ledger)
+}
+
+func TestNew002(t *testing.T) {
+	repoRoot, err := ioutil.TempDir("", "TestChainLedger")
+	require.Nil(t, err)
+
+	blockStorage, err := leveldb.New(filepath.Join(repoRoot, "storage"))
 	assert.Nil(t, err)
+	ldb, err := leveldb.New(filepath.Join(repoRoot, "ledger"))
+	assert.Nil(t, err)
+
+	blockStorage.Put([]byte(chainMetaKey), []byte{1})
+
+	accountCache, err := NewAccountCache()
+	assert.Nil(t, err)
+	ledger, err := New(createMockRepo(t), blockStorage, ldb, accountCache, log.NewWithModule("executor"))
+	require.NotNil(t, err)
+	require.Nil(t, ledger)
+}
+
+func TestNew003(t *testing.T) {
+	repoRoot, err := ioutil.TempDir("", "TestChainLedger")
+	require.Nil(t, err)
+
+	blockStorage, err := leveldb.New(filepath.Join(repoRoot, "storage"))
+	assert.Nil(t, err)
+	ldb, err := leveldb.New(filepath.Join(repoRoot, "ledger"))
+	assert.Nil(t, err)
+
+	ldb.Put(compositeKey(journalKey, maxHeightStr), marshalHeight(1))
+
+	ledger, err := New(createMockRepo(t), blockStorage, ldb, nil, log.NewWithModule("executor"))
+	require.NotNil(t, err)
+	require.Nil(t, ledger)
+}
+
+func TestNew004(t *testing.T) {
+	repoRoot, err := ioutil.TempDir("", "TestChainLedger")
+	require.Nil(t, err)
+
+	blockStorage, err := leveldb.New(filepath.Join(repoRoot, "storage"))
+	assert.Nil(t, err)
+	ldb, err := leveldb.New(filepath.Join(repoRoot, "ledger"))
+	assert.Nil(t, err)
+
+	ldb.Put(compositeKey(journalKey, maxHeightStr), marshalHeight(1))
+
+	journal := &BlockJournal{}
+	data, err := json.Marshal(journal)
+	assert.Nil(t, err)
+
+	ldb.Put(compositeKey(journalKey, 1), data)
+
+	ledger, err := New(createMockRepo(t), blockStorage, ldb, nil, log.NewWithModule("executor"))
+	require.Nil(t, err)
+	require.NotNil(t, ledger)
+}
+
+func TestNew005(t *testing.T) {
+	repoRoot, err := ioutil.TempDir("", "TestChainLedger")
+	require.Nil(t, err)
+
+	blockStorage, err := leveldb.New(filepath.Join(repoRoot, "storage"))
+	assert.Nil(t, err)
+	ldb, err := leveldb.New(filepath.Join(repoRoot, "ledger"))
+	assert.Nil(t, err)
+
+	ldb.Put(compositeKey(journalKey, maxHeightStr), marshalHeight(5))
+	ldb.Put(compositeKey(journalKey, minHeightStr), marshalHeight(3))
+
+	journal := &BlockJournal{}
+	data, err := json.Marshal(journal)
+	assert.Nil(t, err)
+
+	ldb.Put(compositeKey(journalKey, 5), data)
+
+	ledger, err := New(createMockRepo(t), blockStorage, ldb, nil, log.NewWithModule("executor"))
+	require.NotNil(t, err)
+	require.Nil(t, ledger)
+}
+
+func TestChainLedger_PersistBlockData(t *testing.T) {
+	ledger, _ := initLedger(t, "")
 
 	// create an account
 	account := types.Bytes2Address(bytesutil.LeftPadBytes([]byte{100}, 20))
@@ -38,24 +123,38 @@ func TestLedger_Commit(t *testing.T) {
 	ledger.SetState(account, []byte("a"), []byte("b"))
 	accounts, journal := ledger.FlushDirtyDataAndComputeJournal()
 	ledger.PersistBlockData(genBlockData(1, accounts, journal))
+}
+
+func TestChainLedger_Commit(t *testing.T) {
+	ledger, repoRoot := initLedger(t, "")
+
+	// create an account
+	account := types.Bytes2Address(bytesutil.LeftPadBytes([]byte{100}, 20))
+
+	ledger.SetState(account, []byte("a"), []byte("b"))
+	accounts, journal := ledger.FlushDirtyDataAndComputeJournal()
+	err := ledger.Commit(1, accounts, journal)
+	assert.Nil(t, err)
 	assert.Equal(t, uint64(1), ledger.Version())
 	assert.Equal(t, "0xA1a6d35708Fa6Cf804B6cF9479F3a55d9A87FbFB83c55a64685AeaBdBa6116B1", journal.ChangedHash.Hex())
 
 	accounts, journal = ledger.FlushDirtyDataAndComputeJournal()
-	ledger.PersistBlockData(genBlockData(2, accounts, journal))
+	err = ledger.Commit(2, accounts, journal)
+	assert.Nil(t, err)
 	assert.Equal(t, uint64(2), ledger.Version())
 	assert.Equal(t, "0xF09F0198C06D549316D4ee7C497C9eaeF9D24f5b1075e7bCEF3D0a82DfA742cF", journal.ChangedHash.Hex())
 
 	ledger.SetState(account, []byte("a"), []byte("3"))
 	ledger.SetState(account, []byte("a"), []byte("2"))
 	accounts, journal = ledger.FlushDirtyDataAndComputeJournal()
-	ledger.PersistBlockData(genBlockData(3, accounts, journal))
+	err = ledger.Commit(3, accounts, journal)
+	assert.Nil(t, err)
 	assert.Equal(t, uint64(3), ledger.Version())
 	assert.Equal(t, "0xe9FC370DD36C9BD5f67cCfbc031C909F53A3d8bC7084C01362c55f2D42bA841c", journal.ChangedHash.Hex())
 
 	ledger.SetBalance(account, 100)
 	accounts, journal = ledger.FlushDirtyDataAndComputeJournal()
-	ledger.PersistBlockData(genBlockData(4, accounts, journal))
+	err = ledger.Commit(4, accounts, journal)
 	assert.Nil(t, err)
 	assert.Equal(t, uint64(4), ledger.Version())
 	assert.Equal(t, "0xC179056204BA33eD6CFC0bfE94ca03319BEb522fd7B0773A589899817B49ec08", journal.ChangedHash.Hex())
@@ -65,13 +164,13 @@ func TestLedger_Commit(t *testing.T) {
 	ledger.SetState(account, []byte("b"), []byte("3"))
 	ledger.SetState(account, []byte("c"), []byte("2"))
 	accounts, journal = ledger.FlushDirtyDataAndComputeJournal()
-	ledger.PersistBlockData(genBlockData(5, accounts, journal))
+	err = ledger.Commit(5, accounts, journal)
+	assert.Nil(t, err)
 	assert.Equal(t, uint64(5), ledger.Version())
 	assert.Equal(t, uint64(5), ledger.maxJnlHeight)
 
 	minHeight, maxHeight := getJournalRange(ledger.ldb)
 	journal5 := getBlockJournal(maxHeight, ledger.ldb)
-	assert.Nil(t, err)
 	assert.Equal(t, uint64(1), minHeight)
 	assert.Equal(t, uint64(5), maxHeight)
 	assert.Equal(t, journal.ChangedHash, journal5.ChangedHash)
@@ -90,45 +189,29 @@ func TestLedger_Commit(t *testing.T) {
 
 	ledger.Close()
 
-	// load ChainLedger from db
-	ldb, err = leveldb.New(filepath.Join(repoRoot, "ledger"))
-	assert.Nil(t, err)
+	// load ChainLedger from db, rollback to height 0 since no chain meta stored
+	ldg, repoRoot := initLedger(t, repoRoot)
+	assert.Equal(t, uint64(0), ldg.maxJnlHeight)
+	assert.Equal(t, types.Hash{}, ldg.prevJnlHash)
 
-	ldg, err := New(createMockRepo(t), blockStorage, ldb, accountCache, log.NewWithModule("executor"))
-	assert.Nil(t, err)
-	assert.Equal(t, uint64(5), ldg.maxJnlHeight)
-	assert.Equal(t, journal.ChangedHash, ldg.prevJnlHash)
+	ok, _ := ldg.GetState(account, []byte("a"))
+	assert.False(t, ok)
 
-	ok, value := ldg.GetState(account, []byte("a"))
-	assert.True(t, ok)
-	assert.Equal(t, []byte("2"), value)
+	ok, _ = ldg.GetState(account, []byte("b"))
+	assert.False(t, ok)
 
-	ok, value = ldg.GetState(account, []byte("b"))
-	assert.True(t, ok)
-	assert.Equal(t, []byte("3"), value)
+	ok, _ = ldg.GetState(account, []byte("c"))
+	assert.False(t, ok)
 
-	ok, value = ldg.GetState(account, []byte("c"))
-	assert.True(t, ok)
-	assert.Equal(t, []byte("2"), value)
-
-	assert.Equal(t, uint64(100), ldg.GetBalance(account))
-	assert.Equal(t, code, ldg.GetCode(account))
+	assert.Equal(t, uint64(0), ldg.GetBalance(account))
+	assert.Equal(t, []byte(nil), ldg.GetCode(account))
 
 	ver := ldg.Version()
-	assert.Equal(t, uint64(5), ver)
+	assert.Equal(t, uint64(0), ver)
 }
 
 func TestChainLedger_Rollback(t *testing.T) {
-	repoRoot, err := ioutil.TempDir("", "ledger_rollback")
-	assert.Nil(t, err)
-	blockStorage, err := leveldb.New(filepath.Join(repoRoot, "storage"))
-	assert.Nil(t, err)
-	ldb, err := leveldb.New(filepath.Join(repoRoot, "ledger"))
-	assert.Nil(t, err)
-
-	accountCache := NewAccountCache()
-	ledger, err := New(createMockRepo(t), blockStorage, ldb, accountCache, log.NewWithModule("executor"))
-	assert.Nil(t, err)
+	ledger, repoRoot := initLedger(t, "")
 
 	// create an addr0
 	addr0 := types.Bytes2Address(bytesutil.LeftPadBytes([]byte{100}, 20))
@@ -226,11 +309,7 @@ func TestChainLedger_Rollback(t *testing.T) {
 
 	ledger.Close()
 
-	ldb, err = leveldb.New(filepath.Join(repoRoot, "ledger"))
-	assert.Nil(t, err)
-
-	ledger, err = New(createMockRepo(t), blockStorage, ldb, NewAccountCache(), log.NewWithModule("executor"))
-	assert.Nil(t, err)
+	ledger, _ = initLedger(t, repoRoot)
 	assert.Equal(t, uint64(2), ledger.minJnlHeight)
 	assert.Equal(t, uint64(2), ledger.maxJnlHeight)
 
@@ -239,16 +318,7 @@ func TestChainLedger_Rollback(t *testing.T) {
 }
 
 func TestChainLedger_RemoveJournalsBeforeBlock(t *testing.T) {
-	repoRoot, err := ioutil.TempDir("", "ledger_removeJournal")
-	assert.Nil(t, err)
-	blockStorage, err := leveldb.New(filepath.Join(repoRoot, "storage"))
-	assert.Nil(t, err)
-	ldb, err := leveldb.New(filepath.Join(repoRoot, "ledger"))
-	assert.Nil(t, err)
-
-	accountCache := NewAccountCache()
-	ledger, err := New(createMockRepo(t), blockStorage, ldb, accountCache, log.NewWithModule("executor"))
-	assert.Nil(t, err)
+	ledger, repoRoot := initLedger(t, "")
 
 	assert.Equal(t, uint64(0), ledger.minJnlHeight)
 	assert.Equal(t, uint64(0), ledger.maxJnlHeight)
@@ -271,7 +341,7 @@ func TestChainLedger_RemoveJournalsBeforeBlock(t *testing.T) {
 	assert.Equal(t, uint64(4), maxHeight)
 	assert.Equal(t, journal4.ChangedHash, journal.ChangedHash)
 
-	err = ledger.RemoveJournalsBeforeBlock(5)
+	err := ledger.RemoveJournalsBeforeBlock(5)
 	assert.Equal(t, ErrorRemoveJournalOutOfRange, err)
 
 	err = ledger.RemoveJournalsBeforeBlock(2)
@@ -311,25 +381,15 @@ func TestChainLedger_RemoveJournalsBeforeBlock(t *testing.T) {
 	assert.Equal(t, journal4.ChangedHash, journal.ChangedHash)
 
 	ledger.Close()
-	ldb, err = leveldb.New(filepath.Join(repoRoot, "ledger"))
-	ledger, err = New(createMockRepo(t), blockStorage, ldb, accountCache, log.NewWithModule("executor"))
-	assert.Nil(t, err)
+
+	ledger, repoRoot = initLedger(t, repoRoot)
 	assert.Equal(t, uint64(4), ledger.minJnlHeight)
 	assert.Equal(t, uint64(4), ledger.maxJnlHeight)
 	assert.Equal(t, journal4.ChangedHash, ledger.prevJnlHash)
 }
 
 func TestChainLedger_QueryByPrefix(t *testing.T) {
-	repoRoot, err := ioutil.TempDir("", "ledger_queryByPrefix")
-	assert.Nil(t, err)
-	blockStorage, err := leveldb.New(filepath.Join(repoRoot, "storage"))
-	assert.Nil(t, err)
-	ldb, err := leveldb.New(filepath.Join(repoRoot, "ledger"))
-	assert.Nil(t, err)
-
-	accountCache := NewAccountCache()
-	ledger, err := New(createMockRepo(t), blockStorage, ldb, accountCache, log.NewWithModule("executor"))
-	assert.Nil(t, err)
+	ledger, _ := initLedger(t, "")
 
 	addr := types.Bytes2Address(bytesutil.LeftPadBytes([]byte{1}, 20))
 	key0 := []byte{100, 100}
@@ -351,7 +411,7 @@ func TestChainLedger_QueryByPrefix(t *testing.T) {
 	assert.Equal(t, []byte("1"), vals[1])
 	assert.Equal(t, []byte("2"), vals[2])
 
-	err = ledger.Commit(1, accounts, journal)
+	err := ledger.Commit(1, accounts, journal)
 	assert.Nil(t, err)
 
 	ok, vals = ledger.QueryByPrefix(addr, string([]byte{100}))
@@ -364,16 +424,7 @@ func TestChainLedger_QueryByPrefix(t *testing.T) {
 }
 
 func TestChainLedger_GetAccount(t *testing.T) {
-	repoRoot, err := ioutil.TempDir("", "ledger_getAccount")
-	assert.Nil(t, err)
-	blockStorage, err := leveldb.New(filepath.Join(repoRoot, "storage"))
-	assert.Nil(t, err)
-	ldb, err := leveldb.New(filepath.Join(repoRoot, "ledger"))
-	assert.Nil(t, err)
-
-	accountCache := NewAccountCache()
-	ledger, err := New(createMockRepo(t), blockStorage, ldb, accountCache, log.NewWithModule("executor"))
-	assert.Nil(t, err)
+	ledger, _ := initLedger(t, "")
 
 	addr := types.Bytes2Address(bytesutil.LeftPadBytes([]byte{1}, 20))
 	code := bytesutil.LeftPadBytes([]byte{1}, 120)
@@ -389,7 +440,7 @@ func TestChainLedger_GetAccount(t *testing.T) {
 	account.SetState(key1, key0)
 
 	accounts, journal := ledger.FlushDirtyDataAndComputeJournal()
-	err = ledger.Commit(1, accounts, journal)
+	err := ledger.Commit(1, accounts, journal)
 	assert.Nil(t, err)
 
 	account1 := ledger.GetAccount(addr)
@@ -431,16 +482,7 @@ func TestChainLedger_GetAccount(t *testing.T) {
 }
 
 func TestChainLedger_GetCode(t *testing.T) {
-	repoRoot, err := ioutil.TempDir("", "ledger_getCode")
-	assert.Nil(t, err)
-	blockStorage, err := leveldb.New(filepath.Join(repoRoot, "storage"))
-	assert.Nil(t, err)
-	ldb, err := leveldb.New(filepath.Join(repoRoot, "ledger"))
-	assert.Nil(t, err)
-
-	accountCache := NewAccountCache()
-	ledger, err := New(createMockRepo(t), blockStorage, ldb, accountCache, log.NewWithModule("executor"))
-	assert.Nil(t, err)
+	ledger, _ := initLedger(t, "")
 
 	addr := types.Bytes2Address(bytesutil.LeftPadBytes([]byte{1}, 20))
 	code := bytesutil.LeftPadBytes([]byte{10}, 120)
@@ -451,7 +493,7 @@ func TestChainLedger_GetCode(t *testing.T) {
 	ledger.SetCode(addr, code)
 
 	accounts, journal := ledger.FlushDirtyDataAndComputeJournal()
-	err = ledger.Commit(1, accounts, journal)
+	err := ledger.Commit(1, accounts, journal)
 	assert.Nil(t, err)
 
 	vals := ledger.GetCode(addr)
@@ -469,16 +511,7 @@ func TestChainLedger_GetCode(t *testing.T) {
 }
 
 func TestChainLedger_AddAccountsToCache(t *testing.T) {
-	repoRoot, err := ioutil.TempDir("", "ledger_addAccountToCache")
-	assert.Nil(t, err)
-	blockStorage, err := leveldb.New(filepath.Join(repoRoot, "storage"))
-	assert.Nil(t, err)
-	ldb, err := leveldb.New(filepath.Join(repoRoot, "ledger"))
-	assert.Nil(t, err)
-
-	accountCache := NewAccountCache()
-	ledger, err := New(createMockRepo(t), blockStorage, ldb, accountCache, log.NewWithModule("executor"))
-	assert.Nil(t, err)
+	ledger, _ := initLedger(t, "")
 
 	addr := types.Bytes2Address(bytesutil.LeftPadBytes([]byte{1}, 20))
 	key := []byte{1}
@@ -493,17 +526,17 @@ func TestChainLedger_AddAccountsToCache(t *testing.T) {
 	accounts, journal := ledger.FlushDirtyDataAndComputeJournal()
 	ledger.Clear()
 
-	innerAccount, ok := ledger.accountCache.getInnerAccount(addr.Hex())
+	innerAccount, ok := ledger.accountCache.getInnerAccount(addr)
 	assert.True(t, ok)
 	assert.Equal(t, uint64(100), innerAccount.Balance)
 	assert.Equal(t, uint64(1), innerAccount.Nonce)
 	assert.Equal(t, types.Hash(sha256.Sum256(code)).Bytes(), innerAccount.CodeHash)
 
-	val1, ok := ledger.accountCache.getState(addr.Hex(), string(key))
+	val1, ok := ledger.accountCache.getState(addr, string(key))
 	assert.True(t, ok)
 	assert.Equal(t, val, val1)
 
-	code1, ok := ledger.accountCache.getCode(addr.Hex())
+	code1, ok := ledger.accountCache.getCode(addr)
 	assert.True(t, ok)
 	assert.Equal(t, code, code1)
 
@@ -515,7 +548,7 @@ func TestChainLedger_AddAccountsToCache(t *testing.T) {
 	assert.Equal(t, val, val1)
 	assert.Equal(t, code, ledger.GetCode(addr))
 
-	err = ledger.Commit(1, accounts, journal)
+	err := ledger.Commit(1, accounts, journal)
 	assert.Nil(t, err)
 
 	assert.Equal(t, uint64(100), ledger.GetBalance(addr))
@@ -526,27 +559,18 @@ func TestChainLedger_AddAccountsToCache(t *testing.T) {
 	assert.Equal(t, val, val1)
 	assert.Equal(t, code, ledger.GetCode(addr))
 
-	_, ok = ledger.accountCache.getInnerAccount(addr.Hex())
-	assert.False(t, ok)
+	_, ok = ledger.accountCache.getInnerAccount(addr)
+	assert.True(t, ok)
 
-	_, ok = ledger.accountCache.getState(addr.Hex(), string(key))
-	assert.False(t, ok)
+	_, ok = ledger.accountCache.getState(addr, string(key))
+	assert.True(t, ok)
 
-	_, ok = ledger.accountCache.getCode(addr.Hex())
-	assert.False(t, ok)
+	_, ok = ledger.accountCache.getCode(addr)
+	assert.True(t, ok)
 }
 
 func TestChainLedger_GetInterchainMeta(t *testing.T) {
-	repoRoot, err := ioutil.TempDir("", "ledger_GetInterchainMeta")
-	require.Nil(t, err)
-	blockStorage, err := leveldb.New(filepath.Join(repoRoot, "storage"))
-	assert.Nil(t, err)
-	ldb, err := leveldb.New(filepath.Join(repoRoot, "ledger"))
-	assert.Nil(t, err)
-
-	accountCache := NewAccountCache()
-	ledger, err := New(createMockRepo(t), blockStorage, ldb, accountCache, log.NewWithModule("executor"))
-	require.Nil(t, err)
+	ledger, _ := initLedger(t, "")
 
 	// create an account
 	account := types.Bytes2Address(bytesutil.LeftPadBytes([]byte{100}, 20))
@@ -582,7 +606,76 @@ func TestChainLedger_GetInterchainMeta(t *testing.T) {
 	require.Equal(t, len(meta.L2Roots), len(meta2.Counter))
 }
 
-func genBlockData(height uint64, accounts map[string]*Account, journal *BlockJournal) *BlockData {
+func TestChainLedger_AddState(t *testing.T) {
+	ledger, _ := initLedger(t, "")
+
+	account := types.Bytes2Address(bytesutil.LeftPadBytes([]byte{100}, 20))
+	key0 := "100"
+	value0 := []byte{100}
+	ledger.AddState(account, []byte(key0), value0)
+	accounts, journal := ledger.FlushDirtyDataAndComputeJournal()
+
+	ledger.PersistBlockData(genBlockData(1, accounts, journal))
+	require.Equal(t, uint64(1), ledger.Version())
+
+	ok, val := ledger.GetState(account, []byte(key0))
+	assert.True(t, ok)
+	assert.Equal(t, value0, val)
+
+	key1 := "101"
+	value0 = []byte{99}
+	value1 := []byte{101}
+	ledger.SetState(account, []byte(key0), value0)
+	ledger.AddState(account, []byte(key1), value1)
+	accounts, journal = ledger.FlushDirtyDataAndComputeJournal()
+
+	ledger.PersistBlockData(genBlockData(2, accounts, journal))
+	require.Equal(t, uint64(2), ledger.Version())
+
+	ok, val = ledger.GetState(account, []byte(key0))
+	assert.True(t, ok)
+	assert.Equal(t, value0, val)
+
+	ok, val = ledger.GetState(account, []byte(key1))
+	assert.True(t, ok)
+	assert.Equal(t, value1, val)
+}
+
+func TestChainLedger_AddEvent(t *testing.T) {
+	ledger, _ := initLedger(t, "")
+
+	hash0 := types.Hash{1}
+	hash1 := types.Hash{2}
+	event00 := &pb.Event{
+		TxHash:     hash0,
+		Data:       nil,
+		Interchain: false,
+	}
+	event01 := &pb.Event{
+		TxHash:     hash0,
+		Data:       []byte{1},
+		Interchain: true,
+	}
+	event10 := &pb.Event{
+		TxHash:     hash1,
+		Data:       []byte{1},
+		Interchain: true,
+	}
+
+	ledger.AddEvent(event00)
+	ledger.AddEvent(event01)
+	ledger.AddEvent(event10)
+
+	events := ledger.Events(hash0.Hex())
+	assert.Equal(t, 2, len(events))
+	assert.Equal(t, event00, events[0])
+	assert.Equal(t, event01, events[1])
+
+	events = ledger.Events("123")
+	assert.Equal(t, 0, len(events))
+}
+
+func genBlockData(height uint64, accounts map[types.Address]*Account, journal *BlockJournal) *BlockData {
 	return &BlockData{
 		Block: &pb.Block{
 			BlockHeader: &pb.BlockHeader{
@@ -615,4 +708,24 @@ BcNwjTDCxyxLNjFKQfMAc6sY6iJs+Ma59WZyC/4uhjE=
 			Address: address.Hex(),
 		},
 	}
+}
+
+func initLedger(t *testing.T, repoRoot string) (*ChainLedger, string) {
+	if repoRoot == "" {
+		root, err := ioutil.TempDir("", "TestChainLedger")
+		require.Nil(t, err)
+		repoRoot = root
+	}
+
+	blockStorage, err := leveldb.New(filepath.Join(repoRoot, "storage"))
+	assert.Nil(t, err)
+	ldb, err := leveldb.New(filepath.Join(repoRoot, "ledger"))
+	assert.Nil(t, err)
+
+	accountCache, err := NewAccountCache()
+	assert.Nil(t, err)
+	ledger, err := New(createMockRepo(t), blockStorage, ldb, accountCache, log.NewWithModule("executor"))
+	require.Nil(t, err)
+
+	return ledger, repoRoot
 }

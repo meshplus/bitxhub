@@ -14,9 +14,8 @@ var _ Ledger = (*ChainLedger)(nil)
 
 // GetOrCreateAccount get the account, if not exist, create a new account
 func (l *ChainLedger) GetOrCreateAccount(addr types.Address) *Account {
-	h := addr.Hex()
 	l.lock.RLock()
-	value, ok := l.accounts[h]
+	value, ok := l.accounts[addr]
 	l.lock.RUnlock()
 	if ok {
 		return value
@@ -24,25 +23,25 @@ func (l *ChainLedger) GetOrCreateAccount(addr types.Address) *Account {
 
 	l.lock.Lock()
 	defer l.lock.Unlock()
-	if value, ok := l.accounts[h]; ok {
+	if value, ok := l.accounts[addr]; ok {
 		return value
 	}
 	account := l.GetAccount(addr)
-	l.accounts[h] = account
+	l.accounts[addr] = account
 
 	return account
 }
 
 // GetAccount get account info using account Address, if not found, create a new account
-func (l *ChainLedger) GetAccount(addr types.Address) *Account {
-	account := newAccount(l.ldb, l.accountCache, addr)
+func (l *ChainLedger) GetAccount(address types.Address) *Account {
+	account := newAccount(l.ldb, l.accountCache, address)
 
-	if innerAccount, ok := l.accountCache.getInnerAccount(addr.Hex()); ok {
+	if innerAccount, ok := l.accountCache.getInnerAccount(address); ok {
 		account.originAccount = innerAccount
 		return account
 	}
 
-	if data := l.ldb.Get(compositeKey(accountKey, addr.Hex())); data != nil {
+	if data := l.ldb.Get(compositeKey(accountKey, address)); data != nil {
 		account.originAccount = &innerAccount{}
 		if err := account.originAccount.Unmarshal(data); err != nil {
 			panic(err)
@@ -74,6 +73,12 @@ func (l *ChainLedger) GetState(addr types.Address, key []byte) (bool, []byte) {
 func (l *ChainLedger) SetState(addr types.Address, key []byte, v []byte) {
 	account := l.GetOrCreateAccount(addr)
 	account.SetState(key, v)
+}
+
+// AddState add account state value using account Address and key
+func (l *ChainLedger) AddState(addr types.Address, key []byte, v []byte) {
+	account := l.GetOrCreateAccount(addr)
+	account.AddState(key, v)
 }
 
 // SetCode set contract code
@@ -108,16 +113,16 @@ func (l *ChainLedger) QueryByPrefix(addr types.Address, prefix string) (bool, []
 
 func (l *ChainLedger) Clear() {
 	l.events = sync.Map{}
-	l.accounts = make(map[string]*Account)
+	l.accounts = make(map[types.Address]*Account)
 }
 
 // FlushDirtyDataAndComputeJournal gets dirty accounts and computes block journal
-func (l *ChainLedger) FlushDirtyDataAndComputeJournal() (map[string]*Account, *BlockJournal) {
-	dirtyAccounts := make(map[string]*Account)
+func (l *ChainLedger) FlushDirtyDataAndComputeJournal() (map[types.Address]*Account, *BlockJournal) {
+	dirtyAccounts := make(map[types.Address]*Account)
 	var dirtyAccountData []byte
 	var journals []*journal
-	var sortedAddr []string
-	accountData := make(map[string][]byte)
+	var sortedAddr []types.Address
+	accountData := make(map[types.Address][]byte)
 
 	for addr, account := range l.accounts {
 		journal := account.getJournalIfModified()
@@ -129,7 +134,9 @@ func (l *ChainLedger) FlushDirtyDataAndComputeJournal() (map[string]*Account, *B
 		}
 	}
 
-	sort.Strings(sortedAddr)
+	sort.Slice(sortedAddr, func(i, j int) bool {
+		return bytes.Compare(sortedAddr[i].Bytes(), sortedAddr[j].Bytes()) < 0
+	})
 	for _, addr := range sortedAddr {
 		dirtyAccountData = append(dirtyAccountData, accountData[addr]...)
 	}
@@ -149,7 +156,7 @@ func (l *ChainLedger) FlushDirtyDataAndComputeJournal() (map[string]*Account, *B
 }
 
 // Commit commit the state
-func (l *ChainLedger) Commit(height uint64, accounts map[string]*Account, blockJournal *BlockJournal) error {
+func (l *ChainLedger) Commit(height uint64, accounts map[types.Address]*Account, blockJournal *BlockJournal) error {
 	ldbBatch := l.ldb.NewBatch()
 
 	for _, account := range accounts {
@@ -158,14 +165,14 @@ func (l *ChainLedger) Commit(height uint64, accounts map[string]*Account, blockJ
 			if err != nil {
 				panic(err)
 			}
-			ldbBatch.Put(compositeKey(accountKey, account.Addr.Hex()), data)
+			ldbBatch.Put(compositeKey(accountKey, account.Addr), data)
 		}
 
 		if !bytes.Equal(account.originCode, account.dirtyCode) {
 			if account.dirtyCode != nil {
-				ldbBatch.Put(compositeKey(codeKey, account.Addr.Hex()), account.dirtyCode)
+				ldbBatch.Put(compositeKey(codeKey, account.Addr), account.dirtyCode)
 			} else {
-				ldbBatch.Delete(compositeKey(codeKey, account.Addr.Hex()))
+				ldbBatch.Delete(compositeKey(codeKey, account.Addr))
 			}
 		}
 

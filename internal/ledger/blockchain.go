@@ -97,6 +97,19 @@ func (l *ChainLedger) GetTransaction(hash types.Hash) (*pb.Transaction, error) {
 	return tx, nil
 }
 
+func (l *ChainLedger) GetTransactionCount(height uint64) (uint64, error) {
+	txHashesData := l.blockchainStore.Get(compositeKey(blockTxSetKey, height))
+	if txHashesData == nil {
+		return 0, fmt.Errorf("cannot get tx hashes of block")
+	}
+	txHashes := make([]types.Hash, 0)
+	if err := json.Unmarshal(txHashesData, &txHashes); err != nil {
+		return 0, err
+	}
+
+	return uint64(len(txHashes)), nil
+}
+
 // GetTransactionMeta get the transaction meta data
 func (l *ChainLedger) GetTransactionMeta(hash types.Hash) (*pb.TransactionMeta, error) {
 	data := l.blockchainStore.Get(compositeKey(transactionMetaKey, hash.Hex()))

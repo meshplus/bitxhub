@@ -30,6 +30,8 @@ type Stub interface {
 	Set(key string, value []byte)
 	// SetObject sets k with object v, v will be marshaled using json
 	SetObject(key string, value interface{})
+	// AddObject adds k with object v, v will be marshaled using json
+	AddObject(key string, value interface{})
 	// Delete deletes k-v
 	Delete(key string)
 	// QueryByPrefix queries object by prefix

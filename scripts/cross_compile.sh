@@ -27,15 +27,7 @@ linux-amd64)
       -v ~/.gitconfig:/root/.gitconfig \
       -v $GOPATH/pkg/mod:$GOPATH/pkg/mod \
       golang:1.13 \
-      /bin/bash -c "go env -w GO111MODULE=on &&
-        go env -w GOPROXY=https://goproxy.cn,direct &&
-        go get -u github.com/gobuffalo/packr/packr &&
-        cd /code/bitxhub &&
-        make install &&
-        cd internal/plugins &&
-        make plugins &&
-        mkdir -p /code/bitxhub/bin &&
-        cp /go/bin/bitxhub /code/bitxhub/bin/bitxhub_linux-amd64"
+      /bin/bash /code/bitxhub/scripts/compile.sh
   fi
   ;;
 *)

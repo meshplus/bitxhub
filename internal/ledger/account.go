@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/meshplus/bitxhub-kit/types"
@@ -51,7 +52,7 @@ func (o *Account) GetState(key []byte) (bool, []byte) {
 		return value != nil, value
 	}
 
-	val, ok := o.cache.getState(o.Addr.Hex(), string(key))
+	val, ok := o.cache.getState(o.Addr, string(key))
 	if !ok {
 		val = o.ldb.Get(composeStateKey(o.Addr, key))
 	}
@@ -64,6 +65,11 @@ func (o *Account) GetState(key []byte) (bool, []byte) {
 // SetState Set account state
 func (o *Account) SetState(key []byte, value []byte) {
 	o.GetState(key)
+	o.dirtyState.Store(string(key), value)
+}
+
+// AddState Add account state
+func (o *Account) AddState(key []byte, value []byte) {
 	o.dirtyState.Store(string(key), value)
 }
 
@@ -94,9 +100,9 @@ func (o *Account) Code() []byte {
 		return nil
 	}
 
-	code, ok := o.cache.getCode(o.Addr.Hex())
+	code, ok := o.cache.getCode(o.Addr)
 	if !ok {
-		code = o.ldb.Get(compositeKey(codeKey, o.Addr.Hex()))
+		code = o.ldb.Get(compositeKey(codeKey, o.Addr))
 	}
 
 	o.originCode = code
@@ -158,7 +164,7 @@ func (o *Account) Query(prefix string) (bool, [][]byte) {
 	var ret [][]byte
 	stored := make(map[string][]byte)
 
-	cached := o.cache.query(o.Addr.Hex(), prefix)
+	cached := o.cache.query(o.Addr, prefix)
 
 	begin, end := bytesPrefix(append(o.Addr.Bytes(), prefix...))
 	it := o.ldb.Iterator(begin, end)
@@ -174,6 +180,13 @@ func (o *Account) Query(prefix string) (bool, [][]byte) {
 	for key, val := range cached {
 		stored[key] = val
 	}
+
+	o.dirtyState.Range(func(key, value interface{}) bool {
+		if strings.HasPrefix(key.(string), prefix) {
+			stored[key.(string)] = value.([]byte)
+		}
+		return true
+	})
 
 	for _, val := range stored {
 		ret = append(ret, val)
@@ -195,7 +208,7 @@ func (o *Account) getJournalIfModified() *journal {
 	}
 
 	if o.originCode == nil && !(o.originAccount == nil || o.originAccount.CodeHash == nil) {
-		o.originCode = o.ldb.Get(compositeKey(codeKey, o.Addr.Hex()))
+		o.originCode = o.ldb.Get(compositeKey(codeKey, o.Addr))
 	}
 
 	if !bytes.Equal(o.originCode, o.dirtyCode) {

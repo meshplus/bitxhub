@@ -2,9 +2,11 @@ package coreapi
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
+	"go.uber.org/atomic"
 )
 
 type ChainAPI CoreAPI
@@ -24,27 +26,55 @@ func (api *ChainAPI) Meta() (*pb.ChainMeta, error) {
 }
 
 func (api *ChainAPI) TPS(begin, end uint64) (uint64, error) {
-	total := 0
-	startTime := int64(0)
-	endTime := int64(0)
+	var (
+		errCount  atomic.Int64
+		total     atomic.Uint64
+		startTime int64
+		endTime   int64
+		wg        sync.WaitGroup
+	)
 
 	if begin >= end {
 		return 0, fmt.Errorf("begin number should be smaller than end number")
 	}
 
-	for i := begin; i <= end; i++ {
-		block, err := api.bxh.Ledger.GetBlock(i)
-		if err != nil {
-			return 0, err
-		}
+	wg.Add(int(end - begin + 1))
+	for i := begin + 1; i <= end-1; i++ {
+		go func(height uint64, wg *sync.WaitGroup) {
+			defer wg.Done()
+			count, err := api.bxh.Ledger.GetTransactionCount(height)
+			if err != nil {
+				errCount.Inc()
+			} else {
+				total.Add(count)
+			}
+		}(i, &wg)
+	}
 
-		total += len(block.Transactions)
-		if i == begin {
+	go func() {
+		defer wg.Done()
+		block, err := api.bxh.Ledger.GetBlock(begin)
+		if err != nil {
+			errCount.Inc()
+		} else {
+			total.Add(uint64(len(block.Transactions)))
 			startTime = block.BlockHeader.Timestamp
 		}
-		if i == end {
+	}()
+	go func() {
+		defer wg.Done()
+		block, err := api.bxh.Ledger.GetBlock(end)
+		if err != nil {
+			errCount.Inc()
+		} else {
+			total.Add(uint64(len(block.Transactions)))
 			endTime = block.BlockHeader.Timestamp
 		}
+	}()
+	wg.Wait()
+
+	if errCount.Load() != 0 {
+		return 0, fmt.Errorf("error during get block TPS")
 	}
 
 	elapsed := endTime - startTime
@@ -53,5 +83,5 @@ func (api *ChainAPI) TPS(begin, end uint64) (uint64, error) {
 		return 0, fmt.Errorf("incorrect block timestamp")
 	}
 
-	return uint64(total) * 1e9 / uint64(elapsed), nil
+	return total.Load() * 1e9 / uint64(elapsed), nil
 }

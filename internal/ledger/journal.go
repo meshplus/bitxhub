@@ -34,9 +34,9 @@ func (journal *journal) revert(batch storage.Batch) {
 			if err != nil {
 				panic(err)
 			}
-			batch.Put(compositeKey(accountKey, journal.Address.Hex()), data)
+			batch.Put(compositeKey(accountKey, journal.Address), data)
 		} else {
-			batch.Delete(compositeKey(accountKey, journal.Address.Hex()))
+			batch.Delete(compositeKey(accountKey, journal.Address))
 		}
 	}
 
@@ -50,9 +50,9 @@ func (journal *journal) revert(batch storage.Batch) {
 
 	if journal.CodeChanged {
 		if journal.PrevCode != nil {
-			batch.Put(compositeKey(codeKey, journal.Address.Hex()), journal.PrevCode)
+			batch.Put(compositeKey(codeKey, journal.Address), journal.PrevCode)
 		} else {
-			batch.Delete(compositeKey(codeKey, journal.Address.Hex()))
+			batch.Delete(compositeKey(codeKey, journal.Address))
 		}
 	}
 }

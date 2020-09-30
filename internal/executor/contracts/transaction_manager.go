@@ -40,11 +40,7 @@ func (t *TransactionManager) BeginMultiTXs(globalId string, childTxIds ...string
 }
 
 func (t *TransactionManager) Begin(txId string) *boltvm.Response {
-	if t.Has(t.txInfoKey(txId)) {
-		return boltvm.Error("Transaction id already exists")
-	}
-
-	t.SetObject(t.txInfoKey(txId), pb.TransactionStatus_BEGIN)
+	t.AddObject(t.txInfoKey(txId), pb.TransactionStatus_BEGIN)
 
 	return boltvm.Success(nil)
 }
