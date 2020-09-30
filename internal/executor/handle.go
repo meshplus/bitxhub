@@ -10,8 +10,6 @@ import (
 	"time"
 
 	"github.com/cbergoon/merkletree"
-	"github.com/meshplus/bitxhub-kit/crypto"
-	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/ledger"
@@ -81,24 +79,6 @@ func (exec *BlockExecutor) processExecuteEvent(block *pb.Block) *ledger.BlockDat
 	}
 }
 
-func (exec *BlockExecutor) listenPreExecuteEvent() {
-	for {
-		select {
-		case block := <-exec.preBlockC:
-			now := time.Now()
-			block = exec.verifySign(block)
-			exec.logger.WithFields(logrus.Fields{
-				"height": block.BlockHeader.Number,
-				"count":  len(block.Transactions),
-				"elapse": time.Since(now),
-			}).Infof("Verified signature")
-			exec.blockC <- block
-		case <-exec.ctx.Done():
-			return
-		}
-	}
-}
-
 func (exec *BlockExecutor) buildTxMerkleTree(txs []*pb.Transaction) (types.Hash, []types.Hash, error) {
 	var (
 		groupCnt = len(exec.interchainCounter) + 1
@@ -163,43 +143,6 @@ func (exec *BlockExecutor) buildTxMerkleTree(txs []*pb.Transaction) (types.Hash,
 	}
 
 	return root, l2Roots, nil
-}
-
-func (exec *BlockExecutor) verifySign(block *pb.Block) *pb.Block {
-	if block.BlockHeader.Number == 1 {
-		return block
-	}
-
-	var (
-		wg    sync.WaitGroup
-		mutex sync.Mutex
-		index []int
-	)
-	txs := block.Transactions
-
-	wg.Add(len(txs))
-	for i, tx := range txs {
-		go func(i int, tx *pb.Transaction) {
-			defer wg.Done()
-			ok, _ := asym.Verify(crypto.Secp256k1, tx.Signature, tx.SignHash().Bytes(), tx.From)
-			if !ok {
-				mutex.Lock()
-				defer mutex.Unlock()
-				index = append(index, i)
-			}
-		}(i, tx)
-	}
-	wg.Wait()
-
-	if len(index) > 0 {
-		sort.Sort(sort.Reverse(sort.IntSlice(index)))
-		for _, idx := range index {
-			txs = append(txs[:idx], txs[idx+1:]...)
-		}
-		block.Transactions = txs
-	}
-
-	return block
 }
 
 func (exec *BlockExecutor) applyTransactions(txs []*pb.Transaction) []*pb.Receipt {

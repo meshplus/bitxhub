@@ -32,7 +32,6 @@ type BlockExecutor struct {
 	ledger            ledger.Ledger
 	logger            logrus.FieldLogger
 	blockC            chan *pb.Block
-	preBlockC         chan *pb.Block
 	persistC          chan *ledger.BlockData
 	interchainCounter map[string][]uint64
 	normalTxs         []types.Hash
@@ -64,7 +63,6 @@ func New(chainLedger ledger.Ledger, logger logrus.FieldLogger) (*BlockExecutor, 
 		ctx:               ctx,
 		cancel:            cancel,
 		blockC:            make(chan *pb.Block, blockChanNumber),
-		preBlockC:         make(chan *pb.Block, blockChanNumber),
 		persistC:          make(chan *ledger.BlockData, persistChanNumber),
 		ibtpVerify:        ibtpVerify,
 		validationEngine:  ibtpVerify.ValidationEngine(),
@@ -78,8 +76,6 @@ func New(chainLedger ledger.Ledger, logger logrus.FieldLogger) (*BlockExecutor, 
 // Start starts executor
 func (exec *BlockExecutor) Start() error {
 	go exec.listenExecuteEvent()
-
-	go exec.listenPreExecuteEvent()
 
 	go exec.persistData()
 
@@ -102,7 +98,7 @@ func (exec *BlockExecutor) Stop() error {
 
 // ExecuteBlock executes block from order
 func (exec *BlockExecutor) ExecuteBlock(block *pb.Block) {
-	exec.preBlockC <- block
+	exec.blockC <- block
 }
 
 func (exec *BlockExecutor) SyncExecuteBlock(block *pb.Block) {
