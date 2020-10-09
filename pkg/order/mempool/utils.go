@@ -144,7 +144,7 @@ func getAccount(tx *pb.Transaction) (string, error) {
 		if err := ibtp.Unmarshal(payload.Args[0].Value); err != nil {
 			return "", fmt.Errorf("unmarshal ibtp from tx :%w", err)
 		}
-		account := fmt.Sprintf("%s-%s-%d", ibtp.From, ibtp.To, ibtp.Type)
+		account := fmt.Sprintf("%s-%s-%d", ibtp.From, ibtp.To, ibtp.Category())
 		return account, nil
 	}
 	return tx.From.Hex(), nil
