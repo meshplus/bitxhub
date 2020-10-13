@@ -65,6 +65,7 @@ func (mpi *mempoolImpl) RecvTransaction(tx *pb.Transaction) error {
 	if mpi.txCache.IsFull() && mpi.poolIsFull() {
 		return errors.New("transaction cache and pool are full, we will drop this transaction")
 	}
+	// TODO（YH）: how to inform the client that the nonce of is wrong, need to sync to correct nonce.
 	mpi.txCache.recvTxC <- tx
 	return nil
 }

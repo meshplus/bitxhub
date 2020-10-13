@@ -7,8 +7,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/meshplus/bitxhub-kit/crypto"
-	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
@@ -48,7 +46,7 @@ func newMempoolImpl(config *Config, storage storage.Storage, batchC chan *raftpr
 		storage:      storage,
 	}
 	mpi.txStore = newTransactionStore()
-	mpi.txCache = newTxCache(config.TxSliceTimeout, config.Logger)
+	mpi.txCache = newTxCache(config.TxSliceTimeout, config.TxSliceSize, config.Logger)
 	mpi.subscribe = newSubscribe()
 	if config.BatchSize == 0 {
 		mpi.batchSize = DefaultBatchSize
@@ -156,17 +154,11 @@ func (mpi *mempoolImpl) listenEvent() {
 func (mpi *mempoolImpl) processTransactions(txs []*pb.Transaction) error {
 	validTxs := make(map[string][]*pb.Transaction)
 	for _, tx := range txs {
-		// check if this tx signature is valid first
-		ok, _ := asym.Verify(crypto.Secp256k1, tx.Signature, tx.SignHash().Bytes(), tx.From)
-
-		if !ok {
-			return fmt.Errorf("invalid signature")
-		}
 		// check the sequence number of tx
-		// TODO refactor Transaction
 		txAccount, err := getAccount(tx)
 		if err != nil {
-			return fmt.Errorf("get tx account failed, err: %s", err.Error())
+			mpi.logger.Warningf("get tx account failed, err: %s", err.Error())
+			continue
 		}
 		currentSeqNo := mpi.txStore.nonceCache.getPendingNonce(txAccount)
 		if tx.Nonce < currentSeqNo {
@@ -179,7 +171,7 @@ func (mpi *mempoolImpl) processTransactions(txs []*pb.Transaction) error {
 			mpi.logger.Warningf("Tx %s already received", txHash)
 			continue
 		}
-		_, ok = validTxs[txAccount]
+		_, ok := validTxs[txAccount]
 		if !ok {
 			validTxs[txAccount] = make([]*pb.Transaction, 0)
 		}
@@ -233,7 +225,7 @@ func (txStore *transactionStore) InsertTxs(txs map[string][]*pb.Transaction) map
 				tx:      tx,
 			}
 			list.items[tx.Nonce] = txItem
-			list.index.insert(tx)
+			list.index.insertBySortedNonceKey(tx)
 			atomic.AddInt32(&txStore.poolSize, 1)
 		}
 		dirtyAccounts[account] = true
@@ -348,6 +340,7 @@ func (mpi *mempoolImpl) getBlock(ready *raftproto.Ready) *mempoolBatch {
 	return mpi.constructSameBatch(ready)
 }
 
+// constructSameBatch only be called by follower, constructs a batch by given ready info.
 func (mpi *mempoolImpl) constructSameBatch(ready *raftproto.Ready) *mempoolBatch {
 	res := &mempoolBatch{}
 	if txList, ok := mpi.txStore.batchedCache[ready.Height]; ok {
@@ -388,12 +381,11 @@ func (mpi *mempoolImpl) constructSameBatch(ready *raftproto.Ready) *mempoolBatch
 	if len(res.missingTxnHashList) == 0 {
 		// store the batch to cache
 		mpi.txStore.batchedCache[ready.Height] = txList
-		// store the batch to db
-		mpi.batchStore(txList)
 	}
 	return res
 }
 
+// processCommitTransactions removes the transactions in ready.
 func (mpi *mempoolImpl) processCommitTransactions(ready *raftproto.Ready) {
 	dirtyAccounts := make(map[string]bool)
 	// update current cached commit nonce for account
@@ -418,14 +410,14 @@ func (mpi *mempoolImpl) processCommitTransactions(ready *raftproto.Ready) {
 	for account := range dirtyAccounts {
 		commitNonce := mpi.txStore.nonceCache.getCommitNonce(account)
 		if list, ok := mpi.txStore.allTxs[account]; ok {
-			// remove all previous seq number txs for this account.
+			// removeBySortedNonceKey all previous seq number txs for this account.
 			removedTxs := list.forward(commitNonce)
-			// remove index smaller than commitNonce delete index.
+			// removeBySortedNonceKey index smaller than commitNonce delete index.
 			var wg sync.WaitGroup
 			wg.Add(3)
 			go func(ready map[string][]*pb.Transaction) {
 				defer wg.Done()
-				list.index.remove(removedTxs)
+				list.index.removeBySortedNonceKey(removedTxs)
 			}(removedTxs)
 			go func(ready map[string][]*pb.Transaction) {
 				defer wg.Done()
@@ -440,7 +432,9 @@ func (mpi *mempoolImpl) processCommitTransactions(ready *raftproto.Ready) {
 			atomic.AddInt32(&mpi.txStore.poolSize, -delta)
 		}
 	}
-	mpi.batchDelete(ready.TxHashes)
+	if mpi.isLeader() {
+		mpi.batchDelete(ready.TxHashes)
+	}
 	delete(mpi.txStore.batchedCache, ready.Height)
 	// restart batch timer for remain txs.
 	if mpi.isLeader() {
@@ -528,21 +522,23 @@ func (mpi *mempoolImpl) loadTxnFromStorage(fetchTxnRequest *FetchTxnRequest) (ma
 	txList := make(map[uint64]*pb.Transaction)
 	for index, txHash := range missingHashList {
 		var (
+			tx      *pb.Transaction
 			rawHash types.Hash
 			err     error
+			ok      bool
 		)
 		if rawHash, err = hex2Hash(txHash); err != nil {
 			return nil, err
 		}
-		if tx, ok := mpi.load(rawHash); !ok {
+		if tx, ok = mpi.load(rawHash); !ok {
 			return nil, errors.New("can't load tx from storage")
-		} else {
-			txList[index] = tx
 		}
+		txList[index] = tx
 	}
 	return txList, nil
 }
 
+// loadTxnFromLedger find missing transactions from ledger.
 func (mpi *mempoolImpl) loadTxnFromLedger(fetchTxnRequest *FetchTxnRequest) (map[uint64]*pb.Transaction, error) {
 	missingHashList := fetchTxnRequest.MissingTxHashes
 	txList := make(map[uint64]*pb.Transaction)

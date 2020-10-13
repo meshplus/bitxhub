@@ -1,264 +1,233 @@
 package mempool
-//
-//import (
-//	"encoding/json"
-//	"fmt"
-//	"math/rand"
-//	"sort"
-//	"testing"
-//	"time"
-//
-//	"github.com/google/btree"
-//	"github.com/meshplus/bitxhub-kit/crypto"
-//	"github.com/meshplus/bitxhub-kit/crypto/asym"
-//	"github.com/meshplus/bitxhub-kit/types"
-//	"github.com/meshplus/bitxhub-model/pb"
-//	"github.com/stretchr/testify/require"
-//)
-//
-//var (
-//	InterchainContractAddr = types.String2Address("000000000000000000000000000000000000000a")
-//	appchains              = []string{
-//		"0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997",
-//		"0xa8ae1bbc1105944a84a71b89056930d951d420fe",
-//		"0x929545f44692178edb7fa468b44c5351596184ba",
-//		"0x7368022e6659236983eb959b8a1fa22577d48294",
-//	}
-//)
-//
-//func TestCoreMemPool_RecvTransactions(t *testing.T) {
-//	readyTxs := make([]*pb.Transaction, 0)
-//	nonreadyTxs := make([]*pb.Transaction, 0)
-//	txIndex := make(map[string]*pb.Transaction)
-//	privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
-//	require.Nil(t, err)
-//	pubKey := privKey.PublicKey()
-//	addr, err := pubKey.Address()
-//	require.Nil(t, err)
-//
-//	sort.Strings(appchains)
-//	readyTxsLen := 2
-//	for _, appchain := range appchains {
-//		for i := 1; i <= readyTxsLen; i++ {
-//			readyTxs = append(readyTxs, mockTxhelper(t, txIndex, appchain, uint64(i)))
-//			// add unready txs
-//			nonreadyTxs = append(nonreadyTxs, mockTxhelper(t, txIndex, appchain, uint64(i+readyTxsLen+1)))
-//		}
-//	}
-//
-//	// set timestamp and signature for txs
-//	for _, tx := range readyTxs {
-//		addSigAndTime(t, tx, addr, privKey)
-//	}
-//	for _, tx := range nonreadyTxs {
-//		addSigAndTime(t, tx, addr, privKey)
-//	}
-//
-//	// shuffle tx order
-//	rand.Seed(time.Now().UnixNano())
-//	rand.Shuffle(len(readyTxs), func(i, j int) {
-//		readyTxs[i], readyTxs[j] = readyTxs[j], readyTxs[i]
-//	})
-//	memPool := newMempoolImpl(nil, nil, nil)
-//	require.Nil(t, memPool.recvTransactions(readyTxs))
-//	require.Nil(t, memPool.RecvTransactions(nonreadyTxs))
-//
-//	// check if all txs are indexed in memPool.allTxs
-//	// and if all txs are indexed by its account and nonce
-//	require.Equal(t, len(appchains), len(memPool.transactionStore.allTxs))
-//	checkAllTxs(t, memPool, txIndex, readyTxsLen, readyTxsLen)
-//	checkHashMap(t, memPool, true, readyTxs, nonreadyTxs)
-//
-//	// check if priorityIndex is correctly recorded
-//	require.Equal(t, len(readyTxs), memPool.transactionStore.priorityIndex.data.Len())
-//	for _, tx := range readyTxs {
-//		ok := memPool.priorityIndex.data.Has(makeKey(tx))
-//		require.True(t, ok)
-//		ok = memPool.transactionStore.parkingLotIndex.data.Has(makeKey(tx))
-//		require.True(t, !ok)
-//	}
-//
-//	// check if parkingLotIndex is correctly recorded
-//	require.Equal(t, len(nonreadyTxs), memPool.transactionStore.parkingLotIndex.data.Len())
-//	for _, tx := range nonreadyTxs {
-//		ok := memPool.transactionStore.parkingLotIndex.data.Has(makeKey(tx))
-//		require.True(t, ok)
-//		ok = memPool.transactionStore.priorityIndex.data.Has(makeKey(tx))
-//		require.True(t, !ok)
-//	}
-//
-//	// add the missing tx for each appchain
-//	missingTxs := make([]*pb.Transaction, 0, len(appchains))
-//	for _, appchain := range appchains {
-//		missingTxs = append(missingTxs, mockTxhelper(t, txIndex, appchain, uint64(readyTxsLen+1)))
-//	}
-//	for _, tx := range missingTxs {
-//		addSigAndTime(t, tx, addr, privKey)
-//	}
-//
-//	require.Nil(t, memPool.RecvTransactions(missingTxs))
-//
-//	// check if parkingLotIndex is empty now
-//	require.Equal(t, 0, memPool.transactionStore.parkingLotIndex.data.Len())
-//	// check if priorityIndex has received missingTxs and txs from original parkingLotIndex
-//	for _, tx := range missingTxs {
-//		ok := memPool.transactionStore.priorityIndex.data.Has(makeKey(tx))
-//		require.True(t, ok)
-//	}
-//	for _, tx := range nonreadyTxs {
-//		ok := memPool.transactionStore.priorityIndex.data.Has(makeKey(tx))
-//		require.True(t, ok)
-//	}
-//	checkHashMap(t, memPool, true, readyTxs, nonreadyTxs, missingTxs)
-//}
-//
-//func TestCoreMemPool_RecvTransactions_Margin(t *testing.T) {
-//	readyTxs := make([]*pb.Transaction, 0)
-//	identicalNonceTxs := make([]*pb.Transaction, 0)
-//	replayedTxs := make([]*pb.Transaction, 0)
-//	readyTxIndex := make(map[string]*pb.Transaction)
-//	identicalNonceTxIndex := make(map[string]*pb.Transaction)
-//	privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
-//	require.Nil(t, err)
-//	pubKey := privKey.PublicKey()
-//	addr, err := pubKey.Address()
-//	require.Nil(t, err)
-//
-//	sort.Strings(appchains)
-//	readyTxsLen := 2
-//	for _, appchain := range appchains {
-//		for i := 1; i <= readyTxsLen; i++ {
-//			tx := mockTxhelper(t, readyTxIndex, appchain, uint64(i))
-//			readyTxs = append(readyTxs, tx)
-//			// add tx with same index but different content
-//			identicalNonceTx := mockTxhelper(t, identicalNonceTxIndex, appchain, uint64(i))
-//			identicalNonceTxs = append(identicalNonceTxs, identicalNonceTx)
-//		}
-//	}
-//
-//	// set timestamp and signature for txs
-//	for _, tx := range readyTxs {
-//		addSigAndTime(t, tx, addr, privKey)
-//		// add repeated txs
-//		replayedTxs = append(replayedTxs, tx)
-//	}
-//	for _, tx := range identicalNonceTxs {
-//		addSigAndTime(t, tx, addr, privKey)
-//	}
-//
-//	memPool := New()
-//	require.Nil(t, memPool.RecvTransactions(readyTxs))
-//	require.NotNil(t, memPool.RecvTransactions(replayedTxs))
-//	err = memPool.RecvTransactions(identicalNonceTxs)
-//	require.NotNil(t, err)
-//
-//	require.Equal(t, len(appchains), len(memPool.transactionStore.allTxs))
-//	checkAllTxs(t, memPool, readyTxIndex, readyTxsLen, 0)
-//	checkHashMap(t, memPool, true, readyTxs)
-//	checkHashMap(t, memPool, false, identicalNonceTxs)
-//}
-//
-//func checkAllTxs(t *testing.T, memPool *CoreMemPool,
-//	txIndex map[string]*pb.Transaction, readyTxsLen, nonReadyTxLen int) {
-//	for _, appchain := range appchains {
-//		idx := uint64(1)
-//		accountAddr := fmt.Sprintf("%s-%s", appchain, appchain)
-//
-//		txMap, ok := memPool.transactionStore.allTxs[accountAddr]
-//		require.True(t, ok)
-//		require.NotNil(t, txMap.index)
-//		require.Equal(t, readyTxsLen+nonReadyTxLen, txMap.index.data.Len())
-//		require.Equal(t, readyTxsLen+nonReadyTxLen, len(txMap.items))
-//		txMap.index.data.Ascend(func(i btree.Item) bool {
-//			orderedKey := i.(*orderedIndexKey)
-//			if idx <= uint64(readyTxsLen) {
-//				require.Equal(t, orderedKey.nonce, idx)
-//			} else {
-//				require.Equal(t, orderedKey.nonce, idx+1)
-//			}
-//			require.Equal(t, orderedKey.accountAddress, accountAddr)
-//
-//			ibtpID := fmt.Sprintf("%s-%s-%d", appchain, appchain, orderedKey.nonce)
-//			require.Equal(t, txIndex[ibtpID], txMap.items[orderedKey.nonce])
-//			idx++
-//			return true
-//		})
-//	}
-//}
-//
-//func checkHashMap(t *testing.T, memPool *CoreMemPool, expectedStatus bool, txsSlice ...[]*pb.Transaction) {
-//	for _, txs := range txsSlice {
-//		for _, tx := range txs {
-//			_, ok := memPool.transactionStore.txHashMap[tx.TransactionHash.Hex()]
-//			require.Equal(t, expectedStatus, ok)
-//		}
-//	}
-//}
-//
-//func mockTxhelper(t *testing.T, txIndex map[string]*pb.Transaction, appchainAddr string, index uint64) *pb.Transaction {
-//	ibtp := mockIBTP(t, appchainAddr, appchainAddr, index)
-//	tx := mockInterchainTx(t, ibtp)
-//	txIndex[ibtp.ID()] = tx
-//	return tx
-//}
-//
-//func addSigAndTime(t *testing.T, tx *pb.Transaction, addr types.Address, privKey crypto.PrivateKey) {
-//	tx.Timestamp = time.Now().UnixNano()
-//	tx.From = addr
-//	sig, err := privKey.Sign(tx.SignHash().Bytes())
-//	tx.Signature = sig
-//	require.Nil(t, err)
-//	tx.TransactionHash = tx.Hash()
-//}
-//
-//func mockInterchainTx(t *testing.T, ibtp *pb.IBTP) *pb.Transaction {
-//	ib, err := ibtp.Marshal()
-//	require.Nil(t, err)
-//
-//	ipd := &pb.InvokePayload{
-//		Method: "HandleIBTP",
-//		Args:   []*pb.Arg{{Value: ib}},
-//	}
-//	pd, err := ipd.Marshal()
-//	require.Nil(t, err)
-//
-//	data := &pb.TransactionData{
-//		VmType:  pb.TransactionData_BVM,
-//		Type:    pb.TransactionData_INVOKE,
-//		Payload: pd,
-//	}
-//
-//	return &pb.Transaction{
-//		To:    InterchainContractAddr,
-//		Nonce: int64(ibtp.Index),
-//		Data:  data,
-//		Extra: []byte(fmt.Sprintf("%s-%s", ibtp.From, ibtp.To)),
-//	}
-//}
-//
-//func mockIBTP(t *testing.T, from, to string, nonce uint64) *pb.IBTP {
-//	content := pb.Content{
-//		SrcContractId: from,
-//		DstContractId: from,
-//		Func:          "interchainget",
-//		Args:          [][]byte{[]byte("Alice"), []byte("10")},
-//	}
-//
-//	bytes, err := content.Marshal()
-//	require.Nil(t, err)
-//
-//	ibtppd, err := json.Marshal(pb.Payload{
-//		Encrypted: false,
-//		Content:   bytes,
-//	})
-//	require.Nil(t, err)
-//
-//	return &pb.IBTP{
-//		From:      from,
-//		To:        to,
-//		Payload:   ibtppd,
-//		Index:     nonce,
-//		Type:      pb.IBTP_INTERCHAIN,
-//		Timestamp: time.Now().UnixNano(),
-//	}
-//}
+
+import (
+	"testing"
+	"time"
+
+	"github.com/meshplus/bitxhub-kit/types"
+	"github.com/meshplus/bitxhub-model/pb"
+	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
+
+	"github.com/stretchr/testify/assert"
+)
+
+func TestRecvTransaction(t *testing.T) {
+	ast := assert.New(t)
+	mempool, _ := mockMempoolImpl()
+	defer cleanTestData()
+
+	privKey1 := genPrivKey()
+	tx1 := constructTx(uint64(1), &privKey1)
+	go mempool.txCache.listenEvent()
+	go func() {
+		_ = mempool.RecvTransaction(tx1)
+	}()
+	select {
+	case txSet := <-mempool.txCache.txSetC:
+		ast.Equal(1, len(txSet.TxList))
+	}
+
+	err := mempool.Start()
+	ast.Nil(err)
+	privKey2 := genPrivKey()
+	go func() {
+		_ = mempool.RecvTransaction(tx1)
+	}()
+	time.Sleep(1 * time.Millisecond)
+	ast.Equal(1, mempool.txStore.priorityIndex.size())
+	ast.Equal(0, mempool.txStore.parkingLotIndex.size())
+
+	tx2 := constructTx(uint64(2), &privKey1)
+	tx3 := constructTx(uint64(1), &privKey2)
+	tx4 := constructTx(uint64(2), &privKey2)
+	go func() {
+		_ = mempool.RecvTransaction(tx4)
+	}()
+	time.Sleep(1 * time.Millisecond)
+	ast.Equal(1, mempool.txStore.priorityIndex.size())
+	ast.Equal(1, mempool.txStore.parkingLotIndex.size())
+	go func() {
+		_ = mempool.RecvTransaction(tx2)
+	}()
+	time.Sleep(1 * time.Millisecond)
+	ast.Equal(2, mempool.txStore.priorityIndex.size())
+	ast.Equal(1, mempool.txStore.parkingLotIndex.size())
+	go func() {
+		_ = mempool.RecvTransaction(tx3)
+	}()
+	time.Sleep(1 * time.Millisecond)
+	ast.Equal(4, mempool.txStore.priorityIndex.size())
+	ast.Equal(1, mempool.txStore.parkingLotIndex.size(), "delete tx4 until finishing executor")
+	mempool.Stop()
+}
+
+func TestRecvForwardTxs(t *testing.T) {
+	ast := assert.New(t)
+	mempool, _ := mockMempoolImpl()
+	defer cleanTestData()
+
+	privKey1 := genPrivKey()
+	tx := constructTx(uint64(1), &privKey1)
+	txList := []*pb.Transaction{tx}
+	txSlice := &TxSlice{TxList: txList}
+	go mempool.RecvForwardTxs(txSlice)
+	select {
+	case txSet := <-mempool.subscribe.txForwardC:
+		ast.Equal(1, len(txSet.TxList))
+	}
+}
+
+func TestUpdateLeader(t *testing.T) {
+	ast := assert.New(t)
+	mempool, _ := mockMempoolImpl()
+	mempool.Start()
+	defer cleanTestData()
+	go mempool.UpdateLeader(uint64(2))
+	time.Sleep(1 * time.Millisecond)
+	ast.Equal(uint64(2), mempool.leader)
+}
+
+func TestGetBlock(t *testing.T) {
+	ast := assert.New(t)
+	mempool, _ := mockMempoolImpl()
+	err := mempool.Start()
+	ast.Nil(err)
+	defer cleanTestData()
+
+	privKey1 := genPrivKey()
+	privKey2 := genPrivKey()
+	tx1 := constructTx(uint64(1), &privKey1)
+	tx2 := constructTx(uint64(2), &privKey1)
+	tx3 := constructTx(uint64(2), &privKey2)
+	tx4 := constructTx(uint64(4), &privKey2)
+	tx5 := constructTx(uint64(1), &privKey2)
+	var txList []*pb.Transaction
+	var txHashList []types.Hash
+	txList = append(txList, tx1, tx2, tx3, tx4)
+	txHashList = append(txHashList, tx1.TransactionHash, tx2.TransactionHash, tx3.TransactionHash, tx5.TransactionHash)
+	err = mempool.processTransactions(txList)
+	ast.Nil(err)
+	ready := &raftproto.Ready{
+		Height:   uint64(2),
+		TxHashes: txHashList,
+	}
+	missingTxnHashList, txList := mempool.GetBlock(ready)
+	ast.Equal(1, len(missingTxnHashList), "missing tx5")
+	ast.Equal(3, len(txList))
+
+	txList = []*pb.Transaction{}
+	txList = append(txList, tx5)
+	err = mempool.processTransactions(txList)
+	missingTxnHashList, txList = mempool.GetBlock(ready)
+	ast.Equal(0, len(missingTxnHashList))
+	ast.Equal(4, len(txList))
+}
+
+func TestGetPendingNonceByAccount(t *testing.T) {
+	ast := assert.New(t)
+	mpi, _ := mockMempoolImpl()
+	err := mpi.Start()
+	ast.Nil(err)
+	defer cleanTestData()
+
+	privKey1 := genPrivKey()
+	account1, _ := privKey1.PublicKey().Address()
+	nonce := mpi.GetPendingNonceByAccount(account1.Hex())
+	ast.Equal(uint64(1), nonce)
+
+	privKey2 := genPrivKey()
+	account2, _ := privKey2.PublicKey().Address()
+	tx1 := constructTx(uint64(1), &privKey1)
+	tx2 := constructTx(uint64(2), &privKey1)
+	tx3 := constructTx(uint64(1), &privKey2)
+	tx4 := constructTx(uint64(2), &privKey2)
+	tx5 := constructTx(uint64(4), &privKey2)
+	var txList []*pb.Transaction
+	txList = append(txList, tx1, tx2, tx3, tx4, tx5)
+	err = mpi.processTransactions(txList)
+	ast.Nil(err)
+	nonce = mpi.GetPendingNonceByAccount(account1.Hex())
+	ast.Equal(uint64(3), nonce)
+	nonce = mpi.GetPendingNonceByAccount(account2.Hex())
+	ast.Equal(uint64(3), nonce, "not 4")
+}
+
+func TestCommitTransactions(t *testing.T) {
+	ast := assert.New(t)
+	mpi, _ := mockMempoolImpl()
+	err := mpi.Start()
+	ast.Nil(err)
+	defer cleanTestData()
+
+	privKey1 := genPrivKey()
+	account1, _ := privKey1.PublicKey().Address()
+	nonce := mpi.GetPendingNonceByAccount(account1.Hex())
+	ast.Equal(uint64(1), nonce)
+
+	privKey2 := genPrivKey()
+	tx1 := constructTx(uint64(1), &privKey1)
+	tx2 := constructTx(uint64(2), &privKey1)
+	tx3 := constructTx(uint64(1), &privKey2)
+	tx4 := constructTx(uint64(4), &privKey2)
+	var txList []*pb.Transaction
+	txList = append(txList, tx1, tx2, tx3, tx4)
+	mpi.leader = uint64(1)
+	err = mpi.processTransactions(txList)
+	ast.Equal(3, mpi.txStore.priorityIndex.size())
+	ast.Equal(1, mpi.txStore.parkingLotIndex.size())
+	ast.Equal(0, len(mpi.txStore.batchedCache))
+
+	go func() {
+		<-mpi.batchC
+	}()
+	tx5 := constructTx(uint64(2), &privKey2)
+	txList = []*pb.Transaction{}
+	txList = append(txList, tx5)
+	err = mpi.processTransactions(txList)
+	ast.Equal(4, mpi.txStore.priorityIndex.size())
+	ast.Equal(1, mpi.txStore.parkingLotIndex.size())
+	ast.Equal(1, len(mpi.txStore.batchedCache))
+	height := mpi.GetChainHeight()
+	ast.Equal(uint64(2), height)
+
+	var txHashList []types.Hash
+	txHashList = append(txHashList, tx1.TransactionHash, tx2.TransactionHash, tx3.TransactionHash, tx5.TransactionHash)
+	ready := &raftproto.Ready{
+		Height:   uint64(2),
+		TxHashes: txHashList,
+	}
+	mpi.CommitTransactions(ready)
+	time.Sleep(100 * time.Millisecond)
+	ast.Equal(0, mpi.txStore.priorityIndex.size())
+	ast.Equal(1, mpi.txStore.parkingLotIndex.size())
+	ast.Equal(0, len(mpi.txStore.batchedCache))
+}
+
+func TestFetchTxn(t *testing.T) {
+	ast := assert.New(t)
+	mpi, _ := mockMempoolImpl()
+	err := mpi.Start()
+	ast.Nil(err)
+	defer cleanTestData()
+
+	missingList := make(map[uint64]string)
+	missingList[0] = "tx1"
+	lostTxnEvent := &LocalMissingTxnEvent{
+		Height:             uint64(2),
+		MissingTxnHashList: missingList,
+		WaitC:              make(chan bool),
+	}
+	mpi.FetchTxn(lostTxnEvent)
+	time.Sleep(10 * time.Millisecond)
+	ast.Equal(1, len(mpi.txStore.missingBatch))
+}
+
+func TestIncreaseChainHeight(t *testing.T) {
+	ast := assert.New(t)
+	mpi, _ := mockMempoolImpl()
+	defer cleanTestData()
+
+	ast.Equal(uint64(1), mpi.GetChainHeight())
+	mpi.increaseBatchSeqNo()
+	ast.Equal(uint64(2), mpi.GetChainHeight())
+}
