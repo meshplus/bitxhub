@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime/pprof"
 	"sync"
 	"syscall"
 	"time"
@@ -19,6 +20,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/coreapi"
 	"github.com/meshplus/bitxhub/internal/loggers"
 	"github.com/meshplus/bitxhub/internal/repo"
+
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/urfave/cli"
 )
@@ -60,7 +62,12 @@ func start(ctx *cli.Context) error {
 	loggers.Initialize(repo.Config)
 
 	if repo.Config.PProf.Enable {
-		runPProf(repo.Config.Port.PProf)
+		switch repo.Config.PProf.PType {
+		case "runtime":
+			go runtimePProf(repo.Config.PProf.Mode, repo.NetworkConfig.ID, repo.Config.PProf.Duration)
+		case "http":
+			httpPProf(repo.Config.Port.PProf)
+		}
 	}
 
 	if repo.Config.Monitor.Enable {
@@ -135,7 +142,45 @@ func handleShutdown(node *app.BitXHub, wg *sync.WaitGroup) {
 	}()
 }
 
-func runPProf(port int64) {
+// runtimePProf will record the cpu or memory profiles every 5 second.
+func runtimePProf(mode string, id uint64, duration time.Duration) {
+	tick := time.NewTicker(duration)
+	rootPath := fmt.Sprint("./scripts/build/", "node", id, "/pprof/")
+	exist := fileExist(rootPath)
+	if !exist {
+		err := os.Mkdir(rootPath, os.ModePerm)
+		if err != nil {
+			return
+		}
+	}
+
+	var cpuFile *os.File
+	if mode == "cpu" {
+		cpuPath := fmt.Sprint(rootPath,"cpu-", time.Now().Format("20060102-15:04:05"))
+		cpuFile, _ = os.Create(cpuPath)
+		_ = pprof.StartCPUProfile(cpuFile)
+	}
+	for {
+		select {
+		case <- tick.C:
+			switch mode {
+			case "cpu":
+				pprof.StopCPUProfile()
+				_ = cpuFile.Close()
+				cpuPath := fmt.Sprint(rootPath,"cpu-", time.Now().Format("20060102-15:04:05"))
+				cpuFile, _ := os.Create(cpuPath)
+				_ = pprof.StartCPUProfile(cpuFile)
+			case "memory":
+				memPath := fmt.Sprint(rootPath,"mem-", time.Now().Format("2006-01-02-15:04:05"))
+				memFile, _ := os.Create(memPath)
+				_ = pprof.WriteHeapProfile(memFile)
+				_ = memFile.Close()
+			}
+		}
+	}
+}
+
+func httpPProf(port int64) {
 	go func() {
 		addr := fmt.Sprintf(":%d", port)
 		logger.WithField("port", port).Info("Start pprof")
@@ -162,4 +207,15 @@ func runMonitor(port int64) {
 			fmt.Println(err)
 		}
 	}()
+}
+
+func fileExist(path string) bool {
+	_, err := os.Stat(path)
+	if err != nil {
+		if os.IsExist(err) {
+			return true
+		}
+		return false
+	}
+	return true
 }

@@ -53,7 +53,10 @@ type Monitor struct {
 }
 
 type PProf struct {
-	Enable bool
+	Enable bool   `toml:"enbale" json:"enable"`
+	PType  string `toml:"ptype" json:"ptype"`
+	Mode   string `toml:"mode" json:"mode"`
+	Duration time.Duration `toml:"duration" json:"duration"`
 }
 
 type Gateway struct {

@@ -13,84 +13,84 @@ import (
 
 func TestRecvTransaction(t *testing.T) {
 	ast := assert.New(t)
-	mempool, _ := mockMempoolImpl()
+	mpi, _ := mockMempoolImpl()
 	defer cleanTestData()
 
 	privKey1 := genPrivKey()
 	tx1 := constructTx(uint64(1), &privKey1)
-	go mempool.txCache.listenEvent()
+	go mpi.txCache.listenEvent()
 	go func() {
-		_ = mempool.RecvTransaction(tx1)
+		_ = mpi.RecvTransaction(tx1)
 	}()
 	select {
-	case txSet := <-mempool.txCache.txSetC:
+	case txSet := <-mpi.txCache.txSetC:
 		ast.Equal(1, len(txSet.TxList))
 	}
 
-	err := mempool.Start()
+	err := mpi.Start()
 	ast.Nil(err)
 	privKey2 := genPrivKey()
 	go func() {
-		_ = mempool.RecvTransaction(tx1)
+		_ = mpi.RecvTransaction(tx1)
 	}()
 	time.Sleep(1 * time.Millisecond)
-	ast.Equal(1, mempool.txStore.priorityIndex.size())
-	ast.Equal(0, mempool.txStore.parkingLotIndex.size())
+	ast.Equal(1, mpi.txStore.priorityIndex.size())
+	ast.Equal(0, mpi.txStore.parkingLotIndex.size())
 
 	tx2 := constructTx(uint64(2), &privKey1)
 	tx3 := constructTx(uint64(1), &privKey2)
 	tx4 := constructTx(uint64(2), &privKey2)
 	go func() {
-		_ = mempool.RecvTransaction(tx4)
+		_ = mpi.RecvTransaction(tx4)
 	}()
 	time.Sleep(1 * time.Millisecond)
-	ast.Equal(1, mempool.txStore.priorityIndex.size())
-	ast.Equal(1, mempool.txStore.parkingLotIndex.size())
+	ast.Equal(1, mpi.txStore.priorityIndex.size())
+	ast.Equal(1, mpi.txStore.parkingLotIndex.size())
 	go func() {
-		_ = mempool.RecvTransaction(tx2)
+		_ = mpi.RecvTransaction(tx2)
 	}()
 	time.Sleep(1 * time.Millisecond)
-	ast.Equal(2, mempool.txStore.priorityIndex.size())
-	ast.Equal(1, mempool.txStore.parkingLotIndex.size())
+	ast.Equal(2, mpi.txStore.priorityIndex.size())
+	ast.Equal(1, mpi.txStore.parkingLotIndex.size())
 	go func() {
-		_ = mempool.RecvTransaction(tx3)
+		_ = mpi.RecvTransaction(tx3)
 	}()
 	time.Sleep(1 * time.Millisecond)
-	ast.Equal(4, mempool.txStore.priorityIndex.size())
-	ast.Equal(1, mempool.txStore.parkingLotIndex.size(), "delete tx4 until finishing executor")
-	mempool.Stop()
+	ast.Equal(4, mpi.txStore.priorityIndex.size())
+	ast.Equal(1, mpi.txStore.parkingLotIndex.size(), "delete tx4 until finishing executor")
+	mpi.Stop()
 }
 
 func TestRecvForwardTxs(t *testing.T) {
 	ast := assert.New(t)
-	mempool, _ := mockMempoolImpl()
+	mpi, _ := mockMempoolImpl()
 	defer cleanTestData()
 
 	privKey1 := genPrivKey()
 	tx := constructTx(uint64(1), &privKey1)
 	txList := []*pb.Transaction{tx}
 	txSlice := &TxSlice{TxList: txList}
-	go mempool.RecvForwardTxs(txSlice)
+	go mpi.RecvForwardTxs(txSlice)
 	select {
-	case txSet := <-mempool.subscribe.txForwardC:
+	case txSet := <-mpi.subscribe.txForwardC:
 		ast.Equal(1, len(txSet.TxList))
 	}
 }
 
 func TestUpdateLeader(t *testing.T) {
 	ast := assert.New(t)
-	mempool, _ := mockMempoolImpl()
-	mempool.Start()
+	mpi, _ := mockMempoolImpl()
+	mpi.Start()
 	defer cleanTestData()
-	go mempool.UpdateLeader(uint64(2))
+	go mpi.UpdateLeader(uint64(2))
 	time.Sleep(1 * time.Millisecond)
-	ast.Equal(uint64(2), mempool.leader)
+	ast.Equal(uint64(2), mpi.leader)
 }
 
 func TestGetBlock(t *testing.T) {
 	ast := assert.New(t)
-	mempool, _ := mockMempoolImpl()
-	err := mempool.Start()
+	mpi, _ := mockMempoolImpl()
+	err := mpi.Start()
 	ast.Nil(err)
 	defer cleanTestData()
 
@@ -105,20 +105,34 @@ func TestGetBlock(t *testing.T) {
 	var txHashList []types.Hash
 	txList = append(txList, tx1, tx2, tx3, tx4)
 	txHashList = append(txHashList, tx1.TransactionHash, tx2.TransactionHash, tx3.TransactionHash, tx5.TransactionHash)
-	err = mempool.processTransactions(txList)
+	err = mpi.processTransactions(txList)
 	ast.Nil(err)
 	ready := &raftproto.Ready{
 		Height:   uint64(2),
 		TxHashes: txHashList,
 	}
-	missingTxnHashList, txList := mempool.GetBlock(ready)
+	missingTxnHashList, txList := mpi.GetBlock(ready)
 	ast.Equal(1, len(missingTxnHashList), "missing tx5")
 	ast.Equal(3, len(txList))
 
+	// mock leader to getBlock
+	mpi.leader = uint64(1)
+	missingTxnHashList, txList = mpi.GetBlock(ready)
+	ast.Equal(4, len(missingTxnHashList))
+	ast.Equal(0, len(txList))
+
+	// mock follower
+	mpi.leader = uint64(2)
 	txList = []*pb.Transaction{}
 	txList = append(txList, tx5)
-	err = mempool.processTransactions(txList)
-	missingTxnHashList, txList = mempool.GetBlock(ready)
+	err = mpi.processTransactions(txList)
+	missingTxnHashList, txList = mpi.GetBlock(ready)
+	ast.Equal(0, len(missingTxnHashList))
+	ast.Equal(4, len(txList))
+
+	// mock leader to getBlock
+	mpi.leader = uint64(1)
+	missingTxnHashList, txList = mpi.GetBlock(ready)
 	ast.Equal(0, len(missingTxnHashList))
 	ast.Equal(4, len(txList))
 }

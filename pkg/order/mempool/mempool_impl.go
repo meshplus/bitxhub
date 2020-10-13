@@ -410,9 +410,9 @@ func (mpi *mempoolImpl) processCommitTransactions(ready *raftproto.Ready) {
 	for account := range dirtyAccounts {
 		commitNonce := mpi.txStore.nonceCache.getCommitNonce(account)
 		if list, ok := mpi.txStore.allTxs[account]; ok {
-			// removeBySortedNonceKey all previous seq number txs for this account.
+			// remove all previous seq number txs for this account.
 			removedTxs := list.forward(commitNonce)
-			// removeBySortedNonceKey index smaller than commitNonce delete index.
+			// remove index smaller than commitNonce delete index.
 			var wg sync.WaitGroup
 			wg.Add(3)
 			go func(ready map[string][]*pb.Transaction) {
