@@ -105,10 +105,6 @@ func (exec *BlockExecutor) ExecuteBlock(block *pb.Block) {
 	exec.preBlockC <- block
 }
 
-func (exec *BlockExecutor) SyncExecuteBlock(block *pb.Block) {
-	exec.processExecuteEvent(block)
-}
-
 // SubscribeBlockEvent registers a subscription of NewBlockEvent.
 func (exec *BlockExecutor) SubscribeBlockEvent(ch chan<- events.NewBlockEvent) event.Subscription {
 	return exec.blockFeed.Subscribe(ch)

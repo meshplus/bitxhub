@@ -9,6 +9,7 @@ import (
 
 type Contract interface{}
 
+//go:generate mockgen -destination mock_stub/mock_stub.go -package mock_stub -source stub.go
 type Stub interface {
 	// Caller
 	Caller() string

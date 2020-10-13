@@ -120,16 +120,3 @@ func checkAssetExchangeInfo(aei *pb.AssetExchangeInfo) error {
 
 	return nil
 }
-
-func checkAssetExchangeInfoPair(aei0, aei1 *pb.AssetExchangeInfo) error {
-	if aei0.SenderOnSrc != aei1.ReceiverOnDst ||
-		aei0.ReceiverOnSrc != aei1.SenderOnDst ||
-		aei0.SenderOnDst != aei1.ReceiverOnSrc ||
-		aei0.ReceiverOnDst != aei1.SenderOnSrc ||
-		aei0.AssetOnSrc != aei1.AssetOnDst ||
-		aei0.AssetOnDst != aei1.AssetOnSrc {
-		return fmt.Errorf("unmatched exchange info pair")
-	}
-
-	return nil
-}
