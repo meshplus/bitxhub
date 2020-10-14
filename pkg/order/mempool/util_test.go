@@ -2,9 +2,11 @@ package mempool
 
 import (
 	"fmt"
-	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/meshplus/bitxhub-model/pb"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetAccount(t *testing.T) {
@@ -26,4 +28,16 @@ func TestGetAccount(t *testing.T) {
 	}
 	_, err = getAccount(tx)
 	ast.NotNil(err.Error(), "unmarshal invoke payload faile")
+}
+
+func TestPoolIsFull(t *testing.T) {
+	ast := assert.New(t)
+	mpi, _ := mockMempoolImpl()
+	defer cleanTestData()
+
+	isFull := mpi.poolIsFull()
+	ast.Equal(false, isFull)
+	mpi.txStore.poolSize = DefaultPoolSize
+	isFull = mpi.poolIsFull()
+	ast.Equal(true, isFull)
 }

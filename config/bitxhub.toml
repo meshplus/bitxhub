@@ -10,6 +10,9 @@ solo = false
 
 [pprof]
   enable = true
+  ptype = "runtime" # including two types: runtime (recommended for use during the development phase) and http
+  mode = "cpu" # only required for runtime ptype, including two modes: cpu、memory
+  duration = "5s" # only required for runtime ptype, every duration will generation a profile.
 
 [monitor]
   enable = true
