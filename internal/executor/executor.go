@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/event"
+	"github.com/meshplus/bitxhub-core/agency"
 	"github.com/meshplus/bitxhub-core/validator"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -29,50 +30,50 @@ var _ Executor = (*BlockExecutor)(nil)
 
 // BlockExecutor executes block from order
 type BlockExecutor struct {
-	ledger            ledger.Ledger
-	logger            logrus.FieldLogger
-	blockC            chan *pb.Block
-	preBlockC         chan *pb.Block
-	persistC          chan *ledger.BlockData
-	interchainCounter map[string][]uint64
-	normalTxs         []types.Hash
-	ibtpVerify        proof.Verify
-	validationEngine  validator.Engine
-	currentHeight     uint64
-	currentBlockHash  types.Hash
-	boltContracts     map[string]boltvm.Contract
-	wasmInstances     map[string]wasmer.Instance
-
-	blockFeed event.Feed
-
-	ctx    context.Context
-	cancel context.CancelFunc
+	ledger           ledger.Ledger
+	logger           logrus.FieldLogger
+	blockC           chan *pb.Block
+	preBlockC        chan *pb.Block
+	persistC         chan *ledger.BlockData
+	ibtpVerify       proof.Verify
+	validationEngine validator.Engine
+	currentHeight    uint64
+	currentBlockHash types.Hash
+	wasmInstances    map[string]wasmer.Instance
+	txsExecutor      agency.TxsExecutor
+	blockFeed        event.Feed
+	ctx              context.Context
+	cancel           context.CancelFunc
 }
 
 // New creates executor instance
-func New(chainLedger ledger.Ledger, logger logrus.FieldLogger) (*BlockExecutor, error) {
+func New(chainLedger ledger.Ledger, logger logrus.FieldLogger, typ string) (*BlockExecutor, error) {
 	ibtpVerify := proof.New(chainLedger, logger)
-
-	boltContracts := registerBoltContracts()
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	return &BlockExecutor{
-		ledger:            chainLedger,
-		logger:            logger,
-		interchainCounter: make(map[string][]uint64),
-		ctx:               ctx,
-		cancel:            cancel,
-		blockC:            make(chan *pb.Block, blockChanNumber),
-		preBlockC:         make(chan *pb.Block, blockChanNumber),
-		persistC:          make(chan *ledger.BlockData, persistChanNumber),
-		ibtpVerify:        ibtpVerify,
-		validationEngine:  ibtpVerify.ValidationEngine(),
-		currentHeight:     chainLedger.GetChainMeta().Height,
-		currentBlockHash:  chainLedger.GetChainMeta().BlockHash,
-		boltContracts:     boltContracts,
-		wasmInstances:     make(map[string]wasmer.Instance),
-	}, nil
+	txsExecutor, err := agency.GetExecutorConstructor(typ)
+	if err != nil {
+		return nil, err
+	}
+
+	blockExecutor := &BlockExecutor{
+		ledger:           chainLedger,
+		logger:           logger,
+		ctx:              ctx,
+		cancel:           cancel,
+		blockC:           make(chan *pb.Block, blockChanNumber),
+		preBlockC:        make(chan *pb.Block, blockChanNumber),
+		persistC:         make(chan *ledger.BlockData, persistChanNumber),
+		ibtpVerify:       ibtpVerify,
+		validationEngine: ibtpVerify.ValidationEngine(),
+		currentHeight:    chainLedger.GetChainMeta().Height,
+		currentBlockHash: chainLedger.GetChainMeta().BlockHash,
+		wasmInstances:    make(map[string]wasmer.Instance),
+	}
+	blockExecutor.txsExecutor = txsExecutor(blockExecutor.applyTx, registerBoltContracts)
+
+	return blockExecutor, nil
 }
 
 // Start starts executor
@@ -120,7 +121,7 @@ func (exec *BlockExecutor) ApplyReadonlyTransactions(txs []*pb.Transaction) []*p
 			TxHash:  tx.TransactionHash,
 		}
 
-		ret, err := exec.applyTransaction(i, tx)
+		ret, err := exec.applyTransaction(i, tx, nil)
 		if err != nil {
 			receipt.Status = pb.Receipt_FAILED
 			receipt.Ret = []byte(err.Error())
@@ -215,7 +216,7 @@ func (exec *BlockExecutor) persistData() {
 	}
 }
 
-func registerBoltContracts() map[string]boltvm.Contract {
+func registerBoltContracts() map[string]agency.Contract {
 	boltContracts := []*boltvm.BoltContract{
 		{
 			Enabled:  true,

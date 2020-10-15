@@ -38,3 +38,6 @@ solo = false
 
 [order]
   plugin = "plugins/raft.so"
+
+[executor]
+  type = "serial"  # opensource version only supports serial type, commercial version supports serial and parallel types
