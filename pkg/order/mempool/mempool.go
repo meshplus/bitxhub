@@ -76,6 +76,7 @@ func (mpi *mempoolImpl) RecvForwardTxs(txSlice *TxSlice) {
 
 // UpdateLeader updates the
 func (mpi *mempoolImpl) UpdateLeader(newLeader uint64) {
+	// TODO (YH): should block until mempool finishing updating the leader info.
 	mpi.subscribe.updateLeaderC <- newLeader
 }
 
