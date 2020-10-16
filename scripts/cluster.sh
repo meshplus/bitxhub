@@ -101,5 +101,4 @@ function clear_config() {
 }
 
 prepare
-compile
 start
