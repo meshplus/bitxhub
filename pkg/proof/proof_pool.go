@@ -56,7 +56,8 @@ func (pl *VerifyPool) CheckProof(tx *pb.Transaction) (bool, error) {
 				"id":   ibtp.ID()}).Error("ibtp verify fail")
 			return false, nil
 		}
-		tx.Extra = nil
+		//TODO(jz): need to remove the proof
+		//tx.Extra = nil
 	}
 	return true, nil
 }
