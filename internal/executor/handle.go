@@ -99,7 +99,6 @@ func (exec *BlockExecutor) processExecuteEvent(block *pb.Block) {
 		Counter: counter,
 		L2Roots: l2Roots,
 	}
-	exec.postBlockEvent(block, interchainMeta)
 	exec.clear()
 
 	exec.currentHeight = block.BlockHeader.Number
