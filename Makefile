@@ -49,13 +49,13 @@ tester:
 ## make install: Go install the project
 install:
 	cd internal/repo && packr
-	$(GO) install -ldflags '${GOLDFLAGS}' ./cmd/${APP_NAME}
+	$(GO) install -tags '${TAGS}' -ldflags '${GOLDFLAGS}' ./cmd/${APP_NAME}
 	@printf "${GREEN}Build bitxhub successfully!${NC}\n"
 
 build:
 	cd internal/repo && packr
 	@mkdir -p bin
-	$(GO) build -ldflags '${GOLDFLAGS}' ./cmd/${APP_NAME}
+	$(GO) build -tags '${TAGS}' -ldflags '${GOLDFLAGS}' ./cmd/${APP_NAME}
 	@mv ./bitxhub bin
 	@printf "${GREEN}Build bitxhub successfully!${NC}\n"
 
@@ -64,7 +64,7 @@ linter:
 	golangci-lint run
 
 ## make cluster: Run cluster including 4 nodes
-cluster:
+cluster:install
 	@cd scripts && bash cluster.sh
 
 .PHONY: tester build
