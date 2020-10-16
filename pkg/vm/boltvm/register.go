@@ -2,6 +2,8 @@ package boltvm
 
 import (
 	"fmt"
+
+	"github.com/meshplus/bitxhub-core/agency"
 )
 
 type BoltContract struct {
@@ -12,12 +14,12 @@ type BoltContract struct {
 	// contract address
 	Address string
 	// Contract is contract object
-	Contract Contract
+	Contract agency.Contract
 }
 
 // register contract
-func Register(contracts []*BoltContract) map[string]Contract {
-	boltRegister := make(map[string]Contract)
+func Register(contracts []*BoltContract) map[string]agency.Contract {
+	boltRegister := make(map[string]agency.Contract)
 	for _, c := range contracts {
 		if _, ok := boltRegister[c.Address]; ok {
 			panic("duplicate bolt contract address")
@@ -28,7 +30,7 @@ func Register(contracts []*BoltContract) map[string]Contract {
 	return boltRegister
 }
 
-func GetBoltContract(address string, boltRegister map[string]Contract) (contract Contract, err error) {
+func GetBoltContract(address string, boltRegister map[string]agency.Contract) (contract agency.Contract, err error) {
 	var ok bool
 	if contract, ok = boltRegister[address]; !ok {
 		return nil, fmt.Errorf("the address %v is not a bolt contract", address)

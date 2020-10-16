@@ -29,9 +29,10 @@ import (
 )
 
 const (
-	keyPassword = "bitxhub"
-	from        = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
-	to          = "0x000018f7c3a6e5e4c0b877fe3e688ab08840b997"
+	keyPassword  = "bitxhub"
+	from         = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
+	to           = "0x000018f7c3a6e5e4c0b877fe3e688ab08840b997"
+	executorType = "serial"
 )
 
 func TestNew(t *testing.T) {
@@ -46,21 +47,17 @@ func TestNew(t *testing.T) {
 	mockLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
 
 	logger := log.NewWithModule("executor")
-	executor, err := New(mockLedger, logger)
+	executor, err := New(mockLedger, logger, executorType)
 	assert.Nil(t, err)
 	assert.NotNil(t, executor)
 
 	assert.Equal(t, mockLedger, executor.ledger)
 	assert.Equal(t, logger, executor.logger)
-	assert.NotNil(t, executor.interchainCounter)
-	assert.Equal(t, 0, len(executor.interchainCounter))
 	assert.NotNil(t, executor.preBlockC)
 	assert.NotNil(t, executor.blockC)
 	assert.NotNil(t, executor.persistC)
 	assert.NotNil(t, executor.ibtpVerify)
 	assert.NotNil(t, executor.validationEngine)
-	assert.Equal(t, 0, len(executor.normalTxs))
-	assert.Equal(t, 7, len(executor.boltContracts))
 	assert.Equal(t, chainMeta.BlockHash, executor.currentBlockHash)
 	assert.Equal(t, chainMeta.Height, executor.currentHeight)
 	assert.NotNil(t, executor.wasmInstances)
@@ -105,7 +102,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	mockLedger.EXPECT().PersistBlockData(gomock.Any()).AnyTimes()
 	logger := log.NewWithModule("executor")
 
-	exec, err := New(mockLedger, logger)
+	exec, err := New(mockLedger, logger, executorType)
 	assert.Nil(t, err)
 
 	// mock data for block
@@ -201,7 +198,7 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 	mockLedger.EXPECT().PersistBlockData(gomock.Any()).AnyTimes()
 	logger := log.NewWithModule("executor")
 
-	exec, err := New(mockLedger, logger)
+	exec, err := New(mockLedger, logger, executorType)
 	assert.Nil(t, err)
 
 	// mock data for block
@@ -270,7 +267,7 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 	err = ldg.PersistExecutionResult(mockBlock(1, nil), nil, &pb.InterchainMeta{})
 	require.Nil(t, err)
 
-	executor, err := New(ldg, log.NewWithModule("executor"))
+	executor, err := New(ldg, log.NewWithModule("executor"), executorType)
 	require.Nil(t, err)
 	err = executor.Start()
 	require.Nil(t, err)
@@ -294,7 +291,7 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 	viewLedger, err := ledger.New(createMockRepo(t), blockchainStorage, ldb, accountCache, log.NewWithModule("ledger"))
 	require.Nil(t, err)
 
-	exec, err := New(viewLedger, log.NewWithModule("executor"))
+	exec, err := New(viewLedger, log.NewWithModule("executor"), executorType)
 	require.Nil(t, err)
 
 	tx := mockTransferTx(t)

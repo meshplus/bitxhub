@@ -39,6 +39,7 @@ type Config struct {
 	Cert     `json:"cert"`
 	Txpool   `json:"txpool"`
 	Order    `json:"order"`
+	Executor `json:"executor"`
 }
 
 type Port struct {
@@ -53,9 +54,9 @@ type Monitor struct {
 }
 
 type PProf struct {
-	Enable bool   `toml:"enbale" json:"enable"`
-	PType  string `toml:"ptype" json:"ptype"`
-	Mode   string `toml:"mode" json:"mode"`
+	Enable   bool          `toml:"enbale" json:"enable"`
+	PType    string        `toml:"ptype" json:"ptype"`
+	Mode     string        `toml:"mode" json:"mode"`
 	Duration time.Duration `toml:"duration" json:"duration"`
 }
 
@@ -95,6 +96,10 @@ type Txpool struct {
 
 type Order struct {
 	Plugin string `toml:"plugin" json:"plugin"`
+}
+
+type Executor struct {
+	Type string `toml:"type" json:"type"`
 }
 
 func (c *Config) Bytes() ([]byte, error) {
@@ -138,6 +143,9 @@ func DefaultConfig() (*Config, error) {
 		},
 		Order: Order{
 			Plugin: "plugins/raft.so",
+		},
+		Executor: Executor{
+			Type: "serial",
 		},
 	}, nil
 }

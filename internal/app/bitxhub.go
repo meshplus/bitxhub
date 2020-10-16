@@ -6,8 +6,6 @@ import (
 	"syscall"
 	"time"
 
-	orderplg "github.com/meshplus/bitxhub/internal/plugins"
-
 	"github.com/common-nighthawk/go-figure"
 	"github.com/ethereum/go-ethereum/common/fdlimit"
 	"github.com/meshplus/bitxhub-kit/types"
@@ -15,9 +13,11 @@ import (
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/ledger/genesis"
 	"github.com/meshplus/bitxhub/internal/loggers"
+	orderplg "github.com/meshplus/bitxhub/internal/plugins"
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/bitxhub/internal/router"
 	"github.com/meshplus/bitxhub/internal/storages"
+	_ "github.com/meshplus/bitxhub/pkg/imports"
 	"github.com/meshplus/bitxhub/pkg/order"
 	"github.com/meshplus/bitxhub/pkg/order/etcdraft"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
@@ -128,12 +128,12 @@ func generateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 	}
 
 	// 1. create executor and view executor
-	txExec, err := executor.New(rwLdg, loggers.Logger(loggers.Executor))
+	txExec, err := executor.New(rwLdg, loggers.Logger(loggers.Executor), rep.Config.Executor.Type)
 	if err != nil {
 		return nil, fmt.Errorf("create BlockExecutor: %w", err)
 	}
 
-	viewExec, err := executor.New(viewLdg, loggers.Logger(loggers.Executor))
+	viewExec, err := executor.New(viewLdg, loggers.Logger(loggers.Executor), rep.Config.Executor.Type)
 	if err != nil {
 		return nil, fmt.Errorf("create ViewExecutor: %w", err)
 	}
