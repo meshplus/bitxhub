@@ -40,6 +40,14 @@ type Config struct {
 	Txpool   `json:"txpool"`
 	Order    `json:"order"`
 	Executor `json:"executor"`
+	Security Security `toml:"security" json:"security"`
+}
+
+// Security are files used to setup connection with tls
+type Security struct {
+	EnableTLS     bool   `mapstructure:"enable_tls"`
+	PemFilePath   string `mapstructure:"pem_file_path" json:"pem_file_path"`
+	ServerKeyPath string `mapstructure:"server_key_path" json:"server_key_path"`
 }
 
 type Port struct {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"path/filepath"
 
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -12,6 +13,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 type ChainBrokerService struct {
@@ -27,12 +29,25 @@ type ChainBrokerService struct {
 
 func NewChainBrokerService(api api.CoreAPI, config *repo.Config, genesis *repo.Genesis) (*ChainBrokerService, error) {
 	ctx, cancel := context.WithCancel(context.Background())
-	server := grpc.NewServer(
+
+	grpcOpts := []grpc.ServerOption{
 		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
 		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
 		grpc.MaxConcurrentStreams(1000),
-		grpc.InitialWindowSize(10*1024*1024),
-		grpc.InitialConnWindowSize(100*1024*1024))
+		grpc.InitialWindowSize(10 * 1024 * 1024),
+		grpc.InitialConnWindowSize(100 * 1024 * 1024),
+	}
+
+	if config.Security.EnableTLS {
+		pemFilePath := filepath.Join(config.RepoRoot, config.Security.PemFilePath)
+		serverKeyPath := filepath.Join(config.RepoRoot, config.Security.ServerKeyPath)
+		cred, err := credentials.NewServerTLSFromFile(pemFilePath, serverKeyPath)
+		if err != nil {
+			return nil, err
+		}
+		grpcOpts = append(grpcOpts, grpc.Creds(cred))
+	}
+	server := grpc.NewServer(grpcOpts...)
 	return &ChainBrokerService{
 		logger:  loggers.Logger(loggers.API),
 		config:  config,
