@@ -49,13 +49,13 @@ tester:
 ## make install: Go install the project
 install:
 	cd internal/repo && packr
-	$(GO) install -tags '${TAGS}' -ldflags '${GOLDFLAGS}' ./cmd/${APP_NAME}
+	$(GO) install -tags '${TAGS}' -ldflags '${GOLDFLAGS}' -modfile go${TAGS}.mod ./cmd/${APP_NAME}
 	@printf "${GREEN}Build bitxhub successfully!${NC}\n"
 
 build:
 	cd internal/repo && packr
 	@mkdir -p bin
-	$(GO) build -tags '${TAGS}' -ldflags '${GOLDFLAGS}' ./cmd/${APP_NAME}
+	$(GO) build -tags '${TAGS}' -ldflags '${GOLDFLAGS}' -modfile go${TAGS}.mod ./cmd/${APP_NAME}
 	@mv ./bitxhub bin
 	@printf "${GREEN}Build bitxhub successfully!${NC}\n"
 
