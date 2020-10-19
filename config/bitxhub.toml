@@ -37,6 +37,7 @@ server_key_path = "certs/server.key"
     router = "info"
     api = "info"
     coreapi = "info"
+    storage = "info"
 
 [cert]
   verify = true

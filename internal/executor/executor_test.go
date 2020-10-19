@@ -23,6 +23,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/ledger/mock_ledger"
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/internal/repo"
+	"github.com/meshplus/bitxhub/internal/storages/blockfile"
 	"github.com/meshplus/bitxhub/pkg/cert"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -266,7 +267,10 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 	repo.DefaultConfig()
 	accountCache, err := ledger.NewAccountCache()
 	assert.Nil(t, err)
-	ldg, err := ledger.New(createMockRepo(t), blockchainStorage, ldb, accountCache, log.NewWithModule("ledger"))
+	logger := log.NewWithModule("executor_test")
+	blockFile, err := blockfile.NewBlockFile(repoRoot, logger)
+	assert.Nil(t, err)
+	ldg, err := ledger.New(createMockRepo(t), blockchainStorage, ldb, blockFile, accountCache, log.NewWithModule("ledger"))
 	require.Nil(t, err)
 
 	_, from := loadAdminKey(t)
@@ -299,7 +303,7 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 	require.EqualValues(t, uint64(99999997), ldg.GetBalance(from))
 
 	// test executor with readonly ledger
-	viewLedger, err := ledger.New(createMockRepo(t), blockchainStorage, ldb, accountCache, log.NewWithModule("ledger"))
+	viewLedger, err := ledger.New(createMockRepo(t), blockchainStorage, ldb, blockFile, accountCache, log.NewWithModule("ledger"))
 	require.Nil(t, err)
 
 	exec, err := New(viewLedger, log.NewWithModule("executor"), executorType)

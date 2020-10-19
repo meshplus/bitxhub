@@ -14,6 +14,7 @@ const (
 	App      = "app"
 	API      = "api"
 	CoreAPI  = "coreapi"
+	Storage  = "storage"
 )
 
 var w *loggerWrapper
@@ -38,6 +39,8 @@ func Initialize(config *repo.Config) {
 	m[API].Logger.SetLevel(log.ParseLevel(config.Log.Module.API))
 	m[CoreAPI] = log.NewWithModule(CoreAPI)
 	m[CoreAPI].Logger.SetLevel(log.ParseLevel(config.Log.Module.CoreAPI))
+	m[Storage] = log.NewWithModule(Storage)
+	m[Storage].Logger.SetLevel(log.ParseLevel(config.Log.Module.Storage))
 
 	w = &loggerWrapper{loggers: m}
 }

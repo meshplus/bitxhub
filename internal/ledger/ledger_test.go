@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
@@ -16,6 +17,7 @@ import (
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/repo"
+	"github.com/meshplus/bitxhub/internal/storages/blockfile"
 	"github.com/meshplus/bitxhub/pkg/cert"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,7 +32,10 @@ func TestNew001(t *testing.T) {
 	ldb, err := leveldb.New(filepath.Join(repoRoot, "ledger"))
 	assert.Nil(t, err)
 
-	ledger, err := New(createMockRepo(t), blockStorage, ldb, nil, log.NewWithModule("executor"))
+	logger := log.NewWithModule("account_test")
+	blockFile, err := blockfile.NewBlockFile(repoRoot, logger)
+	assert.Nil(t, err)
+	ledger, err := New(createMockRepo(t), blockStorage, ldb, blockFile, nil, log.NewWithModule("executor"))
 	require.Nil(t, err)
 	require.NotNil(t, ledger)
 }
@@ -48,7 +53,10 @@ func TestNew002(t *testing.T) {
 
 	accountCache, err := NewAccountCache()
 	assert.Nil(t, err)
-	ledger, err := New(createMockRepo(t), blockStorage, ldb, accountCache, log.NewWithModule("executor"))
+	logger := log.NewWithModule("account_test")
+	blockFile, err := blockfile.NewBlockFile(repoRoot, logger)
+	assert.Nil(t, err)
+	ledger, err := New(createMockRepo(t), blockStorage, ldb, blockFile, accountCache, log.NewWithModule("executor"))
 	require.NotNil(t, err)
 	require.Nil(t, ledger)
 }
@@ -64,7 +72,10 @@ func TestNew003(t *testing.T) {
 
 	ldb.Put(compositeKey(journalKey, maxHeightStr), marshalHeight(1))
 
-	ledger, err := New(createMockRepo(t), blockStorage, ldb, nil, log.NewWithModule("executor"))
+	logger := log.NewWithModule("account_test")
+	blockFile, err := blockfile.NewBlockFile(repoRoot, logger)
+	assert.Nil(t, err)
+	ledger, err := New(createMockRepo(t), blockStorage, ldb, blockFile, nil, log.NewWithModule("executor"))
 	require.NotNil(t, err)
 	require.Nil(t, ledger)
 }
@@ -86,7 +97,10 @@ func TestNew004(t *testing.T) {
 
 	ldb.Put(compositeKey(journalKey, 1), data)
 
-	ledger, err := New(createMockRepo(t), blockStorage, ldb, nil, log.NewWithModule("executor"))
+	logger := log.NewWithModule("account_test")
+	blockFile, err := blockfile.NewBlockFile(repoRoot, logger)
+	assert.Nil(t, err)
+	ledger, err := New(createMockRepo(t), blockStorage, ldb, blockFile, nil, log.NewWithModule("executor"))
 	require.Nil(t, err)
 	require.NotNil(t, ledger)
 }
@@ -109,7 +123,10 @@ func TestNew005(t *testing.T) {
 
 	ldb.Put(compositeKey(journalKey, 5), data)
 
-	ledger, err := New(createMockRepo(t), blockStorage, ldb, nil, log.NewWithModule("executor"))
+	logger := log.NewWithModule("account_test")
+	blockFile, err := blockfile.NewBlockFile(repoRoot, logger)
+	assert.Nil(t, err)
+	ledger, err := New(createMockRepo(t), blockStorage, ldb, blockFile, nil, log.NewWithModule("executor"))
 	require.NotNil(t, err)
 	require.Nil(t, ledger)
 }
@@ -285,7 +302,7 @@ func TestChainLedger_Rollback(t *testing.T) {
 	err = ledger.Rollback(2)
 	assert.Nil(t, err)
 	block, err = ledger.GetBlock(3)
-	assert.Equal(t, storage.ErrorNotFound, err)
+	assert.Equal(t, fmt.Errorf("out of bounds"), err)
 	assert.Nil(t, block)
 	assert.Equal(t, uint64(2), ledger.chainMeta.Height)
 	assert.Equal(t, journal2.ChangedHash.String(), ledger.prevJnlHash.String())
@@ -579,7 +596,7 @@ func TestChainLedger_GetInterchainMeta(t *testing.T) {
 	accounts, journal := ledger.FlushDirtyDataAndComputeJournal()
 
 	meta, err := ledger.GetInterchainMeta(1)
-	require.Equal(t, storage.ErrorNotFound, err)
+	require.Equal(t, fmt.Errorf("out of bounds"), err)
 	require.Nil(t, meta)
 
 	ledger.PersistBlockData(genBlockData(1, accounts, journal))
@@ -589,22 +606,23 @@ func TestChainLedger_GetInterchainMeta(t *testing.T) {
 	require.Nil(t, err)
 	require.Equal(t, 0, len(meta.Counter))
 
-	meta = &pb.InterchainMeta{
-		Counter: make(map[string]*pb.Uint64Slice),
-		L2Roots: make([]types.Hash, 0),
-	}
-	meta.Counter["a"] = &pb.Uint64Slice{}
-	meta.L2Roots = append(meta.L2Roots, *types.NewHash([]byte{}))
-	batch := ledger.blockchainStore.NewBatch()
-	err = ledger.persistInterChainMeta(batch, meta, 2)
-	require.Nil(t, err)
-	batch.Commit()
+	// deprecated for blockfile
+	// meta = &pb.InterchainMeta{
+	// 	Counter: make(map[string]*pb.Uint64Slice),
+	// 	L2Roots: make([]types.Hash, 0),
+	// }
+	// meta.Counter["a"] = &pb.Uint64Slice{}
+	// meta.L2Roots = append(meta.L2Roots, *types.NewHash([]byte{}))
+	// batch := ledger.blockchainStore.NewBatch()
+	// err = ledger.persistInterChainMeta(batch, meta, 2)
+	// require.Nil(t, err)
+	// batch.Commit()
 
-	meta2, err := ledger.GetInterchainMeta(2)
-	require.Nil(t, err)
-	require.Equal(t, len(meta.Counter), len(meta2.Counter))
-	require.Equal(t, meta.Counter["a"], meta2.Counter["a"])
-	require.Equal(t, len(meta.L2Roots), len(meta2.Counter))
+	// meta2, err := ledger.GetInterchainMeta(2)
+	// require.Nil(t, err)
+	// require.Equal(t, len(meta.Counter), len(meta2.Counter))
+	// require.Equal(t, meta.Counter["a"], meta2.Counter["a"])
+	// require.Equal(t, len(meta.L2Roots), len(meta2.Counter))
 }
 
 func TestChainLedger_AddState(t *testing.T) {
@@ -676,6 +694,142 @@ func TestChainLedger_AddEvent(t *testing.T) {
 	assert.Equal(t, 0, len(events))
 }
 
+func TestPutBlock(t *testing.T) {
+	repoRoot, err := ioutil.TempDir("", "TestPutBlock")
+	require.Nil(t, err)
+
+	blockStorage, err := leveldb.New(filepath.Join(repoRoot, "storage"))
+	assert.Nil(t, err)
+	ldb, err := leveldb.New(filepath.Join(repoRoot, "ledger"))
+	assert.Nil(t, err)
+
+	logger := log.NewWithModule("account_test")
+	blockFile, err := blockfile.NewBlockFile(repoRoot, logger)
+	assert.Nil(t, err)
+	ledger, err := New(createMockRepo(t), blockStorage, ldb, blockFile, nil, log.NewWithModule("executor"))
+	block := &pb.Block{}
+	ledger.PutBlock(uint64(0), block)
+	require.Nil(t, err)
+}
+
+func TestGetBlockSign(t *testing.T) {
+	ledger, _ := initLedger(t, "")
+	_, err := ledger.GetBlockSign(uint64(0))
+	assert.NotNil(t, err)
+}
+
+func TestGetBlockByHash(t *testing.T) {
+	ledger, _ := initLedger(t, "")
+	_, err := ledger.GetBlockByHash(types.NewHash([]byte("1")))
+	assert.Equal(t, storage.ErrorNotFound, err)
+	ledger.blockchainStore.Put(compositeKey(blockHashKey, types.NewHash([]byte("1")).String()), []byte("1"))
+	_, err = ledger.GetBlockByHash(types.NewHash([]byte("1")))
+	assert.NotNil(t, err)
+}
+
+func TestGetTransaction(t *testing.T) {
+	ledger, _ := initLedger(t, "")
+	_, err := ledger.GetTransaction(types.NewHash([]byte("1")))
+	assert.Equal(t, storage.ErrorNotFound, err)
+	ledger.blockchainStore.Put(compositeKey(transactionMetaKey, types.NewHash([]byte("1")).String()), []byte("1"))
+	_, err = ledger.GetTransaction(types.NewHash([]byte("1")))
+	assert.NotNil(t, err)
+	err = ledger.bf.AppendBlock(0, []byte("1"), []byte("1"), []byte("1"), []byte("1"), []byte("1"))
+	require.Nil(t, err)
+	_, err = ledger.GetTransaction(types.NewHash([]byte("1")))
+	assert.NotNil(t, err)
+}
+
+func TestGetTransaction1(t *testing.T) {
+	ledger, _ := initLedger(t, "")
+	_, err := ledger.GetTransaction(types.NewHash([]byte("1")))
+	assert.Equal(t, storage.ErrorNotFound, err)
+	meta := pb.TransactionMeta{
+		BlockHeight: 0,
+	}
+	metaBytes, err := meta.Marshal()
+	require.Nil(t, err)
+	ledger.blockchainStore.Put(compositeKey(transactionMetaKey, types.NewHash([]byte("1")).String()), metaBytes)
+	_, err = ledger.GetTransaction(types.NewHash([]byte("1")))
+	assert.NotNil(t, err)
+	err = ledger.bf.AppendBlock(0, []byte("1"), []byte("1"), []byte("1"), []byte("1"), []byte("1"))
+	require.Nil(t, err)
+	_, err = ledger.GetTransaction(types.NewHash([]byte("1")))
+	assert.NotNil(t, err)
+}
+
+func TestGetTransactionMeta(t *testing.T) {
+	ledger, _ := initLedger(t, "")
+	_, err := ledger.GetTransactionMeta(types.NewHash([]byte("1")))
+	assert.Equal(t, storage.ErrorNotFound, err)
+	ledger.blockchainStore.Put(compositeKey(transactionMetaKey, types.NewHash([]byte("1")).String()), []byte("1"))
+	_, err = ledger.GetTransactionMeta(types.NewHash([]byte("1")))
+	assert.NotNil(t, err)
+	err = ledger.bf.AppendBlock(0, []byte("1"), []byte("1"), []byte("1"), []byte("1"), []byte("1"))
+	require.Nil(t, err)
+	_, err = ledger.GetTransactionMeta(types.NewHash([]byte("1")))
+	assert.NotNil(t, err)
+}
+
+func TestGetReceipt(t *testing.T) {
+	ledger, _ := initLedger(t, "")
+	_, err := ledger.GetReceipt(types.NewHash([]byte("1")))
+	assert.Equal(t, storage.ErrorNotFound, err)
+	ledger.blockchainStore.Put(compositeKey(transactionMetaKey, types.NewHash([]byte("1")).String()), []byte("0"))
+	_, err = ledger.GetReceipt(types.NewHash([]byte("1")))
+	assert.NotNil(t, err)
+	err = ledger.bf.AppendBlock(0, []byte("1"), []byte("1"), []byte("1"), []byte("1"), []byte("1"))
+	require.Nil(t, err)
+	_, err = ledger.GetReceipt(types.NewHash([]byte("1")))
+	assert.NotNil(t, err)
+}
+
+func TestGetReceipt1(t *testing.T) {
+	ledger, _ := initLedger(t, "")
+	_, err := ledger.GetTransaction(types.NewHash([]byte("1")))
+	assert.Equal(t, storage.ErrorNotFound, err)
+	meta := pb.TransactionMeta{
+		BlockHeight: 0,
+	}
+	metaBytes, err := meta.Marshal()
+	require.Nil(t, err)
+	ledger.blockchainStore.Put(compositeKey(transactionMetaKey, types.NewHash([]byte("1")).String()), metaBytes)
+	_, err = ledger.GetReceipt(types.NewHash([]byte("1")))
+	assert.NotNil(t, err)
+	err = ledger.bf.AppendBlock(0, []byte("1"), []byte("1"), []byte("1"), []byte("1"), []byte("1"))
+	require.Nil(t, err)
+	_, err = ledger.GetReceipt(types.NewHash([]byte("1")))
+	assert.NotNil(t, err)
+}
+
+func TestPrepare(t *testing.T) {
+	ledger, _ := initLedger(t, "")
+	batch := ledger.blockchainStore.NewBatch()
+	transactions := []*pb.Transaction{}
+	transaction := &pb.Transaction{
+		TransactionHash: types.NewHash([]byte("1")),
+	}
+	transactions = append(transactions, transaction)
+	block := &pb.Block{
+		BlockHeader: &pb.BlockHeader{
+			Number: uint64(0),
+		},
+		BlockHash:    types.NewHash([]byte{1}),
+		Transactions: transactions,
+	}
+	_, err := ledger.prepareBlock(batch, block)
+	require.Nil(t, err)
+	receipts := []*pb.Receipt{}
+	receipt := &pb.Receipt{
+		TxHash: types.NewHash([]byte("1")),
+	}
+	receipts = append(receipts, receipt)
+	_, err = ledger.prepareReceipts(batch, block, receipts)
+	require.Nil(t, err)
+	_, err = ledger.prepareTransactions(batch, block)
+	require.Nil(t, err)
+}
+
 func genBlockData(height uint64, accounts map[string]*Account, journal *BlockJournal) *BlockData {
 	return &BlockData{
 		Block: &pb.Block{
@@ -725,7 +879,10 @@ func initLedger(t *testing.T, repoRoot string) (*ChainLedger, string) {
 
 	accountCache, err := NewAccountCache()
 	assert.Nil(t, err)
-	ledger, err := New(createMockRepo(t), blockStorage, ldb, accountCache, log.NewWithModule("executor"))
+	logger := log.NewWithModule("account_test")
+	blockFile, err := blockfile.NewBlockFile(repoRoot, logger)
+	assert.Nil(t, err)
+	ledger, err := New(createMockRepo(t), blockStorage, ldb, blockFile, accountCache, log.NewWithModule("executor"))
 	require.Nil(t, err)
 
 	return ledger, repoRoot

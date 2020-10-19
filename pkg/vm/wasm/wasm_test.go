@@ -17,6 +17,7 @@ import (
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/repo"
+	"github.com/meshplus/bitxhub/internal/storages/blockfile"
 	"github.com/meshplus/bitxhub/pkg/cert"
 	"github.com/meshplus/bitxhub/pkg/vm"
 	"github.com/stretchr/testify/assert"
@@ -62,7 +63,10 @@ func initCreateContext(t *testing.T, name string) *vm.Context {
 
 	accountCache, err := ledger.NewAccountCache()
 	require.Nil(t, err)
-	ldg, err := ledger.New(createMockRepo(t), store, ldb, accountCache, log.NewWithModule("executor"))
+	logger := log.NewWithModule("account_test")
+	blockFile, err := blockfile.NewBlockFile(dir, logger)
+	assert.Nil(t, err)
+	ldg, err := ledger.New(createMockRepo(t), store, ldb, blockFile, accountCache, log.NewWithModule("executor"))
 	assert.Nil(t, err)
 
 	return &vm.Context{
@@ -95,7 +99,10 @@ func initValidationContext(t *testing.T, name string) *vm.Context {
 
 	accountCache, err := ledger.NewAccountCache()
 	require.Nil(t, err)
-	ldg, err := ledger.New(createMockRepo(t), store, ldb, accountCache, log.NewWithModule("executor"))
+	logger := log.NewWithModule("account_test")
+	blockFile, err := blockfile.NewBlockFile(dir, logger)
+	assert.Nil(t, err)
+	ldg, err := ledger.New(createMockRepo(t), store, ldb, blockFile, accountCache, log.NewWithModule("executor"))
 	require.Nil(t, err)
 
 	return &vm.Context{
@@ -127,7 +134,10 @@ func initFabricContext(t *testing.T, name string) *vm.Context {
 
 	accountCache, err := ledger.NewAccountCache()
 	require.Nil(t, err)
-	ldg, err := ledger.New(createMockRepo(t), store, ldb, accountCache, log.NewWithModule("executor"))
+	logger := log.NewWithModule("account_test")
+	blockFile, err := blockfile.NewBlockFile(dir, logger)
+	assert.Nil(t, err)
+	ldg, err := ledger.New(createMockRepo(t), store, ldb, blockFile, accountCache, log.NewWithModule("executor"))
 	require.Nil(t, err)
 
 	return &vm.Context{
@@ -258,7 +268,10 @@ func BenchmarkRunFabValidation(b *testing.B) {
 
 	accountCache, err := ledger.NewAccountCache()
 	assert.Nil(b, err)
-	ldg, err := ledger.New(&repo.Repo{Key: &repo.Key{PrivKey: privKey}}, store, ldb, accountCache, log.NewWithModule("executor"))
+	logger := log.NewWithModule("account_test")
+	blockFile, err := blockfile.NewBlockFile(dir, logger)
+	assert.Nil(b, err)
+	ldg, err := ledger.New(&repo.Repo{Key: &repo.Key{PrivKey: privKey}}, store, ldb, blockFile, accountCache, log.NewWithModule("executor"))
 	require.Nil(b, err)
 	ctx := &vm.Context{
 		Caller:          caller,
