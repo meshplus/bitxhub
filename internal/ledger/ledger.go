@@ -5,10 +5,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/repo"
-	"github.com/meshplus/bitxhub/pkg/storage"
 	"github.com/sirupsen/logrus"
 )
 

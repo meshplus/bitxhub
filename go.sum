@@ -51,6 +51,8 @@ github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24
 github.com/beorn7/perks v1.0.0/go.mod h1:KWe93zE9D1o94FZ5RNwFwVgaQK1VOXiVxmqh+CedLV8=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
+github.com/bitxhub/parallel-executor v0.0.0-20201016065313-8057d544998e h1:nz0MelhdC0A8yPGAL2gM/94xD8KgRVjYX0QejiP/f0Q=
+github.com/bitxhub/parallel-executor v0.0.0-20201016065313-8057d544998e/go.mod h1:rMcZvKgOfyIesmOimA6LXjAvGZyJAXhPPRejEYmsS+k=
 github.com/btcsuite/btcd v0.0.0-20171128150713-2e60448ffcc6/go.mod h1:Dmm/EzmjnCiweXmzRIAiUWCInVmPgjkzgv5k4tVyXiQ=
 github.com/btcsuite/btcd v0.0.0-20190115013929-ed77733ec07d/go.mod h1:d3C0AkH6BRcvO8T0UEPu53cnw4IbV63x1bEjildYhO0=
 github.com/btcsuite/btcd v0.0.0-20190213025234-306aecffea32/go.mod h1:DrZx5ec/dmnfpw9KyYoQyYo7d0KEvTkk/5M/vbZjAr8=
@@ -579,6 +581,8 @@ github.com/meshplus/bitxhub-kit v1.0.0/go.mod h1:7cWyhXWZfrQ3+EaxkRoXfuiG3Y5R9DX
 github.com/meshplus/bitxhub-kit v1.0.1-0.20200903112208-fb288271c55c/go.mod h1:8Pprmnq+2fFi5kJP0qcbwPl/fe22nro0OamjtwD0LJM=
 github.com/meshplus/bitxhub-kit v1.0.1-0.20200914065214-5161497a783c h1:H5RvXIJK9yjV8kqruGI9Ks5aal6PVvcpsMhn6hREtA8=
 github.com/meshplus/bitxhub-kit v1.0.1-0.20200914065214-5161497a783c/go.mod h1:Whtgcr25HOF6iJv0Ib5/BPnEXq9iNFO89j8JQkElISk=
+github.com/meshplus/bitxhub-kit v1.0.1-0.20201020090511-52fcd9cba5dc h1:rB9K68YrxFS4R2JbweF2zDh8Vwk30U00YLgZuiUSUpY=
+github.com/meshplus/bitxhub-kit v1.0.1-0.20201020090511-52fcd9cba5dc/go.mod h1:Whtgcr25HOF6iJv0Ib5/BPnEXq9iNFO89j8JQkElISk=
 github.com/meshplus/bitxhub-model v1.0.0-rc3/go.mod h1:ZCctQIYTlE3vJ8Lhkrgs9bWwNA+Dw4JzojOSIzLVU6E=
 github.com/meshplus/bitxhub-model v1.0.0-rc4.0.20200514093243-7e8ae60d1c19/go.mod h1:QK8aACbxtZEA3Hk1BOCirW0uxMWLsMrLDpWz9FweIKM=
 github.com/meshplus/bitxhub-model v1.0.0-rc4.0.20201009112846-79d2e6ddf10d h1:q4Vig+IVhBvARLyeOsFw8gAdor0ajiBl6lGch1N65sk=

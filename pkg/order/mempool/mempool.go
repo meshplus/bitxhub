@@ -3,9 +3,9 @@ package mempool
 import (
 	"errors"
 
+	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/meshplus/bitxhub-model/pb"
 	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
-	"github.com/meshplus/bitxhub/pkg/storage"
 )
 
 var _ MemPool = (*mempoolImpl)(nil)

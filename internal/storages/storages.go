@@ -3,9 +3,9 @@ package storages
 import (
 	"fmt"
 
+	"github.com/meshplus/bitxhub-kit/storage"
+	"github.com/meshplus/bitxhub-kit/storage/leveldb"
 	"github.com/meshplus/bitxhub/internal/repo"
-	"github.com/meshplus/bitxhub/pkg/storage"
-	"github.com/meshplus/bitxhub/pkg/storage/leveldb"
 )
 
 const (

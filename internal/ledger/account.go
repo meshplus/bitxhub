@@ -8,8 +8,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub/pkg/storage"
 )
 
 type Account struct {

@@ -9,13 +9,13 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/pkg/order"
 	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
 	"github.com/meshplus/bitxhub/pkg/order/mempool"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
-	"github.com/meshplus/bitxhub/pkg/storage"
 
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"

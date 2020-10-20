@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/pkg/storage"
 )
 
 // PutBlock put block into store
