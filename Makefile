@@ -40,7 +40,7 @@ test:
 test-coverage:
 	go generate ./...
 	@go test -short -coverprofile cover.out -covermode=atomic ${TEST_PKGS}
-	@cat cover.out >> coverage.txt
+	@cat cover.out | grep -v "pb.go" >> coverage.txt
 
 ## make tester: Run integration test
 tester:
