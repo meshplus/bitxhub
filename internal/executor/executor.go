@@ -209,6 +209,7 @@ func (exec *BlockExecutor) persistData() {
 	for data := range exec.persistC {
 		now := time.Now()
 		exec.ledger.PersistBlockData(data)
+		exec.postBlockEvent(data.Block, data.InterchainMeta)
 		exec.logger.WithFields(logrus.Fields{
 			"height": data.Block.BlockHeader.Number,
 			"hash":   data.Block.BlockHash.ShortString(),
