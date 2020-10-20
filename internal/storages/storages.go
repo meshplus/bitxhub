@@ -32,10 +32,10 @@ func Initialize(repoRoot string) error {
 }
 
 func Get(name string) (storage.Storage, error) {
-	strg, ok := s.storages[name]
+	storage, ok := s.storages[name]
 	if !ok {
 		return nil, fmt.Errorf("wrong storage name")
 	}
 
-	return strg, nil
+	return storage, nil
 }
