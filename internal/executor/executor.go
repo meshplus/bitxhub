@@ -162,6 +162,7 @@ func (exec *BlockExecutor) listenExecuteEvent() {
 func (exec *BlockExecutor) persistData() {
 	for data := range exec.persistC {
 		exec.ledger.PersistBlockData(data)
+		exec.postBlockEvent(data.Block, data.InterchainMeta)
 	}
 }
 
