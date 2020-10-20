@@ -1,4 +1,4 @@
-// +build com
+// +build ent
 
 package imports
 
