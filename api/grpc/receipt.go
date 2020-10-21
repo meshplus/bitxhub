@@ -8,7 +8,7 @@ import (
 )
 
 func (cbs *ChainBrokerService) GetReceipt(ctx context.Context, req *pb.TransactionHashMsg) (*pb.Receipt, error) {
-	hash := types.String2Hash(req.TxHash)
+	hash := types.NewHashByStr(req.TxHash)
 
 	return cbs.api.Broker().GetReceipt(*hash)
 }

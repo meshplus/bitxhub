@@ -22,11 +22,11 @@ func (cbs *ChainBrokerService) GetAccountBalance(ctx context.Context, req *pb.Ad
 		return nil, fmt.Errorf("invalid account address: %v", req.Address)
 	}
 
-	addr := types.String2Address(req.Address)
+	addr := types.NewAddressByStr(req.Address)
 
 	account := cbs.api.Account().GetAccount(*addr)
 
-	hash := types.Bytes2Hash(account.CodeHash())
+	hash := types.NewHash(account.CodeHash())
 
 	typ := "normal"
 

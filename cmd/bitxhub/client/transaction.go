@@ -97,7 +97,7 @@ func sendTransaction(ctx *cli.Context) error {
 		return fmt.Errorf("wrong private key: %w", err)
 	}
 
-	to := types.String2Address(toString)
+	to := types.NewAddressByStr(toString)
 
 	data := &pb.TransactionData{
 		Type:   pb.TransactionData_Type(txType),
@@ -109,8 +109,8 @@ func sendTransaction(ctx *cli.Context) error {
 	}
 
 	tx := &pb.Transaction{
-		From:      *from,
-		To:        *to,
+		From:      from,
+		To:        to,
 		Timestamp: time.Now().UnixNano(),
 		Nonce:     rand.Uint64(),
 		Payload:   payload,

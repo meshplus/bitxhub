@@ -19,11 +19,11 @@ type BoltStubImpl struct {
 }
 
 func (b *BoltStubImpl) Caller() string {
-	return b.ctx.Caller.Hex()
+	return b.ctx.Caller.String()
 }
 
 func (b *BoltStubImpl) Callee() string {
-	return b.ctx.Callee.Hex()
+	return b.ctx.Callee.String()
 }
 
 func (b *BoltStubImpl) Logger() logrus.FieldLogger {
@@ -31,7 +31,7 @@ func (b *BoltStubImpl) Logger() logrus.FieldLogger {
 }
 
 // GetTxHash returns the transaction hash
-func (b *BoltStubImpl) GetTxHash() types.Hash {
+func (b *BoltStubImpl) GetTxHash() *types.Hash {
 	hash := b.ctx.TransactionHash
 	return hash
 }
@@ -115,7 +115,7 @@ func (b *BoltStubImpl) postEvent(interchain bool, event interface{}) {
 }
 
 func (b *BoltStubImpl) CrossInvoke(address, method string, args ...*pb.Arg) *Response {
-	addr := types.String2Address(address)
+	addr := types.NewAddressByStr(address)
 
 	payload := &pb.InvokePayload{
 		Method: method,

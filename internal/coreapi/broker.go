@@ -77,7 +77,7 @@ func (b *BrokerAPI) GetBlock(mode string, value string) (*pb.Block, error) {
 		}
 		return b.bxh.Ledger.GetBlock(height)
 	case "HASH":
-		return b.bxh.Ledger.GetBlockByHash(*types.String2Hash(value))
+		return b.bxh.Ledger.GetBlockByHash(*types.NewHashByStr(value))
 	default:
 		return nil, fmt.Errorf("wrong args about getting block: %s", mode)
 	}

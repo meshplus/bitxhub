@@ -31,10 +31,10 @@ func Initialize(genesis *repo.Genesis, lg ledger.Ledger) error {
 	block := &pb.Block{
 		BlockHeader: &pb.BlockHeader{
 			Number:    1,
-			StateRoot: journal.ChangedHash,
+			StateRoot: &journal.ChangedHash,
 		},
 	}
-	block.BlockHash = *block.Hash()
+	block.BlockHash = block.Hash()
 	blockData := &ledger.BlockData{
 		Block:          block,
 		Receipts:       nil,

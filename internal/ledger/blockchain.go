@@ -291,7 +291,7 @@ func (l *ChainLedger) persistBlock(batcher storage.Batch, block *pb.Block) error
 
 	var txHashes []types.Hash
 	for _, tx := range block.Transactions {
-		txHashes = append(txHashes, tx.TransactionHash)
+		txHashes = append(txHashes, *tx.TransactionHash)
 	}
 
 	data, err := json.Marshal(txHashes)

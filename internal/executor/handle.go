@@ -47,14 +47,14 @@ func (exec *BlockExecutor) processExecuteEvent(block *pb.Block) *ledger.BlockDat
 
 	calcMerkleDuration.Observe(float64(time.Since(calcMerkleStart)) / float64(time.Second))
 
-	block.BlockHeader.TxRoot = l1Root
-	block.BlockHeader.ReceiptRoot = receiptRoot
-	block.BlockHeader.ParentHash = exec.currentBlockHash
+	block.BlockHeader.TxRoot = &l1Root
+	block.BlockHeader.ReceiptRoot = &receiptRoot
+	block.BlockHeader.ParentHash = &exec.currentBlockHash
 
 	accounts, journal := exec.ledger.FlushDirtyDataAndComputeJournal()
 
-	block.BlockHeader.StateRoot = journal.ChangedHash
-	block.BlockHash = *block.Hash()
+	block.BlockHeader.StateRoot = &journal.ChangedHash
+	block.BlockHash = block.Hash()
 
 	exec.logger.WithFields(logrus.Fields{
 		"tx_root":      block.BlockHeader.TxRoot.String(),
@@ -75,7 +75,7 @@ func (exec *BlockExecutor) processExecuteEvent(block *pb.Block) *ledger.BlockDat
 	exec.clear()
 
 	exec.currentHeight = block.BlockHeader.Number
-	exec.currentBlockHash = block.BlockHash
+	exec.currentBlockHash = *block.BlockHash
 
 	return &ledger.BlockData{
 		Block:          block,
@@ -120,7 +120,7 @@ func (exec *BlockExecutor) buildTxMerkleTree(txs []*pb.Transaction) (types.Hash,
 
 			txHashes := make([]merkletree.Content, 0, len(txIndexes))
 			for _, txIndex := range txIndexes {
-				txHashes = append(txHashes, &txs[txIndex].TransactionHash)
+				txHashes = append(txHashes, txs[txIndex].TransactionHash)
 			}
 
 			hash, err := calcMerkleRoot(txHashes)
@@ -186,7 +186,7 @@ func (exec *BlockExecutor) verifySign(block *pb.Block) *pb.Block {
 	for i, tx := range txs {
 		go func(i int, tx *pb.Transaction) {
 			defer wg.Done()
-			ok, _ := asym.Verify(crypto.Secp256k1, tx.Signature, tx.SignHash().Bytes(), tx.From)
+			ok, _ := asym.Verify(crypto.Secp256k1, tx.Signature, tx.SignHash().Bytes(), *tx.From)
 			if !ok {
 				mutex.Lock()
 				defer mutex.Unlock()
@@ -243,7 +243,7 @@ func (exec *BlockExecutor) applyTx(index int, tx *pb.Transaction, opt *agency.Tx
 	}
 
 	if normalTx {
-		exec.txsExecutor.AddNormalTx(tx.TransactionHash)
+		exec.txsExecutor.AddNormalTx(*tx.TransactionHash)
 	}
 
 	return receipt
@@ -295,20 +295,20 @@ func (exec *BlockExecutor) clear() {
 	exec.ledger.Clear()
 }
 
-func (exec *BlockExecutor) transfer(from, to types.Address, value uint64) error {
+func (exec *BlockExecutor) transfer(from, to *types.Address, value uint64) error {
 	if value == 0 {
 		return nil
 	}
 
-	fv := exec.ledger.GetBalance(from)
+	fv := exec.ledger.GetBalance(*from)
 	if fv < value {
 		return fmt.Errorf("not sufficient funds for %s", from.String())
 	}
 
-	tv := exec.ledger.GetBalance(to)
+	tv := exec.ledger.GetBalance(*to)
 
-	exec.ledger.SetBalance(from, fv-value)
-	exec.ledger.SetBalance(to, tv+value)
+	exec.ledger.SetBalance(*from, fv-value)
+	exec.ledger.SetBalance(*to, tv+value)
 
 	return nil
 }

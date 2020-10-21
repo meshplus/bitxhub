@@ -54,7 +54,7 @@ func NewBitXHub(rep *repo.Repo) (*BitXHub, error) {
 
 	if !rep.Config.Solo {
 		for i, node := range rep.NetworkConfig.Nodes {
-			m[node.ID] = *types.String2Address(rep.Genesis.Addresses[i])
+			m[node.ID] = *types.NewAddressByStr(rep.Genesis.Addresses[i])
 		}
 	}
 
@@ -67,7 +67,7 @@ func NewBitXHub(rep *repo.Repo) (*BitXHub, error) {
 		order.WithPeerManager(bxh.PeerMgr),
 		order.WithLogger(loggers.Logger(loggers.Order)),
 		order.WithApplied(chainMeta.Height),
-		order.WithDigest(chainMeta.BlockHash.Hex()),
+		order.WithDigest(chainMeta.BlockHash.String()),
 		order.WithGetChainMetaFunc(bxh.Ledger.GetChainMeta),
 		order.WithGetTransactionFunc(bxh.Ledger.GetTransaction),
 	)
@@ -170,7 +170,7 @@ func NewTesterBitXHub(rep *repo.Repo) (*BitXHub, error) {
 
 	if !rep.Config.Solo {
 		for i, node := range rep.NetworkConfig.Nodes {
-			m[node.ID] = *types.String2Address(rep.Genesis.Addresses[i])
+			m[node.ID] = *types.NewAddressByStr(rep.Genesis.Addresses[i])
 		}
 	}
 
@@ -183,7 +183,7 @@ func NewTesterBitXHub(rep *repo.Repo) (*BitXHub, error) {
 		order.WithPeerManager(bxh.PeerMgr),
 		order.WithLogger(loggers.Logger(loggers.Order)),
 		order.WithApplied(chainMeta.Height),
-		order.WithDigest(chainMeta.BlockHash.Hex()),
+		order.WithDigest(chainMeta.BlockHash.String()),
 		order.WithGetChainMetaFunc(bxh.Ledger.GetChainMeta),
 		order.WithGetTransactionFunc(bxh.Ledger.GetTransaction),
 	)

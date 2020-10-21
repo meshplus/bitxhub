@@ -49,15 +49,15 @@ func (cbs *ChainBrokerService) checkTransaction(tx *pb.Transaction) error {
 	}
 
 	emptyAddress := &types.Address{}
-	if tx.From.Hex() == emptyAddress.Hex() {
+	if tx.From.String() == emptyAddress.String() {
 		return fmt.Errorf("from can't be empty")
 	}
 
-	if tx.From.Hex() == tx.To.Hex() {
+	if tx.From.String() == tx.To.String() {
 		return fmt.Errorf("from can`t be the same as to")
 	}
 
-	if tx.To.Hex() == emptyAddress.Hex() && len(tx.Payload) == 0 {
+	if tx.To.String() == emptyAddress.String() && len(tx.Payload) == 0 {
 		return fmt.Errorf("can't deploy empty contract")
 	}
 
@@ -78,8 +78,8 @@ func (cbs *ChainBrokerService) checkTransaction(tx *pb.Transaction) error {
 }
 
 func (cbs *ChainBrokerService) sendTransaction(tx *pb.Transaction) (string, error) {
-	tx.TransactionHash = *tx.Hash()
-	ok, _ := asym.Verify(crypto.Secp256k1, tx.Signature, tx.SignHash().Bytes(), tx.From)
+	tx.TransactionHash = tx.Hash()
+	ok, _ := asym.Verify(crypto.Secp256k1, tx.Signature, tx.SignHash().Bytes(), *tx.From)
 	if !ok {
 		return "", fmt.Errorf("invalid signature")
 	}
@@ -88,7 +88,7 @@ func (cbs *ChainBrokerService) sendTransaction(tx *pb.Transaction) (string, erro
 		return "", err
 	}
 
-	return tx.TransactionHash.Hex(), nil
+	return tx.TransactionHash.String(), nil
 }
 
 func (cbs *ChainBrokerService) sendView(tx *pb.Transaction) (*pb.Receipt, error) {
@@ -101,7 +101,7 @@ func (cbs *ChainBrokerService) sendView(tx *pb.Transaction) (*pb.Receipt, error)
 }
 
 func (cbs *ChainBrokerService) GetTransaction(ctx context.Context, req *pb.TransactionHashMsg) (*pb.GetTransactionResponse, error) {
-	hash := types.String2Hash(req.TxHash)
+	hash := types.NewHashByStr(req.TxHash)
 	tx, err := cbs.api.Broker().GetTransaction(*hash)
 	if err != nil {
 		return nil, err

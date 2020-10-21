@@ -40,7 +40,7 @@ func (bvm *BoltVM) Run(input []byte) (ret []byte, err error) {
 		return nil, fmt.Errorf("unmarshal invoke payload: %w", err)
 	}
 
-	contract, err := GetBoltContract(bvm.ctx.Callee.Hex(), bvm.contracts)
+	contract, err := GetBoltContract(bvm.ctx.Callee.String(), bvm.contracts)
 	if err != nil {
 		return nil, fmt.Errorf("get bolt contract: %w", err)
 	}

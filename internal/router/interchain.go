@@ -202,7 +202,7 @@ func (router *InterchainRouter) classify(block *pb.Block, meta *pb.InterchainMet
 		var hashes []types.Hash
 		for _, i := range vs.Slice {
 			txs = append(txs, block.Transactions[i])
-			hashes = append(hashes, block.Transactions[i].TransactionHash)
+			hashes = append(hashes, *block.Transactions[i].TransactionHash)
 		}
 		txsM[k] = txs
 		hashesM[k] = hashes

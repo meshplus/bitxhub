@@ -86,7 +86,7 @@ func (w *WasmVM) deploy() ([]byte, error) {
 	contractAddr := createAddress(w.ctx.Caller, contractNonce)
 	wasmStruct := &Contract{
 		Code: w.ctx.TransactionData.Payload,
-		Hash: *types.Bytes2Hash(w.ctx.TransactionData.Payload),
+		Hash: *types.NewHash(w.ctx.TransactionData.Payload),
 	}
 	wasmByte, err := json.Marshal(wasmStruct)
 	if err != nil {
@@ -103,5 +103,5 @@ func createAddress(b types.Address, nonce uint64) types.Address {
 	data, _ := rlp.EncodeToBytes([]interface{}{b, nonce})
 	hashBytes := sha256.Sum256(data)
 
-	return *types.Bytes2Address(hashBytes[12:])
+	return *types.NewAddress(hashBytes[12:])
 }

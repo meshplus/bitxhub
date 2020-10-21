@@ -79,7 +79,7 @@ func loadPrivKey(repoRoot string) (*Key, error) {
 	}
 
 	return &Key{
-		Address:       address.Hex(),
+		Address:       address.String(),
 		PrivKey:       privKey,
 		Libp2pPrivKey: libp2pPrivKey,
 	}, nil

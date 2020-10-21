@@ -9,8 +9,8 @@ import (
 
 // Context represents the context of wasm
 type Context struct {
-	caller          types.Address
-	callee          types.Address
+	caller          *types.Address
+	callee          *types.Address
 	ledger          ledger.Ledger
 	transactionData *pb.TransactionData
 	nonce           int64
@@ -31,12 +31,12 @@ func NewContext(tx *pb.Transaction, data *pb.TransactionData, ledger ledger.Ledg
 
 // Caller returns the tx caller address
 func (ctx *Context) Caller() string {
-	return ctx.caller.Hex()
+	return ctx.caller.String()
 }
 
 // Callee returns the tx callee address
 func (ctx *Context) Callee() string {
-	return ctx.callee.Hex()
+	return ctx.callee.String()
 }
 
 // Logger returns the log instance
