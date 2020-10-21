@@ -1,9 +1,7 @@
 package mempool
 
 import (
-	"encoding/json"
 	"errors"
-	"fmt"
 	"math/rand"
 	"os"
 	"time"
@@ -36,16 +34,16 @@ const (
 
 func mockMempoolImpl() (*mempoolImpl, chan *raftproto.Ready) {
 	config := &Config{
-		ID:             1,
-		ChainHeight:    DefaultTestChainHeight,
-		BatchSize:      DefaultTestBatchSize,
-		PoolSize:       DefaultPoolSize,
-		TxSliceSize:    DefaultTestTxSetSize,
-		BatchTick:      DefaultBatchTick,
-		FetchTimeout:   DefaultFetchTxnTimeout,
-		TxSliceTimeout: DefaultTxSetTick,
-		Logger:         log.NewWithModule("consensus"),
-		GetTransactionFunc:getTransactionFunc,
+		ID:                 1,
+		ChainHeight:        DefaultTestChainHeight,
+		BatchSize:          DefaultTestBatchSize,
+		PoolSize:           DefaultPoolSize,
+		TxSliceSize:        DefaultTestTxSetSize,
+		BatchTick:          DefaultBatchTick,
+		FetchTimeout:       DefaultFetchTxnTimeout,
+		TxSliceTimeout:     DefaultTxSetTick,
+		Logger:             log.NewWithModule("consensus"),
+		GetTransactionFunc: getTransactionFunc,
 	}
 	config.PeerMgr = newMockPeerMgr()
 	db, _ := leveldb.New(LevelDBDir)
@@ -80,29 +78,6 @@ func constructTx(nonce uint64, privKey *crypto.PrivateKey) *pb.Transaction {
 	return tx
 }
 
-func constructIBTPTx(nonce uint64, privKey *crypto.PrivateKey) *pb.Transaction {
-	var privK crypto.PrivateKey
-	if privKey == nil {
-		privK = genPrivKey()
-	}
-	privK = *privKey
-	pubKey := privK.PublicKey()
-	from, _ := pubKey.Address()
-	to := from.String()
-	ibtp := mockIBTP(from.String(), to, nonce)
-	tx := &pb.Transaction{
-		To:    InterchainContractAddr,
-		Nonce: ibtp.Index,
-		IBTP:  ibtp,
-		Extra: []byte(fmt.Sprintf("%s-%s-%d", ibtp.From, ibtp.To, ibtp.Type)),
-	}
-	tx.Timestamp = time.Now().UnixNano()
-	sig, _ := privK.Sign(tx.SignHash().Bytes())
-	tx.Signature = sig
-	tx.TransactionHash = tx.Hash()
-	return tx
-}
-
 func cleanTestData() bool {
 	err := os.RemoveAll(LevelDBDir)
 	if err != nil {
@@ -111,29 +86,7 @@ func cleanTestData() bool {
 	return true
 }
 
-func mockIBTP(from, to string, nonce uint64) *pb.IBTP {
-	content := pb.Content{
-		SrcContractId: from,
-		DstContractId: from,
-		Func:          "interchainget",
-		Args:          [][]byte{[]byte("Alice"), []byte("10")},
-	}
-	bytes, _ := content.Marshal()
-	ibtppd, _ := json.Marshal(pb.Payload{
-		Encrypted: false,
-		Content:   bytes,
-	})
-	return &pb.IBTP{
-		From:      from,
-		To:        to,
-		Payload:   ibtppd,
-		Index:     nonce,
-		Type:      pb.IBTP_INTERCHAIN,
-		Timestamp: time.Now().UnixNano(),
-	}
-}
-
-func newHash(hash string) *types.Hash {
+func newHash() *types.Hash {
 	hashBytes :=  make([]byte,types.HashLength)
 	rand.Read(hashBytes)
 	return  types.NewHash(hashBytes)
@@ -149,7 +102,6 @@ func newMockPeerMgr() *mockPeerMgr {
 }
 
 func (mpm *mockPeerMgr) Broadcast(msg *pb.Message) error {
-	mpm.EventChan <- msg
 	return nil
 }
 

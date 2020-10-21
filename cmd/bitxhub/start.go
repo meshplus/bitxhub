@@ -171,7 +171,7 @@ func runtimePProf(mode string, id uint64, duration time.Duration) {
 				cpuFile, _ := os.Create(cpuPath)
 				_ = pprof.StartCPUProfile(cpuFile)
 			case "memory":
-				memPath := fmt.Sprint(rootPath,"mem-", time.Now().Format("2006-01-02-15:04:05"))
+				memPath := fmt.Sprint(rootPath,"mem-", time.Now().Format("20060102-15:04:05"))
 				memFile, _ := os.Create(memPath)
 				_ = pprof.WriteHeapProfile(memFile)
 				_ = memFile.Close()

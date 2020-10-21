@@ -3,6 +3,7 @@ package mempool
 import (
 	"github.com/google/btree"
 	"github.com/meshplus/bitxhub-model/pb"
+	"sync/atomic"
 )
 
 type transactionStore struct {
@@ -41,6 +42,35 @@ func newTransactionStore() *transactionStore {
 		priorityIndex:   newBtreeIndex(),
 		nonceCache:      newNonceCache(),
 	}
+}
+
+func (txStore *transactionStore) insertTxs(txs map[string][]*pb.Transaction) map[string]bool {
+	dirtyAccounts := make(map[string]bool)
+	for account, list := range txs {
+		for _, tx := range list {
+			txHash := tx.TransactionHash.String()
+			txPointer := &orderedIndexKey{
+				account: account,
+				nonce:   tx.Nonce,
+			}
+			txStore.txHashMap[txHash] = txPointer
+			txList, ok := txStore.allTxs[account]
+			if !ok {
+				// if this is new account to send tx, create a new txSortedMap
+				txStore.allTxs[account] = newTxSortedMap()
+			}
+			txList = txStore.allTxs[account]
+			txItem := &txItem{
+				account: account,
+				tx:      tx,
+			}
+			txList.items[tx.Nonce] = txItem
+			txList.index.insertBySortedNonceKey(tx)
+			atomic.AddInt32(&txStore.poolSize, 1)
+		}
+		dirtyAccounts[account] = true
+	}
+	return dirtyAccounts
 }
 
 // Get transaction by account address + nonce
@@ -113,6 +143,14 @@ type nonceCache struct {
 	// pendingNonces records each account's latest nonce which has been included in
 	// priority queue. Invariant: pendingNonces[account] >= commitNonces[account]
 	pendingNonces map[string]uint64
+}
+
+// TODO (YH): restore commitNonce and pendingNonce from db.
+func newNonceCache() *nonceCache {
+	return &nonceCache{
+		commitNonces:  make(map[string]uint64),
+		pendingNonces: make(map[string]uint64),
+	}
 }
 
 func (nc *nonceCache) getCommitNonce(account string) uint64 {

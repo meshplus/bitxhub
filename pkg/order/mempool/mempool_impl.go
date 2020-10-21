@@ -63,6 +63,7 @@ func newMempoolImpl(config *Config, storage storage.Storage, batchC chan *raftpr
 	return mpi
 }
 
+// TODO (YH): refactor listenEvent by mu
 func (mpi *mempoolImpl) listenEvent() {
 	waitC := make(chan bool)
 	for {
@@ -98,7 +99,7 @@ func (mpi *mempoolImpl) listenEvent() {
 			}
 
 		case res := <-mpi.subscribe.getBlockC:
-			result := mpi.getBlock(res.ready)
+			result := mpi.getBlockByHashList(res.ready)
 			res.result <- result
 
 		case <-mpi.batchTimerMgr.timeoutEventC:
@@ -164,7 +165,7 @@ func (mpi *mempoolImpl) processTransactions(txs []*pb.Transaction) error {
 		// check the existence of hash of this tx
 		txHash := tx.TransactionHash.String()
 		if txPointer := mpi.txStore.txHashMap[txHash]; txPointer != nil {
-			mpi.logger.Warningf("Tx %s already received", txHash)
+			mpi.logger.Warningf("Tx [account: %s, nonce: %d, hash: %s] already received", txAccount, tx.Nonce, txHash)
 			continue
 		}
 		_, ok := validTxs[txAccount]
@@ -175,7 +176,7 @@ func (mpi *mempoolImpl) processTransactions(txs []*pb.Transaction) error {
 	}
 
 	// Process all the new transaction and merge any errors into the original slice
-	dirtyAccounts := mpi.txStore.InsertTxs(validTxs)
+	dirtyAccounts := mpi.txStore.insertTxs(validTxs)
 
 	// send tx to mempool store
 	mpi.processDirtyAccount(dirtyAccounts)
@@ -198,35 +199,6 @@ func (mpi *mempoolImpl) processTransactions(txs []*pb.Transaction) error {
 		}
 	}
 	return nil
-}
-
-func (txStore *transactionStore) InsertTxs(txs map[string][]*pb.Transaction) map[string]bool {
-	dirtyAccounts := make(map[string]bool)
-	for account, list := range txs {
-		for _, tx := range list {
-			txHash := tx.TransactionHash.String()
-			txPointer := &orderedIndexKey{
-				account: account,
-				nonce:   tx.Nonce,
-			}
-			txStore.txHashMap[txHash] = txPointer
-			list, ok := txStore.allTxs[account]
-			if !ok {
-				// if this is new account to send tx, create a new txSortedMap
-				txStore.allTxs[account] = newTxSortedMap()
-			}
-			list = txStore.allTxs[account]
-			txItem := &txItem{
-				account: account,
-				tx:      tx,
-			}
-			list.items[tx.Nonce] = txItem
-			list.index.insertBySortedNonceKey(tx)
-			atomic.AddInt32(&txStore.poolSize, 1)
-		}
-		dirtyAccounts[account] = true
-	}
-	return dirtyAccounts
 }
 
 func (mpi *mempoolImpl) processDirtyAccount(dirtyAccounts map[string]bool) {
@@ -315,7 +287,7 @@ func (mpi *mempoolImpl) generateBlock(isTimeout bool) (*raftproto.Ready, error) 
 	return ready, nil
 }
 
-func (mpi *mempoolImpl) getBlock(ready *raftproto.Ready) *mempoolBatch {
+func (mpi *mempoolImpl) getBlockByHashList(ready *raftproto.Ready) *mempoolBatch {
 	res := &mempoolBatch{}
 	// leader get the block directly from batchedCache
 	if mpi.isLeader() {

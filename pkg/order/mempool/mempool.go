@@ -46,7 +46,7 @@ type MemPool interface {
 
 	// GetBlock return the transactions list by given ready.
 	// If the corresponding transaction cannot be found, a list of missing transactions will be returned.
-	GetBlock(ready *raftproto.Ready) (map[uint64]string, []*pb.Transaction)
+	GetBlockByHashList(ready *raftproto.Ready) (map[uint64]string, []*pb.Transaction)
 
 	// Remove removes the committed transactions from mempool
 	CommitTransactions(ready *raftproto.Ready)
@@ -119,7 +119,7 @@ func (mpi *mempoolImpl) IncreaseChainHeight() {
 	mpi.increaseBatchSeqNo()
 }
 
-func (mpi *mempoolImpl) GetBlock(ready *raftproto.Ready) (missingTxnHashList map[uint64]string, txList []*pb.Transaction) {
+func (mpi *mempoolImpl) GetBlockByHashList(ready *raftproto.Ready) (missingTxnHashList map[uint64]string, txList []*pb.Transaction) {
 	waitC := make(chan *mempoolBatch)
 	getBlock := &constructBatchEvent{
 		ready:  ready,

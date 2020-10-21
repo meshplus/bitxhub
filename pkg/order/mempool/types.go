@@ -7,6 +7,7 @@ import (
 	"github.com/meshplus/bitxhub-model/pb"
 	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
+
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/sirupsen/logrus"
 )
@@ -34,12 +35,6 @@ const (
 	StopReason1 = "generated a batch by batch timer"
 	StopReason2 = "generated a batch by batch size"
 	StopReason3 = "restart batch timer"
-)
-
-// IBTP methods
-const (
-	IBTPMethod1 = "HandleIBTP"
-	IBTPMethod2 = "HandleIBTPs"
 )
 
 type LocalMissingTxnEvent struct {
