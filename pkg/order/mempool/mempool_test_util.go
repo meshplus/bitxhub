@@ -10,11 +10,11 @@ import (
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/log"
+	"github.com/meshplus/bitxhub-kit/storage/leveldb"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/model/events"
 	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
-	"github.com/meshplus/bitxhub/pkg/storage/leveldb"
 	network "github.com/meshplus/go-lightp2p"
 
 	"github.com/libp2p/go-libp2p-core/peer"

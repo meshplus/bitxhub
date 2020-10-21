@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"sync"
 
-	"github.com/meshplus/bitxhub/pkg/storage"
+	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/sirupsen/logrus"
 	"github.com/willf/bloom"
 )

@@ -3,8 +3,8 @@ package ledger
 import (
 	"fmt"
 
+	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/pkg/storage"
 )
 
 var (
