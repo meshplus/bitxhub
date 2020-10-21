@@ -118,9 +118,9 @@ func TestChainLedger_PersistBlockData(t *testing.T) {
 	ledger, _ := initLedger(t, "")
 
 	// create an account
-	account := types.Bytes2Address(bytesutil.LeftPadBytes([]byte{100}, 20))
+	account := types.NewAddress(bytesutil.LeftPadBytes([]byte{100}, 20))
 
-	ledger.SetState(account, []byte("a"), []byte("b"))
+	ledger.SetState(*account, []byte("a"), []byte("b"))
 	accounts, journal := ledger.FlushDirtyDataAndComputeJournal()
 	ledger.PersistBlockData(genBlockData(1, accounts, journal))
 }
@@ -129,20 +129,20 @@ func TestChainLedger_Commit(t *testing.T) {
 	ledger, repoRoot := initLedger(t, "")
 
 	// create an account
-	account := types.Bytes2Address(bytesutil.LeftPadBytes([]byte{100}, 20))
+	account := *types.NewAddress(bytesutil.LeftPadBytes([]byte{100}, 20))
 
 	ledger.SetState(account, []byte("a"), []byte("b"))
 	accounts, journal := ledger.FlushDirtyDataAndComputeJournal()
 	err := ledger.Commit(1, accounts, journal)
 	assert.Nil(t, err)
 	assert.Equal(t, uint64(1), ledger.Version())
-	assert.Equal(t, "0xA1a6d35708Fa6Cf804B6cF9479F3a55d9A87FbFB83c55a64685AeaBdBa6116B1", journal.ChangedHash.Hex())
+	assert.Equal(t, "0xA1a6d35708Fa6Cf804B6cF9479F3a55d9A87FbFB83c55a64685AeaBdBa6116B1", journal.ChangedHash.String())
 
 	accounts, journal = ledger.FlushDirtyDataAndComputeJournal()
 	err = ledger.Commit(2, accounts, journal)
 	assert.Nil(t, err)
 	assert.Equal(t, uint64(2), ledger.Version())
-	assert.Equal(t, "0xF09F0198C06D549316D4ee7C497C9eaeF9D24f5b1075e7bCEF3D0a82DfA742cF", journal.ChangedHash.Hex())
+	assert.Equal(t, "0xF09F0198C06D549316D4ee7C497C9eaeF9D24f5b1075e7bCEF3D0a82DfA742cF", journal.ChangedHash.String())
 
 	ledger.SetState(account, []byte("a"), []byte("3"))
 	ledger.SetState(account, []byte("a"), []byte("2"))
@@ -150,14 +150,14 @@ func TestChainLedger_Commit(t *testing.T) {
 	err = ledger.Commit(3, accounts, journal)
 	assert.Nil(t, err)
 	assert.Equal(t, uint64(3), ledger.Version())
-	assert.Equal(t, "0xe9FC370DD36C9BD5f67cCfbc031C909F53A3d8bC7084C01362c55f2D42bA841c", journal.ChangedHash.Hex())
+	assert.Equal(t, "0xe9FC370DD36C9BD5f67cCfbc031C909F53A3d8bC7084C01362c55f2D42bA841c", journal.ChangedHash.String())
 
 	ledger.SetBalance(account, 100)
 	accounts, journal = ledger.FlushDirtyDataAndComputeJournal()
 	err = ledger.Commit(4, accounts, journal)
 	assert.Nil(t, err)
 	assert.Equal(t, uint64(4), ledger.Version())
-	assert.Equal(t, "0xC179056204BA33eD6CFC0bfE94ca03319BEb522fd7B0773A589899817B49ec08", journal.ChangedHash.Hex())
+	assert.Equal(t, "0xC179056204BA33eD6CFC0bfE94ca03319BEb522fd7B0773A589899817B49ec08", journal.ChangedHash.String())
 
 	code := bytesutil.RightPadBytes([]byte{100}, 100)
 	ledger.SetCode(account, code)
@@ -214,8 +214,8 @@ func TestChainLedger_Rollback(t *testing.T) {
 	ledger, repoRoot := initLedger(t, "")
 
 	// create an addr0
-	addr0 := types.Bytes2Address(bytesutil.LeftPadBytes([]byte{100}, 20))
-	addr1 := types.Bytes2Address(bytesutil.LeftPadBytes([]byte{101}, 20))
+	addr0 := *types.NewAddress(bytesutil.LeftPadBytes([]byte{100}, 20))
+	addr1 := *types.NewAddress(bytesutil.LeftPadBytes([]byte{101}, 20))
 
 	hash0 := types.Hash{}
 	assert.Equal(t, hash0, ledger.prevJnlHash)
@@ -391,7 +391,7 @@ func TestChainLedger_RemoveJournalsBeforeBlock(t *testing.T) {
 func TestChainLedger_QueryByPrefix(t *testing.T) {
 	ledger, _ := initLedger(t, "")
 
-	addr := types.Bytes2Address(bytesutil.LeftPadBytes([]byte{1}, 20))
+	addr := *types.NewAddress(bytesutil.LeftPadBytes([]byte{1}, 20))
 	key0 := []byte{100, 100}
 	key1 := []byte{100, 101}
 	key2 := []byte{100, 102}
@@ -426,7 +426,7 @@ func TestChainLedger_QueryByPrefix(t *testing.T) {
 func TestChainLedger_GetAccount(t *testing.T) {
 	ledger, _ := initLedger(t, "")
 
-	addr := types.Bytes2Address(bytesutil.LeftPadBytes([]byte{1}, 20))
+	addr := *types.NewAddress(bytesutil.LeftPadBytes([]byte{1}, 20))
 	code := bytesutil.LeftPadBytes([]byte{1}, 120)
 	key0 := []byte{100, 100}
 	key1 := []byte{100, 101}
@@ -484,7 +484,7 @@ func TestChainLedger_GetAccount(t *testing.T) {
 func TestChainLedger_GetCode(t *testing.T) {
 	ledger, _ := initLedger(t, "")
 
-	addr := types.Bytes2Address(bytesutil.LeftPadBytes([]byte{1}, 20))
+	addr := *types.NewAddress(bytesutil.LeftPadBytes([]byte{1}, 20))
 	code := bytesutil.LeftPadBytes([]byte{10}, 120)
 
 	code0 := ledger.GetCode(addr)
@@ -513,7 +513,7 @@ func TestChainLedger_GetCode(t *testing.T) {
 func TestChainLedger_AddAccountsToCache(t *testing.T) {
 	ledger, _ := initLedger(t, "")
 
-	addr := types.Bytes2Address(bytesutil.LeftPadBytes([]byte{1}, 20))
+	addr := *types.NewAddress(bytesutil.LeftPadBytes([]byte{1}, 20))
 	key := []byte{1}
 	val := []byte{2}
 	code := bytesutil.RightPadBytes([]byte{1, 2, 3, 4}, 100)
@@ -530,7 +530,8 @@ func TestChainLedger_AddAccountsToCache(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, uint64(100), innerAccount.Balance)
 	assert.Equal(t, uint64(1), innerAccount.Nonce)
-	assert.Equal(t, types.Hash(sha256.Sum256(code)).Bytes(), innerAccount.CodeHash)
+	codeHash := sha256.Sum256(code)
+	assert.Equal(t, types.NewHash(codeHash[:]).Bytes(), innerAccount.CodeHash)
 
 	val1, ok := ledger.accountCache.getState(addr, string(key))
 	assert.True(t, ok)
@@ -573,7 +574,7 @@ func TestChainLedger_GetInterchainMeta(t *testing.T) {
 	ledger, _ := initLedger(t, "")
 
 	// create an account
-	account := types.Bytes2Address(bytesutil.LeftPadBytes([]byte{100}, 20))
+	account := *types.NewAddress(bytesutil.LeftPadBytes([]byte{100}, 20))
 	ledger.SetState(account, []byte("a"), []byte("b"))
 	accounts, journal := ledger.FlushDirtyDataAndComputeJournal()
 
@@ -593,7 +594,7 @@ func TestChainLedger_GetInterchainMeta(t *testing.T) {
 		L2Roots: make([]types.Hash, 0),
 	}
 	meta.Counter["a"] = &pb.Uint64Slice{}
-	meta.L2Roots = append(meta.L2Roots, [32]byte{})
+	meta.L2Roots = append(meta.L2Roots, *types.NewHash([]byte{}))
 	batch := ledger.blockchainStore.NewBatch()
 	err = ledger.persistInterChainMeta(batch, meta, 2)
 	require.Nil(t, err)
@@ -609,7 +610,7 @@ func TestChainLedger_GetInterchainMeta(t *testing.T) {
 func TestChainLedger_AddState(t *testing.T) {
 	ledger, _ := initLedger(t, "")
 
-	account := types.Bytes2Address(bytesutil.LeftPadBytes([]byte{100}, 20))
+	account := *types.NewAddress(bytesutil.LeftPadBytes([]byte{100}, 20))
 	key0 := "100"
 	value0 := []byte{100}
 	ledger.AddState(account, []byte(key0), value0)
@@ -644,8 +645,8 @@ func TestChainLedger_AddState(t *testing.T) {
 func TestChainLedger_AddEvent(t *testing.T) {
 	ledger, _ := initLedger(t, "")
 
-	hash0 := types.Hash{1}
-	hash1 := types.Hash{2}
+	hash0 := *types.NewHash([]byte{1})
+	hash1 := *types.NewHash([]byte{2})
 	event00 := &pb.Event{
 		TxHash:     hash0,
 		Data:       nil,
@@ -666,7 +667,7 @@ func TestChainLedger_AddEvent(t *testing.T) {
 	ledger.AddEvent(event01)
 	ledger.AddEvent(event10)
 
-	events := ledger.Events(hash0.Hex())
+	events := ledger.Events(hash0.String())
 	assert.Equal(t, 2, len(events))
 	assert.Equal(t, event00, events[0])
 	assert.Equal(t, event01, events[1])
@@ -681,7 +682,7 @@ func genBlockData(height uint64, accounts map[types.Address]*Account, journal *B
 			BlockHeader: &pb.BlockHeader{
 				Number: height,
 			},
-			BlockHash:    sha256.Sum256([]byte{1}),
+			BlockHash:    *types.NewHash([]byte{1}),
 			Transactions: []*pb.Transaction{{}},
 		},
 		Receipts:       nil,
@@ -705,7 +706,7 @@ BcNwjTDCxyxLNjFKQfMAc6sY6iJs+Ma59WZyC/4uhjE=
 	return &repo.Repo{
 		Key: &repo.Key{
 			PrivKey: privKey,
-			Address: address.Hex(),
+			Address: address.String(),
 		},
 	}
 }

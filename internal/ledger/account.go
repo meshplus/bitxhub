@@ -255,7 +255,7 @@ func (o *Account) getStateJournalAndComputeHash() map[string][]byte {
 		dirtyStateData = append(dirtyStateData, dirtyVal.([]byte)...)
 	}
 	hash := sha256.Sum256(dirtyStateData)
-	o.dirtyStateHash = *types.Bytes2Hash(hash[:])
+	o.dirtyStateHash = *types.NewHash(hash[:])
 
 	return prevStates
 }

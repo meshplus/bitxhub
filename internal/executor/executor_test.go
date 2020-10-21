@@ -42,7 +42,7 @@ func TestNew(t *testing.T) {
 	// mock data for ledger
 	chainMeta := &pb.ChainMeta{
 		Height:    1,
-		BlockHash: types.String2Hash(from),
+		BlockHash: *types.NewHashByStr(from),
 	}
 	mockLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
 
@@ -71,7 +71,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	// mock data for ledger
 	chainMeta := &pb.ChainMeta{
 		Height:    1,
-		BlockHash: types.String2Hash(from),
+		BlockHash: *types.NewHashByStr(from),
 	}
 
 	evs := make([]*pb.Event, 0)
@@ -80,7 +80,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	data, err := json.Marshal(m)
 	assert.Nil(t, err)
 	ev := &pb.Event{
-		TxHash:     types.String2Hash(from),
+		TxHash:     *types.NewHashByStr(from),
 		Data:       data,
 		Interchain: true,
 	}
@@ -132,7 +132,8 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 
 	// set signature for txs
 	for _, tx := range txs {
-		tx.From, err = pubKey.Address()
+		addr, err := pubKey.Address()
+		tx.From = *addr
 		assert.Nil(t, err)
 		sig, err := privKey.Sign(tx.SignHash().Bytes())
 		assert.Nil(t, err)
@@ -140,7 +141,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	}
 	// set invalid signature tx
 	invalidTx := mockTx(nil)
-	invalidTx.From = types.String2Address(from)
+	invalidTx.From = *types.NewAddressByStr(from)
 	invalidTx.Signature = []byte("invalid")
 	txs = append(txs, invalidTx)
 
@@ -174,7 +175,7 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 	// mock data for ledger
 	chainMeta := &pb.ChainMeta{
 		Height:    1,
-		BlockHash: types.String2Hash(from),
+		BlockHash: *types.NewHashByStr(from),
 	}
 
 	privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
@@ -184,7 +185,7 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 	assert.Nil(t, err)
 	id := fmt.Sprintf("%s-%s-%d", addr.String(), to, 1)
 
-	hash := types.Hash{1}
+	hash := types.NewHash([]byte{1})
 	val, err := json.Marshal(hash)
 	assert.Nil(t, err)
 
@@ -203,7 +204,7 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 
 	// mock data for block
 	var txs []*pb.Transaction
-	tx, err := genBVMContractTransaction(privKey, 1, constant.InterchainContractAddr.Address(), "GetIBTPByID", pb.String(id))
+	tx, err := genBVMContractTransaction(privKey, 1, *constant.InterchainContractAddr.Address(), "GetIBTPByID", pb.String(id))
 	assert.Nil(t, err)
 
 	txs = append(txs, tx)
@@ -237,9 +238,10 @@ func mockBlock(blockNumber uint64, txs []*pb.Transaction) *pb.Block {
 }
 
 func mockTx(data *pb.TransactionData) *pb.Transaction {
+	content, _ := data.Marshal()
 	return &pb.Transaction{
-		Data:  data,
-		Nonce: uint64(rand.Int63()),
+		Payload: content,
+		Nonce:   uint64(rand.Int63()),
 	}
 }
 
@@ -305,20 +307,25 @@ func mockTransferTx(t *testing.T) *pb.Transaction {
 	privKey, from := loadAdminKey(t)
 	to := randAddress(t)
 
+	transactionData := &pb.TransactionData{
+		Type:   pb.TransactionData_NORMAL,
+		Amount: 1,
+	}
+
+	data, err := transactionData.Marshal()
+	require.Nil(t, err)
+
 	tx := &pb.Transaction{
 		From:      from,
 		To:        to,
 		Timestamp: time.Now().UnixNano(),
-		Data: &pb.TransactionData{
-			Type:   pb.TransactionData_NORMAL,
-			Amount: 1,
-		},
-		Nonce: uint64(rand.Int63()),
+		Payload:   data,
+		Nonce:     uint64(rand.Int63()),
 	}
 
-	err := tx.Sign(privKey)
+	err = tx.Sign(privKey)
 	require.Nil(t, err)
-	tx.TransactionHash = tx.Hash()
+	tx.TransactionHash = *tx.Hash()
 
 	return tx
 }
@@ -330,7 +337,7 @@ func loadAdminKey(t *testing.T) (crypto.PrivateKey, types.Address) {
 	from, err := privKey.PublicKey().Address()
 	require.Nil(t, err)
 
-	return privKey, from
+	return privKey, *from
 }
 
 func randAddress(t *testing.T) types.Address {
@@ -339,7 +346,7 @@ func randAddress(t *testing.T) types.Address {
 	address, err := privKey.PublicKey().Address()
 	require.Nil(t, err)
 
-	return address
+	return *address
 }
 
 func genBVMContractTransaction(privateKey crypto.PrivateKey, nonce uint64, address types.Address, method string, args ...*pb.Arg) (*pb.Transaction, error) {
@@ -372,10 +379,15 @@ func genContractTransaction(vmType pb.TransactionData_VMType, privateKey crypto.
 		Payload: data,
 	}
 
+	pld, err := td.Marshal()
+	if err != nil {
+		return nil, err
+	}
+
 	tx := &pb.Transaction{
-		From:      from,
+		From:      *from,
 		To:        address,
-		Data:      td,
+		Payload:   pld,
 		Timestamp: time.Now().UnixNano(),
 		Nonce:     nonce,
 	}
@@ -384,7 +396,7 @@ func genContractTransaction(vmType pb.TransactionData_VMType, privateKey crypto.
 		return nil, fmt.Errorf("tx sign: %w", err)
 	}
 
-	tx.TransactionHash = tx.Hash()
+	tx.TransactionHash = *tx.Hash()
 
 	return tx, nil
 }
@@ -448,7 +460,7 @@ BcNwjTDCxyxLNjFKQfMAc6sY6iJs+Ma59WZyC/4uhjE=
 	return &repo.Repo{
 		Key: &repo.Key{
 			PrivKey: privKey,
-			Address: address.Hex(),
+			Address: address.String(),
 		},
 	}
 }

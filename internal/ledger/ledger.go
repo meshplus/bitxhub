@@ -163,7 +163,7 @@ func (l *ChainLedger) RemoveJournalsBeforeBlock(height uint64) error {
 // AddEvent add ledger event
 func (l *ChainLedger) AddEvent(event *pb.Event) {
 	var events []*pb.Event
-	hash := event.TxHash.Hex()
+	hash := event.TxHash.String()
 	value, ok := l.events.Load(hash)
 	if ok {
 		events = value.([]*pb.Event)

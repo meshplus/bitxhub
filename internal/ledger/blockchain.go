@@ -70,7 +70,7 @@ func (l *ChainLedger) GetBlockSign(height uint64) ([]byte, error) {
 
 // GetBlockByHash get the block using block hash
 func (l *ChainLedger) GetBlockByHash(hash types.Hash) (*pb.Block, error) {
-	data := l.blockchainStore.Get(compositeKey(blockHashKey, hash.Hex()))
+	data := l.blockchainStore.Get(compositeKey(blockHashKey, hash.String()))
 	if data == nil {
 		return nil, storage.ErrorNotFound
 	}
@@ -85,7 +85,7 @@ func (l *ChainLedger) GetBlockByHash(hash types.Hash) (*pb.Block, error) {
 
 // GetTransaction get the transaction using transaction hash
 func (l *ChainLedger) GetTransaction(hash types.Hash) (*pb.Transaction, error) {
-	v := l.blockchainStore.Get(compositeKey(transactionKey, hash.Hex()))
+	v := l.blockchainStore.Get(compositeKey(transactionKey, hash.String()))
 	if v == nil {
 		return nil, storage.ErrorNotFound
 	}
@@ -112,7 +112,7 @@ func (l *ChainLedger) GetTransactionCount(height uint64) (uint64, error) {
 
 // GetTransactionMeta get the transaction meta data
 func (l *ChainLedger) GetTransactionMeta(hash types.Hash) (*pb.TransactionMeta, error) {
-	data := l.blockchainStore.Get(compositeKey(transactionMetaKey, hash.Hex()))
+	data := l.blockchainStore.Get(compositeKey(transactionMetaKey, hash.String()))
 	if data == nil {
 		return nil, storage.ErrorNotFound
 	}
@@ -127,7 +127,7 @@ func (l *ChainLedger) GetTransactionMeta(hash types.Hash) (*pb.TransactionMeta, 
 
 // GetReceipt get the transaction receipt
 func (l *ChainLedger) GetReceipt(hash types.Hash) (*pb.Receipt, error) {
-	data := l.blockchainStore.Get(compositeKey(receiptKey, hash.Hex()))
+	data := l.blockchainStore.Get(compositeKey(receiptKey, hash.String()))
 	if data == nil {
 		return nil, storage.ErrorNotFound
 	}
@@ -233,7 +233,7 @@ func (l *ChainLedger) persistReceipts(batcher storage.Batch, receipts []*pb.Rece
 			return err
 		}
 
-		batcher.Put(compositeKey(receiptKey, receipt.TxHash.Hex()), data)
+		batcher.Put(compositeKey(receiptKey, receipt.TxHash.String()), data)
 	}
 
 	return nil
@@ -246,7 +246,7 @@ func (l *ChainLedger) persistTransactions(batcher storage.Batch, block *pb.Block
 			return err
 		}
 
-		batcher.Put(compositeKey(transactionKey, tx.TransactionHash.Hex()), body)
+		batcher.Put(compositeKey(transactionKey, tx.TransactionHash.String()), body)
 
 		meta := &pb.TransactionMeta{
 			BlockHeight: block.BlockHeader.Number,
@@ -259,7 +259,7 @@ func (l *ChainLedger) persistTransactions(batcher storage.Batch, block *pb.Block
 			return fmt.Errorf("marshal tx meta error: %s", err)
 		}
 
-		batcher.Put(compositeKey(transactionMetaKey, tx.TransactionHash.Hex()), bs)
+		batcher.Put(compositeKey(transactionMetaKey, tx.TransactionHash.String()), bs)
 	}
 
 	return nil
@@ -301,7 +301,7 @@ func (l *ChainLedger) persistBlock(batcher storage.Batch, block *pb.Block) error
 
 	batcher.Put(compositeKey(blockTxSetKey, height), data)
 
-	hash := block.BlockHash.Hex()
+	hash := block.BlockHash.String()
 	batcher.Put(compositeKey(blockHashKey, hash), []byte(fmt.Sprintf("%d", height)))
 
 	return nil
@@ -340,13 +340,13 @@ func (l *ChainLedger) removeChainDataOnBlock(batch storage.Batch, height uint64)
 	}
 
 	batch.Delete(compositeKey(blockKey, height))
-	batch.Delete(compositeKey(blockHashKey, block.BlockHash.Hex()))
+	batch.Delete(compositeKey(blockHashKey, block.BlockHash.String()))
 	batch.Delete(compositeKey(interchainMetaKey, height))
 
 	for _, tx := range block.Transactions {
-		batch.Delete(compositeKey(transactionKey, tx.TransactionHash.Hex()))
-		batch.Delete(compositeKey(transactionMetaKey, tx.TransactionHash.Hex()))
-		batch.Delete(compositeKey(receiptKey, tx.TransactionHash.Hex()))
+		batch.Delete(compositeKey(transactionKey, tx.TransactionHash.String()))
+		batch.Delete(compositeKey(transactionMetaKey, tx.TransactionHash.String()))
+		batch.Delete(compositeKey(receiptKey, tx.TransactionHash.String()))
 	}
 
 	return getInterchainTxCount(interchainMeta), nil

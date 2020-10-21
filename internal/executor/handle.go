@@ -57,9 +57,9 @@ func (exec *BlockExecutor) processExecuteEvent(block *pb.Block) *ledger.BlockDat
 	block.BlockHash = *block.Hash()
 
 	exec.logger.WithFields(logrus.Fields{
-		"tx_root":      block.BlockHeader.TxRoot.ShortString(),
-		"receipt_root": block.BlockHeader.ReceiptRoot.ShortString(),
-		"state_root":   block.BlockHeader.StateRoot.ShortString(),
+		"tx_root":      block.BlockHeader.TxRoot.String(),
+		"receipt_root": block.BlockHeader.ReceiptRoot.String(),
+		"state_root":   block.BlockHeader.StateRoot.String(),
 	}).Debug("block meta")
 	calcBlockSize.Observe(float64(block.Size()))
 	executeBlockDuration.Observe(float64(time.Since(current)) / float64(time.Second))
@@ -223,7 +223,7 @@ func (exec *BlockExecutor) applyTx(index int, tx *pb.Transaction, opt *agency.Tx
 		receipt.Ret = ret
 	}
 
-	events := exec.ledger.Events(tx.TransactionHash.Hex())
+	events := exec.ledger.Events(tx.TransactionHash.String())
 	if len(events) != 0 {
 		receipt.Events = events
 		for _, ev := range events {
@@ -302,7 +302,7 @@ func (exec *BlockExecutor) transfer(from, to types.Address, value uint64) error 
 
 	fv := exec.ledger.GetBalance(from)
 	if fv < value {
-		return fmt.Errorf("not sufficient funds for %s", from.Hex())
+		return fmt.Errorf("not sufficient funds for %s", from.String())
 	}
 
 	tv := exec.ledger.GetBalance(to)
@@ -341,7 +341,7 @@ func calcMerkleRoot(contents []merkletree.Content) (types.Hash, error) {
 		return types.Hash{}, err
 	}
 
-	return *types.Bytes2Hash(tree.MerkleRoot()), nil
+	return *types.NewHash(tree.MerkleRoot()), nil
 }
 
 func (exec *BlockExecutor) getContracts(opt *agency.TxOpt) map[string]agency.Contract {

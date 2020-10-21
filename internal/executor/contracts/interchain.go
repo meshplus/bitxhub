@@ -389,7 +389,7 @@ func (x *InterchainManager) checkUnionIBTP(app *appchainMgr.Appchain, ibtp *pb.I
 			return fmt.Errorf("wrong validator: %s", v)
 		}
 		delete(m, v)
-		addr := types.String2Address(v)
+		addr := types.NewAddressByStr(v)
 		ok, _ := asym.Verify(crypto.Secp256k1, sign, hash[:], *addr)
 		if ok {
 			counter++

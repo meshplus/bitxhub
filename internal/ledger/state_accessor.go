@@ -145,7 +145,7 @@ func (l *ChainLedger) FlushDirtyDataAndComputeJournal() (map[types.Address]*Acco
 
 	blockJournal := &BlockJournal{
 		Journals:    journals,
-		ChangedHash: *types.Bytes2Hash(journalHash[:]),
+		ChangedHash: *types.NewHash(journalHash[:]),
 	}
 
 	l.prevJnlHash = blockJournal.ChangedHash
