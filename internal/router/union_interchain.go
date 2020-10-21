@@ -7,7 +7,7 @@ import (
 	"github.com/meshplus/bitxhub-model/pb"
 
 	appchain_mgr "github.com/meshplus/bitxhub-core/appchain-mgr"
-	"github.com/meshplus/bitxhub/internal/constant"
+	"github.com/meshplus/bitxhub-model/constant"
 )
 
 func (router *InterchainRouter) queryAllAppchains() (map[string]*appchain_mgr.Appchain, error) {

@@ -6,14 +6,13 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/tidwall/gjson"
-
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
+	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/internal/constant"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
 	"github.com/stretchr/testify/suite"
+	"github.com/tidwall/gjson"
 )
 
 type Role struct {

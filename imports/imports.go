@@ -2,4 +2,4 @@
 
 package imports
 
-import _ "github.com/bitxhub/parallel-executor/parallel"
+import _ "github.com/bitxhub/parallel-executor"

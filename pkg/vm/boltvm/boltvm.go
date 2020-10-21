@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/meshplus/bitxhub-core/agency"
+	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/validator"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/pkg/vm"
@@ -70,7 +71,7 @@ func (bvm *BoltVM) Run(input []byte) (ret []byte, err error) {
 		return nil, fmt.Errorf("parse args: %w", err)
 	}
 
-	res := m.Call(fnArgs)[0].Interface().(*Response)
+	res := m.Call(fnArgs)[0].Interface().(*boltvm.Response)
 	if !res.Ok {
 		return nil, fmt.Errorf("call error: %s", res.Result)
 	}
