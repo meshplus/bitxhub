@@ -19,8 +19,8 @@ require (
 	github.com/libp2p/go-libp2p-core v0.5.6
 	github.com/magiconair/properties v1.8.1
 	github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20201016031620-9d2d859c4069
-	github.com/meshplus/bitxhub-kit v1.0.1-0.20201020090511-52fcd9cba5dc
-	github.com/meshplus/bitxhub-model v1.0.0-rc4.0.20201009112846-79d2e6ddf10d
+	github.com/meshplus/bitxhub-kit v1.1.1
+	github.com/meshplus/bitxhub-model v1.1.1
 	github.com/meshplus/go-lightp2p v0.0.0-20200817105923-6b3aee40fa54
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-multiaddr v0.2.2

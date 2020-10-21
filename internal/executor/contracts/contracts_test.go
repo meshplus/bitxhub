@@ -20,8 +20,8 @@ func TestAppchainManager_Appchain(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	mockStub := mock_stub.NewMockStub(mockCtl)
 
-	addr0 := types.Address{0}.String()
-	addr1 := types.Address{1}.String()
+	addr0 := types.Bytes2Address([]byte{0}).String()
+	addr1 := types.Bytes2Address([]byte{1}).String()
 
 	chain := &appchainMgr.Appchain{
 		ID:            addr0,
@@ -62,7 +62,7 @@ func TestAppchainManager_Appchains(t *testing.T) {
 	var chains []*appchainMgr.Appchain
 	var chainsData [][]byte
 	for i := 0; i < 2; i++ {
-		addr := types.Address{byte(i)}.String()
+		addr := types.Bytes2Address([]byte{byte(i)}).String()
 
 		chain := &appchainMgr.Appchain{
 			ID:            addr,
@@ -109,7 +109,7 @@ func TestInterchainManager_Register(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	mockStub := mock_stub.NewMockStub(mockCtl)
 
-	addr := types.Address{}.String()
+	addr := types.Bytes2Address([]byte{0}).String()
 	mockStub.EXPECT().Caller().Return(addr).AnyTimes()
 	mockStub.EXPECT().Set(gomock.Any(), gomock.Any()).AnyTimes()
 	o1 := mockStub.EXPECT().Get(appchainMgr.PREFIX+addr).Return(false, nil)
@@ -164,7 +164,7 @@ func TestInterchainManager_Interchain(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	mockStub := mock_stub.NewMockStub(mockCtl)
 
-	addr := types.Address{}.String()
+	addr := types.Bytes2Address([]byte{0}).String()
 	mockStub.EXPECT().Caller().Return(addr).AnyTimes()
 	mockStub.EXPECT().Set(gomock.Any(), gomock.Any()).AnyTimes()
 	o1 := mockStub.EXPECT().Get(appchainMgr.PREFIX+addr).Return(false, nil)
@@ -197,7 +197,7 @@ func TestInterchainManager_GetInterchain(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	mockStub := mock_stub.NewMockStub(mockCtl)
 
-	addr := types.Address{}.String()
+	addr := types.Bytes2Address([]byte{0}).String()
 	mockStub.EXPECT().Set(gomock.Any(), gomock.Any()).AnyTimes()
 	o1 := mockStub.EXPECT().Get(appchainMgr.PREFIX+addr).Return(false, nil)
 
@@ -229,8 +229,8 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	mockStub := mock_stub.NewMockStub(mockCtl)
 
-	from := types.Address{0}.String()
-	to := types.Address{1}.String()
+	from := types.Bytes2Address([]byte{0}).String()
+	to := types.Bytes2Address([]byte{1}).String()
 	mockStub.EXPECT().Set(gomock.Any(), gomock.Any()).AnyTimes()
 	f1 := mockStub.EXPECT().Get(appchainMgr.PREFIX+from).Return(false, nil)
 
@@ -362,8 +362,8 @@ func TestInterchainManager_GetIBTPByID(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	mockStub := mock_stub.NewMockStub(mockCtl)
 
-	from := types.Address{}.String()
-	to := types.Address{byte(1)}.String()
+	from := types.Bytes2Address([]byte{0}).String()
+	to := types.Bytes2Address([]byte{1}).String()
 
 	validID := fmt.Sprintf("%s-%s-1", from, to)
 
@@ -394,10 +394,10 @@ func TestRole_GetRole(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	mockStub := mock_stub.NewMockStub(mockCtl)
 
-	addrs := []string{types.Address{0}.String(), types.Address{1}.String()}
+	addrs := []string{types.Bytes2Address([]byte{0}).String(), types.Bytes2Address([]byte{1}).String()}
 
 	mockStub.EXPECT().GetObject(adminRolesKey, gomock.Any()).SetArg(1, addrs).AnyTimes()
-	mockStub.EXPECT().Caller().Return(types.Address{0}.String())
+	mockStub.EXPECT().Caller().Return(types.Bytes2Address([]byte{0}).String())
 
 	im := &Role{mockStub}
 
@@ -405,7 +405,7 @@ func TestRole_GetRole(t *testing.T) {
 	assert.True(t, res.Ok)
 	assert.Equal(t, "admin", string(res.Result))
 
-	mockStub.EXPECT().Caller().Return(types.Address{2}.String()).AnyTimes()
+	mockStub.EXPECT().Caller().Return(types.Bytes2Address([]byte{2}).String()).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error(""))
 
 	res = im.GetRole()
@@ -423,7 +423,7 @@ func TestRole_IsAdmin(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	mockStub := mock_stub.NewMockStub(mockCtl)
 
-	addrs := []string{types.Address{0}.String(), types.Address{1}.String()}
+	addrs := []string{types.Bytes2Address([]byte{0}).String(), types.Bytes2Address([]byte{1}).String()}
 
 	mockStub.EXPECT().GetObject(adminRolesKey, gomock.Any()).SetArg(1, addrs).AnyTimes()
 
@@ -433,7 +433,7 @@ func TestRole_IsAdmin(t *testing.T) {
 	assert.True(t, res.Ok)
 	assert.Equal(t, "true", string(res.Result))
 
-	res = im.IsAdmin(types.Address{2}.String())
+	res = im.IsAdmin(types.Bytes2Address([]byte{2}).String())
 	assert.True(t, res.Ok)
 	assert.Equal(t, "false", string(res.Result))
 }
@@ -442,7 +442,7 @@ func TestRole_GetAdminRoles(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	mockStub := mock_stub.NewMockStub(mockCtl)
 
-	addrs := []string{types.Address{0}.String(), types.Address{1}.String()}
+	addrs := []string{types.Bytes2Address([]byte{0}).String(), types.Bytes2Address([]byte{1}).String()}
 
 	mockStub.EXPECT().GetObject(adminRolesKey, gomock.Any()).SetArg(1, addrs).AnyTimes()
 
@@ -464,7 +464,7 @@ func TestRole_SetAdminRoles(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	mockStub := mock_stub.NewMockStub(mockCtl)
 
-	addrs := []string{types.Address{0}.String(), types.Address{1}.String()}
+	addrs := []string{types.Bytes2Address([]byte{0}).String(), types.Bytes2Address([]byte{1}).String()}
 	mockStub.EXPECT().SetObject(adminRolesKey, addrs).AnyTimes()
 
 	im := &Role{mockStub}
@@ -480,8 +480,8 @@ func TestRuleManager_RegisterRule(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	mockStub := mock_stub.NewMockStub(mockCtl)
 
-	id0 := types.Address{0}.String()
-	id1 := types.Address{1}.String()
+	id0 := types.Bytes2Address([]byte{0}).String()
+	id1 := types.Bytes2Address([]byte{1}).String()
 
 	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), "GetAppchain", pb.String(id0)).Return(boltvm.Success(nil))
 	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), "GetAppchain", pb.String(id1)).Return(boltvm.Error(""))
@@ -489,7 +489,7 @@ func TestRuleManager_RegisterRule(t *testing.T) {
 
 	im := &RuleManager{mockStub}
 
-	addr := types.Address{2}.String()
+	addr := types.Bytes2Address([]byte{2}).String()
 	res := im.RegisterRule(id0, addr)
 	assert.True(t, res.Ok)
 
@@ -502,8 +502,8 @@ func TestRuleManager_GetRuleAddress(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	mockStub := mock_stub.NewMockStub(mockCtl)
 
-	id0 := types.Address{0}.String()
-	id1 := types.Address{1}.String()
+	id0 := types.Bytes2Address([]byte{0}).String()
+	id1 := types.Bytes2Address([]byte{1}).String()
 	rule := Rule{
 		Address: "123",
 		Status:  1,
@@ -531,8 +531,8 @@ func TestRuleManager_Audit(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	mockStub := mock_stub.NewMockStub(mockCtl)
 
-	id0 := types.Address{0}.String()
-	id1 := types.Address{1}.String()
+	id0 := types.Bytes2Address([]byte{0}).String()
+	id1 := types.Bytes2Address([]byte{1}).String()
 	rule := Rule{
 		Address: "123",
 		Status:  1,
@@ -591,7 +591,7 @@ func TestTransactionManager_Begin(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	mockStub := mock_stub.NewMockStub(mockCtl)
 
-	id := types.Hash{}.String()
+	id := types.Bytes2Hash([]byte{0}).String()
 	mockStub.EXPECT().AddObject(fmt.Sprintf("%s-%s", PREFIX, id), pb.TransactionStatus_BEGIN)
 
 	im := &TransactionManager{mockStub}
@@ -778,8 +778,8 @@ func TestAssetExchange_Init(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	mockStub := mock_stub.NewMockStub(mockCtl)
 
-	from := types.Address{0}.String()
-	to := types.Address{1}.String()
+	from := types.Bytes2Address([]byte{0}).String()
+	to := types.Bytes2Address([]byte{1}).String()
 
 	ae := &AssetExchange{mockStub}
 
@@ -827,8 +827,8 @@ func TestAssetExchange_Redeem(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	mockStub := mock_stub.NewMockStub(mockCtl)
 
-	from := types.Address{0}.String()
-	to := types.Address{1}.String()
+	from := types.Bytes2Address([]byte{0}).String()
+	to := types.Bytes2Address([]byte{1}).String()
 
 	ae := &AssetExchange{mockStub}
 
@@ -880,8 +880,8 @@ func TestAssetExchange_Refund(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	mockStub := mock_stub.NewMockStub(mockCtl)
 
-	from := types.Address{0}.String()
-	to := types.Address{1}.String()
+	from := types.Bytes2Address([]byte{0}).String()
+	to := types.Bytes2Address([]byte{1}).String()
 
 	ae := &AssetExchange{mockStub}
 
@@ -943,8 +943,8 @@ func TestAssetExchange_GetStatus(t *testing.T) {
 		AssetOnDst:    100,
 	}
 
-	from := types.Address{0}.String()
-	to := types.Address{1}.String()
+	from := types.Bytes2Address([]byte{0}).String()
+	to := types.Bytes2Address([]byte{1}).String()
 	aer := AssetExchangeRecord{
 		Chain0: from,
 		Chain1: to,

@@ -254,7 +254,8 @@ func (o *Account) getStateJournalAndComputeHash() map[string][]byte {
 		dirtyVal, _ := o.dirtyState.Load(key)
 		dirtyStateData = append(dirtyStateData, dirtyVal.([]byte)...)
 	}
-	o.dirtyStateHash = sha256.Sum256(dirtyStateData)
+	hash := sha256.Sum256(dirtyStateData)
+	o.dirtyStateHash = *types.Bytes2Hash(hash[:])
 
 	return prevStates
 }
@@ -272,7 +273,7 @@ func (o *Account) getDirtyData() []byte {
 		dirtyData = append(dirtyData, data...)
 	}
 
-	return append(dirtyData, o.dirtyStateHash[:]...)
+	return append(dirtyData, o.dirtyStateHash.Bytes()...)
 }
 
 func innerAccountChanged(account0 *innerAccount, account1 *innerAccount) bool {

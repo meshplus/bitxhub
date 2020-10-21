@@ -140,15 +140,15 @@ func (l *ChainLedger) FlushDirtyDataAndComputeJournal() (map[types.Address]*Acco
 	for _, addr := range sortedAddr {
 		dirtyAccountData = append(dirtyAccountData, accountData[addr]...)
 	}
-	dirtyAccountData = append(dirtyAccountData, l.prevJnlHash[:]...)
+	dirtyAccountData = append(dirtyAccountData, l.prevJnlHash.Bytes()...)
 	journalHash := sha256.Sum256(dirtyAccountData)
 
 	blockJournal := &BlockJournal{
 		Journals:    journals,
-		ChangedHash: journalHash,
+		ChangedHash: *types.Bytes2Hash(journalHash[:]),
 	}
 
-	l.prevJnlHash = journalHash
+	l.prevJnlHash = blockJournal.ChangedHash
 	l.Clear()
 	l.accountCache.add(dirtyAccounts)
 
