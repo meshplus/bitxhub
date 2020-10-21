@@ -24,14 +24,14 @@ func TestForward(t *testing.T) {
 	txList = append(txList, tx1, tx2, tx3, tx4, tx5)
 	err := mpi.processTransactions(txList)
 	ast.Nil(err)
-	list := mpi.txStore.allTxs[account1.Hex()]
+	list := mpi.txStore.allTxs[account1.String()]
 	ast.Equal(5, list.index.size())
 	ast.Equal(4, mpi.txStore.priorityIndex.size())
 	ast.Equal(1, mpi.txStore.parkingLotIndex.size())
 
 	removeList := list.forward(uint64(3))
 	ast.Equal(1, len(removeList))
-	ast.Equal(2, len(removeList[account1.Hex()]))
-	ast.Equal(uint64(1), removeList[account1.Hex()][0].Nonce)
-	ast.Equal(uint64(2), removeList[account1.Hex()][1].Nonce)
+	ast.Equal(2, len(removeList[account1.String()]))
+	ast.Equal(uint64(1), removeList[account1.String()][0].Nonce)
+	ast.Equal(uint64(2), removeList[account1.String()][1].Nonce)
 }

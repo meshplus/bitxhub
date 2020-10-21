@@ -2,7 +2,6 @@ module github.com/meshplus/bitxhub
 
 require (
 	github.com/Rican7/retry v0.1.0
-	github.com/bitxhub/parallel-executor v0.0.0-20201016065313-8057d544998e
 	github.com/cbergoon/merkletree v0.2.0
 	github.com/common-nighthawk/go-figure v0.0.0-20190529165535-67e0ed34491a
 	github.com/coreos/etcd v3.3.18+incompatible
@@ -20,8 +19,8 @@ require (
 	github.com/libp2p/go-libp2p-core v0.5.6
 	github.com/magiconair/properties v1.8.1
 	github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20201021060002-1c1bbd9b125b
-	github.com/meshplus/bitxhub-kit v1.1.1
-	github.com/meshplus/bitxhub-model v1.1.2-0.20201021105923-65b4f2c37d91
+	github.com/meshplus/bitxhub-kit v1.1.2-0.20201021090332-9830eaa971d4
+	github.com/meshplus/bitxhub-model v1.1.2-0.20201021121200-409ba3cf9d4b
 	github.com/meshplus/go-lightp2p v0.0.0-20200817105923-6b3aee40fa54
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-multiaddr v0.2.2

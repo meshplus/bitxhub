@@ -168,7 +168,6 @@ func (n *Node) ReportState(height uint64, hash types.Hash) {
 	if height%10 == 0 {
 		n.logger.WithFields(logrus.Fields{
 			"height": height,
-			"hash":   hash.ShortString(),
 		}).Info("Report checkpoint")
 	}
 	appliedIndex, ok := n.blockAppliedIndex.Load(height)

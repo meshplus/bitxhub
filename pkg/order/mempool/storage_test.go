@@ -15,19 +15,19 @@ func TestStorage(t *testing.T) {
 
 	txList := make([]*pb.Transaction, 0)
 	txHashList := make([]types.Hash, 0)
-	txHash1, _ := hex2Hash("txHash1")
+	txHash1 := types.NewHashByStr("txHash1")
 	tx1 := &pb.Transaction{Nonce: uint64(1), TransactionHash: txHash1}
-	txHash2, _ := hex2Hash("txHash2")
+	txHash2 := types.NewHashByStr("txHash2")
 	tx2 := &pb.Transaction{Nonce: uint64(1), TransactionHash: txHash2}
 	txList = append(txList, tx1, tx2)
-	txHashList = append(txHashList, txHash1, txHash2)
+	txHashList = append(txHashList, *txHash1, *txHash1)
 	mempool.batchStore(txList)
-	tx, ok := mempool.load(txHash1)
+	tx, ok := mempool.load(txHash1.Bytes())
 	ast.Equal(true, ok)
 	ast.Equal(uint64(1), tx.Nonce)
 
 	mempool.batchDelete(txHashList)
-	tx, ok = mempool.load(txHash1)
+	tx, ok = mempool.load(txHash1.Bytes())
 	ast.Equal(false, ok)
 	ast.Nil(tx)
 }

@@ -166,7 +166,7 @@ func (mpi *mempoolImpl) processTransactions(txs []*pb.Transaction) error {
 			continue
 		}
 		// check the existence of hash of this tx
-		txHash := tx.TransactionHash.Hex()
+		txHash := tx.TransactionHash.String()
 		if txPointer := mpi.txStore.txHashMap[txHash]; txPointer != nil {
 			mpi.logger.Warningf("Tx %s already received", txHash)
 			continue
@@ -208,7 +208,7 @@ func (txStore *transactionStore) InsertTxs(txs map[string][]*pb.Transaction) map
 	dirtyAccounts := make(map[string]bool)
 	for account, list := range txs {
 		for _, tx := range list {
-			txHash := tx.TransactionHash.Hex()
+			txHash := tx.TransactionHash.String()
 			txPointer := &orderedIndexKey{
 				account: account,
 				nonce:   tx.Nonce,
@@ -296,7 +296,7 @@ func (mpi *mempoolImpl) generateBlock(isTimeout bool) (*raftproto.Ready, error) 
 	txList := make([]*pb.Transaction, len(result))
 	for i, v := range result {
 		rawTransaction := mpi.txStore.getTxByOrderKey(v.account, v.nonce)
-		hashList[i] = rawTransaction.TransactionHash
+		hashList[i] = *rawTransaction.TransactionHash
 		txList[i] = rawTransaction
 	}
 	mpi.increaseBatchSeqNo()
@@ -327,7 +327,7 @@ func (mpi *mempoolImpl) getBlock(ready *raftproto.Ready) *mempoolBatch {
 			mpi.logger.Warningf("Leader get block failed, can't find block %d from batchedCache", ready.Height)
 			missingTxnHashList := make(map[uint64]string)
 			for i, txHash := range ready.TxHashes {
-				missingTxnHashList[uint64(i)] = txHash.Hex()
+				missingTxnHashList[uint64(i)] = txHash.String()
 			}
 			res.missingTxnHashList = missingTxnHashList
 		} else {
@@ -358,18 +358,19 @@ func (mpi *mempoolImpl) constructSameBatch(ready *raftproto.Ready) *mempoolBatch
 			txItem    *txItem
 			ok        bool
 		)
-		if txPointer, _ = mpi.txStore.txHashMap[txHash.Hex()]; txPointer == nil {
-			missingTxList[uint64(index)] = txHash.Hex()
+		strHash := txHash.String()
+		if txPointer, _ = mpi.txStore.txHashMap[strHash]; txPointer == nil {
+			missingTxList[uint64(index)] = strHash
 			continue
 		}
 		if txMap, ok = mpi.txStore.allTxs[txPointer.account]; !ok {
-			mpi.logger.Warningf("Transaction %s exist in txHashMap but not in allTxs", txHash.Hex())
-			missingTxList[uint64(index)] = txHash.Hex()
+			mpi.logger.Warningf("Transaction %s exist in txHashMap but not in allTxs", strHash)
+			missingTxList[uint64(index)] = strHash
 			continue
 		}
 		if txItem, ok = txMap.items[txPointer.nonce]; !ok {
-			mpi.logger.Warningf("Transaction %s exist in txHashMap but not in allTxs", txHash.Hex())
-			missingTxList[uint64(index)] = txHash.Hex()
+			mpi.logger.Warningf("Transaction %s exist in txHashMap but not in allTxs", strHash)
+			missingTxList[uint64(index)] = strHash
 			continue
 		}
 		txList = append(txList, txItem.tx)
@@ -390,11 +391,11 @@ func (mpi *mempoolImpl) processCommitTransactions(ready *raftproto.Ready) {
 	dirtyAccounts := make(map[string]bool)
 	// update current cached commit nonce for account
 	for _, txHash := range ready.TxHashes {
-		txHashStr := txHash.Hex()
-		txPointer := mpi.txStore.txHashMap[txHashStr]
-		txPointer, ok := mpi.txStore.txHashMap[txHashStr]
+		strHash := txHash.String()
+		txPointer := mpi.txStore.txHashMap[strHash]
+		txPointer, ok := mpi.txStore.txHashMap[strHash]
 		if !ok {
-			mpi.logger.Warningf("Remove transaction %s failed, Can't find it from txHashMap", txHashStr)
+			mpi.logger.Warningf("Remove transaction %s failed, Can't find it from txHashMap", strHash)
 			continue
 		}
 		preCommitNonce := mpi.txStore.nonceCache.getCommitNonce(txPointer.account)
@@ -402,7 +403,7 @@ func (mpi *mempoolImpl) processCommitTransactions(ready *raftproto.Ready) {
 		if preCommitNonce < newCommitNonce {
 			mpi.txStore.nonceCache.setCommitNonce(txPointer.account, newCommitNonce)
 		}
-		delete(mpi.txStore.txHashMap, txHashStr)
+		delete(mpi.txStore.txHashMap, strHash)
 		delete(mpi.txStore.batchedTxs, *txPointer)
 		dirtyAccounts[txPointer.account] = true
 	}
@@ -508,7 +509,7 @@ func (mpi *mempoolImpl) loadTxnFromCache(fetchTxnRequest *FetchTxnRequest) (map[
 	targetBatchLen := uint64(len(targetBatch))
 	txList := make(map[uint64]*pb.Transaction, len(missingHashList))
 	for index, txHash := range missingHashList {
-		if index > targetBatchLen || targetBatch[index].TransactionHash.Hex() != txHash {
+		if index > targetBatchLen || targetBatch[index].TransactionHash.String() != txHash {
 			return nil, fmt.Errorf("find invaild transaction, index: %d, targetHash: %s", index, txHash)
 		}
 		txList[index] = targetBatch[index]
@@ -523,11 +524,11 @@ func (mpi *mempoolImpl) loadTxnFromStorage(fetchTxnRequest *FetchTxnRequest) (ma
 	for index, txHash := range missingHashList {
 		var (
 			tx      *pb.Transaction
-			rawHash types.Hash
+			rawHash []byte
 			err     error
 			ok      bool
 		)
-		if rawHash, err = hex2Hash(txHash); err != nil {
+		if rawHash, err = types.HexDecodeString(txHash); err != nil {
 			return nil, err
 		}
 		if tx, ok = mpi.load(rawHash); !ok {
@@ -545,13 +546,13 @@ func (mpi *mempoolImpl) loadTxnFromLedger(fetchTxnRequest *FetchTxnRequest) (map
 	for index, txHash := range missingHashList {
 		var (
 			tx      *pb.Transaction
-			rawHash types.Hash
 			err     error
 		)
-		if rawHash, err = hex2Hash(txHash); err != nil {
-			return nil, err
+		hash := types.NewHashByStr(txHash)
+		if hash == nil {
+			return nil, errors.New("nil hash")
 		}
-		if tx, err = mpi.ledgerHelper(rawHash); err != nil {
+		if tx, err = mpi.ledgerHelper(*hash); err != nil {
 			return nil, err
 		}
 		txList[index] = tx
@@ -572,7 +573,7 @@ func (mpi *mempoolImpl) processFetchTxnResponse(fetchTxnResponse *FetchTxnRespon
 	validTxn := make([]*pb.Transaction, 0)
 	targetBatch := mpi.txStore.missingBatch[fetchTxnResponse.Height]
 	for index, tx := range fetchTxnResponse.MissingTxnList {
-		if tx.Hash().Hex() != targetBatch[index] {
+		if tx.TransactionHash.String() != targetBatch[index] {
 			return errors.New("find a hash mismatch tx")
 		}
 		validTxn = append(validTxn, tx)

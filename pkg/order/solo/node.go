@@ -47,7 +47,7 @@ func (n *Node) GetPendingNonceByAccount(account string) uint64 {
 func (n *Node) Prepare(tx *pb.Transaction) error {
 	hash := tx.TransactionHash
 	if ok := n.reqLookUp.LookUp(hash.Bytes()); ok {
-		if tx, _ := n.getTransactionFunc(hash); tx != nil {
+		if tx, _ := n.getTransactionFunc(*hash); tx != nil {
 			return nil
 		}
 	}
@@ -87,7 +87,7 @@ func (n *Node) ReportState(height uint64, hash types.Hash) {
 	if height%10 == 0 {
 		n.logger.WithFields(logrus.Fields{
 			"height": height,
-			"hash":   hash.ShortString(),
+			"hash":   hash.String(),
 		}).Info("Report checkpoint")
 	}
 }

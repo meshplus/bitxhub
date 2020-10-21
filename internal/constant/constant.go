@@ -15,7 +15,7 @@ const (
 )
 
 func (addr BoltContractAddress) Address() *types.Address {
-	return types.String2Address(string(addr))
+	return types.NewAddressByStr(string(addr))
 }
 
 func (addr BoltContractAddress) String() string {

@@ -40,7 +40,7 @@ func TestNode_Start(t *testing.T) {
 
 	var ID uint64 = 1
 	nodes := make(map[uint64]types.Address)
-	nodes[ID] = types.String2Address("")
+	nodes[ID] = *types.NewAddressByStr("")
 
 	fileData, err := ioutil.ReadFile("../../../config/order.toml")
 	require.Nil(t, err)
@@ -160,10 +160,7 @@ func generateTx() *pb.Transaction {
 
 	tx := &pb.Transaction{
 		From: from,
-		To:   types.String2Address(to),
-		Data: &pb.TransactionData{
-			Amount: 10,
-		},
+		To:   types.NewAddressByStr(to),
 		Timestamp: time.Now().UnixNano(),
 		Nonce:     1,
 	}
@@ -277,7 +274,7 @@ func newSwarms(t *testing.T, peerCnt int) ([]*peermgr.Swarm, map[uint64]types.Ad
 
 		address, err := privKeys[i].PublicKey().Address()
 		require.Nil(t, err)
-		nodes[uint64(ID)] = address
+		nodes[uint64(ID)] = *address
 		swarm, err := peermgr.New(repo, log.NewWithModule("p2p"), mockLedger)
 		require.Nil(t, err)
 		err = swarm.Start()
