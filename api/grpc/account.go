@@ -24,7 +24,7 @@ func (cbs *ChainBrokerService) GetAccountBalance(ctx context.Context, req *pb.Ad
 
 	addr := types.String2Address(req.Address)
 
-	account := cbs.api.Account().GetAccount(addr)
+	account := cbs.api.Account().GetAccount(*addr)
 
 	hash := types.Bytes2Hash(account.CodeHash())
 
@@ -38,7 +38,7 @@ func (cbs *ChainBrokerService) GetAccountBalance(ctx context.Context, req *pb.Ad
 		Type:          typ,
 		Balance:       account.GetBalance(),
 		ContractCount: account.GetNonce(),
-		CodeHash:      hash,
+		CodeHash:      *hash,
 	}
 
 	data, err := json.Marshal(ret)
@@ -50,7 +50,6 @@ func (cbs *ChainBrokerService) GetAccountBalance(ctx context.Context, req *pb.Ad
 		Data: data,
 	}, nil
 }
-
 
 func (cbs *ChainBrokerService) GetPendingNonceByAccount(ctx context.Context, req *pb.Address) (*pb.Response, error) {
 	nonce := cbs.api.Broker().GetPendingNonceByAccount(req.Address)

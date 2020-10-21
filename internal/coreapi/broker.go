@@ -77,7 +77,7 @@ func (b *BrokerAPI) GetBlock(mode string, value string) (*pb.Block, error) {
 		}
 		return b.bxh.Ledger.GetBlock(height)
 	case "HASH":
-		return b.bxh.Ledger.GetBlockByHash(types.String2Hash(value))
+		return b.bxh.Ledger.GetBlockByHash(*types.String2Hash(value))
 	default:
 		return nil, fmt.Errorf("wrong args about getting block: %s", mode)
 	}
@@ -223,7 +223,7 @@ func (b *BrokerAPI) GetSign(content string, typ pb.GetMultiSignsRequest_Type) (s
 	switch typ {
 	case pb.GetMultiSignsRequest_ASSET_EXCHANGE:
 		id := content
-		ok, record := b.bxh.Ledger.GetState(constant.AssetExchangeContractAddr.Address(), []byte(contracts.AssetExchangeKey(id)))
+		ok, record := b.bxh.Ledger.GetState(*constant.AssetExchangeContractAddr.Address(), []byte(contracts.AssetExchangeKey(id)))
 		if !ok {
 			return "", nil, fmt.Errorf("cannot find asset exchange record with id %s", id)
 		}

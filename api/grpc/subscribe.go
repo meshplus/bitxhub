@@ -171,9 +171,9 @@ func (cbs *ChainBrokerService) interStatus(block *pb.Block, interchainMeta *pb.I
 
 	for _, indices := range interchainMeta.Counter {
 		for _, idx := range indices.Slice {
-			ibtp, err := txs[idx].GetIBTP()
-			if err != nil {
-				return nil, err
+			ibtp := txs[idx].GetIBTP()
+			if ibtp == nil {
+				return nil, fmt.Errorf("ibtp is empty")
 			}
 
 			status := &InterchainStatus{
