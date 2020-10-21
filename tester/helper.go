@@ -13,15 +13,15 @@ import (
 	"github.com/meshplus/bitxhub-model/pb"
 )
 
-func genBVMContractTransaction(privateKey crypto.PrivateKey, nonce uint64, address types.Address, method string, args ...*pb.Arg) (*pb.Transaction, error) {
+func genBVMContractTransaction(privateKey crypto.PrivateKey, nonce uint64, address *types.Address, method string, args ...*pb.Arg) (*pb.Transaction, error) {
 	return genContractTransaction(pb.TransactionData_BVM, privateKey, nonce, address, method, args...)
 }
 
-func genXVMContractTransaction(privateKey crypto.PrivateKey, nonce uint64, address types.Address, method string, args ...*pb.Arg) (*pb.Transaction, error) {
+func genXVMContractTransaction(privateKey crypto.PrivateKey, nonce uint64, address *types.Address, method string, args ...*pb.Arg) (*pb.Transaction, error) {
 	return genContractTransaction(pb.TransactionData_XVM, privateKey, nonce, address, method, args...)
 }
 
-func invokeBVMContract(api api.CoreAPI, privateKey crypto.PrivateKey, nonce uint64, address types.Address, method string, args ...*pb.Arg) (*pb.Receipt, error) {
+func invokeBVMContract(api api.CoreAPI, privateKey crypto.PrivateKey, nonce uint64, address *types.Address, method string, args ...*pb.Arg) (*pb.Receipt, error) {
 	tx, err := genBVMContractTransaction(privateKey, nonce, address, method, args...)
 	if err != nil {
 		return nil, err
@@ -60,7 +60,7 @@ func sendTransactionWithReceipt(api api.CoreAPI, tx *pb.Transaction) (*pb.Receip
 
 }
 
-func genContractTransaction(vmType pb.TransactionData_VMType, privateKey crypto.PrivateKey, nonce uint64, address types.Address, method string, args ...*pb.Arg) (*pb.Transaction, error) {
+func genContractTransaction(vmType pb.TransactionData_VMType, privateKey crypto.PrivateKey, nonce uint64, address *types.Address, method string, args ...*pb.Arg) (*pb.Transaction, error) {
 	from, err := privateKey.PublicKey().Address()
 	if err != nil {
 		return nil, err
@@ -82,10 +82,15 @@ func genContractTransaction(vmType pb.TransactionData_VMType, privateKey crypto.
 		Payload: data,
 	}
 
+	payload, err := td.Marshal()
+	if err != nil {
+		return nil, err
+	}
+
 	tx := &pb.Transaction{
-		From:      from,
-		To:        address,
-		Data:      td,
+		From:      *from,
+		To:        *address,
+		Payload:   payload,
 		Timestamp: time.Now().UnixNano(),
 		Nonce:     nonce,
 	}
@@ -94,15 +99,15 @@ func genContractTransaction(vmType pb.TransactionData_VMType, privateKey crypto.
 		return nil, fmt.Errorf("tx sign: %w", err)
 	}
 
-	tx.TransactionHash = tx.Hash()
+	tx.TransactionHash = *tx.Hash()
 
 	return tx, nil
 }
 
-func deployContract(api api.CoreAPI, privateKey crypto.PrivateKey, nonce uint64, contract []byte) (types.Address, error) {
+func deployContract(api api.CoreAPI, privateKey crypto.PrivateKey, nonce uint64, contract []byte) (*types.Address, error) {
 	from, err := privateKey.PublicKey().Address()
 	if err != nil {
-		return types.Address{}, err
+		return nil, err
 	}
 
 	td := &pb.TransactionData{
@@ -111,22 +116,27 @@ func deployContract(api api.CoreAPI, privateKey crypto.PrivateKey, nonce uint64,
 		Payload: contract,
 	}
 
+	payload, err := td.Marshal()
+	if err != nil {
+		return nil, err
+	}
+
 	tx := &pb.Transaction{
-		From:      from,
-		Data:      td,
+		From:      *from,
+		Payload:   payload,
 		Timestamp: time.Now().UnixNano(),
 		Nonce:     nonce,
 	}
 
-	tx.TransactionHash = tx.Hash()
+	tx.TransactionHash = *tx.Hash()
 
 	if err := tx.Sign(privateKey); err != nil {
-		return types.Address{}, fmt.Errorf("tx sign: %w", err)
+		return nil, fmt.Errorf("tx sign: %w", err)
 	}
 
 	receipt, err := sendTransactionWithReceipt(api, tx)
 	if err != nil {
-		return types.Address{}, err
+		return nil, err
 	}
 
 	ret := types.Bytes2Address(receipt.GetRet())

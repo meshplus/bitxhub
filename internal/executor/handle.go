@@ -54,7 +54,7 @@ func (exec *BlockExecutor) processExecuteEvent(block *pb.Block) *ledger.BlockDat
 	accounts, journal := exec.ledger.FlushDirtyDataAndComputeJournal()
 
 	block.BlockHeader.StateRoot = journal.ChangedHash
-	block.BlockHash = block.Hash()
+	block.BlockHash = *block.Hash()
 
 	exec.logger.WithFields(logrus.Fields{
 		"tx_root":      block.BlockHeader.TxRoot.ShortString(),
@@ -319,7 +319,7 @@ func (exec *BlockExecutor) calcReceiptMerkleRoot(receipts []*pb.Receipt) (types.
 	receiptHashes := make([]merkletree.Content, 0, len(receipts))
 	for _, receipt := range receipts {
 		hash := receipt.Hash()
-		receiptHashes = append(receiptHashes, &hash)
+		receiptHashes = append(receiptHashes, hash)
 	}
 	receiptRoot, err := calcMerkleRoot(receiptHashes)
 	if err != nil {

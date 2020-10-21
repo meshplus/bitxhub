@@ -166,7 +166,7 @@ func (swarm *Swarm) handleFetchAssetExchangeSignMessage(s network.Stream, data [
 	handle := func(id string) (string, []byte, error) {
 		swarm.logger.WithField("asset exchange id", id).Debug("Handle fetching asset exchange sign message")
 
-		ok, record := swarm.ledger.GetState(constant.AssetExchangeContractAddr.Address(), []byte(contracts.AssetExchangeKey(id)))
+		ok, record := swarm.ledger.GetState(*constant.AssetExchangeContractAddr.Address(), []byte(contracts.AssetExchangeKey(id)))
 		if !ok {
 			return "", nil, fmt.Errorf("cannot find asset exchange record with id %s", id)
 		}

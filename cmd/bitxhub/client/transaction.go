@@ -3,6 +3,7 @@ package client
 import (
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"time"
 
 	"github.com/meshplus/bitxhub-kit/types"
@@ -98,30 +99,28 @@ func sendTransaction(ctx *cli.Context) error {
 
 	to := types.String2Address(toString)
 
-	req := pb.SendTransactionRequest{
-		From:      from,
-		To:        to,
-		Timestamp: time.Now().UnixNano(),
-		Data: &pb.TransactionData{
-			Type:   pb.TransactionData_Type(txType),
-			Amount: amount,
-		},
-		Signature: nil,
+	data := &pb.TransactionData{
+		Type:   pb.TransactionData_Type(txType),
+		Amount: amount,
+	}
+	payload, err := data.Marshal()
+	if err != nil {
+		return err
 	}
 
 	tx := &pb.Transaction{
-		From:      from,
-		To:        to,
-		Timestamp: req.Timestamp,
-		Nonce:     uint64(req.Nonce),
-		Data:      req.Data,
+		From:      *from,
+		To:        *to,
+		Timestamp: time.Now().UnixNano(),
+		Nonce:     rand.Uint64(),
+		Payload:   payload,
 	}
 
 	if err := tx.Sign(key.PrivKey); err != nil {
 		return err
 	}
 
-	reqData, err := json.Marshal(req)
+	reqData, err := json.Marshal(tx)
 	if err != nil {
 		return err
 	}

@@ -67,13 +67,16 @@ func (pl *VerifyPool) extractIBTP(tx *pb.Transaction) *pb.IBTP {
 	if strings.ToLower(tx.To.String()) != constant.InterchainContractAddr.String() {
 		return nil
 	}
-	if tx.Data.VmType != pb.TransactionData_BVM {
+	data := &pb.TransactionData{}
+	if err := data.Unmarshal(tx.Payload); err != nil {
 		return nil
 	}
+
 	ip := &pb.InvokePayload{}
-	if err := ip.Unmarshal(tx.Data.Payload); err != nil {
+	if err := ip.Unmarshal(data.Payload); err != nil {
 		return nil
 	}
+
 	if ip.Method != "HandleIBTP" {
 		return nil
 	}
@@ -130,7 +133,7 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, error) {
 }
 
 func (pl *VerifyPool) getAccountState(address constant.BoltContractAddress, key string) (bool, []byte) {
-	return pl.ledger.GetState(address.Address(), []byte(key))
+	return pl.ledger.GetState(*address.Address(), []byte(key))
 }
 
 func (pl *VerifyPool) putProof(proofHash types.Hash, proof []byte) {

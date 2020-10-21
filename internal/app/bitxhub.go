@@ -54,7 +54,7 @@ func NewBitXHub(rep *repo.Repo) (*BitXHub, error) {
 
 	if !rep.Config.Solo {
 		for i, node := range rep.NetworkConfig.Nodes {
-			m[node.ID] = types.String2Address(rep.Genesis.Addresses[i])
+			m[node.ID] = *types.String2Address(rep.Genesis.Addresses[i])
 		}
 	}
 
@@ -170,7 +170,7 @@ func NewTesterBitXHub(rep *repo.Repo) (*BitXHub, error) {
 
 	if !rep.Config.Solo {
 		for i, node := range rep.NetworkConfig.Nodes {
-			m[node.ID] = types.String2Address(rep.Genesis.Addresses[i])
+			m[node.ID] = *types.String2Address(rep.Genesis.Addresses[i])
 		}
 	}
 

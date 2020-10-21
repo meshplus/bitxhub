@@ -105,9 +105,13 @@ func mockBlock(blockNumber uint64, txs []*pb.Transaction) *pb.Block {
 }
 
 func mockTx(data *pb.TransactionData) *pb.Transaction {
+	payload, err := data.Marshal()
+	if err != nil {
+		panic(err)
+	}
 	return &pb.Transaction{
-		Data:  data,
-		Nonce: uint64(rand.Int63()),
+		Payload: payload,
+		Nonce:   uint64(rand.Int63()),
 	}
 }
 

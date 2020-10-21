@@ -23,7 +23,7 @@ type API struct {
 	suite.Suite
 	api     api.CoreAPI
 	privKey crypto.PrivateKey
-	from    types.Address
+	from    *types.Address
 }
 
 func (suite *API) SetupSuite() {
