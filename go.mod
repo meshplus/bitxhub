@@ -2,6 +2,7 @@ module github.com/meshplus/bitxhub
 
 require (
 	github.com/Rican7/retry v0.1.0
+	github.com/bitxhub/parallel-executor v0.0.0-20201016065313-8057d544998e
 	github.com/cbergoon/merkletree v0.2.0
 	github.com/common-nighthawk/go-figure v0.0.0-20190529165535-67e0ed34491a
 	github.com/coreos/etcd v3.3.18+incompatible
@@ -18,7 +19,7 @@ require (
 	github.com/hokaccha/go-prettyjson v0.0.0-20190818114111-108c894c2c0e
 	github.com/libp2p/go-libp2p-core v0.5.6
 	github.com/magiconair/properties v1.8.1
-	github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20201016031620-9d2d859c4069
+	github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20201021060002-1c1bbd9b125b
 	github.com/meshplus/bitxhub-kit v1.1.1
 	github.com/meshplus/bitxhub-model v1.1.1
 	github.com/meshplus/go-lightp2p v0.0.0-20200817105923-6b3aee40fa54
@@ -37,6 +38,7 @@ require (
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5
 	github.com/urfave/cli v1.22.1
 	github.com/wasmerio/go-ext-wasm v0.3.1
+	github.com/willf/bitset v1.1.11 // indirect
 	github.com/willf/bloom v2.0.3+incompatible
 	go.uber.org/atomic v1.6.0
 	google.golang.org/grpc v1.27.1
