@@ -9,8 +9,8 @@ import (
 
 // Context represents the context of wasm
 type Context struct {
-	Caller           types.Address
-	Callee           types.Address
+	Caller           *types.Address
+	Callee           *types.Address
 	Ledger           ledger.Ledger
 	TransactionIndex uint64
 	TransactionHash  *types.Hash
@@ -22,8 +22,8 @@ type Context struct {
 // NewContext creates a context of wasm instance
 func NewContext(tx *pb.Transaction, txIndex uint64, data *pb.TransactionData, ledger ledger.Ledger, logger logrus.FieldLogger) *Context {
 	return &Context{
-		Caller:           *tx.From,
-		Callee:           *tx.To,
+		Caller:           tx.From,
+		Callee:           tx.To,
 		Ledger:           ledger,
 		TransactionIndex: txIndex,
 		TransactionHash:  tx.TransactionHash,

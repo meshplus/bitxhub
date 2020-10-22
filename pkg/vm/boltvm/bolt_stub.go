@@ -124,7 +124,7 @@ func (b *BoltStubImpl) CrossInvoke(address, method string, args ...*pb.Arg) *Res
 
 	ctx := &vm.Context{
 		Caller:           b.bvm.ctx.Caller,
-		Callee:           *addr,
+		Callee:           addr,
 		Ledger:           b.bvm.ctx.Ledger,
 		TransactionIndex: b.bvm.ctx.TransactionIndex,
 		TransactionHash:  b.bvm.ctx.TransactionHash,

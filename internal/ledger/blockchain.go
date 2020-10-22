@@ -39,7 +39,7 @@ func (l *ChainLedger) GetBlock(height uint64) (*pb.Block, error) {
 	if txHashesData == nil {
 		return nil, fmt.Errorf("cannot get tx hashes of block")
 	}
-	txHashes := make([]types.Hash, 0)
+	txHashes := make([]*types.Hash, 0)
 	if err := json.Unmarshal(txHashesData, &txHashes); err != nil {
 		return nil, err
 	}
@@ -69,7 +69,7 @@ func (l *ChainLedger) GetBlockSign(height uint64) ([]byte, error) {
 }
 
 // GetBlockByHash get the block using block hash
-func (l *ChainLedger) GetBlockByHash(hash types.Hash) (*pb.Block, error) {
+func (l *ChainLedger) GetBlockByHash(hash *types.Hash) (*pb.Block, error) {
 	data := l.blockchainStore.Get(compositeKey(blockHashKey, hash.String()))
 	if data == nil {
 		return nil, storage.ErrorNotFound
@@ -84,7 +84,7 @@ func (l *ChainLedger) GetBlockByHash(hash types.Hash) (*pb.Block, error) {
 }
 
 // GetTransaction get the transaction using transaction hash
-func (l *ChainLedger) GetTransaction(hash types.Hash) (*pb.Transaction, error) {
+func (l *ChainLedger) GetTransaction(hash *types.Hash) (*pb.Transaction, error) {
 	v := l.blockchainStore.Get(compositeKey(transactionKey, hash.String()))
 	if v == nil {
 		return nil, storage.ErrorNotFound
@@ -111,7 +111,7 @@ func (l *ChainLedger) GetTransactionCount(height uint64) (uint64, error) {
 }
 
 // GetTransactionMeta get the transaction meta data
-func (l *ChainLedger) GetTransactionMeta(hash types.Hash) (*pb.TransactionMeta, error) {
+func (l *ChainLedger) GetTransactionMeta(hash *types.Hash) (*pb.TransactionMeta, error) {
 	data := l.blockchainStore.Get(compositeKey(transactionMetaKey, hash.String()))
 	if data == nil {
 		return nil, storage.ErrorNotFound
@@ -126,7 +126,7 @@ func (l *ChainLedger) GetTransactionMeta(hash types.Hash) (*pb.TransactionMeta, 
 }
 
 // GetReceipt get the transaction receipt
-func (l *ChainLedger) GetReceipt(hash types.Hash) (*pb.Receipt, error) {
+func (l *ChainLedger) GetReceipt(hash *types.Hash) (*pb.Receipt, error) {
 	data := l.blockchainStore.Get(compositeKey(receiptKey, hash.String()))
 	if data == nil {
 		return nil, storage.ErrorNotFound

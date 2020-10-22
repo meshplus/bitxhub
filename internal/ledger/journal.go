@@ -14,7 +14,7 @@ var (
 )
 
 type journal struct {
-	Address        types.Address
+	Address        *types.Address
 	PrevAccount    *innerAccount
 	AccountChanged bool
 	PrevStates     map[string][]byte
@@ -24,7 +24,7 @@ type journal struct {
 
 type BlockJournal struct {
 	Journals    []*journal
-	ChangedHash types.Hash
+	ChangedHash *types.Hash
 }
 
 func (journal *journal) revert(batch storage.Batch) {

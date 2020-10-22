@@ -109,10 +109,13 @@ func mockTx(data *pb.TransactionData) *pb.Transaction {
 	if err != nil {
 		panic(err)
 	}
-	return &pb.Transaction{
+	tx := &pb.Transaction{
 		Payload: payload,
 		Nonce:   uint64(rand.Int63()),
 	}
+	tx.TransactionHash = tx.Hash()
+
+	return tx
 }
 
 func mockTxData(t *testing.T, dataType pb.TransactionData_Type, vmType pb.TransactionData_VMType, ibtp proto.Marshaler) *pb.TransactionData {

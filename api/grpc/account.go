@@ -24,7 +24,7 @@ func (cbs *ChainBrokerService) GetAccountBalance(ctx context.Context, req *pb.Ad
 
 	addr := types.NewAddressByStr(req.Address)
 
-	account := cbs.api.Account().GetAccount(*addr)
+	account := cbs.api.Account().GetAccount(addr)
 
 	hash := types.NewHash(account.CodeHash())
 

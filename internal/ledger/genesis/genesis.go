@@ -17,7 +17,7 @@ var (
 // Initialize initialize block
 func Initialize(genesis *repo.Genesis, lg ledger.Ledger) error {
 	for _, addr := range genesis.Addresses {
-		lg.SetBalance(*types.NewAddressByStr(addr), 100000000)
+		lg.SetBalance(types.NewAddressByStr(addr), 100000000)
 	}
 
 	body, err := json.Marshal(genesis.Addresses)
@@ -25,13 +25,13 @@ func Initialize(genesis *repo.Genesis, lg ledger.Ledger) error {
 		return err
 	}
 
-	lg.SetState(*roleAddr, []byte("admin-roles"), body)
+	lg.SetState(roleAddr, []byte("admin-roles"), body)
 
 	accounts, journal := lg.FlushDirtyDataAndComputeJournal()
 	block := &pb.Block{
 		BlockHeader: &pb.BlockHeader{
 			Number:    1,
-			StateRoot: &journal.ChangedHash,
+			StateRoot: journal.ChangedHash,
 		},
 	}
 	block.BlockHash = block.Hash()

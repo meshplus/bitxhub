@@ -66,7 +66,8 @@ func initCreateContext(t *testing.T, name string) *vm.Context {
 	assert.Nil(t, err)
 
 	return &vm.Context{
-		Caller:          *caller,
+		Caller:          caller,
+		Callee:          &types.Address{},
 		TransactionData: data,
 		Ledger:          ldg,
 	}
@@ -98,7 +99,7 @@ func initValidationContext(t *testing.T, name string) *vm.Context {
 	require.Nil(t, err)
 
 	return &vm.Context{
-		Caller:          *caller,
+		Caller:          caller,
 		TransactionData: data,
 		Ledger:          ldg,
 	}
@@ -130,7 +131,7 @@ func initFabricContext(t *testing.T, name string) *vm.Context {
 	require.Nil(t, err)
 
 	return &vm.Context{
-		Caller:          *caller,
+		Caller:          caller,
 		TransactionData: data,
 		Ledger:          ldg,
 	}
@@ -173,7 +174,7 @@ func TestExecute(t *testing.T) {
 	}
 	ctx1 := &vm.Context{
 		Caller:          ctx.Caller,
-		Callee:          *types.Bytes2Address(ret),
+		Callee:          types.NewAddress(ret),
 		TransactionData: data,
 		Ledger:          ctx.Ledger,
 	}
@@ -221,7 +222,7 @@ func TestWasm_RunFabValidation(t *testing.T) {
 	}
 	ctx1 := &vm.Context{
 		Caller:          ctx.Caller,
-		Callee:          *types.Bytes2Address(ret),
+		Callee:          types.NewAddress(ret),
 		TransactionData: data,
 		Ledger:          ctx.Ledger,
 	}
@@ -260,7 +261,7 @@ func BenchmarkRunFabValidation(b *testing.B) {
 	ldg, err := ledger.New(&repo.Repo{Key: &repo.Key{PrivKey: privKey}}, store, ldb, accountCache, log.NewWithModule("executor"))
 	require.Nil(b, err)
 	ctx := &vm.Context{
-		Caller:          *caller,
+		Caller:          caller,
 		TransactionData: data,
 		Ledger:          ldg,
 	}
@@ -288,7 +289,7 @@ func BenchmarkRunFabValidation(b *testing.B) {
 	require.Nil(b, err)
 	ctx1 := &vm.Context{
 		Caller:          ctx.Caller,
-		Callee:          *types.Bytes2Address(ret),
+		Callee:          types.NewAddress(ret),
 		TransactionData: data,
 		Ledger:          ctx.Ledger,
 	}
@@ -334,7 +335,7 @@ func TestWasm_RunWithoutMethod(t *testing.T) {
 	}
 	ctx1 := &vm.Context{
 		Caller:          ctx.Caller,
-		Callee:          *types.Bytes2Address(ret),
+		Callee:          types.NewAddress(ret),
 		TransactionData: data,
 		Ledger:          ctx.Ledger,
 	}
@@ -361,7 +362,7 @@ BcNwjTDCxyxLNjFKQfMAc6sY6iJs+Ma59WZyC/4uhjE=
 	return &repo.Repo{
 		Key: &repo.Key{
 			PrivKey: privKey,
-			Address: address.Hex(),
+			Address: address.String(),
 		},
 	}
 }

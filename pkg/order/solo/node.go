@@ -21,7 +21,7 @@ type Node struct {
 	commitC            chan *pb.Block     // block channel
 	logger             logrus.FieldLogger // logger
 	reqLookUp          *order.ReqLookUp   // bloom filter
-	getTransactionFunc func(hash types.Hash) (*pb.Transaction, error)
+	getTransactionFunc func(hash *types.Hash) (*pb.Transaction, error)
 
 	packSize  int           // maximum number of transaction packages
 	blockTick time.Duration // block packed period
@@ -47,7 +47,7 @@ func (n *Node) GetPendingNonceByAccount(account string) uint64 {
 func (n *Node) Prepare(tx *pb.Transaction) error {
 	hash := tx.TransactionHash
 	if ok := n.reqLookUp.LookUp(hash.Bytes()); ok {
-		if tx, _ := n.getTransactionFunc(*hash); tx != nil {
+		if tx, _ := n.getTransactionFunc(hash); tx != nil {
 			return nil
 		}
 	}

@@ -102,12 +102,12 @@ func (cbs *ChainBrokerService) sendView(tx *pb.Transaction) (*pb.Receipt, error)
 
 func (cbs *ChainBrokerService) GetTransaction(ctx context.Context, req *pb.TransactionHashMsg) (*pb.GetTransactionResponse, error) {
 	hash := types.NewHashByStr(req.TxHash)
-	tx, err := cbs.api.Broker().GetTransaction(*hash)
+	tx, err := cbs.api.Broker().GetTransaction(hash)
 	if err != nil {
 		return nil, err
 	}
 
-	meta, err := cbs.api.Broker().GetTransactionMeta(*hash)
+	meta, err := cbs.api.Broker().GetTransactionMeta(hash)
 	if err != nil {
 		return nil, err
 	}

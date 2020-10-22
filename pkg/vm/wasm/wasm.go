@@ -43,7 +43,7 @@ func New(ctx *vm.Context, imports *wasmer.Imports, instances map[string]wasmer.I
 		ctx: ctx,
 	}
 
-	if ctx.Callee == (types.Address{}) {
+	if *ctx.Callee == (types.Address{}) {
 		return wasmVM, nil
 	}
 
@@ -70,7 +70,7 @@ func EmptyImports() (*wasmer.Imports, error) {
 
 // Run let the wasm vm excute or deploy the smart contract which depends on whether the callee is empty
 func (w *WasmVM) Run(input []byte) (ret []byte, err error) {
-	if w.ctx.Callee == (types.Address{}) {
+	if *w.ctx.Callee == (types.Address{}) {
 		return w.deploy()
 	}
 
@@ -99,9 +99,9 @@ func (w *WasmVM) deploy() ([]byte, error) {
 	return contractAddr.Bytes(), nil
 }
 
-func createAddress(b types.Address, nonce uint64) types.Address {
+func createAddress(b *types.Address, nonce uint64) *types.Address {
 	data, _ := rlp.EncodeToBytes([]interface{}{b, nonce})
 	hashBytes := sha256.Sum256(data)
 
-	return *types.NewAddress(hashBytes[12:])
+	return types.NewAddress(hashBytes[12:])
 }

@@ -6,11 +6,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/meshplus/bitxhub-kit/crypto"
-
-	"github.com/meshplus/bitxhub-kit/crypto/asym"
-
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
+	"github.com/meshplus/bitxhub-kit/crypto"
+	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/constant"

@@ -34,46 +34,46 @@ type Ledger interface {
 // StateAccessor manipulates the state data
 type StateAccessor interface {
 	// GetOrCreateAccount
-	GetOrCreateAccount(types.Address) *Account
+	GetOrCreateAccount(*types.Address) *Account
 
 	// GetAccount
-	GetAccount(types.Address) *Account
+	GetAccount(*types.Address) *Account
 
 	// GetBalance
-	GetBalance(types.Address) uint64
+	GetBalance(*types.Address) uint64
 
 	// SetBalance
-	SetBalance(types.Address, uint64)
+	SetBalance(*types.Address, uint64)
 
 	// GetState
-	GetState(types.Address, []byte) (bool, []byte)
+	GetState(*types.Address, []byte) (bool, []byte)
 
 	// SetState
-	SetState(types.Address, []byte, []byte)
+	SetState(*types.Address, []byte, []byte)
 
 	// AddState
-	AddState(types.Address, []byte, []byte)
+	AddState(*types.Address, []byte, []byte)
 
 	// SetCode
-	SetCode(types.Address, []byte)
+	SetCode(*types.Address, []byte)
 
 	// GetCode
-	GetCode(types.Address) []byte
+	GetCode(*types.Address) []byte
 
 	// SetNonce
-	SetNonce(types.Address, uint64)
+	SetNonce(*types.Address, uint64)
 
 	// GetNonce
-	GetNonce(types.Address) uint64
+	GetNonce(*types.Address) uint64
 
 	// QueryByPrefix
-	QueryByPrefix(address types.Address, prefix string) (bool, [][]byte)
+	QueryByPrefix(address *types.Address, prefix string) (bool, [][]byte)
 
 	// Commit commits the state data
-	Commit(height uint64, accounts map[types.Address]*Account, blockJournal *BlockJournal) error
+	Commit(height uint64, accounts map[string]*Account, blockJournal *BlockJournal) error
 
 	// FlushDirtyDataAndComputeJournal flushes the dirty data and computes block journal
-	FlushDirtyDataAndComputeJournal() (map[types.Address]*Account, *BlockJournal)
+	FlushDirtyDataAndComputeJournal() (map[string]*Account, *BlockJournal)
 
 	// Version
 	Version() uint64
@@ -94,16 +94,16 @@ type BlockchainLedger interface {
 	GetBlockSign(height uint64) ([]byte, error)
 
 	// GetBlockByHash get the block using block hash
-	GetBlockByHash(hash types.Hash) (*pb.Block, error)
+	GetBlockByHash(hash *types.Hash) (*pb.Block, error)
 
 	// GetTransaction get the transaction using transaction hash
-	GetTransaction(hash types.Hash) (*pb.Transaction, error)
+	GetTransaction(hash *types.Hash) (*pb.Transaction, error)
 
 	// GetTransactionMeta get the transaction meta data
-	GetTransactionMeta(hash types.Hash) (*pb.TransactionMeta, error)
+	GetTransactionMeta(hash *types.Hash) (*pb.TransactionMeta, error)
 
 	// GetReceipt get the transaction receipt
-	GetReceipt(hash types.Hash) (*pb.Receipt, error)
+	GetReceipt(hash *types.Hash) (*pb.Receipt, error)
 
 	// GetInterchainMeta get interchain meta data
 	GetInterchainMeta(height uint64) (*pb.InterchainMeta, error)

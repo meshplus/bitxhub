@@ -18,7 +18,7 @@ require (
 	github.com/hokaccha/go-prettyjson v0.0.0-20190818114111-108c894c2c0e
 	github.com/libp2p/go-libp2p-core v0.5.6
 	github.com/magiconair/properties v1.8.1
-	github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20201021153523-274a013bfd41
+	github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20201022032823-4591a8883995
 	github.com/meshplus/bitxhub-kit v1.1.2-0.20201021105954-468d0a9d7957
 	github.com/meshplus/bitxhub-model v1.1.2-0.20201021152621-0b3c17c54b23
 	github.com/meshplus/go-lightp2p v0.0.0-20200817105923-6b3aee40fa54

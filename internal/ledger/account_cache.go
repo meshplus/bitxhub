@@ -10,9 +10,9 @@ import (
 )
 
 type AccountCache struct {
-	innerAccounts     map[types.Address]*innerAccount
-	states            map[types.Address]map[string][]byte
-	codes             map[types.Address][]byte
+	innerAccounts     map[string]*innerAccount
+	states            map[string]map[string][]byte
+	codes             map[string][]byte
 	innerAccountCache *lru.Cache
 	stateCache        *lru.Cache
 	codeCache         *lru.Cache
@@ -36,9 +36,9 @@ func NewAccountCache() (*AccountCache, error) {
 	}
 
 	return &AccountCache{
-		innerAccounts:     make(map[types.Address]*innerAccount),
-		states:            make(map[types.Address]map[string][]byte),
-		codes:             make(map[types.Address][]byte),
+		innerAccounts:     make(map[string]*innerAccount),
+		states:            make(map[string]map[string][]byte),
+		codes:             make(map[string][]byte),
 		innerAccountCache: innerAccountCache,
 		stateCache:        stateCache,
 		codeCache:         codeCache,
@@ -46,7 +46,7 @@ func NewAccountCache() (*AccountCache, error) {
 	}, nil
 }
 
-func (ac *AccountCache) add(accounts map[types.Address]*Account) error {
+func (ac *AccountCache) add(accounts map[string]*Account) error {
 	ac.addToWriteBuffer(accounts)
 	if err := ac.addToReadCache(accounts); err != nil {
 		return err
@@ -54,7 +54,7 @@ func (ac *AccountCache) add(accounts map[types.Address]*Account) error {
 	return nil
 }
 
-func (ac *AccountCache) addToReadCache(accounts map[types.Address]*Account) error {
+func (ac *AccountCache) addToReadCache(accounts map[string]*Account) error {
 	for addr, account := range accounts {
 		var stateCache *lru.Cache
 
@@ -86,7 +86,7 @@ func (ac *AccountCache) addToReadCache(accounts map[types.Address]*Account) erro
 	return nil
 }
 
-func (ac *AccountCache) addToWriteBuffer(accounts map[types.Address]*Account) {
+func (ac *AccountCache) addToWriteBuffer(accounts map[string]*Account) {
 	ac.rwLock.Lock()
 	defer ac.rwLock.Unlock()
 
@@ -112,7 +112,7 @@ func (ac *AccountCache) addToWriteBuffer(accounts map[types.Address]*Account) {
 	}
 }
 
-func (ac *AccountCache) remove(accounts map[types.Address]*Account) {
+func (ac *AccountCache) remove(accounts map[string]*Account) {
 	ac.rwLock.Lock()
 	defer ac.rwLock.Unlock()
 
@@ -147,16 +147,16 @@ func (ac *AccountCache) remove(accounts map[types.Address]*Account) {
 	}
 }
 
-func (ac *AccountCache) getInnerAccount(addr types.Address) (*innerAccount, bool) {
-	if ia, ok := ac.innerAccountCache.Get(addr); ok {
+func (ac *AccountCache) getInnerAccount(addr *types.Address) (*innerAccount, bool) {
+	if ia, ok := ac.innerAccountCache.Get(addr.String()); ok {
 		return ia.(*innerAccount), true
 	}
 
 	return nil, false
 }
 
-func (ac *AccountCache) getState(addr types.Address, key string) ([]byte, bool) {
-	if value, ok := ac.stateCache.Get(addr); ok {
+func (ac *AccountCache) getState(addr *types.Address, key string) ([]byte, bool) {
+	if value, ok := ac.stateCache.Get(addr.String()); ok {
 		if val, ok := value.(*lru.Cache).Get(key); ok {
 			return val.([]byte), true
 		}
@@ -165,21 +165,21 @@ func (ac *AccountCache) getState(addr types.Address, key string) ([]byte, bool) 
 	return nil, false
 }
 
-func (ac *AccountCache) getCode(addr types.Address) ([]byte, bool) {
-	if code, ok := ac.codeCache.Get(addr); ok {
+func (ac *AccountCache) getCode(addr *types.Address) ([]byte, bool) {
+	if code, ok := ac.codeCache.Get(addr.String()); ok {
 		return code.([]byte), true
 	}
 
 	return nil, false
 }
 
-func (ac *AccountCache) query(addr types.Address, prefix string) map[string][]byte {
+func (ac *AccountCache) query(addr *types.Address, prefix string) map[string][]byte {
 	ac.rwLock.RLock()
 	defer ac.rwLock.RUnlock()
 
 	ret := make(map[string][]byte)
 
-	if stateMap, ok := ac.states[addr]; ok {
+	if stateMap, ok := ac.states[addr.String()]; ok {
 		for key, val := range stateMap {
 			if strings.HasPrefix(key, prefix) {
 				ret[key] = val
@@ -193,9 +193,9 @@ func (ac *AccountCache) clear() {
 	ac.rwLock.Lock()
 	defer ac.rwLock.Unlock()
 
-	ac.innerAccounts = make(map[types.Address]*innerAccount)
-	ac.states = make(map[types.Address]map[string][]byte)
-	ac.codes = make(map[types.Address][]byte)
+	ac.innerAccounts = make(map[string]*innerAccount)
+	ac.states = make(map[string]map[string][]byte)
+	ac.codes = make(map[string][]byte)
 	ac.innerAccountCache.Purge()
 	ac.stateCache.Purge()
 	ac.codeCache.Purge()

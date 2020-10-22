@@ -38,7 +38,7 @@ type BlockExecutor struct {
 	ibtpVerify       proof.Verify
 	validationEngine validator.Engine
 	currentHeight    uint64
-	currentBlockHash types.Hash
+	currentBlockHash *types.Hash
 	wasmInstances    map[string]wasmer.Instance
 	txsExecutor      agency.TxsExecutor
 	blockFeed        event.Feed
@@ -68,7 +68,7 @@ func New(chainLedger ledger.Ledger, logger logrus.FieldLogger, typ string) (*Blo
 		ibtpVerify:       ibtpVerify,
 		validationEngine: ibtpVerify.ValidationEngine(),
 		currentHeight:    chainLedger.GetChainMeta().Height,
-		currentBlockHash: *chainLedger.GetChainMeta().BlockHash,
+		currentBlockHash: chainLedger.GetChainMeta().BlockHash,
 		wasmInstances:    make(map[string]wasmer.Instance),
 	}
 	blockExecutor.txsExecutor = txsExecutor(blockExecutor.applyTx, registerBoltContracts)

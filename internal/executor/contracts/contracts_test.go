@@ -252,7 +252,7 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	mockStub.EXPECT().AddObject(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().GetTxIndex().Return(uint64(1)).AnyTimes()
 	mockStub.EXPECT().PostInterchainEvent(gomock.Any()).AnyTimes()
-	mockStub.EXPECT().GetTxHash().Return(types.Hash{}).AnyTimes()
+	mockStub.EXPECT().GetTxHash().Return(&types.Hash{}).AnyTimes()
 	gomock.InOrder(f1, f2)
 
 	im := &InterchainManager{mockStub}

@@ -28,9 +28,9 @@ type ChainLedger struct {
 	minJnlHeight    uint64
 	maxJnlHeight    uint64
 	events          sync.Map
-	accounts        map[types.Address]*Account
+	accounts        map[string]*Account
 	accountCache    *AccountCache
-	prevJnlHash     types.Hash
+	prevJnlHash     *types.Hash
 	repo            *repo.Repo
 
 	chainMutex sync.RWMutex
@@ -43,7 +43,7 @@ type ChainLedger struct {
 type BlockData struct {
 	Block          *pb.Block
 	Receipts       []*pb.Receipt
-	Accounts       map[types.Address]*Account
+	Accounts       map[string]*Account
 	Journal        *BlockJournal
 	InterchainMeta *pb.InterchainMeta
 }
@@ -57,7 +57,7 @@ func New(repo *repo.Repo, blockchainStore storage.Storage, ldb storage.Storage, 
 
 	minJnlHeight, maxJnlHeight := getJournalRange(ldb)
 
-	prevJnlHash := types.Hash{}
+	prevJnlHash := &types.Hash{}
 	if maxJnlHeight != 0 {
 		blockJournal := getBlockJournal(maxJnlHeight, ldb)
 		if blockJournal == nil {
@@ -81,7 +81,7 @@ func New(repo *repo.Repo, blockchainStore storage.Storage, ldb storage.Storage, 
 		ldb:             ldb,
 		minJnlHeight:    minJnlHeight,
 		maxJnlHeight:    maxJnlHeight,
-		accounts:        make(map[types.Address]*Account),
+		accounts:        make(map[string]*Account),
 		accountCache:    accountCache,
 		prevJnlHash:     prevJnlHash,
 	}

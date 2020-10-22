@@ -10,6 +10,6 @@ type AccountAPI CoreAPI
 
 var _ api.AccountAPI = (*AccountAPI)(nil)
 
-func (api *AccountAPI) GetAccount(addr types.Address) *ledger.Account {
+func (api *AccountAPI) GetAccount(addr *types.Address) *ledger.Account {
 	return api.bxh.Ledger.GetAccount(addr)
 }

@@ -7,7 +7,7 @@ import (
 )
 
 type SerialExecutor struct {
-	normalTxs         []types.Hash
+	normalTxs         []*types.Hash
 	interchainCounter map[string][]uint64
 	applyTxFunc       agency.ApplyTxFunc
 	boltContracts     map[string]agency.Contract
@@ -26,7 +26,7 @@ func init() {
 
 func (se *SerialExecutor) ApplyTransactions(txs []*pb.Transaction) []*pb.Receipt {
 	se.interchainCounter = make(map[string][]uint64)
-	se.normalTxs = make([]types.Hash, 0)
+	se.normalTxs = make([]*types.Hash, 0)
 	receipts := make([]*pb.Receipt, 0, len(txs))
 
 	for i, tx := range txs {
@@ -40,11 +40,11 @@ func (se *SerialExecutor) GetBoltContracts() map[string]agency.Contract {
 	return se.boltContracts
 }
 
-func (se *SerialExecutor) AddNormalTx(hash types.Hash) {
+func (se *SerialExecutor) AddNormalTx(hash *types.Hash) {
 	se.normalTxs = append(se.normalTxs, hash)
 }
 
-func (se *SerialExecutor) GetNormalTxs() []types.Hash {
+func (se *SerialExecutor) GetNormalTxs() []*types.Hash {
 	return se.normalTxs
 }
 

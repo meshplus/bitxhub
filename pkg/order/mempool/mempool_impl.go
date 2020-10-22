@@ -32,7 +32,7 @@ type mempoolImpl struct {
 	storage       storage.Storage
 	peerMgr       peermgr.PeerManager //network manager
 	batchTimerMgr *timerManager
-	ledgerHelper  func(hash types.Hash) (*pb.Transaction, error)
+	ledgerHelper  func(hash *types.Hash) (*pb.Transaction, error)
 }
 
 func newMempoolImpl(config *Config, storage storage.Storage, batchC chan *raftproto.Ready) *mempoolImpl {
@@ -545,14 +545,14 @@ func (mpi *mempoolImpl) loadTxnFromLedger(fetchTxnRequest *FetchTxnRequest) (map
 	txList := make(map[uint64]*pb.Transaction)
 	for index, txHash := range missingHashList {
 		var (
-			tx      *pb.Transaction
-			err     error
+			tx  *pb.Transaction
+			err error
 		)
 		hash := types.NewHashByStr(txHash)
 		if hash == nil {
 			return nil, errors.New("nil hash")
 		}
-		if tx, err = mpi.ledgerHelper(*hash); err != nil {
+		if tx, err = mpi.ledgerHelper(hash); err != nil {
 			return nil, err
 		}
 		txList[index] = tx

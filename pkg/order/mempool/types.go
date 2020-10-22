@@ -80,7 +80,7 @@ type Config struct {
 	TxSliceTimeout time.Duration
 
 	PeerMgr            peermgr.PeerManager
-	GetTransactionFunc func(hash types.Hash) (*pb.Transaction, error)
+	GetTransactionFunc func(hash *types.Hash) (*pb.Transaction, error)
 	ChainHeight        uint64
 	Logger             logrus.FieldLogger
 }

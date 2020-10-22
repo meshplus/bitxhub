@@ -13,9 +13,9 @@ import (
 var _ Ledger = (*ChainLedger)(nil)
 
 // GetOrCreateAccount get the account, if not exist, create a new account
-func (l *ChainLedger) GetOrCreateAccount(addr types.Address) *Account {
+func (l *ChainLedger) GetOrCreateAccount(addr *types.Address) *Account {
 	l.lock.RLock()
-	value, ok := l.accounts[addr]
+	value, ok := l.accounts[addr.String()]
 	l.lock.RUnlock()
 	if ok {
 		return value
@@ -23,17 +23,17 @@ func (l *ChainLedger) GetOrCreateAccount(addr types.Address) *Account {
 
 	l.lock.Lock()
 	defer l.lock.Unlock()
-	if value, ok := l.accounts[addr]; ok {
+	if value, ok := l.accounts[addr.String()]; ok {
 		return value
 	}
 	account := l.GetAccount(addr)
-	l.accounts[addr] = account
+	l.accounts[addr.String()] = account
 
 	return account
 }
 
 // GetAccount get account info using account Address, if not found, create a new account
-func (l *ChainLedger) GetAccount(address types.Address) *Account {
+func (l *ChainLedger) GetAccount(address *types.Address) *Account {
 	account := newAccount(l.ldb, l.accountCache, address)
 
 	if innerAccount, ok := l.accountCache.getInnerAccount(address); ok {
@@ -52,77 +52,77 @@ func (l *ChainLedger) GetAccount(address types.Address) *Account {
 }
 
 // GetBalanec get account balance using account Address
-func (l *ChainLedger) GetBalance(addr types.Address) uint64 {
+func (l *ChainLedger) GetBalance(addr *types.Address) uint64 {
 	account := l.GetOrCreateAccount(addr)
 	return account.GetBalance()
 }
 
 // SetBalance set account balance
-func (l *ChainLedger) SetBalance(addr types.Address, value uint64) {
+func (l *ChainLedger) SetBalance(addr *types.Address, value uint64) {
 	account := l.GetOrCreateAccount(addr)
 	account.SetBalance(value)
 }
 
 // GetState get account state value using account Address and key
-func (l *ChainLedger) GetState(addr types.Address, key []byte) (bool, []byte) {
+func (l *ChainLedger) GetState(addr *types.Address, key []byte) (bool, []byte) {
 	account := l.GetOrCreateAccount(addr)
 	return account.GetState(key)
 }
 
 // SetState set account state value using account Address and key
-func (l *ChainLedger) SetState(addr types.Address, key []byte, v []byte) {
+func (l *ChainLedger) SetState(addr *types.Address, key []byte, v []byte) {
 	account := l.GetOrCreateAccount(addr)
 	account.SetState(key, v)
 }
 
 // AddState add account state value using account Address and key
-func (l *ChainLedger) AddState(addr types.Address, key []byte, v []byte) {
+func (l *ChainLedger) AddState(addr *types.Address, key []byte, v []byte) {
 	account := l.GetOrCreateAccount(addr)
 	account.AddState(key, v)
 }
 
 // SetCode set contract code
-func (l *ChainLedger) SetCode(addr types.Address, code []byte) {
+func (l *ChainLedger) SetCode(addr *types.Address, code []byte) {
 	account := l.GetOrCreateAccount(addr)
 	account.SetCodeAndHash(code)
 }
 
 // GetCode get contract code
-func (l *ChainLedger) GetCode(addr types.Address) []byte {
+func (l *ChainLedger) GetCode(addr *types.Address) []byte {
 	account := l.GetOrCreateAccount(addr)
 	return account.Code()
 }
 
 // GetNonce get account nonce
-func (l *ChainLedger) GetNonce(addr types.Address) uint64 {
+func (l *ChainLedger) GetNonce(addr *types.Address) uint64 {
 	account := l.GetOrCreateAccount(addr)
 	return account.GetNonce()
 }
 
 // SetNonce set account nonce
-func (l *ChainLedger) SetNonce(addr types.Address, nonce uint64) {
+func (l *ChainLedger) SetNonce(addr *types.Address, nonce uint64) {
 	account := l.GetOrCreateAccount(addr)
 	account.SetNonce(nonce)
 }
 
 // QueryByPrefix query value using key
-func (l *ChainLedger) QueryByPrefix(addr types.Address, prefix string) (bool, [][]byte) {
+func (l *ChainLedger) QueryByPrefix(addr *types.Address, prefix string) (bool, [][]byte) {
 	account := l.GetOrCreateAccount(addr)
 	return account.Query(prefix)
 }
 
 func (l *ChainLedger) Clear() {
 	l.events = sync.Map{}
-	l.accounts = make(map[types.Address]*Account)
+	l.accounts = make(map[string]*Account)
 }
 
 // FlushDirtyDataAndComputeJournal gets dirty accounts and computes block journal
-func (l *ChainLedger) FlushDirtyDataAndComputeJournal() (map[types.Address]*Account, *BlockJournal) {
-	dirtyAccounts := make(map[types.Address]*Account)
+func (l *ChainLedger) FlushDirtyDataAndComputeJournal() (map[string]*Account, *BlockJournal) {
+	dirtyAccounts := make(map[string]*Account)
 	var dirtyAccountData []byte
 	var journals []*journal
-	var sortedAddr []types.Address
-	accountData := make(map[types.Address][]byte)
+	var sortedAddr []string
+	accountData := make(map[string][]byte)
 
 	for addr, account := range l.accounts {
 		journal := account.getJournalIfModified()
@@ -134,9 +134,7 @@ func (l *ChainLedger) FlushDirtyDataAndComputeJournal() (map[types.Address]*Acco
 		}
 	}
 
-	sort.Slice(sortedAddr, func(i, j int) bool {
-		return bytes.Compare(sortedAddr[i].Bytes(), sortedAddr[j].Bytes()) < 0
-	})
+	sort.Strings(sortedAddr)
 	for _, addr := range sortedAddr {
 		dirtyAccountData = append(dirtyAccountData, accountData[addr]...)
 	}
@@ -145,7 +143,7 @@ func (l *ChainLedger) FlushDirtyDataAndComputeJournal() (map[types.Address]*Acco
 
 	blockJournal := &BlockJournal{
 		Journals:    journals,
-		ChangedHash: *types.NewHash(journalHash[:]),
+		ChangedHash: types.NewHash(journalHash[:]),
 	}
 
 	l.prevJnlHash = blockJournal.ChangedHash
@@ -156,7 +154,7 @@ func (l *ChainLedger) FlushDirtyDataAndComputeJournal() (map[types.Address]*Acco
 }
 
 // Commit commit the state
-func (l *ChainLedger) Commit(height uint64, accounts map[types.Address]*Account, blockJournal *BlockJournal) error {
+func (l *ChainLedger) Commit(height uint64, accounts map[string]*Account, blockJournal *BlockJournal) error {
 	ldbBatch := l.ldb.NewBatch()
 
 	for _, account := range accounts {
@@ -271,7 +269,7 @@ func (l *ChainLedger) rollbackState(height uint64) error {
 		journal := getBlockJournal(height, l.ldb)
 		l.prevJnlHash = journal.ChangedHash
 	} else {
-		l.prevJnlHash = types.Hash{}
+		l.prevJnlHash = &types.Hash{}
 		l.minJnlHeight = 0
 	}
 	l.maxJnlHeight = height

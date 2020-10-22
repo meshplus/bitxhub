@@ -42,7 +42,7 @@ func TestNew(t *testing.T) {
 	// mock data for ledger
 	chainMeta := &pb.ChainMeta{
 		Height:    1,
-		BlockHash: *types.NewHashByStr(from),
+		BlockHash: types.NewHashByStr(from),
 	}
 	mockLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
 
@@ -71,7 +71,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	// mock data for ledger
 	chainMeta := &pb.ChainMeta{
 		Height:    1,
-		BlockHash: *types.NewHashByStr(from),
+		BlockHash: types.NewHash([]byte(from)),
 	}
 
 	evs := make([]*pb.Event, 0)
@@ -80,7 +80,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	data, err := json.Marshal(m)
 	assert.Nil(t, err)
 	ev := &pb.Event{
-		TxHash:     *types.NewHashByStr(from),
+		TxHash:     types.NewHash([]byte(from)),
 		Data:       data,
 		Interchain: true,
 	}
@@ -98,7 +98,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	mockLedger.EXPECT().SetCode(gomock.Any(), gomock.Any()).AnyTimes()
 	mockLedger.EXPECT().GetCode(gomock.Any()).Return([]byte("10")).AnyTimes()
 	mockLedger.EXPECT().PersistExecutionResult(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-	mockLedger.EXPECT().FlushDirtyDataAndComputeJournal().Return(make(map[types.Address]*ledger.Account), &ledger.BlockJournal{}).AnyTimes()
+	mockLedger.EXPECT().FlushDirtyDataAndComputeJournal().Return(make(map[string]*ledger.Account), &ledger.BlockJournal{ChangedHash: &types.Hash{}}).AnyTimes()
 	mockLedger.EXPECT().PersistBlockData(gomock.Any()).AnyTimes()
 	logger := log.NewWithModule("executor")
 
@@ -114,34 +114,34 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	// set tx of TransactionData_BVM type
 	ibtp1 := mockIBTP(t, 1, pb.IBTP_INTERCHAIN)
 	BVMData := mockTxData(t, pb.TransactionData_INVOKE, pb.TransactionData_BVM, ibtp1)
-	BVMTx := mockTx(BVMData)
+	BVMTx := mockTx(t, BVMData)
 	txs = append(txs, BVMTx)
 	// set tx of TransactionData_XVM type
 	ibtp2 := mockIBTP(t, 2, pb.IBTP_INTERCHAIN)
 	XVMData := mockTxData(t, pb.TransactionData_INVOKE, pb.TransactionData_XVM, ibtp2)
-	XVMTx := mockTx(XVMData)
+	XVMTx := mockTx(t, XVMData)
 	txs = append(txs, XVMTx)
 	// set tx of TransactionData_NORMAL type
 	ibtp3 := mockIBTP(t, 3, pb.IBTP_INTERCHAIN)
 	NormalData := mockTxData(t, pb.TransactionData_NORMAL, pb.TransactionData_XVM, ibtp3)
-	NormalTx := mockTx(NormalData)
+	NormalTx := mockTx(t, NormalData)
 	txs = append(txs, NormalTx)
 	// set tx with empty transaction data
-	emptyDataTx := mockTx(nil)
+	emptyDataTx := mockTx(t, nil)
 	txs = append(txs, emptyDataTx)
 
 	// set signature for txs
 	for _, tx := range txs {
-		addr, err := pubKey.Address()
-		tx.From = *addr
+		tx.From, err = pubKey.Address()
 		assert.Nil(t, err)
 		sig, err := privKey.Sign(tx.SignHash().Bytes())
 		assert.Nil(t, err)
 		tx.Signature = sig
+		tx.TransactionHash = tx.Hash()
 	}
 	// set invalid signature tx
-	invalidTx := mockTx(nil)
-	invalidTx.From = *types.NewAddressByStr(from)
+	invalidTx := mockTx(t, nil)
+	invalidTx.From = types.NewAddressByStr(from)
 	invalidTx.Signature = []byte("invalid")
 	txs = append(txs, invalidTx)
 
@@ -175,7 +175,7 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 	// mock data for ledger
 	chainMeta := &pb.ChainMeta{
 		Height:    1,
-		BlockHash: *types.NewHashByStr(from),
+		BlockHash: types.NewHashByStr(from),
 	}
 
 	privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
@@ -189,13 +189,15 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 	val, err := json.Marshal(hash)
 	assert.Nil(t, err)
 
+	contractAddr := constant.InterchainContractAddr.Address()
+
 	mockLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
 	mockLedger.EXPECT().Events(gomock.Any()).Return(nil).AnyTimes()
 	mockLedger.EXPECT().Commit(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	mockLedger.EXPECT().Clear().AnyTimes()
-	mockLedger.EXPECT().GetState(constant.InterchainContractAddr.Address(), []byte(fmt.Sprintf("index-tx-%s", id))).Return(true, val).AnyTimes()
+	mockLedger.EXPECT().GetState(contractAddr, []byte(fmt.Sprintf("index-tx-%s", id))).Return(true, val).AnyTimes()
 	mockLedger.EXPECT().PersistExecutionResult(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-	mockLedger.EXPECT().FlushDirtyDataAndComputeJournal().Return(make(map[types.Address]*ledger.Account), &ledger.BlockJournal{}).AnyTimes()
+	mockLedger.EXPECT().FlushDirtyDataAndComputeJournal().Return(make(map[string]*ledger.Account), &ledger.BlockJournal{}).AnyTimes()
 	mockLedger.EXPECT().PersistBlockData(gomock.Any()).AnyTimes()
 	logger := log.NewWithModule("executor")
 
@@ -204,7 +206,7 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 
 	// mock data for block
 	var txs []*pb.Transaction
-	tx, err := genBVMContractTransaction(privKey, 1, *constant.InterchainContractAddr.Address(), "GetIBTPByID", pb.String(id))
+	tx, err := genBVMContractTransaction(privKey, 1, contractAddr, "GetIBTPByID", pb.String(id))
 	assert.Nil(t, err)
 
 	txs = append(txs, tx)
@@ -231,15 +233,22 @@ func mockBlock(blockNumber uint64, txs []*pb.Transaction) *pb.Block {
 		Number:    blockNumber,
 		Timestamp: time.Now().UnixNano(),
 	}
-	return &pb.Block{
+	block := &pb.Block{
 		BlockHeader:  header,
 		Transactions: txs,
 	}
+	block.BlockHash = block.Hash()
+
+	return block
 }
 
-func mockTx(data *pb.TransactionData) *pb.Transaction {
-	content, _ := data.Marshal()
+func mockTx(t *testing.T, data *pb.TransactionData) *pb.Transaction {
+	var content []byte
+	if data != nil {
+		content, _ = data.Marshal()
+	}
 	return &pb.Transaction{
+		To:      randAddress(t),
 		Payload: content,
 		Nonce:   uint64(rand.Int63()),
 	}
@@ -320,44 +329,44 @@ func mockTransferTx(t *testing.T) *pb.Transaction {
 		To:        to,
 		Timestamp: time.Now().UnixNano(),
 		Payload:   data,
-		Nonce:     uint64(rand.Int63()),
+		Amount:    1,
 	}
 
 	err = tx.Sign(privKey)
 	require.Nil(t, err)
-	tx.TransactionHash = *tx.Hash()
+	tx.TransactionHash = tx.Hash()
 
 	return tx
 }
 
-func loadAdminKey(t *testing.T) (crypto.PrivateKey, types.Address) {
+func loadAdminKey(t *testing.T) (crypto.PrivateKey, *types.Address) {
 	privKey, err := asym.RestorePrivateKey(filepath.Join("testdata", "key.json"), keyPassword)
 	require.Nil(t, err)
 
 	from, err := privKey.PublicKey().Address()
 	require.Nil(t, err)
 
-	return privKey, *from
+	return privKey, from
 }
 
-func randAddress(t *testing.T) types.Address {
+func randAddress(t *testing.T) *types.Address {
 	privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	require.Nil(t, err)
 	address, err := privKey.PublicKey().Address()
 	require.Nil(t, err)
 
-	return *address
+	return address
 }
 
-func genBVMContractTransaction(privateKey crypto.PrivateKey, nonce uint64, address types.Address, method string, args ...*pb.Arg) (*pb.Transaction, error) {
+func genBVMContractTransaction(privateKey crypto.PrivateKey, nonce uint64, address *types.Address, method string, args ...*pb.Arg) (*pb.Transaction, error) {
 	return genContractTransaction(pb.TransactionData_BVM, privateKey, nonce, address, method, args...)
 }
 
-func genXVMContractTransaction(privateKey crypto.PrivateKey, nonce uint64, address types.Address, method string, args ...*pb.Arg) (*pb.Transaction, error) {
+func genXVMContractTransaction(privateKey crypto.PrivateKey, nonce uint64, address *types.Address, method string, args ...*pb.Arg) (*pb.Transaction, error) {
 	return genContractTransaction(pb.TransactionData_XVM, privateKey, nonce, address, method, args...)
 }
 
-func genContractTransaction(vmType pb.TransactionData_VMType, privateKey crypto.PrivateKey, nonce uint64, address types.Address, method string, args ...*pb.Arg) (*pb.Transaction, error) {
+func genContractTransaction(vmType pb.TransactionData_VMType, privateKey crypto.PrivateKey, nonce uint64, address *types.Address, method string, args ...*pb.Arg) (*pb.Transaction, error) {
 	from, err := privateKey.PublicKey().Address()
 	if err != nil {
 		return nil, err
@@ -385,7 +394,7 @@ func genContractTransaction(vmType pb.TransactionData_VMType, privateKey crypto.
 	}
 
 	tx := &pb.Transaction{
-		From:      *from,
+		From:      from,
 		To:        address,
 		Payload:   pld,
 		Timestamp: time.Now().UnixNano(),
@@ -396,7 +405,7 @@ func genContractTransaction(vmType pb.TransactionData_VMType, privateKey crypto.
 		return nil, fmt.Errorf("tx sign: %w", err)
 	}
 
-	tx.TransactionHash = *tx.Hash()
+	tx.TransactionHash = tx.Hash()
 
 	return tx, nil
 }
