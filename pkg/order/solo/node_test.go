@@ -47,6 +47,7 @@ func TestNode_Start(t *testing.T) {
 		Timestamp: time.Now().UnixNano(),
 		Nonce:     uint64(rand.Int63()),
 	}
+	tx.TransactionHash = tx.Hash()
 	err = tx.Sign(privKey)
 	require.Nil(t, err)
 

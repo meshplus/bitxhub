@@ -15,9 +15,9 @@ func TestStorage(t *testing.T) {
 
 	txList := make([]*pb.Transaction, 0)
 	txHashList := make([]types.Hash, 0)
-	txHash1 := types.NewHashByStr("txHash1")
+	txHash1 := newHash("txHash1")
 	tx1 := &pb.Transaction{Nonce: uint64(1), TransactionHash: txHash1}
-	txHash2 := types.NewHashByStr("txHash2")
+	txHash2 := newHash("txHash2")
 	tx2 := &pb.Transaction{Nonce: uint64(1), TransactionHash: txHash2}
 	txList = append(txList, tx1, tx2)
 	txHashList = append(txHashList, *txHash1, *txHash1)

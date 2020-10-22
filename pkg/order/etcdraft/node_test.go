@@ -40,8 +40,8 @@ func TestNode_Start(t *testing.T) {
 
 	var ID uint64 = 1
 	nodes := make(map[uint64]types.Address)
-	nodes[ID] = *types.NewAddressByStr("")
-
+	hash := types.NewAddressByStr("000000000000000000000000000000000000000a")
+	nodes[ID] = *hash
 	fileData, err := ioutil.ReadFile("../../../config/order.toml")
 	require.Nil(t, err)
 	err = ioutil.WriteFile(filepath.Join(repoRoot, "order.toml"), fileData, 0644)

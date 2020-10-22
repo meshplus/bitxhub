@@ -2,7 +2,9 @@ package mempool
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"math/rand"
 	"os"
 	"time"
 
@@ -43,12 +45,17 @@ func mockMempoolImpl() (*mempoolImpl, chan *raftproto.Ready) {
 		FetchTimeout:   DefaultFetchTxnTimeout,
 		TxSliceTimeout: DefaultTxSetTick,
 		Logger:         log.NewWithModule("consensus"),
+		GetTransactionFunc:getTransactionFunc,
 	}
 	config.PeerMgr = newMockPeerMgr()
 	db, _ := leveldb.New(LevelDBDir)
 	proposalC := make(chan *raftproto.Ready)
 	mempool := newMempoolImpl(config, db, proposalC)
 	return mempool, proposalC
+}
+
+func getTransactionFunc(hash *types.Hash) (*pb.Transaction, error) {
+	return nil,errors.New("can't find transaction")
 }
 
 func genPrivKey() crypto.PrivateKey {
@@ -124,6 +131,12 @@ func mockIBTP(from, to string, nonce uint64) *pb.IBTP {
 		Type:      pb.IBTP_INTERCHAIN,
 		Timestamp: time.Now().UnixNano(),
 	}
+}
+
+func newHash(hash string) *types.Hash {
+	hashBytes :=  make([]byte,types.HashLength)
+	rand.Read(hashBytes)
+	return  types.NewHash(hashBytes)
 }
 
 type mockPeerMgr struct {

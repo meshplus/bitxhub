@@ -19,10 +19,12 @@ func TestGetAccount(t *testing.T) {
 	expectedAddr := fmt.Sprintf("%s-%s-%d", address, address, pb.IBTP_INTERCHAIN)
 	ast.Equal(expectedAddr, addr)
 	tx = &pb.Transaction{
+		From: InterchainContractAddr,
 		To:   InterchainContractAddr,
 	}
-	_, err = getAccount(tx)
-	ast.NotNil(err, "unmarshal invoke payload faile")
+	addr, err = getAccount(tx)
+	ast.Nil(err)
+	ast.Equal(addr,InterchainContractAddr.String())
 }
 
 func TestPoolIsFull(t *testing.T) {
