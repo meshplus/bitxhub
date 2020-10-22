@@ -155,11 +155,7 @@ func (mpi *mempoolImpl) processTransactions(txs []*pb.Transaction) error {
 	validTxs := make(map[string][]*pb.Transaction)
 	for _, tx := range txs {
 		// check the sequence number of tx
-		txAccount, err := getAccount(tx)
-		if err != nil {
-			mpi.logger.Warningf("get tx account failed, err: %s", err.Error())
-			continue
-		}
+		txAccount := tx.Account()
 		currentSeqNo := mpi.txStore.nonceCache.getPendingNonce(txAccount)
 		if tx.Nonce < currentSeqNo {
 			mpi.logger.Warningf("Account %s, current sequence number is %d, required %d", txAccount, tx.Nonce, currentSeqNo+1)

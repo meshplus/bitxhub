@@ -1,7 +1,6 @@
 package mempool
 
 import (
-	"fmt"
 	"strconv"
 	"sync/atomic"
 	"time"
@@ -102,12 +101,4 @@ func newTimer(d time.Duration) *timerManager {
 		isActive:      cmap.New(),
 		timeoutEventC: make(chan bool),
 	}
-}
-
-func getAccount(tx *pb.Transaction) (string, error) {
-	if tx.IBTP != nil {
-		account := fmt.Sprintf("%s-%s-%d", tx.IBTP.From, tx.IBTP.To, tx.IBTP.Category())
-		return account, nil
-	}
-	return tx.From.String(), nil
 }
