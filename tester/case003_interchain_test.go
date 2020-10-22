@@ -75,14 +75,14 @@ func (suite *Interchain) TestHandleIBTP() {
 	k1Nonce++
 
 	// register rule
-	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(), "RegisterRule", pb.String(f.Hex()), pb.String(addr.Hex()))
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(), "RegisterRule", pb.String(f.String()), pb.String(addr.String()))
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess())
 	k1Nonce++
 
 	proof := []byte("true")
 	proofHash := sha256.Sum256(proof)
-	ib := &pb.IBTP{From: f.Hex(), To: t.Hex(), Index: 1, Timestamp: time.Now().UnixNano(), Proof: proofHash[:]}
+	ib := &pb.IBTP{From: f.String(), To: t.String(), Index: 1, Timestamp: time.Now().UnixNano(), Proof: proofHash[:]}
 	data, err := ib.Marshal()
 	suite.Require().Nil(err)
 
@@ -150,7 +150,7 @@ func (suite *Interchain) TestGetIBTPByID() {
 	k1Nonce++
 
 	// register rule
-	_, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(), "RegisterRule", pb.String(f.Hex()), pb.String(addr.Hex()))
+	_, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(), "RegisterRule", pb.String(f.String()), pb.String(addr.String()))
 	suite.Require().Nil(err)
 	k1Nonce++
 
@@ -158,7 +158,7 @@ func (suite *Interchain) TestGetIBTPByID() {
 	suite.Require().Nil(err)
 
 	proofHash := sha256.Sum256(proof)
-	ib := &pb.IBTP{From: f.Hex(), To: t.Hex(), Index: 1, Payload: []byte("111"), Timestamp: time.Now().UnixNano(), Proof: proofHash[:]}
+	ib := &pb.IBTP{From: f.String(), To: t.String(), Index: 1, Payload: []byte("111"), Timestamp: time.Now().UnixNano(), Proof: proofHash[:]}
 	data, err := ib.Marshal()
 	suite.Require().Nil(err)
 

@@ -54,7 +54,7 @@ func (suite *API) TestSend() {
 	testSendView(suite)
 }
 
-func testSendTransaction(suite *API) types.Hash {
+func testSendTransaction(suite *API) *types.Hash {
 	tx, err := genContractTransaction(pb.TransactionData_BVM, suite.privKey, 1,
 		constant.StoreContractAddr.Address(), "Set", pb.String("key"), pb.String(value))
 	suite.Nil(err)

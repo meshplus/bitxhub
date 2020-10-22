@@ -88,8 +88,8 @@ func genContractTransaction(vmType pb.TransactionData_VMType, privateKey crypto.
 	}
 
 	tx := &pb.Transaction{
-		From:      *from,
-		To:        *address,
+		From:      from,
+		To:        address,
 		Payload:   payload,
 		Timestamp: time.Now().UnixNano(),
 		Nonce:     nonce,
@@ -99,7 +99,7 @@ func genContractTransaction(vmType pb.TransactionData_VMType, privateKey crypto.
 		return nil, fmt.Errorf("tx sign: %w", err)
 	}
 
-	tx.TransactionHash = *tx.Hash()
+	tx.TransactionHash = tx.Hash()
 
 	return tx, nil
 }
@@ -122,13 +122,13 @@ func deployContract(api api.CoreAPI, privateKey crypto.PrivateKey, nonce uint64,
 	}
 
 	tx := &pb.Transaction{
-		From:      *from,
+		From:      from,
 		Payload:   payload,
 		Timestamp: time.Now().UnixNano(),
 		Nonce:     nonce,
 	}
 
-	tx.TransactionHash = *tx.Hash()
+	tx.TransactionHash = tx.Hash()
 
 	if err := tx.Sign(privateKey); err != nil {
 		return nil, fmt.Errorf("tx sign: %w", err)
@@ -139,7 +139,7 @@ func deployContract(api api.CoreAPI, privateKey crypto.PrivateKey, nonce uint64,
 		return nil, err
 	}
 
-	ret := types.Bytes2Address(receipt.GetRet())
+	ret := types.NewAddress(receipt.GetRet())
 
 	return ret, nil
 }
