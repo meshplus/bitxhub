@@ -6,11 +6,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/meshplus/bitxhub/internal/coreapi/api"
-
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub/internal/constant"
+	"github.com/meshplus/bitxhub/internal/coreapi/api"
 )
 
 func genBVMContractTransaction(privateKey crypto.PrivateKey, nonce uint64, address *types.Address, method string, args ...*pb.Arg) (*pb.Transaction, error) {
@@ -19,6 +19,56 @@ func genBVMContractTransaction(privateKey crypto.PrivateKey, nonce uint64, addre
 
 func genXVMContractTransaction(privateKey crypto.PrivateKey, nonce uint64, address *types.Address, method string, args ...*pb.Arg) (*pb.Transaction, error) {
 	return genContractTransaction(pb.TransactionData_XVM, privateKey, nonce, address, method, args...)
+}
+
+func genIBTPTransaction(privateKey crypto.PrivateKey, ibtp *pb.IBTP) (*pb.Transaction, error) {
+	from, err := privateKey.PublicKey().Address()
+	if err != nil {
+		return nil, err
+	}
+
+	ibtpd, err := ibtp.Marshal()
+	if err != nil {
+		return nil, err
+	}
+
+	pl := &pb.InvokePayload{
+		Method: "HandleIBTP",
+		Args:   []*pb.Arg{pb.Bytes(ibtpd)},
+	}
+
+	data, err := pl.Marshal()
+	if err != nil {
+		return nil, err
+	}
+
+	td := &pb.TransactionData{
+		Type:    pb.TransactionData_INVOKE,
+		VmType:  pb.TransactionData_BVM,
+		Payload: data,
+	}
+
+	payload, err := td.Marshal()
+	if err != nil {
+		return nil, err
+	}
+
+	tx := &pb.Transaction{
+		From:      from,
+		To:        constant.InterchainContractAddr.Address(),
+		Payload:   payload,
+		Timestamp: time.Now().UnixNano(),
+		Nonce:     ibtp.Index,
+		IBTP:      ibtp,
+	}
+
+	if err := tx.Sign(privateKey); err != nil {
+		return nil, fmt.Errorf("tx sign: %w", err)
+	}
+
+	tx.TransactionHash = tx.Hash()
+
+	return tx, nil
 }
 
 func invokeBVMContract(api api.CoreAPI, privateKey crypto.PrivateKey, nonce uint64, address *types.Address, method string, args ...*pb.Arg) (*pb.Receipt, error) {
