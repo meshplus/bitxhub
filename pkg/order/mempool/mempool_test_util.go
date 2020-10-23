@@ -2,7 +2,9 @@ package mempool
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"math/rand"
 	"os"
 	"time"
 
@@ -22,7 +24,7 @@ import (
 )
 
 var (
-	InterchainContractAddr = types.String2Address("000000000000000000000000000000000000000a")
+	InterchainContractAddr = types.NewAddressByStr("000000000000000000000000000000000000000a")
 )
 
 const (
@@ -43,12 +45,17 @@ func mockMempoolImpl() (*mempoolImpl, chan *raftproto.Ready) {
 		FetchTimeout:   DefaultFetchTxnTimeout,
 		TxSliceTimeout: DefaultTxSetTick,
 		Logger:         log.NewWithModule("consensus"),
+		GetTransactionFunc:getTransactionFunc,
 	}
 	config.PeerMgr = newMockPeerMgr()
 	db, _ := leveldb.New(LevelDBDir)
 	proposalC := make(chan *raftproto.Ready)
 	mempool := newMempoolImpl(config, db, proposalC)
 	return mempool, proposalC
+}
+
+func getTransactionFunc(hash *types.Hash) (*pb.Transaction, error) {
+	return nil,errors.New("can't find transaction")
 }
 
 func genPrivKey() crypto.PrivateKey {
@@ -81,9 +88,14 @@ func constructIBTPTx(nonce uint64, privKey *crypto.PrivateKey) *pb.Transaction {
 	privK = *privKey
 	pubKey := privK.PublicKey()
 	from, _ := pubKey.Address()
-	to := from.Hex()
-	ibtp := mockIBTP(from.Hex(), to, nonce)
-	tx := mockInterChainTx(ibtp)
+	to := from.String()
+	ibtp := mockIBTP(from.String(), to, nonce)
+	tx := &pb.Transaction{
+		To:    InterchainContractAddr,
+		Nonce: ibtp.Index,
+		IBTP:  ibtp,
+		Extra: []byte(fmt.Sprintf("%s-%s-%d", ibtp.From, ibtp.To, ibtp.Type)),
+	}
 	tx.Timestamp = time.Now().UnixNano()
 	sig, _ := privK.Sign(tx.SignHash().Bytes())
 	tx.Signature = sig
@@ -97,26 +109,6 @@ func cleanTestData() bool {
 		return false
 	}
 	return true
-}
-
-func mockInterChainTx(ibtp *pb.IBTP) *pb.Transaction {
-	ib, _ := ibtp.Marshal()
-	ipd := &pb.InvokePayload{
-		Method: "HandleIBTP",
-		Args:   []*pb.Arg{{Value: ib}},
-	}
-	pd, _ := ipd.Marshal()
-	data := &pb.TransactionData{
-		VmType:  pb.TransactionData_BVM,
-		Type:    pb.TransactionData_INVOKE,
-		Payload: pd,
-	}
-	return &pb.Transaction{
-		To:    InterchainContractAddr,
-		Nonce: ibtp.Index,
-		Data:  data,
-		Extra: []byte(fmt.Sprintf("%s-%s-%d", ibtp.From, ibtp.To, ibtp.Type)),
-	}
 }
 
 func mockIBTP(from, to string, nonce uint64) *pb.IBTP {
@@ -139,6 +131,12 @@ func mockIBTP(from, to string, nonce uint64) *pb.IBTP {
 		Type:      pb.IBTP_INTERCHAIN,
 		Timestamp: time.Now().UnixNano(),
 	}
+}
+
+func newHash(hash string) *types.Hash {
+	hashBytes :=  make([]byte,types.HashLength)
+	rand.Read(hashBytes)
+	return  types.NewHash(hashBytes)
 }
 
 type mockPeerMgr struct {

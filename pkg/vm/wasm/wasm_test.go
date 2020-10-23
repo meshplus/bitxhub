@@ -67,6 +67,7 @@ func initCreateContext(t *testing.T, name string) *vm.Context {
 
 	return &vm.Context{
 		Caller:          caller,
+		Callee:          &types.Address{},
 		TransactionData: data,
 		Ledger:          ldg,
 	}
@@ -173,7 +174,7 @@ func TestExecute(t *testing.T) {
 	}
 	ctx1 := &vm.Context{
 		Caller:          ctx.Caller,
-		Callee:          types.Bytes2Address(ret),
+		Callee:          types.NewAddress(ret),
 		TransactionData: data,
 		Ledger:          ctx.Ledger,
 	}
@@ -221,7 +222,7 @@ func TestWasm_RunFabValidation(t *testing.T) {
 	}
 	ctx1 := &vm.Context{
 		Caller:          ctx.Caller,
-		Callee:          types.Bytes2Address(ret),
+		Callee:          types.NewAddress(ret),
 		TransactionData: data,
 		Ledger:          ctx.Ledger,
 	}
@@ -288,7 +289,7 @@ func BenchmarkRunFabValidation(b *testing.B) {
 	require.Nil(b, err)
 	ctx1 := &vm.Context{
 		Caller:          ctx.Caller,
-		Callee:          types.Bytes2Address(ret),
+		Callee:          types.NewAddress(ret),
 		TransactionData: data,
 		Ledger:          ctx.Ledger,
 	}
@@ -334,7 +335,7 @@ func TestWasm_RunWithoutMethod(t *testing.T) {
 	}
 	ctx1 := &vm.Context{
 		Caller:          ctx.Caller,
-		Callee:          types.Bytes2Address(ret),
+		Callee:          types.NewAddress(ret),
 		TransactionData: data,
 		Ledger:          ctx.Ledger,
 	}
@@ -361,7 +362,7 @@ BcNwjTDCxyxLNjFKQfMAc6sY6iJs+Ma59WZyC/4uhjE=
 	return &repo.Repo{
 		Key: &repo.Key{
 			PrivKey: privKey,
-			Address: address.Hex(),
+			Address: address.String(),
 		},
 	}
 }

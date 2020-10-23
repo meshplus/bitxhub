@@ -13,7 +13,7 @@ import (
 
 // SendTransaction handles transaction sent by the client.
 // If the transaction is valid, it will return the transaction hash.
-func (cbs *ChainBrokerService) SendTransaction(ctx context.Context, tx *pb.SendTransactionRequest) (*pb.TransactionHashMsg, error) {
+func (cbs *ChainBrokerService) SendTransaction(ctx context.Context, tx *pb.Transaction) (*pb.TransactionHashMsg, error) {
 	if !cbs.api.Broker().OrderReady() {
 		return nil, fmt.Errorf("the system is temporarily unavailable")
 	}
@@ -30,7 +30,7 @@ func (cbs *ChainBrokerService) SendTransaction(ctx context.Context, tx *pb.SendT
 	return &pb.TransactionHashMsg{TxHash: hash}, nil
 }
 
-func (cbs *ChainBrokerService) SendView(_ context.Context, tx *pb.SendTransactionRequest) (*pb.Receipt, error) {
+func (cbs *ChainBrokerService) SendView(_ context.Context, tx *pb.Transaction) (*pb.Receipt, error) {
 	if err := cbs.checkTransaction(tx); err != nil {
 		return nil, err
 	}
@@ -43,25 +43,21 @@ func (cbs *ChainBrokerService) SendView(_ context.Context, tx *pb.SendTransactio
 	return result, nil
 }
 
-func (cbs *ChainBrokerService) checkTransaction(tx *pb.SendTransactionRequest) error {
-	if tx.Data == nil {
-		return fmt.Errorf("tx data can't be empty")
+func (cbs *ChainBrokerService) checkTransaction(tx *pb.Transaction) error {
+	if tx.Payload == nil && tx.Amount == 0 && tx.IBTP == nil {
+		return fmt.Errorf("tx payload, ibtp and amount can't all be empty")
 	}
 
-	if tx.Data.Type == pb.TransactionData_NORMAL && tx.Data.Amount == 0 {
-		return fmt.Errorf("amount can't be 0 in transfer tx")
-	}
-
-	emptyAddress := types.Address{}.Hex()
-	if tx.From.Hex() == emptyAddress {
+	emptyAddress := &types.Address{}
+	if tx.From.String() == emptyAddress.String() {
 		return fmt.Errorf("from can't be empty")
 	}
 
-	if tx.From == tx.To {
+	if tx.From.String() == tx.To.String() {
 		return fmt.Errorf("from can`t be the same as to")
 	}
 
-	if tx.To.Hex() == emptyAddress && len(tx.Data.Payload) == 0 {
+	if tx.To.String() == emptyAddress.String() && len(tx.Payload) == 0 {
 		return fmt.Errorf("can't deploy empty contract")
 	}
 
@@ -81,19 +77,9 @@ func (cbs *ChainBrokerService) checkTransaction(tx *pb.SendTransactionRequest) e
 	return nil
 }
 
-func (cbs *ChainBrokerService) sendTransaction(req *pb.SendTransactionRequest) (string, error) {
-	tx := &pb.Transaction{
-		Version:   req.Version,
-		From:      req.From,
-		To:        req.To,
-		Timestamp: req.Timestamp,
-		Data:      req.Data,
-		Nonce:     req.Nonce,
-		Signature: req.Signature,
-		Extra:     req.Extra,
-	}
+func (cbs *ChainBrokerService) sendTransaction(tx *pb.Transaction) (string, error) {
 	tx.TransactionHash = tx.Hash()
-	ok, _ := asym.Verify(crypto.Secp256k1, tx.Signature, tx.SignHash().Bytes(), tx.From)
+	ok, _ := asym.Verify(crypto.Secp256k1, tx.Signature, tx.SignHash().Bytes(), *tx.From)
 	if !ok {
 		return "", fmt.Errorf("invalid signature")
 	}
@@ -102,21 +88,10 @@ func (cbs *ChainBrokerService) sendTransaction(req *pb.SendTransactionRequest) (
 		return "", err
 	}
 
-	return tx.TransactionHash.Hex(), nil
+	return tx.TransactionHash.String(), nil
 }
 
-func (cbs *ChainBrokerService) sendView(req *pb.SendTransactionRequest) (*pb.Receipt, error) {
-	tx := &pb.Transaction{
-		Version:   req.Version,
-		From:      req.From,
-		To:        req.To,
-		Timestamp: req.Timestamp,
-		Data:      req.Data,
-		Nonce:     req.Nonce,
-		Signature: req.Signature,
-		Extra:     req.Extra,
-	}
-
+func (cbs *ChainBrokerService) sendView(tx *pb.Transaction) (*pb.Receipt, error) {
 	result, err := cbs.api.Broker().HandleView(tx)
 	if err != nil {
 		return nil, err
@@ -126,7 +101,7 @@ func (cbs *ChainBrokerService) sendView(req *pb.SendTransactionRequest) (*pb.Rec
 }
 
 func (cbs *ChainBrokerService) GetTransaction(ctx context.Context, req *pb.TransactionHashMsg) (*pb.GetTransactionResponse, error) {
-	hash := types.String2Hash(req.TxHash)
+	hash := types.NewHashByStr(req.TxHash)
 	tx, err := cbs.api.Broker().GetTransaction(hash)
 	if err != nil {
 		return nil, err

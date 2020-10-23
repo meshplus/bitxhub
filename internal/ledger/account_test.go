@@ -27,7 +27,7 @@ func TestAccount_GetState(t *testing.T) {
 	assert.Nil(t, err)
 
 	h := hexutil.Encode(bytesutil.LeftPadBytes([]byte{11}, 20))
-	addr := types.String2Address(h)
+	addr := types.NewAddressByStr(h)
 	account := newAccount(ledger.ldb, ledger.accountCache, addr)
 
 	account.SetState([]byte("a"), []byte("b"))

@@ -38,7 +38,7 @@ type BlockExecutor struct {
 	ibtpVerify       proof.Verify
 	validationEngine validator.Engine
 	currentHeight    uint64
-	currentBlockHash types.Hash
+	currentBlockHash *types.Hash
 	wasmInstances    map[string]wasmer.Instance
 	txsExecutor      agency.TxsExecutor
 	blockFeed        event.Feed
@@ -86,7 +86,7 @@ func (exec *BlockExecutor) Start() error {
 
 	exec.logger.WithFields(logrus.Fields{
 		"height": exec.currentHeight,
-		"hash":   exec.currentBlockHash.ShortString(),
+		"hash":   exec.currentBlockHash.String(),
 	}).Infof("BlockExecutor started")
 
 	return nil
@@ -209,7 +209,7 @@ func (exec *BlockExecutor) persistData() {
 		exec.postBlockEvent(data.Block, data.InterchainMeta)
 		exec.logger.WithFields(logrus.Fields{
 			"height": data.Block.BlockHeader.Number,
-			"hash":   data.Block.BlockHash.ShortString(),
+			"hash":   data.Block.BlockHash.String(),
 			"count":  len(data.Block.Transactions),
 			"elapse": time.Since(now),
 		}).Info("Persisted block")

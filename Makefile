@@ -47,12 +47,12 @@ tester:
 	cd tester && $(GO) test -v -run TestTester
 
 ## make install: Go install the project
-install:mod
+install:
 	cd internal/repo && packr
 	$(GO) install -tags '${TAGS}' -ldflags '${GOLDFLAGS}' -modfile go${TAGS}.mod ./cmd/${APP_NAME}
 	@printf "${GREEN}Build bitxhub successfully!${NC}\n"
 
-build: mod
+build:
 	cd internal/repo && packr
 	@mkdir -p bin
 	$(GO) build -tags '${TAGS}' -ldflags '${GOLDFLAGS}' -modfile go${TAGS}.mod ./cmd/${APP_NAME}
@@ -62,9 +62,6 @@ build: mod
 ## make linter: Run golanci-lint
 linter:
 	golangci-lint run
-
-mod:
-	@if [ "${TAGS}" != "" ]; then MODS=$(cat ${TAGS}.diff); sed "s?)?${MODS})?" go.mod > go${TAGS}.mod; fi
 
 ## make cluster: Run cluster including 4 nodes
 cluster:install

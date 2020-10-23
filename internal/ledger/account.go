@@ -13,14 +13,14 @@ import (
 )
 
 type Account struct {
-	Addr           types.Address
+	Addr           *types.Address
 	originAccount  *innerAccount
 	dirtyAccount   *innerAccount
 	originState    sync.Map
 	dirtyState     sync.Map
 	originCode     []byte
 	dirtyCode      []byte
-	dirtyStateHash types.Hash
+	dirtyStateHash *types.Hash
 	ldb            storage.Storage
 	cache          *AccountCache
 	lock           sync.RWMutex
@@ -32,7 +32,7 @@ type innerAccount struct {
 	CodeHash []byte `json:"code_hash"`
 }
 
-func newAccount(ldb storage.Storage, cache *AccountCache, addr types.Address) *Account {
+func newAccount(ldb storage.Storage, cache *AccountCache, addr *types.Address) *Account {
 	return &Account{
 		Addr:  addr,
 		ldb:   ldb,
@@ -254,7 +254,8 @@ func (o *Account) getStateJournalAndComputeHash() map[string][]byte {
 		dirtyVal, _ := o.dirtyState.Load(key)
 		dirtyStateData = append(dirtyStateData, dirtyVal.([]byte)...)
 	}
-	o.dirtyStateHash = sha256.Sum256(dirtyStateData)
+	hash := sha256.Sum256(dirtyStateData)
+	o.dirtyStateHash = types.NewHash(hash[:])
 
 	return prevStates
 }
@@ -272,7 +273,7 @@ func (o *Account) getDirtyData() []byte {
 		dirtyData = append(dirtyData, data...)
 	}
 
-	return append(dirtyData, o.dirtyStateHash[:]...)
+	return append(dirtyData, o.dirtyStateHash.Bytes()...)
 }
 
 func innerAccountChanged(account0 *innerAccount, account1 *innerAccount) bool {

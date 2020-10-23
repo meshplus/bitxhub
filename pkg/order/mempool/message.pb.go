@@ -9,7 +9,6 @@ import (
 	pb "github.com/meshplus/bitxhub-model/pb"
 	io "io"
 	math "math"
-	math_bits "math/bits"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -21,7 +20,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
+const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
 
 type TxSlice struct {
 	TxList []*pb.Transaction `protobuf:"bytes,1,rep,name=TxList,proto3" json:"TxList,omitempty"`
@@ -41,7 +40,7 @@ func (m *TxSlice) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return xxx_messageInfo_TxSlice.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
+		n, err := m.MarshalTo(b)
 		if err != nil {
 			return nil, err
 		}
@@ -87,7 +86,7 @@ func (m *FetchTxnRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, err
 		return xxx_messageInfo_FetchTxnRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
+		n, err := m.MarshalTo(b)
 		if err != nil {
 			return nil, err
 		}
@@ -147,7 +146,7 @@ func (m *FetchTxnResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, er
 		return xxx_messageInfo_FetchTxnResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
+		n, err := m.MarshalTo(b)
 		if err != nil {
 			return nil, err
 		}
@@ -228,7 +227,7 @@ var fileDescriptor_33c57e4bae7b9afd = []byte{
 func (m *TxSlice) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
@@ -236,36 +235,29 @@ func (m *TxSlice) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *TxSlice) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *TxSlice) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
+	var i int
 	_ = i
 	var l int
 	_ = l
 	if len(m.TxList) > 0 {
-		for iNdEx := len(m.TxList) - 1; iNdEx >= 0; iNdEx-- {
-			{
-				size, err := m.TxList[iNdEx].MarshalToSizedBuffer(dAtA[:i])
-				if err != nil {
-					return 0, err
-				}
-				i -= size
-				i = encodeVarintMessage(dAtA, i, uint64(size))
-			}
-			i--
+		for _, msg := range m.TxList {
 			dAtA[i] = 0xa
+			i++
+			i = encodeVarintMessage(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
 		}
 	}
-	return len(dAtA) - i, nil
+	return i, nil
 }
 
 func (m *FetchTxnRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
@@ -273,49 +265,43 @@ func (m *FetchTxnRequest) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *FetchTxnRequest) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *FetchTxnRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
+	var i int
 	_ = i
 	var l int
 	_ = l
-	if len(m.MissingTxHashes) > 0 {
-		for k := range m.MissingTxHashes {
-			v := m.MissingTxHashes[k]
-			baseI := i
-			i -= len(v)
-			copy(dAtA[i:], v)
-			i = encodeVarintMessage(dAtA, i, uint64(len(v)))
-			i--
-			dAtA[i] = 0x12
-			i = encodeVarintMessage(dAtA, i, uint64(k))
-			i--
-			dAtA[i] = 0x8
-			i = encodeVarintMessage(dAtA, i, uint64(baseI-i))
-			i--
-			dAtA[i] = 0x1a
-		}
+	if m.ReplicaId != 0 {
+		dAtA[i] = 0x8
+		i++
+		i = encodeVarintMessage(dAtA, i, uint64(m.ReplicaId))
 	}
 	if m.Height != 0 {
-		i = encodeVarintMessage(dAtA, i, uint64(m.Height))
-		i--
 		dAtA[i] = 0x10
+		i++
+		i = encodeVarintMessage(dAtA, i, uint64(m.Height))
 	}
-	if m.ReplicaId != 0 {
-		i = encodeVarintMessage(dAtA, i, uint64(m.ReplicaId))
-		i--
-		dAtA[i] = 0x8
+	if len(m.MissingTxHashes) > 0 {
+		for k, _ := range m.MissingTxHashes {
+			dAtA[i] = 0x1a
+			i++
+			v := m.MissingTxHashes[k]
+			mapSize := 1 + sovMessage(uint64(k)) + 1 + len(v) + sovMessage(uint64(len(v)))
+			i = encodeVarintMessage(dAtA, i, uint64(mapSize))
+			dAtA[i] = 0x8
+			i++
+			i = encodeVarintMessage(dAtA, i, uint64(k))
+			dAtA[i] = 0x12
+			i++
+			i = encodeVarintMessage(dAtA, i, uint64(len(v)))
+			i += copy(dAtA[i:], v)
+		}
 	}
-	return len(dAtA) - i, nil
+	return i, nil
 }
 
 func (m *FetchTxnResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
@@ -323,62 +309,58 @@ func (m *FetchTxnResponse) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *FetchTxnResponse) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *FetchTxnResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
+	var i int
 	_ = i
 	var l int
 	_ = l
-	if len(m.MissingTxnList) > 0 {
-		for k := range m.MissingTxnList {
-			v := m.MissingTxnList[k]
-			baseI := i
-			if v != nil {
-				{
-					size, err := v.MarshalToSizedBuffer(dAtA[:i])
-					if err != nil {
-						return 0, err
-					}
-					i -= size
-					i = encodeVarintMessage(dAtA, i, uint64(size))
-				}
-				i--
-				dAtA[i] = 0x12
-			}
-			i = encodeVarintMessage(dAtA, i, uint64(k))
-			i--
-			dAtA[i] = 0x8
-			i = encodeVarintMessage(dAtA, i, uint64(baseI-i))
-			i--
-			dAtA[i] = 0x1a
-		}
+	if m.ReplicaId != 0 {
+		dAtA[i] = 0x8
+		i++
+		i = encodeVarintMessage(dAtA, i, uint64(m.ReplicaId))
 	}
 	if m.Height != 0 {
-		i = encodeVarintMessage(dAtA, i, uint64(m.Height))
-		i--
 		dAtA[i] = 0x10
+		i++
+		i = encodeVarintMessage(dAtA, i, uint64(m.Height))
 	}
-	if m.ReplicaId != 0 {
-		i = encodeVarintMessage(dAtA, i, uint64(m.ReplicaId))
-		i--
-		dAtA[i] = 0x8
+	if len(m.MissingTxnList) > 0 {
+		for k, _ := range m.MissingTxnList {
+			dAtA[i] = 0x1a
+			i++
+			v := m.MissingTxnList[k]
+			msgSize := 0
+			if v != nil {
+				msgSize = v.Size()
+				msgSize += 1 + sovMessage(uint64(msgSize))
+			}
+			mapSize := 1 + sovMessage(uint64(k)) + msgSize
+			i = encodeVarintMessage(dAtA, i, uint64(mapSize))
+			dAtA[i] = 0x8
+			i++
+			i = encodeVarintMessage(dAtA, i, uint64(k))
+			if v != nil {
+				dAtA[i] = 0x12
+				i++
+				i = encodeVarintMessage(dAtA, i, uint64(v.Size()))
+				n1, err := v.MarshalTo(dAtA[i:])
+				if err != nil {
+					return 0, err
+				}
+				i += n1
+			}
+		}
 	}
-	return len(dAtA) - i, nil
+	return i, nil
 }
 
 func encodeVarintMessage(dAtA []byte, offset int, v uint64) int {
-	offset -= sovMessage(v)
-	base := offset
 	for v >= 1<<7 {
 		dAtA[offset] = uint8(v&0x7f | 0x80)
 		v >>= 7
 		offset++
 	}
 	dAtA[offset] = uint8(v)
-	return base
+	return offset + 1
 }
 func (m *TxSlice) Size() (n int) {
 	if m == nil {
@@ -447,7 +429,14 @@ func (m *FetchTxnResponse) Size() (n int) {
 }
 
 func sovMessage(x uint64) (n int) {
-	return (math_bits.Len64(x|1) + 6) / 7
+	for {
+		n++
+		x >>= 7
+		if x == 0 {
+			break
+		}
+	}
+	return n
 }
 func sozMessage(x uint64) (n int) {
 	return sovMessage(uint64((x << 1) ^ uint64((int64(x) >> 63))))
@@ -952,7 +941,6 @@ func (m *FetchTxnResponse) Unmarshal(dAtA []byte) error {
 func skipMessage(dAtA []byte) (n int, err error) {
 	l := len(dAtA)
 	iNdEx := 0
-	depth := 0
 	for iNdEx < l {
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
@@ -984,8 +972,10 @@ func skipMessage(dAtA []byte) (n int, err error) {
 					break
 				}
 			}
+			return iNdEx, nil
 		case 1:
 			iNdEx += 8
+			return iNdEx, nil
 		case 2:
 			var length int
 			for shift := uint(0); ; shift += 7 {
@@ -1006,30 +996,55 @@ func skipMessage(dAtA []byte) (n int, err error) {
 				return 0, ErrInvalidLengthMessage
 			}
 			iNdEx += length
-		case 3:
-			depth++
-		case 4:
-			if depth == 0 {
-				return 0, ErrUnexpectedEndOfGroupMessage
+			if iNdEx < 0 {
+				return 0, ErrInvalidLengthMessage
 			}
-			depth--
+			return iNdEx, nil
+		case 3:
+			for {
+				var innerWire uint64
+				var start int = iNdEx
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return 0, ErrIntOverflowMessage
+					}
+					if iNdEx >= l {
+						return 0, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					innerWire |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				innerWireType := int(innerWire & 0x7)
+				if innerWireType == 4 {
+					break
+				}
+				next, err := skipMessage(dAtA[start:])
+				if err != nil {
+					return 0, err
+				}
+				iNdEx = start + next
+				if iNdEx < 0 {
+					return 0, ErrInvalidLengthMessage
+				}
+			}
+			return iNdEx, nil
+		case 4:
+			return iNdEx, nil
 		case 5:
 			iNdEx += 4
+			return iNdEx, nil
 		default:
 			return 0, fmt.Errorf("proto: illegal wireType %d", wireType)
 		}
-		if iNdEx < 0 {
-			return 0, ErrInvalidLengthMessage
-		}
-		if depth == 0 {
-			return iNdEx, nil
-		}
 	}
-	return 0, io.ErrUnexpectedEOF
+	panic("unreachable")
 }
 
 var (
-	ErrInvalidLengthMessage        = fmt.Errorf("proto: negative length found during unmarshaling")
-	ErrIntOverflowMessage          = fmt.Errorf("proto: integer overflow")
-	ErrUnexpectedEndOfGroupMessage = fmt.Errorf("proto: unexpected end of group")
+	ErrInvalidLengthMessage = fmt.Errorf("proto: negative length found during unmarshaling")
+	ErrIntOverflowMessage   = fmt.Errorf("proto: integer overflow")
 )

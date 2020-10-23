@@ -24,6 +24,6 @@ func compositeKey(prefix string, value interface{}) []byte {
 	return append([]byte(prefix), []byte(fmt.Sprintf("%v", value))...)
 }
 
-func composeStateKey(addr types.Address, key []byte) []byte {
+func composeStateKey(addr *types.Address, key []byte) []byte {
 	return append(addr.Bytes(), key...)
 }

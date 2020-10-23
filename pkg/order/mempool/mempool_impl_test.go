@@ -30,12 +30,12 @@ func TestProcessTransactions(t *testing.T) {
 	ast.Equal(1, mpi.txStore.parkingLotIndex.size())
 	ast.Equal(5, len(mpi.txStore.txHashMap))
 	ast.Equal(0, len(mpi.txStore.batchedCache))
-	ast.Equal(2, mpi.txStore.allTxs[account1.Hex()].index.size())
-	ast.Equal(3, mpi.txStore.allTxs[account2.Hex()].index.size())
-	ast.Equal(uint64(1), mpi.txStore.nonceCache.getCommitNonce(account1.Hex()))
-	ast.Equal(uint64(3), mpi.txStore.nonceCache.getPendingNonce(account1.Hex()))
-	ast.Equal(uint64(1), mpi.txStore.nonceCache.getCommitNonce(account2.Hex()))
-	ast.Equal(uint64(3), mpi.txStore.nonceCache.getPendingNonce(account2.Hex()))
+	ast.Equal(2, mpi.txStore.allTxs[account1.String()].index.size())
+	ast.Equal(3, mpi.txStore.allTxs[account2.String()].index.size())
+	ast.Equal(uint64(1), mpi.txStore.nonceCache.getCommitNonce(account1.String()))
+	ast.Equal(uint64(3), mpi.txStore.nonceCache.getPendingNonce(account1.String()))
+	ast.Equal(uint64(1), mpi.txStore.nonceCache.getCommitNonce(account2.String()))
+	ast.Equal(uint64(3), mpi.txStore.nonceCache.getPendingNonce(account2.String()))
 
 	go func() {
 		mpi.batchSize = 4
@@ -57,10 +57,10 @@ func TestProcessTransactions(t *testing.T) {
 		ast.Equal(7, len(mpi.txStore.txHashMap))
 		ast.Equal(1, len(mpi.txStore.batchedCache))
 		ast.Equal(4, len(mpi.txStore.batchedCache[uint64(2)]))
-		ast.Equal(3, mpi.txStore.allTxs[account1.Hex()].index.size())
-		ast.Equal(4, mpi.txStore.allTxs[account2.Hex()].index.size())
-		ast.Equal(uint64(4), mpi.txStore.nonceCache.getPendingNonce(account1.Hex()))
-		ast.Equal(uint64(3), mpi.txStore.nonceCache.getPendingNonce(account2.Hex()))
+		ast.Equal(3, mpi.txStore.allTxs[account1.String()].index.size())
+		ast.Equal(4, mpi.txStore.allTxs[account2.String()].index.size())
+		ast.Equal(uint64(4), mpi.txStore.nonceCache.getPendingNonce(account1.String()))
+		ast.Equal(uint64(3), mpi.txStore.nonceCache.getPendingNonce(account2.String()))
 	}
 }
 
@@ -75,7 +75,7 @@ func TestProcessFetchTxnRequest(t *testing.T) {
 	txList = append(txList, tx1)
 
 	missingList := make(map[uint64]string)
-	missingList[0] = tx1.TransactionHash.Hex()
+	missingList[0] = tx1.TransactionHash.String()
 	fetchTxnRequest := &FetchTxnRequest{
 		Height:          uint64(2),
 		MissingTxHashes: missingList,
@@ -105,7 +105,7 @@ func TestProcessFetchTxnResponse(t *testing.T) {
 	privKey1 := genPrivKey()
 	tx1 := constructTx(uint64(1), &privKey1)
 	missingList := make(map[uint64]string)
-	missingList[0] = tx1.TransactionHash.Hex()
+	missingList[0] = tx1.TransactionHash.String()
 	mpi.txStore.missingBatch[uint64(2)] = missingList
 
 	fetchTxnResponse.MissingTxnList = make(map[uint64]*pb.Transaction)

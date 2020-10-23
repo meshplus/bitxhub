@@ -20,7 +20,7 @@ type RegisterAppchain struct {
 	suite.Suite
 	api     api.CoreAPI
 	privKey crypto.PrivateKey
-	from    types.Address
+	from    *types.Address
 }
 
 type Appchain struct {

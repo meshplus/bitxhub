@@ -6,13 +6,14 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/tidwall/gjson"
+
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/constant"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
 	"github.com/stretchr/testify/suite"
-	"github.com/tidwall/gjson"
 )
 
 type Role struct {
@@ -80,7 +81,7 @@ func (suite *Role) TestIsAdmin() {
 	suite.Require().Nil(err)
 	kNonce := uint64(1)
 
-	r, err := invokeBVMContract(suite.api, k, kNonce, constant.RoleContractAddr.Address(), "IsAdmin", pb.String(from.Hex()))
+	r, err := invokeBVMContract(suite.api, k, kNonce, constant.RoleContractAddr.Address(), "IsAdmin", pb.String(from.String()))
 	suite.Assert().Nil(err)
 	ret, err := strconv.ParseBool(string(r.Ret))
 	suite.Assert().Nil(err)
@@ -94,9 +95,9 @@ func (suite *Role) TestIsAdmin() {
 	suite.Require().Nil(err)
 	fromAdmin, err := priAdmin.PublicKey().Address()
 	suite.Require().Nil(err)
-	adminNonce := suite.api.Broker().GetPendingNonceByAccount(fromAdmin.Hex())
+	adminNonce := suite.api.Broker().GetPendingNonceByAccount(fromAdmin.String())
 
-	r, err = invokeBVMContract(suite.api, priAdmin, adminNonce, constant.RoleContractAddr.Address(), "IsAdmin", pb.String(fromAdmin.Hex()))
+	r, err = invokeBVMContract(suite.api, priAdmin, adminNonce, constant.RoleContractAddr.Address(), "IsAdmin", pb.String(fromAdmin.String()))
 	suite.Require().Nil(err)
 	suite.Require().True(r.IsSuccess())
 	ret, err = strconv.ParseBool(string(r.Ret))
@@ -176,12 +177,12 @@ func (suite *Role) TestGetRuleAddress() {
 	suite.Require().NotEqual(addr1, addr2)
 
 	// register rule
-	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(), "RegisterRule", pb.String(f1.Hex()), pb.String(addr1.Hex()))
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(), "RegisterRule", pb.String(f1.String()), pb.String(addr1.String()))
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess())
 	k1Nonce++
 
-	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.RuleManagerContractAddr.Address(), "RegisterRule", pb.String(f2.Hex()), pb.String(addr2.Hex()))
+	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.RuleManagerContractAddr.Address(), "RegisterRule", pb.String(f2.String()), pb.String(addr2.String()))
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess())
 	k2Nonce++
@@ -210,7 +211,7 @@ func (suite *Role) TestSetAdminRoles() {
 	suite.Require().Nil(err)
 	pubAdmin, err := priAdmin.PublicKey().Bytes()
 	suite.Require().Nil(err)
-	adminNonce := suite.api.Broker().GetPendingNonceByAccount(fromAdmin.Hex())
+	adminNonce := suite.api.Broker().GetPendingNonceByAccount(fromAdmin.String())
 
 	// register
 	retReg, err := invokeBVMContract(suite.api, priAdmin, adminNonce, constant.AppchainMgrContractAddr.Address(), "Register",
@@ -227,7 +228,7 @@ func (suite *Role) TestSetAdminRoles() {
 	adminNonce++
 
 	// is admin
-	retIsAdmin, err := invokeBVMContract(suite.api, priAdmin, adminNonce, constant.RoleContractAddr.Address(), "IsAdmin", pb.String(fromAdmin.Hex()))
+	retIsAdmin, err := invokeBVMContract(suite.api, priAdmin, adminNonce, constant.RoleContractAddr.Address(), "IsAdmin", pb.String(fromAdmin.String()))
 	suite.Require().Nil(err)
 	suite.Require().True(retIsAdmin.IsSuccess())
 	adminNonce++
@@ -240,7 +241,7 @@ func (suite *Role) TestSetAdminRoles() {
 	adminNonce++
 
 	as := make([]string, 0)
-	as = append(as, fromAdmin.Hex())
+	as = append(as, fromAdmin.String())
 	data, err := json.Marshal(as)
 	suite.Nil(err)
 
@@ -282,7 +283,7 @@ func (suite *Role) TestSetAdminRoles() {
 
 	// set admin roles
 	as2 := make([]string, 0)
-	as2 = append(as2, fromAdmin.Hex(), fromAdmin2.Hex(), fromAdmin3.Hex(), fromAdmin4.Hex())
+	as2 = append(as2, fromAdmin.String(), fromAdmin2.String(), fromAdmin3.String(), fromAdmin4.String())
 	data2, err := json.Marshal(as2)
 	suite.Nil(err)
 	r, err = invokeBVMContract(suite.api, priAdmin, adminNonce, constant.RoleContractAddr.Address(), "SetAdminRoles", pb.String(string(data2)))

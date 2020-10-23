@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"sync"
 
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
@@ -41,7 +40,8 @@ func (pl *VerifyPool) ValidationEngine() *validator.ValidationEngine {
 }
 
 func (pl *VerifyPool) CheckProof(tx *pb.Transaction) (bool, error) {
-	if ibtp := pl.extractIBTP(tx); ibtp != nil {
+	ibtp := tx.IBTP
+	if ibtp != nil {
 		ok, err := pl.verifyProof(ibtp, tx.Extra)
 		if err != nil {
 			pl.logger.WithFields(logrus.Fields{
@@ -61,32 +61,6 @@ func (pl *VerifyPool) CheckProof(tx *pb.Transaction) (bool, error) {
 		//tx.Extra = nil
 	}
 	return true, nil
-}
-
-func (pl *VerifyPool) extractIBTP(tx *pb.Transaction) *pb.IBTP {
-	if strings.ToLower(tx.To.String()) != constant.InterchainContractAddr.String() {
-		return nil
-	}
-	if tx.Data.VmType != pb.TransactionData_BVM {
-		return nil
-	}
-	ip := &pb.InvokePayload{}
-	if err := ip.Unmarshal(tx.Data.Payload); err != nil {
-		return nil
-	}
-	if ip.Method != "HandleIBTP" {
-		return nil
-	}
-	if len(ip.Args) != 1 {
-		return nil
-	}
-
-	ibtp := &pb.IBTP{}
-	if err := ibtp.Unmarshal(ip.Args[0].Value); err != nil {
-		pl.logger.Error(err)
-		return nil
-	}
-	return ibtp
 }
 
 func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, error) {

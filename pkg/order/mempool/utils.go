@@ -1,16 +1,11 @@
 package mempool
 
 import (
-	"encoding/hex"
-	"errors"
-	"fmt"
 	"strconv"
 	"sync/atomic"
 	"time"
 
-	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/internal/constant"
 	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
 
 	cmap "github.com/orcaman/concurrent-map"
@@ -62,23 +57,6 @@ func newNonceCache() *nonceCache {
 	}
 }
 
-// TODO (YH): refactor the tx struct
-func hex2Hash(hash string) (types.Hash, error) {
-	var (
-		hubHash   types.Hash
-		hashBytes []byte
-		err       error
-	)
-	if hashBytes, err = hex.DecodeString(hash); err != nil {
-		return types.Hash{}, err
-	}
-	if len(hashBytes) != types.HashLength {
-		return types.Hash{}, errors.New("invalid tx hash")
-	}
-	copy(hubHash[:], hashBytes)
-	return hubHash, nil
-}
-
 func (mpi *mempoolImpl) poolIsFull() bool {
 	return atomic.LoadInt32(&mpi.txStore.poolSize) >= DefaultPoolSize
 }
@@ -123,23 +101,4 @@ func newTimer(d time.Duration) *timerManager {
 		isActive:      cmap.New(),
 		timeoutEventC: make(chan bool),
 	}
-}
-
-func getAccount(tx *pb.Transaction) (string, error) {
-	if tx.To != constant.InterchainContractAddr.Address() {
-		return tx.From.Hex(), nil
-	}
-	payload := &pb.InvokePayload{}
-	if err := payload.Unmarshal(tx.Data.Payload); err != nil {
-		return "", fmt.Errorf("unmarshal invoke payload failed: %s", err.Error())
-	}
-	if payload.Method == IBTPMethod1 || payload.Method == IBTPMethod2 {
-		ibtp := &pb.IBTP{}
-		if err := ibtp.Unmarshal(payload.Args[0].Value); err != nil {
-			return "", fmt.Errorf("unmarshal ibtp from tx :%w", err)
-		}
-		account := fmt.Sprintf("%s-%s-%d", ibtp.From, ibtp.To, ibtp.Category())
-		return account, nil
-	}
-	return tx.From.Hex(), nil
 }

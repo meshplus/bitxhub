@@ -20,9 +20,9 @@ type CoreAPI interface {
 type BrokerAPI interface {
 	HandleTransaction(tx *pb.Transaction) error
 	HandleView(tx *pb.Transaction) (*pb.Receipt, error)
-	GetTransaction(types.Hash) (*pb.Transaction, error)
-	GetTransactionMeta(types.Hash) (*pb.TransactionMeta, error)
-	GetReceipt(types.Hash) (*pb.Receipt, error)
+	GetTransaction(*types.Hash) (*pb.Transaction, error)
+	GetTransactionMeta(*types.Hash) (*pb.TransactionMeta, error)
+	GetReceipt(*types.Hash) (*pb.Receipt, error)
 	GetBlock(mode string, key string) (*pb.Block, error)
 	GetBlocks(start uint64, end uint64) ([]*pb.Block, error)
 	GetPendingNonceByAccount(account string) uint64
@@ -59,5 +59,5 @@ type FeedAPI interface {
 }
 
 type AccountAPI interface {
-	GetAccount(addr types.Address) *ledger.Account
+	GetAccount(addr *types.Address) *ledger.Account
 }

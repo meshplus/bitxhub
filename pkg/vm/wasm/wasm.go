@@ -1,14 +1,15 @@
 package wasm
 
 import (
+	"bytes"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/meshplus/bitxhub-core/wasm"
 	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub-kit/wasm"
 	"github.com/meshplus/bitxhub/pkg/vm"
 	"github.com/wasmerio/go-ext-wasm/wasmer"
 )
@@ -43,7 +44,7 @@ func New(ctx *vm.Context, imports *wasmer.Imports, instances map[string]wasmer.I
 		ctx: ctx,
 	}
 
-	if ctx.Callee == (types.Address{}) {
+	if ctx.Callee == nil || bytes.Equal(ctx.Callee.Bytes(), (&types.Address{}).Bytes()) {
 		return wasmVM, nil
 	}
 
@@ -70,7 +71,7 @@ func EmptyImports() (*wasmer.Imports, error) {
 
 // Run let the wasm vm excute or deploy the smart contract which depends on whether the callee is empty
 func (w *WasmVM) Run(input []byte) (ret []byte, err error) {
-	if w.ctx.Callee == (types.Address{}) {
+	if w.ctx.Callee == nil || bytes.Equal(w.ctx.Callee.Bytes(), (&types.Address{}).Bytes()) {
 		return w.deploy()
 	}
 
@@ -86,7 +87,7 @@ func (w *WasmVM) deploy() ([]byte, error) {
 	contractAddr := createAddress(w.ctx.Caller, contractNonce)
 	wasmStruct := &Contract{
 		Code: w.ctx.TransactionData.Payload,
-		Hash: types.Bytes2Hash(w.ctx.TransactionData.Payload),
+		Hash: *types.NewHash(w.ctx.TransactionData.Payload),
 	}
 	wasmByte, err := json.Marshal(wasmStruct)
 	if err != nil {
@@ -99,9 +100,14 @@ func (w *WasmVM) deploy() ([]byte, error) {
 	return contractAddr.Bytes(), nil
 }
 
-func createAddress(b types.Address, nonce uint64) types.Address {
-	data, _ := rlp.EncodeToBytes([]interface{}{b, nonce})
+func createAddress(b *types.Address, nonce uint64) *types.Address {
+	var data []byte
+	nonceBytes := make([]byte, 8)
+
+	binary.LittleEndian.PutUint64(nonceBytes, nonce)
+	data = append(data, b.Bytes()...)
+	data = append(data, nonceBytes...)
 	hashBytes := sha256.Sum256(data)
 
-	return types.Bytes2Address(hashBytes[12:])
+	return types.NewAddress(hashBytes[12:])
 }

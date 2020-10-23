@@ -5,7 +5,6 @@ import (
 	"strconv"
 
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
-
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/constant"
 	"github.com/meshplus/bitxhub/pkg/vm/boltvm"

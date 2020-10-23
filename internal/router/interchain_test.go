@@ -105,10 +105,17 @@ func mockBlock(blockNumber uint64, txs []*pb.Transaction) *pb.Block {
 }
 
 func mockTx(data *pb.TransactionData) *pb.Transaction {
-	return &pb.Transaction{
-		Data:  data,
-		Nonce: uint64(rand.Int63()),
+	payload, err := data.Marshal()
+	if err != nil {
+		panic(err)
 	}
+	tx := &pb.Transaction{
+		Payload: payload,
+		Nonce:   uint64(rand.Int63()),
+	}
+	tx.TransactionHash = tx.Hash()
+
+	return tx
 }
 
 func mockTxData(t *testing.T, dataType pb.TransactionData_Type, vmType pb.TransactionData_VMType, ibtp proto.Marshaler) *pb.TransactionData {

@@ -21,7 +21,7 @@ type Config struct {
 	Nodes              map[uint64]types.Address
 	Applied            uint64
 	Digest             string
-	GetTransactionFunc func(hash types.Hash) (*pb.Transaction, error)
+	GetTransactionFunc func(hash *types.Hash) (*pb.Transaction, error)
 	GetChainMetaFunc   func() *pb.ChainMeta
 }
 type Option func(*Config)
@@ -92,7 +92,7 @@ func WithGetChainMetaFunc(f func() *pb.ChainMeta) Option {
 	}
 }
 
-func WithGetTransactionFunc(f func(hash types.Hash) (*pb.Transaction, error)) Option {
+func WithGetTransactionFunc(f func(hash *types.Hash) (*pb.Transaction, error)) Option {
 	return func(config *Config) {
 		config.GetTransactionFunc = f
 	}

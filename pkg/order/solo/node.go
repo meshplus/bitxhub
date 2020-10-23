@@ -21,7 +21,7 @@ type Node struct {
 	commitC            chan *pb.Block     // block channel
 	logger             logrus.FieldLogger // logger
 	reqLookUp          *order.ReqLookUp   // bloom filter
-	getTransactionFunc func(hash types.Hash) (*pb.Transaction, error)
+	getTransactionFunc func(hash *types.Hash) (*pb.Transaction, error)
 
 	packSize  int           // maximum number of transaction packages
 	blockTick time.Duration // block packed period
@@ -87,7 +87,7 @@ func (n *Node) ReportState(height uint64, hash types.Hash) {
 	if height%10 == 0 {
 		n.logger.WithFields(logrus.Fields{
 			"height": height,
-			"hash":   hash.ShortString(),
+			"hash":   hash.String(),
 		}).Info("Report checkpoint")
 	}
 }

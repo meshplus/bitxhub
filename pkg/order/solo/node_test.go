@@ -43,13 +43,11 @@ func TestNode_Start(t *testing.T) {
 
 	tx := &pb.Transaction{
 		From: from,
-		To:   types.String2Address(to),
-		Data: &pb.TransactionData{
-			Amount: 10,
-		},
+		To:   types.NewAddressByStr(to),
 		Timestamp: time.Now().UnixNano(),
 		Nonce:     uint64(rand.Int63()),
 	}
+	tx.TransactionHash = tx.Hash()
 	err = tx.Sign(privKey)
 	require.Nil(t, err)
 

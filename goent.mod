@@ -2,6 +2,7 @@ module github.com/meshplus/bitxhub
 
 require (
 	github.com/Rican7/retry v0.1.0
+	github.com/bitxhub/parallel-executor v0.0.0-20201022141235-a2d73478b5a0
 	github.com/cbergoon/merkletree v0.2.0
 	github.com/common-nighthawk/go-figure v0.0.0-20190529165535-67e0ed34491a
 	github.com/coreos/etcd v3.3.18+incompatible
@@ -45,4 +46,4 @@ require (
 
 replace github.com/golang/protobuf v1.4.2 => github.com/golang/protobuf v1.3.2
 
-go 1.13
+go 1.14

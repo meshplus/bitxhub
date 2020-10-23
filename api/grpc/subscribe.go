@@ -26,9 +26,9 @@ func (cbs *ChainBrokerService) Subscribe(req *pb.SubscriptionRequest, server pb.
 	case pb.SubscriptionRequest_BLOCK_HEADER.String():
 		return cbs.handleBlockHeaderSubscription(server)
 	case pb.SubscriptionRequest_INTERCHAIN_TX_WRAPPER.String():
-		return cbs.handleInterchainTxWrapperSubscription(server, types.Bytes2Address(req.Extra).String(), false)
+		return cbs.handleInterchainTxWrapperSubscription(server, types.NewAddress(req.Extra).String(), false)
 	case pb.SubscriptionRequest_UNION_INTERCHAIN_TX_WRAPPER.String():
-		return cbs.handleInterchainTxWrapperSubscription(server, types.Bytes2Address(req.Extra).String(), true)
+		return cbs.handleInterchainTxWrapperSubscription(server, types.NewAddress(req.Extra).String(), true)
 	}
 
 	return nil
@@ -171,9 +171,9 @@ func (cbs *ChainBrokerService) interStatus(block *pb.Block, interchainMeta *pb.I
 
 	for _, indices := range interchainMeta.Counter {
 		for _, idx := range indices.Slice {
-			ibtp, err := txs[idx].GetIBTP()
-			if err != nil {
-				return nil, err
+			ibtp := txs[idx].GetIBTP()
+			if ibtp == nil {
+				return nil, fmt.Errorf("ibtp is empty")
 			}
 
 			status := &InterchainStatus{

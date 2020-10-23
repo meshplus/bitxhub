@@ -104,7 +104,7 @@ func TestGetBlock(t *testing.T) {
 	var txList []*pb.Transaction
 	var txHashList []types.Hash
 	txList = append(txList, tx1, tx2, tx3, tx4)
-	txHashList = append(txHashList, tx1.TransactionHash, tx2.TransactionHash, tx3.TransactionHash, tx5.TransactionHash)
+	txHashList = append(txHashList, *tx1.TransactionHash, *tx2.TransactionHash, *tx3.TransactionHash, *tx5.TransactionHash)
 	err = mpi.processTransactions(txList)
 	ast.Nil(err)
 	ready := &raftproto.Ready{
@@ -146,7 +146,7 @@ func TestGetPendingNonceByAccount(t *testing.T) {
 
 	privKey1 := genPrivKey()
 	account1, _ := privKey1.PublicKey().Address()
-	nonce := mpi.GetPendingNonceByAccount(account1.Hex())
+	nonce := mpi.GetPendingNonceByAccount(account1.String())
 	ast.Equal(uint64(1), nonce)
 
 	privKey2 := genPrivKey()
@@ -160,9 +160,9 @@ func TestGetPendingNonceByAccount(t *testing.T) {
 	txList = append(txList, tx1, tx2, tx3, tx4, tx5)
 	err = mpi.processTransactions(txList)
 	ast.Nil(err)
-	nonce = mpi.GetPendingNonceByAccount(account1.Hex())
+	nonce = mpi.GetPendingNonceByAccount(account1.String())
 	ast.Equal(uint64(3), nonce)
-	nonce = mpi.GetPendingNonceByAccount(account2.Hex())
+	nonce = mpi.GetPendingNonceByAccount(account2.String())
 	ast.Equal(uint64(3), nonce, "not 4")
 }
 
@@ -175,7 +175,7 @@ func TestCommitTransactions(t *testing.T) {
 
 	privKey1 := genPrivKey()
 	account1, _ := privKey1.PublicKey().Address()
-	nonce := mpi.GetPendingNonceByAccount(account1.Hex())
+	nonce := mpi.GetPendingNonceByAccount(account1.String())
 	ast.Equal(uint64(1), nonce)
 
 	privKey2 := genPrivKey()
@@ -205,7 +205,7 @@ func TestCommitTransactions(t *testing.T) {
 	ast.Equal(uint64(2), height)
 
 	var txHashList []types.Hash
-	txHashList = append(txHashList, tx1.TransactionHash, tx2.TransactionHash, tx3.TransactionHash, tx5.TransactionHash)
+	txHashList = append(txHashList, *tx1.TransactionHash, *tx2.TransactionHash, *tx3.TransactionHash, *tx5.TransactionHash)
 	ready := &raftproto.Ready{
 		Height:   uint64(2),
 		TxHashes: txHashList,

@@ -14,8 +14,8 @@ const (
 	AssetExchangeContractAddr  BoltContractAddress = "0x0000000000000000000000000000000000000010"
 )
 
-func (addr BoltContractAddress) Address() types.Address {
-	return types.String2Address(string(addr))
+func (addr BoltContractAddress) Address() *types.Address {
+	return types.NewAddressByStr(string(addr))
 }
 
 func (addr BoltContractAddress) String() string {

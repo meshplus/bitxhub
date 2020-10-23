@@ -6,11 +6,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/meshplus/bitxhub-kit/crypto"
-
-	"github.com/meshplus/bitxhub-kit/crypto/asym"
-
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
+	"github.com/meshplus/bitxhub-kit/crypto"
+	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/constant"
@@ -382,14 +380,15 @@ func (x *InterchainManager) checkUnionIBTP(app *appchainMgr.Appchain, ibtp *pb.I
 	threshold := (len(validators.Addresses) - 1) / 3
 	counter := 0
 
-	hash := sha256.Sum256([]byte(ibtp.Hash().String()))
+	ibtpHash := ibtp.Hash()
+	hash := sha256.Sum256([]byte(ibtpHash.String()))
 	for v, sign := range signs.Sign {
 		if _, ok := m[v]; !ok {
 			return fmt.Errorf("wrong validator: %s", v)
 		}
 		delete(m, v)
-		addr := types.String2Address(v)
-		ok, _ := asym.Verify(crypto.Secp256k1, sign, hash[:], addr)
+		addr := types.NewAddressByStr(v)
+		ok, _ := asym.Verify(crypto.Secp256k1, sign, hash[:], *addr)
 		if ok {
 			counter++
 		}
