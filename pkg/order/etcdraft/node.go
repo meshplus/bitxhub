@@ -37,6 +37,7 @@ type Node struct {
 	confState   raftpb.ConfState         // raft requires ConfState to be persisted within snapshot
 	commitC     chan *pb.Block           // the hash commit channel
 	errorC      chan<- error             // errors from raft session
+	tickTimeout time.Duration            // tick timeout
 
 	raftStorage *RaftStorage    // the raft backend storage system
 	storage     storage.Storage // db
@@ -55,6 +56,7 @@ type Node struct {
 	readyCache sync.Map        // ready cache
 	ctx        context.Context // context
 	haltC      chan struct{}   // exit signal
+
 }
 
 // NewNode new raft node
@@ -128,7 +130,7 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 // Start or restart raft node
 func (n *Node) Start() error {
 	n.blockAppliedIndex.Store(n.mempool.GetChainHeight(), n.loadAppliedIndex())
-	rc, err := generateRaftConfig(n.id, n.repoRoot, n.logger, n.raftStorage.ram)
+	rc, tickTimeout, err := generateRaftConfig(n.id, n.repoRoot, n.logger, n.raftStorage.ram)
 	if err != nil {
 		return fmt.Errorf("generate raft config: %w", err)
 	}
@@ -137,6 +139,7 @@ func (n *Node) Start() error {
 	} else {
 		n.node = raft.StartNode(rc, n.peers)
 	}
+	n.tickTimeout = tickTimeout
 
 	go n.run()
 	n.mempool.Start()
@@ -255,7 +258,7 @@ func (n *Node) run() {
 	n.confState = snap.Metadata.ConfState
 	n.snapshotIndex = snap.Metadata.Index
 	n.appliedIndex = snap.Metadata.Index
-	ticker := time.NewTicker(100 * time.Millisecond)
+	ticker := time.NewTicker(n.tickTimeout)
 	defer ticker.Stop()
 
 	// handle input request
