@@ -257,22 +257,15 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 
 	im := &InterchainManager{mockStub}
 
-	fakeIBTP := []byte{1}
-	res := im.HandleIBTP(fakeIBTP)
-	assert.False(t, res.Ok)
-
 	ibtp := &pb.IBTP{
 		From: from,
 	}
 
-	ibtpd, err := ibtp.Marshal()
-	assert.Nil(t, err)
-
-	res = im.HandleIBTP(ibtpd)
+	res := im.HandleIBTP(ibtp)
 	assert.False(t, res.Ok)
 	assert.Equal(t, "this appchain does not exist", string(res.Result))
 
-	res = im.HandleIBTP(ibtpd)
+	res = im.HandleIBTP(ibtp)
 	assert.False(t, res.Ok)
 	assert.Equal(t, "empty destination chain id", string(res.Result))
 
@@ -287,74 +280,50 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 		Version:   "",
 		Extra:     nil,
 	}
-	ibtpd, err = ibtp.Marshal()
-	assert.Nil(t, err)
-
 	mockStub.EXPECT().Caller().Return(ibtp.To)
 
-	res = im.HandleIBTP(ibtpd)
+	res = im.HandleIBTP(ibtp)
 	assert.False(t, res.Ok)
 	assert.Equal(t, "ibtp from != caller", string(res.Result))
 
 	mockStub.EXPECT().Caller().Return(ibtp.From).MaxTimes(6)
 
-	res = im.HandleIBTP(ibtpd)
+	res = im.HandleIBTP(ibtp)
 	assert.False(t, res.Ok)
 	assert.Equal(t, "wrong index, required 2, but 0", string(res.Result))
 
 	ibtp.Index = 2
-	ibtpd, err = ibtp.Marshal()
-	assert.Nil(t, err)
-
-	res = im.HandleIBTP(ibtpd)
+	res = im.HandleIBTP(ibtp)
 	assert.True(t, res.Ok)
 
 	ibtp.Type = pb.IBTP_ASSET_EXCHANGE_INIT
-	ibtpd, err = ibtp.Marshal()
-	assert.Nil(t, err)
-
-	res = im.HandleIBTP(ibtpd)
+	res = im.HandleIBTP(ibtp)
 	assert.True(t, res.Ok)
 
 	ibtp.Type = pb.IBTP_ASSET_EXCHANGE_REFUND
-	ibtpd, err = ibtp.Marshal()
-	assert.Nil(t, err)
-
-	res = im.HandleIBTP(ibtpd)
+	res = im.HandleIBTP(ibtp)
 	assert.True(t, res.Ok)
 
 	ibtp.Type = pb.IBTP_ASSET_EXCHANGE_REDEEM
-	ibtpd, err = ibtp.Marshal()
-	assert.Nil(t, err)
-
-	res = im.HandleIBTP(ibtpd)
+	res = im.HandleIBTP(ibtp)
 	assert.True(t, res.Ok)
 
 	ibtp.Type = pb.IBTP_RECEIPT_SUCCESS
-	ibtpd, err = ibtp.Marshal()
-	assert.Nil(t, err)
-
-	res = im.HandleIBTP(ibtpd)
+	res = im.HandleIBTP(ibtp)
 	assert.False(t, res.Ok)
 	assert.Equal(t, "ibtp to != caller", string(res.Result))
 
 	mockStub.EXPECT().Caller().Return(ibtp.To).AnyTimes()
 
-	res = im.HandleIBTP(ibtpd)
+	res = im.HandleIBTP(ibtp)
 	assert.True(t, res.Ok)
 
 	ibtp.Type = pb.IBTP_RECEIPT_FAILURE
-	ibtpd, err = ibtp.Marshal()
-	assert.Nil(t, err)
-
-	res = im.HandleIBTP(ibtpd)
+	res = im.HandleIBTP(ibtp)
 	assert.True(t, res.Ok)
 
 	ibtp.Type = pb.IBTP_ASSET_EXCHANGE_RECEIPT
-	ibtpd, err = ibtp.Marshal()
-	assert.Nil(t, err)
-
-	res = im.HandleIBTP(ibtpd)
+	res = im.HandleIBTP(ibtp)
 	assert.True(t, res.Ok)
 }
 

@@ -9,6 +9,7 @@ import (
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/validator"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/pkg/vm"
 )
 
@@ -72,6 +73,28 @@ func (bvm *BoltVM) Run(input []byte) (ret []byte, err error) {
 	}
 
 	res := m.Call(fnArgs)[0].Interface().(*boltvm.Response)
+	if !res.Ok {
+		return nil, fmt.Errorf("call error: %s", res.Result)
+	}
+
+	return res.Result, err
+}
+
+func (bvm *BoltVM) HandleIBTP(ibtp *pb.IBTP) (ret []byte, err error) {
+	defer func() {
+		if e := recover(); e != nil {
+			err = fmt.Errorf("%v", e)
+		}
+	}()
+
+	con := &contracts.InterchainManager{}
+	con.Stub = &BoltStubImpl{
+		bvm: bvm,
+		ctx: bvm.ctx,
+		ve:  bvm.ve,
+	}
+
+	res := con.HandleIBTP(ibtp)
 	if !res.Ok {
 		return nil, fmt.Errorf("call error: %s", res.Result)
 	}

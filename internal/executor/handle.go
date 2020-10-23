@@ -254,6 +254,12 @@ func (exec *BlockExecutor) postBlockEvent(block *pb.Block, interchainMeta *pb.In
 }
 
 func (exec *BlockExecutor) applyTransaction(i int, tx *pb.Transaction, opt *agency.TxOpt) ([]byte, error) {
+	if tx.IsIBTP() {
+		ctx := vm.NewContext(tx, uint64(i), nil, exec.ledger, exec.logger)
+		instance := boltvm.New(ctx, exec.validationEngine, exec.getContracts(opt))
+		return instance.HandleIBTP(tx.IBTP)
+	}
+
 	if tx.Payload == nil {
 		return nil, fmt.Errorf("empty transaction data")
 	}
