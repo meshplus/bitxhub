@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"strconv"
 
-	"github.com/meshplus/bitxhub/internal/constant"
-	"github.com/meshplus/bitxhub/pkg/vm/boltvm"
+	"github.com/meshplus/bitxhub-core/boltvm"
+	"github.com/meshplus/bitxhub-model/constant"
 )
 
 const (

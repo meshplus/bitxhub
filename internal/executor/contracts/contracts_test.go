@@ -7,12 +7,12 @@ import (
 
 	"github.com/golang/mock/gomock"
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
+	"github.com/meshplus/bitxhub-core/boltvm"
+	"github.com/meshplus/bitxhub-core/boltvm/mock_stub"
 	"github.com/meshplus/bitxhub-core/validator"
 	"github.com/meshplus/bitxhub-kit/types"
+	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/internal/constant"
-	"github.com/meshplus/bitxhub/pkg/vm/boltvm"
-	"github.com/meshplus/bitxhub/pkg/vm/boltvm/mock_stub"
 	"github.com/stretchr/testify/assert"
 )
 

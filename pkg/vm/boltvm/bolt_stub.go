@@ -3,6 +3,7 @@ package boltvm
 import (
 	"encoding/json"
 
+	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/validator"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -10,7 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var _ Stub = (*BoltStubImpl)(nil)
+var _ boltvm.Stub = (*BoltStubImpl)(nil)
 
 type BoltStubImpl struct {
 	bvm *BoltVM
@@ -114,7 +115,7 @@ func (b *BoltStubImpl) postEvent(interchain bool, event interface{}) {
 	})
 }
 
-func (b *BoltStubImpl) CrossInvoke(address, method string, args ...*pb.Arg) *Response {
+func (b *BoltStubImpl) CrossInvoke(address, method string, args ...*pb.Arg) *boltvm.Response {
 	addr := types.NewAddressByStr(address)
 
 	payload := &pb.InvokePayload{
@@ -133,15 +134,15 @@ func (b *BoltStubImpl) CrossInvoke(address, method string, args ...*pb.Arg) *Res
 
 	data, err := payload.Marshal()
 	if err != nil {
-		return Error(err.Error())
+		return boltvm.Error(err.Error())
 	}
 	bvm := New(ctx, b.ve, b.bvm.contracts)
 	ret, err := bvm.Run(data)
 	if err != nil {
-		return Error(err.Error())
+		return boltvm.Error(err.Error())
 	}
 
-	return Success(ret)
+	return boltvm.Success(ret)
 }
 
 func (b *BoltStubImpl) ValidationEngine() validator.Engine {

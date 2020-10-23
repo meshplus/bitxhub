@@ -10,8 +10,8 @@ import (
 	"github.com/meshplus/bitxhub-core/agency"
 	"github.com/meshplus/bitxhub-core/validator"
 	"github.com/meshplus/bitxhub-kit/types"
+	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/internal/constant"
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/model/events"
@@ -260,6 +260,16 @@ func registerBoltContracts() map[string]agency.Contract {
 			Address:  constant.AssetExchangeContractAddr.Address().String(),
 			Contract: &contracts.AssetExchange{},
 		},
+	}
+
+	ContractsInfo := agency.GetRegisteredContractInfo()
+	for addr, info := range ContractsInfo {
+		boltContracts = append(boltContracts, &boltvm.BoltContract{
+			Enabled:  true,
+			Name:     info.Name,
+			Address:  addr,
+			Contract: info.Constructor(),
+		})
 	}
 
 	return boltvm.Register(boltContracts)
