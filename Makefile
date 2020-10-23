@@ -49,22 +49,34 @@ tester:
 ## make install: Go install the project
 install:
 	cd internal/repo && packr
-	$(GO) install -tags '${TAGS}' -ldflags '${GOLDFLAGS}' -modfile go${TAGS}.mod ./cmd/${APP_NAME}
-	@printf "${GREEN}Build bitxhub successfully!${NC}\n"
+	$(GO) install -ldflags '${GOLDFLAGS}' ./cmd/${APP_NAME}
+	@printf "${GREEN}Install bitxhub successfully!${NC}\n"
 
 build:
 	cd internal/repo && packr
 	@mkdir -p bin
-	$(GO) build -tags '${TAGS}' -ldflags '${GOLDFLAGS}' -modfile go${TAGS}.mod ./cmd/${APP_NAME}
+	$(GO) build -ldflags '${GOLDFLAGS}' ./cmd/${APP_NAME}
 	@mv ./bitxhub bin
 	@printf "${GREEN}Build bitxhub successfully!${NC}\n"
+
+installent:
+	cd internal/repo && packr
+	$(GO) install -tags ent -ldflags '${GOLDFLAGS}' -modfile goent.mod ./cmd/${APP_NAME}
+	@printf "${GREEN}Install bitxhub ent successfully!${NC}\n"
+
+buildent:
+	cd internal/repo && packr
+	@mkdir -p bin
+	$(GO) build -tags ent -ldflags '${GOLDFLAGS}' -modfile goent.mod ./cmd/${APP_NAME}
+	@mv ./bitxhub bin
+	@printf "${GREEN}Build bitxhub ent successfully!${NC}\n"
 
 ## make linter: Run golanci-lint
 linter:
 	golangci-lint run
 
 ## make cluster: Run cluster including 4 nodes
-cluster:install
+cluster:install${TAGS}
 	@cd scripts && bash cluster.sh
 
 .PHONY: tester build
