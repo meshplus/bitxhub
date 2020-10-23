@@ -102,12 +102,7 @@ func (x *InterchainManager) GetInterchain(id string) *boltvm.Response {
 	return boltvm.Success(data)
 }
 
-func (x *InterchainManager) HandleIBTP(data []byte) *boltvm.Response {
-	ibtp := &pb.IBTP{}
-	if err := ibtp.Unmarshal(data); err != nil {
-		return boltvm.Error(err.Error())
-	}
-
+func (x *InterchainManager) HandleIBTP(ibtp *pb.IBTP) *boltvm.Response {
 	if len(strings.Split(ibtp.From, "-")) == 2 {
 		return x.handleUnionIBTP(ibtp)
 	}
