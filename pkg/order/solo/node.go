@@ -41,7 +41,7 @@ func (n *Node) Stop() {
 
 func (n *Node) GetPendingNonceByAccount(account string) uint64 {
 	// TODO: implement me
-	return 0
+	return 1
 }
 
 func (n *Node) Prepare(tx *pb.Transaction) error {
