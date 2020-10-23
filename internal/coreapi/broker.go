@@ -77,7 +77,11 @@ func (b *BrokerAPI) GetBlock(mode string, value string) (*pb.Block, error) {
 		}
 		return b.bxh.Ledger.GetBlock(height)
 	case "HASH":
-		return b.bxh.Ledger.GetBlockByHash(types.NewHashByStr(value))
+		hash := types.NewHashByStr(value)
+		if hash == nil {
+			return nil, fmt.Errorf("invalid format of block hash for querying block")
+		}
+		return b.bxh.Ledger.GetBlockByHash(hash)
 	default:
 		return nil, fmt.Errorf("wrong args about getting block: %s", mode)
 	}

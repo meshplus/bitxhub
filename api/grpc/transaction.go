@@ -47,6 +47,12 @@ func (cbs *ChainBrokerService) checkTransaction(tx *pb.Transaction) error {
 	if tx.Payload == nil && tx.Amount == 0 && tx.IBTP == nil {
 		return fmt.Errorf("tx payload, ibtp and amount can't all be empty")
 	}
+	if tx.From == nil {
+		return fmt.Errorf("tx from address is nil")
+	}
+	if tx.To == nil {
+		tx.To = &types.Address{}
+	}
 
 	emptyAddress := &types.Address{}
 	if tx.From.String() == emptyAddress.String() {
@@ -102,6 +108,9 @@ func (cbs *ChainBrokerService) sendView(tx *pb.Transaction) (*pb.Receipt, error)
 
 func (cbs *ChainBrokerService) GetTransaction(ctx context.Context, req *pb.TransactionHashMsg) (*pb.GetTransactionResponse, error) {
 	hash := types.NewHashByStr(req.TxHash)
+	if hash == nil {
+		return nil, fmt.Errorf("invalid format of tx hash for querying transaction")
+	}
 	tx, err := cbs.api.Broker().GetTransaction(hash)
 	if err != nil {
 		return nil, err
