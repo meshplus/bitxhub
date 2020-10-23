@@ -371,7 +371,7 @@ func (n *Node) send(messages []raftpb.Message) {
 		if err != nil {
 			n.logger.WithFields(logrus.Fields{
 				"from": msg.From,
-			}).Error(err)
+			}).Debug(err)
 			n.node.ReportUnreachable(msg.To)
 			status = raft.SnapshotFailure
 		}
