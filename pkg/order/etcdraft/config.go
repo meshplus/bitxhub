@@ -14,16 +14,17 @@ type RAFTConfig struct {
 }
 
 type MempoolConfig struct {
-	BatchSize uint64 `mapstructure:"batch_size"`
-	PoolSize  uint64 `mapstructure:"pool_size"`
+	BatchSize   uint64 `mapstructure:"batch_size"`
+	PoolSize    uint64 `mapstructure:"pool_size"`
 	TxSliceSize uint64 `mapstructure:"tx_slice_size"`
 
-	BatchTick time.Duration `mapstructure:"batch_tick"`
-	FetchTimeout time.Duration `mapstructure:"fetch_timeout"`
+	BatchTick      time.Duration `mapstructure:"batch_tick"`
+	FetchTimeout   time.Duration `mapstructure:"fetch_timeout"`
 	TxSliceTimeout time.Duration `mapstructure:"tx_slice_timeout"`
 }
 
 type RAFT struct {
+	TickTimeout               time.Duration `mapstructure:"tick_timeout"`
 	ElectionTick              int           `mapstructure:"election_tick"`
 	HeartbeatTick             int           `mapstructure:"heartbeat_tick"`
 	MaxSizePerMsg             uint64        `mapstructure:"max_size_per_msg"`
@@ -46,10 +47,10 @@ func defaultRaftConfig() raft.Config {
 	}
 }
 
-func generateRaftConfig(id uint64, repoRoot string, logger logrus.FieldLogger, ram MemoryStorage) (*raft.Config, error) {
+func generateRaftConfig(id uint64, repoRoot string, logger logrus.FieldLogger, ram MemoryStorage) (*raft.Config, time.Duration, error) {
 	readConfig, err := readConfig(repoRoot)
 	if err != nil {
-		return &raft.Config{}, nil
+		return &raft.Config{}, 100 * time.Millisecond, nil
 	}
 	defaultConfig := defaultRaftConfig()
 	defaultConfig.ID = id
@@ -70,7 +71,7 @@ func generateRaftConfig(id uint64, repoRoot string, logger logrus.FieldLogger, r
 	defaultConfig.PreVote = readConfig.RAFT.PreVote
 	defaultConfig.CheckQuorum = readConfig.RAFT.CheckQuorum
 	defaultConfig.DisableProposalForwarding = readConfig.RAFT.DisableProposalForwarding
-	return &defaultConfig, nil
+	return &defaultConfig, readConfig.RAFT.TickTimeout, nil
 }
 
 func generateMempoolConfig(repoRoot string) (*MempoolConfig, error) {

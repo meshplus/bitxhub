@@ -1,4 +1,5 @@
 [raft]
+tick_timeout                = "0.1s" # TickTimeout is the internal logical clock for the Node by a single tick, Election timeouts and heartbeat timeouts are in units of ticks.
 election_tick               = 10 # ElectionTick is the number of Node.Tick invocations that must pass between elections.
 heartbeat_tick              = 1 # HeartbeatTick is the number of Node.Tick invocations that must pass between heartbeats.
 max_size_per_msg            = 1048576 # 1024*1024, MaxSizePerMsg limits the max size of each append message.
