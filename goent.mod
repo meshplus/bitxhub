@@ -4,6 +4,7 @@ require (
 	github.com/Rican7/retry v0.1.0
 	github.com/aristanetworks/goarista v0.0.0-20200310212843-2da4c1f5881b // indirect
 	github.com/bitxhub/parallel-executor v0.0.0-20201023090040-75413da56024
+	github.com/bitxhub/service-mng v0.0.0-20201026025955-3c11590b93cf
 	github.com/cbergoon/merkletree v0.2.0
 	github.com/common-nighthawk/go-figure v0.0.0-20190529165535-67e0ed34491a
 	github.com/coreos/etcd v3.3.18+incompatible
@@ -26,7 +27,7 @@ require (
 	github.com/magiconair/properties v1.8.1
 	github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20201023084554-3f7dc6cd1164
 	github.com/meshplus/bitxhub-kit v1.1.2-0.20201023073721-052e6b89ea39
-	github.com/meshplus/bitxhub-model v1.1.2-0.20201023072831-329ed555ad0d
+	github.com/meshplus/bitxhub-model v1.1.2-0.20201023091417-b6445e44d535
 	github.com/meshplus/go-lightp2p v0.0.0-20200817105923-6b3aee40fa54
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-multiaddr v0.2.2
