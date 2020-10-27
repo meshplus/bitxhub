@@ -111,13 +111,13 @@ func TestGetBlock(t *testing.T) {
 		Height:   uint64(2),
 		TxHashes: txHashList,
 	}
-	missingTxnHashList, txList := mpi.GetBlock(ready)
+	missingTxnHashList, txList := mpi.GetBlockByHashList(ready)
 	ast.Equal(1, len(missingTxnHashList), "missing tx5")
 	ast.Equal(3, len(txList))
 
 	// mock leader to getBlock
 	mpi.leader = uint64(1)
-	missingTxnHashList, txList = mpi.GetBlock(ready)
+	missingTxnHashList, txList = mpi.GetBlockByHashList(ready)
 	ast.Equal(4, len(missingTxnHashList))
 	ast.Equal(0, len(txList))
 
@@ -126,13 +126,13 @@ func TestGetBlock(t *testing.T) {
 	txList = []*pb.Transaction{}
 	txList = append(txList, tx5)
 	err = mpi.processTransactions(txList)
-	missingTxnHashList, txList = mpi.GetBlock(ready)
+	missingTxnHashList, txList = mpi.GetBlockByHashList(ready)
 	ast.Equal(0, len(missingTxnHashList))
 	ast.Equal(4, len(txList))
 
 	// mock leader to getBlock
 	mpi.leader = uint64(1)
-	missingTxnHashList, txList = mpi.GetBlock(ready)
+	missingTxnHashList, txList = mpi.GetBlockByHashList(ready)
 	ast.Equal(0, len(missingTxnHashList))
 	ast.Equal(4, len(txList))
 }

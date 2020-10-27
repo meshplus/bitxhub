@@ -465,7 +465,7 @@ func (n *Node) mint(ready *raftproto.Ready) {
 		return
 	}
 
-	missingTxsHash, txList := n.mempool.GetBlock(ready)
+	missingTxsHash, txList := n.mempool.GetBlockByHashList(ready)
 	// handle missing txs
 	if len(missingTxsHash) != 0 {
 		waitLostTxnC := make(chan bool)
@@ -491,7 +491,7 @@ func (n *Node) mint(ready *raftproto.Ready) {
 			return
 		}
 
-		if missingTxsHash, txList = n.mempool.GetBlock(ready); len(missingTxsHash) != 0 {
+		if missingTxsHash, txList = n.mempool.GetBlockByHashList(ready); len(missingTxsHash) != 0 {
 			n.logger.Error("Still missing transaction")
 			return
 		}

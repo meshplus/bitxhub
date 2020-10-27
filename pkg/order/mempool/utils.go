@@ -49,14 +49,6 @@ func newSubscribe() *subscribeEvent {
 	}
 }
 
-// TODO (YH): restore commitNonce and pendingNonce from db.
-func newNonceCache() *nonceCache {
-	return &nonceCache{
-		commitNonces:  make(map[string]uint64),
-		pendingNonces: make(map[string]uint64),
-	}
-}
-
 func (mpi *mempoolImpl) poolIsFull() bool {
 	return atomic.LoadInt32(&mpi.txStore.poolSize) >= DefaultPoolSize
 }
