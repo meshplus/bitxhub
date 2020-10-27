@@ -9,6 +9,7 @@ import (
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/repo"
+	"github.com/meshplus/bitxhub/internal/storages/blockfile"
 	"github.com/sirupsen/logrus"
 )
 
@@ -25,6 +26,7 @@ type ChainLedger struct {
 	logger          logrus.FieldLogger
 	blockchainStore storage.Storage
 	ldb             storage.Storage
+	bf              *blockfile.BlockFile
 	minJnlHeight    uint64
 	maxJnlHeight    uint64
 	events          sync.Map
@@ -49,7 +51,7 @@ type BlockData struct {
 }
 
 // New create a new ledger instance
-func New(repo *repo.Repo, blockchainStore storage.Storage, ldb storage.Storage, accountCache *AccountCache, logger logrus.FieldLogger) (*ChainLedger, error) {
+func New(repo *repo.Repo, blockchainStore storage.Storage, ldb storage.Storage, bf *blockfile.BlockFile, accountCache *AccountCache, logger logrus.FieldLogger) (*ChainLedger, error) {
 	chainMeta, err := loadChainMeta(blockchainStore)
 	if err != nil {
 		return nil, fmt.Errorf("load chain meta: %w", err)
@@ -79,6 +81,7 @@ func New(repo *repo.Repo, blockchainStore storage.Storage, ldb storage.Storage, 
 		chainMeta:       chainMeta,
 		blockchainStore: blockchainStore,
 		ldb:             ldb,
+		bf:              bf,
 		minJnlHeight:    minJnlHeight,
 		maxJnlHeight:    maxJnlHeight,
 		accounts:        make(map[string]*Account),
@@ -185,4 +188,5 @@ func (l *ChainLedger) Events(txHash string) []*pb.Event {
 func (l *ChainLedger) Close() {
 	l.ldb.Close()
 	l.blockchainStore.Close()
+	l.bf.Close()
 }

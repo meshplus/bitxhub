@@ -10,6 +10,7 @@ import (
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/storage/leveldb"
 	"github.com/meshplus/bitxhub-kit/types"
+	"github.com/meshplus/bitxhub/internal/storages/blockfile"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -23,7 +24,10 @@ func TestAccount_GetState(t *testing.T) {
 
 	accountCache, err := NewAccountCache()
 	assert.Nil(t, err)
-	ledger, err := New(createMockRepo(t), blockStorage, ldb, accountCache, log.NewWithModule("ChainLedger"))
+	logger := log.NewWithModule("account_test")
+	blockFile, err := blockfile.NewBlockFile(repoRoot, logger)
+	assert.Nil(t, err)
+	ledger, err := New(createMockRepo(t), blockStorage, ldb, blockFile, accountCache, log.NewWithModule("ChainLedger"))
 	assert.Nil(t, err)
 
 	h := hexutil.Encode(bytesutil.LeftPadBytes([]byte{11}, 20))

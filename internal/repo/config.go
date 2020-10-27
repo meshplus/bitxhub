@@ -87,6 +87,7 @@ type LogModule struct {
 	Router    string `toml:"router" json:"router"`
 	API       string `toml:"api" json:"api"`
 	CoreAPI   string `mapstructure:"coreapi" toml:"coreapi" json:"coreapi"`
+	Storage   string `toml:"storage" json:"storage"`
 }
 
 type Genesis struct {

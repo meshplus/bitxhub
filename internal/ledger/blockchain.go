@@ -9,25 +9,21 @@ import (
 	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub/internal/storages/blockfile"
 )
 
 // PutBlock put block into store
 func (l *ChainLedger) PutBlock(height uint64, block *pb.Block) error {
-	data, err := block.Marshal()
-	if err != nil {
-		return err
-	}
-
-	l.blockchainStore.Put(compositeKey(blockKey, height), data)
+	// deprecated
 
 	return nil
 }
 
 // GetBlock get block with height
 func (l *ChainLedger) GetBlock(height uint64) (*pb.Block, error) {
-	data := l.blockchainStore.Get(compositeKey(blockKey, height))
-	if data == nil {
-		return nil, storage.ErrorNotFound
+	data, err := l.bf.Get(blockfile.BlockFileBodiesTable, height)
+	if err != nil {
+		return nil, err
 	}
 
 	block := &pb.Block{}
@@ -44,16 +40,16 @@ func (l *ChainLedger) GetBlock(height uint64) (*pb.Block, error) {
 		return nil, err
 	}
 
-	var txs []*pb.Transaction
-	for _, hash := range txHashes {
-		tx, err := l.GetTransaction(hash)
-		if err != nil {
-			return nil, fmt.Errorf("cannot get tx with hash %s", hash.String())
-		}
-		txs = append(txs, tx)
+	txs := &pb.Transactions{}
+	txsBytes, err := l.bf.Get(blockfile.BlockFileTXsTable, height)
+	if err != nil {
+		return nil, err
+	}
+	if err := txs.Unmarshal(txsBytes); err != nil {
+		return nil, err
 	}
 
-	block.Transactions = txs
+	block.Transactions = txs.Transactions
 
 	return block, nil
 }
@@ -85,16 +81,24 @@ func (l *ChainLedger) GetBlockByHash(hash *types.Hash) (*pb.Block, error) {
 
 // GetTransaction get the transaction using transaction hash
 func (l *ChainLedger) GetTransaction(hash *types.Hash) (*pb.Transaction, error) {
-	v := l.blockchainStore.Get(compositeKey(transactionKey, hash.String()))
-	if v == nil {
+	metaBytes := l.blockchainStore.Get(compositeKey(transactionMetaKey, hash.String()))
+	if metaBytes == nil {
 		return nil, storage.ErrorNotFound
 	}
-	tx := &pb.Transaction{}
-	if err := tx.Unmarshal(v); err != nil {
+	meta := &pb.TransactionMeta{}
+	if err := meta.Unmarshal(metaBytes); err != nil {
+		return nil, err
+	}
+	txsBytes, err := l.bf.Get(blockfile.BlockFileTXsTable, meta.BlockHeight)
+	if err != nil {
+		return nil, err
+	}
+	txs := &pb.Transactions{}
+	if err := txs.Unmarshal(txsBytes); err != nil {
 		return nil, err
 	}
 
-	return tx, nil
+	return txs.Transactions[meta.Index], nil
 }
 
 func (l *ChainLedger) GetTransactionCount(height uint64) (uint64, error) {
@@ -127,17 +131,24 @@ func (l *ChainLedger) GetTransactionMeta(hash *types.Hash) (*pb.TransactionMeta,
 
 // GetReceipt get the transaction receipt
 func (l *ChainLedger) GetReceipt(hash *types.Hash) (*pb.Receipt, error) {
-	data := l.blockchainStore.Get(compositeKey(receiptKey, hash.String()))
-	if data == nil {
+	metaBytes := l.blockchainStore.Get(compositeKey(transactionMetaKey, hash.String()))
+	if metaBytes == nil {
 		return nil, storage.ErrorNotFound
 	}
-
-	r := &pb.Receipt{}
-	if err := r.Unmarshal(data); err != nil {
+	meta := &pb.TransactionMeta{}
+	if err := meta.Unmarshal(metaBytes); err != nil {
+		return nil, err
+	}
+	rsBytes, err := l.bf.Get(blockfile.BlockFileReceiptTable, meta.BlockHeight)
+	if err != nil {
+		return nil, err
+	}
+	rs := &pb.Receipts{}
+	if err := rs.Unmarshal(rsBytes); err != nil {
 		return nil, err
 	}
 
-	return r, nil
+	return rs.Receipts[meta.Index], nil
 }
 
 // PersistExecutionResult persist the execution result
@@ -150,19 +161,23 @@ func (l *ChainLedger) PersistExecutionResult(block *pb.Block, receipts []*pb.Rec
 
 	batcher := l.blockchainStore.NewBatch()
 
-	if err := l.persistReceipts(batcher, receipts); err != nil {
+	rs, err := l.prepareReceipts(batcher, block, receipts)
+	if err != nil {
 		return err
 	}
 
-	if err := l.persistTransactions(batcher, block); err != nil {
+	ts, err := l.prepareTransactions(batcher, block)
+	if err != nil {
 		return err
 	}
 
-	if err := l.persistBlock(batcher, block); err != nil {
+	b, err := l.prepareBlock(batcher, block)
+	if err != nil {
 		return err
 	}
 
-	if err := l.persistInterChainMeta(batcher, interchainMeta, block.BlockHeader.Number); err != nil {
+	im, err := interchainMeta.Marshal()
+	if err != nil {
 		return err
 	}
 
@@ -176,6 +191,10 @@ func (l *ChainLedger) PersistExecutionResult(block *pb.Block, receipts []*pb.Rec
 		Height:            block.BlockHeader.Number,
 		BlockHash:         block.BlockHash,
 		InterchainTxCount: count + l.chainMeta.InterchainTxCount,
+	}
+
+	if err := l.bf.AppendBlock(l.chainMeta.Height, block.BlockHash.Bytes(), b, rs, ts, im); err != nil {
+		return err
 	}
 
 	if err := l.persistChainMeta(batcher, meta); err != nil {
@@ -213,9 +232,9 @@ func (l *ChainLedger) GetChainMeta() *pb.ChainMeta {
 }
 
 func (l *ChainLedger) GetInterchainMeta(height uint64) (*pb.InterchainMeta, error) {
-	data := l.blockchainStore.Get(compositeKey(interchainMetaKey, height))
-	if data == nil {
-		return nil, storage.ErrorNotFound
+	data, err := l.bf.Get(blockfile.BlockFileInterchainTable, height)
+	if err != nil {
+		return nil, err
 	}
 
 	meta := &pb.InterchainMeta{}
@@ -226,50 +245,41 @@ func (l *ChainLedger) GetInterchainMeta(height uint64) (*pb.InterchainMeta, erro
 	return meta, nil
 }
 
-func (l *ChainLedger) persistReceipts(batcher storage.Batch, receipts []*pb.Receipt) error {
-	for _, receipt := range receipts {
-		data, err := receipt.Marshal()
-		if err != nil {
-			return err
-		}
-
-		batcher.Put(compositeKey(receiptKey, receipt.TxHash.String()), data)
+func (l *ChainLedger) prepareReceipts(batcher storage.Batch, block *pb.Block, receipts []*pb.Receipt) ([]byte, error) {
+	rs := &pb.Receipts{
+		Receipts: receipts,
 	}
 
-	return nil
+	return rs.Marshal()
 }
 
-func (l *ChainLedger) persistTransactions(batcher storage.Batch, block *pb.Block) error {
+func (l *ChainLedger) prepareTransactions(batcher storage.Batch, block *pb.Block) ([]byte, error) {
 	for i, tx := range block.Transactions {
-		body, err := tx.Marshal()
-		if err != nil {
-			return err
-		}
-
-		batcher.Put(compositeKey(transactionKey, tx.TransactionHash.String()), body)
-
 		meta := &pb.TransactionMeta{
 			BlockHeight: block.BlockHeader.Number,
 			BlockHash:   block.BlockHash.Bytes(),
 			Index:       uint64(i),
 		}
 
-		bs, err := meta.Marshal()
+		metaBytes, err := meta.Marshal()
 		if err != nil {
-			return fmt.Errorf("marshal tx meta error: %s", err)
+			return nil, fmt.Errorf("marshal tx meta error: %s", err)
 		}
 
-		batcher.Put(compositeKey(transactionMetaKey, tx.TransactionHash.String()), bs)
+		batcher.Put(compositeKey(transactionMetaKey, tx.TransactionHash.String()), metaBytes)
 	}
 
-	return nil
+	ts := &pb.Transactions{
+		Transactions: block.Transactions,
+	}
+	return ts.Marshal()
 }
 
-func (l *ChainLedger) persistBlock(batcher storage.Batch, block *pb.Block) error {
+func (l *ChainLedger) prepareBlock(batcher storage.Batch, block *pb.Block) ([]byte, error) {
 	// Generate block header signature
 	signed, err := l.repo.Key.PrivKey.Sign(block.BlockHash.Bytes())
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	block.Signature = signed
@@ -283,11 +293,10 @@ func (l *ChainLedger) persistBlock(batcher storage.Batch, block *pb.Block) error
 	}
 	bs, err := storedBlock.Marshal()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	height := block.BlockHeader.Number
-	batcher.Put(compositeKey(blockKey, height), bs)
 
 	var txHashes []types.Hash
 	for _, tx := range block.Transactions {
@@ -296,7 +305,7 @@ func (l *ChainLedger) persistBlock(batcher storage.Batch, block *pb.Block) error
 
 	data, err := json.Marshal(txHashes)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	batcher.Put(compositeKey(blockTxSetKey, height), data)
@@ -304,18 +313,7 @@ func (l *ChainLedger) persistBlock(batcher storage.Batch, block *pb.Block) error
 	hash := block.BlockHash.String()
 	batcher.Put(compositeKey(blockHashKey, hash), []byte(fmt.Sprintf("%d", height)))
 
-	return nil
-}
-
-func (l *ChainLedger) persistInterChainMeta(batcher storage.Batch, meta *pb.InterchainMeta, height uint64) error {
-	data, err := meta.Marshal()
-	if err != nil {
-		return err
-	}
-
-	batcher.Put(compositeKey(interchainMetaKey, height), data)
-
-	return nil
+	return bs, nil
 }
 
 func (l *ChainLedger) persistChainMeta(batcher storage.Batch, meta *pb.ChainMeta) error {
@@ -339,14 +337,16 @@ func (l *ChainLedger) removeChainDataOnBlock(batch storage.Batch, height uint64)
 		return 0, err
 	}
 
-	batch.Delete(compositeKey(blockKey, height))
+	if err := l.bf.TruncateBlocks(height - 1); err != nil {
+		return 0, err
+	}
+
+	batch.Delete(compositeKey(blockTxSetKey, height))
 	batch.Delete(compositeKey(blockHashKey, block.BlockHash.String()))
 	batch.Delete(compositeKey(interchainMetaKey, height))
 
 	for _, tx := range block.Transactions {
-		batch.Delete(compositeKey(transactionKey, tx.TransactionHash.String()))
 		batch.Delete(compositeKey(transactionMetaKey, tx.TransactionHash.String()))
-		batch.Delete(compositeKey(receiptKey, tx.TransactionHash.String()))
 	}
 
 	return getInterchainTxCount(interchainMeta), nil
