@@ -47,13 +47,13 @@ func (pl *VerifyPool) CheckProof(tx *pb.Transaction) (bool, error) {
 			pl.logger.WithFields(logrus.Fields{
 				"hash":  tx.TransactionHash.String(),
 				"id":    ibtp.ID(),
-				"error": err}).Error("ibtp verify error")
+				"error": err}).Warn("ibtp verify got error")
 			return false, err
 		}
 		if !ok {
 			pl.logger.WithFields(logrus.Fields{
 				"hash": tx.TransactionHash.String(),
-				"id":   ibtp.ID()}).Error("ibtp verify fail")
+				"id":   ibtp.ID()}).Warn("ibtp verify failed")
 			return false, nil
 		}
 

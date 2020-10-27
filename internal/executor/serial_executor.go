@@ -4,6 +4,7 @@ import (
 	"github.com/meshplus/bitxhub-core/agency"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/sirupsen/logrus"
 )
 
 type SerialExecutor struct {
@@ -11,12 +12,14 @@ type SerialExecutor struct {
 	interchainCounter map[string][]uint64
 	applyTxFunc       agency.ApplyTxFunc
 	boltContracts     map[string]agency.Contract
+	logger            logrus.FieldLogger
 }
 
-func NewSerialExecutor(f1 agency.ApplyTxFunc, f2 agency.RegisterContractFunc) agency.TxsExecutor {
+func NewSerialExecutor(f1 agency.ApplyTxFunc, f2 agency.RegisterContractFunc, logger logrus.FieldLogger) agency.TxsExecutor {
 	return &SerialExecutor{
 		applyTxFunc:   f1,
 		boltContracts: f2(),
+		logger:        logger,
 	}
 }
 
@@ -32,6 +35,8 @@ func (se *SerialExecutor) ApplyTransactions(txs []*pb.Transaction) []*pb.Receipt
 	for i, tx := range txs {
 		receipts = append(receipts, se.applyTxFunc(i, tx, nil))
 	}
+
+	se.logger.Debugf("serial executor executed %d txs", len(txs))
 
 	return receipts
 }
