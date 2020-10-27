@@ -44,8 +44,8 @@ func (cbs *ChainBrokerService) SendView(_ context.Context, tx *pb.Transaction) (
 }
 
 func (cbs *ChainBrokerService) checkTransaction(tx *pb.Transaction) error {
-	if tx.Payload == nil && tx.Amount == 0 && tx.IBTP == nil {
-		return fmt.Errorf("tx payload, ibtp and amount can't all be empty")
+	if tx.Payload == nil && tx.IBTP == nil {
+		return fmt.Errorf("tx payload and ibtp can't both be nil")
 	}
 	if tx.From == nil {
 		return fmt.Errorf("tx from address is nil")
