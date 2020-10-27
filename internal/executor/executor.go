@@ -71,7 +71,7 @@ func New(chainLedger ledger.Ledger, logger logrus.FieldLogger, typ string) (*Blo
 		currentBlockHash: chainLedger.GetChainMeta().BlockHash,
 		wasmInstances:    make(map[string]wasmer.Instance),
 	}
-	blockExecutor.txsExecutor = txsExecutor(blockExecutor.applyTx, registerBoltContracts)
+	blockExecutor.txsExecutor = txsExecutor(blockExecutor.applyTx, registerBoltContracts, logger)
 
 	return blockExecutor, nil
 }
@@ -197,6 +197,8 @@ func (exec *BlockExecutor) verifyProofs(block *pb.Block) *pb.Block {
 			txs = append(txs[:idx], txs[idx+1:]...)
 		}
 		block.Transactions = txs
+	} else {
+		exec.logger.Debugf("all txs in block %d passed IBTP verification", block.BlockHeader.Number)
 	}
 
 	return block
