@@ -6,11 +6,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/meshplus/bitxhub-kit/key"
-
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/meshplus/bitxhub-kit/crypto/asym/ecdsa"
+	"github.com/meshplus/bitxhub-kit/key"
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/bitxhub/pkg/cert"
 	"github.com/urfave/cli"
@@ -41,12 +40,6 @@ func keyCMD() cli.Command {
 				Name:   "show",
 				Usage:  "Show key from cert",
 				Action: showKey,
-				Flags: []cli.Flag{
-					cli.StringFlag{
-						Name:  "path",
-						Usage: "Node Path",
-					},
-				},
 			},
 			{
 				Name:   "pid",
