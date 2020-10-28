@@ -17,3 +17,22 @@ disable_proposal_forwarding = true # This prevents blocks from being accidentall
         tx_slice_timeout    = "0.1s"  # Node broadcasts transactions if there are cached transactions, although set_size isn't reached yet
         fetch_timeout       = "3s"    # How long to wait before fetching missing transactions finished
 
+[rbft]        #RBFT configurations
+set_size         = 100   # How many transactions should the node broadcast at once
+batch_size       = 500   # How many transactions should the primary pack before sending pre-prepare
+pool_size        = 50000 # How many transactions could the txPool stores in total
+vc_resend_limit  = 10    # How many times of same vc from self before a replica start recovery
+vc_period        = 0     # After how many checkpoint periods( Blocks = 10 * vcperiod ) the primary gets cycled automatically. ( Set 0 to disable )
+    [rbft.timeout]
+        nego_view        = "6s"  # How long to wait for N-f responses after send negotiate view
+        recovery        = "15s" # How long to wait before recovery finished(This is for release1.2)
+        first_request    = "30s" # How long to wait before first request should come
+        batch           = "0.5s"# Primary send a pre-prepare if there are pending requests, although batchsize isn't reached yet,
+        request         = "6s"  # How long may a request(transaction batch) take between reception and execution, must be greater than the batch timeout
+        validate        = "1s"  # How long may a validate (transaction batch) process will take by local Validation
+        null_request     = "6s"  # Primary send it to inform aliveness, must be greater than request timeout
+        viewchange      = "8s"  # How long may a view change take
+        resend_viewchange= "10s" # How long to wait for a view change quorum before resending (the same) view change
+        clean_viewchange = "60s" # How long to clean out-of-data view change message
+        update          = "4s"  # How long may a update-n take
+        set             = "0.1s" # Node broadcasts transactions if there are cached transactions, although set_size isn't reached yet,
