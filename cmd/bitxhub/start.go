@@ -64,7 +64,7 @@ func start(ctx *cli.Context) error {
 	if repo.Config.PProf.Enable {
 		switch repo.Config.PProf.PType {
 		case "runtime":
-			go runtimePProf(repo.Config.PProf.Mode, repo.NetworkConfig.ID, repo.Config.PProf.Duration)
+			go runtimePProf(repo.Config.RepoRoot, repo.Config.PProf.Mode, repo.Config.PProf.Duration)
 		case "http":
 			httpPProf(repo.Config.Port.PProf)
 		}
@@ -143,9 +143,9 @@ func handleShutdown(node *app.BitXHub, wg *sync.WaitGroup) {
 }
 
 // runtimePProf will record the cpu or memory profiles every 5 second.
-func runtimePProf(mode string, id uint64, duration time.Duration) {
+func runtimePProf(root, mode string, duration time.Duration) {
 	tick := time.NewTicker(duration)
-	rootPath := fmt.Sprint("./scripts/build/", "node", id, "/pprof/")
+	rootPath := filepath.Join(root, "pprof")
 	exist := fileExist(rootPath)
 	if !exist {
 		err := os.Mkdir(rootPath, os.ModePerm)
@@ -156,22 +156,22 @@ func runtimePProf(mode string, id uint64, duration time.Duration) {
 
 	var cpuFile *os.File
 	if mode == "cpu" {
-		cpuPath := fmt.Sprint(rootPath,"cpu-", time.Now().Format("20060102-15:04:05"))
+		cpuPath := fmt.Sprint(rootPath, "cpu-", time.Now().Format("20060102-15:04:05"))
 		cpuFile, _ = os.Create(cpuPath)
 		_ = pprof.StartCPUProfile(cpuFile)
 	}
 	for {
 		select {
-		case <- tick.C:
+		case <-tick.C:
 			switch mode {
 			case "cpu":
 				pprof.StopCPUProfile()
 				_ = cpuFile.Close()
-				cpuPath := fmt.Sprint(rootPath,"cpu-", time.Now().Format("20060102-15:04:05"))
+				cpuPath := fmt.Sprint(rootPath, "cpu-", time.Now().Format("20060102-15:04:05"))
 				cpuFile, _ := os.Create(cpuPath)
 				_ = pprof.StartCPUProfile(cpuFile)
 			case "memory":
-				memPath := fmt.Sprint(rootPath,"mem-", time.Now().Format("20060102-15:04:05"))
+				memPath := fmt.Sprint(rootPath, "mem-", time.Now().Format("20060102-15:04:05"))
 				memFile, _ := os.Create(memPath)
 				_ = pprof.WriteHeapProfile(memFile)
 				_ = memFile.Close()
