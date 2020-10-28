@@ -119,7 +119,7 @@ func convertKey(ctx *cli.Context) error {
 }
 
 func showKey(ctx *cli.Context) error {
-	repoRoot, err := repo.PathRootWithDefault(ctx.GlobalString("repo"))
+	repoRoot, err := repo.PathRootWithDefault(ctx.String("path"))
 	if err != nil {
 		return err
 	}
