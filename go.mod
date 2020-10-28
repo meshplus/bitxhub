@@ -20,7 +20,6 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway v1.13.0
 	github.com/hokaccha/go-prettyjson v0.0.0-20190818114111-108c894c2c0e
 	github.com/libp2p/go-libp2p-core v0.5.6
-	github.com/libp2p/go-libp2p-crypto v0.1.0
 	github.com/magiconair/properties v1.8.1
 	github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20200728032028-8dba332fa0ed
 	github.com/meshplus/bitxhub-kit v1.0.1-0.20200813112754-a341f7bc198d
