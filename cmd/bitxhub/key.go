@@ -55,12 +55,6 @@ func keyCMD() cli.Command {
 				Name:   "show",
 				Usage:  "Show key from cert",
 				Action: showKey,
-				Flags: []cli.Flag{
-					cli.StringFlag{
-						Name:  "path",
-						Usage: "Node Path",
-					},
-				},
 			},
 			{
 				Name:   "address",
