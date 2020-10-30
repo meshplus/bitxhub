@@ -10,9 +10,7 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/ethereum/go-ethereum v1.9.18
 	github.com/fatih/color v1.7.0 // indirect
-	github.com/go-playground/assert/v2 v2.0.1
 	github.com/gobuffalo/envy v1.9.0 // indirect
-	github.com/gobuffalo/logger v1.0.0
 	github.com/gobuffalo/packd v1.0.0
 	github.com/gobuffalo/packr v1.30.1
 	github.com/gogo/protobuf v1.3.1
