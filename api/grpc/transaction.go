@@ -46,10 +46,6 @@ func (cbs *ChainBrokerService) checkTransaction(tx *pb.SendTransactionRequest) e
 		return fmt.Errorf("tx data can't be empty")
 	}
 
-	if tx.Data.Type == pb.TransactionData_NORMAL && tx.Data.Amount == 0 {
-		return fmt.Errorf("amount can't be 0 in transfer tx")
-	}
-
 	emptyAddress := types.Address{}.Hex()
 	if tx.From.Hex() == emptyAddress {
 		return fmt.Errorf("from can't be empty")
