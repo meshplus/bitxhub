@@ -156,7 +156,7 @@ func (exec *BlockExecutor) listenExecuteEvent() {
 				"height": block.BlockHeader.Number,
 				"count":  len(block.Transactions),
 				"elapse": time.Since(now),
-			}).Infof("Executed block")
+			}).Info("Executed block")
 			exec.persistC <- blockData
 		case <-exec.ctx.Done():
 			return
@@ -215,7 +215,7 @@ func (exec *BlockExecutor) persistData() {
 			"hash":   data.Block.BlockHash.ShortString(),
 			"count":  len(data.Block.Transactions),
 			"elapse": time.Since(now),
-		}).Info("Persisted block")
+		}).Debug("Persisted block")
 	}
 }
 
