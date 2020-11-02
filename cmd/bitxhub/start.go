@@ -156,7 +156,8 @@ func runtimePProf(root, mode string, duration time.Duration) {
 
 	var cpuFile *os.File
 	if mode == "cpu" {
-		cpuPath := fmt.Sprint(rootPath, "cpu-", time.Now().Format("20060102-15:04:05"))
+		subPath := fmt.Sprint("cpu-", time.Now().Format("20060102-15:04:05"))
+		cpuPath := filepath.Join(rootPath, subPath)
 		cpuFile, _ = os.Create(cpuPath)
 		_ = pprof.StartCPUProfile(cpuFile)
 	}
@@ -167,11 +168,13 @@ func runtimePProf(root, mode string, duration time.Duration) {
 			case "cpu":
 				pprof.StopCPUProfile()
 				_ = cpuFile.Close()
-				cpuPath := fmt.Sprint(rootPath, "cpu-", time.Now().Format("20060102-15:04:05"))
+				subPath := fmt.Sprint("cpu-", time.Now().Format("20060102-15:04:05"))
+				cpuPath := filepath.Join(rootPath, subPath)
 				cpuFile, _ := os.Create(cpuPath)
 				_ = pprof.StartCPUProfile(cpuFile)
 			case "memory":
-				memPath := fmt.Sprint(rootPath, "mem-", time.Now().Format("20060102-15:04:05"))
+				subPath := fmt.Sprint("mem-", time.Now().Format("20060102-15:04:05"))
+				memPath := filepath.Join(rootPath, subPath)
 				memFile, _ := os.Create(memPath)
 				_ = pprof.WriteHeapProfile(memFile)
 				_ = memFile.Close()
