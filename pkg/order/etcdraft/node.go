@@ -394,11 +394,6 @@ func (n *Node) publishEntries(ents []raftpb.Entry) bool {
 				break
 			}
 
-			ready := n.readyPool.Get().(*raftproto.Ready)
-			if err := ready.Unmarshal(ents[i].Data); err != nil {
-				n.logger.Error(err)
-				continue
-			}
 			// This can happen:
 			//
 			// if (1) we crashed after applying this block to the chain, but
@@ -411,6 +406,12 @@ func (n *Node) publishEntries(ents []raftpb.Entry) bool {
 			blockAppliedIndex := n.getBlockAppliedIndex()
 			if blockAppliedIndex >= ents[i].Index {
 				n.appliedIndex = ents[i].Index
+				continue
+			}
+
+			ready := n.readyPool.Get().(*raftproto.Ready)
+			if err := ready.Unmarshal(ents[i].Data); err != nil {
+				n.logger.Error(err)
 				continue
 			}
 
