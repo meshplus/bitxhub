@@ -55,8 +55,13 @@ type subscribeEvent struct {
 	fetchTxnResponseC    chan *FetchTxnResponse
 	getBlockC            chan *constructBatchEvent
 	commitTxnC           chan *raftproto.Ready
-	updateLeaderC        chan uint64
+	updateLeaderC        chan *updateLeader
 	pendingNonceC        chan *getNonceRequest
+}
+
+type updateLeader struct {
+	leader uint64
+	res chan bool
 }
 
 type mempoolBatch struct {

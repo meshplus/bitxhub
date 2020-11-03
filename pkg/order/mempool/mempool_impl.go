@@ -73,11 +73,14 @@ func (mpi *mempoolImpl) listenEvent() {
 			mpi.logger.Info("----- Exit listen loop -----")
 			return
 
-		case newLeader := <-mpi.subscribe.updateLeaderC:
+		case updateLeader := <-mpi.subscribe.updateLeaderC:
+			newLeader := updateLeader.leader
+			mpi.logger.Infof("Replica %d update the leader to node %d", mpi.localID, newLeader)
 			if newLeader == mpi.localID {
 				mpi.logger.Info("----- Become the leader node -----")
 			}
 			mpi.leader = newLeader
+			updateLeader.res <- true
 
 		case txSet := <-mpi.txCache.txSetC:
 			// 1. send transactions to other peer
@@ -105,12 +108,12 @@ func (mpi *mempoolImpl) listenEvent() {
 
 		case <-mpi.batchTimerMgr.timeoutEventC:
 			if mpi.isBatchTimerActive() {
-				mpi.stopBatchTimer(StopReason1)
 				mpi.logger.Debug("Batch timer expired, try to create a batch")
+				mpi.stopBatchTimer(StopReason1)
 				if mpi.txStore.priorityNonBatchSize > 0 {
-					ready, err := mpi.generateBlock(true)
+					ready, err := mpi.generateBlock()
 					if err != nil {
-						mpi.logger.Errorf("Generator batch failed")
+						mpi.logger.Errorf("Generator batch failed, err: %s", err.Error())
 						continue
 					}
 					mpi.batchC <- ready
@@ -130,13 +133,13 @@ func (mpi *mempoolImpl) listenEvent() {
 				mpi.logger.Errorf("Process fetch txn failed, err: %s", err.Error())
 				lostTxnEvent.WaitC <- false
 			} else {
-				mpi.logger.Debug("Process fetch txn success")
+				mpi.logger.Debug("Send fetch txn request success")
 				waitC = lostTxnEvent.WaitC
 			}
 
 		case fetchRequest := <-mpi.subscribe.fetchTxnRequestC:
 			if err := mpi.processFetchTxnRequest(fetchRequest); err != nil {
-				mpi.logger.Error("Process fetchTxnRequest failed")
+				mpi.logger.Errorf("Process fetchTxnRequest failed, err: %s", err.Error())
 			}
 
 		case fetchRes := <-mpi.subscribe.fetchTxnResponseC:
@@ -200,7 +203,7 @@ func (mpi *mempoolImpl) processTransactions(txs []*pb.Transaction) error {
 
 		// generator batch by block size
 		if mpi.txStore.priorityNonBatchSize >= mpi.batchSize {
-			ready, err := mpi.generateBlock(false)
+			ready, err := mpi.generateBlock()
 			if err != nil {
 				return errors.New("generator batch fai")
 			}
@@ -266,11 +269,17 @@ func (mpi *mempoolImpl) processDirtyAccount(dirtyAccounts map[string]bool) {
 
 // getBlock fetches next block of transactions for consensus,
 // batchedTx are all txs sent to consensus but were not committed yet, mempool should filter out such txs.
-func (mpi *mempoolImpl) generateBlock(isTimeout bool) (*raftproto.Ready, error) {
+func (mpi *mempoolImpl) generateBlock() (*raftproto.Ready, error) {
 	result := make([]orderedIndexKey, 0, mpi.batchSize)
+	var batchSize uint64
+	if mpi.txStore.priorityNonBatchSize < mpi.batchSize {
+		batchSize = mpi.txStore.priorityNonBatchSize
+	} else {
+		batchSize = mpi.batchSize
+	}
 
 	// txs has lower nonce will be observed first in priority index iterator.
-	mpi.logger.Infof("Length of priority index: %v", mpi.txStore.priorityIndex.data.Len())
+	mpi.logger.Infof("The number of non-batched transactions are %d", mpi.txStore.priorityNonBatchSize)
 	mpi.txStore.priorityIndex.data.Ascend(func(a btree.Item) bool {
 		tx := a.(*orderedIndexKey)
 		// if tx has existed in bathedTxs,
@@ -289,10 +298,7 @@ func (mpi *mempoolImpl) generateBlock(isTimeout bool) (*raftproto.Ready, error) 
 			ptr := orderedIndexKey{account: tx.account, nonce: tx.nonce}
 			mpi.txStore.batchedTxs[ptr] = true
 			result = append(result, ptr)
-			// batched by batch size or timeout
-			condition1 := uint64(len(result)) == mpi.batchSize
-			condition2 := isTimeout && uint64(len(result)) == mpi.txStore.priorityNonBatchSize
-			if condition1 || condition2 {
+			if uint64(len(result)) == batchSize {
 				return false
 			}
 		}
@@ -313,6 +319,7 @@ func (mpi *mempoolImpl) generateBlock(isTimeout bool) (*raftproto.Ready, error) 
 		TxHashes: hashList,
 		Height:   batchSeqNo,
 	}
+
 	// store the batch to cache
 	if _, ok := mpi.txStore.batchedCache[batchSeqNo]; ok {
 		mpi.logger.Errorf("Generate block with height %d, but there is already block at this height", batchSeqNo)
@@ -323,7 +330,7 @@ func (mpi *mempoolImpl) generateBlock(isTimeout bool) (*raftproto.Ready, error) 
 	// store the batch to db
 	mpi.batchStore(txList)
 	mpi.txStore.priorityNonBatchSize = mpi.txStore.priorityNonBatchSize - uint64(len(hashList))
-	mpi.logger.Infof("Generated block %d with %d txs", batchSeqNo, len(txList))
+	mpi.logger.Infof("Replica %d generated block %d with %d txs", mpi.localID, batchSeqNo, len(txList))
 	return ready, nil
 }
 
@@ -390,6 +397,7 @@ func (mpi *mempoolImpl) constructSameBatch(ready *raftproto.Ready) *mempoolBatch
 		mpi.txStore.batchedCache[ready.Height] = txList
 		// store the batch to db
 		mpi.batchStore(txList)
+		mpi.txStore.priorityNonBatchSize = mpi.txStore.priorityNonBatchSize - uint64(len(txList))
 	}
 	return res
 }
@@ -477,9 +485,8 @@ func (mpi *mempoolImpl) processFetchTxnRequest(fetchTxnRequest *FetchTxnRequest)
 	if txList, err = mpi.loadTxnFromCache(fetchTxnRequest); err != nil {
 		if txList, err = mpi.loadTxnFromStorage(fetchTxnRequest); err != nil {
 			if txList, err = mpi.loadTxnFromLedger(fetchTxnRequest); err != nil {
-				mpi.logger.Errorf("Process fetch txn request [peer: %s, block height: %d] failed",
+				return fmt.Errorf("process fetch txn request [peer: %d, block height: %d] failed",
 					fetchTxnRequest.ReplicaId, fetchTxnRequest.Height)
-				return err
 			}
 		}
 	}

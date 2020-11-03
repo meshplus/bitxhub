@@ -74,10 +74,15 @@ func (mpi *mempoolImpl) RecvForwardTxs(txSlice *TxSlice) {
 	mpi.subscribe.txForwardC <- txSlice
 }
 
-// UpdateLeader updates the
+// UpdateLeader updates the leader node info.
 func (mpi *mempoolImpl) UpdateLeader(newLeader uint64) {
-	// TODO (YH): should block until mempool finishing updating the leader info.
-	mpi.subscribe.updateLeaderC <- newLeader
+	updateLeader := &updateLeader{
+		leader: newLeader,
+		res:    make(chan bool),
+	}
+	mpi.subscribe.updateLeaderC <- updateLeader
+	// block until finishing updating the leader node
+	<-updateLeader.res
 }
 
 // FetchTxn sends the fetch request.

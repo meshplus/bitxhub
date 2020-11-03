@@ -53,7 +53,7 @@ func newSubscribe() *subscribeEvent {
 		txForwardC:           make(chan *TxSlice),
 		localMissingTxnEvent: make(chan *LocalMissingTxnEvent),
 		fetchTxnRequestC:     make(chan *FetchTxnRequest),
-		updateLeaderC:        make(chan uint64),
+		updateLeaderC:        make(chan *updateLeader),
 		fetchTxnResponseC:    make(chan *FetchTxnResponse),
 		commitTxnC:           make(chan *raftproto.Ready),
 		getBlockC:            make(chan *constructBatchEvent),

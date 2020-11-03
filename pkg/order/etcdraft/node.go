@@ -324,8 +324,10 @@ func (n *Node) run() {
 			}
 			if rd.SoftState != nil {
 				newLeader := atomic.LoadUint64(&rd.SoftState.Lead)
-				n.leader = newLeader
-				n.mempool.UpdateLeader(newLeader)
+				if newLeader != n.leader {
+					n.leader = newLeader
+					n.mempool.UpdateLeader(newLeader)
+				}
 			}
 			// 3: AsyncSend all Messages to the nodes named in the To field.
 			go n.send(rd.Messages)
@@ -388,12 +390,6 @@ func (n *Node) publishEntries(ents []raftpb.Entry) bool {
 				// ignore empty messages
 				break
 			}
-
-			ready := n.readyPool.Get().(*raftproto.Ready)
-			if err := ready.Unmarshal(ents[i].Data); err != nil {
-				n.logger.Error(err)
-				continue
-			}
 			// This can happen:
 			//
 			// if (1) we crashed after applying this block to the chain, but
@@ -406,6 +402,12 @@ func (n *Node) publishEntries(ents []raftpb.Entry) bool {
 			blockAppliedIndex := n.getBlockAppliedIndex()
 			if blockAppliedIndex >= ents[i].Index {
 				n.appliedIndex = ents[i].Index
+				continue
+			}
+
+			ready := n.readyPool.Get().(*raftproto.Ready)
+			if err := ready.Unmarshal(ents[i].Data); err != nil {
+				n.logger.Error(err)
 				continue
 			}
 
@@ -463,6 +465,17 @@ func (n *Node) mint(ready *raftproto.Ready) {
 	missingTxsHash, txList := n.mempool.GetBlock(ready)
 	// handle missing txs
 	if len(missingTxsHash) != 0 {
+		if isLeader {
+			n.logger.Warningf("Leader %d missing batch %d", n.id, ready.Height)
+			// check if node has been partitioned away rejoins the cluster
+			status := n.node.Status()
+			newLeader := status.Lead
+			if n.leader == newLeader {
+				n.logger.Errorf("Replica %d missing batch %d, but it is leader", n.id, ready.Height)
+				return
+			}
+			n.mempool.UpdateLeader(newLeader)
+		}
 		waitLostTxnC := make(chan bool)
 		lostTxnEvent := &mempool.LocalMissingTxnEvent{
 			Height:             ready.Height,
