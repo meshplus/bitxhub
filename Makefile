@@ -2,7 +2,7 @@
 SHELL := /bin/bash
 CURRENT_PATH = $(shell pwd)
 APP_NAME = bitxhub
-APP_VERSION = 1.0.0-rc1
+APP_VERSION = 1.3.1
 
 # build with verison infos
 VERSION_DIR = github.com/meshplus/${APP_NAME}
