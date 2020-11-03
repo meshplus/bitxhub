@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub/internal/repo"
@@ -407,6 +408,12 @@ func generatePrivKey(ctx *cli.Context, opt crypto.KeyType) error {
 		return fmt.Errorf("marshal key: %w", err)
 	}
 
+	if !fileutil.Exist(target) {
+		err := os.MkdirAll(target, 0755)
+		if err != nil {
+			return fmt.Errorf("create folder: %w", err)
+		}
+	}
 	path := filepath.Join(target, fmt.Sprintf("%s.priv", name))
 	f, err := os.Create(path)
 	if err != nil {
