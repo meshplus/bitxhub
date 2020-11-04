@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/coreos/etcd/raft"
@@ -48,10 +49,12 @@ type Node struct {
 	snapshotIndex     uint64   // current snapshot apply index in raft log
 	lastIndex         uint64   // last apply index in raft log
 
-	readyPool  *sync.Pool      // ready pool, avoiding memory growth fast
-	readyCache sync.Map        //ready cache
-	ctx        context.Context // context
-	haltC      chan struct{}   // exit signal
+	readyPool   *sync.Pool      // ready pool, avoiding memory growth fast
+	readyCache  sync.Map        //ready cache
+	ctx         context.Context // context
+	haltC       chan struct{}   // exit signal
+	justElected bool
+	isRestart bool
 }
 
 // NewNode new raft node
@@ -121,6 +124,7 @@ func (n *Node) Start() error {
 	}
 	if restart {
 		n.node = raft.RestartNode(rc)
+		n.isRestart = true
 	} else {
 		n.node = raft.StartNode(rc, n.peers)
 	}
@@ -141,6 +145,7 @@ func (n *Node) Stop() {
 //Add the transaction into txpool and broadcast it to other nodes
 func (n *Node) Prepare(tx *pb.Transaction) error {
 	if !n.Ready() {
+		n.logger.Warningf("Replica %d is unready, we will drop the transaction")
 		return nil
 	}
 	if err := n.tp.AddPendingTx(tx, false); err != nil {
@@ -171,7 +176,7 @@ func (n *Node) ReportState(height uint64, hash types.Hash) {
 	}
 	//block already persisted, record the apply index in db
 	n.writeAppliedIndex(appliedIndex.(uint64))
-	n.blockAppliedIndex.Delete(height)
+	n.blockAppliedIndex.Delete(height-1)
 
 	n.tp.BuildReqLookUp() //store bloom filter
 
@@ -323,6 +328,23 @@ func (n *Node) run() {
 				n.logger.Fatalf("failed to persist etcd/raft data: %s", err)
 			}
 
+			if rd.SoftState != nil {
+				newLeader := atomic.LoadUint64(&rd.SoftState.Lead)
+				n.leader = newLeader
+				if newLeader == n.id {
+					// If the cluster is started for the first time, the leader node starts listening requests directly.
+					if !n.isRestart && n.getBlockAppliedIndex() == uint64(0) {
+						n.tp.CheckExecute(true)
+					} else {
+						// new leader should not serve requests
+						n.justElected = true
+					}
+				} else {
+					// follower node stop batch block
+					n.tp.CheckExecute(false)
+				}
+			}
+
 			// 2: Apply Snapshot (if any) and CommittedEntries to the state machine.
 			if len(rd.CommittedEntries) != 0 {
 				if ok := n.publishEntries(n.entriesToApply(rd.CommittedEntries)); !ok {
@@ -330,10 +352,17 @@ func (n *Node) run() {
 					return
 				}
 			}
-			if rd.SoftState != nil {
-				n.leader = rd.SoftState.Lead
+
+			if n.justElected {
+				msgInflight := n.ramLastIndex() > n.appliedIndex+1
+				if msgInflight {
+					n.logger.Debugf("There are in flight blocks, new leader should not serve requests")
+					continue
+				}
+				n.justElected = false
 				n.tp.CheckExecute(n.IsLeader())
 			}
+
 			// 3: AsyncSend all Messages to the nodes named in the To field.
 			go n.send(rd.Messages)
 
@@ -346,6 +375,12 @@ func (n *Node) run() {
 			n.Stop()
 		}
 	}
+}
+
+func (n *Node) ramLastIndex() uint64 {
+	i, _ := n.raftStorage.ram.LastIndex()
+	n.logger.Infof("New Leader's last index is %d, appliedIndex is %d", i, n.appliedIndex)
+	return i
 }
 
 // send raft consensus message
@@ -393,6 +428,9 @@ func (n *Node) publishEntries(ents []raftpb.Entry) bool {
 		switch ents[i].Type {
 		case raftpb.EntryNormal:
 			if len(ents[i].Data) == 0 {
+				if ents[i].Index > n.appliedIndex {
+					n.appliedIndex = ents[i].Index
+				}
 				// ignore empty messages
 				break
 			}

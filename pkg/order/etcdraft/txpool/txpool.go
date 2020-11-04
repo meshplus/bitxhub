@@ -76,7 +76,7 @@ func New(config *order.Config, storage storage.Storage, txPoolConfig *Config) (*
 //AddPendingTx add pending transaction into txpool
 func (tp *TxPool) AddPendingTx(tx *pb.Transaction, isAckTx bool) error {
 	if tp.PoolSize() >= tp.config.PoolSize {
-		tp.logger.Debugf("Tx pool size: %d is full", tp.PoolSize())
+		tp.logger.Warningf("Tx pool size: %d is full", tp.PoolSize())
 		return nil
 	}
 	hash := tx.TransactionHash
@@ -263,7 +263,7 @@ func (tp *TxPool) Broadcast(tx *pb.Transaction) error {
 			continue
 		}
 		if err := tp.peerMgr.AsyncSend(id, msg); err != nil {
-			tp.logger.Debugf("send tx to:%d %s", id, err.Error())
+			tp.logger.Warningf("Send tx to:%d %s", id, err.Error())
 			continue
 		}
 	}
