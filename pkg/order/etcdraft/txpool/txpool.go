@@ -151,7 +151,7 @@ func (tp *TxPool) executeInit() {
 	tp.pendingTxs.Init()
 	tp.presenceTxs = sync.Map{}
 	tp.poolContext = newTxPoolContext()
-	tp.logger.Debugln("start txpool execute")
+	tp.logger.Debugf("Replica %d start txpool execute", tp.nodeId)
 }
 
 //execute schedule to collect txs to the ready channel
@@ -174,7 +174,7 @@ func (tp *TxPool) execute() {
 			newTimestamp := value.(string)
 			if timestamp == newTimestamp {
 				tp.isExecuting = false
-				tp.logger.Info("done txpool execute")
+				tp.logger.Info("Stop batching the transactions")
 				return
 			}
 			tp.logger.Warning("Out of date done execute message")
@@ -209,12 +209,13 @@ func (tp *TxPool) ready() *raftproto.Ready {
 			continue
 		}
 		hashes = append(hashes, hash)
-
 	}
 	if len(hashes) == 0 {
 		return nil
 	}
 	height := tp.UpdateHeight()
+	tp.logger.Debugf("Leader generate a transaction batch with %d txs, which height is %d, " +
+		"and now there are %d pending txs in txPool", len(hashes), height, tp.pendingTxs.Len())
 	return &raftproto.Ready{
 		TxHashes: hashes,
 		Height:   height,
