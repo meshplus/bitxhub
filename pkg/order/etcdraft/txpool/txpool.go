@@ -4,16 +4,16 @@ import (
 	"container/list"
 	"context"
 	"fmt"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/meshplus/bitxhub/pkg/order"
 
 	"github.com/Rican7/retry"
 	"github.com/Rican7/retry/strategy"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub/pkg/order"
 	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
 	"github.com/meshplus/bitxhub/pkg/storage"
@@ -21,6 +21,8 @@ import (
 )
 
 type getTransactionFunc func(hash types.Hash) (*pb.Transaction, error)
+
+var cancelKey string = "cancelKey"
 
 type TxPool struct {
 	sync.RWMutex                             //lock for the pendingTxs
@@ -36,9 +38,8 @@ type TxPool struct {
 	reqLookUp          *order.ReqLookUp      //bloom filter
 	storage            storage.Storage       //storage pending tx
 	config             *Config               //tx pool config
-	ctx                context.Context       //context
-	cancel             context.CancelFunc    //stop Execute
-	getTransactionFunc getTransactionFunc    //get transaction by ledger
+	poolContext        *poolContext
+	getTransactionFunc getTransactionFunc //get transaction by ledger
 }
 
 type Config struct {
@@ -48,6 +49,12 @@ type Config struct {
 	SetSize   int           //how many transactions should the node broadcast at once
 }
 
+type poolContext struct {
+	ctx       context.Context    //context
+	cancel    context.CancelFunc //stop Execute
+	timestamp string
+}
+
 //New txpool
 func New(config *order.Config, storage storage.Storage, txPoolConfig *Config) (*TxPool, chan *raftproto.Ready) {
 	readyC := make(chan *raftproto.Ready)
@@ -55,8 +62,7 @@ func New(config *order.Config, storage storage.Storage, txPoolConfig *Config) (*
 	if err != nil {
 		return nil, nil
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	return &TxPool{
+	txPool := &TxPool{
 		nodeId:             config.ID,
 		peerMgr:            config.PeerMgr,
 		logger:             config.Logger,
@@ -68,15 +74,15 @@ func New(config *order.Config, storage storage.Storage, txPoolConfig *Config) (*
 		storage:            storage,
 		getTransactionFunc: config.GetTransactionFunc,
 		config:             txPoolConfig,
-		ctx:                ctx,
-		cancel:             cancel,
-	}, readyC
+		poolContext:        newTxPoolContext(),
+	}
+	return txPool, readyC
 }
 
 //AddPendingTx add pending transaction into txpool
 func (tp *TxPool) AddPendingTx(tx *pb.Transaction, isAckTx bool) error {
 	if tp.PoolSize() >= tp.config.PoolSize {
-		tp.logger.Debugf("Tx pool size: %d is full", tp.PoolSize())
+		tp.logger.Warningf("Tx pool size: %d is full", tp.PoolSize())
 		return nil
 	}
 	hash := tx.TransactionHash
@@ -132,7 +138,7 @@ func (tp *TxPool) CheckExecute(isLeader bool) {
 		}
 	} else {
 		if tp.isExecuting {
-			tp.cancel()
+			tp.poolContext.cancel()
 		}
 	}
 }
@@ -144,12 +150,14 @@ func (tp *TxPool) executeInit() {
 	tp.isExecuting = true
 	tp.pendingTxs.Init()
 	tp.presenceTxs = sync.Map{}
+	tp.poolContext = newTxPoolContext()
 	tp.logger.Debugln("start txpool execute")
 }
 
 //execute schedule to collect txs to the ready channel
 func (tp *TxPool) execute() {
 	tp.executeInit()
+	timestamp := tp.poolContext.ctx.Value(cancelKey).(string)
 	ticker := time.NewTicker(tp.config.BlockTick)
 	defer ticker.Stop()
 
@@ -161,10 +169,15 @@ func (tp *TxPool) execute() {
 				continue
 			}
 			tp.readyC <- ready
-		case <-tp.ctx.Done():
-			tp.isExecuting = false
-			tp.logger.Infoln("done txpool execute")
-			return
+		case <-tp.poolContext.ctx.Done():
+			value := tp.poolContext.ctx.Value(cancelKey)
+			newTimestamp := value.(string)
+			if timestamp == newTimestamp {
+				tp.isExecuting = false
+				tp.logger.Info("done txpool execute")
+				return
+			}
+			tp.logger.Warning("Out of date done execute message")
 		}
 	}
 
@@ -263,7 +276,7 @@ func (tp *TxPool) Broadcast(tx *pb.Transaction) error {
 			continue
 		}
 		if err := tp.peerMgr.AsyncSend(id, msg); err != nil {
-			tp.logger.Debugf("send tx to:%d %s", id, err.Error())
+			tp.logger.Warningf("Send tx to:%d %s", id, err.Error())
 			continue
 		}
 	}
@@ -388,4 +401,16 @@ func (tp *TxPool) BatchDelete(hashes []types.Hash) {
 		batch.Delete(txKey)
 	}
 	batch.Commit()
+}
+
+func newTxPoolContext() *poolContext {
+	timestamp := time.Now().UnixNano()
+	key := strconv.FormatInt(timestamp, 10)
+	newCtx := context.WithValue(context.Background(), cancelKey, key)
+	ctx, cancel := context.WithCancel(newCtx)
+	return &poolContext{
+		ctx:       ctx,
+		cancel:    cancel,
+		timestamp: key,
+	}
 }
