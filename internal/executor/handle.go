@@ -90,7 +90,7 @@ func (exec *BlockExecutor) listenPreExecuteEvent() {
 				"height": block.BlockHeader.Number,
 				"count":  len(block.Transactions),
 				"elapse": time.Since(now),
-			}).Infof("Verified signature")
+			}).Debug("Verified signature")
 			exec.blockC <- block
 		case <-exec.ctx.Done():
 			return
