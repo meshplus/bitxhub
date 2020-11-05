@@ -20,6 +20,10 @@ solo = false
 [gateway]
     allowed_origins = ["*"]
 
+[ping]
+  enable = false
+  duration = "2s"
+
 [security]
 enable_tls = false
 pem_file_path = "certs/server.pem"
