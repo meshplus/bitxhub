@@ -26,14 +26,15 @@ const (
 )
 
 type Swarm struct {
-	repo           *repo.Repo
-	p2p            network.Network
-	logger         logrus.FieldLogger
-	peers          map[uint64]*peer.AddrInfo
-	connectedPeers sync.Map
-	ledger         ledger.Ledger
-
+	repo             *repo.Repo
+	p2p              network.Network
+	logger           logrus.FieldLogger
+	peers            map[uint64]*peer.AddrInfo
+	connectedPeers   sync.Map
+	ledger           ledger.Ledger
 	orderMessageFeed event.Feed
+	enablePing       bool
+	pingTimeout      time.Duration
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -59,6 +60,8 @@ func New(repo *repo.Repo, logger logrus.FieldLogger, ledger ledger.Ledger) (*Swa
 		p2p:            p2p,
 		logger:         logger,
 		ledger:         ledger,
+		enablePing:     repo.Config.Ping.Enable,
+		pingTimeout:    repo.Config.Ping.Duration,
 		peers:          repo.NetworkConfig.OtherNodes,
 		connectedPeers: sync.Map{},
 		ctx:            ctx,
@@ -110,6 +113,10 @@ func (swarm *Swarm) Start() error {
 		}(id, addr)
 	}
 
+	if swarm.enablePing {
+		go swarm.Ping()
+	}
+
 	return nil
 }
 
@@ -117,6 +124,31 @@ func (swarm *Swarm) Stop() error {
 	swarm.cancel()
 
 	return nil
+}
+
+func (swarm *Swarm) Ping() {
+	ticker := time.NewTicker(swarm.pingTimeout)
+	for {
+		select {
+		case <-ticker.C:
+			fields := logrus.Fields{}
+			swarm.connectedPeers.Range(func(key, value interface{}) bool {
+				info := value.(*peer.AddrInfo)
+				pingCh, err := swarm.p2p.Ping(info.ID.String())
+				if err != nil {
+					return true
+				}
+				select {
+				case res := <-pingCh:
+					fields[fmt.Sprintf("%d", key.(uint64))] = res.RTT
+				case <-time.After(time.Second * 5):
+					swarm.logger.Errorf("ping to node %d timeout", key.(uint64))
+				}
+				return true
+			})
+			swarm.logger.WithFields(fields).Warning("ping time")
+		}
+	}
 }
 
 func (swarm *Swarm) AsyncSend(id uint64, msg *pb.Message) error {

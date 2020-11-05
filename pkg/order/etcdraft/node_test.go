@@ -159,8 +159,8 @@ func generateTx() *pb.Transaction {
 	from, _ := privKey.PublicKey().Address()
 
 	tx := &pb.Transaction{
-		From: from,
-		To:   types.NewAddressByStr(to),
+		From:      from,
+		To:        types.NewAddressByStr(to),
 		Timestamp: time.Now().UnixNano(),
 		Nonce:     1,
 	}
@@ -257,6 +257,12 @@ func newSwarms(t *testing.T, peerCnt int) ([]*peermgr.Swarm, map[uint64]types.Ad
 				NodeCertData:   nodeData,
 				AgencyCertData: agencyData,
 				CACert:         cert,
+			},
+			Config: &repo.Config{
+				Ping: repo.Ping{
+					Enable:   true,
+					Duration: 2 * time.Second,
+				},
 			},
 		}
 		var local string

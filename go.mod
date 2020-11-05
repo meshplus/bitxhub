@@ -26,7 +26,7 @@ require (
 	github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20201027045256-8dff50f77c08
 	github.com/meshplus/bitxhub-kit v1.1.2-0.20201027090548-41dfc41037af
 	github.com/meshplus/bitxhub-model v1.1.2-0.20201023091417-b6445e44d535
-	github.com/meshplus/go-lightp2p v0.0.0-20200817105923-6b3aee40fa54
+	github.com/meshplus/go-lightp2p v0.0.0-20201102131103-3fa9723c2c7c
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-multiaddr v0.2.2
 	github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6
