@@ -134,6 +134,12 @@ func NewSwarms(t *testing.T, peerCnt int) []*Swarm {
 				AgencyCertData: agencyData,
 				CACert:         cert,
 			},
+			Config: &repo.Config{
+				Ping: repo.Ping{
+					Enable:   true,
+					Duration: 2 * time.Second,
+				},
+			},
 		}
 		var local string
 		id, err := peer.IDFromPublicKey(nodeKeys[i].GetPublic())
