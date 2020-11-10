@@ -69,7 +69,8 @@ func TestNode_Start(t *testing.T) {
 
 	for {
 		time.Sleep(200 * time.Millisecond)
-		if order.Ready() {
+		err := order.Ready()
+		if err == nil {
 			break
 		}
 	}
@@ -124,7 +125,8 @@ func TestMulti_Node_Start(t *testing.T) {
 
 	for {
 		time.Sleep(200 * time.Millisecond)
-		if orders[0].Ready() {
+		err := orders[0].Ready()
+		if err != nil {
 			break
 		}
 	}

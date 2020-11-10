@@ -76,7 +76,8 @@ func TestNode_Start(t *testing.T) {
 
 	for {
 		time.Sleep(200 * time.Millisecond)
-		if order.Ready() {
+		err := order.Ready()
+		if err == nil {
 			break
 		}
 	}

@@ -14,7 +14,8 @@ type ChainAPI CoreAPI
 var _ api.ChainAPI = (*ChainAPI)(nil)
 
 func (api *ChainAPI) Status() string {
-	if api.bxh.Order.Ready() {
+	err := api.bxh.Order.Ready()
+	if err != nil {
 		return "normal"
 	}
 
