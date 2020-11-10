@@ -279,7 +279,8 @@ func (bxh *BitXHub) Stop() error {
 func (bxh *BitXHub) printLogo() {
 	for {
 		time.Sleep(100 * time.Millisecond)
-		if bxh.Order.Ready() {
+		err :=bxh.Order.Ready()
+		if err == nil {
 			bxh.logger.WithFields(logrus.Fields{
 				"plugin_path": bxh.repo.Config.Order.Plugin,
 			}).Info("Order is ready")

@@ -3,6 +3,7 @@ package etcdraft
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"sync"
@@ -161,7 +162,8 @@ func (n *Node) Stop() {
 
 // Add the transaction into txpool and broadcast it to other nodes
 func (n *Node) Prepare(tx *pb.Transaction) error {
-	if !n.Ready() {
+	err := n.Ready()
+	if err != nil {
 		return nil
 	}
 	return n.mempool.RecvTransaction(tx)
@@ -248,8 +250,12 @@ func (n *Node) IsLeader() bool {
 	return n.leader == n.id
 }
 
-func (n *Node) Ready() bool {
-	return n.leader != 0
+func (n *Node) Ready() error {
+	hashLeader := n.leader != 0
+	if !hashLeader {
+		return errors.New("in leader election status")
+	}
+	return nil
 }
 
 // main work loop

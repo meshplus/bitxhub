@@ -14,8 +14,9 @@ import (
 // SendTransaction handles transaction sent by the client.
 // If the transaction is valid, it will return the transaction hash.
 func (cbs *ChainBrokerService) SendTransaction(ctx context.Context, tx *pb.Transaction) (*pb.TransactionHashMsg, error) {
-	if !cbs.api.Broker().OrderReady() {
-		return nil, fmt.Errorf("the system is temporarily unavailable")
+	err := cbs.api.Broker().OrderReady()
+	if err != nil {
+		return nil, fmt.Errorf("the system is temporarily unavailable, err: %s", err.Error())
 	}
 
 	if err := cbs.checkTransaction(tx); err != nil {

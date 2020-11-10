@@ -72,8 +72,8 @@ func (n *Node) Step(ctx context.Context, msg []byte) error {
 	return nil
 }
 
-func (n *Node) Ready() bool {
-	return true
+func (n *Node) Ready() error {
+	return nil
 }
 
 func (n *Node) ReportState(height uint64, hash types.Hash) {

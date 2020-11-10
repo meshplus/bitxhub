@@ -38,7 +38,7 @@ type BrokerAPI interface {
 	GetInterchainTxWrappers(pid string, begin, end uint64, ch chan<- *pb.InterchainTxWrappers) error
 
 	// OrderReady
-	OrderReady() bool
+	OrderReady() error
 
 	FetchSignsFromOtherPeers(content string, typ pb.GetMultiSignsRequest_Type) map[string][]byte
 	GetSign(content string, typ pb.GetMultiSignsRequest_Type) (string, []byte, error)

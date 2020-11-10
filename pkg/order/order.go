@@ -25,7 +25,7 @@ type Order interface {
 	Step(ctx context.Context, msg []byte) error
 
 	// Ready means whether order has finished electing leader
-	Ready() bool
+	Ready() error
 
 	// ReportState means block was persisted and report it to the consensus engine
 	ReportState(height uint64, hash types.Hash)
