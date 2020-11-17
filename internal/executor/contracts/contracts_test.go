@@ -232,6 +232,7 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	from := types.NewAddress([]byte{0}).String()
 	to := types.NewAddress([]byte{1}).String()
 	mockStub.EXPECT().Set(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
 	f1 := mockStub.EXPECT().Get(appchainMgr.PREFIX+from).Return(false, nil)
 
 	interchain := pb.Interchain{
@@ -290,7 +291,7 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 
 	res = im.HandleIBTP(ibtp)
 	assert.False(t, res.Ok)
-	assert.Equal(t, "wrong index, required 2, but 0", string(res.Result))
+	assert.Equal(t, "index already exists, required 2, but 0", string(res.Result))
 
 	ibtp.Index = 2
 	res = im.HandleIBTP(ibtp)
