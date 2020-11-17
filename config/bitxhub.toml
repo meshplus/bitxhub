@@ -10,15 +10,19 @@ solo = false
 
 [pprof]
   enable = true
-  ptype = "http" # including two types: runtime (recommended for use during the development phase) and http
-  mode = "memory" # only required for runtime ptype, including two modes: cpu、memory
-  duration = "5s" # only required for runtime ptype, every duration will generation a profile.
+ptype = "http" # including two types: runtime (recommended for use during the development phase) and http
+mode = "memory" # only required for runtime ptype, including two modes: cpu、memory
+duration = "5s" # only required for runtime ptype, every duration will generation a profile.
 
 [monitor]
-  enable = true
+enable = true
 
 [gateway]
-    allowed_origins = ["*"]
+allowed_origins = ["*"]
+
+[ping]
+enable = false
+duration = "2s"
 
 [security]
 enable_tls = false
@@ -26,9 +30,9 @@ pem_file_path = "certs/server.pem"
 server_key_path = "certs/server.key"
 
 [log]
-  level = "info"
-  dir = "logs"
-  filename = "bitxhub.log"
+level = "info"
+dir = "logs"
+filename = "bitxhub.log"
   report_caller = false
   [log.module]
     p2p = "info"

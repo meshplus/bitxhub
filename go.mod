@@ -10,9 +10,7 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/ethereum/go-ethereum v1.9.18
 	github.com/fatih/color v1.7.0 // indirect
-	github.com/go-playground/assert/v2 v2.0.1
 	github.com/gobuffalo/envy v1.9.0 // indirect
-	github.com/gobuffalo/logger v1.0.0
 	github.com/gobuffalo/packd v1.0.0
 	github.com/gobuffalo/packr v1.30.1
 	github.com/gogo/protobuf v1.3.1
@@ -28,7 +26,7 @@ require (
 	github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20201027045256-8dff50f77c08
 	github.com/meshplus/bitxhub-kit v1.1.2-0.20201027090548-41dfc41037af
 	github.com/meshplus/bitxhub-model v1.1.2-0.20201023091417-b6445e44d535
-	github.com/meshplus/go-lightp2p v0.0.0-20200817105923-6b3aee40fa54
+	github.com/meshplus/go-lightp2p v0.0.0-20201116100624-7e6c34dc0b98
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-multiaddr v0.2.2
 	github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6

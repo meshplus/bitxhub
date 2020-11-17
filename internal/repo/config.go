@@ -35,6 +35,7 @@ type Config struct {
 	PProf    `json:"pprof"`
 	Monitor  `json:"monitor"`
 	Gateway  `json:"gateway"`
+	Ping     `json:"ping"`
 	Log      `json:"log"`
 	Cert     `json:"cert"`
 	Txpool   `json:"txpool"`
@@ -70,6 +71,11 @@ type PProf struct {
 
 type Gateway struct {
 	AllowedOrigins []string `mapstructure:"allowed_origins"`
+}
+
+type Ping struct {
+	Enable   bool          `toml:"enable" json:"enable"`
+	Duration time.Duration `toml:"duration" json:"duration"`
 }
 
 type Log struct {
@@ -131,6 +137,7 @@ func DefaultConfig() (*Config, error) {
 			Monitor: 40011,
 		},
 		PProf:   PProf{Enable: false},
+		Ping:    Ping{Enable: false},
 		Gateway: Gateway{AllowedOrigins: []string{"*"}},
 		Log: Log{
 			Level:    "info",
