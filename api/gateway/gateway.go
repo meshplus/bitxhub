@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"path/filepath"
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -11,6 +12,7 @@ import (
 	"github.com/rs/cors"
 	"github.com/tmc/grpc-websocket-proxy/wsproxy"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 func Start(config *repo.Config) error {
@@ -28,13 +30,30 @@ func Start(config *repo.Config) error {
 		AllowedOrigins: config.AllowedOrigins,
 	}).Handler(mux)
 
-	opts := []grpc.DialOption{grpc.WithInsecure()}
-
 	endpoint := fmt.Sprintf("localhost:%d", config.Port.Grpc)
-	err := pb.RegisterChainBrokerHandlerFromEndpoint(ctx, mux, endpoint, opts)
-	if err != nil {
-		return err
-	}
+	if config.Security.EnableTLS {
+		pemFilePath := filepath.Join(config.RepoRoot, config.Security.PemFilePath)
+		serverKeyPath := filepath.Join(config.RepoRoot, config.Security.ServerKeyPath)
+		cred, err := credentials.NewServerTLSFromFile(pemFilePath, serverKeyPath)
+		if err != nil {
+			return err
+		}
 
-	return http.ListenAndServe(fmt.Sprintf(":%d", config.Port.Gateway), wsproxy.WebsocketProxy(handler))
+		conn, err := grpc.DialContext(ctx, endpoint, grpc.WithTransportCredentials(cred))
+		if err != nil {
+			return err
+		}
+		err = pb.RegisterChainBrokerHandler(ctx, mux, conn)
+		if err != nil {
+			return err
+		}
+		return http.ListenAndServeTLS(fmt.Sprintf(":%d", config.Port.Gateway), pemFilePath, serverKeyPath, wsproxy.WebsocketProxy(handler))
+	} else {
+		opts := []grpc.DialOption{grpc.WithInsecure()}
+		err := pb.RegisterChainBrokerHandlerFromEndpoint(ctx, mux, endpoint, opts)
+		if err != nil {
+			return err
+		}
+		return http.ListenAndServe(fmt.Sprintf(":%d", config.Port.Gateway), wsproxy.WebsocketProxy(handler))
+	}
 }
