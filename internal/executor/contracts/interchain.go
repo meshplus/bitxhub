@@ -187,7 +187,7 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP, interchain *pb.Interchain) 
 
 		idx := interchain.InterchainCounter[ibtp.To]
 		if ibtp.Index <= idx {
-			return fmt.Errorf(fmt.Sprintf("index alreay exists, required %d, but %d", idx+1, ibtp.Index))
+			return fmt.Errorf(fmt.Sprintf("index already exists, required %d, but %d", idx+1, ibtp.Index))
 		}
 		if ibtp.Index > idx+1 {
 			return fmt.Errorf(fmt.Sprintf("wrong index, required %d, but %d", idx+1, ibtp.Index))
@@ -199,7 +199,7 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP, interchain *pb.Interchain) 
 
 		idx := interchain.ReceiptCounter[ibtp.To]
 		if ibtp.Index <= idx {
-			return fmt.Errorf(fmt.Sprintf("receipt index alreay exists, required %d, but %d", idx+1, ibtp.Index))
+			return fmt.Errorf(fmt.Sprintf("receipt index already exists, required %d, but %d", idx+1, ibtp.Index))
 		}
 
 		if ibtp.Index > idx+1 {

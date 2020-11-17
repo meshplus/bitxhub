@@ -178,7 +178,7 @@ func (n *Node) ReportState(height uint64, hash types.Hash) {
 	}
 	appliedIndex, ok := n.blockAppliedIndex.Load(height)
 	if !ok {
-		n.logger.Errorf("can not found appliedIndex:", height)
+		n.logger.Debugf("can not found appliedIndex:", height)
 		return
 	}
 	// block already persisted, record the apply index in db
@@ -188,7 +188,7 @@ func (n *Node) ReportState(height uint64, hash types.Hash) {
 	// TODO: delete readyCache
 	readyBytes, ok := n.readyCache.Load(height)
 	if !ok {
-		n.logger.Errorf("can not found ready:", height)
+		n.logger.Debugf("can not found ready:", height)
 		return
 	}
 	ready := readyBytes.(*raftproto.Ready)
@@ -327,7 +327,6 @@ func (n *Node) run() {
 				newLeader := atomic.LoadUint64(&rd.SoftState.Lead)
 				if newLeader != n.leader {
 					n.logger.Infof("Raft leader changed: %d -> %d", n.leader, newLeader)
-					oldLeader := n.leader
 					n.leader = newLeader
 					if newLeader == n.id {
 						// If the cluster is started for the first time, the leader node starts listening requests directly.
@@ -338,10 +337,7 @@ func (n *Node) run() {
 							n.justElected = true
 						}
 					}
-					// old leader node stop batch block
-					if oldLeader == n.id {
-						n.mempool.UpdateLeader(n.leader)
-					}
+					n.mempool.UpdateLeader(n.leader)
 				}
 			}
 
