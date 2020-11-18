@@ -79,4 +79,8 @@ linter:
 cluster:install${TAGS}
 	@cd scripts && bash cluster.sh
 
+## make solo: Run one node in solo mode
+solo:install${TAGS}
+	@cd scripts && bash solo.sh
+
 .PHONY: tester build
