@@ -58,8 +58,8 @@ func (n *Node) GetPendingNonceByAccount(account string) uint64 {
 }
 
 func (n *Node) Prepare(tx *pb.Transaction) error {
-	if !n.Ready() {
-		return nil
+	if err := n.Ready(); err != nil {
+		return err
 	}
 	return n.mempool.RecvTransaction(tx)
 }
@@ -76,7 +76,7 @@ func (n *Node) Ready() error {
 	return nil
 }
 
-func (n *Node) ReportState(height uint64, hash types.Hash) {
+func (n *Node) ReportState(height uint64, hash *types.Hash) {
 	if err := n.reqLookUp.Build(); err != nil {
 		n.logger.Errorf("bloom filter persistence error：", err)
 	}

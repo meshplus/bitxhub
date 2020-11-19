@@ -89,5 +89,6 @@ func TestNode_Start(t *testing.T) {
 	require.Equal(t, uint64(2), block.BlockHeader.Number)
 	require.Equal(t, 1, len(block.Transactions))
 
+	order.ReportState(block.Height(), block.BlockHash)
 	order.Stop()
 }

@@ -71,6 +71,7 @@ func NewBitXHub(rep *repo.Repo) (*BitXHub, error) {
 		order.WithDigest(chainMeta.BlockHash.String()),
 		order.WithGetChainMetaFunc(bxh.Ledger.GetChainMeta),
 		order.WithGetTransactionFunc(bxh.Ledger.GetTransaction),
+		order.WithGetBlockByHeightFunc(bxh.Ledger.GetBlock),
 	)
 	if err != nil {
 		return nil, err
@@ -192,6 +193,7 @@ func NewTesterBitXHub(rep *repo.Repo) (*BitXHub, error) {
 		order.WithDigest(chainMeta.BlockHash.String()),
 		order.WithGetChainMetaFunc(bxh.Ledger.GetChainMeta),
 		order.WithGetTransactionFunc(bxh.Ledger.GetTransaction),
+		order.WithGetBlockByHeightFunc(bxh.Ledger.GetBlock),
 	)
 
 	if err != nil {

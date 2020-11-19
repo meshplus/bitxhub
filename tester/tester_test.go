@@ -25,7 +25,7 @@ func TestTester(t *testing.T) {
 		err2 := node2.Broker().OrderReady()
 		err3 := node3.Broker().OrderReady()
 		err4 := node4.Broker().OrderReady()
-		if err1 != nil && err2 != nil && err3 != nil && err4 != nil {
+		if err1 == nil && err2 == nil && err3 == nil && err4 == nil {
 			break
 		}
 

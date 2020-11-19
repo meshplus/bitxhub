@@ -28,7 +28,7 @@ type Order interface {
 	Ready() error
 
 	// ReportState means block was persisted and report it to the consensus engine
-	ReportState(height uint64, hash types.Hash)
+	ReportState(height uint64, hash *types.Hash)
 
 	// Quorum means minimum number of nodes in the cluster that can work
 	Quorum() uint64
