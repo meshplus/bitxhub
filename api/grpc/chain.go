@@ -2,8 +2,8 @@ package grpc
 
 import (
 	"context"
+	"encoding/json"
 
-	"github.com/hokaccha/go-prettyjson"
 	"github.com/meshplus/bitxhub-model/pb"
 )
 
@@ -19,7 +19,7 @@ func GetChainStatus(cbs *ChainBrokerService) (*pb.Response, error) {
 
 func GetValidators(cbs *ChainBrokerService) (*pb.Response, error) {
 	addresses := cbs.genesis.Addresses
-	v, err := prettyjson.Marshal(addresses)
+	v, err := json.Marshal(addresses)
 	if err != nil {
 		return nil, err
 	}
