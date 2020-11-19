@@ -54,7 +54,7 @@ type Node struct {
 	ctx         context.Context // context
 	haltC       chan struct{}   // exit signal
 	justElected bool
-	isRestart bool
+	isRestart   bool
 }
 
 // NewNode new raft node
@@ -176,7 +176,7 @@ func (n *Node) ReportState(height uint64, hash types.Hash) {
 	}
 	//block already persisted, record the apply index in db
 	n.writeAppliedIndex(appliedIndex.(uint64))
-	n.blockAppliedIndex.Delete(height-1)
+	n.blockAppliedIndex.Delete(height - 1)
 
 	n.tp.BuildReqLookUp() //store bloom filter
 
@@ -284,17 +284,14 @@ func (n *Node) run() {
 				if !ok {
 					n.proposeC = nil
 				} else {
-					if !n.IsLeader() {
-						n.tp.CheckExecute(false)
-						continue
-					}
 					data, err := ready.Marshal()
 					if err != nil {
 						n.logger.Panic(err)
 					}
 					n.tp.BatchStore(ready.TxHashes)
+					n.logger.Debugf("Proposed block %d to raft core consensus", ready.Height)
 					if err := n.node.Propose(n.ctx, data); err != nil {
-						n.logger.Panic("Failed to propose block [%d] to raft: %s", ready.Height, err)
+						n.logger.Errorf("Failed to propose block [%d] to raft: %s", ready.Height, err)
 					}
 				}
 			case cc, ok := <-n.confChangeC:
@@ -304,7 +301,7 @@ func (n *Node) run() {
 					confChangeCount++
 					cc.ID = confChangeCount
 					if err := n.node.ProposeConfChange(n.ctx, cc); err != nil {
-						n.logger.Panic("Failed to propose configuration update to Raft node: %s", err)
+						n.logger.Errorf("Failed to propose configuration update to Raft node: %s", err)
 					}
 				}
 			case <-n.ctx.Done():
@@ -325,23 +322,28 @@ func (n *Node) run() {
 			// 1: Write HardState, Entries, and Snapshot to persistent storage if they
 			// are not empty.
 			if err := n.raftStorage.Store(rd.Entries, rd.HardState, rd.Snapshot); err != nil {
-				n.logger.Fatalf("failed to persist etcd/raft data: %s", err)
+				n.logger.Errorf("Failed to persist etcd/raft data: %s", err)
 			}
 
 			if rd.SoftState != nil {
 				newLeader := atomic.LoadUint64(&rd.SoftState.Lead)
-				n.leader = newLeader
-				if newLeader == n.id {
-					// If the cluster is started for the first time, the leader node starts listening requests directly.
-					if !n.isRestart && n.getBlockAppliedIndex() == uint64(0) {
-						n.tp.CheckExecute(true)
-					} else {
-						// new leader should not serve requests
-						n.justElected = true
+				if newLeader != n.leader {
+					n.logger.Infof("Raft leader changed: %d -> %d", n.leader, newLeader)
+					oldLeader := n.leader
+					n.leader = newLeader
+					if newLeader == n.id {
+						// If the cluster is started for the first time, the leader node starts listening requests directly.
+						if !n.isRestart && n.getBlockAppliedIndex() == uint64(0) {
+							n.tp.CheckExecute(true)
+						} else {
+							// new leader should not serve requests
+							n.justElected = true
+						}
 					}
-				} else {
-					// follower node stop batch block
-					n.tp.CheckExecute(false)
+					// old leader node stop batch block
+					if oldLeader == n.id {
+						n.tp.CheckExecute(false)
+					}
 				}
 			}
 
