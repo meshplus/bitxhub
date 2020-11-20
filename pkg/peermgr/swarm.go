@@ -222,8 +222,9 @@ func (swarm *Swarm) Peers() map[uint64]*peer.AddrInfo {
 
 func (swarm *Swarm) OtherPeers() map[uint64]*peer.AddrInfo {
 	m := swarm.Peers()
-	delete(m, swarm.repo.NetworkConfig.ID)
-
+	if swarm.repo != nil {
+		delete(m, swarm.repo.NetworkConfig.ID)
+	}
 	return m
 }
 
