@@ -10,6 +10,7 @@ import (
 	"github.com/meshplus/bitxhub-core/validator"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
+	"github.com/meshplus/bitxhub/internal/loggers"
 	"github.com/meshplus/bitxhub/pkg/vm"
 )
 
@@ -46,6 +47,8 @@ func (bvm *BoltVM) Run(input []byte) (ret []byte, err error) {
 	if err != nil {
 		return nil, fmt.Errorf("get bolt contract: %w", err)
 	}
+
+	loggers.Logger("executor").Info("address:", bvm.ctx.Callee.String(), " contract:", contract)
 
 	rc := reflect.ValueOf(contract)
 	stubField := rc.Elem().Field(0)

@@ -1,6 +1,7 @@
 package vm
 
 import (
+	"github.com/meshplus/bitxhub-core/agency"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/ledger"
@@ -17,10 +18,12 @@ type Context struct {
 	TransactionData  *pb.TransactionData
 	Nonce            uint64
 	Logger           logrus.FieldLogger
+	MethodRegistry   agency.Registry
+	DIDRegistry      agency.Registry
 }
 
 // NewContext creates a context of wasm instance
-func NewContext(tx *pb.Transaction, txIndex uint64, data *pb.TransactionData, ledger ledger.Ledger, logger logrus.FieldLogger) *Context {
+func NewContext(tx *pb.Transaction, txIndex uint64, data *pb.TransactionData, ledger ledger.Ledger, logger logrus.FieldLogger, mr agency.Registry) *Context {
 	return &Context{
 		Caller:           tx.From,
 		Callee:           tx.To,
@@ -30,5 +33,6 @@ func NewContext(tx *pb.Transaction, txIndex uint64, data *pb.TransactionData, le
 		TransactionData:  data,
 		Nonce:            tx.Nonce,
 		Logger:           logger,
+		MethodRegistry:   mr,
 	}
 }

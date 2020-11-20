@@ -255,7 +255,7 @@ func (exec *BlockExecutor) postBlockEvent(block *pb.Block, interchainMeta *pb.In
 
 func (exec *BlockExecutor) applyTransaction(i int, tx *pb.Transaction, opt *agency.TxOpt) ([]byte, error) {
 	if tx.IsIBTP() {
-		ctx := vm.NewContext(tx, uint64(i), nil, exec.ledger, exec.logger)
+		ctx := vm.NewContext(tx, uint64(i), nil, exec.ledger, exec.logger, exec.methodRegistry)
 		instance := boltvm.New(ctx, exec.validationEngine, exec.getContracts(opt))
 		return instance.HandleIBTP(tx.IBTP)
 	}
@@ -277,10 +277,10 @@ func (exec *BlockExecutor) applyTransaction(i int, tx *pb.Transaction, opt *agen
 		var instance vm.VM
 		switch data.VmType {
 		case pb.TransactionData_BVM:
-			ctx := vm.NewContext(tx, uint64(i), data, exec.ledger, exec.logger)
+			ctx := vm.NewContext(tx, uint64(i), data, exec.ledger, exec.logger, exec.methodRegistry)
 			instance = boltvm.New(ctx, exec.validationEngine, exec.getContracts(opt))
 		case pb.TransactionData_XVM:
-			ctx := vm.NewContext(tx, uint64(i), data, exec.ledger, exec.logger)
+			ctx := vm.NewContext(tx, uint64(i), data, exec.ledger, exec.logger, exec.methodRegistry)
 			imports, err := wasm.EmptyImports()
 			if err != nil {
 				return nil, err

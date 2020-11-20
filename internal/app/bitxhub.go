@@ -8,6 +8,7 @@ import (
 
 	"github.com/common-nighthawk/go-figure"
 	"github.com/ethereum/go-ethereum/common/fdlimit"
+	"github.com/meshplus/bitxhub-core/agency"
 	"github.com/meshplus/bitxhub-kit/storage/leveldb"
 	"github.com/meshplus/bitxhub-kit/types"
 	_ "github.com/meshplus/bitxhub/imports"
@@ -109,6 +110,26 @@ func generateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 		return nil, fmt.Errorf("create tm-leveldb: %w", err)
 	}
 
+	methodStore, err := leveldb.New(repo.GetStoragePath(repoRoot, "method"))
+	if err != nil {
+		return nil, fmt.Errorf("create method-store-leveldb: %w", err)
+	}
+	methodRegister, err := agency.GetRegistryConstructor("method")
+	if err != nil {
+		return nil, fmt.Errorf("get method constructor: %w", err)
+	}
+	methodRegistry := methodRegister(methodStore, methodStore, loggers.Logger(loggers.Executor))
+
+	didStore, err := leveldb.New(repo.GetStoragePath(repoRoot, "did"))
+	if err != nil {
+		return nil, fmt.Errorf("create did-store-leveldb: %w", err)
+	}
+	didRegister, err := agency.GetRegistryConstructor("did")
+	if err != nil {
+		return nil, fmt.Errorf("create did constructor: %w", err)
+	}
+	didRegistry := didRegister(didStore, didStore, loggers.Logger(loggers.Executor))
+
 	bf, err := blockfile.NewBlockFile(repoRoot, loggers.Logger(loggers.Storage))
 	if err != nil {
 		return nil, fmt.Errorf("blockfile initialize: %w", err)
@@ -134,12 +155,12 @@ func generateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 	}
 
 	// 1. create executor and view executor
-	txExec, err := executor.New(rwLdg, loggers.Logger(loggers.Executor), rep.Config.Executor.Type)
+	txExec, err := executor.New(rwLdg, loggers.Logger(loggers.Executor), rep.Config.Executor.Type, methodRegistry, didRegistry)
 	if err != nil {
 		return nil, fmt.Errorf("create BlockExecutor: %w", err)
 	}
 
-	viewExec, err := executor.New(viewLdg, loggers.Logger(loggers.Executor), rep.Config.Executor.Type)
+	viewExec, err := executor.New(viewLdg, loggers.Logger(loggers.Executor), rep.Config.Executor.Type, methodRegistry, didRegistry)
 	if err != nil {
 		return nil, fmt.Errorf("create ViewExecutor: %w", err)
 	}

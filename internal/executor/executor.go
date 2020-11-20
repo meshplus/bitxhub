@@ -44,10 +44,12 @@ type BlockExecutor struct {
 	blockFeed        event.Feed
 	ctx              context.Context
 	cancel           context.CancelFunc
+	methodRegistry   agency.Registry
+	didRegistry      agency.Registry
 }
 
 // New creates executor instance
-func New(chainLedger ledger.Ledger, logger logrus.FieldLogger, typ string) (*BlockExecutor, error) {
+func New(chainLedger ledger.Ledger, logger logrus.FieldLogger, typ string, mr agency.Registry, dr agency.Registry) (*BlockExecutor, error) {
 	ibtpVerify := proof.New(chainLedger, logger)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -70,8 +72,10 @@ func New(chainLedger ledger.Ledger, logger logrus.FieldLogger, typ string) (*Blo
 		currentHeight:    chainLedger.GetChainMeta().Height,
 		currentBlockHash: chainLedger.GetChainMeta().BlockHash,
 		wasmInstances:    make(map[string]wasmer.Instance),
+		methodRegistry:   mr,
+		didRegistry:      dr,
 	}
-	blockExecutor.txsExecutor = txsExecutor(blockExecutor.applyTx, registerBoltContracts, logger)
+	blockExecutor.txsExecutor = txsExecutor(blockExecutor.applyTx, blockExecutor.registerBoltContracts, logger)
 
 	return blockExecutor, nil
 }
@@ -218,7 +222,7 @@ func (exec *BlockExecutor) persistData() {
 	}
 }
 
-func registerBoltContracts() map[string]agency.Contract {
+func (exec *BlockExecutor) registerBoltContracts() map[string]agency.Contract {
 	boltContracts := []*boltvm.BoltContract{
 		{
 			Enabled:  true,
@@ -265,12 +269,24 @@ func registerBoltContracts() map[string]agency.Contract {
 	}
 
 	ContractsInfo := agency.GetRegisteredContractInfo()
+	exec.logger.WithFields(logrus.Fields{}).Info("ContractsInfo:", ContractsInfo)
 	for addr, info := range ContractsInfo {
+		var contract agency.Contract
+		exec.logger.WithFields(logrus.Fields{}).Info(addr, ", info.Name:", info.Name)
+
+		if info.Name == "method registry" {
+			contract = info.Constructor(exec.methodRegistry)
+		} else if info.Name == "did registry" {
+			contract = info.Constructor(exec.didRegistry)
+		} else {
+			contract = info.Constructor(0)
+		}
+		exec.logger.WithFields(logrus.Fields{}).Info("contract:", contract)
 		boltContracts = append(boltContracts, &boltvm.BoltContract{
 			Enabled:  true,
 			Name:     info.Name,
 			Address:  addr,
-			Contract: info.Constructor(),
+			Contract: contract,
 		})
 	}
 
