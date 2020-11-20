@@ -51,7 +51,6 @@ func start(ctx *cli.Context) error {
 		log.WithPersist(true),
 		log.WithFilePath(filepath.Join(repoRoot, repo.Config.Log.Dir)),
 		log.WithFileName(repo.Config.Log.Filename),
-		log.WithMaxSize(20*1024*1024),
 		log.WithMaxAge(90*24*time.Hour),
 		log.WithRotationTime(24*time.Hour),
 	)
