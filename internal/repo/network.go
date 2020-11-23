@@ -130,6 +130,11 @@ func loadNetworkConfig(repoRoot string) (*NetworkConfig, error) {
 	for _, node := range networkConfig.Nodes {
 		if node.ID == networkConfig.ID {
 			networkConfig.LocalAddr = node.Addr
+			addr, err := ma.NewMultiaddr(networkConfig.LocalAddr)
+			if err != nil {
+				return nil, fmt.Errorf("new multiaddr: %w", err)
+			}
+			networkConfig.LocalAddr = strings.Replace(networkConfig.LocalAddr, ma.Split(addr)[0].String(), "/ip4/0.0.0.0", -1)
 		}
 	}
 
