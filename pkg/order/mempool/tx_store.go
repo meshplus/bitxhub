@@ -1,9 +1,11 @@
 package mempool
 
 import (
+	"fmt"
+	"sync/atomic"
+
 	"github.com/google/btree"
 	"github.com/meshplus/bitxhub-model/pb"
-	"sync/atomic"
 )
 
 type transactionStore struct {
@@ -13,6 +15,8 @@ type transactionStore struct {
 	allTxs map[string]*txSortedMap
 	// track the commit nonce and pending nonce of each account.
 	nonceCache *nonceCache
+	// keep track of the livetime of ready txs in priorityIndex
+	ttlIndex *txLiveTimeMap
 	// keeps track of "non-ready" txs (txs that can't be included in next block)
 	// only used to help remove some txs if pool is full.
 	parkingLotIndex *btreeIndex
@@ -38,6 +42,7 @@ func newTransactionStore() *transactionStore {
 		batchedTxs:      make(map[orderedIndexKey]bool),
 		missingBatch:    make(map[uint64]map[uint64]string),
 		batchedCache:    make(map[uint64][]*pb.Transaction),
+		ttlIndex:        newTxLiveTimeMap(),
 		parkingLotIndex: newBtreeIndex(),
 		priorityIndex:   newBtreeIndex(),
 		nonceCache:      newNonceCache(),
@@ -175,4 +180,36 @@ func (nc *nonceCache) getPendingNonce(account string) uint64 {
 
 func (nc *nonceCache) setPendingNonce(account string, nonce uint64) {
 	nc.pendingNonces[account] = nonce
+}
+
+// since the live time field in sortedTtlKey may vary during process
+// we need to track the latest live time since its latest broadcast.
+type txLiveTimeMap struct {
+	items map[string]int64 // map account to its latest live time
+	index *btree.BTree     // index for txs
+}
+
+func newTxLiveTimeMap() *txLiveTimeMap {
+	return &txLiveTimeMap{
+		index: btree.New(btreeDegree),
+		items: make(map[string]int64),
+	}
+}
+
+func (tlm *txLiveTimeMap) insertByTtlKey(account string, nonce uint64, liveTime int64) {
+	tlm.index.ReplaceOrInsert(&sortedTtlKey{account, nonce, liveTime})
+	tlm.items[account] = liveTime
+}
+
+func (tlm *txLiveTimeMap) removeByTtlKey(txs map[string][]*pb.Transaction) {
+	for account, list := range txs {
+		for _, tx := range list {
+			liveTime, ok := tlm.items[account]
+			if !ok {
+				fmt.Printf("ttl key for %s not found\n", account)
+				return
+			}
+			tlm.index.Delete(&sortedTtlKey{account, tx.Nonce, liveTime})
+		}
+	}
 }

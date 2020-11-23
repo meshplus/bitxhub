@@ -23,6 +23,7 @@ const (
 	DefaultTxSetSize   = 10
 
 	DefaultBatchTick       = 500 * time.Millisecond
+	DefaultTimeoutTick     = 3 * time.Minute
 	DefaultTxSetTick       = 100 * time.Millisecond
 	DefaultFetchTxnTimeout = 3 * time.Second
 )
@@ -70,6 +71,7 @@ type Config struct {
 	BatchSize      uint64
 	PoolSize       uint64
 	TxSliceSize    uint64
+	TimeoutTick    time.Duration
 	BatchTick      time.Duration
 	FetchTimeout   time.Duration
 	TxSliceTimeout time.Duration

@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/meshplus/bitxhub-model/pb"
-
 	"github.com/stretchr/testify/assert"
 )
 

@@ -26,13 +26,15 @@ type mempoolImpl struct {
 	batchC     chan *raftproto.Ready
 	close      chan bool
 
-	txStore       *transactionStore // store all transactions info
-	txCache       *TxCache          // cache the transactions received from api
-	subscribe     *subscribeEvent
-	storage       storage.Storage
-	peerMgr       peermgr.PeerManager //network manager
-	batchTimerMgr *timerManager
-	ledgerHelper  func(hash *types.Hash) (*pb.Transaction, error)
+	txStore         *transactionStore // store all transactions info
+	txCache         *TxCache          // cache the transactions received from api
+	subscribe       *subscribeEvent
+	storage         storage.Storage
+	peerMgr         peermgr.PeerManager //network manager
+	batchTimerMgr   *timerManager
+	timeoutC        *time.Ticker
+	timeoutDuration time.Duration
+	ledgerHelper    func(hash *types.Hash) (*pb.Transaction, error)
 }
 
 func newMempoolImpl(config *Config, storage storage.Storage, batchC chan *raftproto.Ready) *mempoolImpl {
@@ -60,6 +62,15 @@ func newMempoolImpl(config *Config, storage storage.Storage, batchC chan *raftpr
 		batchTick = config.BatchTick
 	}
 	mpi.batchTimerMgr = newTimer(batchTick)
+	// set timeout manager for timeout txs
+	var timeoutTick time.Duration
+	if config.TimeoutTick == 0 {
+		timeoutTick = DefaultTimeoutTick
+	} else {
+		timeoutTick = config.TimeoutTick
+	}
+	mpi.timeoutDuration = timeoutTick
+	mpi.timeoutC = time.NewTicker(timeoutTick)
 	return mpi
 }
 
@@ -118,6 +129,9 @@ func (mpi *mempoolImpl) listenEvent() {
 				}
 			}
 
+		case <-mpi.timeoutC.C:
+			// check if there are timeout txs to rebroadcast
+			mpi.rebroadcastTimeoutTxs() // need to run in another goroutine or not?
 		case commitReady := <-mpi.subscribe.commitTxnC:
 			gcStartTime := time.Now()
 			mpi.processCommitTransactions(commitReady)
@@ -210,9 +224,10 @@ func (mpi *mempoolImpl) processDirtyAccount(dirtyAccounts map[string]bool) {
 			readyTxs, nonReadyTxs, nextDemandNonce := list.filterReady(pendingNonce)
 			mpi.txStore.nonceCache.setPendingNonce(account, nextDemandNonce)
 
-			// inset ready txs into priorityIndex.
+			// inset ready txs into priorityIndex and set ttlIndex for these txs.
 			for _, tx := range readyTxs {
 				mpi.txStore.priorityIndex.insertByOrderedQueueKey(account, tx)
+				mpi.txStore.ttlIndex.insertByTtlKey(account, tx.Nonce, tx.Timestamp)
 			}
 			mpi.txStore.priorityNonBatchSize = mpi.txStore.priorityNonBatchSize + uint64(len(readyTxs))
 
@@ -234,7 +249,7 @@ func (mpi *mempoolImpl) generateBlock(isTimeout bool) (*raftproto.Ready, error) 
 	mpi.txStore.priorityIndex.data.Ascend(func(a btree.Item) bool {
 		tx := a.(*orderedIndexKey)
 		// if tx has existed in bathedTxs,
-		if _, ok := mpi.txStore.batchedTxs[orderedIndexKey{tx.account, tx.nonce}]; ok {
+		if _, ok := mpi.txStore.batchedTxs[orderedIndexKey{tx.account, tx.nonce, tx.timestamp}]; ok {
 			return true
 		}
 		txSeq := tx.nonce
@@ -383,7 +398,7 @@ func (mpi *mempoolImpl) processCommitTransactions(ready *raftproto.Ready) {
 			removedTxs := list.forward(commitNonce)
 			// remove index smaller than commitNonce delete index.
 			var wg sync.WaitGroup
-			wg.Add(3)
+			wg.Add(4)
 			go func(ready map[string][]*pb.Transaction) {
 				defer wg.Done()
 				list.index.removeBySortedNonceKey(removedTxs)
@@ -395,6 +410,10 @@ func (mpi *mempoolImpl) processCommitTransactions(ready *raftproto.Ready) {
 			go func(ready map[string][]*pb.Transaction) {
 				defer wg.Done()
 				mpi.txStore.parkingLotIndex.removeByOrderedQueueKey(removedTxs)
+			}(removedTxs)
+			go func(ready map[string][]*pb.Transaction) {
+				defer wg.Done()
+				mpi.txStore.ttlIndex.removeByTtlKey(removedTxs)
 			}(removedTxs)
 			wg.Wait()
 			delta := int32(len(removedTxs))
@@ -551,4 +570,35 @@ func (mpi *mempoolImpl) processFetchTxnResponse(fetchTxnResponse *FetchTxnRespon
 	}
 	delete(mpi.txStore.missingBatch, fetchTxnResponse.Height)
 	return nil
+}
+
+func (mpi *mempoolImpl) rebroadcastTimeoutTxs() {
+	lowBoundTime := time.Now().UnixNano() - mpi.timeoutDuration.Nanoseconds()
+	pivot := &sortedTtlKey{liveTime: lowBoundTime}
+	txSet := &TxSlice{TxList: make([]*pb.Transaction, 0)}
+	// all the tx whose live time is less than lowBoundTime should be rebroadcast
+	mpi.logger.Debug("------- start rebroadcast timeout tx -----------")
+	mpi.txStore.ttlIndex.index.AscendLessThan(pivot, func(i btree.Item) bool {
+		item := i.(*sortedTtlKey)
+		if txMap, ok := mpi.txStore.allTxs[item.account]; !ok {
+			tx := txMap.items[item.nonce].tx
+			txSet.TxList = append(txSet.TxList, tx)
+			// update the liveTime of each tx
+			item.liveTime = time.Now().UnixNano()
+			mpi.txStore.ttlIndex.items[item.account] = item.liveTime
+		}
+		return true
+	})
+	if len(txSet.TxList) == 0 {
+		return
+	}
+	mpi.logger.Debug("rebroadcast timeout tx %d", len(txSet.TxList))
+	data, err := txSet.Marshal()
+	if err != nil {
+		mpi.logger.Errorf("Marshal failed, err: %s", err.Error())
+		return
+	}
+
+	pbMsg := mpi.msgToConsensusPbMsg(data, raftproto.RaftMessage_BROADCAST_TX)
+	mpi.broadcast(pbMsg)
 }

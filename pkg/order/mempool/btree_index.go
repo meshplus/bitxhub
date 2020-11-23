@@ -1,15 +1,15 @@
 package mempool
 
 import (
-	"github.com/meshplus/bitxhub-model/pb"
-
 	"github.com/google/btree"
+	"github.com/meshplus/bitxhub-model/pb"
 )
 
 // the key of priorityIndex and parkingLotIndex.
 type orderedIndexKey struct {
-	account string
-	nonce   uint64
+	account   string
+	nonce     uint64
+	timestamp int64 // the timestamp of tx when it is received
 }
 
 // TODO (YH): add expiration time order
@@ -17,13 +17,24 @@ type orderedIndexKey struct {
 func (oik *orderedIndexKey) Less(than btree.Item) bool {
 	other := than.(*orderedIndexKey)
 	if oik.account != other.account {
-		return oik.account < other.account
+		return oik.timestamp < other.timestamp
 	}
 	return oik.nonce < other.nonce
 }
 
 type sortedNonceKey struct {
 	nonce uint64
+}
+
+type sortedTtlKey struct {
+	account  string
+	nonce    uint64
+	liveTime int64 // the timestamp of tx when it is received or rebroadcast
+}
+
+func (stk *sortedTtlKey) Less(than btree.Item) bool {
+	other := than.(*sortedTtlKey)
+	return stk.liveTime < other.liveTime
 }
 
 // Less should guarantee item can be cast into sortedNonceKey.
@@ -34,8 +45,9 @@ func (snk *sortedNonceKey) Less(item btree.Item) bool {
 
 func makeOrderedIndexKey(account string, tx *pb.Transaction) *orderedIndexKey {
 	return &orderedIndexKey{
-		account: account,
-		nonce:   tx.Nonce,
+		account:   account,
+		nonce:     tx.Nonce,
+		timestamp: tx.Timestamp,
 	}
 }
 
