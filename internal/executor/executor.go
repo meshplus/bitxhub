@@ -153,7 +153,7 @@ func (exec *BlockExecutor) listenExecuteEvent() {
 				"height": block.BlockHeader.Number,
 				"count":  len(block.Transactions),
 				"elapse": time.Since(now),
-			}).Infof("Executed block")
+			}).Debug("Executed block")
 			exec.persistC <- blockData
 		case <-exec.ctx.Done():
 			return
