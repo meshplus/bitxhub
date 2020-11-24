@@ -87,7 +87,7 @@ func (swarm *Swarm) Start() error {
 					return err
 				}
 
-				if err := swarm.verifyCert(id); err != nil {
+				if err := swarm.verifyCertOrDisconnect(id); err != nil {
 					if attempt != 0 && attempt%5 == 0 {
 						swarm.logger.WithFields(logrus.Fields{
 							"node":  id,
@@ -125,6 +125,17 @@ func (swarm *Swarm) Stop() error {
 
 	return nil
 }
+
+func (swarm *Swarm) verifyCertOrDisconnect(id uint64) error {
+	if err := swarm.verifyCert(id); err != nil {
+		if err = swarm.p2p.Disconnect(swarm.peers[id].ID.String()); err != nil {
+			return err
+		}
+		return err
+	}
+	return nil
+}
+
 
 func (swarm *Swarm) Ping() {
 	ticker := time.NewTicker(swarm.pingTimeout)
