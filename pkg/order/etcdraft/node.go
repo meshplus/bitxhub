@@ -139,6 +139,7 @@ func (n *Node) Start() error {
 	}
 	if restart {
 		n.node = raft.RestartNode(rc)
+		n.isRestart = true
 	} else {
 		n.node = raft.StartNode(rc, n.peers)
 	}
