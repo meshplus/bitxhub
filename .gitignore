@@ -19,6 +19,7 @@ pid
 scripts/prepare
 logs
 mock_*/
+!mock_peermgr
 .fabric-samples
 coverage.txt
 docs/.vuepress/dist
