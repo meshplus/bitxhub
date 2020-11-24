@@ -51,8 +51,7 @@ func start(ctx *cli.Context) error {
 		log.WithPersist(true),
 		log.WithFilePath(filepath.Join(repoRoot, repo.Config.Log.Dir)),
 		log.WithFileName(repo.Config.Log.Filename),
-		log.WithMaxSize(2*1024*1024),
-		log.WithMaxAge(24*time.Hour),
+		log.WithMaxAge(90*24*time.Hour),
 		log.WithRotationTime(24*time.Hour),
 	)
 	if err != nil {
@@ -145,7 +144,7 @@ func handleShutdown(node *app.BitXHub, wg *sync.WaitGroup) {
 // runtimePProf will record the cpu or memory profiles every 5 second.
 func runtimePProf(repoRoot, mode string, id uint64, duration time.Duration) {
 	tick := time.NewTicker(duration)
-	rootPath := filepath.Join(repoRoot,"/pprof/")
+	rootPath := filepath.Join(repoRoot, "/pprof/")
 	exist := fileExist(rootPath)
 	if !exist {
 		err := os.Mkdir(rootPath, os.ModePerm)
@@ -158,13 +157,13 @@ func runtimePProf(repoRoot, mode string, id uint64, duration time.Duration) {
 	var cpuFile *os.File
 	if mode == "cpu" {
 		subPath := fmt.Sprint("cpu-", time.Now().Format("20060102-15:04:05"))
-		cpuPath := filepath.Join(rootPath,subPath)
+		cpuPath := filepath.Join(rootPath, subPath)
 		cpuFile, _ = os.Create(cpuPath)
 		_ = pprof.StartCPUProfile(cpuFile)
 	}
 	for {
 		select {
-		case <- tick.C:
+		case <-tick.C:
 			switch mode {
 			case "cpu":
 				pprof.StopCPUProfile()
