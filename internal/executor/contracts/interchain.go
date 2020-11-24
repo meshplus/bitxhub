@@ -186,7 +186,10 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP, interchain *pb.Interchain) 
 		}
 
 		idx := interchain.InterchainCounter[ibtp.To]
-		if idx+1 != ibtp.Index {
+		if ibtp.Index <= idx {
+			return fmt.Errorf(fmt.Sprintf("index already exists, required %d, but %d", idx+1, ibtp.Index))
+		}
+		if ibtp.Index > idx+1 {
 			return fmt.Errorf(fmt.Sprintf("wrong index, required %d, but %d", idx+1, ibtp.Index))
 		}
 	} else {
@@ -195,10 +198,12 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP, interchain *pb.Interchain) 
 		}
 
 		idx := interchain.ReceiptCounter[ibtp.To]
-		if idx+1 != ibtp.Index {
-			if interchain.SourceReceiptCounter[ibtp.To]+1 != ibtp.Index {
-				return fmt.Errorf("wrong receipt index, required %d, but %d", idx+1, ibtp.Index)
-			}
+		if ibtp.Index <= idx {
+			return fmt.Errorf(fmt.Sprintf("receipt index already exists, required %d, but %d", idx+1, ibtp.Index))
+		}
+
+		if ibtp.Index > idx+1 {
+			return fmt.Errorf(fmt.Sprintf("wrong receipt index, required %d, but %d", idx+1, ibtp.Index))
 		}
 	}
 
@@ -224,6 +229,8 @@ func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *pb.Interchain
 		ic, _ := x.getInterchain(ibtp.To)
 		ic.SourceReceiptCounter[ibtp.From] = ibtp.Index
 		x.setInterchain(ibtp.To, ic)
+		x.SetObject(x.indexReceiptMapKey(ibtp.ID()), x.GetTxHash())
+
 	}
 
 	x.PostInterchainEvent(m)
@@ -401,4 +408,8 @@ func AppchainKey(id string) string {
 
 func (x *InterchainManager) indexMapKey(id string) string {
 	return fmt.Sprintf("index-tx-%s", id)
+}
+
+func (x *InterchainManager) indexReceiptMapKey(id string) string {
+	return fmt.Sprintf("index-receipt-tx-%s", id)
 }

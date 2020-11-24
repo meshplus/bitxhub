@@ -9,6 +9,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/coreos/etcd/raft"
+	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/gogo/protobuf/sortkeys"
 	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -16,10 +19,6 @@ import (
 	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
 	"github.com/meshplus/bitxhub/pkg/order/mempool"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
-
-	"github.com/coreos/etcd/raft"
-	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/gogo/protobuf/sortkeys"
 	"github.com/sirupsen/logrus"
 )
 
@@ -52,10 +51,14 @@ type Node struct {
 	snapshotIndex     uint64   // current snapshot apply index in raft log
 	lastIndex         uint64   // last apply index in raft log
 
-	readyPool  *sync.Pool      // ready pool, avoiding memory growth fast
-	readyCache sync.Map        // ready cache
-	ctx        context.Context // context
-	haltC      chan struct{}   // exit signal
+	readyPool  *sync.Pool // ready pool, avoiding memory growth fast
+	readyCache sync.Map   // ready cache
+
+	justElected bool
+	isRestart   bool
+
+	ctx   context.Context // context
+	haltC chan struct{}   // exit signal
 
 }
 
@@ -136,6 +139,7 @@ func (n *Node) Start() error {
 	}
 	if restart {
 		n.node = raft.RestartNode(rc)
+		n.isRestart = true
 	} else {
 		n.node = raft.StartNode(rc, n.peers)
 	}
@@ -175,17 +179,17 @@ func (n *Node) ReportState(height uint64, hash types.Hash) {
 	}
 	appliedIndex, ok := n.blockAppliedIndex.Load(height)
 	if !ok {
-		n.logger.Errorf("can not found appliedIndex:", height)
+		n.logger.Debugf("can not found appliedIndex:", height)
 		return
 	}
 	// block already persisted, record the apply index in db
 	n.writeAppliedIndex(appliedIndex.(uint64))
-	n.blockAppliedIndex.Delete(height)
+	n.blockAppliedIndex.Delete(height - 1)
 
 	// TODO: delete readyCache
 	readyBytes, ok := n.readyCache.Load(height)
 	if !ok {
-		n.logger.Errorf("can not found ready:", height)
+		n.logger.Debugf("can not found ready:", height)
 		return
 	}
 	ready := readyBytes.(*raftproto.Ready)
@@ -273,17 +277,13 @@ func (n *Node) run() {
 				if !ok {
 					n.proposeC = nil
 				} else {
-					if !n.IsLeader() {
-						n.logger.Warn("Follower node can't propose a proposal")
-						n.mempool.UpdateLeader(n.leader)
-						continue
-					}
 					data, err := ready.Marshal()
 					if err != nil {
 						n.logger.Panic(err)
 					}
+					n.logger.Debugf("Proposed block %d to raft core consensus", ready.Height)
 					if err := n.node.Propose(n.ctx, data); err != nil {
-						n.logger.Panic("Failed to propose block [%d] to raft: %s", ready.Height, err)
+						n.logger.Errorf("Failed to propose block [%d] to raft: %s", ready.Height, err)
 					}
 				}
 			case cc, ok := <-n.confChangeC:
@@ -293,7 +293,7 @@ func (n *Node) run() {
 					confChangeCount++
 					cc.ID = confChangeCount
 					if err := n.node.ProposeConfChange(n.ctx, cc); err != nil {
-						n.logger.Panic("Failed to propose configuration update to Raft node: %s", err)
+						n.logger.Errorf("Failed to propose configuration update to Raft node: %s", err)
 					}
 				}
 			case <-n.ctx.Done():
@@ -314,9 +314,30 @@ func (n *Node) run() {
 			// 1: Write HardState, Entries, and Snapshot to persistent storage if they
 			// are not empty.
 			if err := n.raftStorage.Store(rd.Entries, rd.HardState, rd.Snapshot); err != nil {
-				n.logger.Fatalf("failed to persist etcd/raft data: %s", err)
+				n.logger.Errorf("failed to persist etcd/raft data: %s", err)
 			}
 
+			if rd.SoftState != nil {
+				newLeader := atomic.LoadUint64(&rd.SoftState.Lead)
+				if newLeader != n.leader {
+					n.logger.Infof("Raft leader changed: %d -> %d", n.leader, newLeader)
+					oldLeader := n.leader
+					n.leader = newLeader
+					if newLeader == n.id {
+						// If the cluster is started for the first time, the leader node starts listening requests directly.
+						if !n.isRestart && n.getBlockAppliedIndex() == uint64(0) {
+							n.mempool.UpdateLeader(n.leader)
+						} else {
+							// new leader should not serve requests
+							n.justElected = true
+						}
+					}
+					// old leader node stop batch block
+					if oldLeader == n.id {
+						n.mempool.UpdateLeader(n.leader)
+					}
+				}
+			}
 			// 2: Apply Snapshot (if any) and CommittedEntries to the state machine.
 			if len(rd.CommittedEntries) != 0 {
 				if ok := n.publishEntries(n.entriesToApply(rd.CommittedEntries)); !ok {
@@ -324,13 +345,19 @@ func (n *Node) run() {
 					return
 				}
 			}
-			if rd.SoftState != nil {
-				newLeader := atomic.LoadUint64(&rd.SoftState.Lead)
-				n.leader = newLeader
-				n.mempool.UpdateLeader(newLeader)
+
+			if n.justElected {
+				msgInflight := n.ramLastIndex() > n.appliedIndex+1
+				if msgInflight {
+					n.logger.Debugf("There are in flight blocks, new leader should not serve requests")
+					continue
+				}
+				n.justElected = false
+				n.mempool.UpdateLeader(n.leader)
 			}
+
 			// 3: AsyncSend all Messages to the nodes named in the To field.
-			go n.send(rd.Messages)
+			n.send(rd.Messages)
 
 			n.maybeTriggerSnapshot()
 
@@ -342,46 +369,57 @@ func (n *Node) run() {
 	}
 }
 
+func (n *Node) ramLastIndex() uint64 {
+	i, _ := n.raftStorage.ram.LastIndex()
+	n.logger.Infof("New Leader's last index is %d, appliedIndex is %d", i, n.appliedIndex)
+	return i
+}
+
 // send raft consensus message
 func (n *Node) send(messages []raftpb.Message) {
 	for _, msg := range messages {
-		if msg.To == 0 {
-			continue
-		}
-		status := raft.SnapshotFinish
+		go func(msg raftpb.Message) {
+			if msg.To == 0 {
+				return
+			}
+			status := raft.SnapshotFinish
 
-		data, err := (&msg).Marshal()
-		if err != nil {
-			n.logger.Error(err)
-			continue
-		}
+			data, err := (&msg).Marshal()
+			if err != nil {
+				n.logger.Error(err)
+				return
+			}
 
-		rm := &raftproto.RaftMessage{
-			Type: raftproto.RaftMessage_CONSENSUS,
-			Data: data,
-		}
-		rmData, err := rm.Marshal()
-		if err != nil {
-			n.logger.Error(err)
-			continue
-		}
-		p2pMsg := &pb.Message{
-			Type: pb.Message_CONSENSUS,
-			Data: rmData,
-		}
+			rm := &raftproto.RaftMessage{
+				Type: raftproto.RaftMessage_CONSENSUS,
+				Data: data,
+			}
+			rmData, err := rm.Marshal()
+			if err != nil {
+				n.logger.Error(err)
+				return
+			}
+			p2pMsg := &pb.Message{
+				Type: pb.Message_CONSENSUS,
+				Data: rmData,
+			}
 
-		err = n.peerMgr.AsyncSend(msg.To, p2pMsg)
-		if err != nil {
-			n.logger.WithFields(logrus.Fields{
-				"from": msg.From,
-			}).Debug(err)
-			n.node.ReportUnreachable(msg.To)
-			status = raft.SnapshotFailure
-		}
+			err = n.peerMgr.AsyncSend(msg.To, p2pMsg)
+			if err != nil {
+				n.logger.WithFields(logrus.Fields{
+					"from":     n.id,
+					"to":       msg.To,
+					"msg_type": msg.Type,
+					"err":      err.Error(),
+				}).Debugf("async send msg")
+				n.node.ReportUnreachable(msg.To)
+				status = raft.SnapshotFailure
+			}
 
-		if msg.Type == raftpb.MsgSnap {
-			n.node.ReportSnapshot(msg.To, status)
-		}
+			if msg.Type == raftpb.MsgSnap {
+				n.node.ReportSnapshot(msg.To, status)
+			}
+		}(msg)
 	}
 }
 
@@ -394,11 +432,6 @@ func (n *Node) publishEntries(ents []raftpb.Entry) bool {
 				break
 			}
 
-			ready := n.readyPool.Get().(*raftproto.Ready)
-			if err := ready.Unmarshal(ents[i].Data); err != nil {
-				n.logger.Error(err)
-				continue
-			}
 			// This can happen:
 			//
 			// if (1) we crashed after applying this block to the chain, but
@@ -411,6 +444,12 @@ func (n *Node) publishEntries(ents []raftpb.Entry) bool {
 			blockAppliedIndex := n.getBlockAppliedIndex()
 			if blockAppliedIndex >= ents[i].Index {
 				n.appliedIndex = ents[i].Index
+				continue
+			}
+
+			ready := n.readyPool.Get().(*raftproto.Ready)
+			if err := ready.Unmarshal(ents[i].Data); err != nil {
+				n.logger.Error(err)
 				continue
 			}
 

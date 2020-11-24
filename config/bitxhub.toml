@@ -21,8 +21,8 @@ solo = false
     allowed_origins = ["*"]
 
 [ping]
-  enable = false
-  duration = "2s"
+  enable = true
+  duration = "15s"
 
 [security]
 enable_tls = false
