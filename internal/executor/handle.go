@@ -160,7 +160,8 @@ func (exec *BlockExecutor) buildTxMerkleTree(txs []*pb.Transaction) (*types.Hash
 
 	contents := make([]merkletree.Content, 0, groupCnt)
 	for _, l2Root := range l2Roots {
-		contents = append(contents, &l2Root)
+		r := l2Root
+		contents = append(contents, &r)
 	}
 	root, err := calcMerkleRoot(contents)
 	if err != nil {
