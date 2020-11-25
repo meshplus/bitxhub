@@ -34,7 +34,11 @@ func (api *ChainAPI) TPS(begin, end uint64) (uint64, error) {
 		wg        sync.WaitGroup
 	)
 
-	if begin >= end {
+	if int(begin) <= 0 {
+		return 0, fmt.Errorf("begin number should be greater than zero")
+	}
+
+	if int(begin) >= int(end) {
 		return 0, fmt.Errorf("begin number should be smaller than end number")
 	}
 
