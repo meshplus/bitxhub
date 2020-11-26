@@ -559,6 +559,8 @@ github.com/meshplus/go-lightp2p v0.0.0-20200817105923-6b3aee40fa54 h1:5Ip5AB7Sxx
 github.com/meshplus/go-lightp2p v0.0.0-20200817105923-6b3aee40fa54/go.mod h1:G89UJaeqCQFxFdp8wzy1AdKfMtDEhpySau0pjDNeeaw=
 github.com/meshplus/go-lightp2p v0.0.0-20201102131103-3fa9723c2c7c h1:okdrShjaenRGAoyS/3oMaGx5fPkcn6xZlFbAech41HY=
 github.com/meshplus/go-lightp2p v0.0.0-20201102131103-3fa9723c2c7c/go.mod h1:Rk+Lwb1a1468sF9mfKcu8VtVCTnF6BKpc8T1G8rSLL4=
+github.com/meshplus/go-lightp2p v0.0.0-20201119082512-489f5f269aac h1:jdaFjulP0euJsnOEqTdI9z994V3v87sYEvMDFi1/srM=
+github.com/meshplus/go-lightp2p v0.0.0-20201119082512-489f5f269aac/go.mod h1:L3pEzDMouz+xcIVwG2fj+mAsM95GAkzoo7cEd2CzmCQ=
 github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b/go.mod h1:01TrycV0kFyexm33Z7vhZRXopbI8J3TDReVlkTgMUxE=
 github.com/miekg/dns v1.1.12/go.mod h1:W1PPwlIAgtquWBMBEV9nkV9Cazfe8ScdGz/Lj7v3Nrg=
 github.com/miekg/dns v1.1.28/go.mod h1:KNUDUusw/aVsxyTYZM1oqvCicbwhgbNgztCETuNZ7xM=

@@ -277,6 +277,11 @@ func (n *Node) run() {
 				if !ok {
 					n.proposeC = nil
 				} else {
+					if !n.IsLeader() {
+						n.logger.Warn("Follower node can't propose a proposal")
+						n.mempool.UpdateLeader(n.leader)
+						continue
+					}
 					data, err := ready.Marshal()
 					if err != nil {
 						n.logger.Panic(err)
@@ -319,24 +324,8 @@ func (n *Node) run() {
 
 			if rd.SoftState != nil {
 				newLeader := atomic.LoadUint64(&rd.SoftState.Lead)
-				if newLeader != n.leader {
-					n.logger.Infof("Raft leader changed: %d -> %d", n.leader, newLeader)
-					oldLeader := n.leader
-					n.leader = newLeader
-					if newLeader == n.id {
-						// If the cluster is started for the first time, the leader node starts listening requests directly.
-						if !n.isRestart && n.getBlockAppliedIndex() == uint64(0) {
-							n.mempool.UpdateLeader(n.leader)
-						} else {
-							// new leader should not serve requests
-							n.justElected = true
-						}
-					}
-					// old leader node stop batch block
-					if oldLeader == n.id {
-						n.mempool.UpdateLeader(n.leader)
-					}
-				}
+				n.leader = newLeader
+				n.mempool.UpdateLeader(newLeader)
 			}
 			// 2: Apply Snapshot (if any) and CommittedEntries to the state machine.
 			if len(rd.CommittedEntries) != 0 {
@@ -344,16 +333,6 @@ func (n *Node) run() {
 					n.Stop()
 					return
 				}
-			}
-
-			if n.justElected {
-				msgInflight := n.ramLastIndex() > n.appliedIndex+1
-				if msgInflight {
-					n.logger.Debugf("There are in flight blocks, new leader should not serve requests")
-					continue
-				}
-				n.justElected = false
-				n.mempool.UpdateLeader(n.leader)
 			}
 
 			// 3: AsyncSend all Messages to the nodes named in the To field.
@@ -367,12 +346,6 @@ func (n *Node) run() {
 			n.Stop()
 		}
 	}
-}
-
-func (n *Node) ramLastIndex() uint64 {
-	i, _ := n.raftStorage.ram.LastIndex()
-	n.logger.Infof("New Leader's last index is %d, appliedIndex is %d", i, n.appliedIndex)
-	return i
 }
 
 // send raft consensus message
