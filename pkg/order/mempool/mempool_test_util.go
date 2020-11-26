@@ -47,13 +47,13 @@ func mockMempoolImpl() (*mempoolImpl, chan *raftproto.Ready) {
 	}
 	config.PeerMgr = newMockPeerMgr()
 	db, _ := leveldb.New(LevelDBDir)
-	proposalC := make(chan *raftproto.Ready)
+	proposalC := make(chan *raftproto.Ready, 2)
 	mempool := newMempoolImpl(config, db, proposalC)
 	return mempool, proposalC
 }
 
 func getTransactionFunc(hash *types.Hash) (*pb.Transaction, error) {
-	return nil,errors.New("can't find transaction")
+	return nil, errors.New("can't find transaction")
 }
 
 func genPrivKey() crypto.PrivateKey {
@@ -87,9 +87,9 @@ func cleanTestData() bool {
 }
 
 func newHash() *types.Hash {
-	hashBytes :=  make([]byte,types.HashLength)
+	hashBytes := make([]byte, types.HashLength)
 	rand.Read(hashBytes)
-	return  types.NewHash(hashBytes)
+	return types.NewHash(hashBytes)
 }
 
 type mockPeerMgr struct {

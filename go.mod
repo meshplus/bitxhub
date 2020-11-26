@@ -45,6 +45,7 @@ require (
 	github.com/syndtr/goleveldb v1.0.1-0.20190923125748-758128399b1d
 	github.com/tidwall/gjson v1.3.5
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5
+	github.com/uber/go-torch v0.0.0-20181107071353-86f327cc820e // indirect
 	github.com/urfave/cli v1.22.1
 	github.com/wasmerio/go-ext-wasm v0.3.1
 	github.com/willf/bitset v1.1.11 // indirect

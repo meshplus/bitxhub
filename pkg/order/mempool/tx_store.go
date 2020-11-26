@@ -198,18 +198,19 @@ func newTxLiveTimeMap() *txLiveTimeMap {
 
 func (tlm *txLiveTimeMap) insertByTtlKey(account string, nonce uint64, liveTime int64) {
 	tlm.index.ReplaceOrInsert(&sortedTtlKey{account, nonce, liveTime})
-	tlm.items[account] = liveTime
+	tlm.items[makeKey(account, nonce)] = liveTime
 }
 
 func (tlm *txLiveTimeMap) removeByTtlKey(txs map[string][]*pb.Transaction) {
 	for account, list := range txs {
 		for _, tx := range list {
-			liveTime, ok := tlm.items[account]
+			liveTime, ok := tlm.items[makeKey(account, tx.Nonce)]
 			if !ok {
 				fmt.Printf("ttl key for %s not found\n", account)
 				return
 			}
 			tlm.index.Delete(&sortedTtlKey{account, tx.Nonce, liveTime})
+			delete(tlm.items, makeKey(account, tx.Nonce))
 		}
 	}
 }

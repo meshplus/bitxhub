@@ -14,7 +14,7 @@ disable_proposal_forwarding = true # This prevents blocks from being accidentall
         tx_slice_size       = 10    # How many transactions should the node broadcast at once
 
         batch_tick          = "0.3s" # Block packaging time period.
-        timeout_tick = "30s" # Node timeout tick to check if there exist txs to be rebroadcast
+        timeout_tick = "3m" # Node timeout tick to check if there exist txs to be rebroadcast
         tx_slice_timeout    = "0.1s"  # Node broadcasts transactions if there are cached transactions, although set_size isn't reached yet
         fetch_timeout       = "3s"    # How long to wait before fetching missing transactions finished
 

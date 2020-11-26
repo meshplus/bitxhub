@@ -2,8 +2,11 @@ package mempool
 
 import (
 	"testing"
+	"time"
 
+	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
+	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -117,4 +120,131 @@ func TestProcessFetchTxnResponse(t *testing.T) {
 	err = mpi.processFetchTxnResponse(fetchTxnResponse)
 	ast.Nil(err)
 	ast.Equal(0, len(mpi.txStore.missingBatch))
+}
+
+func TestRebroadcastTimeoutTxs(t *testing.T) {
+	ast := assert.New(t)
+	mpi, _ := mockMempoolImpl()
+	mpi.batchSize = 100
+	defer cleanTestData()
+
+	txList := make([]*pb.Transaction, 0)
+	privKey1 := genPrivKey()
+	privKey2 := genPrivKey()
+
+	for i := 1; i <= 500; i++ {
+		tx1 := constructTx(uint64(i), &privKey1)
+		tx2 := constructTx(uint64(i), &privKey2)
+		txList = append(txList, tx1, tx2)
+	}
+
+	err := mpi.processTransactions(txList)
+
+	mpi.timeoutDuration = 300 * time.Millisecond
+	time.Sleep(300 * time.Millisecond)
+	mpi.rebroadcastTimeoutTxs()
+	ast.Nil(err)
+}
+
+func TestGenerateBlockByTimestamp(t *testing.T) {
+	ast := assert.New(t)
+	mpi, batchC := mockMempoolImpl()
+	defer cleanTestData()
+
+	txList := make([]*pb.Transaction, 0)
+	privKey1 := genPrivKey()
+	account1, _ := privKey1.PublicKey().Address()
+	privKey2 := genPrivKey()
+	account2, _ := privKey2.PublicKey().Address()
+	nonceArr := []uint64{4, 2, 1}
+	for _, i := range nonceArr {
+		tx1 := constructTx(i, &privKey1)
+		tx2 := constructTx(i, &privKey2)
+		txList = append(txList, tx1, tx2)
+	}
+	err := mpi.processTransactions(txList)
+	ast.Nil(err)
+	ast.Equal(4, mpi.txStore.priorityIndex.size())
+	ast.Equal(2, mpi.txStore.parkingLotIndex.size())
+	ast.Equal(6, len(mpi.txStore.txHashMap))
+	ast.Equal(0, len(mpi.txStore.batchedCache))
+	ast.Equal(3, mpi.txStore.allTxs[account1.String()].index.size())
+	ast.Equal(3, mpi.txStore.allTxs[account2.String()].index.size())
+	ast.Equal(uint64(1), mpi.txStore.nonceCache.getCommitNonce(account1.String()))
+	ast.Equal(uint64(3), mpi.txStore.nonceCache.getPendingNonce(account1.String()))
+	ast.Equal(uint64(1), mpi.txStore.nonceCache.getCommitNonce(account2.String()))
+	ast.Equal(uint64(3), mpi.txStore.nonceCache.getPendingNonce(account2.String()))
+
+	go func() {
+		mpi.batchSize = 5
+		mpi.leader = mpi.localID
+		tx7 := constructTx(uint64(3), &privKey1)
+		tx8 := constructTx(uint64(5), &privKey2)
+		txList = make([]*pb.Transaction, 0)
+		txList = append(txList, tx7, tx8)
+		err = mpi.processTransactions(txList)
+		ast.Nil(err)
+	}()
+	var hashes []types.Hash
+	select {
+	case batch := <-batchC:
+		hashes = batch.TxHashes
+		ast.Equal(5, len(batch.TxHashes))
+		ast.Equal(uint64(2), batch.Height)
+		ast.Equal(uint64(1), mpi.txStore.priorityNonBatchSize)
+		ast.Equal(6, mpi.txStore.priorityIndex.size())
+		ast.Equal(3, mpi.txStore.parkingLotIndex.size(), "delete parkingLot until finishing executor")
+		ast.Equal(8, len(mpi.txStore.txHashMap))
+		ast.Equal(1, len(mpi.txStore.batchedCache))
+		ast.Equal(5, len(mpi.txStore.batchedCache[uint64(2)]))
+		ast.Equal(4, mpi.txStore.allTxs[account1.String()].index.size())
+		ast.Equal(4, mpi.txStore.allTxs[account2.String()].index.size())
+		ast.Equal(uint64(5), mpi.txStore.nonceCache.getPendingNonce(account1.String()))
+		ast.Equal(uint64(3), mpi.txStore.nonceCache.getPendingNonce(account2.String()))
+	}
+
+	// process committed txs
+	ready := &raftproto.Ready{
+		TxHashes: hashes,
+		Height:   2,
+	}
+	mpi.processCommitTransactions(ready)
+
+	time.Sleep(time.Second)
+	ast.Equal(uint64(1), mpi.txStore.priorityNonBatchSize)
+	ast.Equal(1, mpi.txStore.priorityIndex.size())
+	ast.Equal(3, mpi.txStore.parkingLotIndex.size(), "delete parkingLot until finishing executor")
+	ast.Equal(3, len(mpi.txStore.txHashMap))
+	ast.Equal(0, len(mpi.txStore.batchedCache))
+	ast.Equal(1, mpi.txStore.allTxs[account1.String()].index.size())
+	ast.Equal(2, mpi.txStore.allTxs[account2.String()].index.size())
+	ast.Equal(uint64(5), mpi.txStore.nonceCache.getPendingNonce(account1.String()))
+	ast.Equal(uint64(3), mpi.txStore.nonceCache.getCommitNonce(account2.String()))
+	ast.Equal(uint64(3), mpi.txStore.nonceCache.getPendingNonce(account2.String()))
+
+	// generate block3
+	txList = make([]*pb.Transaction, 0)
+	account1NonceArr2 := []uint64{5, 6}
+	for _, i := range account1NonceArr2 {
+		tx1 := constructTx(i, &privKey1)
+		txList = append(txList, tx1)
+	}
+	account2NonceArr2 := []uint64{3, 6}
+	for _, i := range account2NonceArr2 {
+		tx1 := constructTx(i, &privKey2)
+		txList = append(txList, tx1)
+	}
+	err = mpi.processTransactions(txList)
+	ast.Nil(err)
+	ast.Equal(uint64(2), mpi.txStore.priorityNonBatchSize)
+	ast.Equal(7, mpi.txStore.priorityIndex.size())
+	ast.Equal(3, mpi.txStore.parkingLotIndex.size(), "delete parkingLot until finishing executor")
+	ast.Equal(7, len(mpi.txStore.txHashMap))
+	ast.Equal(1, len(mpi.txStore.batchedCache))
+	ast.Equal(3, mpi.txStore.allTxs[account1.String()].index.size())
+	ast.Equal(4, mpi.txStore.allTxs[account2.String()].index.size())
+	ast.Equal(uint64(4), mpi.txStore.nonceCache.getCommitNonce(account1.String()))
+	ast.Equal(uint64(7), mpi.txStore.nonceCache.getPendingNonce(account1.String()))
+	ast.Equal(uint64(3), mpi.txStore.nonceCache.getCommitNonce(account2.String()))
+	ast.Equal(uint64(7), mpi.txStore.nonceCache.getPendingNonce(account2.String()))
 }

@@ -18,13 +18,14 @@ import (
 )
 
 type mempoolImpl struct {
-	localID    uint64
-	leader     uint64 // leader node id
-	batchSize  uint64
-	batchSeqNo uint64 // track the sequence number of block
-	logger     logrus.FieldLogger
-	batchC     chan *raftproto.Ready
-	close      chan bool
+	localID     uint64
+	leader      uint64 // leader node id
+	batchSize   uint64
+	txSliceSize uint64 // the number of transactions the node will broadcast at once
+	batchSeqNo  uint64 // track the sequence number of block
+	logger      logrus.FieldLogger
+	batchC      chan *raftproto.Ready
+	close       chan bool
 
 	txStore         *transactionStore // store all transactions info
 	txCache         *TxCache          // cache the transactions received from api
@@ -54,6 +55,11 @@ func newMempoolImpl(config *Config, storage storage.Storage, batchC chan *raftpr
 		mpi.batchSize = DefaultBatchSize
 	} else {
 		mpi.batchSize = config.BatchSize
+	}
+	if config.TxSliceSize == 0 {
+		mpi.txSliceSize = DefaultTxSetSize
+	} else {
+		mpi.txSliceSize = config.TxSliceSize
 	}
 	var batchTick time.Duration
 	if config.BatchTick == 0 {
@@ -118,9 +124,10 @@ func (mpi *mempoolImpl) listenEvent() {
 				mpi.stopBatchTimer(StopReason1)
 				mpi.logger.Debug("Batch timer expired, try to create a batch")
 				if mpi.txStore.priorityNonBatchSize > 0 {
+					//mpi.logger.Debugf("generate batch cause priorityNonBatchSize is %s", mpi.txStore.priorityNonBatchSize)
 					ready, err := mpi.generateBlock(true)
 					if err != nil {
-						mpi.logger.Errorf("Generator batch failed")
+						mpi.logger.Errorf("Generator batch failed when batch timer is active: %s", err.Error())
 						continue
 					}
 					mpi.batchC <- ready
@@ -205,7 +212,7 @@ func (mpi *mempoolImpl) processTransactions(txs []*pb.Transaction) error {
 		if mpi.txStore.priorityNonBatchSize >= mpi.batchSize {
 			ready, err := mpi.generateBlock(false)
 			if err != nil {
-				return errors.New("generator batch fai")
+				return errors.New("generator batch fail")
 			}
 			// stop batch timer
 			mpi.stopBatchTimer(StopReason2)
@@ -226,10 +233,12 @@ func (mpi *mempoolImpl) processDirtyAccount(dirtyAccounts map[string]bool) {
 
 			// inset ready txs into priorityIndex and set ttlIndex for these txs.
 			for _, tx := range readyTxs {
-				mpi.txStore.priorityIndex.insertByOrderedQueueKey(account, tx)
-				mpi.txStore.ttlIndex.insertByTtlKey(account, tx.Nonce, tx.Timestamp)
+				if !mpi.txStore.priorityIndex.data.Has(makeTimeoutKey(account, tx)) {
+					mpi.txStore.priorityIndex.insertByTimeoutKey(account, tx)
+					mpi.txStore.ttlIndex.insertByTtlKey(account, tx.Nonce, tx.Timestamp)
+					mpi.txStore.priorityNonBatchSize++
+				}
 			}
-			mpi.txStore.priorityNonBatchSize = mpi.txStore.priorityNonBatchSize + uint64(len(readyTxs))
 
 			// inset non-ready txs into parkingLotIndex.
 			for _, tx := range nonReadyTxs {
@@ -244,12 +253,15 @@ func (mpi *mempoolImpl) processDirtyAccount(dirtyAccounts map[string]bool) {
 func (mpi *mempoolImpl) generateBlock(isTimeout bool) (*raftproto.Ready, error) {
 	result := make([]orderedIndexKey, 0, mpi.batchSize)
 
-	// txs has lower nonce will be observed first in priority index iterator.
+	// tx which has lower timestamp will be observed first in priority index iterator.
+	// and if first seen tx's nonce isn't the required nonce for the account,
+	// it will be stored in skip DS first.
 	mpi.logger.Infof("Length of priority index: %v", mpi.txStore.priorityIndex.data.Len())
+	skipped := make(map[orderedIndexKey]bool)
 	mpi.txStore.priorityIndex.data.Ascend(func(a btree.Item) bool {
-		tx := a.(*orderedIndexKey)
-		// if tx has existed in bathedTxs,
-		if _, ok := mpi.txStore.batchedTxs[orderedIndexKey{tx.account, tx.nonce, tx.timestamp}]; ok {
+		tx := a.(*orderedTimeoutKey)
+		// if tx has existed in bathedTxs, ignore this tx
+		if _, ok := mpi.txStore.batchedTxs[orderedIndexKey{tx.account, tx.nonce}]; ok {
 			return true
 		}
 		txSeq := tx.nonce
@@ -258,18 +270,41 @@ func (mpi *mempoolImpl) generateBlock(isTimeout bool) (*raftproto.Ready, error) 
 		if txSeq >= 1 {
 			_, seenPrevious = mpi.txStore.batchedTxs[orderedIndexKey{account: tx.account, nonce: txSeq - 1}]
 		}
+
 		// include transaction if it's "next" for given account or
 		// we've already sent its ancestor to Consensus
 		if seenPrevious || (txSeq == commitNonce) {
 			ptr := orderedIndexKey{account: tx.account, nonce: tx.nonce}
 			mpi.txStore.batchedTxs[ptr] = true
 			result = append(result, ptr)
-			// batched by batch size or timeout
+			// batched by batch size or it is timeout to generate block
 			condition1 := uint64(len(result)) == mpi.batchSize
 			condition2 := isTimeout && uint64(len(result)) == mpi.txStore.priorityNonBatchSize
 			if condition1 || condition2 {
 				return false
 			}
+
+			// check if we can now include some transactions
+			// that were skipped before for given account
+			skippedNonce := txSeq + 1
+			for {
+				skippedPtr := orderedIndexKey{account: tx.account, nonce: skippedNonce}
+				if !skipped[skippedPtr] {
+					break
+				}
+				mpi.txStore.batchedTxs[skippedPtr] = true
+				result = append(result, skippedPtr)
+				//delete(skipped, orderedIndexKey{account: tx.account, nonce: skippedNonce})
+				skippedNonce++
+				// batched by batch size or timeout
+				condition1 := uint64(len(result)) == mpi.batchSize
+				condition2 := isTimeout && uint64(len(result)) == mpi.txStore.priorityNonBatchSize
+				if condition1 || condition2 {
+					return false
+				}
+			}
+		} else {
+			skipped[orderedIndexKey{account: tx.account, nonce: txSeq}] = true
 		}
 		return true
 	})
@@ -375,7 +410,6 @@ func (mpi *mempoolImpl) processCommitTransactions(ready *raftproto.Ready) {
 	// update current cached commit nonce for account
 	for _, txHash := range ready.TxHashes {
 		strHash := txHash.String()
-		txPointer := mpi.txStore.txHashMap[strHash]
 		txPointer, ok := mpi.txStore.txHashMap[strHash]
 		if !ok {
 			mpi.logger.Warningf("Remove transaction %s failed, Can't find it from txHashMap", strHash)
@@ -405,7 +439,7 @@ func (mpi *mempoolImpl) processCommitTransactions(ready *raftproto.Ready) {
 			}(removedTxs)
 			go func(ready map[string][]*pb.Transaction) {
 				defer wg.Done()
-				mpi.txStore.priorityIndex.removeByOrderedQueueKey(removedTxs)
+				mpi.txStore.priorityIndex.removeByTimeoutKey(removedTxs)
 			}(removedTxs)
 			go func(ready map[string][]*pb.Transaction) {
 				defer wg.Done()
@@ -429,8 +463,8 @@ func (mpi *mempoolImpl) processCommitTransactions(ready *raftproto.Ready) {
 		mpi.startBatchTimer(StartReason2)
 	}
 	mpi.logger.Debugf("Replica removes batch %d in mempool, and now there are %d batches, "+
-		"priority len: %d, parkingLot len: %d", ready.Height, len(mpi.txStore.batchedCache),
-		mpi.txStore.priorityIndex.size(), mpi.txStore.parkingLotIndex.size())
+		"priority len: %d, priority non-batched len: %d, parkingLot len: %d", ready.Height, len(mpi.txStore.batchedCache),
+		mpi.txStore.priorityIndex.size(), mpi.txStore.priorityNonBatchSize, mpi.txStore.parkingLotIndex.size())
 }
 
 // sendFetchTxnRequest sends fetching missing transactions request to leader node.
@@ -573,32 +607,77 @@ func (mpi *mempoolImpl) processFetchTxnResponse(fetchTxnResponse *FetchTxnRespon
 }
 
 func (mpi *mempoolImpl) rebroadcastTimeoutTxs() {
-	lowBoundTime := time.Now().UnixNano() - mpi.timeoutDuration.Nanoseconds()
-	pivot := &sortedTtlKey{liveTime: lowBoundTime}
-	txSet := &TxSlice{TxList: make([]*pb.Transaction, 0)}
+	startTime := time.Now()
+	txList := make([]*pb.Transaction, 0, mpi.txStore.ttlIndex.index.Len())
 	// all the tx whose live time is less than lowBoundTime should be rebroadcast
-	mpi.logger.Debug("------- start rebroadcast timeout tx -----------")
-	mpi.txStore.ttlIndex.index.AscendLessThan(pivot, func(i btree.Item) bool {
+	mpi.logger.Debugf("------- Start rebroadcasting timeout txs, ttl index len is %d -----------", mpi.txStore.ttlIndex.index.Len())
+	allItem := make([]*sortedTtlKey, 0, mpi.txStore.ttlIndex.index.Len())
+	currentTime := time.Now().UnixNano()
+	mpi.txStore.ttlIndex.index.Ascend(func(i btree.Item) bool {
 		item := i.(*sortedTtlKey)
-		if txMap, ok := mpi.txStore.allTxs[item.account]; !ok {
+		timeoutTime := item.liveTime + mpi.timeoutDuration.Nanoseconds()
+		if txMap, ok := mpi.txStore.allTxs[item.account]; ok && currentTime > timeoutTime {
 			tx := txMap.items[item.nonce].tx
-			txSet.TxList = append(txSet.TxList, tx)
-			// update the liveTime of each tx
-			item.liveTime = time.Now().UnixNano()
-			mpi.txStore.ttlIndex.items[item.account] = item.liveTime
+			txList = append(txList, tx)
+			allItem = append(allItem, item)
 		}
 		return true
 	})
-	if len(txSet.TxList) == 0 {
+	if len(txList) == 0 {
 		return
 	}
-	mpi.logger.Debug("rebroadcast timeout tx %d", len(txSet.TxList))
-	data, err := txSet.Marshal()
-	if err != nil {
-		mpi.logger.Errorf("Marshal failed, err: %s", err.Error())
-		return
+	for _, item := range allItem {
+		// update the liveTime of each tx
+		item.liveTime = currentTime
+		mpi.txStore.ttlIndex.items[makeKey(item.account, item.nonce)] = currentTime
+	}
+	mpi.logger.Debugf("Rebroadcast %d timeout txs, batchSize is %d", len(txList), mpi.batchSize)
+	// shard txList into fixed size in case txList is too large to broadcast one time
+	txLists := shardTxList(txList, mpi.txSliceSize)
+	for _, shardedList := range txLists {
+		txSet := &TxSlice{TxList: shardedList}
+		data, err := txSet.Marshal()
+		if err != nil {
+			mpi.logger.Errorf("Marshal failed, err: %s", err.Error())
+			return
+		}
+		pbMsg := mpi.msgToConsensusPbMsg(data, raftproto.RaftMessage_BROADCAST_TX)
+		mpi.broadcast(pbMsg)
 	}
 
-	pbMsg := mpi.msgToConsensusPbMsg(data, raftproto.RaftMessage_BROADCAST_TX)
-	mpi.broadcast(pbMsg)
+	endTime := time.Now()
+	mpi.logger.Debugf("---------- rebroadcast time cost: %v -----------", endTime.Sub(startTime))
+}
+
+func makeKey(account string, nonce uint64) string {
+	return fmt.Sprintf("%s-%d", account, nonce)
+}
+
+func shardTxList(txs []*pb.Transaction, batchLen uint64) [][]*pb.Transaction {
+	begin := uint64(0)
+	end := uint64(len(txs)) - 1
+	totalLen := uint64(len(txs))
+
+	// shape txs to fixed size in case totalLen is too large
+	batchNums := totalLen / batchLen
+	if totalLen%batchLen != 0 {
+		batchNums++
+	}
+	shardedLists := make([][]*pb.Transaction, 0, batchNums)
+	for i := uint64(0); i <= batchNums; i++ {
+		actualLen := batchLen
+		if end-begin+1 < batchLen {
+			actualLen = end - begin + 1
+		}
+		if actualLen == 0 {
+			continue
+		}
+		shardedList := make([]*pb.Transaction, actualLen)
+		for j := uint64(0); j < batchLen && begin <= end; j++ {
+			shardedList[j] = txs[begin]
+			begin++
+		}
+		shardedLists = append(shardedLists, shardedList)
+	}
+	return shardedLists
 }
