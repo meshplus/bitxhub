@@ -27,7 +27,7 @@ require (
 	github.com/magiconair/properties v1.8.4
 	github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20201129021202-2a64111b8ae7
 	github.com/meshplus/bitxhub-kit v1.1.2-0.20201127072239-fddea8940bae
-	github.com/meshplus/bitxhub-model v1.1.2-0.20201129110814-df5097aea951
+	github.com/meshplus/bitxhub-model v1.1.2-0.20201210083234-c041773b8820
 	github.com/meshplus/go-lightp2p v0.0.0-20201203044909-e09b34cd93ab
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-multiaddr v0.2.2
@@ -60,7 +60,5 @@ require (
 replace github.com/golang/protobuf v1.4.2 => github.com/golang/protobuf v1.3.2
 
 replace github.com/hyperledger/fabric => github.com/hyperledger/fabric v2.0.1+incompatible
-
-replace github.com/meshplus/bitxhub-model => ../bitxhub-model
 
 go 1.13
