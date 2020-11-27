@@ -618,6 +618,7 @@ github.com/mattn/go-runewidth v0.0.3/go.mod h1:LwmH8dsx7+W8Uxz3IHJYH5QSwggIsqBzp
 github.com/mattn/go-runewidth v0.0.4/go.mod h1:LwmH8dsx7+W8Uxz3IHJYH5QSwggIsqBzpuz5H//U1FU=
 github.com/matttproud/golang_protobuf_extensions v1.0.1 h1:4hp9jkHxhMHkqkrB3Ix0jegS5sx/RkqARlsWZ6pIwiU=
 github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5Ld7szi9bcBfOoFv/3dc6xSMkL2PC0=
+github.com/meshplus/bitxhub-core v0.1.0-rc1 h1:i8/8Ay7McOdgAdeZIMeXRzMSzM0usN+hnkGVyIfrOtU=
 github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20201027045256-8dff50f77c08 h1:+uXucoGrzbpi7TVDL6kQxhvRYYglckirpkkKWo6vtQQ=
 github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20201027045256-8dff50f77c08/go.mod h1:MHf0waxqnW4Qwfpq66jqvJP+FritN5OTs/8wlQcNlJY=
 github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20201125025329-ac1187099a88 h1:2EZDE1IuN0R6FQ3XiB26wxV5LG0XuBV6LegOon1Rm2M=

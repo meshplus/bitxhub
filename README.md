@@ -46,6 +46,6 @@ Wechat: If you‘re interested in BitXHub, please add the assistant to join our 
 
 ## License
 
-The BitXHub library (i.e. all code outside of the cmd and internal directory) is licensed under the GNU Lesser General Public License v3.0, also included in our repository in the LICENSE.LESSER file.
+The BitXHub library (i.e. all code outside of the cmd and internal directory) is licensed under the GNU Lesser General Public License v3.0, also included in our repository in the COPYING.LESSER file.
 
-The BitXHub binaries (i.e. all code inside of the cmd and internal directory) is licensed under the GNU General Public License v3.0, also included in our repository in the LICENSE file.
+The BitXHub binaries (i.e. all code inside of the cmd and internal directory) is licensed under the GNU General Public License v3.0, also included in our repository in the COPYING file.
