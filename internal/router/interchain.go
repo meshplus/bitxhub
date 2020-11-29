@@ -2,9 +2,11 @@ package router
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"sync"
 
+	"github.com/cbergoon/merkletree"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/ledger"
@@ -209,15 +211,47 @@ func (router *InterchainRouter) classify(block *pb.Block, meta *pb.InterchainMet
 	}
 
 	target := make(map[string]*pb.InterchainTxWrapper)
-	for dest, txs := range txsM {
+
+	for dest, list := range meta.TimeoutCounter {
 		wrapper := &pb.InterchainTxWrapper{
-			Height:            block.BlockHeader.Number,
-			TransactionHashes: hashesM[dest],
-			Transactions:      txs,
-			L2Roots:           meta.L2Roots,
+			Height:         block.BlockHeader.Number,
+			L2Roots:        meta.L2Roots,
+			TimeoutL2Roots: meta.TimeoutL2Roots,
+			TimeoutIbtps:   list.GetSlice(),
 		}
 		target[dest] = wrapper
 	}
 
+	for dest, txs := range txsM {
+		if wrapper, has := target[dest]; has {
+			wrapper.TransactionHashes = hashesM[dest]
+			wrapper.Transactions = txs
+			target[dest] = wrapper
+		} else {
+			wrapper := &pb.InterchainTxWrapper{
+				Height:            block.BlockHeader.Number,
+				TransactionHashes: hashesM[dest],
+				Transactions:      txs,
+				L2Roots:           meta.L2Roots,
+			}
+			target[dest] = wrapper
+		}
+	}
+
 	return target
+}
+
+func (router *InterchainRouter) calcTimeoutL2Root(list []string) (types.Hash, error) {
+	hashes := make([]merkletree.Content, 0, len(list))
+	for _, id := range list {
+		hash := sha256.Sum256([]byte(id))
+		hashes = append(hashes, types.NewHash(hash[:]))
+	}
+
+	tree, err := merkletree.NewTree(hashes)
+	if err != nil {
+		return types.Hash{}, fmt.Errorf("init merkle tree: %w", err)
+	}
+
+	return *types.NewHash(tree.MerkleRoot()), nil
 }

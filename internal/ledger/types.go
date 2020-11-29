@@ -75,6 +75,18 @@ type StateAccessor interface {
 	// FlushDirtyDataAndComputeJournal flushes the dirty data and computes block journal
 	FlushDirtyDataAndComputeJournal() (map[string]*Account, *BlockJournal)
 
+	// SetTimeoutList set the timeout list for interchain event
+	SetTimeoutList(height uint64, list []string)
+
+	// GetTimeoutList get the timeout list for interchain event
+	GetTimeoutList(height uint64) (bool, []string)
+
+	// SetTxRecord set the record for tx
+	SetTxRecord(txId string, record pb.TransactionRecord)
+
+	// GetTxRecord get the record for tx
+	GetTxRecord(txId string) (bool, pb.TransactionRecord)
+
 	// Version
 	Version() uint64
 

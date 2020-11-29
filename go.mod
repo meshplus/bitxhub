@@ -25,9 +25,9 @@ require (
 	github.com/lestrrat-go/strftime v1.0.3 // indirect
 	github.com/libp2p/go-libp2p-core v0.5.6
 	github.com/magiconair/properties v1.8.4
-	github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20201125025329-ac1187099a88
+	github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20201129021202-2a64111b8ae7
 	github.com/meshplus/bitxhub-kit v1.1.2-0.20201127072239-fddea8940bae
-	github.com/meshplus/bitxhub-model v1.1.2-0.20201118055706-510eb971b4c6
+	github.com/meshplus/bitxhub-model v1.1.2-0.20201129110814-df5097aea951
 	github.com/meshplus/go-lightp2p v0.0.0-20201203044909-e09b34cd93ab
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-multiaddr v0.2.2

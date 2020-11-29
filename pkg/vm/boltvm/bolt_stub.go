@@ -41,6 +41,10 @@ func (b *BoltStubImpl) GetTxIndex() uint64 {
 	return b.ctx.TransactionIndex
 }
 
+func (b *BoltStubImpl) GetCurrentHeight() uint64 {
+	return b.ctx.CurrentHeight
+}
+
 func (b *BoltStubImpl) Has(key string) bool {
 	exist, _ := b.ctx.Ledger.GetState(b.ctx.Callee, []byte(key))
 	return exist
@@ -129,6 +133,7 @@ func (b *BoltStubImpl) CrossInvoke(address, method string, args ...*pb.Arg) *bol
 		Ledger:           b.bvm.ctx.Ledger,
 		TransactionIndex: b.bvm.ctx.TransactionIndex,
 		TransactionHash:  b.bvm.ctx.TransactionHash,
+		CurrentHeight:    b.bvm.ctx.CurrentHeight,
 		Logger:           b.bvm.ctx.Logger,
 	}
 
@@ -147,4 +152,20 @@ func (b *BoltStubImpl) CrossInvoke(address, method string, args ...*pb.Arg) *bol
 
 func (b *BoltStubImpl) ValidationEngine() validator.Engine {
 	return b.ve
+}
+
+func (b *BoltStubImpl) SetTimeoutList(height uint64, list []string) {
+	b.ctx.Ledger.SetTimeoutList(height, list)
+}
+
+func (b *BoltStubImpl) GetTimeoutList(height uint64) (bool, []string) {
+	return b.ctx.Ledger.GetTimeoutList(height)
+}
+
+func (b *BoltStubImpl) SetTxRecord(txId string, record pb.TransactionRecord) {
+	b.ctx.Ledger.SetTxRecord(txId, record)
+}
+
+func (b *BoltStubImpl) GetTxRecord(txId string) (bool, pb.TransactionRecord) {
+	return b.ctx.Ledger.GetTxRecord(txId)
 }
