@@ -23,6 +23,8 @@ GREEN=\033[0;32m
 BLUE=\033[0;34m
 NC=\033[0m
 
+MODS = $(shell sed -e ':a' -e 'N' -e '$$!ba' -e 's/\n/\\n/g' goent.diff)
+
 help: Makefile
 	@printf "${BLUE}Choose a command run:${NC}\n"
 	@sed -n 's/^##//p' $< | column -t -s ':' | sed -e 's/^/    /'
@@ -49,27 +51,36 @@ tester:
 ## make install: Go install the project
 install:
 	cd internal/repo && packr
+	rm -f imports/imports.go
 	$(GO) install -ldflags '${GOLDFLAGS}' ./cmd/${APP_NAME}
 	@printf "${GREEN}Install bitxhub successfully!${NC}\n"
 
 build:
 	cd internal/repo && packr
 	@mkdir -p bin
+	rm -f imports/imports.go
 	$(GO) build -ldflags '${GOLDFLAGS}' ./cmd/${APP_NAME}
 	@mv ./bitxhub bin
 	@printf "${GREEN}Build bitxhub successfully!${NC}\n"
 
 installent:
 	cd internal/repo && packr
+	cp imports/imports.go.template imports/imports.go
+	@sed "s?)?$(MODS)\n)?" go.mod > goent.mod
 	$(GO) install -tags ent -ldflags '${GOLDFLAGS}' -modfile goent.mod ./cmd/${APP_NAME}
 	@printf "${GREEN}Install bitxhub ent successfully!${NC}\n"
 
 buildent:
 	cd internal/repo && packr
 	@mkdir -p bin
+	cp imports/imports.go.template imports/imports.go
+	@sed "s?)?$(MODS)\n)?" go.mod > goent.mod
 	$(GO) build -tags ent -ldflags '${GOLDFLAGS}' -modfile goent.mod ./cmd/${APP_NAME}
 	@mv ./bitxhub bin
 	@printf "${GREEN}Build bitxhub ent successfully!${NC}\n"
+
+mod:
+	sed "s?)?$(MODS)\n)?" go.mod
 
 ## make linter: Run golanci-lint
 linter:
