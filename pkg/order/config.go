@@ -23,7 +23,9 @@ type Config struct {
 	Digest             string
 	GetTransactionFunc func(hash *types.Hash) (*pb.Transaction, error)
 	GetChainMetaFunc   func() *pb.ChainMeta
+	GetBlockByHeight   func(height uint64) (*pb.Block, error)
 }
+
 type Option func(*Config)
 
 func WithID(id uint64) Option {
@@ -95,6 +97,12 @@ func WithGetChainMetaFunc(f func() *pb.ChainMeta) Option {
 func WithGetTransactionFunc(f func(hash *types.Hash) (*pb.Transaction, error)) Option {
 	return func(config *Config) {
 		config.GetTransactionFunc = f
+	}
+}
+
+func WithGetBlockByHeightFunc(f func(height uint64) (*pb.Block, error)) Option {
+	return func(config *Config) {
+		config.GetBlockByHeight = f
 	}
 }
 

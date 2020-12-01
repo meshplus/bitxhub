@@ -3,6 +3,7 @@ package etcdraft
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"sync"
@@ -161,8 +162,8 @@ func (n *Node) Stop() {
 
 // Add the transaction into txpool and broadcast it to other nodes
 func (n *Node) Prepare(tx *pb.Transaction) error {
-	if !n.Ready() {
-		return nil
+	if err := n.Ready(); err != nil {
+		return err
 	}
 	return n.mempool.RecvTransaction(tx)
 }
@@ -171,7 +172,7 @@ func (n *Node) Commit() chan *pb.Block {
 	return n.commitC
 }
 
-func (n *Node) ReportState(height uint64, hash types.Hash) {
+func (n *Node) ReportState(height uint64, hash *types.Hash) {
 	if height%10 == 0 {
 		n.logger.WithFields(logrus.Fields{
 			"height": height,
@@ -248,8 +249,12 @@ func (n *Node) IsLeader() bool {
 	return n.leader == n.id
 }
 
-func (n *Node) Ready() bool {
-	return n.leader != 0
+func (n *Node) Ready() error {
+	hasLeader := n.leader != 0
+	if !hasLeader {
+		return errors.New("in leader election status")
+	}
+	return nil
 }
 
 // main work loop

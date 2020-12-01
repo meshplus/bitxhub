@@ -109,7 +109,7 @@ func (b *BrokerAPI) RemovePier(pid string, isUnion bool) {
 	b.bxh.Router.RemovePier(pid, isUnion)
 }
 
-func (b *BrokerAPI) OrderReady() bool {
+func (b *BrokerAPI) OrderReady() error {
 	return b.bxh.Order.Ready()
 }
 

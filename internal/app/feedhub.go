@@ -38,7 +38,7 @@ func (bxh *BitXHub) listenEvent() {
 	for {
 		select {
 		case ev := <-blockCh:
-			go bxh.Order.ReportState(ev.Block.BlockHeader.Number, *ev.Block.BlockHash)
+			go bxh.Order.ReportState(ev.Block.BlockHeader.Number, ev.Block.BlockHash)
 			go bxh.Router.PutBlockAndMeta(ev.Block, ev.InterchainMeta)
 		case ev := <-orderMsgCh:
 			go func() {

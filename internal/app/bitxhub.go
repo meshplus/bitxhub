@@ -71,6 +71,7 @@ func NewBitXHub(rep *repo.Repo) (*BitXHub, error) {
 		order.WithDigest(chainMeta.BlockHash.String()),
 		order.WithGetChainMetaFunc(bxh.Ledger.GetChainMeta),
 		order.WithGetTransactionFunc(bxh.Ledger.GetTransaction),
+		order.WithGetBlockByHeightFunc(bxh.Ledger.GetBlock),
 	)
 	if err != nil {
 		return nil, err
@@ -192,6 +193,7 @@ func NewTesterBitXHub(rep *repo.Repo) (*BitXHub, error) {
 		order.WithDigest(chainMeta.BlockHash.String()),
 		order.WithGetChainMetaFunc(bxh.Ledger.GetChainMeta),
 		order.WithGetTransactionFunc(bxh.Ledger.GetTransaction),
+		order.WithGetBlockByHeightFunc(bxh.Ledger.GetBlock),
 	)
 
 	if err != nil {
@@ -279,7 +281,8 @@ func (bxh *BitXHub) Stop() error {
 func (bxh *BitXHub) printLogo() {
 	for {
 		time.Sleep(100 * time.Millisecond)
-		if bxh.Order.Ready() {
+		err :=bxh.Order.Ready()
+		if err == nil {
 			bxh.logger.WithFields(logrus.Fields{
 				"plugin_path": bxh.repo.Config.Order.Plugin,
 			}).Info("Order is ready")

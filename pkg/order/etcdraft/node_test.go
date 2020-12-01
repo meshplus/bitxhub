@@ -69,7 +69,8 @@ func TestNode_Start(t *testing.T) {
 
 	for {
 		time.Sleep(200 * time.Millisecond)
-		if order.Ready() {
+		err := order.Ready()
+		if err == nil {
 			break
 		}
 	}
@@ -113,6 +114,7 @@ func TestMulti_Node_Start(t *testing.T) {
 			order.WithPeerManager(swarms[i]),
 			order.WithStoragePath(repo.GetStoragePath(nodeRepo, "order")),
 			order.WithLogger(log.NewWithModule("consensus")),
+			order.WithGetBlockByHeightFunc(nil),
 			order.WithApplied(1),
 		)
 		require.Nil(t, err)
@@ -124,7 +126,8 @@ func TestMulti_Node_Start(t *testing.T) {
 
 	for {
 		time.Sleep(200 * time.Millisecond)
-		if orders[0].Ready() {
+		err := orders[0].Ready()
+		if err == nil {
 			break
 		}
 	}
@@ -136,7 +139,6 @@ func TestMulti_Node_Start(t *testing.T) {
 		require.Equal(t, uint64(2), block.BlockHeader.Number)
 		require.Equal(t, 1, len(block.Transactions))
 	}
-
 }
 
 func listen(t *testing.T, order order.Order, swarm *peermgr.Swarm) {
@@ -260,7 +262,6 @@ func newSwarms(t *testing.T, peerCnt int) ([]*peermgr.Swarm, map[uint64]types.Ad
 			},
 			Config: &repo.Config{
 				Ping: repo.Ping{
-					Enable:   true,
 					Duration: 2 * time.Second,
 				},
 			},

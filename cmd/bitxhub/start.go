@@ -179,7 +179,6 @@ func runtimePProf(repoRoot, mode string, id uint64, duration time.Duration) {
 				_ = pprof.WriteHeapProfile(memFile)
 				_ = memFile.Close()
 			}
-
 		}
 	}
 }
