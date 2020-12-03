@@ -47,6 +47,7 @@ func New(repo *repo.Repo, logger logrus.FieldLogger, ledger ledger.Ledger) (*Swa
 		network.WithPrivateKey(repo.Key.Libp2pPrivKey),
 		network.WithProtocolIDs(protocolIDs),
 		network.WithLogger(logger),
+		network.WithNotify(notifiee{}),
 	)
 
 	if err != nil {
