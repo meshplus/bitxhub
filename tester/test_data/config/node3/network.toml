@@ -1,6 +1,18 @@
-addrs = [
-    ["/ip4/127.0.0.1/tcp/4001/p2p/QmXi58fp9ZczF3Z5iz1yXAez3Hy5NYo1R8STHWKEM9XnTL"],
-    ["/ip4/127.0.0.1/tcp/4002/p2p/QmbmD1kzdsxRiawxu7bRrteDgW1ituXupR8GH6E2EUAHY4"],
-    ["/ip4/127.0.0.1/tcp/4003/p2p/QmQUcDYCtqbpn5Nhaw4FAGxQaSSNvdWfAFcpQT9SPiezbS"],
-    ["/ip4/127.0.0.1/tcp/4004/p2p/QmQW3bFn8XX1t4W14Pmn37bPJUpUVBrBjnPuBZwPog3Qdy"]
-]
+id = 3 # self id
+N = 4 # the number of cluster nodes
+
+[[nodes]]
+addr = "/ip4/127.0.0.1/tcp/4001/p2p/QmXi58fp9ZczF3Z5iz1yXAez3Hy5NYo1R8STHWKEM9XnTL"
+id = 1
+
+[[nodes]]
+addr = "/ip4/127.0.0.1/tcp/4002/p2p/QmbmD1kzdsxRiawxu7bRrteDgW1ituXupR8GH6E2EUAHY4"
+id = 2
+
+[[nodes]]
+addr = "/ip4/127.0.0.1/tcp/4003/p2p/QmQUcDYCtqbpn5Nhaw4FAGxQaSSNvdWfAFcpQT9SPiezbS"
+id = 3
+
+[[nodes]]
+addr = "/ip4/127.0.0.1/tcp/4004/p2p/QmQW3bFn8XX1t4W14Pmn37bPJUpUVBrBjnPuBZwPog3Qdy"
+id = 4
