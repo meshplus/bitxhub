@@ -26,7 +26,6 @@ import (
 	"github.com/meshplus/bitxhub/pkg/order"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
 	"github.com/meshplus/bitxhub/pkg/peermgr/mock_peermgr"
-	ma "github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -171,12 +170,26 @@ func generateTx() *pb.Transaction {
 	return tx
 }
 
-func genKeysAndConfig(t *testing.T, peerCnt int) ([]crypto2.PrivKey, []crypto.PrivateKey, []string) {
+func peers(id uint64, addrs []string, ids []string) []*repo.NetworkNodes {
+	m := make([]*repo.NetworkNodes, 0, len(addrs))
+	for i, addr := range addrs {
+		m = append(m, &repo.NetworkNodes{
+			ID:      uint64(i + 1),
+			Account: "",
+			Pid:     ids[i],
+			Hosts:   []string{addr},
+		})
+	}
+	return m
+}
+
+func genKeysAndConfig(t *testing.T, peerCnt int) ([]crypto2.PrivKey, []crypto.PrivateKey, []string, []string) {
 	var nodeKeys []crypto2.PrivKey
 	var privKeys []crypto.PrivateKey
 	var peers []string
+	var ids []string
 
-	port := 7001
+	port := 5001
 
 	for i := 0; i < peerCnt; i++ {
 		key, err := asym.GenerateKeyPair(crypto.ECDSA_P256)
@@ -188,8 +201,9 @@ func genKeysAndConfig(t *testing.T, peerCnt int) ([]crypto2.PrivKey, []crypto.Pr
 		id, err := peer.IDFromPublicKey(libp2pKey.GetPublic())
 		require.Nil(t, err)
 
-		peer := fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/p2p/%s", port, id)
+		peer := fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/p2p/", port)
 		peers = append(peers, peer)
+		ids = append(ids, id.String())
 		port++
 
 		privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
@@ -198,7 +212,7 @@ func genKeysAndConfig(t *testing.T, peerCnt int) ([]crypto2.PrivKey, []crypto.Pr
 		privKeys = append(privKeys, privKey)
 	}
 
-	return nodeKeys, privKeys, peers
+	return nodeKeys, privKeys, peers, ids
 }
 
 func convertToLibp2pPrivKey(privateKey crypto.PrivateKey) (crypto2.PrivKey, error) {
@@ -215,23 +229,10 @@ func convertToLibp2pPrivKey(privateKey crypto.PrivateKey) (crypto2.PrivKey, erro
 	return libp2pPrivKey, nil
 }
 
-func otherPeers(id uint64, addrs []string) map[uint64]*peer.AddrInfo {
-	m := make(map[uint64]*peer.AddrInfo)
-	for i, addr := range addrs {
-		if uint64(i+1) == id {
-			continue
-		}
-		addr, _ := ma.NewMultiaddr(addr)
-		pAddr, _ := peer.AddrInfoFromP2pAddr(addr)
-		m[uint64(i+1)] = pAddr
-	}
-	return m
-}
-
 func newSwarms(t *testing.T, peerCnt int) ([]*peermgr.Swarm, map[uint64]types.Address) {
 	var swarms []*peermgr.Swarm
 	nodes := make(map[uint64]types.Address)
-	nodeKeys, privKeys, addrs := genKeysAndConfig(t, peerCnt)
+	nodeKeys, privKeys, addrs, ids := genKeysAndConfig(t, peerCnt)
 	mockCtl := gomock.NewController(t)
 	mockLedger := mock_ledger.NewMockLedger(mockCtl)
 
@@ -266,18 +267,12 @@ func newSwarms(t *testing.T, peerCnt int) ([]*peermgr.Swarm, map[uint64]types.Ad
 				},
 			},
 		}
-		var local string
-		id, err := peer.IDFromPublicKey(nodeKeys[i].GetPublic())
-		require.Nil(t, err)
-		if strings.HasSuffix(addrs[i], id.String()) {
-			idx := strings.LastIndex(addrs[i], "/p2p/")
-			local = addrs[i][:idx]
-		}
-
+		idx := strings.LastIndex(addrs[i], "/p2p/")
+		local := addrs[i][:idx]
 		repo.NetworkConfig.LocalAddr = local
 		repo.Key.Libp2pPrivKey = nodeKeys[i]
 		repo.Key.PrivKey = privKeys[i]
-		repo.NetworkConfig.OtherNodes = otherPeers(uint64(ID), addrs)
+		repo.NetworkConfig.Nodes = peers(uint64(i), addrs, ids)
 
 		address, err := privKeys[i].PublicKey().Address()
 		require.Nil(t, err)
