@@ -40,30 +40,34 @@ type Swarm struct {
 	cancel context.CancelFunc
 }
 
-func New(repo *repo.Repo, logger logrus.FieldLogger, ledger ledger.Ledger) (*Swarm, error) {
+func New(repoConfig *repo.Repo, logger logrus.FieldLogger, ledger ledger.Ledger) (*Swarm, error) {
 	var protocolIDs = []string{string(protocolID)}
 	p2p, err := network.New(
-		network.WithLocalAddr(repo.NetworkConfig.LocalAddr),
-		network.WithPrivateKey(repo.Key.Libp2pPrivKey),
+		network.WithLocalAddr(repoConfig.NetworkConfig.LocalAddr),
+		network.WithPrivateKey(repoConfig.Key.Libp2pPrivKey),
 		network.WithProtocolIDs(protocolIDs),
 		network.WithLogger(logger),
 		network.WithNotify(notifiee{}),
 	)
-
 	if err != nil {
 		return nil, fmt.Errorf("create p2p: %w", err)
+	}
+
+	peers, err := repoConfig.NetworkConfig.GetPeers()
+	if err != nil {
+		return nil, fmt.Errorf("get peers:%w", err)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &Swarm{
-		repo:           repo,
+		repo:           repoConfig,
 		p2p:            p2p,
 		logger:         logger,
 		ledger:         ledger,
-		enablePing:     repo.Config.Ping.Enable,
-		pingTimeout:    repo.Config.Ping.Duration,
-		peers:          repo.NetworkConfig.OtherNodes,
+		enablePing:     repoConfig.Config.Ping.Enable,
+		pingTimeout:    repoConfig.Config.Ping.Duration,
+		peers:          peers,
 		connectedPeers: sync.Map{},
 		ctx:            ctx,
 		cancel:         cancel,
@@ -77,7 +81,7 @@ func (swarm *Swarm) Start() error {
 		return err
 	}
 
-	for id, addr := range swarm.peers {
+	for id, addr := range swarm.OtherPeers() {
 		go func(id uint64, addr *peer.AddrInfo) {
 			if err := retry.Retry(func(attempt uint) error {
 				if err := swarm.p2p.Connect(*addr); err != nil {
@@ -136,7 +140,6 @@ func (swarm *Swarm) verifyCertOrDisconnect(id uint64) error {
 	}
 	return nil
 }
-
 
 func (swarm *Swarm) Ping() {
 	ticker := time.NewTicker(swarm.pingTimeout)
@@ -211,7 +214,7 @@ func (swarm *Swarm) Send(id uint64, msg *pb.Message) (*pb.Message, error) {
 
 func (swarm *Swarm) Broadcast(msg *pb.Message) error {
 	addrs := make([]string, 0, len(swarm.peers))
-	for _, addr := range swarm.peers {
+	for _, addr := range swarm.OtherPeers() {
 		addrs = append(addrs, addr.ID.String())
 	}
 
@@ -225,8 +228,8 @@ func (swarm *Swarm) Broadcast(msg *pb.Message) error {
 
 func (swarm *Swarm) Peers() map[uint64]*peer.AddrInfo {
 	m := make(map[uint64]*peer.AddrInfo)
-	for id, addr := range swarm.peers {
-		m[id] = addr
+	for id, node := range swarm.peers {
+		m[id] = node
 	}
 
 	return m

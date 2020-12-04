@@ -87,7 +87,7 @@ func start(ctx *cli.Context) error {
 	}
 
 	// start grpc service
-	b, err := grpc.NewChainBrokerService(api, repo.Config, repo.Genesis)
+	b, err := grpc.NewChainBrokerService(api, repo.Config, &repo.Config.Genesis)
 	if err != nil {
 		return err
 	}
