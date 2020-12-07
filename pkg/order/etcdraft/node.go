@@ -611,7 +611,8 @@ func GenerateRaftPeers(config *order.Config) ([]raft.Peer, error) {
 
 	for _, id := range idSlice {
 		addr := nodes[id]
-		peers = append(peers, raft.Peer{ID: id, Context: addr.Bytes()})
+		addBytes := peermgr.MasherVPInfo(addr)
+		peers = append(peers, raft.Peer{ID: id, Context: addBytes})
 	}
 	return peers, nil
 }

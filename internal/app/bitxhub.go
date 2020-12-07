@@ -20,7 +20,6 @@ import (
 	"github.com/meshplus/bitxhub/internal/router"
 	"github.com/meshplus/bitxhub/internal/storages"
 	"github.com/meshplus/bitxhub/pkg/order"
-	"github.com/meshplus/bitxhub/pkg/order/etcdraft"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
 	"github.com/sirupsen/logrus"
 )
@@ -36,14 +35,14 @@ type BitXHub struct {
 	repo   *repo.Repo
 	logger logrus.FieldLogger
 
-	ctx    context.Context
-	cancel context.CancelFunc
+	Ctx    context.Context
+	Cancel context.CancelFunc
 }
 
 func NewBitXHub(rep *repo.Repo) (*BitXHub, error) {
 	repoRoot := rep.Config.RepoRoot
 
-	bxh, err := generateBitXHubWithoutOrder(rep)
+	bxh, err := GenerateBitXHubWithoutOrder(rep)
 	if err != nil {
 		return nil, err
 	}
@@ -77,15 +76,15 @@ func NewBitXHub(rep *repo.Repo) (*BitXHub, error) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	bxh.ctx = ctx
-	bxh.cancel = cancel
+	bxh.Ctx = ctx
+	bxh.Cancel = cancel
 	bxh.Order = order
 	bxh.Router = r
 
 	return bxh, nil
 }
 
-func generateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
+func GenerateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 	repoRoot := rep.Config.RepoRoot
 	logger := loggers.Logger(loggers.App)
 
@@ -156,52 +155,6 @@ func generateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 	}, nil
 }
 
-func NewTesterBitXHub(rep *repo.Repo) (*BitXHub, error) {
-	repoRoot := rep.Config.RepoRoot
-
-	bxh, err := generateBitXHubWithoutOrder(rep)
-	if err != nil {
-		return nil, err
-	}
-
-	chainMeta := bxh.Ledger.GetChainMeta()
-
-	m := rep.NetworkConfig.GetVpAccount()
-
-	order, err := etcdraft.NewNode(
-		order.WithRepoRoot(repoRoot),
-		order.WithStoragePath(repo.GetStoragePath(repoRoot, "order")),
-		order.WithPluginPath(rep.Config.Plugin),
-		order.WithNodes(m),
-		order.WithID(rep.NetworkConfig.ID),
-		order.WithPeerManager(bxh.PeerMgr),
-		order.WithLogger(loggers.Logger(loggers.Order)),
-		order.WithApplied(chainMeta.Height),
-		order.WithDigest(chainMeta.BlockHash.String()),
-		order.WithGetChainMetaFunc(bxh.Ledger.GetChainMeta),
-		order.WithGetTransactionFunc(bxh.Ledger.GetTransaction),
-		order.WithGetBlockByHeightFunc(bxh.Ledger.GetBlock),
-	)
-
-	if err != nil {
-		return nil, err
-	}
-
-	r, err := router.New(loggers.Logger(loggers.Router), rep, bxh.Ledger, bxh.PeerMgr, order.Quorum())
-	if err != nil {
-		return nil, fmt.Errorf("create InterchainRouter: %w", err)
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-
-	bxh.ctx = ctx
-	bxh.cancel = cancel
-	bxh.Order = order
-	bxh.Router = r
-
-	return bxh, nil
-}
-
 func (bxh *BitXHub) Start() error {
 
 	if err := bxh.raiseUlimit(2048); err != nil {
@@ -258,7 +211,7 @@ func (bxh *BitXHub) Stop() error {
 
 	bxh.Order.Stop()
 
-	bxh.cancel()
+	bxh.Cancel()
 
 	bxh.logger.Info("Bitxhub stopped")
 

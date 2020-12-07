@@ -10,6 +10,7 @@ import (
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	pb "github.com/meshplus/bitxhub-model/pb"
 	events "github.com/meshplus/bitxhub/internal/model/events"
+	peermgr "github.com/meshplus/bitxhub/pkg/peermgr"
 	network "github.com/meshplus/go-lightp2p"
 	reflect "reflect"
 )
@@ -123,10 +124,10 @@ func (mr *MockPeerManagerMockRecorder) Broadcast(arg0 interface{}) *gomock.Call 
 }
 
 // Peers mocks base method
-func (m *MockPeerManager) Peers() map[uint64]*peer.AddrInfo {
+func (m *MockPeerManager) Peers() map[uint64]*peermgr.MrgPeerInfo {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Peers")
-	ret0, _ := ret[0].(map[uint64]*peer.AddrInfo)
+	ret0, _ := ret[0].(map[uint64]*peermgr.MrgPeerInfo)
 	return ret0
 }
 
@@ -162,4 +163,40 @@ func (m *MockPeerManager) SubscribeOrderMessage(ch chan<- events.OrderMessageEve
 func (mr *MockPeerManagerMockRecorder) SubscribeOrderMessage(ch interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubscribeOrderMessage", reflect.TypeOf((*MockPeerManager)(nil).SubscribeOrderMessage), ch)
+}
+
+// AddNode mocks base method
+func (m *MockPeerManager) AddNode(newNodeID uint64, vpInfo *peermgr.MrgPeerInfo) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "AddNode", newNodeID, vpInfo)
+}
+
+// AddNode indicates an expected call of AddNode
+func (mr *MockPeerManagerMockRecorder) AddNode(newNodeID, vpInfo interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddNode", reflect.TypeOf((*MockPeerManager)(nil).AddNode), newNodeID, vpInfo)
+}
+
+// DelNode mocks base method
+func (m *MockPeerManager) DelNode(delID uint64) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "DelNode", delID)
+}
+
+// DelNode indicates an expected call of DelNode
+func (mr *MockPeerManagerMockRecorder) DelNode(delID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DelNode", reflect.TypeOf((*MockPeerManager)(nil).DelNode), delID)
+}
+
+// UpdateRouter mocks base method
+func (m *MockPeerManager) UpdateRouter(vpInfo map[uint64]*peermgr.MrgPeerInfo) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "UpdateRouter", vpInfo)
+}
+
+// UpdateRouter indicates an expected call of UpdateRouter
+func (mr *MockPeerManagerMockRecorder) UpdateRouter(vpInfo interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateRouter", reflect.TypeOf((*MockPeerManager)(nil).UpdateRouter), vpInfo)
 }

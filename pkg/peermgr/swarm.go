@@ -3,6 +3,7 @@ package peermgr
 import (
 	"context"
 	"fmt"
+	"github.com/meshplus/bitxhub-kit/types"
 	"sync"
 	"time"
 
@@ -26,11 +27,16 @@ const (
 )
 
 type Swarm struct {
-	repo             *repo.Repo
-	p2p              network.Network
-	logger           logrus.FieldLogger
-	peers            map[uint64]*peer.AddrInfo
+	repo    *repo.Repo
+	localID uint64
+	p2p     network.Network
+	logger  logrus.FieldLogger
+
+	routers       map[uint64]*VPInfo // trace the vp nodes
+	multiAddrs  map[uint64]*peer.AddrInfo
 	connectedPeers   sync.Map
+	notifiee         *notifiee
+
 	ledger           ledger.Ledger
 	orderMessageFeed event.Feed
 	enablePing       bool
@@ -42,12 +48,44 @@ type Swarm struct {
 
 func New(repoConfig *repo.Repo, logger logrus.FieldLogger, ledger ledger.Ledger) (*Swarm, error) {
 	var protocolIDs = []string{string(protocolID)}
+	// init peers with ips and hosts
+	peers := make([]string, 0)
+	for _, addr := range repo.NetworkConfig.Nodes {
+		peers = append(peers, addr.Addr)
+	}
+
+	validators := make(map[uint64]*VPInfo)
+	for i, node := range repo.NetworkConfig.Nodes {
+		keyAddr := *types.NewAddressByStr(repo.AllAddresses.Addresses[i])
+		IpInfo := repo.NetworkConfig.VpNodes[node.ID]
+		vpInfo := &VPInfo{
+			KeyAddr:    keyAddr.String(),
+			IPAddr:     IpInfo.ID.String(),
+		}
+		validators[node.ID] = vpInfo
+	}
+
+	multiAddrs := make(map[uint64]*peer.AddrInfo)
+	for _, node := range repo.NetworkConfig.Nodes {
+		if node.ID == repo.NetworkConfig.ID {
+			continue
+		}
+		IpInfo := repo.NetworkConfig.VpNodes[node.ID]
+		addInfo := &peer.AddrInfo{
+			ID:IpInfo.ID,
+			Addrs:IpInfo.Addrs,
+		}
+		multiAddrs[node.ID] = addInfo
+	}
+	notifiee := newNotifiee(validators, logger)
 	p2p, err := network.New(
 		network.WithLocalAddr(repoConfig.NetworkConfig.LocalAddr),
 		network.WithPrivateKey(repoConfig.Key.Libp2pPrivKey),
 		network.WithProtocolIDs(protocolIDs),
 		network.WithLogger(logger),
-		network.WithNotify(notifiee{}),
+		// enable discovery
+		network.WithBootstrap(peers),
+		network.WithNotify(notifiee),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("create p2p: %w", err)
@@ -62,13 +100,16 @@ func New(repoConfig *repo.Repo, logger logrus.FieldLogger, ledger ledger.Ledger)
 
 	return &Swarm{
 		repo:           repoConfig,
+		localID:        repoConfig.NetworkConfig.ID,
 		p2p:            p2p,
 		logger:         logger,
 		ledger:         ledger,
 		enablePing:     repoConfig.Config.Ping.Enable,
 		pingTimeout:    repoConfig.Config.Ping.Duration,
-		peers:          peers,
+		routers:          peers,
+		multiAddrs: multiAddrs,
 		connectedPeers: sync.Map{},
+		notifiee:       notifiee,
 		ctx:            ctx,
 		cancel:         cancel,
 	}, nil
@@ -81,7 +122,7 @@ func (swarm *Swarm) Start() error {
 		return err
 	}
 
-	for id, addr := range swarm.OtherPeers() {
+	for id, addr := range swarm.multiAddrs {
 		go func(id uint64, addr *peer.AddrInfo) {
 			if err := retry.Retry(func(attempt uint) error {
 				if err := swarm.p2p.Connect(*addr); err != nil {
@@ -127,13 +168,12 @@ func (swarm *Swarm) Start() error {
 
 func (swarm *Swarm) Stop() error {
 	swarm.cancel()
-
 	return nil
 }
 
 func (swarm *Swarm) verifyCertOrDisconnect(id uint64) error {
 	if err := swarm.verifyCert(id); err != nil {
-		if err = swarm.p2p.Disconnect(swarm.peers[id].ID.String()); err != nil {
+		if err = swarm.p2p.Disconnect(swarm.routers[id].IPAddr); err != nil {
 			return err
 		}
 		return err
@@ -161,13 +201,17 @@ func (swarm *Swarm) Ping() {
 				}
 				return true
 			})
-			swarm.logger.WithFields(fields).Warning("ping time")
+			swarm.logger.WithFields(fields).Info("ping time")
 		}
 	}
 }
 
 func (swarm *Swarm) AsyncSend(id uint64, msg *pb.Message) error {
-	if err := swarm.checkID(id); err != nil {
+	var (
+		addr string
+		err  error
+	)
+	if addr, err = swarm.findPeer(id); err != nil {
 		return fmt.Errorf("p2p send: %w", err)
 	}
 
@@ -175,7 +219,6 @@ func (swarm *Swarm) AsyncSend(id uint64, msg *pb.Message) error {
 	if err != nil {
 		return err
 	}
-	addr := swarm.peers[id].ID.String()
 	return swarm.p2p.AsyncSend(addr, data)
 }
 
@@ -189,7 +232,11 @@ func (swarm *Swarm) SendWithStream(s network.Stream, msg *pb.Message) error {
 }
 
 func (swarm *Swarm) Send(id uint64, msg *pb.Message) (*pb.Message, error) {
-	if err := swarm.checkID(id); err != nil {
+	var (
+		addr string
+		err  error
+	)
+	if addr, err = swarm.findPeer(id); err != nil {
 		return nil, fmt.Errorf("check id: %w", err)
 	}
 
@@ -198,7 +245,6 @@ func (swarm *Swarm) Send(id uint64, msg *pb.Message) (*pb.Message, error) {
 		return nil, err
 	}
 
-	addr := swarm.peers[id].ID.String()
 	ret, err := swarm.p2p.Send(addr, data)
 	if err != nil {
 		return nil, fmt.Errorf("sync send: %w", err)
@@ -213,9 +259,20 @@ func (swarm *Swarm) Send(id uint64, msg *pb.Message) (*pb.Message, error) {
 }
 
 func (swarm *Swarm) Broadcast(msg *pb.Message) error {
-	addrs := make([]string, 0, len(swarm.peers))
-	for _, addr := range swarm.OtherPeers() {
-		addrs = append(addrs, addr.ID.String())
+	addrs := make([]string, 0, len(swarm.routers))
+	for id, addr := range swarm.routers {
+		if id == swarm.localID {
+			continue
+		}
+		addrs = append(addrs, addr.IPAddr)
+	}
+
+	// if we are in adding node but hasn't finished updateN, new node hash will be temporarily recorded
+	// in swarm.notifiee.newPeer.
+	// TODO (Peer): keep access goroutine safety
+	if swarm.notifiee.newPeer != "" {
+		swarm.logger.Debugf("Broadcast to new peer %s", swarm.notifiee.newPeer)
+		addrs = append(addrs, swarm.notifiee.newPeer)
 	}
 
 	data, err := msg.Marshal()
@@ -226,21 +283,22 @@ func (swarm *Swarm) Broadcast(msg *pb.Message) error {
 	return swarm.p2p.Broadcast(addrs, data)
 }
 
-func (swarm *Swarm) Peers() map[uint64]*peer.AddrInfo {
-	m := make(map[uint64]*peer.AddrInfo)
-	for id, node := range swarm.peers {
-		m[id] = node
-	}
-
-	return m
+func (swarm *Swarm) Peers() map[uint64]*VPInfo {
+	return swarm.routers
 }
 
 func (swarm *Swarm) OtherPeers() map[uint64]*peer.AddrInfo {
-	m := swarm.Peers()
-	if swarm.repo != nil {
-		delete(m, swarm.repo.NetworkConfig.ID)
+	addrInfos := make(map[uint64]*peer.AddrInfo)
+	for id, addr := range swarm.Peers() {
+		if id == swarm.localID {
+			continue
+		}
+		addrInfo := &peer.AddrInfo{
+			ID: peer.ID(addr.IPAddr),
+		}
+		addrInfos[id] = addrInfo
 	}
-	return m
+	return addrInfos
 }
 
 func (swarm *Swarm) SubscribeOrderMessage(ch chan<- events.OrderMessageEvent) event.Subscription {
@@ -248,7 +306,7 @@ func (swarm *Swarm) SubscribeOrderMessage(ch chan<- events.OrderMessageEvent) ev
 }
 
 func (swarm *Swarm) verifyCert(id uint64) error {
-	if err := swarm.checkID(id); err != nil {
+	if _, err := swarm.findPeer(id); err != nil {
 		return fmt.Errorf("check id: %w", err)
 	}
 
@@ -280,7 +338,7 @@ func (swarm *Swarm) verifyCert(id uint64) error {
 		return fmt.Errorf("verify certs: %w", err)
 	}
 
-	err = swarm.p2p.Disconnect(swarm.peers[id].ID.String())
+	err = swarm.p2p.Disconnect(swarm.routers[id].IPAddr)
 	if err != nil {
 		return fmt.Errorf("disconnect peer: %w", err)
 	}
@@ -288,10 +346,52 @@ func (swarm *Swarm) verifyCert(id uint64) error {
 	return nil
 }
 
-func (swarm *Swarm) checkID(id uint64) error {
-	if swarm.peers[id] == nil {
-		return fmt.Errorf("wrong id: %d", id)
+func (swarm *Swarm) findPeer(id uint64) (string, error) {
+	if swarm.routers[id] != nil {
+		return swarm.routers[id].IPAddr, nil
+	}
+	swarm.notifiee.mu.Lock()
+	newPeerAddr := swarm.notifiee.newPeer
+	swarm.notifiee.mu.Unlock()
+	// new node id should be len(swarm.peers)+1,
+	if uint64(len(swarm.routers)+1) == id && newPeerAddr != "" {
+		return newPeerAddr, nil
+	}
+	return "", fmt.Errorf("wrong id: %d", id)
+}
+
+func (swarm *Swarm) AddNode(newNodeID uint64, vpInfo *VPInfo) {
+	if _, ok := swarm.routers[newNodeID]; ok {
+		swarm.logger.Warningf("VP[ID: %d, IpAddr: %s] has already exist in routing table", newNodeID, vpInfo.IPAddr)
+		return
+	}
+	swarm.logger.Infof("Add vp[ID: %d, IpAddr: %s] into routing table", newNodeID, vpInfo.IPAddr)
+	swarm.routers[newNodeID] = vpInfo
+	for index, p := range swarm.routers {
+		swarm.logger.Debugf("=====ID: %d, Addr: %v=====", index+1, p)
 	}
 
-	return nil
+	// update notifiee info
+	swarm.notifiee.mu.Lock()
+	swarm.notifiee.peers[newNodeID] = vpInfo
+	if swarm.notifiee.newPeer == vpInfo.IPAddr {
+		swarm.logger.Info("Clear notifiee newPeer info")
+		swarm.notifiee.newPeer = ""
+	} else {
+		swarm.logger.Warningf("Received vpInfo %v, but it doesn't equal to  notifiee newPeer %s", vpInfo, swarm.notifiee.newPeer)
+	}
+	swarm.notifiee.mu.Unlock()
+}
+
+func (swarm *Swarm) DelNode(delID uint64) {
+
+}
+
+func (swarm *Swarm) UpdateRouter(vpInfos map[uint64]*VPInfo) {
+	swarm.logger.Infof("Update router: %+v", vpInfos)
+	swarm.routers = vpInfos
+	// update notifiee info
+	swarm.notifiee.mu.Lock()
+	swarm.notifiee.peers = vpInfos
+	swarm.notifiee.mu.Unlock()
 }

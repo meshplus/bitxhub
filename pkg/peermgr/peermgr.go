@@ -29,11 +29,17 @@ type PeerManager interface {
 	Broadcast(*pb.Message) error
 
 	// Peers
-	Peers() map[uint64]*peer.AddrInfo
+	Peers() map[uint64]*VPInfo
 
 	// OtherPeers
 	OtherPeers() map[uint64]*peer.AddrInfo
 
 	// SubscribeOrderMessage
 	SubscribeOrderMessage(ch chan<- events.OrderMessageEvent) event.Subscription
+
+	AddNode(newNodeID uint64, vpInfo *VPInfo)
+
+	DelNode(delID uint64)
+
+	UpdateRouter (vpInfos map[uint64]*VPInfo)
 }

@@ -18,7 +18,7 @@ type Config struct {
 	PeerMgr            peermgr.PeerManager
 	PrivKey            crypto.PrivateKey
 	Logger             logrus.FieldLogger
-	Nodes              map[uint64]types.Address
+	Nodes              map[uint64]*peermgr.VPInfo
 	Applied            uint64
 	Digest             string
 	GetTransactionFunc func(hash *types.Hash) (*pb.Transaction, error)
@@ -70,7 +70,7 @@ func WithLogger(logger logrus.FieldLogger) Option {
 	}
 }
 
-func WithNodes(nodes map[uint64]types.Address) Option {
+func WithNodes(nodes map[uint64]*peermgr.VPInfo) Option {
 	return func(config *Config) {
 		config.Nodes = nodes
 	}
