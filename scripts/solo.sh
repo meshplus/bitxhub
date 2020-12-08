@@ -21,11 +21,11 @@ function config() {
 function compile() {
   print_blue "===> Compileing bitxhub"
   cd "${PROJECT_PATH}"
-  make install
+  make install${TAGS}
 
   ## build plugin
   cd "${PROJECT_PATH}"/internal/plugins
-  make solo
+  make solo${TAGS}
 }
 
 function start() {

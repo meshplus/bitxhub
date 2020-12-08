@@ -88,10 +88,10 @@ linter:
 
 ## make cluster: Run cluster including 4 nodes
 cluster:install${TAGS}
-	@cd scripts && bash cluster.sh
+	@cd scripts && bash cluster.sh TAGS=${TAGS}
 
 ## make solo: Run one node in solo mode
 solo:install${TAGS}
-	@cd scripts && bash solo.sh
+	@cd scripts && bash solo.sh TAGS=${TAGS}
 
 .PHONY: tester build
