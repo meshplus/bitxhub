@@ -46,6 +46,7 @@ type BrokerAPI interface {
 
 type NetworkAPI interface {
 	PeerInfo() ([]byte, error)
+	DelVPNode(pid string) ([]byte, error)
 }
 
 type ChainAPI interface {
