@@ -130,7 +130,11 @@ func (mpm *mockPeerMgr)AddNode(newNodeID uint64, vpInfo *peermgr.VPInfo) {}
 
 func (mpm *mockPeerMgr)DelNode(delID uint64){}
 
-func (mpm *mockPeerMgr)UpdateRouter(vpInfos map[uint64]*peermgr.VPInfo) {}
+func (mpm *mockPeerMgr)UpdateRouter(vpInfos map[uint64]*peermgr.VPInfo, isNew bool) bool {
+	return false
+}
+
+func (mpm *mockPeerMgr)Disconnect(vpInfos map[uint64]*peermgr.VPInfo) {}
 
 func (mpm *mockPeerMgr) Peers() map[uint64]*peermgr.VPInfo {
 	peers := make(map[uint64]*peermgr.VPInfo, 3)

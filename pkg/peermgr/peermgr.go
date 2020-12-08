@@ -37,9 +37,15 @@ type PeerManager interface {
 	// SubscribeOrderMessage
 	SubscribeOrderMessage(ch chan<- events.OrderMessageEvent) event.Subscription
 
+	// AddNode adds a vp peer.
 	AddNode(newNodeID uint64, vpInfo *VPInfo)
 
+	// DelNode deletes a vp peer.
 	DelNode(delID uint64)
 
-	UpdateRouter (vpInfos map[uint64]*VPInfo)
+	// UpdateRouter update the local router to quorum router.
+	UpdateRouter (vpInfos map[uint64]*VPInfo, isNew bool) bool
+
+	// Disconnect disconnect with all vp peers.
+	Disconnect(vpInfos map[uint64]*VPInfo)
 }

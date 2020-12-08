@@ -57,6 +57,10 @@ func (n *Node) GetPendingNonceByAccount(account string) uint64 {
 	return n.mempool.GetPendingNonceByAccount(account)
 }
 
+func (n *Node) DelNode(delID uint64) error {
+	return nil
+}
+
 func (n *Node) Prepare(tx *pb.Transaction) error {
 	if err := n.Ready(); err != nil {
 		return err

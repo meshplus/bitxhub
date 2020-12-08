@@ -58,6 +58,7 @@ type Node struct {
 	justElected bool
 	isRestart   bool
 
+	//  TODO (YH): refactor
 	ctx   context.Context // context
 	haltC chan struct{}   // exit signal
 
@@ -655,6 +656,12 @@ func (n *Node) writeAppliedIndex(index uint64) {
 	n.storage.Put(appliedDbKey, buf)
 }
 
+// GetPendingNonceByAccount gets pending nonce by given account.
 func (n *Node) GetPendingNonceByAccount(account string) uint64 {
 	return n.mempool.GetPendingNonceByAccount(account)
+}
+
+// DelNode sends a delete vp request by given id.
+func (n *Node) DelNode(delID uint64) error {
+	return nil
 }
