@@ -55,7 +55,7 @@ function prepare() {
 
   print_blue "===> Building plugin"
   cd "${PROJECT_PATH}"/internal/plugins
-  make raft
+  make raft${TAGS}
 
   for ((i = 1; i < N + 1; i = i + 1)); do
     cp -rf "${PROJECT_PATH}"/internal/plugins/build "${BUILD_PATH}"/node${i}/plugins
@@ -65,7 +65,7 @@ function prepare() {
 function compile() {
   print_blue "===> Compiling bitxhub"
   cd "${PROJECT_PATH}"
-  make install
+  make install${TAGS}
 }
 
 function splitWindow() {
