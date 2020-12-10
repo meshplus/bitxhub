@@ -53,12 +53,12 @@ func (exec *BlockExecutor) processExecuteEvent(block *pb.Block) *ledger.BlockDat
 
 	var timeoutL2Roots []types.Hash
 	timeoutCounter := make(map[string]*pb.StringSlice)
-	for dest, list := range timeoutIBTPsMap {
+	for from, list := range timeoutIBTPsMap {
 		root, err := exec.calcTimeoutL2Root(list)
 		if err != nil {
 			panic(err)
 		}
-		timeoutCounter[dest] = &pb.StringSlice{Slice: list}
+		timeoutCounter[from] = &pb.StringSlice{Slice: list}
 		timeoutL2Roots = append(timeoutL2Roots, root)
 	}
 	timeoutRoots := make([]merkletree.Content, 0, len(timeoutL2Roots))
@@ -75,6 +75,7 @@ func (exec *BlockExecutor) processExecuteEvent(block *pb.Block) *ledger.BlockDat
 	block.BlockHeader.ParentHash = exec.currentBlockHash
 	block.BlockHeader.TimeoutRoot = timeoutRoot
 
+	exec.setTimeoutRollback(block.BlockHeader.Number)
 	accounts, journal := exec.ledger.FlushDirtyDataAndComputeJournal()
 
 	block.BlockHeader.StateRoot = journal.ChangedHash
@@ -103,8 +104,6 @@ func (exec *BlockExecutor) processExecuteEvent(block *pb.Block) *ledger.BlockDat
 
 	exec.currentHeight = block.BlockHeader.Number
 	exec.currentBlockHash = block.BlockHash
-
-	exec.setTimeoutRollback(exec.currentHeight)
 
 	return &ledger.BlockData{
 		Block:          block,
@@ -417,15 +416,17 @@ func (exec *BlockExecutor) calcTimeoutL2Root(list []string) (types.Hash, error) 
 
 func (exec *BlockExecutor) getTimeoutIBTPsMap(height uint64) map[string][]string {
 	ok, timeoutList := exec.ledger.GetTimeoutList(height)
-	var timeoutIBTPsMap map[string][]string
+	timeoutIBTPsMap := make(map[string][]string)
+
 	if ok {
 		for _, value := range timeoutList {
 			listArray := strings.Split(value, "-")
-			if list, has := timeoutIBTPsMap[listArray[1]]; has {
+			from := listArray[0]
+			if list, has := timeoutIBTPsMap[from]; has {
 				list := append(list, value)
-				timeoutIBTPsMap[listArray[1]] = list
+				timeoutIBTPsMap[from] = list
 			} else {
-				timeoutIBTPsMap[listArray[1]] = []string{value}
+				timeoutIBTPsMap[from] = []string{value}
 			}
 		}
 	}

@@ -265,7 +265,7 @@ func (x *InterchainManager) reportTransaction(ibtp *pb.IBTP, interchain *pb.Inte
 		result = 1
 	}
 	ret := x.CrossInvoke(constant.TransactionMgrContractAddr.String(), "Report", pb.String(txId), pb.Int32(result))
-	if string(ret.Result) == fmt.Sprintf("transaction with Id %s has been rollback", txId) {
+	if strings.Contains(string(ret.Result), fmt.Sprintf("transaction with Id %s has been rollback", txId)) {
 		interchain.ReceiptCounter[ibtp.To] = ibtp.Index
 		x.setInterchain(ibtp.From, interchain)
 
