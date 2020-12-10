@@ -61,4 +61,6 @@ replace github.com/golang/protobuf v1.4.2 => github.com/golang/protobuf v1.3.2
 
 replace github.com/hyperledger/fabric => github.com/hyperledger/fabric v2.0.1+incompatible
 
+replace github.com/meshplus/bitxhub-model => ../bitxhub-model
+
 go 1.13

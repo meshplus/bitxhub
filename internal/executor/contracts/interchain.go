@@ -180,7 +180,8 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP, interchain *pb.Interchain) 
 	if pb.IBTP_INTERCHAIN == ibtp.Type ||
 		pb.IBTP_ASSET_EXCHANGE_INIT == ibtp.Type ||
 		pb.IBTP_ASSET_EXCHANGE_REDEEM == ibtp.Type ||
-		pb.IBTP_ASSET_EXCHANGE_REFUND == ibtp.Type {
+		pb.IBTP_ASSET_EXCHANGE_REFUND == ibtp.Type ||
+		pb.IBTP_ROLLBACK == ibtp.Type {
 		if ibtp.From != x.Caller() {
 			return fmt.Errorf("ibtp from != caller")
 		}
@@ -216,7 +217,8 @@ func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *pb.Interchain
 	if pb.IBTP_INTERCHAIN == ibtp.Type ||
 		pb.IBTP_ASSET_EXCHANGE_INIT == ibtp.Type ||
 		pb.IBTP_ASSET_EXCHANGE_REDEEM == ibtp.Type ||
-		pb.IBTP_ASSET_EXCHANGE_REFUND == ibtp.Type {
+		pb.IBTP_ASSET_EXCHANGE_REFUND == ibtp.Type ||
+		pb.IBTP_ROLLBACK == ibtp.Type {
 		interchain.InterchainCounter[ibtp.To]++
 		x.setInterchain(ibtp.From, interchain)
 		x.AddObject(x.indexMapKey(ibtp.ID()), x.GetTxHash())
@@ -230,10 +232,11 @@ func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *pb.Interchain
 		ic.SourceReceiptCounter[ibtp.From] = ibtp.Index
 		x.setInterchain(ibtp.To, ic)
 		x.SetObject(x.indexReceiptMapKey(ibtp.ID()), x.GetTxHash())
-
 	}
 
-	x.PostInterchainEvent(m)
+	if pb.IBTP_RECEIPT_ROLLBACK != ibtp.Type {
+		x.PostInterchainEvent(m)
+	}
 }
 
 func (x *InterchainManager) beginMultiTargetsTransaction(ibtps *pb.IBTPs) *boltvm.Response {

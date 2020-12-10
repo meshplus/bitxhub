@@ -61,9 +61,14 @@ func (exec *BlockExecutor) processExecuteEvent(block *pb.Block) *ledger.BlockDat
 		timeoutCounter[from] = &pb.StringSlice{Slice: list}
 		timeoutL2Roots = append(timeoutL2Roots, root)
 	}
+
 	timeoutRoots := make([]merkletree.Content, 0, len(timeoutL2Roots))
+	sort.Slice(timeoutL2Roots, func(i, j int) bool {
+		return bytes.Compare(timeoutL2Roots[i].Bytes(), timeoutL2Roots[j].Bytes()) < 0
+	})
 	for _, root := range timeoutL2Roots {
-		timeoutRoots = append(timeoutRoots, &root)
+		r := root
+		timeoutRoots = append(timeoutRoots, &r)
 	}
 	timeoutRoot, err := calcMerkleRoot(timeoutRoots)
 	if err != nil {
