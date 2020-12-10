@@ -2,9 +2,9 @@ package executor
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"github.com/meshplus/bitxhub-kit/crypto"
 	"sort"
 	"strings"
 	"sync"
@@ -14,6 +14,7 @@ import (
 	"github.com/cbergoon/merkletree"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/meshplus/bitxhub-core/agency"
+	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -57,10 +58,38 @@ func (exec *BlockExecutor) processExecuteEvent(block *pb.Block) *ledger.BlockDat
 
 	calcMerkleDuration.Observe(float64(time.Since(calcMerkleStart)) / float64(time.Second))
 
+	timeoutIBTPsMap := exec.getTimeoutIBTPsMap(block.BlockHeader.Number)
+
+	var timeoutL2Roots []types.Hash
+	timeoutCounter := make(map[string]*pb.StringSlice)
+	for from, list := range timeoutIBTPsMap {
+		root, err := exec.calcTimeoutL2Root(list)
+		if err != nil {
+			panic(err)
+		}
+		timeoutCounter[from] = &pb.StringSlice{Slice: list}
+		timeoutL2Roots = append(timeoutL2Roots, root)
+	}
+
+	timeoutRoots := make([]merkletree.Content, 0, len(timeoutL2Roots))
+	sort.Slice(timeoutL2Roots, func(i, j int) bool {
+		return bytes.Compare(timeoutL2Roots[i].Bytes(), timeoutL2Roots[j].Bytes()) < 0
+	})
+	for _, root := range timeoutL2Roots {
+		r := root
+		timeoutRoots = append(timeoutRoots, &r)
+	}
+	timeoutRoot, err := calcMerkleRoot(timeoutRoots)
+	if err != nil {
+		panic(err)
+	}
+
 	block.BlockHeader.TxRoot = l1Root
 	block.BlockHeader.ReceiptRoot = receiptRoot
 	block.BlockHeader.ParentHash = exec.currentBlockHash
+	block.BlockHeader.TimeoutRoot = timeoutRoot
 
+	exec.setTimeoutRollback(block.BlockHeader.Number)
 	accounts, journal := exec.ledger.FlushDirtyDataAndComputeJournal()
 
 	block.BlockHeader.StateRoot = journal.ChangedHash
@@ -79,13 +108,17 @@ func (exec *BlockExecutor) processExecuteEvent(block *pb.Block) *ledger.BlockDat
 		counter[k] = &pb.VerifiedIndexSlice{Slice: v}
 	}
 	interchainMeta := &pb.InterchainMeta{
-		Counter: counter,
-		L2Roots: l2Roots,
+		Counter:        counter,
+		L2Roots:        l2Roots,
+		TimeoutCounter: timeoutCounter,
+		TimeoutL2Roots: timeoutL2Roots,
 	}
 	exec.clear()
 
 	exec.currentHeight = block.BlockHeader.Number
 	exec.currentBlockHash = block.BlockHash
+
+	exec.setTimeoutRollback(exec.currentHeight)
 
 	return &ledger.BlockData{
 		Block:          block,
@@ -93,7 +126,6 @@ func (exec *BlockExecutor) processExecuteEvent(block *pb.Block) *ledger.BlockDat
 		Accounts:       accounts,
 		Journal:        journal,
 		InterchainMeta: interchainMeta,
-		TxHashList:     txHashList,
 	}
 }
 
@@ -312,7 +344,7 @@ func (exec *BlockExecutor) applyTransaction(i int, tx *pb.Transaction, opt *agen
 	defer exec.ledger.SetNonce(tx.From, curNonce+1)
 
 	if tx.IsIBTP() {
-		ctx := vm.NewContext(tx, uint64(i), nil, exec.ledger, exec.logger)
+		ctx := vm.NewContext(tx, uint64(i), nil, exec.currentHeight, exec.ledger, exec.logger)
 		instance := boltvm.New(ctx, exec.validationEngine, exec.getContracts(opt))
 		return instance.HandleIBTP(tx.IBTP)
 	}
@@ -334,10 +366,10 @@ func (exec *BlockExecutor) applyTransaction(i int, tx *pb.Transaction, opt *agen
 		var instance vm.VM
 		switch data.VmType {
 		case pb.TransactionData_BVM:
-			ctx := vm.NewContext(tx, uint64(i), data, exec.ledger, exec.logger)
+			ctx := vm.NewContext(tx, uint64(i), data, exec.currentHeight, exec.ledger, exec.logger)
 			instance = boltvm.New(ctx, exec.validationEngine, exec.getContracts(opt))
 		case pb.TransactionData_XVM:
-			ctx := vm.NewContext(tx, uint64(i), data, exec.ledger, exec.logger)
+			ctx := vm.NewContext(tx, uint64(i), data, exec.currentHeight, exec.ledger, exec.logger)
 			imports, err := vmledger.New()
 			if err != nil {
 				return nil, err
@@ -412,4 +444,52 @@ func (exec *BlockExecutor) getContracts(opt *agency.TxOpt) map[string]agency.Con
 	}
 
 	return exec.txsExecutor.GetBoltContracts()
+}
+
+func (exec *BlockExecutor) setTimeoutRollback(height uint64) {
+	ok, list := exec.ledger.GetTimeoutList(height)
+	if ok {
+		for _, value := range list {
+			record := pb.TransactionRecord{
+				Height: height,
+				Status: pb.TransactionStatus_ROLLBACK,
+			}
+			exec.ledger.SetTxRecord(value, record)
+		}
+	}
+}
+
+func (exec *BlockExecutor) calcTimeoutL2Root(list []string) (types.Hash, error) {
+	hashes := make([]merkletree.Content, 0, len(list))
+	for _, id := range list {
+		hash := sha256.Sum256([]byte(id))
+		hashes = append(hashes, types.NewHash(hash[:]))
+	}
+
+	tree, err := merkletree.NewTree(hashes)
+	if err != nil {
+		return types.Hash{}, fmt.Errorf("init merkle tree: %w", err)
+	}
+
+	return *types.NewHash(tree.MerkleRoot()), nil
+}
+
+func (exec *BlockExecutor) getTimeoutIBTPsMap(height uint64) map[string][]string {
+	ok, timeoutList := exec.ledger.GetTimeoutList(height)
+	timeoutIBTPsMap := make(map[string][]string)
+
+	if ok {
+		for _, value := range timeoutList {
+			listArray := strings.Split(value, "-")
+			from := listArray[0]
+			if list, has := timeoutIBTPsMap[from]; has {
+				list := append(list, value)
+				timeoutIBTPsMap[from] = list
+			} else {
+				timeoutIBTPsMap[from] = []string{value}
+			}
+		}
+	}
+
+	return timeoutIBTPsMap
 }

@@ -9,7 +9,7 @@ require (
 	github.com/common-nighthawk/go-figure v0.0.0-20190529165535-67e0ed34491a
 	github.com/coreos/etcd v3.3.18+incompatible
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f // indirect
-	github.com/ethereum/go-ethereum v1.10.2
+	github.com/ethereum/go-ethereum v1.10.4
 	github.com/fatih/color v1.7.0
 	github.com/gobuffalo/envy v1.9.0 // indirect
 	github.com/gobuffalo/packd v1.0.0
@@ -25,9 +25,9 @@ require (
 	github.com/juju/ratelimit v1.0.1
 	github.com/libp2p/go-libp2p-core v0.5.6
 	github.com/magiconair/properties v1.8.4
-	github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20210610064804-da2278686d33
+	github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20210724105900-764f4d594885
 	github.com/meshplus/bitxhub-kit v1.2.1-0.20210723100713-b8d99c166281
-	github.com/meshplus/bitxhub-model v1.1.2-0.20210723101055-4a432d0aa239
+	github.com/meshplus/bitxhub-model v1.1.2-0.20210724105649-55b7bde6bc91
 	github.com/meshplus/go-libp2p-cert v0.0.0-20210125063330-7c25fd5b7a49
 	github.com/meshplus/go-lightp2p v0.0.0-20210120082108-df5a536a6192
 	github.com/mitchellh/go-homedir v1.1.0
@@ -51,6 +51,7 @@ require (
 	github.com/willf/bitset v1.1.11 // indirect
 	github.com/willf/bloom v2.0.3+incompatible
 	go.uber.org/atomic v1.7.0
+	golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a // indirect
 	google.golang.org/grpc v1.33.2
 )
 

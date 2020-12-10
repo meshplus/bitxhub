@@ -130,7 +130,7 @@ func (x *InterchainManager) HandleIBTP(ibtp *pb.IBTP) *boltvm.Response {
 	if pb.IBTP_INTERCHAIN == ibtp.Type {
 		res = x.beginTransaction(ibtp)
 	} else if pb.IBTP_RECEIPT_SUCCESS == ibtp.Type || pb.IBTP_RECEIPT_FAILURE == ibtp.Type {
-		res = x.reportTransaction(ibtp)
+		res = x.reportTransaction(ibtp, interchain)
 	}
 
 	if !res.Ok {
@@ -283,7 +283,8 @@ func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *pb.Interchain
 	if pb.IBTP_INTERCHAIN == ibtp.Type ||
 		pb.IBTP_ASSET_EXCHANGE_INIT == ibtp.Type ||
 		pb.IBTP_ASSET_EXCHANGE_REDEEM == ibtp.Type ||
-		pb.IBTP_ASSET_EXCHANGE_REFUND == ibtp.Type {
+		pb.IBTP_ASSET_EXCHANGE_REFUND == ibtp.Type ||
+		pb.IBTP_ROLLBACK == ibtp.Type {
 		if interchain.InterchainCounter == nil {
 			x.Logger().Info("interchain counter is nil, make one")
 			interchain.InterchainCounter = make(map[string]uint64)
@@ -301,10 +302,11 @@ func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *pb.Interchain
 		ic.SourceReceiptCounter[ibtp.From] = ibtp.Index
 		x.setInterchain(ibtp.To, ic)
 		x.SetObject(x.indexReceiptMapKey(ibtp.ID()), x.GetTxHash())
-
 	}
 
-	x.PostInterchainEvent(m)
+	if pb.IBTP_RECEIPT_ROLLBACK != ibtp.Type {
+		x.PostInterchainEvent(m)
+	}
 }
 
 func (x *InterchainManager) beginMultiTargetsTransaction(ibtps *pb.IBTPs) *boltvm.Response {
@@ -329,13 +331,24 @@ func (x *InterchainManager) beginTransaction(ibtp *pb.IBTP) *boltvm.Response {
 	return x.CrossInvoke(constant.TransactionMgrContractAddr.String(), "Begin", pb.String(txId))
 }
 
-func (x *InterchainManager) reportTransaction(ibtp *pb.IBTP) *boltvm.Response {
+func (x *InterchainManager) reportTransaction(ibtp *pb.IBTP, interchain *pb.Interchain) *boltvm.Response {
 	txId := fmt.Sprintf("%s-%s-%d", ibtp.From, ibtp.To, ibtp.Index)
 	result := int32(0)
 	if ibtp.Type == pb.IBTP_RECEIPT_FAILURE {
 		result = 1
 	}
-	return x.CrossInvoke(constant.TransactionMgrContractAddr.String(), "Report", pb.String(txId), pb.Int32(result))
+	ret := x.CrossInvoke(constant.TransactionMgrContractAddr.String(), "Report", pb.String(txId), pb.Int32(result))
+	if strings.Contains(string(ret.Result), fmt.Sprintf("transaction with Id %s has been rollback", txId)) {
+		interchain.ReceiptCounter[ibtp.To] = ibtp.Index
+		x.setInterchain(ibtp.From, interchain)
+
+		ic, _ := x.getInterchain(ibtp.To)
+		ic.SourceReceiptCounter[ibtp.From] = ibtp.Index
+		x.setInterchain(ibtp.To, ic)
+		x.SetObject(x.indexReceiptMapKey(ibtp.ID()), x.GetTxHash())
+	}
+
+	return ret
 }
 
 func (x *InterchainManager) handleAssetExchange(ibtp *pb.IBTP) *boltvm.Response {

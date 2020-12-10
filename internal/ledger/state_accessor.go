@@ -5,9 +5,17 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"sort"
+	"strconv"
 	"sync"
 
 	"github.com/meshplus/bitxhub-kit/types"
+	"github.com/meshplus/bitxhub-model/constant"
+	"github.com/meshplus/bitxhub-model/pb"
+)
+
+const (
+	TX_PREFIX      = "tx-"
+	TIMEOUT_PREFIX = "timeout-"
 )
 
 var _ Ledger = (*ChainLedger)(nil)
@@ -279,4 +287,56 @@ func (l *ChainLedger) rollbackState(height uint64) error {
 	l.maxJnlHeight = height
 
 	return nil
+}
+
+func (l *ChainLedger) SetTimeoutList(height uint64, list []string) {
+	data, err := json.Marshal(list)
+	if err != nil {
+		panic(err)
+	}
+	key := TIMEOUT_PREFIX + strconv.FormatUint(height, 10)
+	account := l.GetOrCreateAccount(constant.InterchainContractAddr.Address())
+	account.SetState([]byte(key), data)
+}
+
+func (l *ChainLedger) GetTimeoutList(height uint64) (bool, []string) {
+	key := TIMEOUT_PREFIX + strconv.FormatUint(height, 10)
+	account := l.GetOrCreateAccount(constant.InterchainContractAddr.Address())
+	ok, data := account.GetState([]byte(key))
+	if !ok {
+		return false, nil
+	}
+
+	var list []string
+	err := json.Unmarshal(data, &list)
+	if err != nil {
+		panic(err)
+	}
+	return true, list
+}
+
+func (l *ChainLedger) SetTxRecord(txId string, record pb.TransactionRecord) {
+	data, err := json.Marshal(record)
+	if err != nil {
+		panic(err)
+	}
+	key := TX_PREFIX + txId
+	account := l.GetOrCreateAccount(constant.TransactionMgrContractAddr.Address())
+	account.SetState([]byte(key), data)
+}
+
+func (l *ChainLedger) GetTxRecord(txId string) (bool, pb.TransactionRecord) {
+	key := TX_PREFIX + txId
+	account := l.GetOrCreateAccount(constant.TransactionMgrContractAddr.Address())
+	ok, data := account.GetState([]byte(key))
+	if !ok {
+		return false, pb.TransactionRecord{}
+	}
+
+	var record pb.TransactionRecord
+	err := json.Unmarshal(data, &record)
+	if err != nil {
+		panic(err)
+	}
+	return true, record
 }
