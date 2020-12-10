@@ -2,6 +2,7 @@ package coreapi
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
 )
@@ -20,4 +21,11 @@ func (network *NetworkAPI) PeerInfo() ([]byte, error) {
 	}
 
 	return data, nil
+}
+
+func (network *NetworkAPI) DelVPNode(pid string) ([]byte, error) {
+	if pid == "" {
+		return nil, fmt.Errorf("pid is null")
+	}
+	return nil, nil
 }
