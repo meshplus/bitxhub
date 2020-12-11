@@ -14,13 +14,6 @@ func initCMD() cli.Command {
 		Name:   "init",
 		Usage:  "Initialize BitXHub local configuration",
 		Action: initialize,
-		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name:  "config",
-				Value: "",
-				Usage: "BitXHub config repo path",
-			},
-		},
 	}
 }
 
