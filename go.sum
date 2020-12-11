@@ -203,6 +203,8 @@ github.com/golang/mock v1.2.0/go.mod h1:oTYuIxOrZwtPieC+H1uAHpcLFnEyAGVDL/k47Jfb
 github.com/golang/mock v1.3.1/go.mod h1:sBzyDLLjw3U8JLTeZvSv8jJB+tU5PVekmnlKIyFUx0Y=
 github.com/golang/mock v1.4.3 h1:GV+pQPG/EUUbkh47niozDcADz6go/dUwhVzdUQHIVRw=
 github.com/golang/mock v1.4.3/go.mod h1:UOMv5ysSaYNkG+OFQykRIcU/QvvxJf3p21QfJ2Bt3cw=
+github.com/golang/mock v1.4.4 h1:l75CXGRSwbaYNpl/Z2X1XIIAMSCquvXgpVZDhwEIJsc=
+github.com/golang/mock v1.4.4/go.mod h1:l3mdAwkq5BuhzHwde/uurv3sEJeZMXNpwsxVWU71h+4=
 github.com/golang/protobuf v1.2.0/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
 github.com/golang/protobuf v1.3.0/go.mod h1:Qd/q+1AKNOZr9uGQzbzCmRO6sUih6GTPZv6a1/R87v0=
 github.com/golang/protobuf v1.3.1/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
@@ -632,6 +634,8 @@ github.com/meshplus/bitxhub-kit v1.1.2-0.20201021105954-468d0a9d7957/go.mod h1:r
 github.com/meshplus/bitxhub-kit v1.1.2-0.20201023030558-9f36554d5d5d/go.mod h1:r4l4iqn0RPJreb/OmoYKfjCjQJrXpZX++6Qc31VG/1k=
 github.com/meshplus/bitxhub-kit v1.1.2-0.20201127072239-fddea8940bae h1:G9ENjV078RtGauPVUvpPn2c83h9uXQvvzdQpOwdSVUM=
 github.com/meshplus/bitxhub-kit v1.1.2-0.20201127072239-fddea8940bae/go.mod h1:KR7ZlXhII9n0Bu8viaZTScvXCYn0MCQnYlsTvHPp0XA=
+github.com/meshplus/bitxhub-kit v1.1.2-0.20201203072410-8a0383a6870d h1:J9tzTNf29mR0r97An3KoAtZQYlwpNhlMItWKyzKJLHU=
+github.com/meshplus/bitxhub-kit v1.1.2-0.20201203072410-8a0383a6870d/go.mod h1:KR7ZlXhII9n0Bu8viaZTScvXCYn0MCQnYlsTvHPp0XA=
 github.com/meshplus/bitxhub-model v1.0.0-rc3/go.mod h1:ZCctQIYTlE3vJ8Lhkrgs9bWwNA+Dw4JzojOSIzLVU6E=
 github.com/meshplus/bitxhub-model v1.0.0-rc3/go.mod h1:ZCctQIYTlE3vJ8Lhkrgs9bWwNA+Dw4JzojOSIzLVU6E=
 github.com/meshplus/bitxhub-model v1.1.1 h1:/0Si29e14YW1GUbkJbCL8A70yXzxyiV/u36kxFC+gqI=

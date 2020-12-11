@@ -13,7 +13,7 @@ require (
 	github.com/gobuffalo/packd v1.0.0
 	github.com/gobuffalo/packr v1.30.1
 	github.com/gogo/protobuf v1.3.1
-	github.com/golang/mock v1.4.3
+	github.com/golang/mock v1.4.4
 	github.com/google/btree v1.0.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
@@ -26,7 +26,7 @@ require (
 	github.com/libp2p/go-libp2p-core v0.5.6
 	github.com/magiconair/properties v1.8.4
 	github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20201129021202-2a64111b8ae7
-	github.com/meshplus/bitxhub-kit v1.1.2-0.20201127072239-fddea8940bae
+	github.com/meshplus/bitxhub-kit v1.1.2-0.20201203072410-8a0383a6870d
 	github.com/meshplus/bitxhub-model v1.1.2-0.20201210083234-c041773b8820
 	github.com/meshplus/go-lightp2p v0.0.0-20201203044909-e09b34cd93ab
 	github.com/mitchellh/go-homedir v1.1.0
@@ -56,8 +56,6 @@ require (
 	google.golang.org/genproto v0.0.0-20201119123407-9b1e624d6bc4 // indirect
 	google.golang.org/grpc v1.33.2
 )
-
-replace github.com/golang/protobuf v1.4.2 => github.com/golang/protobuf v1.3.2
 
 replace github.com/hyperledger/fabric => github.com/hyperledger/fabric v2.0.1+incompatible
 
