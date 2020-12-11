@@ -39,7 +39,7 @@ var certCMD = cli.Command{
 
 var caCMD = cli.Command{
 	Name:  "ca",
-	Usage: "generate ca cert and private key",
+	Usage: "Generate ca cert and private key",
 	Action: func(ctx *cli.Context) error {
 		privKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 		if err != nil {
@@ -88,12 +88,12 @@ var csrCMD = cli.Command{
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:     "key",
-			Usage:    "Specific private key path",
+			Usage:    "Specify Secp256r1 private key path",
 			Required: true,
 		},
 		cli.StringFlag{
 			Name:     "org",
-			Usage:    "Specific organization name",
+			Usage:    "Specify organization name",
 			Required: true,
 		},
 		cli.StringFlag{
@@ -113,7 +113,7 @@ var csrCMD = cli.Command{
 		block, _ := pem.Decode(privData)
 		privKey, err := x509.ParseECPrivateKey(block.Bytes)
 		if err != nil {
-			return fmt.Errorf("parse private key: %w", err)
+			return fmt.Errorf("Error occured when parsing private key. Please make sure it's secp256r1 private key.")
 		}
 
 		template := &x509.CertificateRequest{
@@ -152,21 +152,21 @@ var issueCMD = cli.Command{
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:     "csr",
-			Usage:    "Special csr path",
+			Usage:    "Specify csr path",
 			Required: true,
 		},
 		cli.StringFlag{
 			Name:  "is_ca",
-			Usage: "is ca",
+			Usage: "Specify whether it's ca",
 		},
 		cli.StringFlag{
 			Name:     "key",
-			Usage:    "ca priv path",
+			Usage:    "Specify ca's secp256r1 private key path",
 			Required: true,
 		},
 		cli.StringFlag{
 			Name:     "cert",
-			Usage:    "ca certification path",
+			Usage:    "Specify ca certification path",
 			Required: true,
 		},
 		cli.StringFlag{
@@ -188,7 +188,7 @@ var issueCMD = cli.Command{
 		block, _ := pem.Decode(privData)
 		privKey, err := x509.ParseECPrivateKey(block.Bytes)
 		if err != nil {
-			return fmt.Errorf("parse ca private key: %w", err)
+			return fmt.Errorf("Error occured when parsing private key. Please make sure it's secp256r1 private key.")
 		}
 
 		caCertData, err := ioutil.ReadFile(certPath)
