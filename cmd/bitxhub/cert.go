@@ -398,6 +398,11 @@ func generatePrivKey(ctx *cli.Context, opt crypto.KeyType) error {
 	name := ctx.String("name")
 	target := ctx.String("target")
 
+	target, err := filepath.Abs(target)
+	if err != nil {
+		return fmt.Errorf("get absolute key path: %w", err)
+	}
+
 	privKey, err := asym.GenerateKeyPair(opt)
 	if err != nil {
 		return fmt.Errorf("generate key: %w", err)
@@ -425,5 +430,6 @@ func generatePrivKey(ctx *cli.Context, opt crypto.KeyType) error {
 		return fmt.Errorf("pem encode: %w", err)
 	}
 
+	fmt.Printf("%s.priv key is generated under directory %s\n", name, target)
 	return nil
 }

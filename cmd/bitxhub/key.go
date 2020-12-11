@@ -19,7 +19,7 @@ func keyCMD() cli.Command {
 		Subcommands: []cli.Command{
 			{
 				Name:  "gen",
-				Usage: "Create new Secp256k1 private key",
+				Usage: "Create new Secp256k1 private key in specified directory",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "name",
