@@ -2,7 +2,6 @@ package repo
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -41,6 +40,7 @@ type Config struct {
 	Txpool   `json:"txpool"`
 	Order    `json:"order"`
 	Executor `json:"executor"`
+	Genesis  `json:"genesis"`
 	Security Security `toml:"security" json:"security"`
 }
 
@@ -221,17 +221,4 @@ func PathRootWithDefault(path string) (string, error) {
 	}
 
 	return path, nil
-}
-
-func loadGenesis(repoRoot string) (*Genesis, error) {
-	genesis := &Genesis{}
-	if err := ReadConfig(filepath.Join(repoRoot, "genesis.json"), "json", genesis); err != nil {
-		return nil, err
-	}
-
-	if len(genesis.Addresses) == 0 {
-		return nil, fmt.Errorf("wrong genesis address number")
-	}
-
-	return genesis, nil
 }

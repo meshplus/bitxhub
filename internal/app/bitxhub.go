@@ -10,7 +10,6 @@ import (
 	"github.com/ethereum/go-ethereum/common/fdlimit"
 	"github.com/meshplus/bitxhub-kit/storage/blockfile"
 	"github.com/meshplus/bitxhub-kit/storage/leveldb"
-	"github.com/meshplus/bitxhub-kit/types"
 	_ "github.com/meshplus/bitxhub/imports"
 	"github.com/meshplus/bitxhub/internal/executor"
 	"github.com/meshplus/bitxhub/internal/ledger"
@@ -51,13 +50,7 @@ func NewBitXHub(rep *repo.Repo) (*BitXHub, error) {
 
 	chainMeta := bxh.Ledger.GetChainMeta()
 
-	m := make(map[uint64]types.Address)
-
-	if !rep.Config.Solo {
-		for i, node := range rep.NetworkConfig.Nodes {
-			m[node.ID] = *types.NewAddressByStr(rep.Genesis.Addresses[i])
-		}
-	}
+	m := rep.NetworkConfig.GetVpAccount()
 
 	order, err := orderplg.New(
 		order.WithRepoRoot(repoRoot),
@@ -122,7 +115,7 @@ func generateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 	}
 
 	if rwLdg.GetChainMeta().Height == 0 {
-		if err := genesis.Initialize(rep.Genesis, rwLdg); err != nil {
+		if err := genesis.Initialize(&rep.Config.Genesis, rwLdg); err != nil {
 			return nil, err
 		}
 		logger.Info("Initialize genesis")
@@ -173,13 +166,7 @@ func NewTesterBitXHub(rep *repo.Repo) (*BitXHub, error) {
 
 	chainMeta := bxh.Ledger.GetChainMeta()
 
-	m := make(map[uint64]types.Address)
-
-	if !rep.Config.Solo {
-		for i, node := range rep.NetworkConfig.Nodes {
-			m[node.ID] = *types.NewAddressByStr(rep.Genesis.Addresses[i])
-		}
-	}
+	m := rep.NetworkConfig.GetVpAccount()
 
 	order, err := etcdraft.NewNode(
 		order.WithRepoRoot(repoRoot),
@@ -281,7 +268,7 @@ func (bxh *BitXHub) Stop() error {
 func (bxh *BitXHub) printLogo() {
 	for {
 		time.Sleep(100 * time.Millisecond)
-		err :=bxh.Order.Ready()
+		err := bxh.Order.Ready()
 		if err == nil {
 			bxh.logger.WithFields(logrus.Fields{
 				"plugin_path": bxh.repo.Config.Order.Plugin,

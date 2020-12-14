@@ -1,6 +1,26 @@
-addrs = [
-    ["/ip4/127.0.0.1/tcp/4001/p2p/QmXi58fp9ZczF3Z5iz1yXAez3Hy5NYo1R8STHWKEM9XnTL"],
-    ["/ip4/127.0.0.1/tcp/4002/p2p/QmbmD1kzdsxRiawxu7bRrteDgW1ituXupR8GH6E2EUAHY4"],
-    ["/ip4/127.0.0.1/tcp/4003/p2p/QmQUcDYCtqbpn5Nhaw4FAGxQaSSNvdWfAFcpQT9SPiezbS"],
-    ["/ip4/127.0.0.1/tcp/4004/p2p/QmQW3bFn8XX1t4W14Pmn37bPJUpUVBrBjnPuBZwPog3Qdy"]
-]
+id = 2 # self id
+n = 4 # the number of cluster nodes
+
+[[nodes]]
+id = 1
+pid = "QmXi58fp9ZczF3Z5iz1yXAez3Hy5NYo1R8STHWKEM9XnTL"
+hosts = ["/ip4/127.0.0.1/tcp/4001/p2p/"]
+account = "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013"
+
+[[nodes]]
+id = 2
+pid = "QmbmD1kzdsxRiawxu7bRrteDgW1ituXupR8GH6E2EUAHY4"
+hosts = ["/ip4/127.0.0.1/tcp/4002/p2p/"]
+account = "0x79a1215469FaB6f9c63c1816b45183AD3624bE34"
+
+[[nodes]]
+id = 3
+pid = "QmQUcDYCtqbpn5Nhaw4FAGxQaSSNvdWfAFcpQT9SPiezbS"
+hosts = ["/ip4/127.0.0.1/tcp/4003/p2p/"]
+account = "0x97c8B516D19edBf575D72a172Af7F418BE498C37"
+
+[[nodes]]
+id = 4
+pid = "QmQW3bFn8XX1t4W14Pmn37bPJUpUVBrBjnPuBZwPog3Qdy"
+hosts = ["/ip4/127.0.0.1/tcp/4004/p2p/"]
+account = "0xc0Ff2e0b3189132D815b8eb325bE17285AC898f8"

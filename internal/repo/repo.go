@@ -9,7 +9,6 @@ import (
 type Repo struct {
 	Config        *Config
 	NetworkConfig *NetworkConfig
-	Genesis       *Genesis
 	Key           *Key
 	Certs         *Certs
 }
@@ -20,14 +19,9 @@ func Load(repoRoot string) (*Repo, error) {
 		return nil, err
 	}
 
-	networkConfig, err := loadNetworkConfig(repoRoot)
+	networkConfig, err := loadNetworkConfig(repoRoot, config.Genesis)
 	if err != nil {
 		return nil, fmt.Errorf("load network config: %w", err)
-	}
-
-	genesis, err := loadGenesis(repoRoot)
-	if err != nil {
-		return nil, fmt.Errorf("load genesis: %w", err)
 	}
 
 	certs, err := loadCerts(repoRoot)
@@ -43,7 +37,6 @@ func Load(repoRoot string) (*Repo, error) {
 	return &Repo{
 		Config:        config,
 		NetworkConfig: networkConfig,
-		Genesis:       genesis,
 		Key:           key,
 		Certs:         certs,
 	}, nil

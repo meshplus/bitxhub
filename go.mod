@@ -27,11 +27,12 @@ require (
 	github.com/magiconair/properties v1.8.4
 	github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20201125025329-ac1187099a88
 	github.com/meshplus/bitxhub-kit v1.1.2-0.20201203072410-8a0383a6870d
-	github.com/meshplus/bitxhub-model v1.1.2-0.20201208133437-73fa50d5efed
+	github.com/meshplus/bitxhub-model v1.1.2-0.20201209072914-6846fa78ff35
 	github.com/meshplus/go-lightp2p v0.0.0-20201203044909-e09b34cd93ab
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-multiaddr v0.2.2
 	github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6
+	github.com/pelletier/go-toml v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.5.0
 	github.com/rogpeppe/go-internal v1.5.2 // indirect
