@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub/internal/app"
 	"github.com/meshplus/bitxhub/internal/coreapi"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
@@ -15,7 +14,6 @@ import (
 	"github.com/meshplus/bitxhub/internal/router"
 	"github.com/meshplus/bitxhub/pkg/order"
 	"github.com/meshplus/bitxhub/pkg/order/etcdraft"
-	"github.com/meshplus/bitxhub/pkg/peermgr"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -78,18 +76,7 @@ func newTesterBitXHub(rep *repo.Repo) (*app.BitXHub, error) {
 
 	chainMeta := bxh.Ledger.GetChainMeta()
 
-	m := make(map[uint64]*peermgr.VPInfo)
-	if !rep.Config.Solo {
-		for i, node := range rep.NetworkConfig.Nodes {
-			keyAddr := *types.NewAddressByStr(rep.Genesis.Addresses[i])
-			IpInfo := rep.NetworkConfig.VpNodes[node.ID]
-			vpInfo := &peermgr.VPInfo{
-				KeyAddr:    keyAddr.String(),
-				IPAddr:     IpInfo.ID.String(),
-			}
-			m[node.ID] = vpInfo
-		}
-	}
+	m := rep.NetworkConfig.GetVpInfos()
 
 	order, err := etcdraft.NewNode(
 		order.WithRepoRoot(repoRoot),
@@ -97,6 +84,7 @@ func newTesterBitXHub(rep *repo.Repo) (*app.BitXHub, error) {
 		order.WithPluginPath(rep.Config.Plugin),
 		order.WithNodes(m),
 		order.WithID(rep.NetworkConfig.ID),
+		order.WithIsNew(rep.NetworkConfig.IsNew),
 		order.WithPeerManager(bxh.PeerMgr),
 		order.WithLogger(loggers.Logger(loggers.Order)),
 		order.WithApplied(chainMeta.Height),

@@ -41,6 +41,3 @@ batch_max_mem    = 10000 # The max memory size of one batch
         clean_viewchange  = "60s" # How long to clean out-of-data view change message
         update            = "4s"  # How long may a update-n take
         set               = "0.1s" # Node broadcasts transactions if there are cached transactions, although set_size isn't reached yet
-
-    [rbft.config]
-        isNew  = false # track the vp node is genesis or new node

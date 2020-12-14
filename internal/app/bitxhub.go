@@ -49,7 +49,7 @@ func NewBitXHub(rep *repo.Repo) (*BitXHub, error) {
 
 	chainMeta := bxh.Ledger.GetChainMeta()
 
-	m := rep.NetworkConfig.GetVpAccount()
+	m := rep.NetworkConfig.GetVpInfos()
 
 	order, err := orderplg.New(
 		order.WithRepoRoot(repoRoot),
@@ -57,6 +57,7 @@ func NewBitXHub(rep *repo.Repo) (*BitXHub, error) {
 		order.WithPluginPath(rep.Config.Plugin),
 		order.WithNodes(m),
 		order.WithID(rep.NetworkConfig.ID),
+		order.WithIsNew(rep.NetworkConfig.IsNew),
 		order.WithPeerManager(bxh.PeerMgr),
 		order.WithLogger(loggers.Logger(loggers.Order)),
 		order.WithApplied(chainMeta.Height),

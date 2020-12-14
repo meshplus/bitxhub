@@ -38,9 +38,12 @@ func TestNode_Start(t *testing.T) {
 	defer os.RemoveAll(repoRoot)
 
 	var ID uint64 = 1
-	nodes := make(map[uint64]types.Address)
-	hash := types.NewAddressByStr("000000000000000000000000000000000000000a")
-	nodes[ID] = *hash
+	nodes := make(map[uint64]*pb.VpInfo)
+	vpInfo := &pb.VpInfo{
+		Id: ID,
+		Account: types.NewAddressByStr("000000000000000000000000000000000000000a").String(),
+	}
+	nodes[ID] = vpInfo
 	fileData, err := ioutil.ReadFile("../../../config/order.toml")
 	require.Nil(t, err)
 	err = ioutil.WriteFile(filepath.Join(repoRoot, "order.toml"), fileData, 0644)
@@ -229,9 +232,9 @@ func convertToLibp2pPrivKey(privateKey crypto.PrivateKey) (crypto2.PrivKey, erro
 	return libp2pPrivKey, nil
 }
 
-func newSwarms(t *testing.T, peerCnt int) ([]*peermgr.Swarm, map[uint64]types.Address) {
+func newSwarms(t *testing.T, peerCnt int) ([]*peermgr.Swarm, map[uint64]*pb.VpInfo) {
 	var swarms []*peermgr.Swarm
-	nodes := make(map[uint64]types.Address)
+	nodes := make(map[uint64]*pb.VpInfo)
 	nodeKeys, privKeys, addrs, ids := genKeysAndConfig(t, peerCnt)
 	mockCtl := gomock.NewController(t)
 	mockLedger := mock_ledger.NewMockLedger(mockCtl)
@@ -276,7 +279,11 @@ func newSwarms(t *testing.T, peerCnt int) ([]*peermgr.Swarm, map[uint64]types.Ad
 
 		address, err := privKeys[i].PublicKey().Address()
 		require.Nil(t, err)
-		nodes[uint64(ID)] = *address
+		vpInfo := &pb.VpInfo{
+			Id: uint64(ID),
+			Account: address.String(),
+		}
+		nodes[uint64(ID)] = vpInfo
 		swarm, err := peermgr.New(repo, log.NewWithModule("p2p"), mockLedger)
 		require.Nil(t, err)
 		err = swarm.Start()

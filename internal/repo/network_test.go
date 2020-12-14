@@ -14,7 +14,7 @@ func TestNetworkConfig(t *testing.T) {
 		"0xc0Ff2e0b3189132D815b8eb325bE17285AC898f8"}})
 
 	require.Nil(t, err)
-	peers, err := cfg.GetPeers()
+	peers, err := cfg.GetNetWorkPeers()
 	require.Nil(t, err)
 	require.Equal(t, 4, len(peers))
 
@@ -62,8 +62,8 @@ func TestRewriteNetworkConfig(t *testing.T) {
 			Account: "0xc0Ff2e0b3189132D815b8eb325bE1728",
 		})
 	}
-	err := RewriteNetworkConfig("./testdata", infos)
+	err := RewriteNetworkConfig("./testdata", infos, false)
 	require.Nil(t, err)
-	err = RewriteNetworkConfig("./testdata", infos[:len(infos)-1])
+	err = RewriteNetworkConfig("./testdata", infos[:len(infos)-1],false)
 	require.Nil(t, err)
 }

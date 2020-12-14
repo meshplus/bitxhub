@@ -612,7 +612,10 @@ func GenerateRaftPeers(config *order.Config) ([]raft.Peer, error) {
 
 	for _, id := range idSlice {
 		addr := nodes[id]
-		addBytes := peermgr.MasherVPInfo(addr)
+		addBytes,err := addr.Marshal()
+		if err != nil {
+			return nil, err
+		}
 		peers = append(peers, raft.Peer{ID: id, Context: addBytes})
 	}
 	return peers, nil

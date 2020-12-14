@@ -39,9 +39,12 @@ func TestNode_Start(t *testing.T) {
 	peers := make(map[uint64]*peer.AddrInfo)
 	mockPeermgr.EXPECT().Peers().Return(peers).AnyTimes()
 
-	nodes := make(map[uint64]types.Address)
-	hash := types.NewAddressByStr("000000000000000000000000000000000000000a")
-	nodes[1] = *hash
+	nodes := make(map[uint64]*pb.VpInfo)
+	vpInfo := & pb.VpInfo{
+		Id: uint64(1),
+		Account: types.NewAddressByStr("000000000000000000000000000000000000000a").String(),
+	}
+	nodes[1] = vpInfo
 
 	order, err := NewNode(
 		order.WithRepoRoot(repoRoot),

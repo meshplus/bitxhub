@@ -12,13 +12,14 @@ import (
 
 type Config struct {
 	ID                 uint64
+	IsNew              bool
 	RepoRoot           string
 	StoragePath        string
 	PluginPath         string
 	PeerMgr            peermgr.PeerManager
 	PrivKey            crypto.PrivateKey
 	Logger             logrus.FieldLogger
-	Nodes              map[uint64]*peermgr.VPInfo
+	Nodes              map[uint64]*pb.VpInfo
 	Applied            uint64
 	Digest             string
 	GetTransactionFunc func(hash *types.Hash) (*pb.Transaction, error)
@@ -31,6 +32,12 @@ type Option func(*Config)
 func WithID(id uint64) Option {
 	return func(config *Config) {
 		config.ID = id
+	}
+}
+
+func WithIsNew(isNew bool) Option {
+	return func(config *Config) {
+		config.IsNew = isNew
 	}
 }
 
@@ -70,7 +77,7 @@ func WithLogger(logger logrus.FieldLogger) Option {
 	}
 }
 
-func WithNodes(nodes map[uint64]*peermgr.VPInfo) Option {
+func WithNodes(nodes map[uint64]*pb.VpInfo) Option {
 	return func(config *Config) {
 		config.Nodes = nodes
 	}

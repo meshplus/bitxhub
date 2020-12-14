@@ -73,13 +73,13 @@ func testSendView(suite *API) {
 	suite.Equal(value, string(receipt.Ret))
 }
 
-func (suite *API) TestDelVPNode() {
-	_, err := suite.api.Network().DelVPNode("")
-	suite.NotNil(err)
-
-	_, err = suite.api.Network().DelVPNode("1234")
-	suite.Nil(err)
-}
+//func (suite *API) TestDelVPNode() {
+//	err := suite.api.Broker().DelVPNode(1)
+//	suite.NotNil(err)
+//
+//	err = suite.api.Broker().DelVPNode(2)
+//	suite.Nil(err)
+//}
 
 func TestAPI(t *testing.T) {
 	suite.Run(t, &API{})

@@ -16,7 +16,6 @@ import (
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/model/events"
 	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
-	"github.com/meshplus/bitxhub/pkg/peermgr"
 	network "github.com/meshplus/go-lightp2p"
 	"github.com/stretchr/testify/mock"
 )
@@ -126,24 +125,24 @@ func (mpm *mockPeerMgr) Send(uint64, *pb.Message) (*pb.Message, error) {
 	return nil, nil
 }
 
-func (mpm *mockPeerMgr)AddNode(newNodeID uint64, vpInfo *peermgr.VPInfo) {}
+func (mpm *mockPeerMgr)AddNode(newNodeID uint64, vpInfo *pb.VpInfo) {}
 
 func (mpm *mockPeerMgr)DelNode(delID uint64){}
 
-func (mpm *mockPeerMgr)UpdateRouter(vpInfos map[uint64]*peermgr.VPInfo, isNew bool) bool {
+func (mpm *mockPeerMgr)UpdateRouter(vpInfos map[uint64]*pb.VpInfo, isNew bool) bool {
 	return false
 }
 
-func (mpm *mockPeerMgr)Disconnect(vpInfos map[uint64]*peermgr.VPInfo) {}
+func (mpm *mockPeerMgr)Disconnect(vpInfos map[uint64]*pb.VpInfo) {}
 
-func (mpm *mockPeerMgr) Peers() map[uint64]*peermgr.VPInfo {
-	peers := make(map[uint64]*peermgr.VPInfo, 3)
+func (mpm *mockPeerMgr) Peers() map[uint64]*pb.VpInfo {
+	peers := make(map[uint64]*pb.VpInfo, 3)
 	id1 := "peer1"
-	peers[0] = &peermgr.VPInfo{IPAddr: id1}
+	peers[0] = &pb.VpInfo{Pid: id1}
 	id1 = "peer2"
-	peers[1] = &peermgr.VPInfo{IPAddr: id1}
+	peers[1] = &pb.VpInfo{Pid: id1}
 	id1 = "peer3"
-	peers[2] = &peermgr.VPInfo{IPAddr: id1}
+	peers[2] = &pb.VpInfo{Pid: id1}
 	return peers
 }
 

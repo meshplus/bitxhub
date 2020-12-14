@@ -10,7 +10,6 @@ import (
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	pb "github.com/meshplus/bitxhub-model/pb"
 	events "github.com/meshplus/bitxhub/internal/model/events"
-	peermgr "github.com/meshplus/bitxhub/pkg/peermgr"
 	network "github.com/meshplus/go-lightp2p"
 	reflect "reflect"
 )
@@ -124,10 +123,10 @@ func (mr *MockPeerManagerMockRecorder) Broadcast(arg0 interface{}) *gomock.Call 
 }
 
 // Peers mocks base method
-func (m *MockPeerManager) Peers() map[uint64]*peermgr.MrgPeerInfo {
+func (m *MockPeerManager) Peers() map[uint64]*pb.VpInfo {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Peers")
-	ret0, _ := ret[0].(map[uint64]*peermgr.MrgPeerInfo)
+	ret0, _ := ret[0].(map[uint64]*pb.VpInfo)
 	return ret0
 }
 
@@ -166,7 +165,7 @@ func (mr *MockPeerManagerMockRecorder) SubscribeOrderMessage(ch interface{}) *go
 }
 
 // AddNode mocks base method
-func (m *MockPeerManager) AddNode(newNodeID uint64, vpInfo *peermgr.MrgPeerInfo) {
+func (m *MockPeerManager) AddNode(newNodeID uint64, vpInfo *pb.VpInfo) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "AddNode", newNodeID, vpInfo)
 }
@@ -190,13 +189,27 @@ func (mr *MockPeerManagerMockRecorder) DelNode(delID interface{}) *gomock.Call {
 }
 
 // UpdateRouter mocks base method
-func (m *MockPeerManager) UpdateRouter(vpInfo map[uint64]*peermgr.MrgPeerInfo) {
+func (m *MockPeerManager) UpdateRouter(vpInfos map[uint64]*pb.VpInfo, isNew bool) bool {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "UpdateRouter", vpInfo)
+	ret := m.ctrl.Call(m, "UpdateRouter", vpInfos, isNew)
+	ret0, _ := ret[0].(bool)
+	return ret0
 }
 
 // UpdateRouter indicates an expected call of UpdateRouter
-func (mr *MockPeerManagerMockRecorder) UpdateRouter(vpInfo interface{}) *gomock.Call {
+func (mr *MockPeerManagerMockRecorder) UpdateRouter(vpInfos, isNew interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateRouter", reflect.TypeOf((*MockPeerManager)(nil).UpdateRouter), vpInfo)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateRouter", reflect.TypeOf((*MockPeerManager)(nil).UpdateRouter), vpInfos, isNew)
+}
+
+// Disconnect mocks base method
+func (m *MockPeerManager) Disconnect(vpInfos map[uint64]*pb.VpInfo) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "Disconnect", vpInfos)
+}
+
+// Disconnect indicates an expected call of Disconnect
+func (mr *MockPeerManagerMockRecorder) Disconnect(vpInfos interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Disconnect", reflect.TypeOf((*MockPeerManager)(nil).Disconnect), vpInfos)
 }

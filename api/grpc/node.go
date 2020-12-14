@@ -7,7 +7,6 @@ import (
 	"fmt"
 
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/pkg/peermgr"
 )
 
 func GetValidators(cbs *ChainBrokerService) (*pb.Response, error) {
@@ -24,7 +23,7 @@ func GetValidators(cbs *ChainBrokerService) (*pb.Response, error) {
 func (cbs *ChainBrokerService) DelVPNode(ctx context.Context, req *pb.DelVPNodeRequest) (*pb.Response, error) {
 	delPid := req.Pid
 	peersBytes,_ := cbs.api.Network().PeerInfo()
-	peers := make(map[uint64]*peermgr.VPInfo)
+	peers := make(map[uint64]*pb.VpInfo)
 	err := json.Unmarshal(peersBytes,&peers)
 	if err != nil {
 		return nil, err
@@ -32,7 +31,7 @@ func (cbs *ChainBrokerService) DelVPNode(ctx context.Context, req *pb.DelVPNodeR
 	var isExist bool
 	var delID uint64
 	for id, peer := range peers {
-		if peer.IPAddr == delPid {
+		if peer.Pid == delPid {
 			isExist = true
 			delID = id
 			break
