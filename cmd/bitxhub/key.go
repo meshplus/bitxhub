@@ -37,15 +37,15 @@ func keyCMD() cli.Command {
 			},
 			{
 				Name:  "convert",
-				Usage: "Convert new key file from private key",
+				Usage: "Convert the Secp256k1 private key to BitXHub key format",
 				Flags: []cli.Flag{
 					cli.BoolFlag{
 						Name:  "save,s",
-						Usage: "save key into repo",
+						Usage: "Save BitXHub key into repo",
 					},
 					cli.StringFlag{
 						Name:     "priv",
-						Usage:    "private key path",
+						Usage:    "Specify private key path",
 						Required: true,
 					},
 				},
@@ -53,17 +53,17 @@ func keyCMD() cli.Command {
 			},
 			{
 				Name:   "show",
-				Usage:  "Show key from cert",
+				Usage:  "Show BitXHub key from repo",
 				Action: showKey,
 			},
 			{
 				Name:   "address",
-				Usage:  "Show address from private key",
+				Usage:  "Show address from Secp256k1 private key",
 				Action: getAddress,
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "path",
-						Usage:    "Specific private key path",
+						Usage:    "Specify private key path",
 						Required: true,
 					},
 				},
