@@ -355,10 +355,10 @@ func (n *Node) run() {
 				msgInflight := n.ramLastIndex() > n.appliedIndex+1
 				if msgInflight {
 					n.logger.Debugf("There are in flight blocks, new leader should not serve requests")
-					continue
+				} else {
+					n.justElected = false
+					n.mempool.UpdateLeader(n.leader)
 				}
-				n.justElected = false
-				n.mempool.UpdateLeader(n.leader)
 			}
 
 			// 3: AsyncSend all Messages to the nodes named in the To field.
