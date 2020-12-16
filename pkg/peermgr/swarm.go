@@ -60,7 +60,7 @@ func New(repoConfig *repo.Repo, logger logrus.FieldLogger, ledger ledger.Ledger)
 	}
 
 	multiAddrs := make(map[uint64]*peer.AddrInfo)
-	p2pPeers, _ := repoConfig.NetworkConfig.GetNetWorkPeers()
+	p2pPeers, _ := repoConfig.NetworkConfig.GetNetworkPeers()
 	for id, node := range p2pPeers {
 		if id == repoConfig.NetworkConfig.ID {
 			continue

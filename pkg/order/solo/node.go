@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
-	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/meshplus/bitxhub-kit/storage/leveldb"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -114,7 +113,7 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 
 	mockCtl := gomock.NewController(&testing.T{})
 	peerMgr := mock_peermgr.NewMockPeerManager(mockCtl)
-	peerMgr.EXPECT().Peers().Return(map[uint64]*peer.AddrInfo{}).AnyTimes()
+	peerMgr.EXPECT().Peers().Return(map[uint64]*pb.VpInfo{}).AnyTimes()
 	memConfig, err := generateMempoolConfig(config.RepoRoot)
 	mempoolConf := &mempool.Config{
 		ID:                 config.ID,

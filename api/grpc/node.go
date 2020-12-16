@@ -9,17 +9,6 @@ import (
 	"github.com/meshplus/bitxhub-model/pb"
 )
 
-func GetValidators(cbs *ChainBrokerService) (*pb.Response, error) {
-	addresses := cbs.genesis.Addresses
-	v, err := json.Marshal(addresses)
-	if err != nil {
-		return nil, err
-	}
-	return &pb.Response{
-		Data: v,
-	}, nil
-}
-
 func (cbs *ChainBrokerService) DelVPNode(ctx context.Context, req *pb.DelVPNodeRequest) (*pb.Response, error) {
 	delPid := req.Pid
 	peersBytes,_ := cbs.api.Network().PeerInfo()

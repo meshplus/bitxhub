@@ -2,6 +2,8 @@ package grpc
 
 import (
 	"context"
+	"encoding/json"
+
 	"github.com/meshplus/bitxhub-model/pb"
 )
 
@@ -15,3 +17,13 @@ func GetChainStatus(cbs *ChainBrokerService) (*pb.Response, error) {
 	}, nil
 }
 
+func GetValidators(cbs *ChainBrokerService) (*pb.Response, error) {
+	addresses := cbs.genesis.Addresses
+	v, err := json.Marshal(addresses)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.Response{
+		Data: v,
+	}, nil
+}

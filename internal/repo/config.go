@@ -100,14 +100,6 @@ type Genesis struct {
 	Addresses []string `json:"addresses" toml:"addresses"`
 }
 
-type NewAddresses struct {
-	New []string `json:"new" toml:"new"`
-}
-
-type Addresses struct {
-	Addresses []string
-}
-
 type Cert struct {
 	Verify bool `toml:"verify" json:"verify"`
 }

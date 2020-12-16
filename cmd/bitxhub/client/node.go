@@ -58,6 +58,7 @@ func delVPNode(ctx *cli.Context) error {
 		return err
 	}
 
+	// TODO (FBZ): change to httpPost
 	data, err := httpGet(url)
 	if err != nil {
 		return err

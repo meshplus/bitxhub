@@ -21,7 +21,7 @@ func (mpi *mempoolImpl) broadcast(m *pb.Message) {
 func (mpi *mempoolImpl) unicast(to uint64, m *pb.Message) {
 	go func() {
 		if err := mpi.peerMgr.AsyncSend(to, m); err != nil {
-			mpi.logger.Error("Send message to peer %d failed, err: %s", to, err.Error())
+			mpi.logger.Warningf("Send message to peer %d failed, err: %s", to, err.Error())
 		}
 	}()
 }

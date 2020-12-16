@@ -72,7 +72,7 @@ func testSendView(suite *API) {
 	suite.Equal(receipt.Status, pb.Receipt_SUCCESS)
 	suite.Equal(value, string(receipt.Ret))
 }
-
+//
 //func (suite *API) TestDelVPNode() {
 //	err := suite.api.Broker().DelVPNode(1)
 //	suite.NotNil(err)

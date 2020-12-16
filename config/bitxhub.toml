@@ -36,7 +36,7 @@ server_key_path = "certs/server.key"
   report_caller = false
   [log.module]
     p2p = "info"
-    consensus = "debug"
+    consensus = "info"
     executor = "info"
     router = "info"
     api = "info"
@@ -47,7 +47,7 @@ server_key_path = "certs/server.key"
   verify = true
 
 [order]
-  plugin = "plugins/rbft.so"
+  plugin = "plugins/raft.so"
 
 [executor]
   type = "serial"  # opensource version only supports serial type, commercial version supports serial and parallel types

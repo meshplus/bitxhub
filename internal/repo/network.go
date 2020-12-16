@@ -105,8 +105,8 @@ func (config *NetworkConfig) GetVpAccount() map[uint64]types.Address {
 	return m
 }
 
-// GetPeers gets all peers from network config
-func (config *NetworkConfig) GetNetWorkPeers() (map[uint64]*peer.AddrInfo, error) {
+// GetNetworkPeers gets all peers from network config
+func (config *NetworkConfig) GetNetworkPeers() (map[uint64]*peer.AddrInfo, error) {
 	peers := make(map[uint64]*peer.AddrInfo)
 	for _, node := range config.Nodes {
 		if len(node.Hosts) == 0 {

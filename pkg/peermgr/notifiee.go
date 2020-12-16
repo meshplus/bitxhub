@@ -41,6 +41,7 @@ func (n *notifiee) Connected(network network.Network, conn network.Conn) {
 	if n.newPeer == "" {
 		n.newPeer = newAddr
 		n.logger.Infof("Updating notifiee newPeer %s", newAddr)
+		return
 	}
 	n.logger.Infof("The newPeer %s is not nil, skip the new addr %s", n.newPeer, newAddr)
 }
