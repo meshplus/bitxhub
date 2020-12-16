@@ -22,7 +22,7 @@ import (
 type NetworkConfig struct {
 	ID        uint64          `toml:"id" json:"id"`
 	N         uint64          `toml:"n" json:"n"`
-	IsNew     bool            `toml:"new" json:"new"`
+	New       bool            `toml:"new" json:"new"`
 	LocalAddr string          `toml:"local_addr, omitempty" json:"local_addr"`
 	Nodes     []*NetworkNodes `toml:"nodes" json:"nodes"`
 	Genesis   Genesis         `toml:"genesis, omitempty" json:"genesis"`
@@ -164,7 +164,7 @@ func RewriteNetworkConfig(repoRoot string, infos map[uint64]*pb.VpInfo, isNew bo
 	}
 	networkConfig.Nodes = nodes
 	networkConfig.N = uint64(len(nodes))
-	networkConfig.IsNew = isNew
+	networkConfig.New = isNew
 	data, err := toml.Marshal(*networkConfig)
 	if err != nil {
 		return err

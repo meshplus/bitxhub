@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/meshplus/bitxhub-kit/crypto"
-	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
 	"github.com/sirupsen/logrus"
@@ -22,7 +21,6 @@ type Config struct {
 	Nodes              map[uint64]*pb.VpInfo
 	Applied            uint64
 	Digest             string
-	GetTransactionFunc func(hash *types.Hash) (*pb.Transaction, error)
 	GetChainMetaFunc   func() *pb.ChainMeta
 	GetBlockByHeight   func(height uint64) (*pb.Block, error)
 }
@@ -98,12 +96,6 @@ func WithDigest(digest string) Option {
 func WithGetChainMetaFunc(f func() *pb.ChainMeta) Option {
 	return func(config *Config) {
 		config.GetChainMetaFunc = f
-	}
-}
-
-func WithGetTransactionFunc(f func(hash *types.Hash) (*pb.Transaction, error)) Option {
-	return func(config *Config) {
-		config.GetTransactionFunc = f
 	}
 }
 

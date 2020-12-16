@@ -3,6 +3,8 @@ package tester
 import (
 	"context"
 	"fmt"
+	"os"
+	"path"
 	"testing"
 	"time"
 
@@ -44,6 +46,7 @@ func TestTester(t *testing.T) {
 }
 
 func setupNode(t *testing.T, path string) api.CoreAPI {
+	cleanStorage(path)
 	repoRoot, err := repo.PathRootWithDefault(path)
 	require.Nil(t, err)
 
@@ -84,13 +87,12 @@ func newTesterBitXHub(rep *repo.Repo) (*app.BitXHub, error) {
 		order.WithPluginPath(rep.Config.Plugin),
 		order.WithNodes(m),
 		order.WithID(rep.NetworkConfig.ID),
-		order.WithIsNew(rep.NetworkConfig.IsNew),
+		order.WithIsNew(rep.NetworkConfig.New),
 		order.WithPeerManager(bxh.PeerMgr),
 		order.WithLogger(loggers.Logger(loggers.Order)),
 		order.WithApplied(chainMeta.Height),
 		order.WithDigest(chainMeta.BlockHash.String()),
 		order.WithGetChainMetaFunc(bxh.Ledger.GetChainMeta),
-		order.WithGetTransactionFunc(bxh.Ledger.GetTransaction),
 		order.WithGetBlockByHeightFunc(bxh.Ledger.GetBlock),
 	)
 
@@ -110,4 +112,13 @@ func newTesterBitXHub(rep *repo.Repo) (*app.BitXHub, error) {
 	bxh.Router = r
 
 	return bxh, nil
+}
+
+func cleanStorage(basePath string) {
+	filePath := path.Join(basePath,"storage")
+	err := os.RemoveAll(filePath)
+	if err != nil {
+		fmt.Printf("Clean storage failed, error: %s", err.Error())
+		return
+	}
 }

@@ -2,20 +2,29 @@ syntax = "proto3";
 
 package proto;
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+import "github.com/meshplus/bitxhub-model/pb/transaction.proto";
 
 message RaftMessage {
     enum Type {
         CONSENSUS = 0;
         BROADCAST_TX = 1;
-        GET_TX = 2;
-        GET_TX_ACK = 3;
     }
     Type type = 1;
     uint64 fromId = 2;
     bytes data = 3;
 }
 
+message request_batch {
+    string digest = 1;
+    repeated pb.Transaction txList = 2;
+    uint64 height = 3;
+}
+
 message Ready {
     repeated bytes txHashes = 1 [(gogoproto.customtype) = "github.com/meshplus/bitxhub-kit/types.Hash"];
     uint64 height = 2;
+}
+
+message tx_slice {
+	 repeated pb.Transaction TxList = 1;
 }

@@ -28,7 +28,7 @@ func TestNode_Start(t *testing.T) {
 	assert.Nil(t, err)
 
 	// write config file for order module
-	fileData, err := ioutil.ReadFile("../../../config/order.toml")
+	fileData, err := ioutil.ReadFile("./testdata/order.toml")
 	require.Nil(t, err)
 	err = ioutil.WriteFile(filepath.Join(repoRoot, "order.toml"), fileData, 0644)
 	require.Nil(t, err)
@@ -39,8 +39,8 @@ func TestNode_Start(t *testing.T) {
 	mockPeermgr.EXPECT().Peers().Return(peers).AnyTimes()
 
 	nodes := make(map[uint64]*pb.VpInfo)
-	vpInfo := & pb.VpInfo{
-		Id: uint64(1),
+	vpInfo := &pb.VpInfo{
+		Id:      uint64(1),
 		Account: types.NewAddressByStr("000000000000000000000000000000000000000a").String(),
 	}
 	nodes[1] = vpInfo
@@ -57,9 +57,8 @@ func TestNode_Start(t *testing.T) {
 	)
 	require.Nil(t, err)
 
-	err = order.Start()
+	_ = order.Start()
 	require.Nil(t, err)
-
 	privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	require.Nil(t, err)
 
@@ -91,6 +90,8 @@ func TestNode_Start(t *testing.T) {
 	require.Equal(t, uint64(2), block.BlockHeader.Number)
 	require.Equal(t, 1, len(block.Transactions))
 
-	order.ReportState(block.Height(), block.BlockHash)
+	txHashList := make([]*types.Hash, 0)
+	txHashList = append(txHashList, tx.TransactionHash)
+	order.ReportState(block.Height(), block.BlockHash, txHashList)
 	order.Stop()
 }

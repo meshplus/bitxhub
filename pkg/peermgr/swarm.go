@@ -3,7 +3,6 @@ package peermgr
 import (
 	"context"
 	"fmt"
-	ma "github.com/multiformats/go-multiaddr"
 	"sync"
 	"time"
 
@@ -20,6 +19,7 @@ import (
 	"github.com/meshplus/bitxhub/pkg/cert"
 	network "github.com/meshplus/go-lightp2p"
 	"github.com/sirupsen/logrus"
+	ma "github.com/multiformats/go-multiaddr"
 )
 
 const (

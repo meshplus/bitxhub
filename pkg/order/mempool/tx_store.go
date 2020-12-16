@@ -3,7 +3,7 @@ package mempool
 import (
 	"github.com/google/btree"
 	"github.com/meshplus/bitxhub-model/pb"
-	"sync/atomic"
+	"sync"
 )
 
 type transactionStore struct {
@@ -20,13 +20,6 @@ type transactionStore struct {
 	priorityIndex *btreeIndex
 	// cache all the batched txs which haven't executed.
 	batchedTxs map[orderedIndexKey]bool
-	// cache all batches created by current primary in order, removed after they are been executed.
-	// TODO (YH): change the type of key from height to digest.
-	batchedCache map[uint64][]*pb.Transaction
-	// trace the missing transaction
-	missingBatch map[uint64]map[uint64]string
-	// track the current size of mempool
-	poolSize int32
 	// track the non-batch priority transaction.
 	priorityNonBatchSize uint64
 }
@@ -36,8 +29,6 @@ func newTransactionStore() *transactionStore {
 		txHashMap:       make(map[string]*orderedIndexKey, 0),
 		allTxs:          make(map[string]*txSortedMap),
 		batchedTxs:      make(map[orderedIndexKey]bool),
-		missingBatch:    make(map[uint64]map[uint64]string),
-		batchedCache:    make(map[uint64][]*pb.Transaction),
 		parkingLotIndex: newBtreeIndex(),
 		priorityIndex:   newBtreeIndex(),
 		nonceCache:      newNonceCache(),
@@ -66,7 +57,6 @@ func (txStore *transactionStore) insertTxs(txs map[string][]*pb.Transaction) map
 			}
 			txList.items[tx.Nonce] = txItem
 			txList.index.insertBySortedNonceKey(tx)
-			atomic.AddInt32(&txStore.poolSize, 1)
 		}
 		dirtyAccounts[account] = true
 	}
@@ -137,15 +127,16 @@ func (m *txSortedMap) forward(commitNonce uint64) map[string][]*pb.Transaction {
 	return removedTxs
 }
 
+// TODO (YH): persist and restore commitNonce and pendingNonce from db.
 type nonceCache struct {
 	// commitNonces records each account's latest committed nonce in ledger.
 	commitNonces map[string]uint64
 	// pendingNonces records each account's latest nonce which has been included in
 	// priority queue. Invariant: pendingNonces[account] >= commitNonces[account]
 	pendingNonces map[string]uint64
+	pendingMu            sync.RWMutex
 }
 
-// TODO (YH): restore commitNonce and pendingNonce from db.
 func newNonceCache() *nonceCache {
 	return &nonceCache{
 		commitNonces:  make(map[string]uint64),
@@ -166,6 +157,8 @@ func (nc *nonceCache) setCommitNonce(account string, nonce uint64) {
 }
 
 func (nc *nonceCache) getPendingNonce(account string) uint64 {
+	nc.pendingMu.RLock()
+	defer nc.pendingMu.RUnlock()
 	nonce, ok := nc.pendingNonces[account]
 	if !ok {
 		return 1
@@ -174,5 +167,7 @@ func (nc *nonceCache) getPendingNonce(account string) uint64 {
 }
 
 func (nc *nonceCache) setPendingNonce(account string, nonce uint64) {
+	nc.pendingMu.Lock()
+	defer nc.pendingMu.Unlock()
 	nc.pendingNonces[account] = nonce
 }

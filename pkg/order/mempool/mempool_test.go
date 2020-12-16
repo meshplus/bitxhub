@@ -6,144 +6,38 @@ import (
 
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
-	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
-
 	"github.com/stretchr/testify/assert"
 )
-
-func TestRecvTransaction(t *testing.T) {
-	ast := assert.New(t)
-	mpi, _ := mockMempoolImpl()
-	defer cleanTestData()
-
-	privKey1 := genPrivKey()
-	tx1 := constructTx(uint64(1), &privKey1)
-	go mpi.txCache.listenEvent()
-	go func() {
-		_ = mpi.RecvTransaction(tx1)
-	}()
-	select {
-	case txSet := <-mpi.txCache.txSetC:
-		ast.Equal(1, len(txSet.TxList))
-	}
-
-	err := mpi.Start()
-	ast.Nil(err)
-	privKey2 := genPrivKey()
-	go func() {
-		_ = mpi.RecvTransaction(tx1)
-	}()
-	time.Sleep(1 * time.Millisecond)
-	ast.Equal(1, mpi.txStore.priorityIndex.size())
-	ast.Equal(0, mpi.txStore.parkingLotIndex.size())
-
-	tx2 := constructTx(uint64(2), &privKey1)
-	tx3 := constructTx(uint64(1), &privKey2)
-	tx4 := constructTx(uint64(2), &privKey2)
-	go func() {
-		_ = mpi.RecvTransaction(tx4)
-	}()
-	time.Sleep(1 * time.Millisecond)
-	ast.Equal(1, mpi.txStore.priorityIndex.size())
-	ast.Equal(1, mpi.txStore.parkingLotIndex.size())
-	go func() {
-		_ = mpi.RecvTransaction(tx2)
-	}()
-	time.Sleep(1 * time.Millisecond)
-	ast.Equal(2, mpi.txStore.priorityIndex.size())
-	ast.Equal(1, mpi.txStore.parkingLotIndex.size())
-	go func() {
-		_ = mpi.RecvTransaction(tx3)
-	}()
-	time.Sleep(1 * time.Millisecond)
-	ast.Equal(4, mpi.txStore.priorityIndex.size())
-	ast.Equal(1, mpi.txStore.parkingLotIndex.size(), "delete tx4 until finishing executor")
-	mpi.Stop()
-}
-
-func TestRecvForwardTxs(t *testing.T) {
-	ast := assert.New(t)
-	mpi, _ := mockMempoolImpl()
-	defer cleanTestData()
-
-	privKey1 := genPrivKey()
-	tx := constructTx(uint64(1), &privKey1)
-	txList := []*pb.Transaction{tx}
-	txSlice := &TxSlice{TxList: txList}
-	go mpi.RecvForwardTxs(txSlice)
-	select {
-	case txSet := <-mpi.subscribe.txForwardC:
-		ast.Equal(1, len(txSet.TxList))
-	}
-}
-
-func TestUpdateLeader(t *testing.T) {
-	ast := assert.New(t)
-	mpi, _ := mockMempoolImpl()
-	mpi.Start()
-	defer cleanTestData()
-	go mpi.UpdateLeader(uint64(2))
-	time.Sleep(1 * time.Millisecond)
-	ast.Equal(uint64(2), mpi.leader)
-}
 
 func TestGetBlock(t *testing.T) {
 	ast := assert.New(t)
 	mpi, _ := mockMempoolImpl()
-	err := mpi.Start()
-	ast.Nil(err)
-	defer cleanTestData()
-
 	privKey1 := genPrivKey()
 	privKey2 := genPrivKey()
 	tx1 := constructTx(uint64(1), &privKey1)
 	tx2 := constructTx(uint64(2), &privKey1)
 	tx3 := constructTx(uint64(2), &privKey2)
 	tx4 := constructTx(uint64(4), &privKey2)
-	tx5 := constructTx(uint64(1), &privKey2)
 	var txList []*pb.Transaction
-	var txHashList []types.Hash
 	txList = append(txList, tx1, tx2, tx3, tx4)
-	txHashList = append(txHashList, *tx1.TransactionHash, *tx2.TransactionHash, *tx3.TransactionHash, *tx5.TransactionHash)
-	err = mpi.processTransactions(txList)
-	ast.Nil(err)
-	ready := &raftproto.Ready{
-		Height:   uint64(2),
-		TxHashes: txHashList,
-	}
-	missingTxnHashList, txList := mpi.GetBlockByHashList(ready)
-	ast.Equal(1, len(missingTxnHashList), "missing tx5")
-	ast.Equal(3, len(txList))
-
-	// mock leader to getBlock
-	mpi.leader = uint64(1)
-	missingTxnHashList, txList = mpi.GetBlockByHashList(ready)
-	ast.Equal(4, len(missingTxnHashList))
-	ast.Equal(0, len(txList))
-
 	// mock follower
-	mpi.leader = uint64(2)
-	txList = []*pb.Transaction{}
-	txList = append(txList, tx5)
-	err = mpi.processTransactions(txList)
-	missingTxnHashList, txList = mpi.GetBlockByHashList(ready)
-	ast.Equal(0, len(missingTxnHashList))
-	ast.Equal(4, len(txList))
+	batch := mpi.ProcessTransactions(txList, false)
+	ast.Nil(batch)
+	// mock leader
+	batch = mpi.ProcessTransactions(txList, true)
+	ast.Nil(batch)
 
 	// mock leader to getBlock
-	mpi.leader = uint64(1)
-	missingTxnHashList, txList = mpi.GetBlockByHashList(ready)
-	ast.Equal(0, len(missingTxnHashList))
-	ast.Equal(4, len(txList))
+	txList = make([]*pb.Transaction,0)
+	tx5 := constructTx(uint64(1), &privKey2)
+	txList = append(txList, tx5)
+	batch = mpi.ProcessTransactions(txList, true)
+	ast.Equal(4, len(batch.TxList))
 }
 
 func TestGetPendingNonceByAccount(t *testing.T) {
 	ast := assert.New(t)
 	mpi, _ := mockMempoolImpl()
-	err := mpi.Start()
-	ast.Nil(err)
-	defer cleanTestData()
-
 	privKey1 := genPrivKey()
 	account1, _ := privKey1.PublicKey().Address()
 	nonce := mpi.GetPendingNonceByAccount(account1.String())
@@ -158,8 +52,8 @@ func TestGetPendingNonceByAccount(t *testing.T) {
 	tx5 := constructTx(uint64(4), &privKey2)
 	var txList []*pb.Transaction
 	txList = append(txList, tx1, tx2, tx3, tx4, tx5)
-	err = mpi.processTransactions(txList)
-	ast.Nil(err)
+	batch := mpi.ProcessTransactions(txList, false)
+	ast.Nil(batch)
 	nonce = mpi.GetPendingNonceByAccount(account1.String())
 	ast.Equal(uint64(3), nonce)
 	nonce = mpi.GetPendingNonceByAccount(account2.String())
@@ -168,16 +62,11 @@ func TestGetPendingNonceByAccount(t *testing.T) {
 
 func TestCommitTransactions(t *testing.T) {
 	ast := assert.New(t)
-	mpi, _ := mockMempoolImpl()
-	err := mpi.Start()
-	ast.Nil(err)
-	defer cleanTestData()
-
+	mpi, batchC := mockMempoolImpl()
 	privKey1 := genPrivKey()
 	account1, _ := privKey1.PublicKey().Address()
 	nonce := mpi.GetPendingNonceByAccount(account1.String())
 	ast.Equal(uint64(1), nonce)
-
 	privKey2 := genPrivKey()
 	tx1 := constructTx(uint64(1), &privKey1)
 	tx2 := constructTx(uint64(2), &privKey1)
@@ -185,63 +74,111 @@ func TestCommitTransactions(t *testing.T) {
 	tx4 := constructTx(uint64(4), &privKey2)
 	var txList []*pb.Transaction
 	txList = append(txList, tx1, tx2, tx3, tx4)
-	mpi.leader = uint64(1)
-	err = mpi.processTransactions(txList)
+	batch := mpi.ProcessTransactions(txList, true)
+	ast.Nil(batch)
 	ast.Equal(3, mpi.txStore.priorityIndex.size())
 	ast.Equal(1, mpi.txStore.parkingLotIndex.size())
-	ast.Equal(0, len(mpi.txStore.batchedCache))
 
 	go func() {
-		<-mpi.batchC
+		<-batchC
 	}()
 	tx5 := constructTx(uint64(2), &privKey2)
 	txList = []*pb.Transaction{}
 	txList = append(txList, tx5)
-	err = mpi.processTransactions(txList)
+	batch = mpi.ProcessTransactions(txList, true)
+	ast.Equal(4, len(batch.TxList))
 	ast.Equal(4, mpi.txStore.priorityIndex.size())
 	ast.Equal(1, mpi.txStore.parkingLotIndex.size())
-	ast.Equal(1, len(mpi.txStore.batchedCache))
-	height := mpi.GetChainHeight()
-	ast.Equal(uint64(2), height)
+	ast.Equal(uint64(2),  mpi.batchSeqNo)
 
-	var txHashList []types.Hash
-	txHashList = append(txHashList, *tx1.TransactionHash, *tx2.TransactionHash, *tx3.TransactionHash, *tx5.TransactionHash)
-	ready := &raftproto.Ready{
+	var txHashList []*types.Hash
+	txHashList = append(txHashList, tx1.TransactionHash, tx2.TransactionHash, tx3.TransactionHash, tx5.TransactionHash)
+	state := &ChainState{
+		TxHashList: txHashList,
 		Height:   uint64(2),
-		TxHashes: txHashList,
 	}
-	mpi.CommitTransactions(ready)
+	mpi.CommitTransactions(state)
 	time.Sleep(100 * time.Millisecond)
 	ast.Equal(0, mpi.txStore.priorityIndex.size())
 	ast.Equal(1, mpi.txStore.parkingLotIndex.size())
-	ast.Equal(0, len(mpi.txStore.batchedCache))
-}
-
-func TestFetchTxn(t *testing.T) {
-	ast := assert.New(t)
-	mpi, _ := mockMempoolImpl()
-	err := mpi.Start()
-	ast.Nil(err)
-	defer cleanTestData()
-
-	missingList := make(map[uint64]string)
-	missingList[0] = "tx1"
-	lostTxnEvent := &LocalMissingTxnEvent{
-		Height:             uint64(2),
-		MissingTxnHashList: missingList,
-		WaitC:              make(chan bool),
-	}
-	mpi.FetchTxn(lostTxnEvent)
-	time.Sleep(10 * time.Millisecond)
-	ast.Equal(1, len(mpi.txStore.missingBatch))
 }
 
 func TestIncreaseChainHeight(t *testing.T) {
 	ast := assert.New(t)
 	mpi, _ := mockMempoolImpl()
-	defer cleanTestData()
+	ast.Equal(uint64(1), mpi.batchSeqNo)
+	mpi.batchSeqNo++
+	mpi.SetBatchSeqNo(mpi.batchSeqNo)
+	ast.Equal(uint64(2), mpi.batchSeqNo)
+}
 
-	ast.Equal(uint64(1), mpi.GetChainHeight())
-	mpi.increaseBatchSeqNo()
-	ast.Equal(uint64(2), mpi.GetChainHeight())
+func TestProcessTransactions(t *testing.T) {
+	ast := assert.New(t)
+	mpi, _ := mockMempoolImpl()
+	txList := make([]*pb.Transaction, 0)
+	privKey1 := genPrivKey()
+	account1, _ := privKey1.PublicKey().Address()
+	privKey2 := genPrivKey()
+	account2, _ := privKey2.PublicKey().Address()
+	tx1 := constructTx(uint64(1), &privKey1)
+	tx2 := constructTx(uint64(2), &privKey1)
+	tx3 := constructTx(uint64(1), &privKey2)
+	tx4 := constructTx(uint64(2), &privKey2)
+	tx5 := constructTx(uint64(4), &privKey2)
+	txList = append(txList, tx1, tx2, tx3, tx4, tx5)
+	batch := mpi.ProcessTransactions(txList, false)
+	ast.Nil(batch)
+	ast.Equal(4, mpi.txStore.priorityIndex.size())
+	ast.Equal(1, mpi.txStore.parkingLotIndex.size())
+	ast.Equal(5, len(mpi.txStore.txHashMap))
+	ast.Equal(2, mpi.txStore.allTxs[account1.String()].index.size())
+	ast.Equal(3, mpi.txStore.allTxs[account2.String()].index.size())
+	ast.Equal(uint64(1), mpi.txStore.nonceCache.getCommitNonce(account1.String()))
+	ast.Equal(uint64(3), mpi.txStore.nonceCache.getPendingNonce(account1.String()))
+	ast.Equal(uint64(1), mpi.txStore.nonceCache.getCommitNonce(account2.String()))
+	ast.Equal(uint64(3), mpi.txStore.nonceCache.getPendingNonce(account2.String()))
+
+	mpi.batchSize = 4
+	tx6 := constructTx(uint64(3), &privKey1)
+	tx7 := constructTx(uint64(5), &privKey2)
+	txList = make([]*pb.Transaction, 0)
+	txList = append(txList, tx6, tx7)
+	batch = mpi.ProcessTransactions(txList, true)
+	ast.Equal(4, len(batch.TxList))
+	ast.Equal(uint64(2), batch.Height)
+	ast.Equal(uint64(1), mpi.txStore.priorityNonBatchSize)
+	ast.Equal(5, mpi.txStore.priorityIndex.size())
+	ast.Equal(2, mpi.txStore.parkingLotIndex.size())
+	ast.Equal(7, len(mpi.txStore.txHashMap))
+	ast.Equal(3, mpi.txStore.allTxs[account1.String()].index.size())
+	ast.Equal(4, mpi.txStore.allTxs[account2.String()].index.size())
+	ast.Equal(uint64(4), mpi.txStore.nonceCache.getPendingNonce(account1.String()))
+	ast.Equal(uint64(3), mpi.txStore.nonceCache.getPendingNonce(account2.String()))
+}
+
+
+func TestForward(t *testing.T) {
+	ast := assert.New(t)
+	mpi, _ := mockMempoolImpl()
+	txList := make([]*pb.Transaction, 0)
+	privKey1 := genPrivKey()
+	account1, _ := privKey1.PublicKey().Address()
+	tx1 := constructTx(uint64(1), &privKey1)
+	tx2 := constructTx(uint64(2), &privKey1)
+	tx3 := constructTx(uint64(3), &privKey1)
+	tx4 := constructTx(uint64(4), &privKey1)
+	tx5 := constructTx(uint64(6), &privKey1)
+	txList = append(txList, tx1, tx2, tx3, tx4, tx5)
+	batch := mpi.ProcessTransactions(txList, false)
+	ast.Nil(batch)
+	list := mpi.txStore.allTxs[account1.String()]
+	ast.Equal(5, list.index.size())
+	ast.Equal(4, mpi.txStore.priorityIndex.size())
+	ast.Equal(1, mpi.txStore.parkingLotIndex.size())
+
+	removeList := list.forward(uint64(3))
+	ast.Equal(1, len(removeList))
+	ast.Equal(2, len(removeList[account1.String()]))
+	ast.Equal(uint64(1), removeList[account1.String()][0].Nonce)
+	ast.Equal(uint64(2), removeList[account1.String()][1].Nonce)
 }
