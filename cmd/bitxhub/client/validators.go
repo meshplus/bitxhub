@@ -6,16 +6,16 @@ import (
 	"github.com/urfave/cli"
 )
 
-func networkCMD() cli.Command {
+func validatorsCMD() cli.Command {
 	return cli.Command{
-		Name:   "network",
-		Usage:  "Query network info from node",
-		Action: network,
+		Name:   "validators",
+		Usage:  "Query validator address",
+		Action: getValidators,
 	}
 }
 
-func network(ctx *cli.Context) error {
-	url, err := getURL(ctx, "info?type=1")
+func getValidators(ctx *cli.Context) error {
+	url, err := getURL(ctx, "info?type=2")
 	if err != nil {
 		return err
 	}
@@ -27,7 +27,7 @@ func network(ctx *cli.Context) error {
 
 	ret, err := parseResponse(data)
 	if err != nil {
-		return fmt.Errorf("wrong response: %w", err)
+		return err
 	}
 
 	retJson, err := prettyJson(ret)

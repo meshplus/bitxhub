@@ -24,7 +24,7 @@ func getAccount(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	data, err := httpGet(url)
+	data, err := httpGet(ctx, url)
 	if err != nil {
 		return err
 	}
