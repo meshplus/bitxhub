@@ -27,7 +27,7 @@ func (bxh *BitXHub) start() {
 }
 
 func (bxh *BitXHub) listenEvent() {
-	blockCh := make(chan events.NewBlockEvent)
+	blockCh := make(chan events.ExecutedEvent)
 	orderMsgCh := make(chan events.OrderMessageEvent)
 	blockSub := bxh.BlockExecutor.SubscribeBlockEvent(blockCh)
 	orderMsgSub := bxh.PeerMgr.SubscribeOrderMessage(orderMsgCh)

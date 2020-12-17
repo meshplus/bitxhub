@@ -149,7 +149,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	assert.Nil(t, exec.Start())
 
 	done := make(chan bool)
-	ch := make(chan events.NewBlockEvent)
+	ch := make(chan events.ExecutedEvent)
 	blockSub := exec.SubscribeBlockEvent(ch)
 	defer blockSub.Unsubscribe()
 
@@ -218,7 +218,7 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 	assert.Equal(t, pb.Receipt_SUCCESS, receipts[0].Status)
 }
 
-func listenBlock(wg *sync.WaitGroup, done chan bool, blockCh chan events.NewBlockEvent) {
+func listenBlock(wg *sync.WaitGroup, done chan bool, blockCh chan events.ExecutedEvent) {
 	for {
 		select {
 		case <-blockCh:
@@ -287,7 +287,7 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 	err = executor.Start()
 	require.Nil(t, err)
 
-	ch := make(chan events.NewBlockEvent)
+	ch := make(chan events.ExecutedEvent)
 	sub := executor.SubscribeBlockEvent(ch)
 	defer sub.Unsubscribe()
 
