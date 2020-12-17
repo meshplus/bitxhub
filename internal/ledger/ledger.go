@@ -48,6 +48,7 @@ type BlockData struct {
 	Accounts       map[string]*Account
 	Journal        *BlockJournal
 	InterchainMeta *pb.InterchainMeta
+	TxHashList     []*types.Hash
 }
 
 // New create a new ledger instance

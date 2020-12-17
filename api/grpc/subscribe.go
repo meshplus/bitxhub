@@ -35,7 +35,7 @@ func (cbs *ChainBrokerService) Subscribe(req *pb.SubscriptionRequest, server pb.
 }
 
 func (cbs *ChainBrokerService) handleNewBlockSubscription(server pb.ChainBroker_SubscribeServer) error {
-	blockCh := make(chan events.NewBlockEvent)
+	blockCh := make(chan events.ExecutedEvent)
 	sub := cbs.api.Feed().SubscribeNewBlockEvent(blockCh)
 	defer sub.Unsubscribe()
 
@@ -57,7 +57,7 @@ func (cbs *ChainBrokerService) handleNewBlockSubscription(server pb.ChainBroker_
 }
 
 func (cbs *ChainBrokerService) handleBlockHeaderSubscription(server pb.ChainBroker_SubscribeServer) error {
-	blockCh := make(chan events.NewBlockEvent)
+	blockCh := make(chan events.ExecutedEvent)
 	sub := cbs.api.Feed().SubscribeNewBlockEvent(blockCh)
 	defer sub.Unsubscribe()
 
@@ -79,7 +79,7 @@ func (cbs *ChainBrokerService) handleBlockHeaderSubscription(server pb.ChainBrok
 }
 
 func (cbs *ChainBrokerService) handleInterchainTxSubscription(server pb.ChainBroker_SubscribeServer) error {
-	blockCh := make(chan events.NewBlockEvent)
+	blockCh := make(chan events.ExecutedEvent)
 	sub := cbs.api.Feed().SubscribeNewBlockEvent(blockCh)
 	defer sub.Unsubscribe()
 

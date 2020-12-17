@@ -20,5 +20,5 @@ type Executor interface {
 	ApplyReadonlyTransactions(txs []*pb.Transaction) []*pb.Receipt
 
 	// SubscribeBlockEvent
-	SubscribeBlockEvent(chan<- events.NewBlockEvent) event.Subscription
+	SubscribeBlockEvent(chan<- events.ExecutedEvent) event.Subscription
 }

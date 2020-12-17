@@ -25,6 +25,12 @@ import (
 
 func (exec *BlockExecutor) processExecuteEvent(block *pb.Block) *ledger.BlockData {
 	current := time.Now()
+	var txHashList []*types.Hash
+
+	for _, tx := range block.Transactions {
+		txHashList = append(txHashList, tx.TransactionHash)
+	}
+
 	block = exec.verifyProofs(block)
 	receipts := exec.txsExecutor.ApplyTransactions(block.Transactions)
 
@@ -83,6 +89,7 @@ func (exec *BlockExecutor) processExecuteEvent(block *pb.Block) *ledger.BlockDat
 		Accounts:       accounts,
 		Journal:        journal,
 		InterchainMeta: interchainMeta,
+		TxHashList:     txHashList,
 	}
 }
 
@@ -250,8 +257,12 @@ func (exec *BlockExecutor) applyTx(index int, tx *pb.Transaction, opt *agency.Tx
 	return receipt
 }
 
-func (exec *BlockExecutor) postBlockEvent(block *pb.Block, interchainMeta *pb.InterchainMeta) {
-	go exec.blockFeed.Send(events.NewBlockEvent{Block: block, InterchainMeta: interchainMeta})
+func (exec *BlockExecutor) postBlockEvent(block *pb.Block, interchainMeta *pb.InterchainMeta, txHashList []*types.Hash) {
+	go exec.blockFeed.Send(events.ExecutedEvent{
+		Block:          block,
+		InterchainMeta: interchainMeta,
+		TxHashList:     txHashList,
+	})
 }
 
 func (exec *BlockExecutor) applyTransaction(i int, tx *pb.Transaction, opt *agency.TxOpt) ([]byte, error) {

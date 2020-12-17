@@ -106,8 +106,8 @@ func (exec *BlockExecutor) ExecuteBlock(block *pb.Block) {
 	exec.preBlockC <- block
 }
 
-// SubscribeBlockEvent registers a subscription of NewBlockEvent.
-func (exec *BlockExecutor) SubscribeBlockEvent(ch chan<- events.NewBlockEvent) event.Subscription {
+// SubscribeBlockEvent registers a subscription of ExecutedEvent.
+func (exec *BlockExecutor) SubscribeBlockEvent(ch chan<- events.ExecutedEvent) event.Subscription {
 	return exec.blockFeed.Subscribe(ch)
 }
 
@@ -208,7 +208,7 @@ func (exec *BlockExecutor) persistData() {
 	for data := range exec.persistC {
 		now := time.Now()
 		exec.ledger.PersistBlockData(data)
-		exec.postBlockEvent(data.Block, data.InterchainMeta)
+		exec.postBlockEvent(data.Block, data.InterchainMeta, data.TxHashList)
 		exec.logger.WithFields(logrus.Fields{
 			"height": data.Block.BlockHeader.Number,
 			"hash":   data.Block.BlockHash.String(),
