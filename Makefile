@@ -3,6 +3,7 @@ SHELL := /bin/bash
 CURRENT_PATH = $(shell pwd)
 APP_NAME = bitxhub
 APP_VERSION = 1.4.0
+export GODEBUG=x509ignoreCN=0
 
 # build with verison infos
 VERSION_DIR = github.com/meshplus/${APP_NAME}
