@@ -29,13 +29,12 @@ func (cbs *ChainBrokerService) GetMultiSigns(ctx context.Context, req *pb.GetMul
 		cbs.logger.WithFields(logrus.Fields{
 			"id":  req.Content,
 			"err": err.Error(),
-		}).Warnf("Get sign on current node")
+		}).Errorf("Get sign on current node")
+		return nil, err
 	} else {
 		result[address] = sign
 	}
-
 	return &pb.SignResponse{
 		Sign: result,
 	}, nil
-
 }
