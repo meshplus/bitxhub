@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
-	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/log"
@@ -36,12 +35,15 @@ func TestNode_Start(t *testing.T) {
 
 	mockCtl := gomock.NewController(t)
 	mockPeermgr := mock_peermgr.NewMockPeerManager(mockCtl)
-	peers := make(map[uint64]*peer.AddrInfo)
+	peers := make(map[uint64]*pb.VpInfo)
 	mockPeermgr.EXPECT().Peers().Return(peers).AnyTimes()
 
-	nodes := make(map[uint64]types.Address)
-	hash := types.NewAddressByStr("000000000000000000000000000000000000000a")
-	nodes[1] = *hash
+	nodes := make(map[uint64]*pb.VpInfo)
+	vpInfo := & pb.VpInfo{
+		Id: uint64(1),
+		Account: types.NewAddressByStr("000000000000000000000000000000000000000a").String(),
+	}
+	nodes[1] = vpInfo
 
 	order, err := NewNode(
 		order.WithRepoRoot(repoRoot),

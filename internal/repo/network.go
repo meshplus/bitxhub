@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/libp2p/go-libp2p-core/crypto"
@@ -21,6 +22,7 @@ import (
 type NetworkConfig struct {
 	ID        uint64          `toml:"id" json:"id"`
 	N         uint64          `toml:"n" json:"n"`
+	IsNew     bool            `toml:"new" json:"new"`
 	LocalAddr string          `toml:"local_addr, omitempty" json:"local_addr"`
 	Nodes     []*NetworkNodes `toml:"nodes" json:"nodes"`
 	Genesis   Genesis         `toml:"genesis, omitempty" json:"genesis"`
@@ -71,17 +73,18 @@ func loadNetworkConfig(repoRoot string, genesis Genesis) (*NetworkConfig, error)
 }
 
 // GetVpInfos gets vp info from network config
-func (config *NetworkConfig) GetVpInfos() []*pb.VpInfo {
-	vpGenesisInfos := make([]*pb.VpInfo, 0, len(config.Nodes))
+func (config *NetworkConfig) GetVpInfos() map[uint64]*pb.VpInfo {
+	vpNodes := make(map[uint64]*pb.VpInfo)
 	for _, node := range config.Nodes {
-		vpGenesisInfos = append(vpGenesisInfos, &pb.VpInfo{
+		vpInfo := &pb.VpInfo{
 			Id:      node.ID,
 			Pid:     node.Pid,
 			Account: node.Account,
 			Hosts:   node.Hosts,
-		})
+		}
+		vpNodes[node.ID] = vpInfo
 	}
-	return vpGenesisInfos
+	return vpNodes
 }
 
 // GetVpGenesisAccount gets genesis address from network config
@@ -102,8 +105,8 @@ func (config *NetworkConfig) GetVpAccount() map[uint64]types.Address {
 	return m
 }
 
-// GetPeers gets all peers from network config
-func (config *NetworkConfig) GetPeers() (map[uint64]*peer.AddrInfo, error) {
+// GetNetworkPeers gets all peers from network config
+func (config *NetworkConfig) GetNetworkPeers() (map[uint64]*peer.AddrInfo, error) {
 	peers := make(map[uint64]*peer.AddrInfo)
 	for _, node := range config.Nodes {
 		if len(node.Hosts) == 0 {
@@ -130,7 +133,7 @@ func (config *NetworkConfig) GetPeers() (map[uint64]*peer.AddrInfo, error) {
 	return peers, nil
 }
 
-func RewriteNetworkConfig(repoRoot string, infos []*pb.VpInfo) error {
+func RewriteNetworkConfig(repoRoot string, infos map[uint64]*pb.VpInfo, isNew bool) error {
 	networkConfig := &NetworkConfig{}
 	v := viper.New()
 	v.SetConfigFile(filepath.Join(repoRoot, "network.toml"))
@@ -143,7 +146,14 @@ func RewriteNetworkConfig(repoRoot string, infos []*pb.VpInfo) error {
 	}
 
 	nodes := make([]*NetworkNodes, 0, len(infos))
+	routers := make([]*pb.VpInfo, 0, len(nodes))
 	for _, info := range infos {
+		routers = append(routers, info)
+	}
+	sort.Slice(routers, func(i, j int) bool {
+		return routers[i].Id < routers[j].Id
+	})
+	for _, info := range routers {
 		node := &NetworkNodes{
 			ID:      info.Id,
 			Pid:     info.Pid,
@@ -154,6 +164,7 @@ func RewriteNetworkConfig(repoRoot string, infos []*pb.VpInfo) error {
 	}
 	networkConfig.Nodes = nodes
 	networkConfig.N = uint64(len(nodes))
+	networkConfig.IsNew = isNew
 	data, err := toml.Marshal(*networkConfig)
 	if err != nil {
 		return err
@@ -187,17 +198,4 @@ func GetPidFromPrivFile(privPath string) (string, error) {
 	}
 
 	return pid.String(), nil
-}
-
-// MultiaddrToPeerID .
-func MultiaddrToPeerID(multiAddr string) (string, error) {
-	maddri, err := ma.NewMultiaddr(multiAddr)
-	if err != nil {
-		return "", err
-	}
-	_, PeerID := peer.SplitAddr(maddri)
-	if PeerID == "" {
-		return "", err
-	}
-	return PeerID.String(), nil
 }

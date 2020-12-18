@@ -39,3 +39,31 @@ func getValidators(ctx *cli.Context) error {
 
 	return nil
 }
+
+func delVPNodeCMD() cli.Command {
+	return cli.Command{
+		Name:   "delVPNode",
+		Usage:  "delete a vp node",
+		Action: delVPNode,
+	}
+}
+
+func delVPNode(ctx *cli.Context) error {
+	if ctx.NArg() < 1 {
+		return fmt.Errorf("please input pid")
+	}
+
+	url, err := getURL(ctx, "delvpnode/"+ctx.Args().Get(0))
+	if err != nil {
+		return err
+	}
+
+	// TODO (FBZ): change to httpPost
+	data, err := httpGet(url)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(string(data))
+	return nil
+}

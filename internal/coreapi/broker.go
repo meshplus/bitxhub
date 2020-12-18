@@ -279,3 +279,7 @@ func (b *BrokerAPI) getSign(content string) (string, []byte, error) {
 func (b BrokerAPI) GetPendingNonceByAccount(account string) uint64 {
 	return b.bxh.Order.GetPendingNonceByAccount(account)
 }
+
+func (b BrokerAPI) DelVPNode(delID uint64) error {
+	return b.bxh.Order.DelNode(delID)
+}

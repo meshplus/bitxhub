@@ -2,7 +2,6 @@ package order
 
 import (
 	"context"
-
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 )
@@ -35,4 +34,7 @@ type Order interface {
 
 	// GetPendingNonce will return the latest pending nonce of a given account
 	GetPendingNonceByAccount(account string) uint64
+
+	// DelNode sends a delete vp request by given id.
+	DelNode(delID uint64) error
 }

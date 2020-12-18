@@ -19,7 +19,7 @@ func (bxh *BitXHub) start() {
 					"count":  len(block.Transactions),
 				}).Info("Generated block")
 				bxh.BlockExecutor.ExecuteBlock(block)
-			case <-bxh.ctx.Done():
+			case <-bxh.Ctx.Done():
 				return
 			}
 		}
@@ -46,7 +46,7 @@ func (bxh *BitXHub) listenEvent() {
 					bxh.logger.Error(err)
 				}
 			}()
-		case <-bxh.ctx.Done():
+		case <-bxh.Ctx.Done():
 			return
 		}
 	}

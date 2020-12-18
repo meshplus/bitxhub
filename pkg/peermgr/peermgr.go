@@ -29,11 +29,23 @@ type PeerManager interface {
 	Broadcast(*pb.Message) error
 
 	// Peers
-	Peers() map[uint64]*peer.AddrInfo
+	Peers() map[uint64]*pb.VpInfo
 
 	// OtherPeers
 	OtherPeers() map[uint64]*peer.AddrInfo
 
 	// SubscribeOrderMessage
 	SubscribeOrderMessage(ch chan<- events.OrderMessageEvent) event.Subscription
+
+	// AddNode adds a vp peer.
+	AddNode(newNodeID uint64, vpInfo *pb.VpInfo)
+
+	// DelNode deletes a vp peer.
+	DelNode(delID uint64)
+
+	// UpdateRouter update the local router to quorum router.
+	UpdateRouter (vpInfos map[uint64]*pb.VpInfo, isNew bool) bool
+
+	// Disconnect disconnect with all vp peers.
+	Disconnect(vpInfos map[uint64]*pb.VpInfo)
 }

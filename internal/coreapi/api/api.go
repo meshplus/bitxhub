@@ -40,13 +40,15 @@ type BrokerAPI interface {
 	// OrderReady
 	OrderReady() error
 
+	// DelVPNode delete a vp node by given id.
+	DelVPNode(delID uint64) error
+
 	FetchSignsFromOtherPeers(content string, typ pb.GetMultiSignsRequest_Type) map[string][]byte
 	GetSign(content string, typ pb.GetMultiSignsRequest_Type) (string, []byte, error)
 }
 
 type NetworkAPI interface {
 	PeerInfo() ([]byte, error)
-	DelVPNode(pid string) ([]byte, error)
 }
 
 type ChainAPI interface {
