@@ -128,7 +128,7 @@ func NewSwarms(t *testing.T, peerCnt int) []*Swarm {
 			Key: &repo.Key{},
 			NetworkConfig: &repo.NetworkConfig{
 				N:  uint64(peerCnt),
-				ID: uint64(i+1),
+				ID: uint64(i + 1),
 			},
 			Certs: &repo.Certs{
 				NodeCertData:   nodeData,
