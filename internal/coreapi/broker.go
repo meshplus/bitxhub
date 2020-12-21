@@ -121,6 +121,24 @@ func (b *BrokerAPI) GetBlocks(start uint64, end uint64) ([]*pb.Block, error) {
 	return blocks, nil
 }
 
+func (b *BrokerAPI) GetBlockHeaders(start uint64, end uint64) ([]*pb.BlockHeader, error) {
+	meta := b.bxh.Ledger.GetChainMeta()
+
+	var blockHeaders []*pb.BlockHeader
+	if meta.Height < end {
+		end = meta.Height
+	}
+	for i := start; i > 0 && i <= end; i++ {
+		b, err := b.GetBlock("HEIGHT", strconv.Itoa(int(i)))
+		if err != nil {
+			continue
+		}
+		blockHeaders = append(blockHeaders, b.BlockHeader)
+	}
+
+	return blockHeaders, nil
+}
+
 func (b *BrokerAPI) RemovePier(pid string, isUnion bool) {
 	b.bxh.Router.RemovePier(pid, isUnion)
 }

@@ -45,6 +45,7 @@ type BrokerAPI interface {
 
 	FetchSignsFromOtherPeers(content string, typ pb.GetMultiSignsRequest_Type) map[string][]byte
 	GetSign(content string, typ pb.GetMultiSignsRequest_Type) (string, []byte, error)
+	GetBlockHeaders(start uint64, end uint64) ([]*pb.BlockHeader, error)
 }
 
 type NetworkAPI interface {

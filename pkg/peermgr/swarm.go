@@ -327,13 +327,13 @@ func (swarm *Swarm) verifyCert(id uint64) error {
 	}
 
 	if err := verifyCerts(nodeCert, agencyCert, swarm.repo.Certs.CACert); err != nil {
+		err = swarm.p2p.Disconnect(swarm.routers[id].Pid)
+		if err != nil {
+			return fmt.Errorf("disconnect peer: %w", err)
+		}
 		return fmt.Errorf("verify certs: %w", err)
 	}
 
-	err = swarm.p2p.Disconnect(swarm.routers[id].Pid)
-	if err != nil {
-		return fmt.Errorf("disconnect peer: %w", err)
-	}
 	return nil
 }
 
@@ -490,3 +490,4 @@ func constructMultiaddr(vpInfo *pb.VpInfo) (*peer.AddrInfo, error) {
 	}
 	return addrInfo, nil
 }
+
