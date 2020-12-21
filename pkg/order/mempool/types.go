@@ -17,8 +17,6 @@ const (
 	DefaultTxCacheSize = 10000
 	DefaultBatchSize   = 500
 	DefaultTxSetSize   = 10
-
-	DefaultBatchTick       = 500 * time.Millisecond
 	DefaultTxSetTick       = 100 * time.Millisecond
 )
 
@@ -27,8 +25,6 @@ type Config struct {
 	BatchSize      uint64
 	PoolSize       uint64
 	TxSliceSize    uint64
-	BatchTick      time.Duration
-	FetchTimeout   time.Duration
 	TxSliceTimeout time.Duration
 	ChainHeight        uint64
 	Logger             logrus.FieldLogger

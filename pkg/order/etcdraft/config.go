@@ -17,12 +17,11 @@ type MempoolConfig struct {
 	BatchSize   uint64 `mapstructure:"batch_size"`
 	PoolSize    uint64 `mapstructure:"pool_size"`
 	TxSliceSize uint64 `mapstructure:"tx_slice_size"`
-
-	BatchTick      time.Duration `mapstructure:"batch_tick"`
 	TxSliceTimeout time.Duration `mapstructure:"tx_slice_timeout"`
 }
 
 type RAFT struct {
+	BatchTimeout              time.Duration `mapstructure:"batch_timeout"`
 	TickTimeout               time.Duration `mapstructure:"tick_timeout"`
 	ElectionTick              int           `mapstructure:"election_tick"`
 	HeartbeatTick             int           `mapstructure:"heartbeat_tick"`
@@ -46,7 +45,7 @@ func defaultRaftConfig() raft.Config {
 	}
 }
 
-func generateRaftConfig(id uint64, repoRoot string, logger logrus.FieldLogger, ram MemoryStorage) (*raft.Config, time.Duration, error) {
+func generateEtcdRaftConfig(id uint64, repoRoot string, logger logrus.FieldLogger, ram MemoryStorage) (*raft.Config, time.Duration, error) {
 	readConfig, err := readConfig(repoRoot)
 	if err != nil {
 		return &raft.Config{}, 100 * time.Millisecond, nil
@@ -73,18 +72,12 @@ func generateRaftConfig(id uint64, repoRoot string, logger logrus.FieldLogger, r
 	return &defaultConfig, readConfig.RAFT.TickTimeout, nil
 }
 
-func generateMempoolConfig(repoRoot string) (*MempoolConfig, error) {
+func generateRaftConfig(repoRoot string) (*RAFTConfig, error) {
 	readConfig, err := readConfig(repoRoot)
 	if err != nil {
 		return nil, err
 	}
-	mempoolConf := &MempoolConfig{}
-	mempoolConf.BatchSize = readConfig.RAFT.MempoolConfig.BatchSize
-	mempoolConf.PoolSize = readConfig.RAFT.MempoolConfig.PoolSize
-	mempoolConf.TxSliceSize = readConfig.RAFT.MempoolConfig.TxSliceSize
-	mempoolConf.BatchTick = readConfig.RAFT.MempoolConfig.BatchTick
-	mempoolConf.TxSliceTimeout = readConfig.RAFT.MempoolConfig.TxSliceTimeout
-	return mempoolConf, nil
+	return readConfig, nil
 }
 
 func readConfig(repoRoot string) (*RAFTConfig, error) {
