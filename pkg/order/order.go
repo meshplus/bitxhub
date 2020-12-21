@@ -1,7 +1,6 @@
 package order
 
 import (
-	"context"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 )
@@ -21,13 +20,13 @@ type Order interface {
 	Commit() chan *pb.Block
 
 	// Step send msg to the consensus engine
-	Step(ctx context.Context, msg []byte) error
+	Step(msg []byte) error
 
 	// Ready means whether order has finished electing leader
 	Ready() error
 
 	// ReportState means block was persisted and report it to the consensus engine
-	ReportState(height uint64, hash *types.Hash)
+	ReportState(height uint64, blockHash *types.Hash, txHashList []*types.Hash)
 
 	// Quorum means minimum number of nodes in the cluster that can work
 	Quorum() uint64

@@ -57,13 +57,12 @@ func NewBitXHub(rep *repo.Repo) (*BitXHub, error) {
 		order.WithPluginPath(rep.Config.Plugin),
 		order.WithNodes(m),
 		order.WithID(rep.NetworkConfig.ID),
-		order.WithIsNew(rep.NetworkConfig.IsNew),
+		order.WithIsNew(rep.NetworkConfig.New),
 		order.WithPeerManager(bxh.PeerMgr),
 		order.WithLogger(loggers.Logger(loggers.Order)),
 		order.WithApplied(chainMeta.Height),
 		order.WithDigest(chainMeta.BlockHash.String()),
 		order.WithGetChainMetaFunc(bxh.Ledger.GetChainMeta),
-		order.WithGetTransactionFunc(bxh.Ledger.GetTransaction),
 		order.WithGetBlockByHeightFunc(bxh.Ledger.GetBlock),
 	)
 	if err != nil {

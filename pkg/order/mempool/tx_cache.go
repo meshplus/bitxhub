@@ -1,6 +1,7 @@
 package mempool
 
 import (
+	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
 	"time"
 
 	"github.com/meshplus/bitxhub-model/pb"
@@ -8,23 +9,23 @@ import (
 )
 
 type TxCache struct {
-	recvTxC chan *pb.Transaction
-	txSetC  chan *TxSlice
-	txSet   []*pb.Transaction
-	logger  logrus.FieldLogger
+	TxSetC  chan *raftproto.TxSlice
+	RecvTxC chan *pb.Transaction
 
+	txSet   []*pb.Transaction
 	timerC     chan bool
 	stopTimerC chan bool
 	close      chan bool
 	txSetTick  time.Duration
 	txSetSize  uint64
+	logger  logrus.FieldLogger
 }
 
-func newTxCache(txSliceTimeout time.Duration, txSetSize uint64, logger logrus.FieldLogger) *TxCache {
+func NewTxCache(txSliceTimeout time.Duration, txSetSize uint64, logger logrus.FieldLogger) *TxCache {
 	txCache := &TxCache{}
-	txCache.recvTxC = make(chan *pb.Transaction, DefaultTxCacheSize)
+	txCache.RecvTxC = make(chan *pb.Transaction, DefaultTxCacheSize)
 	txCache.close = make(chan bool)
-	txCache.txSetC = make(chan *TxSlice)
+	txCache.TxSetC = make(chan *raftproto.TxSlice)
 	txCache.timerC = make(chan bool)
 	txCache.stopTimerC = make(chan bool)
 	txCache.txSet = make([]*pb.Transaction, 0)
@@ -42,14 +43,14 @@ func newTxCache(txSliceTimeout time.Duration, txSetSize uint64, logger logrus.Fi
 	return txCache
 }
 
-func (tc *TxCache) listenEvent() {
+func (tc *TxCache) ListenEvent() {
 	for {
 		select {
 		case <-tc.close:
 			tc.logger.Info("Exit transaction cache")
 			return
 
-		case tx := <-tc.recvTxC:
+		case tx := <-tc.RecvTxC:
 			tc.appendTx(tx)
 
 		case <-tc.timerC:
@@ -77,15 +78,15 @@ func (tc *TxCache) appendTx(tx *pb.Transaction) {
 func (tc *TxCache) postTxSet() {
 	dst := make([]*pb.Transaction, len(tc.txSet))
 	copy(dst, tc.txSet)
-	txSet := &TxSlice{
+	txSet := &raftproto.TxSlice{
 		TxList: dst,
 	}
-	tc.txSetC <- txSet
+	tc.TxSetC <- txSet
 	tc.txSet = make([]*pb.Transaction, 0)
 }
 
 func (tc *TxCache) IsFull() bool {
-	return len(tc.recvTxC) == DefaultTxCacheSize
+	return len(tc.RecvTxC) == DefaultTxCacheSize
 }
 
 func (tc *TxCache) startTxSetTimer() {

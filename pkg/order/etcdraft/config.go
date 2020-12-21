@@ -19,7 +19,6 @@ type MempoolConfig struct {
 	TxSliceSize uint64 `mapstructure:"tx_slice_size"`
 
 	BatchTick      time.Duration `mapstructure:"batch_tick"`
-	FetchTimeout   time.Duration `mapstructure:"fetch_timeout"`
 	TxSliceTimeout time.Duration `mapstructure:"tx_slice_timeout"`
 }
 
@@ -84,7 +83,6 @@ func generateMempoolConfig(repoRoot string) (*MempoolConfig, error) {
 	mempoolConf.PoolSize = readConfig.RAFT.MempoolConfig.PoolSize
 	mempoolConf.TxSliceSize = readConfig.RAFT.MempoolConfig.TxSliceSize
 	mempoolConf.BatchTick = readConfig.RAFT.MempoolConfig.BatchTick
-	mempoolConf.FetchTimeout = readConfig.RAFT.MempoolConfig.FetchTimeout
 	mempoolConf.TxSliceTimeout = readConfig.RAFT.MempoolConfig.TxSliceTimeout
 	return mempoolConf, nil
 }

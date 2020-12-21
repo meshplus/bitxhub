@@ -5,17 +5,13 @@ import (
 	"fmt"
 	"path/filepath"
 	"sync"
-	"testing"
 	"time"
 
-	"github.com/golang/mock/gomock"
-	"github.com/meshplus/bitxhub-kit/storage/leveldb"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/pkg/order"
 	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
 	"github.com/meshplus/bitxhub/pkg/order/mempool"
-	"github.com/meshplus/bitxhub/pkg/peermgr/mock_peermgr"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
@@ -23,13 +19,13 @@ import (
 type Node struct {
 	ID uint64
 	sync.RWMutex
-	height             uint64             // current block height
 	commitC            chan *pb.Block     // block channel
 	logger             logrus.FieldLogger // logger
-	reqLookUp          *order.ReqLookUp   // bloom filter
-	getTransactionFunc func(hash *types.Hash) (*pb.Transaction, error)
-	mempool            mempool.MemPool       // transaction pool
-	proposeC           chan *raftproto.Ready // proposed listenReadyBlock, input channel
+	mempool            mempool.MemPool              // transaction pool
+	proposeC           chan *raftproto.RequestBatch // proposed listenReadyBlock, input channel
+	stateC             chan *mempool.ChainState
+	txCache            *mempool.TxCache // cache the transactions received from api
+	lastExec           uint64           // the index of the last-applied block
 
 	packSize  int           // maximum number of transaction packages
 	blockTick time.Duration // block packed period
@@ -39,16 +35,12 @@ type Node struct {
 }
 
 func (n *Node) Start() error {
+	go n.txCache.ListenEvent()
 	go n.listenReadyBlock()
-	if err := n.mempool.Start(); err != nil {
-		return err
-	}
-	n.mempool.UpdateLeader(n.ID)
 	return nil
 }
 
 func (n *Node) Stop() {
-	n.mempool.Stop()
 	n.cancel()
 }
 
@@ -64,14 +56,15 @@ func (n *Node) Prepare(tx *pb.Transaction) error {
 	if err := n.Ready(); err != nil {
 		return err
 	}
-	return n.mempool.RecvTransaction(tx)
+	n.txCache.RecvTxC <- tx
+	return nil
 }
 
 func (n *Node) Commit() chan *pb.Block {
 	return n.commitC
 }
 
-func (n *Node) Step(ctx context.Context, msg []byte) error {
+func (n *Node) Step(msg []byte) error {
 	return nil
 }
 
@@ -79,17 +72,13 @@ func (n *Node) Ready() error {
 	return nil
 }
 
-func (n *Node) ReportState(height uint64, hash *types.Hash) {
-	if err := n.reqLookUp.Build(); err != nil {
-		n.logger.Errorf("bloom filter persistence error：", err)
+func (n *Node) ReportState(height uint64, blockHash *types.Hash, txHashList []*types.Hash) {
+	state := &mempool.ChainState{
+		Height:     height,
+		BlockHash:  blockHash,
+		TxHashList: txHashList,
 	}
-
-	if height%10 == 0 {
-		n.logger.WithFields(logrus.Fields{
-			"height": height,
-			"hash":   hash.String(),
-		}).Info("Report checkpoint")
-	}
+	n.stateC <- state
 }
 
 func (n *Node) Quorum() uint64 {
@@ -101,77 +90,91 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 	if err != nil {
 		return nil, fmt.Errorf("generate config: %w", err)
 	}
-	storage, err := leveldb.New(config.StoragePath)
 	if err != nil {
 		return nil, fmt.Errorf("new leveldb: %w", err)
 	}
-	reqLookUp, err := order.NewReqLookUp(storage, config.Logger)
-	if err != nil {
-		return nil, fmt.Errorf("new bloom filter: %w", err)
-	}
 	ctx, cancel := context.WithCancel(context.Background())
 
-	mockCtl := gomock.NewController(&testing.T{})
-	peerMgr := mock_peermgr.NewMockPeerManager(mockCtl)
-	peerMgr.EXPECT().Peers().Return(map[uint64]*pb.VpInfo{}).AnyTimes()
 	memConfig, err := generateMempoolConfig(config.RepoRoot)
 	mempoolConf := &mempool.Config{
-		ID:                 config.ID,
-		ChainHeight:        config.Applied,
-		GetTransactionFunc: config.GetTransactionFunc,
-		PeerMgr:            peerMgr,
-		Logger:             config.Logger,
+		ID:          config.ID,
+		ChainHeight: config.Applied,
+		Logger:      config.Logger,
 
 		BatchSize:      memConfig.BatchSize,
 		BatchTick:      memConfig.BatchTick,
 		PoolSize:       memConfig.PoolSize,
 		TxSliceSize:    memConfig.TxSliceSize,
-		FetchTimeout:   memConfig.FetchTimeout,
 		TxSliceTimeout: memConfig.TxSliceTimeout,
 	}
-	batchC := make(chan *raftproto.Ready, 10)
-	mempoolInst := mempool.NewMempool(mempoolConf, storage, batchC)
-	return &Node{
+	batchC := make(chan *raftproto.RequestBatch)
+	mempoolInst := mempool.NewMempool(mempoolConf)
+	txCache := mempool.NewTxCache(mempoolConf.TxSliceTimeout, mempoolConf.TxSliceSize, config.Logger)
+	soloNode := &Node{
 		ID:                 config.ID,
-		height:             config.Applied,
 		commitC:            make(chan *pb.Block, 1024),
-		reqLookUp:          reqLookUp,
-		getTransactionFunc: config.GetTransactionFunc,
+		stateC:             make(chan *mempool.ChainState),
+		lastExec:           config.Applied,
 		mempool:            mempoolInst,
+		txCache:            txCache,
 		proposeC:           batchC,
 		logger:             config.Logger,
 		ctx:                ctx,
 		cancel:             cancel,
-	}, nil
+	}
+	soloNode.logger.Infof("========= SOLO lastExec = %d  ", soloNode.lastExec)
+	return soloNode, nil
 }
 
 // Schedule to collect txs to the listenReadyBlock channel
 func (n *Node) listenReadyBlock() {
+	go func() {
+		for {
+			select {
+			case proposal := <-n.proposeC:
+				n.logger.WithFields(logrus.Fields{
+					"proposal_height": proposal.Height,
+					"tx_count":        len(proposal.TxList),
+				}).Debugf("Receive proposal from mempool")
+
+				if proposal.Height != n.lastExec+1 {
+					n.logger.Warningf("Expects to execute seq=%d, but get seq=%d, ignore it", n.lastExec+1, proposal.Height)
+					return
+				}
+				n.logger.Infof("======== Call execute, height=%d", proposal.Height)
+				block := &pb.Block{
+					BlockHeader: &pb.BlockHeader{
+						Version:   []byte("1.0.0"),
+						Number:    proposal.Height,
+						Timestamp: time.Now().UnixNano(),
+					},
+					Transactions: proposal.TxList,
+				}
+				n.commitC <- block
+				n.lastExec++
+			}
+		}
+	}()
+
 	for {
 		select {
 		case <-n.ctx.Done():
 			n.logger.Info("----- Exit listen ready block loop -----")
 			return
-		case proposal := <-n.proposeC:
-			n.logger.WithFields(logrus.Fields{
-				"proposal_height": proposal.Height,
-				"tx_count":        len(proposal.TxHashes),
-			}).Debugf("Receive proposal from mempool")
-			// collect txs from proposalC
-			_, txs := n.mempool.GetBlockByHashList(proposal)
-			n.height++
 
-			block := &pb.Block{
-				BlockHeader: &pb.BlockHeader{
-					Version:   []byte("1.0.0"),
-					Number:    n.height,
-					Timestamp: time.Now().UnixNano(),
-				},
-				Transactions: txs,
+		case txSet := <-n.txCache.TxSetC:
+			if batch := n.mempool.ProcessTransactions(txSet.TxList, true); batch != nil {
+				n.proposeC <- batch
 			}
-			n.mempool.CommitTransactions(proposal)
-			n.mempool.IncreaseChainHeight()
-			n.commitC <- block
+
+		case state := <-n.stateC:
+			if state.Height%10 == 0 {
+				n.logger.WithFields(logrus.Fields{
+					"height": state.Height,
+					"hash":   state.BlockHash.String(),
+				}).Info("Report checkpoint")
+			}
+			n.mempool.CommitTransactions(state)
 		}
 	}
 }

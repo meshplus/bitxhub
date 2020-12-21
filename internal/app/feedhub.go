@@ -1,8 +1,6 @@
 package app
 
 import (
-	"context"
-
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/sirupsen/logrus"
 )
@@ -38,11 +36,11 @@ func (bxh *BitXHub) listenEvent() {
 	for {
 		select {
 		case ev := <-blockCh:
-			go bxh.Order.ReportState(ev.Block.BlockHeader.Number, ev.Block.BlockHash)
+			go bxh.Order.ReportState(ev.Block.BlockHeader.Number, ev.Block.BlockHash, ev.TxHashList)
 			go bxh.Router.PutBlockAndMeta(ev.Block, ev.InterchainMeta)
 		case ev := <-orderMsgCh:
 			go func() {
-				if err := bxh.Order.Step(context.Background(), ev.Data); err != nil {
+				if err := bxh.Order.Step(ev.Data); err != nil {
 					bxh.logger.Error(err)
 				}
 			}()

@@ -1,7 +1,6 @@
 package etcdraft
 
 import (
-	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -44,7 +43,7 @@ func TestNode_Start(t *testing.T) {
 		Account: types.NewAddressByStr("000000000000000000000000000000000000000a").String(),
 	}
 	nodes[ID] = vpInfo
-	fileData, err := ioutil.ReadFile("../../../config/order.toml")
+	fileData, err := ioutil.ReadFile("./testdata/order.toml")
 	require.Nil(t, err)
 	err = ioutil.WriteFile(filepath.Join(repoRoot, "order.toml"), fileData, 0644)
 	require.Nil(t, err)
@@ -54,6 +53,7 @@ func TestNode_Start(t *testing.T) {
 	mockPeermgr := mock_peermgr.NewMockPeerManager(mockCtl)
 	peers := make(map[uint64]*pb.VpInfo)
 	mockPeermgr.EXPECT().Peers().Return(peers).AnyTimes()
+	mockPeermgr.EXPECT().Broadcast(gomock.Any()).AnyTimes()
 
 	order, err := NewNode(
 		order.WithRepoRoot(repoRoot),
@@ -150,7 +150,7 @@ func listen(t *testing.T, order order.Order, swarm *peermgr.Swarm) {
 	for {
 		select {
 		case ev := <-orderMsgCh:
-			err := order.Step(context.Background(), ev.Data)
+			err := order.Step(ev.Data)
 			require.Nil(t, err)
 		}
 	}
