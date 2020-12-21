@@ -16,10 +16,10 @@ var _ api.ChainAPI = (*ChainAPI)(nil)
 func (api *ChainAPI) Status() string {
 	err := api.bxh.Order.Ready()
 	if err != nil {
-		return "normal"
+		return "abnormal"
 	}
 
-	return "abnormal"
+	return "normal"
 }
 
 func (api *ChainAPI) Meta() (*pb.ChainMeta, error) {
