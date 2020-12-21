@@ -21,6 +21,14 @@ type BrokerAPI CoreAPI
 var _ api.BrokerAPI = (*BrokerAPI)(nil)
 
 func (b *BrokerAPI) HandleTransaction(tx *pb.Transaction) error {
+	if tx.TransactionHash == nil {
+		if tx.Hash() != nil {
+			tx.TransactionHash = tx.Hash()
+		} else {
+			return fmt.Errorf("transaction hash is nil")
+		}
+	}
+
 	b.logger.WithFields(logrus.Fields{
 		"hash": tx.TransactionHash.String(),
 	}).Debugf("Receive tx")
@@ -35,6 +43,14 @@ func (b *BrokerAPI) HandleTransaction(tx *pb.Transaction) error {
 }
 
 func (b *BrokerAPI) HandleView(tx *pb.Transaction) (*pb.Receipt, error) {
+	if tx.TransactionHash == nil {
+		if tx.Hash() != nil {
+			tx.TransactionHash = tx.Hash()
+		} else {
+			return nil, fmt.Errorf("transaction hash is nil")
+		}
+	}
+
 	b.logger.WithFields(logrus.Fields{
 		"hash": tx.TransactionHash.String(),
 	}).Debugf("Receive view")
