@@ -28,6 +28,10 @@ func (swarm *Swarm) handleMessage(s network.Stream, data []byte) {
 		switch m.Type {
 		case pb.Message_GET_BLOCK:
 			return swarm.handleGetBlockPack(s, m)
+		case pb.Message_GET_BLOCK_HEADERS:
+			return swarm.handleGetBlockHeadersPack(s, m)
+		case pb.Message_GET_BLOCKS:
+			return swarm.handleGetBlocksPack(s, m)
 		case pb.Message_FETCH_CERT:
 			return swarm.handleFetchCertMessage(s)
 		case pb.Message_CONSENSUS:
@@ -72,6 +76,38 @@ func (swarm *Swarm) handleGetBlockPack(s network.Stream, msg *pb.Message) error 
 
 	m := &pb.Message{
 		Type: pb.Message_GET_BLOCK_ACK,
+		Data: v,
+	}
+
+	if err := swarm.SendWithStream(s, m); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (swarm *Swarm) handleGetBlockHeadersPack(s network.Stream, msg *pb.Message) error {
+	req := &pb.GetBlockHeadersRequest{}
+	if err := req.Unmarshal(msg.Data); err != nil {
+		return err
+	}
+
+	res := &pb.GetBlockHeadersResponse{}
+	blockHeaders := make([]*pb.BlockHeader, 0)
+	for i := req.Start; i <= req.End; i++ {
+		block, err := swarm.ledger.GetBlock(i)
+		if err != nil {
+			return err
+		}
+		blockHeaders = append(blockHeaders, block.BlockHeader)
+	}
+	res.BlockHeaders = blockHeaders
+	v, err := res.Marshal()
+	if err != nil {
+		return err
+	}
+	m := &pb.Message{
+		Type: pb.Message_GET_BLOCK_HEADERS_ACK,
 		Data: v,
 	}
 
@@ -250,4 +286,37 @@ func (swarm *Swarm) handleFetchIBTPSignMessage(s network.Stream, data []byte) {
 	if err := swarm.SendWithStream(s, msg); err != nil {
 		swarm.logger.Errorf("send asset exchange sign back: %s", err)
 	}
+}
+
+
+func (swarm *Swarm) handleGetBlocksPack(s network.Stream, msg *pb.Message) error {
+	req := &pb.GetBlocksRequest{}
+	if err := req.Unmarshal(msg.Data); err != nil {
+		return err
+	}
+
+	res := &pb.GetBlocksResponse{}
+	blocks := make([]*pb.Block, 0)
+	for i := req.Start; i <= req.End; i++ {
+		block, err := swarm.ledger.GetBlock(i)
+		if err != nil {
+			return err
+		}
+		blocks = append(blocks, block)
+	}
+	res.Blocks = blocks
+	v, err := res.Marshal()
+	if err != nil {
+		return err
+	}
+	m := &pb.Message{
+		Type: pb.Message_GET_BLOCKS_ACK,
+		Data: v,
+	}
+
+	if err := swarm.SendWithStream(s, m); err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -163,7 +163,6 @@ func TestSwarm_Send(t *testing.T) {
 	peerCnt := 4
 	swarms := NewSwarms(t, peerCnt)
 
-	time.Sleep(2 * time.Second)
 
 	msg := &pb.Message{
 		Type: pb.Message_GET_BLOCK,
@@ -186,22 +185,77 @@ func TestSwarm_Send(t *testing.T) {
 	require.Nil(t, err)
 	require.Equal(t, uint64(1), block.BlockHeader.Number)
 
+	req := pb.GetBlocksRequest{
+		Start: 1,
+		End:   1,
+	}
+	data, err := req.Marshal()
+	require.Nil(t, err)
+
+	fetchBlocksMsg := &pb.Message{
+		Type: pb.Message_GET_BLOCKS,
+		Data: data,
+	}
+	err = retry.Retry(func(attempt uint) error {
+		res, err = swarms[2].Send(1, fetchBlocksMsg)
+		if err != nil {
+			swarms[2].logger.Errorf(err.Error())
+			return err
+		}
+		return nil
+	}, strategy.Wait(50*time.Millisecond))
+	require.Nil(t, err)
+	require.Equal(t, pb.Message_GET_BLOCKS_ACK, res.Type)
+	var getBlocksRes pb.GetBlocksResponse
+	err = getBlocksRes.Unmarshal(res.Data)
+	require.Nil(t, err)
+	require.Equal(t, 1, len(getBlocksRes.Blocks))
+
+
+
+	getBlockHeadersReq := pb.GetBlockHeadersRequest{
+		Start: 1,
+		End:   1,
+	}
+	data, err = getBlockHeadersReq.Marshal()
+	require.Nil(t, err)
+
+	fetchBlockHeadersMsg := &pb.Message{
+		Type: pb.Message_GET_BLOCK_HEADERS,
+		Data: data,
+	}
+	err = retry.Retry(func(attempt uint) error {
+		res, err = swarms[2].Send(4, fetchBlockHeadersMsg)
+		if err != nil {
+			swarms[2].logger.Errorf(err.Error())
+			return err
+		}
+		return nil
+	}, strategy.Wait(50*time.Millisecond))
+	require.Nil(t, err)
+	require.Equal(t, pb.Message_GET_BLOCK_HEADERS_ACK, res.Type)
+
+	var getBlockHeaderssRes pb.GetBlockHeadersResponse
+	err = getBlockHeaderssRes.Unmarshal(res.Data)
+	require.Nil(t, err)
+	require.Equal(t, 1, len(getBlockHeaderssRes.BlockHeaders))
+
+
 	fetchBlockSignMsg := &pb.Message{
 		Type: pb.Message_FETCH_BLOCK_SIGN,
 		Data: []byte("1"),
 	}
 
 	err = retry.Retry(func(attempt uint) error {
-		res, err = swarms[0].Send(3, fetchBlockSignMsg)
+		res, err = swarms[1].Send(3, fetchBlockSignMsg)
 		if err != nil {
-			swarms[0].logger.Errorf(err.Error())
+			swarms[1].logger.Errorf(err.Error())
 			return err
 		}
 		return nil
 	}, strategy.Wait(50*time.Millisecond))
 	require.Nil(t, err)
 	require.Equal(t, pb.Message_FETCH_BLOCK_SIGN_ACK, res.Type)
-	require.Nil(t, err)
 	require.NotNil(t, res.Data)
 
 	fetchAESMsg := &pb.Message{
@@ -219,7 +273,6 @@ func TestSwarm_Send(t *testing.T) {
 	}, strategy.Wait(50*time.Millisecond))
 	require.Nil(t, err)
 	require.Equal(t, pb.Message_FETCH_ASSET_EXCHANGE_SIGN_ACK, res.Type)
-	require.Nil(t, err)
 	require.NotNil(t, res.Data)
 
 	fetchIBTPSignMsg := &pb.Message{
@@ -237,15 +290,12 @@ func TestSwarm_Send(t *testing.T) {
 	}, strategy.Wait(50*time.Millisecond))
 	require.Nil(t, err)
 	require.Equal(t, pb.Message_FETCH_IBTP_SIGN_ACK, res.Type)
-	require.Nil(t, err)
 	require.NotNil(t, res.Data)
 }
 
 func TestSwarm_AsyncSend(t *testing.T) {
 	peerCnt := 4
 	swarms := NewSwarms(t, peerCnt)
-
-	time.Sleep(2 * time.Second)
 
 	orderMsgCh := make(chan events.OrderMessageEvent)
 	orderMsgSub := swarms[2].SubscribeOrderMessage(orderMsgCh)

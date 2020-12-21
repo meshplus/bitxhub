@@ -88,3 +88,14 @@ func (cbs *ChainBrokerService) GetBlocks(ctx context.Context, req *pb.GetBlocksR
 		Blocks: blocks,
 	}, nil
 }
+
+func (cbs *ChainBrokerService) GetBlockHeaders(ctx context.Context, req *pb.GetBlockHeadersRequest) (*pb.GetBlockHeadersResponse, error) {
+	headers, err := cbs.api.Broker().GetBlockHeaders(req.Start, req.End)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.GetBlockHeadersResponse{
+		BlockHeaders: headers,
+	}, nil
+}
