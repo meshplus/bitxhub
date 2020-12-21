@@ -2,6 +2,7 @@ package syncer
 
 import (
 	"fmt"
+	"github.com/meshplus/bitxhub-kit/types"
 	"io/ioutil"
 	"strings"
 	"testing"
@@ -26,7 +27,6 @@ func TestStateSyncer_SyncCFTBlocks(t *testing.T) {
 	peerCnt := 3
 	swarms := NewSwarms(t, peerCnt)
 
-	time.Sleep(2 * time.Second)
 	otherPeers := swarms[0].OtherPeers()
 	peerIds := make([]uint64, 0)
 	for id, _ := range otherPeers {
@@ -53,10 +53,37 @@ func TestStateSyncer_SyncCFTBlocks(t *testing.T) {
 
 }
 
-//
-//func TestStateSyncer_SyncBFTBlocks(t *testing.T) {
-//
-//}
+func TestStateSyncer_SyncBFTBlocks(t *testing.T) {
+	peerCnt := 4
+	swarms := NewSwarms(t, peerCnt)
+
+	//time.Sleep(100 * time.Millisecond)
+	otherPeers := swarms[0].OtherPeers()
+	peerIds := make([]uint64, 0)
+	for id, _ := range otherPeers {
+		peerIds = append(peerIds, id)
+	}
+	logger := log.NewWithModule("syncer")
+	syncer, err := New(10, swarms[0], 3, peerIds, logger)
+	require.Nil(t, err)
+
+	begin := 2
+	end := 100
+	blockCh := make(chan *pb.Block, 1024)
+
+	metaHash := types.NewHashByStr("0xbC1C6897f97782F3161492d5CcfBE0691502f15894A0b2f2f40069C995E33cCB")
+	go syncer.SyncBFTBlocks(uint64(begin), uint64(end), metaHash, blockCh)
+
+	blocks := make([]*pb.Block, 0)
+	for block := range blockCh {
+		if block == nil {
+			break
+		}
+		blocks = append(blocks, block)
+	}
+
+	require.Equal(t, len(blocks), end-begin+1)
+}
 
 func genKeysAndConfig(t *testing.T, peerCnt int) ([]crypto2.PrivKey, []crypto.PrivateKey, []string, []string) {
 	var nodeKeys []crypto2.PrivKey
@@ -119,14 +146,14 @@ func peers(id uint64, addrs []string, ids []string) []*repo.NetworkNodes {
 
 func NewSwarms(t *testing.T, peerCnt int) []*peermgr.Swarm {
 	var swarms []*peermgr.Swarm
+
+	blocks := genBlocks(1024)
 	nodeKeys, privKeys, addrs, ids := genKeysAndConfig(t, peerCnt)
 	mockCtl := gomock.NewController(t)
 	mockLedger := mock_ledger.NewMockLedger(mockCtl)
-	mockLedger.EXPECT().GetBlock(gomock.Any()).Return(&pb.Block{
-		BlockHeader: &pb.BlockHeader{
-			Number: 1,
-		},
-	}, nil).AnyTimes()
+	mockLedger.EXPECT().GetBlock(gomock.Any()).DoAndReturn(func(height uint64) (*pb.Block, error) {
+		return blocks[height-1], nil
+	}).AnyTimes()
 
 	agencyData, err := ioutil.ReadFile("testdata/agency.cert")
 	require.Nil(t, err)
@@ -174,4 +201,36 @@ func NewSwarms(t *testing.T, peerCnt int) []*peermgr.Swarm {
 		swarms = append(swarms, swarm)
 	}
 	return swarms
+}
+
+func genBlocks(count int) []*pb.Block {
+	blocks := make([]*pb.Block, 0, count)
+	for height := 1; height <= count; height++ {
+		block := &pb.Block{}
+		if height == 1 {
+			block.BlockHeader = &pb.BlockHeader{
+				Number:      1,
+				StateRoot:   types.NewHashByStr("0xc30B6E0ad5327fc8548f4BaFab3271cA6a5bD92f084095958c84970165bfA6E7"),
+				TxRoot:      nil,
+				ReceiptRoot: nil,
+				ParentHash:  nil,
+				Timestamp:   0,
+				Version:     nil,
+			}
+			block.BlockHash = types.NewHashByStr("0xbC1C6897f97782F3161492d5CcfBE0691502f15894A0b2f2f40069C995E33cCB")
+		} else {
+			block.BlockHeader = &pb.BlockHeader{
+				Number:      uint64(height),
+				StateRoot:   blocks[len(blocks)-1].BlockHeader.StateRoot,
+				TxRoot:      nil,
+				ReceiptRoot: nil,
+				ParentHash:  blocks[len(blocks)-1].BlockHash,
+				Timestamp:   0,
+				Version:     nil,
+			}
+			block.BlockHash = block.Hash()
+		}
+		blocks = append(blocks, block)
+	}
+	return blocks
 }

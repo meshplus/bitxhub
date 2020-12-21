@@ -163,7 +163,6 @@ func TestSwarm_Send(t *testing.T) {
 	peerCnt := 4
 	swarms := NewSwarms(t, peerCnt)
 
-	time.Sleep(2 * time.Second)
 
 	msg := &pb.Message{
 		Type: pb.Message_GET_BLOCK,
@@ -297,8 +296,6 @@ func TestSwarm_Send(t *testing.T) {
 func TestSwarm_AsyncSend(t *testing.T) {
 	peerCnt := 4
 	swarms := NewSwarms(t, peerCnt)
-
-	time.Sleep(2 * time.Second)
 
 	orderMsgCh := make(chan events.OrderMessageEvent)
 	orderMsgSub := swarms[2].SubscribeOrderMessage(orderMsgCh)

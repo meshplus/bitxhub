@@ -95,7 +95,7 @@ func (swarm *Swarm) handleGetBlockHeadersPack(s network.Stream, msg *pb.Message)
 	res := &pb.GetBlockHeadersResponse{}
 	blockHeaders := make([]*pb.BlockHeader, 0)
 	for i := req.Start; i <= req.End; i++ {
-		block, err := swarm.ledger.GetBlock(req.Start)
+		block, err := swarm.ledger.GetBlock(i)
 		if err != nil {
 			return err
 		}
@@ -298,7 +298,7 @@ func (swarm *Swarm) handleGetBlocksPack(s network.Stream, msg *pb.Message) error
 	res := &pb.GetBlocksResponse{}
 	blocks := make([]*pb.Block, 0)
 	for i := req.Start; i <= req.End; i++ {
-		block, err := swarm.ledger.GetBlock(req.Start)
+		block, err := swarm.ledger.GetBlock(i)
 		if err != nil {
 			return err
 		}

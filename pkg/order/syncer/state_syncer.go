@@ -59,14 +59,22 @@ func (s *StateSyncer) SyncCFTBlocks(begin, end uint64, blockCh chan *pb.Block) e
 	for _, rangeHeight := range rangeHeights {
 		rangeTmp := rangeHeight
 		err := retry.Retry(func(attempt uint) error {
-			id := s.randPeers()
+			id, err := s.randPeers()
+			if err != nil {
+				s.logger.Errorf(err.Error())
+				return err
+			}
+
+
 			s.logger.WithFields(logrus.Fields{
 				"begin":   rangeTmp.begin,
 				"end":     rangeTmp.end,
 				"peer_id": id,
 			}).Info("syncing range block")
+
 			blocks, err := s.fetchBlocks(id, rangeTmp.begin, rangeTmp.end)
 			if err != nil {
+				s.badPeers.Store(id, nil)
 				s.logger.Errorf("fetch blocks error:%w", err)
 				return err
 			}
@@ -107,6 +115,7 @@ func (s *StateSyncer) SyncBFTBlocks(begin, end uint64, metaHash *types.Hash, blo
 		for _, block := range blocks {
 			blockCh <- block
 		}
+		parentBlockHash = blocks[len(blocks)-1].Hash()
 	}
 	blockCh <- nil
 	return nil
@@ -114,9 +123,9 @@ func (s *StateSyncer) SyncBFTBlocks(begin, end uint64, metaHash *types.Hash, blo
 
 func (s *StateSyncer) syncQuorumRangeBlockHeaders(rangeHeight *rangeHeight, parentBlockHash *types.Hash) []*pb.BlockHeader {
 	var isQuorum bool
-	var hash *types.Hash
-	latestBlockHeaderCounter := make(map[*types.Hash]uint64)
-	blockHeadersM := make(map[*types.Hash][]*pb.BlockHeader)
+	var hash string
+	latestBlockHeaderCounter := make(map[string]uint64)
+	blockHeadersM := make(map[string][]*pb.BlockHeader)
 
 	fetchAndVerifyBlockHeaders := func(id uint64) {
 		s.logger.WithFields(logrus.Fields{
@@ -131,16 +140,20 @@ func (s *StateSyncer) syncQuorumRangeBlockHeaders(rangeHeight *rangeHeight, pare
 		}
 		err = s.verifyBlockHeaders(parentBlockHash, headers)
 		if err != nil {
+			s.badPeers.Store(id, nil)
 			s.logger.Errorf("check block headers error:%w", err)
 			return
 		}
 		latestBlock := &pb.Block{BlockHeader: headers[len(headers)-1]}
 		blockHash := latestBlock.Hash()
-		latestBlockHeaderCounter[blockHash]++
-		blockHeadersM[blockHash] = headers
+		latestBlockHeaderCounter[blockHash.String()]++
+		blockHeadersM[blockHash.String()] = headers
 	}
 
+
 	for _, id := range s.peerIds {
+
+		fetchAndVerifyBlockHeaders(id)
 		for latestHash, counter := range latestBlockHeaderCounter {
 			if counter >= s.quorum {
 				hash = latestHash
@@ -151,9 +164,8 @@ func (s *StateSyncer) syncQuorumRangeBlockHeaders(rangeHeight *rangeHeight, pare
 		if isQuorum {
 			break
 		}
-		fetchAndVerifyBlockHeaders(id)
 	}
-	if hash == nil {
+	if !isQuorum {
 		return nil
 	}
 
@@ -174,12 +186,14 @@ func (s *StateSyncer) syncRangeBlocks(headers []*pb.BlockHeader) []*pb.Block {
 		}).Info("syncing range block")
 		fetchBlocks, err := s.fetchBlocks(id, begin, end)
 		if err != nil {
+			s.badPeers.Store(id, nil)
 			s.logger.Errorf("fetch block headers error:%w", err)
 			return
 		}
 		for i, block := range fetchBlocks {
 			err := s.verifyBlock(headers[i], block)
 			if err != nil {
+				s.badPeers.Store(id, nil)
 				s.logger.Errorf("check block headers error:%w", err)
 				return
 			}
@@ -195,7 +209,7 @@ func (s *StateSyncer) syncRangeBlocks(headers []*pb.BlockHeader) []*pb.Block {
 	return blocks
 }
 
-func (s *StateSyncer) randPeers() uint64 {
+func (s *StateSyncer) randPeers() (uint64, error) {
 	ids := make([]uint64, 0)
 	for _, id := range s.peerIds {
 		_, ok := s.badPeers.Load(id)
@@ -204,8 +218,11 @@ func (s *StateSyncer) randPeers() uint64 {
 		}
 		ids = append(ids, id)
 	}
+	if len(ids) == 0 {
+		return 0, fmt.Errorf("peers nums is 0")
+	}
 	randIndex := rand.Int63n(int64(len(ids)))
-	return ids[randIndex]
+	return ids[randIndex], nil
 }
 
 func (s *StateSyncer) calcRangeHeight(begin, end uint64) ([]*rangeHeight, error) {
@@ -300,7 +317,7 @@ func (s *StateSyncer) verifyBlockHeaders(parentHash *types.Hash, headers []*pb.B
 		hash := block.Hash()
 		ok, _ := parentHash.Equals(header.ParentHash)
 		if !ok {
-			return fmt.Errorf("block number is %d, hash is %s, but parent hash is %s", header.Number, hash.Hash, header.ParentHash)
+			return fmt.Errorf("block number is %d, hash is %s, but parent hash is %s", header.Number, hash.String(), header.ParentHash)
 		}
 		parentHash = hash
 	}
