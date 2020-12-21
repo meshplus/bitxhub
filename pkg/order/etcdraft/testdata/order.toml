@@ -1,4 +1,5 @@
 [raft]
+batch_timeout               = "0.3s"  # Block packaging time period.
 tick_timeout                = "0.1s" # TickTimeout is the internal logical clock for the Node by a single tick, Election timeouts and heartbeat timeouts are in units of ticks.
 election_tick               = 10 # ElectionTick is the number of Node.Tick invocations that must pass between elections.
 heartbeat_tick              = 1  # HeartbeatTick is the number of Node.Tick invocations that must pass between heartbeats.
@@ -9,9 +10,7 @@ pre_vote                    = true # PreVote prevents reconnected node from dist
 disable_proposal_forwarding = true # This prevents blocks from being accidentally proposed by followers.
 
     [raft.mempool]
-        batch_size          = 1   # How many transactions should the primary pack.
+        batch_size          = 200   # How many transactions should the primary pack.
         pool_size           = 50000 # How many transactions could the txPool stores in total.
-        tx_slice_size       = 1    # How many transactions should the node broadcast at once
-
-        batch_tick          = "0.3s"  # Block packaging time period.
-        tx_slice_timeout    = "0.1s"  # Node broadcasts transactions if there are cached transactions, although set_size isn't reached yet
+        tx_slice_size       = 10    # How many transactions should the node broadcast at once
+        tx_slice_timeout    = "0.1s"  # Node broadcasts transactions if there are cached transactions, although set_size isn't reached yetxRx

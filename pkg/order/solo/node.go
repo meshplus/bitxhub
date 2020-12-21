@@ -3,35 +3,34 @@ package solo
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"sync"
 	"time"
 
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/pkg/order"
+	"github.com/meshplus/bitxhub/pkg/order/etcdraft"
 	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
 	"github.com/meshplus/bitxhub/pkg/order/mempool"
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
 )
 
 type Node struct {
-	ID uint64
-	sync.RWMutex
-	commitC            chan *pb.Block     // block channel
-	logger             logrus.FieldLogger // logger
-	mempool            mempool.MemPool              // transaction pool
-	proposeC           chan *raftproto.RequestBatch // proposed listenReadyBlock, input channel
-	stateC             chan *mempool.ChainState
-	txCache            *mempool.TxCache // cache the transactions received from api
-	lastExec           uint64           // the index of the last-applied block
-
+	ID        uint64
+	commitC   chan *pb.Block               // block channel
+	logger    logrus.FieldLogger           // logger
+	mempool   mempool.MemPool              // transaction pool
+	proposeC  chan *raftproto.RequestBatch // proposed listenReadyBlock, input channel
+	stateC    chan *mempool.ChainState
+	txCache   *mempool.TxCache // cache the transactions received from api
+	batchMgr  *etcdraft.BatchTimer
+	lastExec  uint64        // the index of the last-applied block
 	packSize  int           // maximum number of transaction packages
 	blockTick time.Duration // block packed period
 
-	ctx    context.Context
-	cancel context.CancelFunc
+	ctx       context.Context
+	cancel    context.CancelFunc
+	sync.RWMutex
 }
 
 func (n *Node) Start() error {
@@ -95,14 +94,13 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 
-	memConfig, err := generateMempoolConfig(config.RepoRoot)
+	batchTimeout, memConfig, err := generateSoloConfig(config.RepoRoot)
 	mempoolConf := &mempool.Config{
 		ID:          config.ID,
 		ChainHeight: config.Applied,
 		Logger:      config.Logger,
 
 		BatchSize:      memConfig.BatchSize,
-		BatchTick:      memConfig.BatchTick,
 		PoolSize:       memConfig.PoolSize,
 		TxSliceSize:    memConfig.TxSliceSize,
 		TxSliceTimeout: memConfig.TxSliceTimeout,
@@ -110,19 +108,22 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 	batchC := make(chan *raftproto.RequestBatch)
 	mempoolInst := mempool.NewMempool(mempoolConf)
 	txCache := mempool.NewTxCache(mempoolConf.TxSliceTimeout, mempoolConf.TxSliceSize, config.Logger)
+	batchTimerMgr := etcdraft.NewTimer(batchTimeout, config.Logger)
 	soloNode := &Node{
-		ID:                 config.ID,
-		commitC:            make(chan *pb.Block, 1024),
-		stateC:             make(chan *mempool.ChainState),
-		lastExec:           config.Applied,
-		mempool:            mempoolInst,
-		txCache:            txCache,
-		proposeC:           batchC,
-		logger:             config.Logger,
-		ctx:                ctx,
-		cancel:             cancel,
+		ID:       config.ID,
+		commitC:  make(chan *pb.Block, 1024),
+		stateC:   make(chan *mempool.ChainState),
+		lastExec: config.Applied,
+		mempool:  mempoolInst,
+		txCache:  txCache,
+		batchMgr: batchTimerMgr,
+		proposeC: batchC,
+		logger:   config.Logger,
+		ctx:      ctx,
+		cancel:   cancel,
 	}
-	soloNode.logger.Infof("========= SOLO lastExec = %d  ", soloNode.lastExec)
+	soloNode.logger.Infof("SOLO lastExec = %d", soloNode.lastExec)
+	soloNode.logger.Infof("SOLO batch timeout = %v", batchTimeout)
 	return soloNode, nil
 }
 
@@ -163,7 +164,12 @@ func (n *Node) listenReadyBlock() {
 			return
 
 		case txSet := <-n.txCache.TxSetC:
+			// start batch timer when this node receives the first transaction
+			if !n.batchMgr.IsBatchTimerActive() {
+				n.batchMgr.StartBatchTimer()
+			}
 			if batch := n.mempool.ProcessTransactions(txSet.TxList, true); batch != nil {
+				n.batchMgr.StopBatchTimer()
 				n.proposeC <- batch
 			}
 
@@ -175,38 +181,22 @@ func (n *Node) listenReadyBlock() {
 				}).Info("Report checkpoint")
 			}
 			n.mempool.CommitTransactions(state)
+
+		case <-n.batchMgr.BatchTimeoutEvent():
+			n.batchMgr.StopBatchTimer()
+			n.logger.Debug("Batch timer expired, try to create a batch")
+			if n.mempool.HasPendingRequest() {
+				if batch := n.mempool.GenerateBlock(); batch != nil {
+					n.postProposal(batch)
+				}
+			} else {
+				n.logger.Debug("The length of priorityIndex is 0, skip the batch timer")
+			}
 		}
 	}
 }
 
-func generateMempoolConfig(repoRoot string) (*MempoolConfig, error) {
-	readConfig, err := readConfig(repoRoot)
-	if err != nil {
-		return nil, err
-	}
-	mempoolConf := &MempoolConfig{}
-	mempoolConf.BatchSize = readConfig.RAFT.MempoolConfig.BatchSize
-	mempoolConf.PoolSize = readConfig.RAFT.MempoolConfig.PoolSize
-	mempoolConf.TxSliceSize = readConfig.RAFT.MempoolConfig.TxSliceSize
-	mempoolConf.BatchTick = readConfig.RAFT.MempoolConfig.BatchTick
-	mempoolConf.FetchTimeout = readConfig.RAFT.MempoolConfig.FetchTimeout
-	mempoolConf.TxSliceTimeout = readConfig.RAFT.MempoolConfig.TxSliceTimeout
-	return mempoolConf, nil
-}
-
-func readConfig(repoRoot string) (*RAFTConfig, error) {
-	v := viper.New()
-	v.SetConfigFile(filepath.Join(repoRoot, "order.toml"))
-	v.SetConfigType("toml")
-	if err := v.ReadInConfig(); err != nil {
-		return nil, err
-	}
-
-	config := &RAFTConfig{}
-
-	if err := v.Unmarshal(config); err != nil {
-		return nil, err
-	}
-
-	return config, nil
+func (n *Node) postProposal(batch *raftproto.RequestBatch) {
+	n.proposeC <- batch
+	n.batchMgr.StartBatchTimer()
 }

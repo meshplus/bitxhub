@@ -1,31 +1,53 @@
 package solo
 
 import (
+	"path/filepath"
 	"time"
+
+	"github.com/spf13/viper"
 )
 
-type RAFTConfig struct {
-	RAFT RAFT
+type SOLOConfig struct {
+	SOLO SOLO
+}
+
+type SOLO struct {
+	BatchTimeout  time.Duration `mapstructure:"batch_timeout"`
+	MempoolConfig MempoolConfig `mapstructure:"mempool"`
 }
 
 type MempoolConfig struct {
-	BatchSize   uint64 `mapstructure:"batch_size"`
-	PoolSize    uint64 `mapstructure:"pool_size"`
-	TxSliceSize uint64 `mapstructure:"tx_slice_size"`
-
-	BatchTick      time.Duration `mapstructure:"batch_tick"`
-	FetchTimeout   time.Duration `mapstructure:"fetch_timeout"`
+	BatchSize      uint64        `mapstructure:"batch_size"`
+	PoolSize       uint64        `mapstructure:"pool_size"`
+	TxSliceSize    uint64        `mapstructure:"tx_slice_size"`
 	TxSliceTimeout time.Duration `mapstructure:"tx_slice_timeout"`
 }
 
-type RAFT struct {
-	TickTimeout               time.Duration `mapstructure:"tick_timeout"`
-	ElectionTick              int           `mapstructure:"election_tick"`
-	HeartbeatTick             int           `mapstructure:"heartbeat_tick"`
-	MaxSizePerMsg             uint64        `mapstructure:"max_size_per_msg"`
-	MaxInflightMsgs           int           `mapstructure:"max_inflight_msgs"`
-	CheckQuorum               bool          `mapstructure:"check_quorum"`
-	PreVote                   bool          `mapstructure:"pre_vote"`
-	DisableProposalForwarding bool          `mapstructure:"disable_proposal_forwarding"`
-	MempoolConfig             MempoolConfig `mapstructure:"mempool"`
+func generateSoloConfig(repoRoot string) (time.Duration, MempoolConfig, error) {
+	readConfig, err := readConfig(repoRoot)
+	if err != nil {
+		return 0, MempoolConfig{}, err
+	}
+	mempoolConf := MempoolConfig{}
+	mempoolConf.BatchSize = readConfig.SOLO.MempoolConfig.BatchSize
+	mempoolConf.PoolSize = readConfig.SOLO.MempoolConfig.PoolSize
+	mempoolConf.TxSliceSize = readConfig.SOLO.MempoolConfig.TxSliceSize
+	mempoolConf.TxSliceTimeout = readConfig.SOLO.MempoolConfig.TxSliceTimeout
+	return readConfig.SOLO.BatchTimeout, mempoolConf, nil
+}
+
+func readConfig(repoRoot string) (*SOLOConfig, error) {
+	v := viper.New()
+	v.SetConfigFile(filepath.Join(repoRoot, "order.toml"))
+	v.SetConfigType("toml")
+	if err := v.ReadInConfig(); err != nil {
+		return nil, err
+	}
+
+	config := &SOLOConfig{}
+
+	if err := v.Unmarshal(config); err != nil {
+		return nil, err
+	}
+	return config, nil
 }

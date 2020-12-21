@@ -7,7 +7,9 @@ import (
 
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/pkg/order"
+	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
 )
 
 const (
@@ -90,4 +92,21 @@ func (n *Node) ramLastIndex() uint64 {
 	i, _ := n.raftStorage.ram.LastIndex()
 	n.logger.Infof("New Leader's last index is %d, appliedIndex is %d", i, n.appliedIndex)
 	return i
+}
+
+func msgToConsensusPbMsg(data []byte, tyr raftproto.RaftMessage_Type, replicaID uint64) *pb.Message {
+	rm := &raftproto.RaftMessage{
+		Type:   tyr,
+		FromId: replicaID,
+		Data:   data,
+	}
+	cmData, err := rm.Marshal()
+	if err != nil {
+		return nil
+	}
+	msg := &pb.Message{
+		Type: pb.Message_CONSENSUS,
+		Data: cmData,
+	}
+	return msg
 }

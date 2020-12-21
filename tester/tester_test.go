@@ -38,7 +38,7 @@ func TestTester(t *testing.T) {
 		time.Sleep(500 * time.Millisecond)
 	}
 
-	//suite.Run(t, &API{api: node1})
+	suite.Run(t, &API{api: node1})
 	suite.Run(t, &RegisterAppchain{api: node2})
 	suite.Run(t, &Interchain{api: node3})
 	suite.Run(t, &Role{api: node4})

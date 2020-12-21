@@ -36,7 +36,7 @@ type Node struct {
 	storage       storage.Storage     // db
 	mempool       mempool.MemPool     // transaction pool
 	txCache       *mempool.TxCache    // cache the transactions received from api
-	batchTimerMgr *batchTimer
+	batchTimerMgr *BatchTimer
 
 	proposeC    chan *raftproto.RequestBatch // proposed ready, input channel
 	confChangeC <-chan raftpb.ConfChange     // proposed cluster config changes
@@ -84,7 +84,7 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 		return nil, fmt.Errorf("generate raft peers: %w", err)
 	}
 
-	memConfig, err := generateMempoolConfig(repoRoot)
+	raftConfig, err := generateRaftConfig(repoRoot)
 	if err != nil {
 		return nil, fmt.Errorf("generate raft txpool config: %w", err)
 	}
@@ -93,21 +93,20 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 		ChainHeight: config.Applied,
 		Logger:      config.Logger,
 
-		BatchSize:      memConfig.BatchSize,
-		BatchTick:      memConfig.BatchTick,
-		PoolSize:       memConfig.PoolSize,
-		TxSliceSize:    memConfig.TxSliceSize,
-		TxSliceTimeout: memConfig.TxSliceTimeout,
+		BatchSize:      raftConfig.RAFT.MempoolConfig.BatchSize,
+		PoolSize:       raftConfig.RAFT.MempoolConfig.PoolSize,
+		TxSliceSize:    raftConfig.RAFT.MempoolConfig.TxSliceSize,
+		TxSliceTimeout: raftConfig.RAFT.MempoolConfig.TxSliceTimeout,
 	}
 	mempoolInst := mempool.NewMempool(mempoolConf)
 
-	var batchTick time.Duration
-	if mempoolConf.BatchTick == 0 {
-		batchTick = DefaultBatchTick
+	var batchTimeout time.Duration
+	if raftConfig.RAFT.BatchTimeout == 0 {
+		batchTimeout = DefaultBatchTick
 	} else {
-		batchTick = mempoolConf.BatchTick
+		batchTimeout = raftConfig.RAFT.BatchTimeout
 	}
-	batchTimerMgr := newTimer(batchTick, config.Logger)
+	batchTimerMgr := NewTimer(batchTimeout, config.Logger)
 	txCache := mempool.NewTxCache(mempoolConf.TxSliceTimeout, mempoolConf.TxSliceSize, config.Logger)
 
 	readyPool := &sync.Pool{New: func() interface{} {
@@ -135,16 +134,16 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 		ctx:           context.Background(),
 		mempool:       mempoolInst,
 	}
-	node.logger.Infof("========= Raft localID = %d", node.id)
-	node.logger.Infof("========= Raft lastExec = %d  ", node.lastExec)
-	node.logger.Infof("========= Raft defaultSnapshotCount = %d", node.snapCount)
+	node.logger.Infof("Raft localID = %d", node.id)
+	node.logger.Infof("Raft lastExec = %d  ", node.lastExec)
+	node.logger.Infof("Raft defaultSnapshotCount = %d", node.snapCount)
 	return node, nil
 }
 
 // Start or restart raft node
 func (n *Node) Start() error {
 	n.blockAppliedIndex.Store(n.lastExec, n.loadAppliedIndex())
-	rc, tickTimeout, err := generateRaftConfig(n.id, n.repoRoot, n.logger, n.raftStorage.ram)
+	rc, tickTimeout, err := generateEtcdRaftConfig(n.id, n.repoRoot, n.logger, n.raftStorage.ram)
 	if err != nil {
 		return fmt.Errorf("generate raft config: %w", err)
 	}
@@ -293,8 +292,8 @@ func (n *Node) run() {
 		case state := <-n.stateC:
 			n.reportState(state)
 
-		case <-n.batchTimerMgr.timeoutEventC:
-			n.batchTimerMgr.stopBatchTimer()
+		case <-n.batchTimerMgr.BatchTimeoutEvent():
+			n.batchTimerMgr.StopBatchTimer()
 			// call txPool module to generate a tx batch
 			if n.isLeader() {
 				n.logger.Debug("Leader batch timer expired, try to create a batch")
@@ -367,12 +366,12 @@ func (n *Node) processTransactions(txList []*pb.Transaction) {
 	// leader node would check if this transaction triggered generating a batch or not
 	if n.isLeader() {
 		// start batch timer when this node receives the first transaction
-		if !n.batchTimerMgr.isBatchTimerActive() {
-			n.batchTimerMgr.startBatchTimer()
+		if !n.batchTimerMgr.IsBatchTimerActive() {
+			n.batchTimerMgr.StartBatchTimer()
 		}
 		// If this transaction triggers generating a batch, stop batch timer
 		if batch := n.mempool.ProcessTransactions(txList, true); batch != nil {
-			n.batchTimerMgr.stopBatchTimer()
+			n.batchTimerMgr.StopBatchTimer()
 			n.postProposal(batch)
 		}
 	} else {
@@ -595,12 +594,12 @@ func (n *Node) send(messages []raftpb.Message) {
 
 func (n *Node) postProposal(batch *raftproto.RequestBatch) {
 	n.proposeC <- batch
-	n.batchTimerMgr.startBatchTimer()
+	n.batchTimerMgr.StartBatchTimer()
 }
 
 func (n *Node) becomeFollower() {
 	n.logger.Debugf("Replica %d became follower", n.id)
-	n.batchTimerMgr.stopBatchTimer()
+	n.batchTimerMgr.StopBatchTimer()
 }
 
 func (n *Node) setLastExec(height uint64) {

@@ -28,7 +28,6 @@ func mockMempoolImpl() (*mempoolImpl, chan *raftproto.Ready) {
 		BatchSize:      DefaultTestBatchSize,
 		PoolSize:       DefaultPoolSize,
 		TxSliceSize:    DefaultTestTxSetSize,
-		BatchTick:      DefaultBatchTick,
 		TxSliceTimeout: DefaultTxSetTick,
 		Logger:         log.NewWithModule("consensus"),
 	}
