@@ -62,7 +62,7 @@ func getTransaction(ctx *cli.Context) error {
 		return err
 	}
 
-	data, err := httpGet(url)
+	data, err := httpGet(ctx, url)
 	if err != nil {
 		return err
 	}
@@ -130,7 +130,7 @@ func sendTransaction(ctx *cli.Context) error {
 		return err
 	}
 
-	resp, err := httpPost(url, reqData)
+	resp, err := httpPost(ctx, url, reqData)
 	if err != nil {
 		return err
 	}

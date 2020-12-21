@@ -22,7 +22,7 @@ func getValidators(ctx *cli.Context) error {
 		return err
 	}
 
-	data, err := httpGet(url)
+	data, err := httpGet(ctx, url)
 	if err != nil {
 		return fmt.Errorf("http get: %w", err)
 	}
@@ -69,7 +69,7 @@ func delVPNode(ctx *cli.Context) error {
 
 	p := pb.DelVPNodeRequest{Pid: pid}
 	reqData, err := json.Marshal(p)
-	data, err := httpPost(url, reqData)
+	data, err := httpPost(ctx, url, reqData)
 	if err != nil {
 		return err
 	}

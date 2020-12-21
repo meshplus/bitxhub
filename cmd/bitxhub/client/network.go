@@ -20,7 +20,7 @@ func network(ctx *cli.Context) error {
 		return err
 	}
 
-	data, err := httpGet(url)
+	data, err := httpGet(ctx, url)
 	if err != nil {
 		return fmt.Errorf("http get: %w", err)
 	}
