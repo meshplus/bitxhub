@@ -2,7 +2,6 @@ package syncer
 
 import (
 	"fmt"
-	"github.com/meshplus/bitxhub-kit/types"
 	"io/ioutil"
 	"strings"
 	"testing"
@@ -15,6 +14,7 @@ import (
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/crypto/asym/ecdsa"
 	"github.com/meshplus/bitxhub-kit/log"
+	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/ledger/mock_ledger"
 	"github.com/meshplus/bitxhub/internal/repo"
@@ -27,6 +27,9 @@ func TestStateSyncer_SyncCFTBlocks(t *testing.T) {
 	peerCnt := 3
 	swarms := NewSwarms(t, peerCnt)
 
+	for swarms[0].CountConnectedPeers() != 2 {
+		time.Sleep(100*time.Millisecond)
+	}
 	otherPeers := swarms[0].OtherPeers()
 	peerIds := make([]uint64, 0)
 	for id, _ := range otherPeers {
@@ -57,7 +60,9 @@ func TestStateSyncer_SyncBFTBlocks(t *testing.T) {
 	peerCnt := 4
 	swarms := NewSwarms(t, peerCnt)
 
-	//time.Sleep(100 * time.Millisecond)
+	for swarms[0].CountConnectedPeers() != 3 {
+		time.Sleep(100*time.Millisecond)
+	}
 	otherPeers := swarms[0].OtherPeers()
 	peerIds := make([]uint64, 0)
 	for id, _ := range otherPeers {
@@ -180,10 +185,6 @@ func NewSwarms(t *testing.T, peerCnt int) []*peermgr.Swarm {
 				CACert:         cert,
 			},
 			Config: &repo.Config{
-				Ping: repo.Ping{
-					Enable:   true,
-					Duration: 2 * time.Second,
-				},
 			},
 		}
 

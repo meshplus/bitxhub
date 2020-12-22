@@ -28,6 +28,9 @@ type PeerManager interface {
 	// Broadcast message to all node
 	Broadcast(*pb.Message) error
 
+	// CountConnectedPeers counts connected peer numbers
+	CountConnectedPeers() uint64
+
 	// Peers
 	Peers() map[uint64]*pb.VpInfo
 
@@ -44,7 +47,7 @@ type PeerManager interface {
 	DelNode(delID uint64)
 
 	// UpdateRouter update the local router to quorum router.
-	UpdateRouter (vpInfos map[uint64]*pb.VpInfo, isNew bool) bool
+	UpdateRouter(vpInfos map[uint64]*pb.VpInfo, isNew bool) bool
 
 	// Disconnect disconnect with all vp peers.
 	Disconnect(vpInfos map[uint64]*pb.VpInfo)
