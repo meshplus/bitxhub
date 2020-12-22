@@ -109,7 +109,8 @@ func AssetExchangeKey(id string) string {
 }
 
 func checkAssetExchangeInfo(aei *pb.AssetExchangeInfo) error {
-	if aei.SenderOnDst == "" ||
+	if aei.Id == "" ||
+		aei.SenderOnDst == "" ||
 		aei.ReceiverOnSrc == "" ||
 		aei.SenderOnSrc == "" ||
 		aei.ReceiverOnDst == "" ||
