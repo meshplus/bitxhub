@@ -18,8 +18,8 @@ import (
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/bitxhub/pkg/cert"
 	network "github.com/meshplus/go-lightp2p"
-	"github.com/sirupsen/logrus"
 	ma "github.com/multiformats/go-multiaddr"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -467,6 +467,15 @@ func (swarm *Swarm) Disconnect(vpInfos map[uint64]*pb.VpInfo) {
 	}
 }
 
+func (swarm *Swarm) CountConnectedPeers() uint64 {
+	var counter uint64
+	swarm.connectedPeers.Range(func(k, v interface{}) bool {
+		counter++
+		return true
+	})
+	return counter
+}
+
 func (swarm *Swarm) reset() {
 	swarm.routers = nil
 	swarm.multiAddrs = nil
@@ -475,7 +484,7 @@ func (swarm *Swarm) reset() {
 }
 
 func constructMultiaddr(vpInfo *pb.VpInfo) (*peer.AddrInfo, error) {
-	addrs := make([]ma.Multiaddr,0)
+	addrs := make([]ma.Multiaddr, 0)
 	for _, host := range vpInfo.Hosts {
 		addr, err := ma.NewMultiaddr(fmt.Sprintf("%s%s", host, vpInfo.Pid))
 		if err != nil {
@@ -490,4 +499,3 @@ func constructMultiaddr(vpInfo *pb.VpInfo) (*peer.AddrInfo, error) {
 	}
 	return addrInfo, nil
 }
-
