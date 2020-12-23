@@ -16,8 +16,10 @@ import (
 
 var _ Syncer = (*StateSyncer)(nil)
 
+const defaultBlockFetch = 5
+
 type StateSyncer struct {
-	checkpoint uint64              // check point
+	blockFetch uint64              // amount of blocks to be fetched per retrieval request
 	peerMgr    peermgr.PeerManager // network manager
 	badPeers   *sync.Map           // peer node set who return bad block
 	quorum     uint64              // quorum node numbers
@@ -30,18 +32,15 @@ type rangeHeight struct {
 	end   uint64
 }
 
-func New(checkpoint uint64, peerMgr peermgr.PeerManager, quorum uint64, peerIds []uint64, logger logrus.FieldLogger) (*StateSyncer, error) {
-	if checkpoint == 0 {
-		return nil, fmt.Errorf("checkpoint not be 0")
+func New(blockFetch uint64, peerMgr peermgr.PeerManager, quorum uint64, peerIds []uint64, logger logrus.FieldLogger) (*StateSyncer, error) {
+	if blockFetch == 0 {
+		blockFetch = defaultBlockFetch
 	}
 	if quorum <= 0 {
 		return nil, fmt.Errorf("the vp nodes' quorum must be positive")
 	}
-	if len(peerIds) < int(quorum) {
-		return nil, fmt.Errorf("the peers num must be gather than quorum")
-	}
 	return &StateSyncer{
-		checkpoint: checkpoint,
+		blockFetch: blockFetch,
 		peerMgr:    peerMgr,
 		logger:     logger,
 		quorum:     quorum,
@@ -64,7 +63,6 @@ func (s *StateSyncer) SyncCFTBlocks(begin, end uint64, blockCh chan *pb.Block) e
 				s.logger.Errorf(err.Error())
 				return err
 			}
-
 
 			s.logger.WithFields(logrus.Fields{
 				"begin":   rangeTmp.begin,
@@ -150,7 +148,6 @@ func (s *StateSyncer) syncQuorumRangeBlockHeaders(rangeHeight *rangeHeight, pare
 		blockHeadersM[blockHash.String()] = headers
 	}
 
-
 	for _, id := range s.peerIds {
 
 		fetchAndVerifyBlockHeaders(id)
@@ -229,11 +226,11 @@ func (s *StateSyncer) calcRangeHeight(begin, end uint64) ([]*rangeHeight, error)
 	if begin > end {
 		return nil, fmt.Errorf("the end height:%d is less than the start height:%d", end, begin)
 	}
-	startNo := begin / s.checkpoint
+	startNo := begin / s.blockFetch
 	rangeHeights := make([]*rangeHeight, 0)
 	for ; begin <= end; {
 		rangeBegin := begin
-		rangeEnd := (startNo + 1) * s.checkpoint
+		rangeEnd := (startNo + 1) * s.blockFetch
 		if rangeEnd > end {
 			rangeEnd = end
 		}
