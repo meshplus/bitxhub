@@ -52,7 +52,7 @@ func (cbs *ChainBrokerService) checkTransaction(tx *pb.Transaction) error {
 		return fmt.Errorf("tx from address is nil")
 	}
 	if tx.To == nil {
-		tx.To = &types.Address{}
+		return fmt.Errorf("tx to address is nil")
 	}
 
 	emptyAddress := &types.Address{}
