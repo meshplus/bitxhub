@@ -12,11 +12,6 @@ var clientCMD = cli.Command{
 			Value: "http://localhost:9091/v1/",
 		},
 		cli.StringFlag{
-			Name:  "grpc",
-			Usage: "Specific grpc address",
-			Value: "localhost:60011",
-		},
-		cli.StringFlag{
 			Name:  "cert",
 			Usage: "Specific ca cert file if https is enabled",
 		},

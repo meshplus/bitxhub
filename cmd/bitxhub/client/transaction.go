@@ -3,7 +3,7 @@ package client
 import (
 	"encoding/json"
 	"fmt"
-	"math/rand"
+	"strconv"
 	"time"
 
 	"github.com/meshplus/bitxhub-kit/types"
@@ -108,11 +108,31 @@ func sendTransaction(ctx *cli.Context) error {
 		return err
 	}
 
+	getNonceUrl, err := getURL(ctx, fmt.Sprintf("pendingNonce/%s", from.String()))
+	if err != nil {
+		return err
+	}
+
+	encodedNonce, err := httpGet(ctx, getNonceUrl)
+	if err != nil {
+		return err
+	}
+
+	ret, err := parseResponse(encodedNonce)
+	if err != nil {
+		return err
+	}
+
+	nonce, err := strconv.ParseUint(ret, 10, 64)
+	if err != nil {
+		return fmt.Errorf("parse pending nonce :%w", err)
+	}
+
 	tx := &pb.Transaction{
 		From:      from,
 		To:        to,
 		Timestamp: time.Now().UnixNano(),
-		Nonce:     rand.Uint64(),
+		Nonce:     nonce,
 		Payload:   payload,
 	}
 
