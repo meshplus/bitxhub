@@ -12,6 +12,7 @@ import (
 	"github.com/meshplus/bitxhub/pkg/order/etcdraft"
 	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
 	"github.com/meshplus/bitxhub/pkg/order/mempool"
+	"github.com/meshplus/bitxhub/pkg/peermgr"
 	"github.com/sirupsen/logrus"
 )
 
@@ -24,12 +25,13 @@ type Node struct {
 	stateC    chan *mempool.ChainState
 	txCache   *mempool.TxCache // cache the transactions received from api
 	batchMgr  *etcdraft.BatchTimer
-	lastExec  uint64        // the index of the last-applied block
-	packSize  int           // maximum number of transaction packages
-	blockTick time.Duration // block packed period
+	lastExec  uint64              // the index of the last-applied block
+	packSize  int                 // maximum number of transaction packages
+	blockTick time.Duration       // block packed period
+	peerMgr   peermgr.PeerManager // network manager
 
-	ctx       context.Context
-	cancel    context.CancelFunc
+	ctx    context.Context
+	cancel context.CancelFunc
 	sync.RWMutex
 }
 
@@ -117,6 +119,7 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 		mempool:  mempoolInst,
 		txCache:  txCache,
 		batchMgr: batchTimerMgr,
+		peerMgr:  config.PeerMgr,
 		proposeC: batchC,
 		logger:   config.Logger,
 		ctx:      ctx,
