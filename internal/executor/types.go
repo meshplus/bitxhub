@@ -14,7 +14,7 @@ type Executor interface {
 	Stop() error
 
 	// ExecutorBlock
-	ExecuteBlock(*pb.Block)
+	ExecuteBlock(commitEvent *pb.CommitEvent)
 
 	// ApplyReadonlyTransactions execute readonly tx
 	ApplyReadonlyTransactions(txs []*pb.Transaction) []*pb.Receipt

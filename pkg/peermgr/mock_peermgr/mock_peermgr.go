@@ -20,6 +20,10 @@ type MockPeerManager struct {
 	recorder *MockPeerManagerMockRecorder
 }
 
+func (m *MockPeerManager) CountConnectedPeers() uint64 {
+	return 0
+}
+
 // MockPeerManagerMockRecorder is the mock recorder for MockPeerManager
 type MockPeerManagerMockRecorder struct {
 	mock *MockPeerManager

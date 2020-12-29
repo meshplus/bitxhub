@@ -17,7 +17,7 @@ type Order interface {
 	Prepare(tx *pb.Transaction) error
 
 	// Commit recv blocks form Order and commit it by order
-	Commit() chan *pb.Block
+	Commit() chan *pb.CommitEvent
 
 	// Step send msg to the consensus engine
 	Step(msg []byte) error

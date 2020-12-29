@@ -615,6 +615,11 @@ github.com/meshplus/bitxhub-model v1.1.2-0.20201221062626-1774aad0f842 h1:THnvVa
 github.com/meshplus/bitxhub-model v1.1.2-0.20201221062626-1774aad0f842/go.mod h1:HpL39K8fuh3nDu+HuprYuDcS/C3eFOQBvFkd1bPViwA=
 github.com/meshplus/bitxhub-model v1.1.2-0.20201221070800-ca8184215353 h1:7wkdviM8ssujL6pQHjHRGo9k+IOioBviaRKySjd0lzQ=
 github.com/meshplus/bitxhub-model v1.1.2-0.20201221070800-ca8184215353/go.mod h1:HpL39K8fuh3nDu+HuprYuDcS/C3eFOQBvFkd1bPViwA=
+github.com/meshplus/bitxhub-model v1.1.2-0.20201229073026-1b346f4d70af/go.mod h1:HpL39K8fuh3nDu+HuprYuDcS/C3eFOQBvFkd1bPViwA=
+github.com/meshplus/bitxhub-model v1.1.2-0.20201229075949-5d556a5252e4 h1:C/NNvJOfnMZdoZT8ijgrMD+XW0P5i//MLocPlOpl/Xo=
+github.com/meshplus/bitxhub-model v1.1.2-0.20201229075949-5d556a5252e4/go.mod h1:HpL39K8fuh3nDu+HuprYuDcS/C3eFOQBvFkd1bPViwA=
+github.com/meshplus/bitxhub-model v1.1.2-0.20201229110212-37dd343b4c76 h1:3EndfTR7Zb1RbqjLNavrQ9BzjNz2WFWak4l+muq3klA=
+github.com/meshplus/bitxhub-model v1.1.2-0.20201229110212-37dd343b4c76/go.mod h1:x3H+TL24wcByzHegenLfs+5PQkQGNsk8eCm31QJMa+Q=
 github.com/meshplus/go-lightp2p v0.0.0-20201203044909-e09b34cd93ab h1:JclTakVV0dcXxl/dScmN77htnYe3n19hh7m2eMk9Abs=
 github.com/meshplus/go-lightp2p v0.0.0-20201203044909-e09b34cd93ab/go.mod h1:L3pEzDMouz+xcIVwG2fj+mAsM95GAkzoo7cEd2CzmCQ=
 github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b/go.mod h1:01TrycV0kFyexm33Z7vhZRXopbI8J3TDReVlkTgMUxE=

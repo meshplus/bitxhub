@@ -18,7 +18,7 @@ import (
 
 type Node struct {
 	ID        uint64
-	commitC   chan *pb.Block               // block channel
+	commitC   chan *pb.CommitEvent         // block channel
 	logger    logrus.FieldLogger           // logger
 	mempool   mempool.MemPool              // transaction pool
 	proposeC  chan *raftproto.RequestBatch // proposed listenReadyBlock, input channel
@@ -61,7 +61,7 @@ func (n *Node) Prepare(tx *pb.Transaction) error {
 	return nil
 }
 
-func (n *Node) Commit() chan *pb.Block {
+func (n *Node) Commit() chan *pb.CommitEvent {
 	return n.commitC
 }
 
@@ -113,7 +113,7 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 	batchTimerMgr := etcdraft.NewTimer(batchTimeout, config.Logger)
 	soloNode := &Node{
 		ID:       config.ID,
-		commitC:  make(chan *pb.Block, 1024),
+		commitC:  make(chan *pb.CommitEvent, 1024),
 		stateC:   make(chan *mempool.ChainState),
 		lastExec: config.Applied,
 		mempool:  mempoolInst,
@@ -154,7 +154,15 @@ func (n *Node) listenReadyBlock() {
 					},
 					Transactions: proposal.TxList,
 				}
-				n.commitC <- block
+				localList := make([]bool, len(proposal.TxList))
+				for i := 0; i < len(proposal.TxList); i++ {
+					localList[i] = true
+				}
+				executeEvent := &pb.CommitEvent{
+					Block:     block,
+					LocalList: localList,
+				}
+				n.commitC <- executeEvent
 				n.lastExec++
 			}
 		}

@@ -96,15 +96,15 @@ func (exec *BlockExecutor) processExecuteEvent(block *pb.Block) *ledger.BlockDat
 func (exec *BlockExecutor) listenPreExecuteEvent() {
 	for {
 		select {
-		case block := <-exec.preBlockC:
+		case commitEvent := <-exec.preBlockC:
 			now := time.Now()
-			block = exec.verifySign(block)
+			commitEvent.Block = exec.verifySign(commitEvent)
 			exec.logger.WithFields(logrus.Fields{
-				"height": block.BlockHeader.Number,
-				"count":  len(block.Transactions),
+				"height": commitEvent.Block.BlockHeader.Number,
+				"count":  len(commitEvent.Block.Transactions),
 				"elapse": time.Since(now),
 			}).Debug("Verified signature")
-			exec.blockC <- block
+			exec.blockC <- commitEvent.Block
 		case <-exec.ctx.Done():
 			return
 		}
@@ -178,9 +178,9 @@ func (exec *BlockExecutor) buildTxMerkleTree(txs []*pb.Transaction) (*types.Hash
 	return root, l2Roots, nil
 }
 
-func (exec *BlockExecutor) verifySign(block *pb.Block) *pb.Block {
-	if block.BlockHeader.Number == 1 {
-		return block
+func (exec *BlockExecutor) verifySign(commitEvent *pb.CommitEvent) *pb.Block {
+	if commitEvent.Block.BlockHeader.Number == 1 {
+		return commitEvent.Block
 	}
 
 	var (
@@ -188,10 +188,15 @@ func (exec *BlockExecutor) verifySign(block *pb.Block) *pb.Block {
 		mutex sync.Mutex
 		index []int
 	)
-	txs := block.Transactions
-
+	txs := commitEvent.Block.Transactions
+	txsLen := len(commitEvent.LocalList)
 	wg.Add(len(txs))
 	for i, tx := range txs {
+		// if the tx is received from api, we will pass the verify.
+		if txsLen > i && commitEvent.LocalList[i] {
+			wg.Done()
+			continue
+		}
 		go func(i int, tx *pb.Transaction) {
 			defer wg.Done()
 			ok, _ := asym.Verify(crypto.Secp256k1, tx.Signature, tx.SignHash().Bytes(), *tx.From)
@@ -209,10 +214,10 @@ func (exec *BlockExecutor) verifySign(block *pb.Block) *pb.Block {
 		for _, idx := range index {
 			txs = append(txs[:idx], txs[idx+1:]...)
 		}
-		block.Transactions = txs
+		commitEvent.Block.Transactions = txs
 	}
 
-	return block
+	return commitEvent.Block
 }
 
 func (exec *BlockExecutor) applyTx(index int, tx *pb.Transaction, opt *agency.TxOpt) *pb.Receipt {
