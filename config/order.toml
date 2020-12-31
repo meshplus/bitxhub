@@ -1,5 +1,6 @@
 [raft]
 batch_timeout               = "0.3s"  # Block packaging time period.
+rebroadcast_timeout         = "3m" # Node timeout tick to check if there exist txs to be rebroadcast
 tick_timeout                = "0.1s" # TickTimeout is the internal logical clock for the Node by a single tick, Election timeouts and heartbeat timeouts are in units of ticks.
 election_tick               = 10 # ElectionTick is the number of Node.Tick invocations that must pass between elections.
 heartbeat_tick              = 1  # HeartbeatTick is the number of Node.Tick invocations that must pass between heartbeats.

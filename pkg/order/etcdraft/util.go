@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	DefaultBatchTick = 500 * time.Millisecond
+	DefaultBatchTick     = 500 * time.Millisecond
 	DefaultSnapshotCount = 1000
 )
 

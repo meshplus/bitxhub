@@ -27,6 +27,7 @@ type SyncerConfig struct {
 
 type RAFT struct {
 	BatchTimeout              time.Duration `mapstructure:"batch_timeout"`
+	RebroadcastTimeout        time.Duration `mapstructure:"rebroadcast_timeout"`
 	TickTimeout               time.Duration `mapstructure:"tick_timeout"`
 	ElectionTick              int           `mapstructure:"election_tick"`
 	HeartbeatTick             int           `mapstructure:"heartbeat_tick"`
@@ -51,10 +52,10 @@ func defaultRaftConfig() raft.Config {
 	}
 }
 
-func generateEtcdRaftConfig(id uint64, repoRoot string, logger logrus.FieldLogger, ram MemoryStorage) (*raft.Config, time.Duration, error) {
+func generateEtcdRaftConfig(id uint64, repoRoot string, logger logrus.FieldLogger, ram MemoryStorage) (*raft.Config, time.Duration, time.Duration, error) {
 	readConfig, err := readConfig(repoRoot)
 	if err != nil {
-		return &raft.Config{}, 100 * time.Millisecond, nil
+		return &raft.Config{}, 100 * time.Millisecond, 3 * time.Minute, nil
 	}
 	defaultConfig := defaultRaftConfig()
 	defaultConfig.ID = id
@@ -75,7 +76,7 @@ func generateEtcdRaftConfig(id uint64, repoRoot string, logger logrus.FieldLogge
 	defaultConfig.PreVote = readConfig.RAFT.PreVote
 	defaultConfig.CheckQuorum = readConfig.RAFT.CheckQuorum
 	defaultConfig.DisableProposalForwarding = readConfig.RAFT.DisableProposalForwarding
-	return &defaultConfig, readConfig.RAFT.TickTimeout, nil
+	return &defaultConfig, readConfig.RAFT.TickTimeout, readConfig.RAFT.RebroadcastTimeout, nil
 }
 
 func generateRaftConfig(repoRoot string) (*RAFTConfig, error) {

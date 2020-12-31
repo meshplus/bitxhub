@@ -1,6 +1,7 @@
 package mempool
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -18,6 +19,12 @@ func TestGetBlock(t *testing.T) {
 	tx2 := constructTx(uint64(2), &privKey1)
 	tx3 := constructTx(uint64(2), &privKey2)
 	tx4 := constructTx(uint64(4), &privKey2)
+	from1, err := privKey1.PublicKey().Address()
+	ast.Nil(err)
+	fmt.Printf("from 1 is %s\n", from1)
+	from2, err := privKey2.PublicKey().Address()
+	ast.Nil(err)
+	fmt.Printf("from 2 is %s\n", from2)
 	var txList []*pb.Transaction
 	txList = append(txList, tx1, tx2, tx3, tx4)
 	// mock follower
@@ -28,7 +35,7 @@ func TestGetBlock(t *testing.T) {
 	ast.Nil(batch)
 
 	// mock leader to getBlock
-	txList = make([]*pb.Transaction,0)
+	txList = make([]*pb.Transaction, 0)
 	tx5 := constructTx(uint64(1), &privKey2)
 	txList = append(txList, tx5)
 	batch = mpi.ProcessTransactions(txList, true)
@@ -89,13 +96,13 @@ func TestCommitTransactions(t *testing.T) {
 	ast.Equal(4, len(batch.TxList))
 	ast.Equal(4, mpi.txStore.priorityIndex.size())
 	ast.Equal(1, mpi.txStore.parkingLotIndex.size())
-	ast.Equal(uint64(2),  mpi.batchSeqNo)
+	ast.Equal(uint64(2), mpi.batchSeqNo)
 
 	var txHashList []*types.Hash
 	txHashList = append(txHashList, tx1.TransactionHash, tx2.TransactionHash, tx3.TransactionHash, tx5.TransactionHash)
 	state := &ChainState{
 		TxHashList: txHashList,
-		Height:   uint64(2),
+		Height:     uint64(2),
 	}
 	mpi.CommitTransactions(state)
 	time.Sleep(100 * time.Millisecond)
@@ -156,7 +163,6 @@ func TestProcessTransactions(t *testing.T) {
 	ast.Equal(uint64(3), mpi.txStore.nonceCache.getPendingNonce(account2.String()))
 }
 
-
 func TestForward(t *testing.T) {
 	ast := assert.New(t)
 	mpi, _ := mockMempoolImpl()
@@ -181,4 +187,100 @@ func TestForward(t *testing.T) {
 	ast.Equal(2, len(removeList[account1.String()]))
 	ast.Equal(uint64(1), removeList[account1.String()][0].Nonce)
 	ast.Equal(uint64(2), removeList[account1.String()][1].Nonce)
+}
+
+func TestGetTimeoutTransaction(t *testing.T) {
+	ast := assert.New(t)
+	mpi, _ := mockMempoolImpl()
+	mpi.batchSize = 5
+
+	txList := make([]*pb.Transaction, 0)
+	privKey1 := genPrivKey()
+	account1, _ := privKey1.PublicKey().Address()
+	privKey2 := genPrivKey()
+	account2, _ := privKey2.PublicKey().Address()
+	nonceArr := []uint64{4, 2, 1}
+	for _, i := range nonceArr {
+		tx1 := constructTx(i, &privKey1)
+		tx2 := constructTx(i, &privKey2)
+		txList = append(txList, tx1, tx2)
+	}
+	batch := mpi.ProcessTransactions(txList, true)
+	ast.Nil(batch) // not enough for 5 txs to generate batch
+	ast.Equal(4, mpi.txStore.priorityIndex.size())
+	ast.Equal(2, mpi.txStore.parkingLotIndex.size())
+	ast.Equal(6, len(mpi.txStore.txHashMap))
+	ast.Equal(3, mpi.txStore.allTxs[account1.String()].index.size())
+	ast.Equal(3, mpi.txStore.allTxs[account2.String()].index.size())
+	ast.Equal(uint64(1), mpi.txStore.nonceCache.getCommitNonce(account1.String()))
+	ast.Equal(uint64(3), mpi.txStore.nonceCache.getPendingNonce(account1.String()))
+	ast.Equal(uint64(1), mpi.txStore.nonceCache.getCommitNonce(account2.String()))
+	ast.Equal(uint64(3), mpi.txStore.nonceCache.getPendingNonce(account2.String()))
+
+	tx7 := constructTx(uint64(3), &privKey1)
+	tx8 := constructTx(uint64(5), &privKey2)
+	txList = make([]*pb.Transaction, 0)
+	txList = append(txList, tx7, tx8)
+	batch = mpi.ProcessTransactions(txList, true)
+	ast.NotNil(batch)
+
+	var hashes []types.Hash
+	// this batch will contain tx{1,2,3} for privKey1 and tx{1,2} for privKey2
+	ast.Equal(5, len(batch.TxList))
+	ast.Equal(uint64(2), batch.Height)
+	ast.Equal(uint64(1), mpi.txStore.priorityNonBatchSize)
+	ast.Equal(6, mpi.txStore.priorityIndex.size())
+	ast.Equal(3, mpi.txStore.parkingLotIndex.size(), "delete parkingLot until finishing executor")
+	ast.Equal(8, len(mpi.txStore.txHashMap))
+	ast.Equal(4, mpi.txStore.allTxs[account1.String()].index.size())
+	ast.Equal(4, mpi.txStore.allTxs[account2.String()].index.size())
+	ast.Equal(uint64(5), mpi.txStore.nonceCache.getPendingNonce(account1.String()))
+	ast.Equal(uint64(3), mpi.txStore.nonceCache.getPendingNonce(account2.String()))
+
+	// process committed txs
+	hashList := make([]*types.Hash, 0, len(hashes))
+	for _, tx := range batch.TxList {
+		hashList = append(hashList, tx.Hash())
+	}
+	ready := &ChainState{
+		TxHashList: hashList,
+		Height:     2,
+	}
+	mpi.processCommitTransactions(ready)
+	time.Sleep(100 * time.Millisecond)
+
+	ast.Equal(uint64(1), mpi.txStore.priorityNonBatchSize)
+	ast.Equal(1, mpi.txStore.priorityIndex.size())
+	ast.Equal(3, mpi.txStore.parkingLotIndex.size(), "delete parkingLot until finishing executor")
+	ast.Equal(3, len(mpi.txStore.txHashMap))
+	ast.Equal(1, mpi.txStore.allTxs[account1.String()].index.size())
+	ast.Equal(2, mpi.txStore.allTxs[account2.String()].index.size())
+	ast.Equal(uint64(5), mpi.txStore.nonceCache.getPendingNonce(account1.String()))
+	ast.Equal(uint64(3), mpi.txStore.nonceCache.getCommitNonce(account2.String()))
+	ast.Equal(uint64(3), mpi.txStore.nonceCache.getPendingNonce(account2.String()))
+
+	// generate block3
+	txList = make([]*pb.Transaction, 0)
+	account1NonceArr2 := []uint64{5, 6}
+	for _, i := range account1NonceArr2 {
+		tx1 := constructTx(i, &privKey1)
+		txList = append(txList, tx1)
+	}
+	account2NonceArr2 := []uint64{3, 6}
+	for _, i := range account2NonceArr2 {
+		tx1 := constructTx(i, &privKey2)
+		txList = append(txList, tx1)
+	}
+	batch = mpi.ProcessTransactions(txList, true)
+	ast.NotNil(batch)
+	ast.Equal(uint64(2), mpi.txStore.priorityNonBatchSize)
+	ast.Equal(7, mpi.txStore.priorityIndex.size())
+	ast.Equal(3, mpi.txStore.parkingLotIndex.size(), "delete parkingLot until finishing executor")
+	ast.Equal(7, len(mpi.txStore.txHashMap))
+	ast.Equal(3, mpi.txStore.allTxs[account1.String()].index.size())
+	ast.Equal(4, mpi.txStore.allTxs[account2.String()].index.size())
+	ast.Equal(uint64(4), mpi.txStore.nonceCache.getCommitNonce(account1.String()))
+	ast.Equal(uint64(7), mpi.txStore.nonceCache.getPendingNonce(account1.String()))
+	ast.Equal(uint64(3), mpi.txStore.nonceCache.getCommitNonce(account2.String()))
+	ast.Equal(uint64(7), mpi.txStore.nonceCache.getPendingNonce(account2.String()))
 }

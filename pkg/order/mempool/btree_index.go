@@ -22,6 +22,17 @@ func (oik *orderedIndexKey) Less(than btree.Item) bool {
 	return oik.nonce < other.nonce
 }
 
+type sortedTtlKey struct {
+	account  string
+	nonce    uint64
+	liveTime int64 // the latest live time of tx after it is received or rebroadcast
+}
+
+func (stk *sortedTtlKey) Less(than btree.Item) bool {
+	other := than.(*sortedTtlKey)
+	return stk.liveTime < other.liveTime
+}
+
 type sortedNonceKey struct {
 	nonce uint64
 }
@@ -32,10 +43,35 @@ func (snk *sortedNonceKey) Less(item btree.Item) bool {
 	return snk.nonce < dst.nonce
 }
 
+type orderedTimeoutKey struct {
+	account   string
+	nonce     uint64
+	timestamp int64 // the timestamp of tx when it is received
+}
+
+func (otk *orderedTimeoutKey) Less(than btree.Item) bool {
+	other := than.(*orderedTimeoutKey)
+	if otk.timestamp != other.timestamp {
+		return otk.timestamp < other.timestamp
+	}
+	if otk.account != other.account {
+		return otk.account < other.account
+	}
+	return otk.nonce < other.nonce
+}
+
 func makeOrderedIndexKey(account string, tx *pb.Transaction) *orderedIndexKey {
 	return &orderedIndexKey{
 		account: account,
 		nonce:   tx.Nonce,
+	}
+}
+
+func makeTimeoutKey(account string, tx *pb.Transaction) *orderedTimeoutKey {
+	return &orderedTimeoutKey{
+		account:   account,
+		nonce:     tx.Nonce,
+		timestamp: tx.Timestamp,
 	}
 }
 
@@ -75,6 +111,18 @@ func (idx *btreeIndex) removeByOrderedQueueKey(txs map[string][]*pb.Transaction)
 	for account, list := range txs {
 		for _, tx := range list {
 			idx.data.Delete(makeOrderedIndexKey(account, tx))
+		}
+	}
+}
+
+func (idx *btreeIndex) insertByTimeoutKey(account string, tx *pb.Transaction) {
+	idx.data.ReplaceOrInsert(makeTimeoutKey(account, tx))
+}
+
+func (idx *btreeIndex) removeByTimeoutKey(txs map[string][]*pb.Transaction) {
+	for account, list := range txs {
+		for _, tx := range list {
+			idx.data.Delete(makeTimeoutKey(account, tx))
 		}
 	}
 }
