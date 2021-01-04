@@ -80,9 +80,9 @@ func TestNode_Start(t *testing.T) {
 	err = order.Prepare(tx)
 	require.Nil(t, err)
 
-	block := <-order.Commit()
-	require.Equal(t, uint64(2), block.BlockHeader.Number)
-	require.Equal(t, 1, len(block.Transactions))
+	commitEvent := <-order.Commit()
+	require.Equal(t, uint64(2), commitEvent.Block.BlockHeader.Number)
+	require.Equal(t, 1, len(commitEvent.Block.Transactions))
 
 	order.Stop()
 }
@@ -137,9 +137,9 @@ func TestMulti_Node_Start(t *testing.T) {
 	err = orders[0].Prepare(tx)
 	require.Nil(t, err)
 	for i := 0; i < len(orders); i++ {
-		block := <-orders[i].Commit()
-		require.Equal(t, uint64(2), block.BlockHeader.Number)
-		require.Equal(t, 1, len(block.Transactions))
+		commitEvent := <-orders[i].Commit()
+		require.Equal(t, uint64(2), commitEvent.Block.BlockHeader.Number)
+		require.Equal(t, 1, len(commitEvent.Block.Transactions))
 	}
 }
 

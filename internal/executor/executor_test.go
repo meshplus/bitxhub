@@ -159,10 +159,10 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	go listenBlock(&wg, done, ch)
 
 	// send blocks to executor
-	block1 := mockBlock(uint64(1), nil)
-	block2 := mockBlock(uint64(2), txs)
-	exec.ExecuteBlock(block1)
-	exec.ExecuteBlock(block2)
+	commitEvent1 := mockCommitEvent(uint64(1), nil)
+	commitEvent2 := mockCommitEvent(uint64(2), txs)
+	exec.ExecuteBlock(commitEvent1)
+	exec.ExecuteBlock(commitEvent2)
 
 	wg.Wait()
 	done <- true
@@ -226,6 +226,18 @@ func listenBlock(wg *sync.WaitGroup, done chan bool, blockCh chan events.Execute
 		case <-done:
 			return
 		}
+	}
+}
+
+func mockCommitEvent(blockNumber uint64, txs []*pb.Transaction) *pb.CommitEvent {
+	block := mockBlock(blockNumber, txs)
+	localList := make([]bool, len(block.Transactions))
+	for i := 0; i < len(block.Transactions); i++ {
+		localList[i] = false
+	}
+	return &pb.CommitEvent{
+		Block: block,
+		LocalList: localList,
 	}
 }
 
@@ -295,7 +307,8 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 	txs = append(txs, mockTransferTx(t))
 	txs = append(txs, mockTransferTx(t))
 	txs = append(txs, mockTransferTx(t))
-	executor.ExecuteBlock(mockBlock(2, txs))
+	commitEvent := mockCommitEvent(2, txs)
+	executor.ExecuteBlock(commitEvent)
 	require.Nil(t, err)
 
 	block := <-ch

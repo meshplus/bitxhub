@@ -86,12 +86,12 @@ func TestNode_Start(t *testing.T) {
 	err = order.Prepare(tx)
 	require.Nil(t, err)
 
-	block := <-order.Commit()
-	require.Equal(t, uint64(2), block.BlockHeader.Number)
-	require.Equal(t, 1, len(block.Transactions))
+	commitEvent := <-order.Commit()
+	require.Equal(t, uint64(2), commitEvent.Block.BlockHeader.Number)
+	require.Equal(t, 1, len(commitEvent.Block.Transactions))
 
 	txHashList := make([]*types.Hash, 0)
 	txHashList = append(txHashList, tx.TransactionHash)
-	order.ReportState(block.Height(), block.BlockHash, txHashList)
+	order.ReportState(commitEvent.Block.Height(), commitEvent.Block.BlockHash, txHashList)
 	order.Stop()
 }

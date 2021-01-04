@@ -33,7 +33,7 @@ type BlockExecutor struct {
 	ledger           ledger.Ledger
 	logger           logrus.FieldLogger
 	blockC           chan *pb.Block
-	preBlockC        chan *pb.Block
+	preBlockC        chan *pb.CommitEvent
 	persistC         chan *ledger.BlockData
 	ibtpVerify       proof.Verify
 	validationEngine validator.Engine
@@ -63,7 +63,7 @@ func New(chainLedger ledger.Ledger, logger logrus.FieldLogger, typ string) (*Blo
 		ctx:              ctx,
 		cancel:           cancel,
 		blockC:           make(chan *pb.Block, blockChanNumber),
-		preBlockC:        make(chan *pb.Block, blockChanNumber),
+		preBlockC:        make(chan *pb.CommitEvent, blockChanNumber),
 		persistC:         make(chan *ledger.BlockData, persistChanNumber),
 		ibtpVerify:       ibtpVerify,
 		validationEngine: ibtpVerify.ValidationEngine(),
@@ -102,7 +102,7 @@ func (exec *BlockExecutor) Stop() error {
 }
 
 // ExecuteBlock executes block from order
-func (exec *BlockExecutor) ExecuteBlock(block *pb.Block) {
+func (exec *BlockExecutor) ExecuteBlock(block *pb.CommitEvent) {
 	exec.preBlockC <- block
 }
 

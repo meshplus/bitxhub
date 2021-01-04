@@ -40,7 +40,7 @@ type Node struct {
 
 	proposeC    chan *raftproto.RequestBatch // proposed ready, input channel
 	confChangeC <-chan raftpb.ConfChange     // proposed cluster config changes
-	commitC     chan *pb.Block               // the hash commit channel
+	commitC     chan *pb.CommitEvent         // the hash commit channel
 	errorC      chan<- error                 // errors from raft session
 	tickTimeout time.Duration                // tick timeout
 	msgC        chan []byte                  // receive messages from remote peer
@@ -116,7 +116,7 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 		id:            config.ID,
 		lastExec:      config.Applied,
 		confChangeC:   make(chan raftpb.ConfChange),
-		commitC:       make(chan *pb.Block, 1024),
+		commitC:       make(chan *pb.CommitEvent, 1024),
 		errorC:        make(chan<- error),
 		msgC:          make(chan []byte),
 		stateC:        make(chan *mempool.ChainState),
@@ -179,7 +179,7 @@ func (n *Node) Prepare(tx *pb.Transaction) error {
 	return nil
 }
 
-func (n *Node) Commit() chan *pb.Block {
+func (n *Node) Commit() chan *pb.CommitEvent {
 	return n.commitC
 }
 
@@ -470,7 +470,16 @@ func (n *Node) mint(requestBatch *raftproto.RequestBatch) {
 		},
 		Transactions: requestBatch.TxList,
 	}
-	n.commitC <- block
+	// TODO (YH): refactor localLost
+	localList := make([]bool, len(requestBatch.TxList))
+	for i := 0; i < len(requestBatch.TxList); i++ {
+		localList[i] = false
+	}
+	executeEvent := &pb.CommitEvent{
+		Block:     block,
+		LocalList: localList,
+	}
+	n.commitC <- executeEvent
 }
 
 //Determines whether the current apply index triggers a snapshot
