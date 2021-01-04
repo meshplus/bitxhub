@@ -126,6 +126,20 @@ func (mr *MockPeerManagerMockRecorder) Broadcast(arg0 interface{}) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Broadcast", reflect.TypeOf((*MockPeerManager)(nil).Broadcast), arg0)
 }
 
+// CountConnectedPeers mocks base method
+func (m *MockPeerManager) CountConnectedPeers() uint64 {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CountConnectedPeers")
+	ret0, _ := ret[0].(uint64)
+	return ret0
+}
+
+// CountConnectedPeers indicates an expected call of CountConnectedPeers
+func (mr *MockPeerManagerMockRecorder) CountConnectedPeers() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountConnectedPeers", reflect.TypeOf((*MockPeerManager)(nil).CountConnectedPeers))
+}
+
 // Peers mocks base method
 func (m *MockPeerManager) Peers() map[uint64]*pb.VpInfo {
 	m.ctrl.T.Helper()

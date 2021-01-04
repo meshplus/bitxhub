@@ -52,7 +52,9 @@ func TestNode_Start(t *testing.T) {
 
 	mockPeermgr := mock_peermgr.NewMockPeerManager(mockCtl)
 	peers := make(map[uint64]*pb.VpInfo)
+	otherPeers := make(map[uint64]*peer.AddrInfo, 5)
 	mockPeermgr.EXPECT().Peers().Return(peers).AnyTimes()
+	mockPeermgr.EXPECT().OtherPeers().Return(otherPeers).AnyTimes()
 	mockPeermgr.EXPECT().Broadcast(gomock.Any()).AnyTimes()
 
 	order, err := NewNode(

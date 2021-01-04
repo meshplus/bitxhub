@@ -123,7 +123,6 @@ func CreateStorage(
 		walDir:                 walDir,
 		snapDir:                snapDir,
 		db:                     db,
-		SnapshotCatchUpEntries: 4,
 		snapshotIndex:          ListSnapshots(lg, snapDir),
 	}, db, nil
 }

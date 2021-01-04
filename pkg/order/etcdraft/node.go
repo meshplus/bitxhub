@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/meshplus/bitxhub-kit/log"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -17,11 +18,10 @@ import (
 	"github.com/meshplus/bitxhub/pkg/order"
 	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
 	"github.com/meshplus/bitxhub/pkg/order/mempool"
+	"github.com/meshplus/bitxhub/pkg/order/syncer"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
 	"github.com/sirupsen/logrus"
 )
-
-var defaultSnapshotCount uint64 = 10000
 
 type Node struct {
 	id       uint64             // raft id
@@ -32,6 +32,7 @@ type Node struct {
 	node          raft.Node           // raft node
 	peerMgr       peermgr.PeerManager // network manager
 	peers         []raft.Peer         // raft peers
+	syncer        syncer.Syncer       // state syncer
 	raftStorage   *RaftStorage        // the raft backend storage system
 	storage       storage.Storage     // db
 	mempool       mempool.MemPool     // transaction pool
@@ -55,6 +56,7 @@ type Node struct {
 	lastExec          uint64           // the index of the last-applied block
 	readyPool         *sync.Pool       // ready pool, avoiding memory growth fast
 	justElected       bool             // track new leader status
+	getChainMetaFunc  func() *pb.ChainMeta // current chain meta
 	ctx               context.Context  // context
 	haltC             chan struct{}    // exit signal
 }
@@ -112,31 +114,51 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 	readyPool := &sync.Pool{New: func() interface{} {
 		return new(raftproto.RequestBatch)
 	}}
-	node := &Node{
-		id:            config.ID,
-		lastExec:      config.Applied,
-		confChangeC:   make(chan raftpb.ConfChange),
-		commitC:       make(chan *pb.CommitEvent, 1024),
-		errorC:        make(chan<- error),
-		msgC:          make(chan []byte),
-		stateC:        make(chan *mempool.ChainState),
-		proposeC:      make(chan *raftproto.RequestBatch),
-		repoRoot:      repoRoot,
-		snapCount:     defaultSnapshotCount,
-		peerMgr:       config.PeerMgr,
-		txCache:       txCache,
-		batchTimerMgr: batchTimerMgr,
-		peers:         peers,
-		logger:        config.Logger,
-		storage:       dbStorage,
-		raftStorage:   raftStorage,
-		readyPool:     readyPool,
-		ctx:           context.Background(),
-		mempool:       mempoolInst,
+
+	snapCount := raftConfig.RAFT.SyncerConfig.SnapshotCount
+	if snapCount == 0 {
+		snapCount = DefaultSnapshotCount
 	}
+
+	node := &Node{
+		id:               config.ID,
+		lastExec:         config.Applied,
+		confChangeC:      make(chan raftpb.ConfChange),
+		commitC:          make(chan *pb.CommitEvent, 1024),
+		errorC:           make(chan<- error),
+		msgC:             make(chan []byte),
+		stateC:           make(chan *mempool.ChainState),
+		proposeC:         make(chan *raftproto.RequestBatch),
+		snapCount:        snapCount,
+		repoRoot:         repoRoot,
+		peerMgr:          config.PeerMgr,
+		txCache:          txCache,
+		batchTimerMgr:    batchTimerMgr,
+		peers:            peers,
+		logger:           config.Logger,
+		getChainMetaFunc: config.GetChainMetaFunc,
+		storage:          dbStorage,
+		raftStorage:      raftStorage,
+		readyPool:        readyPool,
+		ctx:              context.Background(),
+		mempool:          mempoolInst,
+	}
+	node.raftStorage.SnapshotCatchUpEntries = node.snapCount
+
+	otherPeers := node.peerMgr.OtherPeers()
+	peerIds := make([]uint64, 0, len(otherPeers))
+	for id, _ := range otherPeers {
+		peerIds = append(peerIds, id)
+	}
+	stateSyncer, err := syncer.New(raftConfig.RAFT.SyncerConfig.SyncBlocks, config.PeerMgr, node.Quorum(), peerIds, log.NewWithModule("syncer"))
+	if err != nil {
+		return nil, fmt.Errorf("new state syncer error:%s", err.Error())
+	}
+	node.syncer = stateSyncer
+
 	node.logger.Infof("Raft localID = %d", node.id)
 	node.logger.Infof("Raft lastExec = %d  ", node.lastExec)
-	node.logger.Infof("Raft defaultSnapshotCount = %d", node.snapCount)
+	node.logger.Infof("Raft snapshotCount = %d", node.snapCount)
 	return node, nil
 }
 
@@ -153,7 +175,6 @@ func (n *Node) Start() error {
 		n.node = raft.StartNode(rc, n.peers)
 	}
 	n.tickTimeout = tickTimeout
-
 	go n.run()
 	go n.txCache.ListenEvent()
 	n.logger.Info("Consensus module started")
@@ -317,6 +338,9 @@ func (n *Node) run() {
 				n.logger.Errorf("failed to persist etcd/raft data: %s", err)
 			}
 
+			if !raft.IsEmptySnap(rd.Snapshot) {
+				n.recoverFromSnapshot()
+			}
 			if rd.SoftState != nil {
 				newLeader := atomic.LoadUint64(&rd.SoftState.Lead)
 				if newLeader != n.leader {
@@ -484,28 +508,19 @@ func (n *Node) mint(requestBatch *raftproto.RequestBatch) {
 
 //Determines whether the current apply index triggers a snapshot
 func (n *Node) maybeTriggerSnapshot() {
-	if n.appliedIndex-n.snapshotIndex <= n.snapCount {
+	if n.appliedIndex-n.snapshotIndex < n.snapCount {
 		return
 	}
-	data := n.raftStorage.Snapshot().Data
-	n.logger.Infof("Start snapshot [applied index: %d | last snapshot index: %d]", n.appliedIndex, n.snapshotIndex)
-	snap, err := n.raftStorage.ram.CreateSnapshot(n.appliedIndex, &n.confState, data)
+	data, err := n.getSnapshot()
 	if err != nil {
-		panic(err)
+		n.logger.Error(err)
+		return
 	}
-	if err := n.raftStorage.saveSnap(snap); err != nil {
-		panic(err)
+	err = n.raftStorage.TakeSnapshot(n.appliedIndex, n.confState, data)
+	if err != nil {
+		n.logger.Error(err)
+		return
 	}
-
-	compactIndex := uint64(1)
-	if n.appliedIndex > n.raftStorage.SnapshotCatchUpEntries {
-		compactIndex = n.appliedIndex - n.raftStorage.SnapshotCatchUpEntries
-	}
-	if err := n.raftStorage.ram.Compact(compactIndex); err != nil {
-		panic(err)
-	}
-
-	n.logger.Infof("compacted log at index %d", compactIndex)
 	n.snapshotIndex = n.appliedIndex
 }
 

@@ -15,6 +15,9 @@ disable_proposal_forwarding = true # This prevents blocks from being accidentall
         tx_slice_size       = 10    # How many transactions should the node broadcast at once
         tx_slice_timeout    = "0.1s"  # Node broadcasts transactions if there are cached transactions, although set_size isn't reached yet
 
+    [raft.syncer]
+        sync_blocks = 1 # How many blocks should the behind node fetch at once
+        snapshot_count = 1000  # How many apply index(blocks) should the node trigger at once
 
 [rbft]        #RBFT configurations
 set_size         = 25    # How many transactions should the node broadcast at once
@@ -40,6 +43,8 @@ batch_max_mem    = 10000 # The max memory size of one batch
         update            = "4s"  # How long may a update-n take
         set               = "0.1s" # Node broadcasts transactions if there are cached transactions, although set_size isn't reached yet
 
+    [rbft.syncer]
+        sync_blocks = 1 # How many blocks should the behind node fetch at once
 
 [solo]
 batch_timeout = "0.3s"  # Block packaging time period.

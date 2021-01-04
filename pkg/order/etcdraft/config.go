@@ -14,10 +14,15 @@ type RAFTConfig struct {
 }
 
 type MempoolConfig struct {
-	BatchSize   uint64 `mapstructure:"batch_size"`
-	PoolSize    uint64 `mapstructure:"pool_size"`
-	TxSliceSize uint64 `mapstructure:"tx_slice_size"`
+	BatchSize      uint64        `mapstructure:"batch_size"`
+	PoolSize       uint64        `mapstructure:"pool_size"`
+	TxSliceSize    uint64        `mapstructure:"tx_slice_size"`
 	TxSliceTimeout time.Duration `mapstructure:"tx_slice_timeout"`
+}
+
+type SyncerConfig struct {
+	SyncBlocks    uint64 `mapstructure:"sync_blocks"`
+	SnapshotCount uint64 `mapstructure:"snapshot_count"`
 }
 
 type RAFT struct {
@@ -31,6 +36,7 @@ type RAFT struct {
 	PreVote                   bool          `mapstructure:"pre_vote"`
 	DisableProposalForwarding bool          `mapstructure:"disable_proposal_forwarding"`
 	MempoolConfig             MempoolConfig `mapstructure:"mempool"`
+	SyncerConfig              SyncerConfig  `mapstructure:"syncer"`
 }
 
 func defaultRaftConfig() raft.Config {
