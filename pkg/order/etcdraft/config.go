@@ -52,10 +52,10 @@ func defaultRaftConfig() raft.Config {
 	}
 }
 
-func generateEtcdRaftConfig(id uint64, repoRoot string, logger logrus.FieldLogger, ram MemoryStorage) (*raft.Config, time.Duration, time.Duration, error) {
+func generateEtcdRaftConfig(id uint64, repoRoot string, logger logrus.FieldLogger, ram MemoryStorage) (*raft.Config, time.Duration, error) {
 	readConfig, err := readConfig(repoRoot)
 	if err != nil {
-		return &raft.Config{}, 100 * time.Millisecond, 3 * time.Minute, nil
+		return &raft.Config{}, 100 * time.Millisecond, nil
 	}
 	defaultConfig := defaultRaftConfig()
 	defaultConfig.ID = id
@@ -76,7 +76,7 @@ func generateEtcdRaftConfig(id uint64, repoRoot string, logger logrus.FieldLogge
 	defaultConfig.PreVote = readConfig.RAFT.PreVote
 	defaultConfig.CheckQuorum = readConfig.RAFT.CheckQuorum
 	defaultConfig.DisableProposalForwarding = readConfig.RAFT.DisableProposalForwarding
-	return &defaultConfig, readConfig.RAFT.TickTimeout, readConfig.RAFT.RebroadcastTimeout, nil
+	return &defaultConfig, readConfig.RAFT.TickTimeout, nil
 }
 
 func generateRaftConfig(repoRoot string) (*RAFTConfig, error) {

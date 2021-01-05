@@ -122,28 +122,36 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 		snapCount = DefaultSnapshotCount
 	}
 
+	var rebroadcastTimeout time.Duration
+	if raftConfig.RAFT.RebroadcastTimeout == 0 {
+		rebroadcastTimeout = DefaultRebroadcastTimeout
+	} else {
+		rebroadcastTimeout = raftConfig.RAFT.RebroadcastTimeout
+	}
+
 	node := &Node{
-		id:               config.ID,
-		lastExec:         config.Applied,
-		confChangeC:      make(chan raftpb.ConfChange),
-		commitC:          make(chan *pb.CommitEvent, 1024),
-		errorC:           make(chan<- error),
-		msgC:             make(chan []byte),
-		stateC:           make(chan *mempool.ChainState),
-		proposeC:         make(chan *raftproto.RequestBatch),
-		snapCount:        snapCount,
-		repoRoot:         repoRoot,
-		peerMgr:          config.PeerMgr,
-		txCache:          txCache,
-		batchTimerMgr:    batchTimerMgr,
-		peers:            peers,
-		logger:           config.Logger,
-		getChainMetaFunc: config.GetChainMetaFunc,
-		storage:          dbStorage,
-		raftStorage:      raftStorage,
-		readyPool:        readyPool,
-		ctx:              context.Background(),
-		mempool:          mempoolInst,
+		id:                 config.ID,
+		lastExec:           config.Applied,
+		confChangeC:        make(chan raftpb.ConfChange),
+		commitC:            make(chan *pb.CommitEvent, 1024),
+		errorC:             make(chan<- error),
+		msgC:               make(chan []byte),
+		stateC:             make(chan *mempool.ChainState),
+		proposeC:           make(chan *raftproto.RequestBatch),
+		snapCount:          snapCount,
+		repoRoot:           repoRoot,
+		peerMgr:            config.PeerMgr,
+		txCache:            txCache,
+		batchTimerMgr:      batchTimerMgr,
+		peers:              peers,
+		logger:             config.Logger,
+		getChainMetaFunc:   config.GetChainMetaFunc,
+		storage:            dbStorage,
+		raftStorage:        raftStorage,
+		readyPool:          readyPool,
+		ctx:                context.Background(),
+		mempool:            mempoolInst,
+		rebroadcastTimeout: rebroadcastTimeout,
 	}
 	node.raftStorage.SnapshotCatchUpEntries = node.snapCount
 
@@ -167,7 +175,7 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 // Start or restart raft node
 func (n *Node) Start() error {
 	n.blockAppliedIndex.Store(n.lastExec, n.loadAppliedIndex())
-	rc, tickTimeout, rebroadcastTimeout, err := generateEtcdRaftConfig(n.id, n.repoRoot, n.logger, n.raftStorage.ram)
+	rc, tickTimeout, err := generateEtcdRaftConfig(n.id, n.repoRoot, n.logger, n.raftStorage.ram)
 	if err != nil {
 		return fmt.Errorf("generate raft config: %w", err)
 	}
@@ -177,7 +185,6 @@ func (n *Node) Start() error {
 		n.node = raft.StartNode(rc, n.peers)
 	}
 	n.tickTimeout = tickTimeout
-	n.rebroadcastTimeout = rebroadcastTimeout
 
 	go n.run()
 	go n.txCache.ListenEvent()
