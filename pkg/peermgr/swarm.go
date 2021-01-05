@@ -180,7 +180,10 @@ func (swarm *Swarm) Ping() {
 			fields := logrus.Fields{}
 			swarm.connectedPeers.Range(func(key, value interface{}) bool {
 				info := value.(*peer.AddrInfo)
-				pingCh, err := swarm.p2p.Ping(info.ID.String())
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+
+				pingCh, err := swarm.p2p.Ping(ctx, info.ID.String())
 				if err != nil {
 					return true
 				}
