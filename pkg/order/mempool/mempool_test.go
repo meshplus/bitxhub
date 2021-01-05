@@ -28,17 +28,17 @@ func TestGetBlock(t *testing.T) {
 	var txList []*pb.Transaction
 	txList = append(txList, tx1, tx2, tx3, tx4)
 	// mock follower
-	batch := mpi.ProcessTransactions(txList, false)
+	batch := mpi.ProcessTransactions(txList, false, true)
 	ast.Nil(batch)
 	// mock leader
-	batch = mpi.ProcessTransactions(txList, true)
+	batch = mpi.ProcessTransactions(txList, true, true)
 	ast.Nil(batch)
 
 	// mock leader to getBlock
 	txList = make([]*pb.Transaction, 0)
 	tx5 := constructTx(uint64(1), &privKey2)
 	txList = append(txList, tx5)
-	batch = mpi.ProcessTransactions(txList, true)
+	batch = mpi.ProcessTransactions(txList, true, true)
 	ast.Equal(4, len(batch.TxList))
 }
 
@@ -59,7 +59,7 @@ func TestGetPendingNonceByAccount(t *testing.T) {
 	tx5 := constructTx(uint64(4), &privKey2)
 	var txList []*pb.Transaction
 	txList = append(txList, tx1, tx2, tx3, tx4, tx5)
-	batch := mpi.ProcessTransactions(txList, false)
+	batch := mpi.ProcessTransactions(txList, false, true)
 	ast.Nil(batch)
 	nonce = mpi.GetPendingNonceByAccount(account1.String())
 	ast.Equal(uint64(3), nonce)
@@ -81,7 +81,7 @@ func TestCommitTransactions(t *testing.T) {
 	tx4 := constructTx(uint64(4), &privKey2)
 	var txList []*pb.Transaction
 	txList = append(txList, tx1, tx2, tx3, tx4)
-	batch := mpi.ProcessTransactions(txList, true)
+	batch := mpi.ProcessTransactions(txList, true, true)
 	ast.Nil(batch)
 	ast.Equal(3, mpi.txStore.priorityIndex.size())
 	ast.Equal(1, mpi.txStore.parkingLotIndex.size())
@@ -92,7 +92,7 @@ func TestCommitTransactions(t *testing.T) {
 	tx5 := constructTx(uint64(2), &privKey2)
 	txList = []*pb.Transaction{}
 	txList = append(txList, tx5)
-	batch = mpi.ProcessTransactions(txList, true)
+	batch = mpi.ProcessTransactions(txList, true, true)
 	ast.Equal(4, len(batch.TxList))
 	ast.Equal(4, mpi.txStore.priorityIndex.size())
 	ast.Equal(1, mpi.txStore.parkingLotIndex.size())
@@ -133,7 +133,7 @@ func TestProcessTransactions(t *testing.T) {
 	tx4 := constructTx(uint64(2), &privKey2)
 	tx5 := constructTx(uint64(4), &privKey2)
 	txList = append(txList, tx1, tx2, tx3, tx4, tx5)
-	batch := mpi.ProcessTransactions(txList, false)
+	batch := mpi.ProcessTransactions(txList, false, true)
 	ast.Nil(batch)
 	ast.Equal(4, mpi.txStore.priorityIndex.size())
 	ast.Equal(1, mpi.txStore.parkingLotIndex.size())
@@ -150,7 +150,7 @@ func TestProcessTransactions(t *testing.T) {
 	tx7 := constructTx(uint64(5), &privKey2)
 	txList = make([]*pb.Transaction, 0)
 	txList = append(txList, tx6, tx7)
-	batch = mpi.ProcessTransactions(txList, true)
+	batch = mpi.ProcessTransactions(txList, true, true)
 	ast.Equal(4, len(batch.TxList))
 	ast.Equal(uint64(2), batch.Height)
 	ast.Equal(uint64(1), mpi.txStore.priorityNonBatchSize)
@@ -175,7 +175,7 @@ func TestForward(t *testing.T) {
 	tx4 := constructTx(uint64(4), &privKey1)
 	tx5 := constructTx(uint64(6), &privKey1)
 	txList = append(txList, tx1, tx2, tx3, tx4, tx5)
-	batch := mpi.ProcessTransactions(txList, false)
+	batch := mpi.ProcessTransactions(txList, false, true)
 	ast.Nil(batch)
 	list := mpi.txStore.allTxs[account1.String()]
 	ast.Equal(5, list.index.size())
@@ -189,7 +189,7 @@ func TestForward(t *testing.T) {
 	ast.Equal(uint64(2), removeList[account1.String()][1].Nonce)
 }
 
-func TestGetTimeoutTransaction(t *testing.T) {
+func TestUnorderedIncomingTxs(t *testing.T) {
 	ast := assert.New(t)
 	mpi, _ := mockMempoolImpl()
 	mpi.batchSize = 5
@@ -205,7 +205,7 @@ func TestGetTimeoutTransaction(t *testing.T) {
 		tx2 := constructTx(i, &privKey2)
 		txList = append(txList, tx1, tx2)
 	}
-	batch := mpi.ProcessTransactions(txList, true)
+	batch := mpi.ProcessTransactions(txList, true, true)
 	ast.Nil(batch) // not enough for 5 txs to generate batch
 	ast.Equal(4, mpi.txStore.priorityIndex.size())
 	ast.Equal(2, mpi.txStore.parkingLotIndex.size())
@@ -221,7 +221,7 @@ func TestGetTimeoutTransaction(t *testing.T) {
 	tx8 := constructTx(uint64(5), &privKey2)
 	txList = make([]*pb.Transaction, 0)
 	txList = append(txList, tx7, tx8)
-	batch = mpi.ProcessTransactions(txList, true)
+	batch = mpi.ProcessTransactions(txList, true, true)
 	ast.NotNil(batch)
 
 	var hashes []types.Hash
@@ -271,7 +271,7 @@ func TestGetTimeoutTransaction(t *testing.T) {
 		tx1 := constructTx(i, &privKey2)
 		txList = append(txList, tx1)
 	}
-	batch = mpi.ProcessTransactions(txList, true)
+	batch = mpi.ProcessTransactions(txList, true, true)
 	ast.NotNil(batch)
 	ast.Equal(uint64(2), mpi.txStore.priorityNonBatchSize)
 	ast.Equal(7, mpi.txStore.priorityIndex.size())
@@ -283,4 +283,70 @@ func TestGetTimeoutTransaction(t *testing.T) {
 	ast.Equal(uint64(7), mpi.txStore.nonceCache.getPendingNonce(account1.String()))
 	ast.Equal(uint64(3), mpi.txStore.nonceCache.getCommitNonce(account2.String()))
 	ast.Equal(uint64(7), mpi.txStore.nonceCache.getPendingNonce(account2.String()))
+
+}
+
+func TestGetTimeoutTransaction(t *testing.T) {
+	ast := assert.New(t)
+	mpi, _ := mockMempoolImpl()
+	mpi.txSliceSize = 3
+
+	txList := make([]*pb.Transaction, 0)
+	privKey1 := genPrivKey()
+	account1, _ := privKey1.PublicKey().Address()
+	privKey2 := genPrivKey()
+	account2, _ := privKey2.PublicKey().Address()
+	nonceArr := []uint64{4, 5}
+	for _, i := range nonceArr {
+		tx1 := constructTx(i, &privKey1)
+		tx2 := constructTx(i, &privKey2)
+		txList = append(txList, tx1, tx2)
+	}
+	batch := mpi.ProcessTransactions(txList, true, true)
+	ast.Nil(batch)
+
+	// set another incoming list for timeout
+	time.Sleep(150 * time.Millisecond)
+	nonceArr = []uint64{1, 2}
+	for _, i := range nonceArr {
+		tx1 := constructTx(i, &privKey1)
+		tx2 := constructTx(i, &privKey2)
+		txList = append(txList, tx1, tx2)
+	}
+	batch = mpi.ProcessTransactions(txList, true, false)
+	ast.NotNil(batch)
+	// tx1,tx2 for account1 and account2 will be batched.
+	// all txs for account1 and account2 will be in priorityIndex.
+	// And tx4,tx5 for account1 and account2 will be timeout while tx3 will not
+	ast.Equal(4, mpi.txStore.priorityIndex.size())
+	ast.Equal(4, mpi.txStore.parkingLotIndex.size())
+	ast.Equal(8, len(mpi.txStore.txHashMap))
+	ast.Equal(4, mpi.txStore.allTxs[account1.String()].index.size())
+	ast.Equal(4, mpi.txStore.allTxs[account2.String()].index.size())
+	ast.Equal(uint64(1), mpi.txStore.nonceCache.getCommitNonce(account1.String()))
+	ast.Equal(uint64(3), mpi.txStore.nonceCache.getPendingNonce(account1.String()))
+	ast.Equal(uint64(1), mpi.txStore.nonceCache.getCommitNonce(account2.String()))
+	ast.Equal(uint64(3), mpi.txStore.nonceCache.getPendingNonce(account2.String()))
+
+	tx1 := constructTx(3, &privKey1)
+	tx2 := constructTx(3, &privKey2)
+	txList = append(txList, tx1, tx2)
+	batch = mpi.ProcessTransactions(txList, true, true)
+	ast.NotNil(batch)
+
+	// tx4,tx5 should be timeout
+	timeoutList := mpi.GetTimeoutTransactions(100 * time.Millisecond)
+	ast.NotNil(timeoutList)
+	ast.Equal(2, len(timeoutList))
+	ast.Equal(3, len(timeoutList[0]))
+	ast.Equal(1, len(timeoutList[1]))
+
+	// wait another 150 millisecond, tx3 be timeout too.
+	// though tx1,tx2 has wait a long time, they are not local and they won't be broadcast
+	time.Sleep(150 * time.Millisecond)
+	timeoutList = mpi.GetTimeoutTransactions(100 * time.Millisecond)
+	ast.NotNil(timeoutList)
+	ast.Equal(2, len(timeoutList))
+	ast.Equal(3, len(timeoutList[0]))
+	ast.Equal(3, len(timeoutList[1]))
 }

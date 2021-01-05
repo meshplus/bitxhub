@@ -1,8 +1,9 @@
 package mempool
 
 import (
-	"fmt"
+	"math"
 	"sync"
+	"time"
 
 	"github.com/google/btree"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -50,7 +51,7 @@ func newMempoolImpl(config *Config) *mempoolImpl {
 	return mpi
 }
 
-func (mpi *mempoolImpl) ProcessTransactions(txs []*pb.Transaction, isLeader bool) *raftproto.RequestBatch {
+func (mpi *mempoolImpl) ProcessTransactions(txs []*pb.Transaction, isLeader, isLocal bool) *raftproto.RequestBatch {
 	validTxs := make(map[string][]*pb.Transaction)
 	for _, tx := range txs {
 		// check the sequence number of tx
@@ -74,7 +75,7 @@ func (mpi *mempoolImpl) ProcessTransactions(txs []*pb.Transaction, isLeader bool
 	}
 
 	// Process all the new transaction and merge any errors into the original slice
-	dirtyAccounts := mpi.txStore.insertTxs(validTxs)
+	dirtyAccounts := mpi.txStore.insertTxs(validTxs, isLocal)
 
 	// send tx to mempool store
 	mpi.processDirtyAccount(dirtyAccounts)
@@ -100,13 +101,17 @@ func (mpi *mempoolImpl) processDirtyAccount(dirtyAccounts map[string]bool) {
 			readyTxs, nonReadyTxs, nextDemandNonce := list.filterReady(pendingNonce)
 			mpi.txStore.nonceCache.setPendingNonce(account, nextDemandNonce)
 
-			// inset ready txs into priorityIndex and set ttlIndex for these txs.
+			// insert ready txs into priorityIndex and set ttlIndex for these txs.
 			for _, tx := range readyTxs {
 				if !mpi.txStore.priorityIndex.data.Has(makeTimeoutKey(account, tx)) {
 					mpi.txStore.priorityIndex.insertByTimeoutKey(account, tx)
-					mpi.txStore.ttlIndex.insertByTtlKey(account, tx.Nonce, tx.Timestamp)
+					if list.items[tx.Nonce].local {
+						// no need to rebroadcast tx from other nodes to reduce network overhead
+						mpi.txStore.ttlIndex.insertByTtlKey(account, tx.Nonce, tx.Timestamp)
+					}
 				}
 			}
+			mpi.txStore.updateEarliestTimestamp()
 			mpi.txStore.priorityNonBatchSize = mpi.txStore.priorityNonBatchSize + uint64(len(readyTxs))
 
 			// inset non-ready txs into parkingLotIndex.
@@ -252,6 +257,7 @@ func (mpi *mempoolImpl) processCommitTransactions(state *ChainState) {
 			go func(ready map[string][]*pb.Transaction) {
 				defer wg.Done()
 				mpi.txStore.ttlIndex.removeByTtlKey(removedTxs)
+				mpi.txStore.updateEarliestTimestamp()
 			}(removedTxs)
 			go func(ready map[string][]*pb.Transaction) {
 				defer wg.Done()
@@ -273,6 +279,72 @@ func (mpi *mempoolImpl) processCommitTransactions(state *ChainState) {
 		mpi.txStore.priorityIndex.size(), mpi.txStore.parkingLotIndex.size(), len(mpi.txStore.batchedTxs), len(mpi.txStore.txHashMap))
 }
 
-func makeKey(account string, nonce uint64) string {
-	return fmt.Sprintf("%s-%d", account, nonce)
+func (mpi *mempoolImpl) GetTimeoutTransactions(rebroadcastDuration time.Duration) [][]*pb.Transaction {
+	// all the tx whose live time is less than lowBoundTime should be rebroadcast
+	mpi.logger.Debugf("------- Start gathering timeout txs, ttl index len is %d -----------", mpi.txStore.ttlIndex.index.Len())
+	currentTime := time.Now().UnixNano()
+	if currentTime < mpi.txStore.earliestTimestamp+rebroadcastDuration.Nanoseconds() {
+		// if the latest incoming tx has not exceeded the timeout limit, then none will be timeout
+		return [][]*pb.Transaction{}
+	}
+
+	txList := make([]*pb.Transaction, 0)
+	timeoutItems := make([]*sortedTtlKey, 0)
+	mpi.txStore.ttlIndex.index.Ascend(func(i btree.Item) bool {
+		item := i.(*sortedTtlKey)
+		if item.liveTime > math.MaxInt64 {
+			// TODO(tyx): if this tx has rebroadcast many times and exceeded a final limit,
+			// it is expired and will be removed from mempool
+			return true
+		}
+		// if this tx has not exceeded the rebroadcast duration, break iteration
+		timeoutTime := item.liveTime + rebroadcastDuration.Nanoseconds()
+		txMap, ok := mpi.txStore.allTxs[item.account]
+		if !ok || currentTime < timeoutTime {
+			return false
+		}
+		tx := txMap.items[item.nonce].tx
+		txList = append(txList, tx)
+		timeoutItems = append(timeoutItems, item)
+		return true
+	})
+	if len(txList) == 0 {
+		return [][]*pb.Transaction{}
+	}
+	for _, item := range timeoutItems {
+		// update the liveTime of timeout txs
+		item.liveTime = currentTime
+		mpi.txStore.ttlIndex.items[makeAccountNonceKey(item.account, item.nonce)] = currentTime
+	}
+	// shard txList into fixed size in case txList is too large to broadcast one time
+	return shardTxList(txList, mpi.txSliceSize)
+}
+
+func shardTxList(txs []*pb.Transaction, batchLen uint64) [][]*pb.Transaction {
+	begin := uint64(0)
+	end := uint64(len(txs)) - 1
+	totalLen := uint64(len(txs))
+
+	// shape txs to fixed size in case totalLen is too large
+	batchNums := totalLen / batchLen
+	if totalLen%batchLen != 0 {
+		batchNums++
+	}
+	shardedLists := make([][]*pb.Transaction, 0, batchNums)
+	for i := uint64(0); i <= batchNums; i++ {
+		actualLen := batchLen
+		if end-begin+1 < batchLen {
+			actualLen = end - begin + 1
+		}
+		if actualLen == 0 {
+			continue
+		}
+		shardedList := make([]*pb.Transaction, actualLen)
+		for j := uint64(0); j < batchLen && begin <= end; j++ {
+			shardedList[j] = txs[begin]
+			begin++
+		}
+		shardedLists = append(shardedLists, shardedList)
+	}
+	return shardedLists
 }

@@ -34,6 +34,7 @@ type Config struct {
 type txItem struct {
 	account string
 	tx      *pb.Transaction
+	local   bool
 }
 
 type ChainState struct {

@@ -314,7 +314,7 @@ func (n *Node) run() {
 			_ = n.peerMgr.Broadcast(pbMsg)
 
 			// 2. process transactions
-			n.processTransactions(txSet.TxList)
+			n.processTransactions(txSet.TxList, true)
 
 		case state := <-n.stateC:
 			n.reportState(state)
@@ -405,7 +405,7 @@ func (n *Node) run() {
 	}
 }
 
-func (n *Node) processTransactions(txList []*pb.Transaction) {
+func (n *Node) processTransactions(txList []*pb.Transaction, isLocal bool) {
 	// leader node would check if this transaction triggered generating a batch or not
 	if n.isLeader() {
 		// start batch timer when this node receives the first transaction
@@ -413,12 +413,12 @@ func (n *Node) processTransactions(txList []*pb.Transaction) {
 			n.batchTimerMgr.StartBatchTimer()
 		}
 		// If this transaction triggers generating a batch, stop batch timer
-		if batch := n.mempool.ProcessTransactions(txList, true); batch != nil {
+		if batch := n.mempool.ProcessTransactions(txList, true, isLocal); batch != nil {
 			n.batchTimerMgr.StopBatchTimer()
 			n.postProposal(batch)
 		}
 	} else {
-		n.mempool.ProcessTransactions(txList, false)
+		n.mempool.ProcessTransactions(txList, false, isLocal)
 	}
 }
 
@@ -579,7 +579,7 @@ func (n *Node) processRaftCoreMsg(msg []byte) error {
 		if err := txSlice.Unmarshal(rm.Data); err != nil {
 			return err
 		}
-		n.processTransactions(txSlice.TxList)
+		n.processTransactions(txSlice.TxList, false)
 
 	default:
 		return fmt.Errorf("unexpected raft message received")

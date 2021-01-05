@@ -1,7 +1,7 @@
 package mempool
 
 import (
-	"fmt"
+	"math"
 	"sync"
 
 	"github.com/google/btree"
@@ -15,6 +15,8 @@ type transactionStore struct {
 	allTxs map[string]*txSortedMap
 	// track the commit nonce and pending nonce of each account.
 	nonceCache *nonceCache
+	// keep track of the latest timestamp of ready txs in ttlIndex
+	earliestTimestamp int64
 	// keep track of the livetime of ready txs in priorityIndex
 	ttlIndex *txLiveTimeMap
 	// keeps track of "non-ready" txs (txs that can't be included in next block)
@@ -40,7 +42,7 @@ func newTransactionStore() *transactionStore {
 	}
 }
 
-func (txStore *transactionStore) insertTxs(txs map[string][]*pb.Transaction) map[string]bool {
+func (txStore *transactionStore) insertTxs(txs map[string][]*pb.Transaction, isLocal bool) map[string]bool {
 	dirtyAccounts := make(map[string]bool)
 	for account, list := range txs {
 		for _, tx := range list {
@@ -59,6 +61,7 @@ func (txStore *transactionStore) insertTxs(txs map[string][]*pb.Transaction) map
 			txItem := &txItem{
 				account: account,
 				tx:      tx,
+				local:   isLocal,
 			}
 			txList.items[tx.Nonce] = txItem
 			txList.index.insertBySortedNonceKey(tx)
@@ -78,6 +81,16 @@ func (txStore *transactionStore) getTxByOrderKey(account string, seqNo uint64) *
 		return res.tx
 	}
 	return nil
+}
+
+func (txStore *transactionStore) updateEarliestTimestamp() {
+	// find the earliest tx in ttlIndex
+	earliestTime := int64(math.MaxInt64)
+	latestItem := txStore.ttlIndex.index.Min()
+	if latestItem != nil {
+		earliestTime = latestItem.(*sortedTtlKey).liveTime
+	}
+	txStore.earliestTimestamp = earliestTime
 }
 
 type txSortedMap struct {
@@ -193,19 +206,18 @@ func newTxLiveTimeMap() *txLiveTimeMap {
 
 func (tlm *txLiveTimeMap) insertByTtlKey(account string, nonce uint64, liveTime int64) {
 	tlm.index.ReplaceOrInsert(&sortedTtlKey{account, nonce, liveTime})
-	tlm.items[makeKey(account, nonce)] = liveTime
+	tlm.items[makeAccountNonceKey(account, nonce)] = liveTime
 }
 
 func (tlm *txLiveTimeMap) removeByTtlKey(txs map[string][]*pb.Transaction) {
 	for account, list := range txs {
 		for _, tx := range list {
-			liveTime, ok := tlm.items[makeKey(account, tx.Nonce)]
+			liveTime, ok := tlm.items[makeAccountNonceKey(account, tx.Nonce)]
 			if !ok {
-				fmt.Printf("ttl key for %s not found\n", account)
 				return
 			}
 			tlm.index.Delete(&sortedTtlKey{account, tx.Nonce, liveTime})
-			delete(tlm.items, makeKey(account, tx.Nonce))
+			delete(tlm.items, makeAccountNonceKey(account, tx.Nonce))
 		}
 	}
 }

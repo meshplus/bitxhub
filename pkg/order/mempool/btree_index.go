@@ -1,6 +1,8 @@
 package mempool
 
 import (
+	"fmt"
+
 	"github.com/meshplus/bitxhub-model/pb"
 
 	"github.com/google/btree"
@@ -79,6 +81,10 @@ func makeSortedNonceKey(nonce uint64) *sortedNonceKey {
 	return &sortedNonceKey{
 		nonce: nonce,
 	}
+}
+
+func makeAccountNonceKey(account string, nonce uint64) string {
+	return fmt.Sprintf("%s-%d", account, nonce)
 }
 
 type btreeIndex struct {
