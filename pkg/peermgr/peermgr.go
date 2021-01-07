@@ -51,4 +51,13 @@ type PeerManager interface {
 
 	// Disconnect disconnect with all vp peers.
 	Disconnect(vpInfos map[uint64]*pb.VpInfo)
+
+	// PierManager
+	PierManager() PierManager
+}
+
+type PierManager interface {
+	Piers() *Piers
+
+	AskPierMaster(string) (bool, error)
 }
