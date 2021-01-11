@@ -36,6 +36,7 @@ type Swarm struct {
 	multiAddrs     map[uint64]*peer.AddrInfo
 	connectedPeers sync.Map
 	notifiee       *notifiee
+	piers          *Piers
 
 	ledger           ledger.Ledger
 	orderMessageFeed event.Feed
@@ -94,6 +95,7 @@ func New(repoConfig *repo.Repo, logger logrus.FieldLogger, ledger ledger.Ledger)
 		pingTimeout:    repoConfig.Config.Ping.Duration,
 		routers:        routers,
 		multiAddrs:     multiAddrs,
+		piers:          newPiers(),
 		connectedPeers: sync.Map{},
 		notifiee:       notifiee,
 		ctx:            ctx,
@@ -501,4 +503,8 @@ func constructMultiaddr(vpInfo *pb.VpInfo) (*peer.AddrInfo, error) {
 		Addrs: addrs,
 	}
 	return addrInfo, nil
+}
+
+func (swarm *Swarm) PierManager() PierManager {
+	return swarm
 }

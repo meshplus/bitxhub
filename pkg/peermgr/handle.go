@@ -42,6 +42,10 @@ func (swarm *Swarm) handleMessage(s network.Stream, data []byte) {
 			swarm.handleFetchAssetExchangeSignMessage(s, m.Data)
 		case pb.Message_FETCH_IBTP_SIGN:
 			swarm.handleFetchIBTPSignMessage(s, m.Data)
+		case pb.Message_CHECK_MASTER_PIER:
+			swarm.handleAskPierMaster(s, m.Data)
+		case pb.Message_CHECK_MASTER_PIER_ACK:
+			swarm.handleReplyPierMaster(s, m.Data)
 		default:
 			swarm.logger.WithField("module", "p2p").Errorf("can't handle msg[type: %v]", m.Type)
 			return nil
@@ -288,7 +292,6 @@ func (swarm *Swarm) handleFetchIBTPSignMessage(s network.Stream, data []byte) {
 	}
 }
 
-
 func (swarm *Swarm) handleGetBlocksPack(s network.Stream, msg *pb.Message) error {
 	req := &pb.GetBlocksRequest{}
 	if err := req.Unmarshal(msg.Data); err != nil {
@@ -319,4 +322,51 @@ func (swarm *Swarm) handleGetBlocksPack(s network.Stream, msg *pb.Message) error
 	}
 
 	return nil
+}
+
+func (swarm *Swarm) handleAskPierMaster(s network.Stream, data []byte) {
+	address := string(data)
+	if !swarm.piers.pierMap.hasPier(address) {
+		return
+	}
+	resp := &pb.CheckPierResponse{}
+	if swarm.piers.pierChan.checkAddress(address) {
+		resp.Status = pb.CheckPierResponse_HAS_MASTER
+	} else {
+		if swarm.piers.pierMap.checkMaster(address) {
+			resp.Status = pb.CheckPierResponse_HAS_MASTER
+		} else {
+			resp.Status = pb.CheckPierResponse_NO_MASTER
+		}
+	}
+	resp.Address = address
+	msgData, err := resp.Marshal()
+	if err != nil {
+		swarm.logger.Errorf("marshal ask pier master response: %s", err)
+		return
+	}
+	message := &pb.Message{
+		Data: msgData,
+		Type: pb.Message_CHECK_MASTER_PIER_ACK,
+	}
+	msg, err := message.Marshal()
+	if err != nil {
+		swarm.logger.Errorf("marshal response message: %s", err)
+		return
+	}
+
+	if err := swarm.p2p.AsyncSend(s.RemotePeerID(), msg); err != nil {
+		swarm.logger.Errorf("send response: %s", err)
+		return
+	}
+}
+
+func (swarm *Swarm) handleReplyPierMaster(s network.Stream, data []byte) {
+	resp := &pb.CheckPierResponse{}
+	err := resp.Unmarshal(data)
+	if err != nil {
+		swarm.logger.Errorf("unmarshal response: %s", err)
+		return
+	}
+	swarm.piers.pierChan.writeChan(resp)
 }
