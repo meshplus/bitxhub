@@ -1,11 +1,12 @@
 package mempool
 
 import (
+	"sync"
+
 	"github.com/google/btree"
 	"github.com/meshplus/bitxhub-model/pb"
 	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
 	"github.com/sirupsen/logrus"
-	"sync"
 )
 
 type mempoolImpl struct {
@@ -146,7 +147,7 @@ func (mpi *mempoolImpl) generateBlock() (*raftproto.RequestBatch, error) {
 				if _, ok := skippedTxs[skippedTxn]; !ok {
 					break
 				}
-				mpi.txStore.batchedTxs[ptr] = true
+				mpi.txStore.batchedTxs[skippedTxn] = true
 				result = append(result, skippedTxn)
 				if uint64(len(result)) == batchSize {
 					return false
