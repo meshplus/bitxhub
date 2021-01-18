@@ -39,15 +39,15 @@ type Node struct {
 	txCache       *mempool.TxCache    // cache the transactions received from api
 	batchTimerMgr *BatchTimer
 
-	proposeC           chan *raftproto.RequestBatch // proposed ready, input channel
-	confChangeC        <-chan raftpb.ConfChange     // proposed cluster config changes
-	commitC            chan *pb.CommitEvent         // the hash commit channel
-	errorC             chan<- error                 // errors from raft session
-	tickTimeout        time.Duration                // tick timeout
-	rebroadcastTimeout time.Duration                // rebroadcast timeout
-	msgC               chan []byte                  // receive messages from remote peer
-	stateC             chan *mempool.ChainState     // receive the executed block state
-	rebroadcastTicker  chan *raftproto.TxSlice      // receive the executed block state
+	proposeC          chan *raftproto.RequestBatch // proposed ready, input channel
+	confChangeC       <-chan raftpb.ConfChange     // proposed cluster config changes
+	commitC           chan *pb.CommitEvent         // the hash commit channel
+	errorC            chan<- error                 // errors from raft session
+	tickTimeout       time.Duration                // tick timeout
+	checkInterval     time.Duration                // interval for rebroadcast
+	msgC              chan []byte                  // receive messages from remote peer
+	stateC            chan *mempool.ChainState     // receive the executed block state
+	rebroadcastTicker chan *raftproto.TxSlice      // receive the executed block state
 
 	confState         raftpb.ConfState     // raft requires ConfState to be persisted within snapshot
 	blockAppliedIndex sync.Map             // mapping of block height and apply index in raft log
@@ -122,36 +122,36 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 		snapCount = DefaultSnapshotCount
 	}
 
-	var rebroadcastTimeout time.Duration
-	if raftConfig.RAFT.RebroadcastTimeout == 0 {
-		rebroadcastTimeout = DefaultRebroadcastTimeout
+	var checkInterval time.Duration
+	if raftConfig.RAFT.CheckInterval == 0 {
+		checkInterval = DefaultCheckInterval
 	} else {
-		rebroadcastTimeout = raftConfig.RAFT.RebroadcastTimeout
+		checkInterval = raftConfig.RAFT.CheckInterval
 	}
 
 	node := &Node{
-		id:                 config.ID,
-		lastExec:           config.Applied,
-		confChangeC:        make(chan raftpb.ConfChange),
-		commitC:            make(chan *pb.CommitEvent, 1024),
-		errorC:             make(chan<- error),
-		msgC:               make(chan []byte),
-		stateC:             make(chan *mempool.ChainState),
-		proposeC:           make(chan *raftproto.RequestBatch),
-		snapCount:          snapCount,
-		repoRoot:           repoRoot,
-		peerMgr:            config.PeerMgr,
-		txCache:            txCache,
-		batchTimerMgr:      batchTimerMgr,
-		peers:              peers,
-		logger:             config.Logger,
-		getChainMetaFunc:   config.GetChainMetaFunc,
-		storage:            dbStorage,
-		raftStorage:        raftStorage,
-		readyPool:          readyPool,
-		ctx:                context.Background(),
-		mempool:            mempoolInst,
-		rebroadcastTimeout: rebroadcastTimeout,
+		id:               config.ID,
+		lastExec:         config.Applied,
+		confChangeC:      make(chan raftpb.ConfChange),
+		commitC:          make(chan *pb.CommitEvent, 1024),
+		errorC:           make(chan<- error),
+		msgC:             make(chan []byte),
+		stateC:           make(chan *mempool.ChainState),
+		proposeC:         make(chan *raftproto.RequestBatch),
+		snapCount:        snapCount,
+		repoRoot:         repoRoot,
+		peerMgr:          config.PeerMgr,
+		txCache:          txCache,
+		batchTimerMgr:    batchTimerMgr,
+		peers:            peers,
+		logger:           config.Logger,
+		getChainMetaFunc: config.GetChainMetaFunc,
+		storage:          dbStorage,
+		raftStorage:      raftStorage,
+		readyPool:        readyPool,
+		ctx:              context.Background(),
+		mempool:          mempoolInst,
+		checkInterval:    checkInterval,
 	}
 	node.raftStorage.SnapshotCatchUpEntries = node.snapCount
 
@@ -260,7 +260,7 @@ func (n *Node) run() {
 	n.snapshotIndex = snap.Metadata.Index
 	n.appliedIndex = snap.Metadata.Index
 	ticker := time.NewTicker(n.tickTimeout)
-	rebroadcastTicker := time.NewTicker(n.rebroadcastTimeout)
+	rebroadcastTicker := time.NewTicker(n.checkInterval)
 	defer ticker.Stop()
 	defer rebroadcastTicker.Stop()
 
@@ -328,7 +328,7 @@ func (n *Node) run() {
 
 		case <-rebroadcastTicker.C:
 			// check periodically if there are long-pending txs in mempool
-			rebroadcastTxs := n.mempool.GetTimeoutTransactions(n.rebroadcastTimeout)
+			rebroadcastTxs := n.mempool.GetTimeoutTransactions(n.checkInterval)
 			for _, txSlice := range rebroadcastTxs {
 				txSet := &raftproto.TxSlice{TxList: txSlice}
 				data, err := txSet.Marshal()

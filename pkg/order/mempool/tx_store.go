@@ -65,6 +65,10 @@ func (txStore *transactionStore) insertTxs(txs map[string][]*pb.Transaction, isL
 			}
 			txList.items[tx.Nonce] = txItem
 			txList.index.insertBySortedNonceKey(tx)
+			if isLocal {
+				// no need to rebroadcast tx from other nodes to reduce network overhead
+				txStore.ttlIndex.insertByTtlKey(account, tx.Nonce, tx.Timestamp)
+			}
 		}
 		dirtyAccounts[account] = true
 	}
@@ -88,7 +92,7 @@ func (txStore *transactionStore) updateEarliestTimestamp() {
 	earliestTime := int64(math.MaxInt64)
 	latestItem := txStore.ttlIndex.index.Min()
 	if latestItem != nil {
-		earliestTime = latestItem.(*sortedTtlKey).liveTime
+		earliestTime = latestItem.(*orderedTimeoutKey).timestamp
 	}
 	txStore.earliestTimestamp = earliestTime
 }
@@ -205,7 +209,7 @@ func newTxLiveTimeMap() *txLiveTimeMap {
 }
 
 func (tlm *txLiveTimeMap) insertByTtlKey(account string, nonce uint64, liveTime int64) {
-	tlm.index.ReplaceOrInsert(&sortedTtlKey{account, nonce, liveTime})
+	tlm.index.ReplaceOrInsert(&orderedTimeoutKey{account, nonce, liveTime})
 	tlm.items[makeAccountNonceKey(account, nonce)] = liveTime
 }
 
@@ -216,7 +220,7 @@ func (tlm *txLiveTimeMap) removeByTtlKey(txs map[string][]*pb.Transaction) {
 			if !ok {
 				return
 			}
-			tlm.index.Delete(&sortedTtlKey{account, tx.Nonce, liveTime})
+			tlm.index.Delete(&orderedTimeoutKey{account, tx.Nonce, liveTime})
 			delete(tlm.items, makeAccountNonceKey(account, tx.Nonce))
 		}
 	}

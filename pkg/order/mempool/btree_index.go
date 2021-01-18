@@ -24,17 +24,6 @@ func (oik *orderedIndexKey) Less(than btree.Item) bool {
 	return oik.nonce < other.nonce
 }
 
-type sortedTtlKey struct {
-	account  string
-	nonce    uint64
-	liveTime int64 // the latest live time of tx after it is received or rebroadcast
-}
-
-func (stk *sortedTtlKey) Less(than btree.Item) bool {
-	other := than.(*sortedTtlKey)
-	return stk.liveTime < other.liveTime
-}
-
 type sortedNonceKey struct {
 	nonce uint64
 }
@@ -48,7 +37,7 @@ func (snk *sortedNonceKey) Less(item btree.Item) bool {
 type orderedTimeoutKey struct {
 	account   string
 	nonce     uint64
-	timestamp int64 // the timestamp of tx when it is received
+	timestamp int64 // the timestamp of index key created
 }
 
 func (otk *orderedTimeoutKey) Less(than btree.Item) bool {

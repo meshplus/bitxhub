@@ -101,14 +101,10 @@ func (mpi *mempoolImpl) processDirtyAccount(dirtyAccounts map[string]bool) {
 			readyTxs, nonReadyTxs, nextDemandNonce := list.filterReady(pendingNonce)
 			mpi.txStore.nonceCache.setPendingNonce(account, nextDemandNonce)
 
-			// insert ready txs into priorityIndex and set ttlIndex for these txs.
+			// insert ready txs into priorityIndex.
 			for _, tx := range readyTxs {
 				if !mpi.txStore.priorityIndex.data.Has(makeTimeoutKey(account, tx)) {
 					mpi.txStore.priorityIndex.insertByTimeoutKey(account, tx)
-					if list.items[tx.Nonce].local {
-						// no need to rebroadcast tx from other nodes to reduce network overhead
-						mpi.txStore.ttlIndex.insertByTtlKey(account, tx.Nonce, tx.Timestamp)
-					}
 				}
 			}
 			mpi.txStore.updateEarliestTimestamp()
@@ -281,67 +277,60 @@ func (mpi *mempoolImpl) processCommitTransactions(state *ChainState) {
 
 func (mpi *mempoolImpl) GetTimeoutTransactions(rebroadcastDuration time.Duration) [][]*pb.Transaction {
 	// all the tx whose live time is less than lowBoundTime should be rebroadcast
-	mpi.logger.Debugf("------- Start gathering timeout txs, ttl index len is %d -----------", mpi.txStore.ttlIndex.index.Len())
+	mpi.logger.Debugf("Start gathering timeout txs, ttl index len is %d", mpi.txStore.ttlIndex.index.Len())
 	currentTime := time.Now().UnixNano()
 	if currentTime < mpi.txStore.earliestTimestamp+rebroadcastDuration.Nanoseconds() {
 		// if the latest incoming tx has not exceeded the timeout limit, then none will be timeout
 		return [][]*pb.Transaction{}
 	}
 
-	txList := make([]*pb.Transaction, 0)
-	timeoutItems := make([]*sortedTtlKey, 0)
+	timeoutItems := make([]*orderedTimeoutKey, 0)
 	mpi.txStore.ttlIndex.index.Ascend(func(i btree.Item) bool {
-		item := i.(*sortedTtlKey)
-		if item.liveTime > math.MaxInt64 {
+		item := i.(*orderedTimeoutKey)
+		if item.timestamp > math.MaxInt64 {
 			// TODO(tyx): if this tx has rebroadcast many times and exceeded a final limit,
 			// it is expired and will be removed from mempool
 			return true
 		}
 		// if this tx has not exceeded the rebroadcast duration, break iteration
-		timeoutTime := item.liveTime + rebroadcastDuration.Nanoseconds()
-		txMap, ok := mpi.txStore.allTxs[item.account]
+		timeoutTime := item.timestamp + rebroadcastDuration.Nanoseconds()
+		_, ok := mpi.txStore.allTxs[item.account]
 		if !ok || currentTime < timeoutTime {
 			return false
 		}
-		tx := txMap.items[item.nonce].tx
-		txList = append(txList, tx)
 		timeoutItems = append(timeoutItems, item)
 		return true
 	})
-	if len(txList) == 0 {
-		return [][]*pb.Transaction{}
-	}
 	for _, item := range timeoutItems {
 		// update the liveTime of timeout txs
-		item.liveTime = currentTime
+		item.timestamp = currentTime
 		mpi.txStore.ttlIndex.items[makeAccountNonceKey(item.account, item.nonce)] = currentTime
 	}
 	// shard txList into fixed size in case txList is too large to broadcast one time
-	return shardTxList(txList, mpi.txSliceSize)
+	return mpi.shardTxList(timeoutItems, mpi.txSliceSize)
 }
 
-func shardTxList(txs []*pb.Transaction, batchLen uint64) [][]*pb.Transaction {
+func (mpi *mempoolImpl) shardTxList(timeoutItems []*orderedTimeoutKey, batchLen uint64) [][]*pb.Transaction {
 	begin := uint64(0)
-	end := uint64(len(txs)) - 1
-	totalLen := uint64(len(txs))
+	end := uint64(len(timeoutItems)) - 1
+	totalLen := uint64(len(timeoutItems))
 
-	// shape txs to fixed size in case totalLen is too large
+	// shape timeout txs to batch size in case totalLen is too large
 	batchNums := totalLen / batchLen
 	if totalLen%batchLen != 0 {
 		batchNums++
 	}
 	shardedLists := make([][]*pb.Transaction, 0, batchNums)
-	for i := uint64(0); i <= batchNums; i++ {
+	for i := uint64(0); i < batchNums; i++ {
 		actualLen := batchLen
 		if end-begin+1 < batchLen {
 			actualLen = end - begin + 1
 		}
-		if actualLen == 0 {
-			continue
-		}
+
 		shardedList := make([]*pb.Transaction, actualLen)
 		for j := uint64(0); j < batchLen && begin <= end; j++ {
-			shardedList[j] = txs[begin]
+			txMap, _ := mpi.txStore.allTxs[timeoutItems[begin].account]
+			shardedList[j] = txMap.items[timeoutItems[begin].nonce].tx
 			begin++
 		}
 		shardedLists = append(shardedLists, shardedList)
