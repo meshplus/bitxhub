@@ -26,9 +26,9 @@ func (cbs *ChainBrokerService) Subscribe(req *pb.SubscriptionRequest, server pb.
 	case pb.SubscriptionRequest_BLOCK_HEADER.String():
 		return cbs.handleBlockHeaderSubscription(server)
 	case pb.SubscriptionRequest_INTERCHAIN_TX_WRAPPER.String():
-		return cbs.handleInterchainTxWrapperSubscription(server, types.NewAddress(req.Extra).String(), false)
+		return cbs.handleInterchainTxWrapperSubscription(server, types.NewAddressByStr(string(req.Extra)).String(), false)
 	case pb.SubscriptionRequest_UNION_INTERCHAIN_TX_WRAPPER.String():
-		return cbs.handleInterchainTxWrapperSubscription(server, types.NewAddress(req.Extra).String(), true)
+		return cbs.handleInterchainTxWrapperSubscription(server, types.NewAddressByStr(string(req.Extra)).String(), true)
 	}
 
 	return nil
