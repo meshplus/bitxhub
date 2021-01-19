@@ -17,15 +17,16 @@ const (
 	DefaultTxCacheSize = 10000
 	DefaultBatchSize   = 500
 	DefaultTxSetSize   = 10
-	DefaultTxSetTick       = 100 * time.Millisecond
+	DefaultTxSetTick   = 100 * time.Millisecond
 )
 
 type Config struct {
-	ID uint64
-	BatchSize      uint64
-	PoolSize       uint64
-	TxSliceSize    uint64
-	TxSliceTimeout time.Duration
+	ID                 uint64
+	BatchSize          uint64
+	PoolSize           uint64
+	RebroadcastTimeout time.Duration
+	TxSliceSize        uint64
+	TxSliceTimeout     time.Duration
 	ChainHeight        uint64
 	Logger             logrus.FieldLogger
 }
@@ -33,10 +34,11 @@ type Config struct {
 type txItem struct {
 	account string
 	tx      *pb.Transaction
+	local   bool
 }
 
 type ChainState struct {
-	Height uint64
-	BlockHash *types.Hash
+	Height     uint64
+	BlockHash  *types.Hash
 	TxHashList []*types.Hash
 }

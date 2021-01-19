@@ -10,6 +10,7 @@ import (
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	pb "github.com/meshplus/bitxhub-model/pb"
 	events "github.com/meshplus/bitxhub/internal/model/events"
+	peermgr "github.com/meshplus/bitxhub/pkg/peermgr"
 	network "github.com/meshplus/go-lightp2p"
 	reflect "reflect"
 )
@@ -18,10 +19,6 @@ import (
 type MockPeerManager struct {
 	ctrl     *gomock.Controller
 	recorder *MockPeerManagerMockRecorder
-}
-
-func (m *MockPeerManager) CountConnectedPeers() uint64 {
-	return 0
 }
 
 // MockPeerManagerMockRecorder is the mock recorder for MockPeerManager
@@ -230,4 +227,70 @@ func (m *MockPeerManager) Disconnect(vpInfos map[uint64]*pb.VpInfo) {
 func (mr *MockPeerManagerMockRecorder) Disconnect(vpInfos interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Disconnect", reflect.TypeOf((*MockPeerManager)(nil).Disconnect), vpInfos)
+}
+
+// PierManager mocks base method
+func (m *MockPeerManager) PierManager() peermgr.PierManager {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PierManager")
+	ret0, _ := ret[0].(peermgr.PierManager)
+	return ret0
+}
+
+// PierManager indicates an expected call of PierManager
+func (mr *MockPeerManagerMockRecorder) PierManager() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PierManager", reflect.TypeOf((*MockPeerManager)(nil).PierManager))
+}
+
+// MockPierManager is a mock of PierManager interface
+type MockPierManager struct {
+	ctrl     *gomock.Controller
+	recorder *MockPierManagerMockRecorder
+}
+
+// MockPierManagerMockRecorder is the mock recorder for MockPierManager
+type MockPierManagerMockRecorder struct {
+	mock *MockPierManager
+}
+
+// NewMockPierManager creates a new mock instance
+func NewMockPierManager(ctrl *gomock.Controller) *MockPierManager {
+	mock := &MockPierManager{ctrl: ctrl}
+	mock.recorder = &MockPierManagerMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use
+func (m *MockPierManager) EXPECT() *MockPierManagerMockRecorder {
+	return m.recorder
+}
+
+// Piers mocks base method
+func (m *MockPierManager) Piers() *peermgr.Piers {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Piers")
+	ret0, _ := ret[0].(*peermgr.Piers)
+	return ret0
+}
+
+// Piers indicates an expected call of Piers
+func (mr *MockPierManagerMockRecorder) Piers() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Piers", reflect.TypeOf((*MockPierManager)(nil).Piers))
+}
+
+// AskPierMaster mocks base method
+func (m *MockPierManager) AskPierMaster(arg0 string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AskPierMaster", arg0)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// AskPierMaster indicates an expected call of AskPierMaster
+func (mr *MockPierManagerMockRecorder) AskPierMaster(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AskPierMaster", reflect.TypeOf((*MockPierManager)(nil).AskPierMaster), arg0)
 }

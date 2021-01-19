@@ -1,9 +1,11 @@
 package mempool
 
 import (
+	"math"
+	"sync"
+
 	"github.com/google/btree"
 	"github.com/meshplus/bitxhub-model/pb"
-	"sync"
 )
 
 type transactionStore struct {
@@ -13,6 +15,10 @@ type transactionStore struct {
 	allTxs map[string]*txSortedMap
 	// track the commit nonce and pending nonce of each account.
 	nonceCache *nonceCache
+	// keep track of the latest timestamp of ready txs in ttlIndex
+	earliestTimestamp int64
+	// keep track of the livetime of ready txs in priorityIndex
+	ttlIndex *txLiveTimeMap
 	// keeps track of "non-ready" txs (txs that can't be included in next block)
 	// only used to help remove some txs if pool is full.
 	parkingLotIndex *btreeIndex
@@ -31,11 +37,12 @@ func newTransactionStore() *transactionStore {
 		batchedTxs:      make(map[orderedIndexKey]bool),
 		parkingLotIndex: newBtreeIndex(),
 		priorityIndex:   newBtreeIndex(),
+		ttlIndex:        newTxLiveTimeMap(),
 		nonceCache:      newNonceCache(),
 	}
 }
 
-func (txStore *transactionStore) insertTxs(txs map[string][]*pb.Transaction) map[string]bool {
+func (txStore *transactionStore) insertTxs(txs map[string][]*pb.Transaction, isLocal bool) map[string]bool {
 	dirtyAccounts := make(map[string]bool)
 	for account, list := range txs {
 		for _, tx := range list {
@@ -54,9 +61,14 @@ func (txStore *transactionStore) insertTxs(txs map[string][]*pb.Transaction) map
 			txItem := &txItem{
 				account: account,
 				tx:      tx,
+				local:   isLocal,
 			}
 			txList.items[tx.Nonce] = txItem
 			txList.index.insertBySortedNonceKey(tx)
+			if isLocal {
+				// no need to rebroadcast tx from other nodes to reduce network overhead
+				txStore.ttlIndex.insertByTtlKey(account, tx.Nonce, tx.Timestamp)
+			}
 		}
 		dirtyAccounts[account] = true
 	}
@@ -73,6 +85,16 @@ func (txStore *transactionStore) getTxByOrderKey(account string, seqNo uint64) *
 		return res.tx
 	}
 	return nil
+}
+
+func (txStore *transactionStore) updateEarliestTimestamp() {
+	// find the earliest tx in ttlIndex
+	earliestTime := int64(math.MaxInt64)
+	latestItem := txStore.ttlIndex.index.Min()
+	if latestItem != nil {
+		earliestTime = latestItem.(*orderedTimeoutKey).timestamp
+	}
+	txStore.earliestTimestamp = earliestTime
 }
 
 type txSortedMap struct {
@@ -134,7 +156,7 @@ type nonceCache struct {
 	// pendingNonces records each account's latest nonce which has been included in
 	// priority queue. Invariant: pendingNonces[account] >= commitNonces[account]
 	pendingNonces map[string]uint64
-	pendingMu            sync.RWMutex
+	pendingMu     sync.RWMutex
 }
 
 func newNonceCache() *nonceCache {
@@ -170,4 +192,42 @@ func (nc *nonceCache) setPendingNonce(account string, nonce uint64) {
 	nc.pendingMu.Lock()
 	defer nc.pendingMu.Unlock()
 	nc.pendingNonces[account] = nonce
+}
+
+// since the live time field in sortedTtlKey may vary during process
+// we need to track the latest live time since its latest broadcast.
+type txLiveTimeMap struct {
+	items map[string]int64 // map account to its latest live time
+	index *btree.BTree     // index for txs
+}
+
+func newTxLiveTimeMap() *txLiveTimeMap {
+	return &txLiveTimeMap{
+		index: btree.New(btreeDegree),
+		items: make(map[string]int64),
+	}
+}
+
+func (tlm *txLiveTimeMap) insertByTtlKey(account string, nonce uint64, liveTime int64) {
+	tlm.index.ReplaceOrInsert(&orderedTimeoutKey{account, nonce, liveTime})
+	tlm.items[makeAccountNonceKey(account, nonce)] = liveTime
+}
+
+func (tlm *txLiveTimeMap) removeByTtlKey(txs map[string][]*pb.Transaction) {
+	for account, list := range txs {
+		for _, tx := range list {
+			liveTime, ok := tlm.items[makeAccountNonceKey(account, tx.Nonce)]
+			if !ok {
+				continue
+			}
+			tlm.index.Delete(&orderedTimeoutKey{account, tx.Nonce, liveTime})
+			delete(tlm.items, makeAccountNonceKey(account, tx.Nonce))
+		}
+	}
+}
+
+func (tlm *txLiveTimeMap) updateByTtlKey(originalKey *orderedTimeoutKey, newTime int64) {
+	tlm.index.Delete(originalKey)
+	delete(tlm.items, makeAccountNonceKey(originalKey.account, originalKey.nonce))
+	tlm.insertByTtlKey(originalKey.account, originalKey.nonce, newTime)
 }

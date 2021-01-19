@@ -11,7 +11,7 @@ var _ MemPool = (*mempoolImpl)(nil)
 
 type MemPool interface {
 	// ProcessTransactions process transaction from api and other vp nodes.
-	ProcessTransactions(txs []*pb.Transaction, isLeader bool) *raftproto.RequestBatch
+	ProcessTransactions(txs []*pb.Transaction, isLeader, isLocal bool) *raftproto.RequestBatch
 
 	// GenerateBlock generate a block
 	GenerateBlock() *raftproto.RequestBatch
@@ -23,6 +23,8 @@ type MemPool interface {
 	HasPendingRequest() bool
 
 	SetBatchSeqNo(batchSeq uint64)
+
+	GetTimeoutTransactions(rebroadcastDuration time.Duration) [][]*pb.Transaction
 
 	External
 }

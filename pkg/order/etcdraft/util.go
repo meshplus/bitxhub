@@ -14,8 +14,9 @@ import (
 )
 
 const (
-	DefaultBatchTick = 500 * time.Millisecond
+	DefaultBatchTick     = 500 * time.Millisecond
 	DefaultSnapshotCount = 1000
+	DefaultCheckInterval = 3 * time.Minute
 )
 
 func generateRaftPeers(config *order.Config) ([]raft.Peer, error) {

@@ -179,7 +179,7 @@ func (n *Node) listenReadyBlock() {
 			if !n.batchMgr.IsBatchTimerActive() {
 				n.batchMgr.StartBatchTimer()
 			}
-			if batch := n.mempool.ProcessTransactions(txSet.TxList, true); batch != nil {
+			if batch := n.mempool.ProcessTransactions(txSet.TxList, true, true); batch != nil {
 				n.batchMgr.StopBatchTimer()
 				n.proposeC <- batch
 			}

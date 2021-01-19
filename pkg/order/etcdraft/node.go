@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/meshplus/bitxhub-kit/log"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -39,26 +39,28 @@ type Node struct {
 	txCache       *mempool.TxCache    // cache the transactions received from api
 	batchTimerMgr *BatchTimer
 
-	proposeC    chan *raftproto.RequestBatch // proposed ready, input channel
-	confChangeC <-chan raftpb.ConfChange     // proposed cluster config changes
-	commitC     chan *pb.CommitEvent         // the hash commit channel
-	errorC      chan<- error                 // errors from raft session
-	tickTimeout time.Duration                // tick timeout
-	msgC        chan []byte                  // receive messages from remote peer
-	stateC      chan *mempool.ChainState     // receive the executed block state
+	proposeC          chan *raftproto.RequestBatch // proposed ready, input channel
+	confChangeC       <-chan raftpb.ConfChange     // proposed cluster config changes
+	commitC           chan *pb.CommitEvent         // the hash commit channel
+	errorC            chan<- error                 // errors from raft session
+	tickTimeout       time.Duration                // tick timeout
+	checkInterval     time.Duration                // interval for rebroadcast
+	msgC              chan []byte                  // receive messages from remote peer
+	stateC            chan *mempool.ChainState     // receive the executed block state
+	rebroadcastTicker chan *raftproto.TxSlice      // receive the executed block state
 
-	confState         raftpb.ConfState // raft requires ConfState to be persisted within snapshot
-	blockAppliedIndex sync.Map         // mapping of block height and apply index in raft log
-	appliedIndex      uint64           // current apply index in raft log
-	snapCount         uint64           // snapshot count
-	snapshotIndex     uint64           // current snapshot apply index in raft log
-	lastIndex         uint64           // last apply index in raft log
-	lastExec          uint64           // the index of the last-applied block
-	readyPool         *sync.Pool       // ready pool, avoiding memory growth fast
-	justElected       bool             // track new leader status
+	confState         raftpb.ConfState     // raft requires ConfState to be persisted within snapshot
+	blockAppliedIndex sync.Map             // mapping of block height and apply index in raft log
+	appliedIndex      uint64               // current apply index in raft log
+	snapCount         uint64               // snapshot count
+	snapshotIndex     uint64               // current snapshot apply index in raft log
+	lastIndex         uint64               // last apply index in raft log
+	lastExec          uint64               // the index of the last-applied block
+	readyPool         *sync.Pool           // ready pool, avoiding memory growth fast
+	justElected       bool                 // track new leader status
 	getChainMetaFunc  func() *pb.ChainMeta // current chain meta
-	ctx               context.Context  // context
-	haltC             chan struct{}    // exit signal
+	ctx               context.Context      // context
+	haltC             chan struct{}        // exit signal
 }
 
 // NewNode new raft node
@@ -120,6 +122,13 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 		snapCount = DefaultSnapshotCount
 	}
 
+	var checkInterval time.Duration
+	if raftConfig.RAFT.CheckInterval == 0 {
+		checkInterval = DefaultCheckInterval
+	} else {
+		checkInterval = raftConfig.RAFT.CheckInterval
+	}
+
 	node := &Node{
 		id:               config.ID,
 		lastExec:         config.Applied,
@@ -142,6 +151,7 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 		readyPool:        readyPool,
 		ctx:              context.Background(),
 		mempool:          mempoolInst,
+		checkInterval:    checkInterval,
 	}
 	node.raftStorage.SnapshotCatchUpEntries = node.snapCount
 
@@ -175,6 +185,7 @@ func (n *Node) Start() error {
 		n.node = raft.StartNode(rc, n.peers)
 	}
 	n.tickTimeout = tickTimeout
+
 	go n.run()
 	go n.txCache.ListenEvent()
 	n.logger.Info("Consensus module started")
@@ -249,7 +260,9 @@ func (n *Node) run() {
 	n.snapshotIndex = snap.Metadata.Index
 	n.appliedIndex = snap.Metadata.Index
 	ticker := time.NewTicker(n.tickTimeout)
+	rebroadcastTicker := time.NewTicker(n.checkInterval)
 	defer ticker.Stop()
+	defer rebroadcastTicker.Stop()
 
 	// handle input request
 	go func() {
@@ -308,11 +321,24 @@ func (n *Node) run() {
 			_ = n.peerMgr.Broadcast(pbMsg)
 
 			// 2. process transactions
-			n.processTransactions(txSet.TxList)
+			n.processTransactions(txSet.TxList, true)
 
 		case state := <-n.stateC:
 			n.reportState(state)
 
+		case <-rebroadcastTicker.C:
+			// check periodically if there are long-pending txs in mempool
+			rebroadcastTxs := n.mempool.GetTimeoutTransactions(n.checkInterval)
+			for _, txSlice := range rebroadcastTxs {
+				txSet := &raftproto.TxSlice{TxList: txSlice}
+				data, err := txSet.Marshal()
+				if err != nil {
+					n.logger.Errorf("Marshal failed, err: %s", err.Error())
+					return
+				}
+				pbMsg := msgToConsensusPbMsg(data, raftproto.RaftMessage_BROADCAST_TX, n.id)
+				_ = n.peerMgr.Broadcast(pbMsg)
+			}
 		case <-n.batchTimerMgr.BatchTimeoutEvent():
 			n.batchTimerMgr.StopBatchTimer()
 			// call txPool module to generate a tx batch
@@ -386,7 +412,7 @@ func (n *Node) run() {
 	}
 }
 
-func (n *Node) processTransactions(txList []*pb.Transaction) {
+func (n *Node) processTransactions(txList []*pb.Transaction, isLocal bool) {
 	// leader node would check if this transaction triggered generating a batch or not
 	if n.isLeader() {
 		// start batch timer when this node receives the first transaction
@@ -394,12 +420,12 @@ func (n *Node) processTransactions(txList []*pb.Transaction) {
 			n.batchTimerMgr.StartBatchTimer()
 		}
 		// If this transaction triggers generating a batch, stop batch timer
-		if batch := n.mempool.ProcessTransactions(txList, true); batch != nil {
+		if batch := n.mempool.ProcessTransactions(txList, true, isLocal); batch != nil {
 			n.batchTimerMgr.StopBatchTimer()
 			n.postProposal(batch)
 		}
 	} else {
-		n.mempool.ProcessTransactions(txList, false)
+		n.mempool.ProcessTransactions(txList, false, isLocal)
 	}
 }
 
@@ -560,7 +586,7 @@ func (n *Node) processRaftCoreMsg(msg []byte) error {
 		if err := txSlice.Unmarshal(rm.Data); err != nil {
 			return err
 		}
-		n.processTransactions(txSlice.TxList)
+		n.processTransactions(txSlice.TxList, false)
 
 	default:
 		return fmt.Errorf("unexpected raft message received")

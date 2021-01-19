@@ -27,6 +27,7 @@ type SyncerConfig struct {
 
 type RAFT struct {
 	BatchTimeout              time.Duration `mapstructure:"batch_timeout"`
+	CheckInterval             time.Duration `mapstructure:"check_interval"`
 	TickTimeout               time.Duration `mapstructure:"tick_timeout"`
 	ElectionTick              int           `mapstructure:"election_tick"`
 	HeartbeatTick             int           `mapstructure:"heartbeat_tick"`
