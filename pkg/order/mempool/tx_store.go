@@ -218,10 +218,16 @@ func (tlm *txLiveTimeMap) removeByTtlKey(txs map[string][]*pb.Transaction) {
 		for _, tx := range list {
 			liveTime, ok := tlm.items[makeAccountNonceKey(account, tx.Nonce)]
 			if !ok {
-				return
+				continue
 			}
 			tlm.index.Delete(&orderedTimeoutKey{account, tx.Nonce, liveTime})
 			delete(tlm.items, makeAccountNonceKey(account, tx.Nonce))
 		}
 	}
+}
+
+func (tlm *txLiveTimeMap) updateByTtlKey(originalKey *orderedTimeoutKey, newTime int64) {
+	tlm.index.Delete(originalKey)
+	delete(tlm.items, makeAccountNonceKey(originalKey.account, originalKey.nonce))
+	tlm.insertByTtlKey(originalKey.account, originalKey.nonce, newTime)
 }

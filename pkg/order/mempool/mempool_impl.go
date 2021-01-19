@@ -146,10 +146,6 @@ func (mpi *mempoolImpl) generateBlock() (*raftproto.RequestBatch, error) {
 		if txSeq >= 1 {
 			_, seenPrevious = mpi.txStore.batchedTxs[orderedIndexKey{account: tx.account, nonce: txSeq - 1}]
 		}
-		if txSeq == 3 {
-			mpi.logger.Infof("seenPrevious %v and commitNonce is %d", seenPrevious, commitNonce)
-			mpi.logger.Infof("batched txs is %v", mpi.txStore.batchedTxs)
-		}
 		// include transaction if it's "next" for given account or
 		// we've already sent its ancestor to Consensus
 		if seenPrevious || (txSeq == commitNonce) {
@@ -303,8 +299,7 @@ func (mpi *mempoolImpl) GetTimeoutTransactions(rebroadcastDuration time.Duration
 	})
 	for _, item := range timeoutItems {
 		// update the liveTime of timeout txs
-		item.timestamp = currentTime
-		mpi.txStore.ttlIndex.items[makeAccountNonceKey(item.account, item.nonce)] = currentTime
+		mpi.txStore.ttlIndex.updateByTtlKey(item, currentTime)
 	}
 	// shard txList into fixed size in case txList is too large to broadcast one time
 	return mpi.shardTxList(timeoutItems, mpi.txSliceSize)
