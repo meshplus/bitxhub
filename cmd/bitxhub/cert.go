@@ -20,7 +20,7 @@ import (
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub/internal/repo"
-	"github.com/meshplus/bitxhub/pkg/cert"
+	libp2pcert "github.com/meshplus/go-libp2p-cert"
 	"github.com/urfave/cli"
 )
 
@@ -62,7 +62,7 @@ var caCMD = cli.Command{
 			return err
 		}
 
-		c, err := cert.GenerateCert(privKey, true, "Hyperchain")
+		c, err := libp2pcert.GenerateCert(privKey, true, "Hyperchain")
 		if err != nil {
 			return err
 		}

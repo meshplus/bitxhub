@@ -4,13 +4,15 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+
+	libp2pcert "github.com/meshplus/go-libp2p-cert"
 )
 
 type Repo struct {
 	Config        *Config
 	NetworkConfig *NetworkConfig
 	Key           *Key
-	Certs         *Certs
+	Certs         *libp2pcert.Certs
 }
 
 func Load(repoRoot string) (*Repo, error) {
@@ -24,7 +26,7 @@ func Load(repoRoot string) (*Repo, error) {
 		return nil, fmt.Errorf("load network config: %w", err)
 	}
 
-	certs, err := loadCerts(repoRoot)
+	certs, err := libp2pcert.LoadCerts(repoRoot)
 	if err != nil {
 		return nil, err
 	}

@@ -18,8 +18,8 @@ import (
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/ledger/mock_ledger"
 	"github.com/meshplus/bitxhub/internal/repo"
-	"github.com/meshplus/bitxhub/pkg/cert"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
+	libp2pcert "github.com/meshplus/go-libp2p-cert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -28,7 +28,7 @@ func TestStateSyncer_SyncCFTBlocks(t *testing.T) {
 	swarms := NewSwarms(t, peerCnt)
 
 	for swarms[0].CountConnectedPeers() != 2 {
-		time.Sleep(100*time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 	}
 	otherPeers := swarms[0].OtherPeers()
 	peerIds := make([]uint64, 0)
@@ -61,7 +61,7 @@ func TestStateSyncer_SyncBFTBlocks(t *testing.T) {
 	swarms := NewSwarms(t, peerCnt)
 
 	for swarms[0].CountConnectedPeers() != 3 {
-		time.Sleep(100*time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 	}
 	otherPeers := swarms[0].OtherPeers()
 	peerIds := make([]uint64, 0)
@@ -169,7 +169,7 @@ func NewSwarms(t *testing.T, peerCnt int) []*peermgr.Swarm {
 	caData, err := ioutil.ReadFile("testdata/ca.cert")
 	require.Nil(t, err)
 
-	cert, err := cert.ParseCert(caData)
+	cert, err := libp2pcert.ParseCert(caData)
 	require.Nil(t, err)
 
 	for i := 0; i < peerCnt; i++ {
@@ -179,13 +179,12 @@ func NewSwarms(t *testing.T, peerCnt int) []*peermgr.Swarm {
 				N:  uint64(peerCnt),
 				ID: uint64(i + 1),
 			},
-			Certs: &repo.Certs{
+			Certs: &libp2pcert.Certs{
 				NodeCertData:   nodeData,
 				AgencyCertData: agencyData,
 				CACert:         cert,
 			},
-			Config: &repo.Config{
-			},
+			Config: &repo.Config{},
 		}
 
 		idx := strings.LastIndex(addrs[i], "/p2p/")

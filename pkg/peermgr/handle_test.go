@@ -8,15 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/meshplus/bitxhub/internal/model/events"
-
-	"github.com/meshplus/bitxhub/internal/executor/contracts"
-
 	"github.com/Rican7/retry"
 	"github.com/Rican7/retry/strategy"
-
-	"github.com/meshplus/bitxhub/pkg/cert"
-
 	"github.com/golang/mock/gomock"
 	crypto2 "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -25,8 +18,11 @@ import (
 	"github.com/meshplus/bitxhub-kit/crypto/asym/ecdsa"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/ledger/mock_ledger"
+	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/internal/repo"
+	libp2pcert "github.com/meshplus/go-libp2p-cert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -120,7 +116,7 @@ func NewSwarms(t *testing.T, peerCnt int) []*Swarm {
 	caData, err := ioutil.ReadFile("testdata/ca.cert")
 	require.Nil(t, err)
 
-	cert, err := cert.ParseCert(caData)
+	cert, err := libp2pcert.ParseCert(caData)
 	require.Nil(t, err)
 
 	for i := 0; i < peerCnt; i++ {
@@ -130,7 +126,7 @@ func NewSwarms(t *testing.T, peerCnt int) []*Swarm {
 				N:  uint64(peerCnt),
 				ID: uint64(i + 1),
 			},
-			Certs: &repo.Certs{
+			Certs: &libp2pcert.Certs{
 				NodeCertData:   nodeData,
 				AgencyCertData: agencyData,
 				CACert:         cert,
@@ -164,7 +160,7 @@ func TestSwarm_Send(t *testing.T) {
 	swarms := NewSwarms(t, peerCnt)
 
 	for swarms[0].CountConnectedPeers() != 3 {
-		time.Sleep(100*time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 	}
 
 	msg := &pb.Message{
@@ -214,8 +210,6 @@ func TestSwarm_Send(t *testing.T) {
 	require.Nil(t, err)
 	require.Equal(t, 1, len(getBlocksRes.Blocks))
 
-
-
 	getBlockHeadersReq := pb.GetBlockHeadersRequest{
 		Start: 1,
 		End:   1,
@@ -242,7 +236,6 @@ func TestSwarm_Send(t *testing.T) {
 	err = getBlockHeaderssRes.Unmarshal(res.Data)
 	require.Nil(t, err)
 	require.Equal(t, 1, len(getBlockHeaderssRes.BlockHeaders))
-
 
 	fetchBlockSignMsg := &pb.Message{
 		Type: pb.Message_FETCH_BLOCK_SIGN,
@@ -301,7 +294,7 @@ func TestSwarm_AsyncSend(t *testing.T) {
 	swarms := NewSwarms(t, peerCnt)
 
 	for swarms[0].CountConnectedPeers() != 3 {
-		time.Sleep(100*time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 	}
 
 	orderMsgCh := make(chan events.OrderMessageEvent)

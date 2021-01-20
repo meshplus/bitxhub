@@ -18,7 +18,7 @@ import (
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/repo"
-	"github.com/meshplus/bitxhub/pkg/cert"
+	libp2pcert "github.com/meshplus/go-libp2p-cert"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -851,7 +851,7 @@ func createMockRepo(t *testing.T) *repo.Repo {
 BcNwjTDCxyxLNjFKQfMAc6sY6iJs+Ma59WZyC/4uhjE=
 -----END EC PRIVATE KEY-----`
 
-	privKey, err := cert.ParsePrivateKey([]byte(key), crypto.Secp256k1)
+	privKey, err := libp2pcert.ParsePrivateKey([]byte(key), crypto.Secp256k1)
 	require.Nil(t, err)
 
 	address, err := privKey.PublicKey().Address()

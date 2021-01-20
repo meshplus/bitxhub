@@ -21,10 +21,10 @@ import (
 	"github.com/meshplus/bitxhub/internal/ledger/mock_ledger"
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/internal/repo"
-	"github.com/meshplus/bitxhub/pkg/cert"
 	"github.com/meshplus/bitxhub/pkg/order"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
 	"github.com/meshplus/bitxhub/pkg/peermgr/mock_peermgr"
+	libp2pcert "github.com/meshplus/go-libp2p-cert"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -39,7 +39,7 @@ func TestNode_Start(t *testing.T) {
 	var ID uint64 = 1
 	nodes := make(map[uint64]*pb.VpInfo)
 	vpInfo := &pb.VpInfo{
-		Id: ID,
+		Id:      ID,
 		Account: types.NewAddressByStr("000000000000000000000000000000000000000a").String(),
 	}
 	nodes[ID] = vpInfo
@@ -250,7 +250,7 @@ func newSwarms(t *testing.T, peerCnt int) ([]*peermgr.Swarm, map[uint64]*pb.VpIn
 	caData, err := ioutil.ReadFile("testdata/ca.cert")
 	require.Nil(t, err)
 
-	cert, err := cert.ParseCert(caData)
+	cert, err := libp2pcert.ParseCert(caData)
 	require.Nil(t, err)
 
 	for i := 0; i < peerCnt; i++ {
@@ -261,7 +261,7 @@ func newSwarms(t *testing.T, peerCnt int) ([]*peermgr.Swarm, map[uint64]*pb.VpIn
 				N:  uint64(peerCnt),
 				ID: uint64(ID),
 			},
-			Certs: &repo.Certs{
+			Certs: &libp2pcert.Certs{
 				NodeCertData:   nodeData,
 				AgencyCertData: agencyData,
 				CACert:         cert,
@@ -282,7 +282,7 @@ func newSwarms(t *testing.T, peerCnt int) ([]*peermgr.Swarm, map[uint64]*pb.VpIn
 		address, err := privKeys[i].PublicKey().Address()
 		require.Nil(t, err)
 		vpInfo := &pb.VpInfo{
-			Id: uint64(ID),
+			Id:      uint64(ID),
 			Account: address.String(),
 		}
 		nodes[uint64(ID)] = vpInfo
