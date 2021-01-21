@@ -24,3 +24,7 @@ mock_*/
 coverage.txt
 docs/.vuepress/dist
 testdata/storage
+
+imports/imports.go
+goent.mod
+goent.sum

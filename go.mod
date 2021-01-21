@@ -15,6 +15,8 @@ require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/mock v1.4.4
 	github.com/golangci/golangci-lint v1.23.0 // indirect
+	github.com/gogo/protobuf v1.3.2
+	github.com/golang/mock v1.4.3
 	github.com/google/btree v1.0.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
@@ -34,7 +36,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-multiaddr v0.2.2
 	github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6
-	github.com/pelletier/go-toml v1.2.0
+	github.com/pelletier/go-toml v1.8.1
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.5.0
 	github.com/rogpeppe/go-internal v1.5.2 // indirect
@@ -42,7 +44,7 @@ require (
 	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/cast v1.3.1
 	github.com/spf13/viper v1.7.1
-	github.com/stretchr/testify v1.6.0
+	github.com/stretchr/testify v1.6.1
 	github.com/sykesm/zap-logfmt v0.0.4 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20190923125748-758128399b1d
 	github.com/tidwall/gjson v1.3.5
@@ -57,6 +59,10 @@ require (
 	golang.org/x/sys v0.0.0-20201119102817-f84b799fce68 // indirect
 	google.golang.org/genproto v0.0.0-20201119123407-9b1e624d6bc4 // indirect
 	google.golang.org/grpc v1.33.2
+	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad // indirect
+	golang.org/x/net v0.0.0-20210119194325-5f4716e94777 // indirect
+	google.golang.org/genproto v0.0.0-20210120162456-f5e8c5e2aaf2 // indirect
+	google.golang.org/grpc v1.35.0
 )
 
 replace github.com/golang/protobuf => github.com/golang/protobuf v1.3.2
@@ -66,5 +72,7 @@ replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20200218
 replace google.golang.org/grpc => google.golang.org/grpc v1.33.0
 
 replace github.com/hyperledger/fabric => github.com/hyperledger/fabric v2.0.1+incompatible
+
+// replace golang.org/x/text => golang.org/x/text v0.3.4
 
 go 1.13

@@ -23,6 +23,9 @@ func (router *InterchainRouter) queryAllAppchains() (map[string]*appchain_mgr.Ap
 			router.logger.Errorf("unmarshal appchain error:%v", err)
 			return nil, fmt.Errorf("unmarshal appchain error:%v", err)
 		}
+		if chain.ChainType == appchain_mgr.RelaychainType {
+			continue
+		}
 		ret[chain.ID] = chain
 	}
 	return ret, nil
