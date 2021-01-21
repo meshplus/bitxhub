@@ -379,3 +379,42 @@ BcNwjTDCxyxLNjFKQfMAc6sY6iJs+Ma59WZyC/4uhjE=
 		},
 	}
 }
+
+func TestContext(t *testing.T) {
+	privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
+	assert.Nil(t, err)
+	bytes, err := ioutil.ReadFile("./testdata/fabric_policy.wasm")
+	require.Nil(t, err)
+
+	data := &pb.TransactionData{
+		Payload: bytes,
+	}
+
+	addr, err := privKey.PublicKey().Address()
+	require.Nil(t, err)
+
+	dir := filepath.Join(os.TempDir(), "ctx_test")
+	store, err := leveldb.New(filepath.Join(dir, "validation"))
+	assert.Nil(t, err)
+	ldb, err := leveldb.New(filepath.Join(dir, "ledger"))
+	assert.Nil(t, err)
+
+	accountCache, err := ledger.NewAccountCache()
+	require.Nil(t, err)
+	logger := log.NewWithModule("ctx_test")
+	blockFile, err := blockfile.NewBlockFile(dir, logger)
+	assert.Nil(t, err)
+	ldg, err := ledger.New(createMockRepo(t), store, ldb, blockFile, accountCache, log.NewWithModule("executor"))
+	require.Nil(t, err)
+
+	tx := &pb.Transaction{
+		From: addr,
+		To:   addr,
+	}
+
+	ctx := NewContext(tx, data, ldg, logger)
+
+	require.Equal(t, ctx.Caller(), addr.String())
+	require.Equal(t, ctx.Callee(), addr.String())
+	require.NotNil(t, ctx.Logger())
+}
