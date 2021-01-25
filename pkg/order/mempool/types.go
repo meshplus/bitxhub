@@ -29,6 +29,7 @@ type Config struct {
 	TxSliceTimeout     time.Duration
 	ChainHeight        uint64
 	Logger             logrus.FieldLogger
+	StoragePath        string // db for persist mem pool meta data
 }
 
 type txItem struct {

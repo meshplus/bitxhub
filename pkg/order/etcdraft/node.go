@@ -96,6 +96,7 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 		ID:          config.ID,
 		ChainHeight: config.Applied,
 		Logger:      config.Logger,
+		StoragePath: config.StoragePath,
 
 		BatchSize:      raftConfig.RAFT.MempoolConfig.BatchSize,
 		PoolSize:       raftConfig.RAFT.MempoolConfig.PoolSize,

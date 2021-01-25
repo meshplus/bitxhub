@@ -101,6 +101,7 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 		ID:          config.ID,
 		ChainHeight: config.Applied,
 		Logger:      config.Logger,
+		StoragePath: config.StoragePath,
 
 		BatchSize:      memConfig.BatchSize,
 		PoolSize:       memConfig.PoolSize,

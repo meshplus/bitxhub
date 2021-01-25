@@ -1,7 +1,9 @@
 package mempool
 
 import (
+	"io/ioutil"
 	"math"
+	"os"
 	"testing"
 	"time"
 
@@ -12,7 +14,10 @@ import (
 
 func TestGetBlock(t *testing.T) {
 	ast := assert.New(t)
-	mpi, _ := mockMempoolImpl()
+	storePath, err := ioutil.TempDir("", "mempool")
+	ast.Nil(err)
+	defer os.RemoveAll(storePath)
+	mpi, _ := mockMempoolImpl(storePath)
 	privKey1 := genPrivKey()
 	privKey2 := genPrivKey()
 	tx1 := constructTx(uint64(1), &privKey1)
@@ -38,7 +43,10 @@ func TestGetBlock(t *testing.T) {
 
 func TestGetPendingNonceByAccount(t *testing.T) {
 	ast := assert.New(t)
-	mpi, _ := mockMempoolImpl()
+	storePath, err := ioutil.TempDir("", "mempool")
+	ast.Nil(err)
+	defer os.RemoveAll(storePath)
+	mpi, _ := mockMempoolImpl(storePath)
 	privKey1 := genPrivKey()
 	account1, _ := privKey1.PublicKey().Address()
 	nonce := mpi.GetPendingNonceByAccount(account1.String())
@@ -65,7 +73,10 @@ func TestGetPendingNonceByAccount(t *testing.T) {
 
 func TestCommitTransactions(t *testing.T) {
 	ast := assert.New(t)
-	mpi, batchC := mockMempoolImpl()
+	storePath, err := ioutil.TempDir("", "mempool")
+	ast.Nil(err)
+	defer os.RemoveAll(storePath)
+	mpi, batchC := mockMempoolImpl(storePath)
 	privKey1 := genPrivKey()
 	account1, _ := privKey1.PublicKey().Address()
 	nonce := mpi.GetPendingNonceByAccount(account1.String())
@@ -108,7 +119,10 @@ func TestCommitTransactions(t *testing.T) {
 
 func TestIncreaseChainHeight(t *testing.T) {
 	ast := assert.New(t)
-	mpi, _ := mockMempoolImpl()
+	storePath, err := ioutil.TempDir("", "mempool")
+	ast.Nil(err)
+	defer os.RemoveAll(storePath)
+	mpi, _ := mockMempoolImpl(storePath)
 	ast.Equal(uint64(1), mpi.batchSeqNo)
 	mpi.batchSeqNo++
 	mpi.SetBatchSeqNo(mpi.batchSeqNo)
@@ -117,7 +131,10 @@ func TestIncreaseChainHeight(t *testing.T) {
 
 func TestProcessTransactions(t *testing.T) {
 	ast := assert.New(t)
-	mpi, _ := mockMempoolImpl()
+	storePath, err := ioutil.TempDir("", "mempool")
+	ast.Nil(err)
+	defer os.RemoveAll(storePath)
+	mpi, _ := mockMempoolImpl(storePath)
 	txList := make([]*pb.Transaction, 0)
 	privKey1 := genPrivKey()
 	account1, _ := privKey1.PublicKey().Address()
@@ -161,7 +178,10 @@ func TestProcessTransactions(t *testing.T) {
 
 func TestForward(t *testing.T) {
 	ast := assert.New(t)
-	mpi, _ := mockMempoolImpl()
+	storePath, err := ioutil.TempDir("", "mempool")
+	ast.Nil(err)
+	defer os.RemoveAll(storePath)
+	mpi, _ := mockMempoolImpl(storePath)
 	txList := make([]*pb.Transaction, 0)
 	privKey1 := genPrivKey()
 	account1, _ := privKey1.PublicKey().Address()
@@ -187,7 +207,10 @@ func TestForward(t *testing.T) {
 
 func TestUnorderedIncomingTxs(t *testing.T) {
 	ast := assert.New(t)
-	mpi, _ := mockMempoolImpl()
+	storePath, err := ioutil.TempDir("", "mempool")
+	ast.Nil(err)
+	defer os.RemoveAll(storePath)
+	mpi, _ := mockMempoolImpl(storePath)
 	mpi.batchSize = 5
 
 	txList := make([]*pb.Transaction, 0)
@@ -284,7 +307,10 @@ func TestUnorderedIncomingTxs(t *testing.T) {
 
 func TestGetTimeoutTransaction(t *testing.T) {
 	ast := assert.New(t)
-	mpi, _ := mockMempoolImpl()
+	storePath, err := ioutil.TempDir("", "mempool")
+	ast.Nil(err)
+	defer os.RemoveAll(storePath)
+	mpi, _ := mockMempoolImpl(storePath)
 	mpi.txSliceSize = 3
 	allTxHashes := make([]*types.Hash, 0)
 
@@ -368,4 +394,59 @@ func TestGetTimeoutTransaction(t *testing.T) {
 	ast.Equal(0, len(mpi.txStore.batchedTxs))
 	ast.Equal(0, len(mpi.txStore.txHashMap))
 	ast.Equal(uint64(0), mpi.txStore.priorityNonBatchSize)
+}
+
+func TestRestore(t *testing.T) {
+	ast := assert.New(t)
+	storePath, err := ioutil.TempDir("", "mempool")
+	ast.Nil(err)
+	defer os.RemoveAll(storePath)
+	mpi, batchC := mockMempoolImpl(storePath)
+	privKey1 := genPrivKey()
+	account1, _ := privKey1.PublicKey().Address()
+	nonce := mpi.GetPendingNonceByAccount(account1.String())
+	ast.Equal(uint64(1), nonce)
+	privKey2 := genPrivKey()
+	account2, _ := privKey1.PublicKey().Address()
+	tx1 := constructTx(uint64(1), &privKey1)
+	tx2 := constructTx(uint64(2), &privKey1)
+	tx3 := constructTx(uint64(1), &privKey2)
+	tx4 := constructTx(uint64(4), &privKey2)
+	var txList []*pb.Transaction
+	txList = append(txList, tx1, tx2, tx3, tx4)
+	batch := mpi.ProcessTransactions(txList, true, true)
+	ast.Nil(batch)
+	ast.Equal(3, mpi.txStore.priorityIndex.size())
+	ast.Equal(1, mpi.txStore.parkingLotIndex.size())
+
+	go func() {
+		<-batchC
+	}()
+	tx5 := constructTx(uint64(2), &privKey2)
+	txList = []*pb.Transaction{}
+	txList = append(txList, tx5)
+	batch = mpi.ProcessTransactions(txList, true, true)
+	ast.Equal(4, len(batch.TxList))
+	ast.Equal(4, mpi.txStore.priorityIndex.size())
+	ast.Equal(1, mpi.txStore.parkingLotIndex.size())
+	ast.Equal(uint64(2), mpi.batchSeqNo)
+
+	var txHashList []*types.Hash
+	txHashList = append(txHashList, tx1.TransactionHash, tx2.TransactionHash, tx3.TransactionHash, tx5.TransactionHash)
+	state := &ChainState{
+		TxHashList: txHashList,
+		Height:     uint64(2),
+	}
+	mpi.CommitTransactions(state)
+	time.Sleep(100 * time.Millisecond)
+	ast.Equal(0, mpi.txStore.priorityIndex.size())
+	ast.Equal(1, mpi.txStore.parkingLotIndex.size())
+
+	// stop and restore
+	ast.Nil(mpi.store.Close())
+	newMpi, _ := mockMempoolImpl(storePath)
+	ast.Equal(uint64(3), newMpi.txStore.nonceCache.getCommitNonce(account1.String()))
+	ast.Equal(uint64(3), newMpi.txStore.nonceCache.getCommitNonce(account2.String()))
+	ast.Equal(uint64(3), newMpi.txStore.nonceCache.getPendingNonce(account1.String()))
+	ast.Equal(uint64(3), newMpi.txStore.nonceCache.getPendingNonce(account2.String()))
 }

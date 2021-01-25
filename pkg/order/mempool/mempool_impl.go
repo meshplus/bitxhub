@@ -2,12 +2,19 @@ package mempool
 
 import (
 	"math"
+	"os"
+	"path/filepath"
+	"strconv"
 	"sync"
 	"time"
 
+	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/google/btree"
+	"github.com/meshplus/bitxhub-kit/storage"
+	"github.com/meshplus/bitxhub-kit/storage/leveldb"
 	"github.com/meshplus/bitxhub-model/pb"
 	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -19,16 +26,22 @@ type mempoolImpl struct {
 	poolSize    uint64
 	logger      logrus.FieldLogger
 	txStore     *transactionStore // store all transactions info
+	store       storage.Storage   // persist storage for mem pool
 }
 
 func newMempoolImpl(config *Config) *mempoolImpl {
+	db, err := loadOrCreateStorage(filepath.Join(config.StoragePath, "mempool"))
+	if err != nil {
+		config.Logger.Panicf("load or create mem pool storage :%s", err.Error())
+	}
 	mpi := &mempoolImpl{
 		localID:     config.ID,
 		batchSeqNo:  config.ChainHeight,
 		logger:      config.Logger,
 		txSliceSize: config.TxSliceSize,
+		store:       db,
 	}
-	mpi.txStore = newTransactionStore()
+	mpi.txStore = newTransactionStore(db)
 	if config.BatchSize == 0 {
 		mpi.batchSize = DefaultBatchSize
 	} else {
@@ -206,6 +219,8 @@ func (mpi *mempoolImpl) processCommitTransactions(state *ChainState) {
 	// update current cached commit nonce for account
 	updateAccounts := make(map[string]uint64)
 	// update current cached commit nonce for account
+	storageBatch := mpi.store.NewBatch()
+	defer storageBatch.Commit()
 	for _, txHash := range state.TxHashList {
 		strHash := txHash.String()
 		txPointer := mpi.txStore.txHashMap[strHash]
@@ -218,6 +233,7 @@ func (mpi *mempoolImpl) processCommitTransactions(state *ChainState) {
 		newCommitNonce := txPointer.nonce + 1
 		if preCommitNonce < newCommitNonce {
 			mpi.txStore.nonceCache.setCommitNonce(txPointer.account, newCommitNonce)
+			storageBatch.Put(committedNonceKey(txPointer.account), []byte(strconv.FormatUint(newCommitNonce, 10)))
 			// Note!!! updating pendingNonce to commitNonce for the restart node
 			pendingNonce := mpi.txStore.nonceCache.getPendingNonce(txPointer.account)
 			if pendingNonce < newCommitNonce {
@@ -331,4 +347,13 @@ func (mpi *mempoolImpl) shardTxList(timeoutItems []*orderedTimeoutKey, batchLen 
 		shardedLists = append(shardedLists, shardedList)
 	}
 	return shardedLists
+}
+
+func loadOrCreateStorage(memPoolDir string) (storage.Storage, error) {
+	if !fileutil.Exist(memPoolDir) {
+		if err := os.MkdirAll(memPoolDir, os.ModePerm); err != nil {
+			return nil, errors.Errorf("failed to mkdir '%s' for mem pool: %s", memPoolDir, err)
+		}
+	}
+	return leveldb.New(memPoolDir)
 }

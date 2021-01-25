@@ -1,10 +1,13 @@
 package mempool
 
 import (
+	"fmt"
 	"math"
+	"strconv"
 	"sync"
 
 	"github.com/google/btree"
+	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/meshplus/bitxhub-model/pb"
 )
 
@@ -30,7 +33,7 @@ type transactionStore struct {
 	priorityNonBatchSize uint64
 }
 
-func newTransactionStore() *transactionStore {
+func newTransactionStore(db storage.Storage) *transactionStore {
 	return &transactionStore{
 		txHashMap:       make(map[string]*orderedIndexKey, 0),
 		allTxs:          make(map[string]*txSortedMap),
@@ -38,7 +41,7 @@ func newTransactionStore() *transactionStore {
 		parkingLotIndex: newBtreeIndex(),
 		priorityIndex:   newBtreeIndex(),
 		ttlIndex:        newTxLiveTimeMap(),
-		nonceCache:      newNonceCache(),
+		nonceCache:      newNonceCache(db),
 	}
 }
 
@@ -156,20 +159,23 @@ type nonceCache struct {
 	// pendingNonces records each account's latest nonce which has been included in
 	// priority queue. Invariant: pendingNonces[account] >= commitNonces[account]
 	pendingNonces map[string]uint64
-	pendingMu     sync.RWMutex
+	// falling back to reading from local database if an account is unknown.
+	fallback  storage.Storage
+	pendingMu sync.RWMutex
 }
 
-func newNonceCache() *nonceCache {
+func newNonceCache(store storage.Storage) *nonceCache {
 	return &nonceCache{
 		commitNonces:  make(map[string]uint64),
 		pendingNonces: make(map[string]uint64),
+		fallback:      store,
 	}
 }
 
 func (nc *nonceCache) getCommitNonce(account string) uint64 {
 	nonce, ok := nc.commitNonces[account]
 	if !ok {
-		return 1
+		return nc.getNonceFromDB(committedNonceKey(account))
 	}
 	return nonce
 }
@@ -183,7 +189,8 @@ func (nc *nonceCache) getPendingNonce(account string) uint64 {
 	defer nc.pendingMu.RUnlock()
 	nonce, ok := nc.pendingNonces[account]
 	if !ok {
-		return 1
+		// if nonce is unknown, check if there is nonce persisted in db
+		return nc.getNonceFromDB(pendingNonceKey(account))
 	}
 	return nonce
 }
@@ -191,7 +198,28 @@ func (nc *nonceCache) getPendingNonce(account string) uint64 {
 func (nc *nonceCache) setPendingNonce(account string, nonce uint64) {
 	nc.pendingMu.Lock()
 	defer nc.pendingMu.Unlock()
+	nc.fallback.Put(pendingNonceKey(account), []byte(strconv.FormatUint(nonce, 10)))
 	nc.pendingNonces[account] = nonce
+}
+
+func (nc *nonceCache) getNonceFromDB(key []byte) uint64 {
+	var value []byte
+	if value = nc.fallback.Get(key); value == nil {
+		return 1
+	}
+	nonce, err := strconv.ParseUint(string(value), 10, 64)
+	if err != nil {
+		return 1
+	}
+	return nonce
+}
+
+func pendingNonceKey(account string) []byte {
+	return []byte(fmt.Sprintf("pending-%s", account))
+}
+
+func committedNonceKey(account string) []byte {
+	return []byte(fmt.Sprintf("committed-%s", account))
 }
 
 // since the live time field in sortedTtlKey may vary during process

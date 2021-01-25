@@ -21,7 +21,7 @@ const (
 	DefaultTestTxSetSize   = uint64(1)
 )
 
-func mockMempoolImpl() (*mempoolImpl, chan *raftproto.Ready) {
+func mockMempoolImpl(path string) (*mempoolImpl, chan *raftproto.Ready) {
 	config := &Config{
 		ID:             1,
 		ChainHeight:    DefaultTestChainHeight,
@@ -30,6 +30,7 @@ func mockMempoolImpl() (*mempoolImpl, chan *raftproto.Ready) {
 		TxSliceSize:    DefaultTestTxSetSize,
 		TxSliceTimeout: DefaultTxSetTick,
 		Logger:         log.NewWithModule("consensus"),
+		StoragePath:    path,
 	}
 	proposalC := make(chan *raftproto.Ready)
 	mempool := newMempoolImpl(config)
