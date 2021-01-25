@@ -45,6 +45,9 @@ server_key_path = "certs/server.key"
 
 [cert]
   verify = true
+  node_cert_path = "certs/node.cert"
+  agency_cert_path = "certs/agency.cert"
+  ca_cert_path = "certs/ca.cert"
 
 [order]
   plugin = "plugins/raft.so"

@@ -26,7 +26,7 @@ func Load(repoRoot string) (*Repo, error) {
 		return nil, fmt.Errorf("load network config: %w", err)
 	}
 
-	certs, err := libp2pcert.LoadCerts(repoRoot)
+	certs, err := libp2pcert.LoadCerts(repoRoot, config.NodeCertPath, config.AgencyCertPath, config.CACertPath)
 	if err != nil {
 		return nil, err
 	}

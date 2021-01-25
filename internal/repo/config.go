@@ -101,7 +101,10 @@ type Genesis struct {
 }
 
 type Cert struct {
-	Verify bool `toml:"verify" json:"verify"`
+	Verify         bool   `toml:"verify" json:"verify"`
+	NodeCertPath   string `mapstructure:"node_cert_path" json:"node_cert_path"`
+	AgencyCertPath string `mapstructure:"agency_cert_path" json:"agency_cert_path"`
+	CACertPath     string `mapstructure:"ca_cert_path" json:"ca_cert_path"`
 }
 
 type Txpool struct {
@@ -152,7 +155,12 @@ func DefaultConfig() (*Config, error) {
 				CoreAPI:   "info",
 			},
 		},
-		Cert: Cert{Verify: true},
+		Cert: Cert{
+			Verify:         true,
+			NodeCertPath:   "certs/node.cert",
+			AgencyCertPath: "certs/agency.cert",
+			CACertPath:     "certs/ca.cert",
+		},
 		Txpool: Txpool{
 			BatchSize:    500,
 			BatchTimeout: 500 * time.Millisecond,

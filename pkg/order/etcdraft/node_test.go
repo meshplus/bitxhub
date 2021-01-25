@@ -91,9 +91,64 @@ func TestNode_Start(t *testing.T) {
 
 func TestMulti_Node_Start(t *testing.T) {
 	peerCnt := 4
-	swarms, nodes := newSwarms(t, peerCnt)
+	swarms, nodes := newSwarms(t, peerCnt, true)
 
 	//time.Sleep(3 * time.Second)
+	repoRoot, err := ioutil.TempDir("", "nodes")
+	defer os.RemoveAll(repoRoot)
+
+	fileData, err := ioutil.ReadFile("../../../config/order.toml")
+	require.Nil(t, err)
+
+	orders := make([]order.Order, 0)
+	for i := 0; i < peerCnt; i++ {
+		nodePath := fmt.Sprintf("node%d", i)
+		nodeRepo := filepath.Join(repoRoot, nodePath)
+		err := os.Mkdir(nodeRepo, 0744)
+		require.Nil(t, err)
+		orderPath := filepath.Join(nodeRepo, "order.toml")
+		err = ioutil.WriteFile(orderPath, fileData, 0744)
+		require.Nil(t, err)
+
+		ID := i + 1
+		order, err := NewNode(
+			order.WithRepoRoot(nodeRepo),
+			order.WithID(uint64(ID)),
+			order.WithNodes(nodes),
+			order.WithPeerManager(swarms[i]),
+			order.WithStoragePath(repo.GetStoragePath(nodeRepo, "order")),
+			order.WithLogger(log.NewWithModule("consensus")),
+			order.WithGetBlockByHeightFunc(nil),
+			order.WithApplied(1),
+		)
+		require.Nil(t, err)
+		err = order.Start()
+		require.Nil(t, err)
+		orders = append(orders, order)
+		go listen(t, order, swarms[i])
+	}
+
+	for {
+		time.Sleep(200 * time.Millisecond)
+		err := orders[0].Ready()
+		if err == nil {
+			break
+		}
+	}
+	tx := generateTx()
+	err = orders[0].Prepare(tx)
+	require.Nil(t, err)
+	for i := 0; i < len(orders); i++ {
+		commitEvent := <-orders[i].Commit()
+		require.Equal(t, uint64(2), commitEvent.Block.BlockHeader.Number)
+		require.Equal(t, 1, len(commitEvent.Block.Transactions))
+	}
+}
+
+func TestMulti_Node_Start_Without_Cert_Verification(t *testing.T) {
+	peerCnt := 4
+	swarms, nodes := newSwarms(t, peerCnt, false)
+
 	repoRoot, err := ioutil.TempDir("", "nodes")
 	defer os.RemoveAll(repoRoot)
 
@@ -234,7 +289,7 @@ func convertToLibp2pPrivKey(privateKey crypto.PrivateKey) (crypto2.PrivKey, erro
 	return libp2pPrivKey, nil
 }
 
-func newSwarms(t *testing.T, peerCnt int) ([]*peermgr.Swarm, map[uint64]*pb.VpInfo) {
+func newSwarms(t *testing.T, peerCnt int, certVerify bool) ([]*peermgr.Swarm, map[uint64]*pb.VpInfo) {
 	var swarms []*peermgr.Swarm
 	nodes := make(map[uint64]*pb.VpInfo)
 	nodeKeys, privKeys, addrs, ids := genKeysAndConfig(t, peerCnt)
@@ -272,6 +327,13 @@ func newSwarms(t *testing.T, peerCnt int) ([]*peermgr.Swarm, map[uint64]*pb.VpIn
 				},
 			},
 		}
+
+		if certVerify {
+			repo.Config.Cert.Verify = true
+		} else {
+			repo.Config.Cert.Verify = false
+		}
+
 		idx := strings.LastIndex(addrs[i], "/p2p/")
 		local := addrs[i][:idx]
 		repo.NetworkConfig.LocalAddr = local
