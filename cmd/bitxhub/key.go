@@ -8,7 +8,7 @@ import (
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub/internal/repo"
-	"github.com/meshplus/bitxhub/pkg/cert"
+	libp2pcert "github.com/meshplus/go-libp2p-cert"
 	"github.com/urfave/cli"
 )
 
@@ -80,7 +80,7 @@ func convertKey(ctx *cli.Context) error {
 		return fmt.Errorf("read private key: %w", err)
 	}
 
-	privKey, err := cert.ParsePrivateKey(data, crypto.Secp256k1)
+	privKey, err := libp2pcert.ParsePrivateKey(data, crypto.Secp256k1)
 	if err != nil {
 		return err
 	}
@@ -137,7 +137,7 @@ func getAddress(ctx *cli.Context) error {
 		return fmt.Errorf("read private key: %w", err)
 	}
 
-	privKey, err := cert.ParsePrivateKey(data, crypto.Secp256k1)
+	privKey, err := libp2pcert.ParsePrivateKey(data, crypto.Secp256k1)
 	if err != nil {
 		return err
 	}

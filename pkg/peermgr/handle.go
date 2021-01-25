@@ -2,7 +2,6 @@ package peermgr
 
 import (
 	"crypto/sha256"
-	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -12,7 +11,6 @@ import (
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/model"
 	"github.com/meshplus/bitxhub/internal/model/events"
-	"github.com/meshplus/bitxhub/pkg/cert"
 	network "github.com/meshplus/go-lightp2p"
 	"github.com/sirupsen/logrus"
 )
@@ -141,18 +139,6 @@ func (swarm *Swarm) handleFetchCertMessage(s network.Stream) error {
 	err = swarm.SendWithStream(s, msg)
 	if err != nil {
 		return fmt.Errorf("send msg: %w", err)
-	}
-
-	return nil
-}
-
-func verifyCerts(nodeCert *x509.Certificate, agencyCert *x509.Certificate, caCert *x509.Certificate) error {
-	if err := cert.VerifySign(agencyCert, caCert); err != nil {
-		return fmt.Errorf("verify agency cert: %w", err)
-	}
-
-	if err := cert.VerifySign(nodeCert, agencyCert); err != nil {
-		return fmt.Errorf("verify node cert: %w", err)
 	}
 
 	return nil

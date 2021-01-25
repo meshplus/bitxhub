@@ -13,7 +13,7 @@ import (
 	crypto2 "github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/pkg/cert"
+	libp2pcert "github.com/meshplus/go-libp2p-cert"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/pelletier/go-toml"
 	"github.com/spf13/viper"
@@ -182,7 +182,7 @@ func GetPidFromPrivFile(privPath string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("read private key: %w", err)
 	}
-	privKey, err := cert.ParsePrivateKey(data, crypto2.ECDSA_P256)
+	privKey, err := libp2pcert.ParsePrivateKey(data, crypto2.ECDSA_P256)
 	if err != nil {
 		return "", err
 	}

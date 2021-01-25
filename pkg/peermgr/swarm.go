@@ -13,10 +13,9 @@ import (
 	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/ledger"
-	"github.com/meshplus/bitxhub/internal/model"
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/internal/repo"
-	"github.com/meshplus/bitxhub/pkg/cert"
+	libp2pcert "github.com/meshplus/go-libp2p-cert"
 	network "github.com/meshplus/go-lightp2p"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/sirupsen/logrus"
@@ -69,6 +68,11 @@ func New(repoConfig *repo.Repo, logger logrus.FieldLogger, ledger ledger.Ledger)
 		multiAddrs[id] = node
 	}
 
+	tpt, err := libp2pcert.New(repoConfig.Key.Libp2pPrivKey, repoConfig.Certs)
+	if err != nil {
+		return nil, fmt.Errorf("create transport: %w", err)
+	}
+
 	notifiee := newNotifiee(routers, logger)
 	p2p, err := network.New(
 		network.WithLocalAddr(repoConfig.NetworkConfig.LocalAddr),
@@ -78,6 +82,8 @@ func New(repoConfig *repo.Repo, logger logrus.FieldLogger, ledger ledger.Ledger)
 		// enable discovery
 		network.WithBootstrap(bootstrap),
 		network.WithNotify(notifiee),
+		network.WithTransportId(libp2pcert.ID),
+		network.WithTransport(tpt),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("create p2p: %w", err)
@@ -127,17 +133,6 @@ func (swarm *Swarm) Start() error {
 					return err
 				}
 
-				if err := swarm.verifyCertOrDisconnect(id); err != nil {
-					if attempt != 0 && attempt%5 == 0 {
-						swarm.logger.WithFields(logrus.Fields{
-							"node":  id,
-							"error": err,
-						}).Error("Verify cert")
-					}
-
-					return err
-				}
-
 				swarm.logger.WithFields(logrus.Fields{
 					"node": id,
 				}).Info("Connect successfully")
@@ -162,15 +157,6 @@ func (swarm *Swarm) Start() error {
 
 func (swarm *Swarm) Stop() error {
 	swarm.cancel()
-	return nil
-}
-
-func (swarm *Swarm) verifyCertOrDisconnect(id uint64) error {
-	if err := swarm.verifyCert(id); err != nil {
-		if err = swarm.p2p.Disconnect(swarm.routers[id].Pid); err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
@@ -300,46 +286,6 @@ func (swarm *Swarm) OtherPeers() map[uint64]*peer.AddrInfo {
 
 func (swarm *Swarm) SubscribeOrderMessage(ch chan<- events.OrderMessageEvent) event.Subscription {
 	return swarm.orderMessageFeed.Subscribe(ch)
-}
-
-func (swarm *Swarm) verifyCert(id uint64) error {
-	if _, err := swarm.findPeer(id); err != nil {
-		return fmt.Errorf("check id: %w", err)
-	}
-
-	msg := &pb.Message{
-		Type: pb.Message_FETCH_CERT,
-	}
-
-	ret, err := swarm.Send(id, msg)
-	if err != nil {
-		return fmt.Errorf("sync send: %w", err)
-	}
-
-	certs := &model.CertsMessage{}
-	if err := certs.Unmarshal(ret.Data); err != nil {
-		return fmt.Errorf("unmarshal certs: %w", err)
-	}
-
-	nodeCert, err := cert.ParseCert(certs.NodeCert)
-	if err != nil {
-		return fmt.Errorf("parse node cert: %w", err)
-	}
-
-	agencyCert, err := cert.ParseCert(certs.AgencyCert)
-	if err != nil {
-		return fmt.Errorf("parse agency cert: %w", err)
-	}
-
-	if err := verifyCerts(nodeCert, agencyCert, swarm.repo.Certs.CACert); err != nil {
-		err = swarm.p2p.Disconnect(swarm.routers[id].Pid)
-		if err != nil {
-			return fmt.Errorf("disconnect peer: %w", err)
-		}
-		return fmt.Errorf("verify certs: %w", err)
-	}
-
-	return nil
 }
 
 func (swarm *Swarm) findPeer(id uint64) (string, error) {
