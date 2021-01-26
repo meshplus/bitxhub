@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/meshplus/bitxhub-kit/log"
+
 	"github.com/golang/mock/gomock"
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/boltvm"
@@ -82,14 +84,28 @@ func TestAppchainManager_Appchains(t *testing.T) {
 		chains = append(chains, chain)
 	}
 
-	o1 := mockStub.EXPECT().Query(appchainMgr.PREFIX).Return(true, chainsData)
-	o2 := mockStub.EXPECT().Query(appchainMgr.PREFIX).Return(false, nil)
-	gomock.InOrder(o1, o2)
-
+	logger := log.NewWithModule("contracts")
+	caller := "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
+	registerResponse := &boltvm.Response{
+		Ok: true,
+	}
 	am := &AppchainManager{
 		Stub: mockStub,
 	}
+	mockStub.EXPECT().Caller().Return(caller).AnyTimes()
+	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).Return().AnyTimes()
+	mockStub.EXPECT().Logger().Return(logger).AnyTimes()
 
+	// test for register
+	mockStub.EXPECT().CrossInvoke(constant.InterchainContractAddr.String(), "Register").Return(registerResponse)
+	mockStub.EXPECT().Has(appchainMgr.PREFIX + caller).Return(false).AnyTimes()
+	am.Register(chains[0].Validators, chains[0].ConsensusType, chains[0].ChainType,
+		chains[0].Name, chains[0].Desc, chains[0].Version, chains[0].PublicKey)
+
+	appchainsReq1 := mockStub.EXPECT().Query(appchainMgr.PREFIX).Return(true, chainsData)
+	appchainReq2 := mockStub.EXPECT().Query(appchainMgr.PREFIX).Return(false, nil)
+	counterAppchainReq := mockStub.EXPECT().Query(appchainMgr.PREFIX).Return(true, chainsData)
+	gomock.InOrder(appchainsReq1, appchainReq2, counterAppchainReq)
 	res := am.Appchains()
 	assert.Equal(t, true, res.Ok)
 
@@ -103,6 +119,39 @@ func TestAppchainManager_Appchains(t *testing.T) {
 	res = am.Appchains()
 	assert.Equal(t, true, res.Ok)
 	assert.Equal(t, []byte(nil), res.Result)
+
+	// counter chains
+	res = am.CountAppchains()
+	assert.Equal(t, true, res.Ok)
+	assert.Equal(t, "2", string(res.Result))
+
+	// test GetAppchain
+	mockStub.EXPECT().Get(AppchainKey(caller)).Return(true, chainsData[0])
+
+	res = am.GetAppchain(caller)
+	assert.Equal(t, true, res.Ok)
+	assert.Equal(t, chainsData[0], res.Result)
+
+	// test UpdateAppchain without register
+	mockStub.EXPECT().GetObject(AppchainKey(caller), gomock.Any()).Return(true)
+	res = am.UpdateAppchain(chains[0].Validators, chains[0].ConsensusType, chains[0].ChainType,
+		chains[0].Name, chains[0].Desc, chains[0].Version, chains[0].PublicKey)
+
+	assert.Equal(t, false, res.Ok)
+	// test UpdateAppchain with register
+	//mockStub.EXPECT().GetObject(AppchainKey(caller), gomock.Any()).DoAndReturn(
+	//	func(key string, ret interface{}) bool {
+	//		assert.Equal(t, key, AppchainKey(caller))
+	//		chains[0].Status = appchainMgr.REGISTERED
+	//		ret = chains[0]
+	//		return true
+	//	})
+	//res = am.UpdateAppchain(chains[0].Validators, chains[0].ConsensusType, chains[0].ChainType,
+	//	chains[0].Name, chains[0].Desc, chains[0].Version, chains[0].PublicKey)
+	//
+	//assert.Equal(t, true, res.Ok)
+
+	// test for
 }
 
 func TestInterchainManager_Register(t *testing.T) {
