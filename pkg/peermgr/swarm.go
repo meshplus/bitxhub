@@ -74,7 +74,8 @@ func New(repoConfig *repo.Repo, logger logrus.FieldLogger, ledger ledger.Ledger)
 	}
 
 	notifiee := newNotifiee(routers, logger)
-	p2p, err := network.New(
+
+	opts := []network.Option{
 		network.WithLocalAddr(repoConfig.NetworkConfig.LocalAddr),
 		network.WithPrivateKey(repoConfig.Key.Libp2pPrivKey),
 		network.WithProtocolIDs(protocolIDs),
@@ -82,9 +83,16 @@ func New(repoConfig *repo.Repo, logger logrus.FieldLogger, ledger ledger.Ledger)
 		// enable discovery
 		network.WithBootstrap(bootstrap),
 		network.WithNotify(notifiee),
-		network.WithTransportId(libp2pcert.ID),
-		network.WithTransport(tpt),
-	)
+	}
+
+	if repoConfig.Config.Cert.Verify {
+		opts = append(opts,
+			network.WithTransportId(libp2pcert.ID),
+			network.WithTransport(tpt),
+		)
+	}
+
+	p2p, err := network.New(opts...)
 	if err != nil {
 		return nil, fmt.Errorf("create p2p: %w", err)
 	}
