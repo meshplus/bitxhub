@@ -21,7 +21,7 @@ import (
 type VerifyPool struct {
 	proofs sync.Map //ibtp proof cache
 	ledger ledger.Ledger
-	ve     *validator.ValidationEngine
+	ve     validator.Engine
 	logger logrus.FieldLogger
 }
 
@@ -35,7 +35,7 @@ func New(ledger ledger.Ledger, logger logrus.FieldLogger) Verify {
 	return proofPool
 }
 
-func (pl *VerifyPool) ValidationEngine() *validator.ValidationEngine {
+func (pl *VerifyPool) ValidationEngine() validator.Engine {
 	return pl.ve
 }
 
