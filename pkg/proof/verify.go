@@ -6,12 +6,13 @@ import (
 	"github.com/meshplus/bitxhub-model/pb"
 )
 
+//go:generate mockgen -destination mock_proof/mock_proof.go -package mock_proof -source verify.go
 type Verify interface {
 	// CheckProof verifies ibtp proof in interchain transaction
 	CheckProof(tx *pb.Transaction) (bool, error)
 
 	// ValidationEngine returns validation engine
-	ValidationEngine() *validator.ValidationEngine
+	ValidationEngine() validator.Engine
 
 	// GetProof gets proof by transaction hash
 	GetProof(txHash types.Hash) ([]byte, bool)
