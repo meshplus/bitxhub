@@ -149,7 +149,7 @@ func (x *InterchainManager) HandleIBTPs(data []byte) *boltvm.Response {
 	}
 
 	interchain := &pb.Interchain{}
-	x.GetObject(AppchainKey(x.Caller()), &interchain)
+	x.GetObject(AppchainKey(x.Caller()), interchain)
 
 	for _, ibtp := range ibtps.Ibtps {
 		if err := x.checkIBTP(ibtp, interchain); err != nil {
