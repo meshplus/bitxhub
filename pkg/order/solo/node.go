@@ -109,7 +109,10 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 		TxSliceTimeout: memConfig.TxSliceTimeout,
 	}
 	batchC := make(chan *raftproto.RequestBatch)
-	mempoolInst := mempool.NewMempool(mempoolConf)
+	mempoolInst, err := mempool.NewMempool(mempoolConf)
+	if err != nil {
+		return nil, fmt.Errorf("create mempool instance: %w", err)
+	}
 	txCache := mempool.NewTxCache(mempoolConf.TxSliceTimeout, mempoolConf.TxSliceSize, config.Logger)
 	batchTimerMgr := etcdraft.NewTimer(batchTimeout, config.Logger)
 	soloNode := &Node{

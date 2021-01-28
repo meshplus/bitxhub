@@ -33,7 +33,7 @@ func mockMempoolImpl(path string) (*mempoolImpl, chan *raftproto.Ready) {
 		StoragePath:    path,
 	}
 	proposalC := make(chan *raftproto.Ready)
-	mempool := newMempoolImpl(config)
+	mempool, _ := newMempoolImpl(config)
 	return mempool, proposalC
 }
 

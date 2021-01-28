@@ -443,7 +443,7 @@ func TestRestore(t *testing.T) {
 	ast.Equal(1, mpi.txStore.parkingLotIndex.size())
 
 	// stop and restore
-	ast.Nil(mpi.store.Close())
+	ast.Nil(mpi.txStore.nonceCache.fallback.Close())
 	newMpi, _ := mockMempoolImpl(storePath)
 	ast.Equal(uint64(3), newMpi.txStore.nonceCache.getCommitNonce(account1.String()))
 	ast.Equal(uint64(3), newMpi.txStore.nonceCache.getCommitNonce(account2.String()))

@@ -48,7 +48,7 @@ func constructTx(nonce uint64) *pb.Transaction {
 	return tx
 }
 
-func mockRaftNode(t *testing.T) *Node {
+func mockRaftNode(t *testing.T) (*Node, error) {
 	logger := log.NewWithModule("consensus")
 	batchTimerMgr := NewTimer(500*time.Millisecond, logger)
 	txCache := mempool.NewTxCache(25*time.Millisecond, uint64(2), logger)
@@ -68,8 +68,12 @@ func mockRaftNode(t *testing.T) *Node {
 		PoolSize:       raftConfig.RAFT.MempoolConfig.PoolSize,
 		TxSliceSize:    raftConfig.RAFT.MempoolConfig.TxSliceSize,
 		TxSliceTimeout: raftConfig.RAFT.MempoolConfig.TxSliceTimeout,
+		StoragePath:    filepath.Join(repoRoot, "storage"),
 	}
-	mempoolInst := mempool.NewMempool(mempoolConf)
+	mempoolInst, err := mempool.NewMempool(mempoolConf)
+	if err != nil {
+		return nil, err
+	}
 	node := &Node{
 		id:               uint64(1),
 		lastExec:         uint64(1),
@@ -93,7 +97,7 @@ func mockRaftNode(t *testing.T) *Node {
 		getChainMetaFunc: getChainMetaFunc,
 	}
 	node.syncer = &mockSync{}
-	return node
+	return node, nil
 }
 
 type mockSync struct{}

@@ -194,8 +194,9 @@ func TestMulti_Node_Start_Without_Cert_Verification(t *testing.T) {
 func TestReportState(t *testing.T) {
 	ast := assert.New(t)
 	defer os.RemoveAll("./testdata/storage")
-	node := mockRaftNode(t)
-	err := node.Start()
+	node, err := mockRaftNode(t)
+	ast.Nil(err)
+	err = node.Start()
 	ast.Nil(err)
 	blockHash := &types.Hash{
 		RawHash: [types.HashLength]byte{0},
@@ -218,8 +219,9 @@ func TestReportState(t *testing.T) {
 func TestGetPendingNonceByAccount(t *testing.T) {
 	ast := assert.New(t)
 	defer os.RemoveAll("./testdata/storage")
-	node := mockRaftNode(t)
-	err := node.Start()
+	node, err := mockRaftNode(t)
+	ast.Nil(err)
+	err = node.Start()
 	ast.Nil(err)
 	nonce := node.GetPendingNonceByAccount("account1")
 	ast.Equal(uint64(1), nonce)
@@ -229,9 +231,10 @@ func TestGetPendingNonceByAccount(t *testing.T) {
 func TestRun(t *testing.T) {
 	ast := assert.New(t)
 	defer os.RemoveAll("./testdata/storage")
-	node := mockRaftNode(t)
+	node, err := mockRaftNode(t)
+	ast.Nil(err)
 	node.checkInterval = 200 * time.Millisecond
-	err := node.Start()
+	err = node.Start()
 	ast.Nil(err)
 	// test confChangeC
 	node.confChangeC <- raftpb.ConfChange{ID: uint64(2)}

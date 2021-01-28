@@ -1,10 +1,10 @@
 package mempool
 
 import (
+	"fmt"
 	"math"
 	"os"
 	"path/filepath"
-	"strconv"
 	"sync"
 	"time"
 
@@ -26,22 +26,20 @@ type mempoolImpl struct {
 	poolSize    uint64
 	logger      logrus.FieldLogger
 	txStore     *transactionStore // store all transactions info
-	store       storage.Storage   // persist storage for mem pool
 }
 
-func newMempoolImpl(config *Config) *mempoolImpl {
+func newMempoolImpl(config *Config) (*mempoolImpl, error) {
 	db, err := loadOrCreateStorage(filepath.Join(config.StoragePath, "mempool"))
 	if err != nil {
-		config.Logger.Panicf("load or create mem pool storage :%s", err.Error())
+		return nil, fmt.Errorf("load or create mem pool storage :%w", err)
 	}
 	mpi := &mempoolImpl{
 		localID:     config.ID,
 		batchSeqNo:  config.ChainHeight,
 		logger:      config.Logger,
 		txSliceSize: config.TxSliceSize,
-		store:       db,
 	}
-	mpi.txStore = newTransactionStore(db)
+	mpi.txStore = newTransactionStore(db, config.Logger)
 	if config.BatchSize == 0 {
 		mpi.batchSize = DefaultBatchSize
 	} else {
@@ -61,7 +59,7 @@ func newMempoolImpl(config *Config) *mempoolImpl {
 	mpi.logger.Infof("MemPool tx slice size = %d", mpi.batchSize)
 	mpi.logger.Infof("MemPool batch seqNo = %d", mpi.batchSeqNo)
 	mpi.logger.Infof("MemPool pool size = %d", mpi.poolSize)
-	return mpi
+	return mpi, nil
 }
 
 func (mpi *mempoolImpl) ProcessTransactions(txs []*pb.Transaction, isLeader, isLocal bool) *raftproto.RequestBatch {
@@ -106,14 +104,15 @@ func (mpi *mempoolImpl) ProcessTransactions(txs []*pb.Transaction, isLeader, isL
 }
 
 func (mpi *mempoolImpl) processDirtyAccount(dirtyAccounts map[string]bool) {
+	// updateAccounts track the biggest pending nonces to update
+	updateAccounts := make(map[string]uint64)
 	for account := range dirtyAccounts {
 		if list, ok := mpi.txStore.allTxs[account]; ok {
 			// search for related sequential txs in allTxs
 			// and add these txs into priorityIndex and parkingLotIndex
 			pendingNonce := mpi.txStore.nonceCache.getPendingNonce(account)
 			readyTxs, nonReadyTxs, nextDemandNonce := list.filterReady(pendingNonce)
-			mpi.txStore.nonceCache.setPendingNonce(account, nextDemandNonce)
-
+			updateAccounts[account] = nextDemandNonce
 			// insert ready txs into priorityIndex.
 			for _, tx := range readyTxs {
 				if !mpi.txStore.priorityIndex.data.Has(makeTimeoutKey(account, tx)) {
@@ -129,6 +128,8 @@ func (mpi *mempoolImpl) processDirtyAccount(dirtyAccounts map[string]bool) {
 			}
 		}
 	}
+	// update pending nonce in batch mode for performance consideration
+	mpi.txStore.nonceCache.updatePendingNonce(updateAccounts)
 }
 
 // getBlock fetches next block of transactions for consensus,
@@ -219,8 +220,6 @@ func (mpi *mempoolImpl) processCommitTransactions(state *ChainState) {
 	// update current cached commit nonce for account
 	updateAccounts := make(map[string]uint64)
 	// update current cached commit nonce for account
-	storageBatch := mpi.store.NewBatch()
-	defer storageBatch.Commit()
 	for _, txHash := range state.TxHashList {
 		strHash := txHash.String()
 		txPointer := mpi.txStore.txHashMap[strHash]
@@ -231,20 +230,16 @@ func (mpi *mempoolImpl) processCommitTransactions(state *ChainState) {
 		}
 		preCommitNonce := mpi.txStore.nonceCache.getCommitNonce(txPointer.account)
 		newCommitNonce := txPointer.nonce + 1
-		if preCommitNonce < newCommitNonce {
-			mpi.txStore.nonceCache.setCommitNonce(txPointer.account, newCommitNonce)
-			storageBatch.Put(committedNonceKey(txPointer.account), []byte(strconv.FormatUint(newCommitNonce, 10)))
-			// Note!!! updating pendingNonce to commitNonce for the restart node
-			pendingNonce := mpi.txStore.nonceCache.getPendingNonce(txPointer.account)
-			if pendingNonce < newCommitNonce {
-				updateAccounts[txPointer.account] = newCommitNonce
-				mpi.txStore.nonceCache.setPendingNonce(txPointer.account, newCommitNonce)
-			}
+		if updateAccounts[txPointer.account] < newCommitNonce && preCommitNonce < newCommitNonce {
+			updateAccounts[txPointer.account] = newCommitNonce
 		}
 		delete(mpi.txStore.txHashMap, strHash)
 		delete(mpi.txStore.batchedTxs, *txPointer)
 		dirtyAccounts[txPointer.account] = true
 	}
+	// batch commit new Nonce
+	mpi.txStore.nonceCache.updateCommittedNonce(updateAccounts)
+
 	// clean related txs info in cache
 	for account := range dirtyAccounts {
 		commitNonce := mpi.txStore.nonceCache.getCommitNonce(account)
@@ -278,9 +273,6 @@ func (mpi *mempoolImpl) processCommitTransactions(state *ChainState) {
 	// set priorityNonBatchSize to min(nonBatchedTxs, readyNum),
 	if mpi.txStore.priorityNonBatchSize > readyNum {
 		mpi.txStore.priorityNonBatchSize = readyNum
-	}
-	for account, pendingNonce := range updateAccounts {
-		mpi.logger.Debugf("Account %s update its pendingNonce to %d by commitNonce", account, pendingNonce)
 	}
 	mpi.logger.Debugf("Replica %d removes batches in mempool, and now there are %d non-batched txs,"+
 		"priority len: %d, parkingLot len: %d, batchedTx len: %d, txHashMap len: %d", mpi.localID, mpi.txStore.priorityNonBatchSize,

@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/google/btree"
 	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -33,7 +35,7 @@ type transactionStore struct {
 	priorityNonBatchSize uint64
 }
 
-func newTransactionStore(db storage.Storage) *transactionStore {
+func newTransactionStore(db storage.Storage, logger logrus.FieldLogger) *transactionStore {
 	return &transactionStore{
 		txHashMap:       make(map[string]*orderedIndexKey, 0),
 		allTxs:          make(map[string]*txSortedMap),
@@ -41,7 +43,7 @@ func newTransactionStore(db storage.Storage) *transactionStore {
 		parkingLotIndex: newBtreeIndex(),
 		priorityIndex:   newBtreeIndex(),
 		ttlIndex:        newTxLiveTimeMap(),
-		nonceCache:      newNonceCache(db),
+		nonceCache:      newNonceCache(db, logger),
 	}
 }
 
@@ -152,23 +154,24 @@ func (m *txSortedMap) forward(commitNonce uint64) map[string][]*pb.Transaction {
 	return removedTxs
 }
 
-// TODO (YH): persist and restore commitNonce and pendingNonce from db.
 type nonceCache struct {
 	// commitNonces records each account's latest committed nonce in ledger.
 	commitNonces map[string]uint64
 	// pendingNonces records each account's latest nonce which has been included in
 	// priority queue. Invariant: pendingNonces[account] >= commitNonces[account]
 	pendingNonces map[string]uint64
+	pendingMu     sync.RWMutex
 	// falling back to reading from local database if an account is unknown.
-	fallback  storage.Storage
-	pendingMu sync.RWMutex
+	fallback storage.Storage
+	logger   logrus.FieldLogger
 }
 
-func newNonceCache(store storage.Storage) *nonceCache {
+func newNonceCache(store storage.Storage, logger logrus.FieldLogger) *nonceCache {
 	return &nonceCache{
 		commitNonces:  make(map[string]uint64),
 		pendingNonces: make(map[string]uint64),
 		fallback:      store,
+		logger:        logger,
 	}
 }
 
@@ -198,8 +201,25 @@ func (nc *nonceCache) getPendingNonce(account string) uint64 {
 func (nc *nonceCache) setPendingNonce(account string, nonce uint64) {
 	nc.pendingMu.Lock()
 	defer nc.pendingMu.Unlock()
-	nc.fallback.Put(pendingNonceKey(account), []byte(strconv.FormatUint(nonce, 10)))
 	nc.pendingNonces[account] = nonce
+}
+
+func (nc *nonceCache) updatePendingNonce(newPending map[string]uint64) {
+	storageBatch := nc.fallback.NewBatch()
+	defer storageBatch.Commit()
+	for account, pendingNonce := range newPending {
+		nc.setPendingNonce(account, pendingNonce)
+		storageBatch.Put(pendingNonceKey(account), []byte(strconv.FormatUint(pendingNonce, 10)))
+	}
+}
+
+func (nc *nonceCache) updateCommittedNonce(newCommitted map[string]uint64) {
+	storageBatch := nc.fallback.NewBatch()
+	defer storageBatch.Commit()
+	for account, committedNonce := range newCommitted {
+		nc.setCommitNonce(account, committedNonce)
+		storageBatch.Put(committedNonceKey(account), []byte(strconv.FormatUint(committedNonce, 10)))
+	}
 }
 
 func (nc *nonceCache) getNonceFromDB(key []byte) uint64 {
@@ -209,6 +229,7 @@ func (nc *nonceCache) getNonceFromDB(key []byte) uint64 {
 	}
 	nonce, err := strconv.ParseUint(string(value), 10, 64)
 	if err != nil {
+		nc.logger.Errorf("Parse invalid nonce from db %s", err.Error())
 		return 1
 	}
 	return nonce
