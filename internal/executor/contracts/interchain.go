@@ -170,11 +170,7 @@ func (x *InterchainManager) HandleIBTPs(data []byte) *boltvm.Response {
 }
 
 func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP, interchain *pb.Interchain) error {
-	srcChain := &appchainMgr.Appchain{}
-	res := x.CrossInvoke(constant.AppchainMgrContractAddr.String(), "GetAppchain", pb.String(ibtp.From))
-	if err := json.Unmarshal(res.Result, srcChain); err != nil {
-		return err
-	}
+	isRelayIBTP := x.isRelayIBTP(ibtp.From)
 
 	if ibtp.To == "" {
 		return fmt.Errorf("empty destination chain id")
@@ -188,7 +184,7 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP, interchain *pb.Interchain) 
 		pb.IBTP_ASSET_EXCHANGE_INIT == ibtp.Type ||
 		pb.IBTP_ASSET_EXCHANGE_REDEEM == ibtp.Type ||
 		pb.IBTP_ASSET_EXCHANGE_REFUND == ibtp.Type {
-		if srcChain.ChainType != appchainMgr.RelaychainType {
+		if !isRelayIBTP {
 			if ibtp.From != x.Caller() {
 				return fmt.Errorf("ibtp from != caller")
 			}
@@ -202,7 +198,7 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP, interchain *pb.Interchain) 
 			return fmt.Errorf(fmt.Sprintf("wrong index, required %d, but %d", idx+1, ibtp.Index))
 		}
 	} else {
-		if srcChain.ChainType != appchainMgr.RelaychainType {
+		if !isRelayIBTP {
 			if ibtp.To != x.Caller() {
 				return fmt.Errorf("ibtp to != caller")
 			}
@@ -219,6 +215,16 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP, interchain *pb.Interchain) 
 	}
 
 	return nil
+}
+
+// isRelayIBTP returns whether ibtp.from is relaychain type
+func (x *InterchainManager) isRelayIBTP(from string) bool {
+	srcChain := &appchainMgr.Appchain{}
+	res := x.CrossInvoke(constant.AppchainMgrContractAddr.String(), "GetAppchain", pb.String(from))
+	if err := json.Unmarshal(res.Result, srcChain); err != nil {
+		return false
+	}
+	return srcChain.ChainType == appchainMgr.RelaychainType
 }
 
 func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *pb.Interchain) {
