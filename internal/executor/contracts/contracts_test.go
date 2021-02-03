@@ -680,7 +680,7 @@ func TestInterchainManager_HandleUnionIBTP(t *testing.T) {
 	data, err := json.Marshal(relayChain)
 	assert.Nil(t, err)
 
-	mockStub.EXPECT().Get(appchainMgr.PREFIX+appchainMgr.PREFIX+from+"-"+from).Return(true, data0).AnyTimes()
+	mockStub.EXPECT().Get(appchainMgr.PREFIX+from+"-"+from).Return(true, data0).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(data)).AnyTimes()
 	mockStub.EXPECT().AddObject(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().GetTxIndex().Return(uint64(1)).AnyTimes()

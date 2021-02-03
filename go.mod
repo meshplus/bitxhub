@@ -3,7 +3,6 @@ module github.com/meshplus/bitxhub
 require (
 	github.com/Rican7/retry v0.1.0
 	github.com/aristanetworks/goarista v0.0.0-20200310212843-2da4c1f5881b // indirect
-	github.com/bitxhub/did-method-registry v0.0.0-20210202070148-39bd6955ef95 // indirect
 	github.com/cbergoon/merkletree v0.2.0
 	github.com/common-nighthawk/go-figure v0.0.0-20190529165535-67e0ed34491a
 	github.com/coreos/etcd v3.3.18+incompatible
@@ -16,8 +15,6 @@ require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/mock v1.4.4
 	github.com/golangci/golangci-lint v1.23.0 // indirect
-	github.com/gogo/protobuf v1.3.2
-	github.com/golang/mock v1.4.3
 	github.com/google/btree v1.0.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
@@ -28,16 +25,17 @@ require (
 	github.com/lestrrat-go/file-rotatelogs v2.4.0+incompatible // indirect
 	github.com/lestrrat-go/strftime v1.0.3 // indirect
 	github.com/libp2p/go-libp2p-core v0.5.6
+	github.com/libp2p/go-libp2p-crypto v0.1.0
 	github.com/magiconair/properties v1.8.4
-	github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20210202024251-5a1c2b3eaf0c
+	github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20210126064930-8245c5b45956
 	github.com/meshplus/bitxhub-kit v1.1.2-0.20210112075018-319e668d6359
-	github.com/meshplus/bitxhub-model v1.1.2-0.20210107045700-cee670a2e117
+	github.com/meshplus/bitxhub-model v1.1.2-0.20210120083349-c7a006b03fcb
 	github.com/meshplus/go-libp2p-cert v0.0.0-20210125063330-7c25fd5b7a49
 	github.com/meshplus/go-lightp2p v0.0.0-20210120082108-df5a536a6192
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-multiaddr v0.2.2
 	github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6
-	github.com/pelletier/go-toml v1.8.1
+	github.com/pelletier/go-toml v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.5.0
 	github.com/rogpeppe/go-internal v1.5.2 // indirect
@@ -45,7 +43,7 @@ require (
 	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/cast v1.3.1
 	github.com/spf13/viper v1.7.1
-	github.com/stretchr/testify v1.6.1
+	github.com/stretchr/testify v1.6.0
 	github.com/sykesm/zap-logfmt v0.0.4 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20190923125748-758128399b1d
 	github.com/tidwall/gjson v1.3.5
@@ -60,10 +58,6 @@ require (
 	golang.org/x/sys v0.0.0-20201119102817-f84b799fce68 // indirect
 	google.golang.org/genproto v0.0.0-20201119123407-9b1e624d6bc4 // indirect
 	google.golang.org/grpc v1.33.2
-	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad // indirect
-	golang.org/x/net v0.0.0-20210119194325-5f4716e94777 // indirect
-	google.golang.org/genproto v0.0.0-20210120162456-f5e8c5e2aaf2 // indirect
-	google.golang.org/grpc v1.35.0
 )
 
 replace github.com/golang/protobuf => github.com/golang/protobuf v1.3.2
@@ -73,7 +67,5 @@ replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20200218
 replace google.golang.org/grpc => google.golang.org/grpc v1.33.0
 
 replace github.com/hyperledger/fabric => github.com/hyperledger/fabric v2.0.1+incompatible
-
-// replace golang.org/x/text => golang.org/x/text v0.3.4
 
 go 1.13
