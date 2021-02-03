@@ -51,7 +51,7 @@ func (b *BoltStubImpl) Get(key string) (bool, []byte) {
 }
 
 func (b *BoltStubImpl) Delete(key string) {
-
+	b.ctx.Ledger.SetState(b.ctx.Callee, []byte(key), nil)
 }
 
 func (b *BoltStubImpl) GetObject(key string, ret interface{}) bool {
