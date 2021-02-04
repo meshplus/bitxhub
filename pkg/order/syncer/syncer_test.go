@@ -2,41 +2,68 @@ package syncer
 
 import (
 	"fmt"
-	"io/ioutil"
-	"strings"
 	"testing"
-	"time"
 
 	"github.com/golang/mock/gomock"
-	crypto2 "github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/meshplus/bitxhub-kit/crypto"
-	"github.com/meshplus/bitxhub-kit/crypto/asym"
-	"github.com/meshplus/bitxhub-kit/crypto/asym/ecdsa"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/internal/ledger/mock_ledger"
-	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
-	libp2pcert "github.com/meshplus/go-libp2p-cert"
+	"github.com/meshplus/bitxhub/pkg/peermgr/mock_peermgr"
 	"github.com/stretchr/testify/require"
 )
 
-func TestStateSyncer_SyncCFTBlocks(t *testing.T) {
-	peerCnt := 3
-	swarms := NewSwarms(t, peerCnt)
+func preparePeerMgr(t *testing.T) peermgr.PeerManager {
+	ctrl := gomock.NewController(t)
+	mockPeerMgr := mock_peermgr.NewMockPeerManager(ctrl)
+	genblocks := genBlocks(1024)
+	mockPeerMgr.EXPECT().Send(gomock.Any(), gomock.Any()).DoAndReturn(func(id uint64, m *pb.Message) (*pb.Message, error) {
+		switch m.Type {
+		case pb.Message_GET_BLOCK_HEADERS:
+			req := &pb.GetBlockHeadersRequest{}
+			err := req.Unmarshal(m.Data)
+			require.Nil(t, err)
+			res := &pb.GetBlockHeadersResponse{}
+			blockHeaders := make([]*pb.BlockHeader, 0)
+			for i := req.Start; i <= req.End; i++ {
+				blockHeaders = append(blockHeaders, genblocks[i-1].BlockHeader)
+			}
+			res.BlockHeaders = blockHeaders
+			v, err := res.Marshal()
+			require.Nil(t, err)
+			m := &pb.Message{
+				Type: pb.Message_GET_BLOCK_HEADERS_ACK,
+				Data: v,
+			}
+			return m, nil
+		case pb.Message_GET_BLOCKS:
+			req := &pb.GetBlocksRequest{}
+			err := req.Unmarshal(m.Data)
+			require.Nil(t, err)
+			res := &pb.GetBlocksResponse{}
+			blocks := make([]*pb.Block, 0)
+			for i := req.Start; i <= req.End; i++ {
+				blocks = append(blocks, genblocks[i-1])
+			}
+			res.Blocks = blocks
+			v, err := res.Marshal()
+			require.Nil(t, err)
+			m := &pb.Message{
+				Type: pb.Message_GET_BLOCKS_ACK,
+				Data: v,
+			}
+			return m, nil
+		}
+		return nil, fmt.Errorf("unhapply")
+	}).AnyTimes()
+	return mockPeerMgr
+}
 
-	for swarms[0].CountConnectedPeers() != 2 {
-		time.Sleep(100 * time.Millisecond)
-	}
-	otherPeers := swarms[0].OtherPeers()
-	peerIds := make([]uint64, 0)
-	for id, _ := range otherPeers {
-		peerIds = append(peerIds, id)
-	}
+func TestStateSyncer_SyncCFTBlocks(t *testing.T) {
+	mockPeerMgr := preparePeerMgr(t)
+	peerIds := []uint64{2, 3, 4}
 	logger := log.NewWithModule("syncer")
-	syncer, err := New(10, swarms[0], 2, peerIds, logger)
+	syncer, err := New(10, mockPeerMgr, 2, peerIds, logger)
 	require.Nil(t, err)
 
 	begin := 2
@@ -57,19 +84,10 @@ func TestStateSyncer_SyncCFTBlocks(t *testing.T) {
 }
 
 func TestStateSyncer_SyncBFTBlocks(t *testing.T) {
-	peerCnt := 4
-	swarms := NewSwarms(t, peerCnt)
-
-	for swarms[0].CountConnectedPeers() != 3 {
-		time.Sleep(100 * time.Millisecond)
-	}
-	otherPeers := swarms[0].OtherPeers()
-	peerIds := make([]uint64, 0)
-	for id, _ := range otherPeers {
-		peerIds = append(peerIds, id)
-	}
+	mockPeerMgr := preparePeerMgr(t)
+	peerIds := []uint64{2, 3, 4}
 	logger := log.NewWithModule("syncer")
-	syncer, err := New(10, swarms[0], 3, peerIds, logger)
+	syncer, err := New(10, mockPeerMgr, 3, peerIds, logger)
 	require.Nil(t, err)
 
 	begin := 2
@@ -88,119 +106,6 @@ func TestStateSyncer_SyncBFTBlocks(t *testing.T) {
 	}
 
 	require.Equal(t, len(blocks), end-begin+1)
-}
-
-func genKeysAndConfig(t *testing.T, peerCnt int) ([]crypto2.PrivKey, []crypto.PrivateKey, []string, []string) {
-	var nodeKeys []crypto2.PrivKey
-	var privKeys []crypto.PrivateKey
-	var peers []string
-	var ids []string
-
-	port := 5001
-
-	for i := 0; i < peerCnt; i++ {
-		key, err := asym.GenerateKeyPair(crypto.ECDSA_P256)
-		require.Nil(t, err)
-
-		libp2pKey, err := convertToLibp2pPrivKey(key)
-		require.Nil(t, err)
-		nodeKeys = append(nodeKeys, libp2pKey)
-		id, err := peer.IDFromPublicKey(libp2pKey.GetPublic())
-		require.Nil(t, err)
-
-		peer := fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/p2p/", port)
-		peers = append(peers, peer)
-		ids = append(ids, id.String())
-		port++
-
-		privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
-		require.Nil(t, err)
-
-		privKeys = append(privKeys, privKey)
-	}
-
-	return nodeKeys, privKeys, peers, ids
-}
-
-func convertToLibp2pPrivKey(privateKey crypto.PrivateKey) (crypto2.PrivKey, error) {
-	ecdsaPrivKey, ok := privateKey.(*ecdsa.PrivateKey)
-	if !ok {
-		return nil, fmt.Errorf("convert to libp2p private key: not ecdsa private key")
-	}
-
-	libp2pPrivKey, _, err := crypto2.ECDSAKeyPairFromKey(ecdsaPrivKey.K)
-	if err != nil {
-		return nil, err
-	}
-
-	return libp2pPrivKey, nil
-}
-
-func peers(id uint64, addrs []string, ids []string) []*repo.NetworkNodes {
-	m := make([]*repo.NetworkNodes, 0, len(addrs))
-	for i, addr := range addrs {
-		m = append(m, &repo.NetworkNodes{
-			ID:      uint64(i + 1),
-			Account: "",
-			Pid:     ids[i],
-			Hosts:   []string{addr},
-		})
-	}
-	return m
-}
-
-func NewSwarms(t *testing.T, peerCnt int) []*peermgr.Swarm {
-	var swarms []*peermgr.Swarm
-
-	blocks := genBlocks(1024)
-	nodeKeys, privKeys, addrs, ids := genKeysAndConfig(t, peerCnt)
-	mockCtl := gomock.NewController(t)
-	mockLedger := mock_ledger.NewMockLedger(mockCtl)
-	mockLedger.EXPECT().GetBlock(gomock.Any()).DoAndReturn(func(height uint64) (*pb.Block, error) {
-		return blocks[height-1], nil
-	}).AnyTimes()
-
-	agencyData, err := ioutil.ReadFile("testdata/agency.cert")
-	require.Nil(t, err)
-
-	nodeData, err := ioutil.ReadFile("testdata/node.cert")
-	require.Nil(t, err)
-
-	caData, err := ioutil.ReadFile("testdata/ca.cert")
-	require.Nil(t, err)
-
-	cert, err := libp2pcert.ParseCert(caData)
-	require.Nil(t, err)
-
-	for i := 0; i < peerCnt; i++ {
-		repo := &repo.Repo{
-			Key: &repo.Key{},
-			NetworkConfig: &repo.NetworkConfig{
-				N:  uint64(peerCnt),
-				ID: uint64(i + 1),
-			},
-			Certs: &libp2pcert.Certs{
-				NodeCertData:   nodeData,
-				AgencyCertData: agencyData,
-				CACert:         cert,
-			},
-			Config: &repo.Config{},
-		}
-
-		idx := strings.LastIndex(addrs[i], "/p2p/")
-		local := addrs[i][:idx]
-		repo.NetworkConfig.LocalAddr = local
-		repo.Key.Libp2pPrivKey = nodeKeys[i]
-		repo.Key.PrivKey = privKeys[i]
-		repo.NetworkConfig.Nodes = peers(uint64(i), addrs, ids)
-
-		swarm, err := peermgr.New(repo, log.NewWithModule(fmt.Sprintf("swarm%d", i)), mockLedger)
-		require.Nil(t, err)
-		err = swarm.Start()
-		require.Nil(t, err)
-		swarms = append(swarms, swarm)
-	}
-	return swarms
 }
 
 func genBlocks(count int) []*pb.Block {
