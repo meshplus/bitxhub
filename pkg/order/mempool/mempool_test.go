@@ -59,6 +59,8 @@ func TestGetPendingNonceByAccount(t *testing.T) {
 	ast.Equal(uint64(3), nonce)
 	nonce = mpi.GetPendingNonceByAccount(account2.String())
 	ast.Equal(uint64(3), nonce, "not 4")
+	ifFull := mpi.IsPoolFull()
+	ast.Equal(false, ifFull)
 }
 
 func TestCommitTransactions(t *testing.T) {

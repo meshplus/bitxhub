@@ -40,7 +40,7 @@ type Node struct {
 	batchTimerMgr *BatchTimer
 
 	proposeC          chan *raftproto.RequestBatch // proposed ready, input channel
-	confChangeC       <-chan raftpb.ConfChange     // proposed cluster config changes
+	confChangeC       chan raftpb.ConfChange       // proposed cluster config changes
 	commitC           chan *pb.CommitEvent         // the hash commit channel
 	errorC            chan<- error                 // errors from raft session
 	tickTimeout       time.Duration                // tick timeout
@@ -361,7 +361,7 @@ func (n *Node) run() {
 			// 1: Write HardState, Entries, and Snapshot to persistent storage if they
 			// are not empty.
 			if err := n.raftStorage.Store(rd.Entries, rd.HardState, rd.Snapshot); err != nil {
-				n.logger.Errorf("failed to persist etcd/raft data: %s", err)
+				n.logger.Errorf("Failed to persist etcd/raft data: %s", err)
 			}
 
 			if !raft.IsEmptySnap(rd.Snapshot) {
