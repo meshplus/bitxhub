@@ -37,12 +37,12 @@ prepare:
 ## make test: Run go unittest
 test:
 	go generate ./...
-	@$(GO) test ${TEST_PKGS} -count=1
+	@$(GO) test -timeout 300s ${TEST_PKGS} -count=1
 
 ## make test-coverage: Test project with cover
 test-coverage:
 	go generate ./...
-	@go test -short -coverprofile cover.out -covermode=atomic ${TEST_PKGS}
+	@go test -timeout 300s -short -coverprofile cover.out -covermode=atomic ${TEST_PKGS}
 	@cat cover.out | grep -v "pb.go" >> coverage.txt
 
 ## make tester: Run integration test

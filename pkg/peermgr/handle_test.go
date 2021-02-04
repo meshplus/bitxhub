@@ -20,7 +20,6 @@ import (
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/ledger/mock_ledger"
-	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/internal/repo"
 	libp2pcert "github.com/meshplus/go-libp2p-cert"
 	"github.com/stretchr/testify/require"
@@ -132,6 +131,7 @@ func NewSwarms(t *testing.T, peerCnt int) []*Swarm {
 				CACert:         cert,
 			},
 			Config: &repo.Config{
+				RepoRoot: "testdata",
 				Ping: repo.Ping{
 					Enable:   true,
 					Duration: 2 * time.Second,
@@ -153,6 +153,88 @@ func NewSwarms(t *testing.T, peerCnt int) []*Swarm {
 		swarms = append(swarms, swarm)
 	}
 	return swarms
+}
+
+func TestSwarm_GetBlockPack(t *testing.T) {
+	peerCnt := 4
+	swarms := NewSwarms(t, peerCnt)
+
+	for swarms[0].CountConnectedPeers() != 3 {
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	msg := &pb.Message{
+		Type: pb.Message_GET_BLOCK,
+		Data: []byte("aaa"),
+	}
+	var err error
+	_, err = swarms[0].Send(2, msg)
+	require.NotNil(t, err)
+	msg.Type = 100
+	_, err = swarms[0].Send(2, msg)
+	require.NotNil(t, err)
+	for i := 0; i < len(swarms); i++ {
+		err = swarms[i].Stop()
+		require.Nil(t, err)
+	}
+}
+
+func TestSwarm_FetchCert(t *testing.T) {
+	peerCnt := 4
+	swarms := NewSwarms(t, peerCnt)
+
+	for swarms[0].CountConnectedPeers() != 3 {
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	msg := &pb.Message{
+		Type: pb.Message_FETCH_CERT,
+	}
+	var res *pb.Message
+	var err error
+	err = retry.Retry(func(attempt uint) error {
+		res, err = swarms[0].Send(2, msg)
+		if err != nil {
+			swarms[0].logger.Errorf(err.Error())
+			return err
+		}
+		return nil
+	}, strategy.Wait(50*time.Millisecond))
+	require.Nil(t, err)
+	require.Equal(t, pb.Message_FETCH_CERT_ACK, res.Type)
+}
+
+func TestSwarm_CheckMasterPier(t *testing.T) {
+	peerCnt := 4
+	swarms := NewSwarms(t, peerCnt)
+
+	for swarms[0].CountConnectedPeers() != 3 {
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	msg := &pb.Message{
+		Type: pb.Message_CHECK_MASTER_PIER,
+		Data: []byte("0x111111122222222333333333"),
+	}
+	res, err := swarms[0].Send(2, msg)
+	require.NotNil(t, err)
+	require.Contains(t, err.Error(), "wait msg timeout")
+	require.Nil(t, res)
+
+	pierName := "0x2222233333444444"
+	piers2 := newPiers()
+	piers1 := newPiers()
+
+	err = piers2.pierMap.setMaster(pierName, "pier-index", 300)
+	require.Nil(t, err)
+
+	swarms[0].piers = piers1
+	swarms[0].piers.pierChan.newChan(pierName)
+	swarms[1].piers = piers2
+	msg.Data = []byte(pierName)
+	swarms[0].Send(2, msg)
+	time.Sleep(500 * time.Millisecond)
+	require.NotNil(t, swarms[0].piers.pierChan.checkAddress(pierName))
 }
 
 func TestSwarm_Send(t *testing.T) {
@@ -289,33 +371,33 @@ func TestSwarm_Send(t *testing.T) {
 	require.NotNil(t, res.Data)
 }
 
-func TestSwarm_AsyncSend(t *testing.T) {
-	peerCnt := 4
-	swarms := NewSwarms(t, peerCnt)
-
-	for swarms[0].CountConnectedPeers() != 3 {
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	orderMsgCh := make(chan events.OrderMessageEvent)
-	orderMsgSub := swarms[2].SubscribeOrderMessage(orderMsgCh)
-
-	defer orderMsgSub.Unsubscribe()
-
-	msg := &pb.Message{
-		Type: pb.Message_CONSENSUS,
-		Data: []byte("1"),
-	}
-	var err error
-	err = retry.Retry(func(attempt uint) error {
-		err = swarms[0].AsyncSend(3, msg)
-		if err != nil {
-			swarms[0].logger.Errorf(err.Error())
-			return err
-		}
-		return nil
-	}, strategy.Wait(50*time.Millisecond))
-	require.Nil(t, err)
-
-	require.NotNil(t, <-orderMsgCh)
-}
+//func TestSwarm_AsyncSend(t *testing.T) {
+//	peerCnt := 4
+//	swarms := NewSwarms(t, peerCnt)
+//
+//	for swarms[0].CountConnectedPeers() != 3 {
+//		time.Sleep(100 * time.Millisecond)
+//	}
+//
+//	orderMsgCh := make(chan events.OrderMessageEvent)
+//	orderMsgSub := swarms[2].SubscribeOrderMessage(orderMsgCh)
+//
+//	defer orderMsgSub.Unsubscribe()
+//
+//	msg := &pb.Message{
+//		Type: pb.Message_CONSENSUS,
+//		Data: []byte("1"),
+//	}
+//	var err error
+//	err = retry.Retry(func(attempt uint) error {
+//		err = swarms[0].AsyncSend(3, msg)
+//		if err != nil {
+//			swarms[0].logger.Errorf(err.Error())
+//			return err
+//		}
+//		return nil
+//	}, strategy.Wait(50*time.Millisecond))
+//	require.Nil(t, err)
+//
+//	require.NotNil(t, <-orderMsgCh)
+//}
