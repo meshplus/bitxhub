@@ -132,7 +132,7 @@ func (swarm *Swarm) handleFetchCertMessage(s network.Stream) error {
 	}
 
 	msg := &pb.Message{
-		Type: pb.Message_FETCH_CERT,
+		Type: pb.Message_FETCH_CERT_ACK,
 		Data: data,
 	}
 
