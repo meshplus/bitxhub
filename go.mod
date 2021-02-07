@@ -13,7 +13,8 @@ require (
 	github.com/gobuffalo/packd v1.0.0
 	github.com/gobuffalo/packr v1.30.1
 	github.com/gogo/protobuf v1.3.2
-	github.com/golang/mock v1.4.3
+	github.com/golang/mock v1.4.4
+	github.com/golangci/golangci-lint v1.23.0 // indirect
 	github.com/google/btree v1.0.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
