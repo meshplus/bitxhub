@@ -23,3 +23,4 @@ mock_*/
 .fabric-samples
 coverage.txt
 docs/.vuepress/dist
+testdata/storage
