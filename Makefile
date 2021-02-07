@@ -17,7 +17,7 @@ GOLDFLAGS += -X "${VERSION_DIR}.CurrentBranch=${GIT_BRANCH}"
 GOLDFLAGS += -X "${VERSION_DIR}.CurrentVersion=${APP_VERSION}"
 
 GO  = GO111MODULE=on go
-TEST_PKGS := $(shell $(GO) list ./... | grep -v 'mock_*' | grep -v 'tester' | grep -v 'proto' | grep -v 'cmd')
+TEST_PKGS := $(shell $(GO) list ./... | grep -v 'mock_*' | grep -v 'tester' | grep -v 'proto' | grep -v 'cmd'| grep -v 'api')
 
 RED=\033[0;31m
 GREEN=\033[0;32m
