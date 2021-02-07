@@ -28,6 +28,7 @@ import (
 	"github.com/meshplus/bitxhub/pkg/order/mempool"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
 	libp2pcert "github.com/meshplus/go-libp2p-cert"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -277,4 +278,12 @@ func newSwarms(t *testing.T, peerCnt int, certVerify bool) ([]*peermgr.Swarm, ma
 		swarms = append(swarms, swarm)
 	}
 	return swarms, nodes
+}
+
+func stopSwarms(t *testing.T, swarms []*peermgr.Swarm) error {
+	for _, swarm := range swarms {
+		err := swarm.Stop()
+		assert.Nil(t, err)
+	}
+	return nil
 }

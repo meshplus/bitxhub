@@ -10,6 +10,7 @@ import (
 func TestSwarm_AskPierMaster(t *testing.T) {
 	peerCnt := 4
 	swarms := NewSwarms(t, peerCnt)
+	defer stopSwarms(t, swarms)
 
 	for swarms[0].CountConnectedPeers() != 3 {
 		time.Sleep(100 * time.Millisecond)
@@ -29,6 +30,7 @@ func TestSwarm_AskPierMaster(t *testing.T) {
 func TestSwarm_Piers(t *testing.T) {
 	peerCnt := 4
 	swarms := NewSwarms(t, peerCnt)
+	defer stopSwarms(t, swarms)
 
 	for swarms[0].CountConnectedPeers() != 3 {
 		time.Sleep(100 * time.Millisecond)

@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/Rican7/retry"
 	"github.com/Rican7/retry/strategy"
 	"github.com/golang/mock/gomock"
@@ -158,6 +160,7 @@ func NewSwarms(t *testing.T, peerCnt int) []*Swarm {
 func TestSwarm_GetBlockPack(t *testing.T) {
 	peerCnt := 4
 	swarms := NewSwarms(t, peerCnt)
+	defer stopSwarms(t, swarms)
 
 	for swarms[0].CountConnectedPeers() != 3 {
 		time.Sleep(100 * time.Millisecond)
@@ -179,9 +182,18 @@ func TestSwarm_GetBlockPack(t *testing.T) {
 	}
 }
 
+func stopSwarms(t *testing.T, swarms []*Swarm) error {
+	for _, swarm := range swarms {
+		err := swarm.Stop()
+		assert.Nil(t, err)
+	}
+	return nil
+}
+
 func TestSwarm_FetchCert(t *testing.T) {
 	peerCnt := 4
 	swarms := NewSwarms(t, peerCnt)
+	defer stopSwarms(t, swarms)
 
 	for swarms[0].CountConnectedPeers() != 3 {
 		time.Sleep(100 * time.Millisecond)
@@ -207,6 +219,7 @@ func TestSwarm_FetchCert(t *testing.T) {
 func TestSwarm_CheckMasterPier(t *testing.T) {
 	peerCnt := 4
 	swarms := NewSwarms(t, peerCnt)
+	defer stopSwarms(t, swarms)
 
 	for swarms[0].CountConnectedPeers() != 3 {
 		time.Sleep(100 * time.Millisecond)
@@ -240,6 +253,7 @@ func TestSwarm_CheckMasterPier(t *testing.T) {
 func TestSwarm_Send(t *testing.T) {
 	peerCnt := 4
 	swarms := NewSwarms(t, peerCnt)
+	defer stopSwarms(t, swarms)
 
 	for swarms[0].CountConnectedPeers() != 3 {
 		time.Sleep(100 * time.Millisecond)

@@ -165,7 +165,7 @@ func (swarm *Swarm) Start() error {
 
 func (swarm *Swarm) Stop() error {
 	swarm.cancel()
-	return nil
+	return swarm.p2p.Stop()
 }
 
 func (swarm *Swarm) Ping() {
