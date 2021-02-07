@@ -47,7 +47,6 @@ test-coverage:
 
 ## make tester: Run integration test
 tester:
-	go generate ./...
 	cd tester && $(GO) test -v -run TestTester
 
 ## make install: Go install the project
