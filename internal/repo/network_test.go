@@ -1,9 +1,10 @@
 package repo
 
 import (
+	"testing"
+
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestNetworkConfig(t *testing.T) {
@@ -57,5 +58,8 @@ func TestRewriteNetworkConfig(t *testing.T) {
 		}
 	}
 	err := RewriteNetworkConfig("./testdata", infos, false)
+	require.Nil(t, err)
+
+	_, err = GetPidFromPrivFile("testdata/certs/node.priv")
 	require.Nil(t, err)
 }
