@@ -53,7 +53,8 @@ func TestVerifyPool_CheckProof(t *testing.T) {
 	mockLedger.EXPECT().GetState(constant.RuleManagerContractAddr.Address(), gomock.Any()).Return(false, rlData)
 	mockEngine.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil).AnyTimes()
 
-	vp := VerifyPool{
+	vp := New(mockLedger, log.NewWithModule("test_verify"))
+	vp = &VerifyPool{
 		ledger: mockLedger,
 		ve:     mockEngine,
 		logger: log.NewWithModule("test_verify"),
