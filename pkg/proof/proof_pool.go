@@ -51,9 +51,7 @@ func (pl *VerifyPool) CheckProof(tx *pb.Transaction) (bool, error) {
 			return false, err
 		}
 		if !ok {
-			pl.logger.WithFields(logrus.Fields{
-				"hash": tx.TransactionHash.String(),
-				"id":   ibtp.ID()}).Warn("ibtp verify failed")
+			pl.logger.WithFields(logrus.Fields{"hash": tx.TransactionHash.String(), "id": ibtp.ID()}).Warn("ibtp verify failed")
 			return false, nil
 		}
 

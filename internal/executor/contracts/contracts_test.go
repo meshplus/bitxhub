@@ -1,10 +1,15 @@
 package contracts
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/meshplus/bitxhub-kit/crypto"
+	"github.com/meshplus/bitxhub-kit/crypto/asym"
+	"github.com/stretchr/testify/require"
 
 	"github.com/golang/mock/gomock"
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
@@ -597,6 +602,178 @@ func TestInterchainManager_HandleIBTPs(t *testing.T) {
 	res := im.HandleIBTPs(data)
 	fmt.Printf("result is %v", string(res.Result))
 	assert.Equal(t, true, res.Ok)
+}
+
+func TestInterchainManager_HandleUnionIBTP(t *testing.T) {
+	mockCtl := gomock.NewController(t)
+	mockStub := mock_stub.NewMockStub(mockCtl)
+
+	from := types.NewAddress([]byte{0}).String()
+	to := types.NewAddress([]byte{1}).String()
+	mockStub.EXPECT().Set(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().Has(gomock.Any()).Return(true).AnyTimes()
+
+	interchain := pb.Interchain{
+		ID:                   from,
+		InterchainCounter:    make(map[string]uint64),
+		ReceiptCounter:       make(map[string]uint64),
+		SourceReceiptCounter: make(map[string]uint64),
+	}
+	interchain.InterchainCounter[to] = 1
+	interchain.ReceiptCounter[to] = 1
+	interchain.SourceReceiptCounter[to] = 1
+	data0, err := interchain.Marshal()
+	assert.Nil(t, err)
+
+	relayChain := &appchainMgr.Appchain{
+		Status:        appchainMgr.APPROVED,
+		ID:            from,
+		Name:          "appchain" + from,
+		Validators:    "",
+		ConsensusType: int32(1),
+		ChainType:     "fabric",
+		Desc:          "",
+		Version:       "",
+		PublicKey:     "pubkey",
+	}
+
+	keys := make([]crypto.PrivateKey, 0, 4)
+	var bv BxhValidators
+	addrs := make([]string, 0, 4)
+	for i := 0; i < 4; i++ {
+		keyPair, err := asym.GenerateKeyPair(crypto.Secp256k1)
+		require.Nil(t, err)
+		keys = append(keys, keyPair)
+		address, err := keyPair.PublicKey().Address()
+		require.Nil(t, err)
+		addrs = append(addrs, address.String())
+	}
+
+	bv.Addresses = addrs
+	addrsData, err := json.Marshal(bv)
+	require.Nil(t, err)
+	relayChain.Validators = string(addrsData)
+
+	data, err := json.Marshal(relayChain)
+	assert.Nil(t, err)
+
+	mockStub.EXPECT().Get(appchainMgr.PREFIX+appchainMgr.PREFIX+from+"-"+from).Return(true, data0).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(data)).AnyTimes()
+	mockStub.EXPECT().AddObject(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().GetTxIndex().Return(uint64(1)).AnyTimes()
+	mockStub.EXPECT().PostInterchainEvent(gomock.Any()).AnyTimes()
+	mockStub.EXPECT().GetTxHash().Return(&types.Hash{}).AnyTimes()
+
+	im := &InterchainManager{mockStub}
+
+	ibtp := &pb.IBTP{
+		From:      from + "-" + from,
+		To:        to,
+		Index:     0,
+		Type:      pb.IBTP_INTERCHAIN,
+		Timestamp: 0,
+		Proof:     nil,
+		Payload:   nil,
+		Version:   "",
+		Extra:     nil,
+	}
+
+	mockStub.EXPECT().Caller().Return(ibtp.From).AnyTimes()
+
+	res := im.handleUnionIBTP(ibtp)
+	assert.False(t, res.Ok)
+	assert.Equal(t, "wrong index, required 2, but 0", string(res.Result))
+
+	ibtp.Index = 2
+
+	ibtpHash := ibtp.Hash()
+	hash := sha256.Sum256([]byte(ibtpHash.String()))
+	sign := &pb.SignResponse{Sign: make(map[string][]byte)}
+	for _, key := range keys {
+		signData, err := key.Sign(hash[:])
+		require.Nil(t, err)
+
+		address, err := key.PublicKey().Address()
+		require.Nil(t, err)
+		ok, err := asym.Verify(crypto.Secp256k1, signData[:], hash[:], *address)
+		require.Nil(t, err)
+		require.True(t, ok)
+		sign.Sign[address.String()] = signData
+	}
+	signData, err := sign.Marshal()
+	require.Nil(t, err)
+	ibtp.Proof = signData
+
+	res = im.handleUnionIBTP(ibtp)
+	assert.True(t, res.Ok)
+
+	ibtp.Type = pb.IBTP_ASSET_EXCHANGE_INIT
+	ibtpHash = ibtp.Hash()
+	hash = sha256.Sum256([]byte(ibtpHash.String()))
+	sign = &pb.SignResponse{Sign: make(map[string][]byte)}
+	for _, key := range keys {
+		signData, err := key.Sign(hash[:])
+		require.Nil(t, err)
+
+		address, err := key.PublicKey().Address()
+		require.Nil(t, err)
+		ok, err := asym.Verify(crypto.Secp256k1, signData[:], hash[:], *address)
+		require.Nil(t, err)
+		require.True(t, ok)
+		sign.Sign[address.String()] = signData
+	}
+	signData, err = sign.Marshal()
+	require.Nil(t, err)
+	ibtp.Proof = signData
+	res = im.handleUnionIBTP(ibtp)
+	assert.True(t, res.Ok)
+
+	ibtp.Type = pb.IBTP_ASSET_EXCHANGE_REFUND
+
+	ibtpHash = ibtp.Hash()
+	hash = sha256.Sum256([]byte(ibtpHash.String()))
+	sign = &pb.SignResponse{Sign: make(map[string][]byte)}
+	for _, key := range keys {
+		signData, err := key.Sign(hash[:])
+		require.Nil(t, err)
+
+		address, err := key.PublicKey().Address()
+		require.Nil(t, err)
+		ok, err := asym.Verify(crypto.Secp256k1, signData[:], hash[:], *address)
+		require.Nil(t, err)
+		require.True(t, ok)
+		sign.Sign[address.String()] = signData
+	}
+	signData, err = sign.Marshal()
+	require.Nil(t, err)
+	ibtp.Proof = signData
+
+	res = im.handleUnionIBTP(ibtp)
+	assert.True(t, res.Ok)
+
+	ibtp.Type = pb.IBTP_ASSET_EXCHANGE_REDEEM
+
+	ibtpHash = ibtp.Hash()
+	hash = sha256.Sum256([]byte(ibtpHash.String()))
+	sign = &pb.SignResponse{Sign: make(map[string][]byte)}
+	for _, key := range keys {
+		signData, err := key.Sign(hash[:])
+		require.Nil(t, err)
+
+		address, err := key.PublicKey().Address()
+		require.Nil(t, err)
+		ok, err := asym.Verify(crypto.Secp256k1, signData[:], hash[:], *address)
+		require.Nil(t, err)
+		require.True(t, ok)
+		sign.Sign[address.String()] = signData
+	}
+	signData, err = sign.Marshal()
+	require.Nil(t, err)
+	ibtp.Proof = signData
+
+	res = im.handleUnionIBTP(ibtp)
+	assert.True(t, res.Ok)
 }
 
 func TestRole_GetRole(t *testing.T) {
