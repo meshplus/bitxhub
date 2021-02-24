@@ -192,8 +192,9 @@ func (nc *nonceCache) getPendingNonce(account string) uint64 {
 	defer nc.pendingMu.RUnlock()
 	nonce, ok := nc.pendingNonces[account]
 	if !ok {
-		// if nonce is unknown, check if there is nonce persisted in db
-		return nc.getNonceFromDB(pendingNonceKey(account))
+		// if nonce is unknown, check if there is committed nonce persisted in db
+		// cause there aer no pending txs in mempool now, pending nonce is equal to committed nonce
+		return nc.getNonceFromDB(committedNonceKey(account))
 	}
 	return nonce
 }
@@ -205,11 +206,8 @@ func (nc *nonceCache) setPendingNonce(account string, nonce uint64) {
 }
 
 func (nc *nonceCache) updatePendingNonce(newPending map[string]uint64) {
-	storageBatch := nc.fallback.NewBatch()
-	defer storageBatch.Commit()
 	for account, pendingNonce := range newPending {
 		nc.setPendingNonce(account, pendingNonce)
-		storageBatch.Put(pendingNonceKey(account), []byte(strconv.FormatUint(pendingNonce, 10)))
 	}
 }
 
@@ -233,10 +231,6 @@ func (nc *nonceCache) getNonceFromDB(key []byte) uint64 {
 		return 1
 	}
 	return nonce
-}
-
-func pendingNonceKey(account string) []byte {
-	return []byte(fmt.Sprintf("pending-%s", account))
 }
 
 func committedNonceKey(account string) []byte {
