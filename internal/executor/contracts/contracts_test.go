@@ -1372,3 +1372,51 @@ func TestAssetExchange_GetStatus(t *testing.T) {
 	assert.True(t, res.Ok)
 	assert.Equal(t, "1", string(res.Result))
 }
+
+func TestInterRelayBroker_InvokeInterRelayContract(t *testing.T) {
+	mockCtl := gomock.NewController(t)
+	mockStub := mock_stub.NewMockStub(mockCtl)
+
+	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Return(true).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&boltvm.Response{
+		Ok:     true,
+		Result: nil,
+	}).AnyTimes()
+
+	realArgs := [2][]byte{[]byte("123"), []byte("123454")}
+	args, err := json.Marshal(realArgs)
+	require.Nil(t, err)
+
+	interRelayBroker := InterRelayBroker{mockStub}
+	res := interRelayBroker.InvokeInterRelayContract(constant.DIDRegistryContractAddr.String(), "", args)
+	require.False(t, res.Ok)
+
+	res = interRelayBroker.InvokeInterRelayContract(constant.MethodRegistryContractAddr.String(), "Synchronize", args)
+	require.True(t, res.Ok)
+
+	res = interRelayBroker.GetInCouterMap()
+	require.True(t, res.Ok)
+
+	res = interRelayBroker.GetOutCouterMap()
+	require.True(t, res.Ok)
+
+	res = interRelayBroker.GetOutMessageMap()
+	require.True(t, res.Ok)
+
+	ibtp := &pb.IBTP{
+		From: "123",
+		To:   "123",
+		Type: pb.IBTP_INTERCHAIN,
+	}
+
+	ibtps := &pb.IBTPs{Ibtps: []*pb.IBTP{ibtp}}
+	data, err := ibtps.Marshal()
+	require.Nil(t, err)
+
+	res = interRelayBroker.RecordIBTPs(data)
+	require.True(t, res.Ok)
+
+	res = interRelayBroker.GetOutMessage("123", 1)
+	require.True(t, res.Ok)
+}

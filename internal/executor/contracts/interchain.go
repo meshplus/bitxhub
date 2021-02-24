@@ -381,8 +381,8 @@ func (x *InterchainManager) checkUnionIBTP(app *appchainMgr.Appchain, ibtp *pb.I
 		}
 	}
 
-	// _, err := verifyMultiSign(app, ibtp, ibtp.Proof)
-	return nil
+	_, err := verifyMultiSign(app, ibtp, ibtp.Proof)
+	return err
 }
 
 // verifyMultiSign .
