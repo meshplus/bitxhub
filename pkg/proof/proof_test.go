@@ -6,6 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/meshplus/bitxhub-kit/crypto"
+	"github.com/meshplus/bitxhub-kit/crypto/asym"
+
 	"github.com/golang/mock/gomock"
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/validator/mock_validator"
@@ -124,42 +127,64 @@ func TestVerifyPool_CheckProof2(t *testing.T) {
 	mockEngine := mock_validator.NewMockEngine(mockCtl)
 
 	chain := &appchainMgr.Appchain{
-		ID:        from,
-		Name:      "appchain A",
-		ChainType: "fabric",
+		Status:        appchainMgr.APPROVED,
+		ID:            from,
+		Name:          "appchain" + from,
+		Validators:    "",
+		ConsensusType: int32(1),
+		ChainType:     "fabric",
+		Desc:          "",
+		Version:       "",
+		PublicKey:     "pubkey",
 	}
 
-	chainData, err := json.Marshal(chain)
+	keys := make([]crypto.PrivateKey, 0, 4)
+	var bv contracts.BxhValidators
+	addrs := make([]string, 0, 4)
+	for i := 0; i < 4; i++ {
+		keyPair, err := asym.GenerateKeyPair(crypto.Secp256k1)
+		require.Nil(t, err)
+		keys = append(keys, keyPair)
+		address, err := keyPair.PublicKey().Address()
+		require.Nil(t, err)
+		addrs = append(addrs, address.String())
+	}
+
+	bv.Addresses = addrs
+	addrsData, err := json.Marshal(bv)
 	require.Nil(t, err)
 
-	rl := &contracts.Rule{
-		Address: contract,
-	}
-	rlData, err := json.Marshal(rl)
+	chainData, err := json.Marshal(chain)
 	require.Nil(t, err)
 
 	mockLedger.EXPECT().GetState(constant.AppchainMgrContractAddr.Address(), gomock.Any()).Return(true, chainData)
 	mockEngine.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil).AnyTimes()
 
-	vp := VerifyPool{
-		ledger: mockLedger,
-		ve:     mockEngine,
-		logger: log.NewWithModule("test_verify"),
+	ibtp := getIBTP(t, 1, pb.IBTP_RECEIPT_SUCCESS, nil)
+	ibtpHash := ibtp.Hash()
+	hash := sha256.Sum256([]byte(ibtpHash.String()))
+	sign := &pb.SignResponse{Sign: make(map[string][]byte)}
+	for _, key := range keys {
+		signData, err := key.Sign(hash[:])
+		require.Nil(t, err)
+
+		address, err := key.PublicKey().Address()
+		require.Nil(t, err)
+		ok, err := asym.Verify(crypto.Secp256k1, signData[:], hash[:], *address)
+		require.Nil(t, err)
+		require.True(t, ok)
+		sign.Sign[address.String()] = signData
 	}
+	signData, err := sign.Marshal()
+	require.Nil(t, err)
+	ibtp.Proof = signData
 
-	proof := []byte("test_proof")
-	proofHash := sha256.Sum256(proof)
+	ok, err := verifyMultiSign(chain, ibtp, nil)
+	require.NotNil(t, err)
+	require.False(t, ok)
 
-	txWithIBTP := &pb.Transaction{
-		From:  types.NewAddressByStr(from),
-		To:    types.NewAddressByStr(to),
-		IBTP:  getIBTP(t, 1, pb.IBTP_RECEIPT_SUCCESS, proofHash[:]),
-		Extra: proof,
-	}
-
-	mockLedger.EXPECT().GetState(constant.RuleManagerContractAddr.Address(), gomock.Any()).Return(true, rlData)
-	txWithIBTP.TransactionHash = txWithIBTP.Hash()
-	ok, err := vp.CheckProof(txWithIBTP)
+	chain.Validators = string(addrsData)
+	ok, err = verifyMultiSign(chain, ibtp, nil)
 	require.Nil(t, err)
 	require.True(t, ok)
 }

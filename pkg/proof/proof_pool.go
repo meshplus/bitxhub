@@ -8,7 +8,8 @@ import (
 	"strings"
 	"sync"
 
-	crypto "github.com/libp2p/go-libp2p-crypto"
+	"github.com/meshplus/bitxhub-kit/crypto"
+
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/validator"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
