@@ -701,6 +701,8 @@ github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20210112105719-497a79914e4e h1:gQf
 github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20210112105719-497a79914e4e/go.mod h1:MHf0waxqnW4Qwfpq66jqvJP+FritN5OTs/8wlQcNlJY=
 github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20210126064930-8245c5b45956 h1:f1CXhJSLo/JuTXLjv5PRtvLvzq7mxzD58Aet27k5QlU=
 github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20210126064930-8245c5b45956/go.mod h1:MHf0waxqnW4Qwfpq66jqvJP+FritN5OTs/8wlQcNlJY=
+github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20210202024251-5a1c2b3eaf0c h1:BPQrfOSEWb5Qi0Bsp5lSwg9ceqQ5T23Ex16pAY+6l0c=
+github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20210202024251-5a1c2b3eaf0c/go.mod h1:MHf0waxqnW4Qwfpq66jqvJP+FritN5OTs/8wlQcNlJY=
 github.com/meshplus/bitxhub-kit v1.0.0-rc1/go.mod h1:ra/AhOkPvpElI+wXrB9G6DjdcrdxFU3vMwA5MYKr9D0=
 github.com/meshplus/bitxhub-kit v1.0.0/go.mod h1:7cWyhXWZfrQ3+EaxkRoXfuiG3Y5R9DXYJomeZKkETW8=
 github.com/meshplus/bitxhub-kit v1.1.1 h1:vkPO88oA3+Kpc0N8lIgfj/U52KBuI+633hPbMYt1xm8=
@@ -714,6 +716,8 @@ github.com/meshplus/bitxhub-kit v1.1.2-0.20210112075018-319e668d6359/go.mod h1:K
 github.com/meshplus/bitxhub-model v1.1.2-0.20201021152621-0b3c17c54b23/go.mod h1:4qWBZx5wv7WZzUqiuBsbkQqQ2Ju8aOFpsoNpBBNy8Us=
 github.com/meshplus/bitxhub-model v1.1.2-0.20210107045700-cee670a2e117 h1:q1FT1DYWg2Ntf6A6wWiEx2WIEaEGBVgaIE1gAIVJKeI=
 github.com/meshplus/bitxhub-model v1.1.2-0.20210107045700-cee670a2e117/go.mod h1:x3H+TL24wcByzHegenLfs+5PQkQGNsk8eCm31QJMa+Q=
+github.com/meshplus/bitxhub-model v1.1.2-0.20210120083349-c7a006b03fcb h1:PxGQL22OVxozkvEgVvxHol9WDqCZlhyvnd0Bu0HBX1Y=
+github.com/meshplus/bitxhub-model v1.1.2-0.20210120083349-c7a006b03fcb/go.mod h1:x3H+TL24wcByzHegenLfs+5PQkQGNsk8eCm31QJMa+Q=
 github.com/meshplus/go-libp2p-cert v0.0.0-20210120021632-1578cf63e06a h1:eg1BDjSOsz3cdH49kPE8c2XnIFlLTPEMJLqpofV/OEY=
 github.com/meshplus/go-libp2p-cert v0.0.0-20210120021632-1578cf63e06a/go.mod h1:rS4AYMqKypLn2IPEnHICP//V2v16SZo4CWUbwMdihl0=
 github.com/meshplus/go-libp2p-cert v0.0.0-20210125063330-7c25fd5b7a49 h1:F8dpLJZW6FxqinAQcZKTkoymZgxnqlNvTebNqWVMEYI=

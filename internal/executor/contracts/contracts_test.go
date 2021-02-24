@@ -422,7 +422,23 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 
 	f2 := mockStub.EXPECT().Get(appchainMgr.PREFIX+from).Return(true, data0).AnyTimes()
 	mockStub.EXPECT().Get(appchainMgr.PREFIX+to).Return(true, data0).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+
+	appchain := &appchainMgr.Appchain{
+		ID:            "",
+		Name:          "Relay1",
+		Validators:    "",
+		ConsensusType: 0,
+		ChainType:     "appchain",
+		Desc:          "Relay1",
+		Version:       "1",
+		PublicKey:     "",
+	}
+	appchainData, err := json.Marshal(appchain)
+	assert.Nil(t, err)
+
+	// mockStub.EXPECT().IsRelayIBTP(gomock.Any()).Return(true).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(gomock.Any(), gomock.Eq("GetAppchain"), gomock.Any()).Return(boltvm.Success(appchainData)).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(gomock.Any(), gomock.Not("GetAppchain"), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().AddObject(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().GetTxIndex().Return(uint64(1)).AnyTimes()
 	mockStub.EXPECT().PostInterchainEvent(gomock.Any()).AnyTimes()
@@ -435,6 +451,12 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 		From: from,
 	}
 
+	// srcChain := &appchainMgr.Appchain{}
+	// ress := im.CrossInvoke(constant.AppchainMgrContractAddr.String(), "GetAppchain", pb.String(ibtp.From))
+	// t.Log("ress: ", ress)
+	// if err := json.Unmarshal(ress.Result, srcChain); err != nil {
+	// 	t.Log("err: ", err)
+	// }
 	res := im.HandleIBTP(ibtp)
 	assert.False(t, res.Ok)
 	assert.Equal(t, "this appchain does not exist", string(res.Result))
@@ -658,7 +680,7 @@ func TestInterchainManager_HandleUnionIBTP(t *testing.T) {
 	data, err := json.Marshal(relayChain)
 	assert.Nil(t, err)
 
-	mockStub.EXPECT().Get(appchainMgr.PREFIX+appchainMgr.PREFIX+from+"-"+from).Return(true, data0).AnyTimes()
+	mockStub.EXPECT().Get(appchainMgr.PREFIX+from+"-"+from).Return(true, data0).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(data)).AnyTimes()
 	mockStub.EXPECT().AddObject(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().GetTxIndex().Return(uint64(1)).AnyTimes()

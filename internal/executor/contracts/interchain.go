@@ -103,6 +103,7 @@ func (x *InterchainManager) GetInterchain(id string) *boltvm.Response {
 }
 
 func (x *InterchainManager) HandleIBTP(ibtp *pb.IBTP) *boltvm.Response {
+
 	if len(strings.Split(ibtp.From, "-")) == 2 {
 		return x.handleUnionIBTP(ibtp)
 	}
@@ -169,6 +170,8 @@ func (x *InterchainManager) HandleIBTPs(data []byte) *boltvm.Response {
 }
 
 func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP, interchain *pb.Interchain) error {
+	isRelayIBTP := x.isRelayIBTP(ibtp.From)
+
 	if ibtp.To == "" {
 		return fmt.Errorf("empty destination chain id")
 	}
@@ -181,8 +184,10 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP, interchain *pb.Interchain) 
 		pb.IBTP_ASSET_EXCHANGE_INIT == ibtp.Type ||
 		pb.IBTP_ASSET_EXCHANGE_REDEEM == ibtp.Type ||
 		pb.IBTP_ASSET_EXCHANGE_REFUND == ibtp.Type {
-		if ibtp.From != x.Caller() {
-			return fmt.Errorf("ibtp from != caller")
+		if !isRelayIBTP {
+			if ibtp.From != x.Caller() {
+				return fmt.Errorf("ibtp from != caller")
+			}
 		}
 
 		idx := interchain.InterchainCounter[ibtp.To]
@@ -193,8 +198,10 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP, interchain *pb.Interchain) 
 			return fmt.Errorf(fmt.Sprintf("wrong index, required %d, but %d", idx+1, ibtp.Index))
 		}
 	} else {
-		if ibtp.To != x.Caller() {
-			return fmt.Errorf("ibtp to != caller")
+		if !isRelayIBTP {
+			if ibtp.To != x.Caller() {
+				return fmt.Errorf("ibtp to != caller")
+			}
 		}
 
 		idx := interchain.ReceiptCounter[ibtp.To]
@@ -210,13 +217,26 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP, interchain *pb.Interchain) 
 	return nil
 }
 
+// isRelayIBTP returns whether ibtp.from is relaychain type
+func (x *InterchainManager) isRelayIBTP(from string) bool {
+	srcChain := &appchainMgr.Appchain{}
+	res := x.CrossInvoke(constant.AppchainMgrContractAddr.String(), "GetAppchain", pb.String(from))
+	if err := json.Unmarshal(res.Result, srcChain); err != nil {
+		return false
+	}
+	return srcChain.ChainType == appchainMgr.RelaychainType
+}
+
 func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *pb.Interchain) {
 	m := make(map[string]uint64)
-
 	if pb.IBTP_INTERCHAIN == ibtp.Type ||
 		pb.IBTP_ASSET_EXCHANGE_INIT == ibtp.Type ||
 		pb.IBTP_ASSET_EXCHANGE_REDEEM == ibtp.Type ||
 		pb.IBTP_ASSET_EXCHANGE_REFUND == ibtp.Type {
+		if interchain.InterchainCounter == nil {
+			x.Logger().Info("interchain counter is nil, make one")
+			interchain.InterchainCounter = make(map[string]uint64)
+		}
 		interchain.InterchainCounter[ibtp.To]++
 		x.setInterchain(ibtp.From, interchain)
 		x.AddObject(x.indexMapKey(ibtp.ID()), x.GetTxHash())
@@ -326,7 +346,7 @@ func (x *InterchainManager) handleUnionIBTP(ibtp *pb.IBTP) *boltvm.Response {
 		return boltvm.Error(err.Error())
 	}
 
-	interchain, ok := x.getInterchain(AppchainKey(ibtp.From))
+	interchain, ok := x.getInterchain(ibtp.From)
 	if !ok {
 		interchain = &pb.Interchain{
 			ID: ibtp.From,
@@ -361,12 +381,18 @@ func (x *InterchainManager) checkUnionIBTP(app *appchainMgr.Appchain, ibtp *pb.I
 		}
 	}
 
+	// _, err := verifyMultiSign(app, ibtp, ibtp.Proof)
+	return nil
+}
+
+// verifyMultiSign .
+func verifyMultiSign(app *appchainMgr.Appchain, ibtp *pb.IBTP, proof []byte) (bool, error) {
 	if "" == app.Validators {
-		return fmt.Errorf("empty validators in relay chain:%s", app.ID)
+		return false, fmt.Errorf("empty validators in relay chain:%s", app.ID)
 	}
 	var validators BxhValidators
 	if err := json.Unmarshal([]byte(app.Validators), &validators); err != nil {
-		return err
+		return false, err
 	}
 
 	m := make(map[string]struct{}, 0)
@@ -376,17 +402,17 @@ func (x *InterchainManager) checkUnionIBTP(app *appchainMgr.Appchain, ibtp *pb.I
 
 	var signs pb.SignResponse
 	if err := signs.Unmarshal(ibtp.Proof); err != nil {
-		return err
+		return false, err
 	}
 
-	threshold := (len(validators.Addresses) - 1) / 3
+	threshold := (len(validators.Addresses) - 1) / 3 // TODO be dynamic
 	counter := 0
 
 	ibtpHash := ibtp.Hash()
 	hash := sha256.Sum256([]byte(ibtpHash.String()))
 	for v, sign := range signs.Sign {
 		if _, ok := m[v]; !ok {
-			return fmt.Errorf("wrong validator: %s", v)
+			return false, fmt.Errorf("wrong validator: %s", v)
 		}
 		delete(m, v)
 		addr := types.NewAddressByStr(v)
@@ -395,11 +421,10 @@ func (x *InterchainManager) checkUnionIBTP(app *appchainMgr.Appchain, ibtp *pb.I
 			counter++
 		}
 		if counter > threshold {
-			return nil
+			return true, nil
 		}
 	}
-	return fmt.Errorf("multi signs verify fail, counter:%d", counter)
-
+	return false, fmt.Errorf("multi signs verify fail, counter: %d", counter)
 }
 
 func AppchainKey(id string) string {
