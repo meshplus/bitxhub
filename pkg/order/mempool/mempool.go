@@ -40,7 +40,7 @@ type External interface {
 }
 
 // NewMempool return the mempool instance.
-func NewMempool(config *Config) MemPool {
+func NewMempool(config *Config) (MemPool, error) {
 	return newMempoolImpl(config)
 }
 

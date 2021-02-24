@@ -96,13 +96,17 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 		ID:          config.ID,
 		ChainHeight: config.Applied,
 		Logger:      config.Logger,
+		StoragePath: config.StoragePath,
 
 		BatchSize:      raftConfig.RAFT.MempoolConfig.BatchSize,
 		PoolSize:       raftConfig.RAFT.MempoolConfig.PoolSize,
 		TxSliceSize:    raftConfig.RAFT.MempoolConfig.TxSliceSize,
 		TxSliceTimeout: raftConfig.RAFT.MempoolConfig.TxSliceTimeout,
 	}
-	mempoolInst := mempool.NewMempool(mempoolConf)
+	mempoolInst, err := mempool.NewMempool(mempoolConf)
+	if err != nil {
+		return nil, fmt.Errorf("create mempool instance: %w", err)
+	}
 
 	var batchTimeout time.Duration
 	if raftConfig.RAFT.BatchTimeout == 0 {

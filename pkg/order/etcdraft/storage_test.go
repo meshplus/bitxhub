@@ -13,8 +13,9 @@ import (
 func TestRecoverFromSnapshot(t *testing.T) {
 	ast := assert.New(t)
 	defer os.RemoveAll("./testdata/storage")
-	node := mockRaftNode(t)
-	err := node.Start()
+	node, err := mockRaftNode(t)
+	ast.Nil(err)
+	err = node.Start()
 	ast.Nil(err)
 	snap := raftpb.Snapshot{Data: []byte("test"), Metadata: raftpb.SnapshotMetadata{Index: uint64(2), Term: uint64(1)}}
 	err = node.raftStorage.snap.SaveSnap(snap)
@@ -43,8 +44,9 @@ func TestRecoverFromSnapshot(t *testing.T) {
 func TestTakeSnapshotAndGC(t *testing.T) {
 	ast := assert.New(t)
 	defer os.RemoveAll("./testdata/storage")
-	node := mockRaftNode(t)
-	err := node.Start()
+	node, err := mockRaftNode(t)
+	ast.Nil(err)
+	err = node.Start()
 	ast.Nil(err)
 	entries := []raftpb.Entry{raftpb.Entry{Term: uint64(1), Index: uint64(1)}}
 	node.raftStorage.ram.Append(entries)
@@ -82,8 +84,9 @@ func TestTakeSnapshotAndGC(t *testing.T) {
 func TestCreateOrReadWAL(t *testing.T) {
 	ast := assert.New(t)
 	defer os.RemoveAll("./testdata/storage")
-	node := mockRaftNode(t)
-	err := node.Start()
+	node, err := mockRaftNode(t)
+	ast.Nil(err)
+	err = node.Start()
 	ast.Nil(err)
 	entries := []raftpb.Entry{raftpb.Entry{Term: uint64(1), Index: uint64(1)}}
 	snap := raftpb.Snapshot{Data: []byte("test"), Metadata: raftpb.SnapshotMetadata{Index: uint64(2), Term: uint64(1)}}
