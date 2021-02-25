@@ -1,15 +1,12 @@
 package contracts
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"strings"
 
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/boltvm"
-	"github.com/meshplus/bitxhub-kit/crypto"
-	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -381,51 +378,51 @@ func (x *InterchainManager) checkUnionIBTP(app *appchainMgr.Appchain, ibtp *pb.I
 		}
 	}
 
-	_, err := verifyMultiSign(app, ibtp, ibtp.Proof)
-	return err
+	//_, err := verifyMultiSign(app, ibtp, ibtp.Proof)
+	return nil
 }
 
-// verifyMultiSign .
-func verifyMultiSign(app *appchainMgr.Appchain, ibtp *pb.IBTP, proof []byte) (bool, error) {
-	if "" == app.Validators {
-		return false, fmt.Errorf("empty validators in relay chain:%s", app.ID)
-	}
-	var validators BxhValidators
-	if err := json.Unmarshal([]byte(app.Validators), &validators); err != nil {
-		return false, err
-	}
-
-	m := make(map[string]struct{}, 0)
-	for _, validator := range validators.Addresses {
-		m[validator] = struct{}{}
-	}
-
-	var signs pb.SignResponse
-	if err := signs.Unmarshal(ibtp.Proof); err != nil {
-		return false, err
-	}
-
-	threshold := (len(validators.Addresses) - 1) / 3 // TODO be dynamic
-	counter := 0
-
-	ibtpHash := ibtp.Hash()
-	hash := sha256.Sum256([]byte(ibtpHash.String()))
-	for v, sign := range signs.Sign {
-		if _, ok := m[v]; !ok {
-			return false, fmt.Errorf("wrong validator: %s", v)
-		}
-		delete(m, v)
-		addr := types.NewAddressByStr(v)
-		ok, _ := asym.Verify(crypto.Secp256k1, sign, hash[:], *addr)
-		if ok {
-			counter++
-		}
-		if counter > threshold {
-			return true, nil
-		}
-	}
-	return false, fmt.Errorf("multi signs verify fail, counter: %d", counter)
-}
+//// verifyMultiSign .
+//func verifyMultiSign(app *appchainMgr.Appchain, ibtp *pb.IBTP, proof []byte) (bool, error) {
+//	if "" == app.Validators {
+//		return false, fmt.Errorf("empty validators in relay chain:%s", app.ID)
+//	}
+//	var validators BxhValidators
+//	if err := json.Unmarshal([]byte(app.Validators), &validators); err != nil {
+//		return false, err
+//	}
+//
+//	m := make(map[string]struct{}, 0)
+//	for _, validator := range validators.Addresses {
+//		m[validator] = struct{}{}
+//	}
+//
+//	var signs pb.SignResponse
+//	if err := signs.Unmarshal(ibtp.Proof); err != nil {
+//		return false, err
+//	}
+//
+//	threshold := (len(validators.Addresses) - 1) / 3 // TODO be dynamic
+//	counter := 0
+//
+//	ibtpHash := ibtp.Hash()
+//	hash := sha256.Sum256([]byte(ibtpHash.String()))
+//	for v, sign := range signs.Sign {
+//		if _, ok := m[v]; !ok {
+//			return false, fmt.Errorf("wrong validator: %s", v)
+//		}
+//		delete(m, v)
+//		addr := types.NewAddressByStr(v)
+//		ok, _ := asym.Verify(crypto.Secp256k1, sign, hash[:], *addr)
+//		if ok {
+//			counter++
+//		}
+//		if counter > threshold {
+//			return true, nil
+//		}
+//	}
+//	return false, fmt.Errorf("multi signs verify fail, counter: %d", counter)
+//}
 
 func AppchainKey(id string) string {
 	return appchainMgr.PREFIX + id
