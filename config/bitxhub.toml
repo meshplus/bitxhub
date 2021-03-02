@@ -25,9 +25,14 @@ solo = false
   duration = "15s"
 
 [security]
-enable_tls = false
-pem_file_path = "certs/server.pem"
-server_key_path = "certs/server.key"
+  enable_tls = false
+  pem_file_path = "certs/server.pem"
+  server_key_path = "certs/server.key"
+
+[limiter]
+  interval= "50ms"
+  quantum= 500
+  capacity= 10000
 
 [log]
   level = "info"

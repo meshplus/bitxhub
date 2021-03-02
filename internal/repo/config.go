@@ -33,6 +33,7 @@ type Config struct {
 	Port     `json:"port"`
 	PProf    `json:"pprof"`
 	Monitor  `json:"monitor"`
+	Limiter  `json:"limiter"`
 	Gateway  `json:"gateway"`
 	Ping     `json:"ping"`
 	Log      `json:"log"`
@@ -67,6 +68,12 @@ type PProf struct {
 	PType    string        `toml:"ptype" json:"ptype"`
 	Mode     string        `toml:"mode" json:"mode"`
 	Duration time.Duration `toml:"duration" json:"duration"`
+}
+
+type Limiter struct {
+	Interval time.Duration `toml:"interval" json:"interval"`
+	Quantum  int64         `toml:"quantum" json:"quantum"`
+	Capacity int64         `toml:"capacity" json:"capacity"`
 }
 
 type Gateway struct {

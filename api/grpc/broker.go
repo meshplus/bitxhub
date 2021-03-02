@@ -6,11 +6,14 @@ import (
 	"net"
 	"path/filepath"
 
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	"github.com/grpc-ecosystem/go-grpc-middleware/ratelimit"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
 	"github.com/meshplus/bitxhub/internal/loggers"
 	"github.com/meshplus/bitxhub/internal/repo"
+	"github.com/meshplus/bitxhub/pkg/ratelimiter"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -28,11 +31,12 @@ type ChainBrokerService struct {
 }
 
 func NewChainBrokerService(api api.CoreAPI, config *repo.Config, genesis *repo.Genesis) (*ChainBrokerService, error) {
-	ctx, cancel := context.WithCancel(context.Background())
+	limiter := config.Limiter
+	rateLimiter := ratelimiter.NewRateLimiterWithQuantum(limiter.Interval, limiter.Capacity, limiter.Quantum)
 
 	grpcOpts := []grpc.ServerOption{
-		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
-		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
+		grpc_middleware.WithUnaryServerChain(ratelimit.UnaryServerInterceptor(rateLimiter), grpc_prometheus.UnaryServerInterceptor),
+		grpc_middleware.WithStreamServerChain(ratelimit.StreamServerInterceptor(rateLimiter), grpc_prometheus.StreamServerInterceptor),
 		grpc.MaxConcurrentStreams(1000),
 		grpc.InitialWindowSize(10 * 1024 * 1024),
 		grpc.InitialConnWindowSize(100 * 1024 * 1024),
@@ -48,6 +52,7 @@ func NewChainBrokerService(api api.CoreAPI, config *repo.Config, genesis *repo.G
 		grpcOpts = append(grpcOpts, grpc.Creds(cred))
 	}
 	server := grpc.NewServer(grpcOpts...)
+	ctx, cancel := context.WithCancel(context.Background())
 	return &ChainBrokerService{
 		logger:  loggers.Logger(loggers.API),
 		config:  config,
