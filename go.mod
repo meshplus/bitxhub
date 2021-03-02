@@ -14,18 +14,18 @@ require (
 	github.com/gobuffalo/packr v1.30.1
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/mock v1.4.4
-	github.com/golangci/golangci-lint v1.23.0 // indirect
 	github.com/google/btree v1.0.0
+	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/hokaccha/go-prettyjson v0.0.0-20190818114111-108c894c2c0e
 	github.com/hyperledger/fabric v2.1.1+incompatible // indirect
 	github.com/hyperledger/fabric-protos-go v0.0.0-20201028172056-a3136dde2354 // indirect
+	github.com/juju/ratelimit v1.0.1
 	github.com/lestrrat-go/file-rotatelogs v2.4.0+incompatible // indirect
 	github.com/lestrrat-go/strftime v1.0.3 // indirect
 	github.com/libp2p/go-libp2p-core v0.5.6
-	github.com/libp2p/go-libp2p-crypto v0.1.0
 	github.com/magiconair/properties v1.8.4
 	github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20210126064930-8245c5b45956
 	github.com/meshplus/bitxhub-kit v1.1.2-0.20210112075018-319e668d6359
@@ -42,7 +42,9 @@ require (
 	github.com/rs/cors v1.7.0
 	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/cast v1.3.1
+	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.7.1
+	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/stretchr/testify v1.6.0
 	github.com/sykesm/zap-logfmt v0.0.4 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20190923125748-758128399b1d
