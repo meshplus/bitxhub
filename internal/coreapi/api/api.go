@@ -1,6 +1,7 @@
 package api
 
 import (
+	"github.com/bitxhub/bitxid"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -29,14 +30,14 @@ type BrokerAPI interface {
 	GetPendingNonceByAccount(account string) uint64
 
 	// AddPier
-	AddPier(pid string, isUnion bool) (chan *pb.InterchainTxWrappers, error)
+	AddPier(did bitxid.DID, pierID string, isUnion bool) (chan *pb.InterchainTxWrappers, error)
 
 	// RemovePier
-	RemovePier(pid string, isUnion bool)
+	RemovePier(did bitxid.DID, pierID string, isUnion bool)
 
 	GetBlockHeader(begin, end uint64, ch chan<- *pb.BlockHeader) error
 
-	GetInterchainTxWrappers(pid string, begin, end uint64, ch chan<- *pb.InterchainTxWrappers) error
+	GetInterchainTxWrappers(did string, begin, end uint64, ch chan<- *pb.InterchainTxWrappers) error
 
 	// OrderReady
 	OrderReady() error

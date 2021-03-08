@@ -2,7 +2,9 @@ package grpc
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/bitxhub/bitxid"
 	"github.com/meshplus/bitxhub-model/pb"
 )
 
@@ -14,6 +16,9 @@ func (cbs *ChainBrokerService) GetInterchainTxWrappers(req *pb.GetInterchainTxWr
 
 	if meta.Height < req.End {
 		req.End = meta.Height
+	}
+	if !bitxid.DID(req.Pid).IsValidFormat() {
+		return fmt.Errorf("invalid did format to get interchain wrappers")
 	}
 
 	ch := make(chan *pb.InterchainTxWrappers, req.End-req.Begin+1)

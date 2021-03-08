@@ -3,6 +3,7 @@ module github.com/meshplus/bitxhub
 require (
 	github.com/Rican7/retry v0.1.0
 	github.com/aristanetworks/goarista v0.0.0-20200310212843-2da4c1f5881b // indirect
+	github.com/bitxhub/bitxid v0.2.0
 	github.com/cbergoon/merkletree v0.2.0
 	github.com/cheynewallace/tabby v1.1.1
 	github.com/common-nighthawk/go-figure v0.0.0-20190529165535-67e0ed34491a

@@ -22,6 +22,7 @@ import (
 const (
 	from  = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b991"
 	to    = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b992"
+	did   = "did:bitxhub:appchain001:0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b992"
 	other = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b993"
 )
 
@@ -125,7 +126,7 @@ func TestInterchainRouter_AddPier(t *testing.T) {
 	isUnion := false
 	router := testStartRouter(t)
 
-	interchainWrappersC, err := router.AddPier(to, isUnion)
+	interchainWrappersC, err := router.AddPier(did, to, isUnion)
 	require.Nil(t, err)
 
 	var txs []*pb.Transaction
@@ -156,7 +157,7 @@ func TestInterchainRouter_AddPier(t *testing.T) {
 		require.Errorf(t, fmt.Errorf("not found interchainWrappers"), "")
 	}
 
-	router.RemovePier(to, isUnion)
+	router.RemovePier(did, to, isUnion)
 
 	require.Nil(t, router.Stop())
 }
@@ -165,7 +166,7 @@ func TestInterchainRouter_AddNonexistentPier(t *testing.T) {
 	isUnion := false
 	router := testStartRouter(t)
 
-	interchainWrappersC, err := router.AddPier(to, isUnion)
+	interchainWrappersC, err := router.AddPier(did, to, isUnion)
 	require.Nil(t, err)
 
 	var txs []*pb.Transaction
@@ -196,7 +197,7 @@ func TestInterchainRouter_AddNonexistentPier(t *testing.T) {
 		require.Errorf(t, fmt.Errorf("not found interchainWrappers"), "")
 	}
 
-	router.RemovePier(to, isUnion)
+	router.RemovePier(did, to, isUnion)
 
 	require.Nil(t, router.Stop())
 }
@@ -205,7 +206,7 @@ func TestInterchainRouter_AddUnionPier(t *testing.T) {
 	isUnion := true
 	router := testStartRouter(t)
 
-	interchainWrappersC, err := router.AddPier(to, isUnion)
+	interchainWrappersC, err := router.AddPier(did, to, isUnion)
 	require.Nil(t, err)
 
 	var txs []*pb.Transaction
@@ -236,7 +237,7 @@ func TestInterchainRouter_AddUnionPier(t *testing.T) {
 		require.Errorf(t, fmt.Errorf("not found interchainWrappers"), "")
 	}
 
-	router.RemovePier(to, isUnion)
+	router.RemovePier(did, to, isUnion)
 
 	require.Nil(t, router.Stop())
 }
