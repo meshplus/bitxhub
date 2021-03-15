@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/bitxhub/bitxid"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
+	"github.com/meshplus/bitxid"
 	"github.com/sirupsen/logrus"
 	"go.uber.org/atomic"
 )
@@ -66,19 +66,20 @@ func (router *InterchainRouter) Stop() error {
 func (router *InterchainRouter) AddPier(key bitxid.DID, pierID string, isUnion bool) (chan *pb.InterchainTxWrappers, error) {
 	c := make(chan *pb.InterchainTxWrappers, blockChanNumber)
 	if isUnion {
-		raw, _ := router.unionPiers.LoadOrStore(string(key), event.Feed{})
+		raw, _ := router.unionPiers.LoadOrStore(string(key), &event.Feed{})
 		//if !ok {
 		//	return nil, fmt.Errorf("did %s for subscription is not exist", key)
 		//}
-		subBus := raw.(event.Feed)
+		subBus := raw.(*event.Feed)
 		sub := subBus.Subscribe(c)
 		router.unionSubscriptions.Store(pierID, sub)
 	} else {
-		raw, _ := router.piers.LoadOrStore(string(key), event.Feed{})
+		raw, _ := router.piers.LoadOrStore(string(key), &event.Feed{})
 		//if !ok {
 		//	return nil, fmt.Errorf("did %s for subscription is not exist", key)
 		//}
-		subBus := raw.(event.Feed)
+		subBus := raw.(*event.Feed)
+		router.logger.Errorf("feed addr is %v", subBus)
 		sub := subBus.Subscribe(c)
 		router.subscriptions.Store(pierID, sub)
 	}
@@ -119,7 +120,7 @@ func (router *InterchainRouter) PutBlockAndMeta(block *pb.Block, meta *pb.Interc
 	ret := router.classify(block, meta)
 	router.piers.Range(func(k, value interface{}) bool {
 		key := k.(string)
-		w := value.(event.Feed)
+		w := value.(*event.Feed)
 		wrappers := make([]*pb.InterchainTxWrapper, 0)
 		_, ok := ret[key]
 		if ok {
@@ -145,7 +146,7 @@ func (router *InterchainRouter) PutBlockAndMeta(block *pb.Block, meta *pb.Interc
 
 	interchainTxWrappers := router.generateUnionInterchainTxWrappers(ret, block, meta)
 	router.unionPiers.Range(func(k, v interface{}) bool {
-		w := v.(event.Feed)
+		w := v.(*event.Feed)
 		w.Send(interchainTxWrappers)
 		return true
 	})

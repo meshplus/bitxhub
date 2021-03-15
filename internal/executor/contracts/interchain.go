@@ -13,6 +13,7 @@ import (
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxid"
 )
 
 type InterchainManager struct {
@@ -23,16 +24,16 @@ type BxhValidators struct {
 	Addresses []string `json:"addresses"`
 }
 
-func (x *InterchainManager) Register(chainId string) *boltvm.Response {
-	interchain, ok := x.getInterchain(chainId)
+func (x *InterchainManager) Register(method string) *boltvm.Response {
+	interchain, ok := x.getInterchain(method)
 	if !ok {
 		interchain = &pb.Interchain{
-			ID:                   chainId,
+			ID:                   method,
 			InterchainCounter:    make(map[string]uint64),
 			ReceiptCounter:       make(map[string]uint64),
 			SourceReceiptCounter: make(map[string]uint64),
 		}
-		x.setInterchain(chainId, interchain)
+		x.setInterchain(method, interchain)
 	}
 	body, err := interchain.Marshal()
 	if err != nil {
@@ -85,8 +86,8 @@ func (x *InterchainManager) setInterchain(id string, interchain *pb.Interchain) 
 }
 
 // Interchain returns information of the interchain count, Receipt count and SourceReceipt count
-func (x *InterchainManager) Interchain() *boltvm.Response {
-	ok, data := x.Get(AppchainKey(x.Caller()))
+func (x *InterchainManager) Interchain(method string) *boltvm.Response {
+	ok, data := x.Get(AppchainKey(method))
 	if !ok {
 		return boltvm.Error(fmt.Errorf("this appchain does not exist").Error())
 	}
@@ -103,7 +104,6 @@ func (x *InterchainManager) GetInterchain(id string) *boltvm.Response {
 }
 
 func (x *InterchainManager) HandleIBTP(ibtp *pb.IBTP) *boltvm.Response {
-
 	if len(strings.Split(ibtp.From, "-")) == 2 {
 		return x.handleUnionIBTP(ibtp)
 	}
@@ -139,23 +139,33 @@ func (x *InterchainManager) HandleIBTP(ibtp *pb.IBTP) *boltvm.Response {
 }
 
 func (x *InterchainManager) HandleIBTPs(data []byte) *boltvm.Response {
-	interchain, _, err := x.checkAppchain(x.Caller())
-	if err != nil {
-		return boltvm.Error(err.Error())
-	}
-
 	ibtps := &pb.IBTPs{}
 	if err := ibtps.Unmarshal(data); err != nil {
 		return boltvm.Error(err.Error())
 	}
 
+	// check if all ibtp has the same src address
+	if len(ibtps.Ibtps) == 0 {
+		return boltvm.Error("empty pack of ibtps")
+	}
+	srcChainMethod := ibtps.Ibtps[0].From
+	for _, ibtp := range ibtps.Ibtps {
+		if ibtp.From != srcChainMethod {
+			return boltvm.Error("ibtp pack should have the same src chain method")
+		}
+	}
+
+	interchain, _, err := x.checkAppchain(srcChainMethod)
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
 	for _, ibtp := range ibtps.Ibtps {
 		if err := x.checkIBTP(ibtp, interchain); err != nil {
 			return boltvm.Error(err.Error())
 		}
 	}
 
-	if res := x.beginMultiTargetsTransaction(ibtps); !res.Ok {
+	if res := x.beginMultiTargetsTransaction(srcChainMethod, ibtps); !res.Ok {
 		return res
 	}
 
@@ -167,8 +177,6 @@ func (x *InterchainManager) HandleIBTPs(data []byte) *boltvm.Response {
 }
 
 func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP, interchain *pb.Interchain) error {
-	isRelayIBTP := x.isRelayIBTP(ibtp.From)
-
 	if ibtp.To == "" {
 		return fmt.Errorf("empty destination chain id")
 	}
@@ -181,12 +189,6 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP, interchain *pb.Interchain) 
 		pb.IBTP_ASSET_EXCHANGE_INIT == ibtp.Type ||
 		pb.IBTP_ASSET_EXCHANGE_REDEEM == ibtp.Type ||
 		pb.IBTP_ASSET_EXCHANGE_REFUND == ibtp.Type {
-		if !isRelayIBTP {
-			if ibtp.From != x.Caller() {
-				return fmt.Errorf("ibtp from != caller")
-			}
-		}
-
 		idx := interchain.InterchainCounter[ibtp.To]
 		if ibtp.Index <= idx {
 			return fmt.Errorf(fmt.Sprintf("index already exists, required %d, but %d", idx+1, ibtp.Index))
@@ -195,12 +197,6 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP, interchain *pb.Interchain) 
 			return fmt.Errorf(fmt.Sprintf("wrong index, required %d, but %d", idx+1, ibtp.Index))
 		}
 	} else {
-		if !isRelayIBTP {
-			if ibtp.To != x.Caller() {
-				return fmt.Errorf("ibtp to != caller")
-			}
-		}
-
 		idx := interchain.ReceiptCounter[ibtp.To]
 		if ibtp.Index <= idx {
 			return fmt.Errorf(fmt.Sprintf("receipt index already exists, required %d, but %d", idx+1, ibtp.Index))
@@ -276,9 +272,9 @@ func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *pb.Interchain
 	x.PostInterchainEvent(m)
 }
 
-func (x *InterchainManager) beginMultiTargetsTransaction(ibtps *pb.IBTPs) *boltvm.Response {
+func (x *InterchainManager) beginMultiTargetsTransaction(srcChainMethod string, ibtps *pb.IBTPs) *boltvm.Response {
 	args := make([]*pb.Arg, 0)
-	globalId := fmt.Sprintf("%s-%s", x.Caller(), x.GetTxHash())
+	globalId := fmt.Sprintf("%s-%s", srcChainMethod, x.GetTxHash())
 	args = append(args, pb.String(globalId))
 
 	for _, ibtp := range ibtps.Ibtps {
@@ -330,17 +326,16 @@ func (x *InterchainManager) GetIBTPByID(id string) *boltvm.Response {
 	if len(arr) != 3 {
 		return boltvm.Error("wrong ibtp id")
 	}
-
-	caller := x.Caller()
-
-	if caller != arr[0] && caller != arr[1] {
-		return boltvm.Error("The caller does not have access to this ibtp")
+	srcAppchainMethod := arr[0]
+	dstAppchainMethod := arr[1]
+	if !bitxid.DID(srcAppchainMethod).IsValidFormat() || !bitxid.DID(dstAppchainMethod).IsValidFormat() {
+		return boltvm.Error("invalid format of appchain method")
 	}
 
 	var hash types.Hash
 	exist := x.GetObject(x.indexMapKey(id), &hash)
 	if !exist {
-		return boltvm.Error("this id is not existed")
+		return boltvm.Error("this ibtp id is not existed")
 	}
 
 	return boltvm.Success(hash.Bytes())

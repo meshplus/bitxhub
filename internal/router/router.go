@@ -1,8 +1,8 @@
 package router
 
 import (
-	"github.com/bitxhub/bitxid"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxid"
 )
 
 type Router interface {

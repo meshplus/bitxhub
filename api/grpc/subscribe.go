@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/bitxhub/bitxid"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/model/events"
+	"github.com/meshplus/bitxid"
 )
 
 type InterchainStatus struct {
@@ -117,8 +117,8 @@ func (cbs *ChainBrokerService) handleInterchainTxWrapperSubscription(server pb.C
 	if err != nil {
 		return err
 	}
-	appchainDID := bitxid.DID(key.appchainDID)
-	pierID := key.pierID
+	appchainDID := bitxid.DID(key.AppchainDID)
+	pierID := key.PierID
 	ch, err := cbs.api.Broker().AddPier(appchainDID, pierID, isUnion)
 	defer cbs.api.Broker().RemovePier(appchainDID, pierID, isUnion)
 	if err != nil {
@@ -130,6 +130,7 @@ func (cbs *ChainBrokerService) handleInterchainTxWrapperSubscription(server pb.C
 		case wrapper, ok := <-ch:
 			// if channel is unexpected closed, return
 			if !ok {
+				cbs.logger.Errorf("subs closed")
 				return nil
 			}
 			data, err := wrapper.Marshal()
@@ -144,6 +145,7 @@ func (cbs *ChainBrokerService) handleInterchainTxWrapperSubscription(server pb.C
 				return fmt.Errorf("send new interchain tx wrapper failed")
 			}
 		case <-server.Context().Done():
+			cbs.logger.Errorf("Server lost connection with pier")
 			return nil
 		}
 	}
@@ -158,8 +160,8 @@ type interchainEvent struct {
 }
 
 type SubscriptionKey struct {
-	pierID      string `json:"pier_id"`
-	appchainDID string `json:"appchain_did"`
+	PierID      string `json:"pier_id"`
+	AppchainDID string `json:"appchain_did"`
 }
 
 func parseSubKey(extra []byte) (*SubscriptionKey, error) {
@@ -167,9 +169,9 @@ func parseSubKey(extra []byte) (*SubscriptionKey, error) {
 	if err := json.Unmarshal(extra, key); err != nil {
 		return nil, err
 	}
-	did := bitxid.DID(key.appchainDID)
+	did := bitxid.DID(key.AppchainDID)
 	if !did.IsValidFormat() {
-		return nil, fmt.Errorf("invalid appchain did to subscribe")
+		return nil, fmt.Errorf("invalid appchain did :%s to subscribe", key.AppchainDID)
 	}
 	return key, nil
 }

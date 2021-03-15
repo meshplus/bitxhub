@@ -7,13 +7,13 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/bitxhub/bitxid"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/model"
+	"github.com/meshplus/bitxid"
 	"github.com/sirupsen/logrus"
 )
 

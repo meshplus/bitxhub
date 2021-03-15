@@ -58,7 +58,7 @@ func (suite *RegisterAppchain) TestRegisterAppchain() {
 	registerRes := &contracts.RegisterResult{}
 	err = json.Unmarshal(ret.Ret, registerRes)
 	suite.Require().Nil(err)
-	chainId := registerRes.ChainID
+	chainId := registerRes.ChainMethod
 
 	ret, err = invokeBVMContract(suite.api, suite.privKey, suite.normalNonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainId))
 	suite.Require().Nil(err)

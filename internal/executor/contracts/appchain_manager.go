@@ -17,8 +17,8 @@ type AppchainManager struct {
 }
 
 type RegisterResult struct {
-	ChainID    string `json:"chain_id"`
-	ProposalID string `json:"proposal_id"`
+	ChainMethod string `json:"chain_method"`
+	ProposalID  string `json:"proposal_id"`
 }
 
 func (am *AppchainManager) Manager(des string, proposalResult string, extra []byte) *boltvm.Response {
@@ -59,9 +59,41 @@ func (am *AppchainManager) Manager(des string, proposalResult string, extra []by
 	return boltvm.Success(nil)
 }
 
+// Apply: appchain managers apply appchain method and set appchainAdminDID for this new method
+// @appchainAdminDID its address should be the same with am.Caller()
+// @appchainMethod should be in format like did:bitxhub:appchain1:.
+// @sig is the signature of appchain admin for appchainMethod
+func (am *AppchainManager) Apply(appchainAdminDID, appchainMethod string, sig []byte) *boltvm.Response {
+	am.AppchainManager.Persister = am.Stub
+	res := am.CrossInvoke(constant.MethodRegistryContractAddr.String(), "Apply",
+		pb.String(appchainAdminDID), pb.String(appchainMethod), pb.Bytes(sig))
+	if !res.Ok {
+		return res
+	}
+
+	res = am.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
+		pb.String(am.Caller()),
+		pb.String(appchainMgr.EventRegister),
+		pb.String(string(AppchainMgr)),
+		pb.Bytes([]byte(appchainMethod)),
+	)
+	if !res.Ok {
+		return res
+	}
+	res1 := RegisterResult{
+		ChainMethod: appchainMethod,
+		ProposalID:  string(res.Result),
+	}
+	resData, err := json.Marshal(res1)
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+	return boltvm.Success(resData)
+}
+
 // Register appchain managers registers appchain info caller is the appchain
 // manager address return appchain id and error
-func (am *AppchainManager) Register(validators string, consensusType, chainType, name, desc, version, pubkey string) *boltvm.Response {
+func (am *AppchainManager) Register(appchainAdminDID, appchainMethod string, docAddr, docHash, validators string, consensusType, chainType, name, desc, version, pubkey string) *boltvm.Response {
 	am.AppchainManager.Persister = am.Stub
 	ok, idData := am.AppchainManager.Register(am.Caller(), validators, consensusType, chainType, name, desc, version, pubkey)
 	if ok {
@@ -79,14 +111,24 @@ func (am *AppchainManager) Register(validators string, consensusType, chainType,
 		pb.String(string(AppchainMgr)),
 		pb.Bytes(data),
 	)
+	if !res.Ok {
+		return res
+	}
 
+	res = am.CrossInvoke(constant.InterchainContractAddr.String(), "Register", pb.String(appchainMethod))
+	if !res.Ok {
+		return res
+	}
+	res = am.CrossInvoke(constant.MethodRegistryContractAddr.String(), "Register",
+		pb.String(appchainAdminDID), pb.String(appchainMethod),
+		pb.String(docAddr), pb.Bytes([]byte(docHash)), pb.Bytes(sig))
 	if !res.Ok {
 		return res
 	}
 
 	res1 := RegisterResult{
-		ChainID:    am.Caller(),
-		ProposalID: string(res.Result),
+		ChainMethod: am.Caller(),
+		ProposalID:  string(res.Result),
 	}
 	resData, err := json.Marshal(res1)
 	if err != nil {
@@ -124,6 +166,12 @@ func (am *AppchainManager) UpdateAppchain(validators string, consensusType, chai
 		pb.String(string(AppchainMgr)),
 		pb.Bytes(data),
 	)
+}
+
+// UpdateAppchain updates approved appchain
+func (am *AppchainManager) UpdateAppchain(appchainMethod, validators string, consensusType int32, chainType, name, desc, version, pubkey string) *boltvm.Response {
+	am.AppchainManager.Persister = am.Stub
+	return responseWrapper(am.AppchainManager.UpdateAppchain(appchainMethod, validators, consensusType, chainType, name, desc, version, pubkey))
 }
 
 // FreezeAppchain freezes available appchain
@@ -190,6 +238,16 @@ func (am *AppchainManager) ActivateAppchain(id string) *boltvm.Response {
 	)
 }
 
+// AuditApply bitxhub manager audit appchain method apply
+func (am *AppchainManager) AuditApply(relayAdminDID, proposerMethod string, isApproved int32, sig []byte) *boltvm.Response {
+	if res := am.IsAdmin(); !res.Ok {
+		return res
+	}
+	res := am.CrossInvoke(constant.MethodRegistryContractAddr.String(), "AuditApply",
+		pb.String(relayAdminDID), pb.String(proposerMethod), pb.Int32(isApproved), pb.Bytes(sig))
+	return responseWrapper(res.Ok, res.Result)
+}
+
 // LogoutAppchain updates available appchain
 func (am *AppchainManager) LogoutAppchain() *boltvm.Response {
 	am.AppchainManager.Persister = am.Stub
@@ -249,16 +307,20 @@ func (am *AppchainManager) GetPubKeyByChainID(id string) *boltvm.Response {
 	return responseWrapper(am.AppchainManager.GetPubKeyByChainID(id))
 }
 
-func (am *AppchainManager) DeleteAppchain(cid string) *boltvm.Response {
+func (am *AppchainManager) DeleteAppchain(relayAdminDID, toDeleteMethod string, sig []byte) *boltvm.Response {
 	am.AppchainManager.Persister = am.Stub
 	if res := am.IsAdmin(); !res.Ok {
 		return res
 	}
-	res := am.CrossInvoke(constant.InterchainContractAddr.String(), "DeleteInterchain", pb.String(cid))
+	res := am.CrossInvoke(constant.InterchainContractAddr.String(), "DeleteInterchain", pb.String(toDeleteMethod))
 	if !res.Ok {
 		return res
 	}
-	return responseWrapper(am.AppchainManager.DeleteAppchain(cid))
+	res = am.CrossInvoke(constant.MethodRegistryContractAddr.String(), "Delete", pb.String(relayAdminDID), pb.String(toDeleteMethod), pb.Bytes(sig))
+	if !res.Ok {
+		return res
+	}
+	return responseWrapper(am.AppchainManager.DeleteAppchain(toDeleteMethod))
 }
 
 func (am *AppchainManager) IsAdmin() *boltvm.Response {
