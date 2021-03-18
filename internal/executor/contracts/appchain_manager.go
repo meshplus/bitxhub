@@ -289,12 +289,6 @@ func (am *AppchainManager) Appchains() *boltvm.Response {
 	return responseWrapper(am.AppchainManager.Appchains())
 }
 
-// Appchain returns appchain info
-func (am *AppchainManager) Appchain() *boltvm.Response {
-	am.AppchainManager.Persister = am.Stub
-	return responseWrapper(am.AppchainManager.Appchain())
-}
-
 // GetAppchain returns appchain info by appchain id
 func (am *AppchainManager) GetAppchain(id string) *boltvm.Response {
 	am.AppchainManager.Persister = am.Stub

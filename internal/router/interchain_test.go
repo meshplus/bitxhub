@@ -20,10 +20,13 @@ import (
 )
 
 const (
-	from  = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b991"
-	to    = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b992"
-	did   = "did:bitxhub:appchain001:0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b992"
-	other = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b993"
+	srcMethod   = "did:bitxhub:appchain1:."
+	dstMethod   = "did:bitxhub:appchain2:."
+	otherMethod = "did:bitxhub:appchain3:."
+	from        = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b991"
+	to          = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b992"
+	did         = "did:bitxhub:appchain001:0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b992"
+	other       = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b993"
 )
 
 func TestInterchainRouter_GetInterchainTxWrappers(t *testing.T) {
@@ -36,7 +39,7 @@ func TestInterchainRouter_GetInterchainTxWrappers(t *testing.T) {
 
 	m := make(map[string]*pb.Uint64Slice, 0)
 
-	m[to] = &pb.Uint64Slice{
+	m[dstMethod] = &pb.Uint64Slice{
 		Slice: []uint64{0},
 	}
 	im := &pb.InterchainMeta{
@@ -63,13 +66,13 @@ func TestInterchainRouter_GetInterchainTxWrappers(t *testing.T) {
 	wrappersCh3 := make(chan *pb.InterchainTxWrappers, 1)
 	wrappersCh4 := make(chan *pb.InterchainTxWrappers, 1)
 
-	err = router.GetInterchainTxWrappers(to, 1, 1, wrappersCh1)
+	err = router.GetInterchainTxWrappers(dstMethod, 1, 1, wrappersCh1)
 	require.Nil(t, err)
-	err = router.GetInterchainTxWrappers(to, 2, 2, wrappersCh2)
+	err = router.GetInterchainTxWrappers(dstMethod, 2, 2, wrappersCh2)
 	require.NotNil(t, err)
-	err = router.GetInterchainTxWrappers(to, 3, 3, wrappersCh3)
+	err = router.GetInterchainTxWrappers(dstMethod, 3, 3, wrappersCh3)
 	require.NotNil(t, err)
-	err = router.GetInterchainTxWrappers(other, 1, 1, wrappersCh4)
+	err = router.GetInterchainTxWrappers(otherMethod, 1, 1, wrappersCh4)
 	require.Nil(t, err)
 
 	select {
@@ -126,7 +129,7 @@ func TestInterchainRouter_AddPier(t *testing.T) {
 	isUnion := false
 	router := testStartRouter(t)
 
-	interchainWrappersC, err := router.AddPier(did, to, isUnion)
+	interchainWrappersC, err := router.AddPier(dstMethod, to, isUnion)
 	require.Nil(t, err)
 
 	var txs []*pb.Transaction
@@ -138,7 +141,7 @@ func TestInterchainRouter_AddPier(t *testing.T) {
 
 	m := make(map[string]*pb.Uint64Slice, 0)
 
-	m[to] = &pb.Uint64Slice{
+	m[dstMethod] = &pb.Uint64Slice{
 		Slice: []uint64{0},
 	}
 	im := &pb.InterchainMeta{
@@ -157,7 +160,7 @@ func TestInterchainRouter_AddPier(t *testing.T) {
 		require.Errorf(t, fmt.Errorf("not found interchainWrappers"), "")
 	}
 
-	router.RemovePier(did, to, isUnion)
+	router.RemovePier(dstMethod, to, isUnion)
 
 	require.Nil(t, router.Stop())
 }
@@ -166,7 +169,7 @@ func TestInterchainRouter_AddNonexistentPier(t *testing.T) {
 	isUnion := false
 	router := testStartRouter(t)
 
-	interchainWrappersC, err := router.AddPier(did, to, isUnion)
+	interchainWrappersC, err := router.AddPier(srcMethod, to, isUnion)
 	require.Nil(t, err)
 
 	var txs []*pb.Transaction
@@ -179,7 +182,7 @@ func TestInterchainRouter_AddNonexistentPier(t *testing.T) {
 	m := make(map[string]*pb.Uint64Slice, 0)
 
 	// pier of other is not added
-	m[other] = &pb.Uint64Slice{
+	m[otherMethod] = &pb.Uint64Slice{
 		Slice: []uint64{0},
 	}
 	im := &pb.InterchainMeta{
@@ -197,7 +200,7 @@ func TestInterchainRouter_AddNonexistentPier(t *testing.T) {
 		require.Errorf(t, fmt.Errorf("not found interchainWrappers"), "")
 	}
 
-	router.RemovePier(did, to, isUnion)
+	router.RemovePier(srcMethod, to, isUnion)
 
 	require.Nil(t, router.Stop())
 }
@@ -206,7 +209,7 @@ func TestInterchainRouter_AddUnionPier(t *testing.T) {
 	isUnion := true
 	router := testStartRouter(t)
 
-	interchainWrappersC, err := router.AddPier(did, to, isUnion)
+	interchainWrappersC, err := router.AddPier(srcMethod, to, isUnion)
 	require.Nil(t, err)
 
 	var txs []*pb.Transaction
@@ -218,7 +221,7 @@ func TestInterchainRouter_AddUnionPier(t *testing.T) {
 
 	m := make(map[string]*pb.Uint64Slice, 0)
 
-	m[other] = &pb.Uint64Slice{
+	m[otherMethod] = &pb.Uint64Slice{
 		Slice: []uint64{0},
 	}
 	im := &pb.InterchainMeta{
@@ -237,7 +240,7 @@ func TestInterchainRouter_AddUnionPier(t *testing.T) {
 		require.Errorf(t, fmt.Errorf("not found interchainWrappers"), "")
 	}
 
-	router.RemovePier(did, to, isUnion)
+	router.RemovePier(srcMethod, to, isUnion)
 
 	require.Nil(t, router.Stop())
 }
@@ -338,8 +341,8 @@ func mockIBTP(t *testing.T, index uint64, typ pb.IBTP_Type) *pb.IBTP {
 	assert.Nil(t, err)
 
 	return &pb.IBTP{
-		From:      from,
-		To:        other,
+		From:      srcMethod,
+		To:        otherMethod,
 		Payload:   ibtppd,
 		Index:     index,
 		Type:      typ,
