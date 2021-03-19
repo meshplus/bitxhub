@@ -6,6 +6,7 @@ import (
 
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-model/constant"
+	"github.com/meshplus/bitxhub/internal/repo"
 )
 
 const (
@@ -17,11 +18,11 @@ type Role struct {
 }
 
 func (r *Role) GetRole() *boltvm.Response {
-	var addrs []string
-	r.GetObject(adminRolesKey, &addrs)
+	var admins []*repo.Admin
+	r.GetObject(adminRolesKey, &admins)
 
-	for _, addr := range addrs {
-		if addr == r.Caller() {
+	for _, admin := range admins {
+		if admin.Address == r.Caller() {
 			return boltvm.Success([]byte("admin"))
 		}
 	}
@@ -35,11 +36,11 @@ func (r *Role) GetRole() *boltvm.Response {
 }
 
 func (r *Role) IsAdmin(address string) *boltvm.Response {
-	var addrs []string
-	r.GetObject(adminRolesKey, &addrs)
+	var admins []*repo.Admin
+	r.GetObject(adminRolesKey, &admins)
 
-	for _, addr := range addrs {
-		if addr == address {
+	for _, admin := range admins {
+		if admin.Address == address {
 			return boltvm.Success([]byte(strconv.FormatBool(true)))
 		}
 	}
@@ -48,10 +49,10 @@ func (r *Role) IsAdmin(address string) *boltvm.Response {
 }
 
 func (r *Role) GetAdminRoles() *boltvm.Response {
-	var addrs []string
-	r.GetObject(adminRolesKey, &addrs)
+	var admins []*repo.Admin
+	r.GetObject(adminRolesKey, &admins)
 
-	ret, err := json.Marshal(addrs)
+	ret, err := json.Marshal(admins)
 	if err != nil {
 		return boltvm.Error(err.Error())
 	}
@@ -65,6 +66,27 @@ func (r *Role) SetAdminRoles(addrs string) *boltvm.Response {
 		return boltvm.Error(err.Error())
 	}
 
-	r.SetObject(adminRolesKey, as)
+	admins := make([]*repo.Admin, 0)
+	for _, addr := range as {
+		admins = append(admins, &repo.Admin{
+			Address: addr,
+			Weight:  1,
+		})
+	}
+
+	r.SetObject(adminRolesKey, admins)
 	return boltvm.Success(nil)
+}
+
+func (r *Role) GetRoleWeight(address string) *boltvm.Response {
+	var admins []*repo.Admin
+	r.GetObject(adminRolesKey, &admins)
+
+	for _, admin := range admins {
+		if admin.Address == address {
+			return boltvm.Success([]byte(strconv.Itoa(int(admin.Weight))))
+		}
+	}
+
+	return boltvm.Error("account at the address does not exist:" + address)
 }

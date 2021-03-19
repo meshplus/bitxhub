@@ -43,6 +43,7 @@ func TestTester(t *testing.T) {
 	suite.Run(t, &Interchain{api: node3})
 	suite.Run(t, &Role{api: node4})
 	suite.Run(t, &Store{api: node1})
+	suite.Run(t, &Governance{api: node2})
 }
 
 func setupNode(t *testing.T, path string) api.CoreAPI {
@@ -115,7 +116,7 @@ func newTesterBitXHub(rep *repo.Repo) (*app.BitXHub, error) {
 }
 
 func cleanStorage(basePath string) {
-	filePath := path.Join(basePath,"storage")
+	filePath := path.Join(basePath, "storage")
 	err := os.RemoveAll(filePath)
 	if err != nil {
 		fmt.Printf("Clean storage failed, error: %s", err.Error())

@@ -90,8 +90,8 @@ func (config *NetworkConfig) GetVpInfos() map[uint64]*pb.VpInfo {
 // GetVpGenesisAccount gets genesis address from network config
 func (config *NetworkConfig) GetVpGenesisAccount() map[uint64]types.Address {
 	m := make(map[uint64]types.Address)
-	for i, address := range config.Genesis.Addresses {
-		m[uint64(i)+1] = *types.NewAddressByStr(address)
+	for i, admin := range config.Genesis.Admins {
+		m[uint64(i)+1] = *types.NewAddressByStr(admin.Address)
 	}
 	return m
 }

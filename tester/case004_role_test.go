@@ -136,11 +136,7 @@ func (suite *Role) TestGetRuleAddress() {
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k1Nonce++
-
-	appchain := Appchain{}
-	err = json.Unmarshal(ret.Ret, &appchain)
-	suite.Require().Nil(err)
-	id1 := appchain.ID
+	id1 := gjson.Get(string(ret.Ret), "chain_id").String()
 
 	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "Register",
 		pb.String(""),
@@ -154,11 +150,7 @@ func (suite *Role) TestGetRuleAddress() {
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k2Nonce++
-
-	appchain = Appchain{}
-	err = json.Unmarshal(ret.Ret, &appchain)
-	suite.Require().Nil(err)
-	id2 := appchain.ID
+	id2 := gjson.Get(string(ret.Ret), "chain_id").String()
 
 	// deploy rule
 	bytes, err := ioutil.ReadFile("./test_data/hpc_rule.wasm")

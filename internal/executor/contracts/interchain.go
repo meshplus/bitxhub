@@ -23,16 +23,16 @@ type BxhValidators struct {
 	Addresses []string `json:"addresses"`
 }
 
-func (x *InterchainManager) Register() *boltvm.Response {
-	interchain, ok := x.getInterchain(x.Caller())
+func (x *InterchainManager) Register(chainId string) *boltvm.Response {
+	interchain, ok := x.getInterchain(chainId)
 	if !ok {
 		interchain = &pb.Interchain{
-			ID:                   x.Caller(),
+			ID:                   chainId,
 			InterchainCounter:    make(map[string]uint64),
 			ReceiptCounter:       make(map[string]uint64),
 			SourceReceiptCounter: make(map[string]uint64),
 		}
-		x.setInterchain(x.Caller(), interchain)
+		x.setInterchain(chainId, interchain)
 	}
 	body, err := interchain.Marshal()
 	if err != nil {

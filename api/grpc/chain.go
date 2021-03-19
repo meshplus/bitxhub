@@ -18,7 +18,12 @@ func GetChainStatus(cbs *ChainBrokerService) (*pb.Response, error) {
 }
 
 func GetValidators(cbs *ChainBrokerService) (*pb.Response, error) {
-	addresses := cbs.genesis.Addresses
+	admins := cbs.genesis.Admins
+	addresses := make([]string, 0)
+	for _, admin := range admins {
+		addresses = append(addresses, admin.Address)
+	}
+
 	v, err := json.Marshal(addresses)
 	if err != nil {
 		return nil, err

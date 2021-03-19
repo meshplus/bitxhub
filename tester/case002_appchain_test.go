@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"path/filepath"
 	"strconv"
-	"testing"
 
+	"github.com/meshplus/bitxhub/internal/executor/contracts"
+
+	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/types"
@@ -18,22 +20,10 @@ import (
 
 type RegisterAppchain struct {
 	suite.Suite
-	api     api.CoreAPI
-	privKey crypto.PrivateKey
-	from    *types.Address
-}
-
-type Appchain struct {
-	ID            string `json:"id"`
-	Name          string `json:"name"`
-	Validators    string `json:"validators"`
-	ConsensusType int32  `json:"consensus_type"`
-	// 0 => registered, 1 => approved, -1 => rejected
-	Status    int32  `json:"status"`
-	ChainType string `json:"chain_type"`
-	Desc      string `json:"desc"`
-	Version   string `json:"version"`
-	PublicKey string `json:"public_key"`
+	api         api.CoreAPI
+	privKey     crypto.PrivateKey
+	from        *types.Address
+	normalNonce uint64
 }
 
 func (suite *RegisterAppchain) SetupSuite() {
@@ -43,6 +33,7 @@ func (suite *RegisterAppchain) SetupSuite() {
 
 	suite.from, err = suite.privKey.PublicKey().Address()
 	suite.Require().Nil(err)
+	suite.normalNonce = 1
 }
 
 // Appchain registers in bitxhub
@@ -51,7 +42,7 @@ func (suite *RegisterAppchain) TestRegisterAppchain() {
 	suite.Require().Nil(err)
 
 	args := []*pb.Arg{
-		pb.String(""),
+		pb.String("validators"),
 		pb.Int32(0),
 		pb.String("hyperchain"),
 		pb.String("税务链"),
@@ -60,9 +51,19 @@ func (suite *RegisterAppchain) TestRegisterAppchain() {
 		pb.String(string(pub)),
 	}
 
-	ret, err := invokeBVMContract(suite.api, suite.privKey, 1, constant.AppchainMgrContractAddr.Address(), "Register", args...)
+	ret, err := invokeBVMContract(suite.api, suite.privKey, suite.normalNonce, constant.AppchainMgrContractAddr.Address(), "Register", args...)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	suite.normalNonce++
+	registerRes := &contracts.RegisterResult{}
+	err = json.Unmarshal(ret.Ret, registerRes)
+	suite.Require().Nil(err)
+	chainId := registerRes.ChainID
+
+	ret, err = invokeBVMContract(suite.api, suite.privKey, suite.normalNonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainId))
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	suite.normalNonce++
 	suite.Require().Equal("hyperchain", gjson.Get(string(ret.Ret), "chain_type").String())
 }
 
@@ -92,11 +93,7 @@ func (suite *RegisterAppchain) TestFetchAppchains() {
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k1Nonce++
-
-	appchain := Appchain{}
-	err = json.Unmarshal(ret.Ret, &appchain)
-	suite.Require().Nil(err)
-	id1 := appchain.ID
+	id1 := gjson.Get(string(ret.Ret), "chain_id").String()
 
 	args = []*pb.Arg{
 		pb.String(""),
@@ -126,19 +123,13 @@ func (suite *RegisterAppchain) TestFetchAppchains() {
 	suite.Require().GreaterOrEqual(num, len(result.Array()))
 	k2Nonce++
 
-	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "CountApprovedAppchains")
+	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "CountAvailableAppchains")
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess())
 	num, err = strconv.Atoi(string(ret.Ret))
 	suite.Require().Nil(err)
 	suite.Require().EqualValues(0, num)
 	k2Nonce++
-
-	//FetchAuditRecords
-	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "FetchAuditRecords", pb.String(string(id1)))
-	suite.Require().Nil(err)
-	suite.Require().True(ret.IsSuccess())
-	k1Nonce++
 
 	//AppChain
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "Appchain")
@@ -194,11 +185,15 @@ func (suite *RegisterAppchain) TestGetPubKeyByChainID() {
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	suite.Require().Nil(err)
 	k2Nonce++
+	id2 := gjson.Get(string(ret.Ret), "chain_id").String()
 
-	appchain2 := Appchain{}
+	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(id2))
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k2Nonce++
+	appchain2 := appchainMgr.Appchain{}
 	err = json.Unmarshal(ret.Ret, &appchain2)
 	suite.Require().Nil(err)
-	id2 := appchain2.ID
 
 	//GetPubKeyByChainID
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetPubKeyByChainID", pb.String(string(id2)))
@@ -229,13 +224,8 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k1Nonce++
 
-	appchain := Appchain{}
-	err = json.Unmarshal(ret.Ret, &appchain)
-	suite.Require().Nil(err)
-	id1 := appchain.ID
-
 	//Admin Chain
-	path := "./test_data/config/node1/key.json"
+	path := "./test_data/config/node2/key.json"
 	keyPath := filepath.Join(path)
 	priAdmin, err := asym.RestorePrivateKey(keyPath, "bitxhub")
 	suite.Require().Nil(err)
@@ -257,16 +247,6 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	adminNonce++
 
-	//Audit
-	ret, err = invokeBVMContract(suite.api, priAdmin, adminNonce, constant.AppchainMgrContractAddr.Address(), "Audit",
-		pb.String(string(id1)),
-		pb.Int32(1),
-		pb.String("通过"),
-	)
-	suite.Require().Nil(err)
-	suite.Require().True(ret.IsSuccess())
-	adminNonce++
-
 	//UpdateAppchain
 	args = []*pb.Arg{
 		pb.String(""),
@@ -279,10 +259,11 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 	}
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "UpdateAppchain", args...)
 	suite.Require().Nil(err)
-	suite.Require().True(ret.IsSuccess())
+	// this appchain is registing, can not be updated
+	suite.Require().False(ret.IsSuccess())
 	k1Nonce++
 }
 
-func TestRegisterAppchain(t *testing.T) {
-	suite.Run(t, &RegisterAppchain{})
-}
+//func TestRegisterAppchain(t *testing.T) {
+//	suite.Run(t, &RegisterAppchain{})
+//}
