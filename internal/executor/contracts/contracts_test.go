@@ -4,23 +4,24 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"testing"
 	"time"
-
-	"github.com/meshplus/bitxhub-kit/crypto"
-	"github.com/meshplus/bitxhub-kit/crypto/asym"
-	"github.com/stretchr/testify/require"
 
 	"github.com/golang/mock/gomock"
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/boltvm/mock_stub"
 	"github.com/meshplus/bitxhub-core/validator"
+	"github.com/meshplus/bitxhub-kit/crypto"
+	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var caller = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
@@ -74,7 +75,7 @@ func TestAppchainManager_Appchains(t *testing.T) {
 		addr := types.NewAddress([]byte{byte(i)}).String()
 
 		chain := &appchainMgr.Appchain{
-			Status:        appchainMgr.APPROVED,
+			Status:        appchainMgr.AppchainAvailable,
 			ID:            addr,
 			Name:          "appchain" + addr,
 			Validators:    "",
@@ -93,9 +94,7 @@ func TestAppchainManager_Appchains(t *testing.T) {
 	}
 
 	logger := log.NewWithModule("contracts")
-	registerResponse := &boltvm.Response{
-		Ok: true,
-	}
+
 	am := &AppchainManager{
 		Stub: mockStub,
 	}
@@ -104,7 +103,8 @@ func TestAppchainManager_Appchains(t *testing.T) {
 	mockStub.EXPECT().Logger().Return(logger).AnyTimes()
 
 	// test for register
-	mockStub.EXPECT().CrossInvoke(constant.InterchainContractAddr.String(), "Register").Return(registerResponse)
+	mockStub.EXPECT().Get(gomock.Any()).Return(true, chainsData[0]).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil))
 	mockStub.EXPECT().Has(AppchainKey(caller)).Return(false).MaxTimes(3)
 	am.Register(chains[0].Validators, chains[0].ConsensusType, chains[0].ChainType,
 		chains[0].Name, chains[0].Desc, chains[0].Version, chains[0].PublicKey)
@@ -133,31 +133,102 @@ func TestAppchainManager_Appchains(t *testing.T) {
 	assert.Equal(t, "2", string(res.Result))
 
 	// test GetAppchain
-	mockStub.EXPECT().Get(AppchainKey(caller)).Return(true, chainsData[0])
-
 	res = am.GetAppchain(caller)
 	assert.Equal(t, true, res.Ok)
 	assert.Equal(t, chainsData[0], res.Result)
 }
 
-func TestAudit(t *testing.T) {
-	am, mockStub, _, _ := prepare(t)
+func TestAppchainManager_Register(t *testing.T) {
+	am, mockStub, chains, chainsData := prepare(t)
+
 	logger := log.NewWithModule("contracts")
-	// test for DeleteAppchain
+
 	mockStub.EXPECT().Caller().Return(caller).AnyTimes()
+	mockStub.EXPECT().Get(gomock.Any()).Return(true, chainsData[0]).AnyTimes()
+	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Do(
+		func(key string, ret interface{}) bool {
+			chain := ret.(*appchainMgr.Appchain)
+			chain.ID = chains[0].ID
+			return true
+		}).Return(true).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).Return().AnyTimes()
 	mockStub.EXPECT().Logger().Return(logger).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil))
+	mockStub.EXPECT().Has(AppchainKey(caller)).Return(false).Times(1)
+	mockStub.EXPECT().Has(AppchainKey(caller)).Return(true).AnyTimes()
+	res := am.Register(chains[0].Validators, chains[0].ConsensusType, chains[0].ChainType,
+		chains[0].Name, chains[0].Desc, chains[0].Version, chains[0].PublicKey)
+	assert.True(t, res.Ok)
 
-	// test for audit
-	approveRes := &boltvm.Response{
-		Ok:     true,
-		Result: []byte("true"),
+	// test for repeated register
+	am.Register(chains[0].Validators, chains[0].ConsensusType, chains[0].ChainType,
+		chains[0].Name, chains[0].Desc, chains[0].Version, chains[0].PublicKey)
+	assert.True(t, res.Ok)
+}
+
+func TestAppchainManager_Manager(t *testing.T) {
+	mockCtl := gomock.NewController(t)
+	mockStub := mock_stub.NewMockStub(mockCtl)
+	am := &AppchainManager{
+		Stub: mockStub,
 	}
-	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "IsAdmin", gomock.Any()).Return(approveRes)
-	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Return(true).AnyTimes()
 
-	res := am.Audit(caller, appchainMgr.APPROVED, "approve test chain")
-	assert.Equal(t, true, res.Ok)
+	chain := &appchainMgr.Appchain{
+		Status:        appchainMgr.AppchainUpdating,
+		ID:            "addr",
+		Name:          "appchain A",
+		Validators:    "",
+		ConsensusType: int32(1),
+		ChainType:     "fabric",
+		Desc:          "",
+		Version:       "",
+		PublicKey:     "11111",
+	}
+	data, err := json.Marshal(chain)
+	assert.Nil(t, err)
+
+	chain1 := &appchainMgr.Appchain{
+		Status:        appchainMgr.AppchainUpdating,
+		ID:            "addr1",
+		Name:          "appchain A",
+		Validators:    "",
+		ConsensusType: int32(1),
+		ChainType:     "fabric",
+		Desc:          "",
+		Version:       "",
+		PublicKey:     "11111",
+	}
+	data1, err := json.Marshal(chain1)
+	assert.Nil(t, err)
+
+	mockStub.EXPECT().Get(AppchainKey("addr")).Return(true, data).AnyTimes()
+	mockStub.EXPECT().Get(AppchainKey("addr1")).Return(false, nil).AnyTimes()
+	mockStub.EXPECT().Has(AppchainKey("addr")).Return(true).AnyTimes()
+	mockStub.EXPECT().Has(AppchainKey("addr1")).Return(false).AnyTimes()
+	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).Return().AnyTimes()
+	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Do(
+		func(key string, ret interface{}) bool {
+			chain := ret.(*appchainMgr.Appchain)
+			chain.Status = appchainMgr.AppchainAvailable
+			assert.Equal(t, key, AppchainKey("addr"))
+			return true
+		})
+
+	res := am.Manager(appchainMgr.EventUpdate, string(APPOVED), data1)
+	assert.False(t, res.Ok)
+	res = am.Manager(appchainMgr.EventUpdate, string(REJECTED), data1)
+	assert.False(t, res.Ok)
+	res = am.Manager(appchainMgr.EventUpdate, string(APPOVED), data)
+	assert.True(t, res.Ok)
+	res = am.Manager(appchainMgr.EventUpdate, string(REJECTED), data)
+	assert.True(t, res.Ok)
+
+	mockStub.EXPECT().CrossInvoke(constant.InterchainContractAddr.String(), "Register", gomock.Any()).Return(boltvm.Error("")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.InterchainContractAddr.String(), "Register", gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+	res = am.Manager(appchainMgr.EventRegister, string(APPOVED), data)
+	assert.False(t, res.Ok)
+	res = am.Manager(appchainMgr.EventRegister, string(APPOVED), data)
+	assert.True(t, res.Ok)
 }
 
 func TestUpdateChain(t *testing.T) {
@@ -165,26 +236,20 @@ func TestUpdateChain(t *testing.T) {
 	logger := log.NewWithModule("contracts")
 	// test for DeleteAppchain
 	mockStub.EXPECT().Caller().Return(caller).AnyTimes()
-	mockStub.EXPECT().Has(AppchainKey(caller)).Return(true)
+	mockStub.EXPECT().Has(AppchainKey(caller)).Return(true).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).Return().AnyTimes()
 	mockStub.EXPECT().Logger().Return(logger).AnyTimes()
-	// test UpdateAppchain without register
-	mockStub.EXPECT().GetObject(AppchainKey(caller), gomock.Any()).Return(true)
-	res := am.UpdateAppchain(chains[0].Validators, chains[0].ConsensusType, chains[0].ChainType,
-		chains[0].Name, chains[0].Desc, chains[0].Version, chains[0].PublicKey)
-
-	assert.Equal(t, false, res.Ok)
+	// TODO: test UpdateAppchain without register (false)
 	// test UpdateAppchain with register
-	mockStub.EXPECT().Has(AppchainKey(caller)).Return(true)
 	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Do(
 		func(key string, ret interface{}) bool {
 			chain := ret.(*appchainMgr.Appchain)
-			chain.Status = appchainMgr.APPROVED
+			chain.Status = appchainMgr.AppchainAvailable
 			chain.PublicKey = chains[0].PublicKey
 			assert.Equal(t, key, AppchainKey(caller))
 			return true
 		})
-	res = am.UpdateAppchain(chains[0].Validators, chains[0].ConsensusType, chains[0].ChainType,
+	res := am.UpdateAppchain(chains[0].Validators, chains[0].ConsensusType, chains[0].ChainType,
 		chains[0].Name, chains[0].Desc, chains[0].Version, chains[0].PublicKey)
 	assert.Equal(t, true, res.Ok)
 }
@@ -199,7 +264,7 @@ func TestCountApprovedAppchains(t *testing.T) {
 	mockStub.EXPECT().Logger().Return(logger).AnyTimes()
 	// test for CountApprovedAppchains
 	mockStub.EXPECT().Query(appchainMgr.PREFIX).Return(true, chainsData)
-	res := am.CountApprovedAppchains()
+	res := am.CountAvailableAppchains()
 	assert.Equal(t, true, res.Ok)
 	assert.Equal(t, "2", string(res.Result))
 }
@@ -219,7 +284,6 @@ func TestDeleteAppchain(t *testing.T) {
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "IsAdmin", gomock.Any()).Return(approveRes)
 	mockStub.EXPECT().CrossInvoke(constant.InterchainContractAddr.String(), "DeleteInterchain",
 		gomock.Any()).Return(approveRes)
-	mockStub.EXPECT().GetObject(AppchainKey(caller), gomock.Any()).Return(true)
 	mockStub.EXPECT().Delete(AppchainKey(caller)).Return()
 
 	res := am.DeleteAppchain(caller)
@@ -233,7 +297,7 @@ func TestGetPubKeyByChainID(t *testing.T) {
 	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Do(
 		func(key string, ret interface{}) bool {
 			chain := ret.(*appchainMgr.Appchain)
-			chain.Status = appchainMgr.APPROVED
+			chain.Status = appchainMgr.AppchainAvailable
 			chain.PublicKey = chains[0].PublicKey
 			assert.Equal(t, key, AppchainKey(caller))
 			fmt.Printf("chain is %v", chain)
@@ -247,6 +311,9 @@ func TestGetPubKeyByChainID(t *testing.T) {
 func prepare(t *testing.T) (*AppchainManager, *mock_stub.MockStub, []*appchainMgr.Appchain, [][]byte) {
 	mockCtl := gomock.NewController(t)
 	mockStub := mock_stub.NewMockStub(mockCtl)
+	am := &AppchainManager{
+		Stub: mockStub,
+	}
 
 	var chains []*appchainMgr.Appchain
 	var chainsData [][]byte
@@ -254,7 +321,7 @@ func prepare(t *testing.T) (*AppchainManager, *mock_stub.MockStub, []*appchainMg
 		addr := types.NewAddress([]byte{byte(i)}).String()
 
 		chain := &appchainMgr.Appchain{
-			Status:        appchainMgr.APPROVED,
+			Status:        appchainMgr.AppchainAvailable,
 			ID:            addr,
 			Name:          "appchain" + addr,
 			Validators:    "",
@@ -272,9 +339,6 @@ func prepare(t *testing.T) (*AppchainManager, *mock_stub.MockStub, []*appchainMg
 		chains = append(chains, chain)
 	}
 
-	am := &AppchainManager{
-		Stub: mockStub,
-	}
 	return am, mockStub, chains, chainsData
 }
 
@@ -283,7 +347,7 @@ func TestInterchainManager_Register(t *testing.T) {
 	mockStub := mock_stub.NewMockStub(mockCtl)
 
 	addr := types.NewAddress([]byte{0}).String()
-	mockStub.EXPECT().Caller().Return(addr).AnyTimes()
+	//mockStub.EXPECT().Caller().Return(addr).AnyTimes()
 	mockStub.EXPECT().Set(gomock.Any(), gomock.Any()).AnyTimes()
 	o1 := mockStub.EXPECT().Get(appchainMgr.PREFIX+addr).Return(false, nil)
 
@@ -313,7 +377,7 @@ func TestInterchainManager_Register(t *testing.T) {
 
 	im := &InterchainManager{mockStub}
 
-	res := im.Register()
+	res := im.Register(addr)
 	assert.Equal(t, true, res.Ok)
 
 	ic := &pb.Interchain{}
@@ -324,11 +388,11 @@ func TestInterchainManager_Register(t *testing.T) {
 	assert.Equal(t, 0, len(ic.ReceiptCounter))
 	assert.Equal(t, 0, len(ic.SourceReceiptCounter))
 
-	res = im.Register()
+	res = im.Register(addr)
 	assert.Equal(t, true, res.Ok)
 	assert.Equal(t, data0, res.Result)
 
-	res = im.Register()
+	res = im.Register(addr)
 	assert.Equal(t, true, res.Ok)
 	assert.Equal(t, data1, res.Result)
 }
@@ -585,19 +649,17 @@ func TestInterchainManager_HandleIBTPs(t *testing.T) {
 
 	mockStub.EXPECT().Set(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
-	f1 := mockStub.EXPECT().Get(appchainMgr.PREFIX+caller).Return(false, nil)
 
 	data0, err := interchain.Marshal()
 	assert.Nil(t, err)
 
-	f2 := mockStub.EXPECT().Get(appchainMgr.PREFIX+caller).Return(true, data0).AnyTimes()
+	mockStub.EXPECT().Get(appchainMgr.PREFIX+caller).Return(true, data0).AnyTimes()
 	mockStub.EXPECT().Get(appchainMgr.PREFIX+to).Return(true, data0).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().AddObject(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().GetTxIndex().Return(uint64(1)).AnyTimes()
 	mockStub.EXPECT().PostInterchainEvent(gomock.Any()).AnyTimes()
 	mockStub.EXPECT().GetTxHash().Return(&types.Hash{}).AnyTimes()
-	gomock.InOrder(f1, f2)
 
 	im := &InterchainManager{mockStub}
 
@@ -649,7 +711,7 @@ func TestInterchainManager_HandleUnionIBTP(t *testing.T) {
 	assert.Nil(t, err)
 
 	relayChain := &appchainMgr.Appchain{
-		Status:        appchainMgr.APPROVED,
+		Status:        appchainMgr.AppchainAvailable,
 		ID:            from,
 		Name:          "appchain" + from,
 		Validators:    "",
@@ -802,10 +864,15 @@ func TestRole_GetRole(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	mockStub := mock_stub.NewMockStub(mockCtl)
 
-	addrs := []string{types.NewAddress([]byte{0}).String(), types.NewAddress([]byte{1}).String()}
+	admins := []*repo.Admin{
+		&repo.Admin{
+			Address: "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013",
+			Weight:  1,
+		},
+	}
 
-	mockStub.EXPECT().GetObject(adminRolesKey, gomock.Any()).SetArg(1, addrs).AnyTimes()
-	mockStub.EXPECT().Caller().Return(types.NewAddress([]byte{0}).String())
+	mockStub.EXPECT().GetObject(adminRolesKey, gomock.Any()).SetArg(1, admins).AnyTimes()
+	mockStub.EXPECT().Caller().Return(admins[0].Address)
 
 	im := &Role{mockStub}
 
@@ -831,13 +898,18 @@ func TestRole_IsAdmin(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	mockStub := mock_stub.NewMockStub(mockCtl)
 
-	addrs := []string{types.NewAddress([]byte{0}).String(), types.NewAddress([]byte{1}).String()}
+	admins := []*repo.Admin{
+		&repo.Admin{
+			Address: "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013",
+			Weight:  1,
+		},
+	}
 
-	mockStub.EXPECT().GetObject(adminRolesKey, gomock.Any()).SetArg(1, addrs).AnyTimes()
+	mockStub.EXPECT().GetObject(adminRolesKey, gomock.Any()).SetArg(1, admins).AnyTimes()
 
 	im := &Role{mockStub}
 
-	res := im.IsAdmin(addrs[0])
+	res := im.IsAdmin(admins[0].Address)
 	assert.True(t, res.Ok)
 	assert.Equal(t, "true", string(res.Result))
 
@@ -850,21 +922,30 @@ func TestRole_GetAdminRoles(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	mockStub := mock_stub.NewMockStub(mockCtl)
 
-	addrs := []string{types.NewAddress([]byte{0}).String(), types.NewAddress([]byte{1}).String()}
+	admins := []*repo.Admin{
+		&repo.Admin{
+			Address: "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013",
+			Weight:  1,
+		},
+		&repo.Admin{
+			Address: "0x79a1215469FaB6f9c63c1816b45183AD3624bE34",
+			Weight:  1,
+		},
+	}
 
-	mockStub.EXPECT().GetObject(adminRolesKey, gomock.Any()).SetArg(1, addrs).AnyTimes()
+	mockStub.EXPECT().GetObject(adminRolesKey, gomock.Any()).SetArg(1, admins).AnyTimes()
 
 	im := &Role{mockStub}
 
 	res := im.GetAdminRoles()
 	assert.True(t, res.Ok)
 
-	var admins []string
-	err := json.Unmarshal(res.Result, &admins)
+	var as []*repo.Admin
+	err := json.Unmarshal(res.Result, &as)
 	assert.Nil(t, err)
-	assert.Equal(t, len(addrs), len(admins))
-	for i, addr := range addrs {
-		assert.Equal(t, addr, admins[i])
+	assert.Equal(t, len(admins), len(as))
+	for i, admin := range admins {
+		assert.Equal(t, admin.Address, as[i].Address)
 	}
 }
 
@@ -873,7 +954,7 @@ func TestRole_SetAdminRoles(t *testing.T) {
 	mockStub := mock_stub.NewMockStub(mockCtl)
 
 	addrs := []string{types.NewAddress([]byte{0}).String(), types.NewAddress([]byte{1}).String()}
-	mockStub.EXPECT().SetObject(adminRolesKey, addrs).AnyTimes()
+	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
 
 	im := &Role{mockStub}
 
@@ -882,6 +963,31 @@ func TestRole_SetAdminRoles(t *testing.T) {
 
 	res := im.SetAdminRoles(string(data))
 	assert.True(t, res.Ok)
+}
+
+func TestRole_GetRoleWeight(t *testing.T) {
+	mockCtl := gomock.NewController(t)
+	mockStub := mock_stub.NewMockStub(mockCtl)
+
+	admins := []*repo.Admin{
+		&repo.Admin{
+			Address: "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013",
+			Weight:  1,
+		},
+	}
+
+	mockStub.EXPECT().GetObject(adminRolesKey, gomock.Any()).SetArg(1, admins).AnyTimes()
+
+	im := &Role{mockStub}
+
+	res := im.GetRoleWeight(admins[0].Address)
+	assert.True(t, res.Ok)
+	w, err := strconv.Atoi(string(res.Result))
+	assert.Nil(t, err)
+	assert.Equal(t, admins[0].Weight, uint64(w))
+
+	res = im.GetRoleWeight("")
+	assert.False(t, res.Ok)
 }
 
 func TestRuleManager_RegisterRule(t *testing.T) {
@@ -1419,4 +1525,468 @@ func TestInterRelayBroker_InvokeInterRelayContract(t *testing.T) {
 
 	res = interRelayBroker.GetOutMessage("123", 1)
 	require.True(t, res.Ok)
+}
+
+func TestGovernance_SubmitProposal(t *testing.T) {
+	mockCtl := gomock.NewController(t)
+	mockStub := mock_stub.NewMockStub(mockCtl)
+
+	g := Governance{mockStub}
+
+	idExistent := "idExistent-1"
+	addrApproved := "addrApproved"
+	addrAganisted := "addrAganisted"
+	approveBallot := Ballot{
+		VoterAddr: addrApproved,
+		Approve:   BallotApprove,
+		Num:       1,
+		Reason:    "",
+	}
+	againstBallot := Ballot{
+		VoterAddr: addrAganisted,
+		Approve:   BallotReject,
+		Num:       1,
+		Reason:    "",
+	}
+	proposalExistent := &Proposal{
+		Id:         idExistent,
+		Des:        "des",
+		Typ:        AppchainMgr,
+		Status:     PROPOSED,
+		BallotMap:  map[string]Ballot{addrApproved: approveBallot, addrAganisted: againstBallot},
+		ApproveNum: 1,
+		AgainstNum: 1,
+	}
+	pData, err := json.Marshal(proposalExistent)
+	assert.Nil(t, err)
+	pDatas := make([][]byte, 0)
+	pDatas = append(pDatas, pData)
+
+	admins := []*repo.Admin{
+		&repo.Admin{
+			Address: "addr1",
+			Weight:  1,
+		},
+		&repo.Admin{
+			Address: "addr2",
+			Weight:  1,
+		},
+		&repo.Admin{
+			Address: "addr3",
+			Weight:  1,
+		},
+		&repo.Admin{
+			Address: "addr4",
+			Weight:  1,
+		},
+	}
+	adminsData, err := json.Marshal(admins)
+	assert.Nil(t, err)
+	adminsErrorData := make([]byte, 0)
+
+	mockStub.EXPECT().Query(gomock.Any()).Return(true, pDatas).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "GetAdminRoles").Return(boltvm.Error("")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "GetAdminRoles").Return(boltvm.Success(adminsErrorData)).Times(2)
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "GetAdminRoles").Return(boltvm.Success(adminsData)).AnyTimes()
+	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Return(false).AnyTimes()
+	mockStub.EXPECT().AddObject(gomock.Any(), gomock.Any()).AnyTimes()
+
+	res := g.SubmitProposal("", "des", string(AppchainMgr), []byte{})
+	assert.False(t, res.Ok, string(res.Result))
+	// GetAdminRoles error
+	res = g.SubmitProposal(idExistent, "des", string(AppchainMgr), []byte{})
+	assert.False(t, res.Ok, string(res.Result))
+	// GetAdminRoles unmarshal error
+	res = g.SubmitProposal(idExistent, "des", string(AppchainMgr), []byte{})
+	assert.False(t, res.Ok, string(res.Result))
+	res = g.SubmitProposal(idExistent, "des", "", []byte{})
+	assert.False(t, res.Ok, string(res.Result))
+	res = g.SubmitProposal(idExistent, "des", string(AppchainMgr), []byte{})
+	assert.True(t, res.Ok, string(res.Result))
+
+}
+func TestGovernance_Proposal(t *testing.T) {
+	mockCtl := gomock.NewController(t)
+	mockStub := mock_stub.NewMockStub(mockCtl)
+
+	g := Governance{mockStub}
+
+	idExistent := "idExistent-1"
+	idNonexistent := "idNonexistent-2"
+	idClosed := "idClosed-3"
+	idNotReachThreshold := "idNotReachThreshold-4"
+	idSuperMajorityApprove := "idSuperMajorityApprove-5"
+	idSuperMajorityAgainst := "idSuperMajorityAgainst-6"
+	idUnupportedType := "idUnsupportedType-7"
+	addrApproved := "addrApproved"
+	addrAganisted := "addrAganisted"
+	addrNotVoted := "addrNotVoted"
+	addrNotVoted1 := "addrNotVoted1"
+	addrNotVoted2 := "addrNotVoted2"
+	addrNotVoted3 := "addrNotVoted3"
+	addrNotVoted4 := "addrNotVoted4"
+	addrNotVoted5 := "addrNotVoted5"
+	addrNotVoted6 := "addrNotVoted6"
+
+	approveBallot := Ballot{
+		VoterAddr: addrApproved,
+		Approve:   BallotApprove,
+		Num:       1,
+		Reason:    "",
+	}
+	againstBallot := Ballot{
+		VoterAddr: addrAganisted,
+		Approve:   BallotReject,
+		Num:       1,
+		Reason:    "",
+	}
+	proposalExistent := Proposal{
+		Id:            idExistent,
+		Des:           "des",
+		Typ:           AppchainMgr,
+		Status:        PROPOSED,
+		BallotMap:     map[string]Ballot{addrApproved: approveBallot, addrAganisted: againstBallot},
+		ApproveNum:    1,
+		AgainstNum:    1,
+		ElectorateNum: 4,
+		ThresholdNum:  3,
+	}
+
+	pData, err := json.Marshal(proposalExistent)
+	assert.Nil(t, err)
+	pDatas := make([][]byte, 0)
+	pDatas = append(pDatas, pData)
+
+	admins := []*repo.Admin{
+		&repo.Admin{
+			Address: "addr1",
+			Weight:  1,
+		},
+		&repo.Admin{
+			Address: "addr2",
+			Weight:  1,
+		},
+		&repo.Admin{
+			Address: "addr3",
+			Weight:  1,
+		},
+		&repo.Admin{
+			Address: "addr4",
+			Weight:  1,
+		},
+	}
+	adminsData, err := json.Marshal(admins)
+	assert.Nil(t, err)
+
+	mockStub.EXPECT().Has(ProposalKey(idExistent)).Return(true).AnyTimes()
+	mockStub.EXPECT().Has(ProposalKey(idNonexistent)).Return(false).AnyTimes()
+	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().AddObject(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().GetObject(ProposalKey(idExistent), gomock.Any()).SetArg(1, proposalExistent).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(ProposalKey(idClosed), gomock.Any()).Do(
+		func(id string, ret interface{}) bool {
+			pro := ret.(*Proposal)
+			pro.Id = idClosed
+			pro.Des = proposalExistent.Des
+			pro.Typ = proposalExistent.Typ
+			pro.Status = APPOVED
+			return true
+		}).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(ProposalKey(idNonexistent), gomock.Any()).Return(false).AnyTimes()
+	mockStub.EXPECT().GetObject(ProposalKey(idNotReachThreshold), gomock.Any()).Do(
+		func(key string, ret interface{}) bool {
+			pro := ret.(*Proposal)
+			pro.Id = idNotReachThreshold
+			pro.Des = proposalExistent.Des
+			pro.Typ = RuleMgr
+			pro.Status = proposalExistent.Status
+			pro.BallotMap = proposalExistent.BallotMap
+			pro.ApproveNum = proposalExistent.ApproveNum
+			pro.AgainstNum = proposalExistent.AgainstNum
+			pro.ElectorateNum = 4
+			pro.ThresholdNum = 4
+			return true
+		}).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(ProposalKey(idSuperMajorityApprove), gomock.Any()).Do(
+		func(id string, ret interface{}) bool {
+			pro := ret.(*Proposal)
+			pro.Id = idSuperMajorityApprove
+			pro.Des = proposalExistent.Des
+			pro.Typ = NodeMgr
+			pro.Status = proposalExistent.Status
+			pro.BallotMap = proposalExistent.BallotMap
+			pro.ApproveNum = proposalExistent.ApproveNum
+			pro.AgainstNum = proposalExistent.AgainstNum
+			pro.ElectorateNum = proposalExistent.ElectorateNum
+			pro.ThresholdNum = proposalExistent.ThresholdNum
+			return true
+		}).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(ProposalKey(idSuperMajorityAgainst), gomock.Any()).Do(
+		func(id string, ret interface{}) bool {
+			pro := ret.(*Proposal)
+			pro.Id = idSuperMajorityAgainst
+			pro.Des = proposalExistent.Des
+			pro.Typ = NodeMgr
+			pro.Status = proposalExistent.Status
+			pro.BallotMap = proposalExistent.BallotMap
+			pro.ApproveNum = proposalExistent.ApproveNum
+			pro.AgainstNum = proposalExistent.AgainstNum
+			pro.ElectorateNum = proposalExistent.ElectorateNum
+			pro.ThresholdNum = proposalExistent.ThresholdNum
+			return true
+		}).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(ProposalKey(idUnupportedType), gomock.Any()).Do(
+		func(id string, ret interface{}) bool {
+			pro := ret.(*Proposal)
+			pro.Id = idUnupportedType
+			pro.Des = proposalExistent.Des
+			pro.Typ = ServiceMgr
+			pro.Status = proposalExistent.Status
+			pro.BallotMap = proposalExistent.BallotMap
+			pro.ApproveNum = proposalExistent.ApproveNum
+			pro.AgainstNum = proposalExistent.AgainstNum
+			pro.ElectorateNum = proposalExistent.ElectorateNum
+			pro.ThresholdNum = proposalExistent.ThresholdNum
+			return true
+		}).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(string(AppchainMgr), gomock.Any()).Return(false).AnyTimes()
+	mockStub.EXPECT().GetObject(string(RuleMgr), gomock.Any()).Do(
+		func(key string, ret interface{}) bool {
+			proStrategy := ret.(*ProposalStrategy)
+			proStrategy.Typ = SimpleMajority
+			return true
+		}).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(string(NodeMgr), gomock.Any()).Do(
+		func(key string, ret interface{}) bool {
+			proStrategy := ret.(*ProposalStrategy)
+			proStrategy.Typ = SuperMajorityApprove
+			return true
+		}).Return(true).Times(1)
+	mockStub.EXPECT().GetObject(string(NodeMgr), gomock.Any()).Do(
+		func(key string, ret interface{}) bool {
+			proStrategy := ret.(*ProposalStrategy)
+			proStrategy.Typ = SuperMajorityAgainst
+			return true
+		}).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(string(ServiceMgr), gomock.Any()).Return(false).AnyTimes()
+	mockStub.EXPECT().Query(gomock.Any()).Return(true, pDatas).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "GetRoleWeight", gomock.Any()).Return(boltvm.Error("get role weight")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "GetRoleWeight", gomock.Any()).Return(boltvm.Success([]byte(""))).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "GetRoleWeight", gomock.Any()).Return(boltvm.Success([]byte(strconv.Itoa(1)))).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "GetAdminRoles").Return(boltvm.Error("")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "GetAdminRoles").Return(boltvm.Success(adminsData)).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), "Manager", gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), "Manager", gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+
+	res := g.ModifyProposal(idExistent, "des", string(AppchainMgr), []byte{})
+	assert.False(t, res.Ok, string(res.Result))
+	res = g.ModifyProposal(idExistent, "des", string(AppchainMgr), []byte{})
+	assert.True(t, res.Ok, string(res.Result))
+	res = g.ModifyProposal(idNonexistent, "des", string(AppchainMgr), []byte{})
+	assert.False(t, res.Ok, string(res.Result))
+	res = g.ModifyProposal("", "des", string(AppchainMgr), []byte{})
+	assert.False(t, res.Ok, string(res.Result))
+	res = g.ModifyProposal(idExistent, "des", "", []byte{})
+	assert.False(t, res.Ok, string(res.Result))
+
+	res = g.GetProposal(idExistent)
+	assert.True(t, res.Ok, string(res.Result))
+	res = g.GetProposal(idNonexistent)
+	assert.False(t, res.Ok, string(res.Result))
+
+	res = g.GetProposalsByFrom("idExistent")
+	assert.True(t, res.Ok, string(res.Result))
+
+	res = g.GetProposalsByTyp("")
+	assert.False(t, res.Ok, string(res.Result))
+	res = g.GetProposalsByTyp(string(AppchainMgr))
+	assert.True(t, res.Ok, string(res.Result))
+
+	res = g.GetProposalsByStatus("")
+	assert.False(t, res.Ok, string(res.Result))
+	res = g.GetProposalsByStatus(string((PROPOSED)))
+	assert.True(t, res.Ok, string(res.Result))
+
+	res = g.GetDes(idExistent)
+	assert.True(t, res.Ok, string(res.Result))
+	res = g.GetDes(idNonexistent)
+	assert.False(t, res.Ok, string(res.Result))
+
+	res = g.GetTyp(idExistent)
+	assert.True(t, res.Ok, string(res.Result))
+	res = g.GetTyp(idNonexistent)
+	assert.False(t, res.Ok, string(res.Result))
+
+	res = g.GetStatus(idExistent)
+	assert.True(t, res.Ok, string(res.Result))
+	res = g.GetStatus(idNonexistent)
+	assert.False(t, res.Ok, string(res.Result))
+
+	res = g.GetApprove(idExistent)
+	assert.True(t, res.Ok, string(res.Result))
+	res = g.GetApprove(idNonexistent)
+	assert.False(t, res.Ok, string(res.Result))
+
+	res = g.GetAgainst(idExistent)
+	assert.True(t, res.Ok, string(res.Result))
+	res = g.GetAgainst(idNonexistent)
+	assert.False(t, res.Ok, string(res.Result))
+
+	res = g.GetVotedNum(idExistent)
+	assert.True(t, res.Ok, string(res.Result))
+	res = g.GetVotedNum(idNonexistent)
+	assert.False(t, res.Ok, string(res.Result))
+
+	res = g.GetVoted(idExistent)
+	assert.True(t, res.Ok, string(res.Result))
+	res = g.GetVoted(idNonexistent)
+	assert.False(t, res.Ok, string(res.Result))
+
+	res = g.GetApproveNum(idExistent)
+	assert.True(t, res.Ok, string(res.Result))
+	res = g.GetApproveNum(idNonexistent)
+	assert.False(t, res.Ok, string(res.Result))
+
+	res = g.GetAgainstNum(idExistent)
+	assert.True(t, res.Ok, string(res.Result))
+	res = g.GetAgainstNum(idNonexistent)
+	assert.False(t, res.Ok, string(res.Result))
+
+	res = g.GetElectorateNum(idExistent)
+	assert.True(t, res.Ok, string(res.Result))
+	res = g.GetElectorateNum(idNonexistent)
+	assert.False(t, res.Ok, string(res.Result))
+
+	res = g.GetThresholdNum(idExistent)
+	assert.True(t, res.Ok, string(res.Result))
+	res = g.GetThresholdNum(idNonexistent)
+	assert.False(t, res.Ok, string(res.Result))
+
+	var v = &Ballot{}
+	res = g.GetBallot(addrApproved, idNonexistent)
+	assert.False(t, res.Ok, string(res.Result))
+	res = g.GetBallot(addrNotVoted, idExistent)
+	assert.False(t, res.Ok, string(res.Result))
+	res = g.GetBallot(addrApproved, idExistent)
+	assert.True(t, res.Ok, string(res.Result))
+	err = json.Unmarshal(res.Result, v)
+	assert.Nil(t, err)
+	assert.Equal(t, BallotApprove, v.Approve)
+	assert.Equal(t, uint64(1), v.Num)
+	res = g.GetBallot(addrAganisted, idExistent)
+	assert.True(t, res.Ok, string(res.Result))
+	err = json.Unmarshal(res.Result, v)
+	assert.Nil(t, err)
+	assert.Equal(t, BallotReject, v.Approve)
+	assert.Equal(t, uint64(1), v.Num)
+
+	res = g.GetUnvote(idNonexistent)
+	assert.False(t, res.Ok, string(res.Result))
+	res = g.GetUnvote(idExistent)
+	assert.True(t, res.Ok, string(res.Result))
+	res = g.GetUnvoteNum(idNonexistent)
+	assert.False(t, res.Ok, string(res.Result))
+	res = g.GetUnvoteNum(idExistent)
+	assert.True(t, res.Ok, string(res.Result))
+	mockStub.EXPECT().Caller().Return(addrApproved).Times(1)
+	mockStub.EXPECT().Caller().Return(addrNotVoted).Times(1)
+	mockStub.EXPECT().Caller().Return(addrApproved).Times(1)
+	mockStub.EXPECT().Caller().Return(addrNotVoted).Times(1)
+	mockStub.EXPECT().Caller().Return(addrNotVoted).Times(1)
+	mockStub.EXPECT().Caller().Return(addrNotVoted).Times(1)
+	mockStub.EXPECT().Caller().Return(addrNotVoted1).Times(1)
+	mockStub.EXPECT().Caller().Return(addrNotVoted2).Times(1)
+	mockStub.EXPECT().Caller().Return(addrNotVoted3).Times(1)
+	mockStub.EXPECT().Caller().Return(addrNotVoted4).Times(1)
+	mockStub.EXPECT().Caller().Return(addrNotVoted5).Times(1)
+	mockStub.EXPECT().Caller().Return(addrNotVoted6).Times(1)
+
+	// nonexistent error
+	res = g.Vote(idNonexistent, BallotApprove, "")
+	assert.False(t, res.Ok, string(res.Result))
+	// closed error
+	res = g.Vote(idClosed, BallotApprove, "")
+	assert.False(t, res.Ok, string(res.Result))
+	// has voted error
+	res = g.Vote(idExistent, BallotApprove, "")
+	assert.False(t, res.Ok, string(res.Result))
+
+	// get weight error
+	res = g.Vote(idExistent, BallotApprove, "")
+	assert.False(t, res.Ok, string(res.Result))
+	// get weight parse int error
+	res = g.Vote(idExistent, BallotApprove, "")
+	assert.False(t, res.Ok, string(res.Result))
+
+	// not reach threshold (approve:1)
+	res = g.Vote(idNotReachThreshold, BallotApprove, "")
+	assert.True(t, res.Ok, string(res.Result))
+	// SuperMajorityApprove (reject:1)
+	res = g.Vote(idSuperMajorityApprove, BallotReject, "")
+	assert.False(t, res.Ok, string(res.Result))
+	// SuperMajorityAgainst (approve:2)
+	res = g.Vote(idSuperMajorityAgainst, BallotApprove, "")
+	assert.False(t, res.Ok, string(res.Result))
+	// UnupportedType (reject:2)
+	res = g.Vote(idUnupportedType, BallotReject, "")
+	assert.False(t, res.Ok, string(res.Result))
+	// Manager error (approve:3)
+	res = g.Vote(idExistent, BallotApprove, "")
+	assert.False(t, res.Ok, string(res.Result))
+	// reject (reject:3)
+	res = g.Vote(idExistent, BallotReject, "")
+	assert.True(t, res.Ok, string(res.Result))
+	// approve (approve:4)
+	res = g.Vote(idExistent, BallotReject, "")
+	assert.True(t, res.Ok, string(res.Result))
+}
+
+func TestGovernance_ProposalStrategy(t *testing.T) {
+	mockCtl := gomock.NewController(t)
+	mockStub := mock_stub.NewMockStub(mockCtl)
+
+	g := Governance{mockStub}
+	ps := &ProposalStrategy{
+		Typ:                  SimpleMajority,
+		ParticipateThreshold: 0.5,
+	}
+	psData, err := json.Marshal(ps)
+	assert.Nil(t, err)
+
+	psError := &ProposalStrategy{
+		Typ:                  SimpleMajority,
+		ParticipateThreshold: 1.5,
+	}
+	psErrorData, err := json.Marshal(psError)
+	assert.Nil(t, err)
+
+	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().GetObject(string(RuleMgr), gomock.Any()).Return(false).AnyTimes()
+	mockStub.EXPECT().GetObject(string(AppchainMgr), gomock.Any()).Return(true).AnyTimes()
+
+	res := g.NewProposalStrategy(string(SimpleMajority), 0.5, []byte{})
+	assert.True(t, res.Ok, string(res.Result))
+	res = g.NewProposalStrategy("", 0.5, []byte{})
+	assert.False(t, res.Ok, string(res.Result))
+
+	res = g.SetProposalStrategy(string(AppchainMgr), psData)
+	assert.True(t, res.Ok, string(res.Result))
+	res = g.SetProposalStrategy("", psData)
+	assert.False(t, res.Ok, string(res.Result))
+	res = g.SetProposalStrategy(string(AppchainMgr), psErrorData)
+	assert.False(t, res.Ok, string(res.Result))
+
+	res = g.GetProposalStrategy(string(AppchainMgr))
+	assert.True(t, res.Ok, string(res.Result))
+	res = g.GetProposalStrategy("")
+	assert.False(t, res.Ok, string(res.Result))
+	res = g.GetProposalStrategy(string(RuleMgr))
+	assert.False(t, res.Ok, string(res.Result))
+
+	res = g.GetProposalStrategyType(string(AppchainMgr))
+	assert.True(t, res.Ok, string(res.Result))
+	res = g.GetProposalStrategyType("")
+	assert.False(t, res.Ok, string(res.Result))
+	res = g.GetProposalStrategyType(string(RuleMgr))
+	assert.False(t, res.Ok, string(res.Result))
 }

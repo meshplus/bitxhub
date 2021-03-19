@@ -268,6 +268,12 @@ func registerBoltContracts() map[string]agency.Contract {
 			Address:  constant.InterRelayBrokerContractAddr.Address().String(),
 			Contract: &contracts.InterRelayBroker{},
 		},
+		{
+			Enabled:  true,
+			Name:     "governance service",
+			Address:  constant.GovernanceContractAddr.Address().String(),
+			Contract: &contracts.Governance{},
+		},
 	}
 
 	ContractsInfo := agency.GetRegisteredContractInfo()

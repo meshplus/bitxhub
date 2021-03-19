@@ -5,6 +5,7 @@ import (
 
 	"github.com/meshplus/bitxhub-kit/bytesutil"
 	"github.com/meshplus/bitxhub-kit/types"
+	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/repo"
@@ -16,16 +17,20 @@ var (
 
 // Initialize initialize block
 func Initialize(genesis *repo.Genesis, lg ledger.Ledger) error {
-	for _, addr := range genesis.Addresses {
-		lg.SetBalance(types.NewAddressByStr(addr), 100000000)
-	}
-
-	body, err := json.Marshal(genesis.Addresses)
+	body, err := json.Marshal(genesis.Admins)
 	if err != nil {
 		return err
 	}
 
 	lg.SetState(roleAddr, []byte("admin-roles"), body)
+
+	for _, admin := range genesis.Admins {
+		lg.SetBalance(types.NewAddressByStr(admin.Address), 100000000)
+	}
+
+	for k, v := range genesis.Strategy {
+		lg.SetState(constant.GovernanceContractAddr.Address(), []byte(k), []byte(v))
+	}
 
 	accounts, journal := lg.FlushDirtyDataAndComputeJournal()
 	block := &pb.Block{

@@ -8,6 +8,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/meshplus/bitxhub-core/agency"
+	appchain_mgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/validator/mock_validator"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/types"
@@ -69,6 +70,12 @@ func GetBoltContracts() map[string]agency.Contract {
 			Address:  constant.AssetExchangeContractAddr.Address().String(),
 			Contract: &contracts.AssetExchange{},
 		},
+		{
+			Enabled:  true,
+			Name:     "governance service",
+			Address:  constant.GovernanceContractAddr.Address().String(),
+			Contract: &contracts.Governance{},
+		},
 	}
 
 	ContractsInfo := agency.GetRegisteredContractInfo()
@@ -85,7 +92,7 @@ func GetBoltContracts() map[string]agency.Contract {
 
 func TestRegister(t *testing.T) {
 	registers := GetBoltContracts()
-	require.Equal(t, len(registers), 7)
+	require.Equal(t, len(registers), 8)
 
 	contract, err := GetBoltContract(constant.StoreContractAddr.Address().String(), registers)
 	require.Nil(t, err)
@@ -115,7 +122,23 @@ func TestBoltVM_Run(t *testing.T) {
 
 	data := make([][]byte, 0)
 	data = append(data, []byte("1"))
-	mockLedger.EXPECT().QueryByPrefix(gomock.Any(), gomock.Any()).Return(true, data).AnyTimes()
+	proposalData, err := json.Marshal(&contracts.Proposal{
+		Id: from + "-0",
+	})
+	require.Nil(t, err)
+	proposals := make([][]byte, 0)
+	proposals = append(proposals, proposalData)
+	mockLedger.EXPECT().QueryByPrefix(gomock.Any(), contracts.PROPOSAL_PREFIX).Return(true, proposals).AnyTimes()
+	mockLedger.EXPECT().QueryByPrefix(gomock.Any(), appchain_mgr.PREFIX).Return(true, data).AnyTimes()
+	mockLedger.EXPECT().GetState(gomock.Any(), gomock.Any()).DoAndReturn(func(addr *types.Address, key []byte) (bool, []byte) {
+		switch addr.String() {
+		case constant.AppchainMgrContractAddr.String():
+			return false, nil
+		case constant.InterchainContractAddr.String():
+			return false, nil
+		}
+		return false, nil
+	}).Times(1)
 	mockLedger.EXPECT().GetState(gomock.Any(), gomock.Any()).DoAndReturn(func(addr *types.Address, key []byte) (bool, []byte) {
 		switch addr.String() {
 		case constant.AppchainMgrContractAddr.String():

@@ -2,10 +2,14 @@ package tester
 
 import (
 	"crypto/sha256"
-	"encoding/json"
 	"io/ioutil"
-	"testing"
 	"time"
+
+	"github.com/meshplus/bitxhub/internal/executor/contracts"
+
+	"github.com/tidwall/gjson"
+
+	appchain_mgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
@@ -53,6 +57,21 @@ func (suite *Interchain) TestHandleIBTP() {
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k1Nonce++
+	id1 := gjson.Get(string(ret.Ret), "chain_id").String()
+
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(id1))
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k1Nonce++
+
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "Manager",
+		pb.String(string(appchain_mgr.EventRegister)),
+		pb.String(string(contracts.APPOVED)),
+		pb.Bytes(ret.Ret),
+	)
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k1Nonce++
 
 	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "Register",
 		pb.String(""),
@@ -65,6 +84,21 @@ func (suite *Interchain) TestHandleIBTP() {
 	)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess())
+	k2Nonce++
+	id2 := gjson.Get(string(ret.Ret), "chain_id").String()
+
+	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(id2))
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k2Nonce++
+
+	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "Manager",
+		pb.String(string(appchain_mgr.EventRegister)),
+		pb.String(string(contracts.APPOVED)),
+		pb.Bytes(ret.Ret),
+	)
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k2Nonce++
 
 	// deploy rule
@@ -126,6 +160,21 @@ func (suite *Interchain) TestGetIBTPByID() {
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k1Nonce++
+	id1 := gjson.Get(string(ret.Ret), "chain_id").String()
+
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(id1))
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k1Nonce++
+
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "Manager",
+		pb.String(string(appchain_mgr.EventRegister)),
+		pb.String(string(contracts.APPOVED)),
+		pb.Bytes(ret.Ret),
+	)
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k1Nonce++
 
 	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "Register",
 		pb.String(""),
@@ -135,6 +184,21 @@ func (suite *Interchain) TestGetIBTPByID() {
 		pb.String("fabric税务链"),
 		pb.String("1.8"),
 		pb.String(string(pub2)),
+	)
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k2Nonce++
+	id2 := gjson.Get(string(ret.Ret), "chain_id").String()
+
+	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(id2))
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k2Nonce++
+
+	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "Manager",
+		pb.String(string(appchain_mgr.EventRegister)),
+		pb.String(string(contracts.APPOVED)),
+		pb.Bytes(ret.Ret),
 	)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
@@ -188,21 +252,6 @@ func (suite *Interchain) TestGetIBTPByID() {
 	k1Nonce++
 }
 
-func (suite *Interchain) TestAudit() {
-	k, err := asym.GenerateKeyPair(crypto.Secp256k1)
-	suite.Require().Nil(err)
-	kNonce := uint64(1)
-
-	ret, err := invokeBVMContract(suite.api, k, kNonce, constant.AppchainMgrContractAddr.Address(), "Audit",
-		pb.String("0x123"),
-		pb.Int32(1),
-		pb.String("通过"),
-	)
-	suite.Require().Nil(err)
-	suite.Contains(string(ret.Ret), "caller is not an admin account")
-	kNonce++
-}
-
 func (suite *Interchain) TestInterchain() {
 	k1, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
@@ -223,11 +272,21 @@ func (suite *Interchain) TestInterchain() {
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k1Nonce++
+	id1 := gjson.Get(string(ret.Ret), "chain_id").String()
 
-	appchain := Appchain{}
-	err = json.Unmarshal(ret.Ret, &appchain)
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(id1))
 	suite.Require().Nil(err)
-	id1 := appchain.ID
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k1Nonce++
+
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "Manager",
+		pb.String(string(appchain_mgr.EventRegister)),
+		pb.String(string(contracts.APPOVED)),
+		pb.Bytes(ret.Ret),
+	)
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k1Nonce++
 
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.InterchainContractAddr.Address(), "Interchain")
 	suite.Require().Nil(err)
@@ -246,14 +305,16 @@ func (suite *Interchain) TestInterchain() {
 func (suite *Interchain) TestRegister() {
 	k1, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
+	from1, err := k1.PublicKey().Address()
+	suite.Require().Nil(err)
 	k1Nonce := uint64(1)
 
-	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.InterchainContractAddr.Address(), "Register")
+	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.InterchainContractAddr.Address(), "Register", pb.String(from1.Address))
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k1Nonce++
 }
 
-func TestInterchain(t *testing.T) {
-	suite.Run(t, &Interchain{})
-}
+//func TestInterchain(t *testing.T) {
+//	suite.Run(t, &Interchain{})
+//}

@@ -6,12 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/meshplus/bitxhub-kit/crypto"
-	"github.com/meshplus/bitxhub-kit/crypto/asym"
-
 	"github.com/golang/mock/gomock"
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/validator/mock_validator"
+	"github.com/meshplus/bitxhub-kit/crypto"
+	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
@@ -123,11 +122,10 @@ func TestVerifyPool_CheckProof(t *testing.T) {
 
 func TestVerifyPool_CheckProof2(t *testing.T) {
 	mockCtl := gomock.NewController(t)
-	mockLedger := mock_ledger.NewMockLedger(mockCtl)
 	mockEngine := mock_validator.NewMockEngine(mockCtl)
 
 	chain := &appchainMgr.Appchain{
-		Status:        appchainMgr.APPROVED,
+		Status:        appchainMgr.AppchainAvailable,
 		ID:            from,
 		Name:          "appchain" + from,
 		Validators:    "",
@@ -154,10 +152,6 @@ func TestVerifyPool_CheckProof2(t *testing.T) {
 	addrsData, err := json.Marshal(bv)
 	require.Nil(t, err)
 
-	chainData, err := json.Marshal(chain)
-	require.Nil(t, err)
-
-	mockLedger.EXPECT().GetState(constant.AppchainMgrContractAddr.Address(), gomock.Any()).Return(true, chainData)
 	mockEngine.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil).AnyTimes()
 
 	ibtp := getIBTP(t, 1, pb.IBTP_RECEIPT_SUCCESS, nil)
@@ -194,12 +188,6 @@ func TestVerifyPool_CheckProof3(t *testing.T) {
 	mockLedger := mock_ledger.NewMockLedger(mockCtl)
 	mockEngine := mock_validator.NewMockEngine(mockCtl)
 
-	rl := &contracts.Rule{
-		Address: contract,
-	}
-	rlData, err := json.Marshal(rl)
-	require.Nil(t, err)
-
 	mockLedger.EXPECT().GetState(constant.AppchainMgrContractAddr.Address(), gomock.Any()).Return(true, []byte("123"))
 	mockEngine.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil).AnyTimes()
 
@@ -219,7 +207,6 @@ func TestVerifyPool_CheckProof3(t *testing.T) {
 		Extra: proof,
 	}
 
-	mockLedger.EXPECT().GetState(constant.RuleManagerContractAddr.Address(), gomock.Any()).Return(true, rlData)
 	txWithIBTP.TransactionHash = txWithIBTP.Hash()
 	ok, err := vp.CheckProof(txWithIBTP)
 	require.NotNil(t, err)

@@ -1,6 +1,7 @@
 package contracts
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 
@@ -15,15 +16,69 @@ type AppchainManager struct {
 	appchainMgr.AppchainManager
 }
 
+type RegisterResult struct {
+	ChainID    string `json:"chain_id"`
+	ProposalID string `json:"proposal_id"`
+}
+
+func (am *AppchainManager) Manager(des string, proposalResult string, extra []byte) *boltvm.Response {
+	am.AppchainManager.Persister = am.Stub
+	chain := &appchainMgr.Appchain{}
+	if err := json.Unmarshal(extra, chain); err != nil {
+		return boltvm.Error("unmarshal json error:" + err.Error())
+	}
+
+	ok, err := am.AppchainManager.ChangeStatus(chain.ID, proposalResult)
+	if !ok {
+		return boltvm.Error(string(err))
+	}
+
+	if proposalResult == string(APPOVED) {
+		switch des {
+		case appchainMgr.EventRegister:
+			return am.CrossInvoke(constant.InterchainContractAddr.String(), "Register", pb.String(chain.ID))
+		case appchainMgr.EventUpdate:
+			return responseWrapper(am.AppchainManager.UpdateAppchain(chain.ID, chain.Validators, chain.ConsensusType, chain.ChainType, chain.Name, chain.Desc, chain.Version, chain.PublicKey))
+		}
+	}
+
+	return boltvm.Success(nil)
+}
+
 // Register appchain managers registers appchain info caller is the appchain
 // manager address return appchain id and error
 func (am *AppchainManager) Register(validators string, consensusType int32, chainType, name, desc, version, pubkey string) *boltvm.Response {
 	am.AppchainManager.Persister = am.Stub
-	res := am.CrossInvoke(constant.InterchainContractAddr.String(), "Register")
+	ok, idData := am.AppchainManager.Register(am.Caller(), validators, consensusType, chainType, name, desc, version, pubkey)
+	if ok {
+		return boltvm.Error("appchain has registered, chain id: " + string(idData))
+	}
+
+	ok, data := am.AppchainManager.GetAppchain(string(idData))
+	if !ok {
+		return boltvm.Error("get appchain error: " + string(data))
+	}
+
+	res := am.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
+		pb.String(am.Caller()),
+		pb.String(appchainMgr.EventRegister),
+		pb.String(string(AppchainMgr)),
+		pb.Bytes(data),
+	)
+
 	if !res.Ok {
 		return res
 	}
-	return responseWrapper(am.AppchainManager.Register(am.Caller(), validators, consensusType, chainType, name, desc, version, pubkey))
+
+	res1 := RegisterResult{
+		ChainID:    am.Caller(),
+		ProposalID: string(res.Result),
+	}
+	resData, err := json.Marshal(res1)
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+	return boltvm.Success(resData)
 }
 
 // UpdateAppchain updates approved appchain
@@ -32,16 +87,10 @@ func (am *AppchainManager) UpdateAppchain(validators string, consensusType int32
 	return responseWrapper(am.AppchainManager.UpdateAppchain(am.Caller(), validators, consensusType, chainType, name, desc, version, pubkey))
 }
 
-//FetchAuditRecords fetches audit records by appchain id
-func (am *AppchainManager) FetchAuditRecords(id string) *boltvm.Response {
-	am.AppchainManager.Persister = am.Stub
-	return responseWrapper(am.AppchainManager.FetchAuditRecords(id))
-}
-
 // CountApprovedAppchains counts all approved appchains
-func (am *AppchainManager) CountApprovedAppchains() *boltvm.Response {
+func (am *AppchainManager) CountAvailableAppchains() *boltvm.Response {
 	am.AppchainManager.Persister = am.Stub
-	return responseWrapper(am.AppchainManager.CountApprovedAppchains())
+	return responseWrapper(am.AppchainManager.CountAvailableAppchains())
 }
 
 // CountAppchains counts all appchains including approved, rejected or registered
@@ -72,15 +121,6 @@ func (am *AppchainManager) GetAppchain(id string) *boltvm.Response {
 func (am *AppchainManager) GetPubKeyByChainID(id string) *boltvm.Response {
 	am.AppchainManager.Persister = am.Stub
 	return responseWrapper(am.AppchainManager.GetPubKeyByChainID(id))
-}
-
-// Audit bitxhub manager audit appchain register info
-func (am *AppchainManager) Audit(proposer string, isApproved int32, desc string) *boltvm.Response {
-	am.AppchainManager.Persister = am.Stub
-	if res := am.IsAdmin(); !res.Ok {
-		return res
-	}
-	return responseWrapper(am.AppchainManager.Audit(proposer, isApproved, desc))
 }
 
 func (am *AppchainManager) DeleteAppchain(cid string) *boltvm.Response {

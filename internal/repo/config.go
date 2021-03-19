@@ -104,7 +104,13 @@ type LogModule struct {
 }
 
 type Genesis struct {
-	Addresses []string `json:"addresses" toml:"addresses"`
+	Admins   []*Admin          `json:"admins" toml:"admins"`
+	Strategy map[string]string `json:"strategy" toml:"strategy"`
+}
+
+type Admin struct {
+	Address string `json:"address" toml:"address"`
+	Weight  uint64 `json:"weight" toml:"weight"`
 }
 
 type Cert struct {
