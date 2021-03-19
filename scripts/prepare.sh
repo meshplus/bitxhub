@@ -55,9 +55,10 @@ function Get_PM_Name()
   print_blue "Your OS distribution is detected as: "$DISTRO;
   eval "$1=$PM"
 }
+
+print_blue "===> 4. Install tmux with package manager"
 PM_NAME=''
 Get_PM_Name PM_NAME
-print_blue "===> 4. Install tmux with package manager"
 if [ -n "$PM_NAME" ]; then
   $PM_NAME install -y tmux
 fi
