@@ -87,45 +87,67 @@ func sendTransaction(ctx *cli.Context) error {
 		keyPath = repo.GetKeyPath(repoRoot)
 	}
 
+	resp, err := sendTx(ctx, toString, amount, txType, keyPath, 0, "")
+	if err != nil {
+		return fmt.Errorf("send transaction: %w", err)
+	}
+
+	fmt.Println(string(resp))
+	return nil
+}
+
+func sendTx(ctx *cli.Context, toString string, amount uint64, txType uint64, keyPath string, vmType uint64, method string, args ...*pb.Arg) ([]byte, error) {
+
 	key, err := repo.LoadKey(keyPath)
 	if err != nil {
-		return fmt.Errorf("wrong key: %w", err)
+		return nil, fmt.Errorf("wrong key: %w", err)
 	}
 
 	from, err := key.PrivKey.PublicKey().Address()
 	if err != nil {
-		return fmt.Errorf("wrong private key: %w", err)
+		return nil, fmt.Errorf("wrong private key: %w", err)
 	}
 
 	to := types.NewAddressByStr(toString)
 
+	invokePayload := &pb.InvokePayload{
+		Method: method,
+		Args:   args,
+	}
+	invokePayloadData, err := invokePayload.Marshal()
+	if err != nil {
+		return nil, err
+	}
+
 	data := &pb.TransactionData{
-		Type:   pb.TransactionData_Type(txType),
-		Amount: amount,
+		Type:    pb.TransactionData_Type(txType),
+		Amount:  amount,
+		VmType:  pb.TransactionData_VMType(vmType),
+		Payload: invokePayloadData,
 	}
 	payload, err := data.Marshal()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	getNonceUrl, err := getURL(ctx, fmt.Sprintf("pendingNonce/%s", from.String()))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	encodedNonce, err := httpGet(ctx, getNonceUrl)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	ret, err := parseResponse(encodedNonce)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	nonce, err := strconv.ParseUint(ret, 10, 64)
 	if err != nil {
-		return fmt.Errorf("parse pending nonce :%w", err)
+		return nil, fmt.Errorf("parse pending nonce :%w", err)
 	}
 
 	tx := &pb.Transaction{
@@ -137,25 +159,23 @@ func sendTransaction(ctx *cli.Context) error {
 	}
 
 	if err := tx.Sign(key.PrivKey); err != nil {
-		return err
+		return nil, err
 	}
 
 	reqData, err := json.Marshal(tx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	url, err := getURL(ctx, "transaction")
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	resp, err := httpPost(ctx, url, reqData)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	fmt.Println(string(resp))
-
-	return nil
+	return resp, nil
 }
