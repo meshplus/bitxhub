@@ -60,5 +60,5 @@ print_blue "===> 4. Install tmux with package manager"
 PM_NAME=''
 Get_PM_Name PM_NAME
 if [ -n "$PM_NAME" ]; then
-  $PM_NAME install -y tmux
+  sudo $PM_NAME install -y tmux
 fi
