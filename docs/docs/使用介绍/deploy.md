@@ -29,7 +29,7 @@ git clone https://github.com/meshplus/bitxhub.git
 
 ##### 二进制下载
 
-可以在github上下载已经打包好的二进制安装包，地址如下：`https://github.com/meshplus/bitxhub/releases`, 根据需要的版本进行下载即可。
+可以在github上下载已经打包好的二进制安装包，地址如下：`https://github.com/meshplus/bitxhub/releases`, 根据需要的版本进行下载即可。请注意，在bitxhub v1.6.0及之后，二进制包和部署配置示例文件将分为两个压缩包提供，其中配置文件是以四节点bitxhub集群为示例，文件命名以examples开头，如果只下载配置文件，仍需要将二进制程序拷贝到指定地方之后才能启动节点。
 
 ### 修改配置文件
 
