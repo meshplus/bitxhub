@@ -28,7 +28,10 @@ fi
 function Get_PM_Name()
 {
   PM=''
-  if grep -Eqii "CentOS" /etc/issue || grep -Eq "CentOS" /etc/*-release; then
+  if [ "$(uname)" == "Darwin" ]; then
+    DISTRO='MacOS'
+    PM='brew'
+  elif grep -Eqii "CentOS" /etc/issue || grep -Eq "CentOS" /etc/*-release; then
     DISTRO='CentOS'
     PM='yum'
   elif grep -Eqi "Red Hat Enterprise Linux Server" /etc/issue || grep -Eq "Red Hat Enterprise Linux Server" /etc/*-release; then
@@ -60,5 +63,9 @@ print_blue "===> 4. Install tmux with package manager"
 PM_NAME=''
 Get_PM_Name PM_NAME
 if [ -n "$PM_NAME" ]; then
-  sudo $PM_NAME install -y tmux
+  if [ "$PM_NAME" == "brew" ]; then
+    $PM_NAME install tmux
+  else
+    sudo $PM_NAME install -y tmux
+  fi
 fi
