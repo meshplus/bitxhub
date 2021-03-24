@@ -11,6 +11,7 @@ import (
 type Context struct {
 	Caller           *types.Address
 	Callee           *types.Address
+	CurrentCaller    *types.Address
 	Ledger           ledger.Ledger
 	TransactionIndex uint64
 	TransactionHash  *types.Hash
@@ -24,6 +25,7 @@ func NewContext(tx *pb.Transaction, txIndex uint64, data *pb.TransactionData, le
 	return &Context{
 		Caller:           tx.From,
 		Callee:           tx.To,
+		CurrentCaller:    tx.From,
 		Ledger:           ledger,
 		TransactionIndex: txIndex,
 		TransactionHash:  tx.TransactionHash,
