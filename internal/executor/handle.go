@@ -20,6 +20,7 @@ import (
 	"github.com/meshplus/bitxhub/pkg/vm"
 	"github.com/meshplus/bitxhub/pkg/vm/boltvm"
 	"github.com/meshplus/bitxhub/pkg/vm/wasm"
+	"github.com/meshplus/bitxhub/pkg/vm/wasm/vmledger"
 	"github.com/sirupsen/logrus"
 )
 
@@ -298,7 +299,7 @@ func (exec *BlockExecutor) applyTransaction(i int, tx *pb.Transaction, opt *agen
 			instance = boltvm.New(ctx, exec.validationEngine, exec.getContracts(opt))
 		case pb.TransactionData_XVM:
 			ctx := vm.NewContext(tx, uint64(i), data, exec.ledger, exec.logger)
-			imports, err := wasm.EmptyImports()
+			imports, err := vmledger.New()
 			if err != nil {
 				return nil, err
 			}
