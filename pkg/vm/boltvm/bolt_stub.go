@@ -27,6 +27,10 @@ func (b *BoltStubImpl) Callee() string {
 	return b.ctx.Callee.String()
 }
 
+func (b *BoltStubImpl) CurrentCaller() string {
+	return b.ctx.CurrentCaller.String()
+}
+
 func (b *BoltStubImpl) Logger() logrus.FieldLogger {
 	return b.ctx.Logger
 }
@@ -126,6 +130,7 @@ func (b *BoltStubImpl) CrossInvoke(address, method string, args ...*pb.Arg) *bol
 	ctx := &vm.Context{
 		Caller:           b.bvm.ctx.Caller,
 		Callee:           addr,
+		CurrentCaller:    b.bvm.ctx.Callee,
 		Ledger:           b.bvm.ctx.Ledger,
 		TransactionIndex: b.bvm.ctx.TransactionIndex,
 		TransactionHash:  b.bvm.ctx.TransactionHash,
