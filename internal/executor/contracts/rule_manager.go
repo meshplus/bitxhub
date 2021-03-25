@@ -32,9 +32,8 @@ type ruleRecord struct {
 
 // SetRule can map the validation rule address with the chain id
 func (r *RuleManager) RegisterRule(id string, address string) *boltvm.Response {
-
-	if res := r.CrossInvoke(constant.AppchainMgrContractAddr.String(), "GetAppchain", pb.String(id)); !res.Ok {
-		return boltvm.Error("this appchain does not exist")
+	if res := r.CrossInvoke(constant.AppchainMgrContractAddr.String(), "IsAvailable", pb.String(id)); !res.Ok {
+		return boltvm.Error(string(res.Result))
 	}
 
 	rl := &Rule{

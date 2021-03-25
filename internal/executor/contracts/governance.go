@@ -76,6 +76,20 @@ type Proposal struct {
 }
 
 func (g *Governance) SubmitProposal(from, des string, typ string, extra []byte) *boltvm.Response {
+	specificAddrs := []string{constant.AppchainMgrContractAddr.Address().String()}
+	addrsData, err := json.Marshal(specificAddrs)
+	if err != nil {
+		return boltvm.Error("marshal specificAddrs error:" + string(err.Error()))
+	}
+	res := g.CrossInvoke(constant.RoleContractAddr.String(), "CheckPermission",
+		pb.String(string(PermissionSpecific)),
+		pb.String(""),
+		pb.String(g.CurrentCaller()),
+		pb.Bytes(addrsData))
+	if !res.Ok {
+		return boltvm.Error("check permission error:" + string(res.Result))
+	}
+
 	ret, err := g.getProposalsByFrom(from)
 	if err != nil {
 		return boltvm.Error(err.Error())
@@ -103,9 +117,6 @@ func (g *Governance) SubmitProposal(from, des string, typ string, extra []byte) 
 		ThresholdNum:  tn,
 		Extra:         extra,
 	}
-	if err := checkProposalInfo(p); err != nil {
-		return boltvm.Error(err.Error())
-	}
 
 	g.AddObject(ProposalKey(p.Id), *p)
 
@@ -115,7 +126,7 @@ func (g *Governance) SubmitProposal(from, des string, typ string, extra []byte) 
 func (g *Governance) getElectorateNum() (uint64, error) {
 	res := g.CrossInvoke(constant.RoleContractAddr.String(), "GetAdminRoles")
 	if !res.Ok {
-		return 0, fmt.Errorf(string(res.Result))
+		return 0, fmt.Errorf("get admin roles error: %s", string(res.Result))
 	}
 
 	var admins []*repo.Admin
@@ -549,6 +560,8 @@ func (g *Governance) setVote(p *Proposal, addr string, approve string, reason st
 		p.ApproveNum = p.ApproveNum + uint64(num)
 	case BallotReject:
 		p.AgainstNum = p.AgainstNum + uint64(num)
+	default:
+		return fmt.Errorf("the info of vote should be approve or reject")
 	}
 
 	g.SetObject(ProposalKey(p.Id), *p)
