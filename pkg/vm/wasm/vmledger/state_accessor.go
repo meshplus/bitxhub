@@ -2,13 +2,14 @@ package vmledger
 
 // #include <stdlib.h>
 //
-// extern long long unsigned int get_balance(void *context);
-// extern void set_balance(void *context, long long unsigned int value);
+// extern long long get_balance(void *context);
+// extern void set_balance(void *context, long long value);
 // extern int32_t get_state(void *context, long long key_ptr);
 // extern void set_state(void *context, long long key_ptr, long long value_ptr);
 // extern void add_state(void *context, long long key_ptr, long long value_ptr);
 import "C"
 import (
+	"fmt"
 	"unsafe"
 
 	"github.com/meshplus/bitxhub/internal/ledger"
@@ -16,19 +17,19 @@ import (
 )
 
 //export get_balance
-func get_balance(context unsafe.Pointer) uint64 {
+func get_balance(context unsafe.Pointer) int64 {
 	ctx := wasmer.IntoInstanceContext(context)
 	ctxMap := ctx.Data().(map[string]interface{})
 	account := ctxMap["account"].(*ledger.Account)
-	return account.GetBalance()
+	return int64(account.GetBalance())
 }
 
 //export set_balance
-func set_balance(context unsafe.Pointer, value uint64) {
+func set_balance(context unsafe.Pointer, value int64) {
 	ctx := wasmer.IntoInstanceContext(context)
 	ctxMap := ctx.Data().(map[string]interface{})
 	account := ctxMap["account"].(*ledger.Account)
-	account.SetBalance(value)
+	account.SetBalance(uint64(value))
 }
 
 //export get_state
@@ -36,7 +37,7 @@ func get_state(context unsafe.Pointer, key_ptr int64) int32 {
 	ctx := wasmer.IntoInstanceContext(context)
 	ctxMap := ctx.Data().(map[string]interface{})
 	data := ctxMap["argmap"].(map[int]int)
-	alloc := ctxMap["alloc"].(func(...interface{}) (wasmer.Value, error))
+	alloc := ctxMap["allocate"].(func(...interface{}) (wasmer.Value, error))
 	account := ctxMap["account"].(*ledger.Account)
 	memory := ctx.Memory()
 	key := memory.Data()[key_ptr : key_ptr+int64(data[int(key_ptr)])]
@@ -92,6 +93,7 @@ func (im *Imports) importLedger() {
 	var err error
 	im.imports, err = im.imports.Append("get_balance", get_balance, C.get_balance)
 	if err != nil {
+		fmt.Println(err)
 		return
 	}
 	im.imports, err = im.imports.Append("set_balance", set_balance, C.set_balance)
