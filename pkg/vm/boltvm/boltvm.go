@@ -94,6 +94,11 @@ func (bvm *BoltVM) HandleIBTP(ibtp *pb.IBTP) (ret []byte, err error) {
 		ve:  bvm.ve,
 	}
 
+	_, err = GetBoltContract(bvm.ctx.Callee.String(), bvm.contracts)
+	if err != nil {
+		return nil, fmt.Errorf("get bolt contract: %w", err)
+	}
+
 	res := con.HandleIBTP(ibtp)
 	if !res.Ok {
 		return nil, fmt.Errorf("call error: %s", res.Result)

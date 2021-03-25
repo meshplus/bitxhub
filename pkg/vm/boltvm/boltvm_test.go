@@ -7,23 +7,28 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
-	"github.com/meshplus/bitxhub-core/agency"
 	appchain_mgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/validator/mock_validator"
 	"github.com/meshplus/bitxhub-kit/log"
+	"github.com/meshplus/bitxhub/internal/ledger/mock_ledger"
+	"github.com/meshplus/bitxhub/internal/repo"
+	"github.com/meshplus/bitxhub/pkg/vm"
+
+	"github.com/meshplus/bitxhub-core/agency"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
-	"github.com/meshplus/bitxhub/internal/ledger/mock_ledger"
-	"github.com/meshplus/bitxhub/pkg/vm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 const (
-	from = "0x3f9d18f7C3a6E5E4C0B877FE3E688aB08840b997"
-	to   = "0x000018f7C3A6E5E4c0b877fe3E688ab08840b997"
+	from   = "0x3f9d18f7C3a6E5E4C0B877FE3E688aB08840b997"
+	to     = "0x000018f7C3A6E5E4c0b877fe3E688ab08840b997"
+	admin1 = "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013"
+	admin2 = "0x79a1215469FaB6f9c63c1816b45183AD3624bE34"
+	admin3 = "0x97c8B516D19edBf575D72a172Af7F418BE498C37"
 )
 
 func GetBoltContracts() map[string]agency.Contract {
@@ -128,23 +133,96 @@ func TestBoltVM_Run(t *testing.T) {
 	require.Nil(t, err)
 	proposals := make([][]byte, 0)
 	proposals = append(proposals, proposalData)
+
+	admins := make([]*repo.Admin, 0)
+	admins = append(admins, &repo.Admin{
+		Address: admin1,
+		Weight:  uint64(1),
+	})
+	admins = append(admins, &repo.Admin{
+		Address: admin2,
+		Weight:  uint64(1),
+	})
+	admins = append(admins, &repo.Admin{
+		Address: admin3,
+		Weight:  uint64(1),
+	})
+	adminsData, err := json.Marshal(admins)
+	require.Nil(t, err)
+
+	chainRegisting := &appchain_mgr.Appchain{
+		Status:        appchain_mgr.AppchainRegisting,
+		ID:            from,
+		Name:          "appchain A",
+		Validators:    "",
+		ConsensusType: "rbft",
+		ChainType:     "fabric",
+		Desc:          "",
+		Version:       "",
+		PublicKey:     "11111",
+	}
+	chainRegistingData, err := json.Marshal(chainRegisting)
+	require.Nil(t, err)
+
+	chainAvailable := &appchain_mgr.Appchain{
+		Status:        appchain_mgr.AppchainAvailable,
+		ID:            from,
+		Name:          "appchain A",
+		Validators:    "",
+		ConsensusType: "rbft",
+		ChainType:     "fabric",
+		Desc:          "",
+		Version:       "",
+		PublicKey:     "11111",
+	}
+	chainAvailableData, err := json.Marshal(chainAvailable)
+	require.Nil(t, err)
+
+	interchain := &pb.Interchain{
+		ID:                   from,
+		InterchainCounter:    make(map[string]uint64),
+		ReceiptCounter:       make(map[string]uint64),
+		SourceReceiptCounter: make(map[string]uint64),
+	}
+	interchainData, err := interchain.Marshal()
+	require.Nil(t, err)
+
 	mockLedger.EXPECT().QueryByPrefix(gomock.Any(), contracts.PROPOSAL_PREFIX).Return(true, proposals).AnyTimes()
 	mockLedger.EXPECT().QueryByPrefix(gomock.Any(), appchain_mgr.PREFIX).Return(true, data).AnyTimes()
 	mockLedger.EXPECT().GetState(gomock.Any(), gomock.Any()).DoAndReturn(func(addr *types.Address, key []byte) (bool, []byte) {
 		switch addr.String() {
-		case constant.AppchainMgrContractAddr.String():
+		case constant.AppchainMgrContractAddr.Address().String():
 			return false, nil
-		case constant.InterchainContractAddr.String():
+		case constant.InterchainContractAddr.Address().String():
 			return false, nil
+		case constant.RoleContractAddr.Address().String():
+			return true, adminsData
 		}
 		return false, nil
 	}).Times(1)
 	mockLedger.EXPECT().GetState(gomock.Any(), gomock.Any()).DoAndReturn(func(addr *types.Address, key []byte) (bool, []byte) {
 		switch addr.String() {
-		case constant.AppchainMgrContractAddr.String():
-			return true, nil
-		case constant.InterchainContractAddr.String():
+		case constant.AppchainMgrContractAddr.Address().String():
+			return true, chainRegistingData
+		case constant.InterchainContractAddr.Address().String():
 			return false, nil
+		case constant.RoleContractAddr.Address().String():
+			return true, adminsData
+		case constant.GovernanceContractAddr.Address().String():
+			return true, nil
+		}
+		return true, nil
+	}).Times(5)
+	mockLedger.EXPECT().GetState(gomock.Any(), gomock.Any()).DoAndReturn(func(addr *types.Address, key []byte) (bool, []byte) {
+		switch addr.String() {
+		case constant.AppchainMgrContractAddr.Address().String():
+			return true, chainAvailableData
+		case constant.InterchainContractAddr.Address().String():
+			return true, interchainData
+		case constant.RoleContractAddr.Address().String():
+			return true, adminsData
+		case constant.GovernanceContractAddr.Address().String():
+			return true, nil
 		}
 		return true, nil
 	}).AnyTimes()
@@ -159,6 +237,24 @@ func TestBoltVM_Run(t *testing.T) {
 	tx.TransactionHash = tx.Hash()
 	ctx := vm.NewContext(tx, 1, nil, mockLedger, log.NewWithModule("vm"))
 	boltVM := New(ctx, mockEngine, GetBoltContracts())
+
+	// create Governance boltVM
+	txGovernance := &pb.Transaction{
+		From: types.NewAddressByStr(constant.GovernanceContractAddr.String()),
+		To:   constant.AppchainMgrContractAddr.Address(),
+	}
+	txGovernance.TransactionHash = txGovernance.Hash()
+	ctxGovernance := vm.NewContext(txGovernance, 1, nil, mockLedger, log.NewWithModule("vm"))
+	boltVMGovernance := New(ctxGovernance, mockEngine, GetBoltContracts())
+
+	// create Interchain boltVM
+	txInterchain := &pb.Transaction{
+		From: types.NewAddressByStr(from),
+		To:   constant.InterchainContractAddr.Address(),
+	}
+	txInterchain.TransactionHash = txInterchain.Hash()
+	ctxInterchain := vm.NewContext(txInterchain, 1, nil, mockLedger, log.NewWithModule("vm"))
+	boltVMInterchain := New(ctxInterchain, mockEngine, GetBoltContracts())
 
 	ip := &pb.InvokePayload{
 		Method: "CountAppchains",
@@ -197,8 +293,8 @@ func TestBoltVM_Run(t *testing.T) {
 				Value: []byte(from),
 			},
 			{
-				Type:  pb.Arg_I32,
-				Value: []byte(strconv.Itoa(1)),
+				Type:  pb.Arg_String,
+				Value: []byte("rbft"),
 			},
 			{
 				Type:  pb.Arg_String,
@@ -228,6 +324,28 @@ func TestBoltVM_Run(t *testing.T) {
 	require.Nil(t, err)
 
 	ip = &pb.InvokePayload{
+		Method: "Manager",
+		Args: []*pb.Arg{
+			{
+				Type:  pb.Arg_String,
+				Value: []byte(appchain_mgr.EventRegister),
+			},
+			{
+				Type:  pb.Arg_String,
+				Value: []byte(contracts.APPOVED),
+			},
+			{
+				Type:  pb.Arg_Bytes,
+				Value: chainRegistingData,
+			},
+		},
+	}
+	input, err = ip.Marshal()
+	require.Nil(t, err)
+	ret, err = boltVMGovernance.Run(input)
+	require.Nil(t, err, string(ret))
+
+	ip = &pb.InvokePayload{
 		Method: "DeleteAppchain",
 		Args: []*pb.Arg{
 			{
@@ -244,7 +362,7 @@ func TestBoltVM_Run(t *testing.T) {
 	require.Contains(t, err.Error(), "caller is not an admin account")
 
 	ibtp := mockIBTP(t, 1, pb.IBTP_INTERCHAIN)
-	_, err = boltVM.HandleIBTP(ibtp)
+	_, err = boltVMInterchain.HandleIBTP(ibtp)
 	require.Nil(t, err)
 
 }

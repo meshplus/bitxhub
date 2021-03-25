@@ -76,15 +76,45 @@ func governanceCMD() cli.Command {
 			},
 			cli.Command{
 				Name:  "chain",
-				Usage: "query chain status by chain id",
-				Flags: []cli.Flag{
-					cli.StringFlag{
-						Name:     "id",
-						Usage:    "chain id",
-						Required: true,
+				Usage: "appchain manage command",
+				Subcommands: cli.Commands{
+					cli.Command{
+						Name:  "status",
+						Usage: "query chain status by chain id",
+						Flags: []cli.Flag{
+							cli.StringFlag{
+								Name:     "id",
+								Usage:    "chain id",
+								Required: true,
+							},
+						},
+						Action: getChainStatusById,
+					},
+					cli.Command{
+						Name:  "freeze",
+						Usage: "freeze appchain by chain id",
+						Flags: []cli.Flag{
+							cli.StringFlag{
+								Name:     "id",
+								Usage:    "chain id",
+								Required: true,
+							},
+						},
+						Action: freezeAppchain,
+					},
+					cli.Command{
+						Name:  "activate",
+						Usage: "activate chain by chain id",
+						Flags: []cli.Flag{
+							cli.StringFlag{
+								Name:     "id",
+								Usage:    "chain id",
+								Required: true,
+							},
+						},
+						Action: activateAppchain,
 					},
 				},
-				Action: getChainStatusById,
 			},
 		},
 	}
@@ -99,46 +129,9 @@ func vote(ctx *cli.Context) error {
 		return fmt.Errorf("the info parameter can only have a value of \"approve\" or \"reject\"")
 	}
 
-	repoRoot, err := repo.PathRootWithDefault(ctx.GlobalString("repo"))
+	receipt, err := invokeBVMContract(ctx, constant.GovernanceContractAddr.String(), "Vote", pb.String(id), pb.String(info), pb.String(reason))
 	if err != nil {
 		return err
-	}
-	keyPath := repo.GetKeyPath(repoRoot)
-
-	resp, err := sendTx(ctx, constant.GovernanceContractAddr.String(), 0, uint64(pb.TransactionData_INVOKE), keyPath, uint64(pb.TransactionData_BVM), "Vote",
-		pb.String(id), pb.String(info), pb.String(reason))
-	if err != nil {
-		return fmt.Errorf("send transaction error: %s", err.Error())
-	}
-	hash := gjson.Get(string(resp), "tx_hash").String()
-
-	var data []byte
-	if err = retry.Retry(func(attempt uint) error {
-		data, err = getTxReceipt(ctx, hash)
-		if err != nil {
-			fmt.Println("get transaction receipt error: " + err.Error() + "... retry later")
-			return err
-		} else {
-			m := make(map[string]interface{})
-			if err := json.Unmarshal(data, &m); err != nil {
-				fmt.Println("get transaction receipt error: " + err.Error() + "... retry later")
-				return err
-			}
-			if errInfo, ok := m["error"]; ok {
-				fmt.Println("get transaction receipt error: " + errInfo.(string) + "... retry later")
-				return fmt.Errorf(errInfo.(string))
-			}
-			return nil
-		}
-	}, strategy.Wait(500*time.Millisecond),
-	); err != nil {
-		fmt.Println("get transaction receipt error: " + err.Error())
-	}
-
-	m := &runtime.JSONPb{OrigName: true, EmitDefaults: true, EnumsAsInts: true}
-	receipt := &pb.Receipt{}
-	if err = m.Unmarshal(data, receipt); err != nil {
-		return fmt.Errorf("jsonpb unmarshal receipt error: %w", err)
 	}
 
 	if receipt.IsSuccess() {
@@ -155,7 +148,7 @@ func getProposals(ctx *cli.Context) error {
 	status := ctx.String("status")
 	from := ctx.String("from")
 
-	if err := checkArgs(id, typ, status, from); err != nil {
+	if err := checkProposalArgs(id, typ, status, from); err != nil {
 		return err
 	}
 
@@ -206,7 +199,7 @@ func getProposals(ctx *cli.Context) error {
 	return nil
 }
 
-func checkArgs(id, typ, status, from string) error {
+func checkProposalArgs(id, typ, status, from string) error {
 	if id == "" &&
 		typ == "" &&
 		status == "" &&
@@ -246,40 +239,9 @@ func getdDuplicateProposals(ps1, ps2 []contracts.Proposal) []contracts.Proposal 
 }
 
 func getProposalsByConditions(ctx *cli.Context, keyPath string, menthod string, arg string) ([]contracts.Proposal, error) {
-	resp, err := sendTx(ctx, constant.GovernanceContractAddr.String(), 0, uint64(pb.TransactionData_INVOKE), keyPath, uint64(pb.TransactionData_BVM), menthod,
-		pb.String(arg))
+	receipt, err := invokeBVMContract(ctx, constant.GovernanceContractAddr.String(), menthod, pb.String(arg))
 	if err != nil {
-		return nil, fmt.Errorf("send transaction error: %w", err)
-	}
-	hash := gjson.Get(string(resp), "tx_hash").String()
-
-	var data []byte
-	if err = retry.Retry(func(attempt uint) error {
-		data, err = getTxReceipt(ctx, hash)
-		if err != nil {
-			fmt.Println("get transaction receipt error: " + err.Error() + "... retry later")
-			return err
-		} else {
-			m := make(map[string]interface{})
-			if err := json.Unmarshal(data, &m); err != nil {
-				fmt.Println("get transaction receipt error: " + err.Error() + "... retry later")
-				return err
-			}
-			if errInfo, ok := m["error"]; ok {
-				fmt.Println("get transaction receipt error: " + errInfo.(string) + "... retry later")
-				return fmt.Errorf(errInfo.(string))
-			}
-			return nil
-		}
-	}, strategy.Wait(500*time.Millisecond),
-	); err != nil {
-		fmt.Println("get transaction receipt error: " + err.Error())
-	}
-
-	m := &runtime.JSONPb{OrigName: true, EmitDefaults: true, EnumsAsInts: true}
-	receipt := &pb.Receipt{}
-	if err = m.Unmarshal(data, receipt); err != nil {
-		return nil, fmt.Errorf("jsonpb unmarshal receipt error: %w", err)
+		return nil, err
 	}
 
 	if receipt.IsSuccess() {
@@ -356,22 +318,72 @@ func addRow(t *tabby.Tabby, rawLine []string, header bool) {
 func getChainStatusById(ctx *cli.Context) error {
 	id := ctx.String("id")
 
-	repoRoot, err := repo.PathRootWithDefault(ctx.GlobalString("repo"))
+	receipt, err := invokeBVMContract(ctx, constant.AppchainMgrContractAddr.String(), "GetAppchain", pb.String(id))
 	if err != nil {
 		return err
 	}
+
+	if receipt.IsSuccess() {
+		chain := &appchainMgr.Appchain{}
+		if err := json.Unmarshal(receipt.Ret, chain); err != nil {
+			return fmt.Errorf("unmarshal receipt error: %w", err)
+		}
+		color.Green("appchain %s is %s", chain.ID, string(chain.Status))
+	} else {
+		color.Red("get chain status error: %s\n", string(receipt.Ret))
+	}
+	return nil
+}
+
+func freezeAppchain(ctx *cli.Context) error {
+	id := ctx.String("id")
+
+	receipt, err := invokeBVMContract(ctx, constant.AppchainMgrContractAddr.String(), "FreezeAppchain", pb.String(id))
+	if err != nil {
+		return err
+	}
+
+	if receipt.IsSuccess() {
+		color.Green("proposal id is %s", string(receipt.Ret))
+	} else {
+		color.Red("freeze appchain error: %s\n", string(receipt.Ret))
+	}
+	return nil
+}
+
+func activateAppchain(ctx *cli.Context) error {
+	id := ctx.String("id")
+
+	receipt, err := invokeBVMContract(ctx, constant.AppchainMgrContractAddr.String(), "ActivateAppchain", pb.String(id))
+	if err != nil {
+		return err
+	}
+
+	if receipt.IsSuccess() {
+		color.Green("proposal id is %s", string(receipt.Ret))
+	} else {
+		color.Red("activate appchain error: %s\n", string(receipt.Ret))
+	}
+	return nil
+}
+
+func invokeBVMContract(ctx *cli.Context, contractAddr string, method string, args ...*pb.Arg) (*pb.Receipt, error) {
+	repoRoot, err := repo.PathRootWithDefault(ctx.GlobalString("repo"))
+	if err != nil {
+		return nil, err
+	}
 	keyPath := repo.GetKeyPath(repoRoot)
 
-	resp, err := sendTx(ctx, constant.AppchainMgrContractAddr.String(), 0, uint64(pb.TransactionData_INVOKE), keyPath, uint64(pb.TransactionData_BVM), "GetAppchain",
-		pb.String(id))
+	resp, err := sendTx(ctx, contractAddr, 0, uint64(pb.TransactionData_INVOKE), keyPath, uint64(pb.TransactionData_BVM), method, args...)
 	if err != nil {
-		return fmt.Errorf("send transaction error: %s", err.Error())
+		return nil, fmt.Errorf("send transaction error: %s", err.Error())
 	}
 
 	hash := gjson.Get(string(resp), "tx_hash").String()
 
 	var data []byte
 	if err = retry.Retry(func(attempt uint) error {
+		time.Sleep(1000 * time.Millisecond)
 		data, err = getTxReceipt(ctx, hash)
 		if err != nil {
 			fmt.Println("get transaction receipt error: " + err.Error() + "... retry later")
@@ -396,17 +408,8 @@ func getChainStatusById(ctx *cli.Context) error {
 	m := &runtime.JSONPb{OrigName: true, EmitDefaults: true, EnumsAsInts: true}
 	receipt := &pb.Receipt{}
 	if err = m.Unmarshal(data, receipt); err != nil {
-		return fmt.Errorf("jsonpb unmarshal receipt error: %w", err)
+		return nil, fmt.Errorf("jsonpb unmarshal receipt error: %w", err)
 	}
 
-	if receipt.IsSuccess() {
-		chain := &appchainMgr.Appchain{}
-		if err := json.Unmarshal(receipt.Ret, chain); err != nil {
-			return fmt.Errorf("unmarshal receipt error: %w", err)
-		}
-		color.Green("appchain %s is %s", chain.ID, string(chain.Status))
-	} else {
-		color.Red("get chain status error: %s\n", string(receipt.Ret))
-	}
-	return nil
+	return receipt, nil
 }
