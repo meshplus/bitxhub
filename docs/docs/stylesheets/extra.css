@@ -6,3 +6,40 @@
   width: auto;
   height: 2rem;
 }
+
+.md-sidebar--secondary .md-nav {
+  font-size: 13px;
+}
+
+:root {
+  font-size: 123%;
+}
+
+.md-content .md-typeset h1 {
+  color: inherit;
+}
+
+.md-content h1, .md-content h2, .md-content h3 {
+  font-weight: 600;
+}
+
+.md-typeset__table {
+  /*width: 100%;*/
+}
+
+.md-typeset pre {
+  margin: 2em 0;
+}
+
+.md-typeset pre>code {
+  padding: 1.5em 2em;
+  border-radius: 4px;
+}
+
+.md-typeset a {
+  font-weight: 600;
+}
+
+.md-content__inner {
+  margin-bottom: 3.5rem;
+}

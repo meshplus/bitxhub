@@ -11,7 +11,7 @@
 
 从总体架构来说，跨链网关根据不同的功能采取了模块划分的方式，主要的功能模块有Monitor，Executor，Exchanger，Validate Engine，Appchain Manager，Network等。
 
-![](/assets/pier.png)
+![](../..//assets/pier.png)
 
 ## 处理流程
 

@@ -4,13 +4,13 @@
 
 如果你需要接入自己的开发的区块链到BitXHub跨链平台来的话，可以根据你们自己的区块链来定制开发Plugin，通过我们跨链网关加入到跨链平台来。
 
-# 开发要求
+## 开发要求
 
 - 安装 [__go1.13+__](https://golang.org/doc/install)
 
 - 设置好$GOPATH等环境
 
-# 教程章节
+## 教程章节
 
 1. 重要概念
 
@@ -22,7 +22,7 @@
 
 1. 编译你的Plugin
 
-# 重要概念
+## 重要概念
 
 在解释具体的接口之前，先明确几个概念：
 
@@ -34,7 +34,7 @@
 
 **目的链：**在跨链请求A->B中，B即为目的链。
 
-# Plugin接口
+## Plugin接口
 
 为了更加便捷的开发Plugin接入到Pier中来，我们规定了下面一些必要的接口。
 
@@ -78,11 +78,11 @@ type Client interface {
 }
 ```
 
-# 程序目的
+## 程序目的
 
 本教程以开发一个简单的连接Fabric区块链网络的Plugin为例，最终的程序能够实现从负责的区块链获取`Hello World`信息并返回到跨链平台中。
 
-# 开始编写你的程序
+## 开始编写你的程序
 
 首先选择你的工程目录，按照正常的GO程序的流程建立项目
 
@@ -93,7 +93,7 @@ $ cd ${YOUR_PROJECT}
 $ go mod init
 ```
 
-## Client对象
+### Client对象
 
 首先创建一个`client.go`文件，这个文件是Plugin的核心和入口。
 
@@ -172,7 +172,7 @@ func NewClient(configPath, pierId string, extra []byte) (client.Client, error) {
 }
 ```
 
-## consumer
+### consumer
 
 consumer 负责监听区块链上的由跨链合约抛出的跨链事件以及和调用chaincode。
 
@@ -204,7 +204,7 @@ type Consumer struct {
 
 - ctx：用来结束consumer的 gorountine
 
-## Event
+### Event
 
 由于在Fabric上抛出的事件内容是可以自定义的，而跨链请求要在跨链平台上传递的话，需要使用IBTP包，所以我们需要一定的代码来执行这种转换。
 
@@ -226,7 +226,7 @@ type Event struct {
 
 Event结构也是自定义的，需要和在你的跨链合约中抛出的事件结构一致。一个跨链交易事件，一般来说需要指定目标应用的ID `DstChainID`，目标应用链上智能合约的地址或者ID（Fabric上的chaincode没有合约地址）`DstContractID`，这次跨链交易的发起者的合约地址`SrcContractID`，跨链调用的函数名 `Func`，该函数的参数 `Args`，是否有跨链调用之后要执行的回调函数 `Callback`，为了该应用链上对于该事件的证明 `Proof`，用户课自定义的部分 `Extra`。
 
-## 读取配置
+### 读取配置
 
 Plugin的配置文件路径是通过NewClient的方法动态传入的，这意味着你可以方便的修改关于你的区块链的参数信息。我们新建文件 `./config.go` 文件，负责配置读取的所有操作。
 
@@ -291,7 +291,7 @@ func UnmarshalConfig(configPath string) (*Fabric, error) {
 
 
 
-# 编译你的Plugin
+## 编译你的Plugin
 
 我们采用GO语言提供的插件模式，实现Pier对于你编写的Plugin的动态加载。
 

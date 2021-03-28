@@ -1,5 +1,5 @@
 # 硬件环境
-### 服务器
+## 服务器
 
 | 服务器| 配置要求
 ---|---
@@ -8,7 +8,7 @@ CPU | 64位8核及其以上
 内存 | 大于等于16GB
 
 
-### 软件环境
+## 软件环境
 **操作系统**
 
 目前BitXHub支持的操作系统以及对应版本号如下：
@@ -21,7 +21,7 @@ SLES  |11SP3或更新|amd64，386
 Ubuntu |14.04或更新|amd64，386
 MacOS |10.8或更新|amd64，386
 
-### 安装go
+## 安装go
 Go为Mac OS X、Linux和Windows提供二进制发行版。如果您使用的是不同的操作系统，您可以下载Go源代码并从源代码安装。
 
 在这里下载适用于您的平台的最新版本Go：[下载](https://golang.org/dl/) - 请下载 1.13.x 或更新
@@ -40,7 +40,7 @@ export PATH=$PATH:$GOROOT/bin
 ```
 
 
-### 设置GOPATH
+## 设置GOPATH
 您的Go工作目录 (GOPATH) 是用来存储您的Go代码的地方，您必须要将他跟您的Go安装目录区分开 (GOROOT)。
 以下命令是用了设置您的GOPATH环境变量的，您也可以参考Go官方文档，来获得更详细的内容: [https://golang.org/doc/code.html](https://golang.org/doc/code.html).
 

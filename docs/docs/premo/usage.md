@@ -4,13 +4,13 @@ Premo是BitXHub跨链系统测试框架，目前支持系统集成测试、接�
 
 ## 安装
 
-#### 获取源码
+### 获取源码
 
 ```shell
 git clone git@github.com:meshplus/premo.git
 ```
 
-#### 编译
+### 编译
 
 进入premo工程目录:
 
@@ -31,7 +31,7 @@ premo init
 premo [global options] command [command options] [arguments...]
 ```
 
-#### COMMANDS:
+### COMMANDS:
 
 - `init` init config home for premo
 - `version` Premo version
@@ -43,7 +43,7 @@ premo [global options] command [command options] [arguments...]
 - `status` List the status of instantiated components
 - `help, h` Shows a list of commands or help for one command
 
-#### GLOBAL OPTIONS:
+### GLOBAL OPTIONS:
 
 - `--repo value`  Premo storage repo path
 - `--help, -h`    show help (default: false)

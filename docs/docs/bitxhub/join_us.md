@@ -3,9 +3,9 @@
 
 - **BitXHub开源社区微信群·小助手**
 
-![](/assets/wechat.png)
+![](../assets/wechat.png)
 
 - **趣链科技官方公共号    **
 
-![](/assets/public wechat.png)
+![](../assets/public wechat.png)
 

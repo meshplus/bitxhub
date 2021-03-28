@@ -1,15 +1,15 @@
 # Java SDK
-# 1 前言
+## 1 前言
 
 此SDK文档面向BitXHub平台的应用开发者，提供BitXHub Java SDK的使用指南。
 
-# 2 接口使用流程示例
+## 2 接口使用流程示例
 
-## 2.1 基础流程示例
+### 2.1 基础流程示例
 
 为了更好的理解接口的使用，本示例将从初始化Client，部署合约，调用合约和返回值解析这个大致流程作介绍，具体详细接口可参考第三章SDK文档。
 
-### 2.1.1 初始化Client
+#### 2.1.1 初始化Client
 
 使用默认的配置类初始化Grpc Client。
 
@@ -32,7 +32,7 @@ Config config = Config.builder()
 GrpcClient client = new GrpcClientImpl(config);
 ```
 
-### 2.1.2 部署合约
+#### 2.1.2 部署合约
 
 开发者需提供已经编译的`WebAssembly`文件。
 
@@ -50,7 +50,7 @@ byte[] contractBytes = IOUtils.toByteArray(new FileInputStream("./example.wasm")
 String contractAddress = client.deployContract(contractBytes);
 ```
 
-### 2.1.3 调用合约
+#### 2.1.3 调用合约
 
 调用合约需传入合约地址、合约方法名和对应的参数。
 
@@ -61,7 +61,7 @@ ReceiptOuterClass.Receipt receipt =
 client.invokeXVMContract(contractAddress, "a", Types.i32(1), Types.i32(1)); \\方法名为a，传参1，传参2
 ```
 
-### 2.1.4 返回值解析
+#### 2.1.4 返回值解析
 
 得到返回值结果后，获得状态码可以判断是否调用成功，若调用成功，解析返回值可看到调用之后的结果。
 
@@ -73,7 +73,7 @@ if (receipt.getStatus() == ReceiptOuterClass.Receipt.Status.SUCCESS) {
 }
 ```
 
-### 2.1.5 完整示例
+#### 2.1.5 完整示例
 
 ```java
 //获取wasm字节数组
@@ -92,11 +92,11 @@ if (receipt.getStatus() == ReceiptOuterClass.Receipt.Status.SUCCESS) {
 }
 ```
 
-## 2.2 应用链管理流程示例
+### 2.2 应用链管理流程示例
 
 本示例展示应用链管理流程中的注册、审核以及注销操作。
 
-### 2.2.1 应用链注册
+#### 2.2.1 应用链注册
 
 调用BVM合约的`Register`方法，向BitXHub注册应用链。
 
@@ -132,7 +132,7 @@ ReceiptOuterClass.Receipt receipt = client.invokeBVMContract(BVMAddr.APPCHAIN_MA
 }
 ```
 
-### 2.2.2 应用链审核
+#### 2.2.2 应用链审核
 
 调用BVM合约的`Audit`方法，向BitXHub审核应用链。
 
@@ -146,7 +146,7 @@ ArgOuterClass.Arg[] adultArgs = Types.toArgArray(
 ReceiptOuterClass.Receipt adultReceipt = client.invokeBVMContract(BVMAddr.APPCHAIN_MANAGER_CONTRACT_ADDR, "Audit", adultArgs);
 ```
 
-### 2.2.3 应用链注销
+#### 2.2.3 应用链注销
 
 调用BVM合约的`DeleteAppchain`方法，向BitXHub注销应用链。
 
@@ -158,11 +158,11 @@ ArgOuterClass.Arg[] deleteArgs = Types.toArgArray(
 ReceiptOuterClass.Receipt deleteReceipt = client.invokeBVMContract(BVMAddr.APPCHAIN_MANAGER_CONTRACT_ADDR, "DeleteAppchain", deleteArgs);
 ```
 
-## 2.3 验证规则使用示例
+### 2.3 验证规则使用示例
 
 本示例展示验证规则中的注册、审核操作，以及WebAssembly合约示例。
 
-### 2.3.1 验证规则注册
+#### 2.3.1 验证规则注册
 
 调用BVM合约的`RegisterRule`方法，向应用链注册验证规则（WebAssembly合约），这里我们需要先注册应用链和部署验证规则合约，然后获取应用链ID和合约地址。
 
@@ -175,7 +175,7 @@ ArgOuterClass.Arg[] ruleArgs = Types.toArgArray(
 ReceiptOuterClass.Receipt ruleReceipt = client.invokeBVMContract(BVMAddr.RULE_MANAGER_CONTRACT_ADDR, "RegisterRule", ruleArgs);
 ```
 
-### 2.3.2 验证规则审核
+#### 2.3.2 验证规则审核
 
 调用BVM合约的`Audit`方法，向BitXHub审核验证规则。
 
@@ -189,7 +189,7 @@ ArgOuterClass.Arg[] adultArgs = Types.toArgArray(
 ReceiptOuterClass.Receipt adultReceipt = client.invokeBVMContract(BVMAddr.RULE_MANAGER_CONTRACT_ADDR, "Audit", adultArgs);
 ```
 
-### 2.3.3 验证规则示例（WebAssembly合约, Fabric实例）
+#### 2.3.3 验证规则示例（WebAssembly合约, Fabric实例）
 
 ```rust
 extern crate protobuf;
@@ -222,11 +222,11 @@ pub fn verify(proof: &[u8], validator: &[u8]) -> bool {
 
 
 
-# 3 SDK文档
+## 3 SDK文档
 
-## 3.1 初始化
+### 3.1 初始化
 
-### 3.1.1 初始化Client
+#### 3.1.1 初始化Client
 
 用途：调用该接口获取与BitXHub交互的Client。
 
@@ -238,7 +238,7 @@ GrpcClient client = new GrpcClientImpl(Config.defaultConfig());
 
 返回值：与BitXHub交互的`Client`。
 
-### 3.1.2 停止Client
+#### 3.1.2 停止Client
 
 用途：调用该接口将与BitXHub交互的`Client`关闭。
 
@@ -246,9 +246,9 @@ GrpcClient client = new GrpcClientImpl(Config.defaultConfig());
 public void stop() throws InterruptedException
 ```
 
-## 3.2 交易接口
+### 3.2 交易接口
 
-### 3.2.1 发送交易
+#### 3.2.1 发送交易
 
 用途：调用该接口向BitXHub发送交易，交易类型包括普通交易、跨链交易和智能合约交易。
 
@@ -277,7 +277,7 @@ public void sendTransaction() {
 }
 ```
 
-### 3.2.2 查询交易回执
+#### 3.2.2 查询交易回执
 
 参数：
 
@@ -287,7 +287,7 @@ public void sendTransaction() {
 ReceiptOuterClass.Receipt getReceipt(String hash);
 ```
 
-### 3.2.3 查询交易
+#### 3.2.3 查询交易
 
 参数：
 
@@ -297,7 +297,7 @@ ReceiptOuterClass.Receipt getReceipt(String hash);
 Broker.GetTransactionResponse getTransaction(String hash);
 ```
 
-## 3.3 合约接口
+### 3.3 合约接口
 
 合约类型：
 
@@ -305,7 +305,7 @@ Broker.GetTransactionResponse getTransaction(String hash);
 
 - XVM：WebAssembly合约
 
-### 3.3.1 部署合约
+#### 3.3.1 部署合约
 
 用途：调用该接口向BitXHub部署XVM合约。
 
@@ -317,7 +317,7 @@ Broker.GetTransactionResponse getTransaction(String hash);
 String deployContract(byte[] contract);
 ```
 
-### 3.3.2 调用合约
+#### 3.3.2 调用合约
 
 用途：调用该接口向BitXHub调用BVM或者XVM合约。
 
@@ -344,9 +344,9 @@ public void invokeContract() throws IOException {
 }
 ```
 
-## 3.4 区块接口
+### 3.4 区块接口
 
-### 3.4.1 查询区块
+#### 3.4.1 查询区块
 
 参数：
 
@@ -359,7 +359,7 @@ BlockOuterClass.Block getBlock(String value, Broker.GetBlockRequest.Type type);
 
 
 
-### 3.4.2 批量查询区块
+#### 3.4.2 批量查询区块
 
 用途：批量查询区块，返回指定块高度范围（start到end）的区块信息。
 
@@ -374,7 +374,7 @@ Broker.GetBlocksResponse getBlocks(Long start, Long end);
 
 
 
-### 3.4.3 查询区块Meta
+#### 3.4.3 查询区块Meta
 
 用途：返回当前链的高度和区块哈希。
 
@@ -384,7 +384,7 @@ Chain.ChainMeta getChainMeta();
 
 
 
-### 3.4.4 查询区块链状态
+#### 3.4.4 查询区块链状态
 
 用途：返回当前区块链共识的状态（正常或者不正常）。
 
@@ -394,9 +394,9 @@ Broker.Response getChainStatus();
 
 
 
-## 3.5 订阅接口
+### 3.5 订阅接口
 
-### 3.5.1 订阅事件
+#### 3.5.1 订阅事件
 
 用途：调用该接口向BitXHub发起订阅事件。
 
@@ -444,9 +444,9 @@ public void subscribe() throws InterruptedException {
 
 
 
-## 3.6 其它接口
+### 3.6 其它接口
 
-### 3.6.1 查询节点网络信息
+#### 3.6.1 查询节点网络信息
 
 用途：返回当前区块链网络的节点信息。
 
@@ -454,7 +454,7 @@ public void subscribe() throws InterruptedException {
 Broker.Response getNetworkMeta();
 ```
 
-### 3.6.2 查询账户余额
+#### 3.6.2 查询账户余额
 
 参数：
 

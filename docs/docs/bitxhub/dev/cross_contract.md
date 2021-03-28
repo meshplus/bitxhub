@@ -166,7 +166,7 @@ public interface DataSwapper {
 }
 ```
 
-# 具体实现
+## 具体实现
 
 对于想要接入到我们的跨链平台中的Fabric区块链，我们已经有提供跨链管理合约Broker和相应的Plugin，你只需要对你的业务合约进行一定的改造便可拥有跨链功能。
 
@@ -179,8 +179,6 @@ public interface DataSwapper {
 - [chaincode 跨链合约实现](https://github.com/meshplus/pier-client-fabric/tree/master/example)
 
 如果你需要新的语言编写合约，你可以按照我们的设计思路和参考实现进行进一步的开发。
-
-# 改造业务合约
 
 现在我们支持Hyperchain EVM合约以及Fabric上chaincode合约编写跨链合约。
 
