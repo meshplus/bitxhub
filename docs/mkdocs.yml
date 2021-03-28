@@ -4,8 +4,69 @@ repo_name: meshplus/bitxhub
 extra_css:
   - stylesheets/extra.css
 theme:
-  logo: /assets/logo.png
+  logo: assets/logo.png
   name: material
+  features:
+    - navigation.tabs
+  font:
+    text: Roboto
+    code: Roboto Mono
   palette:
-    scheme: blue
-    accent: blue
+    primary: red
+    scheme: default
+    accent: red
+
+version:
+  provider: mike
+
+markdown_extensions:
+  - pymdownx.highlight:
+      linenums: false
+      use_pygments: true
+  - pymdownx.superfences
+
+#extra_javascript:
+#  - https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js
+#  - javascripts/config.js
+#extra_css:
+#  - https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/default.min.css
+
+nav:
+  - Home:
+      - 快速开始: bitxhub/quick_start.md
+      - 产品介绍:
+          - 产品优势: bitxhub/introduction/advantage.md
+          - 技术架构: bitxhub/introduction/arch.md
+          - 基本概念: bitxhub/introduction/conception.md
+          - 应用场景: bitxhub/introduction/scenaries.md
+          - 跨链服务平台介绍: bitxhub/introduction/summary.md
+      - 开发手册:
+          - 共识算法插件: bitxhub/dev/consensus.md
+          - 跨链合约: bitxhub/dev/cross_contract.md
+          - 应用链插件编写: bitxhub/dev/plugin.md
+          - 验证规则编写: bitxhub/dev/rule.md
+          - 设计文档:
+              - 共识算法插件方案: bitxhub/dev/design/consensus_plugin.md
+              - 跨链事务方案: bitxhub/dev/design/interchain_transaction.md
+              - 跨链网关设计方案: bitxhub/dev/design/pier.md
+              - 隐私保护方案: bitxhub/dev/design/privacy_protection.md
+      - 使用手册:
+          - 硬件环境: bitxhub/usage/env.md
+          - 中继链部署: bitxhub/usage/deploy.md
+          - 中继跨链部署: bitxhub/usage/inter_relay_deploy.md
+          - 跨链网关直连模式部署: bitxhub/usage/pier_direct_mode_deploy.md
+      - 版本发布记录:
+          - BitXHub v1.0.0: bitxhub/changelog/bitxhub_v1.0.0.md
+          - BitXHub v1.3.0: bitxhub/changelog/bitxhub_v1.3.0.md
+          - BitXHub v1.4.0: bitxhub/changelog/bitxhub_v1.4.0.md
+          - BitXHub v1.5.0: bitxhub/changelog/bitxhub_v1.5.0.md
+      - FAQ: bitxhub/faq.md
+      - 加入我们: bitxhub/join_us.md
+      - 社区介绍: bitxhub/community_introduction.md
+  - 小工具:
+      - Goduck运维工具: goduck/index.md
+      - Premo测试工具: premo/usage.md
+  - SDK文档:
+      - GoSDK使用文档: sdk/gosdk.md
+      - JavaSDK使用: sdk/javasdk.md
+      - JsSDK使用文档: sdk/jssdk.md
