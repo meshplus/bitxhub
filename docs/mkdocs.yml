@@ -8,7 +8,6 @@ theme:
   name: material
   features:
     - navigation.tabs
-    - navigation.sections
   font:
     text: Roboto
     code: Roboto Mono
@@ -19,7 +18,7 @@ theme:
 
 version:
   provider: mike
-  
+
 markdown_extensions:
   - pymdownx.highlight:
       linenums: false
