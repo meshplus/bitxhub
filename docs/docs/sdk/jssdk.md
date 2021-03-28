@@ -1,14 +1,14 @@
 # Js SDK
-# 1 前言
+## 1 前言
 
 此SDK文档面向BitXHub平台的应用开发者，提供BitXHub JS SDK的使用指南。
 
-# 2 接口使用流程示例
+## 2 接口使用流程示例
 
 为了更好的理解接口的使用，本示例将从初始化Client，部署合约，调用合约和返回值解析这个大致流程作介绍，具体详细接口可参考第三章SDK文档。
 
-## 2.1 基本流程
-### 2.1.1 安装并初始化Client
+### 2.1 基本流程
+#### 2.1.1 安装并初始化Client
 
 可以通过npm安装JS SDK并引入到JS的项目中
 ```shell
@@ -60,7 +60,7 @@ let contract = fs.readFileSync("./testdata/example.wasm");
 let address = await cli.DeployContract(contract) 
 ```
 
-### 2.1.3 调用合约
+#### 2.1.3 调用合约
 
 调用合约需传入合约地址、合约方法名和对应的参数。
 
@@ -71,7 +71,7 @@ result = cli.InvokeContract(0, address, "a", PbType.pbInt32(1), PbType.pbInt32(2
 //第一个参数指定调用XVM合约还是BVM合约，第二个参数是合约地址， 方法名为a，传参1，传参2
 ```
 
-### 2.1.4 完整示例
+#### 2.1.4 完整示例
 
 ```javascript
 import { fs } from 'fs';
@@ -90,11 +90,11 @@ result = cli.InvokeContract(1, address, "a", PbType.pbInt32(1), PbType.pbInt32(2
 console.log(result);
 ```
 
-## 2.2 应用链管理流程示例
+### 2.2 应用链管理流程示例
 
 本示例展示应用链管理流程中的注册、审核以及注销操作。
 
-### 2.2.1 应用链注册
+#### 2.2.1 应用链注册
 
 调用BVM合约的`Register`方法，向BitXHub注册应用链。
 
@@ -124,7 +124,7 @@ let ret = cli.InvokeContract(0, InterchainContractAddr, "Register", PbType.pbStr
 }
 ```
 
-### 2.2.2 应用链审核
+#### 2.2.2 应用链审核
 
 调用BVM合约的`Aduit`方法，向BitXHub审核应用链。
 
@@ -136,7 +136,7 @@ let ret = cli.InvokeContract(0, InterchainContractAddr, "Aduit", PbType.pbString
 );
 ```
 
-### 2.2.3 应用链注销
+#### 2.2.3 应用链注销
 
 调用BVM合约的`DeleteAppchain`方法，向BitXHub注销应用链。
 
@@ -146,11 +146,11 @@ let ret = cli.InvokeContract(0, InterchainContractAddr, "Aduit", PbType.pbString
 let ret = cli.InvokeContract(0, InterchainContractAddr, "DeleteAppchain", PbType.pbString(address));
 ```
 
-## 2.3 验证规则使用示例
+### 2.3 验证规则使用示例
 
 本示例展示验证规则中的注册、审核操作，以及WebAssembly合约示例。
 
-### 2.3.1 验证规则注册
+#### 2.3.1 验证规则注册
 
 调用BVM合约的`RegisterRule`方法，向应用链注册验证规则（WebAssembly合约），这里我们需要先注册应用链和部署验证规则合约，然后获取应用链ID和合约地址。
 
@@ -160,7 +160,7 @@ let ret = cli.InvokeContract(0, InterchainContractAddr, "DeleteAppchain", PbType
 let ret = cli.InvokeContract(0, RoleContractAddr, "RegisterRule", PbType.pbString(chainAddr), PbType.pbString(contractAddr));
 ```
 
-### 2.3.2 验证规则审核
+#### 2.3.2 验证规则审核
 
 调用BVM合约的`Aduit`方法，向BitXHub审核验证规则。
 
@@ -172,7 +172,7 @@ let ret = cli.InvokeContract(0, RoleContractAddr, "Aduit", PbType.pbString(chain
 );
 ```
 
-### 2.3.3 验证规则示例（WebAssembly合约, Fabric实例）
+#### 2.3.3 验证规则示例（WebAssembly合约, Fabric实例）
 
 ```rust
 extern crate protobuf;
@@ -210,11 +210,11 @@ pub fn verify(proof: &[u8], validator: &[u8]) -> bool {
 
 
 
-# 3 SDK文档
+## 3 SDK文档
 
-## 3.1 交易接口
+### 3.1 交易接口
 
-### 3.1.1 发送交易
+#### 3.1.1 发送交易
 
 用途：调用该接口向中继链发送交易，交易类型包括普通交易、跨链交易和智能合约。
 
@@ -228,7 +228,7 @@ function SendTransaction(transaction)
 
 
 
-### 3.1.2 查询交易回执
+#### 3.1.2 查询交易回执
 
 用途：调用该接口向BitXHub查询交易回执。
 
@@ -240,7 +240,7 @@ function SendTransaction(transaction)
 function GetReceipt(hash)
 ```
 
-### 3.1.3 查询交易
+#### 3.1.3 查询交易
 
 用途：调用该接口向BitXHub查询交易。
 
@@ -254,7 +254,7 @@ function GetTransaction(hash)
 
 
 
-## 3.2 合约接口
+### 3.2 合约接口
 
 合约类型：
 
@@ -262,7 +262,7 @@ function GetTransaction(hash)
 
 - XVM：WebAssembly合约。
 
-### 3.2.1 部署合约
+#### 3.2.1 部署合约
 
 用途：调用该接口向BitXHub部署XVM合约，返回合约地址。
 
@@ -275,7 +275,7 @@ function GetTransaction(hash)
 function DeployContract(ctx)
 ```
 
-### 3.2.2 调用合约
+#### 3.2.2 调用合约
 
 用途：该接口向中继链调用合约获取交易回执。
 
@@ -294,9 +294,9 @@ function DeployContract(ctx)
 function InvokeContract(vmType, address, method, ...args)
 ```
 
-## 3.3 区块接口
+### 3.3 区块接口
 
-### 3.3.1 查询区块
+#### 3.3.1 查询区块
 
 参数：
 
@@ -309,7 +309,7 @@ function GetBlock(type, value)
 
 
 
-### 3.3.2 批量查询区块
+#### 3.3.2 批量查询区块
 
 用途：批量查询区块，返回指定块高度范围（start到end）的区块信息。
 

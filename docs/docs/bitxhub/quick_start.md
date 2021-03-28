@@ -2,8 +2,8 @@
 我们提供了脚本来快速启动中继链、两条Fabric应用链A和B和跨链网关。
 
 
-# 启动BitXHub
-BitXHub依赖于[golang](https://golang.org/) 和[tmux](https://github.com/tmux/tmux/wiki)，需要提前进行安装。
+## 启动BitXHub
+BitXHub依赖于[golang](https://golang.org/)和[tmux](https://github.com/tmux/tmux/wiki)，需要提前进行安装。
 
 使用下面的命令克隆项目：
 
