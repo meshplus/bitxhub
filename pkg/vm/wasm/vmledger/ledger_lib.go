@@ -12,7 +12,10 @@ func New() (*wasmer.Imports, error) {
 	imports := &Imports{
 		imports: wasmer.NewImports(),
 	}
-	imports.importLedger()
+	err := imports.importLedger()
+	if err != nil {
+		return nil, err
+	}
 
 	return imports.imports, nil
 }
