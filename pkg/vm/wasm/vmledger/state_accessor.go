@@ -9,7 +9,6 @@ package vmledger
 // extern void add_state(void *context, long long key_ptr, long long value_ptr);
 import "C"
 import (
-	"fmt"
 	"unsafe"
 
 	"github.com/meshplus/bitxhub/internal/ledger"
@@ -89,27 +88,28 @@ func add_state(context unsafe.Pointer, key_ptr int64, value_ptr int64) {
 	account.AddState(key, value)
 }
 
-func (im *Imports) importLedger() {
+func (im *Imports) importLedger() error {
 	var err error
 	im.imports, err = im.imports.Append("get_balance", get_balance, C.get_balance)
 	if err != nil {
-		fmt.Println(err)
-		return
+		return err
 	}
 	im.imports, err = im.imports.Append("set_balance", set_balance, C.set_balance)
 	if err != nil {
-		return
+		return err
 	}
 	im.imports, err = im.imports.Append("get_state", get_state, C.get_state)
 	if err != nil {
-		return
+		return err
 	}
 	im.imports, err = im.imports.Append("set_state", set_state, C.set_state)
 	if err != nil {
-		return
+		return err
 	}
 	im.imports, err = im.imports.Append("add_state", add_state, C.add_state)
 	if err != nil {
-		return
+		return err
 	}
+
+	return nil
 }
