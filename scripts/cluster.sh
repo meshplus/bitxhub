@@ -49,6 +49,7 @@ function prepare() {
     x_replace "s/9091/909${i}/g" "${bitxhubConfig}"
     x_replace "s/53121/5312${i}/g" "${bitxhubConfig}"
     x_replace "s/40011/4001${i}/g" "${bitxhubConfig}"
+    x_replace "s/8881/888${i}/g" "${bitxhubConfig}"
     x_replace "1s/1/${i}/" "${networkConfig}"
   done
 
