@@ -53,6 +53,7 @@ type Security struct {
 }
 
 type Port struct {
+	JsonRpc int64 `toml:"jsonrpc" json:"jsonrpc"`
 	Grpc    int64 `toml:"grpc" json:"grpc"`
 	Gateway int64 `toml:"gateway" json:"gateway"`
 	PProf   int64 `toml:"pprof" json:"pprof"`
@@ -104,6 +105,7 @@ type LogModule struct {
 }
 
 type Genesis struct {
+	ChainID  string            `json:"chainid" toml:"chainid"`
 	Admins   []*Admin          `json:"admins" toml:"admins"`
 	Strategy map[string]string `json:"strategy" toml:"strategy"`
 	Dider    string            `json:"dider" toml:"dider"`

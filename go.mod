@@ -17,6 +17,7 @@ require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/mock v1.5.0
 	github.com/google/btree v1.0.0
+	github.com/gorilla/mux v1.8.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
