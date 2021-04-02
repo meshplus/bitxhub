@@ -1,197 +1,167 @@
 # 快速开始
-我们提供了脚本来快速启动中继链、两条Fabric应用链A和B和跨链网关。
+我们提供了Goduck运维小工具来快速体验跨链流程。
 
+## 1 环境准备
+Goduck快速开始依赖于Docker和Docker-Compose，需要提前准备好docker环境。
 
-## 启动BitXHub
-BitXHub依赖于[golang](https://golang.org/)和[tmux](https://github.com/tmux/tmux/wiki)，需要提前进行安装。
-
-使用下面的命令克隆项目：
-
+## 2 下载 Goduck
+下载Goduck可执行二进制文件：
 ```shell
-git clone git@github.com:meshplus/bitxhub.git
+curl https://raw.githubusercontent.com/meshplus/goduck/release-0.1/scripts/goduck.sh -L -o - | bash
+```
+**！！！注意：** 执行上述命令的路径下应该没有goduck同名目录
+
+## 3 初始化
+初始化goduck配置文件，命令如下：
+```shell
+goduck init
 ```
 
-BitXHub还依赖于一些小工具，使用下面的命令进行安装：
+## 4 启动跨链网络
+在本地启动一个solo版本的BitXHub节点、两条以太坊私有链以及相应的两个跨链网关，启动命令如下：
 
 ```shell
-cd bitxhub
-git checkout v1.0.0-rc1
-bash scripts/prepare.sh 
+goduck playground start
+```
+该命令执行的具体操作包括以下步骤：
+
+### 获取相关镜像
+镜像拉取成功后将会打印日志如下：
+
+```shell
+Creating network "quick_start_default" with the default driver
+Creating ethereum-1      ... done
+Creating bitxhub_solo ... done
+Creating ethereum-2   ... done
+Creating pier-ethereum-2 ... done
+Creating pier-ethereum-1 ... done
+Attaching to bitxhub_solo, ethereum-2, ethereum-1, pier-ethereum-1, pier-ethereum-2
 ```
 
-最后，运行下面的命令即可运行一个四节点的BitXHub中继链：
-
+### 启动两条以太坊私有链
+以太坊私有链ethereum-1和ethereum-2启动成功后，最终会打印出日志如下：
 ```shell
-make cluster
+ethereum-2         | INFO [04-02|02:41:57.348] Sealing paused, waiting for transactions
+ethereum-1         | INFO [04-02|02:41:57.349] Sealing paused, waiting for transactions
 ```
 
-**注意：** `make cluster`启动会使用`tmux`进行分屏，所以在命令执行过程中，最好不要进行终端切换。
-
-
-## 部署Fabric网络
-
-在运行跨链网络之前，必要的软件如Golang和Docker可以根据官网自行安装。确保 $GAPTH， $GOBIN等环境变量已经正确设置。
-
-以上的软件依赖安装之后，我们提供了脚本来安装启动两个简单的Fabric网络。
-
-下载部署fabric网络脚本（ffn.sh）：
+### 启动中继链
+启动一条solo模式的中继链，启动成功后将会打印出BitXHub的logo如下：
 
 ```shell
-wget https://github.com/meshplus/goduck/raw/master/scripts/quick_start/ffn.sh
+bitxhub_solo       | =======================================================
+bitxhub_solo       |     ____     _    __    _  __    __  __            __
+bitxhub_solo       |    / __ )   (_)  / /_  | |/ /   / / / /  __  __   / /_
+bitxhub_solo       |   / __  |  / /  / __/  |   /   / /_/ /  / / / /  / __ \
+bitxhub_solo       |  / /_/ /  / /  / /_   /   |   / __  /  / /_/ /  / /_/ /
+bitxhub_solo       | /_____/  /_/   \__/  /_/|_|  /_/ /_/   \__,_/  /_.___/
+bitxhub_solo       |
+bitxhub_solo       | =======================================================
 ```
 
-启动fabric网络：
-
-**注意：** 脚本运行过程中按照提示进行确认即可。
+### 注册应用链
+创建两个与应用链对应的跨链网关，通过跨链网关向中继链注册应用链信息，注册成功后会打印出应用链id如下：
 
 ```shell
-bash ffn.sh down // 如果本地已经有Fabric网络运行，需要先关闭，如果没有可以不运行该命令
-bash ffn.sh up //启动两条fabric应用链A和B
+pier-ethereum-1    | appchain register successfully, id is 0xb132702a7500507411f3bd61ab33d9d350d41a37
+pier-ethereum-2    | appchain register successfully, id is 0x9f5cf4b97965ababe19fcf3f1f12bb794a7dc279
 ```
 
-**注意：** 命令执行完，会在当前目录生成`crypto-config`和`crypto-configB`文件夹，后面的`chaincode.sh`和 `fabric_pier.sh`需要在执行目录下存在上述文件。
-
-
-## 部署跨链合约
-下载操作`chaincode`的脚本（chaincode.sh）：
+### 部署验证规则
+跨链网关向中继链部署应用链的验证规则，部署成功后将打印日志如下：
 
 ```shell
-wget https://raw.githubusercontent.com/meshplus/goduck/master/scripts/quick_start/chaincode.sh
+pier-ethereum-1    | Deploy rule to bitxhub successfully
+pier-ethereum-2    | Deploy rule to bitxhub successfully
 ```
 
-拷贝`crypto-config`和`crypto-configB`到当前目录，执行以下命令：
+### 启动跨链网关
+跨链网关完成注册应用链、部署验证规则两步后即可启动，启动成功后跨链网关会打印出日志如下：
 
 ```shell
-// -c：指定fabric cli的配置文件，默认为config.yaml
-// 应用链A部署chaincode
-bash chaincode.sh install 
-
-//应用链B部署chaincode
-bash chaincode.sh install -c 'configB.yaml' 
+pier-ethereum-1    | time="02:42:02.287" level=info msg="Exchanger started" module=exchanger
+pier-ethereum-2    | time="02:42:02.349" level=info msg="Exchanger started" module=exchanger
 ```
+中继链会打印出日志如下：
 
-该命令会在指定fabric网络中部署`broker`, `transfer` 和`data_swapper`三个`chaincode`
-
-部署完成后，通过以下命令检查是否部署成功：
-
-```shell
-// 上一步的脚本默认初始化了一个有10000余额的账号Alice（transfer chaincode）
-// -c：指定fabric cli的config.yaml配置文件
-// 查看应用链A中Alice的余额
-bash chaincode.sh get_balance -c 'config.yaml' 
-****************************************************************************************************
-***** |  Response[0]: //peer0.org2.example.com
-***** |  |  Payload: 10000
-***** |  Response[1]: //peer1.org2.example.com
-***** |  |  Payload: 10000
-****************************************************************************************************
-
-//查看应用链B中Alice的余额
-bash chaincode.sh get_balance -c 'configB.yaml' 
-****************************************************************************************************
-***** |  Response[0]: //peer0.org2.example1.com
-***** |  |  Payload: 10000
-***** |  Response[1]: //peer1.org2.example1.com
-***** |  |  Payload: 10000
-****************************************************************************************************
+```
+bitxhub_solo       | time="02:42:02.291" level=info msg="Add pier" id=0xb132702a7500507411f3bd61ab33d9d350d41a37 module=router
+bitxhub_solo       | time="02:42:02.353" level=info msg="Add pier" id=0x9f5cf4b97965ababe19fcf3f1f12bb794a7dc279 module=router
 ```
 
 
-
-## 启动跨链网关
-
-下载相关的脚本（fabric_pier.sh）：
+**！！！注意：** 如遇网络问题，运行下面命令：
 
 ```shell
-wget https://github.com/meshplus/goduck/raw/master/scripts/quick_start/fabric_pier.sh
+goduck playground clean
 ```
 
-执行以下命令即可启动跨链网关：
+
+## 5 跨链交易
+
+分别在两条以太坊应用链上发起跨链交易，执行命令如下：
 
 ```shell
-//启动跨链网关连接应用链A和BitXHub
-// -r: 跨链网关启动目录，默认为.pier目录
-// -c: fabric组织证书目录，默认为crypto-config
-// -g: 指定fabric cli连接的配置文件，默认为config.yaml
-// -p: 跨链网关的启动端口，默认为8987
-// -b: 中继链GRPC地址，默认为localhost:60011
-// -o: pprof端口，默认为44555
-bash fabric_pier.sh start -r '.pier' -c 'crypto-config'  -g 'config.yaml' -p 8987 -b 'localhost:60011' -o 44555
-
-//启动跨链网关连接应用链B和BitXHub
-bash fabric_pier.sh start -r '.pierB' -c 'crypto-configB'  -g 'configB.yaml' -p 8988 -b 'localhost:60011' -o 44556
+goduck playground transfer
 ```
+该命令会调用以太坊上的合约（以太坊镜像上已经部署好合约）发起两笔跨链交易：
+- 从ethereum-1的Alice账户转账1到ethereum-2的Alice账户
+- 从ethereum-2的Alice账户转账1到ethereum-1的Alice账户
 
-在该目录下通过以下命令可以得到该跨链网关对应应用链的ID：
 
+信息打印出如下：
 ```shell
-//应用链A的ID
-bash fabric_pier.sh id -r '.pier'
+// 查询账户余额
+1. Query original accounts in appchains
+// 以太坊1的Alice账户余额为10000
+Query Alice account in ethereum-1 appchain
 
-//应用链B的ID
-bash fabric_pier.sh id -r '.pierB'
+======= invoke function getBalance =======
+call result: 10000
+// 以太坊2的Alice账户余额为10000
+Query Alice account in ethereum-2 appchain
+
+======= invoke function getBalance =======
+call result: 10000
+
+// 从以太坊1的Alice账户转账1到以太坊2的Alice账户
+2. Send 1 coin from Alice in ethereum-1 to Alice in ethereum-2
+======= invoke function transfer =======
+
+=============== Transaction hash is ==============
+0xff42eb87410f7ed4c8bf394716b7f202d4f307191e5ac2ef3cfb77fabd8211a0
+
+// 查询账户余额
+3. Query accounts after the first-round invocation
+// 以太坊1的Alice账户余额为9999
+Query Alice account in ethereum-1 appchain
+
+======= invoke function getBalance =======
+call result: 9999
+// 以太坊2的Alice账户余额为10001
+Query Alice account in ethereum-2 appchain
+
+======= invoke function getBalance =======
+call result: 10001
+
+// 从以太坊2的Alice账户转账1到以太坊1的Alice账户
+4. Send 1 coin from Alice in ethereum-2 to Alice in ethereum-1
+
+======= invoke function transfer =======
+
+=============== Transaction hash is ==============
+0x0c8042a3539cd49ce5d0570afbdb625697aadf71a040203f6bc03e3a43fb71b5
+
+// 查询账户余额
+5. Query accounts after the second-round invocation
+// 以太坊1的Alice账户余额为10000
+Query Alice account in ethereum-1 appchain
+
+======= invoke function getBalance =======
+call result: 10000
+// 以太坊2的Alice账户余额为10000
+Query Alice account in ethereum-2 appchain
+
+======= invoke function getBalance =======
+call result: 10000
 ```
-
-**注意：** 后面跨链交易命令需要该值
-
-## 跨链转账
-使用**部署跨链合约**章节中下载的`chaincode.sh`进行相关`chaincode`调用。
-
-1. 查询Alice余额
-
-```shell
-// 查询应用链A中Alice的余额
-// -c：指定fabric cli的config.yaml配置文件
-bash chaincode.sh get_balance -c 'config.yaml'
-****************************************************************************************************
-***** |  Response[0]: //peer0.org2.example.com
-***** |  |  Payload: 10000
-***** |  Response[1]: //peer1.org2.example.com
-***** |  |  Payload: 10000
-****************************************************************************************************
-
-// 查询应用链B中Alice的余额
-bash chaincode.sh get_balance -c 'configB.yaml'
-****************************************************************************************************
-***** |  Response[0]: //peer0.org2.example1.com
-***** |  |  Payload: 10000
-***** |  Response[1]: //peer1.org2.example1.com
-***** |  |  Payload: 10000
-****************************************************************************************************
-```
-
-2. 发送一笔跨链转账
-
-下面的命令会将应用链A中Alice的一块钱转移到应用链B中Alice：
-
-```shell
-// -c：指定fabric cli的config.yaml配置文件
-// -t: 目的链的ID（应用链B的ID）
-bash chaincode.sh interchain_transfer -c 'config.yaml' -t <target_appchain_id>
-```
-3. 查询余额
-
-分别在两条链上查询Alice余额：
-
-```shell
-// 查询应用链A中Alice的余额，发现余额少了一块钱
-// -c：指定fabric cli的config.yaml配置文件
-bash chaincode.sh get_balance -c 'config.yaml'
-****************************************************************************************************
-***** |  Response[0]: //peer0.org2.example.com
-***** |  |  Payload: 9999
-***** |  Response[1]: //peer1.org2.example.com
-***** |  |  Payload: 9999
-****************************************************************************************************
-
-// 查询应用链B中Alice的余额，发现余额多了一块钱
-bash chaincode.sh get_balance -c 'configB.yaml'
-****************************************************************************************************
-***** |  Response[0]: //peer0.org2.example1.com
-***** |  |  Payload: 10001
-***** |  Response[1]: //peer1.org2.example1.com
-***** |  |  Payload: 10001
-****************************************************************************************************
-```
-
-**注意：** `chaincode.sh`调用不同的fabric，需要不同的`config.yaml`，注意区分。
