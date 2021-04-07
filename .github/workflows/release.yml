@@ -1,9 +1,9 @@
 name: Release
 
 on:
-  create:
+  push:
     tags:
-      - v*
+      - 'v*.*.*'
 
 jobs:
   release:
@@ -21,14 +21,12 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v2
 
-      # Executed in the next step
-      #- name: Build Binary
-      #  run: make release-binary
+      - name: Build Binary
+        run: make release-binary
 
-      - name: Build and Release Binary
-        uses: goreleaser/goreleaser-action@v2
+      - name: Release Binary
+        uses: softprops/action-gh-release@v1
         with:
-          version: latest
-          args: release --rm-dist
+          files: dist/**.tar.gz
           env:
             RELEASE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
