@@ -106,6 +106,7 @@ type LogModule struct {
 type Genesis struct {
 	Admins   []*Admin          `json:"admins" toml:"admins"`
 	Strategy map[string]string `json:"strategy" toml:"strategy"`
+	Dider    string            `json:"dider" toml:"dider"`
 }
 
 type Admin struct {
