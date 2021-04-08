@@ -233,7 +233,7 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP, interchain *pb.Interchain) 
 func (x *InterchainManager) checkPubKeyAndCaller(pub string) error {
 	pubKeyBytes, err := base64.StdEncoding.DecodeString(pub)
 	if err != nil {
-		return err
+		return fmt.Errorf("decode public key bytes: %w", err)
 	}
 	pubKey, err := ecdsa.UnmarshalPublicKey(pubKeyBytes, crypto.Secp256k1)
 	if err != nil {

@@ -5,8 +5,6 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/meshplus/bitxhub/internal/executor/contracts"
-
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
@@ -14,6 +12,7 @@ import (
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
+	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/stretchr/testify/suite"
 	"github.com/tidwall/gjson"
 )
@@ -58,7 +57,7 @@ func (suite *RegisterAppchain) TestRegisterAppchain() {
 	registerRes := &contracts.RegisterResult{}
 	err = json.Unmarshal(ret.Ret, registerRes)
 	suite.Require().Nil(err)
-	chainId := registerRes.ChainMethod
+	chainId := registerRes.ChainID
 
 	ret, err = invokeBVMContract(suite.api, suite.privKey, suite.normalNonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainId))
 	suite.Require().Nil(err)
