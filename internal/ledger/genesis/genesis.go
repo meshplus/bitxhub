@@ -22,7 +22,14 @@ func Initialize(genesis *repo.Genesis, lg ledger.Ledger) error {
 		return err
 	}
 
+	admin, err := json.Marshal(genesis.Dider)
+	if err != nil {
+		return err
+	}
+
 	lg.SetState(roleAddr, []byte("admin-roles"), body)
+	lg.SetState(constant.MethodRegistryContractAddr.Address(), []byte("admin-method"), admin)
+	lg.SetState(constant.DIDRegistryContractAddr.Address(), []byte("admin-did"), admin)
 
 	for _, admin := range genesis.Admins {
 		lg.SetBalance(types.NewAddressByStr(admin.Address), 100000000)
