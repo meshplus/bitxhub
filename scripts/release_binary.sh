@@ -5,7 +5,7 @@ source x.sh
 CURRENT_PATH=$(pwd)
 PROJECT_PATH=$(dirname "${CURRENT_PATH}")
 BUILD_PATH=${PROJECT_PATH}/build
-APP_VERSION=${1:-'v1.6.0'}
+APP_VERSION=${1:-'1.6.0'}
 
 print_blue "===> 1. Install packr"
 if ! type packr >/dev/null 2>&1; then
@@ -23,9 +23,9 @@ cd "${PROJECT_PATH}"
 cp ./bin/bitxhub ./build/bitxhub
 cp ./internal/plugins/build/*.so ./build/
 if [ "$(uname)" == "Darwin" ]; then
-    cd "${BUILD_PATH}" && tar zcvf bitxhub_macos_x86_64_v"${APP_VERSION}".tar.gz ./bitxhub ./raft.so ./solo.so ./libwasmer.dylib
+    cd "${BUILD_PATH}" && tar zcvf bitxhub_v"${APP_VERSION}"_Darwin_x86_64.tar.gz ./bitxhub ./raft.so ./solo.so ./libwasmer.dylib
     mv ./*.tar.gz ../dist/
 else
-    cd "${BUILD_PATH}" && tar zcvf bitxhub_linux-amd64_v"${APP_VERSION}".tar.gz ./bitxhub ./*.so
+    cd "${BUILD_PATH}" && tar zcvf bitxhub_v"${APP_VERSION}"_Linux_x86_64.tar.gz ./bitxhub ./*.so
     mv ./*.tar.gz ../dist/
 fi
