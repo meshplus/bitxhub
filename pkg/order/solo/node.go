@@ -98,10 +98,11 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 
 	batchTimeout, memConfig, err := generateSoloConfig(config.RepoRoot)
 	mempoolConf := &mempool.Config{
-		ID:          config.ID,
-		ChainHeight: config.Applied,
-		Logger:      config.Logger,
-		StoragePath: config.StoragePath,
+		ID:              config.ID,
+		ChainHeight:     config.Applied,
+		Logger:          config.Logger,
+		StoragePath:     config.StoragePath,
+		GetAccountNonce: config.GetAccountNonce,
 
 		BatchSize:      memConfig.BatchSize,
 		PoolSize:       memConfig.PoolSize,

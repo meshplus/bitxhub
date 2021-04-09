@@ -93,10 +93,11 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 		return nil, fmt.Errorf("generate raft txpool config: %w", err)
 	}
 	mempoolConf := &mempool.Config{
-		ID:          config.ID,
-		ChainHeight: config.Applied,
-		Logger:      config.Logger,
-		StoragePath: config.StoragePath,
+		ID:              config.ID,
+		ChainHeight:     config.Applied,
+		Logger:          config.Logger,
+		StoragePath:     config.StoragePath,
+		GetAccountNonce: config.GetAccountNonce,
 
 		BatchSize:      raftConfig.RAFT.MempoolConfig.BatchSize,
 		PoolSize:       raftConfig.RAFT.MempoolConfig.PoolSize,

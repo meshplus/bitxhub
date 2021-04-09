@@ -55,6 +55,9 @@ func TestNode_Start(t *testing.T) {
 		order.WithStoragePath(repo.GetStoragePath(repoRoot, "order")),
 		order.WithLogger(log.NewWithModule("consensus")),
 		order.WithApplied(1),
+		order.WithGetAccountNonceFunc(func(address *types.Address) uint64 {
+			return 0
+		}),
 	)
 	require.Nil(t, err)
 
@@ -111,6 +114,9 @@ func TestMulti_Node_Start(t *testing.T) {
 			order.WithLogger(log.NewWithModule("consensus")),
 			order.WithGetBlockByHeightFunc(nil),
 			order.WithApplied(1),
+			order.WithGetAccountNonceFunc(func(address *types.Address) uint64 {
+				return 0
+			}),
 		)
 		require.Nil(t, err)
 		err = order.Start()
@@ -166,6 +172,9 @@ func TestMulti_Node_Start_Without_Cert_Verification(t *testing.T) {
 			order.WithLogger(log.NewWithModule("consensus")),
 			order.WithGetBlockByHeightFunc(nil),
 			order.WithApplied(1),
+			order.WithGetAccountNonceFunc(func(address *types.Address) uint64 {
+				return 0
+			}),
 		)
 		require.Nil(t, err)
 		err = order.Start()
