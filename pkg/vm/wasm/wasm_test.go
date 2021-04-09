@@ -19,6 +19,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/bitxhub/pkg/vm"
+	"github.com/meshplus/bitxhub/pkg/vm/wasm/vmledger"
 	libp2pcert "github.com/meshplus/go-libp2p-cert"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -45,7 +46,7 @@ func initCreateContext(t *testing.T, name string) *vm.Context {
 	assert.Nil(t, err)
 	dir := filepath.Join(os.TempDir(), "wasm", name)
 
-	bytes, err := ioutil.ReadFile("./testdata/wasm_test.wasm")
+	bytes, err := ioutil.ReadFile("./testdata/ledger_test_gc.wasm")
 	assert.Nil(t, err)
 
 	data := &pb.TransactionData{
@@ -159,45 +160,69 @@ func TestDeploy(t *testing.T) {
 	require.Nil(t, err)
 }
 
-// TODO: Waiting for the PR from XLW
-//func TestExecute(t *testing.T) {
-//	ctx := initCreateContext(t, "execute")
-//	instances := make(map[string]wasmer.Instance)
-//	imports, err := EmptyImports()
-//	require.Nil(t, err)
-//	wasm, err := New(ctx, imports, instances)
-//	require.Nil(t, err)
-//
-//	ret, err := wasm.deploy()
-//	require.Nil(t, err)
-//
-//	invokePayload := &pb.InvokePayload{
-//		Method: "a",
-//		Args: []*pb.Arg{
-//			{Type: pb.Arg_I32, Value: []byte(fmt.Sprintf("%d", 1))},
-//			{Type: pb.Arg_I32, Value: []byte(fmt.Sprintf("%d", 2))},
-//		},
-//	}
-//	payload, err := invokePayload.Marshal()
-//	require.Nil(t, err)
-//	data := &pb.TransactionData{
-//		Payload: payload,
-//	}
-//	ctx1 := &vm.Context{
-//		Caller:          ctx.Caller,
-//		Callee:          types.NewAddress(ret),
-//		TransactionData: data,
-//		Ledger:          ctx.Ledger,
-//	}
-//	imports1, err := validatorlib.New()
-//	require.Nil(t, err)
-//	wasm1, err := New(ctx1, imports1, instances)
-//	require.Nil(t, err)
-//
-//	result, err := wasm1.Run(payload)
-//	require.Nil(t, err)
-//	require.Equal(t, "336", string(result))
-//}
+func TestExecute(t *testing.T) {
+	ctx := initCreateContext(t, "execute")
+	instances := make(map[string]wasmer.Instance)
+	imports, err := EmptyImports()
+	require.Nil(t, err)
+	wasm, err := New(ctx, imports, instances)
+	require.Nil(t, err)
+
+	ret, err := wasm.deploy()
+	require.Nil(t, err)
+
+	invokePayload := &pb.InvokePayload{
+		Method: "state_test_set",
+		Args: []*pb.Arg{
+			{Type: pb.Arg_Bytes, Value: []byte("alice")},
+			{Type: pb.Arg_Bytes, Value: []byte("111")},
+		},
+	}
+	payload, err := invokePayload.Marshal()
+	require.Nil(t, err)
+	data := &pb.TransactionData{
+		Payload: payload,
+	}
+	ctx1 := &vm.Context{
+		Caller:          ctx.Caller,
+		Callee:          types.NewAddress(ret),
+		TransactionData: data,
+		Ledger:          ctx.Ledger,
+	}
+	imports1, err := vmledger.New()
+	require.Nil(t, err)
+	fmt.Println(imports1)
+	wasm1, err := New(ctx1, imports1, instances)
+	require.Nil(t, err)
+	fmt.Println(wasm1.w.Instance.Exports)
+
+	result, err := wasm1.Run(payload)
+	require.Nil(t, err)
+	require.Equal(t, "1", string(result))
+
+	invokePayload1 := &pb.InvokePayload{
+		Method: "state_test_get",
+		Args: []*pb.Arg{
+			{Type: pb.Arg_Bytes, Value: []byte("alice")},
+			{Type: pb.Arg_Bytes, Value: []byte("111")},
+		},
+	}
+	payload1, err := invokePayload1.Marshal()
+	require.Nil(t, err)
+	// data1 := &pb.TransactionData{
+	// 	Payload: payload1,
+	// }
+	// ctx2 := &vm.Context{
+	// 	Caller:          ctx.Caller,
+	// 	Callee:          types.NewAddress(ret),
+	// 	TransactionData: data1,
+	// 	Ledger:          ctx.Ledger,
+	// }
+
+	result1, err := wasm1.Run(payload1)
+	require.Nil(t, err)
+	require.Equal(t, "1", string(result1))
+}
 
 func TestWasm_RunFabValidation(t *testing.T) {
 	ctx := initFabricContext(t, "execute")
@@ -353,7 +378,7 @@ func TestWasm_RunWithoutMethod(t *testing.T) {
 		TransactionData: data,
 		Ledger:          ctx.Ledger,
 	}
-	imports1, err := validatorlib.New()
+	imports1, err := vmledger.New()
 	require.Nil(t, err)
 	wasm1, err := New(ctx1, imports1, instances)
 	require.Nil(t, err)
