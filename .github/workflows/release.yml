@@ -29,4 +29,4 @@ jobs:
         with:
           files: dist/**.tar.gz
           env:
-            RELEASE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            RELEASE_TOKEN: ${{ secrets.ACCESS_TOKEN }}
