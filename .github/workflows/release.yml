@@ -28,5 +28,5 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: dist/**.tar.gz
-          env:
-            RELEASE_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+        env:
+          RELEASE_TOKEN: ${{ secrets.ACCESS_TOKEN }}
