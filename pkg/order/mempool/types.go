@@ -20,6 +20,8 @@ const (
 	DefaultTxSetTick   = 100 * time.Millisecond
 )
 
+type GetAccountNonceFunc func(address *types.Address) uint64
+
 type Config struct {
 	ID                 uint64
 	BatchSize          uint64
@@ -30,6 +32,7 @@ type Config struct {
 	ChainHeight        uint64
 	Logger             logrus.FieldLogger
 	StoragePath        string // db for persist mem pool meta data
+	GetAccountNonce    GetAccountNonceFunc
 }
 
 type txItem struct {

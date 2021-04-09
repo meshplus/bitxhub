@@ -174,8 +174,9 @@ func (suite *Interchain) TestHandleIBTP() {
 	proof := []byte("true")
 	proofHash := sha256.Sum256(proof)
 	ib := &pb.IBTP{From: f.String(), To: t.String(), Index: ibtpNonce, Timestamp: time.Now().UnixNano(), Proof: proofHash[:]}
-	tx, err := genIBTPTransaction(k1, ib)
+	tx, err := genIBTPTransaction(k1, ib, k1Nonce)
 	suite.Require().Nil(err)
+	k1Nonce++
 
 	tx.Extra = proof
 	ret, err = sendTransactionWithReceipt(suite.api, tx)
@@ -337,30 +338,33 @@ func (suite *Interchain) TestGetIBTPByID() {
 
 	proofHash := sha256.Sum256(proof)
 	ib := &pb.IBTP{From: f.String(), To: t.String(), Index: ibtpNonce, Payload: []byte("111"), Timestamp: time.Now().UnixNano(), Proof: proofHash[:]}
-	tx, err := genIBTPTransaction(k1, ib)
+	tx, err := genIBTPTransaction(k1, ib, k1Nonce)
 	suite.Require().Nil(err)
 	tx.Extra = proof
 	receipt, err := sendTransactionWithReceipt(suite.api, tx)
 	suite.Require().Nil(err)
 	suite.Require().EqualValues(true, receipt.IsSuccess(), string(receipt.Ret))
 	ibtpNonce++
+	k1Nonce++
 
 	ib2 := &pb.IBTP{From: f.String(), To: t.String(), Index: ibtpNonce, Payload: []byte("111"), Timestamp: time.Now().UnixNano(), Proof: proofHash[:]}
-	tx, err = genIBTPTransaction(k1, ib2)
+	tx, err = genIBTPTransaction(k1, ib2, k1Nonce)
 	suite.Require().Nil(err)
 	tx.Extra = proof
 	receipt, err = sendTransactionWithReceipt(suite.api, tx)
 	suite.Require().Nil(err)
 	suite.Require().EqualValues(true, receipt.IsSuccess(), string(receipt.Ret))
 	ibtpNonce++
+	k1Nonce++
 
 	ib3 := &pb.IBTP{From: f.String(), To: t.String(), Index: ibtpNonce, Payload: []byte("111"), Timestamp: time.Now().UnixNano(), Proof: proofHash[:]}
-	tx, err = genIBTPTransaction(k1, ib3)
+	tx, err = genIBTPTransaction(k1, ib3, k1Nonce)
 	suite.Require().Nil(err)
 	tx.Extra = proof
 	receipt, err = sendTransactionWithReceipt(suite.api, tx)
 	suite.Assert().Nil(err)
 	ibtpNonce++
+	k1Nonce++
 
 	ib.Index = 2
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.InterchainContractAddr.Address(), "GetIBTPByID", pb.String(ib.ID()))

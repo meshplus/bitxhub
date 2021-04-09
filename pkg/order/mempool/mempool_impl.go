@@ -1,10 +1,8 @@
 package mempool
 
 import (
-	"fmt"
 	"math"
 	"os"
-	"path/filepath"
 	"sync"
 	"time"
 
@@ -29,17 +27,13 @@ type mempoolImpl struct {
 }
 
 func newMempoolImpl(config *Config) (*mempoolImpl, error) {
-	db, err := loadOrCreateStorage(filepath.Join(config.StoragePath, "mempool"))
-	if err != nil {
-		return nil, fmt.Errorf("load or create mem pool storage :%w", err)
-	}
 	mpi := &mempoolImpl{
 		localID:     config.ID,
 		batchSeqNo:  config.ChainHeight,
 		logger:      config.Logger,
 		txSliceSize: config.TxSliceSize,
 	}
-	mpi.txStore = newTransactionStore(db, config.Logger)
+	mpi.txStore = newTransactionStore(config.GetAccountNonce, config.Logger)
 	if config.BatchSize == 0 {
 		mpi.batchSize = DefaultBatchSize
 	} else {
@@ -162,7 +156,7 @@ func (mpi *mempoolImpl) generateBlock() (*raftproto.RequestBatch, error) {
 		}
 		// include transaction if it's "next" for given account or
 		// we've already sent its ancestor to Consensus
-		if seenPrevious || (txSeq == commitNonce) {
+		if seenPrevious || (txSeq == commitNonce+1) {
 			ptr := orderedIndexKey{account: tx.account, nonce: txSeq}
 			mpi.txStore.batchedTxs[ptr] = true
 			result = append(result, ptr)
@@ -229,7 +223,7 @@ func (mpi *mempoolImpl) processCommitTransactions(state *ChainState) {
 			continue
 		}
 		preCommitNonce := mpi.txStore.nonceCache.getCommitNonce(txPointer.account)
-		newCommitNonce := txPointer.nonce + 1
+		newCommitNonce := txPointer.nonce
 		if updateAccounts[txPointer.account] < newCommitNonce && preCommitNonce < newCommitNonce {
 			updateAccounts[txPointer.account] = newCommitNonce
 		}
@@ -245,7 +239,7 @@ func (mpi *mempoolImpl) processCommitTransactions(state *ChainState) {
 		commitNonce := mpi.txStore.nonceCache.getCommitNonce(account)
 		if list, ok := mpi.txStore.allTxs[account]; ok {
 			// remove all previous seq number txs for this account.
-			removedTxs := list.forward(commitNonce)
+			removedTxs := list.forward(commitNonce + 1)
 			// remove index smaller than commitNonce delete index.
 			var wg sync.WaitGroup
 			wg.Add(4)
