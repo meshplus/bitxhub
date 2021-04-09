@@ -69,7 +69,7 @@ func (am *AppchainManager) Manager(des string, proposalResult string, extra []by
 			}
 
 			return am.CrossInvoke(constant.MethodRegistryContractAddr.String(), "Register",
-				pb.String(chain.OwnerDID), pb.String(chain.ID),
+				pb.String(relaychainAdmin), pb.String(chain.ID),
 				pb.String(chain.DidDocAddr), pb.Bytes([]byte(chain.DidDocHash)), pb.Bytes(nil))
 		case appchainMgr.EventUpdate:
 			return responseWrapper(am.AppchainManager.UpdateAppchain(chain.ID, chain.OwnerDID,
@@ -123,8 +123,8 @@ func (am *AppchainManager) Register(appchainAdminDID, appchainMethod string, doc
 }
 
 // UpdateAppchain updates available appchain
-func (am *AppchainManager) UpdateAppchain(appchainMethod, validators string, consensusType, chainType,
-	name, desc, version, pubkey, docAddr, docHash string) *boltvm.Response {
+func (am *AppchainManager) UpdateAppchain(appchainMethod, docAddr, docHash, validators string, consensusType, chainType,
+	name, desc, version, pubkey string) *boltvm.Response {
 	am.AppchainManager.Persister = am.Stub
 	if ok, data := am.AppchainManager.ChangeStatus(appchainMethod, appchainMgr.EventUpdate); !ok {
 		return boltvm.Error(string(data))

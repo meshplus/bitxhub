@@ -80,7 +80,6 @@ func (router *InterchainRouter) AddPier(key bitxid.DID, pierID string, isUnion b
 		//	return nil, fmt.Errorf("did %s for subscription is not exist", key)
 		//}
 		subBus := raw.(*event.Feed)
-		router.logger.Errorf("feed addr is %v", subBus)
 		sub := subBus.Subscribe(c)
 		router.subscriptions.Store(pierID, sub)
 	}

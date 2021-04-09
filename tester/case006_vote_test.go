@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/meshplus/bitxid"
+
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
@@ -59,10 +61,17 @@ func (suite *Governance) TestGovernance() {
 	suite.Require().Nil(err)
 	appchainPub, err := appchainPri.PublicKey().Bytes()
 	suite.Require().Nil(err)
+	addr, err := appchainPri.PublicKey().Address()
+	suite.Require().Nil(err)
 	appchainNonce := uint64(1)
 
 	// 1. Register ==============================================
+	did := genUniqueAppchainDID(addr.String())
 	ret, err := invokeBVMContract(suite.api, appchainPri, appchainNonce, constant.AppchainMgrContractAddr.Address(), "Register",
+		pb.String(did),
+		pb.String(string(bitxid.DID(did).GetChainDID())),
+		pb.String(docAddr),
+		pb.String(docHash),
 		pb.String("validators"),
 		pb.String("rbft"),
 		pb.String("hyperchain"),
@@ -79,6 +88,10 @@ func (suite *Governance) TestGovernance() {
 
 	// repeated registration
 	ret, err = invokeBVMContract(suite.api, appchainPri, appchainNonce, constant.AppchainMgrContractAddr.Address(), "Register",
+		pb.String(did),
+		pb.String(string(bitxid.DID(did).GetChainDID())),
+		pb.String(docAddr),
+		pb.String(docHash),
 		pb.String("validators"),
 		pb.String("rbft"),
 		pb.String("hyperchain"),

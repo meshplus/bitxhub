@@ -2,9 +2,13 @@ package tester
 
 import (
 	"crypto/sha256"
+	"encoding/base64"
+	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"time"
+
+	"github.com/meshplus/bitxid"
 
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
@@ -51,20 +55,28 @@ func (suite *Interchain) TestHandleIBTP() {
 	suite.Require().Nil(err)
 	k2, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
-	f, err := k1.PublicKey().Address()
 	suite.Require().Nil(err)
-	t, err := k2.PublicKey().Address()
+	addr1, err := k1.PublicKey().Address()
+	suite.Require().Nil(err)
+	addr2, err := k2.PublicKey().Address()
 	suite.Require().Nil(err)
 	k1Nonce := uint64(1)
 	k2Nonce := uint64(1)
 	ibtpNonce := uint64(1)
 
-	pub1, err := k1.PublicKey().Bytes()
+	rawpub1, err := k1.PublicKey().Bytes()
 	suite.Require().Nil(err)
-	pub2, err := k2.PublicKey().Bytes()
+	pub1 := base64.StdEncoding.EncodeToString(rawpub1)
+	rawpub2, err := k2.PublicKey().Bytes()
 	suite.Require().Nil(err)
+	pub2 := base64.StdEncoding.EncodeToString(rawpub2)
 
+	did := genUniqueAppchainDID(addr1.String())
 	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "Register",
+		pb.String(did),
+		pb.String(string(bitxid.DID(did).GetChainDID())),
+		pb.String(docAddr),
+		pb.String(docHash),
 		pb.String(""),
 		pb.String("rbft"),
 		pb.String("hyperchain"),
@@ -111,7 +123,12 @@ func (suite *Interchain) TestHandleIBTP() {
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	adminNonce3++
 
+	did2 := genUniqueAppchainDID(addr2.String())
 	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "Register",
+		pb.String(did2),
+		pb.String(string(bitxid.DID(did2).GetChainDID())),
+		pb.String(docAddr),
+		pb.String(docHash),
 		pb.String(""),
 		pb.String("rbft"),
 		pb.String("fabric"),
@@ -125,6 +142,8 @@ func (suite *Interchain) TestHandleIBTP() {
 	k2Nonce++
 	id2 := gjson.Get(string(ret.Ret), "chain_id").String()
 	proposalId2 := gjson.Get(string(ret.Ret), "proposal_id").String()
+	fmt.Printf("appchain id 2 is %s\n", id2)
+	fmt.Printf("proposal id is %s\n", proposalId2)
 
 	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(id2))
 	suite.Require().Nil(err)
@@ -166,14 +185,15 @@ func (suite *Interchain) TestHandleIBTP() {
 	k1Nonce++
 
 	// register rule
-	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(), "RegisterRule", pb.String(f.String()), pb.String(addr.String()))
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(),
+		"RegisterRule", pb.String(string(bitxid.DID(did).GetChainDID())), pb.String(addr.String()))
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess())
 	k1Nonce++
 
 	proof := []byte("true")
 	proofHash := sha256.Sum256(proof)
-	ib := &pb.IBTP{From: f.String(), To: t.String(), Index: ibtpNonce, Timestamp: time.Now().UnixNano(), Proof: proofHash[:]}
+	ib := &pb.IBTP{From: id1, To: id2, Index: ibtpNonce, Timestamp: time.Now().UnixNano(), Proof: proofHash[:]}
 	tx, err := genIBTPTransaction(k1, ib, k1Nonce)
 	suite.Require().Nil(err)
 	k1Nonce++
@@ -212,23 +232,31 @@ func (suite *Interchain) TestGetIBTPByID() {
 	suite.Require().Nil(err)
 	k2, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
-	f, err := k1.PublicKey().Address()
-	suite.Require().Nil(err)
-	t, err := k2.PublicKey().Address()
 	suite.Require().Nil(err)
 	k1Nonce := uint64(1)
 	k2Nonce := uint64(1)
 	ibtpNonce := uint64(1)
 
-	pub1, err := k1.PublicKey().Bytes()
+	rawpub1, err := k1.PublicKey().Bytes()
 	suite.Require().Nil(err)
-	pub2, err := k2.PublicKey().Bytes()
+	pub1 := base64.StdEncoding.EncodeToString(rawpub1)
+	rawpub2, err := k2.PublicKey().Bytes()
+	suite.Require().Nil(err)
+	pub2 := base64.StdEncoding.EncodeToString(rawpub2)
+	addr1, err := k1.PublicKey().Address()
+	suite.Require().Nil(err)
+	addr2, err := k2.PublicKey().Address()
 	suite.Require().Nil(err)
 
 	confByte, err := ioutil.ReadFile("./test_data/validator")
 	suite.Require().Nil(err)
 
+	did := genUniqueAppchainDID(addr1.String())
 	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "Register",
+		pb.String(did),
+		pb.String(string(bitxid.DID(did).GetChainDID())),
+		pb.String(docAddr),
+		pb.String(docHash),
 		pb.String(string(confByte)),
 		pb.String("rbft"),
 		pb.String("hyperchain"),
@@ -275,7 +303,12 @@ func (suite *Interchain) TestGetIBTPByID() {
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	adminNonce3++
 
+	did2 := genUniqueAppchainDID(addr2.String())
 	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "Register",
+		pb.String(did2),
+		pb.String(string(bitxid.DID(did2).GetChainDID())),
+		pb.String(docAddr),
+		pb.String(docHash),
 		pb.String(""),
 		pb.String("rbft"),
 		pb.String("fabric"),
@@ -329,7 +362,8 @@ func (suite *Interchain) TestGetIBTPByID() {
 	k1Nonce++
 
 	// register rule
-	_, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(), "RegisterRule", pb.String(f.String()), pb.String(addr.String()))
+	_, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(),
+		"RegisterRule", pb.String(id1), pb.String(addr.String()))
 	suite.Require().Nil(err)
 	k1Nonce++
 
@@ -337,7 +371,7 @@ func (suite *Interchain) TestGetIBTPByID() {
 	suite.Require().Nil(err)
 
 	proofHash := sha256.Sum256(proof)
-	ib := &pb.IBTP{From: f.String(), To: t.String(), Index: ibtpNonce, Payload: []byte("111"), Timestamp: time.Now().UnixNano(), Proof: proofHash[:]}
+	ib := &pb.IBTP{From: id1, To: id2, Index: ibtpNonce, Payload: []byte("111"), Timestamp: time.Now().UnixNano(), Proof: proofHash[:]}
 	tx, err := genIBTPTransaction(k1, ib, k1Nonce)
 	suite.Require().Nil(err)
 	tx.Extra = proof
@@ -347,7 +381,7 @@ func (suite *Interchain) TestGetIBTPByID() {
 	ibtpNonce++
 	k1Nonce++
 
-	ib2 := &pb.IBTP{From: f.String(), To: t.String(), Index: ibtpNonce, Payload: []byte("111"), Timestamp: time.Now().UnixNano(), Proof: proofHash[:]}
+	ib2 := &pb.IBTP{From: id1, To: id2, Index: ibtpNonce, Payload: []byte("111"), Timestamp: time.Now().UnixNano(), Proof: proofHash[:]}
 	tx, err = genIBTPTransaction(k1, ib2, k1Nonce)
 	suite.Require().Nil(err)
 	tx.Extra = proof
@@ -357,7 +391,7 @@ func (suite *Interchain) TestGetIBTPByID() {
 	ibtpNonce++
 	k1Nonce++
 
-	ib3 := &pb.IBTP{From: f.String(), To: t.String(), Index: ibtpNonce, Payload: []byte("111"), Timestamp: time.Now().UnixNano(), Proof: proofHash[:]}
+	ib3 := &pb.IBTP{From: id1, To: id2, Index: ibtpNonce, Payload: []byte("111"), Timestamp: time.Now().UnixNano(), Proof: proofHash[:]}
 	tx, err = genIBTPTransaction(k1, ib3, k1Nonce)
 	suite.Require().Nil(err)
 	tx.Extra = proof
@@ -400,10 +434,18 @@ func (suite *Interchain) TestInterchain() {
 	suite.Require().Nil(err)
 	k1Nonce := uint64(1)
 
-	pub1, err := k1.PublicKey().Bytes()
+	rawpub1, err := k1.PublicKey().Bytes()
+	suite.Require().Nil(err)
+	pub1 := base64.StdEncoding.EncodeToString(rawpub1)
+	addr1, err := k1.PublicKey().Address()
 	suite.Require().Nil(err)
 
+	did := genUniqueAppchainDID(addr1.String())
 	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "Register",
+		pb.String(did),
+		pb.String(string(bitxid.DID(did).GetChainDID())),
+		pb.String(docAddr),
+		pb.String(docHash),
 		pb.String(""),
 		pb.String("rbft"),
 		pb.String("hyperchain"),
@@ -450,9 +492,10 @@ func (suite *Interchain) TestInterchain() {
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	adminNonce3++
 
-	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.InterchainContractAddr.Address(), "Interchain")
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.InterchainContractAddr.Address(),
+		"Interchain", pb.String(string(bitxid.DID(did).GetChainDID())))
 	suite.Require().Nil(err)
-	suite.Require().True(ret.IsSuccess())
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 
 	ic := &pb.Interchain{}
 	err = ic.Unmarshal(ret.Ret)
@@ -476,7 +519,3 @@ func (suite *Interchain) TestRegister() {
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k1Nonce++
 }
-
-//func TestInterchain(t *testing.T) {
-//	suite.Run(t, &Interchain{})
-//}
