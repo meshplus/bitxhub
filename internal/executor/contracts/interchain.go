@@ -108,9 +108,9 @@ func (x *InterchainManager) HandleIBTP(ibtp *pb.IBTP) *boltvm.Response {
 		return x.handleUnionIBTP(ibtp)
 	}
 
-	interchain, ok := x.getInterchain(ibtp.From)
-	if !ok {
-		return boltvm.Error("this appchain does not exist")
+	interchain, _, err := x.checkAppchain(ibtp.From)
+	if err != nil {
+		return boltvm.Error(err.Error())
 	}
 
 	if err := x.checkIBTP(ibtp, interchain); err != nil {
@@ -139,18 +139,15 @@ func (x *InterchainManager) HandleIBTP(ibtp *pb.IBTP) *boltvm.Response {
 }
 
 func (x *InterchainManager) HandleIBTPs(data []byte) *boltvm.Response {
-	ok := x.Has(AppchainKey(x.Caller()))
-	if !ok {
-		return boltvm.Error("this appchain does not exist")
+	interchain, _, err := x.checkAppchain(x.Caller())
+	if err != nil {
+		return boltvm.Error(err.Error())
 	}
 
 	ibtps := &pb.IBTPs{}
 	if err := ibtps.Unmarshal(data); err != nil {
 		return boltvm.Error(err.Error())
 	}
-
-	interchain := &pb.Interchain{}
-	x.GetObject(AppchainKey(x.Caller()), interchain)
 
 	for _, ibtp := range ibtps.Ibtps {
 		if err := x.checkIBTP(ibtp, interchain); err != nil {
@@ -215,6 +212,29 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP, interchain *pb.Interchain) 
 	}
 
 	return nil
+}
+
+func (x *InterchainManager) checkAppchain(id string) (*pb.Interchain, *appchainMgr.Appchain, error) {
+	interchain, ok := x.getInterchain(id)
+	if !ok {
+		return nil, nil, fmt.Errorf("this appchain does not exist")
+	}
+
+	app := &appchainMgr.Appchain{}
+	res := x.CrossInvoke(constant.AppchainMgrContractAddr.String(), "GetAppchain", pb.String(id))
+	if !res.Ok {
+		return nil, nil, fmt.Errorf("get appchain info error: " + string(res.Result))
+	}
+
+	if err := json.Unmarshal(res.Result, app); err != nil {
+		return nil, nil, fmt.Errorf("unmarshal error: " + err.Error())
+	}
+
+	if app.Status != appchainMgr.AppchainAvailable {
+		return nil, nil, fmt.Errorf("the appchain status is " + string(app.Status) + ", can not handle IBTP")
+	}
+
+	return interchain, app, nil
 }
 
 // isRelayIBTP returns whether ibtp.from is relaychain type
@@ -328,9 +348,10 @@ func (x *InterchainManager) GetIBTPByID(id string) *boltvm.Response {
 
 func (x *InterchainManager) handleUnionIBTP(ibtp *pb.IBTP) *boltvm.Response {
 	srcRelayChainID := strings.Split(ibtp.From, "-")[0]
-	ok := x.Has(AppchainKey(srcRelayChainID))
-	if !ok {
-		return boltvm.Error("this relay chain does not exist")
+
+	_, app, err := x.checkAppchain(srcRelayChainID)
+	if err != nil {
+		return boltvm.Error(err.Error())
 	}
 
 	if ibtp.To == "" {
@@ -338,12 +359,6 @@ func (x *InterchainManager) handleUnionIBTP(ibtp *pb.IBTP) *boltvm.Response {
 	}
 	if ok := x.Has(AppchainKey(ibtp.To)); !ok {
 		return boltvm.Error(fmt.Sprintf("target appchain does not exist: %s", ibtp.To))
-	}
-
-	app := &appchainMgr.Appchain{}
-	res := x.CrossInvoke(constant.AppchainMgrContractAddr.String(), "GetAppchain", pb.String(srcRelayChainID))
-	if err := json.Unmarshal(res.Result, app); err != nil {
-		return boltvm.Error(err.Error())
 	}
 
 	interchain, ok := x.getInterchain(ibtp.From)

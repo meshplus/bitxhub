@@ -58,7 +58,9 @@ func (ac *AccountCache) addToReadCache(accounts map[string]*Account) error {
 	for addr, account := range accounts {
 		var stateCache *lru.Cache
 
-		ac.innerAccountCache.Add(addr, account.dirtyAccount)
+		if account.dirtyAccount != nil {
+			ac.innerAccountCache.Add(addr, account.dirtyAccount)
+		}
 		value, ok := ac.stateCache.Get(addr)
 		if ok {
 			stateCache = value.(*lru.Cache)
@@ -91,7 +93,9 @@ func (ac *AccountCache) addToWriteBuffer(accounts map[string]*Account) {
 	defer ac.rwLock.Unlock()
 
 	for addr, account := range accounts {
-		ac.innerAccounts[addr] = account.dirtyAccount
+		if account.dirtyAccount != nil {
+			ac.innerAccounts[addr] = account.dirtyAccount
+		}
 		stateMap, ok := ac.states[addr]
 		if !ok {
 			stateMap = make(map[string][]byte)

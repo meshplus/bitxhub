@@ -64,7 +64,7 @@ func (suite *Governance) TestGovernance() {
 	// 1. Register ==============================================
 	ret, err := invokeBVMContract(suite.api, appchainPri, appchainNonce, constant.AppchainMgrContractAddr.Address(), "Register",
 		pb.String("validators"),
-		pb.Int32(0),
+		pb.String("rbft"),
 		pb.String("hyperchain"),
 		pb.String("税务链"),
 		pb.String("趣链税务链"),
@@ -80,7 +80,7 @@ func (suite *Governance) TestGovernance() {
 	// repeated registration
 	ret, err = invokeBVMContract(suite.api, appchainPri, appchainNonce, constant.AppchainMgrContractAddr.Address(), "Register",
 		pb.String("validators"),
-		pb.Int32(0),
+		pb.String("rbft"),
 		pb.String("hyperchain"),
 		pb.String("税务链"),
 		pb.String("趣链税务链"),

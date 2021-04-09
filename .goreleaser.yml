@@ -1,0 +1,29 @@
+env:
+  - GO111MODULE=on
+  #- GOPROXY=https://goproxy.cn,direct
+before:
+  hooks:
+    - make release-binary
+
+builds:
+  - id: bitxhub
+    binary: bitxhub
+    main: ./cmd/bitxhub
+    skip: true
+
+release:
+  draft: true
+  prerelease: auto
+  name_template: Release {{.Tag}}
+  disable: false
+
+archives:
+  - id: bitxhub-archive
+    format: binary
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'

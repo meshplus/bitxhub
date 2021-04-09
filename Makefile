@@ -2,7 +2,7 @@
 SHELL := /bin/bash
 CURRENT_PATH = $(shell pwd)
 APP_NAME = bitxhub
-APP_VERSION = 1.5.0
+APP_VERSION = 1.6.0
 export GODEBUG=x509ignoreCN=0
 
 # build with verison infos
@@ -80,6 +80,10 @@ buildent:
 	$(GO) build -tags ent -ldflags '${GOLDFLAGS}' -modfile goent.mod ./cmd/${APP_NAME}
 	@mv ./bitxhub bin
 	@printf "${GREEN}Build bitxhub ent successfully!${NC}\n"
+
+## make release: Build release before push
+release-binary:
+	@cd scripts && bash release_binary.sh '${APP_VERSION}'
 
 mod:
 	sed "s?)?$(MODS)\n)?" go.mod

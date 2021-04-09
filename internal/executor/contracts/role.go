@@ -36,16 +36,20 @@ func (r *Role) GetRole() *boltvm.Response {
 }
 
 func (r *Role) IsAdmin(address string) *boltvm.Response {
+	return boltvm.Success([]byte(strconv.FormatBool(r.isAdmin(address))))
+}
+
+func (r *Role) isAdmin(address string) bool {
 	var admins []*repo.Admin
 	r.GetObject(adminRolesKey, &admins)
 
 	for _, admin := range admins {
 		if admin.Address == address {
-			return boltvm.Success([]byte(strconv.FormatBool(true)))
+			return true
 		}
 	}
 
-	return boltvm.Success([]byte(strconv.FormatBool(false)))
+	return false
 }
 
 func (r *Role) GetAdminRoles() *boltvm.Response {
@@ -88,5 +92,43 @@ func (r *Role) GetRoleWeight(address string) *boltvm.Response {
 		}
 	}
 
-	return boltvm.Error("account at the address does not exist:" + address)
+	return boltvm.Error("the account at this address is not an administrator: " + address)
+}
+
+// Permission manager
+type Permission string
+
+const (
+	PermissionAdmin     Permission = "PermissionAdmin"
+	PermissionSelfAdmin Permission = "PermissionSelfAdmin"
+	PermissionSpecific  Permission = "PermissionSpecific"
+)
+
+func (r *Role) CheckPermission(permission string, regulatedId string, regulatorAddr string, specificAddrsData []byte) *boltvm.Response {
+	switch permission {
+	case string(PermissionAdmin):
+		if !r.isAdmin(regulatorAddr) {
+			return boltvm.Error("caller is not an admin account: " + regulatorAddr)
+		}
+	case string(PermissionSelfAdmin):
+		if regulatorAddr != regulatedId && !r.isAdmin(regulatorAddr) {
+			return boltvm.Error("caller is not an admin account or appchain self: " + regulatorAddr)
+		}
+	case string(PermissionSpecific):
+		specificAddrs := []string{}
+		err := json.Unmarshal(specificAddrsData, &specificAddrs)
+		if err != nil {
+			return boltvm.Error(err.Error())
+		}
+		for _, addr := range specificAddrs {
+			if addr == regulatorAddr {
+				return boltvm.Success(nil)
+			}
+		}
+		return boltvm.Error("caller is not specific account: " + regulatorAddr)
+	default:
+		return boltvm.Error("unsupport permission: " + permission)
+	}
+
+	return boltvm.Success(nil)
 }
