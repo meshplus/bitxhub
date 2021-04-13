@@ -2,7 +2,7 @@
 
 按照跨链合约的设计，我们需要在有跨链需求的应用链上部署两种合约。一个合约负责对接跨链网关Pier，为跨链管理合约Broker；一个合约负责具体的业务场景，为业务合约。业务合约需要跨链时，要统一将跨链请求提交到Broker合约上，Broker统一和Pier进行交互。一个Broker合约可以负责对接多个业务合约。
 
-同时为了简化Broker的编写，我们设计了Broker合约和业务合约的相应接口。
+跨链接入方无需对broker合约进行修改，直接部署使用即可；同时为了简化业务合约的编写，我们设计了业务合约的相应接口。
 
 ## Broker 合约接口
 
@@ -29,38 +29,15 @@ type Broker interface {
   // getOutMessage 查询历史跨链请求。查询键值中dstChainID指定目的链，idx指定序号，查询结果为以Broker所在的区块链作为来源链的跨链请求。
   getOutMessage(string dstChainID, uint64 idx) Response
 
-  // 提供给业务合约发起跨链资产交换的接口
-  InterchainTransferInvoke(string dstChainID, string destAddr, string args) Response
+  // 提供给跨链网关调用的接口，跨链网关收到跨链请求时会调用该接口。
+  invokeInterchain(address srcChainID, uint64 index, address destAddr, bool req, bytes calldata bizCallData)
+  	
+  // 提供给跨链网关调用的接口，当跨链网关收到无效当跨链请求时会调用该接口。
+  invokeIndexUpdateWithError(address srcChainID, uint64 index, bool req, string memory err)
 
-  // 提供给业务合约发起跨链数据交换的接口
-  InterchainDataSwapInvoke(string dstChainID, string destAddr, string key) Response
+  // 提供给业务合约发起通用的跨链交易的接口。
+  emitInterchainEvent(address destChainID, string memory destAddr, string memory funcs, string memory args, string memory argscb, string memory argsrb)
 
-  // 提供给业务合约发起通用的跨链交易的接口
-  InterchainInvoke(string dstChainID, string sourceAddr, string destAddr, string func, string args, string callback) Response
-
-  // 提供给跨链网关调用的接口，跨链网关收到跨链充值的请求时候调用
-  interchainCharge(string srcChainID, uint64 index, string destAddr, string sender, string receiver, uint64 amount) Response
-
-  // 提供给跨链网关调用的接口，跨链网关收到跨链转账执行结果时调用
-  interchainConfirm(string srcChainID, uint64 index, string destAddr, bool status, string sender, uint64 amount) Response
-
-  // 提供给跨链网关调用的接口，跨链网关收到跨链数据交换请求时调用
-  interchainGet(string srcChainID, uint64 index, string destAddr, string key) Response
-
-  // 提供给跨链网关调用的接口，跨链网关收到跨链数据交换执行结果时调用
-  interchainSet(string srcChainID, uint64 index, string destAddr, string key, string value) Response
-
-  // 准备阶段，锁定sender的金额，并记录Prepare过程
-  interchainPrepare(string dstChainID, string destAddr, string sender, string receiver, uint64 amount) Response
-
-  // 当双方都已经执行Prepare之后，执行具体事物
-  interchainCommit(string uuid) Response
-
-  // 当Pier检测到双方commit都成功了，便不用产生Rollback
-  interchainRollback(string dstChainID, string destAddr, string sender, string receiver, uint64 amount) Response
-
-  // 如果跨链失败，根据合约本身的记录来执行相应的Abort操作
-  interchainAbort(string uuid) Response
   // 提供给合约部署初始化使用
   initialize() Response
 }
@@ -68,63 +45,17 @@ type Broker interface {
 
 ### 重要接口说明
 
-- `InterchainInvoke` 接口
+- `__emitInterchainEvent__` 
 
-该接口是实现通用的跨链调用的接口。接受的参数有：目的链ID，发起跨链交易的业务合约地址或ID，目的链业务合约地址或ID，调用的函数名，该函数的参数，回调函数名。
+该接口是业务合约发起通用的跨链调用的接口。接受的参数有：目的链ID，目的链业务合约地址或ID，调用的函数名、回调函数名、回滚函数名，调用函数的参数，回调函数参数，回滚函数参数。
 
 Broker会记录跨链交易相应的元信息，并对跨链交易进行编号，保证跨链交易有序进行。并且抛出跨链事件，以通知跨链网关跨链交易的产生。
 
-- `InterchainTransferInvoke` 接口
+- `invokeInterchain` 
 
-是对`InterchainInvoke` 接口的封装，专门用于发起一次跨链转账业务。接受参数有：目的链ID，目的链业务合约地址或ID，发起转账账户名，接受转账账户名，转账金额。
+该接口是跨链网关对业务合约进行跨链调用或回调/回滚的接口。跨链网关对要调用的目的合约的方法和参数进行封装，通过该接口实现对不同目的合约的灵活调用，并返回目的合约的调用函数的返回值。
+接受参数有：来源链ID，交易序号，目的业务合约ID，是否是跨链请求，业务合约调用方法和参数的封装数据。
 
-- `InterchainDataSwapInvoke` 接口
-
-是对InterchainInvoke 接口的封装，专门用于发起一次跨链数据交换业务。接受参数有：目的链ID，目的链业务合约地址或ID，Key值。
-
-- `interchainCharge` 接口
-
-接受跨链转账的接口。由Broker合约根据业务合约地址或ID对业务合约进行充值操作，并记录相应的元信息。接受参数有：来源链ID，交易序号，目的业务合约ID，发起账户名，接收账户名，转账金额。
-
-- `interchainConfirm` 接口
-
-接受跨链转账的接口。由Broker合约根据业务合约地址或ID对业务合约进行充值操作，并记录相应的元信息。接受参数有：来源链ID，交易序号，目的业务合约ID，跨链转账交易状态，接收账户名，转账金额。
-
-Broker需要根据跨链交易的状态决定是否进行回滚操作，并记录相应元信息。
-
-- `interchainGet` 接口
-
-接受跨链数据获取的接口。接受参数有：来源链ID，交易序号，目的业务合约ID，Key值。
-
-- `interchainSet` 接口
-
-接受跨链数据回写的接口。接受参数有：来源链ID，交易序号，目的业务合约ID，Key值，value值。
-
-**事物管理接口（设计中，未定）**
-
-应用链A，中继链C，应用链B为一次事物的三方。
-
-1. prepare阶段：
-
-A跨链合约抛出跨链事件，C记录跨链事件并转发，B进行prepare
-
-1. commit前阶段
-
-C收到两方Yes回复，中继链通知双方进行commit阶段。
-
-C未收到B回复或No回复，通知A Abort。
-
-1. Commit阶段
-
-双方都进行commit，将响应结果写入到中继链。
-
-C收到A和B的Yes回复，C将双方的Confirm转发，到事务完成
-
-C未收到全部Yes回复，发回双方Abort通知。
-
-> 如果上述任何步骤因为网络问题或其他问题，跨链合约无法收到消息，都会因为超时而自动执行Abort操作。
-
-> Abort操作会根据跨链合约中记录的状态选择是不是要执行回滚。比如Prepare阶段执行Abort只是取消冻结，Commit阶段则还要执行回滚。
 
 ## 业务合约接口
 
@@ -203,8 +134,7 @@ contract DataSwapper {
         return dataM[key];
     }
 
-    function setData(string memory key, string memory value
-) public {
+    function setData(string memory key, string memory value) public {
         dataM[key] = value;
     }
 }
@@ -223,17 +153,16 @@ contract DataSwapper {
 	...
 
 	function get(address destChainID, string memory destAddr, string memory key) public {
-        bool ok = broker.InterchainDataSwapInvoke(destChainID, destAddr, key);
-        require(ok);
+        broker.emitInterchainEvent(destChainID, destAddr, "interchainGet,interchainSet,", key, key, "");
 	}
 }
 
 contract Broker {
-    function InterchainDataSwapInvoke(address destChainID, string memory destAddr, string memory key) public returns(bool);
+    function emitInterchainEvent(address destChainID, string memory destAddr, string memory funcs, string memory args, string memory argscb, string memory argsrb);
 }
 ```
 
-其中Broker的地址和该业务合约需要使用到的接口需要在业务合约中声明，然后直接调用该接口接口发起跨链交易。
+其中Broker的地址和该业务合约需要使用到的接口需要在业务合约中声明，然后直接调用该接口发起跨链交易。
 
 ### 跨链获取的接口
 
@@ -247,7 +176,7 @@ function interchainGet(string memory key) public onlyBroker returns(bool, string
         return (true, dataM[key]);
 }
 ```
-
+我们规定跨链调用的接口的第一个返回值类型必须是bool类型，它用来表示跨链调用是否成功。
 其中onlyBroker是进行跨链权限控制的修饰器。该接口和下面的跨链回写接口均是提供给Broker合约进行调用，也是其他应用链发来的跨链交易执行时需要调用的接口。
 
 ### 跨链回写的接口
@@ -261,7 +190,7 @@ function interchainSet(string memory key, string memory value) public onlyBroker
 
 ## Fabric
 
-本节主要说明在Fabric应用链上，如何使用我们提供的跨链管理合约Broker，在你已有业务合约的基础上添加接口，以或得跨链能力。
+本节主要说明在Fabric应用链上，如何使用我们提供的跨链管理合约Broker，在你已有业务合约的基础上添加接口，以跨链能力。
 
 ### 业务合约Demo
 
@@ -347,7 +276,7 @@ func (s *KVStore) get(stub shim.ChaincodeStubInterface, args []string) peer.Resp
 		// args[0]: destination appchain id
 		// args[1]: destination contract address
 		// args[2]: key
-		b := util.ToChaincodeArgs(interchainInvokeFunc, args[0], args[1], args[2])
+        b := util.ToChaincodeArgs(emitInterchainEventFunc, args[0], args[1], "interchainGet", args[2], "interchainSet", args[2], "", "")
 		response := stub.InvokeChaincode(brokerContractName, b, channelID)
 
 		if response.Status != shim.OK {
@@ -364,11 +293,11 @@ func (s *KVStore) get(stub shim.ChaincodeStubInterface, args []string) peer.Resp
 由于我们的跨链管理合约一旦部署之后，chaincode name和所在的channel和跨链接口都是不变的，所以在业务变量中直接使用常量指定Broker合约的相关信息。
 
 ```go
-b := util.ToChaincodeArgs(interchainInvokeFunc, args[0], args[1], args[2])
+b := util.ToChaincodeArgs(emitInterchainEventFunc, args[0], args[1], "interchainGet", args[2], "interchainSet", args[2], "", "")
 response := stub.InvokeChaincode(brokerContractName, b, channelID)
 ```
 
-这两行代码调用了我们的跨链管理合约，只需要提供参数：目的链ID，目的链上业务合约的地址，想要获取数据的`Key`值。
+这两行代码调用了我们的跨链管理合约，只需要提供参数：目的链ID，目的链上业务合约的地址，跨链调用函数，跨链调用函数参数，回调函数，回调函数参数，最后两个参数为回滚函数和回滚函数参数，因为该场景下即使目的链执行跨链交易失败，来源链也无需回滚，因此无需提供回滚信息。
 
 ### 跨链获取的接口
 
