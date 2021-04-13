@@ -86,6 +86,11 @@ func (am *AppchainManager) Manager(des string, proposalResult string, extra []by
 func (am *AppchainManager) Register(appchainAdminDID, appchainMethod string, docAddr, docHash, validators string,
 	consensusType, chainType, name, desc, version, pubkey string) *boltvm.Response {
 	am.AppchainManager.Persister = am.Stub
+	res := am.CrossInvoke(constant.MethodRegistryContractAddr.String(), "Apply",
+		pb.String(appchainAdminDID), pb.String(appchainMethod), pb.Bytes(nil))
+	if !res.Ok {
+		return res
+	}
 	ok, idData := am.AppchainManager.Register(appchainMethod, appchainAdminDID, docAddr, docHash, validators, consensusType,
 		chainType, name, desc, version, pubkey)
 	if ok {
@@ -97,11 +102,6 @@ func (am *AppchainManager) Register(appchainAdminDID, appchainMethod string, doc
 		return boltvm.Error("get appchain error: " + string(data))
 	}
 
-	res := am.CrossInvoke(constant.MethodRegistryContractAddr.String(), "Apply",
-		pb.String(appchainAdminDID), pb.String(appchainMethod), pb.Bytes(nil))
-	if !res.Ok {
-		return res
-	}
 	res = am.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
 		pb.String(am.Caller()),
 		pb.String(appchainMgr.EventRegister),

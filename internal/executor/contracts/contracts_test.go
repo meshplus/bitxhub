@@ -172,49 +172,20 @@ func TestAppchainManager_Register(t *testing.T) {
 	mockStub.EXPECT().Logger().Return(logger).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil))
 	mockStub.EXPECT().CrossInvoke(constant.MethodRegistryContractAddr.String(), "Apply",
-		gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil))
-	mockStub.EXPECT().Has(AppchainKey(appchainMethod)).Return(false).Times(1)
-	mockStub.EXPECT().Has(AppchainKey(appchainMethod)).Return(true).AnyTimes()
+		gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).Times(2)
+	mockStub.EXPECT().Has(AppchainKey(appchainMethod)).Return(false)
 	res := am.Register(appchainAdminDID, appchainMethod, docAddr, docHash,
 		chains[0].Validators, chains[0].ConsensusType, chains[0].ChainType,
 		chains[0].Name, chains[0].Desc, chains[0].Version, chains[0].PublicKey)
 	assert.True(t, res.Ok)
 
 	// test for repeated register
-	am.Register(appchainAdminDID, appchainMethod, docAddr, docHash,
+	mockStub.EXPECT().Has(AppchainKey(appchainMethod)).Return(true)
+	res = am.Register(appchainAdminDID, appchainMethod, docAddr, docHash,
 		chains[0].Validators, chains[0].ConsensusType, chains[0].ChainType,
 		chains[0].Name, chains[0].Desc, chains[0].Version, chains[0].PublicKey)
-	assert.True(t, res.Ok)
+	assert.False(t, res.Ok)
 }
-
-//func TestAudit(t *testing.T) {
-//	am, mockStub, _, _ := prepare(t)
-//	logger := log.NewWithModule("contracts")
-//
-//	mockStub.EXPECT().Caller().Return(caller).AnyTimes()
-//	mockStub.EXPECT().Get(gomock.Any()).Return(true, chainsData[0]).AnyTimes()
-//	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Do(
-//		func(key string, ret interface{}) bool {
-//			chain := ret.(*appchainMgr.Appchain)
-//			chain.ID = chains[0].ID
-//			return true
-//		}).Return(true).AnyTimes()
-//	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).Return().AnyTimes()
-//	mockStub.EXPECT().Logger().Return(logger).AnyTimes()
-//	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil))
-//	mockStub.EXPECT().Has(AppchainKey(caller)).Return(false).Times(1)
-//	mockStub.EXPECT().Has(AppchainKey(caller)).Return(true).AnyTimes()
-//	res := am.Register(appchainAdminDID, appchainMethod, docAddr, docHash,
-//		chains[0].Validators, chains[0].ConsensusType, chains[0].ChainType,
-//		chains[0].Name, chains[0].Desc, chains[0].Version, chains[0].PublicKey)
-//	assert.True(t, res.Ok)
-//
-//	// test for repeated register
-//	am.Register(appchainAdminDID, appchainMethod, docAddr, docHash,
-//		chains[0].Validators, chains[0].ConsensusType, chains[0].ChainType,
-//		chains[0].Name, chains[0].Desc, chains[0].Version, chains[0].PublicKey)
-//	assert.True(t, res.Ok)
-//}
 
 func TestAppchainManager_Manager(t *testing.T) {
 	mockCtl := gomock.NewController(t)
