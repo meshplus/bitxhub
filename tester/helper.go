@@ -21,7 +21,7 @@ func genXVMContractTransaction(privateKey crypto.PrivateKey, nonce uint64, addre
 	return genContractTransaction(pb.TransactionData_XVM, privateKey, nonce, address, method, args...)
 }
 
-func genIBTPTransaction(privateKey crypto.PrivateKey, ibtp *pb.IBTP) (*pb.Transaction, error) {
+func genIBTPTransaction(privateKey crypto.PrivateKey, ibtp *pb.IBTP, nonce uint64) (*pb.Transaction, error) {
 	from, err := privateKey.PublicKey().Address()
 	if err != nil {
 		return nil, err
@@ -58,7 +58,7 @@ func genIBTPTransaction(privateKey crypto.PrivateKey, ibtp *pb.IBTP) (*pb.Transa
 		To:        constant.InterchainContractAddr.Address(),
 		Payload:   payload,
 		Timestamp: time.Now().UnixNano(),
-		Nonce:     ibtp.Index,
+		Nonce:     nonce,
 		IBTP:      ibtp,
 	}
 

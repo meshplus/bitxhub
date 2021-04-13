@@ -69,6 +69,9 @@ func mockRaftNode(t *testing.T) (*Node, error) {
 		TxSliceSize:    raftConfig.RAFT.MempoolConfig.TxSliceSize,
 		TxSliceTimeout: raftConfig.RAFT.MempoolConfig.TxSliceTimeout,
 		StoragePath:    filepath.Join(repoRoot, "storage"),
+		GetAccountNonce: func(address *types.Address) uint64 {
+			return 0
+		},
 	}
 	mempoolInst, err := mempool.NewMempool(mempoolConf)
 	if err != nil {

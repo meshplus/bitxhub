@@ -4,25 +4,27 @@ import (
 	"fmt"
 
 	"github.com/meshplus/bitxhub-kit/crypto"
+	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
 	"github.com/sirupsen/logrus"
 )
 
 type Config struct {
-	ID                 uint64
-	IsNew              bool
-	RepoRoot           string
-	StoragePath        string
-	PluginPath         string
-	PeerMgr            peermgr.PeerManager
-	PrivKey            crypto.PrivateKey
-	Logger             logrus.FieldLogger
-	Nodes              map[uint64]*pb.VpInfo
-	Applied            uint64
-	Digest             string
-	GetChainMetaFunc   func() *pb.ChainMeta
-	GetBlockByHeight   func(height uint64) (*pb.Block, error)
+	ID               uint64
+	IsNew            bool
+	RepoRoot         string
+	StoragePath      string
+	PluginPath       string
+	PeerMgr          peermgr.PeerManager
+	PrivKey          crypto.PrivateKey
+	Logger           logrus.FieldLogger
+	Nodes            map[uint64]*pb.VpInfo
+	Applied          uint64
+	Digest           string
+	GetChainMetaFunc func() *pb.ChainMeta
+	GetBlockByHeight func(height uint64) (*pb.Block, error)
+	GetAccountNonce  func(address *types.Address) uint64
 }
 
 type Option func(*Config)
@@ -102,6 +104,12 @@ func WithGetChainMetaFunc(f func() *pb.ChainMeta) Option {
 func WithGetBlockByHeightFunc(f func(height uint64) (*pb.Block, error)) Option {
 	return func(config *Config) {
 		config.GetBlockByHeight = f
+	}
+}
+
+func WithGetAccountNonceFunc(f func(address *types.Address) uint64) Option {
+	return func(config *Config) {
+		config.GetAccountNonce = f
 	}
 }
 

@@ -272,6 +272,9 @@ func (exec *BlockExecutor) postBlockEvent(block *pb.Block, interchainMeta *pb.In
 }
 
 func (exec *BlockExecutor) applyTransaction(i int, tx *pb.Transaction, opt *agency.TxOpt) ([]byte, error) {
+	curNonce := exec.ledger.GetNonce(tx.From)
+	defer exec.ledger.SetNonce(tx.From, curNonce+1)
+
 	if tx.IsIBTP() {
 		ctx := vm.NewContext(tx, uint64(i), nil, exec.ledger, exec.logger)
 		instance := boltvm.New(ctx, exec.validationEngine, exec.getContracts(opt))
