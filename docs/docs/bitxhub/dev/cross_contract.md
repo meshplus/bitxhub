@@ -7,7 +7,7 @@
 ## Broker 合约接口
 
 ```go
-public interface Broker {
+type Broker interface {
   // 提供给业务合约注册。注册且审核通过的业务合约才能调用Broker合约的跨链接口
   register(string id) Response
 
@@ -68,9 +68,9 @@ public interface Broker {
 
 ### 重要接口说明
 
-- `__InterchainInvoke__` 接口
+- `InterchainInvoke` 接口
 
-改接口是实现通用的跨链调用的接口。接受的参数有：目的链ID，发起跨链交易的业务合约地址或ID，目的链业务合约地址或ID，调用的函数名，该函数的参数，回调函数名。
+该接口是实现通用的跨链调用的接口。接受的参数有：目的链ID，发起跨链交易的业务合约地址或ID，目的链业务合约地址或ID，调用的函数名，该函数的参数，回调函数名。
 
 Broker会记录跨链交易相应的元信息，并对跨链交易进行编号，保证跨链交易有序进行。并且抛出跨链事件，以通知跨链网关跨链交易的产生。
 
@@ -133,7 +133,7 @@ C未收到全部Yes回复，发回双方Abort通知。
 ### Transfer 合约
 
 ```go
-public interface Transfer {
+type Transfer interface {
   // 发起一笔跨链交易的接口
   transfer(string dstChainID, string destAddr, string sender, string receiver, string amount) Response
 
@@ -174,17 +174,19 @@ public interface DataSwapper {
 
 现在我们已经有Solidity版本和chaincode版本编写的跨链合约样例实现，具体说明如下：
 
-- [__Solidity 跨链合约实现__](http://git.hyperchain.cn/dmlab/pier-client-hyperchain/tree/dev/example)
+- [__Solidity 跨链合约实现__](https://github.com/meshplus/pier-client-ethereum/tree/master/example)
 
 - [chaincode 跨链合约实现](https://github.com/meshplus/pier-client-fabric/tree/master/example)
 
 如果你需要新的语言编写合约，你可以按照我们的设计思路和参考实现进行进一步的开发。
 
-现在我们支持Hyperchain EVM合约以及Fabric上chaincode合约编写跨链合约。
+现在我们支持Hyperchain EVM合约、以太坊私链Solidity合约、BCOS上的EVM合约以及Fabric上chaincode合约编写跨链合约。
 
-## Hyperchain
+## Hyperchain、以太坊、BCOS上的EVM合约
 
-本节主要说明在Hyperchain应用链上，如何使用我们提供的跨链管理合约Broker，在你已有的Solidity业务合约的基础上添加接口，以或得跨链能力。
+本节主要说明在支持EVM合约的应用链上，如何使用我们提供的跨链管理合约Broker，在你已有的Solidity业务合约的基础上添加接口，以获得跨链能力。
+
+当然不同的区块链可能在以太坊的EVM上做了一些二次开发和新增功能，请根据具体区块链的文档相应修改代码。
 
 ### 业务合约Demo
 

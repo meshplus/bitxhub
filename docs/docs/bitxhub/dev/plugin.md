@@ -14,13 +14,13 @@
 
 1. 重要概念
 
-1. Plugin接口
+2. Plugin接口
 
-1. 程序目标
+3. 程序目标
 
-1. 开始编写程序
+4. 开始编写程序
 
-1. 编译你的Plugin
+5. 编译你的Plugin
 
 ## 重要概念
 
@@ -90,7 +90,7 @@ type Client interface {
 $ go version // 确认你安装的GO版本
 $ mkdir ${YOUR_PROJECT}
 $ cd ${YOUR_PROJECT}
-$ go mod init
+$ go mod init exmple/fabric-plugin
 ```
 
 ### Client对象
@@ -289,7 +289,88 @@ func UnmarshalConfig(configPath string) (*Fabric, error) {
 }
 ```
 
+### SubmitIBTP
 
+该接口主要负责将其他链发送过来的IBTP包解析并构造成本链的交易，并发送到本链的跨链合约中。
+如果来源链要求将本链调用合约的结果返回的话，还需要构造相应的IBTP回执发回来源链。
+
+```go
+func (c *Client) SubmitIBTP(ibtp *pb.IBTP) (*model.PluginResponse, error) {
+	ret := &model.PluginResponse{}
+    pd := &pb.Payload{}
+	if err := pd.Unmarshal(ibtp.Payload); err != nil {
+		return ret, fmt.Errorf("ibtp payload unmarshal: %w", err)
+	}
+	content := &pb.Content{}
+	if err := content.Unmarshal(pd.Content); err != nil {
+		return ret, fmt.Errorf("ibtp content unmarshal: %w", err)
+	}
+
+	args := util.ToChaincodeArgs(ibtp.From, strconv.FormatUint(ibtp.Index, 10), content.DstContractId)
+	args = append(args, content.Args...)
+	request := channel.Request{
+		ChaincodeID: c.meta.CCID,
+		Fcn:         content.Func,
+		Args:        args,
+	}
+
+	// retry executing
+	var res channel.Response
+	var proof []byte
+	var err error
+	if err := retry.Retry(func(attempt uint) error {
+		res, err = c.consumer.ChannelClient.Execute(request)
+		if err != nil {
+			if strings.Contains(err.Error(), "Chaincode status Code: (500)") {
+				res.ChaincodeStatus = shim.ERROR
+				return nil
+			}
+			return fmt.Errorf("execute request: %w", err)
+		}
+
+		return nil
+	}, strategy.Wait(2*time.Second)); err != nil {
+		logger.Panicf("Can't send rollback ibtp back to bitxhub: %s", err.Error())
+	}
+
+	response := &Response{}
+	if err := json.Unmarshal(res.Payload, response); err != nil {
+		return nil, err
+	}
+
+	// if there is callback function, parse returned value
+	result := util.ToChaincodeArgs(strings.Split(string(response.Data), ",")...)
+	newArgs := make([][]byte, 0)
+	ret.Status = response.OK
+	ret.Message = response.Message
+
+	// If no callback function to invoke, then simply return
+	if content.Callback == "" {
+		return ret, nil
+	}
+
+	proof, err = c.getProof(res.TransactionID)
+	if err != nil {
+		return ret, err
+	}
+
+	switch content.Func {
+	case "interchainGet":
+		newArgs = append(newArgs, content.Args[0])
+		newArgs = append(newArgs, result...)
+	case "interchainCharge":
+		newArgs = append(newArgs, []byte(strconv.FormatBool(response.OK)), content.Args[0])
+		newArgs = append(newArgs, content.Args[2:]...)
+	}
+
+	ret.Result, err = c.generateCallback(ibtp, newArgs, proof)
+	if err != nil {
+		return nil, err
+	}
+
+	return ret, nil
+}
+```
 
 ## 编译你的Plugin
 
