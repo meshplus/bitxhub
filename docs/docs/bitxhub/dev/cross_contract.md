@@ -45,7 +45,7 @@ type Broker interface {
 
 ### 重要接口说明
 
-- `__emitInterchainEvent__` 
+- `emitInterchainEvent` 
 
 该接口是业务合约发起通用的跨链调用的接口。接受的参数有：目的链ID，目的链业务合约地址或ID，调用的函数名、回调函数名、回滚函数名，调用函数的参数，回调函数参数，回滚函数参数。
 
