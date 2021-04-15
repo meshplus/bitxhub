@@ -9,6 +9,8 @@ import (
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // SendTransaction handles transaction sent by the client.
@@ -16,16 +18,16 @@ import (
 func (cbs *ChainBrokerService) SendTransaction(ctx context.Context, tx *pb.Transaction) (*pb.TransactionHashMsg, error) {
 	err := cbs.api.Broker().OrderReady()
 	if err != nil {
-		return nil, fmt.Errorf("the system is temporarily unavailable, err: %s", err.Error())
+		return nil, status.Newf(codes.Internal, "the system is temporarily unavailable %s", err.Error()).Err()
 	}
 
 	if err := cbs.checkTransaction(tx); err != nil {
-		return nil, err
+		return nil, status.Newf(codes.InvalidArgument, "check transaction fail for %s", err.Error()).Err()
 	}
 
 	hash, err := cbs.sendTransaction(tx)
 	if err != nil {
-		return nil, err
+		return nil, status.Newf(codes.Internal, "internal handling transaction fail %s", err.Error()).Err()
 	}
 
 	return &pb.TransactionHashMsg{TxHash: hash}, nil
