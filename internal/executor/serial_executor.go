@@ -27,13 +27,13 @@ func init() {
 	agency.RegisterExecutorConstructor("serial", NewSerialExecutor)
 }
 
-func (se *SerialExecutor) ApplyTransactions(txs []*pb.Transaction) []*pb.Receipt {
+func (se *SerialExecutor) ApplyTransactions(txs []*pb.Transaction, invalidTxs map[int]agency.InvalidReason) []*pb.Receipt {
 	se.interchainCounter = make(map[string][]uint64)
 	se.normalTxs = make([]*types.Hash, 0)
 	receipts := make([]*pb.Receipt, 0, len(txs))
 
 	for i, tx := range txs {
-		receipts = append(receipts, se.applyTxFunc(i, tx, nil))
+		receipts = append(receipts, se.applyTxFunc(i, tx, invalidTxs[i], nil))
 	}
 
 	se.logger.Debugf("serial executor executed %d txs", len(txs))
@@ -59,4 +59,8 @@ func (se *SerialExecutor) AddInterchainCounter(to string, index uint64) {
 
 func (se *SerialExecutor) GetInterchainCounter() map[string][]uint64 {
 	return se.interchainCounter
+}
+
+func (se *SerialExecutor) GetDescription() string {
+	return "serial executor"
 }

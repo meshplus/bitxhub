@@ -2,7 +2,6 @@ package executor
 
 import (
 	"context"
-	"sort"
 	"sync"
 	"time"
 
@@ -32,7 +31,7 @@ var _ Executor = (*BlockExecutor)(nil)
 type BlockExecutor struct {
 	ledger           ledger.Ledger
 	logger           logrus.FieldLogger
-	blockC           chan *pb.Block
+	blockC           chan *BlockWrapper
 	preBlockC        chan *pb.CommitEvent
 	persistC         chan *ledger.BlockData
 	ibtpVerify       proof.Verify
@@ -62,7 +61,7 @@ func New(chainLedger ledger.Ledger, logger logrus.FieldLogger, typ string) (*Blo
 		logger:           logger,
 		ctx:              ctx,
 		cancel:           cancel,
-		blockC:           make(chan *pb.Block, blockChanNumber),
+		blockC:           make(chan *BlockWrapper, blockChanNumber),
 		preBlockC:        make(chan *pb.CommitEvent, blockChanNumber),
 		persistC:         make(chan *ledger.BlockData, persistChanNumber),
 		ibtpVerify:       ibtpVerify,
@@ -87,6 +86,7 @@ func (exec *BlockExecutor) Start() error {
 	exec.logger.WithFields(logrus.Fields{
 		"height": exec.currentHeight,
 		"hash":   exec.currentBlockHash.String(),
+		"desc":   exec.txsExecutor.GetDescription(),
 	}).Infof("BlockExecutor started")
 
 	return nil
@@ -121,7 +121,7 @@ func (exec *BlockExecutor) ApplyReadonlyTransactions(txs []*pb.Transaction) []*p
 			TxHash:  tx.TransactionHash,
 		}
 
-		ret, err := exec.applyTransaction(i, tx, nil)
+		ret, err := exec.applyTransaction(i, tx, "", nil)
 		if err != nil {
 			receipt.Status = pb.Receipt_FAILED
 			receipt.Ret = []byte(err.Error())
@@ -146,12 +146,12 @@ func (exec *BlockExecutor) ApplyReadonlyTransactions(txs []*pb.Transaction) []*p
 func (exec *BlockExecutor) listenExecuteEvent() {
 	for {
 		select {
-		case block := <-exec.blockC:
+		case blockWrapper := <-exec.blockC:
 			now := time.Now()
-			blockData := exec.processExecuteEvent(block)
+			blockData := exec.processExecuteEvent(blockWrapper)
 			exec.logger.WithFields(logrus.Fields{
-				"height": block.BlockHeader.Number,
-				"count":  len(block.Transactions),
+				"height": blockWrapper.block.BlockHeader.Number,
+				"count":  len(blockWrapper.block.Transactions),
 				"elapse": time.Since(now),
 			}).Debug("Executed block")
 			exec.persistC <- blockData
@@ -161,19 +161,21 @@ func (exec *BlockExecutor) listenExecuteEvent() {
 	}
 }
 
-func (exec *BlockExecutor) verifyProofs(block *pb.Block) *pb.Block {
+func (exec *BlockExecutor) verifyProofs(blockWrapper *BlockWrapper) {
+	block := blockWrapper.block
+
 	if block.BlockHeader.Number == 1 {
-		return block
+		return
 	}
 	if block.Extra != nil {
 		block.Extra = nil
-		return block
+		return
 	}
 
 	var (
-		index []int
-		wg    sync.WaitGroup
-		lock  sync.Mutex
+		invalidTxs = make([]int, 0)
+		wg         sync.WaitGroup
+		lock       sync.Mutex
 	)
 	txs := block.Transactions
 
@@ -181,27 +183,21 @@ func (exec *BlockExecutor) verifyProofs(block *pb.Block) *pb.Block {
 	for i, tx := range txs {
 		go func(i int, tx *pb.Transaction) {
 			defer wg.Done()
-			ok, _ := exec.ibtpVerify.CheckProof(tx)
-			if !ok {
-				lock.Lock()
-				defer lock.Unlock()
-				index = append(index, i)
+			if _, ok := blockWrapper.invalidTx[i]; !ok {
+				ok, _ := exec.ibtpVerify.CheckProof(tx)
+				if !ok {
+					lock.Lock()
+					defer lock.Unlock()
+					invalidTxs = append(invalidTxs, i)
+				}
 			}
 		}(i, tx)
 	}
 	wg.Wait()
 
-	if len(index) > 0 {
-		sort.Sort(sort.Reverse(sort.IntSlice(index)))
-		for _, idx := range index {
-			txs = append(txs[:idx], txs[idx+1:]...)
-		}
-		block.Transactions = txs
-	} else {
-		exec.logger.Debugf("all txs in block %d passed IBTP verification", block.BlockHeader.Number)
+	for _, i := range invalidTxs {
+		blockWrapper.invalidTx[i] = "tx has invalid ibtp proof"
 	}
-
-	return block
 }
 
 func (exec *BlockExecutor) persistData() {
