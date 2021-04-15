@@ -2,17 +2,12 @@ package mempool
 
 import (
 	"math"
-	"os"
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/google/btree"
-	"github.com/meshplus/bitxhub-kit/storage"
-	"github.com/meshplus/bitxhub-kit/storage/leveldb"
 	"github.com/meshplus/bitxhub-model/pb"
 	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -325,21 +320,21 @@ func (mpi *mempoolImpl) shardTxList(timeoutItems []*orderedTimeoutKey, batchLen 
 		}
 
 		shardedList := make([]*pb.Transaction, actualLen)
-		for j := uint64(0); j < batchLen && begin <= end; j++ {
-			txMap, _ := mpi.txStore.allTxs[timeoutItems[begin].account]
-			shardedList[j] = txMap.items[timeoutItems[begin].nonce].tx
+		for j := uint64(0); j < actualLen && begin <= end; j++ {
+			txMap, ok := mpi.txStore.allTxs[timeoutItems[begin].account]
+			if !ok {
+				mpi.logger.Warnf("Timeout tx account %s can't be found in mempool", timeoutItems[begin].account)
+				return shardedLists
+			}
+			item, ok := txMap.items[timeoutItems[begin].nonce]
+			if !ok {
+				mpi.logger.Warnf("Timeout tx account %s with nonce %d can't be found in mempool", timeoutItems[begin].account, timeoutItems[begin].nonce)
+				return shardedLists
+			}
+			shardedList[j] = item.tx
 			begin++
 		}
 		shardedLists = append(shardedLists, shardedList)
 	}
 	return shardedLists
-}
-
-func loadOrCreateStorage(memPoolDir string) (storage.Storage, error) {
-	if !fileutil.Exist(memPoolDir) {
-		if err := os.MkdirAll(memPoolDir, os.ModePerm); err != nil {
-			return nil, errors.Errorf("failed to mkdir '%s' for mem pool: %s", memPoolDir, err)
-		}
-	}
-	return leveldb.New(memPoolDir)
 }
