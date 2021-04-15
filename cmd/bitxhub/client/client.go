@@ -26,6 +26,7 @@ var clientCMD = cli.Command{
 		validatorsCMD(),
 		delVPNodeCMD(),
 		governanceCMD(),
+		didCMD(),
 	},
 }
 

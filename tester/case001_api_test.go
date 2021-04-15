@@ -1,6 +1,7 @@
 package tester
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -59,6 +60,7 @@ func testSendTransaction(suite *API) *types.Hash {
 		constant.StoreContractAddr.Address(), "Set", pb.String("key"), pb.String(value))
 	suite.Nil(err)
 
+	fmt.Printf("api is %v\n", suite.api)
 	suite.Nil(suite.api.Broker().HandleTransaction(tx))
 	return tx.TransactionHash
 }

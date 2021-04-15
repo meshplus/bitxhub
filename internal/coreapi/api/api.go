@@ -7,6 +7,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
+	"github.com/meshplus/bitxid"
 )
 
 //go:generate mockgen -destination mock_api/mock_api.go -package mock_api -source api.go
@@ -29,14 +30,14 @@ type BrokerAPI interface {
 	GetPendingNonceByAccount(account string) uint64
 
 	// AddPier
-	AddPier(pid string, isUnion bool) (chan *pb.InterchainTxWrappers, error)
+	AddPier(did bitxid.DID, pierID string, isUnion bool) (chan *pb.InterchainTxWrappers, error)
 
 	// RemovePier
-	RemovePier(pid string, isUnion bool)
+	RemovePier(did bitxid.DID, pierID string, isUnion bool)
 
 	GetBlockHeader(begin, end uint64, ch chan<- *pb.BlockHeader) error
 
-	GetInterchainTxWrappers(pid string, begin, end uint64, ch chan<- *pb.InterchainTxWrappers) error
+	GetInterchainTxWrappers(did string, begin, end uint64, ch chan<- *pb.InterchainTxWrappers) error
 
 	// OrderReady
 	OrderReady() error

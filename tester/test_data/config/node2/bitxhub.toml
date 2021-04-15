@@ -33,6 +33,7 @@ solo = false
   plugin = "plugins/raft.so"
 
 [genesis]
+  dider = "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013"
   [[genesis.admins]]
     address = "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013"
     weight = 1

@@ -13,6 +13,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/model"
+	"github.com/meshplus/bitxid"
 	"github.com/sirupsen/logrus"
 )
 
@@ -72,16 +73,16 @@ func (b *BrokerAPI) GetReceipt(hash *types.Hash) (*pb.Receipt, error) {
 	return b.bxh.Ledger.GetReceipt(hash)
 }
 
-func (b *BrokerAPI) AddPier(pid string, isUnion bool) (chan *pb.InterchainTxWrappers, error) {
-	return b.bxh.Router.AddPier(pid, isUnion)
+func (b *BrokerAPI) AddPier(did bitxid.DID, pierID string, isUnion bool) (chan *pb.InterchainTxWrappers, error) {
+	return b.bxh.Router.AddPier(did, pierID, isUnion)
 }
 
 func (b *BrokerAPI) GetBlockHeader(begin, end uint64, ch chan<- *pb.BlockHeader) error {
 	return b.bxh.Router.GetBlockHeader(begin, end, ch)
 }
 
-func (b *BrokerAPI) GetInterchainTxWrappers(pid string, begin, end uint64, ch chan<- *pb.InterchainTxWrappers) error {
-	return b.bxh.Router.GetInterchainTxWrappers(pid, begin, end, ch)
+func (b *BrokerAPI) GetInterchainTxWrappers(did string, begin, end uint64, ch chan<- *pb.InterchainTxWrappers) error {
+	return b.bxh.Router.GetInterchainTxWrappers(did, begin, end, ch)
 }
 
 func (b *BrokerAPI) GetBlock(mode string, value string) (*pb.Block, error) {
@@ -139,8 +140,8 @@ func (b *BrokerAPI) GetBlockHeaders(start uint64, end uint64) ([]*pb.BlockHeader
 	return blockHeaders, nil
 }
 
-func (b *BrokerAPI) RemovePier(pid string, isUnion bool) {
-	b.bxh.Router.RemovePier(pid, isUnion)
+func (b *BrokerAPI) RemovePier(did bitxid.DID, pierID string, isUnion bool) {
+	b.bxh.Router.RemovePier(did, pierID, isUnion)
 }
 
 func (b *BrokerAPI) OrderReady() error {

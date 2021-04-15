@@ -31,8 +31,9 @@ import (
 
 const (
 	keyPassword  = "bitxhub"
+	srcMethod    = "did:bitxhub:appchain1:."
+	dstMethod    = "did:bitxhub:appchain2:."
 	from         = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
-	to           = "0x000018f7c3a6e5e4c0b877fe3e688ab08840b997"
 	executorType = "serial"
 )
 
@@ -182,9 +183,7 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 	privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	assert.Nil(t, err)
 
-	addr, err := privKey.PublicKey().Address()
-	assert.Nil(t, err)
-	id := fmt.Sprintf("%s-%s-%d", addr.String(), to, 1)
+	id := fmt.Sprintf("%s-%s-%d", srcMethod, dstMethod, 1)
 
 	hash := types.NewHash([]byte{1})
 	val, err := json.Marshal(hash)
