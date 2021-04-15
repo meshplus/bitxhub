@@ -16,6 +16,8 @@ theme:
     scheme: slate
     accent: blue
 
+edit_uri: edit/master/docs/docs
+
 extra:
   version:
     provider: mike
@@ -55,6 +57,7 @@ nav:
           - 跨链事务方案: bitxhub/design/interchain_transaction.md
           - 跨链网关设计方案: bitxhub/design/pier.md
           - 隐私保护方案: bitxhub/design/privacy_protection.md
+          - API流控设计: bitxhub/design/rate-limiter.md
       - 部署使用:
           - 环境准备: bitxhub/usage/env.md
           - 中继链部署: bitxhub/usage/deploy_bitxhub.md
