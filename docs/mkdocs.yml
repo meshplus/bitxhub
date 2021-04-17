@@ -8,14 +8,26 @@ theme:
   name: material
   features:
     - navigation.tabs
+    - navigation.top
+    - search.highlight
   font:
     text: Roboto
     code: Roboto Mono
   palette:
-    primary: blue
-    scheme: slate
-    accent: blue
-
+    - media: "(prefers-color-scheme: light)"
+      scheme: slate
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to night mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: default
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/weather-night
+        name: Switch to light mode
 edit_uri: edit/master/docs/docs
 
 extra:
@@ -68,9 +80,10 @@ nav:
       - 社区介绍: bitxhub/community_introduction.md
       - 加入我们: bitxhub/join_us.md
       - FAQ: bitxhub/faq.md
-  - 小工具:
-      - Goduck运维工具: goduck/index.md
-      - Premo测试工具: premo/usage.md
+  - Goduck:
+    - Getting started: goduck/index.md
+  - Premo:
+    - 使用文档: premo/usage.md
   - SDK文档:
       - GoSDK使用文档: sdk/gosdk.md
       - JavaSDK使用: sdk/javasdk.md
