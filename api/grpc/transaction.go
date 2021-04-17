@@ -81,15 +81,16 @@ func (cbs *ChainBrokerService) checkTransaction(tx *pb.Transaction) error {
 		return fmt.Errorf("signature can't be empty")
 	}
 
+	tx.TransactionHash = tx.Hash()
+	ok, _ := asym.Verify(crypto.Secp256k1, tx.Signature, tx.SignHash().Bytes(), *tx.From)
+	if !ok {
+		return fmt.Errorf("invalid signature")
+	}
+
 	return nil
 }
 
 func (cbs *ChainBrokerService) sendTransaction(tx *pb.Transaction) (string, error) {
-	tx.TransactionHash = tx.Hash()
-	ok, _ := asym.Verify(crypto.Secp256k1, tx.Signature, tx.SignHash().Bytes(), *tx.From)
-	if !ok {
-		return "", fmt.Errorf("invalid signature")
-	}
 	err := cbs.api.Broker().HandleTransaction(tx)
 	if err != nil {
 		return "", err
