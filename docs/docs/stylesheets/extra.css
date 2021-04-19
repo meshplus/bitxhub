@@ -1,8 +1,8 @@
-.md-header-nav__button.md-logo {
+.md-header .md-logo {
   padding: 0;
 }
 
-.md-header-nav__button.md-logo img {
+.md-header .md-logo img {
   width: auto;
   height: 2rem;
 }

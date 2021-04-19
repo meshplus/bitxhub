@@ -60,6 +60,13 @@ func New(ctx *vm.Context, imports *wasmer.Imports, instances map[string]wasmer.I
 		return nil, err
 	}
 
+	w.SetContext(wasm.ACCOUNT, ctx.Ledger.GetOrCreateAccount(ctx.Callee))
+
+	_, ok := w.Instance.Exports["allocate"]
+	if !ok {
+		return nil, fmt.Errorf("no allocate method")
+	}
+	w.SetContext(wasm.ALLOC_MEM, w.Instance.Exports["allocate"])
 	wasmVM.w = w
 
 	return wasmVM, nil

@@ -64,6 +64,7 @@ func NewBitXHub(rep *repo.Repo) (*BitXHub, error) {
 		order.WithDigest(chainMeta.BlockHash.String()),
 		order.WithGetChainMetaFunc(bxh.Ledger.GetChainMeta),
 		order.WithGetBlockByHeightFunc(bxh.Ledger.GetBlock),
+		order.WithGetAccountNonceFunc(bxh.Ledger.GetNonce),
 	)
 	if err != nil {
 		return nil, err

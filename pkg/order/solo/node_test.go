@@ -54,6 +54,9 @@ func TestNode_Start(t *testing.T) {
 		order.WithID(1),
 		order.WithNodes(nodes),
 		order.WithApplied(1),
+		order.WithGetAccountNonceFunc(func(address *types.Address) uint64 {
+			return 0
+		}),
 	)
 	require.Nil(t, err)
 

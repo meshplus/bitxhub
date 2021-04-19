@@ -21,16 +21,21 @@ const (
 	DefaultTestTxSetSize   = uint64(1)
 )
 
+func mockGetAccountNonce(address *types.Address) uint64 {
+	return 0
+}
+
 func mockMempoolImpl(path string) (*mempoolImpl, chan *raftproto.Ready) {
 	config := &Config{
-		ID:             1,
-		ChainHeight:    DefaultTestChainHeight,
-		BatchSize:      DefaultTestBatchSize,
-		PoolSize:       DefaultPoolSize,
-		TxSliceSize:    DefaultTestTxSetSize,
-		TxSliceTimeout: DefaultTxSetTick,
-		Logger:         log.NewWithModule("consensus"),
-		StoragePath:    path,
+		ID:              1,
+		ChainHeight:     DefaultTestChainHeight,
+		BatchSize:       DefaultTestBatchSize,
+		PoolSize:        DefaultPoolSize,
+		TxSliceSize:     DefaultTestTxSetSize,
+		TxSliceTimeout:  DefaultTxSetTick,
+		Logger:          log.NewWithModule("consensus"),
+		StoragePath:     path,
+		GetAccountNonce: mockGetAccountNonce,
 	}
 	proposalC := make(chan *raftproto.Ready)
 	mempool, _ := newMempoolImpl(config)

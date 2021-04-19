@@ -43,7 +43,7 @@ func (suite *RegisterAppchain) TestRegisterAppchain() {
 
 	args := []*pb.Arg{
 		pb.String("validators"),
-		pb.Int32(0),
+		pb.String(""),
 		pb.String("hyperchain"),
 		pb.String("税务链"),
 		pb.String("趣链税务链"),
@@ -82,7 +82,7 @@ func (suite *RegisterAppchain) TestFetchAppchains() {
 
 	args := []*pb.Arg{
 		pb.String(""),
-		pb.Int32(0),
+		pb.String(""),
 		pb.String("hyperchain"),
 		pb.String("税务链"),
 		pb.String("趣链税务链"),
@@ -97,7 +97,7 @@ func (suite *RegisterAppchain) TestFetchAppchains() {
 
 	args = []*pb.Arg{
 		pb.String(""),
-		pb.Int32(0),
+		pb.String(""),
 		pb.String("fabric"),
 		pb.String("政务链"),
 		pb.String("fabric政务"),
@@ -160,7 +160,7 @@ func (suite *RegisterAppchain) TestGetPubKeyByChainID() {
 
 	args := []*pb.Arg{
 		pb.String(""),
-		pb.Int32(0),
+		pb.String(""),
 		pb.String("hyperchain"),
 		pb.String("税务链"),
 		pb.String("趣链税务链"),
@@ -174,7 +174,7 @@ func (suite *RegisterAppchain) TestGetPubKeyByChainID() {
 
 	args = []*pb.Arg{
 		pb.String(""),
-		pb.Int32(0),
+		pb.String(""),
 		pb.String("fabric"),
 		pb.String("政务链"),
 		pb.String("fabric政务"),
@@ -212,7 +212,7 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 
 	args := []*pb.Arg{
 		pb.String(""),
-		pb.Int32(0),
+		pb.String(""),
 		pb.String("hyperchain"),
 		pb.String("税务链"),
 		pb.String("趣链税务链"),
@@ -235,7 +235,7 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 
 	args = []*pb.Arg{
 		pb.String(""),
-		pb.Int32(0),
+		pb.String(""),
 		pb.String("hyperchain"),
 		pb.String("管理链"),
 		pb.String("趣链管理链"),
@@ -250,7 +250,7 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 	//UpdateAppchain
 	args = []*pb.Arg{
 		pb.String(""),
-		pb.Int32(0),
+		pb.String(""),
 		pb.String("hyperchain"),
 		pb.String("税务链"),
 		pb.String("趣链税务链"),
