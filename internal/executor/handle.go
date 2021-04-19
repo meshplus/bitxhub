@@ -24,16 +24,22 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func (exec *BlockExecutor) processExecuteEvent(block *pb.Block) *ledger.BlockData {
-	current := time.Now()
+type BlockWrapper struct {
+	block     *pb.Block
+	invalidTx map[int]agency.InvalidReason
+}
+
+func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledger.BlockData {
 	var txHashList []*types.Hash
+	current := time.Now()
+	block := blockWrapper.block
 
 	for _, tx := range block.Transactions {
 		txHashList = append(txHashList, tx.TransactionHash)
 	}
 
-	block = exec.verifyProofs(block)
-	receipts := exec.txsExecutor.ApplyTransactions(block.Transactions)
+	exec.verifyProofs(blockWrapper)
+	receipts := exec.txsExecutor.ApplyTransactions(block.Transactions, blockWrapper.invalidTx)
 
 	applyTxsDuration.Observe(float64(time.Since(current)) / float64(time.Second))
 	exec.logger.WithFields(logrus.Fields{
@@ -99,13 +105,13 @@ func (exec *BlockExecutor) listenPreExecuteEvent() {
 		select {
 		case commitEvent := <-exec.preBlockC:
 			now := time.Now()
-			commitEvent.Block = exec.verifySign(commitEvent)
+			blockWrapper := exec.verifySign(commitEvent)
 			exec.logger.WithFields(logrus.Fields{
 				"height": commitEvent.Block.BlockHeader.Number,
 				"count":  len(commitEvent.Block.Transactions),
 				"elapse": time.Since(now),
 			}).Debug("Verified signature")
-			exec.blockC <- commitEvent.Block
+			exec.blockC <- blockWrapper
 		case <-exec.ctx.Done():
 			return
 		}
@@ -179,15 +185,19 @@ func (exec *BlockExecutor) buildTxMerkleTree(txs []*pb.Transaction) (*types.Hash
 	return root, l2Roots, nil
 }
 
-func (exec *BlockExecutor) verifySign(commitEvent *pb.CommitEvent) *pb.Block {
+func (exec *BlockExecutor) verifySign(commitEvent *pb.CommitEvent) *BlockWrapper {
+	blockWrapper := &BlockWrapper{
+		block:     commitEvent.Block,
+		invalidTx: make(map[int]agency.InvalidReason),
+	}
+
 	if commitEvent.Block.BlockHeader.Number == 1 {
-		return commitEvent.Block
+		return blockWrapper
 	}
 
 	var (
 		wg    sync.WaitGroup
 		mutex sync.Mutex
-		index []int
 	)
 	txs := commitEvent.Block.Transactions
 	txsLen := len(commitEvent.LocalList)
@@ -204,31 +214,23 @@ func (exec *BlockExecutor) verifySign(commitEvent *pb.CommitEvent) *pb.Block {
 			if !ok {
 				mutex.Lock()
 				defer mutex.Unlock()
-				index = append(index, i)
+				blockWrapper.invalidTx[i] = "tx has invalid signature"
 			}
 		}(i, tx)
 	}
 	wg.Wait()
 
-	if len(index) > 0 {
-		sort.Sort(sort.Reverse(sort.IntSlice(index)))
-		for _, idx := range index {
-			txs = append(txs[:idx], txs[idx+1:]...)
-		}
-		commitEvent.Block.Transactions = txs
-	}
-
-	return commitEvent.Block
+	return blockWrapper
 }
 
-func (exec *BlockExecutor) applyTx(index int, tx *pb.Transaction, opt *agency.TxOpt) *pb.Receipt {
+func (exec *BlockExecutor) applyTx(index int, tx *pb.Transaction, invalidReason agency.InvalidReason, opt *agency.TxOpt) *pb.Receipt {
 	receipt := &pb.Receipt{
 		Version: tx.Version,
 		TxHash:  tx.TransactionHash,
 	}
 	normalTx := true
 
-	ret, err := exec.applyTransaction(index, tx, opt)
+	ret, err := exec.applyTransaction(index, tx, invalidReason, opt)
 	if err != nil {
 		receipt.Status = pb.Receipt_FAILED
 		receipt.Ret = []byte(err.Error())
@@ -271,9 +273,13 @@ func (exec *BlockExecutor) postBlockEvent(block *pb.Block, interchainMeta *pb.In
 	})
 }
 
-func (exec *BlockExecutor) applyTransaction(i int, tx *pb.Transaction, opt *agency.TxOpt) ([]byte, error) {
+func (exec *BlockExecutor) applyTransaction(i int, tx *pb.Transaction, invalidReason agency.InvalidReason, opt *agency.TxOpt) ([]byte, error) {
 	curNonce := exec.ledger.GetNonce(tx.From)
 	defer exec.ledger.SetNonce(tx.From, curNonce+1)
+
+	if invalidReason != "" {
+		return nil, fmt.Errorf(string(invalidReason))
+	}
 
 	if tx.IsIBTP() {
 		ctx := vm.NewContext(tx, uint64(i), nil, exec.ledger, exec.logger)

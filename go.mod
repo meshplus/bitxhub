@@ -25,7 +25,7 @@ require (
 	github.com/juju/ratelimit v1.0.1
 	github.com/libp2p/go-libp2p-core v0.5.6
 	github.com/magiconair/properties v1.8.4
-	github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20210408091239-7e5f1c49f9cb
+	github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20210415074101-803926c50b55
 	github.com/meshplus/bitxhub-kit v1.1.2-0.20210112075018-319e668d6359
 	github.com/meshplus/bitxhub-model v1.1.2-0.20210409090411-de23bd385c5f
 	github.com/meshplus/bitxid v0.0.0-20210412025850-e0eaf0f9063a

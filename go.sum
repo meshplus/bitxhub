@@ -682,8 +682,8 @@ github.com/mattn/goveralls v0.0.2/go.mod h1:8d1ZMHsd7fW6IRPKQh46F2WRpyib5/X4FOpe
 github.com/matttproud/golang_protobuf_extensions v1.0.1 h1:4hp9jkHxhMHkqkrB3Ix0jegS5sx/RkqARlsWZ6pIwiU=
 github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5Ld7szi9bcBfOoFv/3dc6xSMkL2PC0=
 github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20210318102029-494ee3060b0c/go.mod h1:G19Wrz1u66UmwaES/iLM19jmlv3APAZ5qfYOlNnIIZw=
-github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20210408091239-7e5f1c49f9cb h1:2wL8uQHsyRGnubKYLub3AhKuFF0M5RSblUKIOR/5mHE=
-github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20210408091239-7e5f1c49f9cb/go.mod h1:G19Wrz1u66UmwaES/iLM19jmlv3APAZ5qfYOlNnIIZw=
+github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20210415074101-803926c50b55 h1:SIR7jOjhzhFoSqjQlivlaPxd7Mo06Ijw4kdJ+iRs9JA=
+github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20210415074101-803926c50b55/go.mod h1:G19Wrz1u66UmwaES/iLM19jmlv3APAZ5qfYOlNnIIZw=
 github.com/meshplus/bitxhub-kit v1.1.1 h1:vkPO88oA3+Kpc0N8lIgfj/U52KBuI+633hPbMYt1xm8=
 github.com/meshplus/bitxhub-kit v1.1.1/go.mod h1:r4l4iqn0RPJreb/OmoYKfjCjQJrXpZX++6Qc31VG/1k=
 github.com/meshplus/bitxhub-kit v1.1.2-0.20201021105954-468d0a9d7957/go.mod h1:r4l4iqn0RPJreb/OmoYKfjCjQJrXpZX++6Qc31VG/1k=
@@ -917,7 +917,6 @@ github.com/sirupsen/logrus v1.4.2/go.mod h1:tLMulIdttU9McNUspp0xgXVQah82FyeX6Mwd
 github.com/sirupsen/logrus v1.5.0/go.mod h1:+F7Ogzej0PZc/94MaYx/nvG9jOFMD2osvC3s+Squfpo=
 github.com/sirupsen/logrus v1.6.0 h1:UBcNElsrwanuuMsnGSlYmtmgbb23qDR5dG+6X6Oo89I=
 github.com/sirupsen/logrus v1.6.0/go.mod h1:7uNnSEd1DgxDLC74fIahvMZmmYsHGZGEOFrfsX/uA88=
-github.com/sirupsen/logrus v1.7.0/go.mod h1:yWOB1SBYBC5VeMP7gHvWumXLIWorT60ONWic61uBYv0=
 github.com/sirupsen/logrus v1.8.1 h1:dJKuHgqk1NNQlqoA6BTlM1Wf9DOH3NBjQyu0h9+AZZE=
 github.com/sirupsen/logrus v1.8.1/go.mod h1:yWOB1SBYBC5VeMP7gHvWumXLIWorT60ONWic61uBYv0=
 github.com/smartystreets/assertions v0.0.0-20180927180507-b2de0cb4f26d h1:zE9ykElWQ6/NYmHa3jpm/yHnI4xSofP+UP6SpjHcSeM=

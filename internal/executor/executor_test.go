@@ -145,6 +145,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	invalidTx := mockTx(t, nil)
 	invalidTx.From = types.NewAddressByStr(from)
 	invalidTx.Signature = []byte("invalid")
+	invalidTx.TransactionHash = invalidTx.Hash()
 	txs = append(txs, invalidTx)
 
 	assert.Nil(t, exec.Start())
