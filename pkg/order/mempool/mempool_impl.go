@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/meshplus/bitxhub-kit/types"
+
 	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/google/btree"

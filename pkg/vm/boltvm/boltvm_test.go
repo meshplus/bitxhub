@@ -48,7 +48,7 @@ func GetBoltContracts() map[string]agency.Contract {
 
 func TestRegister(t *testing.T) {
 	registers := GetBoltContracts()
-	require.Equal(t, len(registers), 1)
+	require.Equal(t, len(registers), 8)
 
 	contract, err := GetBoltContract(constant.StoreContractAddr.Address().String(), registers)
 	require.Nil(t, err)
