@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/json"
+	"math/big"
 	"sort"
 	"strings"
 	"sync"
@@ -24,12 +25,14 @@ type Account struct {
 	ldb            storage.Storage
 	cache          *AccountCache
 	lock           sync.RWMutex
+
+	suicided bool
 }
 
 type innerAccount struct {
-	Nonce    uint64 `json:"nonce"`
-	Balance  uint64 `json:"balance"`
-	CodeHash []byte `json:"code_hash"`
+	Nonce    uint64   `json:"nonce"`
+	Balance  *big.Int `json:"balance"`
+	CodeHash []byte   `json:"code_hash"`
 }
 
 func newAccount(ldb storage.Storage, cache *AccountCache, addr *types.Address) *Account {
@@ -141,18 +144,18 @@ func (o *Account) GetNonce() uint64 {
 }
 
 // GetBalance Get the balance from the account
-func (o *Account) GetBalance() uint64 {
+func (o *Account) GetBalance() *big.Int {
 	if o.dirtyAccount != nil {
 		return o.dirtyAccount.Balance
 	}
 	if o.originAccount != nil {
 		return o.originAccount.Balance
 	}
-	return 0
+	return new(big.Int).SetInt64(0)
 }
 
 // SetBalance Set the balance to the account
-func (o *Account) SetBalance(balance uint64) {
+func (o *Account) SetBalance(balance *big.Int) {
 	if o.dirtyAccount == nil {
 		o.dirtyAccount = copyOrNewIfEmpty(o.originAccount)
 	}
@@ -274,6 +277,10 @@ func (o *Account) getDirtyData() []byte {
 	}
 
 	return append(dirtyData, o.dirtyStateHash.Bytes()...)
+}
+
+func (o *Account) markSuicided() {
+	o.suicided = true
 }
 
 func innerAccountChanged(account0 *innerAccount, account1 *innerAccount) bool {

@@ -32,6 +32,7 @@ type ChainLedger struct {
 	events          sync.Map
 	accounts        map[string]*Account
 	accountCache    *AccountCache
+	changer         *stateChanger
 	prevJnlHash     *types.Hash
 	repo            *repo.Repo
 
@@ -87,6 +88,7 @@ func New(repo *repo.Repo, blockchainStore storage.Storage, ldb storage.Storage, 
 		maxJnlHeight:    maxJnlHeight,
 		accounts:        make(map[string]*Account),
 		accountCache:    accountCache,
+		changer:         newChanger(),
 		prevJnlHash:     prevJnlHash,
 	}
 

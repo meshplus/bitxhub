@@ -51,6 +51,12 @@ func (l *ChainLedger) GetAccount(address *types.Address) *Account {
 	return account
 }
 
+func (l *ChainLedger) setAccount(account *Account) {
+	l.lock.Lock()
+	defer l.lock.Unlock()
+	l.accounts[account.Addr.String()] = account
+}
+
 // GetBalanec get account balance using account Address
 func (l *ChainLedger) GetBalance(addr *types.Address) uint64 {
 	account := l.GetOrCreateAccount(addr)
@@ -158,6 +164,12 @@ func (l *ChainLedger) Commit(height uint64, accounts map[string]*Account, blockJ
 	ldbBatch := l.ldb.NewBatch()
 
 	for _, account := range accounts {
+		if account.suicided {
+			if data := l.ldb.Get(compositeKey(accountKey, account.Addr)); data != nil {
+				ldbBatch.Delete(compositeKey(accountKey, account.Addr))
+			}
+			continue
+		}
 		if innerAccountChanged(account.originAccount, account.dirtyAccount) {
 			data, err := account.dirtyAccount.Marshal()
 			if err != nil {
@@ -275,4 +287,12 @@ func (l *ChainLedger) rollbackState(height uint64) error {
 	l.maxJnlHeight = height
 
 	return nil
+}
+
+func (l *ChainLedger) Suiside(addr *types.Address) bool {
+	account := l.GetAccount(addr)
+	l.changer.append(suicideChange{
+		account: addr,
+		prev:    account.suicided,
+	})
 }
