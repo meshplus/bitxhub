@@ -21,7 +21,7 @@ type TransactionInfo struct {
 
 func (t *TransactionManager) BeginMultiTXs(globalId string, childTxIds ...string) *boltvm.Response {
 	if t.Has(t.txInfoKey(globalId)) {
-		return boltvm.Error("Transaction id already exists")
+		return boltvm.Error("Transaction id already exists", boltvm.AlreadyExist)
 	}
 
 	txInfo := TransactionInfo{
@@ -50,7 +50,7 @@ func (t *TransactionManager) Report(txId string, result int32) *boltvm.Response 
 	ok := t.GetObject(t.txInfoKey(txId), &status)
 	if ok {
 		if status != pb.TransactionStatus_BEGIN {
-			return boltvm.Error(fmt.Sprintf("transaction with Id %s is finished", txId))
+			return boltvm.Error(fmt.Sprintf("transaction with Id %s is finished", txId), boltvm.Unknown)
 		}
 
 		if result == 0 {
@@ -61,26 +61,26 @@ func (t *TransactionManager) Report(txId string, result int32) *boltvm.Response 
 	} else {
 		ok, val := t.Get(txId)
 		if !ok {
-			return boltvm.Error(fmt.Sprintf("cannot get global id of child tx id %s", txId))
+			return boltvm.Error(fmt.Sprintf("cannot get global id of child tx id %s", txId), boltvm.NotFound)
 		}
 
 		globalId := string(val)
 		txInfo := TransactionInfo{}
 		if !t.GetObject(t.globalTxInfoKey(globalId), &txInfo) {
-			return boltvm.Error(fmt.Sprintf("transaction global id %s does not exist", globalId))
+			return boltvm.Error(fmt.Sprintf("transaction global id %s does not exist", globalId), boltvm.NotFound)
 		}
 
 		if txInfo.GlobalState != pb.TransactionStatus_BEGIN {
-			return boltvm.Error(fmt.Sprintf("transaction with global Id %s is finished", globalId))
+			return boltvm.Error(fmt.Sprintf("transaction with global Id %s is finished", globalId), boltvm.Unknown)
 		}
 
 		status, ok := txInfo.ChildTxInfo[txId]
 		if !ok {
-			return boltvm.Error(fmt.Sprintf("%s is not in transaction %s, %v", txId, globalId, txInfo))
+			return boltvm.Error(fmt.Sprintf("%s is not in transaction %s, %v", txId, globalId, txInfo), boltvm.Internal)
 		}
 
 		if status != pb.TransactionStatus_BEGIN {
-			return boltvm.Error(fmt.Sprintf("%s has already reported result", txId))
+			return boltvm.Error(fmt.Sprintf("%s has already reported result", txId), boltvm.AlreadyExist)
 		}
 
 		if result == 0 {
@@ -122,13 +122,13 @@ func (t *TransactionManager) GetStatus(txId string) *boltvm.Response {
 
 	ok, val := t.Get(txId)
 	if !ok {
-		return boltvm.Error(fmt.Sprintf("cannot get global id of child tx id %s", txId))
+		return boltvm.Error(fmt.Sprintf("cannot get global id of child tx id %s", txId), boltvm.NotFound)
 	}
 
 	globalId := string(val)
 	txInfo = TransactionInfo{}
 	if !t.GetObject(t.globalTxInfoKey(globalId), &txInfo) {
-		return boltvm.Error(fmt.Sprintf("transaction info for global id %s does not exist", globalId))
+		return boltvm.Error(fmt.Sprintf("transaction info for global id %s does not exist", globalId), boltvm.NotFound)
 	}
 
 	return boltvm.Success([]byte(strconv.Itoa(int(txInfo.GlobalState))))

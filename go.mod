@@ -55,6 +55,10 @@ require (
 	google.golang.org/grpc v1.33.2
 )
 
+replace github.com/meshplus/did-registry => ../did-registry
+
+replace github.com/meshplus/bitxhub-core => ../bitxhub-core
+
 replace github.com/golang/protobuf => github.com/golang/protobuf v1.3.2
 
 replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20200218151345-dad8c97a84f5

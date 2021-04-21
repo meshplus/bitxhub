@@ -48,7 +48,7 @@ func (ibroker *InterRelayBroker) GetInCouterMap() *boltvm.Response {
 	ibroker.GetObject(InCounterKey, &InCounterMap)
 	data, err := json.Marshal(InCounterMap)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(err.Error(), boltvm.Internal)
 	}
 	return boltvm.Success(data)
 }
@@ -59,7 +59,7 @@ func (ibroker *InterRelayBroker) GetOutCouterMap() *boltvm.Response {
 	ibroker.GetObject(OutCounterKey, &OutCounterMap)
 	data, err := json.Marshal(OutCounterMap)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(err.Error(), boltvm.Internal)
 	}
 	return boltvm.Success(data)
 }
@@ -70,7 +70,7 @@ func (ibroker *InterRelayBroker) GetOutMessageMap() *boltvm.Response {
 	ibroker.GetObject(OutMessageKey, &OutMessage)
 	data, err := json.Marshal(OutMessage)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(err.Error(), boltvm.Internal)
 	}
 	return boltvm.Success(data)
 }
@@ -81,7 +81,7 @@ func (ibroker *InterRelayBroker) GetOutMessage(destChain string, index uint64) *
 	ibroker.GetObject(OutMessageKey, &OutMessage)
 	data, err := json.Marshal(OutMessage[combineKey(destChain, index)])
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(err.Error(), boltvm.Internal)
 	}
 	return boltvm.Success(data)
 }
@@ -97,7 +97,7 @@ func (ibroker *InterRelayBroker) RecordIBTPs(ibtpsBytes []byte) *boltvm.Response
 	ibtps := &pb.IBTPs{}
 	err := ibtps.Unmarshal(ibtpsBytes)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(err.Error(), boltvm.Internal)
 	}
 
 	for _, ibtp := range ibtps.Ibtps {
@@ -111,7 +111,7 @@ func (ibroker *InterRelayBroker) RecordIBTPs(ibtpsBytes []byte) *boltvm.Response
 
 	newIbtps, err := ibtps.Marshal()
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(err.Error(), boltvm.Internal)
 	}
 
 	return boltvm.Success(newIbtps)
@@ -124,7 +124,7 @@ func (ibroker *InterRelayBroker) InvokeInterRelayContract(addr string, fun strin
 	invokeArgs := []*pb.Arg{}
 	err := json.Unmarshal(args, &realArgs)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(err.Error(), boltvm.Internal)
 	}
 	switch addr {
 	case constant.MethodRegistryContractAddr.String():
@@ -133,11 +133,11 @@ func (ibroker *InterRelayBroker) InvokeInterRelayContract(addr string, fun strin
 			invokeArgs = append(invokeArgs, pb.String(string(realArgs[0])))
 			invokeArgs = append(invokeArgs, pb.Bytes(realArgs[1]))
 			res := ibroker.CrossInvoke(addr, fun, invokeArgs...)
-			if res.Ok {
+			if res.Code == boltvm.Normal {
 				ibroker.incInCounter(string(realArgs[0]))
 			}
 			return res
 		}
 	}
-	return boltvm.Error("Invoke " + addr + "." + fun + " is no supported")
+	return boltvm.Error("Invoke "+addr+"."+fun+" is no supported", boltvm.NotFound)
 }

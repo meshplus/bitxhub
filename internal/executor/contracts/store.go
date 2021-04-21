@@ -18,7 +18,7 @@ func (s *Store) Get(key string) *boltvm.Response {
 	var v string
 	ok := s.GetObject(key, &v)
 	if !ok {
-		return boltvm.Error("there is not exist key")
+		return boltvm.Error("there is not exist key", boltvm.NotFound)
 	}
 
 	return boltvm.Success([]byte(v))

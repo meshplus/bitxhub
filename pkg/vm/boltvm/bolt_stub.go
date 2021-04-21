@@ -139,12 +139,12 @@ func (b *BoltStubImpl) CrossInvoke(address, method string, args ...*pb.Arg) *bol
 
 	data, err := payload.Marshal()
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(err.Error(), boltvm.Internal)
 	}
 	bvm := New(ctx, b.ve, b.bvm.contracts)
 	ret, err := bvm.Run(data)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(err.Error(), boltvm.Unknown)
 	}
 
 	return boltvm.Success(ret)

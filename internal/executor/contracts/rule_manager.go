@@ -32,8 +32,8 @@ type ruleRecord struct {
 
 // SetRule can map the validation rule address with the chain id
 func (r *RuleManager) RegisterRule(id string, address string) *boltvm.Response {
-	if res := r.CrossInvoke(constant.AppchainMgrContractAddr.String(), "IsAvailable", pb.String(id)); !res.Ok {
-		return boltvm.Error(string(res.Result))
+	if res := r.CrossInvoke(constant.AppchainMgrContractAddr.String(), "IsAvailable", pb.String(id)); res.Code != boltvm.Normal {
+		return boltvm.Error(string(res.Result), boltvm.NotAvailableAppchain)
 	}
 
 	rl := &Rule{
@@ -56,14 +56,14 @@ func (r *RuleManager) GetRuleAddress(id, chainType string) *boltvm.Response {
 		return boltvm.Success([]byte(validator.FabricRuleAddr))
 	}
 
-	return boltvm.Error("")
+	return boltvm.Error("", boltvm.NotFound)
 }
 
 func (r *RuleManager) Audit(id string, isApproved int32, desc string) *boltvm.Response {
 	rl := &Rule{}
 	ok := r.GetObject(RuleKey(id), rl)
 	if !ok {
-		return boltvm.Error(fmt.Errorf("this rule does not exist").Error())
+		return boltvm.Error(fmt.Errorf("this rule does not exist").Error(), boltvm.NotFound)
 	}
 	rl.Status = isApproved
 

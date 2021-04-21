@@ -2,11 +2,13 @@ package executor
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/meshplus/bitxhub-core/agency"
+	vmCore "github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/validator"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
@@ -180,15 +182,17 @@ func (exec *BlockExecutor) verifyProofs(blockWrapper *BlockWrapper) {
 	txs := block.Transactions
 
 	wg.Add(len(txs))
+	errM := make(map[int]string)
 	for i, tx := range txs {
 		go func(i int, tx *pb.Transaction) {
 			defer wg.Done()
 			if _, ok := blockWrapper.invalidTx[i]; !ok {
-				ok, _ := exec.ibtpVerify.CheckProof(tx)
-				if !ok {
+				statusCode, err := exec.ibtpVerify.CheckProof(tx)
+				if statusCode != vmCore.Normal {
 					lock.Lock()
 					defer lock.Unlock()
 					invalidTxs = append(invalidTxs, i)
+					errM[i] = err.Error()
 				}
 			}
 		}(i, tx)
@@ -196,7 +200,7 @@ func (exec *BlockExecutor) verifyProofs(blockWrapper *BlockWrapper) {
 	wg.Wait()
 
 	for _, i := range invalidTxs {
-		blockWrapper.invalidTx[i] = "tx has invalid ibtp proof"
+		blockWrapper.invalidTx[i] = agency.InvalidReason(fmt.Sprintf("tx has invalid ibtp proof: %s", errM[i]))
 	}
 }
 

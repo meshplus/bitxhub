@@ -32,15 +32,15 @@ const (
 func (t *AssetExchange) Init(from, to string, info []byte) *boltvm.Response {
 	aei := pb.AssetExchangeInfo{}
 	if err := aei.Unmarshal(info); err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(err.Error(), boltvm.Internal)
 	}
 
 	if t.Has(AssetExchangeKey(aei.Id)) {
-		return boltvm.Error(fmt.Sprintf("asset exhcange id already exists"))
+		return boltvm.Error(fmt.Sprintf("asset exhcange id already exists"), boltvm.AlreadyExist)
 	}
 
 	if err := checkAssetExchangeInfo(&aei); err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(err.Error(), boltvm.Internal)
 	}
 
 	aer := AssetExchangeRecord{
@@ -56,7 +56,7 @@ func (t *AssetExchange) Init(from, to string, info []byte) *boltvm.Response {
 
 func (t *AssetExchange) Redeem(from, to string, info []byte) *boltvm.Response {
 	if err := t.confirm(from, to, info, AssetExchangeRedeem); err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(err.Error(), boltvm.Unknown)
 	}
 
 	return boltvm.Success(nil)
@@ -64,7 +64,7 @@ func (t *AssetExchange) Redeem(from, to string, info []byte) *boltvm.Response {
 
 func (t *AssetExchange) Refund(from, to string, info []byte) *boltvm.Response {
 	if err := t.confirm(from, to, info, AssetExchangeRefund); err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(err.Error(), boltvm.Unknown)
 	}
 
 	return boltvm.Success(nil)
@@ -98,7 +98,7 @@ func (t *AssetExchange) GetStatus(id string) *boltvm.Response {
 	aer := AssetExchangeRecord{}
 	ok := t.GetObject(AssetExchangeKey(id), &aer)
 	if !ok {
-		return boltvm.Error(fmt.Sprintf("asset exchange record does not exist"))
+		return boltvm.Error(fmt.Sprintf("asset exchange record does not exist"), boltvm.NotFound)
 	}
 
 	return boltvm.Success([]byte(strconv.Itoa(int(aer.Status))))

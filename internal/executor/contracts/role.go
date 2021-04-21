@@ -28,7 +28,7 @@ func (r *Role) GetRole() *boltvm.Response {
 	}
 
 	res := r.CrossInvoke(constant.AppchainMgrContractAddr.String(), "Appchain")
-	if !res.Ok {
+	if res.Code != boltvm.Normal {
 		return boltvm.Success([]byte("none"))
 	}
 
@@ -58,7 +58,7 @@ func (r *Role) GetAdminRoles() *boltvm.Response {
 
 	ret, err := json.Marshal(admins)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(err.Error(), boltvm.Internal)
 	}
 
 	return boltvm.Success(ret)
@@ -67,7 +67,7 @@ func (r *Role) GetAdminRoles() *boltvm.Response {
 func (r *Role) SetAdminRoles(addrs string) *boltvm.Response {
 	as := make([]string, 0)
 	if err := json.Unmarshal([]byte(addrs), &as); err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(err.Error(), boltvm.Internal)
 	}
 
 	admins := make([]*repo.Admin, 0)
@@ -92,7 +92,7 @@ func (r *Role) GetRoleWeight(address string) *boltvm.Response {
 		}
 	}
 
-	return boltvm.Error("the account at this address is not an administrator: " + address)
+	return boltvm.Error("the account at this address is not an administrator: "+address, boltvm.BadPermission)
 }
 
 // Permission manager
@@ -108,26 +108,26 @@ func (r *Role) CheckPermission(permission string, regulatedId string, regulatorA
 	switch permission {
 	case string(PermissionAdmin):
 		if !r.isAdmin(regulatorAddr) {
-			return boltvm.Error("caller is not an admin account: " + regulatorAddr)
+			return boltvm.Error("caller is not an admin account: "+regulatorAddr, boltvm.BadPermission)
 		}
 	case string(PermissionSelfAdmin):
 		if regulatorAddr != regulatedId && !r.isAdmin(regulatorAddr) {
-			return boltvm.Error("caller is not an admin account or appchain self: " + regulatorAddr)
+			return boltvm.Error("caller is not an admin account or appchain self: "+regulatorAddr, boltvm.BadPermission)
 		}
 	case string(PermissionSpecific):
 		specificAddrs := []string{}
 		err := json.Unmarshal(specificAddrsData, &specificAddrs)
 		if err != nil {
-			return boltvm.Error(err.Error())
+			return boltvm.Error(err.Error(), boltvm.Internal)
 		}
 		for _, addr := range specificAddrs {
 			if addr == regulatorAddr {
 				return boltvm.Success(nil)
 			}
 		}
-		return boltvm.Error("caller is not specific account: " + regulatorAddr)
+		return boltvm.Error("caller is not specific account: "+regulatorAddr, boltvm.BadPermission)
 	default:
-		return boltvm.Error("unsupport permission: " + permission)
+		return boltvm.Error("unsupport permission: "+permission, boltvm.BadPermission)
 	}
 
 	return boltvm.Success(nil)

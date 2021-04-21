@@ -1,6 +1,7 @@
 package boltvm
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -73,11 +74,15 @@ func (bvm *BoltVM) Run(input []byte) (ret []byte, err error) {
 	}
 
 	res := m.Call(fnArgs)[0].Interface().(*boltvm.Response)
-	if !res.Ok {
+	resBytes, err := json.Marshal(res)
+	if err != nil {
+		return nil, fmt.Errorf("parse args: %w", err)
+	}
+	if res.Code != boltvm.Normal {
 		return nil, fmt.Errorf("call error: %s", res.Result)
 	}
 
-	return res.Result, err
+	return resBytes, err
 }
 
 func (bvm *BoltVM) HandleIBTP(ibtp *pb.IBTP) (ret []byte, err error) {
@@ -100,7 +105,7 @@ func (bvm *BoltVM) HandleIBTP(ibtp *pb.IBTP) (ret []byte, err error) {
 	}
 
 	res := con.HandleIBTP(ibtp)
-	if !res.Ok {
+	if res.Code != boltvm.Normal {
 		return nil, fmt.Errorf("call error: %s", res.Result)
 	}
 

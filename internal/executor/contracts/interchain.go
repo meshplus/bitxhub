@@ -39,7 +39,7 @@ func (x *InterchainManager) Register(method string) *boltvm.Response {
 	}
 	body, err := interchain.Marshal()
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(err.Error(), boltvm.Internal)
 	}
 
 	return boltvm.Success(body)
@@ -91,7 +91,7 @@ func (x *InterchainManager) setInterchain(id string, interchain *pb.Interchain) 
 func (x *InterchainManager) Interchain(method string) *boltvm.Response {
 	ok, data := x.Get(AppchainKey(method))
 	if !ok {
-		return boltvm.Error(fmt.Errorf("this appchain does not exist").Error())
+		return boltvm.Error(fmt.Errorf("this appchain does not exist").Error(), boltvm.NotAvailableAppchain)
 	}
 	return boltvm.Success(data)
 }
@@ -100,7 +100,7 @@ func (x *InterchainManager) Interchain(method string) *boltvm.Response {
 func (x *InterchainManager) GetInterchain(id string) *boltvm.Response {
 	ok, data := x.Get(AppchainKey(id))
 	if !ok {
-		return boltvm.Error(fmt.Errorf("this appchain does not exist").Error())
+		return boltvm.Error(fmt.Errorf("this appchain does not exist").Error(), boltvm.NotAvailableAppchain)
 	}
 	return boltvm.Success(data)
 }
@@ -112,11 +112,12 @@ func (x *InterchainManager) HandleIBTP(ibtp *pb.IBTP) *boltvm.Response {
 
 	interchain, _, err := x.checkAppchain(ibtp.From)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(err.Error(), boltvm.NotAvailableAppchain)
 	}
 
 	if err := x.checkIBTP(ibtp, interchain); err != nil {
-		return boltvm.Error(err.Error())
+		// todo: check error type
+		return boltvm.Error(err.Error(), boltvm.InvalidIBTP)
 	}
 
 	res := boltvm.Success(nil)
@@ -131,7 +132,7 @@ func (x *InterchainManager) HandleIBTP(ibtp *pb.IBTP) *boltvm.Response {
 		res = x.handleAssetExchange(ibtp)
 	}
 
-	if !res.Ok {
+	if res.Code != boltvm.Normal {
 		return res
 	}
 
@@ -143,31 +144,31 @@ func (x *InterchainManager) HandleIBTP(ibtp *pb.IBTP) *boltvm.Response {
 func (x *InterchainManager) HandleIBTPs(data []byte) *boltvm.Response {
 	ibtps := &pb.IBTPs{}
 	if err := ibtps.Unmarshal(data); err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(err.Error(), boltvm.Internal)
 	}
 
 	// check if all ibtp has the same src address
 	if len(ibtps.Ibtps) == 0 {
-		return boltvm.Error("empty pack of ibtps")
+		return boltvm.Error("empty pack of ibtps", boltvm.InvalidIBTP)
 	}
 	srcChainMethod := ibtps.Ibtps[0].From
 	for _, ibtp := range ibtps.Ibtps {
 		if ibtp.From != srcChainMethod {
-			return boltvm.Error("ibtp pack should have the same src chain method")
+			return boltvm.Error("ibtp pack should have the same src chain method", boltvm.InvalidIBTP)
 		}
 	}
 
 	interchain, _, err := x.checkAppchain(srcChainMethod)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(err.Error(), boltvm.NotAvailableAppchain)
 	}
 	for _, ibtp := range ibtps.Ibtps {
 		if err := x.checkIBTP(ibtp, interchain); err != nil {
-			return boltvm.Error(err.Error())
+			return boltvm.Error(err.Error(), boltvm.InvalidIBTP)
 		}
 	}
 
-	if res := x.beginMultiTargetsTransaction(srcChainMethod, ibtps); !res.Ok {
+	if res := x.beginMultiTargetsTransaction(srcChainMethod, ibtps); res.Code != boltvm.Normal {
 		return res
 	}
 
@@ -257,7 +258,7 @@ func (x *InterchainManager) checkAppchain(id string) (*pb.Interchain, *appchainM
 
 	app := &appchainMgr.Appchain{}
 	res := x.CrossInvoke(constant.AppchainMgrContractAddr.String(), "GetAppchain", pb.String(id))
-	if !res.Ok {
+	if res.Code != boltvm.Normal {
 		return nil, nil, fmt.Errorf("get appchain info error: " + string(res.Result))
 	}
 
@@ -318,7 +319,7 @@ func (x *InterchainManager) beginMultiTargetsTransaction(srcChainMethod string, 
 
 	for _, ibtp := range ibtps.Ibtps {
 		if ibtp.Type != pb.IBTP_INTERCHAIN {
-			return boltvm.Error("ibtp type != IBTP_INTERCHAIN")
+			return boltvm.Error("ibtp type != IBTP_INTERCHAIN", boltvm.InvalidIBTP)
 		}
 
 		childTxId := fmt.Sprintf("%s-%s-%d", ibtp.From, ibtp.To, ibtp.Index)
@@ -353,7 +354,7 @@ func (x *InterchainManager) handleAssetExchange(ibtp *pb.IBTP) *boltvm.Response 
 	case pb.IBTP_ASSET_EXCHANGE_REFUND:
 		method = "Refund"
 	default:
-		return boltvm.Error("unsupported asset exchange type")
+		return boltvm.Error("unsupported asset exchange type", boltvm.InvalidIBTP)
 	}
 
 	return x.CrossInvoke(constant.AssetExchangeContractAddr.String(), method, pb.String(ibtp.From),
@@ -363,18 +364,18 @@ func (x *InterchainManager) handleAssetExchange(ibtp *pb.IBTP) *boltvm.Response 
 func (x *InterchainManager) GetIBTPByID(id string) *boltvm.Response {
 	arr := strings.Split(id, "-")
 	if len(arr) != 3 {
-		return boltvm.Error("wrong ibtp id")
+		return boltvm.Error("wrong ibtp id", boltvm.InvalidParams)
 	}
 	srcAppchainMethod := arr[0]
 	dstAppchainMethod := arr[1]
 	if !bitxid.DID(srcAppchainMethod).IsValidFormat() || !bitxid.DID(dstAppchainMethod).IsValidFormat() {
-		return boltvm.Error("invalid format of appchain method")
+		return boltvm.Error("invalid format of appchain method", boltvm.InvalidParams)
 	}
 
 	var hash types.Hash
 	exist := x.GetObject(x.indexMapKey(id), &hash)
 	if !exist {
-		return boltvm.Error("this ibtp id is not existed")
+		return boltvm.Error("this ibtp id is not existed", boltvm.NotFound)
 	}
 
 	return boltvm.Success(hash.Bytes())
@@ -385,14 +386,14 @@ func (x *InterchainManager) handleUnionIBTP(ibtp *pb.IBTP) *boltvm.Response {
 
 	_, app, err := x.checkAppchain(srcRelayChainID)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(err.Error(), boltvm.NotAvailableAppchain)
 	}
 
 	if ibtp.To == "" {
-		return boltvm.Error("empty destination chain id")
+		return boltvm.Error("empty destination chain id", boltvm.InvalidIBTP)
 	}
 	if ok := x.Has(AppchainKey(ibtp.To)); !ok {
-		return boltvm.Error(fmt.Sprintf("target appchain does not exist: %s", ibtp.To))
+		return boltvm.Error(fmt.Sprintf("target appchain does not exist: %s", ibtp.To), boltvm.NotAvailableAppchain)
 	}
 
 	interchain, ok := x.getInterchain(ibtp.From)
@@ -404,7 +405,7 @@ func (x *InterchainManager) handleUnionIBTP(ibtp *pb.IBTP) *boltvm.Response {
 	}
 
 	if err := x.checkUnionIBTP(app, ibtp, interchain); err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(err.Error(), boltvm.InvalidIBTP)
 	}
 
 	x.ProcessIBTP(ibtp, interchain)
