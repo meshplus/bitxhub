@@ -9,6 +9,7 @@ import (
 
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/boltvm"
+	"github.com/meshplus/bitxhub-core/governance"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/crypto/asym/ecdsa"
@@ -265,7 +266,7 @@ func (x *InterchainManager) checkAppchain(id string) (*pb.Interchain, *appchainM
 		return nil, nil, fmt.Errorf("unmarshal error: " + err.Error())
 	}
 
-	if app.Status != appchainMgr.AppchainAvailable {
+	if app.Status != governance.GovernanceAvailable {
 		return nil, nil, fmt.Errorf("the appchain status is " + string(app.Status) + ", can not handle IBTP")
 	}
 

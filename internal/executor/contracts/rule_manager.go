@@ -3,8 +3,8 @@ package contracts
 import (
 	"fmt"
 
-	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/boltvm"
+	"github.com/meshplus/bitxhub-core/governance"
 	"github.com/meshplus/bitxhub-core/validator"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -69,7 +69,7 @@ func (r *RuleManager) Audit(id string, isApproved int32, desc string) *boltvm.Re
 
 	record := &ruleRecord{
 		Rule:       rl,
-		IsApproved: isApproved == appchainMgr.APPROVED,
+		IsApproved: isApproved == governance.APPROVED,
 		Desc:       desc,
 	}
 

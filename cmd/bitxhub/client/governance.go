@@ -48,31 +48,54 @@ func governanceCMD() cli.Command {
 				Action: vote,
 			},
 			cli.Command{
-				Name:  "proposals",
-				Usage: "query proposals based on the condition",
-				Flags: []cli.Flag{
-					cli.StringFlag{
-						Name:     "id",
-						Usage:    "proposal id",
-						Required: false,
+				Name:  "proposal",
+				Usage: "proposal manage command",
+				Subcommands: cli.Commands{
+					cli.Command{
+						Name:  "query",
+						Usage: "query proposals based on the condition",
+						Flags: []cli.Flag{
+							cli.StringFlag{
+								Name:     "id",
+								Usage:    "proposal id",
+								Required: false,
+							},
+							cli.StringFlag{
+								Name:     "type",
+								Usage:    "proposal type, currently only AppchainMgr is supported",
+								Required: false,
+							},
+							cli.StringFlag{
+								Name:     "status",
+								Usage:    "proposal status, one of proposed, approve or reject",
+								Required: false,
+							},
+							cli.StringFlag{
+								Name:     "from",
+								Usage:    "the address of the account to which the proposal was made",
+								Required: false,
+							},
+							cli.StringFlag{
+								Name:     "objId",
+								Usage:    "the ID of the managed object",
+								Required: false,
+							},
+						},
+						Action: getProposals,
 					},
-					cli.StringFlag{
-						Name:     "type",
-						Usage:    "proposal type, currently only AppchainMgr is supported",
-						Required: false,
-					},
-					cli.StringFlag{
-						Name:     "status",
-						Usage:    "proposal status, one of proposed, approve or reject",
-						Required: false,
-					},
-					cli.StringFlag{
-						Name:     "from",
-						Usage:    "the address of the account to which the proposal was made",
-						Required: false,
+					cli.Command{
+						Name:  "withdraw",
+						Usage: "withdraw a proposal",
+						Flags: []cli.Flag{
+							cli.StringFlag{
+								Name:     "id",
+								Usage:    "proposal id",
+								Required: true,
+							},
+						},
+						Action: withdraw,
 					},
 				},
-				Action: getProposals,
 			},
 			cli.Command{
 				Name:  "chain",
@@ -120,6 +143,22 @@ func governanceCMD() cli.Command {
 	}
 }
 
+func withdraw(ctx *cli.Context) error {
+	id := ctx.String("id")
+
+	receipt, err := invokeBVMContract(ctx, constant.GovernanceContractAddr.String(), "WithdrawProposal", pb.String(id))
+	if err != nil {
+		return err
+	}
+
+	if receipt.IsSuccess() {
+		color.Green("withdraw proposal successfully!\n")
+	} else {
+		color.Red("withdraw proposal  error: %s\n", string(receipt.Ret))
+	}
+	return nil
+}
+
 func vote(ctx *cli.Context) error {
 	id := ctx.String("id")
 	info := ctx.String("info")
@@ -147,8 +186,9 @@ func getProposals(ctx *cli.Context) error {
 	typ := ctx.String("type")
 	status := ctx.String("status")
 	from := ctx.String("from")
+	objId := ctx.String("objId")
 
-	if err := checkProposalArgs(id, typ, status, from); err != nil {
+	if err := checkProposalArgs(id, typ, status, from, objId); err != nil {
 		return err
 	}
 
@@ -187,6 +227,13 @@ func getProposals(ctx *cli.Context) error {
 			}
 			proposals = getdDuplicateProposals(proposals, proposalsTmp)
 		}
+		if objId != "" {
+			proposalsTmp, err := getProposalsByConditions(ctx, keyPath, "GetProposalsByObjId", objId)
+			if err != nil {
+				return fmt.Errorf("get proposals by object id error: %w", err)
+			}
+			proposals = getdDuplicateProposals(proposals, proposalsTmp)
+		}
 	} else {
 		proposals, err = getProposalsByConditions(ctx, keyPath, "GetProposal", id)
 		if err != nil {
@@ -199,11 +246,12 @@ func getProposals(ctx *cli.Context) error {
 	return nil
 }
 
-func checkProposalArgs(id, typ, status, from string) error {
+func checkProposalArgs(id, typ, status, from, objId string) error {
 	if id == "" &&
 		typ == "" &&
 		status == "" &&
-		from == "" {
+		from == "" &&
+		objId == "" {
 		return fmt.Errorf("input at least one query condition")
 	}
 	if typ != "" &&
@@ -269,18 +317,19 @@ func getProposalsByConditions(ctx *cli.Context, keyPath string, menthod string, 
 
 func printProposal(proposals []contracts.Proposal) {
 	var table [][]string
-	table = append(table, []string{"Id", "Type", "Status", "ApproveNum", "RejectNum", "ElectorateNum", "ThresholdNum", "Des"})
+	table = append(table, []string{"Id", "ManagedObjectId", "Type", "EventType", "Status", "Approve/Reject", "Electorate/Threshold", "Description", "EndReason"})
 
 	for _, pro := range proposals {
 		table = append(table, []string{
 			pro.Id,
+			pro.ObjId,
 			string(pro.Typ),
+			string(pro.EventType),
 			string(pro.Status),
-			strconv.Itoa(int(pro.ApproveNum)),
-			strconv.Itoa(int(pro.AgainstNum)),
-			strconv.Itoa(int(pro.ElectorateNum)),
-			strconv.Itoa(int(pro.ThresholdNum)),
+			strconv.Itoa(int(pro.ApproveNum)) + "/" + strconv.Itoa(int(pro.AgainstNum)),
+			strconv.Itoa(int(pro.ElectorateNum)) + "/" + strconv.Itoa(int(pro.ThresholdNum)),
 			pro.Des,
+			pro.EndReason,
 		})
 	}
 
