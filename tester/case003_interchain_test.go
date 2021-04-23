@@ -60,8 +60,8 @@ func (suite *Interchain) TestHandleIBTP() {
 	suite.Require().Nil(err)
 	addr2, err := k2.PublicKey().Address()
 	suite.Require().Nil(err)
-	k1Nonce := uint64(1)
-	k2Nonce := uint64(1)
+	k1Nonce := uint64(0)
+	k2Nonce := uint64(0)
 	ibtpNonce := uint64(1)
 
 	rawpub1, err := k1.PublicKey().Bytes()
@@ -233,8 +233,8 @@ func (suite *Interchain) TestGetIBTPByID() {
 	k2, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
 	suite.Require().Nil(err)
-	k1Nonce := uint64(1)
-	k2Nonce := uint64(1)
+	k1Nonce := uint64(0)
+	k2Nonce := uint64(0)
 	ibtpNonce := uint64(1)
 
 	rawpub1, err := k1.PublicKey().Bytes()
@@ -432,7 +432,7 @@ func (suite *Interchain) TestInterchain() {
 
 	k1, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
-	k1Nonce := uint64(1)
+	k1Nonce := uint64(0)
 
 	rawpub1, err := k1.PublicKey().Bytes()
 	suite.Require().Nil(err)
@@ -512,7 +512,7 @@ func (suite *Interchain) TestRegister() {
 	suite.Require().Nil(err)
 	from1, err := k1.PublicKey().Address()
 	suite.Require().Nil(err)
-	k1Nonce := uint64(1)
+	k1Nonce := uint64(0)
 
 	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.InterchainContractAddr.Address(), "Register", pb.String(from1.Address))
 	suite.Require().Nil(err)

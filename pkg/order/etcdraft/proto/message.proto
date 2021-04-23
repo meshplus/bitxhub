@@ -2,7 +2,6 @@ syntax = "proto3";
 
 package proto;
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
-import "github.com/meshplus/bitxhub-model/pb/transaction.proto";
 
 message RaftMessage {
     enum Type {
@@ -16,7 +15,7 @@ message RaftMessage {
 
 message request_batch {
     string digest = 1;
-    repeated pb.Transaction txList = 2;
+    bytes txList = 2 [(gogoproto.customtype) = "github.com/meshplus/bitxhub-model/pb.Transactions"];
     uint64 height = 3;
 }
 
@@ -26,5 +25,5 @@ message Ready {
 }
 
 message tx_slice {
-	 repeated pb.Transaction TxList = 1;
+	 repeated bytes TxList = 1 [(gogoproto.customtype) = "github.com/meshplus/bitxhub-model/pb.Transaction"];
 }

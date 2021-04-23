@@ -221,15 +221,16 @@ func (router *InterchainRouter) fetchSigns(height uint64) (map[string][]byte, er
 }
 
 func (router *InterchainRouter) classify(block *pb.Block, meta *pb.InterchainMeta) map[bitxid.DID]*pb.InterchainTxWrapper {
-	txsM := make(map[bitxid.DID][]*pb.Transaction)
+	txsM := make(map[bitxid.DID][]*pb.BxhTransaction)
 	hashesM := make(map[bitxid.DID][]types.Hash)
 
 	for k, vs := range meta.Counter {
-		var txs []*pb.Transaction
+		var txs []*pb.BxhTransaction
 		var hashes []types.Hash
 		for _, i := range vs.Slice {
-			txs = append(txs, block.Transactions[i])
-			hashes = append(hashes, *block.Transactions[i].TransactionHash)
+			tx, _ := block.Transactions.Transactions[i].(*pb.BxhTransaction)
+			txs = append(txs, tx)
+			hashes = append(hashes, *block.Transactions.Transactions[i].GetHash())
 		}
 		// k value is the destination did address, so did with same method
 		// will be grouped into one set

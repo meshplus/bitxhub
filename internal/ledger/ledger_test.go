@@ -805,8 +805,8 @@ func TestGetReceipt1(t *testing.T) {
 func TestPrepare(t *testing.T) {
 	ledger, _ := initLedger(t, "")
 	batch := ledger.blockchainStore.NewBatch()
-	transactions := []*pb.Transaction{}
-	transaction := &pb.Transaction{
+	transactions := []pb.Transaction{}
+	transaction := &pb.BxhTransaction{
 		TransactionHash: types.NewHash([]byte("1")),
 	}
 	transactions = append(transactions, transaction)
@@ -815,7 +815,7 @@ func TestPrepare(t *testing.T) {
 			Number: uint64(0),
 		},
 		BlockHash:    types.NewHash([]byte{1}),
-		Transactions: transactions,
+		Transactions: &pb.Transactions{Transactions: transactions},
 	}
 	_, err := ledger.prepareBlock(batch, block)
 	require.Nil(t, err)
@@ -837,7 +837,7 @@ func genBlockData(height uint64, accounts map[string]*Account, journal *BlockJou
 				Number: height,
 			},
 			BlockHash:    types.NewHash([]byte{1}),
-			Transactions: []*pb.Transaction{},
+			Transactions: &pb.Transactions{},
 		},
 		Receipts:       nil,
 		Accounts:       accounts,

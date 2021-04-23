@@ -150,7 +150,7 @@ func sendTx(ctx *cli.Context, toString string, amount uint64, txType uint64, key
 		return nil, fmt.Errorf("parse pending nonce :%w", err)
 	}
 
-	tx := &pb.Transaction{
+	tx := &pb.BxhTransaction{
 		From:      from,
 		To:        to,
 		Timestamp: time.Now().UnixNano(),

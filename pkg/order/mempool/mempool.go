@@ -3,7 +3,10 @@ package mempool
 import (
 	"time"
 
+	"github.com/ethereum/go-ethereum/event"
+	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub/internal/model/events"
 	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
 )
 
@@ -11,7 +14,7 @@ var _ MemPool = (*mempoolImpl)(nil)
 
 type MemPool interface {
 	// ProcessTransactions process transaction from api and other vp nodes.
-	ProcessTransactions(txs []*pb.Transaction, isLeader, isLocal bool) *raftproto.RequestBatch
+	ProcessTransactions(txs []pb.Transaction, isLeader, isLocal bool) *raftproto.RequestBatch
 
 	// GenerateBlock generate a block
 	GenerateBlock() *raftproto.RequestBatch
@@ -24,7 +27,13 @@ type MemPool interface {
 
 	SetBatchSeqNo(batchSeq uint64)
 
-	GetTimeoutTransactions(rebroadcastDuration time.Duration) [][]*pb.Transaction
+	GetTimeoutTransactions(rebroadcastDuration time.Duration) [][]pb.Transaction
+
+	GetPendingTransactions(max int) []pb.Transaction
+
+	GetTransaction(hash *types.Hash) pb.Transaction
+
+	SubscribeTxEvent(chan<- events.NewTxsEvent) event.Subscription
 
 	External
 }

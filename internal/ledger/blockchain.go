@@ -49,7 +49,7 @@ func (l *ChainLedger) GetBlock(height uint64) (*pb.Block, error) {
 		return nil, err
 	}
 
-	block.Transactions = txs.Transactions
+	block.Transactions = txs
 
 	return block, nil
 }
@@ -80,7 +80,7 @@ func (l *ChainLedger) GetBlockByHash(hash *types.Hash) (*pb.Block, error) {
 }
 
 // GetTransaction get the transaction using transaction hash
-func (l *ChainLedger) GetTransaction(hash *types.Hash) (*pb.Transaction, error) {
+func (l *ChainLedger) GetTransaction(hash *types.Hash) (pb.Transaction, error) {
 	metaBytes := l.blockchainStore.Get(compositeKey(transactionMetaKey, hash.String()))
 	if metaBytes == nil {
 		return nil, storage.ErrorNotFound
@@ -254,7 +254,7 @@ func (l *ChainLedger) prepareReceipts(batcher storage.Batch, block *pb.Block, re
 }
 
 func (l *ChainLedger) prepareTransactions(batcher storage.Batch, block *pb.Block) ([]byte, error) {
-	for i, tx := range block.Transactions {
+	for i, tx := range block.Transactions.Transactions {
 		meta := &pb.TransactionMeta{
 			BlockHeight: block.BlockHeader.Number,
 			BlockHash:   block.BlockHash.Bytes(),
@@ -266,13 +266,10 @@ func (l *ChainLedger) prepareTransactions(batcher storage.Batch, block *pb.Block
 			return nil, fmt.Errorf("marshal tx meta error: %s", err)
 		}
 
-		batcher.Put(compositeKey(transactionMetaKey, tx.TransactionHash.String()), metaBytes)
+		batcher.Put(compositeKey(transactionMetaKey, tx.GetHash().String()), metaBytes)
 	}
 
-	ts := &pb.Transactions{
-		Transactions: block.Transactions,
-	}
-	return ts.Marshal()
+	return block.Transactions.Marshal()
 }
 
 func (l *ChainLedger) prepareBlock(batcher storage.Batch, block *pb.Block) ([]byte, error) {
@@ -299,8 +296,8 @@ func (l *ChainLedger) prepareBlock(batcher storage.Batch, block *pb.Block) ([]by
 	height := block.BlockHeader.Number
 
 	var txHashes []types.Hash
-	for _, tx := range block.Transactions {
-		txHashes = append(txHashes, *tx.TransactionHash)
+	for _, tx := range block.Transactions.Transactions {
+		txHashes = append(txHashes, *tx.GetHash())
 	}
 
 	data, err := json.Marshal(txHashes)
@@ -345,8 +342,8 @@ func (l *ChainLedger) removeChainDataOnBlock(batch storage.Batch, height uint64)
 	batch.Delete(compositeKey(blockHashKey, block.BlockHash.String()))
 	batch.Delete(compositeKey(interchainMetaKey, height))
 
-	for _, tx := range block.Transactions {
-		batch.Delete(compositeKey(transactionMetaKey, tx.TransactionHash.String()))
+	for _, tx := range block.Transactions.Transactions {
+		batch.Delete(compositeKey(transactionMetaKey, tx.GetHash().String()))
 	}
 
 	return getInterchainTxCount(interchainMeta), nil

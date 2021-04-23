@@ -105,7 +105,7 @@ type LogModule struct {
 }
 
 type Genesis struct {
-	ChainID  string            `json:"chainid" toml:"chainid"`
+	ChainID  uint64            `json:"chainid" toml:"chainid"`
 	Admins   []*Admin          `json:"admins" toml:"admins"`
 	Strategy map[string]string `json:"strategy" toml:"strategy"`
 	Dider    string            `json:"dider" toml:"dider"`

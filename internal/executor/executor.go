@@ -41,6 +41,7 @@ type BlockExecutor struct {
 	wasmInstances    map[string]wasmer.Instance
 	txsExecutor      agency.TxsExecutor
 	blockFeed        event.Feed
+	logsFeed         event.Feed
 	ctx              context.Context
 	cancel           context.CancelFunc
 }
@@ -49,12 +50,12 @@ type BlockExecutor struct {
 func New(chainLedger ledger.Ledger, logger logrus.FieldLogger, typ string) (*BlockExecutor, error) {
 	ibtpVerify := proof.New(chainLedger, logger)
 
-	ctx, cancel := context.WithCancel(context.Background())
-
 	txsExecutor, err := agency.GetExecutorConstructor(typ)
 	if err != nil {
 		return nil, err
 	}
+
+	ctx, cancel := context.WithCancel(context.Background())
 
 	blockExecutor := &BlockExecutor{
 		ledger:           chainLedger,
@@ -111,14 +112,18 @@ func (exec *BlockExecutor) SubscribeBlockEvent(ch chan<- events.ExecutedEvent) e
 	return exec.blockFeed.Subscribe(ch)
 }
 
-func (exec *BlockExecutor) ApplyReadonlyTransactions(txs []*pb.Transaction) []*pb.Receipt {
+func (exec *BlockExecutor) SubscribeLogsEvent(ch chan<- []*pb.EvmLog) event.Subscription {
+	return exec.logsFeed.Subscribe(ch)
+}
+
+func (exec *BlockExecutor) ApplyReadonlyTransactions(txs []pb.Transaction) []*pb.Receipt {
 	current := time.Now()
 	receipts := make([]*pb.Receipt, 0, len(txs))
 
 	for i, tx := range txs {
 		receipt := &pb.Receipt{
-			Version: tx.Version,
-			TxHash:  tx.TransactionHash,
+			Version: tx.GetVersion(),
+			TxHash:  tx.GetHash(),
 		}
 
 		ret, err := exec.applyTransaction(i, tx, "", nil)
@@ -151,7 +156,7 @@ func (exec *BlockExecutor) listenExecuteEvent() {
 			blockData := exec.processExecuteEvent(blockWrapper)
 			exec.logger.WithFields(logrus.Fields{
 				"height": blockWrapper.block.BlockHeader.Number,
-				"count":  len(blockWrapper.block.Transactions),
+				"count":  len(blockWrapper.block.Transactions.Transactions),
 				"elapse": time.Since(now),
 			}).Debug("Executed block")
 			exec.persistC <- blockData
@@ -177,12 +182,12 @@ func (exec *BlockExecutor) verifyProofs(blockWrapper *BlockWrapper) {
 		wg         sync.WaitGroup
 		lock       sync.Mutex
 	)
-	txs := block.Transactions
+	txs := block.Transactions.Transactions
 
 	wg.Add(len(txs))
 	errM := make(map[int]string)
 	for i, tx := range txs {
-		go func(i int, tx *pb.Transaction) {
+		go func(i int, tx pb.Transaction) {
 			defer wg.Done()
 			if _, ok := blockWrapper.invalidTx[i]; !ok {
 				ok, err := exec.ibtpVerify.CheckProof(tx)
@@ -207,10 +212,11 @@ func (exec *BlockExecutor) persistData() {
 		now := time.Now()
 		exec.ledger.PersistBlockData(data)
 		exec.postBlockEvent(data.Block, data.InterchainMeta, data.TxHashList)
+		exec.postLogsEvent(data.Receipts)
 		exec.logger.WithFields(logrus.Fields{
 			"height": data.Block.BlockHeader.Number,
 			"hash":   data.Block.BlockHash.String(),
-			"count":  len(data.Block.Transactions),
+			"count":  len(data.Block.Transactions.Transactions),
 			"elapse": time.Since(now),
 		}).Info("Persisted block")
 	}

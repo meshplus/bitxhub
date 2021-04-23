@@ -62,7 +62,7 @@ func (api *ChainAPI) TPS(begin, end uint64) (uint64, error) {
 		if err != nil {
 			errCount.Inc()
 		} else {
-			total.Add(uint64(len(block.Transactions)))
+			total.Add(uint64(len(block.Transactions.Transactions)))
 			startTime = block.BlockHeader.Timestamp
 		}
 	}()
@@ -72,7 +72,7 @@ func (api *ChainAPI) TPS(begin, end uint64) (uint64, error) {
 		if err != nil {
 			errCount.Inc()
 		} else {
-			total.Add(uint64(len(block.Transactions)))
+			total.Add(uint64(len(block.Transactions.Transactions)))
 			endTime = block.BlockHeader.Timestamp
 		}
 	}()

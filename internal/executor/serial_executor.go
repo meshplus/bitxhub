@@ -27,7 +27,7 @@ func init() {
 	agency.RegisterExecutorConstructor("serial", NewSerialExecutor)
 }
 
-func (se *SerialExecutor) ApplyTransactions(txs []*pb.Transaction, invalidTxs map[int]agency.InvalidReason) []*pb.Receipt {
+func (se *SerialExecutor) ApplyTransactions(txs []pb.Transaction, invalidTxs map[int]agency.InvalidReason) []*pb.Receipt {
 	se.interchainCounter = make(map[string][]uint64)
 	se.normalTxs = make([]*types.Hash, 0)
 	receipts := make([]*pb.Receipt, 0, len(txs))

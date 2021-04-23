@@ -433,7 +433,7 @@ func TestContext(t *testing.T) {
 	ldg, err := ledger.New(createMockRepo(t), store, ldb, blockFile, accountCache, log.NewWithModule("executor"))
 	require.Nil(t, err)
 
-	tx := &pb.Transaction{
+	tx := &pb.BxhTransaction{
 		From: addr,
 		To:   addr,
 	}
