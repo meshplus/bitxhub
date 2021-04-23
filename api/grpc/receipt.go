@@ -15,7 +15,7 @@ import (
 func (cbs *ChainBrokerService) GetReceipt(ctx context.Context, req *pb.TransactionHashMsg) (*pb.Receipt, error) {
 	hash := types.NewHashByStr(req.TxHash)
 	if hash == nil {
-		return nil, fmt.Errorf("invalid format of receipt hash for querying receipt")
+		return nil, status.Newf(codes.InvalidArgument, fmt.Sprintf("invalid format of receipt hash %s for querying receipt", hash)).Err()
 	}
 	r, err := cbs.api.Broker().GetReceipt(hash)
 	if err != nil {
