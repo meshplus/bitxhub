@@ -52,6 +52,9 @@ func (cbs *ChainBrokerService) GetAccountBalance(ctx context.Context, req *pb.Ad
 }
 
 func (cbs *ChainBrokerService) GetPendingNonceByAccount(ctx context.Context, req *pb.Address) (*pb.Response, error) {
+	if !types.IsValidAddressByte([]byte(req.Address)) {
+		return nil, fmt.Errorf("invalid account address: %v", req.Address)
+	}
 	nonce := cbs.api.Broker().GetPendingNonceByAccount(req.Address)
 	return &pb.Response{
 		Data: []byte(strconv.FormatUint(nonce, 10)),
