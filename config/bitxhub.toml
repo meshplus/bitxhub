@@ -45,7 +45,7 @@ solo = false
     consensus = "info"
     executor = "info"
     router = "info"
-    api = "debug"
+    api = "info"
     coreapi = "info"
     storage = "info"
 
@@ -62,7 +62,7 @@ solo = false
   type = "serial"  # opensource version only supports serial type, commercial version supports serial and parallel types
 
 [genesis]
-  chainid = "a-1"
+  chainid = 1
   dider = "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013"
   [[genesis.admins]]
     address = "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013"

@@ -150,8 +150,8 @@ func (n *Node) recoverFromSnapshot() {
 				break
 			}
 			if block.Height() == n.lastExec+1 {
-				localList := make([]bool, len(block.Transactions))
-				for i := 0; i < len(block.Transactions); i++ {
+				localList := make([]bool, len(block.Transactions.Transactions))
+				for i := 0; i < len(block.Transactions.Transactions); i++ {
 					localList[i] = false
 				}
 				executeEvent := &pb.CommitEvent{

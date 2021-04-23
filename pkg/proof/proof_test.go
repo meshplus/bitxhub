@@ -69,7 +69,7 @@ func TestVerifyPool_CheckProof(t *testing.T) {
 	engine := vp.ValidationEngine()
 	require.NotNil(t, engine)
 
-	txWithNoIBTP := &pb.Transaction{
+	txWithNoIBTP := &pb.BxhTransaction{
 		From:  types.NewAddressByStr(from),
 		To:    types.NewAddressByStr(to),
 		IBTP:  nil,
@@ -80,7 +80,7 @@ func TestVerifyPool_CheckProof(t *testing.T) {
 	require.Nil(t, err)
 	require.True(t, ok)
 
-	txWithNoExtra := &pb.Transaction{
+	txWithNoExtra := &pb.BxhTransaction{
 		From:  types.NewAddressByStr(from),
 		To:    types.NewAddressByStr(to),
 		IBTP:  getIBTP(t, 1, pb.IBTP_RECEIPT_SUCCESS, []byte("1")),
@@ -91,7 +91,7 @@ func TestVerifyPool_CheckProof(t *testing.T) {
 	require.NotNil(t, err)
 	require.False(t, ok)
 
-	txWithNotEqualProofHash := &pb.Transaction{
+	txWithNotEqualProofHash := &pb.BxhTransaction{
 		From:  types.NewAddressByStr(from),
 		To:    types.NewAddressByStr(to),
 		IBTP:  getIBTP(t, 1, pb.IBTP_RECEIPT_SUCCESS, []byte("222")),
@@ -105,7 +105,7 @@ func TestVerifyPool_CheckProof(t *testing.T) {
 	proof := []byte("test_proof")
 	proofHash := sha256.Sum256(proof)
 
-	txWithIBTP := &pb.Transaction{
+	txWithIBTP := &pb.BxhTransaction{
 		From:  types.NewAddressByStr(from),
 		To:    types.NewAddressByStr(to),
 		IBTP:  getIBTP(t, 1, pb.IBTP_RECEIPT_SUCCESS, proofHash[:]),
@@ -204,7 +204,7 @@ func TestVerifyPool_CheckProof3(t *testing.T) {
 	proof := []byte("test_proof")
 	proofHash := sha256.Sum256(proof)
 
-	txWithIBTP := &pb.Transaction{
+	txWithIBTP := &pb.BxhTransaction{
 		From:  types.NewAddressByStr(from),
 		To:    types.NewAddressByStr(to),
 		IBTP:  getIBTP(t, 1, pb.IBTP_RECEIPT_SUCCESS, proofHash[:]),

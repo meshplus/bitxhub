@@ -15,7 +15,7 @@ import (
 
 // SendTransaction handles transaction sent by the client.
 // If the transaction is valid, it will return the transaction hash.
-func (cbs *ChainBrokerService) SendTransaction(ctx context.Context, tx *pb.Transaction) (*pb.TransactionHashMsg, error) {
+func (cbs *ChainBrokerService) SendTransaction(ctx context.Context, tx *pb.BxhTransaction) (*pb.TransactionHashMsg, error) {
 	err := cbs.api.Broker().OrderReady()
 	if err != nil {
 		return nil, status.Newf(codes.Internal, "the system is temporarily unavailable %s", err.Error()).Err()
@@ -33,7 +33,7 @@ func (cbs *ChainBrokerService) SendTransaction(ctx context.Context, tx *pb.Trans
 	return &pb.TransactionHashMsg{TxHash: hash}, nil
 }
 
-func (cbs *ChainBrokerService) SendView(_ context.Context, tx *pb.Transaction) (*pb.Receipt, error) {
+func (cbs *ChainBrokerService) SendView(_ context.Context, tx *pb.BxhTransaction) (*pb.Receipt, error) {
 	if err := cbs.checkTransaction(tx); err != nil {
 		return nil, err
 	}
@@ -46,7 +46,7 @@ func (cbs *ChainBrokerService) SendView(_ context.Context, tx *pb.Transaction) (
 	return result, nil
 }
 
-func (cbs *ChainBrokerService) checkTransaction(tx *pb.Transaction) error {
+func (cbs *ChainBrokerService) checkTransaction(tx *pb.BxhTransaction) error {
 	if tx.Payload == nil && tx.IBTP == nil {
 		return fmt.Errorf("tx payload and ibtp can't both be nil")
 	}
@@ -86,7 +86,7 @@ func (cbs *ChainBrokerService) checkTransaction(tx *pb.Transaction) error {
 	return nil
 }
 
-func (cbs *ChainBrokerService) sendTransaction(tx *pb.Transaction) (string, error) {
+func (cbs *ChainBrokerService) sendTransaction(tx *pb.BxhTransaction) (string, error) {
 	tx.TransactionHash = tx.Hash()
 	ok, _ := asym.Verify(crypto.Secp256k1, tx.Signature, tx.SignHash().Bytes(), *tx.From)
 	if !ok {
@@ -100,7 +100,7 @@ func (cbs *ChainBrokerService) sendTransaction(tx *pb.Transaction) (string, erro
 	return tx.TransactionHash.String(), nil
 }
 
-func (cbs *ChainBrokerService) sendView(tx *pb.Transaction) (*pb.Receipt, error) {
+func (cbs *ChainBrokerService) sendView(tx *pb.BxhTransaction) (*pb.Receipt, error) {
 	result, err := cbs.api.Broker().HandleView(tx)
 	if err != nil {
 		return nil, err
@@ -119,13 +119,18 @@ func (cbs *ChainBrokerService) GetTransaction(ctx context.Context, req *pb.Trans
 		return nil, err
 	}
 
+	bxhTx, ok := tx.(*pb.BxhTransaction)
+	if !ok {
+		return nil, fmt.Errorf("cannot get non bxh tx via grpc")
+	}
+
 	meta, err := cbs.api.Broker().GetTransactionMeta(hash)
 	if err != nil {
 		return nil, err
 	}
 
 	return &pb.GetTransactionResponse{
-		Tx:     tx,
+		Tx:     bxhTx,
 		TxMeta: meta,
 	}, nil
 }

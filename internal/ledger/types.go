@@ -97,7 +97,7 @@ type BlockchainLedger interface {
 	GetBlockByHash(hash *types.Hash) (*pb.Block, error)
 
 	// GetTransaction get the transaction using transaction hash
-	GetTransaction(hash *types.Hash) (*pb.Transaction, error)
+	GetTransaction(hash *types.Hash) (pb.Transaction, error)
 
 	// GetTransactionMeta get the transaction meta data
 	GetTransactionMeta(hash *types.Hash) (*pb.TransactionMeta, error)

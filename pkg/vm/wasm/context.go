@@ -18,13 +18,13 @@ type Context struct {
 }
 
 // NewContext creates a context of wasm instance
-func NewContext(tx *pb.Transaction, data *pb.TransactionData, ledger ledger.Ledger, logger logrus.FieldLogger) *Context {
+func NewContext(tx pb.Transaction, data *pb.TransactionData, ledger ledger.Ledger, logger logrus.FieldLogger) *Context {
 	return &Context{
-		caller:          tx.From,
-		callee:          tx.To,
+		caller:          tx.GetFrom(),
+		callee:          tx.GetTo(),
 		ledger:          ledger,
 		transactionData: data,
-		nonce:           int64(tx.Nonce),
+		nonce:           int64(tx.GetNonce()),
 		logger:          logger,
 	}
 }

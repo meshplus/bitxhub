@@ -11,8 +11,6 @@ import (
 
 	"github.com/cbergoon/merkletree"
 	"github.com/meshplus/bitxhub-core/agency"
-	"github.com/meshplus/bitxhub-kit/crypto"
-	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/ledger"
@@ -34,21 +32,21 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	current := time.Now()
 	block := blockWrapper.block
 
-	for _, tx := range block.Transactions {
-		txHashList = append(txHashList, tx.TransactionHash)
+	for _, tx := range block.Transactions.Transactions {
+		txHashList = append(txHashList, tx.GetHash())
 	}
 
 	exec.verifyProofs(blockWrapper)
-	receipts := exec.txsExecutor.ApplyTransactions(block.Transactions, blockWrapper.invalidTx)
+	receipts := exec.txsExecutor.ApplyTransactions(block.Transactions.Transactions, blockWrapper.invalidTx)
 
 	applyTxsDuration.Observe(float64(time.Since(current)) / float64(time.Second))
 	exec.logger.WithFields(logrus.Fields{
 		"time":  time.Since(current),
-		"count": len(block.Transactions),
+		"count": len(block.Transactions.Transactions),
 	}).Debug("Apply transactions elapsed")
 
 	calcMerkleStart := time.Now()
-	l1Root, l2Roots, err := exec.buildTxMerkleTree(block.Transactions)
+	l1Root, l2Roots, err := exec.buildTxMerkleTree(block.Transactions.Transactions)
 	if err != nil {
 		panic(err)
 	}
@@ -108,7 +106,7 @@ func (exec *BlockExecutor) listenPreExecuteEvent() {
 			blockWrapper := exec.verifySign(commitEvent)
 			exec.logger.WithFields(logrus.Fields{
 				"height": commitEvent.Block.BlockHeader.Number,
-				"count":  len(commitEvent.Block.Transactions),
+				"count":  len(commitEvent.Block.Transactions.Transactions),
 				"elapse": time.Since(now),
 			}).Debug("Verified signature")
 			exec.blockC <- blockWrapper
@@ -118,7 +116,7 @@ func (exec *BlockExecutor) listenPreExecuteEvent() {
 	}
 }
 
-func (exec *BlockExecutor) buildTxMerkleTree(txs []*pb.Transaction) (*types.Hash, []types.Hash, error) {
+func (exec *BlockExecutor) buildTxMerkleTree(txs []pb.Transaction) (*types.Hash, []types.Hash, error) {
 	var (
 		groupCnt = len(exec.txsExecutor.GetInterchainCounter()) + 1
 		wg       = sync.WaitGroup{}
@@ -134,7 +132,7 @@ func (exec *BlockExecutor) buildTxMerkleTree(txs []*pb.Transaction) (*types.Hash
 
 			txHashes := make([]merkletree.Content, 0, len(txIndexes))
 			for _, txIndex := range txIndexes {
-				txHashes = append(txHashes, txs[txIndex].TransactionHash)
+				txHashes = append(txHashes, txs[txIndex].GetHash())
 			}
 
 			hash, err := calcMerkleRoot(txHashes)
@@ -199,7 +197,7 @@ func (exec *BlockExecutor) verifySign(commitEvent *pb.CommitEvent) *BlockWrapper
 		wg    sync.WaitGroup
 		mutex sync.Mutex
 	)
-	txs := commitEvent.Block.Transactions
+	txs := commitEvent.Block.Transactions.Transactions
 	txsLen := len(commitEvent.LocalList)
 	wg.Add(len(txs))
 	for i, tx := range txs {
@@ -208,13 +206,13 @@ func (exec *BlockExecutor) verifySign(commitEvent *pb.CommitEvent) *BlockWrapper
 			wg.Done()
 			continue
 		}
-		go func(i int, tx *pb.Transaction) {
+		go func(i int, tx pb.Transaction) {
 			defer wg.Done()
-			ok, _ := asym.Verify(crypto.Secp256k1, tx.Signature, tx.SignHash().Bytes(), *tx.From)
-			if !ok {
+			err := tx.VerifySignature()
+			if err != nil {
 				mutex.Lock()
 				defer mutex.Unlock()
-				blockWrapper.invalidTx[i] = "tx has invalid signature"
+				blockWrapper.invalidTx[i] = agency.InvalidReason(err.Error())
 			}
 		}(i, tx)
 	}
@@ -223,10 +221,10 @@ func (exec *BlockExecutor) verifySign(commitEvent *pb.CommitEvent) *BlockWrapper
 	return blockWrapper
 }
 
-func (exec *BlockExecutor) applyTx(index int, tx *pb.Transaction, invalidReason agency.InvalidReason, opt *agency.TxOpt) *pb.Receipt {
+func (exec *BlockExecutor) applyTx(index int, tx pb.Transaction, invalidReason agency.InvalidReason, opt *agency.TxOpt) *pb.Receipt {
 	receipt := &pb.Receipt{
-		Version: tx.Version,
-		TxHash:  tx.TransactionHash,
+		Version: tx.GetVersion(),
+		TxHash:  tx.GetHash(),
 	}
 	normalTx := true
 
@@ -239,7 +237,7 @@ func (exec *BlockExecutor) applyTx(index int, tx *pb.Transaction, invalidReason 
 		receipt.Ret = ret
 	}
 
-	events := exec.ledger.Events(tx.TransactionHash.String())
+	events := exec.ledger.Events(tx.GetHash().String())
 	if len(events) != 0 {
 		receipt.Events = events
 		for _, ev := range events {
@@ -259,7 +257,7 @@ func (exec *BlockExecutor) applyTx(index int, tx *pb.Transaction, invalidReason 
 	}
 
 	if normalTx {
-		exec.txsExecutor.AddNormalTx(tx.TransactionHash)
+		exec.txsExecutor.AddNormalTx(tx.GetHash())
 	}
 
 	return receipt
@@ -273,9 +271,32 @@ func (exec *BlockExecutor) postBlockEvent(block *pb.Block, interchainMeta *pb.In
 	})
 }
 
-func (exec *BlockExecutor) applyTransaction(i int, tx *pb.Transaction, invalidReason agency.InvalidReason, opt *agency.TxOpt) ([]byte, error) {
-	curNonce := exec.ledger.GetNonce(tx.From)
-	defer exec.ledger.SetNonce(tx.From, curNonce+1)
+func (exec *BlockExecutor) postLogsEvent(receipts []*pb.Receipt) {
+	go func() {
+		logs := make([]*pb.EvmLog, 0)
+		for _, receipt := range receipts {
+			logs = append(logs, receipt.EvmLogs...)
+		}
+
+		exec.logsFeed.Send(logs)
+	}()
+}
+
+func (exec *BlockExecutor) applyTransaction(i int, tx pb.Transaction, invalidReason agency.InvalidReason, opt *agency.TxOpt) ([]byte, error) {
+	switch tx.(type) {
+	case *pb.BxhTransaction:
+		bxhTx := tx.(*pb.BxhTransaction)
+		return exec.applyBxhTransaction(i, bxhTx, invalidReason, opt)
+	case *pb.EthTransaction:
+		// TODO
+
+	}
+
+	return nil, fmt.Errorf("unknown tx type")
+}
+
+func (exec *BlockExecutor) applyBxhTransaction(i int, tx *pb.BxhTransaction, invalidReason agency.InvalidReason, opt *agency.TxOpt) ([]byte, error) {
+	defer exec.ledger.SetNonce(tx.From, tx.GetNonce()+1)
 
 	if invalidReason != "" {
 		return nil, fmt.Errorf(string(invalidReason))
@@ -284,15 +305,15 @@ func (exec *BlockExecutor) applyTransaction(i int, tx *pb.Transaction, invalidRe
 	if tx.IsIBTP() {
 		ctx := vm.NewContext(tx, uint64(i), nil, exec.ledger, exec.logger)
 		instance := boltvm.New(ctx, exec.validationEngine, exec.getContracts(opt))
-		return instance.HandleIBTP(tx.IBTP)
+		return instance.HandleIBTP(tx.GetIBTP())
 	}
 
-	if tx.Payload == nil {
+	if tx.GetPayload() == nil {
 		return nil, fmt.Errorf("empty transaction data")
 	}
 
 	data := &pb.TransactionData{}
-	if err := data.Unmarshal(tx.Payload); err != nil {
+	if err := data.Unmarshal(tx.GetPayload()); err != nil {
 		return nil, err
 	}
 

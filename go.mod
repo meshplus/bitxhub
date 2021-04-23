@@ -2,11 +2,13 @@ module github.com/meshplus/bitxhub
 
 require (
 	github.com/Rican7/retry v0.1.0
+	github.com/aristanetworks/goarista v0.0.0-20200310212843-2da4c1f5881b // indirect
 	github.com/cbergoon/merkletree v0.2.0
 	github.com/cheynewallace/tabby v1.1.1
 	github.com/common-nighthawk/go-figure v0.0.0-20190529165535-67e0ed34491a
 	github.com/coreos/etcd v3.3.18+incompatible
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f // indirect
+	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/ethereum/go-ethereum v1.10.2
 	github.com/fatih/color v1.7.0
 	github.com/gobuffalo/envy v1.9.0 // indirect
@@ -24,10 +26,9 @@ require (
 	github.com/juju/ratelimit v1.0.1
 	github.com/libp2p/go-libp2p-core v0.5.6
 	github.com/magiconair/properties v1.8.4
-	//github.com/meshplus/bitxhub-core v1.2.1-0.20210426113834-e5d1e9078142
-	github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20210426113617-09421d61d97e
-	github.com/meshplus/bitxhub-kit v1.2.0
-	github.com/meshplus/bitxhub-model v1.2.0
+	github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20210423140028-7c7e2fd80a46
+	github.com/meshplus/bitxhub-kit v1.1.2-0.20210425013549-7a642723d279
+	github.com/meshplus/bitxhub-model v1.1.2-0.20210425021723-411f67ad49be
 	github.com/meshplus/bitxid v0.0.0-20210412025850-e0eaf0f9063a
 	github.com/meshplus/did-registry v0.0.0-20210413035015-509c6c3a0bae
 	github.com/meshplus/go-libp2p-cert v0.0.0-20210125063330-7c25fd5b7a49
@@ -38,7 +39,6 @@ require (
 	github.com/pelletier/go-toml v1.8.1
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.5.0
-	github.com/prometheus/procfs v0.0.10 // indirect
 	github.com/rogpeppe/go-internal v1.8.0 // indirect
 	github.com/rs/cors v1.7.0
 	github.com/sirupsen/logrus v1.8.1
@@ -53,7 +53,9 @@ require (
 	github.com/willf/bitset v1.1.11 // indirect
 	github.com/willf/bloom v2.0.3+incompatible
 	go.uber.org/atomic v1.7.0
+	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad
 	google.golang.org/grpc v1.33.2
+	google.golang.org/protobuf v1.26.0 // indirect
 )
 
 replace github.com/golang/protobuf => github.com/golang/protobuf v1.3.2
@@ -63,9 +65,5 @@ replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20200218
 replace google.golang.org/grpc => google.golang.org/grpc v1.33.0
 
 replace github.com/hyperledger/fabric => github.com/hyperledger/fabric v2.0.1+incompatible
-
-replace github.com/meshplus/bitxhub-kit => github.com/meshplus/bitxhub-kit v1.1.2-0.20210112075018-319e668d6359
-
-replace github.com/meshplus/bitxhub-model => github.com/meshplus/bitxhub-model v1.1.2-0.20210409090411-de23bd385c5f
 
 go 1.13

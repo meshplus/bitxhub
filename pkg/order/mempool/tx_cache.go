@@ -1,7 +1,6 @@
 package mempool
 
 import (
-	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
 	"time"
 
 	"github.com/meshplus/bitxhub-model/pb"
@@ -9,26 +8,26 @@ import (
 )
 
 type TxCache struct {
-	TxSetC  chan *raftproto.TxSlice
-	RecvTxC chan *pb.Transaction
+	TxSetC  chan *pb.Transactions
+	RecvTxC chan pb.Transaction
 
-	txSet   []*pb.Transaction
+	txSet      []pb.Transaction
 	timerC     chan bool
 	stopTimerC chan bool
 	close      chan bool
 	txSetTick  time.Duration
 	txSetSize  uint64
-	logger  logrus.FieldLogger
+	logger     logrus.FieldLogger
 }
 
 func NewTxCache(txSliceTimeout time.Duration, txSetSize uint64, logger logrus.FieldLogger) *TxCache {
 	txCache := &TxCache{}
-	txCache.RecvTxC = make(chan *pb.Transaction, DefaultTxCacheSize)
+	txCache.RecvTxC = make(chan pb.Transaction, DefaultTxCacheSize)
 	txCache.close = make(chan bool)
-	txCache.TxSetC = make(chan *raftproto.TxSlice)
+	txCache.TxSetC = make(chan *pb.Transactions)
 	txCache.timerC = make(chan bool)
 	txCache.stopTimerC = make(chan bool)
-	txCache.txSet = make([]*pb.Transaction, 0)
+	txCache.txSet = make([]pb.Transaction, 0)
 	txCache.logger = logger
 	if txSliceTimeout == 0 {
 		txCache.txSetTick = DefaultTxSetTick
@@ -60,7 +59,7 @@ func (tc *TxCache) ListenEvent() {
 	}
 }
 
-func (tc *TxCache) appendTx(tx *pb.Transaction) {
+func (tc *TxCache) appendTx(tx pb.Transaction) {
 	if tx == nil {
 		tc.logger.Errorf("Transaction is nil")
 		return
@@ -76,13 +75,13 @@ func (tc *TxCache) appendTx(tx *pb.Transaction) {
 }
 
 func (tc *TxCache) postTxSet() {
-	dst := make([]*pb.Transaction, len(tc.txSet))
+	dst := make([]pb.Transaction, len(tc.txSet))
 	copy(dst, tc.txSet)
-	txSet := &raftproto.TxSlice{
-		TxList: dst,
+	txSet := &pb.Transactions{
+		Transactions: dst,
 	}
 	tc.TxSetC <- txSet
-	tc.txSet = make([]*pb.Transaction, 0)
+	tc.txSet = make([]pb.Transaction, 0)
 }
 
 func (tc *TxCache) IsFull() bool {

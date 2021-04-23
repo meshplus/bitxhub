@@ -55,19 +55,19 @@ func (pl *VerifyPool) ValidationEngine() validator.Engine {
 	return pl.ve
 }
 
-func (pl *VerifyPool) CheckProof(tx *pb.Transaction) (bool, error) {
-	ibtp := tx.IBTP
+func (pl *VerifyPool) CheckProof(tx pb.Transaction) (bool, error) {
+	ibtp := tx.GetIBTP()
 	if ibtp != nil {
-		ok, err := pl.verifyProof(ibtp, tx.Extra)
+		ok, err := pl.verifyProof(ibtp, tx.GetExtra())
 		if err != nil {
 			pl.logger.WithFields(logrus.Fields{
-				"hash":  tx.TransactionHash.String(),
+				"hash":  tx.GetHash().String(),
 				"id":    ibtp.ID(),
 				"error": err}).Warn("ibtp verify got error")
 			return false, err
 		}
 		if !ok {
-			pl.logger.WithFields(logrus.Fields{"hash": tx.TransactionHash.String(), "id": ibtp.ID()}).Warn("ibtp verify failed")
+			pl.logger.WithFields(logrus.Fields{"hash": tx.GetHash().String(), "id": ibtp.ID()}).Warn("ibtp verify failed")
 			return false, nil
 		}
 

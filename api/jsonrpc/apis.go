@@ -3,6 +3,7 @@ package jsonrpc
 import (
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/meshplus/bitxhub/api/jsonrpc/namespaces/eth"
+	"github.com/meshplus/bitxhub/api/jsonrpc/namespaces/eth/filters"
 	"github.com/meshplus/bitxhub/api/jsonrpc/namespaces/net"
 	"github.com/meshplus/bitxhub/api/jsonrpc/namespaces/web3"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
@@ -35,6 +36,15 @@ func GetAPIs(config *repo.Config, api api.CoreAPI, logger logrus.FieldLogger) ([
 			Namespace: EthNamespace,
 			Version:   apiVersion,
 			Service:   ethAPI,
+			Public:    true,
+		},
+	)
+
+	apis = append(apis,
+		rpc.API{
+			Namespace: EthNamespace,
+			Version:   apiVersion,
+			Service:   filters.NewAPI(api, logger),
 			Public:    true,
 		},
 	)

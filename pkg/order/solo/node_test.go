@@ -68,11 +68,11 @@ func TestNode_Start(t *testing.T) {
 	from, err := privKey.PublicKey().Address()
 	require.Nil(t, err)
 
-	tx := &pb.Transaction{
+	tx := &pb.BxhTransaction{
 		From:      from,
 		To:        types.NewAddressByStr(to),
 		Timestamp: time.Now().UnixNano(),
-		Nonce:     1,
+		Nonce:     0,
 	}
 	tx.TransactionHash = tx.Hash()
 	err = tx.Sign(privKey)
@@ -91,7 +91,7 @@ func TestNode_Start(t *testing.T) {
 
 	commitEvent := <-order.Commit()
 	require.Equal(t, uint64(2), commitEvent.Block.BlockHeader.Number)
-	require.Equal(t, 1, len(commitEvent.Block.Transactions))
+	require.Equal(t, 1, len(commitEvent.Block.Transactions.Transactions))
 
 	txHashList := make([]*types.Hash, 0)
 	txHashList = append(txHashList, tx.TransactionHash)

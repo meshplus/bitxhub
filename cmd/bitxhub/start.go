@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math/big"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/meshplus/bitxhub"
 	"github.com/meshplus/bitxhub-kit/log"
+	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/api/gateway"
 	"github.com/meshplus/bitxhub/api/grpc"
 	"github.com/meshplus/bitxhub/api/jsonrpc"
@@ -59,6 +61,8 @@ func start(ctx *cli.Context) error {
 	}
 
 	loggers.Initialize(repo.Config)
+
+	pb.InitEIP155Signer(big.NewInt(int64(repo.Config.ChainID)))
 
 	if repo.Config.PProf.Enable {
 		switch repo.Config.PProf.PType {

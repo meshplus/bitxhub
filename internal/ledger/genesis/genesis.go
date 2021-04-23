@@ -45,6 +45,7 @@ func Initialize(genesis *repo.Genesis, lg ledger.Ledger) error {
 			Number:    1,
 			StateRoot: journal.ChangedHash,
 		},
+		Transactions: &pb.Transactions{},
 	}
 	block.BlockHash = block.Hash()
 	blockData := &ledger.BlockData{

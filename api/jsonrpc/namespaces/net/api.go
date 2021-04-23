@@ -3,7 +3,6 @@ package net
 import (
 	"fmt"
 
-	"github.com/meshplus/bitxhub/api/jsonrpc/types"
 	"github.com/meshplus/bitxhub/internal/repo"
 )
 
@@ -15,13 +14,8 @@ type PublicNetAPI struct {
 // NewAPI creates an instance of the public Net Web3 API.
 func NewAPI(config *repo.Config) *PublicNetAPI {
 	// parse the chainID from a integer string
-	chainIDEpoch, err := types.ParseChainID(config.ChainID)
-	if err != nil {
-		panic(err)
-	}
-
 	return &PublicNetAPI{
-		networkVersion: chainIDEpoch.Uint64(),
+		networkVersion: config.ChainID,
 	}
 }
 
