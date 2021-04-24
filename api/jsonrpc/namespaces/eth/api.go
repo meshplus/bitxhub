@@ -104,7 +104,7 @@ func (api *PublicEthereumAPI) GetBalance(address common.Address, blockNum rpctyp
 	balance := account.GetBalance()
 
 	api.logger.Debugf("balance: %d", balance)
-	bal := big.NewInt(int64(balance))
+	bal := balance
 
 	return (*hexutil.Big)(bal), nil
 }
@@ -206,7 +206,6 @@ func (api *PublicEthereumAPI) SendRawTransaction(data hexutil.Bytes) (common.Has
 	if tx.GetFrom() == nil {
 		return [32]byte{}, fmt.Errorf("verify signature failed")
 	}
-<<<<<<< HEAD
 
 	err := api.api.Broker().OrderReady()
 	if err != nil {
@@ -260,61 +259,6 @@ func (api *PublicEthereumAPI) sendTransaction(tx *pb.EthTransaction) (common.Has
 		return common.Hash{}, err
 	}
 
-=======
-
-	err := api.api.Broker().OrderReady()
-	if err != nil {
-		return [32]byte{}, status.Newf(codes.Internal, "the system is temporarily unavailable %s", err.Error()).Err()
-	}
-
-	if err := api.checkTransaction(tx); err != nil {
-		return [32]byte{}, status.Newf(codes.InvalidArgument, "check transaction fail for %s", err.Error()).Err()
-	}
-
-	return api.sendTransaction(tx)
-}
-
-func (api *PublicEthereumAPI) checkTransaction(tx *pb.EthTransaction) error {
-	if tx.GetFrom() == nil {
-		return fmt.Errorf("tx from address is nil")
-	}
-	api.logger.Debugf("from address: %s, nonce: %d", tx.GetFrom().String(), tx.GetNonce())
-
-	emptyAddress := &types.Address{}
-	if tx.GetFrom().String() == emptyAddress.String() {
-		return fmt.Errorf("from can't be empty")
-	}
-
-	if tx.GetFrom().String() == tx.GetTo().String() {
-		return fmt.Errorf("from can`t be the same as to")
-	}
-
-	if tx.GetTo().String() == emptyAddress.String() && len(tx.GetPayload()) == 0 {
-		return fmt.Errorf("can't deploy empty contract")
-	}
-
-	if tx.GetTimeStamp() < time.Now().UnixNano()-10*time.Minute.Nanoseconds() ||
-		tx.GetTimeStamp() > time.Now().UnixNano()+10*time.Minute.Nanoseconds() {
-		return fmt.Errorf("timestamp is illegal")
-	}
-
-	if len(tx.GetSignature()) == 0 {
-		return fmt.Errorf("signature can't be empty")
-	}
-
-	return nil
-}
-
-func (api *PublicEthereumAPI) sendTransaction(tx *pb.EthTransaction) (common.Hash, error) {
-	if err := tx.VerifySignature(); err != nil {
-		return [32]byte{}, err
-	}
-	err := api.api.Broker().HandleTransaction(tx)
-	if err != nil {
-		return common.Hash{}, err
-	}
-
->>>>>>> feat(API): add web3 compatible APIs
 	return tx.GetHash().RawHash, nil
 }
 
@@ -473,10 +417,6 @@ func (api *PublicEthereumAPI) GetTransactionReceipt(hash common.Hash) (map[strin
 		"logs":              receipt.EvmLogs,
 
 		"transactionHash": hash,
-<<<<<<< HEAD
-=======
-		"contractAddress": receipt.ContractAddress.Bytes(),
->>>>>>> feat(API): add web3 compatible APIs
 		"gasUsed":         hexutil.Uint64(receipt.GasUsed),
 
 		"blockHash":        meta.BlockHash,
@@ -487,13 +427,10 @@ func (api *PublicEthereumAPI) GetTransactionReceipt(hash common.Hash) (map[strin
 		"to":   tx.GetTo().Bytes(),
 	}
 
-<<<<<<< HEAD
 	if receipt.ContractAddress != nil {
 		fields["contractAddress"] = receipt.ContractAddress.Bytes()
 	}
 
-=======
->>>>>>> feat(API): add web3 compatible APIs
 	return fields, nil
 }
 

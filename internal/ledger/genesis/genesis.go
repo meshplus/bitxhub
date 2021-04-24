@@ -2,6 +2,7 @@ package genesis
 
 import (
 	"encoding/json"
+	"math/big"
 
 	"github.com/meshplus/bitxhub-kit/bytesutil"
 	"github.com/meshplus/bitxhub-kit/types"
@@ -32,7 +33,7 @@ func Initialize(genesis *repo.Genesis, lg ledger.Ledger) error {
 	lg.SetState(constant.DIDRegistryContractAddr.Address(), []byte("admin-did"), admin)
 
 	for _, admin := range genesis.Admins {
-		lg.SetBalance(types.NewAddressByStr(admin.Address), 100000000)
+		lg.SetBalance(types.NewAddressByStr(admin.Address), new(big.Int).SetUint64(10000000000000000000))
 	}
 
 	for k, v := range genesis.Strategy {

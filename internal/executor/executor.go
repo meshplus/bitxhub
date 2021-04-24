@@ -2,12 +2,15 @@ package executor
 
 import (
 	"context"
+	"math/big"
 	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/event"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/meshplus/bitxhub-core/agency"
 	"github.com/meshplus/bitxhub-core/validator"
+	vm "github.com/meshplus/bitxhub-kit/evm"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -44,6 +47,9 @@ type BlockExecutor struct {
 	logsFeed         event.Feed
 	ctx              context.Context
 	cancel           context.CancelFunc
+
+	evm         *vm.EVM
+	evmChainCfg *params.ChainConfig
 }
 
 // New creates executor instance
@@ -70,6 +76,7 @@ func New(chainLedger ledger.Ledger, logger logrus.FieldLogger, typ string) (*Blo
 		currentHeight:    chainLedger.GetChainMeta().Height,
 		currentBlockHash: chainLedger.GetChainMeta().BlockHash,
 		wasmInstances:    make(map[string]wasmer.Instance),
+		evmChainCfg:      newEVMChainCfg(),
 	}
 	blockExecutor.txsExecutor = txsExecutor(blockExecutor.applyTx, registerBoltContracts, logger)
 
@@ -121,19 +128,7 @@ func (exec *BlockExecutor) ApplyReadonlyTransactions(txs []pb.Transaction) []*pb
 	receipts := make([]*pb.Receipt, 0, len(txs))
 
 	for i, tx := range txs {
-		receipt := &pb.Receipt{
-			Version: tx.GetVersion(),
-			TxHash:  tx.GetHash(),
-		}
-
-		ret, err := exec.applyTransaction(i, tx, "", nil)
-		if err != nil {
-			receipt.Status = pb.Receipt_FAILED
-			receipt.Ret = []byte(err.Error())
-		} else {
-			receipt.Status = pb.Receipt_SUCCESS
-			receipt.Ret = ret
-		}
+		receipt := exec.applyTransaction(i, tx, "", nil)
 
 		receipts = append(receipts, receipt)
 		// clear potential write to ledger
@@ -291,4 +286,20 @@ func registerBoltContracts() map[string]agency.Contract {
 	}
 
 	return boltvm.Register(boltContracts)
+}
+
+func newEVMChainCfg() *params.ChainConfig {
+	return &params.ChainConfig{
+		ChainID:             big.NewInt(1),
+		HomesteadBlock:      big.NewInt(0),
+		EIP150Block:         big.NewInt(0),
+		EIP155Block:         big.NewInt(0),
+		EIP158Block:         big.NewInt(0),
+		ByzantiumBlock:      big.NewInt(0),
+		ConstantinopleBlock: big.NewInt(0),
+		PetersburgBlock:     big.NewInt(0),
+		IstanbulBlock:       big.NewInt(0),
+		// MuirGlacierBlock:    big.NewInt(0),
+		// BerlinBlock:         big.NewInt(0),
+	}
 }

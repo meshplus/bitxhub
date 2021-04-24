@@ -1,6 +1,9 @@
 package ledger
 
 import (
+	"math/big"
+
+	vm "github.com/meshplus/bitxhub-kit/evm"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 )
@@ -9,6 +12,8 @@ import (
 type Ledger interface {
 	BlockchainLedger
 	StateAccessor
+
+	StateDB() vm.StateDB
 
 	AccountCache() *AccountCache
 
@@ -27,6 +32,9 @@ type Ledger interface {
 	// RemoveJournalsBeforeBlock
 	RemoveJournalsBeforeBlock(height uint64) error
 
+	PrepareBlock(*types.Hash)
+	ClearChangerAndRefund()
+
 	// Close release resource
 	Close()
 }
@@ -40,10 +48,10 @@ type StateAccessor interface {
 	GetAccount(*types.Address) *Account
 
 	// GetBalance
-	GetBalance(*types.Address) uint64
+	GetBalance(*types.Address) *big.Int
 
 	// SetBalance
-	SetBalance(*types.Address, uint64)
+	SetBalance(*types.Address, *big.Int)
 
 	// GetState
 	GetState(*types.Address, []byte) (bool, []byte)
@@ -77,6 +85,8 @@ type StateAccessor interface {
 
 	// Version
 	Version() uint64
+
+	GetLogs(types.Hash) []*pb.EvmLog
 
 	// Clear
 	Clear()

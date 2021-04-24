@@ -54,6 +54,14 @@ func (l *ChainLedger) GetBlock(height uint64) (*pb.Block, error) {
 	return block, nil
 }
 
+func (l *ChainLedger) GetBlockHash(height uint64) *types.Hash {
+	hash := l.blockchainStore.Get(compositeKey(blockHeightKey, height))
+	if hash == nil {
+		return &types.Hash{}
+	}
+	return types.NewHash(hash)
+}
+
 // GetBlockSign get the signature of block
 func (l *ChainLedger) GetBlockSign(height uint64) ([]byte, error) {
 	block, err := l.GetBlock(height)
@@ -309,6 +317,7 @@ func (l *ChainLedger) prepareBlock(batcher storage.Batch, block *pb.Block) ([]by
 
 	hash := block.BlockHash.String()
 	batcher.Put(compositeKey(blockHashKey, hash), []byte(fmt.Sprintf("%d", height)))
+	batcher.Put(compositeKey(blockHeightKey, height), []byte(hash))
 
 	return bs, nil
 }

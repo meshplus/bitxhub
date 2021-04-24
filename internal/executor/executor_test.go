@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math/big"
 	"math/rand"
 	"path/filepath"
 	"sync"
@@ -93,7 +94,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	mockLedger.EXPECT().Clear().AnyTimes()
 	mockLedger.EXPECT().GetState(gomock.Any(), gomock.Any()).Return(true, []byte("10")).AnyTimes()
 	mockLedger.EXPECT().SetState(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
-	mockLedger.EXPECT().GetBalance(gomock.Any()).Return(uint64(10)).AnyTimes()
+	mockLedger.EXPECT().GetBalance(gomock.Any()).Return(new(big.Int).SetUint64(10)).AnyTimes()
 	mockLedger.EXPECT().SetBalance(gomock.Any(), gomock.Any()).AnyTimes()
 	mockLedger.EXPECT().SetNonce(gomock.Any(), gomock.Any()).AnyTimes()
 	mockLedger.EXPECT().GetNonce(gomock.Any()).Return(uint64(0)).AnyTimes()
@@ -102,6 +103,8 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	mockLedger.EXPECT().PersistExecutionResult(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	mockLedger.EXPECT().FlushDirtyDataAndComputeJournal().Return(make(map[string]*ledger.Account), &ledger.BlockJournal{ChangedHash: &types.Hash{}}).AnyTimes()
 	mockLedger.EXPECT().PersistBlockData(gomock.Any()).AnyTimes()
+	mockLedger.EXPECT().StateDB().AnyTimes()
+	mockLedger.EXPECT().PrepareBlock(gomock.Any()).AnyTimes()
 	logger := log.NewWithModule("executor")
 
 	exec, err := New(mockLedger, logger, executorType)
@@ -296,7 +299,7 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 
 	_, from := loadAdminKey(t)
 
-	ldg.SetBalance(from, 100000000)
+	ldg.SetBalance(from, new(big.Int).SetInt64(100000000))
 	account, journal := ldg.FlushDirtyDataAndComputeJournal()
 	err = ldg.Commit(1, account, journal)
 	require.Nil(t, err)
@@ -322,7 +325,7 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 
 	block := <-ch
 	require.EqualValues(t, 2, block.Block.Height())
-	require.EqualValues(t, uint64(99999997), ldg.GetBalance(from))
+	require.EqualValues(t, uint64(99999997), ldg.GetBalance(from).Uint64())
 
 	// test executor with readonly ledger
 	viewLedger, err := ledger.New(createMockRepo(t), blockchainStorage, ldb, blockFile, accountCache, log.NewWithModule("ledger"))

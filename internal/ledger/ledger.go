@@ -22,6 +22,11 @@ var (
 	ErrorRemoveJournalOutOfRange = fmt.Errorf("remove journal out of range")
 )
 
+type revision struct {
+	id           int
+	changerIndex int
+}
+
 type ChainLedger struct {
 	logger          logrus.FieldLogger
 	blockchainStore storage.Storage
@@ -32,7 +37,6 @@ type ChainLedger struct {
 	events          sync.Map
 	accounts        map[string]*Account
 	accountCache    *AccountCache
-	changer         *stateChanger
 	prevJnlHash     *types.Hash
 	repo            *repo.Repo
 
@@ -41,6 +45,15 @@ type ChainLedger struct {
 
 	journalMutex sync.RWMutex
 	lock         sync.RWMutex
+
+	validRevisions []revision
+	nextRevisionId int
+	changer        *stateChanger
+
+	accessList *accessList
+	preimages  map[types.Hash][]byte
+	refund     uint64
+	logs       *evmLogs
 }
 
 type BlockData struct {
@@ -88,8 +101,11 @@ func New(repo *repo.Repo, blockchainStore storage.Storage, ldb storage.Storage, 
 		maxJnlHeight:    maxJnlHeight,
 		accounts:        make(map[string]*Account),
 		accountCache:    accountCache,
-		changer:         newChanger(),
 		prevJnlHash:     prevJnlHash,
+		preimages:       make(map[types.Hash][]byte),
+		changer:         newChanger(),
+		accessList:      newAccessList(),
+		logs:            NewEvmLogs(),
 	}
 
 	height := maxJnlHeight

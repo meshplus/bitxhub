@@ -4,13 +4,19 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/cbergoon/merkletree"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/meshplus/bitxhub-core/agency"
+	vm1 "github.com/meshplus/bitxhub-kit/evm"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/ledger"
@@ -37,6 +43,8 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	}
 
 	exec.verifyProofs(blockWrapper)
+	exec.evm = newEvm(block.Height(), uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateDB())
+	exec.ledger.PrepareBlock(block.BlockHash)
 	receipts := exec.txsExecutor.ApplyTransactions(block.Transactions.Transactions, blockWrapper.invalidTx)
 
 	applyTxsDuration.Observe(float64(time.Since(current)) / float64(time.Second))
@@ -222,20 +230,9 @@ func (exec *BlockExecutor) verifySign(commitEvent *pb.CommitEvent) *BlockWrapper
 }
 
 func (exec *BlockExecutor) applyTx(index int, tx pb.Transaction, invalidReason agency.InvalidReason, opt *agency.TxOpt) *pb.Receipt {
-	receipt := &pb.Receipt{
-		Version: tx.GetVersion(),
-		TxHash:  tx.GetHash(),
-	}
 	normalTx := true
 
-	ret, err := exec.applyTransaction(index, tx, invalidReason, opt)
-	if err != nil {
-		receipt.Status = pb.Receipt_FAILED
-		receipt.Ret = []byte(err.Error())
-	} else {
-		receipt.Status = pb.Receipt_SUCCESS
-		receipt.Ret = ret
-	}
+	receipt := exec.applyTransaction(index, tx, invalidReason, opt)
 
 	events := exec.ledger.Events(tx.GetHash().String())
 	if len(events) != 0 {
@@ -282,17 +279,32 @@ func (exec *BlockExecutor) postLogsEvent(receipts []*pb.Receipt) {
 	}()
 }
 
-func (exec *BlockExecutor) applyTransaction(i int, tx pb.Transaction, invalidReason agency.InvalidReason, opt *agency.TxOpt) ([]byte, error) {
+func (exec *BlockExecutor) applyTransaction(i int, tx pb.Transaction, invalidReason agency.InvalidReason, opt *agency.TxOpt) *pb.Receipt {
+	receipt := &pb.Receipt{
+		Version: tx.GetVersion(),
+		TxHash:  tx.GetHash(),
+	}
 	switch tx.(type) {
 	case *pb.BxhTransaction:
 		bxhTx := tx.(*pb.BxhTransaction)
-		return exec.applyBxhTransaction(i, bxhTx, invalidReason, opt)
+		ret, err := exec.applyBxhTransaction(i, bxhTx, invalidReason, opt)
+		if err != nil {
+			receipt.Status = pb.Receipt_FAILED
+			receipt.Ret = []byte(err.Error())
+		} else {
+			receipt.Status = pb.Receipt_SUCCESS
+			receipt.Ret = ret
+		}
+		return receipt
 	case *pb.EthTransaction:
 		// TODO
-
+		ethTx := tx.(*pb.EthTransaction)
+		return exec.applyEthTransaction(i, ethTx)
 	}
 
-	return nil, fmt.Errorf("unknown tx type")
+	receipt.Status = pb.Receipt_FAILED
+	receipt.Ret = []byte(fmt.Errorf("unknown tx type").Error())
+	return receipt
 }
 
 func (exec *BlockExecutor) applyBxhTransaction(i int, tx *pb.BxhTransaction, invalidReason agency.InvalidReason, opt *agency.TxOpt) ([]byte, error) {
@@ -345,6 +357,46 @@ func (exec *BlockExecutor) applyBxhTransaction(i int, tx *pb.BxhTransaction, inv
 	}
 }
 
+func (exec *BlockExecutor) applyEthTransaction(i int, tx *pb.EthTransaction) *pb.Receipt {
+	receipt := &pb.Receipt{
+		Version: tx.GetVersion(),
+		TxHash:  tx.GetHash(),
+	}
+	gp := new(core.GasPool).AddGas(0x2fefd8)
+	msg := ledger.NewMessage(tx)
+	statedb := exec.ledger.StateDB()
+	statedb.PrepareEVM(common.BytesToHash(tx.GetHash().Bytes()), i)
+	snapshot := statedb.Snapshot()
+	txContext := vm1.NewEVMTxContext(msg)
+	exec.evm.Reset(txContext, exec.ledger.StateDB())
+	result, err := vm1.ApplyMessage(exec.evm, msg, gp)
+	exec.logger.Errorln(err)
+	if err != nil {
+		statedb.RevertToSnapshot(snapshot)
+		receipt.Status = pb.Receipt_FAILED
+		receipt.Ret = []byte(err.Error())
+		exec.ledger.ClearChangerAndRefund()
+		return receipt
+	}
+	if result.Failed() {
+		exec.logger.Infoln(result.Failed())
+		receipt.Status = pb.Receipt_FAILED
+	} else {
+		receipt.Status = pb.Receipt_SUCCESS
+	}
+	receipt.TxHash = tx.GetHash()
+	receipt.GasUsed = result.UsedGas
+	exec.ledger.ClearChangerAndRefund()
+	if msg.To() == nil || bytes.Equal(msg.To().Bytes(), common.Address{}.Bytes()) {
+		receipt.ContractAddress = types.NewAddress(crypto.CreateAddress(exec.evm.TxContext.Origin, tx.GetNonce()).Bytes())
+	}
+
+	receipt.EvmLogs = exec.ledger.GetLogs(*tx.GetHash())
+	receipt.Bloom = ledger.CreateBloom(ledger.EvmReceipts{receipt})
+	// receipt.Bloom = types.CreateBloom(types.Receipts{receipt})
+	return receipt
+}
+
 func (exec *BlockExecutor) clear() {
 	exec.ledger.Clear()
 }
@@ -354,15 +406,15 @@ func (exec *BlockExecutor) transfer(from, to *types.Address, value uint64) error
 		return nil
 	}
 
-	fv := exec.ledger.GetBalance(from)
+	fv := exec.ledger.GetBalance(from).Uint64()
 	if fv < value {
 		return fmt.Errorf("not sufficient funds for %s", from.String())
 	}
 
-	tv := exec.ledger.GetBalance(to)
+	tv := exec.ledger.GetBalance(to).Uint64()
 
-	exec.ledger.SetBalance(from, fv-value)
-	exec.ledger.SetBalance(to, tv+value)
+	exec.ledger.SetBalance(from, new(big.Int).SetUint64(fv-value))
+	exec.ledger.SetBalance(to, new(big.Int).SetUint64(tv+value))
 
 	return nil
 }
@@ -403,4 +455,10 @@ func (exec *BlockExecutor) getContracts(opt *agency.TxOpt) map[string]agency.Con
 	}
 
 	return exec.txsExecutor.GetBoltContracts()
+}
+
+func newEvm(number uint64, timestamp uint64, chainCfg *params.ChainConfig, db vm1.StateDB) *vm1.EVM {
+	blkCtx := vm1.NewEVMBlockContext(number, timestamp, db)
+
+	return vm1.NewEVM(blkCtx, vm1.TxContext{}, db, chainCfg, vm1.Config{})
 }

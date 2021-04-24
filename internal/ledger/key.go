@@ -9,6 +9,7 @@ import (
 const (
 	blockKey           = "block-"
 	blockHashKey       = "block-hash-"
+	blockHeightKey     = "block-height-"
 	blockTxSetKey      = "block-tx-set-"
 	interchainMetaKey  = "interchain-meta-"
 	receiptKey         = "receipt-"
