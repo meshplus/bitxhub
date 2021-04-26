@@ -3,6 +3,7 @@ title = "BitXHub configuration file"
 solo = false
 
 [port]
+  jsonrpc = 8881
   grpc = 60011
   gateway = 9091
   pprof = 53121
@@ -61,6 +62,8 @@ solo = false
   type = "serial"  # opensource version only supports serial type, commercial version supports serial and parallel types
 
 [genesis]
+  chainid = 1
+  gas_limit = 0x2fefd8
   dider = "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013"
   [[genesis.admins]]
     address = "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013"

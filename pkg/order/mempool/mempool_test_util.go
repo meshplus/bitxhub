@@ -47,7 +47,7 @@ func genPrivKey() crypto.PrivateKey {
 	return privKey
 }
 
-func constructTx(nonce uint64, privKey *crypto.PrivateKey) *pb.Transaction {
+func constructTx(nonce uint64, privKey *crypto.PrivateKey) pb.Transaction {
 	var privK crypto.PrivateKey
 	if privKey == nil {
 		privK = genPrivKey()
@@ -55,7 +55,7 @@ func constructTx(nonce uint64, privKey *crypto.PrivateKey) *pb.Transaction {
 	privK = *privKey
 	pubKey := privK.PublicKey()
 	addr, _ := pubKey.Address()
-	tx := &pb.Transaction{Nonce: nonce}
+	tx := &pb.BxhTransaction{Nonce: nonce}
 	tx.Timestamp = time.Now().UnixNano()
 	tx.From = addr
 	sig, _ := privK.Sign(tx.SignHash().Bytes())

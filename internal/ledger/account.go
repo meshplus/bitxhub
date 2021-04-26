@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/json"
+	"math/big"
 	"sort"
 	"strings"
 	"sync"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/meshplus/bitxhub-kit/types"
 )
@@ -24,19 +26,24 @@ type Account struct {
 	ldb            storage.Storage
 	cache          *AccountCache
 	lock           sync.RWMutex
+
+	changer  *stateChanger
+	suicided bool
 }
 
 type innerAccount struct {
-	Nonce    uint64 `json:"nonce"`
-	Balance  uint64 `json:"balance"`
-	CodeHash []byte `json:"code_hash"`
+	Nonce    uint64   `json:"nonce"`
+	Balance  *big.Int `json:"balance"`
+	CodeHash []byte   `json:"code_hash"`
 }
 
-func newAccount(ldb storage.Storage, cache *AccountCache, addr *types.Address) *Account {
+func newAccount(ldb storage.Storage, cache *AccountCache, addr *types.Address, changer *stateChanger) *Account {
 	return &Account{
-		Addr:  addr,
-		ldb:   ldb,
-		cache: cache,
+		Addr:     addr,
+		ldb:      ldb,
+		cache:    cache,
+		changer:  changer,
+		suicided: false,
 	}
 }
 
@@ -62,6 +69,28 @@ func (o *Account) GetState(key []byte) (bool, []byte) {
 	return val != nil, val
 }
 
+func (o *Account) GetCommittedState(key []byte) []byte {
+	if val, exist := o.originState.Load(string(key)); exist {
+		value := val.([]byte)
+		if val != nil {
+			return (&types.Hash{}).Bytes()
+		}
+		return value
+	}
+
+	val, ok := o.cache.getState(o.Addr, string(key))
+	if !ok {
+		val = o.ldb.Get(composeStateKey(o.Addr, key))
+	}
+
+	o.originState.Store(string(key), val)
+
+	if val != nil {
+		return (&types.Hash{}).Bytes()
+	}
+	return val
+}
+
 // SetState Set account state
 func (o *Account) SetState(key []byte, value []byte) {
 	o.GetState(key)
@@ -75,11 +104,15 @@ func (o *Account) AddState(key []byte, value []byte) {
 
 // SetCodeAndHash Set the contract code and hash
 func (o *Account) SetCodeAndHash(code []byte) {
-	ret := sha256.Sum256(code)
+	ret := crypto.Keccak256Hash(code)
+	o.changer.append(codeChange{
+		account:  o.Addr,
+		prevcode: o.Code(),
+	})
 	if o.dirtyAccount == nil {
 		o.dirtyAccount = copyOrNewIfEmpty(o.originAccount)
 	}
-	o.dirtyAccount.CodeHash = ret[:]
+	o.dirtyAccount.CodeHash = ret.Bytes()
 	o.dirtyCode = code
 }
 
@@ -123,6 +156,10 @@ func (o *Account) CodeHash() []byte {
 
 // SetNonce Set the nonce which indicates the contract number
 func (o *Account) SetNonce(nonce uint64) {
+	o.changer.append(nonceChange{
+		account: o.Addr,
+		prev:    o.GetNonce(),
+	})
 	if o.dirtyAccount == nil {
 		o.dirtyAccount = copyOrNewIfEmpty(o.originAccount)
 	}
@@ -141,22 +178,40 @@ func (o *Account) GetNonce() uint64 {
 }
 
 // GetBalance Get the balance from the account
-func (o *Account) GetBalance() uint64 {
+func (o *Account) GetBalance() *big.Int {
 	if o.dirtyAccount != nil {
 		return o.dirtyAccount.Balance
 	}
 	if o.originAccount != nil {
 		return o.originAccount.Balance
 	}
-	return 0
+	return new(big.Int).SetInt64(0)
 }
 
 // SetBalance Set the balance to the account
-func (o *Account) SetBalance(balance uint64) {
+func (o *Account) SetBalance(balance *big.Int) {
+	o.changer.append(balanceChange{
+		account: o.Addr,
+		prev:    new(big.Int).Set(o.GetBalance()),
+	})
 	if o.dirtyAccount == nil {
 		o.dirtyAccount = copyOrNewIfEmpty(o.originAccount)
 	}
 	o.dirtyAccount.Balance = balance
+}
+
+func (o *Account) SubBalance(amount *big.Int) {
+	if amount.Sign() == 0 {
+		return
+	}
+	o.SetBalance(new(big.Int).Sub(o.GetBalance(), amount))
+}
+
+func (o *Account) AddBalance(amount *big.Int) {
+	if amount.Sign() == 0 {
+		return
+	}
+	o.SetBalance(new(big.Int).Add(o.GetBalance(), amount))
 }
 
 // Query Query the value using key
@@ -276,6 +331,14 @@ func (o *Account) getDirtyData() []byte {
 	return append(dirtyData, o.dirtyStateHash.Bytes()...)
 }
 
+func (o *Account) markSuicided() {
+	o.suicided = true
+}
+
+func (o *Account) isEmpty() bool {
+	return o.GetBalance().Sign() == 0 && o.GetNonce() == 0 && o.Code() == nil && o.suicided == false
+}
+
 func innerAccountChanged(account0 *innerAccount, account1 *innerAccount) bool {
 	// If account1 is nil, the account does not change whatever account0 is.
 	if account1 == nil {
@@ -285,7 +348,7 @@ func innerAccountChanged(account0 *innerAccount, account1 *innerAccount) bool {
 	// If account already exists, account0 is not nil. We should compare account0 and account1 to get the result.
 	if account0 != nil &&
 		account0.Nonce == account1.Nonce &&
-		account0.Balance == account1.Balance &&
+		account0.Balance.Cmp(account1.Balance) == 0 &&
 		bytes.Equal(account0.CodeHash, account1.CodeHash) {
 		return false
 	}
@@ -311,7 +374,7 @@ func (o *innerAccount) Unmarshal(data []byte) error {
 
 func copyOrNewIfEmpty(o *innerAccount) *innerAccount {
 	if o == nil {
-		return &innerAccount{}
+		return &innerAccount{Balance: big.NewInt(0)}
 	}
 
 	return &innerAccount{

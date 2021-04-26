@@ -6,9 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math/big"
 	"path/filepath"
 	"testing"
 
+	crypto1 "github.com/ethereum/go-ethereum/crypto"
 	"github.com/meshplus/bitxhub-kit/bytesutil"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/log"
@@ -169,7 +171,7 @@ func TestChainLedger_Commit(t *testing.T) {
 	assert.Equal(t, uint64(3), ledger.Version())
 	assert.Equal(t, "0xe9FC370DD36C9BD5f67cCfbc031C909F53A3d8bC7084C01362c55f2D42bA841c", journal.ChangedHash.String())
 
-	ledger.SetBalance(account, 100)
+	ledger.SetBalance(account, new(big.Int).SetInt64(100))
 	accounts, journal = ledger.FlushDirtyDataAndComputeJournal()
 	err = ledger.Commit(4, accounts, journal)
 	assert.Nil(t, err)
@@ -195,7 +197,7 @@ func TestChainLedger_Commit(t *testing.T) {
 	entry := journal5.Journals[0]
 	assert.Equal(t, account.String(), entry.Address.String())
 	assert.True(t, entry.AccountChanged)
-	assert.Equal(t, uint64(100), entry.PrevAccount.Balance)
+	assert.Equal(t, uint64(100), entry.PrevAccount.Balance.Uint64())
 	assert.Equal(t, uint64(0), entry.PrevAccount.Nonce)
 	assert.Nil(t, entry.PrevAccount.CodeHash)
 	assert.Equal(t, 2, len(entry.PrevStates))
@@ -220,7 +222,7 @@ func TestChainLedger_Commit(t *testing.T) {
 	ok, _ = ldg.GetState(account, []byte("c"))
 	assert.False(t, ok)
 
-	assert.Equal(t, uint64(0), ldg.GetBalance(account))
+	assert.Equal(t, uint64(0), ldg.GetBalance(account).Uint64())
 	assert.Equal(t, []byte(nil), ldg.GetCode(account))
 
 	ver := ldg.Version()
@@ -237,30 +239,32 @@ func TestChainLedger_Rollback(t *testing.T) {
 	hash0 := types.Hash{}
 	assert.Equal(t, &hash0, ledger.prevJnlHash)
 
-	ledger.SetBalance(addr0, 1)
+	ledger.SetBalance(addr0, new(big.Int).SetInt64(1))
 	accounts, journal1 := ledger.FlushDirtyDataAndComputeJournal()
 	ledger.PersistBlockData(genBlockData(1, accounts, journal1))
 
-	ledger.SetBalance(addr0, 2)
+	ledger.SetBalance(addr0, new(big.Int).SetInt64(2))
 	ledger.SetState(addr0, []byte("a"), []byte("2"))
 
 	code := sha256.Sum256([]byte("code"))
-	codeHash := sha256.Sum256(code[:])
+	ret := crypto1.Keccak256Hash(code[:])
+	codeHash := ret.Bytes()
 	ledger.SetCode(addr0, code[:])
 
 	accounts, journal2 := ledger.FlushDirtyDataAndComputeJournal()
 	ledger.PersistBlockData(genBlockData(2, accounts, journal2))
 
 	account0 := ledger.GetAccount(addr0)
-	assert.Equal(t, uint64(2), account0.GetBalance())
+	assert.Equal(t, uint64(2), account0.GetBalance().Uint64())
 
-	ledger.SetBalance(addr1, 3)
-	ledger.SetBalance(addr0, 4)
+	ledger.SetBalance(addr1, new(big.Int).SetInt64(3))
+	ledger.SetBalance(addr0, new(big.Int).SetInt64(4))
 	ledger.SetState(addr0, []byte("a"), []byte("3"))
 	ledger.SetState(addr0, []byte("b"), []byte("4"))
 
 	code1 := sha256.Sum256([]byte("code1"))
-	codeHash1 := sha256.Sum256(code1[:])
+	ret1 := crypto1.Keccak256Hash(code1[:])
+	codeHash1 := ret1.Bytes()
 	ledger.SetCode(addr0, code1[:])
 
 	accounts, journal3 := ledger.FlushDirtyDataAndComputeJournal()
@@ -273,7 +277,7 @@ func TestChainLedger_Rollback(t *testing.T) {
 	assert.Equal(t, uint64(3), ledger.chainMeta.Height)
 
 	account0 = ledger.GetAccount(addr0)
-	assert.Equal(t, uint64(4), account0.GetBalance())
+	assert.Equal(t, uint64(4), account0.GetBalance().Uint64())
 
 	err = ledger.Rollback(4)
 	assert.Equal(t, ErrorRollbackToHigherNumber, err)
@@ -296,7 +300,7 @@ func TestChainLedger_Rollback(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, block)
 	assert.Equal(t, uint64(3), ledger.chainMeta.Height)
-	assert.Equal(t, codeHash1[:], account0.CodeHash())
+	assert.Equal(t, codeHash1, account0.CodeHash())
 	assert.Equal(t, code1[:], account0.Code())
 
 	err = ledger.Rollback(2)
@@ -310,7 +314,7 @@ func TestChainLedger_Rollback(t *testing.T) {
 	assert.Equal(t, uint64(2), ledger.maxJnlHeight)
 
 	account0 = ledger.GetAccount(addr0)
-	assert.Equal(t, uint64(2), account0.GetBalance())
+	assert.Equal(t, uint64(2), account0.GetBalance().Uint64())
 	assert.Equal(t, uint64(0), account0.GetNonce())
 	assert.Equal(t, codeHash[:], account0.CodeHash())
 	assert.Equal(t, code[:], account0.Code())
@@ -319,7 +323,7 @@ func TestChainLedger_Rollback(t *testing.T) {
 	assert.Equal(t, []byte("2"), val)
 
 	account1 := ledger.GetAccount(addr1)
-	assert.Equal(t, uint64(0), account1.GetBalance())
+	assert.Equal(t, uint64(0), account1.GetBalance().Uint64())
 	assert.Equal(t, uint64(0), account1.GetNonce())
 	assert.Nil(t, account1.CodeHash())
 	assert.Nil(t, account1.Code())
@@ -449,7 +453,7 @@ func TestChainLedger_GetAccount(t *testing.T) {
 	key1 := []byte{100, 101}
 
 	account := ledger.GetOrCreateAccount(addr)
-	account.SetBalance(1)
+	account.SetBalance(new(big.Int).SetInt64(1))
 	account.SetNonce(2)
 	account.SetCodeAndHash(code)
 
@@ -535,7 +539,7 @@ func TestChainLedger_AddAccountsToCache(t *testing.T) {
 	val := []byte{2}
 	code := bytesutil.RightPadBytes([]byte{1, 2, 3, 4}, 100)
 
-	ledger.SetBalance(addr, 100)
+	ledger.SetBalance(addr, new(big.Int).SetInt64(100))
 	ledger.SetNonce(addr, 1)
 	ledger.SetState(addr, key, val)
 	ledger.SetCode(addr, code)
@@ -545,10 +549,11 @@ func TestChainLedger_AddAccountsToCache(t *testing.T) {
 
 	innerAccount, ok := ledger.accountCache.getInnerAccount(addr)
 	assert.True(t, ok)
-	assert.Equal(t, uint64(100), innerAccount.Balance)
+	assert.Equal(t, uint64(100), innerAccount.Balance.Uint64())
 	assert.Equal(t, uint64(1), innerAccount.Nonce)
-	codeHash := sha256.Sum256(code)
-	assert.Equal(t, types.NewHash(codeHash[:]).Bytes(), innerAccount.CodeHash)
+	ret := crypto1.Keccak256Hash(code)
+	codeHash := ret.Bytes()
+	assert.Equal(t, types.NewHash(codeHash).Bytes(), innerAccount.CodeHash)
 
 	val1, ok := ledger.accountCache.getState(addr, string(key))
 	assert.True(t, ok)
@@ -558,7 +563,7 @@ func TestChainLedger_AddAccountsToCache(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, code, code1)
 
-	assert.Equal(t, uint64(100), ledger.GetBalance(addr))
+	assert.Equal(t, uint64(100), ledger.GetBalance(addr).Uint64())
 	assert.Equal(t, uint64(1), ledger.GetNonce(addr))
 
 	ok, val1 = ledger.GetState(addr, key)
@@ -569,7 +574,7 @@ func TestChainLedger_AddAccountsToCache(t *testing.T) {
 	err := ledger.Commit(1, accounts, journal)
 	assert.Nil(t, err)
 
-	assert.Equal(t, uint64(100), ledger.GetBalance(addr))
+	assert.Equal(t, uint64(100), ledger.GetBalance(addr).Uint64())
 	assert.Equal(t, uint64(1), ledger.GetNonce(addr))
 
 	ok, val1 = ledger.GetState(addr, key)
@@ -805,8 +810,8 @@ func TestGetReceipt1(t *testing.T) {
 func TestPrepare(t *testing.T) {
 	ledger, _ := initLedger(t, "")
 	batch := ledger.blockchainStore.NewBatch()
-	transactions := []*pb.Transaction{}
-	transaction := &pb.Transaction{
+	transactions := []pb.Transaction{}
+	transaction := &pb.BxhTransaction{
 		TransactionHash: types.NewHash([]byte("1")),
 	}
 	transactions = append(transactions, transaction)
@@ -815,7 +820,7 @@ func TestPrepare(t *testing.T) {
 			Number: uint64(0),
 		},
 		BlockHash:    types.NewHash([]byte{1}),
-		Transactions: transactions,
+		Transactions: &pb.Transactions{Transactions: transactions},
 	}
 	_, err := ledger.prepareBlock(batch, block)
 	require.Nil(t, err)
@@ -837,7 +842,7 @@ func genBlockData(height uint64, accounts map[string]*Account, journal *BlockJou
 				Number: height,
 			},
 			BlockHash:    types.NewHash([]byte{1}),
-			Transactions: []*pb.Transaction{},
+			Transactions: &pb.Transactions{},
 		},
 		Receipts:       nil,
 		Accounts:       accounts,

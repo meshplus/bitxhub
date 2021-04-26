@@ -3,6 +3,7 @@ package order
 import (
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub/pkg/order/mempool"
 )
 
 //go:generate mockgen -destination mock_order/mock_order.go -package mock_order -source order.go
@@ -14,7 +15,7 @@ type Order interface {
 	Stop()
 
 	// Prepare means send transaction to the consensus engine
-	Prepare(tx *pb.Transaction) error
+	Prepare(tx pb.Transaction) error
 
 	// Commit recv blocks form Order and commit it by order
 	Commit() chan *pb.CommitEvent
@@ -36,4 +37,6 @@ type Order interface {
 
 	// DelNode sends a delete vp request by given id.
 	DelNode(delID uint64) error
+
+	GetPool() mempool.MemPool
 }

@@ -44,7 +44,7 @@ func (suite *RegisterAppchain) SetupSuite() {
 
 	suite.from, err = suite.privKey.PublicKey().Address()
 	suite.Require().Nil(err)
-	suite.normalNonce = 1
+	suite.normalNonce = 0
 }
 
 // Appchain registers in bitxhub
@@ -89,8 +89,8 @@ func (suite *RegisterAppchain) TestFetchAppchains() {
 	suite.Require().Nil(err)
 	k2, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
-	k1Nonce := uint64(1)
-	k2Nonce := uint64(1)
+	k1Nonce := uint64(0)
+	k2Nonce := uint64(0)
 
 	pub1, err := k1.PublicKey().Bytes()
 	suite.Require().Nil(err)
@@ -177,8 +177,8 @@ func (suite *RegisterAppchain) TestGetPubKeyByChainID() {
 	suite.Require().Nil(err)
 	k2, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
-	k1Nonce := uint64(1)
-	k2Nonce := uint64(1)
+	k1Nonce := uint64(0)
+	k2Nonce := uint64(0)
 
 	pub1, err := k1.PublicKey().Bytes()
 	suite.Require().Nil(err)
@@ -249,7 +249,7 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 	suite.Require().Nil(err)
 	pub1, err := k1.PublicKey().Bytes()
 	suite.Require().Nil(err)
-	k1Nonce := uint64(1)
+	k1Nonce := uint64(0)
 	addr1, err := k1.PublicKey().Address()
 	suite.Require().Nil(err)
 
@@ -281,7 +281,7 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 	suite.Require().Nil(err)
 	adminAddr, err := priAdmin.PublicKey().Address()
 	suite.Require().Nil(err)
-	adminNonce := uint64(1)
+	adminNonce := uint64(0)
 
 	adminDID := genUniqueAppchainDID(adminAddr.String())
 	args = []*pb.Arg{

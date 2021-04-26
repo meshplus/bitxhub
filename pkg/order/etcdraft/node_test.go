@@ -77,7 +77,7 @@ func TestNode_Start(t *testing.T) {
 
 	commitEvent := <-order.Commit()
 	require.Equal(t, uint64(2), commitEvent.Block.BlockHeader.Number)
-	require.Equal(t, 1, len(commitEvent.Block.Transactions))
+	require.Equal(t, 1, len(commitEvent.Block.Transactions.Transactions))
 
 	order.Stop()
 }
@@ -138,7 +138,7 @@ func TestMulti_Node_Start(t *testing.T) {
 	for i := 0; i < len(orders); i++ {
 		commitEvent := <-orders[i].Commit()
 		require.Equal(t, uint64(2), commitEvent.Block.BlockHeader.Number)
-		require.Equal(t, 1, len(commitEvent.Block.Transactions))
+		require.Equal(t, 1, len(commitEvent.Block.Transactions.Transactions))
 	}
 }
 
@@ -196,7 +196,7 @@ func TestMulti_Node_Start_Without_Cert_Verification(t *testing.T) {
 	for i := 0; i < len(orders); i++ {
 		commitEvent := <-orders[i].Commit()
 		require.Equal(t, uint64(2), commitEvent.Block.BlockHeader.Number)
-		require.Equal(t, 1, len(commitEvent.Block.Transactions))
+		require.Equal(t, 1, len(commitEvent.Block.Transactions.Transactions))
 	}
 }
 
@@ -221,7 +221,7 @@ func TestReportState(t *testing.T) {
 	ast.Equal(true, ok)
 	ast.Equal(uint64(10), appliedIndex.(uint64))
 	nonce := node.GetPendingNonceByAccount("account1")
-	ast.Equal(uint64(1), nonce)
+	ast.Equal(uint64(0), nonce)
 	err = node.DelNode(uint64(1))
 }
 
@@ -233,7 +233,7 @@ func TestGetPendingNonceByAccount(t *testing.T) {
 	err = node.Start()
 	ast.Nil(err)
 	nonce := node.GetPendingNonceByAccount("account1")
-	ast.Equal(uint64(1), nonce)
+	ast.Equal(uint64(0), nonce)
 	err = node.DelNode(uint64(1))
 }
 
@@ -248,7 +248,7 @@ func TestRun(t *testing.T) {
 	// test confChangeC
 	node.confChangeC <- raftpb.ConfChange{ID: uint64(2)}
 	// test rebroadcastTicker
-	txs := make([]*pb.Transaction, 0)
+	txs := make([]pb.Transaction, 0)
 	txs = append(txs, constructTx(1))
 	node.mempool.ProcessTransactions(txs, false, true)
 	time.Sleep(250 * time.Millisecond)

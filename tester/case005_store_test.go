@@ -27,7 +27,7 @@ func (suite *Store) SetupSuite() {
 func (suite *Store) TestStore() {
 	k, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
-	kNonce := uint64(1)
+	kNonce := uint64(0)
 
 	args := []*pb.Arg{
 		pb.String("123"),

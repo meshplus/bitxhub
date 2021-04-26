@@ -9,6 +9,7 @@ package vmledger
 // extern void add_state(void *context, long long key_ptr, long long value_ptr);
 import "C"
 import (
+	"math/big"
 	"unsafe"
 
 	"github.com/meshplus/bitxhub/internal/ledger"
@@ -20,7 +21,7 @@ func get_balance(context unsafe.Pointer) int64 {
 	ctx := wasmer.IntoInstanceContext(context)
 	ctxMap := ctx.Data().(map[string]interface{})
 	account := ctxMap["account"].(*ledger.Account)
-	return int64(account.GetBalance())
+	return account.GetBalance().Int64()
 }
 
 //export set_balance
@@ -28,7 +29,7 @@ func set_balance(context unsafe.Pointer, value int64) {
 	ctx := wasmer.IntoInstanceContext(context)
 	ctxMap := ctx.Data().(map[string]interface{})
 	account := ctxMap["account"].(*ledger.Account)
-	account.SetBalance(uint64(value))
+	account.SetBalance(new(big.Int).SetUint64(uint64(value)))
 }
 
 //export get_state

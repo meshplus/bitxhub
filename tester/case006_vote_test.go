@@ -65,7 +65,7 @@ func (suite *Governance) TestGovernance() {
 	suite.Require().Nil(err)
 	addr, err := appchainPri.PublicKey().Address()
 	suite.Require().Nil(err)
-	appchainNonce := uint64(1)
+	appchainNonce := uint64(0)
 
 	// 1. Register ==============================================
 	did := genUniqueAppchainDID(addr.String())

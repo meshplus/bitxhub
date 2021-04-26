@@ -14,7 +14,10 @@ require (
 	github.com/gobuffalo/packr v1.30.1
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/mock v1.5.0
+	github.com/golang/protobuf v1.5.0 // indirect
 	github.com/google/btree v1.0.0
+	github.com/google/go-cmp v0.5.5 // indirect
+	github.com/gorilla/mux v1.8.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
@@ -23,8 +26,7 @@ require (
 	github.com/juju/ratelimit v1.0.1
 	github.com/libp2p/go-libp2p-core v0.5.6
 	github.com/magiconair/properties v1.8.4
-	//github.com/meshplus/bitxhub-core v1.2.1-0.20210426113834-e5d1e9078142
-	github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20210426113617-09421d61d97e
+	github.com/meshplus/bitxhub-core v1.3.0
 	github.com/meshplus/bitxhub-kit v1.2.0
 	github.com/meshplus/bitxhub-model v1.2.0
 	github.com/meshplus/bitxid v0.0.0-20210412025850-e0eaf0f9063a
@@ -62,9 +64,5 @@ replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20200218
 replace google.golang.org/grpc => google.golang.org/grpc v1.33.0
 
 replace github.com/hyperledger/fabric => github.com/hyperledger/fabric v2.0.1+incompatible
-
-replace github.com/meshplus/bitxhub-kit => github.com/meshplus/bitxhub-kit v1.1.2-0.20210112075018-319e668d6359
-
-replace github.com/meshplus/bitxhub-model => github.com/meshplus/bitxhub-model v1.1.2-0.20210409090411-de23bd385c5f
 
 go 1.13

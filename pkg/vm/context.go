@@ -21,16 +21,16 @@ type Context struct {
 }
 
 // NewContext creates a context of wasm instance
-func NewContext(tx *pb.Transaction, txIndex uint64, data *pb.TransactionData, ledger ledger.Ledger, logger logrus.FieldLogger) *Context {
+func NewContext(tx pb.Transaction, txIndex uint64, data *pb.TransactionData, ledger ledger.Ledger, logger logrus.FieldLogger) *Context {
 	return &Context{
-		Caller:           tx.From,
-		Callee:           tx.To,
-		CurrentCaller:    tx.From,
+		Caller:           tx.GetFrom(),
+		Callee:           tx.GetTo(),
+		CurrentCaller:    tx.GetFrom(),
 		Ledger:           ledger,
 		TransactionIndex: txIndex,
-		TransactionHash:  tx.TransactionHash,
+		TransactionHash:  tx.GetHash(),
 		TransactionData:  data,
-		Nonce:            tx.Nonce,
+		Nonce:            tx.GetNonce(),
 		Logger:           logger,
 	}
 }

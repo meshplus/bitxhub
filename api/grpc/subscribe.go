@@ -193,7 +193,7 @@ func (cbs *ChainBrokerService) interStatus(block *pb.Block, interchainMeta *pb.I
 		InterchainTxCount: meta.InterchainTxCount,
 		BlockHeight:       block.BlockHeader.Number,
 	}
-	txs := block.Transactions
+	txs := block.Transactions.Transactions
 
 	for _, indices := range interchainMeta.Counter {
 		for _, idx := range indices.Slice {

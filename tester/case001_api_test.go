@@ -56,17 +56,17 @@ func (suite *API) TestSend() {
 }
 
 func testSendTransaction(suite *API) *types.Hash {
-	tx, err := genContractTransaction(pb.TransactionData_BVM, suite.privKey, 1,
+	tx, err := genContractTransaction(pb.TransactionData_BVM, suite.privKey, 0,
 		constant.StoreContractAddr.Address(), "Set", pb.String("key"), pb.String(value))
 	suite.Nil(err)
 
 	fmt.Printf("api is %v\n", suite.api)
 	suite.Nil(suite.api.Broker().HandleTransaction(tx))
-	return tx.TransactionHash
+	return tx.GetHash()
 }
 
 func testSendView(suite *API) {
-	tx, err := genContractTransaction(pb.TransactionData_BVM, suite.privKey, 1,
+	tx, err := genContractTransaction(pb.TransactionData_BVM, suite.privKey, 0,
 		constant.StoreContractAddr.Address(), "Get", pb.String("key"))
 
 	receipt, err := suite.api.Broker().HandleView(tx)

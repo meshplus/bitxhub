@@ -36,7 +36,7 @@ func (suite *Role) SetupSuite() {
 	suite.Assert().Nil(err)
 
 	suite.pubKey = suite.privKey.PublicKey()
-	suite.normalNonce = 1
+	suite.normalNonce = 0
 }
 
 func (suite *Role) TestGetRole() {
@@ -70,7 +70,7 @@ func (suite *Role) TestGetRole() {
 	k, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
 
-	r, err := invokeBVMContract(suite.api, k, 1, constant.RoleContractAddr.Address(), "GetRole")
+	r, err := invokeBVMContract(suite.api, k, 0, constant.RoleContractAddr.Address(), "GetRole")
 	suite.Assert().Nil(err)
 	suite.Equal("none", string(r.Ret))
 }
@@ -78,7 +78,7 @@ func (suite *Role) TestGetRole() {
 func (suite *Role) TestGetAdminRoles() {
 	k, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
-	kNonce := uint64(1)
+	kNonce := uint64(0)
 
 	r, err := invokeBVMContract(suite.api, k, kNonce, constant.RoleContractAddr.Address(), "GetAdminRoles")
 	suite.Assert().Nil(err)
@@ -93,7 +93,7 @@ func (suite *Role) TestIsAdmin() {
 	suite.Require().Nil(err)
 	from, err := k.PublicKey().Address()
 	suite.Require().Nil(err)
-	kNonce := uint64(1)
+	kNonce := uint64(0)
 
 	r, err := invokeBVMContract(suite.api, k, kNonce, constant.RoleContractAddr.Address(), "IsAdmin", pb.String(from.String()))
 	suite.Assert().Nil(err)
@@ -147,8 +147,8 @@ func (suite *Role) TestGetRuleAddress() {
 	suite.Require().Nil(err)
 	k2, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
-	k1Nonce := uint64(1)
-	k2Nonce := uint64(1)
+	k1Nonce := uint64(0)
+	k2Nonce := uint64(0)
 
 	chainAdminKeyPath, err := repo.PathRootWithDefault("test_data/admin.json")
 	suite.Require().Nil(err)

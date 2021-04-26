@@ -44,14 +44,14 @@ func newTransactionStore(f GetAccountNonceFunc, logger logrus.FieldLogger) *tran
 	}
 }
 
-func (txStore *transactionStore) insertTxs(txs map[string][]*pb.Transaction, isLocal bool) map[string]bool {
+func (txStore *transactionStore) insertTxs(txs map[string][]pb.Transaction, isLocal bool) map[string]bool {
 	dirtyAccounts := make(map[string]bool)
 	for account, list := range txs {
 		for _, tx := range list {
-			txHash := tx.TransactionHash.String()
+			txHash := tx.GetHash().String()
 			txPointer := &orderedIndexKey{
 				account: account,
-				nonce:   tx.Nonce,
+				nonce:   tx.GetNonce(),
 			}
 			txStore.txHashMap[txHash] = txPointer
 			txList, ok := txStore.allTxs[account]
@@ -65,11 +65,11 @@ func (txStore *transactionStore) insertTxs(txs map[string][]*pb.Transaction, isL
 				tx:      tx,
 				local:   isLocal,
 			}
-			txList.items[tx.Nonce] = txItem
+			txList.items[tx.GetNonce()] = txItem
 			txList.index.insertBySortedNonceKey(tx)
 			if isLocal {
 				// no need to rebroadcast tx from other nodes to reduce network overhead
-				txStore.ttlIndex.insertByTtlKey(account, tx.Nonce, tx.Timestamp)
+				txStore.ttlIndex.insertByTtlKey(account, tx.GetNonce(), tx.GetTimeStamp())
 			}
 		}
 		dirtyAccounts[account] = true
@@ -78,7 +78,7 @@ func (txStore *transactionStore) insertTxs(txs map[string][]*pb.Transaction, isL
 }
 
 // Get transaction by account address + nonce
-func (txStore *transactionStore) getTxByOrderKey(account string, seqNo uint64) *pb.Transaction {
+func (txStore *transactionStore) getTxByOrderKey(account string, seqNo uint64) pb.Transaction {
 	if list, ok := txStore.allTxs[account]; ok {
 		res := list.items[seqNo]
 		if res == nil {
@@ -111,8 +111,8 @@ func newTxSortedMap() *txSortedMap {
 	}
 }
 
-func (m *txSortedMap) filterReady(demandNonce uint64) ([]*pb.Transaction, []*pb.Transaction, uint64) {
-	var readyTxs, nonReadyTxs []*pb.Transaction
+func (m *txSortedMap) filterReady(demandNonce uint64) ([]pb.Transaction, []pb.Transaction, uint64) {
+	var readyTxs, nonReadyTxs []pb.Transaction
 	if m.index.data.Len() == 0 {
 		return nil, nil, demandNonce
 	}
@@ -133,8 +133,8 @@ func (m *txSortedMap) filterReady(demandNonce uint64) ([]*pb.Transaction, []*pb.
 
 // forward removes all allTxs from the map with a nonce lower than the
 // provided commitNonce.
-func (m *txSortedMap) forward(commitNonce uint64) map[string][]*pb.Transaction {
-	removedTxs := make(map[string][]*pb.Transaction)
+func (m *txSortedMap) forward(commitNonce uint64) map[string][]pb.Transaction {
+	removedTxs := make(map[string][]pb.Transaction)
 	commitNonceKey := makeSortedNonceKey(commitNonce)
 	m.index.data.AscendLessThan(commitNonceKey, func(i btree.Item) bool {
 		// delete tx from map.
@@ -142,7 +142,7 @@ func (m *txSortedMap) forward(commitNonce uint64) map[string][]*pb.Transaction {
 		txItem := m.items[nonce]
 		account := txItem.account
 		if _, ok := removedTxs[account]; !ok {
-			removedTxs[account] = make([]*pb.Transaction, 0)
+			removedTxs[account] = make([]pb.Transaction, 0)
 		}
 		removedTxs[account] = append(removedTxs[account], txItem.tx)
 		delete(m.items, nonce)
@@ -192,7 +192,7 @@ func (nc *nonceCache) getPendingNonce(account string) uint64 {
 	if !ok {
 		// if nonce is unknown, check if there is committed nonce persisted in db
 		// cause there aer no pending txs in mempool now, pending nonce is equal to committed nonce
-		return nc.getCommitNonce(account) + 1
+		return nc.getCommitNonce(account)
 	}
 	return nonce
 }
@@ -234,15 +234,15 @@ func (tlm *txLiveTimeMap) insertByTtlKey(account string, nonce uint64, liveTime 
 	tlm.items[makeAccountNonceKey(account, nonce)] = liveTime
 }
 
-func (tlm *txLiveTimeMap) removeByTtlKey(txs map[string][]*pb.Transaction) {
+func (tlm *txLiveTimeMap) removeByTtlKey(txs map[string][]pb.Transaction) {
 	for account, list := range txs {
 		for _, tx := range list {
-			liveTime, ok := tlm.items[makeAccountNonceKey(account, tx.Nonce)]
+			liveTime, ok := tlm.items[makeAccountNonceKey(account, tx.GetNonce())]
 			if !ok {
 				continue
 			}
-			tlm.index.Delete(&orderedTimeoutKey{account, tx.Nonce, liveTime})
-			delete(tlm.items, makeAccountNonceKey(account, tx.Nonce))
+			tlm.index.Delete(&orderedTimeoutKey{account, tx.GetNonce(), liveTime})
+			delete(tlm.items, makeAccountNonceKey(account, tx.GetNonce()))
 		}
 	}
 }

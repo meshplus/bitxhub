@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math/big"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -14,13 +15,14 @@ import (
 
 	"github.com/meshplus/bitxhub"
 	"github.com/meshplus/bitxhub-kit/log"
+	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/api/gateway"
 	"github.com/meshplus/bitxhub/api/grpc"
+	"github.com/meshplus/bitxhub/api/jsonrpc"
 	"github.com/meshplus/bitxhub/internal/app"
 	"github.com/meshplus/bitxhub/internal/coreapi"
 	"github.com/meshplus/bitxhub/internal/loggers"
 	"github.com/meshplus/bitxhub/internal/repo"
-
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/urfave/cli"
 )
@@ -60,6 +62,8 @@ func start(ctx *cli.Context) error {
 
 	loggers.Initialize(repo.Config)
 
+	pb.InitEIP155Signer(big.NewInt(int64(repo.Config.ChainID)))
+
 	if repo.Config.PProf.Enable {
 		switch repo.Config.PProf.PType {
 		case "runtime":
@@ -93,6 +97,16 @@ func start(ctx *cli.Context) error {
 	}
 
 	if err := b.Start(); err != nil {
+		return err
+	}
+
+	// start json-rpc service
+	cbs, err := jsonrpc.NewChainBrokerService(api, repo.Config)
+	if err != nil {
+		return err
+	}
+
+	if err := cbs.Start(); err != nil {
 		return err
 	}
 

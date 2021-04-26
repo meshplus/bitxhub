@@ -36,7 +36,7 @@ func (cbs *ChainBrokerService) GetAccountBalance(ctx context.Context, req *pb.Ad
 
 	ret := &Account{
 		Type:          typ,
-		Balance:       account.GetBalance(),
+		Balance:       account.GetBalance().Uint64(),
 		ContractCount: account.GetNonce(),
 		CodeHash:      *hash,
 	}

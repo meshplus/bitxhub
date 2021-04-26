@@ -58,11 +58,11 @@ func TestRegister(t *testing.T) {
 }
 
 func TestNewContext(t *testing.T) {
-	tx := &pb.Transaction{
+	tx := &pb.BxhTransaction{
 		From: types.NewAddressByStr(from),
 		To:   types.NewAddressByStr(to),
 	}
-	tx.TransactionHash = tx.Hash()
+	tx.TransactionHash = tx.GetHash()
 	ctx := NewContext(tx, 1, nil, nil, nil)
 	require.Equal(t, from, ctx.Caller())
 	require.Equal(t, to, ctx.Callee())
@@ -97,7 +97,7 @@ func TestBoltVM_Run(t *testing.T) {
 	print(interchainData)
 
 	// create Interchain boltVM
-	txInterchain := &pb.Transaction{
+	txInterchain := &pb.BxhTransaction{
 		From: types.NewAddressByStr(from),
 		To:   constant.InterchainContractAddr.Address(),
 	}

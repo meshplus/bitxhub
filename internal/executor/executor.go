@@ -2,12 +2,15 @@ package executor
 
 import (
 	"context"
+	"math/big"
 	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/event"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/meshplus/bitxhub-core/agency"
 	"github.com/meshplus/bitxhub-core/validator"
+	vm "github.com/meshplus/bitxhub-kit/evm"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -41,20 +44,25 @@ type BlockExecutor struct {
 	wasmInstances    map[string]wasmer.Instance
 	txsExecutor      agency.TxsExecutor
 	blockFeed        event.Feed
+	logsFeed         event.Feed
 	ctx              context.Context
 	cancel           context.CancelFunc
+
+	evm         *vm.EVM
+	evmChainCfg *params.ChainConfig
+	gasLimit    uint64
 }
 
 // New creates executor instance
-func New(chainLedger ledger.Ledger, logger logrus.FieldLogger, typ string) (*BlockExecutor, error) {
+func New(chainLedger ledger.Ledger, logger logrus.FieldLogger, typ string, gasLimit uint64) (*BlockExecutor, error) {
 	ibtpVerify := proof.New(chainLedger, logger)
-
-	ctx, cancel := context.WithCancel(context.Background())
 
 	txsExecutor, err := agency.GetExecutorConstructor(typ)
 	if err != nil {
 		return nil, err
 	}
+
+	ctx, cancel := context.WithCancel(context.Background())
 
 	blockExecutor := &BlockExecutor{
 		ledger:           chainLedger,
@@ -69,7 +77,12 @@ func New(chainLedger ledger.Ledger, logger logrus.FieldLogger, typ string) (*Blo
 		currentHeight:    chainLedger.GetChainMeta().Height,
 		currentBlockHash: chainLedger.GetChainMeta().BlockHash,
 		wasmInstances:    make(map[string]wasmer.Instance),
+		evmChainCfg:      newEVMChainCfg(),
+		gasLimit:         gasLimit,
 	}
+
+	blockExecutor.evm = newEvm(1, uint64(0), blockExecutor.evmChainCfg, blockExecutor.ledger.StateDB())
+
 	blockExecutor.txsExecutor = txsExecutor(blockExecutor.applyTx, registerBoltContracts, logger)
 
 	return blockExecutor, nil
@@ -111,24 +124,16 @@ func (exec *BlockExecutor) SubscribeBlockEvent(ch chan<- events.ExecutedEvent) e
 	return exec.blockFeed.Subscribe(ch)
 }
 
-func (exec *BlockExecutor) ApplyReadonlyTransactions(txs []*pb.Transaction) []*pb.Receipt {
+func (exec *BlockExecutor) SubscribeLogsEvent(ch chan<- []*pb.EvmLog) event.Subscription {
+	return exec.logsFeed.Subscribe(ch)
+}
+
+func (exec *BlockExecutor) ApplyReadonlyTransactions(txs []pb.Transaction) []*pb.Receipt {
 	current := time.Now()
 	receipts := make([]*pb.Receipt, 0, len(txs))
 
 	for i, tx := range txs {
-		receipt := &pb.Receipt{
-			Version: tx.Version,
-			TxHash:  tx.TransactionHash,
-		}
-
-		ret, err := exec.applyTransaction(i, tx, "", nil)
-		if err != nil {
-			receipt.Status = pb.Receipt_FAILED
-			receipt.Ret = []byte(err.Error())
-		} else {
-			receipt.Status = pb.Receipt_SUCCESS
-			receipt.Ret = ret
-		}
+		receipt := exec.applyTransaction(i, tx, "", nil)
 
 		receipts = append(receipts, receipt)
 		// clear potential write to ledger
@@ -151,7 +156,7 @@ func (exec *BlockExecutor) listenExecuteEvent() {
 			blockData := exec.processExecuteEvent(blockWrapper)
 			exec.logger.WithFields(logrus.Fields{
 				"height": blockWrapper.block.BlockHeader.Number,
-				"count":  len(blockWrapper.block.Transactions),
+				"count":  len(blockWrapper.block.Transactions.Transactions),
 				"elapse": time.Since(now),
 			}).Debug("Executed block")
 			exec.persistC <- blockData
@@ -177,12 +182,12 @@ func (exec *BlockExecutor) verifyProofs(blockWrapper *BlockWrapper) {
 		wg         sync.WaitGroup
 		lock       sync.Mutex
 	)
-	txs := block.Transactions
+	txs := block.Transactions.Transactions
 
 	wg.Add(len(txs))
 	errM := make(map[int]string)
 	for i, tx := range txs {
-		go func(i int, tx *pb.Transaction) {
+		go func(i int, tx pb.Transaction) {
 			defer wg.Done()
 			if _, ok := blockWrapper.invalidTx[i]; !ok {
 				ok, err := exec.ibtpVerify.CheckProof(tx)
@@ -207,10 +212,11 @@ func (exec *BlockExecutor) persistData() {
 		now := time.Now()
 		exec.ledger.PersistBlockData(data)
 		exec.postBlockEvent(data.Block, data.InterchainMeta, data.TxHashList)
+		exec.postLogsEvent(data.Receipts)
 		exec.logger.WithFields(logrus.Fields{
 			"height": data.Block.BlockHeader.Number,
 			"hash":   data.Block.BlockHash.String(),
-			"count":  len(data.Block.Transactions),
+			"count":  len(data.Block.Transactions.Transactions),
 			"elapse": time.Since(now),
 		}).Info("Persisted block")
 	}
@@ -285,4 +291,20 @@ func registerBoltContracts() map[string]agency.Contract {
 	}
 
 	return boltvm.Register(boltContracts)
+}
+
+func newEVMChainCfg() *params.ChainConfig {
+	return &params.ChainConfig{
+		ChainID:             big.NewInt(1),
+		HomesteadBlock:      big.NewInt(0),
+		EIP150Block:         big.NewInt(0),
+		EIP155Block:         big.NewInt(0),
+		EIP158Block:         big.NewInt(0),
+		ByzantiumBlock:      big.NewInt(0),
+		ConstantinopleBlock: big.NewInt(0),
+		PetersburgBlock:     big.NewInt(0),
+		IstanbulBlock:       big.NewInt(0),
+		// MuirGlacierBlock:    big.NewInt(0),
+		// BerlinBlock:         big.NewInt(0),
+	}
 }

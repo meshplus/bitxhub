@@ -151,6 +151,14 @@ func (ac *AccountCache) remove(accounts map[string]*Account) {
 	}
 }
 
+func (ac *AccountCache) rmAccount(addr *types.Address) {
+	ac.rwLock.Lock()
+	defer ac.rwLock.Unlock()
+
+	delete(ac.innerAccounts, addr.String())
+	ac.innerAccountCache.Remove(addr.String())
+}
+
 func (ac *AccountCache) getInnerAccount(addr *types.Address) (*innerAccount, bool) {
 	if ia, ok := ac.innerAccountCache.Get(addr.String()); ok {
 		return ia.(*innerAccount), true

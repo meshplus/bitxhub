@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/meshplus/bitxhub/api/jsonrpc"
+
 	"github.com/stretchr/testify/suite"
 
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
@@ -103,12 +105,13 @@ func TestTester(t *testing.T) {
 	require.True(t, ret.IsSuccess(), string(ret.Ret))
 	adminNonce1++
 
-	suite.Run(t, &API{api: node1})
-	suite.Run(t, &RegisterAppchain{api: node2})
-	suite.Run(t, &Interchain{api: node3})
-	suite.Run(t, &Role{api: node4})
-	suite.Run(t, &Store{api: node1})
-	suite.Run(t, &Governance{api: node2})
+	//suite.Run(t, &API{api: node1})
+	//suite.Run(t, &RegisterAppchain{api: node2})
+	//suite.Run(t, &Interchain{api: node3})
+	//suite.Run(t, &Role{api: node4})
+	//suite.Run(t, &Store{api: node1})
+	//suite.Run(t, &Governance{api: node2})
+	suite.Run(t, &JsonRpc{api: node1})
 }
 
 func setupNode(t *testing.T, path string) api.CoreAPI {
@@ -125,6 +128,13 @@ func setupNode(t *testing.T, path string) api.CoreAPI {
 	require.Nil(t, err)
 
 	api, err := coreapi.New(bxh)
+	require.Nil(t, err)
+
+	// start json-rpc service
+	cbs, err := jsonrpc.NewChainBrokerService(api, repo.Config)
+	require.Nil(t, err)
+
+	err = cbs.Start()
 	require.Nil(t, err)
 
 	go func() {
