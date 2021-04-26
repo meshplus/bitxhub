@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/meshplus/bitxhub-core/governance"
+
 	"github.com/meshplus/bitxid"
 
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
@@ -112,7 +114,7 @@ func (suite *Governance) TestGovernance() {
 	p := contracts.Proposal{}
 	err = json.Unmarshal(ret.Ret, &p)
 	suite.Require().Nil(err)
-	suite.Require().Equal("register", p.Des, "des")
+	suite.Require().Equal("register", string(p.EventType), "event type")
 
 	// get chain status
 	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainId))
@@ -122,7 +124,7 @@ func (suite *Governance) TestGovernance() {
 	chain := appchainMgr.Appchain{}
 	err = json.Unmarshal(ret.Ret, &chain)
 	suite.Require().Nil(err)
-	suite.Require().Equal(appchainMgr.AppchainRegisting, chain.Status)
+	suite.Require().Equal(governance.GovernanceRegisting, chain.Status)
 
 	// get role weight
 	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.RoleContractAddr.Address(), "GetRoleWeight", pb.String(fromAdmin1.Address))
@@ -219,5 +221,5 @@ func (suite *Governance) TestGovernance() {
 	adminNonce1++
 	err = json.Unmarshal(ret.Ret, &chain)
 	suite.Require().Nil(err)
-	suite.Require().Equal(appchainMgr.AppchainAvailable, chain.Status)
+	suite.Require().Equal(governance.GovernanceAvailable, chain.Status)
 }

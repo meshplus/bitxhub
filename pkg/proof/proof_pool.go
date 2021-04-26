@@ -8,6 +8,9 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/meshplus/bitxhub-core/governance"
+	ruleMgr "github.com/meshplus/bitxhub-core/rule-mgr"
+
 	"github.com/meshplus/bitxhub-kit/crypto"
 
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
@@ -150,8 +153,8 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, error) {
 	}
 
 	validateAddr := validator.FabricRuleAddr
-	rl := &contracts.Rule{}
-	ok, data = pl.getAccountState(constant.RuleManagerContractAddr, contracts.RuleKey(from))
+	rl := &ruleMgr.Rule{}
+	ok, data = pl.getRule(from)
 	if ok {
 		if err := json.Unmarshal(data, rl); err != nil {
 			return false, fmt.Errorf("%s: unmarshal rule data error: %w", internalError, err)
@@ -168,6 +171,30 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, error) {
 		return false, fmt.Errorf("%s: %w", InvalidIBTP, err)
 	}
 	return ok, nil
+}
+
+func (pl *VerifyPool) getRule(chainId string) (bool, []byte) {
+	ok, data := pl.ledger.GetState(constant.RuleManagerContractAddr.Address(), []byte(contracts.RuleKey(chainId)))
+	if !ok {
+		return ok, data
+	}
+
+	rules := make([]*ruleMgr.Rule, 0)
+	if err := json.Unmarshal(data, rules); err != nil {
+		return false, []byte("unmarshal rules error: " + err.Error())
+	}
+
+	for _, r := range rules {
+		if governance.GovernanceAvailable == r.Status {
+			resData, err := json.Marshal(r)
+			if err != nil {
+				return false, []byte("marshal rule error: " + err.Error())
+			}
+			return true, resData
+		}
+	}
+
+	return false, []byte(fmt.Errorf("the available rule does not exist").Error())
 }
 
 func (pl *VerifyPool) getAccountState(address constant.BoltContractAddress, key string) (bool, []byte) {

@@ -6,6 +6,10 @@ import (
 	"testing"
 	"time"
 
+	ruleMgr "github.com/meshplus/bitxhub-core/rule-mgr"
+
+	"github.com/meshplus/bitxhub-core/governance"
+
 	"github.com/golang/mock/gomock"
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/validator/mock_validator"
@@ -45,7 +49,7 @@ func TestVerifyPool_CheckProof(t *testing.T) {
 	chainData, err := json.Marshal(chain)
 	require.Nil(t, err)
 
-	rl := &contracts.Rule{
+	rl := &ruleMgr.Rule{
 		Address: contract,
 	}
 	rlData, err := json.Marshal(rl)
@@ -125,7 +129,7 @@ func TestVerifyPool_CheckProof2(t *testing.T) {
 	mockEngine := mock_validator.NewMockEngine(mockCtl)
 
 	chain := &appchainMgr.Appchain{
-		Status:        appchainMgr.AppchainAvailable,
+		Status:        governance.GovernanceAvailable,
 		ID:            from,
 		Name:          "appchain" + from,
 		Validators:    "",

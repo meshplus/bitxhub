@@ -11,7 +11,6 @@ import (
 	"github.com/cheynewallace/tabby"
 	"github.com/fatih/color"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
-	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
@@ -48,76 +47,75 @@ func governanceCMD() cli.Command {
 				Action: vote,
 			},
 			cli.Command{
-				Name:  "proposals",
-				Usage: "query proposals based on the condition",
-				Flags: []cli.Flag{
-					cli.StringFlag{
-						Name:     "id",
-						Usage:    "proposal id",
-						Required: false,
-					},
-					cli.StringFlag{
-						Name:     "type",
-						Usage:    "proposal type, currently only AppchainMgr is supported",
-						Required: false,
-					},
-					cli.StringFlag{
-						Name:     "status",
-						Usage:    "proposal status, one of proposed, approve or reject",
-						Required: false,
-					},
-					cli.StringFlag{
-						Name:     "from",
-						Usage:    "the address of the account to which the proposal was made",
-						Required: false,
-					},
-				},
-				Action: getProposals,
-			},
-			cli.Command{
-				Name:  "chain",
-				Usage: "appchain manage command",
+				Name:  "proposal",
+				Usage: "proposal manage command",
 				Subcommands: cli.Commands{
 					cli.Command{
-						Name:  "status",
-						Usage: "query chain status by chain id",
+						Name:  "query",
+						Usage: "query proposals based on the condition",
 						Flags: []cli.Flag{
 							cli.StringFlag{
 								Name:     "id",
-								Usage:    "chain id",
-								Required: true,
+								Usage:    "proposal id",
+								Required: false,
+							},
+							cli.StringFlag{
+								Name:     "type",
+								Usage:    "proposal type, currently only AppchainMgr is supported",
+								Required: false,
+							},
+							cli.StringFlag{
+								Name:     "status",
+								Usage:    "proposal status, one of proposed, approve or reject",
+								Required: false,
+							},
+							cli.StringFlag{
+								Name:     "from",
+								Usage:    "the address of the account to which the proposal was made",
+								Required: false,
+							},
+							cli.StringFlag{
+								Name:     "objId",
+								Usage:    "the ID of the managed object",
+								Required: false,
 							},
 						},
-						Action: getChainStatusById,
+						Action: getProposals,
 					},
 					cli.Command{
-						Name:  "freeze",
-						Usage: "freeze appchain by chain id",
+						Name:  "withdraw",
+						Usage: "withdraw a proposal",
 						Flags: []cli.Flag{
 							cli.StringFlag{
 								Name:     "id",
-								Usage:    "chain id",
+								Usage:    "proposal id",
 								Required: true,
 							},
 						},
-						Action: freezeAppchain,
-					},
-					cli.Command{
-						Name:  "activate",
-						Usage: "activate chain by chain id",
-						Flags: []cli.Flag{
-							cli.StringFlag{
-								Name:     "id",
-								Usage:    "chain id",
-								Required: true,
-							},
-						},
-						Action: activateAppchain,
+						Action: withdraw,
 					},
 				},
 			},
+			appchainMgrCMD(),
+			ruleMgrCMD(),
 		},
 	}
+}
+
+func withdraw(ctx *cli.Context) error {
+	id := ctx.String("id")
+
+	receipt, err := invokeBVMContract(ctx, constant.GovernanceContractAddr.String(), "WithdrawProposal", pb.String(id))
+	if err != nil {
+		return err
+	}
+
+	if receipt.IsSuccess() {
+		color.Green("withdraw proposal successfully!\n")
+	} else {
+		color.Red("withdraw proposal  error: %s\n", string(receipt.Ret))
+	}
+	return nil
 }
 
 func vote(ctx *cli.Context) error {
@@ -147,8 +145,9 @@ func getProposals(ctx *cli.Context) error {
 	typ := ctx.String("type")
 	status := ctx.String("status")
 	from := ctx.String("from")
+	objId := ctx.String("objId")
 
-	if err := checkProposalArgs(id, typ, status, from); err != nil {
+	if err := checkProposalArgs(id, typ, status, from, objId); err != nil {
 		return err
 	}
 
@@ -187,6 +186,13 @@ func getProposals(ctx *cli.Context) error {
 			}
 			proposals = getdDuplicateProposals(proposals, proposalsTmp)
 		}
+		if objId != "" {
+			proposalsTmp, err := getProposalsByConditions(ctx, keyPath, "GetProposalsByObjId", objId)
+			if err != nil {
+				return fmt.Errorf("get proposals by object id error: %w", err)
+			}
+			proposals = getdDuplicateProposals(proposals, proposalsTmp)
+		}
 	} else {
 		proposals, err = getProposalsByConditions(ctx, keyPath, "GetProposal", id)
 		if err != nil {
@@ -199,11 +205,12 @@ func getProposals(ctx *cli.Context) error {
 	return nil
 }
 
-func checkProposalArgs(id, typ, status, from string) error {
+func checkProposalArgs(id, typ, status, from, objId string) error {
 	if id == "" &&
 		typ == "" &&
 		status == "" &&
-		from == "" {
+		from == "" &&
+		objId == "" {
 		return fmt.Errorf("input at least one query condition")
 	}
 	if typ != "" &&
@@ -269,18 +276,19 @@ func getProposalsByConditions(ctx *cli.Context, keyPath string, menthod string, 
 
 func printProposal(proposals []contracts.Proposal) {
 	var table [][]string
-	table = append(table, []string{"Id", "Type", "Status", "ApproveNum", "RejectNum", "ElectorateNum", "ThresholdNum", "Des"})
+	table = append(table, []string{"Id", "ManagedObjectId", "Type", "EventType", "Status", "Approve/Reject", "Electorate/Threshold", "Description", "EndReason"})
 
 	for _, pro := range proposals {
 		table = append(table, []string{
 			pro.Id,
+			pro.ObjId,
 			string(pro.Typ),
+			string(pro.EventType),
 			string(pro.Status),
-			strconv.Itoa(int(pro.ApproveNum)),
-			strconv.Itoa(int(pro.AgainstNum)),
-			strconv.Itoa(int(pro.ElectorateNum)),
-			strconv.Itoa(int(pro.ThresholdNum)),
+			strconv.Itoa(int(pro.ApproveNum)) + "/" + strconv.Itoa(int(pro.AgainstNum)),
+			strconv.Itoa(int(pro.ElectorateNum)) + "/" + strconv.Itoa(int(pro.ThresholdNum)),
 			pro.Des,
+			pro.EndReason,
 		})
 	}
 
@@ -313,58 +321,6 @@ func addRow(t *tabby.Tabby, rawLine []string, header bool) {
 	} else {
 		t.AddLine(row...)
 	}
-}
-
-func getChainStatusById(ctx *cli.Context) error {
-	id := ctx.String("id")
-
-	receipt, err := invokeBVMContract(ctx, constant.AppchainMgrContractAddr.String(), "GetAppchain", pb.String(id))
-	if err != nil {
-		return err
-	}
-
-	if receipt.IsSuccess() {
-		chain := &appchainMgr.Appchain{}
-		if err := json.Unmarshal(receipt.Ret, chain); err != nil {
-			return fmt.Errorf("unmarshal receipt error: %w", err)
-		}
-		color.Green("appchain %s is %s", chain.ID, string(chain.Status))
-	} else {
-		color.Red("get chain status error: %s\n", string(receipt.Ret))
-	}
-	return nil
-}
-
-func freezeAppchain(ctx *cli.Context) error {
-	id := ctx.String("id")
-
-	receipt, err := invokeBVMContract(ctx, constant.AppchainMgrContractAddr.String(), "FreezeAppchain", pb.String(id))
-	if err != nil {
-		return err
-	}
-
-	if receipt.IsSuccess() {
-		color.Green("proposal id is %s", string(receipt.Ret))
-	} else {
-		color.Red("freeze appchain error: %s\n", string(receipt.Ret))
-	}
-	return nil
-}
-
-func activateAppchain(ctx *cli.Context) error {
-	id := ctx.String("id")
-
-	receipt, err := invokeBVMContract(ctx, constant.AppchainMgrContractAddr.String(), "ActivateAppchain", pb.String(id))
-	if err != nil {
-		return err
-	}
-
-	if receipt.IsSuccess() {
-		color.Green("proposal id is %s", string(receipt.Ret))
-	} else {
-		color.Red("activate appchain error: %s\n", string(receipt.Ret))
-	}
-	return nil
 }
 
 func invokeBVMContract(ctx *cli.Context, contractAddr string, method string, args ...*pb.Arg) (*pb.Receipt, error) {
