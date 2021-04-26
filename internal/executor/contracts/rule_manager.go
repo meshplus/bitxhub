@@ -54,7 +54,7 @@ func (rm *RuleManager) BindRule(chainId string, ruleAddress string) *boltvm.Resp
 	rm.RuleManager.Persister = rm.Stub
 
 	// 1. check permission
-	if err := rm.checkPermission(chainId, PermissionSelf); err != nil {
+	if err := rm.checkPermission(chainId, PermissionSelfAdmin); err != nil {
 		return boltvm.Error(err.Error())
 	}
 
@@ -94,7 +94,7 @@ func (rm *RuleManager) UnbindRule(chainId string, ruleAddress string) *boltvm.Re
 	rm.RuleManager.Persister = rm.Stub
 
 	// 1. check permission
-	if err := rm.checkPermission(chainId, PermissionSelf); err != nil {
+	if err := rm.checkPermission(chainId, PermissionSelfAdmin); err != nil {
 		return boltvm.Error(err.Error())
 	}
 
@@ -239,16 +239,12 @@ func (rm *RuleManager) IsAvailableRule(chainId, ruleAddress string) *boltvm.Resp
 }
 
 func (rm *RuleManager) checkRuleAddress(addr string) error {
-	ok, data := rm.Persister.GetAccount(addr)
+	ok, account1 := rm.Persister.GetAccount(addr)
 	if !ok {
-		return fmt.Errorf("get account error: %s", string(data))
+		return fmt.Errorf("get account error")
 	}
 
-	account := &ledger.Account{}
-	if err := json.Unmarshal(data, account); err != nil {
-		return fmt.Errorf("unmarshal account error: %s", err.Error())
-	}
-
+	account := account1.(*ledger.Account)
 	if account.Code() == nil {
 		return fmt.Errorf("the validation rule does not exist")
 	}

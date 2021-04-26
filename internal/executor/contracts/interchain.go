@@ -19,6 +19,14 @@ import (
 	"github.com/meshplus/bitxid"
 )
 
+const (
+	AppchainNotAvailable = "appchain not available"
+	InvalidIBTP          = "invalid ibtp"
+	internalError        = "internal server error"
+	ibtpIndexExist       = "index already exists"
+	ibtpIndexWrong       = "wrong index"
+)
+
 type InterchainManager struct {
 	boltvm.Stub
 }
@@ -181,7 +189,7 @@ func (x *InterchainManager) HandleIBTPs(data []byte) *boltvm.Response {
 
 func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP, interchain *pb.Interchain) error {
 	if ibtp.To == "" {
-		return fmt.Errorf("empty destination chain id")
+		return fmt.Errorf("%s: empty destination chain id", InvalidIBTP)
 	}
 
 	if _, ok := x.getInterchain(ibtp.To); !ok {
@@ -198,15 +206,15 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP, interchain *pb.Interchain) 
 		pb.IBTP_ASSET_EXCHANGE_REFUND == ibtp.Type {
 		if srcChainInfo.ChainType != appchainMgr.RelaychainType {
 			if err := x.checkPubKeyAndCaller(srcChainInfo.PublicKey); err != nil {
-				return fmt.Errorf("caller is not bind to ibtp from: %w", err)
+				return fmt.Errorf("%s: caller is not bind to ibtp from: %w", InvalidIBTP, err)
 			}
 		}
 		idx := interchain.InterchainCounter[ibtp.To]
 		if ibtp.Index <= idx {
-			return fmt.Errorf(fmt.Sprintf("index already exists, required %d, but %d", idx+1, ibtp.Index))
+			return fmt.Errorf(fmt.Sprintf("%s: required %d, but %d", ibtpIndexExist, idx+1, ibtp.Index))
 		}
 		if ibtp.Index > idx+1 {
-			return fmt.Errorf(fmt.Sprintf("wrong index, required %d, but %d", idx+1, ibtp.Index))
+			return fmt.Errorf(fmt.Sprintf("%s: required %d, but %d", ibtpIndexWrong, idx+1, ibtp.Index))
 		}
 	} else {
 		if srcChainInfo.ChainType != appchainMgr.RelaychainType {
@@ -215,16 +223,16 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP, interchain *pb.Interchain) 
 				return err
 			}
 			if err := x.checkPubKeyAndCaller(destChainInfo.PublicKey); err != nil {
-				return fmt.Errorf("caller is not bind to ibtp to")
+				return fmt.Errorf("%s: caller is not bind to ibtp to", InvalidIBTP)
 			}
 		}
 		idx := interchain.ReceiptCounter[ibtp.To]
 		if ibtp.Index <= idx {
-			return fmt.Errorf(fmt.Sprintf("receipt index already exists, required %d, but %d", idx+1, ibtp.Index))
+			return fmt.Errorf(fmt.Sprintf("%s: required %d, but %d", ibtpIndexExist, idx+1, ibtp.Index))
 		}
 
 		if ibtp.Index > idx+1 {
-			return fmt.Errorf(fmt.Sprintf("wrong receipt index, required %d, but %d", idx+1, ibtp.Index))
+			return fmt.Errorf(fmt.Sprintf("%s: required %d, but %d", ibtpIndexWrong, idx+1, ibtp.Index))
 		}
 	}
 
@@ -253,13 +261,13 @@ func (x *InterchainManager) checkPubKeyAndCaller(pub string) error {
 func (x *InterchainManager) checkAppchain(id string) (*pb.Interchain, *appchainMgr.Appchain, error) {
 	interchain, ok := x.getInterchain(id)
 	if !ok {
-		return nil, nil, fmt.Errorf("this appchain does not exist")
+		return nil, nil, fmt.Errorf("%s: this appchain does not exist", AppchainNotAvailable)
 	}
 
 	app := &appchainMgr.Appchain{}
 	res := x.CrossInvoke(constant.AppchainMgrContractAddr.String(), "GetAppchain", pb.String(id))
 	if !res.Ok {
-		return nil, nil, fmt.Errorf("get appchain info error: " + string(res.Result))
+		return nil, nil, fmt.Errorf("%s: get appchain info error: %s", AppchainNotAvailable, string(res.Result))
 	}
 
 	if err := json.Unmarshal(res.Result, app); err != nil {
@@ -267,7 +275,7 @@ func (x *InterchainManager) checkAppchain(id string) (*pb.Interchain, *appchainM
 	}
 
 	if app.Status != governance.GovernanceAvailable {
-		return nil, nil, fmt.Errorf("the appchain status is " + string(app.Status) + ", can not handle IBTP")
+		return nil, nil, fmt.Errorf("%s: the appchain status is %s, can not handle IBTP", AppchainNotAvailable, string(app.Status))
 	}
 
 	return interchain, app, nil
@@ -278,7 +286,7 @@ func (x *InterchainManager) getAppchainInfo(chainMethod string) (*appchainMgr.Ap
 	srcChain := &appchainMgr.Appchain{}
 	res := x.CrossInvoke(constant.AppchainMgrContractAddr.String(), "GetAppchain", pb.String(chainMethod))
 	if err := json.Unmarshal(res.Result, srcChain); err != nil {
-		return nil, fmt.Errorf("unmarshal appchain info error: %w", err)
+		return nil, fmt.Errorf("%s: unmarshal appchain info error: %w", internalError, err)
 	}
 	return srcChain, nil
 }

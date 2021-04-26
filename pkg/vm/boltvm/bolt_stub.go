@@ -154,13 +154,9 @@ func (b *BoltStubImpl) ValidationEngine() validator.Engine {
 	return b.ve
 }
 
-func (b *BoltStubImpl) GetAccount(address string) (bool, []byte) {
+func (b *BoltStubImpl) GetAccount(address string) (bool, interface{}) {
 	addr := types.NewAddressByStr(address)
 	account := b.ctx.Ledger.GetAccount(addr)
-	data, err := json.Marshal(account)
-	if err != nil {
-		return false, []byte(err.Error())
-	}
 
-	return true, data
+	return true, account
 }

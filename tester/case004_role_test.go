@@ -1,10 +1,13 @@
 package tester
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"io/ioutil"
 	"path/filepath"
 	"strconv"
+
+	"github.com/meshplus/bitxhub/internal/repo"
 
 	"github.com/meshplus/bitxid"
 
@@ -147,9 +150,9 @@ func (suite *Role) TestGetRuleAddress() {
 	k1Nonce := uint64(1)
 	k2Nonce := uint64(1)
 
-	pub1, err := k1.PublicKey().Bytes()
+	chainAdminKeyPath, err := repo.PathRootWithDefault("test_data/admin.json")
 	suite.Require().Nil(err)
-	pub2, err := k2.PublicKey().Bytes()
+	pubKey, err := getPubKey(chainAdminKeyPath)
 	suite.Require().Nil(err)
 
 	addr1, err := k1.PublicKey().Address()
@@ -170,7 +173,7 @@ func (suite *Role) TestGetRuleAddress() {
 		pb.String("婚姻链"),
 		pb.String("趣链婚姻链"),
 		pb.String("1.8"),
-		pb.String(string(pub1)),
+		pb.String(string(pubKey)),
 	)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
@@ -217,7 +220,7 @@ func (suite *Role) TestGetRuleAddress() {
 		pb.String("政务链"),
 		pb.String("fabric政务"),
 		pb.String("1.4"),
-		pb.String(string(pub2)),
+		pb.String(string(pubKey)),
 	)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
@@ -268,12 +271,12 @@ func (suite *Role) TestGetRuleAddress() {
 	suite.Require().NotEqual(addr1, addr2)
 
 	// register rule
-	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(), "RegisterRule", pb.String(string(bitxid.DID(did).GetChainDID())), pb.String(addr1.String()))
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(), "BindRule", pb.String(string(bitxid.DID(did).GetChainDID())), pb.String(addr1.String()))
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k1Nonce++
 
-	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.RuleManagerContractAddr.Address(), "RegisterRule", pb.String(string(bitxid.DID(did2).GetChainDID())), pb.String(addr2.String()))
+	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.RuleManagerContractAddr.Address(), "BindRule", pb.String(string(bitxid.DID(did2).GetChainDID())), pb.String(addr2.String()))
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess())
 	k2Nonce++
@@ -393,4 +396,17 @@ func (suite *Role) TestSetAdminRoles() {
 	ret3 := gjson.ParseBytes(r3.Ret)
 	suite.EqualValues(4, len(ret3.Array()))
 	adminNonce++
+}
+
+func getPubKey(keyPath string) (string, error) {
+	privKey, err := asym.RestorePrivateKey(keyPath, "bitxhub")
+	if err != nil {
+		return "", err
+	}
+
+	pubBytes, err := privKey.PublicKey().Bytes()
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(pubBytes), nil
 }

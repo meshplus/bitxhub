@@ -180,15 +180,17 @@ func (exec *BlockExecutor) verifyProofs(blockWrapper *BlockWrapper) {
 	txs := block.Transactions
 
 	wg.Add(len(txs))
+	errM := make(map[int]string)
 	for i, tx := range txs {
 		go func(i int, tx *pb.Transaction) {
 			defer wg.Done()
 			if _, ok := blockWrapper.invalidTx[i]; !ok {
-				ok, _ := exec.ibtpVerify.CheckProof(tx)
+				ok, err := exec.ibtpVerify.CheckProof(tx)
 				if !ok {
 					lock.Lock()
 					defer lock.Unlock()
 					invalidTxs = append(invalidTxs, i)
+					errM[i] = err.Error()
 				}
 			}
 		}(i, tx)
@@ -196,7 +198,7 @@ func (exec *BlockExecutor) verifyProofs(blockWrapper *BlockWrapper) {
 	wg.Wait()
 
 	for _, i := range invalidTxs {
-		blockWrapper.invalidTx[i] = "tx has invalid ibtp proof"
+		blockWrapper.invalidTx[i] = agency.InvalidReason(errM[i])
 	}
 }
 

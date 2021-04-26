@@ -175,14 +175,14 @@ func TestVerifyPool_CheckProof2(t *testing.T) {
 	}
 	signData, err := sign.Marshal()
 	require.Nil(t, err)
-	ibtp.Proof = signData
+	proof := signData
 
 	ok, err := verifyMultiSign(chain, ibtp, nil)
 	require.NotNil(t, err)
 	require.False(t, ok)
 
 	chain.Validators = string(addrsData)
-	ok, err = verifyMultiSign(chain, ibtp, nil)
+	ok, err = verifyMultiSign(chain, ibtp, proof)
 	require.Nil(t, err)
 	require.True(t, ok)
 }

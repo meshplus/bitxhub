@@ -110,7 +110,7 @@ func (am *AppchainManager) Register(appchainAdminDID, appchainMethod string, doc
 	}
 
 	chain := &appchainMgr.Appchain{
-		ID:            appchainAdminDID,
+		ID:            appchainMethod,
 		Name:          name,
 		Validators:    validators,
 		ConsensusType: consensusType,
@@ -121,7 +121,7 @@ func (am *AppchainManager) Register(appchainAdminDID, appchainMethod string, doc
 		PublicKey:     pubkey,
 		DidDocAddr:    docAddr,
 		DidDocHash:    docHash,
-		OwnerDID:      appchainMethod,
+		OwnerDID:      appchainAdminDID,
 	}
 	chainData, err := json.Marshal(chain)
 	if err != nil {

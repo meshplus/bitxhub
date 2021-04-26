@@ -228,11 +228,11 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 
 	res := im.HandleIBTP(ibtp)
 	assert.False(t, res.Ok)
-	assert.Equal(t, "this appchain does not exist", string(res.Result))
+	assert.Equal(t, "appchain not available: this appchain does not exist", string(res.Result))
 
 	res = im.HandleIBTP(ibtp)
 	assert.False(t, res.Ok)
-	assert.Equal(t, "empty destination chain id", string(res.Result))
+	assert.Equal(t, "invalid ibtp: empty destination chain id", string(res.Result))
 
 	ibtp = &pb.IBTP{
 		From:      appchainMethod,
@@ -248,12 +248,12 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	ibtp.From = appchainMethod2
 	res = im.HandleIBTP(ibtp)
 	assert.False(t, res.Ok)
-	assert.Equal(t, true, strings.HasPrefix(string(res.Result), "caller is not bind to ibtp from"))
+	assert.Equal(t, true, strings.Contains(string(res.Result), "caller is not bind to ibtp from"))
 
 	ibtp.From = appchainMethod
 	res = im.HandleIBTP(ibtp)
 	assert.False(t, res.Ok)
-	assert.Equal(t, "index already exists, required 2, but 0", string(res.Result))
+	assert.Equal(t, "index already exists: required 2, but 0", string(res.Result))
 
 	ibtp.Index = 2
 	res = im.HandleIBTP(ibtp)
@@ -274,7 +274,7 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	ibtp.Type = pb.IBTP_RECEIPT_SUCCESS
 	res = im.HandleIBTP(ibtp)
 	assert.False(t, res.Ok)
-	assert.Equal(t, "caller is not bind to ibtp to", string(res.Result))
+	assert.Equal(t, "invalid ibtp: caller is not bind to ibtp to", string(res.Result))
 
 	mockStub.EXPECT().Caller().Return(to.String()).AnyTimes()
 	res = im.HandleIBTP(ibtp)
