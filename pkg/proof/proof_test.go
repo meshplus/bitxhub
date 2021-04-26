@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	ruleMgr "github.com/meshplus/bitxhub-core/rule-mgr"
+
 	"github.com/meshplus/bitxhub-core/governance"
 
 	"github.com/golang/mock/gomock"
@@ -47,7 +49,7 @@ func TestVerifyPool_CheckProof(t *testing.T) {
 	chainData, err := json.Marshal(chain)
 	require.Nil(t, err)
 
-	rl := &contracts.Rule{
+	rl := &ruleMgr.Rule{
 		Address: contract,
 	}
 	rlData, err := json.Marshal(rl)

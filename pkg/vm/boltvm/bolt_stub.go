@@ -153,3 +153,14 @@ func (b *BoltStubImpl) CrossInvoke(address, method string, args ...*pb.Arg) *bol
 func (b *BoltStubImpl) ValidationEngine() validator.Engine {
 	return b.ve
 }
+
+func (b *BoltStubImpl) GetAccount(address string) (bool, []byte) {
+	addr := types.NewAddressByStr(address)
+	account := b.ctx.Ledger.GetAccount(addr)
+	data, err := json.Marshal(account)
+	if err != nil {
+		return false, []byte(err.Error())
+	}
+
+	return true, data
+}
