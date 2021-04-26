@@ -5,7 +5,8 @@ source x.sh
 CURRENT_PATH=$(pwd)
 PROJECT_PATH=$(dirname "${CURRENT_PATH}")
 BUILD_PATH=${PROJECT_PATH}/build
-APP_VERSION=${1:-'1.6.0'}
+# shellcheck disable=SC2046
+APP_VERSION=$(if [ `git rev-parse --abbrev-ref HEAD` == 'HEAD' ];then git describe --tags HEAD ; else echo "dev" ; fi)
 
 print_blue "===> 1. Install packr"
 if ! type packr >/dev/null 2>&1; then
