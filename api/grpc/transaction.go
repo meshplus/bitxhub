@@ -75,10 +75,6 @@ func (cbs *ChainBrokerService) checkTransaction(tx *pb.BxhTransaction) error {
 		return fmt.Errorf("timestamp is illegal")
 	}
 
-	if tx.Nonce <= 0 {
-		return fmt.Errorf("nonce is illegal")
-	}
-
 	if len(tx.Signature) == 0 {
 		return fmt.Errorf("signature can't be empty")
 	}
