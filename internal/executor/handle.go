@@ -297,7 +297,6 @@ func (exec *BlockExecutor) applyTransaction(i int, tx pb.Transaction, invalidRea
 		}
 		return receipt
 	case *pb.EthTransaction:
-		// TODO
 		ethTx := tx.(*pb.EthTransaction)
 		return exec.applyEthTransaction(i, ethTx)
 	}
@@ -362,16 +361,18 @@ func (exec *BlockExecutor) applyEthTransaction(i int, tx *pb.EthTransaction) *pb
 		Version: tx.GetVersion(),
 		TxHash:  tx.GetHash(),
 	}
-	gp := new(core.GasPool).AddGas(0x2fefd8)
+
+	gp := new(core.GasPool).AddGas(exec.gasLimit)
 	msg := ledger.NewMessage(tx)
 	statedb := exec.ledger.StateDB()
 	statedb.PrepareEVM(common.BytesToHash(tx.GetHash().Bytes()), i)
 	snapshot := statedb.Snapshot()
 	txContext := vm1.NewEVMTxContext(msg)
 	exec.evm.Reset(txContext, exec.ledger.StateDB())
+	exec.logger.Warnf("msg gas: %v", msg.Gas())
 	result, err := vm1.ApplyMessage(exec.evm, msg, gp)
-	exec.logger.Errorln(err)
 	if err != nil {
+		exec.logger.Errorf("apply msg failed: %s", err.Error())
 		statedb.RevertToSnapshot(snapshot)
 		receipt.Status = pb.Receipt_FAILED
 		receipt.Ret = []byte(err.Error())
@@ -379,11 +380,14 @@ func (exec *BlockExecutor) applyEthTransaction(i int, tx *pb.EthTransaction) *pb
 		return receipt
 	}
 	if result.Failed() {
-		exec.logger.Infoln(result.Failed())
+		exec.logger.Warnf("execute tx failed: %s", result.Err.Error())
 		receipt.Status = pb.Receipt_FAILED
+		receipt.Ret = append([]byte(result.Err.Error()), result.Revert()...)
 	} else {
 		receipt.Status = pb.Receipt_SUCCESS
+		receipt.Ret = result.Return()
 	}
+
 	receipt.TxHash = tx.GetHash()
 	receipt.GasUsed = result.UsedGas
 	exec.ledger.ClearChangerAndRefund()

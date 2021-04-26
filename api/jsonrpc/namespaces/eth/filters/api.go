@@ -334,6 +334,7 @@ func (api *PublicFilterAPI) NewFilter(crit FilterCriteria) (rpc.ID, error) {
 //
 // https://eth.wiki/json-rpc/API#eth_getlogs
 func (api *PublicFilterAPI) GetLogs(ctx context.Context, ethCrit FilterCriteria) ([]*pb.EvmLog, error) {
+	api.logger.Debugf("eth_getLogs: ethCrit: %s", ethCrit)
 	var filter *Filter
 	crit := ethCrit.toBxhFilterQuery()
 	if crit.BlockHash != nil {
@@ -588,9 +589,12 @@ func decodeTopic(s string) (common.Hash, error) {
 
 func (fc *FilterCriteria) toBxhFilterQuery() FilterQuery {
 	fq := FilterQuery{
-		BlockHash: types2.NewHash(fc.BlockHash.Bytes()),
 		FromBlock: fc.FromBlock,
 		ToBlock:   fc.ToBlock,
+	}
+
+	if fc.BlockHash != nil {
+		fq.BlockHash = types2.NewHash(fc.BlockHash.Bytes())
 	}
 
 	for _, addr := range fc.Addresses {

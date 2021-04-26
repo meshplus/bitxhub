@@ -819,6 +819,8 @@ github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5
 github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20210318102029-494ee3060b0c/go.mod h1:G19Wrz1u66UmwaES/iLM19jmlv3APAZ5qfYOlNnIIZw=
 github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20210423140028-7c7e2fd80a46 h1:ZX6J+BcLFuxzCmC8yf7DC5ah9MVJ+birGL5xd5SMdgY=
 github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20210423140028-7c7e2fd80a46/go.mod h1:ijf/8xybq2lGz86VKSTghDQGrKhx7GHavDQpCJWcsDs=
+github.com/meshplus/bitxhub-core v1.2.0 h1:tSOIN3Fg89UJwu0XhlCIP+oCLwhg/TP4JQehTFp4Las=
+github.com/meshplus/bitxhub-core v1.2.0/go.mod h1:2ksSKEiox4B06gSPT6h4+GcdWnh92/FDPUUImX/dI04=
 github.com/meshplus/bitxhub-kit v1.1.1 h1:vkPO88oA3+Kpc0N8lIgfj/U52KBuI+633hPbMYt1xm8=
 github.com/meshplus/bitxhub-kit v1.1.1/go.mod h1:r4l4iqn0RPJreb/OmoYKfjCjQJrXpZX++6Qc31VG/1k=
 github.com/meshplus/bitxhub-kit v1.1.2-0.20201021105954-468d0a9d7957/go.mod h1:r4l4iqn0RPJreb/OmoYKfjCjQJrXpZX++6Qc31VG/1k=
@@ -832,12 +834,20 @@ github.com/meshplus/bitxhub-kit v1.1.2-0.20210423082909-97edee705d22/go.mod h1:l
 github.com/meshplus/bitxhub-kit v1.1.2-0.20210425013549-7a642723d279/go.mod h1:ltiaMnupw2mzE1gENiV6LF6C8UYu0bF7w1NrG3QDvFQ=
 github.com/meshplus/bitxhub-kit v1.1.2-0.20210425020456-3e87ac09c707 h1:xkeoue4sog72PnVVmPrcGgGiQDjaougHallr4RjDTEk=
 github.com/meshplus/bitxhub-kit v1.1.2-0.20210425020456-3e87ac09c707/go.mod h1:Zs4eZnVtI0uX6aIMN7DnqXCJTthQ0WNrjF1/h6KkGRc=
+github.com/meshplus/bitxhub-kit v1.2.0 h1:lG6vyRD14bPoQFNU8ygmgzMXAy4xDlEueJyM6vShndo=
+github.com/meshplus/bitxhub-kit v1.2.0/go.mod h1:vGTKDkCAU7/IlirT6tlq6BMnCpY9UbfrrwGDy6foQIg=
 github.com/meshplus/bitxhub-model v1.1.1/go.mod h1:lUl9vPZXM9tP+B0ABRW/2eOW/6KCmjFTdoiTj5Vut/A=
 github.com/meshplus/bitxhub-model v1.1.2-0.20201021152621-0b3c17c54b23/go.mod h1:4qWBZx5wv7WZzUqiuBsbkQqQ2Ju8aOFpsoNpBBNy8Us=
 github.com/meshplus/bitxhub-model v1.1.2-0.20210409090411-de23bd385c5f/go.mod h1:x3H+TL24wcByzHegenLfs+5PQkQGNsk8eCm31QJMa+Q=
 github.com/meshplus/bitxhub-model v1.1.2-0.20210423135747-9546174eabb0/go.mod h1:rW2Sd4ZFdBoch0h4i1lSuyHNFIOg/3t8loQ+LV5rvNc=
 github.com/meshplus/bitxhub-model v1.1.2-0.20210425021723-411f67ad49be h1:SGCgDzpMEu/cpjlewBrotZmGujB9tPOEL614CrJxlLk=
 github.com/meshplus/bitxhub-model v1.1.2-0.20210425021723-411f67ad49be/go.mod h1:XIfxB6AAi0D5Qd7jmOykijSvI0GSKQZRR0OG0cp23iU=
+github.com/meshplus/bitxhub-model v1.1.2-0.20210426012554-bb170814ec11 h1:rdevlFfnfLNvoSfnJx/pdJkfUHAQGoJfyqxDxWOyhJw=
+github.com/meshplus/bitxhub-model v1.1.2-0.20210426012554-bb170814ec11/go.mod h1:XIfxB6AAi0D5Qd7jmOykijSvI0GSKQZRR0OG0cp23iU=
+github.com/meshplus/bitxhub-model v1.1.2-0.20210426065438-954f4d830abc h1:Xdr93A4XsYXzI0Sxcmrvsl9aDt0QGnaXfs8i1vbGmhk=
+github.com/meshplus/bitxhub-model v1.1.2-0.20210426065438-954f4d830abc/go.mod h1:XIfxB6AAi0D5Qd7jmOykijSvI0GSKQZRR0OG0cp23iU=
+github.com/meshplus/bitxhub-model v1.2.0 h1:Ac8ol1HZNLIegyZkU/DZGYkPeeAWp3ZgYsbJGNF2GV0=
+github.com/meshplus/bitxhub-model v1.2.0/go.mod h1:QCYJy8fUQex0cvxqAZtGHJn31F5mwuXnE3Lyri15zUc=
 github.com/meshplus/bitxid v0.0.0-20210412025850-e0eaf0f9063a h1:c4ESPDa60Jd4zfzZIGGTyzhfaVM3vKN+xV2G9BwIDGQ=
 github.com/meshplus/bitxid v0.0.0-20210412025850-e0eaf0f9063a/go.mod h1:vAldSRfDe2Qo7exsSTbchVmZWXPY7fhWQrRw18QJHho=
 github.com/meshplus/did-registry v0.0.0-20210413035015-509c6c3a0bae h1:E4iaFwHAg1ScyiU9Bz3RY0wjfXNZzPH3O43DBTl9iWg=
@@ -995,6 +1005,7 @@ github.com/pelletier/go-toml v1.8.1 h1:1Nf83orprkJyknT6h7zbuEGUEjcyVlCxSUGTENmNC
 github.com/pelletier/go-toml v1.8.1/go.mod h1:T2/BmBdy8dvIRq1a/8aqjN41wvWlN4lrapLU/GW4pbc=
 github.com/performancecopilot/speed v3.0.0+incompatible/go.mod h1:/CLtqpZ5gBg1M9iaPbIdPPGyKcA8hKdoy6hAWba7Yac=
 github.com/peterh/liner v1.0.1-0.20180619022028-8c1271fcf47f/go.mod h1:xIteQHvHuaLYG9IFj6mSxM0fCKrs34IrEQUhOYuGPHc=
+github.com/peterh/liner v1.1.1-0.20190123174540-a2c9a5303de7 h1:oYW+YCJ1pachXTQmzR3rNLYGGz4g/UgFcjb28p/viDM=
 github.com/peterh/liner v1.1.1-0.20190123174540-a2c9a5303de7/go.mod h1:CRroGNssyjTd/qIG2FyxByd2S8JEAZXBl4qUrZf8GS0=
 github.com/philhofer/fwd v1.0.0/go.mod h1:gk3iGcWd9+svBvR0sR+KPcfE+RNWozjowpeBVG3ZVNU=
 github.com/pierrec/lz4 v1.0.2-0.20190131084431-473cd7ce01a1/go.mod h1:3/3N9NVKO0jef7pBehbT1qWhCMrIgbYNnFAZCqQ5LRc=
@@ -1052,6 +1063,7 @@ github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0/go.mod h1:bCqn
 github.com/retailnext/hllpp v1.0.1-0.20180308014038-101a6d2f8b52/go.mod h1:RDpi1RftBQPUCDRw6SmxeaREsAaRKnOclghuzp/WRzc=
 github.com/rifflock/lfshook v0.0.0-20180920164130-b9218ef580f5 h1:mZHayPoR0lNmnHyvtYjDeq0zlVHn9K/ZXoy17ylucdo=
 github.com/rifflock/lfshook v0.0.0-20180920164130-b9218ef580f5/go.mod h1:GEXHk5HgEKCvEIIrSpFI3ozzG5xOKA2DVlEX/gGnewM=
+github.com/rjeczalik/notify v0.9.1 h1:CLCKso/QK1snAlnhNR/CNvNiFU2saUtjV0bx3EwNeCE=
 github.com/rjeczalik/notify v0.9.1/go.mod h1:rKwnCoCGeuQnwBtTSPL9Dad03Vh2n40ePRrjvIXnJho=
 github.com/rogpeppe/fastuuid v0.0.0-20150106093220-6724a57986af/go.mod h1:XWv6SoW27p1b0cqNHllgS5HIMJraePCO15w5zCzIWYg=
 github.com/rogpeppe/fastuuid v1.2.0/go.mod h1:jVj6XXZzXRy/MSR5jhDC/2q6DgLz+nrA6LYCDYWNEvQ=
@@ -1125,6 +1137,7 @@ github.com/spf13/viper v1.7.0/go.mod h1:8WkrPz2fc9jxqZNCJI/76HCieCp4Q8HaLFoCha5q
 github.com/spf13/viper v1.7.1 h1:pM5oEahlgWv/WnHXpgbKz7iLIxRf65tye2Ci+XFK5sk=
 github.com/spf13/viper v1.7.1/go.mod h1:8WkrPz2fc9jxqZNCJI/76HCieCp4Q8HaLFoCha5qpdg=
 github.com/src-d/envconfig v1.0.0/go.mod h1:Q9YQZ7BKITldTBnoxsE5gOeB5y66RyPXeue/R4aaNBc=
+github.com/status-im/keycard-go v0.0.0-20190316090335-8537d3370df4 h1:Gb2Tyox57NRNuZ2d3rmvB3pcmbu7O1RS3m8WRx7ilrg=
 github.com/status-im/keycard-go v0.0.0-20190316090335-8537d3370df4/go.mod h1:RZLeN1LMWmRsyYjvAu+I6Dm9QmlDaIIt+Y+4Kd7Tp+Q=
 github.com/steakknife/bloomfilter v0.0.0-20180922174646-6819c0d2a570/go.mod h1:8OR4w3TdeIHIh1g6EMY5p0gVNOovcWC+1vpc7naMuAw=
 github.com/steakknife/hamming v0.0.0-20180906055917-c99c65617cd3/go.mod h1:hpGUWaI9xL8pRQCTXQgocU38Qw1g0Us7n5PxxTwTCYU=
@@ -1168,6 +1181,7 @@ github.com/tmc/grpc-websocket-proxy v0.0.0-20170815181823-89b8d40f7ca8/go.mod h1
 github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5 h1:LnC5Kc/wtumK+WB441p7ynQJzVuNRJiqddSIE3IlSEQ=
 github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5/go.mod h1:ncp9v5uamzpCO7NfCPTXjqaC+bZgJeR0sMTm6dMHP7U=
 github.com/tommy-muehle/go-mnd v1.1.1/go.mod h1:dSUh0FtTP8VhvkL1S+gUR1OKd9ZnSaozuI6r3m6wOig=
+github.com/tyler-smith/go-bip39 v1.0.1-0.20181017060643-dbb3b84ba2ef h1:wHSqTBrZW24CsNJDfeh9Ex6Pm0Rcpc7qrgKBiL44vF4=
 github.com/tyler-smith/go-bip39 v1.0.1-0.20181017060643-dbb3b84ba2ef/go.mod h1:sJ5fKU0s6JVwZjjcUEX2zFOnvq0ASQ2K9Zr6cf67kNs=
 github.com/ugorji/go v1.1.4/go.mod h1:uQMGLiO92mf5W77hV/PUCpI3pbzQx3CRekS0kk+RGrc=
 github.com/ugorji/go/codec v0.0.0-20181204163529-d75b2dcb6bc8/go.mod h1:VFNgLljTbGfSG7qAOspJ7OScBnGdDN/yBr0sguwnwf0=

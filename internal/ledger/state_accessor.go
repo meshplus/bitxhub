@@ -45,7 +45,7 @@ func (l *ChainLedger) GetAccount(address *types.Address) *Account {
 	}
 
 	if data := l.ldb.Get(compositeKey(accountKey, address)); data != nil {
-		account.originAccount = &innerAccount{}
+		account.originAccount = &innerAccount{Balance: big.NewInt(0)}
 		if err := account.originAccount.Unmarshal(data); err != nil {
 			panic(err)
 		}

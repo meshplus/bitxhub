@@ -2,13 +2,19 @@ package eth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/params"
+	"github.com/ethereum/go-ethereum/rpc"
+	vm1 "github.com/meshplus/bitxhub-kit/evm"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	rpctypes "github.com/meshplus/bitxhub/api/jsonrpc/types"
@@ -23,6 +29,7 @@ import (
 type PublicEthereumAPI struct {
 	ctx     context.Context
 	cancel  context.CancelFunc
+	config  *repo.Config
 	chainID *big.Int
 	logger  logrus.FieldLogger
 	api     api.CoreAPI
@@ -35,6 +42,7 @@ func NewAPI(config *repo.Config, api api.CoreAPI, logger logrus.FieldLogger) (*P
 	return &PublicEthereumAPI{
 		ctx:     ctx,
 		cancel:  cancel,
+		config:  config,
 		chainID: big.NewInt(int64(config.Genesis.ChainID)),
 		logger:  logger,
 		api:     api,
@@ -58,8 +66,6 @@ func (api *PublicEthereumAPI) ChainId() (hexutil.Uint, error) { // nolint
 func (api *PublicEthereumAPI) Syncing() (interface{}, error) {
 	api.logger.Debug("eth_syncing")
 
-	api.api.Chain().Status()
-
 	// TODO
 
 	return nil, nil
@@ -80,7 +86,7 @@ func (api *PublicEthereumAPI) Hashrate() hexutil.Uint64 {
 // GasPrice returns the current gas price based on Ethermint's gas price oracle.
 func (api *PublicEthereumAPI) GasPrice() *hexutil.Big {
 	api.logger.Debug("eth_gasPrice")
-	out := big.NewInt(0)
+	out := big.NewInt(rpctypes.GasPrice)
 	return (*hexutil.Big)(out)
 }
 
@@ -230,12 +236,14 @@ func (api *PublicEthereumAPI) checkTransaction(tx *pb.EthTransaction) error {
 		return fmt.Errorf("from can't be empty")
 	}
 
-	if tx.GetFrom().String() == tx.GetTo().String() {
-		return fmt.Errorf("from can`t be the same as to")
-	}
-
-	if tx.GetTo().String() == emptyAddress.String() && len(tx.GetPayload()) == 0 {
-		return fmt.Errorf("can't deploy empty contract")
+	if tx.GetTo() == nil {
+		if len(tx.GetPayload()) == 0 {
+			return fmt.Errorf("can't deploy empty contract")
+		}
+	} else {
+		if tx.GetFrom().String() == tx.GetTo().String() {
+			return fmt.Errorf("from can`t be the same as to")
+		}
 	}
 
 	if tx.GetTimeStamp() < time.Now().UnixNano()-10*time.Minute.Nanoseconds() ||
@@ -262,22 +270,87 @@ func (api *PublicEthereumAPI) sendTransaction(tx *pb.EthTransaction) (common.Has
 	return tx.GetHash().RawHash, nil
 }
 
-// Call performs a raw contract call.
-func (api *PublicEthereumAPI) Call(args rpctypes.CallArgs, blockNr uint64, _ *map[common.Address]rpctypes.Account) (hexutil.Bytes, error) {
-	api.logger.Debugf("eth_call, args: %s, block number: %d", args, blockNr)
-	// TODO
+func newRevertError(data []byte) *revertError {
+	reason, errUnpack := abi.UnpackRevert(data)
+	err := errors.New("execution reverted")
+	if errUnpack == nil {
+		err = fmt.Errorf("execution reverted: %v", reason)
+	}
+	return &revertError{
+		error:  err,
+		reason: hexutil.Encode(data),
+	}
+}
 
-	return nil, nil
+// revertError is an API error that encompassas an EVM revertal with JSON error
+// code and a binary data blob.
+type revertError struct {
+	error
+	reason string // revert reason hex encoded
+}
+
+// ErrorCode returns the JSON error code for a revertal.
+// See: https://github.com/ethereum/wiki/wiki/JSON-RPC-Error-Codes-Improvement-Proposal
+func (e *revertError) ErrorCode() int {
+	return 3
+}
+
+// ErrorData returns the hex encoded revert reason.
+func (e *revertError) ErrorData() interface{} {
+	return e.reason
+}
+
+// Call performs a raw contract call.
+func (api *PublicEthereumAPI) Call(args pb.CallArgs, blockNr rpc.BlockNumber, _ *map[common.Address]rpctypes.Account) (hexutil.Bytes, error) {
+	api.logger.Debugf("eth_call, args: %s, block number: %d", args, blockNr.Int64())
+
+	// Determine the highest gas limit can be used during call.
+	if args.Gas == nil || uint64(*args.Gas) < params.TxGas {
+		// Retrieve the block to act as the gas ceiling
+		args.Gas = (*hexutil.Uint64)(&api.config.GasLimit)
+	}
+
+	tx := &pb.EthTransaction{}
+	tx.FromCallArgs(args)
+
+	receipt, err := api.api.Broker().HandleView(tx)
+	if err != nil {
+		return nil, err
+	}
+
+	api.logger.Warnf("receipt: %v", receipt)
+
+	if receipt.Status == pb.Receipt_FAILED {
+		errMsg := string(receipt.Ret)
+		if strings.HasPrefix(errMsg, vm1.ErrExecutionReverted.Error()) {
+			return nil, newRevertError(receipt.Ret[len(vm1.ErrExecutionReverted.Error()):])
+		}
+		return nil, errors.New(errMsg)
+	}
+
+	return receipt.Ret, nil
 }
 
 // EstimateGas returns an estimate of gas usage for the given smart contract call.
-// It adds 1,000 gas to the returned value instead of using the gas adjustment
+// It adds 2,000 gas to the returned value instead of using the gas adjustment
 // param from the SDK.
-func (api *PublicEthereumAPI) EstimateGas(args rpctypes.CallArgs) (hexutil.Uint64, error) {
+func (api *PublicEthereumAPI) EstimateGas(args pb.CallArgs) (hexutil.Uint64, error) {
 	api.logger.Debugf("eth_estimateGas, args: %s", args)
-	// TODO
 
-	return hexutil.Uint64(1000), nil
+	// Determine the highest gas limit can be used during the estimation.
+	if args.Gas == nil || uint64(*args.Gas) < params.TxGas {
+		// Retrieve the block to act as the gas ceiling
+		args.Gas = (*hexutil.Uint64)(&api.config.GasLimit)
+	}
+	tx := &pb.EthTransaction{}
+	tx.FromCallArgs(args)
+
+	result, err := api.api.Broker().HandleView(tx)
+	if err != nil {
+		return 0, err
+	}
+
+	return hexutil.Uint64(result.GasUsed + 2000), nil
 }
 
 // GetBlockByHash returns the block identified by hash.
@@ -411,25 +484,39 @@ func (api *PublicEthereumAPI) GetTransactionReceipt(hash common.Hash) (map[strin
 
 	fields := map[string]interface{}{
 		"type":              hexutil.Uint(ethTx.GetType()),
-		"status":            receipt.Status,
 		"cumulativeGasUsed": hexutil.Uint64(cumulativeGasUsed),
-		"logsBloom":         receipt.Bloom,
+		"logsBloom":         *receipt.Bloom,
 		"logs":              receipt.EvmLogs,
 
 		"transactionHash": hash,
 		"gasUsed":         hexutil.Uint64(receipt.GasUsed),
 
-		"blockHash":        meta.BlockHash,
+		"blockHash":        common.BytesToHash(meta.BlockHash),
 		"blockNumber":      hexutil.Uint64(meta.BlockHeight),
 		"transactionIndex": hexutil.Uint64(meta.Index),
 
-		"from": tx.GetFrom().Bytes(),
-		"to":   tx.GetTo().Bytes(),
+		"from": common.BytesToAddress(tx.GetFrom().Bytes()),
+	}
+
+	if len(receipt.EvmLogs) == 0 {
+		fields["logs"] = make([]*pb.EvmLog, 0)
+	}
+
+	if receipt.Status == pb.Receipt_SUCCESS {
+		fields["status"] = hexutil.Uint(1)
+	} else {
+		fields["status"] = hexutil.Uint(0)
 	}
 
 	if receipt.ContractAddress != nil {
-		fields["contractAddress"] = receipt.ContractAddress.Bytes()
+		fields["contractAddress"] = common.BytesToAddress(receipt.ContractAddress.Bytes())
 	}
+
+	if tx.GetTo() != nil {
+		fields["to"] = common.BytesToAddress(tx.GetTo().Bytes())
+	}
+
+	api.logger.Debugf("eth_getTransactionReceipt: %v", fields)
 
 	return fields, nil
 }
@@ -526,7 +613,7 @@ func (api *PublicEthereumAPI) formatBlock(block *pb.Block, fullTx bool) (map[str
 		"totalDifficulty":  0,
 		"extraData":        hexutil.Uint64(0),
 		"size":             block.Size(),
-		"gasLimit":         rpctypes.MaxGas, // Static gas limit
+		"gasLimit":         api.config.GasLimit, // Static gas limit
 		"gasUsed":          cumulativeGas,
 		"timestamp":        block.BlockHeader.Timestamp,
 		"transactions":     transactions,

@@ -206,12 +206,22 @@ func CreateBloom(receipts EvmReceipts) *types.Bloom {
 
 func NewMessage(tx *pb.EthTransaction) etherTypes.Message {
 	from := common.BytesToAddress(tx.GetFrom().Bytes())
-	to := common.BytesToAddress(tx.GetTo().Bytes())
+	var to *common.Address
+	if tx.GetTo() != nil {
+		toAddr := common.BytesToAddress(tx.GetTo().Bytes())
+		to = &toAddr
+	}
 	nonce := tx.GetNonce()
 	amount := new(big.Int).SetUint64(tx.GetAmount())
 	gas := tx.GetGas()
 	gasPrice := tx.GetGasPrice()
 	data := tx.GetPayload()
 	accessList := tx.AccessList()
-	return etherTypes.NewMessage(from, &to, nonce, amount, gas, gasPrice, data, accessList, true)
+
+	checkNonce := true
+	if v, _, _ := tx.GetRawSignature(); v == nil {
+		checkNonce = false
+	}
+
+	return etherTypes.NewMessage(from, to, nonce, amount, gas, gasPrice, data, accessList, checkNonce)
 }

@@ -348,7 +348,7 @@ func innerAccountChanged(account0 *innerAccount, account1 *innerAccount) bool {
 	// If account already exists, account0 is not nil. We should compare account0 and account1 to get the result.
 	if account0 != nil &&
 		account0.Nonce == account1.Nonce &&
-		account0.Balance == account1.Balance &&
+		account0.Balance.Cmp(account1.Balance) == 0 &&
 		bytes.Equal(account0.CodeHash, account1.CodeHash) {
 		return false
 	}
@@ -374,7 +374,7 @@ func (o *innerAccount) Unmarshal(data []byte) error {
 
 func copyOrNewIfEmpty(o *innerAccount) *innerAccount {
 	if o == nil {
-		return &innerAccount{}
+		return &innerAccount{Balance: big.NewInt(0)}
 	}
 
 	return &innerAccount{

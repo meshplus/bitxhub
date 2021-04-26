@@ -13,11 +13,9 @@ import (
 
 // RPC namespaces and API version
 const (
-	Web3Namespace     = "web3"
-	EthNamespace      = "eth"
-	PersonalNamespace = "personal"
-	NetNamespace      = "net"
-	flagRPCAPI        = "rpc-api"
+	Web3Namespace = "web3"
+	EthNamespace  = "eth"
+	NetNamespace  = "net"
 
 	apiVersion = "1.0"
 )

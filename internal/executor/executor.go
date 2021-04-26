@@ -50,10 +50,11 @@ type BlockExecutor struct {
 
 	evm         *vm.EVM
 	evmChainCfg *params.ChainConfig
+	gasLimit    uint64
 }
 
 // New creates executor instance
-func New(chainLedger ledger.Ledger, logger logrus.FieldLogger, typ string) (*BlockExecutor, error) {
+func New(chainLedger ledger.Ledger, logger logrus.FieldLogger, typ string, gasLimit uint64) (*BlockExecutor, error) {
 	ibtpVerify := proof.New(chainLedger, logger)
 
 	txsExecutor, err := agency.GetExecutorConstructor(typ)
@@ -77,7 +78,11 @@ func New(chainLedger ledger.Ledger, logger logrus.FieldLogger, typ string) (*Blo
 		currentBlockHash: chainLedger.GetChainMeta().BlockHash,
 		wasmInstances:    make(map[string]wasmer.Instance),
 		evmChainCfg:      newEVMChainCfg(),
+		gasLimit:         gasLimit,
 	}
+
+	blockExecutor.evm = newEvm(1, uint64(0), blockExecutor.evmChainCfg, blockExecutor.ledger.StateDB())
+
 	blockExecutor.txsExecutor = txsExecutor(blockExecutor.applyTx, registerBoltContracts, logger)
 
 	return blockExecutor, nil

@@ -42,7 +42,7 @@ solo = false
   report_caller = false
   [log.module]
     p2p = "info"
-    consensus = "debug"
+    consensus = "info"
     executor = "info"
     router = "info"
     api = "info"
@@ -63,6 +63,7 @@ solo = false
 
 [genesis]
   chainid = 1
+  gas_limit = 0x2fefd8
   dider = "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013"
   [[genesis.admins]]
     address = "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013"
@@ -75,9 +76,6 @@ solo = false
     weight = 1
   [[genesis.admins]]
     address = "0xc0Ff2e0b3189132D815b8eb325bE17285AC898f8"
-    weight = 1
-  [[genesis.admins]]
-    address = "0x2962b85e2bEe2e1eA9C4CD69f2758cF7bbc3297E"
     weight = 1
   [genesis.strategy]
     AppchainMgr = "SimpleMajority"
