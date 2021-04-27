@@ -3,6 +3,7 @@ package ledger
 import (
 	"fmt"
 	"math/big"
+	"sync"
 
 	"github.com/meshplus/bitxhub-kit/types"
 )
@@ -18,6 +19,8 @@ type stateChange interface {
 type stateChanger struct {
 	changes []stateChange
 	dirties map[types.Address]int // dirty address and the number of changes
+
+	lock sync.RWMutex
 }
 
 func newChanger() *stateChanger {
@@ -27,6 +30,9 @@ func newChanger() *stateChanger {
 }
 
 func (s *stateChanger) append(change stateChange) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
 	s.changes = append(s.changes, change)
 	if addr := change.dirtied(); addr != nil {
 		s.dirties[*addr]++
@@ -34,6 +40,9 @@ func (s *stateChanger) append(change stateChange) {
 }
 
 func (s *stateChanger) revert(ledger *ChainLedger, snapshot int) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
 	for i := len(s.changes) - 1; i >= snapshot; i-- {
 		s.changes[i].revert(ledger)
 
