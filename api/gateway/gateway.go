@@ -22,7 +22,7 @@ func Start(config *repo.Config) error {
 
 	mux := runtime.NewServeMux(
 		runtime.WithMarshalerOption(runtime.MIMEWildcard,
-			&runtime.JSONPb{OrigName: true, EmitDefaults: true, EnumsAsInts: true},
+			&runtime.JSONPb{OrigName: true, EmitDefaults: false, EnumsAsInts: true},
 		),
 	)
 

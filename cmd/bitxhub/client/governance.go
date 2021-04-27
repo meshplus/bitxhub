@@ -361,7 +361,7 @@ func invokeBVMContract(ctx *cli.Context, contractAddr string, method string, arg
 		fmt.Println("get transaction receipt error: " + err.Error())
 	}
 
-	m := &runtime.JSONPb{OrigName: true, EmitDefaults: true, EnumsAsInts: true}
+	m := &runtime.JSONPb{OrigName: true, EmitDefaults: false, EnumsAsInts: true}
 	receipt := &pb.Receipt{}
 	if err = m.Unmarshal(data, receipt); err != nil {
 		return nil, fmt.Errorf("jsonpb unmarshal receipt error: %w", err)
