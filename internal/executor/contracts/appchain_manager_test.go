@@ -397,7 +397,7 @@ func prepare(t *testing.T) (*AppchainManager, *mock_stub.MockStub, []*appchainMg
 	var chainsData [][]byte
 	chainType := []string{string(governance.GovernanceAvailable), string(governance.GovernanceFrozen), string(governance.GovernanceUnavailable)}
 
-	chainAdminKeyPath, err := repo.PathRootWithDefault("../../../tester/test_data/admin.json")
+	chainAdminKeyPath, err := repo.PathRootWithDefault("../../../tester/test_data/appchain1.json")
 	assert.Nil(t, err)
 	pubKey, err := getPubKey(chainAdminKeyPath)
 	assert.Nil(t, err)
