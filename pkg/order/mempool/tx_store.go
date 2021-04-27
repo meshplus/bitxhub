@@ -69,7 +69,7 @@ func (txStore *transactionStore) insertTxs(txs map[string][]pb.Transaction, isLo
 			txList.index.insertBySortedNonceKey(tx)
 			if isLocal {
 				// no need to rebroadcast tx from other nodes to reduce network overhead
-				txStore.ttlIndex.insertByTtlKey(account, tx.GetNonce(), tx.GetTimeStamp())
+				txStore.ttlIndex.insertOrUpdateByTtlKey(account, tx.GetNonce(), tx.GetTimeStamp())
 			}
 		}
 		dirtyAccounts[account] = true
@@ -251,4 +251,12 @@ func (tlm *txLiveTimeMap) updateByTtlKey(originalKey *orderedTimeoutKey, newTime
 	tlm.index.Delete(originalKey)
 	delete(tlm.items, makeAccountNonceKey(originalKey.account, originalKey.nonce))
 	tlm.insertByTtlKey(originalKey.account, originalKey.nonce, newTime)
+}
+
+func (tlm *txLiveTimeMap) insertOrUpdateByTtlKey(account string, nonce uint64, liveTime int64) {
+	accountNonceKey := makeAccountNonceKey(account, nonce)
+	if oldTime, ok := tlm.items[accountNonceKey]; ok {
+		tlm.index.Delete(&orderedTimeoutKey{account, nonce, oldTime})
+	}
+	tlm.insertByTtlKey(account, nonce, liveTime)
 }
