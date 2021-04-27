@@ -2,11 +2,13 @@ package tester
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/meshplus/bitxhub-kit/crypto"
+	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -192,4 +194,17 @@ func deployContract(api api.CoreAPI, privateKey crypto.PrivateKey, nonce uint64,
 	ret := types.NewAddress(receipt.GetRet())
 
 	return ret, nil
+}
+
+func getPubKey(keyPath string) (string, error) {
+	privKey, err := asym.RestorePrivateKey(keyPath, "bitxhub")
+	if err != nil {
+		return "", err
+	}
+
+	pubBytes, err := privKey.PublicKey().Bytes()
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(pubBytes), nil
 }

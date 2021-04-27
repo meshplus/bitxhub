@@ -8,13 +8,11 @@ import (
 	"strings"
 	"sync"
 
+	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/governance"
 	ruleMgr "github.com/meshplus/bitxhub-core/rule-mgr"
-
-	"github.com/meshplus/bitxhub-kit/crypto"
-
-	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/validator"
+	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/types"
@@ -180,7 +178,7 @@ func (pl *VerifyPool) getRule(chainId string) (bool, []byte) {
 	}
 
 	rules := make([]*ruleMgr.Rule, 0)
-	if err := json.Unmarshal(data, rules); err != nil {
+	if err := json.Unmarshal(data, &rules); err != nil {
 		return false, []byte("unmarshal rules error: " + err.Error())
 	}
 

@@ -75,17 +75,24 @@ func (rm *RuleManager) BindRule(chainId string, ruleAddress string) *boltvm.Resp
 
 	// 5. change status
 	if ok, data := rm.RuleManager.ChangeStatus(ruleAddress, string(governance.EventBind), []byte(chainId)); !ok {
-		return boltvm.Error(string(data))
+		return boltvm.Error("change status error: " + string(data))
 	}
 
 	// 6. submit proposal
+	ruleData, err := json.Marshal(&ruleMgr.Rule{
+		Address: ruleAddress,
+		ChainId: chainId,
+	})
+	if err != nil {
+		return boltvm.Error("marshal rule error: " + err.Error())
+	}
 	return rm.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
 		pb.String(rm.Caller()),
 		pb.String(string(governance.EventBind)),
-		pb.String("des"),
+		pb.String(""),
 		pb.String(string(RuleMgr)),
 		pb.String(ruleAddress),
-		pb.Bytes([]byte(ruleAddress)),
+		pb.Bytes(ruleData),
 	)
 }
 
@@ -109,13 +116,20 @@ func (rm *RuleManager) UnbindRule(chainId string, ruleAddress string) *boltvm.Re
 	}
 
 	// 4. submit proposal
+	ruleData, err := json.Marshal(&ruleMgr.Rule{
+		Address: ruleAddress,
+		ChainId: chainId,
+	})
+	if err != nil {
+		return boltvm.Error("marshal rule error: " + err.Error())
+	}
 	return rm.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
 		pb.String(rm.Caller()),
 		pb.String(string(governance.EventUnbind)),
-		pb.String("des"),
+		pb.String(""),
 		pb.String(string(RuleMgr)),
 		pb.String(ruleAddress),
-		pb.Bytes([]byte(ruleAddress)),
+		pb.Bytes(ruleData),
 	)
 }
 
@@ -139,13 +153,20 @@ func (rm *RuleManager) FreezeRule(chainId string, ruleAddress string) *boltvm.Re
 	}
 
 	// 4. submit proposal
+	ruleData, err := json.Marshal(&ruleMgr.Rule{
+		Address: ruleAddress,
+		ChainId: chainId,
+	})
+	if err != nil {
+		return boltvm.Error("marshal rule error: " + err.Error())
+	}
 	return rm.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
 		pb.String(rm.Caller()),
 		pb.String(string(governance.EventFreeze)),
-		pb.String("des"),
+		pb.String(""),
 		pb.String(string(RuleMgr)),
 		pb.String(ruleAddress),
-		pb.Bytes([]byte(ruleAddress)),
+		pb.Bytes(ruleData),
 	)
 }
 
@@ -169,13 +190,20 @@ func (rm *RuleManager) ActivateRule(chainId string, ruleAddress string) *boltvm.
 	}
 
 	// 4. submit proposal
+	ruleData, err := json.Marshal(&ruleMgr.Rule{
+		Address: ruleAddress,
+		ChainId: chainId,
+	})
+	if err != nil {
+		return boltvm.Error("marshal rule error: " + err.Error())
+	}
 	return rm.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
 		pb.String(rm.Caller()),
 		pb.String(string(governance.EventActivate)),
-		pb.String("des"),
+		pb.String(""),
 		pb.String(string(RuleMgr)),
 		pb.String(ruleAddress),
-		pb.Bytes([]byte(ruleAddress)),
+		pb.Bytes(ruleData),
 	)
 }
 
@@ -199,13 +227,20 @@ func (rm *RuleManager) LogoutRule(chainId string, ruleAddress string) *boltvm.Re
 	}
 
 	// 4. submit proposal
+	ruleData, err := json.Marshal(&ruleMgr.Rule{
+		Address: ruleAddress,
+		ChainId: chainId,
+	})
+	if err != nil {
+		return boltvm.Error("marshal rule error: " + err.Error())
+	}
 	return rm.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
 		pb.String(rm.Caller()),
 		pb.String(string(governance.EventLogout)),
-		pb.String("des"),
+		pb.String(""),
 		pb.String(string(RuleMgr)),
 		pb.String(ruleAddress),
-		pb.Bytes([]byte(ruleAddress)),
+		pb.Bytes(ruleData),
 	)
 }
 

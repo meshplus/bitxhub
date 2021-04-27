@@ -7,17 +7,13 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/meshplus/bitxhub/internal/repo"
-
-	"github.com/meshplus/bitxid"
-
-	"github.com/meshplus/bitxhub/internal/executor/contracts"
-
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
+	"github.com/meshplus/bitxhub/internal/executor/contracts"
+	"github.com/meshplus/bitxid"
 	"github.com/stretchr/testify/suite"
 	"github.com/tidwall/gjson"
 )
@@ -147,18 +143,20 @@ func (suite *Role) TestGetRuleAddress() {
 	suite.Require().Nil(err)
 	k2, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
-	k1Nonce := uint64(0)
-	k2Nonce := uint64(0)
-
-	chainAdminKeyPath, err := repo.PathRootWithDefault("test_data/admin.json")
 	suite.Require().Nil(err)
-	pubKey, err := getPubKey(chainAdminKeyPath)
-	suite.Require().Nil(err)
-
 	addr1, err := k1.PublicKey().Address()
 	suite.Require().Nil(err)
 	addr2, err := k2.PublicKey().Address()
 	suite.Require().Nil(err)
+	k1Nonce := uint64(0)
+	k2Nonce := uint64(0)
+
+	rawpub1, err := k1.PublicKey().Bytes()
+	suite.Require().Nil(err)
+	pub1 := base64.StdEncoding.EncodeToString(rawpub1)
+	rawpub2, err := k2.PublicKey().Bytes()
+	suite.Require().Nil(err)
+	pub2 := base64.StdEncoding.EncodeToString(rawpub2)
 
 	did := genUniqueAppchainDID(addr1.String())
 	// Register
@@ -173,7 +171,7 @@ func (suite *Role) TestGetRuleAddress() {
 		pb.String("婚姻链"),
 		pb.String("趣链婚姻链"),
 		pb.String("1.8"),
-		pb.String(string(pubKey)),
+		pb.String(string(pub1)),
 	)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
@@ -220,7 +218,7 @@ func (suite *Role) TestGetRuleAddress() {
 		pb.String("政务链"),
 		pb.String("fabric政务"),
 		pb.String("1.4"),
-		pb.String(string(pubKey)),
+		pb.String(string(pub2)),
 	)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
@@ -258,40 +256,107 @@ func (suite *Role) TestGetRuleAddress() {
 	// deploy rule
 	bytes, err := ioutil.ReadFile("./test_data/hpc_rule.wasm")
 	suite.Require().Nil(err)
-	addr1, err = deployContract(suite.api, k1, k1Nonce, bytes)
+	ruleAddr1, err := deployContract(suite.api, k1, k1Nonce, bytes)
+	suite.Require().Nil(err)
+	k1Nonce++
+
+	bytes, err = ioutil.ReadFile("./test_data/hpc_rule.wasm")
+	suite.Require().Nil(err)
+	ruleAddr11, err := deployContract(suite.api, k1, k1Nonce, bytes)
 	suite.Require().Nil(err)
 	k1Nonce++
 
 	bytes, err = ioutil.ReadFile("./test_data/fabric_policy.wasm")
 	suite.Require().Nil(err)
-	addr2, err = deployContract(suite.api, k2, k2Nonce, bytes)
+	ruleAddr2, err := deployContract(suite.api, k2, k2Nonce, bytes)
 	suite.Require().Nil(err)
 	k2Nonce++
 
-	suite.Require().NotEqual(addr1, addr2)
+	suite.Require().NotEqual(ruleAddr1, ruleAddr2)
 
 	// register rule
-	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(), "BindRule", pb.String(string(bitxid.DID(did).GetChainDID())), pb.String(addr1.String()))
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(), "BindRule", pb.String(id1), pb.String(ruleAddr1.String()))
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k1Nonce++
+	proposalRuleId := string(ret.Ret)
+
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(), "BindRule", pb.String(id1), pb.String(ruleAddr11.String()))
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k1Nonce++
 
-	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.RuleManagerContractAddr.Address(), "BindRule", pb.String(string(bitxid.DID(did2).GetChainDID())), pb.String(addr2.String()))
+	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.GovernanceContractAddr.Address(), "Vote",
+		pb.String(proposalRuleId),
+		pb.String(string(contracts.APPOVED)),
+		pb.String("reason"),
+	)
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	adminNonce1++
+
+	ret, err = invokeBVMContract(suite.api, priAdmin2, adminNonce2, constant.GovernanceContractAddr.Address(), "Vote",
+		pb.String(proposalRuleId),
+		pb.String(string(contracts.APPOVED)),
+		pb.String("reason"),
+	)
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	adminNonce2++
+
+	ret, err = invokeBVMContract(suite.api, priAdmin3, adminNonce3, constant.GovernanceContractAddr.Address(), "Vote",
+		pb.String(proposalRuleId),
+		pb.String(string(contracts.APPOVED)),
+		pb.String("reason"),
+	)
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	adminNonce3++
+
+	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.RuleManagerContractAddr.Address(), "BindRule", pb.String(id2), pb.String(ruleAddr2.String()))
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess())
 	k2Nonce++
+	proposalRuleId2 := string(ret.Ret)
+
+	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.GovernanceContractAddr.Address(), "Vote",
+		pb.String(proposalRuleId2),
+		pb.String(string(contracts.APPOVED)),
+		pb.String("reason"),
+	)
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	adminNonce1++
+
+	ret, err = invokeBVMContract(suite.api, priAdmin2, adminNonce2, constant.GovernanceContractAddr.Address(), "Vote",
+		pb.String(proposalRuleId2),
+		pb.String(string(contracts.APPOVED)),
+		pb.String("reason"),
+	)
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	adminNonce2++
+
+	ret, err = invokeBVMContract(suite.api, priAdmin3, adminNonce3, constant.GovernanceContractAddr.Address(), "Vote",
+		pb.String(proposalRuleId2),
+		pb.String(string(contracts.APPOVED)),
+		pb.String("reason"),
+	)
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	adminNonce3++
 
 	// get role address
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(), "GetRuleAddress", pb.String(string(id1)), pb.String("hyperchain"))
 	suite.Assert().Nil(err)
-	suite.Require().True(ret.IsSuccess())
-	suite.Require().Equal(addr1.String(), string(ret.Ret))
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	suite.Require().Equal(ruleAddr1.String(), string(ret.Ret))
 	k1Nonce++
 
 	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.RuleManagerContractAddr.Address(), "GetRuleAddress", pb.String(string(id2)), pb.String("fabric"))
 	suite.Assert().Nil(err)
 	suite.Require().True(ret.IsSuccess())
-	suite.Require().Equal(addr2.String(), string(ret.Ret))
+	suite.Require().Equal(ruleAddr2.String(), string(ret.Ret))
 	k2Nonce++
 }
 
@@ -396,17 +461,4 @@ func (suite *Role) TestSetAdminRoles() {
 	ret3 := gjson.ParseBytes(r3.Ret)
 	suite.EqualValues(4, len(ret3.Array()))
 	adminNonce++
-}
-
-func getPubKey(keyPath string) (string, error) {
-	privKey, err := asym.RestorePrivateKey(keyPath, "bitxhub")
-	if err != nil {
-		return "", err
-	}
-
-	pubBytes, err := privKey.PublicKey().Bytes()
-	if err != nil {
-		return "", err
-	}
-	return base64.StdEncoding.EncodeToString(pubBytes), nil
 }
