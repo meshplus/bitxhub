@@ -28,7 +28,7 @@ require (
 	github.com/magiconair/properties v1.8.4
 	github.com/meshplus/bitxhub-core v1.3.0
 	github.com/meshplus/bitxhub-kit v1.2.0
-	github.com/meshplus/bitxhub-model v1.2.0
+	github.com/meshplus/bitxhub-model v1.2.1-0.20210427070329-44b1020dd703
 	github.com/meshplus/bitxid v0.0.0-20210412025850-e0eaf0f9063a
 	github.com/meshplus/did-registry v0.0.0-20210413035015-509c6c3a0bae
 	github.com/meshplus/go-libp2p-cert v0.0.0-20210125063330-7c25fd5b7a49
