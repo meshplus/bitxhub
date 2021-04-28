@@ -12,6 +12,7 @@ import (
 type Ledger interface {
 	BlockchainLedger
 	StateAccessor
+	vm.StateDB
 
 	StateDB() vm.StateDB
 
