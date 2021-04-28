@@ -73,12 +73,7 @@ func (rm *RuleManager) BindRule(chainId string, ruleAddress string) *boltvm.Resp
 		return boltvm.Error("bind prepare error: " + string(data))
 	}
 
-	// 5. change status
-	if ok, data := rm.RuleManager.ChangeStatus(ruleAddress, string(governance.EventBind), []byte(chainId)); !ok {
-		return boltvm.Error("change status error: " + string(data))
-	}
-
-	// 6. submit proposal
+	// 5. submit proposal
 	ruleData, err := json.Marshal(&ruleMgr.Rule{
 		Address: ruleAddress,
 		ChainId: chainId,
@@ -86,7 +81,8 @@ func (rm *RuleManager) BindRule(chainId string, ruleAddress string) *boltvm.Resp
 	if err != nil {
 		return boltvm.Error("marshal rule error: " + err.Error())
 	}
-	return rm.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
+
+	res := rm.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
 		pb.String(rm.Caller()),
 		pb.String(string(governance.EventBind)),
 		pb.String(""),
@@ -94,6 +90,15 @@ func (rm *RuleManager) BindRule(chainId string, ruleAddress string) *boltvm.Resp
 		pb.String(ruleAddress),
 		pb.Bytes(ruleData),
 	)
+	if !res.Ok {
+		return boltvm.Error("cross invoke SubmitProposal error: " + string(res.Result))
+	}
+
+	// 6. change status
+	if ok, data := rm.RuleManager.ChangeStatus(ruleAddress, string(governance.EventBind), []byte(chainId)); !ok {
+		return boltvm.Error("change status error: " + string(data))
+	}
+	return boltvm.Success(res.Result)
 }
 
 // UnbindRule unbinds the validation rule address with the chain id
@@ -110,12 +115,7 @@ func (rm *RuleManager) UnbindRule(chainId string, ruleAddress string) *boltvm.Re
 		return boltvm.Error("cross invoke IsAvailable error: " + string(res.Result))
 	}
 
-	// 3. change status
-	if ok, data := rm.RuleManager.ChangeStatus(ruleAddress, string(governance.EventUnbind), []byte(chainId)); !ok {
-		return boltvm.Error(string(data))
-	}
-
-	// 4. submit proposal
+	// 3. submit proposal
 	ruleData, err := json.Marshal(&ruleMgr.Rule{
 		Address: ruleAddress,
 		ChainId: chainId,
@@ -123,7 +123,8 @@ func (rm *RuleManager) UnbindRule(chainId string, ruleAddress string) *boltvm.Re
 	if err != nil {
 		return boltvm.Error("marshal rule error: " + err.Error())
 	}
-	return rm.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
+
+	res := rm.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
 		pb.String(rm.Caller()),
 		pb.String(string(governance.EventUnbind)),
 		pb.String(""),
@@ -131,6 +132,15 @@ func (rm *RuleManager) UnbindRule(chainId string, ruleAddress string) *boltvm.Re
 		pb.String(ruleAddress),
 		pb.Bytes(ruleData),
 	)
+	if !res.Ok {
+		return boltvm.Error("cross invoke SubmitProposal error: " + string(res.Result))
+	}
+
+	// 4. change status
+	if ok, data := rm.RuleManager.ChangeStatus(ruleAddress, string(governance.EventUnbind), []byte(chainId)); !ok {
+		return boltvm.Error(string(data))
+	}
+	return boltvm.Success(res.Result)
 }
 
 // FreezeRule freezes the validation rule address with the chain id
@@ -147,12 +157,7 @@ func (rm *RuleManager) FreezeRule(chainId string, ruleAddress string) *boltvm.Re
 		return boltvm.Error("cross invoke IsAvailable error: " + string(res.Result))
 	}
 
-	// 3. change status
-	if ok, data := rm.RuleManager.ChangeStatus(ruleAddress, string(governance.EventFreeze), []byte(chainId)); !ok {
-		return boltvm.Error(string(data))
-	}
-
-	// 4. submit proposal
+	// 3. submit proposal
 	ruleData, err := json.Marshal(&ruleMgr.Rule{
 		Address: ruleAddress,
 		ChainId: chainId,
@@ -160,7 +165,8 @@ func (rm *RuleManager) FreezeRule(chainId string, ruleAddress string) *boltvm.Re
 	if err != nil {
 		return boltvm.Error("marshal rule error: " + err.Error())
 	}
-	return rm.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
+
+	res := rm.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
 		pb.String(rm.Caller()),
 		pb.String(string(governance.EventFreeze)),
 		pb.String(""),
@@ -168,6 +174,15 @@ func (rm *RuleManager) FreezeRule(chainId string, ruleAddress string) *boltvm.Re
 		pb.String(ruleAddress),
 		pb.Bytes(ruleData),
 	)
+	if !res.Ok {
+		return boltvm.Error("cross invoke SubmitProposal error: " + string(res.Result))
+	}
+
+	// 4. change status
+	if ok, data := rm.RuleManager.ChangeStatus(ruleAddress, string(governance.EventFreeze), []byte(chainId)); !ok {
+		return boltvm.Error(string(data))
+	}
+	return boltvm.Success(res.Result)
 }
 
 // ActivateRule activate the validation rule address with the chain id
@@ -184,12 +199,7 @@ func (rm *RuleManager) ActivateRule(chainId string, ruleAddress string) *boltvm.
 		return boltvm.Error("cross invoke IsAvailable error: " + string(res.Result))
 	}
 
-	// 3. change status
-	if ok, data := rm.RuleManager.ChangeStatus(ruleAddress, string(governance.EventActivate), []byte(chainId)); !ok {
-		return boltvm.Error(string(data))
-	}
-
-	// 4. submit proposal
+	// 3. submit proposal
 	ruleData, err := json.Marshal(&ruleMgr.Rule{
 		Address: ruleAddress,
 		ChainId: chainId,
@@ -197,7 +207,8 @@ func (rm *RuleManager) ActivateRule(chainId string, ruleAddress string) *boltvm.
 	if err != nil {
 		return boltvm.Error("marshal rule error: " + err.Error())
 	}
-	return rm.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
+
+	res := rm.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
 		pb.String(rm.Caller()),
 		pb.String(string(governance.EventActivate)),
 		pb.String(""),
@@ -205,6 +216,15 @@ func (rm *RuleManager) ActivateRule(chainId string, ruleAddress string) *boltvm.
 		pb.String(ruleAddress),
 		pb.Bytes(ruleData),
 	)
+	if !res.Ok {
+		return boltvm.Error("cross invoke SubmitProposal error: " + string(res.Result))
+	}
+
+	// 4. change status
+	if ok, data := rm.RuleManager.ChangeStatus(ruleAddress, string(governance.EventActivate), []byte(chainId)); !ok {
+		return boltvm.Error(string(data))
+	}
+	return boltvm.Success(res.Result)
 }
 
 // LogoutRule logout the validation rule address with the chain id
@@ -221,12 +241,7 @@ func (rm *RuleManager) LogoutRule(chainId string, ruleAddress string) *boltvm.Re
 		return boltvm.Error("cross invoke IsAvailable error: " + string(res.Result))
 	}
 
-	// 3. change status
-	if ok, data := rm.RuleManager.ChangeStatus(ruleAddress, string(governance.EventLogout), []byte(chainId)); !ok {
-		return boltvm.Error(string(data))
-	}
-
-	// 4. submit proposal
+	// 3. submit proposal
 	ruleData, err := json.Marshal(&ruleMgr.Rule{
 		Address: ruleAddress,
 		ChainId: chainId,
@@ -234,7 +249,8 @@ func (rm *RuleManager) LogoutRule(chainId string, ruleAddress string) *boltvm.Re
 	if err != nil {
 		return boltvm.Error("marshal rule error: " + err.Error())
 	}
-	return rm.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
+
+	res := rm.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
 		pb.String(rm.Caller()),
 		pb.String(string(governance.EventLogout)),
 		pb.String(""),
@@ -242,6 +258,15 @@ func (rm *RuleManager) LogoutRule(chainId string, ruleAddress string) *boltvm.Re
 		pb.String(ruleAddress),
 		pb.Bytes(ruleData),
 	)
+	if !res.Ok {
+		return boltvm.Error("cross invoke SubmitProposal error: " + string(res.Result))
+	}
+
+	// 4. change status
+	if ok, data := rm.RuleManager.ChangeStatus(ruleAddress, string(governance.EventLogout), []byte(chainId)); !ok {
+		return boltvm.Error(string(data))
+	}
+	return boltvm.Success(res.Result)
 }
 
 // CountAvailableRules counts all available rules (should be 0 or 1)
@@ -263,7 +288,13 @@ func (rm *RuleManager) Rules(chainId string) *boltvm.Response {
 }
 
 // GetRule returns available rule address by appchain id and rule address
-func (rm *RuleManager) GetRuleAddress(chainId, chainType string) *boltvm.Response {
+func (rm *RuleManager) GetRuleByAddr(chainId, ruleAddr string) *boltvm.Response {
+	rm.RuleManager.Persister = rm.Stub
+	return responseWrapper(rm.QueryById(ruleAddr, []byte(chainId)))
+}
+
+// GetRule returns available rule address by appchain id and rule address
+func (rm *RuleManager) GetAvailableRuleAddr(chainId, chainType string) *boltvm.Response {
 	rm.RuleManager.Persister = rm.Stub
 	return responseWrapper(rm.GetAvailableRuleAddress(chainId, chainType))
 }

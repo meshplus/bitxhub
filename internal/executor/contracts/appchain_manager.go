@@ -188,10 +188,6 @@ func (am *AppchainManager) UpdateAppchain(id, docAddr, docHash, validators strin
 		return boltvm.Error("check permission error:" + string(res.Result))
 	}
 
-	if ok, data := am.AppchainManager.ChangeStatus(id, string(governance.EventUpdate), nil); !ok {
-		return boltvm.Error(string(data))
-	}
-
 	chain := &appchainMgr.Appchain{
 		ID:            id,
 		Name:          name,
@@ -210,7 +206,7 @@ func (am *AppchainManager) UpdateAppchain(id, docAddr, docHash, validators strin
 		return boltvm.Error(err.Error())
 	}
 
-	return am.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
+	res = am.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
 		pb.String(am.Caller()),
 		pb.String(string(governance.EventUpdate)),
 		pb.String(""),
@@ -218,6 +214,14 @@ func (am *AppchainManager) UpdateAppchain(id, docAddr, docHash, validators strin
 		pb.String(id),
 		pb.Bytes(data),
 	)
+	if !res.Ok {
+		return boltvm.Error("submit proposal error:" + string(res.Result))
+	}
+
+	if ok, data := am.AppchainManager.ChangeStatus(id, string(governance.EventUpdate), nil); !ok {
+		return boltvm.Error(string(data))
+	}
+	return boltvm.Success(res.Result)
 }
 
 // FreezeAppchain freezes available appchain
@@ -243,10 +247,6 @@ func (am *AppchainManager) FreezeAppchain(id string) *boltvm.Response {
 		return boltvm.Error("check permission error:" + string(res.Result))
 	}
 
-	if ok, data := am.AppchainManager.ChangeStatus(id, string(governance.EventFreeze), nil); !ok {
-		return boltvm.Error(string(data))
-	}
-
 	chain := &appchainMgr.Appchain{
 		ID: id,
 	}
@@ -255,7 +255,7 @@ func (am *AppchainManager) FreezeAppchain(id string) *boltvm.Response {
 		return boltvm.Error(err.Error())
 	}
 
-	return am.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
+	res = am.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
 		pb.String(am.Caller()),
 		pb.String(string(governance.EventFreeze)),
 		pb.String(""),
@@ -263,6 +263,14 @@ func (am *AppchainManager) FreezeAppchain(id string) *boltvm.Response {
 		pb.String(id),
 		pb.Bytes(chainData),
 	)
+	if !res.Ok {
+		return boltvm.Error("submit proposal error:" + string(res.Result))
+	}
+
+	if ok, data := am.AppchainManager.ChangeStatus(id, string(governance.EventFreeze), nil); !ok {
+		return boltvm.Error(string(data))
+	}
+	return boltvm.Success(res.Result)
 }
 
 // ActivateAppchain updates freezing appchain
@@ -289,9 +297,6 @@ func (am *AppchainManager) ActivateAppchain(id string) *boltvm.Response {
 	}
 
 	am.AppchainManager.Persister = am.Stub
-	if ok, data := am.AppchainManager.ChangeStatus(id, string(governance.EventActivate), nil); !ok {
-		return boltvm.Error(string(data))
-	}
 
 	chain := &appchainMgr.Appchain{
 		ID: id,
@@ -301,7 +306,7 @@ func (am *AppchainManager) ActivateAppchain(id string) *boltvm.Response {
 		return boltvm.Error(err.Error())
 	}
 
-	return am.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
+	res = am.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
 		pb.String(am.Caller()),
 		pb.String(string(governance.EventActivate)),
 		pb.String(""),
@@ -309,6 +314,14 @@ func (am *AppchainManager) ActivateAppchain(id string) *boltvm.Response {
 		pb.String(id),
 		pb.Bytes(data),
 	)
+	if !res.Ok {
+		return boltvm.Error("submit proposal error:" + string(res.Result))
+	}
+
+	if ok, data := am.AppchainManager.ChangeStatus(id, string(governance.EventActivate), nil); !ok {
+		return boltvm.Error(string(data))
+	}
+	return boltvm.Success(res.Result)
 }
 
 // LogoutAppchain updates available appchain
@@ -334,10 +347,6 @@ func (am *AppchainManager) LogoutAppchain(id string) *boltvm.Response {
 		return boltvm.Error("check permission error:" + string(res.Result))
 	}
 
-	if ok, data := am.AppchainManager.ChangeStatus(id, string(governance.EventLogout), nil); !ok {
-		return boltvm.Error(string(data))
-	}
-
 	chain := &appchainMgr.Appchain{
 		ID: id,
 	}
@@ -346,7 +355,7 @@ func (am *AppchainManager) LogoutAppchain(id string) *boltvm.Response {
 		return boltvm.Error(err.Error())
 	}
 
-	return am.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
+	res = am.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
 		pb.String(am.Caller()),
 		pb.String(string(governance.EventLogout)),
 		pb.String(""),
@@ -354,6 +363,14 @@ func (am *AppchainManager) LogoutAppchain(id string) *boltvm.Response {
 		pb.String(id),
 		pb.Bytes(data),
 	)
+	if !res.Ok {
+		return boltvm.Error("submit proposal error:" + string(res.Result))
+	}
+
+	if ok, data := am.AppchainManager.ChangeStatus(id, string(governance.EventLogout), nil); !ok {
+		return boltvm.Error(string(data))
+	}
+	return boltvm.Success(res.Result)
 }
 
 // CountAvailableAppchains counts all available appchains

@@ -42,6 +42,23 @@ func ruleMgrCMD() cli.Command {
 				Action: getAvailableRuleAddress,
 			},
 			cli.Command{
+				Name:  "status",
+				Usage: "query rule status by rule address and chain id",
+				Flags: []cli.Flag{
+					cli.StringFlag{
+						Name:     "id",
+						Usage:    "chain id",
+						Required: true,
+					},
+					cli.StringFlag{
+						Name:     "addr",
+						Usage:    "rule addr",
+						Required: true,
+					},
+				},
+				Action: getRuleStatus,
+			},
+			cli.Command{
 				Name:  "bind",
 				Usage: "bind rule with chain id",
 				Flags: []cli.Flag{
@@ -145,6 +162,27 @@ func getAvailableRuleAddress(ctx *cli.Context) error {
 		color.Green("available rule address is %s", string(receipt.Ret))
 	} else {
 		color.Red("get available rule address error: %s\n", string(receipt.Ret))
+	}
+	return nil
+}
+
+func getRuleStatus(ctx *cli.Context) error {
+	chainId := ctx.String("id")
+	ruleAddr := ctx.String("addr")
+
+	receipt, err := invokeBVMContract(ctx, constant.RuleManagerContractAddr.String(), "GetRuleByAddr", pb.String(chainId), pb.String(ruleAddr))
+	if err != nil {
+		return err
+	}
+
+	if receipt.IsSuccess() {
+		rule := &ruleMgr.Rule{}
+		if err := json.Unmarshal(receipt.Ret, rule); err != nil {
+			return fmt.Errorf("unmarshal receipt error: %w", err)
+		}
+		color.Green("the rule %s is %s", ruleAddr, string(rule.Status))
+	} else {
+		color.Red("get rule status error: %s\n", string(receipt.Ret))
 	}
 	return nil
 }

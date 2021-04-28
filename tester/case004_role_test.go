@@ -260,12 +260,6 @@ func (suite *Role) TestGetRuleAddress() {
 	suite.Require().Nil(err)
 	k1Nonce++
 
-	bytes, err = ioutil.ReadFile("./test_data/hpc_rule.wasm")
-	suite.Require().Nil(err)
-	ruleAddr11, err := deployContract(suite.api, k1, k1Nonce, bytes)
-	suite.Require().Nil(err)
-	k1Nonce++
-
 	bytes, err = ioutil.ReadFile("./test_data/fabric_policy.wasm")
 	suite.Require().Nil(err)
 	ruleAddr2, err := deployContract(suite.api, k2, k2Nonce, bytes)
@@ -280,11 +274,6 @@ func (suite *Role) TestGetRuleAddress() {
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k1Nonce++
 	proposalRuleId := string(ret.Ret)
-
-	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(), "BindRule", pb.String(id1), pb.String(ruleAddr11.String()))
-	suite.Require().Nil(err)
-	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
-	k1Nonce++
 
 	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalRuleId),
@@ -347,13 +336,13 @@ func (suite *Role) TestGetRuleAddress() {
 	adminNonce3++
 
 	// get role address
-	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(), "GetRuleAddress", pb.String(string(id1)), pb.String("hyperchain"))
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(), "GetAvailableRuleAddr", pb.String(string(id1)), pb.String("hyperchain"))
 	suite.Assert().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	suite.Require().Equal(ruleAddr1.String(), string(ret.Ret))
 	k1Nonce++
 
-	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.RuleManagerContractAddr.Address(), "GetRuleAddress", pb.String(string(id2)), pb.String("fabric"))
+	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.RuleManagerContractAddr.Address(), "GetAvailableRuleAddr", pb.String(string(id2)), pb.String("fabric"))
 	suite.Assert().Nil(err)
 	suite.Require().True(ret.IsSuccess())
 	suite.Require().Equal(ruleAddr2.String(), string(ret.Ret))
