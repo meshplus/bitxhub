@@ -29,10 +29,6 @@ type MemPool interface {
 
 	GetTimeoutTransactions(rebroadcastDuration time.Duration) [][]pb.Transaction
 
-	GetPendingTransactions(max int) []pb.Transaction
-
-	GetTransaction(hash *types.Hash) pb.Transaction
-
 	SubscribeTxEvent(chan<- events.NewTxsEvent) event.Subscription
 
 	External
@@ -43,6 +39,10 @@ type External interface {
 
 	// GetPendingNonceByAccount will return the latest pending nonce of a given account
 	GetPendingNonceByAccount(account string) uint64
+
+	GetPendingTransactions(max int) []pb.Transaction
+
+	GetTransaction(hash *types.Hash) pb.Transaction
 
 	// IsPoolFull check if memPool has exceeded the limited txSize.
 	IsPoolFull() bool

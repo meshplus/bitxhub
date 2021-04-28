@@ -327,22 +327,24 @@ func (mpi *mempoolImpl) GetPendingTransactions(max int) []pb.Transaction {
 }
 
 func (mpi *mempoolImpl) GetTransaction(hash *types.Hash) pb.Transaction {
-	key, ok := mpi.txStore.txHashMap[hash.String()]
-	if !ok {
-		return nil
-	}
+	// TODO: make it go routine safe
+	//key, ok := mpi.txStore.txHashMap[hash.String()]
+	//if !ok {
+	//	return nil
+	//}
+	//
+	//txMap, ok := mpi.txStore.allTxs[key.account]
+	//if !ok {
+	//	return nil
+	//}
+	//
+	//item, ok := txMap.items[key.nonce]
+	//if !ok {
+	//	return nil
+	//}
 
-	txMap, ok := mpi.txStore.allTxs[key.account]
-	if !ok {
-		return nil
-	}
-
-	item, ok := txMap.items[key.nonce]
-	if !ok {
-		return nil
-	}
-
-	return item.tx
+	//return item.tx
+	return nil
 }
 
 func (mpi *mempoolImpl) shardTxList(timeoutItems []*orderedTimeoutKey, batchLen uint64) [][]pb.Transaction {
