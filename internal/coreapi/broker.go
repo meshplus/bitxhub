@@ -1,17 +1,25 @@
 package coreapi
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 
+	solsha3 "github.com/miguelmota/go-solidity-sha3"
+
+	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
+	"github.com/meshplus/bitxhub/internal/executor/oracle/appchain"
 	"github.com/meshplus/bitxhub/internal/model"
 	"github.com/meshplus/bitxid"
 	"github.com/meshplus/eth-kit/ledger"
@@ -164,6 +172,8 @@ func (b *BrokerAPI) FetchSignsFromOtherPeers(id string, typ pb.GetMultiSignsRequ
 				address, sign, err = b.requestBlockHeaderSignFromPeer(pid, id)
 			case pb.GetMultiSignsRequest_MINT:
 				address, sign, err = b.requestMintSignFromPeer(pid, id)
+			case pb.GetMultiSignsRequest_BURN:
+				address, sign, err = b.requestBurnSignFromPeer(pid, id)
 			}
 
 			if err != nil {
@@ -252,10 +262,10 @@ func (b *BrokerAPI) requestBlockHeaderSignFromPeer(pid uint64, height string) (s
 	return data.Address, data.Signature, nil
 }
 
-func (b *BrokerAPI) requestMintSignFromPeer(pid uint64, height string) (string, []byte, error) {
+func (b *BrokerAPI) requestMintSignFromPeer(pid uint64, hash string) (string, []byte, error) {
 	req := pb.Message{
 		Type: pb.Message_FETCH_MINT_SIGN,
-		Data: []byte(height),
+		Data: []byte(hash),
 	}
 
 	resp, err := b.bxh.PeerMgr.Send(pid, &req)
@@ -264,6 +274,29 @@ func (b *BrokerAPI) requestMintSignFromPeer(pid uint64, height string) (string, 
 	}
 
 	if resp == nil || resp.Type != pb.Message_FETCH_MINT_SIGN_ACK {
+		return "", nil, fmt.Errorf("invalid fetch minter sign resp")
+	}
+
+	data := model.MerkleWrapperSign{}
+	if err := data.Unmarshal(resp.Data); err != nil {
+		return "", nil, err
+	}
+
+	return data.Address, data.Signature, nil
+}
+
+func (b *BrokerAPI) requestBurnSignFromPeer(pid uint64, hash string) (string, []byte, error) {
+	req := pb.Message{
+		Type: pb.Message_FETCH_BURN_SIGN,
+		Data: []byte(hash),
+	}
+
+	resp, err := b.bxh.PeerMgr.Send(pid, &req)
+	if err != nil {
+		return "", nil, err
+	}
+
+	if resp == nil || resp.Type != pb.Message_FETCH_BURN_SIGN_ACK {
 		return "", nil, fmt.Errorf("invalid fetch minter sign resp")
 	}
 
@@ -312,10 +345,90 @@ func (b *BrokerAPI) GetSign(content string, typ pb.GetMultiSignsRequest_Type) (s
 		}
 
 		return b.bxh.GetPrivKey().Address, sign, nil
+	case pb.GetMultiSignsRequest_MINT:
+		return b.handleMultiSignsMintReq(content)
+	case pb.GetMultiSignsRequest_BURN:
+		return b.handleMultiSignsBurnReq(content)
 	default:
 		return "", nil, fmt.Errorf("unsupported get sign type")
 	}
 
+}
+
+func (b *BrokerAPI) handleMultiSignsMintReq(id string) (string, []byte, error) {
+	ok, _ := b.bxh.Ledger.GetState(constant.EthHeaderMgrContractAddr.Address(), []byte(contracts.MintKey(id)))
+	if !ok {
+		return "", nil, fmt.Errorf("cannot find minter record with id %s", id)
+	}
+
+	hash := common.HexToHash(id)
+	key := b.bxh.GetPrivKey()
+	sign, err := key.PrivKey.Sign(hash[:])
+	if err != nil {
+		return "", nil, fmt.Errorf("bitxhub sign: %w", err)
+	}
+	return key.Address, sign, nil
+}
+
+func (b *BrokerAPI) handleMultiSignsBurnReq(hash string) (string, []byte, error) {
+	receipt, err := b.bxh.Ledger.GetReceipt(types.NewHashByStr(hash))
+	if err != nil {
+		return "", nil, fmt.Errorf("cannot find receipt with hash %s", hash)
+	}
+	tx, err := b.bxh.Ledger.GetTransaction(types.NewHashByStr(hash))
+	if err != nil {
+		return "", nil, fmt.Errorf("cannot find transaction with hash %s", hash)
+	}
+	ok, interchainSwapAddr := b.bxh.Ledger.GetState(constant.EthHeaderMgrContractAddr.Address(), []byte(contracts.InterchainSwapAddrKey))
+	if !ok {
+		return "", nil, fmt.Errorf("cannot find interchainswap contract")
+	}
+
+	interchainAbi, err := abi.JSON(bytes.NewReader([]byte(appchain.InterchainSwapABI)))
+	if err != nil {
+		return "", nil, err
+	}
+	var burn *appchain.InterchainSwapBurn
+	for _, log := range receipt.GetEvmLogs() {
+		if !strings.EqualFold(log.Address.String(), common.BytesToAddress(interchainSwapAddr).String()) {
+			continue
+		}
+
+		if log.Removed {
+			continue
+		}
+		for _, topic := range log.Topics {
+			if strings.EqualFold(topic.String(), interchainAbi.Events["Burn"].ID.String()) {
+				if err := interchainAbi.UnpackIntoInterface(&burn, "Burn", log.Data); err != nil {
+					b.logger.Error(err)
+					continue
+				}
+			}
+		}
+	}
+
+	if burn == nil {
+		return "", nil, fmt.Errorf("not found burn log:%v", receipt.TxHash.Hash)
+	}
+
+	//abi.encodePacked
+	abiHash := solsha3.SoliditySHA3(
+		solsha3.Address(burn.EthToken),
+		solsha3.Address(tx.GetFrom()),
+		solsha3.Address(burn.Recipient),
+		solsha3.Uint256(burn.Amount),
+		solsha3.String(receipt.TxHash.Bytes()),
+	)
+	prefixedHash := crypto.Keccak256Hash(
+		[]byte(fmt.Sprintf("\x19Ethereum Signed Message:\n%v", len(hash))),
+		abiHash,
+	)
+	key := b.bxh.GetPrivKey()
+	sign, err := key.PrivKey.Sign(prefixedHash[:])
+	if err != nil {
+		return "", nil, fmt.Errorf("bitxhub sign: %w", err)
+	}
+	return key.Address, sign, nil
 }
 
 func (b *BrokerAPI) getSign(content string) (string, []byte, error) {
