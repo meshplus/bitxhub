@@ -1,10 +1,21 @@
 package peermgr
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
+
+	solsha3 "github.com/miguelmota/go-solidity-sha3"
+
+	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/meshplus/bitxhub-kit/types"
+	"github.com/meshplus/bitxhub/internal/executor/oracle/appchain"
+
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -41,7 +52,9 @@ func (swarm *Swarm) handleMessage(s network.Stream, data []byte) {
 		case pb.Message_FETCH_IBTP_SIGN:
 			swarm.handleFetchIBTPSignMessage(s, m.Data)
 		case pb.Message_FETCH_MINT_SIGN:
-			swarm.handleFetchMinterSignMessage(s, m.Data)
+			swarm.handleFetchMintSignMessage(s, m.Data)
+		case pb.Message_FETCH_BURN_SIGN:
+			swarm.handleFetchBurnSignMessage(s, m.Data)
 		case pb.Message_CHECK_MASTER_PIER:
 			swarm.handleAskPierMaster(s, m.Data)
 		case pb.Message_CHECK_MASTER_PIER_ACK:
@@ -280,7 +293,7 @@ func (swarm *Swarm) handleFetchIBTPSignMessage(s network.Stream, data []byte) {
 	}
 }
 
-func (swarm *Swarm) handleFetchMinterSignMessage(s network.Stream, data []byte) {
+func (swarm *Swarm) handleFetchMintSignMessage(s network.Stream, data []byte) {
 	handle := func(id string) (string, []byte, error) {
 		swarm.logger.WithField("mint id", id).Debug("Handle fetching minter sign message")
 
@@ -289,7 +302,7 @@ func (swarm *Swarm) handleFetchMinterSignMessage(s network.Stream, data []byte) 
 			return "", nil, fmt.Errorf("cannot find minter record with id %s", id)
 		}
 
-		hash := sha256.Sum256([]byte(fmt.Sprintf("%s", id)))
+		hash := common.HexToHash(id)
 		key := swarm.repo.Key
 		sign, err := key.PrivKey.Sign(hash[:])
 		if err != nil {
@@ -323,6 +336,95 @@ func (swarm *Swarm) handleFetchMinterSignMessage(s network.Stream, data []byte) 
 
 	if err := swarm.SendWithStream(s, msg); err != nil {
 		swarm.logger.Errorf("send minter sign back: %s", err)
+	}
+}
+
+func (swarm *Swarm) handleFetchBurnSignMessage(s network.Stream, data []byte) {
+	handle := func(hash string) (string, []byte, error) {
+		receipt, err := swarm.ledger.GetReceipt(types.NewHashByStr(hash))
+		if err != nil {
+			return "", nil, fmt.Errorf("cannot find receipt with hash %s", hash)
+		}
+		tx, err := swarm.ledger.GetTransaction(types.NewHashByStr(hash))
+		if err != nil {
+			return "", nil, fmt.Errorf("cannot find transaction with hash %s", hash)
+		}
+		ok, interchainSwapAddr := swarm.ledger.GetState(constant.EthHeaderMgrContractAddr.Address(), []byte(contracts.InterchainSwapAddrKey))
+		if !ok {
+			return "", nil, fmt.Errorf("cannot find interchainswap contract")
+		}
+
+		interchainAbi, err := abi.JSON(bytes.NewReader([]byte(appchain.InterchainSwapABI)))
+		if err != nil {
+			return "", nil, err
+		}
+		var burn *appchain.InterchainSwapBurn
+		for _, log := range receipt.GetEvmLogs() {
+			if !strings.EqualFold(log.Address.String(), common.BytesToAddress(interchainSwapAddr).String()) {
+				continue
+			}
+
+			if log.Removed {
+				continue
+			}
+			for _, topic := range log.Topics {
+				if strings.EqualFold(topic.String(), interchainAbi.Events["Burn"].ID.String()) {
+					if err := interchainAbi.UnpackIntoInterface(&burn, "Burn", log.Data); err != nil {
+						swarm.logger.Error(err)
+						continue
+					}
+				}
+			}
+		}
+
+		if burn == nil {
+			return "", nil, fmt.Errorf("not found burn log:%v", receipt.TxHash.Hash)
+		}
+
+		//abi.encodePacked
+		abiHash := solsha3.SoliditySHA3(
+			solsha3.Address(burn.EthToken),
+			solsha3.Address(tx.GetFrom()),
+			solsha3.Address(burn.Recipient),
+			solsha3.Uint256(burn.Amount),
+			solsha3.String(receipt.TxHash.Bytes()),
+		)
+		prefixedHash := crypto.Keccak256Hash(
+			[]byte(fmt.Sprintf("\x19Ethereum Signed Message:\n%v", len(hash))),
+			abiHash,
+		)
+		key := swarm.repo.Key
+		sign, err := key.PrivKey.Sign(prefixedHash[:])
+		if err != nil {
+			return "", nil, fmt.Errorf("bitxhub sign: %w", err)
+		}
+		return key.Address, sign, nil
+	}
+
+	address, signed, err := handle(string(data))
+	if err != nil {
+		swarm.logger.Errorf("handle fetch-burn-sign: %s", err)
+		return
+	}
+
+	m := model.MerkleWrapperSign{
+		Address:   address,
+		Signature: signed,
+	}
+
+	body, err := m.Marshal()
+	if err != nil {
+		swarm.logger.Errorf("marshal merkle wrapper sign: %s", err)
+		return
+	}
+
+	msg := &pb.Message{
+		Type: pb.Message_FETCH_BURN_SIGN_ACK,
+		Data: body,
+	}
+
+	if err := swarm.SendWithStream(s, msg); err != nil {
+		swarm.logger.Errorf("send burn sign back: %s", err)
 	}
 }
 
