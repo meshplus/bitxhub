@@ -40,6 +40,8 @@ func (swarm *Swarm) handleMessage(s network.Stream, data []byte) {
 			swarm.handleFetchAssetExchangeSignMessage(s, m.Data)
 		case pb.Message_FETCH_IBTP_SIGN:
 			swarm.handleFetchIBTPSignMessage(s, m.Data)
+		case pb.Message_FETCH_MINT_SIGN:
+			swarm.handleFetchMinterSignMessage(s, m.Data)
 		case pb.Message_CHECK_MASTER_PIER:
 			swarm.handleAskPierMaster(s, m.Data)
 		case pb.Message_CHECK_MASTER_PIER_ACK:
@@ -275,6 +277,52 @@ func (swarm *Swarm) handleFetchIBTPSignMessage(s network.Stream, data []byte) {
 
 	if err := swarm.SendWithStream(s, msg); err != nil {
 		swarm.logger.Errorf("send asset exchange sign back: %s", err)
+	}
+}
+
+func (swarm *Swarm) handleFetchMinterSignMessage(s network.Stream, data []byte) {
+	handle := func(id string) (string, []byte, error) {
+		swarm.logger.WithField("mint id", id).Debug("Handle fetching minter sign message")
+
+		ok, _ := swarm.ledger.GetState(constant.EthHeaderMgrContractAddr.Address(), []byte(contracts.MintKey(id)))
+		if !ok {
+			return "", nil, fmt.Errorf("cannot find minter record with id %s", id)
+		}
+
+		hash := sha256.Sum256([]byte(fmt.Sprintf("%s", id)))
+		key := swarm.repo.Key
+		sign, err := key.PrivKey.Sign(hash[:])
+		if err != nil {
+			return "", nil, fmt.Errorf("fetch minter sign: %w", err)
+		}
+
+		return key.Address, sign, nil
+	}
+
+	address, signed, err := handle(string(data))
+	if err != nil {
+		swarm.logger.Errorf("handle fetch-minter-sign: %s", err)
+		return
+	}
+
+	m := model.MerkleWrapperSign{
+		Address:   address,
+		Signature: signed,
+	}
+
+	body, err := m.Marshal()
+	if err != nil {
+		swarm.logger.Errorf("marshal merkle wrapper sign: %s", err)
+		return
+	}
+
+	msg := &pb.Message{
+		Type: pb.Message_FETCH_MINT_SIGN_ACK,
+		Data: body,
+	}
+
+	if err := swarm.SendWithStream(s, msg); err != nil {
+		swarm.logger.Errorf("send minter sign back: %s", err)
 	}
 }
 
