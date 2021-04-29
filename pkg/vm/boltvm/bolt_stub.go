@@ -5,6 +5,7 @@ import (
 
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/validator"
+	evm "github.com/meshplus/bitxhub-kit/evm"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/pkg/vm"
@@ -15,6 +16,7 @@ var _ boltvm.Stub = (*BoltStubImpl)(nil)
 
 type BoltStubImpl struct {
 	bvm *BoltVM
+	evm *evm.EVM
 	ctx *vm.Context
 	ve  validator.Engine
 }

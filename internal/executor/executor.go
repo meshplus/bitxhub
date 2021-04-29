@@ -54,6 +54,7 @@ type BlockExecutor struct {
 	evm         *vm.EVM
 	evmChainCfg *params.ChainConfig
 	gasLimit    uint64
+	config      repo.Config
 	bxhGasPrice *big.Int
 	lock        *sync.Mutex
 	admins      []string
@@ -66,7 +67,6 @@ func (exec *BlockExecutor) GetBoltContracts() map[string]agency.Contract {
 // New creates executor instance
 func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, config *repo.Config, gasPrice *big.Int) (*BlockExecutor, error) {
 	ibtpVerify := proof.New(chainLedger, logger)
-
 	txsExecutor, err := agency.GetExecutorConstructor(config.Executor.Type)
 	if err != nil {
 		return nil, err
@@ -88,8 +88,8 @@ func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, config *repo.Con
 		currentBlockHash: chainLedger.GetChainMeta().BlockHash,
 		wasmInstances:    make(map[string]*wasmer.Instance),
 		evmChainCfg:      newEVMChainCfg(),
+		config:           *config,
 		gasLimit:         config.GasLimit,
-		bxhGasPrice:      gasPrice,
 		lock:             &sync.Mutex{},
 	}
 
@@ -99,7 +99,7 @@ func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, config *repo.Con
 
 	blockExecutor.evm = newEvm(1, uint64(0), blockExecutor.evmChainCfg, blockExecutor.ledger, blockExecutor.ledger.ChainLedger, blockExecutor.admins[0])
 
-	blockExecutor.txsExecutor = txsExecutor(blockExecutor.applyTx, registerBoltContracts, logger)
+	blockExecutor.txsExecutor = txsExecutor(blockExecutor.applyTx, blockExecutor.registerBoltContracts, logger)
 
 	return blockExecutor, nil
 }
@@ -173,7 +173,7 @@ func (exec *BlockExecutor) ApplyReadonlyTransactions(txs []pb.Transaction) []*pb
 	}
 
 	exec.ledger.PrepareBlock(meta.BlockHash, meta.Height)
-	exec.evm = newEvm(meta.Height, uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateLedger, exec.ledger.ChainLedger, exec.admins[0])
+	exec.evm = newEvm(meta.Height, uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateLedger, exec.ledger.ChainLedger)
 	for i, tx := range txs {
 		receipt := exec.applyTransaction(i, tx, "", nil)
 

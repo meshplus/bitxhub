@@ -162,6 +162,8 @@ func (b *BrokerAPI) FetchSignsFromOtherPeers(id string, typ pb.GetMultiSignsRequ
 				address, sign, err = b.requestIBTPSignPeer(pid, id)
 			case pb.GetMultiSignsRequest_BLOCK_HEADER:
 				address, sign, err = b.requestBlockHeaderSignFromPeer(pid, id)
+			case pb.GetMultiSignsRequest_MINT:
+				address, sign, err = b.requestMintSignFromPeer(pid, id)
 			}
 
 			if err != nil {
@@ -240,6 +242,29 @@ func (b *BrokerAPI) requestBlockHeaderSignFromPeer(pid uint64, height string) (s
 
 	if resp == nil || resp.Type != pb.Message_FETCH_BLOCK_SIGN_ACK {
 		return "", nil, fmt.Errorf("invalid fetch block header sign resp")
+	}
+
+	data := model.MerkleWrapperSign{}
+	if err := data.Unmarshal(resp.Data); err != nil {
+		return "", nil, err
+	}
+
+	return data.Address, data.Signature, nil
+}
+
+func (b *BrokerAPI) requestMintSignFromPeer(pid uint64, height string) (string, []byte, error) {
+	req := pb.Message{
+		Type: pb.Message_FETCH_MINT_SIGN,
+		Data: []byte(height),
+	}
+
+	resp, err := b.bxh.PeerMgr.Send(pid, &req)
+	if err != nil {
+		return "", nil, err
+	}
+
+	if resp == nil || resp.Type != pb.Message_FETCH_MINT_SIGN_ACK {
+		return "", nil, fmt.Errorf("invalid fetch minter sign resp")
 	}
 
 	data := model.MerkleWrapperSign{}
