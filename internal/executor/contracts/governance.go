@@ -12,7 +12,6 @@ import (
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/repo"
-	"github.com/tidwall/gjson"
 )
 
 type Governance struct {
@@ -126,8 +125,7 @@ func (g *Governance) SubmitProposal(from, eventTyp, des, typ, objId string, extr
 	}
 
 	// 3. lock low-priority proposals
-	chainId := gjson.Get(string(extra), "id").String()
-	lockPId, err := g.lockLowPriorityProposal(chainId, eventTyp)
+	lockPId, err := g.lockLowPriorityProposal(objId, eventTyp)
 	if err != nil {
 		return boltvm.Error("close low priority proposals error:" + err.Error())
 	}
