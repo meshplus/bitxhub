@@ -11,6 +11,7 @@ import (
 
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/ethereum/go-ethereum/event"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/meshplus/bitxhub-kit/types"
@@ -255,9 +256,9 @@ func (n *Node) DelNode(delID uint64) error {
 	return nil
 }
 
-// GetPool returns memory pool.
-func (n *Node) GetPool() mempool.MemPool {
-	return n.mempool
+// SubscribeTxEvent subscribes tx event
+func (n *Node) SubscribeTxEvent(events chan<- pb.Transactions) event.Subscription {
+	return n.mempool.SubscribeTxEvent(events)
 }
 
 // main work loop

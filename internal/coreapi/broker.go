@@ -312,9 +312,12 @@ func (b BrokerAPI) DelVPNode(delID uint64) error {
 }
 
 func (b BrokerAPI) GetPendingTransactions(max int) []pb.Transaction {
-	return b.bxh.Order.GetPool().GetPendingTransactions(max)
+	// TODO
+	return nil
 }
 
 func (b BrokerAPI) GetPoolTransaction(hash *types.Hash) pb.Transaction {
-	return b.bxh.Order.GetPool().GetTransaction(hash)
+	// TODO
+
+	return nil
 }

@@ -65,7 +65,7 @@ type ChainAPI interface {
 
 type FeedAPI interface {
 	SubscribeLogsEvent(chan<- []*pb.EvmLog) event.Subscription
-	SubscribeNewTxEvent(chan<- events.NewTxsEvent) event.Subscription
+	SubscribeNewTxEvent(chan<- pb.Transactions) event.Subscription
 	SubscribeNewBlockEvent(chan<- events.ExecutedEvent) event.Subscription
 	BloomStatus() (uint64, uint64)
 }

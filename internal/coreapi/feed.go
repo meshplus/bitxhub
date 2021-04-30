@@ -11,8 +11,8 @@ type FeedAPI CoreAPI
 
 var _ api.FeedAPI = (*FeedAPI)(nil)
 
-func (api *FeedAPI) SubscribeNewTxEvent(ch chan<- events.NewTxsEvent) event.Subscription {
-	return api.bxh.Order.GetPool().SubscribeTxEvent(ch)
+func (api *FeedAPI) SubscribeNewTxEvent(ch chan<- pb.Transactions) event.Subscription {
+	return api.bxh.Order.SubscribeTxEvent(ch)
 }
 
 func (api *FeedAPI) SubscribeNewBlockEvent(ch chan<- events.ExecutedEvent) event.Subscription {

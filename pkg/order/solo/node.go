@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/event"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/pkg/order"
@@ -86,8 +87,8 @@ func (n *Node) Quorum() uint64 {
 	return 1
 }
 
-func (n *Node) GetPool() mempool.MemPool {
-	return n.mempool
+func (n *Node) SubscribeTxEvent(ch chan<- pb.Transactions) event.Subscription {
+	return n.mempool.SubscribeTxEvent(ch)
 }
 
 func NewNode(opts ...order.Option) (order.Order, error) {

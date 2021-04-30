@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/meshplus/bitxhub-kit/log"
-
 	"github.com/meshplus/bitxhub-kit/storage/leveldb"
 	"github.com/stretchr/testify/require"
 )
