@@ -6,7 +6,6 @@ import (
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/internal/model/events"
 	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
 )
 
@@ -29,7 +28,7 @@ type MemPool interface {
 
 	GetTimeoutTransactions(rebroadcastDuration time.Duration) [][]pb.Transaction
 
-	SubscribeTxEvent(chan<- events.NewTxsEvent) event.Subscription
+	SubscribeTxEvent(chan<- pb.Transactions) event.Subscription
 
 	External
 }

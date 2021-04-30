@@ -1,9 +1,9 @@
 package order
 
 import (
+	"github.com/ethereum/go-ethereum/event"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/pkg/order/mempool"
 )
 
 //go:generate mockgen -destination mock_order/mock_order.go -package mock_order -source order.go
@@ -38,5 +38,5 @@ type Order interface {
 	// DelNode sends a delete vp request by given id.
 	DelNode(delID uint64) error
 
-	GetPool() mempool.MemPool
+	SubscribeTxEvent(events chan<- pb.Transactions) event.Subscription
 }

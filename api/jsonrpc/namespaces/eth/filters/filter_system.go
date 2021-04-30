@@ -101,10 +101,10 @@ type EventSystem struct {
 	chainSub event.Subscription // Subscription for new chain event
 
 	// Channels
-	install   chan *subscription       // install filter for event notification
-	uninstall chan *subscription       // remove filter for event notification
-	txsCh     chan events2.NewTxsEvent // Channel to receive new transactions event
-	logsCh    chan []*pb.EvmLog        // Channel to receive new log event
+	install   chan *subscription   // install filter for event notification
+	uninstall chan *subscription   // remove filter for event notification
+	txsCh     chan pb.Transactions // Channel to receive new transactions event
+	logsCh    chan []*pb.EvmLog    // Channel to receive new log event
 	//pendingLogsCh chan []*pb.EvmLog          // Channel to receive new log event
 	chainCh chan events2.ExecutedEvent // Channel to receive new chain event
 }
@@ -121,7 +121,7 @@ func NewEventSystem(api api.CoreAPI, lightMode bool) *EventSystem {
 		lightMode: lightMode,
 		install:   make(chan *subscription),
 		uninstall: make(chan *subscription),
-		txsCh:     make(chan events2.NewTxsEvent, txChanSize),
+		txsCh:     make(chan pb.Transactions, txChanSize),
 		logsCh:    make(chan []*pb.EvmLog, logsChanSize),
 		//pendingLogsCh: make(chan []*pb.EvmLog, logsChanSize),
 		chainCh: make(chan events2.ExecutedEvent, chainEvChanSize),
@@ -335,9 +335,9 @@ func (es *EventSystem) handlePendingLogs(filters filterIndex, ev []*pb.EvmLog) {
 	}
 }
 
-func (es *EventSystem) handleTxsEvent(filters filterIndex, ev events2.NewTxsEvent) {
-	hashes := make([]*types2.Hash, 0, len(ev.Txs))
-	for _, tx := range ev.Txs {
+func (es *EventSystem) handleTxsEvent(filters filterIndex, ev pb.Transactions) {
+	hashes := make([]*types2.Hash, 0, len(ev.Transactions))
+	for _, tx := range ev.Transactions {
 		hashes = append(hashes, tx.GetHash())
 	}
 	for _, f := range filters[PendingTransactionsSubscription] {

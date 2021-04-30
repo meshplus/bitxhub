@@ -13,7 +13,6 @@ import (
 	"github.com/meshplus/bitxhub-kit/storage/leveldb"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/internal/model/events"
 	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -384,10 +383,10 @@ func loadOrCreateStorage(memPoolDir string) (storage.Storage, error) {
 	return leveldb.New(memPoolDir)
 }
 
-func (mpi *mempoolImpl) SubscribeTxEvent(ch chan<- events.NewTxsEvent) event.Subscription {
+func (mpi *mempoolImpl) SubscribeTxEvent(ch chan<- pb.Transactions) event.Subscription {
 	return mpi.txFeed.Subscribe(ch)
 }
 
 func (mpi *mempoolImpl) postTxsEvent(txList []pb.Transaction) {
-	go mpi.txFeed.Send(events.NewTxsEvent{Txs: txList})
+	go mpi.txFeed.Send(pb.Transactions{Transactions: txList})
 }
