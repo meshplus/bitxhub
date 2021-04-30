@@ -562,9 +562,9 @@ func TestGovernance_SubmitProposal_LockLowPriorityProposal(t *testing.T) {
 	mockStub.EXPECT().AddObject(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().CurrentCaller().Return("").AnyTimes()
 
-	res := g.SubmitProposal(idExistent, string(governance.EventUpdate), "des", string(AppchainMgr), "objId", chainData)
+	res := g.SubmitProposal(idExistent, string(governance.EventUpdate), "des", string(AppchainMgr), appchainMethod, chainData)
 	assert.False(t, res.Ok, string(res.Result))
-	res = g.SubmitProposal(idExistent, string(governance.EventLogout), "des", string(AppchainMgr), "objId", chainData)
+	res = g.SubmitProposal(idExistent, string(governance.EventLogout), "des", string(AppchainMgr), appchainMethod, chainData)
 	assert.True(t, res.Ok, string(res.Result))
 }
 
