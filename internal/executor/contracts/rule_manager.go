@@ -7,6 +7,7 @@ import (
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/governance"
 	ruleMgr "github.com/meshplus/bitxhub-core/rule-mgr"
+	"github.com/meshplus/bitxhub-core/validator"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/ledger"
@@ -305,6 +306,10 @@ func (rm *RuleManager) IsAvailableRule(chainId, ruleAddress string) *boltvm.Resp
 }
 
 func (rm *RuleManager) checkRuleAddress(addr string) error {
+	if addr == validator.FabricRuleAddr || addr == validator.SimFabricRuleAddr {
+		return nil
+	}
+
 	ok, account1 := rm.Persister.GetAccount(addr)
 	if !ok {
 		return fmt.Errorf("get account error")
