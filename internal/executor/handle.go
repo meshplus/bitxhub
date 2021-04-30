@@ -69,6 +69,7 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	block.BlockHeader.TxRoot = l1Root
 	block.BlockHeader.ReceiptRoot = receiptRoot
 	block.BlockHeader.ParentHash = exec.currentBlockHash
+	block.BlockHeader.Bloom = ledger.CreateBloom(receipts)
 
 	accounts, journal := exec.ledger.FlushDirtyDataAndComputeJournal()
 

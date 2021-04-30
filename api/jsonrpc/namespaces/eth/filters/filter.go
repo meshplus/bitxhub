@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/core/bloombits"
 	types2 "github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
@@ -36,7 +35,6 @@ type Filter struct {
 	block     *types2.Hash // Block hash if filtering a single block
 	begin     int64
 	end       int64 // Range interval if filtering multiple blocks
-	matcher   *bloombits.Matcher
 }
 
 type bytesBacked interface {
@@ -64,12 +62,10 @@ func NewRangeFilter(api api.CoreAPI, begin, end int64, addresses []*types2.Addre
 		}
 		filters = append(filters, filter)
 	}
-	size, _ := api.Feed().BloomStatus()
 
 	// Create a generic filter and convert it into a range filter
 	filter := newFilter(api, addresses, topics)
 
-	filter.matcher = bloombits.NewMatcher(size, filters)
 	filter.begin = begin
 	filter.end = end
 
