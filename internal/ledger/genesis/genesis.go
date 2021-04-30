@@ -45,6 +45,7 @@ func Initialize(genesis *repo.Genesis, lg ledger.Ledger) error {
 		BlockHeader: &pb.BlockHeader{
 			Number:    1,
 			StateRoot: journal.ChangedHash,
+			Bloom:     &types.Bloom{},
 		},
 		Transactions: &pb.Transactions{},
 	}
