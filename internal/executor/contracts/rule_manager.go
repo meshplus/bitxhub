@@ -291,18 +291,18 @@ func (rm *RuleManager) Rules(chainId string) *boltvm.Response {
 // GetRule returns available rule address by appchain id and rule address
 func (rm *RuleManager) GetRuleByAddr(chainId, ruleAddr string) *boltvm.Response {
 	rm.RuleManager.Persister = rm.Stub
-	return responseWrapper(rm.QueryById(ruleAddr, []byte(chainId)))
+	return responseWrapper(rm.RuleManager.QueryById(ruleAddr, []byte(chainId)))
 }
 
 // GetRule returns available rule address by appchain id and rule address
 func (rm *RuleManager) GetAvailableRuleAddr(chainId, chainType string) *boltvm.Response {
 	rm.RuleManager.Persister = rm.Stub
-	return responseWrapper(rm.GetAvailableRuleAddress(chainId, chainType))
+	return responseWrapper(rm.RuleManager.GetAvailableRuleAddress(chainId, chainType))
 }
 
 func (rm *RuleManager) IsAvailableRule(chainId, ruleAddress string) *boltvm.Response {
 	rm.RuleManager.Persister = rm.Stub
-	return responseWrapper(rm.IsAvailable(chainId, ruleAddress))
+	return responseWrapper(rm.RuleManager.IsAvailable(chainId, ruleAddress))
 }
 
 func (rm *RuleManager) checkRuleAddress(addr string) error {
