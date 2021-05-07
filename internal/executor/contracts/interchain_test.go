@@ -165,7 +165,7 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 
 	mockStub.EXPECT().Set(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
-	f1 := mockStub.EXPECT().Get(appchainMgr.PREFIX+appchainMethod).Return(false, nil)
+	mockStub.EXPECT().Get(appchainMgr.PREFIX+appchainMethod).Return(false, nil)
 
 	interchain := pb.Interchain{
 		ID:                   appchainMethod,
@@ -179,8 +179,9 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	data0, err := interchain.Marshal()
 	assert.Nil(t, err)
 
-	f2 := mockStub.EXPECT().Get(appchainMgr.PREFIX+appchainMethod).Return(true, data0).AnyTimes()
+	mockStub.EXPECT().Get(appchainMgr.PREFIX+appchainMethod).Return(true, data0).AnyTimes()
 	mockStub.EXPECT().Get(appchainMgr.PREFIX+appchainMethod2).Return(true, data0).AnyTimes()
+	mockStub.EXPECT().Get(appchainMgr.PREFIX).Return(false, nil).AnyTimes()
 
 	appchain := &appchainMgr.Appchain{
 		ID:            appchainMethod,
@@ -218,7 +219,7 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	mockStub.EXPECT().GetTxIndex().Return(uint64(1)).AnyTimes()
 	mockStub.EXPECT().PostInterchainEvent(gomock.Any()).AnyTimes()
 	mockStub.EXPECT().GetTxHash().Return(&types.Hash{}).AnyTimes()
-	gomock.InOrder(f1, f2)
+	//gomock.InOrder(f1, f2)
 
 	im := &InterchainManager{mockStub}
 
@@ -228,16 +229,13 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 
 	res := im.HandleIBTP(ibtp)
 	assert.False(t, res.Ok)
-	assert.Equal(t, "appchain not available: this appchain does not exist", string(res.Result))
-
-	res = im.HandleIBTP(ibtp)
-	assert.False(t, res.Ok)
-	assert.Equal(t, "invalid ibtp: empty destination chain id", string(res.Result))
+	assert.True(t, strings.HasPrefix(string(res.Result), AppchainNotAvailable), string(res.Result))
+	assert.True(t, strings.Contains(string(res.Result), appchainMethod), string(res.Result))
 
 	ibtp = &pb.IBTP{
 		From:      appchainMethod,
 		To:        appchainMethod2,
-		Index:     0,
+		Index:     1,
 		Type:      pb.IBTP_INTERCHAIN,
 		Timestamp: 0,
 		Proof:     nil,
@@ -253,7 +251,7 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	ibtp.From = appchainMethod
 	res = im.HandleIBTP(ibtp)
 	assert.False(t, res.Ok)
-	assert.Equal(t, "index already exists: required 2, but 0", string(res.Result))
+	assert.Equal(t, "index already exists: required 2, but 1", string(res.Result))
 
 	ibtp.Index = 2
 	res = im.HandleIBTP(ibtp)
@@ -379,8 +377,8 @@ func TestInterchainManager_HandleIBTPs(t *testing.T) {
 
 	mockStub.EXPECT().Get(appchainMgr.PREFIX+appchainMethod).Return(true, data0).AnyTimes()
 	mockStub.EXPECT().Get(appchainMgr.PREFIX+appchainMethod2).Return(true, data0).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), "GetAppchain", gomock.Any()).Return(boltvm.Success(appchainData)).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.TransactionMgrContractAddr.String(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), "GetAppchain", pb.String(appchainMethod)).Return(boltvm.Success(appchainData)).AnyTimes()
 	mockStub.EXPECT().AddObject(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().GetTxIndex().Return(uint64(1)).AnyTimes()
 	mockStub.EXPECT().PostInterchainEvent(gomock.Any()).AnyTimes()
