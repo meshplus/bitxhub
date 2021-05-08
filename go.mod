@@ -66,4 +66,3 @@ replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20200218
 replace google.golang.org/grpc => google.golang.org/grpc v1.33.0
 
 replace github.com/hyperledger/fabric => github.com/hyperledger/fabric v2.0.1+incompatible
-
