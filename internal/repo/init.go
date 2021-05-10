@@ -35,5 +35,5 @@ func Initialize(repoRoot string) error {
 }
 
 func Initialized(repoRoot string) bool {
-	return fileutil.Exist(filepath.Join(repoRoot, configName))
+	return fileutil.Exist(filepath.Join(repoRoot, ConfigName))
 }

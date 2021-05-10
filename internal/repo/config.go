@@ -2,6 +2,7 @@ package repo
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,11 +20,21 @@ const (
 	// envDir is the environment variable used to change the path root.
 	envDir = "BITXHUB_PATH"
 	// Config name
-	configName = "bitxhub.toml"
+	ConfigName = "bitxhub.toml"
+	// key
+	KeyN = "key"
 	// key name
 	KeyName = "key.json"
 	// API name
 	APIName = "api"
+	// node name
+	NodeName = "node"
+	// node org
+	NodeOrg = "org"
+	// agency name
+	AgencyName = "agency"
+	// certs dir
+	CertsDir = "certs"
 )
 
 type Config struct {
@@ -147,6 +158,26 @@ func (c *Config) Bytes() ([]byte, error) {
 }
 
 func DefaultConfig() (*Config, error) {
+	admins := make([]*Admin, 4)
+	{
+		admins[0] = &Admin{
+			Address: "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013",
+			Weight:  1,
+		}
+		admins[1] = &Admin{
+			Address: "0x79a1215469FaB6f9c63c1816b45183AD3624bE34",
+			Weight:  1,
+		}
+		admins[2] = &Admin{
+			Address: "0x97c8B516D19edBf575D72a172Af7F418BE498C37",
+			Weight:  1,
+		}
+		admins[3] = &Admin{
+			Address: "0xc0Ff2e0b3189132D815b8eb325bE17285AC898f8",
+			Weight:  1,
+		}
+	}
+
 	return &Config{
 		Title: "BitXHub configuration file",
 		Solo:  false,
@@ -191,12 +222,13 @@ func DefaultConfig() (*Config, error) {
 		Genesis: Genesis{
 			ChainID:  1,
 			GasLimit: 0x2fefd8,
+			Admins:   admins,
 		},
 	}, nil
 }
 
 func UnmarshalConfig(repoRoot string) (*Config, error) {
-	viper.SetConfigFile(filepath.Join(repoRoot, configName))
+	viper.SetConfigFile(filepath.Join(repoRoot, ConfigName))
 	viper.SetConfigType("toml")
 	viper.AutomaticEnv()
 	viper.SetEnvPrefix("BITXHUB")
@@ -250,4 +282,40 @@ func PathRootWithDefault(path string) (string, error) {
 	}
 
 	return path, nil
+}
+
+func RewriteBitxhubConfigAddr(repoRoot string, addr string) error {
+	bitxhubConfig, err := UnmarshalConfig(repoRoot)
+	if err != nil {
+		return err
+	}
+
+	bitxhubConfig.Genesis.Admins[0].Address = addr
+
+	return ModifyBitxhubConfig(repoRoot, "genesis", bitxhubConfig.Genesis)
+}
+
+func ModifyBitxhubConfig(repoRoot string, modifyKey string, modifyValue interface{}) error {
+	data, _ := json.Marshal(&modifyValue)
+	m := make(map[string]interface{})
+	if err := json.Unmarshal(data, &m); err != nil {
+		return fmt.Errorf("convert struct to map error: %w", err)
+	}
+
+	viper.SetConfigFile(filepath.Join(repoRoot, ConfigName))
+	viper.SetConfigType("toml")
+	viper.AutomaticEnv()
+	viper.SetEnvPrefix("BITXHUB")
+	replacer := strings.NewReplacer(".", "_")
+	viper.SetEnvKeyReplacer(replacer)
+	if err := viper.ReadInConfig(); err != nil {
+		return err
+	}
+
+	viper.Set(modifyKey, m)
+	if err := viper.WriteConfigAs(filepath.Join(repoRoot, ConfigName)); err != nil {
+		return err
+	}
+
+	return nil
 }

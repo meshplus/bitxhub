@@ -132,22 +132,31 @@ func showKey(ctx *cli.Context) error {
 func getAddress(ctx *cli.Context) error {
 	privPath := ctx.String("path")
 
+	addr, err := GetAddressFromPrivFile(privPath)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(addr)
+
+	return nil
+}
+
+func GetAddressFromPrivFile(privPath string) (string, error) {
 	data, err := ioutil.ReadFile(privPath)
 	if err != nil {
-		return fmt.Errorf("read private key: %w", err)
+		return "", fmt.Errorf("read private key: %w", err)
 	}
 
 	privKey, err := libp2pcert.ParsePrivateKey(data, crypto.Secp256k1)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	addr, err := privKey.PublicKey().Address()
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	fmt.Println(addr.String())
-
-	return nil
+	return addr.String(), nil
 }
