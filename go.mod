@@ -5,6 +5,7 @@ require (
 	github.com/aristanetworks/goarista v0.0.0-20200310212843-2da4c1f5881b // indirect
 	github.com/cbergoon/merkletree v0.2.0
 	github.com/cheynewallace/tabby v1.1.1
+	github.com/codeskyblue/go-sh v0.0.0-20200712050446-30169cf553fe
 	github.com/common-nighthawk/go-figure v0.0.0-20190529165535-67e0ed34491a
 	github.com/coreos/etcd v3.3.18+incompatible
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f // indirect
@@ -28,6 +29,7 @@ require (
 	github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20210330035001-b327cf056572
 	github.com/meshplus/bitxhub-kit v1.1.2-0.20210112075018-319e668d6359
 	github.com/meshplus/bitxhub-model v1.1.2-0.20210409071219-0526019e06c4
+	github.com/meshplus/bitxid v0.0.0-20210412025850-e0eaf0f9063a
 	github.com/meshplus/go-libp2p-cert v0.0.0-20210125063330-7c25fd5b7a49
 	github.com/meshplus/go-lightp2p v0.0.0-20210120082108-df5a536a6192
 	github.com/mitchellh/go-homedir v1.1.0

@@ -16,9 +16,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
+	"github.com/meshplus/bitxhub-kit/fileutil"
 	"github.com/meshplus/bitxhub/internal/repo"
 	libp2pcert "github.com/meshplus/go-libp2p-cert"
 	"github.com/urfave/cli"
@@ -106,43 +106,7 @@ var csrCMD = cli.Command{
 		privPath := ctx.String("key")
 		target := ctx.String("target")
 
-		privData, err := ioutil.ReadFile(privPath)
-		if err != nil {
-			return err
-		}
-		block, _ := pem.Decode(privData)
-		privKey, err := x509.ParseECPrivateKey(block.Bytes)
-		if err != nil {
-			return fmt.Errorf("Error occured when parsing private key. Please make sure it's secp256r1 private key.")
-		}
-
-		template := &x509.CertificateRequest{
-			Subject: pkix.Name{
-				Country:            []string{"CN"},
-				Locality:           []string{"HangZhou"},
-				Province:           []string{"ZheJiang"},
-				OrganizationalUnit: []string{"BitXHub"},
-				Organization:       []string{org},
-				StreetAddress:      []string{"street", "address"},
-				PostalCode:         []string{"324000"},
-				CommonName:         "BitXHub",
-			},
-		}
-		data, err := x509.CreateCertificateRequest(rand.Reader, template, privKey)
-		if err != nil {
-			return err
-		}
-
-		name := getFileName(privPath)
-
-		path := filepath.Join(target, fmt.Sprintf("%s.csr", name))
-		f, err := os.Create(path)
-		if err != nil {
-			return err
-		}
-		defer f.Close()
-
-		return pem.Encode(f, &pem.Block{Type: "CSR", Bytes: data})
+		return GenerateCsr(org, privPath, target)
 	},
 }
 
@@ -181,81 +145,7 @@ var issueCMD = cli.Command{
 		certPath := ctx.String("cert")
 		target := ctx.String("target")
 
-		privData, err := ioutil.ReadFile(privPath)
-		if err != nil {
-			return fmt.Errorf("read ca private key: %w", err)
-		}
-		block, _ := pem.Decode(privData)
-		privKey, err := x509.ParseECPrivateKey(block.Bytes)
-		if err != nil {
-			return fmt.Errorf("Error occured when parsing private key. Please make sure it's secp256r1 private key.")
-		}
-
-		caCertData, err := ioutil.ReadFile(certPath)
-		if err != nil {
-			return err
-		}
-		block, _ = pem.Decode(caCertData)
-		caCert, err := x509.ParseCertificate(block.Bytes)
-		if err != nil {
-			return fmt.Errorf("parse ca cert: %w", err)
-		}
-
-		csrData, err := ioutil.ReadFile(csrPath)
-		if err != nil {
-			return fmt.Errorf("read csr: %w", err)
-		}
-
-		block, _ = pem.Decode(csrData)
-
-		csr, err := x509.ParseCertificateRequest(block.Bytes)
-		if err != nil {
-			return fmt.Errorf("parse csr: %w", err)
-		}
-
-		if err := csr.CheckSignature(); err != nil {
-			return fmt.Errorf("wrong csr sign: %w", err)
-		}
-
-		sn, err := rand.Int(rand.Reader, big.NewInt(1000000))
-		if err != nil {
-			return err
-		}
-
-		notBefore := time.Now().Add(-5 * time.Minute).UTC()
-		template := &x509.Certificate{
-			Signature:             csr.Signature,
-			SignatureAlgorithm:    csr.SignatureAlgorithm,
-			PublicKey:             csr.PublicKey,
-			PublicKeyAlgorithm:    csr.PublicKeyAlgorithm,
-			SerialNumber:          sn,
-			NotBefore:             notBefore,
-			NotAfter:              notBefore.Add(50 * 365 * 24 * time.Hour).UTC(),
-			BasicConstraintsValid: true,
-			IsCA:                  isCA,
-			Issuer:                caCert.Subject,
-			KeyUsage: x509.KeyUsageDigitalSignature |
-				x509.KeyUsageKeyEncipherment | x509.KeyUsageCertSign |
-				x509.KeyUsageCRLSign,
-			ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
-			Subject:     csr.Subject,
-		}
-
-		x509certEncode, err := x509.CreateCertificate(rand.Reader, template, caCert, csr.PublicKey, privKey)
-		if err != nil {
-			return fmt.Errorf("create cert: %w", err)
-		}
-
-		name := getFileName(csrPath)
-
-		path := filepath.Join(target, fmt.Sprintf("%s.cert", name))
-		f, err := os.Create(path)
-		if err != nil {
-			return err
-		}
-		defer f.Close()
-
-		return pem.Encode(f, &pem.Block{Type: "CERTIFICATE", Bytes: x509certEncode})
+		return CertIssue(csrPath, isCA, privPath, certPath, target)
 	},
 }
 
@@ -398,6 +288,10 @@ func generatePrivKey(ctx *cli.Context, opt crypto.KeyType) error {
 	name := ctx.String("name")
 	target := ctx.String("target")
 
+	return GeneratePrivKey(name, target, opt)
+}
+
+func GeneratePrivKey(name, target string, opt crypto.KeyType) error {
 	target, err := filepath.Abs(target)
 	if err != nil {
 		return fmt.Errorf("get absolute key path: %w", err)
@@ -432,4 +326,122 @@ func generatePrivKey(ctx *cli.Context, opt crypto.KeyType) error {
 
 	fmt.Printf("%s.priv key is generated under directory %s\n", name, target)
 	return nil
+}
+
+func GenerateCsr(org, privPath, target string) error {
+	privData, err := ioutil.ReadFile(privPath)
+	if err != nil {
+		return err
+	}
+	block, _ := pem.Decode(privData)
+	privKey, err := x509.ParseECPrivateKey(block.Bytes)
+	if err != nil {
+		return fmt.Errorf("Error occured when parsing private key. Please make sure it's secp256r1 private key.")
+	}
+
+	template := &x509.CertificateRequest{
+		Subject: pkix.Name{
+			Country:            []string{"CN"},
+			Locality:           []string{"HangZhou"},
+			Province:           []string{"ZheJiang"},
+			OrganizationalUnit: []string{"BitXHub"},
+			Organization:       []string{org},
+			StreetAddress:      []string{"street", "address"},
+			PostalCode:         []string{"324000"},
+			CommonName:         "BitXHub",
+		},
+	}
+	data, err := x509.CreateCertificateRequest(rand.Reader, template, privKey)
+	if err != nil {
+		return err
+	}
+
+	name := getFileName(privPath)
+
+	path := filepath.Join(target, fmt.Sprintf("%s.csr", name))
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	return pem.Encode(f, &pem.Block{Type: "CSR", Bytes: data})
+}
+
+func CertIssue(csrPath string, isCA bool, privPath, certPath, target string) error {
+	privData, err := ioutil.ReadFile(privPath)
+	if err != nil {
+		return fmt.Errorf("read ca private key: %w", err)
+	}
+	block, _ := pem.Decode(privData)
+	privKey, err := x509.ParseECPrivateKey(block.Bytes)
+	if err != nil {
+		return fmt.Errorf("Error occured when parsing private key. Please make sure it's secp256r1 private key.")
+	}
+
+	caCertData, err := ioutil.ReadFile(certPath)
+	if err != nil {
+		return err
+	}
+	block, _ = pem.Decode(caCertData)
+	caCert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return fmt.Errorf("parse ca cert: %w", err)
+	}
+
+	csrData, err := ioutil.ReadFile(csrPath)
+	if err != nil {
+		return fmt.Errorf("read csr: %w", err)
+	}
+
+	block, _ = pem.Decode(csrData)
+
+	csr, err := x509.ParseCertificateRequest(block.Bytes)
+	if err != nil {
+		return fmt.Errorf("parse csr: %w", err)
+	}
+
+	if err := csr.CheckSignature(); err != nil {
+		return fmt.Errorf("wrong csr sign: %w", err)
+	}
+
+	sn, err := rand.Int(rand.Reader, big.NewInt(1000000))
+	if err != nil {
+		return err
+	}
+
+	notBefore := time.Now().Add(-5 * time.Minute).UTC()
+	template := &x509.Certificate{
+		Signature:             csr.Signature,
+		SignatureAlgorithm:    csr.SignatureAlgorithm,
+		PublicKey:             csr.PublicKey,
+		PublicKeyAlgorithm:    csr.PublicKeyAlgorithm,
+		SerialNumber:          sn,
+		NotBefore:             notBefore,
+		NotAfter:              notBefore.Add(50 * 365 * 24 * time.Hour).UTC(),
+		BasicConstraintsValid: true,
+		IsCA:                  isCA,
+		Issuer:                caCert.Subject,
+		KeyUsage: x509.KeyUsageDigitalSignature |
+			x509.KeyUsageKeyEncipherment | x509.KeyUsageCertSign |
+			x509.KeyUsageCRLSign,
+		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
+		Subject:     csr.Subject,
+	}
+
+	x509certEncode, err := x509.CreateCertificate(rand.Reader, template, caCert, csr.PublicKey, privKey)
+	if err != nil {
+		return fmt.Errorf("create cert: %w", err)
+	}
+
+	name := getFileName(csrPath)
+
+	path := filepath.Join(target, fmt.Sprintf("%s.cert", name))
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	return pem.Encode(f, &pem.Block{Type: "CERTIFICATE", Bytes: x509certEncode})
 }
