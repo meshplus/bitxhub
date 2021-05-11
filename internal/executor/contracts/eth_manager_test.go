@@ -2,6 +2,7 @@ package contracts
 
 import (
 	"encoding/json"
+	"github.com/meshplus/bitxhub-kit/log"
 	"io/ioutil"
 	"math/big"
 	"os"
@@ -12,7 +13,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/golang/mock/gomock"
 	"github.com/meshplus/bitxhub-core/boltvm/mock_stub"
-	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub/internal/executor/oracle/appchain"
 	solsha3 "github.com/miguelmota/go-solidity-sha3"
 	"github.com/stretchr/testify/require"
@@ -25,7 +25,7 @@ func TestEthHeaderManager_PreMint(t *testing.T) {
 	require.Nil(t, err)
 	defer os.RemoveAll(repoRoot)
 
-	oracle, err := appchain.NewRopstenOracle(repoRoot, false, log.NewWithModule("test"))
+	oracle, err := appchain.NewRopstenOracle("../../../config/eth_header.json", repoRoot, false, log.NewWithModule("test"))
 	require.Nil(t, err)
 	mockCtl := gomock.NewController(t)
 	mockStub := mock_stub.NewMockStub(mockCtl)
