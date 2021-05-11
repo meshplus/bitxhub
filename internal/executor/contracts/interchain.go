@@ -20,11 +20,13 @@ import (
 )
 
 const (
-	AppchainNotAvailable = "appchain not available"
-	InvalidIBTP          = "invalid ibtp"
-	internalError        = "internal server error"
-	ibtpIndexExist       = "index already exists"
-	ibtpIndexWrong       = "wrong index"
+	CurAppchainNotAvailable    = "current appchain not available"
+	TargetAppchainNotAvailable = "target appchain not available"
+	AppchainNotAvailable       = "the appchain is not available"
+	InvalidIBTP                = "invalid ibtp"
+	internalError              = "internal server error"
+	ibtpIndexExist             = "index already exists"
+	ibtpIndexWrong             = "wrong index"
 )
 
 type InterchainManager struct {
@@ -119,13 +121,17 @@ func (x *InterchainManager) HandleIBTP(ibtp *pb.IBTP) *boltvm.Response {
 		return x.handleUnionIBTP(ibtp)
 	}
 
-	interchain, _, err := x.checkAppchain(ibtp.From)
+	// Pier should retry if checkBasicIBTP failed
+	srcAppchain, dstAppchain, err := x.checkBasicIBTP(ibtp)
 	if err != nil {
 		return boltvm.Error(err.Error())
 	}
 
-	if err := x.checkIBTP(ibtp, interchain); err != nil {
-		return boltvm.Error(err.Error())
+	interchain, srcAppchain, dstAppchain, appchainErr := x.checkAppchainInfo(ibtp, srcAppchain, dstAppchain)
+	if appchainErr == nil {
+		if err := x.checkIBTP(ibtp, interchain, srcAppchain, dstAppchain); err != nil {
+			return boltvm.Error(err.Error())
+		}
 	}
 
 	res := boltvm.Success(nil)
@@ -134,10 +140,6 @@ func (x *InterchainManager) HandleIBTP(ibtp *pb.IBTP) *boltvm.Response {
 		res = x.beginTransaction(ibtp)
 	} else if pb.IBTP_RECEIPT_SUCCESS == ibtp.Type || pb.IBTP_RECEIPT_FAILURE == ibtp.Type {
 		res = x.reportTransaction(ibtp)
-	} else if pb.IBTP_ASSET_EXCHANGE_INIT == ibtp.Type ||
-		pb.IBTP_ASSET_EXCHANGE_REDEEM == ibtp.Type ||
-		pb.IBTP_ASSET_EXCHANGE_REFUND == ibtp.Type {
-		res = x.handleAssetExchange(ibtp)
 	}
 
 	if !res.Ok {
@@ -146,66 +148,59 @@ func (x *InterchainManager) HandleIBTP(ibtp *pb.IBTP) *boltvm.Response {
 
 	x.ProcessIBTP(ibtp, interchain)
 
+	if appchainErr != nil {
+		return boltvm.Error(appchainErr.Error())
+	}
+
 	return res
 }
 
-func (x *InterchainManager) HandleIBTPs(data []byte) *boltvm.Response {
-	ibtps := &pb.IBTPs{}
-	if err := ibtps.Unmarshal(data); err != nil {
-		return boltvm.Error(err.Error())
+func (x *InterchainManager) checkBasicIBTP(ibtp *pb.IBTP) (*appchainMgr.Appchain, *appchainMgr.Appchain, error) {
+	if ibtp.From == "" {
+		return nil, nil, fmt.Errorf("%s: empty source chain id", InvalidIBTP)
+	}
+	if ibtp.To == "" {
+		return nil, nil, fmt.Errorf("%s: empty destination chain id", InvalidIBTP)
 	}
 
-	// check if all ibtp has the same src address
-	if len(ibtps.Ibtps) == 0 {
-		return boltvm.Error("empty pack of ibtps")
-	}
-	srcChainMethod := ibtps.Ibtps[0].From
-	for _, ibtp := range ibtps.Ibtps {
-		if ibtp.From != srcChainMethod {
-			return boltvm.Error("ibtp pack should have the same src chain method")
+	var (
+		srcAppchain *appchainMgr.Appchain
+		dstAppchain *appchainMgr.Appchain
+		err         error
+	)
+
+	if pb.IBTP_INTERCHAIN == ibtp.Type {
+		srcAppchain, err = x.getAppchainInfo(ibtp.From)
+		if err != nil {
+			return nil, nil, fmt.Errorf("%s: source appchain %s is not registered", CurAppchainNotAvailable, ibtp.From)
+		}
+
+		if srcAppchain.Status != governance.GovernanceAvailable {
+			return nil, nil, fmt.Errorf("%s: source appchain status is %s, can not handle IBTP", CurAppchainNotAvailable, string(srcAppchain.Status))
+		}
+	} else {
+		srcAppchain, err = x.getAppchainInfo(ibtp.From)
+		if err != nil {
+			return nil, nil, fmt.Errorf("%s: source appchain %s is not correct", InvalidIBTP, ibtp.From)
+		}
+
+		dstAppchain, err = x.getAppchainInfo(ibtp.To)
+		if err != nil {
+			return nil, nil, fmt.Errorf("%s: dest appchain %s is not registered", CurAppchainNotAvailable, ibtp.To)
+		}
+
+		if dstAppchain.Status != governance.GovernanceAvailable {
+			return nil, nil, fmt.Errorf("%s: dest appchain status is %s, can not handle IBTP", CurAppchainNotAvailable, string(dstAppchain.Status))
 		}
 	}
 
-	interchain, _, err := x.checkAppchain(srcChainMethod)
-	if err != nil {
-		return boltvm.Error(err.Error())
-	}
-	for _, ibtp := range ibtps.Ibtps {
-		if err := x.checkIBTP(ibtp, interchain); err != nil {
-			return boltvm.Error(err.Error())
-		}
-	}
-
-	if res := x.beginMultiTargetsTransaction(srcChainMethod, ibtps); !res.Ok {
-		return res
-	}
-
-	for _, ibtp := range ibtps.Ibtps {
-		x.ProcessIBTP(ibtp, interchain)
-	}
-
-	return boltvm.Success(nil)
+	return srcAppchain, dstAppchain, nil
 }
 
-func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP, interchain *pb.Interchain) error {
-	if ibtp.To == "" {
-		return fmt.Errorf("%s: empty destination chain id", InvalidIBTP)
-	}
-
-	if _, ok := x.getInterchain(ibtp.To); !ok {
-		x.Logger().WithField("chain_id", ibtp.To).Debug("target appchain does not exist")
-	}
-
-	srcChainInfo, err := x.getAppchainInfo(ibtp.From)
-	if err != nil {
-		return err
-	}
-	if pb.IBTP_INTERCHAIN == ibtp.Type ||
-		pb.IBTP_ASSET_EXCHANGE_INIT == ibtp.Type ||
-		pb.IBTP_ASSET_EXCHANGE_REDEEM == ibtp.Type ||
-		pb.IBTP_ASSET_EXCHANGE_REFUND == ibtp.Type {
-		if srcChainInfo.ChainType != appchainMgr.RelaychainType {
-			if err := x.checkPubKeyAndCaller(srcChainInfo.PublicKey); err != nil {
+func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP, interchain *pb.Interchain, srcAppchain, dstAppchain *appchainMgr.Appchain) error {
+	if pb.IBTP_INTERCHAIN == ibtp.Type {
+		if srcAppchain.ChainType != appchainMgr.RelaychainType {
+			if err := x.checkPubKeyAndCaller(srcAppchain.PublicKey); err != nil {
 				return fmt.Errorf("%s: caller is not bind to ibtp from: %w", InvalidIBTP, err)
 			}
 		}
@@ -217,12 +212,8 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP, interchain *pb.Interchain) 
 			return fmt.Errorf(fmt.Sprintf("%s: required %d, but %d", ibtpIndexWrong, idx+1, ibtp.Index))
 		}
 	} else {
-		if srcChainInfo.ChainType != appchainMgr.RelaychainType {
-			destChainInfo, err := x.getAppchainInfo(ibtp.To)
-			if err != nil {
-				return err
-			}
-			if err := x.checkPubKeyAndCaller(destChainInfo.PublicKey); err != nil {
+		if srcAppchain.ChainType != appchainMgr.RelaychainType {
+			if err := x.checkPubKeyAndCaller(dstAppchain.PublicKey); err != nil {
 				return fmt.Errorf("%s: caller is not bind to ibtp to", InvalidIBTP)
 			}
 		}
@@ -257,7 +248,6 @@ func (x *InterchainManager) checkPubKeyAndCaller(pub string) error {
 	}
 	return nil
 }
-
 func (x *InterchainManager) checkAppchain(id string) (*pb.Interchain, *appchainMgr.Appchain, error) {
 	interchain, ok := x.getInterchain(id)
 	if !ok {
@@ -279,6 +269,32 @@ func (x *InterchainManager) checkAppchain(id string) (*pb.Interchain, *appchainM
 	}
 
 	return interchain, app, nil
+}
+
+func (x *InterchainManager) checkAppchainInfo(ibtp *pb.IBTP, srcAppchain, dstAppchain *appchainMgr.Appchain) (*pb.Interchain, *appchainMgr.Appchain, *appchainMgr.Appchain, error) {
+	var err error
+
+	interchain, ok := x.getInterchain(ibtp.From)
+	if !ok {
+		interchain = &pb.Interchain{
+			ID:                   ibtp.From,
+			InterchainCounter:    make(map[string]uint64),
+			ReceiptCounter:       make(map[string]uint64),
+			SourceReceiptCounter: make(map[string]uint64),
+		}
+	}
+
+	if pb.IBTP_INTERCHAIN == ibtp.Type {
+		dstAppchain, err = x.getAppchainInfo(ibtp.To)
+		if err != nil {
+			return interchain, srcAppchain, dstAppchain, fmt.Errorf("%s: dest appchain id %s is not registered", TargetAppchainNotAvailable, ibtp.To)
+		}
+		if dstAppchain.Status != governance.GovernanceAvailable {
+			return interchain, srcAppchain, dstAppchain, fmt.Errorf("%s: dest appchain status is %s, can not handle IBTP", TargetAppchainNotAvailable, string(dstAppchain.Status))
+		}
+	}
+
+	return interchain, srcAppchain, dstAppchain, nil
 }
 
 // isRelayIBTP returns whether ibtp.from is relaychain type
@@ -314,7 +330,6 @@ func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *pb.Interchain
 		ic.SourceReceiptCounter[ibtp.From] = ibtp.Index
 		x.setInterchain(ibtp.To, ic)
 		x.SetObject(x.indexReceiptMapKey(ibtp.ID()), x.GetTxHash())
-
 	}
 
 	x.PostInterchainEvent(m)
