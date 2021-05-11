@@ -24,9 +24,9 @@ cd "${PROJECT_PATH}"
 cp ./bin/bitxhub ./build/bitxhub
 cp ./internal/plugins/build/*.so ./build/
 if [ "$(uname)" == "Darwin" ]; then
-    cd "${BUILD_PATH}" && tar zcvf bitxhub_v"${APP_VERSION}"_Darwin_x86_64.tar.gz ./bitxhub ./raft.so ./solo.so ./libwasmer.dylib
+    cd "${BUILD_PATH}" && tar zcvf bitxhub_darwin_x86_64_"${APP_VERSION}".tar.gz ./bitxhub ./raft.so ./solo.so ./libwasmer.dylib
     mv ./*.tar.gz ../dist/
 else
-    cd "${BUILD_PATH}" && tar zcvf bitxhub_v"${APP_VERSION}"_Linux_x86_64.tar.gz ./bitxhub ./*.so
+    cd "${BUILD_PATH}" && tar zcvf bitxhub_linux-amd64_"${APP_VERSION}".tar.gz ./bitxhub ./*.so
     mv ./*.tar.gz ../dist/
 fi

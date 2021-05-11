@@ -1,0 +1,21 @@
+FROM frolvlad/alpine-glibc
+# Environmental preparation
+COPY ./build/libwasmer.so /lib
+RUN mkdir -p /root/.bitxhub/plugins
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/lib
+
+WORKDIR /root/.bitxhub
+
+# Copy essential binaries from build
+COPY ./build/bitxhub /usr/local/bin/
+COPY ./build/solo.so ./plugins/
+
+# Generate configuration
+RUN bitxhub --repo=/root/.bitxhub init \
+    && sed -i "s/solo = false/solo = true/g" ./bitxhub.toml \
+    && sed -i "s/raft.so/solo.so/g" ./bitxhub.toml
+
+EXPOSE 8881 60011 9091 53121 40011
+
+CMD ["bitxhub", "start"]
+
