@@ -41,6 +41,7 @@ type Config struct {
 	PProf    `json:"pprof"`
 	Monitor  `json:"monitor"`
 	Limiter  `json:"limiter"`
+	Appchain `json:"appchain"`
 	Gateway  `json:"gateway"`
 	Ping     `json:"ping"`
 	Log      `json:"log"`
@@ -84,6 +85,11 @@ type Limiter struct {
 	Quantum  int64         `toml:"quantum" json:"quantum"`
 	Capacity int64         `toml:"capacity" json:"capacity"`
 }
+
+type Appchain struct {
+	EthHeaderPath string `mapstructure:"eth_header_path"`
+}
+
 
 type Gateway struct {
 	AllowedOrigins []string `mapstructure:"allowed_origins"`

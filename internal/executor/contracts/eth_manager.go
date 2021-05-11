@@ -11,18 +11,16 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/meshplus/bitxhub-core/boltvm"
+	"github.com/meshplus/bitxhub-core/eth-contracts"
 	"github.com/meshplus/bitxhub/internal/executor/oracle/appchain"
-	solsha3 "github.com/miguelmota/go-solidity-sha3"
 )
 
 const (
 	EscrowsAddrKey        = "escrows_addr_key"
 	InterchainSwapAddrKey = "interchain_swap_addr_key"
-	MINT_HASH_PREFIX      = "mint"
-	ETH_TX_HASH_PREFIX    = "eth-hash"
+	EthTxHashPrefix       = "eth-hash"
 )
 
 type ContractAddr struct {
@@ -95,11 +93,7 @@ func (ehm *EthHeaderManager) CurrentBlockHeader() *boltvm.Response {
 	if header == nil {
 		return boltvm.Error("not found")
 	}
-	data, err := header.MarshalJSON()
-	if err != nil {
-		return boltvm.Error(err.Error())
-	}
-	return boltvm.Success(data)
+	return boltvm.Success(header.Number.Bytes())
 }
 
 func (ehm *EthHeaderManager) GetBlockHeader(hash string) *boltvm.Response {
@@ -114,7 +108,13 @@ func (ehm *EthHeaderManager) GetBlockHeader(hash string) *boltvm.Response {
 	return boltvm.Success(data)
 }
 
-func (ehm *EthHeaderManager) PreMint(receiptData []byte, proofData []byte) *boltvm.Response {
+func (ehm *EthHeaderManager) Mint(receiptData []byte, proofData []byte) *boltvm.Response {
+	var interchainSwapAddr *ContractAddr
+	ok := ehm.GetObject(InterchainSwapAddrKey, &interchainSwapAddr)
+	if !ok {
+		return boltvm.Error("not found interchain swap contract address")
+	}
+
 	var receipt types.Receipt
 	err := receipt.UnmarshalJSON(receiptData)
 	if err != nil {
@@ -134,22 +134,21 @@ func (ehm *EthHeaderManager) PreMint(receiptData []byte, proofData []byte) *bolt
 		return boltvm.Error(err.Error())
 	}
 
-	//abi.encodePacked
-	hash := solsha3.SoliditySHA3(
-		solsha3.Address(escrowsLockEvent.EthToken),
-		solsha3.Address(escrowsLockEvent.RelayToken),
-		solsha3.Address(escrowsLockEvent.Locker),
-		solsha3.Address(escrowsLockEvent.Recipient),
-		solsha3.String(receipt.TxHash.Bytes()),
-		solsha3.Uint256(escrowsLockEvent.Amount.Bytes()),
-	)
-	prefixedHash := crypto.Keccak256Hash(
-		[]byte(fmt.Sprintf("\x19Ethereum Signed Message:\n%v", len(hash))),
-		hash,
-	)
-	ehm.SetObject(MintKey(prefixedHash.String()), escrowsLockEvent)
-	ehm.Set(EthTxKey(receipt.TxHash.String()), prefixedHash.Bytes())
-	return boltvm.Success(prefixedHash.Bytes())
+	interchainSwapAbi, err := abi.JSON(bytes.NewReader([]byte(contracts.InterchainSwapABI)))
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+	input, err := interchainSwapAbi.Pack("mint", escrowsLockEvent.EthToken, escrowsLockEvent.RelayToken, escrowsLockEvent.Locker,
+		escrowsLockEvent.Recipient, escrowsLockEvent.Amount, receipt.TxHash.String(),escrowsLockEvent.AppchainIndex)
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+	res := ehm.CrossInvokeEVM(interchainSwapAddr.Addr, input)
+	if res.Ok {
+		ehm.Set(EthTxKey(receipt.TxHash.String()), res.Result)
+	}
+	return res
+
 }
 
 func (ehm *EthHeaderManager) GetPrefixedHash(hash string) *boltvm.Response {
@@ -157,11 +156,11 @@ func (ehm *EthHeaderManager) GetPrefixedHash(hash string) *boltvm.Response {
 	if ok {
 		return boltvm.Success(v)
 	}
-	return boltvm.Error(fmt.Sprintf("not found prefixed hash by %v", hash))
+	return boltvm.Error(fmt.Sprintf("not found hash by %v", hash))
 }
 
-func (ehm *EthHeaderManager) unpackEscrowsLock(receipt *types.Receipt) (*appchain.EscrowsLock, error) {
-	escrowsAbi, err := abi.JSON(bytes.NewReader([]byte(appchain.EscrowsABI)))
+func (ehm *EthHeaderManager) unpackEscrowsLock(receipt *types.Receipt) (*contracts.EscrowsLock, error) {
+	escrowsAbi, err := abi.JSON(bytes.NewReader([]byte(contracts.EscrowsABI)))
 	if err != nil {
 		return nil, err
 	}
@@ -170,7 +169,7 @@ func (ehm *EthHeaderManager) unpackEscrowsLock(receipt *types.Receipt) (*appchai
 	if !ok {
 		return nil, fmt.Errorf("not found the escrows contract address")
 	}
-	var lock *appchain.EscrowsLock
+	var lock *contracts.EscrowsLock
 	for _, log := range receipt.Logs {
 		if !strings.EqualFold(log.Address.String(), escrowsAddr.Addr) {
 			continue
@@ -189,10 +188,6 @@ func (ehm *EthHeaderManager) unpackEscrowsLock(receipt *types.Receipt) (*appchai
 	return lock, nil
 }
 
-func MintKey(hash string) string {
-	return fmt.Sprintf("%s-%s", MINT_HASH_PREFIX, hash)
-}
-
 func EthTxKey(hash string) string {
-	return fmt.Sprintf("%s-%s", ETH_TX_HASH_PREFIX, hash)
+	return fmt.Sprintf("%s-%s", EthTxHashPrefix, hash)
 }

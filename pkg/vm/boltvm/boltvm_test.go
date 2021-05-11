@@ -110,7 +110,7 @@ func TestBoltVM_Run(t *testing.T) {
 	}
 	txInterchain.TransactionHash = txInterchain.Hash()
 	ctxInterchain := vm.NewContext(txInterchain, 1, nil, mockLedger, log.NewWithModule("vm"))
-	boltVMInterchain := New(ctxInterchain, mockEngine, cons)
+	boltVMInterchain := New(ctxInterchain, mockEngine, nil, cons)
 	ibtp := mockIBTP(t, 1, pb.IBTP_INTERCHAIN)
 	stateLedger.EXPECT().GetState(txInterchain.To, []byte(contracts.AppchainKey(ibtp.From))).Return(false, nil).AnyTimes()
 	_, err = boltVMInterchain.HandleIBTP(ibtp)

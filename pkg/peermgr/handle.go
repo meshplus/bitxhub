@@ -8,21 +8,18 @@ import (
 	"strconv"
 	"strings"
 
-	solsha3 "github.com/miguelmota/go-solidity-sha3"
-
 	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub/internal/executor/oracle/appchain"
-
 	"github.com/ethereum/go-ethereum/common"
-
+	"github.com/ethereum/go-ethereum/crypto"
+	contracts2 "github.com/meshplus/bitxhub-core/eth-contracts"
+	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/model"
 	"github.com/meshplus/bitxhub/internal/model/events"
 	network "github.com/meshplus/go-lightp2p"
+	solsha3 "github.com/miguelmota/go-solidity-sha3"
 	"github.com/sirupsen/logrus"
 )
 
@@ -51,8 +48,6 @@ func (swarm *Swarm) handleMessage(s network.Stream, data []byte) {
 			swarm.handleFetchAssetExchangeSignMessage(s, m.Data)
 		case pb.Message_FETCH_IBTP_SIGN:
 			swarm.handleFetchIBTPSignMessage(s, m.Data)
-		case pb.Message_FETCH_MINT_SIGN:
-			swarm.handleFetchMintSignMessage(s, m.Data)
 		case pb.Message_FETCH_BURN_SIGN:
 			swarm.handleFetchBurnSignMessage(s, m.Data)
 		case pb.Message_CHECK_MASTER_PIER:
@@ -293,52 +288,6 @@ func (swarm *Swarm) handleFetchIBTPSignMessage(s network.Stream, data []byte) {
 	}
 }
 
-func (swarm *Swarm) handleFetchMintSignMessage(s network.Stream, data []byte) {
-	handle := func(id string) (string, []byte, error) {
-		swarm.logger.WithField("mint id", id).Debug("Handle fetching minter sign message")
-
-		ok, _ := swarm.ledger.GetState(constant.EthHeaderMgrContractAddr.Address(), []byte(contracts.MintKey(id)))
-		if !ok {
-			return "", nil, fmt.Errorf("cannot find minter record with id %s", id)
-		}
-
-		hash := common.HexToHash(id)
-		key := swarm.repo.Key
-		sign, err := key.PrivKey.Sign(hash[:])
-		if err != nil {
-			return "", nil, fmt.Errorf("fetch minter sign: %w", err)
-		}
-
-		return key.Address, sign, nil
-	}
-
-	address, signed, err := handle(string(data))
-	if err != nil {
-		swarm.logger.Errorf("handle fetch-minter-sign: %s", err)
-		return
-	}
-
-	m := model.MerkleWrapperSign{
-		Address:   address,
-		Signature: signed,
-	}
-
-	body, err := m.Marshal()
-	if err != nil {
-		swarm.logger.Errorf("marshal merkle wrapper sign: %s", err)
-		return
-	}
-
-	msg := &pb.Message{
-		Type: pb.Message_FETCH_MINT_SIGN_ACK,
-		Data: body,
-	}
-
-	if err := swarm.SendWithStream(s, msg); err != nil {
-		swarm.logger.Errorf("send minter sign back: %s", err)
-	}
-}
-
 func (swarm *Swarm) handleFetchBurnSignMessage(s network.Stream, data []byte) {
 	handle := func(hash string) (string, []byte, error) {
 		receipt, err := swarm.ledger.GetReceipt(types.NewHashByStr(hash))
@@ -354,11 +303,11 @@ func (swarm *Swarm) handleFetchBurnSignMessage(s network.Stream, data []byte) {
 			return "", nil, fmt.Errorf("cannot find interchainswap contract")
 		}
 
-		interchainAbi, err := abi.JSON(bytes.NewReader([]byte(appchain.InterchainSwapABI)))
+		interchainAbi, err := abi.JSON(bytes.NewReader([]byte(contracts2.InterchainSwapABI)))
 		if err != nil {
 			return "", nil, err
 		}
-		var burn *appchain.InterchainSwapBurn
+		var burn *contracts2.InterchainSwapBurn
 		for _, log := range receipt.GetEvmLogs() {
 			if !strings.EqualFold(log.Address.String(), common.BytesToAddress(interchainSwapAddr).String()) {
 				continue

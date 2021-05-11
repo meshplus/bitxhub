@@ -3,6 +3,7 @@ package appchain
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"path/filepath"
 	"sort"
 
@@ -61,17 +62,22 @@ func NewRinkebyOracle(storagePath string, logger logrus.FieldLogger) (*EthLightC
 }
 
 // NewRopstenOracle inits with ropsten block 10105112, receives above the 10105112 headers
-func NewRopstenOracle(storagePath string, readOnly bool, logger logrus.FieldLogger) (*EthLightChainOracle, error) {
+func NewRopstenOracle(ropstenPath string, storagePath string, readOnly bool, logger logrus.FieldLogger) (*EthLightChainOracle, error) {
 	db, err := leveldb.New(storagePath, 256, 0, "", readOnly)
 	if err != nil {
 		return nil, err
 	}
 	database := rawdb.NewDatabase(db)
 
-	// block 10105112
+	headerData, err := ioutil.ReadFile(ropstenPath)
+	if err != nil {
+		return nil, err
+	}
 	header := types.Header{}
-	err = header.UnmarshalJSON([]byte(RopstenHeader))
-
+	err = header.UnmarshalJSON(headerData)
+	if err != nil {
+		return nil, err
+	}
 	if head := rawdb.ReadHeadHeaderHash(database); head == (common.Hash{}) {
 		core.DefaultRopstenGenesisBlock().MustCommit(database)
 		rawdb.WriteHeader(database, &header)

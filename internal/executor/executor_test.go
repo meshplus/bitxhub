@@ -21,7 +21,6 @@ import (
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
-	types2 "github.com/meshplus/bitxhub/api/jsonrpc/types"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/ledger/mock_ledger"
 	"github.com/meshplus/bitxhub/internal/model/events"
@@ -75,7 +74,6 @@ func TestNew(t *testing.T) {
 }
 
 func TestBlockExecutor_ExecuteBlock(t *testing.T) {
-	config := generateMockConfig(t)
 	mockCtl := gomock.NewController(t)
 	chainLedger := mock_ledger.NewMockChainLedger(mockCtl)
 	stateLedger := mock_ledger.NewMockStateLedger(mockCtl)
@@ -198,7 +196,6 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 }
 
 func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
-	config := generateMockConfig(t)
 	mockCtl := gomock.NewController(t)
 	chainLedger := mock_ledger.NewMockChainLedger(mockCtl)
 	stateLedger := mock_ledger.NewMockStateLedger(mockCtl)
@@ -337,7 +334,8 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 	err = ldg.PersistExecutionResult(mockBlock(1, nil), nil, &pb.InterchainMeta{})
 	require.Nil(t, err)
 
-	executor, err := New(ldg, log.NewWithModule("executor"), config, big.NewInt(types2.GasPrice))
+	executor, err := New(ldg, log.NewWithModule("executor"), nil, repo.Config{Genesis: repo.Genesis{GasLimit: gasLimit}, Executor: repo.Executor{Type: executorType}}, big.NewInt(types2.GasPrice))
+
 	require.Nil(t, err)
 	err = executor.Start()
 	require.Nil(t, err)
