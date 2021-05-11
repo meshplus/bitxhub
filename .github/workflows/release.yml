@@ -6,8 +6,8 @@ on:
       - 'v*.*.*'
 
 jobs:
-  release:
-    name: Build Release on Linux and Macos
+  release-binary:
+    name: Release binary on Linux and Macos
     runs-on: ${{matrix.os}}
     strategy:
       matrix:
@@ -30,3 +30,42 @@ jobs:
           files: dist/**.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  release-docker:
+    name: Release docker-images of bitxhub and bitxhub-solo
+    runs-on: ${{matrix.os}}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        go_version: [1.13]
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.go_version }}
+
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Build Binary
+        run: make release-binary
+
+      - name: Build and push bitxhub image with raft consensus
+        uses: elgohr/Publish-Docker-Github-Action@master
+        with:
+          name: meshplus/bitxhub
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          registry: hub.docker.com
+          dockerfile: Dockerfile-raft
+          tag_names: true
+
+      - name: Build and push bitxhub image with solo consensus
+        uses: elgohr/Publish-Docker-Github-Action@master
+        with:
+          name: meshplus/bitxhub-solo
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          registry: hub.docker.com
+          dockerfile: Dockerfile-solo
+          tag_names: true
