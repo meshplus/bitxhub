@@ -262,12 +262,6 @@ func registerBoltContracts() map[string]agency.Contract {
 		},
 		{
 			Enabled:  true,
-			Name:     "asset exchange service",
-			Address:  constant.AssetExchangeContractAddr.Address().String(),
-			Contract: &contracts.AssetExchange{},
-		},
-		{
-			Enabled:  true,
 			Name:     "interchain broker service",
 			Address:  constant.InterRelayBrokerContractAddr.Address().String(),
 			Contract: &contracts.InterRelayBroker{},
