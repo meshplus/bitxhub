@@ -24,7 +24,7 @@ function prepare() {
 function startBitxhub() {
     print_blue "Start bitxhub"
     echo "$CURRENT_PATH"
-    cd ../ && make cluster
+    cd ../ && make solo
 }
 function getPremo() {
     print_blue "Start git clone Premo"
