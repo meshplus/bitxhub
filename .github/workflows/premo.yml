@@ -1,10 +1,6 @@
 name: Premo
 
 on:
-  push:
-    branches:
-      - master
-      - release-*
   pull_request:
     branches:
       - master
@@ -22,5 +18,4 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Run bxh_tester
-        run: echo ${{ github.base_ref }}
-
+        run: bash scripts/bxh_test.sh -b ${{ github.base_ref }} -t bxh-tester
