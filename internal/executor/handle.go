@@ -4,14 +4,19 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/cbergoon/merkletree"
-	"github.com/meshplus/bitxhub-kit/crypto"
-	"github.com/meshplus/bitxhub-kit/crypto/asym"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/params"
+	"github.com/meshplus/bitxhub-core/agency"
+	vm1 "github.com/meshplus/bitxhub-kit/evm"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/ledger"
@@ -19,50 +24,37 @@ import (
 	"github.com/meshplus/bitxhub/pkg/vm"
 	"github.com/meshplus/bitxhub/pkg/vm/boltvm"
 	"github.com/meshplus/bitxhub/pkg/vm/wasm"
+	"github.com/meshplus/bitxhub/pkg/vm/wasm/vmledger"
 	"github.com/sirupsen/logrus"
 )
 
-func (exec *BlockExecutor) handleExecuteEvent(block *pb.Block) {
-	if !exec.isDemandNumber(block.BlockHeader.Number) {
-		exec.addPendingExecuteEvent(block)
-		return
-	}
-	exec.processExecuteEvent(block)
-	exec.handlePendingExecuteEvent()
+type BlockWrapper struct {
+	block     *pb.Block
+	invalidTx map[int]agency.InvalidReason
 }
 
-func (exec *BlockExecutor) addPendingExecuteEvent(block *pb.Block) {
-	exec.logger.WithFields(logrus.Fields{
-		"received": block.BlockHeader.Number,
-		"required": exec.currentHeight + 1,
-	}).Warnf("Save wrong block into cache")
-
-	exec.pendingBlockQ.Add(block.BlockHeader.Number, block)
-}
-
-func (exec *BlockExecutor) fetchPendingExecuteEvent(num uint64) *pb.Block {
-	res, ok := exec.pendingBlockQ.Get(num)
-	if !ok {
-		return nil
-	}
-
-	return res.(*pb.Block)
-}
-
-func (exec *BlockExecutor) processExecuteEvent(block *pb.Block) {
+func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledger.BlockData {
+	var txHashList []*types.Hash
 	current := time.Now()
-	exec.logger.WithFields(logrus.Fields{
-		"height": block.BlockHeader.Number,
-		"count":  len(block.Transactions),
-	}).Infof("Execute block")
+	block := blockWrapper.block
 
-	exec.normalTxs = make([]types.Hash, 0)
-	validTxs, invalidReceipts := exec.verifySign(block)
-	receipts := exec.applyTransactions(validTxs)
-	receipts = append(receipts, invalidReceipts...)
+	for _, tx := range block.Transactions.Transactions {
+		txHashList = append(txHashList, tx.GetHash())
+	}
+
+	exec.verifyProofs(blockWrapper)
+	exec.evm = newEvm(block.Height(), uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateDB())
+	exec.ledger.PrepareBlock(block.BlockHash)
+	receipts := exec.txsExecutor.ApplyTransactions(block.Transactions.Transactions, blockWrapper.invalidTx)
+
+	applyTxsDuration.Observe(float64(time.Since(current)) / float64(time.Second))
+	exec.logger.WithFields(logrus.Fields{
+		"time":  time.Since(current),
+		"count": len(block.Transactions.Transactions),
+	}).Debug("Apply transactions elapsed")
 
 	calcMerkleStart := time.Now()
-	l1Root, l2Roots, err := exec.buildTxMerkleTree(block.Transactions)
+	l1Root, l2Roots, err := exec.buildTxMerkleTree(block.Transactions.Transactions)
 	if err != nil {
 		panic(err)
 	}
@@ -77,6 +69,7 @@ func (exec *BlockExecutor) processExecuteEvent(block *pb.Block) {
 	block.BlockHeader.TxRoot = l1Root
 	block.BlockHeader.ReceiptRoot = receiptRoot
 	block.BlockHeader.ParentHash = exec.currentBlockHash
+	block.BlockHeader.Bloom = ledger.CreateBloom(receipts)
 
 	accounts, journal := exec.ledger.FlushDirtyDataAndComputeJournal()
 
@@ -84,39 +77,57 @@ func (exec *BlockExecutor) processExecuteEvent(block *pb.Block) {
 	block.BlockHash = block.Hash()
 
 	exec.logger.WithFields(logrus.Fields{
-		"tx_root":      block.BlockHeader.TxRoot.ShortString(),
-		"receipt_root": block.BlockHeader.ReceiptRoot.ShortString(),
-		"state_root":   block.BlockHeader.StateRoot.ShortString(),
+		"tx_root":      block.BlockHeader.TxRoot.String(),
+		"receipt_root": block.BlockHeader.ReceiptRoot.String(),
+		"state_root":   block.BlockHeader.StateRoot.String(),
 	}).Debug("block meta")
 	calcBlockSize.Observe(float64(block.Size()))
 	executeBlockDuration.Observe(float64(time.Since(current)) / float64(time.Second))
 
 	counter := make(map[string]*pb.Uint64Slice)
-	for k, v := range exec.interchainCounter {
+	for k, v := range exec.txsExecutor.GetInterchainCounter() {
 		counter[k] = &pb.Uint64Slice{Slice: v}
 	}
 	interchainMeta := &pb.InterchainMeta{
 		Counter: counter,
 		L2Roots: l2Roots,
 	}
-	exec.postBlockEvent(block, interchainMeta)
 	exec.clear()
 
 	exec.currentHeight = block.BlockHeader.Number
 	exec.currentBlockHash = block.BlockHash
 
-	exec.persistC <- &ledger.BlockData{
+	return &ledger.BlockData{
 		Block:          block,
 		Receipts:       receipts,
 		Accounts:       accounts,
 		Journal:        journal,
 		InterchainMeta: interchainMeta,
+		TxHashList:     txHashList,
 	}
 }
 
-func (exec *BlockExecutor) buildTxMerkleTree(txs []*pb.Transaction) (types.Hash, []types.Hash, error) {
+func (exec *BlockExecutor) listenPreExecuteEvent() {
+	for {
+		select {
+		case commitEvent := <-exec.preBlockC:
+			now := time.Now()
+			blockWrapper := exec.verifySign(commitEvent)
+			exec.logger.WithFields(logrus.Fields{
+				"height": commitEvent.Block.BlockHeader.Number,
+				"count":  len(commitEvent.Block.Transactions.Transactions),
+				"elapse": time.Since(now),
+			}).Debug("Verified signature")
+			exec.blockC <- blockWrapper
+		case <-exec.ctx.Done():
+			return
+		}
+	}
+}
+
+func (exec *BlockExecutor) buildTxMerkleTree(txs []pb.Transaction) (*types.Hash, []types.Hash, error) {
 	var (
-		groupCnt = len(exec.interchainCounter) + 1
+		groupCnt = len(exec.txsExecutor.GetInterchainCounter()) + 1
 		wg       = sync.WaitGroup{}
 		lock     = sync.Mutex{}
 		l2Roots  = make([]types.Hash, 0, groupCnt)
@@ -124,13 +135,13 @@ func (exec *BlockExecutor) buildTxMerkleTree(txs []*pb.Transaction) (types.Hash,
 	)
 
 	wg.Add(groupCnt - 1)
-	for addr, txIndexes := range exec.interchainCounter {
+	for addr, txIndexes := range exec.txsExecutor.GetInterchainCounter() {
 		go func(addr string, txIndexes []uint64) {
 			defer wg.Done()
 
 			txHashes := make([]merkletree.Content, 0, len(txIndexes))
 			for _, txIndex := range txIndexes {
-				txHashes = append(txHashes, pb.TransactionHash(txs[txIndex].TransactionHash.Bytes()))
+				txHashes = append(txHashes, txs[txIndex].GetHash())
 			}
 
 			hash, err := calcMerkleRoot(txHashes)
@@ -141,13 +152,13 @@ func (exec *BlockExecutor) buildTxMerkleTree(txs []*pb.Transaction) (types.Hash,
 
 			lock.Lock()
 			defer lock.Unlock()
-			l2Roots = append(l2Roots, hash)
+			l2Roots = append(l2Roots, *hash)
 		}(addr, txIndexes)
 	}
 
-	txHashes := make([]merkletree.Content, 0, len(exec.normalTxs))
-	for _, txHash := range exec.normalTxs {
-		txHashes = append(txHashes, pb.TransactionHash(txHash.Bytes()))
+	txHashes := make([]merkletree.Content, 0, len(exec.txsExecutor.GetNormalTxs()))
+	for _, txHash := range exec.txsExecutor.GetNormalTxs() {
+		txHashes = append(txHashes, txHash)
 	}
 
 	hash, err := calcMerkleRoot(txHashes)
@@ -156,12 +167,12 @@ func (exec *BlockExecutor) buildTxMerkleTree(txs []*pb.Transaction) (types.Hash,
 	}
 
 	lock.Lock()
-	l2Roots = append(l2Roots, hash)
+	l2Roots = append(l2Roots, *hash)
 	lock.Unlock()
 
 	wg.Wait()
 	if errorCnt != 0 {
-		return types.Hash{}, nil, fmt.Errorf("build tx merkle tree error")
+		return nil, nil, fmt.Errorf("build tx merkle tree error")
 	}
 
 	sort.Slice(l2Roots, func(i, j int) bool {
@@ -170,83 +181,114 @@ func (exec *BlockExecutor) buildTxMerkleTree(txs []*pb.Transaction) (types.Hash,
 
 	contents := make([]merkletree.Content, 0, groupCnt)
 	for _, l2Root := range l2Roots {
-		contents = append(contents, pb.TransactionHash(l2Root.Bytes()))
+		r := l2Root
+		contents = append(contents, &r)
 	}
 	root, err := calcMerkleRoot(contents)
 	if err != nil {
-		return types.Hash{}, nil, err
+		return nil, nil, err
 	}
 
 	return root, l2Roots, nil
 }
 
-func (exec *BlockExecutor) verifySign(block *pb.Block) ([]*pb.Transaction, []*pb.Receipt) {
-	if block.BlockHeader.Number == 1 {
-		return block.Transactions, nil
+func (exec *BlockExecutor) verifySign(commitEvent *pb.CommitEvent) *BlockWrapper {
+	blockWrapper := &BlockWrapper{
+		block:     commitEvent.Block,
+		invalidTx: make(map[int]agency.InvalidReason),
 	}
 
-	txs := block.Transactions
+	if commitEvent.Block.BlockHeader.Number == 1 {
+		return blockWrapper
+	}
 
 	var (
-		wg       sync.WaitGroup
-		receipts []*pb.Receipt
-		mutex    sync.Mutex
-		index    []int
+		wg    sync.WaitGroup
+		mutex sync.Mutex
 	)
-
-	receiptsM := make(map[int]*pb.Receipt)
-
+	txs := commitEvent.Block.Transactions.Transactions
+	txsLen := len(commitEvent.LocalList)
 	wg.Add(len(txs))
 	for i, tx := range txs {
-		go func(i int, tx *pb.Transaction) {
+		// if the tx is received from api, we will pass the verify.
+		if txsLen > i && commitEvent.LocalList[i] {
+			wg.Done()
+			continue
+		}
+		go func(i int, tx pb.Transaction) {
 			defer wg.Done()
-			ok, _ := asym.Verify(crypto.Secp256k1, tx.Signature, tx.SignHash().Bytes(), tx.From)
-			mutex.Lock()
-			defer mutex.Unlock()
-			if !ok {
-				receiptsM[i] = &pb.Receipt{
-					Version: tx.Version,
-					TxHash:  tx.TransactionHash,
-					Ret:     []byte("invalid signature"),
-					Status:  pb.Receipt_FAILED,
-				}
-
-				index = append(index, i)
+			err := tx.VerifySignature()
+			if err != nil {
+				mutex.Lock()
+				defer mutex.Unlock()
+				blockWrapper.invalidTx[i] = agency.InvalidReason(err.Error())
 			}
 		}(i, tx)
-
 	}
-
 	wg.Wait()
 
-	if len(index) > 0 {
-		sort.Ints(index)
-		count := 0
-		for _, idx := range index {
-			receipts = append(receipts, receiptsM[idx])
-			idx -= count
-			txs = append(txs[:idx], txs[idx+1:]...)
-			count++
+	return blockWrapper
+}
 
+func (exec *BlockExecutor) applyTx(index int, tx pb.Transaction, invalidReason agency.InvalidReason, opt *agency.TxOpt) *pb.Receipt {
+	normalTx := true
+
+	receipt := exec.applyTransaction(index, tx, invalidReason, opt)
+
+	events := exec.ledger.Events(tx.GetHash().String())
+	if len(events) != 0 {
+		receipt.Events = events
+		for _, ev := range events {
+			if ev.Interchain {
+				m := make(map[string]uint64)
+				err := json.Unmarshal(ev.Data, &m)
+				if err != nil {
+					panic(err)
+				}
+
+				for k, v := range m {
+					exec.txsExecutor.AddInterchainCounter(k, v)
+				}
+				normalTx = false
+			}
 		}
 	}
 
-	return txs, receipts
+	if normalTx {
+		exec.txsExecutor.AddNormalTx(tx.GetHash())
+	}
+
+	return receipt
 }
 
-func (exec *BlockExecutor) applyTransactions(txs []*pb.Transaction) []*pb.Receipt {
-	current := time.Now()
-	receipts := make([]*pb.Receipt, 0, len(txs))
+func (exec *BlockExecutor) postBlockEvent(block *pb.Block, interchainMeta *pb.InterchainMeta, txHashList []*types.Hash) {
+	go exec.blockFeed.Send(events.ExecutedEvent{
+		Block:          block,
+		InterchainMeta: interchainMeta,
+		TxHashList:     txHashList,
+	})
+}
 
-	for i, tx := range txs {
-		receipt := &pb.Receipt{
-			Version: tx.Version,
-			TxHash:  tx.TransactionHash,
+func (exec *BlockExecutor) postLogsEvent(receipts []*pb.Receipt) {
+	go func() {
+		logs := make([]*pb.EvmLog, 0)
+		for _, receipt := range receipts {
+			logs = append(logs, receipt.EvmLogs...)
 		}
 
-		normalTx := true
+		exec.logsFeed.Send(logs)
+	}()
+}
 
-		ret, err := exec.applyTransaction(i, tx)
+func (exec *BlockExecutor) applyTransaction(i int, tx pb.Transaction, invalidReason agency.InvalidReason, opt *agency.TxOpt) *pb.Receipt {
+	receipt := &pb.Receipt{
+		Version: tx.GetVersion(),
+		TxHash:  tx.GetHash(),
+	}
+	switch tx.(type) {
+	case *pb.BxhTransaction:
+		bxhTx := tx.(*pb.BxhTransaction)
+		ret, err := exec.applyBxhTransaction(i, bxhTx, invalidReason, opt)
 		if err != nil {
 			receipt.Status = pb.Receipt_FAILED
 			receipt.Ret = []byte(err.Error())
@@ -254,73 +296,52 @@ func (exec *BlockExecutor) applyTransactions(txs []*pb.Transaction) []*pb.Receip
 			receipt.Status = pb.Receipt_SUCCESS
 			receipt.Ret = ret
 		}
-
-		events := exec.ledger.Events(tx.TransactionHash.Hex())
-		if len(events) != 0 {
-			receipt.Events = events
-			for _, ev := range events {
-				if ev.Interchain {
-					m := make(map[string]uint64)
-					err := json.Unmarshal(ev.Data, &m)
-					if err != nil {
-						panic(err)
-					}
-
-					for k, v := range m {
-						exec.interchainCounter[k] = append(exec.interchainCounter[k], v)
-					}
-					normalTx = false
-				}
-			}
-		}
-
-		if normalTx {
-			exec.normalTxs = append(exec.normalTxs, tx.TransactionHash)
-		}
-
-		receipts = append(receipts, receipt)
+		return receipt
+	case *pb.EthTransaction:
+		ethTx := tx.(*pb.EthTransaction)
+		return exec.applyEthTransaction(i, ethTx)
 	}
 
-	applyTxsDuration.Observe(float64(time.Since(current)) / float64(time.Second))
-	exec.logger.WithFields(logrus.Fields{
-		"time":  time.Since(current),
-		"count": len(txs),
-	}).Debug("Apply transactions elapsed")
-
-	return receipts
+	receipt.Status = pb.Receipt_FAILED
+	receipt.Ret = []byte(fmt.Errorf("unknown tx type").Error())
+	return receipt
 }
 
-func (exec *BlockExecutor) postBlockEvent(block *pb.Block, interchainMeta *pb.InterchainMeta) {
-	go exec.blockFeed.Send(events.NewBlockEvent{Block: block, InterchainMeta: interchainMeta})
-}
+func (exec *BlockExecutor) applyBxhTransaction(i int, tx *pb.BxhTransaction, invalidReason agency.InvalidReason, opt *agency.TxOpt) ([]byte, error) {
+	defer exec.ledger.SetNonce(tx.From, tx.GetNonce()+1)
 
-func (exec *BlockExecutor) handlePendingExecuteEvent() {
-	if exec.pendingBlockQ.Len() > 0 {
-		for exec.pendingBlockQ.Contains(exec.getDemandNumber()) {
-			block := exec.fetchPendingExecuteEvent(exec.getDemandNumber())
-			exec.processExecuteEvent(block)
-		}
+	if invalidReason != "" {
+		return nil, fmt.Errorf(string(invalidReason))
 	}
-}
 
-func (exec *BlockExecutor) applyTransaction(i int, tx *pb.Transaction) ([]byte, error) {
-	if tx.Data == nil {
+	if tx.IsIBTP() {
+		ctx := vm.NewContext(tx, uint64(i), nil, exec.ledger, exec.logger)
+		instance := boltvm.New(ctx, exec.validationEngine, exec.getContracts(opt))
+		return instance.HandleIBTP(tx.GetIBTP())
+	}
+
+	if tx.GetPayload() == nil {
 		return nil, fmt.Errorf("empty transaction data")
 	}
 
-	switch tx.Data.Type {
+	data := &pb.TransactionData{}
+	if err := data.Unmarshal(tx.GetPayload()); err != nil {
+		return nil, err
+	}
+
+	switch data.Type {
 	case pb.TransactionData_NORMAL:
-		err := exec.transfer(tx.From, tx.To, tx.Data.Amount)
+		err := exec.transfer(tx.From, tx.To, data.Amount)
 		return nil, err
 	default:
 		var instance vm.VM
-		switch tx.Data.VmType {
+		switch data.VmType {
 		case pb.TransactionData_BVM:
-			ctx := vm.NewContext(tx, uint64(i), tx.Data, exec.ledger, exec.logger)
-			instance = boltvm.New(ctx, exec.validationEngine, exec.boltContracts)
+			ctx := vm.NewContext(tx, uint64(i), data, exec.ledger, exec.logger)
+			instance = boltvm.New(ctx, exec.validationEngine, exec.getContracts(opt))
 		case pb.TransactionData_XVM:
-			ctx := vm.NewContext(tx, uint64(i), tx.Data, exec.ledger, exec.logger)
-			imports, err := wasm.EmptyImports()
+			ctx := vm.NewContext(tx, uint64(i), data, exec.ledger, exec.logger)
+			imports, err := vmledger.New()
 			if err != nil {
 				return nil, err
 			}
@@ -332,43 +353,87 @@ func (exec *BlockExecutor) applyTransaction(i int, tx *pb.Transaction) ([]byte, 
 			return nil, fmt.Errorf("wrong vm type")
 		}
 
-		return instance.Run(tx.Data.Payload)
+		return instance.Run(data.Payload)
 	}
 }
 
+func (exec *BlockExecutor) applyEthTransaction(i int, tx *pb.EthTransaction) *pb.Receipt {
+	receipt := &pb.Receipt{
+		Version: tx.GetVersion(),
+		TxHash:  tx.GetHash(),
+	}
+
+	gp := new(core.GasPool).AddGas(exec.gasLimit)
+	msg := ledger.NewMessage(tx)
+	statedb := exec.ledger.StateDB()
+	statedb.PrepareEVM(common.BytesToHash(tx.GetHash().Bytes()), i)
+	snapshot := statedb.Snapshot()
+	txContext := vm1.NewEVMTxContext(msg)
+	exec.evm.Reset(txContext, exec.ledger.StateDB())
+	exec.logger.Warnf("msg gas: %v", msg.Gas())
+	result, err := vm1.ApplyMessage(exec.evm, msg, gp)
+	if err != nil {
+		exec.logger.Errorf("apply msg failed: %s", err.Error())
+		statedb.RevertToSnapshot(snapshot)
+		receipt.Status = pb.Receipt_FAILED
+		receipt.Ret = []byte(err.Error())
+		exec.ledger.ClearChangerAndRefund()
+		return receipt
+	}
+	if result.Failed() {
+		exec.logger.Warnf("execute tx failed: %s", result.Err.Error())
+		receipt.Status = pb.Receipt_FAILED
+		receipt.Ret = append([]byte(result.Err.Error()), result.Revert()...)
+	} else {
+		receipt.Status = pb.Receipt_SUCCESS
+		receipt.Ret = result.Return()
+	}
+
+	receipt.TxHash = tx.GetHash()
+	receipt.GasUsed = result.UsedGas
+	exec.ledger.ClearChangerAndRefund()
+	if msg.To() == nil || bytes.Equal(msg.To().Bytes(), common.Address{}.Bytes()) {
+		receipt.ContractAddress = types.NewAddress(crypto.CreateAddress(exec.evm.TxContext.Origin, tx.GetNonce()).Bytes())
+	}
+
+	receipt.EvmLogs = exec.ledger.GetLogs(*tx.GetHash())
+	receipt.Bloom = ledger.CreateBloom(ledger.EvmReceipts{receipt})
+	// receipt.Bloom = types.CreateBloom(types.Receipts{receipt})
+	return receipt
+}
+
 func (exec *BlockExecutor) clear() {
-	exec.interchainCounter = make(map[string][]uint64)
 	exec.ledger.Clear()
 }
 
-func (exec *BlockExecutor) transfer(from, to types.Address, value uint64) error {
+func (exec *BlockExecutor) transfer(from, to *types.Address, value uint64) error {
 	if value == 0 {
 		return nil
 	}
 
-	fv := exec.ledger.GetBalance(from)
+	fv := exec.ledger.GetBalance(from).Uint64()
 	if fv < value {
-		return fmt.Errorf("not sufficient funds for %s", from.Hex())
+		return fmt.Errorf("not sufficient funds for %s", from.String())
 	}
 
-	tv := exec.ledger.GetBalance(to)
+	tv := exec.ledger.GetBalance(to).Uint64()
 
-	exec.ledger.SetBalance(from, fv-value)
-	exec.ledger.SetBalance(to, tv+value)
+	exec.ledger.SetBalance(from, new(big.Int).SetUint64(fv-value))
+	exec.ledger.SetBalance(to, new(big.Int).SetUint64(tv+value))
 
 	return nil
 }
 
-func (exec *BlockExecutor) calcReceiptMerkleRoot(receipts []*pb.Receipt) (types.Hash, error) {
+func (exec *BlockExecutor) calcReceiptMerkleRoot(receipts []*pb.Receipt) (*types.Hash, error) {
 	current := time.Now()
 
 	receiptHashes := make([]merkletree.Content, 0, len(receipts))
 	for _, receipt := range receipts {
-		receiptHashes = append(receiptHashes, pb.TransactionHash(receipt.Hash().Bytes()))
+		receiptHashes = append(receiptHashes, receipt.Hash())
 	}
 	receiptRoot, err := calcMerkleRoot(receiptHashes)
 	if err != nil {
-		return types.Hash{}, err
+		return nil, err
 	}
 
 	exec.logger.WithField("time", time.Since(current)).Debug("Calculate receipt merkle roots")
@@ -376,15 +441,29 @@ func (exec *BlockExecutor) calcReceiptMerkleRoot(receipts []*pb.Receipt) (types.
 	return receiptRoot, nil
 }
 
-func calcMerkleRoot(contents []merkletree.Content) (types.Hash, error) {
+func calcMerkleRoot(contents []merkletree.Content) (*types.Hash, error) {
 	if len(contents) == 0 {
-		return types.Hash{}, nil
+		return &types.Hash{}, nil
 	}
 
 	tree, err := merkletree.NewTree(contents)
 	if err != nil {
-		return types.Hash{}, err
+		return nil, err
 	}
 
-	return types.Bytes2Hash(tree.MerkleRoot()), nil
+	return types.NewHash(tree.MerkleRoot()), nil
+}
+
+func (exec *BlockExecutor) getContracts(opt *agency.TxOpt) map[string]agency.Contract {
+	if opt != nil && opt.Contracts != nil {
+		return opt.Contracts
+	}
+
+	return exec.txsExecutor.GetBoltContracts()
+}
+
+func newEvm(number uint64, timestamp uint64, chainCfg *params.ChainConfig, db vm1.StateDB) *vm1.EVM {
+	blkCtx := vm1.NewEVMBlockContext(number, timestamp, db)
+
+	return vm1.NewEVM(blkCtx, vm1.TxContext{}, db, chainCfg, vm1.Config{})
 }

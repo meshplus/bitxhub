@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"strconv"
 
-	"github.com/meshplus/bitxhub/internal/constant"
-	"github.com/meshplus/bitxhub/pkg/vm/boltvm"
+	"github.com/meshplus/bitxhub-core/boltvm"
+	"github.com/meshplus/bitxhub-model/constant"
+	"github.com/meshplus/bitxhub/internal/repo"
 )
 
 const (
@@ -17,11 +18,11 @@ type Role struct {
 }
 
 func (r *Role) GetRole() *boltvm.Response {
-	var addrs []string
-	r.GetObject(adminRolesKey, &addrs)
+	var admins []*repo.Admin
+	r.GetObject(adminRolesKey, &admins)
 
-	for _, addr := range addrs {
-		if addr == r.Caller() {
+	for _, admin := range admins {
+		if admin.Address == r.Caller() {
 			return boltvm.Success([]byte("admin"))
 		}
 	}
@@ -35,23 +36,27 @@ func (r *Role) GetRole() *boltvm.Response {
 }
 
 func (r *Role) IsAdmin(address string) *boltvm.Response {
-	var addrs []string
-	r.GetObject(adminRolesKey, &addrs)
+	return boltvm.Success([]byte(strconv.FormatBool(r.isAdmin(address))))
+}
 
-	for _, addr := range addrs {
-		if addr == address {
-			return boltvm.Success([]byte(strconv.FormatBool(true)))
+func (r *Role) isAdmin(address string) bool {
+	var admins []*repo.Admin
+	r.GetObject(adminRolesKey, &admins)
+
+	for _, admin := range admins {
+		if admin.Address == address {
+			return true
 		}
 	}
 
-	return boltvm.Success([]byte(strconv.FormatBool(false)))
+	return false
 }
 
 func (r *Role) GetAdminRoles() *boltvm.Response {
-	var addrs []string
-	r.GetObject(adminRolesKey, &addrs)
+	var admins []*repo.Admin
+	r.GetObject(adminRolesKey, &admins)
 
-	ret, err := json.Marshal(addrs)
+	ret, err := json.Marshal(admins)
 	if err != nil {
 		return boltvm.Error(err.Error())
 	}
@@ -65,6 +70,70 @@ func (r *Role) SetAdminRoles(addrs string) *boltvm.Response {
 		return boltvm.Error(err.Error())
 	}
 
-	r.SetObject(adminRolesKey, as)
+	admins := make([]*repo.Admin, 0)
+	for _, addr := range as {
+		admins = append(admins, &repo.Admin{
+			Address: addr,
+			Weight:  1,
+		})
+	}
+
+	r.SetObject(adminRolesKey, admins)
+	return boltvm.Success(nil)
+}
+
+func (r *Role) GetRoleWeight(address string) *boltvm.Response {
+	var admins []*repo.Admin
+	r.GetObject(adminRolesKey, &admins)
+
+	for _, admin := range admins {
+		if admin.Address == address {
+			return boltvm.Success([]byte(strconv.Itoa(int(admin.Weight))))
+		}
+	}
+
+	return boltvm.Error("the account at this address is not an administrator: " + address)
+}
+
+// Permission manager
+type Permission string
+
+const (
+	PermissionSelf      Permission = "PermissionSelf"
+	PermissionAdmin     Permission = "PermissionAdmin"
+	PermissionSelfAdmin Permission = "PermissionSelfAdmin"
+	PermissionSpecific  Permission = "PermissionSpecific"
+)
+
+func (r *Role) CheckPermission(permission string, regulatedAddr string, regulatorAddr string, specificAddrsData []byte) *boltvm.Response {
+	switch permission {
+	case string(PermissionSelf):
+		if regulatorAddr != regulatedAddr {
+			return boltvm.Error("caller(" + regulatorAddr + ") is not regulated self(" + regulatedAddr + ")")
+		}
+	case string(PermissionAdmin):
+		if !r.isAdmin(regulatorAddr) {
+			return boltvm.Error("caller(" + regulatorAddr + ") is not an admin account: ")
+		}
+	case string(PermissionSelfAdmin):
+		if regulatorAddr != regulatedAddr && !r.isAdmin(regulatorAddr) {
+			return boltvm.Error("caller(" + regulatorAddr + ") is not an admin account or regulated self(" + regulatedAddr + ")")
+		}
+	case string(PermissionSpecific):
+		specificAddrs := []string{}
+		err := json.Unmarshal(specificAddrsData, &specificAddrs)
+		if err != nil {
+			return boltvm.Error(err.Error())
+		}
+		for _, addr := range specificAddrs {
+			if addr == regulatorAddr {
+				return boltvm.Success(nil)
+			}
+		}
+		return boltvm.Error("caller(" + regulatorAddr + ") is not specific account")
+	default:
+		return boltvm.Error("unsupport permission: " + permission)
+	}
+
 	return boltvm.Success(nil)
 }

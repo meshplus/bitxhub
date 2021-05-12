@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"strconv"
 
+	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub/pkg/storage"
 )
 
 var (
@@ -14,7 +14,7 @@ var (
 )
 
 type journal struct {
-	Address        types.Address
+	Address        *types.Address
 	PrevAccount    *innerAccount
 	AccountChanged bool
 	PrevStates     map[string][]byte
@@ -24,7 +24,7 @@ type journal struct {
 
 type BlockJournal struct {
 	Journals    []*journal
-	ChangedHash types.Hash
+	ChangedHash *types.Hash
 }
 
 func (journal *journal) revert(batch storage.Batch) {
@@ -34,9 +34,9 @@ func (journal *journal) revert(batch storage.Batch) {
 			if err != nil {
 				panic(err)
 			}
-			batch.Put(compositeKey(accountKey, journal.Address.Hex()), data)
+			batch.Put(compositeKey(accountKey, journal.Address), data)
 		} else {
-			batch.Delete(compositeKey(accountKey, journal.Address.Hex()))
+			batch.Delete(compositeKey(accountKey, journal.Address))
 		}
 	}
 
@@ -50,9 +50,9 @@ func (journal *journal) revert(batch storage.Batch) {
 
 	if journal.CodeChanged {
 		if journal.PrevCode != nil {
-			batch.Put(compositeKey(codeKey, journal.Address.Hex()), journal.PrevCode)
+			batch.Put(compositeKey(codeKey, journal.Address), journal.PrevCode)
 		} else {
-			batch.Delete(compositeKey(codeKey, journal.Address.Hex()))
+			batch.Delete(compositeKey(codeKey, journal.Address))
 		}
 	}
 }

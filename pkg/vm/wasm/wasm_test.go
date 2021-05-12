@@ -12,11 +12,15 @@ import (
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/log"
+	"github.com/meshplus/bitxhub-kit/storage/blockfile"
+	"github.com/meshplus/bitxhub-kit/storage/leveldb"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/ledger"
-	"github.com/meshplus/bitxhub/pkg/storage/leveldb"
+	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/bitxhub/pkg/vm"
+	"github.com/meshplus/bitxhub/pkg/vm/wasm/vmledger"
+	libp2pcert "github.com/meshplus/go-libp2p-cert"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/wasmerio/go-ext-wasm/wasmer"
@@ -42,7 +46,7 @@ func initCreateContext(t *testing.T, name string) *vm.Context {
 	assert.Nil(t, err)
 	dir := filepath.Join(os.TempDir(), "wasm", name)
 
-	bytes, err := ioutil.ReadFile("./testdata/wasm_test.wasm")
+	bytes, err := ioutil.ReadFile("./testdata/ledger_test_gc.wasm")
 	assert.Nil(t, err)
 
 	data := &pb.TransactionData{
@@ -58,11 +62,17 @@ func initCreateContext(t *testing.T, name string) *vm.Context {
 	ldb, err := leveldb.New(filepath.Join(dir, "ledger"))
 	assert.Nil(t, err)
 
-	ldg, err := ledger.New(store, ldb, ledger.NewAccountCache(), log.NewWithModule("executor"))
+	accountCache, err := ledger.NewAccountCache()
+	require.Nil(t, err)
+	logger := log.NewWithModule("account_test")
+	blockFile, err := blockfile.NewBlockFile(dir, logger)
+	assert.Nil(t, err)
+	ldg, err := ledger.New(createMockRepo(t), store, ldb, blockFile, accountCache, log.NewWithModule("executor"))
 	assert.Nil(t, err)
 
 	return &vm.Context{
 		Caller:          caller,
+		Callee:          &types.Address{},
 		TransactionData: data,
 		Ledger:          ldg,
 	}
@@ -88,7 +98,12 @@ func initValidationContext(t *testing.T, name string) *vm.Context {
 	ldb, err := leveldb.New(filepath.Join(dir, "ledger"))
 	assert.Nil(t, err)
 
-	ldg, err := ledger.New(store, ldb, ledger.NewAccountCache(), log.NewWithModule("executor"))
+	accountCache, err := ledger.NewAccountCache()
+	require.Nil(t, err)
+	logger := log.NewWithModule("account_test")
+	blockFile, err := blockfile.NewBlockFile(dir, logger)
+	assert.Nil(t, err)
+	ldg, err := ledger.New(createMockRepo(t), store, ldb, blockFile, accountCache, log.NewWithModule("executor"))
 	require.Nil(t, err)
 
 	return &vm.Context{
@@ -118,7 +133,12 @@ func initFabricContext(t *testing.T, name string) *vm.Context {
 	ldb, err := leveldb.New(filepath.Join(dir, "ledger"))
 	assert.Nil(t, err)
 
-	ldg, err := ledger.New(store, ldb, ledger.NewAccountCache(), log.NewWithModule("executor"))
+	accountCache, err := ledger.NewAccountCache()
+	require.Nil(t, err)
+	logger := log.NewWithModule("account_test")
+	blockFile, err := blockfile.NewBlockFile(dir, logger)
+	assert.Nil(t, err)
+	ldg, err := ledger.New(createMockRepo(t), store, ldb, blockFile, accountCache, log.NewWithModule("executor"))
 	require.Nil(t, err)
 
 	return &vm.Context{
@@ -152,10 +172,10 @@ func TestExecute(t *testing.T) {
 	require.Nil(t, err)
 
 	invokePayload := &pb.InvokePayload{
-		Method: "a",
+		Method: "state_test_set",
 		Args: []*pb.Arg{
-			{Type: pb.Arg_I32, Value: []byte(fmt.Sprintf("%d", 1))},
-			{Type: pb.Arg_I32, Value: []byte(fmt.Sprintf("%d", 2))},
+			{Type: pb.Arg_Bytes, Value: []byte("alice")},
+			{Type: pb.Arg_Bytes, Value: []byte("111")},
 		},
 	}
 	payload, err := invokePayload.Marshal()
@@ -165,18 +185,43 @@ func TestExecute(t *testing.T) {
 	}
 	ctx1 := &vm.Context{
 		Caller:          ctx.Caller,
-		Callee:          types.Bytes2Address(ret),
+		Callee:          types.NewAddress(ret),
 		TransactionData: data,
 		Ledger:          ctx.Ledger,
 	}
-	imports1, err := validatorlib.New()
+	imports1, err := vmledger.New()
 	require.Nil(t, err)
+	fmt.Println(imports1)
 	wasm1, err := New(ctx1, imports1, instances)
 	require.Nil(t, err)
+	fmt.Println(wasm1.w.Instance.Exports)
 
 	result, err := wasm1.Run(payload)
 	require.Nil(t, err)
-	require.Equal(t, "336", string(result))
+	require.Equal(t, "1", string(result))
+
+	invokePayload1 := &pb.InvokePayload{
+		Method: "state_test_get",
+		Args: []*pb.Arg{
+			{Type: pb.Arg_Bytes, Value: []byte("alice")},
+			{Type: pb.Arg_Bytes, Value: []byte("111")},
+		},
+	}
+	payload1, err := invokePayload1.Marshal()
+	require.Nil(t, err)
+	// data1 := &pb.TransactionData{
+	// 	Payload: payload1,
+	// }
+	// ctx2 := &vm.Context{
+	// 	Caller:          ctx.Caller,
+	// 	Callee:          types.NewAddress(ret),
+	// 	TransactionData: data1,
+	// 	Ledger:          ctx.Ledger,
+	// }
+
+	result1, err := wasm1.Run(payload1)
+	require.Nil(t, err)
+	require.Equal(t, "1", string(result1))
 }
 
 func TestWasm_RunFabValidation(t *testing.T) {
@@ -213,7 +258,7 @@ func TestWasm_RunFabValidation(t *testing.T) {
 	}
 	ctx1 := &vm.Context{
 		Caller:          ctx.Caller,
-		Callee:          types.Bytes2Address(ret),
+		Callee:          types.NewAddress(ret),
 		TransactionData: data,
 		Ledger:          ctx.Ledger,
 	}
@@ -247,7 +292,12 @@ func BenchmarkRunFabValidation(b *testing.B) {
 	ldb, err := leveldb.New(filepath.Join(dir, "ledger"))
 	assert.Nil(b, err)
 
-	ldg, err := ledger.New(store, ldb, ledger.NewAccountCache(), log.NewWithModule("executor"))
+	accountCache, err := ledger.NewAccountCache()
+	assert.Nil(b, err)
+	logger := log.NewWithModule("account_test")
+	blockFile, err := blockfile.NewBlockFile(dir, logger)
+	assert.Nil(b, err)
+	ldg, err := ledger.New(&repo.Repo{Key: &repo.Key{PrivKey: privKey}}, store, ldb, blockFile, accountCache, log.NewWithModule("executor"))
 	require.Nil(b, err)
 	ctx := &vm.Context{
 		Caller:          caller,
@@ -278,7 +328,7 @@ func BenchmarkRunFabValidation(b *testing.B) {
 	require.Nil(b, err)
 	ctx1 := &vm.Context{
 		Caller:          ctx.Caller,
-		Callee:          types.Bytes2Address(ret),
+		Callee:          types.NewAddress(ret),
 		TransactionData: data,
 		Ledger:          ctx.Ledger,
 	}
@@ -296,46 +346,8 @@ func BenchmarkRunFabValidation(b *testing.B) {
 	store.Close()
 }
 
-func TestWasm_RunValidation(t *testing.T) {
-	ctx := initValidationContext(t, "execute")
-	instances := make(map[string]wasmer.Instance)
-	imports, err := EmptyImports()
-	require.Nil(t, err)
-	wasm, err := New(ctx, imports, instances)
-	require.Nil(t, err)
-
-	ret, err := wasm.deploy()
-	require.Nil(t, err)
-
-	bytes, err := ioutil.ReadFile("./testdata/fab_test")
-	require.Nil(t, err)
-	invokePayload := &pb.InvokePayload{
-		Method: "start_verify",
-		Args: []*pb.Arg{
-			{Type: pb.Arg_Bytes, Value: bytes},
-			{Type: pb.Arg_Bytes, Value: []byte(cert1)},
-		},
-	}
-	payload, err := invokePayload.Marshal()
-	require.Nil(t, err)
-	data := &pb.TransactionData{
-		Payload: payload,
-	}
-	ctx1 := &vm.Context{
-		Caller:          ctx.Caller,
-		Callee:          types.Bytes2Address(ret),
-		TransactionData: data,
-		Ledger:          ctx.Ledger,
-	}
-	imports1, err := validatorlib.New()
-	require.Nil(t, err)
-	wasm1, err := New(ctx1, imports1, instances)
-	require.Nil(t, err)
-
-	result, err := wasm1.Run(payload)
-	require.Nil(t, err)
-	require.Equal(t, "1", string(result))
-}
+// TestWasm_RunValidation has been deprecated. See test in BitXHub-Core instead
+func TestWasm_RunValidation(t *testing.T) {}
 
 func TestWasm_RunWithoutMethod(t *testing.T) {
 	ctx := initCreateContext(t, "execute_without_method")
@@ -362,15 +374,73 @@ func TestWasm_RunWithoutMethod(t *testing.T) {
 	}
 	ctx1 := &vm.Context{
 		Caller:          ctx.Caller,
-		Callee:          types.Bytes2Address(ret),
+		Callee:          types.NewAddress(ret),
 		TransactionData: data,
 		Ledger:          ctx.Ledger,
 	}
-	imports1, err := validatorlib.New()
+	imports1, err := vmledger.New()
 	require.Nil(t, err)
 	wasm1, err := New(ctx1, imports1, instances)
 	require.Nil(t, err)
 
 	_, err = wasm1.Run(payload)
 	assert.Equal(t, errorLackOfMethod, err)
+}
+
+func createMockRepo(t *testing.T) *repo.Repo {
+	key := `-----BEGIN EC PRIVATE KEY-----
+BcNwjTDCxyxLNjFKQfMAc6sY6iJs+Ma59WZyC/4uhjE=
+-----END EC PRIVATE KEY-----`
+
+	privKey, err := libp2pcert.ParsePrivateKey([]byte(key), crypto.Secp256k1)
+	require.Nil(t, err)
+
+	address, err := privKey.PublicKey().Address()
+	require.Nil(t, err)
+
+	return &repo.Repo{
+		Key: &repo.Key{
+			PrivKey: privKey,
+			Address: address.String(),
+		},
+	}
+}
+
+func TestContext(t *testing.T) {
+	privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
+	assert.Nil(t, err)
+	bytes, err := ioutil.ReadFile("./testdata/fabric_policy.wasm")
+	require.Nil(t, err)
+
+	data := &pb.TransactionData{
+		Payload: bytes,
+	}
+
+	addr, err := privKey.PublicKey().Address()
+	require.Nil(t, err)
+
+	dir := filepath.Join(os.TempDir(), "ctx_test")
+	store, err := leveldb.New(filepath.Join(dir, "validation"))
+	assert.Nil(t, err)
+	ldb, err := leveldb.New(filepath.Join(dir, "ledger"))
+	assert.Nil(t, err)
+
+	accountCache, err := ledger.NewAccountCache()
+	require.Nil(t, err)
+	logger := log.NewWithModule("ctx_test")
+	blockFile, err := blockfile.NewBlockFile(dir, logger)
+	assert.Nil(t, err)
+	ldg, err := ledger.New(createMockRepo(t), store, ldb, blockFile, accountCache, log.NewWithModule("executor"))
+	require.Nil(t, err)
+
+	tx := &pb.BxhTransaction{
+		From: addr,
+		To:   addr,
+	}
+
+	ctx := NewContext(tx, data, ldg, logger)
+
+	require.Equal(t, ctx.Caller(), addr.String())
+	require.Equal(t, ctx.Callee(), addr.String())
+	require.NotNil(t, ctx.Logger())
 }

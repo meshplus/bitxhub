@@ -5,9 +5,14 @@ import (
 	"github.com/meshplus/bitxhub-model/pb"
 )
 
-type NewBlockEvent struct {
+type NewTxsEvent struct {
+	Txs []pb.Transaction
+}
+
+type ExecutedEvent struct {
 	Block          *pb.Block
 	InterchainMeta *pb.InterchainMeta
+	TxHashList     []*types.Hash
 }
 
 type CheckpointEvent struct {

@@ -1,0 +1,67 @@
+.md-header .md-logo {
+  padding: 0;
+}
+
+.md-header .md-logo img {
+  width: auto;
+  height: 2rem;
+}
+
+.md-sidebar--secondary .md-nav {
+  font-size: 13px;
+}
+
+.md-content .md-typeset h1 {
+  color: inherit;
+}
+
+.md-content h1, .md-content h2, .md-content h3 {
+  font-weight: 600;
+}
+
+.md-typeset__table {
+  /*width: 100%;*/
+}
+
+.md-typeset pre {
+  margin: 2em 0;
+}
+
+.md-typeset pre>code {
+  padding: 1.5em 2em;
+  border-radius: 4px;
+}
+
+.md-typeset a {
+  font-weight: 600;
+}
+
+.md-typeset {
+  /*font-size: 0.8rem;*/
+}
+
+.md-typeset h2 {
+  font-size: 1.5em;
+}
+
+.md-typeset img {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@media screen and (min-width: 100em) {
+  .md-typeset {
+    font-size: 0.726rem;
+  }
+}
+
+@media screen and (min-width: 100em) {
+  .md-nav {
+    font-size: 0.65rem;
+  }
+}
+
+.md-content__inner {
+  margin-bottom: 3.5rem;
+}

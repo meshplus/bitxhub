@@ -1,0 +1,17 @@
+{
+  "name": "bitxhub",
+  "version": "1.2.0",
+  "description": "Interchain protocol ",
+  "main": "index.js",
+  "repository": "git@github.com:meshplus/bitxhub.git",
+  "author": "Aiden X <caichao.xu@gmail.com>",
+  "license": "Apache-2.0",
+  "scripts": {
+    "docs:dev": "vuepress dev docs",
+    "docs:build": "vuepress build docs",
+    "docs:deploy": "cd docs && bash deploy.sh"
+  },
+  "dependencies": {
+    "vuepress": "^1.5.4"
+  }
+}

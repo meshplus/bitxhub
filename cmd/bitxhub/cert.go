@@ -16,10 +16,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub/internal/repo"
-	"github.com/meshplus/bitxhub/pkg/cert"
+	libp2pcert "github.com/meshplus/go-libp2p-cert"
 	"github.com/urfave/cli"
 )
 
@@ -38,7 +39,7 @@ var certCMD = cli.Command{
 
 var caCMD = cli.Command{
 	Name:  "ca",
-	Usage: "generate ca cert and private key",
+	Usage: "Generate ca cert and private key",
 	Action: func(ctx *cli.Context) error {
 		privKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 		if err != nil {
@@ -61,7 +62,7 @@ var caCMD = cli.Command{
 			return err
 		}
 
-		c, err := cert.GenerateCert(privKey, true, "Hyperchain")
+		c, err := libp2pcert.GenerateCert(privKey, true, "Hyperchain")
 		if err != nil {
 			return err
 		}
@@ -87,12 +88,12 @@ var csrCMD = cli.Command{
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:     "key",
-			Usage:    "Specific private key path",
+			Usage:    "Specify Secp256r1 private key path",
 			Required: true,
 		},
 		cli.StringFlag{
 			Name:     "org",
-			Usage:    "Specific organization name",
+			Usage:    "Specify organization name",
 			Required: true,
 		},
 		cli.StringFlag{
@@ -112,7 +113,7 @@ var csrCMD = cli.Command{
 		block, _ := pem.Decode(privData)
 		privKey, err := x509.ParseECPrivateKey(block.Bytes)
 		if err != nil {
-			return fmt.Errorf("parse private key: %w", err)
+			return fmt.Errorf("Error occured when parsing private key. Please make sure it's secp256r1 private key.")
 		}
 
 		template := &x509.CertificateRequest{
@@ -151,21 +152,21 @@ var issueCMD = cli.Command{
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:     "csr",
-			Usage:    "Special csr path",
+			Usage:    "Specify csr path",
 			Required: true,
 		},
 		cli.StringFlag{
 			Name:  "is_ca",
-			Usage: "is ca",
+			Usage: "Specify whether it's ca",
 		},
 		cli.StringFlag{
 			Name:     "key",
-			Usage:    "ca priv path",
+			Usage:    "Specify ca's secp256r1 private key path",
 			Required: true,
 		},
 		cli.StringFlag{
 			Name:     "cert",
-			Usage:    "ca certification path",
+			Usage:    "Specify ca certification path",
 			Required: true,
 		},
 		cli.StringFlag{
@@ -174,7 +175,7 @@ var issueCMD = cli.Command{
 		},
 	},
 	Action: func(ctx *cli.Context) error {
-		crsPath := ctx.String("csr")
+		csrPath := ctx.String("csr")
 		isCA := ctx.Bool("is_ca")
 		privPath := ctx.String("key")
 		certPath := ctx.String("cert")
@@ -187,7 +188,7 @@ var issueCMD = cli.Command{
 		block, _ := pem.Decode(privData)
 		privKey, err := x509.ParseECPrivateKey(block.Bytes)
 		if err != nil {
-			return fmt.Errorf("parse ca private key: %w", err)
+			return fmt.Errorf("Error occured when parsing private key. Please make sure it's secp256r1 private key.")
 		}
 
 		caCertData, err := ioutil.ReadFile(certPath)
@@ -200,19 +201,19 @@ var issueCMD = cli.Command{
 			return fmt.Errorf("parse ca cert: %w", err)
 		}
 
-		crsData, err := ioutil.ReadFile(crsPath)
+		csrData, err := ioutil.ReadFile(csrPath)
 		if err != nil {
-			return fmt.Errorf("read crs: %w", err)
+			return fmt.Errorf("read csr: %w", err)
 		}
 
-		block, _ = pem.Decode(crsData)
+		block, _ = pem.Decode(csrData)
 
-		crs, err := x509.ParseCertificateRequest(block.Bytes)
+		csr, err := x509.ParseCertificateRequest(block.Bytes)
 		if err != nil {
 			return fmt.Errorf("parse csr: %w", err)
 		}
 
-		if err := crs.CheckSignature(); err != nil {
+		if err := csr.CheckSignature(); err != nil {
 			return fmt.Errorf("wrong csr sign: %w", err)
 		}
 
@@ -223,10 +224,10 @@ var issueCMD = cli.Command{
 
 		notBefore := time.Now().Add(-5 * time.Minute).UTC()
 		template := &x509.Certificate{
-			Signature:             crs.Signature,
-			SignatureAlgorithm:    crs.SignatureAlgorithm,
-			PublicKey:             crs.PublicKey,
-			PublicKeyAlgorithm:    crs.PublicKeyAlgorithm,
+			Signature:             csr.Signature,
+			SignatureAlgorithm:    csr.SignatureAlgorithm,
+			PublicKey:             csr.PublicKey,
+			PublicKeyAlgorithm:    csr.PublicKeyAlgorithm,
 			SerialNumber:          sn,
 			NotBefore:             notBefore,
 			NotAfter:              notBefore.Add(50 * 365 * 24 * time.Hour).UTC(),
@@ -237,15 +238,15 @@ var issueCMD = cli.Command{
 				x509.KeyUsageKeyEncipherment | x509.KeyUsageCertSign |
 				x509.KeyUsageCRLSign,
 			ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
-			Subject:     crs.Subject,
+			Subject:     csr.Subject,
 		}
 
-		x509certEncode, err := x509.CreateCertificate(rand.Reader, template, caCert, crs.PublicKey, privKey)
+		x509certEncode, err := x509.CreateCertificate(rand.Reader, template, caCert, csr.PublicKey, privKey)
 		if err != nil {
 			return fmt.Errorf("create cert: %w", err)
 		}
 
-		name := getFileName(crsPath)
+		name := getFileName(csrPath)
 
 		path := filepath.Join(target, fmt.Sprintf("%s.cert", name))
 		f, err := os.Create(path)
@@ -397,6 +398,11 @@ func generatePrivKey(ctx *cli.Context, opt crypto.KeyType) error {
 	name := ctx.String("name")
 	target := ctx.String("target")
 
+	target, err := filepath.Abs(target)
+	if err != nil {
+		return fmt.Errorf("get absolute key path: %w", err)
+	}
+
 	privKey, err := asym.GenerateKeyPair(opt)
 	if err != nil {
 		return fmt.Errorf("generate key: %w", err)
@@ -407,6 +413,12 @@ func generatePrivKey(ctx *cli.Context, opt crypto.KeyType) error {
 		return fmt.Errorf("marshal key: %w", err)
 	}
 
+	if !fileutil.Exist(target) {
+		err := os.MkdirAll(target, 0755)
+		if err != nil {
+			return fmt.Errorf("create folder: %w", err)
+		}
+	}
 	path := filepath.Join(target, fmt.Sprintf("%s.priv", name))
 	f, err := os.Create(path)
 	if err != nil {
@@ -418,5 +430,6 @@ func generatePrivKey(ctx *cli.Context, opt crypto.KeyType) error {
 		return fmt.Errorf("pem encode: %w", err)
 	}
 
+	fmt.Printf("%s.priv key is generated under directory %s\n", name, target)
 	return nil
 }

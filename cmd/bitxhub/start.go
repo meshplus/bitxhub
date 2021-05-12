@@ -2,19 +2,23 @@ package main
 
 import (
 	"fmt"
+	"math/big"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime/pprof"
 	"sync"
 	"syscall"
 	"time"
 
 	"github.com/meshplus/bitxhub"
 	"github.com/meshplus/bitxhub-kit/log"
+	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/api/gateway"
 	"github.com/meshplus/bitxhub/api/grpc"
+	"github.com/meshplus/bitxhub/api/jsonrpc"
 	"github.com/meshplus/bitxhub/internal/app"
 	"github.com/meshplus/bitxhub/internal/coreapi"
 	"github.com/meshplus/bitxhub/internal/loggers"
@@ -49,8 +53,7 @@ func start(ctx *cli.Context) error {
 		log.WithPersist(true),
 		log.WithFilePath(filepath.Join(repoRoot, repo.Config.Log.Dir)),
 		log.WithFileName(repo.Config.Log.Filename),
-		log.WithMaxSize(2*1024*1024),
-		log.WithMaxAge(24*time.Hour),
+		log.WithMaxAge(90*24*time.Hour),
 		log.WithRotationTime(24*time.Hour),
 	)
 	if err != nil {
@@ -59,8 +62,15 @@ func start(ctx *cli.Context) error {
 
 	loggers.Initialize(repo.Config)
 
+	pb.InitEIP155Signer(big.NewInt(int64(repo.Config.ChainID)))
+
 	if repo.Config.PProf.Enable {
-		runPProf(repo.Config.Port.PProf)
+		switch repo.Config.PProf.PType {
+		case "runtime":
+			go runtimePProf(repo.Config.RepoRoot, repo.Config.PProf.Mode, repo.NetworkConfig.ID, repo.Config.PProf.Duration)
+		case "http":
+			httpPProf(repo.Config.Port.PProf)
+		}
 	}
 
 	if repo.Config.Monitor.Enable {
@@ -81,12 +91,22 @@ func start(ctx *cli.Context) error {
 	}
 
 	// start grpc service
-	b, err := grpc.NewChainBrokerService(api, repo.Config, repo.Genesis)
+	b, err := grpc.NewChainBrokerService(api, repo.Config, &repo.Config.Genesis)
 	if err != nil {
 		return err
 	}
 
 	if err := b.Start(); err != nil {
+		return err
+	}
+
+	// start json-rpc service
+	cbs, err := jsonrpc.NewChainBrokerService(api, repo.Config)
+	if err != nil {
+		return err
+	}
+
+	if err := cbs.Start(); err != nil {
 		return err
 	}
 
@@ -135,7 +155,49 @@ func handleShutdown(node *app.BitXHub, wg *sync.WaitGroup) {
 	}()
 }
 
-func runPProf(port int64) {
+// runtimePProf will record the cpu or memory profiles every 5 second.
+func runtimePProf(repoRoot, mode string, id uint64, duration time.Duration) {
+	tick := time.NewTicker(duration)
+	rootPath := filepath.Join(repoRoot, "/pprof/")
+	exist := fileExist(rootPath)
+	if !exist {
+		err := os.Mkdir(rootPath, os.ModePerm)
+		if err != nil {
+			fmt.Printf("----- runtimePProf start failed, err: %s -----\n", err.Error())
+			return
+		}
+	}
+
+	var cpuFile *os.File
+	if mode == "cpu" {
+		subPath := fmt.Sprint("cpu-", time.Now().Format("20060102-15:04:05"))
+		cpuPath := filepath.Join(rootPath, subPath)
+		cpuFile, _ = os.Create(cpuPath)
+		_ = pprof.StartCPUProfile(cpuFile)
+	}
+	for {
+		select {
+		case <-tick.C:
+			switch mode {
+			case "cpu":
+				pprof.StopCPUProfile()
+				_ = cpuFile.Close()
+				subPath := fmt.Sprint("cpu-", time.Now().Format("20060102-15:04:05"))
+				cpuPath := filepath.Join(rootPath, subPath)
+				cpuFile, _ := os.Create(cpuPath)
+				_ = pprof.StartCPUProfile(cpuFile)
+			case "memory":
+				subPath := fmt.Sprint("mem-", time.Now().Format("20060102-15:04:05"))
+				memPath := filepath.Join(rootPath, subPath)
+				memFile, _ := os.Create(memPath)
+				_ = pprof.WriteHeapProfile(memFile)
+				_ = memFile.Close()
+			}
+		}
+	}
+}
+
+func httpPProf(port int64) {
 	go func() {
 		addr := fmt.Sprintf(":%d", port)
 		logger.WithField("port", port).Info("Start pprof")
@@ -162,4 +224,15 @@ func runMonitor(port int64) {
 			fmt.Println(err)
 		}
 	}()
+}
+
+func fileExist(path string) bool {
+	_, err := os.Stat(path)
+	if err != nil {
+		if os.IsExist(err) {
+			return true
+		}
+		return false
+	}
+	return true
 }

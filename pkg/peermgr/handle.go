@@ -2,19 +2,16 @@ package peermgr
 
 import (
 	"crypto/sha256"
-	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"strconv"
 
-	"github.com/libp2p/go-libp2p-core/network"
-	network2 "github.com/libp2p/go-libp2p-core/network"
+	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/internal/constant"
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/model"
 	"github.com/meshplus/bitxhub/internal/model/events"
-	"github.com/meshplus/bitxhub/pkg/cert"
+	network "github.com/meshplus/go-lightp2p"
 	"github.com/sirupsen/logrus"
 )
 
@@ -29,6 +26,10 @@ func (swarm *Swarm) handleMessage(s network.Stream, data []byte) {
 		switch m.Type {
 		case pb.Message_GET_BLOCK:
 			return swarm.handleGetBlockPack(s, m)
+		case pb.Message_GET_BLOCK_HEADERS:
+			return swarm.handleGetBlockHeadersPack(s, m)
+		case pb.Message_GET_BLOCKS:
+			return swarm.handleGetBlocksPack(s, m)
 		case pb.Message_FETCH_CERT:
 			return swarm.handleFetchCertMessage(s)
 		case pb.Message_CONSENSUS:
@@ -37,6 +38,12 @@ func (swarm *Swarm) handleMessage(s network.Stream, data []byte) {
 			swarm.handleFetchBlockSignMessage(s, m.Data)
 		case pb.Message_FETCH_ASSET_EXCHANEG_SIGN:
 			swarm.handleFetchAssetExchangeSignMessage(s, m.Data)
+		case pb.Message_FETCH_IBTP_SIGN:
+			swarm.handleFetchIBTPSignMessage(s, m.Data)
+		case pb.Message_CHECK_MASTER_PIER:
+			swarm.handleAskPierMaster(s, m.Data)
+		case pb.Message_CHECK_MASTER_PIER_ACK:
+			swarm.handleReplyPierMaster(s, m.Data)
 		default:
 			swarm.logger.WithField("module", "p2p").Errorf("can't handle msg[type: %v]", m.Type)
 			return nil
@@ -81,6 +88,38 @@ func (swarm *Swarm) handleGetBlockPack(s network.Stream, msg *pb.Message) error 
 	return nil
 }
 
+func (swarm *Swarm) handleGetBlockHeadersPack(s network.Stream, msg *pb.Message) error {
+	req := &pb.GetBlockHeadersRequest{}
+	if err := req.Unmarshal(msg.Data); err != nil {
+		return err
+	}
+
+	res := &pb.GetBlockHeadersResponse{}
+	blockHeaders := make([]*pb.BlockHeader, 0)
+	for i := req.Start; i <= req.End; i++ {
+		block, err := swarm.ledger.GetBlock(i)
+		if err != nil {
+			return err
+		}
+		blockHeaders = append(blockHeaders, block.BlockHeader)
+	}
+	res.BlockHeaders = blockHeaders
+	v, err := res.Marshal()
+	if err != nil {
+		return err
+	}
+	m := &pb.Message{
+		Type: pb.Message_GET_BLOCK_HEADERS_ACK,
+		Data: v,
+	}
+
+	if err := swarm.SendWithStream(s, m); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (swarm *Swarm) handleFetchCertMessage(s network.Stream) error {
 	certs := &model.CertsMessage{
 		AgencyCert: swarm.repo.Certs.AgencyCertData,
@@ -93,7 +132,7 @@ func (swarm *Swarm) handleFetchCertMessage(s network.Stream) error {
 	}
 
 	msg := &pb.Message{
-		Type: pb.Message_FETCH_CERT,
+		Type: pb.Message_FETCH_CERT_ACK,
 		Data: data,
 	}
 
@@ -105,19 +144,7 @@ func (swarm *Swarm) handleFetchCertMessage(s network.Stream) error {
 	return nil
 }
 
-func verifyCerts(nodeCert *x509.Certificate, agencyCert *x509.Certificate, caCert *x509.Certificate) error {
-	if err := cert.VerifySign(agencyCert, caCert); err != nil {
-		return fmt.Errorf("verify agency cert: %w", err)
-	}
-
-	if err := cert.VerifySign(nodeCert, agencyCert); err != nil {
-		return fmt.Errorf("verify node cert: %w", err)
-	}
-
-	return nil
-}
-
-func (swarm *Swarm) handleFetchBlockSignMessage(s network2.Stream, data []byte) {
+func (swarm *Swarm) handleFetchBlockSignMessage(s network.Stream, data []byte) {
 	handle := func(data []byte) ([]byte, error) {
 		height, err := strconv.ParseUint(string(data), 10, 64)
 		if err != nil {
@@ -161,7 +188,7 @@ func (swarm *Swarm) handleFetchBlockSignMessage(s network2.Stream, data []byte) 
 	}
 }
 
-func (swarm *Swarm) handleFetchAssetExchangeSignMessage(s network2.Stream, data []byte) {
+func (swarm *Swarm) handleFetchAssetExchangeSignMessage(s network.Stream, data []byte) {
 	handle := func(id string) (string, []byte, error) {
 		swarm.logger.WithField("asset exchange id", id).Debug("Handle fetching asset exchange sign message")
 
@@ -210,4 +237,122 @@ func (swarm *Swarm) handleFetchAssetExchangeSignMessage(s network2.Stream, data 
 	if err := swarm.SendWithStream(s, msg); err != nil {
 		swarm.logger.Errorf("send asset exchange sign back: %s", err)
 	}
+}
+
+func (swarm *Swarm) handleFetchIBTPSignMessage(s network.Stream, data []byte) {
+	handle := func(id string) (string, []byte, error) {
+		hash := sha256.Sum256([]byte(id))
+		key := swarm.repo.Key
+		sign, err := key.PrivKey.Sign(hash[:])
+		if err != nil {
+			return "", nil, fmt.Errorf("fetch ibtp sign: %w", err)
+		}
+
+		return key.Address, sign, nil
+	}
+
+	address, signed, err := handle(string(data))
+	if err != nil {
+		swarm.logger.Errorf("handle fetch-ibtp-sign: %s", err)
+		return
+	}
+
+	m := model.MerkleWrapperSign{
+		Address:   address,
+		Signature: signed,
+	}
+
+	body, err := m.Marshal()
+	if err != nil {
+		swarm.logger.Errorf("marshal merkle wrapper sign: %s", err)
+		return
+	}
+
+	msg := &pb.Message{
+		Type: pb.Message_FETCH_IBTP_SIGN_ACK,
+		Data: body,
+	}
+
+	if err := swarm.SendWithStream(s, msg); err != nil {
+		swarm.logger.Errorf("send asset exchange sign back: %s", err)
+	}
+}
+
+func (swarm *Swarm) handleGetBlocksPack(s network.Stream, msg *pb.Message) error {
+	req := &pb.GetBlocksRequest{}
+	if err := req.Unmarshal(msg.Data); err != nil {
+		return err
+	}
+
+	res := &pb.GetBlocksResponse{}
+	blocks := make([]*pb.Block, 0)
+	for i := req.Start; i <= req.End; i++ {
+		block, err := swarm.ledger.GetBlock(i)
+		if err != nil {
+			return err
+		}
+		blocks = append(blocks, block)
+	}
+	res.Blocks = blocks
+	v, err := res.Marshal()
+	if err != nil {
+		return err
+	}
+	m := &pb.Message{
+		Type: pb.Message_GET_BLOCKS_ACK,
+		Data: v,
+	}
+
+	if err := swarm.SendWithStream(s, m); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (swarm *Swarm) handleAskPierMaster(s network.Stream, data []byte) {
+	address := string(data)
+	resp := &pb.CheckPierResponse{}
+	if swarm.piers.pierChan.checkAddress(address) {
+		resp.Status = pb.CheckPierResponse_HAS_MASTER
+	} else {
+		if !swarm.piers.pierMap.hasPier(address) {
+			return
+		}
+		if swarm.piers.pierMap.checkMaster(address) {
+			resp.Status = pb.CheckPierResponse_HAS_MASTER
+		} else {
+			resp.Status = pb.CheckPierResponse_NO_MASTER
+		}
+	}
+	resp.Address = address
+	msgData, err := resp.Marshal()
+	if err != nil {
+		swarm.logger.Errorf("marshal ask pier master response: %s", err)
+		return
+	}
+	message := &pb.Message{
+		Data: msgData,
+		Type: pb.Message_CHECK_MASTER_PIER_ACK,
+	}
+	msg, err := message.Marshal()
+	if err != nil {
+		swarm.logger.Errorf("marshal response message: %s", err)
+		return
+	}
+
+	if err := swarm.p2p.AsyncSend(s.RemotePeerID(), msg); err != nil {
+		swarm.logger.Errorf("send response: %s", err)
+		return
+	}
+}
+
+func (swarm *Swarm) handleReplyPierMaster(s network.Stream, data []byte) {
+	resp := &pb.CheckPierResponse{}
+	err := resp.Unmarshal(data)
+	if err != nil {
+		swarm.logger.Errorf("unmarshal response: %s", err)
+		return
+	}
+	swarm.piers.pierChan.writeChan(resp)
 }

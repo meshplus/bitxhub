@@ -14,11 +14,14 @@ type Executor interface {
 	Stop() error
 
 	// ExecutorBlock
-	ExecuteBlock(*pb.Block)
+	ExecuteBlock(commitEvent *pb.CommitEvent)
 
 	// ApplyReadonlyTransactions execute readonly tx
-	ApplyReadonlyTransactions(txs []*pb.Transaction) []*pb.Receipt
+	ApplyReadonlyTransactions(txs []pb.Transaction) []*pb.Receipt
 
 	// SubscribeBlockEvent
-	SubscribeBlockEvent(chan<- events.NewBlockEvent) event.Subscription
+	SubscribeBlockEvent(chan<- events.ExecutedEvent) event.Subscription
+
+	// SubscribeLogEvent
+	SubscribeLogsEvent(chan<- []*pb.EvmLog) event.Subscription
 }

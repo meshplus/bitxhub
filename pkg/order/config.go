@@ -11,24 +11,33 @@ import (
 )
 
 type Config struct {
-	ID                 uint64
-	RepoRoot           string
-	StoragePath        string
-	PluginPath         string
-	PeerMgr            peermgr.PeerManager
-	PrivKey            crypto.PrivateKey
-	Logger             logrus.FieldLogger
-	Nodes              map[uint64]types.Address
-	Applied            uint64
-	Digest             string
-	GetTransactionFunc func(hash types.Hash) (*pb.Transaction, error)
-	GetChainMetaFunc   func() *pb.ChainMeta
+	ID               uint64
+	IsNew            bool
+	RepoRoot         string
+	StoragePath      string
+	PluginPath       string
+	PeerMgr          peermgr.PeerManager
+	PrivKey          crypto.PrivateKey
+	Logger           logrus.FieldLogger
+	Nodes            map[uint64]*pb.VpInfo
+	Applied          uint64
+	Digest           string
+	GetChainMetaFunc func() *pb.ChainMeta
+	GetBlockByHeight func(height uint64) (*pb.Block, error)
+	GetAccountNonce  func(address *types.Address) uint64
 }
+
 type Option func(*Config)
 
 func WithID(id uint64) Option {
 	return func(config *Config) {
 		config.ID = id
+	}
+}
+
+func WithIsNew(isNew bool) Option {
+	return func(config *Config) {
+		config.IsNew = isNew
 	}
 }
 
@@ -68,7 +77,7 @@ func WithLogger(logger logrus.FieldLogger) Option {
 	}
 }
 
-func WithNodes(nodes map[uint64]types.Address) Option {
+func WithNodes(nodes map[uint64]*pb.VpInfo) Option {
 	return func(config *Config) {
 		config.Nodes = nodes
 	}
@@ -92,9 +101,15 @@ func WithGetChainMetaFunc(f func() *pb.ChainMeta) Option {
 	}
 }
 
-func WithGetTransactionFunc(f func(hash types.Hash) (*pb.Transaction, error)) Option {
+func WithGetBlockByHeightFunc(f func(height uint64) (*pb.Block, error)) Option {
 	return func(config *Config) {
-		config.GetTransactionFunc = f
+		config.GetBlockByHeight = f
+	}
+}
+
+func WithGetAccountNonceFunc(f func(address *types.Address) uint64) Option {
+	return func(config *Config) {
+		config.GetAccountNonce = f
 	}
 }
 

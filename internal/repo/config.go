@@ -2,7 +2,6 @@ package repo
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -34,14 +33,27 @@ type Config struct {
 	Port     `json:"port"`
 	PProf    `json:"pprof"`
 	Monitor  `json:"monitor"`
+	Limiter  `json:"limiter"`
 	Gateway  `json:"gateway"`
+	Ping     `json:"ping"`
 	Log      `json:"log"`
 	Cert     `json:"cert"`
 	Txpool   `json:"txpool"`
 	Order    `json:"order"`
+	Executor `json:"executor"`
+	Genesis  `json:"genesis"`
+	Security Security `toml:"security" json:"security"`
+}
+
+// Security are files used to setup connection with tls
+type Security struct {
+	EnableTLS     bool   `mapstructure:"enable_tls"`
+	PemFilePath   string `mapstructure:"pem_file_path" json:"pem_file_path"`
+	ServerKeyPath string `mapstructure:"server_key_path" json:"server_key_path"`
 }
 
 type Port struct {
+	JsonRpc int64 `toml:"jsonrpc" json:"jsonrpc"`
 	Grpc    int64 `toml:"grpc" json:"grpc"`
 	Gateway int64 `toml:"gateway" json:"gateway"`
 	PProf   int64 `toml:"pprof" json:"pprof"`
@@ -53,11 +65,25 @@ type Monitor struct {
 }
 
 type PProf struct {
-	Enable bool
+	Enable   bool          `toml:"enbale" json:"enable"`
+	PType    string        `toml:"ptype" json:"ptype"`
+	Mode     string        `toml:"mode" json:"mode"`
+	Duration time.Duration `toml:"duration" json:"duration"`
+}
+
+type Limiter struct {
+	Interval time.Duration `toml:"interval" json:"interval"`
+	Quantum  int64         `toml:"quantum" json:"quantum"`
+	Capacity int64         `toml:"capacity" json:"capacity"`
 }
 
 type Gateway struct {
 	AllowedOrigins []string `mapstructure:"allowed_origins"`
+}
+
+type Ping struct {
+	Enable   bool          `toml:"enable" json:"enable"`
+	Duration time.Duration `toml:"duration" json:"duration"`
 }
 
 type Log struct {
@@ -75,14 +101,27 @@ type LogModule struct {
 	Router    string `toml:"router" json:"router"`
 	API       string `toml:"api" json:"api"`
 	CoreAPI   string `mapstructure:"coreapi" toml:"coreapi" json:"coreapi"`
+	Storage   string `toml:"storage" json:"storage"`
 }
 
 type Genesis struct {
-	Addresses []string `json:"addresses" toml:"addresses"`
+	ChainID  uint64            `json:"chainid" toml:"chainid"`
+	GasLimit uint64            `json:"gas_limit" toml:"gas_limit"`
+	Admins   []*Admin          `json:"admins" toml:"admins"`
+	Strategy map[string]string `json:"strategy" toml:"strategy"`
+	Dider    string            `json:"dider" toml:"dider"`
+}
+
+type Admin struct {
+	Address string `json:"address" toml:"address"`
+	Weight  uint64 `json:"weight" toml:"weight"`
 }
 
 type Cert struct {
-	Verify bool `toml:"verify" json:"verify"`
+	Verify         bool   `toml:"verify" json:"verify"`
+	NodeCertPath   string `mapstructure:"node_cert_path" json:"node_cert_path"`
+	AgencyCertPath string `mapstructure:"agency_cert_path" json:"agency_cert_path"`
+	CACertPath     string `mapstructure:"ca_cert_path" json:"ca_cert_path"`
 }
 
 type Txpool struct {
@@ -92,6 +131,10 @@ type Txpool struct {
 
 type Order struct {
 	Plugin string `toml:"plugin" json:"plugin"`
+}
+
+type Executor struct {
+	Type string `toml:"type" json:"type"`
 }
 
 func (c *Config) Bytes() ([]byte, error) {
@@ -114,6 +157,7 @@ func DefaultConfig() (*Config, error) {
 			Monitor: 40011,
 		},
 		PProf:   PProf{Enable: false},
+		Ping:    Ping{Enable: false},
 		Gateway: Gateway{AllowedOrigins: []string{"*"}},
 		Log: Log{
 			Level:    "info",
@@ -128,13 +172,25 @@ func DefaultConfig() (*Config, error) {
 				CoreAPI:   "info",
 			},
 		},
-		Cert: Cert{Verify: true},
+		Cert: Cert{
+			Verify:         true,
+			NodeCertPath:   "certs/node.cert",
+			AgencyCertPath: "certs/agency.cert",
+			CACertPath:     "certs/ca.cert",
+		},
 		Txpool: Txpool{
 			BatchSize:    500,
 			BatchTimeout: 500 * time.Millisecond,
 		},
 		Order: Order{
 			Plugin: "plugins/raft.so",
+		},
+		Executor: Executor{
+			Type: "serial",
+		},
+		Genesis: Genesis{
+			ChainID:  1,
+			GasLimit: 0x2fefd8,
 		},
 	}, nil
 }
@@ -194,17 +250,4 @@ func PathRootWithDefault(path string) (string, error) {
 	}
 
 	return path, nil
-}
-
-func loadGenesis(repoRoot string) (*Genesis, error) {
-	genesis := &Genesis{}
-	if err := ReadConfig(filepath.Join(repoRoot, "genesis.json"), "json", genesis); err != nil {
-		return nil, err
-	}
-
-	if len(genesis.Addresses) == 0 {
-		return nil, fmt.Errorf("wrong genesis address number")
-	}
-
-	return genesis, nil
 }

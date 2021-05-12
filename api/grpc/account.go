@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -21,11 +22,11 @@ func (cbs *ChainBrokerService) GetAccountBalance(ctx context.Context, req *pb.Ad
 		return nil, fmt.Errorf("invalid account address: %v", req.Address)
 	}
 
-	addr := types.String2Address(req.Address)
+	addr := types.NewAddressByStr(req.Address)
 
 	account := cbs.api.Account().GetAccount(addr)
 
-	hash := types.Bytes2Hash(account.CodeHash())
+	hash := types.NewHash(account.CodeHash())
 
 	typ := "normal"
 
@@ -35,9 +36,9 @@ func (cbs *ChainBrokerService) GetAccountBalance(ctx context.Context, req *pb.Ad
 
 	ret := &Account{
 		Type:          typ,
-		Balance:       account.GetBalance(),
+		Balance:       account.GetBalance().Uint64(),
 		ContractCount: account.GetNonce(),
-		CodeHash:      hash,
+		CodeHash:      *hash,
 	}
 
 	data, err := json.Marshal(ret)
@@ -47,5 +48,15 @@ func (cbs *ChainBrokerService) GetAccountBalance(ctx context.Context, req *pb.Ad
 
 	return &pb.Response{
 		Data: data,
+	}, nil
+}
+
+func (cbs *ChainBrokerService) GetPendingNonceByAccount(ctx context.Context, req *pb.Address) (*pb.Response, error) {
+	if !types.IsValidAddressByte([]byte(req.Address)) {
+		return nil, fmt.Errorf("invalid account address: %v", req.Address)
+	}
+	nonce := cbs.api.Broker().GetPendingNonceByAccount(req.Address)
+	return &pb.Response{
+		Data: []byte(strconv.FormatUint(nonce, 10)),
 	}, nil
 }

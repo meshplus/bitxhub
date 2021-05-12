@@ -8,38 +8,38 @@ import (
 )
 
 type Context struct {
-	caller           types.Address
-	callee           types.Address
+	caller           *types.Address
+	callee           *types.Address
 	ledger           ledger.Ledger
 	transactionIndex uint64
-	transactionHash  types.Hash
+	transactionHash  *types.Hash
 	logger           logrus.FieldLogger
 }
 
-func NewContext(tx *pb.Transaction, txIndex uint64, data *pb.TransactionData, ledger ledger.Ledger, logger logrus.FieldLogger) *Context {
+func NewContext(tx pb.Transaction, txIndex uint64, data *pb.TransactionData, ledger ledger.Ledger, logger logrus.FieldLogger) *Context {
 	return &Context{
-		caller:           tx.From,
-		callee:           tx.To,
+		caller:           tx.GetFrom(),
+		callee:           tx.GetTo(),
 		ledger:           ledger,
 		transactionIndex: txIndex,
-		transactionHash:  tx.TransactionHash,
+		transactionHash:  tx.GetHash(),
 		logger:           logger,
 	}
 }
 
 func (ctx *Context) Caller() string {
-	return ctx.caller.Hex()
+	return ctx.caller.String()
 }
 
 func (ctx *Context) Callee() string {
-	return ctx.callee.Hex()
+	return ctx.callee.String()
 }
 
 func (ctx *Context) TransactionIndex() uint64 {
 	return ctx.transactionIndex
 }
 
-func (ctx *Context) TransactionHash() types.Hash {
+func (ctx *Context) TransactionHash() *types.Hash {
 	return ctx.transactionHash
 }
 

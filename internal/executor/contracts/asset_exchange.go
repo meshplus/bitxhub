@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/pkg/vm/boltvm"
 )
 
 type AssetExchange struct {
@@ -109,26 +109,14 @@ func AssetExchangeKey(id string) string {
 }
 
 func checkAssetExchangeInfo(aei *pb.AssetExchangeInfo) error {
-	if aei.SenderOnDst == "" ||
+	if aei.Id == "" ||
+		aei.SenderOnDst == "" ||
 		aei.ReceiverOnSrc == "" ||
 		aei.SenderOnSrc == "" ||
 		aei.ReceiverOnDst == "" ||
 		aei.AssetOnSrc == 0 ||
 		aei.AssetOnDst == 0 {
 		return fmt.Errorf("illegal asset exchange info")
-	}
-
-	return nil
-}
-
-func checkAssetExchangeInfoPair(aei0, aei1 *pb.AssetExchangeInfo) error {
-	if aei0.SenderOnSrc != aei1.ReceiverOnDst ||
-		aei0.ReceiverOnSrc != aei1.SenderOnDst ||
-		aei0.SenderOnDst != aei1.ReceiverOnSrc ||
-		aei0.ReceiverOnDst != aei1.SenderOnSrc ||
-		aei0.AssetOnSrc != aei1.AssetOnDst ||
-		aei0.AssetOnDst != aei1.AssetOnSrc {
-		return fmt.Errorf("unmatched exchange info pair")
 	}
 
 	return nil

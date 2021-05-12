@@ -5,8 +5,11 @@ import (
 	"reflect"
 	"strconv"
 
+	"github.com/meshplus/bitxhub-core/agency"
+	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/validator"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/pkg/vm"
 )
 
@@ -15,11 +18,11 @@ var _ vm.VM = (*BoltVM)(nil)
 type BoltVM struct {
 	ctx       *vm.Context
 	ve        validator.Engine
-	contracts map[string]Contract
+	contracts map[string]agency.Contract
 }
 
 // New creates a blot vm object
-func New(ctx *vm.Context, ve validator.Engine, contracts map[string]Contract) *BoltVM {
+func New(ctx *vm.Context, ve validator.Engine, contracts map[string]agency.Contract) *BoltVM {
 	return &BoltVM{
 		ctx:       ctx,
 		ve:        ve,
@@ -39,7 +42,7 @@ func (bvm *BoltVM) Run(input []byte) (ret []byte, err error) {
 		return nil, fmt.Errorf("unmarshal invoke payload: %w", err)
 	}
 
-	contract, err := GetBoltContract(bvm.ctx.Callee.Hex(), bvm.contracts)
+	contract, err := GetBoltContract(bvm.ctx.Callee.String(), bvm.contracts)
 	if err != nil {
 		return nil, fmt.Errorf("get bolt contract: %w", err)
 	}
@@ -69,7 +72,34 @@ func (bvm *BoltVM) Run(input []byte) (ret []byte, err error) {
 		return nil, fmt.Errorf("parse args: %w", err)
 	}
 
-	res := m.Call(fnArgs)[0].Interface().(*Response)
+	res := m.Call(fnArgs)[0].Interface().(*boltvm.Response)
+	if !res.Ok {
+		return nil, fmt.Errorf("call error: %s", res.Result)
+	}
+
+	return res.Result, err
+}
+
+func (bvm *BoltVM) HandleIBTP(ibtp *pb.IBTP) (ret []byte, err error) {
+	defer func() {
+		if e := recover(); e != nil {
+			err = fmt.Errorf("%v", e)
+		}
+	}()
+
+	con := &contracts.InterchainManager{}
+	con.Stub = &BoltStubImpl{
+		bvm: bvm,
+		ctx: bvm.ctx,
+		ve:  bvm.ve,
+	}
+
+	_, err = GetBoltContract(bvm.ctx.Callee.String(), bvm.contracts)
+	if err != nil {
+		return nil, fmt.Errorf("get bolt contract: %w", err)
+	}
+
+	res := con.HandleIBTP(ibtp)
 	if !res.Ok {
 		return nil, fmt.Errorf("call error: %s", res.Result)
 	}

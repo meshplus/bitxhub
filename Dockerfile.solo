@@ -44,7 +44,7 @@ RUN bitxhub --repo=/root/.bitxhub init \
 COPY --from=builder /go/src/github.com/meshplus/bitxhub/scripts/certs/node1/certs/* /root/.bitxhub/certs/
 COPY --from=builder /go/src/github.com/meshplus/bitxhub/internal/plugins/build/solo.so /root/.bitxhub/plugins/
 
-EXPOSE 60011 9091 53121 40011
+EXPOSE 8881 60011 9091 53121 40011
 
 ENTRYPOINT ["bitxhub", "start"]
 

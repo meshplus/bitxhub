@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/pkg/vm/boltvm"
 )
 
 const PREFIX = "tx-"
@@ -40,11 +40,7 @@ func (t *TransactionManager) BeginMultiTXs(globalId string, childTxIds ...string
 }
 
 func (t *TransactionManager) Begin(txId string) *boltvm.Response {
-	if t.Has(t.txInfoKey(txId)) {
-		return boltvm.Error("Transaction id already exists")
-	}
-
-	t.SetObject(t.txInfoKey(txId), pb.TransactionStatus_BEGIN)
+	t.AddObject(t.txInfoKey(txId), pb.TransactionStatus_BEGIN)
 
 	return boltvm.Success(nil)
 }

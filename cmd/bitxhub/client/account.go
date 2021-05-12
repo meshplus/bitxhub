@@ -24,7 +24,7 @@ func getAccount(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	data, err := httpGet(url)
+	data, err := httpGet(ctx, url)
 	if err != nil {
 		return err
 	}
@@ -34,7 +34,12 @@ func getAccount(ctx *cli.Context) error {
 		return fmt.Errorf("wrong response: %w", err)
 	}
 
-	fmt.Println(ret)
+	retJson, err := prettyJson(ret)
+	if err != nil {
+		return fmt.Errorf("wrong response: %w", err)
+	}
+
+	fmt.Println(retJson)
 
 	return nil
 }

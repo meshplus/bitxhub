@@ -3,9 +3,9 @@ package storages
 import (
 	"fmt"
 
+	"github.com/meshplus/bitxhub-kit/storage"
+	"github.com/meshplus/bitxhub-kit/storage/leveldb"
 	"github.com/meshplus/bitxhub/internal/repo"
-	"github.com/meshplus/bitxhub/pkg/storage"
-	"github.com/meshplus/bitxhub/pkg/storage/leveldb"
 )
 
 const (
@@ -32,10 +32,10 @@ func Initialize(repoRoot string) error {
 }
 
 func Get(name string) (storage.Storage, error) {
-	strg, ok := s.storages[name]
+	storage, ok := s.storages[name]
 	if !ok {
 		return nil, fmt.Errorf("wrong storage name")
 	}
 
-	return strg, nil
+	return storage, nil
 }

@@ -2,18 +2,32 @@ package client
 
 import (
 	"bytes"
-	"fmt"
+	"crypto/tls"
+	"crypto/x509"
 	"io/ioutil"
 	"net/http"
 	"strings"
 
-	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/urfave/cli"
 )
 
-func httpGet(url string) ([]byte, error) {
+func httpGet(ctx *cli.Context, url string) ([]byte, error) {
 	/* #nosec */
-	resp, err := http.Get(url)
+	var (
+		client *http.Client
+		err    error
+	)
+	certPath := ctx.GlobalString("cert")
+	if certPath != "" {
+		client, err = getHttpsClient(certPath)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		client = http.DefaultClient
+	}
+
+	resp, err := client.Get(url)
 	if err != nil {
 		return nil, err
 	}
@@ -31,11 +45,24 @@ func httpGet(url string) ([]byte, error) {
 	return c, nil
 }
 
-func httpPost(url string, data []byte) ([]byte, error) {
+func httpPost(ctx *cli.Context, url string, data []byte) ([]byte, error) {
+	var (
+		client *http.Client
+		err    error
+	)
+	certPath := ctx.GlobalString("cert")
+	if certPath != "" {
+		client, err = getHttpsClient(certPath)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		client = http.DefaultClient
+	}
 	buffer := bytes.NewBuffer(data)
 
 	/* #nosec */
-	resp, err := http.Post(url, "application/json", buffer)
+	resp, err := client.Post(url, "application/json", buffer)
 	if err != nil {
 		return nil, err
 	}
@@ -52,18 +79,29 @@ func httpPost(url string, data []byte) ([]byte, error) {
 	return c, nil
 }
 
-func getURL(ctx *cli.Context, path string) (string, error) {
-	repoRoot, err := repo.PathRootWithDefault(ctx.GlobalString("repo"))
+func getHttpsClient(certPath string) (*http.Client, error) {
+	caCert, err := ioutil.ReadFile(certPath)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	api, err := repo.GetAPI(repoRoot)
-	if err != nil {
-		return "", fmt.Errorf("get api file: %w", err)
-	}
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(caCert)
+	return &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				RootCAs: caCertPool,
+			},
+		},
+	}, nil
+}
 
+func getURL(ctx *cli.Context, p string) (string, error) {
+	api := ctx.GlobalString("gateway")
 	api = strings.TrimSpace(api)
+	if api[len(api)-1:] != "/" {
+		api = api + "/"
+	}
 
-	return api + path, nil
+	return api + p, nil
 }

@@ -20,7 +20,7 @@ func network(ctx *cli.Context) error {
 		return err
 	}
 
-	data, err := httpGet(url)
+	data, err := httpGet(ctx, url)
 	if err != nil {
 		return fmt.Errorf("http get: %w", err)
 	}
@@ -30,7 +30,12 @@ func network(ctx *cli.Context) error {
 		return fmt.Errorf("wrong response: %w", err)
 	}
 
-	fmt.Println(ret)
+	retJson, err := prettyJson(ret)
+	if err != nil {
+		return fmt.Errorf("wrong response: %w", err)
+	}
+
+	fmt.Println(retJson)
 
 	return nil
 }

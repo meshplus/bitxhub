@@ -2,11 +2,13 @@ package grpc
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxid"
 )
 
-func (cbs *ChainBrokerService) GetInterchainTxWrapper(req *pb.GetInterchainTxWrapperRequest, server pb.ChainBroker_GetInterchainTxWrapperServer) error {
+func (cbs *ChainBrokerService) GetInterchainTxWrappers(req *pb.GetInterchainTxWrappersRequest, server pb.ChainBroker_GetInterchainTxWrappersServer) error {
 	meta, err := cbs.api.Chain().Meta()
 	if err != nil {
 		return err
@@ -15,9 +17,12 @@ func (cbs *ChainBrokerService) GetInterchainTxWrapper(req *pb.GetInterchainTxWra
 	if meta.Height < req.End {
 		req.End = meta.Height
 	}
+	if !bitxid.DID(req.Pid).IsValidFormat() {
+		return fmt.Errorf("invalid did format to get interchain wrappers")
+	}
 
-	ch := make(chan *pb.InterchainTxWrapper, req.End-req.Begin+1)
-	if err := cbs.api.Broker().GetInterchainTxWrapper(req.Pid, req.Begin, req.End, ch); err != nil {
+	ch := make(chan *pb.InterchainTxWrappers, req.End-req.Begin+1)
+	if err := cbs.api.Broker().GetInterchainTxWrappers(req.Pid, req.Begin, req.End, ch); err != nil {
 		return err
 	}
 
@@ -86,5 +91,16 @@ func (cbs *ChainBrokerService) GetBlocks(ctx context.Context, req *pb.GetBlocksR
 
 	return &pb.GetBlocksResponse{
 		Blocks: blocks,
+	}, nil
+}
+
+func (cbs *ChainBrokerService) GetBlockHeaders(ctx context.Context, req *pb.GetBlockHeadersRequest) (*pb.GetBlockHeadersResponse, error) {
+	headers, err := cbs.api.Broker().GetBlockHeaders(req.Start, req.End)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.GetBlockHeadersResponse{
+		BlockHeaders: headers,
 	}, nil
 }

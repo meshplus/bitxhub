@@ -1,7 +1,7 @@
 package leveldb
 
 import (
-	"github.com/meshplus/bitxhub/pkg/storage"
+	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/errors"
 	"github.com/syndtr/goleveldb/leveldb/util"

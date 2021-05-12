@@ -13,47 +13,49 @@ type RAFTConfig struct {
 	RAFT RAFT
 }
 
-type TxPoolConfig struct {
-	PackSize  int           `mapstructure:"pack_size"`
-	BlockTick time.Duration `mapstructure:"block_tick"`
-	PoolSize  int           `mapstructure:"pool_size"`
+type MempoolConfig struct {
+	BatchSize      uint64        `mapstructure:"batch_size"`
+	PoolSize       uint64        `mapstructure:"pool_size"`
+	TxSliceSize    uint64        `mapstructure:"tx_slice_size"`
+	TxSliceTimeout time.Duration `mapstructure:"tx_slice_timeout"`
+}
+
+type SyncerConfig struct {
+	SyncBlocks    uint64 `mapstructure:"sync_blocks"`
+	SnapshotCount uint64 `mapstructure:"snapshot_count"`
 }
 
 type RAFT struct {
-	ElectionTick              int          `mapstructure:"election_tick"`
-	HeartbeatTick             int          `mapstructure:"heartbeat_tick"`
-	MaxSizePerMsg             uint64       `mapstructure:"max_size_per_msg"`
-	MaxInflightMsgs           int          `mapstructure:"max_inflight_msgs"`
-	CheckQuorum               bool         `mapstructure:"check_quorum"`
-	PreVote                   bool         `mapstructure:"pre_vote"`
-	DisableProposalForwarding bool         `mapstructure:"disable_proposal_forwarding"`
-	TxPoolConfig              TxPoolConfig `mapstructure:"tx_pool"`
+	BatchTimeout              time.Duration `mapstructure:"batch_timeout"`
+	CheckInterval             time.Duration `mapstructure:"check_interval"`
+	TickTimeout               time.Duration `mapstructure:"tick_timeout"`
+	ElectionTick              int           `mapstructure:"election_tick"`
+	HeartbeatTick             int           `mapstructure:"heartbeat_tick"`
+	MaxSizePerMsg             uint64        `mapstructure:"max_size_per_msg"`
+	MaxInflightMsgs           int           `mapstructure:"max_inflight_msgs"`
+	CheckQuorum               bool          `mapstructure:"check_quorum"`
+	PreVote                   bool          `mapstructure:"pre_vote"`
+	DisableProposalForwarding bool          `mapstructure:"disable_proposal_forwarding"`
+	MempoolConfig             MempoolConfig `mapstructure:"mempool"`
+	SyncerConfig              SyncerConfig  `mapstructure:"syncer"`
 }
 
 func defaultRaftConfig() raft.Config {
 	return raft.Config{
-		ElectionTick:              10,          //ElectionTick is the number of Node.Tick invocations that must pass between elections.(s)
-		HeartbeatTick:             1,           //HeartbeatTick is the number of Node.Tick invocations that must pass between heartbeats.(s)
-		MaxSizePerMsg:             1024 * 1024, //1024*1024, MaxSizePerMsg limits the max size of each append message.
-		MaxInflightMsgs:           500,         //MaxInflightMsgs limits the max number of in-flight append messages during optimistic replication phase.
+		ElectionTick:              10,          // ElectionTick is the number of Node.Tick invocations that must pass between elections.(s)
+		HeartbeatTick:             1,           // HeartbeatTick is the number of Node.Tick invocations that must pass between heartbeats.(s)
+		MaxSizePerMsg:             1024 * 1024, // 1024*1024, MaxSizePerMsg limits the max size of each append message.
+		MaxInflightMsgs:           500,         // MaxInflightMsgs limits the max number of in-flight append messages during optimistic replication phase.
 		PreVote:                   true,        // PreVote prevents reconnected node from disturbing network.
 		CheckQuorum:               true,        // Leader steps down when quorum is not active for an electionTimeout.
 		DisableProposalForwarding: true,        // This prevents blocks from being accidentally proposed by followers
 	}
 }
 
-func defaultTxPoolConfig() TxPoolConfig {
-	return TxPoolConfig{
-		PackSize:  500,                    // How many transactions should the primary pack.
-		BlockTick: 500 * time.Millisecond, //Block packaging time period.
-		PoolSize:  50000,                  //How many transactions could the txPool stores in total.
-	}
-}
-
-func generateRaftConfig(id uint64, repoRoot string, logger logrus.FieldLogger, ram MemoryStorage) (*raft.Config, error) {
+func generateEtcdRaftConfig(id uint64, repoRoot string, logger logrus.FieldLogger, ram MemoryStorage) (*raft.Config, time.Duration, error) {
 	readConfig, err := readConfig(repoRoot)
 	if err != nil {
-		return &raft.Config{}, nil
+		return &raft.Config{}, 100 * time.Millisecond, nil
 	}
 	defaultConfig := defaultRaftConfig()
 	defaultConfig.ID = id
@@ -74,25 +76,15 @@ func generateRaftConfig(id uint64, repoRoot string, logger logrus.FieldLogger, r
 	defaultConfig.PreVote = readConfig.RAFT.PreVote
 	defaultConfig.CheckQuorum = readConfig.RAFT.CheckQuorum
 	defaultConfig.DisableProposalForwarding = readConfig.RAFT.DisableProposalForwarding
-	return &defaultConfig, nil
+	return &defaultConfig, readConfig.RAFT.TickTimeout, nil
 }
 
-func generateTxPoolConfig(repoRoot string) (*TxPoolConfig, error) {
+func generateRaftConfig(repoRoot string) (*RAFTConfig, error) {
 	readConfig, err := readConfig(repoRoot)
 	if err != nil {
-		return &TxPoolConfig{}, nil
+		return nil, err
 	}
-	defaultTxPoolConfig := defaultTxPoolConfig()
-	if readConfig.RAFT.TxPoolConfig.BlockTick > 0 {
-		defaultTxPoolConfig.BlockTick = readConfig.RAFT.TxPoolConfig.BlockTick
-	}
-	if readConfig.RAFT.TxPoolConfig.PackSize > 0 {
-		defaultTxPoolConfig.PackSize = readConfig.RAFT.TxPoolConfig.PackSize
-	}
-	if readConfig.RAFT.TxPoolConfig.PoolSize > 0 {
-		defaultTxPoolConfig.PoolSize = readConfig.RAFT.TxPoolConfig.PoolSize
-	}
-	return &defaultTxPoolConfig, nil
+	return readConfig, nil
 }
 
 func readConfig(repoRoot string) (*RAFTConfig, error) {
