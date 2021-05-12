@@ -55,10 +55,10 @@ func TestAppchainManager_Appchains(t *testing.T) {
 	am, mockStub, chains, chainsData := prepare(t)
 
 	logger := log.NewWithModule("contracts")
-	applyResponse := &boltvm.Response{
-		Ok:     true,
-		Result: []byte("OK"),
-	}
+	//applyResponse := &boltvm.Response{
+	//	Ok:     true,
+	//	Result: []byte("OK"),
+	//}
 
 	mockStub.EXPECT().Caller().Return(caller).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).Return().AnyTimes()
@@ -68,8 +68,8 @@ func TestAppchainManager_Appchains(t *testing.T) {
 	mockStub.EXPECT().Logger().Return(logger).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, chainsData[0]).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil))
-	mockStub.EXPECT().CrossInvoke(constant.MethodRegistryContractAddr.String(), "Apply",
-		gomock.Any(), gomock.Any(), gomock.Any()).Return(applyResponse)
+	//mockStub.EXPECT().CrossInvoke(constant.MethodRegistryContractAddr.String(), "Apply",
+	//	gomock.Any(), gomock.Any(), gomock.Any()).Return(applyResponse)
 	mockStub.EXPECT().Has(AppchainKey(appchainMethod)).Return(false).MaxTimes(3)
 	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Do(
 		func(key string, ret interface{}) bool {
@@ -137,8 +137,8 @@ func TestAppchainManager_Register(t *testing.T) {
 	mockStub.EXPECT().Logger().Return(logger).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
 		gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.MethodRegistryContractAddr.String(), "Apply",
-		gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+	//mockStub.EXPECT().CrossInvoke(constant.MethodRegistryContractAddr.String(), "Apply",
+	//	gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 
 	res := am.Register(appchainAdminDID, appchainMethod, docAddr, docHash,
 		chains[2].Validators, chains[2].ConsensusType, chains[2].ChainType,
@@ -197,10 +197,10 @@ func TestAppchainManager_Manager(t *testing.T) {
 	mockStub.EXPECT().CurrentCaller().Return(constant.GovernanceContractAddr.String()).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "CheckPermission", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("")).Times(1)
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "CheckPermission", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.MethodRegistryContractAddr.String(), "AuditApply",
-		gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil))
-	mockStub.EXPECT().CrossInvoke(constant.MethodRegistryContractAddr.String(), "Register",
-		gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil))
+	//mockStub.EXPECT().CrossInvoke(constant.MethodRegistryContractAddr.String(), "AuditApply",
+	//	gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil))
+	//mockStub.EXPECT().CrossInvoke(constant.MethodRegistryContractAddr.String(), "Register",
+	//	gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil))
 
 	// test without permission
 	res := am.Manage(string(governance.EventUpdate), string(APPOVED), data)
@@ -351,8 +351,8 @@ func TestDeleteAppchain(t *testing.T) {
 	mockStub.EXPECT().CrossInvoke(constant.InterchainContractAddr.String(), "DeleteInterchain",
 		gomock.Any()).Return(approveRes).AnyTimes()
 	mockStub.EXPECT().Delete(AppchainKey(caller)).Return()
-	mockStub.EXPECT().CrossInvoke(constant.MethodRegistryContractAddr.String(), "Delete",
-		gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil))
+	//mockStub.EXPECT().CrossInvoke(constant.MethodRegistryContractAddr.String(), "Delete",
+	//	gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil))
 
 	// judge caller type error
 	res := am.DeleteAppchain(caller)
