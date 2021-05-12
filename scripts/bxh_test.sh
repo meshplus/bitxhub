@@ -17,7 +17,7 @@ function prepare() {
     fi
     print_blue "===> 2. Install tmux with package manager"
     if ! type tmux >/dev/null 2>&1; then
-      sudo apt-get -y tmux
+      sudo apt-get install -y tmux
     fi
 }
 
