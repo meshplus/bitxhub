@@ -32,7 +32,7 @@ function getPremo() {
 }
 function test() {
     print_blue "Start $TEST_NAME test"
-    cd premo && make "$TEST_NAME"
+    cd premo && make bitxhub-tester
 }
 function bxh_test() {
     prepare
@@ -40,7 +40,7 @@ function bxh_test() {
     getPremo
     test
 }
-while getopts "h?b:t" opt; do
+while getopts "h?b" opt; do
   case "$opt" in
   h | \?)
     printHelp
@@ -48,9 +48,6 @@ while getopts "h?b:t" opt; do
     ;;
   b)
     BRANCH_NAME=$OPTARG
-    ;;
-  t)
-    TEST_NAME=$OPTARG
     ;;
   esac
 done
