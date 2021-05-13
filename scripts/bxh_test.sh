@@ -27,9 +27,8 @@ function startBitxhub() {
     cd ../ && make install && cd scripts
     print_blue "Start Solo"
     nohup bash solo.sh 2>gc.log 1>solo.log &
-    while  ps aux | grep "solo"|grep -v grep > /dev/null ;do
+    while  lsof -i:60011 > /dev/null ;do
       sleep 1
-      echo $(lsof -i:60011)
     done
 }
 function bitxhub_tester() {
