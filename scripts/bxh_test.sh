@@ -25,12 +25,15 @@ function startBitxhub() {
     print_blue "Start bitxhub"
     echo "$CURRENT_PATH"
     cd ../ && nohup make solo &
+    while  ps aux | pgrep "solo"|pgrep -v grep > /dev/null ;do
+      sleep 1
+    done
 }
 function bitxhub_tester() {
     print_blue "Start git clone Premo"
     echo "$BRANCH_NAME"
     cd ../ && git clone -b "$BRANCH_NAME" https://github.com/meshplus/premo.git
-    export PATH=$PATH:$(go env GOPATH)/bin && cd premo && make install && premo init
+    cd premo && make install && premo init
     print_blue "Start test"
     make bitxhub-tester
 }
