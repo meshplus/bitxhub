@@ -24,7 +24,7 @@ function prepare() {
 function startBitxhub() {
     print_blue "Start bitxhub"
     echo "$CURRENT_PATH"
-    cd ../ && nohup make solo &
+    cd ../ && make install && cd scripts && nohup bash solo.sh 2>gc.log 1>solo.log &
     while  ps aux | grep "solo"|grep -v grep > /dev/null ;do
       sleep 1
     done
