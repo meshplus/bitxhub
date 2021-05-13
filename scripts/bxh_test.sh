@@ -24,19 +24,21 @@ function prepare() {
 function startBitxhub() {
     print_blue "Start bitxhub"
     echo "$CURRENT_PATH"
-    cd ../ && make solo
+    cd ../ && nohup make solo &
 }
 function getPremo() {
     print_blue "Start git clone Premo"
-    git clone -b "$BRANCH_NAME" https://github.com/meshplus/premo.git
+    cd ../ && git clone -b "$BRANCH_NAME" https://github.com/meshplus/premo.git
 }
 function test() {
     print_blue "Start $TEST_NAME test"
-    cd "$CURRENT_PATH"/premo && make "$TEST_NAME"
+    cd premo && make "$TEST_NAME"
 }
 function bxh_test() {
     prepare
     startBitxhub
+    getPremo
+    test
 }
 while getopts "h?b:t" opt; do
   case "$opt" in

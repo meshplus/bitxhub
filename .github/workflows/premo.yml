@@ -24,3 +24,4 @@ jobs:
           cd scripts
           bash bxh_test.sh -b ${{ github.base_ref }} -t bxh-tester
 
+
