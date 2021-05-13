@@ -25,7 +25,7 @@ function startBitxhub() {
     print_blue "Start bitxhub"
     echo "$CURRENT_PATH"
     cd ../ && nohup make solo &
-    while  ps aux | pgrep "solo"|pgrep -v grep > /dev/null ;do
+    while  ps aux | grep "solo"|grep -v grep > /dev/null ;do
       sleep 1
     done
 }
