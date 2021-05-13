@@ -22,6 +22,7 @@ jobs:
         run: |
           export PATH=$PATH:$(go env GOPATH)/bin
           cd scripts
+          echo ${{ github.base_ref }}
           bash bxh_test.sh -b ${{ github.base_ref }}
 
 
