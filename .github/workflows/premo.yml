@@ -1,26 +1,22 @@
 name: Premo
 
 on:
-  push:
-    branches:
-      - master
-      - release-*
   pull_request:
     branches:
       - master
       - release-*
 jobs:
   bxh_tester:
-    name: Release binary on Linux and Macos
+    name: Run bxh_tester
     runs-on: ubuntu-latest
     steps:
       - name: Set up Go
         uses: actions/setup-go@v1
         with:
           go-version: 1.13
+
       - name: Check out code
         uses: actions/checkout@v2
 
       - name: Run bxh_tester
-        run: echo {{ github.head_ref }}
-
+        run: bash scripts/bxh_test.sh -b ${{ github.base_ref }} -t bxh-tester
