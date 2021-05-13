@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/repo"
@@ -194,27 +193,25 @@ func (router *InterchainRouter) fetchSigns(height uint64) (map[string][]byte, er
 }
 
 func (router *InterchainRouter) classify(block *pb.Block, meta *pb.InterchainMeta) map[string]*pb.InterchainTxWrapper {
-	txsM := make(map[string][]*pb.Transaction)
-	hashesM := make(map[string][]types.Hash)
+	txsM := make(map[string][]*pb.VerifiedTx)
 
 	for k, vs := range meta.Counter {
-		var txs []*pb.Transaction
-		var hashes []types.Hash
-		for _, i := range vs.Slice {
-			txs = append(txs, block.Transactions[i])
-			hashes = append(hashes, *block.Transactions[i].TransactionHash)
+		var txs []*pb.VerifiedTx
+		for _, vi := range vs.Slice {
+			txs = append(txs, &pb.VerifiedTx{
+				Tx:    block.Transactions[vi.Index],
+				Valid: vi.Valid,
+			})
 		}
 		txsM[k] = txs
-		hashesM[k] = hashes
 	}
 
 	target := make(map[string]*pb.InterchainTxWrapper)
 	for dest, txs := range txsM {
 		wrapper := &pb.InterchainTxWrapper{
-			Height:            block.BlockHeader.Number,
-			TransactionHashes: hashesM[dest],
-			Transactions:      txs,
-			L2Roots:           meta.L2Roots,
+			Height:       block.BlockHeader.Number,
+			Transactions: txs,
+			L2Roots:      meta.L2Roots,
 		}
 		target[dest] = wrapper
 	}

@@ -33,10 +33,10 @@ func TestInterchainRouter_GetInterchainTxWrappers(t *testing.T) {
 	BVMTx := mockTx(BVMData)
 	txs = append(txs, BVMTx)
 
-	m := make(map[string]*pb.Uint64Slice, 0)
+	m := make(map[string]*pb.VerifiedIndexSlice, 0)
 
-	m[to] = &pb.Uint64Slice{
-		Slice: []uint64{0},
+	m[to] = &pb.VerifiedIndexSlice{
+		Slice: []*pb.VerifiedIndex{{0, true}},
 	}
 	im := &pb.InterchainMeta{
 		Counter: m,
@@ -75,7 +75,7 @@ func TestInterchainRouter_GetInterchainTxWrappers(t *testing.T) {
 	case iw1 := <-wrappersCh1:
 		require.Equal(t, len(iw1.InterchainTxWrappers), 1)
 		require.Equal(t, len(iw1.InterchainTxWrappers[0].Transactions), 1)
-		require.Equal(t, iw1.InterchainTxWrappers[0].Transactions[0].Hash().String(), BVMTx.Hash().String())
+		require.Equal(t, iw1.InterchainTxWrappers[0].Transactions[0].Tx.Hash().String(), BVMTx.Hash().String())
 	case iw4 := <-wrappersCh4:
 		require.Equal(t, len(iw4.InterchainTxWrappers), 1)
 		require.Equal(t, len(iw4.InterchainTxWrappers[0].Transactions), 0)
@@ -135,10 +135,10 @@ func TestInterchainRouter_AddPier(t *testing.T) {
 	BVMTx := mockTx(BVMData)
 	txs = append(txs, BVMTx)
 
-	m := make(map[string]*pb.Uint64Slice, 0)
+	m := make(map[string]*pb.VerifiedIndexSlice, 0)
 
-	m[to] = &pb.Uint64Slice{
-		Slice: []uint64{0},
+	m[to] = &pb.VerifiedIndexSlice{
+		Slice: []*pb.VerifiedIndex{{0, true}},
 	}
 	im := &pb.InterchainMeta{
 		Counter: m,
@@ -151,7 +151,7 @@ func TestInterchainRouter_AddPier(t *testing.T) {
 	case iw := <-interchainWrappersC:
 		require.Equal(t, len(iw.InterchainTxWrappers), 1)
 		require.Equal(t, len(iw.InterchainTxWrappers[0].Transactions), 1)
-		require.Equal(t, iw.InterchainTxWrappers[0].Transactions[0].Hash().String(), BVMTx.Hash().String())
+		require.Equal(t, iw.InterchainTxWrappers[0].Transactions[0].Tx.Hash().String(), BVMTx.Hash().String())
 	default:
 		require.Errorf(t, fmt.Errorf("not found interchainWrappers"), "")
 	}
@@ -175,11 +175,11 @@ func TestInterchainRouter_AddNonexistentPier(t *testing.T) {
 	BVMTx := mockTx(BVMData)
 	txs = append(txs, BVMTx)
 
-	m := make(map[string]*pb.Uint64Slice, 0)
+	m := make(map[string]*pb.VerifiedIndexSlice, 0)
 
 	// pier of other is not added
-	m[other] = &pb.Uint64Slice{
-		Slice: []uint64{0},
+	m[other] = &pb.VerifiedIndexSlice{
+		Slice: []*pb.VerifiedIndex{{0, true}},
 	}
 	im := &pb.InterchainMeta{
 		Counter: m,
@@ -215,10 +215,10 @@ func TestInterchainRouter_AddUnionPier(t *testing.T) {
 	BVMTx := mockTx(BVMData)
 	txs = append(txs, BVMTx)
 
-	m := make(map[string]*pb.Uint64Slice, 0)
+	m := make(map[string]*pb.VerifiedIndexSlice, 0)
 
-	m[other] = &pb.Uint64Slice{
-		Slice: []uint64{0},
+	m[other] = &pb.VerifiedIndexSlice{
+		Slice: []*pb.VerifiedIndex{{0, true}},
 	}
 	im := &pb.InterchainMeta{
 		Counter: m,
@@ -231,7 +231,7 @@ func TestInterchainRouter_AddUnionPier(t *testing.T) {
 	case iw := <-interchainWrappersC:
 		require.Equal(t, len(iw.InterchainTxWrappers), 1)
 		require.Equal(t, len(iw.InterchainTxWrappers[0].Transactions), 1)
-		require.Equal(t, iw.InterchainTxWrappers[0].Transactions[0].Hash().String(), BVMTx.Hash().String())
+		require.Equal(t, iw.InterchainTxWrappers[0].Transactions[0].Tx.Hash().String(), BVMTx.Hash().String())
 	default:
 		require.Errorf(t, fmt.Errorf("not found interchainWrappers"), "")
 	}
