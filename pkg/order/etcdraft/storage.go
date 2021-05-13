@@ -2,7 +2,6 @@ package etcdraft
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -14,8 +13,8 @@ import (
 	"github.com/coreos/etcd/snap"
 	"github.com/coreos/etcd/wal"
 	"github.com/coreos/etcd/wal/walpb"
-	"github.com/meshplus/bitxhub/pkg/storage"
-	"github.com/meshplus/bitxhub/pkg/storage/leveldb"
+	"github.com/meshplus/bitxhub-kit/storage"
+	"github.com/meshplus/bitxhub-kit/storage/leveldb"
 	"github.com/pkg/errors"
 )
 
@@ -83,8 +82,7 @@ func CreateStorage(
 		}
 	} else {
 		// snapshot found
-		lg.Debugf("Loaded snapshot at Term %d and Index %d, Nodes: %+v",
-			snapshot.Metadata.Term, snapshot.Metadata.Index, snapshot.Metadata.ConfState.Nodes)
+		lg.Debugf("Loaded snapshot at Term %d and Index %d, Nodes: %+v", snapshot.Metadata.Term, snapshot.Metadata.Index, snapshot.Metadata.ConfState.Nodes)
 	}
 
 	w, st, ents, err := createOrReadWAL(lg, walDir, snapshot)
@@ -116,15 +114,14 @@ func CreateStorage(
 		return nil, nil, errors.Errorf("Failed to new leveldb: %s", err)
 	}
 	return &RaftStorage{
-		lg:                     lg,
-		ram:                    ram,
-		wal:                    w,
-		snap:                   sn,
-		walDir:                 walDir,
-		snapDir:                snapDir,
-		db:                     db,
-		SnapshotCatchUpEntries: 4,
-		snapshotIndex:          ListSnapshots(lg, snapDir),
+		lg:            lg,
+		ram:           ram,
+		wal:           w,
+		snap:          sn,
+		walDir:        walDir,
+		snapDir:       snapDir,
+		db:            db,
+		snapshotIndex: ListSnapshots(lg, snapDir),
 	}, db, nil
 }
 
@@ -158,17 +155,8 @@ func ListSnapshots(logger raft.Logger, snapDir string) []uint64 {
 		s, err := snap.Read(fpath)
 		if err != nil {
 			logger.Errorf("Snapshot file %s is corrupted: %s", fpath, err)
-
-			broken := fpath + ".broken"
-			if err = os.Rename(fpath, broken); err != nil {
-				logger.Errorf("Failed to rename corrupted snapshot file %s to %s: %s", fpath, broken, err)
-			} else {
-				logger.Debugf("Renaming corrupted snapshot file %s to %s", fpath, broken)
-			}
-
 			continue
 		}
-
 		snapshots = append(snapshots, s.Metadata.Index)
 	}
 
@@ -190,10 +178,6 @@ func createOrReadWAL(lg raft.Logger, walDir string, snapshot *raftpb.Snapshot) (
 		// TODO(jay_guo) add metadata to be persisted with wal once we need it.
 		// use case could be data dump and restore on a new node.
 		w, err := wal.Create(walDir, nil)
-		if err == os.ErrExist {
-			lg.Fatalf("programming error, we've just checked that WAL does not exist")
-		}
-
 		if err != nil {
 			return nil, st, nil, errors.Errorf("failed to initialize WAL: %s", err)
 		}
@@ -213,44 +197,15 @@ func createOrReadWAL(lg raft.Logger, walDir string, snapshot *raftpb.Snapshot) (
 
 	lg.Debugf("Loading WAL at Term %d and Index %d", walsnap.Term, walsnap.Index)
 
-	var repaired bool
-	for {
-		if w, err = wal.Open(walDir, walsnap); err != nil {
-			return nil, st, nil, errors.Errorf("failed to open WAL: %s", err)
-		}
+	if w, err = wal.Open(walDir, walsnap); err != nil {
+		return nil, st, nil, errors.Errorf("failed to open WAL: %s", err)
+	}
 
-		if _, st, ents, err = w.ReadAll(); err != nil {
-			lg.Warningf("Failed to read WAL: %s", err)
-
-			if errc := w.Close(); errc != nil {
-				return nil, st, nil, errors.Errorf("failed to close erroneous WAL: %s", errc)
-			}
-
-			// only repair UnexpectedEOF and only repair once
-			if repaired || err != io.ErrUnexpectedEOF {
-				return nil, st, nil, errors.Errorf("failed to read WAL and cannot repair: %s", err)
-			}
-
-			if !wal.Repair(walDir) {
-				return nil, st, nil, errors.Errorf("failed to repair WAL: %s", err)
-			}
-
-			repaired = true
-			// next loop should be able to open WAL and return
-			continue
-		}
-
-		// successfully opened WAL and read all entries, break
-		break
+	if _, st, ents, err = w.ReadAll(); err != nil {
+		return nil, st, nil, errors.Errorf("failed to read WAL: %s", err)
 	}
 
 	return w, st, ents, nil
-}
-
-// Snapshot returns the latest snapshot stored in memory
-func (rs *RaftStorage) Snapshot() raftpb.Snapshot {
-	sn, _ := rs.ram.Snapshot() // Snapshot always returns nil error
-	return sn
 }
 
 // Store persists etcd/raft data
@@ -264,13 +219,8 @@ func (rs *RaftStorage) Store(entries []raftpb.Entry, hardstate raftpb.HardState,
 			return err
 		}
 
-		if err := rs.ram.ApplySnapshot(snapshot); err != nil {
-			if err == raft.ErrSnapOutOfDate {
-				rs.lg.Warningf("Attempted to apply out-of-date snapshot at Term %d and Index %d",
-					snapshot.Metadata.Term, snapshot.Metadata.Index)
-			} else {
-				rs.lg.Fatalf("Unexpected programming error: %s", err)
-			}
+		if err := rs.ram.ApplySnapshot(snapshot); err != nil && err != raft.ErrSnapOutOfDate {
+			return err
 		}
 	}
 
@@ -326,12 +276,8 @@ func (rs *RaftStorage) TakeSnapshot(i uint64, cs raftpb.ConfState, data []byte) 
 	if i > rs.SnapshotCatchUpEntries {
 		compacti := i - rs.SnapshotCatchUpEntries
 		rs.lg.Debugf("Purging in-memory raft entries prior to %d", compacti)
-		if err = rs.ram.Compact(compacti); err != nil {
-			if err == raft.ErrCompacted {
-				rs.lg.Warningf("Raft entries prior to %d are already purged", compacti)
-			} else {
-				rs.lg.Fatalf("Failed to purge raft entries: %s", err)
-			}
+		if err = rs.ram.Compact(compacti); err != nil && err != raft.ErrCompacted {
+			return err
 		}
 	}
 
@@ -396,10 +342,6 @@ func (rs *RaftStorage) purgeSnap() {
 	var files []string
 	for _, f := range snapFiles {
 		if !strings.HasSuffix(f, ".snap") {
-			if strings.HasPrefix(f, ".broken") {
-				rs.lg.Warningf("Found broken snapshot file %s, it can be removed manually", f)
-			}
-
 			continue
 		}
 
@@ -430,18 +372,6 @@ func (rs *RaftStorage) purge(files []string) {
 
 		if err = l.Close(); err != nil {
 			rs.lg.Errorf("Failed to close file lock %s: %s", l.Name(), err)
-		}
-	}
-}
-
-// ApplySnapshot applies snapshot to local memory storage
-func (rs *RaftStorage) ApplySnapshot(snap raftpb.Snapshot) {
-	if err := rs.ram.ApplySnapshot(snap); err != nil {
-		if err == raft.ErrSnapOutOfDate {
-			rs.lg.Warningf("Attempted to apply out-of-date snapshot at Term %d and Index %d",
-				snap.Metadata.Term, snap.Metadata.Index)
-		} else {
-			rs.lg.Fatalf("Unexpected programming error: %s", err)
 		}
 	}
 }

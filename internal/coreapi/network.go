@@ -2,8 +2,10 @@ package coreapi
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
+	"github.com/meshplus/bitxhub/pkg/peermgr"
 )
 
 type NetworkAPI CoreAPI
@@ -20,4 +22,15 @@ func (network *NetworkAPI) PeerInfo() ([]byte, error) {
 	}
 
 	return data, nil
+}
+
+func (network *NetworkAPI) DelVPNode(pid string) ([]byte, error) {
+	if pid == "" {
+		return nil, fmt.Errorf("pid is null")
+	}
+	return nil, nil
+}
+
+func (network *NetworkAPI) PierManager() peermgr.PierManager {
+	return network.bxh.PeerMgr.PierManager()
 }

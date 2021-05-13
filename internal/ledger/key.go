@@ -9,6 +9,8 @@ import (
 const (
 	blockKey           = "block-"
 	blockHashKey       = "block-hash-"
+	blockHeightKey     = "block-height-"
+	blockTxSetKey      = "block-tx-set-"
 	interchainMetaKey  = "interchain-meta-"
 	receiptKey         = "receipt-"
 	transactionKey     = "tx-"
@@ -23,6 +25,6 @@ func compositeKey(prefix string, value interface{}) []byte {
 	return append([]byte(prefix), []byte(fmt.Sprintf("%v", value))...)
 }
 
-func composeStateKey(addr types.Address, key []byte) []byte {
+func composeStateKey(addr *types.Address, key []byte) []byte {
 	return append(addr.Bytes(), key...)
 }

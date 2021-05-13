@@ -5,9 +5,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/meshplus/bitxhub-kit/storage"
+	"github.com/meshplus/bitxhub-kit/storage/blockfile"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/pkg/storage"
+	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/sirupsen/logrus"
 )
 
@@ -20,21 +22,38 @@ var (
 	ErrorRemoveJournalOutOfRange = fmt.Errorf("remove journal out of range")
 )
 
+type revision struct {
+	id           int
+	changerIndex int
+}
+
 type ChainLedger struct {
 	logger          logrus.FieldLogger
 	blockchainStore storage.Storage
 	ldb             storage.Storage
+	bf              *blockfile.BlockFile
 	minJnlHeight    uint64
 	maxJnlHeight    uint64
-	events          map[string][]*pb.Event
+	events          sync.Map
 	accounts        map[string]*Account
 	accountCache    *AccountCache
-	prevJnlHash     types.Hash
+	prevJnlHash     *types.Hash
+	repo            *repo.Repo
 
 	chainMutex sync.RWMutex
 	chainMeta  *pb.ChainMeta
 
 	journalMutex sync.RWMutex
+	lock         sync.RWMutex
+
+	validRevisions []revision
+	nextRevisionId int
+	changer        *stateChanger
+
+	accessList *accessList
+	preimages  map[types.Hash][]byte
+	refund     uint64
+	logs       *evmLogs
 }
 
 type BlockData struct {
@@ -43,10 +62,11 @@ type BlockData struct {
 	Accounts       map[string]*Account
 	Journal        *BlockJournal
 	InterchainMeta *pb.InterchainMeta
+	TxHashList     []*types.Hash
 }
 
 // New create a new ledger instance
-func New(blockchainStore storage.Storage, ldb storage.Storage, accountCache *AccountCache, logger logrus.FieldLogger) (*ChainLedger, error) {
+func New(repo *repo.Repo, blockchainStore storage.Storage, ldb storage.Storage, bf *blockfile.BlockFile, accountCache *AccountCache, logger logrus.FieldLogger) (*ChainLedger, error) {
 	chainMeta, err := loadChainMeta(blockchainStore)
 	if err != nil {
 		return nil, fmt.Errorf("load chain meta: %w", err)
@@ -54,27 +74,38 @@ func New(blockchainStore storage.Storage, ldb storage.Storage, accountCache *Acc
 
 	minJnlHeight, maxJnlHeight := getJournalRange(ldb)
 
-	prevJnlHash := types.Hash{}
+	prevJnlHash := &types.Hash{}
 	if maxJnlHeight != 0 {
 		blockJournal := getBlockJournal(maxJnlHeight, ldb)
+		if blockJournal == nil {
+			return nil, fmt.Errorf("get empty block journal for block: %d", maxJnlHeight)
+		}
 		prevJnlHash = blockJournal.ChangedHash
 	}
 
 	if accountCache == nil {
-		accountCache = NewAccountCache()
+		accountCache, err = NewAccountCache()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	ledger := &ChainLedger{
+		repo:            repo,
 		logger:          logger,
 		chainMeta:       chainMeta,
 		blockchainStore: blockchainStore,
 		ldb:             ldb,
+		bf:              bf,
 		minJnlHeight:    minJnlHeight,
 		maxJnlHeight:    maxJnlHeight,
-		events:          make(map[string][]*pb.Event, 10),
 		accounts:        make(map[string]*Account),
 		accountCache:    accountCache,
 		prevJnlHash:     prevJnlHash,
+		preimages:       make(map[types.Hash][]byte),
+		changer:         newChanger(),
+		accessList:      newAccessList(),
+		logs:            NewEvmLogs(),
 	}
 
 	height := maxJnlHeight
@@ -110,11 +141,6 @@ func (l *ChainLedger) PersistBlockData(blockData *BlockData) {
 		panic(err)
 	}
 
-	l.logger.WithFields(logrus.Fields{
-		"height": block.BlockHeader.Number,
-		"hash":   block.BlockHash.ShortString(),
-		"count":  len(block.Transactions),
-	}).Info("Persist block")
 	PersistBlockDuration.Observe(float64(time.Since(current)) / float64(time.Second))
 }
 
@@ -158,16 +184,28 @@ func (l *ChainLedger) RemoveJournalsBeforeBlock(height uint64) error {
 
 // AddEvent add ledger event
 func (l *ChainLedger) AddEvent(event *pb.Event) {
-	hash := event.TxHash.Hex()
-	l.events[hash] = append(l.events[hash], event)
+	var events []*pb.Event
+	hash := event.TxHash.String()
+	value, ok := l.events.Load(hash)
+	if ok {
+		events = value.([]*pb.Event)
+	}
+	events = append(events, event)
+	l.events.Store(hash, events)
 }
 
 // Events return ledger events
 func (l *ChainLedger) Events(txHash string) []*pb.Event {
-	return l.events[txHash]
+	events, ok := l.events.Load(txHash)
+	if !ok {
+		return nil
+	}
+	return events.([]*pb.Event)
 }
 
 // Close close the ledger instance
 func (l *ChainLedger) Close() {
 	l.ldb.Close()
+	l.blockchainStore.Close()
+	l.bf.Close()
 }

@@ -19,12 +19,7 @@ func getReceipt(ctx *cli.Context) error {
 		return fmt.Errorf("please input transaction hash")
 	}
 
-	url, err := getURL(ctx, "receipt/"+ctx.Args().Get(0))
-	if err != nil {
-		return err
-	}
-
-	data, err := httpGet(url)
+	data, err := getTxReceipt(ctx, ctx.Args().Get(0))
 	if err != nil {
 		return err
 	}
@@ -32,4 +27,18 @@ func getReceipt(ctx *cli.Context) error {
 	fmt.Println(string(data))
 
 	return nil
+}
+
+func getTxReceipt(ctx *cli.Context, hash string) ([]byte, error) {
+	url, err := getURL(ctx, "receipt/"+hash)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := httpGet(ctx, url)
+	if err != nil {
+		return nil, err
+	}
+
+	return data, nil
 }

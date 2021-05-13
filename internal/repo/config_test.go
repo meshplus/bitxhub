@@ -3,10 +3,12 @@ package repo
 import (
 	"testing"
 
+	"github.com/mitchellh/go-homedir"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func testReadConfig(t *testing.T) {
+func TestReadNetworkConfig(t *testing.T) {
 	path := "../../config/network.toml"
 	cfg := &NetworkConfig{}
 	err := ReadConfig(path, "toml", cfg)
@@ -19,16 +21,31 @@ func testReadConfig(t *testing.T) {
 	for i, node := range cfg.Nodes {
 		assert.True(t, uint64(i+1) == node.ID)
 	}
+
 }
 
-func TestReadNewConfig(t *testing.T) {
-	repo := "./testdata"
-	cfg, err := loadNetworkConfig(repo)
+func TestReadConfig(t *testing.T) {
+	_, err := DefaultConfig()
+	require.Nil(t, err)
+
+	path := "../../config/bitxhub.toml"
+	cfg := &Config{}
+	err = ReadConfig(path, "toml", cfg)
 	assert.Nil(t, err)
-	assert.True(t, 4 == cfg.ID)
-	assert.True(t, 4 == cfg.N)
-	assert.True(t, 4 == len(cfg.Nodes))
-	assert.True(t, "/ip4/127.0.0.1/tcp/4001" == cfg.LocalAddr)
-	assert.True(t, "/ip4/127.0.0.1/tcp/4002/p2p/QmNRgD6djYJERNpDpHqRn3mxjJ9SYiiGWzExNSy4sEmSNL" == cfg.Nodes[0].Addr)
-	assert.True(t, 3 == len(cfg.OtherNodes))
+
+	_, err = cfg.Bytes()
+	require.Nil(t, err)
+
+	_, err = UnmarshalConfig("../../config")
+	require.Nil(t, err)
+
+	pathRoot, err := PathRoot()
+	require.Nil(t, err)
+	dir, err := homedir.Expand(defaultPathRoot)
+	require.Nil(t, err)
+	require.Equal(t, dir, pathRoot)
+
+	rootWithDefault, err := PathRootWithDefault("../../config")
+	require.Nil(t, err)
+	require.Equal(t, "../../config", rootWithDefault)
 }

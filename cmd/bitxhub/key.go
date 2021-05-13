@@ -8,7 +8,7 @@ import (
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub/internal/repo"
-	"github.com/meshplus/bitxhub/pkg/cert"
+	libp2pcert "github.com/meshplus/go-libp2p-cert"
 	"github.com/urfave/cli"
 )
 
@@ -19,7 +19,7 @@ func keyCMD() cli.Command {
 		Subcommands: []cli.Command{
 			{
 				Name:  "gen",
-				Usage: "Create new Secp256k1 private key",
+				Usage: "Create new Secp256k1 private key in specified directory",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "name",
@@ -37,15 +37,15 @@ func keyCMD() cli.Command {
 			},
 			{
 				Name:  "convert",
-				Usage: "Convert new key file from private key",
+				Usage: "Convert the Secp256k1 private key to BitXHub key format",
 				Flags: []cli.Flag{
 					cli.BoolFlag{
 						Name:  "save,s",
-						Usage: "save key into repo",
+						Usage: "Save BitXHub key into repo",
 					},
 					cli.StringFlag{
 						Name:     "priv",
-						Usage:    "private key path",
+						Usage:    "Specify private key path",
 						Required: true,
 					},
 				},
@@ -53,23 +53,17 @@ func keyCMD() cli.Command {
 			},
 			{
 				Name:   "show",
-				Usage:  "Show key from cert",
+				Usage:  "Show BitXHub key from repo",
 				Action: showKey,
-				Flags: []cli.Flag{
-					cli.StringFlag{
-						Name:  "path",
-						Usage: "Node Path",
-					},
-				},
 			},
 			{
 				Name:   "address",
-				Usage:  "Show address from private key",
+				Usage:  "Show address from Secp256k1 private key",
 				Action: getAddress,
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "path",
-						Usage:    "Specific private key path",
+						Usage:    "Specify private key path",
 						Required: true,
 					},
 				},
@@ -86,7 +80,7 @@ func convertKey(ctx *cli.Context) error {
 		return fmt.Errorf("read private key: %w", err)
 	}
 
-	privKey, err := cert.ParsePrivateKey(data, crypto.Secp256k1)
+	privKey, err := libp2pcert.ParsePrivateKey(data, crypto.Secp256k1)
 	if err != nil {
 		return err
 	}
@@ -143,7 +137,7 @@ func getAddress(ctx *cli.Context) error {
 		return fmt.Errorf("read private key: %w", err)
 	}
 
-	privKey, err := cert.ParsePrivateKey(data, crypto.Secp256k1)
+	privKey, err := libp2pcert.ParsePrivateKey(data, crypto.Secp256k1)
 	if err != nil {
 		return err
 	}

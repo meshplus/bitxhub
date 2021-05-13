@@ -9,12 +9,11 @@ var clientCMD = cli.Command{
 		cli.StringFlag{
 			Name:  "gateway",
 			Usage: "Specific gateway address",
-			Value: "localhost:9091",
+			Value: "http://localhost:9091/v1/",
 		},
 		cli.StringFlag{
-			Name:  "grpc",
-			Usage: "Specific grpc address",
-			Value: "localhost:60011",
+			Name:  "cert",
+			Usage: "Specific ca cert file if https is enabled",
 		},
 	},
 	Subcommands: cli.Commands{
@@ -25,6 +24,9 @@ var clientCMD = cli.Command{
 		receiptCMD(),
 		txCMD(),
 		validatorsCMD(),
+		delVPNodeCMD(),
+		governanceCMD(),
+		didCMD(),
 	},
 }
 

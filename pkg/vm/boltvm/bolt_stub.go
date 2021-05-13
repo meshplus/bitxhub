@@ -3,6 +3,7 @@ package boltvm
 import (
 	"encoding/json"
 
+	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/validator"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -10,7 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var _ Stub = (*BoltStubImpl)(nil)
+var _ boltvm.Stub = (*BoltStubImpl)(nil)
 
 type BoltStubImpl struct {
 	bvm *BoltVM
@@ -19,11 +20,15 @@ type BoltStubImpl struct {
 }
 
 func (b *BoltStubImpl) Caller() string {
-	return b.ctx.Caller.Hex()
+	return b.ctx.Caller.String()
 }
 
 func (b *BoltStubImpl) Callee() string {
-	return b.ctx.Callee.Hex()
+	return b.ctx.Callee.String()
+}
+
+func (b *BoltStubImpl) CurrentCaller() string {
+	return b.ctx.CurrentCaller.String()
 }
 
 func (b *BoltStubImpl) Logger() logrus.FieldLogger {
@@ -31,7 +36,7 @@ func (b *BoltStubImpl) Logger() logrus.FieldLogger {
 }
 
 // GetTxHash returns the transaction hash
-func (b *BoltStubImpl) GetTxHash() types.Hash {
+func (b *BoltStubImpl) GetTxHash() *types.Hash {
 	hash := b.ctx.TransactionHash
 	return hash
 }
@@ -50,7 +55,7 @@ func (b *BoltStubImpl) Get(key string) (bool, []byte) {
 }
 
 func (b *BoltStubImpl) Delete(key string) {
-
+	b.ctx.Ledger.SetState(b.ctx.Callee, []byte(key), nil)
 }
 
 func (b *BoltStubImpl) GetObject(key string, ret interface{}) bool {
@@ -67,6 +72,10 @@ func (b *BoltStubImpl) Set(key string, value []byte) {
 	b.ctx.Ledger.SetState(b.ctx.Callee, []byte(key), value)
 }
 
+func (b *BoltStubImpl) Add(key string, value []byte) {
+	b.ctx.Ledger.AddState(b.ctx.Callee, []byte(key), value)
+}
+
 func (b *BoltStubImpl) SetObject(key string, value interface{}) {
 	data, err := json.Marshal(value)
 	if err != nil {
@@ -74,6 +83,15 @@ func (b *BoltStubImpl) SetObject(key string, value interface{}) {
 	}
 
 	b.Set(key, data)
+}
+
+func (b *BoltStubImpl) AddObject(key string, value interface{}) {
+	data, err := json.Marshal(value)
+	if err != nil {
+		panic(err)
+	}
+
+	b.Add(key, data)
 }
 
 func (b *BoltStubImpl) Query(prefix string) (bool, [][]byte) {
@@ -101,8 +119,8 @@ func (b *BoltStubImpl) postEvent(interchain bool, event interface{}) {
 	})
 }
 
-func (b *BoltStubImpl) CrossInvoke(address, method string, args ...*pb.Arg) *Response {
-	addr := types.String2Address(address)
+func (b *BoltStubImpl) CrossInvoke(address, method string, args ...*pb.Arg) *boltvm.Response {
+	addr := types.NewAddressByStr(address)
 
 	payload := &pb.InvokePayload{
 		Method: method,
@@ -112,6 +130,7 @@ func (b *BoltStubImpl) CrossInvoke(address, method string, args ...*pb.Arg) *Res
 	ctx := &vm.Context{
 		Caller:           b.bvm.ctx.Caller,
 		Callee:           addr,
+		CurrentCaller:    b.bvm.ctx.Callee,
 		Ledger:           b.bvm.ctx.Ledger,
 		TransactionIndex: b.bvm.ctx.TransactionIndex,
 		TransactionHash:  b.bvm.ctx.TransactionHash,
@@ -120,17 +139,24 @@ func (b *BoltStubImpl) CrossInvoke(address, method string, args ...*pb.Arg) *Res
 
 	data, err := payload.Marshal()
 	if err != nil {
-		return Error(err.Error())
+		return boltvm.Error(err.Error())
 	}
 	bvm := New(ctx, b.ve, b.bvm.contracts)
 	ret, err := bvm.Run(data)
 	if err != nil {
-		return Error(err.Error())
+		return boltvm.Error(err.Error())
 	}
 
-	return Success(ret)
+	return boltvm.Success(ret)
 }
 
 func (b *BoltStubImpl) ValidationEngine() validator.Engine {
 	return b.ve
+}
+
+func (b *BoltStubImpl) GetAccount(address string) (bool, interface{}) {
+	addr := types.NewAddressByStr(address)
+	account := b.ctx.Ledger.GetAccount(addr)
+
+	return true, account
 }

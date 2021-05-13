@@ -1,6 +1,9 @@
 package ledger
 
 import (
+	"math/big"
+
+	vm "github.com/meshplus/bitxhub-kit/evm"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 )
@@ -9,6 +12,9 @@ import (
 type Ledger interface {
 	BlockchainLedger
 	StateAccessor
+	vm.StateDB
+
+	StateDB() vm.StateDB
 
 	AccountCache() *AccountCache
 
@@ -27,6 +33,9 @@ type Ledger interface {
 	// RemoveJournalsBeforeBlock
 	RemoveJournalsBeforeBlock(height uint64) error
 
+	PrepareBlock(*types.Hash)
+	ClearChangerAndRefund()
+
 	// Close release resource
 	Close()
 }
@@ -34,37 +43,40 @@ type Ledger interface {
 // StateAccessor manipulates the state data
 type StateAccessor interface {
 	// GetOrCreateAccount
-	GetOrCreateAccount(types.Address) *Account
+	GetOrCreateAccount(*types.Address) *Account
 
 	// GetAccount
-	GetAccount(types.Address) *Account
+	GetAccount(*types.Address) *Account
 
 	// GetBalance
-	GetBalance(types.Address) uint64
+	GetBalance(*types.Address) *big.Int
 
 	// SetBalance
-	SetBalance(types.Address, uint64)
+	SetBalance(*types.Address, *big.Int)
 
 	// GetState
-	GetState(types.Address, []byte) (bool, []byte)
+	GetState(*types.Address, []byte) (bool, []byte)
 
 	// SetState
-	SetState(types.Address, []byte, []byte)
+	SetState(*types.Address, []byte, []byte)
+
+	// AddState
+	AddState(*types.Address, []byte, []byte)
 
 	// SetCode
-	SetCode(types.Address, []byte)
+	SetCode(*types.Address, []byte)
 
 	// GetCode
-	GetCode(types.Address) []byte
+	GetCode(*types.Address) []byte
 
 	// SetNonce
-	SetNonce(types.Address, uint64)
+	SetNonce(*types.Address, uint64)
 
 	// GetNonce
-	GetNonce(types.Address) uint64
+	GetNonce(*types.Address) uint64
 
 	// QueryByPrefix
-	QueryByPrefix(address types.Address, prefix string) (bool, [][]byte)
+	QueryByPrefix(address *types.Address, prefix string) (bool, [][]byte)
 
 	// Commit commits the state data
 	Commit(height uint64, accounts map[string]*Account, blockJournal *BlockJournal) error
@@ -74,6 +86,8 @@ type StateAccessor interface {
 
 	// Version
 	Version() uint64
+
+	GetLogs(types.Hash) []*pb.EvmLog
 
 	// Clear
 	Clear()
@@ -91,16 +105,16 @@ type BlockchainLedger interface {
 	GetBlockSign(height uint64) ([]byte, error)
 
 	// GetBlockByHash get the block using block hash
-	GetBlockByHash(hash types.Hash) (*pb.Block, error)
+	GetBlockByHash(hash *types.Hash) (*pb.Block, error)
 
 	// GetTransaction get the transaction using transaction hash
-	GetTransaction(hash types.Hash) (*pb.Transaction, error)
+	GetTransaction(hash *types.Hash) (pb.Transaction, error)
 
 	// GetTransactionMeta get the transaction meta data
-	GetTransactionMeta(hash types.Hash) (*pb.TransactionMeta, error)
+	GetTransactionMeta(hash *types.Hash) (*pb.TransactionMeta, error)
 
 	// GetReceipt get the transaction receipt
-	GetReceipt(hash types.Hash) (*pb.Receipt, error)
+	GetReceipt(hash *types.Hash) (*pb.Receipt, error)
 
 	// GetInterchainMeta get interchain meta data
 	GetInterchainMeta(height uint64) (*pb.InterchainMeta, error)
@@ -113,4 +127,7 @@ type BlockchainLedger interface {
 
 	// UpdateChainMeta update the chain meta data
 	UpdateChainMeta(*pb.ChainMeta)
+
+	// GetTxCountInBlock get the transaction count in a block
+	GetTransactionCount(height uint64) (uint64, error)
 }

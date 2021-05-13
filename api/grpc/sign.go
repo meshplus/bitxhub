@@ -8,7 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func (cbs *ChainBrokerService) GetAssetExchangeSigns(ctx context.Context, req *pb.AssetExchangeSignsRequest) (*pb.SignResponse, error) {
+func (cbs *ChainBrokerService) GetMultiSigns(ctx context.Context, req *pb.GetMultiSignsRequest) (*pb.SignResponse, error) {
 	var (
 		wg     = sync.WaitGroup{}
 		result = make(map[string][]byte)
@@ -16,24 +16,24 @@ func (cbs *ChainBrokerService) GetAssetExchangeSigns(ctx context.Context, req *p
 
 	wg.Add(1)
 	go func(result map[string][]byte) {
-		for k, v := range cbs.api.Broker().FetchAssetExchangeSignsFromOtherPeers(req.Id) {
+		for k, v := range cbs.api.Broker().FetchSignsFromOtherPeers(req.Content, req.Type) {
 			result[k] = v
 		}
 		wg.Done()
 	}(result)
 
-	address, sign, err := cbs.api.Broker().GetAssetExchangeSign(req.Id)
+	address, sign, err := cbs.api.Broker().GetSign(req.Content, req.Type)
 	wg.Wait()
 
 	if err != nil {
 		cbs.logger.WithFields(logrus.Fields{
-			"id":  req.Id,
+			"id":  req.Content,
 			"err": err.Error(),
-		}).Warnf("Get asset exchange sign on current node")
+		}).Errorf("Get sign on current node")
+		return nil, err
 	} else {
 		result[address] = sign
 	}
-
 	return &pb.SignResponse{
 		Sign: result,
 	}, nil

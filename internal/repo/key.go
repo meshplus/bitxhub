@@ -8,7 +8,7 @@ import (
 	crypto2 "github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/fileutil"
-	"github.com/meshplus/bitxhub/pkg/cert"
+	libp2pcert "github.com/meshplus/go-libp2p-cert"
 )
 
 type Key struct {
@@ -40,7 +40,7 @@ func loadPrivKey(repoRoot string) (*Key, error) {
 		return nil, err
 	}
 
-	privKey, err := cert.ParsePrivateKey(keyData, crypto2.Secp256k1)
+	privKey, err := libp2pcert.ParsePrivateKey(keyData, crypto2.Secp256k1)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func loadPrivKey(repoRoot string) (*Key, error) {
 		return nil, err
 	}
 
-	nodePrivKey, err := cert.ParsePrivateKey(nodeKeyData, crypto2.ECDSA_P256)
+	nodePrivKey, err := libp2pcert.ParsePrivateKey(nodeKeyData, crypto2.ECDSA_P256)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func loadPrivKey(repoRoot string) (*Key, error) {
 	}
 
 	return &Key{
-		Address:       address.Hex(),
+		Address:       address.String(),
 		PrivKey:       privKey,
 		Libp2pPrivKey: libp2pPrivKey,
 	}, nil

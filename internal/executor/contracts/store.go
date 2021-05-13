@@ -1,7 +1,7 @@
 package contracts
 
 import (
-	"github.com/meshplus/bitxhub/pkg/vm/boltvm"
+	"github.com/meshplus/bitxhub-core/boltvm"
 )
 
 type Store struct {

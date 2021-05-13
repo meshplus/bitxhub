@@ -3,4 +3,5 @@ scripts/build
 scripts/build_solo
 scripts/quick_start
 tester
+docs
 Dockerfile

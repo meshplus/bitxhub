@@ -20,3 +20,4 @@ jobs:
 
       - name: Run bxh_tester
         run: bash scripts/bxh_test.sh -b ${{ github.base_ref }} -t bxh-tester
+

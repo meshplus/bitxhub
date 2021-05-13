@@ -49,13 +49,13 @@ function prepare() {
     x_replace "s/9091/909${i}/g" "${bitxhubConfig}"
     x_replace "s/53121/5312${i}/g" "${bitxhubConfig}"
     x_replace "s/40011/4001${i}/g" "${bitxhubConfig}"
-    x_replace "s/9091/909${i}/g" "${root}"/api
+    x_replace "s/8881/888${i}/g" "${bitxhubConfig}"
     x_replace "1s/1/${i}/" "${networkConfig}"
   done
 
   print_blue "===> Building plugin"
   cd "${PROJECT_PATH}"/internal/plugins
-  make raft
+  make raft${TAGS}
 
   for ((i = 1; i < N + 1; i = i + 1)); do
     cp -rf "${PROJECT_PATH}"/internal/plugins/build "${BUILD_PATH}"/node${i}/plugins
@@ -65,7 +65,7 @@ function prepare() {
 function compile() {
   print_blue "===> Compiling bitxhub"
   cd "${PROJECT_PATH}"
-  make install
+  make install${TAGS}
 }
 
 function splitWindow() {
@@ -101,5 +101,4 @@ function clear_config() {
 }
 
 prepare
-compile
 start

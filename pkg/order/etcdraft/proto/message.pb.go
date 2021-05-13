@@ -5,13 +5,13 @@ package proto
 
 import (
 	fmt "fmt"
-	io "io"
-	math "math"
-	math_bits "math/bits"
-
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
 	github_com_meshplus_bitxhub_kit_types "github.com/meshplus/bitxhub-kit/types"
+	github_com_meshplus_bitxhub_model_pb "github.com/meshplus/bitxhub-model/pb"
+	io "io"
+	math "math"
+	math_bits "math/bits"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -30,22 +30,16 @@ type RaftMessage_Type int32
 const (
 	RaftMessage_CONSENSUS    RaftMessage_Type = 0
 	RaftMessage_BROADCAST_TX RaftMessage_Type = 1
-	RaftMessage_GET_TX       RaftMessage_Type = 2
-	RaftMessage_GET_TX_ACK   RaftMessage_Type = 3
 )
 
 var RaftMessage_Type_name = map[int32]string{
 	0: "CONSENSUS",
 	1: "BROADCAST_TX",
-	2: "GET_TX",
-	3: "GET_TX_ACK",
 }
 
 var RaftMessage_Type_value = map[string]int32{
 	"CONSENSUS":    0,
 	"BROADCAST_TX": 1,
-	"GET_TX":       2,
-	"GET_TX_ACK":   3,
 }
 
 func (x RaftMessage_Type) String() string {
@@ -57,12 +51,9 @@ func (RaftMessage_Type) EnumDescriptor() ([]byte, []int) {
 }
 
 type RaftMessage struct {
-	Type                 RaftMessage_Type `protobuf:"varint,1,opt,name=type,proto3,enum=proto.RaftMessage_Type" json:"type,omitempty"`
-	FromId               uint64           `protobuf:"varint,2,opt,name=fromId,proto3" json:"fromId,omitempty"`
-	Data                 []byte           `protobuf:"bytes,3,opt,name=data,proto3" json:"data,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
-	XXX_unrecognized     []byte           `json:"-"`
-	XXX_sizecache        int32            `json:"-"`
+	Type   RaftMessage_Type `protobuf:"varint,1,opt,name=type,proto3,enum=proto.RaftMessage_Type" json:"type,omitempty"`
+	FromId uint64           `protobuf:"varint,2,opt,name=fromId,proto3" json:"fromId,omitempty"`
+	Data   []byte           `protobuf:"bytes,3,opt,name=data,proto3" json:"data,omitempty"`
 }
 
 func (m *RaftMessage) Reset()         { *m = RaftMessage{} }
@@ -119,19 +110,69 @@ func (m *RaftMessage) GetData() []byte {
 	return nil
 }
 
+type RequestBatch struct {
+	Digest string                                             `protobuf:"bytes,1,opt,name=digest,proto3" json:"digest,omitempty"`
+	TxList *github_com_meshplus_bitxhub_model_pb.Transactions `protobuf:"bytes,2,opt,name=txList,proto3,customtype=github.com/meshplus/bitxhub-model/pb.Transactions" json:"txList,omitempty"`
+	Height uint64                                             `protobuf:"varint,3,opt,name=height,proto3" json:"height,omitempty"`
+}
+
+func (m *RequestBatch) Reset()         { *m = RequestBatch{} }
+func (m *RequestBatch) String() string { return proto.CompactTextString(m) }
+func (*RequestBatch) ProtoMessage()    {}
+func (*RequestBatch) Descriptor() ([]byte, []int) {
+	return fileDescriptor_33c57e4bae7b9afd, []int{1}
+}
+func (m *RequestBatch) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RequestBatch) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RequestBatch.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RequestBatch) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RequestBatch.Merge(m, src)
+}
+func (m *RequestBatch) XXX_Size() int {
+	return m.Size()
+}
+func (m *RequestBatch) XXX_DiscardUnknown() {
+	xxx_messageInfo_RequestBatch.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RequestBatch proto.InternalMessageInfo
+
+func (m *RequestBatch) GetDigest() string {
+	if m != nil {
+		return m.Digest
+	}
+	return ""
+}
+
+func (m *RequestBatch) GetHeight() uint64 {
+	if m != nil {
+		return m.Height
+	}
+	return 0
+}
+
 type Ready struct {
-	TxHashes             []github_com_meshplus_bitxhub_kit_types.Hash `protobuf:"bytes,1,rep,name=txHashes,proto3,customtype=github.com/meshplus/bitxhub-kit/types.Hash" json:"txHashes"`
-	Height               uint64                                       `protobuf:"varint,2,opt,name=height,proto3" json:"height,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}                                     `json:"-"`
-	XXX_unrecognized     []byte                                       `json:"-"`
-	XXX_sizecache        int32                                        `json:"-"`
+	TxHashes []github_com_meshplus_bitxhub_kit_types.Hash `protobuf:"bytes,1,rep,name=txHashes,proto3,customtype=github.com/meshplus/bitxhub-kit/types.Hash" json:"txHashes,omitempty"`
+	Height   uint64                                       `protobuf:"varint,2,opt,name=height,proto3" json:"height,omitempty"`
 }
 
 func (m *Ready) Reset()         { *m = Ready{} }
 func (m *Ready) String() string { return proto.CompactTextString(m) }
 func (*Ready) ProtoMessage()    {}
 func (*Ready) Descriptor() ([]byte, []int) {
-	return fileDescriptor_33c57e4bae7b9afd, []int{1}
+	return fileDescriptor_33c57e4bae7b9afd, []int{2}
 }
 func (m *Ready) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -167,36 +208,81 @@ func (m *Ready) GetHeight() uint64 {
 	return 0
 }
 
+type TxSlice struct {
+	TxList []github_com_meshplus_bitxhub_model_pb.Transaction `protobuf:"bytes,1,rep,name=TxList,proto3,customtype=github.com/meshplus/bitxhub-model/pb.Transaction" json:"TxList,omitempty"`
+}
+
+func (m *TxSlice) Reset()         { *m = TxSlice{} }
+func (m *TxSlice) String() string { return proto.CompactTextString(m) }
+func (*TxSlice) ProtoMessage()    {}
+func (*TxSlice) Descriptor() ([]byte, []int) {
+	return fileDescriptor_33c57e4bae7b9afd, []int{3}
+}
+func (m *TxSlice) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *TxSlice) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_TxSlice.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *TxSlice) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_TxSlice.Merge(m, src)
+}
+func (m *TxSlice) XXX_Size() int {
+	return m.Size()
+}
+func (m *TxSlice) XXX_DiscardUnknown() {
+	xxx_messageInfo_TxSlice.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_TxSlice proto.InternalMessageInfo
+
 func init() {
 	proto.RegisterEnum("proto.RaftMessage_Type", RaftMessage_Type_name, RaftMessage_Type_value)
 	proto.RegisterType((*RaftMessage)(nil), "proto.RaftMessage")
+	proto.RegisterType((*RequestBatch)(nil), "proto.request_batch")
 	proto.RegisterType((*Ready)(nil), "proto.Ready")
+	proto.RegisterType((*TxSlice)(nil), "proto.tx_slice")
 }
 
 func init() { proto.RegisterFile("message.proto", fileDescriptor_33c57e4bae7b9afd) }
 
 var fileDescriptor_33c57e4bae7b9afd = []byte{
-	// 306 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x4c, 0x90, 0x41, 0x4b, 0xc3, 0x30,
-	0x1c, 0xc5, 0x97, 0xad, 0x1b, 0xfa, 0xb7, 0x1b, 0x25, 0x07, 0x2d, 0x1e, 0xb6, 0xb2, 0x53, 0x51,
-	0xd6, 0xc2, 0xfc, 0x04, 0x5b, 0x1d, 0x2a, 0xe2, 0x06, 0xe9, 0x04, 0x6f, 0x23, 0x75, 0x59, 0x53,
-	0xb4, 0xa4, 0x2c, 0x29, 0xac, 0x9f, 0xc9, 0x2f, 0xb2, 0xa3, 0x67, 0x0f, 0x43, 0xfa, 0x49, 0xa4,
-	0xa9, 0xca, 0x4e, 0x79, 0xbf, 0xf0, 0xde, 0x23, 0x2f, 0xd0, 0x4d, 0x99, 0x94, 0x34, 0x66, 0x5e,
-	0xb6, 0x15, 0x4a, 0xe0, 0xb6, 0x3e, 0x2e, 0x47, 0x71, 0xa2, 0x78, 0x1e, 0x79, 0xaf, 0x22, 0xf5,
-	0x63, 0x11, 0x0b, 0x5f, 0x5f, 0x47, 0xf9, 0x46, 0x93, 0x06, 0xad, 0xea, 0xd4, 0xf0, 0x03, 0xc1,
-	0x19, 0xa1, 0x1b, 0xf5, 0x54, 0x77, 0xe1, 0x6b, 0x30, 0x54, 0x91, 0x31, 0x1b, 0x39, 0xc8, 0xed,
-	0x8d, 0x2f, 0x6a, 0x97, 0x77, 0xe4, 0xf0, 0x96, 0x45, 0xc6, 0x88, 0x36, 0xe1, 0x73, 0xe8, 0x6c,
-	0xb6, 0x22, 0x7d, 0x58, 0xdb, 0x4d, 0x07, 0xb9, 0x06, 0xf9, 0x25, 0x8c, 0xc1, 0x58, 0x53, 0x45,
-	0xed, 0x96, 0x83, 0x5c, 0x93, 0x68, 0x3d, 0x0c, 0xc0, 0xa8, 0x92, 0xb8, 0x0b, 0xa7, 0xc1, 0x62,
-	0x1e, 0xce, 0xe6, 0xe1, 0x73, 0x68, 0x35, 0xb0, 0x05, 0xe6, 0x94, 0x2c, 0x26, 0xb7, 0xc1, 0x24,
-	0x5c, 0xae, 0x96, 0x2f, 0x16, 0xc2, 0x00, 0x9d, 0xbb, 0x99, 0xd6, 0x4d, 0xdc, 0x03, 0xa8, 0xf5,
-	0x6a, 0x12, 0x3c, 0x5a, 0xad, 0xa1, 0x80, 0x36, 0x61, 0x74, 0x5d, 0xe0, 0x39, 0x9c, 0xa8, 0xdd,
-	0x3d, 0x95, 0x9c, 0x49, 0x1b, 0x39, 0x2d, 0xd7, 0x9c, 0x8e, 0xf7, 0x87, 0x41, 0xe3, 0xeb, 0x30,
-	0xb8, 0x3a, 0xda, 0x9f, 0x32, 0xc9, 0xb3, 0xf7, 0x5c, 0xfa, 0x51, 0xa2, 0x76, 0x3c, 0x8f, 0x46,
-	0x6f, 0x89, 0xf2, 0xab, 0x97, 0x4b, 0xaf, 0xca, 0x92, 0xff, 0x8e, 0x6a, 0x09, 0x67, 0x49, 0xcc,
-	0xd5, 0xdf, 0x92, 0x9a, 0xa6, 0xe6, 0xbe, 0xec, 0xa3, 0xcf, 0xb2, 0x8f, 0xbe, 0xcb, 0x3e, 0x8a,
-	0x3a, 0xfa, 0x37, 0x6e, 0x7e, 0x02, 0x00, 0x00, 0xff, 0xff, 0x7c, 0xb0, 0xe7, 0x45, 0x7a, 0x01,
-	0x00, 0x00,
+	// 401 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x91, 0xcd, 0x8e, 0xd3, 0x30,
+	0x14, 0x85, 0xe3, 0x99, 0x4c, 0xc4, 0x98, 0x14, 0x55, 0x5e, 0x40, 0xc4, 0x22, 0x8d, 0xb2, 0x21,
+	0x02, 0x4d, 0xc2, 0xef, 0x03, 0x4c, 0x06, 0x24, 0x40, 0x33, 0xad, 0xe4, 0x04, 0xa9, 0xbb, 0xca,
+	0x49, 0xdc, 0xc4, 0x6a, 0x53, 0x87, 0xd8, 0x91, 0xda, 0x97, 0x00, 0x1e, 0x8b, 0x65, 0x97, 0xa8,
+	0x8b, 0x0a, 0xb5, 0x2f, 0x82, 0xe2, 0x44, 0xa8, 0x6c, 0x90, 0x66, 0xe5, 0x7b, 0xac, 0x7b, 0xee,
+	0x77, 0x8f, 0x0d, 0x07, 0x25, 0x15, 0x82, 0xe4, 0xd4, 0xaf, 0x6a, 0x2e, 0x39, 0xba, 0x50, 0xc7,
+	0xd3, 0xab, 0x9c, 0xc9, 0xa2, 0x49, 0xfc, 0x94, 0x97, 0x41, 0xce, 0x73, 0x1e, 0xa8, 0xeb, 0xa4,
+	0x99, 0x2b, 0xa5, 0x84, 0xaa, 0x3a, 0x97, 0xfb, 0x1d, 0xc0, 0x87, 0x98, 0xcc, 0xe5, 0x5d, 0x37,
+	0x0b, 0xbd, 0x80, 0xba, 0xdc, 0x54, 0xd4, 0x02, 0x0e, 0xf0, 0x1e, 0xbd, 0x7e, 0xd2, 0x75, 0xf9,
+	0x27, 0x1d, 0x7e, 0xbc, 0xa9, 0x28, 0x56, 0x4d, 0xe8, 0x31, 0x34, 0xe6, 0x35, 0x2f, 0x3f, 0x65,
+	0xd6, 0x99, 0x03, 0x3c, 0x1d, 0xf7, 0x0a, 0x21, 0xa8, 0x67, 0x44, 0x12, 0xeb, 0xdc, 0x01, 0x9e,
+	0x89, 0x55, 0xed, 0x3e, 0x83, 0x7a, 0xeb, 0x44, 0x03, 0x78, 0x79, 0x33, 0x19, 0x47, 0x1f, 0xc6,
+	0xd1, 0x97, 0x68, 0xa8, 0xa1, 0x21, 0x34, 0x43, 0x3c, 0xb9, 0x7e, 0x7f, 0x73, 0x1d, 0xc5, 0xb3,
+	0x78, 0x3a, 0x04, 0xee, 0x37, 0x00, 0x07, 0x35, 0xfd, 0xda, 0x50, 0x21, 0x67, 0x09, 0x91, 0x69,
+	0xd1, 0x62, 0x32, 0x96, 0x53, 0x21, 0xd5, 0x56, 0x97, 0xb8, 0x57, 0xe8, 0x0e, 0x1a, 0x72, 0x7d,
+	0xcb, 0x84, 0x54, 0x78, 0x33, 0x7c, 0xb7, 0xdb, 0x8f, 0x5e, 0x9d, 0xc4, 0x2f, 0xa9, 0x28, 0xaa,
+	0x65, 0x23, 0x82, 0x84, 0xc9, 0x75, 0xd1, 0x24, 0x57, 0x25, 0xcf, 0xe8, 0x32, 0xa8, 0x12, 0x3f,
+	0xae, 0xc9, 0x4a, 0x90, 0x54, 0x32, 0xbe, 0x12, 0xb8, 0x1f, 0xd2, 0x62, 0x0a, 0xca, 0xf2, 0x42,
+	0xaa, 0xbd, 0x75, 0xdc, 0x2b, 0x77, 0x01, 0x2f, 0x30, 0x25, 0xd9, 0x06, 0x7d, 0x86, 0x0f, 0xe4,
+	0xfa, 0x23, 0x11, 0x05, 0x15, 0x16, 0x70, 0xce, 0x3d, 0x33, 0xf4, 0x77, 0xfb, 0xd1, 0xf3, 0xff,
+	0x11, 0x17, 0x4c, 0x06, 0xed, 0x53, 0x09, 0xbf, 0xf5, 0xe1, 0xbf, 0xfe, 0x13, 0xd8, 0xd9, 0x3f,
+	0xb0, 0x69, 0xcb, 0x98, 0x89, 0x25, 0x4b, 0x29, 0xba, 0x85, 0x46, 0xdc, 0xe5, 0xeb, 0x68, 0x6f,
+	0x77, 0xfb, 0xd1, 0xcb, 0xfb, 0xe6, 0xc3, 0xfd, 0x8c, 0xd0, 0xfa, 0x79, 0xb0, 0xc1, 0xf6, 0x60,
+	0x83, 0xdf, 0x07, 0x1b, 0xfc, 0x38, 0xda, 0xda, 0xf6, 0x68, 0x6b, 0xbf, 0x8e, 0xb6, 0x96, 0x18,
+	0xea, 0x93, 0xdf, 0xfc, 0x09, 0x00, 0x00, 0xff, 0xff, 0x8e, 0x99, 0xc3, 0xd1, 0x51, 0x02, 0x00,
+	0x00,
 }
 
 func (m *RaftMessage) Marshal() (dAtA []byte, err error) {
@@ -219,10 +305,6 @@ func (m *RaftMessage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.XXX_unrecognized != nil {
-		i -= len(m.XXX_unrecognized)
-		copy(dAtA[i:], m.XXX_unrecognized)
-	}
 	if len(m.Data) > 0 {
 		i -= len(m.Data)
 		copy(dAtA[i:], m.Data)
@@ -239,6 +321,53 @@ func (m *RaftMessage) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		i = encodeVarintMessage(dAtA, i, uint64(m.Type))
 		i--
 		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *RequestBatch) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RequestBatch) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RequestBatch) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Height != 0 {
+		i = encodeVarintMessage(dAtA, i, uint64(m.Height))
+		i--
+		dAtA[i] = 0x18
+	}
+	if m.TxList != nil {
+		{
+			size := m.TxList.Size()
+			i -= size
+			if _, err := m.TxList.MarshalTo(dAtA[i:]); err != nil {
+				return 0, err
+			}
+			i = encodeVarintMessage(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.Digest) > 0 {
+		i -= len(m.Digest)
+		copy(dAtA[i:], m.Digest)
+		i = encodeVarintMessage(dAtA, i, uint64(len(m.Digest)))
+		i--
+		dAtA[i] = 0xa
 	}
 	return len(dAtA) - i, nil
 }
@@ -263,10 +392,6 @@ func (m *Ready) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.XXX_unrecognized != nil {
-		i -= len(m.XXX_unrecognized)
-		copy(dAtA[i:], m.XXX_unrecognized)
-	}
 	if m.Height != 0 {
 		i = encodeVarintMessage(dAtA, i, uint64(m.Height))
 		i--
@@ -278,6 +403,43 @@ func (m *Ready) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 				size := m.TxHashes[iNdEx].Size()
 				i -= size
 				if _, err := m.TxHashes[iNdEx].MarshalTo(dAtA[i:]); err != nil {
+					return 0, err
+				}
+				i = encodeVarintMessage(dAtA, i, uint64(size))
+			}
+			i--
+			dAtA[i] = 0xa
+		}
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *TxSlice) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *TxSlice) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *TxSlice) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.TxList) > 0 {
+		for iNdEx := len(m.TxList) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size := m.TxList[iNdEx].Size()
+				i -= size
+				if _, err := m.TxList[iNdEx].MarshalTo(dAtA[i:]); err != nil {
 					return 0, err
 				}
 				i = encodeVarintMessage(dAtA, i, uint64(size))
@@ -316,8 +478,25 @@ func (m *RaftMessage) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovMessage(uint64(l))
 	}
-	if m.XXX_unrecognized != nil {
-		n += len(m.XXX_unrecognized)
+	return n
+}
+
+func (m *RequestBatch) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Digest)
+	if l > 0 {
+		n += 1 + l + sovMessage(uint64(l))
+	}
+	if m.TxList != nil {
+		l = m.TxList.Size()
+		n += 1 + l + sovMessage(uint64(l))
+	}
+	if m.Height != 0 {
+		n += 1 + sovMessage(uint64(m.Height))
 	}
 	return n
 }
@@ -337,8 +516,20 @@ func (m *Ready) Size() (n int) {
 	if m.Height != 0 {
 		n += 1 + sovMessage(uint64(m.Height))
 	}
-	if m.XXX_unrecognized != nil {
-		n += len(m.XXX_unrecognized)
+	return n
+}
+
+func (m *TxSlice) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if len(m.TxList) > 0 {
+		for _, e := range m.TxList {
+			l = e.Size()
+			n += 1 + l + sovMessage(uint64(l))
+		}
 	}
 	return n
 }
@@ -456,16 +647,148 @@ func (m *RaftMessage) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthMessage
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthMessage
 			}
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RequestBatch) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowMessage
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: request_batch: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: request_batch: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Digest", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessage
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthMessage
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthMessage
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Digest = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TxList", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessage
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthMessage
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex < 0 {
+				return ErrInvalidLengthMessage
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			var v github_com_meshplus_bitxhub_model_pb.Transactions
+			m.TxList = &v
+			if err := m.TxList.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Height", wireType)
+			}
+			m.Height = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessage
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Height |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipMessage(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthMessage
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
 			iNdEx += skippy
 		}
 	}
@@ -564,16 +887,97 @@ func (m *Ready) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthMessage
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthMessage
 			}
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *TxSlice) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowMessage
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: tx_slice: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: tx_slice: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TxList", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessage
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthMessage
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex < 0 {
+				return ErrInvalidLengthMessage
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			var v github_com_meshplus_bitxhub_model_pb.Transaction
+			m.TxList = append(m.TxList, v)
+			if err := m.TxList[len(m.TxList)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipMessage(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthMessage
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
 			iNdEx += skippy
 		}
 	}

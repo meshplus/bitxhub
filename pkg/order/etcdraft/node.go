@@ -2,56 +2,66 @@ package etcdraft
 
 import (
 	"context"
-	"encoding/binary"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/ethereum/go-ethereum/event"
+	"github.com/meshplus/bitxhub-kit/log"
+	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/pkg/order"
 	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
-	"github.com/meshplus/bitxhub/pkg/order/etcdraft/txpool"
+	"github.com/meshplus/bitxhub/pkg/order/mempool"
+	"github.com/meshplus/bitxhub/pkg/order/syncer"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
-	"github.com/meshplus/bitxhub/pkg/storage"
 	"github.com/sirupsen/logrus"
 )
 
-var defaultSnapshotCount uint64 = 10000
-
 type Node struct {
-	id      uint64              // raft id
-	leader  uint64              // leader id
-	node    raft.Node           // raft node
-	peerMgr peermgr.PeerManager // network manager
-	peers   []raft.Peer         // raft peers
+	id       uint64             // raft id
+	leader   uint64             // leader id
+	repoRoot string             // project path
+	logger   logrus.FieldLogger // logger
 
-	proposeC    chan *raftproto.Ready    // proposed ready, input channel
-	confChangeC <-chan raftpb.ConfChange // proposed cluster config changes
-	confState   raftpb.ConfState         // raft requires ConfState to be persisted within snapshot
-	commitC     chan *pb.Block           // the hash commit channel
-	errorC      chan<- error             // errors from raft session
+	node          raft.Node           // raft node
+	peerMgr       peermgr.PeerManager // network manager
+	peers         []raft.Peer         // raft peers
+	syncer        syncer.Syncer       // state syncer
+	raftStorage   *RaftStorage        // the raft backend storage system
+	storage       storage.Storage     // db
+	mempool       mempool.MemPool     // transaction pool
+	txCache       *mempool.TxCache    // cache the transactions received from api
+	batchTimerMgr *BatchTimer
 
-	raftStorage *RaftStorage    // the raft backend storage system
-	tp          *txpool.TxPool  // transaction pool
-	storage     storage.Storage // db
+	proposeC          chan *raftproto.RequestBatch // proposed ready, input channel
+	confChangeC       chan raftpb.ConfChange       // proposed cluster config changes
+	commitC           chan *pb.CommitEvent         // the hash commit channel
+	errorC            chan<- error                 // errors from raft session
+	tickTimeout       time.Duration                // tick timeout
+	checkInterval     time.Duration                // interval for rebroadcast
+	msgC              chan []byte                  // receive messages from remote peer
+	stateC            chan *mempool.ChainState     // receive the executed block state
+	rebroadcastTicker chan *raftproto.TxSlice      // receive the executed block state
 
-	repoRoot string             //project path
-	logger   logrus.FieldLogger //logger
-
-	blockAppliedIndex sync.Map // mapping of block height and apply index in raft log
-	appliedIndex      uint64   // current apply index in raft log
-	snapCount         uint64   // snapshot count
-	snapshotIndex     uint64   // current snapshot apply index in raft log
-	lastIndex         uint64   // last apply index in raft log
-
-	readyPool  *sync.Pool      // ready pool, avoiding memory growth fast
-	readyCache sync.Map        //ready cache
-	ctx        context.Context // context
-	haltC      chan struct{}   // exit signal
+	confState         raftpb.ConfState     // raft requires ConfState to be persisted within snapshot
+	blockAppliedIndex sync.Map             // mapping of block height and apply index in raft log
+	appliedIndex      uint64               // current apply index in raft log
+	snapCount         uint64               // snapshot count
+	snapshotIndex     uint64               // current snapshot apply index in raft log
+	lastIndex         uint64               // last apply index in raft log
+	lastExec          uint64               // the index of the last-applied block
+	readyPool         *sync.Pool           // ready pool, avoiding memory growth fast
+	justElected       bool                 // track new leader status
+	getChainMetaFunc  func() *pb.ChainMeta // current chain meta
+	ctx               context.Context      // context
+	haltC             chan struct{}        // exit signal
 }
 
 // NewNode new raft node
@@ -72,50 +82,106 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 		return nil, err
 	}
 
-	//generate raft peers
-	peers, err := GenerateRaftPeers(config)
+	// generate raft peers
+	peers, err := generateRaftPeers(config)
+
 	if err != nil {
 		return nil, fmt.Errorf("generate raft peers: %w", err)
 	}
 
-	//generate txpool config
-	tpc, err := generateTxPoolConfig(repoRoot)
+	raftConfig, err := generateRaftConfig(repoRoot)
 	if err != nil {
 		return nil, fmt.Errorf("generate raft txpool config: %w", err)
 	}
-	txPoolConfig := &txpool.Config{
-		PackSize:  tpc.PackSize,
-		BlockTick: tpc.BlockTick,
-		PoolSize:  tpc.PoolSize,
+	mempoolConf := &mempool.Config{
+		ID:              config.ID,
+		ChainHeight:     config.Applied,
+		Logger:          config.Logger,
+		StoragePath:     config.StoragePath,
+		GetAccountNonce: config.GetAccountNonce,
+
+		BatchSize:      raftConfig.RAFT.MempoolConfig.BatchSize,
+		PoolSize:       raftConfig.RAFT.MempoolConfig.PoolSize,
+		TxSliceSize:    raftConfig.RAFT.MempoolConfig.TxSliceSize,
+		TxSliceTimeout: raftConfig.RAFT.MempoolConfig.TxSliceTimeout,
 	}
-	txPool, proposeC := txpool.New(config, dbStorage, txPoolConfig)
+	mempoolInst, err := mempool.NewMempool(mempoolConf)
+	if err != nil {
+		return nil, fmt.Errorf("create mempool instance: %w", err)
+	}
+
+	var batchTimeout time.Duration
+	if raftConfig.RAFT.BatchTimeout == 0 {
+		batchTimeout = DefaultBatchTick
+	} else {
+		batchTimeout = raftConfig.RAFT.BatchTimeout
+	}
+	batchTimerMgr := NewTimer(batchTimeout, config.Logger)
+	txCache := mempool.NewTxCache(mempoolConf.TxSliceTimeout, mempoolConf.TxSliceSize, config.Logger)
 
 	readyPool := &sync.Pool{New: func() interface{} {
-		return new(raftproto.Ready)
+		return new(raftproto.RequestBatch)
 	}}
-	return &Node{
-		id:          config.ID,
-		proposeC:    proposeC,
-		confChangeC: make(chan raftpb.ConfChange),
-		commitC:     make(chan *pb.Block, 1024),
-		errorC:      make(chan<- error),
-		tp:          txPool,
-		repoRoot:    repoRoot,
-		snapCount:   defaultSnapshotCount,
-		peerMgr:     config.PeerMgr,
-		peers:       peers,
-		logger:      config.Logger,
-		storage:     dbStorage,
-		raftStorage: raftStorage,
-		readyPool:   readyPool,
-		ctx:         context.Background(),
-	}, nil
+
+	snapCount := raftConfig.RAFT.SyncerConfig.SnapshotCount
+	if snapCount == 0 {
+		snapCount = DefaultSnapshotCount
+	}
+
+	var checkInterval time.Duration
+	if raftConfig.RAFT.CheckInterval == 0 {
+		checkInterval = DefaultCheckInterval
+	} else {
+		checkInterval = raftConfig.RAFT.CheckInterval
+	}
+
+	node := &Node{
+		id:               config.ID,
+		lastExec:         config.Applied,
+		confChangeC:      make(chan raftpb.ConfChange),
+		commitC:          make(chan *pb.CommitEvent, 1024),
+		errorC:           make(chan<- error),
+		msgC:             make(chan []byte),
+		stateC:           make(chan *mempool.ChainState),
+		proposeC:         make(chan *raftproto.RequestBatch),
+		snapCount:        snapCount,
+		repoRoot:         repoRoot,
+		peerMgr:          config.PeerMgr,
+		txCache:          txCache,
+		batchTimerMgr:    batchTimerMgr,
+		peers:            peers,
+		logger:           config.Logger,
+		getChainMetaFunc: config.GetChainMetaFunc,
+		storage:          dbStorage,
+		raftStorage:      raftStorage,
+		readyPool:        readyPool,
+		ctx:              context.Background(),
+		mempool:          mempoolInst,
+		checkInterval:    checkInterval,
+	}
+	node.raftStorage.SnapshotCatchUpEntries = node.snapCount
+
+	otherPeers := node.peerMgr.OtherPeers()
+	peerIds := make([]uint64, 0, len(otherPeers))
+	for id, _ := range otherPeers {
+		peerIds = append(peerIds, id)
+	}
+	stateSyncer, err := syncer.New(raftConfig.RAFT.SyncerConfig.SyncBlocks, config.PeerMgr, node.Quorum(), peerIds, log.NewWithModule("syncer"))
+	if err != nil {
+		return nil, fmt.Errorf("new state syncer error:%s", err.Error())
+	}
+	node.syncer = stateSyncer
+
+	node.logger.Infof("Raft localID = %d", node.id)
+	node.logger.Infof("Raft lastExec = %d  ", node.lastExec)
+	node.logger.Infof("Raft snapshotCount = %d", node.snapCount)
+	return node, nil
 }
 
-//Start or restart raft node
+// Start or restart raft node
 func (n *Node) Start() error {
-	n.blockAppliedIndex.Store(n.tp.GetHeight(), n.loadAppliedIndex())
-	rc, err := generateRaftConfig(n.id, n.repoRoot, n.logger, n.raftStorage.ram)
+	n.blockAppliedIndex.Store(n.lastExec, n.loadAppliedIndex())
+	rc, tickTimeout, err := generateEtcdRaftConfig(n.id, n.repoRoot, n.logger, n.raftStorage.ram)
 	if err != nil {
 		return fmt.Errorf("generate raft config: %w", err)
 	}
@@ -124,134 +190,75 @@ func (n *Node) Start() error {
 	} else {
 		n.node = raft.StartNode(rc, n.peers)
 	}
+	n.tickTimeout = tickTimeout
 
 	go n.run()
+	go n.txCache.ListenEvent()
 	n.logger.Info("Consensus module started")
 
 	return nil
 }
 
-//Stop the raft node
+// Stop the raft node
 func (n *Node) Stop() {
-	n.tp.CheckExecute(false)
 	n.node.Stop()
 	n.logger.Infof("Consensus stopped")
 }
 
-//Add the transaction into txpool and broadcast it to other nodes
-func (n *Node) Prepare(tx *pb.Transaction) error {
-	if !n.Ready() {
-		return nil
-	}
-	if err := n.tp.AddPendingTx(tx, false); err != nil {
+// Add the transaction into txpool and broadcast it to other nodes
+func (n *Node) Prepare(tx pb.Transaction) error {
+	if err := n.Ready(); err != nil {
 		return err
 	}
-	if err := n.tp.Broadcast(tx); err != nil {
-		return err
+	if n.txCache.IsFull() && n.mempool.IsPoolFull() {
+		return errors.New("transaction cache are full, we will drop this transaction")
 	}
-
+	n.txCache.RecvTxC <- tx
 	return nil
 }
 
-func (n *Node) Commit() chan *pb.Block {
+func (n *Node) Commit() chan *pb.CommitEvent {
 	return n.commitC
 }
 
-func (n *Node) ReportState(height uint64, hash types.Hash) {
-	if height%10 == 0 {
-		n.logger.WithFields(logrus.Fields{
-			"height": height,
-			"hash":   hash.ShortString(),
-		}).Info("Report checkpoint")
+func (n *Node) ReportState(height uint64, blockHash *types.Hash, txHashList []*types.Hash) {
+	state := &mempool.ChainState{
+		Height:     height,
+		BlockHash:  blockHash,
+		TxHashList: txHashList,
 	}
-	appliedIndex, ok := n.blockAppliedIndex.Load(height)
-	if !ok {
-		n.logger.Errorf("can not found appliedIndex:", height)
-		return
-	}
-	//block already persisted, record the apply index in db
-	n.writeAppliedIndex(appliedIndex.(uint64))
-	n.blockAppliedIndex.Delete(height)
-
-	n.tp.BuildReqLookUp() //store bloom filter
-
-	ready, ok := n.readyCache.Load(height)
-	if !ok {
-		n.logger.Errorf("can not found ready:", height)
-		return
-	}
-	hashes := ready.(*raftproto.Ready).TxHashes
-	// remove redundant tx
-	n.tp.BatchDelete(hashes)
-
-	n.readyCache.Delete(height)
+	n.stateC <- state
 }
 
 func (n *Node) Quorum() uint64 {
 	return uint64(len(n.peers)/2 + 1)
 }
 
-func (n *Node) Step(ctx context.Context, msg []byte) error {
-	rm := &raftproto.RaftMessage{}
-	if err := rm.Unmarshal(msg); err != nil {
-		return err
-	}
-	switch rm.Type {
-	case raftproto.RaftMessage_CONSENSUS:
-		msg := &raftpb.Message{}
-		if err := msg.Unmarshal(rm.Data); err != nil {
-			return err
-		}
-		return n.node.Step(ctx, *msg)
-	case raftproto.RaftMessage_GET_TX:
-		hash := types.Hash{}
-		if err := hash.Unmarshal(rm.Data); err != nil {
-			return err
-		}
-		tx, ok := n.tp.GetTx(hash, true)
-		if !ok {
-			return nil
-		}
-		v, err := tx.Marshal()
-		if err != nil {
-			return err
-		}
-		txAck := &raftproto.RaftMessage{
-			Type: raftproto.RaftMessage_GET_TX_ACK,
-			Data: v,
-		}
-		txAckData, err := txAck.Marshal()
-		if err != nil {
-			return err
-		}
-		m := &pb.Message{
-			Type: pb.Message_CONSENSUS,
-			Data: txAckData,
-		}
-		return n.peerMgr.AsyncSend(rm.FromId, m)
-	case raftproto.RaftMessage_GET_TX_ACK:
-		tx := &pb.Transaction{}
-		if err := tx.Unmarshal(rm.Data); err != nil {
-			return err
-		}
-		return n.tp.AddPendingTx(tx, true)
-	case raftproto.RaftMessage_BROADCAST_TX:
-		tx := &pb.Transaction{}
-		if err := tx.Unmarshal(rm.Data); err != nil {
-			return err
-		}
-		return n.tp.AddPendingTx(tx, false)
-	default:
-		return fmt.Errorf("unexpected raft message received")
-	}
+func (n *Node) Step(msg []byte) error {
+	n.msgC <- msg
+	return nil
 }
 
-func (n *Node) IsLeader() bool {
-	return n.leader == n.id
+func (n *Node) Ready() error {
+	hasLeader := n.leader != 0
+	if !hasLeader {
+		return errors.New("in leader election status")
+	}
+	return nil
 }
 
-func (n *Node) Ready() bool {
-	return n.leader != 0
+func (n *Node) GetPendingNonceByAccount(account string) uint64 {
+	return n.mempool.GetPendingNonceByAccount(account)
+}
+
+// DelNode sends a delete vp request by given id.
+func (n *Node) DelNode(delID uint64) error {
+	return nil
+}
+
+// SubscribeTxEvent subscribes tx event
+func (n *Node) SubscribeTxEvent(events chan<- pb.Transactions) event.Subscription {
+	return n.mempool.SubscribeTxEvent(events)
 }
 
 // main work loop
@@ -263,8 +270,10 @@ func (n *Node) run() {
 	n.confState = snap.Metadata.ConfState
 	n.snapshotIndex = snap.Metadata.Index
 	n.appliedIndex = snap.Metadata.Index
-	ticker := time.NewTicker(100 * time.Millisecond)
+	ticker := time.NewTicker(n.tickTimeout)
+	rebroadcastTicker := time.NewTicker(n.checkInterval)
 	defer ticker.Stop()
+	defer rebroadcastTicker.Stop()
 
 	// handle input request
 	go func() {
@@ -275,22 +284,14 @@ func (n *Node) run() {
 
 		for n.proposeC != nil && n.confChangeC != nil {
 			select {
-			case ready, ok := <-n.proposeC:
-				if !ok {
-					n.proposeC = nil
-				} else {
-					if !n.IsLeader() {
-						n.tp.CheckExecute(false)
-						continue
-					}
-					data, err := ready.Marshal()
-					if err != nil {
-						n.logger.Panic(err)
-					}
-					n.tp.BatchStore(ready.TxHashes)
-					if err := n.node.Propose(n.ctx, data); err != nil {
-						n.logger.Panic("Failed to propose block [%d] to raft: %s", ready.Height, err)
-					}
+			case batch := <-n.proposeC:
+				data, err := batch.Marshal()
+				if err != nil {
+					n.logger.Error("Marshal batch failed")
+				}
+				n.logger.Debugf("Proposed block %d to raft core consensus", batch.Height)
+				if err := n.node.Propose(n.ctx, data); err != nil {
+					n.logger.Errorf("Failed to propose block [%d] to raft: %s", batch.Height, err)
 				}
 			case cc, ok := <-n.confChangeC:
 				if !ok {
@@ -299,7 +300,7 @@ func (n *Node) run() {
 					confChangeCount++
 					cc.ID = confChangeCount
 					if err := n.node.ProposeConfChange(n.ctx, cc); err != nil {
-						n.logger.Panic("Failed to propose configuration update to Raft node: %s", err)
+						n.logger.Errorf("Failed to propose configuration update to Raft node: %s", err)
 					}
 				}
 			case <-n.ctx.Done():
@@ -314,15 +315,84 @@ func (n *Node) run() {
 		select {
 		case <-ticker.C:
 			n.node.Tick()
-			// when the node is first ready it gives us entries to commit and messages
-			// to immediately publish
+
+		case msg := <-n.msgC:
+			if err := n.processRaftCoreMsg(msg); err != nil {
+				n.logger.Errorf("Process consensus message failed, err: %s", err.Error())
+			}
+
+		case txSet := <-n.txCache.TxSetC:
+			// 1. send transactions to other peer
+			data, err := txSet.Marshal()
+			if err != nil {
+				n.logger.Errorf("Marshal failed, err: %s", err.Error())
+				return
+			}
+			pbMsg := msgToConsensusPbMsg(data, raftproto.RaftMessage_BROADCAST_TX, n.id)
+			_ = n.peerMgr.Broadcast(pbMsg)
+
+			// 2. process transactions
+			n.processTransactions(txSet.Transactions, true)
+
+		case state := <-n.stateC:
+			n.reportState(state)
+
+		case <-rebroadcastTicker.C:
+			// check periodically if there are long-pending txs in mempool
+			rebroadcastTxs := n.mempool.GetTimeoutTransactions(n.checkInterval)
+			for _, txSlice := range rebroadcastTxs {
+				txSet := &pb.Transactions{Transactions: txSlice}
+				data, err := txSet.Marshal()
+				if err != nil {
+					n.logger.Errorf("Marshal failed, err: %s", err.Error())
+					return
+				}
+				pbMsg := msgToConsensusPbMsg(data, raftproto.RaftMessage_BROADCAST_TX, n.id)
+				_ = n.peerMgr.Broadcast(pbMsg)
+			}
+		case <-n.batchTimerMgr.BatchTimeoutEvent():
+			n.batchTimerMgr.StopBatchTimer()
+			// call txPool module to generate a tx batch
+			if n.isLeader() {
+				n.logger.Debug("Leader batch timer expired, try to create a batch")
+				if n.mempool.HasPendingRequest() {
+					if batch := n.mempool.GenerateBlock(); batch != nil {
+						n.postProposal(batch)
+					}
+				} else {
+					n.logger.Debug("The length of priorityIndex is 0, skip the batch timer")
+				}
+			} else {
+				n.logger.Warningf("Replica %d try to generate batch, but the leader is %d", n.id, n.leader)
+			}
+
+		// when the node is first ready it gives us entries to commit and messages
+		// to immediately publish
 		case rd := <-n.node.Ready():
 			// 1: Write HardState, Entries, and Snapshot to persistent storage if they
 			// are not empty.
 			if err := n.raftStorage.Store(rd.Entries, rd.HardState, rd.Snapshot); err != nil {
-				n.logger.Fatalf("failed to persist etcd/raft data: %s", err)
+				n.logger.Errorf("Failed to persist etcd/raft data: %s", err)
 			}
 
+			if !raft.IsEmptySnap(rd.Snapshot) {
+				n.recoverFromSnapshot()
+			}
+			if rd.SoftState != nil {
+				newLeader := atomic.LoadUint64(&rd.SoftState.Lead)
+				if newLeader != n.leader {
+					// new leader should not serve requests directly.
+					if newLeader == n.id {
+						n.justElected = true
+					}
+					// notify old leader to stop batching
+					if n.leader == n.id {
+						n.becomeFollower()
+					}
+					n.logger.Infof("Raft leader changed: %d -> %d", n.leader, newLeader)
+					n.leader = newLeader
+				}
+			}
 			// 2: Apply Snapshot (if any) and CommittedEntries to the state machine.
 			if len(rd.CommittedEntries) != 0 {
 				if ok := n.publishEntries(n.entriesToApply(rd.CommittedEntries)); !ok {
@@ -330,17 +400,22 @@ func (n *Node) run() {
 					return
 				}
 			}
-			if rd.SoftState != nil {
-				n.leader = rd.SoftState.Lead
-				n.tp.CheckExecute(n.IsLeader())
+
+			if n.justElected {
+				msgInflight := n.ramLastIndex() > n.appliedIndex+1
+				if msgInflight {
+					n.logger.Debug("There are in flight blocks, new leader should not generate new batches")
+				} else {
+					n.justElected = false
+				}
 			}
+
 			// 3: AsyncSend all Messages to the nodes named in the To field.
-			go n.send(rd.Messages)
+			n.send(rd.Messages)
 
 			n.maybeTriggerSnapshot()
 
-			// 4: Call Node.Advance() to signal readiness for the next batch of
-			// updates.
+			// 4: Call Node.Advance() to signal readiness for the next batch of updates.
 			n.node.Advance()
 		case <-n.ctx.Done():
 			n.Stop()
@@ -348,43 +423,20 @@ func (n *Node) run() {
 	}
 }
 
-// send raft consensus message
-func (n *Node) send(messages []raftpb.Message) {
-	for _, msg := range messages {
-		if msg.To == 0 {
-			continue
+func (n *Node) processTransactions(txList []pb.Transaction, isLocal bool) {
+	// leader node would check if this transaction triggered generating a batch or not
+	if n.isLeader() {
+		// start batch timer when this node receives the first transaction
+		if !n.batchTimerMgr.IsBatchTimerActive() {
+			n.batchTimerMgr.StartBatchTimer()
 		}
-		status := raft.SnapshotFinish
-
-		data, err := (&msg).Marshal()
-		if err != nil {
-			n.logger.Error(err)
-			continue
+		// If this transaction triggers generating a batch, stop batch timer
+		if batch := n.mempool.ProcessTransactions(txList, true, isLocal); batch != nil {
+			n.batchTimerMgr.StopBatchTimer()
+			n.postProposal(batch)
 		}
-
-		rm := &raftproto.RaftMessage{
-			Type: raftproto.RaftMessage_CONSENSUS,
-			Data: data,
-		}
-		rmData, err := rm.Marshal()
-		if err != nil {
-			n.logger.Error(err)
-			continue
-		}
-		p2pMsg := &pb.Message{
-			Type: pb.Message_CONSENSUS,
-			Data: rmData,
-		}
-
-		err = n.peerMgr.AsyncSend(msg.To, p2pMsg)
-		if err != nil {
-			n.node.ReportUnreachable(msg.To)
-			status = raft.SnapshotFailure
-		}
-
-		if msg.Type == raftpb.MsgSnap {
-			n.node.ReportSnapshot(msg.To, status)
-		}
+	} else {
+		n.mempool.ProcessTransactions(txList, false, isLocal)
 	}
 }
 
@@ -397,11 +449,6 @@ func (n *Node) publishEntries(ents []raftpb.Entry) bool {
 				break
 			}
 
-			ready := n.readyPool.Get().(*raftproto.Ready)
-			if err := ready.Unmarshal(ents[i].Data); err != nil {
-				n.logger.Error(err)
-				continue
-			}
 			// This can happen:
 			//
 			// if (1) we crashed after applying this block to the chain, but
@@ -416,9 +463,25 @@ func (n *Node) publishEntries(ents []raftpb.Entry) bool {
 				n.appliedIndex = ents[i].Index
 				continue
 			}
+			requestBatch := n.readyPool.Get().(*raftproto.RequestBatch)
+			if err := requestBatch.Unmarshal(ents[i].Data); err != nil {
+				n.logger.Error(err)
+				continue
+			}
+			// strictly avoid writing the same block
+			if requestBatch.Height != n.lastExec+1 {
+				n.logger.Warningf("Replica %d expects to execute seq=%d, but get seq=%d, ignore it",
+					n.id, n.lastExec+1, requestBatch.Height)
+				continue
+			}
+			n.mint(requestBatch)
+			n.blockAppliedIndex.Store(requestBatch.Height, ents[i].Index)
+			n.setLastExec(requestBatch.Height)
+			// update followers' batch sequence number
+			if !n.isLeader() {
+				n.mempool.SetBatchSeqNo(requestBatch.Height)
+			}
 
-			n.mint(ready)
-			n.blockAppliedIndex.Store(ready.Height, ents[i].Index)
 		case raftpb.EntryConfChange:
 			var cc raftpb.ConfChange
 			if err := cc.Unmarshal(ents[i].Data); err != nil {
@@ -453,143 +516,153 @@ func (n *Node) publishEntries(ents []raftpb.Entry) bool {
 	return true
 }
 
-//mint the block
-func (n *Node) mint(ready *raftproto.Ready) {
+// mint the block
+func (n *Node) mint(requestBatch *raftproto.RequestBatch) {
 	n.logger.WithFields(logrus.Fields{
-		"height": ready.Height,
-		"count":  len(ready.TxHashes),
-	}).Debugln("block will be generated")
-	//follower node update the block height
-	if n.tp.GetHeight() == ready.Height-1 {
-		n.tp.UpdateHeight()
-	}
-	loseTxs := make([]types.Hash, 0)
-	txs := make([]*pb.Transaction, 0, len(ready.TxHashes))
-	for _, hash := range ready.TxHashes {
-		_, ok := n.tp.GetTx(hash, false)
-		if !ok {
-			loseTxs = append(loseTxs, hash)
-		}
-	}
-
-	//handle missing txs
-	if len(loseTxs) != 0 {
-		var wg sync.WaitGroup
-		wg.Add(len(loseTxs))
-		for _, hash := range loseTxs {
-			go func(hash types.Hash) {
-				defer wg.Done()
-				n.tp.FetchTx(hash, ready.Height)
-			}(hash)
-		}
-		wg.Wait()
-	}
-
-	for _, hash := range ready.TxHashes {
-		tx, _ := n.tp.GetTx(hash, false)
-		txs = append(txs, tx)
-	}
-	n.tp.RemoveTxs(ready.TxHashes, n.IsLeader())
+		"height": requestBatch.Height,
+		"count":  len(requestBatch.TxList.Transactions),
+	}).Debugln("block will be mint")
+	n.logger.Infof("======== Replica %d call execute, height=%d", n.id, requestBatch.Height)
 	block := &pb.Block{
 		BlockHeader: &pb.BlockHeader{
 			Version:   []byte("1.0.0"),
-			Number:    ready.Height,
+			Number:    requestBatch.Height,
 			Timestamp: time.Now().UnixNano(),
 		},
-		Transactions: txs,
+		Transactions: requestBatch.TxList,
 	}
-	n.logger.WithFields(logrus.Fields{
-		"txpool_size": n.tp.PoolSize(),
-	}).Debugln("current tx pool size")
-	n.readyCache.Store(ready.Height, ready)
-	n.commitC <- block
-}
-
-//Determine whether the current apply index is normal
-func (n *Node) entriesToApply(allEntries []raftpb.Entry) (entriesToApply []raftpb.Entry) {
-	if len(allEntries) == 0 {
-		return
+	// TODO (YH): refactor localLost
+	localList := make([]bool, len(requestBatch.TxList.Transactions))
+	for i := 0; i < len(requestBatch.TxList.Transactions); i++ {
+		localList[i] = false
 	}
-	firstIdx := allEntries[0].Index
-	if firstIdx > n.appliedIndex+1 {
-		n.logger.Fatalf("first index of committed entry[%d] should <= progress.appliedIndex[%d]+1", firstIdx, n.appliedIndex)
+	executeEvent := &pb.CommitEvent{
+		Block:     block,
+		LocalList: localList,
 	}
-	if n.appliedIndex-firstIdx+1 < uint64(len(allEntries)) {
-		entriesToApply = allEntries[n.appliedIndex-firstIdx+1:]
-	}
-	return entriesToApply
+	n.commitC <- executeEvent
 }
 
 //Determines whether the current apply index triggers a snapshot
 func (n *Node) maybeTriggerSnapshot() {
-	if n.appliedIndex-n.snapshotIndex <= n.snapCount {
+	if n.appliedIndex-n.snapshotIndex < n.snapCount {
 		return
 	}
-	data := n.raftStorage.Snapshot().Data
-	n.logger.Infof("Start snapshot [applied index: %d | last snapshot index: %d]", n.appliedIndex, n.snapshotIndex)
-	snap, err := n.raftStorage.ram.CreateSnapshot(n.appliedIndex, &n.confState, data)
+	data, err := n.getSnapshot()
 	if err != nil {
-		panic(err)
+		n.logger.Error(err)
+		return
 	}
-	if err := n.raftStorage.saveSnap(snap); err != nil {
-		panic(err)
+	err = n.raftStorage.TakeSnapshot(n.appliedIndex, n.confState, data)
+	if err != nil {
+		n.logger.Error(err)
+		return
 	}
-
-	compactIndex := uint64(1)
-	if n.appliedIndex > n.raftStorage.SnapshotCatchUpEntries {
-		compactIndex = n.appliedIndex - n.raftStorage.SnapshotCatchUpEntries
-	}
-	if err := n.raftStorage.ram.Compact(compactIndex); err != nil {
-		panic(err)
-	}
-
-	n.logger.Infof("compacted log at index %d", compactIndex)
 	n.snapshotIndex = n.appliedIndex
 }
 
-func GenerateRaftPeers(config *order.Config) ([]raft.Peer, error) {
-	nodes := config.Nodes
-	peers := make([]raft.Peer, 0, len(nodes))
-	for id, node := range nodes {
-		peers = append(peers, raft.Peer{ID: id, Context: node.Bytes()})
+func (n *Node) reportState(state *mempool.ChainState) {
+	height := state.Height
+	if height%10 == 0 {
+		n.logger.WithFields(logrus.Fields{
+			"height": height,
+		}).Info("Report checkpoint")
 	}
-	return peers, nil
-}
-
-//Get the raft apply index of the highest block
-func (n *Node) getBlockAppliedIndex() uint64 {
-	height := uint64(0)
-	n.blockAppliedIndex.Range(
-		func(key, value interface{}) bool {
-			k := key.(uint64)
-			if k > height {
-				height = k
-			}
-			return true
-		})
 	appliedIndex, ok := n.blockAppliedIndex.Load(height)
 	if !ok {
-		return 0
+		n.logger.Debugf("can not found appliedIndex:", height)
+		return
 	}
-	return appliedIndex.(uint64)
+	// block already persisted, record the apply index in db
+	n.writeAppliedIndex(appliedIndex.(uint64))
+	n.blockAppliedIndex.Delete(height - 1)
+	n.mempool.CommitTransactions(state)
 }
 
-//Load the lastAppliedIndex of block height
-func (n *Node) loadAppliedIndex() uint64 {
-	dat := n.storage.Get(appliedDbKey)
-	var lastAppliedIndex uint64
-	if dat == nil {
-		lastAppliedIndex = 0
-	} else {
-		lastAppliedIndex = binary.LittleEndian.Uint64(dat)
+func (n *Node) processRaftCoreMsg(msg []byte) error {
+	rm := &raftproto.RaftMessage{}
+	if err := rm.Unmarshal(msg); err != nil {
+		return err
 	}
+	switch rm.Type {
+	case raftproto.RaftMessage_CONSENSUS:
+		msg := &raftpb.Message{}
+		if err := msg.Unmarshal(rm.Data); err != nil {
+			return err
+		}
+		return n.node.Step(context.Background(), *msg)
 
-	return lastAppliedIndex
+	case raftproto.RaftMessage_BROADCAST_TX:
+		txSlice := &pb.Transactions{}
+		if err := txSlice.Unmarshal(rm.Data); err != nil {
+			return err
+		}
+		n.processTransactions(txSlice.Transactions, false)
+
+	default:
+		return fmt.Errorf("unexpected raft message received")
+	}
+	return nil
 }
 
-//Write the lastAppliedIndex
-func (n *Node) writeAppliedIndex(index uint64) {
-	buf := make([]byte, 8)
-	binary.LittleEndian.PutUint64(buf, index)
-	n.storage.Put(appliedDbKey, buf)
+// send raft consensus message
+func (n *Node) send(messages []raftpb.Message) {
+	for _, msg := range messages {
+		go func(msg raftpb.Message) {
+			if msg.To == 0 {
+				return
+			}
+			status := raft.SnapshotFinish
+
+			data, err := (&msg).Marshal()
+			if err != nil {
+				n.logger.Error(err)
+				return
+			}
+
+			rm := &raftproto.RaftMessage{
+				Type: raftproto.RaftMessage_CONSENSUS,
+				Data: data,
+			}
+			rmData, err := rm.Marshal()
+			if err != nil {
+				n.logger.Error(err)
+				return
+			}
+			p2pMsg := &pb.Message{
+				Type: pb.Message_CONSENSUS,
+				Data: rmData,
+			}
+
+			err = n.peerMgr.AsyncSend(msg.To, p2pMsg)
+			if err != nil {
+				n.logger.WithFields(logrus.Fields{
+					"from":     n.id,
+					"to":       msg.To,
+					"msg_type": msg.Type,
+					"err":      err.Error(),
+				}).Debugf("async send msg")
+				n.node.ReportUnreachable(msg.To)
+				status = raft.SnapshotFailure
+			}
+
+			if msg.Type == raftpb.MsgSnap {
+				n.node.ReportSnapshot(msg.To, status)
+			}
+		}(msg)
+	}
+}
+
+func (n *Node) postProposal(batch *raftproto.RequestBatch) {
+	n.proposeC <- batch
+	n.batchTimerMgr.StartBatchTimer()
+}
+
+func (n *Node) becomeFollower() {
+	n.logger.Debugf("Replica %d became follower", n.id)
+	n.batchTimerMgr.StopBatchTimer()
+}
+
+func (n *Node) setLastExec(height uint64) {
+	n.lastExec = height
 }

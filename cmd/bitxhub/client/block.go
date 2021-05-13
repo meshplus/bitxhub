@@ -39,7 +39,7 @@ func getBlockByHeight(ctx *cli.Context, height uint64) error {
 	if err != nil {
 		return err
 	}
-	data, err := httpGet(url)
+	data, err := httpGet(ctx, url)
 	if err != nil {
 		return err
 	}
@@ -54,7 +54,7 @@ func getBlockByHash(ctx *cli.Context, hash string) error {
 	if err != nil {
 		return err
 	}
-	data, err := httpGet(url)
+	data, err := httpGet(ctx, url)
 	if err != nil {
 		return err
 	}

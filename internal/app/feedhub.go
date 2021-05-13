@@ -1,8 +1,6 @@
 package app
 
 import (
-	"context"
-
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/sirupsen/logrus"
 )
@@ -13,13 +11,13 @@ func (bxh *BitXHub) start() {
 	go func() {
 		for {
 			select {
-			case block := <-bxh.Order.Commit():
+			case commitEvent := <-bxh.Order.Commit():
 				bxh.logger.WithFields(logrus.Fields{
-					"height": block.BlockHeader.Number,
-					"count":  len(block.Transactions),
-				}).Info("Generate block")
-				bxh.BlockExecutor.ExecuteBlock(block)
-			case <-bxh.ctx.Done():
+					"height": commitEvent.Block.BlockHeader.Number,
+					"count":  len(commitEvent.Block.Transactions.Transactions),
+				}).Info("Generated block")
+				bxh.BlockExecutor.ExecuteBlock(commitEvent)
+			case <-bxh.Ctx.Done():
 				return
 			}
 		}
@@ -27,7 +25,7 @@ func (bxh *BitXHub) start() {
 }
 
 func (bxh *BitXHub) listenEvent() {
-	blockCh := make(chan events.NewBlockEvent)
+	blockCh := make(chan events.ExecutedEvent)
 	orderMsgCh := make(chan events.OrderMessageEvent)
 	blockSub := bxh.BlockExecutor.SubscribeBlockEvent(blockCh)
 	orderMsgSub := bxh.PeerMgr.SubscribeOrderMessage(orderMsgCh)
@@ -38,15 +36,15 @@ func (bxh *BitXHub) listenEvent() {
 	for {
 		select {
 		case ev := <-blockCh:
-			go bxh.Order.ReportState(ev.Block.BlockHeader.Number, ev.Block.BlockHash)
+			go bxh.Order.ReportState(ev.Block.BlockHeader.Number, ev.Block.BlockHash, ev.TxHashList)
 			go bxh.Router.PutBlockAndMeta(ev.Block, ev.InterchainMeta)
 		case ev := <-orderMsgCh:
 			go func() {
-				if err := bxh.Order.Step(context.Background(), ev.Data); err != nil {
+				if err := bxh.Order.Step(ev.Data); err != nil {
 					bxh.logger.Error(err)
 				}
 			}()
-		case <-bxh.ctx.Done():
+		case <-bxh.Ctx.Done():
 			return
 		}
 	}

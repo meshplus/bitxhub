@@ -3,8 +3,10 @@ package ledger
 import (
 	"fmt"
 
+	"github.com/meshplus/bitxhub-kit/types"
+
+	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/pkg/storage"
 )
 
 var (
@@ -14,7 +16,11 @@ var (
 func loadChainMeta(store storage.Storage) (*pb.ChainMeta, error) {
 	ok := store.Has(chainKey)
 
-	chain := &pb.ChainMeta{}
+	chain := &pb.ChainMeta{
+		Height:            0,
+		BlockHash:         &types.Hash{},
+		InterchainTxCount: 0,
+	}
 	if ok {
 		body := store.Get(chainKey)
 

@@ -1,0 +1,20 @@
+name: Notify
+
+on:
+  pull_request:
+    types: [opened, reopened]
+
+jobs:
+  notify:
+    name: notify on DingTalk
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Ding Talk PR Notify
+        uses: lijinke666/ding-talk-pr-notify@main
+        with:
+          ding_talk_token: ${{ secrets.DING_TALK_ACCESS_TOKEN }}
+          repo_url: https://github.com/meshplus/bitxhub/pull
+          at_all: false
