@@ -27,9 +27,10 @@ function startBitxhub() {
     cd ../ && make install && cd scripts
     print_blue "Start Solo"
     nohup bash solo.sh 2>gc.log 1>solo.log &
-    while  lsof -i:60011 > /dev/null ;do
-      sleep 10
-    done
+#    while  lsof -i:60011 > /dev/null ;do
+#      sleep 10
+#    done
+    sleep 100
 }
 function bitxhub_tester() {
     print_blue "Start git clone Premo"
