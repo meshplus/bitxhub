@@ -24,10 +24,13 @@ function prepare() {
 function startBitxhub() {
     print_blue "Start bitxhub"
     echo "$CURRENT_PATH"
-    cd ../ && make install && cd scripts && nohup bash solo.sh 2>gc.log 1>solo.log &
+    cd ../ && make install && cd scripts
+    print_blue "Start Solo"
+    nohup bash solo.sh 2>gc.log 1>solo.log &
     while  ps aux | grep "solo"|grep -v grep > /dev/null ;do
       sleep 1
     done
+    echo $(ps aux | grep "solo"|grep -v grep)
 }
 function bitxhub_tester() {
     print_blue "Start git clone Premo"
