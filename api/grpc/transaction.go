@@ -48,7 +48,7 @@ func (cbs *ChainBrokerService) SendView(_ context.Context, tx *pb.BxhTransaction
 
 func (cbs *ChainBrokerService) checkTransaction(tx *pb.BxhTransaction) error {
 	if tx.Payload == nil && tx.IBTP == nil {
-		return fmt.Errorf("tx payload and ibtp can't both be nil")
+		tx.Payload = []byte{}
 	}
 	if tx.From == nil {
 		return fmt.Errorf("tx from address is nil")
