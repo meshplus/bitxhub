@@ -158,6 +158,7 @@ type nonceCache struct {
 	// priority queue. Invariant: pendingNonces[account] >= commitNonces[account]
 	pendingNonces   map[string]uint64
 	pendingMu       sync.RWMutex
+	commitMu        sync.Mutex
 	getAccountNonce GetAccountNonceFunc
 	logger          logrus.FieldLogger
 }
@@ -172,6 +173,9 @@ func newNonceCache(f GetAccountNonceFunc, logger logrus.FieldLogger) *nonceCache
 }
 
 func (nc *nonceCache) getCommitNonce(account string) uint64 {
+	nc.commitMu.Lock()
+	defer nc.commitMu.Unlock()
+
 	nonce, ok := nc.commitNonces[account]
 	if !ok {
 		cn := nc.getAccountNonce(types.NewAddressByStr(account))
@@ -182,6 +186,9 @@ func (nc *nonceCache) getCommitNonce(account string) uint64 {
 }
 
 func (nc *nonceCache) setCommitNonce(account string, nonce uint64) {
+	nc.commitMu.Lock()
+	defer nc.commitMu.Unlock()
+
 	nc.commitNonces[account] = nonce
 }
 
