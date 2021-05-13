@@ -30,7 +30,7 @@ function bitxhub_tester() {
     print_blue "Start git clone Premo"
     echo "$BRANCH_NAME"
     cd ../ && git clone -b "$BRANCH_NAME" https://github.com/meshplus/premo.git
-    premo init
+    cd premo && make install && premo init
     print_blue "Start $TEST_NAME test"
     cd premo && make bitxhub-tester
 }
