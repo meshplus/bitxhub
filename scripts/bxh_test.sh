@@ -30,8 +30,8 @@ function bitxhub_tester() {
     print_blue "Start git clone Premo"
     echo "$BRANCH_NAME"
     cd ../ && git clone -b "$BRANCH_NAME" https://github.com/meshplus/premo.git
-    cd premo && make install && premo init
-    print_blue "Start $TEST_NAME test"
+    export PATH=$PATH:$(go env GOPATH)/bin && cd premo && make install && premo init
+    print_blue "Start test"
     cd premo && make bitxhub-tester
 }
 function bxh_test() {
