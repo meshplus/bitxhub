@@ -40,5 +40,4 @@ while getopts "h?b:t" opt; do
     ;;
   esac
 done
-
 bxh_test
