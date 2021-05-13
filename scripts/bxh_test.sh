@@ -26,20 +26,18 @@ function startBitxhub() {
     echo "$CURRENT_PATH"
     cd ../ && nohup make solo &
 }
-function getPremo() {
+function bitxhub_tester() {
     print_blue "Start git clone Premo"
     echo "$BRANCH_NAME"
     cd ../ && git clone -b "$BRANCH_NAME" https://github.com/meshplus/premo.git
-}
-function test() {
+    premo init
     print_blue "Start $TEST_NAME test"
     cd premo && make bitxhub-tester
 }
 function bxh_test() {
     prepare
     startBitxhub
-    getPremo
-    test
+    bitxhub_tester
 }
 while getopts "h?b:" opt; do
   case "$opt" in
