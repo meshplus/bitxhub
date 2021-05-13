@@ -41,7 +41,7 @@ function bxh_test() {
     getPremo
     test
 }
-while getopts "h?b" opt; do
+while getopts "h?b:" opt; do
   case "$opt" in
   h | \?)
     printHelp
@@ -52,4 +52,5 @@ while getopts "h?b" opt; do
     ;;
   esac
 done
+
 bxh_test
