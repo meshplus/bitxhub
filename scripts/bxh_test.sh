@@ -10,6 +10,17 @@ function printHelp() {
   echo "  -'t' - the test name such as bitxhub-tester,gosdk-tester,http-tester"
   echo "  bxh_test.sh -h (print this message)"
 }
+function prepare() {
+    print_blue "===> 1. Install packr"
+    if ! type packr >/dev/null 2>&1; then
+      go get -u github.com/gobuffalo/packr/packr
+    fi
+    print_blue "===> 2. Install tmux with package manager"
+    if ! type tmux >/dev/null 2>&1; then
+      sudo apt-get -y tmux
+    fi
+}
+
 function startBitxhub() {
     print_blue "Start bitxhub"
     echo "$CURRENT_PATH"
