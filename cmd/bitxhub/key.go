@@ -48,6 +48,10 @@ func keyCMD() cli.Command {
 						Usage:    "Specify private key path",
 						Required: true,
 					},
+					cli.StringFlag{
+						Name:  "target",
+						Usage: "pecific target directory",
+					},
 				},
 				Action: convertKey,
 			},
@@ -74,6 +78,7 @@ func keyCMD() cli.Command {
 
 func convertKey(ctx *cli.Context) error {
 	privPath := ctx.String("priv")
+	target := ctx.String("target")
 
 	data, err := ioutil.ReadFile(privPath)
 	if err != nil {
@@ -86,12 +91,19 @@ func convertKey(ctx *cli.Context) error {
 	}
 
 	if ctx.Bool("save") {
-		repoRoot, err := repo.PathRootWithDefault(ctx.GlobalString("repo"))
-		if err != nil {
-			return err
+		if target == "" {
+			target, err = repo.PathRootWithDefault(ctx.GlobalString("repo"))
+			if err != nil {
+				return err
+			}
+		} else {
+			target, err = filepath.Abs(target)
+			if err != nil {
+				return fmt.Errorf("get absolute key path: %w", err)
+			}
 		}
 
-		keyPath := filepath.Join(repoRoot, repo.KeyName)
+		keyPath := filepath.Join(target, repo.KeyName)
 		if err := asym.StorePrivateKey(privKey, keyPath, "bitxhub"); err != nil {
 			return err
 		}
