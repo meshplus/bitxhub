@@ -28,6 +28,7 @@ function startBitxhub() {
 }
 function getPremo() {
     print_blue "Start git clone Premo"
+    echo "$BRANCH_NAME"
     cd ../ && git clone -b "$BRANCH_NAME" https://github.com/meshplus/premo.git
 }
 function test() {
