@@ -30,7 +30,7 @@ function startBitxhub() {
     while  lsof -i:60011 > /dev/null ;do
       sleep 1
     done
-    lsof -i:60011
+    echo $(lsof -i:60011)
 }
 function bitxhub_tester() {
     print_blue "Start git clone Premo"
