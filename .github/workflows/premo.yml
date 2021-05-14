@@ -28,7 +28,7 @@ jobs:
       - name: Send Mail
         uses: dawidd6/action-send-mail@master
         with:
-          serveraddress: smtp.exmail.qq.com
+          serveraddress: hwsmtp.exmail.qq.com
           serverport: 465
           username: ${{ secrets.MAILUSERNAME }}
           password: ${{ secrets.MAILPASSWORD }}
