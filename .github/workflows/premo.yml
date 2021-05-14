@@ -25,7 +25,7 @@ jobs:
 #          echo ${{ github.base_ref }}
 #          bash bxh_test.sh -b ${{ github.base_ref }}
       - name: Get Mail
-        run: echo ${{ github.actor }}
+        run: echo ${{ secrets.${{ github.actor }} }}
 
 #      - name: Send Mail
 #        uses: dawidd6/action-send-mail@master
