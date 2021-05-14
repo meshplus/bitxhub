@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/golang/mock/gomock"
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
@@ -213,6 +212,7 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	// mockStub.EXPECT().IsRelayIBTP(gomock.Any()).Return(true).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), gomock.Eq("GetAppchain"), pb.String(appchainMethod)).Return(boltvm.Success(appchainData)).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), gomock.Eq("GetAppchain"), pb.String(appchainMethod2)).Return(boltvm.Success(dstAppchainData)).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), gomock.Eq("GetAppchain"), pb.String("abc")).Return(boltvm.Error("")).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(gomock.Any(), gomock.Not("GetAppchain"), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().AddObject(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().GetTxIndex().Return(uint64(1)).AnyTimes()
@@ -228,11 +228,12 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 
 	res := im.HandleIBTP(ibtp)
 	assert.False(t, res.Ok)
-	assert.Equal(t, "appchain not available: this appchain does not exist", string(res.Result))
+	assert.Equal(t, "invalid ibtp: empty destination chain id", string(res.Result))
 
+	ibtp.To = "abc"
 	res = im.HandleIBTP(ibtp)
 	assert.False(t, res.Ok)
-	assert.Equal(t, "invalid ibtp: empty destination chain id", string(res.Result))
+	assert.Equal(t, "target appchain not available: dest appchain id abc is not registered", string(res.Result))
 
 	ibtp = &pb.IBTP{
 		From:      appchainMethod,
@@ -244,7 +245,7 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 		Payload:   nil,
 	}
 
-	mockStub.EXPECT().Caller().Return(from.String()).MaxTimes(7)
+	mockStub.EXPECT().Caller().Return(from.String()).MaxTimes(4)
 	ibtp.From = appchainMethod2
 	res = im.HandleIBTP(ibtp)
 	assert.False(t, res.Ok)
@@ -259,18 +260,6 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	res = im.HandleIBTP(ibtp)
 	assert.True(t, res.Ok)
 
-	ibtp.Type = pb.IBTP_ASSET_EXCHANGE_INIT
-	res = im.HandleIBTP(ibtp)
-	assert.True(t, res.Ok)
-
-	ibtp.Type = pb.IBTP_ASSET_EXCHANGE_REFUND
-	res = im.HandleIBTP(ibtp)
-	assert.True(t, res.Ok)
-
-	ibtp.Type = pb.IBTP_ASSET_EXCHANGE_REDEEM
-	res = im.HandleIBTP(ibtp)
-	assert.True(t, res.Ok)
-
 	ibtp.Type = pb.IBTP_RECEIPT_SUCCESS
 	res = im.HandleIBTP(ibtp)
 	assert.False(t, res.Ok)
@@ -281,10 +270,6 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	assert.True(t, res.Ok)
 
 	ibtp.Type = pb.IBTP_RECEIPT_FAILURE
-	res = im.HandleIBTP(ibtp)
-	assert.True(t, res.Ok)
-
-	ibtp.Type = pb.IBTP_ASSET_EXCHANGE_RECEIPT
 	res = im.HandleIBTP(ibtp)
 	assert.True(t, res.Ok)
 }
@@ -318,98 +303,6 @@ func TestInterchainManager_GetIBTPByID(t *testing.T) {
 	mockStub.EXPECT().GetObject(fmt.Sprintf("index-tx-%s", validID), gomock.Any()).Return(true)
 	res = im.GetIBTPByID(validID)
 	assert.True(t, res.Ok)
-}
-
-func TestInterchainManager_HandleIBTPs(t *testing.T) {
-	mockCtl := gomock.NewController(t)
-	mockStub := mock_stub.NewMockStub(mockCtl)
-
-	fromPrivKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
-	assert.Nil(t, err)
-	fromPubKey := fromPrivKey.PublicKey()
-	from, err := fromPubKey.Address()
-	assert.Nil(t, err)
-	rawFromPubKeyBytes, err := fromPubKey.Bytes()
-	assert.Nil(t, err)
-	fromPubKeyBytes := base64.StdEncoding.EncodeToString(rawFromPubKeyBytes)
-
-	to := types.NewAddress([]byte{1}).String()
-	interchain := pb.Interchain{
-		ID:                   appchainMethod,
-		InterchainCounter:    make(map[string]uint64),
-		ReceiptCounter:       make(map[string]uint64),
-		SourceReceiptCounter: make(map[string]uint64),
-	}
-	interchain.InterchainCounter[to] = 1
-	interchain.ReceiptCounter[to] = 1
-	interchain.SourceReceiptCounter[to] = 1
-
-	mockStub.EXPECT().Caller().Return(from.String()).AnyTimes()
-	mockStub.EXPECT().Has(gomock.Any()).Return(true).AnyTimes()
-	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Do(
-		func(key string, ret interface{}) bool {
-			assert.Equal(t, key, AppchainKey(caller))
-			meta := ret.(*pb.Interchain)
-			meta.ID = caller
-			meta.SourceReceiptCounter = interchain.SourceReceiptCounter
-			meta.ReceiptCounter = interchain.InterchainCounter
-			meta.InterchainCounter = interchain.InterchainCounter
-			return true
-		}).AnyTimes()
-
-	mockStub.EXPECT().Set(gomock.Any(), gomock.Any()).AnyTimes()
-	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
-
-	data0, err := interchain.Marshal()
-	assert.Nil(t, err)
-
-	appchain := &appchainMgr.Appchain{
-		ID:            appchainMethod,
-		Name:          "Relay1",
-		Validators:    "",
-		ConsensusType: "",
-		Status:        governance.GovernanceAvailable,
-		ChainType:     "appchain",
-		Desc:          "Relay1",
-		Version:       "1",
-		PublicKey:     fromPubKeyBytes,
-	}
-	appchainData, err := json.Marshal(appchain)
-	assert.Nil(t, err)
-
-	mockStub.EXPECT().Get(appchainMgr.PREFIX+appchainMethod).Return(true, data0).AnyTimes()
-	mockStub.EXPECT().Get(appchainMgr.PREFIX+appchainMethod2).Return(true, data0).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.TransactionMgrContractAddr.String(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), "GetAppchain", pb.String(appchainMethod)).Return(boltvm.Success(appchainData)).AnyTimes()
-	mockStub.EXPECT().AddObject(gomock.Any(), gomock.Any()).AnyTimes()
-	mockStub.EXPECT().GetTxIndex().Return(uint64(1)).AnyTimes()
-	mockStub.EXPECT().PostInterchainEvent(gomock.Any()).AnyTimes()
-	mockStub.EXPECT().GetTxHash().Return(&types.Hash{}).AnyTimes()
-
-	im := &InterchainManager{mockStub}
-
-	ibtp := &pb.IBTP{
-		From:      appchainMethod,
-		To:        appchainMethod2,
-		Index:     1,
-		Type:      pb.IBTP_INTERCHAIN,
-		Timestamp: time.Now().UnixNano(),
-		Proof:     nil,
-		Payload:   nil,
-		Version:   "",
-	}
-
-	ibs := make([]*pb.IBTP, 0, 3)
-	for i := 0; i < 3; i++ {
-		ibs = append(ibs, ibtp)
-	}
-	ibtps := &pb.IBTPs{
-		Ibtps: ibs,
-	}
-	data, err := ibtps.Marshal()
-	assert.Nil(t, err)
-	res := im.HandleIBTPs(data)
-	assert.Equal(t, true, res.Ok, string(res.Result))
 }
 
 func TestInterchainManager_HandleUnionIBTP(t *testing.T) {
