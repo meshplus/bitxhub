@@ -24,19 +24,20 @@ jobs:
 #          cd scripts
 #          echo ${{ github.base_ref }}
 #          bash bxh_test.sh -b ${{ github.base_ref }}
+      - name: Get Mail
+        run: echo ${{ github.actor }}
 
-      - name: Send Mail
-        uses: dawidd6/action-send-mail@master
-        with:
-          server_address: smtp.exmail.qq.com
-          server_port: 465
-          username: ${{ secrets.MAILUSERNAME }}
-          password: ${{ secrets.MAILPASSWORD }}
-          subject: Bxh-teser Test Report
-          body: Hello World
-          to: zhuweijie@hyperchain.cn
-          from: GitHub Actions
-          content_type: text/html
+#      - name: Send Mail
+#        uses: dawidd6/action-send-mail@master
+#        with:
+#          server_address: smtp.exmail.qq.com
+#          server_port: 465
+#          username: ${{ secrets.MAILUSERNAME }}
+#          password: ${{ secrets.MAILPASSWORD }}
+#          subject: Bxh-teser Test Report
+#          body: Hello World
+#          to: zhuweijie@hyperchain.cn
+#          from: GitHub Actions
 
 
 
