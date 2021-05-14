@@ -10,11 +10,11 @@ jobs:
     name: Run bxh_tester
     runs-on: ubuntu-latest
     steps:
-      - name: Set up Go
-        uses: actions/setup-go@v1
-        with:
-          go-version: 1.13
-
+#      - name: Set up Go
+#        uses: actions/setup-go@v1
+#        with:
+#          go-version: 1.13
+#
 #      - name: Check out code
 #        uses: actions/checkout@v2
 #
@@ -28,15 +28,15 @@ jobs:
       - name: Send Mail
         uses: dawidd6/action-send-mail@master
         with:
-          serveraddress: smtp.163.com
-          serverport: 465
-          content_type: text/html
+          server_address: smtp.exmail.qq.com
+          server_port: 465
           username: ${{ secrets.MAILUSERNAME }}
           password: ${{ secrets.MAILPASSWORD }}
           subject: Bxh-teser Test Report
+          body: Hello World
           to: zhuweijie@hyperchain.cn
           from: GitHub Actions
-          body: Hello World
+          content_type: text/html
 
 
 
