@@ -33,7 +33,7 @@ jobs:
           username: ${{ secrets.MAILUSERNAME }}
           password: ${{ secrets.MAILPASSWORD }}
           subject: Bxh-teser Test Report
-          body: ${{ github.actor }} thr pr ${{ github.event_name }}
+          body: ${{ github.actor }} , the pull_request {{ github.head_ref }} to {{ github.base_ref }} 
           to: zhuweijie@hyperchain.cn
           from: GitHub Actions
 
