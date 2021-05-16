@@ -33,7 +33,7 @@ jobs:
           username: ${{ secrets.MAILUSERNAME }}
           password: ${{ secrets.MAILPASSWORD }}
           subject: Bxh-teser Test Report
-          body: xiaochenl
+          body: ${{ github.actor }} ${{ github.event_name }}
           to: zhuweijie@hyperchain.cn
           from: GitHub Actions
 
