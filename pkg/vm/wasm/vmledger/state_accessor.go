@@ -1,116 +1,171 @@
 package vmledger
 
-// #include <stdlib.h>
-//
-// extern long long get_balance(void *context);
-// extern void set_balance(void *context, long long value);
-// extern int32_t get_state(void *context, long long key_ptr);
-// extern void set_state(void *context, long long key_ptr, long long value_ptr);
-// extern void add_state(void *context, long long key_ptr, long long value_ptr);
-import "C"
 import (
+	"fmt"
 	"math/big"
-	"unsafe"
 
+	"github.com/meshplus/bitxhub-core/wasm/wasmlib"
 	"github.com/meshplus/bitxhub/internal/ledger"
-	"github.com/wasmerio/go-ext-wasm/wasmer"
+	"github.com/wasmerio/wasmer-go/wasmer"
 )
 
-//export get_balance
-func get_balance(context unsafe.Pointer) int64 {
-	ctx := wasmer.IntoInstanceContext(context)
-	ctxMap := ctx.Data().(map[string]interface{})
-	account := ctxMap["account"].(*ledger.Account)
-	return account.GetBalance().Int64()
+func getBalance(env interface{}, args []wasmer.Value) ([]wasmer.Value, error) {
+	account := env.(*wasmlib.WasmEnv).Ctx["account"].(*ledger.Account)
+	return []wasmer.Value{wasmer.NewI64(account.GetBalance().Int64())}, nil
 }
 
-//export set_balance
-func set_balance(context unsafe.Pointer, value int64) {
-	ctx := wasmer.IntoInstanceContext(context)
-	ctxMap := ctx.Data().(map[string]interface{})
-	account := ctxMap["account"].(*ledger.Account)
-	account.SetBalance(new(big.Int).SetUint64(uint64(value)))
+func setBalance(env interface{}, args []wasmer.Value) ([]wasmer.Value, error) {
+	account := env.(*wasmlib.WasmEnv).Ctx["account"].(*ledger.Account)
+	account.SetBalance(new(big.Int).SetUint64(uint64(args[0].I64())))
+	return []wasmer.Value{}, nil
 }
 
-//export get_state
-func get_state(context unsafe.Pointer, key_ptr int64) int32 {
-	ctx := wasmer.IntoInstanceContext(context)
-	ctxMap := ctx.Data().(map[string]interface{})
-	data := ctxMap["argmap"].(map[int]int)
-	alloc := ctxMap["allocate"].(func(...interface{}) (wasmer.Value, error))
-	account := ctxMap["account"].(*ledger.Account)
-	memory := ctx.Memory()
-	key := memory.Data()[key_ptr : key_ptr+int64(data[int(key_ptr)])]
+func getState(env interface{}, args []wasmer.Value) ([]wasmer.Value, error) {
+	key_ptr := args[0].I64()
+	ctx := env.(*wasmlib.WasmEnv).Ctx
+	mem, err := env.(*wasmlib.WasmEnv).Instance.Exports.GetMemory("memory")
+	if err != nil {
+		return []wasmer.Value{wasmer.NewI32(-1)}, nil
+	}
+	data := ctx["argmap"].(map[int]int)
+	// alloc := ctx["allocate"].(wasmer.NativeFunction)
+	alloc, err := env.(*wasmlib.WasmEnv).Instance.Exports.GetFunction("allocate")
+	if err != nil {
+		return []wasmer.Value{wasmer.NewI32(-1)}, nil
+	}
+	account := ctx["account"].(*ledger.Account)
+	key := mem.Data()[key_ptr : key_ptr+int64(data[int(key_ptr)])]
 	ok, value := account.GetState(key)
 	if !ok {
-		return -1
+		fmt.Println("===========================================")
+		return []wasmer.Value{wasmer.NewI32(-1)}, nil
 	}
 	lengthOfBytes := len(value)
 
 	allocResult, err := alloc(lengthOfBytes)
 	if err != nil {
-		return -1
+		return []wasmer.Value{}, err
 	}
-	inputPointer := allocResult.ToI32()
-	mem := memory.Data()[inputPointer:]
+	inputPointer := allocResult.(int32)
+	memory := mem.Data()[inputPointer:]
 
 	var i int
 	for i = 0; i < lengthOfBytes; i++ {
-		mem[i] = value[i]
+		memory[i] = value[i]
 	}
 
-	mem[i] = 0
+	memory[i] = 0
 	data[int(inputPointer)] = len(value)
 
-	return inputPointer
+	return []wasmer.Value{wasmer.NewI32(inputPointer)}, nil
 }
 
-//export set_state
-func set_state(context unsafe.Pointer, key_ptr int64, value_ptr int64) {
-	ctx := wasmer.IntoInstanceContext(context)
-	ctxMap := ctx.Data().(map[string]interface{})
-	data := ctxMap["argmap"].(map[int]int)
-	account := ctxMap["account"].(*ledger.Account)
-	memory := ctx.Memory()
-	key := memory.Data()[key_ptr : key_ptr+int64(data[int(key_ptr)])]
-	value := memory.Data()[value_ptr : value_ptr+int64(data[int(value_ptr)])]
+func setState(env interface{}, args []wasmer.Value) ([]wasmer.Value, error) {
+	key_ptr := args[0].I64()
+	value_ptr := args[1].I64()
+	ctx := env.(*wasmlib.WasmEnv).Ctx
+	mem, err := env.(*wasmlib.WasmEnv).Instance.Exports.GetMemory("memory")
+	if err != nil {
+		return []wasmer.Value{}, err
+	}
+	data := ctx["argmap"].(map[int]int)
+	account := ctx["account"].(*ledger.Account)
+	key := mem.Data()[key_ptr : key_ptr+int64(data[int(key_ptr)])]
+	value := mem.Data()[value_ptr : value_ptr+int64(data[int(value_ptr)])]
 	account.SetState(key, value)
+	return []wasmer.Value{}, nil
 }
 
-//export add_state
-func add_state(context unsafe.Pointer, key_ptr int64, value_ptr int64) {
-	ctx := wasmer.IntoInstanceContext(context)
-	ctxMap := ctx.Data().(map[string]interface{})
-	data := ctxMap["argmap"].(map[int]int)
-	account := ctxMap["account"].(*ledger.Account)
-	memory := ctx.Memory()
-	key := memory.Data()[key_ptr : key_ptr+int64(data[int(key_ptr)])]
-	value := memory.Data()[value_ptr : value_ptr+int64(data[int(value_ptr)])]
+func addState(env interface{}, args []wasmer.Value) ([]wasmer.Value, error) {
+	key_ptr := args[0].I64()
+	value_ptr := args[1].I64()
+	ctx := env.(*wasmlib.WasmEnv).Ctx
+	mem, err := env.(*wasmlib.WasmEnv).Instance.Exports.GetMemory("memory")
+	if err != nil {
+		return []wasmer.Value{}, err
+	}
+	data := ctx["argmap"].(map[int]int)
+	account := ctx["account"].(*ledger.Account)
+	key := mem.Data()[key_ptr : key_ptr+int64(data[int(key_ptr)])]
+	value := mem.Data()[value_ptr : value_ptr+int64(data[int(value_ptr)])]
 	account.AddState(key, value)
+	return []wasmer.Value{}, nil
 }
 
-func (im *Imports) importLedger() error {
-	var err error
-	im.imports, err = im.imports.Append("get_balance", get_balance, C.get_balance)
-	if err != nil {
-		return err
-	}
-	im.imports, err = im.imports.Append("set_balance", set_balance, C.set_balance)
-	if err != nil {
-		return err
-	}
-	im.imports, err = im.imports.Append("get_state", get_state, C.get_state)
-	if err != nil {
-		return err
-	}
-	im.imports, err = im.imports.Append("set_state", set_state, C.set_state)
-	if err != nil {
-		return err
-	}
-	im.imports, err = im.imports.Append("add_state", add_state, C.add_state)
-	if err != nil {
-		return err
-	}
-
-	return nil
+func (im *Imports) importLedgerLib(store *wasmer.Store, wasmEnv *wasmlib.WasmEnv) {
+	getBalanceFunc := wasmer.NewFunctionWithEnvironment(
+		store,
+		wasmer.NewFunctionType(
+			wasmer.NewValueTypes(),
+			wasmer.NewValueTypes(wasmer.I64),
+		),
+		wasmEnv,
+		getBalance,
+	)
+	setBalanceFunc := wasmer.NewFunctionWithEnvironment(
+		store,
+		wasmer.NewFunctionType(
+			wasmer.NewValueTypes(wasmer.I64),
+			wasmer.NewValueTypes(),
+		),
+		wasmEnv,
+		setBalance,
+	)
+	getStateFunc := wasmer.NewFunctionWithEnvironment(
+		store,
+		wasmer.NewFunctionType(
+			wasmer.NewValueTypes(wasmer.I64),
+			wasmer.NewValueTypes(wasmer.I32),
+		),
+		wasmEnv,
+		getState,
+	)
+	setStateFunc := wasmer.NewFunctionWithEnvironment(
+		store,
+		wasmer.NewFunctionType(
+			wasmer.NewValueTypes(wasmer.I64, wasmer.I64),
+			wasmer.NewValueTypes(),
+		),
+		wasmEnv,
+		setState,
+	)
+	addStateFunc := wasmer.NewFunctionWithEnvironment(
+		store,
+		wasmer.NewFunctionType(
+			wasmer.NewValueTypes(wasmer.I64, wasmer.I64),
+			wasmer.NewValueTypes(),
+		),
+		wasmEnv,
+		addState,
+	)
+	im.imports.Register(
+		"env",
+		map[string]wasmer.IntoExtern{
+			"get_balance": getBalanceFunc,
+		},
+	)
+	im.imports.Register(
+		"env",
+		map[string]wasmer.IntoExtern{
+			"set_balance": setBalanceFunc,
+		},
+	)
+	im.imports.Register(
+		"env",
+		map[string]wasmer.IntoExtern{
+			"get_state": getStateFunc,
+		},
+	)
+	im.imports.Register(
+		"env",
+		map[string]wasmer.IntoExtern{
+			"set_state": setStateFunc,
+		},
+	)
+	im.imports.Register(
+		"env",
+		map[string]wasmer.IntoExtern{
+			"add_state": addStateFunc,
+		},
+	)
 }

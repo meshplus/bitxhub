@@ -1,21 +1,25 @@
 package vmledger
 
 import (
-	"github.com/wasmerio/go-ext-wasm/wasmer"
+	"github.com/meshplus/bitxhub-core/wasm/wasmlib"
+	"github.com/wasmerio/wasmer-go/wasmer"
 )
 
 type Imports struct {
-	imports *wasmer.Imports
+	imports *wasmer.ImportObject
 }
 
-func New() (*wasmer.Imports, error) {
+func New() wasmlib.WasmImport {
 	imports := &Imports{
-		imports: wasmer.NewImports(),
+		imports: wasmer.NewImportObject(),
 	}
-	err := imports.importLedger()
-	if err != nil {
-		return nil, err
-	}
+	return imports
+}
 
-	return imports.imports, nil
+func (imports *Imports) ImportLib(wasmEnv *wasmlib.WasmEnv) {
+	imports.importLedgerLib(wasmEnv.Store, wasmEnv)
+}
+
+func (imports *Imports) GetImportObject() *wasmer.ImportObject {
+	return imports.imports
 }

@@ -23,7 +23,7 @@ import (
 	libp2pcert "github.com/meshplus/go-libp2p-cert"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/wasmerio/go-ext-wasm/wasmer"
+	"github.com/wasmerio/wasmer-go/wasmer"
 )
 
 const cert1 = `-----BEGIN CERTIFICATE-----
@@ -150,7 +150,7 @@ func initFabricContext(t *testing.T, name string) *vm.Context {
 
 func TestDeploy(t *testing.T) {
 	ctx := initCreateContext(t, "create")
-	instances := make(map[string]wasmer.Instance)
+	instances := make(map[string]*wasmer.Instance)
 	imports, err := EmptyImports()
 	require.Nil(t, err)
 	wasm, err := New(ctx, imports, instances)
@@ -162,7 +162,7 @@ func TestDeploy(t *testing.T) {
 
 func TestExecute(t *testing.T) {
 	ctx := initCreateContext(t, "execute")
-	instances := make(map[string]wasmer.Instance)
+	instances := make(map[string]*wasmer.Instance)
 	imports, err := EmptyImports()
 	require.Nil(t, err)
 	wasm, err := New(ctx, imports, instances)
@@ -189,8 +189,7 @@ func TestExecute(t *testing.T) {
 		TransactionData: data,
 		Ledger:          ctx.Ledger,
 	}
-	imports1, err := vmledger.New()
-	require.Nil(t, err)
+	imports1 := vmledger.New()
 	fmt.Println(imports1)
 	wasm1, err := New(ctx1, imports1, instances)
 	require.Nil(t, err)
@@ -221,12 +220,18 @@ func TestExecute(t *testing.T) {
 
 	result1, err := wasm1.Run(payload1)
 	require.Nil(t, err)
+	_, err = wasm1.Run(payload1)
+	require.Nil(t, err)
+	_, err = wasm1.Run(payload1)
+	require.Nil(t, err)
 	require.Equal(t, "1", string(result1))
+	hash := types.NewHashByStr("")
+	fmt.Println(hash)
 }
 
 func TestWasm_RunFabValidation(t *testing.T) {
 	ctx := initFabricContext(t, "execute")
-	instances := make(map[string]wasmer.Instance)
+	instances := make(map[string]*wasmer.Instance)
 	imports, err := EmptyImports()
 	require.Nil(t, err)
 	wasm, err := New(ctx, imports, instances)
@@ -262,8 +267,7 @@ func TestWasm_RunFabValidation(t *testing.T) {
 		TransactionData: data,
 		Ledger:          ctx.Ledger,
 	}
-	imports1, err := validatorlib.New()
-	require.Nil(t, err)
+	imports1 := validatorlib.New()
 	wasm1, err := New(ctx1, imports1, instances)
 	require.Nil(t, err)
 
@@ -304,7 +308,7 @@ func BenchmarkRunFabValidation(b *testing.B) {
 		TransactionData: data,
 		Ledger:          ldg,
 	}
-	instances := make(map[string]wasmer.Instance)
+	instances := make(map[string]*wasmer.Instance)
 	imports, err := EmptyImports()
 	require.Nil(b, err)
 	wasm, err := New(ctx, imports, instances)
@@ -333,8 +337,7 @@ func BenchmarkRunFabValidation(b *testing.B) {
 		Ledger:          ctx.Ledger,
 	}
 	for i := 0; i < b.N; i++ {
-		imports1, err := validatorlib.New()
-		require.Nil(b, err)
+		imports1 := validatorlib.New()
 		wasm1, err := New(ctx1, imports1, instances)
 		require.Nil(b, err)
 
@@ -351,7 +354,7 @@ func TestWasm_RunValidation(t *testing.T) {}
 
 func TestWasm_RunWithoutMethod(t *testing.T) {
 	ctx := initCreateContext(t, "execute_without_method")
-	instances := make(map[string]wasmer.Instance)
+	instances := make(map[string]*wasmer.Instance)
 	imports, err := EmptyImports()
 	require.Nil(t, err)
 	wasm, err := New(ctx, imports, instances)
@@ -378,8 +381,7 @@ func TestWasm_RunWithoutMethod(t *testing.T) {
 		TransactionData: data,
 		Ledger:          ctx.Ledger,
 	}
-	imports1, err := vmledger.New()
-	require.Nil(t, err)
+	imports1 := vmledger.New()
 	wasm1, err := New(ctx1, imports1, instances)
 	require.Nil(t, err)
 
