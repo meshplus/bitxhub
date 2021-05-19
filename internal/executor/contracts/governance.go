@@ -867,3 +867,15 @@ func checkStrategyType(pst ProposalStrategyType) error {
 	}
 	return nil
 }
+
+func getGovernanceRet(proposalID string, extra []byte) *boltvm.Response {
+	res1 := governance.GovernanceResult{
+		ProposalID: proposalID,
+		Extra:      extra,
+	}
+	resData, err := json.Marshal(res1)
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+	return boltvm.Success(resData)
+}

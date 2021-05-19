@@ -9,6 +9,7 @@ import (
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/governance"
+	"github.com/meshplus/bitxhub-core/validator"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym/ecdsa"
 	"github.com/meshplus/bitxhub-model/constant"
@@ -22,11 +23,6 @@ const relayRootPrefix = "did:bitxhub:relayroot:"
 type AppchainManager struct {
 	boltvm.Stub
 	appchainMgr.AppchainManager
-}
-
-type RegisterResult struct {
-	ChainID    string `json:"chain_id"`
-	ProposalID string `json:"proposal_id"`
 }
 
 // extra: appchainMgr.Appchain
@@ -67,7 +63,9 @@ func (am *AppchainManager) Manage(eventTyp string, proposalResult string, extra 
 			if !res.Ok {
 				return res
 			}
-
+			if err = am.chainDefaultConfig(chain); err != nil {
+				return boltvm.Error("chain default config error:" + err.Error())
+			}
 			//res = am.CrossInvoke(constant.MethodRegistryContractAddr.String(), "AuditApply",
 			//	pb.String(relaychainAdmin), pb.String(chain.ID), pb.Int32(1), pb.Bytes(nil))
 			//if !res.Ok {
@@ -121,6 +119,20 @@ func (am *AppchainManager) Manage(eventTyp string, proposalResult string, extra 
 	}
 
 	return boltvm.Success(nil)
+}
+
+func (am *AppchainManager) chainDefaultConfig(chain *appchainMgr.Appchain) error {
+	if chain.ChainType == appchainMgr.FabricType {
+		res := am.CrossInvoke(constant.RuleManagerContractAddr.String(), "DefaultRule", pb.String(chain.ID), pb.String(validator.FabricRuleAddr))
+		if !res.Ok {
+			return fmt.Errorf(string(res.Result))
+		}
+		res = am.CrossInvoke(constant.RuleManagerContractAddr.String(), "DefaultRule", pb.String(chain.ID), pb.String(validator.SimFabricRuleAddr))
+		if !res.Ok {
+			return fmt.Errorf(string(res.Result))
+		}
+	}
+	return nil
 }
 
 // Register registers appchain info
@@ -178,15 +190,8 @@ func (am *AppchainManager) Register(appchainAdminDID, appchainMethod string, doc
 	if !res.Ok {
 		return res
 	}
-	res1 := RegisterResult{
-		ChainID:    appchainMethod,
-		ProposalID: string(res.Result),
-	}
-	resData, err := json.Marshal(res1)
-	if err != nil {
-		return boltvm.Error(err.Error())
-	}
-	return boltvm.Success(resData)
+
+	return getGovernanceRet(string(res.Result), []byte(appchainMethod))
 }
 
 // UpdateAppchain updates available appchain
@@ -241,7 +246,7 @@ func (am *AppchainManager) UpdateAppchain(id, docAddr, docHash, validators strin
 		if !res.Ok {
 			return res
 		} else {
-			return boltvm.Success([]byte("(this governance action does not require a proposal)"))
+			return getGovernanceRet("", nil)
 		}
 	}
 
@@ -260,7 +265,8 @@ func (am *AppchainManager) UpdateAppchain(id, docAddr, docHash, validators strin
 	if ok, data := am.AppchainManager.ChangeStatus(id, string(governance.EventUpdate), nil); !ok {
 		return boltvm.Error(string(data))
 	}
-	return boltvm.Success(res.Result)
+
+	return getGovernanceRet(string(res.Result), nil)
 }
 
 // FreezeAppchain freezes available appchain
@@ -310,7 +316,7 @@ func (am *AppchainManager) FreezeAppchain(id string) *boltvm.Response {
 		return boltvm.Error(string(data))
 	}
 
-	return boltvm.Success(res.Result)
+	return getGovernanceRet(string(res.Result), nil)
 }
 
 // ActivateAppchain updates freezing appchain
@@ -361,7 +367,8 @@ func (am *AppchainManager) ActivateAppchain(id string) *boltvm.Response {
 	if ok, data := am.AppchainManager.ChangeStatus(id, string(governance.EventActivate), nil); !ok {
 		return boltvm.Error(string(data))
 	}
-	return boltvm.Success(res.Result)
+
+	return getGovernanceRet(string(res.Result), nil)
 }
 
 // LogoutAppchain updates available appchain
@@ -410,7 +417,8 @@ func (am *AppchainManager) LogoutAppchain(id string) *boltvm.Response {
 	if ok, data := am.AppchainManager.ChangeStatus(id, string(governance.EventLogout), nil); !ok {
 		return boltvm.Error(string(data))
 	}
-	return boltvm.Success(res.Result)
+
+	return getGovernanceRet(string(res.Result), nil)
 }
 
 // CountAvailableAppchains counts all available appchains

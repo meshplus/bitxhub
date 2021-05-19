@@ -197,6 +197,7 @@ func TestAppchainManager_Manager(t *testing.T) {
 	mockStub.EXPECT().CurrentCaller().Return(constant.GovernanceContractAddr.String()).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "CheckPermission", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("")).Times(1)
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "CheckPermission", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.RuleManagerContractAddr.String(), "DefaultRule", gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	//mockStub.EXPECT().CrossInvoke(constant.MethodRegistryContractAddr.String(), "AuditApply",
 	//	gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil))
 	//mockStub.EXPECT().CrossInvoke(constant.MethodRegistryContractAddr.String(), "Register",

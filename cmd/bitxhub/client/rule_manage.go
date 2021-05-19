@@ -140,8 +140,10 @@ func getRulesList(ctx *cli.Context) error {
 
 	if receipt.IsSuccess() {
 		rules := make([]*ruleMgr.Rule, 0)
-		if err := json.Unmarshal(receipt.Ret, &rules); err != nil {
-			return fmt.Errorf("unmarshal rules error: %w", err)
+		if receipt.Ret != nil {
+			if err := json.Unmarshal(receipt.Ret, &rules); err != nil {
+				return fmt.Errorf("unmarshal rules error: %w", err)
+			}
 		}
 		printRule(rules)
 	} else {
@@ -153,7 +155,7 @@ func getRulesList(ctx *cli.Context) error {
 func getAvailableRuleAddress(ctx *cli.Context) error {
 	id := ctx.String("id")
 
-	receipt, err := invokeBVMContract(ctx, constant.RuleManagerContractAddr.String(), "GetRuleAddress", pb.String(id))
+	receipt, err := invokeBVMContract(ctx, constant.RuleManagerContractAddr.String(), "GetAvailableRuleAddr", pb.String(id))
 	if err != nil {
 		return err
 	}
