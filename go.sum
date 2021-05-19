@@ -37,8 +37,6 @@ github.com/BurntSushi/toml v0.3.1 h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/DATA-DOG/go-sqlmock v1.3.3/go.mod h1:f/Ixk793poVmq4qj/V1dPUg2JEAKC73Q5eFN3EC/SaM=
-github.com/Knetic/govaluate v3.0.0+incompatible h1:7o6+MAPhYTCF0+fdvoz1xDedhRb4f6s9Tn1Tt7/WTEg=
-github.com/Knetic/govaluate v3.0.0+incompatible/go.mod h1:r7JcOSlj0wfOMncg0iLm8Leh48TZaKVeNIfJntJ2wa0=
 github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible h1:1G1pk05UrOh0NlF1oeaaix1x8XzrfjIDK47TY0Zehcw=
 github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible/go.mod h1:r7JcOSlj0wfOMncg0iLm8Leh48TZaKVeNIfJntJ2wa0=
 github.com/Kubuxu/go-os-helper v0.0.1/go.mod h1:N8B+I7vPCT80IcP58r50u4+gEEcsZETFUpAzWW2ep1Y=
@@ -850,13 +848,10 @@ github.com/mattn/go-tty v0.0.0-20180907095812-13ff1204f104/go.mod h1:XPvLUNfbS4f
 github.com/mattn/goveralls v0.0.2/go.mod h1:8d1ZMHsd7fW6IRPKQh46F2WRpyib5/X4FOpevwGNQEw=
 github.com/matttproud/golang_protobuf_extensions v1.0.1 h1:4hp9jkHxhMHkqkrB3Ix0jegS5sx/RkqARlsWZ6pIwiU=
 github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5Ld7szi9bcBfOoFv/3dc6xSMkL2PC0=
-github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20210318102029-494ee3060b0c/go.mod h1:G19Wrz1u66UmwaES/iLM19jmlv3APAZ5qfYOlNnIIZw=
-github.com/meshplus/bitxhub-core v1.3.1-0.20210511104648-895849c327f1 h1:5CfGeyGw/jBaFKS6SyQz3PK4eHnnSoa9sl/uzgs8P5U=
-github.com/meshplus/bitxhub-core v1.3.1-0.20210511104648-895849c327f1/go.mod h1:e7n8Zb/eL6jBJRVgx+/19FTI8W1pB0qbxcbdIcFZ9a8=
+github.com/meshplus/bitxhub-core v1.3.1-0.20210521061730-5a91ce138879 h1:Vpp0CckoH9oANYAGMoT+VVaT8VBaVFlC1R81fud+xkU=
+github.com/meshplus/bitxhub-core v1.3.1-0.20210521061730-5a91ce138879/go.mod h1:e7n8Zb/eL6jBJRVgx+/19FTI8W1pB0qbxcbdIcFZ9a8=
 github.com/meshplus/bitxhub-kit v1.1.1 h1:vkPO88oA3+Kpc0N8lIgfj/U52KBuI+633hPbMYt1xm8=
 github.com/meshplus/bitxhub-kit v1.1.1/go.mod h1:r4l4iqn0RPJreb/OmoYKfjCjQJrXpZX++6Qc31VG/1k=
-github.com/meshplus/bitxhub-kit v1.1.2-0.20201021105954-468d0a9d7957/go.mod h1:r4l4iqn0RPJreb/OmoYKfjCjQJrXpZX++6Qc31VG/1k=
-github.com/meshplus/bitxhub-kit v1.1.2-0.20201023030558-9f36554d5d5d/go.mod h1:r4l4iqn0RPJreb/OmoYKfjCjQJrXpZX++6Qc31VG/1k=
 github.com/meshplus/bitxhub-kit v1.1.2-0.20201203072410-8a0383a6870d h1:J9tzTNf29mR0r97An3KoAtZQYlwpNhlMItWKyzKJLHU=
 github.com/meshplus/bitxhub-kit v1.1.2-0.20201203072410-8a0383a6870d/go.mod h1:KR7ZlXhII9n0Bu8viaZTScvXCYn0MCQnYlsTvHPp0XA=
 github.com/meshplus/bitxhub-kit v1.1.2-0.20210112075018-319e668d6359 h1:GdgS14bnCF4b/a5zhQi2wlu92pHc9cfl6A1HcbO7zmE=
@@ -864,7 +859,6 @@ github.com/meshplus/bitxhub-kit v1.1.2-0.20210112075018-319e668d6359/go.mod h1:K
 github.com/meshplus/bitxhub-kit v1.2.0 h1:lG6vyRD14bPoQFNU8ygmgzMXAy4xDlEueJyM6vShndo=
 github.com/meshplus/bitxhub-kit v1.2.0/go.mod h1:vGTKDkCAU7/IlirT6tlq6BMnCpY9UbfrrwGDy6foQIg=
 github.com/meshplus/bitxhub-model v1.1.1/go.mod h1:lUl9vPZXM9tP+B0ABRW/2eOW/6KCmjFTdoiTj5Vut/A=
-github.com/meshplus/bitxhub-model v1.1.2-0.20201021152621-0b3c17c54b23/go.mod h1:4qWBZx5wv7WZzUqiuBsbkQqQ2Ju8aOFpsoNpBBNy8Us=
 github.com/meshplus/bitxhub-model v1.1.2-0.20210409090411-de23bd385c5f/go.mod h1:x3H+TL24wcByzHegenLfs+5PQkQGNsk8eCm31QJMa+Q=
 github.com/meshplus/bitxhub-model v1.2.1-0.20210511081145-6ae7a279e2f0 h1:6+Ueje0ghLEOgY/T6uIlTffNGjApM/1/n2FrAdmHBKw=
 github.com/meshplus/bitxhub-model v1.2.1-0.20210511081145-6ae7a279e2f0/go.mod h1:2zFpbwQ/2y7JiTCsnLYSa3XTF1jTz0ElsQJhUksj2EE=

@@ -3,11 +3,13 @@ package tester
 import (
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"time"
 
+	"github.com/meshplus/bitxhub-core/governance"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-model/constant"
@@ -87,8 +89,11 @@ func (suite *Interchain) TestHandleIBTP() {
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k1Nonce++
-	id1 := gjson.Get(string(ret.Ret), "chain_id").String()
-	proposalId1 := gjson.Get(string(ret.Ret), "proposal_id").String()
+	gRet := &governance.GovernanceResult{}
+	err = json.Unmarshal(ret.Ret, gRet)
+	suite.Require().Nil(err)
+	id1 := string(gRet.Extra)
+	proposalId1 := gRet.ProposalID
 
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(id1))
 	suite.Require().Nil(err)
@@ -139,8 +144,10 @@ func (suite *Interchain) TestHandleIBTP() {
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess())
 	k2Nonce++
-	id2 := gjson.Get(string(ret.Ret), "chain_id").String()
-	proposalId2 := gjson.Get(string(ret.Ret), "proposal_id").String()
+	err = json.Unmarshal(ret.Ret, gRet)
+	suite.Require().Nil(err)
+	id2 := string(gRet.Extra)
+	proposalId2 := gRet.ProposalID
 	fmt.Printf("appchain id 2 is %s\n", id2)
 	fmt.Printf("proposal id is %s\n", proposalId2)
 
@@ -185,11 +192,11 @@ func (suite *Interchain) TestHandleIBTP() {
 
 	// register rule
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(),
-		"BindRule", pb.String(string(bitxid.DID(did).GetChainDID())), pb.String(addr.String()))
+		"RegisterRule", pb.String(string(bitxid.DID(did).GetChainDID())), pb.String(addr.String()))
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess())
 	k1Nonce++
-	proposalRuleId := string(ret.Ret)
+	proposalRuleId := gjson.Get(string(ret.Ret), "proposal_id").String()
 
 	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalRuleId),
@@ -295,8 +302,11 @@ func (suite *Interchain) TestGetIBTPByID() {
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k1Nonce++
-	id1 := gjson.Get(string(ret.Ret), "chain_id").String()
-	proposalId1 := gjson.Get(string(ret.Ret), "proposal_id").String()
+	gRet := &governance.GovernanceResult{}
+	err = json.Unmarshal(ret.Ret, gRet)
+	suite.Require().Nil(err)
+	id1 := string(gRet.Extra)
+	proposalId1 := gRet.ProposalID
 
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(id1))
 	suite.Require().Nil(err)
@@ -347,8 +357,10 @@ func (suite *Interchain) TestGetIBTPByID() {
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k2Nonce++
-	id2 := gjson.Get(string(ret.Ret), "chain_id").String()
-	proposalId2 := gjson.Get(string(ret.Ret), "proposal_id").String()
+	err = json.Unmarshal(ret.Ret, gRet)
+	suite.Require().Nil(err)
+	id2 := string(gRet.Extra)
+	proposalId2 := gRet.ProposalID
 
 	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(id2))
 	suite.Require().Nil(err)
@@ -390,10 +402,10 @@ func (suite *Interchain) TestGetIBTPByID() {
 
 	// register rule
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(),
-		"BindRule", pb.String(id1), pb.String(addr.String()))
+		"RegisterRule", pb.String(id1), pb.String(addr.String()))
 	suite.Require().Nil(err)
 	k1Nonce++
-	proposalRuleId := string(ret.Ret)
+	proposalRuleId := gjson.Get(string(ret.Ret), "proposal_id").String()
 
 	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalRuleId),
@@ -512,8 +524,11 @@ func (suite *Interchain) TestInterchain() {
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k1Nonce++
-	id1 := gjson.Get(string(ret.Ret), "chain_id").String()
-	proposalId1 := gjson.Get(string(ret.Ret), "proposal_id").String()
+	gRet := &governance.GovernanceResult{}
+	err = json.Unmarshal(ret.Ret, gRet)
+	suite.Require().Nil(err)
+	id1 := string(gRet.Extra)
+	proposalId1 := gRet.ProposalID
 
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(id1))
 	suite.Require().Nil(err)

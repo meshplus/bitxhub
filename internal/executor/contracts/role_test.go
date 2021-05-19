@@ -52,9 +52,13 @@ func TestRole_IsAdmin(t *testing.T) {
 	mockStub := mock_stub.NewMockStub(mockCtl)
 
 	admins := []*repo.Admin{
-		&repo.Admin{
+		{
 			Address: "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013",
 			Weight:  1,
+		},
+		{
+			Address: "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013",
+			Weight:  2,
 		},
 	}
 
@@ -67,6 +71,14 @@ func TestRole_IsAdmin(t *testing.T) {
 	assert.Equal(t, "true", string(res.Result))
 
 	res = im.IsAdmin(types.NewAddress([]byte{2}).String())
+	assert.True(t, res.Ok)
+	assert.Equal(t, "false", string(res.Result))
+
+	res = im.IsSuperAdmin(admins[1].Address)
+	assert.True(t, res.Ok)
+	assert.Equal(t, "true", string(res.Result))
+
+	res = im.IsSuperAdmin(types.NewAddress([]byte{2}).String())
 	assert.True(t, res.Ok)
 	assert.Equal(t, "false", string(res.Result))
 }

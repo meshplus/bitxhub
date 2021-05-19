@@ -8,6 +8,7 @@ import (
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/tidwall/gjson"
 	"github.com/urfave/cli"
 )
 
@@ -85,7 +86,8 @@ func freezeAppchain(ctx *cli.Context) error {
 	}
 
 	if receipt.IsSuccess() {
-		color.Green("proposal id is %s", string(receipt.Ret))
+		proposalId := gjson.Get(string(receipt.Ret), "proposal_id").String()
+		color.Green("proposal id is %s", proposalId)
 	} else {
 		color.Red("freeze appchain error: %s\n", string(receipt.Ret))
 	}
@@ -101,7 +103,8 @@ func activateAppchain(ctx *cli.Context) error {
 	}
 
 	if receipt.IsSuccess() {
-		color.Green("proposal id is %s", string(receipt.Ret))
+		proposalId := gjson.Get(string(receipt.Ret), "proposal_id").String()
+		color.Green("proposal id is %s", proposalId)
 	} else {
 		color.Red("activate appchain error: %s\n", string(receipt.Ret))
 	}
