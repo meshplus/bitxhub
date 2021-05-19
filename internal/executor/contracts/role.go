@@ -23,6 +23,9 @@ func (r *Role) GetRole() *boltvm.Response {
 
 	for _, admin := range admins {
 		if admin.Address == r.Caller() {
+			if admin.Weight == 2 {
+				return boltvm.Success([]byte("superAdmin"))
+			}
 			return boltvm.Success([]byte("admin"))
 		}
 	}
@@ -33,6 +36,19 @@ func (r *Role) GetRole() *boltvm.Response {
 	}
 
 	return boltvm.Success([]byte("appchain_admin"))
+}
+
+func (r *Role) IsSuperAdmin(address string) *boltvm.Response {
+	var admins []*repo.Admin
+	r.GetObject(adminRolesKey, &admins)
+
+	for _, admin := range admins {
+		if admin.Address == address && admin.Weight == 2 {
+			return boltvm.Success([]byte(strconv.FormatBool(true)))
+		}
+	}
+
+	return boltvm.Success([]byte(strconv.FormatBool(false)))
 }
 
 func (r *Role) IsAdmin(address string) *boltvm.Response {
