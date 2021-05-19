@@ -199,8 +199,12 @@ func (am *AppchainManager) UpdateAppchain(id, docAddr, docHash, validators strin
 		return boltvm.Error(string(data))
 	}
 
-	pubKeyStr := gjson.Get(string(data), "public_key").String()
-	addr, err := getAddr(pubKeyStr)
+	oldChainInfo := &appchainMgr.Appchain{}
+	if err := json.Unmarshal(data, oldChainInfo); err != nil {
+		return boltvm.Error(err.Error())
+	}
+
+	addr, err := getAddr(oldChainInfo.PublicKey)
 	if err != nil {
 		return boltvm.Error("get addr error: " + err.Error())
 	}
@@ -230,6 +234,15 @@ func (am *AppchainManager) UpdateAppchain(id, docAddr, docHash, validators strin
 	data, err = json.Marshal(chain)
 	if err != nil {
 		return boltvm.Error(err.Error())
+	}
+
+	if oldChainInfo.Validators == chain.Validators {
+		res := responseWrapper(am.AppchainManager.Update(data))
+		if !res.Ok {
+			return res
+		} else {
+			return boltvm.Success([]byte("(this governance action does not require a proposal)"))
+		}
 	}
 
 	res = am.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
