@@ -276,7 +276,7 @@ func getProposalsByConditions(ctx *cli.Context, keyPath string, menthod string, 
 
 func printProposal(proposals []contracts.Proposal) {
 	var table [][]string
-	table = append(table, []string{"Id", "ManagedObjectId", "Type", "EventType", "Status", "Approve/Reject", "Electorate/Threshold", "Description", "EndReason"})
+	table = append(table, []string{"Id", "ManagedObjectId", "Type", "EventType", "Status", "A/R", "E/T", "Special/Super", "Description", "EndReason"})
 
 	for _, pro := range proposals {
 		table = append(table, []string{
@@ -287,12 +287,17 @@ func printProposal(proposals []contracts.Proposal) {
 			string(pro.Status),
 			strconv.Itoa(int(pro.ApproveNum)) + "/" + strconv.Itoa(int(pro.AgainstNum)),
 			strconv.Itoa(int(pro.ElectorateNum)) + "/" + strconv.Itoa(int(pro.ThresholdNum)),
+			strconv.FormatBool(pro.IsSpecial) + "/" + strconv.FormatBool(pro.IsSuperAdminVoted),
 			pro.Des,
 			pro.EndReason,
 		})
 	}
 
 	PrintTable(table, true)
+	fmt.Println("========================================================================================")
+	fmt.Println("* A/R：approve num / reject num")
+	fmt.Println("* E/T：the total number of electorate / the minimum threshold for votes to take effect")
+	fmt.Println("* Special/Super：is special proposal / is super admin voted")
 }
 
 func PrintTable(rows [][]string, header bool) {
