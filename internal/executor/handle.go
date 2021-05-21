@@ -11,6 +11,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	types2 "github.com/meshplus/eth-kit/types"
+
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
 
 	"github.com/cbergoon/merkletree"
@@ -19,7 +21,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/meshplus/bitxhub-core/agency"
-	vm1 "github.com/meshplus/bitxhub-kit/evm"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/ledger"
@@ -28,6 +29,7 @@ import (
 	"github.com/meshplus/bitxhub/pkg/vm/boltvm"
 	"github.com/meshplus/bitxhub/pkg/vm/wasm"
 	"github.com/meshplus/bitxhub/pkg/vm/wasm/vmledger"
+	vm1 "github.com/meshplus/eth-kit/evm"
 	"github.com/sirupsen/logrus"
 )
 
@@ -311,8 +313,8 @@ func (exec *BlockExecutor) applyTransaction(i int, tx pb.Transaction, invalidRea
 			receipt.Ret = ret
 		}
 		return receipt
-	case *pb.EthTransaction:
-		ethTx := tx.(*pb.EthTransaction)
+	case *types2.EthTransaction:
+		ethTx := tx.(*types2.EthTransaction)
 		return exec.applyEthTransaction(i, ethTx)
 	}
 
@@ -371,7 +373,7 @@ func (exec *BlockExecutor) applyBxhTransaction(i int, tx *pb.BxhTransaction, inv
 	}
 }
 
-func (exec *BlockExecutor) applyEthTransaction(i int, tx *pb.EthTransaction) *pb.Receipt {
+func (exec *BlockExecutor) applyEthTransaction(i int, tx *types2.EthTransaction) *pb.Receipt {
 	receipt := &pb.Receipt{
 		Version: tx.GetVersion(),
 		TxHash:  tx.GetHash(),

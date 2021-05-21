@@ -3,9 +3,9 @@ package ledger
 import (
 	"math/big"
 
-	vm "github.com/meshplus/bitxhub-kit/evm"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
+	vm "github.com/meshplus/eth-kit/evm"
 )
 
 //go:generate mockgen -destination mock_ledger/mock_ledger.go -package mock_ledger -source types.go

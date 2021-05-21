@@ -3,11 +3,13 @@ package ledger
 import (
 	"math/big"
 
+	types2 "github.com/meshplus/eth-kit/types"
+
 	"github.com/ethereum/go-ethereum/common"
 	etherTypes "github.com/ethereum/go-ethereum/core/types"
-	vm "github.com/meshplus/bitxhub-kit/evm"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
+	vm "github.com/meshplus/eth-kit/evm"
 )
 
 func (l *ChainLedger) CreateEVMAccount(addr common.Address) {
@@ -204,7 +206,7 @@ func CreateBloom(receipts EvmReceipts) *types.Bloom {
 	return &bin
 }
 
-func NewMessage(tx *pb.EthTransaction) etherTypes.Message {
+func NewMessage(tx *types2.EthTransaction) etherTypes.Message {
 	from := common.BytesToAddress(tx.GetFrom().Bytes())
 	var to *common.Address
 	if tx.GetTo() != nil {
@@ -216,7 +218,7 @@ func NewMessage(tx *pb.EthTransaction) etherTypes.Message {
 	gas := tx.GetGas()
 	gasPrice := tx.GetGasPrice()
 	data := tx.GetPayload()
-	accessList := tx.AccessList()
+	accessList := tx.GetInner().GetAccessList()
 
 	checkNonce := true
 	if v, _, _ := tx.GetRawSignature(); v == nil {
