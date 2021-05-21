@@ -850,8 +850,8 @@ github.com/mattn/goveralls v0.0.2/go.mod h1:8d1ZMHsd7fW6IRPKQh46F2WRpyib5/X4FOpe
 github.com/matttproud/golang_protobuf_extensions v1.0.1 h1:4hp9jkHxhMHkqkrB3Ix0jegS5sx/RkqARlsWZ6pIwiU=
 github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5Ld7szi9bcBfOoFv/3dc6xSMkL2PC0=
 github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20210318102029-494ee3060b0c/go.mod h1:G19Wrz1u66UmwaES/iLM19jmlv3APAZ5qfYOlNnIIZw=
-github.com/meshplus/bitxhub-core v1.3.1-0.20210521124550-cf88d0ce5a38 h1:bdINehhEv7wvfAhnGeiZEgMXqjpIh8xjYhn08T2Xo8g=
-github.com/meshplus/bitxhub-core v1.3.1-0.20210521124550-cf88d0ce5a38/go.mod h1:e7n8Zb/eL6jBJRVgx+/19FTI8W1pB0qbxcbdIcFZ9a8=
+github.com/meshplus/bitxhub-core v1.3.1-0.20210524070912-6b801d9eb3c9 h1:BD0OZZBSYnU5cq+INRhyAQdFEtxNS0i94aaOesxToIg=
+github.com/meshplus/bitxhub-core v1.3.1-0.20210524070912-6b801d9eb3c9/go.mod h1:e7n8Zb/eL6jBJRVgx+/19FTI8W1pB0qbxcbdIcFZ9a8=
 github.com/meshplus/bitxhub-kit v1.1.1 h1:vkPO88oA3+Kpc0N8lIgfj/U52KBuI+633hPbMYt1xm8=
 github.com/meshplus/bitxhub-kit v1.1.1/go.mod h1:r4l4iqn0RPJreb/OmoYKfjCjQJrXpZX++6Qc31VG/1k=
 github.com/meshplus/bitxhub-kit v1.1.2-0.20201021105954-468d0a9d7957/go.mod h1:r4l4iqn0RPJreb/OmoYKfjCjQJrXpZX++6Qc31VG/1k=

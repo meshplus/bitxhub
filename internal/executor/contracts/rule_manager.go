@@ -59,14 +59,11 @@ func (rm *RuleManager) Manage(eventTyp string, proposalResult string, extra []by
 	case string(governance.EventUpdate):
 		// get master
 		masterRule := &ruleMgr.Rule{}
-		ok, data := rm.RuleManager.HasMaster(rule.ChainId)
-		if !ok {
-			return boltvm.Error("has master  error: " + string(data))
-		}
-		if strconv.FormatBool(true) == string(data) {
+		hasMaster := rm.RuleManager.HasMaster(rule.ChainId)
+		if hasMaster {
 			ok, masterData := rm.RuleManager.GetMaster(rule.ChainId)
 			if !ok {
-				return boltvm.Error("get master error: " + string(data))
+				return boltvm.Error("get master error: " + string(masterData))
 			}
 			if err := json.Unmarshal(masterData, &masterRule); err != nil {
 				return boltvm.Error("unmarshal masterRule error:" + err.Error())
@@ -257,14 +254,11 @@ func (rm *RuleManager) UpdateMasterRule(chainId string, newMasterruleAddress str
 	}
 
 	// 7. operate master rule
-	ok, data := rm.RuleManager.HasMaster(chainId)
-	if !ok {
-		return boltvm.Error("has master  error: " + string(data))
-	}
-	if strconv.FormatBool(true) == string(data) {
+	hasMaster := rm.RuleManager.HasMaster(chainId)
+	if hasMaster {
 		ok, masterData := rm.RuleManager.GetMaster(chainId)
 		if !ok {
-			return boltvm.Error("get master error: " + string(data))
+			return boltvm.Error("get master error: " + string(masterData))
 		}
 		masterRuleAddress := gjson.Get(string(masterData), "address").String()
 		if ok, data := rm.RuleManager.ChangeStatus(masterRuleAddress, string(governance.EventUnbind), []byte(chainId)); !ok {
