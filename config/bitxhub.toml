@@ -67,16 +67,16 @@ solo = false
   dider = "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013"
   [[genesis.admins]]
     address = "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013"
-    weight = 2 # 1：General Administrator 2: Super Administrator (Genesis Administrator)
+    weight = 1
   [[genesis.admins]]
     address = "0x79a1215469FaB6f9c63c1816b45183AD3624bE34"
-    weight = 2
+    weight = 1
   [[genesis.admins]]
     address = "0x97c8B516D19edBf575D72a172Af7F418BE498C37"
-    weight = 2
+    weight = 1
   [[genesis.admins]]
     address = "0xc0Ff2e0b3189132D815b8eb325bE17285AC898f8"
-    weight = 2
+    weight = 1
   [genesis.strategy]
     AppchainMgr = "SimpleMajority"
     RuleMgr = "SimpleMajority"

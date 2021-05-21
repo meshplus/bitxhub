@@ -24,12 +24,10 @@ type ProposalStatus string
 const (
 	PROPOSAL_PREFIX = "proposal-"
 
-	AppchainMgr         ProposalType = "AppchainMgr"
-	RuleMgr             ProposalType = "RuleMgr"
-	NodeMgr             ProposalType = "NodeMgr"
-	ServiceMgr          ProposalType = "ServiceMgr"
-	RoleMgr             ProposalType = "RoleMgr"
-	ProposalStrategyMgr ProposalType = "ProposalStrategyMgr"
+	AppchainMgr ProposalType = "AppchainMgr"
+	RuleMgr     ProposalType = "RuleMgr"
+	NodeMgr     ProposalType = "NodeMgr"
+	ServiceMgr  ProposalType = "ServiceMgr"
 
 	PROPOSED ProposalStatus = "proposed"
 	APPOVED  ProposalStatus = "approve"
@@ -80,30 +78,17 @@ type Proposal struct {
 	Des    string         `json:"des"`
 	Typ    ProposalType   `json:"typ"`
 	Status ProposalStatus `json:"status"`
-	ObjId  string         `json:"obj_id"`
+	ObjId  string         `json:"obj_id`
 	// ballot information: voter address -> ballot
-	BallotMap         map[string]Ballot    `json:"ballot_map"`
-	ApproveNum        uint64               `json:"approve_num"`
-	AgainstNum        uint64               `json:"against_num"`
-	ElectorateNum     uint64               `json:"electorate_num"`
-	ThresholdNum      uint64               `json:"threshold_num"`
-	EventType         governance.EventType `json:"event_type"`
-	EndReason         string               `json:"end_reason"`
-	LockProposalId    string               `json:"lock_proposal_id"`
-	IsSpecial         bool                 `json:"is_special"`
-	IsSuperAdminVoted bool                 `json:"is_super_admin_voted"`
-	Extra             []byte               `json:"extra"`
-}
-
-var SpecialProposalEventType = []governance.EventType{
-	governance.EventFreeze,
-	governance.EventActivate,
-	governance.EventLogout,
-}
-
-var SpecialProposalProposalType = []ProposalType{
-	RoleMgr,
-	ProposalStrategyMgr,
+	BallotMap      map[string]Ballot    `json:"ballot_map"`
+	ApproveNum     uint64               `json:"approve_num"`
+	AgainstNum     uint64               `json:"against_num"`
+	ElectorateNum  uint64               `json:"electorate_num"`
+	ThresholdNum   uint64               `json:"threshold_num"`
+	EventType      governance.EventType `json:"event_type"`
+	EndReason      string               `json:"end_reason"`
+	LockProposalId string               `json:"lock_proposal_id"`
+	Extra          []byte               `json:"extra"`
 }
 
 func (g *Governance) SubmitProposal(from, eventTyp, des, typ, objId string, extra []byte) *boltvm.Response {
@@ -146,41 +131,24 @@ func (g *Governance) SubmitProposal(from, eventTyp, des, typ, objId string, extr
 	}
 
 	p := &Proposal{
-		Id:                from + "-" + strconv.Itoa(len(ret)),
-		EventType:         governance.EventType(eventTyp),
-		Des:               des,
-		Typ:               ProposalType(typ),
-		Status:            PROPOSED,
-		ObjId:             objId,
-		BallotMap:         make(map[string]Ballot, 0),
-		ApproveNum:        0,
-		AgainstNum:        0,
-		ElectorateNum:     en,
-		ThresholdNum:      tn,
-		LockProposalId:    lockPId,
-		IsSuperAdminVoted: false,
-		Extra:             extra,
+		Id:             from + "-" + strconv.Itoa(len(ret)),
+		EventType:      governance.EventType(eventTyp),
+		Des:            des,
+		Typ:            ProposalType(typ),
+		Status:         PROPOSED,
+		ObjId:          objId,
+		BallotMap:      make(map[string]Ballot, 0),
+		ApproveNum:     0,
+		AgainstNum:     0,
+		ElectorateNum:  en,
+		ThresholdNum:   tn,
+		LockProposalId: lockPId,
+		Extra:          extra,
 	}
-	p.IsSpecial = isSpecialProposal(p)
 
 	g.AddObject(ProposalKey(p.Id), *p)
 
 	return boltvm.Success([]byte(p.Id))
-}
-
-func isSpecialProposal(p *Proposal) bool {
-	for _, pt := range SpecialProposalProposalType {
-		if pt == p.Typ {
-			return true
-		}
-	}
-	for _, et := range SpecialProposalEventType {
-		if et == p.EventType {
-			return true
-		}
-	}
-
-	return false
 }
 
 func (g *Governance) lockLowPriorityProposal(objId, eventTyp string) (string, error) {
@@ -218,7 +186,7 @@ func (g *Governance) getElectorateNum(from string) (uint64, error) {
 	electorateNum := uint64(0)
 	for _, admin := range admins {
 		if from != admin.Address {
-			electorateNum++
+			electorateNum = electorateNum + admin.Weight
 		}
 	}
 	return electorateNum, nil
@@ -719,15 +687,12 @@ func (g *Governance) setVote(p *Proposal, addr string, approve string, reason st
 		Num:       uint64(num),
 		Reason:    reason,
 	}
-	if 2 == num {
-		p.IsSuperAdminVoted = true
-	}
 	p.BallotMap[addr] = ballot
 	switch approve {
 	case BallotApprove:
-		p.ApproveNum++
+		p.ApproveNum = p.ApproveNum + uint64(num)
 	case BallotReject:
-		p.AgainstNum++
+		p.AgainstNum = p.AgainstNum + uint64(num)
 	default:
 		return fmt.Errorf("the info of vote should be approve or reject")
 	}
@@ -746,13 +711,6 @@ func (g *Governance) countVote(p *Proposal) (bool, error) {
 		ps.Typ = SimpleMajority
 		ps.ParticipateThreshold = 0.75
 		g.SetObject(string(p.Typ), ps)
-	}
-
-	// Special types of proposals require super administrator voting
-	if p.IsSpecial {
-		if !p.IsSuperAdminVoted {
-			return false, nil
-		}
 	}
 
 	// Determine whether the participation threshold for the strategy has been met
@@ -908,16 +866,4 @@ func checkStrategyType(pst ProposalStrategyType) error {
 		return fmt.Errorf("illegal proposal strategy type")
 	}
 	return nil
-}
-
-func getGovernanceRet(proposalID string, extra []byte) *boltvm.Response {
-	res1 := governance.GovernanceResult{
-		ProposalID: proposalID,
-		Extra:      extra,
-	}
-	resData, err := json.Marshal(res1)
-	if err != nil {
-		return boltvm.Error(err.Error())
-	}
-	return boltvm.Success(resData)
 }

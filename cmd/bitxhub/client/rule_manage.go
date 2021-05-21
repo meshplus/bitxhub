@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/fatih/color"
 	ruleMgr "github.com/meshplus/bitxhub-core/rule-mgr"
+
+	"github.com/fatih/color"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/tidwall/gjson"
 	"github.com/urfave/cli"
 )
 
@@ -140,10 +140,8 @@ func getRulesList(ctx *cli.Context) error {
 
 	if receipt.IsSuccess() {
 		rules := make([]*ruleMgr.Rule, 0)
-		if receipt.Ret != nil {
-			if err := json.Unmarshal(receipt.Ret, &rules); err != nil {
-				return fmt.Errorf("unmarshal rules error: %w", err)
-			}
+		if err := json.Unmarshal(receipt.Ret, &rules); err != nil {
+			return fmt.Errorf("unmarshal rules error: %w", err)
 		}
 		printRule(rules)
 	} else {
@@ -155,7 +153,7 @@ func getRulesList(ctx *cli.Context) error {
 func getAvailableRuleAddress(ctx *cli.Context) error {
 	id := ctx.String("id")
 
-	receipt, err := invokeBVMContract(ctx, constant.RuleManagerContractAddr.String(), "GetAvailableRuleAddr", pb.String(id))
+	receipt, err := invokeBVMContract(ctx, constant.RuleManagerContractAddr.String(), "GetRuleAddress", pb.String(id))
 	if err != nil {
 		return err
 	}
@@ -199,8 +197,7 @@ func bindRule(ctx *cli.Context) error {
 	}
 
 	if receipt.IsSuccess() {
-		proposalId := gjson.Get(string(receipt.Ret), "proposal_id").String()
-		color.Green("proposal id is %s", proposalId)
+		color.Green("proposal id is %s", string(receipt.Ret))
 	} else {
 		color.Red("bind rule error: %s\n", string(receipt.Ret))
 	}
@@ -217,8 +214,7 @@ func unbindRule(ctx *cli.Context) error {
 	}
 
 	if receipt.IsSuccess() {
-		proposalId := gjson.Get(string(receipt.Ret), "proposal_id").String()
-		color.Green("proposal id is %s", proposalId)
+		color.Green("proposal id is %s", string(receipt.Ret))
 	} else {
 		color.Red("unbind rule error: %s\n", string(receipt.Ret))
 	}
@@ -235,8 +231,7 @@ func freezeRule(ctx *cli.Context) error {
 	}
 
 	if receipt.IsSuccess() {
-		proposalId := gjson.Get(string(receipt.Ret), "proposal_id").String()
-		color.Green("proposal id is %s", proposalId)
+		color.Green("proposal id is %s", string(receipt.Ret))
 	} else {
 		color.Red("freeze rule error: %s\n", string(receipt.Ret))
 	}
@@ -253,8 +248,7 @@ func activateRule(ctx *cli.Context) error {
 	}
 
 	if receipt.IsSuccess() {
-		proposalId := gjson.Get(string(receipt.Ret), "proposal_id").String()
-		color.Green("proposal id is %s", proposalId)
+		color.Green("proposal id is %s", string(receipt.Ret))
 	} else {
 		color.Red("activate rule error: %s\n", string(receipt.Ret))
 	}
