@@ -2,7 +2,6 @@
 SHELL := /bin/bash
 CURRENT_PATH = $(shell pwd)
 APP_NAME = bitxhub
-APP_VERSION = 1.6.0
 export GODEBUG=x509ignoreCN=0
 
 # build with verison infos
@@ -10,6 +9,11 @@ VERSION_DIR = github.com/meshplus/${APP_NAME}
 BUILD_DATE = $(shell date +%FT%T)
 GIT_COMMIT = $(shell git log --pretty=format:'%h' -n 1)
 GIT_BRANCH = $(shell git rev-parse --abbrev-ref HEAD)
+ifeq (${GIT_BRANCH},HEAD)
+  APP_VERSION = $(shell git describe --tags HEAD)
+else
+  APP_VERSION = dev
+endif
 
 GOLDFLAGS += -X "${VERSION_DIR}.BuildDate=${BUILD_DATE}"
 GOLDFLAGS += -X "${VERSION_DIR}.CurrentCommit=${GIT_COMMIT}"
@@ -83,7 +87,7 @@ buildent:
 
 ## make release: Build release before push
 release-binary:
-	@cd scripts && bash release_binary.sh '${APP_VERSION}'
+	@cd scripts && bash release_binary.sh
 
 mod:
 	sed "s?)?$(MODS)\n)?" go.mod

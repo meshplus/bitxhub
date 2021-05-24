@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/event"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/pkg/order"
@@ -53,7 +54,7 @@ func (n *Node) DelNode(delID uint64) error {
 	return nil
 }
 
-func (n *Node) Prepare(tx *pb.Transaction) error {
+func (n *Node) Prepare(tx pb.Transaction) error {
 	if err := n.Ready(); err != nil {
 		return err
 	}
@@ -84,6 +85,10 @@ func (n *Node) ReportState(height uint64, blockHash *types.Hash, txHashList []*t
 
 func (n *Node) Quorum() uint64 {
 	return 1
+}
+
+func (n *Node) SubscribeTxEvent(ch chan<- pb.Transactions) event.Subscription {
+	return n.mempool.SubscribeTxEvent(ch)
 }
 
 func NewNode(opts ...order.Option) (order.Order, error) {
@@ -143,7 +148,7 @@ func (n *Node) listenReadyBlock() {
 			case proposal := <-n.proposeC:
 				n.logger.WithFields(logrus.Fields{
 					"proposal_height": proposal.Height,
-					"tx_count":        len(proposal.TxList),
+					"tx_count":        len(proposal.TxList.Transactions),
 				}).Debugf("Receive proposal from mempool")
 
 				if proposal.Height != n.lastExec+1 {
@@ -159,8 +164,8 @@ func (n *Node) listenReadyBlock() {
 					},
 					Transactions: proposal.TxList,
 				}
-				localList := make([]bool, len(proposal.TxList))
-				for i := 0; i < len(proposal.TxList); i++ {
+				localList := make([]bool, len(proposal.TxList.Transactions))
+				for i := 0; i < len(proposal.TxList.Transactions); i++ {
 					localList[i] = true
 				}
 				executeEvent := &pb.CommitEvent{
@@ -184,7 +189,7 @@ func (n *Node) listenReadyBlock() {
 			if !n.batchMgr.IsBatchTimerActive() {
 				n.batchMgr.StartBatchTimer()
 			}
-			if batch := n.mempool.ProcessTransactions(txSet.TxList, true, true); batch != nil {
+			if batch := n.mempool.ProcessTransactions(txSet.Transactions, true, true); batch != nil {
 				n.batchMgr.StopBatchTimer()
 				n.proposeC <- batch
 			}

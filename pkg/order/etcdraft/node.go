@@ -11,6 +11,7 @@ import (
 
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/ethereum/go-ethereum/event"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/meshplus/bitxhub-kit/types"
@@ -205,7 +206,7 @@ func (n *Node) Stop() {
 }
 
 // Add the transaction into txpool and broadcast it to other nodes
-func (n *Node) Prepare(tx *pb.Transaction) error {
+func (n *Node) Prepare(tx pb.Transaction) error {
 	if err := n.Ready(); err != nil {
 		return err
 	}
@@ -253,6 +254,11 @@ func (n *Node) GetPendingNonceByAccount(account string) uint64 {
 // DelNode sends a delete vp request by given id.
 func (n *Node) DelNode(delID uint64) error {
 	return nil
+}
+
+// SubscribeTxEvent subscribes tx event
+func (n *Node) SubscribeTxEvent(events chan<- pb.Transactions) event.Subscription {
+	return n.mempool.SubscribeTxEvent(events)
 }
 
 // main work loop
@@ -326,7 +332,7 @@ func (n *Node) run() {
 			_ = n.peerMgr.Broadcast(pbMsg)
 
 			// 2. process transactions
-			n.processTransactions(txSet.TxList, true)
+			n.processTransactions(txSet.Transactions, true)
 
 		case state := <-n.stateC:
 			n.reportState(state)
@@ -335,7 +341,7 @@ func (n *Node) run() {
 			// check periodically if there are long-pending txs in mempool
 			rebroadcastTxs := n.mempool.GetTimeoutTransactions(n.checkInterval)
 			for _, txSlice := range rebroadcastTxs {
-				txSet := &raftproto.TxSlice{TxList: txSlice}
+				txSet := &pb.Transactions{Transactions: txSlice}
 				data, err := txSet.Marshal()
 				if err != nil {
 					n.logger.Errorf("Marshal failed, err: %s", err.Error())
@@ -417,7 +423,7 @@ func (n *Node) run() {
 	}
 }
 
-func (n *Node) processTransactions(txList []*pb.Transaction, isLocal bool) {
+func (n *Node) processTransactions(txList []pb.Transaction, isLocal bool) {
 	// leader node would check if this transaction triggered generating a batch or not
 	if n.isLeader() {
 		// start batch timer when this node receives the first transaction
@@ -514,7 +520,7 @@ func (n *Node) publishEntries(ents []raftpb.Entry) bool {
 func (n *Node) mint(requestBatch *raftproto.RequestBatch) {
 	n.logger.WithFields(logrus.Fields{
 		"height": requestBatch.Height,
-		"count":  len(requestBatch.TxList),
+		"count":  len(requestBatch.TxList.Transactions),
 	}).Debugln("block will be mint")
 	n.logger.Infof("======== Replica %d call execute, height=%d", n.id, requestBatch.Height)
 	block := &pb.Block{
@@ -526,8 +532,8 @@ func (n *Node) mint(requestBatch *raftproto.RequestBatch) {
 		Transactions: requestBatch.TxList,
 	}
 	// TODO (YH): refactor localLost
-	localList := make([]bool, len(requestBatch.TxList))
-	for i := 0; i < len(requestBatch.TxList); i++ {
+	localList := make([]bool, len(requestBatch.TxList.Transactions))
+	for i := 0; i < len(requestBatch.TxList.Transactions); i++ {
 		localList[i] = false
 	}
 	executeEvent := &pb.CommitEvent{
@@ -587,11 +593,11 @@ func (n *Node) processRaftCoreMsg(msg []byte) error {
 		return n.node.Step(context.Background(), *msg)
 
 	case raftproto.RaftMessage_BROADCAST_TX:
-		txSlice := &raftproto.TxSlice{}
+		txSlice := &pb.Transactions{}
 		if err := txSlice.Unmarshal(rm.Data); err != nil {
 			return err
 		}
-		n.processTransactions(txSlice.TxList, false)
+		n.processTransactions(txSlice.Transactions, false)
 
 	default:
 		return fmt.Errorf("unexpected raft message received")

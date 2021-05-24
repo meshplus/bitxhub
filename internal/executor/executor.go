@@ -2,11 +2,12 @@ package executor
 
 import (
 	"context"
-	"sort"
+	"math/big"
 	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/event"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/meshplus/bitxhub-core/agency"
 	"github.com/meshplus/bitxhub-core/validator"
 	"github.com/meshplus/bitxhub-kit/types"
@@ -17,6 +18,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/pkg/proof"
 	"github.com/meshplus/bitxhub/pkg/vm/boltvm"
+	vm "github.com/meshplus/eth-kit/evm"
 	"github.com/sirupsen/logrus"
 	"github.com/wasmerio/go-ext-wasm/wasmer"
 )
@@ -32,7 +34,7 @@ var _ Executor = (*BlockExecutor)(nil)
 type BlockExecutor struct {
 	ledger           ledger.Ledger
 	logger           logrus.FieldLogger
-	blockC           chan *pb.Block
+	blockC           chan *BlockWrapper
 	preBlockC        chan *pb.CommitEvent
 	persistC         chan *ledger.BlockData
 	ibtpVerify       proof.Verify
@@ -42,27 +44,32 @@ type BlockExecutor struct {
 	wasmInstances    map[string]wasmer.Instance
 	txsExecutor      agency.TxsExecutor
 	blockFeed        event.Feed
+	logsFeed         event.Feed
 	ctx              context.Context
 	cancel           context.CancelFunc
+
+	evm         *vm.EVM
+	evmChainCfg *params.ChainConfig
+	gasLimit    uint64
 }
 
 // New creates executor instance
-func New(chainLedger ledger.Ledger, logger logrus.FieldLogger, typ string) (*BlockExecutor, error) {
+func New(chainLedger ledger.Ledger, logger logrus.FieldLogger, typ string, gasLimit uint64) (*BlockExecutor, error) {
 	ibtpVerify := proof.New(chainLedger, logger)
-
-	ctx, cancel := context.WithCancel(context.Background())
 
 	txsExecutor, err := agency.GetExecutorConstructor(typ)
 	if err != nil {
 		return nil, err
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+
 	blockExecutor := &BlockExecutor{
 		ledger:           chainLedger,
 		logger:           logger,
 		ctx:              ctx,
 		cancel:           cancel,
-		blockC:           make(chan *pb.Block, blockChanNumber),
+		blockC:           make(chan *BlockWrapper, blockChanNumber),
 		preBlockC:        make(chan *pb.CommitEvent, blockChanNumber),
 		persistC:         make(chan *ledger.BlockData, persistChanNumber),
 		ibtpVerify:       ibtpVerify,
@@ -70,7 +77,12 @@ func New(chainLedger ledger.Ledger, logger logrus.FieldLogger, typ string) (*Blo
 		currentHeight:    chainLedger.GetChainMeta().Height,
 		currentBlockHash: chainLedger.GetChainMeta().BlockHash,
 		wasmInstances:    make(map[string]wasmer.Instance),
+		evmChainCfg:      newEVMChainCfg(),
+		gasLimit:         gasLimit,
 	}
+
+	blockExecutor.evm = newEvm(1, uint64(0), blockExecutor.evmChainCfg, blockExecutor.ledger.StateDB())
+
 	blockExecutor.txsExecutor = txsExecutor(blockExecutor.applyTx, registerBoltContracts, logger)
 
 	return blockExecutor, nil
@@ -87,6 +99,7 @@ func (exec *BlockExecutor) Start() error {
 	exec.logger.WithFields(logrus.Fields{
 		"height": exec.currentHeight,
 		"hash":   exec.currentBlockHash.String(),
+		"desc":   exec.txsExecutor.GetDescription(),
 	}).Infof("BlockExecutor started")
 
 	return nil
@@ -111,24 +124,16 @@ func (exec *BlockExecutor) SubscribeBlockEvent(ch chan<- events.ExecutedEvent) e
 	return exec.blockFeed.Subscribe(ch)
 }
 
-func (exec *BlockExecutor) ApplyReadonlyTransactions(txs []*pb.Transaction) []*pb.Receipt {
+func (exec *BlockExecutor) SubscribeLogsEvent(ch chan<- []*pb.EvmLog) event.Subscription {
+	return exec.logsFeed.Subscribe(ch)
+}
+
+func (exec *BlockExecutor) ApplyReadonlyTransactions(txs []pb.Transaction) []*pb.Receipt {
 	current := time.Now()
 	receipts := make([]*pb.Receipt, 0, len(txs))
 
 	for i, tx := range txs {
-		receipt := &pb.Receipt{
-			Version: tx.Version,
-			TxHash:  tx.TransactionHash,
-		}
-
-		ret, err := exec.applyTransaction(i, tx, nil)
-		if err != nil {
-			receipt.Status = pb.Receipt_FAILED
-			receipt.Ret = []byte(err.Error())
-		} else {
-			receipt.Status = pb.Receipt_SUCCESS
-			receipt.Ret = ret
-		}
+		receipt := exec.applyTransaction(i, tx, "", nil)
 
 		receipts = append(receipts, receipt)
 		// clear potential write to ledger
@@ -146,12 +151,12 @@ func (exec *BlockExecutor) ApplyReadonlyTransactions(txs []*pb.Transaction) []*p
 func (exec *BlockExecutor) listenExecuteEvent() {
 	for {
 		select {
-		case block := <-exec.blockC:
+		case blockWrapper := <-exec.blockC:
 			now := time.Now()
-			blockData := exec.processExecuteEvent(block)
+			blockData := exec.processExecuteEvent(blockWrapper)
 			exec.logger.WithFields(logrus.Fields{
-				"height": block.BlockHeader.Number,
-				"count":  len(block.Transactions),
+				"height": blockWrapper.block.BlockHeader.Number,
+				"count":  len(blockWrapper.block.Transactions.Transactions),
 				"elapse": time.Since(now),
 			}).Debug("Executed block")
 			exec.persistC <- blockData
@@ -161,47 +166,45 @@ func (exec *BlockExecutor) listenExecuteEvent() {
 	}
 }
 
-func (exec *BlockExecutor) verifyProofs(block *pb.Block) *pb.Block {
+func (exec *BlockExecutor) verifyProofs(blockWrapper *BlockWrapper) {
+	block := blockWrapper.block
+
 	if block.BlockHeader.Number == 1 {
-		return block
+		return
 	}
 	if block.Extra != nil {
 		block.Extra = nil
-		return block
+		return
 	}
 
 	var (
-		index []int
-		wg    sync.WaitGroup
-		lock  sync.Mutex
+		invalidTxs = make([]int, 0)
+		wg         sync.WaitGroup
+		lock       sync.Mutex
 	)
-	txs := block.Transactions
+	txs := block.Transactions.Transactions
 
 	wg.Add(len(txs))
+	errM := make(map[int]string)
 	for i, tx := range txs {
-		go func(i int, tx *pb.Transaction) {
+		go func(i int, tx pb.Transaction) {
 			defer wg.Done()
-			ok, _ := exec.ibtpVerify.CheckProof(tx)
-			if !ok {
-				lock.Lock()
-				defer lock.Unlock()
-				index = append(index, i)
+			if _, ok := blockWrapper.invalidTx[i]; !ok {
+				ok, err := exec.ibtpVerify.CheckProof(tx)
+				if !ok {
+					lock.Lock()
+					defer lock.Unlock()
+					invalidTxs = append(invalidTxs, i)
+					errM[i] = err.Error()
+				}
 			}
 		}(i, tx)
 	}
 	wg.Wait()
 
-	if len(index) > 0 {
-		sort.Sort(sort.Reverse(sort.IntSlice(index)))
-		for _, idx := range index {
-			txs = append(txs[:idx], txs[idx+1:]...)
-		}
-		block.Transactions = txs
-	} else {
-		exec.logger.Debugf("all txs in block %d passed IBTP verification", block.BlockHeader.Number)
+	for _, i := range invalidTxs {
+		blockWrapper.invalidTx[i] = agency.InvalidReason(errM[i])
 	}
-
-	return block
 }
 
 func (exec *BlockExecutor) persistData() {
@@ -209,10 +212,11 @@ func (exec *BlockExecutor) persistData() {
 		now := time.Now()
 		exec.ledger.PersistBlockData(data)
 		exec.postBlockEvent(data.Block, data.InterchainMeta, data.TxHashList)
+		exec.postLogsEvent(data.Receipts)
 		exec.logger.WithFields(logrus.Fields{
 			"height": data.Block.BlockHeader.Number,
 			"hash":   data.Block.BlockHash.String(),
-			"count":  len(data.Block.Transactions),
+			"count":  len(data.Block.Transactions.Transactions),
 			"elapse": time.Since(now),
 		}).Info("Persisted block")
 	}
@@ -258,12 +262,6 @@ func registerBoltContracts() map[string]agency.Contract {
 		},
 		{
 			Enabled:  true,
-			Name:     "asset exchange service",
-			Address:  constant.AssetExchangeContractAddr.Address().String(),
-			Contract: &contracts.AssetExchange{},
-		},
-		{
-			Enabled:  true,
 			Name:     "interchain broker service",
 			Address:  constant.InterRelayBrokerContractAddr.Address().String(),
 			Contract: &contracts.InterRelayBroker{},
@@ -287,4 +285,20 @@ func registerBoltContracts() map[string]agency.Contract {
 	}
 
 	return boltvm.Register(boltContracts)
+}
+
+func newEVMChainCfg() *params.ChainConfig {
+	return &params.ChainConfig{
+		ChainID:             big.NewInt(1),
+		HomesteadBlock:      big.NewInt(0),
+		EIP150Block:         big.NewInt(0),
+		EIP155Block:         big.NewInt(0),
+		EIP158Block:         big.NewInt(0),
+		ByzantiumBlock:      big.NewInt(0),
+		ConstantinopleBlock: big.NewInt(0),
+		PetersburgBlock:     big.NewInt(0),
+		IstanbulBlock:       big.NewInt(0),
+		// MuirGlacierBlock:    big.NewInt(0),
+		// BerlinBlock:         big.NewInt(0),
+	}
 }

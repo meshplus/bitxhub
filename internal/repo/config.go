@@ -53,6 +53,7 @@ type Security struct {
 }
 
 type Port struct {
+	JsonRpc int64 `toml:"jsonrpc" json:"jsonrpc"`
 	Grpc    int64 `toml:"grpc" json:"grpc"`
 	Gateway int64 `toml:"gateway" json:"gateway"`
 	PProf   int64 `toml:"pprof" json:"pprof"`
@@ -104,6 +105,8 @@ type LogModule struct {
 }
 
 type Genesis struct {
+	ChainID  uint64            `json:"chainid" toml:"chainid"`
+	GasLimit uint64            `json:"gas_limit" toml:"gas_limit"`
 	Admins   []*Admin          `json:"admins" toml:"admins"`
 	Strategy map[string]string `json:"strategy" toml:"strategy"`
 	Dider    string            `json:"dider" toml:"dider"`
@@ -184,6 +187,10 @@ func DefaultConfig() (*Config, error) {
 		},
 		Executor: Executor{
 			Type: "serial",
+		},
+		Genesis: Genesis{
+			ChainID:  1,
+			GasLimit: 0x2fefd8,
 		},
 	}, nil
 }

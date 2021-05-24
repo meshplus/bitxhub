@@ -1,14 +1,20 @@
 package ledger
 
 import (
+	"math/big"
+
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
+	vm "github.com/meshplus/eth-kit/evm"
 )
 
 //go:generate mockgen -destination mock_ledger/mock_ledger.go -package mock_ledger -source types.go
 type Ledger interface {
 	BlockchainLedger
 	StateAccessor
+	vm.StateDB
+
+	StateDB() vm.StateDB
 
 	AccountCache() *AccountCache
 
@@ -27,6 +33,9 @@ type Ledger interface {
 	// RemoveJournalsBeforeBlock
 	RemoveJournalsBeforeBlock(height uint64) error
 
+	PrepareBlock(*types.Hash)
+	ClearChangerAndRefund()
+
 	// Close release resource
 	Close()
 }
@@ -40,10 +49,10 @@ type StateAccessor interface {
 	GetAccount(*types.Address) *Account
 
 	// GetBalance
-	GetBalance(*types.Address) uint64
+	GetBalance(*types.Address) *big.Int
 
 	// SetBalance
-	SetBalance(*types.Address, uint64)
+	SetBalance(*types.Address, *big.Int)
 
 	// GetState
 	GetState(*types.Address, []byte) (bool, []byte)
@@ -78,6 +87,8 @@ type StateAccessor interface {
 	// Version
 	Version() uint64
 
+	GetLogs(types.Hash) []*pb.EvmLog
+
 	// Clear
 	Clear()
 }
@@ -97,7 +108,7 @@ type BlockchainLedger interface {
 	GetBlockByHash(hash *types.Hash) (*pb.Block, error)
 
 	// GetTransaction get the transaction using transaction hash
-	GetTransaction(hash *types.Hash) (*pb.Transaction, error)
+	GetTransaction(hash *types.Hash) (pb.Transaction, error)
 
 	// GetTransactionMeta get the transaction meta data
 	GetTransactionMeta(hash *types.Hash) (*pb.TransactionMeta, error)

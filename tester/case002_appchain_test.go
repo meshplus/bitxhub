@@ -7,13 +7,13 @@ import (
 	"strconv"
 
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
+	"github.com/meshplus/bitxhub-core/governance"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
-	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxid"
 	"github.com/stretchr/testify/suite"
 	"github.com/tidwall/gjson"
@@ -44,7 +44,7 @@ func (suite *RegisterAppchain) SetupSuite() {
 
 	suite.from, err = suite.privKey.PublicKey().Address()
 	suite.Require().Nil(err)
-	suite.normalNonce = 1
+	suite.normalNonce = 0
 }
 
 // Appchain registers in bitxhub
@@ -72,10 +72,10 @@ func (suite *RegisterAppchain) TestRegisterAppchain() {
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	suite.normalNonce++
-	registerRes := &contracts.RegisterResult{}
-	err = json.Unmarshal(ret.Ret, registerRes)
+	gRet := &governance.GovernanceResult{}
+	err = json.Unmarshal(ret.Ret, gRet)
 	suite.Require().Nil(err)
-	chainId := registerRes.ChainID
+	chainId := string(gRet.Extra)
 
 	ret, err = invokeBVMContract(suite.api, suite.privKey, suite.normalNonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainId))
 	suite.Require().Nil(err)
@@ -89,8 +89,8 @@ func (suite *RegisterAppchain) TestFetchAppchains() {
 	suite.Require().Nil(err)
 	k2, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
-	k1Nonce := uint64(1)
-	k2Nonce := uint64(1)
+	k1Nonce := uint64(0)
+	k2Nonce := uint64(0)
 
 	pub1, err := k1.PublicKey().Bytes()
 	suite.Require().Nil(err)
@@ -119,7 +119,10 @@ func (suite *RegisterAppchain) TestFetchAppchains() {
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k1Nonce++
-	id1 := gjson.Get(string(ret.Ret), "chain_id").String()
+	gRet := &governance.GovernanceResult{}
+	err = json.Unmarshal(ret.Ret, gRet)
+	suite.Require().Nil(err)
+	id1 := string(gRet.Extra)
 	did2 := genUniqueAppchainDID(addr2.String())
 	args = []*pb.Arg{
 		pb.String(did2),
@@ -177,8 +180,8 @@ func (suite *RegisterAppchain) TestGetPubKeyByChainID() {
 	suite.Require().Nil(err)
 	k2, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
-	k1Nonce := uint64(1)
-	k2Nonce := uint64(1)
+	k1Nonce := uint64(0)
+	k2Nonce := uint64(0)
 
 	pub1, err := k1.PublicKey().Bytes()
 	suite.Require().Nil(err)
@@ -226,7 +229,10 @@ func (suite *RegisterAppchain) TestGetPubKeyByChainID() {
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	suite.Require().Nil(err)
 	k2Nonce++
-	id2 := gjson.Get(string(ret.Ret), "chain_id").String()
+	gRet := &governance.GovernanceResult{}
+	err = json.Unmarshal(ret.Ret, gRet)
+	suite.Require().Nil(err)
+	id2 := string(gRet.Extra)
 
 	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(id2))
 	suite.Require().Nil(err)
@@ -249,7 +255,7 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 	suite.Require().Nil(err)
 	pub1, err := k1.PublicKey().Bytes()
 	suite.Require().Nil(err)
-	k1Nonce := uint64(1)
+	k1Nonce := uint64(0)
 	addr1, err := k1.PublicKey().Address()
 	suite.Require().Nil(err)
 
@@ -281,7 +287,7 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 	suite.Require().Nil(err)
 	adminAddr, err := priAdmin.PublicKey().Address()
 	suite.Require().Nil(err)
-	adminNonce := uint64(1)
+	adminNonce := uint64(0)
 
 	adminDID := genUniqueAppchainDID(adminAddr.String())
 	args = []*pb.Arg{

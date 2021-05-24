@@ -3,6 +3,8 @@ package mempool
 import (
 	"time"
 
+	"github.com/ethereum/go-ethereum/event"
+	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
 )
@@ -11,7 +13,7 @@ var _ MemPool = (*mempoolImpl)(nil)
 
 type MemPool interface {
 	// ProcessTransactions process transaction from api and other vp nodes.
-	ProcessTransactions(txs []*pb.Transaction, isLeader, isLocal bool) *raftproto.RequestBatch
+	ProcessTransactions(txs []pb.Transaction, isLeader, isLocal bool) *raftproto.RequestBatch
 
 	// GenerateBlock generate a block
 	GenerateBlock() *raftproto.RequestBatch
@@ -24,7 +26,9 @@ type MemPool interface {
 
 	SetBatchSeqNo(batchSeq uint64)
 
-	GetTimeoutTransactions(rebroadcastDuration time.Duration) [][]*pb.Transaction
+	GetTimeoutTransactions(rebroadcastDuration time.Duration) [][]pb.Transaction
+
+	SubscribeTxEvent(chan<- pb.Transactions) event.Subscription
 
 	External
 }
@@ -34,6 +38,10 @@ type External interface {
 
 	// GetPendingNonceByAccount will return the latest pending nonce of a given account
 	GetPendingNonceByAccount(account string) uint64
+
+	GetPendingTransactions(max int) []pb.Transaction
+
+	GetTransaction(hash *types.Hash) pb.Transaction
 
 	// IsPoolFull check if memPool has exceeded the limited txSize.
 	IsPoolFull() bool

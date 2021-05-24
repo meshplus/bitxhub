@@ -7,9 +7,11 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/pkg/fileutil"
+	"github.com/ethereum/go-ethereum/event"
 	"github.com/google/btree"
 	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/meshplus/bitxhub-kit/storage/leveldb"
+	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
 	"github.com/pkg/errors"
@@ -24,6 +26,7 @@ type mempoolImpl struct {
 	poolSize    uint64
 	logger      logrus.FieldLogger
 	txStore     *transactionStore // store all transactions info
+	txFeed      event.Feed
 }
 
 func newMempoolImpl(config *Config) (*mempoolImpl, error) {
@@ -56,28 +59,33 @@ func newMempoolImpl(config *Config) (*mempoolImpl, error) {
 	return mpi, nil
 }
 
-func (mpi *mempoolImpl) ProcessTransactions(txs []*pb.Transaction, isLeader, isLocal bool) *raftproto.RequestBatch {
-	validTxs := make(map[string][]*pb.Transaction)
+func (mpi *mempoolImpl) ProcessTransactions(txs []pb.Transaction, isLeader, isLocal bool) *raftproto.RequestBatch {
+	validTxs := make(map[string][]pb.Transaction)
+	validTxList := make([]pb.Transaction, 0)
+
 	for _, tx := range txs {
 		// check the sequence number of tx
-		txAccount := tx.Account()
+		txAccount := tx.GetFrom().String()
 		currentSeqNo := mpi.txStore.nonceCache.getPendingNonce(txAccount)
-		if tx.Nonce < currentSeqNo {
-			mpi.logger.Warningf("Account %s, current sequence number is %d, required %d", txAccount, tx.Nonce, currentSeqNo+1)
+		if tx.GetNonce() < currentSeqNo {
+			mpi.logger.Warningf("Account %s, current sequence number is %d, required %d", txAccount, tx.GetNonce(), currentSeqNo)
 			continue
 		}
 		// check the existence of hash of this tx
-		txHash := tx.TransactionHash.String()
+		txHash := tx.GetHash().String()
 		if txPointer := mpi.txStore.txHashMap[txHash]; txPointer != nil {
-			mpi.logger.Warningf("Tx [account: %s, nonce: %d, hash: %s] already received", txAccount, tx.Nonce, txHash)
+			mpi.logger.Warningf("Tx [account: %s, nonce: %d, hash: %s] already received", txAccount, tx.GetNonce(), txHash)
 			continue
 		}
 		_, ok := validTxs[txAccount]
 		if !ok {
-			validTxs[txAccount] = make([]*pb.Transaction, 0)
+			validTxs[txAccount] = make([]pb.Transaction, 0)
 		}
 		validTxs[txAccount] = append(validTxs[txAccount], tx)
+		validTxList = append(validTxList, tx)
 	}
+
+	mpi.postTxsEvent(validTxList)
 
 	// Process all the new transaction and merge any errors into the original slice
 	dirtyAccounts := mpi.txStore.insertTxs(validTxs, isLocal)
@@ -156,7 +164,7 @@ func (mpi *mempoolImpl) generateBlock() (*raftproto.RequestBatch, error) {
 		}
 		// include transaction if it's "next" for given account or
 		// we've already sent its ancestor to Consensus
-		if seenPrevious || (txSeq == commitNonce+1) {
+		if seenPrevious || (txSeq == commitNonce) {
 			ptr := orderedIndexKey{account: tx.account, nonce: txSeq}
 			mpi.txStore.batchedTxs[ptr] = true
 			result = append(result, ptr)
@@ -190,7 +198,7 @@ func (mpi *mempoolImpl) generateBlock() (*raftproto.RequestBatch, error) {
 	}
 
 	// convert transaction pointers to real values
-	txList := make([]*pb.Transaction, len(result))
+	txList := make([]pb.Transaction, len(result))
 	for i, v := range result {
 		rawTransaction := mpi.txStore.getTxByOrderKey(v.account, v.nonce)
 		txList[i] = rawTransaction
@@ -198,7 +206,7 @@ func (mpi *mempoolImpl) generateBlock() (*raftproto.RequestBatch, error) {
 	mpi.batchSeqNo++
 	batchSeqNo := mpi.batchSeqNo
 	batch := &raftproto.RequestBatch{
-		TxList: txList,
+		TxList: &pb.Transactions{Transactions: txList},
 		Height: batchSeqNo,
 	}
 	if mpi.txStore.priorityNonBatchSize >= uint64(len(txList)) {
@@ -223,7 +231,7 @@ func (mpi *mempoolImpl) processCommitTransactions(state *ChainState) {
 			continue
 		}
 		preCommitNonce := mpi.txStore.nonceCache.getCommitNonce(txPointer.account)
-		newCommitNonce := txPointer.nonce
+		newCommitNonce := txPointer.nonce + 1
 		if updateAccounts[txPointer.account] < newCommitNonce && preCommitNonce < newCommitNonce {
 			updateAccounts[txPointer.account] = newCommitNonce
 		}
@@ -239,24 +247,24 @@ func (mpi *mempoolImpl) processCommitTransactions(state *ChainState) {
 		commitNonce := mpi.txStore.nonceCache.getCommitNonce(account)
 		if list, ok := mpi.txStore.allTxs[account]; ok {
 			// remove all previous seq number txs for this account.
-			removedTxs := list.forward(commitNonce + 1)
+			removedTxs := list.forward(commitNonce)
 			// remove index smaller than commitNonce delete index.
 			var wg sync.WaitGroup
 			wg.Add(4)
-			go func(ready map[string][]*pb.Transaction) {
+			go func(ready map[string][]pb.Transaction) {
 				defer wg.Done()
 				list.index.removeBySortedNonceKey(removedTxs)
 			}(removedTxs)
-			go func(ready map[string][]*pb.Transaction) {
+			go func(ready map[string][]pb.Transaction) {
 				defer wg.Done()
 				mpi.txStore.priorityIndex.removeByTimeoutKey(removedTxs)
 			}(removedTxs)
-			go func(ready map[string][]*pb.Transaction) {
+			go func(ready map[string][]pb.Transaction) {
 				defer wg.Done()
 				mpi.txStore.ttlIndex.removeByTtlKey(removedTxs)
 				mpi.txStore.updateEarliestTimestamp()
 			}(removedTxs)
-			go func(ready map[string][]*pb.Transaction) {
+			go func(ready map[string][]pb.Transaction) {
 				defer wg.Done()
 				mpi.txStore.parkingLotIndex.removeByOrderedQueueKey(removedTxs)
 			}(removedTxs)
@@ -273,13 +281,13 @@ func (mpi *mempoolImpl) processCommitTransactions(state *ChainState) {
 		mpi.txStore.priorityIndex.size(), mpi.txStore.parkingLotIndex.size(), len(mpi.txStore.batchedTxs), len(mpi.txStore.txHashMap))
 }
 
-func (mpi *mempoolImpl) GetTimeoutTransactions(rebroadcastDuration time.Duration) [][]*pb.Transaction {
+func (mpi *mempoolImpl) GetTimeoutTransactions(rebroadcastDuration time.Duration) [][]pb.Transaction {
 	// all the tx whose live time is less than lowBoundTime should be rebroadcast
 	mpi.logger.Debugf("Start gathering timeout txs, ttl index len is %d", mpi.txStore.ttlIndex.index.Len())
 	currentTime := time.Now().UnixNano()
 	if currentTime < mpi.txStore.earliestTimestamp+rebroadcastDuration.Nanoseconds() {
 		// if the latest incoming tx has not exceeded the timeout limit, then none will be timeout
-		return [][]*pb.Transaction{}
+		return [][]pb.Transaction{}
 	}
 
 	timeoutItems := make([]*orderedTimeoutKey, 0)
@@ -307,7 +315,38 @@ func (mpi *mempoolImpl) GetTimeoutTransactions(rebroadcastDuration time.Duration
 	return mpi.shardTxList(timeoutItems, mpi.txSliceSize)
 }
 
-func (mpi *mempoolImpl) shardTxList(timeoutItems []*orderedTimeoutKey, batchLen uint64) [][]*pb.Transaction {
+func (mpi *mempoolImpl) GetPendingTransactions(max int) []pb.Transaction {
+	if max < 0 {
+		max = int(mpi.txStore.priorityNonBatchSize)
+	}
+
+	// TODO
+
+	return nil
+}
+
+func (mpi *mempoolImpl) GetTransaction(hash *types.Hash) pb.Transaction {
+	// TODO: make it go routine safe
+	//key, ok := mpi.txStore.txHashMap[hash.String()]
+	//if !ok {
+	//	return nil
+	//}
+	//
+	//txMap, ok := mpi.txStore.allTxs[key.account]
+	//if !ok {
+	//	return nil
+	//}
+	//
+	//item, ok := txMap.items[key.nonce]
+	//if !ok {
+	//	return nil
+	//}
+
+	//return item.tx
+	return nil
+}
+
+func (mpi *mempoolImpl) shardTxList(timeoutItems []*orderedTimeoutKey, batchLen uint64) [][]pb.Transaction {
 	begin := uint64(0)
 	end := uint64(len(timeoutItems)) - 1
 	totalLen := uint64(len(timeoutItems))
@@ -317,14 +356,14 @@ func (mpi *mempoolImpl) shardTxList(timeoutItems []*orderedTimeoutKey, batchLen 
 	if totalLen%batchLen != 0 {
 		batchNums++
 	}
-	shardedLists := make([][]*pb.Transaction, 0, batchNums)
+	shardedLists := make([][]pb.Transaction, 0, batchNums)
 	for i := uint64(0); i < batchNums; i++ {
 		actualLen := batchLen
 		if end-begin+1 < batchLen {
 			actualLen = end - begin + 1
 		}
 
-		shardedList := make([]*pb.Transaction, actualLen)
+		shardedList := make([]pb.Transaction, actualLen)
 		for j := uint64(0); j < batchLen && begin <= end; j++ {
 			txMap, _ := mpi.txStore.allTxs[timeoutItems[begin].account]
 			shardedList[j] = txMap.items[timeoutItems[begin].nonce].tx
@@ -342,4 +381,12 @@ func loadOrCreateStorage(memPoolDir string) (storage.Storage, error) {
 		}
 	}
 	return leveldb.New(memPoolDir)
+}
+
+func (mpi *mempoolImpl) SubscribeTxEvent(ch chan<- pb.Transactions) event.Subscription {
+	return mpi.txFeed.Subscribe(ch)
+}
+
+func (mpi *mempoolImpl) postTxsEvent(txList []pb.Transaction) {
+	go mpi.txFeed.Send(pb.Transactions{Transactions: txList})
 }

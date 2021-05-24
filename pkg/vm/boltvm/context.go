@@ -16,13 +16,13 @@ type Context struct {
 	logger           logrus.FieldLogger
 }
 
-func NewContext(tx *pb.Transaction, txIndex uint64, data *pb.TransactionData, ledger ledger.Ledger, logger logrus.FieldLogger) *Context {
+func NewContext(tx pb.Transaction, txIndex uint64, data *pb.TransactionData, ledger ledger.Ledger, logger logrus.FieldLogger) *Context {
 	return &Context{
-		caller:           tx.From,
-		callee:           tx.To,
+		caller:           tx.GetFrom(),
+		callee:           tx.GetTo(),
 		ledger:           ledger,
 		transactionIndex: txIndex,
-		transactionHash:  tx.TransactionHash,
+		transactionHash:  tx.GetHash(),
 		logger:           logger,
 	}
 }

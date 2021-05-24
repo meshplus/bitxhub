@@ -5,17 +5,16 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/meshplus/bitxid"
-
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
+	"github.com/meshplus/bitxhub-core/governance"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
+	"github.com/meshplus/bitxid"
 	"github.com/stretchr/testify/suite"
-	"github.com/tidwall/gjson"
 )
 
 type Governance struct {
@@ -63,7 +62,7 @@ func (suite *Governance) TestGovernance() {
 	suite.Require().Nil(err)
 	addr, err := appchainPri.PublicKey().Address()
 	suite.Require().Nil(err)
-	appchainNonce := uint64(1)
+	appchainNonce := uint64(0)
 
 	// 1. Register ==============================================
 	did := genUniqueAppchainDID(addr.String())
@@ -83,8 +82,11 @@ func (suite *Governance) TestGovernance() {
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	appchainNonce++
-	chainId := gjson.Get(string(ret.Ret), "chain_id").String()
-	registerProposalId := gjson.Get(string(ret.Ret), "proposal_id").String()
+	gRet := &governance.GovernanceResult{}
+	err = json.Unmarshal(ret.Ret, gRet)
+	suite.Require().Nil(err)
+	chainId := string(gRet.Extra)
+	registerProposalId := gRet.ProposalID
 
 	// repeated registration
 	ret, err = invokeBVMContract(suite.api, appchainPri, appchainNonce, constant.AppchainMgrContractAddr.Address(), "Register",
@@ -112,7 +114,7 @@ func (suite *Governance) TestGovernance() {
 	p := contracts.Proposal{}
 	err = json.Unmarshal(ret.Ret, &p)
 	suite.Require().Nil(err)
-	suite.Require().Equal("register", p.Des, "des")
+	suite.Require().Equal("register", string(p.EventType), "event type")
 
 	// get chain status
 	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainId))
@@ -122,7 +124,7 @@ func (suite *Governance) TestGovernance() {
 	chain := appchainMgr.Appchain{}
 	err = json.Unmarshal(ret.Ret, &chain)
 	suite.Require().Nil(err)
-	suite.Require().Equal(appchainMgr.AppchainRegisting, chain.Status)
+	suite.Require().Equal(governance.GovernanceRegisting, chain.Status)
 
 	// get role weight
 	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.RoleContractAddr.Address(), "GetRoleWeight", pb.String(fromAdmin1.Address))
@@ -219,5 +221,5 @@ func (suite *Governance) TestGovernance() {
 	adminNonce1++
 	err = json.Unmarshal(ret.Ret, &chain)
 	suite.Require().Nil(err)
-	suite.Require().Equal(appchainMgr.AppchainAvailable, chain.Status)
+	suite.Require().Equal(governance.GovernanceAvailable, chain.Status)
 }

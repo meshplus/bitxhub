@@ -2,26 +2,28 @@ package tester
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/meshplus/bitxhub-kit/crypto"
+	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
 )
 
-func genBVMContractTransaction(privateKey crypto.PrivateKey, nonce uint64, address *types.Address, method string, args ...*pb.Arg) (*pb.Transaction, error) {
+func genBVMContractTransaction(privateKey crypto.PrivateKey, nonce uint64, address *types.Address, method string, args ...*pb.Arg) (pb.Transaction, error) {
 	return genContractTransaction(pb.TransactionData_BVM, privateKey, nonce, address, method, args...)
 }
 
-func genXVMContractTransaction(privateKey crypto.PrivateKey, nonce uint64, address *types.Address, method string, args ...*pb.Arg) (*pb.Transaction, error) {
+func genXVMContractTransaction(privateKey crypto.PrivateKey, nonce uint64, address *types.Address, method string, args ...*pb.Arg) (pb.Transaction, error) {
 	return genContractTransaction(pb.TransactionData_XVM, privateKey, nonce, address, method, args...)
 }
 
-func genIBTPTransaction(privateKey crypto.PrivateKey, ibtp *pb.IBTP, nonce uint64) (*pb.Transaction, error) {
+func genIBTPTransaction(privateKey crypto.PrivateKey, ibtp *pb.IBTP, nonce uint64) (*pb.BxhTransaction, error) {
 	from, err := privateKey.PublicKey().Address()
 	if err != nil {
 		return nil, err
@@ -53,7 +55,7 @@ func genIBTPTransaction(privateKey crypto.PrivateKey, ibtp *pb.IBTP, nonce uint6
 		return nil, err
 	}
 
-	tx := &pb.Transaction{
+	tx := &pb.BxhTransaction{
 		From:      from,
 		To:        constant.InterchainContractAddr.Address(),
 		Payload:   payload,
@@ -80,7 +82,7 @@ func invokeBVMContract(api api.CoreAPI, privateKey crypto.PrivateKey, nonce uint
 	return sendTransactionWithReceipt(api, tx)
 }
 
-func sendTransactionWithReceipt(api api.CoreAPI, tx *pb.Transaction) (*pb.Receipt, error) {
+func sendTransactionWithReceipt(api api.CoreAPI, tx pb.Transaction) (*pb.Receipt, error) {
 	err := api.Broker().HandleTransaction(tx)
 	if err != nil {
 		return nil, err
@@ -95,7 +97,7 @@ func sendTransactionWithReceipt(api api.CoreAPI, tx *pb.Transaction) (*pb.Receip
 			return nil, fmt.Errorf("get receipt timeout")
 		default:
 			time.Sleep(200 * time.Millisecond)
-			receipt, err := api.Broker().GetReceipt(tx.TransactionHash)
+			receipt, err := api.Broker().GetReceipt(tx.GetHash())
 			if err != nil {
 				if strings.Contains(err.Error(), "not found") {
 					continue
@@ -110,7 +112,7 @@ func sendTransactionWithReceipt(api api.CoreAPI, tx *pb.Transaction) (*pb.Receip
 
 }
 
-func genContractTransaction(vmType pb.TransactionData_VMType, privateKey crypto.PrivateKey, nonce uint64, address *types.Address, method string, args ...*pb.Arg) (*pb.Transaction, error) {
+func genContractTransaction(vmType pb.TransactionData_VMType, privateKey crypto.PrivateKey, nonce uint64, address *types.Address, method string, args ...*pb.Arg) (pb.Transaction, error) {
 	from, err := privateKey.PublicKey().Address()
 	if err != nil {
 		return nil, err
@@ -137,7 +139,7 @@ func genContractTransaction(vmType pb.TransactionData_VMType, privateKey crypto.
 		return nil, err
 	}
 
-	tx := &pb.Transaction{
+	tx := &pb.BxhTransaction{
 		From:      from,
 		To:        address,
 		Payload:   payload,
@@ -171,7 +173,7 @@ func deployContract(api api.CoreAPI, privateKey crypto.PrivateKey, nonce uint64,
 		return nil, err
 	}
 
-	tx := &pb.Transaction{
+	tx := &pb.BxhTransaction{
 		From:      from,
 		Payload:   payload,
 		Timestamp: time.Now().UnixNano(),
@@ -192,4 +194,17 @@ func deployContract(api api.CoreAPI, privateKey crypto.PrivateKey, nonce uint64,
 	ret := types.NewAddress(receipt.GetRet())
 
 	return ret, nil
+}
+
+func getPubKey(keyPath string) (string, error) {
+	privKey, err := asym.RestorePrivateKey(keyPath, "bitxhub")
+	if err != nil {
+		return "", err
+	}
+
+	pubBytes, err := privKey.PublicKey().Bytes()
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(pubBytes), nil
 }

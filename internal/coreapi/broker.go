@@ -21,17 +21,13 @@ type BrokerAPI CoreAPI
 
 var _ api.BrokerAPI = (*BrokerAPI)(nil)
 
-func (b *BrokerAPI) HandleTransaction(tx *pb.Transaction) error {
-	if tx.TransactionHash == nil {
-		if tx.Hash() != nil {
-			tx.TransactionHash = tx.Hash()
-		} else {
-			return fmt.Errorf("transaction hash is nil")
-		}
+func (b *BrokerAPI) HandleTransaction(tx pb.Transaction) error {
+	if tx.GetHash() == nil {
+		return fmt.Errorf("transaction hash is nil")
 	}
 
 	b.logger.WithFields(logrus.Fields{
-		"hash": tx.TransactionHash.String(),
+		"hash": tx.GetHash().String(),
 	}).Debugf("Receive tx")
 
 	go func() {
@@ -43,25 +39,21 @@ func (b *BrokerAPI) HandleTransaction(tx *pb.Transaction) error {
 	return nil
 }
 
-func (b *BrokerAPI) HandleView(tx *pb.Transaction) (*pb.Receipt, error) {
-	if tx.TransactionHash == nil {
-		if tx.Hash() != nil {
-			tx.TransactionHash = tx.Hash()
-		} else {
-			return nil, fmt.Errorf("transaction hash is nil")
-		}
+func (b *BrokerAPI) HandleView(tx pb.Transaction) (*pb.Receipt, error) {
+	if tx.GetHash() == nil {
+		return nil, fmt.Errorf("transaction hash is nil")
 	}
 
 	b.logger.WithFields(logrus.Fields{
-		"hash": tx.TransactionHash.String(),
+		"hash": tx.GetHash().String(),
 	}).Debugf("Receive view")
 
-	receipts := b.bxh.ViewExecutor.ApplyReadonlyTransactions([]*pb.Transaction{tx})
+	receipts := b.bxh.ViewExecutor.ApplyReadonlyTransactions([]pb.Transaction{tx})
 
 	return receipts[0], nil
 }
 
-func (b *BrokerAPI) GetTransaction(hash *types.Hash) (*pb.Transaction, error) {
+func (b *BrokerAPI) GetTransaction(hash *types.Hash) (pb.Transaction, error) {
 	return b.bxh.Ledger.GetTransaction(hash)
 }
 
@@ -317,4 +309,15 @@ func (b BrokerAPI) GetPendingNonceByAccount(account string) uint64 {
 
 func (b BrokerAPI) DelVPNode(delID uint64) error {
 	return b.bxh.Order.DelNode(delID)
+}
+
+func (b BrokerAPI) GetPendingTransactions(max int) []pb.Transaction {
+	// TODO
+	return nil
+}
+
+func (b BrokerAPI) GetPoolTransaction(hash *types.Hash) pb.Transaction {
+	// TODO
+
+	return nil
 }

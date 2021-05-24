@@ -113,7 +113,7 @@ var csrCMD = cli.Command{
 		block, _ := pem.Decode(privData)
 		privKey, err := x509.ParseECPrivateKey(block.Bytes)
 		if err != nil {
-			return fmt.Errorf("Error occured when parsing private key. Please make sure it's secp256r1 private key.")
+			return fmt.Errorf("Error occurred when parsing private key. Please make sure it's secp256r1 private key.")
 		}
 
 		template := &x509.CertificateRequest{
@@ -188,7 +188,7 @@ var issueCMD = cli.Command{
 		block, _ := pem.Decode(privData)
 		privKey, err := x509.ParseECPrivateKey(block.Bytes)
 		if err != nil {
-			return fmt.Errorf("Error occured when parsing private key. Please make sure it's secp256r1 private key.")
+			return fmt.Errorf("Error occurred when parsing private key. Please make sure it's secp256r1 private key.")
 		}
 
 		caCertData, err := ioutil.ReadFile(certPath)

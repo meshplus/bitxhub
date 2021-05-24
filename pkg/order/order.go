@@ -1,6 +1,7 @@
 package order
 
 import (
+	"github.com/ethereum/go-ethereum/event"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 )
@@ -14,7 +15,7 @@ type Order interface {
 	Stop()
 
 	// Prepare means send transaction to the consensus engine
-	Prepare(tx *pb.Transaction) error
+	Prepare(tx pb.Transaction) error
 
 	// Commit recv blocks form Order and commit it by order
 	Commit() chan *pb.CommitEvent
@@ -36,4 +37,6 @@ type Order interface {
 
 	// DelNode sends a delete vp request by given id.
 	DelNode(delID uint64) error
+
+	SubscribeTxEvent(events chan<- pb.Transactions) event.Subscription
 }

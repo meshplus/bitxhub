@@ -8,10 +8,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/meshplus/bitxhub-kit/crypto"
-
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
+	"github.com/meshplus/bitxhub-core/governance"
+	ruleMgr "github.com/meshplus/bitxhub-core/rule-mgr"
 	"github.com/meshplus/bitxhub-core/validator"
+	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/types"
@@ -20,6 +21,13 @@ import (
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/sirupsen/logrus"
+)
+
+const (
+	InvalidIBTP          = "invalid ibtp"
+	AppchainNotAvailable = "appchain not available"
+	NoBindRule           = "appchain didn't register rule"
+	internalError        = "internal server error"
 )
 
 type VerifyPool struct {
@@ -45,19 +53,19 @@ func (pl *VerifyPool) ValidationEngine() validator.Engine {
 	return pl.ve
 }
 
-func (pl *VerifyPool) CheckProof(tx *pb.Transaction) (bool, error) {
-	ibtp := tx.IBTP
+func (pl *VerifyPool) CheckProof(tx pb.Transaction) (bool, error) {
+	ibtp := tx.GetIBTP()
 	if ibtp != nil {
-		ok, err := pl.verifyProof(ibtp, tx.Extra)
+		ok, err := pl.verifyProof(ibtp, tx.GetExtra())
 		if err != nil {
 			pl.logger.WithFields(logrus.Fields{
-				"hash":  tx.TransactionHash.String(),
+				"hash":  tx.GetHash().String(),
 				"id":    ibtp.ID(),
 				"error": err}).Warn("ibtp verify got error")
 			return false, err
 		}
 		if !ok {
-			pl.logger.WithFields(logrus.Fields{"hash": tx.TransactionHash.String(), "id": ibtp.ID()}).Warn("ibtp verify failed")
+			pl.logger.WithFields(logrus.Fields{"hash": tx.GetHash().String(), "id": ibtp.ID()}).Warn("ibtp verify failed")
 			return false, nil
 		}
 
@@ -73,12 +81,12 @@ type bxhValidators struct {
 
 // verifyMultiSign .
 func verifyMultiSign(app *appchainMgr.Appchain, ibtp *pb.IBTP, proof []byte) (bool, error) {
-	if "" == app.Validators {
-		return false, fmt.Errorf("empty validators in relay chain:%s", app.ID)
+	if app.Validators == "" {
+		return false, fmt.Errorf("%s: empty validators in relay chain:%s", internalError, app.ID)
 	}
 	var validators bxhValidators
 	if err := json.Unmarshal([]byte(app.Validators), &validators); err != nil {
-		return false, err
+		return false, fmt.Errorf("%s: %w", InvalidIBTP, err)
 	}
 
 	m := make(map[string]struct{}, 0)
@@ -87,7 +95,7 @@ func verifyMultiSign(app *appchainMgr.Appchain, ibtp *pb.IBTP, proof []byte) (bo
 	}
 
 	var signs pb.SignResponse
-	if err := signs.Unmarshal(ibtp.Proof); err != nil {
+	if err := signs.Unmarshal(proof); err != nil {
 		return false, err
 	}
 
@@ -98,7 +106,7 @@ func verifyMultiSign(app *appchainMgr.Appchain, ibtp *pb.IBTP, proof []byte) (bo
 	hash := sha256.Sum256([]byte(ibtpHash.String()))
 	for v, sign := range signs.Sign {
 		if _, ok := m[v]; !ok {
-			return false, fmt.Errorf("wrong validator: %s", v)
+			return false, fmt.Errorf("%s: wrong validator: %s", InvalidIBTP, v)
 		}
 		delete(m, v)
 		addr := types.NewAddressByStr(v)
@@ -110,33 +118,32 @@ func verifyMultiSign(app *appchainMgr.Appchain, ibtp *pb.IBTP, proof []byte) (bo
 			return true, nil
 		}
 	}
-	return false, fmt.Errorf("multi signs verify fail, counter: %d", counter)
+	return false, fmt.Errorf("%s: multi signs verify fail, counter: %d", InvalidIBTP, counter)
 }
 
 func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, error) {
 	if proof == nil {
-		return false, fmt.Errorf("empty proof")
+		return false, fmt.Errorf("%s:, empty proof", InvalidIBTP)
 	}
 	proofHash := sha256.Sum256(proof)
 	if !bytes.Equal(proofHash[:], ibtp.Proof) {
-		return false, fmt.Errorf("proof hash is not correct")
+		return false, fmt.Errorf("%s: proof hash is not correct", InvalidIBTP)
 	}
 
 	// get real appchain id for union ibtp
 	from := ibtp.From
 	if len(strings.Split(ibtp.From, "-")) == 2 {
 		from = strings.Split(ibtp.From, "-")[1]
-		return true, nil
 	}
 
 	app := &appchainMgr.Appchain{}
 	ok, data := pl.getAccountState(constant.AppchainMgrContractAddr, contracts.AppchainKey(from)) // ibtp.From
 	if !ok {
-		return false, fmt.Errorf("cannot get registered appchain")
+		return false, fmt.Errorf("%s: cannot get registered appchain", AppchainNotAvailable)
 	}
 	err := json.Unmarshal(data, app)
 	if err != nil {
-		return false, fmt.Errorf("unmarshal appchain data fail: %w", err)
+		return false, fmt.Errorf("%s: unmarshal appchain data fail: %w", internalError, err)
 	}
 
 	if len(strings.Split(ibtp.From, "-")) == 2 {
@@ -144,24 +151,48 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, error) {
 	}
 
 	validateAddr := validator.FabricRuleAddr
-	rl := &contracts.Rule{}
-	ok, data = pl.getAccountState(constant.RuleManagerContractAddr, contracts.RuleKey(from))
+	rl := &ruleMgr.Rule{}
+	ok, data = pl.getRule(from)
 	if ok {
 		if err := json.Unmarshal(data, rl); err != nil {
-			return false, fmt.Errorf("unmarshal rule data error: %w", err)
+			return false, fmt.Errorf("%s: unmarshal rule data error: %w", internalError, err)
 		}
 		validateAddr = rl.Address
 	} else {
 		if app.ChainType != appchainMgr.FabricType {
-			return false, fmt.Errorf("appchain didn't register rule")
+			return false, fmt.Errorf(NoBindRule)
 		}
 	}
 
 	ok, err = pl.ve.Validate(validateAddr, from, proof, ibtp.Payload, app.Validators) // ibtp.From
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("%s: %w", InvalidIBTP, err)
 	}
 	return ok, nil
+}
+
+func (pl *VerifyPool) getRule(chainId string) (bool, []byte) {
+	ok, data := pl.ledger.GetState(constant.RuleManagerContractAddr.Address(), []byte(contracts.RuleKey(chainId)))
+	if !ok {
+		return ok, data
+	}
+
+	rules := make([]*ruleMgr.Rule, 0)
+	if err := json.Unmarshal(data, &rules); err != nil {
+		return false, []byte("unmarshal rules error: " + err.Error())
+	}
+
+	for _, r := range rules {
+		if governance.GovernanceAvailable == r.Status {
+			resData, err := json.Marshal(r)
+			if err != nil {
+				return false, []byte("marshal rule error: " + err.Error())
+			}
+			return true, resData
+		}
+	}
+
+	return false, []byte(fmt.Errorf("the available rule does not exist").Error())
 }
 
 func (pl *VerifyPool) getAccountState(address constant.BoltContractAddress, key string) (bool, []byte) {

@@ -9,29 +9,31 @@ import (
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // SendTransaction handles transaction sent by the client.
 // If the transaction is valid, it will return the transaction hash.
-func (cbs *ChainBrokerService) SendTransaction(ctx context.Context, tx *pb.Transaction) (*pb.TransactionHashMsg, error) {
+func (cbs *ChainBrokerService) SendTransaction(ctx context.Context, tx *pb.BxhTransaction) (*pb.TransactionHashMsg, error) {
 	err := cbs.api.Broker().OrderReady()
 	if err != nil {
-		return nil, fmt.Errorf("the system is temporarily unavailable, err: %s", err.Error())
+		return nil, status.Newf(codes.Internal, "the system is temporarily unavailable %s", err.Error()).Err()
 	}
 
 	if err := cbs.checkTransaction(tx); err != nil {
-		return nil, err
+		return nil, status.Newf(codes.InvalidArgument, "check transaction fail for %s", err.Error()).Err()
 	}
 
 	hash, err := cbs.sendTransaction(tx)
 	if err != nil {
-		return nil, err
+		return nil, status.Newf(codes.Internal, "internal handling transaction fail %s", err.Error()).Err()
 	}
 
 	return &pb.TransactionHashMsg{TxHash: hash}, nil
 }
 
-func (cbs *ChainBrokerService) SendView(_ context.Context, tx *pb.Transaction) (*pb.Receipt, error) {
+func (cbs *ChainBrokerService) SendView(_ context.Context, tx *pb.BxhTransaction) (*pb.Receipt, error) {
 	if err := cbs.checkTransaction(tx); err != nil {
 		return nil, err
 	}
@@ -44,9 +46,9 @@ func (cbs *ChainBrokerService) SendView(_ context.Context, tx *pb.Transaction) (
 	return result, nil
 }
 
-func (cbs *ChainBrokerService) checkTransaction(tx *pb.Transaction) error {
+func (cbs *ChainBrokerService) checkTransaction(tx *pb.BxhTransaction) error {
 	if tx.Payload == nil && tx.IBTP == nil {
-		return fmt.Errorf("tx payload and ibtp can't both be nil")
+		tx.Payload = []byte{}
 	}
 	if tx.From == nil {
 		return fmt.Errorf("tx from address is nil")
@@ -68,19 +70,20 @@ func (cbs *ChainBrokerService) checkTransaction(tx *pb.Transaction) error {
 		return fmt.Errorf("can't deploy empty contract")
 	}
 
-	if tx.Timestamp < time.Now().UnixNano()-10*time.Minute.Nanoseconds() ||
-		tx.Timestamp > time.Now().UnixNano()+10*time.Minute.Nanoseconds() {
+	if tx.Timestamp < time.Now().UnixNano()-30*time.Minute.Nanoseconds() ||
+		tx.Timestamp > time.Now().UnixNano()+5*time.Minute.Nanoseconds() {
 		return fmt.Errorf("timestamp is illegal")
-	}
-
-	if tx.Nonce <= 0 {
-		return fmt.Errorf("nonce is illegal")
 	}
 
 	if len(tx.Signature) == 0 {
 		return fmt.Errorf("signature can't be empty")
 	}
 
+
+	return nil
+}
+
+func (cbs *ChainBrokerService) sendTransaction(tx *pb.BxhTransaction) (string, error) {
 	tx.TransactionHash = tx.Hash()
 	ok, _ := asym.Verify(crypto.Secp256k1, tx.Signature, tx.SignHash().Bytes(), *tx.From)
 	if !ok {
@@ -99,7 +102,7 @@ func (cbs *ChainBrokerService) sendTransaction(tx *pb.Transaction) (string, erro
 	return tx.TransactionHash.String(), nil
 }
 
-func (cbs *ChainBrokerService) sendView(tx *pb.Transaction) (*pb.Receipt, error) {
+func (cbs *ChainBrokerService) sendView(tx *pb.BxhTransaction) (*pb.Receipt, error) {
 	result, err := cbs.api.Broker().HandleView(tx)
 	if err != nil {
 		return nil, err
@@ -118,13 +121,18 @@ func (cbs *ChainBrokerService) GetTransaction(ctx context.Context, req *pb.Trans
 		return nil, err
 	}
 
+	bxhTx, ok := tx.(*pb.BxhTransaction)
+	if !ok {
+		return nil, fmt.Errorf("cannot get non bxh tx via grpc")
+	}
+
 	meta, err := cbs.api.Broker().GetTransactionMeta(hash)
 	if err != nil {
 		return nil, err
 	}
 
 	return &pb.GetTransactionResponse{
-		Tx:     tx,
+		Tx:     bxhTx,
 		TxMeta: meta,
 	}, nil
 }

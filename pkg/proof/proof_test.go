@@ -6,6 +6,10 @@ import (
 	"testing"
 	"time"
 
+	ruleMgr "github.com/meshplus/bitxhub-core/rule-mgr"
+
+	"github.com/meshplus/bitxhub-core/governance"
+
 	"github.com/golang/mock/gomock"
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/validator/mock_validator"
@@ -45,7 +49,7 @@ func TestVerifyPool_CheckProof(t *testing.T) {
 	chainData, err := json.Marshal(chain)
 	require.Nil(t, err)
 
-	rl := &contracts.Rule{
+	rl := &ruleMgr.Rule{
 		Address: contract,
 	}
 	rlData, err := json.Marshal(rl)
@@ -65,7 +69,7 @@ func TestVerifyPool_CheckProof(t *testing.T) {
 	engine := vp.ValidationEngine()
 	require.NotNil(t, engine)
 
-	txWithNoIBTP := &pb.Transaction{
+	txWithNoIBTP := &pb.BxhTransaction{
 		From:  types.NewAddressByStr(from),
 		To:    types.NewAddressByStr(to),
 		IBTP:  nil,
@@ -76,7 +80,7 @@ func TestVerifyPool_CheckProof(t *testing.T) {
 	require.Nil(t, err)
 	require.True(t, ok)
 
-	txWithNoExtra := &pb.Transaction{
+	txWithNoExtra := &pb.BxhTransaction{
 		From:  types.NewAddressByStr(from),
 		To:    types.NewAddressByStr(to),
 		IBTP:  getIBTP(t, 1, pb.IBTP_RECEIPT_SUCCESS, []byte("1")),
@@ -87,7 +91,7 @@ func TestVerifyPool_CheckProof(t *testing.T) {
 	require.NotNil(t, err)
 	require.False(t, ok)
 
-	txWithNotEqualProofHash := &pb.Transaction{
+	txWithNotEqualProofHash := &pb.BxhTransaction{
 		From:  types.NewAddressByStr(from),
 		To:    types.NewAddressByStr(to),
 		IBTP:  getIBTP(t, 1, pb.IBTP_RECEIPT_SUCCESS, []byte("222")),
@@ -101,7 +105,7 @@ func TestVerifyPool_CheckProof(t *testing.T) {
 	proof := []byte("test_proof")
 	proofHash := sha256.Sum256(proof)
 
-	txWithIBTP := &pb.Transaction{
+	txWithIBTP := &pb.BxhTransaction{
 		From:  types.NewAddressByStr(from),
 		To:    types.NewAddressByStr(to),
 		IBTP:  getIBTP(t, 1, pb.IBTP_RECEIPT_SUCCESS, proofHash[:]),
@@ -125,7 +129,7 @@ func TestVerifyPool_CheckProof2(t *testing.T) {
 	mockEngine := mock_validator.NewMockEngine(mockCtl)
 
 	chain := &appchainMgr.Appchain{
-		Status:        appchainMgr.AppchainAvailable,
+		Status:        governance.GovernanceAvailable,
 		ID:            from,
 		Name:          "appchain" + from,
 		Validators:    "",
@@ -171,14 +175,14 @@ func TestVerifyPool_CheckProof2(t *testing.T) {
 	}
 	signData, err := sign.Marshal()
 	require.Nil(t, err)
-	ibtp.Proof = signData
+	proof := signData
 
 	ok, err := verifyMultiSign(chain, ibtp, nil)
 	require.NotNil(t, err)
 	require.False(t, ok)
 
 	chain.Validators = string(addrsData)
-	ok, err = verifyMultiSign(chain, ibtp, nil)
+	ok, err = verifyMultiSign(chain, ibtp, proof)
 	require.Nil(t, err)
 	require.True(t, ok)
 }
@@ -200,7 +204,7 @@ func TestVerifyPool_CheckProof3(t *testing.T) {
 	proof := []byte("test_proof")
 	proofHash := sha256.Sum256(proof)
 
-	txWithIBTP := &pb.Transaction{
+	txWithIBTP := &pb.BxhTransaction{
 		From:  types.NewAddressByStr(from),
 		To:    types.NewAddressByStr(to),
 		IBTP:  getIBTP(t, 1, pb.IBTP_RECEIPT_SUCCESS, proofHash[:]),

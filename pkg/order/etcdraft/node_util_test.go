@@ -34,11 +34,11 @@ import (
 
 const to = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
 
-func constructTx(nonce uint64) *pb.Transaction {
+func constructTx(nonce uint64) pb.Transaction {
 	privK, _ := asym.GenerateKeyPair(crypto.Secp256k1)
 	pubKey := privK.PublicKey()
 	addr, _ := pubKey.Address()
-	tx := &pb.Transaction{Nonce: nonce}
+	tx := &pb.BxhTransaction{Nonce: nonce}
 	tx.Timestamp = time.Now().UnixNano()
 	tx.From = addr
 	sig, _ := privK.Sign(tx.SignHash().Bytes())
@@ -113,7 +113,7 @@ func (sync *mockSync) SyncCFTBlocks(begin, end uint64, blockCh chan *pb.Block) e
 		blockHash := &types.Hash{
 			RawHash: [types.HashLength]byte{0},
 		}
-		blockCh <- &pb.Block{BlockHeader: header, BlockHash: blockHash}
+		blockCh <- &pb.Block{BlockHeader: header, BlockHash: blockHash, Transactions: &pb.Transactions{}}
 	}
 	blockCh <- nil
 	return nil
@@ -146,14 +146,14 @@ func listen(t *testing.T, order order.Order, swarm *peermgr.Swarm) {
 	}
 }
 
-func generateTx() *pb.Transaction {
+func generateTx() pb.Transaction {
 	privKey, _ := asym.GenerateKeyPair(crypto.Secp256k1)
 	from, _ := privKey.PublicKey().Address()
-	tx := &pb.Transaction{
+	tx := &pb.BxhTransaction{
 		From:      from,
 		To:        types.NewAddressByStr(to),
 		Timestamp: time.Now().UnixNano(),
-		Nonce:     1,
+		Nonce:     0,
 	}
 	_ = tx.Sign(privKey)
 	tx.TransactionHash = tx.Hash()

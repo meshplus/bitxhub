@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math/big"
 	"math/rand"
 	"path/filepath"
 	"sync"
@@ -35,6 +36,7 @@ const (
 	dstMethod    = "did:bitxhub:appchain2:."
 	from         = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
 	executorType = "serial"
+	gasLimit     = 10000000
 )
 
 func TestNew(t *testing.T) {
@@ -47,9 +49,10 @@ func TestNew(t *testing.T) {
 		BlockHash: types.NewHashByStr(from),
 	}
 	mockLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
+	mockLedger.EXPECT().StateDB().Return(mockLedger).AnyTimes()
 
 	logger := log.NewWithModule("executor")
-	executor, err := New(mockLedger, logger, executorType)
+	executor, err := New(mockLedger, logger, executorType, gasLimit)
 	assert.Nil(t, err)
 	assert.NotNil(t, executor)
 
@@ -93,7 +96,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	mockLedger.EXPECT().Clear().AnyTimes()
 	mockLedger.EXPECT().GetState(gomock.Any(), gomock.Any()).Return(true, []byte("10")).AnyTimes()
 	mockLedger.EXPECT().SetState(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
-	mockLedger.EXPECT().GetBalance(gomock.Any()).Return(uint64(10)).AnyTimes()
+	mockLedger.EXPECT().GetBalance(gomock.Any()).Return(new(big.Int).SetUint64(10)).AnyTimes()
 	mockLedger.EXPECT().SetBalance(gomock.Any(), gomock.Any()).AnyTimes()
 	mockLedger.EXPECT().SetNonce(gomock.Any(), gomock.Any()).AnyTimes()
 	mockLedger.EXPECT().GetNonce(gomock.Any()).Return(uint64(0)).AnyTimes()
@@ -102,13 +105,15 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	mockLedger.EXPECT().PersistExecutionResult(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	mockLedger.EXPECT().FlushDirtyDataAndComputeJournal().Return(make(map[string]*ledger.Account), &ledger.BlockJournal{ChangedHash: &types.Hash{}}).AnyTimes()
 	mockLedger.EXPECT().PersistBlockData(gomock.Any()).AnyTimes()
+	mockLedger.EXPECT().PrepareBlock(gomock.Any()).AnyTimes()
+	mockLedger.EXPECT().StateDB().Return(mockLedger).AnyTimes()
 	logger := log.NewWithModule("executor")
 
-	exec, err := New(mockLedger, logger, executorType)
+	exec, err := New(mockLedger, logger, executorType, gasLimit)
 	assert.Nil(t, err)
 
 	// mock data for block
-	var txs []*pb.Transaction
+	var txs []*pb.BxhTransaction
 	privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	assert.Nil(t, err)
 	pubKey := privKey.PublicKey()
@@ -145,6 +150,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	invalidTx := mockTx(t, nil)
 	invalidTx.From = types.NewAddressByStr(from)
 	invalidTx.Signature = []byte("invalid")
+	invalidTx.TransactionHash = invalidTx.Hash()
 	txs = append(txs, invalidTx)
 
 	assert.Nil(t, exec.Start())
@@ -161,7 +167,13 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 
 	// send blocks to executor
 	commitEvent1 := mockCommitEvent(uint64(1), nil)
-	commitEvent2 := mockCommitEvent(uint64(2), txs)
+
+	transactions := make([]pb.Transaction, 0)
+	for _, tx := range txs {
+		transactions = append(transactions, tx)
+	}
+
+	commitEvent2 := mockCommitEvent(uint64(2), transactions)
 	exec.ExecuteBlock(commitEvent1)
 	exec.ExecuteBlock(commitEvent2)
 
@@ -201,13 +213,14 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 	mockLedger.EXPECT().PersistBlockData(gomock.Any()).AnyTimes()
 	mockLedger.EXPECT().GetNonce(gomock.Any()).Return(uint64(0)).AnyTimes()
 	mockLedger.EXPECT().SetNonce(gomock.Any(), gomock.Any()).AnyTimes()
+	mockLedger.EXPECT().StateDB().Return(mockLedger).AnyTimes()
 	logger := log.NewWithModule("executor")
 
-	exec, err := New(mockLedger, logger, executorType)
+	exec, err := New(mockLedger, logger, executorType, gasLimit)
 	assert.Nil(t, err)
 
 	// mock data for block
-	var txs []*pb.Transaction
+	var txs []pb.Transaction
 	tx, err := genBVMContractTransaction(privKey, 1, contractAddr, "GetIBTPByID", pb.String(id))
 	assert.Nil(t, err)
 
@@ -230,10 +243,10 @@ func listenBlock(wg *sync.WaitGroup, done chan bool, blockCh chan events.Execute
 	}
 }
 
-func mockCommitEvent(blockNumber uint64, txs []*pb.Transaction) *pb.CommitEvent {
+func mockCommitEvent(blockNumber uint64, txs []pb.Transaction) *pb.CommitEvent {
 	block := mockBlock(blockNumber, txs)
-	localList := make([]bool, len(block.Transactions))
-	for i := 0; i < len(block.Transactions); i++ {
+	localList := make([]bool, len(block.Transactions.Transactions))
+	for i := 0; i < len(block.Transactions.Transactions); i++ {
 		localList[i] = false
 	}
 	return &pb.CommitEvent{
@@ -242,26 +255,27 @@ func mockCommitEvent(blockNumber uint64, txs []*pb.Transaction) *pb.CommitEvent 
 	}
 }
 
-func mockBlock(blockNumber uint64, txs []*pb.Transaction) *pb.Block {
+func mockBlock(blockNumber uint64, txs []pb.Transaction) *pb.Block {
 	header := &pb.BlockHeader{
 		Number:    blockNumber,
 		Timestamp: time.Now().UnixNano(),
 	}
+
 	block := &pb.Block{
 		BlockHeader:  header,
-		Transactions: txs,
+		Transactions: &pb.Transactions{Transactions: txs},
 	}
 	block.BlockHash = block.Hash()
 
 	return block
 }
 
-func mockTx(t *testing.T, data *pb.TransactionData) *pb.Transaction {
+func mockTx(t *testing.T, data *pb.TransactionData) *pb.BxhTransaction {
 	var content []byte
 	if data != nil {
 		content, _ = data.Marshal()
 	}
-	return &pb.Transaction{
+	return &pb.BxhTransaction{
 		To:      randAddress(t),
 		Payload: content,
 		Nonce:   uint64(rand.Int63()),
@@ -288,14 +302,14 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 
 	_, from := loadAdminKey(t)
 
-	ldg.SetBalance(from, 100000000)
+	ldg.SetBalance(from, new(big.Int).SetInt64(100000000))
 	account, journal := ldg.FlushDirtyDataAndComputeJournal()
 	err = ldg.Commit(1, account, journal)
 	require.Nil(t, err)
 	err = ldg.PersistExecutionResult(mockBlock(1, nil), nil, &pb.InterchainMeta{})
 	require.Nil(t, err)
 
-	executor, err := New(ldg, log.NewWithModule("executor"), executorType)
+	executor, err := New(ldg, log.NewWithModule("executor"), executorType, gasLimit)
 	require.Nil(t, err)
 	err = executor.Start()
 	require.Nil(t, err)
@@ -304,7 +318,7 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 	sub := executor.SubscribeBlockEvent(ch)
 	defer sub.Unsubscribe()
 
-	var txs []*pb.Transaction
+	var txs []pb.Transaction
 	txs = append(txs, mockTransferTx(t))
 	txs = append(txs, mockTransferTx(t))
 	txs = append(txs, mockTransferTx(t))
@@ -314,23 +328,23 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 
 	block := <-ch
 	require.EqualValues(t, 2, block.Block.Height())
-	require.EqualValues(t, uint64(99999997), ldg.GetBalance(from))
+	require.EqualValues(t, uint64(99999997), ldg.GetBalance(from).Uint64())
 
 	// test executor with readonly ledger
 	viewLedger, err := ledger.New(createMockRepo(t), blockchainStorage, ldb, blockFile, accountCache, log.NewWithModule("ledger"))
 	require.Nil(t, err)
 
-	exec, err := New(viewLedger, log.NewWithModule("executor"), executorType)
+	exec, err := New(viewLedger, log.NewWithModule("executor"), executorType, gasLimit)
 	require.Nil(t, err)
 
 	tx := mockTransferTx(t)
-	receipts := exec.ApplyReadonlyTransactions([]*pb.Transaction{tx})
+	receipts := exec.ApplyReadonlyTransactions([]pb.Transaction{tx})
 	require.NotNil(t, receipts)
 	require.Equal(t, pb.Receipt_SUCCESS, receipts[0].Status)
 	require.Nil(t, receipts[0].Ret)
 }
 
-func mockTransferTx(t *testing.T) *pb.Transaction {
+func mockTransferTx(t *testing.T) pb.Transaction {
 	privKey, from := loadAdminKey(t)
 	to := randAddress(t)
 
@@ -342,7 +356,7 @@ func mockTransferTx(t *testing.T) *pb.Transaction {
 	data, err := transactionData.Marshal()
 	require.Nil(t, err)
 
-	tx := &pb.Transaction{
+	tx := &pb.BxhTransaction{
 		From:      from,
 		To:        to,
 		Timestamp: time.Now().UnixNano(),
@@ -376,15 +390,15 @@ func randAddress(t *testing.T) *types.Address {
 	return address
 }
 
-func genBVMContractTransaction(privateKey crypto.PrivateKey, nonce uint64, address *types.Address, method string, args ...*pb.Arg) (*pb.Transaction, error) {
+func genBVMContractTransaction(privateKey crypto.PrivateKey, nonce uint64, address *types.Address, method string, args ...*pb.Arg) (pb.Transaction, error) {
 	return genContractTransaction(pb.TransactionData_BVM, privateKey, nonce, address, method, args...)
 }
 
-func genXVMContractTransaction(privateKey crypto.PrivateKey, nonce uint64, address *types.Address, method string, args ...*pb.Arg) (*pb.Transaction, error) {
+func genXVMContractTransaction(privateKey crypto.PrivateKey, nonce uint64, address *types.Address, method string, args ...*pb.Arg) (pb.Transaction, error) {
 	return genContractTransaction(pb.TransactionData_XVM, privateKey, nonce, address, method, args...)
 }
 
-func genContractTransaction(vmType pb.TransactionData_VMType, privateKey crypto.PrivateKey, nonce uint64, address *types.Address, method string, args ...*pb.Arg) (*pb.Transaction, error) {
+func genContractTransaction(vmType pb.TransactionData_VMType, privateKey crypto.PrivateKey, nonce uint64, address *types.Address, method string, args ...*pb.Arg) (pb.Transaction, error) {
 	from, err := privateKey.PublicKey().Address()
 	if err != nil {
 		return nil, err
@@ -411,7 +425,7 @@ func genContractTransaction(vmType pb.TransactionData_VMType, privateKey crypto.
 		return nil, err
 	}
 
-	tx := &pb.Transaction{
+	tx := &pb.BxhTransaction{
 		From:      from,
 		To:        address,
 		Payload:   pld,

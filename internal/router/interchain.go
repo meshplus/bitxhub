@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum/event"
-	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/repo"
@@ -221,30 +220,29 @@ func (router *InterchainRouter) fetchSigns(height uint64) (map[string][]byte, er
 }
 
 func (router *InterchainRouter) classify(block *pb.Block, meta *pb.InterchainMeta) map[bitxid.DID]*pb.InterchainTxWrapper {
-	txsM := make(map[bitxid.DID][]*pb.Transaction)
-	hashesM := make(map[bitxid.DID][]types.Hash)
+	txsM := make(map[bitxid.DID][]*pb.VerifiedTx)
 
 	for k, vs := range meta.Counter {
-		var txs []*pb.Transaction
-		var hashes []types.Hash
-		for _, i := range vs.Slice {
-			txs = append(txs, block.Transactions[i])
-			hashes = append(hashes, *block.Transactions[i].TransactionHash)
+		var txs []*pb.VerifiedTx
+		for _, vi := range vs.Slice {
+			tx, _ := block.Transactions.Transactions[vi.Index].(*pb.BxhTransaction)
+			txs = append(txs, &pb.VerifiedTx{
+				Tx:    tx,
+				Valid: vi.Valid,
+			})
 		}
 		// k value is the destination did address, so did with same method
 		// will be grouped into one set
 		fullMethod := bitxid.DID(k).GetChainDID()
 		txsM[fullMethod] = txs
-		hashesM[fullMethod] = hashes
 	}
 
 	target := make(map[bitxid.DID]*pb.InterchainTxWrapper)
 	for dest, txs := range txsM {
 		wrapper := &pb.InterchainTxWrapper{
-			Height:            block.BlockHeader.Number,
-			TransactionHashes: hashesM[dest],
-			Transactions:      txs,
-			L2Roots:           meta.L2Roots,
+			Height:       block.BlockHeader.Number,
+			Transactions: txs,
+			L2Roots:      meta.L2Roots,
 		}
 		target[dest] = wrapper
 	}
