@@ -5,19 +5,16 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/meshplus/bitxhub-core/governance"
-
-	"github.com/meshplus/bitxid"
-
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
+	"github.com/meshplus/bitxhub-core/governance"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
+	"github.com/meshplus/bitxid"
 	"github.com/stretchr/testify/suite"
-	"github.com/tidwall/gjson"
 )
 
 type Governance struct {
@@ -85,8 +82,11 @@ func (suite *Governance) TestGovernance() {
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	appchainNonce++
-	chainId := gjson.Get(string(ret.Ret), "chain_id").String()
-	registerProposalId := gjson.Get(string(ret.Ret), "proposal_id").String()
+	gRet := &governance.GovernanceResult{}
+	err = json.Unmarshal(ret.Ret, gRet)
+	suite.Require().Nil(err)
+	chainId := string(gRet.Extra)
+	registerProposalId := gRet.ProposalID
 
 	// repeated registration
 	ret, err = invokeBVMContract(suite.api, appchainPri, appchainNonce, constant.AppchainMgrContractAddr.Address(), "Register",
