@@ -121,18 +121,14 @@ func (x *InterchainManager) HandleIBTP(ibtp *pb.IBTP) *boltvm.Response {
 		return x.handleUnionIBTP(ibtp)
 	}
 
-	// Pier should retry if checkBasicIBTP failed
-	srcAppchain, dstAppchain, err := x.checkBasicIBTP(ibtp)
+	// Pier should retry if checkIBTP failed
+	interchain, err := x.checkIBTP(ibtp)
 	if err != nil {
 		return boltvm.Error(err.Error())
 	}
 
-	interchain, srcAppchain, dstAppchain, appchainErr := x.checkAppchainInfo(ibtp, srcAppchain, dstAppchain)
-	if appchainErr == nil {
-		if err := x.checkIBTP(ibtp, interchain, srcAppchain, dstAppchain); err != nil {
-			return boltvm.Error(err.Error())
-		}
-	}
+	// ProcessIBTP should always executed even if checkTargetAppchainAvailability failed
+	appchainErr := x.checkTargetAppchainAvailability(ibtp)
 
 	res := boltvm.Success(nil)
 
@@ -155,12 +151,12 @@ func (x *InterchainManager) HandleIBTP(ibtp *pb.IBTP) *boltvm.Response {
 	return res
 }
 
-func (x *InterchainManager) checkBasicIBTP(ibtp *pb.IBTP) (*appchainMgr.Appchain, *appchainMgr.Appchain, error) {
+func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, error) {
 	if ibtp.From == "" {
-		return nil, nil, fmt.Errorf("%s: empty source chain id", InvalidIBTP)
+		return nil, fmt.Errorf("%s: empty source chain id", InvalidIBTP)
 	}
 	if ibtp.To == "" {
-		return nil, nil, fmt.Errorf("%s: empty destination chain id", InvalidIBTP)
+		return nil, fmt.Errorf("%s: empty destination chain id", InvalidIBTP)
 	}
 
 	var (
@@ -169,65 +165,65 @@ func (x *InterchainManager) checkBasicIBTP(ibtp *pb.IBTP) (*appchainMgr.Appchain
 		err         error
 	)
 
-	if pb.IBTP_INTERCHAIN == ibtp.Type {
-		srcAppchain, err = x.getAppchainInfo(ibtp.From)
-		if err != nil {
-			return nil, nil, fmt.Errorf("%s: source appchain %s is not registered", CurAppchainNotAvailable, ibtp.From)
-		}
-
-		if srcAppchain.Status != governance.GovernanceAvailable {
-			return nil, nil, fmt.Errorf("%s: source appchain status is %s, can not handle IBTP", CurAppchainNotAvailable, string(srcAppchain.Status))
-		}
-	} else {
-		srcAppchain, err = x.getAppchainInfo(ibtp.From)
-		if err != nil {
-			return nil, nil, fmt.Errorf("%s: source appchain %s is not correct", InvalidIBTP, ibtp.From)
-		}
-
-		dstAppchain, err = x.getAppchainInfo(ibtp.To)
-		if err != nil {
-			return nil, nil, fmt.Errorf("%s: dest appchain %s is not registered", CurAppchainNotAvailable, ibtp.To)
-		}
-
-		if dstAppchain.Status != governance.GovernanceAvailable {
-			return nil, nil, fmt.Errorf("%s: dest appchain status is %s, can not handle IBTP", CurAppchainNotAvailable, string(dstAppchain.Status))
+	interchain, ok := x.getInterchain(ibtp.From)
+	if !ok {
+		interchain = &pb.Interchain{
+			ID:                   ibtp.From,
+			InterchainCounter:    make(map[string]uint64),
+			ReceiptCounter:       make(map[string]uint64),
+			SourceReceiptCounter: make(map[string]uint64),
 		}
 	}
 
-	return srcAppchain, dstAppchain, nil
-}
-
-func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP, interchain *pb.Interchain, srcAppchain, dstAppchain *appchainMgr.Appchain) error {
 	if pb.IBTP_INTERCHAIN == ibtp.Type {
+		srcAppchain, err = x.getAppchainInfo(ibtp.From)
+		if err != nil {
+			return nil, fmt.Errorf("%s: source appchain %s is not registered", CurAppchainNotAvailable, ibtp.From)
+		}
+
+		if srcAppchain.Status != governance.GovernanceAvailable {
+			return nil, fmt.Errorf("%s: source appchain status is %s, can not handle IBTP", CurAppchainNotAvailable, string(srcAppchain.Status))
+		}
+
 		if srcAppchain.ChainType != appchainMgr.RelaychainType {
 			if err := x.checkPubKeyAndCaller(srcAppchain.PublicKey); err != nil {
-				return fmt.Errorf("%s: caller is not bind to ibtp from: %w", InvalidIBTP, err)
+				return nil, fmt.Errorf("%s: caller is not bind to ibtp from: %w", InvalidIBTP, err)
 			}
 		}
 		idx := interchain.InterchainCounter[ibtp.To]
 		if ibtp.Index <= idx {
-			return fmt.Errorf(fmt.Sprintf("%s: required %d, but %d", ibtpIndexExist, idx+1, ibtp.Index))
+			return nil, fmt.Errorf(fmt.Sprintf("%s: required %d, but %d", ibtpIndexExist, idx+1, ibtp.Index))
 		}
 		if ibtp.Index > idx+1 {
-			return fmt.Errorf(fmt.Sprintf("%s: required %d, but %d", ibtpIndexWrong, idx+1, ibtp.Index))
+			return nil, fmt.Errorf(fmt.Sprintf("%s: required %d, but %d", ibtpIndexWrong, idx+1, ibtp.Index))
 		}
 	} else {
+		srcAppchain, err = x.getAppchainInfo(ibtp.From)
+		if err != nil {
+			return nil, fmt.Errorf("%s: source appchain %s is not correct", InvalidIBTP, ibtp.From)
+		}
+
+		dstAppchain, err = x.getAppchainInfo(ibtp.To)
+		if err != nil {
+			return nil, fmt.Errorf("%s: dest appchain %s is not registered", CurAppchainNotAvailable, ibtp.To)
+		}
+
 		if srcAppchain.ChainType != appchainMgr.RelaychainType {
 			if err := x.checkPubKeyAndCaller(dstAppchain.PublicKey); err != nil {
-				return fmt.Errorf("%s: caller is not bind to ibtp to", InvalidIBTP)
+				return nil, fmt.Errorf("%s: caller is not bind to ibtp to", InvalidIBTP)
 			}
 		}
 		idx := interchain.ReceiptCounter[ibtp.To]
 		if ibtp.Index <= idx {
-			return fmt.Errorf(fmt.Sprintf("%s: required %d, but %d", ibtpIndexExist, idx+1, ibtp.Index))
+			return nil, fmt.Errorf(fmt.Sprintf("%s: required %d, but %d", ibtpIndexExist, idx+1, ibtp.Index))
 		}
 
 		if ibtp.Index > idx+1 {
-			return fmt.Errorf(fmt.Sprintf("%s: required %d, but %d", ibtpIndexWrong, idx+1, ibtp.Index))
+			return nil, fmt.Errorf(fmt.Sprintf("%s: required %d, but %d", ibtpIndexWrong, idx+1, ibtp.Index))
 		}
 	}
 
-	return nil
+	return interchain, nil
 }
 
 func (x *InterchainManager) checkPubKeyAndCaller(pub string) error {
@@ -271,30 +267,18 @@ func (x *InterchainManager) checkAppchain(id string) (*pb.Interchain, *appchainM
 	return interchain, app, nil
 }
 
-func (x *InterchainManager) checkAppchainInfo(ibtp *pb.IBTP, srcAppchain, dstAppchain *appchainMgr.Appchain) (*pb.Interchain, *appchainMgr.Appchain, *appchainMgr.Appchain, error) {
-	var err error
-
-	interchain, ok := x.getInterchain(ibtp.From)
-	if !ok {
-		interchain = &pb.Interchain{
-			ID:                   ibtp.From,
-			InterchainCounter:    make(map[string]uint64),
-			ReceiptCounter:       make(map[string]uint64),
-			SourceReceiptCounter: make(map[string]uint64),
-		}
-	}
-
+func (x *InterchainManager) checkTargetAppchainAvailability(ibtp *pb.IBTP) error {
 	if pb.IBTP_INTERCHAIN == ibtp.Type {
-		dstAppchain, err = x.getAppchainInfo(ibtp.To)
+		dstAppchain, err := x.getAppchainInfo(ibtp.To)
 		if err != nil {
-			return interchain, srcAppchain, dstAppchain, fmt.Errorf("%s: dest appchain id %s is not registered", TargetAppchainNotAvailable, ibtp.To)
+			return fmt.Errorf("%s: dest appchain id %s is not registered", TargetAppchainNotAvailable, ibtp.To)
 		}
 		if dstAppchain.Status != governance.GovernanceAvailable {
-			return interchain, srcAppchain, dstAppchain, fmt.Errorf("%s: dest appchain status is %s, can not handle IBTP", TargetAppchainNotAvailable, string(dstAppchain.Status))
+			return fmt.Errorf("%s: dest appchain status is %s, can not handle IBTP", TargetAppchainNotAvailable, string(dstAppchain.Status))
 		}
 	}
 
-	return interchain, srcAppchain, dstAppchain, nil
+	return nil
 }
 
 // isRelayIBTP returns whether ibtp.from is relaychain type
