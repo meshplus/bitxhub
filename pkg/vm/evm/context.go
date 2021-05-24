@@ -4,7 +4,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/params"
-	vm "github.com/meshplus/bitxhub-kit/evm"
+	vm "github.com/meshplus/eth-kit/evm"
 )
 
 type EvmBlockContext struct {

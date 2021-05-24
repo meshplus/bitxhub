@@ -15,7 +15,6 @@ import (
 
 	"github.com/meshplus/bitxhub"
 	"github.com/meshplus/bitxhub-kit/log"
-	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/api/gateway"
 	"github.com/meshplus/bitxhub/api/grpc"
 	"github.com/meshplus/bitxhub/api/jsonrpc"
@@ -23,6 +22,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/coreapi"
 	"github.com/meshplus/bitxhub/internal/loggers"
 	"github.com/meshplus/bitxhub/internal/repo"
+	types2 "github.com/meshplus/eth-kit/types"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/urfave/cli"
 )
@@ -62,7 +62,7 @@ func start(ctx *cli.Context) error {
 
 	loggers.Initialize(repo.Config)
 
-	pb.InitEIP155Signer(big.NewInt(int64(repo.Config.ChainID)))
+	types2.InitEIP155Signer(big.NewInt(int64(repo.Config.ChainID)))
 
 	if repo.Config.PProf.Enable {
 		switch repo.Config.PProf.PType {

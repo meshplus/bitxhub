@@ -14,12 +14,13 @@ import (
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rpc"
-	vm1 "github.com/meshplus/bitxhub-kit/evm"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	rpctypes "github.com/meshplus/bitxhub/api/jsonrpc/types"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
 	"github.com/meshplus/bitxhub/internal/repo"
+	vm1 "github.com/meshplus/eth-kit/evm"
+	types2 "github.com/meshplus/eth-kit/types"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -204,7 +205,7 @@ func (api *PublicEthereumAPI) GetTransactionLogs(txHash common.Hash) ([]*pb.EvmL
 func (api *PublicEthereumAPI) SendRawTransaction(data hexutil.Bytes) (common.Hash, error) {
 	api.logger.Debugf("eth_sendRawTransaction, data: %s", data.String())
 
-	tx := &pb.EthTransaction{}
+	tx := &types2.EthTransaction{}
 	if err := tx.Unmarshal(data); err != nil {
 		return [32]byte{}, err
 	}
@@ -225,7 +226,7 @@ func (api *PublicEthereumAPI) SendRawTransaction(data hexutil.Bytes) (common.Has
 	return api.sendTransaction(tx)
 }
 
-func (api *PublicEthereumAPI) checkTransaction(tx *pb.EthTransaction) error {
+func (api *PublicEthereumAPI) checkTransaction(tx *types2.EthTransaction) error {
 	if tx.GetFrom() == nil {
 		return fmt.Errorf("tx from address is nil")
 	}
@@ -258,7 +259,7 @@ func (api *PublicEthereumAPI) checkTransaction(tx *pb.EthTransaction) error {
 	return nil
 }
 
-func (api *PublicEthereumAPI) sendTransaction(tx *pb.EthTransaction) (common.Hash, error) {
+func (api *PublicEthereumAPI) sendTransaction(tx *types2.EthTransaction) (common.Hash, error) {
 	if err := tx.VerifySignature(); err != nil {
 		return [32]byte{}, err
 	}
@@ -301,7 +302,7 @@ func (e *revertError) ErrorData() interface{} {
 }
 
 // Call performs a raw contract call.
-func (api *PublicEthereumAPI) Call(args pb.CallArgs, blockNr rpc.BlockNumber, _ *map[common.Address]rpctypes.Account) (hexutil.Bytes, error) {
+func (api *PublicEthereumAPI) Call(args types2.CallArgs, blockNr rpc.BlockNumber, _ *map[common.Address]rpctypes.Account) (hexutil.Bytes, error) {
 	api.logger.Debugf("eth_call, args: %s, block number: %d", args, blockNr.Int64())
 
 	// Determine the highest gas limit can be used during call.
@@ -310,7 +311,7 @@ func (api *PublicEthereumAPI) Call(args pb.CallArgs, blockNr rpc.BlockNumber, _ 
 		args.Gas = (*hexutil.Uint64)(&api.config.GasLimit)
 	}
 
-	tx := &pb.EthTransaction{}
+	tx := &types2.EthTransaction{}
 	tx.FromCallArgs(args)
 
 	receipt, err := api.api.Broker().HandleView(tx)
@@ -334,7 +335,7 @@ func (api *PublicEthereumAPI) Call(args pb.CallArgs, blockNr rpc.BlockNumber, _ 
 // EstimateGas returns an estimate of gas usage for the given smart contract call.
 // It adds 2,000 gas to the returned value instead of using the gas adjustment
 // param from the SDK.
-func (api *PublicEthereumAPI) EstimateGas(args pb.CallArgs) (hexutil.Uint64, error) {
+func (api *PublicEthereumAPI) EstimateGas(args types2.CallArgs) (hexutil.Uint64, error) {
 	api.logger.Debugf("eth_estimateGas, args: %s", args)
 
 	// Determine the highest gas limit can be used during the estimation.
@@ -342,7 +343,7 @@ func (api *PublicEthereumAPI) EstimateGas(args pb.CallArgs) (hexutil.Uint64, err
 		// Retrieve the block to act as the gas ceiling
 		args.Gas = (*hexutil.Uint64)(&api.config.GasLimit)
 	}
-	tx := &pb.EthTransaction{}
+	tx := &types2.EthTransaction{}
 	tx.FromCallArgs(args)
 
 	result, err := api.api.Broker().HandleView(tx)
@@ -397,7 +398,7 @@ func (api *PublicEthereumAPI) GetTransactionByHash(hash common.Hash) (*rpctypes.
 		}
 	}
 
-	ethTx, ok := tx.(*pb.EthTransaction)
+	ethTx, ok := tx.(*types2.EthTransaction)
 	if !ok {
 		return nil, fmt.Errorf("tx is not in eth format")
 	}
@@ -427,7 +428,7 @@ func (api *PublicEthereumAPI) GetTransactionByBlockNumberAndIndex(blockNum rpcty
 			return nil, fmt.Errorf("index beyond block transactions' size")
 		}
 
-		ethTx, ok := txs[idx].(*pb.EthTransaction)
+		ethTx, ok := txs[idx].(*types2.EthTransaction)
 		if !ok {
 			return nil, fmt.Errorf("tx is not in eth format")
 		}
@@ -457,7 +458,7 @@ func (api *PublicEthereumAPI) GetTransactionReceipt(hash common.Hash) (map[strin
 		return nil, err
 	}
 
-	ethTx, ok := tx.(*pb.EthTransaction)
+	ethTx, ok := tx.(*types2.EthTransaction)
 	if !ok {
 		return nil, fmt.Errorf("tx is not in eth format")
 	}
@@ -531,7 +532,7 @@ func (api *PublicEthereumAPI) PendingTransactions() ([]*rpctypes.RPCTransaction,
 	rpcTxs := make([]*rpctypes.RPCTransaction, len(txs))
 
 	for _, tx := range txs {
-		ethTx, ok := tx.(*pb.EthTransaction)
+		ethTx, ok := tx.(*types2.EthTransaction)
 		if !ok {
 			continue
 		}
@@ -561,7 +562,7 @@ func (api *PublicEthereumAPI) getTxByBlockInfoAndIndex(mode string, key string, 
 		return nil, fmt.Errorf("index beyond block transactions' size")
 	}
 
-	ethTx, ok := block.Transactions.Transactions[idx].(*pb.EthTransaction)
+	ethTx, ok := block.Transactions.Transactions[idx].(*types2.EthTransaction)
 	if !ok {
 		return nil, fmt.Errorf("tx is not in eth format")
 	}
@@ -647,7 +648,7 @@ func newRPCTransaction(tx pb.Transaction, blockHash common.Hash, blockNumber uin
 		result.TransactionIndex = (*hexutil.Uint64)(&index)
 	}
 	if tx.GetType() == ethtypes.AccessListTxType {
-		al := tx.(*pb.EthTransaction).AccessList()
+		al := tx.(*types2.EthTransaction).GetInner().GetAccessList()
 		result.Accesses = &al
 		result.ChainID = (*hexutil.Big)(tx.GetChainID())
 	}

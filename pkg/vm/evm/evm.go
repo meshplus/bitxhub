@@ -5,8 +5,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/pkg/vm"
+	types2 "github.com/meshplus/eth-kit/types"
 )
 
 type EtherVM struct {
@@ -19,7 +19,7 @@ func New(ctx *vm.Context) (*EtherVM, error) {
 	}, nil
 }
 
-func NewMessage(tx *pb.EthTransaction) types.Message {
+func NewMessage(tx *types2.EthTransaction) types.Message {
 	from := common.BytesToAddress(tx.GetFrom().Bytes())
 	to := common.BytesToAddress(tx.GetTo().Bytes())
 	nonce := tx.GetNonce()
@@ -27,7 +27,7 @@ func NewMessage(tx *pb.EthTransaction) types.Message {
 	gas := tx.GetGas()
 	gasPrice := tx.GetGasPrice()
 	data := tx.GetPayload()
-	accessList := tx.AccessList()
+	accessList := tx.GetInner().GetAccessList()
 	return types.NewMessage(from, &to, nonce, amount, gas, gasPrice, data, accessList, true)
 }
 
