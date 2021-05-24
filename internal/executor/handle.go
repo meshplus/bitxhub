@@ -6,9 +6,12 @@ import (
 	"fmt"
 	"math/big"
 	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/meshplus/bitxhub/internal/executor/contracts"
 
 	"github.com/cbergoon/merkletree"
 	"github.com/ethereum/go-ethereum/common"
@@ -84,9 +87,9 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	calcBlockSize.Observe(float64(block.Size()))
 	executeBlockDuration.Observe(float64(time.Since(current)) / float64(time.Second))
 
-	counter := make(map[string]*pb.Uint64Slice)
+	counter := make(map[string]*pb.VerifiedIndexSlice)
 	for k, v := range exec.txsExecutor.GetInterchainCounter() {
-		counter[k] = &pb.Uint64Slice{Slice: v}
+		counter[k] = &pb.VerifiedIndexSlice{Slice: v}
 	}
 	interchainMeta := &pb.InterchainMeta{
 		Counter: counter,
@@ -136,15 +139,18 @@ func (exec *BlockExecutor) buildTxMerkleTree(txs []pb.Transaction) (*types.Hash,
 
 	wg.Add(groupCnt - 1)
 	for addr, txIndexes := range exec.txsExecutor.GetInterchainCounter() {
-		go func(addr string, txIndexes []uint64) {
+		go func(addr string, txIndexes []*pb.VerifiedIndex) {
 			defer wg.Done()
 
-			txHashes := make([]merkletree.Content, 0, len(txIndexes))
+			verifiedTx := make([]merkletree.Content, 0, len(txIndexes))
 			for _, txIndex := range txIndexes {
-				txHashes = append(txHashes, txs[txIndex].GetHash())
+				verifiedTx = append(verifiedTx, &pb.VerifiedTx{
+					Tx:    txs[txIndex.Index].(*pb.BxhTransaction),
+					Valid: txIndex.Valid,
+				})
 			}
 
-			hash, err := calcMerkleRoot(txHashes)
+			hash, err := calcMerkleRoot(verifiedTx)
 			if err != nil {
 				atomic.AddInt32(&errorCnt, 1)
 				return
@@ -247,7 +253,15 @@ func (exec *BlockExecutor) applyTx(index int, tx pb.Transaction, invalidReason a
 				}
 
 				for k, v := range m {
-					exec.txsExecutor.AddInterchainCounter(k, v)
+					valid := true
+					if receipt.Status == pb.Receipt_FAILED &&
+						strings.Contains(string(receipt.Ret), contracts.TargetAppchainNotAvailable) {
+						valid = false
+					}
+					exec.txsExecutor.AddInterchainCounter(k, &pb.VerifiedIndex{
+						Index: v,
+						Valid: valid,
+					})
 				}
 				normalTx = false
 			}

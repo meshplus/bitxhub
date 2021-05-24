@@ -13,7 +13,6 @@ import (
 	"github.com/meshplus/bitxhub-kit/crypto/asym/ecdsa"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxid"
 	"github.com/tidwall/gjson"
 )
 
@@ -58,6 +57,7 @@ func (am *AppchainManager) Manage(eventTyp string, proposalResult string, extra 
 	}
 
 	if proposalResult == string(APPOVED) {
+		//relaychainAdmin := relayRootPrefix + am.Caller()
 		switch eventTyp {
 		case string(governance.EventRegister):
 			// When applying a new method for appchain is successful
@@ -68,29 +68,55 @@ func (am *AppchainManager) Manage(eventTyp string, proposalResult string, extra 
 				return res
 			}
 
-			relaychainAdmin := relayRootPrefix + am.Caller()
-			res = am.CrossInvoke(constant.MethodRegistryContractAddr.String(), "AuditApply",
-				pb.String(relaychainAdmin), pb.String(chain.ID), pb.Int32(1), pb.Bytes(nil))
+			//res = am.CrossInvoke(constant.MethodRegistryContractAddr.String(), "AuditApply",
+			//	pb.String(relaychainAdmin), pb.String(chain.ID), pb.Int32(1), pb.Bytes(nil))
+			//if !res.Ok {
+			//	return res
+			//}
+			//return am.CrossInvoke(constant.MethodRegistryContractAddr.String(), "Register",
+			//	pb.String(relaychainAdmin), pb.String(chain.ID),
+			//	pb.String(chain.DidDocAddr), pb.Bytes([]byte(chain.DidDocHash)), pb.Bytes(nil))
+		//case string(governance.EventActivate):
+		//	res = am.CrossInvoke(constant.MethodRegistryContractAddr.String(), "UnFreeze",
+		//		pb.String(relaychainAdmin), pb.String(chain.ID), pb.Bytes(nil))
+		//	if !res.Ok {
+		//		return res
+		//	}
+		//case string(governance.EventFreeze):
+		//	res = am.CrossInvoke(constant.MethodRegistryContractAddr.String(), "Freeze",
+		//		pb.String(relaychainAdmin), pb.String(chain.ID), pb.Bytes(nil))
+		//	if !res.Ok {
+		//		return res
+		//	}
+		//case string(governance.EventLogout):
+		//res = am.CrossInvoke(constant.MethodRegistryContractAddr.String(), "Delete",
+		//	pb.String(relaychainAdmin), pb.String(chain.ID), pb.Bytes(nil))
+		//if !res.Ok {
+		//	return res
+		//}
+		case string(governance.EventUpdate):
+			res := responseWrapper(am.AppchainManager.Update(extra))
 			if !res.Ok {
 				return res
 			}
-
-			return am.CrossInvoke(constant.MethodRegistryContractAddr.String(), "Register",
-				pb.String(relaychainAdmin), pb.String(chain.ID),
-				pb.String(chain.DidDocAddr), pb.Bytes([]byte(chain.DidDocHash)), pb.Bytes(nil))
-		case string(governance.EventUpdate):
-			return responseWrapper(am.AppchainManager.Update(extra))
+			//res = am.CrossInvoke(constant.MethodRegistryContractAddr.String(), "Update",
+			//	pb.String(relaychainAdmin), pb.String(chain.ID),
+			//	pb.String(chain.DidDocAddr), pb.Bytes([]byte(chain.DidDocHash)), pb.Bytes(nil))
+			//if !res.Ok {
+			//	return res
+			//}
 		}
 	} else {
-		switch eventTyp {
-		case string(governance.EventRegister):
-			relaychainAdmin := relayRootPrefix + am.Caller()
-			res = am.CrossInvoke(constant.MethodRegistryContractAddr.String(), "Audit",
-				pb.String(relaychainAdmin), pb.String(chain.ID), pb.String(string(bitxid.Initial)), pb.Bytes(nil))
-			if !res.Ok {
-				return res
-			}
-		}
+		//relaychainAdmin := relayRootPrefix + am.Caller()
+		//switch eventTyp {
+		//case string(governance.EventRegister):
+		//	res = am.CrossInvoke(constant.MethodRegistryContractAddr.String(), "Audit",
+		//		pb.String(relaychainAdmin), pb.String(chain.ID), pb.String(string(bitxid.Initial)), pb.Bytes(nil))
+		//	if !res.Ok {
+		//		return res
+		//	}
+		//
+		//}
 
 	}
 
@@ -103,11 +129,11 @@ func (am *AppchainManager) Manage(eventTyp string, proposalResult string, extra 
 func (am *AppchainManager) Register(appchainAdminDID, appchainMethod string, docAddr, docHash, validators string,
 	consensusType, chainType, name, desc, version, pubkey string) *boltvm.Response {
 	am.AppchainManager.Persister = am.Stub
-	res := am.CrossInvoke(constant.MethodRegistryContractAddr.String(), "Apply",
-		pb.String(appchainAdminDID), pb.String(appchainMethod), pb.Bytes(nil))
-	if !res.Ok {
-		return res
-	}
+	//res := am.CrossInvoke(constant.MethodRegistryContractAddr.String(), "Apply",
+	//	pb.String(appchainAdminDID), pb.String(appchainMethod), pb.Bytes(nil))
+	//if !res.Ok {
+	//	return res
+	//}
 
 	chain := &appchainMgr.Appchain{
 		ID:            appchainMethod,
@@ -141,7 +167,7 @@ func (am *AppchainManager) Register(appchainAdminDID, appchainMethod string, doc
 		return boltvm.Error("appchain has registered, chain id: " + registerRes.ID)
 	}
 
-	res = am.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
+	res := am.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
 		pb.String(am.Caller()),
 		pb.String(string(governance.EventRegister)),
 		pb.String(""),
@@ -270,6 +296,7 @@ func (am *AppchainManager) FreezeAppchain(id string) *boltvm.Response {
 	if ok, data := am.AppchainManager.ChangeStatus(id, string(governance.EventFreeze), nil); !ok {
 		return boltvm.Error(string(data))
 	}
+
 	return boltvm.Success(res.Result)
 }
 
@@ -412,11 +439,11 @@ func (am *AppchainManager) DeleteAppchain(toDeleteMethod string) *boltvm.Respons
 	if !res.Ok {
 		return res
 	}
-	relayAdminDID := relayRootPrefix + am.Caller()
-	res = am.CrossInvoke(constant.MethodRegistryContractAddr.String(), "Delete", pb.String(relayAdminDID), pb.String(toDeleteMethod), nil)
-	if !res.Ok {
-		return res
-	}
+	//relayAdminDID := relayRootPrefix + am.Caller()
+	//res = am.CrossInvoke(constant.MethodRegistryContractAddr.String(), "Delete", pb.String(relayAdminDID), pb.String(toDeleteMethod), nil)
+	//if !res.Ok {
+	//	return res
+	//}
 	return responseWrapper(am.AppchainManager.DeleteAppchain(toDeleteMethod))
 }
 

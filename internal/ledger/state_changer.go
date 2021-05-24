@@ -86,7 +86,7 @@ type (
 	}
 	storageChange struct {
 		account       *types.Address
-		key, prevalue *types.Hash
+		key, prevalue []byte
 	}
 	codeChange struct {
 		account  *types.Address
@@ -173,7 +173,7 @@ func (ch codeChange) dirtied() *types.Address {
 }
 
 func (ch storageChange) revert(l *ChainLedger) {
-	l.GetAccount(ch.account).SetState(ch.key.Bytes(), ch.prevalue.Bytes())
+	l.GetAccount(ch.account).SetState(ch.key, ch.prevalue)
 }
 
 func (ch storageChange) dirtied() *types.Address {
