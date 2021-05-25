@@ -196,12 +196,6 @@ func (rm *RuleManager) DefaultRule(chainId string, ruleAddress string) *boltvm.R
 		return boltvm.Error("register error: " + string(data))
 	}
 	isRegistered := gjson.Get(string(data), "is_registered").Bool()
-	if !isRegistered {
-		ok, data := rm.RuleManager.SetMaster(ruleAddress, []byte(chainId), true)
-		if !ok {
-			return boltvm.Error(string(data))
-		}
-	}
 
 	// 3. default bind
 	ok, data = rm.RuleManager.CountAvailable([]byte(chainId))
@@ -209,6 +203,12 @@ func (rm *RuleManager) DefaultRule(chainId string, ruleAddress string) *boltvm.R
 		return boltvm.Error("count available error: " + string(data))
 	}
 	if string(data) == strconv.Itoa(0) {
+		if !isRegistered {
+			ok, data := rm.RuleManager.SetMaster(ruleAddress, []byte(chainId), true)
+			if !ok {
+				return boltvm.Error(string(data))
+			}
+		}
 		ok, data = rm.RuleManager.ChangeStatus(ruleAddress, string(governance.EventBind), []byte(chainId))
 		if !ok {
 			return boltvm.Error("change status error: " + string(data))
