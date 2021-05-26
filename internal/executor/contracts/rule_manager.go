@@ -340,7 +340,12 @@ func (rm *RuleManager) UnbindRule(chainId string, ruleAddress string) *boltvm.Re
 		return boltvm.Error("cross invoke IsAvailable error: " + string(res.Result))
 	}
 
-	// 3. submit proposal
+	// 3. pre unbind
+	if ok, data := rm.RuleManager.GovernancePre(chainId, ruleAddress, governance.EventUnbind); !ok {
+		return boltvm.Error("unbind prepare error: " + string(data))
+	}
+
+	// 4. submit proposal
 	ruleRes := rm.GetRuleByAddr(chainId, ruleAddress)
 	if !ruleRes.Ok {
 		return boltvm.Error("get rule by addr error: " + string(ruleRes.Result))
@@ -358,7 +363,7 @@ func (rm *RuleManager) UnbindRule(chainId string, ruleAddress string) *boltvm.Re
 		return boltvm.Error("cross invoke SubmitProposal error: " + string(res.Result))
 	}
 
-	// 4. change status
+	// 5. change status
 	if ok, data := rm.RuleManager.ChangeStatus(ruleAddress, string(governance.EventUnbind), []byte(chainId)); !ok {
 		return boltvm.Error(string(data))
 	}
@@ -380,7 +385,12 @@ func (rm *RuleManager) FreezeRule(chainId string, ruleAddress string) *boltvm.Re
 		return boltvm.Error("cross invoke IsAvailable error: " + string(res.Result))
 	}
 
-	// 3. submit proposal
+	// 3. pre freeze
+	if ok, data := rm.RuleManager.GovernancePre(chainId, ruleAddress, governance.EventFreeze); !ok {
+		return boltvm.Error("freeze prepare error: " + string(data))
+	}
+
+	// 4. submit proposal
 	ruleRes := rm.GetRuleByAddr(chainId, ruleAddress)
 	if !ruleRes.Ok {
 		return boltvm.Error("get rule by addr error: " + string(ruleRes.Result))
@@ -398,7 +408,7 @@ func (rm *RuleManager) FreezeRule(chainId string, ruleAddress string) *boltvm.Re
 		return boltvm.Error("cross invoke SubmitProposal error: " + string(res.Result))
 	}
 
-	// 4. change status
+	// 5. change status
 	if ok, data := rm.RuleManager.ChangeStatus(ruleAddress, string(governance.EventFreeze), []byte(chainId)); !ok {
 		return boltvm.Error(string(data))
 	}
@@ -420,7 +430,12 @@ func (rm *RuleManager) ActivateRule(chainId string, ruleAddress string) *boltvm.
 		return boltvm.Error("cross invoke IsAvailable error: " + string(res.Result))
 	}
 
-	// 3. submit proposal
+	// 3. pre activate
+	if ok, data := rm.RuleManager.GovernancePre(chainId, ruleAddress, governance.EventActivate); !ok {
+		return boltvm.Error("activate prepare error: " + string(data))
+	}
+
+	// 4. submit proposal
 	ruleRes := rm.GetRuleByAddr(chainId, ruleAddress)
 	if !ruleRes.Ok {
 		return boltvm.Error("get rule by addr error: " + string(ruleRes.Result))
@@ -438,7 +453,7 @@ func (rm *RuleManager) ActivateRule(chainId string, ruleAddress string) *boltvm.
 		return boltvm.Error("cross invoke SubmitProposal error: " + string(res.Result))
 	}
 
-	// 4. change status
+	// 5. change status
 	if ok, data := rm.RuleManager.ChangeStatus(ruleAddress, string(governance.EventActivate), []byte(chainId)); !ok {
 		return boltvm.Error(string(data))
 	}
@@ -460,7 +475,12 @@ func (rm *RuleManager) LogoutRule(chainId string, ruleAddress string) *boltvm.Re
 		return boltvm.Error("cross invoke IsAvailable error: " + string(res.Result))
 	}
 
-	// 3. submit proposal
+	// 3. pre logout
+	if ok, data := rm.RuleManager.GovernancePre(chainId, ruleAddress, governance.EventLogout); !ok {
+		return boltvm.Error("logout prepare error: " + string(data))
+	}
+
+	// 4. submit proposal
 	ruleRes := rm.GetRuleByAddr(chainId, ruleAddress)
 	if !ruleRes.Ok {
 		return boltvm.Error("get rule by addr error: " + string(ruleRes.Result))
@@ -478,7 +498,7 @@ func (rm *RuleManager) LogoutRule(chainId string, ruleAddress string) *boltvm.Re
 		return boltvm.Error("cross invoke SubmitProposal error: " + string(res.Result))
 	}
 
-	// 4. change status
+	// 5. change status
 	if ok, data := rm.RuleManager.ChangeStatus(ruleAddress, string(governance.EventLogout), []byte(chainId)); !ok {
 		return boltvm.Error(string(data))
 	}

@@ -250,6 +250,10 @@ func (am *AppchainManager) UpdateAppchain(id, docAddr, docHash, validators strin
 		}
 	}
 
+	if ok, data := am.AppchainManager.GovernancePre(id, governance.EventUpdate); !ok {
+		return boltvm.Error("update prepare error: " + string(data))
+	}
+
 	res = am.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
 		pb.String(am.Caller()),
 		pb.String(string(governance.EventUpdate)),
@@ -290,6 +294,10 @@ func (am *AppchainManager) FreezeAppchain(id string) *boltvm.Response {
 		pb.Bytes(nil))
 	if !res.Ok {
 		return boltvm.Error("check permission error:" + string(res.Result))
+	}
+
+	if ok, data := am.AppchainManager.GovernancePre(id, governance.EventFreeze); !ok {
+		return boltvm.Error("freeze prepare error: " + string(data))
 	}
 
 	chain := &appchainMgr.Appchain{
@@ -342,6 +350,10 @@ func (am *AppchainManager) ActivateAppchain(id string) *boltvm.Response {
 		return boltvm.Error("check permission error:" + string(res.Result))
 	}
 
+	if ok, data := am.AppchainManager.GovernancePre(id, governance.EventActivate); !ok {
+		return boltvm.Error("activate prepare error: " + string(data))
+	}
+
 	am.AppchainManager.Persister = am.Stub
 
 	chain := &appchainMgr.Appchain{
@@ -392,6 +404,10 @@ func (am *AppchainManager) LogoutAppchain(id string) *boltvm.Response {
 		pb.Bytes(nil))
 	if !res.Ok {
 		return boltvm.Error("check permission error:" + string(res.Result))
+	}
+
+	if ok, data := am.AppchainManager.GovernancePre(id, governance.EventLogout); !ok {
+		return boltvm.Error("logout prepare error: " + string(data))
 	}
 
 	chain := &appchainMgr.Appchain{
