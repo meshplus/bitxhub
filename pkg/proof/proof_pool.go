@@ -150,7 +150,7 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, error) {
 		return verifyMultiSign(app, ibtp, proof)
 	}
 
-	validateAddr := validator.FabricRuleAddr
+	validateAddr := validator.SimFabricRuleAddr
 	rl := &ruleMgr.Rule{}
 	ok, data = pl.getRule(from)
 	if ok {
@@ -168,7 +168,7 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("%s: %w", InvalidIBTP, err)
 	}
-	return ok, nil
+	return true, nil
 }
 
 func (pl *VerifyPool) getRule(chainId string) (bool, []byte) {
