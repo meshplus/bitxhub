@@ -254,11 +254,15 @@ func TestManageChain(t *testing.T) {
 	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "CheckPermission", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 
+	availableChain := chains[0]
+	availableChain.Status = governance.GovernanceAvailable
+	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *availableChain).Return(true).Times(1)
+	frozenChain := chains[1]
+	frozenChain.Status = governance.GovernanceFrozen
+	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *frozenChain).Return(true).AnyTimes()
+
 	// test UpdateAppchain
 	res := am.UpdateAppchain(appchainMethod, docAddr, docHash,
-		chains[0].Validators, chains[0].ConsensusType, chains[0].ChainType,
-		chains[0].Name, chains[0].Desc, chains[0].Version, chains[0].PublicKey)
-	res = am.UpdateAppchain(appchainMethod, docAddr, docHash,
 		chains[0].Validators, chains[0].ConsensusType, chains[0].ChainType,
 		chains[0].Name, chains[0].Desc, chains[0].Version, chains[0].PublicKey)
 	assert.Equal(t, true, res.Ok, string(res.Result))
