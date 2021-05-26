@@ -38,31 +38,30 @@ func TestRuleManager_DefaultRule(t *testing.T) {
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "CheckPermission", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 
 	// 1: register, false
-	// 2: SetMaster error=========
-	// 3: register, false
-	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).Return(false).Times(3)
-	// 4: SetMaster ok
+	// 2: CountAvailable, false
+	// 3: SetMaster error=========
+	// 4: register, false
+	// 5: CountAvailable, false
+	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).Return(false).Times(5)
+	// 1: SetMaster ok
 	retRulesBindable := make([]*ruleMgr.Rule, 0)
 	retRulesBindable = append(retRulesBindable, rules[3])
 	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).SetArg(1, retRulesBindable).Return(true).Times(1)
-	// 5: CountAvailable, false
-	// 6: ChangeStatus1, no rules=====
-	// 4: register, false
+	// 1: ChangeStatus1, no rules=====
+	// 2: register, false
+	// 3: CountAvailable, false
 	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).Return(false).Times(3)
-	// 4: SetMaster ok
+	// 1: SetMaster ok
 	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).SetArg(1, retRulesBindable).Return(true).Times(1)
-	// 5: CountAvailable, false
-	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).Return(false).Times(1)
-	// 6: ChangeStatus1 ok
+	// 1: ChangeStatus1 ok
 	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).SetArg(1, retRulesBindable).Return(true).Times(1)
-	// 7: ChangeStatus2, no rules=====
-	// 8: register, false
-	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).Return(false).Times(2)
-	// 4: SetMaster ok
+	// 1: ChangeStatus2, no rules=====
+	// 2: register, false
+	// 3: CountAvailable, false
+	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).Return(false).Times(3)
+	// 1: SetMaster ok
 	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).SetArg(1, retRulesBindable).Return(true).Times(1)
-	// 5: CountAvailable, false
-	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).Return(false).Times(1)
-	// 6: ChangeStatus1 ok
+	// 1: ChangeStatus1 ok
 	retRulesBindable1 := make([]*ruleMgr.Rule, 0)
 	retRulesBindable1 = append(retRulesBindable1, rules[4])
 	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).SetArg(1, retRulesBindable1).Return(true).Times(1)
