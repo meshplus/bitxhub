@@ -61,7 +61,7 @@ func governanceCMD() cli.Command {
 							},
 							cli.StringFlag{
 								Name:     "type",
-								Usage:    "proposal type, currently only AppchainMgr is supported",
+								Usage:    "proposal type, currently only AppchainMgr and RuleMgr are supported",
 								Required: false,
 							},
 							cli.StringFlag{

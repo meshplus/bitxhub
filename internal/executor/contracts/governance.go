@@ -76,11 +76,12 @@ func (g *Governance) GetBallot(voterAddr, proposalId string) *boltvm.Response {
 }
 
 type Proposal struct {
-	Id     string         `json:"id"`
-	Des    string         `json:"des"`
-	Typ    ProposalType   `json:"typ"`
-	Status ProposalStatus `json:"status"`
-	ObjId  string         `json:"obj_id"`
+	Id            string                      `json:"id"`
+	Des           string                      `json:"des"`
+	Typ           ProposalType                `json:"typ"`
+	Status        ProposalStatus              `json:"status"`
+	ObjId         string                      `json:"obj_id"`
+	ObjLastStatus governance.GovernanceStatus `json:"obj_last_status"`
 	// ballot information: voter address -> ballot
 	BallotMap         map[string]Ballot    `json:"ballot_map"`
 	ApproveNum        uint64               `json:"approve_num"`
@@ -106,7 +107,7 @@ var SpecialProposalProposalType = []ProposalType{
 	ProposalStrategyMgr,
 }
 
-func (g *Governance) SubmitProposal(from, eventTyp, des, typ, objId string, extra []byte) *boltvm.Response {
+func (g *Governance) SubmitProposal(from, eventTyp, des, typ, objId, objLastStatus string, extra []byte) *boltvm.Response {
 
 	// 1. check permission
 	specificAddrs := []string{constant.AppchainMgrContractAddr.Address().String(), constant.RuleManagerContractAddr.Address().String()}
@@ -152,6 +153,7 @@ func (g *Governance) SubmitProposal(from, eventTyp, des, typ, objId string, extr
 		Typ:               ProposalType(typ),
 		Status:            PROPOSED,
 		ObjId:             objId,
+		ObjLastStatus:     governance.GovernanceStatus(objLastStatus),
 		BallotMap:         make(map[string]Ballot, 0),
 		ApproveNum:        0,
 		AgainstNum:        0,
@@ -650,13 +652,13 @@ func (g *Governance) handleResult(p *Proposal) error {
 	case NodeMgr, ServiceMgr:
 		return fmt.Errorf("waiting for subsequent implementation")
 	case RuleMgr:
-		res := g.CrossInvoke(constant.RuleManagerContractAddr.String(), "Manage", pb.String(string(p.EventType)), pb.String(string(nextEventType)), pb.Bytes(p.Extra))
+		res := g.CrossInvoke(constant.RuleManagerContractAddr.String(), "Manage", pb.String(string(p.EventType)), pb.String(string(nextEventType)), pb.String(string(p.ObjLastStatus)), pb.Bytes(p.Extra))
 		if !res.Ok {
 			return fmt.Errorf("cross invoke Manager error: %s", string(res.Result))
 		}
 		return nil
 	default: // APPCHAIN_MGR
-		res := g.CrossInvoke(constant.AppchainMgrContractAddr.String(), "Manage", pb.String(string(p.EventType)), pb.String(string(nextEventType)), pb.Bytes(p.Extra))
+		res := g.CrossInvoke(constant.AppchainMgrContractAddr.String(), "Manage", pb.String(string(p.EventType)), pb.String(string(nextEventType)), pb.String(string(p.ObjLastStatus)), pb.Bytes(p.Extra))
 		if !res.Ok {
 			return fmt.Errorf("cross invoke Manager error: %s", string(res.Result))
 		}

@@ -39,28 +39,18 @@ func TestRuleManager_DefaultRule(t *testing.T) {
 
 	// 1: register, false
 	// 2: CountAvailable, false
-	// 3: SetMaster error=========
+	// 3: ChangeStatus1, no rules=====
 	// 4: register, false
 	// 5: CountAvailable, false
 	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).Return(false).Times(5)
-	// 1: SetMaster ok
+	// 1: ChangeStatus1 ok
 	retRulesBindable := make([]*ruleMgr.Rule, 0)
 	retRulesBindable = append(retRulesBindable, rules[3])
-	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).SetArg(1, retRulesBindable).Return(true).Times(1)
-	// 1: ChangeStatus1, no rules=====
-	// 2: register, false
-	// 3: CountAvailable, false
-	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).Return(false).Times(3)
-	// 1: SetMaster ok
-	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).SetArg(1, retRulesBindable).Return(true).Times(1)
-	// 1: ChangeStatus1 ok
 	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).SetArg(1, retRulesBindable).Return(true).Times(1)
 	// 1: ChangeStatus2, no rules=====
 	// 2: register, false
 	// 3: CountAvailable, false
 	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).Return(false).Times(3)
-	// 1: SetMaster ok
-	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).SetArg(1, retRulesBindable).Return(true).Times(1)
 	// 1: ChangeStatus1 ok
 	retRulesBindable1 := make([]*ruleMgr.Rule, 0)
 	retRulesBindable1 = append(retRulesBindable1, rules[4])
@@ -80,9 +70,6 @@ func TestRuleManager_DefaultRule(t *testing.T) {
 	res := rm.DefaultRule(chains[0].ID, rules[0].Address)
 	assert.False(t, res.Ok, string(res.Result))
 
-	// SetMaster error
-	res = rm.DefaultRule(chains[0].ID, rules[0].Address)
-	assert.False(t, res.Ok, string(res.Result))
 	// ChangeStatus1 error
 	res = rm.DefaultRule(chains[0].ID, rules[0].Address)
 	assert.False(t, res.Ok, string(res.Result))
@@ -115,33 +102,30 @@ func TestRuleManager_UpdateMasterRule(t *testing.T) {
 
 	// BindPre ok
 	// bindRule ok(GetRuleByAddr,ChangeStatus) 2
-	// has master true
-	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).SetArg(1, retRulesBindable).Return(true).Times(4)
+	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).SetArg(1, retRulesBindable).Return(true).Times(3)
 	// get master false=====
 	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).Return(false).Times(1)
 
 	// BindPre ok
 	// bindRule ok 2
-	// has master true
 	// get master ok
 	// change status error=====
 	retRulesBindable1 := make([]*ruleMgr.Rule, 0)
 	retRulesBindable1 = append(retRulesBindable1, rules[4])
-	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).SetArg(1, retRulesBindable1).Return(true).Times(6)
+	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).SetArg(1, retRulesBindable1).Return(true).Times(5)
 
 	// BindPre ok
 	// bindRule ok 2
-	// has master true
 	retRulesBindable2 := make([]*ruleMgr.Rule, 0)
 	retRulesBindable2 = append(retRulesBindable2, rules[6])
-	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).SetArg(1, retRulesBindable2).Return(true).Times(4)
+	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).SetArg(1, retRulesBindable2).Return(true).Times(3)
 	// get master ok
 	// change status ok
 	retRulesAvailable := make([]*ruleMgr.Rule, 0)
 	retRulesAvailable = append(retRulesAvailable, rules[0])
 	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).SetArg(1, retRulesAvailable).Return(true).Times(2)
 
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().CurrentCaller().Return("").AnyTimes()
 	mockStub.EXPECT().Caller().Return("").AnyTimes()
@@ -174,166 +158,6 @@ func TestRuleManager_UpdateMasterRule(t *testing.T) {
 	assert.True(t, res.Ok, string(res.Result))
 }
 
-func TestRuleManager_BindRule(t *testing.T) {
-
-	rm, mockStub, rules, _, chains, chainsData, account := rulePrepare(t)
-
-	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), "GetAppchain", pb.String(chains[0].ID)).Return(boltvm.Error("get Appchain error")).Times(1)
-	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), "GetAppchain", pb.String(chains[0].ID)).Return(boltvm.Success(chainsData[0])).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "CheckPermission", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("CheckPermission error")).Times(1)
-	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "CheckPermission", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), "IsAvailable", pb.String(chains[0].ID)).Return(boltvm.Error("is available error")).Times(1)
-	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), "IsAvailable", pb.String(chains[0].ID)).Return(boltvm.Success(chainsData[0])).AnyTimes()
-	mockStub.EXPECT().GetAccount(rules[0].Address).Return(false, nil).Times(1)
-	mockStub.EXPECT().GetAccount(rules[0].Address).Return(true, account).AnyTimes()
-	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).Return(false).Times(1)
-
-	retRulesBindable := make([]*ruleMgr.Rule, 0)
-	retRulesBindable = append(retRulesBindable, rules[3])
-	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).SetArg(1, retRulesBindable).Return(true).AnyTimes()
-
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("SubmitProposal error")).Times(1)
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
-	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
-	mockStub.EXPECT().CurrentCaller().Return("").AnyTimes()
-	mockStub.EXPECT().Caller().Return("").AnyTimes()
-
-	// getAppchain error
-	res := rm.BindRule(chains[0].ID, rules[0].Address)
-	assert.False(t, res.Ok, string(res.Result))
-	// check permission error
-	res = rm.BindRule(chains[0].ID, rules[0].Address)
-	assert.False(t, res.Ok, string(res.Result))
-	// isAvailable error
-	res = rm.BindRule(chains[0].ID, rules[0].Address)
-	assert.False(t, res.Ok, string(res.Result))
-	// get account error
-	res = rm.BindRule(chains[0].ID, rules[0].Address)
-	assert.False(t, res.Ok, string(res.Result))
-	// bind pre error (no rules)
-	res = rm.BindRule(chains[0].ID, rules[0].Address)
-	assert.False(t, res.Ok, string(res.Result))
-	// submit proposal error
-	res = rm.BindRule(chains[0].ID, rules[0].Address)
-	assert.False(t, res.Ok, string(res.Result))
-
-	res = rm.BindRule(chains[0].ID, rules[0].Address)
-	assert.True(t, res.Ok, string(res.Result))
-}
-
-func TestRuleManager_UnindRule(t *testing.T) {
-
-	rm, mockStub, rules, _, chains, chainsData, _ := rulePrepare(t)
-
-	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), "GetAppchain", pb.String(chains[0].ID)).Return(boltvm.Error("get Appchain error")).Times(1)
-	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), "GetAppchain", pb.String(chains[0].ID)).Return(boltvm.Success(chainsData[0])).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "CheckPermission", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), "IsAvailable", pb.String(chains[0].ID)).Return(boltvm.Error("is available error")).Times(1)
-	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), "IsAvailable", pb.String(chains[0].ID)).Return(boltvm.Success(chainsData[0])).AnyTimes()
-	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).Return(false).Times(1)
-
-	retRulesAvailable := make([]*ruleMgr.Rule, 0)
-	retRulesAvailable = append(retRulesAvailable, rules[0])
-	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).SetArg(1, retRulesAvailable).Return(true).AnyTimes()
-
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("SubmitProposal error")).Times(1)
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
-	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
-	mockStub.EXPECT().CurrentCaller().Return("").AnyTimes()
-	mockStub.EXPECT().Caller().Return("").AnyTimes()
-
-	// check permission(get account error) error
-	res := rm.UnbindRule(chains[0].ID, rules[0].Address)
-	assert.False(t, res.Ok, string(res.Result))
-	// isAvailable error
-	res = rm.UnbindRule(chains[0].ID, rules[0].Address)
-	assert.False(t, res.Ok, string(res.Result))
-	// submit proposal error
-	res = rm.UnbindRule(chains[0].ID, rules[0].Address)
-	assert.False(t, res.Ok, string(res.Result))
-	// change status(get object) error
-	res = rm.UnbindRule(chains[0].ID, rules[0].Address)
-	assert.False(t, res.Ok, string(res.Result))
-
-	res = rm.UnbindRule(chains[0].ID, rules[0].Address)
-	assert.True(t, res.Ok, string(res.Result))
-}
-
-func TestRuleManager_FreezeRule(t *testing.T) {
-
-	rm, mockStub, rules, _, chains, chainsData, _ := rulePrepare(t)
-
-	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), "GetAppchain", pb.String(chains[0].ID)).Return(boltvm.Error("get Appchain error")).Times(1)
-	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), "GetAppchain", pb.String(chains[0].ID)).Return(boltvm.Success(chainsData[0])).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "CheckPermission", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), "IsAvailable", pb.String(chains[0].ID)).Return(boltvm.Error("is available error")).Times(1)
-	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), "IsAvailable", pb.String(chains[0].ID)).Return(boltvm.Success(chainsData[0])).AnyTimes()
-	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).Return(false).Times(1)
-
-	retRulesAvailable := make([]*ruleMgr.Rule, 0)
-	retRulesAvailable = append(retRulesAvailable, rules[0])
-	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).SetArg(1, retRulesAvailable).Return(true).AnyTimes()
-
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("SubmitProposal error")).Times(1)
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
-	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
-	mockStub.EXPECT().CurrentCaller().Return("").AnyTimes()
-	mockStub.EXPECT().Caller().Return("").AnyTimes()
-
-	// check permission(get account error) error
-	res := rm.FreezeRule(chains[0].ID, rules[0].Address)
-	assert.False(t, res.Ok, string(res.Result))
-	// isAvailable error
-	res = rm.FreezeRule(chains[0].ID, rules[0].Address)
-	assert.False(t, res.Ok, string(res.Result))
-	// submit proposal error
-	res = rm.FreezeRule(chains[0].ID, rules[0].Address)
-	assert.False(t, res.Ok, string(res.Result))
-	// change status(get object) error
-	res = rm.FreezeRule(chains[0].ID, rules[0].Address)
-	assert.False(t, res.Ok, string(res.Result))
-
-	res = rm.FreezeRule(chains[0].ID, rules[0].Address)
-	assert.True(t, res.Ok, string(res.Result))
-}
-
-func TestRuleManager_ActivateRule(t *testing.T) {
-	rm, mockStub, rules, _, chains, chainsData, _ := rulePrepare(t)
-
-	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), "GetAppchain", pb.String(chains[0].ID)).Return(boltvm.Error("get Appchain error")).Times(1)
-	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), "GetAppchain", pb.String(chains[0].ID)).Return(boltvm.Success(chainsData[0])).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "CheckPermission", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), "IsAvailable", pb.String(chains[0].ID)).Return(boltvm.Error("is available error")).Times(1)
-	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), "IsAvailable", pb.String(chains[0].ID)).Return(boltvm.Success(chainsData[0])).AnyTimes()
-	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).Return(false).Times(1)
-
-	retRulesFrozen := make([]*ruleMgr.Rule, 0)
-	retRulesFrozen = append(retRulesFrozen, rules[2])
-	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).SetArg(1, retRulesFrozen).Return(true).AnyTimes()
-
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("SubmitProposal error")).Times(1)
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
-	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
-	mockStub.EXPECT().CurrentCaller().Return("").AnyTimes()
-	mockStub.EXPECT().Caller().Return("").AnyTimes()
-
-	// check permission(get account error) error
-	res := rm.ActivateRule(chains[0].ID, rules[0].Address)
-	assert.False(t, res.Ok, string(res.Result))
-	// isAvailable error
-	res = rm.ActivateRule(chains[0].ID, rules[0].Address)
-	assert.False(t, res.Ok, string(res.Result))
-	// submit proposal error
-	res = rm.ActivateRule(chains[0].ID, rules[0].Address)
-	assert.False(t, res.Ok, string(res.Result))
-	// change status(get object) error
-	res = rm.ActivateRule(chains[0].ID, rules[0].Address)
-	assert.False(t, res.Ok, string(res.Result))
-
-	res = rm.ActivateRule(chains[0].ID, rules[0].Address)
-	assert.True(t, res.Ok, string(res.Result))
-}
-
 func TestRuleManager_LogoutRule(t *testing.T) {
 	rm, mockStub, rules, _, chains, chainsData, _ := rulePrepare(t)
 
@@ -344,12 +168,10 @@ func TestRuleManager_LogoutRule(t *testing.T) {
 	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), "IsAvailable", pb.String(chains[0].ID)).Return(boltvm.Success(chainsData[0])).AnyTimes()
 	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).Return(false).Times(1)
 
-	retRulesFrozen := make([]*ruleMgr.Rule, 0)
-	retRulesFrozen = append(retRulesFrozen, rules[2])
-	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).SetArg(1, retRulesFrozen).Return(true).AnyTimes()
+	retRulesBindable := make([]*ruleMgr.Rule, 0)
+	retRulesBindable = append(retRulesBindable, rules[3])
+	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).SetArg(1, retRulesBindable).Return(true).AnyTimes()
 
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("SubmitProposal error")).Times(1)
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().CurrentCaller().Return("").AnyTimes()
 	mockStub.EXPECT().Caller().Return("").AnyTimes()
@@ -358,9 +180,6 @@ func TestRuleManager_LogoutRule(t *testing.T) {
 	res := rm.LogoutRule(chains[0].ID, rules[0].Address)
 	assert.False(t, res.Ok, string(res.Result))
 	// isAvailable error
-	res = rm.LogoutRule(chains[0].ID, rules[0].Address)
-	assert.False(t, res.Ok, string(res.Result))
-	// submit proposal error
 	res = rm.LogoutRule(chains[0].ID, rules[0].Address)
 	assert.False(t, res.Ok, string(res.Result))
 	// change status(get object) error
@@ -404,7 +223,7 @@ func TestRuleManager_Query(t *testing.T) {
 	// In principle, it is not allowed to have two available, but this situation is only for the convenience of writing unit test
 	res = rm.CountAvailableRules(chains[0].ID)
 	assert.True(t, res.Ok, string(res.Result))
-	assert.Equal(t, "2", string(res.Result))
+	assert.Equal(t, "3", string(res.Result))
 
 	res = rm.CountRules(chains[0].ID)
 	assert.True(t, res.Ok, string(res.Result))
@@ -478,8 +297,6 @@ func rulePrepare(t *testing.T) (*RuleManager, *mock_stub.MockStub, []*ruleMgr.Ru
 		switch i {
 		case 1:
 			rule.Status = governance.GovernanceBinding
-		case 2:
-			rule.Status = governance.GovernanceFrozen
 		case 3:
 			rule.Status = governance.GovernanceBindable
 		case 4:

@@ -97,17 +97,17 @@ func TestGovernance_SubmitProposal(t *testing.T) {
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
 
 	// check permission error
-	res := g.SubmitProposal("", string(governance.EventRegister), "des", string(AppchainMgr), "objId", []byte{})
+	res := g.SubmitProposal("", string(governance.EventRegister), "des", string(AppchainMgr), "objId", string(governance.GovernanceUnavailable), []byte{})
 	assert.False(t, res.Ok, string(res.Result))
 	// GetAdminRoles error
-	res = g.SubmitProposal(idExistent, string(governance.EventRegister), "des", string(AppchainMgr), "objId", []byte{})
+	res = g.SubmitProposal(idExistent, string(governance.EventRegister), "des", string(AppchainMgr), "objId", string(governance.GovernanceUnavailable), []byte{})
 	assert.False(t, res.Ok, string(res.Result))
 	// GetAdminRoles unmarshal error
-	res = g.SubmitProposal(idExistent, string(governance.EventRegister), "des", string(AppchainMgr), "objId", []byte{})
+	res = g.SubmitProposal(idExistent, string(governance.EventRegister), "des", string(AppchainMgr), "objId", string(governance.GovernanceUnavailable), []byte{})
 	assert.False(t, res.Ok, string(res.Result))
-	res = g.SubmitProposal(idExistent, string(governance.EventRegister), "des", "", "objId", []byte{})
+	res = g.SubmitProposal(idExistent, string(governance.EventRegister), "des", "", "objId", string(governance.GovernanceUnavailable), []byte{})
 	assert.False(t, res.Ok, string(res.Result))
-	res = g.SubmitProposal(idExistent, string(governance.EventRegister), "des", string(AppchainMgr), "objId", []byte{})
+	res = g.SubmitProposal(idExistent, string(governance.EventRegister), "des", string(AppchainMgr), "objId", string(governance.GovernanceUnavailable), []byte{})
 	assert.True(t, res.Ok, string(res.Result))
 
 }
@@ -283,8 +283,8 @@ func TestGovernance_Proposal(t *testing.T) {
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "GetRoleWeight", gomock.Any()).Return(boltvm.Success([]byte(strconv.Itoa(1)))).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "GetAdminRoles").Return(boltvm.Error("")).Times(1)
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "GetAdminRoles").Return(boltvm.Success(adminsData)).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), "Manage", gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("")).Times(1)
-	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), "Manage", gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), "Manage", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), "Manage", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 
 	res := g.GetProposal(idExistent)
 	assert.True(t, res.Ok, string(res.Result))
@@ -562,9 +562,9 @@ func TestGovernance_SubmitProposal_LockLowPriorityProposal(t *testing.T) {
 	mockStub.EXPECT().AddObject(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().CurrentCaller().Return("").AnyTimes()
 
-	res := g.SubmitProposal(idExistent, string(governance.EventUpdate), "des", string(AppchainMgr), appchainMethod, chainData)
+	res := g.SubmitProposal(idExistent, string(governance.EventUpdate), "des", string(AppchainMgr), appchainMethod, string(governance.GovernanceAvailable), chainData)
 	assert.False(t, res.Ok, string(res.Result))
-	res = g.SubmitProposal(idExistent, string(governance.EventLogout), "des", string(AppchainMgr), appchainMethod, chainData)
+	res = g.SubmitProposal(idExistent, string(governance.EventLogout), "des", string(AppchainMgr), appchainMethod, string(governance.GovernanceAvailable), chainData)
 	assert.True(t, res.Ok, string(res.Result))
 }
 
@@ -680,8 +680,8 @@ func TestGovernance_WithdrawProposal(t *testing.T) {
 		}).Return(true).AnyTimes()
 	mockStub.EXPECT().AddObject(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().CurrentCaller().Return("").AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), "Manage", gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("")).Times(1)
-	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), "Manage", gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), "Manage", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), "Manage", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 
 	res := g.WithdrawProposal(idExistent)
 	assert.False(t, res.Ok, string(res.Result))
