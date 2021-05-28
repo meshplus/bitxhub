@@ -62,7 +62,7 @@ solo = false
   type = "serial"  # opensource version only supports serial type, commercial version supports serial and parallel types
 
 [genesis]
-  chainid = 1
+  chainid = 1356
   gas_limit = 0x2fefd8
   dider = "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013"
   [[genesis.admins]]

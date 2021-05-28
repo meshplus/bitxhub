@@ -386,7 +386,7 @@ func (exec *BlockExecutor) applyEthTransaction(i int, tx *types2.EthTransaction)
 	snapshot := statedb.Snapshot()
 	txContext := vm1.NewEVMTxContext(msg)
 	exec.evm.Reset(txContext, exec.ledger.StateDB())
-	exec.logger.Warnf("msg gas: %v", msg.Gas())
+	exec.logger.Debugf("msg gas: %v", msg.Gas())
 	result, err := vm1.ApplyMessage(exec.evm, msg, gp)
 	if err != nil {
 		exec.logger.Errorf("apply msg failed: %s", err.Error())

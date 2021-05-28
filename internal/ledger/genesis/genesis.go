@@ -32,8 +32,9 @@ func Initialize(genesis *repo.Genesis, lg ledger.Ledger) error {
 	lg.SetState(constant.MethodRegistryContractAddr.Address(), []byte("admin-method"), admin)
 	lg.SetState(constant.DIDRegistryContractAddr.Address(), []byte("admin-did"), admin)
 
+	balance, _ := new(big.Int).SetString("100000000000000000000000000000000000", 10)
 	for _, admin := range genesis.Admins {
-		lg.SetBalance(types.NewAddressByStr(admin.Address), new(big.Int).SetUint64(10000000000000000000))
+		lg.SetBalance(types.NewAddressByStr(admin.Address), balance)
 	}
 
 	for k, v := range genesis.Strategy {
