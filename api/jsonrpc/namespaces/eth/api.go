@@ -159,7 +159,7 @@ func (api *PublicEthereumAPI) GetBlockTransactionCountByHash(hash common.Hash) *
 func (api *PublicEthereumAPI) GetBlockTransactionCountByNumber(blockNum uint64) *hexutil.Uint {
 	api.logger.Debugf("eth_getBlockTransactionCountByNumber, block number: %d", blockNum)
 
-	block, err := api.api.Broker().GetBlock("HEIGHT", fmt.Sprintf("%s", blockNum))
+	block, err := api.api.Broker().GetBlock("HEIGHT", fmt.Sprintf("%d", blockNum))
 	if err != nil {
 		return nil
 	}
@@ -369,7 +369,7 @@ func (api *PublicEthereumAPI) GetBlockByHash(hash common.Hash, fullTx bool) (map
 func (api *PublicEthereumAPI) GetBlockByNumber(blockNum uint64, fullTx bool) (map[string]interface{}, error) {
 	api.logger.Debugf("eth_getBlockByNumber, number: %d, full: %v", blockNum, fullTx)
 
-	block, err := api.api.Broker().GetBlock("HEIGHT", fmt.Sprintf("%s", blockNum))
+	block, err := api.api.Broker().GetBlock("HEIGHT", fmt.Sprintf("%d", blockNum))
 	if err != nil {
 		return nil, err
 	}
@@ -381,29 +381,37 @@ func (api *PublicEthereumAPI) GetBlockByNumber(blockNum uint64, fullTx bool) (ma
 func (api *PublicEthereumAPI) GetTransactionByHash(hash common.Hash) (*rpctypes.RPCTransaction, error) {
 	api.logger.Debugf("eth_getTransactionByHash, hash: %s", hash.String())
 
+	ethTx, meta, err := api.GetEthTransactionByHash(types.NewHash(hash.Bytes()))
+	if err != nil {
+		return nil, err
+	}
+
+	return newRPCTransaction(ethTx, common.BytesToHash(meta.BlockHash), meta.BlockHeight, meta.Index), nil
+}
+
+func (api *PublicEthereumAPI) GetEthTransactionByHash(hash *types.Hash) (*types2.EthTransaction, *pb.TransactionMeta, error) {
 	var err error
 	meta := &pb.TransactionMeta{}
-	txHash := types.NewHash(hash.Bytes())
 
-	tx := api.api.Broker().GetPoolTransaction(txHash)
+	tx := api.api.Broker().GetPoolTransaction(hash)
 	if tx == nil {
-		tx, err = api.api.Broker().GetTransaction(txHash)
+		tx, err = api.api.Broker().GetTransaction(hash)
 		if err != nil {
-			return nil, err
+			return nil, nil, fmt.Errorf("get tx from ledger: %w", err)
 		}
 
-		meta, err = api.api.Broker().GetTransactionMeta(txHash)
+		meta, err = api.api.Broker().GetTransactionMeta(hash)
 		if err != nil {
-			return nil, err
+			return nil, nil, fmt.Errorf("get tx meta from ledger: %w", err)
 		}
 	}
 
 	ethTx, ok := tx.(*types2.EthTransaction)
 	if !ok {
-		return nil, fmt.Errorf("tx is not in eth format")
+		return nil, nil, fmt.Errorf("tx is not in eth format")
 	}
 
-	return newRPCTransaction(ethTx, common.BytesToHash(meta.BlockHash), meta.BlockHeight, meta.Index), nil
+	return ethTx, meta, nil
 }
 
 // GetTransactionByBlockHashAndIndex returns the transaction identified by hash and index.
@@ -453,14 +461,9 @@ func (api *PublicEthereumAPI) GetTransactionReceipt(hash common.Hash) (map[strin
 	api.logger.Debugf("eth_getTransactionReceipt, hash: %s", hash.String())
 
 	txHash := types.NewHash(hash.Bytes())
-	tx, err := api.api.Broker().GetTransaction(txHash)
+	tx, _, err := api.GetEthTransactionByHash(txHash)
 	if err != nil {
 		return nil, err
-	}
-
-	ethTx, ok := tx.(*types2.EthTransaction)
-	if !ok {
-		return nil, fmt.Errorf("tx is not in eth format")
 	}
 
 	receipt, err := api.api.Broker().GetReceipt(txHash)
@@ -484,7 +487,7 @@ func (api *PublicEthereumAPI) GetTransactionReceipt(hash common.Hash) (map[strin
 	}
 
 	fields := map[string]interface{}{
-		"type":              hexutil.Uint(ethTx.GetType()),
+		"type":              hexutil.Uint(tx.GetType()),
 		"cumulativeGasUsed": hexutil.Uint64(cumulativeGasUsed),
 		"logsBloom":         *receipt.Bloom,
 		"logs":              receipt.EvmLogs,
@@ -626,7 +629,10 @@ func (api *PublicEthereumAPI) formatBlock(block *pb.Block, fullTx bool) (map[str
 // newRPCTransaction returns a transaction that will serialize to the RPC representation
 func newRPCTransaction(tx pb.Transaction, blockHash common.Hash, blockNumber uint64, index uint64) *rpctypes.RPCTransaction {
 	from := common.BytesToAddress(tx.GetFrom().Bytes())
-	to := common.BytesToAddress(tx.GetTo().Bytes())
+	to := common.Address{}
+	if tx.GetTo() != nil {
+		to = common.BytesToAddress(tx.GetTo().Bytes())
+	}
 	v, r, s := tx.GetRawSignature()
 	result := &rpctypes.RPCTransaction{
 		Type:     hexutil.Uint64(tx.GetType()),

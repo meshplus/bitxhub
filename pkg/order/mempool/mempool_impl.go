@@ -224,7 +224,6 @@ func (mpi *mempoolImpl) processCommitTransactions(state *ChainState) {
 	// update current cached commit nonce for account
 	for _, txHash := range state.TxHashList {
 		strHash := txHash.String()
-		txPointer := mpi.txStore.txHashMap[strHash]
 		txPointer, ok := mpi.txStore.txHashMap[strHash]
 		if !ok {
 			mpi.logger.Warningf("Remove transaction %s failed, Can't find it from txHashMap", strHash)
@@ -326,24 +325,22 @@ func (mpi *mempoolImpl) GetPendingTransactions(max int) []pb.Transaction {
 }
 
 func (mpi *mempoolImpl) GetTransaction(hash *types.Hash) pb.Transaction {
-	// TODO: make it go routine safe
-	//key, ok := mpi.txStore.txHashMap[hash.String()]
-	//if !ok {
-	//	return nil
-	//}
-	//
-	//txMap, ok := mpi.txStore.allTxs[key.account]
-	//if !ok {
-	//	return nil
-	//}
-	//
-	//item, ok := txMap.items[key.nonce]
-	//if !ok {
-	//	return nil
-	//}
+	key, ok := mpi.txStore.txHashMap[hash.String()]
+	if !ok {
+		return nil
+	}
 
-	//return item.tx
-	return nil
+	txMap, ok := mpi.txStore.allTxs[key.account]
+	if !ok {
+		return nil
+	}
+
+	item, ok := txMap.items[key.nonce]
+	if !ok {
+		return nil
+	}
+
+	return item.tx
 }
 
 func (mpi *mempoolImpl) shardTxList(timeoutItems []*orderedTimeoutKey, batchLen uint64) [][]pb.Transaction {
