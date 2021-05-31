@@ -33,7 +33,7 @@ require (
 	github.com/meshplus/bitxhub-model v1.2.1-0.20210524063354-5d48e2fee178
 	github.com/meshplus/bitxid v0.0.0-20210412025850-e0eaf0f9063a
 	github.com/meshplus/did-registry v0.0.0-20210413035015-509c6c3a0bae
-	github.com/meshplus/eth-kit v0.0.0-20210528061724-53f4b642baf8
+	github.com/meshplus/eth-kit v0.0.0-20210531014345-7b859107eff4
 	github.com/meshplus/go-libp2p-cert v0.0.0-20210125063330-7c25fd5b7a49
 	github.com/meshplus/go-lightp2p v0.0.0-20210120082108-df5a536a6192
 	github.com/mitchellh/go-homedir v1.1.0
