@@ -8,11 +8,11 @@ import (
 )
 
 const (
-	OnceTakeCount       = 1
-	OncePutCount        = 1
-	DefaultFillInterval = 50 * time.Millisecond
-	DefaultCapacity     = 10000
-	DefaultQuantum      = 500
+	OnceTakeCount = 1
+	OncePutCount  = 1
+	// DefaultFillInterval = 50 * time.Millisecond
+	// DefaultCapacity     = 10000
+	// DefaultQuantum      = 500
 )
 
 type RateLimiter struct {
