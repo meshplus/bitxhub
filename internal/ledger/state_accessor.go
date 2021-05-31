@@ -113,7 +113,9 @@ func (l *ChainLedger) QueryByPrefix(addr *types.Address, prefix string) (bool, [
 
 func (l *ChainLedger) Clear() {
 	l.events = sync.Map{}
+	l.lock.Lock()
 	l.accounts = make(map[string]*Account)
+	l.lock.Unlock()
 }
 
 // FlushDirtyDataAndComputeJournal gets dirty accounts and computes block journal
@@ -124,6 +126,7 @@ func (l *ChainLedger) FlushDirtyDataAndComputeJournal() (map[string]*Account, *B
 	var sortedAddr []string
 	accountData := make(map[string][]byte)
 
+	l.lock.RLock()
 	for addr, account := range l.accounts {
 		journal := account.getJournalIfModified()
 		if journal != nil {
@@ -133,6 +136,7 @@ func (l *ChainLedger) FlushDirtyDataAndComputeJournal() (map[string]*Account, *B
 			dirtyAccounts[addr] = account
 		}
 	}
+	l.lock.RUnlock()
 
 	sort.Strings(sortedAddr)
 	for _, addr := range sortedAddr {
