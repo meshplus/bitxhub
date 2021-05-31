@@ -4,9 +4,9 @@
 
 ## 安装包获取
 
-#### 源码下载编译
+#### 源码编译
 
-您可以自行拉取BitXHub项目的源码，然后在本地编译bitxhub及插件的二进制文件，具体操作步骤可参考如下：
+您可以自行拉取BitXHub项目的源码，然后在本地编译BitXHub及插件的二进制文件，具体操作步骤可参考如下：
 
 ```
 # 1. 首先拉取bitxhub项目源代码
@@ -26,38 +26,54 @@ cd internal/plugins && make plugins
 
 #### 二进制直接下载
 
-除了源码编译外，我们也提供了直接下载BitXHub二进制的方式，下载地址链接如下：[BitXHub二进制包下载](https://github.com/meshplus/bitxhub/releases)，链接中已经包含了所需的二进制和依赖库，您只需跟据实际情况选择合适的版本和系统下载即可。
+除了源码编译外，我们也提供了直接下载BitXHub二进制的方式，下载地址链接如下：[BitXHub二进制包下载](https://github.com/meshplus/bitxhub/releases)，链接中已经包含了所需的二进制和依赖库，您只需跟据实际情况选择合适的版本和系统下载即可，建议使用最新的BitXHub发布版本。
 
-## 配置文件修改
 
-获取到安装包后，接下来要根据您的实际情况修改配置文件。如果您是在本地编译的二进制包，您也可以在项目根目录执行`make cluster`一键启动四节点raft共识的BitXHub集群。本章主要是介绍普适的配置方法，所以接下来将从生成、修改、检查配置文件等步骤进行详细说明。
 
-#### 生成BitXHub配置文件
+## 快速启动BitXHub节点
 
-BitXHub提供了生成初始配置文件的命令行，执行步骤可参考如下：
+获取到安装包后，接下来要根据您的实际情况修改配置文件。如果您是在本地编译的二进制包，您也可以在项目根目录执行`make cluster`一键启动四节点raft共识的BitXHub集群，或者执行`make solo`一键启动单节点solo共识的BitXHub节点。如果您是直接下载的二进制安装包，为了简化操作，我们也提供了可以直接启动raft和solo共识的节点配置文件示例，其下载地址与二进制包一样，文件名以raft、solo或example开头。需要注意的是，raft共识的示例配置文件是四节点集群，solo共识的示例配置文件是单节点。接下来只需将上一步下载的BitXHub二进制及对应插件拷贝到配置目录即可，具体操作如下：
 
 ```
-# 1. 新建节点启动目录（下面以node1为例）
-mkdir -p node1
-# 2. 在上一步新建的node1目录中生成初始配置
-./bitxhub --repo ./node1 init
-# 注意⚠️：如果执行失败提示依赖库找不到，可以将上一章中以libwasmer开头的文件加入到PATH中，并执行 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PATH
-# 3. 将bitxhub和共识插件的二进制分别拷贝到node1和node1/plugins目录
-cp bitxhub ./node1
-cp *.so ./node1/plugins
-# 4. 在node1目录生成当前节点的管理员私钥并转换成json格式
-./bitxhub key gen --target ./node1 --name key
-./bitxhub key convert --priv ./node1/key.priv
-# 注意⚠️：需要手动将上一步输出的内容保存为key.json文件
-# 5. 在node1目录生成当前节点的网络通信私钥
-./bitxhub cert priv gen --name node --target ./node1
+# 1. 解压二进制压缩包
+mkdir bitxhub && cd bitxhub
+cp ~/Downloads/bitxhub_darwin_x86_64_v1.8.0.tar.gz .
+tar -zxvf bitxhub_darwin_x86_64_v1.8.0.tar.gz
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PWD
+# 2. 解压配置文件压缩包(以raft共识为例)
+mkdir raft-nodes
+tar -zxvf raft_config_example_v1.8.0.tar.gz -C raft-nodes/
+# 3. 将bitxhub和共识插件二进制分别拷贝到4个节点的配置目录（以node1为例）
+cp bitxhub raft-nodes/node1/
+cp raft.so raft-nodes/node1/plugins/
+# 注意⚠️：节点2、3、4也需要执行上面拷贝操作
+# 以上操作均是示例，执行时二进制和配置文件压缩包的名称可能存在差异，需要根据实际情况进行调整
 ```
 
-执行完后可以在node1目录下看到新生成的初始配置文件：
+拷贝完成后，可以进入各个节点的配置目录，依次启动BitXHub节点即可，启动操作如下：
 
-<img src="../../assets/treeForNode1.png" alt="image-20210413151432472" style="zoom:50%;" />
+```
+cd bitxhub/raft-nodes/node1
+./bitxhub --repo ./ start
 
-中继链节点主要包括bitxhub.toml、network.tom和order.toml配置文件，分别代表节点本身、节点网络以及节点共识方面的配置，其中order.toml一般使用默认配置即可，其它两个文件均需要根据实际部署情况进行修改，接下来我们以node1为例进行说明。
+...
+...
+
+cd bitxhub/raft-nodes/node4
+./bitxhub --repo ./ start
+```
+
+待节点集群打印出bitxhub的LOGO，表示BitXHub集群开始正常工作
+
+![](../../assets/bitxhub.png)
+
+
+
+## BitXHub配置文件说明
+
+前面的提供的配置示例可以方便地快速启动BitXHub节点(集群)，但是没有对配置文件进行具体说明，考虑到您可能需要详细了解bitxhub的运行原理和配置项的具体含义，从而可以灵活配置和启动节点，我们接下来对BitXHub的具体配置项进行说明。
+
+中继链节点主要包括bitxhub.toml、network.tom和order.toml配置文件，分别代表节点本身、节点网络以及节点共识方面的配置，其中order.toml一般使用默认配置即可，其它两个文件均需要根据实际部署情况进行修改，接下来的内容依然以node1为例。
 
 #### bitxhub.toml文件配置修改
 
@@ -235,17 +251,4 @@ batch_timeout = "0.3s"  # Block packaging time period.
         tx_slice_size       = 10    # How many transactions should the node broadcast at once
         tx_slice_timeout    = "0.1s"  # Node broadcasts transactions if there are cached transactions, although set_size isn't reached yet
 ```
-
-## 启动中继链节点
-
-启动bitxhub节点只需要一条命令
-
-```
-cd node1
-./bitxhub --repo ./ start
-```
-
-待节点集群打印出bitxhub的LOGO，表示bitxhub集群开始正常工作
-
-![](../../assets/bitxhub.png)
 

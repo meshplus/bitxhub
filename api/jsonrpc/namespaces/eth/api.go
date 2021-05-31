@@ -303,7 +303,7 @@ func (e *revertError) ErrorData() interface{} {
 
 // Call performs a raw contract call.
 func (api *PublicEthereumAPI) Call(args types2.CallArgs, blockNr rpc.BlockNumber, _ *map[common.Address]rpctypes.Account) (hexutil.Bytes, error) {
-	api.logger.Debugf("eth_call, args: %s, block number: %d", args, blockNr.Int64())
+	api.logger.Debugf("eth_call, args: %v, block number: %d", args, blockNr.Int64())
 
 	// Determine the highest gas limit can be used during call.
 	if args.Gas == nil || uint64(*args.Gas) < params.TxGas {
@@ -319,7 +319,7 @@ func (api *PublicEthereumAPI) Call(args types2.CallArgs, blockNr rpc.BlockNumber
 		return nil, err
 	}
 
-	api.logger.Warnf("receipt: %v", receipt)
+	api.logger.Debugf("receipt: %v", receipt)
 
 	if receipt.Status == pb.Receipt_FAILED {
 		errMsg := string(receipt.Ret)

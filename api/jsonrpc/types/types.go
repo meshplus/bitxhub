@@ -18,7 +18,7 @@ const (
 	// ProtocolVersion is the latest supported version of the eth protocol.
 	ProtocolVersion = eth65
 
-	GasPrice = 5000000
+	GasPrice = 0
 
 	// consider a filter inactive if it has not been polled for within deadline
 	Deadline = 5 * time.Minute
