@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/meshplus/bitxhub/internal/ledger"
+
 	ruleMgr "github.com/meshplus/bitxhub-core/rule-mgr"
 
 	"github.com/meshplus/bitxhub-core/governance"
@@ -32,7 +34,12 @@ const (
 
 func TestVerifyPool_CheckProof(t *testing.T) {
 	mockCtl := gomock.NewController(t)
-	mockLedger := mock_ledger.NewMockLedger(mockCtl)
+	chainLedger := mock_ledger.NewMockChainLedger(mockCtl)
+	stateLedger := mock_ledger.NewMockStateLedger(mockCtl)
+	mockLedger := &ledger.Ledger{
+		ChainLedger: chainLedger,
+		StateLedger: stateLedger,
+	}
 	mockEngine := mock_validator.NewMockEngine(mockCtl)
 
 	chain := &appchainMgr.Appchain{
@@ -55,8 +62,8 @@ func TestVerifyPool_CheckProof(t *testing.T) {
 	rlData, err := json.Marshal(rl)
 	require.Nil(t, err)
 
-	mockLedger.EXPECT().GetState(constant.AppchainMgrContractAddr.Address(), gomock.Any()).Return(true, chainData)
-	mockLedger.EXPECT().GetState(constant.RuleManagerContractAddr.Address(), gomock.Any()).Return(false, rlData)
+	stateLedger.EXPECT().GetState(constant.AppchainMgrContractAddr.Address(), gomock.Any()).Return(true, chainData)
+	stateLedger.EXPECT().GetState(constant.RuleManagerContractAddr.Address(), gomock.Any()).Return(false, rlData)
 	mockEngine.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil).AnyTimes()
 
 	vp := New(mockLedger, log.NewWithModule("test_verify"))
@@ -189,10 +196,15 @@ func TestVerifyPool_CheckProof2(t *testing.T) {
 
 func TestVerifyPool_CheckProof3(t *testing.T) {
 	mockCtl := gomock.NewController(t)
-	mockLedger := mock_ledger.NewMockLedger(mockCtl)
+	chainLedger := mock_ledger.NewMockChainLedger(mockCtl)
+	stateLedger := mock_ledger.NewMockStateLedger(mockCtl)
+	mockLedger := &ledger.Ledger{
+		ChainLedger: chainLedger,
+		StateLedger: stateLedger,
+	}
 	mockEngine := mock_validator.NewMockEngine(mockCtl)
 
-	mockLedger.EXPECT().GetState(constant.AppchainMgrContractAddr.Address(), gomock.Any()).Return(true, []byte("123"))
+	stateLedger.EXPECT().GetState(constant.AppchainMgrContractAddr.Address(), gomock.Any()).Return(true, []byte("123"))
 	mockEngine.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil).AnyTimes()
 
 	vp := VerifyPool{

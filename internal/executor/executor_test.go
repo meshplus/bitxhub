@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	ledger2 "github.com/meshplus/eth-kit/ledger"
+
 	"github.com/gogo/protobuf/proto"
 	"github.com/golang/mock/gomock"
 	"github.com/meshplus/bitxhub-kit/crypto"
@@ -41,15 +43,20 @@ const (
 
 func TestNew(t *testing.T) {
 	mockCtl := gomock.NewController(t)
-	mockLedger := mock_ledger.NewMockLedger(mockCtl)
+	chainLedger := mock_ledger.NewMockChainLedger(mockCtl)
+	stateLedger := mock_ledger.NewMockStateLedger(mockCtl)
+	mockLedger := &ledger.Ledger{
+		ChainLedger: chainLedger,
+		StateLedger: stateLedger,
+	}
 
 	// mock data for ledger
 	chainMeta := &pb.ChainMeta{
 		Height:    1,
 		BlockHash: types.NewHashByStr(from),
 	}
-	mockLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
-	mockLedger.EXPECT().StateDB().Return(mockLedger).AnyTimes()
+	chainLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
+	stateLedger.EXPECT().StateDB().Return(mockLedger).AnyTimes()
 
 	logger := log.NewWithModule("executor")
 	executor, err := New(mockLedger, logger, executorType, gasLimit)
@@ -71,7 +78,12 @@ func TestNew(t *testing.T) {
 
 func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	mockCtl := gomock.NewController(t)
-	mockLedger := mock_ledger.NewMockLedger(mockCtl)
+	chainLedger := mock_ledger.NewMockChainLedger(mockCtl)
+	stateLedger := mock_ledger.NewMockStateLedger(mockCtl)
+	mockLedger := &ledger.Ledger{
+		ChainLedger: chainLedger,
+		StateLedger: stateLedger,
+	}
 
 	// mock data for ledger
 	chainMeta := &pb.ChainMeta{
@@ -90,23 +102,25 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 		Interchain: true,
 	}
 	evs = append(evs, ev)
-	mockLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
-	mockLedger.EXPECT().Events(gomock.Any()).Return(evs).AnyTimes()
-	mockLedger.EXPECT().Commit(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-	mockLedger.EXPECT().Clear().AnyTimes()
-	mockLedger.EXPECT().GetState(gomock.Any(), gomock.Any()).Return(true, []byte("10")).AnyTimes()
-	mockLedger.EXPECT().SetState(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
-	mockLedger.EXPECT().GetBalance(gomock.Any()).Return(new(big.Int).SetUint64(10)).AnyTimes()
-	mockLedger.EXPECT().SetBalance(gomock.Any(), gomock.Any()).AnyTimes()
-	mockLedger.EXPECT().SetNonce(gomock.Any(), gomock.Any()).AnyTimes()
-	mockLedger.EXPECT().GetNonce(gomock.Any()).Return(uint64(0)).AnyTimes()
-	mockLedger.EXPECT().SetCode(gomock.Any(), gomock.Any()).AnyTimes()
-	mockLedger.EXPECT().GetCode(gomock.Any()).Return([]byte("10")).AnyTimes()
-	mockLedger.EXPECT().PersistExecutionResult(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-	mockLedger.EXPECT().FlushDirtyDataAndComputeJournal().Return(make(map[string]*ledger.Account), &ledger.BlockJournal{ChangedHash: &types.Hash{}}).AnyTimes()
-	mockLedger.EXPECT().PersistBlockData(gomock.Any()).AnyTimes()
-	mockLedger.EXPECT().PrepareBlock(gomock.Any()).AnyTimes()
-	mockLedger.EXPECT().StateDB().Return(mockLedger).AnyTimes()
+	chainLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
+	stateLedger.EXPECT().Events(gomock.Any()).Return(evs).AnyTimes()
+	stateLedger.EXPECT().Commit(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+	stateLedger.EXPECT().Clear().AnyTimes()
+	stateLedger.EXPECT().GetState(gomock.Any(), gomock.Any()).Return(true, []byte("10")).AnyTimes()
+	stateLedger.EXPECT().SetState(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	stateLedger.EXPECT().GetBalance(gomock.Any()).Return(new(big.Int).SetUint64(10)).AnyTimes()
+	stateLedger.EXPECT().SetBalance(gomock.Any(), gomock.Any()).AnyTimes()
+	stateLedger.EXPECT().SetNonce(gomock.Any(), gomock.Any()).AnyTimes()
+	stateLedger.EXPECT().GetNonce(gomock.Any()).Return(uint64(0)).AnyTimes()
+	stateLedger.EXPECT().SetCode(gomock.Any(), gomock.Any()).AnyTimes()
+	stateLedger.EXPECT().GetCode(gomock.Any()).Return([]byte("10")).AnyTimes()
+	chainLedger.EXPECT().PersistExecutionResult(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	stateLedger.EXPECT().FlushDirtyDataAndComputeJournal().Return(make(map[string]ledger2.IAccount), &ledger2.BlockJournal{ChangedHash: &types.Hash{}}).AnyTimes()
+	stateLedger.EXPECT().StateDB().Return(mockLedger).AnyTimes()
+	stateLedger.EXPECT().PrepareBlock(gomock.Any()).AnyTimes()
+	stateLedger.EXPECT().Finalise(gomock.Any()).AnyTimes()
+	stateLedger.EXPECT().Close().AnyTimes()
+	chainLedger.EXPECT().Close().AnyTimes()
 	logger := log.NewWithModule("executor")
 
 	exec, err := New(mockLedger, logger, executorType, gasLimit)
@@ -184,7 +198,12 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 
 func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 	mockCtl := gomock.NewController(t)
-	mockLedger := mock_ledger.NewMockLedger(mockCtl)
+	chainLedger := mock_ledger.NewMockChainLedger(mockCtl)
+	stateLedger := mock_ledger.NewMockStateLedger(mockCtl)
+	mockLedger := &ledger.Ledger{
+		ChainLedger: chainLedger,
+		StateLedger: stateLedger,
+	}
 
 	// mock data for ledger
 	chainMeta := &pb.ChainMeta{
@@ -203,17 +222,17 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 
 	contractAddr := constant.InterchainContractAddr.Address()
 
-	mockLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
-	mockLedger.EXPECT().Events(gomock.Any()).Return(nil).AnyTimes()
-	mockLedger.EXPECT().Commit(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-	mockLedger.EXPECT().Clear().AnyTimes()
-	mockLedger.EXPECT().GetState(contractAddr, []byte(fmt.Sprintf("index-tx-%s", id))).Return(true, val).AnyTimes()
-	mockLedger.EXPECT().PersistExecutionResult(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-	mockLedger.EXPECT().FlushDirtyDataAndComputeJournal().Return(make(map[string]*ledger.Account), &ledger.BlockJournal{}).AnyTimes()
-	mockLedger.EXPECT().PersistBlockData(gomock.Any()).AnyTimes()
-	mockLedger.EXPECT().GetNonce(gomock.Any()).Return(uint64(0)).AnyTimes()
-	mockLedger.EXPECT().SetNonce(gomock.Any(), gomock.Any()).AnyTimes()
-	mockLedger.EXPECT().StateDB().Return(mockLedger).AnyTimes()
+	chainLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
+	stateLedger.EXPECT().Events(gomock.Any()).Return(nil).AnyTimes()
+	stateLedger.EXPECT().Commit(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+	stateLedger.EXPECT().Clear().AnyTimes()
+	stateLedger.EXPECT().GetState(contractAddr, []byte(fmt.Sprintf("index-tx-%s", id))).Return(true, val).AnyTimes()
+	chainLedger.EXPECT().PersistExecutionResult(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	stateLedger.EXPECT().FlushDirtyDataAndComputeJournal().Return(make(map[string]ledger2.IAccount), &ledger2.BlockJournal{}).AnyTimes()
+	stateLedger.EXPECT().GetNonce(gomock.Any()).Return(uint64(0)).AnyTimes()
+	stateLedger.EXPECT().SetNonce(gomock.Any(), gomock.Any()).AnyTimes()
+	stateLedger.EXPECT().StateDB().Return(mockLedger).AnyTimes()
+	stateLedger.EXPECT().Finalise(gomock.Any()).AnyTimes()
 	logger := log.NewWithModule("executor")
 
 	exec, err := New(mockLedger, logger, executorType, gasLimit)
@@ -304,7 +323,7 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 
 	ldg.SetBalance(from, new(big.Int).SetInt64(100000000))
 	account, journal := ldg.FlushDirtyDataAndComputeJournal()
-	err = ldg.Commit(1, account, journal)
+	_, err = ldg.Commit(1, account, journal)
 	require.Nil(t, err)
 	err = ldg.PersistExecutionResult(mockBlock(1, nil), nil, &pb.InterchainMeta{})
 	require.Nil(t, err)

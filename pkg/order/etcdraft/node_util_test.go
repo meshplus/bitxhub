@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/meshplus/bitxhub/internal/ledger"
+
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/golang/mock/gomock"
@@ -224,7 +226,12 @@ func newSwarms(t *testing.T, peerCnt int, certVerify bool) ([]*peermgr.Swarm, ma
 	nodes := make(map[uint64]*pb.VpInfo)
 	nodeKeys, privKeys, addrs, ids := genKeysAndConfig(t, peerCnt)
 	mockCtl := gomock.NewController(t)
-	mockLedger := mock_ledger.NewMockLedger(mockCtl)
+	chainLedger := mock_ledger.NewMockChainLedger(mockCtl)
+	stateLedger := mock_ledger.NewMockStateLedger(mockCtl)
+	mockLedger := &ledger.Ledger{
+		ChainLedger: chainLedger,
+		StateLedger: stateLedger,
+	}
 
 	agencyData, err := ioutil.ReadFile("testdata/agency.cert")
 	require.Nil(t, err)

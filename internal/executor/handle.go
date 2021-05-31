@@ -11,10 +11,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	types2 "github.com/meshplus/eth-kit/types"
-
-	"github.com/meshplus/bitxhub/internal/executor/contracts"
-
 	"github.com/cbergoon/merkletree"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
@@ -23,6 +19,7 @@ import (
 	"github.com/meshplus/bitxhub-core/agency"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/pkg/vm"
@@ -30,6 +27,8 @@ import (
 	"github.com/meshplus/bitxhub/pkg/vm/wasm"
 	"github.com/meshplus/bitxhub/pkg/vm/wasm/vmledger"
 	vm1 "github.com/meshplus/eth-kit/evm"
+	ledger2 "github.com/meshplus/eth-kit/ledger"
+	types2 "github.com/meshplus/eth-kit/types"
 	"github.com/sirupsen/logrus"
 )
 
@@ -38,7 +37,7 @@ type BlockWrapper struct {
 	invalidTx map[int]agency.InvalidReason
 }
 
-func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledger.BlockData {
+func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledger2.BlockData {
 	var txHashList []*types.Hash
 	current := time.Now()
 	block := blockWrapper.block
@@ -48,7 +47,7 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	}
 
 	exec.verifyProofs(blockWrapper)
-	exec.evm = newEvm(block.Height(), uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateDB())
+	exec.evm = newEvm(block.Height(), uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateDB(), exec.ledger.ChainLedger)
 	exec.ledger.PrepareBlock(block.BlockHash)
 	receipts := exec.txsExecutor.ApplyTransactions(block.Transactions.Transactions, blockWrapper.invalidTx)
 
@@ -78,13 +77,10 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 
 	accounts, journal := exec.ledger.FlushDirtyDataAndComputeJournal()
 
-	block.BlockHeader.StateRoot = journal.ChangedHash
-	block.BlockHash = block.Hash()
-
 	exec.logger.WithFields(logrus.Fields{
 		"tx_root":      block.BlockHeader.TxRoot.String(),
 		"receipt_root": block.BlockHeader.ReceiptRoot.String(),
-		"state_root":   block.BlockHeader.StateRoot.String(),
+		//"state_root":   block.BlockHeader.StateRoot.String(),
 	}).Debug("block meta")
 	calcBlockSize.Observe(float64(block.Size()))
 	executeBlockDuration.Observe(float64(time.Since(current)) / float64(time.Second))
@@ -97,12 +93,8 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 		Counter: counter,
 		L2Roots: l2Roots,
 	}
-	exec.clear()
 
-	exec.currentHeight = block.BlockHeader.Number
-	exec.currentBlockHash = block.BlockHash
-
-	return &ledger.BlockData{
+	data := &ledger2.BlockData{
 		Block:          block,
 		Receipts:       receipts,
 		Accounts:       accounts,
@@ -110,6 +102,23 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 		InterchainMeta: interchainMeta,
 		TxHashList:     txHashList,
 	}
+
+	now := time.Now()
+	exec.ledger.PersistBlockData(data)
+	exec.postBlockEvent(data.Block, data.InterchainMeta, data.TxHashList)
+	exec.postLogsEvent(data.Receipts)
+	exec.logger.WithFields(logrus.Fields{
+		"height": data.Block.BlockHeader.Number,
+		"hash":   data.Block.BlockHash.String(),
+		"count":  len(data.Block.Transactions.Transactions),
+		"elapse": time.Since(now),
+	}).Info("Persisted block")
+
+	exec.currentHeight = block.BlockHeader.Number
+	exec.currentBlockHash = block.BlockHash
+	exec.clear()
+
+	return nil
 }
 
 func (exec *BlockExecutor) listenPreExecuteEvent() {
@@ -324,7 +333,10 @@ func (exec *BlockExecutor) applyTransaction(i int, tx pb.Transaction, invalidRea
 }
 
 func (exec *BlockExecutor) applyBxhTransaction(i int, tx *pb.BxhTransaction, invalidReason agency.InvalidReason, opt *agency.TxOpt) ([]byte, error) {
-	defer exec.ledger.SetNonce(tx.From, tx.GetNonce()+1)
+	defer func() {
+		exec.ledger.SetNonce(tx.From, tx.GetNonce()+1)
+		exec.ledger.Finalise(false)
+	}()
 
 	if invalidReason != "" {
 		return nil, fmt.Errorf(string(invalidReason))
@@ -391,7 +403,7 @@ func (exec *BlockExecutor) applyEthTransaction(i int, tx *types2.EthTransaction)
 		statedb.RevertToSnapshot(snapshot)
 		receipt.Status = pb.Receipt_FAILED
 		receipt.Ret = []byte(err.Error())
-		exec.ledger.ClearChangerAndRefund()
+		exec.ledger.Finalise(false)
 		return receipt
 	}
 	if result.Failed() {
@@ -405,7 +417,7 @@ func (exec *BlockExecutor) applyEthTransaction(i int, tx *types2.EthTransaction)
 
 	receipt.TxHash = tx.GetHash()
 	receipt.GasUsed = result.UsedGas
-	exec.ledger.ClearChangerAndRefund()
+	exec.ledger.Finalise(false)
 	if msg.To() == nil || bytes.Equal(msg.To().Bytes(), common.Address{}.Bytes()) {
 		receipt.ContractAddress = types.NewAddress(crypto.CreateAddress(exec.evm.TxContext.Origin, tx.GetNonce()).Bytes())
 	}
@@ -476,8 +488,8 @@ func (exec *BlockExecutor) getContracts(opt *agency.TxOpt) map[string]agency.Con
 	return exec.txsExecutor.GetBoltContracts()
 }
 
-func newEvm(number uint64, timestamp uint64, chainCfg *params.ChainConfig, db vm1.StateDB) *vm1.EVM {
-	blkCtx := vm1.NewEVMBlockContext(number, timestamp, db)
+func newEvm(number uint64, timestamp uint64, chainCfg *params.ChainConfig, db ledger2.StateDB, chainLedger ledger2.ChainLedger) *vm1.EVM {
+	blkCtx := vm1.NewEVMBlockContext(number, timestamp, db, chainLedger)
 
 	return vm1.NewEVM(blkCtx, vm1.TxContext{}, db, chainCfg, vm1.Config{})
 }

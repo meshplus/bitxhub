@@ -7,10 +7,11 @@ import (
 
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/meshplus/bitxhub-kit/types"
+	"github.com/meshplus/eth-kit/ledger"
 )
 
 type AccountCache struct {
-	innerAccounts     map[string]*innerAccount
+	innerAccounts     map[string]*ledger.InnerAccount
 	states            map[string]map[string][]byte
 	codes             map[string][]byte
 	innerAccountCache *lru.Cache
@@ -36,7 +37,7 @@ func NewAccountCache() (*AccountCache, error) {
 	}
 
 	return &AccountCache{
-		innerAccounts:     make(map[string]*innerAccount),
+		innerAccounts:     make(map[string]*ledger.InnerAccount),
 		states:            make(map[string]map[string][]byte),
 		codes:             make(map[string][]byte),
 		innerAccountCache: innerAccountCache,
@@ -46,7 +47,7 @@ func NewAccountCache() (*AccountCache, error) {
 	}, nil
 }
 
-func (ac *AccountCache) add(accounts map[string]*Account) error {
+func (ac *AccountCache) add(accounts map[string]ledger.IAccount) error {
 	ac.addToWriteBuffer(accounts)
 	if err := ac.addToReadCache(accounts); err != nil {
 		return err
@@ -54,8 +55,9 @@ func (ac *AccountCache) add(accounts map[string]*Account) error {
 	return nil
 }
 
-func (ac *AccountCache) addToReadCache(accounts map[string]*Account) error {
-	for addr, account := range accounts {
+func (ac *AccountCache) addToReadCache(accounts map[string]ledger.IAccount) error {
+	for addr, acc := range accounts {
+		account := acc.(*SimpleAccount)
 		var stateCache *lru.Cache
 
 		if account.dirtyAccount != nil {
@@ -88,11 +90,12 @@ func (ac *AccountCache) addToReadCache(accounts map[string]*Account) error {
 	return nil
 }
 
-func (ac *AccountCache) addToWriteBuffer(accounts map[string]*Account) {
+func (ac *AccountCache) addToWriteBuffer(accounts map[string]ledger.IAccount) {
 	ac.rwLock.Lock()
 	defer ac.rwLock.Unlock()
 
-	for addr, account := range accounts {
+	for addr, acc := range accounts {
+		account := acc.(*SimpleAccount)
 		if account.dirtyAccount != nil {
 			ac.innerAccounts[addr] = account.dirtyAccount
 		}
@@ -116,13 +119,14 @@ func (ac *AccountCache) addToWriteBuffer(accounts map[string]*Account) {
 	}
 }
 
-func (ac *AccountCache) remove(accounts map[string]*Account) {
+func (ac *AccountCache) remove(accounts map[string]ledger.IAccount) {
 	ac.rwLock.Lock()
 	defer ac.rwLock.Unlock()
 
-	for addr, account := range accounts {
+	for addr, acc := range accounts {
+		account := acc.(*SimpleAccount)
 		if innerAccount, ok := ac.innerAccounts[addr]; ok {
-			if !innerAccountChanged(innerAccount, account.dirtyAccount) {
+			if !ledger.InnerAccountChanged(innerAccount, account.dirtyAccount) {
 				delete(ac.innerAccounts, addr)
 			}
 		}
@@ -159,9 +163,9 @@ func (ac *AccountCache) rmAccount(addr *types.Address) {
 	ac.innerAccountCache.Remove(addr.String())
 }
 
-func (ac *AccountCache) getInnerAccount(addr *types.Address) (*innerAccount, bool) {
+func (ac *AccountCache) getInnerAccount(addr *types.Address) (*ledger.InnerAccount, bool) {
 	if ia, ok := ac.innerAccountCache.Get(addr.String()); ok {
-		return ia.(*innerAccount), true
+		return ia.(*ledger.InnerAccount), true
 	}
 
 	return nil, false
@@ -205,7 +209,7 @@ func (ac *AccountCache) clear() {
 	ac.rwLock.Lock()
 	defer ac.rwLock.Unlock()
 
-	ac.innerAccounts = make(map[string]*innerAccount)
+	ac.innerAccounts = make(map[string]*ledger.InnerAccount)
 	ac.states = make(map[string]map[string][]byte)
 	ac.codes = make(map[string][]byte)
 	ac.innerAccountCache.Purge()

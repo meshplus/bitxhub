@@ -4,10 +4,10 @@ import (
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
 	"github.com/meshplus/bitxid"
+	"github.com/meshplus/eth-kit/ledger"
 )
 
 //go:generate mockgen -destination mock_api/mock_api.go -package mock_api -source api.go
@@ -71,5 +71,5 @@ type FeedAPI interface {
 }
 
 type AccountAPI interface {
-	GetAccount(addr *types.Address) *ledger.Account
+	GetAccount(addr *types.Address) ledger.IAccount
 }

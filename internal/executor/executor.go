@@ -19,6 +19,7 @@ import (
 	"github.com/meshplus/bitxhub/pkg/proof"
 	"github.com/meshplus/bitxhub/pkg/vm/boltvm"
 	vm "github.com/meshplus/eth-kit/evm"
+	ledger2 "github.com/meshplus/eth-kit/ledger"
 	"github.com/sirupsen/logrus"
 	"github.com/wasmerio/wasmer-go/wasmer"
 )
@@ -32,11 +33,11 @@ var _ Executor = (*BlockExecutor)(nil)
 
 // BlockExecutor executes block from order
 type BlockExecutor struct {
-	ledger           ledger.Ledger
+	ledger           *ledger.Ledger
 	logger           logrus.FieldLogger
 	blockC           chan *BlockWrapper
 	preBlockC        chan *pb.CommitEvent
-	persistC         chan *ledger.BlockData
+	persistC         chan *ledger2.BlockData
 	ibtpVerify       proof.Verify
 	validationEngine validator.Engine
 	currentHeight    uint64
@@ -54,7 +55,7 @@ type BlockExecutor struct {
 }
 
 // New creates executor instance
-func New(chainLedger ledger.Ledger, logger logrus.FieldLogger, typ string, gasLimit uint64) (*BlockExecutor, error) {
+func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, typ string, gasLimit uint64) (*BlockExecutor, error) {
 	ibtpVerify := proof.New(chainLedger, logger)
 
 	txsExecutor, err := agency.GetExecutorConstructor(typ)
@@ -71,7 +72,7 @@ func New(chainLedger ledger.Ledger, logger logrus.FieldLogger, typ string, gasLi
 		cancel:           cancel,
 		blockC:           make(chan *BlockWrapper, blockChanNumber),
 		preBlockC:        make(chan *pb.CommitEvent, blockChanNumber),
-		persistC:         make(chan *ledger.BlockData, persistChanNumber),
+		persistC:         make(chan *ledger2.BlockData, persistChanNumber),
 		ibtpVerify:       ibtpVerify,
 		validationEngine: ibtpVerify.ValidationEngine(),
 		currentHeight:    chainLedger.GetChainMeta().Height,
@@ -81,7 +82,7 @@ func New(chainLedger ledger.Ledger, logger logrus.FieldLogger, typ string, gasLi
 		gasLimit:         gasLimit,
 	}
 
-	blockExecutor.evm = newEvm(1, uint64(0), blockExecutor.evmChainCfg, blockExecutor.ledger.StateDB())
+	blockExecutor.evm = newEvm(1, uint64(0), blockExecutor.evmChainCfg, blockExecutor.ledger, blockExecutor.ledger.ChainLedger)
 
 	blockExecutor.txsExecutor = txsExecutor(blockExecutor.applyTx, registerBoltContracts, logger)
 
@@ -132,6 +133,22 @@ func (exec *BlockExecutor) ApplyReadonlyTransactions(txs []pb.Transaction) []*pb
 	current := time.Now()
 	receipts := make([]*pb.Receipt, 0, len(txs))
 
+	switch sl := exec.ledger.StateLedger.(type) {
+	case *ledger2.ComplexStateLedger:
+		meta := exec.ledger.LoadChainMeta()
+		block, err := exec.ledger.GetBlock(meta.Height)
+		if err != nil {
+			exec.logger.Errorf("fail to get block at %d: %v", meta.Height, err.Error())
+			return nil
+		}
+		sl, err = sl.StateAt(block.BlockHeader.StateRoot)
+		if err != nil {
+			exec.logger.Errorf("fail to new state ledger at %s: %v", meta.BlockHash.String(), err.Error())
+			return nil
+		}
+		exec.ledger.StateLedger = sl
+	}
+
 	for i, tx := range txs {
 		receipt := exec.applyTransaction(i, tx, "", nil)
 
@@ -154,13 +171,16 @@ func (exec *BlockExecutor) listenExecuteEvent() {
 		case blockWrapper := <-exec.blockC:
 			now := time.Now()
 			blockData := exec.processExecuteEvent(blockWrapper)
-			exec.logger.WithFields(logrus.Fields{
-				"height": blockWrapper.block.BlockHeader.Number,
-				"count":  len(blockWrapper.block.Transactions.Transactions),
-				"elapse": time.Since(now),
-			}).Debug("Executed block")
-			exec.persistC <- blockData
+			if blockData != nil {
+				exec.logger.WithFields(logrus.Fields{
+					"height": blockWrapper.block.BlockHeader.Number,
+					"count":  len(blockWrapper.block.Transactions.Transactions),
+					"elapse": time.Since(now),
+				}).Debug("Executed block")
+				exec.persistC <- blockData
+			}
 		case <-exec.ctx.Done():
+			close(exec.persistC)
 			return
 		}
 	}
@@ -220,6 +240,7 @@ func (exec *BlockExecutor) persistData() {
 			"elapse": time.Since(now),
 		}).Info("Persisted block")
 	}
+	exec.ledger.Close()
 }
 
 func registerBoltContracts() map[string]agency.Contract {

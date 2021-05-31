@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	"github.com/meshplus/bitxhub-kit/storage"
-	"github.com/meshplus/bitxhub-kit/types"
+	"github.com/meshplus/eth-kit/ledger"
 )
 
 var (
@@ -13,21 +13,7 @@ var (
 	maxHeightStr = "maxHeight"
 )
 
-type journal struct {
-	Address        *types.Address
-	PrevAccount    *innerAccount
-	AccountChanged bool
-	PrevStates     map[string][]byte
-	PrevCode       []byte
-	CodeChanged    bool
-}
-
-type BlockJournal struct {
-	Journals    []*journal
-	ChangedHash *types.Hash
-}
-
-func (journal *journal) revert(batch storage.Batch) {
+func revertJournal(journal *ledger.Journal, batch storage.Batch) {
 	if journal.AccountChanged {
 		if journal.PrevAccount != nil {
 			data, err := journal.PrevAccount.Marshal()
@@ -74,13 +60,13 @@ func getJournalRange(ldb storage.Storage) (uint64, uint64) {
 	return minHeight, maxHeight
 }
 
-func getBlockJournal(height uint64, ldb storage.Storage) *BlockJournal {
+func getBlockJournal(height uint64, ldb storage.Storage) *ledger.BlockJournal {
 	data := ldb.Get(compositeKey(journalKey, height))
 	if data == nil {
 		return nil
 	}
 
-	journal := &BlockJournal{}
+	journal := &ledger.BlockJournal{}
 	if err := json.Unmarshal(data, journal); err != nil {
 		panic(err)
 	}

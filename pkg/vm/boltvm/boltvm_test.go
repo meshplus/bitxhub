@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/meshplus/bitxhub/internal/ledger"
+
 	"github.com/golang/mock/gomock"
 	"github.com/meshplus/bitxhub-core/agency"
 	"github.com/meshplus/bitxhub-core/validator/mock_validator"
@@ -74,7 +76,12 @@ func TestNewContext(t *testing.T) {
 func TestBoltVM_Run(t *testing.T) {
 	ctr := gomock.NewController(t)
 	mockEngine := mock_validator.NewMockEngine(ctr)
-	mockLedger := mock_ledger.NewMockLedger(ctr)
+	chainLedger := mock_ledger.NewMockChainLedger(ctr)
+	stateLedger := mock_ledger.NewMockStateLedger(ctr)
+	mockLedger := &ledger.Ledger{
+		ChainLedger: chainLedger,
+		StateLedger: stateLedger,
+	}
 
 	cons := GetBoltContracts()
 	data := make([][]byte, 0)
@@ -105,7 +112,7 @@ func TestBoltVM_Run(t *testing.T) {
 	ctxInterchain := vm.NewContext(txInterchain, 1, nil, mockLedger, log.NewWithModule("vm"))
 	boltVMInterchain := New(ctxInterchain, mockEngine, cons)
 	ibtp := mockIBTP(t, 1, pb.IBTP_INTERCHAIN)
-	mockLedger.EXPECT().GetState(txInterchain.To, []byte(contracts.AppchainKey(ibtp.From))).Return(false, nil).AnyTimes()
+	stateLedger.EXPECT().GetState(txInterchain.To, []byte(contracts.AppchainKey(ibtp.From))).Return(false, nil).AnyTimes()
 	_, err = boltVMInterchain.HandleIBTP(ibtp)
 	require.NotNil(t, err)
 }

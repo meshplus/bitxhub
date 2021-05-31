@@ -2,130 +2,80 @@ package ledger
 
 import (
 	"fmt"
-	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/core/rawdb"
+	"github.com/ethereum/go-ethereum/core/state"
+	"github.com/ethereum/go-ethereum/ethdb"
+	"github.com/ethereum/go-ethereum/trie"
 	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/meshplus/bitxhub-kit/storage/blockfile"
+	"github.com/meshplus/bitxhub-kit/storage/leveldb"
 	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/repo"
+	"github.com/meshplus/eth-kit/ledger"
 	"github.com/sirupsen/logrus"
 )
 
-var _ Ledger = (*ChainLedger)(nil)
-
-var (
-	ErrorRollbackToHigherNumber  = fmt.Errorf("rollback to higher blockchain height")
-	ErrorRollbackWithoutJournal  = fmt.Errorf("rollback to blockchain height without journal")
-	ErrorRollbackTooMuch         = fmt.Errorf("rollback too much block")
-	ErrorRemoveJournalOutOfRange = fmt.Errorf("remove journal out of range")
-)
-
-type revision struct {
-	id           int
-	changerIndex int
+type Ledger struct {
+	ledger.ChainLedger
+	ledger.StateLedger
 }
 
-type ChainLedger struct {
-	logger          logrus.FieldLogger
-	blockchainStore storage.Storage
-	ldb             storage.Storage
-	bf              *blockfile.BlockFile
-	minJnlHeight    uint64
-	maxJnlHeight    uint64
-	events          sync.Map
-	accounts        map[string]*Account
-	accountCache    *AccountCache
-	prevJnlHash     *types.Hash
-	repo            *repo.Repo
-
-	chainMutex sync.RWMutex
-	chainMeta  *pb.ChainMeta
-
-	journalMutex sync.RWMutex
-	lock         sync.RWMutex
-
-	validRevisions []revision
-	nextRevisionId int
-	changer        *stateChanger
-
-	accessList *accessList
-	preimages  map[types.Hash][]byte
-	refund     uint64
-	logs       *evmLogs
-}
-
-type BlockData struct {
-	Block          *pb.Block
-	Receipts       []*pb.Receipt
-	Accounts       map[string]*Account
-	Journal        *BlockJournal
-	InterchainMeta *pb.InterchainMeta
-	TxHashList     []*types.Hash
-}
-
-// New create a new ledger instance
-func New(repo *repo.Repo, blockchainStore storage.Storage, ldb storage.Storage, bf *blockfile.BlockFile, accountCache *AccountCache, logger logrus.FieldLogger) (*ChainLedger, error) {
-	chainMeta, err := loadChainMeta(blockchainStore)
+func New(repo *repo.Repo, blockchainStore storage.Storage, ldb stateStorage, bf *blockfile.BlockFile, accountCache *AccountCache, logger logrus.FieldLogger) (*Ledger, error) {
+	chainLedger, err := NewChainLedgerImpl(blockchainStore, bf, repo, logger)
 	if err != nil {
-		return nil, fmt.Errorf("load chain meta: %w", err)
+		return nil, err
 	}
 
-	minJnlHeight, maxJnlHeight := getJournalRange(ldb)
+	meta := chainLedger.GetChainMeta()
 
-	prevJnlHash := &types.Hash{}
-	if maxJnlHeight != 0 {
-		blockJournal := getBlockJournal(maxJnlHeight, ldb)
-		if blockJournal == nil {
-			return nil, fmt.Errorf("get empty block journal for block: %d", maxJnlHeight)
-		}
-		prevJnlHash = blockJournal.ChangedHash
-	}
+	var stateLedger ledger.StateLedger
 
-	if accountCache == nil {
-		accountCache, err = NewAccountCache()
+	switch v := ldb.(type) {
+	case storage.Storage:
+		stateLedger, err = NewSimpleLedger(repo, ldb.(storage.Storage), accountCache, logger)
 		if err != nil {
 			return nil, err
 		}
+	case ethdb.Database:
+		db := state.NewDatabaseWithConfig(ldb.(ethdb.Database), &trie.Config{
+			Cache:     256,
+			Journal:   "",
+			Preimages: true,
+		})
+
+		root := &types.Hash{}
+		if meta.Height > 0 {
+			block, err := chainLedger.GetBlock(meta.Height)
+			if err != nil {
+				return nil, err
+			}
+			root = block.BlockHeader.StateRoot
+		}
+
+		stateLedger, err = ledger.New(root, db, logger)
+		if err != nil {
+			return nil, err
+		}
+	default:
+		return nil, fmt.Errorf("unknow storage type %T, expect simple or historical", v)
 	}
 
-	ledger := &ChainLedger{
-		repo:            repo,
-		logger:          logger,
-		chainMeta:       chainMeta,
-		blockchainStore: blockchainStore,
-		ldb:             ldb,
-		bf:              bf,
-		minJnlHeight:    minJnlHeight,
-		maxJnlHeight:    maxJnlHeight,
-		accounts:        make(map[string]*Account),
-		accountCache:    accountCache,
-		prevJnlHash:     prevJnlHash,
-		preimages:       make(map[types.Hash][]byte),
-		changer:         newChanger(),
-		accessList:      newAccessList(),
-		logs:            NewEvmLogs(),
+	ledger := &Ledger{
+		ChainLedger: chainLedger,
+		StateLedger: stateLedger,
 	}
 
-	height := maxJnlHeight
-	if maxJnlHeight > chainMeta.Height {
-		height = chainMeta.Height
-	}
-
-	if err := ledger.Rollback(height); err != nil {
+	if err := ledger.Rollback(meta.Height); err != nil {
 		return nil, err
 	}
 
 	return ledger, nil
 }
 
-func (l *ChainLedger) AccountCache() *AccountCache {
-	return l.accountCache
-}
-
 // PersistBlockData persists block data
-func (l *ChainLedger) PersistBlockData(blockData *BlockData) {
+func (l *Ledger) PersistBlockData(blockData *ledger.BlockData) {
 	current := time.Now()
 	block := blockData.Block
 	receipts := blockData.Receipts
@@ -133,11 +83,15 @@ func (l *ChainLedger) PersistBlockData(blockData *BlockData) {
 	journal := blockData.Journal
 	meta := blockData.InterchainMeta
 
-	if err := l.Commit(block.BlockHeader.Number, accounts, journal); err != nil {
+	root, err := l.StateLedger.Commit(block.BlockHeader.Number, accounts, journal)
+	if err != nil {
 		panic(err)
 	}
 
-	if err := l.PersistExecutionResult(block, receipts, meta); err != nil {
+	block.BlockHeader.StateRoot = root
+	block.BlockHash = block.Hash()
+
+	if err := l.ChainLedger.PersistExecutionResult(block, receipts, meta); err != nil {
 		panic(err)
 	}
 
@@ -145,67 +99,42 @@ func (l *ChainLedger) PersistBlockData(blockData *BlockData) {
 }
 
 // Rollback rollback ledger to history version
-func (l *ChainLedger) Rollback(height uint64) error {
-	if err := l.rollbackState(height); err != nil {
+func (l *Ledger) Rollback(height uint64) error {
+	if err := l.StateLedger.RollbackState(height); err != nil {
 		return err
 	}
 
-	if err := l.rollbackBlockChain(height); err != nil {
+	if err := l.ChainLedger.RollbackBlockChain(height); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-// RemoveJournalsBeforeBlock removes ledger journals whose block number < height
-func (l *ChainLedger) RemoveJournalsBeforeBlock(height uint64) error {
-	l.journalMutex.Lock()
-	defer l.journalMutex.Unlock()
-
-	if height > l.maxJnlHeight {
-		return ErrorRemoveJournalOutOfRange
-	}
-
-	if height <= l.minJnlHeight {
-		return nil
-	}
-
-	batch := l.ldb.NewBatch()
-	for i := l.minJnlHeight; i < height; i++ {
-		batch.Delete(compositeKey(journalKey, i))
-	}
-	batch.Put(compositeKey(journalKey, minHeightStr), marshalHeight(height))
-	batch.Commit()
-
-	l.minJnlHeight = height
-
-	return nil
+func (l *Ledger) Close() {
+	l.ChainLedger.Close()
+	l.StateLedger.Close()
 }
 
-// AddEvent add ledger event
-func (l *ChainLedger) AddEvent(event *pb.Event) {
-	var events []*pb.Event
-	hash := event.TxHash.String()
-	value, ok := l.events.Load(hash)
-	if ok {
-		events = value.([]*pb.Event)
-	}
-	events = append(events, event)
-	l.events.Store(hash, events)
-}
+type stateStorage interface{}
 
-// Events return ledger events
-func (l *ChainLedger) Events(txHash string) []*pb.Event {
-	events, ok := l.events.Load(txHash)
-	if !ok {
-		return nil
-	}
-	return events.([]*pb.Event)
-}
+func OpenStateDB(file string, typ string) (stateStorage, error) {
+	var storage stateStorage
+	var err error
 
-// Close close the ledger instance
-func (l *ChainLedger) Close() {
-	l.ldb.Close()
-	l.blockchainStore.Close()
-	l.bf.Close()
+	if typ == "simple" {
+		storage, err = leveldb.New(file)
+		if err != nil {
+			return nil, err
+		}
+	} else if typ == "complex" {
+		storage, err = rawdb.NewLevelDBDatabase(file, 0, 0, "", false)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, fmt.Errorf("unknow storage type %s, expect simple or complex", typ)
+	}
+
+	return storage, nil
 }

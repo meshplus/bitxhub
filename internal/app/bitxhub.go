@@ -9,7 +9,6 @@ import (
 	"github.com/common-nighthawk/go-figure"
 	"github.com/ethereum/go-ethereum/common/fdlimit"
 	"github.com/meshplus/bitxhub-kit/storage/blockfile"
-	"github.com/meshplus/bitxhub-kit/storage/leveldb"
 	_ "github.com/meshplus/bitxhub/imports"
 	"github.com/meshplus/bitxhub/internal/executor"
 	"github.com/meshplus/bitxhub/internal/ledger"
@@ -25,7 +24,7 @@ import (
 )
 
 type BitXHub struct {
-	Ledger        ledger.Ledger
+	Ledger        *ledger.Ledger
 	BlockExecutor executor.Executor
 	ViewExecutor  executor.Executor
 	Router        router.Router
@@ -98,7 +97,7 @@ func GenerateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 		return nil, fmt.Errorf("create blockchain storage: %w", err)
 	}
 
-	ldb, err := leveldb.New(repo.GetStoragePath(repoRoot, "ledger"))
+	stateStorage, err := ledger.OpenStateDB(repo.GetStoragePath(repoRoot, "ledger"), rep.Config.Ledger.Type)
 	if err != nil {
 		return nil, fmt.Errorf("create tm-leveldb: %w", err)
 	}
@@ -109,22 +108,25 @@ func GenerateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 	}
 
 	// 0. load ledger
-	rwLdg, err := ledger.New(rep, bcStorage, ldb, bf, nil, loggers.Logger(loggers.Executor))
+	rwLdg, err := ledger.New(rep, bcStorage, stateStorage, bf, nil, loggers.Logger(loggers.Executor))
 	if err != nil {
 		return nil, fmt.Errorf("create RW ledger: %w", err)
 	}
 
-	if rwLdg.GetChainMeta().Height == 0 {
+	viewLdg := rwLdg
+	if rep.Config.Ledger.Type == "simple" {
+		// create read only ledger
+		viewLdg, err = ledger.New(rep, bcStorage, stateStorage, bf, nil, loggers.Logger(loggers.Executor))
+		if err != nil {
+			return nil, fmt.Errorf("create readonly ledger: %w", err)
+		}
+	}
+
+	if rwLdg.ChainLedger.GetChainMeta().Height == 0 {
 		if err := genesis.Initialize(&rep.Config.Genesis, rwLdg); err != nil {
 			return nil, err
 		}
 		logger.Info("Initialize genesis")
-	}
-
-	// create read only ledger
-	viewLdg, err := ledger.New(rep, bcStorage, ldb, bf, rwLdg.AccountCache(), loggers.Logger(loggers.Executor))
-	if err != nil {
-		return nil, fmt.Errorf("create readonly ledger: %w", err)
 	}
 
 	// 1. create executor and view executor

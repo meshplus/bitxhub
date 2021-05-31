@@ -11,7 +11,7 @@ import (
 	"github.com/meshplus/bitxhub-core/validator"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/internal/ledger"
+	"github.com/meshplus/eth-kit/ledger"
 	"github.com/tidwall/gjson"
 )
 
@@ -537,7 +537,7 @@ func (rm *RuleManager) checkRuleAddress(addr string) error {
 		return fmt.Errorf("get account error")
 	}
 
-	account := account1.(*ledger.Account)
+	account := account1.(ledger.IAccount)
 	if account.Code() == nil {
 		return fmt.Errorf("the validation rule does not exist")
 	}

@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/meshplus/bitxhub/internal/ledger"
+
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/governance"
 	ruleMgr "github.com/meshplus/bitxhub-core/rule-mgr"
@@ -19,7 +21,6 @@ import (
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
-	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/sirupsen/logrus"
 )
 
@@ -32,14 +33,14 @@ const (
 
 type VerifyPool struct {
 	proofs sync.Map //ibtp proof cache
-	ledger ledger.Ledger
+	ledger *ledger.Ledger
 	ve     validator.Engine
 	logger logrus.FieldLogger
 }
 
 var _ Verify = (*VerifyPool)(nil)
 
-func New(ledger ledger.Ledger, logger logrus.FieldLogger) Verify {
+func New(ledger *ledger.Ledger, logger logrus.FieldLogger) Verify {
 	ve := validator.NewValidationEngine(ledger, &sync.Map{}, log.NewWithModule("validator"))
 	proofPool := &VerifyPool{
 		ledger: ledger,

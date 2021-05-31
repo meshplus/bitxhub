@@ -11,14 +11,14 @@ import (
 type Context struct {
 	caller          *types.Address
 	callee          *types.Address
-	ledger          ledger.Ledger
+	ledger          *ledger.Ledger
 	transactionData *pb.TransactionData
 	nonce           int64
 	logger          logrus.FieldLogger
 }
 
 // NewContext creates a context of wasm instance
-func NewContext(tx pb.Transaction, data *pb.TransactionData, ledger ledger.Ledger, logger logrus.FieldLogger) *Context {
+func NewContext(tx pb.Transaction, data *pb.TransactionData, ledger *ledger.Ledger, logger logrus.FieldLogger) *Context {
 	return &Context{
 		caller:          tx.GetFrom(),
 		callee:          tx.GetTo(),

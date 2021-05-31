@@ -10,13 +10,13 @@ import (
 type Context struct {
 	caller           *types.Address
 	callee           *types.Address
-	ledger           ledger.Ledger
+	ledger           *ledger.Ledger
 	transactionIndex uint64
 	transactionHash  *types.Hash
 	logger           logrus.FieldLogger
 }
 
-func NewContext(tx pb.Transaction, txIndex uint64, data *pb.TransactionData, ledger ledger.Ledger, logger logrus.FieldLogger) *Context {
+func NewContext(tx pb.Transaction, txIndex uint64, data *pb.TransactionData, ledger *ledger.Ledger, logger logrus.FieldLogger) *Context {
 	return &Context{
 		caller:           tx.GetFrom(),
 		callee:           tx.GetTo(),
