@@ -463,12 +463,12 @@ func (api *PublicEthereumAPI) GetTransactionReceipt(hash common.Hash) (map[strin
 	txHash := types.NewHash(hash.Bytes())
 	tx, _, err := api.GetEthTransactionByHash(txHash)
 	if err != nil {
-		return nil, err
+		return nil, nil
 	}
 
 	receipt, err := api.api.Broker().GetReceipt(txHash)
 	if err != nil {
-		return nil, err
+		return nil, nil
 	}
 
 	meta, err := api.api.Broker().GetTransactionMeta(txHash)
