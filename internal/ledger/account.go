@@ -93,7 +93,17 @@ func (o *Account) GetCommittedState(key []byte) []byte {
 
 // SetState Set account state
 func (o *Account) SetState(key []byte, value []byte) {
-	o.GetState(key)
+	_, prev := o.GetState(key)
+	o.dirtyState.Store(string(key), value)
+
+	o.changer.append(storageChange{
+		account:  o.Addr,
+		key:      key,
+		prevalue: prev,
+	})
+}
+
+func (o *Account) setState(key []byte, value []byte) {
 	o.dirtyState.Store(string(key), value)
 }
 
@@ -109,6 +119,15 @@ func (o *Account) SetCodeAndHash(code []byte) {
 		account:  o.Addr,
 		prevcode: o.Code(),
 	})
+	if o.dirtyAccount == nil {
+		o.dirtyAccount = copyOrNewIfEmpty(o.originAccount)
+	}
+	o.dirtyAccount.CodeHash = ret.Bytes()
+	o.dirtyCode = code
+}
+
+func (o *Account) setCodeAndHash(code []byte) {
+	ret := crypto.Keccak256Hash(code)
 	if o.dirtyAccount == nil {
 		o.dirtyAccount = copyOrNewIfEmpty(o.originAccount)
 	}
@@ -166,6 +185,13 @@ func (o *Account) SetNonce(nonce uint64) {
 	o.dirtyAccount.Nonce = nonce
 }
 
+func (o *Account) setNonce(nonce uint64) {
+	if o.dirtyAccount == nil {
+		o.dirtyAccount = copyOrNewIfEmpty(o.originAccount)
+	}
+	o.dirtyAccount.Nonce = nonce
+}
+
 // GetNonce Get the nonce from user account
 func (o *Account) GetNonce() uint64 {
 	if o.dirtyAccount != nil {
@@ -194,6 +220,13 @@ func (o *Account) SetBalance(balance *big.Int) {
 		account: o.Addr,
 		prev:    new(big.Int).Set(o.GetBalance()),
 	})
+	if o.dirtyAccount == nil {
+		o.dirtyAccount = copyOrNewIfEmpty(o.originAccount)
+	}
+	o.dirtyAccount.Balance = balance
+}
+
+func (o *Account) setBalance(balance *big.Int) {
 	if o.dirtyAccount == nil {
 		o.dirtyAccount = copyOrNewIfEmpty(o.originAccount)
 	}
