@@ -8,7 +8,7 @@ import (
 )
 
 func TestNewRateLimiter(t *testing.T) {
-	limiter := NewRateLimiter(10*time.Second, 5)
+	limiter, _ := NewRateLimiter(10*time.Second, 5)
 	for i := 0; i < 6; i++ {
 		if i == 5 {
 			ok := limiter.Limit()
@@ -21,7 +21,7 @@ func TestNewRateLimiter(t *testing.T) {
 }
 
 func TestNewRateLimiterWithQuantum(t *testing.T) {
-	limiter := NewRateLimiterWithQuantum(0, 0, 0)
+	limiter, _ := NewRateLimiterWithQuantum(50*time.Millisecond, 10000, 500)
 	ok := limiter.Limit()
 	assert.False(t, ok)
 }
