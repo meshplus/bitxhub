@@ -350,6 +350,9 @@ func (api *PublicEthereumAPI) EstimateGas(args types2.CallArgs) (hexutil.Uint64,
 	if err != nil {
 		return 0, err
 	}
+	if !result.IsSuccess() && strings.Contains(string(result.Ret), "out of gas") {
+		return 0, fmt.Errorf("gas required exceeds allowance (%s)", (*uint64)(args.Gas))
+	}
 
 	return hexutil.Uint64(result.GasUsed + 2000), nil
 }

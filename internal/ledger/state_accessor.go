@@ -103,14 +103,7 @@ func (l *ChainLedger) GetCommittedState(addr *types.Address, key []byte) []byte 
 // SetState set account state value using account Address and key
 func (l *ChainLedger) SetState(addr *types.Address, key []byte, v []byte) {
 	account := l.GetOrCreateAccount(addr)
-	_, prev := account.GetState(key)
-
 	account.SetState(key, v)
-	l.changer.append(storageChange{
-		account:  addr,
-		key:      key,
-		prevalue: prev,
-	})
 }
 
 // AddState add account state value using account Address and key

@@ -130,9 +130,9 @@ func (ch resetObjectChange) dirtied() *types.Address {
 }
 
 func (ch suicideChange) revert(l *ChainLedger) {
-	account := l.GetAccount(ch.account)
+	account := l.GetOrCreateAccount(ch.account)
 	account.suicided = ch.prev
-	account.SetBalance(ch.prevbalance)
+	account.setBalance(ch.prevbalance)
 }
 
 func (ch suicideChange) dirtied() *types.Address {
@@ -147,7 +147,7 @@ func (ch touchChange) dirtied() *types.Address {
 }
 
 func (ch balanceChange) revert(l *ChainLedger) {
-	l.GetAccount(ch.account).SetBalance(ch.prev)
+	l.GetOrCreateAccount(ch.account).setBalance(ch.prev)
 }
 
 func (ch balanceChange) dirtied() *types.Address {
@@ -155,7 +155,7 @@ func (ch balanceChange) dirtied() *types.Address {
 }
 
 func (ch nonceChange) revert(l *ChainLedger) {
-	l.GetAccount(ch.account).SetNonce(ch.prev)
+	l.GetOrCreateAccount(ch.account).setNonce(ch.prev)
 }
 
 func (ch nonceChange) dirtied() *types.Address {
@@ -163,7 +163,7 @@ func (ch nonceChange) dirtied() *types.Address {
 }
 
 func (ch codeChange) revert(l *ChainLedger) {
-	l.GetAccount(ch.account).SetCodeAndHash(ch.prevcode)
+	l.GetOrCreateAccount(ch.account).setCodeAndHash(ch.prevcode)
 }
 
 func (ch codeChange) dirtied() *types.Address {
@@ -171,7 +171,7 @@ func (ch codeChange) dirtied() *types.Address {
 }
 
 func (ch storageChange) revert(l *ChainLedger) {
-	l.GetAccount(ch.account).SetState(ch.key, ch.prevalue)
+	l.GetOrCreateAccount(ch.account).setState(ch.key, ch.prevalue)
 }
 
 func (ch storageChange) dirtied() *types.Address {
