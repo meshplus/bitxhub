@@ -30,11 +30,10 @@ func (b *BrokerAPI) HandleTransaction(tx pb.Transaction) error {
 		"hash": tx.GetHash().String(),
 	}).Debugf("Receive tx")
 
-	go func() {
-		if err := b.bxh.Order.Prepare(tx); err != nil {
-			b.logger.Error(err)
-		}
-	}()
+	if err := b.bxh.Order.Prepare(tx); err != nil {
+		b.logger.Error(err)
+		return err
+	}
 
 	return nil
 }
@@ -317,7 +316,5 @@ func (b BrokerAPI) GetPendingTransactions(max int) []pb.Transaction {
 }
 
 func (b BrokerAPI) GetPoolTransaction(hash *types.Hash) pb.Transaction {
-	// TODO
-
-	return nil
+	return b.bxh.Order.GetPendingTxByHash(hash)
 }

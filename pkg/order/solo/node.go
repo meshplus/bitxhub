@@ -36,6 +36,10 @@ type Node struct {
 	sync.RWMutex
 }
 
+func (n *Node) GetPendingTxByHash(hash *types.Hash) pb.Transaction {
+	return n.mempool.GetTransaction(hash)
+}
+
 func (n *Node) Start() error {
 	go n.txCache.ListenEvent()
 	go n.listenReadyBlock()
