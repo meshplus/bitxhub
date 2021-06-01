@@ -106,7 +106,7 @@ type LogModule struct {
 
 type Genesis struct {
 	ChainID  uint64            `json:"chainid" toml:"chainid"`
-	GasLimit uint64            `json:"gas_limit" toml:"gas_limit"`
+	GasLimit uint64            `mapstructure:"gas_limit" json:"gas_limit" toml:"gas_limit"`
 	Admins   []*Admin          `json:"admins" toml:"admins"`
 	Strategy map[string]string `json:"strategy" toml:"strategy"`
 	Dider    string            `json:"dider" toml:"dider"`
@@ -190,7 +190,7 @@ func DefaultConfig() (*Config, error) {
 		},
 		Genesis: Genesis{
 			ChainID:  1,
-			GasLimit: 0x2fefd8,
+			GasLimit: 0x5f5e100,
 		},
 	}, nil
 }
