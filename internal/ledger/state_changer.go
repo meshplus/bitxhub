@@ -1,7 +1,6 @@
 package ledger
 
 import (
-	"fmt"
 	"math/big"
 	"sync"
 
@@ -148,7 +147,6 @@ func (ch touchChange) dirtied() *types.Address {
 }
 
 func (ch balanceChange) revert(l *ChainLedger) {
-	fmt.Println(ch.prev.Int64())
 	l.GetAccount(ch.account).SetBalance(ch.prev)
 }
 

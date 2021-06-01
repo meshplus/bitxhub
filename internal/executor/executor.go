@@ -20,7 +20,7 @@ import (
 	"github.com/meshplus/bitxhub/pkg/vm/boltvm"
 	vm "github.com/meshplus/eth-kit/evm"
 	"github.com/sirupsen/logrus"
-	"github.com/wasmerio/go-ext-wasm/wasmer"
+	"github.com/wasmerio/wasmer-go/wasmer"
 )
 
 const (
@@ -41,7 +41,7 @@ type BlockExecutor struct {
 	validationEngine validator.Engine
 	currentHeight    uint64
 	currentBlockHash *types.Hash
-	wasmInstances    map[string]wasmer.Instance
+	wasmInstances    map[string]*wasmer.Instance
 	txsExecutor      agency.TxsExecutor
 	blockFeed        event.Feed
 	logsFeed         event.Feed
@@ -76,7 +76,7 @@ func New(chainLedger ledger.Ledger, logger logrus.FieldLogger, typ string, gasLi
 		validationEngine: ibtpVerify.ValidationEngine(),
 		currentHeight:    chainLedger.GetChainMeta().Height,
 		currentBlockHash: chainLedger.GetChainMeta().BlockHash,
-		wasmInstances:    make(map[string]wasmer.Instance),
+		wasmInstances:    make(map[string]*wasmer.Instance),
 		evmChainCfg:      newEVMChainCfg(),
 		gasLimit:         gasLimit,
 	}

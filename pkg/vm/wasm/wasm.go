@@ -9,9 +9,10 @@ import (
 	"sync"
 
 	"github.com/meshplus/bitxhub-core/wasm"
+	"github.com/meshplus/bitxhub-core/wasm/wasmlib"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub/pkg/vm"
-	"github.com/wasmerio/go-ext-wasm/wasmer"
+	"github.com/wasmerio/wasmer-go/wasmer"
 )
 
 var (
@@ -39,7 +40,7 @@ type Contract struct {
 }
 
 // New creates a wasm vm instance
-func New(ctx *vm.Context, imports *wasmer.Imports, instances map[string]wasmer.Instance) (*WasmVM, error) {
+func New(ctx *vm.Context, imports wasmlib.WasmImport, instances map[string]*wasmer.Instance) (*WasmVM, error) {
 	wasmVM := &WasmVM{
 		ctx: ctx,
 	}
@@ -62,18 +63,18 @@ func New(ctx *vm.Context, imports *wasmer.Imports, instances map[string]wasmer.I
 
 	w.SetContext(wasm.ACCOUNT, ctx.Ledger.GetOrCreateAccount(ctx.Callee))
 
-	_, ok := w.Instance.Exports["allocate"]
-	if !ok {
-		return nil, fmt.Errorf("no allocate method")
-	}
-	w.SetContext(wasm.ALLOC_MEM, w.Instance.Exports["allocate"])
+	// alloc, err := w.Instance.Exports.GetFunction("allocate")
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// w.SetContext(wasm.ALLOC_MEM, alloc)
 	wasmVM.w = w
 
 	return wasmVM, nil
 }
 
-func EmptyImports() (*wasmer.Imports, error) {
-	return wasmer.NewImports(), nil
+func EmptyImports() (wasmlib.WasmImport, error) {
+	return wasm.NewEmptyImports(), nil
 }
 
 // Run let the wasm vm excute or deploy the smart contract which depends on whether the callee is empty
