@@ -356,11 +356,9 @@ func (exec *BlockExecutor) applyBxhTransaction(i int, tx *pb.BxhTransaction, inv
 			ctx := vm.NewContext(tx, uint64(i), data, exec.ledger, exec.logger)
 			instance = boltvm.New(ctx, exec.validationEngine, exec.getContracts(opt))
 		case pb.TransactionData_XVM:
+			var err error
 			ctx := vm.NewContext(tx, uint64(i), data, exec.ledger, exec.logger)
-			imports, err := vmledger.New()
-			if err != nil {
-				return nil, err
-			}
+			imports := vmledger.New()
 			instance, err = wasm.New(ctx, imports, exec.wasmInstances)
 			if err != nil {
 				return nil, err

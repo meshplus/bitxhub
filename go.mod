@@ -28,7 +28,7 @@ require (
 	github.com/juju/ratelimit v1.0.1
 	github.com/libp2p/go-libp2p-core v0.5.6
 	github.com/magiconair/properties v1.8.4
-	github.com/meshplus/bitxhub-core v1.3.1-0.20210526020156-0e74d18dbf83
+	github.com/meshplus/bitxhub-core v1.3.1-0.20210527023754-d67ee659d174
 	github.com/meshplus/bitxhub-kit v1.2.1-0.20210524063043-9afae78ac098
 	github.com/meshplus/bitxhub-model v1.2.1-0.20210524063354-5d48e2fee178
 	github.com/meshplus/bitxid v0.0.0-20210412025850-e0eaf0f9063a
@@ -53,7 +53,7 @@ require (
 	github.com/tidwall/gjson v1.6.8
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5
 	github.com/urfave/cli v1.22.1
-	github.com/wasmerio/go-ext-wasm v0.3.1
+	github.com/wasmerio/wasmer-go v1.0.3
 	github.com/willf/bitset v1.1.11 // indirect
 	github.com/willf/bloom v2.0.3+incompatible
 	go.uber.org/atomic v1.7.0
