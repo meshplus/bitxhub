@@ -629,9 +629,10 @@ func (api *PublicEthereumAPI) formatBlock(block *pb.Block, fullTx bool) (map[str
 // newRPCTransaction returns a transaction that will serialize to the RPC representation
 func newRPCTransaction(tx pb.Transaction, blockHash common.Hash, blockNumber uint64, index uint64) *rpctypes.RPCTransaction {
 	from := common.BytesToAddress(tx.GetFrom().Bytes())
-	to := common.Address{}
+	var to *common.Address
 	if tx.GetTo() != nil {
-		to = common.BytesToAddress(tx.GetTo().Bytes())
+		toAddr := common.BytesToAddress(tx.GetTo().Bytes())
+		to = &toAddr
 	}
 	v, r, s := tx.GetRawSignature()
 	result := &rpctypes.RPCTransaction{
@@ -642,7 +643,7 @@ func newRPCTransaction(tx pb.Transaction, blockHash common.Hash, blockNumber uin
 		Hash:     tx.GetHash().RawHash,
 		Input:    hexutil.Bytes(tx.GetPayload()),
 		Nonce:    hexutil.Uint64(tx.GetNonce()),
-		To:       &to,
+		To:       to,
 		Value:    (*hexutil.Big)(big.NewInt(int64(tx.GetAmount()))),
 		V:        (*hexutil.Big)(v),
 		R:        (*hexutil.Big)(r),
