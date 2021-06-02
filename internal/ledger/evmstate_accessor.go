@@ -209,7 +209,7 @@ func NewMessage(tx *types2.EthTransaction) etherTypes.Message {
 		to = &toAddr
 	}
 	nonce := tx.GetNonce()
-	amount := new(big.Int).SetUint64(tx.GetAmount())
+	amount := tx.GetAmount()
 	gas := tx.GetGas()
 	gasPrice := tx.GetGasPrice()
 	data := tx.GetPayload()

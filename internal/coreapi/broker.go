@@ -14,6 +14,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/model"
 	"github.com/meshplus/bitxid"
+	"github.com/meshplus/eth-kit/ledger"
 	"github.com/sirupsen/logrus"
 )
 
@@ -317,4 +318,8 @@ func (b BrokerAPI) GetPendingTransactions(max int) []pb.Transaction {
 
 func (b BrokerAPI) GetPoolTransaction(hash *types.Hash) pb.Transaction {
 	return b.bxh.Order.GetPendingTxByHash(hash)
+}
+
+func (b BrokerAPI) GetStateLedger() ledger.StateLedger {
+	return b.bxh.Ledger.StateLedger
 }

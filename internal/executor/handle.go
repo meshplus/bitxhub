@@ -359,7 +359,7 @@ func (exec *BlockExecutor) applyBxhTransaction(i int, tx *pb.BxhTransaction, inv
 
 	switch data.Type {
 	case pb.TransactionData_NORMAL:
-		err := exec.transfer(tx.From, tx.To, data.Amount)
+		err := exec.transfer(tx.From, tx.To, (*big.Int)(data.Amount))
 		return nil, err
 	default:
 		var instance vm.VM
@@ -432,20 +432,20 @@ func (exec *BlockExecutor) clear() {
 	exec.ledger.Clear()
 }
 
-func (exec *BlockExecutor) transfer(from, to *types.Address, value uint64) error {
-	if value == 0 {
+func (exec *BlockExecutor) transfer(from, to *types.Address, value *big.Int) error {
+	if value == nil || value.Cmp(big.NewInt(0)) == 0 {
 		return nil
 	}
 
-	fv := exec.ledger.GetBalance(from).Uint64()
-	if fv < value {
+	fv := exec.ledger.GetBalance(from)
+	if fv.Cmp(value) == -1 {
 		return fmt.Errorf("not sufficient funds for %s", from.String())
 	}
 
-	tv := exec.ledger.GetBalance(to).Uint64()
+	tv := exec.ledger.GetBalance(to)
 
-	exec.ledger.SetBalance(from, new(big.Int).SetUint64(fv-value))
-	exec.ledger.SetBalance(to, new(big.Int).SetUint64(tv+value))
+	exec.ledger.SetBalance(from, fv.Sub(fv, value))
+	exec.ledger.SetBalance(to, tv.Add(tv, value))
 
 	return nil
 }

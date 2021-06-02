@@ -30,6 +30,7 @@ type BrokerAPI interface {
 	GetPendingNonceByAccount(account string) uint64
 	GetPendingTransactions(max int) []pb.Transaction
 	GetPoolTransaction(hash *types.Hash) pb.Transaction
+	GetStateLedger() ledger.StateLedger
 
 	// AddPier
 	AddPier(did bitxid.DID, pierID string, isUnion bool) (chan *pb.InterchainTxWrappers, error)

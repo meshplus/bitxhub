@@ -3,11 +3,10 @@ package router
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"math/rand"
 	"testing"
 	"time"
-
-	"github.com/meshplus/bitxhub/internal/ledger"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/golang/mock/gomock"
@@ -15,6 +14,7 @@ import (
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/ledger/mock_ledger"
 	"github.com/meshplus/bitxhub/pkg/peermgr/mock_peermgr"
 	"github.com/stretchr/testify/assert"
@@ -336,7 +336,7 @@ func mockTxData(t *testing.T, dataType pb.TransactionData_Type, vmType pb.Transa
 	return &pb.TransactionData{
 		VmType:  vmType,
 		Type:    dataType,
-		Amount:  10,
+		Amount:  (*pb.BigInt)(big.NewInt(10)),
 		Payload: pd,
 	}
 }
