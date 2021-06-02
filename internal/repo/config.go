@@ -41,6 +41,7 @@ type Config struct {
 	Txpool   `json:"txpool"`
 	Order    `json:"order"`
 	Executor `json:"executor"`
+	Ledger   `json:"ledger"`
 	Genesis  `json:"genesis"`
 	Security Security `toml:"security" json:"security"`
 }
@@ -137,6 +138,10 @@ type Executor struct {
 	Type string `toml:"type" json:"type"`
 }
 
+type Ledger struct {
+	Type string `toml:"type" json:"type"`
+}
+
 func (c *Config) Bytes() ([]byte, error) {
 	ret, err := json.Marshal(c)
 	if err != nil {
@@ -192,6 +197,7 @@ func DefaultConfig() (*Config, error) {
 			ChainID:  1,
 			GasLimit: 0x2fefd8,
 		},
+		Ledger: Ledger{Type: "complex"},
 	}, nil
 }
 

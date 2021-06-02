@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/meshplus/bitxhub/internal/ledger"
+
 	"github.com/stretchr/testify/assert"
 
 	"github.com/Rican7/retry"
@@ -90,9 +92,14 @@ func NewSwarms(t *testing.T, peerCnt int) []*Swarm {
 	var swarms []*Swarm
 	nodeKeys, privKeys, addrs, ids := genKeysAndConfig(t, peerCnt)
 	mockCtl := gomock.NewController(t)
-	mockLedger := mock_ledger.NewMockLedger(mockCtl)
+	chainLedger := mock_ledger.NewMockChainLedger(mockCtl)
+	stateLedger := mock_ledger.NewMockStateLedger(mockCtl)
+	mockLedger := &ledger.Ledger{
+		ChainLedger: chainLedger,
+		StateLedger: stateLedger,
+	}
 
-	mockLedger.EXPECT().GetBlock(gomock.Any()).Return(&pb.Block{
+	chainLedger.EXPECT().GetBlock(gomock.Any()).Return(&pb.Block{
 		BlockHeader: &pb.BlockHeader{
 			Number: 1,
 		},
@@ -105,8 +112,8 @@ func NewSwarms(t *testing.T, peerCnt int) []*Swarm {
 	data, err := json.Marshal(aer)
 	require.Nil(t, err)
 
-	mockLedger.EXPECT().GetBlockSign(gomock.Any()).Return([]byte("sign"), nil).AnyTimes()
-	mockLedger.EXPECT().GetState(gomock.Any(), gomock.Any()).Return(true, data).AnyTimes()
+	chainLedger.EXPECT().GetBlockSign(gomock.Any()).Return([]byte("sign"), nil).AnyTimes()
+	stateLedger.EXPECT().GetState(gomock.Any(), gomock.Any()).Return(true, data).AnyTimes()
 
 	agencyData, err := ioutil.ReadFile("testdata/agency.cert")
 	require.Nil(t, err)

@@ -6,13 +6,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/meshplus/bitxhub/internal/ledger"
+
 	"github.com/Rican7/retry"
 	"github.com/Rican7/retry/strategy"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/internal/repo"
 	libp2pcert "github.com/meshplus/go-libp2p-cert"
@@ -37,7 +38,7 @@ type Swarm struct {
 	notifiee       *notifiee
 	piers          *Piers
 
-	ledger           ledger.Ledger
+	ledger           *ledger.Ledger
 	orderMessageFeed event.Feed
 	enablePing       bool
 	pingTimeout      time.Duration
@@ -46,7 +47,7 @@ type Swarm struct {
 	cancel context.CancelFunc
 }
 
-func New(repoConfig *repo.Repo, logger logrus.FieldLogger, ledger ledger.Ledger) (*Swarm, error) {
+func New(repoConfig *repo.Repo, logger logrus.FieldLogger, ledger *ledger.Ledger) (*Swarm, error) {
 	var protocolIDs = []string{string(protocolID)}
 	// init peers with ips and hosts
 	routers := repoConfig.NetworkConfig.GetVpInfos()

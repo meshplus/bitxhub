@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/meshplus/bitxhub/internal/ledger"
+
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
 	"github.com/meshplus/bitxid"
@@ -27,7 +28,7 @@ type InterchainRouter struct {
 	subscriptions      sync.Map
 	unionSubscriptions sync.Map
 	count              atomic.Int64
-	ledger             ledger.Ledger
+	ledger             *ledger.Ledger
 	peerMgr            peermgr.PeerManager
 	quorum             uint64
 
@@ -35,7 +36,7 @@ type InterchainRouter struct {
 	cancel context.CancelFunc
 }
 
-func New(logger logrus.FieldLogger, repo *repo.Repo, ledger ledger.Ledger, peerMgr peermgr.PeerManager, quorum uint64) (*InterchainRouter, error) {
+func New(logger logrus.FieldLogger, repo *repo.Repo, ledger *ledger.Ledger, peerMgr peermgr.PeerManager, quorum uint64) (*InterchainRouter, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &InterchainRouter{

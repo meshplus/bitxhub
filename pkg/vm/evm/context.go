@@ -3,6 +3,8 @@ package evm
 import (
 	"math/big"
 
+	"github.com/meshplus/eth-kit/ledger"
+
 	"github.com/ethereum/go-ethereum/params"
 	vm "github.com/meshplus/eth-kit/evm"
 )
@@ -13,8 +15,8 @@ type EvmBlockContext struct {
 	vmConfig vm.Config
 }
 
-func NewEvmBlockContext(number uint64, timestamp uint64, db vm.StateDB) *EvmBlockContext {
-	blkCtx := vm.NewEVMBlockContext(number, timestamp, db)
+func NewEvmBlockContext(number uint64, timestamp uint64, db ledger.StateLedger, db2 ledger.ChainLedger) *EvmBlockContext {
+	blkCtx := vm.NewEVMBlockContext(number, timestamp, db, db2)
 
 	return &EvmBlockContext{
 		BlkCtx:   blkCtx,

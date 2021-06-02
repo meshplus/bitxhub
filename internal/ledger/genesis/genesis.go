@@ -10,6 +10,7 @@ import (
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/repo"
+	ledger2 "github.com/meshplus/eth-kit/ledger"
 )
 
 var (
@@ -17,7 +18,7 @@ var (
 )
 
 // Initialize initialize block
-func Initialize(genesis *repo.Genesis, lg ledger.Ledger) error {
+func Initialize(genesis *repo.Genesis, lg *ledger.Ledger) error {
 	body, err := json.Marshal(genesis.Admins)
 	if err != nil {
 		return err
@@ -29,6 +30,7 @@ func Initialize(genesis *repo.Genesis, lg ledger.Ledger) error {
 	}
 
 	lg.SetState(roleAddr, []byte("admin-roles"), body)
+
 	lg.SetState(constant.MethodRegistryContractAddr.Address(), []byte("admin-method"), admin)
 	lg.SetState(constant.DIDRegistryContractAddr.Address(), []byte("admin-did"), admin)
 
@@ -42,16 +44,17 @@ func Initialize(genesis *repo.Genesis, lg ledger.Ledger) error {
 	}
 
 	accounts, journal := lg.FlushDirtyDataAndComputeJournal()
+
 	block := &pb.Block{
 		BlockHeader: &pb.BlockHeader{
-			Number:    1,
-			StateRoot: journal.ChangedHash,
-			Bloom:     &types.Bloom{},
+			Number: 1,
+			//StateRoot: journal.ChangedHash,
+			Bloom: &types.Bloom{},
 		},
 		Transactions: &pb.Transactions{},
 	}
-	block.BlockHash = block.Hash()
-	blockData := &ledger.BlockData{
+	//block.BlockHash = block.Hash()
+	blockData := &ledger2.BlockData{
 		Block:          block,
 		Receipts:       nil,
 		Accounts:       accounts,

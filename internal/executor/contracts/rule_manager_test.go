@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	ledger2 "github.com/meshplus/eth-kit/ledger"
+
 	"github.com/golang/mock/gomock"
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/boltvm"
@@ -423,7 +425,7 @@ func TestRuleManager_Query(t *testing.T) {
 	assert.True(t, res.Ok, string(res.Result))
 }
 
-func rulePrepare(t *testing.T) (*RuleManager, *mock_stub.MockStub, []*ruleMgr.Rule, [][]byte, []*appchainMgr.Appchain, [][]byte, *ledger.Account) {
+func rulePrepare(t *testing.T) (*RuleManager, *mock_stub.MockStub, []*ruleMgr.Rule, [][]byte, []*appchainMgr.Appchain, [][]byte, ledger2.IAccount) {
 	// 1. prepare stub
 	mockCtl := gomock.NewController(t)
 	mockStub := mock_stub.NewMockStub(mockCtl)
@@ -503,7 +505,7 @@ func rulePrepare(t *testing.T) (*RuleManager, *mock_stub.MockStub, []*ruleMgr.Ru
 	return rm, mockStub, rules, rulesData, chains, chainsData, account
 }
 
-func mockAccount(t *testing.T) *ledger.Account {
+func mockAccount(t *testing.T) ledger2.IAccount {
 	addr := types.NewAddress(bytesutil.LeftPadBytes([]byte{1}, 20))
 	code := bytesutil.LeftPadBytes([]byte{1}, 120)
 	repoRoot, err := ioutil.TempDir("", "contract")

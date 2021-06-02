@@ -5,11 +5,12 @@ import (
 	"sync"
 
 	"github.com/meshplus/bitxhub-kit/types"
+	"github.com/meshplus/eth-kit/ledger"
 )
 
 type stateChange interface {
 	// revert undoes the state changes by this entry
-	revert(*ChainLedger)
+	revert(*SimpleLedger)
 
 	// dirted returns the address modified by this state entry
 	dirtied() *types.Address
@@ -38,7 +39,7 @@ func (s *stateChanger) append(change stateChange) {
 	}
 }
 
-func (s *stateChanger) revert(ledger *ChainLedger, snapshot int) {
+func (s *stateChanger) revert(ledger *SimpleLedger, snapshot int) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -68,7 +69,7 @@ type (
 		account *types.Address
 	}
 	resetObjectChange struct {
-		prev *Account
+		prev ledger.IAccount
 	}
 	suicideChange struct {
 		account     *types.Address
@@ -112,7 +113,7 @@ type (
 	}
 )
 
-func (ch createObjectChange) revert(l *ChainLedger) {
+func (ch createObjectChange) revert(l *SimpleLedger) {
 	delete(l.accounts, ch.account.String())
 	l.accountCache.rmAccount(ch.account)
 }
@@ -121,7 +122,7 @@ func (ch createObjectChange) dirtied() *types.Address {
 	return ch.account
 }
 
-func (ch resetObjectChange) revert(l *ChainLedger) {
+func (ch resetObjectChange) revert(l *SimpleLedger) {
 	l.setAccount(ch.prev)
 }
 
@@ -129,8 +130,9 @@ func (ch resetObjectChange) dirtied() *types.Address {
 	return nil
 }
 
-func (ch suicideChange) revert(l *ChainLedger) {
-	account := l.GetOrCreateAccount(ch.account)
+func (ch suicideChange) revert(l *SimpleLedger) {
+	acc := l.GetOrCreateAccount(ch.account)
+	account := acc.(*SimpleAccount)
 	account.suicided = ch.prev
 	account.setBalance(ch.prevbalance)
 }
@@ -139,46 +141,46 @@ func (ch suicideChange) dirtied() *types.Address {
 	return ch.account
 }
 
-func (ch touchChange) revert(l *ChainLedger) {
+func (ch touchChange) revert(l *SimpleLedger) {
 }
 
 func (ch touchChange) dirtied() *types.Address {
 	return ch.account
 }
 
-func (ch balanceChange) revert(l *ChainLedger) {
-	l.GetOrCreateAccount(ch.account).setBalance(ch.prev)
+func (ch balanceChange) revert(l *SimpleLedger) {
+	l.GetOrCreateAccount(ch.account).(*SimpleAccount).setBalance(ch.prev)
 }
 
 func (ch balanceChange) dirtied() *types.Address {
 	return ch.account
 }
 
-func (ch nonceChange) revert(l *ChainLedger) {
-	l.GetOrCreateAccount(ch.account).setNonce(ch.prev)
+func (ch nonceChange) revert(l *SimpleLedger) {
+	l.GetOrCreateAccount(ch.account).(*SimpleAccount).setNonce(ch.prev)
 }
 
 func (ch nonceChange) dirtied() *types.Address {
 	return ch.account
 }
 
-func (ch codeChange) revert(l *ChainLedger) {
-	l.GetOrCreateAccount(ch.account).setCodeAndHash(ch.prevcode)
+func (ch codeChange) revert(l *SimpleLedger) {
+	l.GetOrCreateAccount(ch.account).(*SimpleAccount).setCodeAndHash(ch.prevcode)
 }
 
 func (ch codeChange) dirtied() *types.Address {
 	return ch.account
 }
 
-func (ch storageChange) revert(l *ChainLedger) {
-	l.GetOrCreateAccount(ch.account).setState(ch.key, ch.prevalue)
+func (ch storageChange) revert(l *SimpleLedger) {
+	l.GetOrCreateAccount(ch.account).(*SimpleAccount).setState(ch.key, ch.prevalue)
 }
 
 func (ch storageChange) dirtied() *types.Address {
 	return ch.account
 }
 
-func (ch refundChange) revert(l *ChainLedger) {
+func (ch refundChange) revert(l *SimpleLedger) {
 	l.refund = ch.prev
 }
 
@@ -186,7 +188,7 @@ func (ch refundChange) dirtied() *types.Address {
 	return nil
 }
 
-func (ch addPreimageChange) revert(l *ChainLedger) {
+func (ch addPreimageChange) revert(l *SimpleLedger) {
 	delete(l.preimages, ch.hash)
 }
 
@@ -194,7 +196,7 @@ func (ch addPreimageChange) dirtied() *types.Address {
 	return nil
 }
 
-func (ch accessListAddAccountChange) revert(l *ChainLedger) {
+func (ch accessListAddAccountChange) revert(l *SimpleLedger) {
 	l.accessList.DeleteAddress(*ch.address)
 }
 
@@ -202,7 +204,7 @@ func (ch accessListAddAccountChange) dirtied() *types.Address {
 	return nil
 }
 
-func (ch accessListAddSlotChange) revert(l *ChainLedger) {
+func (ch accessListAddSlotChange) revert(l *SimpleLedger) {
 	l.accessList.DeleteSlot(*ch.address, *ch.slot)
 }
 
@@ -210,7 +212,7 @@ func (ch accessListAddSlotChange) dirtied() *types.Address {
 	return nil
 }
 
-func (ch addLogChange) revert(l *ChainLedger) {
+func (ch addLogChange) revert(l *SimpleLedger) {
 	logs := l.logs.logs[*ch.txHash]
 	if len(logs) == 1 {
 		delete(l.logs.logs, *ch.txHash)
