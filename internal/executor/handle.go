@@ -384,6 +384,11 @@ func (exec *BlockExecutor) applyBxhTransaction(i int, tx *pb.BxhTransaction, inv
 }
 
 func (exec *BlockExecutor) applyEthTransaction(i int, tx *types2.EthTransaction) *pb.Receipt {
+	defer func() {
+		exec.ledger.SetNonce(tx.GetFrom(), tx.GetNonce()+1)
+		exec.ledger.Finalise(false)
+	}()
+
 	receipt := &pb.Receipt{
 		Version: tx.GetVersion(),
 		TxHash:  tx.GetHash(),

@@ -249,6 +249,7 @@ func (api *PublicEthereumAPI) SendRawTransaction(data hexutil.Bytes) (common.Has
 	if err := tx.Unmarshal(data); err != nil {
 		return [32]byte{}, err
 	}
+	api.logger.Debugf("get new eth tx: %s", tx.GetHash().String())
 
 	if tx.GetFrom() == nil {
 		return [32]byte{}, fmt.Errorf("verify signature failed")
@@ -504,7 +505,7 @@ func (api *PublicEthereumAPI) GetTransactionReceipt(hash common.Hash) (map[strin
 	api.logger.Debugf("eth_getTransactionReceipt, hash: %s", hash.String())
 
 	txHash := types.NewHash(hash.Bytes())
-	tx, _, err := api.GetEthTransactionByHash(txHash)
+	tx, meta, err := api.GetEthTransactionByHash(txHash)
 	if err != nil {
 		return nil, nil
 	}
@@ -512,11 +513,6 @@ func (api *PublicEthereumAPI) GetTransactionReceipt(hash common.Hash) (map[strin
 	receipt, err := api.api.Broker().GetReceipt(txHash)
 	if err != nil {
 		return nil, nil
-	}
-
-	meta, err := api.api.Broker().GetTransactionMeta(txHash)
-	if err != nil {
-		return nil, err
 	}
 
 	block, err := api.api.Broker().GetBlock("HEIGHT", fmt.Sprintf("%d", meta.BlockHeight))
@@ -532,17 +528,18 @@ func (api *PublicEthereumAPI) GetTransactionReceipt(hash common.Hash) (map[strin
 	fields := map[string]interface{}{
 		"type":              hexutil.Uint(tx.GetType()),
 		"cumulativeGasUsed": hexutil.Uint64(cumulativeGasUsed),
-		"logsBloom":         *receipt.Bloom,
 		"logs":              receipt.EvmLogs,
-
-		"transactionHash": hash,
-		"gasUsed":         hexutil.Uint64(receipt.GasUsed),
-
-		"blockHash":        common.BytesToHash(meta.BlockHash),
-		"blockNumber":      hexutil.Uint64(meta.BlockHeight),
-		"transactionIndex": hexutil.Uint64(meta.Index),
-
-		"from": common.BytesToAddress(tx.GetFrom().Bytes()),
+		"transactionHash":   hash,
+		"gasUsed":           hexutil.Uint64(receipt.GasUsed),
+		"blockHash":         common.BytesToHash(meta.BlockHash),
+		"blockNumber":       hexutil.Uint64(meta.BlockHeight),
+		"transactionIndex":  hexutil.Uint64(meta.Index),
+		"from":              common.BytesToAddress(tx.GetFrom().Bytes()),
+	}
+	if receipt.Bloom == nil {
+		fields["logsBloom"] = types.Bloom{}
+	} else {
+		fields["logsBloom"] = *receipt.Bloom
 	}
 
 	if len(receipt.EvmLogs) == 0 {
