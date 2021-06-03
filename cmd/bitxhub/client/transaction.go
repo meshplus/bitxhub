@@ -3,6 +3,7 @@ package client
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"strconv"
 	"time"
 
@@ -34,7 +35,7 @@ func txCMD() cli.Command {
 						Name:  "to",
 						Usage: "Target address",
 					},
-					cli.Uint64Flag{
+					cli.StringFlag{
 						Name:  "amount",
 						Usage: "Transfer amount",
 					},
@@ -74,9 +75,14 @@ func getTransaction(ctx *cli.Context) error {
 
 func sendTransaction(ctx *cli.Context) error {
 	toString := ctx.String("to")
-	amount := ctx.Uint64("amount")
+	amountStr := ctx.String("amount")
 	txType := ctx.Uint64("type")
 	keyPath := ctx.String("key")
+
+	amount, ok := new(big.Int).SetString(amountStr, 10)
+	if !ok {
+		return fmt.Errorf("invalid amount")
+	}
 
 	if keyPath == "" {
 		repoRoot, err := repo.PathRootWithDefault(ctx.GlobalString("repo"))
@@ -87,7 +93,7 @@ func sendTransaction(ctx *cli.Context) error {
 		keyPath = repo.GetKeyPath(repoRoot)
 	}
 
-	resp, err := sendTx(ctx, toString, amount, txType, keyPath, 0, "")
+	resp, err := sendTx(ctx, toString, (*pb.BigInt)(amount), txType, keyPath, 0, "")
 	if err != nil {
 		return fmt.Errorf("send transaction: %w", err)
 	}
@@ -96,7 +102,7 @@ func sendTransaction(ctx *cli.Context) error {
 	return nil
 }
 
-func sendTx(ctx *cli.Context, toString string, amount uint64, txType uint64, keyPath string, vmType uint64, method string, args ...*pb.Arg) ([]byte, error) {
+func sendTx(ctx *cli.Context, toString string, amount *pb.BigInt, txType uint64, keyPath string, vmType uint64, method string, args ...*pb.Arg) ([]byte, error) {
 
 	key, err := repo.LoadKey(keyPath)
 	if err != nil {

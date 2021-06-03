@@ -49,6 +49,7 @@ type Node struct {
 	msgC              chan []byte                  // receive messages from remote peer
 	stateC            chan *mempool.ChainState     // receive the executed block state
 	rebroadcastTicker chan *raftproto.TxSlice      // receive the executed block state
+	getTxC            chan *GetTxReq
 
 	confState         raftpb.ConfState     // raft requires ConfState to be persisted within snapshot
 	blockAppliedIndex sync.Map             // mapping of block height and apply index in raft log
@@ -62,6 +63,11 @@ type Node struct {
 	getChainMetaFunc  func() *pb.ChainMeta // current chain meta
 	ctx               context.Context      // context
 	haltC             chan struct{}        // exit signal
+}
+
+type GetTxReq struct {
+	Hash *types.Hash
+	Tx   chan pb.Transaction
 }
 
 // NewNode new raft node
@@ -144,6 +150,7 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 		msgC:             make(chan []byte),
 		stateC:           make(chan *mempool.ChainState),
 		proposeC:         make(chan *raftproto.RequestBatch),
+		getTxC:           make(chan *GetTxReq),
 		snapCount:        snapCount,
 		repoRoot:         repoRoot,
 		peerMgr:          config.PeerMgr,
@@ -213,7 +220,16 @@ func (n *Node) Prepare(tx pb.Transaction) error {
 	if n.txCache.IsFull() && n.mempool.IsPoolFull() {
 		return errors.New("transaction cache are full, we will drop this transaction")
 	}
+
+	txWithResp := &mempool.TxWithResp{
+		Tx: tx,
+		Ch: make(chan bool),
+	}
+	n.txCache.TxRespC <- txWithResp
 	n.txCache.RecvTxC <- tx
+
+	<-txWithResp.Ch
+
 	return nil
 }
 
@@ -249,6 +265,16 @@ func (n *Node) Ready() error {
 
 func (n *Node) GetPendingNonceByAccount(account string) uint64 {
 	return n.mempool.GetPendingNonceByAccount(account)
+}
+
+func (n *Node) GetPendingTxByHash(hash *types.Hash) pb.Transaction {
+	getTxReq := &GetTxReq{
+		Hash: hash,
+		Tx:   make(chan pb.Transaction),
+	}
+	n.getTxC <- getTxReq
+
+	return <-getTxReq.Tx
 }
 
 // DelNode sends a delete vp request by given id.
@@ -331,8 +357,14 @@ func (n *Node) run() {
 			pbMsg := msgToConsensusPbMsg(data, raftproto.RaftMessage_BROADCAST_TX, n.id)
 			_ = n.peerMgr.Broadcast(pbMsg)
 
-			// 2. process transactions
-			n.processTransactions(txSet.Transactions, true)
+		// 2. process transactions
+		//n.processTransactions(txSet.Transactions, true)
+		case txWithResp := <-n.txCache.TxRespC:
+			n.processTransactions([]pb.Transaction{txWithResp.Tx}, true)
+			txWithResp.Ch <- true
+
+		case getTxReq := <-n.getTxC:
+			getTxReq.Tx <- n.mempool.GetTransaction(getTxReq.Hash)
 
 		case state := <-n.stateC:
 			n.reportState(state)

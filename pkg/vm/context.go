@@ -12,7 +12,7 @@ type Context struct {
 	Caller           *types.Address
 	Callee           *types.Address
 	CurrentCaller    *types.Address
-	Ledger           ledger.Ledger
+	Ledger           *ledger.Ledger
 	TransactionIndex uint64
 	TransactionHash  *types.Hash
 	TransactionData  *pb.TransactionData
@@ -21,7 +21,7 @@ type Context struct {
 }
 
 // NewContext creates a context of wasm instance
-func NewContext(tx pb.Transaction, txIndex uint64, data *pb.TransactionData, ledger ledger.Ledger, logger logrus.FieldLogger) *Context {
+func NewContext(tx pb.Transaction, txIndex uint64, data *pb.TransactionData, ledger *ledger.Ledger, logger logrus.FieldLogger) *Context {
 	return &Context{
 		Caller:           tx.GetFrom(),
 		Callee:           tx.GetTo(),

@@ -32,7 +32,10 @@ type ChainBrokerService struct {
 
 func NewChainBrokerService(api api.CoreAPI, config *repo.Config, genesis *repo.Genesis) (*ChainBrokerService, error) {
 	limiter := config.Limiter
-	rateLimiter := ratelimiter.NewRateLimiterWithQuantum(limiter.Interval, limiter.Capacity, limiter.Quantum)
+	rateLimiter, err := ratelimiter.NewRateLimiterWithQuantum(limiter.Interval, limiter.Capacity, limiter.Quantum)
+	if err != nil {
+		return nil, err
+	}
 
 	grpcOpts := []grpc.ServerOption{
 		grpc_middleware.WithUnaryServerChain(ratelimit.UnaryServerInterceptor(rateLimiter), grpc_prometheus.UnaryServerInterceptor),

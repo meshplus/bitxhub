@@ -7,9 +7,15 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+type TxWithResp struct {
+	Tx pb.Transaction
+	Ch chan bool
+}
+
 type TxCache struct {
 	TxSetC  chan *pb.Transactions
 	RecvTxC chan pb.Transaction
+	TxRespC chan *TxWithResp
 
 	txSet      []pb.Transaction
 	timerC     chan bool
@@ -25,6 +31,7 @@ func NewTxCache(txSliceTimeout time.Duration, txSetSize uint64, logger logrus.Fi
 	txCache.RecvTxC = make(chan pb.Transaction, DefaultTxCacheSize)
 	txCache.close = make(chan bool)
 	txCache.TxSetC = make(chan *pb.Transactions)
+	txCache.TxRespC = make(chan *TxWithResp)
 	txCache.timerC = make(chan bool)
 	txCache.stopTimerC = make(chan bool)
 	txCache.txSet = make([]pb.Transaction, 0)

@@ -35,6 +35,8 @@ type Order interface {
 	// GetPendingNonce will return the latest pending nonce of a given account
 	GetPendingNonceByAccount(account string) uint64
 
+	GetPendingTxByHash(hash *types.Hash) pb.Transaction
+
 	// DelNode sends a delete vp request by given id.
 	DelNode(delID uint64) error
 

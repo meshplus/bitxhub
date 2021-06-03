@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -22,7 +24,6 @@ import (
 	"github.com/meshplus/bitxhub/pkg/order"
 	"github.com/meshplus/bitxhub/pkg/order/etcdraft"
 	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 )
 
 func TestTester(t *testing.T) {
@@ -102,8 +103,8 @@ func TestTester(t *testing.T) {
 	require.True(t, ret.IsSuccess(), string(ret.Ret))
 	adminNonce1++
 
-	suite.Run(t, &API{api: node1})
-	suite.Run(t, &RegisterAppchain{api: node2})
+	//suite.Run(t, &API{api: node1})
+	//suite.Run(t, &RegisterAppchain{api: node2})
 	suite.Run(t, &Interchain{api: node3})
 	suite.Run(t, &Role{api: node4})
 	suite.Run(t, &Store{api: node1})

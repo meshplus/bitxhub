@@ -14,6 +14,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/model"
 	"github.com/meshplus/bitxid"
+	"github.com/meshplus/eth-kit/ledger"
 	"github.com/sirupsen/logrus"
 )
 
@@ -30,11 +31,10 @@ func (b *BrokerAPI) HandleTransaction(tx pb.Transaction) error {
 		"hash": tx.GetHash().String(),
 	}).Debugf("Receive tx")
 
-	go func() {
-		if err := b.bxh.Order.Prepare(tx); err != nil {
-			b.logger.Error(err)
-		}
-	}()
+	if err := b.bxh.Order.Prepare(tx); err != nil {
+		b.logger.Error(err)
+		return err
+	}
 
 	return nil
 }
@@ -317,7 +317,9 @@ func (b BrokerAPI) GetPendingTransactions(max int) []pb.Transaction {
 }
 
 func (b BrokerAPI) GetPoolTransaction(hash *types.Hash) pb.Transaction {
-	// TODO
+	return b.bxh.Order.GetPendingTxByHash(hash)
+}
 
-	return nil
+func (b BrokerAPI) GetStateLedger() ledger.StateLedger {
+	return b.bxh.Ledger.StateLedger
 }

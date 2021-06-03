@@ -1,8 +1,6 @@
 package evm
 
 import (
-	"math/big"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/meshplus/bitxhub/pkg/vm"
@@ -23,7 +21,7 @@ func NewMessage(tx *types2.EthTransaction) types.Message {
 	from := common.BytesToAddress(tx.GetFrom().Bytes())
 	to := common.BytesToAddress(tx.GetTo().Bytes())
 	nonce := tx.GetNonce()
-	amount := new(big.Int).SetUint64(tx.GetAmount())
+	amount := tx.GetAmount()
 	gas := tx.GetGas()
 	gasPrice := tx.GetGasPrice()
 	data := tx.GetPayload()
