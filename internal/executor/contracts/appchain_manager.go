@@ -425,6 +425,35 @@ func (am *AppchainManager) Appchains() *boltvm.Response {
 }
 
 // GetAppchain returns appchain info by appchain id
+func (am *AppchainManager) IsAppchainAdmin() *boltvm.Response {
+	am.AppchainManager.Persister = am.Stub
+
+	addr := am.Caller()
+
+	ok, data := am.AppchainManager.All(nil)
+	if !ok {
+		return boltvm.Error(string(data))
+	}
+	chains := make([]*appchainMgr.Appchain, 0)
+	err := json.Unmarshal(data, &chains)
+	if !ok {
+		return boltvm.Error(err.Error())
+	}
+
+	for _, chain := range chains {
+		tmpAddr, err := getAddr(chain.PublicKey)
+		if err != nil {
+			return boltvm.Error("get addr error: " + err.Error())
+		}
+		if tmpAddr == addr {
+			return boltvm.Success(nil)
+		}
+	}
+
+	return boltvm.Error("not found the appchain admin")
+}
+
+// GetAppchain returns appchain info by appchain id
 func (am *AppchainManager) GetAppchain(id string) *boltvm.Response {
 	am.AppchainManager.Persister = am.Stub
 	return responseWrapper(am.AppchainManager.QueryById(id, nil))

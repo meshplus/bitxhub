@@ -38,13 +38,22 @@ func (suite *Role) SetupSuite() {
 }
 
 func (suite *Role) TestGetRole() {
-	pubKey, err := suite.pubKey.Bytes()
-	suite.Assert().Nil(err)
-	addr, err := suite.privKey.PublicKey().Address()
+	k1, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
 
-	did := genUniqueAppchainDID(addr.String())
-	_, err = invokeBVMContract(suite.api, suite.privKey, suite.normalNonce, constant.AppchainMgrContractAddr.Address(), "Register",
+	rawpub1, err := k1.PublicKey().Bytes()
+	suite.Require().Nil(err)
+	pub1 := base64.StdEncoding.EncodeToString(rawpub1)
+
+	from1, err := k1.PublicKey().Address()
+	suite.Require().Nil(err)
+
+	fromaddr := from1.String()
+
+	k1nonce := suite.api.Broker().GetPendingNonceByAccount(from1.String())
+
+	did := genUniqueAppchainDID(fromaddr)
+	_, err = invokeBVMContract(suite.api, k1, k1nonce, constant.AppchainMgrContractAddr.Address(), "Register",
 		pb.String(did),
 		pb.String(string(bitxid.DID(did).GetChainDID())),
 		pb.String(docAddr),
@@ -55,22 +64,15 @@ func (suite *Role) TestGetRole() {
 		pb.String("婚姻链"),
 		pb.String("趣链婚姻链"),
 		pb.String("1.8"),
-		pb.String(string(pubKey)),
+		pb.String(pub1),
 	)
 	suite.Assert().Nil(err)
-	suite.normalNonce++
+	k1nonce++
 
-	//receipt, err := invokeBVMContract(suite.api, suite.privKey, suite.normalNonce, constant.RoleContractAddr.Address(), "GetRole")
-	//suite.Require().Nil(err)
-	//suite.Equal("appchain_admin", string(receipt.Ret))
-	//suite.normalNonce++
-
-	k, err := asym.GenerateKeyPair(crypto.Secp256k1)
+	receipt, err := invokeBVMContract(suite.api, k1, k1nonce, constant.RoleContractAddr.Address(), "GetRole")
 	suite.Require().Nil(err)
-
-	r, err := invokeBVMContract(suite.api, k, 0, constant.RoleContractAddr.Address(), "GetRole")
-	suite.Assert().Nil(err)
-	suite.Equal("none", string(r.Ret))
+	suite.Equal("appchain_admin", string(receipt.Ret))
+	suite.normalNonce++
 }
 
 func (suite *Role) TestGetAdminRoles() {
