@@ -336,7 +336,7 @@ func invokeBVMContract(ctx *cli.Context, contractAddr string, method string, arg
 	}
 	keyPath := repo.GetKeyPath(repoRoot)
 
-	resp, err := sendTx(ctx, contractAddr, (*pb.BigInt)(big.NewInt(0)), uint64(pb.TransactionData_INVOKE), keyPath, uint64(pb.TransactionData_BVM), method, args...)
+	resp, err := sendTx(ctx, contractAddr, big.NewInt(0), uint64(pb.TransactionData_INVOKE), keyPath, uint64(pb.TransactionData_BVM), method, args...)
 	if err != nil {
 		return nil, fmt.Errorf("send transaction error: %s", err.Error())
 	}

@@ -93,7 +93,7 @@ func sendTransaction(ctx *cli.Context) error {
 		keyPath = repo.GetKeyPath(repoRoot)
 	}
 
-	resp, err := sendTx(ctx, toString, (*pb.BigInt)(amount), txType, keyPath, 0, "")
+	resp, err := sendTx(ctx, toString, amount, txType, keyPath, 0, "")
 	if err != nil {
 		return fmt.Errorf("send transaction: %w", err)
 	}
@@ -102,7 +102,7 @@ func sendTransaction(ctx *cli.Context) error {
 	return nil
 }
 
-func sendTx(ctx *cli.Context, toString string, amount *pb.BigInt, txType uint64, keyPath string, vmType uint64, method string, args ...*pb.Arg) ([]byte, error) {
+func sendTx(ctx *cli.Context, toString string, amount *big.Int, txType uint64, keyPath string, vmType uint64, method string, args ...*pb.Arg) ([]byte, error) {
 
 	key, err := repo.LoadKey(keyPath)
 	if err != nil {
@@ -127,7 +127,7 @@ func sendTx(ctx *cli.Context, toString string, amount *pb.BigInt, txType uint64,
 
 	data := &pb.TransactionData{
 		Type:    pb.TransactionData_Type(txType),
-		Amount:  amount,
+		Amount:  amount.String(),
 		VmType:  pb.TransactionData_VMType(vmType),
 		Payload: invokePayloadData,
 	}

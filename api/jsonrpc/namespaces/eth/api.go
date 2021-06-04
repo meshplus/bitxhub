@@ -684,7 +684,7 @@ func newRPCTransaction(tx pb.Transaction, blockHash common.Hash, blockNumber uin
 		Input:    hexutil.Bytes(tx.GetPayload()),
 		Nonce:    hexutil.Uint64(tx.GetNonce()),
 		To:       to,
-		Value:    (*hexutil.Big)(tx.GetAmount()),
+		Value:    (*hexutil.Big)(tx.GetValue()),
 		V:        (*hexutil.Big)(v),
 		R:        (*hexutil.Big)(r),
 		S:        (*hexutil.Big)(s),
