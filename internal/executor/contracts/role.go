@@ -30,7 +30,7 @@ func (r *Role) GetRole() *boltvm.Response {
 		}
 	}
 
-	res := r.CrossInvoke(constant.AppchainMgrContractAddr.String(), "Appchain")
+	res := r.CrossInvoke(constant.AppchainMgrContractAddr.String(), "IsAppchainAdmin")
 	if !res.Ok {
 		return boltvm.Success([]byte("none"))
 	}

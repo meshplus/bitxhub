@@ -266,7 +266,6 @@ func (suite *Interchain) TestGetIBTPByID() {
 	suite.Require().Nil(err)
 	k2, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
-	suite.Require().Nil(err)
 	k1Nonce := uint64(0)
 	k2Nonce := uint64(0)
 	ibtpNonce := uint64(1)

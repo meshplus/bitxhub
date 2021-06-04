@@ -60,8 +60,8 @@ func ruleMgrCMD() cli.Command {
 				Action: getRuleStatus,
 			},
 			cli.Command{
-				Name:  "bind",
-				Usage: "bind rule with chain id",
+				Name:  "update",
+				Usage: "update master rule with chain id",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "id",
@@ -74,58 +74,7 @@ func ruleMgrCMD() cli.Command {
 						Required: true,
 					},
 				},
-				Action: bindRule,
-			},
-			cli.Command{
-				Name:  "unbind",
-				Usage: "unbind rule with chain id",
-				Flags: []cli.Flag{
-					cli.StringFlag{
-						Name:     "id",
-						Usage:    "chain id",
-						Required: true,
-					},
-					cli.StringFlag{
-						Name:     "addr",
-						Usage:    "rule address",
-						Required: true,
-					},
-				},
-				Action: unbindRule,
-			},
-			cli.Command{
-				Name:  "freeze",
-				Usage: "freeze rule by chain id and rule address",
-				Flags: []cli.Flag{
-					cli.StringFlag{
-						Name:     "id",
-						Usage:    "chain id",
-						Required: true,
-					},
-					cli.StringFlag{
-						Name:     "addr",
-						Usage:    "rule address",
-						Required: true,
-					},
-				},
-				Action: freezeRule,
-			},
-			cli.Command{
-				Name:  "activate",
-				Usage: "activate rule by chain id and rule address",
-				Flags: []cli.Flag{
-					cli.StringFlag{
-						Name:     "id",
-						Usage:    "chain id",
-						Required: true,
-					},
-					cli.StringFlag{
-						Name:     "addr",
-						Usage:    "rule address",
-						Required: true,
-					},
-				},
-				Action: activateRule,
+				Action: updateRule,
 			},
 		},
 	}
@@ -190,11 +139,11 @@ func getRuleStatus(ctx *cli.Context) error {
 	return nil
 }
 
-func bindRule(ctx *cli.Context) error {
+func updateRule(ctx *cli.Context) error {
 	id := ctx.String("id")
 	addr := ctx.String("addr")
 
-	receipt, err := invokeBVMContract(ctx, constant.RuleManagerContractAddr.String(), "BindRule", pb.String(id), pb.String(addr))
+	receipt, err := invokeBVMContract(ctx, constant.RuleManagerContractAddr.String(), "UpdateMasterRule", pb.String(id), pb.String(addr))
 	if err != nil {
 		return err
 	}
@@ -203,61 +152,7 @@ func bindRule(ctx *cli.Context) error {
 		proposalId := gjson.Get(string(receipt.Ret), "proposal_id").String()
 		color.Green("proposal id is %s", proposalId)
 	} else {
-		color.Red("bind rule error: %s\n", string(receipt.Ret))
-	}
-	return nil
-}
-
-func unbindRule(ctx *cli.Context) error {
-	id := ctx.String("id")
-	addr := ctx.String("addr")
-
-	receipt, err := invokeBVMContract(ctx, constant.RuleManagerContractAddr.String(), "UnbindRule", pb.String(id), pb.String(addr))
-	if err != nil {
-		return err
-	}
-
-	if receipt.IsSuccess() {
-		proposalId := gjson.Get(string(receipt.Ret), "proposal_id").String()
-		color.Green("proposal id is %s", proposalId)
-	} else {
-		color.Red("unbind rule error: %s\n", string(receipt.Ret))
-	}
-	return nil
-}
-
-func freezeRule(ctx *cli.Context) error {
-	id := ctx.String("id")
-	addr := ctx.String("addr")
-
-	receipt, err := invokeBVMContract(ctx, constant.RuleManagerContractAddr.String(), "FreezeRule", pb.String(id), pb.String(addr))
-	if err != nil {
-		return err
-	}
-
-	if receipt.IsSuccess() {
-		proposalId := gjson.Get(string(receipt.Ret), "proposal_id").String()
-		color.Green("proposal id is %s", proposalId)
-	} else {
-		color.Red("freeze rule error: %s\n", string(receipt.Ret))
-	}
-	return nil
-}
-
-func activateRule(ctx *cli.Context) error {
-	id := ctx.String("id")
-	addr := ctx.String("addr")
-
-	receipt, err := invokeBVMContract(ctx, constant.RuleManagerContractAddr.String(), "ActivateRule", pb.String(id), pb.String(addr))
-	if err != nil {
-		return err
-	}
-
-	if receipt.IsSuccess() {
-		proposalId := gjson.Get(string(receipt.Ret), "proposal_id").String()
-		color.Green("proposal id is %s", proposalId)
-	} else {
-		color.Red("activate rule error: %s\n", string(receipt.Ret))
+		color.Red("update rule error: %s\n", string(receipt.Ret))
 	}
 	return nil
 }
