@@ -21,7 +21,7 @@ func NewMessage(tx *types2.EthTransaction) types.Message {
 	from := common.BytesToAddress(tx.GetFrom().Bytes())
 	to := common.BytesToAddress(tx.GetTo().Bytes())
 	nonce := tx.GetNonce()
-	amount := tx.GetAmount()
+	amount := tx.GetValue()
 	gas := tx.GetGas()
 	gasPrice := tx.GetGasPrice()
 	data := tx.GetPayload()

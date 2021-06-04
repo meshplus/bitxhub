@@ -359,7 +359,11 @@ func (exec *BlockExecutor) applyBxhTransaction(i int, tx *pb.BxhTransaction, inv
 
 	switch data.Type {
 	case pb.TransactionData_NORMAL:
-		err := exec.transfer(tx.From, tx.To, (*big.Int)(data.Amount))
+		val, ok := new(big.Int).SetString(data.Amount, 10)
+		if !ok {
+			val = big.NewInt(0)
+		}
+		err := exec.transfer(tx.From, tx.To, val)
 		return nil, err
 	default:
 		var instance vm.VM

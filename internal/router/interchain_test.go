@@ -3,7 +3,6 @@ package router
 import (
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"math/rand"
 	"testing"
 	"time"
@@ -336,7 +335,7 @@ func mockTxData(t *testing.T, dataType pb.TransactionData_Type, vmType pb.Transa
 	return &pb.TransactionData{
 		VmType:  vmType,
 		Type:    dataType,
-		Amount:  (*pb.BigInt)(big.NewInt(10)),
+		Amount:  "10",
 		Payload: pd,
 	}
 }

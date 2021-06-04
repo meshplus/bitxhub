@@ -369,7 +369,7 @@ func mockTransferTx(t *testing.T) pb.Transaction {
 
 	transactionData := &pb.TransactionData{
 		Type:   pb.TransactionData_NORMAL,
-		Amount: (*pb.BigInt)(big.NewInt(1)),
+		Amount: "1",
 	}
 
 	data, err := transactionData.Marshal()
@@ -380,7 +380,7 @@ func mockTransferTx(t *testing.T) pb.Transaction {
 		To:        to,
 		Timestamp: time.Now().UnixNano(),
 		Payload:   data,
-		Amount:    (*pb.BigInt)(big.NewInt(1)),
+		Amount:    "1",
 	}
 
 	err = tx.Sign(privKey)
@@ -475,7 +475,7 @@ func mockTxData(t *testing.T, dataType pb.TransactionData_Type, vmType pb.Transa
 	return &pb.TransactionData{
 		VmType:  vmType,
 		Type:    dataType,
-		Amount:  (*pb.BigInt)(big.NewInt(10)),
+		Amount:  "10",
 		Payload: pd,
 	}
 }
