@@ -22,19 +22,10 @@ import (
 
 type Role struct {
 	suite.Suite
-	api         api.CoreAPI
-	privKey     crypto.PrivateKey
-	pubKey      crypto.PublicKey
-	normalNonce uint64
+	api api.CoreAPI
 }
 
 func (suite *Role) SetupSuite() {
-	var err error
-	suite.privKey, err = asym.GenerateKeyPair(crypto.Secp256k1)
-	suite.Assert().Nil(err)
-
-	suite.pubKey = suite.privKey.PublicKey()
-	suite.normalNonce = 0
 }
 
 func (suite *Role) TestGetRole() {
@@ -72,13 +63,15 @@ func (suite *Role) TestGetRole() {
 	receipt, err := invokeBVMContract(suite.api, k1, k1nonce, constant.RoleContractAddr.Address(), "GetRole")
 	suite.Require().Nil(err)
 	suite.Equal("appchain_admin", string(receipt.Ret))
-	suite.normalNonce++
+	k1nonce++
 }
 
 func (suite *Role) TestGetAdminRoles() {
 	k, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
-	kNonce := uint64(0)
+	from, err := k.PublicKey().Address()
+	suite.Require().Nil(err)
+	kNonce := suite.api.Broker().GetPendingNonceByAccount(from.String())
 
 	r, err := invokeBVMContract(suite.api, k, kNonce, constant.RoleContractAddr.Address(), "GetAdminRoles")
 	suite.Assert().Nil(err)
@@ -93,7 +86,7 @@ func (suite *Role) TestIsAdmin() {
 	suite.Require().Nil(err)
 	from, err := k.PublicKey().Address()
 	suite.Require().Nil(err)
-	kNonce := uint64(0)
+	kNonce := suite.api.Broker().GetPendingNonceByAccount(from.String())
 
 	r, err := invokeBVMContract(suite.api, k, kNonce, constant.RoleContractAddr.Address(), "IsAdmin", pb.String(from.String()))
 	suite.Assert().Nil(err)
@@ -152,8 +145,12 @@ func (suite *Role) TestGetRuleAddress() {
 	suite.Require().Nil(err)
 	addr2, err := k2.PublicKey().Address()
 	suite.Require().Nil(err)
-	k1Nonce := uint64(0)
-	k2Nonce := uint64(0)
+	from1, err := k1.PublicKey().Address()
+	suite.Require().Nil(err)
+	k1Nonce := suite.api.Broker().GetPendingNonceByAccount(from1.String())
+	from2, err := k2.PublicKey().Address()
+	suite.Require().Nil(err)
+	k2Nonce := suite.api.Broker().GetPendingNonceByAccount(from2.String())
 
 	rawpub1, err := k1.PublicKey().Bytes()
 	suite.Require().Nil(err)
@@ -225,7 +222,7 @@ func (suite *Role) TestGetRuleAddress() {
 		pb.String("政务链"),
 		pb.String("fabric政务"),
 		pb.String("1.4"),
-		pb.String(string(pub2)),
+		pb.String(pub2),
 	)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
@@ -351,7 +348,7 @@ func (suite *Role) TestSetAdminRoles() {
 		pb.String("管理链"),
 		pb.String("趣链管理链"),
 		pb.String("1.8"),
-		pb.String(string(pubAdmin)),
+		pb.String(base64.StdEncoding.EncodeToString(pubAdmin)),
 	)
 	suite.Require().Nil(err)
 	suite.Require().True(retReg.IsSuccess(), string(retReg.Ret))

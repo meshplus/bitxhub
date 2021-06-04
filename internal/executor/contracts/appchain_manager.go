@@ -436,7 +436,7 @@ func (am *AppchainManager) IsAppchainAdmin() *boltvm.Response {
 	}
 	chains := make([]*appchainMgr.Appchain, 0)
 	err := json.Unmarshal(data, &chains)
-	if !ok {
+	if err != nil {
 		return boltvm.Error(err.Error())
 	}
 
@@ -457,6 +457,11 @@ func (am *AppchainManager) IsAppchainAdmin() *boltvm.Response {
 func (am *AppchainManager) GetAppchain(id string) *boltvm.Response {
 	am.AppchainManager.Persister = am.Stub
 	return responseWrapper(am.AppchainManager.QueryById(id, nil))
+}
+
+func (am *AppchainManager) GetIdByAddr(addr string) *boltvm.Response {
+	am.AppchainManager.Persister = am.Stub
+	return responseWrapper(am.AppchainManager.GetIdByAddr(addr))
 }
 
 // GetPubKeyByChainID can get aim chain's public key using aim chain ID

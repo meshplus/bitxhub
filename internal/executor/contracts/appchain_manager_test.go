@@ -18,6 +18,18 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestAppchainManager_IsAppchainAdmin(t *testing.T) {
+	am, mockStub, chains, chainsData := prepare(t)
+
+	addr, err := getAddr(chains[0].PublicKey)
+	assert.Nil(t, err)
+	mockStub.EXPECT().Caller().Return(addr).AnyTimes()
+	mockStub.EXPECT().Query(appchainMgr.PREFIX).Return(true, chainsData).AnyTimes()
+
+	res := am.IsAppchainAdmin()
+	assert.Equal(t, true, res.Ok)
+}
+
 func TestAppchainManager_Appchain(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	mockStub := mock_stub.NewMockStub(mockCtl)
@@ -389,6 +401,15 @@ func TestGetPubKeyByChainID(t *testing.T) {
 	res := am.GetPubKeyByChainID(appchainMethod)
 	assert.Equal(t, true, res.Ok)
 	assert.Equal(t, chains[0].PublicKey, string(res.Result))
+}
+
+func TestAppchainManager_GetIdByAddr(t *testing.T) {
+	am, mockStub, _, _ := prepare(t)
+	// test for GetIdByAddr
+	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Return(true)
+
+	res := am.GetIdByAddr("")
+	assert.Equal(t, true, res.Ok)
 }
 
 func prepare(t *testing.T) (*AppchainManager, *mock_stub.MockStub, []*appchainMgr.Appchain, [][]byte) {
