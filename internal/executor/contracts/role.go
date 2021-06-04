@@ -90,7 +90,7 @@ func (r *Role) SetAdminRoles(addrs string) *boltvm.Response {
 	for _, addr := range as {
 		admins = append(admins, &repo.Admin{
 			Address: addr,
-			Weight:  1,
+			Weight:  2,
 		})
 	}
 

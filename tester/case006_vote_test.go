@@ -1,6 +1,7 @@
 package tester
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"path/filepath"
 	"strconv"
@@ -77,7 +78,7 @@ func (suite *Governance) TestGovernance() {
 		pb.String("税务链"),
 		pb.String("趣链税务链"),
 		pb.String("1.8"),
-		pb.String(string(appchainPub)),
+		pb.String(base64.StdEncoding.EncodeToString(appchainPub)),
 	)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
@@ -133,7 +134,7 @@ func (suite *Governance) TestGovernance() {
 	adminNonce1++
 	w, err := strconv.Atoi(string(ret.Ret))
 	suite.Require().Nil(err)
-	suite.Require().Equal(1, w, "weight")
+	suite.Require().Equal(2, w, "weight")
 
 	// vote1: approve
 	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.GovernanceContractAddr.Address(), "Vote",

@@ -61,8 +61,8 @@ func (suite *Interchain) TestHandleIBTP() {
 	suite.Require().Nil(err)
 	addr2, err := k2.PublicKey().Address()
 	suite.Require().Nil(err)
-	k1Nonce := uint64(0)
-	k2Nonce := uint64(0)
+	k1Nonce := suite.api.Broker().GetPendingNonceByAccount(addr1.String())
+	k2Nonce := suite.api.Broker().GetPendingNonceByAccount(addr2.String())
 	ibtpNonce := uint64(1)
 
 	rawpub1, err := k1.PublicKey().Bytes()
@@ -84,7 +84,7 @@ func (suite *Interchain) TestHandleIBTP() {
 		pb.String("婚姻链"),
 		pb.String("趣链婚姻链"),
 		pb.String("1.8"),
-		pb.String(string(pub1)),
+		pb.String(pub1),
 	)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
@@ -95,10 +95,10 @@ func (suite *Interchain) TestHandleIBTP() {
 	id1 := string(gRet.Extra)
 	proposalId1 := gRet.ProposalID
 
-	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(id1))
-	suite.Require().Nil(err)
-	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
-	k1Nonce++
+	//ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(id1))
+	//suite.Require().Nil(err)
+	//suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	//k1Nonce++
 
 	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalId1),
@@ -529,10 +529,10 @@ func (suite *Interchain) TestInterchain() {
 	id1 := string(gRet.Extra)
 	proposalId1 := gRet.ProposalID
 
-	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(id1))
-	suite.Require().Nil(err)
-	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
-	k1Nonce++
+	//ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(id1))
+	//suite.Require().Nil(err)
+	//suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	//k1Nonce++
 
 	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalId1),
