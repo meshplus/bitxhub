@@ -13,7 +13,7 @@ import (
 	pb "github.com/meshplus/bitxhub-model/pb"
 	events "github.com/meshplus/bitxhub/internal/model/events"
 	peermgr "github.com/meshplus/bitxhub/pkg/peermgr"
-	go_lightp2p "github.com/meshplus/go-lightp2p"
+	network "github.com/meshplus/go-lightp2p"
 )
 
 // MockPeerManager is a mock of PeerManager interface.
@@ -175,7 +175,7 @@ func (mr *MockPeerManagerMockRecorder) Send(arg0, arg1 interface{}) *gomock.Call
 }
 
 // SendWithStream mocks base method.
-func (m *MockPeerManager) SendWithStream(arg0 go_lightp2p.Stream, arg1 *pb.Message) error {
+func (m *MockPeerManager) SendWithStream(arg0 network.Stream, arg1 *pb.Message) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SendWithStream", arg0, arg1)
 	ret0, _ := ret[0].(error)
