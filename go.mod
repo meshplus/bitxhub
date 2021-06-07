@@ -1,5 +1,7 @@
 module github.com/meshplus/bitxhub
 
+go 1.13
+
 require (
 	github.com/Rican7/retry v0.1.0
 	github.com/cbergoon/merkletree v0.2.0
@@ -23,9 +25,9 @@ require (
 	github.com/juju/ratelimit v1.0.1
 	github.com/libp2p/go-libp2p-core v0.5.6
 	github.com/magiconair/properties v1.8.4
-	github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20210513030054-c3b3ff976db4
+	github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20210607124744-c1c8251462df
 	github.com/meshplus/bitxhub-kit v1.2.0
-	github.com/meshplus/bitxhub-model v1.1.2-0.20210513025421-8fde99a99b3f
+	github.com/meshplus/bitxhub-model v1.1.2-0.20210513074749-d31e04a9f41d
 	github.com/meshplus/bitxid v0.0.0-20210412025850-e0eaf0f9063a
 	github.com/meshplus/go-libp2p-cert v0.0.0-20210125063330-7c25fd5b7a49
 	github.com/meshplus/go-lightp2p v0.0.0-20210120082108-df5a536a6192
@@ -61,4 +63,4 @@ replace google.golang.org/grpc => google.golang.org/grpc v1.33.0
 
 replace github.com/hyperledger/fabric => github.com/hyperledger/fabric v2.0.1+incompatible
 
-go 1.13
+

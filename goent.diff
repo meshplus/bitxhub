@@ -1,3 +1,4 @@
-	github.com/bitxhub/did-method-registry v0.0.0-20210203031156-4397b27db24d // indirect
-	github.com/bitxhub/parallel-executor v0.0.0-20201027053703-4bec95aa1cda
+	github.com/bitxhub/did-method-registry v0.0.0-20210203112018-b0b2c6379069 // indirect
+	github.com/bitxhub/parallel-executor v0.0.0-20210607125420-b559169aba10
 	github.com/bitxhub/service-mng v0.0.0-20201125031105-f345beee1b42
+	github.com/bitxhub/license v0.0.0-20210607100359-4527b1ffe92b

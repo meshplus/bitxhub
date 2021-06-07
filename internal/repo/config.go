@@ -41,6 +41,7 @@ type Config struct {
 	Txpool   `json:"txpool"`
 	Order    `json:"order"`
 	Executor `json:"executor"`
+	License  `json:"license"`
 	Genesis  `json:"genesis"`
 	Security Security `toml:"security" json:"security"`
 }
@@ -101,6 +102,11 @@ type LogModule struct {
 	API       string `toml:"api" json:"api"`
 	CoreAPI   string `mapstructure:"coreapi" toml:"coreapi" json:"coreapi"`
 	Storage   string `toml:"storage" json:"storage"`
+}
+
+type License struct {
+	Key      string `json:"key" toml:"key"`
+	Verifier string `json:"verifier" toml:"verifier"`
 }
 
 type Genesis struct {

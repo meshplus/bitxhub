@@ -29,6 +29,7 @@ BLUE=\033[0;34m
 NC=\033[0m
 
 MODS = $(shell sed -e ':a' -e 'N' -e '$$!ba' -e 's/\n/@/g' goent.diff)
+REPLACE = $(shell sed -e ':a' -e 'N' -e '$$!ba' -e 's/\n/@/g' goent.replace)
 
 help: Makefile
 	@printf "${BLUE}Choose a command run:${NC}\n"
@@ -73,6 +74,7 @@ installent:
 	cd internal/repo && packr
 	cp imports/imports.go.template imports/imports.go
 	@sed "s?)?$(MODS)@)?" go.mod  | tr '@' '\n' > goent.mod
+	@echo "$(REPLACE)" | tr '@' '\n' >> goent.mod
 	$(GO) install -tags ent -ldflags '${GOLDFLAGS}' -modfile goent.mod ./cmd/${APP_NAME}
 	@printf "${GREEN}Install bitxhub ent successfully!${NC}\n"
 
@@ -81,6 +83,7 @@ buildent:
 	@mkdir -p bin
 	cp imports/imports.go.template imports/imports.go
 	@sed "s?)?$(MODS)@)?" go.mod  | tr '@' '\n' > goent.mod
+	@echo "$(REPLACE)" | tr '@' '\n' >> goent.mod
 	$(GO) build -tags ent -ldflags '${GOLDFLAGS}' -modfile goent.mod ./cmd/${APP_NAME}
 	@mv ./bitxhub bin
 	@printf "${GREEN}Build bitxhub ent successfully!${NC}\n"

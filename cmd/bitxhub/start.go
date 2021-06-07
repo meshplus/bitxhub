@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/meshplus/bitxhub"
+	"github.com/meshplus/bitxhub-core/agency"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub/api/gateway"
 	"github.com/meshplus/bitxhub/api/grpc"
@@ -20,7 +21,6 @@ import (
 	"github.com/meshplus/bitxhub/internal/coreapi"
 	"github.com/meshplus/bitxhub/internal/loggers"
 	"github.com/meshplus/bitxhub/internal/repo"
-
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/urfave/cli"
 )
@@ -44,6 +44,10 @@ func start(ctx *cli.Context) error {
 	repo, err := repo.Load(repoRoot)
 	if err != nil {
 		return fmt.Errorf("repo load: %w", err)
+	}
+
+	if err := checkLicense(repoRoot, repo.Config.License); err != nil {
+		return err
 	}
 
 	err = log.Initialize(
@@ -221,4 +225,20 @@ func fileExist(path string) bool {
 		return false
 	}
 	return true
+}
+
+func checkLicense(repoRoot string, config repo.License) error {
+	licenseCons, _ := agency.GetLicenseConstructor("license")
+	if licenseCons != nil {
+		license := licenseCons(config.Key, config.Verifier)
+		if license == nil {
+			return fmt.Errorf("error: can not verify license")
+		}
+
+		if err := license.Verify(repoRoot); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
