@@ -4,7 +4,7 @@ source x.sh
 
 CURRENT_PATH=$(pwd)
 PROJECT_PATH=$(dirname "${CURRENT_PATH}")
-BUILD_PATH=${PROJECT_PATH}/build
+BUILD_PATH=${PROJECT_PATH}/dist
 # shellcheck disable=SC2046
 APP_VERSION=$(if [ `git rev-parse --abbrev-ref HEAD` == 'HEAD' ];then git describe --tags HEAD ; else echo "dev" ; fi)
 
@@ -21,12 +21,12 @@ cd "${PROJECT_PATH}"/internal/plugins && make plugins
 
 print_blue "===> 4. pack binarys"
 cd "${PROJECT_PATH}"
-cp ./bin/bitxhub ./build/bitxhub
-cp ./internal/plugins/build/*.so ./build/
+cp ./bin/bitxhub "${BUILD_PATH}"/bitxhub
+cp ./internal/plugins/build/*.so "${BUILD_PATH}"
 if [ "$(uname)" == "Darwin" ]; then
-    cd "${BUILD_PATH}" && tar zcvf bitxhub_darwin_x86_64_"${APP_VERSION}".tar.gz ./bitxhub ./raft.so ./solo.so ./libwasmer.dylib
-    mv ./*.tar.gz ../dist/
+  cd "${BUILD_PATH}" && cp "${PROJECT_PATH}"/build/wasm/lib/darwin-amd64/libwasmer.dylib .
+  tar -zcvf bitxhub_darwin_x86_64_"${APP_VERSION}".tar.gz ./bitxhub ./raft.so ./solo.so ./libwasmer.dylib
 else
-    cd "${BUILD_PATH}" && tar zcvf bitxhub_linux-amd64_"${APP_VERSION}".tar.gz ./bitxhub ./*.so
-    mv ./*.tar.gz ../dist/
+  cd "${BUILD_PATH}" && cp "${PROJECT_PATH}"/build/wasm/lib/linux-amd64/libwasmer.so .
+  tar zcvf bitxhub_linux-amd64_"${APP_VERSION}".tar.gz ./bitxhub ./*.so
 fi
