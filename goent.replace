@@ -1,0 +1,5 @@
+replace github.com/hyperchain/gosdk => git.hyperchain.cn/hyperchain/gosdk.git v1.2.15
+
+replace github.com/ultramesh/crypto-standard => git.hyperchain.cn/ultramesh/crypto-standard.git v0.1.0
+
+replace github.com/ultramesh/crypto => git.hyperchain.cn/ultramesh/crypto.git v0.1.0

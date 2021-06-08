@@ -60,6 +60,10 @@ solo = false
 [executor]
   type = "serial"  # opensource version only supports serial type, commercial version supports serial and parallel types
 
+[license]
+  key = "133847740289a8dc5447bfbaedf10ed5ee9460110e4ba6b455e33cf941253527f18dd721515c5142fcea9b6415ddad6b3f1696011a4bbc86f35833ae9296a3ea"
+  verifier = "https://172.16.5.3:11443/v1/validation"
+
 [genesis]
   [[genesis.admins]]
     address = "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013"
