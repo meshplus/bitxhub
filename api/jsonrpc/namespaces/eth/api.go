@@ -439,14 +439,26 @@ func (api *PublicEthereumAPI) GetEthTransactionByHash(hash *types.Hash) (*types2
 
 	tx := api.api.Broker().GetPoolTransaction(hash)
 	if tx == nil {
+		api.logger.Debugf("tx %s is not in mempool", hash.String())
 		tx, err = api.api.Broker().GetTransaction(hash)
 		if err != nil {
+			api.logger.Debugf("tx %s is not in ledger", hash.String())
 			return nil, nil, fmt.Errorf("get tx from ledger: %w", err)
 		}
 
 		meta, err = api.api.Broker().GetTransactionMeta(hash)
 		if err != nil {
+			api.logger.Debugf("tx meta for %s is not found", hash.String())
 			return nil, nil, fmt.Errorf("get tx meta from ledger: %w", err)
+		}
+	} else {
+		api.logger.Debugf("tx %s is found in mempool", hash.String())
+		if strings.Contains(strings.ToLower(api.config.Order.Plugin), "rbft") {
+			meta, err = api.api.Broker().GetTransactionMeta(hash)
+			if err != nil {
+				api.logger.Debugf("tx meta for %s is not found", hash.String())
+				meta = &pb.TransactionMeta{}
+			}
 		}
 	}
 
@@ -507,16 +519,19 @@ func (api *PublicEthereumAPI) GetTransactionReceipt(hash common.Hash) (map[strin
 	txHash := types.NewHash(hash.Bytes())
 	tx, meta, err := api.GetEthTransactionByHash(txHash)
 	if err != nil {
+		api.logger.Debugf("no tx found for hash %s", txHash.String())
 		return nil, nil
 	}
 
 	receipt, err := api.api.Broker().GetReceipt(txHash)
 	if err != nil {
+		api.logger.Debugf("no receipt found for tx %s", txHash.String())
 		return nil, nil
 	}
 
 	block, err := api.api.Broker().GetBlock("HEIGHT", fmt.Sprintf("%d", meta.BlockHeight))
 	if err != nil {
+		api.logger.Debugf("no block found for height %d", meta.BlockHeight)
 		return nil, err
 	}
 
