@@ -218,7 +218,7 @@ func (rm *RuleManager) bindRule(chainId string, ruleAddr string, event governanc
 		pb.String(string(event)),
 		pb.String(""),
 		pb.String(string(RuleMgr)),
-		pb.String(ruleAddr),
+		pb.String(RuleKey(chainId)),
 		pb.String(string(rule.Status)),
 		pb.Bytes(ruleRes.Result),
 	)
