@@ -36,7 +36,7 @@ func (swarm *Swarm) handleMessage(s network.Stream, data []byte) {
 			go swarm.orderMessageFeed.Send(events.OrderMessageEvent{Data: m.Data})
 		case pb.Message_FETCH_BLOCK_SIGN:
 			swarm.handleFetchBlockSignMessage(s, m.Data)
-		case pb.Message_FETCH_ASSET_EXCHANEG_SIGN:
+		case pb.Message_FETCH_ASSET_EXCHANGE_SIGN:
 			swarm.handleFetchAssetExchangeSignMessage(s, m.Data)
 		case pb.Message_FETCH_IBTP_SIGN:
 			swarm.handleFetchIBTPSignMessage(s, m.Data)

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub/api/jsonrpc/namespaces/eth/filters"
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxid"
 )
@@ -29,6 +30,8 @@ func (cbs *ChainBrokerService) Subscribe(req *pb.SubscriptionRequest, server pb.
 		return cbs.handleInterchainTxWrapperSubscription(server, req.Extra, false)
 	case pb.SubscriptionRequest_UNION_INTERCHAIN_TX_WRAPPER.String():
 		return cbs.handleInterchainTxWrapperSubscription(server, req.Extra, true)
+	case pb.SubscriptionRequest_EVM_LOG.String():
+		return cbs.handleEvmLogSubscription(server, req.Extra)
 	}
 
 	return nil
@@ -143,6 +146,47 @@ func (cbs *ChainBrokerService) handleInterchainTxWrapperSubscription(server pb.C
 			}); err != nil {
 				cbs.logger.Warnf("Send new interchain tx wrapper failed %s", err.Error())
 				return fmt.Errorf("send new interchain tx wrapper failed")
+			}
+		case <-server.Context().Done():
+			cbs.logger.Errorf("Server lost connection with pier")
+			return nil
+		}
+	}
+}
+
+func (cbs *ChainBrokerService) handleEvmLogSubscription(server pb.ChainBroker_SubscribeServer, query []byte) error {
+	filter := filters.FilterQuery{}
+	if err := json.Unmarshal(query, &filter); err != nil {
+		return err
+	}
+
+	ch := make(chan []*pb.EvmLog)
+	logsSub := cbs.api.Feed().SubscribeLogsEvent(ch)
+	defer logsSub.Unsubscribe()
+
+	for {
+		select {
+		case logs, ok := <-ch:
+			// if channel is unexpected closed, return
+			if !ok {
+				cbs.logger.Errorf("subs closed")
+				return nil
+			}
+
+			matchedLogs := filters.FilterLogs(logs, filter.FromBlock, filter.ToBlock, filter.Addresses, filter.Topics)
+			for _, log := range matchedLogs {
+				data, err := log.Marshal()
+				if err != nil {
+					cbs.logger.Warnf("Marshal evm log failed %s", err.Error())
+					return fmt.Errorf("marshal evm log failed")
+				}
+
+				if err := server.Send(&pb.Response{
+					Data: data,
+				}); err != nil {
+					cbs.logger.Warnf("Send evm log failed %s", err.Error())
+					return fmt.Errorf("send evm log failed")
+				}
 			}
 		case <-server.Context().Done():
 			cbs.logger.Errorf("Server lost connection with pier")

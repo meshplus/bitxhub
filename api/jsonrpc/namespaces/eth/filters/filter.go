@@ -169,7 +169,7 @@ func (f *Filter) checkMatches(ctx context.Context, blockNum uint64) (logs []*pb.
 	for _, receipt := range receipts {
 		unfiltered = append(unfiltered, receipt.EvmLogs...)
 	}
-	return filterLogs(unfiltered, nil, nil, f.addresses, f.topics), nil
+	return FilterLogs(unfiltered, nil, nil, f.addresses, f.topics), nil
 }
 
 func (f *Filter) getBlockReceipts(blockNum uint64) ([]*pb.Receipt, error) {
@@ -202,8 +202,8 @@ func includes(addresses []*types2.Address, a *types2.Address) bool {
 	return false
 }
 
-// filterLogs creates a slice of logs matching the given criteria.
-func filterLogs(logs []*pb.EvmLog, fromBlock, toBlock *big.Int, addresses []*types2.Address, topics [][]*types2.Hash) []*pb.EvmLog {
+// FilterLogs creates a slice of logs matching the given criteria.
+func FilterLogs(logs []*pb.EvmLog, fromBlock, toBlock *big.Int, addresses []*types2.Address, topics [][]*types2.Hash) []*pb.EvmLog {
 	var ret []*pb.EvmLog
 Logs:
 	for _, log := range logs {
