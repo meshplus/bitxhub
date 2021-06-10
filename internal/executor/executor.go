@@ -52,6 +52,7 @@ type BlockExecutor struct {
 	evm         *vm.EVM
 	evmChainCfg *params.ChainConfig
 	gasLimit    uint64
+	lock        *sync.Mutex
 }
 
 func (exec *BlockExecutor) GetBoltContracts() map[string]agency.Contract {
@@ -84,6 +85,7 @@ func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, typ string, gasL
 		wasmInstances:    make(map[string]*wasmer.Instance),
 		evmChainCfg:      newEVMChainCfg(),
 		gasLimit:         gasLimit,
+		lock:             &sync.Mutex{},
 	}
 
 	blockExecutor.evm = newEvm(1, uint64(0), blockExecutor.evmChainCfg, blockExecutor.ledger, blockExecutor.ledger.ChainLedger)
@@ -136,6 +138,9 @@ func (exec *BlockExecutor) SubscribeLogsEvent(ch chan<- []*pb.EvmLog) event.Subs
 func (exec *BlockExecutor) ApplyReadonlyTransactions(txs []pb.Transaction) []*pb.Receipt {
 	current := time.Now()
 	receipts := make([]*pb.Receipt, 0, len(txs))
+
+	exec.lock.Lock()
+	defer exec.lock.Unlock()
 
 	meta := exec.ledger.GetChainMeta()
 	block, err := exec.ledger.GetBlock(meta.Height)

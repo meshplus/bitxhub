@@ -32,6 +32,12 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const (
+	GasNormalTx = 21000
+	GasFiledTx  = 21000
+	GasBVMTx    = 21000 * 10
+)
+
 type BlockWrapper struct {
 	block     *pb.Block
 	invalidTx map[int]agency.InvalidReason
@@ -322,7 +328,7 @@ func (exec *BlockExecutor) applyTransaction(i int, tx pb.Transaction, invalidRea
 	switch tx.(type) {
 	case *pb.BxhTransaction:
 		bxhTx := tx.(*pb.BxhTransaction)
-		ret, err := exec.applyBxhTransaction(i, bxhTx, invalidReason, opt)
+		ret, gasUsed, err := exec.applyBxhTransaction(i, bxhTx, invalidReason, opt)
 		if err != nil {
 			receipt.Status = pb.Receipt_FAILED
 			receipt.Ret = []byte(err.Error())
@@ -330,6 +336,7 @@ func (exec *BlockExecutor) applyTransaction(i int, tx pb.Transaction, invalidRea
 			receipt.Status = pb.Receipt_SUCCESS
 			receipt.Ret = ret
 		}
+		receipt.GasUsed = gasUsed
 		return receipt
 	case *types2.EthTransaction:
 		ethTx := tx.(*types2.EthTransaction)
@@ -337,28 +344,30 @@ func (exec *BlockExecutor) applyTransaction(i int, tx pb.Transaction, invalidRea
 	}
 
 	receipt.Status = pb.Receipt_FAILED
+	receipt.GasUsed = GasFiledTx
 	receipt.Ret = []byte(fmt.Errorf("unknown tx type").Error())
 	return receipt
 }
 
-func (exec *BlockExecutor) applyBxhTransaction(i int, tx *pb.BxhTransaction, invalidReason agency.InvalidReason, opt *agency.TxOpt) ([]byte, error) {
+func (exec *BlockExecutor) applyBxhTransaction(i int, tx *pb.BxhTransaction, invalidReason agency.InvalidReason, opt *agency.TxOpt) ([]byte, uint64, error) {
 	if invalidReason != "" {
-		return nil, fmt.Errorf(string(invalidReason))
+		return nil, GasFiledTx, fmt.Errorf(string(invalidReason))
 	}
 
 	if tx.IsIBTP() {
 		ctx := vm.NewContext(tx, uint64(i), nil, exec.ledger, exec.logger)
 		instance := boltvm.New(ctx, exec.validationEngine, exec.getContracts(opt))
-		return instance.HandleIBTP(tx.GetIBTP())
+		ret, err := instance.HandleIBTP(tx.GetIBTP())
+		return ret, GasBVMTx, err
 	}
 
 	if tx.GetPayload() == nil {
-		return nil, fmt.Errorf("empty transaction data")
+		return nil, GasFiledTx, fmt.Errorf("empty transaction data")
 	}
 
 	data := &pb.TransactionData{}
 	if err := data.Unmarshal(tx.GetPayload()); err != nil {
-		return nil, err
+		return nil, GasFiledTx, err
 	}
 
 	snapshot := exec.ledger.Snapshot()
@@ -372,30 +381,32 @@ func (exec *BlockExecutor) applyBxhTransaction(i int, tx *pb.BxhTransaction, inv
 		if err != nil {
 			exec.ledger.RevertToSnapshot(snapshot)
 		}
-		return nil, err
+		return nil, GasNormalTx, err
 	default:
 		var instance vm.VM
+		var gasUsed uint64
 		switch data.VmType {
 		case pb.TransactionData_BVM:
 			ctx := vm.NewContext(tx, uint64(i), data, exec.ledger, exec.logger)
 			instance = boltvm.New(ctx, exec.validationEngine, exec.getContracts(opt))
+			gasUsed = GasBVMTx
 		case pb.TransactionData_XVM:
 			var err error
 			ctx := vm.NewContext(tx, uint64(i), data, exec.ledger, exec.logger)
 			imports := vmledger.New()
 			instance, err = wasm.New(ctx, imports, exec.wasmInstances)
 			if err != nil {
-				return nil, err
+				return nil, GasFiledTx, err
 			}
 		default:
-			return nil, fmt.Errorf("wrong vm type")
+			return nil, GasFiledTx, fmt.Errorf("wrong vm type")
 		}
 
 		ret, err := instance.Run(data.Payload)
 		if err != nil {
 			exec.ledger.RevertToSnapshot(snapshot)
 		}
-		return ret, err
+		return ret, gasUsed, err
 	}
 }
 
