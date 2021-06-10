@@ -10,20 +10,20 @@ jobs:
     name: Run bxh_tester
     runs-on: ubuntu-latest
     steps:
-#      - name: Set up Go
-#        uses: actions/setup-go@v1
-#        with:
-#          go-version: 1.13
-#
-#      - name: Check out code
-#        uses: actions/checkout@v2
-#
-#      - name: Run bxh_tester
-#        run: |
-#          export PATH=$PATH:$(go env GOPATH)/bin
-#          cd scripts
-#          echo ${{ github.base_ref }}
-#          bash bxh_test.sh -b ${{ github.base_ref }}
+      - name: Set up Go
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.13
+
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Run bxh_tester
+        run: |
+          export PATH=$PATH:$(go env GOPATH)/bin
+          cd scripts
+          echo ${{ github.base_ref }}
+          bash bxh_test.sh -b ${{ github.base_ref }}
 
       - name: Send Mail
         uses: dawidd6/action-send-mail@master
