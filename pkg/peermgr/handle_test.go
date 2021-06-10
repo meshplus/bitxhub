@@ -358,7 +358,7 @@ func TestSwarm_Send(t *testing.T) {
 	require.NotNil(t, res.Data)
 
 	fetchAESMsg := &pb.Message{
-		Type: pb.Message_FETCH_ASSET_EXCHANEG_SIGN,
+		Type: pb.Message_FETCH_ASSET_EXCHANGE_SIGN,
 		Data: []byte("1"),
 	}
 

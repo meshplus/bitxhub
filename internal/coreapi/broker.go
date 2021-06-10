@@ -185,7 +185,7 @@ func (b *BrokerAPI) FetchSignsFromOtherPeers(id string, typ pb.GetMultiSignsRequ
 
 func (b *BrokerAPI) requestAssetExchangeSignFromPeer(peerId uint64, assetExchangeId string) (string, []byte, error) {
 	req := pb.Message{
-		Type: pb.Message_FETCH_ASSET_EXCHANEG_SIGN,
+		Type: pb.Message_FETCH_ASSET_EXCHANGE_SIGN,
 		Data: []byte(assetExchangeId),
 	}
 
