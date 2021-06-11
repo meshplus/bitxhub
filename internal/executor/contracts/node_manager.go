@@ -169,7 +169,7 @@ func (nm *NodeManager) LogoutNode(nodeId int64) *boltvm.Response {
 		// 3.3 only support delete last vp node
 		// TODO: solve it
 		if strconv.Itoa(int(node.Id)) != string(res.Result) {
-			return boltvm.Error(fmt.Sprintf("only support delete last vp node currently"))
+			return boltvm.Error(fmt.Sprintf("only support delete last vp node(%s) currently: %s", string(res.Result), strconv.Itoa(int(node.Id))))
 		}
 
 	}

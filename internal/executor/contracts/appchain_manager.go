@@ -6,16 +6,16 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/meshplus/bitxhub-kit/hexutil"
-
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/governance"
 	"github.com/meshplus/bitxhub-core/validator"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym/ecdsa"
+	"github.com/meshplus/bitxhub-kit/hexutil"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub/internal/repo"
 )
 
 // todo: get this from config file
@@ -114,7 +114,7 @@ func (am *AppchainManager) chainDefaultConfig(chain *appchainMgr.Appchain) error
 // Register registers appchain info
 // caller is the appchain manager address
 // return appchain id, proposal id and error
-func (am *AppchainManager) Register(appchainAdminDID, appchainMethod string, docAddr, docHash, validators string,
+func (am *AppchainManager) Register(method string, docAddr, docHash, validators string,
 	consensusType, chainType, name, desc, version, pubkey string) *boltvm.Response {
 	am.AppchainManager.Persister = am.Stub
 	//res := am.CrossInvoke(constant.MethodRegistryContractAddr.String(), "Apply",
@@ -123,8 +123,16 @@ func (am *AppchainManager) Register(appchainAdminDID, appchainMethod string, doc
 	//	return res
 	//}
 
+	addr, err := getAddr(pubkey)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("get addr from public key: %v", err))
+	}
+
+	appchainAdminDID := fmt.Sprintf("%s:%s:%s", repo.BitxhubRootPrefix, method, addr)
+	appchainDID := fmt.Sprintf("%s:%s:.", repo.BitxhubRootPrefix, method)
+
 	chain := &appchainMgr.Appchain{
-		ID:            appchainMethod,
+		ID:            appchainDID,
 		Name:          name,
 		Validators:    validators,
 		ConsensusType: consensusType,
@@ -160,7 +168,7 @@ func (am *AppchainManager) Register(appchainAdminDID, appchainMethod string, doc
 		pb.String(string(governance.EventRegister)),
 		pb.String(""),
 		pb.String(string(AppchainMgr)),
-		pb.String(appchainMethod),
+		pb.String(appchainDID),
 		pb.String(string(governance.GovernanceUnavailable)),
 		pb.Bytes(chainData),
 	)
@@ -168,7 +176,7 @@ func (am *AppchainManager) Register(appchainAdminDID, appchainMethod string, doc
 		return res
 	}
 
-	return getGovernanceRet(string(res.Result), []byte(appchainMethod))
+	return getGovernanceRet(string(res.Result), []byte(appchainDID))
 }
 
 // UpdateAppchain updates available appchain
@@ -221,6 +229,10 @@ func (am *AppchainManager) UpdateAppchain(id, docAddr, docHash, validators strin
 	data, err = json.Marshal(chain)
 	if err != nil {
 		return boltvm.Error(err.Error())
+	}
+
+	if oldChainInfo.PublicKey != chain.PublicKey {
+		return boltvm.Error("pubkey can not be updated")
 	}
 
 	if oldChainInfo.Validators == chain.Validators {

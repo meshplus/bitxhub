@@ -21,6 +21,10 @@ func Load(repoRoot string) (*Repo, error) {
 		return nil, err
 	}
 
+	if err := checkConfig(config); err != nil {
+		return nil, err
+	}
+
 	networkConfig, err := loadNetworkConfig(repoRoot, config.Genesis)
 	if err != nil {
 		return nil, fmt.Errorf("load network config: %w", err)
@@ -42,6 +46,23 @@ func Load(repoRoot string) (*Repo, error) {
 		Key:           key,
 		Certs:         certs,
 	}, nil
+}
+
+func checkConfig(config *Config) error {
+	// check genesis admin info
+	hasSuperAdmin := false
+	for _, admin := range config.Genesis.Admins {
+		if admin.Weight == SuperAdminWeight {
+			hasSuperAdmin = true
+		} else if admin.Weight != NormalAdminWeight {
+			return fmt.Errorf("Illegal admin weight in genesis config!")
+		}
+	}
+
+	if !hasSuperAdmin {
+		return fmt.Errorf("Set up at least one super administrator in genesis config!")
+	}
+	return nil
 }
 
 func GetAPI(repoRoot string) (string, error) {

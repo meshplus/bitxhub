@@ -6,6 +6,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/governance"
@@ -93,6 +94,7 @@ type Proposal struct {
 	LockProposalId    string               `json:"lock_proposal_id"`
 	IsSpecial         bool                 `json:"is_special"`
 	IsSuperAdminVoted bool                 `json:"is_super_admin_voted"`
+	CreateTime        string               `json:"create_time"`
 	Extra             []byte               `json:"extra"`
 }
 
@@ -165,6 +167,7 @@ func (g *Governance) SubmitProposal(from, eventTyp, des, typ, objId, objLastStat
 		ThresholdNum:      tn,
 		LockProposalId:    lockPId,
 		IsSuperAdminVoted: false,
+		CreateTime:        time.Now().Format("2006/1/2 15:04:05"),
 		Extra:             extra,
 	}
 	p.IsSpecial = isSpecialProposal(p)
@@ -238,7 +241,7 @@ func (g *Governance) getThresholdNum(electorateNum uint64, proposalTyp ProposalT
 	if !g.GetObject(string(proposalTyp), &ps) {
 		// SimpleMajority is used by default
 		ps.Typ = SimpleMajority
-		ps.ParticipateThreshold = 0.75
+		ps.ParticipateThreshold = repo.DefaultParticipateThreshold
 		g.AddObject(string(proposalTyp), ps)
 	}
 
@@ -731,7 +734,7 @@ func (g *Governance) setVote(p *Proposal, addr string, approve string, reason st
 		Num:       uint64(num),
 		Reason:    reason,
 	}
-	if 2 == num {
+	if repo.SuperAdminWeight == num {
 		p.IsSuperAdminVoted = true
 	}
 	p.BallotMap[addr] = ballot
@@ -756,7 +759,7 @@ func (g *Governance) countVote(p *Proposal) (bool, error) {
 	if !g.GetObject(string(p.Typ), &ps) {
 		// SimpleMajority is used by default
 		ps.Typ = SimpleMajority
-		ps.ParticipateThreshold = 0.75
+		ps.ParticipateThreshold = repo.DefaultParticipateThreshold
 		g.SetObject(string(p.Typ), ps)
 	}
 
