@@ -602,19 +602,19 @@ func TestChainLedger_AddEvent(t *testing.T) {
 	hash0 := types.NewHash([]byte{1})
 	hash1 := types.NewHash([]byte{2})
 	event00 := &pb.Event{
-		TxHash:     hash0,
-		Data:       nil,
-		Interchain: false,
+		TxHash:    hash0,
+		Data:      nil,
+		EventType: pb.Event_OTHER,
 	}
 	event01 := &pb.Event{
-		TxHash:     hash0,
-		Data:       []byte{1},
-		Interchain: true,
+		TxHash:    hash0,
+		Data:      []byte{1},
+		EventType: pb.Event_INTERCHAIN,
 	}
 	event10 := &pb.Event{
-		TxHash:     hash1,
-		Data:       []byte{1},
-		Interchain: true,
+		TxHash:    hash1,
+		Data:      []byte{1},
+		EventType: pb.Event_INTERCHAIN,
 	}
 
 	ledger.AddEvent(event00)

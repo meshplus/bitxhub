@@ -1,6 +1,7 @@
 package app
 
 import (
+	"github.com/meshplus/bitxhub-core/governance"
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/sirupsen/logrus"
 )
@@ -27,11 +28,14 @@ func (bxh *BitXHub) start() {
 func (bxh *BitXHub) listenEvent() {
 	blockCh := make(chan events.ExecutedEvent)
 	orderMsgCh := make(chan events.OrderMessageEvent)
+	nodeCh := make(chan events.NodeEvent)
 	blockSub := bxh.BlockExecutor.SubscribeBlockEvent(blockCh)
 	orderMsgSub := bxh.PeerMgr.SubscribeOrderMessage(orderMsgCh)
+	nodeSub := bxh.BlockExecutor.SubscribeNodeEvent(nodeCh)
 
 	defer blockSub.Unsubscribe()
 	defer orderMsgSub.Unsubscribe()
+	defer nodeSub.Unsubscribe()
 
 	for {
 		select {
@@ -44,6 +48,24 @@ func (bxh *BitXHub) listenEvent() {
 					bxh.logger.Error(err)
 				}
 			}()
+		case ev := <-nodeCh:
+			switch ev.NodeEventType {
+			case governance.EventLogout:
+				go func() {
+					if err := bxh.Order.Ready(); err != nil {
+						bxh.logger.Error(err)
+					}
+					if err := bxh.Order.DelNode(ev.NodeId); err != nil {
+						bxh.logger.Error(err)
+					}
+				}()
+			case governance.EventRegister:
+				go func() {
+					if err := bxh.Order.Ready(); err != nil {
+						bxh.logger.Error(err)
+					}
+				}()
+			}
 		case <-bxh.Ctx.Done():
 			return
 		}

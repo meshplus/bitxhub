@@ -307,10 +307,6 @@ func (b BrokerAPI) GetPendingNonceByAccount(account string) uint64 {
 	return b.bxh.Order.GetPendingNonceByAccount(account)
 }
 
-func (b BrokerAPI) DelVPNode(delID uint64) error {
-	return b.bxh.Order.DelNode(delID)
-}
-
 func (b BrokerAPI) GetPendingTransactions(max int) []pb.Transaction {
 	// TODO
 	return nil

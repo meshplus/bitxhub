@@ -259,11 +259,12 @@ func (exec *BlockExecutor) applyTx(index int, tx pb.Transaction, invalidReason a
 
 	receipt := exec.applyTransaction(index, tx, invalidReason, opt)
 
-	events := exec.ledger.Events(tx.GetHash().String())
-	if len(events) != 0 {
-		receipt.Events = events
-		for _, ev := range events {
-			if ev.Interchain {
+	evs := exec.ledger.Events(tx.GetHash().String())
+	if len(evs) != 0 {
+		receipt.Events = evs
+		for _, ev := range evs {
+			switch ev.EventType {
+			case pb.Event_INTERCHAIN:
 				m := make(map[string]uint64)
 				err := json.Unmarshal(ev.Data, &m)
 				if err != nil {
@@ -282,6 +283,13 @@ func (exec *BlockExecutor) applyTx(index int, tx pb.Transaction, invalidReason a
 					})
 				}
 				normalTx = false
+			case pb.Event_NODEMGR:
+				nodeEvent := events.NodeEvent{}
+				err := json.Unmarshal(ev.Data, &nodeEvent)
+				if err != nil {
+					panic(err)
+				}
+				exec.postNodeEvent(nodeEvent)
 			}
 		}
 	}
@@ -291,6 +299,10 @@ func (exec *BlockExecutor) applyTx(index int, tx pb.Transaction, invalidReason a
 	}
 
 	return receipt
+}
+
+func (exec *BlockExecutor) postNodeEvent(event events.NodeEvent) {
+	go exec.nodeFeed.Send(event)
 }
 
 func (exec *BlockExecutor) postBlockEvent(block *pb.Block, interchainMeta *pb.InterchainMeta, txHashList []*types.Hash) {

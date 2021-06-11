@@ -110,7 +110,11 @@ var SpecialProposalProposalType = []ProposalType{
 func (g *Governance) SubmitProposal(from, eventTyp, des, typ, objId, objLastStatus string, extra []byte) *boltvm.Response {
 
 	// 1. check permission
-	specificAddrs := []string{constant.AppchainMgrContractAddr.Address().String(), constant.RuleManagerContractAddr.Address().String()}
+	specificAddrs := []string{
+		constant.AppchainMgrContractAddr.Address().String(),
+		constant.RuleManagerContractAddr.Address().String(),
+		constant.NodeManagerContractAddr.Address().String(),
+	}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
 		return boltvm.Error("marshal specificAddrs error:" + string(err.Error()))
@@ -649,8 +653,14 @@ func (g *Governance) handleResult(p *Proposal) error {
 
 	// manage object
 	switch p.Typ {
-	case NodeMgr, ServiceMgr:
+	case ServiceMgr:
 		return fmt.Errorf("waiting for subsequent implementation")
+	case NodeMgr:
+		res := g.CrossInvoke(constant.NodeManagerContractAddr.String(), "Manage", pb.String(string(p.EventType)), pb.String(string(nextEventType)), pb.String(string(p.ObjLastStatus)), pb.Bytes(p.Extra))
+		if !res.Ok {
+			return fmt.Errorf("cross invoke Manager error: %s", string(res.Result))
+		}
+		return nil
 	case RuleMgr:
 		res := g.CrossInvoke(constant.RuleManagerContractAddr.String(), "Manage", pb.String(string(p.EventType)), pb.String(string(nextEventType)), pb.String(string(p.ObjLastStatus)), pb.Bytes(p.Extra))
 		if !res.Ok {

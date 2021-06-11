@@ -98,24 +98,24 @@ func (b *BoltStubImpl) Query(prefix string) (bool, [][]byte) {
 	return b.ctx.Ledger.QueryByPrefix(b.ctx.Callee, prefix)
 }
 
-func (b *BoltStubImpl) PostEvent(event interface{}) {
-	b.postEvent(false, event)
+func (b *BoltStubImpl) PostEvent(eventType pb.Event_EventType, event interface{}) {
+	b.postEvent(eventType, event)
 }
 
 func (b *BoltStubImpl) PostInterchainEvent(event interface{}) {
-	b.postEvent(true, event)
+	b.postEvent(pb.Event_INTERCHAIN, event)
 }
 
-func (b *BoltStubImpl) postEvent(interchain bool, event interface{}) {
+func (b *BoltStubImpl) postEvent(eventType pb.Event_EventType, event interface{}) {
 	data, err := json.Marshal(event)
 	if err != nil {
 		panic(err)
 	}
 
 	b.ctx.Ledger.AddEvent(&pb.Event{
-		Interchain: interchain,
-		Data:       data,
-		TxHash:     b.GetTxHash(),
+		EventType: eventType,
+		Data:      data,
+		TxHash:    b.GetTxHash(),
 	})
 }
 

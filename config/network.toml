@@ -1,5 +1,5 @@
 id = 1 # self id
-n = 4 # the number of vp nodes
+n = 4 # the number of primary vp nodes
 new = false # track whether the node is a new node
 
 [[nodes]]

@@ -99,6 +99,7 @@ func governanceCMD() cli.Command {
 			},
 			appchainMgrCMD(),
 			ruleMgrCMD(),
+			nodeMgrCND(),
 		},
 	}
 }

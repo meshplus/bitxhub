@@ -118,6 +118,13 @@ func parseArgs(in []*pb.Arg) ([]reflect.Value, error) {
 			}
 
 			args[i] = reflect.ValueOf(int32(ret))
+		case pb.Arg_I64:
+			ret, err := strconv.Atoi(string(in[i].Value))
+			if err != nil {
+				return nil, err
+			}
+
+			args[i] = reflect.ValueOf(int64(ret))
 		case pb.Arg_U64:
 			ret, err := strconv.ParseUint(string(in[i].Value), 10, 64)
 			if err != nil {

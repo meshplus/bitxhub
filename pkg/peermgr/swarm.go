@@ -11,6 +11,7 @@ import (
 	"github.com/Rican7/retry"
 	"github.com/Rican7/retry/strategy"
 	"github.com/ethereum/go-ethereum/event"
+	"github.com/libp2p/go-libp2p-core/connmgr"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -37,6 +38,7 @@ type Swarm struct {
 	connectedPeers sync.Map
 	notifiee       *notifiee
 	piers          *Piers
+	gater          connmgr.ConnectionGater
 
 	ledger           *ledger.Ledger
 	orderMessageFeed event.Feed
@@ -75,6 +77,7 @@ func New(repoConfig *repo.Repo, logger logrus.FieldLogger, ledger *ledger.Ledger
 	}
 
 	notifiee := newNotifiee(routers, logger)
+	gater := newConnectionGater(logger, ledger)
 
 	opts := []network.Option{
 		network.WithLocalAddr(repoConfig.NetworkConfig.LocalAddr),
@@ -84,6 +87,7 @@ func New(repoConfig *repo.Repo, logger logrus.FieldLogger, ledger *ledger.Ledger
 		// enable discovery
 		network.WithBootstrap(bootstrap),
 		network.WithNotify(notifiee),
+		network.WithConnectionGater(gater),
 	}
 
 	if repoConfig.Config.Cert.Verify {
@@ -113,6 +117,7 @@ func New(repoConfig *repo.Repo, logger logrus.FieldLogger, ledger *ledger.Ledger
 		piers:          newPiers(),
 		connectedPeers: sync.Map{},
 		notifiee:       notifiee,
+		gater:          gater,
 		ctx:            ctx,
 		cancel:         cancel,
 	}, nil
