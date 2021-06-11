@@ -16,7 +16,6 @@ require (
 	github.com/gobuffalo/packr v1.30.1
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/mock v1.5.0
-	github.com/golang/protobuf v1.5.0 // indirect
 	github.com/google/btree v1.0.0
 	github.com/google/go-cmp v0.5.5 // indirect
 	github.com/gorilla/mux v1.8.0
@@ -28,14 +27,14 @@ require (
 	github.com/juju/ratelimit v1.0.1
 	github.com/libp2p/go-libp2p-core v0.5.6
 	github.com/magiconair/properties v1.8.4
-	github.com/meshplus/bitxhub-core v1.3.1-0.20210616123614-5e391d61de9f
+	github.com/meshplus/bitxhub-core v1.3.1-0.20210617023501-43a2e4a6c340
 	github.com/meshplus/bitxhub-kit v1.2.1-0.20210524063043-9afae78ac098
-	github.com/meshplus/bitxhub-model v1.2.1-0.20210609034711-abda1813269e
+	github.com/meshplus/bitxhub-model v1.2.1-0.20210617023048-d655fd0d3f63
 	github.com/meshplus/bitxid v0.0.0-20210412025850-e0eaf0f9063a
 	github.com/meshplus/did-registry v0.0.0-20210413035015-509c6c3a0bae
 	github.com/meshplus/eth-kit v0.0.0-20210622082954-7e90c7ae1903
-	github.com/meshplus/go-libp2p-cert v0.0.0-20210125063330-7c25fd5b7a49
-	github.com/meshplus/go-lightp2p v0.0.0-20210120082108-df5a536a6192
+	github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd
+	github.com/meshplus/go-lightp2p v0.0.0-20210611054856-69c2d3341ec0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-multiaddr v0.3.0
 	github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6
