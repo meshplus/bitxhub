@@ -790,8 +790,8 @@ github.com/mattn/goveralls v0.0.2/go.mod h1:8d1ZMHsd7fW6IRPKQh46F2WRpyib5/X4FOpe
 github.com/matttproud/golang_protobuf_extensions v1.0.1 h1:4hp9jkHxhMHkqkrB3Ix0jegS5sx/RkqARlsWZ6pIwiU=
 github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5Ld7szi9bcBfOoFv/3dc6xSMkL2PC0=
 github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20210318102029-494ee3060b0c/go.mod h1:G19Wrz1u66UmwaES/iLM19jmlv3APAZ5qfYOlNnIIZw=
-github.com/meshplus/bitxhub-core v1.3.1-0.20210617023501-43a2e4a6c340 h1:yBgPqHOOmNg8Y9wWAE3iIdEeBn3WYaCrT5vOG478MhQ=
-github.com/meshplus/bitxhub-core v1.3.1-0.20210617023501-43a2e4a6c340/go.mod h1:69nMO5HMvEfNaWodxQawSkvaxXscIONpkLDyNBH4nhU=
+github.com/meshplus/bitxhub-core v1.3.1-0.20210617075014-e68585101164 h1:C7B9PyWbWLp6xn/GLIFnxHm5zrBipmvIyYcUpg3wV3Q=
+github.com/meshplus/bitxhub-core v1.3.1-0.20210617075014-e68585101164/go.mod h1:69nMO5HMvEfNaWodxQawSkvaxXscIONpkLDyNBH4nhU=
 github.com/meshplus/bitxhub-kit v1.1.1/go.mod h1:r4l4iqn0RPJreb/OmoYKfjCjQJrXpZX++6Qc31VG/1k=
 github.com/meshplus/bitxhub-kit v1.1.2-0.20201021105954-468d0a9d7957/go.mod h1:r4l4iqn0RPJreb/OmoYKfjCjQJrXpZX++6Qc31VG/1k=
 github.com/meshplus/bitxhub-kit v1.1.2-0.20201023030558-9f36554d5d5d/go.mod h1:r4l4iqn0RPJreb/OmoYKfjCjQJrXpZX++6Qc31VG/1k=
@@ -802,7 +802,7 @@ github.com/meshplus/bitxhub-kit v1.2.1-0.20210524063043-9afae78ac098/go.mod h1:w
 github.com/meshplus/bitxhub-model v1.1.1/go.mod h1:lUl9vPZXM9tP+B0ABRW/2eOW/6KCmjFTdoiTj5Vut/A=
 github.com/meshplus/bitxhub-model v1.1.2-0.20201021152621-0b3c17c54b23/go.mod h1:4qWBZx5wv7WZzUqiuBsbkQqQ2Ju8aOFpsoNpBBNy8Us=
 github.com/meshplus/bitxhub-model v1.1.2-0.20210409090411-de23bd385c5f/go.mod h1:x3H+TL24wcByzHegenLfs+5PQkQGNsk8eCm31QJMa+Q=
-github.com/meshplus/bitxhub-model v1.2.1-0.20210604034838-b7e8a66d25a2/go.mod h1:vwJ+sHPUyA2JELmUUDBol+7zA+7GcqutxzqXjsN0QLA=
+github.com/meshplus/bitxhub-model v1.2.1-0.20210609034711-abda1813269e/go.mod h1:vwJ+sHPUyA2JELmUUDBol+7zA+7GcqutxzqXjsN0QLA=
 github.com/meshplus/bitxhub-model v1.2.1-0.20210617023048-d655fd0d3f63 h1:Ufo0J8itushBaiW+1Qh8VSYJKqz6nJez/8EqHPlklRY=
 github.com/meshplus/bitxhub-model v1.2.1-0.20210617023048-d655fd0d3f63/go.mod h1:nzr75gGrBktLo9PHfNpFoX7F8gV8crBYMV2xR+WUyZE=
 github.com/meshplus/bitxid v0.0.0-20210412025850-e0eaf0f9063a h1:c4ESPDa60Jd4zfzZIGGTyzhfaVM3vKN+xV2G9BwIDGQ=

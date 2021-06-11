@@ -8,7 +8,6 @@ import (
 
 	"github.com/meshplus/bitxhub-core/governance"
 	node_mgr "github.com/meshplus/bitxhub-core/node-mgr"
-	"github.com/meshplus/bitxhub-kit/bytesutil"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -18,7 +17,7 @@ import (
 )
 
 // Initialize initialize block
-func Initialize(genesis *repo.Genesis, lg *ledger.Ledger, executor executor.Executor) error {
+func Initialize(genesis *repo.Genesis, nodes []*repo.NetworkNodes, primaryN uint64, lg *ledger.Ledger, executor executor.Executor) error {
 	lg.PrepareBlock(nil, 1)
 	body, err := json.Marshal(genesis.Admins)
 	if err != nil {

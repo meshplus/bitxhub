@@ -27,7 +27,7 @@ require (
 	github.com/juju/ratelimit v1.0.1
 	github.com/libp2p/go-libp2p-core v0.5.6
 	github.com/magiconair/properties v1.8.4
-	github.com/meshplus/bitxhub-core v1.3.1-0.20210617023501-43a2e4a6c340
+	github.com/meshplus/bitxhub-core v1.3.1-0.20210617075014-e68585101164
 	github.com/meshplus/bitxhub-kit v1.2.1-0.20210524063043-9afae78ac098
 	github.com/meshplus/bitxhub-model v1.2.1-0.20210617023048-d655fd0d3f63
 	github.com/meshplus/bitxid v0.0.0-20210412025850-e0eaf0f9063a
@@ -66,3 +66,9 @@ replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20200218
 replace google.golang.org/grpc => google.golang.org/grpc v1.33.0
 
 replace github.com/hyperledger/fabric => github.com/hyperledger/fabric v2.0.1+incompatible
+
+//replace github.com/meshplus/go-lightp2p => ../go-lightp2p
+
+//replace github.com/meshplus/bitxhub-core => ../bitxhub-core
+
+//replace github.com/meshplus/bitxhub-model => ../bitxhub-model
