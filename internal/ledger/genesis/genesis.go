@@ -8,6 +8,7 @@ import (
 
 	"github.com/meshplus/bitxhub-core/governance"
 	node_mgr "github.com/meshplus/bitxhub-core/node-mgr"
+	"github.com/meshplus/bitxhub-kit/bytesutil"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
