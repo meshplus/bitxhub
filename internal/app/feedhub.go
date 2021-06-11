@@ -54,14 +54,9 @@ func (bxh *BitXHub) listenEvent() {
 				go func() {
 					if err := bxh.Order.Ready(); err != nil {
 						bxh.logger.Error(err)
+						return
 					}
 					if err := bxh.Order.DelNode(ev.NodeId); err != nil {
-						bxh.logger.Error(err)
-					}
-				}()
-			case governance.EventRegister:
-				go func() {
-					if err := bxh.Order.Ready(); err != nil {
 						bxh.logger.Error(err)
 					}
 				}()

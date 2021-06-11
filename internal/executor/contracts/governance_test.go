@@ -95,6 +95,7 @@ func TestGovernance_SubmitProposal(t *testing.T) {
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "CheckPermission", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().CurrentCaller().Return("").AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().GetTxTimeStamp().Return(int64(1)).AnyTimes()
 
 	// check permission error
 	res := g.SubmitProposal("", string(governance.EventRegister), "des", string(AppchainMgr), "objId", string(governance.GovernanceUnavailable), []byte{})
@@ -561,6 +562,7 @@ func TestGovernance_SubmitProposal_LockLowPriorityProposal(t *testing.T) {
 	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Return(false).AnyTimes()
 	mockStub.EXPECT().AddObject(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().CurrentCaller().Return("").AnyTimes()
+	mockStub.EXPECT().GetTxTimeStamp().Return(int64(1)).AnyTimes()
 
 	res := g.SubmitProposal(idExistent, string(governance.EventUpdate), "des", string(AppchainMgr), appchainMethod, string(governance.GovernanceAvailable), chainData)
 	assert.False(t, res.Ok, string(res.Result))

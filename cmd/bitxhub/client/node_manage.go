@@ -21,7 +21,7 @@ func nodeMgrCND() cli.Command {
 		Subcommands: cli.Commands{
 			cli.Command{
 				Name:  "status",
-				Usage: "query node status by node pid",
+				Usage: "query node status by node id",
 				Flags: []cli.Flag{
 					cli.Int64Flag{
 						Name:     "id",
@@ -61,7 +61,7 @@ func nodeMgrCND() cli.Command {
 			},
 			cli.Command{
 				Name:  "logout",
-				Usage: "logout node by node pid",
+				Usage: "logout node by node id",
 				Flags: []cli.Flag{
 					cli.Int64Flag{
 						Name:     "id",

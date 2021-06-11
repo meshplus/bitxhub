@@ -40,12 +40,13 @@ func (g *connectionGater) InterceptAccept(addr network.ConnMultiaddrs) (allow bo
 }
 
 func (g *connectionGater) InterceptSecured(d network.Direction, p peer.ID, addr network.ConnMultiaddrs) (allow bool) {
-	ok, data := g.ledger.GetState(constant.NodeManagerContractAddr.Address(), []byte(fmt.Sprintf("%s-%s", node_mgr.NODE_PID_PREFIX, p)))
+	lg := g.ledger.Copy()
+	ok, data := lg.GetState(constant.NodeManagerContractAddr.Address(), []byte(fmt.Sprintf("%s-%s", node_mgr.NODE_PID_PREFIX, p)))
 	if !ok {
 		g.logger.Infof("Intercept a connection with an unavailable node(get id err: %s), peer.Pid: %s", string(data), p)
 		return false
 	}
-	ok, nodeData := g.ledger.GetState(constant.NodeManagerContractAddr.Address(), []byte(fmt.Sprintf("%s-%s", node_mgr.NODEPREFIX, string(data))))
+	ok, nodeData := lg.GetState(constant.NodeManagerContractAddr.Address(), []byte(fmt.Sprintf("%s-%s", node_mgr.NODEPREFIX, string(data))))
 	if !ok {
 		g.logger.Infof("Intercept a connection with an unavailable node(get node err: %s), peer.Pid: %s, peer.Id: %s", p, string(data))
 		return false

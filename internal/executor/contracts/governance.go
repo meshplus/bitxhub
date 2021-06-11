@@ -6,7 +6,6 @@ import (
 	"math"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/governance"
@@ -94,7 +93,7 @@ type Proposal struct {
 	LockProposalId    string               `json:"lock_proposal_id"`
 	IsSpecial         bool                 `json:"is_special"`
 	IsSuperAdminVoted bool                 `json:"is_super_admin_voted"`
-	CreateTime        string               `json:"create_time"`
+	CreateTime        int64                `json:"create_time"`
 	Extra             []byte               `json:"extra"`
 }
 
@@ -167,7 +166,7 @@ func (g *Governance) SubmitProposal(from, eventTyp, des, typ, objId, objLastStat
 		ThresholdNum:      tn,
 		LockProposalId:    lockPId,
 		IsSuperAdminVoted: false,
-		CreateTime:        time.Now().Format("2006/1/2 15:04:05"),
+		CreateTime:        g.GetTxTimeStamp(),
 		Extra:             extra,
 	}
 	p.IsSpecial = isSpecialProposal(p)

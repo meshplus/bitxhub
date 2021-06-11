@@ -290,7 +290,7 @@ func printProposal(proposals []contracts.Proposal) {
 			strconv.Itoa(int(pro.ApproveNum)) + "/" + strconv.Itoa(int(pro.AgainstNum)),
 			strconv.Itoa(int(pro.ElectorateNum)) + "/" + strconv.Itoa(int(pro.ThresholdNum)),
 			strconv.FormatBool(pro.IsSpecial) + "/" + strconv.FormatBool(pro.IsSuperAdminVoted),
-			pro.CreateTime,
+			strconv.Itoa(int(pro.CreateTime)),
 			pro.Des,
 			pro.EndReason,
 		})

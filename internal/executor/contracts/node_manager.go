@@ -19,6 +19,8 @@ type NodeManager struct {
 	node_mgr.NodeManager
 }
 
+const MinimumVPNode = 4
+
 // extra: nodeMgr.Node
 func (nm *NodeManager) Manage(eventTyp string, proposalResult, lastStatus string, extra []byte) *boltvm.Response {
 	specificAddrs := []string{constant.GovernanceContractAddr.Address().String()}
@@ -43,7 +45,7 @@ func (nm *NodeManager) Manage(eventTyp string, proposalResult, lastStatus string
 
 	if proposalResult == string(APPOVED) {
 		switch eventTyp {
-		case string(governance.EventLogout), string(governance.EventRegister):
+		case string(governance.EventLogout):
 			nodeEvent := &events.NodeEvent{
 				NodeId:        node.Id,
 				NodeEventType: governance.EventType(eventTyp),
@@ -163,7 +165,12 @@ func (nm *NodeManager) LogoutNode(nodeId int64) *boltvm.Response {
 		if !res.Ok {
 			return boltvm.Error(fmt.Sprintf("count available nodes error: %s", string(res.Result)))
 		}
-		if string(res.Result) <= "4" {
+
+		vpNum, err := strconv.Atoi(string(res.Result))
+		if err != nil {
+			return boltvm.Error(fmt.Sprintf("get vp node num error: %v", err))
+		}
+		if vpNum <= MinimumVPNode {
 			return boltvm.Error(fmt.Sprintf("don't support delete node when there're only %s vp nodes", string(res.Result)))
 		}
 		// 3.3 only support delete last vp node

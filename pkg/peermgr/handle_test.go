@@ -130,6 +130,7 @@ func NewSwarms(t *testing.T, peerCnt int) []*Swarm {
 		stateLedger.EXPECT().GetState(constant.NodeManagerContractAddr.Address(), []byte(fmt.Sprintf("%s-%d", node_mgr.NODEPREFIX, i))).Return(true, nodeData).AnyTimes()
 	}
 	stateLedger.EXPECT().GetState(gomock.Any(), gomock.Any()).Return(true, data).AnyTimes()
+	stateLedger.EXPECT().Copy().Return(stateLedger).AnyTimes()
 
 	agencyData, err := ioutil.ReadFile("testdata/agency.cert")
 	require.Nil(t, err)

@@ -19,6 +19,10 @@ type BoltStubImpl struct {
 	ve  validator.Engine
 }
 
+func (b *BoltStubImpl) CrossInvokeEVM(address string, input []byte) *boltvm.Response {
+	panic("implement me")
+}
+
 func (b *BoltStubImpl) Caller() string {
 	return b.ctx.Caller.String()
 }
@@ -37,8 +41,13 @@ func (b *BoltStubImpl) Logger() logrus.FieldLogger {
 
 // GetTxHash returns the transaction hash
 func (b *BoltStubImpl) GetTxHash() *types.Hash {
-	hash := b.ctx.TransactionHash
+	hash := b.ctx.Transaction.GetHash()
 	return hash
+}
+
+func (b *BoltStubImpl) GetTxTimeStamp() int64 {
+	timeStamp := b.ctx.Transaction.GetTimeStamp()
+	return timeStamp
 }
 
 func (b *BoltStubImpl) GetTxIndex() uint64 {
@@ -133,7 +142,7 @@ func (b *BoltStubImpl) CrossInvoke(address, method string, args ...*pb.Arg) *bol
 		CurrentCaller:    b.bvm.ctx.Callee,
 		Ledger:           b.bvm.ctx.Ledger,
 		TransactionIndex: b.bvm.ctx.TransactionIndex,
-		TransactionHash:  b.bvm.ctx.TransactionHash,
+		Transaction:      b.bvm.ctx.Transaction,
 		Logger:           b.bvm.ctx.Logger,
 	}
 
