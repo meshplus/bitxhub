@@ -48,7 +48,7 @@ jobs:
           subject: Bxh-teser Test Report
           body: |
             ${{ github.actor }} , the pull_request ${{ github.head_ref }} to ${{ github.base_ref }}
-            the report url is ${{ secrets.ALLURESERVER }}/reports/${{ github.base_ref }}/report${{ env.REPORT_DATE }}
+            the report url is ${{ secrets.ALLURESERVER }}reports/${{ github.base_ref }}/report${{ env.REPORT_DATE }}
           to: ${{ secrets.MAILUSERNAME }}
           from: GitHub Actions
 
