@@ -49,7 +49,7 @@ jobs:
           body: |
             ${{ github.actor }} , the pull_request ${{ github.head_ref }} to ${{ github.base_ref }}
             the report url is ${{ secrets.ALLURESERVER }}/reports/${{ github.base_ref }}/report${{ env.REPORT_DATE }}
-          to: zhuweijie@hyperchain.cn
+          to: ${{ secrets.MAILUSERNAME }}
           from: GitHub Actions
 
 
