@@ -83,7 +83,7 @@ function bitxhub_tester() {
 
 function bxh_test() {
     prepare
-    startBitxhub
+    start_bxh_solo
     bitxhub_tester
 }
 
