@@ -42,6 +42,7 @@ function Get_PM_Name(){
   fi
   print_blue "Your OS distribution is detected as: "$DISTRO;
   eval "$1=$PM"
+  eval "$2=$DISTRO"
 }
 
 function prepare() {
@@ -81,10 +82,25 @@ function bitxhub_tester() {
     make bitxhub-tester REPORT=Y
 }
 
+function create_EnvProperties() {
+    OS=''
+    Get_PM_Name null OS
+    GO=$(go version | awk '{print $3}')
+    BitXHubVersion=$(bitxhub version|grep 'BitXHub version:'|awk '{print $3}')
+    PremoVersion=$(premo version|grep 'Premo version:'|awk '{print $3}')
+    cat >>./tester/bxh_tester/allure-results/environment.properties<<EOF
+OS=$OS
+GO=$GO
+BitXHubVersion=$BitXHubVersion
+PremoVersion=$PremoVersion
+EOF
+}
+
 function bxh_test() {
     prepare
     start_bxh_solo
     bitxhub_tester
+    create_EnvProperties
 }
 
 while getopts "h?b:" opt; do
