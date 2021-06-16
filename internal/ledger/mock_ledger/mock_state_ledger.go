@@ -111,6 +111,18 @@ func (mr *MockStateLedgerMockRecorder) AddEvent(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddEvent", reflect.TypeOf((*MockStateLedger)(nil).AddEvent), arg0)
 }
 
+// AddLog mocks base method.
+func (m *MockStateLedger) AddLog(log *pb.EvmLog) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "AddLog", log)
+}
+
+// AddLog indicates an expected call of AddLog.
+func (mr *MockStateLedgerMockRecorder) AddLog(log interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddLog", reflect.TypeOf((*MockStateLedger)(nil).AddLog), log)
+}
+
 // AddSlotToEVMAccessList mocks base method.
 func (m *MockStateLedger) AddSlotToEVMAccessList(addr common.Address, slot common.Hash) {
 	m.ctrl.T.Helper()
@@ -186,18 +198,17 @@ func (mr *MockStateLedgerMockRecorder) Close() *gomock.Call {
 }
 
 // Commit mocks base method.
-func (m *MockStateLedger) Commit(height uint64, accounts map[string]ledger.IAccount, blockJournal *ledger.BlockJournal) (*types0.Hash, error) {
+func (m *MockStateLedger) Commit(height uint64, accounts map[string]ledger.IAccount, stateRoot *types0.Hash) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Commit", height, accounts, blockJournal)
-	ret0, _ := ret[0].(*types0.Hash)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret := m.ctrl.Call(m, "Commit", height, accounts, stateRoot)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // Commit indicates an expected call of Commit.
-func (mr *MockStateLedgerMockRecorder) Commit(height, accounts, blockJournal interface{}) *gomock.Call {
+func (mr *MockStateLedgerMockRecorder) Commit(height, accounts, stateRoot interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Commit", reflect.TypeOf((*MockStateLedger)(nil).Commit), height, accounts, blockJournal)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Commit", reflect.TypeOf((*MockStateLedger)(nil).Commit), height, accounts, stateRoot)
 }
 
 // CreateEVMAccount mocks base method.
@@ -266,19 +277,19 @@ func (mr *MockStateLedgerMockRecorder) Finalise(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Finalise", reflect.TypeOf((*MockStateLedger)(nil).Finalise), arg0)
 }
 
-// FlushDirtyDataAndComputeJournal mocks base method.
-func (m *MockStateLedger) FlushDirtyDataAndComputeJournal() (map[string]ledger.IAccount, *ledger.BlockJournal) {
+// FlushDirtyData mocks base method.
+func (m *MockStateLedger) FlushDirtyData() (map[string]ledger.IAccount, *types0.Hash) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FlushDirtyDataAndComputeJournal")
+	ret := m.ctrl.Call(m, "FlushDirtyData")
 	ret0, _ := ret[0].(map[string]ledger.IAccount)
-	ret1, _ := ret[1].(*ledger.BlockJournal)
+	ret1, _ := ret[1].(*types0.Hash)
 	return ret0, ret1
 }
 
-// FlushDirtyDataAndComputeJournal indicates an expected call of FlushDirtyDataAndComputeJournal.
-func (mr *MockStateLedgerMockRecorder) FlushDirtyDataAndComputeJournal() *gomock.Call {
+// FlushDirtyData indicates an expected call of FlushDirtyData.
+func (mr *MockStateLedgerMockRecorder) FlushDirtyData() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FlushDirtyDataAndComputeJournal", reflect.TypeOf((*MockStateLedger)(nil).FlushDirtyDataAndComputeJournal))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FlushDirtyData", reflect.TypeOf((*MockStateLedger)(nil).FlushDirtyData))
 }
 
 // GetAccount mocks base method.
@@ -507,15 +518,15 @@ func (mr *MockStateLedgerMockRecorder) HasSuisideEVM(arg0 interface{}) *gomock.C
 }
 
 // PrepareBlock mocks base method.
-func (m *MockStateLedger) PrepareBlock(arg0 *types0.Hash) {
+func (m *MockStateLedger) PrepareBlock(arg0 *types0.Hash, arg1 uint64) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "PrepareBlock", arg0)
+	m.ctrl.Call(m, "PrepareBlock", arg0, arg1)
 }
 
 // PrepareBlock indicates an expected call of PrepareBlock.
-func (mr *MockStateLedgerMockRecorder) PrepareBlock(arg0 interface{}) *gomock.Call {
+func (mr *MockStateLedgerMockRecorder) PrepareBlock(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PrepareBlock", reflect.TypeOf((*MockStateLedger)(nil).PrepareBlock), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PrepareBlock", reflect.TypeOf((*MockStateLedger)(nil).PrepareBlock), arg0, arg1)
 }
 
 // PrepareEVM mocks base method.
@@ -555,20 +566,6 @@ func (m *MockStateLedger) QueryByPrefix(address *types0.Address, prefix string) 
 func (mr *MockStateLedgerMockRecorder) QueryByPrefix(address, prefix interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryByPrefix", reflect.TypeOf((*MockStateLedger)(nil).QueryByPrefix), address, prefix)
-}
-
-// RemoveJournalsBeforeBlock mocks base method.
-func (m *MockStateLedger) RemoveJournalsBeforeBlock(height uint64) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RemoveJournalsBeforeBlock", height)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// RemoveJournalsBeforeBlock indicates an expected call of RemoveJournalsBeforeBlock.
-func (mr *MockStateLedgerMockRecorder) RemoveJournalsBeforeBlock(height interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveJournalsBeforeBlock", reflect.TypeOf((*MockStateLedger)(nil).RemoveJournalsBeforeBlock), height)
 }
 
 // RevertToSnapshot mocks base method.
@@ -710,20 +707,6 @@ func (mr *MockStateLedgerMockRecorder) Snapshot() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Snapshot", reflect.TypeOf((*MockStateLedger)(nil).Snapshot))
 }
 
-// StateDB mocks base method.
-func (m *MockStateLedger) StateDB() ledger.StateDB {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StateDB")
-	ret0, _ := ret[0].(ledger.StateDB)
-	return ret0
-}
-
-// StateDB indicates an expected call of StateDB.
-func (mr *MockStateLedgerMockRecorder) StateDB() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateDB", reflect.TypeOf((*MockStateLedger)(nil).StateDB))
-}
-
 // SubEVMBalance mocks base method.
 func (m *MockStateLedger) SubEVMBalance(arg0 common.Address, arg1 *big.Int) {
 	m.ctrl.T.Helper()
@@ -824,33 +807,32 @@ func (mr *MockStateAccessorMockRecorder) Clear() *gomock.Call {
 }
 
 // Commit mocks base method.
-func (m *MockStateAccessor) Commit(height uint64, accounts map[string]ledger.IAccount, blockJournal *ledger.BlockJournal) (*types0.Hash, error) {
+func (m *MockStateAccessor) Commit(height uint64, accounts map[string]ledger.IAccount, stateRoot *types0.Hash) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Commit", height, accounts, blockJournal)
-	ret0, _ := ret[0].(*types0.Hash)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret := m.ctrl.Call(m, "Commit", height, accounts, stateRoot)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // Commit indicates an expected call of Commit.
-func (mr *MockStateAccessorMockRecorder) Commit(height, accounts, blockJournal interface{}) *gomock.Call {
+func (mr *MockStateAccessorMockRecorder) Commit(height, accounts, stateRoot interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Commit", reflect.TypeOf((*MockStateAccessor)(nil).Commit), height, accounts, blockJournal)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Commit", reflect.TypeOf((*MockStateAccessor)(nil).Commit), height, accounts, stateRoot)
 }
 
-// FlushDirtyDataAndComputeJournal mocks base method.
-func (m *MockStateAccessor) FlushDirtyDataAndComputeJournal() (map[string]ledger.IAccount, *ledger.BlockJournal) {
+// FlushDirtyData mocks base method.
+func (m *MockStateAccessor) FlushDirtyData() (map[string]ledger.IAccount, *types0.Hash) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FlushDirtyDataAndComputeJournal")
+	ret := m.ctrl.Call(m, "FlushDirtyData")
 	ret0, _ := ret[0].(map[string]ledger.IAccount)
-	ret1, _ := ret[1].(*ledger.BlockJournal)
+	ret1, _ := ret[1].(*types0.Hash)
 	return ret0, ret1
 }
 
-// FlushDirtyDataAndComputeJournal indicates an expected call of FlushDirtyDataAndComputeJournal.
-func (mr *MockStateAccessorMockRecorder) FlushDirtyDataAndComputeJournal() *gomock.Call {
+// FlushDirtyData indicates an expected call of FlushDirtyData.
+func (mr *MockStateAccessorMockRecorder) FlushDirtyData() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FlushDirtyDataAndComputeJournal", reflect.TypeOf((*MockStateAccessor)(nil).FlushDirtyDataAndComputeJournal))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FlushDirtyData", reflect.TypeOf((*MockStateAccessor)(nil).FlushDirtyData))
 }
 
 // GetAccount mocks base method.
@@ -893,20 +875,6 @@ func (m *MockStateAccessor) GetCode(arg0 *types0.Address) []byte {
 func (mr *MockStateAccessorMockRecorder) GetCode(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCode", reflect.TypeOf((*MockStateAccessor)(nil).GetCode), arg0)
-}
-
-// GetLogs mocks base method.
-func (m *MockStateAccessor) GetLogs(arg0 types0.Hash) []*pb.EvmLog {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetLogs", arg0)
-	ret0, _ := ret[0].([]*pb.EvmLog)
-	return ret0
-}
-
-// GetLogs indicates an expected call of GetLogs.
-func (mr *MockStateAccessorMockRecorder) GetLogs(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLogs", reflect.TypeOf((*MockStateAccessor)(nil).GetLogs), arg0)
 }
 
 // GetNonce mocks base method.
@@ -1013,20 +981,6 @@ func (m *MockStateAccessor) SetState(arg0 *types0.Address, arg1, arg2 []byte) {
 func (mr *MockStateAccessorMockRecorder) SetState(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetState", reflect.TypeOf((*MockStateAccessor)(nil).SetState), arg0, arg1, arg2)
-}
-
-// Version mocks base method.
-func (m *MockStateAccessor) Version() uint64 {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Version")
-	ret0, _ := ret[0].(uint64)
-	return ret0
-}
-
-// Version indicates an expected call of Version.
-func (mr *MockStateAccessorMockRecorder) Version() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Version", reflect.TypeOf((*MockStateAccessor)(nil).Version))
 }
 
 // MockIAccount is a mock of IAccount interface.

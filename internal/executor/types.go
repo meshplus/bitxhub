@@ -2,6 +2,7 @@ package executor
 
 import (
 	"github.com/ethereum/go-ethereum/event"
+	"github.com/meshplus/bitxhub-core/agency"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/model/events"
 )
@@ -24,4 +25,6 @@ type Executor interface {
 
 	// SubscribeLogEvent
 	SubscribeLogsEvent(chan<- []*pb.EvmLog) event.Subscription
+
+	GetBoltContracts() map[string]agency.Contract
 }

@@ -95,7 +95,7 @@ func TestNew004(t *testing.T) {
 
 	ldb.Put(compositeKey(journalKey, maxHeightStr), marshalHeight(1))
 
-	journal := &ledger.BlockJournal{}
+	journal := &BlockJournal{}
 	data, err := json.Marshal(journal)
 	assert.Nil(t, err)
 
@@ -121,7 +121,7 @@ func TestNew005(t *testing.T) {
 	ldb.Put(compositeKey(journalKey, maxHeightStr), marshalHeight(5))
 	ldb.Put(compositeKey(journalKey, minHeightStr), marshalHeight(3))
 
-	journal := &ledger.BlockJournal{}
+	journal := &BlockJournal{}
 	data, err := json.Marshal(journal)
 	assert.Nil(t, err)
 
@@ -142,7 +142,7 @@ func TestChainLedger_PersistBlockData(t *testing.T) {
 	account := types.NewAddress(bytesutil.LeftPadBytes([]byte{100}, 20))
 
 	ledger.SetState(account, []byte("a"), []byte("b"))
-	accounts, journal := ledger.FlushDirtyDataAndComputeJournal()
+	accounts, journal := ledger.FlushDirtyData()
 	ledger.PersistBlockData(genBlockData(1, accounts, journal))
 }
 
@@ -153,39 +153,39 @@ func TestChainLedger_Commit(t *testing.T) {
 	account := types.NewAddress(bytesutil.LeftPadBytes([]byte{100}, 20))
 
 	ledger.SetState(account, []byte("a"), []byte("b"))
-	accounts, journal := ledger.FlushDirtyDataAndComputeJournal()
-	_, err := ledger.Commit(1, accounts, journal)
+	accounts, stateRoot := ledger.FlushDirtyData()
+	err := ledger.Commit(1, accounts, stateRoot)
 	assert.Nil(t, err)
 	assert.Equal(t, uint64(1), ledger.Version())
-	assert.Equal(t, "0xA1a6d35708Fa6Cf804B6cF9479F3a55d9A87FbFB83c55a64685AeaBdBa6116B1", journal.ChangedHash.String())
+	assert.Equal(t, "0xA1a6d35708Fa6Cf804B6cF9479F3a55d9A87FbFB83c55a64685AeaBdBa6116B1", stateRoot.String())
 
-	accounts, journal = ledger.FlushDirtyDataAndComputeJournal()
-	_, err = ledger.Commit(2, accounts, journal)
+	accounts, stateRoot = ledger.FlushDirtyData()
+	err = ledger.Commit(2, accounts, stateRoot)
 	assert.Nil(t, err)
 	assert.Equal(t, uint64(2), ledger.Version())
-	assert.Equal(t, "0xF09F0198C06D549316D4ee7C497C9eaeF9D24f5b1075e7bCEF3D0a82DfA742cF", journal.ChangedHash.String())
+	assert.Equal(t, "0xF09F0198C06D549316D4ee7C497C9eaeF9D24f5b1075e7bCEF3D0a82DfA742cF", stateRoot.String())
 
 	ledger.SetState(account, []byte("a"), []byte("3"))
 	ledger.SetState(account, []byte("a"), []byte("2"))
-	accounts, journal = ledger.FlushDirtyDataAndComputeJournal()
-	_, err = ledger.Commit(3, accounts, journal)
+	accounts, stateRoot = ledger.FlushDirtyData()
+	err = ledger.Commit(3, accounts, stateRoot)
 	assert.Nil(t, err)
 	assert.Equal(t, uint64(3), ledger.Version())
-	assert.Equal(t, "0xe9FC370DD36C9BD5f67cCfbc031C909F53A3d8bC7084C01362c55f2D42bA841c", journal.ChangedHash.String())
+	assert.Equal(t, "0xe9FC370DD36C9BD5f67cCfbc031C909F53A3d8bC7084C01362c55f2D42bA841c", stateRoot.String())
 
 	ledger.SetBalance(account, new(big.Int).SetInt64(100))
-	accounts, journal = ledger.FlushDirtyDataAndComputeJournal()
-	_, err = ledger.Commit(4, accounts, journal)
+	accounts, stateRoot = ledger.FlushDirtyData()
+	err = ledger.Commit(4, accounts, stateRoot)
 	assert.Nil(t, err)
 	assert.Equal(t, uint64(4), ledger.Version())
-	assert.Equal(t, "0xC179056204BA33eD6CFC0bfE94ca03319BEb522fd7B0773A589899817B49ec08", journal.ChangedHash.String())
+	assert.Equal(t, "0xC179056204BA33eD6CFC0bfE94ca03319BEb522fd7B0773A589899817B49ec08", stateRoot.String())
 
 	code := bytesutil.RightPadBytes([]byte{100}, 100)
 	ledger.SetCode(account, code)
 	ledger.SetState(account, []byte("b"), []byte("3"))
 	ledger.SetState(account, []byte("c"), []byte("2"))
-	accounts, journal = ledger.FlushDirtyDataAndComputeJournal()
-	_, err = ledger.Commit(5, accounts, journal)
+	accounts, stateRoot = ledger.FlushDirtyData()
+	err = ledger.Commit(5, accounts, stateRoot)
 	assert.Nil(t, err)
 	assert.Equal(t, uint64(5), ledger.Version())
 	//assert.Equal(t, uint64(5), ledger.maxJnlHeight)
@@ -195,7 +195,7 @@ func TestChainLedger_Commit(t *testing.T) {
 	journal5 := getBlockJournal(maxHeight, stateLedger.ldb)
 	assert.Equal(t, uint64(1), minHeight)
 	assert.Equal(t, uint64(5), maxHeight)
-	assert.Equal(t, journal.ChangedHash.String(), journal5.ChangedHash.String())
+	assert.Equal(t, stateRoot.String(), journal5.ChangedHash.String())
 	assert.Equal(t, 1, len(journal5.Journals))
 	entry := journal5.Journals[0]
 	assert.Equal(t, account.String(), entry.Address.String())
@@ -244,10 +244,12 @@ func TestChainLedger_Rollback(t *testing.T) {
 	hash0 := types.Hash{}
 	assert.Equal(t, &hash0, stateLedger.prevJnlHash)
 
+	ledger.PrepareBlock(nil, 1)
 	ledger.SetBalance(addr0, new(big.Int).SetInt64(1))
-	accounts, journal1 := ledger.FlushDirtyDataAndComputeJournal()
+	accounts, journal1 := ledger.FlushDirtyData()
 	ledger.PersistBlockData(genBlockData(1, accounts, journal1))
 
+	ledger.PrepareBlock(nil, 2)
 	ledger.SetBalance(addr0, new(big.Int).SetInt64(2))
 	ledger.SetState(addr0, []byte("a"), []byte("2"))
 
@@ -256,9 +258,10 @@ func TestChainLedger_Rollback(t *testing.T) {
 	codeHash := ret.Bytes()
 	ledger.SetCode(addr0, code[:])
 
-	accounts, journal2 := ledger.FlushDirtyDataAndComputeJournal()
-	ledger.PersistBlockData(genBlockData(2, accounts, journal2))
+	accounts, stateRoot2 := ledger.FlushDirtyData()
+	ledger.PersistBlockData(genBlockData(2, accounts, stateRoot2))
 
+	ledger.PrepareBlock(nil, 3)
 	account0 := ledger.GetAccount(addr0)
 	assert.Equal(t, uint64(2), account0.GetBalance().Uint64())
 
@@ -272,10 +275,10 @@ func TestChainLedger_Rollback(t *testing.T) {
 	codeHash1 := ret1.Bytes()
 	ledger.SetCode(addr0, code1[:])
 
-	accounts, journal3 := ledger.FlushDirtyDataAndComputeJournal()
-	ledger.PersistBlockData(genBlockData(3, accounts, journal3))
+	accounts, stateRoot3 := ledger.FlushDirtyData()
+	ledger.PersistBlockData(genBlockData(3, accounts, stateRoot3))
 
-	assert.Equal(t, journal3.ChangedHash, stateLedger.prevJnlHash)
+	assert.Equal(t, stateRoot3, stateLedger.prevJnlHash)
 	block, err := ledger.GetBlock(3)
 	assert.Nil(t, err)
 	assert.NotNil(t, block)
@@ -286,21 +289,17 @@ func TestChainLedger_Rollback(t *testing.T) {
 
 	err = ledger.Rollback(4)
 	assert.Equal(t, ErrorRollbackToHigherNumber, err)
-
-	err = ledger.RemoveJournalsBeforeBlock(2)
-	assert.Nil(t, err)
-	assert.Equal(t, uint64(2), stateLedger.minJnlHeight)
-
-	err = ledger.Rollback(0)
-	assert.Equal(t, ErrorRollbackTooMuch, err)
-
-	err = ledger.Rollback(1)
-	assert.Equal(t, ErrorRollbackTooMuch, err)
-	assert.Equal(t, uint64(3), ledger.GetChainMeta().Height)
+	//
+	//err = ledger.Rollback(0)
+	//assert.Equal(t, ErrorRollbackTooMuch, err)
+	//
+	//err = ledger.Rollback(1)
+	//assert.Equal(t, ErrorRollbackTooMuch, err)
+	//assert.Equal(t, uint64(3), ledger.GetChainMeta().Height)
 
 	err = ledger.Rollback(3)
 	assert.Nil(t, err)
-	assert.Equal(t, journal3.ChangedHash, stateLedger.prevJnlHash)
+	assert.Equal(t, stateRoot3, stateLedger.prevJnlHash)
 	block, err = ledger.GetBlock(3)
 	assert.Nil(t, err)
 	assert.NotNil(t, block)
@@ -314,8 +313,8 @@ func TestChainLedger_Rollback(t *testing.T) {
 	assert.Equal(t, fmt.Errorf("out of bounds"), err)
 	assert.Nil(t, block)
 	assert.Equal(t, uint64(2), ledger.GetChainMeta().Height)
-	assert.Equal(t, journal2.ChangedHash.String(), stateLedger.prevJnlHash.String())
-	assert.Equal(t, uint64(2), stateLedger.minJnlHeight)
+	assert.Equal(t, stateRoot2.String(), stateLedger.prevJnlHash.String())
+	assert.Equal(t, uint64(1), stateLedger.minJnlHeight)
 	assert.Equal(t, uint64(2), stateLedger.maxJnlHeight)
 
 	account0 = ledger.GetAccount(addr0)
@@ -328,91 +327,16 @@ func TestChainLedger_Rollback(t *testing.T) {
 	assert.Equal(t, []byte("2"), val)
 
 	account1 := ledger.GetAccount(addr1)
-	assert.Equal(t, uint64(0), account1.GetBalance().Uint64())
-	assert.Equal(t, uint64(0), account1.GetNonce())
-	assert.Nil(t, account1.CodeHash())
-	assert.Nil(t, account1.Code())
+	assert.Nil(t, account1)
 
 	ledger.Close()
 
 	ledger, _ = initLedger(t, repoRoot)
-	assert.Equal(t, uint64(2), stateLedger.minJnlHeight)
+	assert.Equal(t, uint64(1), stateLedger.minJnlHeight)
 	assert.Equal(t, uint64(2), stateLedger.maxJnlHeight)
 
 	err = ledger.Rollback(1)
-	assert.Equal(t, ErrorRollbackTooMuch, err)
-}
-
-func TestChainLedger_RemoveJournalsBeforeBlock(t *testing.T) {
-	ledger, repoRoot := initLedger(t, "")
-	stateLedger := ledger.StateLedger.(*SimpleLedger)
-
-	assert.Equal(t, uint64(0), stateLedger.minJnlHeight)
-	assert.Equal(t, uint64(0), stateLedger.maxJnlHeight)
-
-	accounts, journal := ledger.FlushDirtyDataAndComputeJournal()
-	ledger.PersistBlockData(genBlockData(1, accounts, journal))
-	accounts, journal = ledger.FlushDirtyDataAndComputeJournal()
-	ledger.PersistBlockData(genBlockData(2, accounts, journal))
-	accounts, journal = ledger.FlushDirtyDataAndComputeJournal()
-	ledger.PersistBlockData(genBlockData(3, accounts, journal))
-	accounts, journal4 := ledger.FlushDirtyDataAndComputeJournal()
-	ledger.PersistBlockData(genBlockData(4, accounts, journal4))
-
-	assert.Equal(t, uint64(1), stateLedger.minJnlHeight)
-	assert.Equal(t, uint64(4), stateLedger.maxJnlHeight)
-
-	minHeight, maxHeight := getJournalRange(stateLedger.ldb)
-	journal = getBlockJournal(maxHeight, stateLedger.ldb)
-	assert.Equal(t, uint64(1), minHeight)
-	assert.Equal(t, uint64(4), maxHeight)
-	assert.Equal(t, journal4.ChangedHash.String(), journal.ChangedHash.String())
-
-	err := ledger.RemoveJournalsBeforeBlock(5)
-	assert.Equal(t, ErrorRemoveJournalOutOfRange, err)
-
-	err = ledger.RemoveJournalsBeforeBlock(2)
 	assert.Nil(t, err)
-	assert.Equal(t, uint64(2), stateLedger.minJnlHeight)
-	assert.Equal(t, uint64(4), stateLedger.maxJnlHeight)
-
-	minHeight, maxHeight = getJournalRange(stateLedger.ldb)
-	journal = getBlockJournal(maxHeight, stateLedger.ldb)
-	assert.Equal(t, uint64(2), minHeight)
-	assert.Equal(t, uint64(4), maxHeight)
-	assert.Equal(t, journal4.ChangedHash.String(), journal.ChangedHash.String())
-
-	err = ledger.RemoveJournalsBeforeBlock(2)
-	assert.Nil(t, err)
-
-	assert.Equal(t, uint64(2), stateLedger.minJnlHeight)
-	assert.Equal(t, uint64(4), stateLedger.maxJnlHeight)
-
-	err = ledger.RemoveJournalsBeforeBlock(1)
-	assert.Nil(t, err)
-
-	assert.Equal(t, uint64(2), stateLedger.minJnlHeight)
-	assert.Equal(t, uint64(4), stateLedger.maxJnlHeight)
-
-	err = ledger.RemoveJournalsBeforeBlock(4)
-	assert.Nil(t, err)
-
-	assert.Equal(t, uint64(4), stateLedger.minJnlHeight)
-	assert.Equal(t, uint64(4), stateLedger.maxJnlHeight)
-	assert.Equal(t, journal4.ChangedHash, stateLedger.prevJnlHash)
-
-	minHeight, maxHeight = getJournalRange(stateLedger.ldb)
-	journal = getBlockJournal(maxHeight, stateLedger.ldb)
-	assert.Equal(t, uint64(4), minHeight)
-	assert.Equal(t, uint64(4), maxHeight)
-	assert.Equal(t, journal4.ChangedHash.String(), journal.ChangedHash.String())
-
-	ledger.Close()
-
-	ledger, repoRoot = initLedger(t, repoRoot)
-	assert.Equal(t, uint64(4), stateLedger.minJnlHeight)
-	assert.Equal(t, uint64(4), stateLedger.maxJnlHeight)
-	assert.Equal(t, journal4.ChangedHash.String(), stateLedger.prevJnlHash.String())
 }
 
 func TestChainLedger_QueryByPrefix(t *testing.T) {
@@ -429,7 +353,7 @@ func TestChainLedger_QueryByPrefix(t *testing.T) {
 	ledger.SetState(addr, key2, []byte("2"))
 	ledger.SetState(addr, key3, []byte("2"))
 
-	accounts, journal := ledger.FlushDirtyDataAndComputeJournal()
+	accounts, stateRoot := ledger.FlushDirtyData()
 
 	ok, vals := ledger.QueryByPrefix(addr, string([]byte{100}))
 	assert.True(t, ok)
@@ -438,7 +362,7 @@ func TestChainLedger_QueryByPrefix(t *testing.T) {
 	assert.Equal(t, []byte("1"), vals[1])
 	assert.Equal(t, []byte("2"), vals[2])
 
-	_, err := ledger.Commit(1, accounts, journal)
+	err := ledger.Commit(1, accounts, stateRoot)
 	assert.Nil(t, err)
 
 	ok, vals = ledger.QueryByPrefix(addr, string([]byte{100}))
@@ -466,8 +390,8 @@ func TestChainLedger_GetAccount(t *testing.T) {
 	account.SetState(key0, key1)
 	account.SetState(key1, key0)
 
-	accounts, journal := ledger.FlushDirtyDataAndComputeJournal()
-	_, err := ledger.Commit(1, accounts, journal)
+	accounts, stateRoot := ledger.FlushDirtyData()
+	err := ledger.Commit(1, accounts, stateRoot)
 	assert.Nil(t, err)
 
 	account1 := ledger.GetAccount(addr)
@@ -488,15 +412,15 @@ func TestChainLedger_GetAccount(t *testing.T) {
 	ledger.SetState(addr, key0, val0)
 	ledger.SetState(addr, key2, val2)
 	ledger.SetState(addr, key0, val1)
-	accounts, journal = ledger.FlushDirtyDataAndComputeJournal()
-	_, err = ledger.Commit(2, accounts, journal)
+	accounts, stateRoot = ledger.FlushDirtyData()
+	err = ledger.Commit(2, accounts, stateRoot)
 	assert.Nil(t, err)
 
 	ledger.SetState(addr, key0, val0)
 	ledger.SetState(addr, key0, val1)
 	ledger.SetState(addr, key2, nil)
-	accounts, journal = ledger.FlushDirtyDataAndComputeJournal()
-	_, err = ledger.Commit(3, accounts, journal)
+	accounts, stateRoot = ledger.FlushDirtyData()
+	err = ledger.Commit(3, accounts, stateRoot)
 	assert.Nil(t, err)
 
 	ok, val := ledger.GetState(addr, key0)
@@ -519,15 +443,15 @@ func TestChainLedger_GetCode(t *testing.T) {
 
 	ledger.SetCode(addr, code)
 
-	accounts, journal := ledger.FlushDirtyDataAndComputeJournal()
-	_, err := ledger.Commit(1, accounts, journal)
+	accounts, stateRoot := ledger.FlushDirtyData()
+	err := ledger.Commit(1, accounts, stateRoot)
 	assert.Nil(t, err)
 
 	vals := ledger.GetCode(addr)
 	assert.Equal(t, code, vals)
 
-	accounts, journal = ledger.FlushDirtyDataAndComputeJournal()
-	_, err = ledger.Commit(2, accounts, journal)
+	accounts, stateRoot = ledger.FlushDirtyData()
+	err = ledger.Commit(2, accounts, stateRoot)
 	assert.Nil(t, err)
 
 	vals = ledger.GetCode(addr)
@@ -551,7 +475,7 @@ func TestChainLedger_AddAccountsToCache(t *testing.T) {
 	ledger.SetState(addr, key, val)
 	ledger.SetCode(addr, code)
 
-	accounts, journal := ledger.FlushDirtyDataAndComputeJournal()
+	accounts, stateRoot := ledger.FlushDirtyData()
 	ledger.Clear()
 
 	innerAccount, ok := stateLedger.accountCache.getInnerAccount(addr)
@@ -578,7 +502,7 @@ func TestChainLedger_AddAccountsToCache(t *testing.T) {
 	assert.Equal(t, val, val1)
 	assert.Equal(t, code, ledger.GetCode(addr))
 
-	_, err := ledger.Commit(1, accounts, journal)
+	err := ledger.Commit(1, accounts, stateRoot)
 	assert.Nil(t, err)
 
 	assert.Equal(t, uint64(100), ledger.GetBalance(addr).Uint64())
@@ -605,7 +529,7 @@ func TestChainLedger_GetInterchainMeta(t *testing.T) {
 	// create an account
 	account := types.NewAddress(bytesutil.LeftPadBytes([]byte{100}, 20))
 	ledger.SetState(account, []byte("a"), []byte("b"))
-	accounts, journal := ledger.FlushDirtyDataAndComputeJournal()
+	accounts, journal := ledger.FlushDirtyData()
 
 	meta, err := ledger.GetInterchainMeta(1)
 	require.Equal(t, fmt.Errorf("out of bounds"), err)
@@ -644,7 +568,7 @@ func TestChainLedger_AddState(t *testing.T) {
 	key0 := "100"
 	value0 := []byte{100}
 	ledger.AddState(account, []byte(key0), value0)
-	accounts, journal := ledger.FlushDirtyDataAndComputeJournal()
+	accounts, journal := ledger.FlushDirtyData()
 
 	ledger.PersistBlockData(genBlockData(1, accounts, journal))
 	require.Equal(t, uint64(1), ledger.Version())
@@ -658,7 +582,7 @@ func TestChainLedger_AddState(t *testing.T) {
 	value1 := []byte{101}
 	ledger.SetState(account, []byte(key0), value0)
 	ledger.AddState(account, []byte(key1), value1)
-	accounts, journal = ledger.FlushDirtyDataAndComputeJournal()
+	accounts, journal = ledger.FlushDirtyData()
 
 	ledger.PersistBlockData(genBlockData(2, accounts, journal))
 	require.Equal(t, uint64(2), ledger.Version())
@@ -842,18 +766,27 @@ func TestPrepare(t *testing.T) {
 	require.Nil(t, err)
 }
 
-func genBlockData(height uint64, accounts map[string]ledger.IAccount, journal *ledger.BlockJournal) *ledger.BlockData {
-	return &ledger.BlockData{
+func genBlockData(height uint64, accounts map[string]ledger.IAccount, stateRoot *types.Hash) *BlockData {
+	block := &pb.Block{
+		BlockHeader: &pb.BlockHeader{
+			Number:    height,
+			StateRoot: stateRoot,
+		},
+		Transactions: &pb.Transactions{},
+	}
+
+	block.BlockHash = block.Hash()
+	return &BlockData{
 		Block: &pb.Block{
 			BlockHeader: &pb.BlockHeader{
-				Number: height,
+				Number:    height,
+				StateRoot: stateRoot,
 			},
 			BlockHash:    types.NewHash([]byte{1}),
 			Transactions: &pb.Transactions{},
 		},
 		Receipts:       nil,
 		Accounts:       accounts,
-		Journal:        journal,
 		InterchainMeta: &pb.InterchainMeta{},
 	}
 }
