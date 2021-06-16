@@ -307,10 +307,18 @@ func (exec *BlockExecutor) postLogsEvent(receipts []*pb.Receipt) {
 }
 
 func (exec *BlockExecutor) applyTransaction(i int, tx pb.Transaction, invalidReason agency.InvalidReason, opt *agency.TxOpt) *pb.Receipt {
+	defer func() {
+		exec.ledger.SetNonce(tx.GetFrom(), tx.GetNonce()+1)
+		exec.ledger.Finalise(true)
+	}()
+
 	receipt := &pb.Receipt{
 		Version: tx.GetVersion(),
 		TxHash:  tx.GetHash(),
 	}
+
+	exec.ledger.PrepareEVM(common.BytesToHash(tx.GetHash().Bytes()), i)
+
 	switch tx.(type) {
 	case *pb.BxhTransaction:
 		bxhTx := tx.(*pb.BxhTransaction)
@@ -334,11 +342,6 @@ func (exec *BlockExecutor) applyTransaction(i int, tx pb.Transaction, invalidRea
 }
 
 func (exec *BlockExecutor) applyBxhTransaction(i int, tx *pb.BxhTransaction, invalidReason agency.InvalidReason, opt *agency.TxOpt) ([]byte, error) {
-	defer func() {
-		exec.ledger.SetNonce(tx.From, tx.GetNonce()+1)
-		exec.ledger.Finalise(true)
-	}()
-
 	if invalidReason != "" {
 		return nil, fmt.Errorf(string(invalidReason))
 	}
@@ -358,6 +361,7 @@ func (exec *BlockExecutor) applyBxhTransaction(i int, tx *pb.BxhTransaction, inv
 		return nil, err
 	}
 
+	snapshot := exec.ledger.Snapshot()
 	switch data.Type {
 	case pb.TransactionData_NORMAL:
 		val, ok := new(big.Int).SetString(data.Amount, 10)
@@ -365,6 +369,9 @@ func (exec *BlockExecutor) applyBxhTransaction(i int, tx *pb.BxhTransaction, inv
 			val = big.NewInt(0)
 		}
 		err := exec.transfer(tx.From, tx.To, val)
+		if err != nil {
+			exec.ledger.RevertToSnapshot(snapshot)
+		}
 		return nil, err
 	default:
 		var instance vm.VM
@@ -384,16 +391,15 @@ func (exec *BlockExecutor) applyBxhTransaction(i int, tx *pb.BxhTransaction, inv
 			return nil, fmt.Errorf("wrong vm type")
 		}
 
-		return instance.Run(data.Payload)
+		ret, err := instance.Run(data.Payload)
+		if err != nil {
+			exec.ledger.RevertToSnapshot(snapshot)
+		}
+		return ret, err
 	}
 }
 
 func (exec *BlockExecutor) applyEthTransaction(i int, tx *types2.EthTransaction) *pb.Receipt {
-	defer func() {
-		exec.ledger.SetNonce(tx.GetFrom(), tx.GetNonce()+1)
-		exec.ledger.Finalise(true)
-	}()
-
 	receipt := &pb.Receipt{
 		Version: tx.GetVersion(),
 		TxHash:  tx.GetHash(),
@@ -402,9 +408,8 @@ func (exec *BlockExecutor) applyEthTransaction(i int, tx *types2.EthTransaction)
 	gp := new(core.GasPool).AddGas(exec.gasLimit)
 	msg := ledger.NewMessage(tx)
 	statedb := exec.ledger.StateLedger
-	statedb.PrepareEVM(common.BytesToHash(tx.GetHash().Bytes()), i)
-	snapshot := statedb.Snapshot()
 	txContext := vm1.NewEVMTxContext(msg)
+	snapshot := statedb.Snapshot()
 	exec.evm.Reset(txContext, exec.ledger.StateLedger)
 	exec.logger.Debugf("msg gas: %v", msg.Gas())
 	result, err := vm1.ApplyMessage(exec.evm, msg, gp)
