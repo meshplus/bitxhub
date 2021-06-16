@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/meshplus/bitxhub-kit/hexutil"
+
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/governance"
 	"github.com/meshplus/bitxhub-kit/crypto"
@@ -50,12 +52,22 @@ func (suite *RegisterAppchain) SetupSuite() {
 
 // Appchain registers in bitxhub
 func (suite *RegisterAppchain) TestRegisterAppchain() {
+	k2, err := asym.GenerateKeyPair(crypto.Secp256k1)
+	suite.Require().Nil(err)
+	k2Nonce := uint64(0)
+
+	pub2, err := k2.PublicKey().Bytes()
+	suite.Require().Nil(err)
+	addr2, err := k2.PublicKey().Address()
+	suite.Require().Nil(err)
+
 	pub, err := suite.privKey.PublicKey().Bytes()
 	suite.Require().Nil(err)
 	addr, err := suite.privKey.PublicKey().Address()
 	suite.Require().Nil(err)
 
 	did := genUniqueAppchainDID(addr.String())
+	did2 := genUniqueAppchainDID(addr2.String())
 	args := []*pb.Arg{
 		pb.String(did),
 		pb.String(string(bitxid.DID(did).GetChainDID())),
@@ -67,7 +79,8 @@ func (suite *RegisterAppchain) TestRegisterAppchain() {
 		pb.String("税务链"),
 		pb.String("趣链税务链"),
 		pb.String("1.8"),
-		pb.String(base64.StdEncoding.EncodeToString(pub)),
+		pb.String(hexutil.Encode(pub)),
+		//pb.String(base64.StdEncoding.EncodeToString(pub)),
 	}
 	ret, err := invokeBVMContract(suite.api, suite.privKey, suite.normalNonce, constant.AppchainMgrContractAddr.Address(), "Register", args...)
 	suite.Require().Nil(err)
@@ -77,6 +90,24 @@ func (suite *RegisterAppchain) TestRegisterAppchain() {
 	err = json.Unmarshal(ret.Ret, gRet)
 	suite.Require().Nil(err)
 	chainId := string(gRet.Extra)
+
+	args = []*pb.Arg{
+		pb.String(did2),
+		pb.String(string(bitxid.DID(did2).GetChainDID())),
+		pb.String(docAddr),
+		pb.String(docHash),
+		pb.String(""),
+		pb.String(""),
+		pb.String("hyperchain"),
+		pb.String("税务链"),
+		pb.String("趣链税务链"),
+		pb.String("1.8"),
+		pb.String(base64.StdEncoding.EncodeToString(pub2)),
+	}
+	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "Register", args...)
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k2Nonce++
 
 	ret, err = invokeBVMContract(suite.api, suite.privKey, suite.normalNonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainId))
 	suite.Require().Nil(err)
