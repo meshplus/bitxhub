@@ -158,5 +158,5 @@ func (b *BoltStubImpl) GetAccount(address string) (bool, interface{}) {
 	addr := types.NewAddressByStr(address)
 	account := b.ctx.Ledger.GetAccount(addr)
 
-	return true, account
+	return account != nil, account
 }

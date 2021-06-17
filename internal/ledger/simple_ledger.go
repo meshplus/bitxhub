@@ -27,15 +27,17 @@ type revision struct {
 }
 
 type SimpleLedger struct {
-	logger       logrus.FieldLogger
-	ldb          storage.Storage
-	minJnlHeight uint64
-	maxJnlHeight uint64
-	events       sync.Map
-	accounts     map[string]ledger.IAccount
-	accountCache *AccountCache
-	prevJnlHash  *types.Hash
-	repo         *repo.Repo
+	logger        logrus.FieldLogger
+	ldb           storage.Storage
+	minJnlHeight  uint64
+	maxJnlHeight  uint64
+	events        sync.Map
+	accounts      map[string]ledger.IAccount
+	accountCache  *AccountCache
+	blockJournals sync.Map
+	prevJnlHash   *types.Hash
+	repo          *repo.Repo
+	blockHeight   uint64
 
 	journalMutex sync.RWMutex
 	lock         sync.RWMutex
@@ -97,8 +99,8 @@ func (l *SimpleLedger) AccountCache() *AccountCache {
 	return l.accountCache
 }
 
-// RemoveJournalsBeforeBlock removes ledger journals whose block number < height
-func (l *SimpleLedger) RemoveJournalsBeforeBlock(height uint64) error {
+// removeJournalsBeforeBlock removes ledger journals whose block number < height
+func (l *SimpleLedger) removeJournalsBeforeBlock(height uint64) error {
 	l.journalMutex.Lock()
 	defer l.journalMutex.Unlock()
 

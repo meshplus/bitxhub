@@ -18,30 +18,37 @@ var _ ledger.StateLedger = (*SimpleLedger)(nil)
 
 // GetOrCreateAccount get the account, if not exist, create a new account
 func (l *SimpleLedger) GetOrCreateAccount(addr *types.Address) ledger.IAccount {
-	l.lock.RLock()
-	value, ok := l.accounts[addr.String()]
-	l.lock.RUnlock()
-	if ok {
-		return value
-	}
-
-	l.lock.Lock()
-	defer l.lock.Unlock()
-	if value, ok := l.accounts[addr.String()]; ok {
-		return value
-	}
 	account := l.GetAccount(addr)
-	l.accounts[addr.String()] = account
+	if account == nil {
+		account = newAccount(l.ldb, l.accountCache, addr, l.changer)
+		l.changer.append(createObjectChange{account: addr})
+
+		l.lock.Lock()
+		l.accounts[addr.String()] = account
+		l.lock.Unlock()
+	}
 
 	return account
 }
 
 // GetAccount get account info using account Address, if not found, create a new account
 func (l *SimpleLedger) GetAccount(address *types.Address) ledger.IAccount {
+	addr := address.String()
+
+	l.lock.RLock()
+	value, ok := l.accounts[addr]
+	l.lock.RUnlock()
+	if ok {
+		return value
+	}
+
 	account := newAccount(l.ldb, l.accountCache, address, l.changer)
 
 	if innerAccount, ok := l.accountCache.getInnerAccount(address); ok {
 		account.originAccount = innerAccount
+		l.lock.Lock()
+		l.accounts[addr] = account
+		l.lock.Unlock()
 		return account
 	}
 
@@ -50,11 +57,13 @@ func (l *SimpleLedger) GetAccount(address *types.Address) ledger.IAccount {
 		if err := account.originAccount.Unmarshal(data); err != nil {
 			panic(err)
 		}
+		l.lock.Lock()
+		l.accounts[addr] = account
+		l.lock.Unlock()
 		return account
 	}
 
-	l.changer.append(createObjectChange{account: address})
-	return account
+	return nil
 }
 
 func (l *SimpleLedger) setAccount(account ledger.IAccount) {
@@ -195,11 +204,11 @@ func (l *SimpleLedger) Clear() {
 	l.lock.Unlock()
 }
 
-// FlushDirtyDataAndComputeJournal gets dirty accounts and computes block journal
-func (l *SimpleLedger) FlushDirtyDataAndComputeJournal() (map[string]ledger.IAccount, *ledger.BlockJournal) {
+// FlushDirtyData gets dirty accounts and computes block journal
+func (l *SimpleLedger) FlushDirtyData() (map[string]ledger.IAccount, *types.Hash) {
 	dirtyAccounts := make(map[string]ledger.IAccount)
 	var dirtyAccountData []byte
-	var journals []*ledger.Journal
+	var journals []*blockJournalEntry
 	var sortedAddr []string
 	accountData := make(map[string][]byte)
 
@@ -223,20 +232,20 @@ func (l *SimpleLedger) FlushDirtyDataAndComputeJournal() (map[string]ledger.IAcc
 	dirtyAccountData = append(dirtyAccountData, l.prevJnlHash.Bytes()...)
 	journalHash := sha256.Sum256(dirtyAccountData)
 
-	blockJournal := &ledger.BlockJournal{
+	blockJournal := &BlockJournal{
 		Journals:    journals,
 		ChangedHash: types.NewHash(journalHash[:]),
 	}
-
+	l.blockJournals.Store(blockJournal.ChangedHash.String(), blockJournal)
 	l.prevJnlHash = blockJournal.ChangedHash
 	l.Clear()
 	l.accountCache.add(dirtyAccounts)
 
-	return dirtyAccounts, blockJournal
+	return dirtyAccounts, blockJournal.ChangedHash
 }
 
 // Commit commit the state
-func (l *SimpleLedger) Commit(height uint64, accounts map[string]ledger.IAccount, blockJournal *ledger.BlockJournal) (*types.Hash, error) {
+func (l *SimpleLedger) Commit(height uint64, accounts map[string]ledger.IAccount, stateRoot *types.Hash) error {
 	ldbBatch := l.ldb.NewBatch()
 
 	for _, acc := range accounts {
@@ -283,9 +292,15 @@ func (l *SimpleLedger) Commit(height uint64, accounts map[string]ledger.IAccount
 		})
 	}
 
+	value, ok := l.blockJournals.Load(stateRoot.String())
+	if !ok {
+		return fmt.Errorf("cannot get block journal for block %d", height)
+	}
+
+	blockJournal := value.(*BlockJournal)
 	data, err := json.Marshal(blockJournal)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	ldbBatch.Put(compositeKey(journalKey, height), data)
@@ -306,7 +321,13 @@ func (l *SimpleLedger) Commit(height uint64, accounts map[string]ledger.IAccount
 
 	l.accountCache.remove(accounts)
 
-	return blockJournal.ChangedHash, nil
+	if height > 10 {
+		if err := l.removeJournalsBeforeBlock(height - 10); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // Version returns the current version
@@ -478,9 +499,10 @@ func (l *SimpleLedger) AddPreimage(hash types.Hash, preimage []byte) {
 	}
 }
 
-func (l *SimpleLedger) PrepareBlock(hash *types.Hash) {
+func (l *SimpleLedger) PrepareBlock(hash *types.Hash, height uint64) {
 	l.logs = NewEvmLogs()
 	l.logs.bhash = hash
+	l.blockHeight = height
 }
 
 func (l *SimpleLedger) AddLog(log *pb.EvmLog) {

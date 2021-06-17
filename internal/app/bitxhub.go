@@ -20,6 +20,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/storages"
 	"github.com/meshplus/bitxhub/pkg/order"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
+	ledger2 "github.com/meshplus/eth-kit/ledger"
 	"github.com/sirupsen/logrus"
 )
 
@@ -63,7 +64,7 @@ func NewBitXHub(rep *repo.Repo) (*BitXHub, error) {
 		order.WithDigest(chainMeta.BlockHash.String()),
 		order.WithGetChainMetaFunc(bxh.Ledger.GetChainMeta),
 		order.WithGetBlockByHeightFunc(bxh.Ledger.GetBlock),
-		order.WithGetAccountNonceFunc(bxh.Ledger.GetNonce),
+		order.WithGetAccountNonceFunc(getStateLedger(bxh.Ledger).GetNonce),
 	)
 	if err != nil {
 		return nil, err
@@ -82,6 +83,18 @@ func NewBitXHub(rep *repo.Repo) (*BitXHub, error) {
 	bxh.Router = r
 
 	return bxh, nil
+}
+
+func getStateLedger(lg *ledger.Ledger) ledger2.StateLedger {
+	switch sl := lg.StateLedger.(type) {
+	case *ledger.SimpleLedger:
+		return sl
+
+	case *ledger2.ComplexStateLedger:
+		return sl.Copy()
+	}
+
+	panic("unknown state ledger type")
 }
 
 func GenerateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
@@ -122,13 +135,6 @@ func GenerateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 		}
 	}
 
-	if rwLdg.ChainLedger.GetChainMeta().Height == 0 {
-		if err := genesis.Initialize(&rep.Config.Genesis, rwLdg); err != nil {
-			return nil, err
-		}
-		logger.Info("Initialize genesis")
-	}
-
 	// 1. create executor and view executor
 	txExec, err := executor.New(rwLdg, loggers.Logger(loggers.Executor), rep.Config.Executor.Type, rep.Config.GasLimit)
 	if err != nil {
@@ -138,6 +144,13 @@ func GenerateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 	viewExec, err := executor.New(viewLdg, loggers.Logger(loggers.Executor), rep.Config.Executor.Type, rep.Config.GasLimit)
 	if err != nil {
 		return nil, fmt.Errorf("create ViewExecutor: %w", err)
+	}
+
+	if rwLdg.ChainLedger.GetChainMeta().Height == 0 {
+		if err := genesis.Initialize(&rep.Config.Genesis, rwLdg, txExec); err != nil {
+			return nil, err
+		}
+		logger.Info("Initialize genesis")
 	}
 
 	peerMgr, err := peermgr.New(rep, loggers.Logger(loggers.P2P), rwLdg)

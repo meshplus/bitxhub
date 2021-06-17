@@ -56,7 +56,6 @@ func TestNew(t *testing.T) {
 		BlockHash: types.NewHashByStr(from),
 	}
 	chainLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
-	stateLedger.EXPECT().StateDB().Return(mockLedger).AnyTimes()
 
 	logger := log.NewWithModule("executor")
 	executor, err := New(mockLedger, logger, executorType, gasLimit)
@@ -104,7 +103,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	evs = append(evs, ev)
 	chainLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
 	stateLedger.EXPECT().Events(gomock.Any()).Return(evs).AnyTimes()
-	stateLedger.EXPECT().Commit(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+	stateLedger.EXPECT().Commit(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	stateLedger.EXPECT().Clear().AnyTimes()
 	stateLedger.EXPECT().GetState(gomock.Any(), gomock.Any()).Return(true, []byte("10")).AnyTimes()
 	stateLedger.EXPECT().SetState(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
@@ -115,9 +114,8 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	stateLedger.EXPECT().SetCode(gomock.Any(), gomock.Any()).AnyTimes()
 	stateLedger.EXPECT().GetCode(gomock.Any()).Return([]byte("10")).AnyTimes()
 	chainLedger.EXPECT().PersistExecutionResult(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-	stateLedger.EXPECT().FlushDirtyDataAndComputeJournal().Return(make(map[string]ledger2.IAccount), &ledger2.BlockJournal{ChangedHash: &types.Hash{}}).AnyTimes()
-	stateLedger.EXPECT().StateDB().Return(mockLedger).AnyTimes()
-	stateLedger.EXPECT().PrepareBlock(gomock.Any()).AnyTimes()
+	stateLedger.EXPECT().FlushDirtyData().Return(make(map[string]ledger2.IAccount), &types.Hash{}).AnyTimes()
+	stateLedger.EXPECT().PrepareBlock(gomock.Any(), gomock.Any()).AnyTimes()
 	stateLedger.EXPECT().Finalise(gomock.Any()).AnyTimes()
 	stateLedger.EXPECT().Close().AnyTimes()
 	chainLedger.EXPECT().Close().AnyTimes()
@@ -224,14 +222,13 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 
 	chainLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
 	stateLedger.EXPECT().Events(gomock.Any()).Return(nil).AnyTimes()
-	stateLedger.EXPECT().Commit(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+	stateLedger.EXPECT().Commit(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	stateLedger.EXPECT().Clear().AnyTimes()
 	stateLedger.EXPECT().GetState(contractAddr, []byte(fmt.Sprintf("index-tx-%s", id))).Return(true, val).AnyTimes()
 	chainLedger.EXPECT().PersistExecutionResult(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-	stateLedger.EXPECT().FlushDirtyDataAndComputeJournal().Return(make(map[string]ledger2.IAccount), &ledger2.BlockJournal{}).AnyTimes()
+	stateLedger.EXPECT().FlushDirtyData().Return(make(map[string]ledger2.IAccount), &types.Hash{}).AnyTimes()
 	stateLedger.EXPECT().GetNonce(gomock.Any()).Return(uint64(0)).AnyTimes()
 	stateLedger.EXPECT().SetNonce(gomock.Any(), gomock.Any()).AnyTimes()
-	stateLedger.EXPECT().StateDB().Return(mockLedger).AnyTimes()
 	stateLedger.EXPECT().Finalise(gomock.Any()).AnyTimes()
 	logger := log.NewWithModule("executor")
 
@@ -322,8 +319,8 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 	_, from := loadAdminKey(t)
 
 	ldg.SetBalance(from, new(big.Int).SetInt64(100000000))
-	account, journal := ldg.FlushDirtyDataAndComputeJournal()
-	_, err = ldg.Commit(1, account, journal)
+	account, journal := ldg.FlushDirtyData()
+	err = ldg.Commit(1, account, journal)
 	require.Nil(t, err)
 	err = ldg.PersistExecutionResult(mockBlock(1, nil), nil, &pb.InterchainMeta{})
 	require.Nil(t, err)

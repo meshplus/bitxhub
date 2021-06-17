@@ -37,7 +37,7 @@ type BlockWrapper struct {
 	invalidTx map[int]agency.InvalidReason
 }
 
-func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledger2.BlockData {
+func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledger.BlockData {
 	var txHashList []*types.Hash
 	current := time.Now()
 	block := blockWrapper.block
@@ -47,8 +47,8 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	}
 
 	exec.verifyProofs(blockWrapper)
-	exec.evm = newEvm(block.Height(), uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateDB(), exec.ledger.ChainLedger)
-	exec.ledger.PrepareBlock(block.BlockHash)
+	exec.evm = newEvm(block.Height(), uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateLedger, exec.ledger.ChainLedger)
+	exec.ledger.PrepareBlock(block.BlockHash, block.Height())
 	receipts := exec.txsExecutor.ApplyTransactions(block.Transactions.Transactions, blockWrapper.invalidTx)
 
 	applyTxsDuration.Observe(float64(time.Since(current)) / float64(time.Second))
@@ -70,17 +70,19 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 
 	calcMerkleDuration.Observe(float64(time.Since(calcMerkleStart)) / float64(time.Second))
 
+	accounts, stateRoot := exec.ledger.FlushDirtyData()
+
 	block.BlockHeader.TxRoot = l1Root
 	block.BlockHeader.ReceiptRoot = receiptRoot
 	block.BlockHeader.ParentHash = exec.currentBlockHash
 	block.BlockHeader.Bloom = ledger.CreateBloom(receipts)
-
-	accounts, journal := exec.ledger.FlushDirtyDataAndComputeJournal()
+	block.BlockHeader.StateRoot = stateRoot
+	block.BlockHash = block.Hash()
 
 	exec.logger.WithFields(logrus.Fields{
 		"tx_root":      block.BlockHeader.TxRoot.String(),
 		"receipt_root": block.BlockHeader.ReceiptRoot.String(),
-		//"state_root":   block.BlockHeader.StateRoot.String(),
+		"state_root":   block.BlockHeader.StateRoot.String(),
 	}).Debug("block meta")
 	calcBlockSize.Observe(float64(block.Size()))
 	executeBlockDuration.Observe(float64(time.Since(current)) / float64(time.Second))
@@ -94,11 +96,10 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 		L2Roots: l2Roots,
 	}
 
-	data := &ledger2.BlockData{
+	data := &ledger.BlockData{
 		Block:          block,
 		Receipts:       receipts,
 		Accounts:       accounts,
-		Journal:        journal,
 		InterchainMeta: interchainMeta,
 		TxHashList:     txHashList,
 	}
@@ -335,7 +336,7 @@ func (exec *BlockExecutor) applyTransaction(i int, tx pb.Transaction, invalidRea
 func (exec *BlockExecutor) applyBxhTransaction(i int, tx *pb.BxhTransaction, invalidReason agency.InvalidReason, opt *agency.TxOpt) ([]byte, error) {
 	defer func() {
 		exec.ledger.SetNonce(tx.From, tx.GetNonce()+1)
-		exec.ledger.Finalise(false)
+		exec.ledger.Finalise(true)
 	}()
 
 	if invalidReason != "" {
@@ -390,7 +391,7 @@ func (exec *BlockExecutor) applyBxhTransaction(i int, tx *pb.BxhTransaction, inv
 func (exec *BlockExecutor) applyEthTransaction(i int, tx *types2.EthTransaction) *pb.Receipt {
 	defer func() {
 		exec.ledger.SetNonce(tx.GetFrom(), tx.GetNonce()+1)
-		exec.ledger.Finalise(false)
+		exec.ledger.Finalise(true)
 	}()
 
 	receipt := &pb.Receipt{
@@ -400,11 +401,11 @@ func (exec *BlockExecutor) applyEthTransaction(i int, tx *types2.EthTransaction)
 
 	gp := new(core.GasPool).AddGas(exec.gasLimit)
 	msg := ledger.NewMessage(tx)
-	statedb := exec.ledger.StateDB()
+	statedb := exec.ledger.StateLedger
 	statedb.PrepareEVM(common.BytesToHash(tx.GetHash().Bytes()), i)
 	snapshot := statedb.Snapshot()
 	txContext := vm1.NewEVMTxContext(msg)
-	exec.evm.Reset(txContext, exec.ledger.StateDB())
+	exec.evm.Reset(txContext, exec.ledger.StateLedger)
 	exec.logger.Debugf("msg gas: %v", msg.Gas())
 	result, err := vm1.ApplyMessage(exec.evm, msg, gp)
 	if err != nil {
@@ -412,7 +413,7 @@ func (exec *BlockExecutor) applyEthTransaction(i int, tx *types2.EthTransaction)
 		statedb.RevertToSnapshot(snapshot)
 		receipt.Status = pb.Receipt_FAILED
 		receipt.Ret = []byte(err.Error())
-		exec.ledger.Finalise(false)
+		exec.ledger.Finalise(true)
 		return receipt
 	}
 	if result.Failed() {
@@ -426,7 +427,7 @@ func (exec *BlockExecutor) applyEthTransaction(i int, tx *types2.EthTransaction)
 
 	receipt.TxHash = tx.GetHash()
 	receipt.GasUsed = result.UsedGas
-	exec.ledger.Finalise(false)
+	exec.ledger.Finalise(true)
 	if msg.To() == nil || bytes.Equal(msg.To().Bytes(), common.Address{}.Bytes()) {
 		receipt.ContractAddress = types.NewAddress(crypto.CreateAddress(exec.evm.TxContext.Origin, tx.GetNonce()).Bytes())
 	}

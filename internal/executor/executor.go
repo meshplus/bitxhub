@@ -37,7 +37,7 @@ type BlockExecutor struct {
 	logger           logrus.FieldLogger
 	blockC           chan *BlockWrapper
 	preBlockC        chan *pb.CommitEvent
-	persistC         chan *ledger2.BlockData
+	persistC         chan *ledger.BlockData
 	ibtpVerify       proof.Verify
 	validationEngine validator.Engine
 	currentHeight    uint64
@@ -52,6 +52,10 @@ type BlockExecutor struct {
 	evm         *vm.EVM
 	evmChainCfg *params.ChainConfig
 	gasLimit    uint64
+}
+
+func (exec *BlockExecutor) GetBoltContracts() map[string]agency.Contract {
+	return exec.txsExecutor.GetBoltContracts()
 }
 
 // New creates executor instance
@@ -72,7 +76,7 @@ func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, typ string, gasL
 		cancel:           cancel,
 		blockC:           make(chan *BlockWrapper, blockChanNumber),
 		preBlockC:        make(chan *pb.CommitEvent, blockChanNumber),
-		persistC:         make(chan *ledger2.BlockData, persistChanNumber),
+		persistC:         make(chan *ledger.BlockData, persistChanNumber),
 		ibtpVerify:       ibtpVerify,
 		validationEngine: ibtpVerify.ValidationEngine(),
 		currentHeight:    chainLedger.GetChainMeta().Height,

@@ -287,8 +287,8 @@ func (o *SimpleAccount) Query(prefix string) (bool, [][]byte) {
 	return len(ret) != 0, ret
 }
 
-func (o *SimpleAccount) getJournalIfModified() *ledger.Journal {
-	entry := &ledger.Journal{Address: o.Addr}
+func (o *SimpleAccount) getJournalIfModified() *blockJournalEntry {
+	entry := &blockJournalEntry{Address: o.Addr}
 
 	if ledger.InnerAccountChanged(o.originAccount, o.dirtyAccount) {
 		entry.AccountChanged = true
