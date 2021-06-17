@@ -137,14 +137,15 @@ func (exec *BlockExecutor) ApplyReadonlyTransactions(txs []pb.Transaction) []*pb
 	current := time.Now()
 	receipts := make([]*pb.Receipt, 0, len(txs))
 
+	meta := exec.ledger.GetChainMeta()
+	block, err := exec.ledger.GetBlock(meta.Height)
+	if err != nil {
+		exec.logger.Errorf("fail to get block at %d: %v", meta.Height, err.Error())
+		return nil
+	}
+
 	switch sl := exec.ledger.StateLedger.(type) {
 	case *ledger2.ComplexStateLedger:
-		meta := exec.ledger.LoadChainMeta()
-		block, err := exec.ledger.GetBlock(meta.Height)
-		if err != nil {
-			exec.logger.Errorf("fail to get block at %d: %v", meta.Height, err.Error())
-			return nil
-		}
 		sl, err = sl.StateAt(block.BlockHeader.StateRoot)
 		if err != nil {
 			exec.logger.Errorf("fail to new state ledger at %s: %v", meta.BlockHash.String(), err.Error())
@@ -153,6 +154,8 @@ func (exec *BlockExecutor) ApplyReadonlyTransactions(txs []pb.Transaction) []*pb
 		exec.ledger.StateLedger = sl
 	}
 
+	exec.ledger.PrepareBlock(meta.BlockHash, meta.Height)
+	exec.evm = newEvm(meta.Height, uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateLedger, exec.ledger.ChainLedger)
 	for i, tx := range txs {
 		receipt := exec.applyTransaction(i, tx, "", nil)
 

@@ -8,6 +8,7 @@ import (
 
 	"github.com/common-nighthawk/go-figure"
 	"github.com/ethereum/go-ethereum/common/fdlimit"
+	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/meshplus/bitxhub-kit/storage/blockfile"
 	_ "github.com/meshplus/bitxhub/imports"
 	"github.com/meshplus/bitxhub/internal/executor"
@@ -129,10 +130,12 @@ func GenerateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 	viewLdg := rwLdg
 	if rep.Config.Ledger.Type == "simple" {
 		// create read only ledger
-		viewLdg, err = ledger.New(rep, bcStorage, stateStorage, bf, nil, loggers.Logger(loggers.Executor))
+		viewLdg.StateLedger, err = ledger.NewSimpleLedger(rep, stateStorage.(storage.Storage), nil, loggers.Logger(loggers.Executor))
 		if err != nil {
 			return nil, fmt.Errorf("create readonly ledger: %w", err)
 		}
+	} else {
+		viewLdg.StateLedger = rwLdg.StateLedger.(*ledger2.ComplexStateLedger).Copy()
 	}
 
 	// 1. create executor and view executor

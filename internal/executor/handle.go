@@ -454,8 +454,8 @@ func (exec *BlockExecutor) transfer(from, to *types.Address, value *big.Int) err
 
 	tv := exec.ledger.GetBalance(to)
 
-	exec.ledger.SetBalance(from, fv.Sub(fv, value))
-	exec.ledger.SetBalance(to, tv.Add(tv, value))
+	exec.ledger.SetBalance(from, new(big.Int).Sub(fv, value))
+	exec.ledger.SetBalance(to, new(big.Int).Add(tv, value))
 
 	return nil
 }
