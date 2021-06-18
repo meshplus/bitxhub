@@ -230,6 +230,9 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 	stateLedger.EXPECT().GetNonce(gomock.Any()).Return(uint64(0)).AnyTimes()
 	stateLedger.EXPECT().SetNonce(gomock.Any(), gomock.Any()).AnyTimes()
 	stateLedger.EXPECT().Finalise(gomock.Any()).AnyTimes()
+	chainLedger.EXPECT().LoadChainMeta().Return(chainMeta).AnyTimes()
+	chainLedger.EXPECT().GetBlock(gomock.Any()).Return(mockBlock(10, nil), nil).AnyTimes()
+	stateLedger.EXPECT().PrepareBlock(gomock.Any(), gomock.Any()).AnyTimes()
 	logger := log.NewWithModule("executor")
 
 	exec, err := New(mockLedger, logger, executorType, gasLimit)
