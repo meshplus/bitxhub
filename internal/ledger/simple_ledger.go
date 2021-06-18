@@ -52,6 +52,10 @@ type SimpleLedger struct {
 	logs       *evmLogs
 }
 
+func (l *SimpleLedger) Copy() ledger.StateLedger {
+	return l
+}
+
 func (l *SimpleLedger) Finalise(b bool) {
 	l.ClearChangerAndRefund()
 }

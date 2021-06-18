@@ -284,6 +284,7 @@ func testStartRouter(t *testing.T) *InterchainRouter {
 		ChainLedger: chainLedger,
 		StateLedger: stateLedger,
 	}
+	stateLedger.EXPECT().Copy().Return(stateLedger).AnyTimes()
 	stateLedger.EXPECT().QueryByPrefix(constant.AppchainMgrContractAddr.Address(), appchain_mgr.PREFIX).Return(true, ret)
 
 	mockPeerMgr := mock_peermgr.NewMockPeerManager(mockCtl)

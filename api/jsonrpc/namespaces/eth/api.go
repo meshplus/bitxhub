@@ -107,13 +107,12 @@ func (api *PublicEthereumAPI) BlockNumber() (hexutil.Uint64, error) {
 func (api *PublicEthereumAPI) GetBalance(address common.Address, blockNum rpctypes.BlockNumber) (*hexutil.Big, error) {
 	api.logger.Debugf("eth_getBalance, address: %s, block number: %d", address.String(), blockNum)
 
-	addr := types.NewAddress(address.Bytes())
-	account, err := api.getAccountAt(addr, blockNum)
+	stateLedger, err := api.getStateLedgerAt(blockNum)
 	if err != nil {
 		return nil, err
 	}
 
-	balance := account.GetBalance()
+	balance := stateLedger.GetBalance(types.NewAddress(address.Bytes()))
 	api.logger.Debugf("balance: %d", balance)
 
 	return (*hexutil.Big)(balance), nil
@@ -123,13 +122,12 @@ func (api *PublicEthereumAPI) GetBalance(address common.Address, blockNum rpctyp
 func (api *PublicEthereumAPI) GetStorageAt(address common.Address, key string, blockNum rpctypes.BlockNumber) (hexutil.Bytes, error) {
 	api.logger.Debugf("eth_getStorageAt, address: %s, key: %s, block number: %d", address, key, blockNum)
 
-	addr := types.NewAddress(address.Bytes())
-	account, err := api.getAccountAt(addr, blockNum)
+	stateLedger, err := api.getStateLedgerAt(blockNum)
 	if err != nil {
 		return nil, err
 	}
 
-	ok, val := account.GetState([]byte(key))
+	ok, val := stateLedger.GetState(types.NewAddress(address.Bytes()), []byte(key))
 	if !ok {
 		return nil, nil
 	}
@@ -141,13 +139,12 @@ func (api *PublicEthereumAPI) GetStorageAt(address common.Address, key string, b
 func (api *PublicEthereumAPI) GetTransactionCount(address common.Address, blockNum rpctypes.BlockNumber) (*hexutil.Uint64, error) {
 	api.logger.Debugf("eth_getTransactionCount, address: %s, block number: %d", address, blockNum)
 
-	addr := types.NewAddress(address.Bytes())
-	account, err := api.getAccountAt(addr, blockNum)
+	stateLedger, err := api.getStateLedgerAt(blockNum)
 	if err != nil {
 		return nil, err
 	}
 
-	nonce := account.GetNonce()
+	nonce := stateLedger.GetNonce(types.NewAddress(address.Bytes()))
 
 	return (*hexutil.Uint64)(&nonce), nil
 }
@@ -191,15 +188,14 @@ func (api *PublicEthereumAPI) GetUncleCountByBlockNumber(_ uint64) hexutil.Uint 
 
 // GetCode returns the contract code at the given address, blockNum is ignored.
 func (api *PublicEthereumAPI) GetCode(address common.Address, blockNum rpctypes.BlockNumber) (hexutil.Bytes, error) {
-	api.logger.Debugf("eth_getCode, address: %s, block number: %d", address, blockNum)
+	api.logger.Debugf("eth_getCode, address: %s, block number: %d", address.String(), blockNum)
 
-	addr := types.NewAddress(address.Bytes())
-	account, err := api.getAccountAt(addr, blockNum)
+	stateLedger, err := api.getStateLedgerAt(blockNum)
 	if err != nil {
 		return nil, err
 	}
 
-	code := account.Code()
+	code := stateLedger.GetCode(types.NewAddress(address.Bytes()))
 
 	return code, nil
 }
@@ -242,9 +238,9 @@ func (api *PublicEthereumAPI) SendRawTransaction(data hexutil.Bytes) (common.Has
 	return api.sendTransaction(tx)
 }
 
-func (api *PublicEthereumAPI) getAccountAt(addr *types.Address, blockNum rpctypes.BlockNumber) (ledger2.IAccount, error) {
+func (api *PublicEthereumAPI) getStateLedgerAt(blockNum rpctypes.BlockNumber) (ledger2.StateLedger, error) {
 	if api.config.Ledger.Type == "simple" {
-		return api.api.Account().GetAccount(addr), nil
+		return api.api.Broker().GetStateLedger(), nil
 	}
 
 	if blockNum == rpctypes.PendingBlockNumber || blockNum == rpctypes.LatestBlockNumber {
@@ -261,12 +257,7 @@ func (api *PublicEthereumAPI) getAccountAt(addr *types.Address, blockNum rpctype
 		return nil, err
 	}
 
-	ledger, err := api.api.Broker().GetStateLedger().(*ledger2.ComplexStateLedger).StateAt(block.BlockHeader.StateRoot)
-	if err != nil {
-		return nil, err
-	}
-
-	return ledger.GetAccount(addr), nil
+	return api.api.Broker().GetStateLedger().(*ledger2.ComplexStateLedger).StateAt(block.BlockHeader.StateRoot)
 }
 
 func (api *PublicEthereumAPI) checkTransaction(tx *types2.EthTransaction) error {

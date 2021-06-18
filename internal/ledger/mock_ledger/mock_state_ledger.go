@@ -211,6 +211,20 @@ func (mr *MockStateLedgerMockRecorder) Commit(height, accounts, stateRoot interf
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Commit", reflect.TypeOf((*MockStateLedger)(nil).Commit), height, accounts, stateRoot)
 }
 
+// Copy mocks base method.
+func (m *MockStateLedger) Copy() ledger.StateLedger {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Copy")
+	ret0, _ := ret[0].(ledger.StateLedger)
+	return ret0
+}
+
+// Copy indicates an expected call of Copy.
+func (mr *MockStateLedgerMockRecorder) Copy() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Copy", reflect.TypeOf((*MockStateLedger)(nil).Copy))
+}
+
 // CreateEVMAccount mocks base method.
 func (m *MockStateLedger) CreateEVMAccount(arg0 common.Address) {
 	m.ctrl.T.Helper()
