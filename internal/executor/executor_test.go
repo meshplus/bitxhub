@@ -283,7 +283,7 @@ func mockCommitEvent(blockNumber uint64, txs []pb.Transaction) *pb.CommitEvent {
 func mockBlock(blockNumber uint64, txs []pb.Transaction) *pb.Block {
 	header := &pb.BlockHeader{
 		Number:    blockNumber,
-		Timestamp: time.Now().UnixNano(),
+		Timestamp: time.Now().Unix(),
 	}
 
 	block := &pb.Block{

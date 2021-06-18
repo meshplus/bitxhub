@@ -300,7 +300,7 @@ func testStartRouter(t *testing.T) *InterchainRouter {
 func mockBlock(blockNumber uint64, txs []pb.Transaction) *pb.Block {
 	header := &pb.BlockHeader{
 		Number:    blockNumber,
-		Timestamp: time.Now().UnixNano(),
+		Timestamp: time.Now().Unix(),
 	}
 	return &pb.Block{
 		BlockHeader:  header,

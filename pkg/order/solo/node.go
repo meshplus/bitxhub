@@ -164,7 +164,7 @@ func (n *Node) listenReadyBlock() {
 					BlockHeader: &pb.BlockHeader{
 						Version:   []byte("1.0.0"),
 						Number:    proposal.Height,
-						Timestamp: time.Now().UnixNano(),
+						Timestamp: time.Now().Unix(),
 					},
 					Transactions: proposal.TxList,
 				}
