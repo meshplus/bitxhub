@@ -65,7 +65,7 @@ func NewBitXHub(rep *repo.Repo) (*BitXHub, error) {
 		order.WithDigest(chainMeta.BlockHash.String()),
 		order.WithGetChainMetaFunc(bxh.Ledger.GetChainMeta),
 		order.WithGetBlockByHeightFunc(bxh.Ledger.GetBlock),
-		order.WithGetAccountNonceFunc(getStateLedger(bxh.Ledger).GetNonce),
+		order.WithGetAccountNonceFunc(bxh.Ledger.Copy().GetNonce),
 	)
 	if err != nil {
 		return nil, err
@@ -84,18 +84,6 @@ func NewBitXHub(rep *repo.Repo) (*BitXHub, error) {
 	bxh.Router = r
 
 	return bxh, nil
-}
-
-func getStateLedger(lg *ledger.Ledger) ledger2.StateLedger {
-	switch sl := lg.StateLedger.(type) {
-	case *ledger.SimpleLedger:
-		return sl
-
-	case *ledger2.ComplexStateLedger:
-		return sl.Copy()
-	}
-
-	panic("unknown state ledger type")
 }
 
 func GenerateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
