@@ -1,7 +1,6 @@
 package coreapi
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -9,8 +8,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	types2 "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	contracts2 "github.com/meshplus/bitxhub-core/eth-contracts"
 	"github.com/meshplus/bitxhub-kit/types"
@@ -332,35 +332,42 @@ func (b *BrokerAPI) handleMultiSignsBurnReq(hash string) (string, []byte, error)
 	if err != nil {
 		return "", nil, fmt.Errorf("cannot find receipt with hash %s", hash)
 	}
-	tx, err := b.bxh.Ledger.GetTransaction(types.NewHashByStr(hash))
-	if err != nil {
-		return "", nil, fmt.Errorf("cannot find transaction with hash %s", hash)
-	}
 	ok, interchainSwapAddr := b.bxh.Ledger.GetState(constant.EthHeaderMgrContractAddr.Address(), []byte(contracts.InterchainSwapAddrKey))
 	if !ok {
 		return "", nil, fmt.Errorf("cannot find interchainswap contract")
 	}
 
-	interchainAbi, err := abi.JSON(bytes.NewReader([]byte(contracts2.InterchainSwapABI)))
+	addr := &contracts.ContractAddr{}
+	err = json.Unmarshal(interchainSwapAddr, &addr)
 	if err != nil {
 		return "", nil, err
 	}
 	var burn *contracts2.InterchainSwapBurn
 	for _, log := range receipt.GetEvmLogs() {
-		if !strings.EqualFold(log.Address.String(), common.BytesToAddress(interchainSwapAddr).String()) {
+		if !strings.EqualFold(log.Address.String(), addr.Addr) {
 			continue
 		}
 
 		if log.Removed {
 			continue
 		}
-		for _, topic := range log.Topics {
-			if strings.EqualFold(topic.String(), interchainAbi.Events["Burn"].ID.String()) {
-				if err := interchainAbi.UnpackIntoInterface(&burn, "Burn", log.Data); err != nil {
-					b.logger.Error(err)
-					continue
-				}
-			}
+
+		interchainSwap, err := contracts2.NewInterchainSwap(common.Address{}, nil)
+		if err != nil {
+			continue
+		}
+		data, err := json.Marshal(log)
+		if err != nil {
+			continue
+		}
+		ethLog := &types2.Log{}
+		err = json.Unmarshal(data, &ethLog)
+		if err != nil {
+			continue
+		}
+		burn, err = interchainSwap.ParseBurn(*ethLog)
+		if err != nil {
+			continue
 		}
 	}
 
@@ -370,21 +377,38 @@ func (b *BrokerAPI) handleMultiSignsBurnReq(hash string) (string, []byte, error)
 
 	//abi.encodePacked
 	abiHash := solsha3.SoliditySHA3(
-		solsha3.Address(burn.EthToken),
-		solsha3.Address(tx.GetFrom()),
-		solsha3.Address(burn.Recipient),
+		solsha3.Address(burn.EthToken.String()),
+		solsha3.Address(burn.Burner.String()),
+		solsha3.Address(burn.Recipient.String()),
 		solsha3.Uint256(burn.Amount),
-		solsha3.String(receipt.TxHash.Bytes()),
+		solsha3.String(hash),
 	)
+	b.logger.WithFields(logrus.Fields{
+		"1": burn.EthToken.String(),
+		"2": burn.Burner.String(),
+		"3": burn.Recipient.Hex(),
+		"4": burn.Amount,
+		"5": hash,
+	}).Warnf("muti qian args")
+
 	prefixedHash := crypto.Keccak256Hash(
-		[]byte(fmt.Sprintf("\x19Ethereum Signed Message:\n%v", len(hash))),
+		[]byte(fmt.Sprintf("\x19Ethereum Signed Message:\n%v", len(abiHash))),
 		abiHash,
 	)
 	key := b.bxh.GetPrivKey()
+	s, _ := key.PrivKey.Bytes()
+	b.logger.WithFields(logrus.Fields{
+		"PrivKey": s,
+	}).Warnf("muti qian PrivKey")
+
 	sign, err := key.PrivKey.Sign(prefixedHash[:])
 	if err != nil {
 		return "", nil, fmt.Errorf("bitxhub sign: %w", err)
 	}
+	b.logger.WithFields(logrus.Fields{
+		"PrivKey": hexutil.Encode(sign),
+	}).Warnf("muti qian sign")
+
 	return key.Address, sign, nil
 }
 

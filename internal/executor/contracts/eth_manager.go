@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/meshplus/bitxhub-model/constant"
+	"github.com/meshplus/bitxhub-model/pb"
 	"os"
 	"strconv"
 	"strings"
@@ -38,7 +40,9 @@ func NewEthHeaderManager(ropstenOracle *appchain.EthLightChainOracle) *EthHeader
 }
 
 func (ehm *EthHeaderManager) SetEscrowAddr(addr string) *boltvm.Response {
-	//TODO:add governance
+	if res := ehm.IsAdmin(); !res.Ok {
+		return res
+	}
 	ok := common.IsHexAddress(addr)
 	if ok {
 		escrowsAddr := ContractAddr{addr}
@@ -57,7 +61,9 @@ func (ehm *EthHeaderManager) GetEscrowAddr() *boltvm.Response {
 }
 
 func (ehm *EthHeaderManager) SetInterchainSwapAddr(addr string) *boltvm.Response {
-	//TODO:add governance
+	if res := ehm.IsAdmin(); !res.Ok {
+		return res
+	}
 	ok := common.IsHexAddress(addr)
 	if ok {
 		interchainSwapAddr := &ContractAddr{addr}
@@ -139,7 +145,7 @@ func (ehm *EthHeaderManager) Mint(receiptData []byte, proofData []byte) *boltvm.
 		return boltvm.Error(err.Error())
 	}
 	input, err := interchainSwapAbi.Pack("mint", escrowsLockEvent.EthToken, escrowsLockEvent.RelayToken, escrowsLockEvent.Locker,
-		escrowsLockEvent.Recipient, escrowsLockEvent.Amount, receipt.TxHash.String(),escrowsLockEvent.AppchainIndex)
+		escrowsLockEvent.Recipient, escrowsLockEvent.Amount, receipt.TxHash.String(), escrowsLockEvent.AppchainIndex)
 	if err != nil {
 		return boltvm.Error(err.Error())
 	}
@@ -160,12 +166,8 @@ func (ehm *EthHeaderManager) GetPrefixedHash(hash string) *boltvm.Response {
 }
 
 func (ehm *EthHeaderManager) unpackEscrowsLock(receipt *types.Receipt) (*contracts.EscrowsLock, error) {
-	escrowsAbi, err := abi.JSON(bytes.NewReader([]byte(contracts.EscrowsABI)))
-	if err != nil {
-		return nil, err
-	}
 	var escrowsAddr ContractAddr
-	ok := ehm.GetObject(EscrowsAddrKey, escrowsAddr)
+	ok := ehm.GetObject(EscrowsAddrKey, &escrowsAddr)
 	if !ok {
 		return nil, fmt.Errorf("not found the escrows contract address")
 	}
@@ -178,14 +180,29 @@ func (ehm *EthHeaderManager) unpackEscrowsLock(receipt *types.Receipt) (*contrac
 		if log.Removed {
 			continue
 		}
-		if err := escrowsAbi.UnpackIntoInterface(&lock, "Lock", log.Data); err != nil {
+		escrows, err := contracts.NewEscrows(common.Address{}, nil)
+		if err != nil {
 			continue
 		}
+		lock, _ = escrows.ParseLock(*log)
 	}
 	if lock == nil {
 		return nil, fmt.Errorf("not found the escrow lock event")
 	}
 	return lock, nil
+}
+
+func (ehm *EthHeaderManager) IsAdmin() *boltvm.Response {
+	ret := ehm.CrossInvoke(constant.RoleContractAddr.String(), "IsAdmin", pb.String(ehm.Caller()))
+	is, err := strconv.ParseBool(string(ret.Result))
+	if err != nil {
+		return boltvm.Error(fmt.Errorf("judge caller type: %w", err).Error())
+	}
+
+	if !is {
+		return boltvm.Error("caller is not an admin account")
+	}
+	return boltvm.Success([]byte("1"))
 }
 
 func EthTxKey(hash string) string {

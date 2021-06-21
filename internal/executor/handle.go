@@ -385,7 +385,7 @@ func (exec *BlockExecutor) applyBxhTransaction(i int, tx *pb.BxhTransaction, inv
 
 	if tx.IsIBTP() {
 		ctx := vm.NewContext(tx, uint64(i), nil, exec.ledger, exec.logger)
-		instance := boltvm.New(ctx, exec.validationEngine, exec.getContracts(opt))
+		instance := boltvm.New(ctx, exec.validationEngine,exec.evm, exec.getContracts(opt))
 		ret, err := instance.HandleIBTP(tx.GetIBTP())
 		return ret, GasBVMTx, err
 	}

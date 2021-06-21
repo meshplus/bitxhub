@@ -14,7 +14,6 @@ type Context struct {
 	CurrentCaller    *types.Address
 	Ledger           *ledger.Ledger
 	TransactionIndex uint64
-	Transaction      pb.Transaction
 	TransactionData  *pb.TransactionData
 	Nonce            uint64
 	Tx               *pb.BxhTransaction
@@ -30,7 +29,6 @@ func NewContext(tx pb.Transaction, txIndex uint64, data *pb.TransactionData, led
 		CurrentCaller:    tx.GetFrom(),
 		Ledger:           ledger,
 		TransactionIndex: txIndex,
-		Transaction:      tx,
 		TransactionData:  data,
 		Tx:               bxhTx,
 		Nonce:            tx.GetNonce(),

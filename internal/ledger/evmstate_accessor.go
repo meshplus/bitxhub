@@ -200,28 +200,6 @@ func CreateBloom(receipts EvmReceipts) *types.Bloom {
 	return &bin
 }
 
-func NewMessage(tx *types2.EthTransaction) etherTypes.Message {
-	from := common.BytesToAddress(tx.GetFrom().Bytes())
-	var to *common.Address
-	if tx.GetTo() != nil {
-		toAddr := common.BytesToAddress(tx.GetTo().Bytes())
-		to = &toAddr
-	}
-	nonce := tx.GetNonce()
-	amount := tx.GetValue()
-	gas := tx.GetGas()
-	gasPrice := tx.GetGasPrice()
-	data := tx.GetPayload()
-	accessList := tx.GetInner().GetAccessList()
-
-	checkNonce := true
-	if v, _, _ := tx.GetRawSignature(); v == nil {
-		checkNonce = false
-	}
-
-	return etherTypes.NewMessage(from, to, nonce, amount, gas, gasPrice, data, accessList, checkNonce)
-}
-
 func NewMessageFromBxh(tx *pb.BxhTransaction) etherTypes.Message {
 	from := common.BytesToAddress(tx.GetFrom().Bytes())
 	var to *common.Address
@@ -230,9 +208,11 @@ func NewMessageFromBxh(tx *pb.BxhTransaction) etherTypes.Message {
 		to = &toAddr
 	}
 	nonce := tx.GetNonce()
-	amount, _ := new(big.Int).SetString(tx.GetAmount(), 10)
-	gas := tx.GetGas()
+	amount, _ := new(big.Int).SetString("0", 10)
+	gas := uint64(1000000)
 	gasPrice := tx.GetGasPrice()
+	gasFeeCap := new(big.Int).SetInt64(0)
+	gasTipCap := new(big.Int).SetInt64(0)
 	data := tx.GetPayload()
 	accessList := new(etherTypes.AccessList)
 
@@ -241,5 +221,5 @@ func NewMessageFromBxh(tx *pb.BxhTransaction) etherTypes.Message {
 		checkNonce = false
 	}
 
-	return etherTypes.NewMessage(from, to, nonce, amount, gas, gasPrice, data, *accessList, checkNonce)
+	return etherTypes.NewMessage(from, to, nonce, amount, gas, gasPrice, gasFeeCap, gasTipCap, data, *accessList, checkNonce)
 }

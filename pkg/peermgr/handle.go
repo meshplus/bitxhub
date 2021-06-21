@@ -1,15 +1,14 @@
 package peermgr
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
+	types2 "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	contracts2 "github.com/meshplus/bitxhub-core/eth-contracts"
 	"github.com/meshplus/bitxhub-kit/types"
@@ -294,35 +293,41 @@ func (swarm *Swarm) handleFetchBurnSignMessage(s network.Stream, data []byte) {
 		if err != nil {
 			return "", nil, fmt.Errorf("cannot find receipt with hash %s", hash)
 		}
-		tx, err := swarm.ledger.GetTransaction(types.NewHashByStr(hash))
-		if err != nil {
-			return "", nil, fmt.Errorf("cannot find transaction with hash %s", hash)
-		}
 		ok, interchainSwapAddr := swarm.ledger.GetState(constant.EthHeaderMgrContractAddr.Address(), []byte(contracts.InterchainSwapAddrKey))
 		if !ok {
 			return "", nil, fmt.Errorf("cannot find interchainswap contract")
 		}
 
-		interchainAbi, err := abi.JSON(bytes.NewReader([]byte(contracts2.InterchainSwapABI)))
+		addr := &contracts.ContractAddr{}
+		err = json.Unmarshal(interchainSwapAddr, &addr)
 		if err != nil {
 			return "", nil, err
 		}
 		var burn *contracts2.InterchainSwapBurn
 		for _, log := range receipt.GetEvmLogs() {
-			if !strings.EqualFold(log.Address.String(), common.BytesToAddress(interchainSwapAddr).String()) {
+			if !strings.EqualFold(log.Address.String(), addr.Addr) {
 				continue
 			}
 
 			if log.Removed {
 				continue
 			}
-			for _, topic := range log.Topics {
-				if strings.EqualFold(topic.String(), interchainAbi.Events["Burn"].ID.String()) {
-					if err := interchainAbi.UnpackIntoInterface(&burn, "Burn", log.Data); err != nil {
-						swarm.logger.Error(err)
-						continue
-					}
-				}
+			interchainSwap, err := contracts2.NewInterchainSwap(common.Address{}, nil)
+			if err != nil {
+				continue
+			}
+			data, err := json.Marshal(log)
+			if err != nil {
+				continue
+			}
+			ethLog := &types2.Log{}
+			err = json.Unmarshal(data, &ethLog)
+			if err != nil {
+				continue
+			}
+			burn, err = interchainSwap.ParseBurn(*ethLog)
+			if err != nil {
+				continue
 			}
 		}
 
@@ -333,13 +338,13 @@ func (swarm *Swarm) handleFetchBurnSignMessage(s network.Stream, data []byte) {
 		//abi.encodePacked
 		abiHash := solsha3.SoliditySHA3(
 			solsha3.Address(burn.EthToken),
-			solsha3.Address(tx.GetFrom()),
+			solsha3.Address(burn.Burner),
 			solsha3.Address(burn.Recipient),
 			solsha3.Uint256(burn.Amount),
-			solsha3.String(receipt.TxHash.Bytes()),
+			solsha3.String(string(data)),
 		)
 		prefixedHash := crypto.Keccak256Hash(
-			[]byte(fmt.Sprintf("\x19Ethereum Signed Message:\n%v", len(hash))),
+			[]byte(fmt.Sprintf("\x19Ethereum Signed Message:\n%v", len(abiHash))),
 			abiHash,
 		)
 		key := swarm.repo.Key

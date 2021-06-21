@@ -92,6 +92,7 @@ func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, client *appchain
 		wasmInstances:    make(map[string]*wasmer.Instance),
 		evmChainCfg:      newEVMChainCfg(),
 		config:           *config,
+		bxhGasPrice:      gasPrice,
 		gasLimit:         config.GasLimit,
 		lock:             &sync.Mutex{},
 	}
@@ -176,7 +177,7 @@ func (exec *BlockExecutor) ApplyReadonlyTransactions(txs []pb.Transaction) []*pb
 	}
 
 	exec.ledger.PrepareBlock(meta.BlockHash, meta.Height)
-	exec.evm = newEvm(meta.Height, uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateLedger, exec.ledger.ChainLedger)
+	exec.evm = newEvm(meta.Height, uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateLedger, exec.ledger.ChainLedger, exec.admins[0])
 	for i, tx := range txs {
 		receipt := exec.applyTransaction(i, tx, "", nil)
 

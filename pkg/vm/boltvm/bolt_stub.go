@@ -23,10 +23,6 @@ type BoltStubImpl struct {
 	ve  validator.Engine
 }
 
-func (b *BoltStubImpl) CrossInvokeEVM(address string, input []byte) *boltvm.Response {
-	panic("implement me")
-}
-
 func (b *BoltStubImpl) Caller() string {
 	return b.ctx.Caller.String()
 }
@@ -45,12 +41,12 @@ func (b *BoltStubImpl) Logger() logrus.FieldLogger {
 
 // GetTxHash returns the transaction hash
 func (b *BoltStubImpl) GetTxHash() *types.Hash {
-	hash := b.ctx.Transaction.GetHash()
+	hash := b.ctx.Tx.GetHash()
 	return hash
 }
 
 func (b *BoltStubImpl) GetTxTimeStamp() int64 {
-	timeStamp := b.ctx.Transaction.GetTimeStamp()
+	timeStamp := b.ctx.Tx.GetTimeStamp()
 	return timeStamp
 }
 
@@ -146,7 +142,7 @@ func (b *BoltStubImpl) CrossInvoke(address, method string, args ...*pb.Arg) *bol
 		CurrentCaller:    b.bvm.ctx.Callee,
 		Ledger:           b.bvm.ctx.Ledger,
 		TransactionIndex: b.bvm.ctx.TransactionIndex,
-		Transaction:      b.bvm.ctx.Transaction,
+		Tx:               b.bvm.ctx.Tx,
 		Logger:           b.bvm.ctx.Logger,
 	}
 
@@ -180,11 +176,11 @@ func (b *BoltStubImpl) CrossInvokeEVM(address string, data []byte) *boltvm.Respo
 	}
 	gp := new(core.GasPool).AddGas(10000000)
 	msg := ledger.NewMessageFromBxh(tx)
-	statedb := ctx.Ledger.StateDB()
-	statedb.PrepareEVM(common.BytesToHash(ctx.TransactionHash.Bytes()), int(ctx.TransactionIndex))
+	statedb := ctx.Ledger.StateLedger
+	statedb.PrepareEVM(common.BytesToHash(ctx.Tx.TransactionHash.Bytes()), int(ctx.TransactionIndex))
 	snapshot := statedb.Snapshot()
 	txContext := vm1.NewEVMTxContext(msg)
-	b.bvm.evm.Reset(txContext, ctx.Ledger.StateDB())
+	b.bvm.evm.Reset(txContext, statedb)
 	result, err := vm1.ApplyMessage(b.bvm.evm, msg, gp)
 	if err != nil {
 		statedb.RevertToSnapshot(snapshot)
@@ -195,7 +191,7 @@ func (b *BoltStubImpl) CrossInvokeEVM(address string, data []byte) *boltvm.Respo
 		return boltvm.Error(string(append([]byte(result.Err.Error()), result.Revert()...)))
 	}
 	ret := result.Return()
-	ctx.Ledger.ClearChangerAndRefund()
+	ctx.Ledger.Finalise(false)
 	return boltvm.Success(ret)
 }
 
