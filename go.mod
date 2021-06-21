@@ -9,7 +9,6 @@ require (
 	github.com/common-nighthawk/go-figure v0.0.0-20190529165535-67e0ed34491a
 	github.com/coreos/etcd v3.3.18+incompatible
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f // indirect
-	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/ethereum/go-ethereum v1.10.4
 	github.com/fatih/color v1.7.0
 	github.com/gobuffalo/envy v1.9.0 // indirect
@@ -29,7 +28,7 @@ require (
 	github.com/juju/ratelimit v1.0.1
 	github.com/libp2p/go-libp2p-core v0.5.6
 	github.com/magiconair/properties v1.8.4
-	github.com/meshplus/bitxhub-core v1.3.1-0.20210609023845-fbfb816fd35d
+	github.com/meshplus/bitxhub-core v1.3.1-0.20210624080452-dee78b863631
 	github.com/meshplus/bitxhub-kit v1.2.1-0.20210524063043-9afae78ac098
 	github.com/meshplus/bitxhub-model v1.2.1-0.20210609034711-abda1813269e
 	github.com/meshplus/bitxid v0.0.0-20210412025850-e0eaf0f9063a

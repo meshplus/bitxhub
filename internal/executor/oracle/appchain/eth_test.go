@@ -45,20 +45,16 @@ func TestRopstenLightClient(t *testing.T) {
 	require.Nil(t, err)
 	defer os.RemoveAll(repoRoot)
 
-	oracle, err := NewRopstenOracle(
+	oracle, err := NewRopstenOracle("../../../../config/appchain/eth_header1.json", repoRoot, false, log.NewWithModule("test"))
 	require.Nil(t, err)
-
-	currentHeader := oracle.CurrentHeader()
 
 	header1 := &types.Header{}
 	err = header1.UnmarshalJSON([]byte(RopstenHeader1))
 	require.Nil(t, err)
-	require.Equal(t, currentHeader.Number.Uint64(), header1.Number.Uint64()-1)
 
 	header2 := &types.Header{}
 	err = header2.UnmarshalJSON([]byte(RopstenHeader2))
 	require.Nil(t, err)
-	require.Equal(t, currentHeader.Number.Uint64(), header2.Number.Uint64()-2)
 
 	num, err := oracle.InsertBlockHeaders([]*types.Header{header1, header2})
 	require.Nil(t, err)
@@ -77,7 +73,7 @@ func TestVerifyProof(t *testing.T) {
 		receipt2 = "{\"root\":\"0x\",\"status\":\"0x1\",\"cumulativeGasUsed\":\"0x2fd96\",\"logsBloom\":\"0x00200000000000000000000080000000000000000000000080010000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000000008000000200000000800000000000000000000000000000000080000000000000000000000000000000000000000000010000000000000000000000000004000000000000000000000000000080000004000000000000000000000000140000000000000000000001000000000001000000000000000000002000000200000000000002000000000000000001000000000020020000000000000000000000000000200000000000080000000000000000400000000\",\"logs\":[{\"address\":\"0x2d80502854fc7304c3e3457084de549f5016b73f\",\"topics\":[\"0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef\",\"0x0000000000000000000000004183d62963434056e75e9854bc4ba92aa43a2d08\",\"0x000000000000000000000000dc914190feeb16d6f7c5d9a22826d515be5c5857\"],\"data\":\"0x00000000000000000000000000000000000000000000000000000000000b4cc6\",\"blockNumber\":\"0x9a3118\",\"transactionHash\":\"0x37fc9bf0e945443c862efe5405d9a179dced048c3baed58751f00d84ba64701c\",\"transactionIndex\":\"0x2\",\"blockHash\":\"0x0d37ff8f4a8f1adcfd16add9cf8726e17a8097baa9a50d3b5fd51849476f7ec3\",\"logIndex\":\"0x2\",\"removed\":false},{\"address\":\"0x0d9c8723b343a8368bebe0b5e89273ff8d712e3c\",\"topics\":[\"0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef\",\"0x000000000000000000000000dc914190feeb16d6f7c5d9a22826d515be5c5857\",\"0x0000000000000000000000004183d62963434056e75e9854bc4ba92aa43a2d08\"],\"data\":\"0x0000000000000000000000000000000000000000000000000000000015ee0375\",\"blockNumber\":\"0x9a3118\",\"transactionHash\":\"0x37fc9bf0e945443c862efe5405d9a179dced048c3baed58751f00d84ba64701c\",\"transactionIndex\":\"0x2\",\"blockHash\":\"0x0d37ff8f4a8f1adcfd16add9cf8726e17a8097baa9a50d3b5fd51849476f7ec3\",\"logIndex\":\"0x3\",\"removed\":false},{\"address\":\"0xdc914190feeb16d6f7c5d9a22826d515be5c5857\",\"topics\":[\"0x1c411e9a96e071241c2f21f7726b17ae89e3cab4c78be50e062b03a9fffbbad1\"],\"data\":\"0x00000000000000000000000000000000000000000000000000001a4f9e78bc5e0000000000000000000000000000000000000000000000000000000d8457df78\",\"blockNumber\":\"0x9a3118\",\"transactionHash\":\"0x37fc9bf0e945443c862efe5405d9a179dced048c3baed58751f00d84ba64701c\",\"transactionIndex\":\"0x2\",\"blockHash\":\"0x0d37ff8f4a8f1adcfd16add9cf8726e17a8097baa9a50d3b5fd51849476f7ec3\",\"logIndex\":\"0x4\",\"removed\":false},{\"address\":\"0xdc914190feeb16d6f7c5d9a22826d515be5c5857\",\"topics\":[\"0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840159d822\",\"0x0000000000000000000000007a250d5630b4cf539739df2c5dacb4c659f2488d\",\"0x0000000000000000000000004183d62963434056e75e9854bc4ba92aa43a2d08\"],\"data\":\"0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000b4cc60000000000000000000000000000000000000000000000000000000015ee03750000000000000000000000000000000000000000000000000000000000000000\",\"blockNumber\":\"0x9a3118\",\"transactionHash\":\"0x37fc9bf0e945443c862efe5405d9a179dced048c3baed58751f00d84ba64701c\",\"transactionIndex\":\"0x2\",\"blockHash\":\"0x0d37ff8f4a8f1adcfd16add9cf8726e17a8097baa9a50d3b5fd51849476f7ec3\",\"logIndex\":\"0x5\",\"removed\":false}],\"transactionHash\":\"0x37fc9bf0e945443c862efe5405d9a179dced048c3baed58751f00d84ba64701c\",\"contractAddress\":\"0x0000000000000000000000000000000000000000\",\"gasUsed\":\"0x19858\",\"blockHash\":\"0x0d37ff8f4a8f1adcfd16add9cf8726e17a8097baa9a50d3b5fd51849476f7ec3\",\"blockNumber\":\"0x9a3118\",\"transactionIndex\":\"0x2\"}\n"
 	)
 	receiptList := []string{receipt0, receipt1, receipt2}
-	oracle, err := NewRopstenOracle(
+	oracle, err := NewRopstenOracle("../../../../config/appchain/eth_header1.json", repoRoot, false, log.NewWithModule("test"))
 	require.Nil(t, err)
 
 	receipts := make([]*types.Receipt, 0, len(receiptList))

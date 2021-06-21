@@ -7,8 +7,6 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/meshplus/bitxhub-kit/hexutil"
-
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/governance"
 	"github.com/meshplus/bitxhub-kit/crypto"
@@ -83,8 +81,8 @@ func (suite *RegisterAppchain) TestRegisterAppchain() {
 		pb.String("税务链"),
 		pb.String("趣链税务链"),
 		pb.String("1.8"),
-		pb.String(hexutil.Encode(pub)),
-		//pb.String(base64.StdEncoding.EncodeToString(pub)),
+		//pb.String(hexutil.Encode(pub)),
+		pb.String(base64.StdEncoding.EncodeToString(pub)),
 	}
 	ret, err := invokeBVMContract(suite.api, suite.privKey, suite.normalNonce, constant.AppchainMgrContractAddr.Address(), "Register", args...)
 	suite.Require().Nil(err)

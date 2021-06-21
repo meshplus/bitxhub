@@ -171,11 +171,11 @@ func (b *BoltStubImpl) CrossInvokeEVM(address string, data []byte) *boltvm.Respo
 	}
 	gp := new(core.GasPool).AddGas(10000000)
 	msg := ledger.NewMessageFromBxh(tx)
-	statedb := ctx.Ledger.StateDB()
+	statedb := ctx.Ledger.StateLedger
 	statedb.PrepareEVM(common.BytesToHash(ctx.TransactionHash.Bytes()), int(ctx.TransactionIndex))
 	snapshot := statedb.Snapshot()
 	txContext := vm1.NewEVMTxContext(msg)
-	b.bvm.evm.Reset(txContext, ctx.Ledger.StateDB())
+	b.bvm.evm.Reset(txContext, statedb)
 	result, err := vm1.ApplyMessage(b.bvm.evm, msg, gp)
 	if err != nil {
 		statedb.RevertToSnapshot(snapshot)
@@ -186,7 +186,7 @@ func (b *BoltStubImpl) CrossInvokeEVM(address string, data []byte) *boltvm.Respo
 		return boltvm.Error(string(append([]byte(result.Err.Error()), result.Revert()...)))
 	}
 	ret := result.Return()
-	ctx.Ledger.ClearChangerAndRefund()
+	ctx.Ledger.Finalise(false)
 	return boltvm.Success(ret)
 }
 
