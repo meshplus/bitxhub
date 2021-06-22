@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"syscall"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/fdlimit"
 	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/meshplus/bitxhub-kit/storage/blockfile"
+	"github.com/meshplus/bitxhub/api/jsonrpc/types"
 	_ "github.com/meshplus/bitxhub/imports"
 	"github.com/meshplus/bitxhub/internal/executor"
 	"github.com/meshplus/bitxhub/internal/ledger"
@@ -127,12 +129,12 @@ func GenerateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 	}
 
 	// 1. create executor and view executor
-	txExec, err := executor.New(rwLdg, loggers.Logger(loggers.Executor), rep.Config.Executor.Type, rep.Config.GasLimit)
+	txExec, err := executor.New(rwLdg, loggers.Logger(loggers.Executor), rep.Config, big.NewInt(types.GasPrice))
 	if err != nil {
 		return nil, fmt.Errorf("create BlockExecutor: %w", err)
 	}
 
-	viewExec, err := executor.New(viewLdg, loggers.Logger(loggers.Executor), rep.Config.Executor.Type, rep.Config.GasLimit)
+	viewExec, err := executor.New(viewLdg, loggers.Logger(loggers.Executor), rep.Config, big.NewInt(0))
 	if err != nil {
 		return nil, fmt.Errorf("create ViewExecutor: %w", err)
 	}

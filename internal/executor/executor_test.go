@@ -11,8 +11,6 @@ import (
 	"testing"
 	"time"
 
-	ledger2 "github.com/meshplus/eth-kit/ledger"
-
 	"github.com/gogo/protobuf/proto"
 	"github.com/golang/mock/gomock"
 	"github.com/meshplus/bitxhub-kit/crypto"
@@ -23,25 +21,26 @@ import (
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
+	types2 "github.com/meshplus/bitxhub/api/jsonrpc/types"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/ledger/mock_ledger"
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/internal/repo"
+	ledger2 "github.com/meshplus/eth-kit/ledger"
 	libp2pcert "github.com/meshplus/go-libp2p-cert"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 const (
-	keyPassword  = "bitxhub"
-	srcMethod    = "did:bitxhub:appchain1:."
-	dstMethod    = "did:bitxhub:appchain2:."
-	from         = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
-	executorType = "serial"
-	gasLimit     = 10000000
+	keyPassword = "bitxhub"
+	srcMethod   = "did:bitxhub:appchain1:."
+	dstMethod   = "did:bitxhub:appchain2:."
+	from        = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
 )
 
 func TestNew(t *testing.T) {
+	config := generateMockConfig(t)
 	mockCtl := gomock.NewController(t)
 	chainLedger := mock_ledger.NewMockChainLedger(mockCtl)
 	stateLedger := mock_ledger.NewMockStateLedger(mockCtl)
@@ -58,7 +57,7 @@ func TestNew(t *testing.T) {
 	chainLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
 
 	logger := log.NewWithModule("executor")
-	executor, err := New(mockLedger, logger, executorType, gasLimit)
+	executor, err := New(mockLedger, logger, config, big.NewInt(types2.GasPrice))
 	assert.Nil(t, err)
 	assert.NotNil(t, executor)
 
@@ -76,6 +75,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestBlockExecutor_ExecuteBlock(t *testing.T) {
+	config := generateMockConfig(t)
 	mockCtl := gomock.NewController(t)
 	chainLedger := mock_ledger.NewMockChainLedger(mockCtl)
 	stateLedger := mock_ledger.NewMockStateLedger(mockCtl)
@@ -124,7 +124,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	chainLedger.EXPECT().Close().AnyTimes()
 	logger := log.NewWithModule("executor")
 
-	exec, err := New(mockLedger, logger, executorType, gasLimit)
+	exec, err := New(mockLedger, logger, config, big.NewInt(types2.GasPrice))
 	assert.Nil(t, err)
 
 	// mock data for block
@@ -198,6 +198,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 }
 
 func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
+	config := generateMockConfig(t)
 	mockCtl := gomock.NewController(t)
 	chainLedger := mock_ledger.NewMockChainLedger(mockCtl)
 	stateLedger := mock_ledger.NewMockStateLedger(mockCtl)
@@ -239,9 +240,11 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 	chainLedger.EXPECT().GetBlock(gomock.Any()).Return(mockBlock(10, nil), nil).AnyTimes()
 	stateLedger.EXPECT().PrepareEVM(gomock.Any(), gomock.Any()).AnyTimes()
 	stateLedger.EXPECT().PrepareBlock(gomock.Any(), gomock.Any()).AnyTimes()
+	stateLedger.EXPECT().GetBalance(gomock.Any()).Return(big.NewInt(10000000000000)).AnyTimes()
+	stateLedger.EXPECT().SetBalance(gomock.Any(), gomock.Any()).AnyTimes()
 	logger := log.NewWithModule("executor")
 
-	exec, err := New(mockLedger, logger, executorType, gasLimit)
+	exec, err := New(mockLedger, logger, config, big.NewInt(types2.GasPrice))
 	assert.Nil(t, err)
 
 	// mock data for block
@@ -308,6 +311,7 @@ func mockTx(t *testing.T, data *pb.TransactionData) *pb.BxhTransaction {
 }
 
 func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
+	config := generateMockConfig(t)
 	repoRoot, err := ioutil.TempDir("", "executor")
 	require.Nil(t, err)
 
@@ -316,7 +320,6 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 	ldb, err := leveldb.New(filepath.Join(repoRoot, "ledger"))
 	require.Nil(t, err)
 
-	repo.DefaultConfig()
 	accountCache, err := ledger.NewAccountCache()
 	assert.Nil(t, err)
 	logger := log.NewWithModule("executor_test")
@@ -327,14 +330,14 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 
 	_, from := loadAdminKey(t)
 
-	ldg.SetBalance(from, new(big.Int).SetInt64(100000000))
+	ldg.SetBalance(from, new(big.Int).SetInt64(21000*5000000*3+4))
 	account, journal := ldg.FlushDirtyData()
 	err = ldg.Commit(1, account, journal)
 	require.Nil(t, err)
 	err = ldg.PersistExecutionResult(mockBlock(1, nil), nil, &pb.InterchainMeta{})
 	require.Nil(t, err)
 
-	executor, err := New(ldg, log.NewWithModule("executor"), executorType, gasLimit)
+	executor, err := New(ldg, log.NewWithModule("executor"), config, big.NewInt(types2.GasPrice))
 	require.Nil(t, err)
 	err = executor.Start()
 	require.Nil(t, err)
@@ -353,13 +356,13 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 
 	block := <-ch
 	require.EqualValues(t, 2, block.Block.Height())
-	require.EqualValues(t, uint64(99999997), ldg.GetBalance(from).Uint64())
+	require.EqualValues(t, 1, ldg.GetBalance(from).Uint64())
 
 	// test executor with readonly ledger
 	viewLedger, err := ledger.New(createMockRepo(t), blockchainStorage, ldb, blockFile, accountCache, log.NewWithModule("ledger"))
 	require.Nil(t, err)
 
-	exec, err := New(viewLedger, log.NewWithModule("executor"), executorType, gasLimit)
+	exec, err := New(viewLedger, log.NewWithModule("executor"), config, big.NewInt(0))
 	require.Nil(t, err)
 
 	tx := mockTransferTx(t)
@@ -529,4 +532,18 @@ BcNwjTDCxyxLNjFKQfMAc6sY6iJs+Ma59WZyC/4uhjE=
 			Address: address.String(),
 		},
 	}
+}
+
+func generateMockConfig(t *testing.T) *repo.Config {
+	config, err := repo.DefaultConfig()
+	assert.Nil(t, err)
+
+	for i := 0; i < 4; i++ {
+		config.Admins = append(config.Admins, &repo.Admin{
+			Address: types.NewAddress([]byte{byte(1)}).String(),
+			Weight:  2,
+		})
+	}
+
+	return config
 }

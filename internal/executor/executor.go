@@ -16,6 +16,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/model/events"
+	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/bitxhub/pkg/proof"
 	"github.com/meshplus/bitxhub/pkg/vm/boltvm"
 	vm "github.com/meshplus/eth-kit/evm"
@@ -52,7 +53,9 @@ type BlockExecutor struct {
 	evm         *vm.EVM
 	evmChainCfg *params.ChainConfig
 	gasLimit    uint64
+	bxhGasPrice *big.Int
 	lock        *sync.Mutex
+	admins      []string
 }
 
 func (exec *BlockExecutor) GetBoltContracts() map[string]agency.Contract {
@@ -60,10 +63,10 @@ func (exec *BlockExecutor) GetBoltContracts() map[string]agency.Contract {
 }
 
 // New creates executor instance
-func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, typ string, gasLimit uint64) (*BlockExecutor, error) {
+func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, config *repo.Config, gasPrice *big.Int) (*BlockExecutor, error) {
 	ibtpVerify := proof.New(chainLedger, logger)
 
-	txsExecutor, err := agency.GetExecutorConstructor(typ)
+	txsExecutor, err := agency.GetExecutorConstructor(config.Executor.Type)
 	if err != nil {
 		return nil, err
 	}
@@ -84,11 +87,16 @@ func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, typ string, gasL
 		currentBlockHash: chainLedger.GetChainMeta().BlockHash,
 		wasmInstances:    make(map[string]*wasmer.Instance),
 		evmChainCfg:      newEVMChainCfg(),
-		gasLimit:         gasLimit,
+		gasLimit:         config.GasLimit,
+		bxhGasPrice:      gasPrice,
 		lock:             &sync.Mutex{},
 	}
 
-	blockExecutor.evm = newEvm(1, uint64(0), blockExecutor.evmChainCfg, blockExecutor.ledger, blockExecutor.ledger.ChainLedger)
+	for _, admin := range config.Genesis.Admins {
+		blockExecutor.admins = append(blockExecutor.admins, admin.Address)
+	}
+
+	blockExecutor.evm = newEvm(1, uint64(0), blockExecutor.evmChainCfg, blockExecutor.ledger, blockExecutor.ledger.ChainLedger, blockExecutor.admins[0])
 
 	blockExecutor.txsExecutor = txsExecutor(blockExecutor.applyTx, registerBoltContracts, logger)
 
@@ -160,7 +168,7 @@ func (exec *BlockExecutor) ApplyReadonlyTransactions(txs []pb.Transaction) []*pb
 	}
 
 	exec.ledger.PrepareBlock(meta.BlockHash, meta.Height)
-	exec.evm = newEvm(meta.Height, uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateLedger, exec.ledger.ChainLedger)
+	exec.evm = newEvm(meta.Height, uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateLedger, exec.ledger.ChainLedger, exec.admins[0])
 	for i, tx := range txs {
 		receipt := exec.applyTransaction(i, tx, "", nil)
 

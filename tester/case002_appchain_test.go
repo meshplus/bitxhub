@@ -61,10 +61,14 @@ func (suite *RegisterAppchain) TestRegisterAppchain() {
 	addr2, err := k2.PublicKey().Address()
 	suite.Require().Nil(err)
 
+	suite.Require().Nil(transfer(suite.Suite, suite.api, addr2, 10000000000000))
+
 	pub, err := suite.privKey.PublicKey().Bytes()
 	suite.Require().Nil(err)
 	addr, err := suite.privKey.PublicKey().Address()
 	suite.Require().Nil(err)
+
+	suite.Require().Nil(transfer(suite.Suite, suite.api, addr, 10000000000000))
 
 	did := genUniqueAppchainDID(addr.String())
 	did2 := genUniqueAppchainDID(addr2.String())
@@ -138,6 +142,8 @@ func (suite *RegisterAppchain) TestFetchAppchains() {
 	suite.Require().Nil(err)
 	addr2, err := k2.PublicKey().Address()
 	suite.Require().Nil(err)
+	suite.Require().Nil(transfer(suite.Suite, suite.api, addr1, 10000000000000))
+	suite.Require().Nil(transfer(suite.Suite, suite.api, addr2, 10000000000000))
 
 	did := genUniqueAppchainDID(addr1.String())
 	args := []*pb.Arg{
@@ -230,6 +236,9 @@ func (suite *RegisterAppchain) TestGetPubKeyByChainID() {
 	addr2, err := k2.PublicKey().Address()
 	suite.Require().Nil(err)
 
+	suite.Require().Nil(transfer(suite.Suite, suite.api, addr1, 10000000000000))
+	suite.Require().Nil(transfer(suite.Suite, suite.api, addr2, 10000000000000))
+
 	did := genUniqueAppchainDID(addr1.String())
 	args := []*pb.Arg{
 		pb.String(did),
@@ -296,6 +305,7 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 	k1Nonce := uint64(0)
 	addr1, err := k1.PublicKey().Address()
 	suite.Require().Nil(err)
+	suite.Require().Nil(transfer(suite.Suite, suite.api, addr1, 10000000000000))
 
 	did := genUniqueAppchainDID(addr1.String())
 	args := []*pb.Arg{
