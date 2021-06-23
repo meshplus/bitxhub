@@ -23,6 +23,40 @@ func genXVMContractTransaction(privateKey crypto.PrivateKey, nonce uint64, addre
 	return genContractTransaction(pb.TransactionData_XVM, privateKey, nonce, address, method, args...)
 }
 
+func genTransferTransaction(privateKey crypto.PrivateKey, nonce uint64, address *types.Address, amount uint64) (*pb.BxhTransaction, error) {
+	from, err := privateKey.PublicKey().Address()
+	if err != nil {
+		return nil, err
+	}
+
+	td := &pb.TransactionData{
+		Type:   pb.TransactionData_NORMAL,
+		Amount: fmt.Sprintf("%d", amount),
+	}
+
+	payload, err := td.Marshal()
+	if err != nil {
+		return nil, err
+	}
+
+	tx := &pb.BxhTransaction{
+		From:      from,
+		To:        address,
+		Payload:   payload,
+		Timestamp: time.Now().UnixNano(),
+		Nonce:     nonce,
+	}
+
+	if err := tx.Sign(privateKey); err != nil {
+		return nil, fmt.Errorf("tx sign: %w", err)
+	}
+
+	tx.TransactionHash = tx.Hash()
+
+	return tx, nil
+
+}
+
 func genIBTPTransaction(privateKey crypto.PrivateKey, ibtp *pb.IBTP, nonce uint64) (*pb.BxhTransaction, error) {
 	from, err := privateKey.PublicKey().Address()
 	if err != nil {

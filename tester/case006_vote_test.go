@@ -52,7 +52,6 @@ func (suite *Governance) TestGovernance() {
 	suite.Require().Nil(err)
 	fromAdmin4, err := priAdmin4.PublicKey().Address()
 	suite.Require().Nil(err)
-	adminNonce1 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin1.String())
 	adminNonce2 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin2.String())
 	adminNonce3 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin3.String())
 	adminNonce4 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin4.String())
@@ -64,6 +63,9 @@ func (suite *Governance) TestGovernance() {
 	addr, err := appchainPri.PublicKey().Address()
 	suite.Require().Nil(err)
 	appchainNonce := uint64(0)
+
+	suite.Require().Nil(transfer(suite.Suite, suite.api, addr, 10000000000000))
+	adminNonce1 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin1.String())
 
 	// 1. Register ==============================================
 	did := genUniqueAppchainDID(addr.String())

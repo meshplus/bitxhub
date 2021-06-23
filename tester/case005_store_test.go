@@ -34,6 +34,10 @@ func (suite *Store) TestStore() {
 		pb.String("abc"),
 	}
 
+	addr, err := k.PublicKey().Address()
+	suite.Require().Nil(err)
+	suite.Require().Nil(transfer(suite.Suite, suite.api, addr, 10000000000000))
+
 	ret, err := invokeBVMContract(suite.api, k, kNonce, constant.StoreContractAddr.Address(), "Set", args...)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess())

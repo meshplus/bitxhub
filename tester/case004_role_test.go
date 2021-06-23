@@ -39,6 +39,7 @@ func (suite *Role) TestGetRole() {
 	from1, err := k1.PublicKey().Address()
 	suite.Require().Nil(err)
 
+	suite.Require().Nil(transfer(suite.Suite, suite.api, from1, 10000000000000))
 	fromaddr := from1.String()
 
 	k1nonce := suite.api.Broker().GetPendingNonceByAccount(from1.String())
@@ -71,6 +72,7 @@ func (suite *Role) TestGetAdminRoles() {
 	suite.Require().Nil(err)
 	from, err := k.PublicKey().Address()
 	suite.Require().Nil(err)
+	suite.Require().Nil(transfer(suite.Suite, suite.api, from, 10000000000000))
 	kNonce := suite.api.Broker().GetPendingNonceByAccount(from.String())
 
 	r, err := invokeBVMContract(suite.api, k, kNonce, constant.RoleContractAddr.Address(), "GetAdminRoles")
@@ -86,6 +88,7 @@ func (suite *Role) TestIsAdmin() {
 	suite.Require().Nil(err)
 	from, err := k.PublicKey().Address()
 	suite.Require().Nil(err)
+	suite.Require().Nil(transfer(suite.Suite, suite.api, from, 10000000000000))
 	kNonce := suite.api.Broker().GetPendingNonceByAccount(from.String())
 
 	r, err := invokeBVMContract(suite.api, k, kNonce, constant.RoleContractAddr.Address(), "IsAdmin", pb.String(from.String()))
@@ -132,7 +135,6 @@ func (suite *Role) TestGetRuleAddress() {
 	suite.Require().Nil(err)
 	fromAdmin3, err := priAdmin3.PublicKey().Address()
 	suite.Require().Nil(err)
-	adminNonce1 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin1.String())
 	adminNonce2 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin2.String())
 	adminNonce3 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin3.String())
 
@@ -145,6 +147,9 @@ func (suite *Role) TestGetRuleAddress() {
 	suite.Require().Nil(err)
 	addr2, err := k2.PublicKey().Address()
 	suite.Require().Nil(err)
+	suite.Require().Nil(transfer(suite.Suite, suite.api, addr1, 10000000000000))
+	suite.Require().Nil(transfer(suite.Suite, suite.api, addr2, 10000000000000))
+	adminNonce1 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin1.String())
 	from1, err := k1.PublicKey().Address()
 	suite.Require().Nil(err)
 	k1Nonce := suite.api.Broker().GetPendingNonceByAccount(from1.String())

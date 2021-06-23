@@ -1,18 +1,21 @@
 package grpc
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"strconv"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 )
 
 type Account struct {
 	Type          string     `json:"type"`
-	Balance       uint64     `json:"balance"`
+	Balance       *big.Int   `json:"balance"`
 	ContractCount uint64     `json:"contract_count"`
 	CodeHash      types.Hash `json:"code_hash"`
 }
@@ -22,23 +25,30 @@ func (cbs *ChainBrokerService) GetAccountBalance(ctx context.Context, req *pb.Ad
 		return nil, fmt.Errorf("invalid account address: %v", req.Address)
 	}
 
+	var ret *Account
 	addr := types.NewAddressByStr(req.Address)
 
 	account := cbs.api.Account().GetAccount(addr)
+	if account == nil {
+		ret = &Account{
+			Type:          "normal",
+			Balance:       big.NewInt(0),
+			ContractCount: 0,
+			CodeHash:      types.Hash{},
+		}
+	} else {
+		hash := types.NewHash(account.CodeHash())
+		typ := "contract"
+		if account.CodeHash() == nil || bytes.Equal(account.CodeHash(), crypto.Keccak256(nil)) {
+			typ = "normal"
+		}
 
-	hash := types.NewHash(account.CodeHash())
-
-	typ := "normal"
-
-	if account.CodeHash() != nil {
-		typ = "contract"
-	}
-
-	ret := &Account{
-		Type:          typ,
-		Balance:       account.GetBalance().Uint64(),
-		ContractCount: account.GetNonce(),
-		CodeHash:      *hash,
+		ret = &Account{
+			Type:          typ,
+			Balance:       account.GetBalance(),
+			ContractCount: account.GetNonce(),
+			CodeHash:      *hash,
+		}
 	}
 
 	data, err := json.Marshal(ret)

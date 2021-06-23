@@ -34,7 +34,7 @@ import (
 
 const (
 	GasNormalTx = 21000
-	GasFiledTx  = 21000
+	GasFailedTx = 21000
 	GasBVMTx    = 21000 * 10
 )
 
@@ -53,7 +53,7 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	}
 
 	exec.verifyProofs(blockWrapper)
-	exec.evm = newEvm(block.Height(), uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateLedger, exec.ledger.ChainLedger)
+	exec.evm = newEvm(block.Height(), uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateLedger, exec.ledger.ChainLedger, exec.admins[0])
 	exec.ledger.PrepareBlock(block.BlockHash, block.Height())
 	receipts := exec.txsExecutor.ApplyTransactions(block.Transactions.Transactions, blockWrapper.invalidTx)
 
@@ -328,6 +328,7 @@ func (exec *BlockExecutor) applyTransaction(i int, tx pb.Transaction, invalidRea
 	switch tx.(type) {
 	case *pb.BxhTransaction:
 		bxhTx := tx.(*pb.BxhTransaction)
+		snapshot := exec.ledger.Snapshot()
 		ret, gasUsed, err := exec.applyBxhTransaction(i, bxhTx, invalidReason, opt)
 		if err != nil {
 			receipt.Status = pb.Receipt_FAILED
@@ -337,6 +338,14 @@ func (exec *BlockExecutor) applyTransaction(i int, tx pb.Transaction, invalidRea
 			receipt.Ret = ret
 		}
 		receipt.GasUsed = gasUsed
+
+		if err := exec.payGasFee(tx, gasUsed); err != nil {
+			exec.ledger.RevertToSnapshot(snapshot)
+			receipt.Status = pb.Receipt_FAILED
+			receipt.Ret = []byte(err.Error())
+			exec.payLeftAsGasFee(tx)
+		}
+
 		return receipt
 	case *types2.EthTransaction:
 		ethTx := tx.(*types2.EthTransaction)
@@ -344,14 +353,19 @@ func (exec *BlockExecutor) applyTransaction(i int, tx pb.Transaction, invalidRea
 	}
 
 	receipt.Status = pb.Receipt_FAILED
-	receipt.GasUsed = GasFiledTx
+	receipt.GasUsed = GasFailedTx
 	receipt.Ret = []byte(fmt.Errorf("unknown tx type").Error())
+	if err := exec.payGasFee(tx, receipt.GasUsed); err != nil {
+		receipt.Ret = []byte(err.Error())
+		exec.payLeftAsGasFee(tx)
+	}
+
 	return receipt
 }
 
 func (exec *BlockExecutor) applyBxhTransaction(i int, tx *pb.BxhTransaction, invalidReason agency.InvalidReason, opt *agency.TxOpt) ([]byte, uint64, error) {
 	if invalidReason != "" {
-		return nil, GasFiledTx, fmt.Errorf(string(invalidReason))
+		return nil, GasFailedTx, fmt.Errorf(string(invalidReason))
 	}
 
 	if tx.IsIBTP() {
@@ -362,12 +376,12 @@ func (exec *BlockExecutor) applyBxhTransaction(i int, tx *pb.BxhTransaction, inv
 	}
 
 	if tx.GetPayload() == nil {
-		return nil, GasFiledTx, fmt.Errorf("empty transaction data")
+		return nil, GasFailedTx, fmt.Errorf("empty transaction data")
 	}
 
 	data := &pb.TransactionData{}
 	if err := data.Unmarshal(tx.GetPayload()); err != nil {
-		return nil, GasFiledTx, err
+		return nil, GasFailedTx, err
 	}
 
 	snapshot := exec.ledger.Snapshot()
@@ -396,10 +410,10 @@ func (exec *BlockExecutor) applyBxhTransaction(i int, tx *pb.BxhTransaction, inv
 			imports := vmledger.New()
 			instance, err = wasm.New(ctx, imports, exec.wasmInstances)
 			if err != nil {
-				return nil, GasFiledTx, err
+				return nil, GasFailedTx, err
 			}
 		default:
-			return nil, GasFiledTx, fmt.Errorf("wrong vm type")
+			return nil, GasFailedTx, fmt.Errorf("wrong vm type")
 		}
 
 		ret, err := instance.Run(data.Payload)
@@ -435,7 +449,11 @@ func (exec *BlockExecutor) applyEthTransaction(i int, tx *types2.EthTransaction)
 	if result.Failed() {
 		exec.logger.Warnf("execute tx failed: %s", result.Err.Error())
 		receipt.Status = pb.Receipt_FAILED
-		receipt.Ret = append([]byte(result.Err.Error()), result.Revert()...)
+		if strings.HasPrefix(result.Err.Error(), vm1.ErrExecutionReverted.Error()) {
+			receipt.Ret = append([]byte(result.Err.Error()), common.CopyBytes(result.ReturnData)...)
+		} else {
+			receipt.Ret = []byte(result.Err.Error())
+		}
 	} else {
 		receipt.Status = pb.Receipt_SUCCESS
 		receipt.Ret = result.Return()
@@ -514,8 +532,34 @@ func (exec *BlockExecutor) getContracts(opt *agency.TxOpt) map[string]agency.Con
 	return exec.txsExecutor.GetBoltContracts()
 }
 
-func newEvm(number uint64, timestamp uint64, chainCfg *params.ChainConfig, db ledger2.StateDB, chainLedger ledger2.ChainLedger) *vm1.EVM {
-	blkCtx := vm1.NewEVMBlockContext(number, timestamp, db, chainLedger)
+func newEvm(number uint64, timestamp uint64, chainCfg *params.ChainConfig, db ledger2.StateDB, chainLedger ledger2.ChainLedger, admin string) *vm1.EVM {
+	blkCtx := vm1.NewEVMBlockContext(number, timestamp, db, chainLedger, admin)
 
 	return vm1.NewEVM(blkCtx, vm1.TxContext{}, db, chainCfg, vm1.Config{})
+}
+
+func (exec *BlockExecutor) payGasFee(tx pb.Transaction, gasUsed uint64) error {
+	fees := new(big.Int).Mul(new(big.Int).SetUint64(gasUsed), exec.bxhGasPrice)
+	have := exec.ledger.GetBalance(tx.GetFrom())
+	if have.Cmp(fees) < 0 {
+		return fmt.Errorf("insufficeient balance: address %v have %v want %v", tx.GetFrom().String(), have, fees)
+	}
+	exec.ledger.SetBalance(tx.GetFrom(), new(big.Int).Sub(have, fees))
+	exec.payAdmins(fees)
+	return nil
+}
+
+func (exec *BlockExecutor) payLeftAsGasFee(tx pb.Transaction) {
+	have := exec.ledger.GetBalance(tx.GetFrom())
+	exec.ledger.SetBalance(tx.GetFrom(), big.NewInt(0))
+	exec.payAdmins(have)
+}
+
+func (exec *BlockExecutor) payAdmins(fees *big.Int) {
+	fee := new(big.Int).Div(fees, big.NewInt(int64(len(exec.admins))))
+	for _, admin := range exec.admins {
+		addr := types.NewAddressByStr(admin)
+		balance := exec.ledger.GetBalance(addr)
+		exec.ledger.SetBalance(addr, new(big.Int).Add(balance, fee))
+	}
 }

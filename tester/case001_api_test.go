@@ -2,6 +2,7 @@ package tester
 
 import (
 	"fmt"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -36,6 +37,9 @@ func (suite *API) SetupSuite() {
 
 	suite.privKey = privKey
 	suite.from = from
+
+	err = transfer(suite.Suite, suite.api, from, 10000000000000)
+	suite.Require().Nil(err)
 }
 
 func (suite *API) TestSend() {
@@ -73,6 +77,38 @@ func testSendView(suite *API) {
 	suite.Nil(err)
 	suite.Equal(receipt.Status, pb.Receipt_SUCCESS)
 	suite.Equal(value, string(receipt.Ret))
+}
+
+func transfer(suite suite.Suite, api api.CoreAPI, address *types.Address, amount uint64) error {
+	keyPath1 := filepath.Join("./test_data/config/node1/key.json")
+	priAdmin1, err := asym.RestorePrivateKey(keyPath1, "bitxhub")
+	suite.Require().Nil(err)
+
+	fromAdmin1, err := priAdmin1.PublicKey().Address()
+	suite.Require().Nil(err)
+	adminNonce1 := api.Broker().GetPendingNonceByAccount(fromAdmin1.String())
+
+	tx, err := genTransferTransaction(priAdmin1, adminNonce1, address, amount)
+	suite.Require().Nil(err)
+
+	err = api.Broker().HandleTransaction(tx)
+	suite.Require().Nil(err)
+
+	hash := tx.Hash()
+
+	if err := retry.Retry(func(attempt uint) error {
+		receipt, err := api.Broker().GetReceipt(hash)
+		if err != nil {
+			return err
+		}
+		if receipt.IsSuccess() {
+			return nil
+		}
+		return nil
+	}, strategy.Wait(2*time.Second)); err != nil {
+	}
+
+	return nil
 }
 
 //

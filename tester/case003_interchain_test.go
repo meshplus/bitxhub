@@ -48,7 +48,6 @@ func (suite *Interchain) TestHandleIBTP() {
 	suite.Require().Nil(err)
 	fromAdmin3, err := priAdmin3.PublicKey().Address()
 	suite.Require().Nil(err)
-	adminNonce1 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin1.String())
 	adminNonce2 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin2.String())
 	adminNonce3 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin3.String())
 
@@ -61,9 +60,12 @@ func (suite *Interchain) TestHandleIBTP() {
 	suite.Require().Nil(err)
 	addr2, err := k2.PublicKey().Address()
 	suite.Require().Nil(err)
+	suite.Require().Nil(transfer(suite.Suite, suite.api, addr1, 10000000000000))
+	suite.Require().Nil(transfer(suite.Suite, suite.api, addr2, 10000000000000))
 	k1Nonce := suite.api.Broker().GetPendingNonceByAccount(addr1.String())
 	k2Nonce := suite.api.Broker().GetPendingNonceByAccount(addr2.String())
 	ibtpNonce := uint64(1)
+	adminNonce1 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin1.String())
 
 	rawpub1, err := k1.PublicKey().Bytes()
 	suite.Require().Nil(err)
@@ -258,7 +260,6 @@ func (suite *Interchain) TestGetIBTPByID() {
 	suite.Require().Nil(err)
 	fromAdmin3, err := priAdmin3.PublicKey().Address()
 	suite.Require().Nil(err)
-	adminNonce1 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin1.String())
 	adminNonce2 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin2.String())
 	adminNonce3 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin3.String())
 
@@ -280,6 +281,9 @@ func (suite *Interchain) TestGetIBTPByID() {
 	suite.Require().Nil(err)
 	addr2, err := k2.PublicKey().Address()
 	suite.Require().Nil(err)
+	suite.Require().Nil(transfer(suite.Suite, suite.api, addr1, 10000000000000))
+	suite.Require().Nil(transfer(suite.Suite, suite.api, addr2, 10000000000000))
+	adminNonce1 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin1.String())
 
 	confByte, err := ioutil.ReadFile("./test_data/validator")
 	suite.Require().Nil(err)
@@ -492,7 +496,6 @@ func (suite *Interchain) TestInterchain() {
 	suite.Require().Nil(err)
 	fromAdmin3, err := priAdmin3.PublicKey().Address()
 	suite.Require().Nil(err)
-	adminNonce1 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin1.String())
 	adminNonce2 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin2.String())
 	adminNonce3 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin3.String())
 
@@ -505,6 +508,8 @@ func (suite *Interchain) TestInterchain() {
 	pub1 := base64.StdEncoding.EncodeToString(rawpub1)
 	addr1, err := k1.PublicKey().Address()
 	suite.Require().Nil(err)
+	suite.Require().Nil(transfer(suite.Suite, suite.api, addr1, 10000000000000))
+	adminNonce1 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin1.String())
 
 	did := genUniqueAppchainDID(addr1.String())
 	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "Register",
@@ -582,6 +587,7 @@ func (suite *Interchain) TestRegister() {
 	from1, err := k1.PublicKey().Address()
 	suite.Require().Nil(err)
 	k1Nonce := uint64(0)
+	suite.Require().Nil(transfer(suite.Suite, suite.api, from1, 10000000000000))
 
 	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.InterchainContractAddr.Address(), "Register", pb.String(from1.Address))
 	suite.Require().Nil(err)
