@@ -396,6 +396,7 @@ func (n *Node) run() {
 			}
 
 			if n.justElected {
+				n.mempool.SetBatchSeqNo(n.lastExec)
 				msgInflight := n.ramLastIndex() > n.appliedIndex+1
 				if msgInflight {
 					n.logger.Debug("There are in flight blocks, new leader should not generate new batches")
