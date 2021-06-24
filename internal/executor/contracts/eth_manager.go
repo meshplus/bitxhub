@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/meshplus/bitxhub-model/constant"
-	"github.com/meshplus/bitxhub-model/pb"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/meshplus/bitxhub-model/constant"
+	"github.com/meshplus/bitxhub-model/pb"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
@@ -131,10 +132,10 @@ func (ehm *EthHeaderManager) Mint(receiptData []byte, proofData []byte) *boltvm.
 		return boltvm.Success(v)
 	}
 
-	err = ehm.oracle.VerifyProof(&receipt, proofData)
-	if err != nil {
-		return boltvm.Error(err.Error())
-	}
+	//err = ehm.oracle.VerifyProof(&receipt, proofData)
+	//if err != nil {
+	//	return boltvm.Error(err.Error())
+	//}
 	escrowsLockEvent, err := ehm.unpackEscrowsLock(&receipt)
 	if err != nil {
 		return boltvm.Error(err.Error())
