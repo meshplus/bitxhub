@@ -431,7 +431,7 @@ func (exec *BlockExecutor) applyEthTransaction(i int, tx *types2.EthTransaction)
 	}
 
 	gp := new(core.GasPool).AddGas(exec.gasLimit)
-	msg := ledger.NewMessage(tx)
+	msg := tx.ToMessage()
 	statedb := exec.ledger.StateLedger
 	txContext := vm1.NewEVMTxContext(msg)
 	snapshot := statedb.Snapshot()
