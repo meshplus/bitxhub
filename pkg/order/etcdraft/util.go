@@ -163,11 +163,15 @@ func (n *Node) recoverFromSnapshot() {
 			}
 		}
 	}
-	syncBlocks()
-	if n.lastExec != targetChainMeta.Height {
-		n.logger.Warnf("The lastExec is %d, but not equal the target block height %d", n.lastExec, targetChainMeta.Height)
+
+	for {
 		syncBlocks()
+		if n.lastExec == targetChainMeta.Height {
+			break
+		}
+		n.logger.Warnf("The lastExec is %d, but not equal the target block height %d", n.lastExec, targetChainMeta.Height)
 	}
+
 	n.appliedIndex = snapshot.Metadata.Index
 	n.snapshotIndex = snapshot.Metadata.Index
 }
