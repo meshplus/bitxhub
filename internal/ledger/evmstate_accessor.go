@@ -8,7 +8,6 @@ import (
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	ledger2 "github.com/meshplus/eth-kit/ledger"
-	types2 "github.com/meshplus/eth-kit/types"
 )
 
 func (l *SimpleLedger) CreateEVMAccount(addr common.Address) {
@@ -199,26 +198,4 @@ func CreateBloom(receipts EvmReceipts) *types.Bloom {
 		}
 	}
 	return &bin
-}
-
-func NewMessage(tx *types2.EthTransaction) etherTypes.Message {
-	from := common.BytesToAddress(tx.GetFrom().Bytes())
-	var to *common.Address
-	if tx.GetTo() != nil {
-		toAddr := common.BytesToAddress(tx.GetTo().Bytes())
-		to = &toAddr
-	}
-	nonce := tx.GetNonce()
-	amount := tx.GetValue()
-	gas := tx.GetGas()
-	gasPrice := tx.GetGasPrice()
-	data := tx.GetPayload()
-	accessList := tx.GetInner().GetAccessList()
-
-	checkNonce := true
-	if v, _, _ := tx.GetRawSignature(); v == nil {
-		checkNonce = false
-	}
-
-	return etherTypes.NewMessage(from, to, nonce, amount, gas, gasPrice, data, accessList, checkNonce)
 }

@@ -9,7 +9,8 @@ require (
 	github.com/common-nighthawk/go-figure v0.0.0-20190529165535-67e0ed34491a
 	github.com/coreos/etcd v3.3.18+incompatible
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f // indirect
-	github.com/ethereum/go-ethereum v1.10.2
+	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
+	github.com/ethereum/go-ethereum v1.10.4
 	github.com/fatih/color v1.7.0
 	github.com/gobuffalo/envy v1.9.0 // indirect
 	github.com/gobuffalo/packd v1.0.0
@@ -32,9 +33,9 @@ require (
 	github.com/meshplus/bitxhub-model v1.2.1-0.20210617023048-d655fd0d3f63
 	github.com/meshplus/bitxid v0.0.0-20210412025850-e0eaf0f9063a
 	github.com/meshplus/did-registry v0.0.0-20210413035015-509c6c3a0bae
-	github.com/meshplus/eth-kit v0.0.0-20210622082954-7e90c7ae1903
-	github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd
-	github.com/meshplus/go-lightp2p v0.0.0-20210611054856-69c2d3341ec0
+  github.com/meshplus/eth-kit v0.0.0-20210624062126-352a005d21ea
+  github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd
+  github.com/meshplus/go-lightp2p v0.0.0-20210611054856-69c2d3341ec0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-multiaddr v0.3.0
 	github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6
