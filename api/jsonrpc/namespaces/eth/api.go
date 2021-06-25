@@ -290,6 +290,10 @@ func (api *PublicEthereumAPI) checkTransaction(tx *types2.EthTransaction) error 
 		return fmt.Errorf("signature can't be empty")
 	}
 
+	if tx.GetGasPrice().Cmp((*big.Int)(api.GasPrice())) < 0 {
+		return fmt.Errorf("gas price is too low, at least %s is required", api.GasPrice().String())
+	}
+
 	return nil
 }
 
@@ -388,7 +392,7 @@ func (api *PublicEthereumAPI) EstimateGas(args types2.CallArgs) (hexutil.Uint64,
 		return 0, fmt.Errorf("gas required exceeds allowance (%d)", (*uint64)(args.Gas))
 	}
 
-	return hexutil.Uint64(result.GasUsed + 2000), nil
+	return hexutil.Uint64(result.GasUsed*2 + 2000), nil
 }
 
 // GetBlockByHash returns the block identified by hash.
