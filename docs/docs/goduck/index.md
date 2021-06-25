@@ -3,16 +3,17 @@
 ## 1 安装
 
 ### 1.1 获取源码
-
+下载源码并切到稳定版本release-1.0
 ```
 git clone git@github.com:meshplus/goduck
+cd goduck
+git checkout release-1.0
 ```
 
 ### 1.2 编译安装
 
 ```
-cd goduck
-sudo make install
+make install
 ```
 
 ### 1.3 初始化
