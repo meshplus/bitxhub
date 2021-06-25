@@ -54,7 +54,7 @@ require (
 	github.com/tidwall/gjson v1.6.8
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5
 	github.com/urfave/cli v1.22.1
-	github.com/wasmerio/wasmer-go v1.0.3
+	github.com/wasmerio/wasmer-go v1.0.4-0.20210601080313-1e68d3994c0b
 	github.com/willf/bitset v1.1.11 // indirect
 	github.com/willf/bloom v2.0.3+incompatible
 	go.uber.org/atomic v1.7.0
