@@ -228,9 +228,8 @@ $ bitxhub init
 ##### 生成节点验证者私钥，并通过私钥获取验证者地址
 
 ```shell
-$ bitxhub key gen --target ~/.bitxhub --name key
-$ bitxhub key convert --priv .bitxhub/key.priv --save .bixthub/key.json
-$ bitxhub key  address  --path .bitxhub/key.priv
+$ bitxhub key gen --target ~/.bitxhub
+$ bitxhub key address --path ~/.bitxhub/key.json
 0x0beb9583C069aeC5B5C3B395a1Ee644BFdd5Ce0D
 ```
 

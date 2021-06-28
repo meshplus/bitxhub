@@ -116,7 +116,7 @@ func setupNode(t *testing.T, path string) api.CoreAPI {
 	repoRoot, err := repo.PathRootWithDefault(path)
 	require.Nil(t, err)
 
-	repo, err := repo.Load(repoRoot)
+	repo, err := repo.Load(repoRoot, "")
 	require.Nil(t, err)
 
 	loggers.Initialize(repo.Config)
