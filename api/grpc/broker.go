@@ -31,10 +31,29 @@ type ChainBrokerService struct {
 }
 
 func NewChainBrokerService(api api.CoreAPI, config *repo.Config, genesis *repo.Genesis) (*ChainBrokerService, error) {
-	limiter := config.Limiter
+	ctx, cancel := context.WithCancel(context.Background())
+	cbs := &ChainBrokerService{
+		logger:  loggers.Logger(loggers.API),
+		config:  config,
+		genesis: genesis,
+		api:     api,
+		ctx:     ctx,
+		cancel:  cancel,
+	}
+
+	if err := cbs.init(); err != nil {
+		return nil, err
+	}
+
+	return cbs, nil
+}
+
+func (cbs *ChainBrokerService) init() error {
+	config := cbs.config
+	limiter := cbs.config.Limiter
 	rateLimiter, err := ratelimiter.NewRateLimiterWithQuantum(limiter.Interval, limiter.Capacity, limiter.Quantum)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	grpcOpts := []grpc.ServerOption{
@@ -50,21 +69,14 @@ func NewChainBrokerService(api api.CoreAPI, config *repo.Config, genesis *repo.G
 		serverKeyPath := filepath.Join(config.RepoRoot, config.Security.ServerKeyPath)
 		cred, err := credentials.NewServerTLSFromFile(pemFilePath, serverKeyPath)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		grpcOpts = append(grpcOpts, grpc.Creds(cred))
 	}
-	server := grpc.NewServer(grpcOpts...)
-	ctx, cancel := context.WithCancel(context.Background())
-	return &ChainBrokerService{
-		logger:  loggers.Logger(loggers.API),
-		config:  config,
-		genesis: genesis,
-		api:     api,
-		server:  server,
-		ctx:     ctx,
-		cancel:  cancel,
-	}, nil
+
+	cbs.server = grpc.NewServer(grpcOpts...)
+
+	return nil
 }
 
 func (cbs *ChainBrokerService) Start() error {
@@ -92,7 +104,37 @@ func (cbs *ChainBrokerService) Start() error {
 func (cbs *ChainBrokerService) Stop() error {
 	cbs.cancel()
 
+	cbs.server.Stop()
+
 	cbs.logger.Info("GRPC service stopped")
+
+	return nil
+}
+
+func (cbs *ChainBrokerService) ReConfig(config *repo.Config) error {
+	if cbs.config.Limiter.Capacity != config.Limiter.Capacity ||
+		cbs.config.Limiter.Interval.String() != config.Limiter.Interval.String() ||
+		cbs.config.Limiter.Quantum != config.Limiter.Quantum ||
+		cbs.config.Security.ServerKeyPath != config.Security.ServerKeyPath ||
+		cbs.config.Security.PemFilePath != config.Security.PemFilePath ||
+		cbs.config.Security.EnableTLS != config.Security.EnableTLS ||
+		cbs.config.Grpc != config.Grpc {
+		if err := cbs.Stop(); err != nil {
+			return err
+		}
+
+		cbs.config.Limiter = config.Limiter
+		cbs.config.Security = config.Security
+		cbs.config.Grpc = config.Grpc
+
+		if err := cbs.init(); err != nil {
+			return err
+		}
+
+		if err := cbs.Start(); err != nil {
+			return err
+		}
+	}
 
 	return nil
 }

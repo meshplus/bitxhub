@@ -2,11 +2,14 @@ package repo
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/event"
+	"github.com/fsnotify/fsnotify"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
 )
@@ -116,6 +119,7 @@ type LogModule struct {
 	API       string `toml:"api" json:"api"`
 	CoreAPI   string `mapstructure:"coreapi" toml:"coreapi" json:"coreapi"`
 	Storage   string `toml:"storage" json:"storage"`
+	Profile   string `toml:"profile" json:"profile"`
 }
 
 type Genesis struct {
@@ -235,8 +239,27 @@ func UnmarshalConfig(repoRoot string) (*Config, error) {
 	}
 
 	config.RepoRoot = repoRoot
-
 	return config, nil
+}
+
+func WatchConfig(feed *event.Feed) {
+	viper.WatchConfig()
+	viper.OnConfigChange(func(in fsnotify.Event) {
+		fmt.Println("config file changed: ", in.String())
+
+		config, err := DefaultConfig()
+		if err != nil {
+			fmt.Println("get default config: ", err)
+			return
+		}
+
+		if err := viper.Unmarshal(config); err != nil {
+			fmt.Println("unmarshal config: ", err)
+			return
+		}
+
+		feed.Send(config)
+	})
 }
 
 func ReadConfig(path, configType string, config interface{}) error {
