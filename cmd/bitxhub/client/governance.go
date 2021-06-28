@@ -99,6 +99,7 @@ func governanceCMD() cli.Command {
 			},
 			appchainMgrCMD(),
 			ruleMgrCMD(),
+			nodeMgrCND(),
 		},
 	}
 }
@@ -277,7 +278,7 @@ func getProposalsByConditions(ctx *cli.Context, keyPath string, menthod string, 
 
 func printProposal(proposals []contracts.Proposal) {
 	var table [][]string
-	table = append(table, []string{"Id", "ManagedObjectId", "Type", "EventType", "Status", "A/R", "E/T", "Special/Super", "Description", "EndReason"})
+	table = append(table, []string{"Id", "ManagedObjectId", "Type", "EventType", "Status", "A/R", "E/T", "Special/Super", "CreateTime", "Description", "EndReason"})
 
 	for _, pro := range proposals {
 		table = append(table, []string{
@@ -289,6 +290,7 @@ func printProposal(proposals []contracts.Proposal) {
 			strconv.Itoa(int(pro.ApproveNum)) + "/" + strconv.Itoa(int(pro.AgainstNum)),
 			strconv.Itoa(int(pro.ElectorateNum)) + "/" + strconv.Itoa(int(pro.ThresholdNum)),
 			strconv.FormatBool(pro.IsSpecial) + "/" + strconv.FormatBool(pro.IsSuperAdminVoted),
+			strconv.Itoa(int(pro.CreateTime)),
 			pro.Des,
 			pro.EndReason,
 		})

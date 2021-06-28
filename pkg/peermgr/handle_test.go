@@ -4,9 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/meshplus/bitxhub-core/governance"
+	node_mgr "github.com/meshplus/bitxhub-core/node-mgr"
+	"github.com/meshplus/bitxhub-model/constant"
 
 	"github.com/meshplus/bitxhub/internal/ledger"
 
@@ -113,7 +118,19 @@ func NewSwarms(t *testing.T, peerCnt int) []*Swarm {
 	require.Nil(t, err)
 
 	chainLedger.EXPECT().GetBlockSign(gomock.Any()).Return([]byte("sign"), nil).AnyTimes()
+	for i := 0; i < peerCnt; i++ {
+		node := &node_mgr.Node{
+			Id:     uint64(i),
+			Pid:    ids[i],
+			Status: governance.GovernanceAvailable,
+		}
+		nodeData, err := json.Marshal(node)
+		require.Nil(t, err)
+		stateLedger.EXPECT().GetState(constant.NodeManagerContractAddr.Address(), []byte(fmt.Sprintf("%s-%s", node_mgr.NODE_PID_PREFIX, ids[i]))).Return(true, []byte(strconv.Itoa(i))).AnyTimes()
+		stateLedger.EXPECT().GetState(constant.NodeManagerContractAddr.Address(), []byte(fmt.Sprintf("%s-%d", node_mgr.NODEPREFIX, i))).Return(true, nodeData).AnyTimes()
+	}
 	stateLedger.EXPECT().GetState(gomock.Any(), gomock.Any()).Return(true, data).AnyTimes()
+	stateLedger.EXPECT().Copy().Return(stateLedger).AnyTimes()
 
 	agencyData, err := ioutil.ReadFile("testdata/agency.cert")
 	require.Nil(t, err)

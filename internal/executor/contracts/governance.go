@@ -93,6 +93,7 @@ type Proposal struct {
 	LockProposalId    string               `json:"lock_proposal_id"`
 	IsSpecial         bool                 `json:"is_special"`
 	IsSuperAdminVoted bool                 `json:"is_super_admin_voted"`
+	CreateTime        int64                `json:"create_time"`
 	Extra             []byte               `json:"extra"`
 }
 
@@ -110,7 +111,11 @@ var SpecialProposalProposalType = []ProposalType{
 func (g *Governance) SubmitProposal(from, eventTyp, des, typ, objId, objLastStatus string, extra []byte) *boltvm.Response {
 
 	// 1. check permission
-	specificAddrs := []string{constant.AppchainMgrContractAddr.Address().String(), constant.RuleManagerContractAddr.Address().String()}
+	specificAddrs := []string{
+		constant.AppchainMgrContractAddr.Address().String(),
+		constant.RuleManagerContractAddr.Address().String(),
+		constant.NodeManagerContractAddr.Address().String(),
+	}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
 		return boltvm.Error("marshal specificAddrs error:" + string(err.Error()))
@@ -161,6 +166,7 @@ func (g *Governance) SubmitProposal(from, eventTyp, des, typ, objId, objLastStat
 		ThresholdNum:      tn,
 		LockProposalId:    lockPId,
 		IsSuperAdminVoted: false,
+		CreateTime:        g.GetTxTimeStamp(),
 		Extra:             extra,
 	}
 	p.IsSpecial = isSpecialProposal(p)
@@ -234,7 +240,7 @@ func (g *Governance) getThresholdNum(electorateNum uint64, proposalTyp ProposalT
 	if !g.GetObject(string(proposalTyp), &ps) {
 		// SimpleMajority is used by default
 		ps.Typ = SimpleMajority
-		ps.ParticipateThreshold = 0.75
+		ps.ParticipateThreshold = repo.DefaultParticipateThreshold
 		g.AddObject(string(proposalTyp), ps)
 	}
 
@@ -649,8 +655,14 @@ func (g *Governance) handleResult(p *Proposal) error {
 
 	// manage object
 	switch p.Typ {
-	case NodeMgr, ServiceMgr:
+	case ServiceMgr:
 		return fmt.Errorf("waiting for subsequent implementation")
+	case NodeMgr:
+		res := g.CrossInvoke(constant.NodeManagerContractAddr.String(), "Manage", pb.String(string(p.EventType)), pb.String(string(nextEventType)), pb.String(string(p.ObjLastStatus)), pb.Bytes(p.Extra))
+		if !res.Ok {
+			return fmt.Errorf("cross invoke Manager error: %s", string(res.Result))
+		}
+		return nil
 	case RuleMgr:
 		res := g.CrossInvoke(constant.RuleManagerContractAddr.String(), "Manage", pb.String(string(p.EventType)), pb.String(string(nextEventType)), pb.String(string(p.ObjLastStatus)), pb.Bytes(p.Extra))
 		if !res.Ok {
@@ -721,7 +733,7 @@ func (g *Governance) setVote(p *Proposal, addr string, approve string, reason st
 		Num:       uint64(num),
 		Reason:    reason,
 	}
-	if 2 == num {
+	if repo.SuperAdminWeight == num {
 		p.IsSuperAdminVoted = true
 	}
 	p.BallotMap[addr] = ballot
@@ -746,7 +758,7 @@ func (g *Governance) countVote(p *Proposal) (bool, error) {
 	if !g.GetObject(string(p.Typ), &ps) {
 		// SimpleMajority is used by default
 		ps.Typ = SimpleMajority
-		ps.ParticipateThreshold = 0.75
+		ps.ParticipateThreshold = repo.DefaultParticipateThreshold
 		g.SetObject(string(p.Typ), ps)
 	}
 

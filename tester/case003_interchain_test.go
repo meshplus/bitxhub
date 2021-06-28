@@ -16,7 +16,6 @@ import (
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
-	"github.com/meshplus/bitxid"
 	"github.com/stretchr/testify/suite"
 	"github.com/tidwall/gjson"
 )
@@ -74,10 +73,8 @@ func (suite *Interchain) TestHandleIBTP() {
 	suite.Require().Nil(err)
 	pub2 := base64.StdEncoding.EncodeToString(rawpub2)
 
-	did := genUniqueAppchainDID(addr1.String())
 	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "Register",
-		pb.String(did),
-		pb.String(string(bitxid.DID(did).GetChainDID())),
+		pb.String(fmt.Sprintf("appchain%s", addr1.String())),
 		pb.String(docAddr),
 		pb.String(docHash),
 		pb.String(""),
@@ -129,10 +126,8 @@ func (suite *Interchain) TestHandleIBTP() {
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	adminNonce3++
 
-	did2 := genUniqueAppchainDID(addr2.String())
 	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "Register",
-		pb.String(did2),
-		pb.String(string(bitxid.DID(did2).GetChainDID())),
+		pb.String(fmt.Sprintf("appchain%s", addr2.String())),
 		pb.String(docAddr),
 		pb.String(docHash),
 		pb.String(""),
@@ -194,7 +189,7 @@ func (suite *Interchain) TestHandleIBTP() {
 
 	// register rule
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(),
-		"RegisterRule", pb.String(string(bitxid.DID(did).GetChainDID())), pb.String(addr.String()))
+		"RegisterRule", pb.String(id1), pb.String(addr.String()))
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess())
 	k1Nonce++
@@ -288,10 +283,8 @@ func (suite *Interchain) TestGetIBTPByID() {
 	confByte, err := ioutil.ReadFile("./test_data/validator")
 	suite.Require().Nil(err)
 
-	did := genUniqueAppchainDID(addr1.String())
 	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "Register",
-		pb.String(did),
-		pb.String(string(bitxid.DID(did).GetChainDID())),
+		pb.String(fmt.Sprintf("appchain%s", addr1.String())),
 		pb.String(docAddr),
 		pb.String(docHash),
 		pb.String(string(confByte)),
@@ -343,10 +336,8 @@ func (suite *Interchain) TestGetIBTPByID() {
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	adminNonce3++
 
-	did2 := genUniqueAppchainDID(addr2.String())
 	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "Register",
-		pb.String(did2),
-		pb.String(string(bitxid.DID(did2).GetChainDID())),
+		pb.String(fmt.Sprintf("appchain%s", addr2.String())),
 		pb.String(docAddr),
 		pb.String(docHash),
 		pb.String(""),
@@ -511,10 +502,8 @@ func (suite *Interchain) TestInterchain() {
 	suite.Require().Nil(transfer(suite.Suite, suite.api, addr1, 10000000000000))
 	adminNonce1 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin1.String())
 
-	did := genUniqueAppchainDID(addr1.String())
 	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "Register",
-		pb.String(did),
-		pb.String(string(bitxid.DID(did).GetChainDID())),
+		pb.String(fmt.Sprintf("appchain%s", addr1.String())),
 		pb.String(docAddr),
 		pb.String(docHash),
 		pb.String(""),
@@ -567,7 +556,7 @@ func (suite *Interchain) TestInterchain() {
 	adminNonce3++
 
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.InterchainContractAddr.Address(),
-		"Interchain", pb.String(string(bitxid.DID(did).GetChainDID())))
+		"Interchain", pb.String(id1))
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 

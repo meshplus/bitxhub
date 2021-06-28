@@ -26,5 +26,8 @@ type Executor interface {
 	// SubscribeLogEvent
 	SubscribeLogsEvent(chan<- []*pb.EvmLog) event.Subscription
 
+	// SubscribeNodeEvent
+	SubscribeNodeEvent(chan<- events.NodeEvent) event.Subscription
+
 	GetBoltContracts() map[string]agency.Contract
 }

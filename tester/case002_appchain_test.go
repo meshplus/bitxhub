@@ -7,12 +7,11 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/meshplus/bitxhub-kit/hexutil"
-
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/governance"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
+	"github.com/meshplus/bitxhub-kit/hexutil"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -70,11 +69,8 @@ func (suite *RegisterAppchain) TestRegisterAppchain() {
 
 	suite.Require().Nil(transfer(suite.Suite, suite.api, addr, 10000000000000))
 
-	did := genUniqueAppchainDID(addr.String())
-	did2 := genUniqueAppchainDID(addr2.String())
 	args := []*pb.Arg{
-		pb.String(did),
-		pb.String(string(bitxid.DID(did).GetChainDID())),
+		pb.String(fmt.Sprintf("appchain%s", addr.String())),
 		pb.String(docAddr),
 		pb.String(docHash),
 		pb.String(""),
@@ -96,8 +92,7 @@ func (suite *RegisterAppchain) TestRegisterAppchain() {
 	chainId := string(gRet.Extra)
 
 	args = []*pb.Arg{
-		pb.String(did2),
-		pb.String(string(bitxid.DID(did2).GetChainDID())),
+		pb.String(fmt.Sprintf("appchain%s", addr2.String())),
 		pb.String(docAddr),
 		pb.String(docHash),
 		pb.String(""),
@@ -123,6 +118,7 @@ func (suite *RegisterAppchain) TestRegisterAppchain() {
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	suite.normalNonce++
+	did := genUniqueAppchainDID(addr.String())
 	suite.Require().Equal(string(bitxid.DID(did).GetChainDID()), string(ret.Ret))
 }
 
@@ -145,10 +141,8 @@ func (suite *RegisterAppchain) TestFetchAppchains() {
 	suite.Require().Nil(transfer(suite.Suite, suite.api, addr1, 10000000000000))
 	suite.Require().Nil(transfer(suite.Suite, suite.api, addr2, 10000000000000))
 
-	did := genUniqueAppchainDID(addr1.String())
 	args := []*pb.Arg{
-		pb.String(did),
-		pb.String(string(bitxid.DID(did).GetChainDID())),
+		pb.String(fmt.Sprintf("appchain%s", addr1.String())),
 		pb.String(docAddr),
 		pb.String(docHash),
 		pb.String(""),
@@ -167,10 +161,8 @@ func (suite *RegisterAppchain) TestFetchAppchains() {
 	err = json.Unmarshal(ret.Ret, gRet)
 	suite.Require().Nil(err)
 	id1 := string(gRet.Extra)
-	did2 := genUniqueAppchainDID(addr2.String())
 	args = []*pb.Arg{
-		pb.String(did2),
-		pb.String(string(bitxid.DID(did2).GetChainDID())),
+		pb.String(fmt.Sprintf("appchain%s", addr2.String())),
 		pb.String(docAddr),
 		pb.String(docHash),
 		pb.String(""),
@@ -239,10 +231,8 @@ func (suite *RegisterAppchain) TestGetPubKeyByChainID() {
 	suite.Require().Nil(transfer(suite.Suite, suite.api, addr1, 10000000000000))
 	suite.Require().Nil(transfer(suite.Suite, suite.api, addr2, 10000000000000))
 
-	did := genUniqueAppchainDID(addr1.String())
 	args := []*pb.Arg{
-		pb.String(did),
-		pb.String(string(bitxid.DID(did).GetChainDID())),
+		pb.String(fmt.Sprintf("appchain%s", addr1.String())),
 		pb.String(docAddr),
 		pb.String(docHash),
 		pb.String(""),
@@ -258,10 +248,8 @@ func (suite *RegisterAppchain) TestGetPubKeyByChainID() {
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k1Nonce++
 
-	did2 := genUniqueAppchainDID(addr2.String())
 	args = []*pb.Arg{
-		pb.String(did2),
-		pb.String(string(bitxid.DID(did2).GetChainDID())),
+		pb.String(fmt.Sprintf("appchain%s", addr2.String())),
 		pb.String(docAddr),
 		pb.String(docHash),
 		pb.String(""),
@@ -307,10 +295,8 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 	suite.Require().Nil(err)
 	suite.Require().Nil(transfer(suite.Suite, suite.api, addr1, 10000000000000))
 
-	did := genUniqueAppchainDID(addr1.String())
 	args := []*pb.Arg{
-		pb.String(did),
-		pb.String(string(bitxid.DID(did).GetChainDID())),
+		pb.String(fmt.Sprintf("appchain%s", addr1.String())),
 		pb.String(docAddr),
 		pb.String(docHash),
 		pb.String(""),
@@ -337,10 +323,8 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 	suite.Require().Nil(err)
 	adminNonce := uint64(0)
 
-	adminDID := genUniqueAppchainDID(adminAddr.String())
 	args = []*pb.Arg{
-		pb.String(adminDID),
-		pb.String(string(bitxid.DID(adminDID).GetChainDID())),
+		pb.String(fmt.Sprintf("appchain%s", adminAddr.String())),
 		pb.String(docAddr),
 		pb.String(docHash),
 		pb.String(""),
@@ -355,11 +339,14 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	adminNonce++
+	gRet := &governance.GovernanceResult{}
+	err = json.Unmarshal(ret.Ret, gRet)
+	suite.Require().Nil(err)
+	id1 := string(gRet.Extra)
 
 	//UpdateAppchain
 	args = []*pb.Arg{
-		pb.String(did),
-		pb.String(string(bitxid.DID(did).GetChainDID())),
+		pb.String(id1),
 		pb.String(docAddr),
 		pb.String(docHash),
 		pb.String(""),

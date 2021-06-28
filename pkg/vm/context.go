@@ -14,7 +14,7 @@ type Context struct {
 	CurrentCaller    *types.Address
 	Ledger           *ledger.Ledger
 	TransactionIndex uint64
-	TransactionHash  *types.Hash
+	Transaction      pb.Transaction
 	TransactionData  *pb.TransactionData
 	Nonce            uint64
 	Logger           logrus.FieldLogger
@@ -28,7 +28,7 @@ func NewContext(tx pb.Transaction, txIndex uint64, data *pb.TransactionData, led
 		CurrentCaller:    tx.GetFrom(),
 		Ledger:           ledger,
 		TransactionIndex: txIndex,
-		TransactionHash:  tx.GetHash(),
+		Transaction:      tx,
 		TransactionData:  data,
 		Nonce:            tx.GetNonce(),
 		Logger:           logger,

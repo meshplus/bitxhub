@@ -3,6 +3,7 @@ package tester
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"path/filepath"
 	"strconv"
 
@@ -14,7 +15,6 @@ import (
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
-	"github.com/meshplus/bitxid"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -68,10 +68,8 @@ func (suite *Governance) TestGovernance() {
 	adminNonce1 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin1.String())
 
 	// 1. Register ==============================================
-	did := genUniqueAppchainDID(addr.String())
 	ret, err := invokeBVMContract(suite.api, appchainPri, appchainNonce, constant.AppchainMgrContractAddr.Address(), "Register",
-		pb.String(did),
-		pb.String(string(bitxid.DID(did).GetChainDID())),
+		pb.String(fmt.Sprintf("appchain%s", addr.String())),
 		pb.String(docAddr),
 		pb.String(docHash),
 		pb.String("validators"),
@@ -93,8 +91,7 @@ func (suite *Governance) TestGovernance() {
 
 	// repeated registration
 	ret, err = invokeBVMContract(suite.api, appchainPri, appchainNonce, constant.AppchainMgrContractAddr.Address(), "Register",
-		pb.String(did),
-		pb.String(string(bitxid.DID(did).GetChainDID())),
+		pb.String(fmt.Sprintf("appchain%s", addr.String())),
 		pb.String(docAddr),
 		pb.String(docHash),
 		pb.String("validators"),

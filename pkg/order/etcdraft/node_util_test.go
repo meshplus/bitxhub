@@ -2,12 +2,18 @@ package etcdraft
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/meshplus/bitxhub-core/governance"
+	node_mgr "github.com/meshplus/bitxhub-core/node-mgr"
+	"github.com/meshplus/bitxhub-model/constant"
 
 	"github.com/meshplus/bitxhub/internal/ledger"
 
@@ -232,6 +238,19 @@ func newSwarms(t *testing.T, peerCnt int, certVerify bool) ([]*peermgr.Swarm, ma
 		ChainLedger: chainLedger,
 		StateLedger: stateLedger,
 	}
+
+	for i := 0; i < peerCnt; i++ {
+		node := &node_mgr.Node{
+			Id:     uint64(i),
+			Pid:    ids[i],
+			Status: governance.GovernanceAvailable,
+		}
+		nodeData, err := json.Marshal(node)
+		require.Nil(t, err)
+		stateLedger.EXPECT().GetState(constant.NodeManagerContractAddr.Address(), []byte(fmt.Sprintf("%s-%s", node_mgr.NODE_PID_PREFIX, ids[i]))).Return(true, []byte(strconv.Itoa(i))).AnyTimes()
+		stateLedger.EXPECT().GetState(constant.NodeManagerContractAddr.Address(), []byte(fmt.Sprintf("%s-%d", node_mgr.NODEPREFIX, i))).Return(true, nodeData).AnyTimes()
+	}
+	stateLedger.EXPECT().Copy().Return(stateLedger).AnyTimes()
 
 	agencyData, err := ioutil.ReadFile("testdata/agency.cert")
 	require.Nil(t, err)

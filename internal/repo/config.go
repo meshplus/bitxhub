@@ -24,6 +24,13 @@ const (
 	KeyName = "key.json"
 	// API name
 	APIName = "api"
+	// admin weight
+	SuperAdminWeight  = 2
+	NormalAdminWeight = 1
+	// governance strategy default participate threshold
+	DefaultParticipateThreshold = 0.75
+	// bitxhub DID root prefix
+	BitxhubRootPrefix = "did:bitxhub"
 )
 
 type Config struct {

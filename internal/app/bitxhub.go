@@ -140,7 +140,7 @@ func GenerateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 	}
 
 	if rwLdg.ChainLedger.GetChainMeta().Height == 0 {
-		if err := genesis.Initialize(&rep.Config.Genesis, rwLdg, txExec); err != nil {
+		if err := genesis.Initialize(&rep.Config.Genesis, rep.NetworkConfig.Nodes, rep.NetworkConfig.N, rwLdg, txExec); err != nil {
 			return nil, err
 		}
 		logger.Info("Initialize genesis")

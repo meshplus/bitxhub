@@ -41,10 +41,6 @@ func loadNetworkConfig(repoRoot string, genesis Genesis) (*NetworkConfig, error)
 		return nil, err
 	}
 
-	if uint64(len(networkConfig.Nodes)) != networkConfig.N {
-		return nil, fmt.Errorf("wrong nodes number")
-	}
-
 	for _, node := range networkConfig.Nodes {
 		if node.ID == networkConfig.ID {
 			if len(node.Hosts) == 0 {
@@ -163,7 +159,7 @@ func RewriteNetworkConfig(repoRoot string, infos map[uint64]*pb.VpInfo, isNew bo
 		nodes = append(nodes, node)
 	}
 	networkConfig.Nodes = nodes
-	networkConfig.N = uint64(len(nodes))
+	networkConfig.N = uint64(v.GetUint("N"))
 	networkConfig.New = isNew
 	data, err := toml.Marshal(*networkConfig)
 	if err != nil {

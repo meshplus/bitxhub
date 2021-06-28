@@ -18,6 +18,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const (
+	method = "appchain1"
+)
+
 func TestAppchainManager_IsAppchainAdmin(t *testing.T) {
 	am, mockStub, chains, chainsData := prepare(t)
 
@@ -91,7 +95,7 @@ func TestAppchainManager_Appchains(t *testing.T) {
 			return true
 		}).Return(true).Times(1)
 
-	am.Register(appchainAdminDID, appchainMethod, docAddr, docHash,
+	am.Register(method, docAddr, docHash,
 		chains[0].Validators, chains[0].ConsensusType, chains[0].ChainType,
 		chains[0].Name, chains[0].Desc, chains[0].Version, chains[0].PublicKey)
 
@@ -152,13 +156,13 @@ func TestAppchainManager_Register(t *testing.T) {
 	//mockStub.EXPECT().CrossInvoke(constant.MethodRegistryContractAddr.String(), "Apply",
 	//	gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 
-	res := am.Register(appchainAdminDID, appchainMethod, docAddr, docHash,
+	res := am.Register(method, docAddr, docHash,
 		chains[2].Validators, chains[2].ConsensusType, chains[2].ChainType,
 		chains[2].Name, chains[2].Desc, chains[2].Version, chains[2].PublicKey)
 	assert.True(t, res.Ok)
 
 	// test for repeated register
-	res = am.Register(appchainAdminDID, appchainMethod, docAddr, docHash,
+	res = am.Register(method, docAddr, docHash,
 		chains[0].Validators, chains[0].ConsensusType, chains[0].ChainType,
 		chains[0].Name, chains[0].Desc, chains[0].Version, chains[0].PublicKey)
 	assert.False(t, res.Ok)

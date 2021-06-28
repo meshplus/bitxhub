@@ -1,6 +1,7 @@
 package events
 
 import (
+	"github.com/meshplus/bitxhub-core/governance"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 )
@@ -22,4 +23,9 @@ type CheckpointEvent struct {
 
 type OrderMessageEvent struct {
 	Data []byte
+}
+
+type NodeEvent struct {
+	NodeId        uint64
+	NodeEventType governance.EventType
 }

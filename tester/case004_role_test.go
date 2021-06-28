@@ -3,6 +3,7 @@ package tester
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"strconv"
@@ -15,7 +16,6 @@ import (
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
-	"github.com/meshplus/bitxid"
 	"github.com/stretchr/testify/suite"
 	"github.com/tidwall/gjson"
 )
@@ -44,10 +44,8 @@ func (suite *Role) TestGetRole() {
 
 	k1nonce := suite.api.Broker().GetPendingNonceByAccount(from1.String())
 
-	did := genUniqueAppchainDID(fromaddr)
 	_, err = invokeBVMContract(suite.api, k1, k1nonce, constant.AppchainMgrContractAddr.Address(), "Register",
-		pb.String(did),
-		pb.String(string(bitxid.DID(did).GetChainDID())),
+		pb.String(fmt.Sprintf("appchain%s", fromaddr)),
 		pb.String(docAddr),
 		pb.String(docHash),
 		pb.String(""),
@@ -164,11 +162,9 @@ func (suite *Role) TestGetRuleAddress() {
 	suite.Require().Nil(err)
 	pub2 := base64.StdEncoding.EncodeToString(rawpub2)
 
-	did := genUniqueAppchainDID(addr1.String())
 	// Register
 	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "Register",
-		pb.String(did),
-		pb.String(string(bitxid.DID(did).GetChainDID())),
+		pb.String(fmt.Sprintf("appchain%s", addr1.String())),
 		pb.String(docAddr),
 		pb.String(docHash),
 		pb.String(""),
@@ -215,10 +211,8 @@ func (suite *Role) TestGetRuleAddress() {
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	adminNonce3++
 
-	did2 := genUniqueAppchainDID(addr2.String())
 	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "Register",
-		pb.String(did2),
-		pb.String(string(bitxid.DID(did2).GetChainDID())),
+		pb.String(fmt.Sprintf("appchain%s", addr2.String())),
 		pb.String(docAddr),
 		pb.String(docHash),
 		pb.String(""),
@@ -341,10 +335,8 @@ func (suite *Role) TestSetAdminRoles() {
 	adminNonce := suite.api.Broker().GetPendingNonceByAccount(fromAdmin.String())
 
 	// register
-	did := genUniqueAppchainDID(fromAdmin.String())
 	retReg, err := invokeBVMContract(suite.api, priAdmin, adminNonce, constant.AppchainMgrContractAddr.Address(), "Register",
-		pb.String(did),
-		pb.String(string(bitxid.DID(did).GetChainDID())),
+		pb.String(fmt.Sprintf("appchain%s", fromAdmin.String())),
 		pb.String(docAddr),
 		pb.String(docHash),
 		pb.String(""),

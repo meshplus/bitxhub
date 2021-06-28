@@ -96,9 +96,9 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	data, err := json.Marshal(m)
 	assert.Nil(t, err)
 	ev := &pb.Event{
-		TxHash:     types.NewHash([]byte(from)),
-		Data:       data,
-		Interchain: true,
+		TxHash:    types.NewHash([]byte(from)),
+		Data:      data,
+		EventType: pb.Event_INTERCHAIN,
 	}
 	evs = append(evs, ev)
 	chainLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()

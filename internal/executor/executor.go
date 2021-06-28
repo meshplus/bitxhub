@@ -47,6 +47,7 @@ type BlockExecutor struct {
 	txsExecutor      agency.TxsExecutor
 	blockFeed        event.Feed
 	logsFeed         event.Feed
+	nodeFeed         event.Feed
 	ctx              context.Context
 	cancel           context.CancelFunc
 
@@ -141,6 +142,10 @@ func (exec *BlockExecutor) SubscribeBlockEvent(ch chan<- events.ExecutedEvent) e
 
 func (exec *BlockExecutor) SubscribeLogsEvent(ch chan<- []*pb.EvmLog) event.Subscription {
 	return exec.logsFeed.Subscribe(ch)
+}
+
+func (exec *BlockExecutor) SubscribeNodeEvent(ch chan<- events.NodeEvent) event.Subscription {
+	return exec.nodeFeed.Subscribe(ch)
 }
 
 func (exec *BlockExecutor) ApplyReadonlyTransactions(txs []pb.Transaction) []*pb.Receipt {
@@ -312,6 +317,12 @@ func registerBoltContracts() map[string]agency.Contract {
 			Name:     "governance service",
 			Address:  constant.GovernanceContractAddr.Address().String(),
 			Contract: &contracts.Governance{},
+		},
+		{
+			Enabled:  true,
+			Name:     "node manager service",
+			Address:  constant.NodeManagerContractAddr.Address().String(),
+			Contract: &contracts.NodeManager{},
 		},
 	}
 

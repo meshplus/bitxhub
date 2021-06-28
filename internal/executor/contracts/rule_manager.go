@@ -249,7 +249,7 @@ func (rm *RuleManager) LogoutRule(chainId string, ruleAddress string) *boltvm.Re
 	}
 
 	// 3. pre logout
-	if ok, data := rm.RuleManager.GovernancePre(chainId, ruleAddress, governance.EventLogout); !ok {
+	if ok, data := rm.RuleManager.GovernancePre(ruleAddress, governance.EventLogout, []byte(chainId)); !ok {
 		return boltvm.Error("logout prepare error: " + string(data))
 	}
 
