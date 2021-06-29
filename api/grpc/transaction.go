@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/meshplus/bitxhub-kit/crypto"
-	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"google.golang.org/grpc/codes"
@@ -79,15 +77,14 @@ func (cbs *ChainBrokerService) checkTransaction(tx *pb.BxhTransaction) error {
 		return fmt.Errorf("signature can't be empty")
 	}
 
+	if err := tx.VerifySignature(); err != nil {
+		return fmt.Errorf("invalid signature: %w", err)
+	}
+
 	return nil
 }
 
 func (cbs *ChainBrokerService) sendTransaction(tx *pb.BxhTransaction) (string, error) {
-	tx.TransactionHash = tx.Hash()
-	ok, _ := asym.Verify(crypto.Secp256k1, tx.Signature, tx.SignHash().Bytes(), *tx.From)
-	if !ok {
-		return "", fmt.Errorf("invalid signature")
-	}
 	err := cbs.api.Broker().HandleTransaction(tx)
 	if err != nil {
 		return "", err
