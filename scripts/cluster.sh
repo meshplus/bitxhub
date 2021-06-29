@@ -37,6 +37,7 @@ function prepare() {
     root=${BUILD_PATH}/node${i}
     mkdir -p "${root}"
 
+
     cp -rf "${CURRENT_PATH}"/certs/node${i}/certs "${root}"
     cp -rf "${CONFIG_PATH}"/* "${root}"
 
