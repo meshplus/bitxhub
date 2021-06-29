@@ -41,7 +41,7 @@ function prepare() {
     cp -rf "${CONFIG_PATH}"/* "${root}"
 
     echo " #!/usr/bin/env bash" >"${root}"/start.sh
-    echo "./bitxhub --root \$(pwd)" start >>"${root}"/start.sh
+    echo "./bitxhub --repo \$(pwd)" start >>"${root}"/start.sh
 
     bitxhubConfig=${root}/bitxhub.toml
     networkConfig=${root}/network.toml
