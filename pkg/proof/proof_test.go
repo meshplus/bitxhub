@@ -62,6 +62,7 @@ func TestVerifyPool_CheckProof(t *testing.T) {
 	rlData, err := json.Marshal(rl)
 	require.Nil(t, err)
 
+	stateLedger.EXPECT().Copy().Return(stateLedger).AnyTimes()
 	stateLedger.EXPECT().GetState(constant.AppchainMgrContractAddr.Address(), gomock.Any()).Return(true, chainData)
 	stateLedger.EXPECT().GetState(constant.RuleManagerContractAddr.Address(), gomock.Any()).Return(false, rlData)
 	mockEngine.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil).AnyTimes()
@@ -205,6 +206,7 @@ func TestVerifyPool_CheckProof3(t *testing.T) {
 	mockEngine := mock_validator.NewMockEngine(mockCtl)
 
 	stateLedger.EXPECT().GetState(constant.AppchainMgrContractAddr.Address(), gomock.Any()).Return(true, []byte("123"))
+	stateLedger.EXPECT().Copy().Return(stateLedger).AnyTimes()
 	mockEngine.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil).AnyTimes()
 
 	vp := VerifyPool{
