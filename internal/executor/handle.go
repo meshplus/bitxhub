@@ -351,13 +351,16 @@ func (exec *BlockExecutor) applyTransaction(i int, tx pb.Transaction, invalidRea
 		}
 		receipt.GasUsed = gasUsed
 
+		//internal invoke evm
+		receipt.EvmLogs = exec.ledger.GetLogs(*tx.GetHash())
+		receipt.Bloom = ledger.CreateBloom(ledger.EvmReceipts{receipt})
+
 		if err := exec.payGasFee(tx, gasUsed); err != nil {
 			exec.ledger.RevertToSnapshot(snapshot)
 			receipt.Status = pb.Receipt_FAILED
 			receipt.Ret = []byte(err.Error())
 			exec.payLeftAsGasFee(tx)
 		}
-
 		return receipt
 	case *types2.EthTransaction:
 		ethTx := tx.(*types2.EthTransaction)
@@ -382,7 +385,7 @@ func (exec *BlockExecutor) applyBxhTransaction(i int, tx *pb.BxhTransaction, inv
 
 	if tx.IsIBTP() {
 		ctx := vm.NewContext(tx, uint64(i), nil, exec.ledger, exec.logger)
-		instance := boltvm.New(ctx, exec.validationEngine, exec.getContracts(opt))
+		instance := boltvm.New(ctx, exec.validationEngine,exec.evm, exec.getContracts(opt))
 		ret, err := instance.HandleIBTP(tx.GetIBTP())
 		return ret, GasBVMTx, err
 	}
@@ -414,7 +417,7 @@ func (exec *BlockExecutor) applyBxhTransaction(i int, tx *pb.BxhTransaction, inv
 		switch data.VmType {
 		case pb.TransactionData_BVM:
 			ctx := vm.NewContext(tx, uint64(i), data, exec.ledger, exec.logger)
-			instance = boltvm.New(ctx, exec.validationEngine, exec.getContracts(opt))
+			instance = boltvm.New(ctx, exec.validationEngine,exec.evm, exec.getContracts(opt))
 			gasUsed = GasBVMTx
 		case pb.TransactionData_XVM:
 			var err error

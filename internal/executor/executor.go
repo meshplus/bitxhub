@@ -14,6 +14,7 @@ import (
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
+	"github.com/meshplus/bitxhub/internal/executor/oracle/appchain"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/internal/repo"
@@ -34,6 +35,7 @@ var _ Executor = (*BlockExecutor)(nil)
 
 // BlockExecutor executes block from order
 type BlockExecutor struct {
+	client           *appchain.Client
 	ledger           *ledger.Ledger
 	logger           logrus.FieldLogger
 	blockC           chan *BlockWrapper
@@ -54,6 +56,7 @@ type BlockExecutor struct {
 	evm         *vm.EVM
 	evmChainCfg *params.ChainConfig
 	gasLimit    uint64
+	config      repo.Config
 	bxhGasPrice *big.Int
 	lock        *sync.Mutex
 	admins      []string
@@ -64,9 +67,8 @@ func (exec *BlockExecutor) GetBoltContracts() map[string]agency.Contract {
 }
 
 // New creates executor instance
-func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, config *repo.Config, gasPrice *big.Int) (*BlockExecutor, error) {
+func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, client *appchain.Client, config *repo.Config, gasPrice *big.Int) (*BlockExecutor, error) {
 	ibtpVerify := proof.New(chainLedger, logger)
-
 	txsExecutor, err := agency.GetExecutorConstructor(config.Executor.Type)
 	if err != nil {
 		return nil, err
@@ -75,6 +77,7 @@ func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, config *repo.Con
 	ctx, cancel := context.WithCancel(context.Background())
 
 	blockExecutor := &BlockExecutor{
+		client:           client,
 		ledger:           chainLedger,
 		logger:           logger,
 		ctx:              ctx,
@@ -88,8 +91,9 @@ func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, config *repo.Con
 		currentBlockHash: chainLedger.GetChainMeta().BlockHash,
 		wasmInstances:    make(map[string]*wasmer.Instance),
 		evmChainCfg:      newEVMChainCfg(),
-		gasLimit:         config.GasLimit,
+		config:           *config,
 		bxhGasPrice:      gasPrice,
+		gasLimit:         config.GasLimit,
 		lock:             &sync.Mutex{},
 	}
 
@@ -99,7 +103,7 @@ func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, config *repo.Con
 
 	blockExecutor.evm = newEvm(1, uint64(0), blockExecutor.evmChainCfg, blockExecutor.ledger, blockExecutor.ledger.ChainLedger, blockExecutor.admins[0])
 
-	blockExecutor.txsExecutor = txsExecutor(blockExecutor.applyTx, registerBoltContracts, logger)
+	blockExecutor.txsExecutor = txsExecutor(blockExecutor.applyTx, blockExecutor.registerBoltContracts, logger)
 
 	return blockExecutor, nil
 }
@@ -268,7 +272,7 @@ func (exec *BlockExecutor) persistData() {
 	exec.ledger.Close()
 }
 
-func registerBoltContracts() map[string]agency.Contract {
+func(exec *BlockExecutor) registerBoltContracts() map[string]agency.Contract {
 	boltContracts := []*boltvm.BoltContract{
 		{
 			Enabled:  true,
@@ -317,6 +321,12 @@ func registerBoltContracts() map[string]agency.Contract {
 			Name:     "governance service",
 			Address:  constant.GovernanceContractAddr.Address().String(),
 			Contract: &contracts.Governance{},
+		},
+		{
+			Enabled:  true,
+			Name:     "ethereum header service",
+			Address:  constant.EthHeaderMgrContractAddr.Address().String(),
+			Contract: contracts.NewEthHeaderManager(exec.client.EthOracle),
 		},
 		{
 			Enabled:  true,

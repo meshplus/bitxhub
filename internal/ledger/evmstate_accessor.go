@@ -199,3 +199,27 @@ func CreateBloom(receipts EvmReceipts) *types.Bloom {
 	}
 	return &bin
 }
+
+func NewMessageFromBxh(tx *pb.BxhTransaction) etherTypes.Message {
+	from := common.BytesToAddress(tx.GetFrom().Bytes())
+	var to *common.Address
+	if tx.GetTo() != nil {
+		toAddr := common.BytesToAddress(tx.GetTo().Bytes())
+		to = &toAddr
+	}
+	nonce := tx.GetNonce()
+	amount, _ := new(big.Int).SetString("0", 10)
+	gas := uint64(1000000)
+	gasPrice := tx.GetGasPrice()
+	gasFeeCap := new(big.Int).SetInt64(0)
+	gasTipCap := new(big.Int).SetInt64(0)
+	data := tx.GetPayload()
+	accessList := new(etherTypes.AccessList)
+
+	checkNonce := true
+	if v, _, _ := tx.GetRawSignature(); v == nil {
+		checkNonce = false
+	}
+
+	return etherTypes.NewMessage(from, to, nonce, amount, gas, gasPrice, gasFeeCap, gasTipCap, data, *accessList, checkNonce)
+}

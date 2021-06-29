@@ -22,6 +22,7 @@ import (
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	types2 "github.com/meshplus/bitxhub/api/jsonrpc/types"
+	"github.com/meshplus/bitxhub/internal/executor/oracle/appchain"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/ledger/mock_ledger"
 	"github.com/meshplus/bitxhub/internal/model/events"
@@ -57,7 +58,7 @@ func TestNew(t *testing.T) {
 	chainLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
 
 	logger := log.NewWithModule("executor")
-	executor, err := New(mockLedger, logger, config, big.NewInt(types2.GasPrice))
+	executor, err := New(mockLedger, logger, &appchain.Client{}, config, big.NewInt(types2.GasPrice))
 	assert.Nil(t, err)
 	assert.NotNil(t, executor)
 
@@ -113,6 +114,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	stateLedger.EXPECT().GetNonce(gomock.Any()).Return(uint64(0)).AnyTimes()
 	stateLedger.EXPECT().SetCode(gomock.Any(), gomock.Any()).AnyTimes()
 	stateLedger.EXPECT().GetCode(gomock.Any()).Return([]byte("10")).AnyTimes()
+	stateLedger.EXPECT().GetLogs(gomock.Any()).Return(nil).AnyTimes()
 	chainLedger.EXPECT().PersistExecutionResult(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	stateLedger.EXPECT().FlushDirtyData().Return(make(map[string]ledger2.IAccount), &types.Hash{}).AnyTimes()
 	stateLedger.EXPECT().PrepareBlock(gomock.Any(), gomock.Any()).AnyTimes()
@@ -124,7 +126,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	chainLedger.EXPECT().Close().AnyTimes()
 	logger := log.NewWithModule("executor")
 
-	exec, err := New(mockLedger, logger, config, big.NewInt(types2.GasPrice))
+	exec, err := New(mockLedger, logger, &appchain.Client{}, config, big.NewInt(types2.GasPrice))
 	assert.Nil(t, err)
 
 	// mock data for block
@@ -237,6 +239,7 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 	stateLedger.EXPECT().Snapshot().Return(1).AnyTimes()
 	stateLedger.EXPECT().RevertToSnapshot(1).AnyTimes()
 	chainLedger.EXPECT().LoadChainMeta().Return(chainMeta).AnyTimes()
+	stateLedger.EXPECT().GetLogs(gomock.Any()).Return(nil).AnyTimes()
 	chainLedger.EXPECT().GetBlock(gomock.Any()).Return(mockBlock(10, nil), nil).AnyTimes()
 	stateLedger.EXPECT().PrepareEVM(gomock.Any(), gomock.Any()).AnyTimes()
 	stateLedger.EXPECT().PrepareBlock(gomock.Any(), gomock.Any()).AnyTimes()
@@ -244,7 +247,7 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 	stateLedger.EXPECT().SetBalance(gomock.Any(), gomock.Any()).AnyTimes()
 	logger := log.NewWithModule("executor")
 
-	exec, err := New(mockLedger, logger, config, big.NewInt(types2.GasPrice))
+	exec, err := New(mockLedger, logger, &appchain.Client{}, config, big.NewInt(types2.GasPrice))
 	assert.Nil(t, err)
 
 	// mock data for block
@@ -337,7 +340,7 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 	err = ldg.PersistExecutionResult(mockBlock(1, nil), nil, &pb.InterchainMeta{})
 	require.Nil(t, err)
 
-	executor, err := New(ldg, log.NewWithModule("executor"), config, big.NewInt(types2.GasPrice))
+	executor, err := New(ldg, log.NewWithModule("executor"), &appchain.Client{}, config, big.NewInt(types2.GasPrice))
 	require.Nil(t, err)
 	err = executor.Start()
 	require.Nil(t, err)
@@ -362,7 +365,7 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 	viewLedger, err := ledger.New(createMockRepo(t), blockchainStorage, ldb, blockFile, accountCache, log.NewWithModule("ledger"))
 	require.Nil(t, err)
 
-	exec, err := New(viewLedger, log.NewWithModule("executor"), config, big.NewInt(0))
+	exec, err := New(viewLedger, log.NewWithModule("executor"), &appchain.Client{}, config, big.NewInt(0))
 	require.Nil(t, err)
 
 	tx := mockTransferTx(t)

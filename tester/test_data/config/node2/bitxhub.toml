@@ -3,51 +3,89 @@ title = "BitXHub configuration file"
 solo = false
 
 [port]
-  grpc = 60012
-  gateway = 9092
-  pprof = 53122
+jsonrpc = 8881
+grpc = 60011
+gateway = 9091
+pprof = 53121
+monitor = 40011
 
 [pprof]
-  enable = true
+enable = true
+ptype = "http" # including two types: runtime (recommended for use during the development phase) and http
+mode = "memory" # only required for runtime ptype, including two modes: cpu、memory
+duration = "30s" # only required for runtime ptype, every duration will generation a profile.
+
+[monitor]
+enable = true
 
 [gateway]
-    allowed_origins = ["*"]
+allowed_origins = ["*"]
+
+[ping]
+enable = true
+duration = "15s"
+
+[security]
+enable_tls = false
+pem_file_path = "certs/server.pem"
+server_key_path = "certs/server.key"
+
+[limiter]
+interval= "50ms"
+quantum= 500
+capacity= 10000
+
+[appchain]
+eth_header_path="appchain/eth_header.json"
 
 [log]
-  level = "info"
-  dir = "logs"
-  filename = "bitxhub.log"
-  report_caller = false
-  [log.module]
-    p2p = "info"
-    consensus = "info"
-    executor = "info"
-    router = "info"
-    api = "info"
-    coreapi = "info"
+level = "info"
+dir = "logs"
+filename = "bitxhub.log"
+report_caller = false
+[log.module]
+p2p = "info"
+consensus = "info"
+executor = "info"
+router = "info"
+api = "info"
+coreapi = "info"
+storage = "info"
 
 [cert]
-  verify = true
+verify = true
+node_cert_path = "certs/node.cert"
+agency_cert_path = "certs/agency.cert"
+ca_cert_path = "certs/ca.cert"
 
 [order]
-  plugin = "plugins/raft.so"
+plugin = "plugins/raft.so"
+
+[executor]
+type = "serial"  # opensource version only supports serial type, commercial version supports serial and parallel types
+
+[ledger]
+type = "complex"
 
 [genesis]
-  dider = "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013"
-  [[genesis.admins]]
-    address = "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013"
-    weight = 2
-  [[genesis.admins]]
-    address = "0x79a1215469FaB6f9c63c1816b45183AD3624bE34"
-    weight = 2
-  [[genesis.admins]]
-    address = "0x97c8B516D19edBf575D72a172Af7F418BE498C37"
-    weight = 2
-  [[genesis.admins]]
-    address = "0xc0Ff2e0b3189132D815b8eb325bE17285AC898f8"
-    weight = 2
-  [genesis.strategy]
-    AppchainMgr = "SimpleMajority"
-    RuleMgr = "SimpleMajority"
-    NodeMgr = "SimpleMajority"
-    ServiceMgr = "SimpleMajority"
+chainid = 1356
+gas_limit = 0x5f5e100
+dider = "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013"
+[[genesis.admins]]
+address = "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013"
+weight = 2 # 1：General Administrator 2: Super Administrator (Genesis Administrator)
+[[genesis.admins]]
+address = "0x79a1215469FaB6f9c63c1816b45183AD3624bE34"
+weight = 2
+[[genesis.admins]]
+address = "0x97c8B516D19edBf575D72a172Af7F418BE498C37"
+weight = 2
+[[genesis.admins]]
+address = "0xc0Ff2e0b3189132D815b8eb325bE17285AC898f8"
+weight = 2
+[genesis.strategy]
+AppchainMgr = "SimpleMajority"
+RuleMgr = "SimpleMajority"
+NodeMgr = "SimpleMajority"
+ServiceMgr = "SimpleMajority"
+

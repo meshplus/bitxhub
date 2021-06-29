@@ -35,6 +35,9 @@ solo = false
   quantum= 500
   capacity= 10000
 
+[appchain]
+  eth_header_path="appchain/eth_header.json"
+
 [log]
   level = "info"
   dir = "logs"
@@ -69,7 +72,7 @@ solo = false
   gas_limit = 0x5f5e100
   dider = "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013"
   [[genesis.admins]]
-    address = "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013"
+    address = "0xC213ef4E4AcB689655Fc476D30EFf0fb865Eb28a"
     weight = 2 # 1：General Administrator 2: Super Administrator (Genesis Administrator)
   [[genesis.admins]]
     address = "0x79a1215469FaB6f9c63c1816b45183AD3624bE34"
@@ -85,3 +88,4 @@ solo = false
     RuleMgr = "SimpleMajority"
     NodeMgr = "SimpleMajority"
     ServiceMgr = "SimpleMajority"
+

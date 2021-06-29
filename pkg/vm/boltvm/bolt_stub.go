@@ -3,11 +3,15 @@ package boltvm
 import (
 	"encoding/json"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core"
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/validator"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/pkg/vm"
+	vm1 "github.com/meshplus/eth-kit/evm"
 	"github.com/sirupsen/logrus"
 )
 
@@ -17,10 +21,6 @@ type BoltStubImpl struct {
 	bvm *BoltVM
 	ctx *vm.Context
 	ve  validator.Engine
-}
-
-func (b *BoltStubImpl) CrossInvokeEVM(address string, input []byte) *boltvm.Response {
-	panic("implement me")
 }
 
 func (b *BoltStubImpl) Caller() string {
@@ -41,12 +41,12 @@ func (b *BoltStubImpl) Logger() logrus.FieldLogger {
 
 // GetTxHash returns the transaction hash
 func (b *BoltStubImpl) GetTxHash() *types.Hash {
-	hash := b.ctx.Transaction.GetHash()
+	hash := b.ctx.Tx.GetHash()
 	return hash
 }
 
 func (b *BoltStubImpl) GetTxTimeStamp() int64 {
-	timeStamp := b.ctx.Transaction.GetTimeStamp()
+	timeStamp := b.ctx.Tx.GetTimeStamp()
 	return timeStamp
 }
 
@@ -142,7 +142,7 @@ func (b *BoltStubImpl) CrossInvoke(address, method string, args ...*pb.Arg) *bol
 		CurrentCaller:    b.bvm.ctx.Callee,
 		Ledger:           b.bvm.ctx.Ledger,
 		TransactionIndex: b.bvm.ctx.TransactionIndex,
-		Transaction:      b.bvm.ctx.Transaction,
+		Tx:               b.bvm.ctx.Tx,
 		Logger:           b.bvm.ctx.Logger,
 	}
 
@@ -150,12 +150,48 @@ func (b *BoltStubImpl) CrossInvoke(address, method string, args ...*pb.Arg) *bol
 	if err != nil {
 		return boltvm.Error(err.Error())
 	}
-	bvm := New(ctx, b.ve, b.bvm.contracts)
+	bvm := New(ctx, b.ve, nil, b.bvm.contracts)
 	ret, err := bvm.Run(data)
 	if err != nil {
 		return boltvm.Error(err.Error())
 	}
 
+	return boltvm.Success(ret)
+}
+
+func (b *BoltStubImpl) CrossInvokeEVM(address string, data []byte) *boltvm.Response {
+	addr := types.NewAddressByStr(address)
+	ctx := b.bvm.ctx
+
+	tx := &pb.BxhTransaction{
+		Version:         ctx.Tx.Version,
+		From:            ctx.Tx.From,
+		To:              addr,
+		Timestamp:       ctx.Tx.Timestamp,
+		TransactionHash: ctx.Tx.TransactionHash,
+		Payload:         data,
+		Nonce:           ctx.Tx.Nonce,
+		Signature:       ctx.Tx.Signature,
+		Extra:           ctx.Tx.Extra,
+	}
+	gp := new(core.GasPool).AddGas(10000000)
+	msg := ledger.NewMessageFromBxh(tx)
+	statedb := ctx.Ledger.StateLedger
+	statedb.PrepareEVM(common.BytesToHash(ctx.Tx.TransactionHash.Bytes()), int(ctx.TransactionIndex))
+	snapshot := statedb.Snapshot()
+	txContext := vm1.NewEVMTxContext(msg)
+	b.bvm.evm.Reset(txContext, statedb)
+	result, err := vm1.ApplyMessage(b.bvm.evm, msg, gp)
+	if err != nil {
+		statedb.RevertToSnapshot(snapshot)
+		ctx.Ledger.ClearChangerAndRefund()
+		return boltvm.Error(err.Error())
+	}
+	if result.Failed() {
+		return boltvm.Error(string(append([]byte(result.Err.Error()), result.Revert()...)))
+	}
+	ret := result.Return()
+	ctx.Ledger.Finalise(false)
 	return boltvm.Success(ret)
 }
 
