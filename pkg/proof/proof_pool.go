@@ -8,8 +8,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/meshplus/bitxhub/internal/ledger"
-
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/governance"
 	ruleMgr "github.com/meshplus/bitxhub-core/rule-mgr"
@@ -21,6 +19,7 @@ import (
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
+	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/sirupsen/logrus"
 )
 
@@ -173,7 +172,7 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, error) {
 }
 
 func (pl *VerifyPool) getRule(chainId string) (bool, []byte) {
-	ok, data := pl.ledger.GetState(constant.RuleManagerContractAddr.Address(), []byte(contracts.RuleKey(chainId)))
+	ok, data := pl.ledger.Copy().GetState(constant.RuleManagerContractAddr.Address(), []byte(contracts.RuleKey(chainId)))
 	if !ok {
 		return ok, data
 	}
@@ -197,7 +196,7 @@ func (pl *VerifyPool) getRule(chainId string) (bool, []byte) {
 }
 
 func (pl *VerifyPool) getAccountState(address constant.BoltContractAddress, key string) (bool, []byte) {
-	return pl.ledger.GetState(address.Address(), []byte(key))
+	return pl.ledger.Copy().GetState(address.Address(), []byte(key))
 }
 
 func (pl *VerifyPool) putProof(proofHash types.Hash, proof []byte) {
