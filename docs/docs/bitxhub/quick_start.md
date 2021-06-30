@@ -2,14 +2,18 @@
 我们提供了Goduck运维小工具来快速体验跨链流程。
 
 ## 1 环境准备
-Goduck快速开始依赖于Docker和Docker-Compose，需要提前准备好docker环境。
+
+> Goduck快速开始依赖于Docker和Docker-Compose，需要提前准备好docker环境。
 
 ## 2 下载 Goduck
+
+> **！！！注意：** 执行上述命令的路径下应该没有goduck同名目录
+
 下载Goduck可执行二进制文件：
+
 ```shell
 curl https://raw.githubusercontent.com/meshplus/goduck/release-0.1/scripts/goduck.sh -L -o - | bash
 ```
-**！！！注意：** 执行上述命令的路径下应该没有goduck同名目录
 
 ## 3 初始化
 初始化goduck配置文件，命令如下：
