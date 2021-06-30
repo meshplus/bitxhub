@@ -136,7 +136,7 @@ func GenerateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 	}
 
 	// 1. create executor and view executor
-	viewExec, err := executor.New(viewLdg, loggers.Logger(loggers.Executor), appchainClient, rep.Config, big.NewInt(types.GasPrice))
+	viewExec, err := executor.New(viewLdg, loggers.Logger(loggers.Executor), appchainClient, rep.Config, big.NewInt(0))
 	if err != nil {
 		return nil, fmt.Errorf("create ViewExecutor: %w", err)
 	}
