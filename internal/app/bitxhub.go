@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"fmt"
-	orderplg "github.com/meshplus/bitxhub/internal/plugins"
 	"math/big"
 	"path/filepath"
 	"syscall"
@@ -20,6 +19,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/ledger/genesis"
 	"github.com/meshplus/bitxhub/internal/loggers"
+	orderplg "github.com/meshplus/bitxhub/internal/plugins"
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/bitxhub/internal/router"
 	"github.com/meshplus/bitxhub/internal/storages"
@@ -136,21 +136,23 @@ func GenerateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 	}
 
 	// 1. create executor and view executor
-	txExec, err := executor.New(rwLdg, loggers.Logger(loggers.Executor), appchainClient, rep.Config, big.NewInt(types.GasPrice))
-	if err != nil {
-		return nil, fmt.Errorf("create BlockExecutor: %w", err)
-	}
-
-	viewExec, err := executor.New(viewLdg, loggers.Logger(loggers.Executor), appchainClient, rep.Config, big.NewInt(types.GasPrice))
+	viewExec, err := executor.New(viewLdg, loggers.Logger(loggers.Executor), appchainClient, rep.Config, big.NewInt(0))
 	if err != nil {
 		return nil, fmt.Errorf("create ViewExecutor: %w", err)
 	}
 
 	if rwLdg.ChainLedger.GetChainMeta().Height == 0 {
-		if err := genesis.Initialize(&rep.Config.Genesis, rep.NetworkConfig.Nodes, rep.NetworkConfig.N, rwLdg, txExec); err != nil {
+		if err := genesis.Initialize(&rep.Config.Genesis, rep.NetworkConfig.Nodes, rep.NetworkConfig.N, rwLdg, viewExec); err != nil {
 			return nil, err
 		}
-		logger.Info("Initialize genesis")
+		logger.WithFields(logrus.Fields{
+			"genesis block hash": rwLdg.ChainLedger.GetChainMeta().BlockHash,
+		}).Info("Initialize genesis")
+	}
+
+	txExec, err := executor.New(rwLdg, loggers.Logger(loggers.Executor), appchainClient, rep.Config, big.NewInt(types.GasPrice))
+	if err != nil {
+		return nil, fmt.Errorf("create BlockExecutor: %w", err)
 	}
 
 	peerMgr, err := peermgr.New(rep, loggers.Logger(loggers.P2P), rwLdg)
