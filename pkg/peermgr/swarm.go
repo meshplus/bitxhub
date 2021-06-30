@@ -3,6 +3,7 @@ package peermgr
 import (
 	"context"
 	"fmt"
+	"math"
 	"sync"
 	"time"
 
@@ -44,6 +45,7 @@ type Swarm struct {
 	orderMessageFeed event.Feed
 	enablePing       bool
 	pingTimeout      time.Duration
+	pingC            chan *repo.Ping
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -112,6 +114,7 @@ func New(repoConfig *repo.Repo, logger logrus.FieldLogger, ledger *ledger.Ledger
 		ledger:         ledger,
 		enablePing:     repoConfig.Config.Ping.Enable,
 		pingTimeout:    repoConfig.Config.Ping.Duration,
+		pingC:          make(chan *repo.Ping),
 		routers:        routers,
 		multiAddrs:     multiAddrs,
 		piers:          newPiers(),
@@ -162,9 +165,7 @@ func (swarm *Swarm) Start() error {
 		}(id, addr)
 	}
 
-	if swarm.enablePing {
-		go swarm.Ping()
-	}
+	go swarm.Ping()
 
 	return nil
 }
@@ -175,6 +176,9 @@ func (swarm *Swarm) Stop() error {
 }
 
 func (swarm *Swarm) Ping() {
+	if !swarm.enablePing {
+		swarm.pingTimeout = math.MaxInt64
+	}
 	ticker := time.NewTicker(swarm.pingTimeout)
 	for {
 		select {
@@ -198,6 +202,14 @@ func (swarm *Swarm) Ping() {
 				return true
 			})
 			swarm.logger.WithFields(fields).Info("ping time")
+		case pingConfig := <-swarm.pingC:
+			swarm.enablePing = pingConfig.Enable
+			swarm.pingTimeout = pingConfig.Duration
+			if !swarm.enablePing {
+				swarm.pingTimeout = math.MaxInt64
+			}
+			ticker.Stop()
+			ticker = time.NewTicker(swarm.pingTimeout)
 		case <-swarm.ctx.Done():
 			return
 		}
@@ -467,4 +479,9 @@ func constructMultiaddr(vpInfo *pb.VpInfo) (*peer.AddrInfo, error) {
 
 func (swarm *Swarm) PierManager() PierManager {
 	return swarm
+}
+
+func (swarm *Swarm) ReConfig(config *repo.Config) error {
+	swarm.pingC <- &config.Ping
+	return nil
 }

@@ -5,14 +5,20 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
+	"github.com/ethereum/go-ethereum/event"
 	libp2pcert "github.com/meshplus/go-libp2p-cert"
 )
 
 type Repo struct {
-	Config        *Config
-	NetworkConfig *NetworkConfig
-	Key           *Key
-	Certs         *libp2pcert.Certs
+	Config           *Config
+	NetworkConfig    *NetworkConfig
+	Key              *Key
+	Certs            *libp2pcert.Certs
+	ConfigChangeFeed event.Feed
+}
+
+func (r *Repo) SubscribeConfigChange(ch chan *Config) event.Subscription {
+	return r.ConfigChangeFeed.Subscribe(ch)
 }
 
 func Load(repoRoot string) (*Repo, error) {
@@ -40,12 +46,16 @@ func Load(repoRoot string) (*Repo, error) {
 		return nil, fmt.Errorf("load private key: %w", err)
 	}
 
-	return &Repo{
+	repo := &Repo{
 		Config:        config,
 		NetworkConfig: networkConfig,
 		Key:           key,
 		Certs:         certs,
-	}, nil
+	}
+
+	WatchConfig(&repo.ConfigChangeFeed)
+
+	return repo, nil
 }
 
 func checkConfig(config *Config) error {

@@ -5,55 +5,154 @@ import (
 	"fmt"
 	"net/http"
 	"path/filepath"
+	"sort"
+	"strings"
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub/internal/loggers"
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/rs/cors"
+	"github.com/sirupsen/logrus"
 	"github.com/tmc/grpc-websocket-proxy/wsproxy"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
 
-func Start(config *repo.Config) error {
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+type Gateway struct {
+	server   *http.Server
+	mux      *runtime.ServeMux
+	certFile string
+	keyFile  string
+	endpoint string
+	config   repo.Config
+	logger   logrus.FieldLogger
 
-	mux := runtime.NewServeMux(
+	ctx    context.Context
+	cancel context.CancelFunc
+}
+
+func NewGateway(config *repo.Config) *Gateway {
+	gateway := &Gateway{
+		config: *config,
+		logger: loggers.Logger(loggers.API),
+	}
+	gateway.init()
+
+	return gateway
+}
+
+func (g *Gateway) init() {
+	g.ctx, g.cancel = context.WithCancel(context.Background())
+	config := g.config
+	g.mux = runtime.NewServeMux(
 		runtime.WithMarshalerOption(runtime.MIMEWildcard,
 			&runtime.JSONPb{OrigName: true, EmitDefaults: false, EnumsAsInts: true},
 		),
 	)
-
 	handler := cors.New(cors.Options{
 		AllowedOrigins: config.AllowedOrigins,
-	}).Handler(mux)
+	}).Handler(g.mux)
+	g.server = &http.Server{Addr: fmt.Sprintf(":%d", config.Port.Gateway), Handler: wsproxy.WebsocketProxy(handler)}
+	g.endpoint = fmt.Sprintf("localhost:%d", config.Port.Grpc)
 
-	endpoint := fmt.Sprintf("localhost:%d", config.Port.Grpc)
 	if config.Security.EnableTLS {
-		pemFilePath := filepath.Join(config.RepoRoot, config.Security.PemFilePath)
-		serverKeyPath := filepath.Join(config.RepoRoot, config.Security.ServerKeyPath)
-		cred, err := credentials.NewServerTLSFromFile(pemFilePath, serverKeyPath)
+		g.certFile = filepath.Join(config.RepoRoot, config.Security.PemFilePath)
+		g.keyFile = filepath.Join(config.RepoRoot, config.Security.ServerKeyPath)
+	} else {
+		g.certFile = ""
+		g.keyFile = ""
+	}
+}
+
+func (g *Gateway) Start() error {
+	g.logger.WithField("port", g.config.Port.Gateway).Info("Gateway service started")
+	if g.certFile != "" || g.keyFile != "" {
+		cred, err := credentials.NewServerTLSFromFile(g.certFile, g.keyFile)
 		if err != nil {
 			return err
 		}
 
-		conn, err := grpc.DialContext(ctx, endpoint, grpc.WithTransportCredentials(cred))
+		conn, err := grpc.DialContext(g.ctx, g.endpoint, grpc.WithTransportCredentials(cred))
 		if err != nil {
 			return err
 		}
-		err = pb.RegisterChainBrokerHandler(ctx, mux, conn)
+		err = pb.RegisterChainBrokerHandler(g.ctx, g.mux, conn)
 		if err != nil {
 			return err
 		}
-		return http.ListenAndServeTLS(fmt.Sprintf(":%d", config.Port.Gateway), pemFilePath, serverKeyPath, wsproxy.WebsocketProxy(handler))
+
+		go func() {
+			err := g.server.ListenAndServeTLS(g.certFile, g.keyFile)
+			if err != nil {
+				g.logger.Error(err)
+			}
+		}()
 	} else {
 		opts := []grpc.DialOption{grpc.WithInsecure()}
-		err := pb.RegisterChainBrokerHandlerFromEndpoint(ctx, mux, endpoint, opts)
+		err := pb.RegisterChainBrokerHandlerFromEndpoint(g.ctx, g.mux, g.endpoint, opts)
 		if err != nil {
 			return err
 		}
-		return http.ListenAndServe(fmt.Sprintf(":%d", config.Port.Gateway), wsproxy.WebsocketProxy(handler))
+
+		go func() {
+			err := g.server.ListenAndServe()
+			if err != nil {
+				g.logger.Errorf("ListenAndServe failed: %v", err)
+			}
+		}()
 	}
+
+	return nil
+}
+
+func (g *Gateway) Stop() error {
+	g.cancel()
+	g.logger.Info("Gateway service stopped")
+	return g.server.Close()
+}
+
+func (g *Gateway) ReConfig(config *repo.Config) error {
+	if g.config.Security.EnableTLS != config.Security.EnableTLS ||
+		g.config.Security.PemFilePath != config.Security.PemFilePath ||
+		g.config.Security.ServerKeyPath != config.Security.ServerKeyPath ||
+		g.config.Grpc != config.Grpc ||
+		g.config.Port.Gateway != config.Port.Gateway ||
+		!equalAllowedOrigins(g.config.AllowedOrigins, config.AllowedOrigins) {
+
+		if err := g.Stop(); err != nil {
+			return err
+		}
+
+		g.config.Security = config.Security
+		g.config.Grpc = config.Grpc
+		g.config.Port.Gateway = config.Port.Gateway
+		g.config.AllowedOrigins = config.AllowedOrigins
+
+		g.init()
+
+		if err := g.Start(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+
+}
+
+func equalAllowedOrigins(strings0, strings1 []string) bool {
+	if len(strings0) != len(strings1) {
+		return false
+	}
+
+	sort.Strings(strings0)
+	sort.Strings(strings1)
+
+	for i := range strings0 {
+		if !strings.EqualFold(strings0[i], strings1[i]) {
+			return false
+		}
+	}
+
+	return true
 }
