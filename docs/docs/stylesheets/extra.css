@@ -7,6 +7,10 @@
   --hub-table-th-color: #121212;
 }
 
+[data-md-color-primary=black] {
+  --md-typeset-a-color: #0076D9;
+}
+
 [data-md-color-scheme=slate] {
   --md-default-fg-color--lighter: #0076D9;
   --hub-blockquote-bg: #292a3a; 
@@ -108,4 +112,8 @@
 
 .md-content__inner {
   margin-bottom: 3.5rem;
+}
+
+.md-content__button {
+  width: 18px;
 }

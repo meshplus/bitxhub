@@ -14,14 +14,14 @@ theme:
     # text: Roboto
     code: Roboto Mono
   palette:
-    - media: "(prefers-color-scheme: dark)"
-      scheme: slate
-      primary: black
-      accent: blue
-      toggle:
-        icon: material/weather-sunny
-        name: Switch to night mode
-    - media: "(prefers-color-scheme: light)"
+    # - media: "(prefers-color-scheme: dark)"
+    #   scheme: slate
+    #   primary: black
+    #   accent: blue
+    #   toggle:
+    #     icon: material/weather-sunny
+    #     name: Switch to night mode
+    # - media: "(prefers-color-scheme: light)"
       scheme: default
       primary: black
       accent: blue
