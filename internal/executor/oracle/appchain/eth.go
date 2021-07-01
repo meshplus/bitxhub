@@ -63,7 +63,7 @@ func NewRinkebyOracle(storagePath string, logger logrus.FieldLogger) (*EthLightC
 
 // NewRopstenOracle inits with ropsten block 10105112, receives above the 10105112 headers
 func NewRopstenOracle(ropstenPath string, storagePath string, readOnly bool, logger logrus.FieldLogger) (*EthLightChainOracle, error) {
-	db, err := leveldb.New(storagePath, 256, 0, "", readOnly)
+	db, err := leveldb.New(storagePath, 16, 0, "", readOnly)
 	if err != nil {
 		return nil, err
 	}
