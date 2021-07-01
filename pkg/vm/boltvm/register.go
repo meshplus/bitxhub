@@ -21,6 +21,9 @@ type BoltContract struct {
 func Register(contracts []*BoltContract) map[string]agency.Contract {
 	boltRegister := make(map[string]agency.Contract)
 	for _, c := range contracts {
+		if !c.Enabled {
+			continue
+		}
 		if _, ok := boltRegister[c.Address]; ok {
 			panic("duplicate bolt contract address")
 		} else {

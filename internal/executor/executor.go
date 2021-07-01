@@ -323,7 +323,7 @@ func(exec *BlockExecutor) registerBoltContracts() map[string]agency.Contract {
 			Contract: &contracts.Governance{},
 		},
 		{
-			Enabled:  true,
+			Enabled:  exec.config.Appchain.Enable,
 			Name:     "ethereum header service",
 			Address:  constant.EthHeaderMgrContractAddr.Address().String(),
 			Contract: contracts.NewEthHeaderManager(exec.client.EthOracle),

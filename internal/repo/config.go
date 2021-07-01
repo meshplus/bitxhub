@@ -90,9 +90,9 @@ type Limiter struct {
 }
 
 type Appchain struct {
+	Enable       bool `toml:"enable" json:"enable"`
 	EthHeaderPath string `mapstructure:"eth_header_path"`
 }
-
 
 type Gateway struct {
 	AllowedOrigins []string `mapstructure:"allowed_origins"`
