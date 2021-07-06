@@ -21,4 +21,7 @@ type Executor interface {
 
 	// SubscribeBlockEvent
 	SubscribeBlockEvent(chan<- events.ExecutedEvent) event.Subscription
+
+	// SubscribeReceiptEvent
+	SubscribeReceiptEvent(string, chan<- *pb.Receipt) event.Subscription
 }

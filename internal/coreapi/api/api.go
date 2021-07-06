@@ -62,6 +62,7 @@ type ChainAPI interface {
 
 type FeedAPI interface {
 	SubscribeNewBlockEvent(chan<- events.ExecutedEvent) event.Subscription
+	SubscribeReceiptEvent(string, chan<- *pb.Receipt) event.Subscription
 }
 
 type AccountAPI interface {

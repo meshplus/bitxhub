@@ -10,14 +10,14 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/meshplus/bitxhub/internal/executor/contracts"
-
 	"github.com/cbergoon/merkletree"
+	"github.com/ethereum/go-ethereum/event"
 	"github.com/meshplus/bitxhub-core/agency"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/pkg/vm"
@@ -283,6 +283,19 @@ func (exec *BlockExecutor) postBlockEvent(block *pb.Block, interchainMeta *pb.In
 		InterchainMeta: interchainMeta,
 		TxHashList:     txHashList,
 	})
+}
+
+func (exec *BlockExecutor) postReceiptEvent(receipts []*pb.Receipt) {
+	for _, receipt := range receipts {
+		go func(receipt *pb.Receipt) {
+			val, ok := exec.receiptFeeds.LoadAndDelete(receipt.TxHash.String())
+			if !ok {
+				return
+			}
+			feed := val.(*event.Feed)
+			feed.Send(receipt)
+		}(receipt)
+	}
 }
 
 func (exec *BlockExecutor) applyTransaction(i int, tx *pb.Transaction, opt *agency.TxOpt) ([]byte, error) {

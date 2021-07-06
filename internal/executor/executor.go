@@ -42,6 +42,7 @@ type BlockExecutor struct {
 	wasmInstances    map[string]wasmer.Instance
 	txsExecutor      agency.TxsExecutor
 	blockFeed        event.Feed
+	receiptFeeds     sync.Map
 	ctx              context.Context
 	cancel           context.CancelFunc
 }
@@ -109,6 +110,12 @@ func (exec *BlockExecutor) ExecuteBlock(block *pb.CommitEvent) {
 // SubscribeBlockEvent registers a subscription of ExecutedEvent.
 func (exec *BlockExecutor) SubscribeBlockEvent(ch chan<- events.ExecutedEvent) event.Subscription {
 	return exec.blockFeed.Subscribe(ch)
+}
+
+// SubscribeBlockEvent registers a subscription of ExecutedEvent.
+func (exec *BlockExecutor) SubscribeReceiptEvent(txHash string, ch chan<- *pb.Receipt) event.Subscription {
+	actual, _ := exec.receiptFeeds.LoadOrStore(txHash, &event.Feed{})
+	return actual.(*event.Feed).Subscribe(ch)
 }
 
 func (exec *BlockExecutor) ApplyReadonlyTransactions(txs []*pb.Transaction) []*pb.Receipt {
@@ -209,6 +216,7 @@ func (exec *BlockExecutor) persistData() {
 		now := time.Now()
 		exec.ledger.PersistBlockData(data)
 		exec.postBlockEvent(data.Block, data.InterchainMeta, data.TxHashList)
+		exec.postReceiptEvent(data.Receipts)
 		exec.logger.WithFields(logrus.Fields{
 			"height": data.Block.BlockHeader.Number,
 			"hash":   data.Block.BlockHash.String(),
