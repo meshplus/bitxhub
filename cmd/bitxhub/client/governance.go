@@ -62,7 +62,7 @@ func governanceCMD() cli.Command {
 							},
 							cli.StringFlag{
 								Name:     "type",
-								Usage:    "proposal type, currently only AppchainMgr and RuleMgr are supported",
+								Usage:    "proposal type, currently only AppchainMgr, RuleMgr, NodeMgr, RoleMgr are supported",
 								Required: false,
 							},
 							cli.StringFlag{
@@ -100,6 +100,7 @@ func governanceCMD() cli.Command {
 			appchainMgrCMD(),
 			ruleMgrCMD(),
 			nodeMgrCND(),
+			roleMgrCND(),
 		},
 	}
 }
@@ -219,7 +220,8 @@ func checkProposalArgs(id, typ, status, from, objId string) error {
 		typ != string(contracts.AppchainMgr) &&
 		typ != string(contracts.RuleMgr) &&
 		typ != string(contracts.NodeMgr) &&
-		typ != string(contracts.ServiceMgr) {
+		typ != string(contracts.ServiceMgr) &&
+		typ != string(contracts.RoleMgr) {
 		return fmt.Errorf("illegal proposal type")
 	}
 	if status != "" &&

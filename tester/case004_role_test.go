@@ -61,7 +61,7 @@ func (suite *Role) TestGetRole() {
 
 	receipt, err := invokeBVMContract(suite.api, k1, k1nonce, constant.RoleContractAddr.Address(), "GetRole")
 	suite.Require().Nil(err)
-	suite.Equal("appchain_admin", string(receipt.Ret))
+	suite.Equal(string(contracts.AppchainAdmin), string(receipt.Ret))
 	k1nonce++
 }
 
@@ -322,21 +322,53 @@ func (suite *Role) TestGetRuleAddress() {
 	k2Nonce++
 }
 
-func (suite *Role) TestSetAdminRoles() {
+func (suite *Role) TestRegisterRoles() {
 	// admin chain
 	path1 := "./test_data/config/node1/key.json"
+	path2 := "./test_data/config/node2/key.json"
+	path3 := "./test_data/config/node3/key.json"
+	path4 := "./test_data/config/node4/key.json"
+	path5 := "./test_data/key.json"
+
 	keyPath1 := filepath.Join(path1)
-	priAdmin, err := asym.RestorePrivateKey(keyPath1, "bitxhub")
+	keyPath2 := filepath.Join(path2)
+	keyPath3 := filepath.Join(path3)
+	keyPath4 := filepath.Join(path4)
+	keyPath5 := filepath.Join(path5)
+
+	priAdmin1, err := asym.RestorePrivateKey(keyPath1, "bitxhub")
 	suite.Require().Nil(err)
-	fromAdmin, err := priAdmin.PublicKey().Address()
+	priAdmin2, err := asym.RestorePrivateKey(keyPath2, "bitxhub")
 	suite.Require().Nil(err)
-	pubAdmin, err := priAdmin.PublicKey().Bytes()
+	priAdmin3, err := asym.RestorePrivateKey(keyPath3, "bitxhub")
 	suite.Require().Nil(err)
-	adminNonce := suite.api.Broker().GetPendingNonceByAccount(fromAdmin.String())
+	priAdmin4, err := asym.RestorePrivateKey(keyPath4, "bitxhub")
+	suite.Require().Nil(err)
+	priAdmin5, err := asym.RestorePrivateKey(keyPath5, "bitxhub")
+	suite.Require().Nil(err)
+
+	fromAdmin1, err := priAdmin1.PublicKey().Address()
+	suite.Require().Nil(err)
+	fromAdmin2, err := priAdmin2.PublicKey().Address()
+	suite.Require().Nil(err)
+	fromAdmin3, err := priAdmin3.PublicKey().Address()
+	suite.Require().Nil(err)
+	fromAdmin4, err := priAdmin4.PublicKey().Address()
+	suite.Require().Nil(err)
+	fromAdmin5, err := priAdmin5.PublicKey().Address()
+	suite.Require().Nil(err)
+
+	pubAdmin, err := priAdmin1.PublicKey().Bytes()
+	suite.Require().Nil(err)
+
+	adminNonce1 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin1.String())
+	adminNonce2 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin2.String())
+	adminNonce3 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin3.String())
+	adminNonce4 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin4.String())
 
 	// register
-	retReg, err := invokeBVMContract(suite.api, priAdmin, adminNonce, constant.AppchainMgrContractAddr.Address(), "Register",
-		pb.String(fmt.Sprintf("appchain%s", fromAdmin.String())),
+	retReg, err := invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.AppchainMgrContractAddr.Address(), "Register",
+		pb.String(fmt.Sprintf("appchain%s", fromAdmin1.String())),
 		pb.String(docAddr),
 		pb.String(docHash),
 		pb.String(""),
@@ -349,76 +381,68 @@ func (suite *Role) TestSetAdminRoles() {
 	)
 	suite.Require().Nil(err)
 	suite.Require().True(retReg.IsSuccess(), string(retReg.Ret))
-	adminNonce++
+	adminNonce1++
 
 	// is admin
-	retIsAdmin, err := invokeBVMContract(suite.api, priAdmin, adminNonce, constant.RoleContractAddr.Address(), "IsAdmin", pb.String(fromAdmin.String()))
+	retIsAdmin, err := invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.RoleContractAddr.Address(), "IsAdmin", pb.String(fromAdmin1.String()))
 	suite.Require().Nil(err)
 	suite.Require().True(retIsAdmin.IsSuccess())
-	adminNonce++
+	adminNonce1++
 
 	// get admin roles
-	r1, err := invokeBVMContract(suite.api, priAdmin, adminNonce, constant.RoleContractAddr.Address(), "GetAdminRoles")
+	r1, err := invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.RoleContractAddr.Address(), "GetAdminRoles")
 	suite.Assert().Nil(err)
 	ret1 := gjson.ParseBytes(r1.Ret)
 	suite.EqualValues(4, len(ret1.Array()))
-	adminNonce++
+	adminNonce1++
 
-	as := make([]string, 0)
-	as = append(as, fromAdmin.String())
-	data, err := json.Marshal(as)
-	suite.Nil(err)
-
-	// set admin roles
-	r, err := invokeBVMContract(suite.api, priAdmin, adminNonce, constant.RoleContractAddr.Address(), "SetAdminRoles", pb.String(string(data)))
+	// ！！！Adding an administrator may affect other integration tests, so this section is commented out
+	// register role
+	r, err := invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.RoleContractAddr.Address(), "RegisterRole",
+		pb.String(fromAdmin5.String()),
+		pb.String(string(contracts.GovernanceAdmin)),
+		pb.String(""),
+	)
 	suite.Require().Nil(err)
-	suite.Require().True(r.IsSuccess())
-	adminNonce++
+	suite.Require().True(r.IsSuccess(), string(r.Ret))
+	adminNonce1++
+	gRet := &governance.GovernanceResult{}
+	err = json.Unmarshal(r.Ret, gRet)
+	suite.Require().Nil(err)
+	proposalId1 := gRet.ProposalID
+
+	// vote
+	r, err = invokeBVMContract(suite.api, priAdmin2, adminNonce2, constant.GovernanceContractAddr.Address(), "Vote",
+		pb.String(proposalId1),
+		pb.String(string(contracts.APPOVED)),
+		pb.String("reason"),
+	)
+	suite.Require().Nil(err)
+	suite.Require().True(r.IsSuccess(), string(r.Ret))
+	adminNonce2++
+
+	r, err = invokeBVMContract(suite.api, priAdmin3, adminNonce3, constant.GovernanceContractAddr.Address(), "Vote",
+		pb.String(proposalId1),
+		pb.String(string(contracts.APPOVED)),
+		pb.String("reason"),
+	)
+	suite.Require().Nil(err)
+	suite.Require().True(r.IsSuccess(), string(r.Ret))
+	adminNonce3++
+
+	r, err = invokeBVMContract(suite.api, priAdmin4, adminNonce4, constant.GovernanceContractAddr.Address(), "Vote",
+		pb.String(proposalId1),
+		pb.String(string(contracts.APPOVED)),
+		pb.String("reason"),
+	)
+	suite.Require().Nil(err)
+	suite.Require().True(r.IsSuccess(), string(r.Ret))
+	adminNonce4++
 
 	// get admin roles
-	r2, err := invokeBVMContract(suite.api, priAdmin, adminNonce, constant.RoleContractAddr.Address(), "GetAdminRoles")
+	r2, err := invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.RoleContractAddr.Address(), "GetAdminRoles")
 	suite.Assert().Nil(err)
 	ret2 := gjson.ParseBytes(r2.Ret)
-	suite.EqualValues(1, len(ret2.Array()))
-	adminNonce++
-
-	// set more admin roles
-	path2 := "./test_data/config/node2/key.json"
-	path3 := "./test_data/config/node3/key.json"
-	path4 := "./test_data/config/node4/key.json"
-
-	keyPath2 := filepath.Join(path2)
-	keyPath3 := filepath.Join(path3)
-	keyPath4 := filepath.Join(path4)
-
-	priAdmin2, err := asym.RestorePrivateKey(keyPath2, "bitxhub")
-	suite.Require().Nil(err)
-	priAdmin3, err := asym.RestorePrivateKey(keyPath3, "bitxhub")
-	suite.Require().Nil(err)
-	priAdmin4, err := asym.RestorePrivateKey(keyPath4, "bitxhub")
-	suite.Require().Nil(err)
-
-	fromAdmin2, err := priAdmin2.PublicKey().Address()
-	suite.Require().Nil(err)
-	fromAdmin3, err := priAdmin3.PublicKey().Address()
-	suite.Require().Nil(err)
-	fromAdmin4, err := priAdmin4.PublicKey().Address()
-	suite.Require().Nil(err)
-
-	// set admin roles
-	as2 := make([]string, 0)
-	as2 = append(as2, fromAdmin.String(), fromAdmin2.String(), fromAdmin3.String(), fromAdmin4.String())
-	data2, err := json.Marshal(as2)
-	suite.Nil(err)
-	r, err = invokeBVMContract(suite.api, priAdmin, adminNonce, constant.RoleContractAddr.Address(), "SetAdminRoles", pb.String(string(data2)))
-	suite.Require().Nil(err)
-	suite.Require().True(r.IsSuccess())
-	adminNonce++
-
-	// get Admin Roles
-	r3, err := invokeBVMContract(suite.api, priAdmin, adminNonce, constant.RoleContractAddr.Address(), "GetAdminRoles")
-	suite.Assert().Nil(err)
-	ret3 := gjson.ParseBytes(r3.Ret)
-	suite.EqualValues(4, len(ret3.Array()))
-	adminNonce++
+	suite.EqualValues(5, len(ret2.Array()))
+	adminNonce1++
 }
