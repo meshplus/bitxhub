@@ -12,7 +12,7 @@
 下载Goduck可执行二进制文件：
 
 ```shell
-curl https://raw.githubusercontent.com/meshplus/goduck/release-0.1/scripts/goduck.sh -L -o - | bash
+curl https://raw.githubusercontent.com/meshplus/goduck/release-1.0/scripts/goduck.sh -L -o - | bash
 ```
 
 ## 3 初始化
