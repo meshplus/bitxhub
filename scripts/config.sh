@@ -40,14 +40,11 @@ function prepare() {
   rm -rf "${BUILD_PATH}"
   mkdir "${BUILD_PATH}"
 
-  cd "${PROJECT_PATH}"/internal/plugins
-  make raft
 }
 
 function generate() {
   cd "${BUILD_PATH}"
   cp "${PROJECT_PATH}"/bin/bitxhub "${BUILD_PATH}"
-  cp -rf "${PROJECT_PATH}"/internal/plugins/build/raft.so "${BUILD_PATH}"
 
   "${BUILD_PATH}"/bitxhub cert ca
   "${BUILD_PATH}"/bitxhub cert priv gen --name agency
@@ -60,7 +57,6 @@ function generate() {
     mkdir -p "${repo}"
    "${BUILD_PATH}"/bitxhub --repo="${repo}" init
 
-    mkdir -p "${repo}"/plugins
     mkdir -p "${repo}"/certs
 
     cd "${repo}"/certs

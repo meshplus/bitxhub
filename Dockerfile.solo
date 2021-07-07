@@ -18,8 +18,6 @@ RUN go get -u github.com/gobuffalo/packr/packr
 # Build bitxhub node
 RUN make install
 
-# Build solo plugin
-RUN cd internal/plugins && make solo
 
 
 # Final image
@@ -39,10 +37,6 @@ ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/lib
 RUN bitxhub --repo=/root/.bitxhub init \
     && sed -i "s/solo = false/solo = true/g" /root/.bitxhub/bitxhub.toml \
     && sed -i "s/raft.so/solo.so/g" /root/.bitxhub/bitxhub.toml
-
-# Copy certs and plugin
-COPY --from=builder /go/src/github.com/meshplus/bitxhub/scripts/certs/node1/certs/* /root/.bitxhub/certs/
-COPY --from=builder /go/src/github.com/meshplus/bitxhub/internal/plugins/build/solo.so /root/.bitxhub/plugins/
 
 EXPOSE 8881 60011 9091 53121 40011
 

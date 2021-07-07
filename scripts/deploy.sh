@@ -55,8 +55,6 @@ function deploy() {
   for ((i = 1; i < $N + 1; i = i + 1)); do
     root=${BUILD_PATH}/node${i}
     cp ../bin/bitxhub_linux-amd64 ${root}/bitxhub
-    mkdir -p ${root}/plugins
-    cp ../internal/plugins/build/*.so ${root}/plugins
 
     j=1
     for ip in $ips; do

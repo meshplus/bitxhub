@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"github.com/meshplus/bitxhub-core/agency"
 	"math/big"
 	"path/filepath"
 	"syscall"
@@ -22,12 +23,13 @@ import (
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/ledger/genesis"
 	"github.com/meshplus/bitxhub/internal/loggers"
-	orderplg "github.com/meshplus/bitxhub/internal/plugins"
 	"github.com/meshplus/bitxhub/internal/profile"
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/bitxhub/internal/router"
 	"github.com/meshplus/bitxhub/internal/storages"
 	"github.com/meshplus/bitxhub/pkg/order"
+	_ "github.com/meshplus/bitxhub/pkg/order/etcdraft"
+	_ "github.com/meshplus/bitxhub/pkg/order/solo"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
 	ledger2 "github.com/meshplus/eth-kit/ledger"
 	"github.com/sirupsen/logrus"
@@ -38,7 +40,7 @@ type BitXHub struct {
 	BlockExecutor executor.Executor
 	ViewExecutor  executor.Executor
 	Router        router.Router
-	Order         order.Order
+	Order         agency.Order
 	PeerMgr       peermgr.PeerManager
 
 	repo   *repo.Repo
@@ -67,10 +69,16 @@ func NewBitXHub(rep *repo.Repo) (*BitXHub, error) {
 
 	m := rep.NetworkConfig.GetVpInfos()
 
-	order, err := orderplg.New(
+	//Get the order constructor according to different order type.
+	orderCon, err := agency.GetOrderConstructor(rep.Config.Order.Type)
+	if err != nil {
+		return nil, err
+	}
+
+	order, err := orderCon(
 		order.WithRepoRoot(repoRoot),
 		order.WithStoragePath(repo.GetStoragePath(repoRoot, "order")),
-		order.WithPluginPath(rep.Config.Plugin),
+		order.WithOrderType(rep.Config.Order.Type),
 		order.WithNodes(m),
 		order.WithID(rep.NetworkConfig.ID),
 		order.WithIsNew(rep.NetworkConfig.New),
@@ -281,7 +289,7 @@ func (bxh *BitXHub) printLogo() {
 		err := bxh.Order.Ready()
 		if err == nil {
 			bxh.logger.WithFields(logrus.Fields{
-				"plugin_path": bxh.repo.Config.Order.Plugin,
+				"order_type": bxh.repo.Config.Order.Type,
 			}).Info("Order is ready")
 			fmt.Println()
 			fmt.Println("=======================================================")
