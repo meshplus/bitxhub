@@ -288,12 +288,14 @@ func (exec *BlockExecutor) postBlockEvent(block *pb.Block, interchainMeta *pb.In
 func (exec *BlockExecutor) postReceiptEvent(receipts []*pb.Receipt) {
 	for _, receipt := range receipts {
 		go func(receipt *pb.Receipt) {
-			val, ok := exec.receiptFeeds.LoadAndDelete(receipt.TxHash.String())
+			hash := receipt.TxHash.String()
+			val, ok := exec.receiptFeeds.Load(hash)
 			if !ok {
 				return
 			}
 			feed := val.(*event.Feed)
 			feed.Send(receipt)
+			exec.receiptFeeds.Delete(hash)
 		}(receipt)
 	}
 }
