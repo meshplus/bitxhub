@@ -83,7 +83,7 @@ func ruleMgrCMD() cli.Command {
 func getRulesList(ctx *cli.Context) error {
 	id := ctx.String("id")
 
-	receipt, err := invokeBVMContract(ctx, constant.RuleManagerContractAddr.String(), "Rules", pb.String(id))
+	receipt, err := invokeBVMContractBySendView(ctx, constant.RuleManagerContractAddr.String(), "Rules", pb.String(id))
 	if err != nil {
 		return err
 	}
@@ -105,7 +105,7 @@ func getRulesList(ctx *cli.Context) error {
 func getAvailableRuleAddress(ctx *cli.Context) error {
 	id := ctx.String("id")
 
-	receipt, err := invokeBVMContract(ctx, constant.RuleManagerContractAddr.String(), "GetAvailableRuleAddr", pb.String(id))
+	receipt, err := invokeBVMContractBySendView(ctx, constant.RuleManagerContractAddr.String(), "GetAvailableRuleAddr", pb.String(id))
 	if err != nil {
 		return err
 	}
@@ -122,7 +122,7 @@ func getRuleStatus(ctx *cli.Context) error {
 	chainId := ctx.String("id")
 	ruleAddr := ctx.String("addr")
 
-	receipt, err := invokeBVMContract(ctx, constant.RuleManagerContractAddr.String(), "GetRuleByAddr", pb.String(chainId), pb.String(ruleAddr))
+	receipt, err := invokeBVMContractBySendView(ctx, constant.RuleManagerContractAddr.String(), "GetRuleByAddr", pb.String(chainId), pb.String(ruleAddr))
 	if err != nil {
 		return err
 	}

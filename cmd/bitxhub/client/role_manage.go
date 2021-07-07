@@ -5,13 +5,10 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/meshplus/bitxhub-kit/crypto/asym"
-
-	"github.com/meshplus/bitxhub/internal/executor/contracts"
-
 	"github.com/fatih/color"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/tidwall/gjson"
 	"github.com/urfave/cli"
 )
@@ -38,8 +35,8 @@ func roleMgrCND() cli.Command {
 				Usage: "register role",
 				Flags: []cli.Flag{
 					cli.StringFlag{
-						Name:     "keyPath",
-						Usage:    "the path of key.json",
+						Name:     "address",
+						Usage:    "role address(id)",
 						Required: true,
 					},
 					cli.StringFlag{
@@ -128,7 +125,7 @@ func roleMgrCND() cli.Command {
 func getRoleStatusById(ctx *cli.Context) error {
 	id := ctx.String("id")
 
-	receipt, err := invokeBVMContract(ctx, constant.RoleContractAddr.String(), "GetRoleById", pb.String(id))
+	receipt, err := invokeBVMContractBySendView(ctx, constant.RoleContractAddr.String(), "GetRoleById", pb.String(id))
 	if err != nil {
 		return err
 	}
@@ -146,14 +143,9 @@ func getRoleStatusById(ctx *cli.Context) error {
 }
 
 func registerRole(ctx *cli.Context) error {
-	keyPath := ctx.String("keyPath")
+	addr := ctx.String("address")
 	typ := ctx.String("type")
 	nodePid := ctx.String("nodePid")
-
-	addr, err := getAddrByKey(keyPath)
-	if err != nil {
-		return fmt.Errorf("get addr by key error: %v", err)
-	}
 
 	receipt, err := invokeBVMContract(ctx, constant.RoleContractAddr.String(), "RegisterRole", pb.String(addr), pb.String(typ), pb.String(nodePid))
 	if err != nil {
@@ -244,13 +236,13 @@ func allRole(ctx *cli.Context) error {
 	var ret *pb.Receipt
 	switch typ {
 	case string(contracts.GovernanceAdmin):
-		receipt, err := invokeBVMContract(ctx, constant.RoleContractAddr.String(), "GetAdminRoles")
+		receipt, err := invokeBVMContractBySendView(ctx, constant.RoleContractAddr.String(), "GetAdminRoles")
 		if err != nil {
 			return err
 		}
 		ret = receipt
 	case string(contracts.AuditAdmin):
-		receipt, err := invokeBVMContract(ctx, constant.RoleContractAddr.String(), "GetAuditAdminRoles")
+		receipt, err := invokeBVMContractBySendView(ctx, constant.RoleContractAddr.String(), "GetAuditAdminRoles")
 		if err != nil {
 			return err
 		}
@@ -288,16 +280,4 @@ func printRole(roles []*contracts.Role) {
 	}
 
 	PrintTable(table, true)
-}
-
-func getAddrByKey(keyPath string) (string, error) {
-	adminPriv, err := asym.RestorePrivateKey(keyPath, "bitxhub")
-	if err != nil {
-		return "", err
-	}
-	address, err := adminPriv.PublicKey().Address()
-	if err != nil {
-		return "", err
-	}
-	return address.String(), nil
 }

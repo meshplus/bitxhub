@@ -250,7 +250,7 @@ func getdDuplicateProposals(ps1, ps2 []contracts.Proposal) []contracts.Proposal 
 }
 
 func getProposalsByConditions(ctx *cli.Context, keyPath string, menthod string, arg string) ([]contracts.Proposal, error) {
-	receipt, err := invokeBVMContract(ctx, constant.GovernanceContractAddr.String(), menthod, pb.String(arg))
+	receipt, err := invokeBVMContractBySendView(ctx, constant.GovernanceContractAddr.String(), menthod, pb.String(arg))
 	if err != nil {
 		return nil, err
 	}
@@ -340,7 +340,7 @@ func invokeBVMContract(ctx *cli.Context, contractAddr string, method string, arg
 	}
 	keyPath := repo.GetKeyPath(repoRoot)
 
-	resp, err := sendTx(ctx, contractAddr, big.NewInt(0), uint64(pb.TransactionData_INVOKE), keyPath, uint64(pb.TransactionData_BVM), method, args...)
+	resp, err := sendTxOrView(ctx, sendTx, contractAddr, big.NewInt(0), uint64(pb.TransactionData_INVOKE), keyPath, uint64(pb.TransactionData_BVM), method, args...)
 	if err != nil {
 		return nil, fmt.Errorf("send transaction error: %s", err.Error())
 	}
@@ -374,6 +374,27 @@ func invokeBVMContract(ctx *cli.Context, contractAddr string, method string, arg
 	m := &runtime.JSONPb{OrigName: true, EmitDefaults: false, EnumsAsInts: true}
 	receipt := &pb.Receipt{}
 	if err = m.Unmarshal(data, receipt); err != nil {
+		return nil, fmt.Errorf("jsonpb unmarshal receipt error: %w", err)
+	}
+
+	return receipt, nil
+}
+
+func invokeBVMContractBySendView(ctx *cli.Context, contractAddr string, method string, args ...*pb.Arg) (*pb.Receipt, error) {
+	repoRoot, err := repo.PathRootWithDefault(ctx.GlobalString("repo"))
+	if err != nil {
+		return nil, err
+	}
+	keyPath := repo.GetKeyPath(repoRoot)
+
+	resp, err := sendTxOrView(ctx, sendView, contractAddr, big.NewInt(0), uint64(pb.TransactionData_INVOKE), keyPath, uint64(pb.TransactionData_BVM), method, args...)
+	if err != nil {
+		return nil, fmt.Errorf("send transaction error: %s", err.Error())
+	}
+
+	m := &runtime.JSONPb{OrigName: true, EmitDefaults: false, EnumsAsInts: true}
+	receipt := &pb.Receipt{}
+	if err = m.Unmarshal(resp, receipt); err != nil {
 		return nil, fmt.Errorf("jsonpb unmarshal receipt error: %w", err)
 	}
 

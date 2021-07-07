@@ -91,7 +91,7 @@ func nodeMgrCND() cli.Command {
 func getNodeStatusByPid(ctx *cli.Context) error {
 	pid := ctx.String("pid")
 
-	receipt, err := invokeBVMContract(ctx, constant.NodeManagerContractAddr.String(), "GetNode", pb.String(pid))
+	receipt, err := invokeBVMContractBySendView(ctx, constant.NodeManagerContractAddr.String(), "GetNode", pb.String(pid))
 	if err != nil {
 		return err
 	}
@@ -148,7 +148,7 @@ func logoutNode(ctx *cli.Context) error {
 func allNode(ctx *cli.Context) error {
 	typ := ctx.String("type")
 
-	receipt, err := invokeBVMContract(ctx, constant.NodeManagerContractAddr.String(), "Nodes", pb.String(typ))
+	receipt, err := invokeBVMContractBySendView(ctx, constant.NodeManagerContractAddr.String(), "Nodes", pb.String(typ))
 	if err != nil {
 		return err
 	}
