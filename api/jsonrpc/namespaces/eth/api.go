@@ -450,7 +450,7 @@ func (api *PublicEthereumAPI) GetEthTransactionByHash(hash *types.Hash) (*types2
 		}
 	} else {
 		api.logger.Debugf("tx %s is found in mempool", hash.String())
-		if strings.Contains(strings.ToLower(api.config.Order.Plugin), "rbft") {
+		if strings.Contains(strings.ToLower(api.config.Order.Type), "rbft") {
 			meta, err = api.api.Broker().GetTransactionMeta(hash)
 			if err != nil {
 				api.logger.Debugf("tx meta for %s is not found", hash.String())

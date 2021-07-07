@@ -50,7 +50,7 @@ agency_cert_path = "certs/agency.cert"
 ca_cert_path = "certs/ca.cert"
 
 [order]
-plugin = "plugins/raft.so"
+type = "raft"
 
 [executor]
 type = "serial"  # opensource version only supports serial type, commercial version supports serial and parallel types

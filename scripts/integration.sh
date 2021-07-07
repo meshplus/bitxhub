@@ -51,14 +51,6 @@ function prepare() {
     x_replace "s/9091/909${i}/g" "${root}"/api
     x_replace "1s/1/${i}/" "${networkConfig}"
   done
-
-  print_blue "===> Building plugin"
-  cd "${PROJECT_PATH}"/internal/plugins
-  make raft
-
-  for ((i = 1; i < N + 1; i = i + 1)); do
-    cp -rf "${PROJECT_PATH}"/internal/plugins/build "${BUILD_PATH}"/node${i}/plugins
-  done
 }
 
 function compile() {

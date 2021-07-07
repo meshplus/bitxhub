@@ -157,7 +157,6 @@ func newTesterBitXHub(rep *repo.Repo) (*app.BitXHub, error) {
 	order, err := etcdraft.NewNode(
 		order.WithRepoRoot(repoRoot),
 		order.WithStoragePath(repo.GetStoragePath(repoRoot, "order")),
-		order.WithPluginPath(rep.Config.Plugin),
 		order.WithNodes(m),
 		order.WithID(rep.NetworkConfig.ID),
 		order.WithIsNew(rep.NetworkConfig.New),

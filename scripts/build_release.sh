@@ -33,22 +33,18 @@ function build_linux() {
   ## prepare deploy package
   cd "${CURRENT_PATH}"
   cp ../bin/bitxhub_linux-amd64 "${BUILD_PATH}"/bitxhub
-  cp ../internal/plugins/build/*.so "${BUILD_PATH}"/
   cp ../build/libwasmer.so "${BUILD_PATH}"/
   tar zcf build_linux-amd64_"${APP_VERSION}".tar.gz build
-  tar zcf bitxhub_linux-amd64_"${APP_VERSION}".tar.gz build/bitxhub build/*.so
 }
 
 function build_darwin() {
   print_blue "Compile bitxhub_macos_x86_64_${APP_VERSION}"
   cd "${PROJECT_PATH}"
   make build
-  cd internal/plugins && make plugins
 
   ## prepare deploy package
   cd "${CURRENT_PATH}"
   cp ../bin/bitxhub "${BUILD_PATH}"/bitxhub
-  cp ../internal/plugins/build/*.so "${BUILD_PATH}"/
   cp ../build/libwasmer.dylib "${BUILD_PATH}"/
   tar zcf build_macos_x86_64_"${APP_VERSION}".tar.gz build
   tar zcf bitxhub_macos_x86_64_"${APP_VERSION}".tar.gz build/bitxhub build/*.so build/libwasmer.dylib

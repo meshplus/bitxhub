@@ -3,6 +3,7 @@ package solo
 import (
 	"context"
 	"fmt"
+	"github.com/meshplus/bitxhub-core/agency"
 	"sync"
 	"time"
 
@@ -95,7 +96,11 @@ func (n *Node) SubscribeTxEvent(ch chan<- pb.Transactions) event.Subscription {
 	return n.mempool.SubscribeTxEvent(ch)
 }
 
-func NewNode(opts ...order.Option) (order.Order, error) {
+func init() {
+	agency.RegisterOrderConstructor("solo", NewNode)
+}
+
+func NewNode(opts ...order.Option) (agency.Order, error) {
 	config, err := order.GenerateConfig(opts...)
 	if err != nil {
 		return nil, fmt.Errorf("generate config: %w", err)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/meshplus/bitxhub-core/agency"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -70,8 +71,12 @@ type GetTxReq struct {
 	Tx   chan pb.Transaction
 }
 
+func init() {
+	agency.RegisterOrderConstructor("raft", NewNode)
+}
+
 // NewNode new raft node
-func NewNode(opts ...order.Option) (order.Order, error) {
+func NewNode(opts ...order.Option) (agency.Order, error) {
 	config, err := order.GenerateConfig(opts...)
 	if err != nil {
 		return nil, fmt.Errorf("generate config: %w", err)

@@ -90,7 +90,7 @@ type Limiter struct {
 }
 
 type Appchain struct {
-	Enable       bool `toml:"enable" json:"enable"`
+	Enable        bool   `toml:"enable" json:"enable"`
 	EthHeaderPath string `mapstructure:"eth_header_path"`
 }
 
@@ -148,7 +148,7 @@ type Txpool struct {
 }
 
 type Order struct {
-	Plugin string `toml:"plugin" json:"plugin"`
+	Type string `toml:"type" json:"type"`
 }
 
 type Executor struct {
@@ -205,7 +205,7 @@ func DefaultConfig() (*Config, error) {
 			BatchTimeout: 500 * time.Millisecond,
 		},
 		Order: Order{
-			Plugin: "plugins/raft.so",
+			Type: "raft",
 		},
 		Executor: Executor{
 			Type: "serial",
