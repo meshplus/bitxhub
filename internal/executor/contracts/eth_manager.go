@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/meshplus/bitxhub-model/constant"
-	"github.com/meshplus/bitxhub-model/pb"
 	"os"
 	"strconv"
 	"strings"
@@ -15,13 +13,18 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/meshplus/bitxhub-core/boltvm"
-	"github.com/meshplus/bitxhub-core/eth-contracts"
+	"github.com/meshplus/bitxhub-core/eth-contracts/escrows-contracts"
+	"github.com/meshplus/bitxhub-core/eth-contracts/interchain-contracts"
+	"github.com/meshplus/bitxhub-core/eth-contracts/proxy-contracts"
+	"github.com/meshplus/bitxhub-model/constant"
+	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/executor/oracle/appchain"
 )
 
 const (
 	EscrowsAddrKey        = "escrows_addr_key"
 	InterchainSwapAddrKey = "interchain_swap_addr_key"
+	ProxyAddrKey          = "proxy_addr_key"
 	EthTxHashPrefix       = "eth-hash"
 )
 
@@ -39,25 +42,47 @@ func NewEthHeaderManager(ropstenOracle *appchain.EthLightChainOracle) *EthHeader
 	return &EthHeaderManager{oracle: ropstenOracle}
 }
 
-func (ehm *EthHeaderManager) SetEscrowAddr(addr string) *boltvm.Response {
+func (ehm *EthHeaderManager) SetEscrowAddr(pierAddr string, addr string) *boltvm.Response {
+	if res := ehm.IsAdmin(); !res.Ok {
+		return res
+	}
+	ok := common.IsHexAddress(addr)
+	if !ok {
+		return boltvm.Error("addr formot error")
+	}
+	res := ehm.CrossInvoke(constant.AppchainMgrContractAddr.String(), "GetIdByAddr", pb.String(pierAddr))
+	if !res.Ok {
+		return boltvm.Error(string(res.Result))
+	}
+	escrowsAddr := ContractAddr{addr}
+	ehm.SetObject(EscrowsAddrKey+pierAddr, escrowsAddr)
+
+	return boltvm.Success([]byte(addr))
+}
+
+func (ehm *EthHeaderManager) GetEscrowAddr(pierAddr string) *boltvm.Response {
+	var escrowsAddr ContractAddr
+	res := ehm.CrossInvoke(constant.AppchainMgrContractAddr.String(), "GetIdByAddr", pb.String(pierAddr))
+	if !res.Ok {
+		return boltvm.Error(string(res.Result))
+	}
+	ok := ehm.GetObject(EscrowsAddrKey+pierAddr, &escrowsAddr)
+	if ok {
+		return boltvm.Success([]byte(escrowsAddr.Addr))
+	}
+	return boltvm.Error("not found")
+}
+
+func (ehm *EthHeaderManager) SetProxyAddr(addr string) *boltvm.Response {
 	if res := ehm.IsAdmin(); !res.Ok {
 		return res
 	}
 	ok := common.IsHexAddress(addr)
 	if ok {
-		escrowsAddr := ContractAddr{addr}
-		ehm.SetObject(EscrowsAddrKey, escrowsAddr)
+		proxyAddr := &ContractAddr{addr}
+		ehm.SetObject(ProxyAddrKey, proxyAddr)
 	}
 	return boltvm.Success([]byte(addr))
-}
-
-func (ehm *EthHeaderManager) GetEscrowAddr() *boltvm.Response {
-	var escrowsAddr ContractAddr
-	ok := ehm.GetObject(EscrowsAddrKey, &escrowsAddr)
-	if ok {
-		return boltvm.Success([]byte(escrowsAddr.Addr))
-	}
-	return boltvm.Error("not found")
 }
 
 func (ehm *EthHeaderManager) SetInterchainSwapAddr(addr string) *boltvm.Response {
@@ -115,11 +140,10 @@ func (ehm *EthHeaderManager) GetBlockHeader(hash string) *boltvm.Response {
 }
 
 func (ehm *EthHeaderManager) Mint(receiptData []byte, proofData []byte) *boltvm.Response {
-	var interchainSwapAddr *ContractAddr
-	ok := ehm.GetObject(InterchainSwapAddrKey, &interchainSwapAddr)
-	if !ok {
-		return boltvm.Error("not found interchain swap contract address")
-	}
+	var (
+		interchainSwapAddr *ContractAddr
+		proxyAddr          *ContractAddr
+	)
 
 	var receipt types.Receipt
 	err := receipt.UnmarshalJSON(receiptData)
@@ -131,30 +155,67 @@ func (ehm *EthHeaderManager) Mint(receiptData []byte, proofData []byte) *boltvm.
 		return boltvm.Success(v)
 	}
 
-	err = ehm.oracle.VerifyProof(&receipt, proofData)
-	if err != nil {
-		return boltvm.Error(err.Error())
-	}
-	escrowsLockEvent, err := ehm.unpackEscrowsLock(&receipt)
+	//// for quick swap, suspend following verify logic
+	//err = ehm.oracle.VerifyProof(&receipt, proofData)
+	//if err != nil {
+	//	return boltvm.Error(err.Error())
+	//}
+	escrowsLockEvent, escrowsQuickSwapEvent, err := ehm.unpackEscrowsLock(&receipt)
 	if err != nil {
 		return boltvm.Error(err.Error())
 	}
 
-	interchainSwapAbi, err := abi.JSON(bytes.NewReader([]byte(contracts.InterchainSwapABI)))
-	if err != nil {
-		return boltvm.Error(err.Error())
+	if escrowsQuickSwapEvent != nil {
+		// do swap logic
+		ok := ehm.GetObject(ProxyAddrKey, &proxyAddr)
+		if !ok {
+			return boltvm.Error("not found proxy contract address")
+		}
+		proxyAbi, err := abi.JSON(bytes.NewReader([]byte(proxy_contracts.ProxyABI)))
+		if err != nil {
+			return boltvm.Error(err.Error())
+		}
+		input, err := proxyAbi.Pack("proxy",
+			escrowsLockEvent.EthToken,
+			escrowsLockEvent.RelayToken,
+			escrowsLockEvent.Locker,
+			common.HexToAddress(escrowsLockEvent.Recipient),
+			escrowsLockEvent.Amount,
+			receipt.TxHash.String(),
+			escrowsLockEvent.AppchainIndex,
+			common.HexToAddress(escrowsQuickSwapEvent.DstChainId),
+			common.HexToAddress(escrowsQuickSwapEvent.DstContract))
+		if err != nil {
+			return boltvm.Error(err.Error())
+		}
+		ehm.Logger().Info("proxy txhash is :" + ehm.GetTxHash().String())
+		res := ehm.CrossInvokeEVM(proxyAddr.Addr, input)
+		if res.Ok {
+			ehm.Set(EthTxKey(receipt.TxHash.String()), res.Result)
+		}
+		return res
+	} else {
+		ok := ehm.GetObject(InterchainSwapAddrKey, &interchainSwapAddr)
+		if !ok {
+			return boltvm.Error("not found interchain swap contract address")
+		}
+		interchainSwapAbi, err := abi.JSON(bytes.NewReader([]byte(interchain_contracts.InterchainSwapABI)))
+		if err != nil {
+			return boltvm.Error(err.Error())
+		}
+		input, err := interchainSwapAbi.Pack("mint",
+			escrowsLockEvent.EthToken, escrowsLockEvent.RelayToken, escrowsLockEvent.Locker,
+			common.HexToAddress(escrowsLockEvent.Recipient), escrowsLockEvent.Amount, receipt.TxHash.String(), escrowsLockEvent.AppchainIndex)
+		ehm.Logger().Info("lock txhash is :" + ehm.GetTxHash().String())
+		if err != nil {
+			return boltvm.Error(err.Error())
+		}
+		res := ehm.CrossInvokeEVM(interchainSwapAddr.Addr, input)
+		if res.Ok {
+			ehm.Set(EthTxKey(receipt.TxHash.String()), res.Result)
+		}
+		return res
 	}
-	input, err := interchainSwapAbi.Pack("mint", escrowsLockEvent.EthToken, escrowsLockEvent.RelayToken, escrowsLockEvent.Locker,
-		escrowsLockEvent.Recipient, escrowsLockEvent.Amount, receipt.TxHash.String(), escrowsLockEvent.AppchainIndex)
-	if err != nil {
-		return boltvm.Error(err.Error())
-	}
-	res := ehm.CrossInvokeEVM(interchainSwapAddr.Addr, input)
-	if res.Ok {
-		ehm.Set(EthTxKey(receipt.TxHash.String()), res.Result)
-	}
-	return res
-
 }
 
 func (ehm *EthHeaderManager) GetPrefixedHash(hash string) *boltvm.Response {
@@ -165,13 +226,16 @@ func (ehm *EthHeaderManager) GetPrefixedHash(hash string) *boltvm.Response {
 	return boltvm.Error(fmt.Sprintf("not found hash by %v", hash))
 }
 
-func (ehm *EthHeaderManager) unpackEscrowsLock(receipt *types.Receipt) (*contracts.EscrowsLock, error) {
+func (ehm *EthHeaderManager) unpackEscrowsLock(receipt *types.Receipt) (*escrows_contracts.EscrowsLock, *escrows_contracts.EscrowsQuickSwap, error) {
 	var escrowsAddr ContractAddr
-	ok := ehm.GetObject(EscrowsAddrKey, &escrowsAddr)
+	ok := ehm.GetObject(EscrowsAddrKey+ehm.Caller(), &escrowsAddr)
 	if !ok {
-		return nil, fmt.Errorf("not found the escrows contract address")
+		return nil, nil, fmt.Errorf("not found the escrows contract address")
 	}
-	var lock *contracts.EscrowsLock
+	var (
+		lock *escrows_contracts.EscrowsLock
+		swap *escrows_contracts.EscrowsQuickSwap
+	)
 	for _, log := range receipt.Logs {
 		if !strings.EqualFold(log.Address.String(), escrowsAddr.Addr) {
 			continue
@@ -180,16 +244,21 @@ func (ehm *EthHeaderManager) unpackEscrowsLock(receipt *types.Receipt) (*contrac
 		if log.Removed {
 			continue
 		}
-		escrows, err := contracts.NewEscrows(common.Address{}, nil)
+		escrows, err := escrows_contracts.NewEscrows(common.Address{}, nil)
 		if err != nil {
 			continue
 		}
-		lock, _ = escrows.ParseLock(*log)
+		if lock == nil {
+			lock, _ = escrows.ParseLock(*log)
+		}
+		if swap == nil {
+			swap, _ = escrows.ParseQuickSwap(*log)
+		}
 	}
 	if lock == nil {
-		return nil, fmt.Errorf("not found the escrow lock event")
+		return nil, nil, fmt.Errorf("not found the escrow lock event")
 	}
-	return lock, nil
+	return lock, swap, nil
 }
 
 func (ehm *EthHeaderManager) IsAdmin() *boltvm.Response {

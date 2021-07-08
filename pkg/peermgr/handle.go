@@ -10,7 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	types2 "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	contracts2 "github.com/meshplus/bitxhub-core/eth-contracts"
+	contracts2 "github.com/meshplus/bitxhub-core/eth-contracts/interchain-contracts"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -337,7 +337,7 @@ func (swarm *Swarm) handleFetchBurnSignMessage(s network.Stream, data []byte) {
 
 		//abi.encodePacked
 		abiHash := solsha3.SoliditySHA3(
-			solsha3.Address(burn.EthToken),
+			solsha3.Address(burn.AppToken),
 			solsha3.Address(burn.Burner),
 			solsha3.Address(burn.Recipient),
 			solsha3.Uint256(burn.Amount),
