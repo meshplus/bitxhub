@@ -1,0 +1,56 @@
+name: bxh_tester
+
+on:
+  pull_request:
+    branches:
+      - master
+      - release-*
+jobs:
+  bxh_tester:
+    name: Run bxh_tester
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.13
+
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Run bxh_tester
+        if: ${{ always() }}
+        run: |
+          export PATH=$PATH:$(go env GOPATH)/bin
+          cd scripts
+          echo ${{ github.base_ref }}
+          bash bxh_test.sh -b ${{ github.base_ref }}
+
+      - name: 'Get Date'
+        run: echo "REPORT_DATE=$(TZ=':Asia/Hangzhou' date '+%Y%m%d%H%M%S')" >> $GITHUB_ENV
+
+      - name: Send Results and Generate Allure Report
+        uses: Xotabu4/send-to-allure-server-action@1
+        # always() needed because we want report for failed tests as well
+        if: ${{ always() }}
+        with:
+            allure-server-url: '${{ secrets.ALLURESERVER }}'
+            allure-results: './premo/tester/bxh_tester/allure-results'
+            path: ${{ github.base_ref }}/report${{ env.REPORT_DATE }}
+
+      - name: Send Mail
+        uses: dawidd6/action-send-mail@master
+        with:
+          server_address: smtp.exmail.qq.com
+          server_port: 465
+          username: ${{ secrets.MAILUSERNAME }}
+          password: ${{ secrets.MAILPASSWORD }}
+          subject: Bxh-teser Test Report
+          body: |
+            ${{ github.actor }} , the pull_request ${{ github.head_ref }} to ${{ github.base_ref }}
+            the report url is ${{ secrets.ALLURESERVER }}reports/${{ github.base_ref }}/report${{ env.REPORT_DATE }}
+          to: ${{ secrets.MAILUSERNAME }}
+          from: GitHub Actions
+
+
+
