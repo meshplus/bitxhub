@@ -21,28 +21,28 @@ func nodeMgrCND() cli.Command {
 		Subcommands: cli.Commands{
 			cli.Command{
 				Name:  "status",
-				Usage: "query node status by node id",
+				Usage: "query node status by node pid",
 				Flags: []cli.Flag{
-					cli.Int64Flag{
-						Name:     "id",
-						Usage:    "node id",
+					cli.StringFlag{
+						Name:     "pid",
+						Usage:    "node pid",
 						Required: true,
 					},
 				},
-				Action: getNodeStatusById,
+				Action: getNodeStatusByPid,
 			},
 			cli.Command{
 				Name:  "register",
 				Usage: "register node",
 				Flags: []cli.Flag{
-					cli.Int64Flag{
-						Name:     "id",
-						Usage:    "node id",
-						Required: true,
-					},
 					cli.StringFlag{
 						Name:     "pid",
 						Usage:    "node pid",
+						Required: true,
+					},
+					cli.Uint64Flag{
+						Name:     "id",
+						Usage:    "vp node id",
 						Required: true,
 					},
 					cli.StringFlag{
@@ -61,11 +61,11 @@ func nodeMgrCND() cli.Command {
 			},
 			cli.Command{
 				Name:  "logout",
-				Usage: "logout node by node id",
+				Usage: "logout node by node pid",
 				Flags: []cli.Flag{
-					cli.Int64Flag{
-						Name:     "id",
-						Usage:    "node id",
+					cli.StringFlag{
+						Name:     "pid",
+						Usage:    "node pid",
 						Required: true,
 					},
 				},
@@ -88,10 +88,10 @@ func nodeMgrCND() cli.Command {
 	}
 }
 
-func getNodeStatusById(ctx *cli.Context) error {
-	id := ctx.Int64("id")
+func getNodeStatusByPid(ctx *cli.Context) error {
+	pid := ctx.String("pid")
 
-	receipt, err := invokeBVMContract(ctx, constant.NodeManagerContractAddr.String(), "GetNode", pb.Int64(id))
+	receipt, err := invokeBVMContractBySendView(ctx, constant.NodeManagerContractAddr.String(), "GetNode", pb.String(pid))
 	if err != nil {
 		return err
 	}
@@ -101,7 +101,7 @@ func getNodeStatusById(ctx *cli.Context) error {
 		if err := json.Unmarshal(receipt.Ret, node); err != nil {
 			return fmt.Errorf("unmarshal receipt error: %w", err)
 		}
-		color.Green("node %d is %s\n", node.Id, string(node.Status))
+		color.Green("node %d is %s\n", node.Pid, string(node.Status))
 	} else {
 		color.Red("get node status error: %s\n", string(receipt.Ret))
 	}
@@ -109,12 +109,12 @@ func getNodeStatusById(ctx *cli.Context) error {
 }
 
 func registerNode(ctx *cli.Context) error {
-	id := ctx.Int64("id")
 	pid := ctx.String("pid")
+	vpNodeId := ctx.Uint64("id")
 	account := ctx.String("account")
 	typ := ctx.String("type")
 
-	receipt, err := invokeBVMContract(ctx, constant.NodeManagerContractAddr.String(), "RegisterNode", pb.Int64(id), pb.String(pid), pb.String(account), pb.String(typ))
+	receipt, err := invokeBVMContract(ctx, constant.NodeManagerContractAddr.String(), "RegisterNode", pb.String(pid), pb.Uint64(vpNodeId), pb.String(account), pb.String(typ))
 	if err != nil {
 		return err
 	}
@@ -129,9 +129,9 @@ func registerNode(ctx *cli.Context) error {
 }
 
 func logoutNode(ctx *cli.Context) error {
-	id := ctx.Int64("id")
+	pid := ctx.String("pid")
 
-	receipt, err := invokeBVMContract(ctx, constant.NodeManagerContractAddr.String(), "LogoutNode", pb.Int64(id))
+	receipt, err := invokeBVMContract(ctx, constant.NodeManagerContractAddr.String(), "LogoutNode", pb.String(pid))
 	if err != nil {
 		return err
 	}
@@ -148,7 +148,7 @@ func logoutNode(ctx *cli.Context) error {
 func allNode(ctx *cli.Context) error {
 	typ := ctx.String("type")
 
-	receipt, err := invokeBVMContract(ctx, constant.NodeManagerContractAddr.String(), "Nodes", pb.String(typ))
+	receipt, err := invokeBVMContractBySendView(ctx, constant.NodeManagerContractAddr.String(), "Nodes", pb.String(typ))
 	if err != nil {
 		return err
 	}
@@ -169,11 +169,11 @@ func allNode(ctx *cli.Context) error {
 
 func printNode(nodes []*node_mgr.Node) {
 	var table [][]string
-	table = append(table, []string{"NodeId", "type", "Pid", "Account", "Status"})
+	table = append(table, []string{"NodePid", "type", "VpNodeId", "Account", "Status"})
 
 	for _, n := range nodes {
 		table = append(table, []string{
-			strconv.Itoa(int(n.Id)),
+			strconv.Itoa(int(n.VPNodeId)),
 			string(n.NodeType),
 			n.Pid,
 			n.Account,

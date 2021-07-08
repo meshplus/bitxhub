@@ -60,7 +60,7 @@ func appchainMgrCMD() cli.Command {
 func getChainStatusById(ctx *cli.Context) error {
 	id := ctx.String("id")
 
-	receipt, err := invokeBVMContract(ctx, constant.AppchainMgrContractAddr.String(), "GetAppchain", pb.String(id))
+	receipt, err := invokeBVMContractBySendView(ctx, constant.AppchainMgrContractAddr.String(), "GetAppchain", pb.String(id))
 	if err != nil {
 		return err
 	}

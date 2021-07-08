@@ -115,6 +115,7 @@ func (g *Governance) SubmitProposal(from, eventTyp, des, typ, objId, objLastStat
 		constant.AppchainMgrContractAddr.Address().String(),
 		constant.RuleManagerContractAddr.Address().String(),
 		constant.NodeManagerContractAddr.Address().String(),
+		constant.RoleContractAddr.Address().String(),
 	}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
@@ -126,7 +127,7 @@ func (g *Governance) SubmitProposal(from, eventTyp, des, typ, objId, objLastStat
 		pb.String(g.CurrentCaller()),
 		pb.Bytes(addrsData))
 	if !res.Ok {
-		return boltvm.Error("check permission error:" + string(res.Result))
+		return boltvm.Error("check permission error1:" + string(res.Result))
 	}
 
 	// 2. get information
@@ -135,7 +136,7 @@ func (g *Governance) SubmitProposal(from, eventTyp, des, typ, objId, objLastStat
 		return boltvm.Error(err.Error())
 	}
 
-	en, err := g.getElectorateNum(from)
+	en, err := g.getElectorateNum(from, objId)
 	if err != nil {
 		return boltvm.Error(err.Error())
 	}
@@ -212,20 +213,20 @@ func (g *Governance) lockLowPriorityProposal(objId, eventTyp string) (string, er
 	return "", nil
 }
 
-func (g *Governance) getElectorateNum(from string) (uint64, error) {
+func (g *Governance) getElectorateNum(from, objId string) (uint64, error) {
 	res := g.CrossInvoke(constant.RoleContractAddr.String(), "GetAdminRoles")
 	if !res.Ok {
 		return 0, fmt.Errorf("get admin roles error: %s", string(res.Result))
 	}
 
-	var admins []*repo.Admin
+	var admins []*Role
 	if err := json.Unmarshal(res.Result, &admins); err != nil {
 		return 0, fmt.Errorf(err.Error())
 	}
 
 	electorateNum := uint64(0)
 	for _, admin := range admins {
-		if from != admin.Address {
+		if from != admin.ID && objId != admin.ID {
 			electorateNum++
 		}
 	}
@@ -615,7 +616,16 @@ func (g *Governance) GetUnvoteNum(id string) *boltvm.Response {
 
 // Add someone's voting information (each person can only vote once)
 func (g *Governance) Vote(id, approve string, reason string) *boltvm.Response {
+	// 0. check role
 	addr := g.Caller()
+	res := g.CrossInvoke(constant.RoleContractAddr.String(), "IsAvailable", pb.String(addr))
+	if !res.Ok {
+		return boltvm.Error(fmt.Sprintf("cross invoke IsAvailable error: %s", string(res.Result)))
+	}
+	if string(res.Result) != "true" {
+		return boltvm.Error("the administrator is currently unavailable")
+	}
+
 	// 1. Determine if the proposal exists
 	p := &Proposal{}
 	if !g.GetObject(ProposalKey(id), p) {
@@ -655,6 +665,12 @@ func (g *Governance) handleResult(p *Proposal) error {
 
 	// manage object
 	switch p.Typ {
+	case RoleMgr:
+		res := g.CrossInvoke(constant.RoleContractAddr.String(), "Manage", pb.String(string(p.EventType)), pb.String(string(nextEventType)), pb.String(string(p.ObjLastStatus)), pb.Bytes(p.Extra))
+		if !res.Ok {
+			return fmt.Errorf("cross invoke Manager error: %s", string(res.Result))
+		}
+		return nil
 	case ServiceMgr:
 		return fmt.Errorf("waiting for subsequent implementation")
 	case NodeMgr:
@@ -709,7 +725,10 @@ func (g *Governance) setVote(p *Proposal, addr string, approve string, reason st
 
 	// 2. Determine if the administrator can vote
 	if addr == p.Id[0:strings.Index(p.Id, "-")] {
-		return fmt.Errorf("sponsors can not vote on their own sponsored proposals")
+		return fmt.Errorf("administrators cannot vote on their own initiatives")
+	}
+	if addr == p.ObjId {
+		return fmt.Errorf("administrators cannot vote on proposals that concern themselves")
 	}
 
 	// 3. Determine if the administrator has voted
@@ -891,7 +910,8 @@ func checkProposalType(pt ProposalType) error {
 	if pt != AppchainMgr &&
 		pt != RuleMgr &&
 		pt != NodeMgr &&
-		pt != ServiceMgr {
+		pt != ServiceMgr &&
+		pt != RoleMgr {
 		return fmt.Errorf("illegal proposal type")
 	}
 	return nil

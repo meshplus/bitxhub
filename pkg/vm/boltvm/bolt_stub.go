@@ -199,9 +199,9 @@ func (b *BoltStubImpl) ValidationEngine() validator.Engine {
 	return b.ve
 }
 
-func (b *BoltStubImpl) GetAccount(address string) (bool, interface{}) {
+func (b *BoltStubImpl) GetAccount(address string) interface{} {
 	addr := types.NewAddressByStr(address)
-	account := b.ctx.Ledger.GetAccount(addr)
+	account := b.ctx.Ledger.GetOrCreateAccount(addr)
 
-	return account != nil, account
+	return account
 }

@@ -136,14 +136,14 @@ func TestNodeManager_VPNodeQuery(t *testing.T) {
 	res = nm.Nodes(string(node_mgr.VPNode))
 	assert.True(t, res.Ok, string(res.Result))
 
-	res = nm.IsAvailable(1)
+	res = nm.IsAvailable(NODEPID)
 	assert.True(t, res.Ok, string(res.Result))
 	assert.Equal(t, "false", string(res.Result))
-	res = nm.IsAvailable(1)
+	res = nm.IsAvailable(NODEPID)
 	assert.True(t, res.Ok, string(res.Result))
 	assert.Equal(t, "true", string(res.Result))
 
-	res = nm.GetNode(1)
+	res = nm.GetNode(NODEPID)
 	assert.True(t, res.Ok, string(res.Result))
 }
 
@@ -169,7 +169,7 @@ func nodePrepare(t *testing.T) (*NodeManager, *mock_stub.MockStub, []*node_mgr.N
 
 	for i := 0; i < 7; i++ {
 		node := &node_mgr.Node{
-			Id:       uint64(i + 1),
+			VPNodeId: uint64(i + 1),
 			Pid:      NODEPID,
 			Account:  NODEACCOUNT,
 			NodeType: node_mgr.VPNode,
