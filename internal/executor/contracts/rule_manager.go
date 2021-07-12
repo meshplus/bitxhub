@@ -317,10 +317,7 @@ func (rm *RuleManager) checkRuleAddress(addr string) error {
 		return nil
 	}
 
-	ok, account1 := rm.Persister.GetAccount(addr)
-	if !ok {
-		return fmt.Errorf("get account error")
-	}
+	account1 := rm.Persister.GetAccount(addr)
 
 	account := account1.(ledger.IAccount)
 	if account.Code() == nil {

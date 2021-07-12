@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -120,14 +119,14 @@ func NewSwarms(t *testing.T, peerCnt int) []*Swarm {
 	chainLedger.EXPECT().GetBlockSign(gomock.Any()).Return([]byte("sign"), nil).AnyTimes()
 	for i := 0; i < peerCnt; i++ {
 		node := &node_mgr.Node{
-			Id:     uint64(i),
-			Pid:    ids[i],
-			Status: governance.GovernanceAvailable,
+			VPNodeId: uint64(i),
+			Pid:      ids[i],
+			Status:   governance.GovernanceAvailable,
 		}
 		nodeData, err := json.Marshal(node)
 		require.Nil(t, err)
-		stateLedger.EXPECT().GetState(constant.NodeManagerContractAddr.Address(), []byte(fmt.Sprintf("%s-%s", node_mgr.NODE_PID_PREFIX, ids[i]))).Return(true, []byte(strconv.Itoa(i))).AnyTimes()
-		stateLedger.EXPECT().GetState(constant.NodeManagerContractAddr.Address(), []byte(fmt.Sprintf("%s-%d", node_mgr.NODEPREFIX, i))).Return(true, nodeData).AnyTimes()
+		//stateLedger.EXPECT().GetState(constant.NodeManagerContractAddr.Address(), []byte(fmt.Sprintf("%s-%s", node_mgr.NODE_PID_PREFIX, ids[i]))).Return(true, []byte(strconv.Itoa(i))).AnyTimes()
+		stateLedger.EXPECT().GetState(constant.NodeManagerContractAddr.Address(), []byte(fmt.Sprintf("%s-%s", node_mgr.NODEPREFIX, ids[i]))).Return(true, nodeData).AnyTimes()
 	}
 	stateLedger.EXPECT().GetState(gomock.Any(), gomock.Any()).Return(true, data).AnyTimes()
 	stateLedger.EXPECT().Copy().Return(stateLedger).AnyTimes()
