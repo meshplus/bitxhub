@@ -3,5 +3,5 @@
 package imports
 
 import (
-	_ "github.com/dmlab/bitxhub-order-rbft"
+	_ "github.com/bitxhub/bitxhub-order-rbft/rbft"
 )
