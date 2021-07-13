@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/meshplus/bitxhub-core/agency"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
@@ -30,7 +31,6 @@ import (
 	"github.com/meshplus/bitxhub/internal/ledger/mock_ledger"
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/internal/repo"
-	"github.com/meshplus/bitxhub/pkg/order"
 	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
 	"github.com/meshplus/bitxhub/pkg/order/mempool"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
@@ -140,7 +140,7 @@ func getChainMetaFunc() *pb.ChainMeta {
 		BlockHash: blockHash,
 	}
 }
-func listen(t *testing.T, order order.Order, swarm *peermgr.Swarm) {
+func listen(t *testing.T, order agency.Order, swarm *peermgr.Swarm) {
 	orderMsgCh := make(chan events.OrderMessageEvent)
 	sub := swarm.SubscribeOrderMessage(orderMsgCh)
 	defer sub.Unsubscribe()

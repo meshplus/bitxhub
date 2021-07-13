@@ -9,7 +9,6 @@ require (
 	github.com/cheynewallace/tabby v1.1.1
 	github.com/common-nighthawk/go-figure v0.0.0-20190529165535-67e0ed34491a
 	github.com/coreos/etcd v3.3.18+incompatible
-	github.com/dmlab/bitxhub-order-rbft v1.9.1-0.20210707101744-37fb9ebb4130 // indirect
 	github.com/ethereum/go-ethereum v1.10.4
 	github.com/fatih/color v1.7.0
 	github.com/fsnotify/fsnotify v1.4.9
@@ -30,7 +29,7 @@ require (
 	github.com/libp2p/go-libp2p-core v0.5.6
 	github.com/looplab/fsm v0.2.0
 	github.com/magiconair/properties v1.8.4
-	github.com/meshplus/bitxhub-core v1.3.1-0.20210707032901-c385d9112a49
+	github.com/meshplus/bitxhub-core v1.3.1-0.20210708071750-81205f41691f
 	github.com/meshplus/bitxhub-kit v1.2.1-0.20210616114532-4849447f09e1
 	github.com/meshplus/bitxhub-model v1.2.1-0.20210629020432-d98febd566c1
 	github.com/meshplus/bitxid v0.0.0-20210412025850-e0eaf0f9063a
@@ -69,14 +68,10 @@ replace google.golang.org/grpc => google.golang.org/grpc v1.33.0
 
 replace github.com/hyperledger/fabric => github.com/hyperledger/fabric v2.0.1+incompatible
 
-replace github.com/meshplus/bitxhub-core => github.com/meshplus/bitxhub-core v1.3.1-0.20210707095157-da1edd50ddf9
+replace github.com/meshplus/bitxhub-core => github.com/meshplus/bitxhub-core v1.3.1-0.20210713033052-b029022cc861
 
 replace github.com/ultramesh/rbft => git.hyperchain.cn/ultramesh/rbft v0.1.5-0.20210607141559-581f0060e3f4
 
 replace github.com/ultramesh/txpool => git.hyperchain.cn/ultramesh/txpool v0.1.2
 
-//
-replace github.com/dmlab/bitxhub-order-rbft => git.hyperchain.cn/dmlab/bitxhub-order-rbft v1.9.1-0.20210707101744-37fb9ebb4130
-
-//
 replace github.com/ultramesh/fancylogger => git.hyperchain.cn/ultramesh/fancylogger v0.1.0

@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"fmt"
-	"github.com/meshplus/bitxhub-core/agency"
 	"math/big"
 	"path/filepath"
 	"syscall"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/common-nighthawk/go-figure"
 	"github.com/ethereum/go-ethereum/common/fdlimit"
+	"github.com/meshplus/bitxhub-core/agency"
 	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/meshplus/bitxhub-kit/storage/blockfile"
 	"github.com/meshplus/bitxhub/api/gateway"

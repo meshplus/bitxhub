@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/meshplus/bitxhub-core/agency"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -13,6 +12,7 @@ import (
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/ethereum/go-ethereum/event"
+	"github.com/meshplus/bitxhub-core/agency"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/meshplus/bitxhub-kit/types"
@@ -76,8 +76,13 @@ func init() {
 }
 
 // NewNode new raft node
-func NewNode(opts ...order.Option) (agency.Order, error) {
-	config, err := order.GenerateConfig(opts...)
+func NewNode(opts ...agency.ConfigOption) (agency.Order, error) {
+	var options []order.Option
+	for i, _ := range opts {
+		options = append(options, opts[i].(order.Option))
+	}
+
+	config, err := order.GenerateConfig(options...)
 	if err != nil {
 		return nil, fmt.Errorf("generate config: %w", err)
 	}

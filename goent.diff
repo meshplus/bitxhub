@@ -1,1 +1,3 @@
-    github.com/dmlab/bitxhub-order-rbft 7e5a40a4d5f46837106e295b2259e90ad81342f2
+    github.com/bitxhub/parallel-executor v0.0.0-20210603034349-c18e7ed17048
+    github.com/bitxhub/service-mng v0.0.0-20201125031105-f345beee1b42
+    github.com/bitxhub/bitxhub-order-rbft v0.0.0-20210713034124-e9b0dc2dd0ae
