@@ -2,6 +2,7 @@ package boltvm
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
@@ -188,7 +189,11 @@ func (b *BoltStubImpl) CrossInvokeEVM(address string, data []byte) *boltvm.Respo
 		return boltvm.Error(err.Error())
 	}
 	if result.Failed() {
-		return boltvm.Error(string(append([]byte(result.Err.Error()), result.Revert()...)))
+		if strings.HasPrefix(result.Err.Error(), vm1.ErrExecutionReverted.Error()) {
+			return boltvm.Error(string(append([]byte(result.Err.Error()), common.CopyBytes(result.ReturnData)...)))
+		} else {
+			return boltvm.Error(string(append([]byte(result.Err.Error()), result.Revert()...)))
+		}
 	}
 	ret := result.Return()
 	ctx.Ledger.Finalise(false)
