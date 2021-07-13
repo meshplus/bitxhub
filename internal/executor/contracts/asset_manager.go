@@ -85,6 +85,15 @@ func (ehm *EthHeaderManager) SetProxyAddr(addr string) *boltvm.Response {
 	return boltvm.Success([]byte(addr))
 }
 
+func (ehm *EthHeaderManager) GetProxyAddr() *boltvm.Response {
+	var proxyAddr ContractAddr
+	ok := ehm.GetObject(ProxyAddrKey, &proxyAddr)
+	if ok {
+		return boltvm.Success([]byte(proxyAddr.Addr))
+	}
+	return boltvm.Error("not found")
+}
+
 func (ehm *EthHeaderManager) SetInterchainSwapAddr(addr string) *boltvm.Response {
 	if res := ehm.IsAdmin(); !res.Ok {
 		return res
@@ -192,6 +201,12 @@ func (ehm *EthHeaderManager) Mint(receiptData []byte, proofData []byte) *boltvm.
 		res := ehm.CrossInvokeEVM(proxyAddr.Addr, input)
 		if res.Ok {
 			ehm.Set(EthTxKey(receipt.TxHash.String()), res.Result)
+		} else {
+			// error swap will burn back to himself
+			res = ehm.handleErrorSwap(escrowsLockEvent, receipt)
+			if res.Ok {
+				ehm.Set(EthTxKey(receipt.TxHash.String()), res.Result)
+			}
 		}
 		return res
 	} else {
@@ -216,6 +231,30 @@ func (ehm *EthHeaderManager) Mint(receiptData []byte, proofData []byte) *boltvm.
 		}
 		return res
 	}
+}
+
+func (ehm *EthHeaderManager) handleErrorSwap(escrowsLockEvent *escrows_contracts.EscrowsLock, receipt types.Receipt) *boltvm.Response {
+	var interchainSwapAddr *ContractAddr
+	ok := ehm.GetObject(InterchainSwapAddrKey, &interchainSwapAddr)
+	if !ok {
+		return boltvm.Error("not found interchain swap contract address")
+	}
+	interchainSwapAbi, err := abi.JSON(bytes.NewReader([]byte(interchain_contracts.InterchainSwapABI)))
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+	input, err := interchainSwapAbi.Pack("lockRollback",
+		escrowsLockEvent.EthToken, escrowsLockEvent.RelayToken, escrowsLockEvent.Locker,
+		common.HexToAddress(escrowsLockEvent.Recipient), escrowsLockEvent.Amount, receipt.TxHash.String(), escrowsLockEvent.AppchainIndex)
+	ehm.Logger().Info("lock txhash is :" + ehm.GetTxHash().String())
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+	res := ehm.CrossInvokeEVM(interchainSwapAddr.Addr, input)
+	if res.Ok {
+		ehm.Set(EthTxKey(receipt.TxHash.String()), res.Result)
+	}
+	return res
 }
 
 func (ehm *EthHeaderManager) GetPrefixedHash(hash string) *boltvm.Response {

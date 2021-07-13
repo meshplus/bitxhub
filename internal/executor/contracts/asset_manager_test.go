@@ -69,4 +69,10 @@ func TestEthHeaderManager_PreMint(t *testing.T) {
 
 	res = ehm.GetInterchainSwapAddr()
 	require.True(t, res.Ok)
+
+	res = ehm.SetProxyAddr(address)
+	require.True(t, res.Ok)
+
+	res = ehm.GetProxyAddr()
+	require.True(t, res.Ok)
 }
