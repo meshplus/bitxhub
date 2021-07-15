@@ -77,22 +77,22 @@ func TestNodeManager_LogoutNode(t *testing.T) {
 	mockStub.EXPECT().Query(node_mgr.NODEPREFIX).Return(true, nodesData).AnyTimes()
 
 	// 1. CheckPermission error
-	res := nm.LogoutNode(1)
+	res := nm.LogoutNode(NODEPID)
 	assert.False(t, res.Ok, string(res.Result))
 	// 2. status error
-	res = nm.LogoutNode(1)
+	res = nm.LogoutNode(NODEPID)
 	assert.False(t, res.Ok, string(res.Result))
 	// 3. QueryById error
-	res = nm.LogoutNode(1)
+	res = nm.LogoutNode(NODEPID)
 	assert.False(t, res.Ok, string(res.Result))
 	// 4. check num error
-	res = nm.LogoutNode(1)
+	res = nm.LogoutNode(NODEPID)
 	assert.False(t, res.Ok, string(res.Result))
 	// 5. SubmitProposal error
-	res = nm.LogoutNode(1)
+	res = nm.LogoutNode(NODEPID)
 	assert.False(t, res.Ok, string(res.Result))
 
-	res = nm.LogoutNode(5)
+	res = nm.LogoutNode(NODEPID)
 	assert.True(t, res.Ok, string(res.Result))
 }
 
