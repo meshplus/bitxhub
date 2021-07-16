@@ -28,8 +28,6 @@ import (
 	"github.com/meshplus/bitxhub/internal/router"
 	"github.com/meshplus/bitxhub/internal/storages"
 	"github.com/meshplus/bitxhub/pkg/order"
-	_ "github.com/meshplus/bitxhub/pkg/order/etcdraft"
-	_ "github.com/meshplus/bitxhub/pkg/order/solo"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
 	ledger2 "github.com/meshplus/eth-kit/ledger"
 	"github.com/sirupsen/logrus"
