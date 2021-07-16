@@ -329,6 +329,6 @@ func (n *Node) Quorum() uint64 {
 ```
 
 ### 4.2 插件化
-[共识算法插件化](../design/consensus plugin.md)
+[共识算法插件化](../design/consensus_plugin.md)
 
 
