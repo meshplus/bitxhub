@@ -30,7 +30,7 @@ function start() {
   bitxhub --repo="${BUILD_PATH}" init
   bitxhubConfig=${BUILD_PATH}/bitxhub.toml
   x_replace "s/solo = false/solo = true/g" "${bitxhubConfig}"
-  x_replace "s/raft.so/solo.so/g" "${bitxhubConfig}"
+  x_replace "s/raft/solo/g" "${bitxhubConfig}"
   bitxhub --repo="${BUILD_PATH}" start
 }
 
