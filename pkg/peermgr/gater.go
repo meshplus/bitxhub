@@ -41,14 +41,9 @@ func (g *connectionGater) InterceptAccept(addr network.ConnMultiaddrs) (allow bo
 
 func (g *connectionGater) InterceptSecured(d network.Direction, p peer.ID, addr network.ConnMultiaddrs) (allow bool) {
 	lg := g.ledger.Copy()
-	ok, data := lg.GetState(constant.NodeManagerContractAddr.Address(), []byte(fmt.Sprintf("%s-%s", node_mgr.NODE_PID_PREFIX, p)))
+	ok, nodeData := lg.GetState(constant.NodeManagerContractAddr.Address(), []byte(fmt.Sprintf("%s-%s", node_mgr.NODEPREFIX, p)))
 	if !ok {
-		g.logger.Infof("Intercept a connection with an unavailable node(get id err: %s), peer.Pid: %s", string(data), p)
-		return false
-	}
-	ok, nodeData := lg.GetState(constant.NodeManagerContractAddr.Address(), []byte(fmt.Sprintf("%s-%s", node_mgr.NODEPREFIX, string(data))))
-	if !ok {
-		g.logger.Infof("Intercept a connection with an unavailable node(get node err: %s), peer.Pid: %s, peer.Id: %s", p, string(data))
+		g.logger.Infof("Intercept a connection with an unavailable node(get node err: %s), peer.Pid: %s", p)
 		return false
 	}
 
@@ -60,12 +55,12 @@ func (g *connectionGater) InterceptSecured(d network.Direction, p peer.ID, addr 
 
 	for _, s := range node_mgr.NodeAvailableState {
 		if node.Status == s {
-			g.logger.Infof("Connect with an available node, peer.Pid: %s, peer.Id: %d, peer.status: %s", p, node.Id, node.Status)
+			g.logger.Infof("Connect with an available node, peer.Pid: %s, peer.Id: %d, peer.status: %s", p, node.VPNodeId, node.Status)
 			return true
 		}
 	}
 
-	g.logger.Infof("Intercept a connection with an unavailable node, peer.Pid: %s, peer.Id: %d, peer.status: %s", p, node.Id, node.Status)
+	g.logger.Infof("Intercept a connection with an unavailable node, peer.Pid: %s, peer.Id: %d, peer.status: %s", p, node.VPNodeId, node.Status)
 	return false
 }
 

@@ -71,6 +71,7 @@ type = "complex"
 chainid = 1356
 gas_limit = 0x5f5e100
 dider = "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013"
+balance = "100000000000000000000000000000000000"
 [[genesis.admins]]
 address = "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013"
 weight = 2 # 1：General Administrator 2: Super Administrator (Genesis Administrator)

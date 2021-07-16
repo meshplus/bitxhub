@@ -90,7 +90,7 @@ type Limiter struct {
 }
 
 type Appchain struct {
-	Enable       bool `toml:"enable" json:"enable"`
+	Enable        bool   `toml:"enable" json:"enable"`
 	EthHeaderPath string `mapstructure:"eth_header_path"`
 }
 
@@ -125,6 +125,7 @@ type LogModule struct {
 type Genesis struct {
 	ChainID  uint64            `json:"chainid" toml:"chainid"`
 	GasLimit uint64            `mapstructure:"gas_limit" json:"gas_limit" toml:"gas_limit"`
+	Balance  string            `json:"balance" toml:"balance"`
 	Admins   []*Admin          `json:"admins" toml:"admins"`
 	Strategy map[string]string `json:"strategy" toml:"strategy"`
 	Dider    string            `json:"dider" toml:"dider"`
@@ -213,6 +214,7 @@ func DefaultConfig() (*Config, error) {
 		Genesis: Genesis{
 			ChainID:  1,
 			GasLimit: 0x5f5e100,
+			Balance:  "100000000000000000000000000000000000",
 		},
 		Ledger: Ledger{Type: "complex"},
 	}, nil

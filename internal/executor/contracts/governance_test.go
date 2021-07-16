@@ -279,6 +279,7 @@ func TestGovernance_Proposal(t *testing.T) {
 		}).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(string(ServiceMgr), gomock.Any()).Return(false).AnyTimes()
 	mockStub.EXPECT().Query(gomock.Any()).Return(true, pDatas).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "IsAvailable", gomock.Any()).Return(boltvm.Success([]byte("true"))).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "GetRoleWeight", gomock.Any()).Return(boltvm.Error("get role weight")).Times(1)
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "GetRoleWeight", gomock.Any()).Return(boltvm.Success([]byte(""))).Times(1)
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "GetRoleWeight", gomock.Any()).Return(boltvm.Success([]byte(strconv.Itoa(1)))).AnyTimes()

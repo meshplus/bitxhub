@@ -13,6 +13,11 @@ import (
 	"github.com/urfave/cli"
 )
 
+const (
+	sendTx   = "transaction"
+	sendView = "view"
+)
+
 func txCMD() cli.Command {
 	return cli.Command{
 		Name:  "tx",
@@ -93,7 +98,7 @@ func sendTransaction(ctx *cli.Context) error {
 		keyPath = repo.GetKeyPath(repoRoot)
 	}
 
-	resp, err := sendTx(ctx, toString, amount, txType, keyPath, 0, "")
+	resp, err := sendTxOrView(ctx, sendTx, toString, amount, txType, keyPath, 0, "")
 	if err != nil {
 		return fmt.Errorf("send transaction: %w", err)
 	}
@@ -102,7 +107,7 @@ func sendTransaction(ctx *cli.Context) error {
 	return nil
 }
 
-func sendTx(ctx *cli.Context, toString string, amount *big.Int, txType uint64, keyPath string, vmType uint64, method string, args ...*pb.Arg) ([]byte, error) {
+func sendTxOrView(ctx *cli.Context, sendType, toString string, amount *big.Int, txType uint64, keyPath string, vmType uint64, method string, args ...*pb.Arg) ([]byte, error) {
 
 	key, err := repo.LoadKey(keyPath)
 	if err != nil {
@@ -173,7 +178,7 @@ func sendTx(ctx *cli.Context, toString string, amount *big.Int, txType uint64, k
 		return nil, err
 	}
 
-	url, err := getURL(ctx, "transaction")
+	url, err := getURL(ctx, sendType)
 	if err != nil {
 		return nil, err
 	}

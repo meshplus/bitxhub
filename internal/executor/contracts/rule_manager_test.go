@@ -91,8 +91,7 @@ func TestRuleManager_UpdateMasterRule(t *testing.T) {
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "CheckPermission", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), "IsAvailable", pb.String(chains[0].ID)).Return(boltvm.Error("is available error")).Times(1)
 	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), "IsAvailable", pb.String(chains[0].ID)).Return(boltvm.Success(chainsData[0])).AnyTimes()
-	mockStub.EXPECT().GetAccount(rules[0].Address).Return(false, nil).Times(1)
-	mockStub.EXPECT().GetAccount(rules[0].Address).Return(true, account).AnyTimes()
+	mockStub.EXPECT().GetAccount(rules[0].Address).Return(account).AnyTimes()
 	// BindPre error=========
 	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).Return(false).Times(1)
 	// BindPre ok
@@ -137,9 +136,6 @@ func TestRuleManager_UpdateMasterRule(t *testing.T) {
 	res := rm.UpdateMasterRule(chains[0].ID, rules[0].Address)
 	assert.False(t, res.Ok, string(res.Result))
 	// isAvailable error
-	res = rm.UpdateMasterRule(chains[0].ID, rules[0].Address)
-	assert.False(t, res.Ok, string(res.Result))
-	// get account error
 	res = rm.UpdateMasterRule(chains[0].ID, rules[0].Address)
 	assert.False(t, res.Ok, string(res.Result))
 

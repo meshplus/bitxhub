@@ -272,7 +272,7 @@ func (exec *BlockExecutor) persistData() {
 	exec.ledger.Close()
 }
 
-func(exec *BlockExecutor) registerBoltContracts() map[string]agency.Contract {
+func (exec *BlockExecutor) registerBoltContracts() map[string]agency.Contract {
 	boltContracts := []*boltvm.BoltContract{
 		{
 			Enabled:  true,
@@ -296,7 +296,7 @@ func(exec *BlockExecutor) registerBoltContracts() map[string]agency.Contract {
 			Enabled:  true,
 			Name:     "role manager service",
 			Address:  constant.RoleContractAddr.Address().String(),
-			Contract: &contracts.Role{},
+			Contract: &contracts.RoleManager{},
 		},
 		{
 			Enabled:  true,
