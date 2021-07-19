@@ -31,6 +31,13 @@ func startCMD() cli.Command {
 	return cli.Command{
 		Name:   "start",
 		Usage:  "Start a long-running start process",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name:        "passwd",
+				Usage:       "bitxhub key password",
+				Required:    false,
+			},
+		},
 		Action: start,
 	}
 }
@@ -41,7 +48,9 @@ func start(ctx *cli.Context) error {
 		return fmt.Errorf("get repo path: %w", err)
 	}
 
-	repo, err := repo.Load(repoRoot)
+	passwd := ctx.String("passwd")
+
+	repo, err := repo.Load(repoRoot, passwd)
 	if err != nil {
 		return fmt.Errorf("repo load: %w", err)
 	}
