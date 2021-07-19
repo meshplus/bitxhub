@@ -9,7 +9,6 @@ datastore
 node_modules
 dump
 pkg/order/build
-internal/plugins/build
 scripts/build
 build_solo
 build*.tar.gz

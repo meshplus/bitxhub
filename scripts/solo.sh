@@ -23,9 +23,6 @@ function compile() {
   cd "${PROJECT_PATH}"
   make install${TAGS}
 
-  ## build plugin
-  cd "${PROJECT_PATH}"/internal/plugins
-  make solo${TAGS}
 }
 
 function start() {
@@ -33,9 +30,7 @@ function start() {
   bitxhub --repo="${BUILD_PATH}" init
   bitxhubConfig=${BUILD_PATH}/bitxhub.toml
   x_replace "s/solo = false/solo = true/g" "${bitxhubConfig}"
-  x_replace "s/raft.so/solo.so/g" "${bitxhubConfig}"
-  mkdir -p "${BUILD_PATH}"/plugins
-  cp "${PROJECT_PATH}"/internal/plugins/build/solo.so "${BUILD_PATH}"/plugins/
+  x_replace "s/raft/solo/g" "${bitxhubConfig}"
   bitxhub --repo="${BUILD_PATH}" start
 }
 

@@ -2,6 +2,7 @@ package etcdraft
 
 import (
 	"fmt"
+	"github.com/meshplus/bitxhub-core/agency"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -94,7 +95,7 @@ func TestMulti_Node_Start(t *testing.T) {
 	fileData, err := ioutil.ReadFile("../../../config/order.toml")
 	require.Nil(t, err)
 
-	orders := make([]order.Order, 0)
+	orders := make([]agency.Order, 0)
 	for i := 0; i < peerCnt; i++ {
 		nodePath := fmt.Sprintf("node%d", i)
 		nodeRepo := filepath.Join(repoRoot, nodePath)
@@ -152,7 +153,7 @@ func TestMulti_Node_Start_Without_Cert_Verification(t *testing.T) {
 	fileData, err := ioutil.ReadFile("../../../config/order.toml")
 	require.Nil(t, err)
 
-	orders := make([]order.Order, 0)
+	orders := make([]agency.Order, 0)
 	for i := 0; i < peerCnt; i++ {
 		nodePath := fmt.Sprintf("node%d", i)
 		nodeRepo := filepath.Join(repoRoot, nodePath)

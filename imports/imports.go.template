@@ -3,6 +3,7 @@
 package imports
 
 import (
-	_ "github.com/bitxhub/parallel-executor"
-	_ "github.com/bitxhub/service-mng"
+    _ "github.com/bitxhub/parallel-executor"
+    _ "github.com/bitxhub/service-mng"
+	_ "github.com/bitxhub/bitxhub-order-rbft/rbft"
 )

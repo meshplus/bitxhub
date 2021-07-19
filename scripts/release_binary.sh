@@ -16,13 +16,10 @@ fi
 print_blue "===> 2. build bitxhub"
 cd "${PROJECT_PATH}" && make build
 
-print_blue "===> 3. build plugins: raft, solo"
-cd "${PROJECT_PATH}"/internal/plugins && make plugins
 
 print_blue "===> 4. pack binarys"
 cd "${PROJECT_PATH}"
 cp ./bin/bitxhub "${BUILD_PATH}"/bitxhub
-cp ./internal/plugins/build/*.so "${BUILD_PATH}"
 if [ "$(uname)" == "Darwin" ]; then
   cd "${BUILD_PATH}" && cp "${PROJECT_PATH}"/build/wasm/lib/darwin-amd64/libwasmer.dylib .
   tar -zcvf bitxhub_darwin_x86_64_"${APP_VERSION}".tar.gz ./bitxhub ./raft.so ./solo.so ./libwasmer.dylib

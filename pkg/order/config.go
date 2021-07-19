@@ -15,7 +15,7 @@ type Config struct {
 	IsNew            bool
 	RepoRoot         string
 	StoragePath      string
-	PluginPath       string
+	OrderType        string
 	PeerMgr          peermgr.PeerManager
 	PrivKey          crypto.PrivateKey
 	Logger           logrus.FieldLogger
@@ -53,9 +53,9 @@ func WithStoragePath(path string) Option {
 	}
 }
 
-func WithPluginPath(path string) Option {
+func WithOrderType(typ string) Option {
 	return func(config *Config) {
-		config.PluginPath = path
+		config.OrderType = typ
 	}
 }
 

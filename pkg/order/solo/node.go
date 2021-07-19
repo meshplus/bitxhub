@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/event"
+	"github.com/meshplus/bitxhub-core/agency"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/pkg/order"
@@ -95,8 +96,17 @@ func (n *Node) SubscribeTxEvent(ch chan<- pb.Transactions) event.Subscription {
 	return n.mempool.SubscribeTxEvent(ch)
 }
 
-func NewNode(opts ...order.Option) (order.Order, error) {
-	config, err := order.GenerateConfig(opts...)
+func init() {
+	agency.RegisterOrderConstructor("solo", NewNode)
+}
+
+func NewNode(opts ...agency.ConfigOption) (agency.Order, error) {
+	var options []order.Option
+	for i, _ := range opts {
+		options = append(options, opts[i].(order.Option))
+	}
+
+	config, err := order.GenerateConfig(options...)
 	if err != nil {
 		return nil, fmt.Errorf("generate config: %w", err)
 	}
