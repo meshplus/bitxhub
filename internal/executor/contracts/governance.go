@@ -214,7 +214,12 @@ func (g *Governance) lockLowPriorityProposal(objId, eventTyp string) (string, er
 }
 
 func (g *Governance) getElectorateNum(from, objId string) (uint64, error) {
-	res := g.CrossInvoke(constant.RoleContractAddr.String(), "GetAdminRoles")
+	roleTs, err := json.Marshal([]string{string(GovernanceAdmin)})
+	if err != nil {
+		return 0, fmt.Errorf(err.Error())
+	}
+
+	res := g.CrossInvoke(constant.RoleContractAddr.String(), "GetAvailableRoles", pb.Bytes(roleTs))
 	if !res.Ok {
 		return 0, fmt.Errorf("get admin roles error: %s", string(res.Result))
 	}

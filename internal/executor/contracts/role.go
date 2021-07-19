@@ -6,18 +6,15 @@ import (
 	"math/big"
 	"strconv"
 
-	"github.com/meshplus/eth-kit/ledger"
-
-	"github.com/sirupsen/logrus"
-
+	"github.com/looplab/fsm"
+	"github.com/meshplus/bitxhub-core/boltvm"
+	"github.com/meshplus/bitxhub-core/governance"
+	node_mgr "github.com/meshplus/bitxhub-core/node-mgr"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
-
-	"github.com/looplab/fsm"
-	"github.com/meshplus/bitxhub-core/governance"
-
-	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub/internal/repo"
+	"github.com/meshplus/eth-kit/ledger"
+	"github.com/sirupsen/logrus"
 )
 
 type RoleType string
@@ -272,6 +269,13 @@ func (rm *RoleManager) UpdateAuditAdminNode(roleId, nodePid string) *boltvm.Resp
 	if !res.Ok {
 		return boltvm.Error(fmt.Sprintf("cross invoke GetNode error: %s", string(res.Result)))
 	}
+	var nodeTmp node_mgr.Node
+	if err := json.Unmarshal(res.Result, &nodeTmp); err != nil {
+		return boltvm.Error(fmt.Sprintf("unmarshal node error: %v", err))
+	}
+	if node_mgr.NVPNode != nodeTmp.NodeType {
+		return boltvm.Error(fmt.Sprintf("the node is not a nvp node: %s", string(nodeTmp.NodeType)))
+	}
 
 	// 4. submit proposal
 	role.NodePid = nodePid
@@ -493,6 +497,38 @@ func (rm *RoleManager) getRoles(roleType string) *boltvm.Response {
 		}
 		if role.RoleType == RoleType((roleType)) {
 			ret = append(ret, role)
+		}
+	}
+
+	data, err := json.Marshal(ret)
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+
+	return boltvm.Success(data)
+}
+
+func (rm *RoleManager) GetAvailableRoles(roleTypesData []byte) *boltvm.Response {
+	ok, value := rm.Query(ROLEPREFIX)
+	if !ok {
+		return boltvm.Error("there is no admins")
+	}
+
+	var roleTypes []string
+	if err := json.Unmarshal(roleTypesData, &roleTypes); err != nil {
+		return boltvm.Error(err.Error())
+	}
+
+	ret := make([]*Role, 0)
+	for _, data := range value {
+		role := &Role{}
+		if err := json.Unmarshal(data, role); err != nil {
+			return boltvm.Error(err.Error())
+		}
+		for _, rt := range roleTypes {
+			if role.RoleType == RoleType(rt) && rm.isAvailable(role.ID) {
+				ret = append(ret, role)
+			}
 		}
 	}
 

@@ -4,15 +4,13 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/meshplus/bitxhub-kit/log"
-
-	"github.com/meshplus/bitxhub-model/constant"
-
-	"github.com/meshplus/bitxhub-core/governance"
-
 	"github.com/golang/mock/gomock"
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/boltvm/mock_stub"
+	"github.com/meshplus/bitxhub-core/governance"
+	node_mgr "github.com/meshplus/bitxhub-core/node-mgr"
+	"github.com/meshplus/bitxhub-kit/log"
+	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/stretchr/testify/assert"
 )
@@ -58,12 +56,23 @@ func TestRoleManager_RegisterRole(t *testing.T) {
 func TestRoleManager_UpdateAuditAdminNode(t *testing.T) {
 	rm, mockStub, _, _, aRoles, _ := rolePrepare(t)
 
+	nvpNode := &node_mgr.Node{
+		VPNodeId: uint64(1),
+		Pid:      NODEPID,
+		Account:  NODEACCOUNT,
+		NodeType: node_mgr.NVPNode,
+		Status:   governance.GovernanceAvailable,
+	}
+
+	nvpNodeData, err := json.Marshal(nvpNode)
+	assert.Nil(t, err)
+
 	mockStub.EXPECT().CurrentCaller().Return(SUPER_ADMIN_ROLE_ID1).AnyTimes()
 	mockStub.EXPECT().Caller().Return(SUPER_ADMIN_ROLE_ID1).AnyTimes()
 	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *aRoles[0]).Return(true).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.NodeManagerContractAddr.String(), "GetNode", gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.NodeManagerContractAddr.String(), "GetNode", gomock.Any()).Return(boltvm.Success(nvpNodeData)).AnyTimes()
 	logger := log.NewWithModule("contracts")
 	mockStub.EXPECT().Logger().Return(logger).AnyTimes()
 

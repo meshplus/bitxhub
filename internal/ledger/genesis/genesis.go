@@ -25,7 +25,7 @@ func Initialize(genesis *repo.Genesis, nodes []*repo.NetworkNodes, primaryN uint
 		admin := &contracts.Role{
 			ID:       ad.Address,
 			RoleType: contracts.GovernanceAdmin,
-			Weight:   repo.SuperAdminWeight,
+			Weight:   ad.Weight,
 			Status:   governance.GovernanceAvailable,
 		}
 		adminData, err := json.Marshal(admin)
