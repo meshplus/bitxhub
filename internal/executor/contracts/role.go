@@ -504,6 +504,38 @@ func (rm *RoleManager) getRoles(roleType string) *boltvm.Response {
 	return boltvm.Success(data)
 }
 
+func (rm *RoleManager) GetAvailableRoles(roleTypesData []byte) *boltvm.Response {
+	ok, value := rm.Query(ROLEPREFIX)
+	if !ok {
+		return boltvm.Error("there is no admins")
+	}
+
+	var roleTypes []string
+	if err := json.Unmarshal(roleTypesData, &roleTypes); err != nil {
+		return boltvm.Error(err.Error())
+	}
+
+	ret := make([]*Role, 0)
+	for _, data := range value {
+		role := &Role{}
+		if err := json.Unmarshal(data, role); err != nil {
+			return boltvm.Error(err.Error())
+		}
+		for _, rt := range roleTypes {
+			if role.RoleType == RoleType(rt) && rm.isAvailable(role.ID) {
+				ret = append(ret, role)
+			}
+		}
+	}
+
+	data, err := json.Marshal(ret)
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+
+	return boltvm.Success(data)
+}
+
 // IsAvailable determines whether the role  is available
 func (rm *RoleManager) IsAvailable(roleId string) *boltvm.Response {
 	return boltvm.Success([]byte(strconv.FormatBool(rm.isAvailable(roleId))))
