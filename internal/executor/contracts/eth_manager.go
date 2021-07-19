@@ -85,6 +85,15 @@ func (ehm *EthHeaderManager) SetProxyAddr(addr string) *boltvm.Response {
 	return boltvm.Success([]byte(addr))
 }
 
+func (ehm *EthHeaderManager) GetProxyAddr() *boltvm.Response {
+	var proxyAddr ContractAddr
+	ok := ehm.GetObject(ProxyAddrKey, &proxyAddr)
+	if ok {
+		return boltvm.Success([]byte(proxyAddr.Addr))
+	}
+	return boltvm.Error("not found")
+}
+
 func (ehm *EthHeaderManager) SetInterchainSwapAddr(addr string) *boltvm.Response {
 	if res := ehm.IsAdmin(); !res.Ok {
 		return res
