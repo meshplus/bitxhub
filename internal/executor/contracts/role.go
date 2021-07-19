@@ -6,18 +6,15 @@ import (
 	"math/big"
 	"strconv"
 
-	"github.com/meshplus/eth-kit/ledger"
-
-	"github.com/sirupsen/logrus"
-
+	"github.com/looplab/fsm"
+	"github.com/meshplus/bitxhub-core/boltvm"
+	"github.com/meshplus/bitxhub-core/governance"
+	node_mgr "github.com/meshplus/bitxhub-core/node-mgr"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
-
-	"github.com/looplab/fsm"
-	"github.com/meshplus/bitxhub-core/governance"
-
-	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub/internal/repo"
+	"github.com/meshplus/eth-kit/ledger"
+	"github.com/sirupsen/logrus"
 )
 
 type RoleType string
@@ -271,6 +268,13 @@ func (rm *RoleManager) UpdateAuditAdminNode(roleId, nodePid string) *boltvm.Resp
 	res = rm.CrossInvoke(constant.NodeManagerContractAddr.String(), "GetNode", pb.String(nodePid))
 	if !res.Ok {
 		return boltvm.Error(fmt.Sprintf("cross invoke GetNode error: %s", string(res.Result)))
+	}
+	var nodeTmp node_mgr.Node
+	if err := json.Unmarshal(res.Result, &nodeTmp); err != nil {
+		return boltvm.Error(fmt.Sprintf("unmarshal node error: %v", err))
+	}
+	if node_mgr.NVPNode != nodeTmp.NodeType {
+		return boltvm.Error(fmt.Sprintf("the node is not a nvp node: %s", string(nodeTmp.NodeType)))
 	}
 
 	// 4. submit proposal
