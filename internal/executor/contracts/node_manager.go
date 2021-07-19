@@ -123,13 +123,13 @@ func (nm *NodeManager) RegisterNode(nodeVpId uint64, nodePid, nodeAccount, nodeT
 }
 
 // LogoutNode logout available node
-func (nm *NodeManager) LogoutNode(nodeId int64) *boltvm.Response {
+func (nm *NodeManager) LogoutNode(nodePid string) *boltvm.Response {
 	nm.NodeManager.Persister = nm.Stub
 
 	// 1. check permission
 	res := nm.CrossInvoke(constant.RoleContractAddr.String(), "CheckPermission",
 		pb.String(string(PermissionAdmin)),
-		pb.String(strconv.Itoa(int(nodeId))),
+		pb.String(nodePid),
 		pb.String(nm.CurrentCaller()),
 		pb.Bytes(nil))
 	if !res.Ok {
@@ -137,12 +137,12 @@ func (nm *NodeManager) LogoutNode(nodeId int64) *boltvm.Response {
 	}
 
 	// 2. check status
-	if ok, data := nm.NodeManager.GovernancePre(strconv.Itoa(int(nodeId)), governance.EventLogout, nil); !ok {
+	if ok, data := nm.NodeManager.GovernancePre(nodePid, governance.EventLogout, nil); !ok {
 		return boltvm.Error(fmt.Sprintf("logout prepare error: %s", string(data)))
 	}
 
 	// 3. check node num
-	ok, nodeData := nm.NodeManager.QueryById(strconv.Itoa(int(nodeId)), nil)
+	ok, nodeData := nm.NodeManager.QueryById(nodePid, nil)
 	if !ok {
 		return boltvm.Error(string(nodeData))
 	}
@@ -191,7 +191,7 @@ func (nm *NodeManager) LogoutNode(nodeId int64) *boltvm.Response {
 	}
 
 	// 4. change status
-	if ok, data := nm.NodeManager.ChangeStatus(strconv.Itoa(int(nodeId)), string(governance.EventLogout), string(node.Status), nil); !ok {
+	if ok, data := nm.NodeManager.ChangeStatus(nodePid, string(governance.EventLogout), string(node.Status), nil); !ok {
 		return boltvm.Error(fmt.Sprintf("change status error: %s", string(data)))
 	}
 
