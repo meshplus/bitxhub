@@ -181,16 +181,12 @@ func (rm *RoleManager) Manage(eventTyp string, proposalResult, lastStatus string
 
 // Update proposal information related to the administrator
 func (rm *RoleManager) updateRoleRelatedProposalInfo(roleID string, eventTyp governance.EventType) error {
-	statusListData, err := json.Marshal([]string{string(PROPOSED), string(PAUSED)})
-	if err != nil {
-		return fmt.Errorf("marshal role error:" + err.Error())
-	}
-	res := rm.CrossInvoke(constant.GovernanceContractAddr.String(), "GetProposalsByStatus", pb.Bytes(statusListData))
+	res := rm.CrossInvoke(constant.GovernanceContractAddr.String(), "GetNotClosedProposals")
 	if !res.Ok {
 		return fmt.Errorf("cross invoke GetProposalsByStatus error: %s", string(res.Result))
 	}
 	var proposals []Proposal
-	err = json.Unmarshal(res.Result, &proposals)
+	err := json.Unmarshal(res.Result, &proposals)
 	if err != nil {
 		return fmt.Errorf("unmarshal proposals error: %v", err.Error())
 	}
