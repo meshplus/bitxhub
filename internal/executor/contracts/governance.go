@@ -20,6 +20,7 @@ type Governance struct {
 
 type ProposalType string
 type ProposalStatus string
+type EndReason string
 
 const (
 	PROPOSAL_PREFIX = "proposal-"
@@ -38,6 +39,11 @@ const (
 
 	BallotApprove = "approve"
 	BallotReject  = "reject"
+
+	NormalReason     EndReason = "end of normal voting"
+	WithdrawnReason  EndReason = "withdrawn by the proposal sponsor"
+	PriorityReason   EndReason = "forced shut down by a high-priority proposal"
+	ElectorateReason EndReason = "not enough valid electorate"
 )
 
 var priority = map[governance.EventType]int{
@@ -83,18 +89,20 @@ type Proposal struct {
 	ObjId         string                      `json:"obj_id"`
 	ObjLastStatus governance.GovernanceStatus `json:"obj_last_status"`
 	// ballot information: voter address -> ballot
-	BallotMap         map[string]Ballot    `json:"ballot_map"`
-	ApproveNum        uint64               `json:"approve_num"`
-	AgainstNum        uint64               `json:"against_num"`
-	ElectorateNum     uint64               `json:"electorate_num"`
-	ThresholdNum      uint64               `json:"threshold_num"`
-	EventType         governance.EventType `json:"event_type"`
-	EndReason         string               `json:"end_reason"`
-	LockProposalId    string               `json:"lock_proposal_id"`
-	IsSpecial         bool                 `json:"is_special"`
-	IsSuperAdminVoted bool                 `json:"is_super_admin_voted"`
-	CreateTime        int64                `json:"create_time"`
-	Extra             []byte               `json:"extra"`
+	BallotMap              map[string]Ballot    `json:"ballot_map"`
+	ApproveNum             uint64               `json:"approve_num"`
+	AgainstNum             uint64               `json:"against_num"`
+	ElectorateList         []*Role              `json:"electorate_list"`
+	InitialElectorateNum   uint64               `json:"initial_electorate_num"`
+	AvaliableElectorateNum uint64               `json:"avaliable_electorate_num"`
+	ThresholdElectorateNum uint64               `json:"threshold_electorate_num"`
+	EventType              governance.EventType `json:"event_type"`
+	EndReason              EndReason            `json:"end_reason"`
+	LockProposalId         string               `json:"lock_proposal_id"`
+	IsSpecial              bool                 `json:"is_special"`
+	IsSuperAdminVoted      bool                 `json:"is_super_admin_voted"`
+	CreateTime             int64                `json:"create_time"`
+	Extra                  []byte               `json:"extra"`
 }
 
 var SpecialProposalEventType = []governance.EventType{
@@ -127,7 +135,7 @@ func (g *Governance) SubmitProposal(from, eventTyp, des, typ, objId, objLastStat
 		pb.String(g.CurrentCaller()),
 		pb.Bytes(addrsData))
 	if !res.Ok {
-		return boltvm.Error("check permission error1:" + string(res.Result))
+		return boltvm.Error("check permission error:" + string(res.Result))
 	}
 
 	// 2. get information
@@ -136,12 +144,12 @@ func (g *Governance) SubmitProposal(from, eventTyp, des, typ, objId, objLastStat
 		return boltvm.Error(err.Error())
 	}
 
-	en, err := g.getElectorateNum(from, objId)
+	electorateList, eletctorateNum, err := g.getElectorate()
 	if err != nil {
 		return boltvm.Error(err.Error())
 	}
 
-	tn, err := g.getThresholdNum(en, ProposalType(typ))
+	thresholdNum, err := g.getThresholdNum(eletctorateNum, ProposalType(typ))
 	if err != nil {
 		return boltvm.Error(err.Error())
 	}
@@ -153,22 +161,24 @@ func (g *Governance) SubmitProposal(from, eventTyp, des, typ, objId, objLastStat
 	}
 
 	p := &Proposal{
-		Id:                from + "-" + strconv.Itoa(len(ret)),
-		EventType:         governance.EventType(eventTyp),
-		Des:               des,
-		Typ:               ProposalType(typ),
-		Status:            PROPOSED,
-		ObjId:             objId,
-		ObjLastStatus:     governance.GovernanceStatus(objLastStatus),
-		BallotMap:         make(map[string]Ballot, 0),
-		ApproveNum:        0,
-		AgainstNum:        0,
-		ElectorateNum:     en,
-		ThresholdNum:      tn,
-		LockProposalId:    lockPId,
-		IsSuperAdminVoted: false,
-		CreateTime:        g.GetTxTimeStamp(),
-		Extra:             extra,
+		Id:                     from + "-" + strconv.Itoa(len(ret)),
+		EventType:              governance.EventType(eventTyp),
+		Des:                    des,
+		Typ:                    ProposalType(typ),
+		Status:                 PROPOSED,
+		ObjId:                  objId,
+		ObjLastStatus:          governance.GovernanceStatus(objLastStatus),
+		BallotMap:              make(map[string]Ballot, 0),
+		ApproveNum:             0,
+		AgainstNum:             0,
+		ElectorateList:         electorateList,
+		InitialElectorateNum:   uint64(eletctorateNum),
+		AvaliableElectorateNum: uint64(eletctorateNum),
+		ThresholdElectorateNum: uint64(thresholdNum),
+		LockProposalId:         lockPId,
+		IsSuperAdminVoted:      false,
+		CreateTime:             g.GetTxTimeStamp(),
+		Extra:                  extra,
 	}
 	p.IsSpecial = isSpecialProposal(p)
 
@@ -213,32 +223,26 @@ func (g *Governance) lockLowPriorityProposal(objId, eventTyp string) (string, er
 	return "", nil
 }
 
-func (g *Governance) getElectorateNum(from, objId string) (uint64, error) {
+func (g *Governance) getElectorate() ([]*Role, int, error) {
 	roleTs, err := json.Marshal([]string{string(GovernanceAdmin)})
 	if err != nil {
-		return 0, fmt.Errorf(err.Error())
+		return nil, 0, fmt.Errorf(err.Error())
 	}
 
 	res := g.CrossInvoke(constant.RoleContractAddr.String(), "GetAvailableRoles", pb.Bytes(roleTs))
 	if !res.Ok {
-		return 0, fmt.Errorf("get admin roles error: %s", string(res.Result))
+		return nil, 0, fmt.Errorf("get admin roles error: %s", string(res.Result))
 	}
 
 	var admins []*Role
 	if err := json.Unmarshal(res.Result, &admins); err != nil {
-		return 0, fmt.Errorf(err.Error())
+		return nil, 0, fmt.Errorf(err.Error())
 	}
 
-	electorateNum := uint64(0)
-	for _, admin := range admins {
-		if from != admin.ID && objId != admin.ID {
-			electorateNum++
-		}
-	}
-	return electorateNum, nil
+	return admins, len(admins), nil
 }
 
-func (g *Governance) getThresholdNum(electorateNum uint64, proposalTyp ProposalType) (uint64, error) {
+func (g *Governance) getThresholdNum(electorateNum int, proposalTyp ProposalType) (int, error) {
 	if err := checkProposalType(proposalTyp); err != nil {
 		return 0, fmt.Errorf(err.Error())
 	}
@@ -250,7 +254,7 @@ func (g *Governance) getThresholdNum(electorateNum uint64, proposalTyp ProposalT
 		g.AddObject(string(proposalTyp), ps)
 	}
 
-	return uint64(math.Ceil(float64(electorateNum) * ps.ParticipateThreshold)), nil
+	return int(math.Ceil(float64(electorateNum) * ps.ParticipateThreshold)), nil
 }
 
 // Withdraw the proposal
@@ -278,7 +282,7 @@ func (g *Governance) WithdrawProposal(id string) *boltvm.Response {
 
 	// 4. Withdraw
 	p.Status = REJECTED
-	p.EndReason = "withdrawn by the proposal sponsor"
+	p.EndReason = WithdrawnReason
 	g.SetObject(ProposalKey(p.Id), *p)
 
 	// 5. handel result
@@ -432,6 +436,31 @@ func (g *Governance) GetProposalsByStatus(status string) *boltvm.Response {
 	return boltvm.Success(retData)
 }
 
+// get proposal which is not closed (status is proposed or paused)
+func (g *Governance) GetNotClosedProposals() *boltvm.Response {
+	ret := make([]Proposal, 0)
+
+	ok, datas := g.Query(PROPOSAL_PREFIX)
+	if ok {
+		for _, d := range datas {
+			p := Proposal{}
+			if err := json.Unmarshal(d, &p); err != nil {
+				return boltvm.Error(err.Error())
+			}
+
+			if PROPOSED == p.Status || PAUSED == p.Status {
+				ret = append(ret, p)
+			}
+		}
+	}
+
+	retData, err := json.Marshal(ret)
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+	return boltvm.Success(retData)
+}
+
 // Get proposal description information
 func (g *Governance) GetDes(id string) *boltvm.Response {
 	p := &Proposal{}
@@ -525,13 +554,64 @@ func (g *Governance) GetAgainstNum(id string) *boltvm.Response {
 }
 
 // Get the number of total votes, include all votes cast and all votes not cast
-func (g *Governance) GetElectorateNum(id string) *boltvm.Response {
+func (g *Governance) GetPrimaryElectorateNum(id string) *boltvm.Response {
 	p := &Proposal{}
 	if !g.GetObject(ProposalKey(id), p) {
 		return boltvm.Error("proposal does not exist")
 	}
 
-	return boltvm.Success([]byte(strconv.Itoa(int(p.ElectorateNum))))
+	return boltvm.Success([]byte(strconv.Itoa(int(p.InitialElectorateNum))))
+}
+
+// Get the number of total votes, include all votes cast and all votes not cast
+func (g *Governance) GetAvaliableElectorateNum(id string) *boltvm.Response {
+	p := &Proposal{}
+	if !g.GetObject(ProposalKey(id), p) {
+		return boltvm.Error("proposal does not exist")
+	}
+
+	return boltvm.Success([]byte(strconv.Itoa(int(p.AvaliableElectorateNum))))
+}
+
+// Get the number of total votes, include all votes cast and all votes not cast
+func (g *Governance) UpdateAvaliableElectorateNum(id string, num uint64) *boltvm.Response {
+	// 1. check permission
+	specificAddrs := []string{
+		constant.RoleContractAddr.Address().String(),
+	}
+	addrsData, err := json.Marshal(specificAddrs)
+	if err != nil {
+		return boltvm.Error("marshal specificAddrs error:" + string(err.Error()))
+	}
+	res := g.CrossInvoke(constant.RoleContractAddr.String(), "CheckPermission",
+		pb.String(string(PermissionSpecific)),
+		pb.String(""),
+		pb.String(g.CurrentCaller()),
+		pb.Bytes(addrsData))
+	if !res.Ok {
+		return boltvm.Error("check permission error:" + string(res.Result))
+	}
+
+	// 2. update num
+	p := &Proposal{}
+	if !g.GetObject(ProposalKey(id), p) {
+		return boltvm.Error("proposal does not exist")
+	}
+
+	p.AvaliableElectorateNum = num
+	if p.AvaliableElectorateNum < p.ThresholdElectorateNum {
+		p.EndReason = ElectorateReason
+		p.Status = REJECTED
+		g.SetObject(ProposalKey(p.Id), *p)
+		err := g.handleResult(p)
+		if err != nil {
+			return boltvm.Error(err.Error())
+		}
+	} else {
+		g.SetObject(ProposalKey(p.Id), *p)
+	}
+
+	return boltvm.Success([]byte(strconv.Itoa(int(p.AvaliableElectorateNum))))
 }
 
 // Get the minimum number of votes required for the current voting strategy
@@ -541,7 +621,7 @@ func (g *Governance) GetThresholdNum(id string) *boltvm.Response {
 		return boltvm.Error("proposal does not exist")
 	}
 
-	return boltvm.Success([]byte(strconv.Itoa(int(p.ThresholdNum))))
+	return boltvm.Success([]byte(strconv.Itoa(int(p.ThresholdElectorateNum))))
 }
 
 // Get the number of people who have voted
@@ -710,7 +790,7 @@ func (g *Governance) unlockLowPriorityProposal(p *Proposal) (governance.EventTyp
 
 		if p.Status == APPOVED {
 			lockP.Status = REJECTED
-			lockP.EndReason = "forced shut down by a high-priority proposal (" + p.Id + ")"
+			lockP.EndReason = EndReason(fmt.Sprintf("%s(%s)", string(PriorityReason), p.Id))
 		} else {
 			lockP.Status = PROPOSED
 			nextEventType = lockP.EventType
@@ -729,55 +809,46 @@ func (g *Governance) setVote(p *Proposal, addr string, approve string, reason st
 	}
 
 	// 2. Determine if the administrator can vote
-	if addr == p.Id[0:strings.Index(p.Id, "-")] {
-		return fmt.Errorf("administrators cannot vote on their own initiatives")
-	}
-	if addr == p.ObjId {
-		return fmt.Errorf("administrators cannot vote on proposals that concern themselves")
+	for _, e := range p.ElectorateList {
+		if addr == e.ID {
+
+			// 3. Determine if the administrator has voted
+			if _, ok := p.BallotMap[addr]; ok {
+				return fmt.Errorf("administrator of the address has voted")
+			}
+
+			// 4. Record Voting Information
+			ballot := Ballot{
+				VoterAddr: addr,
+				Approve:   approve,
+				Num:       e.Weight,
+				Reason:    reason,
+			}
+			if repo.SuperAdminWeight == e.Weight {
+				p.IsSuperAdminVoted = true
+			}
+			p.BallotMap[addr] = ballot
+			switch approve {
+			case BallotApprove:
+				p.ApproveNum++
+			case BallotReject:
+				p.AgainstNum++
+			default:
+				return fmt.Errorf("the info of vote should be approve or reject")
+			}
+
+			g.SetObject(ProposalKey(p.Id), *p)
+			return nil
+		}
 	}
 
-	// 3. Determine if the administrator has voted
-	if _, ok := p.BallotMap[addr]; ok {
-		return fmt.Errorf("administrator of the address has voted")
-	}
-
-	res := g.CrossInvoke(constant.RoleContractAddr.String(), "GetRoleWeight", pb.String(addr))
-	if !res.Ok {
-		return fmt.Errorf(string(res.Result))
-	}
-	num, err := strconv.Atoi(string(res.Result))
-	if err != nil {
-		return fmt.Errorf(err.Error())
-	}
-
-	// 4. Record Voting Information
-	ballot := Ballot{
-		VoterAddr: addr,
-		Approve:   approve,
-		Num:       uint64(num),
-		Reason:    reason,
-	}
-	if repo.SuperAdminWeight == num {
-		p.IsSuperAdminVoted = true
-	}
-	p.BallotMap[addr] = ballot
-	switch approve {
-	case BallotApprove:
-		p.ApproveNum++
-	case BallotReject:
-		p.AgainstNum++
-	default:
-		return fmt.Errorf("the info of vote should be approve or reject")
-	}
-
-	g.SetObject(ProposalKey(p.Id), *p)
-	return nil
+	return fmt.Errorf("the administrator can not vote to the proposal")
 }
 
 // Count votes to see if this round is over.
 // If the vote is over change the status of the proposal.
 func (g *Governance) countVote(p *Proposal) (bool, error) {
-	// Get proposal strategy
+	// 1. Get proposal strategy
 	ps := ProposalStrategy{}
 	if !g.GetObject(string(p.Typ), &ps) {
 		// SimpleMajority is used by default
@@ -786,15 +857,15 @@ func (g *Governance) countVote(p *Proposal) (bool, error) {
 		g.SetObject(string(p.Typ), ps)
 	}
 
-	// Special types of proposals require super administrator voting
+	// 2. Special types of proposals require super administrator voting
 	if p.IsSpecial {
 		if !p.IsSuperAdminVoted {
 			return false, nil
 		}
 	}
 
-	// Determine whether the participation threshold for the strategy has been met
-	if p.ApproveNum+p.AgainstNum < p.ThresholdNum {
+	// 3. Determine whether the participation threshold for the strategy has been met
+	if p.ApproveNum+p.AgainstNum < p.ThresholdElectorateNum {
 		return false, nil
 	}
 
@@ -809,10 +880,10 @@ func (g *Governance) countVote(p *Proposal) (bool, error) {
 	default: // SIMPLE_MAJORITY
 		if p.ApproveNum > p.AgainstNum {
 			p.Status = APPOVED
-			p.EndReason = "end of normal voting"
+			p.EndReason = NormalReason
 		} else {
 			p.Status = REJECTED
-			p.EndReason = "end of normal voting"
+			p.EndReason = NormalReason
 		}
 		g.SetObject(ProposalKey(p.Id), *p)
 		return true, nil

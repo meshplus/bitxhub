@@ -42,8 +42,8 @@ func nodeMgrCND() cli.Command {
 					},
 					cli.Uint64Flag{
 						Name:     "id",
-						Usage:    "vp node id",
-						Required: true,
+						Usage:    "vp node id, only useful for VPnode",
+						Required: false,
 					},
 					cli.StringFlag{
 						Name:     "account",
@@ -173,9 +173,9 @@ func printNode(nodes []*node_mgr.Node) {
 
 	for _, n := range nodes {
 		table = append(table, []string{
-			strconv.Itoa(int(n.VPNodeId)),
-			string(n.NodeType),
 			n.Pid,
+			string(n.NodeType),
+			strconv.Itoa(int(n.VPNodeId)),
 			n.Account,
 			string(n.Status),
 		})

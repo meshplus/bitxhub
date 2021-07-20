@@ -64,7 +64,7 @@ func (nm *NodeManager) Manage(eventTyp string, proposalResult, lastStatus string
 // Register registers node info
 // caller is the bitxhub admin address
 // return node pid, proposal id and error
-func (nm *NodeManager) RegisterNode(nodeVpId uint64, nodePid, nodeAccount, nodeType string) *boltvm.Response {
+func (nm *NodeManager) RegisterNode(nodePid string, nodeVpId uint64, nodeAccount, nodeType string) *boltvm.Response {
 	nm.NodeManager.Persister = nm.Stub
 
 	// 1. check permission
@@ -78,6 +78,13 @@ func (nm *NodeManager) RegisterNode(nodeVpId uint64, nodePid, nodeAccount, nodeT
 	}
 
 	// 2. check info
+	switch nodeType {
+	case string(node_mgr.VPNode):
+	case string(node_mgr.NVPNode):
+		nodeVpId = 0
+	default:
+		return boltvm.Error(fmt.Sprintf("not support node type: %s", nodeType))
+	}
 	node := &node_mgr.Node{
 		Pid:      nodePid,
 		VPNodeId: nodeVpId,

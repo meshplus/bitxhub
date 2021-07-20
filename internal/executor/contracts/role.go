@@ -24,9 +24,9 @@ const (
 
 	ROLEPREFIX = "role"
 
-	GovernanceAdmin RoleType = "governance_admin"
-	AuditAdmin      RoleType = "audit_admin"
-	AppchainAdmin   RoleType = "appchain_admin"
+	GovernanceAdmin RoleType = "governanceAdmin"
+	AuditAdmin      RoleType = "auditAdmin"
+	AppchainAdmin   RoleType = "appchainAdmin"
 )
 
 type Role struct {
@@ -164,15 +164,59 @@ func (rm *RoleManager) Manage(eventTyp string, proposalResult, lastStatus string
 	if proposalResult == string(APPOVED) {
 		switch eventTyp {
 		case string(governance.EventUpdate):
-			roleData, err := json.Marshal(role)
-			if err != nil {
-				return boltvm.Error("marshal role error:" + err.Error())
+			rm.SetObject(rm.roleKey(role.ID), *role)
+		case string(governance.EventFreeze):
+			fallthrough
+		case string(governance.EventLogout):
+			fallthrough
+		case string(governance.EventActivate):
+			if err := rm.updateRoleRelatedProposalInfo(role.ID, governance.EventType(eventTyp)); err != nil {
+				return boltvm.Error(err.Error())
 			}
-			rm.SetObject(rm.roleKey(role.ID), roleData)
 		}
 	}
 
 	return boltvm.Success(nil)
+}
+
+// Update proposal information related to the administrator
+func (rm *RoleManager) updateRoleRelatedProposalInfo(roleID string, eventTyp governance.EventType) error {
+	statusListData, err := json.Marshal([]string{string(PROPOSED), string(PAUSED)})
+	if err != nil {
+		return fmt.Errorf("marshal role error:" + err.Error())
+	}
+	res := rm.CrossInvoke(constant.GovernanceContractAddr.String(), "GetProposalsByStatus", pb.Bytes(statusListData))
+	if !res.Ok {
+		return fmt.Errorf("cross invoke GetProposalsByStatus error: %s", string(res.Result))
+	}
+	var proposals []Proposal
+	err = json.Unmarshal(res.Result, &proposals)
+	if err != nil {
+		return fmt.Errorf("unmarshal proposals error: %v", err.Error())
+	}
+
+	for _, p := range proposals {
+		for _, e := range p.ElectorateList {
+			if e.ID == roleID {
+				switch eventTyp {
+				case governance.EventFreeze:
+					fallthrough
+				case governance.EventLogout:
+					p.AvaliableElectorateNum--
+				case governance.EventActivate:
+					p.AvaliableElectorateNum++
+				default:
+					break
+				}
+				res := rm.CrossInvoke(constant.GovernanceContractAddr.String(), "UpdateAvaliableElectorateNum", pb.String(p.Id), pb.Uint64(p.AvaliableElectorateNum))
+				if !res.Ok {
+					return fmt.Errorf("cross invoke UpdateAvaliableElectorateNum error: %s", string(res.Result))
+				}
+				break
+			}
+		}
+	}
+	return nil
 }
 
 // Register registers role info
@@ -493,7 +537,7 @@ func (rm *RoleManager) getRoles(roleType string) *boltvm.Response {
 	for _, data := range value {
 		role := &Role{}
 		if err := json.Unmarshal(data, role); err != nil {
-			return boltvm.Error(err.Error())
+			return boltvm.Error(fmt.Sprintf("unmarshal role error: %v", err.Error()))
 		}
 		if role.RoleType == RoleType((roleType)) {
 			ret = append(ret, role)
@@ -502,7 +546,7 @@ func (rm *RoleManager) getRoles(roleType string) *boltvm.Response {
 
 	data, err := json.Marshal(ret)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(fmt.Sprintf("marshal role error: %v", err.Error()))
 	}
 
 	return boltvm.Success(data)
@@ -675,6 +719,13 @@ func (rm *RoleManager) checkRoleInfo(role *Role) error {
 		res := rm.CrossInvoke(constant.NodeManagerContractAddr.String(), "GetNode", pb.String(role.NodePid))
 		if !res.Ok {
 			return fmt.Errorf("CrossInvoke GetNode error: %s", string(res.Result))
+		}
+		var nodeTmp node_mgr.Node
+		if err := json.Unmarshal(res.Result, &nodeTmp); err != nil {
+			return fmt.Errorf("unmarshal node error: %v", err)
+		}
+		if node_mgr.NVPNode != nodeTmp.NodeType {
+			return fmt.Errorf("the node is not a nvp node: %s", string(nodeTmp.NodeType))
 		}
 	default:
 		return fmt.Errorf("Registration for %s is not supported currently", role.RoleType)
