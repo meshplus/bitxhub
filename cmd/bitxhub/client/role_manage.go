@@ -255,7 +255,7 @@ func allRole(ctx *cli.Context) error {
 		roles := make([]*contracts.Role, 0)
 		if ret.Ret != nil {
 			if err := json.Unmarshal(ret.Ret, &roles); err != nil {
-				return fmt.Errorf("unmarshal roles error: %w", err)
+				return fmt.Errorf("unmarshal roles error: %v", err)
 			}
 		}
 		printRole(roles)

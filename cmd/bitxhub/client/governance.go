@@ -67,7 +67,7 @@ func governanceCMD() cli.Command {
 							},
 							cli.StringFlag{
 								Name:     "status",
-								Usage:    "proposal status, one of proposed, approve or reject",
+								Usage:    "proposal status, one of proposed, paused, approve or reject",
 								Required: false,
 							},
 							cli.StringFlag{
@@ -227,7 +227,8 @@ func checkProposalArgs(id, typ, status, from, objId string) error {
 	if status != "" &&
 		status != string(contracts.PROPOSED) &&
 		status != string(contracts.APPOVED) &&
-		status != string(contracts.REJECTED) {
+		status != string(contracts.REJECTED) &&
+		status != string(contracts.PAUSED) {
 		return fmt.Errorf("illegal proposal status")
 	}
 	return nil
@@ -280,7 +281,7 @@ func getProposalsByConditions(ctx *cli.Context, keyPath string, menthod string, 
 
 func printProposal(proposals []contracts.Proposal) {
 	var table [][]string
-	table = append(table, []string{"Id", "ManagedObjectId", "Type", "EventType", "Status", "A/R", "E/T", "Special/Super", "CreateTime", "Description", "EndReason"})
+	table = append(table, []string{"Id", "ManagedObjectId", "Type", "EventType", "Status", "A/R", "IE/AE/TE", "Special/Super", "CreateTime", "Description", "EndReason"})
 
 	for _, pro := range proposals {
 		table = append(table, []string{
@@ -289,19 +290,20 @@ func printProposal(proposals []contracts.Proposal) {
 			string(pro.Typ),
 			string(pro.EventType),
 			string(pro.Status),
-			strconv.Itoa(int(pro.ApproveNum)) + "/" + strconv.Itoa(int(pro.AgainstNum)),
-			strconv.Itoa(int(pro.ElectorateNum)) + "/" + strconv.Itoa(int(pro.ThresholdNum)),
-			strconv.FormatBool(pro.IsSpecial) + "/" + strconv.FormatBool(pro.IsSuperAdminVoted),
+			fmt.Sprintf("%s/%s", strconv.Itoa(int(pro.ApproveNum)), strconv.Itoa(int(pro.AgainstNum))),
+			fmt.Sprintf("%s/%s/%s", strconv.Itoa(int(pro.InitialElectorateNum)), strconv.Itoa(int(pro.AvaliableElectorateNum)), strconv.Itoa(int(pro.ThresholdElectorateNum))),
+			fmt.Sprintf("%s/%s", strconv.FormatBool(pro.IsSpecial), strconv.FormatBool(pro.IsSuperAdminVoted)),
 			strconv.Itoa(int(pro.CreateTime)),
 			pro.Des,
-			pro.EndReason,
+			string(pro.EndReason),
 		})
 	}
 
+	fmt.Println("========================================================================================")
 	PrintTable(table, true)
 	fmt.Println("========================================================================================")
 	fmt.Println("* A/R：approve num / reject num")
-	fmt.Println("* E/T：the total number of electorate / the minimum threshold for votes to take effect")
+	fmt.Println("* IE/AE/TE：the total number of electorate at the time of the initial proposal / the number of available electorate currently /the minimum threshold for votes to take effect")
 	fmt.Println("* Special/Super：is special proposal / is super admin voted")
 }
 

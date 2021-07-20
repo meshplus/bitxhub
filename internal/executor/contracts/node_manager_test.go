@@ -39,19 +39,19 @@ func TestNodeManager_RegisterNode(t *testing.T) {
 	mockStub.EXPECT().Get(NODEPID).Return(true, nil).AnyTimes()
 
 	// 1. CheckPermission error
-	res := nm.RegisterNode(1, NODEPID, NODEACCOUNT, string(node_mgr.VPNode))
+	res := nm.RegisterNode(NODEPID, 1, NODEACCOUNT, string(node_mgr.VPNode))
 	assert.False(t, res.Ok, string(res.Result))
 	// 2. info(id) error
-	res = nm.RegisterNode(1, NODEPID, NODEACCOUNT, string(node_mgr.VPNode))
+	res = nm.RegisterNode(NODEPID, 1, NODEACCOUNT, string(node_mgr.VPNode))
 	assert.False(t, res.Ok, string(res.Result))
 	// 3. info(pid) error
-	res = nm.RegisterNode(6, NODEPID, NODEACCOUNT, string(node_mgr.VPNode))
+	res = nm.RegisterNode(NODEPID, 6, NODEACCOUNT, string(node_mgr.VPNode))
 	assert.False(t, res.Ok, string(res.Result))
 	// 4. SubmitProposal error
-	res = nm.RegisterNode(6, NODEPID, NODEACCOUNT, string(node_mgr.VPNode))
+	res = nm.RegisterNode(NODEPID, 6, NODEACCOUNT, string(node_mgr.VPNode))
 	assert.False(t, res.Ok, string(res.Result))
 
-	res = nm.RegisterNode(6, NODEPID, NODEACCOUNT, string(node_mgr.VPNode))
+	res = nm.RegisterNode(NODEPID, 6, NODEACCOUNT, string(node_mgr.VPNode))
 	assert.True(t, res.Ok, string(res.Result))
 }
 
