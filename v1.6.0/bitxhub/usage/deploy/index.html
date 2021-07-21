@@ -1,0 +1,1747 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+      <link rel="icon" href="../../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.2.2, mkdocs-material-7.1.11">
+    
+    
+      
+        <title>中继链部署 - Bitxhub Document</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../../assets/stylesheets/main.3754935a.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../../assets/stylesheets/palette.f1a3b89f.min.css">
+        
+          
+          
+          <meta name="theme-color" content="#000000">
+        
+      
+    
+    
+    
+      
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=:300,400,400i,700%7CRoboto+Mono&display=fallback">
+        <style>:root{--md-text-font-family:"";--md-code-font-family:"Roboto Mono"}</style>
+      
+    
+    
+    
+      <link rel="stylesheet" href="../../../../stylesheets/extra.css">
+    
+    
+      
+
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue">
+  
+    
+    <script>function __prefix(e){return new URL("../../../..",location).pathname+"."+e}function __get(e,t=localStorage){return JSON.parse(t.getItem(__prefix(e)))}</script>
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../../.." title="Bitxhub Document" class="md-header__button md-logo" aria-label="Bitxhub Document" data-md-component="logo">
+      
+  <img src="../../../../assets/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Bitxhub Document
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              中继链部署
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5z"/></svg>
+      </label>
+      
+<div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" data-md-state="active" required>
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
+      </label>
+      <button type="reset" class="md-search__icon md-icon" aria-label="Clear" tabindex="-1">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
+      </button>
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        
+<a href="https://github.com/meshplus/bitxhub/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    meshplus/bitxhub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-tabs__inner md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+
+
+  
+  
+  
+    
+
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../../bitxhub/introduction/summary/" class="md-tabs__link">
+        Home
+      </a>
+    </li>
+  
+
+  
+
+      
+        
+  
+  
+
+
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../../goduck/" class="md-tabs__link">
+        Goduck
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+
+
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../../premo/usage/" class="md-tabs__link">
+        Premo
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+
+
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../../sdk/gosdk/" class="md-tabs__link">
+        SDK文档
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../../.." title="Bitxhub Document" class="md-nav__button md-logo" aria-label="Bitxhub Document" data-md-component="logo">
+      
+  <img src="../../../../assets/logo.png" alt="logo">
+
+    </a>
+    Bitxhub Document
+  </label>
+  
+    <div class="md-nav__source">
+      
+<a href="https://github.com/meshplus/bitxhub/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    meshplus/bitxhub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_1" type="checkbox" id="__nav_1" >
+      
+      <label class="md-nav__link" for="__nav_1">
+        Home
+        <span class="md-nav__icon md-icon"></span>
+      </label>
+      <nav class="md-nav" aria-label="Home" data-md-level="1">
+        <label class="md-nav__title" for="__nav_1">
+          <span class="md-nav__icon md-icon"></span>
+          Home
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_1_1" type="checkbox" id="__nav_1_1" >
+      
+      <label class="md-nav__link" for="__nav_1_1">
+        产品介绍
+        <span class="md-nav__icon md-icon"></span>
+      </label>
+      <nav class="md-nav" aria-label="产品介绍" data-md-level="2">
+        <label class="md-nav__title" for="__nav_1_1">
+          <span class="md-nav__icon md-icon"></span>
+          产品介绍
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../bitxhub/introduction/summary/" class="md-nav__link">
+        平台介绍
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../bitxhub/introduction/conception/" class="md-nav__link">
+        基本概念
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../bitxhub/introduction/arch/" class="md-nav__link">
+        技术架构
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../bitxhub/introduction/advantage/" class="md-nav__link">
+        产品优势
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../bitxhub/introduction/scenaries/" class="md-nav__link">
+        应用场景
+      </a>
+    </li>
+  
+
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../bitxhub/quick_start/" class="md-nav__link">
+        快速开始
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_1_3" type="checkbox" id="__nav_1_3" >
+      
+      <label class="md-nav__link" for="__nav_1_3">
+        部署使用
+        <span class="md-nav__icon md-icon"></span>
+      </label>
+      <nav class="md-nav" aria-label="部署使用" data-md-level="2">
+        <label class="md-nav__title" for="__nav_1_3">
+          <span class="md-nav__icon md-icon"></span>
+          部署使用
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../bitxhub/usage/env/" class="md-nav__link">
+        环境准备
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../bitxhub/usage/deploy_bitxhub/" class="md-nav__link">
+        中继链部署
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../bitxhub/usage/deploy_pier_access_fabric/" class="md-nav__link">
+        跨链网关部署--接入Fabric
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../bitxhub/usage/deploy_pier_access_ethereum/" class="md-nav__link">
+        跨链网关部署--接入Ethereum
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../bitxhub/usage/inter_relay_deploy/" class="md-nav__link">
+        中继跨链部署
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../bitxhub/usage/pier_direct_mode_deploy/" class="md-nav__link">
+        跨链网关直连模式部署
+      </a>
+    </li>
+  
+
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_1_4" type="checkbox" id="__nav_1_4" >
+      
+      <label class="md-nav__link" for="__nav_1_4">
+        开发手册
+        <span class="md-nav__icon md-icon"></span>
+      </label>
+      <nav class="md-nav" aria-label="开发手册" data-md-level="2">
+        <label class="md-nav__title" for="__nav_1_4">
+          <span class="md-nav__icon md-icon"></span>
+          开发手册
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../bitxhub/dev/consensus/" class="md-nav__link">
+        共识算法插件
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../bitxhub/dev/cross_contract/" class="md-nav__link">
+        跨链合约
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../bitxhub/dev/plugin/" class="md-nav__link">
+        应用链插件编写
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../bitxhub/dev/rule/" class="md-nav__link">
+        验证规则编写
+      </a>
+    </li>
+  
+
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_1_5" type="checkbox" id="__nav_1_5" >
+      
+      <label class="md-nav__link" for="__nav_1_5">
+        设计文档
+        <span class="md-nav__icon md-icon"></span>
+      </label>
+      <nav class="md-nav" aria-label="设计文档" data-md-level="2">
+        <label class="md-nav__title" for="__nav_1_5">
+          <span class="md-nav__icon md-icon"></span>
+          设计文档
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../bitxhub/design/consensus_plugin/" class="md-nav__link">
+        共识算法插件方案
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../bitxhub/design/interchain_transaction/" class="md-nav__link">
+        跨链事务方案
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../bitxhub/design/pier/" class="md-nav__link">
+        跨链网关设计方案
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../bitxhub/design/privacy_protection/" class="md-nav__link">
+        隐私保护方案
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../bitxhub/design/rate-limiter/" class="md-nav__link">
+        API流控设计
+      </a>
+    </li>
+  
+
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_1_6" type="checkbox" id="__nav_1_6" >
+      
+      <label class="md-nav__link" for="__nav_1_6">
+        版本发布记录
+        <span class="md-nav__icon md-icon"></span>
+      </label>
+      <nav class="md-nav" aria-label="版本发布记录" data-md-level="2">
+        <label class="md-nav__title" for="__nav_1_6">
+          <span class="md-nav__icon md-icon"></span>
+          版本发布记录
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../bitxhub/changelog/bitxhub_v1.5.0/" class="md-nav__link">
+        BitXHub v1.5.0
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../bitxhub/changelog/bitxhub_v1.4.0/" class="md-nav__link">
+        BitXHub v1.4.0
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../bitxhub/changelog/bitxhub_v1.3.0/" class="md-nav__link">
+        BitXHub v1.3.0
+      </a>
+    </li>
+  
+
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../bitxhub/community_introduction/" class="md-nav__link">
+        社区介绍
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../bitxhub/join_us/" class="md-nav__link">
+        加入我们
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../bitxhub/faq/" class="md-nav__link">
+        FAQ
+      </a>
+    </li>
+  
+
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_2" type="checkbox" id="__nav_2" >
+      
+      <label class="md-nav__link" for="__nav_2">
+        Goduck
+        <span class="md-nav__icon md-icon"></span>
+      </label>
+      <nav class="md-nav" aria-label="Goduck" data-md-level="1">
+        <label class="md-nav__title" for="__nav_2">
+          <span class="md-nav__icon md-icon"></span>
+          Goduck
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../goduck/" class="md-nav__link">
+        Getting started
+      </a>
+    </li>
+  
+
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_3" type="checkbox" id="__nav_3" >
+      
+      <label class="md-nav__link" for="__nav_3">
+        Premo
+        <span class="md-nav__icon md-icon"></span>
+      </label>
+      <nav class="md-nav" aria-label="Premo" data-md-level="1">
+        <label class="md-nav__title" for="__nav_3">
+          <span class="md-nav__icon md-icon"></span>
+          Premo
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../premo/usage/" class="md-nav__link">
+        使用文档
+      </a>
+    </li>
+  
+
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_4" type="checkbox" id="__nav_4" >
+      
+      <label class="md-nav__link" for="__nav_4">
+        SDK文档
+        <span class="md-nav__icon md-icon"></span>
+      </label>
+      <nav class="md-nav" aria-label="SDK文档" data-md-level="1">
+        <label class="md-nav__title" for="__nav_4">
+          <span class="md-nav__icon md-icon"></span>
+          SDK文档
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../sdk/gosdk/" class="md-nav__link">
+        GoSDK使用文档
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../sdk/javasdk/" class="md-nav__link">
+        JavaSDK使用
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../sdk/jssdk/" class="md-nav__link">
+        JsSDK使用文档
+      </a>
+    </li>
+  
+
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    安装包获取
+  </a>
+  
+    <nav class="md-nav" aria-label="安装包获取">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    源码下载
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    二进制下载
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    修改配置文件
+  </a>
+  
+    <nav class="md-nav" aria-label="修改配置文件">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#bitxhubtoml" class="md-nav__link">
+    节点配置文件bitxhub.toml
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#networktoml" class="md-nav__link">
+    网络配置文件network.toml
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ordertoml" class="md-nav__link">
+    共识配置文件order.toml
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    启动程序
+  </a>
+  
+    <nav class="md-nav" aria-label="启动程序">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    初始化配置
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    生成节点验证者私钥，并通过私钥获取验证者地址
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#p2ppid" class="md-nav__link">
+    获取节点p2p通信网络pid
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    拷贝共识插件
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bitxhub" class="md-nav__link">
+    启动bitxhub
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_10" class="md-nav__link">
+    跨链网关部署
+  </a>
+  
+    <nav class="md-nav" aria-label="跨链网关部署">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_11" class="md-nav__link">
+    安装包获取
+  </a>
+  
+    <nav class="md-nav" aria-label="安装包获取">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_12" class="md-nav__link">
+    源码安装
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_13" class="md-nav__link">
+    修改配置文件
+  </a>
+  
+    <nav class="md-nav" aria-label="修改配置文件">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fabric" class="md-nav__link">
+    修改fabric插件配置
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          <div class="md-content" data-md-component="content">
+            <article class="md-content__inner md-typeset">
+              
+                
+                  <a href="https://github.com/meshplus/bitxhub/edit/master/docs/docs/v1.6.0/bitxhub/usage/deploy.md" title="Edit this page" class="md-content__button md-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20.71 7.04c.39-.39.39-1.04 0-1.41l-2.34-2.34c-.37-.39-1.02-.39-1.41 0l-1.84 1.83 3.75 3.75M3 17.25V21h3.75L17.81 9.93l-3.75-3.75L3 17.25z"/></svg>
+                  </a>
+                
+                
+                <h1 id="_1">中继链部署</h1>
+<p>中继链用于应用链的跨链管理，以及跨链交易的可信验证与可靠路由，是一种实现IBTP</p>
+<p>协议的开放许可链。</p>
+<h3 id="_2">安装包获取</h3>
+<h5 id="_3">源码下载</h5>
+<p>首先拉区bitxhub源代码：</p>
+<div class="highlight"><pre><span></span><code>git clone https://github.com/meshplus/bitxhub.git
+</code></pre></div>
+<p>代码目录结构如下：</p>
+<table>
+<thead>
+<tr>
+<th>目录</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>api</td>
+<td>网关和GRPC服务</td>
+</tr>
+<tr>
+<td>cmd</td>
+<td>命令行相关代码</td>
+</tr>
+<tr>
+<td>config</td>
+<td>配置文件</td>
+</tr>
+<tr>
+<td>docs</td>
+<td>设计和用户文档</td>
+</tr>
+<tr>
+<td>intenal</td>
+<td>项目内部相关代码</td>
+</tr>
+<tr>
+<td>pkg</td>
+<td>项目重用相关代码</td>
+</tr>
+<tr>
+<td>scripts</td>
+<td>操作脚本</td>
+</tr>
+<tr>
+<td>tester</td>
+<td>单元测试</td>
+</tr>
+</tbody>
+</table>
+<h5 id="_4">二进制下载</h5>
+<p>可以在github上下载已经打包好的二进制安装包，地址如下：<code>https://github.com/meshplus/bitxhub/releases</code>, 根据需要的版本进行下载即可。请注意，在bitxhub v1.6.0及之后，二进制包和部署配置示例文件将分为两个压缩包提供，其中配置文件是以四节点bitxhub集群为示例，文件命名以examples开头，如果只下载配置文件，仍需要将二进制程序拷贝到指定地方之后才能启动节点。</p>
+<h3 id="_5">修改配置文件</h3>
+<p>中继链包括bitxhub.toml、network.tom和order.toml配置文件。下面以node1为例介绍如何修改配置文件。</p>
+<h5 id="bitxhubtoml">节点配置文件bitxhub.toml</h5>
+<p>bitxhub.toml文件是bitxhub启动的主要配置文件。各配置项说明如下：</p>
+<table>
+<thead>
+<tr>
+<th>配置项</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>solo</td>
+<td>是否按照单节点模式启动BitXHub</td>
+</tr>
+<tr>
+<td>[port]</td>
+<td>gateway、grpc、pprof和monitor服务端口</td>
+</tr>
+<tr>
+<td>[monitor]</td>
+<td>监控服务</td>
+</tr>
+<tr>
+<td>[security]</td>
+<td>证书体系</td>
+</tr>
+<tr>
+<td>[cert]</td>
+<td>是否开启认证节点p2p通信证书</td>
+</tr>
+<tr>
+<td>[order]</td>
+<td>共识模块，作为插件进行加载</td>
+</tr>
+<tr>
+<td>[gateway]</td>
+<td>跨域配置</td>
+</tr>
+<tr>
+<td>[ping]</td>
+<td>ping集群节点功能</td>
+</tr>
+<tr>
+<td>[log]</td>
+<td>日志输出相关设置</td>
+</tr>
+<tr>
+<td>[executor]</td>
+<td>执行引擎类型</td>
+</tr>
+<tr>
+<td>[genesis]</td>
+<td>创世节点配置</td>
+</tr>
+</tbody>
+</table>
+<p>变更gateway、grpc、pprof和monitor等端口:</p>
+<div class="highlight"><pre><span></span><code><span class="p">[</span><span class="nx">port</span><span class="p">]</span>
+  <span class="nx">gateway</span> <span class="o">=</span> <span class="mf">9091</span>
+  <span class="nx">grpc</span> <span class="o">=</span> <span class="mf">60011</span>
+  <span class="nx">pprof</span> <span class="o">=</span> <span class="mf">53121</span>
+  <span class="nx">monitor</span> <span class="o">=</span> <span class="mf">40011</span>
+</code></pre></div>
+<p>共识算法类型选择（支持raft和rbft）：</p>
+<div class="highlight"><pre><span></span><code><span class="o">[</span>order<span class="o">]</span>
+  <span class="nv">plugin</span> <span class="o">=</span> <span class="s2">&quot;plugins/raft.so&quot;</span> 
+</code></pre></div>
+<p>执行引擎类型选择（支持serial和parallel）：</p>
+<div class="highlight"><pre><span></span><code><span class="o">[</span>executor<span class="o">]</span>
+  <span class="nb">type</span> <span class="o">=</span> <span class="s2">&quot;serial&quot;</span>
+</code></pre></div>
+<p>修改genesis的节点验证者地址，根据节点数量配置地址数量</p>
+<div class="highlight"><pre><span></span><code><span class="o">[</span>genesis<span class="o">]</span>
+<span class="nv">addresses</span> <span class="o">=</span> <span class="o">[</span>
+  <span class="s2">&quot;0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013&quot;</span>,
+  <span class="s2">&quot;0x79a1215469FaB6f9c63c1816b45183AD3624bE34&quot;</span>,
+  <span class="s2">&quot;0x97c8B516D19edBf575D72a172Af7F418BE498C37&quot;</span>,
+  <span class="s2">&quot;0xc0Ff2e0b3189132D815b8eb325bE17285AC898f8&quot;</span>
+<span class="o">]</span>
+</code></pre></div>
+<h5 id="networktoml">网络配置文件network.toml</h5>
+<p>network.toml文件是bitxhub网络配置文件。各配置项说明如下：</p>
+<table>
+<thead>
+<tr>
+<th>配置项</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>N</td>
+<td>集群节点数量</td>
+</tr>
+<tr>
+<td>id</td>
+<td>当前节点标识</td>
+</tr>
+<tr>
+<td>new</td>
+<td>判断当前节点是新加入的节点</td>
+</tr>
+<tr>
+<td>[nodes]</td>
+<td>集群节点信息</td>
+</tr>
+<tr>
+<td>account</td>
+<td>节点验证者地址</td>
+</tr>
+<tr>
+<td>hosts</td>
+<td>节点网络地址</td>
+</tr>
+<tr>
+<td>id</td>
+<td>节点标识</td>
+</tr>
+<tr>
+<td>pid</td>
+<td>p2p网络唯一标识</td>
+</tr>
+</tbody>
+</table>
+<p>配置过程变更nodes中各个节点的信息</p>
+<div class="highlight"><pre><span></span><code><span class="o">[[</span>nodes<span class="o">]]</span>
+<span class="nv">account</span> <span class="o">=</span> <span class="s2">&quot;0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013&quot;</span>
+<span class="nv">hosts</span> <span class="o">=</span> <span class="o">[</span><span class="s2">&quot;/ip4/127.0.0.1/tcp/4001/p2p/&quot;</span><span class="o">]</span>
+<span class="nv">id</span> <span class="o">=</span> <span class="m">1</span>
+<span class="nv">pid</span> <span class="o">=</span> <span class="s2">&quot;QmXi58fp9ZczF3Z5iz1yXAez3Hy5NYo1R8STHWKEM9XnTL&quot;</span>
+</code></pre></div>
+<p>配置示例如下：</p>
+<div class="highlight"><pre><span></span><code><span class="nx">id</span> <span class="o">=</span> <span class="mf">1</span> <span class="err">#</span> <span class="nx">self</span> <span class="nx">id</span>
+<span class="nx">n</span> <span class="o">=</span> <span class="mf">4</span> <span class="err">#</span> <span class="nx">the</span> <span class="nx">number</span> <span class="k">of</span> <span class="nx">vp</span> <span class="nx">nodes</span>
+<span class="k">new</span> <span class="o">=</span> <span class="kc">false</span> <span class="err">#</span> <span class="nx">track</span> <span class="nx">whether</span> <span class="nx">the</span> <span class="nx">node</span> <span class="nx">is</span> <span class="nx">a</span> <span class="k">new</span> <span class="nx">node</span>
+
+<span class="p">[[</span><span class="nx">nodes</span><span class="p">]]</span>
+<span class="nx">account</span> <span class="o">=</span> <span class="s2">&quot;0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013&quot;</span>
+<span class="nx">hosts</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;/ip4/127.0.0.1/tcp/4001/p2p/&quot;</span><span class="p">]</span>
+<span class="nx">id</span> <span class="o">=</span> <span class="mf">1</span>
+<span class="nx">pid</span> <span class="o">=</span> <span class="s2">&quot;QmXi58fp9ZczF3Z5iz1yXAez3Hy5NYo1R8STHWKEM9XnTL&quot;</span>
+
+<span class="p">[[</span><span class="nx">nodes</span><span class="p">]]</span>
+<span class="nx">account</span> <span class="o">=</span> <span class="s2">&quot;0x79a1215469FaB6f9c63c1816b45183AD3624bE34&quot;</span>
+<span class="nx">hosts</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;/ip4/127.0.0.1/tcp/4002/p2p/&quot;</span><span class="p">]</span>
+<span class="nx">id</span> <span class="o">=</span> <span class="mf">2</span>
+<span class="nx">pid</span> <span class="o">=</span> <span class="s2">&quot;QmbmD1kzdsxRiawxu7bRrteDgW1ituXupR8GH6E2EUAHY4&quot;</span>
+
+<span class="p">[[</span><span class="nx">nodes</span><span class="p">]]</span>
+<span class="nx">account</span> <span class="o">=</span> <span class="s2">&quot;0x97c8B516D19edBf575D72a172Af7F418BE498C37&quot;</span>
+<span class="nx">hosts</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;/ip4/127.0.0.1/tcp/4003/p2p/&quot;</span><span class="p">]</span>
+<span class="nx">id</span> <span class="o">=</span> <span class="mf">3</span>
+<span class="nx">pid</span> <span class="o">=</span> <span class="s2">&quot;QmQUcDYCtqbpn5Nhaw4FAGxQaSSNvdWfAFcpQT9SPiezbS&quot;</span>
+
+<span class="p">[[</span><span class="nx">nodes</span><span class="p">]]</span>
+<span class="nx">account</span> <span class="o">=</span> <span class="s2">&quot;0xc0Ff2e0b3189132D815b8eb325bE17285AC898f8&quot;</span>
+<span class="nx">hosts</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;/ip4/127.0.0.1/tcp/4004/p2p/&quot;</span><span class="p">]</span>
+<span class="nx">id</span> <span class="o">=</span> <span class="mf">4</span>
+<span class="nx">pid</span> <span class="o">=</span> <span class="s2">&quot;QmQW3bFn8XX1t4W14Pmn37bPJUpUVBrBjnPuBZwPog3Qdy&quot;</span>
+</code></pre></div>
+<h5 id="ordertoml">共识配置文件order.toml</h5>
+<p>order.toml文件是bitxhub共识配置文件。各配置项说明如下：</p>
+<table>
+<thead>
+<tr>
+<th>配置项</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>[raft]</td>
+<td>raft 相关配置</td>
+</tr>
+<tr>
+<td>[rbft]</td>
+<td>rbft 相关配置</td>
+</tr>
+<tr>
+<td>[solo]</td>
+<td>solo相关配置</td>
+</tr>
+</tbody>
+</table>
+<p>配置示例如下（无特殊情况不要修改此配置）：</p>
+<div class="highlight"><pre><span></span><code><span class="p">[</span><span class="nx">raft</span><span class="p">]</span>
+<span class="nx">batch_timeout</span>               <span class="o">=</span> <span class="s2">&quot;0.3s&quot;</span>  <span class="err">#</span> <span class="nx">Block</span> <span class="nx">packaging</span> <span class="nx">time</span> <span class="nx">period</span><span class="p">.</span>
+<span class="nx">tick_timeout</span>                <span class="o">=</span> <span class="s2">&quot;0.1s&quot;</span> <span class="err">#</span> <span class="nx">TickTimeout</span> <span class="nx">is</span> <span class="nx">the</span> <span class="nx">internal</span> <span class="nx">logical</span> <span class="nx">clock</span> <span class="k">for</span> <span class="nx">the</span> <span class="nx">Node</span> <span class="nx">by</span> <span class="nx">a</span> <span class="nx">single</span> <span class="nx">tick</span><span class="p">,</span> <span class="nx">Election</span> <span class="nx">timeouts</span> <span class="nx">and</span> <span class="nx">heartbeat</span> <span class="nx">timeouts</span> <span class="nx">are</span> <span class="k">in</span> <span class="nx">units</span> <span class="k">of</span> <span class="nx">ticks</span><span class="p">.</span>
+<span class="nx">election_tick</span>               <span class="o">=</span> <span class="mf">10</span> <span class="err">#</span> <span class="nx">ElectionTick</span> <span class="nx">is</span> <span class="nx">the</span> <span class="nx">number</span> <span class="k">of</span> <span class="nx">Node</span><span class="p">.</span><span class="nx">Tick</span> <span class="nx">invocations</span> <span class="nx">that</span> <span class="nx">must</span> <span class="nx">pass</span> <span class="nx">between</span> <span class="nx">elections</span><span class="p">.</span>
+<span class="nx">heartbeat_tick</span>              <span class="o">=</span> <span class="mf">1</span>  <span class="err">#</span> <span class="nx">HeartbeatTick</span> <span class="nx">is</span> <span class="nx">the</span> <span class="nx">number</span> <span class="k">of</span> <span class="nx">Node</span><span class="p">.</span><span class="nx">Tick</span> <span class="nx">invocations</span> <span class="nx">that</span> <span class="nx">must</span> <span class="nx">pass</span> <span class="nx">between</span> <span class="nx">heartbeats</span><span class="p">.</span>
+<span class="nx">max_size_per_msg</span>            <span class="o">=</span> <span class="mf">1048576</span> <span class="err">#</span> <span class="mf">1024</span><span class="o">*</span><span class="mf">1024</span><span class="p">,</span> <span class="nx">MaxSizePerMsg</span> <span class="nx">limits</span> <span class="nx">the</span> <span class="nx">max</span> <span class="nx">size</span> <span class="k">of</span> <span class="nx">each</span> <span class="nx">append</span> <span class="nx">message</span><span class="p">.</span>
+<span class="nx">max_inflight_msgs</span>           <span class="o">=</span> <span class="mf">500</span>  <span class="err">#</span> <span class="nx">MaxInflightMsgs</span> <span class="nx">limits</span> <span class="nx">the</span> <span class="nx">max</span> <span class="nx">number</span> <span class="k">of</span> <span class="k">in</span><span class="o">-</span><span class="nx">flight</span> <span class="nx">append</span> <span class="nx">messages</span> <span class="nx">during</span> <span class="nx">optimistic</span> <span class="nx">replication</span> <span class="nx">phase</span><span class="p">.</span>
+<span class="nx">check_quorum</span>                <span class="o">=</span> <span class="kc">true</span> <span class="err">#</span> <span class="nx">Leader</span> <span class="nx">steps</span> <span class="nx">down</span> <span class="nx">when</span> <span class="nx">quorum</span> <span class="nx">is</span> <span class="nx">not</span> <span class="nx">active</span> <span class="k">for</span> <span class="nx">an</span> <span class="nx">electionTimeout</span><span class="p">.</span>
+<span class="nx">pre_vote</span>                    <span class="o">=</span> <span class="kc">true</span> <span class="err">#</span> <span class="nx">PreVote</span> <span class="nx">prevents</span> <span class="nx">reconnected</span> <span class="nx">node</span> <span class="k">from</span> <span class="nx">disturbing</span> <span class="nx">network</span><span class="p">.</span>
+<span class="nx">disable_proposal_forwarding</span> <span class="o">=</span> <span class="kc">true</span> <span class="err">#</span> <span class="nx">This</span> <span class="nx">prevents</span> <span class="nx">blocks</span> <span class="k">from</span> <span class="nx">being</span> <span class="nx">accidentally</span> <span class="nx">proposed</span> <span class="nx">by</span> <span class="nx">followers</span><span class="p">.</span>
+
+    <span class="p">[</span><span class="nx">raft</span><span class="p">.</span><span class="nx">mempool</span><span class="p">]</span>
+        <span class="nx">batch_size</span>          <span class="o">=</span> <span class="mf">200</span>   <span class="err">#</span> <span class="nx">How</span> <span class="nx">many</span> <span class="nx">transactions</span> <span class="nx">should</span> <span class="nx">the</span> <span class="nx">primary</span> <span class="nx">pack</span><span class="p">.</span>
+        <span class="nx">pool_size</span>           <span class="o">=</span> <span class="mf">50000</span> <span class="err">#</span> <span class="nx">How</span> <span class="nx">many</span> <span class="nx">transactions</span> <span class="nx">could</span> <span class="nx">the</span> <span class="nx">txPool</span> <span class="nx">stores</span> <span class="k">in</span> <span class="nx">total</span><span class="p">.</span>
+        <span class="nx">tx_slice_size</span>       <span class="o">=</span> <span class="mf">10</span>    <span class="err">#</span> <span class="nx">How</span> <span class="nx">many</span> <span class="nx">transactions</span> <span class="nx">should</span> <span class="nx">the</span> <span class="nx">node</span> <span class="nx">broadcast</span> <span class="nx">at</span> <span class="nx">once</span>
+        <span class="nx">tx_slice_timeout</span>    <span class="o">=</span> <span class="s2">&quot;0.1s&quot;</span>  <span class="err">#</span> <span class="nx">Node</span> <span class="nx">broadcasts</span> <span class="nx">transactions</span> <span class="k">if</span> <span class="nx">there</span> <span class="nx">are</span> <span class="nx">cached</span> <span class="nx">transactions</span><span class="p">,</span> <span class="nx">although</span> <span class="nx">set_size</span> <span class="nx">isn</span><span class="s1">&#39;t reached yet</span>
+
+<span class="s1">    [raft.syncer]</span>
+<span class="s1">        sync_blocks = 1 # How many blocks should the behind node fetch at once</span>
+<span class="s1">        snapshot_count = 1000  # How many apply index(blocks) should the node trigger at once</span>
+
+<span class="s1">[rbft]        #RBFT configurations</span>
+<span class="s1">set_size         = 25    # How many transactions should the node broadcast at once</span>
+<span class="s1">batch_size       = 500   # How many transactions should the primary pack before sending pre-prepare</span>
+<span class="s1">pool_size        = 50000 # How many transactions could the txPool stores in total</span>
+<span class="s1">vc_period        = 0     # After how many checkpoint periods( Blocks = 10 * vcperiod ) the primary gets cycled automatically. ( Set 0 to disable )</span>
+<span class="s1">check_interval   = &quot;3m&quot;  # interval of the check loop</span>
+<span class="s1">tolerance_time   = &quot;5m&quot;  # The max tolerance time duration (in seconds) of out-of-date</span>
+<span class="s1">batch_mem_limit  = false # Indicates whether limit batch mem size or not</span>
+<span class="s1">batch_max_mem    = 10000 # The max memory size of one batch</span>
+
+<span class="s1">    [rbft.timeout]</span>
+<span class="s1">        sync_state        = &quot;3s&quot;  # How long to wait quorum sync state response</span>
+<span class="s1">        sync_interval     = &quot;1m&quot;  # How long to restart sync state process</span>
+<span class="s1">        recovery          = &quot;15s&quot; # How long to wait before recovery finished(This is for release1.2)</span>
+<span class="s1">        first_request     = &quot;30s&quot; # How long to wait before first request should come</span>
+<span class="s1">        batch             = &quot;0.5s&quot;# Primary send a pre-prepare if there are pending requests, although batchsize isn&#39;</span><span class="nx">t</span> <span class="nx">reached</span> <span class="nx">yet</span><span class="p">,</span>
+        <span class="nx">request</span>           <span class="o">=</span> <span class="s2">&quot;6s&quot;</span>  <span class="err">#</span> <span class="nx">How</span> <span class="kr">long</span> <span class="nx">may</span> <span class="nx">a</span> <span class="nx">request</span><span class="p">(</span><span class="nx">transaction</span> <span class="nx">batch</span><span class="p">)</span> <span class="nx">take</span> <span class="nx">between</span> <span class="nx">reception</span> <span class="nx">and</span> <span class="nx">execution</span><span class="p">,</span> <span class="nx">must</span> <span class="nx">be</span> <span class="nx">greater</span> <span class="nx">than</span> <span class="nx">the</span> <span class="nx">batch</span> <span class="nx">timeout</span>
+        <span class="nx">null_request</span>      <span class="o">=</span> <span class="s2">&quot;9s&quot;</span>  <span class="err">#</span> <span class="nx">Primary</span> <span class="nx">send</span> <span class="nx">it</span> <span class="nx">to</span> <span class="nx">inform</span> <span class="nx">aliveness</span><span class="p">,</span> <span class="nx">must</span> <span class="nx">be</span> <span class="nx">greater</span> <span class="nx">than</span> <span class="nx">request</span> <span class="nx">timeout</span>
+        <span class="nx">viewchange</span>        <span class="o">=</span> <span class="s2">&quot;8s&quot;</span>  <span class="err">#</span> <span class="nx">How</span> <span class="kr">long</span> <span class="nx">may</span> <span class="nx">a</span> <span class="nx">view</span> <span class="nx">change</span> <span class="nx">take</span>
+        <span class="nx">resend_viewchange</span> <span class="o">=</span> <span class="s2">&quot;10s&quot;</span> <span class="err">#</span> <span class="nx">How</span> <span class="kr">long</span> <span class="nx">to</span> <span class="nx">wait</span> <span class="k">for</span> <span class="nx">a</span> <span class="nx">view</span> <span class="nx">change</span> <span class="nx">quorum</span> <span class="nx">before</span> <span class="nx">resending</span> <span class="p">(</span><span class="nx">the</span> <span class="nx">same</span><span class="p">)</span> <span class="nx">view</span> <span class="nx">change</span>
+        <span class="nx">clean_viewchange</span>  <span class="o">=</span> <span class="s2">&quot;60s&quot;</span> <span class="err">#</span> <span class="nx">How</span> <span class="kr">long</span> <span class="nx">to</span> <span class="nx">clean</span> <span class="nx">out</span><span class="o">-</span><span class="k">of</span><span class="o">-</span><span class="nx">data</span> <span class="nx">view</span> <span class="nx">change</span> <span class="nx">message</span>
+        <span class="nx">update</span>            <span class="o">=</span> <span class="s2">&quot;4s&quot;</span>  <span class="err">#</span> <span class="nx">How</span> <span class="kr">long</span> <span class="nx">may</span> <span class="nx">a</span> <span class="nx">update</span><span class="o">-</span><span class="nx">n</span> <span class="nx">take</span>
+        <span class="nx">set</span>               <span class="o">=</span> <span class="s2">&quot;0.1s&quot;</span> <span class="err">#</span> <span class="nx">Node</span> <span class="nx">broadcasts</span> <span class="nx">transactions</span> <span class="k">if</span> <span class="nx">there</span> <span class="nx">are</span> <span class="nx">cached</span> <span class="nx">transactions</span><span class="p">,</span> <span class="nx">although</span> <span class="nx">set_size</span> <span class="nx">isn</span><span class="s1">&#39;t reached yet</span>
+
+<span class="s1">    [rbft.syncer]</span>
+<span class="s1">        sync_blocks = 1 # How many blocks should the behind node fetch at once</span>
+
+<span class="s1">[solo]</span>
+<span class="s1">batch_timeout = &quot;0.3s&quot;  # Block packaging time period.</span>
+
+<span class="s1">   [solo.mempool]</span>
+<span class="s1">        batch_size          = 200   # How many transactions should the primary pack.</span>
+<span class="s1">        pool_size           = 50000 # How many transactions could the txPool stores in total.</span>
+<span class="s1">        tx_slice_size       = 10    # How many transactions should the node broadcast at once</span>
+<span class="s1">        tx_slice_timeout    = &quot;0.1s&quot;  # Node broadcasts transactions if there are cached transactions, although set_size isn&#39;</span><span class="nx">t</span> <span class="nx">reached</span> <span class="nx">yet</span>
+</code></pre></div>
+<h3 id="_6">启动程序</h3>
+<h5 id="_7">初始化配置</h5>
+<div class="highlight"><pre><span></span><code>$ bitxhub init
+</code></pre></div>
+<h5 id="_8">生成节点验证者私钥，并通过私钥获取验证者地址</h5>
+<div class="highlight"><pre><span></span><code>$ bitxhub key gen --target ~/.bitxhub
+$ bitxhub key address --path ~/.bitxhub/key.json
+0x0beb9583C069aeC5B5C3B395a1Ee644BFdd5Ce0D
+</code></pre></div>
+<h5 id="p2ppid">获取节点p2p通信网络pid</h5>
+<div class="highlight"><pre><span></span><code>$ bitxhub cert priv gen --name node --target ~/.bitxhub
+$ bitxhub cert priv pid --path ~/.bitxhub/node.priv
+QmWAaFDQ3p2Hj383WsBGU2nLMtsJk1aT9obXXXxL5UyUuA
+</code></pre></div>
+<h5 id="_9">拷贝共识插件</h5>
+<div class="highlight"><pre><span></span><code>$ mkdir ～/.bitxhub/plugins
+
+1. 拷贝raft共识插件, 若源码编译即在internal/plugins/build目录内
+   $ cp raft.so ～/.bitxhub/plugins
+
+2. 拷贝rbft共识插件, 若源码编译即在bitxhub-order-rbft/build目录内
+   $ cp rbft.so ~/.bitxhub/plugins
+</code></pre></div>
+<h5 id="bitxhub">启动bitxhub</h5>
+<div class="highlight"><pre><span></span><code>$ bitxhub --repo ~/.bitxhub start
+</code></pre></div>
+<p>待节点集群打印出bitxhub的LOGO，表示bitxhub集群开始正常工作</p>
+<p><img alt="" src="../assets/bitxhub.png" /></p>
+<h2 id="_10">跨链网关部署</h2>
+<p>跨链网关Pier能够支持业务所在区块链便捷、快速的接入到跨链平台BitXHub中来，从而实现和其他业务区块链的跨链操作。该跨链网关支持跨链消息格式转换、跨链消息的路由、跨链操作的调用等核心功能，不仅保证不同格式的跨链消息能够安全可信的到达目标应用链，而且保证了跨链交易异常情况下来源链的安全。跨链网关为区块链互联形成网络提供了便捷的接入方式，旨在降低跨链互联的使用成本。下面是具体的安装部署教程。                                              </p>
+<h3 id="_11">安装包获取</h3>
+<h5 id="_12">源码安装</h5>
+<p>跨链网关启动的话需要应用链插件，所以从源码安装的话，还需要编译相应的应用链插件的二进制。</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 编译跨链网关本身</span>
+<span class="nb">cd</span> <span class="nv">$HOME</span>
+git clone https://github.com/meshplus/pier.git
+<span class="nb">cd</span> pier
+make prepare <span class="o">&amp;&amp;</span> make install
+
+<span class="c1"># 编译Fabric</span>
+<span class="nb">cd</span> <span class="nv">$HOME</span>
+git clone https://github.com/meshplus/pier-client-fabric.git
+<span class="nb">cd</span> pier-client-fabric
+make fabric1.4
+
+<span class="c1"># 编译以太坊私链插件</span>
+<span class="nb">cd</span> <span class="nv">$HOME</span>
+git clone https://github.com/meshplus/pier-client-ethereum.git
+<span class="nb">cd</span> pier-client-ethereum
+make eth
+
+<span class="c1"># 插件执行make的编译之后，都会在项目目录的之下的build目录生成相应的 .so 文件</span>
+</code></pre></div>
+<p>编译跨链网关步骤会在 $GOPATH/bin 下生成 pier 二进制，运行下面的命令查看是否安装成功：</p>
+<div class="highlight"><pre><span></span><code>pier version
+</code></pre></div>
+<p>如果正常安装会打印出类似下面的说明</p>
+<div class="highlight"><pre><span></span><code>Pier version: 1.0.0-b01a80a
+App build date: 2020-08-27T10:28:05
+System version: darwin/amd64
+Golang version: go1.13
+</code></pre></div>
+<p>代码目录结构如下：</p>
+<table>
+<thead>
+<tr>
+<th>目录</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>agent</td>
+<td>对接BitXHub的Client模块</td>
+</tr>
+<tr>
+<td>cmd</td>
+<td>命令行相关代码</td>
+</tr>
+<tr>
+<td>internal</td>
+<td>项目内部相关代码</td>
+</tr>
+<tr>
+<td>pkg</td>
+<td>项目重用相关代码</td>
+</tr>
+<tr>
+<td>plugins</td>
+<td>对接应用链的Client接口</td>
+</tr>
+<tr>
+<td>scripts</td>
+<td>操作脚本</td>
+</tr>
+</tbody>
+</table>
+<p><strong>3.2.1.2 二进制安装</strong></p>
+<p>没有现有编译环境的用户，也可以在GitHub开源仓库下载编译好的二进制，地址：<code>https://github.com/meshplus/pier/releases</code>, 根据需要的版本进行下载即可。该部署包中包含了 Pier跨链网关的二进制和 pier-client-fabric 和 pier-client-ethereum 的应用链插件的二进制。</p>
+<h3 id="_13">修改配置文件</h3>
+<p>在进行应用链注册、验证规则部署等步骤之前，需要初始化跨链网关的配置目录</p>
+<div class="highlight"><pre><span></span><code><span class="c1">#以用户目录下的pier为例</span>
+pier --repo<span class="o">=</span>~/pier init
+</code></pre></div>
+<p>该命令会生成跨链网关的一些基础配置文件模板，使用 tree 命令可查看目录信息：</p>
+<div class="highlight"><pre><span></span><code>tree -L 1 ~/.pier
+
+├── api
+├── certs
+├── key.json
+├── node.priv
+└── pier.toml
+
+1 directory, 4 files
+</code></pre></div>
+<p>导入插件二进制（hyperchain的插件二进制和配置文件示例需要内部授权）</p>
+<div class="highlight"><pre><span></span><code>mkdir -p ~/.pier/plugins
+cp fabric-client-1.4.so ~/.pier/plugins
+</code></pre></div>
+<p>pier.toml 文件描述链跨链网关启动的必要配置，具体的配置项和说明如下：</p>
+<table>
+<thead>
+<tr>
+<th>配置项</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>[port]</td>
+<td>http、grpc服务端口</td>
+</tr>
+<tr>
+<td>[log]</td>
+<td>日志输出相关设置</td>
+</tr>
+<tr>
+<td>[bitxhub]</td>
+<td>连接的bitxhub的IP地址、验证人地址</td>
+</tr>
+<tr>
+<td>[appchain]</td>
+<td>对接的应用链的基础配置信息</td>
+</tr>
+</tbody>
+</table>
+<p>主要需要修改的部分是端口信息、中继链的信息、应用链的信息</p>
+<ul>
+<li>修改端口信息</li>
+</ul>
+<div class="highlight"><pre><span></span><code>[port]
+// 如果不冲突的话，可以不用修改
+http  = 8987
+pprof = 44555
+</code></pre></div>
+<ul>
+<li>修改中继链信息</li>
+</ul>
+<div class="highlight"><pre><span></span><code>[mode]
+type = &quot;relay&quot; # relay or direct
+[mode.relay]
+addrs = [&quot;localhost:60011&quot;, &quot;localhost:60012&quot;, &quot;localhost:60013&quot;, &quot;localhost:60014&quot;]
+quorum = 2
+validators = [
+    &quot;0x000f1a7a08ccc48e5d30f80850cf1cf283aa3abd&quot;,
+    &quot;0xe93b92f1da08f925bdee44e91e7768380ae83307&quot;,
+    &quot;0xb18c8575e3284e79b92100025a31378feb8100d6&quot;,
+    &quot;0x856E2B9A5FA82FD1B031D1FF6863864DBAC7995D&quot;,
+]
+</code></pre></div>
+<ul>
+<li>修改应用链信息</li>
+</ul>
+<div class="highlight"><pre><span></span><code>[appchain]
+// 所连接的应用链对应的Plugin文件在跨链网关配置文件夹下的相对路径
+plugin = &quot;fabric-client-1.4.so&quot;
+// 所连接的应用链的配置文件夹在跨链网关配置文件夹下的相对路径
+config = &quot;fabric&quot;
+</code></pre></div>
+<h5 id="fabric">修改fabric插件配置</h5>
+<p>Fabric插件配置的模板在<code>pier-client-fabric</code>项目中，并且已经在GitHub上进行开源，所以直接在GitHub上下载代码即可</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 转到pier-client-fabric项目路径下</span>
+git clone https://github.com/meshplus/pier-client-fabric.git <span class="o">&amp;&amp;</span> <span class="nb">cd</span> pier-client-fabric
+cp ./config <span class="nv">$HOME</span>/.pier/fabric
+</code></pre></div>
+<p>配置目录结构</p>
+<div class="highlight"><pre><span></span><code>├── crypto-config/
+├── config.yaml
+├── fabric.toml
+└── fabric.validators
+</code></pre></div>
+<p>主要修改Fabric网络配置，验证证书，跨链合约设置：</p>
+<ul>
+<li><strong>Fabric证书配置</strong></li>
+</ul>
+<p>启动Fabric网络时，会生成所有节点（包括Order、peer等）的证书信息，并保存在 crypto-config文件夹中，Fabric插件和Fabric交互时需要用到这些证书。</p>
+<div class="highlight"><pre><span></span><code># 复制你所部署的Fabric所产生的crypto-config文件夹
+cp -r /path/to/crypto-config $HOME/.pier1/fabric/
+
+# 复制Fabric上验证人证书
+cp $HOME/.pier1/fabric/crypto-config/peerOrganizations/org2.example.com/peers/peer1.org2.example.com/msp/signcerts/peer1.org2.example.com-cert.pem $HOME/.pier1/fabric/fabric.validators
+</code></pre></div>
+<ul>
+<li><strong>修改Plugin配置文件 config.yaml </strong></li>
+</ul>
+<p><code>config.yaml</code>文件记录的Fabric网络配置（如果你是按照你自己的网络拓扑部署的Fabric，用你的网络拓扑配置文件替换这个样例文件），需要使用绝对路径，把所有的路径都修改为 <code>crypto-config</code>文件夹所在的绝对路径</p>
+<div class="highlight"><pre><span></span><code>path: {CONFIG_PATH}/fabric/crypto-config =&gt; path: /home/alex/.pier/fabric/crypto-config
+</code></pre></div>
+<p>替换为你部署的Fabric网络的拓扑设置文件即可，同时需要修改所有的Fabric 的IP地址，如：</p>
+<div class="highlight"><pre><span></span><code>url: grpcs://localhost:7050 =&gt; url: grpcs://10.1.16.48:7050
+</code></pre></div>
+<ul>
+<li><strong>修改Plugin配置文件 fabric.toml</strong></li>
+</ul>
+<p>配置项和说明：</p>
+<table>
+<thead>
+<tr>
+<th>配置项</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>addr</td>
+<td>Fabric 区块链所在的服务器地址和端口</td>
+</tr>
+<tr>
+<td>event_filter</td>
+<td>跨链合约中抛出的跨链事件的名称</td>
+</tr>
+<tr>
+<td>username</td>
+<td>Fabric用户名称</td>
+</tr>
+<tr>
+<td>ccid</td>
+<td>所部署的跨链合约名称</td>
+</tr>
+<tr>
+<td>channel_id</td>
+<td>部署的跨链合约所在的channel</td>
+</tr>
+<tr>
+<td>org</td>
+<td>部署的跨链合约所在的org</td>
+</tr>
+</tbody>
+</table>
+<p>示例配置</p>
+<div class="highlight"><pre><span></span><code>addr = &quot;localhost:7053&quot; // 若Fabric部署在服务器上，该为服务器地址
+event_filter = &quot;interchain-event-name&quot;
+username = &quot;Admin&quot;
+ccid = &quot;broker&quot; // 若部署跨链broker合约名字不是broker需要修改
+channel_id = &quot;mychannel&quot;
+org = &quot;org2&quot;
+</code></pre></div>
+<ul>
+<li><strong>修改Plugin配置文件fabric.validators</strong></li>
+</ul>
+<p>fabric.validators 是Fabric验证人的证书，配置示例：</p>
+<div class="highlight"><pre><span></span><code>-----BEGIN CERTIFICATE-----
+MIICKTCCAc+gAwIBAgIRAIBO31aZaSZoEYSy2AJuhJcwCgYIKoZIzj0EAwIwczEL
+MAkGA1UEBhMCVVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcTDVNhbiBG
+cmFuY2lzY28xGTAXBgNVBAoTEG9yZzIuZXhhbXBsZS5jb20xHDAaBgNVBAMTE2Nh
+Lm9yZzIuZXhhbXBsZS5jb20wHhcNMjAwMjA1MDgyMjAwWhcNMzAwMjAyMDgyMjAw
+WjBqMQswCQYDVQQGEwJVUzETMBEGA1UECBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMN
+U2FuIEZyYW5jaXNjbzENMAsGA1UECxMEcGVlcjEfMB0GA1UEAxMWcGVlcjEub3Jn
+Mi5leGFtcGxlLmNvbTBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABG3jszFPTbGm
+dAYg2BxmHMTDKfQReNw3p9ttMK130qF5lQo5zLBG8Sa3viOCLnvjjg6A/P+yKnwv
+isI/jEVE8T2jTTBLMA4GA1UdDwEB/wQEAwIHgDAMBgNVHRMBAf8EAjAAMCsGA1Ud
+IwQkMCKAIMVL+daK7nMGr2/AQIXTSPFkdd3UiPVDkWtkh5ujnalEMAoGCCqGSM49
+BAMCA0gAMEUCIQDMYOQiYeMiQZTxlRkj/3/jjYvwwdCcX5AWuFmraiHkugIgFkX/
+6uiTSD0lz8P+wwlLf24cIABq2aZyi8q4gj0YfwA=
+-----END CERTIFICATE-----
+</code></pre></div>
+<p>### 启动程序</p>
+<div class="highlight"><pre><span></span><code>#以用户目录下的pier1为例
+pier --repo=~/pier start
+</code></pre></div>
+<p>观察日志信息没有报错信息，pier启动成功</p>
+<p><strong>说明：因为跨链合约和验证规则的部署涉及到不同应用链的细节，且需依赖应用链的安装部署，具体操作请见快速开始手册或使用文档，这里不再赘述</strong></p>
+                
+              
+              
+                
+
+
+              
+            </article>
+          </div>
+        </div>
+        
+          <a href="#" class="md-top md-icon" data-md-component="top" data-md-state="hidden">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"/></svg>
+            Back to top
+          </a>
+        
+      </main>
+      
+        
+<footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-footer-copyright">
+        
+        Made with
+        <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+          Material for MkDocs
+        </a>
+        
+      </div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    <script id="__config" type="application/json">{"base": "../../../..", "features": ["navigation.tabs", "navigation.top", "search.highlight"], "translations": {"clipboard.copy": "Copy to clipboard", "clipboard.copied": "Copied to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.placeholder": "Type to start searching", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.term.missing": "Missing", "select.version.title": "Select version"}, "search": "../../../../assets/javascripts/workers/search.477d984a.min.js", "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../../../assets/javascripts/bundle.ddd52ceb.min.js"></script>
+      
+    
+  </body>
+</html>
