@@ -117,16 +117,26 @@ func (am *AppchainManager) chainDefaultConfig(chain *appchainMgr.Appchain) error
 func (am *AppchainManager) Register(method string, docAddr, docHash, validators string,
 	consensusType, chainType, name, desc, version, pubkey string) *boltvm.Response {
 	am.AppchainManager.Persister = am.Stub
-	//res := am.CrossInvoke(constant.MethodRegistryContractAddr.String(), "Apply",
-	//	pb.String(appchainAdminDID), pb.String(appchainMethod), pb.Bytes(nil))
-	//if !res.Ok {
-	//	return res
-	//}
 
 	addr, err := getAddr(pubkey)
 	if err != nil {
 		return boltvm.Error(fmt.Sprintf("get addr from public key: %v", err))
 	}
+
+	res := am.CrossInvoke(constant.RoleContractAddr.String(), "CheckPermission",
+		pb.String(string(PermissionSelfAdmin)),
+		pb.String(addr),
+		pb.String(am.CurrentCaller()),
+		pb.Bytes(nil))
+	if !res.Ok {
+		return boltvm.Error("check permission error:" + string(res.Result))
+	}
+
+	//res := am.CrossInvoke(constant.MethodRegistryContractAddr.String(), "Apply",
+	//	pb.String(appchainAdminDID), pb.String(appchainMethod), pb.Bytes(nil))
+	//if !res.Ok {
+	//	return res
+	//}
 
 	appchainAdminDID := fmt.Sprintf("%s:%s:%s", repo.BitxhubRootPrefix, method, addr)
 	appchainDID := fmt.Sprintf("%s:%s:.", repo.BitxhubRootPrefix, method)
@@ -163,7 +173,7 @@ func (am *AppchainManager) Register(method string, docAddr, docHash, validators 
 		return boltvm.Error("appchain has registered, chain id: " + registerRes.ID)
 	}
 
-	res := am.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
+	res = am.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
 		pb.String(am.Caller()),
 		pb.String(string(governance.EventRegister)),
 		pb.String(""),
