@@ -56,7 +56,6 @@ jobs:
           name: meshplus/bitxhub
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-          registry: hub.docker.com
           dockerfile: Dockerfile-raft
           tag_names: true
 
@@ -66,6 +65,5 @@ jobs:
           name: meshplus/bitxhub-solo
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-          registry: hub.docker.com
           dockerfile: Dockerfile-solo
           tag_names: true
