@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/meshplus/bitxhub"
+	"github.com/meshplus/bitxhub-core/agency"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub/api/gateway"
 	"github.com/meshplus/bitxhub/api/grpc"
@@ -29,13 +30,13 @@ var logger = log.NewWithModule("cmd")
 
 func startCMD() cli.Command {
 	return cli.Command{
-		Name:   "start",
-		Usage:  "Start a long-running start process",
+		Name:  "start",
+		Usage: "Start a long-running start process",
 		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name:        "passwd",
-				Usage:       "bitxhub key password",
-				Required:    false,
+				Name:     "passwd",
+				Usage:    "bitxhub key password",
+				Required: false,
 			},
 		},
 		Action: start,
@@ -72,6 +73,10 @@ func start(ctx *cli.Context) error {
 	types2.InitEIP155Signer(big.NewInt(int64(repo.Config.ChainID)))
 
 	printVersion()
+
+	if err := checkLicense(repo); err != nil {
+		return fmt.Errorf("verify license fail:%v", err)
+	}
 
 	bxh, err := app.NewBitXHub(repo)
 	if err != nil {
@@ -142,6 +147,16 @@ func start(ctx *cli.Context) error {
 	wg.Wait()
 
 	return nil
+}
+
+func checkLicense(rep *repo.Repo) error {
+	licenseCon, err := agency.GetLicenseConstructor("license")
+	if err != nil {
+		return nil
+	}
+	license := rep.Config.License
+	licenseVerifier := licenseCon(license.Key, license.Verifier)
+	return licenseVerifier.Verify(rep.Config.RepoRoot)
 }
 
 func printVersion() {
