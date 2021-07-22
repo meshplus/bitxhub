@@ -13,7 +13,7 @@ func TestGetStoragePath(t *testing.T) {
 	p = GetStoragePath("/data")
 	assert.Equal(t, p, "/data/storage")
 
-	_, err := Load("testdata")
+	_, err := Load("testdata", "")
 	require.Nil(t, err)
 
 	_, err = GetAPI("testdata")

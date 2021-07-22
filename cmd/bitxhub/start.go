@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/meshplus/bitxhub"
-	"github.com/meshplus/bitxhub-core/agency"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub/api/gateway"
 	"github.com/meshplus/bitxhub/api/grpc"
@@ -31,6 +30,13 @@ func startCMD() cli.Command {
 	return cli.Command{
 		Name:   "start",
 		Usage:  "Start a long-running start process",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name:        "passwd",
+				Usage:       "bitxhub key password",
+				Required:    false,
+			},
+		},
 		Action: start,
 	}
 }
@@ -41,13 +47,11 @@ func start(ctx *cli.Context) error {
 		return fmt.Errorf("get repo path: %w", err)
 	}
 
-	repo, err := repo.Load(repoRoot)
+	passwd := ctx.String("passwd")
+
+	repo, err := repo.Load(repoRoot, passwd)
 	if err != nil {
 		return fmt.Errorf("repo load: %w", err)
-	}
-
-	if err := checkLicense(repoRoot, repo.Config.License); err != nil {
-		return err
 	}
 
 	err = log.Initialize(
@@ -225,20 +229,4 @@ func fileExist(path string) bool {
 		return false
 	}
 	return true
-}
-
-func checkLicense(repoRoot string, config repo.License) error {
-	licenseCons, _ := agency.GetLicenseConstructor("license")
-	if licenseCons != nil {
-		license := licenseCons(config.Key, config.Verifier)
-		if license == nil {
-			return fmt.Errorf("error: can not verify license")
-		}
-
-		if err := license.Verify(repoRoot); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }

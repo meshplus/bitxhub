@@ -24,6 +24,9 @@ const (
 	KeyName = "key.json"
 	// API name
 	APIName = "api"
+
+	//Passwd
+	DefaultPasswd = "bitxhub"
 )
 
 type Config struct {
