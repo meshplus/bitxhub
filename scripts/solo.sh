@@ -28,6 +28,7 @@ function compile() {
 function start() {
   print_blue "===> Start solo bitxhub"
   bitxhub --repo="${BUILD_PATH}" init
+  cd ${BUILD_PATH} && bitxhub key gen
   bitxhubConfig=${BUILD_PATH}/bitxhub.toml
   x_replace "s/solo = false/solo = true/g" "${bitxhubConfig}"
   x_replace "s/raft/solo/g" "${bitxhubConfig}"
