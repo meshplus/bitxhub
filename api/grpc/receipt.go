@@ -20,7 +20,7 @@ func (cbs *ChainBrokerService) GetReceipt(ctx context.Context, req *pb.Transacti
 	r, err := cbs.api.Broker().GetReceipt(hash)
 	if err != nil {
 		if errors.Is(storage.ErrorNotFound, err) {
-			return nil, status.Newf(codes.NotFound, fmt.Sprintf("cannot found receipt for %s", hash), err.Error()).Err()
+			return nil, status.Newf(codes.NotFound, fmt.Sprintf("cannot found receipt for %s", hash.String()), err.Error()).Err()
 		}
 		return nil, status.Newf(codes.Internal, "internal handling error", err.Error()).Err()
 	}

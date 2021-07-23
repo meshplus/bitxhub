@@ -43,7 +43,7 @@ func (g *connectionGater) InterceptSecured(d network.Direction, p peer.ID, addr 
 	lg := g.ledger.Copy()
 	ok, nodeData := lg.GetState(constant.NodeManagerContractAddr.Address(), []byte(fmt.Sprintf("%s-%s", node_mgr.NODEPREFIX, p)))
 	if !ok {
-		g.logger.Infof("Intercept a connection with an unavailable node(get node err: %s), peer.Pid: %s", p)
+		g.logger.Infof("Intercept a connection with an unavailable node(get node err: %s), peer.Pid: %s", string(nodeData), p)
 		return false
 	}
 
