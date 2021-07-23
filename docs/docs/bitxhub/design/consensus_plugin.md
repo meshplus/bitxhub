@@ -34,7 +34,7 @@ Step(ctx context.Context, msg []byte) error
 //集群中产生了新Leader，系统通过该接口判断共识服务是否正常
 Ready() bool
 
-//系统会通知该接口已经持久化的区块，
+//系统会通知该接口已经持久化的区块
 ReportState(height uint64, hash types.Hash)
 
 //集群中可以正常工作的最少节点数量，如在raft中要求正常节点数是N/2+1
