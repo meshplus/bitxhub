@@ -8,7 +8,6 @@ import (
 
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/boltvm"
-	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
@@ -463,7 +462,7 @@ func verifyMultiSign(app *appchainMgr.Appchain, ibtp *pb.IBTP, proof []byte) (bo
 		}
 		delete(m, v)
 		addr := types.NewAddressByStr(v)
-		ok, _ := asym.Verify(crypto.Secp256k1, sign, hash[:], *addr)
+		ok, _ := asym.VerifyWithType(sign, hash[:], *addr)
 		if ok {
 			counter++
 		}

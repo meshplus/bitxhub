@@ -2,6 +2,7 @@ package executor
 
 import (
 	"context"
+	"github.com/meshplus/bitxhub-kit/crypto"
 	"sort"
 	"sync"
 	"time"
@@ -30,25 +31,26 @@ var _ Executor = (*BlockExecutor)(nil)
 
 // BlockExecutor executes block from order
 type BlockExecutor struct {
-	ledger           ledger.Ledger
-	logger           logrus.FieldLogger
-	blockC           chan *pb.Block
-	preBlockC        chan *pb.CommitEvent
-	persistC         chan *ledger.BlockData
-	ibtpVerify       proof.Verify
-	validationEngine validator.Engine
-	currentHeight    uint64
-	currentBlockHash *types.Hash
-	wasmInstances    map[string]wasmer.Instance
-	txsExecutor      agency.TxsExecutor
-	blockFeed        event.Feed
-	receiptFeeds     sync.Map
-	ctx              context.Context
-	cancel           context.CancelFunc
+	ledger                  ledger.Ledger
+	logger                  logrus.FieldLogger
+	blockC                  chan *pb.Block
+	preBlockC               chan *pb.CommitEvent
+	persistC                chan *ledger.BlockData
+	ibtpVerify              proof.Verify
+	validationEngine        validator.Engine
+	currentHeight           uint64
+	currentBlockHash        *types.Hash
+	wasmInstances           map[string]wasmer.Instance
+	txsExecutor             agency.TxsExecutor
+	supportCryptoTypeToName map[crypto.KeyType]string
+	blockFeed               event.Feed
+	receiptFeeds            sync.Map
+	ctx                     context.Context
+	cancel                  context.CancelFunc
 }
 
 // New creates executor instance
-func New(chainLedger ledger.Ledger, logger logrus.FieldLogger, typ string) (*BlockExecutor, error) {
+func New(chainLedger ledger.Ledger, supportCryptoTypeToName map[crypto.KeyType]string, logger logrus.FieldLogger, typ string) (*BlockExecutor, error) {
 	ibtpVerify := proof.New(chainLedger, logger)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -71,6 +73,7 @@ func New(chainLedger ledger.Ledger, logger logrus.FieldLogger, typ string) (*Blo
 		currentHeight:    chainLedger.GetChainMeta().Height,
 		currentBlockHash: chainLedger.GetChainMeta().BlockHash,
 		wasmInstances:    make(map[string]wasmer.Instance),
+		supportCryptoTypeToName: supportCryptoTypeToName,
 	}
 	blockExecutor.txsExecutor = txsExecutor(blockExecutor.applyTx, registerBoltContracts, logger)
 

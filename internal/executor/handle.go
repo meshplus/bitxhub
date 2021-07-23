@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/meshplus/bitxhub-kit/crypto"
 	"sort"
 	"strings"
 	"sync"
@@ -13,7 +14,6 @@ import (
 	"github.com/cbergoon/merkletree"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/meshplus/bitxhub-core/agency"
-	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -206,7 +206,14 @@ func (exec *BlockExecutor) verifySign(commitEvent *pb.CommitEvent) *pb.Block {
 		}
 		go func(i int, tx *pb.Transaction) {
 			defer wg.Done()
-			ok, _ := asym.Verify(crypto.Secp256k1, tx.Signature, tx.SignHash().Bytes(), *tx.From)
+			typ := crypto.KeyType(tx.Signature[0])
+			if _, ok := exec.supportCryptoTypeToName[typ]; !ok {
+				mutex.Lock()
+				defer mutex.Unlock()
+				index = append(index, i)
+				return
+			}
+			ok, _ := asym.VerifyWithType(tx.Signature, tx.SignHash().Bytes(), *tx.From)
 			if !ok {
 				mutex.Lock()
 				defer mutex.Unlock()

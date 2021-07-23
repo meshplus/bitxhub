@@ -397,6 +397,19 @@ func getFileName(path string) string {
 func generatePrivKey(ctx *cli.Context, opt crypto.KeyType) error {
 	name := ctx.String("name")
 	target := ctx.String("target")
+	algo := ctx.String("algo")
+
+	if algo != "" {
+		keyType, err := crypto.CryptoNameToType(algo)
+		if err != nil {
+			return err
+		}
+
+		if supportedKeyType := asym.SupportedKeyType(keyType); !supportedKeyType {
+			return fmt.Errorf("unsupport crypto algo:%s", algo)
+		}
+		opt = keyType
+	}
 
 	target, err := filepath.Abs(target)
 	if err != nil {

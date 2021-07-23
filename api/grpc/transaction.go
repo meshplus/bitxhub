@@ -3,9 +3,9 @@ package grpc
 import (
 	"context"
 	"fmt"
+	"github.com/meshplus/bitxhub-kit/crypto"
 	"time"
 
-	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -93,12 +93,17 @@ func (cbs *ChainBrokerService) checkTransaction(tx *pb.Transaction) error {
 		return fmt.Errorf("signature can't be empty")
 	}
 
+	typ := crypto.KeyType(tx.Signature[0])
+	if _, ok := cbs.supportCryptoTypeToName[typ]; !ok {
+		return fmt.Errorf("unsupport crypto algorithm: %v", typ)
+	}
+
 	return nil
 }
 
 func (cbs *ChainBrokerService) sendTransaction(tx *pb.Transaction) (string, error) {
 	tx.TransactionHash = tx.Hash()
-	ok, _ := asym.Verify(crypto.Secp256k1, tx.Signature, tx.SignHash().Bytes(), *tx.From)
+	ok, _ := asym.VerifyWithType(tx.Signature, tx.SignHash().Bytes(), *tx.From)
 	if !ok {
 		return "", fmt.Errorf("invalid signature")
 	}

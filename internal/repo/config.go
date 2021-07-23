@@ -44,6 +44,7 @@ type Config struct {
 	License  `json:"license"`
 	Genesis  `json:"genesis"`
 	Security Security `toml:"security" json:"security"`
+	Crypto   Crypto   `toml:"crypto" json:"crypto"`
 }
 
 // Security are files used to setup connection with tls
@@ -107,6 +108,10 @@ type LogModule struct {
 type License struct {
 	Key      string `json:"key" toml:"key"`
 	Verifier string `json:"verifier" toml:"verifier"`
+}
+
+type Crypto struct {
+	Algorithms []string `json:"algorithms" toml:"algorithms"`
 }
 
 type Genesis struct {
@@ -190,6 +195,7 @@ func DefaultConfig() (*Config, error) {
 		Executor: Executor{
 			Type: "serial",
 		},
+		Crypto: Crypto{Algorithms: []string{"Secp256k1"}},
 	}, nil
 }
 

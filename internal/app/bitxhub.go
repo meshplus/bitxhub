@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"github.com/meshplus/bitxhub/api/grpc"
 	"syscall"
 	"time"
 
@@ -89,6 +90,11 @@ func GenerateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 	repoRoot := rep.Config.RepoRoot
 	logger := loggers.Logger(loggers.App)
 
+	supportCryptoTypeToName, err := grpc.CheckAlgorithms(rep.Config.Crypto.Algorithms)
+	if err != nil {
+		return nil, err
+	}
+
 	if err := storages.Initialize(repoRoot); err != nil {
 		return nil, fmt.Errorf("storages initialize: %w", err)
 	}
@@ -128,12 +134,12 @@ func GenerateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 	}
 
 	// 1. create executor and view executor
-	txExec, err := executor.New(rwLdg, loggers.Logger(loggers.Executor), rep.Config.Executor.Type)
+	txExec, err := executor.New(rwLdg, supportCryptoTypeToName, loggers.Logger(loggers.Executor), rep.Config.Executor.Type)
 	if err != nil {
 		return nil, fmt.Errorf("create BlockExecutor: %w", err)
 	}
 
-	viewExec, err := executor.New(viewLdg, loggers.Logger(loggers.Executor), rep.Config.Executor.Type)
+	viewExec, err := executor.New(viewLdg, supportCryptoTypeToName, loggers.Logger(loggers.Executor), rep.Config.Executor.Type)
 	if err != nil {
 		return nil, fmt.Errorf("create ViewExecutor: %w", err)
 	}

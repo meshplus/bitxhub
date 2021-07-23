@@ -819,12 +819,12 @@ func TestInterchainManager_HandleUnionIBTP(t *testing.T) {
 	hash := sha256.Sum256([]byte(ibtpHash.String()))
 	sign := &pb.SignResponse{Sign: make(map[string][]byte)}
 	for _, key := range keys {
-		signData, err := key.Sign(hash[:])
+		signData, err := asym.SignWithType(key, hash[:])
 		require.Nil(t, err)
 
 		address, err := key.PublicKey().Address()
 		require.Nil(t, err)
-		ok, err := asym.Verify(crypto.Secp256k1, signData[:], hash[:], *address)
+		ok, err := asym.VerifyWithType(signData[:], hash[:], *address)
 		require.Nil(t, err)
 		require.True(t, ok)
 		sign.Sign[address.String()] = signData
@@ -841,12 +841,12 @@ func TestInterchainManager_HandleUnionIBTP(t *testing.T) {
 	hash = sha256.Sum256([]byte(ibtpHash.String()))
 	sign = &pb.SignResponse{Sign: make(map[string][]byte)}
 	for _, key := range keys {
-		signData, err := key.Sign(hash[:])
+		signData, err := asym.SignWithType(key, hash[:])
 		require.Nil(t, err)
 
 		address, err := key.PublicKey().Address()
 		require.Nil(t, err)
-		ok, err := asym.Verify(crypto.Secp256k1, signData[:], hash[:], *address)
+		ok, err := asym.VerifyWithType(signData[:], hash[:], *address)
 		require.Nil(t, err)
 		require.True(t, ok)
 		sign.Sign[address.String()] = signData
@@ -863,12 +863,12 @@ func TestInterchainManager_HandleUnionIBTP(t *testing.T) {
 	hash = sha256.Sum256([]byte(ibtpHash.String()))
 	sign = &pb.SignResponse{Sign: make(map[string][]byte)}
 	for _, key := range keys {
-		signData, err := key.Sign(hash[:])
+		signData, err := asym.SignWithType(key, hash[:])
 		require.Nil(t, err)
 
 		address, err := key.PublicKey().Address()
 		require.Nil(t, err)
-		ok, err := asym.Verify(crypto.Secp256k1, signData[:], hash[:], *address)
+		ok, err := asym.VerifyWithType(signData[:], hash[:], *address)
 		require.Nil(t, err)
 		require.True(t, ok)
 		sign.Sign[address.String()] = signData
@@ -886,12 +886,12 @@ func TestInterchainManager_HandleUnionIBTP(t *testing.T) {
 	hash = sha256.Sum256([]byte(ibtpHash.String()))
 	sign = &pb.SignResponse{Sign: make(map[string][]byte)}
 	for _, key := range keys {
-		signData, err := key.Sign(hash[:])
+		signData, err := asym.SignWithType(key, hash[:])
 		require.Nil(t, err)
 
 		address, err := key.PublicKey().Address()
 		require.Nil(t, err)
-		ok, err := asym.Verify(crypto.Secp256k1, signData[:], hash[:], *address)
+		ok, err := asym.VerifyWithType(signData[:], hash[:], *address)
 		require.Nil(t, err)
 		require.True(t, ok)
 		sign.Sign[address.String()] = signData

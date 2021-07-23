@@ -48,7 +48,7 @@ func TestNew(t *testing.T) {
 	mockLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
 
 	logger := log.NewWithModule("executor")
-	executor, err := New(mockLedger, logger, executorType)
+	executor, err := New(mockLedger, nil, logger, executorType)
 	assert.Nil(t, err)
 	assert.NotNil(t, executor)
 
@@ -103,7 +103,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	mockLedger.EXPECT().PersistBlockData(gomock.Any()).AnyTimes()
 	logger := log.NewWithModule("executor")
 
-	exec, err := New(mockLedger, logger, executorType)
+	exec, err := New(mockLedger, nil, logger, executorType)
 	assert.Nil(t, err)
 
 	// mock data for block
@@ -204,7 +204,7 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 	mockLedger.EXPECT().SetNonce(gomock.Any(), gomock.Any()).AnyTimes()
 	logger := log.NewWithModule("executor")
 
-	exec, err := New(mockLedger, logger, executorType)
+	exec, err := New(mockLedger, nil, logger, executorType)
 	assert.Nil(t, err)
 
 	// mock data for block
@@ -296,7 +296,7 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 	err = ldg.PersistExecutionResult(mockBlock(1, nil), nil, &pb.InterchainMeta{})
 	require.Nil(t, err)
 
-	executor, err := New(ldg, log.NewWithModule("executor"), executorType)
+	executor, err := New(ldg, nil, log.NewWithModule("executor"), executorType)
 	require.Nil(t, err)
 	err = executor.Start()
 	require.Nil(t, err)
@@ -321,7 +321,7 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 	viewLedger, err := ledger.New(createMockRepo(t), blockchainStorage, ldb, blockFile, accountCache, log.NewWithModule("ledger"))
 	require.Nil(t, err)
 
-	exec, err := New(viewLedger, log.NewWithModule("executor"), executorType)
+	exec, err := New(viewLedger, nil, log.NewWithModule("executor"), executorType)
 	require.Nil(t, err)
 
 	tx := mockTransferTx(t)
@@ -350,6 +350,7 @@ func mockTransferTx(t *testing.T) *pb.Transaction {
 		Payload:   data,
 		Amount:    1,
 	}
+
 
 	err = tx.Sign(privKey)
 	require.Nil(t, err)

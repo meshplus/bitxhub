@@ -3,6 +3,8 @@ package grpc
 import (
 	"context"
 	"fmt"
+	"github.com/meshplus/bitxhub-kit/crypto"
+	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"net"
 	"path/filepath"
 
@@ -20,11 +22,12 @@ import (
 )
 
 type ChainBrokerService struct {
-	config  *repo.Config
-	genesis *repo.Genesis
-	api     api.CoreAPI
-	server  *grpc.Server
-	logger  logrus.FieldLogger
+	config                  *repo.Config
+	genesis                 *repo.Genesis
+	api                     api.CoreAPI
+	server                  *grpc.Server
+	supportCryptoTypeToName map[crypto.KeyType]string
+	logger                  logrus.FieldLogger
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -51,16 +54,23 @@ func NewChainBrokerService(api api.CoreAPI, config *repo.Config, genesis *repo.G
 		}
 		grpcOpts = append(grpcOpts, grpc.Creds(cred))
 	}
+
+	supportCryptoTypeToName, err := CheckAlgorithms(config.Crypto.Algorithms)
+	if err != nil {
+		return nil, err
+	}
+
 	server := grpc.NewServer(grpcOpts...)
 	ctx, cancel := context.WithCancel(context.Background())
 	return &ChainBrokerService{
-		logger:  loggers.Logger(loggers.API),
-		config:  config,
-		genesis: genesis,
-		api:     api,
-		server:  server,
-		ctx:     ctx,
-		cancel:  cancel,
+		supportCryptoTypeToName: supportCryptoTypeToName,
+		logger:                  loggers.Logger(loggers.API),
+		config:                  config,
+		genesis:                 genesis,
+		api:                     api,
+		server:                  server,
+		ctx:                     ctx,
+		cancel:                  cancel,
 	}, nil
 }
 
@@ -92,4 +102,19 @@ func (cbs *ChainBrokerService) Stop() error {
 	cbs.logger.Info("GRPC service stopped")
 
 	return nil
+}
+
+func CheckAlgorithms(algorithms []string) (map[crypto.KeyType]string, error) {
+	supportCryptoTypeToName := make(map[crypto.KeyType]string)
+	for _, algorithm := range algorithms {
+		cryptoType, err := crypto.CryptoNameToType(algorithm)
+		if err != nil {
+			return nil, err
+		}
+		if !asym.SupportedKeyType(cryptoType) {
+			return nil, fmt.Errorf("unsupport algorithm:%s", algorithm)
+		}
+		supportCryptoTypeToName[cryptoType] = algorithm
+	}
+	return supportCryptoTypeToName, nil
 }
