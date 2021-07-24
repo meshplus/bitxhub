@@ -334,6 +334,12 @@ func (exec *BlockExecutor) registerBoltContracts() map[string]agency.Contract {
 			Address:  constant.NodeManagerContractAddr.Address().String(),
 			Contract: &contracts.NodeManager{},
 		},
+		{
+			Enabled:  true,
+			Name:     "service manager service",
+			Address:  constant.ServiceMgrContractAddr.Address().String(),
+			Contract: &contracts.ServiceManager{},
+		},
 	}
 
 	ContractsInfo := agency.GetRegisteredContractInfo()

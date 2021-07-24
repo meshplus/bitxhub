@@ -55,6 +55,10 @@ func (b *BoltStubImpl) GetTxIndex() uint64 {
 	return b.ctx.TransactionIndex
 }
 
+func (b *BoltStubImpl) GetCurrentHeight() uint64 {
+	return b.ctx.CurrentHeight
+}
+
 func (b *BoltStubImpl) Has(key string) bool {
 	exist, _ := b.ctx.Ledger.GetState(b.ctx.Callee, []byte(key))
 	return exist
@@ -144,6 +148,7 @@ func (b *BoltStubImpl) CrossInvoke(address, method string, args ...*pb.Arg) *bol
 		Ledger:           b.bvm.ctx.Ledger,
 		TransactionIndex: b.bvm.ctx.TransactionIndex,
 		Tx:               b.bvm.ctx.Tx,
+		CurrentHeight:    b.bvm.ctx.CurrentHeight,
 		Logger:           b.bvm.ctx.Logger,
 	}
 
@@ -165,20 +170,20 @@ func (b *BoltStubImpl) CrossInvokeEVM(address string, data []byte) *boltvm.Respo
 	ctx := b.bvm.ctx
 
 	tx := &pb.BxhTransaction{
-		Version:         ctx.Tx.Version,
-		From:            ctx.Tx.From,
+		Version:         ctx.Tx.GetVersion(),
+		From:            ctx.Tx.GetFrom(),
 		To:              addr,
-		Timestamp:       ctx.Tx.Timestamp,
-		TransactionHash: ctx.Tx.TransactionHash,
+		Timestamp:       ctx.Tx.GetTimeStamp(),
+		TransactionHash: ctx.Tx.GetHash(),
 		Payload:         data,
-		Nonce:           ctx.Tx.Nonce,
-		Signature:       ctx.Tx.Signature,
-		Extra:           ctx.Tx.Extra,
+		Nonce:           ctx.Tx.GetNonce(),
+		Signature:       ctx.Tx.GetSignature(),
+		Extra:           ctx.Tx.GetExtra(),
 	}
 	gp := new(core.GasPool).AddGas(10000000)
 	msg := ledger.NewMessageFromBxh(tx)
 	statedb := ctx.Ledger.StateLedger
-	statedb.PrepareEVM(common.BytesToHash(ctx.Tx.TransactionHash.Bytes()), int(ctx.TransactionIndex))
+	statedb.PrepareEVM(common.BytesToHash(ctx.Tx.GetHash().Bytes()), int(ctx.TransactionIndex))
 	snapshot := statedb.Snapshot()
 	txContext := vm1.NewEVMTxContext(msg)
 	b.bvm.evm.Reset(txContext, statedb)

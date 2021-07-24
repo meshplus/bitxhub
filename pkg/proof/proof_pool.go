@@ -131,13 +131,13 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, error) {
 	}
 
 	// get real appchain id for union ibtp
-	from := ibtp.From
-	if len(strings.Split(ibtp.From, "-")) == 2 {
-		from = strings.Split(ibtp.From, "-")[1]
+	if err := ibtp.CheckServiceID(); err != nil {
+		return false, err
 	}
 
+	from := ibtp.SrcChainID()
 	app := &appchainMgr.Appchain{}
-	ok, data := pl.getAccountState(constant.AppchainMgrContractAddr, contracts.AppchainKey(from)) // ibtp.From
+	ok, data := pl.getAccountState(constant.AppchainMgrContractAddr, appchainMgr.PREFIX+from) // ibtp.From
 	if !ok {
 		return false, fmt.Errorf("%s: cannot get registered appchain", AppchainNotAvailable)
 	}

@@ -3,9 +3,6 @@ package boltvm
 import (
 	"encoding/json"
 	"testing"
-	"time"
-
-	"github.com/meshplus/bitxhub/internal/ledger"
 
 	"github.com/golang/mock/gomock"
 	"github.com/meshplus/bitxhub-core/agency"
@@ -15,6 +12,7 @@ import (
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
+	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/ledger/mock_ledger"
 	"github.com/meshplus/bitxhub/pkg/vm"
 	"github.com/stretchr/testify/assert"
@@ -93,35 +91,22 @@ func TestBoltVM_Run(t *testing.T) {
 	proposals := make([][]byte, 0)
 	proposals = append(proposals, proposalData)
 
-	interchain := &pb.Interchain{
-		ID:                   from,
-		InterchainCounter:    make(map[string]uint64),
-		ReceiptCounter:       make(map[string]uint64),
-		SourceReceiptCounter: make(map[string]uint64),
-	}
-	interchainData, err := interchain.Marshal()
-	require.Nil(t, err)
-	print(interchainData)
-
 	// create Interchain boltVM
 	txInterchain := &pb.BxhTransaction{
 		From: types.NewAddressByStr(from),
 		To:   constant.InterchainContractAddr.Address(),
 	}
 	txInterchain.TransactionHash = txInterchain.Hash()
-	ctxInterchain := vm.NewContext(txInterchain, 1, nil, mockLedger, log.NewWithModule("vm"))
+	ctxInterchain := vm.NewContext(txInterchain, 1, nil, 100, mockLedger, log.NewWithModule("vm"))
 	boltVMInterchain := New(ctxInterchain, mockEngine, nil, cons)
 	ibtp := mockIBTP(t, 1, pb.IBTP_INTERCHAIN)
-	stateLedger.EXPECT().GetState(txInterchain.To, []byte(contracts.AppchainKey(ibtp.From))).Return(false, nil).AnyTimes()
 	_, err = boltVMInterchain.HandleIBTP(ibtp)
 	require.NotNil(t, err)
 }
 
 func mockIBTP(t *testing.T, index uint64, typ pb.IBTP_Type) *pb.IBTP {
 	content := pb.Content{
-		SrcContractId: from,
-		DstContractId: from,
-		Func:          "set",
+		Func: "set",
 	}
 
 	bytes, err := content.Marshal()
@@ -134,11 +119,10 @@ func mockIBTP(t *testing.T, index uint64, typ pb.IBTP_Type) *pb.IBTP {
 	assert.Nil(t, err)
 
 	return &pb.IBTP{
-		From:      from,
-		To:        from,
-		Payload:   ibtppd,
-		Index:     index,
-		Type:      typ,
-		Timestamp: time.Now().UnixNano(),
+		From:    from,
+		To:      from,
+		Payload: ibtppd,
+		Index:   index,
+		Type:    typ,
 	}
 }

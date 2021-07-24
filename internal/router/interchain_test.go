@@ -11,7 +11,6 @@ import (
 	"github.com/golang/mock/gomock"
 	appchain_mgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-kit/log"
-	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/ledger/mock_ledger"
@@ -86,8 +85,7 @@ func TestInterchainRouter_GetInterchainTxWrappers(t *testing.T) {
 		require.Equal(t, len(iw1.InterchainTxWrappers[0].Transactions), 1)
 		require.Equal(t, iw1.InterchainTxWrappers[0].Transactions[0].Tx.Hash().String(), BVMTx.GetHash().String())
 	case iw4 := <-wrappersCh4:
-		require.Equal(t, len(iw4.InterchainTxWrappers), 1)
-		require.Equal(t, len(iw4.InterchainTxWrappers[0].Transactions), 0)
+		require.Nil(t, iw4)
 	default:
 		require.Errorf(t, fmt.Errorf("not found interchainWrappers"), "")
 	}
@@ -213,44 +211,44 @@ func TestInterchainRouter_AddNonexistentPier(t *testing.T) {
 	require.Nil(t, router.Stop())
 }
 
-func TestInterchainRouter_AddUnionPier(t *testing.T) {
-	router := testStartRouter(t)
-
-	interchainWrappersC, err := router.AddPier(dstChainID)
-	require.Nil(t, err)
-
-	var txs []pb.Transaction
-	// set tx of TransactionData_BVM type
-	ibtp1 := mockIBTP(t, 1, pb.IBTP_INTERCHAIN)
-	BVMData := mockTxData(t, pb.TransactionData_INVOKE, pb.TransactionData_BVM, ibtp1)
-	BVMTx := mockTx(BVMData)
-	txs = append(txs, BVMTx)
-
-	m := make(map[string]*pb.VerifiedIndexSlice, 0)
-
-	m[otherChainID] = &pb.VerifiedIndexSlice{
-		Slice: []*pb.VerifiedIndex{{0, true}},
-	}
-	im := &pb.InterchainMeta{
-		Counter: m,
-		L2Roots: nil,
-	}
-
-	router.PutBlockAndMeta(mockBlock(1, txs), im)
-
-	select {
-	case iw := <-interchainWrappersC:
-		require.Equal(t, len(iw.InterchainTxWrappers), 1)
-		require.Equal(t, len(iw.InterchainTxWrappers[0].Transactions), 1)
-		require.Equal(t, iw.InterchainTxWrappers[0].Transactions[0].Tx.Hash().String(), BVMTx.GetHash().String())
-	default:
-		require.Errorf(t, fmt.Errorf("not found interchainWrappers"), "")
-	}
-
-	router.RemovePier(dstChainID)
-
-	require.Nil(t, router.Stop())
-}
+//func TestInterchainRouter_AddUnionPier(t *testing.T) {
+//	router := testStartRouter(t)
+//
+//	interchainWrappersC, err := router.AddPier(dstChainID)
+//	require.Nil(t, err)
+//
+//	var txs []pb.Transaction
+//	// set tx of TransactionData_BVM type
+//	ibtp1 := mockIBTP(t, 1, pb.IBTP_INTERCHAIN)
+//	BVMData := mockTxData(t, pb.TransactionData_INVOKE, pb.TransactionData_BVM, ibtp1)
+//	BVMTx := mockTx(BVMData)
+//	txs = append(txs, BVMTx)
+//
+//	m := make(map[string]*pb.VerifiedIndexSlice, 0)
+//
+//	m[otherChainID] = &pb.VerifiedIndexSlice{
+//		Slice: []*pb.VerifiedIndex{{0, true}},
+//	}
+//	im := &pb.InterchainMeta{
+//		Counter: m,
+//		L2Roots: nil,
+//	}
+//
+//	router.PutBlockAndMeta(mockBlock(1, txs), im)
+//
+//	select {
+//	case iw := <-interchainWrappersC:
+//		require.Equal(t, len(iw.InterchainTxWrappers), 1)
+//		require.Equal(t, len(iw.InterchainTxWrappers[0].Transactions), 1)
+//		require.Equal(t, iw.InterchainTxWrappers[0].Transactions[0].Tx.Hash().String(), BVMTx.GetHash().String())
+//	default:
+//		require.Errorf(t, fmt.Errorf("not found interchainWrappers"), "")
+//	}
+//
+//	router.RemovePier(dstChainID)
+//
+//	require.Nil(t, router.Stop())
+//}
 
 func testStartRouter(t *testing.T) *InterchainRouter {
 	appchains := make([]*appchain_mgr.Appchain, 0)
@@ -281,7 +279,7 @@ func testStartRouter(t *testing.T) *InterchainRouter {
 		StateLedger: stateLedger,
 	}
 	stateLedger.EXPECT().Copy().Return(stateLedger).AnyTimes()
-	stateLedger.EXPECT().QueryByPrefix(constant.AppchainMgrContractAddr.Address(), appchain_mgr.PREFIX).Return(true, ret)
+	//stateLedger.EXPECT().QueryByPrefix(constant.AppchainMgrContractAddr.Address(), appchain_mgr.PREFIX).Return(true, ret)
 
 	mockPeerMgr := mock_peermgr.NewMockPeerManager(mockCtl)
 

@@ -25,7 +25,8 @@ type ServiceManager struct {
 }
 
 type Service struct {
-	Id         string          `json:"id"`         // service id
+	ChainID    string          `json:"chain_id"`   // aoochain id
+	ServiceID  string          `json:"service_id"` // service id
 	Name       string          `json:"name"`       // service name
 	Type       string          `json:"type"`       // service type
 	Desc       string          `json:"desc"`       // service description
@@ -59,22 +60,25 @@ func NewServiceMng() agency.Contract {
 	return &ServiceManager{}
 }
 
-func (sm *ServiceManager) Register(id, name, desc, typ string, ordered bool, permit string, itemData []byte) *boltvm.Response {
-	res := sm.CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "GetAppchain", pb.String(id))
+func (sm *ServiceManager) Register(chainID, serviceID, name, desc, typ string, ordered bool, permit string, itemData []byte) *boltvm.Response {
+	res := sm.CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "GetAppchain", pb.String(chainID))
 	if !res.Ok {
 		return res
 	}
 
 	sm.Logger().Info("get appchain success")
 	var items map[string]Item
-	if err := json.Unmarshal(itemData, &items); err != nil {
-		return boltvm.Error(err.Error())
+	if len(itemData) != 0 {
+		if err := json.Unmarshal(itemData, &items); err != nil {
+			return boltvm.Error(err.Error())
+		}
 	}
 
 	permission := strings.Split(permit, ",")
 
 	service := &Service{
-		Id:         id,
+		ChainID:    chainID,
+		ServiceID:  serviceID,
 		Name:       name,
 		Desc:       desc,
 		Type:       typ,
@@ -84,22 +88,30 @@ func (sm *ServiceManager) Register(id, name, desc, typ string, ordered bool, per
 		Status:     REGISTERED,
 	}
 
-	ok := sm.Has(sm.serviceKey(id))
+	chainServiceID := fmt.Sprintf("%s:%s", chainID, serviceID)
+
+	ok := sm.Has(sm.serviceKey(chainServiceID))
 	if ok {
 		sm.Logger().WithFields(logrus.Fields{
-			"id": id,
+			"id": chainServiceID,
 		}).Debug("Service has registered")
-		sm.GetObject(sm.serviceKey(id), service)
+		sm.GetObject(sm.serviceKey(chainServiceID), service)
 	} else {
-		sm.SetObject(sm.serviceKey(id), service)
+		res = sm.CrossInvoke(constant.InterchainContractAddr.String(), "Register", pb.String(chainServiceID))
+		if !res.Ok {
+			return res
+		}
+		sm.SetObject(sm.serviceKey(chainServiceID), service)
 		sm.Logger().WithFields(logrus.Fields{
-			"id": id,
+			"id": chainServiceID,
 		}).Info("Service register successfully")
 	}
 	body, err := json.Marshal(service)
 	if err != nil {
 		return boltvm.Error(err.Error())
 	}
+
+	sm.updateAppchainService(chainID, serviceID)
 
 	return boltvm.Success(body)
 }
@@ -115,14 +127,14 @@ func (sm *ServiceManager) Call(data []byte) *boltvm.Response {
 	return res
 }
 
-func (sm *ServiceManager) Update(name string, desc string, itemData []byte) *boltvm.Response {
-	id := sm.Caller()
-	ok := sm.Has(sm.serviceKey(id))
+func (sm *ServiceManager) Update(chainID, serviceID, name string, desc string, itemData []byte) *boltvm.Response {
+	chainServiceID := fmt.Sprintf("%s:%s", chainID, serviceID)
+	ok := sm.Has(sm.serviceKey(chainServiceID))
 	if !ok {
 		return boltvm.Error("register service firstly")
 	}
 
-	service := sm.getServiceInfo(id)
+	service := sm.getServiceInfo(chainServiceID)
 
 	if service.Status == REGISTERED {
 		return boltvm.Error("this service is being audited")
@@ -132,14 +144,12 @@ func (sm *ServiceManager) Update(name string, desc string, itemData []byte) *bol
 	if err := json.Unmarshal(itemData, &items); err != nil {
 		return boltvm.Error(err.Error())
 	}
-	service = &Service{
-		Name:   name,
-		Desc:   desc,
-		Items:  items,
-		Status: service.Status,
-	}
 
-	sm.SetObject(sm.serviceKey(id), service)
+	service.Name = name
+	service.Desc = desc
+	service.Items = items
+
+	sm.SetObject(sm.serviceKey(chainServiceID), service)
 	return boltvm.Success(nil)
 }
 
@@ -291,6 +301,27 @@ func (sm *ServiceManager) IsAdmin() *boltvm.Response {
 	return boltvm.Success([]byte("1"))
 }
 
+func (sm *ServiceManager) GetServicesByAppchainID(appchainID string) *boltvm.Response {
+	var services []string
+	_ = sm.GetObject(sm.appchainServicesKey(appchainID), &services)
+
+	data, err := json.Marshal(services)
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+
+	return boltvm.Success(data)
+}
+
+func (sm *ServiceManager) updateAppchainService(appchainID, serviceID string) {
+	var services []string
+	chainServiceKey := sm.appchainServicesKey(appchainID)
+
+	_ = sm.GetObject(chainServiceKey, &services)
+	services = append(services, serviceID)
+	sm.SetObject(chainServiceKey, services)
+}
+
 func (sm *ServiceManager) serviceKey(id string) string {
 	return ServicePreKey + id
 }
@@ -301,6 +332,10 @@ func (sm *ServiceManager) auditRecordKey(id string) string {
 
 func (sm *ServiceManager) auditItemRecordKey(id string) string {
 	return "audit-item-record-" + id
+}
+
+func (sm *ServiceManager) appchainServicesKey(id string) string {
+	return "appchain-" + id
 }
 
 func (service *Service) checkPermission(serviceId string) bool {

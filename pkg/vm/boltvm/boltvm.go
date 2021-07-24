@@ -138,6 +138,12 @@ func parseArgs(in []*pb.Arg) ([]reflect.Value, error) {
 			args[i] = reflect.ValueOf(string(in[i].Value))
 		case pb.Arg_Bytes:
 			args[i] = reflect.ValueOf(in[i].Value)
+		case pb.Arg_Bool:
+			ret, err := strconv.ParseBool(string(in[i].Value))
+			if err != nil {
+				return nil, err
+			}
+			args[i] = reflect.ValueOf(ret)
 		default:
 			args[i] = reflect.ValueOf(string(in[i].Value))
 		}
