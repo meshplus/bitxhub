@@ -2,13 +2,17 @@ package contracts
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-model/pb"
 )
 
-const PREFIX = "tx-"
+const (
+	PREFIX         = "tx"
+	TIMEOUT_PREFIX = "timeout"
+)
 
 type TransactionManager struct {
 	boltvm.Stub
@@ -20,7 +24,7 @@ type TransactionInfo struct {
 }
 
 func (t *TransactionManager) BeginMultiTXs(globalId string, childTxIds ...string) *boltvm.Response {
-	if t.Has(t.txInfoKey(globalId)) {
+	if t.Has(TxInfoKey(globalId)) {
 		return boltvm.Error("Transaction id already exists")
 	}
 
@@ -39,25 +43,59 @@ func (t *TransactionManager) BeginMultiTXs(globalId string, childTxIds ...string
 	return boltvm.Success(nil)
 }
 
-func (t *TransactionManager) Begin(txId string) *boltvm.Response {
-	t.AddObject(t.txInfoKey(txId), pb.TransactionStatus_BEGIN)
+func (t *TransactionManager) Begin(txId string, timeoutHeight uint64) *boltvm.Response {
+	record := pb.TransactionRecord{
+		Status: pb.TransactionStatus_BEGIN,
+		Height: t.GetCurrentHeight() + timeoutHeight,
+	}
+
+	if timeoutHeight == 0 || timeoutHeight >= math.MaxUint64-t.GetCurrentHeight() {
+		record.Height = math.MaxUint64
+	}
+
+	var timeoutList []string
+	ok := t.GetObject(TimeoutKey(record.Height), &timeoutList)
+	if !ok {
+		timeoutList = []string{txId}
+	} else {
+		timeoutList = append(timeoutList, txId)
+	}
+	t.SetObject(TimeoutKey(record.Height), timeoutList)
 
 	return boltvm.Success(nil)
 }
 
 func (t *TransactionManager) Report(txId string, result int32) *boltvm.Response {
-	var status pb.TransactionStatus
-	ok := t.GetObject(t.txInfoKey(txId), &status)
+	var record pb.TransactionRecord
+	ok := t.GetObject(TxInfoKey(txId), &record)
 	if ok {
-		if status != pb.TransactionStatus_BEGIN {
+		if record.Status == pb.TransactionStatus_ROLLBACK {
+			return boltvm.Error(fmt.Sprintf("transaction with Id %s has been rollback", txId))
+		}
+
+		if record.Status != pb.TransactionStatus_BEGIN {
 			return boltvm.Error(fmt.Sprintf("transaction with Id %s is finished", txId))
 		}
 
 		if result == 0 {
-			t.SetObject(t.txInfoKey(txId), pb.TransactionStatus_SUCCESS)
+			record.Status = pb.TransactionStatus_SUCCESS
+			t.SetObject(TxInfoKey(txId), record)
 		} else {
-			t.SetObject(t.txInfoKey(txId), pb.TransactionStatus_FAILURE)
+			record.Status = pb.TransactionStatus_FAILURE
+			t.SetObject(TxInfoKey(txId), record)
 		}
+
+		var timeoutList []string
+		ok := t.GetObject(TimeoutKey(record.Height), &timeoutList)
+		if ok {
+			for index, value := range timeoutList {
+				if value == txId {
+					timeoutList = append(timeoutList[:index], timeoutList[index+1:]...)
+				}
+			}
+			t.SetObject(TimeoutKey(record.Height), timeoutList)
+		}
+
 	} else {
 		ok, val := t.Get(txId)
 		if !ok {
@@ -108,9 +146,10 @@ func (t *TransactionManager) Report(txId string, result int32) *boltvm.Response 
 }
 
 func (t *TransactionManager) GetStatus(txId string) *boltvm.Response {
-	var status pb.TransactionStatus
-	ok := t.GetObject(t.txInfoKey(txId), &status)
+	var record pb.TransactionRecord
+	ok := t.GetObject(TxInfoKey(txId), &record)
 	if ok {
+		status := record.Status
 		return boltvm.Success([]byte(strconv.Itoa(int(status))))
 	}
 
@@ -134,10 +173,14 @@ func (t *TransactionManager) GetStatus(txId string) *boltvm.Response {
 	return boltvm.Success([]byte(strconv.Itoa(int(txInfo.GlobalState))))
 }
 
-func (t *TransactionManager) txInfoKey(id string) string {
+func TxInfoKey(id string) string {
 	return fmt.Sprintf("%s-%s", PREFIX, id)
 }
 
 func (t *TransactionManager) globalTxInfoKey(id string) string {
 	return fmt.Sprintf("global-%s-%s", PREFIX, id)
+}
+
+func TimeoutKey(height uint64) string {
+	return fmt.Sprintf("%s-%d", TIMEOUT_PREFIX, height)
 }
