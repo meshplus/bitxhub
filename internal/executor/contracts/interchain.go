@@ -169,7 +169,7 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, error) {
 		}
 	}
 
-	if pb.IBTP_INTERCHAIN == ibtp.Type {
+	if pb.IBTP_INTERCHAIN == ibtp.Type || pb.IBTP_ROLLBACK == ibtp.Type {
 		srcAppchain, err = x.getAppchainInfo(ibtp.From)
 		if err != nil {
 			return nil, fmt.Errorf("%s: source appchain %s is not registered", CurAppchainNotAvailable, ibtp.From)
