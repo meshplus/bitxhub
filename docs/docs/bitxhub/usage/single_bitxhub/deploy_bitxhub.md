@@ -1,6 +1,6 @@
 # 中继链部署
 
-中继链用于应用链的跨链管理，以及跨链交易的可信验证与可靠路由，是一种实现IBTP协议的开放许可链。部署中继链节点主要是三个步骤：安装包获取（准备）、配置文件修改和程序启动。下面依次来进行说明。
+中继链用于应用链的跨链管理，以及跨链交易的可信验证与可靠路由，是一种实现IBTP协议的开放许可链。部署中继链节点主要是三个步骤：安装包获取（准备）、配置文件修改和程序启动，下面依次进行说明。
 
 ## 安装包获取
 
@@ -12,7 +12,7 @@
 # 1. 首先拉取bitxhub项目源代码
 git clone https://github.com/meshplus/bitxhub.git
 # 2. 进入bitxhub目录，切换到指定的分支或版本后编译bitxhub二进制
-cd bitxhub && git checkout ${TAG} && make build
+cd bitxhub && git checkout v1.6.2 && make build
 # 注意⚠️：首次编译需要在build之前先执行 make prepare 完成依赖安装
 # 编译完成后可以在项目的bin目录下看到刚刚生成的bitxhub二进制文件
 # 3. 接下来需要编译共识插件，进入到 internal/plugins 目录进行编译
@@ -26,27 +26,27 @@ cd internal/plugins && make plugins
 
 #### 二进制直接下载
 
-除了源码编译外，我们也提供了直接下载BitXHub二进制的方式，下载地址链接如下：[BitXHub二进制包下载](https://github.com/meshplus/bitxhub/releases)，链接中已经包含了所需的二进制和依赖库，您只需跟据实际情况选择合适的版本和系统下载即可，建议使用最新的BitXHub发布版本。
+除了源码编译外，我们也提供了直接下载BitXHub二进制的方式，下载地址链接如下：[BitXHub二进制包下载](https://github.com/meshplus/bitxhub/releases/tag/v1.6.2)，链接中已经包含了所需的二进制和依赖库，您只需跟据实际情况选择合适的版本和系统下载即可，建议使用最新的BitXHub发布版本。
 
 
 
 ## 快速启动BitXHub节点
 
-获取到安装包后，接下来要根据您的实际情况修改配置文件。如果您是在本地编译的二进制包，您也可以在项目根目录执行`make cluster`一键启动四节点raft共识的BitXHub集群，或者执行`make solo`一键启动单节点solo共识的BitXHub节点。如果您是直接下载的二进制安装包，为了简化操作，我们也提供了可以直接启动raft和solo共识的节点配置文件示例，其下载地址与二进制包一样，文件名以raft、solo或example开头。需要注意的是，raft共识的示例配置文件是四节点集群，solo共识的示例配置文件是单节点。接下来只需将上一步下载的BitXHub二进制及对应插件拷贝到配置目录即可，具体操作如下：
+获取到安装包后，接下来要根据您的实际情况修改配置文件。如果您是在本地编译的二进制包，您也可以在项目根目录执行`make cluster`一键启动四节点raft共识的BitXHub集群，或者执行`make solo`一键启动单节点solo共识的BitXHub节点。如果您是直接下载的二进制安装包，为了简化操作，我们也提供了可以直接启动raft/solo共识的节点配置文件示例，其下载地址与二进制包一样，文件名以example开头。需要注意的是，raft共识的示例配置文件是四节点集群，solo共识的示例配置文件是单节点。接下来只需将上一步下载的BitXHub二进制及对应插件拷贝到配置目录即可，具体操作如下：
 
 ```
 # 1. 解压二进制压缩包
 mkdir bitxhub && cd bitxhub
-cp ~/Downloads/bitxhub_darwin_x86_64_v1.8.0.tar.gz .
-tar -zxvf bitxhub_darwin_x86_64_v1.8.0.tar.gz
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PWD
+cp ~/Downloads/bitxhub_v1.6.2_Darwin_x86_64.tar.gz .
+tar -zxvf bitxhub_v1.6.2_Darwin_x86_64.tar.gz
 # 2. 解压配置文件压缩包(以raft共识为例)
 mkdir raft-nodes
-tar -zxvf raft_config_example_v1.8.0.tar.gz -C raft-nodes/
-# 3. 将bitxhub和共识插件二进制分别拷贝到4个节点的配置目录（以node1为例）
+tar -zxvf example_bitxhub_v1.6.2.tar.gz -C raft-nodes/
+# 3. 将bitxhub、共识插件二进制和依赖库文件分别拷贝到4个节点的配置目录（以node1为例）
 cp bitxhub raft-nodes/node1/
+cp libwasmer.dylib raft-nodes/node1/
 cp raft.so raft-nodes/node1/plugins/
-# 注意⚠️：节点2、3、4也需要执行上面拷贝操作
+# 注意⚠️：节点2、3、4也需要执行上面拷贝操作，对于Linux系统依赖库文件是libwasmer.so
 # 以上操作均是示例，执行时二进制和配置文件压缩包的名称可能存在差异，需要根据实际情况进行调整
 ```
 
@@ -54,18 +54,20 @@ cp raft.so raft-nodes/node1/plugins/
 
 ```
 cd bitxhub/raft-nodes/node1
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)
 ./bitxhub --repo ./ start
 
 ...
 ...
 
 cd bitxhub/raft-nodes/node4
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)
 ./bitxhub --repo ./ start
 ```
 
 待节点集群打印出bitxhub的LOGO，表示BitXHub集群开始正常工作
 
-![](../../assets/bitxhub.png)
+![](../../../assets/bitxhub.png)
 
 
 
@@ -95,7 +97,7 @@ bitxhub.toml文件是BitXHub节点启动的主要配置文件。各配置项说�
 | **[executor]** | 执行引擎类型                          |
 | **[genesis]**  | 创世节点配置                          |
 
-**在实际部署过程中，需要修改的配置一般只有port、order和genesis的信息，其它配置默认即可。** 以下为示例参考
+**在快速体验部署流程中，需要修改的配置一般只有port、order的信息，其它配置默认即可。** 以下为示例参考
 
 1. 根据您机器实际分配的端口进行变更：
 
@@ -114,30 +116,7 @@ bitxhub.toml文件是BitXHub节点启动的主要配置文件。各配置项说�
   plugin = "plugins/raft.so" 
 ```
 
-3. 修改genesis的节点管理员地址和投票权重，根据初始节点配置对应地址：
 
-```shell
-[genesis]
-  [[genesis.admins]]
-    address = "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013"
-    weight = 1
-  [[genesis.admins]]
-    address = "0x79a1215469FaB6f9c63c1816b45183AD3624bE34"
-    weight = 1
-  [[genesis.admins]]
-    address = "0x97c8B516D19edBf575D72a172Af7F418BE498C37"
-    weight = 1
-  [[genesis.admins]]
-    address = "0xc0Ff2e0b3189132D815b8eb325bE17285AC898f8"
-    weight = 1
-```
-
-**说明：以上初始节点的address字段可以通过以下命令获取：**
-
-``` 
-./bitxhub key address --path ./node1/key.priv
-# 示例输出：0x6F7BA26056bBC332AC132afF7AD107F7e45E5613
-```
 
 #### network.toml文件配置修改
 

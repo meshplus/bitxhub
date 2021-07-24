@@ -1,6 +1,6 @@
 # 跨链网关直连模式部署
 
-跨链网关Pier能够支持跨链消息格式转换、跨链消息的路由、跨链操作的调用等核心功能，不仅保证不同格式的跨链消息能够安全可信的到达目标应用链，而且保证了跨链交易异常情况下来源链的安全。跨链网关为区块链互联形成网络提供了便捷的接入方式，旨在降低跨链互联的使用成本。在之前的文档中介绍了中继模式的pier安装步骤，下面介绍直连模式下pier的安装步骤。请注意，pier直连不依赖于中继链节点，所以本文档不赘述bitxhub的部署了。												
+跨链网关Pier能够支持跨链消息格式转换、跨链消息的路由、跨链操作的调用等核心功能，不仅保证不同格式的跨链消息能够安全可信的到达目标应用链，而且保证了跨链交易异常情况下来源链的安全。跨链网关为区块链互联形成网络提供了便捷的接入方式，旨在降低跨链互联的使用成本。在之前的文档中介绍了中继模式的pier安装步骤，下面介绍直连模式下pier的安装步骤。请注意，pier直连不依赖于中继链节点，所以本文档不赘述bitxhub的部署了。
 
 ### 安装包获取
 
@@ -33,46 +33,38 @@ make eth
 编译跨链网关步骤会在 $GOPATH/bin 下生成 pier 二进制，运行下面的命令查看是否安装成功：
 
 ```shell
+# $GOPATH/bin需要在PATH目录下
 pier version
 ```
 
 如果正常安装会打印出类似下面的说明
 
 ```text
-Pier version: 1.0.0-b01a80a
-App build date: 2020-08-27T10:28:05
-System version: darwin/amd64
-Golang version: go1.13
+Pier version: dev-release-1.6-7eb8c9a
+App build date: 2021-07-22T10:46:50
+System version: linux/amd64
+Golang version: go1.14.13
 ```
 
-代码目录结构如下：
-
-| 目录       | 说明                 |
-| -------- | ------------------ |
-| agent    | 对接BitXHub的Client模块 |
-| cmd      | 命令行相关代码            |
-| internal | 项目内部相关代码           |
-| pkg      | 项目重用相关代码           |
-| plugins  | 对接应用链的Client接口     |
-| scripts  | 操作脚本               |
-
-**3.2.1.2 二进制安装**
+##### **二进制安装**
 
 没有现有编译环境的用户，也可以在GitHub开源仓库下载编译好的二进制，地址：`https://github.com/meshplus/pier/releases`, 根据需要的版本进行下载即可。该部署包中包含了 Pier跨链网关的二进制和 pier-client-fabric 和 pier-client-ethereum 的应用链插件的二进制。
 
 ### 修改配置文件
 
+##### 修改pier配置
+
 在进行应用链注册、验证规则部署等步骤之前，需要初始化跨链网关的配置目录
 
 ```shell
 #以用户目录下的pier为例
-pier --repo=~/pier init
+pier --repo=~/pier1 init
 ```
 
 该命令会生成跨链网关的一些基础配置文件模板，使用 tree 命令可查看目录信息：
 
 ```text
-tree -L 1 ~/.pier
+tree -L 1 ~/.pier1
 
 ├── api
 ├── certs
@@ -86,18 +78,18 @@ tree -L 1 ~/.pier
 导入插件二进制（hyperchain的插件二进制和配置文件示例需要内部授权）
 
 ```
-mkdir -p ~/.pier/plugins
-cp fabric-client-1.4.so ~/.pier/plugins
+mkdir -p ~/.pier1/plugins
+cp fabric-client-1.4.so ~/.pier1/plugins
 ```
 
 pier.toml 文件描述链跨链网关启动的必要配置，具体的配置项和说明如下：
 
-| 配置项        | 说明                    |
-| ---------- | --------------------- |
-| [port]     | http、grpc服务端口         |
-| [log]      | 日志输出相关设置              |
+| 配置项     | 说明                              |
+| ---------- | --------------------------------- |
+| [port]     | http、grpc服务端口                |
+| [log]      | 日志输出相关设置                  |
 | [bitxhub]  | 连接的bitxhub的IP地址、验证人地址 |
-| [appchain] | 对接的应用链的基础配置信息         |
+| [appchain] | 对接的应用链的基础配置信息        |
 
 主要需要修改的部分是端口信息、中继链的信息、应用链的信息
 
@@ -140,7 +132,7 @@ Fabric插件配置的模板在`pier-client-fabric`项目中，并且已经在Git
 ```shell
 # 转到pier-client-fabric项目路径下
 git clone https://github.com/meshplus/pier-client-fabric.git && cd pier-client-fabric
-cp ./config $HOME/.pier/fabric
+cp ./config $HOME/.pier1/fabric
 ```
 
 配置目录结构
@@ -158,7 +150,7 @@ cp ./config $HOME/.pier/fabric
 
   启动Fabric网络时，会生成所有节点（包括Order、peer等）的证书信息，并保存在 crypto-config文件夹中，Fabric插件和Fabric交互时需要用到这些证书。
 
-  ```
+  ```shell
   # 复制你所部署的Fabric所产生的crypto-config文件夹
   cp -r /path/to/crypto-config $HOME/.pier1/fabric/
   
@@ -168,15 +160,15 @@ cp ./config $HOME/.pier/fabric
 
 - **修改Plugin配置文件 config.yaml **
 
-  `config.yaml`文件记录的Fabric网络配置（如果你是按照你自己的网络拓扑部署的Fabric，用你的网络拓扑配置文件替换这个样例文件），需要使用绝对路径，把所有的路径都修改为 `crypto-config`文件夹所在的绝对路径
+  `config.yaml`文件记录的Fabric网络配置（如果你是按照你自己的网络拓扑部署的Fabric，用你的网络拓扑配置文件替换这个样例文件），需要使用绝对路径，把所有的路径都修改为 `crypto-config`文件夹所在的绝对路径，$USER指代当前用户名
 
-  ```
-  path: {CONFIG_PATH}/fabric/crypto-config => path: /home/alex/.pier/fabric/crypto-config
+  ```yaml
+  path: {CONFIG_PATH}/fabric/crypto-config => path: /home/$USER/.pier/fabric/crypto-config
   ```
 
   替换为你部署的Fabric网络的拓扑设置文件即可，同时需要修改所有的Fabric 的IP地址，如：
 
-  ```
+  ```yaml
   url: grpcs://localhost:7050 => url: grpcs://10.1.16.48:7050
   ```
 
@@ -229,11 +221,24 @@ cp ./config $HOME/.pier/fabric
 
   ```
   #以用户目录下的pier1为例
-  pier --repo=~/pier start
+  pier --repo=~/pier1 start
   ```
 
   观察日志信息没有报错信息，pier启动成功
 
   **说明：1. 因为跨链合约和验证规则的部署涉及到不同应用链的细节，且需依赖应用链的安装部署，具体操作请见快速开始手册或使用文档，这里不再赘述。2. 本文是以一方的跨链网关为例进行部署，而另一方的跨链网关的部署与之基本一样，这里不再赘述。**
-  
+
+  直连模式下，两边的跨链网关需要相互注册同时部署验证规则
+
+  ~~~shell
+  idA=$(pier --repo ~/pier1 id)
+  idB=$(pier --repo ~/pier2 id)
+  pier --repo ~/pier1 client register --pier_id ${idB} --name fab --type fabric --desc simple --version 1 --validators ~/pier1/fabric/fabric.validators --consensusType raft
+  pier --repo ~/pier2 client register --pier_id ${idA} --name eth --type ethereum --desc simple --version 1 --validators ~/pier2/ethereum/ether.validators --consensusType raft
+  pier --repo ~/pier1 client rule --pier_id ${idB} --path ~/pier1/fabric/rule.wasm
+  pier --repo ~/pier2 client rule --pier_id ${idA} --path ~/pier2/ethereum/rule.wasm
+  ~~~
+
+  完成上述布置后，跨链网关直连模式下部署就已经完成，两边的应用链可以进行跨链操作
+
   
