@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"fmt"
-	"github.com/meshplus/bitxhub/api/grpc"
 	"syscall"
 	"time"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/fdlimit"
 	"github.com/meshplus/bitxhub-kit/storage/blockfile"
 	"github.com/meshplus/bitxhub-kit/storage/leveldb"
+	"github.com/meshplus/bitxhub/api/grpc"
 	_ "github.com/meshplus/bitxhub/imports"
 	"github.com/meshplus/bitxhub/internal/executor"
 	"github.com/meshplus/bitxhub/internal/ledger"

@@ -116,5 +116,12 @@ func CheckAlgorithms(algorithms []string) (map[crypto.KeyType]string, error) {
 		}
 		supportCryptoTypeToName[cryptoType] = algorithm
 	}
+
+	fmt.Printf("Supported crypto type:")
+	for _, name := range supportCryptoTypeToName {
+		fmt.Printf("%s ", name)
+	}
+	fmt.Printf("\n\n")
+
 	return supportCryptoTypeToName, nil
 }
