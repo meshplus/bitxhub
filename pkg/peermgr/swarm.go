@@ -7,8 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/meshplus/bitxhub/internal/ledger"
-
 	"github.com/Rican7/retry"
 	"github.com/Rican7/retry/strategy"
 	"github.com/ethereum/go-ethereum/event"
@@ -16,6 +14,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/internal/repo"
 	libp2pcert "github.com/meshplus/go-libp2p-cert"
@@ -462,6 +461,9 @@ func (swarm *Swarm) reset() {
 
 func constructMultiaddr(vpInfo *pb.VpInfo) (*peer.AddrInfo, error) {
 	addrs := make([]ma.Multiaddr, 0)
+	if len(vpInfo.Hosts) == 0 {
+		return nil, fmt.Errorf("no hosts found by node:%d", vpInfo.Id)
+	}
 	for _, host := range vpInfo.Hosts {
 		addr, err := ma.NewMultiaddr(fmt.Sprintf("%s%s", host, vpInfo.Pid))
 		if err != nil {
@@ -470,9 +472,9 @@ func constructMultiaddr(vpInfo *pb.VpInfo) (*peer.AddrInfo, error) {
 		addrs = append(addrs, addr)
 	}
 
-	addrInfo := &peer.AddrInfo{
-		ID:    peer.ID(vpInfo.Pid),
-		Addrs: addrs,
+	addrInfo, err := peer.AddrInfoFromP2pAddr(addrs[0])
+	if err != nil {
+		return nil, err
 	}
 	return addrInfo, nil
 }
