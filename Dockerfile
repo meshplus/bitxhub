@@ -24,8 +24,7 @@ RUN make install
 COPY --from=builder /go/bin/bitxhub /usr/local/bin
 COPY --from=builder /go/bin/packr /usr/local/bin
 
-COPY ./build/libwasmer.so /lib
-
+COPY ./build/wasm/lib/linux-amd64/libwasmer.so /lib
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/lib
 
 
