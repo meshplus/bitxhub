@@ -36,6 +36,7 @@ func TestSwarm_AddNode(t *testing.T) {
 		Id:      5,
 		Pid:     "Qmxxxxxxxxxxxxxxx",
 		Account: "0x1111111111222222222233333333",
+		Hosts:   []string{"/ip4/127.0.0.1/tcp/4003/p2p/,"},
 	})
 
 	require.Equal(t, 5, len(swarms[0].routers))
