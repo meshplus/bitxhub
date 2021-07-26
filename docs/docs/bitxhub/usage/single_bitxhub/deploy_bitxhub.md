@@ -12,12 +12,9 @@
 # 1. 首先拉取bitxhub项目源代码
 git clone https://github.com/meshplus/bitxhub.git
 # 2. 进入bitxhub目录，切换到指定的分支或版本后编译bitxhub二进制
-cd bitxhub && git checkout v1.6.2 && make build
+cd bitxhub && make build
 # 注意⚠️：首次编译需要在build之前先执行 make prepare 完成依赖安装
 # 编译完成后可以在项目的bin目录下看到刚刚生成的bitxhub二进制文件
-# 3. 接下来需要编译共识插件，进入到 internal/plugins 目录进行编译
-cd internal/plugins && make plugins
-# 编译完成后可以在项目的internal/plugins/build目录下看到刚刚生成的共识插件文件，raft.so和solo.so
 ```
 
 **提示：在bitxhub v1.7.0及以上的版本，我们也提供了一键生成部署所需的文件包的make命令：make release-binary，执行完成后可以在项目的dist目录看到符合您系统的压缩包，解压即可使用。**
@@ -26,7 +23,7 @@ cd internal/plugins && make plugins
 
 #### 二进制直接下载
 
-除了源码编译外，我们也提供了直接下载BitXHub二进制的方式，下载地址链接如下：[BitXHub二进制包下载](https://github.com/meshplus/bitxhub/releases/tag/v1.6.2)，链接中已经包含了所需的二进制和依赖库，您只需跟据实际情况选择合适的版本和系统下载即可，建议使用最新的BitXHub发布版本。
+除了源码编译外，我们也提供了直接下载BitXHub二进制的方式，下载地址链接如下：[BitXHub二进制包下载](https://github.com/meshplus/bitxhub/releases)，链接中已经包含了所需的二进制和依赖库，您只需跟据实际情况选择合适的版本和系统下载即可，建议使用最新的BitXHub发布版本。
 
 
 
@@ -37,15 +34,14 @@ cd internal/plugins && make plugins
 ```
 # 1. 解压二进制压缩包
 mkdir bitxhub && cd bitxhub
-cp ~/Downloads/bitxhub_v1.6.2_Darwin_x86_64.tar.gz .
-tar -zxvf bitxhub_v1.6.2_Darwin_x86_64.tar.gz
+cp ~/Downloads/bitxhub_${version}_Darwin_x86_64.tar.gz .
+tar -zxvf bitxhub_${version}_Darwin_x86_64.tar.gz
 # 2. 解压配置文件压缩包(以raft共识为例)
 mkdir raft-nodes
-tar -zxvf example_bitxhub_v1.6.2.tar.gz -C raft-nodes/
-# 3. 将bitxhub、共识插件二进制和依赖库文件分别拷贝到4个节点的配置目录（以node1为例）
+tar -zxvf example_bitxhub_${version}.tar.gz -C raft-nodes/
+# 3. 将bitxhub二进制和依赖库文件分别拷贝到4个节点的配置目录（以node1为例）
 cp bitxhub raft-nodes/node1/
 cp libwasmer.dylib raft-nodes/node1/
-cp raft.so raft-nodes/node1/plugins/
 # 注意⚠️：节点2、3、4也需要执行上面拷贝操作，对于Linux系统依赖库文件是libwasmer.so
 # 以上操作均是示例，执行时二进制和配置文件压缩包的名称可能存在差异，需要根据实际情况进行调整
 ```
@@ -113,7 +109,7 @@ bitxhub.toml文件是BitXHub节点启动的主要配置文件。各配置项说�
 
 ```shell
 [order]
-  plugin = "plugins/raft.so" 
+  type = "raft" 
 ```
 
 
