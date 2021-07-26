@@ -101,7 +101,7 @@ func getNodeStatusByPid(ctx *cli.Context) error {
 		if err := json.Unmarshal(receipt.Ret, node); err != nil {
 			return fmt.Errorf("unmarshal receipt error: %w", err)
 		}
-		color.Green("node %d is %s\n", node.Pid, string(node.Status))
+		color.Green("node %s is %s\n", node.Pid, string(node.Status))
 	} else {
 		color.Red("get node status error: %s\n", string(receipt.Ret))
 	}
