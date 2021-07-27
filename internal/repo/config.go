@@ -57,6 +57,7 @@ type Config struct {
 	Ledger   `json:"ledger"`
 	Genesis  `json:"genesis"`
 	Security Security `toml:"security" json:"security"`
+	License  License  `toml:"license" json:"license"`
 }
 
 // Security are files used to setup connection with tls
@@ -160,6 +161,11 @@ type Executor struct {
 
 type Ledger struct {
 	Type string `toml:"type" json:"type"`
+}
+
+type License struct {
+	Key      string `toml:"key" json:"key"`
+	Verifier string `toml:"verifier" json:"verifier"`
 }
 
 func (c *Config) Bytes() ([]byte, error) {
