@@ -61,6 +61,7 @@ type Ballot struct {
 	Approve   string `json:"approve"`
 	Num       uint64 `json:"num"`
 	Reason    string `json:"reason"`
+	VoteTime  int64  `json:"vote_time"`
 }
 
 func (g *Governance) GetBallot(voterAddr, proposalId string) *boltvm.Response {
@@ -823,6 +824,7 @@ func (g *Governance) setVote(p *Proposal, addr string, approve string, reason st
 				Approve:   approve,
 				Num:       e.Weight,
 				Reason:    reason,
+				VoteTime:  g.GetTxTimeStamp(),
 			}
 			if repo.SuperAdminWeight == e.Weight {
 				p.IsSuperAdminVoted = true
