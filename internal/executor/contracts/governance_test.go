@@ -538,6 +538,7 @@ func TestGovernance_Vote(t *testing.T) {
 	mockStub.EXPECT().Caller().Return(addrNotVoted10).Times(1)
 	mockStub.EXPECT().Caller().Return(addrNotVoted11).Times(1)
 	mockStub.EXPECT().Caller().Return(addrNotVoted12).Times(1)
+	mockStub.EXPECT().GetTxTimeStamp().Return(int64(0)).AnyTimes()
 
 	// 1.cross invoke IsAvailable error
 	res := g.Vote(idNonexistent, BallotApprove, "")
