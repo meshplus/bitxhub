@@ -23,14 +23,13 @@ Pier跨链网关日志显示连接不到BitXHub节点（可参考查看pier节�
 重新启动的Pier跨链网关工作正常，可以连接BitXHub节点
 
 
-
 ### 场景二：Pier与应用链之间连接异常
 
 #### 现象
 
 Pier跨链网关启动时日志显示连接不到指定的应用链，或Pier处理跨链交易时日志显示一直重试连接应用链（可参考查看pier节点日志的操作说明）。
 
-<img src="../../assets/operation-error-02.png" alt="operation-error-02" style="zoom:100%;" />
+<img src="../../../assets/operation-error-02.png" alt="operation-error-02" style="zoom:100%;" />
 
 #### 问题定位
 

@@ -57,14 +57,18 @@ nav:
       - 快速开始: bitxhub/quick_start.md
       - 部署使用:
           - 环境准备: bitxhub/usage/env.md
-          - 中继链部署: bitxhub/usage/deploy_bitxhub.md
-          - 跨链网关部署--接入Fabric: bitxhub/usage/deploy_pier_access_fabric.md
-          - 跨链网关部署--接入Ethereum: bitxhub/usage/deploy_pier_access_ethereum.md
-          - 中继跨链部署: bitxhub/usage/inter_relay_deploy.md
-          - 跨链网关直连模式部署: bitxhub/usage/pier_direct_mode_deploy.md
+          - 整体说明: bitxhub/usage/overall_description.md
+          - 单中继架构部署:
+            - 中继链部署: bitxhub/usage/single_bitxhub/deploy_bitxhub.md
+            - 跨链网关部署: bitxhub/usage/single_bitxhub/deploy_pier.md
+          - 跨链网关直连模式部署: bitxhub/usage/direct_mode_pier/pier_direct_mode_deploy.md
+          - 系统验证: bitxhub/usage/status_verification.md
+      - 产品功能:
+        - 应用链管理: bitxhub/function/appchain.md
+        - 证书管理: bitxhub/function/cert_manage.md
+        - 跨链合约调用: bitxhub/function/cross_invoke.md
       - 开发手册:
-          - 共识算法插件: bitxhub/dev/consensus.md
-          - 跨链合约: bitxhub/dev/cross_contract.md
+          - 跨链合约开发: bitxhub/dev/cross_contract.md
           - 应用链插件编写: bitxhub/dev/plugin.md
           - 验证规则编写: bitxhub/dev/rule.md
       - 设计文档:
@@ -73,6 +77,10 @@ nav:
           - 跨链网关设计方案: bitxhub/design/pier.md
           - 隐私保护方案: bitxhub/design/privacy_protection.md
           - API流控设计: bitxhub/design/rate-limiter.md
+      - 运维:
+        - 查看日志: bitxhub/operation/node_log_view.md
+        - 节点状态检测: bitxhub/operation/node_status_check.md
+        - 异常问题处: bitxhub/operation/exception_problem_handling.md
       - 版本发布记录:
           - BitXHub v1.5.0: bitxhub/changelog/bitxhub_v1.5.0.md
           - BitXHub v1.4.0: bitxhub/changelog/bitxhub_v1.4.0.md

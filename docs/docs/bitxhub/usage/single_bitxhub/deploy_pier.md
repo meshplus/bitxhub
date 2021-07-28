@@ -13,7 +13,7 @@
 1. 下载pier-client-ethereum源码
 
    ```
-   git clone https://github.com/meshplus/pier-client-ethereum.git && git checkout ${VERSION}
+   git clone https://github.com/meshplus/pier-client-ethereum.git && git checkout v1.6.2
    ```
 
 2. 需要部署的合约文件就在example目录下，broker.sol是跨链管理合约，transfer.sol和data_swapper.sol是示例业务合约，需要首先部署broker合约。
@@ -34,13 +34,13 @@
 # 编译跨链网关本身
 cd $HOME
 git clone https://github.com/meshplus/pier.git
-cd pier && git checkout ${VERSION}
+cd pier && git checkout v1.6.2
 make prepare && make build
 
 # 编译Ethereum 插件
 cd $HOME
 git clone https://github.com/meshplus/pier-client-ethereum.git
-cd pier-client-ethereum && git checkout ${VERSION}
+cd pier-client-ethereum && git checkout v1.6.2
 make eth
 
 # 说明：1.ethereum插件编译之后会在插件项目的build目录生成eth-client文件；2.pier编译之后会在跨链网关项目bin目录生成同名的二进制文件。
@@ -50,7 +50,7 @@ make eth
 
 ##### 二进制直接下载
 
-除了源码编译外，我们也提供了直接下载Pier及其插件二进制的方式，下载地址链接如下：[Pier二进制包下载](https://github.com/meshplus/pier/releases) 和 [ethereum插件二进制包下载](https://github.com/meshplus/pier-client-ethereum/releases)链接中已经包含了所需的二进制程序和依赖库，您只需跟据操作系统的实际情况进行选择和下载即可。
+除了源码编译外，我们也提供了直接下载Pier及其插件二进制的方式，下载地址链接如下：[Pier二进制包下载](https://github.com/meshplus/pier/releases/tag/v1.6.2) 和 [ethereum插件二进制包下载](https://github.com/meshplus/pier-client-ethereum/releases/tag/v1.6.2)链接中已经包含了所需的二进制程序和依赖库，您只需跟据操作系统的实际情况进行选择和下载即可。
 
 #### 修改Pier自身的配置
 
@@ -229,7 +229,7 @@ pier --repo=~/.pier start
 2. 获取需要部署的合约文件并解压（需要与pier的版本一致，下面的{VERSION}根据实际情况更改，例如 v1.6.2）
 
    ```
-   git clone https://github.com/meshplus/pier-client-ethereum.git && git checkout ${VERSION}
+   git clone https://github.com/meshplus/pier-client-ethereum.git && git checkout v1.6.2
    # 需要部署的合约文件就在example目录下
    # 或者是用以下方式直接下载合约压缩包
    wget https://github.com/meshplus/pier-client-fabric/raw/{VERSION}/example/contracts.zip
@@ -275,13 +275,13 @@ fabric-cli chaincode invoke --cid mychannel --ccid=broker \
 # 编译跨链网关本身
 cd $HOME
 git clone https://github.com/meshplus/pier.git
-cd pier && git checkout ${VERSION}
+cd pier && git checkout v1.6.2
 make prepare && make build
 
 # 编译Ethereum 插件
 cd $HOME
 git clone https://github.com/meshplus/pier-client-fabric.git
-cd pier-client-fabric && git checkout ${VERSION}
+cd pier-client-fabric && git checkout v1.6.2
 make fabric1.4
 
 # 说明：1.fabric插件编译之后会在插件项目的build目录生成fabric-client-1.4文件；2.pier编译之后会在跨链网关项目bin目录生成同名的二进制文件。
@@ -291,7 +291,7 @@ make fabric1.4
 
 ##### 二进制直接下载
 
-除了源码编译外，我们也提供了直接下载Pier及其插件二进制的方式，下载地址链接如下：[Pier二进制包下载](https://github.com/meshplus/pier/releases) 和 [fabric插件二进制包下载](https://github.com/meshplus/pier-client-fabric/releases)链接中已经包含了所需的二进制程序和依赖库，您只需跟据操作系统的实际情况进行选择和下载即可。
+除了源码编译外，我们也提供了直接下载Pier及其插件二进制的方式，下载地址链接如下：[Pier二进制包下载](https://github.com/meshplus/pier/releases/tag/v1.6.2) 和 [fabric插件二进制包下载](https://github.com/meshplus/pier-client-fabric/releases/tag/v1.6.2)链接中已经包含了所需的二进制程序和依赖库，您只需跟据操作系统的实际情况进行选择和下载即可。
 
 #### 修改Pier自身的配置
 
