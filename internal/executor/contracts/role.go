@@ -10,6 +10,7 @@ import (
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/governance"
 	node_mgr "github.com/meshplus/bitxhub-core/node-mgr"
+	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/repo"
@@ -709,6 +710,11 @@ func (rm *RoleManager) CheckPermission(permission string, regulatedAddr string, 
 }
 
 func (rm *RoleManager) checkRoleInfo(role *Role) error {
+	_, err := types.HexDecodeString(role.ID)
+	if err != nil {
+		return fmt.Errorf("illegal role id")
+	}
+
 	switch role.RoleType {
 	case GovernanceAdmin:
 	case AuditAdmin:
