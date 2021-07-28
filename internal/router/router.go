@@ -2,7 +2,6 @@ package router
 
 import (
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxid"
 )
 
 type Router interface {
@@ -16,13 +15,13 @@ type Router interface {
 	PutBlockAndMeta(*pb.Block, *pb.InterchainMeta)
 
 	// AddPier
-	AddPier(subscribeDID bitxid.DID, pierID string, isUnion bool) (chan *pb.InterchainTxWrappers, error)
+	AddPier(pierID string) (chan *pb.InterchainTxWrappers, error)
 
 	// RemovePier
-	RemovePier(subscribeDID bitxid.DID, pierID string, isUnion bool)
+	RemovePier(pierID string)
 
 	// GetBlockHeader
 	GetBlockHeader(begin, end uint64, ch chan<- *pb.BlockHeader) error
 
-	GetInterchainTxWrappers(did string, begin, end uint64, ch chan<- *pb.InterchainTxWrappers) error
+	GetInterchainTxWrappers(appchainID string, begin, end uint64, ch chan<- *pb.InterchainTxWrappers) error
 }

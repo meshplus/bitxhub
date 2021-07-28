@@ -19,13 +19,9 @@ import (
 
 var (
 	caller           = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
-	appchainMethod   = "did:bitxhub:appchain1:."
-	appchainMethod2  = "did:bitxhub:appchain2:."
+	appchainID       = "appchain1"
+	appchainID2      = "appchain2"
 	appchainAdminDID = "did:bitxhub:appchain1:0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
-	relayAdminDID    = "did:bitxhub:relay:0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
-	docAddr          = "/ipfs/QmQVxzUqN2Yv2UHUQXYwH8dSNkM8ReJ9qPqwJsf8zzoNUi"
-	docHash          = "QmQVxzUqN2Yv2UHUQXYwH8dSNkM8ReJ9qPqwJsf8zzoNUi"
-	fakeSig          = []byte("fake signature")
 )
 
 func TestGovernance_SubmitProposal(t *testing.T) {
@@ -664,7 +660,7 @@ func TestGovernance_SubmitProposal_LockLowPriorityProposal(t *testing.T) {
 	idExistent := "idExistent-1"
 
 	chain := &appchainMgr.Appchain{
-		ID:            appchainMethod,
+		ID:            appchainID,
 		Status:        governance.GovernanceAvailable,
 		Name:          "appchain A",
 		Validators:    "",
@@ -680,7 +676,7 @@ func TestGovernance_SubmitProposal_LockLowPriorityProposal(t *testing.T) {
 	proposalFreeze := &Proposal{
 		Id:         idExistent,
 		EventType:  governance.EventFreeze,
-		ObjId:      appchainMethod,
+		ObjId:      appchainID,
 		Des:        "des",
 		Typ:        AppchainMgr,
 		Status:     PROPOSED,
@@ -724,9 +720,9 @@ func TestGovernance_SubmitProposal_LockLowPriorityProposal(t *testing.T) {
 	mockStub.EXPECT().CurrentCaller().Return("").AnyTimes()
 	mockStub.EXPECT().GetTxTimeStamp().Return(int64(1)).AnyTimes()
 
-	res := g.SubmitProposal(idExistent, string(governance.EventUpdate), "des", string(AppchainMgr), appchainMethod, string(governance.GovernanceAvailable), chainData)
+	res := g.SubmitProposal(idExistent, string(governance.EventUpdate), "des", string(AppchainMgr), appchainID, string(governance.GovernanceAvailable), chainData)
 	assert.False(t, res.Ok, string(res.Result))
-	res = g.SubmitProposal(idExistent, string(governance.EventLogout), "des", string(AppchainMgr), appchainMethod, string(governance.GovernanceAvailable), chainData)
+	res = g.SubmitProposal(idExistent, string(governance.EventLogout), "des", string(AppchainMgr), appchainID, string(governance.GovernanceAvailable), chainData)
 	assert.True(t, res.Ok, string(res.Result))
 }
 
@@ -757,7 +753,7 @@ func TestGovernance_WithdrawProposal(t *testing.T) {
 	}
 
 	chain := &appchainMgr.Appchain{
-		ID:            appchainMethod,
+		ID:            appchainID,
 		Status:        governance.GovernanceAvailable,
 		Name:          "appchain A",
 		Validators:    "",
@@ -773,7 +769,7 @@ func TestGovernance_WithdrawProposal(t *testing.T) {
 	proposalFreeze := &Proposal{
 		Id:             idExistent,
 		EventType:      governance.EventFreeze,
-		ObjId:          appchainMethod,
+		ObjId:          appchainID,
 		Des:            "des",
 		Typ:            AppchainMgr,
 		Status:         PROPOSED,
@@ -789,7 +785,7 @@ func TestGovernance_WithdrawProposal(t *testing.T) {
 	proposalUpdate := &Proposal{
 		Id:         idExistent2,
 		EventType:  governance.EventUpdate,
-		ObjId:      appchainMethod,
+		ObjId:      appchainID,
 		Des:        "des",
 		Typ:        AppchainMgr,
 		Status:     PAUSED,

@@ -19,7 +19,6 @@ import (
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/model"
-	"github.com/meshplus/bitxid"
 	"github.com/meshplus/eth-kit/ledger"
 	solsha3 "github.com/miguelmota/go-solidity-sha3"
 	"github.com/sirupsen/logrus"
@@ -72,16 +71,16 @@ func (b *BrokerAPI) GetReceipt(hash *types.Hash) (*pb.Receipt, error) {
 	return b.bxh.Ledger.GetReceipt(hash)
 }
 
-func (b *BrokerAPI) AddPier(did bitxid.DID, pierID string, isUnion bool) (chan *pb.InterchainTxWrappers, error) {
-	return b.bxh.Router.AddPier(did, pierID, isUnion)
+func (b *BrokerAPI) AddPier(pierID string) (chan *pb.InterchainTxWrappers, error) {
+	return b.bxh.Router.AddPier(pierID)
 }
 
 func (b *BrokerAPI) GetBlockHeader(begin, end uint64, ch chan<- *pb.BlockHeader) error {
 	return b.bxh.Router.GetBlockHeader(begin, end, ch)
 }
 
-func (b *BrokerAPI) GetInterchainTxWrappers(did string, begin, end uint64, ch chan<- *pb.InterchainTxWrappers) error {
-	return b.bxh.Router.GetInterchainTxWrappers(did, begin, end, ch)
+func (b *BrokerAPI) GetInterchainTxWrappers(appchainID string, begin, end uint64, ch chan<- *pb.InterchainTxWrappers) error {
+	return b.bxh.Router.GetInterchainTxWrappers(appchainID, begin, end, ch)
 }
 
 func (b *BrokerAPI) GetBlock(mode string, value string) (*pb.Block, error) {
@@ -139,8 +138,8 @@ func (b *BrokerAPI) GetBlockHeaders(start uint64, end uint64) ([]*pb.BlockHeader
 	return blockHeaders, nil
 }
 
-func (b *BrokerAPI) RemovePier(did bitxid.DID, pierID string, isUnion bool) {
-	b.bxh.Router.RemovePier(did, pierID, isUnion)
+func (b *BrokerAPI) RemovePier(pierID string) {
+	b.bxh.Router.RemovePier(pierID)
 }
 
 func (b *BrokerAPI) OrderReady() error {
@@ -284,23 +283,6 @@ func (b *BrokerAPI) requestBurnSignFromPeer(pid uint64, hash string) (string, []
 
 func (b *BrokerAPI) GetSign(content string, typ pb.GetMultiSignsRequest_Type) (string, []byte, error) {
 	switch typ {
-	case pb.GetMultiSignsRequest_ASSET_EXCHANGE:
-		id := content
-		ok, record := b.bxh.Ledger.GetState(constant.AssetExchangeContractAddr.Address(), []byte(contracts.AssetExchangeKey(id)))
-		if !ok {
-			return "", nil, fmt.Errorf("cannot find asset exchange record with id %s", id)
-		}
-
-		aer := contracts.AssetExchangeRecord{}
-		if err := json.Unmarshal(record, &aer); err != nil {
-			return "", nil, err
-		}
-
-		addr, sign, err := b.getSign(fmt.Sprintf("%s-%d", id, aer.Status))
-		if err != nil {
-			return "", nil, fmt.Errorf("fetch asset exchange sign: %w", err)
-		}
-		return addr, sign, nil
 	case pb.GetMultiSignsRequest_IBTP:
 		addr, sign, err := b.getSign(content)
 		if err != nil {
@@ -324,7 +306,6 @@ func (b *BrokerAPI) GetSign(content string, typ pb.GetMultiSignsRequest_Type) (s
 	default:
 		return "", nil, fmt.Errorf("unsupported get sign type")
 	}
-
 }
 
 func (b *BrokerAPI) handleMultiSignsBurnReq(hash string) (string, []byte, error) {
