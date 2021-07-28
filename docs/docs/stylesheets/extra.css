@@ -117,3 +117,7 @@
 .md-content__button {
   width: 18px;
 }
+
+.md-typeset pre>code::-webkit-scrollbar-thumb {
+  background-color: transparent !important;
+}

@@ -10,7 +10,7 @@
 
 正常情况下可以看到bitxhub节点的进程存活。
 
-<img src="../../assets/bitxhub-node-status.png" alt="bitxhub-node-status" style="zoom:50%;" />
+<img src="../../../assets/bitxhub-node-status.png" alt="bitxhub-node-status" style="zoom:50%;" />
 
 ### Pier
 
@@ -20,5 +20,5 @@
 
 正常情况下可以看到pier节点的进程存活。
 
-<img src="../../assets/pier-node-status.png" alt="pier-node-status" style="zoom:50%;" />
+<img src="../../../assets/pier-node-status.png" alt="pier-node-status" style="zoom:50%;" />
 

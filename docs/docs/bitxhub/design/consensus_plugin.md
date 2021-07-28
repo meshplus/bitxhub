@@ -16,35 +16,35 @@
 
 ```go
 type Order interface {
-//开启共识服务
-Start() error
+	//开启共识服务
+	Start() error
 
-//停止共识服务，关闭共识服务资源
-Stop()
+	//停止共识服务，关闭共识服务资源
+	Stop()
 
-//交易发送到共识服务，共识服务将处理并打包该交易
-Prepare(tx *pb.Transaction) error
+	//交易发送到共识服务，共识服务将处理并打包该交易
+	Prepare(tx *pb.Transaction) error
 
-//返回打包的区块
-Commit() chan *pb.Block
+	//返回打包的区块
+	Commit() chan *pb.Block
 
-//从网络接收到的共识消息
-Step(ctx context.Context, msg []byte) error
+	//从网络接收到的共识消息
+	Step(ctx context.Context, msg []byte) error
 
-//集群中产生了新Leader，系统通过该接口判断共识服务是否正常
-Ready() bool
+	//集群中产生了新Leader，系统通过该接口判断共识服务是否正常
+	Ready() bool
 
-//系统会通知该接口已经持久化的区块，
-ReportState(height uint64, hash types.Hash)
+	//系统会通知该接口已经持久化的区块，
+	ReportState(height uint64, hash types.Hash)
 
-//集群中可以正常工作的最少节点数量，如在raft中要求正常节点数是N/2+1
-Quorum() uint64
+	//集群中可以正常工作的最少节点数量，如在raft中要求正常节点数是N/2+1
+	Quorum() uint64
 
-//获取账户最新的nonce
-GetPendingNonceByAccount(account string) uint64
+    //获取账户最新的nonce
+    GetPendingNonceByAccount(account string) uint64
 
-//从共识删除指定的节点
-DelNode(delID uint64) error
+    //从共识删除指定的节点
+    DelNode(delID uint64) error
 }
 ```
 
