@@ -10,6 +10,7 @@
 pier [--repo <repository>] appchain register --name <appchain name> --type <appchain type> --desc <description> --version <appchain version> --validators <path of appchain validators file> --consensusType <appchain consensus type> [--addr <bitxhub node address>]
 ```
 参数解释：
+
 * --repo：可选参数，指定pier配置文件所在目录，如果不指定，默认使用$HOME/.pier目录。
 * --name：必选参数，指定应用链名称。
 * --type：必选参数，指定应用链类型，如hyperchain、fabric等。
@@ -26,6 +27,7 @@ pier [--repo <repository>] appchain register --name <appchain name> --type <appc
 bitxhub [--repo <repository>] client governance vote --id <proposal id> --info <voting information>  --reason <reason to vote>
 ```
 参数解释：
+
 * --repo：可选参数，指定bitxhub节点配置文件所在目录，如果不指定，默认使用$HOME/.bitxhub目录。
 * --id：必选参数，指定提案id。
 * --info：必选参数，指定投票信息，approve或者reject。
