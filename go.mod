@@ -22,16 +22,15 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d
 	github.com/hokaccha/go-prettyjson v0.0.0-20190818114111-108c894c2c0e
-	github.com/hyperledger/fabric-amcl v0.0.0-20210603140002-2670f91851c8 // indirect
 	github.com/juju/ratelimit v1.0.1
 	github.com/libp2p/go-libp2p-core v0.5.6
 	github.com/looplab/fsm v0.2.0
 	github.com/magiconair/properties v1.8.4
-	github.com/meshplus/bitxhub-core v1.3.1-0.20210721024146-8981da15ef8c
+	github.com/meshplus/bitxhub-core v1.3.1-0.20210728060830-9a6e4a35569b
 	github.com/meshplus/bitxhub-kit v1.2.1-0.20210616114532-4849447f09e1
-	github.com/meshplus/bitxhub-model v1.2.1-0.20210629020432-d98febd566c1
+	github.com/meshplus/bitxhub-model v1.2.1-0.20210728054131-8a811dccae99
 	github.com/meshplus/bitxid v0.0.0-20210412025850-e0eaf0f9063a
-	github.com/meshplus/did-registry v0.0.0-20210413035015-509c6c3a0bae
+	github.com/meshplus/did-registry v0.0.0-20210728060637-3a9c0b3920c2
 	github.com/meshplus/eth-kit v0.0.0-20210702050624-d6220d180243
 	github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd
 	github.com/meshplus/go-lightp2p v0.0.0-20210617153734-471d08b829f8
