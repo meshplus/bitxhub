@@ -27,9 +27,9 @@ func (cbs *ChainBrokerService) Subscribe(req *pb.SubscriptionRequest, server pb.
 	case pb.SubscriptionRequest_BLOCK_HEADER.String():
 		return cbs.handleBlockHeaderSubscription(server)
 	case pb.SubscriptionRequest_INTERCHAIN_TX_WRAPPER.String():
-		return cbs.handleInterchainTxWrapperSubscription(server, req.Extra, false)
+		return cbs.handleInterchainTxWrapperSubscription(server, req.Extra)
 	case pb.SubscriptionRequest_UNION_INTERCHAIN_TX_WRAPPER.String():
-		return cbs.handleInterchainTxWrapperSubscription(server, req.Extra, true)
+		return cbs.handleInterchainTxWrapperSubscription(server, req.Extra)
 	case pb.SubscriptionRequest_EVM_LOG.String():
 		return cbs.handleEvmLogSubscription(server, req.Extra)
 	}
@@ -115,15 +115,10 @@ func (cbs *ChainBrokerService) handleInterchainTxSubscription(server pb.ChainBro
 }
 
 func (cbs *ChainBrokerService) handleInterchainTxWrapperSubscription(server pb.ChainBroker_SubscribeServer,
-	keyBytes []byte, isUnion bool) error {
-	key, err := parseSubKey(keyBytes)
-	if err != nil {
-		return err
-	}
-	appchainDID := bitxid.DID(key.AppchainDID)
-	pierID := key.PierID
-	ch, err := cbs.api.Broker().AddPier(appchainDID, pierID, isUnion)
-	defer cbs.api.Broker().RemovePier(appchainDID, pierID, isUnion)
+	extra []byte) error {
+	pierID := string(extra)
+	ch, err := cbs.api.Broker().AddPier(pierID)
+	defer cbs.api.Broker().RemovePier(pierID)
 	if err != nil {
 		return err
 	}

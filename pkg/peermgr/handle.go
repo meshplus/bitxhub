@@ -198,54 +198,6 @@ func (swarm *Swarm) handleFetchBlockSignMessage(s network.Stream, data []byte) {
 }
 
 func (swarm *Swarm) handleFetchAssetExchangeSignMessage(s network.Stream, data []byte) {
-	handle := func(id string) (string, []byte, error) {
-		swarm.logger.WithField("asset exchange id", id).Debug("Handle fetching asset exchange sign message")
-
-		ok, record := swarm.ledger.GetState(constant.AssetExchangeContractAddr.Address(), []byte(contracts.AssetExchangeKey(id)))
-		if !ok {
-			return "", nil, fmt.Errorf("cannot find asset exchange record with id %s", id)
-		}
-
-		aer := contracts.AssetExchangeRecord{}
-		if err := json.Unmarshal(record, &aer); err != nil {
-			return "", nil, err
-		}
-
-		hash := sha256.Sum256([]byte(fmt.Sprintf("%s-%d", id, aer.Status)))
-		key := swarm.repo.Key
-		sign, err := key.PrivKey.Sign(hash[:])
-		if err != nil {
-			return "", nil, fmt.Errorf("fetch asset exchange sign: %w", err)
-		}
-
-		return key.Address, sign, nil
-	}
-
-	address, signed, err := handle(string(data))
-	if err != nil {
-		swarm.logger.Errorf("handle fetch-asset-exchange-sign: %s", err)
-		return
-	}
-
-	m := model.MerkleWrapperSign{
-		Address:   address,
-		Signature: signed,
-	}
-
-	body, err := m.Marshal()
-	if err != nil {
-		swarm.logger.Errorf("marshal merkle wrapper sign: %s", err)
-		return
-	}
-
-	msg := &pb.Message{
-		Type: pb.Message_FETCH_ASSET_EXCHANGE_SIGN_ACK,
-		Data: body,
-	}
-
-	if err := swarm.SendWithStream(s, msg); err != nil {
-		swarm.logger.Errorf("send asset exchange sign back: %s", err)
-	}
 }
 
 func (swarm *Swarm) handleFetchIBTPSignMessage(s network.Stream, data []byte) {

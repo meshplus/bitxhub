@@ -6,7 +6,6 @@ import (
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
-	"github.com/meshplus/bitxid"
 	"github.com/meshplus/eth-kit/ledger"
 )
 
@@ -33,10 +32,10 @@ type BrokerAPI interface {
 	GetStateLedger() ledger.StateLedger
 
 	// AddPier
-	AddPier(did bitxid.DID, pierID string, isUnion bool) (chan *pb.InterchainTxWrappers, error)
+	AddPier(pierID string) (chan *pb.InterchainTxWrappers, error)
 
 	// RemovePier
-	RemovePier(did bitxid.DID, pierID string, isUnion bool)
+	RemovePier(pierID string)
 
 	GetBlockHeader(begin, end uint64, ch chan<- *pb.BlockHeader) error
 

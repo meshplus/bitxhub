@@ -21,13 +21,12 @@ import (
 )
 
 const (
-	srcMethod   = "did:bitxhub:appchain1:."
-	dstMethod   = "did:bitxhub:appchain2:."
-	otherMethod = "did:bitxhub:appchain3:."
-	from        = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b991"
-	to          = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b992"
-	did         = "did:bitxhub:appchain001:0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b992"
-	other       = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b993"
+	srcChainID   = "appchain1"
+	dstChainID   = "appchain2"
+	otherChainID = "appchain3"
+	srcServiceID = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b991"
+	dstServiceID = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b992"
+	other        = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b993"
 )
 
 func TestInterchainRouter_GetInterchainTxWrappers(t *testing.T) {
@@ -40,7 +39,7 @@ func TestInterchainRouter_GetInterchainTxWrappers(t *testing.T) {
 
 	m := make(map[string]*pb.VerifiedIndexSlice, 0)
 
-	m[dstMethod] = &pb.VerifiedIndexSlice{
+	m[dstChainID] = &pb.VerifiedIndexSlice{
 		Slice: []*pb.VerifiedIndex{{0, true}},
 	}
 	im := &pb.InterchainMeta{
@@ -72,13 +71,13 @@ func TestInterchainRouter_GetInterchainTxWrappers(t *testing.T) {
 	wrappersCh3 := make(chan *pb.InterchainTxWrappers, 1)
 	wrappersCh4 := make(chan *pb.InterchainTxWrappers, 1)
 
-	err = router.GetInterchainTxWrappers(dstMethod, 1, 1, wrappersCh1)
+	err = router.GetInterchainTxWrappers(dstChainID, 1, 1, wrappersCh1)
 	require.Nil(t, err)
-	err = router.GetInterchainTxWrappers(dstMethod, 2, 2, wrappersCh2)
+	err = router.GetInterchainTxWrappers(dstChainID, 2, 2, wrappersCh2)
 	require.NotNil(t, err)
-	err = router.GetInterchainTxWrappers(dstMethod, 3, 3, wrappersCh3)
+	err = router.GetInterchainTxWrappers(dstChainID, 3, 3, wrappersCh3)
 	require.NotNil(t, err)
-	err = router.GetInterchainTxWrappers(otherMethod, 1, 1, wrappersCh4)
+	err = router.GetInterchainTxWrappers(otherChainID, 1, 1, wrappersCh4)
 	require.Nil(t, err)
 
 	select {
@@ -137,10 +136,9 @@ func TestInterchainRouter_GetBlockHeader(t *testing.T) {
 }
 
 func TestInterchainRouter_AddPier(t *testing.T) {
-	isUnion := false
 	router := testStartRouter(t)
 
-	interchainWrappersC, err := router.AddPier(dstMethod, to, isUnion)
+	interchainWrappersC, err := router.AddPier(dstChainID)
 	require.Nil(t, err)
 
 	var txs []pb.Transaction
@@ -152,7 +150,7 @@ func TestInterchainRouter_AddPier(t *testing.T) {
 
 	m := make(map[string]*pb.VerifiedIndexSlice, 0)
 
-	m[dstMethod] = &pb.VerifiedIndexSlice{
+	m[dstChainID] = &pb.VerifiedIndexSlice{
 		Slice: []*pb.VerifiedIndex{{0, true}},
 	}
 	im := &pb.InterchainMeta{
@@ -171,16 +169,15 @@ func TestInterchainRouter_AddPier(t *testing.T) {
 		require.Errorf(t, fmt.Errorf("not found interchainWrappers"), "")
 	}
 
-	router.RemovePier(dstMethod, to, isUnion)
+	router.RemovePier(dstChainID)
 
 	require.Nil(t, router.Stop())
 }
 
 func TestInterchainRouter_AddNonexistentPier(t *testing.T) {
-	isUnion := false
 	router := testStartRouter(t)
 
-	interchainWrappersC, err := router.AddPier(srcMethod, to, isUnion)
+	interchainWrappersC, err := router.AddPier(dstChainID)
 	require.Nil(t, err)
 
 	var txs []pb.Transaction
@@ -193,7 +190,7 @@ func TestInterchainRouter_AddNonexistentPier(t *testing.T) {
 	m := make(map[string]*pb.VerifiedIndexSlice, 0)
 
 	// pier of other is not added
-	m[otherMethod] = &pb.VerifiedIndexSlice{
+	m[otherChainID] = &pb.VerifiedIndexSlice{
 		Slice: []*pb.VerifiedIndex{{0, true}},
 	}
 	im := &pb.InterchainMeta{
@@ -211,16 +208,15 @@ func TestInterchainRouter_AddNonexistentPier(t *testing.T) {
 		require.Errorf(t, fmt.Errorf("not found interchainWrappers"), "")
 	}
 
-	router.RemovePier(srcMethod, to, isUnion)
+	router.RemovePier(dstChainID)
 
 	require.Nil(t, router.Stop())
 }
 
 func TestInterchainRouter_AddUnionPier(t *testing.T) {
-	isUnion := true
 	router := testStartRouter(t)
 
-	interchainWrappersC, err := router.AddPier(srcMethod, to, isUnion)
+	interchainWrappersC, err := router.AddPier(dstChainID)
 	require.Nil(t, err)
 
 	var txs []pb.Transaction
@@ -232,7 +228,7 @@ func TestInterchainRouter_AddUnionPier(t *testing.T) {
 
 	m := make(map[string]*pb.VerifiedIndexSlice, 0)
 
-	m[otherMethod] = &pb.VerifiedIndexSlice{
+	m[otherChainID] = &pb.VerifiedIndexSlice{
 		Slice: []*pb.VerifiedIndex{{0, true}},
 	}
 	im := &pb.InterchainMeta{
@@ -251,7 +247,7 @@ func TestInterchainRouter_AddUnionPier(t *testing.T) {
 		require.Errorf(t, fmt.Errorf("not found interchainWrappers"), "")
 	}
 
-	router.RemovePier(srcMethod, to, isUnion)
+	router.RemovePier(dstChainID)
 
 	require.Nil(t, router.Stop())
 }
@@ -262,11 +258,11 @@ func testStartRouter(t *testing.T) *InterchainRouter {
 	var ret [][]byte
 
 	app := &appchain_mgr.Appchain{
-		ID:   from,
+		ID:   srcChainID,
 		Name: "app",
 	}
 	bxh := &appchain_mgr.Appchain{
-		ID:   to,
+		ID:   dstChainID,
 		Name: "bxh",
 	}
 
@@ -343,9 +339,7 @@ func mockTxData(t *testing.T, dataType pb.TransactionData_Type, vmType pb.Transa
 
 func mockIBTP(t *testing.T, index uint64, typ pb.IBTP_Type) *pb.IBTP {
 	content := pb.Content{
-		SrcContractId: from,
-		DstContractId: from,
-		Func:          "set",
+		Func: "set",
 	}
 
 	bytes, err := content.Marshal()
@@ -358,11 +352,10 @@ func mockIBTP(t *testing.T, index uint64, typ pb.IBTP_Type) *pb.IBTP {
 	assert.Nil(t, err)
 
 	return &pb.IBTP{
-		From:      srcMethod,
-		To:        otherMethod,
-		Payload:   ibtppd,
-		Index:     index,
-		Type:      typ,
-		Timestamp: time.Now().UnixNano(),
+		From:    fmt.Sprintf("%s:%s", srcChainID, srcServiceID),
+		To:      fmt.Sprintf("%s:%s", dstChainID, dstServiceID),
+		Payload: ibtppd,
+		Index:   index,
+		Type:    typ,
 	}
 }

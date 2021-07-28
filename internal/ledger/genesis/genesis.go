@@ -69,6 +69,8 @@ func Initialize(genesis *repo.Genesis, nodes []*repo.NetworkNodes, primaryN uint
 		lg.SetState(constant.NodeManagerContractAddr.Address(), []byte(fmt.Sprintf("%s-%s", node_mgr.NODEPREFIX, node.Pid)), nodeData)
 	}
 
+	lg.SetState(constant.InterchainContractAddr.Address(), []byte(contracts.BitXHubID), []byte(fmt.Sprintf("%d", genesis.ChainID)))
+
 	// avoid being deleted by complex state ledger
 	for addr := range executor.GetBoltContracts() {
 		lg.SetNonce(types.NewAddressByStr(addr), 1)

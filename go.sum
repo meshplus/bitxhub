@@ -809,8 +809,8 @@ github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20210318102029-494ee3060b0c/go.mod
 github.com/meshplus/bitxhub-core v1.3.1-0.20210604120052-4ade98a9c4f1/go.mod h1:eUSVdWko1XHGRNJNWrRDUza7t0UxdIzXF94iTRXVFJU=
 github.com/meshplus/bitxhub-core v1.3.1-0.20210721024146-8981da15ef8c h1:7Dmbw6GQV4KfiHKDfDwxkJ/akEamDyS4TV8FoZ2K6VI=
 github.com/meshplus/bitxhub-core v1.3.1-0.20210721024146-8981da15ef8c/go.mod h1:zkTq/egf0xUOiQaKFSIZ4Cxx/TvCbpebUmpnsgaMZr0=
-github.com/meshplus/bitxhub-core v1.3.1-0.20210728060830-9a6e4a35569b h1:97Azd6l7N0D2oA9mU7qFRRyx78GLoWGTYABOEu4KBu4=
-github.com/meshplus/bitxhub-core v1.3.1-0.20210728060830-9a6e4a35569b/go.mod h1:viOnrTGbWt22cl487k4+99i4Si0Wi/xQ7VNUXqd6Giw=
+github.com/meshplus/bitxhub-core v1.3.1-0.20210802080154-5453911a7489 h1:i6wTpprpGJJyF66pSGcwBfjnlUzh5/Z3QUqLpPUPT9s=
+github.com/meshplus/bitxhub-core v1.3.1-0.20210802080154-5453911a7489/go.mod h1:yP/sWObKXNTovvopImIWNIy50vpdCdlrZkZM1RJoxts=
 github.com/meshplus/bitxhub-kit v1.1.1/go.mod h1:r4l4iqn0RPJreb/OmoYKfjCjQJrXpZX++6Qc31VG/1k=
 github.com/meshplus/bitxhub-kit v1.1.2-0.20201021105954-468d0a9d7957/go.mod h1:r4l4iqn0RPJreb/OmoYKfjCjQJrXpZX++6Qc31VG/1k=
 github.com/meshplus/bitxhub-kit v1.1.2-0.20201023030558-9f36554d5d5d/go.mod h1:r4l4iqn0RPJreb/OmoYKfjCjQJrXpZX++6Qc31VG/1k=
