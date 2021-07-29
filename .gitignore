@@ -29,4 +29,4 @@ testdata/storage
 imports/imports.go
 goent.mod
 goent.sum
-dist
+dist/
