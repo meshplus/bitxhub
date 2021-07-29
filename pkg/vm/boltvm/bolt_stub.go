@@ -19,6 +19,8 @@ type BoltStubImpl struct {
 	ve  validator.Engine
 }
 
+
+
 func (b *BoltStubImpl) Caller() string {
 	return b.ctx.Caller.String()
 }
@@ -43,6 +45,10 @@ func (b *BoltStubImpl) GetTxHash() *types.Hash {
 
 func (b *BoltStubImpl) GetTxIndex() uint64 {
 	return b.ctx.TransactionIndex
+}
+
+func (b *BoltStubImpl) GetTxTimestamp() int64 {
+	return b.ctx.TransactionTimestamp
 }
 
 func (b *BoltStubImpl) Has(key string) bool {

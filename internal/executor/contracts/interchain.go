@@ -29,6 +29,20 @@ type InterchainManager struct {
 	boltvm.Stub
 }
 
+type InterchainMeta struct {
+	TargetChain string `json:"target_chain"`
+	TxHash      string `json:"tx_hash"`
+	Timestamp   int64  `json:"timestamp"`
+}
+
+type InterchainInfo struct {
+	ChainId            string            `json:"chain_id"`
+	InterchainCounter  uint64            `json:"interchain_counter"`
+	ReceiptCounter     uint64            `json:"receipt_counter"`
+	SendInterchains    []*InterchainMeta `json:"send_interchains"`
+	ReceiptInterchains []*InterchainMeta `json:"receipt_interchains"`
+}
+
 type BxhValidators struct {
 	Addresses []string `json:"addresses"`
 }
@@ -50,6 +64,37 @@ func (x *InterchainManager) Register(chainId string) *boltvm.Response {
 	}
 
 	return boltvm.Success(body)
+}
+
+func (x *InterchainManager) GetInterchainInfo(chainId string) *boltvm.Response {
+	interchain, ok := x.getInterchain(chainId)
+	info := &InterchainInfo{
+		ChainId:            chainId,
+		SendInterchains:    []*InterchainMeta{},
+		ReceiptInterchains: []*InterchainMeta{},
+	}
+	if !ok {
+		interchain = &pb.Interchain{
+			ID:                   chainId,
+			InterchainCounter:    make(map[string]uint64),
+			ReceiptCounter:       make(map[string]uint64),
+			SourceReceiptCounter: make(map[string]uint64),
+		}
+	}
+	for _, counter := range interchain.InterchainCounter {
+		info.InterchainCounter += counter
+	}
+
+	for _, counter := range interchain.ReceiptCounter {
+		info.ReceiptCounter += counter
+	}
+	x.GetObject(x.indexSendInterchainMeta(chainId), &info.SendInterchains)
+	x.GetObject(x.indexReceiptInterchainMeta(chainId), &info.ReceiptInterchains)
+	data, err := json.Marshal(&info)
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+	return boltvm.Success(data)
 }
 
 func (x *InterchainManager) DeleteInterchain(id string) *boltvm.Response {
@@ -293,6 +338,16 @@ func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *pb.Interchain
 		x.setInterchain(ibtp.From, interchain)
 		x.AddObject(x.indexMapKey(ibtp.ID()), x.GetTxHash())
 		m[ibtp.To] = x.GetTxIndex()
+
+		meta := &InterchainMeta{
+			TargetChain: ibtp.To,
+			TxHash:      x.GetTxHash().String(),
+			Timestamp:   x.GetTxTimestamp(),
+		}
+		x.setInterchainMeta(x.indexSendInterchainMeta(ibtp.From), meta)
+
+		meta.TargetChain = ibtp.From
+		x.setInterchainMeta(x.indexReceiptInterchainMeta(ibtp.To), meta)
 	} else {
 		interchain.ReceiptCounter[ibtp.To] = ibtp.Index
 		x.setInterchain(ibtp.From, interchain)
@@ -302,10 +357,19 @@ func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *pb.Interchain
 		ic.SourceReceiptCounter[ibtp.From] = ibtp.Index
 		x.setInterchain(ibtp.To, ic)
 		x.SetObject(x.indexReceiptMapKey(ibtp.ID()), x.GetTxHash())
-
 	}
 
 	x.PostInterchainEvent(m)
+}
+
+func (x *InterchainManager) setInterchainMeta(indexKey string, meta *InterchainMeta) {
+	var metas []*InterchainMeta
+	x.GetObject(indexKey, &metas)
+	if len(metas) >= 5 {
+		metas = metas[1:]
+	}
+	metas = append(metas, meta)
+	x.SetObject(indexKey, &metas)
 }
 
 func (x *InterchainManager) beginMultiTargetsTransaction(ibtps *pb.IBTPs) *boltvm.Response {
@@ -484,4 +548,12 @@ func (x *InterchainManager) indexMapKey(id string) string {
 
 func (x *InterchainManager) indexReceiptMapKey(id string) string {
 	return fmt.Sprintf("index-receipt-tx-%s", id)
+}
+
+func (x *InterchainManager) indexSendInterchainMeta(id string) string {
+	return fmt.Sprintf("index-send-interchain-%s", id)
+}
+
+func (x *InterchainManager) indexReceiptInterchainMeta(id string) string {
+	return fmt.Sprintf("index-receipt-interchain-%s", id)
 }
