@@ -27,6 +27,7 @@ solo = false
 
 [security]
   enable_tls = false
+  enable_access = true
   pem_file_path = "certs/server.pem"
   server_key_path = "certs/server.key"
 

@@ -2,7 +2,11 @@ package grpc
 
 import (
 	"context"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/pem"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"path/filepath"
 
@@ -17,7 +21,48 @@ import (
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/metadata"
 )
+
+var caCertData []byte
+
+type ServerAccessFunc func(ctx context.Context, handler grpc.UnaryHandler) error
+
+var serverAccessInterceptorfunc = func(ctx context.Context, handler grpc.UnaryHandler) error {
+	incomingContext, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return fmt.Errorf("client access failed")
+	}
+
+	var subCertData string
+	if val, ok := incomingContext["access"]; ok {
+		subCertData = val[0]
+	}
+	if len(subCertData) == 0 {
+		return fmt.Errorf("client access failed: not found key 'access' from header")
+	}
+	decodeString, err := base64.StdEncoding.DecodeString(subCertData)
+	if err != nil {
+		return fmt.Errorf("parse subCertData: %w", err)
+	}
+	block, _ := pem.Decode(decodeString)
+	subCert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return fmt.Errorf("parse sub cert: %w", err)
+	}
+
+	block, _ = pem.Decode(caCertData)
+	caCert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return fmt.Errorf("parse ca cert: %w", err)
+	}
+
+	err = subCert.CheckSignatureFrom(caCert)
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
 type ChainBrokerService struct {
 	config  *repo.Config
@@ -28,6 +73,16 @@ type ChainBrokerService struct {
 
 	ctx    context.Context
 	cancel context.CancelFunc
+}
+
+// CreateUnaryServerAccessInterceptor returns a new unary server interceptors with serverAccessFunc.
+func CreateUnaryServerAccessInterceptor(serverAccessFunc ServerAccessFunc) grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+		if err := serverAccessFunc(ctx, handler); err != nil {
+			return nil, err
+		}
+		return handler(ctx, req)
+	}
 }
 
 func NewChainBrokerService(api api.CoreAPI, config *repo.Config, genesis *repo.Genesis) (*ChainBrokerService, error) {
@@ -56,9 +111,21 @@ func (cbs *ChainBrokerService) init() error {
 		return err
 	}
 
+	var us []grpc.UnaryServerInterceptor
+	var ss []grpc.StreamServerInterceptor
+	if config.Security.EnableAccess {
+		caCertPath := filepath.Join(config.RepoRoot, config.Cert.CACertPath)
+		caCertData, err = ioutil.ReadFile(caCertPath)
+		if err != nil {
+			return err
+		}
+		us = append(us, CreateUnaryServerAccessInterceptor(serverAccessInterceptorfunc))
+	}
+	us = append(us, ratelimit.UnaryServerInterceptor(rateLimiter), grpc_prometheus.UnaryServerInterceptor)
+	ss = append(ss, ratelimit.StreamServerInterceptor(rateLimiter), grpc_prometheus.StreamServerInterceptor)
 	grpcOpts := []grpc.ServerOption{
-		grpc_middleware.WithUnaryServerChain(ratelimit.UnaryServerInterceptor(rateLimiter), grpc_prometheus.UnaryServerInterceptor),
-		grpc_middleware.WithStreamServerChain(ratelimit.StreamServerInterceptor(rateLimiter), grpc_prometheus.StreamServerInterceptor),
+		grpc_middleware.WithUnaryServerChain(us...),
+		grpc_middleware.WithStreamServerChain(ss...),
 		grpc.MaxConcurrentStreams(1000),
 		grpc.InitialWindowSize(10 * 1024 * 1024),
 		grpc.InitialConnWindowSize(100 * 1024 * 1024),
