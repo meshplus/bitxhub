@@ -2,11 +2,12 @@ package contracts
 
 import (
 	"encoding/json"
-	"github.com/meshplus/bitxhub-core/boltvm"
 	"io/ioutil"
 	"os"
 	"strconv"
 	"testing"
+
+	"github.com/meshplus/bitxhub-core/boltvm"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/golang/mock/gomock"
@@ -16,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const pier = "0x56CcF2466a27E4D231824b823e04cD672E52002B"
 const address = "0x5B38DA6A701C568545DCFCB03FCB875F56BEDDC4"
 
 func TestEthHeaderManager_PreMint(t *testing.T) {
@@ -30,14 +32,13 @@ func TestEthHeaderManager_PreMint(t *testing.T) {
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).Return().AnyTimes()
 	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Return(true).AnyTimes()
 	mockStub.EXPECT().Caller().Return(address).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(gomock.Any(),gomock.Any(), gomock.Any()).Return(boltvm.Success([]byte("true"))).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success([]byte("true"))).AnyTimes()
 
 	ehm := NewEthHeaderManager(oracle)
 	ehm.Stub = mockStub
 
 	res := ehm.CurrentBlockHeader()
 	require.True(t, res.Ok)
-
 
 	header1 := types.Header{}
 	err = header1.UnmarshalJSON([]byte(appchain.RopstenHeader1))
@@ -57,10 +58,10 @@ func TestEthHeaderManager_PreMint(t *testing.T) {
 	require.Nil(t, err)
 	require.Equal(t, 0, num)
 
-	res = ehm.SetEscrowAddr(address)
+	res = ehm.SetEscrowAddr(pier, address)
 	require.True(t, res.Ok)
 
-	res = ehm.GetEscrowAddr()
+	res = ehm.GetEscrowAddr(pier)
 	require.True(t, res.Ok)
 
 	res = ehm.SetInterchainSwapAddr(address)
@@ -68,5 +69,10 @@ func TestEthHeaderManager_PreMint(t *testing.T) {
 
 	res = ehm.GetInterchainSwapAddr()
 	require.True(t, res.Ok)
-}
 
+	res = ehm.SetProxyAddr(address)
+	require.True(t, res.Ok)
+
+	res = ehm.GetProxyAddr()
+	require.True(t, res.Ok)
+}
