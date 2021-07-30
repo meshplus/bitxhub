@@ -15,7 +15,7 @@ type Repo struct {
 	Certs         *libp2pcert.Certs
 }
 
-func Load(repoRoot string) (*Repo, error) {
+func Load(repoRoot string, passwd string) (*Repo, error) {
 	config, err := UnmarshalConfig(repoRoot)
 	if err != nil {
 		return nil, err
@@ -31,7 +31,7 @@ func Load(repoRoot string) (*Repo, error) {
 		return nil, err
 	}
 
-	key, err := loadPrivKey(repoRoot)
+	key, err := loadPrivKey(repoRoot, passwd)
 	if err != nil {
 		return nil, fmt.Errorf("load private key: %w", err)
 	}

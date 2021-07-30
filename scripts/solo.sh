@@ -15,7 +15,7 @@ function prepare() {
 
 function config() {
   mkdir -p "${BUILD_PATH}"/certs
-  cp -r "${CURRENT_PATH}"/certs/node1/certs/* "${BUILD_PATH}"/certs
+  cp -r "${CURRENT_PATH}"/certs/node1/* "${BUILD_PATH}"/
 }
 
 function compile() {
