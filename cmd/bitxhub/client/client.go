@@ -15,6 +15,10 @@ var clientCMD = cli.Command{
 			Name:  "cert",
 			Usage: "Specific ca cert file if https is enabled",
 		},
+		cli.StringFlag{
+			Name:  "access",
+			Usage: "Specific ca cert file if access is enabled",
+		},
 	},
 	Subcommands: cli.Commands{
 		accountCMD(),
