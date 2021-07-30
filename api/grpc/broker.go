@@ -113,25 +113,21 @@ func (cbs *ChainBrokerService) init() error {
 
 	var us []grpc.UnaryServerInterceptor
 	var ss []grpc.StreamServerInterceptor
-	if config.Security.EnableAccess {
-		caCertPath := filepath.Join(config.RepoRoot, config.Cert.CACertPath)
-		caCertData, err = ioutil.ReadFile(caCertPath)
-		if err != nil {
-			return err
-		}
-		us = append(us, CreateUnaryServerAccessInterceptor(serverAccessInterceptorfunc))
-	}
 	us = append(us, ratelimit.UnaryServerInterceptor(rateLimiter), grpc_prometheus.UnaryServerInterceptor)
 	ss = append(ss, ratelimit.StreamServerInterceptor(rateLimiter), grpc_prometheus.StreamServerInterceptor)
 	grpcOpts := []grpc.ServerOption{
-		grpc_middleware.WithUnaryServerChain(us...),
-		grpc_middleware.WithStreamServerChain(ss...),
 		grpc.MaxConcurrentStreams(1000),
 		grpc.InitialWindowSize(10 * 1024 * 1024),
 		grpc.InitialConnWindowSize(100 * 1024 * 1024),
 	}
 
 	if config.Security.EnableTLS {
+		caCertPath := filepath.Join(config.RepoRoot, config.Cert.AgencyCertPath)
+		caCertData, err = ioutil.ReadFile(caCertPath)
+		if err != nil {
+			return err
+		}
+		us = append(us, CreateUnaryServerAccessInterceptor(serverAccessInterceptorfunc))
 		pemFilePath := filepath.Join(config.RepoRoot, config.Security.PemFilePath)
 		serverKeyPath := filepath.Join(config.RepoRoot, config.Security.ServerKeyPath)
 		cred, err := credentials.NewServerTLSFromFile(pemFilePath, serverKeyPath)
@@ -140,9 +136,8 @@ func (cbs *ChainBrokerService) init() error {
 		}
 		grpcOpts = append(grpcOpts, grpc.Creds(cred))
 	}
-
+	grpcOpts = append(grpcOpts, grpc_middleware.WithUnaryServerChain(us...), grpc_middleware.WithStreamServerChain(ss...))
 	cbs.server = grpc.NewServer(grpcOpts...)
-
 	return nil
 }
 

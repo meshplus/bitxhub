@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/base64"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -27,7 +28,21 @@ func httpGet(ctx *cli.Context, url string) ([]byte, error) {
 		client = http.DefaultClient
 	}
 
-	resp, err := client.Get(url)
+	req, err := http.NewRequest("GET", url, nil)
+	accessPath := ctx.GlobalString("access")
+	if accessPath != "" {
+		caCertData, err := ioutil.ReadFile(accessPath)
+		if err != nil {
+			return nil, err
+		}
+		caCertDataString := base64.StdEncoding.EncodeToString(caCertData)
+		req.Header.Add("grpc-metadata-access", caCertDataString)
+	}
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.Do(req)
+
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +77,22 @@ func httpPost(ctx *cli.Context, url string, data []byte) ([]byte, error) {
 	buffer := bytes.NewBuffer(data)
 
 	/* #nosec */
-	resp, err := client.Post(url, "application/json", buffer)
+	req, err := http.NewRequest("POST", url, buffer)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	accessPath := ctx.GlobalString("access")
+	if accessPath != "" {
+		caCertData, err := ioutil.ReadFile(accessPath)
+		if err != nil {
+			return nil, err
+		}
+		caCertDataString := base64.StdEncoding.EncodeToString(caCertData)
+		req.Header.Add("grpc-metadata-access", caCertDataString)
+	}
+	resp, err := client.Do(req)
+
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +120,8 @@ func getHttpsClient(certPath string) (*http.Client, error) {
 	return &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
-				RootCAs: caCertPool,
+				ServerName: "localhost",
+				RootCAs:    caCertPool,
 			},
 		},
 	}, nil

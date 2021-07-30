@@ -68,7 +68,7 @@ func (g *Gateway) init() {
 func (g *Gateway) Start() error {
 	g.logger.WithField("port", g.config.Port.Gateway).Info("Gateway service started")
 	if g.certFile != "" || g.keyFile != "" {
-		cred, err := credentials.NewServerTLSFromFile(g.certFile, g.keyFile)
+		cred, err := credentials.NewClientTLSFromFile(g.certFile, "localhost")
 		if err != nil {
 			return err
 		}
