@@ -40,47 +40,7 @@ func (bvm *BoltVM) Run(input []byte) (ret []byte, err error) {
 		}
 	}()
 
-	payload := &pb.InvokePayload{}
-	if err := payload.Unmarshal(input); err != nil {
-		return nil, fmt.Errorf("unmarshal invoke payload: %w", err)
-	}
-
-	contract, err := GetBoltContract(bvm.ctx.Callee.String(), bvm.contracts)
-	if err != nil {
-		return nil, fmt.Errorf("get bolt contract: %w", err)
-	}
-
-	rc := reflect.ValueOf(contract)
-	stubField := rc.Elem().Field(0)
-	stub := &BoltStubImpl{
-		bvm: bvm,
-		ctx: bvm.ctx,
-		ve:  bvm.ve,
-	}
-
-	if stubField.CanSet() {
-		stubField.Set(reflect.ValueOf(stub))
-	} else {
-		return nil, fmt.Errorf("stub filed can`t set")
-	}
-
-	// judge whether method is valid
-	m := rc.MethodByName(payload.Method)
-	if !m.IsValid() {
-		return nil, fmt.Errorf("not such method `%s`", payload.Method)
-	}
-
-	fnArgs, err := parseArgs(payload.Args)
-	if err != nil {
-		return nil, fmt.Errorf("parse args: %w", err)
-	}
-
-	res := m.Call(fnArgs)[0].Interface().(*boltvm.Response)
-	if !res.Ok {
-		return nil, fmt.Errorf("call error: %s", res.Result)
-	}
-
-	return res.Result, err
+	return bvm.InvokeBVM(bvm.ctx.Callee.String(), input)
 }
 
 func (bvm *BoltVM) HandleIBTP(ibtp *pb.IBTP) (ret []byte, err error) {
@@ -107,6 +67,50 @@ func (bvm *BoltVM) HandleIBTP(ibtp *pb.IBTP) (ret []byte, err error) {
 		return nil, fmt.Errorf("call error: %s", res.Result)
 	}
 
+	return res.Result, err
+}
+
+func (bvm *BoltVM) InvokeBVM(address string, input []byte) (ret []byte, err error) {
+	payload := &pb.InvokePayload{}
+	if err := payload.Unmarshal(input); err != nil {
+		return nil, fmt.Errorf("unmarshal invoke payload: %w", err)
+	}
+
+	method, ins := payload.Method, payload.Args
+	contract, err := GetBoltContract(address, bvm.contracts)
+	if err != nil {
+		return nil, fmt.Errorf("get bolt contract: %w", err)
+	}
+
+	rc := reflect.ValueOf(contract)
+	stubField := rc.Elem().Field(0)
+	stub := &BoltStubImpl{
+		bvm: bvm,
+		ctx: bvm.ctx,
+		ve:  bvm.ve,
+	}
+
+	if stubField.CanSet() {
+		stubField.Set(reflect.ValueOf(stub))
+	} else {
+		return nil, fmt.Errorf("stub filed can`t set")
+	}
+
+	// judge whether method is valid
+	m := rc.MethodByName(method)
+	if !m.IsValid() {
+		return nil, fmt.Errorf("not such method `%s`", method)
+	}
+
+	fnArgs, err := parseArgs(ins)
+	if err != nil {
+		return nil, fmt.Errorf("parse args: %w", err)
+	}
+
+	res := m.Call(fnArgs)[0].Interface().(*boltvm.Response)
+	if !res.Ok {
+		return nil, fmt.Errorf("call error: %s", res.Result)
+	}
 	return res.Result, err
 }
 

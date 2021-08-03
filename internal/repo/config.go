@@ -32,8 +32,6 @@ const (
 	NormalAdminWeight = 1
 	// governance strategy default participate threshold
 	DefaultParticipateThreshold = 0.75
-	// bitxhub DID root prefix
-	BitxhubRootPrefix = "did:bitxhub"
 	//Passwd
 	DefaultPasswd = "bitxhub"
 )
@@ -131,7 +129,6 @@ type Genesis struct {
 	Balance  string            `json:"balance" toml:"balance"`
 	Admins   []*Admin          `json:"admins" toml:"admins"`
 	Strategy map[string]string `json:"strategy" toml:"strategy"`
-	Dider    string            `json:"dider" toml:"dider"`
 }
 
 type Admin struct {

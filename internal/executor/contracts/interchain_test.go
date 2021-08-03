@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"google.golang.org/grpc"
 	"strings"
 	"testing"
 
@@ -495,17 +496,17 @@ func TestInterchainManager_GetIBTPByID(t *testing.T) {
 
 func mockChainService() (*ChainService, *ChainService) {
 	srcChainService := &ChainService{
-		bxhId:     "bxh",
-		chainId:   srcChainID,
-		serviceId: srcServiceID,
-		isLocal:   true,
+		BxhId:     "bxh",
+		ChainId:   srcChainID,
+		ServiceId: srcServiceID,
+		IsLocal:   true,
 	}
 
 	dstChainService := &ChainService{
-		bxhId:     "bxh",
-		chainId:   dstChainID,
-		serviceId: dstServiceID,
-		isLocal:   true,
+		BxhId:     "bxh",
+		ChainId:   dstChainID,
+		ServiceId: dstServiceID,
+		IsLocal:   true,
 	}
 
 	return srcChainService, dstChainService

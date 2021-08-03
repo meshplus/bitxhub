@@ -15,11 +15,7 @@ import (
 	"github.com/meshplus/bitxhub-kit/hexutil"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/internal/repo"
 )
-
-// todo: get this from config file
-const relayRootPrefix = "did:bitxhub:relayroot:"
 
 type AppchainManager struct {
 	boltvm.Stub
@@ -67,31 +63,12 @@ func (am *AppchainManager) Manage(eventTyp string, proposalResult, lastStatus st
 			if err = am.chainDefaultConfig(chain); err != nil {
 				return boltvm.Error("chain default config error:" + err.Error())
 			}
-			//res = am.CrossInvoke(constant.MethodRegistryContractAddr.String(), "AuditApply",
-			//	pb.String(relaychainAdmin), pb.String(chain.ID), pb.Int32(1), pb.Bytes(nil))
-			//if !res.Ok {
-			//	return res
-			//}
-			//return am.CrossInvoke(constant.MethodRegistryContractAddr.String(), "Register",
-			//	pb.String(relaychainAdmin), pb.String(chain.ID),
-			//	pb.String(chain.DidDocAddr), pb.Bytes([]byte(chain.DidDocHash)), pb.Bytes(nil))
 		case string(governance.EventUpdate):
 			res := responseWrapper(am.AppchainManager.Update(extra))
 			if !res.Ok {
 				return res
 			}
 		}
-	} else {
-		//relaychainAdmin := relayRootPrefix + am.Caller()
-		//switch eventTyp {
-		//case string(governance.EventRegister):
-		//	res = am.CrossInvoke(constant.MethodRegistryContractAddr.String(), "Audit",
-		//		pb.String(relaychainAdmin), pb.String(chain.ID), pb.String(string(bitxid.Initial)), pb.Bytes(nil))
-		//	if !res.Ok {
-		//		return res
-		//	}
-		//
-		//}
 	}
 
 	return boltvm.Success(nil)
@@ -114,7 +91,7 @@ func (am *AppchainManager) chainDefaultConfig(chain *appchainMgr.Appchain) error
 // Register registers appchain info
 // caller is the appchain manager address
 // return appchain id, proposal id and error
-func (am *AppchainManager) Register(method string, docAddr, docHash, validators string,
+func (am *AppchainManager) Register(appchainId string, validators string,
 	consensusType, chainType, name, desc, version, pubkey string) *boltvm.Response {
 	am.AppchainManager.Persister = am.Stub
 
@@ -132,17 +109,10 @@ func (am *AppchainManager) Register(method string, docAddr, docHash, validators 
 		return boltvm.Error("check permission error:" + string(res.Result))
 	}
 
-	//res := am.CrossInvoke(constant.MethodRegistryContractAddr.String(), "Apply",
-	//	pb.String(appchainAdminDID), pb.String(appchainMethod), pb.Bytes(nil))
-	//if !res.Ok {
-	//	return res
-	//}
 
-	appchainAdminDID := fmt.Sprintf("%s:%s:%s", repo.BitxhubRootPrefix, method, addr)
-	appchainDID := fmt.Sprintf("%s:%s:.", repo.BitxhubRootPrefix, method)
 
 	chain := &appchainMgr.Appchain{
-		ID:            appchainDID,
+		ID:            appchainId,
 		Name:          name,
 		Validators:    validators,
 		ConsensusType: consensusType,
@@ -151,9 +121,6 @@ func (am *AppchainManager) Register(method string, docAddr, docHash, validators 
 		Desc:          desc,
 		Version:       version,
 		PublicKey:     pubkey,
-		DidDocAddr:    docAddr,
-		DidDocHash:    docHash,
-		OwnerDID:      appchainAdminDID,
 	}
 	chainData, err := json.Marshal(chain)
 	if err != nil {
@@ -178,7 +145,7 @@ func (am *AppchainManager) Register(method string, docAddr, docHash, validators 
 		pb.String(string(governance.EventRegister)),
 		pb.String(""),
 		pb.String(string(AppchainMgr)),
-		pb.String(appchainDID),
+		pb.String(appchainId),
 		pb.String(string(governance.GovernanceUnavailable)),
 		pb.Bytes(chainData),
 	)
@@ -186,7 +153,7 @@ func (am *AppchainManager) Register(method string, docAddr, docHash, validators 
 		return res
 	}
 
-	return getGovernanceRet(string(res.Result), []byte(appchainDID))
+	return getGovernanceRet(string(res.Result), []byte(appchainId))
 }
 
 // UpdateAppchain updates available appchain
@@ -499,11 +466,6 @@ func (am *AppchainManager) DeleteAppchain(toDeleteMethod string) *boltvm.Respons
 	if !res.Ok {
 		return res
 	}
-	//relayAdminDID := relayRootPrefix + am.Caller()
-	//res = am.CrossInvoke(constant.MethodRegistryContractAddr.String(), "Delete", pb.String(relayAdminDID), pb.String(toDeleteMethod), nil)
-	//if !res.Ok {
-	//	return res
-	//}
 	return responseWrapper(am.AppchainManager.DeleteAppchain(toDeleteMethod))
 }
 
@@ -561,7 +523,6 @@ func getAddr(pubKeyStr string) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("decrypt registerd public key error: %w", err)
 		}
-		//return "", fmt.Errorf("decrypt registerd public key error: %w", err)
 	}
 	addr, err := pubKey.Address()
 	if err != nil {

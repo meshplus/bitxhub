@@ -1,6 +1,7 @@
 package ledger
 
 import (
+	types2 "github.com/meshplus/eth-kit/types"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -198,6 +199,23 @@ func CreateBloom(receipts EvmReceipts) *types.Bloom {
 		}
 	}
 	return &bin
+}
+
+func NewBxhTxFromEth(tx *types2.EthTransaction) *pb.BxhTransaction {
+	return &pb.BxhTransaction{
+		Version:         tx.GetVersion(),
+		From:            tx.GetFrom(),
+		To:              tx.GetTo(),
+		Timestamp:       tx.GetTimeStamp(),
+		TransactionHash: tx.GetHash(),
+		Payload:         tx.GetPayload(),
+		IBTP:            tx.GetIBTP(),
+		Nonce:           tx.GetNonce(),
+		Amount:          tx.GetValue().String(),
+		Typ:             uint32(tx.GetType()),
+		Signature:       tx.GetSignature(),
+		Extra:           tx.GetExtra(),
+	}
 }
 
 func NewMessageFromBxh(tx *pb.BxhTransaction) etherTypes.Message {
