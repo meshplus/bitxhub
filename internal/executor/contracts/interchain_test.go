@@ -167,6 +167,8 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 
 	mockStub.EXPECT().Set(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().GetTxTimeStamp().Return(int64(1)).AnyTimes()
+	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Return(true).AnyTimes()
 	mockStub.EXPECT().Get(appchainMgr.PREFIX+unexistChainMethod).Return(false, nil).AnyTimes()
 	mockStub.EXPECT().Get(appchainMgr.PREFIX+unavailableChainMethod).Return(false, nil).AnyTimes()
 
@@ -376,7 +378,9 @@ func TestInterchainManager_HandleUnionIBTP(t *testing.T) {
 
 	from := types.NewAddress([]byte{0}).String()
 	mockStub.EXPECT().Set(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().GetTxTimeStamp().Return(int64(1)).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Return(true).AnyTimes()
 	mockStub.EXPECT().Has(gomock.Any()).Return(true).AnyTimes()
 
 	interchain := pb.Interchain{
