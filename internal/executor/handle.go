@@ -400,7 +400,8 @@ func (exec *BlockExecutor) applyTransaction(i int, tx pb.Transaction, invalidRea
 		return receipt
 	case *types2.EthTransaction:
 		ethTx := tx.(*types2.EthTransaction)
-		return exec.applyEthTransaction(i, ethTx)
+		receipt := exec.applyEthTransaction(i, ethTx)
+		exec.evmInterchain(i, ethTx, receipt)
 	}
 
 	receipt.Status = pb.Receipt_FAILED
@@ -523,6 +524,27 @@ func (exec *BlockExecutor) applyEthTransaction(i int, tx *types2.EthTransaction)
 	return receipt
 }
 
+func (exec *BlockExecutor) evmInterchain(i int, tx *types2.EthTransaction, receipt *pb.Receipt ) {
+	if receipt.Status == pb.Receipt_FAILED {
+		return
+	}
+
+	for _, log := range receipt.EvmLogs {
+		if strings.EqualFold(log.Address.String(), constant.InterBrokerContractAddr.String()) {
+			ctx := vm.NewContext(tx, uint64(i), nil, exec.currentHeight, exec.ledger, exec.logger)
+			instance := boltvm.New(ctx, exec.validationEngine, exec.evm, exec.registerBoltContracts())
+
+			ret, err := instance.InvokeBVM(constant.InterBrokerContractAddr.String(), log.Data)
+			if err != nil {
+				receipt.Status = pb.Receipt_FAILED
+			}
+			receipt.Ret = ret
+			return
+		}
+	}
+
+}
+
 func (exec *BlockExecutor) clear() {
 	exec.ledger.Clear()
 }
@@ -583,7 +605,7 @@ func (exec *BlockExecutor) getContracts(opt *agency.TxOpt) map[string]agency.Con
 	return exec.txsExecutor.GetBoltContracts()
 }
 
-func newEvm(number uint64, timestamp uint64, chainCfg *params.ChainConfig, db ledger2.StateDB, chainLedger ledger2.ChainLedger, admin string) *vm1.EVM {
+func newEvm(number uint64, timestamp uint64, chainCfg *params.ChainConfig, db ledger2.StateLedger, chainLedger ledger2.ChainLedger, admin string) *vm1.EVM {
 	blkCtx := vm1.NewEVMBlockContext(number, timestamp, db, chainLedger, admin)
 
 	return vm1.NewEVM(blkCtx, vm1.TxContext{}, db, chainCfg, vm1.Config{})

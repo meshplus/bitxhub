@@ -7,7 +7,6 @@ import (
 	appchain_mgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxid"
 )
 
 func (router *InterchainRouter) queryAllAppchains() (map[string]*appchain_mgr.Appchain, error) {
@@ -31,7 +30,7 @@ func (router *InterchainRouter) queryAllAppchains() (map[string]*appchain_mgr.Ap
 	return ret, nil
 }
 
-func (router *InterchainRouter) generateUnionInterchainTxWrappers(ret map[bitxid.DID]*pb.InterchainTxWrapper, block *pb.Block, meta *pb.InterchainMeta) *pb.InterchainTxWrappers {
+func (router *InterchainRouter) generateUnionInterchainTxWrappers(ret map[string]*pb.InterchainTxWrapper, block *pb.Block, meta *pb.InterchainMeta) *pb.InterchainTxWrappers {
 	wrappers := make([]*pb.InterchainTxWrapper, 0)
 	emptyWrapper := &pb.InterchainTxWrapper{
 		Height:  block.Height(),
@@ -46,7 +45,7 @@ func (router *InterchainRouter) generateUnionInterchainTxWrappers(ret map[bitxid
 		}
 	}
 	for pid, _ := range ret {
-		if _, ok := appchains[string(pid)]; ok {
+		if _, ok := appchains[pid]; ok {
 			delete(ret, pid)
 		}
 	}

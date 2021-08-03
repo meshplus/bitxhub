@@ -7,7 +7,6 @@ import (
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/api/jsonrpc/namespaces/eth/filters"
 	"github.com/meshplus/bitxhub/internal/model/events"
-	"github.com/meshplus/bitxid"
 )
 
 type InterchainStatus struct {
@@ -201,18 +200,6 @@ type interchainEvent struct {
 type SubscriptionKey struct {
 	PierID      string `json:"pier_id"`
 	AppchainDID string `json:"appchain_did"`
-}
-
-func parseSubKey(extra []byte) (*SubscriptionKey, error) {
-	key := &SubscriptionKey{}
-	if err := json.Unmarshal(extra, key); err != nil {
-		return nil, err
-	}
-	did := bitxid.DID(key.AppchainDID)
-	if !did.IsValidFormat() {
-		return nil, fmt.Errorf("invalid appchain did :%s to subscribe", key.AppchainDID)
-	}
-	return key, nil
 }
 
 func (cbs *ChainBrokerService) interStatus(block *pb.Block, interchainMeta *pb.InterchainMeta) (*interchainEvent, error) {
