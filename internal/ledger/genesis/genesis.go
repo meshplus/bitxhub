@@ -35,12 +35,6 @@ func Initialize(genesis *repo.Genesis, nodes []*repo.NetworkNodes, primaryN uint
 		lg.SetState(constant.RoleContractAddr.Address(), []byte(fmt.Sprintf("%s-%s", contracts.ROLEPREFIX, admin.ID)), adminData)
 	}
 
-	admin, err := json.Marshal(genesis.Dider)
-	if err != nil {
-		return err
-	}
-	lg.SetState(constant.MethodRegistryContractAddr.Address(), []byte("admin-method"), admin)
-	lg.SetState(constant.DIDRegistryContractAddr.Address(), []byte("admin-did"), admin)
 
 	balance, _ := new(big.Int).SetString(genesis.Balance, 10)
 	for _, admin := range genesis.Admins {

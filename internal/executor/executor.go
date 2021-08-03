@@ -90,7 +90,7 @@ func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, client *appchain
 		currentHeight:    chainLedger.GetChainMeta().Height,
 		currentBlockHash: chainLedger.GetChainMeta().BlockHash,
 		wasmInstances:    make(map[string]*wasmer.Instance),
-		evmChainCfg:      newEVMChainCfg(),
+		evmChainCfg:      newEVMChainCfg(config),
 		config:           *config,
 		bxhGasPrice:      gasPrice,
 		gasLimit:         config.GasLimit,
@@ -312,12 +312,6 @@ func (exec *BlockExecutor) registerBoltContracts() map[string]agency.Contract {
 		},
 		{
 			Enabled:  true,
-			Name:     "interchain broker service",
-			Address:  constant.InterRelayBrokerContractAddr.Address().String(),
-			Contract: &contracts.InterRelayBroker{},
-		},
-		{
-			Enabled:  true,
 			Name:     "governance service",
 			Address:  constant.GovernanceContractAddr.Address().String(),
 			Contract: &contracts.Governance{},
@@ -336,9 +330,9 @@ func (exec *BlockExecutor) registerBoltContracts() map[string]agency.Contract {
 		},
 		{
 			Enabled:  true,
-			Name:     "service manager service",
-			Address:  constant.ServiceMgrContractAddr.Address().String(),
-			Contract: &contracts.ServiceManager{},
+			Name:     "inter broker service",
+			Address:  constant.InterBrokerContractAddr.Address().String(),
+			Contract: &contracts.InterBroker{},
 		},
 	}
 
@@ -355,9 +349,9 @@ func (exec *BlockExecutor) registerBoltContracts() map[string]agency.Contract {
 	return boltvm.Register(boltContracts)
 }
 
-func newEVMChainCfg() *params.ChainConfig {
+func newEVMChainCfg(config *repo.Config) *params.ChainConfig {
 	return &params.ChainConfig{
-		ChainID:             big.NewInt(1),
+		ChainID:             big.NewInt(int64(config.ChainID)),
 		HomesteadBlock:      big.NewInt(0),
 		EIP150Block:         big.NewInt(0),
 		EIP155Block:         big.NewInt(0),
