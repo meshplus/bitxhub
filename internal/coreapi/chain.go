@@ -88,5 +88,5 @@ func (api *ChainAPI) TPS(begin, end uint64) (uint64, error) {
 		return 0, fmt.Errorf("incorrect block timestamp")
 	}
 
-	return total.Load() * 1e9 / uint64(elapsed), nil
+	return total.Load() / uint64(elapsed), nil
 }
