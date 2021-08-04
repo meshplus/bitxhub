@@ -358,7 +358,7 @@ func (suite *Role) TestRegisterRoles() {
 	fromAdmin5, err := priAdmin5.PublicKey().Address()
 	suite.Require().Nil(err)
 
-	pubAdmin, err := priAdmin1.PublicKey().Bytes()
+	pubAppAdmin, err := priAdmin5.PublicKey().Bytes()
 	suite.Require().Nil(err)
 
 	adminNonce1 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin1.String())
@@ -377,7 +377,7 @@ func (suite *Role) TestRegisterRoles() {
 		pb.String("管理链"),
 		pb.String("趣链管理链"),
 		pb.String("1.8"),
-		pb.String(base64.StdEncoding.EncodeToString(pubAdmin)),
+		pb.String(base64.StdEncoding.EncodeToString(pubAppAdmin)),
 	)
 	suite.Require().Nil(err)
 	suite.Require().True(retReg.IsSuccess(), string(retReg.Ret))

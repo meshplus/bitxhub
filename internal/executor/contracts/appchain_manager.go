@@ -123,10 +123,20 @@ func (am *AppchainManager) Register(method string, docAddr, docHash, validators 
 		return boltvm.Error(fmt.Sprintf("get addr from public key: %v", err))
 	}
 
-	res := am.CrossInvoke(constant.RoleContractAddr.String(), "CheckPermission",
+	res := am.CrossInvoke(constant.RoleContractAddr.String(), "GetRoleByAddr", pb.String(addr))
+	if !res.Ok {
+		return boltvm.Error(fmt.Sprintf("cross invoke IsAnyAdmin error : %s", string(res.Result)))
+
+	} else {
+		if string(res.Result) != string(NoRole) {
+			return boltvm.Error(fmt.Sprintf("Please do not register appchain with other administrator's public key (address: %s, role: %s)", addr, res.Result))
+		}
+	}
+
+	res = am.CrossInvoke(constant.RoleContractAddr.String(), "CheckPermission",
 		pb.String(string(PermissionSelfAdmin)),
 		pb.String(addr),
-		pb.String(am.CurrentCaller()),
+		pb.String(am.Caller()),
 		pb.Bytes(nil))
 	if !res.Ok {
 		return boltvm.Error("check permission error:" + string(res.Result))

@@ -86,6 +86,7 @@ func TestAppchainManager_Appchains(t *testing.T) {
 	mockStub.EXPECT().Logger().Return(logger).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, chainsData[0]).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil))
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "GetRoleByAddr", gomock.Any()).Return(boltvm.Success([]byte(NoRole))).AnyTimes()
 	//mockStub.EXPECT().CrossInvoke(constant.MethodRegistryContractAddr.String(), "Apply",
 	//	gomock.Any(), gomock.Any(), gomock.Any()).Return(applyResponse)
 	mockStub.EXPECT().Has(AppchainKey(appchainMethod)).Return(false).MaxTimes(3)
@@ -157,19 +158,20 @@ func TestAppchainManager_Register(t *testing.T) {
 		gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "CheckPermission", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().CurrentCaller().Return("").AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "GetRoleByAddr", gomock.Any()).Return(boltvm.Success([]byte(NoRole))).AnyTimes()
 	//mockStub.EXPECT().CrossInvoke(constant.MethodRegistryContractAddr.String(), "Apply",
 	//	gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 
 	res := am.Register(method, docAddr, docHash,
 		chains[2].Validators, chains[2].ConsensusType, chains[2].ChainType,
 		chains[2].Name, chains[2].Desc, chains[2].Version, chains[2].PublicKey)
-	assert.True(t, res.Ok)
+	assert.True(t, res.Ok, string(res.Result))
 
 	// test for repeated register
 	res = am.Register(method, docAddr, docHash,
 		chains[0].Validators, chains[0].ConsensusType, chains[0].ChainType,
 		chains[0].Name, chains[0].Desc, chains[0].Version, chains[0].PublicKey)
-	assert.False(t, res.Ok)
+	assert.False(t, res.Ok, string(res.Result))
 }
 
 func TestAppchainManager_Manager(t *testing.T) {
