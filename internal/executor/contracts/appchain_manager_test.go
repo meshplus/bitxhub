@@ -86,6 +86,7 @@ func TestAppchainManager_Appchains(t *testing.T) {
 	mockStub.EXPECT().Logger().Return(logger).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, chainsData[0]).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil))
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "GetRoleByAddr", gomock.Any()).Return(boltvm.Success([]byte(NoRole))).AnyTimes()
 	//mockStub.EXPECT().CrossInvoke(constant.MethodRegistryContractAddr.String(), "Apply",
 	//	gomock.Any(), gomock.Any(), gomock.Any()).Return(applyResponse)
 	mockStub.EXPECT().Has(AppchainKey(appchainMethod)).Return(false).MaxTimes(3)
@@ -157,6 +158,7 @@ func TestAppchainManager_Register(t *testing.T) {
 		gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "CheckPermission", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().CurrentCaller().Return("").AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "GetRoleByAddr", gomock.Any()).Return(boltvm.Success([]byte(NoRole))).AnyTimes()
 	//mockStub.EXPECT().CrossInvoke(constant.MethodRegistryContractAddr.String(), "Apply",
 	//	gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 

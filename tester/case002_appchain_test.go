@@ -316,8 +316,6 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 	keyPath := filepath.Join(path)
 	priAdmin, err := asym.RestorePrivateKey(keyPath, "bitxhub")
 	suite.Require().Nil(err)
-	pubAdmin, err := priAdmin.PublicKey().Bytes()
-	suite.Require().Nil(err)
 	adminAddr, err := priAdmin.PublicKey().Address()
 	suite.Require().Nil(err)
 	adminNonce := uint64(0)
@@ -332,7 +330,7 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 		pb.String("管理链"),
 		pb.String("趣链管理链"),
 		pb.String("1.0"),
-		pb.String(base64.StdEncoding.EncodeToString(pubAdmin)),
+		pb.String(base64.StdEncoding.EncodeToString(pub1)),
 	}
 	ret, err = invokeBVMContract(suite.api, priAdmin, adminNonce, constant.AppchainMgrContractAddr.Address(), "Register", args...)
 	suite.Require().Nil(err)

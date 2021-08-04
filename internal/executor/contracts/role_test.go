@@ -154,6 +154,10 @@ func TestRoleManager_GetRole(t *testing.T) {
 	res = rm.IsAuditAdmin(SUPER_ADMIN_ROLE_ID)
 	assert.True(t, res.Ok, string(res.Result))
 	assert.Equal(t, "false", string(res.Result))
+
+	res = rm.IsAnyAdmin(SUPER_ADMIN_ROLE_ID)
+	assert.True(t, res.Ok, string(res.Result))
+	assert.Equal(t, "true", string(res.Result))
 }
 
 func rolePrepare(t *testing.T) (*RoleManager, *mock_stub.MockStub, []*Role, [][]byte, []*Role, [][]byte) {
