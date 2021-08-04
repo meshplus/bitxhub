@@ -88,7 +88,7 @@ func (api *PublicEthereumAPI) Hashrate() hexutil.Uint64 {
 // GasPrice returns the current gas price based on Ethermint's gas price oracle.
 func (api *PublicEthereumAPI) GasPrice() *hexutil.Big {
 	api.logger.Debug("eth_gasPrice")
-	out := big.NewInt(rpctypes.GasPrice)
+	out := big.NewInt(int64(api.config.Genesis.BvmGasPrice))
 	return (*hexutil.Big)(out)
 }
 

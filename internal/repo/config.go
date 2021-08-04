@@ -87,7 +87,7 @@ type Limiter struct {
 }
 
 type Appchain struct {
-	Enable       bool `toml:"enable" json:"enable"`
+	Enable        bool   `toml:"enable" json:"enable"`
 	EthHeaderPath string `mapstructure:"eth_header_path"`
 }
 
@@ -119,11 +119,12 @@ type LogModule struct {
 }
 
 type Genesis struct {
-	ChainID  uint64            `json:"chainid" toml:"chainid"`
-	GasLimit uint64            `mapstructure:"gas_limit" json:"gas_limit" toml:"gas_limit"`
-	Admins   []*Admin          `json:"admins" toml:"admins"`
-	Strategy map[string]string `json:"strategy" toml:"strategy"`
-	Dider    string            `json:"dider" toml:"dider"`
+	ChainID     uint64            `json:"chainid" toml:"chainid"`
+	GasLimit    uint64            `mapstructure:"gas_limit" json:"gas_limit" toml:"gas_limit"`
+	BvmGasPrice uint64            `mapstructure:"bvm_gas_price" json:"bvm_gas_price" toml:"bvm_gas_price"`
+	Admins      []*Admin          `json:"admins" toml:"admins"`
+	Strategy    map[string]string `json:"strategy" toml:"strategy"`
+	Dider       string            `json:"dider" toml:"dider"`
 }
 
 type Admin struct {
