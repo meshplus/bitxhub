@@ -46,7 +46,7 @@ func initCreateContext(t *testing.T, name string) *vm.Context {
 	assert.Nil(t, err)
 	dir := filepath.Join(os.TempDir(), "wasm", name)
 
-	bytes, err := ioutil.ReadFile("./testdata/ledger_test_gc.wasm")
+	bytes, err := ioutil.ReadFile("./testdata/gas_test_gc.wasm")
 	assert.Nil(t, err)
 
 	data := &pb.TransactionData{
@@ -200,11 +200,8 @@ func TestExecute(t *testing.T) {
 	require.Equal(t, "1", string(result))
 
 	invokePayload1 := &pb.InvokePayload{
-		Method: "state_test_get",
-		Args: []*pb.Arg{
-			{Type: pb.Arg_Bytes, Value: []byte("alice")},
-			{Type: pb.Arg_Bytes, Value: []byte("111")},
-		},
+		Method: "use_gas_test",
+		Args:   []*pb.Arg{},
 	}
 	payload1, err := invokePayload1.Marshal()
 	require.Nil(t, err)

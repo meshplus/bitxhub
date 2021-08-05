@@ -12,6 +12,7 @@ import (
 	"github.com/meshplus/bitxhub-core/wasm/wasmlib"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub/pkg/vm"
+	"github.com/meshplus/bitxhub/pkg/vm/wasm/vmledger"
 	"github.com/wasmerio/wasmer-go/wasmer"
 )
 
@@ -62,6 +63,10 @@ func New(ctx *vm.Context, imports wasmlib.WasmImport, instances map[string]*wasm
 	}
 
 	w.SetContext(wasm.ACCOUNT, ctx.Ledger.GetOrCreateAccount(ctx.Callee))
+
+	gasLimit := &vmledger.GasLimit{}
+	gasLimit.SetLimit(1000000)
+	w.SetContext("gaslimit", gasLimit)
 
 	// alloc, err := w.Instance.Exports.GetFunction("allocate")
 	// if err != nil {
