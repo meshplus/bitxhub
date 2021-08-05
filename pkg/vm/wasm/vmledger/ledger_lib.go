@@ -18,6 +18,7 @@ func New() wasmlib.WasmImport {
 
 func (imports *Imports) ImportLib(wasmEnv *wasmlib.WasmEnv) {
 	imports.importLedgerLib(wasmEnv.Store, wasmEnv)
+	imports.importGasLib(wasmEnv.Store, wasmEnv)
 }
 
 func (imports *Imports) GetImportObject() *wasmer.ImportObject {
