@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Rican7/retry"
@@ -345,6 +346,9 @@ func invokeBVMContract(ctx *cli.Context, contractAddr string, method string, arg
 	resp, err := sendTxOrView(ctx, sendTx, contractAddr, big.NewInt(0), uint64(pb.TransactionData_INVOKE), keyPath, uint64(pb.TransactionData_BVM), method, args...)
 	if err != nil {
 		return nil, fmt.Errorf("send transaction error: %s", err.Error())
+	}
+	if strings.Contains(string(resp), "error") {
+		return nil, fmt.Errorf("send transaction error: %s", string(resp))
 	}
 
 	hash := gjson.Get(string(resp), "tx_hash").String()
