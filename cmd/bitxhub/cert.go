@@ -173,6 +173,10 @@ var issueCMD = cli.Command{
 			Name:  "target",
 			Usage: "Specific target directory",
 		},
+		cli.StringFlag{
+			Name:  "target_name",
+			Usage: "Specific target file name",
+		},
 	},
 	Action: func(ctx *cli.Context) error {
 		csrPath := ctx.String("csr")
@@ -245,8 +249,10 @@ var issueCMD = cli.Command{
 		if err != nil {
 			return fmt.Errorf("create cert: %w", err)
 		}
-
-		name := getFileName(csrPath)
+		name := ctx.String("target_name")
+		if strings.EqualFold("", name) {
+			name = getFileName(csrPath)
+		}
 
 		path := filepath.Join(target, fmt.Sprintf("%s.cert", name))
 		f, err := os.Create(path)
