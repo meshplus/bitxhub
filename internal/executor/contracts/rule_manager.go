@@ -43,11 +43,6 @@ func (rm *RuleManager) Manage(eventTyp string, proposalResult, lastStatus string
 		return boltvm.Error("unmarshal rule error:" + err.Error())
 	}
 
-	ok, errData := rm.RuleManager.ChangeStatus(rule.Address, proposalResult, lastStatus, []byte(rule.ChainId))
-	if !ok {
-		return boltvm.Error(string(errData))
-	}
-
 	switch eventTyp {
 	case string(governance.EventUpdate):
 		// get master
@@ -59,11 +54,17 @@ func (rm *RuleManager) Manage(eventTyp string, proposalResult, lastStatus string
 		if err := json.Unmarshal(masterData, &masterRule); err != nil {
 			return boltvm.Error("unmarshal masterRule error:" + err.Error())
 		}
+
 		// change master status
 		ok, errData := rm.RuleManager.ChangeStatus(masterRule.Address, proposalResult, string(governance.GovernanceAvailable), []byte(masterRule.ChainId))
 		if !ok {
 			return boltvm.Error(string(errData))
 		}
+	}
+
+	ok, errData := rm.RuleManager.ChangeStatus(rule.Address, proposalResult, lastStatus, []byte(rule.ChainId))
+	if !ok {
+		return boltvm.Error(string(errData))
 	}
 
 	return boltvm.Success(nil)
