@@ -26,9 +26,11 @@ solo = false
   duration = "15s"
 
 [security]
-  enable_tls = false
-  pem_file_path = "certs/server.pem"
-  server_key_path = "certs/server.key"
+  enable_tls = true
+  pem_file_path = "certs/agency.cert"
+  server_key_path = "certs/agency.priv"
+  gateway_cert_path = "certs/gateway.cert"
+  gateway_key_path = "certs/gateway.priv"
 
 [limiter]
   interval= "50ms"

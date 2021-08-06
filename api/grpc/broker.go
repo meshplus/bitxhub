@@ -2,7 +2,10 @@ package grpc
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"path/filepath"
 
@@ -67,15 +70,19 @@ func (cbs *ChainBrokerService) init() error {
 	if config.Security.EnableTLS {
 		pemFilePath := filepath.Join(config.RepoRoot, config.Security.PemFilePath)
 		serverKeyPath := filepath.Join(config.RepoRoot, config.Security.ServerKeyPath)
-		cred, err := credentials.NewServerTLSFromFile(pemFilePath, serverKeyPath)
+		cert, err := tls.LoadX509KeyPair(pemFilePath, serverKeyPath)
 		if err != nil {
 			return err
 		}
+		clientCaCert, _ := ioutil.ReadFile(pemFilePath)
+		clientCaCertPool := x509.NewCertPool()
+		clientCaCertPool.AppendCertsFromPEM(clientCaCert)
+		cred := credentials.NewTLS(&tls.Config{
+			Certificates: []tls.Certificate{cert}, ClientAuth: tls.RequireAndVerifyClientCert, ClientCAs: clientCaCertPool})
+
 		grpcOpts = append(grpcOpts, grpc.Creds(cred))
 	}
-
 	cbs.server = grpc.NewServer(grpcOpts...)
-
 	return nil
 }
 
