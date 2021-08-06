@@ -39,25 +39,26 @@ const (
 )
 
 type Config struct {
-	RepoRoot string `json:"repo_root"`
-	Title    string `json:"title"`
-	Solo     bool   `json:"solo"`
-	Port     `json:"port"`
-	PProf    `json:"pprof"`
-	Monitor  `json:"monitor"`
-	Limiter  `json:"limiter"`
-	Appchain `json:"appchain"`
-	Gateway  `json:"gateway"`
-	Ping     `json:"ping"`
-	Log      `json:"log"`
-	Cert     `json:"cert"`
-	Txpool   `json:"txpool"`
-	Order    `json:"order"`
-	Executor `json:"executor"`
-	Ledger   `json:"ledger"`
-	Genesis  `json:"genesis"`
-	Security Security `toml:"security" json:"security"`
-	License  License  `toml:"license" json:"license"`
+	RepoRoot      string `json:"repo_root"`
+	Title         string `json:"title"`
+	Solo          bool   `json:"solo"`
+	Port          `json:"port"`
+	PProf         `json:"pprof"`
+	Monitor       `json:"monitor"`
+	Limiter       `json:"limiter"`
+	Appchain      `json:"appchain"`
+	Gateway       `json:"gateway"`
+	Ping          `json:"ping"`
+	Log           `json:"log"`
+	Cert          `json:"cert"`
+	Txpool        `json:"txpool"`
+	Order         `json:"order"`
+	Executor      `json:"executor"`
+	Ledger        `json:"ledger"`
+	Genesis       `json:"genesis"`
+	TimedGenBlock `json:"TimedGenBlock"`
+	Security      Security `toml:"security" json:"security"`
+	License       License  `toml:"license" json:"license"`
 }
 
 // Security are files used to setup connection with tls
@@ -169,6 +170,11 @@ type License struct {
 	Verifier string `toml:"verifier" json:"verifier"`
 }
 
+type TimedGenBlock struct {
+	Enable       bool          `toml:"enable" json:"enable"`
+	BlockTimeout time.Duration `mapstructure:"block_timeout" json:"block_timeout"`
+}
+
 func (c *Config) Bytes() ([]byte, error) {
 	ret, err := json.Marshal(c)
 	if err != nil {
@@ -226,6 +232,10 @@ func DefaultConfig() (*Config, error) {
 			Balance:  "100000000000000000000000000000000000",
 		},
 		Ledger: Ledger{Type: "complex"},
+		TimedGenBlock: TimedGenBlock{
+			Enable:       true,
+			BlockTimeout: 2 * time.Second,
+		},
 	}, nil
 }
 

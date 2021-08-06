@@ -19,18 +19,20 @@ import (
 )
 
 type Node struct {
-	ID        uint64
-	commitC   chan *pb.CommitEvent         // block channel
-	logger    logrus.FieldLogger           // logger
-	mempool   mempool.MemPool              // transaction pool
-	proposeC  chan *raftproto.RequestBatch // proposed listenReadyBlock, input channel
-	stateC    chan *mempool.ChainState
-	txCache   *mempool.TxCache // cache the transactions received from api
-	batchMgr  *etcdraft.BatchTimer
-	lastExec  uint64              // the index of the last-applied block
-	packSize  int                 // maximum number of transaction packages
-	blockTick time.Duration       // block packed period
-	peerMgr   peermgr.PeerManager // network manager
+	ID            uint64
+	isTimed       bool
+	commitC       chan *pb.CommitEvent         // block channel
+	logger        logrus.FieldLogger           // logger
+	mempool       mempool.MemPool              // transaction pool
+	proposeC      chan *raftproto.RequestBatch // proposed listenReadyBlock, input channel
+	stateC        chan *mempool.ChainState
+	txCache       *mempool.TxCache // cache the transactions received from api
+	batchMgr      *etcdraft.Timer
+	blockTimerMgr *etcdraft.Timer     //generate block on time
+	lastExec      uint64              // the index of the last-applied block
+	packSize      int                 // maximum number of transaction packages
+	blockTick     time.Duration       // block packed period
+	peerMgr       peermgr.PeerManager // network manager
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -118,6 +120,8 @@ func NewNode(opts ...agency.ConfigOption) (agency.Order, error) {
 	batchTimeout, memConfig, err := generateSoloConfig(config.RepoRoot)
 	mempoolConf := &mempool.Config{
 		ID:              config.ID,
+		IsTimed:         config.IsTimed,
+		BlockTimeout:    config.BlockTimeout,
 		ChainHeight:     config.Applied,
 		Logger:          config.Logger,
 		StoragePath:     config.StoragePath,
@@ -135,19 +139,22 @@ func NewNode(opts ...agency.ConfigOption) (agency.Order, error) {
 	}
 	txCache := mempool.NewTxCache(mempoolConf.TxSliceTimeout, mempoolConf.TxSliceSize, config.Logger)
 	batchTimerMgr := etcdraft.NewTimer(batchTimeout, config.Logger)
+	blockTimerMgr := etcdraft.NewTimer(config.BlockTimeout, config.Logger)
 	soloNode := &Node{
-		ID:       config.ID,
-		commitC:  make(chan *pb.CommitEvent, 1024),
-		stateC:   make(chan *mempool.ChainState),
-		lastExec: config.Applied,
-		mempool:  mempoolInst,
-		txCache:  txCache,
-		batchMgr: batchTimerMgr,
-		peerMgr:  config.PeerMgr,
-		proposeC: batchC,
-		logger:   config.Logger,
-		ctx:      ctx,
-		cancel:   cancel,
+		ID:            config.ID,
+		isTimed:       config.IsTimed,
+		commitC:       make(chan *pb.CommitEvent, 1024),
+		stateC:        make(chan *mempool.ChainState),
+		lastExec:      config.Applied,
+		mempool:       mempoolInst,
+		txCache:       txCache,
+		batchMgr:      batchTimerMgr,
+		blockTimerMgr: blockTimerMgr,
+		peerMgr:       config.PeerMgr,
+		proposeC:      batchC,
+		logger:        config.Logger,
+		ctx:           ctx,
+		cancel:        cancel,
 	}
 	soloNode.logger.Infof("SOLO lastExec = %d", soloNode.lastExec)
 	soloNode.logger.Infof("SOLO batch timeout = %v", batchTimeout)
@@ -193,19 +200,31 @@ func (n *Node) listenReadyBlock() {
 	}()
 
 	for {
+		// generate block on time, allow empty block.
+		if n.isTimed {
+			n.batchMgr.StopTimer()
+			if !n.blockTimerMgr.IsTimerActive() {
+				n.blockTimerMgr.StartTimer()
+			}
+		}
+
 		select {
 		case <-n.ctx.Done():
 			n.logger.Info("----- Exit listen ready block loop -----")
 			return
 
 		case txSet := <-n.txCache.TxSetC:
-			// start batch timer when this node receives the first transaction
-			if !n.batchMgr.IsBatchTimerActive() {
-				n.batchMgr.StartBatchTimer()
-			}
-			if batch := n.mempool.ProcessTransactions(txSet.Transactions, true, true); batch != nil {
-				n.batchMgr.StopBatchTimer()
-				n.proposeC <- batch
+			if !n.isTimed {
+				// start batch timer when this node receives the first transaction
+				if !n.batchMgr.IsTimerActive() {
+					n.batchMgr.StartTimer()
+				}
+				if batch := n.mempool.ProcessTransactions(txSet.Transactions, true, true); batch != nil {
+					n.batchMgr.StopTimer()
+					n.proposeC <- batch
+				}
+			} else {
+				n.mempool.ProcessTransactions(txSet.Transactions, true, true)
 			}
 
 		case state := <-n.stateC:
@@ -217,8 +236,8 @@ func (n *Node) listenReadyBlock() {
 			}
 			n.mempool.CommitTransactions(state)
 
-		case <-n.batchMgr.BatchTimeoutEvent():
-			n.batchMgr.StopBatchTimer()
+		case <-n.batchMgr.TimeoutEvent():
+			n.batchMgr.StopTimer()
 			n.logger.Debug("Batch timer expired, try to create a batch")
 			if n.mempool.HasPendingRequest() {
 				if batch := n.mempool.GenerateBlock(); batch != nil {
@@ -227,11 +246,19 @@ func (n *Node) listenReadyBlock() {
 			} else {
 				n.logger.Debug("The length of priorityIndex is 0, skip the batch timer")
 			}
+
+		case <-n.blockTimerMgr.TimeoutEvent():
+			n.blockTimerMgr.StopTimer()
+			batch := n.mempool.GenerateBlock()
+			if !n.mempool.HasPendingRequest() {
+				n.logger.Debug("start create empty block")
+			}
+			n.postProposal(batch)
 		}
 	}
 }
 
 func (n *Node) postProposal(batch *raftproto.RequestBatch) {
 	n.proposeC <- batch
-	n.batchMgr.StartBatchTimer()
+	n.batchMgr.StartTimer()
 }

@@ -83,6 +83,7 @@ func NewBitXHub(rep *repo.Repo) (*BitXHub, error) {
 		order.WithLogger(loggers.Logger(loggers.Order)),
 		order.WithApplied(chainMeta.Height),
 		order.WithDigest(chainMeta.BlockHash.String()),
+		order.WithIsTimed(rep.Config.TimedGenBlock.Enable, rep.Config.TimedGenBlock.BlockTimeout),
 		order.WithGetChainMetaFunc(bxh.Ledger.GetChainMeta),
 		order.WithGetBlockByHeightFunc(bxh.Ledger.GetBlock),
 		order.WithGetAccountNonceFunc(bxh.Ledger.Copy().GetNonce),

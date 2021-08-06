@@ -29,6 +29,7 @@ type Node struct {
 	id       uint64             // raft id
 	leader   uint64             // leader id
 	repoRoot string             // project path
+	isTimed  bool               // generate block on time
 	logger   logrus.FieldLogger // logger
 
 	node          raft.Node           // raft node
@@ -39,7 +40,8 @@ type Node struct {
 	storage       storage.Storage     // db
 	mempool       mempool.MemPool     // transaction pool
 	txCache       *mempool.TxCache    // cache the transactions received from api
-	batchTimerMgr *BatchTimer
+	batchTimerMgr *Timer
+	blockTimerMgr *Timer
 
 	proposeC          chan *raftproto.RequestBatch // proposed ready, input channel
 	confChangeC       chan raftpb.ConfChange       // proposed cluster config changes
@@ -115,6 +117,8 @@ func NewNode(opts ...agency.ConfigOption) (agency.Order, error) {
 		Logger:          config.Logger,
 		StoragePath:     config.StoragePath,
 		GetAccountNonce: config.GetAccountNonce,
+		IsTimed:         config.IsTimed,
+		BlockTimeout:    config.BlockTimeout,
 
 		BatchSize:      raftConfig.RAFT.MempoolConfig.BatchSize,
 		PoolSize:       raftConfig.RAFT.MempoolConfig.PoolSize,
@@ -133,6 +137,8 @@ func NewNode(opts ...agency.ConfigOption) (agency.Order, error) {
 		batchTimeout = raftConfig.RAFT.BatchTimeout
 	}
 	batchTimerMgr := NewTimer(batchTimeout, config.Logger)
+	// support block on time
+	blockTimerMgr := NewTimer(config.BlockTimeout, config.Logger)
 	txCache := mempool.NewTxCache(mempoolConf.TxSliceTimeout, mempoolConf.TxSliceSize, config.Logger)
 
 	readyPool := &sync.Pool{New: func() interface{} {
@@ -154,6 +160,7 @@ func NewNode(opts ...agency.ConfigOption) (agency.Order, error) {
 	node := &Node{
 		id:               config.ID,
 		lastExec:         config.Applied,
+		isTimed:          config.IsTimed,
 		confChangeC:      make(chan raftpb.ConfChange),
 		commitC:          make(chan *pb.CommitEvent, 1024),
 		errorC:           make(chan<- error),
@@ -166,6 +173,7 @@ func NewNode(opts ...agency.ConfigOption) (agency.Order, error) {
 		peerMgr:          config.PeerMgr,
 		txCache:          txCache,
 		batchTimerMgr:    batchTimerMgr,
+		blockTimerMgr:    blockTimerMgr,
 		peers:            peers,
 		logger:           config.Logger,
 		getChainMetaFunc: config.GetChainMetaFunc,
@@ -222,7 +230,7 @@ func (n *Node) Stop() {
 	n.logger.Infof("Consensus stopped")
 }
 
-// Add the transaction into txpool and broadcast it to other nodes
+// Prepare Add the transaction into txpool and broadcast it to other nodes
 func (n *Node) Prepare(tx pb.Transaction) error {
 	if err := n.Ready(); err != nil {
 		return err
@@ -348,6 +356,12 @@ func (n *Node) run() {
 
 	// handle messages from raft state machine
 	for {
+		if n.isLeader() && n.isTimed {
+			n.batchTimerMgr.StopTimer()
+			if !n.blockTimerMgr.IsTimerActive() {
+				n.blockTimerMgr.StartTimer()
+			}
+		}
 		select {
 		case <-ticker.C:
 			n.node.Tick()
@@ -392,8 +406,8 @@ func (n *Node) run() {
 				pbMsg := msgToConsensusPbMsg(data, raftproto.RaftMessage_BROADCAST_TX, n.id)
 				_ = n.peerMgr.Broadcast(pbMsg)
 			}
-		case <-n.batchTimerMgr.BatchTimeoutEvent():
-			n.batchTimerMgr.StopBatchTimer()
+		case <-n.batchTimerMgr.TimeoutEvent():
+			n.batchTimerMgr.StopTimer()
 			// call txPool module to generate a tx batch
 			if n.isLeader() {
 				n.logger.Debug("Leader batch timer expired, try to create a batch")
@@ -404,6 +418,20 @@ func (n *Node) run() {
 				} else {
 					n.logger.Debug("The length of priorityIndex is 0, skip the batch timer")
 				}
+			} else {
+				n.logger.Warningf("Replica %d try to generate batch, but the leader is %d", n.id, n.leader)
+			}
+
+		case <-n.blockTimerMgr.TimeoutEvent():
+			n.blockTimerMgr.StopTimer()
+			// call txPool module to generate a tx batch
+			if n.isLeader() {
+				n.logger.Debug("Leader block timer expired, try to create a block")
+				batch := n.mempool.GenerateBlock()
+				if !n.mempool.HasPendingRequest() {
+					n.logger.Debug("start create empty block")
+				}
+				n.postProposal(batch)
 			} else {
 				n.logger.Warningf("Replica %d try to generate batch, but the leader is %d", n.id, n.leader)
 			}
@@ -467,19 +495,25 @@ func (n *Node) run() {
 }
 
 func (n *Node) processTransactions(txList []pb.Transaction, isLocal bool) {
-	// leader node would check if this transaction triggered generating a batch or not
-	if n.isLeader() {
-		// start batch timer when this node receives the first transaction
-		if !n.batchTimerMgr.IsBatchTimerActive() {
-			n.batchTimerMgr.StartBatchTimer()
-		}
-		// If this transaction triggers generating a batch, stop batch timer
-		if batch := n.mempool.ProcessTransactions(txList, true, isLocal); batch != nil {
-			n.batchTimerMgr.StopBatchTimer()
-			n.postProposal(batch)
+
+	if !n.isTimed {
+		// leader node would check if this transaction triggered generating a batch or not
+		if n.isLeader() {
+			// start batch timer when this node receives the first transaction
+			if !n.batchTimerMgr.IsTimerActive() {
+				n.batchTimerMgr.StartTimer()
+			}
+			// If this transaction triggers generating a batch, stop batch timer
+			if batch := n.mempool.ProcessTransactions(txList, true, isLocal); batch != nil {
+				n.batchTimerMgr.StopTimer()
+				n.postProposal(batch)
+			}
+		} else {
+			n.mempool.ProcessTransactions(txList, false, isLocal)
 		}
 	} else {
-		n.mempool.ProcessTransactions(txList, false, isLocal)
+		// generate block on time, needn't post Proposal based batch limit
+		n.mempool.ProcessTransactions(txList, true, isLocal)
 	}
 }
 
@@ -698,12 +732,12 @@ func (n *Node) send(messages []raftpb.Message) {
 
 func (n *Node) postProposal(batch *raftproto.RequestBatch) {
 	n.proposeC <- batch
-	n.batchTimerMgr.StartBatchTimer()
+	n.batchTimerMgr.StartTimer()
 }
 
 func (n *Node) becomeFollower() {
 	n.logger.Debugf("Replica %d became follower", n.id)
-	n.batchTimerMgr.StopBatchTimer()
+	n.batchTimerMgr.StopTimer()
 }
 
 func (n *Node) setLastExec(height uint64) {
