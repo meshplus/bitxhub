@@ -71,6 +71,7 @@ solo = false
 [genesis]
   chainid = 1356
   gas_limit = 0x5f5e100
+  bvm_gas_price = 0
   dider = "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013"
   [[genesis.admins]]
     address = "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013"
