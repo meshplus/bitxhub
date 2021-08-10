@@ -27,7 +27,7 @@ require (
 	github.com/libp2p/go-libp2p-core v0.5.6
 	github.com/looplab/fsm v0.2.0
 	github.com/magiconair/properties v1.8.4
-	github.com/meshplus/bitxhub-core v1.3.1-0.20210804103418-8924194bc020
+	github.com/meshplus/bitxhub-core v1.3.1-0.20210810153806-29e25898add4
 	github.com/meshplus/bitxhub-kit v1.2.1-0.20210616114532-4849447f09e1
 	github.com/meshplus/bitxhub-model v1.2.1-0.20210629020432-d98febd566c1
 	github.com/meshplus/bitxid v0.0.0-20210412025850-e0eaf0f9063a
@@ -64,3 +64,5 @@ replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20200218
 replace google.golang.org/grpc => google.golang.org/grpc v1.33.0
 
 replace github.com/hyperledger/fabric => github.com/hyperledger/fabric v2.0.1+incompatible
+
+replace github.com/meshplus/bitxhub-core => ../bitxhub-core

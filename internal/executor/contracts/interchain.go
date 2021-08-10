@@ -13,6 +13,7 @@ import (
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/crypto/asym/ecdsa"
+	"github.com/meshplus/bitxhub-kit/hexutil"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -272,13 +273,19 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, error) {
 }
 
 func (x *InterchainManager) checkPubKeyAndCaller(pub string) error {
-	pubKeyBytes, err := base64.StdEncoding.DecodeString(pub)
-	if err != nil {
-		return fmt.Errorf("decode public key bytes: %w", err)
-	}
+	var pubKeyBytes []byte
+	var pubKey crypto.PublicKey
+	pubKeyBytes = hexutil.Decode(pub)
 	pubKey, err := ecdsa.UnmarshalPublicKey(pubKeyBytes, crypto.Secp256k1)
 	if err != nil {
-		return fmt.Errorf("decrypt registerd public key error: %w", err)
+		pubKeyBytes, err = base64.StdEncoding.DecodeString(pub)
+		if err != nil {
+			return fmt.Errorf("decode public key bytes: %w", err)
+		}
+		pubKey, err = ecdsa.UnmarshalPublicKey(pubKeyBytes, crypto.Secp256k1)
+		if err != nil {
+			return fmt.Errorf("decrypt registerd public key error: %w", err)
+		}
 	}
 	addr, err := pubKey.Address()
 	if err != nil {

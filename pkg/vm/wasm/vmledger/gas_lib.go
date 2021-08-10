@@ -4,24 +4,25 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/meshplus/bitxhub-core/validator/validatorlib"
 	"github.com/meshplus/bitxhub-core/wasm/wasmlib"
 	"github.com/wasmerio/wasmer-go/wasmer"
 )
 
 type GasLimit struct {
-	limit int64
+	limit uint64
 
 	sync.RWMutex
 }
 
-func (g *GasLimit) GetLimit() int64 {
+func (g *GasLimit) GetLimit() uint64 {
 	g.Lock()
 	defer g.Unlock()
 
 	return g.limit
 }
 
-func (g *GasLimit) SetLimit(limit int64) {
+func (g *GasLimit) SetLimit(limit uint64) {
 	g.Lock()
 	defer g.Unlock()
 
@@ -29,14 +30,16 @@ func (g *GasLimit) SetLimit(limit int64) {
 }
 
 func usegas(env interface{}, args []wasmer.Value) ([]wasmer.Value, error) {
-	gasPrice := args[0].I64()
-	gasLimit := env.(*wasmlib.WasmEnv).Ctx["gaslimit"].(*GasLimit)
+	gasPrice := uint64(args[0].I64())
+	gasLimit := env.(*wasmlib.WasmEnv).Ctx["gaslimit"].(*validatorlib.GasLimit)
 
-	remain := gasLimit.GetLimit() - gasPrice
-	fmt.Println(remain)
-	if remain < 0 {
+	gasL := gasLimit.GetLimit()
+	if gasL < gasPrice {
 		return []wasmer.Value{}, fmt.Errorf("run out of gas limit")
 	}
+	remain := gasL - gasPrice
+	fmt.Println(remain)
+
 	gasLimit.SetLimit(remain)
 	return []wasmer.Value{}, nil
 }

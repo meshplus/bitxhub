@@ -126,13 +126,14 @@ type LogModule struct {
 }
 
 type Genesis struct {
-	ChainID     uint64            `json:"chainid" toml:"chainid"`
-	GasLimit    uint64            `mapstructure:"gas_limit" json:"gas_limit" toml:"gas_limit"`
-	BvmGasPrice uint64            `mapstructure:"bvm_gas_price" json:"bvm_gas_price" toml:"bvm_gas_price"`
-	Balance     string            `json:"balance" toml:"balance"`
-	Admins      []*Admin          `json:"admins" toml:"admins"`
-	Strategy    map[string]string `json:"strategy" toml:"strategy"`
-	Dider       string            `json:"dider" toml:"dider"`
+	ChainID      uint64            `json:"chainid" toml:"chainid"`
+	GasLimit     uint64            `mapstructure:"gas_limit" json:"gas_limit" toml:"gas_limit"`
+	WasmGasLimit uint64            `mapstructure:"wasm_gas_limit" json:"gas_limit" toml:"wasm_gas_limit"`
+	BvmGasPrice  uint64            `mapstructure:"bvm_gas_price" json:"bvm_gas_price" toml:"bvm_gas_price"`
+	Balance      string            `json:"balance" toml:"balance"`
+	Admins       []*Admin          `json:"admins" toml:"admins"`
+	Strategy     map[string]string `json:"strategy" toml:"strategy"`
+	Dider        string            `json:"dider" toml:"dider"`
 }
 
 type Admin struct {
@@ -221,9 +222,10 @@ func DefaultConfig() (*Config, error) {
 			Type: "serial",
 		},
 		Genesis: Genesis{
-			ChainID:  1,
-			GasLimit: 0x5f5e100,
-			Balance:  "100000000000000000000000000000000000",
+			ChainID:      1,
+			GasLimit:     0x5f5e100,
+			WasmGasLimit: 0x5f5e100,
+			Balance:      "100000000000000000000000000000000000",
 		},
 		Ledger: Ledger{Type: "complex"},
 	}, nil

@@ -27,9 +27,10 @@ import (
 )
 
 const (
-	from     = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
-	to       = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
-	contract = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
+	from         = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
+	to           = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
+	contract     = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
+	wasmGasLimit = 5000000000000000
 )
 
 func TestVerifyPool_CheckProof(t *testing.T) {
@@ -67,7 +68,7 @@ func TestVerifyPool_CheckProof(t *testing.T) {
 	stateLedger.EXPECT().GetState(constant.RuleManagerContractAddr.Address(), gomock.Any()).Return(false, rlData)
 	mockEngine.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil).AnyTimes()
 
-	vp := New(mockLedger, log.NewWithModule("test_verify"))
+	vp := New(mockLedger, log.NewWithModule("test_verify"), wasmGasLimit)
 	vp = &VerifyPool{
 		ledger: mockLedger,
 		ve:     mockEngine,

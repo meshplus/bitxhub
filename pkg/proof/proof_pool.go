@@ -39,8 +39,8 @@ type VerifyPool struct {
 
 var _ Verify = (*VerifyPool)(nil)
 
-func New(ledger *ledger.Ledger, logger logrus.FieldLogger) Verify {
-	ve := validator.NewValidationEngine(ledger, &sync.Map{}, log.NewWithModule("validator"))
+func New(ledger *ledger.Ledger, logger logrus.FieldLogger, wasmGasLimit uint64) Verify {
+	ve := validator.NewValidationEngine(ledger, &sync.Map{}, log.NewWithModule("validator"), wasmGasLimit)
 	proofPool := &VerifyPool{
 		ledger: ledger,
 		logger: logger,
