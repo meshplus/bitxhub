@@ -5,5 +5,5 @@ type VM interface {
 	// Run should execute the given contract with the given input
 	// and return the contract execution return bytes or an error if it
 	// failed.
-	Run(input []byte) ([]byte, error)
+	Run(input []byte, gasLimit uint64) ([]byte, uint64, error)
 }

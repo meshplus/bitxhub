@@ -38,8 +38,8 @@ type VerifyPool struct {
 
 var _ Verify = (*VerifyPool)(nil)
 
-func New(ledger *ledger.Ledger, logger logrus.FieldLogger) Verify {
-	ve := validator.NewValidationEngine(ledger, &sync.Map{}, log.NewWithModule("validator"))
+func New(ledger *ledger.Ledger, logger logrus.FieldLogger, wasmGasLimit uint64) Verify {
+	ve := validator.NewValidationEngine(ledger, &sync.Map{}, log.NewWithModule("validator"), wasmGasLimit)
 	proofPool := &VerifyPool{
 		ledger: ledger,
 		logger: logger,
@@ -52,26 +52,26 @@ func (pl *VerifyPool) ValidationEngine() validator.Engine {
 	return pl.ve
 }
 
-func (pl *VerifyPool) CheckProof(tx pb.Transaction) (bool, error) {
+func (pl *VerifyPool) CheckProof(tx pb.Transaction) (ok bool, gasUsed uint64, err error) {
 	ibtp := tx.GetIBTP()
 	if ibtp != nil {
-		ok, err := pl.verifyProof(ibtp, tx.GetExtra())
+		ok, gasUsed, err = pl.verifyProof(ibtp, tx.GetExtra())
 		if err != nil {
 			pl.logger.WithFields(logrus.Fields{
 				"hash":  tx.GetHash().String(),
 				"id":    ibtp.ID(),
 				"error": err}).Warn("ibtp verify got error")
-			return false, err
+			return false, gasUsed, err
 		}
 		if !ok {
 			pl.logger.WithFields(logrus.Fields{"hash": tx.GetHash().String(), "id": ibtp.ID()}).Warn("ibtp verify failed")
-			return false, nil
+			return false, gasUsed, nil
 		}
 
 		//TODO(jz): need to remove the proof
 		//tx.Extra = nil
 	}
-	return true, nil
+	return true, gasUsed, nil
 }
 
 type bxhValidators struct {
@@ -79,13 +79,13 @@ type bxhValidators struct {
 }
 
 // verifyMultiSign .
-func verifyMultiSign(app *appchainMgr.Appchain, ibtp *pb.IBTP, proof []byte) (bool, error) {
+func verifyMultiSign(app *appchainMgr.Appchain, ibtp *pb.IBTP, proof []byte) (bool, uint64, error) {
 	if app.TrustRoot == nil {
-		return false, fmt.Errorf("%s: empty validators in relay chain:%s", internalError, app.ID)
+		return false, 0, fmt.Errorf("%s: empty validators in relay chain:%s", internalError, app.ID)
 	}
 	var validators bxhValidators
 	if err := json.Unmarshal(app.TrustRoot, &validators); err != nil {
-		return false, fmt.Errorf("%s: %w", InvalidIBTP, err)
+		return false, 0, fmt.Errorf("%s: %w", InvalidIBTP, err)
 	}
 
 	m := make(map[string]struct{}, 0)
@@ -95,7 +95,7 @@ func verifyMultiSign(app *appchainMgr.Appchain, ibtp *pb.IBTP, proof []byte) (bo
 
 	var signs pb.SignResponse
 	if err := signs.Unmarshal(proof); err != nil {
-		return false, err
+		return false, 0, err
 	}
 
 	threshold := (len(validators.Addresses) - 1) / 3 // TODO be dynamic
@@ -105,7 +105,7 @@ func verifyMultiSign(app *appchainMgr.Appchain, ibtp *pb.IBTP, proof []byte) (bo
 	hash := sha256.Sum256([]byte(ibtpHash.String()))
 	for v, sign := range signs.Sign {
 		if _, ok := m[v]; !ok {
-			return false, fmt.Errorf("%s: wrong validator: %s", InvalidIBTP, v)
+			return false, 0, fmt.Errorf("%s: wrong validator: %s", InvalidIBTP, v)
 		}
 		delete(m, v)
 		addr := types.NewAddressByStr(v)
@@ -114,35 +114,35 @@ func verifyMultiSign(app *appchainMgr.Appchain, ibtp *pb.IBTP, proof []byte) (bo
 			counter++
 		}
 		if counter > threshold {
-			return true, nil
+			return true, 0, nil
 		}
 	}
-	return false, fmt.Errorf("%s: multi signs verify fail, counter: %d", InvalidIBTP, counter)
+	return false, 0, fmt.Errorf("%s: multi signs verify fail, counter: %d", InvalidIBTP, counter)
 }
 
-func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, error) {
+func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, uint64, error) {
 	if proof == nil {
-		return false, fmt.Errorf("%s:, empty proof", InvalidIBTP)
+		return false, 0, fmt.Errorf("%s:, empty proof", InvalidIBTP)
 	}
 	proofHash := sha256.Sum256(proof)
 	if !bytes.Equal(proofHash[:], ibtp.Proof) {
-		return false, fmt.Errorf("%s: proof hash is not correct", InvalidIBTP)
+		return false, 0, fmt.Errorf("%s: proof hash is not correct", InvalidIBTP)
 	}
 
 	// get real appchain id for union ibtp
 	if err := ibtp.CheckServiceID(); err != nil {
-		return false, err
+		return false, 0, err
 	}
 
 	from := ibtp.SrcChainID()
 	app := &appchainMgr.Appchain{}
 	ok, data := pl.getAccountState(constant.AppchainMgrContractAddr, contracts.AppchainKey(from)) // ibtp.From
 	if !ok {
-		return false, fmt.Errorf("%s: cannot get registered appchain", AppchainNotAvailable)
+		return false, 0, fmt.Errorf("%s: cannot get registered appchain", AppchainNotAvailable)
 	}
 	err := json.Unmarshal(data, app)
 	if err != nil {
-		return false, fmt.Errorf("%s: unmarshal appchain data fail: %w", internalError, err)
+		return false, 0, fmt.Errorf("%s: unmarshal appchain data fail: %w", internalError, err)
 	}
 
 	if len(strings.Split(ibtp.From, "-")) == 2 {
@@ -154,18 +154,18 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, error) {
 	ok, data = pl.getRule(from)
 	if ok {
 		if err := json.Unmarshal(data, rl); err != nil {
-			return false, fmt.Errorf("%s: unmarshal rule data error: %w", internalError, err)
+			return false, 0, fmt.Errorf("%s: unmarshal rule data error: %w", internalError, err)
 		}
 		validateAddr = rl.Address
 	} else {
-		return false, fmt.Errorf(NoBindRule)
+		return false, 0, fmt.Errorf(NoBindRule)
 	}
 
-	ok, err = pl.ve.Validate(validateAddr, from, proof, ibtp.Payload, string(app.TrustRoot)) // ibtp.From
+	ok, gasUsed, err := pl.ve.Validate(validateAddr, from, proof, ibtp.Payload, string(app.TrustRoot)) // ibtp.From
 	if err != nil {
-		return false, fmt.Errorf("%s: %w", InvalidIBTP, err)
+		return false, gasUsed, fmt.Errorf("%s: %w", InvalidIBTP, err)
 	}
-	return true, nil
+	return true, gasUsed, nil
 }
 
 func (pl *VerifyPool) getRule(chainId string) (bool, []byte) {

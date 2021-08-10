@@ -140,31 +140,31 @@ func (im *Imports) importLedgerLib(store *wasmer.Store, wasmEnv *wasmlib.WasmEnv
 		wasmEnv,
 		addState,
 	)
-	im.imports.Register(
+	im.imports.GetImportObject().Register(
 		"env",
 		map[string]wasmer.IntoExtern{
 			"get_balance": getBalanceFunc,
 		},
 	)
-	im.imports.Register(
+	im.imports.GetImportObject().Register(
 		"env",
 		map[string]wasmer.IntoExtern{
 			"set_balance": setBalanceFunc,
 		},
 	)
-	im.imports.Register(
+	im.imports.GetImportObject().Register(
 		"env",
 		map[string]wasmer.IntoExtern{
 			"get_state": getStateFunc,
 		},
 	)
-	im.imports.Register(
+	im.imports.GetImportObject().Register(
 		"env",
 		map[string]wasmer.IntoExtern{
 			"set_state": setStateFunc,
 		},
 	)
-	im.imports.Register(
+	im.imports.GetImportObject().Register(
 		"env",
 		map[string]wasmer.IntoExtern{
 			"add_state": addStateFunc,

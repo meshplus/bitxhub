@@ -39,6 +39,8 @@ const (
 	from        = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
 )
 
+const wasmGasLimit = 5000000000000000
+
 func TestNew(t *testing.T) {
 	config := generateMockConfig(t)
 	mockCtl := gomock.NewController(t)

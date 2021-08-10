@@ -68,7 +68,7 @@ func (exec *BlockExecutor) GetBoltContracts() map[string]agency.Contract {
 
 // New creates executor instance
 func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, client *appchain.Client, config *repo.Config, gasPrice *big.Int) (*BlockExecutor, error) {
-	ibtpVerify := proof.New(chainLedger, logger)
+	ibtpVerify := proof.New(chainLedger, logger, config.GasLimit)
 	txsExecutor, err := agency.GetExecutorConstructor(config.Executor.Type)
 	if err != nil {
 		return nil, err
@@ -239,13 +239,15 @@ func (exec *BlockExecutor) verifyProofs(blockWrapper *BlockWrapper) {
 		go func(i int, tx pb.Transaction) {
 			defer wg.Done()
 			if _, ok := blockWrapper.invalidTx[i]; !ok {
-				ok, err := exec.ibtpVerify.CheckProof(tx)
+				ok, gasUsed, err := exec.ibtpVerify.CheckProof(tx)
 				if !ok {
 					lock.Lock()
 					defer lock.Unlock()
 					invalidTxs = append(invalidTxs, i)
 					errM[i] = err.Error()
 				}
+				exec.logger.WithField("gasUsed", gasUsed).Info("Verify proofs")
+				exec.gasLimit -= gasUsed
 			}
 		}(i, tx)
 	}

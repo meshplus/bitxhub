@@ -12,9 +12,11 @@ import (
 	"github.com/meshplus/bitxhub-core/wasm/wasmlib"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub/pkg/vm"
-	"github.com/meshplus/bitxhub/pkg/vm/wasm/vmledger"
+	metering "github.com/meshplus/go-wasm-metering"
 	"github.com/wasmerio/wasmer-go/wasmer"
 )
+
+const GasXVMDeploy = 21000 * 10
 
 var (
 	errorLackOfMethod = fmt.Errorf("wasm execute: lack of method name")
@@ -64,10 +66,6 @@ func New(ctx *vm.Context, imports wasmlib.WasmImport, instances map[string]*wasm
 
 	w.SetContext(wasm.ACCOUNT, ctx.Ledger.GetOrCreateAccount(ctx.Callee))
 
-	gasLimit := &vmledger.GasLimit{}
-	gasLimit.SetLimit(1000000)
-	w.SetContext("gaslimit", gasLimit)
-
 	// alloc, err := w.Instance.Exports.GetFunction("allocate")
 	// if err != nil {
 	// 	return nil, err
@@ -83,34 +81,40 @@ func EmptyImports() (wasmlib.WasmImport, error) {
 }
 
 // Run let the wasm vm excute or deploy the smart contract which depends on whether the callee is empty
-func (w *WasmVM) Run(input []byte) (ret []byte, err error) {
+func (w *WasmVM) Run(input []byte, gasLimit uint64) (ret []byte, gasUsed uint64, err error) {
 	if w.ctx.Callee == nil || bytes.Equal(w.ctx.Callee.Bytes(), (&types.Address{}).Bytes()) {
 		return w.deploy()
 	}
 
-	return w.w.Execute(input)
+	return w.w.Execute(input, gasLimit)
 }
 
-func (w *WasmVM) deploy() ([]byte, error) {
+func (w *WasmVM) deploy() ([]byte, uint64, error) {
 	if len(w.ctx.TransactionData.Payload) == 0 {
-		return nil, fmt.Errorf("contract cannot be empty")
+		return nil, 0, fmt.Errorf("contract cannot be empty")
 	}
+
+	meteredCode, _, err := metering.MeterWASM(w.ctx.TransactionData.Payload, &metering.Options{})
+	if err != nil {
+		return nil, 0, err
+	}
+
 	contractNonce := w.ctx.Ledger.GetNonce(w.ctx.Caller)
 
 	contractAddr := createAddress(w.ctx.Caller, contractNonce)
 	wasmStruct := &Contract{
-		Code: w.ctx.TransactionData.Payload,
+		Code: meteredCode,
 		Hash: *types.NewHash(w.ctx.TransactionData.Payload),
 	}
 	wasmByte, err := json.Marshal(wasmStruct)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	w.ctx.Ledger.SetCode(contractAddr, wasmByte)
 
 	w.ctx.Ledger.SetNonce(w.ctx.Caller, contractNonce+1)
 
-	return contractAddr.Bytes(), nil
+	return contractAddr.Bytes(), GasXVMDeploy, nil
 }
 
 func createAddress(b *types.Address, nonce uint64) *types.Address {
