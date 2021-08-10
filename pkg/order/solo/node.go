@@ -202,7 +202,9 @@ func (n *Node) listenReadyBlock() {
 	for {
 		// generate block on time, allow empty block.
 		if n.isTimed {
-			n.batchMgr.StopTimer()
+			if n.batchMgr.IsTimerActive() {
+				n.batchMgr.StopTimer()
+			}
 			if !n.blockTimerMgr.IsTimerActive() {
 				n.blockTimerMgr.StartTimer()
 			}
@@ -260,5 +262,7 @@ func (n *Node) listenReadyBlock() {
 
 func (n *Node) postProposal(batch *raftproto.RequestBatch) {
 	n.proposeC <- batch
-	n.batchMgr.StartTimer()
+	if !n.isTimed {
+		n.batchMgr.StartTimer()
+	}
 }

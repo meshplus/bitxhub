@@ -2,6 +2,7 @@ package repo
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -259,6 +260,9 @@ func UnmarshalConfig(repoRoot string) (*Config, error) {
 		return nil, err
 	}
 
+	if config.BlockTimeout < 0 {
+		return nil, errors.New("cannot support illegal parameter, blockTimeout must be a positive number. ")
+	}
 	config.RepoRoot = repoRoot
 	return config, nil
 }

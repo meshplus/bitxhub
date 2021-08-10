@@ -357,7 +357,9 @@ func (n *Node) run() {
 	// handle messages from raft state machine
 	for {
 		if n.isLeader() && n.isTimed {
-			n.batchTimerMgr.StopTimer()
+			if n.batchTimerMgr.IsTimerActive() {
+				n.batchTimerMgr.StopTimer()
+			}
 			if !n.blockTimerMgr.IsTimerActive() {
 				n.blockTimerMgr.StartTimer()
 			}
@@ -732,7 +734,9 @@ func (n *Node) send(messages []raftpb.Message) {
 
 func (n *Node) postProposal(batch *raftproto.RequestBatch) {
 	n.proposeC <- batch
-	n.batchTimerMgr.StartTimer()
+	if !n.isTimed {
+		n.batchTimerMgr.StartTimer()
+	}
 }
 
 func (n *Node) becomeFollower() {
