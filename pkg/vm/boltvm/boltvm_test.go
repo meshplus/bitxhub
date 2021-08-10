@@ -2,10 +2,8 @@ package boltvm
 
 import (
 	"encoding/json"
-	"testing"
-	"time"
-
 	"github.com/meshplus/bitxhub/internal/ledger"
+	"testing"
 
 	"github.com/golang/mock/gomock"
 	"github.com/meshplus/bitxhub-core/agency"
@@ -119,8 +117,6 @@ func TestBoltVM_Run(t *testing.T) {
 
 func mockIBTP(t *testing.T, index uint64, typ pb.IBTP_Type) *pb.IBTP {
 	content := pb.Content{
-		SrcContractId: from,
-		DstContractId: from,
 		Func:          "set",
 	}
 
@@ -139,6 +135,5 @@ func mockIBTP(t *testing.T, index uint64, typ pb.IBTP_Type) *pb.IBTP {
 		Payload:   ibtppd,
 		Index:     index,
 		Type:      typ,
-		Timestamp: time.Now().UnixNano(),
 	}
 }

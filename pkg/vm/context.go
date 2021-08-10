@@ -15,14 +15,14 @@ type Context struct {
 	Ledger           *ledger.Ledger
 	TransactionIndex uint64
 	TransactionData  *pb.TransactionData
+	CurrentHeight    uint64
 	Nonce            uint64
-	Tx               *pb.BxhTransaction
+	Tx               pb.Transaction
 	Logger           logrus.FieldLogger
 }
 
 // NewContext creates a context of wasm instance
-func NewContext(tx pb.Transaction, txIndex uint64, data *pb.TransactionData, ledger *ledger.Ledger, logger logrus.FieldLogger) *Context {
-	bxhTx := tx.(*pb.BxhTransaction)
+func NewContext(tx pb.Transaction, txIndex uint64, data *pb.TransactionData, currentHeight uint64, ledger *ledger.Ledger, logger logrus.FieldLogger) *Context {
 	return &Context{
 		Caller:           tx.GetFrom(),
 		Callee:           tx.GetTo(),
@@ -30,7 +30,8 @@ func NewContext(tx pb.Transaction, txIndex uint64, data *pb.TransactionData, led
 		Ledger:           ledger,
 		TransactionIndex: txIndex,
 		TransactionData:  data,
-		Tx:               bxhTx,
+		CurrentHeight:    currentHeight,
+		Tx:               tx,
 		Nonce:            tx.GetNonce(),
 		Logger:           logger,
 	}

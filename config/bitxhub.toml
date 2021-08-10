@@ -72,7 +72,6 @@ solo = false
 [genesis]
   chainid = 1356
   gas_limit = 0x5f5e100
-  dider = "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013"
   balance = "100000000000000000000000000000000000"
   [[genesis.admins]]
     address = "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013"
@@ -85,6 +84,9 @@ solo = false
     weight = 2
   [[genesis.admins]]
     address = "0xc0Ff2e0b3189132D815b8eb325bE17285AC898f8"
+    weight = 2
+  [[genesis.admins]]
+    address = "0xC213ef4E4AcB689655Fc476D30EFf0fb865Eb28a"
     weight = 2
   [genesis.strategy]
     AppchainMgr = "SimpleMajority"
