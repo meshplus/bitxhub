@@ -4,7 +4,6 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"testing"
-	"time"
 
 	"github.com/meshplus/bitxhub/internal/ledger"
 
@@ -27,8 +26,8 @@ import (
 )
 
 const (
-	from     = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
-	to       = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
+	from     = "1356:chain0:0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
+	to       = "1356:chain1:0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
 	contract = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
 )
 
@@ -233,10 +232,8 @@ func TestVerifyPool_CheckProof3(t *testing.T) {
 
 func getIBTP(t *testing.T, index uint64, typ pb.IBTP_Type, proof []byte) *pb.IBTP {
 	ct := &pb.Content{
-		SrcContractId: from,
-		DstContractId: to,
-		Func:          "set",
-		Args:          [][]byte{[]byte("Alice")},
+		Func: "set",
+		Args: [][]byte{[]byte("Alice")},
 	}
 	c, err := ct.Marshal()
 	require.Nil(t, err)
@@ -249,12 +246,11 @@ func getIBTP(t *testing.T, index uint64, typ pb.IBTP_Type, proof []byte) *pb.IBT
 	require.Nil(t, err)
 
 	return &pb.IBTP{
-		From:      from,
-		To:        to,
-		Payload:   ibtppd,
-		Index:     index,
-		Type:      typ,
-		Proof:     proof,
-		Timestamp: time.Now().UnixNano(),
+		From:    from,
+		To:      to,
+		Payload: ibtppd,
+		Index:   index,
+		Type:    typ,
+		Proof:   proof,
 	}
 }

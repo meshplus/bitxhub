@@ -15,7 +15,6 @@ import (
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
-	"github.com/meshplus/bitxid"
 	"github.com/stretchr/testify/suite"
 	"github.com/tidwall/gjson"
 )
@@ -117,8 +116,6 @@ func (suite *RegisterAppchain) TestRegisterAppchain() {
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	suite.normalNonce++
-	did := genUniqueAppchainDID(addr.String())
-	suite.Require().Equal(string(bitxid.DID(did).GetChainDID()), string(ret.Ret))
 }
 
 func (suite *RegisterAppchain) TestFetchAppchains() {
@@ -361,12 +358,4 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 	// this appchain is registing, can not be updated
 	suite.Require().False(ret.IsSuccess())
 	k1Nonce++
-}
-
-func genUniqueAppchainDID(addr string) string {
-	return fmt.Sprintf("%s%s:%s", appchainAdminDIDPrefix, addr, addr)
-}
-
-func genUniqueRelaychainDID(addr string) string {
-	return fmt.Sprintf("%s:%s", relaychainAdminDIDPrefix, addr)
 }

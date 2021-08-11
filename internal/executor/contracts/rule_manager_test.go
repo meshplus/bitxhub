@@ -259,7 +259,7 @@ func rulePrepare(t *testing.T) (*RuleManager, *mock_stub.MockStub, []*ruleMgr.Ru
 	assert.Nil(t, err)
 
 	for i := 0; i < 2; i++ {
-		addr := appchainMethod + types.NewAddress([]byte{byte(i)}).String()
+		addr := appchainID + types.NewAddress([]byte{byte(i)}).String()
 
 		chain := &appchainMgr.Appchain{
 			Status:        governance.GovernanceStatus(chainType[i]),

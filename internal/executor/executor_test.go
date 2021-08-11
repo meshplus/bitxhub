@@ -105,6 +105,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	stateLedger.EXPECT().Events(gomock.Any()).Return(evs).AnyTimes()
 	stateLedger.EXPECT().Commit(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	stateLedger.EXPECT().Clear().AnyTimes()
+	stateLedger.EXPECT().GetState(constant.TransactionMgrContractAddr.Address(), gomock.Any()).Return(false, nil).AnyTimes()
 	stateLedger.EXPECT().GetState(gomock.Any(), gomock.Any()).Return(true, []byte("10")).AnyTimes()
 	stateLedger.EXPECT().SetState(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	stateLedger.EXPECT().GetBalance(gomock.Any()).Return(new(big.Int).SetUint64(10)).AnyTimes()
@@ -123,6 +124,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	stateLedger.EXPECT().PrepareEVM(gomock.Any(), gomock.Any()).AnyTimes()
 	stateLedger.EXPECT().Close().AnyTimes()
 	chainLedger.EXPECT().Close().AnyTimes()
+
 	logger := log.NewWithModule("executor")
 
 	exec, err := New(mockLedger, logger, &appchain.Client{}, config, big.NewInt(5000000))
@@ -229,6 +231,7 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 	stateLedger.EXPECT().Events(gomock.Any()).Return(nil).AnyTimes()
 	stateLedger.EXPECT().Commit(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	stateLedger.EXPECT().Clear().AnyTimes()
+	stateLedger.EXPECT().GetState(constant.TransactionMgrContractAddr.Address(), gomock.Any()).Return(false, nil).AnyTimes()
 	stateLedger.EXPECT().GetState(contractAddr, []byte(fmt.Sprintf("index-tx-%s", id))).Return(true, val).AnyTimes()
 	chainLedger.EXPECT().PersistExecutionResult(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	stateLedger.EXPECT().FlushDirtyData().Return(make(map[string]ledger2.IAccount), &types.Hash{}).AnyTimes()
@@ -251,7 +254,7 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 
 	// mock data for block
 	var txs []pb.Transaction
-	tx, err := genBVMContractTransaction(privKey, 1, contractAddr, "GetIBTPByID", pb.String(id))
+	tx, err := genBVMContractTransaction(privKey, 1, contractAddr, "GetIBTPByID", pb.String(id), pb.Bool(true))
 	assert.Nil(t, err)
 
 	txs = append(txs, tx)
@@ -493,9 +496,7 @@ func mockTxData(t *testing.T, dataType pb.TransactionData_Type, vmType pb.Transa
 
 func mockIBTP(t *testing.T, index uint64, typ pb.IBTP_Type) *pb.IBTP {
 	content := pb.Content{
-		SrcContractId: from,
-		DstContractId: from,
-		Func:          "set",
+		Func: "set",
 	}
 
 	bytes, err := content.Marshal()
@@ -508,12 +509,11 @@ func mockIBTP(t *testing.T, index uint64, typ pb.IBTP_Type) *pb.IBTP {
 	assert.Nil(t, err)
 
 	return &pb.IBTP{
-		From:      from,
-		To:        from,
-		Payload:   ibtppd,
-		Index:     index,
-		Type:      typ,
-		Timestamp: time.Now().UnixNano(),
+		From:    from,
+		To:      from,
+		Payload: ibtppd,
+		Index:   index,
+		Type:    typ,
 	}
 }
 

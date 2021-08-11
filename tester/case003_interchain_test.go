@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
-	"time"
 
 	"github.com/meshplus/bitxhub-core/governance"
 	"github.com/meshplus/bitxhub-kit/crypto"
@@ -73,8 +72,11 @@ func (suite *Interchain) TestHandleIBTP() {
 	suite.Require().Nil(err)
 	pub2 := base64.StdEncoding.EncodeToString(rawpub2)
 
+	chainID1 := fmt.Sprintf("appchain%s", addr1.String())
+	chainID2 := fmt.Sprintf("appchain%s", addr2.String())
+
 	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "Register",
-		pb.String(fmt.Sprintf("appchain%s", addr1.String())),
+		pb.String(chainID1),
 		pb.String(docAddr),
 		pb.String(docHash),
 		pb.String(""),
@@ -127,7 +129,7 @@ func (suite *Interchain) TestHandleIBTP() {
 	adminNonce3++
 
 	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "Register",
-		pb.String(fmt.Sprintf("appchain%s", addr2.String())),
+		pb.String(chainID2),
 		pb.String(docAddr),
 		pb.String(docHash),
 		pb.String(""),
@@ -222,9 +224,42 @@ func (suite *Interchain) TestHandleIBTP() {
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	adminNonce3++
 
+	serviceID1 := "service1"
+	serviceID2 := "service2"
+	fullServiceID1 := fmt.Sprintf("1356:%s:%s", chainID1, serviceID1)
+	fullServiceID2 := fmt.Sprintf("1356:%s:%s", chainID2, serviceID2)
+
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.ServiceMgrContractAddr.Address(), "Register",
+		pb.String(chainID1),
+		pb.String(serviceID1),
+		pb.String("service1"),
+		pb.String("desc"),
+		pb.String("contract"),
+		pb.Bool(true),
+		pb.String("service1"),
+		pb.Bytes(nil),
+	)
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k1Nonce++
+
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.ServiceMgrContractAddr.Address(), "Register",
+		pb.String(chainID2),
+		pb.String(serviceID2),
+		pb.String("service2"),
+		pb.String("desc"),
+		pb.String("contract"),
+		pb.Bool(true),
+		pb.String(fullServiceID1),
+		pb.Bytes(nil),
+	)
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k1Nonce++
+
 	proof := []byte("true")
 	proofHash := sha256.Sum256(proof)
-	ib := &pb.IBTP{From: id1, To: id2, Index: ibtpNonce, Timestamp: time.Now().UnixNano(), Proof: proofHash[:]}
+	ib := &pb.IBTP{From: fullServiceID1, To: fullServiceID2, Index: ibtpNonce, TimeoutHeight: 10, Proof: proofHash[:]}
 	tx, err := genIBTPTransaction(k1, ib, k1Nonce)
 	suite.Require().Nil(err)
 	k1Nonce++
@@ -283,8 +318,10 @@ func (suite *Interchain) TestGetIBTPByID() {
 	confByte, err := ioutil.ReadFile("./test_data/validator")
 	suite.Require().Nil(err)
 
+	chainID1 := fmt.Sprintf("appchain%s", addr1.String())
+	chainID2 := fmt.Sprintf("appchain%s", addr2.String())
 	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "Register",
-		pb.String(fmt.Sprintf("appchain%s", addr1.String())),
+		pb.String(chainID1),
 		pb.String(docAddr),
 		pb.String(docHash),
 		pb.String(string(confByte)),
@@ -337,7 +374,7 @@ func (suite *Interchain) TestGetIBTPByID() {
 	adminNonce3++
 
 	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "Register",
-		pb.String(fmt.Sprintf("appchain%s", addr2.String())),
+		pb.String(chainID2),
 		pb.String(docAddr),
 		pb.String(docHash),
 		pb.String(""),
@@ -431,8 +468,41 @@ func (suite *Interchain) TestGetIBTPByID() {
 	proof, err := ioutil.ReadFile("./test_data/proof")
 	suite.Require().Nil(err)
 
+	serviceID1 := "service1"
+	serviceID2 := "service2"
+	fullServiceID1 := fmt.Sprintf("1356:%s:%s", chainID1, serviceID1)
+	fullServiceID2 := fmt.Sprintf("1356:%s:%s", chainID2, serviceID2)
+
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.ServiceMgrContractAddr.Address(), "Register",
+		pb.String(chainID1),
+		pb.String(serviceID1),
+		pb.String("service1"),
+		pb.String("desc"),
+		pb.String("contract"),
+		pb.Bool(true),
+		pb.String("service1"),
+		pb.Bytes(nil),
+	)
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k1Nonce++
+
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.ServiceMgrContractAddr.Address(), "Register",
+		pb.String(chainID2),
+		pb.String(serviceID2),
+		pb.String("service2"),
+		pb.String("desc"),
+		pb.String("contract"),
+		pb.Bool(true),
+		pb.String(fullServiceID1),
+		pb.Bytes(nil),
+	)
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k1Nonce++
+
 	proofHash := sha256.Sum256(proof)
-	ib := &pb.IBTP{From: id1, To: id2, Index: ibtpNonce, Payload: []byte("111"), Timestamp: time.Now().UnixNano(), Proof: proofHash[:]}
+	ib := &pb.IBTP{From: fullServiceID1, To: fullServiceID2, Index: ibtpNonce, Payload: []byte("111"), TimeoutHeight: 10, Proof: proofHash[:]}
 	tx, err := genIBTPTransaction(k1, ib, k1Nonce)
 	suite.Require().Nil(err)
 	tx.Extra = proof
@@ -442,7 +512,7 @@ func (suite *Interchain) TestGetIBTPByID() {
 	ibtpNonce++
 	k1Nonce++
 
-	ib2 := &pb.IBTP{From: id1, To: id2, Index: ibtpNonce, Payload: []byte("111"), Timestamp: time.Now().UnixNano(), Proof: proofHash[:]}
+	ib2 := &pb.IBTP{From: fullServiceID1, To: fullServiceID2, Index: ibtpNonce, Payload: []byte("111"), TimeoutHeight: 10, Proof: proofHash[:]}
 	tx, err = genIBTPTransaction(k1, ib2, k1Nonce)
 	suite.Require().Nil(err)
 	tx.Extra = proof
@@ -452,7 +522,7 @@ func (suite *Interchain) TestGetIBTPByID() {
 	ibtpNonce++
 	k1Nonce++
 
-	ib3 := &pb.IBTP{From: id1, To: id2, Index: ibtpNonce, Payload: []byte("111"), Timestamp: time.Now().UnixNano(), Proof: proofHash[:]}
+	ib3 := &pb.IBTP{From: fullServiceID1, To: fullServiceID2, Index: ibtpNonce, Payload: []byte("111"), TimeoutHeight: 10, Proof: proofHash[:]}
 	tx, err = genIBTPTransaction(k1, ib3, k1Nonce)
 	suite.Require().Nil(err)
 	tx.Extra = proof
@@ -462,7 +532,7 @@ func (suite *Interchain) TestGetIBTPByID() {
 	k1Nonce++
 
 	ib.Index = 2
-	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.InterchainContractAddr.Address(), "GetIBTPByID", pb.String(ib.ID()))
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.InterchainContractAddr.Address(), "GetIBTPByID", pb.String(ib.ID()), pb.Bool(true))
 	suite.Assert().Nil(err)
 	suite.Assert().Equal(true, ret.IsSuccess(), string(ret.Ret))
 	k1Nonce++
@@ -502,8 +572,9 @@ func (suite *Interchain) TestInterchain() {
 	suite.Require().Nil(transfer(suite.Suite, suite.api, addr1, 10000000000000))
 	adminNonce1 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin1.String())
 
+	chainID := fmt.Sprintf("appchain%s", addr1.String())
 	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "Register",
-		pb.String(fmt.Sprintf("appchain%s", addr1.String())),
+		pb.String(chainID),
 		pb.String(docAddr),
 		pb.String(docHash),
 		pb.String(""),
@@ -520,7 +591,6 @@ func (suite *Interchain) TestInterchain() {
 	gRet := &governance.GovernanceResult{}
 	err = json.Unmarshal(ret.Ret, gRet)
 	suite.Require().Nil(err)
-	id1 := string(gRet.Extra)
 	proposalId1 := gRet.ProposalID
 
 	//ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(id1))
@@ -555,15 +625,30 @@ func (suite *Interchain) TestInterchain() {
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	adminNonce3++
 
+	serviceID := "servie"
+	fullServiceID := fmt.Sprintf("1356:%s:%s", chainID, serviceID)
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.ServiceMgrContractAddr.Address(), "Register",
+		pb.String(chainID),
+		pb.String(serviceID),
+		pb.String("service1"),
+		pb.String("desc"),
+		pb.String("contract"),
+		pb.Bool(true),
+		pb.String("service1"),
+		pb.Bytes(nil),
+	)
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k1Nonce++
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.InterchainContractAddr.Address(),
-		"Interchain", pb.String(id1))
+		"Interchain", pb.String(fullServiceID))
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 
 	ic := &pb.Interchain{}
 	err = ic.Unmarshal(ret.Ret)
 	suite.Require().Nil(err)
-	suite.Require().Equal(id1, ic.ID)
+	suite.Require().Equal(fullServiceID, ic.ID)
 	suite.Require().Equal(0, len(ic.InterchainCounter))
 	suite.Require().Equal(0, len(ic.ReceiptCounter))
 	suite.Require().Equal(0, len(ic.SourceReceiptCounter))

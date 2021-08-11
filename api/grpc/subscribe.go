@@ -7,7 +7,6 @@ import (
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/api/jsonrpc/namespaces/eth/filters"
 	"github.com/meshplus/bitxhub/internal/model/events"
-	"github.com/meshplus/bitxid"
 )
 
 type InterchainStatus struct {
@@ -27,9 +26,9 @@ func (cbs *ChainBrokerService) Subscribe(req *pb.SubscriptionRequest, server pb.
 	case pb.SubscriptionRequest_BLOCK_HEADER.String():
 		return cbs.handleBlockHeaderSubscription(server)
 	case pb.SubscriptionRequest_INTERCHAIN_TX_WRAPPER.String():
-		return cbs.handleInterchainTxWrapperSubscription(server, req.Extra, false)
+		return cbs.handleInterchainTxWrapperSubscription(server, req.Extra)
 	case pb.SubscriptionRequest_UNION_INTERCHAIN_TX_WRAPPER.String():
-		return cbs.handleInterchainTxWrapperSubscription(server, req.Extra, true)
+		return cbs.handleInterchainTxWrapperSubscription(server, req.Extra)
 	case pb.SubscriptionRequest_EVM_LOG.String():
 		return cbs.handleEvmLogSubscription(server, req.Extra)
 	}
@@ -115,15 +114,10 @@ func (cbs *ChainBrokerService) handleInterchainTxSubscription(server pb.ChainBro
 }
 
 func (cbs *ChainBrokerService) handleInterchainTxWrapperSubscription(server pb.ChainBroker_SubscribeServer,
-	keyBytes []byte, isUnion bool) error {
-	key, err := parseSubKey(keyBytes)
-	if err != nil {
-		return err
-	}
-	appchainDID := bitxid.DID(key.AppchainDID)
-	pierID := key.PierID
-	ch, err := cbs.api.Broker().AddPier(appchainDID, pierID, isUnion)
-	defer cbs.api.Broker().RemovePier(appchainDID, pierID, isUnion)
+	extra []byte) error {
+	pierID := string(extra)
+	ch, err := cbs.api.Broker().AddPier(pierID)
+	defer cbs.api.Broker().RemovePier(pierID)
 	if err != nil {
 		return err
 	}
@@ -206,18 +200,6 @@ type interchainEvent struct {
 type SubscriptionKey struct {
 	PierID      string `json:"pier_id"`
 	AppchainDID string `json:"appchain_did"`
-}
-
-func parseSubKey(extra []byte) (*SubscriptionKey, error) {
-	key := &SubscriptionKey{}
-	if err := json.Unmarshal(extra, key); err != nil {
-		return nil, err
-	}
-	did := bitxid.DID(key.AppchainDID)
-	if !did.IsValidFormat() {
-		return nil, fmt.Errorf("invalid appchain did :%s to subscribe", key.AppchainDID)
-	}
-	return key, nil
 }
 
 func (cbs *ChainBrokerService) interStatus(block *pb.Block, interchainMeta *pb.InterchainMeta) (*interchainEvent, error) {

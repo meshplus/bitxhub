@@ -16,11 +16,18 @@ func TestTransactionManager_Begin(t *testing.T) {
 	mockStub := mock_stub.NewMockStub(mockCtl)
 
 	id := types.NewHash([]byte{0}).String()
-	mockStub.EXPECT().AddObject(fmt.Sprintf("%s-%s", PREFIX, id), pb.TransactionStatus_BEGIN)
-
+	mockStub.EXPECT().GetCurrentHeight().Return(uint64(100)).AnyTimes()
+	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().AddObject(gomock.Any(), gomock.Any()).AnyTimes()
 	im := &TransactionManager{mockStub}
 
-	res := im.Begin(id)
+	var timeoutList []string
+	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, timeoutList).Return(true)
+	res := im.Begin(id, 10)
+	assert.True(t, res.Ok)
+
+	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, timeoutList).Return(false)
+	res = im.Begin(id, 10)
 	assert.True(t, res.Ok)
 }
 
@@ -31,26 +38,41 @@ func TestTransactionManager_Report(t *testing.T) {
 	id0 := "id0"
 	id1 := "id1"
 	txInfoKey := fmt.Sprintf("%s-%s", PREFIX, id0)
+	recBegin := pb.TransactionRecord{
+		Height: 100,
+		Status: pb.TransactionStatus_BEGIN,
+	}
+	recSuccess := pb.TransactionRecord{
+		Height: 100,
+		Status: pb.TransactionStatus_SUCCESS,
+	}
+	recFailure := pb.TransactionRecord{
+		Height: 100,
+		Status: pb.TransactionStatus_FAILURE,
+	}
 
 	im := &TransactionManager{mockStub}
 
-	mockStub.EXPECT().GetObject(txInfoKey, gomock.Any()).SetArg(1, pb.TransactionStatus_SUCCESS).Return(true)
+	mockStub.EXPECT().GetObject(txInfoKey, gomock.Any()).SetArg(1, recSuccess).Return(true)
 	res := im.Report(id0, 0)
 	assert.False(t, res.Ok)
 	assert.Equal(t, fmt.Sprintf("transaction with Id %s is finished", id0), string(res.Result))
 
-	mockStub.EXPECT().GetObject(txInfoKey, gomock.Any()).SetArg(1, pb.TransactionStatus_BEGIN).Return(true)
-	mockStub.EXPECT().SetObject(txInfoKey, pb.TransactionStatus_SUCCESS)
+	mockStub.EXPECT().GetObject(txInfoKey, gomock.Any()).SetArg(1, recBegin).Return(true)
+	mockStub.EXPECT().SetObject(txInfoKey, recSuccess)
+	mockStub.EXPECT().GetObject(TimeoutKey(100), gomock.Any()).SetArg(1, []string{id0, id1}).Return(true)
+	mockStub.EXPECT().SetObject(TimeoutKey(100), []string{id1})
 	res = im.Report(id0, 0)
 	assert.True(t, res.Ok)
 
-	mockStub.EXPECT().GetObject(txInfoKey, gomock.Any()).SetArg(1, pb.TransactionStatus_BEGIN).Return(true)
-	mockStub.EXPECT().SetObject(txInfoKey, pb.TransactionStatus_FAILURE)
+	mockStub.EXPECT().GetObject(txInfoKey, gomock.Any()).SetArg(1, recBegin).Return(true)
+	mockStub.EXPECT().SetObject(txInfoKey, recFailure)
+	mockStub.EXPECT().GetObject(TimeoutKey(100), gomock.Any()).SetArg(1, []string{id1}).Return(true)
+	mockStub.EXPECT().SetObject(TimeoutKey(100), []string{id1})
 	res = im.Report(id0, 1)
 	assert.True(t, res.Ok)
 
 	mockStub.EXPECT().GetObject(txInfoKey, gomock.Any()).Return(false).AnyTimes()
-
 	mockStub.EXPECT().Get(id0).Return(false, nil)
 	res = im.Report(id0, 0)
 	assert.False(t, res.Ok)
@@ -130,9 +152,14 @@ func TestTransactionManager_GetStatus(t *testing.T) {
 	txInfoKey := fmt.Sprintf("%s-%s", PREFIX, id)
 	globalInfoKey := fmt.Sprintf("global-%s-%s", PREFIX, id)
 
+	recSuccess := pb.TransactionRecord{
+		Height: 100,
+		Status: pb.TransactionStatus_SUCCESS,
+	}
+
 	im := &TransactionManager{mockStub}
 
-	mockStub.EXPECT().GetObject(txInfoKey, gomock.Any()).SetArg(1, pb.TransactionStatus_SUCCESS).Return(true).MaxTimes(1)
+	mockStub.EXPECT().GetObject(txInfoKey, gomock.Any()).SetArg(1, recSuccess).Return(true).MaxTimes(1)
 	res := im.GetStatus(id)
 	assert.True(t, res.Ok)
 	assert.Equal(t, "1", string(res.Result))

@@ -21,7 +21,6 @@ import (
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/ledger/mock_ledger"
 	"github.com/meshplus/bitxhub/internal/repo"
@@ -106,13 +105,6 @@ func NewSwarms(t *testing.T, peerCnt int) []*Swarm {
 		},
 	}, nil).AnyTimes()
 
-	aer := contracts.AssetExchangeRecord{
-		Status: 0,
-	}
-
-	data, err := json.Marshal(aer)
-	require.Nil(t, err)
-
 	chainLedger.EXPECT().GetBlockSign(gomock.Any()).Return([]byte("sign"), nil).AnyTimes()
 	for i := 0; i < peerCnt; i++ {
 		node := &node_mgr.Node{
@@ -125,7 +117,7 @@ func NewSwarms(t *testing.T, peerCnt int) []*Swarm {
 		//stateLedger.EXPECT().GetState(constant.NodeManagerContractAddr.Address(), []byte(fmt.Sprintf("%s-%s", node_mgr.NODE_PID_PREFIX, ids[i]))).Return(true, []byte(strconv.Itoa(i))).AnyTimes()
 		stateLedger.EXPECT().GetState(constant.NodeManagerContractAddr.Address(), []byte(fmt.Sprintf("%s-%s", node_mgr.NODEPREFIX, ids[i]))).Return(true, nodeData).AnyTimes()
 	}
-	stateLedger.EXPECT().GetState(gomock.Any(), gomock.Any()).Return(true, data).AnyTimes()
+	//stateLedger.EXPECT().GetState(gomock.Any(), gomock.Any()).Return(true, data).AnyTimes()
 	stateLedger.EXPECT().Copy().Return(stateLedger).AnyTimes()
 
 	agencyData, err := ioutil.ReadFile("testdata/agency.cert")
@@ -368,23 +360,6 @@ func TestSwarm_Send(t *testing.T) {
 	}, strategy.Wait(50*time.Millisecond))
 	require.Nil(t, err)
 	require.Equal(t, pb.Message_FETCH_BLOCK_SIGN_ACK, res.Type)
-	require.NotNil(t, res.Data)
-
-	fetchAESMsg := &pb.Message{
-		Type: pb.Message_FETCH_ASSET_EXCHANGE_SIGN,
-		Data: []byte("1"),
-	}
-
-	err = retry.Retry(func(attempt uint) error {
-		res, err = swarms[2].Send(4, fetchAESMsg)
-		if err != nil {
-			swarms[2].logger.Errorf(err.Error())
-			return err
-		}
-		return nil
-	}, strategy.Wait(50*time.Millisecond))
-	require.Nil(t, err)
-	require.Equal(t, pb.Message_FETCH_ASSET_EXCHANGE_SIGN_ACK, res.Type)
 	require.NotNil(t, res.Data)
 
 	fetchIBTPSignMsg := &pb.Message{
