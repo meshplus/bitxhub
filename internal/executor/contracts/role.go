@@ -28,6 +28,7 @@ const (
 	GovernanceAdmin RoleType = "governanceAdmin"
 	AuditAdmin      RoleType = "auditAdmin"
 	AppchainAdmin   RoleType = "appchainAdmin"
+	NoRole          RoleType = "none"
 )
 
 type Role struct {
@@ -474,30 +475,49 @@ func (rm *RoleManager) LogoutRole(roleId string) *boltvm.Response {
 
 // GetRole return the role of the caller
 func (rm *RoleManager) GetRole() *boltvm.Response {
-	roleId := rm.Caller()
+	res, err := rm.getRole(rm.Caller())
+	if err != nil {
+		return boltvm.Error(err.Error())
+	} else {
+		return boltvm.Success([]byte(res))
+	}
+}
+
+// GetRole return the role of the caller
+func (rm *RoleManager) GetRoleByAddr(addr string) *boltvm.Response {
+	res, err := rm.getRole(addr)
+	if err != nil {
+		return boltvm.Error(err.Error())
+	} else {
+		return boltvm.Success([]byte(res))
+	}
+}
+
+// GetRole return the role of the caller
+func (rm *RoleManager) getRole(addr string) (string, error) {
 
 	role := &Role{}
-	ok := rm.GetObject(rm.roleKey(roleId), role)
+	ok := rm.GetObject(rm.roleKey(addr), role)
 	if !ok {
 		res := rm.CrossInvoke(constant.AppchainMgrContractAddr.String(), "IsAppchainAdmin")
 		if !res.Ok {
-			return boltvm.Success([]byte("none"))
+			return string(NoRole), nil
 		} else {
-			return boltvm.Success([]byte(AppchainAdmin))
+			return string(AppchainAdmin), nil
 		}
 	}
 
 	switch role.RoleType {
 	case GovernanceAdmin:
 		if role.Weight == repo.SuperAdminWeight {
-			return boltvm.Success([]byte(fmt.Sprintf("%s(super)", GovernanceAdmin)))
+			return fmt.Sprintf("%s(super)", GovernanceAdmin), nil
 		} else {
-			return boltvm.Success([]byte(GovernanceAdmin))
+			return string(GovernanceAdmin), nil
 		}
 	case AuditAdmin:
-		return boltvm.Success([]byte(AuditAdmin))
+		return string(AuditAdmin), nil
 	}
-	return boltvm.Success([]byte("none"))
+	return string(NoRole), nil
 }
 
 // GetRole query a role by roleId
@@ -639,6 +659,16 @@ func (rm *RoleManager) isAdmin(roleId string, roleType RoleType) bool {
 	} else {
 		return false
 	}
+}
+
+func (rm *RoleManager) IsAnyAdmin(roleId string) *boltvm.Response {
+	role := &Role{}
+	ok := rm.GetObject(rm.roleKey(roleId), role)
+	if !ok {
+		return boltvm.Success([]byte(strconv.FormatBool(false)))
+	}
+
+	return boltvm.Success([]byte(strconv.FormatBool(true)))
 }
 
 func (rm *RoleManager) GetRoleWeight(roleId string) *boltvm.Response {
