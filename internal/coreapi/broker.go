@@ -9,10 +9,9 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	types2 "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	contracts2 "github.com/meshplus/bitxhub-core/eth-contracts"
+	contracts2 "github.com/meshplus/bitxhub-core/eth-contracts/interchain-contracts"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -377,37 +376,23 @@ func (b *BrokerAPI) handleMultiSignsBurnReq(hash string) (string, []byte, error)
 
 	//abi.encodePacked
 	abiHash := solsha3.SoliditySHA3(
-		solsha3.Address(burn.EthToken.String()),
+		solsha3.Address(burn.AppToken.String()),
 		solsha3.Address(burn.Burner.String()),
 		solsha3.Address(burn.Recipient.String()),
 		solsha3.Uint256(burn.Amount),
 		solsha3.String(hash),
 	)
-	b.logger.WithFields(logrus.Fields{
-		"1": burn.EthToken.String(),
-		"2": burn.Burner.String(),
-		"3": burn.Recipient.Hex(),
-		"4": burn.Amount,
-		"5": hash,
-	}).Warnf("muti qian args")
 
 	prefixedHash := crypto.Keccak256Hash(
 		[]byte(fmt.Sprintf("\x19Ethereum Signed Message:\n%v", len(abiHash))),
 		abiHash,
 	)
 	key := b.bxh.GetPrivKey()
-	s, _ := key.PrivKey.Bytes()
-	b.logger.WithFields(logrus.Fields{
-		"PrivKey": s,
-	}).Warnf("muti qian PrivKey")
 
 	sign, err := key.PrivKey.Sign(prefixedHash[:])
 	if err != nil {
 		return "", nil, fmt.Errorf("bitxhub sign: %w", err)
 	}
-	b.logger.WithFields(logrus.Fields{
-		"PrivKey": hexutil.Encode(sign),
-	}).Warnf("muti qian sign")
 
 	return key.Address, sign, nil
 }

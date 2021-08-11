@@ -41,12 +41,14 @@ BAMCA0cAMEQCIFuh8p+nbtjQEZEFg03BN58//9VRsukQXj0xP1eHnrD4AiBwI1jq
 L6FMy96mi64g37R0i/I+T4MC5p2mzZIHvRJ8Rg==
 -----END CERTIFICATE-----`
 
+const wasmGasLimit = 5000000000000000
+
 func initCreateContext(t *testing.T, name string) *vm.Context {
 	privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	assert.Nil(t, err)
 	dir := filepath.Join(os.TempDir(), "wasm", name)
 
-	bytes, err := ioutil.ReadFile("./testdata/gas_test_gc.wasm")
+	bytes, err := ioutil.ReadFile("./testdata/ledger_test_gc1.wasm")
 	assert.Nil(t, err)
 
 	data := &pb.TransactionData{
@@ -153,7 +155,7 @@ func TestDeploy(t *testing.T) {
 	instances := make(map[string]*wasmer.Instance)
 	imports, err := EmptyImports()
 	require.Nil(t, err)
-	wasm, err := New(ctx, imports, instances)
+	wasm, err := New(ctx, imports, instances, wasmGasLimit)
 	require.Nil(t, err)
 
 	_, err = wasm.deploy()
@@ -165,7 +167,7 @@ func TestExecute(t *testing.T) {
 	instances := make(map[string]*wasmer.Instance)
 	imports, err := EmptyImports()
 	require.Nil(t, err)
-	wasm, err := New(ctx, imports, instances)
+	wasm, err := New(ctx, imports, instances, wasmGasLimit)
 	require.Nil(t, err)
 
 	ret, err := wasm.deploy()
@@ -191,7 +193,7 @@ func TestExecute(t *testing.T) {
 	}
 	imports1 := vmledger.New()
 	fmt.Println(imports1)
-	wasm1, err := New(ctx1, imports1, instances)
+	wasm1, err := New(ctx1, imports1, instances, wasmGasLimit)
 	require.Nil(t, err)
 	fmt.Println(wasm1.w.Instance.Exports)
 
@@ -200,8 +202,11 @@ func TestExecute(t *testing.T) {
 	require.Equal(t, "1", string(result))
 
 	invokePayload1 := &pb.InvokePayload{
-		Method: "use_gas_test",
-		Args:   []*pb.Arg{},
+		Method: "state_test_get",
+		Args: []*pb.Arg{
+			{Type: pb.Arg_Bytes, Value: []byte("alice")},
+			{Type: pb.Arg_Bytes, Value: []byte("111")},
+		},
 	}
 	payload1, err := invokePayload1.Marshal()
 	require.Nil(t, err)
@@ -231,7 +236,7 @@ func TestWasm_RunFabValidation(t *testing.T) {
 	instances := make(map[string]*wasmer.Instance)
 	imports, err := EmptyImports()
 	require.Nil(t, err)
-	wasm, err := New(ctx, imports, instances)
+	wasm, err := New(ctx, imports, instances, wasmGasLimit)
 	require.Nil(t, err)
 
 	ret, err := wasm.deploy()
@@ -265,7 +270,7 @@ func TestWasm_RunFabValidation(t *testing.T) {
 		Ledger:          ctx.Ledger,
 	}
 	imports1 := validatorlib.New()
-	wasm1, err := New(ctx1, imports1, instances)
+	wasm1, err := New(ctx1, imports1, instances, wasmGasLimit)
 	require.Nil(t, err)
 
 	result, err := wasm1.Run(payload)
@@ -308,7 +313,7 @@ func BenchmarkRunFabValidation(b *testing.B) {
 	instances := make(map[string]*wasmer.Instance)
 	imports, err := EmptyImports()
 	require.Nil(b, err)
-	wasm, err := New(ctx, imports, instances)
+	wasm, err := New(ctx, imports, instances, wasmGasLimit)
 	require.Nil(b, err)
 
 	ret, err := wasm.deploy()
@@ -335,7 +340,7 @@ func BenchmarkRunFabValidation(b *testing.B) {
 	}
 	for i := 0; i < b.N; i++ {
 		imports1 := validatorlib.New()
-		wasm1, err := New(ctx1, imports1, instances)
+		wasm1, err := New(ctx1, imports1, instances, wasmGasLimit)
 		require.Nil(b, err)
 
 		result, err := wasm1.Run(payload)
@@ -354,7 +359,7 @@ func TestWasm_RunWithoutMethod(t *testing.T) {
 	instances := make(map[string]*wasmer.Instance)
 	imports, err := EmptyImports()
 	require.Nil(t, err)
-	wasm, err := New(ctx, imports, instances)
+	wasm, err := New(ctx, imports, instances, wasmGasLimit)
 	require.Nil(t, err)
 
 	ret, err := wasm.deploy()
@@ -379,7 +384,7 @@ func TestWasm_RunWithoutMethod(t *testing.T) {
 		Ledger:          ctx.Ledger,
 	}
 	imports1 := vmledger.New()
-	wasm1, err := New(ctx1, imports1, instances)
+	wasm1, err := New(ctx1, imports1, instances, wasmGasLimit)
 	require.Nil(t, err)
 
 	_, err = wasm1.Run(payload)

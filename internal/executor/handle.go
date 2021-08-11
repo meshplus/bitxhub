@@ -423,7 +423,7 @@ func (exec *BlockExecutor) applyBxhTransaction(i int, tx *pb.BxhTransaction, inv
 			var err error
 			ctx := vm.NewContext(tx, uint64(i), data, exec.ledger, exec.logger)
 			imports := vmledger.New()
-			instance, err = wasm.New(ctx, imports, exec.wasmInstances)
+			instance, err = wasm.New(ctx, imports, exec.wasmInstances, exec.wasmGasLimit)
 			if err != nil {
 				return nil, GasFailedTx, err
 			}

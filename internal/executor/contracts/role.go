@@ -10,6 +10,7 @@ import (
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/governance"
 	node_mgr "github.com/meshplus/bitxhub-core/node-mgr"
+	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/repo"
@@ -119,7 +120,7 @@ func (rm *RoleManager) governancePre(roleId string, event governance.EventType, 
 	return nil, fmt.Errorf("The role (%s) can not be %s", string(role.Status), string(event))
 }
 
-func (rm *RoleManager) changeStatus(roleId string, trigger, lastStatus string, _ []byte) (bool, []byte) {
+func (rm *RoleManager) changeStatus(roleId string, trigger, lastStatus string) (bool, []byte) {
 	role := &Role{}
 	if ok := rm.GetObject(rm.roleKey(roleId), role); !ok {
 		return false, []byte("this role does not exist")
@@ -155,7 +156,7 @@ func (rm *RoleManager) Manage(eventTyp string, proposalResult, lastStatus string
 		return boltvm.Error("unmarshal json error:" + err.Error())
 	}
 
-	ok, errData := rm.changeStatus(role.ID, proposalResult, lastStatus, nil)
+	ok, errData := rm.changeStatus(role.ID, proposalResult, lastStatus)
 	if !ok {
 		return boltvm.Error("change status error:" + string(errData))
 	}
@@ -277,7 +278,7 @@ func (rm *RoleManager) RegisterRole(roleId, roleType, nodePid string) *boltvm.Re
 	}
 
 	// 6. change status
-	if ok, data := rm.changeStatus(role.ID, string(governance.EventRegister), string(role.Status), nil); !ok {
+	if ok, data := rm.changeStatus(role.ID, string(governance.EventRegister), string(role.Status)); !ok {
 		return boltvm.Error(fmt.Sprintf("change status error: %s, %s", string(data), role.ID))
 	}
 	return getGovernanceRet(string(res.Result), []byte(role.ID))
@@ -338,7 +339,7 @@ func (rm *RoleManager) UpdateAuditAdminNode(roleId, nodePid string) *boltvm.Resp
 	}
 
 	// 5. change status
-	if ok, data := rm.changeStatus(roleId, string(governance.EventUpdate), string(role.Status), nil); !ok {
+	if ok, data := rm.changeStatus(roleId, string(governance.EventUpdate), string(role.Status)); !ok {
 		return boltvm.Error(string(data))
 	}
 
@@ -381,7 +382,7 @@ func (rm *RoleManager) FreezeRole(roleId string) *boltvm.Response {
 	}
 
 	// 4. change status
-	if ok, data := rm.changeStatus(roleId, string(governance.EventFreeze), string(role.Status), nil); !ok {
+	if ok, data := rm.changeStatus(roleId, string(governance.EventFreeze), string(role.Status)); !ok {
 		return boltvm.Error(string(data))
 	}
 
@@ -421,7 +422,7 @@ func (rm *RoleManager) ActivateRole(roleId string) *boltvm.Response {
 	}
 
 	// 4. change status
-	if ok, data := rm.changeStatus(roleId, string(governance.EventActivate), string(role.Status), nil); !ok {
+	if ok, data := rm.changeStatus(roleId, string(governance.EventActivate), string(role.Status)); !ok {
 		return boltvm.Error(string(data))
 	}
 
@@ -464,7 +465,7 @@ func (rm *RoleManager) LogoutRole(roleId string) *boltvm.Response {
 	}
 
 	// 4. change status
-	if ok, data := rm.changeStatus(roleId, string(governance.EventLogout), string(role.Status), nil); !ok {
+	if ok, data := rm.changeStatus(roleId, string(governance.EventLogout), string(role.Status)); !ok {
 		return boltvm.Error(string(data))
 	}
 
@@ -709,6 +710,11 @@ func (rm *RoleManager) CheckPermission(permission string, regulatedAddr string, 
 }
 
 func (rm *RoleManager) checkRoleInfo(role *Role) error {
+	_, err := types.HexDecodeString(role.ID)
+	if err != nil {
+		return fmt.Errorf("illegal role id")
+	}
+
 	switch role.RoleType {
 	case GovernanceAdmin:
 	case AuditAdmin:

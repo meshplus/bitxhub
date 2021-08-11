@@ -53,13 +53,14 @@ type BlockExecutor struct {
 	ctx              context.Context
 	cancel           context.CancelFunc
 
-	evm         *vm.EVM
-	evmChainCfg *params.ChainConfig
-	gasLimit    uint64
-	config      repo.Config
-	bxhGasPrice *big.Int
-	lock        *sync.Mutex
-	admins      []string
+	evm          *vm.EVM
+	evmChainCfg  *params.ChainConfig
+	gasLimit     uint64
+	wasmGasLimit uint64
+	config       repo.Config
+	bxhGasPrice  *big.Int
+	lock         *sync.Mutex
+	admins       []string
 }
 
 func (exec *BlockExecutor) GetBoltContracts() map[string]agency.Contract {
@@ -67,8 +68,8 @@ func (exec *BlockExecutor) GetBoltContracts() map[string]agency.Contract {
 }
 
 // New creates executor instance
-func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, client *appchain.Client, config *repo.Config, gasPrice *big.Int) (*BlockExecutor, error) {
-	ibtpVerify := proof.New(chainLedger, logger)
+func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, client *appchain.Client, config *repo.Config, gasPrice *big.Int, wasmGasLimit uint64) (*BlockExecutor, error) {
+	ibtpVerify := proof.New(chainLedger, logger, wasmGasLimit)
 	txsExecutor, err := agency.GetExecutorConstructor(config.Executor.Type)
 	if err != nil {
 		return nil, err
@@ -94,6 +95,7 @@ func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, client *appchain
 		config:           *config,
 		bxhGasPrice:      gasPrice,
 		gasLimit:         config.GasLimit,
+		wasmGasLimit:     config.WasmGasLimit,
 		lock:             &sync.Mutex{},
 	}
 

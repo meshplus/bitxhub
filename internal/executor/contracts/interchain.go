@@ -13,6 +13,7 @@ import (
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/crypto/asym/ecdsa"
+	"github.com/meshplus/bitxhub-kit/hexutil"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -28,6 +29,20 @@ const (
 	ibtpIndexExist             = "index already exists"
 	ibtpIndexWrong             = "wrong index"
 )
+
+type InterchainMeta struct {
+	TargetChain string `json:"target_chain"`
+	TxHash      string `json:"tx_hash"`
+	Timestamp   int64  `json:"timestamp"`
+}
+
+type InterchainInfo struct {
+	ChainId            string            `json:"chain_id"`
+	InterchainCounter  uint64            `json:"interchain_counter"`
+	ReceiptCounter     uint64            `json:"receipt_counter"`
+	SendInterchains    []*InterchainMeta `json:"send_interchains"`
+	ReceiptInterchains []*InterchainMeta `json:"receipt_interchains"`
+}
 
 type InterchainManager struct {
 	boltvm.Stub
@@ -59,6 +74,37 @@ func (x *InterchainManager) Register(method string) *boltvm.Response {
 func (x *InterchainManager) DeleteInterchain(id string) *boltvm.Response {
 	x.Delete(AppchainKey(id))
 	return boltvm.Success(nil)
+}
+
+func (x *InterchainManager) GetInterchainInfo(chainId string) *boltvm.Response {
+	interchain, ok := x.getInterchain(chainId)
+	info := &InterchainInfo{
+		ChainId:            chainId,
+		SendInterchains:    []*InterchainMeta{},
+		ReceiptInterchains: []*InterchainMeta{},
+	}
+	if !ok {
+		interchain = &pb.Interchain{
+			ID:                   chainId,
+			InterchainCounter:    make(map[string]uint64),
+			ReceiptCounter:       make(map[string]uint64),
+			SourceReceiptCounter: make(map[string]uint64),
+		}
+	}
+	for _, counter := range interchain.InterchainCounter {
+		info.InterchainCounter += counter
+	}
+
+	for _, counter := range interchain.ReceiptCounter {
+		info.ReceiptCounter += counter
+	}
+	x.GetObject(x.indexSendInterchainMeta(chainId), &info.SendInterchains)
+	x.GetObject(x.indexReceiptInterchainMeta(chainId), &info.ReceiptInterchains)
+	data, err := json.Marshal(&info)
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+	return boltvm.Success(data)
 }
 
 // GetInterchain returns information of the interchain count, Receipt count and SourceReceipt count by id
@@ -227,13 +273,19 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, error) {
 }
 
 func (x *InterchainManager) checkPubKeyAndCaller(pub string) error {
-	pubKeyBytes, err := base64.StdEncoding.DecodeString(pub)
-	if err != nil {
-		return fmt.Errorf("decode public key bytes: %w", err)
-	}
+	var pubKeyBytes []byte
+	var pubKey crypto.PublicKey
+	pubKeyBytes = hexutil.Decode(pub)
 	pubKey, err := ecdsa.UnmarshalPublicKey(pubKeyBytes, crypto.Secp256k1)
 	if err != nil {
-		return fmt.Errorf("decrypt registerd public key error: %w", err)
+		pubKeyBytes, err = base64.StdEncoding.DecodeString(pub)
+		if err != nil {
+			return fmt.Errorf("decode public key bytes: %w", err)
+		}
+		pubKey, err = ecdsa.UnmarshalPublicKey(pubKeyBytes, crypto.Secp256k1)
+		if err != nil {
+			return fmt.Errorf("decrypt registerd public key error: %w", err)
+		}
 	}
 	addr, err := pubKey.Address()
 	if err != nil {
@@ -305,6 +357,16 @@ func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *pb.Interchain
 		x.setInterchain(ibtp.From, interchain)
 		x.AddObject(x.indexMapKey(ibtp.ID()), x.GetTxHash())
 		m[ibtp.To] = x.GetTxIndex()
+
+		meta := &InterchainMeta{
+			TargetChain: ibtp.To,
+			TxHash:      x.GetTxHash().String(),
+			Timestamp:   x.GetTxTimeStamp(),
+		}
+		x.setInterchainMeta(x.indexSendInterchainMeta(ibtp.From), meta)
+
+		meta.TargetChain = ibtp.From
+		x.setInterchainMeta(x.indexReceiptInterchainMeta(ibtp.To), meta)
 	} else {
 		interchain.ReceiptCounter[ibtp.To] = ibtp.Index
 		x.setInterchain(ibtp.From, interchain)
@@ -494,4 +556,22 @@ func (x *InterchainManager) indexMapKey(id string) string {
 
 func (x *InterchainManager) indexReceiptMapKey(id string) string {
 	return fmt.Sprintf("index-receipt-tx-%s", id)
+}
+
+func (x *InterchainManager) setInterchainMeta(indexKey string, meta *InterchainMeta) {
+	var metas []*InterchainMeta
+	x.GetObject(indexKey, &metas)
+	if len(metas) >= 5 {
+		metas = metas[1:]
+	}
+	metas = append(metas, meta)
+	x.SetObject(indexKey, &metas)
+}
+
+func (x *InterchainManager) indexSendInterchainMeta(id string) string {
+	return fmt.Sprintf("index-send-interchain-%s", id)
+}
+
+func (x *InterchainManager) indexReceiptInterchainMeta(id string) string {
+	return fmt.Sprintf("index-receipt-interchain-%s", id)
 }

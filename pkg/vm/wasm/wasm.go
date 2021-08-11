@@ -9,10 +9,10 @@ import (
 	"sync"
 
 	"github.com/meshplus/bitxhub-core/wasm"
+	"github.com/meshplus/bitxhub-core/wasm/wasm-metering/metering"
 	"github.com/meshplus/bitxhub-core/wasm/wasmlib"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub/pkg/vm"
-	"github.com/meshplus/bitxhub/pkg/vm/wasm/vmledger"
 	"github.com/wasmerio/wasmer-go/wasmer"
 )
 
@@ -41,7 +41,7 @@ type Contract struct {
 }
 
 // New creates a wasm vm instance
-func New(ctx *vm.Context, imports wasmlib.WasmImport, instances map[string]*wasmer.Instance) (*WasmVM, error) {
+func New(ctx *vm.Context, imports wasmlib.WasmImport, instances map[string]*wasmer.Instance, wasmGasLimit uint64) (*WasmVM, error) {
 	wasmVM := &WasmVM{
 		ctx: ctx,
 	}
@@ -57,16 +57,12 @@ func New(ctx *vm.Context, imports wasmlib.WasmImport, instances map[string]*wasm
 		syncInstances.Store(k, instance)
 	}
 
-	w, err := wasm.New(contractByte, imports, &syncInstances)
+	w, err := wasm.New(contractByte, imports, &syncInstances, wasmGasLimit)
 	if err != nil {
 		return nil, err
 	}
 
 	w.SetContext(wasm.ACCOUNT, ctx.Ledger.GetOrCreateAccount(ctx.Callee))
-
-	gasLimit := &vmledger.GasLimit{}
-	gasLimit.SetLimit(1000000)
-	w.SetContext("gaslimit", gasLimit)
 
 	// alloc, err := w.Instance.Exports.GetFunction("allocate")
 	// if err != nil {
@@ -95,11 +91,18 @@ func (w *WasmVM) deploy() ([]byte, error) {
 	if len(w.ctx.TransactionData.Payload) == 0 {
 		return nil, fmt.Errorf("contract cannot be empty")
 	}
+
+	meteredCode, gasCost, err := metering.MeterWASM(w.ctx.TransactionData.Payload, &metering.Options{})
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("gas cost: %d\n", gasCost)
+
 	contractNonce := w.ctx.Ledger.GetNonce(w.ctx.Caller)
 
 	contractAddr := createAddress(w.ctx.Caller, contractNonce)
 	wasmStruct := &Contract{
-		Code: w.ctx.TransactionData.Payload,
+		Code: meteredCode,
 		Hash: *types.NewHash(w.ctx.TransactionData.Payload),
 	}
 	wasmByte, err := json.Marshal(wasmStruct)
