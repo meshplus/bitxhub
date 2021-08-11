@@ -5,10 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"path/filepath"
-	"time"
-
 	"github.com/meshplus/bitxhub-core/governance"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
@@ -18,6 +14,8 @@ import (
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/stretchr/testify/suite"
 	"github.com/tidwall/gjson"
+	"io/ioutil"
+	"path/filepath"
 )
 
 type Interchain struct {
@@ -224,7 +222,7 @@ func (suite *Interchain) TestHandleIBTP() {
 
 	proof := []byte("true")
 	proofHash := sha256.Sum256(proof)
-	ib := &pb.IBTP{From: id1, To: id2, Index: ibtpNonce, Timestamp: time.Now().UnixNano(), Proof: proofHash[:]}
+	ib := &pb.IBTP{From: id1, To: id2, Index: ibtpNonce, TimeoutHeight: 10, Proof: proofHash[:]}
 	tx, err := genIBTPTransaction(k1, ib, k1Nonce)
 	suite.Require().Nil(err)
 	k1Nonce++
@@ -432,7 +430,7 @@ func (suite *Interchain) TestGetIBTPByID() {
 	suite.Require().Nil(err)
 
 	proofHash := sha256.Sum256(proof)
-	ib := &pb.IBTP{From: id1, To: id2, Index: ibtpNonce, Payload: []byte("111"), Timestamp: time.Now().UnixNano(), Proof: proofHash[:]}
+	ib := &pb.IBTP{From: id1, To: id2, Index: ibtpNonce, Payload: []byte("111"), TimeoutHeight: 10, Proof: proofHash[:]}
 	tx, err := genIBTPTransaction(k1, ib, k1Nonce)
 	suite.Require().Nil(err)
 	tx.Extra = proof
@@ -442,7 +440,7 @@ func (suite *Interchain) TestGetIBTPByID() {
 	ibtpNonce++
 	k1Nonce++
 
-	ib2 := &pb.IBTP{From: id1, To: id2, Index: ibtpNonce, Payload: []byte("111"), Timestamp: time.Now().UnixNano(), Proof: proofHash[:]}
+	ib2 := &pb.IBTP{From: id1, To: id2, Index: ibtpNonce, Payload: []byte("111"), TimeoutHeight: 10, Proof: proofHash[:]}
 	tx, err = genIBTPTransaction(k1, ib2, k1Nonce)
 	suite.Require().Nil(err)
 	tx.Extra = proof
@@ -452,7 +450,7 @@ func (suite *Interchain) TestGetIBTPByID() {
 	ibtpNonce++
 	k1Nonce++
 
-	ib3 := &pb.IBTP{From: id1, To: id2, Index: ibtpNonce, Payload: []byte("111"), Timestamp: time.Now().UnixNano(), Proof: proofHash[:]}
+	ib3 := &pb.IBTP{From: id1, To: id2, Index: ibtpNonce, Payload: []byte("111"), TimeoutHeight: 10, Proof: proofHash[:]}
 	tx, err = genIBTPTransaction(k1, ib3, k1Nonce)
 	suite.Require().Nil(err)
 	tx.Extra = proof

@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"google.golang.org/grpc"
 	"strings"
 	"testing"
 
@@ -311,8 +310,8 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	assert.Equal(t, true, strings.Contains(string(res.Result), "unmarshal service of ID"))
 
 	service := Service{
-		ChainID:   dstChainService.chainId,
-		ServiceID: dstChainService.serviceId,
+		ChainID:   dstChainService.ChainId,
+		ServiceID: dstChainService.ServiceId,
 		Ordered:   true,
 		Status:    0,
 	}
@@ -345,8 +344,8 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	assert.Equal(t, true, strings.Contains(string(res.Result), ServiceNotAvailable))
 
 	service = Service{
-		ChainID:   srcChainService.chainId,
-		ServiceID: srcChainService.serviceId,
+		ChainID:   srcChainService.ChainId,
+		ServiceID: srcChainService.ServiceId,
 		Ordered:   true,
 		Status:    0,
 	}

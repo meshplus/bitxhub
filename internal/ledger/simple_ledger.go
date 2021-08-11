@@ -131,13 +131,17 @@ func (l *SimpleLedger) removeJournalsBeforeBlock(height uint64) error {
 // AddEvent add ledger event
 func (l *SimpleLedger) AddEvent(event *pb.Event) {
 	var events []*pb.Event
-	hash := l.logs.thash
-	value, ok := l.events.Load(hash)
+	hash := event.TxHash
+	if hash == nil {
+		hash = l.logs.thash
+	}
+
+	value, ok := l.events.Load(hash.String())
 	if ok {
 		events = value.([]*pb.Event)
 	}
 	events = append(events, event)
-	l.events.Store(hash, events)
+	l.events.Store(hash.String(), events)
 }
 
 // Events return ledger events
