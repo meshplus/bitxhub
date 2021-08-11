@@ -2,23 +2,19 @@ package order
 
 import (
 	"fmt"
-
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
 	"github.com/sirupsen/logrus"
-	"time"
 )
 
 type Config struct {
 	ID               uint64
-	IsTimed          bool
 	IsNew            bool
 	RepoRoot         string
 	StoragePath      string
 	OrderType        string
-	BlockTimeout     time.Duration
 	PeerMgr          peermgr.PeerManager
 	PrivKey          crypto.PrivateKey
 	Logger           logrus.FieldLogger
@@ -113,13 +109,6 @@ func WithGetBlockByHeightFunc(f func(height uint64) (*pb.Block, error)) Option {
 func WithGetAccountNonceFunc(f func(address *types.Address) uint64) Option {
 	return func(config *Config) {
 		config.GetAccountNonce = f
-	}
-}
-
-func WithIsTimed(isTimed bool, blockTimeout time.Duration) Option {
-	return func(config *Config) {
-		config.IsTimed = isTimed
-		config.BlockTimeout = blockTimeout
 	}
 }
 

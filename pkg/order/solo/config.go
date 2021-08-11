@@ -1,6 +1,7 @@
 package solo
 
 import (
+	"fmt"
 	"path/filepath"
 	"time"
 
@@ -8,7 +9,8 @@ import (
 )
 
 type SOLOConfig struct {
-	SOLO SOLO
+	SOLO          SOLO
+	TimedGenBlock TimedGenBlock `mapstructure:"timed_gen_block"`
 }
 
 type SOLO struct {
@@ -23,17 +25,39 @@ type MempoolConfig struct {
 	TxSliceTimeout time.Duration `mapstructure:"tx_slice_timeout"`
 }
 
-func generateSoloConfig(repoRoot string) (time.Duration, MempoolConfig, error) {
+type TimedGenBlock struct {
+	Enable       bool          `toml:"enable" json:"enable"`
+	BlockTimeout time.Duration `mapstructure:"block_timeout" json:"block_timeout"`
+}
+
+func defaultTimedConfig() TimedGenBlock {
+	return TimedGenBlock{
+		Enable:       true,
+		BlockTimeout: 2 * time.Second,
+	}
+}
+
+func generateSoloConfig(repoRoot string) (time.Duration, MempoolConfig, *TimedGenBlock, error) {
 	readConfig, err := readConfig(repoRoot)
 	if err != nil {
-		return 0, MempoolConfig{}, err
+		return 0, MempoolConfig{}, nil, err
 	}
-	mempoolConf := MempoolConfig{}
-	mempoolConf.BatchSize = readConfig.SOLO.MempoolConfig.BatchSize
-	mempoolConf.PoolSize = readConfig.SOLO.MempoolConfig.PoolSize
-	mempoolConf.TxSliceSize = readConfig.SOLO.MempoolConfig.TxSliceSize
-	mempoolConf.TxSliceTimeout = readConfig.SOLO.MempoolConfig.TxSliceTimeout
-	return readConfig.SOLO.BatchTimeout, mempoolConf, nil
+	mempoolConf := MempoolConfig{
+		BatchSize:      readConfig.SOLO.MempoolConfig.BatchSize,
+		PoolSize:       readConfig.SOLO.MempoolConfig.PoolSize,
+		TxSliceSize:    readConfig.SOLO.MempoolConfig.TxSliceSize,
+		TxSliceTimeout: readConfig.SOLO.MempoolConfig.TxSliceTimeout,
+	}
+	timedGenBlock := defaultTimedConfig()
+	timedGenBlock = TimedGenBlock{
+		Enable:       readConfig.TimedGenBlock.Enable,
+		BlockTimeout: readConfig.TimedGenBlock.BlockTimeout,
+	}
+
+	if timedGenBlock.BlockTimeout < 0 {
+		return 0, MempoolConfig{}, nil, fmt.Errorf("blockTimeout must be a positive number. ")
+	}
+	return readConfig.SOLO.BatchTimeout, mempoolConf, &timedGenBlock, nil
 }
 
 func readConfig(repoRoot string) (*SOLOConfig, error) {

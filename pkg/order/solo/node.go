@@ -117,11 +117,11 @@ func NewNode(opts ...agency.ConfigOption) (agency.Order, error) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 
-	batchTimeout, memConfig, err := generateSoloConfig(config.RepoRoot)
+	batchTimeout, memConfig, timedGenBlock, err := generateSoloConfig(config.RepoRoot)
 	mempoolConf := &mempool.Config{
 		ID:              config.ID,
-		IsTimed:         config.IsTimed,
-		BlockTimeout:    config.BlockTimeout,
+		IsTimed:         timedGenBlock.Enable,
+		BlockTimeout:    timedGenBlock.BlockTimeout,
 		ChainHeight:     config.Applied,
 		Logger:          config.Logger,
 		StoragePath:     config.StoragePath,
@@ -139,10 +139,10 @@ func NewNode(opts ...agency.ConfigOption) (agency.Order, error) {
 	}
 	txCache := mempool.NewTxCache(mempoolConf.TxSliceTimeout, mempoolConf.TxSliceSize, config.Logger)
 	batchTimerMgr := etcdraft.NewTimer(batchTimeout, config.Logger)
-	blockTimerMgr := etcdraft.NewTimer(config.BlockTimeout, config.Logger)
+	blockTimerMgr := etcdraft.NewTimer(mempoolConf.BlockTimeout, config.Logger)
 	soloNode := &Node{
 		ID:            config.ID,
-		isTimed:       config.IsTimed,
+		isTimed:       mempoolConf.IsTimed,
 		commitC:       make(chan *pb.CommitEvent, 1024),
 		stateC:        make(chan *mempool.ChainState),
 		lastExec:      config.Applied,

@@ -107,7 +107,7 @@ func NewNode(opts ...agency.ConfigOption) (agency.Order, error) {
 		return nil, fmt.Errorf("generate raft peers: %w", err)
 	}
 
-	raftConfig, err := generateRaftConfig(repoRoot)
+	raftConfig, timedGenBlock, err := generateRaftConfig(repoRoot)
 	if err != nil {
 		return nil, fmt.Errorf("generate raft txpool config: %w", err)
 	}
@@ -117,13 +117,13 @@ func NewNode(opts ...agency.ConfigOption) (agency.Order, error) {
 		Logger:          config.Logger,
 		StoragePath:     config.StoragePath,
 		GetAccountNonce: config.GetAccountNonce,
-		IsTimed:         config.IsTimed,
-		BlockTimeout:    config.BlockTimeout,
 
 		BatchSize:      raftConfig.RAFT.MempoolConfig.BatchSize,
 		PoolSize:       raftConfig.RAFT.MempoolConfig.PoolSize,
 		TxSliceSize:    raftConfig.RAFT.MempoolConfig.TxSliceSize,
 		TxSliceTimeout: raftConfig.RAFT.MempoolConfig.TxSliceTimeout,
+		IsTimed:        timedGenBlock.Enable,
+		BlockTimeout:   timedGenBlock.BlockTimeout,
 	}
 	mempoolInst, err := mempool.NewMempool(mempoolConf)
 	if err != nil {
@@ -138,7 +138,7 @@ func NewNode(opts ...agency.ConfigOption) (agency.Order, error) {
 	}
 	batchTimerMgr := NewTimer(batchTimeout, config.Logger)
 	// support block on time
-	blockTimerMgr := NewTimer(config.BlockTimeout, config.Logger)
+	blockTimerMgr := NewTimer(mempoolConf.BlockTimeout, config.Logger)
 	txCache := mempool.NewTxCache(mempoolConf.TxSliceTimeout, mempoolConf.TxSliceSize, config.Logger)
 
 	readyPool := &sync.Pool{New: func() interface{} {
@@ -160,7 +160,7 @@ func NewNode(opts ...agency.ConfigOption) (agency.Order, error) {
 	node := &Node{
 		id:               config.ID,
 		lastExec:         config.Applied,
-		isTimed:          config.IsTimed,
+		isTimed:          mempoolConf.IsTimed,
 		confChangeC:      make(chan raftpb.ConfChange),
 		commitC:          make(chan *pb.CommitEvent, 1024),
 		errorC:           make(chan<- error),

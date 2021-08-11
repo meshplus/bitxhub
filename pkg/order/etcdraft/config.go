@@ -1,6 +1,7 @@
 package etcdraft
 
 import (
+	"fmt"
 	"path/filepath"
 	"time"
 
@@ -10,7 +11,13 @@ import (
 )
 
 type RAFTConfig struct {
-	RAFT RAFT
+	RAFT          RAFT
+	TimedGenBlock TimedGenBlock `mapstructure:"timed_gen_block"`
+}
+
+type TimedGenBlock struct {
+	Enable       bool          `toml:"enable" json:"enable"`
+	BlockTimeout time.Duration `mapstructure:"block_timeout" json:"block_timeout"`
 }
 
 type MempoolConfig struct {
@@ -52,6 +59,13 @@ func defaultRaftConfig() raft.Config {
 	}
 }
 
+func defaultTimedConfig() TimedGenBlock {
+	return TimedGenBlock{
+		Enable:       true,
+		BlockTimeout: 2 * time.Second,
+	}
+}
+
 func generateEtcdRaftConfig(id uint64, repoRoot string, logger logrus.FieldLogger, ram MemoryStorage) (*raft.Config, time.Duration, error) {
 	readConfig, err := readConfig(repoRoot)
 	if err != nil {
@@ -79,12 +93,20 @@ func generateEtcdRaftConfig(id uint64, repoRoot string, logger logrus.FieldLogge
 	return &defaultConfig, readConfig.RAFT.TickTimeout, nil
 }
 
-func generateRaftConfig(repoRoot string) (*RAFTConfig, error) {
+func generateRaftConfig(repoRoot string) (*RAFTConfig, *TimedGenBlock, error) {
 	readConfig, err := readConfig(repoRoot)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return readConfig, nil
+	timedGenBlock := defaultTimedConfig()
+	timedGenBlock = TimedGenBlock{
+		Enable:       readConfig.TimedGenBlock.Enable,
+		BlockTimeout: readConfig.TimedGenBlock.BlockTimeout,
+	}
+	if timedGenBlock.BlockTimeout < 0 {
+		return nil, nil, fmt.Errorf("Illegal parameter, blockTimeout must be a positive number. ")
+	}
+	return readConfig, &timedGenBlock, nil
 }
 
 func readConfig(repoRoot string) (*RAFTConfig, error) {
