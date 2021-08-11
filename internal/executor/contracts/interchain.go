@@ -387,9 +387,9 @@ func (x *InterchainManager) checkTargetAppchainAvailability(ibtp *pb.IBTP) error
 			if dstChainService.ChainId == dstChainService.BxhId {
 				return nil
 			}
-			dstAppchain, err := x.getAppchainInfo(ibtp.To)
+			dstAppchain, err := x.getAppchainInfo(dstChainService.ChainId)
 			if err != nil {
-				return fmt.Errorf("%s: dest appchain id %s is not registered", TargetAppchainNotAvailable, ibtp.To)
+				return fmt.Errorf("%s: dest appchain id %s is not registered", TargetAppchainNotAvailable, dstChainService.ChainId)
 			}
 			if dstAppchain.Status != governance.GovernanceAvailable {
 				return fmt.Errorf("%s: dest appchain status is %s, can not handle IBTP", TargetAppchainNotAvailable, string(dstAppchain.Status))

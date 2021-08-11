@@ -334,6 +334,12 @@ func (exec *BlockExecutor) registerBoltContracts() map[string]agency.Contract {
 			Address:  constant.InterBrokerContractAddr.Address().String(),
 			Contract: &contracts.InterBroker{},
 		},
+		{
+			Enabled:  true,
+			Name:     "service manager service",
+			Address:  constant.ServiceMgrContractAddr.Address().String(),
+			Contract: &contracts.ServiceManager{},
+		},
 	}
 
 	ContractsInfo := agency.GetRegisteredContractInfo()
