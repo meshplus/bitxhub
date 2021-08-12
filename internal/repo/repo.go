@@ -18,6 +18,12 @@ type Repo struct {
 	ConfigChangeFeed   event.Feed
 }
 
+var (
+	ConfigPath  string
+	NetworkPath string
+	OrderPath   string
+)
+
 func (r *Repo) SubscribeConfigChange(ch chan *Repo) event.Subscription {
 	return r.ConfigChangeFeed.Subscribe(ch)
 }
@@ -34,8 +40,12 @@ func Load(repoRoot string, passwd string) (*Repo, error) {
 		return nil, err
 	}
 
-
-	networkConfig, err := loadNetworkConfig(nViper, repoRoot, config.Genesis)
+	var networkConfig *NetworkConfig
+	if len(NetworkPath) == 0 {
+		networkConfig, err = loadNetworkConfig(nViper, repoRoot, config.Genesis)
+	} else {
+		networkConfig, err = loadNetworkConfig(nViper, config.Genesis)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("load network config: %w", err)
 	}

@@ -56,6 +56,12 @@ type BitXHub struct {
 
 func NewBitXHub(rep *repo.Repo) (*BitXHub, error) {
 	repoRoot := rep.Config.RepoRoot
+	var orderRoot string
+	if len(repo.OrderPath) == 0 {
+		orderRoot = repoRoot
+	} else {
+		orderRoot = repo.OrderPath
+	}
 
 	bxh, err := GenerateBitXHubWithoutOrder(rep)
 	if err != nil {
@@ -73,7 +79,7 @@ func NewBitXHub(rep *repo.Repo) (*BitXHub, error) {
 	}
 
 	order, err := orderCon(
-		order.WithRepoRoot(repoRoot),
+		order.WithRepoRoot(orderRoot),
 		order.WithStoragePath(repo.GetStoragePath(repoRoot, "order")),
 		order.WithOrderType(rep.Config.Order.Type),
 		order.WithNodes(m),
