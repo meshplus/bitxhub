@@ -114,7 +114,7 @@ func (am *AppchainManager) chainDefaultConfig(chain *appchainMgr.Appchain) error
 // caller is the appchain manager address
 // return appchain id, proposal id and error
 func (am *AppchainManager) Register(appchainID string, docAddr, docHash, validators string,
-	consensusType, chainType, name, desc, version, pubkey string) *boltvm.Response {
+	consensusType, chainType, name, desc, version, pubkey, reason string) *boltvm.Response {
 	am.AppchainManager.Persister = am.Stub
 
 	addr, err := getAddr(pubkey)
@@ -186,6 +186,7 @@ func (am *AppchainManager) Register(appchainID string, docAddr, docHash, validat
 		pb.String(string(AppchainMgr)),
 		pb.String(appchainID),
 		pb.String(string(governance.GovernanceUnavailable)),
+		pb.String(reason),
 		pb.Bytes(chainData),
 	)
 	if !res.Ok {
@@ -197,7 +198,7 @@ func (am *AppchainManager) Register(appchainID string, docAddr, docHash, validat
 
 // UpdateAppchain updates available appchain
 func (am *AppchainManager) UpdateAppchain(id, docAddr, docHash, validators string, consensusType, chainType,
-	name, desc, version, pubkey string) *boltvm.Response {
+	name, desc, version, pubkey, reason string) *boltvm.Response {
 	am.AppchainManager.Persister = am.Stub
 
 	ok, data := am.AppchainManager.QueryById(id, nil)
@@ -275,6 +276,7 @@ func (am *AppchainManager) UpdateAppchain(id, docAddr, docHash, validators strin
 		pb.String(string(AppchainMgr)),
 		pb.String(id),
 		pb.String(string(oldChainInfo.Status)),
+		pb.String(reason),
 		pb.Bytes(data),
 	)
 	if !res.Ok {
@@ -289,7 +291,7 @@ func (am *AppchainManager) UpdateAppchain(id, docAddr, docHash, validators strin
 }
 
 // FreezeAppchain freezes available appchain
-func (am *AppchainManager) FreezeAppchain(id string) *boltvm.Response {
+func (am *AppchainManager) FreezeAppchain(id, reason string) *boltvm.Response {
 	// 1. CheckPermission: PermissionSelfAdmin
 	am.AppchainManager.Persister = am.Stub
 	ok, chainData := am.AppchainManager.QueryById(id, nil)
@@ -339,6 +341,7 @@ func (am *AppchainManager) FreezeAppchain(id string) *boltvm.Response {
 			pb.String(string(AppchainMgr)),
 			pb.String(id),
 			pb.String(string(chainInfo.Status)),
+			pb.String(reason),
 			pb.Bytes(chainData),
 		)
 		if !res.Ok {
@@ -355,7 +358,7 @@ func (am *AppchainManager) FreezeAppchain(id string) *boltvm.Response {
 }
 
 // ActivateAppchain activate freezing appchain
-func (am *AppchainManager) ActivateAppchain(id string) *boltvm.Response {
+func (am *AppchainManager) ActivateAppchain(id, reason string) *boltvm.Response {
 	am.AppchainManager.Persister = am.Stub
 
 	// 1. CheckPermission: PermissionSelfAdmin
@@ -405,6 +408,7 @@ func (am *AppchainManager) ActivateAppchain(id string) *boltvm.Response {
 			pb.String(string(AppchainMgr)),
 			pb.String(id),
 			pb.String(string(chainInfo.Status)),
+			pb.String(reason),
 			pb.Bytes(chainData),
 		)
 		if !res.Ok {
@@ -421,7 +425,7 @@ func (am *AppchainManager) ActivateAppchain(id string) *boltvm.Response {
 }
 
 // LogoutAppchain updates available appchain
-func (am *AppchainManager) LogoutAppchain(id string) *boltvm.Response {
+func (am *AppchainManager) LogoutAppchain(id, reason string) *boltvm.Response {
 	am.AppchainManager.Persister = am.Stub
 
 	ok, chainData := am.AppchainManager.QueryById(id, nil)
@@ -457,6 +461,7 @@ func (am *AppchainManager) LogoutAppchain(id string) *boltvm.Response {
 		pb.String(string(AppchainMgr)),
 		pb.String(id),
 		pb.String(string(chainInfo.Status)),
+		pb.String(reason),
 		pb.Bytes(chainData),
 	)
 	if !res.Ok {

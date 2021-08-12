@@ -55,6 +55,7 @@ func (suite *Role) TestGetRole() {
 		pb.String("趣链婚姻链"),
 		pb.String("1.8"),
 		pb.String(pub1),
+		pb.String("reason"),
 	)
 	suite.Assert().Nil(err)
 	k1nonce++
@@ -174,6 +175,7 @@ func (suite *Role) TestGetRuleAddress() {
 		pb.String("趣链婚姻链"),
 		pb.String("1.8"),
 		pb.String(string(pub1)),
+		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
@@ -222,6 +224,7 @@ func (suite *Role) TestGetRuleAddress() {
 		pb.String("fabric政务"),
 		pb.String("1.4"),
 		pb.String(pub2),
+		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
@@ -275,7 +278,11 @@ func (suite *Role) TestGetRuleAddress() {
 	suite.Require().NotEqual(ruleAddr1, ruleAddr2)
 
 	// register rule
-	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(), "RegisterRule", pb.String(id1), pb.String(ruleAddr1.String()))
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(), "RegisterRule",
+		pb.String(id1),
+		pb.String(ruleAddr1.String()),
+		pb.String("reason"),
+	)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k1Nonce++
@@ -378,6 +385,7 @@ func (suite *Role) TestRegisterRoles() {
 		pb.String("趣链管理链"),
 		pb.String("1.8"),
 		pb.String(base64.StdEncoding.EncodeToString(pubAppAdmin)),
+		pb.String(""),
 	)
 	suite.Require().Nil(err)
 	suite.Require().True(retReg.IsSuccess(), string(retReg.Ret))
@@ -401,6 +409,7 @@ func (suite *Role) TestRegisterRoles() {
 	r, err := invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.RoleContractAddr.Address(), "RegisterRole",
 		pb.String(fromAdmin5.String()),
 		pb.String(string(contracts.GovernanceAdmin)),
+		pb.String(""),
 		pb.String(""),
 	)
 	suite.Require().Nil(err)

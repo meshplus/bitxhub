@@ -25,7 +25,7 @@ func appchainMgrCMD() cli.Command {
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "id",
-						Usage:    "chain id",
+						Usage:    "Specify chain id",
 						Required: true,
 					},
 				},
@@ -36,54 +36,49 @@ func appchainMgrCMD() cli.Command {
 				Usage: "register appchain",
 				Flags: []cli.Flag{
 					cli.StringFlag{
-						Name:     "method",
-						Usage:    "Specific did sub method name(like appchain)",
-						Required: true,
-					},
-					cli.StringFlag{
-						Name:     "doc-addr",
-						Usage:    "Specify the addr of did document",
-						Required: true,
-					},
-					cli.StringFlag{
-						Name:     "doc-hash",
-						Usage:    "Specify the hash of did document",
+						Name:     "id",
+						Usage:    "Specify appchain id",
 						Required: true,
 					},
 					cli.StringFlag{
 						Name:     "name",
-						Usage:    "Specific appchain name",
+						Usage:    "Specify appchain name",
 						Required: true,
 					},
 					cli.StringFlag{
 						Name:     "type",
-						Usage:    "Specific appchain type",
+						Usage:    "Specify appchain type",
 						Required: true,
 					},
 					cli.StringFlag{
 						Name:     "desc",
-						Usage:    "Specific appchain description",
+						Usage:    "Specify appchain description",
 						Required: true,
 					},
 					cli.StringFlag{
 						Name:     "version",
-						Usage:    "Specific appchain version",
+						Usage:    "Specify appchain version",
 						Required: true,
 					},
 					cli.StringFlag{
 						Name:     "validators",
-						Usage:    "Specific appchain validators path",
+						Usage:    "Specify appchain validators path",
 						Required: true,
 					},
 					cli.StringFlag{
 						Name:     "consensus",
-						Usage:    "Specific appchain consensus type",
+						Usage:    "Specify appchain consensus type",
 						Required: true,
 					},
 					cli.StringFlag{
 						Name:     "pubkey",
 						Usage:    "Specify appchain pubkey",
 						Required: true,
+					},
+					cli.StringFlag{
+						Name:     "reason",
+						Usage:    "Specify register reason",
+						Required: false,
 					},
 				},
 				Action: registerAppchain,
@@ -94,8 +89,13 @@ func appchainMgrCMD() cli.Command {
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "id",
-						Usage:    "chain id",
+						Usage:    "Specify chain id",
 						Required: true,
+					},
+					cli.StringFlag{
+						Name:     "reason",
+						Usage:    "Specify freeze reason",
+						Required: false,
 					},
 				},
 				Action: freezeAppchain,
@@ -106,8 +106,13 @@ func appchainMgrCMD() cli.Command {
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "id",
-						Usage:    "chain id",
+						Usage:    "Specify chain id",
 						Required: true,
+					},
+					cli.StringFlag{
+						Name:     "reason",
+						Usage:    "Specify activate reason",
+						Required: false,
 					},
 				},
 				Action: activateAppchain,
@@ -137,9 +142,7 @@ func getChainStatusById(ctx *cli.Context) error {
 }
 
 func registerAppchain(ctx *cli.Context) error {
-	method := ctx.String("method")
-	didDocAddr := ctx.String("doc-addr")
-	didDocHash := ctx.String("doc-hash")
+	id := ctx.String("id")
 	name := ctx.String("name")
 	typ := ctx.String("type")
 	desc := ctx.String("desc")
@@ -147,15 +150,16 @@ func registerAppchain(ctx *cli.Context) error {
 	validatorsPath := ctx.String("validators")
 	consensus := ctx.String("consensus")
 	pubkey := ctx.String("pubkey")
+	reason := ctx.String("reason")
 	validatorData, err := ioutil.ReadFile(validatorsPath)
 	if err != nil {
 		return fmt.Errorf("read validators file: %w", err)
 	}
 
 	receipt, err := invokeBVMContract(ctx, constant.AppchainMgrContractAddr.String(), "Register",
-		pb.String(method),
-		pb.String(didDocAddr),
-		pb.String(didDocHash),
+		pb.String(id),
+		pb.String("didDocAddr"),
+		pb.String("didDocHash"),
 		pb.String(string(validatorData)),
 		pb.String(consensus),
 		pb.String(typ),
@@ -163,6 +167,7 @@ func registerAppchain(ctx *cli.Context) error {
 		pb.String(desc),
 		pb.String(version),
 		pb.String(pubkey),
+		pb.String(reason),
 	)
 	if err != nil {
 		return err
@@ -182,8 +187,9 @@ func registerAppchain(ctx *cli.Context) error {
 
 func freezeAppchain(ctx *cli.Context) error {
 	id := ctx.String("id")
+	reason := ctx.String("reason")
 
-	receipt, err := invokeBVMContract(ctx, constant.AppchainMgrContractAddr.String(), "FreezeAppchain", pb.String(id))
+	receipt, err := invokeBVMContract(ctx, constant.AppchainMgrContractAddr.String(), "FreezeAppchain", pb.String(id), pb.String(reason))
 	if err != nil {
 		return err
 	}
@@ -199,8 +205,9 @@ func freezeAppchain(ctx *cli.Context) error {
 
 func activateAppchain(ctx *cli.Context) error {
 	id := ctx.String("id")
+	reason := ctx.String("reason")
 
-	receipt, err := invokeBVMContract(ctx, constant.AppchainMgrContractAddr.String(), "ActivateAppchain", pb.String(id))
+	receipt, err := invokeBVMContract(ctx, constant.AppchainMgrContractAddr.String(), "ActivateAppchain", pb.String(id), pb.String(reason))
 	if err != nil {
 		return err
 	}

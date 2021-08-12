@@ -25,7 +25,7 @@ func nodeMgrCND() cli.Command {
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "pid",
-						Usage:    "node pid",
+						Usage:    "Specify node pid",
 						Required: true,
 					},
 				},
@@ -37,23 +37,28 @@ func nodeMgrCND() cli.Command {
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "pid",
-						Usage:    "node pid",
+						Usage:    "Specify node pid",
 						Required: true,
 					},
 					cli.Uint64Flag{
 						Name:     "id",
-						Usage:    "vp node id, only useful for VPnode",
+						Usage:    "Specify vp node id, only useful for VPnode",
 						Required: false,
 					},
 					cli.StringFlag{
 						Name:     "account",
-						Usage:    "node account",
+						Usage:    "Specify node account",
 						Required: true,
 					},
 					cli.StringFlag{
 						Name:     "type",
-						Usage:    "node type (vpNode or nvpNode), currently only VPNode is supported",
+						Usage:    "Specify node type (vpNode or nvpNode), currently only VPNode is supported",
 						Value:    "vpNode",
+						Required: false,
+					},
+					cli.StringFlag{
+						Name:     "reason",
+						Usage:    "Specify register reason",
 						Required: false,
 					},
 				},
@@ -65,8 +70,13 @@ func nodeMgrCND() cli.Command {
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "pid",
-						Usage:    "node pid",
+						Usage:    "Specify node pid",
 						Required: true,
+					},
+					cli.StringFlag{
+						Name:     "reason",
+						Usage:    "Specify logout reason",
+						Required: false,
 					},
 				},
 				Action: logoutNode,
@@ -77,7 +87,7 @@ func nodeMgrCND() cli.Command {
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "type",
-						Usage:    "node type",
+						Usage:    "Specify node type",
 						Value:    string(node_mgr.VPNode),
 						Required: false,
 					},
@@ -113,8 +123,14 @@ func registerNode(ctx *cli.Context) error {
 	vpNodeId := ctx.Uint64("id")
 	account := ctx.String("account")
 	typ := ctx.String("type")
+	reason := ctx.String("reason")
 
-	receipt, err := invokeBVMContract(ctx, constant.NodeManagerContractAddr.String(), "RegisterNode", pb.String(pid), pb.Uint64(vpNodeId), pb.String(account), pb.String(typ))
+	receipt, err := invokeBVMContract(ctx, constant.NodeManagerContractAddr.String(), "RegisterNode",
+		pb.String(pid),
+		pb.Uint64(vpNodeId),
+		pb.String(account),
+		pb.String(typ),
+		pb.String(reason))
 	if err != nil {
 		return err
 	}
@@ -130,8 +146,9 @@ func registerNode(ctx *cli.Context) error {
 
 func logoutNode(ctx *cli.Context) error {
 	pid := ctx.String("pid")
+	reason := ctx.String("reason")
 
-	receipt, err := invokeBVMContract(ctx, constant.NodeManagerContractAddr.String(), "LogoutNode", pb.String(pid))
+	receipt, err := invokeBVMContract(ctx, constant.NodeManagerContractAddr.String(), "LogoutNode", pb.String(pid), pb.String(reason))
 	if err != nil {
 		return err
 	}
