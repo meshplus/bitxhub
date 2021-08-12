@@ -62,7 +62,7 @@ function generate() {
     cd "${repo}"/certs
     "${BUILD_PATH}"/bitxhub cert priv gen --name node
     "${BUILD_PATH}"/bitxhub cert csr --key ./node.priv --org Node${i}
-    "${BUILD_PATH}"/bitxhub cert issue --key "${BUILD_PATH}"/agency.priv --cert "${BUILD_PATH}"/agency.cert --csr ./node.csr
+    "${BUILD_PATH}"/bitxhub cert issue --key "${BUILD_PATH}"/agency.priv --cert "${BUILD_PATH}"/agency.cert --csr ./node.csr --is_ca true
     "${BUILD_PATH}"/bitxhub key gen --name key
     cp "${BUILD_PATH}"/ca.cert "${repo}"/certs
     cp "${BUILD_PATH}"/agency.cert "${repo}"/certs

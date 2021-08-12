@@ -62,9 +62,11 @@ type Config struct {
 
 // Security are files used to setup connection with tls
 type Security struct {
-	EnableTLS     bool   `mapstructure:"enable_tls"`
-	PemFilePath   string `mapstructure:"pem_file_path" json:"pem_file_path"`
-	ServerKeyPath string `mapstructure:"server_key_path" json:"server_key_path"`
+	EnableTLS       bool   `mapstructure:"enable_tls"`
+	PemFilePath     string `mapstructure:"pem_file_path" json:"pem_file_path"`
+	ServerKeyPath   string `mapstructure:"server_key_path" json:"server_key_path"`
+	GatewayCertPath string `mapstructure:"gateway_cert_path" json:"gateway_cert_path"`
+	GatewayKeyPath  string `mapstructure:"gateway_key_path" json:"gateway_key_path"`
 }
 
 type Port struct {
