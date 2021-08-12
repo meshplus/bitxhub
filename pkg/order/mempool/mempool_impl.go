@@ -24,6 +24,7 @@ type mempoolImpl struct {
 	txSliceSize uint64
 	batchSeqNo  uint64 // track the sequence number of block
 	poolSize    uint64
+	isTimed     bool
 	logger      logrus.FieldLogger
 	txStore     *transactionStore // store all transactions info
 	txFeed      event.Feed
@@ -35,6 +36,7 @@ func newMempoolImpl(config *Config) (*mempoolImpl, error) {
 		batchSeqNo:  config.ChainHeight,
 		logger:      config.Logger,
 		txSliceSize: config.TxSliceSize,
+		isTimed:     config.IsTimed,
 	}
 	mpi.txStore = newTransactionStore(config.GetAccountNonce, config.Logger)
 	if config.BatchSize == 0 {
@@ -93,8 +95,8 @@ func (mpi *mempoolImpl) ProcessTransactions(txs []pb.Transaction, isLeader, isLo
 	// send tx to mempool store
 	mpi.processDirtyAccount(dirtyAccounts)
 
-	// generator batch by block size
-	if isLeader && mpi.txStore.priorityNonBatchSize >= mpi.batchSize {
+	// if no timedBlock, generator batch by block size
+	if isLeader && mpi.txStore.priorityNonBatchSize >= mpi.batchSize && !mpi.isTimed {
 		batch, err := mpi.generateBlock()
 		if err != nil {
 			mpi.logger.Errorf("Generator batch failed")
@@ -142,7 +144,9 @@ func (mpi *mempoolImpl) generateBlock() (*raftproto.RequestBatch, error) {
 	// it will be stored in skip DS first.
 	mpi.logger.Debugf("Length of non-batched transactions: %d", mpi.txStore.priorityNonBatchSize)
 	var batchSize uint64
-	if poolLen := mpi.txStore.priorityNonBatchSize; poolLen > mpi.batchSize {
+	poolLen := mpi.txStore.priorityNonBatchSize
+	// if generate block isTimed, allow overBatchSize.
+	if !mpi.isTimed && poolLen > mpi.batchSize {
 		batchSize = mpi.batchSize
 	} else {
 		batchSize = mpi.txStore.priorityNonBatchSize
@@ -191,7 +195,7 @@ func (mpi *mempoolImpl) generateBlock() (*raftproto.RequestBatch, error) {
 		return true
 	})
 
-	if len(result) == 0 && mpi.txStore.priorityNonBatchSize > 0 {
+	if !mpi.isTimed && len(result) == 0 && mpi.txStore.priorityNonBatchSize > 0 {
 		mpi.logger.Error("===== NOTE!!! Leader generate a batch with 0 txs")
 		mpi.txStore.priorityNonBatchSize = 0
 		return nil, nil

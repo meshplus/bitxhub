@@ -18,7 +18,7 @@ type MemPool interface {
 	// GenerateBlock generate a block
 	GenerateBlock() *raftproto.RequestBatch
 
-	// Remove removes the committed transactions from mempool
+	// CommitTransactions Remove removes the committed transactions from mempool
 	CommitTransactions(state *ChainState)
 
 	// HasPendingRequest checks if there is non-batched tx(s) in mempool pool or not
@@ -52,10 +52,10 @@ func NewMempool(config *Config) (MemPool, error) {
 	return newMempoolImpl(config)
 }
 
-// GenerateRequestBatch generates a transaction batch and post it
+// GenerateBlock generates a transaction batch and post it
 // to outside if there are transactions in txPool.
 func (mpi *mempoolImpl) GenerateBlock() *raftproto.RequestBatch {
-	if mpi.txStore.priorityNonBatchSize == 0 {
+	if !mpi.isTimed && mpi.txStore.priorityNonBatchSize == 0 {
 		mpi.logger.Debug("Mempool is empty")
 		return nil
 	}

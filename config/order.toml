@@ -1,3 +1,7 @@
+[timed_gen_block]
+enable = true
+block_timeout = "2s"
+
 [raft]
 batch_timeout               = "0.3s"  # Block packaging time period.
 check_interval              = "3m" # Node check interval to check if there exist txs to be rebroadcast
