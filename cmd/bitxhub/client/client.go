@@ -12,8 +12,16 @@ var clientCMD = cli.Command{
 			Value: "http://localhost:9091/v1/",
 		},
 		cli.StringFlag{
-			Name:  "cert",
+			Name:  "ca",
 			Usage: "Specific ca cert file if https is enabled",
+		},
+		cli.StringFlag{
+			Name:  "cert",
+			Usage: "Specific access cert file if https is enabled",
+		},
+		cli.StringFlag{
+			Name:  "key",
+			Usage: "Specific access key file if https is enabled",
 		},
 	},
 	Subcommands: cli.Commands{

@@ -58,13 +58,14 @@ func constructTx(nonce uint64) pb.Transaction {
 func mockRaftNode(t *testing.T) (*Node, error) {
 	logger := log.NewWithModule("consensus")
 	batchTimerMgr := NewTimer(500*time.Millisecond, logger)
+	blockTimerMgr := NewTimer(2*time.Second, logger)
 	txCache := mempool.NewTxCache(25*time.Millisecond, uint64(2), logger)
 	walDir := filepath.Join("./testdata/storage", "wal")
 	snapDir := filepath.Join("./testdata/storage", "snap")
 	dbDir := filepath.Join("./testdata/storage", "state")
 	raftStorage, dbStorage, _ := CreateStorage(logger, walDir, snapDir, dbDir, raft.NewMemoryStorage())
 	repoRoot := "./testdata/"
-	raftConfig, _ := generateRaftConfig(repoRoot)
+	raftConfig, timedGenBlock, _ := generateRaftConfig(repoRoot)
 	peerCnt := 4
 	swarms, _ := newSwarms(t, peerCnt, false)
 	mempoolConf := &mempool.Config{
@@ -79,6 +80,9 @@ func mockRaftNode(t *testing.T) (*Node, error) {
 		GetAccountNonce: func(address *types.Address) uint64 {
 			return 0
 		},
+
+		IsTimed:      timedGenBlock.Enable,
+		BlockTimeout: timedGenBlock.BlockTimeout,
 	}
 	mempoolInst, err := mempool.NewMempool(mempoolConf)
 	if err != nil {
@@ -97,6 +101,7 @@ func mockRaftNode(t *testing.T) (*Node, error) {
 		proposeC:         make(chan *raftproto.RequestBatch),
 		txCache:          txCache,
 		batchTimerMgr:    batchTimerMgr,
+		blockTimerMgr:    blockTimerMgr,
 		storage:          dbStorage,
 		raftStorage:      raftStorage,
 		mempool:          mempoolInst,
@@ -105,6 +110,7 @@ func mockRaftNode(t *testing.T) (*Node, error) {
 		ctx:              context.Background(),
 		peerMgr:          swarms[0],
 		getChainMetaFunc: getChainMetaFunc,
+		isTimed:          mempoolConf.IsTimed,
 	}
 	node.syncer = &mockSync{}
 	return node, nil

@@ -2,7 +2,6 @@ package order
 
 import (
 	"fmt"
-
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"

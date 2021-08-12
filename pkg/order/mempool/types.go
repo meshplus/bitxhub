@@ -26,6 +26,8 @@ type Config struct {
 	ID                 uint64
 	BatchSize          uint64
 	PoolSize           uint64
+	IsTimed            bool
+	BlockTimeout       time.Duration
 	RebroadcastTimeout time.Duration
 	TxSliceSize        uint64
 	TxSliceTimeout     time.Duration

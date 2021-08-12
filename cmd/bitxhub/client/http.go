@@ -17,9 +17,9 @@ func httpGet(ctx *cli.Context, url string) ([]byte, error) {
 		client *http.Client
 		err    error
 	)
-	certPath := ctx.GlobalString("cert")
+	certPath := ctx.GlobalString("ca")
 	if certPath != "" {
-		client, err = getHttpsClient(certPath)
+		client, err = getHttpsClient(ctx, certPath)
 		if err != nil {
 			return nil, err
 		}
@@ -50,9 +50,9 @@ func httpPost(ctx *cli.Context, url string, data []byte) ([]byte, error) {
 		client *http.Client
 		err    error
 	)
-	certPath := ctx.GlobalString("cert")
+	certPath := ctx.GlobalString("ca")
 	if certPath != "" {
-		client, err = getHttpsClient(certPath)
+		client, err = getHttpsClient(ctx, certPath)
 		if err != nil {
 			return nil, err
 		}
@@ -79,7 +79,7 @@ func httpPost(ctx *cli.Context, url string, data []byte) ([]byte, error) {
 	return c, nil
 }
 
-func getHttpsClient(certPath string) (*http.Client, error) {
+func getHttpsClient(ctx *cli.Context, certPath string) (*http.Client, error) {
 	caCert, err := ioutil.ReadFile(certPath)
 	if err != nil {
 		return nil, err
@@ -87,10 +87,13 @@ func getHttpsClient(certPath string) (*http.Client, error) {
 
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)
+	cert, err := tls.LoadX509KeyPair(ctx.GlobalString("cert"), ctx.GlobalString("key"))
 	return &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
-				RootCAs: caCertPool,
+				ServerName:   "BitXHub",
+				RootCAs:      caCertPool,
+				Certificates: []tls.Certificate{cert},
 			},
 		},
 	}, nil

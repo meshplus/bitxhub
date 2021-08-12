@@ -2,7 +2,10 @@ package gateway
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"path/filepath"
 	"sort"
@@ -20,13 +23,15 @@ import (
 )
 
 type Gateway struct {
-	server   *http.Server
-	mux      *runtime.ServeMux
-	certFile string
-	keyFile  string
-	endpoint string
-	config   repo.Config
-	logger   logrus.FieldLogger
+	server          *http.Server
+	mux             *runtime.ServeMux
+	certFile        string
+	keyFile         string
+	gatewayCertFile string
+	gatewayKeyFile  string
+	endpoint        string
+	config          repo.Config
+	logger          logrus.FieldLogger
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -53,25 +58,40 @@ func (g *Gateway) init() {
 	handler := cors.New(cors.Options{
 		AllowedOrigins: config.AllowedOrigins,
 	}).Handler(g.mux)
-	g.server = &http.Server{Addr: fmt.Sprintf(":%d", config.Port.Gateway), Handler: wsproxy.WebsocketProxy(handler)}
 	g.endpoint = fmt.Sprintf("localhost:%d", config.Port.Grpc)
 
 	if config.Security.EnableTLS {
 		g.certFile = filepath.Join(config.RepoRoot, config.Security.PemFilePath)
 		g.keyFile = filepath.Join(config.RepoRoot, config.Security.ServerKeyPath)
+		g.gatewayCertFile = filepath.Join(config.RepoRoot, config.Security.GatewayCertPath)
+		g.gatewayKeyFile = filepath.Join(config.RepoRoot, config.Security.GatewayKeyPath)
+		clientCaCert, _ := ioutil.ReadFile(g.certFile)
+		clientCaCertPool := x509.NewCertPool()
+		clientCaCertPool.AppendCertsFromPEM(clientCaCert)
+		g.server = &http.Server{
+			Addr:    fmt.Sprintf(":%d", config.Port.Gateway),
+			Handler: wsproxy.WebsocketProxy(handler),
+			TLSConfig: &tls.Config{
+				//MinVersion: tls.VersionTLS12,
+				ClientCAs:  clientCaCertPool,
+				ClientAuth: tls.RequireAndVerifyClientCert,
+			},
+		}
 	} else {
 		g.certFile = ""
 		g.keyFile = ""
+		g.server = &http.Server{
+			Addr:    fmt.Sprintf(":%d", config.Port.Gateway),
+			Handler: wsproxy.WebsocketProxy(handler)}
 	}
 }
 
 func (g *Gateway) Start() error {
 	g.logger.WithField("port", g.config.Port.Gateway).Info("Gateway service started")
 	if g.certFile != "" || g.keyFile != "" {
-		cred, err := credentials.NewServerTLSFromFile(g.certFile, g.keyFile)
-		if err != nil {
-			return err
-		}
+		cert, err := tls.LoadX509KeyPair(g.gatewayCertFile, g.gatewayKeyFile)
+		cred := credentials.NewTLS(&tls.Config{
+			Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true})
 
 		conn, err := grpc.DialContext(g.ctx, g.endpoint, grpc.WithTransportCredentials(cred))
 		if err != nil {
