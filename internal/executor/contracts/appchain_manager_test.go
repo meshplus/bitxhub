@@ -280,7 +280,7 @@ func TestManageChain(t *testing.T) {
 	availableChain.Status = governance.GovernanceAvailable
 	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *availableChain).Return(true).Times(2)
 	frozenChain := chains[1]
-	frozenChain.Status = governance.GovernanceFrozen
+	frozenChain.Status = governance.GovernancePassiveFrozen
 	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *frozenChain).Return(true).AnyTimes()
 
 	// test UpdateAppchain
@@ -431,7 +431,7 @@ func prepare(t *testing.T) (*AppchainManager, *mock_stub.MockStub, []*appchainMg
 
 	var chains []*appchainMgr.Appchain
 	var chainsData [][]byte
-	chainType := []string{string(governance.GovernanceAvailable), string(governance.GovernanceFrozen), string(governance.GovernanceUnavailable)}
+	chainType := []string{string(governance.GovernanceAvailable), string(governance.GovernancePassiveFrozen), string(governance.GovernanceUnavailable)}
 
 	chainAdminKeyPath, err := repo.PathRootWithDefault("../../../tester/test_data/appchain1.json")
 	assert.Nil(t, err)

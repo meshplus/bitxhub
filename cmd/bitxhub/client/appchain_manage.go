@@ -7,6 +7,7 @@ import (
 
 	"github.com/fatih/color"
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
+	"github.com/meshplus/bitxhub-core/governance"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/tidwall/gjson"
@@ -168,9 +169,11 @@ func registerAppchain(ctx *cli.Context) error {
 	}
 
 	if receipt.IsSuccess() {
-		chainId := gjson.Get(string(receipt.Ret), "extra").String()
-		proposalId := gjson.Get(string(receipt.Ret), "proposal_id").String()
-		color.Green("proposal id is %s, chain id is %s", proposalId, chainId)
+		ret := &governance.GovernanceResult{}
+		if err := json.Unmarshal(receipt.Ret, ret); err != nil {
+			return err
+		}
+		color.Green("proposal id is %s, chain id is %s", ret.ProposalID, ret.Extra)
 	} else {
 		color.Red("register appchain error: %s\n", string(receipt.Ret))
 	}
