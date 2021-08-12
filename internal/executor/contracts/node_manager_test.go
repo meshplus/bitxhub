@@ -29,8 +29,8 @@ func TestNodeManager_RegisterNode(t *testing.T) {
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "CheckPermission", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *nodes[5]).Return(true).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("")).Times(1)
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	logger := log.NewWithModule("contracts")
 	mockStub.EXPECT().Logger().Return(logger).AnyTimes()
 	mockStub.EXPECT().Query(node_mgr.NODEPREFIX).Return(true, nodesData).AnyTimes()
@@ -39,19 +39,19 @@ func TestNodeManager_RegisterNode(t *testing.T) {
 	mockStub.EXPECT().Get(NODEPID).Return(true, nil).AnyTimes()
 
 	// 1. CheckPermission error
-	res := nm.RegisterNode(NODEPID, 1, NODEACCOUNT, string(node_mgr.VPNode))
+	res := nm.RegisterNode(NODEPID, 1, NODEACCOUNT, string(node_mgr.VPNode), "reason")
 	assert.False(t, res.Ok, string(res.Result))
 	// 2. info(id) error
-	res = nm.RegisterNode(NODEPID, 1, NODEACCOUNT, string(node_mgr.VPNode))
+	res = nm.RegisterNode(NODEPID, 1, NODEACCOUNT, string(node_mgr.VPNode), "reason")
 	assert.False(t, res.Ok, string(res.Result))
 	// 3. info(pid) error
-	res = nm.RegisterNode(NODEPID, 6, NODEACCOUNT, string(node_mgr.VPNode))
+	res = nm.RegisterNode(NODEPID, 6, NODEACCOUNT, string(node_mgr.VPNode), "reason")
 	assert.False(t, res.Ok, string(res.Result))
 	// 4. SubmitProposal error
-	res = nm.RegisterNode(NODEPID, 6, NODEACCOUNT, string(node_mgr.VPNode))
+	res = nm.RegisterNode(NODEPID, 6, NODEACCOUNT, string(node_mgr.VPNode), "reason")
 	assert.False(t, res.Ok, string(res.Result))
 
-	res = nm.RegisterNode(NODEPID, 6, NODEACCOUNT, string(node_mgr.VPNode))
+	res = nm.RegisterNode(NODEPID, 6, NODEACCOUNT, string(node_mgr.VPNode), "reason")
 	assert.True(t, res.Ok, string(res.Result))
 }
 
@@ -67,8 +67,8 @@ func TestNodeManager_LogoutNode(t *testing.T) {
 	mockStub.EXPECT().Get(gomock.Any()).Return(false, nil).Times(1)
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, nodesData[4]).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("")).Times(1)
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	logger := log.NewWithModule("contracts")
 	mockStub.EXPECT().Logger().Return(logger).AnyTimes()
 	var nodesData2 [][]byte
@@ -77,22 +77,22 @@ func TestNodeManager_LogoutNode(t *testing.T) {
 	mockStub.EXPECT().Query(node_mgr.NODEPREFIX).Return(true, nodesData).AnyTimes()
 
 	// 1. CheckPermission error
-	res := nm.LogoutNode(NODEPID)
+	res := nm.LogoutNode(NODEPID, "reason")
 	assert.False(t, res.Ok, string(res.Result))
 	// 2. status error
-	res = nm.LogoutNode(NODEPID)
+	res = nm.LogoutNode(NODEPID, "reason")
 	assert.False(t, res.Ok, string(res.Result))
 	// 3. QueryById error
-	res = nm.LogoutNode(NODEPID)
+	res = nm.LogoutNode(NODEPID, "reason")
 	assert.False(t, res.Ok, string(res.Result))
 	// 4. check num error
-	res = nm.LogoutNode(NODEPID)
+	res = nm.LogoutNode(NODEPID, "reason")
 	assert.False(t, res.Ok, string(res.Result))
 	// 5. SubmitProposal error
-	res = nm.LogoutNode(NODEPID)
+	res = nm.LogoutNode(NODEPID, "reason")
 	assert.False(t, res.Ok, string(res.Result))
 
-	res = nm.LogoutNode(NODEPID)
+	res = nm.LogoutNode(NODEPID, "reason")
 	assert.True(t, res.Ok, string(res.Result))
 }
 

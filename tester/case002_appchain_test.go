@@ -79,6 +79,7 @@ func (suite *RegisterAppchain) TestRegisterAppchain() {
 		pb.String("1.8"),
 		//pb.String(hexutil.Encode(pub)),
 		pb.String(base64.StdEncoding.EncodeToString(pub)),
+		pb.String("reason"),
 	}
 	ret, err := invokeBVMContract(suite.api, suite.privKey, suite.normalNonce, constant.AppchainMgrContractAddr.Address(), "Register", args...)
 	suite.Require().Nil(err)
@@ -100,6 +101,7 @@ func (suite *RegisterAppchain) TestRegisterAppchain() {
 		pb.String("趣链税务链"),
 		pb.String("1.8"),
 		pb.String(base64.StdEncoding.EncodeToString(pub2)),
+		pb.String("reason"),
 	}
 	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "Register", args...)
 	suite.Require().Nil(err)
@@ -148,6 +150,7 @@ func (suite *RegisterAppchain) TestFetchAppchains() {
 		pb.String("趣链税务链"),
 		pb.String("1.8"),
 		pb.String(base64.StdEncoding.EncodeToString(pub1)),
+		pb.String("reason"),
 	}
 	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "Register", args...)
 	suite.Require().Nil(err)
@@ -168,6 +171,7 @@ func (suite *RegisterAppchain) TestFetchAppchains() {
 		pb.String("fabric政务"),
 		pb.String("1.4"),
 		pb.String(base64.StdEncoding.EncodeToString(pub2)),
+		pb.String("reason"),
 	}
 	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "Register", args...)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
@@ -238,6 +242,7 @@ func (suite *RegisterAppchain) TestGetPubKeyByChainID() {
 		pb.String("趣链税务链"),
 		pb.String("1.8"),
 		pb.String(base64.StdEncoding.EncodeToString(pub1)),
+		pb.String("reason"),
 	}
 	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "Register", args...)
 	suite.Require().Nil(err)
@@ -255,6 +260,7 @@ func (suite *RegisterAppchain) TestGetPubKeyByChainID() {
 		pb.String("fabric政务"),
 		pb.String("1.4"),
 		pb.String(base64.StdEncoding.EncodeToString(pub2)),
+		pb.String("reason"),
 	}
 	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "Register", args...)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
@@ -302,6 +308,7 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 		pb.String("趣链税务链"),
 		pb.String("1.8"),
 		pb.String(base64.StdEncoding.EncodeToString(pub1)),
+		pb.String("reason"),
 	}
 	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "Register", args...)
 	suite.Require().Nil(err)
@@ -328,6 +335,7 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 		pb.String("趣链管理链"),
 		pb.String("1.0"),
 		pb.String(base64.StdEncoding.EncodeToString(pub1)),
+		pb.String("reason"),
 	}
 	ret, err = invokeBVMContract(suite.api, priAdmin, adminNonce, constant.AppchainMgrContractAddr.Address(), "Register", args...)
 	suite.Require().Nil(err)
@@ -350,6 +358,7 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 		pb.String("趣链税务链"),
 		pb.String("1.9"),
 		pb.String(string(pub1)),
+		pb.String("reason"),
 	}
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "UpdateAppchain", args...)
 	suite.Require().Nil(err)
