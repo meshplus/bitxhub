@@ -103,8 +103,8 @@ func generateRaftConfig(repoRoot string) (*RAFTConfig, *TimedGenBlock, error) {
 		Enable:       readConfig.TimedGenBlock.Enable,
 		BlockTimeout: readConfig.TimedGenBlock.BlockTimeout,
 	}
-	if timedGenBlock.BlockTimeout < 0 {
-		return nil, nil, fmt.Errorf("Illegal parameter, blockTimeout must be a positive number. ")
+	if err := checkConfig(readConfig); err != nil {
+		return nil, nil, err
 	}
 	return readConfig, &timedGenBlock, nil
 }
@@ -117,11 +117,24 @@ func readConfig(repoRoot string) (*RAFTConfig, error) {
 		return nil, err
 	}
 
-	config := &RAFTConfig{}
+	config := &RAFTConfig{
+		TimedGenBlock: defaultTimedConfig(),
+	}
 
 	if err := v.Unmarshal(config); err != nil {
 		return nil, err
 	}
 
+	if err := checkConfig(config); err != nil {
+		return nil, err
+	}
+
 	return config, nil
+}
+
+func checkConfig(config *RAFTConfig) error {
+	if config.TimedGenBlock.BlockTimeout <= 0 {
+		return fmt.Errorf("Illegal parameter, blockTimeout must be a positive number. ")
+	}
+	return nil
 }

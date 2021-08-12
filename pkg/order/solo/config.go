@@ -37,10 +37,10 @@ func defaultTimedConfig() TimedGenBlock {
 	}
 }
 
-func generateSoloConfig(repoRoot string) (time.Duration, MempoolConfig, *TimedGenBlock, error) {
+func generateSoloConfig(repoRoot string) (time.Duration, MempoolConfig, TimedGenBlock, error) {
 	readConfig, err := readConfig(repoRoot)
 	if err != nil {
-		return 0, MempoolConfig{}, nil, err
+		return 0, MempoolConfig{}, TimedGenBlock{}, err
 	}
 	mempoolConf := MempoolConfig{
 		BatchSize:      readConfig.SOLO.MempoolConfig.BatchSize,
@@ -48,16 +48,9 @@ func generateSoloConfig(repoRoot string) (time.Duration, MempoolConfig, *TimedGe
 		TxSliceSize:    readConfig.SOLO.MempoolConfig.TxSliceSize,
 		TxSliceTimeout: readConfig.SOLO.MempoolConfig.TxSliceTimeout,
 	}
-	timedGenBlock := defaultTimedConfig()
-	timedGenBlock = TimedGenBlock{
-		Enable:       readConfig.TimedGenBlock.Enable,
-		BlockTimeout: readConfig.TimedGenBlock.BlockTimeout,
-	}
 
-	if timedGenBlock.BlockTimeout < 0 {
-		return 0, MempoolConfig{}, nil, fmt.Errorf("blockTimeout must be a positive number. ")
-	}
-	return readConfig.SOLO.BatchTimeout, mempoolConf, &timedGenBlock, nil
+	timedGenBlock := readConfig.TimedGenBlock
+	return readConfig.SOLO.BatchTimeout, mempoolConf, timedGenBlock, nil
 }
 
 func readConfig(repoRoot string) (*SOLOConfig, error) {
@@ -68,10 +61,23 @@ func readConfig(repoRoot string) (*SOLOConfig, error) {
 		return nil, err
 	}
 
-	config := &SOLOConfig{}
+	config := &SOLOConfig{
+		TimedGenBlock: defaultTimedConfig(),
+	}
 
 	if err := v.Unmarshal(config); err != nil {
 		return nil, err
 	}
+
+	if err := checkConfig(config); err != nil {
+		return nil, err
+	}
 	return config, nil
+}
+
+func checkConfig(config *SOLOConfig) error {
+	if config.TimedGenBlock.BlockTimeout.Nanoseconds() <= 0 {
+		return fmt.Errorf("Illegal parameter, blockTimeout must be a positive number. ")
+	}
+	return nil
 }
