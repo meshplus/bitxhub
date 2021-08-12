@@ -247,8 +247,16 @@ func (am *AppchainManager) UpdateAppchain(id, docAddr, docHash, validators strin
 		return boltvm.Error(err.Error())
 	}
 
-	if oldChainInfo.PublicKey != chain.PublicKey {
-		return boltvm.Error("pubkey can not be updated")
+	oldAddr, err := getAddr(oldChainInfo.PublicKey)
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+	newAddr, err := getAddr(chain.PublicKey)
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+	if oldAddr != newAddr {
+		return boltvm.Error(fmt.Sprintf("pubkey can not be updated (oldAddr : %s, newAddr: %s)", oldAddr, newAddr))
 	}
 
 	if oldChainInfo.Validators == chain.Validators {
@@ -282,6 +290,7 @@ func (am *AppchainManager) UpdateAppchain(id, docAddr, docHash, validators strin
 
 // FreezeAppchain freezes available appchain
 func (am *AppchainManager) FreezeAppchain(id string) *boltvm.Response {
+	// 1. CheckPermission: PermissionSelfAdmin
 	am.AppchainManager.Persister = am.Stub
 	ok, chainData := am.AppchainManager.QueryById(id, nil)
 	if !ok {
@@ -306,34 +315,50 @@ func (am *AppchainManager) FreezeAppchain(id string) *boltvm.Response {
 		return boltvm.Error("check permission error:" + string(res.Result))
 	}
 
-	if ok, data := am.AppchainManager.GovernancePre(id, governance.EventFreeze, nil); !ok {
+	// 2. Judging the freezing mode
+	// - Active freeze (appchain admin) does not require voting governance
+	// - Passive freeze (relay-chain admin) requires voting governance
+	var event governance.EventType
+	if am.CurrentCaller() != addr {
+		event = governance.EventPassiveFreeze
+	} else {
+		event = governance.EventActiveFreeze
+	}
+
+	// 3. GovernancePre: check if exist and status
+	if ok, data := am.AppchainManager.GovernancePre(id, event, nil); !ok {
 		return boltvm.Error("freeze prepare error: " + string(data))
 	}
 
-	res = am.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
-		pb.String(am.Caller()),
-		pb.String(string(governance.EventFreeze)),
-		pb.String(""),
-		pb.String(string(AppchainMgr)),
-		pb.String(id),
-		pb.String(string(chainInfo.Status)),
-		pb.Bytes(chainData),
-	)
-	if !res.Ok {
-		return boltvm.Error("submit proposal error:" + string(res.Result))
+	// 4. SubmitProposal(only EventPassiveFreeze require)
+	if event == governance.EventPassiveFreeze {
+		res = am.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
+			pb.String(am.Caller()),
+			pb.String(string(event)),
+			pb.String(""),
+			pb.String(string(AppchainMgr)),
+			pb.String(id),
+			pb.String(string(chainInfo.Status)),
+			pb.Bytes(chainData),
+		)
+		if !res.Ok {
+			return boltvm.Error("submit proposal error:" + string(res.Result))
+		}
 	}
 
-	if ok, data := am.AppchainManager.ChangeStatus(id, string(governance.EventFreeze), string(chainInfo.Status), nil); !ok {
+	// 5. ChangeStatus
+	if ok, data := am.AppchainManager.ChangeStatus(id, string(event), string(chainInfo.Status), nil); !ok {
 		return boltvm.Error(string(data))
 	}
 
 	return getGovernanceRet(string(res.Result), nil)
 }
 
-// ActivateAppchain updates freezing appchain
+// ActivateAppchain activate freezing appchain
 func (am *AppchainManager) ActivateAppchain(id string) *boltvm.Response {
 	am.AppchainManager.Persister = am.Stub
 
+	// 1. CheckPermission: PermissionSelfAdmin
 	ok, chainData := am.AppchainManager.QueryById(id, nil)
 	if !ok {
 		return boltvm.Error(string(chainData))
@@ -356,26 +381,39 @@ func (am *AppchainManager) ActivateAppchain(id string) *boltvm.Response {
 		return boltvm.Error("check permission error:" + string(res.Result))
 	}
 
-	if ok, data := am.AppchainManager.GovernancePre(id, governance.EventActivate, nil); !ok {
+	// 2. Judging the activate mode
+	// - Active activate (appchain admin) : not require voting governance
+	// - Passive activate (relay-chain admin) : require voting governance
+	var event governance.EventType
+	if am.CurrentCaller() != addr {
+		event = governance.EventPassiveActivate
+	} else {
+		event = governance.EventActiveActivate
+	}
+
+	// 3. GovernancePre: check if exist and status
+	if ok, data := am.AppchainManager.GovernancePre(id, event, nil); !ok {
 		return boltvm.Error("activate prepare error: " + string(data))
 	}
 
-	am.AppchainManager.Persister = am.Stub
-
-	res = am.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
-		pb.String(am.Caller()),
-		pb.String(string(governance.EventActivate)),
-		pb.String(""),
-		pb.String(string(AppchainMgr)),
-		pb.String(id),
-		pb.String(string(chainInfo.Status)),
-		pb.Bytes(chainData),
-	)
-	if !res.Ok {
-		return boltvm.Error("submit proposal error:" + string(res.Result))
+	// 4. SubmitProposal
+	if event != governance.EventActiveActivate {
+		res = am.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
+			pb.String(am.Caller()),
+			pb.String(string(event)),
+			pb.String(""),
+			pb.String(string(AppchainMgr)),
+			pb.String(id),
+			pb.String(string(chainInfo.Status)),
+			pb.Bytes(chainData),
+		)
+		if !res.Ok {
+			return boltvm.Error("submit proposal error:" + string(res.Result))
+		}
 	}
 
-	if ok, data := am.AppchainManager.ChangeStatus(id, string(governance.EventActivate), string(chainInfo.Status), nil); !ok {
+	// 5. ChangeStatus
+	if ok, data := am.AppchainManager.ChangeStatus(id, string(event), string(chainInfo.Status), nil); !ok {
 		return boltvm.Error(string(data))
 	}
 
@@ -546,11 +584,12 @@ func (am *AppchainManager) IsAvailable(chainId string) *boltvm.Response {
 		return boltvm.Error("unmarshal error: " + err.Error())
 	}
 
-	if app.Status != governance.GovernanceAvailable {
-		return boltvm.Error("the appchain status is " + string(app.Status))
+	for _, s := range appchainMgr.AppchainAvailableState {
+		if app.Status == s {
+			return boltvm.Success(nil)
+		}
 	}
-
-	return boltvm.Success(nil)
+	return boltvm.Error("the appchain status is " + string(app.Status))
 }
 
 func getAddr(pubKeyStr string) (string, error) {
