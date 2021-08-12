@@ -85,7 +85,8 @@ func TestInterchainRouter_GetInterchainTxWrappers(t *testing.T) {
 		require.Equal(t, len(iw1.InterchainTxWrappers[0].Transactions), 1)
 		require.Equal(t, iw1.InterchainTxWrappers[0].Transactions[0].Tx.Hash().String(), BVMTx.GetHash().String())
 	case iw4 := <-wrappersCh4:
-		require.Nil(t, iw4)
+		require.Equal(t, len(iw4.InterchainTxWrappers), 1)
+		require.Equal(t, len(iw4.InterchainTxWrappers[0].Transactions), 0)
 	default:
 		require.Errorf(t, fmt.Errorf("not found interchainWrappers"), "")
 	}

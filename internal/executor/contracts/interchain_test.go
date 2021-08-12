@@ -279,7 +279,7 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	ibtp.From = srcChainService.getChainServiceId()
 	res = im.HandleIBTP(ibtp)
 	assert.False(t, res.Ok)
-	assert.Equal(t, true, strings.Contains(string(res.Result), InvalidIBTP))
+	assert.Equal(t, true, strings.Contains(string(res.Result), InvalidTargetService))
 
 	ibtp.From = unexistChainServiceID
 	ibtp.To = dstChainService.getChainServiceId()
@@ -302,12 +302,12 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	mockStub.EXPECT().CrossInvoke(constant.ServiceMgrContractAddr.String(), "GetServiceInfo", gomock.Any()).Return(boltvm.Error(""))
 	res = im.HandleIBTP(ibtp)
 	assert.False(t, res.Ok)
-	assert.Equal(t, true, strings.Contains(string(res.Result), ServiceNotAvailable))
+	assert.Equal(t, true, strings.Contains(string(res.Result), TargetServiceNotAvailable))
 
 	mockStub.EXPECT().CrossInvoke(constant.ServiceMgrContractAddr.String(), "GetServiceInfo", gomock.Any()).Return(boltvm.Success(nil))
 	res = im.HandleIBTP(ibtp)
 	assert.False(t, res.Ok)
-	assert.Equal(t, true, strings.Contains(string(res.Result), "unmarshal service of ID"))
+	assert.Equal(t, true, strings.Contains(string(res.Result), TargetServiceNotAvailable))
 
 	service := Service{
 		ChainID:   dstChainService.ChainId,
@@ -323,7 +323,7 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	assert.False(t, res.Ok)
 	assert.Equal(t, true, strings.Contains(string(res.Result), "not permitted to visit"))
 
-	service.Permission = []string{srcChainService.getFullServiceId()}
+	service.Permission = map[string]struct{}{srcChainService.getFullServiceId(): {}}
 	dstServiceData, err = json.Marshal(service)
 	assert.Nil(t, err)
 	mockStub.EXPECT().CrossInvoke(constant.ServiceMgrContractAddr.String(), "GetServiceInfo", gomock.Any()).Return(boltvm.Success(dstServiceData))

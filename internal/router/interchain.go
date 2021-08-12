@@ -167,6 +167,17 @@ func (router *InterchainRouter) GetInterchainTxWrappers(appchainID string, begin
 				InterchainTxWrappers: wrappers,
 			}
 			continue
+		} else {
+			// empty interchain tx in this block
+			emptyWrapper := &pb.InterchainTxWrapper{
+				Height:  block.Height(),
+				L2Roots: meta.L2Roots,
+			}
+			wrappers = append(wrappers, emptyWrapper)
+			ch <- &pb.InterchainTxWrappers{
+				InterchainTxWrappers: wrappers,
+			}
+			continue
 		}
 
 	}
