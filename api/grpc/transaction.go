@@ -112,18 +112,13 @@ func (cbs *ChainBrokerService) GetTransaction(ctx context.Context, req *pb.Trans
 		return nil, err
 	}
 
-	bxhTx, ok := tx.(*pb.BxhTransaction)
-	if !ok {
-		return nil, fmt.Errorf("cannot get non bxh tx via grpc")
-	}
-
 	meta, err := cbs.api.Broker().GetTransactionMeta(hash)
 	if err != nil {
 		return nil, err
 	}
 
 	return &pb.GetTransactionResponse{
-		Tx:     bxhTx,
-		TxMeta: meta,
+		Txs:    &pb.Transactions{[]pb.Transaction{tx}},
+		TxMeta: []pb.TransactionMeta{*meta},
 	}, nil
 }
