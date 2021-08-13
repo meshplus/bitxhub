@@ -79,6 +79,7 @@ func (suite *Governance) TestGovernance() {
 		pb.String("趣链税务链"),
 		pb.String("1.8"),
 		pb.String(base64.StdEncoding.EncodeToString(appchainPub)),
+		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
@@ -101,6 +102,7 @@ func (suite *Governance) TestGovernance() {
 		pb.String("趣链税务链"),
 		pb.String("1.8"),
 		pb.String(string(appchainPub)),
+		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
 	suite.Require().False(ret.IsSuccess(), string(ret.Ret))

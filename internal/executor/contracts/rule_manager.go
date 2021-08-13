@@ -54,7 +54,6 @@ func (rm *RuleManager) Manage(eventTyp string, proposalResult, lastStatus string
 		if err := json.Unmarshal(masterData, &masterRule); err != nil {
 			return boltvm.Error("unmarshal masterRule error:" + err.Error())
 		}
-
 		// change master status
 		ok, errData := rm.RuleManager.ChangeStatus(masterRule.Address, proposalResult, string(governance.GovernanceAvailable), []byte(masterRule.ChainId))
 		if !ok {
@@ -71,7 +70,7 @@ func (rm *RuleManager) Manage(eventTyp string, proposalResult, lastStatus string
 }
 
 // Register records the rule, and then automatically binds the rule if there is no master validation rule
-func (rm *RuleManager) RegisterRule(chainId string, ruleAddress string) *boltvm.Response {
+func (rm *RuleManager) RegisterRule(chainId string, ruleAddress, reason string) *boltvm.Response {
 	rm.RuleManager.Persister = rm.Stub
 
 	// 1. check permission
@@ -112,7 +111,7 @@ func (rm *RuleManager) RegisterRule(chainId string, ruleAddress string) *boltvm.
 
 	// 6. submit proposal
 	// 7. change status
-	return rm.bindRule(chainId, ruleAddress, governance.EventBind)
+	return rm.bindRule(chainId, ruleAddress, governance.EventBind, reason)
 }
 
 // DefaultRule automatically adds default rules to the appchain after the appchain is registered successfully
@@ -159,7 +158,7 @@ func (rm *RuleManager) DefaultRule(chainId string, ruleAddress string) *boltvm.R
 }
 
 // BindRule binds the validation rule address with the chain id
-func (rm *RuleManager) UpdateMasterRule(chainId string, newMasterruleAddress string) *boltvm.Response {
+func (rm *RuleManager) UpdateMasterRule(chainId string, newMasterruleAddress, reason string) *boltvm.Response {
 	rm.RuleManager.Persister = rm.Stub
 
 	// 1. check permission
@@ -184,7 +183,7 @@ func (rm *RuleManager) UpdateMasterRule(chainId string, newMasterruleAddress str
 
 	// 5. submit new rule bind proposal
 	// 6. change new rule status
-	res := rm.bindRule(chainId, newMasterruleAddress, governance.EventUpdate)
+	res := rm.bindRule(chainId, newMasterruleAddress, governance.EventUpdate, reason)
 	if !res.Ok {
 		return res
 	}
@@ -201,7 +200,7 @@ func (rm *RuleManager) UpdateMasterRule(chainId string, newMasterruleAddress str
 	return res
 }
 
-func (rm *RuleManager) bindRule(chainId string, ruleAddr string, event governance.EventType) *boltvm.Response {
+func (rm *RuleManager) bindRule(chainId string, ruleAddr string, event governance.EventType, reason string) *boltvm.Response {
 	rm.RuleManager.Persister = rm.Stub
 
 	// submit proposal
@@ -221,6 +220,7 @@ func (rm *RuleManager) bindRule(chainId string, ruleAddr string, event governanc
 		pb.String(string(RuleMgr)),
 		pb.String(RuleKey(chainId)),
 		pb.String(string(rule.Status)),
+		pb.String(reason),
 		pb.Bytes(ruleRes.Result),
 	)
 	if !res.Ok {

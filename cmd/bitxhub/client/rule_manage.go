@@ -24,7 +24,7 @@ func ruleMgrCMD() cli.Command {
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "id",
-						Usage:    "chain id",
+						Usage:    "Specify chain id",
 						Required: true,
 					},
 				},
@@ -36,7 +36,7 @@ func ruleMgrCMD() cli.Command {
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "id",
-						Usage:    "chain id",
+						Usage:    "Specify chain id",
 						Required: true,
 					},
 				},
@@ -48,12 +48,12 @@ func ruleMgrCMD() cli.Command {
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "id",
-						Usage:    "chain id",
+						Usage:    "Specify chain id",
 						Required: true,
 					},
 					cli.StringFlag{
 						Name:     "addr",
-						Usage:    "rule addr",
+						Usage:    "Specify rule addr",
 						Required: true,
 					},
 				},
@@ -65,13 +65,18 @@ func ruleMgrCMD() cli.Command {
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "id",
-						Usage:    "chain id",
+						Usage:    "Specify chain id",
 						Required: true,
 					},
 					cli.StringFlag{
 						Name:     "addr",
-						Usage:    "rule address",
+						Usage:    "Specify rule address",
 						Required: true,
+					},
+					cli.StringFlag{
+						Name:     "reason",
+						Usage:    "Specify update reason",
+						Required: false,
 					},
 				},
 				Action: updateRule,
@@ -142,8 +147,9 @@ func getRuleStatus(ctx *cli.Context) error {
 func updateRule(ctx *cli.Context) error {
 	id := ctx.String("id")
 	addr := ctx.String("addr")
+	reason := ctx.String("reason")
 
-	receipt, err := invokeBVMContract(ctx, constant.RuleManagerContractAddr.String(), "UpdateMasterRule", pb.String(id), pb.String(addr))
+	receipt, err := invokeBVMContract(ctx, constant.RuleManagerContractAddr.String(), "UpdateMasterRule", pb.String(id), pb.String(addr), pb.String(reason))
 	if err != nil {
 		return err
 	}

@@ -126,33 +126,33 @@ func TestRuleManager_UpdateMasterRule(t *testing.T) {
 	retRulesAvailable = append(retRulesAvailable, rules[0])
 	mockStub.EXPECT().GetObject(RuleKey(chains[0].ID), gomock.Any()).SetArg(1, retRulesAvailable).Return(true).Times(2)
 
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().CurrentCaller().Return("").AnyTimes()
 	mockStub.EXPECT().Caller().Return("").AnyTimes()
 
 	// no old rule
 	// check permission error
-	res := rm.UpdateMasterRule(chains[0].ID, rules[0].Address)
+	res := rm.UpdateMasterRule(chains[0].ID, rules[0].Address, REASON)
 	assert.False(t, res.Ok, string(res.Result))
 	// isAvailable error
-	res = rm.UpdateMasterRule(chains[0].ID, rules[0].Address)
+	res = rm.UpdateMasterRule(chains[0].ID, rules[0].Address, REASON)
 	assert.False(t, res.Ok, string(res.Result))
 
 	// BindPre error
-	res = rm.UpdateMasterRule(chains[0].ID, rules[0].Address)
+	res = rm.UpdateMasterRule(chains[0].ID, rules[0].Address, REASON)
 	assert.False(t, res.Ok, string(res.Result))
 	// bindRule error
-	res = rm.UpdateMasterRule(chains[0].ID, rules[0].Address)
+	res = rm.UpdateMasterRule(chains[0].ID, rules[0].Address, REASON)
 	assert.False(t, res.Ok, string(res.Result))
 	// get master error
-	res = rm.UpdateMasterRule(chains[0].ID, rules[0].Address)
+	res = rm.UpdateMasterRule(chains[0].ID, rules[0].Address, REASON)
 	assert.False(t, res.Ok, string(res.Result))
 	// get master ok, change status error
-	res = rm.UpdateMasterRule(chains[0].ID, rules[0].Address)
+	res = rm.UpdateMasterRule(chains[0].ID, rules[0].Address, REASON)
 	assert.False(t, res.Ok, string(res.Result))
 
-	res = rm.UpdateMasterRule(chains[0].ID, rules[0].Address)
+	res = rm.UpdateMasterRule(chains[0].ID, rules[0].Address, REASON)
 	assert.True(t, res.Ok, string(res.Result))
 }
 

@@ -9,7 +9,6 @@ import (
 
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/boltvm"
-	"github.com/meshplus/bitxhub-core/governance"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/crypto/asym/ecdsa"
@@ -226,7 +225,12 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, error) {
 			return nil, fmt.Errorf("%s: source appchain %s is not registered", CurAppchainNotAvailable, ibtp.From)
 		}
 
-		if srcAppchain.Status != governance.GovernanceAvailable {
+		res := x.CrossInvoke(constant.AppchainMgrContractAddr.String(), "IsAvailable", pb.String(srcAppchain.ID))
+		if !res.Ok {
+			return nil, fmt.Errorf("crossinvoke IsAvailable error: %s", string(res.Result))
+		}
+
+		if string(res.Result) == "false" {
 			return nil, fmt.Errorf("%s: source appchain status is %s, can not handle IBTP", CurAppchainNotAvailable, string(srcAppchain.Status))
 		}
 
@@ -305,7 +309,12 @@ func (x *InterchainManager) checkAppchain(id string) (*pb.Interchain, *appchainM
 		return nil, nil, fmt.Errorf("unmarshal error: " + err.Error())
 	}
 
-	if app.Status != governance.GovernanceAvailable {
+	res = x.CrossInvoke(constant.AppchainMgrContractAddr.String(), "IsAvailable", pb.String(app.ID))
+	if !res.Ok {
+		return nil, nil, fmt.Errorf("crossinvoke IsAvailable error: %s", string(res.Result))
+	}
+
+	if string(res.Result) == "false" {
 		return nil, nil, fmt.Errorf("%s: the appchain status is %s, can not handle IBTP", AppchainNotAvailable, string(app.Status))
 	}
 
@@ -318,7 +327,13 @@ func (x *InterchainManager) checkTargetAppchainAvailability(ibtp *pb.IBTP) error
 		if err != nil {
 			return fmt.Errorf("%s: dest appchain id %s is not registered", TargetAppchainNotAvailable, ibtp.To)
 		}
-		if dstAppchain.Status != governance.GovernanceAvailable {
+
+		res := x.CrossInvoke(constant.AppchainMgrContractAddr.String(), "IsAvailable", pb.String(dstAppchain.ID))
+		if !res.Ok {
+			return fmt.Errorf("crossinvoke IsAvailable error: %s", string(res.Result))
+		}
+
+		if string(res.Result) == "false" {
 			return fmt.Errorf("%s: dest appchain status is %s, can not handle IBTP", TargetAppchainNotAvailable, string(dstAppchain.Status))
 		}
 	}

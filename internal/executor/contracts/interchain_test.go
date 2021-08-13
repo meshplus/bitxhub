@@ -238,6 +238,10 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	require.Nil(t, err)
 
 	// mockStub.EXPECT().IsRelayIBTP(gomock.Any()).Return(true).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), gomock.Eq("IsAvailable"), pb.String(appchainMethod)).Return(boltvm.Success([]byte("true"))).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), gomock.Eq("IsAvailable"), pb.String(appchainMethod2)).Return(boltvm.Success([]byte("true"))).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), gomock.Eq("IsAvailable"), pb.String(unexistChainMethod)).Return(boltvm.Error("")).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), gomock.Eq("IsAvailable"), pb.String(unavailableChainMethod)).Return(boltvm.Success([]byte("false"))).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), gomock.Eq("GetAppchain"), pb.String(appchainMethod)).Return(boltvm.Success(appchainData)).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), gomock.Eq("GetAppchain"), pb.String(appchainMethod2)).Return(boltvm.Success(dstAppchainData)).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.String(), gomock.Eq("GetAppchain"), pb.String(unexistChainMethod)).Return(boltvm.Error("")).AnyTimes()

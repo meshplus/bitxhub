@@ -64,7 +64,7 @@ func (nm *NodeManager) Manage(eventTyp string, proposalResult, lastStatus string
 // Register registers node info
 // caller is the bitxhub admin address
 // return node pid, proposal id and error
-func (nm *NodeManager) RegisterNode(nodePid string, nodeVpId uint64, nodeAccount, nodeType string) *boltvm.Response {
+func (nm *NodeManager) RegisterNode(nodePid string, nodeVpId uint64, nodeAccount, nodeType, reason string) *boltvm.Response {
 	nm.NodeManager.Persister = nm.Stub
 
 	// 1. check permission
@@ -116,6 +116,7 @@ func (nm *NodeManager) RegisterNode(nodePid string, nodeVpId uint64, nodeAccount
 		pb.String(string(NodeMgr)),
 		pb.String(node.Pid),
 		pb.String(string(node.Status)),
+		pb.String(reason),
 		pb.Bytes(nodeData),
 	)
 	if !res.Ok {
@@ -130,7 +131,7 @@ func (nm *NodeManager) RegisterNode(nodePid string, nodeVpId uint64, nodeAccount
 }
 
 // LogoutNode logout available node
-func (nm *NodeManager) LogoutNode(nodePid string) *boltvm.Response {
+func (nm *NodeManager) LogoutNode(nodePid, reason string) *boltvm.Response {
 	nm.NodeManager.Persister = nm.Stub
 
 	// 1. check permission
@@ -191,6 +192,7 @@ func (nm *NodeManager) LogoutNode(nodePid string) *boltvm.Response {
 		pb.String(string(NodeMgr)),
 		pb.String(node.Pid),
 		pb.String(string(node.Status)),
+		pb.String(reason),
 		pb.Bytes(nodeData),
 	)
 	if !res.Ok {

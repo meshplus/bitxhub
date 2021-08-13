@@ -93,6 +93,11 @@ func governanceCMD() cli.Command {
 								Usage:    "proposal id",
 								Required: true,
 							},
+							cli.StringFlag{
+								Name:     "reason",
+								Usage:    "withdraw reason",
+								Required: false,
+							},
 						},
 						Action: withdraw,
 					},
@@ -108,8 +113,9 @@ func governanceCMD() cli.Command {
 
 func withdraw(ctx *cli.Context) error {
 	id := ctx.String("id")
+	reason := ctx.String("reason")
 
-	receipt, err := invokeBVMContract(ctx, constant.GovernanceContractAddr.String(), "WithdrawProposal", pb.String(id))
+	receipt, err := invokeBVMContract(ctx, constant.GovernanceContractAddr.String(), "WithdrawProposal", pb.String(id), pb.String(reason))
 	if err != nil {
 		return err
 	}

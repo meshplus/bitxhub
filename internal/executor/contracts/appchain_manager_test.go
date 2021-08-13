@@ -20,6 +20,7 @@ import (
 
 const (
 	method = "appchain1"
+	REASON = "reason"
 )
 
 func TestAppchainManager_IsAppchainAdmin(t *testing.T) {
@@ -85,7 +86,7 @@ func TestAppchainManager_Appchains(t *testing.T) {
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).Return().AnyTimes()
 	mockStub.EXPECT().Logger().Return(logger).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, chainsData[0]).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil))
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil))
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "GetRoleByAddr", gomock.Any()).Return(boltvm.Success([]byte(NoRole))).AnyTimes()
 	//mockStub.EXPECT().CrossInvoke(constant.MethodRegistryContractAddr.String(), "Apply",
 	//	gomock.Any(), gomock.Any(), gomock.Any()).Return(applyResponse)
@@ -100,7 +101,7 @@ func TestAppchainManager_Appchains(t *testing.T) {
 
 	am.Register(method, docAddr, docHash,
 		chains[0].Validators, chains[0].ConsensusType, chains[0].ChainType,
-		chains[0].Name, chains[0].Desc, chains[0].Version, chains[0].PublicKey)
+		chains[0].Name, chains[0].Desc, chains[0].Version, chains[0].PublicKey, "")
 
 	appchainsReq1 := mockStub.EXPECT().Query(appchainMgr.PREFIX).Return(true, chainsData)
 	appchainReq2 := mockStub.EXPECT().Query(appchainMgr.PREFIX).Return(false, nil)
@@ -155,7 +156,7 @@ func TestAppchainManager_Register(t *testing.T) {
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).Return().AnyTimes()
 	mockStub.EXPECT().Logger().Return(logger).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
-		gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+		gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "CheckPermission", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().CurrentCaller().Return("").AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "GetRoleByAddr", gomock.Any()).Return(boltvm.Success([]byte(NoRole))).AnyTimes()
@@ -164,13 +165,13 @@ func TestAppchainManager_Register(t *testing.T) {
 
 	res := am.Register(method, docAddr, docHash,
 		chains[2].Validators, chains[2].ConsensusType, chains[2].ChainType,
-		chains[2].Name, chains[2].Desc, chains[2].Version, chains[2].PublicKey)
+		chains[2].Name, chains[2].Desc, chains[2].Version, chains[2].PublicKey, "")
 	assert.True(t, res.Ok)
 
 	// test for repeated register
 	res = am.Register(method, docAddr, docHash,
 		chains[0].Validators, chains[0].ConsensusType, chains[0].ChainType,
-		chains[0].Name, chains[0].Desc, chains[0].Version, chains[0].PublicKey)
+		chains[0].Name, chains[0].Desc, chains[0].Version, chains[0].PublicKey, "")
 	assert.False(t, res.Ok)
 }
 
@@ -256,7 +257,8 @@ func TestAppchainManager_IsAvailable(t *testing.T) {
 	res := am.IsAvailable(chains[0].ID)
 	assert.Equal(t, true, res.Ok, string(res.Result))
 	res = am.IsAvailable(chains[1].ID)
-	assert.Equal(t, false, res.Ok, string(res.Result))
+	assert.Equal(t, true, res.Ok, string(res.Result))
+	assert.Equal(t, "false", string(res.Result))
 	res = am.IsAvailable("errId")
 	assert.Equal(t, false, res.Ok, string(res.Result))
 	res = am.IsAvailable("unmarshalErrId")
@@ -273,7 +275,7 @@ func TestManageChain(t *testing.T) {
 	mockStub.EXPECT().Logger().Return(logger).AnyTimes()
 	mockStub.EXPECT().Get(AppchainKey(appchainMethod)).Return(true, chainsData[0]).AnyTimes()
 	mockStub.EXPECT().Get(AppchainKey(appchainMethod2)).Return(true, chainsData[1]).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "CheckPermission", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 
 	availableChain := chains[0]
@@ -286,16 +288,16 @@ func TestManageChain(t *testing.T) {
 	// test UpdateAppchain
 	res := am.UpdateAppchain(appchainMethod, docAddr, docHash,
 		chains[0].Validators, chains[0].ConsensusType, chains[0].ChainType,
-		chains[0].Name, chains[0].Desc, chains[0].Version, chains[0].PublicKey)
+		chains[0].Name, chains[0].Desc, chains[0].Version, chains[0].PublicKey, "")
 	assert.Equal(t, true, res.Ok, string(res.Result))
 	// test FreezeAppchain
-	res = am.FreezeAppchain(appchainMethod)
+	res = am.FreezeAppchain(appchainMethod, REASON)
 	assert.Equal(t, true, res.Ok, string(res.Result))
 	// test ActivateAppchain
-	res = am.ActivateAppchain(appchainMethod2)
+	res = am.ActivateAppchain(appchainMethod2, REASON)
 	assert.Equal(t, true, res.Ok, string(res.Result))
 	// test LogoutAppchain
-	res = am.LogoutAppchain(appchainMethod)
+	res = am.LogoutAppchain(appchainMethod, "")
 	assert.Equal(t, true, res.Ok, string(res.Result))
 }
 
@@ -303,17 +305,17 @@ func TestManageChain_WithoutPermission(t *testing.T) {
 	am, mockStub, _, chainsData := prepare(t)
 	mockStub.EXPECT().Caller().Return(caller).AnyTimes()
 	mockStub.EXPECT().CurrentCaller().Return(caller).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "CheckPermission", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("")).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, chainsData[0]).AnyTimes()
 
 	// test FreezeAppchain
-	res := am.FreezeAppchain("addr")
+	res := am.FreezeAppchain("addr", REASON)
 	assert.Equal(t, false, res.Ok, string(res.Result))
-	res = am.FreezeAppchain("addr")
+	res = am.FreezeAppchain("addr", REASON)
 	assert.Equal(t, false, res.Ok, string(res.Result))
 	// test ActivateAppchain
-	res = am.ActivateAppchain("addr")
+	res = am.ActivateAppchain("addr", REASON)
 	assert.Equal(t, false, res.Ok, string(res.Result))
 }
 
@@ -331,16 +333,16 @@ func TestManageChain_Error(t *testing.T) {
 	// test UpdateAppchain
 	res := am.UpdateAppchain(appchainMethod, docAddr, docHash,
 		chains[0].Validators, chains[0].ConsensusType, chains[0].ChainType,
-		chains[0].Name, chains[0].Desc, chains[0].Version, chains[0].PublicKey)
+		chains[0].Name, chains[0].Desc, chains[0].Version, chains[0].PublicKey, "")
 	assert.Equal(t, false, res.Ok, string(res.Result))
 	// test FreezeAppchain
-	res = am.FreezeAppchain(caller)
+	res = am.FreezeAppchain(caller, REASON)
 	assert.Equal(t, false, res.Ok, string(res.Result))
 	// test ActivateAppchain
-	res = am.ActivateAppchain(caller)
+	res = am.ActivateAppchain(caller, REASON)
 	assert.Equal(t, false, res.Ok, string(res.Result))
 	// test LogoutAppchain
-	res = am.LogoutAppchain(caller)
+	res = am.LogoutAppchain(caller, "")
 	assert.Equal(t, false, res.Ok, string(res.Result))
 }
 
