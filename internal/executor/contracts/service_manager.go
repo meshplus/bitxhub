@@ -25,15 +25,15 @@ type ServiceManager struct {
 }
 
 type Service struct {
-	ChainID    string          `json:"chain_id"`   // aoochain id
-	ServiceID  string          `json:"service_id"` // service id
-	Name       string          `json:"name"`       // service name
-	Type       string          `json:"type"`       // service type
-	Desc       string          `json:"desc"`       // service description
-	Ordered    bool            `json:"ordered"`    // service should be in order or not
-	Permission []string        `json:"permission"` // counter party services which are allowed to call the service
-	Items      map[string]Item `json:"items"`      // service entities
-	Status     int32           `json:"status"`     // 0 => registered, 1 => approved, -1 => rejected
+	ChainID    string              `json:"chain_id"`   // aoochain id
+	ServiceID  string              `json:"service_id"` // service id
+	Name       string              `json:"name"`       // service name
+	Type       string              `json:"type"`       // service type
+	Desc       string              `json:"desc"`       // service description
+	Ordered    bool                `json:"ordered"`    // service should be in order or not
+	Permission map[string]struct{} `json:"permission"` // counter party services which are allowed to call the service
+	Items      map[string]Item     `json:"items"`      // service entities
+	Status     int32               `json:"status"`     // 0 => registered, 1 => approved, -1 => rejected
 }
 
 type Item struct {
@@ -74,7 +74,10 @@ func (sm *ServiceManager) Register(chainID, serviceID, name, desc, typ string, o
 		}
 	}
 
-	permission := strings.Split(permit, ",")
+	permission := make(map[string]struct{})
+	for _, id := range strings.Split(permit, ",") {
+		permission[id] = struct{}{}
+	}
 
 	service := &Service{
 		ChainID:    chainID,
@@ -154,16 +157,24 @@ func (sm *ServiceManager) Update(chainID, serviceID, name string, desc string, i
 }
 
 func (sm *ServiceManager) GetServiceInfo(id string) *boltvm.Response {
-	service, err := json.Marshal(sm.getServiceInfo(id))
-	if err != nil {
-		return boltvm.Error(err.Error())
+	service := sm.getServiceInfo(id)
+	if service == nil {
+		return boltvm.Error(fmt.Sprintf("cannot get service by id %s", id))
 	}
-	return boltvm.Success(service)
+
+	data, err := json.Marshal(service)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("marshal service: %s", err.Error()))
+	}
+
+	return boltvm.Success(data)
 }
 
 func (sm *ServiceManager) getServiceInfo(id string) *Service {
 	service := &Service{}
-	sm.GetObject(sm.serviceKey(id), service)
+	if ok := sm.GetObject(sm.serviceKey(id), service); !ok {
+		return nil
+	}
 	return service
 }
 
@@ -339,11 +350,7 @@ func (sm *ServiceManager) appchainServicesKey(id string) string {
 }
 
 func (service *Service) checkPermission(serviceId string) bool {
-	for _, id := range service.Permission {
-		if id == serviceId {
-			return true
-		}
-	}
+	_, ok := service.Permission[serviceId]
 
-	return false
+	return ok
 }

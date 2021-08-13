@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/meshplus/bitxhub-core/governance"
+
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-kit/crypto"
@@ -24,6 +26,8 @@ const (
 	AppchainNotAvailable       = "the appchain is not available"
 	ServiceNotAvailable        = "the service is not available"
 	InvalidIBTP                = "invalid ibtp"
+	InvalidTargetService       = "invalid target service"
+	TargetServiceNotAvailable  = "target service not available"
 	internalError              = "internal server error"
 	ibtpIndexExist             = "index already exists"
 	ibtpIndexWrong             = "wrong index"
@@ -237,7 +241,7 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, error) {
 
 	dstChainService, err := x.parseChainService(ibtp.To)
 	if err != nil {
-		return nil, fmt.Errorf("%s: parsed dest chain service id %w", InvalidIBTP, err)
+		return nil, fmt.Errorf("%s: parsed dest chain service id %w", InvalidTargetService, err)
 	}
 
 	interchain, ok := x.getInterchain(srcChainService.getFullServiceId())
@@ -251,7 +255,7 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, error) {
 		}
 	}
 
-	if pb.IBTP_INTERCHAIN == ibtp.Type || pb.IBTP_ROLLBACK == ibtp.Type {
+	if pb.IBTP_INTERCHAIN == ibtp.Type {
 		// if src chain service is from appchain registered in current bitxhub, check service index
 		if srcChainService.IsLocal {
 			srcAppchain, err := x.getAppchainInfo(srcChainService.ChainId)
@@ -259,14 +263,7 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, error) {
 				return nil, fmt.Errorf("%s: source appchain %s is not registered", CurAppchainNotAvailable, ibtp.From)
 			}
 
-			availableFlag := false
-			for _, s := range appchainMgr.AppchainAvailableState {
-				if srcAppchain.Status == s {
-					availableFlag = true
-					break
-				}
-			}
-			if !availableFlag {
+			if !isAppchainAvailable(srcAppchain.Status) {
 				return nil, fmt.Errorf("%s: source appchain status is %s, can not handle IBTP", CurAppchainNotAvailable, string(srcAppchain.Status))
 			}
 
@@ -290,11 +287,11 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, error) {
 		if dstChainService.IsLocal {
 			dstService, err := x.getServiceByID(dstChainService.getChainServiceId())
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf(fmt.Sprintf("%s: cannot get service by %s", TargetServiceNotAvailable, dstChainService.getChainServiceId()))
 			}
 
 			if !dstService.checkPermission(srcChainService.getFullServiceId()) {
-				return nil, fmt.Errorf(fmt.Sprintf("the service %s is not permitted to visit %s", srcChainService.getFullServiceId(), dstChainService.getFullServiceId()))
+				return nil, fmt.Errorf(fmt.Sprintf("%s: the service %s is not permitted to visit %s", TargetServiceNotAvailable, srcChainService.getFullServiceId(), dstChainService.getFullServiceId()))
 			}
 
 			if dstService.Ordered {
@@ -307,7 +304,7 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, error) {
 				}
 			}
 		}
-	} else {
+	} else if ibtp.Type == pb.IBTP_RECEIPT_SUCCESS || ibtp.Type == pb.IBTP_RECEIPT_FAILURE {
 		if srcChainService.IsLocal {
 			srcService, err := x.getServiceByID(srcChainService.getChainServiceId())
 			if err != nil {
@@ -326,13 +323,15 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, error) {
 		}
 
 		if dstChainService.IsLocal {
-			idx := interchain.ReceiptCounter[dstChainService.getFullServiceId()]
-			if ibtp.Index <= idx {
-				return nil, fmt.Errorf(fmt.Sprintf("%s: required %d, but %d", ibtpIndexExist, idx+1, ibtp.Index))
-			}
+			if !srcChainService.IsLocal {
+				idx := interchain.ReceiptCounter[dstChainService.getFullServiceId()]
+				if ibtp.Index <= idx {
+					return nil, fmt.Errorf(fmt.Sprintf("%s: required %d, but %d", ibtpIndexExist, idx+1, ibtp.Index))
+				}
 
-			if ibtp.Index > idx+1 {
-				return nil, fmt.Errorf(fmt.Sprintf("%s: required %d, but %d", ibtpIndexWrong, idx+1, ibtp.Index))
+				if ibtp.Index > idx+1 {
+					return nil, fmt.Errorf(fmt.Sprintf("%s: required %d, but %d", ibtpIndexWrong, idx+1, ibtp.Index))
+				}
 			}
 		}
 	}
@@ -375,14 +374,7 @@ func (x *InterchainManager) checkAppchain(id string) (*pb.Interchain, *appchainM
 		return nil, nil, fmt.Errorf("unmarshal error: " + err.Error())
 	}
 
-	availableFlag := false
-	for _, s := range appchainMgr.AppchainAvailableState {
-		if app.Status == s {
-			availableFlag = true
-			break
-		}
-	}
-	if !availableFlag {
+	if !isAppchainAvailable(app.Status) {
 		return nil, nil, fmt.Errorf("%s: the appchain status is %s, can not handle IBTP", AppchainNotAvailable, string(app.Status))
 	}
 
@@ -393,7 +385,7 @@ func (x *InterchainManager) checkTargetAppchainAvailability(ibtp *pb.IBTP) error
 	if pb.IBTP_INTERCHAIN == ibtp.Type {
 		dstChainService, err := x.parseChainService(ibtp.To)
 		if err != nil {
-			return fmt.Errorf("%s: parsed dest chain service id %w", InvalidIBTP, err)
+			return fmt.Errorf("%s: parsed dest chain service id %w", InvalidTargetService, err)
 		}
 
 		if dstChainService.IsLocal {
@@ -462,7 +454,6 @@ func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *pb.Interchain
 		ic, _ := x.getInterchain(to)
 		ic.SourceInterchainCounter[from] = ibtp.Index
 		x.setInterchain(to, ic)
-		x.AddObject(x.indexMapKey(getIBTPID(from, to, ibtp.Index)), x.GetTxHash())
 
 		meta := &InterchainMeta{
 			TargetChain: ibtp.To,
@@ -754,4 +745,14 @@ func (x *InterchainManager) indexSendInterchainMeta(id string) string {
 
 func (x *InterchainManager) indexReceiptInterchainMeta(id string) string {
 	return fmt.Sprintf("index-receipt-interchain-%s", id)
+}
+
+func isAppchainAvailable(state governance.GovernanceStatus) bool {
+	for _, s := range appchainMgr.AppchainAvailableState {
+		if state == s {
+			return true
+		}
+	}
+
+	return false
 }
