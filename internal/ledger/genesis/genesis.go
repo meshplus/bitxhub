@@ -78,9 +78,12 @@ func Initialize(genesis *repo.Genesis, nodes []*repo.NetworkNodes, primaryN uint
 
 	block := &pb.Block{
 		BlockHeader: &pb.BlockHeader{
-			Number:    1,
-			StateRoot: stateRoot,
-			Bloom:     &types.Bloom{},
+			Number:      1,
+			StateRoot:   stateRoot,
+			TxRoot:      &types.Hash{},
+			ReceiptRoot: &types.Hash{},
+			ParentHash:  &types.Hash{},
+			Bloom:       &types.Bloom{},
 		},
 		Transactions: &pb.Transactions{},
 	}

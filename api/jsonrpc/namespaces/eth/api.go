@@ -105,7 +105,7 @@ type feeHistoryResult struct {
 	GasUsedRatio []float64        `json:"gasUsedRatio"`
 }
 
-func (api *PublicEthereumAPI) FeeHistory(ctx context.Context, blockCount int, lastBlock rpc.BlockNumber, rewardPercentiles []float64) (*feeHistoryResult, error) {
+func (api *PublicEthereumAPI) FeeHistory(ctx context.Context, blockCount rpctypes.DecimalOrHex, lastBlock rpc.BlockNumber, rewardPercentiles []float64) (*feeHistoryResult, error) {
 	api.logger.Debug("eth_feeHistory")
 	return &feeHistoryResult{}, nil
 }
@@ -425,7 +425,7 @@ func (api *PublicEthereumAPI) GetBlockByHash(hash common.Hash, fullTx bool) (map
 }
 
 // GetBlockByNumber returns the block identified by number.
-func (api *PublicEthereumAPI) GetBlockByNumber(blockNum uint64, fullTx bool) (map[string]interface{}, error) {
+func (api *PublicEthereumAPI) GetBlockByNumber(blockNum rpc.BlockNumber, fullTx bool) (map[string]interface{}, error) {
 	api.logger.Debugf("eth_getBlockByNumber, number: %d, full: %v", blockNum, fullTx)
 
 	block, err := api.api.Broker().GetBlock("HEIGHT", fmt.Sprintf("%d", blockNum))
@@ -673,7 +673,7 @@ func (api *PublicEthereumAPI) formatBlock(block *pb.Block, fullTx bool) (map[str
 	}
 
 	return map[string]interface{}{
-		"number":           block.Height,
+		"number":           block.Height(),
 		"hash":             block.BlockHash.Bytes(),
 		"parentHash":       block.BlockHeader.ParentHash.Bytes(),
 		"nonce":            0,             // PoW specific
@@ -724,11 +724,6 @@ func newRPCTransaction(tx pb.Transaction, blockHash common.Hash, blockNumber uin
 		result.BlockNumber = (*hexutil.Big)(new(big.Int).SetUint64(blockNumber))
 		result.TransactionIndex = (*hexutil.Uint64)(&index)
 	}
-	if tx.GetType() == ethtypes.AccessListTxType {
-		al := tx.(*types2.EthTransaction).GetInner().GetAccessList()
-		result.Accesses = &al
-		result.ChainID = (*hexutil.Big)(tx.GetChainID())
-	}
 
 	switch tx.GetType() {
 	case ethtypes.AccessListTxType:
@@ -741,8 +736,9 @@ func newRPCTransaction(tx pb.Transaction, blockHash common.Hash, blockNumber uin
 		result.ChainID = (*hexutil.Big)(tx.GetChainID())
 		result.GasFeeCap = (*hexutil.Big)(tx.(*types2.EthTransaction).GetInner().GetGasFeeCap())
 		result.GasTipCap = (*hexutil.Big)(tx.(*types2.EthTransaction).GetInner().GetGasTipCap())
-		result.GasPrice = nil
+		result.GasPrice = result.GasFeeCap
 	}
+
 	return result
 }
 
