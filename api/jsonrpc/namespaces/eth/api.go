@@ -92,6 +92,24 @@ func (api *PublicEthereumAPI) GasPrice() *hexutil.Big {
 	return (*hexutil.Big)(out)
 }
 
+// MaxPriorityFeePerGas returns a suggestion for a gas tip cap for dynamic transactions.
+func (api *PublicEthereumAPI) MaxPriorityFeePerGas(ctx context.Context) (*hexutil.Big, error) {
+	api.logger.Debug("eth_maxPriorityFeePerGas")
+	return (*hexutil.Big)(new(big.Int)), nil
+}
+
+type feeHistoryResult struct {
+	OldestBlock  rpc.BlockNumber  `json:"oldestBlock"`
+	Reward       [][]*hexutil.Big `json:"reward,omitempty"`
+	BaseFee      []*hexutil.Big   `json:"baseFeePerGas,omitempty"`
+	GasUsedRatio []float64        `json:"gasUsedRatio"`
+}
+
+func (api *PublicEthereumAPI) FeeHistory(ctx context.Context, blockCount int, lastBlock rpc.BlockNumber, rewardPercentiles []float64) (*feeHistoryResult, error) {
+	api.logger.Debug("eth_feeHistory")
+	return &feeHistoryResult{}, nil
+}
+
 // BlockNumber returns the current block number.
 func (api *PublicEthereumAPI) BlockNumber() (hexutil.Uint64, error) {
 	api.logger.Debug("eth_blockNumber")
@@ -710,6 +728,20 @@ func newRPCTransaction(tx pb.Transaction, blockHash common.Hash, blockNumber uin
 		al := tx.(*types2.EthTransaction).GetInner().GetAccessList()
 		result.Accesses = &al
 		result.ChainID = (*hexutil.Big)(tx.GetChainID())
+	}
+
+	switch tx.GetType() {
+	case ethtypes.AccessListTxType:
+		al := tx.(*types2.EthTransaction).GetInner().GetAccessList()
+		result.Accesses = &al
+		result.ChainID = (*hexutil.Big)(tx.GetChainID())
+	case ethtypes.DynamicFeeTxType:
+		al := tx.(*types2.EthTransaction).GetInner().GetAccessList()
+		result.Accesses = &al
+		result.ChainID = (*hexutil.Big)(tx.GetChainID())
+		result.GasFeeCap = (*hexutil.Big)(tx.(*types2.EthTransaction).GetInner().GetGasFeeCap())
+		result.GasTipCap = (*hexutil.Big)(tx.(*types2.EthTransaction).GetInner().GetGasTipCap())
+		result.GasPrice = nil
 	}
 	return result
 }
