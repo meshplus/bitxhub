@@ -402,6 +402,8 @@ func (exec *BlockExecutor) applyTransaction(i int, tx pb.Transaction, invalidRea
 		ethTx := tx.(*types2.EthTransaction)
 		receipt := exec.applyEthTransaction(i, ethTx)
 		exec.evmInterchain(i, ethTx, receipt)
+
+		return receipt
 	}
 
 	receipt.Status = pb.Receipt_FAILED
@@ -524,7 +526,7 @@ func (exec *BlockExecutor) applyEthTransaction(i int, tx *types2.EthTransaction)
 	return receipt
 }
 
-func (exec *BlockExecutor) evmInterchain(i int, tx *types2.EthTransaction, receipt *pb.Receipt ) {
+func (exec *BlockExecutor) evmInterchain(i int, tx *types2.EthTransaction, receipt *pb.Receipt) {
 	if receipt.Status == pb.Receipt_FAILED {
 		return
 	}
