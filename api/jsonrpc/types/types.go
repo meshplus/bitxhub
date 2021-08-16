@@ -1,6 +1,8 @@
 package types
 
 import (
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -29,6 +31,8 @@ type RPCTransaction struct {
 	From             common.Address    `json:"from"`
 	Gas              hexutil.Uint64    `json:"gas"`
 	GasPrice         *hexutil.Big      `json:"gasPrice"`
+	GasFeeCap        *hexutil.Big      `json:"maxFeePerGas,omitempty"`
+	GasTipCap        *hexutil.Big      `json:"maxPriorityFeePerGas,omitempty"`
 	Hash             common.Hash       `json:"hash"`
 	Input            hexutil.Bytes     `json:"input"`
 	Nonce            hexutil.Uint64    `json:"nonce"`
@@ -55,4 +59,25 @@ type Account struct {
 	Balance   **hexutil.Big                `json:"balance"`
 	State     *map[common.Hash]common.Hash `json:"state"`
 	StateDiff *map[common.Hash]common.Hash `json:"stateDiff"`
+}
+
+// DecimalOrHex unmarshals a non-negative decimal or hex parameter into a uint64.
+type DecimalOrHex uint64
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (dh *DecimalOrHex) UnmarshalJSON(data []byte) error {
+	input := strings.TrimSpace(string(data))
+	if len(input) >= 2 && input[0] == '"' && input[len(input)-1] == '"' {
+		input = input[1 : len(input)-1]
+	}
+
+	value, err := strconv.ParseUint(input, 10, 64)
+	if err != nil {
+		value, err = hexutil.DecodeUint64(input)
+	}
+	if err != nil {
+		return err
+	}
+	*dh = DecimalOrHex(value)
+	return nil
 }
