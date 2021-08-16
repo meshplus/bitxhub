@@ -35,7 +35,6 @@ func Initialize(genesis *repo.Genesis, nodes []*repo.NetworkNodes, primaryN uint
 		lg.SetState(constant.RoleContractAddr.Address(), []byte(fmt.Sprintf("%s-%s", contracts.ROLEPREFIX, admin.ID)), adminData)
 	}
 
-
 	balance, _ := new(big.Int).SetString(genesis.Balance, 10)
 	for _, admin := range genesis.Admins {
 		lg.SetBalance(types.NewAddressByStr(admin.Address), balance)
@@ -74,9 +73,12 @@ func Initialize(genesis *repo.Genesis, nodes []*repo.NetworkNodes, primaryN uint
 
 	block := &pb.Block{
 		BlockHeader: &pb.BlockHeader{
-			Number:    1,
-			StateRoot: stateRoot,
-			Bloom:     &types.Bloom{},
+			Number:      1,
+			StateRoot:   stateRoot,
+			TxRoot:      &types.Hash{},
+			ReceiptRoot: &types.Hash{},
+			ParentHash:  &types.Hash{},
+			Bloom:       &types.Bloom{},
 		},
 		Transactions: &pb.Transactions{},
 	}
