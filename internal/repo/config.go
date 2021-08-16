@@ -3,6 +3,7 @@ package repo
 import (
 	"encoding/json"
 	"fmt"
+	ma "github.com/multiformats/go-multiaddr"
 	"os"
 	"path/filepath"
 	"strings"
@@ -32,8 +33,6 @@ const (
 	NormalAdminWeight = 1
 	// governance strategy default participate threshold
 	DefaultParticipateThreshold = 0.75
-	// bitxhub DID root prefix
-	BitxhubRootPrefix = "did:bitxhub"
 	//Passwd
 	DefaultPasswd = "bitxhub"
 )
@@ -231,7 +230,7 @@ func DefaultConfig() (*Config, error) {
 	}, nil
 }
 
-func UnmarshalConfig(repoRoot string) (*Config, error) {
+func UnmarshalConfig(viper *viper.Viper, repoRoot string) (*Config, error) {
 	viper.SetConfigFile(filepath.Join(repoRoot, configName))
 	viper.SetConfigType("toml")
 	viper.AutomaticEnv()
@@ -255,10 +254,10 @@ func UnmarshalConfig(repoRoot string) (*Config, error) {
 	return config, nil
 }
 
-func WatchConfig(feed *event.Feed) {
+func WatchBitxhubConfig(viper *viper.Viper, feed *event.Feed) {
 	viper.WatchConfig()
 	viper.OnConfigChange(func(in fsnotify.Event) {
-		fmt.Println("config file changed: ", in.String())
+		fmt.Println("bitxhub config file changed: ", in.String())
 
 		config, err := DefaultConfig()
 		if err != nil {
@@ -271,12 +270,54 @@ func WatchConfig(feed *event.Feed) {
 			return
 		}
 
-		feed.Send(config)
+		feed.Send(&Repo{Config: config})
 	})
 }
 
-func ReadConfig(path, configType string, config interface{}) error {
-	v := viper.New()
+func WatchNetworkConfig(viper *viper.Viper, feed *event.Feed, config *NetworkConfig) {
+	viper.WatchConfig()
+	viper.OnConfigChange(func(in fsnotify.Event) {
+		fmt.Println("network config file changed: ", in.String())
+
+		if err := viper.Unmarshal(config); err != nil {
+			fmt.Println("unmarshal config: ", err)
+			return
+		}
+
+		for _, node := range config.Nodes {
+			if node.ID == config.ID {
+				if len(node.Hosts) == 0 {
+					fmt.Printf("no hosts found by node:%d \n", node.ID)
+					return
+				}
+				config.LocalAddr = node.Hosts[0]
+				addr, err := ma.NewMultiaddr(fmt.Sprintf("%s%s", node.Hosts[0], node.Pid))
+				if err != nil {
+					fmt.Printf("new multiaddr: %v \n", err)
+					return
+				}
+				config.LocalAddr = strings.Replace(config.LocalAddr, ma.Split(addr)[0].String(), "/ip4/0.0.0.0", -1)
+			}
+		}
+
+		if config.LocalAddr == "" {
+			fmt.Printf("lack of local address \n")
+			return
+		}
+
+		idx := strings.LastIndex(config.LocalAddr, "/p2p/")
+		if idx == -1 {
+			fmt.Printf("pid is not existed in bootstrap \n")
+			return
+		}
+
+		config.LocalAddr = config.LocalAddr[:idx]
+
+		feed.Send(&Repo{NetworkConfig: config})
+	})
+}
+
+func ReadConfig(v *viper.Viper, path, configType string, config interface{}) error {
 	v.SetConfigFile(path)
 	v.SetConfigType(configType)
 	if err := v.ReadInConfig(); err != nil {

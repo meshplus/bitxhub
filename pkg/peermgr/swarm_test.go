@@ -19,7 +19,7 @@ func TestSwarm_OtherPeers(t *testing.T) {
 	}
 
 	peers := swarms[0].OtherPeers()
-	require.Equal(t, len(peers), 3)
+	require.Equal(t, 3, len(peers))
 }
 
 func TestSwarm_AddNode(t *testing.T) {

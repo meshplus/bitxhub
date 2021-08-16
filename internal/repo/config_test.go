@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"github.com/spf13/viper"
 	"testing"
 
 	"github.com/mitchellh/go-homedir"
@@ -11,7 +12,7 @@ import (
 func TestReadNetworkConfig(t *testing.T) {
 	path := "../../config/network.toml"
 	cfg := &NetworkConfig{}
-	err := ReadConfig(path, "toml", cfg)
+	err := ReadConfig(viper.New(), path, "toml", cfg)
 	assert.Nil(t, err)
 
 	assert.True(t, 1 == cfg.ID)
@@ -30,13 +31,14 @@ func TestReadConfig(t *testing.T) {
 
 	path := "../../config/bitxhub.toml"
 	cfg := &Config{}
-	err = ReadConfig(path, "toml", cfg)
+	v := viper.New()
+	err = ReadConfig(v, path, "toml", cfg)
 	assert.Nil(t, err)
 
 	_, err = cfg.Bytes()
 	require.Nil(t, err)
 
-	_, err = UnmarshalConfig("../../config")
+	_, err = UnmarshalConfig(v, "../../config")
 	require.Nil(t, err)
 
 	pathRoot, err := PathRoot()

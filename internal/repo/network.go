@@ -35,9 +35,9 @@ type NetworkNodes struct {
 	Account string   `toml:"account" json:"account"`
 }
 
-func loadNetworkConfig(repoRoot string, genesis Genesis) (*NetworkConfig, error) {
+func loadNetworkConfig(viper *viper.Viper, repoRoot string, genesis Genesis) (*NetworkConfig, error) {
 	networkConfig := &NetworkConfig{Genesis: genesis}
-	if err := ReadConfig(filepath.Join(repoRoot, "network.toml"), "toml", networkConfig); err != nil {
+	if err := ReadConfig(viper, filepath.Join(repoRoot, "network.toml"), "toml", networkConfig); err != nil {
 		return nil, err
 	}
 
