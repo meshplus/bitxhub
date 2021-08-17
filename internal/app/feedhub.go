@@ -15,8 +15,9 @@ func (bxh *BitXHub) start() {
 			select {
 			case commitEvent := <-bxh.Order.Commit():
 				bxh.logger.WithFields(logrus.Fields{
-					"height": commitEvent.Block.BlockHeader.Number,
-					"count":  len(commitEvent.Block.Transactions.Transactions),
+					"height":    commitEvent.Block.BlockHeader.Number,
+					"count":     len(commitEvent.Block.Transactions.Transactions),
+					"timestamp": commitEvent.Block.BlockHeader.Timestamp,
 				}).Info("Generated block")
 				bxh.BlockExecutor.ExecuteBlock(commitEvent)
 			case <-bxh.Ctx.Done():
