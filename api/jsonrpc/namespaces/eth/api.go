@@ -309,7 +309,7 @@ func (api *PublicEthereumAPI) checkTransaction(tx *types2.EthTransaction) error 
 	}
 
 	if tx.GetGasPrice().Cmp((*big.Int)(api.GasPrice())) < 0 {
-		return fmt.Errorf("gas price is too low, at least %s is required", api.GasPrice().String())
+		return fmt.Errorf("gas price is too low, at least %s wei is required", api.GasPrice().ToInt().String())
 	}
 
 	return nil
