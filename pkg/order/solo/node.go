@@ -19,20 +19,20 @@ import (
 )
 
 type Node struct {
-	ID            uint64
-	isTimed       bool
-	commitC       chan *pb.CommitEvent         // block channel
-	logger        logrus.FieldLogger           // logger
-	mempool       mempool.MemPool              // transaction pool
-	proposeC      chan *raftproto.RequestBatch // proposed listenReadyBlock, input channel
-	stateC        chan *mempool.ChainState
-	txCache       *mempool.TxCache // cache the transactions received from api
-	batchMgr      *etcdraft.Timer
-	blockTimerMgr *etcdraft.Timer     //generate block on time
-	lastExec      uint64              // the index of the last-applied block
-	packSize      int                 // maximum number of transaction packages
-	blockTick     time.Duration       // block packed period
-	peerMgr       peermgr.PeerManager // network manager
+	ID           uint64
+	isTimed      bool
+	commitC      chan *pb.CommitEvent         // block channel
+	logger       logrus.FieldLogger           // logger
+	mempool      mempool.MemPool              // transaction pool
+	proposeC     chan *raftproto.RequestBatch // proposed listenReadyBlock, input channel
+	stateC       chan *mempool.ChainState
+	txCache      *mempool.TxCache // cache the transactions received from api
+	batchMgr     *etcdraft.BatchTimer
+	blockTimeout time.Duration       // generate block period
+	lastExec     uint64              // the index of the last-applied block
+	packSize     int                 // maximum number of transaction packages
+	blockTick    time.Duration       // block packed period
+	peerMgr      peermgr.PeerManager // network manager
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -118,6 +118,9 @@ func NewNode(opts ...agency.ConfigOption) (agency.Order, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	batchTimeout, memConfig, timedGenBlock, err := generateSoloConfig(config.RepoRoot)
+	if err != nil {
+		return nil, fmt.Errorf("generate solo txpool config: %w", err)
+	}
 	mempoolConf := &mempool.Config{
 		ID:              config.ID,
 		IsTimed:         timedGenBlock.Enable,
@@ -139,22 +142,21 @@ func NewNode(opts ...agency.ConfigOption) (agency.Order, error) {
 	}
 	txCache := mempool.NewTxCache(mempoolConf.TxSliceTimeout, mempoolConf.TxSliceSize, config.Logger)
 	batchTimerMgr := etcdraft.NewTimer(batchTimeout, config.Logger)
-	blockTimerMgr := etcdraft.NewTimer(mempoolConf.BlockTimeout, config.Logger)
 	soloNode := &Node{
-		ID:            config.ID,
-		isTimed:       mempoolConf.IsTimed,
-		commitC:       make(chan *pb.CommitEvent, 1024),
-		stateC:        make(chan *mempool.ChainState),
-		lastExec:      config.Applied,
-		mempool:       mempoolInst,
-		txCache:       txCache,
-		batchMgr:      batchTimerMgr,
-		blockTimerMgr: blockTimerMgr,
-		peerMgr:       config.PeerMgr,
-		proposeC:      batchC,
-		logger:        config.Logger,
-		ctx:           ctx,
-		cancel:        cancel,
+		ID:           config.ID,
+		isTimed:      mempoolConf.IsTimed,
+		blockTimeout: mempoolConf.BlockTimeout,
+		commitC:      make(chan *pb.CommitEvent, 1024),
+		stateC:       make(chan *mempool.ChainState),
+		lastExec:     config.Applied,
+		mempool:      mempoolInst,
+		txCache:      txCache,
+		batchMgr:     batchTimerMgr,
+		peerMgr:      config.PeerMgr,
+		proposeC:     batchC,
+		logger:       config.Logger,
+		ctx:          ctx,
+		cancel:       cancel,
 	}
 	soloNode.logger.Infof("SOLO lastExec = %d", soloNode.lastExec)
 	soloNode.logger.Infof("SOLO batch timeout = %v", batchTimeout)
@@ -163,6 +165,7 @@ func NewNode(opts ...agency.ConfigOption) (agency.Order, error) {
 
 // Schedule to collect txs to the listenReadyBlock channel
 func (n *Node) listenReadyBlock() {
+	blockTicker := time.NewTicker(n.blockTimeout)
 	go func() {
 		for {
 			select {
@@ -200,15 +203,6 @@ func (n *Node) listenReadyBlock() {
 	}()
 
 	for {
-		// generate block on time, allow empty block.
-		if n.isTimed {
-			if n.batchMgr.IsTimerActive() {
-				n.batchMgr.StopTimer()
-			}
-			if !n.blockTimerMgr.IsTimerActive() {
-				n.blockTimerMgr.StartTimer()
-			}
-		}
 
 		select {
 		case <-n.ctx.Done():
@@ -218,11 +212,11 @@ func (n *Node) listenReadyBlock() {
 		case txSet := <-n.txCache.TxSetC:
 			if !n.isTimed {
 				// start batch timer when this node receives the first transaction
-				if !n.batchMgr.IsTimerActive() {
-					n.batchMgr.StartTimer()
+				if !n.batchMgr.IsBatchTimerActive() {
+					n.batchMgr.StartBatchTimer()
 				}
 				if batch := n.mempool.ProcessTransactions(txSet.Transactions, true, true); batch != nil {
-					n.batchMgr.StopTimer()
+					n.batchMgr.StopBatchTimer()
 					n.proposeC <- batch
 				}
 			} else {
@@ -238,23 +232,25 @@ func (n *Node) listenReadyBlock() {
 			}
 			n.mempool.CommitTransactions(state)
 
-		case <-n.batchMgr.TimeoutEvent():
-			n.batchMgr.StopTimer()
+		case <-n.batchMgr.BatchTimeoutEvent():
+			n.batchMgr.StopBatchTimer()
 			n.logger.Debug("Batch timer expired, try to create a batch")
 			if n.mempool.HasPendingRequest() {
 				if batch := n.mempool.GenerateBlock(); batch != nil {
 					n.postProposal(batch)
+					n.batchMgr.StartBatchTimer()
+
 				}
 			} else {
 				n.logger.Debug("The length of priorityIndex is 0, skip the batch timer")
 			}
 
-		case <-n.blockTimerMgr.TimeoutEvent():
-			n.blockTimerMgr.StopTimer()
-			batch := n.mempool.GenerateBlock()
+		case <-blockTicker.C:
+
 			if !n.mempool.HasPendingRequest() {
 				n.logger.Debug("start create empty block")
 			}
+			batch := n.mempool.GenerateBlock()
 			n.postProposal(batch)
 		}
 	}
@@ -262,7 +258,4 @@ func (n *Node) listenReadyBlock() {
 
 func (n *Node) postProposal(batch *raftproto.RequestBatch) {
 	n.proposeC <- batch
-	if !n.isTimed {
-		n.batchMgr.StartTimer()
-	}
 }

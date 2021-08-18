@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-type Timer struct {
+type BatchTimer struct {
 	logger        logrus.FieldLogger
 	timeout       time.Duration      // default timeout of this timer
 	isActive      cmap.ConcurrentMap // track all the timers with this timerName if it is active now
@@ -15,8 +15,8 @@ type Timer struct {
 }
 
 // NewTimer news a timer with default timeout.
-func NewTimer(d time.Duration, logger logrus.FieldLogger) *Timer {
-	return &Timer{
+func NewTimer(d time.Duration, logger logrus.FieldLogger) *BatchTimer {
+	return &BatchTimer{
 		timeout:       d,
 		isActive:      cmap.New(),
 		timeoutEventC: make(chan bool),
@@ -24,15 +24,15 @@ func NewTimer(d time.Duration, logger logrus.FieldLogger) *Timer {
 	}
 }
 
-func (timer *Timer) IsTimerActive() bool {
+func (timer *BatchTimer) IsBatchTimerActive() bool {
 	return !timer.isActive.IsEmpty()
 }
 
+// StartBatchTimer starts the batch timer and reset the batchTimerActive to true.
 // TODO (YH): add restartTimer???
-// StartTimer starts the batch timer and reset the TimerActive to true.
-func (timer *Timer) StartTimer() {
+func (timer *BatchTimer) StartBatchTimer() {
 	// stop old timer
-	timer.StopTimer()
+	timer.StopBatchTimer()
 	timer.logger.Debug("Leader start batch timer")
 	timestamp := time.Now().UnixNano()
 	key := strconv.FormatInt(timestamp, 10)
@@ -45,8 +45,8 @@ func (timer *Timer) StartTimer() {
 	})
 }
 
-// StopTimer stops the batch timer and reset the TimerActive to false.
-func (timer *Timer) StopTimer() {
+// StopBatchTimer stops the batch timer and reset the batchTimerActive to false.
+func (timer *BatchTimer) StopBatchTimer() {
 	if timer.isActive.IsEmpty() {
 		return
 	}
@@ -54,6 +54,6 @@ func (timer *Timer) StopTimer() {
 	timer.isActive = cmap.New()
 }
 
-func (timer *Timer) TimeoutEvent() chan bool {
+func (timer *BatchTimer) BatchTimeoutEvent() chan bool {
 	return timer.timeoutEventC
 }

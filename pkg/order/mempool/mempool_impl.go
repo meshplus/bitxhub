@@ -144,9 +144,7 @@ func (mpi *mempoolImpl) generateBlock() (*raftproto.RequestBatch, error) {
 	// it will be stored in skip DS first.
 	mpi.logger.Debugf("Length of non-batched transactions: %d", mpi.txStore.priorityNonBatchSize)
 	var batchSize uint64
-	poolLen := mpi.txStore.priorityNonBatchSize
-	// if generate block isTimed, allow overBatchSize.
-	if !mpi.isTimed && poolLen > mpi.batchSize {
+	if poolLen := mpi.txStore.priorityNonBatchSize; poolLen > mpi.batchSize {
 		batchSize = mpi.batchSize
 	} else {
 		batchSize = mpi.txStore.priorityNonBatchSize

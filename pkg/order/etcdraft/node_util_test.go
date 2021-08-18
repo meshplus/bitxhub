@@ -58,7 +58,6 @@ func constructTx(nonce uint64) pb.Transaction {
 func mockRaftNode(t *testing.T) (*Node, error) {
 	logger := log.NewWithModule("consensus")
 	batchTimerMgr := NewTimer(500*time.Millisecond, logger)
-	blockTimerMgr := NewTimer(2*time.Second, logger)
 	txCache := mempool.NewTxCache(25*time.Millisecond, uint64(2), logger)
 	walDir := filepath.Join("./testdata/storage", "wal")
 	snapDir := filepath.Join("./testdata/storage", "snap")
@@ -101,7 +100,6 @@ func mockRaftNode(t *testing.T) (*Node, error) {
 		proposeC:         make(chan *raftproto.RequestBatch),
 		txCache:          txCache,
 		batchTimerMgr:    batchTimerMgr,
-		blockTimerMgr:    blockTimerMgr,
 		storage:          dbStorage,
 		raftStorage:      raftStorage,
 		mempool:          mempoolInst,
@@ -111,6 +109,7 @@ func mockRaftNode(t *testing.T) (*Node, error) {
 		peerMgr:          swarms[0],
 		getChainMetaFunc: getChainMetaFunc,
 		isTimed:          mempoolConf.IsTimed,
+		blockTimeout:     mempoolConf.BlockTimeout,
 	}
 	node.syncer = &mockSync{}
 	return node, nil
