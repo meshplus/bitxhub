@@ -570,7 +570,7 @@ func (n *Node) mint(requestBatch *raftproto.RequestBatch) {
 		BlockHeader: &pb.BlockHeader{
 			Version:   []byte("1.0.0"),
 			Number:    requestBatch.Height,
-			Timestamp: requestBatch.Timestamp / int64(time.Second),
+			Timestamp: requestBatch.Timestamp,
 		},
 		Transactions: requestBatch.TxList,
 	}
