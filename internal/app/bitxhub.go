@@ -3,8 +3,9 @@ package app
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
-	"path/filepath"
+	"github.com/meshplus/bitxhub/api/gateway"
+	"github.com/meshplus/bitxhub/api/grpc"
+	"github.com/meshplus/bitxhub/internal/profile"
 	"syscall"
 	"time"
 
@@ -33,6 +34,12 @@ type BitXHub struct {
 	Router        router.Router
 	Order         order.Order
 	PeerMgr       peermgr.PeerManager
+
+	Monitor       *profile.Monitor
+	Pprof         *profile.Pprof
+	LoggerWrapper *loggers.LoggerWrapper
+	Gateway       *gateway.Gateway
+	Grpc          *grpc.ChainBrokerService
 
 	repo   *repo.Repo
 	logger logrus.FieldLogger
@@ -230,6 +237,40 @@ func (bxh *BitXHub) Stop() error {
 	bxh.logger.Info("Bitxhub stopped")
 
 	return nil
+}
+
+
+func (bxh *BitXHub) ReConfig(repo *repo.Repo) {
+	if repo.Config != nil {
+		config := repo.Config
+		loggers.ReConfig(config)
+
+		if err := bxh.Grpc.ReConfig(config); err != nil {
+			bxh.logger.Errorf("reconfig grpc failed: %v", err)
+		}
+
+		if err := bxh.Gateway.ReConfig(config); err != nil {
+			bxh.logger.Errorf("reconfig gateway failed: %v", err)
+		}
+
+		if err := bxh.PeerMgr.ReConfig(config); err != nil {
+			bxh.logger.Errorf("reconfig PeerMgr failed: %v", err)
+		}
+
+		if err := bxh.Monitor.ReConfig(config); err != nil {
+			bxh.logger.Errorf("reconfig Monitor failed: %v", err)
+		}
+
+		if err := bxh.Pprof.ReConfig(config); err != nil {
+			bxh.logger.Errorf("reconfig Pprof failed: %v", err)
+		}
+	}
+	if repo.NetworkConfig != nil {
+		config := repo.NetworkConfig
+		if err := bxh.PeerMgr.ReConfig(config); err != nil {
+			bxh.logger.Errorf("reconfig PeerMgr failed: %v", err)
+		}
+	}
 }
 
 func (bxh *BitXHub) printLogo() {

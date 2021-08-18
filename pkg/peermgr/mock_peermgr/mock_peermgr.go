@@ -159,6 +159,20 @@ func (mr *MockPeerManagerMockRecorder) PierManager() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PierManager", reflect.TypeOf((*MockPeerManager)(nil).PierManager))
 }
 
+// ReConfig mocks base method.
+func (m *MockPeerManager) ReConfig(config interface{}) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReConfig", config)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ReConfig indicates an expected call of ReConfig.
+func (mr *MockPeerManagerMockRecorder) ReConfig(config interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReConfig", reflect.TypeOf((*MockPeerManager)(nil).ReConfig), config)
+}
+
 // Send mocks base method.
 func (m *MockPeerManager) Send(arg0 uint64, arg1 *pb.Message) (*pb.Message, error) {
 	m.ctrl.T.Helper()

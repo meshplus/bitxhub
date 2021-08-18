@@ -36,6 +36,7 @@ type Swarm struct {
 	connectedPeers sync.Map
 	notifiee       *notifiee
 	piers          *Piers
+	pingC            chan *repo.Ping
 
 	ledger           ledger.Ledger
 	orderMessageFeed event.Feed
@@ -47,12 +48,22 @@ type Swarm struct {
 }
 
 func New(repoConfig *repo.Repo, logger logrus.FieldLogger, ledger ledger.Ledger) (*Swarm, error) {
+	ctx, cancel := context.WithCancel(context.Background())
+	swarm := &Swarm{repo: repoConfig, logger: logger, ledger: ledger, ctx: ctx, cancel: cancel}
+	if err := swarm.init(); err != nil {
+		return nil, err
+	}
+
+	return swarm, nil
+}
+
+func (swarm *Swarm) init() error {
 	var protocolIDs = []string{string(protocolID)}
 	// init peers with ips and hosts
-	routers := repoConfig.NetworkConfig.GetVpInfos()
+	routers := swarm.repo.NetworkConfig.GetVpInfos()
 	bootstrap := make([]string, 0)
 	for _, p := range routers {
-		if p.Id == repoConfig.NetworkConfig.ID {
+		if p.Id == swarm.repo.NetworkConfig.ID {
 			continue
 		}
 		addr := fmt.Sprintf("%s%s", p.Hosts[0], p.Pid)
@@ -60,32 +71,32 @@ func New(repoConfig *repo.Repo, logger logrus.FieldLogger, ledger ledger.Ledger)
 	}
 
 	multiAddrs := make(map[uint64]*peer.AddrInfo)
-	p2pPeers, _ := repoConfig.NetworkConfig.GetNetworkPeers()
+	p2pPeers, _ := swarm.repo.NetworkConfig.GetNetworkPeers()
 	for id, node := range p2pPeers {
-		if id == repoConfig.NetworkConfig.ID {
+		if id == swarm.repo.NetworkConfig.ID {
 			continue
 		}
 		multiAddrs[id] = node
 	}
 
-	tpt, err := libp2pcert.New(repoConfig.Key.Libp2pPrivKey, repoConfig.Certs)
+	tpt, err := libp2pcert.New(swarm.repo.Key.Libp2pPrivKey, swarm.repo.Certs)
 	if err != nil {
-		return nil, fmt.Errorf("create transport: %w", err)
+		return fmt.Errorf("create transport: %w", err)
 	}
 
-	notifiee := newNotifiee(routers, logger)
+	notifiee := newNotifiee(routers, swarm.logger)
 
 	opts := []network.Option{
-		network.WithLocalAddr(repoConfig.NetworkConfig.LocalAddr),
-		network.WithPrivateKey(repoConfig.Key.Libp2pPrivKey),
+		network.WithLocalAddr(swarm.repo.NetworkConfig.LocalAddr),
+		network.WithPrivateKey(swarm.repo.Key.Libp2pPrivKey),
 		network.WithProtocolIDs(protocolIDs),
-		network.WithLogger(logger),
+		network.WithLogger(swarm.logger),
 		// enable discovery
 		network.WithBootstrap(bootstrap),
 		network.WithNotify(notifiee),
 	}
 
-	if repoConfig.Config.Cert.Verify {
+	if swarm.repo.Config.Cert.Verify {
 		opts = append(opts,
 			network.WithTransportId(libp2pcert.ID),
 			network.WithTransport(tpt),
@@ -94,27 +105,19 @@ func New(repoConfig *repo.Repo, logger logrus.FieldLogger, ledger ledger.Ledger)
 
 	p2p, err := network.New(opts...)
 	if err != nil {
-		return nil, fmt.Errorf("create p2p: %w", err)
+		return fmt.Errorf("create p2p: %w", err)
 	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-
-	return &Swarm{
-		repo:           repoConfig,
-		localID:        repoConfig.NetworkConfig.ID,
-		p2p:            p2p,
-		logger:         logger,
-		ledger:         ledger,
-		enablePing:     repoConfig.Config.Ping.Enable,
-		pingTimeout:    repoConfig.Config.Ping.Duration,
-		routers:        routers,
-		multiAddrs:     multiAddrs,
-		piers:          newPiers(),
-		connectedPeers: sync.Map{},
-		notifiee:       notifiee,
-		ctx:            ctx,
-		cancel:         cancel,
-	}, nil
+	swarm.localID = swarm.repo.NetworkConfig.ID
+	swarm.p2p = p2p
+	swarm.pingC = make(chan *repo.Ping)
+	swarm.routers=routers
+	swarm.multiAddrs=multiAddrs
+	if swarm.piers == nil {
+		swarm.piers = newPiers()
+	}
+	swarm.connectedPeers = sync.Map{}
+	swarm.notifiee = notifiee
+	return nil
 }
 
 func (swarm *Swarm) Start() error {
@@ -441,6 +444,28 @@ func (swarm *Swarm) reset() {
 	swarm.connectedPeers = sync.Map{}
 	swarm.notifiee.setPeers(nil)
 }
+
+func (swarm *Swarm) ReConfig(config interface{}) error {
+	switch config.(type) {
+	case *repo.Config:
+		config := config.(*repo.Config)
+		swarm.pingC <- &config.Ping
+	case *repo.NetworkConfig:
+		config := config.(*repo.NetworkConfig)
+		if err := swarm.Stop(); err != nil {
+			return err
+		}
+		swarm.repo.NetworkConfig = config
+		if err := swarm.init(); err != nil {
+			return err
+		}
+		if err := swarm.Start(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 
 func constructMultiaddr(vpInfo *pb.VpInfo) (*peer.AddrInfo, error) {
 	addrs := make([]ma.Multiaddr, 0)

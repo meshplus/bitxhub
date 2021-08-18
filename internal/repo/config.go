@@ -2,12 +2,15 @@ package repo
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/event"
+	"github.com/fsnotify/fsnotify"
+	ma "github.com/multiformats/go-multiaddr"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
 )
@@ -106,6 +109,7 @@ type LogModule struct {
 	API       string `toml:"api" json:"api"`
 	CoreAPI   string `mapstructure:"coreapi" toml:"coreapi" json:"coreapi"`
 	Storage   string `toml:"storage" json:"storage"`
+	Profile   string `toml:"profile" json:"profile"`
 }
 
 type License struct {
@@ -197,7 +201,7 @@ func DefaultConfig() (*Config, error) {
 	}, nil
 }
 
-func UnmarshalConfig(repoRoot string, configPath string) (*Config, error) {
+func UnmarshalConfig(viper *viper.Viper, repoRoot string,  configPath string) (*Config, error) {
 	if len(configPath) == 0 {
 		viper.SetConfigFile(filepath.Join(repoRoot, configName))
 	} else {
@@ -234,8 +238,70 @@ func UnmarshalConfig(repoRoot string, configPath string) (*Config, error) {
 	return config, nil
 }
 
-func ReadConfig(path, configType string, config interface{}) error {
-	v := viper.New()
+func WatchBitxhubConfig(viper *viper.Viper, feed *event.Feed) {
+	viper.WatchConfig()
+	viper.OnConfigChange(func(in fsnotify.Event) {
+		fmt.Println("bitxhub config file changed: ", in.String())
+
+		config, err := DefaultConfig()
+		if err != nil {
+			fmt.Println("get default config: ", err)
+			return
+		}
+
+		if err := viper.Unmarshal(config); err != nil {
+			fmt.Println("unmarshal config: ", err)
+			return
+		}
+
+		feed.Send(&Repo{Config: config})
+	})
+}
+
+func WatchNetworkConfig(viper *viper.Viper, feed *event.Feed, config *NetworkConfig) {
+	viper.WatchConfig()
+	viper.OnConfigChange(func(in fsnotify.Event) {
+		fmt.Println("network config file changed: ", in.String())
+
+		if err := viper.Unmarshal(config); err != nil {
+			fmt.Println("unmarshal config: ", err)
+			return
+		}
+
+		for _, node := range config.Nodes {
+			if node.ID == config.ID {
+				if len(node.Hosts) == 0 {
+					fmt.Printf("no hosts found by node:%d \n", node.ID)
+					return
+				}
+				config.LocalAddr = node.Hosts[0]
+				addr, err := ma.NewMultiaddr(fmt.Sprintf("%s%s", node.Hosts[0], node.Pid))
+				if err != nil {
+					fmt.Printf("new multiaddr: %v \n", err)
+					return
+				}
+				config.LocalAddr = strings.Replace(config.LocalAddr, ma.Split(addr)[0].String(), "/ip4/0.0.0.0", -1)
+			}
+		}
+
+		if config.LocalAddr == "" {
+			fmt.Printf("lack of local address \n")
+			return
+		}
+
+		idx := strings.LastIndex(config.LocalAddr, "/p2p/")
+		if idx == -1 {
+			fmt.Printf("pid is not existed in bootstrap \n")
+			return
+		}
+
+		config.LocalAddr = config.LocalAddr[:idx]
+
+		feed.Send(&Repo{NetworkConfig: config})
+	})
+}
+
+func ReadConfig(v *viper.Viper, path, configType string, config interface{}) error {
 	v.SetConfigFile(path)
 	v.SetConfigType(configType)
 	if err := v.ReadInConfig(); err != nil {

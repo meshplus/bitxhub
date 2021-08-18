@@ -2,6 +2,7 @@ package app
 
 import (
 	"github.com/meshplus/bitxhub/internal/model/events"
+	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/sirupsen/logrus"
 )
 
@@ -27,11 +28,15 @@ func (bxh *BitXHub) start() {
 func (bxh *BitXHub) listenEvent() {
 	blockCh := make(chan events.ExecutedEvent)
 	orderMsgCh := make(chan events.OrderMessageEvent)
+	configCh := make(chan *repo.Repo)
+
 	blockSub := bxh.BlockExecutor.SubscribeBlockEvent(blockCh)
 	orderMsgSub := bxh.PeerMgr.SubscribeOrderMessage(orderMsgCh)
+	configSub := bxh.repo.SubscribeConfigChange(configCh)
 
 	defer blockSub.Unsubscribe()
 	defer orderMsgSub.Unsubscribe()
+	defer configSub.Unsubscribe()
 
 	for {
 		select {
@@ -44,6 +49,8 @@ func (bxh *BitXHub) listenEvent() {
 					bxh.logger.Error(err)
 				}
 			}()
+		case config := <-configCh:
+			bxh.ReConfig(config)
 		case <-bxh.Ctx.Done():
 			return
 		}
