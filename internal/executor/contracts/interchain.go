@@ -80,13 +80,6 @@ func (x *InterchainManager) Register(chainServiceID string) *boltvm.Response {
 	fullServiceID := fmt.Sprintf("%s:%s", bxhID, chainServiceID)
 	interchain, ok := x.getInterchain(fullServiceID)
 	if !ok {
-		interchain = &pb.Interchain{
-			ID:                      fullServiceID,
-			InterchainCounter:       make(map[string]uint64),
-			ReceiptCounter:          make(map[string]uint64),
-			SourceInterchainCounter: make(map[string]uint64),
-			SourceReceiptCounter:    make(map[string]uint64),
-		}
 		x.setInterchain(fullServiceID, interchain)
 	}
 	body, err := interchain.Marshal()
@@ -135,14 +128,13 @@ func (x *InterchainManager) GetInterchainInfo(chainId string) *boltvm.Response {
 
 // GetInterchain returns information of the interchain count, Receipt count and SourceReceipt count by id
 func (x *InterchainManager) getInterchain(id string) (*pb.Interchain, bool) {
-	interchain := &pb.Interchain{}
+	interchain := &pb.Interchain{ID: id}
 	ok, data := x.Get(ServiceKey(id))
-	if !ok {
-		return nil, false
-	}
 
-	if err := interchain.Unmarshal(data); err != nil {
-		panic(err)
+	if ok {
+		if err := interchain.Unmarshal(data); err != nil {
+			panic(err)
+		}
 	}
 
 	if interchain.InterchainCounter == nil {
@@ -161,7 +153,7 @@ func (x *InterchainManager) getInterchain(id string) (*pb.Interchain, bool) {
 		interchain.SourceReceiptCounter = make(map[string]uint64)
 	}
 
-	return interchain, true
+	return interchain, ok
 }
 
 // GetInterchain returns information of the interchain count, Receipt count and SourceReceipt count by id
@@ -244,16 +236,7 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, error) {
 		return nil, fmt.Errorf("%s: parsed dest chain service id %w", InvalidTargetService, err)
 	}
 
-	interchain, ok := x.getInterchain(srcChainService.getFullServiceId())
-	if !ok {
-		interchain = &pb.Interchain{
-			ID:                      srcChainService.getFullServiceId(),
-			InterchainCounter:       make(map[string]uint64),
-			ReceiptCounter:          make(map[string]uint64),
-			SourceInterchainCounter: make(map[string]uint64),
-			SourceReceiptCounter:    make(map[string]uint64),
-		}
-	}
+	interchain, _ := x.getInterchain(srcChainService.getFullServiceId())
 
 	if pb.IBTP_INTERCHAIN == ibtp.Type {
 		// if src chain service is from appchain registered in current bitxhub, check service index
@@ -573,9 +556,6 @@ func (x *InterchainManager) handleUnionIBTP(ibtp *pb.IBTP) *boltvm.Response {
 
 	interchain, ok := x.getInterchain(ibtp.From)
 	if !ok {
-		interchain = &pb.Interchain{
-			ID: ibtp.From,
-		}
 		x.setInterchain(ibtp.From, interchain)
 	}
 
