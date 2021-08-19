@@ -84,6 +84,7 @@ func (suite *Interchain) TestHandleIBTP() {
 		pb.String("趣链婚姻链"),
 		pb.String("1.8"),
 		pb.String(pub1),
+		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
@@ -137,6 +138,7 @@ func (suite *Interchain) TestHandleIBTP() {
 		pb.String("fabric婚姻链"),
 		pb.String("1.4"),
 		pb.String(string(pub2)),
+		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess())
@@ -189,7 +191,7 @@ func (suite *Interchain) TestHandleIBTP() {
 
 	// register rule
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(),
-		"RegisterRule", pb.String(id1), pb.String(addr.String()))
+		"RegisterRule", pb.String(id1), pb.String(addr.String()), pb.String(""))
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess())
 	k1Nonce++
@@ -294,6 +296,7 @@ func (suite *Interchain) TestGetIBTPByID() {
 		pb.String("趣链婚姻链"),
 		pb.String("1.8"),
 		pb.String(string(pub1)),
+		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
@@ -347,6 +350,7 @@ func (suite *Interchain) TestGetIBTPByID() {
 		pb.String("fabric税务链"),
 		pb.String("1.8"),
 		pb.String(string(pub2)),
+		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
@@ -396,7 +400,7 @@ func (suite *Interchain) TestGetIBTPByID() {
 
 	// register rule
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(),
-		"RegisterRule", pb.String(id1), pb.String(addr.String()))
+		"RegisterRule", pb.String(id1), pb.String(addr.String()), pb.String(""))
 	suite.Require().Nil(err)
 	k1Nonce++
 	proposalRuleId := gjson.Get(string(ret.Ret), "proposal_id").String()
@@ -513,6 +517,7 @@ func (suite *Interchain) TestInterchain() {
 		pb.String("趣链婚姻链"),
 		pb.String("1.8"),
 		pb.String(string(pub1)),
+		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))

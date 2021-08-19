@@ -220,7 +220,7 @@ func (rm *RoleManager) updateRoleRelatedProposalInfo(roleID string, eventTyp gov
 // Register registers role info
 // caller is the bitxhub admin address
 // return role id proposal id and error
-func (rm *RoleManager) RegisterRole(roleId, roleType, nodePid string) *boltvm.Response {
+func (rm *RoleManager) RegisterRole(roleId, roleType, nodePid, reason string) *boltvm.Response {
 	// 1. check permission
 	res := rm.CheckPermission(string(PermissionAdmin), roleId, rm.CurrentCaller(), nil)
 	if !res.Ok {
@@ -272,6 +272,7 @@ func (rm *RoleManager) RegisterRole(roleId, roleType, nodePid string) *boltvm.Re
 		pb.String(string(RoleMgr)),
 		pb.String(role.ID),
 		pb.String(string(role.Status)),
+		pb.String(reason),
 		pb.Bytes(roleData),
 	)
 	if !res.Ok {
@@ -286,7 +287,7 @@ func (rm *RoleManager) RegisterRole(roleId, roleType, nodePid string) *boltvm.Re
 }
 
 // UpdateAuditAdminNode updates nodeId of nvp role
-func (rm *RoleManager) UpdateAuditAdminNode(roleId, nodePid string) *boltvm.Response {
+func (rm *RoleManager) UpdateAuditAdminNode(roleId, nodePid, reason string) *boltvm.Response {
 	// 1. check permission
 	res := rm.CheckPermission(string(PermissionSelfAdmin), roleId, rm.CurrentCaller(), nil)
 	if !res.Ok {
@@ -333,6 +334,7 @@ func (rm *RoleManager) UpdateAuditAdminNode(roleId, nodePid string) *boltvm.Resp
 		pb.String(string(RoleMgr)),
 		pb.String(roleId),
 		pb.String(string(role.Status)),
+		pb.String(reason),
 		pb.Bytes(roleData),
 	)
 	if !res.Ok {
@@ -348,7 +350,7 @@ func (rm *RoleManager) UpdateAuditAdminNode(roleId, nodePid string) *boltvm.Resp
 }
 
 // FreezeRole freezes available role
-func (rm *RoleManager) FreezeRole(roleId string) *boltvm.Response {
+func (rm *RoleManager) FreezeRole(roleId, reason string) *boltvm.Response {
 	// 1. check permission
 	res := rm.CheckPermission(string(PermissionAdmin), roleId, rm.CurrentCaller(), nil)
 	if !res.Ok {
@@ -376,6 +378,7 @@ func (rm *RoleManager) FreezeRole(roleId string) *boltvm.Response {
 		pb.String(string(RoleMgr)),
 		pb.String(roleId),
 		pb.String(string(role.Status)),
+		pb.String(reason),
 		pb.Bytes(roleData),
 	)
 	if !res.Ok {
@@ -391,7 +394,7 @@ func (rm *RoleManager) FreezeRole(roleId string) *boltvm.Response {
 }
 
 // ActivateRole updates frozen role
-func (rm *RoleManager) ActivateRole(roleId string) *boltvm.Response {
+func (rm *RoleManager) ActivateRole(roleId, reason string) *boltvm.Response {
 	// 1. check permission
 	res := rm.CheckPermission(string(PermissionAdmin), roleId, rm.CurrentCaller(), nil)
 	if !res.Ok {
@@ -416,6 +419,7 @@ func (rm *RoleManager) ActivateRole(roleId string) *boltvm.Response {
 		pb.String(string(RoleMgr)),
 		pb.String(roleId),
 		pb.String(string(role.Status)),
+		pb.String(reason),
 		pb.Bytes(roleData),
 	)
 	if !res.Ok {
@@ -431,7 +435,7 @@ func (rm *RoleManager) ActivateRole(roleId string) *boltvm.Response {
 }
 
 // LogoutRole logout role
-func (rm *RoleManager) LogoutRole(roleId string) *boltvm.Response {
+func (rm *RoleManager) LogoutRole(roleId, reason string) *boltvm.Response {
 	// 1. check permission
 	res := rm.CheckPermission(string(PermissionAdmin), roleId, rm.CurrentCaller(), nil)
 	if !res.Ok {
@@ -459,6 +463,7 @@ func (rm *RoleManager) LogoutRole(roleId string) *boltvm.Response {
 		pb.String(string(RoleMgr)),
 		pb.String(roleId),
 		pb.String(string(role.Status)),
+		pb.String(reason),
 		pb.Bytes(roleData),
 	)
 	if !res.Ok {

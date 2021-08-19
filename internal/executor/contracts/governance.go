@@ -64,24 +64,6 @@ type Ballot struct {
 	VoteTime  int64  `json:"vote_time"`
 }
 
-func (g *Governance) GetBallot(voterAddr, proposalId string) *boltvm.Response {
-	p := &Proposal{}
-	if !g.GetObject(ProposalKey(proposalId), p) {
-		return boltvm.Error("proposal does not exist")
-	}
-
-	ballot, ok := p.BallotMap[voterAddr]
-	if !ok {
-		return boltvm.Error("administrator of the address has not voted")
-	}
-
-	bData, err := json.Marshal(ballot)
-	if err != nil {
-		return boltvm.Error(err.Error())
-	}
-	return boltvm.Success(bData)
-}
-
 type Proposal struct {
 	Id            string                      `json:"id"`
 	Des           string                      `json:"des"`
@@ -102,6 +84,8 @@ type Proposal struct {
 	LockProposalId         string               `json:"lock_proposal_id"`
 	IsSpecial              bool                 `json:"is_special"`
 	IsSuperAdminVoted      bool                 `json:"is_super_admin_voted"`
+	SubmitReason           string               `json:"submit_reason"`
+	WithdrawReason         string               `json:"withdraw_reason"`
 	CreateTime             int64                `json:"create_time"`
 	Extra                  []byte               `json:"extra"`
 }
@@ -117,7 +101,7 @@ var SpecialProposalProposalType = []ProposalType{
 	ProposalStrategyMgr,
 }
 
-func (g *Governance) SubmitProposal(from, eventTyp, des, typ, objId, objLastStatus string, extra []byte) *boltvm.Response {
+func (g *Governance) SubmitProposal(from, eventTyp, des, typ, objId, objLastStatus, reason string, extra []byte) *boltvm.Response {
 
 	// 1. check permission
 	specificAddrs := []string{
@@ -178,6 +162,8 @@ func (g *Governance) SubmitProposal(from, eventTyp, des, typ, objId, objLastStat
 		ThresholdElectorateNum: uint64(thresholdNum),
 		LockProposalId:         lockPId,
 		IsSuperAdminVoted:      false,
+		SubmitReason:           reason,
+		WithdrawReason:         "",
 		CreateTime:             g.GetTxTimeStamp(),
 		Extra:                  extra,
 	}
@@ -259,7 +245,7 @@ func (g *Governance) getThresholdNum(electorateNum int, proposalTyp ProposalType
 }
 
 // Withdraw the proposal
-func (g *Governance) WithdrawProposal(id string) *boltvm.Response {
+func (g *Governance) WithdrawProposal(id, reason string) *boltvm.Response {
 	// 1. check permission
 	res := g.CrossInvoke(constant.RoleContractAddr.String(), "CheckPermission",
 		pb.String(string(PermissionSelf)),
@@ -282,6 +268,7 @@ func (g *Governance) WithdrawProposal(id string) *boltvm.Response {
 	}
 
 	// 4. Withdraw
+	p.WithdrawReason = reason
 	p.Status = REJECTED
 	p.EndReason = WithdrawnReason
 	g.SetObject(ProposalKey(p.Id), *p)
@@ -293,6 +280,24 @@ func (g *Governance) WithdrawProposal(id string) *boltvm.Response {
 	}
 
 	return boltvm.Success(nil)
+}
+
+func (g *Governance) GetBallot(voterAddr, proposalId string) *boltvm.Response {
+	p := &Proposal{}
+	if !g.GetObject(ProposalKey(proposalId), p) {
+		return boltvm.Error("proposal does not exist")
+	}
+
+	ballot, ok := p.BallotMap[voterAddr]
+	if !ok {
+		return boltvm.Error("administrator of the address has not voted")
+	}
+
+	bData, err := json.Marshal(ballot)
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+	return boltvm.Success(bData)
 }
 
 // GetProposal query proposal by id

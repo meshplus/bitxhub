@@ -24,7 +24,7 @@ func roleMgrCND() cli.Command {
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "id",
-						Usage:    "role id(address)",
+						Usage:    "Specify role id(address)",
 						Required: true,
 					},
 				},
@@ -36,17 +36,22 @@ func roleMgrCND() cli.Command {
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "address",
-						Usage:    "role address(id)",
+						Usage:    "Specify role address(id)",
 						Required: true,
 					},
 					cli.StringFlag{
 						Name:  "type",
-						Usage: "role type, one of governanceAdmin or auditAdmin",
+						Usage: "Specify role type, one of governanceAdmin or auditAdmin",
 						Value: string(contracts.GovernanceAdmin),
 					},
 					cli.StringFlag{
 						Name:     "nodePid",
-						Usage:    "node pid for auditAdmin, only useful for auditAdmin",
+						Usage:    "Specify node pid for auditAdmin, only useful for auditAdmin",
+						Required: false,
+					},
+					cli.StringFlag{
+						Name:     "reason",
+						Usage:    "Specify register reason",
 						Required: false,
 					},
 				},
@@ -58,13 +63,18 @@ func roleMgrCND() cli.Command {
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "id",
-						Usage:    "auditAdmin id",
+						Usage:    "Specify auditAdmin id",
 						Required: true,
 					},
 					cli.StringFlag{
 						Name:     "nodePid",
-						Usage:    "node pid",
+						Usage:    "Specify node pid",
 						Required: true,
+					},
+					cli.StringFlag{
+						Name:     "reason",
+						Usage:    "Specify update reason",
+						Required: false,
 					},
 				},
 				Action: updateRole,
@@ -75,8 +85,13 @@ func roleMgrCND() cli.Command {
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "id",
-						Usage:    "role id",
+						Usage:    "Specify role id",
 						Required: true,
+					},
+					cli.StringFlag{
+						Name:     "reason",
+						Usage:    "Specify freeze reason",
+						Required: false,
 					},
 				},
 				Action: freezeRole,
@@ -87,8 +102,13 @@ func roleMgrCND() cli.Command {
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "id",
-						Usage:    "role id",
+						Usage:    "Specify role id",
 						Required: true,
+					},
+					cli.StringFlag{
+						Name:     "reason",
+						Usage:    "Specify activate reason",
+						Required: false,
 					},
 				},
 				Action: activateRole,
@@ -99,8 +119,13 @@ func roleMgrCND() cli.Command {
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "id",
-						Usage:    "role pid",
+						Usage:    "Specify role pid",
 						Required: true,
+					},
+					cli.StringFlag{
+						Name:     "reason",
+						Usage:    "Specify logout reason",
+						Required: false,
 					},
 				},
 				Action: logoutRole,
@@ -111,7 +136,7 @@ func roleMgrCND() cli.Command {
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "type",
-						Usage:    "role type",
+						Usage:    "Specify role type",
 						Value:    string(contracts.GovernanceAdmin),
 						Required: false,
 					},
@@ -146,8 +171,9 @@ func registerRole(ctx *cli.Context) error {
 	addr := ctx.String("address")
 	typ := ctx.String("type")
 	nodePid := ctx.String("nodePid")
+	reason := ctx.String("reason")
 
-	receipt, err := invokeBVMContract(ctx, constant.RoleContractAddr.String(), "RegisterRole", pb.String(addr), pb.String(typ), pb.String(nodePid))
+	receipt, err := invokeBVMContract(ctx, constant.RoleContractAddr.String(), "RegisterRole", pb.String(addr), pb.String(typ), pb.String(nodePid), pb.String(reason))
 	if err != nil {
 		return err
 	}
@@ -164,8 +190,9 @@ func registerRole(ctx *cli.Context) error {
 func updateRole(ctx *cli.Context) error {
 	id := ctx.String("id")
 	nodePid := ctx.String("nodePid")
+	reason := ctx.String("reason")
 
-	receipt, err := invokeBVMContract(ctx, constant.RoleContractAddr.String(), "UpdateAuditAdminNode", pb.String(id), pb.String(nodePid))
+	receipt, err := invokeBVMContract(ctx, constant.RoleContractAddr.String(), "UpdateAuditAdminNode", pb.String(id), pb.String(nodePid), pb.String(reason))
 	if err != nil {
 		return err
 	}
@@ -181,8 +208,9 @@ func updateRole(ctx *cli.Context) error {
 
 func freezeRole(ctx *cli.Context) error {
 	id := ctx.String("id")
+	reason := ctx.String("reason")
 
-	receipt, err := invokeBVMContract(ctx, constant.RoleContractAddr.String(), "FreezeRole", pb.String(id))
+	receipt, err := invokeBVMContract(ctx, constant.RoleContractAddr.String(), "FreezeRole", pb.String(id), pb.String(reason))
 	if err != nil {
 		return err
 	}
@@ -198,8 +226,9 @@ func freezeRole(ctx *cli.Context) error {
 
 func activateRole(ctx *cli.Context) error {
 	id := ctx.String("id")
+	reason := ctx.String("reason")
 
-	receipt, err := invokeBVMContract(ctx, constant.RoleContractAddr.String(), "ActivateRole", pb.String(id))
+	receipt, err := invokeBVMContract(ctx, constant.RoleContractAddr.String(), "ActivateRole", pb.String(id), pb.String(reason))
 	if err != nil {
 		return err
 	}
@@ -215,8 +244,9 @@ func activateRole(ctx *cli.Context) error {
 
 func logoutRole(ctx *cli.Context) error {
 	id := ctx.String("id")
+	reason := ctx.String("reason")
 
-	receipt, err := invokeBVMContract(ctx, constant.RoleContractAddr.String(), "LogoutRole", pb.String(id))
+	receipt, err := invokeBVMContract(ctx, constant.RoleContractAddr.String(), "LogoutRole", pb.String(id), pb.String(reason))
 	if err != nil {
 		return err
 	}
