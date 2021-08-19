@@ -709,7 +709,11 @@ func (exec *BlockExecutor) getTimeoutIBTPsMap(height uint64) (map[string][]strin
 
 	for _, value := range timeoutList {
 		listArray := strings.Split(value, "-")
-		from := listArray[0]
+		_, chainID, _, err := parseChainServiceID(listArray[0])
+		if err != nil {
+			return nil, err
+		}
+		from := chainID
 		if list, has := timeoutIBTPsMap[from]; has {
 			list := append(list, value)
 			timeoutIBTPsMap[from] = list
@@ -719,4 +723,14 @@ func (exec *BlockExecutor) getTimeoutIBTPsMap(height uint64) (map[string][]strin
 	}
 
 	return timeoutIBTPsMap, nil
+}
+
+func parseChainServiceID(id string) (string, string, string, error) {
+	splits := strings.Split(id, ":")
+
+	if len(splits) != 3 {
+		return "", "", "", fmt.Errorf("invalid chain service id %s", id)
+	}
+
+	return splits[0], splits[1], splits[2], nil
 }
