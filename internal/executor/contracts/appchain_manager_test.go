@@ -256,7 +256,8 @@ func TestAppchainManager_IsAvailable(t *testing.T) {
 	res := am.IsAvailable(chains[0].ID)
 	assert.Equal(t, true, res.Ok, string(res.Result))
 	res = am.IsAvailable(chains[1].ID)
-	assert.Equal(t, false, res.Ok, string(res.Result))
+	assert.Equal(t, true, res.Ok, string(res.Result))
+	assert.Equal(t, "false", string(res.Result))
 	res = am.IsAvailable("errId")
 	assert.Equal(t, false, res.Ok, string(res.Result))
 	res = am.IsAvailable("unmarshalErrId")
@@ -280,7 +281,7 @@ func TestManageChain(t *testing.T) {
 	availableChain.Status = governance.GovernanceAvailable
 	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *availableChain).Return(true).Times(2)
 	frozenChain := chains[1]
-	frozenChain.Status = governance.GovernancePassiveFrozen
+	frozenChain.Status = governance.GovernanceFrozen
 	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *frozenChain).Return(true).AnyTimes()
 
 	// test UpdateAppchain
@@ -431,7 +432,7 @@ func prepare(t *testing.T) (*AppchainManager, *mock_stub.MockStub, []*appchainMg
 
 	var chains []*appchainMgr.Appchain
 	var chainsData [][]byte
-	chainType := []string{string(governance.GovernanceAvailable), string(governance.GovernancePassiveFrozen), string(governance.GovernanceUnavailable)}
+	chainType := []string{string(governance.GovernanceAvailable), string(governance.GovernanceFrozen), string(governance.GovernanceUnavailable)}
 
 	chainAdminKeyPath, err := repo.PathRootWithDefault("../../../tester/test_data/appchain1.json")
 	assert.Nil(t, err)

@@ -64,24 +64,6 @@ type Ballot struct {
 	VoteTime  int64  `json:"vote_time"`
 }
 
-func (g *Governance) GetBallot(voterAddr, proposalId string) *boltvm.Response {
-	p := &Proposal{}
-	if !g.GetObject(ProposalKey(proposalId), p) {
-		return boltvm.Error("proposal does not exist")
-	}
-
-	ballot, ok := p.BallotMap[voterAddr]
-	if !ok {
-		return boltvm.Error("administrator of the address has not voted")
-	}
-
-	bData, err := json.Marshal(ballot)
-	if err != nil {
-		return boltvm.Error(err.Error())
-	}
-	return boltvm.Success(bData)
-}
-
 type Proposal struct {
 	Id            string                      `json:"id"`
 	Des           string                      `json:"des"`
@@ -298,6 +280,24 @@ func (g *Governance) WithdrawProposal(id, reason string) *boltvm.Response {
 	}
 
 	return boltvm.Success(nil)
+}
+
+func (g *Governance) GetBallot(voterAddr, proposalId string) *boltvm.Response {
+	p := &Proposal{}
+	if !g.GetObject(ProposalKey(proposalId), p) {
+		return boltvm.Error("proposal does not exist")
+	}
+
+	ballot, ok := p.BallotMap[voterAddr]
+	if !ok {
+		return boltvm.Error("administrator of the address has not voted")
+	}
+
+	bData, err := json.Marshal(ballot)
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+	return boltvm.Success(bData)
 }
 
 // GetProposal query proposal by id
