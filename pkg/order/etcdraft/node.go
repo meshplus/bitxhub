@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Rican7/retry"
+	"github.com/Rican7/retry/strategy"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -202,6 +204,20 @@ func NewNode(opts ...agency.ConfigOption) (agency.Order, error) {
 
 // Start or restart raft node
 func (n *Node) Start() error {
+
+	if err := retry.Retry(func(attempt uint) error {
+		err := n.checkQuorum()
+		if err != nil {
+			n.logger.Error(err)
+			return err
+		}
+		return nil
+	},
+		strategy.Wait(1*time.Second),
+	); err != nil {
+		n.logger.Error(err)
+	}
+
 	n.blockAppliedIndex.Store(n.lastExec, n.loadAppliedIndex())
 	rc, tickTimeout, err := generateEtcdRaftConfig(n.id, n.repoRoot, n.logger, n.raftStorage.ram)
 	if err != nil {
@@ -740,4 +756,12 @@ func (n *Node) becomeFollower() {
 
 func (n *Node) setLastExec(height uint64) {
 	n.lastExec = height
+}
+
+func (n *Node) checkQuorum() error {
+	n.logger.Infof("=======Quorum = %d, connected peers = %d", n.Quorum(), n.peerMgr.CountConnectedPeers()+1)
+	if n.peerMgr.CountConnectedPeers()+1 < n.Quorum() {
+		return errors.New("the number of connected Peers don't reach Quorum")
+	}
+	return nil
 }
