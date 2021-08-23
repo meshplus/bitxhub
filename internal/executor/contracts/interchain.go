@@ -2,7 +2,6 @@ package contracts
 
 import (
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -11,7 +10,6 @@ import (
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
-	"github.com/meshplus/bitxhub-kit/crypto/asym/ecdsa"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -235,7 +233,7 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, error) {
 		}
 
 		if srcAppchain.ChainType != appchainMgr.RelaychainType {
-			if err := x.checkPubKeyAndCaller(srcAppchain.PublicKey); err != nil {
+			if err := x.checkCaller(srcAppchain); err != nil {
 				return nil, fmt.Errorf("%s: caller is not bind to ibtp from: %w", InvalidIBTP, err)
 			}
 		}
@@ -258,7 +256,7 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, error) {
 		}
 
 		if srcAppchain.ChainType != appchainMgr.RelaychainType {
-			if err := x.checkPubKeyAndCaller(dstAppchain.PublicKey); err != nil {
+			if err := x.checkCaller(dstAppchain); err != nil {
 				return nil, fmt.Errorf("%s: caller is not bind to ibtp to", InvalidIBTP)
 			}
 		}
@@ -275,20 +273,12 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, error) {
 	return interchain, nil
 }
 
-func (x *InterchainManager) checkPubKeyAndCaller(pub string) error {
-	pubKeyBytes, err := base64.StdEncoding.DecodeString(pub)
+func (x *InterchainManager) checkCaller(appchain *appchainMgr.Appchain) error {
+	addr, err := appchain.GetAdminAddress()
 	if err != nil {
-		return fmt.Errorf("decode public key bytes: %w", err)
+		return fmt.Errorf("get appchain admin addresserror: %w", err)
 	}
-	pubKey, err := ecdsa.UnmarshalPublicKey(pubKeyBytes, crypto.Secp256k1)
-	if err != nil {
-		return fmt.Errorf("decrypt registerd public key error: %w", err)
-	}
-	addr, err := pubKey.Address()
-	if err != nil {
-		return fmt.Errorf("decrypt registerd public key error: %w", err)
-	}
-	if addr.String() != x.Caller() {
+	if addr != x.Caller() {
 		return fmt.Errorf("chain pub key derived address != caller")
 	}
 	return nil

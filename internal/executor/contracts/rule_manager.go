@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
+	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/governance"
 	ruleMgr "github.com/meshplus/bitxhub-core/rule-mgr"
@@ -334,8 +335,12 @@ func (rm *RuleManager) checkPermission(chainId string, p Permission, specificAdd
 		return fmt.Errorf("cross invoke GetAppchain error: %s", string(res.Result))
 	}
 
-	pubKeyStr := gjson.Get(string(res.Result), "public_key").String()
-	addr, err := getAddr(pubKeyStr)
+	app := &appchainMgr.Appchain{}
+	if err := json.Unmarshal(res.Result, app); err != nil {
+		return fmt.Errorf("unmarshal appchain info error: " + err.Error())
+	}
+
+	addr, err := app.GetAdminAddress()
 	if err != nil {
 		return fmt.Errorf("get addr error: %s", err.Error())
 	}

@@ -26,7 +26,7 @@ const (
 func TestAppchainManager_IsAppchainAdmin(t *testing.T) {
 	am, mockStub, chains, chainsData := prepare(t)
 
-	addr, err := getAddr(chains[0].PublicKey)
+	addr, err := appchainMgr.GetAddressFromPubkey(chains[0].PublicKey)
 	assert.Nil(t, err)
 	mockStub.EXPECT().Caller().Return(addr).AnyTimes()
 	mockStub.EXPECT().Query(appchainMgr.PREFIX).Return(true, chainsData).AnyTimes()

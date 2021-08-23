@@ -444,8 +444,6 @@ github.com/huin/goupnp v1.0.1-0.20210310174557-0ca763054c88/go.mod h1:nNs7wvRfN1
 github.com/huin/goutil v0.0.0-20170803182201-1ca381bf3150/go.mod h1:PpLOETDnJ0o3iZrZfqZzyLl6l7F3c6L1oWn7OICBi6o=
 github.com/hyperledger/fabric v2.0.1+incompatible h1:7W+yG0gLKTC7NLcWPT3vfpnaseztPpH9wXGfAW7yvBs=
 github.com/hyperledger/fabric v2.0.1+incompatible/go.mod h1:tGFAOCT696D3rG0Vofd2dyWYLySHlh0aQjf7Q1HAju0=
-github.com/hyperledger/fabric v2.1.1+incompatible h1:cYYRv3vVg4kA6DmrixLxwn1nwBEUuYda8DsMwlaMKbY=
-github.com/hyperledger/fabric v2.1.1+incompatible/go.mod h1:tGFAOCT696D3rG0Vofd2dyWYLySHlh0aQjf7Q1HAju0=
 github.com/hyperledger/fabric-amcl v0.0.0-20200424173818-327c9e2cf77a h1:JAKZdGuUIjVmES0X31YUD7UqMR2rz/kxLluJuGvsXPk=
 github.com/hyperledger/fabric-amcl v0.0.0-20200424173818-327c9e2cf77a/go.mod h1:X+DIyUsaTmalOpmpQfIvFZjKHQedrURQ5t4YqquX7lE=
 github.com/hyperledger/fabric-protos-go v0.0.0-20200330074707-cfe579e86986/go.mod h1:xVYTjK4DtZRBxZ2D9aE4y6AbLaPwue2o/criQyQbVD0=
@@ -807,8 +805,8 @@ github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5
 github.com/meshplus/bitxhub v1.9.0/go.mod h1:BgH197VeixjL/JgvqRT4tZABKd+0K5ZqauuW9FgCNcw=
 github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20210318102029-494ee3060b0c/go.mod h1:G19Wrz1u66UmwaES/iLM19jmlv3APAZ5qfYOlNnIIZw=
 github.com/meshplus/bitxhub-core v1.3.1-0.20210604120052-4ade98a9c4f1/go.mod h1:eUSVdWko1XHGRNJNWrRDUza7t0UxdIzXF94iTRXVFJU=
-github.com/meshplus/bitxhub-core v1.3.1-0.20210819023223-b7771b7bdf1d h1:7MjpEuBW1zWOw85TNWkbfvujTE/5iJHPKqJvUxdv5sM=
-github.com/meshplus/bitxhub-core v1.3.1-0.20210819023223-b7771b7bdf1d/go.mod h1:zkTq/egf0xUOiQaKFSIZ4Cxx/TvCbpebUmpnsgaMZr0=
+github.com/meshplus/bitxhub-core v1.3.1-0.20210820055613-b809875e5b15 h1:uAO5R6R0As+HDyLE/B0F9lrbBRP3qGffHJyAJ0ZJ688=
+github.com/meshplus/bitxhub-core v1.3.1-0.20210820055613-b809875e5b15/go.mod h1:zkTq/egf0xUOiQaKFSIZ4Cxx/TvCbpebUmpnsgaMZr0=
 github.com/meshplus/bitxhub-kit v1.1.1/go.mod h1:r4l4iqn0RPJreb/OmoYKfjCjQJrXpZX++6Qc31VG/1k=
 github.com/meshplus/bitxhub-kit v1.1.2-0.20201021105954-468d0a9d7957/go.mod h1:r4l4iqn0RPJreb/OmoYKfjCjQJrXpZX++6Qc31VG/1k=
 github.com/meshplus/bitxhub-kit v1.1.2-0.20201023030558-9f36554d5d5d/go.mod h1:r4l4iqn0RPJreb/OmoYKfjCjQJrXpZX++6Qc31VG/1k=
@@ -828,8 +826,6 @@ github.com/meshplus/bitxhub-model v1.2.1-0.20210609034711-abda1813269e/go.mod h1
 github.com/meshplus/bitxhub-model v1.2.1-0.20210617153656-84ba97c3a8f8/go.mod h1:nzr75gGrBktLo9PHfNpFoX7F8gV8crBYMV2xR+WUyZE=
 github.com/meshplus/bitxhub-model v1.2.1-0.20210811024313-728f913a1397 h1:8DnVfsUewtng8Qe6/AZZ8/tFaSFz0kQk+UWSCBP7Np4=
 github.com/meshplus/bitxhub-model v1.2.1-0.20210811024313-728f913a1397/go.mod h1:IjgoQrsn1wthW7XcKRqgaZqCSlqNy0SBwF/7lmGSqXc=
-github.com/meshplus/bitxhub-model v1.2.1-0.20210811072725-7664c5307c05 h1:kgYA46LPlXkyQZ+EGx9nbgJv20mS5OiB9RuYcso4vd4=
-github.com/meshplus/bitxhub-model v1.2.1-0.20210811072725-7664c5307c05/go.mod h1:IjgoQrsn1wthW7XcKRqgaZqCSlqNy0SBwF/7lmGSqXc=
 github.com/meshplus/bitxid v0.0.0-20210412025850-e0eaf0f9063a h1:c4ESPDa60Jd4zfzZIGGTyzhfaVM3vKN+xV2G9BwIDGQ=
 github.com/meshplus/bitxid v0.0.0-20210412025850-e0eaf0f9063a/go.mod h1:vAldSRfDe2Qo7exsSTbchVmZWXPY7fhWQrRw18QJHho=
 github.com/meshplus/did-registry v0.0.0-20210413035015-509c6c3a0bae h1:E4iaFwHAg1ScyiU9Bz3RY0wjfXNZzPH3O43DBTl9iWg=
@@ -1570,6 +1566,7 @@ gopkg.in/yaml.v2 v2.2.8/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=
 gopkg.in/yaml.v2 v2.3.0/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=
 gopkg.in/yaml.v2 v2.4.0 h1:D8xgwECY7CYvx+Y2n4sBz93Jn9JRvxdiyyo8CTfuKaY=
 gopkg.in/yaml.v2 v2.4.0/go.mod h1:RDklbk79AGWmwhnvt/jBztapEOGDOx6ZbXqjP6csGnQ=
+gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c h1:dUUwHk2QECo/6vqA44rthZ8ie2QXMNeKRTHCNY2nXvo=
 gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
 gopkg.in/yaml.v3 v3.0.0-20200601152816-913338de1bd2 h1:VEmvx0P+GVTgkNu2EdTN988YCZPcD3lo9AoczZpucwc=
 gopkg.in/yaml.v3 v3.0.0-20200601152816-913338de1bd2/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=

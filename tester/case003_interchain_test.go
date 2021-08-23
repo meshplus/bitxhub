@@ -66,9 +66,9 @@ func (suite *Interchain) TestHandleIBTP() {
 	ibtpNonce := uint64(1)
 	adminNonce1 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin1.String())
 
-	rawpub1, err := k1.PublicKey().Bytes()
-	suite.Require().Nil(err)
-	pub1 := base64.StdEncoding.EncodeToString(rawpub1)
+	//rawpub1, err := k1.PublicKey().Bytes()
+	//suite.Require().Nil(err)
+	//pub1 := base64.StdEncoding.EncodeToString(rawpub1)
 	rawpub2, err := k2.PublicKey().Bytes()
 	suite.Require().Nil(err)
 	pub2 := base64.StdEncoding.EncodeToString(rawpub2)
@@ -83,7 +83,7 @@ func (suite *Interchain) TestHandleIBTP() {
 		pb.String("婚姻链"),
 		pb.String("趣链婚姻链"),
 		pb.String("1.8"),
-		pb.String(pub1),
+		pb.String(""),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
