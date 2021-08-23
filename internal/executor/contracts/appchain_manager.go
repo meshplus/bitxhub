@@ -239,7 +239,7 @@ func (am *AppchainManager) UpdateAppchain(id, docAddr, docHash, validators strin
 		Name:          name,
 		Validators:    validators,
 		ConsensusType: consensusType,
-		Status:        governance.GovernanceAvailable,
+		Status:        oldChainInfo.Status,
 		ChainType:     chainType,
 		Desc:          desc,
 		Version:       version,
