@@ -233,17 +233,12 @@ func (am *AppchainManager) UpdateAppchain(id, docAddr, docHash, validators strin
 		Name:          name,
 		Validators:    validators,
 		ConsensusType: consensusType,
-		Status:        oldChainInfo.Status,
 		ChainType:     chainType,
 		Desc:          desc,
 		Version:       version,
 		PublicKey:     pubkey,
 		DidDocAddr:    docAddr,
 		DidDocHash:    docHash,
-	}
-	data, err := json.Marshal(chain)
-	if err != nil {
-		return boltvm.Error(err.Error())
 	}
 
 	if oldChainInfo.PublicKey != "" && chain.PublicKey != "" {
@@ -263,33 +258,43 @@ func (am *AppchainManager) UpdateAppchain(id, docAddr, docHash, validators strin
 	}
 
 	if oldChainInfo.Validators == chain.Validators {
+		chain.Status = oldChainInfo.Status
+		data, err := json.Marshal(chain)
+		if err != nil {
+			return boltvm.Error(err.Error())
+		}
 		res := responseWrapper(am.AppchainManager.Update(data))
 		if !res.Ok {
 			return res
 		} else {
 			return getGovernanceRet("", nil)
 		}
-	}
+	} else {
+		chain.Status = governance.GovernanceAvailable
+		data, err := json.Marshal(chain)
+		if err != nil {
+			return boltvm.Error(err.Error())
+		}
+		res := am.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
+			pb.String(am.Caller()),
+			pb.String(string(governance.EventUpdate)),
+			pb.String(""),
+			pb.String(string(AppchainMgr)),
+			pb.String(id),
+			pb.String(string(oldChainInfo.Status)),
+			pb.String(reason),
+			pb.Bytes(data),
+		)
+		if !res.Ok {
+			return boltvm.Error("submit proposal error:" + string(res.Result))
+		}
 
-	res := am.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
-		pb.String(am.Caller()),
-		pb.String(string(governance.EventUpdate)),
-		pb.String(""),
-		pb.String(string(AppchainMgr)),
-		pb.String(id),
-		pb.String(string(oldChainInfo.Status)),
-		pb.String(reason),
-		pb.Bytes(data),
-	)
-	if !res.Ok {
-		return boltvm.Error("submit proposal error:" + string(res.Result))
-	}
+		if ok, data := am.AppchainManager.ChangeStatus(id, string(governance.EventUpdate), string(chain.Status), nil); !ok {
+			return boltvm.Error(string(data))
+		}
 
-	if ok, data := am.AppchainManager.ChangeStatus(id, string(governance.EventUpdate), string(chain.Status), nil); !ok {
-		return boltvm.Error(string(data))
+		return getGovernanceRet(string(res.Result), nil)
 	}
-
-	return getGovernanceRet(string(res.Result), nil)
 }
 
 // FreezeAppchain freezes available appchain
