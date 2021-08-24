@@ -2,6 +2,7 @@ package contracts
 
 import (
 	"encoding/json"
+	"strconv"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -16,6 +17,7 @@ import (
 )
 
 var (
+	AUDIT_ADMIN_ROLE_ID  = "audit_admin_role_id"
 	SUPER_ADMIN_ROLE_ID  = "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013"
 	SUPER_ADMIN_ROLE_ID1 = "0xc0Ff2e0b3189132D815b8eb325bE17285AC898f8"
 	ROLE_ID1             = "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D014"
@@ -25,12 +27,52 @@ var (
 func TestRoleManager_Manage(t *testing.T) {
 	rm, mockStub, _, _, aRoles, aRolesData := rolePrepare(t)
 
+	mockStub.EXPECT().CurrentCaller().Return(noAdminAddr).Times(1)
 	mockStub.EXPECT().CurrentCaller().Return(constant.GovernanceContractAddr.Address().String()).AnyTimes()
+	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Return(false).Times(1)
 	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *aRoles[1]).Return(true).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "GetNotClosedProposals").Return(boltvm.Error("GetNotClosedProposals error")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "GetNotClosedProposals").Return(boltvm.Success(nil)).Times(1)
+	var proposals []*Proposal
+	proposals = append(proposals, &Proposal{
+		ElectorateList: []*Role{
+			&Role{
+				ID: aRoles[0].ID,
+			},
+		},
+	})
+	proposalsData, err := json.Marshal(proposals)
+	assert.Nil(t, err)
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "GetNotClosedProposals").Return(boltvm.Success(proposalsData)).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "UpdateAvaliableElectorateNum", gomock.Any()).Return(boltvm.Error("UpdateAvaliableElectorateNum error")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "UpdateAvaliableElectorateNum", gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 
-	res := rm.Manage(string(governance.EventUpdate), string(APPOVED), string(governance.GovernanceAvailable), aRolesData[0])
+	// check permission error
+	res := rm.Manage(string(governance.EventUpdate), string(APPOVED), string(governance.GovernanceAvailable), aRoles[0].ID, aRolesData[0])
+	assert.False(t, res.Ok, string(res.Result))
+	// change status error
+	res = rm.Manage(string(governance.EventUpdate), string(APPOVED), string(governance.GovernanceAvailable), aRoles[0].ID, aRolesData[0])
+	assert.False(t, res.Ok, string(res.Result))
+
+	res = rm.Manage(string(governance.EventUpdate), string(APPOVED), string(governance.GovernanceAvailable), aRoles[0].ID, aRolesData[0])
+	assert.True(t, res.Ok, string(res.Result))
+
+	// GetNotClosedProposals error
+	res = rm.Manage(string(governance.EventFreeze), string(APPOVED), string(governance.GovernanceAvailable), aRoles[0].ID, aRolesData[0])
+	assert.False(t, res.Ok, string(res.Result))
+	// unmarshal error
+	res = rm.Manage(string(governance.EventLogout), string(APPOVED), string(governance.GovernanceAvailable), aRoles[0].ID, aRolesData[0])
+	assert.False(t, res.Ok, string(res.Result))
+	// UpdateAvaliableElectorateNum error
+	res = rm.Manage(string(governance.EventFreeze), string(APPOVED), string(governance.GovernanceAvailable), aRoles[0].ID, aRolesData[0])
+	assert.False(t, res.Ok, string(res.Result))
+
+	res = rm.Manage(string(governance.EventFreeze), string(APPOVED), string(governance.GovernanceAvailable), aRoles[0].ID, aRolesData[0])
+	assert.True(t, res.Ok, string(res.Result))
+	res = rm.Manage(string(governance.EventLogout), string(APPOVED), string(governance.GovernanceAvailable), aRoles[0].ID, aRolesData[0])
+	assert.True(t, res.Ok, string(res.Result))
+	res = rm.Manage(string(governance.EventActivate), string(APPOVED), string(governance.GovernanceAvailable), aRoles[0].ID, aRolesData[0])
 	assert.True(t, res.Ok, string(res.Result))
 }
 
@@ -38,23 +80,61 @@ func TestRoleManager_RegisterRole(t *testing.T) {
 	rm, mockStub, gRoles, _, _, _ := rolePrepare(t)
 	account := mockAccount(t)
 
-	mockStub.EXPECT().CurrentCaller().Return(SUPER_ADMIN_ROLE_ID1).AnyTimes()
-	mockStub.EXPECT().Caller().Return(SUPER_ADMIN_ROLE_ID1).AnyTimes()
-	mockStub.EXPECT().GetObject(rm.roleKey(ROLE_ID1), gomock.Any()).SetArg(1, *gRoles[0]).Return(true).AnyTimes()
-	mockStub.EXPECT().GetObject(rm.roleKey(SUPER_ADMIN_ROLE_ID1), gomock.Any()).SetArg(1, *gRoles[4]).Return(true).AnyTimes()
+	mockStub.EXPECT().CurrentCaller().Return(noAdminAddr).Times(1)
+	mockStub.EXPECT().CurrentCaller().Return(SUPER_ADMIN_ROLE_ID).AnyTimes()
+	mockStub.EXPECT().Caller().Return(SUPER_ADMIN_ROLE_ID).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("submit error")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	logger := log.NewWithModule("contracts")
 	mockStub.EXPECT().Logger().Return(logger).AnyTimes()
+	mockStub.EXPECT().Get(gomock.Any()).Return(false, nil).Times(1)
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, []byte("100000000000000000000000000000000000")).AnyTimes()
 	mockStub.EXPECT().GetAccount(gomock.Any()).Return(account).AnyTimes()
 
-	res := rm.RegisterRole(ROLE_ID1, string(GovernanceAdmin), NODEPID, "reason")
+	mockStub.EXPECT().GetObject(rm.roleKey(noAdminAddr), gomock.Any()).Return(false).AnyTimes()
+	mockStub.EXPECT().GetObject(rm.roleKey(SUPER_ADMIN_ROLE_ID), gomock.Any()).SetArg(1, *gRoles[1]).Return(true).AnyTimes()
+
+	governancePreErrReq := mockStub.EXPECT().GetObject(rm.roleKey(ROLE_ID1), gomock.Any()).SetArg(1, *gRoles[2]).Return(true).Times(1)
+	appchainAdminReq := mockStub.EXPECT().GetObject(rm.roleKey(ROLE_ID1), gomock.Any()).Return(false).Times(1)
+	getErrReq := mockStub.EXPECT().GetObject(rm.roleKey(ROLE_ID1), gomock.Any()).SetArg(1, *gRoles[0]).Return(true).Times(1)
+	submitErrReq := mockStub.EXPECT().GetObject(rm.roleKey(ROLE_ID1), gomock.Any()).SetArg(1, *gRoles[0]).Return(true).Times(1)
+	changeStatusErrReq1 := mockStub.EXPECT().GetObject(rm.roleKey(ROLE_ID1), gomock.Any()).SetArg(1, *gRoles[0]).Return(true).Times(1)
+	changeStatusErrReq2 := mockStub.EXPECT().GetObject(rm.roleKey(ROLE_ID1), gomock.Any()).Return(false).Times(1)
+	okReq := mockStub.EXPECT().GetObject(rm.roleKey(ROLE_ID1), gomock.Any()).SetArg(1, *gRoles[0]).Return(true).Times(2)
+	gomock.InOrder(governancePreErrReq, appchainAdminReq, getErrReq, submitErrReq, changeStatusErrReq1, changeStatusErrReq2, okReq)
+
+	// check permission error
+	res := rm.RegisterRole(ROLE_ID1, string(GovernanceAdmin), NODEPID, "", reason)
+	assert.False(t, res.Ok, string(res.Result))
+	// check info error
+	res = rm.RegisterRole(ROLE_ID1, "", NODEPID, "", reason)
+	assert.False(t, res.Ok, string(res.Result))
+	// governance pre error
+	res = rm.RegisterRole(ROLE_ID1, string(GovernanceAdmin), NODEPID, "", reason)
+	assert.False(t, res.Ok, string(res.Result))
+
+	// AppchainAdmin
+	res = rm.RegisterRole(ROLE_ID1, string(AppchainAdmin), NODEPID, "", reason)
+	assert.True(t, res.Ok, string(res.Result))
+
+	// GovernanceAdmin
+	// get error
+	res = rm.RegisterRole(ROLE_ID1, string(GovernanceAdmin), NODEPID, "", reason)
+	assert.False(t, res.Ok, string(res.Result))
+	// submit proposal error
+	res = rm.RegisterRole(ROLE_ID1, string(GovernanceAdmin), NODEPID, "", reason)
+	assert.False(t, res.Ok, string(res.Result))
+	// change status error
+	res = rm.RegisterRole(ROLE_ID1, string(GovernanceAdmin), NODEPID, "", reason)
+	assert.False(t, res.Ok, string(res.Result))
+
+	res = rm.RegisterRole(ROLE_ID1, string(GovernanceAdmin), NODEPID, "", reason)
 	assert.True(t, res.Ok, string(res.Result))
 }
 
 func TestRoleManager_UpdateAuditAdminNode(t *testing.T) {
-	rm, mockStub, _, _, aRoles, _ := rolePrepare(t)
+	rm, mockStub, gRoles, _, aRoles, _ := rolePrepare(t)
 
 	nvpNode := &node_mgr.Node{
 		VPNodeId: uint64(1),
@@ -66,32 +146,99 @@ func TestRoleManager_UpdateAuditAdminNode(t *testing.T) {
 
 	nvpNodeData, err := json.Marshal(nvpNode)
 	assert.Nil(t, err)
+	nvpNode.NodeType = node_mgr.VPNode
+	vpNodeData, err := json.Marshal(nvpNode)
+	assert.Nil(t, err)
 
-	mockStub.EXPECT().CurrentCaller().Return(SUPER_ADMIN_ROLE_ID1).AnyTimes()
+	mockStub.EXPECT().CurrentCaller().Return(noAdminAddr).Times(1)
+	mockStub.EXPECT().CurrentCaller().Return(SUPER_ADMIN_ROLE_ID).AnyTimes()
+	mockStub.EXPECT().GetObject(rm.roleKey(noAdminAddr), gomock.Any()).Return(false).AnyTimes()
+	mockStub.EXPECT().GetObject(rm.roleKey(SUPER_ADMIN_ROLE_ID), gomock.Any()).SetArg(1, *gRoles[1]).Return(true).AnyTimes()
 	mockStub.EXPECT().Caller().Return(SUPER_ADMIN_ROLE_ID1).AnyTimes()
-	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *aRoles[0]).Return(true).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.NodeManagerContractAddr.String(), "GetNode", gomock.Any()).Return(boltvm.Error("getNode error")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.NodeManagerContractAddr.String(), "GetNode", gomock.Any()).Return(boltvm.Success(vpNodeData)).Times(1)
 	mockStub.EXPECT().CrossInvoke(constant.NodeManagerContractAddr.String(), "GetNode", gomock.Any()).Return(boltvm.Success(nvpNodeData)).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("submit error")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	logger := log.NewWithModule("contracts")
 	mockStub.EXPECT().Logger().Return(logger).AnyTimes()
 
-	res := rm.UpdateAuditAdminNode(SUPER_ADMIN_ROLE_ID1, NEW_NODE_PID, "reason")
+	governancePreErrReq := mockStub.EXPECT().GetObject(rm.roleKey(ROLE_ID1), gomock.Any()).Return(false).Times(1)
+	roleTypeErrReq := mockStub.EXPECT().GetObject(rm.roleKey(ROLE_ID1), gomock.Any()).SetArg(1, *gRoles[1]).Return(true).Times(1)
+	samePidErrReq := mockStub.EXPECT().GetObject(rm.roleKey(ROLE_ID1), gomock.Any()).SetArg(1, *aRoles[0]).Return(true).Times(1)
+	getNodeErrReq := mockStub.EXPECT().GetObject(rm.roleKey(ROLE_ID1), gomock.Any()).SetArg(1, *aRoles[0]).Return(true).Times(1)
+	nodeTypeErrReq := mockStub.EXPECT().GetObject(rm.roleKey(ROLE_ID1), gomock.Any()).SetArg(1, *aRoles[0]).Return(true).Times(1)
+	submitErrReq := mockStub.EXPECT().GetObject(rm.roleKey(ROLE_ID1), gomock.Any()).SetArg(1, *aRoles[0]).Return(true).Times(1)
+	changeStatusErrReq1 := mockStub.EXPECT().GetObject(rm.roleKey(ROLE_ID1), gomock.Any()).SetArg(1, *aRoles[0]).Return(true).Times(1)
+	changeStatusErrReq2 := mockStub.EXPECT().GetObject(rm.roleKey(ROLE_ID1), gomock.Any()).SetArg(1, *aRoles[1]).Return(true).Times(1)
+	okReq := mockStub.EXPECT().GetObject(rm.roleKey(ROLE_ID1), gomock.Any()).SetArg(1, *aRoles[0]).Return(true).Times(2)
+	gomock.InOrder(governancePreErrReq, roleTypeErrReq, samePidErrReq, getNodeErrReq, nodeTypeErrReq, submitErrReq, changeStatusErrReq1, changeStatusErrReq2, okReq)
+
+	// check permission error
+	res := rm.UpdateAuditAdminNode(ROLE_ID1, NEW_NODE_PID, reason)
+	assert.False(t, res.Ok, string(res.Result))
+	// governance pre error
+	res = rm.UpdateAuditAdminNode(ROLE_ID1, NEW_NODE_PID, reason)
+	assert.False(t, res.Ok, string(res.Result))
+	// role type error
+	res = rm.UpdateAuditAdminNode(ROLE_ID1, NEW_NODE_PID, reason)
+	assert.False(t, res.Ok, string(res.Result))
+	// same pid error
+	res = rm.UpdateAuditAdminNode(ROLE_ID1, NODEPID, reason)
+	assert.False(t, res.Ok, string(res.Result))
+	// getNode error
+	res = rm.UpdateAuditAdminNode(ROLE_ID1, NEW_NODE_PID, reason)
+	assert.False(t, res.Ok, string(res.Result))
+	// node type error
+	res = rm.UpdateAuditAdminNode(ROLE_ID1, NEW_NODE_PID, reason)
+	assert.False(t, res.Ok, string(res.Result))
+	// submit error
+	res = rm.UpdateAuditAdminNode(ROLE_ID1, NEW_NODE_PID, reason)
+	assert.False(t, res.Ok, string(res.Result))
+	// change status error
+	res = rm.UpdateAuditAdminNode(ROLE_ID1, NEW_NODE_PID, reason)
+	assert.False(t, res.Ok, string(res.Result))
+
+	res = rm.UpdateAuditAdminNode(ROLE_ID1, NEW_NODE_PID, reason)
 	assert.True(t, res.Ok, string(res.Result))
 }
 
 func TestRoleManager_FreezeRole(t *testing.T) {
 	rm, mockStub, gRoles, _, _, _ := rolePrepare(t)
 
-	mockStub.EXPECT().CurrentCaller().Return(SUPER_ADMIN_ROLE_ID1).AnyTimes()
+	mockStub.EXPECT().CurrentCaller().Return(noAdminAddr).Times(1)
+	mockStub.EXPECT().CurrentCaller().Return(SUPER_ADMIN_ROLE_ID).AnyTimes()
+	mockStub.EXPECT().GetObject(rm.roleKey(noAdminAddr), gomock.Any()).Return(false).AnyTimes()
+	mockStub.EXPECT().GetObject(rm.roleKey(SUPER_ADMIN_ROLE_ID), gomock.Any()).SetArg(1, *gRoles[1]).Return(true).AnyTimes()
+
 	mockStub.EXPECT().Caller().Return(SUPER_ADMIN_ROLE_ID1).AnyTimes()
-	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *gRoles[1]).Return(true).AnyTimes()
+	governancePreErrReq := mockStub.EXPECT().GetObject(rm.roleKey(ROLE_ID1), gomock.Any()).Return(false).Times(1)
+	submitErrreq := mockStub.EXPECT().GetObject(rm.roleKey(ROLE_ID1), gomock.Any()).SetArg(1, *gRoles[1]).Return(true).Times(1)
+	changeStatusErrReq1 := mockStub.EXPECT().GetObject(rm.roleKey(ROLE_ID1), gomock.Any()).SetArg(1, *gRoles[1]).Return(true).Times(1)
+	changeStatusErrReq2 := mockStub.EXPECT().GetObject(rm.roleKey(ROLE_ID1), gomock.Any()).Return(false).Times(1)
+	okReq := mockStub.EXPECT().GetObject(rm.roleKey(ROLE_ID1), gomock.Any()).SetArg(1, *gRoles[1]).Return(true).Times(2)
+	gomock.InOrder(governancePreErrReq, submitErrreq, changeStatusErrReq1, changeStatusErrReq2, okReq)
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("submit error")).Times(1)
 	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	logger := log.NewWithModule("contracts")
 	mockStub.EXPECT().Logger().Return(logger).AnyTimes()
 
-	res := rm.FreezeRole(ROLE_ID1, "reason")
+	// check permission error
+	res := rm.FreezeRole(ROLE_ID1, reason)
+	assert.False(t, res.Ok, string(res.Result))
+	// governance pre error
+	res = rm.FreezeRole(ROLE_ID1, reason)
+	assert.False(t, res.Ok, string(res.Result))
+	// submit error
+	res = rm.FreezeRole(ROLE_ID1, reason)
+	assert.False(t, res.Ok, string(res.Result))
+	// changestatus error
+	res = rm.FreezeRole(ROLE_ID1, reason)
+	assert.False(t, res.Ok, string(res.Result))
+
+	res = rm.FreezeRole(ROLE_ID1, reason)
 	assert.True(t, res.Ok, string(res.Result))
 }
 
@@ -107,7 +254,7 @@ func TestRoleManager_ActivateRole(t *testing.T) {
 	logger := log.NewWithModule("contracts")
 	mockStub.EXPECT().Logger().Return(logger).AnyTimes()
 
-	res := rm.ActivateRole(ROLE_ID1, "reason")
+	res := rm.ActivateRole(ROLE_ID1, reason)
 	assert.True(t, res.Ok, string(res.Result))
 }
 
@@ -122,42 +269,127 @@ func TestRoleManager_LogoutRole(t *testing.T) {
 	logger := log.NewWithModule("contracts")
 	mockStub.EXPECT().Logger().Return(logger).AnyTimes()
 
-	res := rm.LogoutRole(ROLE_ID1, "reason")
+	res := rm.LogoutRole(ROLE_ID1, reason)
 	assert.True(t, res.Ok, string(res.Result))
 }
 
 func TestRoleManager_GetRole(t *testing.T) {
-	rm, mockStub, gRoles, gRolesData, _, _ := rolePrepare(t)
+	rm, mockStub, gRoles, _, aRoles, _ := rolePrepare(t)
 
-	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *gRoles[3]).Return(true).AnyTimes()
-	mockStub.EXPECT().Query(ROLEPREFIX).Return(true, gRolesData).AnyTimes()
+	adminReq := mockStub.EXPECT().Caller().Return(adminAddr).Times(1)
+	auditAdminReq := mockStub.EXPECT().Caller().Return(AUDIT_ADMIN_ROLE_ID).Times(1)
+	appAdminReq := mockStub.EXPECT().Caller().Return(appchainAdminAddr).Times(1)
+	superAdminReq := mockStub.EXPECT().Caller().Return(SUPER_ADMIN_ROLE_ID).Times(1)
+	gomock.InOrder(adminReq, auditAdminReq, appAdminReq, superAdminReq)
+	mockStub.EXPECT().GetObject(rm.roleKey(adminAddr), gomock.Any()).SetArg(1, *gRoles[3]).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(rm.roleKey(AUDIT_ADMIN_ROLE_ID), gomock.Any()).SetArg(1, *aRoles[0]).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(rm.roleKey(appchainAdminAddr), gomock.Any()).SetArg(1, Role{
+		ID:       appchainAdminAddr,
+		RoleType: AppchainAdmin,
+	}).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(rm.roleKey(SUPER_ADMIN_ROLE_ID), gomock.Any()).SetArg(1, *gRoles[4]).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(rm.roleKey(noAdminAddr), gomock.Any()).Return(false).AnyTimes()
 
-	res := rm.GetRoleById(SUPER_ADMIN_ROLE_ID)
+	res := rm.GetRole()
+	assert.True(t, res.Ok, string(res.Result))
+	assert.Equal(t, string(GovernanceAdmin), string(res.Result))
+	res = rm.GetRole()
+	assert.True(t, res.Ok, string(res.Result))
+	assert.Equal(t, string(AuditAdmin), string(res.Result))
+	res = rm.GetRole()
+	assert.True(t, res.Ok, string(res.Result))
+	assert.Equal(t, string(AppchainAdmin), string(res.Result))
+	res = rm.GetRole()
+	assert.True(t, res.Ok, string(res.Result))
+	assert.Equal(t, string(SuperGovernanceAdmin), string(res.Result))
+	res = rm.GetRoleByAddr(noAdminAddr)
+	assert.True(t, res.Ok, string(res.Result))
+	assert.Equal(t, string(NoRole), string(res.Result))
+}
+
+func TestRoleManager_Query(t *testing.T) {
+	rm, mockStub, gRoles, gRolesData, aRoles, _ := rolePrepare(t)
+
+	mockStub.EXPECT().GetObject(rm.roleKey(adminAddr), gomock.Any()).SetArg(1, *gRoles[3]).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(rm.roleKey(AUDIT_ADMIN_ROLE_ID), gomock.Any()).SetArg(1, *aRoles[0]).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(rm.roleKey(appchainAdminAddr), gomock.Any()).SetArg(1, &Role{
+		ID:       appchainAdminAddr,
+		RoleType: AppchainAdmin,
+	}).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(rm.roleKey(SUPER_ADMIN_ROLE_ID), gomock.Any()).SetArg(1, *gRoles[4]).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(rm.roleKey(noAdminAddr), gomock.Any()).Return(false).AnyTimes()
+	mockStub.EXPECT().GetObject(rm.roleKey(noAdminAddr), gomock.Any()).Return(false).AnyTimes()
+	res := rm.GetRoleInfoById(noAdminAddr)
+	assert.False(t, res.Ok, string(res.Result))
+	res = rm.GetRoleInfoById(adminAddr)
 	assert.True(t, res.Ok, string(res.Result))
 
-	res = rm.GetAdminRoles()
+	getAllErrReq := mockStub.EXPECT().Query(ROLEPREFIX).Return(false, nil).Times(1)
+	getAllOkReq := mockStub.EXPECT().Query(ROLEPREFIX).Return(true, gRolesData).Times(1)
+	gomock.InOrder(getAllErrReq, getAllOkReq)
+	res = rm.GetAllRoles()
+	assert.True(t, res.Ok, string(res.Result))
+	assert.Equal(t, []byte(nil), res.Result, string(res.Result))
+	res = rm.GetAllRoles()
+	assert.True(t, res.Ok, string(res.Result))
+	var roles []*Role
+	err := json.Unmarshal(res.Result, &roles)
+	assert.Nil(t, err)
+	assert.Equal(t, len(gRolesData), len(roles))
+
+	mockStub.EXPECT().Query(ROLEPREFIX).Return(true, gRolesData).Times(1)
+	res = rm.GetRolesByType(string(AuditAdmin))
+	assert.True(t, res.Ok, string(res.Result))
+	assert.Equal(t, []byte(nil), res.Result, string(res.Result))
+
+	mockStub.EXPECT().GetObject(rm.appchainAdminKey(appchainID), gomock.Any()).SetArg(1, Role{
+		ID:       appchainAdminAddr,
+		RoleType: AppchainAdmin,
+	}).Return(true).AnyTimes()
+	res = rm.GetAppchainAdmin(appchainID)
 	assert.True(t, res.Ok, string(res.Result))
 
-	res = rm.GetAuditAdminRoles()
+	res = rm.IsAnyAdmin(adminAddr, string(GovernanceAdmin))
 	assert.True(t, res.Ok, string(res.Result))
-
-	res = rm.IsAvailable(SUPER_ADMIN_ROLE_ID1)
-	assert.True(t, res.Ok, string(res.Result))
-
-	res = rm.IsSuperAdmin(SUPER_ADMIN_ROLE_ID1)
-	assert.True(t, res.Ok, string(res.Result))
-
-	res = rm.IsAdmin(SUPER_ADMIN_ROLE_ID1)
+	assert.Equal(t, "true", string(res.Result))
+	res = rm.IsAnyAdmin(SUPER_ADMIN_ROLE_ID, string(SuperGovernanceAdmin))
 	assert.True(t, res.Ok, string(res.Result))
 	assert.Equal(t, "true", string(res.Result))
 
-	res = rm.IsAuditAdmin(SUPER_ADMIN_ROLE_ID)
-	assert.True(t, res.Ok, string(res.Result))
-	assert.Equal(t, "false", string(res.Result))
-
-	res = rm.IsAnyAdmin(SUPER_ADMIN_ROLE_ID)
+	res = rm.IsAnyAvailableAdmin(adminAddr, string(GovernanceAdmin))
 	assert.True(t, res.Ok, string(res.Result))
 	assert.Equal(t, "true", string(res.Result))
+	res = rm.IsAnyAvailableAdmin(SUPER_ADMIN_ROLE_ID, string(GovernanceAdmin))
+	assert.True(t, res.Ok, string(res.Result))
+	assert.Equal(t, "true", string(res.Result))
+
+	res = rm.GetRoleWeight(adminAddr)
+	assert.True(t, res.Ok, string(res.Result))
+	assert.Equal(t, strconv.Itoa(repo.NormalAdminWeight), string(res.Result))
+	res = rm.GetRoleWeight(AUDIT_ADMIN_ROLE_ID)
+	assert.False(t, res.Ok, string(res.Result))
+}
+
+func TestRoleManager_checkPermission(t *testing.T) {
+	rm, mockStub, gRoles, _, _, _ := rolePrepare(t)
+
+	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *gRoles[0]).Return(true).Times(1)
+	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *gRoles[1]).Return(true).AnyTimes()
+	err := rm.checkPermission([]string{string(PermissionAdmin)}, adminAddr, adminAddr, nil)
+	assert.NotNil(t, err)
+	err = rm.checkPermission([]string{string(PermissionAdmin)}, adminAddr, adminAddr, nil)
+	assert.Nil(t, err)
+
+	err = rm.checkPermission([]string{string(PermissionSelf)}, noAdminAddr, noAdminAddr, nil)
+	assert.Nil(t, err)
+
+	specificAddrs := []string{constant.GovernanceContractAddr.Address().String()}
+	addrsData, err := json.Marshal(specificAddrs)
+	err = rm.checkPermission([]string{string(PermissionSpecific)}, "", constant.GovernanceContractAddr.Address().String(), addrsData)
+	assert.Nil(t, err)
+
+	err = rm.checkPermission([]string{""}, "", "", nil)
+	assert.NotNil(t, err)
 }
 
 func rolePrepare(t *testing.T) (*RoleManager, *mock_stub.MockStub, []*Role, [][]byte, []*Role, [][]byte) {
@@ -193,9 +425,9 @@ func rolePrepare(t *testing.T) (*RoleManager, *mock_stub.MockStub, []*Role, [][]
 		governanceRoles = append(governanceRoles, governanceRole)
 	}
 	governanceRole := &Role{
-		ID:       SUPER_ADMIN_ROLE_ID1,
+		ID:       SUPER_ADMIN_ROLE_ID,
 		RoleType: GovernanceAdmin,
-		Weight:   repo.NormalAdminWeight,
+		Weight:   repo.SuperAdminWeight,
 		NodePid:  NODEPID,
 		Status:   governance.GovernanceAvailable,
 	}
@@ -206,7 +438,7 @@ func rolePrepare(t *testing.T) (*RoleManager, *mock_stub.MockStub, []*Role, [][]
 	governanceRolesData = append(governanceRolesData, data)
 	governanceRoles = append(governanceRoles, governanceRole)
 
-	// 2. prepare audit admin role
+	// 3. prepare audit admin role
 	auditRoleStatus := []string{
 		string(governance.GovernanceAvailable),
 		string(governance.GovernanceUpdating),

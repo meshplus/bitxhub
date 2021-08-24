@@ -7,11 +7,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/meshplus/bitxhub-core/boltvm"
-	"github.com/meshplus/bitxhub-core/governance"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/repo"
+
+	"github.com/meshplus/bitxhub-core/boltvm"
+	"github.com/meshplus/bitxhub-core/governance"
 )
 
 type Governance struct {
@@ -23,7 +24,8 @@ type ProposalStatus string
 type EndReason string
 
 const (
-	PROPOSAL_PREFIX = "proposal-"
+	PROPOSAL_PREFIX      = "proposal"
+	PROPOSALFREOM_PREFIX = "from"
 
 	AppchainMgr         ProposalType = "AppchainMgr"
 	RuleMgr             ProposalType = "RuleMgr"
@@ -44,6 +46,9 @@ const (
 	WithdrawnReason  EndReason = "withdrawn by the proposal sponsor"
 	PriorityReason   EndReason = "forced shut down by a high-priority proposal"
 	ElectorateReason EndReason = "not enough valid electorate"
+
+	FALSE = "false"
+	TRUE  = "true"
 )
 
 var priority = map[governance.EventType]int{
@@ -66,7 +71,6 @@ type Ballot struct {
 
 type Proposal struct {
 	Id            string                      `json:"id"`
-	Des           string                      `json:"des"`
 	Typ           ProposalType                `json:"typ"`
 	Status        ProposalStatus              `json:"status"`
 	ObjId         string                      `json:"obj_id"`
@@ -101,7 +105,33 @@ var SpecialProposalProposalType = []ProposalType{
 	ProposalStrategyMgr,
 }
 
-func (g *Governance) SubmitProposal(from, eventTyp, des, typ, objId, objLastStatus, reason string, extra []byte) *boltvm.Response {
+func (g *Governance) checkPermission(permissions []string, regulatedAddr, regulatorAddr string, specificAddrsData []byte) error {
+	for _, permission := range permissions {
+		switch permission {
+		case string(PermissionSelf):
+			if regulatedAddr == regulatorAddr {
+				return nil
+			}
+		case string(PermissionAdmin):
+		case string(PermissionSpecific):
+			specificAddrs := []string{}
+			if err := json.Unmarshal(specificAddrsData, &specificAddrs); err != nil {
+				return err
+			}
+			for _, addr := range specificAddrs {
+				if addr == regulatorAddr {
+					return nil
+				}
+			}
+		default:
+			return fmt.Errorf("unsupport permission: %s", permission)
+		}
+	}
+
+	return fmt.Errorf("regulatorAddr(%s) does not have the permission", regulatorAddr)
+}
+
+func (g *Governance) SubmitProposal(from, eventTyp, typ, objId, objLastStatus, reason string, extra []byte) *boltvm.Response {
 
 	// 1. check permission
 	specificAddrs := []string{
@@ -112,15 +142,10 @@ func (g *Governance) SubmitProposal(from, eventTyp, des, typ, objId, objLastStat
 	}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
-		return boltvm.Error("marshal specificAddrs error:" + string(err.Error()))
+		return boltvm.Error(fmt.Sprintf("marshal specificAddrs error: %v", err))
 	}
-	res := g.CrossInvoke(constant.RoleContractAddr.String(), "CheckPermission",
-		pb.String(string(PermissionSpecific)),
-		pb.String(""),
-		pb.String(g.CurrentCaller()),
-		pb.Bytes(addrsData))
-	if !res.Ok {
-		return boltvm.Error("check permission error:" + string(res.Result))
+	if err := g.checkPermission([]string{string(PermissionSpecific)}, "", g.CurrentCaller(), addrsData); err != nil {
+		return boltvm.Error(fmt.Sprintf("check permission error: %v", err))
 	}
 
 	// 2. get information
@@ -142,13 +167,12 @@ func (g *Governance) SubmitProposal(from, eventTyp, des, typ, objId, objLastStat
 	// 3. lock low-priority proposals
 	lockPId, err := g.lockLowPriorityProposal(objId, eventTyp)
 	if err != nil {
-		return boltvm.Error("close low priority proposals error:" + err.Error())
+		return boltvm.Error(fmt.Sprintf("close low priority proposals error: %v", err))
 	}
 
 	p := &Proposal{
-		Id:                     from + "-" + strconv.Itoa(len(ret)),
+		Id:                     fmt.Sprintf("%s-%s", from, strconv.Itoa(len(ret))),
 		EventType:              governance.EventType(eventTyp),
-		Des:                    des,
 		Typ:                    ProposalType(typ),
 		Status:                 PROPOSED,
 		ObjId:                  objId,
@@ -170,6 +194,14 @@ func (g *Governance) SubmitProposal(from, eventTyp, des, typ, objId, objLastStat
 	p.IsSpecial = isSpecialProposal(p)
 
 	g.AddObject(ProposalKey(p.Id), *p)
+	var proList []string
+	ok := g.GetObject(ProposalFromKey(from), &proList)
+	if !ok {
+		g.AddObject(ProposalFromKey(from), []string{p.Id})
+	} else {
+		proList = append(proList, p.Id)
+		g.SetObject(ProposalFromKey(from), proList)
+	}
 
 	return boltvm.Success([]byte(p.Id))
 }
@@ -211,14 +243,9 @@ func (g *Governance) lockLowPriorityProposal(objId, eventTyp string) (string, er
 }
 
 func (g *Governance) getElectorate() ([]*Role, int, error) {
-	roleTs, err := json.Marshal([]string{string(GovernanceAdmin)})
-	if err != nil {
-		return nil, 0, fmt.Errorf(err.Error())
-	}
-
-	res := g.CrossInvoke(constant.RoleContractAddr.String(), "GetAvailableRoles", pb.Bytes(roleTs))
+	res := g.CrossInvoke(constant.RoleContractAddr.Address().String(), "GetRolesByType", pb.String(string(GovernanceAdmin)))
 	if !res.Ok {
-		return nil, 0, fmt.Errorf("get admin roles error: %s", string(res.Result))
+		return nil, 0, fmt.Errorf("cross invoke GetRolesByType error: %s", string(res.Result))
 	}
 
 	var admins []*Role
@@ -226,7 +253,14 @@ func (g *Governance) getElectorate() ([]*Role, int, error) {
 		return nil, 0, fmt.Errorf(err.Error())
 	}
 
-	return admins, len(admins), nil
+	var availableAdmins []*Role
+	for _, a := range admins {
+		if a.IsAvailable() {
+			availableAdmins = append(availableAdmins, a)
+		}
+	}
+
+	return availableAdmins, len(availableAdmins), nil
 }
 
 func (g *Governance) getThresholdNum(electorateNum int, proposalTyp ProposalType) (int, error) {
@@ -247,13 +281,8 @@ func (g *Governance) getThresholdNum(electorateNum int, proposalTyp ProposalType
 // Withdraw the proposal
 func (g *Governance) WithdrawProposal(id, reason string) *boltvm.Response {
 	// 1. check permission
-	res := g.CrossInvoke(constant.RoleContractAddr.String(), "CheckPermission",
-		pb.String(string(PermissionSelf)),
-		pb.String(id[0:strings.Index(id, "-")]),
-		pb.String(g.CurrentCaller()),
-		pb.Bytes(nil))
-	if !res.Ok {
-		return boltvm.Error("check permission error:" + string(res.Result))
+	if err := g.checkPermission([]string{string(PermissionSelf)}, id[0:strings.Index(id, "-")], g.CurrentCaller(), nil); err != nil {
+		return boltvm.Error(fmt.Sprintf("check permission error: %v", err))
 	}
 
 	// 2. Determine if the proposal exists
@@ -264,7 +293,7 @@ func (g *Governance) WithdrawProposal(id, reason string) *boltvm.Response {
 
 	// 3。 Determine if the proposal has been cloesd
 	if p.Status == APPOVED || p.Status == REJECTED {
-		return boltvm.Error("the current status of the proposal is " + string(p.Status) + " and cannot be withdrawed")
+		return boltvm.Error(fmt.Sprintf("the current status of the proposal is %s and cannot be withdrawed", string(p.Status)))
 	}
 
 	// 4. Withdraw
@@ -364,21 +393,20 @@ func (g *Governance) GetProposalsByFrom(from string) *boltvm.Response {
 }
 
 func (g *Governance) getProposalsByFrom(from string) ([]Proposal, error) {
-	ok, datas := g.Query(PROPOSAL_PREFIX)
+	var idList []string
+	ok := g.GetObject(ProposalFromKey(from), &idList)
 	if !ok {
 		return make([]Proposal, 0), nil
 	}
 
 	ret := make([]Proposal, 0)
-	for _, d := range datas {
+	for _, id := range idList {
 		p := Proposal{}
-		if err := json.Unmarshal(d, &p); err != nil {
-			return nil, err
+		ok := g.GetObject(ProposalKey(id), &p)
+		if !ok {
+			return nil, fmt.Errorf("proposal %s is not exist", id)
 		}
-
-		if from == p.Id[0:strings.Index(p.Id, "-")] {
-			ret = append(ret, p)
-		}
+		ret = append(ret, p)
 	}
 
 	return ret, nil
@@ -465,36 +493,6 @@ func (g *Governance) GetNotClosedProposals() *boltvm.Response {
 		return boltvm.Error(err.Error())
 	}
 	return boltvm.Success(retData)
-}
-
-// Get proposal description information
-func (g *Governance) GetDes(id string) *boltvm.Response {
-	p := &Proposal{}
-	if !g.GetObject(ProposalKey(id), p) {
-		return boltvm.Error("proposal does not exist")
-	}
-
-	return boltvm.Success([]byte(p.Des))
-}
-
-// Get Proposal Type
-func (g *Governance) GetTyp(id string) *boltvm.Response {
-	p := &Proposal{}
-	if !g.GetObject(ProposalKey(id), p) {
-		return boltvm.Error("proposal does not exist")
-	}
-
-	return boltvm.Success([]byte(p.Typ))
-}
-
-// Get proposal status
-func (g *Governance) GetStatus(id string) *boltvm.Response {
-	p := &Proposal{}
-	if !g.GetObject(ProposalKey(id), p) {
-		return boltvm.Error("proposal does not exist")
-	}
-
-	return boltvm.Success([]byte(p.Status))
 }
 
 // Get affirmative vote information
@@ -587,15 +585,15 @@ func (g *Governance) UpdateAvaliableElectorateNum(id string, num uint64) *boltvm
 	}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
-		return boltvm.Error("marshal specificAddrs error:" + string(err.Error()))
+		return boltvm.Error(fmt.Sprintf("marshal specificAddrs error: %v", err))
 	}
-	res := g.CrossInvoke(constant.RoleContractAddr.String(), "CheckPermission",
+	res := g.CrossInvoke(constant.RoleContractAddr.Address().String(), "CheckPermission",
 		pb.String(string(PermissionSpecific)),
 		pb.String(""),
 		pb.String(g.CurrentCaller()),
 		pb.Bytes(addrsData))
 	if !res.Ok {
-		return boltvm.Error("check permission error:" + string(res.Result))
+		return boltvm.Error(fmt.Sprintf("check permission error: %s", string(res.Result)))
 	}
 
 	// 2. update num
@@ -676,13 +674,13 @@ func (g *Governance) getUnvote(id string) ([]*repo.Admin, error) {
 		return nil, fmt.Errorf("proposal does not exist")
 	}
 
-	res := g.CrossInvoke(constant.RoleContractAddr.String(), "GetAdminRoles")
+	res := g.CrossInvoke(constant.RoleContractAddr.Address().String(), "GetAdminRoles")
 	if !res.Ok {
-		return nil, fmt.Errorf("get admin roles error: " + string(res.Result))
+		return nil, fmt.Errorf(fmt.Sprintf("get admin roles error: %s", string(res.Result)))
 	}
 	var admins []*repo.Admin
 	if err := json.Unmarshal(res.Result, &admins); err != nil {
-		return nil, fmt.Errorf("get admin roles error: " + err.Error())
+		return nil, fmt.Errorf(fmt.Sprintf("get admin roles error: %v", err))
 	}
 
 	ret := make([]*repo.Admin, 0)
@@ -709,7 +707,7 @@ func (g *Governance) GetUnvoteNum(id string) *boltvm.Response {
 func (g *Governance) Vote(id, approve string, reason string) *boltvm.Response {
 	// 0. check role
 	addr := g.Caller()
-	res := g.CrossInvoke(constant.RoleContractAddr.String(), "IsAvailable", pb.String(addr))
+	res := g.CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin", pb.String(addr), pb.String(string(GovernanceAdmin)))
 	if !res.Ok {
 		return boltvm.Error(fmt.Sprintf("cross invoke IsAvailable error: %s", string(res.Result)))
 	}
@@ -725,7 +723,7 @@ func (g *Governance) Vote(id, approve string, reason string) *boltvm.Response {
 
 	// 2. Set vote
 	if err := g.setVote(p, addr, approve, reason); err != nil {
-		return boltvm.Error("get vote error: " + err.Error())
+		return boltvm.Error(fmt.Sprintf("get vote error: %v", err))
 	}
 
 	// 3. Count votes
@@ -733,7 +731,7 @@ func (g *Governance) Vote(id, approve string, reason string) *boltvm.Response {
 	// If the policy determines that the current vote has closed, the proposal state is modified.
 	ok, err := g.countVote(p)
 	if err != nil {
-		return boltvm.Error("count vote error: " + err.Error())
+		return boltvm.Error(fmt.Sprintf("count vote error: %v", err))
 	}
 	if !ok {
 		// the round of the voting is not over, wait the next vote
@@ -757,7 +755,7 @@ func (g *Governance) handleResult(p *Proposal) error {
 	// manage object
 	switch p.Typ {
 	case RoleMgr:
-		res := g.CrossInvoke(constant.RoleContractAddr.String(), "Manage", pb.String(string(p.EventType)), pb.String(string(nextEventType)), pb.String(string(p.ObjLastStatus)), pb.Bytes(p.Extra))
+		res := g.CrossInvoke(constant.RoleContractAddr.Address().String(), "Manage", pb.String(string(p.EventType)), pb.String(string(nextEventType)), pb.String(string(p.ObjLastStatus)), pb.String(p.ObjId), pb.Bytes(p.Extra))
 		if !res.Ok {
 			return fmt.Errorf("cross invoke Manager error: %s", string(res.Result))
 		}
@@ -765,19 +763,19 @@ func (g *Governance) handleResult(p *Proposal) error {
 	case ServiceMgr:
 		return fmt.Errorf("waiting for subsequent implementation")
 	case NodeMgr:
-		res := g.CrossInvoke(constant.NodeManagerContractAddr.String(), "Manage", pb.String(string(p.EventType)), pb.String(string(nextEventType)), pb.String(string(p.ObjLastStatus)), pb.Bytes(p.Extra))
+		res := g.CrossInvoke(constant.NodeManagerContractAddr.Address().String(), "Manage", pb.String(string(p.EventType)), pb.String(string(nextEventType)), pb.String(string(p.ObjLastStatus)), pb.String(p.ObjId), pb.Bytes(p.Extra))
 		if !res.Ok {
 			return fmt.Errorf("cross invoke Manager error: %s", string(res.Result))
 		}
 		return nil
 	case RuleMgr:
-		res := g.CrossInvoke(constant.RuleManagerContractAddr.String(), "Manage", pb.String(string(p.EventType)), pb.String(string(nextEventType)), pb.String(string(p.ObjLastStatus)), pb.Bytes(p.Extra))
+		res := g.CrossInvoke(constant.RuleManagerContractAddr.Address().String(), "Manage", pb.String(string(p.EventType)), pb.String(string(nextEventType)), pb.String(string(p.ObjLastStatus)), pb.String(p.ObjId), pb.Bytes(p.Extra))
 		if !res.Ok {
 			return fmt.Errorf("cross invoke Manager error: %s", string(res.Result))
 		}
 		return nil
 	default: // APPCHAIN_MGR
-		res := g.CrossInvoke(constant.AppchainMgrContractAddr.String(), "Manage", pb.String(string(p.EventType)), pb.String(string(nextEventType)), pb.String(string(p.ObjLastStatus)), pb.Bytes(p.Extra))
+		res := g.CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "Manage", pb.String(string(p.EventType)), pb.String(string(nextEventType)), pb.String(string(p.ObjLastStatus)), pb.String(p.ObjId), pb.Bytes(p.Extra))
 		if !res.Ok {
 			return fmt.Errorf("cross invoke Manager error: %s", string(res.Result))
 		}
@@ -986,6 +984,10 @@ func (g *Governance) GetProposalStrategyType(pt string) *boltvm.Response {
 // Key ====================================================================
 func ProposalKey(id string) string {
 	return fmt.Sprintf("%s-%s", PROPOSAL_PREFIX, id)
+}
+
+func ProposalFromKey(id string) string {
+	return fmt.Sprintf("%s-%s", PROPOSALFREOM_PREFIX, id)
 }
 
 // Check info =============================================================

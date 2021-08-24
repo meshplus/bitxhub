@@ -1,7 +1,6 @@
 package tester
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"path/filepath"
@@ -58,7 +57,6 @@ func (suite *Governance) TestGovernance() {
 
 	appchainPri, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
-	appchainPub, err := appchainPri.PublicKey().Bytes()
 	suite.Require().Nil(err)
 	addr, err := appchainPri.PublicKey().Address()
 	suite.Require().Nil(err)
@@ -68,17 +66,14 @@ func (suite *Governance) TestGovernance() {
 	adminNonce1 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin1.String())
 
 	// 1. Register ==============================================
-	ret, err := invokeBVMContract(suite.api, appchainPri, appchainNonce, constant.AppchainMgrContractAddr.Address(), "Register",
-		pb.String(fmt.Sprintf("appchain%s", addr.String())),
-		pb.String(docAddr),
-		pb.String(docHash),
-		pb.String("validators"),
-		pb.String("rbft"),
-		pb.String("hyperchain"),
-		pb.String("税务链"),
-		pb.String("趣链税务链"),
+	chainID1 := fmt.Sprintf("appchain%s", addr.String())
+	ret, err := invokeBVMContract(suite.api, appchainPri, appchainNonce, constant.AppchainMgrContractAddr.Address(), "RegisterAppchain",
+		pb.String(chainID1),
+		pb.Bytes(nil),
+		pb.String("broker"),
+		pb.String("desc"),
 		pb.String("1.8"),
-		pb.String(base64.StdEncoding.EncodeToString(appchainPub)),
+		pb.String("false"),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -87,21 +82,16 @@ func (suite *Governance) TestGovernance() {
 	gRet := &governance.GovernanceResult{}
 	err = json.Unmarshal(ret.Ret, gRet)
 	suite.Require().Nil(err)
-	chainId := string(gRet.Extra)
 	registerProposalId := gRet.ProposalID
 
 	// repeated registration
-	ret, err = invokeBVMContract(suite.api, appchainPri, appchainNonce, constant.AppchainMgrContractAddr.Address(), "Register",
+	ret, err = invokeBVMContract(suite.api, appchainPri, appchainNonce, constant.AppchainMgrContractAddr.Address(), "RegisterAppchain",
 		pb.String(fmt.Sprintf("appchain%s", addr.String())),
-		pb.String(docAddr),
-		pb.String(docHash),
-		pb.String("validators"),
-		pb.String("rbft"),
-		pb.String("hyperchain"),
-		pb.String("税务链"),
-		pb.String("趣链税务链"),
+		pb.Bytes(nil),
+		pb.String("broker"),
+		pb.String("desc"),
 		pb.String("1.8"),
-		pb.String(string(appchainPub)),
+		pb.String("false"),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -116,10 +106,10 @@ func (suite *Governance) TestGovernance() {
 	p := contracts.Proposal{}
 	err = json.Unmarshal(ret.Ret, &p)
 	suite.Require().Nil(err)
-	suite.Require().Equal("register", string(p.EventType), "event type")
+	suite.Require().Equal(string(governance.EventRegister), string(p.EventType), "event type")
 
 	// get chain status
-	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainId))
+	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID1))
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	adminNonce1++
@@ -209,15 +199,17 @@ func (suite *Governance) TestGovernance() {
 	suite.Require().Equal(1, num, "againstNum")
 
 	// get proposal status
-	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.GovernanceContractAddr.Address(), "GetStatus", pb.String(registerProposalId))
+	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.GovernanceContractAddr.Address(), "GetProposal", pb.String(registerProposalId))
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	adminNonce1++
-	proposalStatus := string(ret.Ret)
-	suite.Require().Equal(contracts.APPOVED, contracts.ProposalStatus(proposalStatus))
+	proposal := &contracts.Proposal{}
+	err = json.Unmarshal(ret.Ret, proposal)
+	suite.Require().Nil(err)
+	suite.Require().Equal(contracts.APPOVED, proposal.Status)
 
 	// get chain status
-	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainId))
+	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID1))
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	adminNonce1++

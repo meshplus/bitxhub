@@ -1,10 +1,8 @@
 package tester
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"path/filepath"
 	"strconv"
 
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
@@ -53,35 +51,24 @@ func (suite *RegisterAppchain) TestRegisterAppchain() {
 	suite.Require().Nil(err)
 	k2Nonce := uint64(0)
 
-	pub2, err := k2.PublicKey().Bytes()
-	suite.Require().Nil(err)
 	addr2, err := k2.PublicKey().Address()
 	suite.Require().Nil(err)
-
 	suite.Require().Nil(transfer(suite.Suite, suite.api, addr2, 10000000000000))
 
-	pub, err := suite.privKey.PublicKey().Bytes()
-	suite.Require().Nil(err)
 	addr, err := suite.privKey.PublicKey().Address()
 	suite.Require().Nil(err)
-
 	suite.Require().Nil(transfer(suite.Suite, suite.api, addr, 10000000000000))
 
 	args := []*pb.Arg{
 		pb.String(fmt.Sprintf("appchain%s", addr.String())),
-		pb.String(docAddr),
-		pb.String(docHash),
-		pb.String(""),
-		pb.String(""),
-		pb.String("hyperchain"),
-		pb.String("税务链"),
-		pb.String("趣链税务链"),
+		pb.Bytes(nil),
+		pb.String("broker"),
+		pb.String("desc"),
 		pb.String("1.8"),
-		//pb.String(hexutil.Encode(pub)),
-		pb.String(base64.StdEncoding.EncodeToString(pub)),
+		pb.String("false"),
 		pb.String("reason"),
 	}
-	ret, err := invokeBVMContract(suite.api, suite.privKey, suite.normalNonce, constant.AppchainMgrContractAddr.Address(), "Register", args...)
+	ret, err := invokeBVMContract(suite.api, suite.privKey, suite.normalNonce, constant.AppchainMgrContractAddr.Address(), "RegisterAppchain", args...)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	suite.normalNonce++
@@ -92,18 +79,14 @@ func (suite *RegisterAppchain) TestRegisterAppchain() {
 
 	args = []*pb.Arg{
 		pb.String(fmt.Sprintf("appchain%s", addr2.String())),
-		pb.String(docAddr),
-		pb.String(docHash),
-		pb.String(""),
-		pb.String(""),
-		pb.String("hyperchain"),
-		pb.String("税务链"),
-		pb.String("趣链税务链"),
+		pb.Bytes(nil),
+		pb.String("broker"),
+		pb.String("desc"),
 		pb.String("1.8"),
-		pb.String(base64.StdEncoding.EncodeToString(pub2)),
+		pb.String("false"),
 		pb.String("reason"),
 	}
-	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "Register", args...)
+	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "RegisterAppchain", args...)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k2Nonce++
@@ -112,12 +95,7 @@ func (suite *RegisterAppchain) TestRegisterAppchain() {
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	suite.normalNonce++
-	suite.Require().Equal("hyperchain", gjson.Get(string(ret.Ret), "chain_type").String())
-
-	ret, err = invokeBVMContract(suite.api, suite.privKey, suite.normalNonce, constant.AppchainMgrContractAddr.Address(), "GetIdByAddr", pb.String(addr.String()))
-	suite.Require().Nil(err)
-	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
-	suite.normalNonce++
+	suite.Require().Equal("desc", gjson.Get(string(ret.Ret), "desc").String())
 }
 
 func (suite *RegisterAppchain) TestFetchAppchains() {
@@ -128,10 +106,6 @@ func (suite *RegisterAppchain) TestFetchAppchains() {
 	k1Nonce := uint64(0)
 	k2Nonce := uint64(0)
 
-	pub1, err := k1.PublicKey().Bytes()
-	suite.Require().Nil(err)
-	pub2, err := k2.PublicKey().Bytes()
-	suite.Require().Nil(err)
 	addr1, err := k1.PublicKey().Address()
 	suite.Require().Nil(err)
 	addr2, err := k2.PublicKey().Address()
@@ -139,41 +113,31 @@ func (suite *RegisterAppchain) TestFetchAppchains() {
 	suite.Require().Nil(transfer(suite.Suite, suite.api, addr1, 10000000000000))
 	suite.Require().Nil(transfer(suite.Suite, suite.api, addr2, 10000000000000))
 
+	id1 := fmt.Sprintf("appchain%s", addr1.String())
 	args := []*pb.Arg{
-		pb.String(fmt.Sprintf("appchain%s", addr1.String())),
-		pb.String(docAddr),
-		pb.String(docHash),
-		pb.String(""),
-		pb.String(""),
-		pb.String("hyperchain"),
-		pb.String("税务链"),
-		pb.String("趣链税务链"),
+		pb.String(id1),
+		pb.Bytes(nil),
+		pb.String("broker"),
+		pb.String("desc"),
 		pb.String("1.8"),
-		pb.String(base64.StdEncoding.EncodeToString(pub1)),
+		pb.String("false"),
 		pb.String("reason"),
 	}
-	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "Register", args...)
+	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "RegisterAppchain", args...)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k1Nonce++
-	gRet := &governance.GovernanceResult{}
-	err = json.Unmarshal(ret.Ret, gRet)
-	suite.Require().Nil(err)
-	id1 := string(gRet.Extra)
+
 	args = []*pb.Arg{
 		pb.String(fmt.Sprintf("appchain%s", addr2.String())),
-		pb.String(docAddr),
-		pb.String(docHash),
-		pb.String(""),
-		pb.String(""),
-		pb.String("fabric"),
-		pb.String("政务链"),
-		pb.String("fabric政务"),
-		pb.String("1.4"),
-		pb.String(base64.StdEncoding.EncodeToString(pub2)),
+		pb.Bytes(nil),
+		pb.String("broker"),
+		pb.String("desc"),
+		pb.String("1.8"),
+		pb.String("false"),
 		pb.String("reason"),
 	}
-	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "Register", args...)
+	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "RegisterAppchain", args...)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	suite.Require().Nil(err)
 	k2Nonce++
@@ -207,158 +171,38 @@ func (suite *RegisterAppchain) TestFetchAppchains() {
 	appchain := &appchainMgr.Appchain{}
 	err = json.Unmarshal(ret2.Ret, appchain)
 	suite.Require().Nil(err)
-	suite.Require().Equal("hyperchain", appchain.ChainType)
+	suite.Require().Equal("desc", appchain.Desc)
 	k2Nonce++
-}
-
-func (suite *RegisterAppchain) TestGetPubKeyByChainID() {
-	k1, err := asym.GenerateKeyPair(crypto.Secp256k1)
-	suite.Require().Nil(err)
-	k2, err := asym.GenerateKeyPair(crypto.Secp256k1)
-	suite.Require().Nil(err)
-	k1Nonce := uint64(0)
-	k2Nonce := uint64(0)
-
-	pub1, err := k1.PublicKey().Bytes()
-	suite.Require().Nil(err)
-	pub2, err := k2.PublicKey().Bytes()
-	suite.Require().Nil(err)
-	addr1, err := k1.PublicKey().Address()
-	suite.Require().Nil(err)
-	addr2, err := k2.PublicKey().Address()
-	suite.Require().Nil(err)
-
-	suite.Require().Nil(transfer(suite.Suite, suite.api, addr1, 10000000000000))
-	suite.Require().Nil(transfer(suite.Suite, suite.api, addr2, 10000000000000))
-
-	args := []*pb.Arg{
-		pb.String(fmt.Sprintf("appchain%s", addr1.String())),
-		pb.String(docAddr),
-		pb.String(docHash),
-		pb.String(""),
-		pb.String(""),
-		pb.String("hyperchain"),
-		pb.String("税务链"),
-		pb.String("趣链税务链"),
-		pb.String("1.8"),
-		pb.String(base64.StdEncoding.EncodeToString(pub1)),
-		pb.String("reason"),
-	}
-	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "Register", args...)
-	suite.Require().Nil(err)
-	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
-	k1Nonce++
-
-	args = []*pb.Arg{
-		pb.String(fmt.Sprintf("appchain%s", addr2.String())),
-		pb.String(docAddr),
-		pb.String(docHash),
-		pb.String(""),
-		pb.String(""),
-		pb.String("fabric"),
-		pb.String("政务链"),
-		pb.String("fabric政务"),
-		pb.String("1.4"),
-		pb.String(base64.StdEncoding.EncodeToString(pub2)),
-		pb.String("reason"),
-	}
-	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "Register", args...)
-	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
-	suite.Require().Nil(err)
-	k2Nonce++
-	gRet := &governance.GovernanceResult{}
-	err = json.Unmarshal(ret.Ret, gRet)
-	suite.Require().Nil(err)
-	id2 := string(gRet.Extra)
-
-	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(id2))
-	suite.Require().Nil(err)
-	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
-	k2Nonce++
-	appchain2 := appchainMgr.Appchain{}
-	err = json.Unmarshal(ret.Ret, &appchain2)
-	suite.Require().Nil(err)
-
-	//GetPubKeyByChainID
-	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetPubKeyByChainID", pb.String(string(id2)))
-	suite.Require().Nil(err)
-	suite.Require().True(ret.IsSuccess())
-	suite.Require().Equal([]byte(appchain2.PublicKey), ret.Ret)
-	k1Nonce++
 }
 
 func (suite *RegisterAppchain) TestUpdateAppchains() {
 	k1, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
-	pub1, err := k1.PublicKey().Bytes()
-	suite.Require().Nil(err)
 	k1Nonce := uint64(0)
 	addr1, err := k1.PublicKey().Address()
 	suite.Require().Nil(err)
 	suite.Require().Nil(transfer(suite.Suite, suite.api, addr1, 10000000000000))
 
+	id1 := fmt.Sprintf("appchain%s", addr1.String())
 	args := []*pb.Arg{
-		pb.String(fmt.Sprintf("appchain%s", addr1.String())),
-		pb.String(docAddr),
-		pb.String(docHash),
-		pb.String(""),
-		pb.String(""),
-		pb.String("hyperchain"),
-		pb.String("税务链"),
-		pb.String("趣链税务链"),
+		pb.String(id1),
+		pb.Bytes(nil),
+		pb.String("broker"),
+		pb.String("desc"),
 		pb.String("1.8"),
-		pb.String(base64.StdEncoding.EncodeToString(pub1)),
+		pb.String("false"),
 		pb.String("reason"),
 	}
-	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "Register", args...)
+	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "RegisterAppchain", args...)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k1Nonce++
 
-	//Admin Chain
-	path := "./test_data/config/node2/key.json"
-	keyPath := filepath.Join(path)
-	priAdmin, err := asym.RestorePrivateKey(keyPath, "bitxhub")
-	suite.Require().Nil(err)
-	adminAddr, err := priAdmin.PublicKey().Address()
-	suite.Require().Nil(err)
-	adminNonce := uint64(0)
-
-	args = []*pb.Arg{
-		pb.String(fmt.Sprintf("appchain%s", adminAddr.String())),
-		pb.String(docAddr),
-		pb.String(docHash),
-		pb.String(""),
-		pb.String(""),
-		pb.String("hyperchain"),
-		pb.String("管理链"),
-		pb.String("趣链管理链"),
-		pb.String("1.0"),
-		pb.String(base64.StdEncoding.EncodeToString(pub1)),
-		pb.String("reason"),
-	}
-	ret, err = invokeBVMContract(suite.api, priAdmin, adminNonce, constant.AppchainMgrContractAddr.Address(), "Register", args...)
-	suite.Require().Nil(err)
-	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
-	adminNonce++
-	gRet := &governance.GovernanceResult{}
-	err = json.Unmarshal(ret.Ret, gRet)
-	suite.Require().Nil(err)
-	id1 := string(gRet.Extra)
-
 	//UpdateAppchain
 	args = []*pb.Arg{
 		pb.String(id1),
-		pb.String(docAddr),
-		pb.String(docHash),
-		pb.String(""),
-		pb.String(""),
-		pb.String("hyperchain"),
-		pb.String("税务链"),
-		pb.String("趣链税务链"),
-		pb.String("1.9"),
-		pb.String(string(pub1)),
-		pb.String("reason"),
+		pb.String("desc1"),
+		pb.String("1.8"),
 	}
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "UpdateAppchain", args...)
 	suite.Require().Nil(err)

@@ -288,7 +288,7 @@ func getProposalsByConditions(ctx *cli.Context, keyPath string, menthod string, 
 
 func printProposal(proposals []contracts.Proposal) {
 	var table [][]string
-	table = append(table, []string{"Id", "ManagedObjectId", "Type", "EventType", "Status", "A/R", "IE/AE/TE", "Special/Super", "CreateTime", "Description", "EndReason"})
+	table = append(table, []string{"Id", "ManagedObjectId", "Type", "EventType", "Status", "A/R", "IE/AE/TE", "Special/Super", "CreateTime", "Reason", "EndReason"})
 
 	for _, pro := range proposals {
 		table = append(table, []string{
@@ -301,7 +301,7 @@ func printProposal(proposals []contracts.Proposal) {
 			fmt.Sprintf("%s/%s/%s", strconv.Itoa(int(pro.InitialElectorateNum)), strconv.Itoa(int(pro.AvaliableElectorateNum)), strconv.Itoa(int(pro.ThresholdElectorateNum))),
 			fmt.Sprintf("%s/%s", strconv.FormatBool(pro.IsSpecial), strconv.FormatBool(pro.IsSuperAdminVoted)),
 			strconv.Itoa(int(pro.CreateTime)),
-			pro.Des,
+			pro.SubmitReason,
 			string(pro.EndReason),
 		})
 	}
