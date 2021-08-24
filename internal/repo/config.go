@@ -58,6 +58,7 @@ type Config struct {
 	Genesis  `json:"genesis"`
 	Security Security `toml:"security" json:"security"`
 	License  License  `toml:"license" json:"license"`
+	Crypto   Crypto   `toml:"crypto" json:"crypto"`
 }
 
 // Security are files used to setup connection with tls
@@ -171,6 +172,10 @@ type License struct {
 	Verifier string `toml:"verifier" json:"verifier"`
 }
 
+type Crypto struct {
+	Algorithms []string `json:"algorithms" toml:"algorithms"`
+}
+
 func (c *Config) Bytes() ([]byte, error) {
 	ret, err := json.Marshal(c)
 	if err != nil {
@@ -228,6 +233,7 @@ func DefaultConfig() (*Config, error) {
 			Balance:  "100000000000000000000000000000000000",
 		},
 		Ledger: Ledger{Type: "complex"},
+		Crypto: Crypto{Algorithms: []string{"Secp256k1"}},
 	}, nil
 }
 
