@@ -1,3 +1,7 @@
+[timed_gen_block]
+enable = false
+block_timeout = "2s"
+
 [solo]
 batch_timeout          = "0.3s"  # Block packaging time period.
 

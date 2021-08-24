@@ -62,6 +62,11 @@ func TestNode_Start(t *testing.T) {
 
 	_ = order.Start()
 	require.Nil(t, err)
+
+	var msg []byte
+	require.Nil(t, order.Step(msg))
+	require.Equal(t, uint64(1), order.Quorum())
+
 	privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	require.Nil(t, err)
 
@@ -97,4 +102,31 @@ func TestNode_Start(t *testing.T) {
 	txHashList = append(txHashList, tx.TransactionHash)
 	order.ReportState(commitEvent.Block.Height(), commitEvent.Block.BlockHash, txHashList)
 	order.Stop()
+}
+
+func TestGetPendingNonceByAccount(t *testing.T) {
+	ast := assert.New(t)
+	defer os.RemoveAll("./testdata/storage")
+	node, err := mockSoloNode(t)
+	ast.Nil(err)
+	err = node.Start()
+	ast.Nil(err)
+	nonce := node.GetPendingNonceByAccount("account1")
+	ast.Equal(uint64(0), nonce)
+	err = node.DelNode(uint64(1))
+}
+
+func TestGetpendingTxByHash(t *testing.T) {
+	ast := assert.New(t)
+	defer os.RemoveAll("./testdata/storage")
+	node, err := mockSoloNode(t)
+	ast.Nil(err)
+	err = node.Start()
+	ast.Nil(err)
+
+	tx := generateTx()
+	err = node.Prepare(tx)
+	ast.Nil(err)
+	time.Sleep(200 * time.Millisecond)
+	ast.Equal(tx, node.GetPendingTxByHash(tx.GetHash()))
 }

@@ -76,6 +76,8 @@ func TestNode_Start(t *testing.T) {
 	err = order.Prepare(tx)
 	require.Nil(t, err)
 
+	require.Equal(t, tx, order.GetPendingTxByHash(tx.GetHash()))
+
 	commitEvent := <-order.Commit()
 	require.Equal(t, uint64(2), commitEvent.Block.BlockHeader.Number)
 	require.Equal(t, 1, len(commitEvent.Block.Transactions.Transactions))

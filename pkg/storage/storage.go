@@ -19,7 +19,7 @@ type Storage interface {
 	// Iterator iterates over a DB's key/value pairs in key order.
 	Iterator(start, end []byte) Iterator
 
-	// QueryByPrefix iterates over a DB's key/value pairs in key order including prefix.
+	// Prefix iterates over a DB's key/value pairs in key order including prefix.
 	Prefix(prefix []byte) Iterator
 
 	NewBatch() Batch
