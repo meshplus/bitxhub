@@ -132,8 +132,12 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, error) {
 
 	// get real appchain id for union ibtp
 	from := ibtp.From
-	if len(strings.Split(ibtp.From, "-")) == 2 {
-		from = strings.Split(ibtp.From, "-")[1]
+	if ibtp.Category() == pb.IBTP_RESPONSE {
+		from = ibtp.To
+	}
+
+	if len(strings.Split(from, "-")) == 2 {
+		from = strings.Split(from, "-")[1]
 	}
 
 	app := &appchainMgr.Appchain{}
@@ -146,8 +150,12 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, error) {
 		return false, fmt.Errorf("%s: unmarshal appchain data fail: %w", internalError, err)
 	}
 
-	if len(strings.Split(ibtp.From, "-")) == 2 {
+	if len(strings.Split(from, "-")) == 2 {
 		return verifyMultiSign(app, ibtp, proof)
+	}
+
+	if ibtp.Category() == pb.IBTP_RESPONSE {
+		return true, nil
 	}
 
 	validateAddr := validator.SimFabricRuleAddr
