@@ -118,6 +118,12 @@ address: 0xE7f5E3c3963c6a588AB3de753817B3F735a6Ab58
 
 为了保证中继链能对Pier发送过来的跨链交易能够进行存在性和有效性验证，验证规则的开发指南请参考[链接](https://docs.bitxhub.cn/bitxhub/dev/rule/)。验证规则文件开发完成后，中继链管理员会在24h内完成验证规则申请审核，验证规则由中继链管理员审核通过后才能部署到中继验证引擎。
 
+注意：如果接入的是fabric，我们内置了两个验证规则，需要切换到0x00000000000000000000000000000000000000a1的验证规则。
+
+![部署](../assets/rule-example.png)
+
+点击箭头处的<绑定>后，中继链管理员会在24h内完成验证规则更新的审核。
+
 ## 四、网关启动
 
 在完成以上步骤之后，用户启动跨链网关，即完成应用链接入跨链系统的操作。
@@ -134,13 +140,13 @@ pier --repo=~/.pier start
 
 ### 1. Fabric
 
-**应用链DID：** did:bitxhub:appchain0xE4E0c02BCeeDE1d313acb367E55BB4027261E9f7:.
+**应用链DID：** did:bitxhub:appchain0xc11bA472f5955B2a3b0e66a91fFc05f68995eFDf:.
 
 **存证合约地址：** mychannel&data_swapper
 
 ### 2. Hyperchain
 
-**应用链DID：** did:bitxhub:appchain0x1e7b87297BBA4b72b4c4fe21288A050Af2D529Eb:.
+**应用链DID：** did:bitxhub:appchain0xe1E8c72408623Dd1825b704C21ceF7C03ab62aB6
 
 **存证合约地址：** 0xb8dc305352edef315f6a7844948c864717e93c84
 
@@ -150,7 +156,12 @@ pier --repo=~/.pier start
 
 调用自己应用链上的data_swapper合约向我们内部的测试应用链发起跨链存证交易，调用方法是 set ，其参数有3个，依次是目的链合约的did、要存储的key，要存储的value
 
-**跨链查询**
+**跨链获取**
 
-调用自己应用链上的data_swapper合约向我们内部的测试应用链发起跨链查询交易，调用方法是 get ，其参数有2个，依次是 目的链合约的did、要查询的key。
+调用自己应用链上的data_swapper合约向我们内部的测试应用链发起跨链交易，将获取到的数据存到自己链上，调用方法是 get ，其参数有2个，依次是 目的链合约的did、要获取的key。
+
+**本地查询**
+
+调用自己应用链上的data_swapper合约查询上一步获取的数据，如果自己链是fabric，则调用方法是 get，如果自己链是hyperchain或其它，则调用方法是 getData，参数均只有1个，即要查询的key
+
 用户如果想验证目的链上是否真正执行了跨链操作，可通过部署两条自己的应用链进行跨链存证的完整体验。
