@@ -197,7 +197,11 @@ func DefaultConfig() (*Config, error) {
 }
 
 func UnmarshalConfig(repoRoot string) (*Config, error) {
-	viper.SetConfigFile(filepath.Join(repoRoot, configName))
+	if len(ConfigPath) == 0 {
+		viper.SetConfigFile(filepath.Join(repoRoot, configName))
+	} else {
+		viper.SetConfigFile(filepath.Join(ConfigPath, configName))
+	}
 	viper.SetConfigType("toml")
 	viper.AutomaticEnv()
 	viper.SetEnvPrefix("BITXHUB")

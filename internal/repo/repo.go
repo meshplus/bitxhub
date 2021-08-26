@@ -15,13 +15,24 @@ type Repo struct {
 	Certs         *libp2pcert.Certs
 }
 
+var (
+	ConfigPath  string
+	NetworkPath string
+	OrderPath   string
+)
+
 func Load(repoRoot string, passwd string) (*Repo, error) {
 	config, err := UnmarshalConfig(repoRoot)
 	if err != nil {
 		return nil, err
 	}
 
-	networkConfig, err := loadNetworkConfig(repoRoot, config.Genesis)
+	var networkConfig *NetworkConfig
+	if len(NetworkPath) == 0 {
+		networkConfig, err = loadNetworkConfig(repoRoot, config.Genesis)
+	} else {
+		networkConfig, err = loadNetworkConfig(NetworkPath, config.Genesis)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("load network config: %w", err)
 	}
