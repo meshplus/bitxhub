@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"sync"
 
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
@@ -30,21 +29,25 @@ const (
 )
 
 type VerifyPool struct {
-	proofs sync.Map //ibtp proof cache
-	ledger *ledger.Ledger
-	ve     validator.Engine
-	logger logrus.FieldLogger
+	proofs    sync.Map //ibtp proof cache
+	ledger    *ledger.Ledger
+	ve        validator.Engine
+	logger    logrus.FieldLogger
+	bitxhubID string
 }
 
 var _ Verify = (*VerifyPool)(nil)
 
-func New(ledger *ledger.Ledger, logger logrus.FieldLogger, wasmGasLimit uint64) Verify {
+func New(ledger *ledger.Ledger, logger logrus.FieldLogger, bxhID, wasmGasLimit uint64) Verify {
 	ve := validator.NewValidationEngine(ledger, &sync.Map{}, log.NewWithModule("validator"), wasmGasLimit)
+
 	proofPool := &VerifyPool{
-		ledger: ledger,
-		logger: logger,
-		ve:     ve,
+		ledger:    ledger,
+		logger:    logger,
+		ve:        ve,
+		bitxhubID: fmt.Sprintf("%d", bxhID),
 	}
+
 	return proofPool
 }
 
@@ -134,66 +137,92 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, uint64, er
 		return false, 0, err
 	}
 
-	from := ibtp.SrcChainID()
-	app := &appchainMgr.Appchain{}
-	ok, data := pl.getAccountState(constant.AppchainMgrContractAddr, contracts.AppchainKey(from)) // ibtp.From
-	if !ok {
-		return false, 0, fmt.Errorf("%s: cannot get registered appchain", AppchainNotAvailable)
-	}
-	err := json.Unmarshal(data, app)
-	if err != nil {
-		return false, 0, fmt.Errorf("%s: unmarshal appchain data fail: %w", internalError, err)
+	var (
+		bxhID   string
+		chainID string
+	)
+
+	if ibtp.Category() == pb.IBTP_REQUEST {
+		bxhID, chainID, _ = ibtp.ParseFrom()
+	} else {
+		bxhID, chainID, _ = ibtp.ParseTo()
 	}
 
-	if len(strings.Split(ibtp.From, "-")) == 2 {
+	if bxhID != pl.bitxhubID {
+		app, err := pl.getAppchain(bxhID)
+		if err != nil {
+			return false, 0, err
+		}
 		return verifyMultiSign(app, ibtp, proof)
 	}
 
-	validateAddr := validator.SimFabricRuleAddr
-	rl := &ruleMgr.Rule{}
-	ok, data = pl.getRule(from)
-	if ok {
-		if err := json.Unmarshal(data, rl); err != nil {
-			return false, 0, fmt.Errorf("%s: unmarshal rule data error: %w", internalError, err)
-		}
-		validateAddr = rl.Address
-	} else {
-		return false, 0, fmt.Errorf(NoBindRule)
+	app, err := pl.getAppchain(chainID)
+	if err != nil {
+		return false, 0, err
 	}
 
-	ok, gasUsed, err := pl.ve.Validate(validateAddr, from, proof, ibtp.Payload, string(app.TrustRoot)) // ibtp.From
+	validateAddr, err := pl.getValidateAddress(chainID)
+	if err != nil {
+		return false, 0, err
+	}
+
+	ok, gasUsed, err := pl.ve.Validate(validateAddr, chainID, proof, ibtp.Payload, string(app.TrustRoot))
 	if err != nil {
 		return false, gasUsed, fmt.Errorf("%s: %w", InvalidIBTP, err)
 	}
-	return true, gasUsed, nil
+	return ok, gasUsed, nil
 }
 
-func (pl *VerifyPool) getRule(chainId string) (bool, []byte) {
-	ok, data := pl.ledger.Copy().GetState(constant.RuleManagerContractAddr.Address(), []byte(ruleMgr.RuleKey(chainId)))
-	if !ok {
-		return ok, data
-	}
-
-	rules := make([]*ruleMgr.Rule, 0)
-	if err := json.Unmarshal(data, &rules); err != nil {
-		return false, []byte("unmarshal rules error: " + err.Error())
-	}
-
-	for _, r := range rules {
-		if governance.GovernanceAvailable == r.Status {
-			resData, err := json.Marshal(r)
-			if err != nil {
-				return false, []byte("marshal rule error: " + err.Error())
-			}
-			return true, resData
+func (pl *VerifyPool) getValidateAddress(chainID string) (string, error) {
+	getRuleFunc := func(chainID string) (*ruleMgr.Rule, error) {
+		ok, data := pl.ledger.Copy().GetState(constant.RuleManagerContractAddr.Address(), []byte(ruleMgr.RuleKey(chainID)))
+		if !ok {
+			return nil, nil
 		}
+
+		rules := make([]*ruleMgr.Rule, 0)
+		if err := json.Unmarshal(data, &rules); err != nil {
+			return nil, fmt.Errorf("unmarshal rules error: %w", err)
+		}
+
+		for _, r := range rules {
+			if governance.GovernanceAvailable == r.Status {
+				return r, nil
+			}
+		}
+
+		return nil, nil
 	}
 
-	return false, []byte(fmt.Errorf("the available rule does not exist").Error())
+	rl, err := getRuleFunc(chainID)
+	if err != nil {
+		return "", err
+	}
+
+	if rl != nil {
+		return rl.Address, nil
+	}
+
+	return "", fmt.Errorf("%s for chainID %s", NoBindRule, chainID)
 }
 
 func (pl *VerifyPool) getAccountState(address constant.BoltContractAddress, key string) (bool, []byte) {
 	return pl.ledger.Copy().GetState(address.Address(), []byte(key))
+}
+
+func (pl *VerifyPool) getAppchain(chainID string) (*appchainMgr.Appchain, error) {
+	app := &appchainMgr.Appchain{}
+	ok, data := pl.getAccountState(constant.AppchainMgrContractAddr, contracts.AppchainKey(chainID))
+	if !ok {
+		return nil, fmt.Errorf("%s: cannot get registered appchain", AppchainNotAvailable)
+	}
+
+	err := json.Unmarshal(data, app)
+	if err != nil {
+		return nil, fmt.Errorf("%s: unmarshal appchain data fail: %w", internalError, err)
+	}
+
+	return app, nil
 }
 
 func (pl *VerifyPool) putProof(proofHash types.Hash, proof []byte) {

@@ -68,7 +68,8 @@ func (exec *BlockExecutor) GetBoltContracts() map[string]agency.Contract {
 
 // New creates executor instance
 func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, client *appchain.Client, config *repo.Config, gasPrice *big.Int) (*BlockExecutor, error) {
-	ibtpVerify := proof.New(chainLedger, logger, config.GasLimit)
+	ibtpVerify := proof.New(chainLedger, logger, config.ChainID, config.GasLimit)
+
 	txsExecutor, err := agency.GetExecutorConstructor(config.Executor.Type)
 	if err != nil {
 		return nil, err
