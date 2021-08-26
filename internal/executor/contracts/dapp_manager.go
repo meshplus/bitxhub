@@ -1,0 +1,668 @@
+package contracts
+
+import (
+	"encoding/json"
+	"fmt"
+	"strconv"
+	"strings"
+
+	"github.com/looplab/fsm"
+	"github.com/meshplus/bitxhub-core/boltvm"
+	"github.com/meshplus/bitxhub-core/governance"
+	"github.com/meshplus/bitxhub-kit/types"
+	"github.com/meshplus/bitxhub-model/constant"
+	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/eth-kit/ledger"
+	"github.com/sirupsen/logrus"
+)
+
+const (
+	DAPPPREFIX  = "dapp"
+	OWNERPREFIX = "owner"
+)
+
+type DappManager struct {
+	boltvm.Stub
+}
+
+type Dapp struct {
+	DappID       string              `json:"dapp_id"` // first owner address + num
+	Name         string              `json:"name"`
+	Type         string              `json:"type"`
+	Desc         string              `json:"desc"`
+	ContractAddr map[string]struct{} `json:"contract_addr"`
+	Permission   map[string]struct{} `json:"permission"` // users which are not allowed to see the dapp
+	OwnerAddr    string              `json:"owner_addr"`
+	CreateTime   int64               `json:"create_time"`
+
+	Score             float64                        `json:"score"`
+	EvaluationRecords []*governance.EvaluationRecord `json:"evaluation_records"`
+	TransferRecords   []*TransferRecord              `json:"transfer_records"`
+
+	Status governance.GovernanceStatus `json:"status"`
+	FSM    *fsm.FSM                    `json:"fsm"`
+}
+
+type TransferRecord struct {
+	From       string `json:"from"`
+	To         string `json:"to"`
+	Reason     string `json:"reason"`
+	Confirm    bool   `json:"confirm"`
+	CreateTime int64  `json:"create_time"`
+}
+
+var dappStateMap = map[governance.EventType][]governance.GovernanceStatus{
+	governance.EventRegister: {governance.GovernanceUnavailable},
+	governance.EventUpdate:   {governance.GovernanceAvailable, governance.GovernanceFrozen},
+	governance.EventFreeze:   {governance.GovernanceAvailable, governance.GovernanceUpdating, governance.GovernanceActivating},
+	governance.EventActivate: {governance.GovernanceFrozen},
+	governance.EventTransfer: {governance.GovernanceAvailable},
+}
+
+var dappAvailableMap = map[governance.GovernanceStatus]struct{}{
+	governance.GovernanceAvailable:    {},
+	governance.GovernanceFreezing:     {},
+	governance.GovernanceTransferring: {},
+}
+
+func (d *Dapp) IsAvailable() bool {
+	if _, ok := dappAvailableMap[d.Status]; ok {
+		return true
+	} else {
+		return false
+	}
+}
+
+func (d *Dapp) setFSM(lastStatus governance.GovernanceStatus) {
+	d.FSM = fsm.NewFSM(
+		string(d.Status),
+		fsm.Events{
+			// register 3
+			{Name: string(governance.EventRegister), Src: []string{string(governance.GovernanceUnavailable)}, Dst: string(governance.GovernanceRegisting)},
+			{Name: string(governance.EventApprove), Src: []string{string(governance.GovernanceRegisting)}, Dst: string(governance.GovernanceAvailable)},
+			{Name: string(governance.EventReject), Src: []string{string(governance.GovernanceRegisting)}, Dst: string(lastStatus)},
+
+			// update 1
+			{Name: string(governance.EventUpdate), Src: []string{string(governance.GovernanceAvailable), string(governance.GovernanceFrozen), string(governance.GovernanceFreezing)}, Dst: string(governance.GovernanceUpdating)},
+			{Name: string(governance.EventApprove), Src: []string{string(governance.GovernanceUpdating)}, Dst: string(governance.GovernanceAvailable)},
+			{Name: string(governance.EventReject), Src: []string{string(governance.GovernanceUpdating)}, Dst: string(governance.GovernanceFrozen)},
+
+			// freeze 2
+			{Name: string(governance.EventFreeze), Src: []string{string(governance.GovernanceAvailable), string(governance.GovernanceUpdating), string(governance.GovernanceActivating), string(governance.GovernanceTransferring)}, Dst: string(governance.GovernanceFreezing)},
+			{Name: string(governance.EventApprove), Src: []string{string(governance.GovernanceFreezing)}, Dst: string(governance.GovernanceFrozen)},
+			{Name: string(governance.EventReject), Src: []string{string(governance.GovernanceFreezing)}, Dst: string(lastStatus)},
+
+			// activate 1
+			{Name: string(governance.EventActivate), Src: []string{string(governance.GovernanceFrozen), string(governance.GovernanceFreezing)}, Dst: string(governance.GovernanceActivating)},
+			{Name: string(governance.EventApprove), Src: []string{string(governance.GovernanceActivating)}, Dst: string(governance.GovernanceAvailable)},
+			{Name: string(governance.EventReject), Src: []string{string(governance.GovernanceActivating)}, Dst: string(lastStatus)},
+
+			// transfer 1
+			{Name: string(governance.EventTransfer), Src: []string{string(governance.GovernanceAvailable), string(governance.GovernanceFreezing)}, Dst: string(governance.GovernanceTransferring)},
+			{Name: string(governance.EventApprove), Src: []string{string(governance.GovernanceTransferring)}, Dst: string(governance.GovernanceAvailable)},
+			{Name: string(governance.EventReject), Src: []string{string(governance.GovernanceTransferring)}, Dst: string(lastStatus)},
+		},
+		fsm.Callbacks{
+			"enter_state": func(e *fsm.Event) { d.Status = governance.GovernanceStatus(d.FSM.Current()) },
+		},
+	)
+}
+
+// GovernancePre checks if the dapp can do the event. (only check, not modify infomation)
+func (dm *DappManager) governancePre(dappID string, event governance.EventType) (*Dapp, error) {
+	dapp := &Dapp{}
+	if ok := dm.GetObject(dm.dappKey(dappID), dapp); !ok {
+		if event == governance.EventRegister {
+			return nil, nil
+		} else {
+			return nil, fmt.Errorf("this dapp does not exist")
+		}
+	}
+
+	for _, s := range dappStateMap[event] {
+		if dapp.Status == s {
+			return dapp, nil
+		}
+	}
+
+	return nil, fmt.Errorf("The dapp (%s) can not be %s", string(dapp.Status), string(event))
+}
+
+func (dm *DappManager) changeStatus(dappID, trigger, lastStatus string) (bool, []byte) {
+	dapp := &Dapp{}
+	if ok := dm.GetObject(dm.dappKey(dappID), dapp); !ok {
+		return false, []byte("this dapp does not exist")
+	}
+
+	dapp.setFSM(governance.GovernanceStatus(lastStatus))
+	err := dapp.FSM.Event(trigger)
+	if err != nil {
+		return false, []byte(fmt.Sprintf("change status error: %v", err))
+	}
+
+	dm.SetObject(dm.dappKey(dappID), *dapp)
+	return true, nil
+}
+
+func (dm *DappManager) checkPermission(permissions []string, ownerAddr string, regulatorAddr string, specificAddrsData []byte) error {
+	for _, permission := range permissions {
+		switch permission {
+		case string(PermissionSelf):
+			if ownerAddr == regulatorAddr {
+				return nil
+			}
+		case string(PermissionAdmin):
+			res := dm.CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin",
+				pb.String(regulatorAddr),
+				pb.String(string(GovernanceAdmin)))
+			if !res.Ok {
+				return fmt.Errorf("cross invoke IsAvailableGovernanceAdmin error:%s", string(res.Result))
+			}
+			if "true" == string(res.Result) {
+				return nil
+			}
+		case string(PermissionSpecific):
+			specificAddrs := []string{}
+			if err := json.Unmarshal(specificAddrsData, &specificAddrs); err != nil {
+				return err
+			}
+			for _, addr := range specificAddrs {
+				if addr == regulatorAddr {
+					return nil
+				}
+			}
+		default:
+			return fmt.Errorf("unsupport permission: %s", permission)
+		}
+	}
+
+	return fmt.Errorf("regulatorAddr(%s) does not have the permission", regulatorAddr)
+}
+
+// ========================== Governance interface ========================
+// =========== Manage does some subsequent operations when the proposal is over
+// extra: update - dapp info, transfer - transfer record
+func (dm *DappManager) Manage(eventTyp, proposalResult, lastStatus, objId string, extra []byte) *boltvm.Response {
+	// 1. check permission: PermissionSpecific(GovernanceContractAddr)
+	specificAddrs := []string{constant.GovernanceContractAddr.Address().String()}
+	addrsData, err := json.Marshal(specificAddrs)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("marshal specificAddrs error: %v", err))
+	}
+	if err := dm.checkPermission([]string{string(PermissionSpecific)}, objId, dm.CurrentCaller(), addrsData); err != nil {
+		return boltvm.Error(fmt.Sprintf("check permission error:%v", err))
+	}
+
+	// 2. change status
+	if ok, data := dm.changeStatus(objId, proposalResult, lastStatus); !ok {
+		return boltvm.Error(fmt.Sprintf("change status error:%s", string(data)))
+	}
+
+	// 3. other operation
+	if proposalResult == string(APPOVED) {
+		switch eventTyp {
+		case string(governance.EventUpdate):
+			if err := dm.manegeUpdate(objId, extra); err != nil {
+				return boltvm.Error(fmt.Sprintf("manage update error: %v", err))
+			}
+		case string(governance.EventTransfer):
+			if err := dm.manegeTransfer(objId, extra); err != nil {
+				return boltvm.Error(fmt.Sprintf("manage update error: %v", err))
+			}
+		}
+	}
+
+	return boltvm.Success(nil)
+}
+
+func (dm *DappManager) manegeUpdate(id string, updateData []byte) error {
+	updataInfo := &Dapp{}
+	if err := json.Unmarshal(updateData, updataInfo); err != nil {
+		return fmt.Errorf("unmarshal update data error:%v", err)
+	}
+
+	dapp := &Dapp{}
+	ok := dm.GetObject(dm.dappKey(id), dapp)
+	if !ok {
+		return fmt.Errorf("the dapp is not exist")
+	}
+
+	dapp.Name = updataInfo.Name
+	dapp.Type = updataInfo.Type
+	dapp.Desc = updataInfo.Desc
+	dapp.Permission = updataInfo.Permission
+	dm.SetObject(dm.dappKey(dapp.DappID), *dapp)
+	return nil
+}
+
+func (dm *DappManager) manegeTransfer(id string, transferData []byte) error {
+	transRec := &TransferRecord{}
+	if err := json.Unmarshal(transferData, transRec); err != nil {
+		return fmt.Errorf("unmarshal update data error:%v", err)
+	}
+	transRec.CreateTime = dm.GetTxTimeStamp()
+
+	dapp := &Dapp{}
+	ok := dm.GetObject(dm.dappKey(id), dapp)
+	if !ok {
+		return fmt.Errorf("the dapp is not exist")
+	}
+
+	dapp.TransferRecords = append(dapp.TransferRecords, transRec)
+	dapp.OwnerAddr = transRec.To
+	dm.SetObject(dm.dappKey(dapp.DappID), *dapp)
+	dm.addToOwner(dapp.OwnerAddr, dapp.DappID)
+	return nil
+}
+
+func (dm *DappManager) addToOwner(ownerAddr, dappID string) {
+	dappMap := make(map[string]struct{})
+	_ = dm.GetObject(dm.ownerKey(ownerAddr), dappMap)
+	dappMap[dappID] = struct{}{}
+	dm.SetObject(dm.ownerKey(ownerAddr), dappMap)
+}
+
+// =========== RegisterDapp registers dapp info, returns proposal id and error
+func (dm *DappManager) RegisterDapp(name, typ, desc, conAddrs, permits, reason string) *boltvm.Response {
+	event := governance.EventRegister
+
+	// 1. get dapp info
+	dapp, err := dm.packageDappInfo("", name, typ, conAddrs, desc, permits, dm.Caller(), 0, dm.GetTxTimeStamp(), nil, nil, governance.GovernanceRegisting)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("get dapp info error: %v", err))
+	}
+
+	// 2. check dapp info
+	if err := dm.checkDappInfo(dapp); err != nil {
+		return boltvm.Error(fmt.Sprintf("check dapp info error : %v", err))
+	}
+
+	// 3. governancePre: check status
+	if _, err := dm.governancePre(dapp.DappID, event); err != nil {
+		return boltvm.Error(fmt.Sprintf("%s prepare error: %v", string(event), err))
+	}
+
+	// 4. submit proposal
+	res := dm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "SubmitProposal",
+		pb.String(dm.Caller()),
+		pb.String(string(event)),
+		pb.String(""),
+		pb.String(string(DappMgr)),
+		pb.String(dapp.DappID),
+		pb.String(string(governance.GovernanceUnavailable)),
+		pb.String(reason),
+		pb.Bytes(nil),
+	)
+	if !res.Ok {
+		return boltvm.Error(fmt.Sprintf("submit proposal error: %s", string(res.Result)))
+	}
+
+	// 5. register info
+	dm.SetObject(dm.dappKey(dapp.DappID), *dapp)
+	dm.addToOwner(dapp.OwnerAddr, dapp.DappID)
+	dm.Logger().WithFields(logrus.Fields{
+		"id": dapp.DappID,
+	}).Info("Dapp is registering")
+
+	return getGovernanceRet(string(res.Result), []byte(dapp.DappID))
+}
+
+// =========== UpdateDapp updates dapp info.
+func (dm *DappManager) UpdateDapp(id, name, typ, desc, conAddrs, permits, reason string) *boltvm.Response {
+	event := governance.EventUpdate
+
+	// 1. governance pre: check if exist and status
+	oldDapp, err := dm.governancePre(id, event)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("%s prepare error: %v", string(event), err))
+	}
+
+	// 2. check permission: PermissionSelf
+	if err := dm.checkPermission([]string{string(PermissionSelf)}, oldDapp.OwnerAddr, dm.CurrentCaller(), nil); err != nil {
+		return boltvm.Error(fmt.Sprintf("check permission error:%v", err))
+	}
+
+	// 3. get info
+	newDapp, err := dm.packageDappInfo(id, name, typ, conAddrs, desc, permits, oldDapp.OwnerAddr, oldDapp.Score, oldDapp.CreateTime, oldDapp.EvaluationRecords, oldDapp.TransferRecords, oldDapp.Status)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("get dapp info error: %v", err))
+	}
+	// 4. check info
+	if err := dm.checkDappInfo(newDapp); err != nil {
+		return boltvm.Error(fmt.Sprintf("check dapp info error : %v", err))
+	}
+
+	// 5. submit proposal
+	dappData, err := json.Marshal(newDapp)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("dapp marshal error: %v", err))
+	}
+
+	res := dm.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
+		pb.String(dm.Caller()),
+		pb.String(string(event)),
+		pb.String(""),
+		pb.String(string(DappMgr)),
+		pb.String(id),
+		pb.String(string(oldDapp.Status)),
+		pb.String(reason),
+		pb.Bytes(dappData),
+	)
+	if !res.Ok {
+		return boltvm.Error("submit proposal error:" + string(res.Result))
+	}
+
+	// 6. change status
+	if ok, data := dm.changeStatus(id, string(event), string(oldDapp.Status)); !ok {
+		return boltvm.Error(fmt.Sprintf("change status error: %s", string(data)))
+	}
+
+	return getGovernanceRet(string(res.Result), nil)
+}
+
+// =========== FreezeDapp freezes dapp
+func (dm *DappManager) FreezeDapp(id, reason string) *boltvm.Response {
+	event := governance.EventFreeze
+	return dm.basicGovernance(id, reason, []string{string(PermissionAdmin)}, event, nil)
+}
+
+// =========== ActivateDapp activates frozen dapp
+func (dm *DappManager) ActivateDapp(id, reason string) *boltvm.Response {
+	event := governance.EventActivate
+	return dm.basicGovernance(id, reason, []string{string(PermissionSelf), string(PermissionAdmin)}, event, nil)
+}
+
+// =========== TransferDapp transfers dapp
+func (dm *DappManager) TransferDapp(id, reason, newOwnerAddr string) *boltvm.Response {
+	event := governance.EventLogout
+
+	_, err := types.HexDecodeString(newOwnerAddr)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("illegal new owner addr: %s", newOwnerAddr))
+	}
+
+	transRec := &TransferRecord{
+		From:    dm.Caller(),
+		To:      newOwnerAddr,
+		Reason:  reason,
+		Confirm: false,
+	}
+	extra, err := json.Marshal(transRec)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("marshal extra error: %v", err))
+	}
+	return dm.basicGovernance(id, reason, []string{string(PermissionSelf)}, event, extra)
+}
+
+func (dm *DappManager) basicGovernance(id, reason string, permissions []string, event governance.EventType, extra []byte) *boltvm.Response {
+	// 1. governance pre: check if exist and status
+	dapp, err := dm.governancePre(id, event)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("%s prepare error: %v", string(event), err))
+	}
+
+	// 2. check permission
+	if err := dm.checkPermission(permissions, dapp.OwnerAddr, dm.CurrentCaller(), nil); err != nil {
+		return boltvm.Error(fmt.Sprintf("check permission error:%v", err))
+	}
+
+	// 3. submit proposal
+	res := dm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "SubmitProposal",
+		pb.String(dm.Caller()),
+		pb.String(string(event)),
+		pb.String(string(DappMgr)),
+		pb.String(id),
+		pb.String(string(dapp.Status)),
+		pb.String(reason),
+		pb.Bytes(extra),
+	)
+	if !res.Ok {
+		return boltvm.Error(fmt.Sprintf("submit proposal error: %s", string(res.Result)))
+	}
+
+	// 4. change status
+	if ok, data := dm.changeStatus(id, string(event), string(dapp.Status)); !ok {
+		return boltvm.Error(fmt.Sprintf("change status error: %s", string(data)))
+	}
+
+	return getGovernanceRet(string(res.Result), nil)
+}
+
+func (dm *DappManager) ConfirmTransfer(id string) *boltvm.Response {
+	// 1. check permission
+	if err := dm.checkPermission([]string{string(PermissionSelf)}, id, dm.CurrentCaller(), nil); err != nil {
+		return boltvm.Error(fmt.Sprintf("check permission error:%v", err))
+	}
+
+	// 2. get dapp
+	dapp := &Dapp{}
+	ok := dm.GetObject(dm.dappKey(id), dapp)
+	if !ok {
+		return boltvm.Error("the dapp is not exist")
+	}
+
+	// 3. confirm
+	if !dapp.TransferRecords[len(dapp.TransferRecords)-1].Confirm {
+		dapp.TransferRecords[len(dapp.TransferRecords)-1].Confirm = true
+		dm.SetObject(dm.dappKey(id), *dapp)
+	}
+	return nil
+}
+
+func (dm *DappManager) EvaluateDapp(id, desc string, score float64) *boltvm.Response {
+	// 1. get dapp
+	dapp := &Dapp{}
+	ok := dm.GetObject(dm.dappKey(id), dapp)
+	if !ok {
+		return boltvm.Error("the dapp is not exist")
+	}
+
+	// 2. get evaluation record
+	evaRec := &governance.EvaluationRecord{
+		Score:      score,
+		Desc:       desc,
+		CreateTime: dm.GetTxTimeStamp(),
+	}
+
+	// 3. store record
+	num := float64(len(dapp.EvaluationRecords))
+	dapp.Score = num/(num+1)*dapp.Score + 1/(num+1)*score
+	dapp.EvaluationRecords = append(dapp.EvaluationRecords, evaRec)
+	dm.SetObject(dm.dappKey(id), *dapp)
+	return nil
+}
+
+// ========================== Query interface ========================
+// GetDapp returns dapp info by dapp id
+func (dm *DappManager) GetDapp(id string) *boltvm.Response {
+	dapp := &Dapp{}
+	ok := dm.GetObject(dm.dappKey(id), dapp)
+	if !ok {
+		return boltvm.Error("the dapp is not exist")
+	}
+
+	data, err := json.Marshal(dapp)
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+
+	return boltvm.Success(data)
+}
+
+// GetAllDapps returns all dapps
+func (dm *DappManager) GetAllDapps() *boltvm.Response {
+	ret, err := dm.getAll()
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+
+	data, err := json.Marshal(ret)
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+	return boltvm.Success(data)
+}
+
+func (dm *DappManager) getAll() ([]*Dapp, error) {
+	ok, value := dm.Query(DAPPPREFIX)
+	if !ok {
+		return nil, fmt.Errorf("there is no dapp")
+	}
+
+	ret := make([]*Dapp, 0)
+	for _, data := range value {
+		dapp := &Dapp{}
+		if err := json.Unmarshal(data, dapp); err != nil {
+			return nil, err
+		}
+		ret = append(ret, dapp)
+	}
+
+	return ret, nil
+}
+
+// GetAllDapps returns all dapps
+func (dm *DappManager) GetPermissionDapps() *boltvm.Response {
+	all, err := dm.getAll()
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+
+	var ret []*Dapp
+	for _, d := range all {
+		if _, ok := d.Permission[dm.Caller()]; !ok {
+			ret = append(ret, d)
+		}
+	}
+
+	if len(ret) == 0 {
+		return boltvm.Success(nil)
+	}
+
+	data, err := json.Marshal(ret)
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+	return boltvm.Success(data)
+}
+
+// get dApps by owner addr, including dApps a person currently owns and the dApps they once owned
+func (dm *DappManager) GetDappsByOwner(ownerAddr string) *boltvm.Response {
+	ret, err := dm.getOwnerAll(ownerAddr)
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+
+	if len(ret) == 0 {
+		return boltvm.Success(nil)
+	}
+
+	data, err := json.Marshal(ret)
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+	return boltvm.Success(data)
+}
+
+func (dm *DappManager) getOwnerAll(ownerAddr string) ([]*Dapp, error) {
+	var dappMap map[string]struct{}
+	ok := dm.GetObject(dm.ownerKey(ownerAddr), &dappMap)
+	if !ok {
+		return nil, fmt.Errorf("there is no dapp of the owner")
+	}
+
+	ret := make([]*Dapp, 0)
+	for dappID, _ := range dappMap {
+		dapp := &Dapp{}
+		ok := dm.GetObject(dm.dappKey(dappID), dapp)
+		if !ok {
+			return nil, fmt.Errorf("the dapp(%s) is not exist", dappID)
+		}
+		ret = append(ret, dapp)
+	}
+
+	return ret, nil
+}
+
+func (dm *DappManager) IsAvailable(dappID string) *boltvm.Response {
+	return boltvm.Success([]byte(strconv.FormatBool(dm.isAvailable(dappID))))
+}
+
+func (dm *DappManager) isAvailable(dappID string) bool {
+	dapp := &Dapp{}
+	ok := dm.GetObject(dm.dappKey(dappID), dapp)
+	if !ok {
+		return false
+	} else {
+		return true
+	}
+}
+
+func (dm *DappManager) packageDappInfo(dappID, name string, typ string, conAddrs string, desc string, permits, ownerAddr string,
+	score float64, createTime int64, evaluationRecord []*governance.EvaluationRecord, transferRecord []*TransferRecord, status governance.GovernanceStatus) (*Dapp, error) {
+	if dappID == "" {
+		// register
+		dappMap := make(map[string]struct{})
+		if ok := dm.GetObject(dm.ownerKey(ownerAddr), dappMap); !ok {
+			dappID = fmt.Sprintf("%s-0", ownerAddr)
+		} else {
+			dappID = fmt.Sprintf("%s-%s", ownerAddr, len(dappMap))
+		}
+	}
+
+	contractAddr := make(map[string]struct{})
+	for _, id := range strings.Split(conAddrs, ",") {
+		contractAddr[id] = struct{}{}
+	}
+
+	permission := make(map[string]struct{})
+	for _, id := range strings.Split(permits, ",") {
+		permission[id] = struct{}{}
+	}
+
+	dapp := &Dapp{
+		DappID:            dappID,
+		Name:              name,
+		Type:              typ,
+		Desc:              desc,
+		ContractAddr:      contractAddr,
+		Permission:        permission,
+		OwnerAddr:         ownerAddr,
+		Score:             score,
+		CreateTime:        createTime,
+		EvaluationRecords: evaluationRecord,
+		TransferRecords:   transferRecord,
+		Status:            status,
+	}
+
+	return dapp, nil
+}
+
+func (dm *DappManager) checkDappInfo(dapp *Dapp) error {
+	// check contract addr
+	for a, _ := range dapp.ContractAddr {
+		account1 := dm.GetAccount(a)
+		account := account1.(ledger.IAccount)
+		if account.Code() == nil {
+			return fmt.Errorf("the contract addr does not exist")
+		}
+	}
+
+	// check permission info
+	for p, _ := range dapp.Permission {
+		_, err := types.HexDecodeString(p)
+		if err != nil {
+			return fmt.Errorf("illegal user addr in permission: %s", p)
+		}
+	}
+
+	return nil
+}
+
+func (dm *DappManager) dappKey(id string) string {
+	return fmt.Sprintf("%s-%s", DAPPPREFIX, id)
+}
+
+func (dm *DappManager) ownerKey(addr string) string {
+	return fmt.Sprintf("%s-%s", OWNERPREFIX, addr)
+}

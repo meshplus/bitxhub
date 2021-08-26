@@ -33,6 +33,7 @@ const (
 	ServiceMgr          ProposalType = "ServiceMgr"
 	RoleMgr             ProposalType = "RoleMgr"
 	ProposalStrategyMgr ProposalType = "ProposalStrategyMgr"
+	DappMgr             ProposalType = "DappMgr"
 
 	PROPOSED ProposalStatus = "proposed"
 	APPOVED  ProposalStatus = "approve"
@@ -139,6 +140,7 @@ func (g *Governance) SubmitProposal(from, eventTyp, typ, objId, objLastStatus, r
 		constant.RuleManagerContractAddr.Address().String(),
 		constant.NodeManagerContractAddr.Address().String(),
 		constant.RoleContractAddr.Address().String(),
+		constant.DappMgrContractAddr.Address().String(),
 	}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
@@ -776,6 +778,12 @@ func (g *Governance) handleResult(p *Proposal) error {
 			return fmt.Errorf("cross invoke Manager error: %s", string(res.Result))
 		}
 		return nil
+	case DappMgr:
+		res := g.CrossInvoke(constant.DappMgrContractAddr.String(), "Manage", pb.String(string(p.EventType)), pb.String(string(nextEventType)), pb.String(string(p.ObjLastStatus)), pb.String(p.ObjId), pb.Bytes(p.Extra))
+		if !res.Ok {
+			return fmt.Errorf("cross invoke Manager error: %s", string(res.Result))
+		}
+		return nil
 	default: // APPCHAIN_MGR
 		res := g.CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "Manage", pb.String(string(p.EventType)), pb.String(string(nextEventType)), pb.String(string(p.ObjLastStatus)), pb.String(p.ObjId), pb.Bytes(p.Extra))
 		if !res.Ok {
@@ -998,7 +1006,8 @@ func checkProposalType(pt ProposalType) error {
 		pt != RuleMgr &&
 		pt != NodeMgr &&
 		pt != ServiceMgr &&
-		pt != RoleMgr {
+		pt != RoleMgr &&
+		pt != DappMgr {
 		return fmt.Errorf("illegal proposal type")
 	}
 	return nil
