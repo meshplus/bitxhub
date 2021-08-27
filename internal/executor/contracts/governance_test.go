@@ -191,9 +191,6 @@ func TestGovernance_QueryProposal(t *testing.T) {
 	res = g.GetProposalsByObjId("objId")
 	assert.True(t, res.Ok, string(res.Result))
 
-	res = g.GetProposalsByFrom("idExistent")
-	assert.True(t, res.Ok, string(res.Result))
-
 	res = g.GetProposalsByTyp("")
 	assert.False(t, res.Ok, string(res.Result))
 	res = g.GetProposalsByTyp(string(AppchainMgr))
