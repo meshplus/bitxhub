@@ -143,7 +143,9 @@ func GenerateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 		return nil, fmt.Errorf("create RW ledger: %w", err)
 	}
 
-	viewLdg := rwLdg
+	viewLdg := &ledger.Ledger{
+		ChainLedger: rwLdg.ChainLedger,
+	}
 	if rep.Config.Ledger.Type == "simple" {
 		// create read only ledger
 		viewLdg.StateLedger, err = ledger.NewSimpleLedger(rep, stateStorage.(storage.Storage), nil, loggers.Logger(loggers.Executor))
