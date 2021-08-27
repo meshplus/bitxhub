@@ -3,6 +3,7 @@ package peermgr
 import (
 	"context"
 	"fmt"
+	"math"
 	"sync"
 	"time"
 
@@ -172,6 +173,9 @@ func (swarm *Swarm) Stop() error {
 }
 
 func (swarm *Swarm) Ping() {
+	if !swarm.enablePing {
+		swarm.pingTimeout = math.MaxInt64
+	}
 	ticker := time.NewTicker(swarm.pingTimeout)
 	for {
 		select {
@@ -195,6 +199,14 @@ func (swarm *Swarm) Ping() {
 				return true
 			})
 			swarm.logger.WithFields(fields).Info("ping time")
+		case pingConfig := <-swarm.pingC:
+			swarm.enablePing = pingConfig.Enable
+			swarm.pingTimeout = pingConfig.Duration
+			if !swarm.enablePing {
+				swarm.pingTimeout = math.MaxInt64
+			}
+			ticker.Stop()
+			ticker = time.NewTicker(swarm.pingTimeout)
 		case <-swarm.ctx.Done():
 			return
 		}

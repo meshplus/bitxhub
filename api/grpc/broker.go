@@ -98,6 +98,8 @@ func (cbs *ChainBrokerService) Start() error {
 func (cbs *ChainBrokerService) Stop() error {
 	cbs.cancel()
 
+	cbs.server.Stop()
+
 	cbs.logger.Info("GRPC service stopped")
 
 	return nil
