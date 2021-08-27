@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
@@ -554,6 +555,7 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 
 	mockStub.EXPECT().Set(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().GetTxTimestamp().Return(time.Now().UnixNano()).AnyTimes()
 
 	interchain := pb.Interchain{
 		ID:                   from,
@@ -610,6 +612,10 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	mockStub.EXPECT().GetTxIndex().Return(uint64(1)).AnyTimes()
 	mockStub.EXPECT().PostInterchainEvent(gomock.Any()).AnyTimes()
 	mockStub.EXPECT().GetTxHash().Return(&types.Hash{}).AnyTimes()
+	metas := []*InterchainMeta{}
+	mockStub.EXPECT().GetObject(fmt.Sprintf("index-send-interchain-%s", from), gomock.Any()).SetArg(1, metas).Return(true)
+	mockStub.EXPECT().GetObject(fmt.Sprintf("index-receipt-interchain-%s", unexistChain), gomock.Any()).SetArg(1, metas).Return(false)
+	mockStub.EXPECT().GetObject(fmt.Sprintf("index-receipt-interchain-%s", unavailableChain), gomock.Any()).SetArg(1, metas).Return(false)
 
 	im := &InterchainManager{mockStub}
 
@@ -657,6 +663,7 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	assert.False(t, res.Ok)
 	assert.Equal(t, true, strings.Contains(string(res.Result), TargetAppchainNotAvailable))
 
+	mockStub.EXPECT().GetObject(fmt.Sprintf("index-send-interchain-%s", from), gomock.Any()).SetArg(1, metas).Return(true)
 	ibtp.To = unavailableChain
 	res = im.HandleIBTP(ibtp)
 	assert.False(t, res.Ok)
@@ -792,6 +799,7 @@ func TestInterchainManager_HandleUnionIBTP(t *testing.T) {
 	mockStub.EXPECT().GetTxIndex().Return(uint64(1)).AnyTimes()
 	mockStub.EXPECT().PostInterchainEvent(gomock.Any()).AnyTimes()
 	mockStub.EXPECT().GetTxHash().Return(&types.Hash{}).AnyTimes()
+	mockStub.EXPECT().GetTxTimestamp().Return(time.Now().UnixNano()).AnyTimes()
 
 	im := &InterchainManager{mockStub}
 
@@ -808,6 +816,9 @@ func TestInterchainManager_HandleUnionIBTP(t *testing.T) {
 	}
 
 	mockStub.EXPECT().Caller().Return(ibtp.From).AnyTimes()
+	metas := []*InterchainMeta{}
+	mockStub.EXPECT().GetObject(fmt.Sprintf("index-send-interchain-%s", ibtp.From), gomock.Any()).SetArg(1, metas).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(fmt.Sprintf("index-receipt-interchain-%s", ibtp.To), gomock.Any()).SetArg(1, metas).Return(true).AnyTimes()
 
 	res := im.handleUnionIBTP(ibtp)
 	assert.False(t, res.Ok)
