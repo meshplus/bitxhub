@@ -831,8 +831,8 @@ github.com/meshplus/bitxid v0.0.0-20210412025850-e0eaf0f9063a/go.mod h1:vAldSRfD
 github.com/meshplus/did-registry v0.0.0-20210413035015-509c6c3a0bae h1:E4iaFwHAg1ScyiU9Bz3RY0wjfXNZzPH3O43DBTl9iWg=
 github.com/meshplus/did-registry v0.0.0-20210413035015-509c6c3a0bae/go.mod h1:tNbFVcS1TX5hnn+2o42byYK/W1cMnYuLdaCPFr+9Umk=
 github.com/meshplus/eth-kit v0.0.0-20210604035214-93ca73391238/go.mod h1:ou2OLftCdJAOJx9bUcYr5w0eCzGcrdVYnSfJxbRwp5Y=
-github.com/meshplus/eth-kit v0.0.0-20210702050624-d6220d180243 h1:B9a3eaqH4YH/QAppWRvd0T+KH32f/JmcHpuYSERX4Yw=
-github.com/meshplus/eth-kit v0.0.0-20210702050624-d6220d180243/go.mod h1:tjE4Nh4mLDabM9bRjJ03Zk/bWkR+oBkWaGwpJTrVRBo=
+github.com/meshplus/eth-kit v0.0.0-20210827080755-1c4d555ff4b1 h1:/+S/os7CyHxsKWyip34b3gHQP8PIbGJXIDASizaYeI8=
+github.com/meshplus/eth-kit v0.0.0-20210827080755-1c4d555ff4b1/go.mod h1:tjE4Nh4mLDabM9bRjJ03Zk/bWkR+oBkWaGwpJTrVRBo=
 github.com/meshplus/go-libp2p-cert v0.0.0-20210120021632-1578cf63e06a/go.mod h1:rS4AYMqKypLn2IPEnHICP//V2v16SZo4CWUbwMdihl0=
 github.com/meshplus/go-libp2p-cert v0.0.0-20210125063330-7c25fd5b7a49/go.mod h1:rS4AYMqKypLn2IPEnHICP//V2v16SZo4CWUbwMdihl0=
 github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd h1:/8ydT0Pc+nFy3uAeTwxAurPXY4cWfggslGz3bNwJKDg=
