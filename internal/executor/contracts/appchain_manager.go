@@ -63,6 +63,16 @@ func (am *AppchainManager) Manage(eventTyp string, proposalResult, lastStatus st
 			if err = am.chainDefaultConfig(chain); err != nil {
 				return boltvm.Error("chain default config error:" + err.Error())
 			}
+
+			if chain.Rule != "" {
+				res = am.CrossInvoke(constant.RuleManagerContractAddr.String(), "BindRule",
+					pb.String(chain.ID),
+					pb.String(chain.Rule),
+				)
+				if !res.Ok {
+					return res
+				}
+			}
 			//res = am.CrossInvoke(constant.MethodRegistryContractAddr.String(), "AuditApply",
 			//	pb.String(relaychainAdmin), pb.String(chain.ID), pb.Int32(1), pb.Bytes(nil))
 			//if !res.Ok {
@@ -167,6 +177,104 @@ func (am *AppchainManager) Register(method string, docAddr, docHash, validators 
 		PublicKey:     pubkey,
 		DidDocAddr:    docAddr,
 		DidDocHash:    docHash,
+		OwnerDID:      appchainAdminDID,
+	}
+	chainData, err := json.Marshal(chain)
+	if err != nil {
+		return boltvm.Error("marshal chain error:" + err.Error())
+	}
+
+	ok, data := am.AppchainManager.Register(chainData)
+	if !ok {
+		return boltvm.Error("register error: " + string(data))
+	}
+
+	registerRes := &governance.RegisterResult{}
+	if err := json.Unmarshal(data, registerRes); err != nil {
+		return boltvm.Error("register error: " + string(data))
+	}
+	if registerRes.IsRegistered {
+		return boltvm.Error("appchain has registered, chain id: " + registerRes.ID)
+	}
+
+	res = am.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
+		pb.String(am.Caller()),
+		pb.String(string(governance.EventRegister)),
+		pb.String(""),
+		pb.String(string(AppchainMgr)),
+		pb.String(appchainDID),
+		pb.String(string(governance.GovernanceUnavailable)),
+		pb.String(reason),
+		pb.Bytes(chainData),
+	)
+	if !res.Ok {
+		return res
+	}
+
+	return getGovernanceRet(string(res.Result), []byte(appchainDID))
+}
+
+// Register registers appchain info
+// caller is the appchain manager address
+// return appchain id, proposal id and error
+func (am *AppchainManager) RegisterV2(method string, docAddr, docHash, validators string,
+	consensusType, chainType, name, desc, version, pubkey, reason, rule string) *boltvm.Response {
+	var (
+		addr string
+		err  error
+	)
+
+	am.AppchainManager.Persister = am.Stub
+
+	if pubkey != "" {
+		addr, err = appchainMgr.GetAddressFromPubkey(pubkey)
+		if err != nil {
+			return boltvm.Error(fmt.Sprintf("get addr from public key: %v", err))
+		}
+	} else {
+		addr = am.Caller()
+	}
+
+	res := am.CrossInvoke(constant.RoleContractAddr.String(), "GetRoleByAddr", pb.String(addr))
+	if !res.Ok {
+		return boltvm.Error(fmt.Sprintf("cross invoke IsAnyAdmin error : %s", string(res.Result)))
+	} else {
+		if string(res.Result) != string(NoRole) {
+			return boltvm.Error(fmt.Sprintf("Please do not register appchain with other administrator's public key (address: %s, role: %s)", addr, res.Result))
+		}
+	}
+
+	res = am.CrossInvoke(constant.RoleContractAddr.String(), "CheckPermission",
+		pb.String(string(PermissionSelfAdmin)),
+		pb.String(addr),
+		pb.String(am.Caller()),
+		pb.Bytes(nil))
+	if !res.Ok {
+		return boltvm.Error("check permission error:" + string(res.Result))
+	}
+
+	//res := am.CrossInvoke(constant.MethodRegistryContractAddr.String(), "Apply",
+	//	pb.String(appchainAdminDID), pb.String(appchainMethod), pb.Bytes(nil))
+	//if !res.Ok {
+	//	return res
+	//}
+
+	appchainAdminDID := fmt.Sprintf("%s:%s:%s", repo.BitxhubRootPrefix, method, addr)
+	appchainDID := fmt.Sprintf("%s:%s:.", repo.BitxhubRootPrefix, method)
+
+	chain := &appchainMgr.Appchain{
+		ID:            appchainDID,
+		Name:          name,
+		Validators:    validators,
+		ConsensusType: consensusType,
+		ChainType:     chainType,
+		Status:        governance.GovernanceRegisting,
+		Desc:          desc,
+		Version:       version,
+		PublicKey:     pubkey,
+		DidDocAddr:    docAddr,
+		DidDocHash:    docHash,
+		Rule:          rule,
 		OwnerDID:      appchainAdminDID,
 	}
 	chainData, err := json.Marshal(chain)

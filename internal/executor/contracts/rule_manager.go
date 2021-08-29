@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
+
+	"github.com/meshplus/bitxid"
 
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/boltvm"
@@ -115,6 +118,39 @@ func (rm *RuleManager) RegisterRule(chainId string, ruleAddress, reason string) 
 	return rm.bindRule(chainId, ruleAddress, governance.EventBind, reason)
 }
 
+// Register records the rule, and then automatically binds the rule if there is no master validation rule
+func (rm *RuleManager) RegisterRuleV2(chainId, ruleAddress string) *boltvm.Response {
+	rm.RuleManager.Persister = rm.Stub
+
+	method := bitxid.DID(chainId).GetSubMethod()
+	appchainAdmin := strings.TrimPrefix(method, "appchain")
+
+	if rm.Caller() != appchainAdmin {
+		return boltvm.Error(fmt.Sprintf("caller %s is not appchain admin %s", rm.Caller(), appchainAdmin))
+	}
+
+	// 1. check rule
+	if err := rm.checkRuleAddress(ruleAddress); err != nil {
+		return boltvm.Error(err.Error())
+	}
+
+	// 2. register
+	ok, data := rm.RuleManager.Register(chainId, ruleAddress)
+	if !ok {
+		return boltvm.Error("register error: " + string(data))
+	}
+
+	registerRes := &governance.RegisterResult{}
+	if err := json.Unmarshal(data, registerRes); err != nil {
+		return boltvm.Error("unmarshal error: " + err.Error())
+	}
+	if registerRes.IsRegistered {
+		return boltvm.Error("rule has registered, chain id: " + chainId + ", rule addr: " + ruleAddress)
+	}
+
+	return boltvm.Success(nil)
+}
+
 // DefaultRule automatically adds default rules to the appchain after the appchain is registered successfully
 // DefaultRule Adds default rules automatically. The rule will automatically bound if there is no master rule currently. All processes do not require vote.
 // Possible situations:
@@ -199,6 +235,33 @@ func (rm *RuleManager) UpdateMasterRule(chainId string, newMasterruleAddress, re
 		return boltvm.Error("change status error: " + string(data))
 	}
 	return res
+}
+
+func (rm *RuleManager) BindRule(chainId string, ruleAddr string) *boltvm.Response {
+	rm.RuleManager.Persister = rm.Stub
+
+	if rm.Caller() != constant.AppchainMgrContractAddr.Address().String() {
+		return boltvm.Error(fmt.Sprintf("caller %s is not appchain manager contract", rm.Caller()))
+	}
+
+	ruleRes := rm.GetRuleByAddr(chainId, ruleAddr)
+	if !ruleRes.Ok {
+		return boltvm.Error("get rule by addr error: " + string(ruleRes.Result))
+	}
+	rule := &ruleMgr.Rule{}
+	if err := json.Unmarshal(ruleRes.Result, &rule); err != nil {
+		return boltvm.Error("unmarshal rule error:" + err.Error())
+	}
+
+	// change status
+	if ok, data := rm.RuleManager.ChangeStatus(ruleAddr, string(governance.EventBind), string(rule.Status), []byte(chainId)); !ok {
+		return boltvm.Error(fmt.Sprintf("change status on event %s error: %w", string(governance.EventBind), string(data)))
+	}
+	if ok, data := rm.RuleManager.ChangeStatus(ruleAddr, string(governance.EventApprove), string(governance.GovernanceBinding), []byte(chainId)); !ok {
+		return boltvm.Error(fmt.Sprintf("change status on event %s error: %w", string(governance.EventApprove), string(data)))
+	}
+
+	return boltvm.Success(nil)
 }
 
 func (rm *RuleManager) bindRule(chainId string, ruleAddr string, event governance.EventType, reason string) *boltvm.Response {
