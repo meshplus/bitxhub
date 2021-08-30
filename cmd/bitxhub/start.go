@@ -28,13 +28,25 @@ var logger = log.NewWithModule("cmd")
 
 func startCMD() cli.Command {
 	return cli.Command{
-		Name:   "start",
-		Usage:  "Start a long-running start process",
+		Name:  "start",
+		Usage: "Start a long-running start process",
 		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name:        "passwd",
-				Usage:       "bitxhub key password",
-				Required:    false,
+				Name:     "passwd",
+				Usage:    "bitxhub key password",
+				Required: false,
+			},
+			cli.StringFlag{
+				Name:  "config",
+				Usage: "bitxhub config path",
+			},
+			cli.StringFlag{
+				Name:  "network",
+				Usage: "bitxhub network config path",
+			},
+			cli.StringFlag{
+				Name:  "order",
+				Usage: "bitxhub order config path",
 			},
 		},
 		Action: start,
@@ -48,8 +60,11 @@ func start(ctx *cli.Context) error {
 	}
 
 	passwd := ctx.String("passwd")
+	configPath := ctx.String("config")
+	networkPath := ctx.String("network")
+	orderPath := ctx.String("order")
 
-	repo, err := repo.Load(repoRoot, passwd)
+	repo, err := repo.Load(repoRoot, passwd, configPath, networkPath)
 	if err != nil {
 		return fmt.Errorf("repo load: %w", err)
 	}
@@ -83,7 +98,7 @@ func start(ctx *cli.Context) error {
 
 	printVersion()
 
-	bxh, err := app.NewBitXHub(repo)
+	bxh, err := app.NewBitXHub(repo, orderPath)
 	if err != nil {
 		return err
 	}

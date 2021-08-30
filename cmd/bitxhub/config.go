@@ -27,7 +27,7 @@ func showConfig(ctx *cli.Context) error {
 		}
 	}
 
-	cfg, err := repo.UnmarshalConfig(repoRoot)
+	cfg, err := repo.UnmarshalConfig(repoRoot, "")
 	if err != nil {
 		return err
 	}

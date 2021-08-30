@@ -2,6 +2,7 @@ package repo
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -196,8 +197,20 @@ func DefaultConfig() (*Config, error) {
 	}, nil
 }
 
-func UnmarshalConfig(repoRoot string) (*Config, error) {
-	viper.SetConfigFile(filepath.Join(repoRoot, configName))
+func UnmarshalConfig(repoRoot string, configPath string) (*Config, error) {
+	if len(configPath) == 0 {
+		viper.SetConfigFile(filepath.Join(repoRoot, configName))
+	} else {
+		viper.SetConfigFile(configPath)
+		fileDate, err := ioutil.ReadFile(configPath)
+		if err != nil {
+			return nil, err
+		}
+		err = ioutil.WriteFile(filepath.Join(repoRoot, configName), fileDate, 0644)
+		if err != nil {
+			return nil, err
+		}
+	}
 	viper.SetConfigType("toml")
 	viper.AutomaticEnv()
 	viper.SetEnvPrefix("BITXHUB")

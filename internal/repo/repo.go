@@ -15,13 +15,26 @@ type Repo struct {
 	Certs         *libp2pcert.Certs
 }
 
-func Load(repoRoot string, passwd string) (*Repo, error) {
-	config, err := UnmarshalConfig(repoRoot)
+func Load(repoRoot string, passwd string, configPath, networkPath string) (*Repo, error) {
+	config, err := UnmarshalConfig(repoRoot, configPath)
 	if err != nil {
 		return nil, err
 	}
 
-	networkConfig, err := loadNetworkConfig(repoRoot, config.Genesis)
+	var networkConfig *NetworkConfig
+	if len(networkPath) == 0 {
+		networkConfig, err = loadNetworkConfig(repoRoot, config.Genesis)
+	} else {
+		networkConfig, err = loadNetworkConfig(filepath.Dir(networkPath), config.Genesis)
+		fileData, err := ioutil.ReadFile(networkPath)
+		if err != nil {
+			return nil, err
+		}
+		err = ioutil.WriteFile(filepath.Join(repoRoot, "network.toml"), fileData, 0644)
+		if err != nil {
+			return nil, err
+		}
+	}
 	if err != nil {
 		return nil, fmt.Errorf("load network config: %w", err)
 	}

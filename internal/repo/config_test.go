@@ -36,7 +36,7 @@ func TestReadConfig(t *testing.T) {
 	_, err = cfg.Bytes()
 	require.Nil(t, err)
 
-	_, err = UnmarshalConfig("../../config")
+	_, err = UnmarshalConfig("../../config", "")
 	require.Nil(t, err)
 
 	pathRoot, err := PathRoot()
