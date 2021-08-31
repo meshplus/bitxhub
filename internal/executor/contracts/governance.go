@@ -23,7 +23,8 @@ type ProposalStatus string
 type EndReason string
 
 const (
-	PROPOSAL_PREFIX = "proposal-"
+	PROPOSAL_PREFIX      = "proposal-"
+	PROPOSALFREOM_PREFIX = "from"
 
 	AppchainMgr         ProposalType = "AppchainMgr"
 	RuleMgr             ProposalType = "RuleMgr"
@@ -170,6 +171,14 @@ func (g *Governance) SubmitProposal(from, eventTyp, des, typ, objId, objLastStat
 	p.IsSpecial = isSpecialProposal(p)
 
 	g.AddObject(ProposalKey(p.Id), *p)
+	var proList []string
+	ok := g.GetObject(ProposalFromKey(from), &proList)
+	if !ok {
+		g.AddObject(ProposalFromKey(from), []string{p.Id})
+	} else {
+		proList = append(proList, p.Id)
+		g.SetObject(ProposalFromKey(from), proList)
+	}
 
 	return boltvm.Success([]byte(p.Id))
 }
@@ -364,21 +373,20 @@ func (g *Governance) GetProposalsByFrom(from string) *boltvm.Response {
 }
 
 func (g *Governance) getProposalsByFrom(from string) ([]Proposal, error) {
-	ok, datas := g.Query(PROPOSAL_PREFIX)
+	var idList []string
+	ok := g.GetObject(ProposalFromKey(from), &idList)
 	if !ok {
 		return make([]Proposal, 0), nil
 	}
 
 	ret := make([]Proposal, 0)
-	for _, d := range datas {
+	for _, id := range idList {
 		p := Proposal{}
-		if err := json.Unmarshal(d, &p); err != nil {
-			return nil, err
+		ok := g.GetObject(ProposalKey(id), &p)
+		if !ok {
+			return nil, fmt.Errorf("proposal %s is not exist", id)
 		}
-
-		if from == p.Id[0:strings.Index(p.Id, "-")] {
-			ret = append(ret, p)
-		}
+		ret = append(ret, p)
 	}
 
 	return ret, nil
@@ -986,6 +994,10 @@ func (g *Governance) GetProposalStrategyType(pt string) *boltvm.Response {
 // Key ====================================================================
 func ProposalKey(id string) string {
 	return fmt.Sprintf("%s-%s", PROPOSAL_PREFIX, id)
+}
+
+func ProposalFromKey(id string) string {
+	return fmt.Sprintf("%s-%s", PROPOSALFREOM_PREFIX, id)
 }
 
 // Check info =============================================================
