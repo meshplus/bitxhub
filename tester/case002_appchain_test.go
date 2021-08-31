@@ -195,6 +195,7 @@ func (suite *RegisterAppchain) TestRegisterV2Appchain() {
 	ret, err := invokeBVMContract(suite.api, k2, k2Nonce, constant.RuleManagerContractAddr.Address(), "RegisterRuleV2",
 		pb.String(appchainDID),
 		pb.String(ruleAddr.String()),
+		pb.String("ruleUrl"),
 	)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
@@ -213,6 +214,7 @@ func (suite *RegisterAppchain) TestRegisterV2Appchain() {
 		pb.String(""),
 		pb.String("reason"),
 		pb.String(ruleAddr.String()),
+		pb.String("ruleurl"),
 	}
 	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "RegisterV2", args...)
 	suite.Require().Nil(err)

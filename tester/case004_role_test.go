@@ -279,6 +279,7 @@ func (suite *Role) TestGetRuleAddress() {
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(), "RegisterRule",
 		pb.String(id1),
 		pb.String(ruleAddr1.String()),
+		pb.String("ruleUrl"),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)

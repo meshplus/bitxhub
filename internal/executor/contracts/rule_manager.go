@@ -73,7 +73,7 @@ func (rm *RuleManager) Manage(eventTyp string, proposalResult, lastStatus string
 }
 
 // Register records the rule, and then automatically binds the rule if there is no master validation rule
-func (rm *RuleManager) RegisterRule(chainId string, ruleAddress, reason string) *boltvm.Response {
+func (rm *RuleManager) RegisterRule(chainId string, ruleAddress, ruleUrl, reason string) *boltvm.Response {
 	rm.RuleManager.Persister = rm.Stub
 
 	// 1. check permission
@@ -92,7 +92,7 @@ func (rm *RuleManager) RegisterRule(chainId string, ruleAddress, reason string) 
 	}
 
 	// 4. register
-	ok, data := rm.RuleManager.Register(chainId, ruleAddress)
+	ok, data := rm.RuleManager.Register(chainId, ruleAddress, ruleUrl)
 	if !ok {
 		return boltvm.Error("register error: " + string(data))
 	}
@@ -118,7 +118,7 @@ func (rm *RuleManager) RegisterRule(chainId string, ruleAddress, reason string) 
 }
 
 // Register records the rule, and then automatically binds the rule if there is no master validation rule
-func (rm *RuleManager) RegisterRuleV2(chainId, ruleAddress string) *boltvm.Response {
+func (rm *RuleManager) RegisterRuleV2(chainId, ruleAddress, ruleUrl string) *boltvm.Response {
 	rm.RuleManager.Persister = rm.Stub
 
 	method := bitxid.DID(chainId).GetSubMethod()
@@ -134,7 +134,7 @@ func (rm *RuleManager) RegisterRuleV2(chainId, ruleAddress string) *boltvm.Respo
 	}
 
 	// 2. register
-	ok, data := rm.RuleManager.Register(chainId, ruleAddress)
+	ok, data := rm.RuleManager.Register(chainId, ruleAddress, ruleUrl)
 	if !ok {
 		return boltvm.Error("register error: " + string(data))
 	}
@@ -169,7 +169,7 @@ func (rm *RuleManager) DefaultRule(chainId string, ruleAddress string) *boltvm.R
 	}
 
 	// 2. register
-	ok, data := rm.RuleManager.Register(chainId, ruleAddress)
+	ok, data := rm.RuleManager.Register(chainId, ruleAddress, "")
 	if !ok {
 		return boltvm.Error("register error: " + string(data))
 	}
@@ -236,7 +236,7 @@ func (rm *RuleManager) UpdateMasterRule(chainId string, newMasterruleAddress, re
 	return res
 }
 
-func (rm *RuleManager) BindRule(chainId string, ruleAddr string) *boltvm.Response {
+func (rm *RuleManager) BindRule(chainId string, ruleAddr, ruleUrl string) *boltvm.Response {
 	rm.RuleManager.Persister = rm.Stub
 
 	if rm.CurrentCaller() != constant.AppchainMgrContractAddr.Address().String() {
@@ -244,7 +244,7 @@ func (rm *RuleManager) BindRule(chainId string, ruleAddr string) *boltvm.Respons
 	}
 
 	if ruleAddr == validator.FabricRuleAddr || ruleAddr == validator.SimFabricRuleAddr || ruleAddr == validator.HappyRuleAddr {
-		ok, data := rm.RuleManager.Register(chainId, ruleAddr)
+		ok, data := rm.RuleManager.Register(chainId, ruleAddr, ruleUrl)
 		if !ok {
 			return boltvm.Error("register error: " + string(data))
 		}
@@ -261,10 +261,10 @@ func (rm *RuleManager) BindRule(chainId string, ruleAddr string) *boltvm.Respons
 
 	// change status
 	if ok, data := rm.RuleManager.ChangeStatus(ruleAddr, string(governance.EventBind), string(rule.Status), []byte(chainId)); !ok {
-		return boltvm.Error(fmt.Sprintf("change status on event %s error: %w", string(governance.EventBind), string(data)))
+		return boltvm.Error(fmt.Sprintf("change status on event %s error: %s", string(governance.EventBind), string(data)))
 	}
 	if ok, data := rm.RuleManager.ChangeStatus(ruleAddr, string(governance.EventApprove), string(governance.GovernanceBinding), []byte(chainId)); !ok {
-		return boltvm.Error(fmt.Sprintf("change status on event %s error: %w", string(governance.EventApprove), string(data)))
+		return boltvm.Error(fmt.Sprintf("change status on event %s error: %s", string(governance.EventApprove), string(data)))
 	}
 
 	return boltvm.Success(nil)

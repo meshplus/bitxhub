@@ -6,14 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/meshplus/bitxhub/internal/ledger"
-
-	ruleMgr "github.com/meshplus/bitxhub-core/rule-mgr"
-
-	"github.com/meshplus/bitxhub-core/governance"
-
 	"github.com/golang/mock/gomock"
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
+	"github.com/meshplus/bitxhub-core/governance"
 	"github.com/meshplus/bitxhub-core/validator/mock_validator"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
@@ -22,6 +17,7 @@ import (
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
+	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/ledger/mock_ledger"
 	"github.com/stretchr/testify/require"
 )
@@ -55,16 +51,16 @@ func TestVerifyPool_CheckProof(t *testing.T) {
 
 	chainData, err := json.Marshal(chain)
 	require.Nil(t, err)
-
-	rl := &ruleMgr.Rule{
-		Address: contract,
-	}
-	rlData, err := json.Marshal(rl)
-	require.Nil(t, err)
+	//
+	//rl := &ruleMgr.Rule{
+	//	Address: contract,
+	//}
+	//rlData, err := json.Marshal(rl)
+	//require.Nil(t, err)
 
 	stateLedger.EXPECT().Copy().Return(stateLedger).AnyTimes()
 	stateLedger.EXPECT().GetState(constant.AppchainMgrContractAddr.Address(), gomock.Any()).Return(true, chainData)
-	stateLedger.EXPECT().GetState(constant.RuleManagerContractAddr.Address(), gomock.Any()).Return(false, rlData)
+	//stateLedger.EXPECT().GetState(constant.RuleManagerContractAddr.Address(), gomock.Any()).Return(false, rlData)
 	mockEngine.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil).AnyTimes()
 
 	vp := New(mockLedger, log.NewWithModule("test_verify"))
