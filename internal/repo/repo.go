@@ -2,36 +2,32 @@ package repo
 
 import (
 	"fmt"
-	"github.com/spf13/viper"
 	"io/ioutil"
+	"os/exec"
 	"path/filepath"
+
+	"github.com/spf13/viper"
 
 	"github.com/ethereum/go-ethereum/event"
 	libp2pcert "github.com/meshplus/go-libp2p-cert"
 )
 
 type Repo struct {
-	Config             *Config
-	NetworkConfig      *NetworkConfig
-	Key                *Key
-	Certs              *libp2pcert.Certs
-	ConfigChangeFeed   event.Feed
+	Config           *Config
+	NetworkConfig    *NetworkConfig
+	Key              *Key
+	Certs            *libp2pcert.Certs
+	ConfigChangeFeed event.Feed
 }
-
-var (
-	ConfigPath  string
-	NetworkPath string
-	OrderPath   string
-)
 
 func (r *Repo) SubscribeConfigChange(ch chan *Repo) event.Subscription {
 	return r.ConfigChangeFeed.Subscribe(ch)
 }
 
-func Load(repoRoot string, passwd string) (*Repo, error) {
+func Load(repoRoot string, passwd string, configPath string, networkPath string) (*Repo, error) {
 	bViper := viper.New()
 	nViper := viper.New()
-	config, err := UnmarshalConfig(bViper, repoRoot)
+	config, err := UnmarshalConfig(bViper, repoRoot, configPath)
 	if err != nil {
 		return nil, err
 	}
@@ -41,10 +37,15 @@ func Load(repoRoot string, passwd string) (*Repo, error) {
 	}
 
 	var networkConfig *NetworkConfig
-	if len(NetworkPath) == 0 {
+	if len(networkPath) == 0 {
 		networkConfig, err = loadNetworkConfig(nViper, repoRoot, config.Genesis)
 	} else {
-		networkConfig, err = loadNetworkConfig(nViper, config.Genesis)
+		networkConfig, err = loadNetworkConfig(nViper, networkPath, config.Genesis)
+		cmd := exec.Command("cp", filepath.Join(networkPath, "network.toml"), filepath.Join(repoRoot, "network.toml"))
+		err := cmd.Run()
+		if err != nil {
+			return nil, err
+		}
 	}
 	if err != nil {
 		return nil, fmt.Errorf("load network config: %w", err)

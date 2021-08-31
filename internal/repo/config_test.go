@@ -1,8 +1,9 @@
 package repo
 
 import (
-	"github.com/spf13/viper"
 	"testing"
+
+	"github.com/spf13/viper"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/stretchr/testify/assert"
@@ -38,7 +39,7 @@ func TestReadConfig(t *testing.T) {
 	_, err = cfg.Bytes()
 	require.Nil(t, err)
 
-	_, err = UnmarshalConfig(v, "../../config")
+	_, err = UnmarshalConfig(v, "../../config", "")
 	require.Nil(t, err)
 
 	pathRoot, err := PathRoot()

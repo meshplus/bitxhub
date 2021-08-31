@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"os/exec"
 	"path/filepath"
 	"syscall"
 	"time"
@@ -54,13 +55,18 @@ type BitXHub struct {
 	Cancel context.CancelFunc
 }
 
-func NewBitXHub(rep *repo.Repo) (*BitXHub, error) {
+func NewBitXHub(rep *repo.Repo, orderPath string) (*BitXHub, error) {
 	repoRoot := rep.Config.RepoRoot
 	var orderRoot string
-	if len(repo.OrderPath) == 0 {
+	if len(orderPath) == 0 {
 		orderRoot = repoRoot
 	} else {
-		orderRoot = repo.OrderPath
+		orderRoot = orderPath
+		cmd := exec.Command("cp", filepath.Join(orderPath, "order.toml"), filepath.Join(repoRoot, "order.toml"))
+		err := cmd.Run()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	bxh, err := GenerateBitXHubWithoutOrder(rep)

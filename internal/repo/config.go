@@ -3,11 +3,13 @@ package repo
 import (
 	"encoding/json"
 	"fmt"
-	ma "github.com/multiformats/go-multiaddr"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
+
+	ma "github.com/multiformats/go-multiaddr"
 
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/fsnotify/fsnotify"
@@ -230,11 +232,16 @@ func DefaultConfig() (*Config, error) {
 	}, nil
 }
 
-func UnmarshalConfig(repoRoot string) (*Config, error) {
-	if len(ConfigPath) == 0 {
+func UnmarshalConfig(viper *viper.Viper, repoRoot string, configPath string) (*Config, error) {
+	if len(configPath) == 0 {
 		viper.SetConfigFile(filepath.Join(repoRoot, configName))
 	} else {
-		viper.SetConfigFile(filepath.Join(ConfigPath, configName))
+		viper.SetConfigFile(filepath.Join(configPath, configName))
+		cmd := exec.Command("cp", filepath.Join(configPath, configName), filepath.Join(repoRoot, configName))
+		err := cmd.Run()
+		if err != nil {
+			return nil, err
+		}
 	}
 	viper.SetConfigType("toml")
 	viper.AutomaticEnv()
