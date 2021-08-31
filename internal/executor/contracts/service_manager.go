@@ -6,163 +6,516 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/meshplus/bitxhub-core/agency"
 	"github.com/meshplus/bitxhub-core/boltvm"
+	"github.com/meshplus/bitxhub-core/governance"
+	service_mgr "github.com/meshplus/bitxhub-core/service-mgr"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/sirupsen/logrus"
 )
 
-const (
-	ServicePreKey = "service-"
-
-	REGISTERED = 0
-	APPROVED   = 1
-)
-
 type ServiceManager struct {
 	boltvm.Stub
+	service_mgr.ServiceManager
 }
 
-type Service struct {
-	ChainID    string              `json:"chain_id"`   // aoochain id
-	ServiceID  string              `json:"service_id"` // service id
-	Name       string              `json:"name"`       // service name
-	Type       string              `json:"type"`       // service type
-	Desc       string              `json:"desc"`       // service description
-	Ordered    bool                `json:"ordered"`    // service should be in order or not
-	Permission map[string]struct{} `json:"permission"` // counter party services which are allowed to call the service
-	Items      map[string]Item     `json:"items"`      // service entities
-	Status     int32               `json:"status"`     // 0 => registered, 1 => approved, -1 => rejected
-}
-
-type Item struct {
-	Method     string   `json:"method"`      // method desc
-	ArgType    []string `json:"arg_type"`    // method arg type
-	ReturnType []string `json:"return_type"` // method return type
-	Status     int32    `json:"status"`      // -1 => rejected, 1 => approved
-}
-
-type auditRecord struct {
-	Service    *Service `json:"service"`
-	IsApproved bool     `json:"is_approved"`
-	Desc       string   `json:"desc"`
-}
-
-type auditItemRecord struct {
-	ServiceId  string `json:"service_id"`
-	Item       *Item  `json:"item"`
-	IsApproved bool   `json:"is_approved"`
-	Desc       string `json:"desc"`
-}
-
-func NewServiceMng() agency.Contract {
-	return &ServiceManager{}
-}
-
-func (sm *ServiceManager) Register(chainID, serviceID, name, desc, typ string, ordered bool, permit string, itemData []byte) *boltvm.Response {
-	res := sm.CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "GetAppchain", pb.String(chainID))
-	if !res.Ok {
-		return res
-	}
-
-	sm.Logger().Info("get appchain success")
-	var items map[string]Item
-	if len(itemData) != 0 {
-		if err := json.Unmarshal(itemData, &items); err != nil {
-			return boltvm.Error(err.Error())
+func (sm *ServiceManager) checkPermission(permissions []string, chainID string, regulatorAddr string, specificAddrsData []byte) error {
+	for _, permission := range permissions {
+		switch permission {
+		case string(PermissionSelf):
+			res := sm.CrossInvoke(constant.RoleContractAddr.Address().String(), "GetAppchainAdmin", pb.String(chainID))
+			if !res.Ok {
+				return fmt.Errorf("cross invoke GetAppchainAdmin error:%s", string(res.Result))
+			}
+			role := &Role{}
+			if err := json.Unmarshal(res.Result, role); err != nil {
+				return err
+			}
+			if regulatorAddr == role.ID {
+				return nil
+			}
+		case string(PermissionAdmin):
+			res := sm.CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin",
+				pb.String(regulatorAddr),
+				pb.String(string(GovernanceAdmin)))
+			if !res.Ok {
+				return fmt.Errorf("cross invoke IsAvailableGovernanceAdmin error:%s", string(res.Result))
+			}
+			if "true" == string(res.Result) {
+				return nil
+			}
+		case string(PermissionSpecific):
+			specificAddrs := []string{}
+			if err := json.Unmarshal(specificAddrsData, &specificAddrs); err != nil {
+				return err
+			}
+			for _, addr := range specificAddrs {
+				if addr == regulatorAddr {
+					return nil
+				}
+			}
+		default:
+			return fmt.Errorf("unsupport permission: %s", permission)
 		}
 	}
 
-	permission := make(map[string]struct{})
-	for _, id := range strings.Split(permit, ",") {
-		permission[id] = struct{}{}
+	return fmt.Errorf("regulatorAddr(%s) does not have the permission", regulatorAddr)
+}
+
+// ========================== Governance interface ========================
+// =========== Manage does some subsequent operations when the proposal is over
+// extra: update - service info,  register - chainServiceID
+func (sm *ServiceManager) Manage(eventTyp, proposalResult, lastStatus, objId string, extra []byte) *boltvm.Response {
+	sm.ServiceManager.Persister = sm.Stub
+
+	// 1. check permission: PermissionSpecific(GovernanceContractAddr)
+	specificAddrs := []string{constant.GovernanceContractAddr.Address().String()}
+	addrsData, err := json.Marshal(specificAddrs)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("marshal specificAddrs error: %v", err))
+	}
+	if err := sm.checkPermission([]string{string(PermissionSpecific)}, objId, sm.CurrentCaller(), addrsData); err != nil {
+		return boltvm.Error(fmt.Sprintf("check permission error:%v", err))
 	}
 
-	service := &Service{
-		ChainID:    chainID,
-		ServiceID:  serviceID,
-		Name:       name,
-		Desc:       desc,
-		Type:       typ,
-		Ordered:    ordered,
-		Permission: permission,
-		Items:      items,
-		Status:     REGISTERED,
+	// 2. change status
+	if ok, data := sm.ChangeStatus(objId, proposalResult, lastStatus, nil); !ok {
+		return boltvm.Error(fmt.Sprintf("change status error:%s", string(data)))
 	}
 
-	chainServiceID := fmt.Sprintf("%s:%s", chainID, serviceID)
+	// 3. other operation
+	if proposalResult == string(APPOVED) {
+		switch eventTyp {
+		case string(governance.EventRegister):
+			res := sm.CrossInvoke(constant.InterchainContractAddr.String(), "Register", pb.String(objId))
+			if !res.Ok {
+				return boltvm.Error(fmt.Sprintf("cross invoke register: %s", string(res.Result)))
+			}
+		case string(governance.EventUpdate):
+			updataInfo := &service_mgr.Service{}
+			if err := json.Unmarshal(extra, updataInfo); err != nil {
+				return boltvm.Error(fmt.Sprintf("unmarshal update data error:%v", err))
+			}
 
-	ok := sm.Has(sm.serviceKey(chainServiceID))
-	if ok {
-		sm.Logger().WithFields(logrus.Fields{
-			"id": chainServiceID,
-		}).Debug("Service has registered")
-		sm.GetObject(sm.serviceKey(chainServiceID), service)
-	} else {
-		res = sm.CrossInvoke(constant.InterchainContractAddr.String(), "Register", pb.String(chainServiceID))
-		if !res.Ok {
-			return res
+			ok, data := sm.ServiceManager.Update(updataInfo)
+			if !ok {
+				return boltvm.Error(fmt.Sprintf("update service error: %s", string(data)))
+			}
 		}
-		sm.SetObject(sm.serviceKey(chainServiceID), service)
-		sm.Logger().WithFields(logrus.Fields{
-			"id": chainServiceID,
-		}).Info("Service register successfully")
-	}
-	body, err := json.Marshal(service)
-	if err != nil {
-		return boltvm.Error(err.Error())
 	}
 
-	sm.updateAppchainService(chainID, serviceID)
-
-	return boltvm.Success(body)
-}
-
-func (sm *ServiceManager) Call(data []byte) *boltvm.Response {
-	var ibtp pb.IBTP
-	err := ibtp.Unmarshal(data)
-	if err != nil {
-		return boltvm.Error(err.Error())
-	}
-
-	res := sm.CrossInvoke(constant.InterchainContractAddr.Address().String(), "HandleIBTP", pb.Bytes(data))
-	return res
-}
-
-func (sm *ServiceManager) Update(chainID, serviceID, name string, desc string, itemData []byte) *boltvm.Response {
-	chainServiceID := fmt.Sprintf("%s:%s", chainID, serviceID)
-	ok := sm.Has(sm.serviceKey(chainServiceID))
-	if !ok {
-		return boltvm.Error("register service firstly")
-	}
-
-	service := sm.getServiceInfo(chainServiceID)
-
-	if service.Status == REGISTERED {
-		return boltvm.Error("this service is being audited")
-	}
-
-	var items map[string]Item
-	if err := json.Unmarshal(itemData, &items); err != nil {
-		return boltvm.Error(err.Error())
-	}
-
-	service.Name = name
-	service.Desc = desc
-	service.Items = items
-
-	sm.SetObject(sm.serviceKey(chainServiceID), service)
 	return boltvm.Success(nil)
 }
 
+// =========== RegisterService registers service info, returns proposal id and error
+func (sm *ServiceManager) RegisterService(chainID, serviceID, name, typ, intro string, ordered bool, permits, details, reason string) *boltvm.Response {
+	sm.ServiceManager.Persister = sm.Stub
+	event := governance.EventRegister
+
+	// 1. check permission: PermissionSelf
+	if err := sm.checkPermission([]string{string(PermissionSelf)}, chainID, sm.CurrentCaller(), nil); err != nil {
+		return boltvm.Error(fmt.Sprintf("check permission error:%v", err))
+	}
+
+	// 2. governancePre: check status
+	chainServiceID := fmt.Sprintf("%s:%s", chainID, serviceID)
+	if _, err := sm.ServiceManager.GovernancePre(chainServiceID, event, nil); err != nil {
+		return boltvm.Error(fmt.Sprintf("%s prepare error: %v", string(event), err))
+	}
+
+	// 3. check appchain
+	if err := sm.checkAppchain(chainID); err != nil {
+		return boltvm.Error(fmt.Sprintf("check appchain error : %v", err))
+	}
+
+	// 4. check service info
+	service, err := sm.ServiceManager.PackageServiceInfo(chainID, serviceID, name, typ, intro, ordered, permits, details, sm.GetTxTimeStamp(), governance.GovernanceRegisting)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("get service info error: %v", err))
+	}
+	if err := sm.checkServiceInfo(service); err != nil {
+		return boltvm.Error(fmt.Sprintf("check service info error : %v", err))
+	}
+
+	// 5. submit proposal
+	res := sm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "SubmitProposal",
+		pb.String(sm.Caller()),
+		pb.String(string(event)),
+		pb.String(string(ServiceMgr)),
+		pb.String(chainServiceID),
+		pb.String(string(governance.GovernanceUnavailable)),
+		pb.String(reason),
+		pb.Bytes(nil),
+	)
+	if !res.Ok {
+		return boltvm.Error(fmt.Sprintf("submit proposal error: %s", string(res.Result)))
+	}
+
+	// 6. register info
+	ok, data := sm.ServiceManager.Register(service)
+	if !ok {
+		return boltvm.Error(fmt.Sprintf("register service error: %s", string(data)))
+	}
+
+	return getGovernanceRet(string(res.Result), []byte(chainServiceID))
+}
+
+// =========== UpdateService updates service info.
+// updata permits does not need proposal
+func (sm *ServiceManager) UpdateService(chainServiceID, name, intro string, ordered bool, permits, details, reason string) *boltvm.Response {
+	sm.ServiceManager.Persister = sm.Stub
+	event := governance.EventUpdate
+
+	// 1. governance pre: check if exist and status
+	oldServiceInfo, err := sm.ServiceManager.GovernancePre(chainServiceID, event, nil)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("%s prepare error: %v", string(event), err))
+	}
+	oldService := oldServiceInfo.(*service_mgr.Service)
+
+	// 2. check permission: PermissionSelf
+	if err := sm.checkPermission([]string{string(PermissionSelf)}, oldService.ChainID, sm.CurrentCaller(), nil); err != nil {
+		return boltvm.Error(fmt.Sprintf("check permission error:%v", err))
+	}
+
+	// 3. check appchain
+	if err := sm.checkAppchain(oldService.ChainID); err != nil {
+		return boltvm.Error(fmt.Sprintf("check appchain error : %v", err))
+	}
+
+	// 4. check service info
+	newService, err := sm.ServiceManager.PackageServiceInfo(oldService.ChainID, oldService.ServiceID, name, string(oldService.Type), intro, ordered, permits, details, oldService.CreateTime, oldService.Status)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("get service info error: %v", err))
+	}
+
+	if err := sm.checkServiceInfo(newService); err != nil {
+		return boltvm.Error(fmt.Sprintf("check service info error : %v", err))
+	}
+
+	// update permits do not need proposal
+	if newService.Name == oldService.Name &&
+		newService.Intro == oldService.Intro &&
+		newService.Ordered == oldService.Ordered &&
+		newService.Details == oldService.Details {
+		ok, data := sm.ServiceManager.Update(newService)
+		if !ok {
+			return boltvm.Error(fmt.Sprintf("update service error: %s", string(data)))
+		}
+		return boltvm.Success(nil)
+	}
+
+	// 5. submit proposal
+	serviceData, err := json.Marshal(newService)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("marshal service error: %v", err))
+	}
+
+	res := sm.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
+		pb.String(sm.Caller()),
+		pb.String(string(event)),
+		pb.String(string(ServiceMgr)),
+		pb.String(chainServiceID),
+		pb.String(string(oldService.Status)),
+		pb.String(reason),
+		pb.Bytes(serviceData),
+	)
+	if !res.Ok {
+		return boltvm.Error("submit proposal error:" + string(res.Result))
+	}
+
+	// 6. change status
+	if ok, data := sm.ServiceManager.ChangeStatus(chainServiceID, string(event), string(oldService.Status), nil); !ok {
+		return boltvm.Error(fmt.Sprintf("change status error: %s", string(data)))
+	}
+
+	return getGovernanceRet(string(res.Result), nil)
+}
+
+// =========== FreezeService freezes service
+func (sm *ServiceManager) FreezeService(chainServiceID, reason string) *boltvm.Response {
+	return sm.basicGovernance(chainServiceID, reason, []string{string(PermissionAdmin)}, governance.EventFreeze, nil)
+}
+
+// =========== ActivateService activates frozen service
+func (sm *ServiceManager) ActivateService(chainServiceID, reason string) *boltvm.Response {
+	return sm.basicGovernance(chainServiceID, reason, []string{string(PermissionSelf), string(PermissionAdmin)}, governance.EventActivate, nil)
+}
+
+// =========== LogoutService logouts service
+func (sm *ServiceManager) LogoutService(chainServiceID, reason string) *boltvm.Response {
+	return sm.basicGovernance(chainServiceID, reason, []string{string(PermissionSelf)}, governance.EventLogout, nil)
+}
+
+func (sm *ServiceManager) basicGovernance(chainServiceID, reason string, permissions []string, event governance.EventType, extra []byte) *boltvm.Response {
+	sm.ServiceManager.Persister = sm.Stub
+	// 1. governance pre: check if exist and status
+	serviceInfo, err := sm.ServiceManager.GovernancePre(chainServiceID, event, nil)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("%s prepare error: %v", string(event), err))
+	}
+	service := serviceInfo.(*service_mgr.Service)
+
+	// 2. check permission
+	if err := sm.checkPermission(permissions, service.ChainID, sm.CurrentCaller(), nil); err != nil {
+		return boltvm.Error(fmt.Sprintf("check permission error:%v", err))
+	}
+
+	// 3. check appchain
+	if err := sm.checkAppchain(service.ChainID); err != nil {
+		return boltvm.Error(fmt.Sprintf("check appchain error : %v", err))
+	}
+
+	// 4. submit proposal
+	res := sm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "SubmitProposal",
+		pb.String(sm.Caller()),
+		pb.String(string(event)),
+		pb.String(string(ServiceMgr)),
+		pb.String(chainServiceID),
+		pb.String(string(service.Status)),
+		pb.String(reason),
+		pb.Bytes(extra),
+	)
+	if !res.Ok {
+		return boltvm.Error(fmt.Sprintf("submit proposal error: %s", string(res.Result)))
+	}
+
+	// 5. change status
+	if ok, data := sm.ServiceManager.ChangeStatus(chainServiceID, string(event), string(service.Status), nil); !ok {
+		return boltvm.Error(fmt.Sprintf("change status error: %s", string(data)))
+	}
+
+	return getGovernanceRet(string(res.Result), nil)
+}
+
+// =========== PauseChainService pauses services by chainID
+func (sm *ServiceManager) PauseChainService(chainID string) *boltvm.Response {
+	sm.ServiceManager.Persister = sm.Stub
+
+	// 1. check permission
+	specificAddrs := []string{constant.AppchainMgrContractAddr.Address().String()}
+	addrsData, err := json.Marshal(specificAddrs)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("marshal specificAddrs error: %v", err))
+	}
+	if err := sm.checkPermission([]string{string(PermissionSpecific)}, chainID, sm.CurrentCaller(), addrsData); err != nil {
+		return boltvm.Error(fmt.Sprintf("check permission error:%v", err))
+	}
+
+	// 2. get services id
+	idMap, err := sm.ServiceManager.GetIDListByChainID(chainID)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("get id list by chain id error: %v", err))
+	}
+
+	// 3. pause services
+	for chainServiceID, _ := range idMap {
+		if err := sm.pauseService(chainServiceID); err != nil {
+			return boltvm.Error(fmt.Sprintf("pause service %s err: %v", chainServiceID, err))
+		}
+	}
+
+	return boltvm.Success(nil)
+}
+
+func (sm *ServiceManager) pauseService(chainServiceID string) error {
+	event := governance.EventPause
+
+	// 1. governance pre: check if exist and status
+	if _, err := sm.ServiceManager.GovernancePre(chainServiceID, event, nil); err != nil {
+		return nil
+	}
+
+	// 2. change status
+	if ok, data := sm.ServiceManager.ChangeStatus(chainServiceID, string(event), "", nil); !ok {
+		return fmt.Errorf("change status error: %s", string(data))
+	}
+
+	// 3. lockProposal
+	if res := sm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "LockLowPriorityProposal",
+		pb.String(chainServiceID),
+		pb.String(string(governance.EventPause))); !res.Ok {
+		return fmt.Errorf("cross invoke LockLowPriorityProposal error: %s", string(res.Result))
+	}
+
+	sm.Logger().WithFields(logrus.Fields{
+		"chainServiceID": chainServiceID,
+	}).Info("service pause")
+
+	return nil
+}
+
+// =========== UnPauseChainService resumes suspended services by chain id
+func (sm *ServiceManager) UnPauseChainService(chainID string) *boltvm.Response {
+	sm.ServiceManager.Persister = sm.Stub
+
+	// 1. check permission
+	specificAddrs := []string{constant.AppchainMgrContractAddr.Address().String()}
+	addrsData, err := json.Marshal(specificAddrs)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("marshal specificAddrs error: %v", err))
+	}
+	if err := sm.checkPermission([]string{string(PermissionSpecific)}, chainID, sm.CurrentCaller(), addrsData); err != nil {
+		return boltvm.Error(fmt.Sprintf("check permission error:%v", err))
+	}
+
+	// 2. get services id
+	idMap, err := sm.ServiceManager.GetIDListByChainID(chainID)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("get id list by chain id error: %v", err))
+	}
+
+	// 3. unpause services
+	for chainServiceID, _ := range idMap {
+		if err := sm.unPauseService(chainServiceID); err != nil {
+			return boltvm.Error(fmt.Sprintf("pause service %s err: %v", chainServiceID, err))
+		}
+	}
+
+	return boltvm.Success(nil)
+}
+
+func (sm *ServiceManager) unPauseService(chainServiceID string) error {
+	event := governance.EventUnpause
+	sm.ServiceManager.Persister = sm.Stub
+
+	// 1. governance pre: check if exist and status
+	_, err := sm.ServiceManager.GovernancePre(chainServiceID, event, nil)
+	if err != nil {
+		return nil
+	}
+	//service := serviceInfo.(*service_mgr.Service)
+
+	// 2. change status
+	if ok, data := sm.ServiceManager.ChangeStatus(chainServiceID, string(event), "", nil); !ok {
+		return fmt.Errorf("change status error: %s", string(data))
+	}
+
+	sm.Logger().WithFields(logrus.Fields{
+		"chainServiceID": chainServiceID,
+	}).Info("service unpause")
+
+	// 3. unlockProposal
+	if res := sm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "UnLockLowPriorityProposal",
+		pb.String(chainServiceID),
+		pb.String(string(governance.EventUnpause))); !res.Ok {
+		return fmt.Errorf("cross invoke UnLockLowPriorityProposal error: %s", string(res.Result))
+	}
+
+	return nil
+}
+
+func (sm *ServiceManager) EvaluateService(chainServiceID, desc string, score float64) *boltvm.Response {
+	sm.ServiceManager.Persister = sm.Stub
+	if score < 0 || score > 5 {
+		return boltvm.Error("the score should be in the range [0,5]")
+	}
+
+	// 1. get service
+	service := &service_mgr.Service{}
+	ok := sm.GetObject(service_mgr.ServiceKey(chainServiceID), service)
+	if !ok {
+		return boltvm.Error("the service is not exist")
+	}
+
+	// 2. Check whether caller has evaluated
+	if _, ok := service.EvaluationRecords[sm.Caller()]; ok {
+		return boltvm.Error("the caller has evaluate the service")
+	}
+
+	// 3. get evaluation record
+	evaRec := &governance.EvaluationRecord{
+		Addr:       sm.Caller(),
+		Score:      score,
+		Desc:       desc,
+		CreateTime: sm.GetTxTimeStamp(),
+	}
+
+	// 4. store record
+	num := float64(len(service.EvaluationRecords))
+	service.Score = num/(num+1)*service.Score + 1/(num+1)*score
+	service.EvaluationRecords[sm.Caller()] = evaRec
+	sm.SetObject(service_mgr.ServiceKey(chainServiceID), *service)
+	return nil
+}
+
+func (sm *ServiceManager) RecordInvokeService(fullServiceID, from string, result bool) *boltvm.Response {
+	sm.ServiceManager.Persister = sm.Stub
+	toStrs := strings.Split(fullServiceID, ":")
+	fromStrs := strings.Split(from, ":")
+	chainServiceID := fmt.Sprintf("%s:%s", toStrs[1], toStrs[2])
+	fromChainServiceID := fmt.Sprintf("%s:%s", fromStrs[1], fromStrs[2])
+
+	// 1. check permission: PermissionSpecific(InterchainContractAddr)
+	specificAddrs := []string{constant.InterchainContractAddr.Address().String()}
+	addrsData, err := json.Marshal(specificAddrs)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("marshal specificAddrs error: %v", err))
+	}
+	if err := sm.checkPermission([]string{string(PermissionSpecific)}, "", sm.CurrentCaller(), addrsData); err != nil {
+		return boltvm.Error(fmt.Sprintf("check permission error:%v", err))
+	}
+
+	// 2. get service
+	service := &service_mgr.Service{}
+	ok := sm.GetObject(service_mgr.ServiceKey(chainServiceID), service)
+	if !ok {
+		return boltvm.Error("the service is not exist")
+	}
+
+	// 3. get invoke record
+	var rec *governance.InvokeRecord
+	rec, ok = service.InvokeRecords[fromChainServiceID]
+	if ok {
+		if result {
+			rec.Succeed++
+		} else {
+			rec.Failure++
+		}
+	} else {
+		rec = &governance.InvokeRecord{}
+		rec.Addr = fromChainServiceID
+		if result {
+			rec.Succeed = 1
+			rec.Failure = 0
+		} else {
+			rec.Succeed = 0
+			rec.Failure = 1
+		}
+	}
+
+	// 4. store record
+	service.InvokeRecords[fromChainServiceID] = rec
+	service.InvokeCount++
+	num := float64(service.InvokeCount)
+	if result {
+		service.InvokeSuccessRate = num/(num+1)*service.InvokeSuccessRate + 1/(num+1)
+	} else {
+		if service.InvokeSuccessRate != 0 {
+			service.InvokeSuccessRate = num/(num+1)*service.InvokeSuccessRate - 1/(num+1)
+		}
+	}
+
+	sm.SetObject(service_mgr.ServiceKey(chainServiceID), *service)
+
+	sm.Logger().WithFields(logrus.Fields{
+		"chainServiceID":     chainServiceID,
+		"fromChainServiceID": fromChainServiceID,
+		"result":             result,
+	}).Info("record invoke service")
+	return nil
+}
+
+// ========================== Query interface ========================
+// GetServiceInfo returns Service info by service id
 func (sm *ServiceManager) GetServiceInfo(id string) *boltvm.Response {
-	service := sm.getServiceInfo(id)
-	if service == nil {
+	sm.ServiceManager.Persister = sm.Stub
+	service, err := sm.ServiceManager.QueryById(id, nil)
+	if err != nil {
 		return boltvm.Error(fmt.Sprintf("cannot get service by id %s", id))
 	}
 
-	data, err := json.Marshal(service)
+	data, err := json.Marshal(service.(*service_mgr.Service))
 	if err != nil {
 		return boltvm.Error(fmt.Sprintf("marshal service: %s", err.Error()))
 	}
@@ -170,118 +523,41 @@ func (sm *ServiceManager) GetServiceInfo(id string) *boltvm.Response {
 	return boltvm.Success(data)
 }
 
-func (sm *ServiceManager) getServiceInfo(id string) *Service {
-	service := &Service{}
-	if ok := sm.GetObject(sm.serviceKey(id), service); !ok {
-		return nil
+// GetAllServices returns all service
+func (sm *ServiceManager) GetAllServices() *boltvm.Response {
+	sm.ServiceManager.Persister = sm.Stub
+	services, err := sm.ServiceManager.All(nil)
+	if err != nil {
+		return boltvm.Error(err.Error())
 	}
-	return service
+	if services == nil {
+		return boltvm.Success(nil)
+	} else {
+		if data, err := json.Marshal(services.([]*service_mgr.Service)); err != nil {
+			return boltvm.Error(err.Error())
+		} else {
+			return boltvm.Success(data)
+		}
+	}
 }
 
-func (sm *ServiceManager) AddItems(itemData []byte) *boltvm.Response {
-	id := sm.Caller()
-	ok := sm.Has(sm.serviceKey(id))
-	if !ok {
-		return boltvm.Error("register service firstly")
-	}
-
-	service := sm.getServiceInfo(id)
-
-	if service.Status == REGISTERED {
-		return boltvm.Error("this service is being audited")
-	}
-
-	var items map[string]Item
-	if err := json.Unmarshal(itemData, &items); err != nil {
+// GetPermissionServices returns all permission dapps
+func (sm *ServiceManager) GetPermissionServices() *boltvm.Response {
+	sm.ServiceManager.Persister = sm.Stub
+	services, err := sm.ServiceManager.All(nil)
+	if err != nil {
 		return boltvm.Error(err.Error())
 	}
 
-	for method, item := range items {
-		service.Items[method] = item
-	}
-	sm.SetObject(sm.serviceKey(id), service)
-	return boltvm.Success(nil)
-}
-
-func (sm *ServiceManager) Audit(proposer string, isApproved int32, desc string) *boltvm.Response {
-	if res := sm.IsAdmin(); !res.Ok {
-		return res
-	}
-
-	service := &Service{}
-	ok := sm.GetObject(sm.serviceKey(proposer), service)
-	if !ok {
-		return boltvm.Error("this service does not exist")
-	}
-
-	service.Status = isApproved
-
-	for _, item := range service.Items {
-		item.Status = APPROVED
-	}
-
-	record := &auditRecord{
-		Service:    service,
-		IsApproved: isApproved == APPROVED,
-		Desc:       desc,
-	}
-
-	var records []*auditRecord
-	sm.GetObject(sm.auditRecordKey(proposer), &records)
-	records = append(records, record)
-
-	sm.SetObject(sm.auditRecordKey(proposer), records)
-	sm.SetObject(sm.serviceKey(proposer), service)
-
-	return boltvm.Success([]byte(fmt.Sprintf("audit %s successfully", proposer)))
-}
-
-func (sm *ServiceManager) AuditItem(proposer string, isApproved int32, method string, desc string) *boltvm.Response {
-	if res := sm.IsAdmin(); !res.Ok {
-		return res
-	}
-
-	service := &Service{}
-	ok := sm.GetObject(sm.serviceKey(proposer), service)
-	if !ok {
-		return boltvm.Error("this service does not exist")
-	}
-
-	item, ok := service.Items[method]
-	if !ok {
-		return boltvm.Error(fmt.Sprintf("this method:%s does not exist", method))
-	}
-	item.Status = isApproved
-	record := &auditItemRecord{
-		ServiceId:  proposer,
-		Item:       &item,
-		IsApproved: isApproved == APPROVED,
-		Desc:       desc,
-	}
-	var records []*auditItemRecord
-	sm.GetObject(sm.auditItemRecordKey(proposer), &records)
-	records = append(records, record)
-
-	sm.SetObject(sm.auditItemRecordKey(proposer), records)
-	sm.SetObject(sm.serviceKey(proposer), service)
-
-	return boltvm.Success([]byte(fmt.Sprintf("audit %s successfully", method)))
-
-}
-
-func (sm *ServiceManager) ListService() *boltvm.Response {
-	ok, value := sm.Query(ServicePreKey)
-	if !ok {
-		return boltvm.Success(nil)
-	}
-
-	ret := make([]*Service, 0)
-	for _, data := range value {
-		service := &Service{}
-		if err := json.Unmarshal(data, service); err != nil {
-			return boltvm.Error(err.Error())
+	var ret []*service_mgr.Service
+	for _, s := range services.([]*service_mgr.Service) {
+		if _, ok := s.Permission[sm.Caller()]; !ok {
+			ret = append(ret, s)
 		}
-		ret = append(ret, service)
+	}
+
+	if len(ret) == 0 {
+		return boltvm.Success(nil)
 	}
 
 	data, err := json.Marshal(ret)
@@ -291,66 +567,104 @@ func (sm *ServiceManager) ListService() *boltvm.Response {
 	return boltvm.Success(data)
 }
 
-func (sm *ServiceManager) DeleteService(id string) *boltvm.Response {
-	if res := sm.IsAdmin(); !res.Ok {
-		return res
-	}
-	sm.Delete(sm.serviceKey(id))
-	return boltvm.Success([]byte(fmt.Sprintf("delete service:%s", id)))
-}
-
-func (sm *ServiceManager) IsAdmin() *boltvm.Response {
-	ret := sm.CrossInvoke(constant.RoleContractAddr.String(), "IsAdmin", pb.String(sm.Caller()))
-	is, err := strconv.ParseBool(string(ret.Result))
-	if err != nil {
-		return boltvm.Error(fmt.Errorf("judge caller type: %w", err).Error())
-	}
-
-	if !is {
-		return boltvm.Error("caller is not an admin account")
-	}
-	return boltvm.Success([]byte("1"))
-}
-
-func (sm *ServiceManager) GetServicesByAppchainID(appchainID string) *boltvm.Response {
-	var services []string
-	_ = sm.GetObject(sm.appchainServicesKey(appchainID), &services)
-
-	data, err := json.Marshal(services)
+// GetServicesByAppchainID return services of an appchain
+func (sm *ServiceManager) GetServicesByAppchainID(chainID string) *boltvm.Response {
+	sm.ServiceManager.Persister = sm.Stub
+	idMap, err := sm.ServiceManager.GetIDListByChainID(chainID)
 	if err != nil {
 		return boltvm.Error(err.Error())
 	}
 
+	if len(idMap) == 0 {
+		return boltvm.Success(nil)
+	}
+
+	var ret []*service_mgr.Service
+	for id, _ := range idMap {
+		service, err := sm.ServiceManager.QueryById(id, nil)
+		if err == nil {
+			return boltvm.Error(fmt.Sprintf("cannot get service by id %s", id))
+		}
+		ret = append(ret, service.(*service_mgr.Service))
+	}
+
+	data, err := json.Marshal(ret)
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
 	return boltvm.Success(data)
 }
 
-func (sm *ServiceManager) updateAppchainService(appchainID, serviceID string) {
-	var services []string
-	chainServiceKey := sm.appchainServicesKey(appchainID)
+func (sm *ServiceManager) IsAvailable(id string) *boltvm.Response {
+	sm.ServiceManager.Persister = sm.Stub
+	service, err := sm.ServiceManager.QueryById(id, nil)
+	if err == nil {
+		return boltvm.Error(fmt.Sprintf("cannot get service by id %s", id))
+	}
 
-	_ = sm.GetObject(chainServiceKey, &services)
-	services = append(services, serviceID)
-	sm.SetObject(chainServiceKey, services)
+	return boltvm.Success([]byte(strconv.FormatBool(service.(*service_mgr.Service).IsAvailable())))
 }
 
-func (sm *ServiceManager) serviceKey(id string) string {
-	return ServicePreKey + id
+func (sm *ServiceManager) checkAppchain(chainID string) error {
+	res := sm.CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "IsAvailable", pb.String(chainID))
+	if !res.Ok {
+		return fmt.Errorf("cross invoke IsAvailable error: %s", string(res.Result))
+	}
+	if "false" == string(res.Result) {
+		return fmt.Errorf("the appchain is not available: %s", chainID)
+	}
+
+	return nil
 }
 
-func (sm *ServiceManager) auditRecordKey(id string) string {
-	return "audit-record-" + id
+func (sm *ServiceManager) checkServiceInfo(service *service_mgr.Service) error {
+	// check type
+	if service.Type != service_mgr.ServiceCallContract &&
+		service.Type != service_mgr.ServiceDepositCertificate &&
+		service.Type != service_mgr.ServiceDataMigration {
+		return fmt.Errorf("illegal service type")
+	}
+
+	// check permission info
+	for p, _ := range service.Permission {
+		if err := sm.checkServiceIDFormat(p); err != nil {
+			return fmt.Errorf("illegal user addr(%s) in permission: %v", p, err)
+		}
+	}
+
+	return nil
 }
 
-func (sm *ServiceManager) auditItemRecordKey(id string) string {
-	return "audit-item-record-" + id
-}
+func (sm *ServiceManager) checkServiceIDFormat(serviceID string) error {
+	addrs := strings.Split(serviceID, ":")
+	if len(addrs) != 3 {
+		return fmt.Errorf("the ID does not contain three parts")
+	}
 
-func (sm *ServiceManager) appchainServicesKey(id string) string {
-	return "appchain-" + id
-}
+	if addrs[0] == "" {
+		return fmt.Errorf("BitxhubID is empty")
+	} else {
+		for _, a := range addrs[0] {
+			if a < 48 || a > 57 {
+				return fmt.Errorf("illegal BitxhubID")
+			}
+		}
+	}
 
-func (service *Service) checkPermission(serviceId string) bool {
-	_, ok := service.Permission[serviceId]
+	if addrs[1] == "" || addrs[2] == "" {
+		return fmt.Errorf("AppchainID or ServiceID is empty")
+	}
 
-	return ok
+	res := sm.CrossInvoke(constant.InterchainContractAddr.Address().String(), "GetBitXHubID")
+	if !res.Ok {
+		return fmt.Errorf("cross invoke GetBitXHubID error: %s", string(res.Result))
+	}
+	if addrs[0] == string(res.Result) {
+		_, err := sm.ServiceManager.QueryById(fmt.Sprintf("%s:%s", addrs[1], addrs[2]), nil)
+		if err != nil {
+			return fmt.Errorf("the service(%s) is not registered on this relay chain(%s)", addrs[2], string(res.Result))
+		}
+	}
+
+	return nil
 }

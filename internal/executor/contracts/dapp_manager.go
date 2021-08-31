@@ -35,9 +35,9 @@ type Dapp struct {
 	OwnerAddr    string              `json:"owner_addr"`
 	CreateTime   int64               `json:"create_time"`
 
-	Score             float64                        `json:"score"`
-	EvaluationRecords []*governance.EvaluationRecord `json:"evaluation_records"`
-	TransferRecords   []*TransferRecord              `json:"transfer_records"`
+	Score             float64                                 `json:"score"`
+	EvaluationRecords map[string]*governance.EvaluationRecord `json:"evaluation_records"`
+	TransferRecords   []*TransferRecord                       `json:"transfer_records"`
 
 	Status governance.GovernanceStatus `json:"status"`
 	FSM    *fsm.FSM                    `json:"fsm"`
@@ -111,7 +111,7 @@ func (d *Dapp) setFSM(lastStatus governance.GovernanceStatus) {
 // GovernancePre checks if the dapp can do the event. (only check, not modify infomation)
 func (dm *DappManager) governancePre(dappID string, event governance.EventType) (*Dapp, error) {
 	dapp := &Dapp{}
-	if ok := dm.GetObject(dm.dappKey(dappID), dapp); !ok {
+	if ok := dm.GetObject(DappKey(dappID), dapp); !ok {
 		if event == governance.EventRegister {
 			return nil, nil
 		} else {
@@ -130,7 +130,7 @@ func (dm *DappManager) governancePre(dappID string, event governance.EventType) 
 
 func (dm *DappManager) changeStatus(dappID, trigger, lastStatus string) (bool, []byte) {
 	dapp := &Dapp{}
-	if ok := dm.GetObject(dm.dappKey(dappID), dapp); !ok {
+	if ok := dm.GetObject(DappKey(dappID), dapp); !ok {
 		return false, []byte("this dapp does not exist")
 	}
 
@@ -140,7 +140,7 @@ func (dm *DappManager) changeStatus(dappID, trigger, lastStatus string) (bool, [
 		return false, []byte(fmt.Sprintf("change status error: %v", err))
 	}
 
-	dm.SetObject(dm.dappKey(dappID), *dapp)
+	dm.SetObject(DappKey(dappID), *dapp)
 	return true, nil
 }
 
@@ -222,7 +222,7 @@ func (dm *DappManager) manegeUpdate(id string, updateData []byte) error {
 	}
 
 	dapp := &Dapp{}
-	ok := dm.GetObject(dm.dappKey(id), dapp)
+	ok := dm.GetObject(DappKey(id), dapp)
 	if !ok {
 		return fmt.Errorf("the dapp is not exist")
 	}
@@ -231,7 +231,7 @@ func (dm *DappManager) manegeUpdate(id string, updateData []byte) error {
 	dapp.Type = updataInfo.Type
 	dapp.Desc = updataInfo.Desc
 	dapp.Permission = updataInfo.Permission
-	dm.SetObject(dm.dappKey(dapp.DappID), *dapp)
+	dm.SetObject(DappKey(dapp.DappID), *dapp)
 	return nil
 }
 
@@ -243,23 +243,23 @@ func (dm *DappManager) manegeTransfer(id string, transferData []byte) error {
 	transRec.CreateTime = dm.GetTxTimeStamp()
 
 	dapp := &Dapp{}
-	ok := dm.GetObject(dm.dappKey(id), dapp)
+	ok := dm.GetObject(DappKey(id), dapp)
 	if !ok {
 		return fmt.Errorf("the dapp is not exist")
 	}
 
 	dapp.TransferRecords = append(dapp.TransferRecords, transRec)
 	dapp.OwnerAddr = transRec.To
-	dm.SetObject(dm.dappKey(dapp.DappID), *dapp)
+	dm.SetObject(DappKey(dapp.DappID), *dapp)
 	dm.addToOwner(dapp.OwnerAddr, dapp.DappID)
 	return nil
 }
 
 func (dm *DappManager) addToOwner(ownerAddr, dappID string) {
 	dappMap := make(map[string]struct{})
-	_ = dm.GetObject(dm.ownerKey(ownerAddr), dappMap)
+	_ = dm.GetObject(OwnerKey(ownerAddr), &dappMap)
 	dappMap[dappID] = struct{}{}
-	dm.SetObject(dm.ownerKey(ownerAddr), dappMap)
+	dm.SetObject(OwnerKey(ownerAddr), dappMap)
 }
 
 // =========== RegisterDapp registers dapp info, returns proposal id and error
@@ -267,7 +267,7 @@ func (dm *DappManager) RegisterDapp(name, typ, desc, conAddrs, permits, reason s
 	event := governance.EventRegister
 
 	// 1. get dapp info
-	dapp, err := dm.packageDappInfo("", name, typ, conAddrs, desc, permits, dm.Caller(), 0, dm.GetTxTimeStamp(), nil, nil, governance.GovernanceRegisting)
+	dapp, err := dm.packageDappInfo("", name, typ, conAddrs, desc, permits, dm.Caller(), 0, dm.GetTxTimeStamp(), make(map[string]*governance.EvaluationRecord), nil, governance.GovernanceRegisting)
 	if err != nil {
 		return boltvm.Error(fmt.Sprintf("get dapp info error: %v", err))
 	}
@@ -286,7 +286,6 @@ func (dm *DappManager) RegisterDapp(name, typ, desc, conAddrs, permits, reason s
 	res := dm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "SubmitProposal",
 		pb.String(dm.Caller()),
 		pb.String(string(event)),
-		pb.String(""),
 		pb.String(string(DappMgr)),
 		pb.String(dapp.DappID),
 		pb.String(string(governance.GovernanceUnavailable)),
@@ -298,7 +297,7 @@ func (dm *DappManager) RegisterDapp(name, typ, desc, conAddrs, permits, reason s
 	}
 
 	// 5. register info
-	dm.SetObject(dm.dappKey(dapp.DappID), *dapp)
+	dm.SetObject(DappKey(dapp.DappID), *dapp)
 	dm.addToOwner(dapp.OwnerAddr, dapp.DappID)
 	dm.Logger().WithFields(logrus.Fields{
 		"id": dapp.DappID,
@@ -341,7 +340,6 @@ func (dm *DappManager) UpdateDapp(id, name, typ, desc, conAddrs, permits, reason
 	res := dm.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
 		pb.String(dm.Caller()),
 		pb.String(string(event)),
-		pb.String(""),
 		pb.String(string(DappMgr)),
 		pb.String(id),
 		pb.String(string(oldDapp.Status)),
@@ -362,20 +360,16 @@ func (dm *DappManager) UpdateDapp(id, name, typ, desc, conAddrs, permits, reason
 
 // =========== FreezeDapp freezes dapp
 func (dm *DappManager) FreezeDapp(id, reason string) *boltvm.Response {
-	event := governance.EventFreeze
-	return dm.basicGovernance(id, reason, []string{string(PermissionAdmin)}, event, nil)
+	return dm.basicGovernance(id, reason, []string{string(PermissionAdmin)}, governance.EventFreeze, nil)
 }
 
 // =========== ActivateDapp activates frozen dapp
 func (dm *DappManager) ActivateDapp(id, reason string) *boltvm.Response {
-	event := governance.EventActivate
-	return dm.basicGovernance(id, reason, []string{string(PermissionSelf), string(PermissionAdmin)}, event, nil)
+	return dm.basicGovernance(id, reason, []string{string(PermissionSelf), string(PermissionAdmin)}, governance.EventActivate, nil)
 }
 
 // =========== TransferDapp transfers dapp
 func (dm *DappManager) TransferDapp(id, reason, newOwnerAddr string) *boltvm.Response {
-	event := governance.EventLogout
-
 	_, err := types.HexDecodeString(newOwnerAddr)
 	if err != nil {
 		return boltvm.Error(fmt.Sprintf("illegal new owner addr: %s", newOwnerAddr))
@@ -391,7 +385,7 @@ func (dm *DappManager) TransferDapp(id, reason, newOwnerAddr string) *boltvm.Res
 	if err != nil {
 		return boltvm.Error(fmt.Sprintf("marshal extra error: %v", err))
 	}
-	return dm.basicGovernance(id, reason, []string{string(PermissionSelf)}, event, extra)
+	return dm.basicGovernance(id, reason, []string{string(PermissionSelf)}, governance.EventTransfer, extra)
 }
 
 func (dm *DappManager) basicGovernance(id, reason string, permissions []string, event governance.EventType, extra []byte) *boltvm.Response {
@@ -429,54 +423,68 @@ func (dm *DappManager) basicGovernance(id, reason string, permissions []string, 
 }
 
 func (dm *DappManager) ConfirmTransfer(id string) *boltvm.Response {
-	// 1. check permission
-	if err := dm.checkPermission([]string{string(PermissionSelf)}, id, dm.CurrentCaller(), nil); err != nil {
+	// 1. get dapp
+	dapp := &Dapp{}
+	ok := dm.GetObject(DappKey(id), dapp)
+	if !ok {
+		return boltvm.Error("the dapp is not exist")
+	}
+
+	// 2. check permission
+	if err := dm.checkPermission([]string{string(PermissionSelf)}, dapp.OwnerAddr, dm.CurrentCaller(), nil); err != nil {
 		return boltvm.Error(fmt.Sprintf("check permission error:%v", err))
 	}
 
-	// 2. get dapp
-	dapp := &Dapp{}
-	ok := dm.GetObject(dm.dappKey(id), dapp)
-	if !ok {
-		return boltvm.Error("the dapp is not exist")
+	// 3. confirm
+	if len(dapp.TransferRecords) != 0 {
+		if !dapp.TransferRecords[len(dapp.TransferRecords)-1].Confirm {
+			dapp.TransferRecords[len(dapp.TransferRecords)-1].Confirm = true
+			dm.SetObject(DappKey(id), *dapp)
+		}
 	}
 
-	// 3. confirm
-	if !dapp.TransferRecords[len(dapp.TransferRecords)-1].Confirm {
-		dapp.TransferRecords[len(dapp.TransferRecords)-1].Confirm = true
-		dm.SetObject(dm.dappKey(id), *dapp)
-	}
-	return nil
+	return boltvm.Success(nil)
 }
 
 func (dm *DappManager) EvaluateDapp(id, desc string, score float64) *boltvm.Response {
+	if score < 0 || score > 5 {
+		return boltvm.Error("the score should be in the range [0,5]")
+	}
+
 	// 1. get dapp
 	dapp := &Dapp{}
-	ok := dm.GetObject(dm.dappKey(id), dapp)
+	ok := dm.GetObject(DappKey(id), dapp)
 	if !ok {
 		return boltvm.Error("the dapp is not exist")
 	}
 
-	// 2. get evaluation record
+	// 2. Check whether caller has evaluated
+	if _, ok := dapp.EvaluationRecords[dm.Caller()]; ok {
+		return boltvm.Error("the caller has evaluate the dapp")
+	}
+
+	// 3. get evaluation record
 	evaRec := &governance.EvaluationRecord{
+		Addr:       dm.Caller(),
 		Score:      score,
 		Desc:       desc,
 		CreateTime: dm.GetTxTimeStamp(),
 	}
 
-	// 3. store record
+	// 4. store record
 	num := float64(len(dapp.EvaluationRecords))
 	dapp.Score = num/(num+1)*dapp.Score + 1/(num+1)*score
-	dapp.EvaluationRecords = append(dapp.EvaluationRecords, evaRec)
-	dm.SetObject(dm.dappKey(id), *dapp)
-	return nil
+	dapp.EvaluationRecords[dm.Caller()] = evaRec
+	dm.SetObject(DappKey(id), *dapp)
+
+	return boltvm.Success(nil)
 }
 
 // ========================== Query interface ========================
 // GetDapp returns dapp info by dapp id
 func (dm *DappManager) GetDapp(id string) *boltvm.Response {
 	dapp := &Dapp{}
-	ok := dm.GetObject(dm.dappKey(id), dapp)
+	ok := dm.GetObject(DappKey(id), dapp)
 	if !ok {
 		return boltvm.Error("the dapp is not exist")
 	}
@@ -504,18 +512,16 @@ func (dm *DappManager) GetAllDapps() *boltvm.Response {
 }
 
 func (dm *DappManager) getAll() ([]*Dapp, error) {
-	ok, value := dm.Query(DAPPPREFIX)
-	if !ok {
-		return nil, fmt.Errorf("there is no dapp")
-	}
-
 	ret := make([]*Dapp, 0)
-	for _, data := range value {
-		dapp := &Dapp{}
-		if err := json.Unmarshal(data, dapp); err != nil {
-			return nil, err
+	ok, value := dm.Query(DAPPPREFIX)
+	if ok {
+		for _, data := range value {
+			dapp := &Dapp{}
+			if err := json.Unmarshal(data, dapp); err != nil {
+				return nil, err
+			}
+			ret = append(ret, dapp)
 		}
-		ret = append(ret, dapp)
 	}
 
 	return ret, nil
@@ -523,20 +529,14 @@ func (dm *DappManager) getAll() ([]*Dapp, error) {
 
 // GetAllDapps returns all dapps
 func (dm *DappManager) GetPermissionDapps() *boltvm.Response {
-	all, err := dm.getAll()
-	if err != nil {
-		return boltvm.Error(err.Error())
-	}
-
 	var ret []*Dapp
-	for _, d := range all {
-		if _, ok := d.Permission[dm.Caller()]; !ok {
-			ret = append(ret, d)
+	all, err := dm.getAll()
+	if err == nil {
+		for _, d := range all {
+			if _, ok := d.Permission[dm.Caller()]; !ok {
+				ret = append(ret, d)
+			}
 		}
-	}
-
-	if len(ret) == 0 {
-		return boltvm.Success(nil)
 	}
 
 	data, err := json.Marshal(ret)
@@ -549,13 +549,6 @@ func (dm *DappManager) GetPermissionDapps() *boltvm.Response {
 // get dApps by owner addr, including dApps a person currently owns and the dApps they once owned
 func (dm *DappManager) GetDappsByOwner(ownerAddr string) *boltvm.Response {
 	ret, err := dm.getOwnerAll(ownerAddr)
-	if err != nil {
-		return boltvm.Error(err.Error())
-	}
-
-	if len(ret) == 0 {
-		return boltvm.Success(nil)
-	}
 
 	data, err := json.Marshal(ret)
 	if err != nil {
@@ -565,20 +558,18 @@ func (dm *DappManager) GetDappsByOwner(ownerAddr string) *boltvm.Response {
 }
 
 func (dm *DappManager) getOwnerAll(ownerAddr string) ([]*Dapp, error) {
-	var dappMap map[string]struct{}
-	ok := dm.GetObject(dm.ownerKey(ownerAddr), &dappMap)
-	if !ok {
-		return nil, fmt.Errorf("there is no dapp of the owner")
-	}
-
 	ret := make([]*Dapp, 0)
-	for dappID, _ := range dappMap {
-		dapp := &Dapp{}
-		ok := dm.GetObject(dm.dappKey(dappID), dapp)
-		if !ok {
-			return nil, fmt.Errorf("the dapp(%s) is not exist", dappID)
+
+	var dappMap map[string]struct{}
+	ok := dm.GetObject(OwnerKey(ownerAddr), &dappMap)
+	if ok {
+		for dappID, _ := range dappMap {
+			dapp := &Dapp{}
+			if ok := dm.GetObject(DappKey(dappID), dapp); !ok {
+				return nil, fmt.Errorf("the dapp(%s) is not exist", dappID)
+			}
+			ret = append(ret, dapp)
 		}
-		ret = append(ret, dapp)
 	}
 
 	return ret, nil
@@ -590,23 +581,23 @@ func (dm *DappManager) IsAvailable(dappID string) *boltvm.Response {
 
 func (dm *DappManager) isAvailable(dappID string) bool {
 	dapp := &Dapp{}
-	ok := dm.GetObject(dm.dappKey(dappID), dapp)
+	ok := dm.GetObject(DappKey(dappID), dapp)
 	if !ok {
 		return false
 	} else {
-		return true
+		return dapp.IsAvailable()
 	}
 }
 
 func (dm *DappManager) packageDappInfo(dappID, name string, typ string, conAddrs string, desc string, permits, ownerAddr string,
-	score float64, createTime int64, evaluationRecord []*governance.EvaluationRecord, transferRecord []*TransferRecord, status governance.GovernanceStatus) (*Dapp, error) {
+	score float64, createTime int64, evaluationRecord map[string]*governance.EvaluationRecord, transferRecord []*TransferRecord, status governance.GovernanceStatus) (*Dapp, error) {
 	if dappID == "" {
 		// register
 		dappMap := make(map[string]struct{})
-		if ok := dm.GetObject(dm.ownerKey(ownerAddr), dappMap); !ok {
+		if ok := dm.GetObject(OwnerKey(ownerAddr), &dappMap); !ok {
 			dappID = fmt.Sprintf("%s-0", ownerAddr)
 		} else {
-			dappID = fmt.Sprintf("%s-%s", ownerAddr, len(dappMap))
+			dappID = fmt.Sprintf("%s-%d", ownerAddr, len(dappMap))
 		}
 	}
 
@@ -659,10 +650,10 @@ func (dm *DappManager) checkDappInfo(dapp *Dapp) error {
 	return nil
 }
 
-func (dm *DappManager) dappKey(id string) string {
+func DappKey(id string) string {
 	return fmt.Sprintf("%s-%s", DAPPPREFIX, id)
 }
 
-func (dm *DappManager) ownerKey(addr string) string {
+func OwnerKey(addr string) string {
 	return fmt.Sprintf("%s-%s", OWNERPREFIX, addr)
 }

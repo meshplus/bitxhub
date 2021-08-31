@@ -501,6 +501,7 @@ func TestGovernance_Vote(t *testing.T) {
 	mockStub.EXPECT().CrossInvoke(constant.RuleManagerContractAddr.Address().String(), "Manage", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "Manage", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("")).Times(1)
 	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "Manage", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "Manage", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().Caller().Return(addrUnavaliable).Times(2)
 	mockStub.EXPECT().Caller().Return(addrCanNotVote).Times(3)
 	mockStub.EXPECT().Caller().Return(addrApproved).Times(1)
@@ -579,9 +580,9 @@ func TestGovernance_Vote(t *testing.T) {
 	// 18.appchain success
 	res = g.Vote(idExistent, BallotReject, "")
 	assert.True(t, res.Ok, string(res.Result))
-	// 19.service error
+	// 19.service success
 	res = g.Vote(idServiceMgr, BallotReject, "")
-	assert.False(t, res.Ok, string(res.Result))
+	assert.True(t, res.Ok, string(res.Result))
 }
 
 func TestGovernance_ProposalStrategy(t *testing.T) {
@@ -696,6 +697,7 @@ func TestGovernance_SubmitProposal_LockLowPriorityProposal(t *testing.T) {
 	mockStub.EXPECT().AddObject(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().CurrentCaller().Return("").AnyTimes()
 	mockStub.EXPECT().GetTxTimeStamp().Return(int64(1)).AnyTimes()
+	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 
 	res := g.SubmitProposal(idExistent, string(governance.EventUpdate), string(AppchainMgr), appchainID, string(governance.GovernanceAvailable), "reason", chainData)
 	assert.False(t, res.Ok, string(res.Result))
@@ -809,6 +811,7 @@ func TestGovernance_WithdrawProposal(t *testing.T) {
 	//mockStub.EXPECT().CurrentCaller().Return("").AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "Manage", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("")).Times(1)
 	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "Manage", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 
 	res := g.WithdrawProposal(idExistent, "reason")
 	assert.False(t, res.Ok, string(res.Result))

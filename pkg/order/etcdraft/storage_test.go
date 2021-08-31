@@ -10,36 +10,36 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-//func TestRecoverFromSnapshot(t *testing.T) {
-//	ast := assert.New(t)
-//	defer os.RemoveAll("./testdata/storage")
-//	node, err := mockRaftNode(t)
-//	ast.Nil(err)
-//	err = node.Start()
-//	ast.Nil(err)
-//	snap := raftpb.Snapshot{Data: []byte("test"), Metadata: raftpb.SnapshotMetadata{Index: uint64(2), Term: uint64(1)}}
-//	err = node.raftStorage.snap.SaveSnap(snap)
-//	ast.Nil(err)
-//	node.recoverFromSnapshot()
-//	ast.NotEqual(uint64(2), node.appliedIndex, "wrong type data")
-//	ast.NotEqual(uint64(2), node.snapshotIndex, "wrong type data")
-//
-//	go func() {
-//		block := <-node.commitC
-//		ast.Equal(uint64(2), block.Block.BlockHeader.Number)
-//	}()
-//	blockHash := &types.Hash{
-//		RawHash: [types.HashLength]byte{2},
-//	}
-//	snapData := &pb.ChainMeta{Height: uint64(2), BlockHash: blockHash}
-//	snapDataBytes, _ := snapData.Marshal()
-//	snap.Data = snapDataBytes
-//	err = node.raftStorage.snap.SaveSnap(snap)
-//	ast.Nil(err)
-//	node.recoverFromSnapshot()
-//	ast.Equal(uint64(2), node.appliedIndex)
-//	ast.Equal(uint64(2), node.snapshotIndex)
-//}
+func TestRecoverFromSnapshot(t *testing.T) {
+	ast := assert.New(t)
+	defer os.RemoveAll("./testdata/storage")
+	node, err := mockRaftNode(t)
+	ast.Nil(err)
+	err = node.Start()
+	ast.Nil(err)
+	snap := raftpb.Snapshot{Data: []byte("test"), Metadata: raftpb.SnapshotMetadata{Index: uint64(2), Term: uint64(1)}}
+	err = node.raftStorage.snap.SaveSnap(snap)
+	ast.Nil(err)
+	node.recoverFromSnapshot()
+	ast.NotEqual(uint64(2), node.appliedIndex, "wrong type data")
+	ast.NotEqual(uint64(2), node.snapshotIndex, "wrong type data")
+
+	go func() {
+		block := <-node.commitC
+		ast.Equal(uint64(2), block.Block.BlockHeader.Number)
+	}()
+	blockHash := &types.Hash{
+		RawHash: [types.HashLength]byte{2},
+	}
+	snapData := &pb.ChainMeta{Height: uint64(2), BlockHash: blockHash}
+	snapDataBytes, _ := snapData.Marshal()
+	snap.Data = snapDataBytes
+	err = node.raftStorage.snap.SaveSnap(snap)
+	ast.Nil(err)
+	node.recoverFromSnapshot()
+	ast.Equal(uint64(2), node.appliedIndex)
+	ast.Equal(uint64(2), node.snapshotIndex)
+}
 
 func TestTakeSnapshotAndGC(t *testing.T) {
 	ast := assert.New(t)

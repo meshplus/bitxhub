@@ -60,6 +60,8 @@ var priority = map[governance.EventType]int{
 	governance.EventBind:     1,
 	governance.EventUnbind:   1,
 	governance.EventLogout:   3,
+	governance.EventPause:    2,
+	governance.EventUnpause:  1,
 }
 
 type Ballot struct {
@@ -141,6 +143,7 @@ func (g *Governance) SubmitProposal(from, eventTyp, typ, objId, objLastStatus, r
 		constant.NodeManagerContractAddr.Address().String(),
 		constant.RoleContractAddr.Address().String(),
 		constant.DappMgrContractAddr.Address().String(),
+		constant.ServiceMgrContractAddr.Address().String(),
 	}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
@@ -234,6 +237,12 @@ func (g *Governance) lockLowPriorityProposal(objId, eventTyp string) (string, er
 			if priority[p.EventType] < priority[governance.EventType(eventTyp)] {
 				p.Status = PAUSED
 				g.SetObject(ProposalKey(p.Id), *p)
+				g.Logger().WithFields(logrus.Fields{
+					"proposal": p.Id,
+					"type":     p.Typ,
+					"status":   p.Status,
+					"eventTyp": eventTyp,
+				}).Info("lock low priority proposal")
 				return p.Id, nil
 			} else {
 				return "", fmt.Errorf("an equal or higher priority proposal is in progress currently, please submit it later")
@@ -749,70 +758,89 @@ func (g *Governance) Vote(id, approve string, reason string) *boltvm.Response {
 	return boltvm.Success(nil)
 }
 
-func (g *Governance) handleResult(p *Proposal) error {
-	// Unlock low-priority proposal
-	nextEventType, err := g.unlockLowPriorityProposal(p)
-	if err != nil {
-		return fmt.Errorf("unlock low priority proposals error: %v", err)
+func (g *Governance) handleResult(p *Proposal) (err error) {
+	// unlock low-priority proposal
+	nextEventType := governance.EventType(p.Status)
+	if p.LockProposalId != "" {
+		if p.Status == APPOVED {
+			notRestoreReason := fmt.Sprintf("%s(%s)", string(PriorityReason), p.Id)
+			_, err = g.unlockLowPriorityProposal(p.LockProposalId, false, notRestoreReason)
+		} else {
+			nextEventType, err = g.unlockLowPriorityProposal(p.LockProposalId, true, "")
+		}
+		if err != nil {
+			return fmt.Errorf("unlock low priority proposals error: %v", err)
+		}
 	}
 
 	// manage object
-	switch p.Typ {
+	return g.manageObj(p.Typ, p.EventType, nextEventType, p.ObjLastStatus, p.ObjId, p.Extra)
+}
+
+// Only the state is unlocked, and function manageObj needs to be called later
+func (g *Governance) unlockLowPriorityProposal(lockedProposalId string, restore bool, notRestoreReason string) (governance.EventType, error) {
+	var nextEventType governance.EventType
+	lockP := &Proposal{}
+	if !g.GetObject(ProposalKey(lockedProposalId), lockP) {
+		return "", fmt.Errorf("proposal does not exist")
+	}
+
+	if !restore {
+		lockP.Status = REJECTED
+		lockP.EndReason = EndReason(notRestoreReason)
+	} else {
+		lockP.Status = PROPOSED
+		nextEventType = lockP.EventType
+	}
+	g.SetObject(ProposalKey(lockP.Id), lockP)
+	g.Logger().WithFields(logrus.Fields{
+		"proposal": lockedProposalId,
+		"type":     lockP.Typ,
+		"status":   lockP.Status,
+		"restore":  restore,
+	}).Info("unlock low priority proposal")
+	return nextEventType, nil
+}
+
+func (g *Governance) manageObj(proposalTyp ProposalType, eventType, nextEventType governance.EventType, objLastStatus governance.GovernanceStatus, objId string, extra []byte) error {
+	switch proposalTyp {
 	case RoleMgr:
-		res := g.CrossInvoke(constant.RoleContractAddr.Address().String(), "Manage", pb.String(string(p.EventType)), pb.String(string(nextEventType)), pb.String(string(p.ObjLastStatus)), pb.String(p.ObjId), pb.Bytes(p.Extra))
+		res := g.CrossInvoke(constant.RoleContractAddr.Address().String(), "Manage", pb.String(string(eventType)), pb.String(string(nextEventType)), pb.String(string(objLastStatus)), pb.String(objId), pb.Bytes(extra))
 		if !res.Ok {
 			return fmt.Errorf("cross invoke Manager error: %s", string(res.Result))
 		}
 		return nil
 	case ServiceMgr:
-		return fmt.Errorf("waiting for subsequent implementation")
+		res := g.CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "Manage", pb.String(string(eventType)), pb.String(string(nextEventType)), pb.String(string(objLastStatus)), pb.String(objId), pb.Bytes(extra))
+		if !res.Ok {
+			return fmt.Errorf("cross invoke Manager error: %s", string(res.Result))
+		}
+		return nil
 	case NodeMgr:
-		res := g.CrossInvoke(constant.NodeManagerContractAddr.Address().String(), "Manage", pb.String(string(p.EventType)), pb.String(string(nextEventType)), pb.String(string(p.ObjLastStatus)), pb.String(p.ObjId), pb.Bytes(p.Extra))
+		res := g.CrossInvoke(constant.NodeManagerContractAddr.Address().String(), "Manage", pb.String(string(eventType)), pb.String(string(nextEventType)), pb.String(string(objLastStatus)), pb.String(objId), pb.Bytes(extra))
 		if !res.Ok {
 			return fmt.Errorf("cross invoke Manager error: %s", string(res.Result))
 		}
 		return nil
 	case RuleMgr:
-		res := g.CrossInvoke(constant.RuleManagerContractAddr.Address().String(), "Manage", pb.String(string(p.EventType)), pb.String(string(nextEventType)), pb.String(string(p.ObjLastStatus)), pb.String(p.ObjId), pb.Bytes(p.Extra))
+		res := g.CrossInvoke(constant.RuleManagerContractAddr.Address().String(), "Manage", pb.String(string(eventType)), pb.String(string(nextEventType)), pb.String(string(objLastStatus)), pb.String(objId), pb.Bytes(extra))
 		if !res.Ok {
 			return fmt.Errorf("cross invoke Manager error: %s", string(res.Result))
 		}
 		return nil
 	case DappMgr:
-		res := g.CrossInvoke(constant.DappMgrContractAddr.String(), "Manage", pb.String(string(p.EventType)), pb.String(string(nextEventType)), pb.String(string(p.ObjLastStatus)), pb.String(p.ObjId), pb.Bytes(p.Extra))
+		res := g.CrossInvoke(constant.DappMgrContractAddr.String(), "Manage", pb.String(string(eventType)), pb.String(string(nextEventType)), pb.String(string(objLastStatus)), pb.String(objId), pb.Bytes(extra))
 		if !res.Ok {
 			return fmt.Errorf("cross invoke Manager error: %s", string(res.Result))
 		}
 		return nil
 	default: // APPCHAIN_MGR
-		res := g.CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "Manage", pb.String(string(p.EventType)), pb.String(string(nextEventType)), pb.String(string(p.ObjLastStatus)), pb.String(p.ObjId), pb.Bytes(p.Extra))
+		res := g.CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "Manage", pb.String(string(eventType)), pb.String(string(nextEventType)), pb.String(string(objLastStatus)), pb.String(objId), pb.Bytes(extra))
 		if !res.Ok {
 			return fmt.Errorf("cross invoke Manager error: %s", string(res.Result))
 		}
 		return nil
 	}
-}
-
-func (g *Governance) unlockLowPriorityProposal(p *Proposal) (governance.EventType, error) {
-	nextEventType := governance.EventType(p.Status)
-
-	if p.LockProposalId != "" {
-		lockP := &Proposal{}
-		if !g.GetObject(ProposalKey(p.LockProposalId), lockP) {
-			return "", fmt.Errorf("proposal does not exist")
-		}
-
-		if p.Status == APPOVED {
-			lockP.Status = REJECTED
-			lockP.EndReason = EndReason(fmt.Sprintf("%s(%s)", string(PriorityReason), p.Id))
-		} else {
-			lockP.Status = PROPOSED
-			nextEventType = lockP.EventType
-		}
-		g.SetObject(ProposalKey(lockP.Id), lockP)
-	}
-
-	return nextEventType, nil
 }
 
 // Set vote of an administrator
@@ -903,6 +931,104 @@ func (g *Governance) countVote(p *Proposal) (bool, error) {
 		g.SetObject(ProposalKey(p.Id), *p)
 		return true, nil
 	}
+}
+
+// Locks a suspended proposal for an object
+func (g *Governance) LockLowPriorityProposal(objId, eventTyp string) *boltvm.Response {
+	// 1. check permission
+	specificAddrs := []string{
+		constant.ServiceMgrContractAddr.Address().String(),
+	}
+	addrsData, err := json.Marshal(specificAddrs)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("marshal specificAddrs error: %v", err))
+	}
+	if err := g.checkPermission([]string{string(PermissionSpecific)}, "", g.CurrentCaller(), addrsData); err != nil {
+		return boltvm.Error(fmt.Sprintf("check permission error: %v", err))
+	}
+
+	lockedProId, err := g.lockLowPriorityProposal(objId, eventTyp)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("lock low priority proposal error: %v", err))
+	}
+	return boltvm.Success([]byte(lockedProId))
+}
+
+// Locks a suspended proposal for an object
+func (g *Governance) UnLockLowPriorityProposal(objId, eventTyp string) *boltvm.Response {
+	// 1. check permission
+	specificAddrs := []string{
+		constant.ServiceMgrContractAddr.Address().String(),
+	}
+	addrsData, err := json.Marshal(specificAddrs)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("marshal specificAddrs error: %v", err))
+	}
+	if err := g.checkPermission([]string{string(PermissionSpecific)}, "", g.CurrentCaller(), addrsData); err != nil {
+		return boltvm.Error(fmt.Sprintf("check permission error: %v", err))
+	}
+
+	// 2. unlock low pro=iority proposak
+	lockedProposal, err := g.getHightestPriorityPausedProposalByObjId(objId)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("getHightestPriorityPausedProposalByObjId error: %v", err))
+	}
+	if lockedProposal == nil {
+		return boltvm.Success(nil)
+	}
+
+	nextEventType, err := g.unlockLowPriorityProposal(lockedProposal.Id, true, "")
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("unlock low priority proposal error: %v", err))
+	}
+
+	// manage object
+	// - The fourth parameter takes effect when nextEvent is reject. This parameter is not required here.
+	if err := g.manageObj(lockedProposal.Typ, governance.EventType(eventTyp), nextEventType, "", lockedProposal.ObjId, nil); err != nil {
+		return boltvm.Error(fmt.Sprintf("manage object error: %v", err))
+	}
+
+	return boltvm.Success(nil)
+}
+
+// Queries suspended proposals for an administrated object and returns only the one with the highest priority
+func (g *Governance) getHightestPriorityPausedProposalByObjId(objID string) (*Proposal, error) {
+	pauseProposals, err := g.getProposalsByObjStatus(objID, PAUSED)
+	if err != nil {
+		return nil, err
+	}
+
+	var retP *Proposal
+	if len(pauseProposals) != 0 {
+		retP = pauseProposals[0]
+		for i := 1; i < len(pauseProposals); i++ {
+			if priority[retP.EventType] < priority[pauseProposals[i].EventType] {
+				retP = pauseProposals[i]
+			}
+		}
+	}
+
+	return retP, nil
+}
+
+func (g *Governance) getProposalsByObjStatus(objID string, status ProposalStatus) ([]*Proposal, error) {
+	ret := make([]*Proposal, 0)
+
+	ok, datas := g.Query(PROPOSAL_PREFIX)
+	if ok {
+		for _, d := range datas {
+			p := &Proposal{}
+			if err := json.Unmarshal(d, p); err != nil {
+				return nil, fmt.Errorf("unmarshal proposal error: %v", err)
+			}
+
+			if status == p.Status && objID == p.ObjId {
+				ret = append(ret, p)
+			}
+		}
+	}
+
+	return ret, nil
 }
 
 // Proposal strategy ===============================================================
@@ -1002,12 +1128,7 @@ func ProposalFromKey(id string) string {
 
 // Check info =============================================================
 func checkProposalType(pt ProposalType) error {
-	if pt != AppchainMgr &&
-		pt != RuleMgr &&
-		pt != NodeMgr &&
-		pt != ServiceMgr &&
-		pt != RoleMgr &&
-		pt != DappMgr {
+	if pt != AppchainMgr && pt != RuleMgr && pt != NodeMgr && pt != RoleMgr && pt != DappMgr && pt != ServiceMgr {
 		return fmt.Errorf("illegal proposal type")
 	}
 	return nil
@@ -1016,7 +1137,8 @@ func checkProposalType(pt ProposalType) error {
 func checkProposalStauts(ps ProposalStatus) error {
 	if ps != PROPOSED &&
 		ps != APPOVED &&
-		ps != REJECTED {
+		ps != REJECTED &&
+		ps != PAUSED {
 		return fmt.Errorf("illegal proposal status")
 	}
 	return nil

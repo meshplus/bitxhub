@@ -108,6 +108,7 @@ func governanceCMD() cli.Command {
 			nodeMgrCND(),
 			roleMgrCND(),
 			dappMgrCMD(),
+			serviceMgrCMD(),
 		},
 	}
 }

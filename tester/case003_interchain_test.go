@@ -7,9 +7,9 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
-	"github.com/meshplus/bitxhub-core/validator"
-
 	"github.com/meshplus/bitxhub-core/governance"
+	service_mgr "github.com/meshplus/bitxhub-core/service-mgr"
+	"github.com/meshplus/bitxhub-core/validator"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-model/constant"
@@ -68,26 +68,12 @@ func (suite *Interchain) TestHandleIBTP() {
 	chainID1 := fmt.Sprintf("appchain%s", addr1.String())
 	chainID2 := fmt.Sprintf("appchain%s", addr2.String())
 
-	// deploy rule
-	bytes, err := ioutil.ReadFile("./test_data/hpc_rule.wasm")
-	suite.Require().Nil(err)
-	addr, err := deployContract(suite.api, k1, k1Nonce, bytes)
-	suite.Require().Nil(err)
-	k1Nonce++
-
-	// register rule
-	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(),
-		"RegisterRule", pb.String(chainID1), pb.String(addr.String()), pb.String("url"))
-	suite.Require().Nil(err)
-	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
-	k1Nonce++
-
-	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "RegisterAppchain",
+	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "RegisterAppchain",
 		pb.String(chainID1),
 		pb.Bytes(nil),
 		pb.String("broker"),
 		pb.String("desc"),
-		pb.String(addr.String()),
+		pb.String(validator.HappyRuleAddr),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -117,7 +103,7 @@ func (suite *Interchain) TestHandleIBTP() {
 		pb.Bytes(nil),
 		pb.String("broker"),
 		pb.String("desc"),
-		pb.String(validator.SimFabricRuleAddr),
+		pb.String(validator.HappyRuleAddr),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -145,34 +131,78 @@ func (suite *Interchain) TestHandleIBTP() {
 	serviceID2 := "service2"
 	fullServiceID1 := fmt.Sprintf("1356:%s:%s", chainID1, serviceID1)
 	fullServiceID2 := fmt.Sprintf("1356:%s:%s", chainID2, serviceID2)
+	chainServiceID1 := fmt.Sprintf("%s:%s", chainID1, serviceID1)
+	chainServiceID2 := fmt.Sprintf("%s:%s", chainID2, serviceID2)
 
-	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.ServiceMgrContractAddr.Address(), "Register",
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.ServiceMgrContractAddr.Address(), "RegisterService",
 		pb.String(chainID1),
 		pb.String(serviceID1),
-		pb.String("service1"),
-		pb.String("desc"),
-		pb.String("contract"),
+		pb.String("name"),
+		pb.String(string(service_mgr.ServiceCallContract)),
+		pb.String("intro"),
 		pb.Bool(true),
-		pb.String("service1"),
-		pb.Bytes(nil),
+		pb.String(""),
+		pb.String("details"),
+		pb.String("raeson"),
 	)
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k1Nonce++
+	gRet = &governance.GovernanceResult{}
+	err = json.Unmarshal(ret.Ret, gRet)
+	suite.Require().Nil(err)
+	proposalServiceId1 := gRet.ProposalID
+
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.ServiceMgrContractAddr.Address(), "GetServiceInfo", pb.String(chainServiceID1))
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k1Nonce++
 
-	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.ServiceMgrContractAddr.Address(), "Register",
+	suite.vote(proposalServiceId1, priAdmin1, adminNonce1)
+	adminNonce1++
+
+	suite.vote(proposalServiceId1, priAdmin2, adminNonce2)
+	adminNonce2++
+
+	suite.vote(proposalServiceId1, priAdmin3, adminNonce3)
+	adminNonce3++
+
+	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.ServiceMgrContractAddr.Address(), "RegisterService",
 		pb.String(chainID2),
 		pb.String(serviceID2),
-		pb.String("service2"),
-		pb.String("desc"),
-		pb.String("contract"),
+		pb.String("name"),
+		pb.String(string(service_mgr.ServiceCallContract)),
+		pb.String("intro"),
 		pb.Bool(true),
-		pb.String(fullServiceID1),
-		pb.Bytes(nil),
+		pb.String(""),
+		pb.String("details"),
+		pb.String("raeson"),
 	)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k2Nonce++
+	gRet = &governance.GovernanceResult{}
+	err = json.Unmarshal(ret.Ret, gRet)
+	suite.Require().Nil(err)
+	proposalServiceId2 := gRet.ProposalID
+
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.ServiceMgrContractAddr.Address(), "GetServiceInfo", pb.String(chainServiceID2))
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k1Nonce++
+	service := &service_mgr.Service{}
+	err = json.Unmarshal(ret.Ret, service)
+	suite.Require().Nil(err)
+	suite.Equal(uint64(0), service.InvokeCount)
+
+	suite.vote(proposalServiceId2, priAdmin1, adminNonce1)
+	adminNonce1++
+
+	suite.vote(proposalServiceId2, priAdmin2, adminNonce2)
+	adminNonce2++
+
+	suite.vote(proposalServiceId2, priAdmin3, adminNonce3)
+	adminNonce3++
 
 	proof := []byte("true")
 	proofHash := sha256.Sum256(proof)
@@ -185,6 +215,51 @@ func (suite *Interchain) TestHandleIBTP() {
 	ret, err = sendTransactionWithReceipt(suite.api, tx)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+
+	ibRec := &pb.IBTP{From: fullServiceID1, To: fullServiceID2, Index: ibtpNonce, TimeoutHeight: 10, Proof: proofHash[:], Type: pb.IBTP_RECEIPT_SUCCESS}
+	tx1, err := genIBTPTransaction(k2, ibRec, k2Nonce)
+	suite.Require().Nil(err)
+	k2Nonce++
+
+	tx1.Extra = proof
+	ret, err = sendTransactionWithReceipt(suite.api, tx1)
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	ibtpNonce++
+
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.ServiceMgrContractAddr.Address(), "GetServiceInfo", pb.String(chainServiceID2))
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k1Nonce++
+	err = json.Unmarshal(ret.Ret, service)
+	suite.Require().Nil(err)
+	suite.Equal(uint64(1), service.InvokeCount)
+	_, ok := service.InvokeRecords[chainServiceID1]
+	suite.Equal(true, ok)
+
+	// Add service1 to the blacklist of service2
+	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.ServiceMgrContractAddr.Address(), "UpdateService",
+		pb.String(chainServiceID2),
+		pb.String("name"),
+		pb.String("intro"),
+		pb.Bool(true),
+		pb.String(fullServiceID1),
+		pb.String("details"),
+		pb.String("raeson"),
+	)
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k2Nonce++
+
+	ib2 := &pb.IBTP{From: fullServiceID1, To: fullServiceID2, Index: ibtpNonce, TimeoutHeight: 10, Proof: proofHash[:]}
+	tx2, err := genIBTPTransaction(k1, ib2, k1Nonce)
+	suite.Require().Nil(err)
+	k1Nonce++
+
+	tx2.Extra = proof
+	ret, err = sendTransactionWithReceipt(suite.api, tx2)
+	suite.Require().Nil(err)
+	suite.Require().False(ret.IsSuccess(), string(ret.Ret))
 	ibtpNonce++
 }
 
@@ -307,15 +382,16 @@ func (suite *Interchain) TestHandleIBTP_Rollback() {
 	fullServiceID1 := fmt.Sprintf("1356:%s:%s", chainID1, serviceID1)
 	fullServiceID2 := fmt.Sprintf("1356:%s:%s", chainID2, serviceID2)
 
-	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.ServiceMgrContractAddr.Address(), "Register",
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.ServiceMgrContractAddr.Address(), "RegisterService",
 		pb.String(chainID1),
 		pb.String(serviceID1),
-		pb.String("service1"),
-		pb.String("desc"),
-		pb.String("contract"),
+		pb.String("name"),
+		pb.String(string(service_mgr.ServiceCallContract)),
+		pb.String("intro"),
 		pb.Bool(true),
-		pb.String("service1"),
-		pb.Bytes(nil),
+		pb.String(""),
+		pb.String("details"),
+		pb.String("raeson"),
 	)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
@@ -457,34 +533,74 @@ func (suite *Interchain) TestGetIBTPByID() {
 	serviceID2 := "service2"
 	fullServiceID1 := fmt.Sprintf("1356:%s:%s", chainID1, serviceID1)
 	fullServiceID2 := fmt.Sprintf("1356:%s:%s", chainID2, serviceID2)
+	chainServiceID1 := fmt.Sprintf("%s:%s", chainID1, serviceID1)
+	chainServiceID2 := fmt.Sprintf("%s:%s", chainID2, serviceID2)
 
-	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.ServiceMgrContractAddr.Address(), "Register",
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.ServiceMgrContractAddr.Address(), "RegisterService",
 		pb.String(chainID1),
 		pb.String(serviceID1),
-		pb.String("service1"),
-		pb.String("desc"),
-		pb.String("contract"),
+		pb.String("name"),
+		pb.String(string(service_mgr.ServiceCallContract)),
+		pb.String("intro"),
 		pb.Bool(true),
-		pb.String("service1"),
-		pb.Bytes(nil),
+		pb.String(""),
+		pb.String("details"),
+		pb.String("raeson"),
 	)
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k1Nonce++
+	gRet = &governance.GovernanceResult{}
+	err = json.Unmarshal(ret.Ret, gRet)
+	suite.Require().Nil(err)
+	proposalServiceId1 := gRet.ProposalID
+
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.ServiceMgrContractAddr.Address(), "GetServiceInfo", pb.String(chainServiceID1))
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k1Nonce++
 
-	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.ServiceMgrContractAddr.Address(), "Register",
+	suite.vote(proposalServiceId1, priAdmin1, adminNonce1)
+	adminNonce1++
+
+	suite.vote(proposalServiceId1, priAdmin2, adminNonce2)
+	adminNonce2++
+
+	suite.vote(proposalServiceId1, priAdmin3, adminNonce3)
+	adminNonce3++
+
+	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.ServiceMgrContractAddr.Address(), "RegisterService",
 		pb.String(chainID2),
 		pb.String(serviceID2),
-		pb.String("service2"),
-		pb.String("desc"),
-		pb.String("contract"),
+		pb.String("name"),
+		pb.String(string(service_mgr.ServiceCallContract)),
+		pb.String("intro"),
 		pb.Bool(true),
-		pb.String(fullServiceID1),
-		pb.Bytes(nil),
+		pb.String(""),
+		pb.String("details"),
+		pb.String("raeson"),
 	)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k2Nonce++
+	gRet = &governance.GovernanceResult{}
+	err = json.Unmarshal(ret.Ret, gRet)
+	suite.Require().Nil(err)
+	proposalServiceId2 := gRet.ProposalID
+
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.ServiceMgrContractAddr.Address(), "GetServiceInfo", pb.String(chainServiceID2))
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k1Nonce++
+
+	suite.vote(proposalServiceId2, priAdmin1, adminNonce1)
+	adminNonce1++
+
+	suite.vote(proposalServiceId2, priAdmin2, adminNonce2)
+	adminNonce2++
+
+	suite.vote(proposalServiceId2, priAdmin3, adminNonce3)
+	adminNonce3++
 
 	proofHash := sha256.Sum256(proof)
 	ib := &pb.IBTP{From: fullServiceID1, To: fullServiceID2, Index: ibtpNonce, Payload: []byte("111"), TimeoutHeight: 10, Proof: proofHash[:]}
@@ -586,19 +702,34 @@ func (suite *Interchain) TestInterchain() {
 
 	serviceID := "servie"
 	fullServiceID := fmt.Sprintf("1356:%s:%s", chainID, serviceID)
-	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.ServiceMgrContractAddr.Address(), "Register",
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.ServiceMgrContractAddr.Address(), "RegisterService",
 		pb.String(chainID),
 		pb.String(serviceID),
-		pb.String("service1"),
-		pb.String("desc"),
-		pb.String("contract"),
+		pb.String("name"),
+		pb.String(string(service_mgr.ServiceCallContract)),
+		pb.String("intro"),
 		pb.Bool(true),
-		pb.String("service1"),
-		pb.Bytes(nil),
+		pb.String(""),
+		pb.String("details"),
+		pb.String("raeson"),
 	)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k1Nonce++
+
+	err = json.Unmarshal(ret.Ret, gRet)
+	suite.Require().Nil(err)
+	proposalId2 := gRet.ProposalID
+
+	suite.vote(proposalId2, priAdmin1, adminNonce1)
+	adminNonce1++
+
+	suite.vote(proposalId2, priAdmin2, adminNonce2)
+	adminNonce2++
+
+	suite.vote(proposalId2, priAdmin3, adminNonce3)
+	adminNonce3++
+
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.InterchainContractAddr.Address(),
 		"Interchain", pb.String(fullServiceID))
 	suite.Require().Nil(err)

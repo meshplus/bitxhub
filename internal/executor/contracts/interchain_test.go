@@ -11,6 +11,7 @@ import (
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/boltvm/mock_stub"
 	"github.com/meshplus/bitxhub-core/governance"
+	service_mgr "github.com/meshplus/bitxhub-core/service-mgr"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -38,7 +39,7 @@ func TestInterchainManager_Register(t *testing.T) {
 	//mockStub.EXPECT().Caller().Return(addr).AnyTimes()
 	mockStub.EXPECT().Set(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().Get(BitXHubID).Return(true, []byte("bxh")).AnyTimes()
-	o1 := mockStub.EXPECT().Get(ServiceKey(srcChainService.getFullServiceId())).Return(false, nil)
+	o1 := mockStub.EXPECT().Get(service_mgr.ServiceKey(srcChainService.getFullServiceId())).Return(false, nil)
 
 	interchain := pb.Interchain{
 		ID:                   srcChainService.getFullServiceId(),
@@ -51,7 +52,7 @@ func TestInterchainManager_Register(t *testing.T) {
 	interchain.SourceReceiptCounter[dstChainService.getFullServiceId()] = 1
 	data0, err := interchain.Marshal()
 	assert.Nil(t, err)
-	o2 := mockStub.EXPECT().Get(ServiceKey(srcChainService.getFullServiceId())).Return(true, data0)
+	o2 := mockStub.EXPECT().Get(service_mgr.ServiceKey(srcChainService.getFullServiceId())).Return(true, data0)
 
 	interchain = pb.Interchain{
 		ID:                   srcChainService.getFullServiceId(),
@@ -61,7 +62,7 @@ func TestInterchainManager_Register(t *testing.T) {
 	}
 	data1, err := interchain.Marshal()
 	assert.Nil(t, err)
-	o3 := mockStub.EXPECT().Get(ServiceKey(srcChainService.getFullServiceId())).Return(true, data1)
+	o3 := mockStub.EXPECT().Get(service_mgr.ServiceKey(srcChainService.getFullServiceId())).Return(true, data1)
 	gomock.InOrder(o1, o2, o3)
 
 	im := &InterchainManager{mockStub}
@@ -94,7 +95,7 @@ func TestInterchainManager_Interchain(t *testing.T) {
 	addr := types.NewAddress([]byte{0}).String()
 	mockStub.EXPECT().Caller().Return(addr).AnyTimes()
 	mockStub.EXPECT().Set(gomock.Any(), gomock.Any()).AnyTimes()
-	o1 := mockStub.EXPECT().Get(ServiceKey(srcChainService.getFullServiceId())).Return(false, nil)
+	o1 := mockStub.EXPECT().Get(service_mgr.ServiceKey(srcChainService.getFullServiceId())).Return(false, nil)
 
 	interchain := pb.Interchain{
 		ID:                   addr,
@@ -107,7 +108,7 @@ func TestInterchainManager_Interchain(t *testing.T) {
 	interchain.SourceReceiptCounter[addr] = 1
 	data0, err := interchain.Marshal()
 	assert.Nil(t, err)
-	o2 := mockStub.EXPECT().Get(ServiceKey(srcChainService.getFullServiceId())).Return(true, data0)
+	o2 := mockStub.EXPECT().Get(service_mgr.ServiceKey(srcChainService.getFullServiceId())).Return(true, data0)
 	gomock.InOrder(o1, o2)
 
 	im := &InterchainManager{mockStub}
@@ -126,7 +127,7 @@ func TestInterchainManager_GetInterchain(t *testing.T) {
 	mockStub := mock_stub.NewMockStub(mockCtl)
 
 	mockStub.EXPECT().Set(gomock.Any(), gomock.Any()).AnyTimes()
-	o1 := mockStub.EXPECT().Get(ServiceKey(srcChainService.getFullServiceId())).Return(false, nil)
+	o1 := mockStub.EXPECT().Get(service_mgr.ServiceKey(srcChainService.getFullServiceId())).Return(false, nil)
 
 	interchain := pb.Interchain{
 		ID:                   srcChainService.getFullServiceId(),
@@ -139,7 +140,7 @@ func TestInterchainManager_GetInterchain(t *testing.T) {
 	interchain.SourceReceiptCounter[dstChainService.getFullServiceId()] = 1
 	data0, err := interchain.Marshal()
 	assert.Nil(t, err)
-	o2 := mockStub.EXPECT().Get(ServiceKey(srcChainService.getFullServiceId())).Return(true, data0)
+	o2 := mockStub.EXPECT().Get(service_mgr.ServiceKey(srcChainService.getFullServiceId())).Return(true, data0)
 	gomock.InOrder(o1, o2)
 
 	im := &InterchainManager{mockStub}
@@ -177,9 +178,9 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 
 	mockStub.EXPECT().Set(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
-	mockStub.EXPECT().Get(ServiceKey(unexistChainServiceID)).Return(false, nil).AnyTimes()
+	mockStub.EXPECT().Get(service_mgr.ServiceKey(unexistChainServiceID)).Return(false, nil).AnyTimes()
 	mockStub.EXPECT().Get(appchainMgr.PREFIX+unexistChainID).Return(false, nil).AnyTimes()
-	mockStub.EXPECT().Get(ServiceKey(unavailableChainServiceID)).Return(false, nil).AnyTimes()
+	mockStub.EXPECT().Get(service_mgr.ServiceKey(unavailableChainServiceID)).Return(false, nil).AnyTimes()
 	mockStub.EXPECT().GetTxTimeStamp().Return(int64(1)).AnyTimes()
 	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Return(true).AnyTimes()
 
@@ -194,7 +195,7 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	interchain.SourceReceiptCounter[dstChainService.getFullServiceId()] = 1
 	data0, err := interchain.Marshal()
 	assert.Nil(t, err)
-	mockStub.EXPECT().Get(ServiceKey(srcChainService.getFullServiceId())).Return(true, data0).AnyTimes()
+	mockStub.EXPECT().Get(service_mgr.ServiceKey(srcChainService.getFullServiceId())).Return(true, data0).AnyTimes()
 
 	interchain2 := pb.Interchain{
 		ID:                   dstChainService.getFullServiceId(),
@@ -204,7 +205,7 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	}
 	data2, err := interchain2.Marshal()
 	assert.Nil(t, err)
-	mockStub.EXPECT().Get(ServiceKey(dstChainService.getFullServiceId())).Return(true, data2).AnyTimes()
+	mockStub.EXPECT().Get(service_mgr.ServiceKey(dstChainService.getFullServiceId())).Return(true, data2).AnyTimes()
 
 	appchain := &appchainMgr.Appchain{
 		ID:      srcChainID,
