@@ -44,9 +44,11 @@ func TestNode_Start(t *testing.T) {
 	mockPeermgr := mock_peermgr.NewMockPeerManager(mockCtl)
 	peers := make(map[uint64]*pb.VpInfo)
 	otherPeers := make(map[uint64]*peer.AddrInfo, 5)
+	cntPeers := uint64(0)
 	mockPeermgr.EXPECT().Peers().Return(peers).AnyTimes()
 	mockPeermgr.EXPECT().OtherPeers().Return(otherPeers).AnyTimes()
 	mockPeermgr.EXPECT().Broadcast(gomock.Any()).AnyTimes()
+	mockPeermgr.EXPECT().CountConnectedPeers().Return(cntPeers).AnyTimes()
 
 	order, err := NewNode(
 		order.WithRepoRoot(repoRoot),
@@ -248,6 +250,7 @@ func TestRun(t *testing.T) {
 	node.checkInterval = 200 * time.Millisecond
 	err = node.Start()
 	ast.Nil(err)
+	ast.Nil(node.checkQuorum())
 	// test confChangeC
 	node.confChangeC <- raftpb.ConfChange{ID: uint64(2)}
 	// test rebroadcastTicker
