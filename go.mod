@@ -26,12 +26,12 @@ require (
 	github.com/libp2p/go-libp2p-core v0.5.6
 	github.com/looplab/fsm v0.2.0
 	github.com/magiconair/properties v1.8.4
-	github.com/meshplus/bitxhub-core v1.3.1-0.20210820055613-b809875e5b15
+	github.com/meshplus/bitxhub-core v1.3.1-0.20210830023059-c6103e1b3f8a
 	github.com/meshplus/bitxhub-kit v1.2.1-0.20210813111404-c50fb6384374
 	github.com/meshplus/bitxhub-model v1.2.1-0.20210811024313-728f913a1397
 	github.com/meshplus/bitxid v0.0.0-20210412025850-e0eaf0f9063a
 	github.com/meshplus/did-registry v0.0.0-20210413035015-509c6c3a0bae
-	github.com/meshplus/eth-kit v0.0.0-20210702050624-d6220d180243
+	github.com/meshplus/eth-kit v0.0.0-20210827080755-1c4d555ff4b1
 	github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd
 	github.com/meshplus/go-lightp2p v0.0.0-20210617153734-471d08b829f8
 	github.com/miguelmota/go-solidity-sha3 v0.1.1

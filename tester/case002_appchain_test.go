@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"path/filepath"
 	"strconv"
 
@@ -48,7 +49,7 @@ func (suite *RegisterAppchain) SetupSuite() {
 	suite.normalNonce = 0
 }
 
-// Appchain registers in bitxhub
+//Appchain registers in bitxhub
 func (suite *RegisterAppchain) TestRegisterAppchain() {
 	k2, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
@@ -150,6 +151,70 @@ func (suite *RegisterAppchain) TestRegisterAppchain_NoPubKey() {
 		pb.String("reason"),
 	}
 	ret, err := invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "Register", args...)
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k2Nonce++
+	gRet := &governance.GovernanceResult{}
+	err = json.Unmarshal(ret.Ret, gRet)
+	suite.Require().Nil(err)
+	chainId := string(gRet.Extra)
+
+	ret, err = invokeBVMContract(suite.api, suite.privKey, suite.normalNonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainId))
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	suite.normalNonce++
+	suite.Require().Equal("hyperchain", gjson.Get(string(ret.Ret), "chain_type").String())
+
+	ret, err = invokeBVMContract(suite.api, suite.privKey, suite.normalNonce, constant.AppchainMgrContractAddr.Address(), "GetIdByAddr", pb.String(addr2.String()))
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	suite.normalNonce++
+	did := genUniqueAppchainDID(addr2.String())
+	suite.Require().Equal(string(bitxid.DID(did).GetChainDID()), string(ret.Ret))
+}
+
+func (suite *RegisterAppchain) TestRegisterV2Appchain() {
+	k2, err := asym.GenerateKeyPair(crypto.Secp256k1)
+	suite.Require().Nil(err)
+	k2Nonce := uint64(0)
+
+	addr2, err := k2.PublicKey().Address()
+	suite.Require().Nil(err)
+	appchainMethod := fmt.Sprintf("appchain%s", addr2.String())
+	appchainDID := fmt.Sprintf("did:bitxhub:%s:.", appchainMethod)
+
+	suite.Require().Nil(transfer(suite.Suite, suite.api, addr2, 10000000000000))
+
+	bytes, err := ioutil.ReadFile("./test_data/hpc_rule.wasm")
+	suite.Require().Nil(err)
+	ruleAddr, err := deployContract(suite.api, k2, k2Nonce, bytes)
+	suite.Require().Nil(err)
+	k2Nonce++
+
+	// register rule
+	ret, err := invokeBVMContract(suite.api, k2, k2Nonce, constant.RuleManagerContractAddr.Address(), "RegisterRuleV2",
+		pb.String(appchainDID),
+		pb.String(ruleAddr.String()),
+	)
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k2Nonce++
+
+	args := []*pb.Arg{
+		pb.String(appchainMethod),
+		pb.String(docAddr),
+		pb.String(docHash),
+		pb.String(""),
+		pb.String(""),
+		pb.String("hyperchain"),
+		pb.String("税务链"),
+		pb.String("趣链税务链"),
+		pb.String("1.8"),
+		pb.String(""),
+		pb.String("reason"),
+		pb.String(ruleAddr.String()),
+	}
+	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "RegisterV2", args...)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k2Nonce++
