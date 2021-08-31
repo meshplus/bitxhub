@@ -22,11 +22,12 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d
 	github.com/hokaccha/go-prettyjson v0.0.0-20190818114111-108c894c2c0e
+	github.com/hyperledger/fabric-amcl v0.0.0-20210603140002-2670f91851c8 // indirect
 	github.com/juju/ratelimit v1.0.1
 	github.com/libp2p/go-libp2p-core v0.5.6
 	github.com/looplab/fsm v0.2.0
 	github.com/magiconair/properties v1.8.4
-	github.com/meshplus/bitxhub-core v1.3.1-0.20210830023059-c6103e1b3f8a
+	github.com/meshplus/bitxhub-core v1.3.1-0.20210831122859-951e437cb2c1
 	github.com/meshplus/bitxhub-kit v1.2.1-0.20210813111404-c50fb6384374
 	github.com/meshplus/bitxhub-model v1.2.1-0.20210811024313-728f913a1397
 	github.com/meshplus/bitxid v0.0.0-20210412025850-e0eaf0f9063a

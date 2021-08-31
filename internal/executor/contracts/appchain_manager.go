@@ -66,6 +66,7 @@ func (am *AppchainManager) Manage(eventTyp string, proposalResult, lastStatus st
 				res = am.CrossInvoke(constant.RuleManagerContractAddr.String(), "BindRule",
 					pb.String(chain.ID),
 					pb.String(chain.Rule),
+					pb.String(chain.RuleUrl),
 				)
 				if !res.Ok {
 					return res
@@ -216,7 +217,7 @@ func (am *AppchainManager) Register(method string, docAddr, docHash, validators 
 // caller is the appchain manager address
 // return appchain id, proposal id and error
 func (am *AppchainManager) RegisterV2(method string, docAddr, docHash, validators string,
-	consensusType, chainType, name, desc, version, pubkey, reason, rule string) *boltvm.Response {
+	consensusType, chainType, name, desc, version, pubkey, reason, rule, ruleUrl string) *boltvm.Response {
 	var (
 		addr string
 		err  error
@@ -283,6 +284,7 @@ func (am *AppchainManager) RegisterV2(method string, docAddr, docHash, validator
 		DidDocAddr:    docAddr,
 		DidDocHash:    docHash,
 		Rule:          rule,
+		RuleUrl:       ruleUrl,
 		OwnerDID:      appchainAdminDID,
 	}
 	chainData, err := json.Marshal(chain)

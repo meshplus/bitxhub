@@ -191,7 +191,7 @@ func (suite *Interchain) TestHandleIBTP() {
 
 	// register rule
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(),
-		"RegisterRule", pb.String(id1), pb.String(addr.String()), pb.String(""))
+		"RegisterRule", pb.String(id1), pb.String(addr.String()), pb.String("ruleUrl"), pb.String("reason"))
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess())
 	k1Nonce++
@@ -400,7 +400,7 @@ func (suite *Interchain) TestGetIBTPByID() {
 
 	// register rule
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(),
-		"RegisterRule", pb.String(id1), pb.String(addr.String()), pb.String(""))
+		"RegisterRule", pb.String(id1), pb.String(addr.String()), pb.String("ruleurl"), pb.String("reason"))
 	suite.Require().Nil(err)
 	k1Nonce++
 	proposalRuleId := gjson.Get(string(ret.Ret), "proposal_id").String()
