@@ -240,8 +240,8 @@ func (rm *RuleManager) UpdateMasterRule(chainId string, newMasterruleAddress, re
 func (rm *RuleManager) BindRule(chainId string, ruleAddr string) *boltvm.Response {
 	rm.RuleManager.Persister = rm.Stub
 
-	if rm.Caller() != constant.AppchainMgrContractAddr.Address().String() {
-		return boltvm.Error(fmt.Sprintf("caller %s is not appchain manager contract", rm.Caller()))
+	if rm.CurrentCaller() != constant.AppchainMgrContractAddr.Address().String() {
+		return boltvm.Error(fmt.Sprintf("current caller %s is not appchain manager contract", rm.Caller()))
 	}
 
 	ruleRes := rm.GetRuleByAddr(chainId, ruleAddr)

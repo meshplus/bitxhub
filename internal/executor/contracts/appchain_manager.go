@@ -253,14 +253,14 @@ func (am *AppchainManager) RegisterV2(method string, docAddr, docHash, validator
 		return boltvm.Error("check permission error:" + string(res.Result))
 	}
 
-	//res := am.CrossInvoke(constant.MethodRegistryContractAddr.String(), "Apply",
-	//	pb.String(appchainAdminDID), pb.String(appchainMethod), pb.Bytes(nil))
-	//if !res.Ok {
-	//	return res
-	//}
-
 	appchainAdminDID := fmt.Sprintf("%s:%s:%s", repo.BitxhubRootPrefix, method, addr)
 	appchainDID := fmt.Sprintf("%s:%s:.", repo.BitxhubRootPrefix, method)
+
+	res = am.CrossInvoke(constant.RuleManagerContractAddr.String(), "GetRuleByAddr",
+		pb.String(appchainDID), pb.String(rule))
+	if !res.Ok {
+		return boltvm.Error(fmt.Sprintf("rule %s is not registered to chain ID %s: %s", rule, appchainDID, string(res.Result)))
+	}
 
 	chain := &appchainMgr.Appchain{
 		ID:            appchainDID,
@@ -573,6 +573,9 @@ func (am *AppchainManager) IsAppchainAdmin() *boltvm.Response {
 	}
 
 	for _, chain := range chains {
+		if chain.Status == governance.GovernanceUnavailable {
+			continue
+		}
 		tmpAddr, err := chain.GetAdminAddress()
 		if err != nil {
 			return boltvm.Error("get addr error: " + err.Error())
