@@ -548,7 +548,7 @@ func (exec *BlockExecutor) getContracts(opt *agency.TxOpt) map[string]agency.Con
 }
 
 func newEvm(number uint64, timestamp uint64, chainCfg *params.ChainConfig, db ledger2.StateDB, chainLedger ledger2.ChainLedger, admin string) *vm1.EVM {
-	blkCtx := vm1.NewEVMBlockContext(number, timestamp, db, chainLedger, admin)
+	blkCtx := vm1.NewEVMBlockContext(number, timestamp/uint64(time.Second), db, chainLedger, admin)
 
 	return vm1.NewEVM(blkCtx, vm1.TxContext{}, db, chainCfg, vm1.Config{})
 }
