@@ -252,31 +252,40 @@ func (bxh *BitXHub) Stop() error {
 	return nil
 }
 
-func (bxh *BitXHub) ReConfig(config *repo.Config) {
-	loggers.ReConfig(config)
+func (bxh *BitXHub) ReConfig(repo *repo.Repo) {
+	if repo.Config != nil {
+		config := repo.Config
+		loggers.ReConfig(config)
 
-	if err := bxh.Jsonrpc.ReConfig(config); err != nil {
-		bxh.logger.Errorf("reconfig json rpc failed: %v", err)
+		if err := bxh.Jsonrpc.ReConfig(config); err != nil {
+			bxh.logger.Errorf("reconfig json rpc failed: %v", err)
+		}
+
+		if err := bxh.Grpc.ReConfig(config); err != nil {
+			bxh.logger.Errorf("reconfig grpc failed: %v", err)
+		}
+
+		if err := bxh.Gateway.ReConfig(config); err != nil {
+			bxh.logger.Errorf("reconfig gateway failed: %v", err)
+		}
+
+		if err := bxh.PeerMgr.ReConfig(config); err != nil {
+			bxh.logger.Errorf("reconfig PeerMgr failed: %v", err)
+		}
+
+		if err := bxh.Monitor.ReConfig(config); err != nil {
+			bxh.logger.Errorf("reconfig Monitor failed: %v", err)
+		}
+
+		if err := bxh.Pprof.ReConfig(config); err != nil {
+			bxh.logger.Errorf("reconfig Pprof failed: %v", err)
+		}
 	}
-
-	if err := bxh.Grpc.ReConfig(config); err != nil {
-		bxh.logger.Errorf("reconfig grpc failed: %v", err)
-	}
-
-	if err := bxh.Gateway.ReConfig(config); err != nil {
-		bxh.logger.Errorf("reconfig gateway failed: %v", err)
-	}
-
-	if err := bxh.PeerMgr.ReConfig(config); err != nil {
-		bxh.logger.Errorf("reconfig PeerMgr failed: %v", err)
-	}
-
-	if err := bxh.Monitor.ReConfig(config); err != nil {
-		bxh.logger.Errorf("reconfig Monitor failed: %v", err)
-	}
-
-	if err := bxh.Pprof.ReConfig(config); err != nil {
-		bxh.logger.Errorf("reconfig Pprof failed: %v", err)
+	if repo.NetworkConfig != nil {
+		config := repo.NetworkConfig
+		if err := bxh.PeerMgr.ReConfig(config); err != nil {
+			bxh.logger.Errorf("reconfig PeerMgr failed: %v", err)
+		}
 	}
 }
 

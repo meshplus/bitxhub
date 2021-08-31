@@ -12,7 +12,6 @@ import (
 	peer "github.com/libp2p/go-libp2p-core/peer"
 	pb "github.com/meshplus/bitxhub-model/pb"
 	events "github.com/meshplus/bitxhub/internal/model/events"
-	repo "github.com/meshplus/bitxhub/internal/repo"
 	peermgr "github.com/meshplus/bitxhub/pkg/peermgr"
 	network "github.com/meshplus/go-lightp2p"
 )
@@ -161,7 +160,7 @@ func (mr *MockPeerManagerMockRecorder) PierManager() *gomock.Call {
 }
 
 // ReConfig mocks base method.
-func (m *MockPeerManager) ReConfig(config *repo.Config) error {
+func (m *MockPeerManager) ReConfig(config interface{}) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ReConfig", config)
 	ret0, _ := ret[0].(error)

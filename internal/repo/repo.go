@@ -2,6 +2,7 @@ package repo
 
 import (
 	"fmt"
+	"github.com/spf13/viper"
 	"io/ioutil"
 	"path/filepath"
 
@@ -10,19 +11,21 @@ import (
 )
 
 type Repo struct {
-	Config           *Config
-	NetworkConfig    *NetworkConfig
-	Key              *Key
-	Certs            *libp2pcert.Certs
-	ConfigChangeFeed event.Feed
+	Config             *Config
+	NetworkConfig      *NetworkConfig
+	Key                *Key
+	Certs              *libp2pcert.Certs
+	ConfigChangeFeed   event.Feed
 }
 
-func (r *Repo) SubscribeConfigChange(ch chan *Config) event.Subscription {
+func (r *Repo) SubscribeConfigChange(ch chan *Repo) event.Subscription {
 	return r.ConfigChangeFeed.Subscribe(ch)
 }
 
 func Load(repoRoot string, passwd string) (*Repo, error) {
-	config, err := UnmarshalConfig(repoRoot)
+	bViper := viper.New()
+	nViper := viper.New()
+	config, err := UnmarshalConfig(bViper, repoRoot)
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +34,8 @@ func Load(repoRoot string, passwd string) (*Repo, error) {
 		return nil, err
 	}
 
-	networkConfig, err := loadNetworkConfig(repoRoot, config.Genesis)
+
+	networkConfig, err := loadNetworkConfig(nViper, repoRoot, config.Genesis)
 	if err != nil {
 		return nil, fmt.Errorf("load network config: %w", err)
 	}
@@ -53,7 +57,11 @@ func Load(repoRoot string, passwd string) (*Repo, error) {
 		Certs:         certs,
 	}
 
-	WatchConfig(&repo.ConfigChangeFeed)
+	// watch bitxhub.toml on changed
+	WatchBitxhubConfig(bViper, &repo.ConfigChangeFeed)
+
+	// watch network.toml on changed
+	WatchNetworkConfig(nViper, &repo.ConfigChangeFeed, &NetworkConfig{Genesis: config.Genesis})
 
 	return repo, nil
 }
