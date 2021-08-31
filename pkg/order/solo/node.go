@@ -165,7 +165,10 @@ func NewNode(opts ...agency.ConfigOption) (agency.Order, error) {
 
 // Schedule to collect txs to the listenReadyBlock channel
 func (n *Node) listenReadyBlock() {
-	blockTicker := time.NewTicker(n.blockTimeout)
+	var blockTicker <-chan time.Time
+	if n.isTimed && blockTicker == nil {
+		blockTicker = time.Tick(n.blockTimeout)
+	}
 	go func() {
 		for {
 			select {
@@ -245,8 +248,7 @@ func (n *Node) listenReadyBlock() {
 				n.logger.Debug("The length of priorityIndex is 0, skip the batch timer")
 			}
 
-		case <-blockTicker.C:
-
+		case <-blockTicker:
 			if !n.mempool.HasPendingRequest() {
 				n.logger.Debug("start create empty block")
 			}

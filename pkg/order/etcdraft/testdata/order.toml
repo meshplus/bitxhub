@@ -1,3 +1,7 @@
+[timed_gen_block]
+enable = false
+block_timeout = "2s"
+
 [raft]
 batch_timeout               = "0.3s"  # Block packaging time period.
 tick_timeout                = "0.1s" # TickTimeout is the internal logical clock for the Node by a single tick, Election timeouts and heartbeat timeouts are in units of ticks.

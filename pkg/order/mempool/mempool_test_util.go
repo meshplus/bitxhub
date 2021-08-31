@@ -38,8 +38,12 @@ func mockMempoolImpl(path string) (*mempoolImpl, chan *raftproto.Ready) {
 		GetAccountNonce: mockGetAccountNonce,
 	}
 	proposalC := make(chan *raftproto.Ready)
-	mempool, _ := newMempoolImpl(config)
-	return mempool, proposalC
+	mempool, _ := NewMempool(config)
+	mempoolImpl, ok := mempool.(*mempoolImpl)
+	if !ok {
+		return nil, nil
+	}
+	return mempoolImpl, proposalC
 }
 
 func genPrivKey() crypto.PrivateKey {
