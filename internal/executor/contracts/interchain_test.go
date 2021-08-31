@@ -210,7 +210,7 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 		ID:      srcChainID,
 		Status:  governance.GovernanceAvailable,
 		Desc:    "Relay1",
-		Version: "1",
+		Version: 0,
 	}
 	appchainData, err := json.Marshal(appchain)
 	require.Nil(t, err)
@@ -219,7 +219,7 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 		ID:      dstChainID,
 		Status:  governance.GovernanceAvailable,
 		Desc:    "Relay2",
-		Version: "1",
+		Version: 0,
 	}
 	dstAppchainData, err := json.Marshal(dstAppchain)
 	assert.Nil(t, err)
@@ -228,7 +228,7 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 		ID:      unavailableChainID,
 		Status:  governance.GovernanceFrozen,
 		Desc:    "Relay1",
-		Version: "1",
+		Version: 0,
 	}
 	unavailableChainData, err := json.Marshal(unavailableChain)
 	require.Nil(t, err)

@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/meshplus/bitxhub-core/validator"
+
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/governance"
 	"github.com/meshplus/bitxhub-kit/crypto"
@@ -30,40 +32,38 @@ func (suite *Governance) TestGovernance() {
 	path1 := "./test_data/config/node1/key.json"
 	path2 := "./test_data/config/node2/key.json"
 	path3 := "./test_data/config/node3/key.json"
-	path4 := "./test_data/config/node4/key.json"
+	//path4 := "./test_data/config/node4/key.json"
 	keyPath1 := filepath.Join(path1)
 	keyPath2 := filepath.Join(path2)
 	keyPath3 := filepath.Join(path3)
-	keyPath4 := filepath.Join(path4)
+	//keyPath4 := filepath.Join(path4)
 	priAdmin1, err := asym.RestorePrivateKey(keyPath1, "bitxhub")
 	suite.Require().Nil(err)
 	priAdmin2, err := asym.RestorePrivateKey(keyPath2, "bitxhub")
 	suite.Require().Nil(err)
 	priAdmin3, err := asym.RestorePrivateKey(keyPath3, "bitxhub")
 	suite.Require().Nil(err)
-	priAdmin4, err := asym.RestorePrivateKey(keyPath4, "bitxhub")
-	suite.Require().Nil(err)
+	//priAdmin4, err := asym.RestorePrivateKey(keyPath4, "bitxhub")
+	//suite.Require().Nil(err)
 	fromAdmin1, err := priAdmin1.PublicKey().Address()
 	suite.Require().Nil(err)
 	fromAdmin2, err := priAdmin2.PublicKey().Address()
 	suite.Require().Nil(err)
 	fromAdmin3, err := priAdmin3.PublicKey().Address()
 	suite.Require().Nil(err)
-	fromAdmin4, err := priAdmin4.PublicKey().Address()
-	suite.Require().Nil(err)
+	//fromAdmin4, err := priAdmin4.PublicKey().Address()
+	//suite.Require().Nil(err)
+	adminNonce1 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin1.String())
 	adminNonce2 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin2.String())
 	adminNonce3 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin3.String())
-	adminNonce4 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin4.String())
+	//adminNonce4 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin4.String())
 
 	appchainPri, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
-	suite.Require().Nil(err)
 	addr, err := appchainPri.PublicKey().Address()
 	suite.Require().Nil(err)
-	appchainNonce := uint64(0)
-
+	appchainNonce := suite.api.Broker().GetPendingNonceByAccount(addr.String())
 	suite.Require().Nil(transfer(suite.Suite, suite.api, addr, 10000000000000))
-	adminNonce1 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin1.String())
 
 	// 1. Register ==============================================
 	chainID1 := fmt.Sprintf("appchain%s", addr.String())
@@ -72,8 +72,7 @@ func (suite *Governance) TestGovernance() {
 		pb.Bytes(nil),
 		pb.String("broker"),
 		pb.String("desc"),
-		pb.String("1.8"),
-		pb.String("false"),
+		pb.String(validator.FabricRuleAddr),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -90,8 +89,7 @@ func (suite *Governance) TestGovernance() {
 		pb.Bytes(nil),
 		pb.String("broker"),
 		pb.String("desc"),
-		pb.String("1.8"),
-		pb.String("false"),
+		pb.String(validator.FabricRuleAddr),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -170,15 +168,15 @@ func (suite *Governance) TestGovernance() {
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	adminNonce3++
 
-	// vote4: error, the proposal is closed
-	ret, err = invokeBVMContract(suite.api, priAdmin4, adminNonce4, constant.GovernanceContractAddr.Address(), "Vote",
-		pb.String(registerProposalId),
-		pb.String(contracts.BallotApprove),
-		pb.String("reason"),
-	)
-	suite.Require().Nil(err)
-	suite.Require().False(ret.IsSuccess(), string(ret.Ret))
-	adminNonce4++
+	//// vote4: error, the proposal is closed
+	//ret, err = invokeBVMContract(suite.api, priAdmin4, adminNonce4, constant.GovernanceContractAddr.Address(), "Vote",
+	//	pb.String(registerProposalId),
+	//	pb.String(contracts.BallotApprove),
+	//	pb.String("reason"),
+	//)
+	//suite.Require().Nil(err)
+	//suite.Require().False(ret.IsSuccess(), string(ret.Ret))
+	//adminNonce4++
 
 	// get approve num
 	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.GovernanceContractAddr.Address(), "GetApproveNum", pb.String(registerProposalId))

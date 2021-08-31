@@ -118,7 +118,7 @@ func (nm *NodeManager) RegisterNode(nodePid string, nodeVpId uint64, nodeAccount
 	}
 
 	// 3. governancePre: check status
-	if _, _, err := nm.NodeManager.GovernancePre(nodePid, event, nil); err != nil {
+	if _, err := nm.NodeManager.GovernancePre(nodePid, event, nil); err != nil {
 		return boltvm.Error(fmt.Sprintf("%s prepare error: %v", string(event), err))
 	}
 
@@ -162,7 +162,7 @@ func (nm *NodeManager) LogoutNode(nodePid, reason string) *boltvm.Response {
 	}
 
 	// 2. governancePre: check status
-	nodeInfo, _, err := nm.NodeManager.GovernancePre(nodePid, event, nil)
+	nodeInfo, err := nm.NodeManager.GovernancePre(nodePid, event, nil)
 	if err != nil {
 		return boltvm.Error(fmt.Sprintf("%s prepare error: %v", string(event), err))
 	}
@@ -242,15 +242,13 @@ func (nm *NodeManager) Nodes() *boltvm.Response {
 	if err != nil {
 		return boltvm.Error(err.Error())
 	}
-	if nodes == nil {
-		return boltvm.Success(nil)
+
+	if data, err := json.Marshal(nodes.([]*node_mgr.Node)); err != nil {
+		return boltvm.Error(err.Error())
 	} else {
-		if data, err := json.Marshal(nodes.([]*node_mgr.Node)); err != nil {
-			return boltvm.Error(err.Error())
-		} else {
-			return boltvm.Success(data)
-		}
+		return boltvm.Success(data)
 	}
+
 }
 
 // IsAvailable returns whether the node is available

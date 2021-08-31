@@ -21,7 +21,9 @@ import (
 func Initialize(genesis *repo.Genesis, nodes []*repo.NetworkNodes, primaryN uint64, lg *ledger.Ledger, executor executor.Executor) error {
 	lg.PrepareBlock(nil, 1)
 
+	idMap := map[string]struct{}{}
 	for _, ad := range genesis.Admins {
+		idMap[ad.Address] = struct{}{}
 		admin := &contracts.Role{
 			ID:       ad.Address,
 			RoleType: contracts.GovernanceAdmin,
@@ -32,8 +34,13 @@ func Initialize(genesis *repo.Genesis, nodes []*repo.NetworkNodes, primaryN uint
 		if err != nil {
 			return err
 		}
-		lg.SetState(constant.RoleContractAddr.Address(), []byte(fmt.Sprintf("%s-%s", contracts.ROLEPREFIX, admin.ID)), adminData)
+		lg.SetState(constant.RoleContractAddr.Address(), []byte(contracts.RoleKey(admin.ID)), adminData)
 	}
+	idMapData, err := json.Marshal(idMap)
+	if err != nil {
+		return err
+	}
+	lg.SetState(constant.RoleContractAddr.Address(), []byte(contracts.RoleTypeKey(string(contracts.GovernanceAdmin))), idMapData)
 
 	balance, _ := new(big.Int).SetString(genesis.Balance, 10)
 	for _, admin := range genesis.Admins {

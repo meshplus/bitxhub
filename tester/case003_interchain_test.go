@@ -7,6 +7,8 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
+	"github.com/meshplus/bitxhub-core/validator"
+
 	"github.com/meshplus/bitxhub-core/governance"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
@@ -15,7 +17,6 @@ import (
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/stretchr/testify/suite"
-	"github.com/tidwall/gjson"
 )
 
 type Interchain struct {
@@ -67,13 +68,26 @@ func (suite *Interchain) TestHandleIBTP() {
 	chainID1 := fmt.Sprintf("appchain%s", addr1.String())
 	chainID2 := fmt.Sprintf("appchain%s", addr2.String())
 
-	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "RegisterAppchain",
+	// deploy rule
+	bytes, err := ioutil.ReadFile("./test_data/hpc_rule.wasm")
+	suite.Require().Nil(err)
+	addr, err := deployContract(suite.api, k1, k1Nonce, bytes)
+	suite.Require().Nil(err)
+	k1Nonce++
+
+	// register rule
+	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(),
+		"RegisterRule", pb.String(chainID1), pb.String(addr.String()), pb.String("url"))
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k1Nonce++
+
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "RegisterAppchain",
 		pb.String(chainID1),
 		pb.Bytes(nil),
 		pb.String("broker"),
 		pb.String("desc"),
-		pb.String("1.8"),
-		pb.String("false"),
+		pb.String(addr.String()),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -103,8 +117,7 @@ func (suite *Interchain) TestHandleIBTP() {
 		pb.Bytes(nil),
 		pb.String("broker"),
 		pb.String("desc"),
-		pb.String("1.8"),
-		pb.String("false"),
+		pb.String(validator.SimFabricRuleAddr),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -126,30 +139,6 @@ func (suite *Interchain) TestHandleIBTP() {
 	adminNonce2++
 
 	suite.vote(proposalId2, priAdmin3, adminNonce3)
-	adminNonce3++
-
-	// deploy rule
-	bytes, err := ioutil.ReadFile("./test_data/hpc_rule.wasm")
-	suite.Require().Nil(err)
-	addr, err := deployContract(suite.api, k1, k1Nonce, bytes)
-	suite.Require().Nil(err)
-	k1Nonce++
-
-	// register rule
-	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(),
-		"RegisterRule", pb.String(chainID1), pb.String(addr.String()), pb.String("reason"))
-	suite.Require().Nil(err)
-	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
-	k1Nonce++
-	proposalRuleId := gjson.Get(string(ret.Ret), "proposal_id").String()
-
-	suite.vote(proposalRuleId, priAdmin1, adminNonce1)
-	adminNonce1++
-
-	suite.vote(proposalRuleId, priAdmin2, adminNonce2)
-	adminNonce2++
-
-	suite.vote(proposalRuleId, priAdmin3, adminNonce3)
 	adminNonce3++
 
 	serviceID1 := "service1"
@@ -240,13 +229,26 @@ func (suite *Interchain) TestHandleIBTP_Rollback() {
 	chainID1 := fmt.Sprintf("appchain%s", addr1.String())
 	chainID2 := fmt.Sprintf("appchain%s", addr2.String())
 
-	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "RegisterAppchain",
+	// deploy rule
+	bytes, err := ioutil.ReadFile("./test_data/hpc_rule.wasm")
+	suite.Require().Nil(err)
+	addr, err := deployContract(suite.api, k1, k1Nonce, bytes)
+	suite.Require().Nil(err)
+	k1Nonce++
+
+	// register rule
+	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(),
+		"RegisterRule", pb.String(chainID1), pb.String(addr.String()), pb.String("url"))
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k1Nonce++
+
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "RegisterAppchain",
 		pb.String(chainID1),
 		pb.Bytes(nil),
 		pb.String("broker"),
 		pb.String("desc"),
-		pb.String("1.8"),
-		pb.String("false"),
+		pb.String(addr.String()),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -276,8 +278,7 @@ func (suite *Interchain) TestHandleIBTP_Rollback() {
 		pb.Bytes(nil),
 		pb.String("broker"),
 		pb.String("desc"),
-		pb.String("1.8"),
-		pb.String("false"),
+		pb.String(validator.SimFabricRuleAddr),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -299,30 +300,6 @@ func (suite *Interchain) TestHandleIBTP_Rollback() {
 	adminNonce2++
 
 	suite.vote(proposalId2, priAdmin3, adminNonce3)
-	adminNonce3++
-
-	// deploy rule
-	bytes, err := ioutil.ReadFile("./test_data/hpc_rule.wasm")
-	suite.Require().Nil(err)
-	addr, err := deployContract(suite.api, k1, k1Nonce, bytes)
-	suite.Require().Nil(err)
-	k1Nonce++
-
-	// register rule
-	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(),
-		"RegisterRule", pb.String(chainID1), pb.String(addr.String()), pb.String("reason"))
-	suite.Require().Nil(err)
-	suite.Require().True(ret.IsSuccess())
-	k1Nonce++
-	proposalRuleId := gjson.Get(string(ret.Ret), "proposal_id").String()
-
-	suite.vote(proposalRuleId, priAdmin1, adminNonce1)
-	adminNonce1++
-
-	suite.vote(proposalRuleId, priAdmin2, adminNonce2)
-	adminNonce2++
-
-	suite.vote(proposalRuleId, priAdmin3, adminNonce3)
 	adminNonce3++
 
 	serviceID1 := "service1"
@@ -401,13 +378,25 @@ func (suite *Interchain) TestGetIBTPByID() {
 
 	chainID1 := fmt.Sprintf("appchain%s", addr1.String())
 	chainID2 := fmt.Sprintf("appchain%s", addr2.String())
-	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "RegisterAppchain",
+
+	contractByte, err := ioutil.ReadFile("./test_data/fabric_policy.wasm")
+	suite.Require().Nil(err)
+	addr, err := deployContract(suite.api, k1, k1Nonce, contractByte)
+	suite.Require().Nil(err)
+	k1Nonce++
+
+	// register rule
+	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(),
+		"RegisterRule", pb.String(chainID1), pb.String(addr.String()), pb.String("reason"))
+	suite.Require().Nil(err)
+	k1Nonce++
+
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "RegisterAppchain",
 		pb.String(chainID1),
 		pb.Bytes(confByte),
 		pb.String("broker"),
 		pb.String("desc"),
-		pb.String("1.8"),
-		pb.String("false"),
+		pb.String(addr.String()),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -437,8 +426,7 @@ func (suite *Interchain) TestGetIBTPByID() {
 		pb.Bytes(nil),
 		pb.String("broker"),
 		pb.String("desc"),
-		pb.String("1.8"),
-		pb.String("false"),
+		pb.String(validator.SimFabricRuleAddr),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -460,28 +448,6 @@ func (suite *Interchain) TestGetIBTPByID() {
 	adminNonce2++
 
 	suite.vote(proposalId2, priAdmin3, adminNonce3)
-	adminNonce3++
-
-	contractByte, err := ioutil.ReadFile("./test_data/fabric_policy.wasm")
-	suite.Require().Nil(err)
-	addr, err := deployContract(suite.api, k1, k1Nonce, contractByte)
-	suite.Require().Nil(err)
-	k1Nonce++
-
-	// register rule
-	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(),
-		"RegisterRule", pb.String(chainID1), pb.String(addr.String()), pb.String("reason"))
-	suite.Require().Nil(err)
-	k1Nonce++
-	proposalRuleId := gjson.Get(string(ret.Ret), "proposal_id").String()
-
-	suite.vote(proposalRuleId, priAdmin1, adminNonce1)
-	adminNonce1++
-
-	suite.vote(proposalRuleId, priAdmin2, adminNonce2)
-	adminNonce2++
-
-	suite.vote(proposalRuleId, priAdmin3, adminNonce3)
 	adminNonce3++
 
 	proof, err := ioutil.ReadFile("./test_data/proof")
@@ -576,17 +542,16 @@ func (suite *Interchain) TestInterchain() {
 	suite.Require().Nil(err)
 	fromAdmin3, err := priAdmin3.PublicKey().Address()
 	suite.Require().Nil(err)
+	adminNonce1 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin1.String())
 	adminNonce2 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin2.String())
 	adminNonce3 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin3.String())
 
 	k1, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
-	k1Nonce := uint64(0)
-
 	addr1, err := k1.PublicKey().Address()
 	suite.Require().Nil(err)
 	suite.Require().Nil(transfer(suite.Suite, suite.api, addr1, 10000000000000))
-	adminNonce1 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin1.String())
+	k1Nonce := suite.api.Broker().GetPendingNonceByAccount(addr1.String())
 
 	chainID := fmt.Sprintf("appchain%s", addr1.String())
 	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "RegisterAppchain",
@@ -594,8 +559,7 @@ func (suite *Interchain) TestInterchain() {
 		pb.Bytes(nil),
 		pb.String("broker"),
 		pb.String("desc"),
-		pb.String("1.8"),
-		pb.String("false"),
+		pb.String(validator.FabricRuleAddr),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -655,7 +619,7 @@ func (suite *Interchain) TestRegister() {
 	suite.Require().Nil(err)
 	from1, err := k1.PublicKey().Address()
 	suite.Require().Nil(err)
-	k1Nonce := uint64(0)
+	k1Nonce := suite.api.Broker().GetPendingNonceByAccount(from1.String())
 	suite.Require().Nil(transfer(suite.Suite, suite.api, from1, 10000000000000))
 
 	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.InterchainContractAddr.Address(), "Register", pb.String(from1.Address))

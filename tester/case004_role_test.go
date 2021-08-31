@@ -38,23 +38,27 @@ func (suite *Role) TestGetRole() {
 
 	suite.Require().Nil(transfer(suite.Suite, suite.api, from1, 10000000000000))
 	fromaddr := from1.String()
-
 	k1nonce := suite.api.Broker().GetPendingNonceByAccount(from1.String())
 
-	_, err = invokeBVMContract(suite.api, k1, k1nonce, constant.AppchainMgrContractAddr.Address(), "RegisterAppchain",
+	// deploy rule
+	bytes, err := ioutil.ReadFile("./test_data/hpc_rule.wasm")
+	suite.Require().Nil(err)
+	ruleAddr1, err := deployContract(suite.api, k1, k1nonce, bytes)
+	suite.Require().Nil(err)
+	k1nonce++
+
+	ret, err := invokeBVMContract(suite.api, k1, k1nonce, constant.RuleManagerContractAddr.Address(), "RegisterRule",
 		pb.String(fmt.Sprintf("appchain%s", fromaddr)),
-		pb.Bytes(nil),
-		pb.String("broker"),
-		pb.String("desc"),
-		pb.String("1.8"),
-		pb.String("false"),
-		pb.String("reason"),
+		pb.String(ruleAddr1.String()),
+		pb.String("url"),
 	)
 	suite.Assert().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k1nonce++
 
 	receipt, err := invokeBVMContract(suite.api, k1, k1nonce, constant.RoleContractAddr.Address(), "GetRole")
 	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	suite.Equal(string(contracts.AppchainAdmin), string(receipt.Ret))
 	k1nonce++
 }
@@ -127,6 +131,7 @@ func (suite *Role) TestGetRuleAddress() {
 	suite.Require().Nil(err)
 	fromAdmin3, err := priAdmin3.PublicKey().Address()
 	suite.Require().Nil(err)
+	adminNonce1 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin1.String())
 	adminNonce2 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin2.String())
 	adminNonce3 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin3.String())
 
@@ -139,25 +144,43 @@ func (suite *Role) TestGetRuleAddress() {
 	suite.Require().Nil(err)
 	addr2, err := k2.PublicKey().Address()
 	suite.Require().Nil(err)
+	k1Nonce := suite.api.Broker().GetPendingNonceByAccount(addr1.String())
+	k2Nonce := suite.api.Broker().GetPendingNonceByAccount(addr2.String())
 	suite.Require().Nil(transfer(suite.Suite, suite.api, addr1, 10000000000000))
 	suite.Require().Nil(transfer(suite.Suite, suite.api, addr2, 10000000000000))
-	adminNonce1 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin1.String())
-	from1, err := k1.PublicKey().Address()
+
+	chainID1 := fmt.Sprintf("appchain%s", addr1.String())
+
+	// deploy rule
+	bytes, err := ioutil.ReadFile("./test_data/hpc_rule.wasm")
 	suite.Require().Nil(err)
-	k1Nonce := suite.api.Broker().GetPendingNonceByAccount(from1.String())
-	from2, err := k2.PublicKey().Address()
+	ruleAddr1, err := deployContract(suite.api, k1, k1Nonce, bytes)
 	suite.Require().Nil(err)
-	k2Nonce := suite.api.Broker().GetPendingNonceByAccount(from2.String())
+	k1Nonce++
+
+	bytes, err = ioutil.ReadFile("./test_data/fabric_policy.wasm")
+	suite.Require().Nil(err)
+	ruleAddr2, err := deployContract(suite.api, k2, k2Nonce, bytes)
+	suite.Require().Nil(err)
+	k2Nonce++
+
+	suite.Require().NotEqual(ruleAddr1, ruleAddr2)
+
+	// register rule
+	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(), "RegisterRule",
+		pb.String(chainID1),
+		pb.String(ruleAddr1.String()),
+		pb.String("url"),
+	)
+	k1Nonce++
 
 	// Register
-	chainID1 := fmt.Sprintf("appchain%s", addr1.String())
-	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "RegisterAppchain",
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "RegisterAppchain",
 		pb.String(chainID1),
 		pb.Bytes(nil),
 		pb.String("broker"),
 		pb.String("desc"),
-		pb.String("1.8"),
-		pb.String("false"),
+		pb.String(ruleAddr1.String()),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -183,8 +206,7 @@ func (suite *Role) TestGetRuleAddress() {
 		pb.Bytes(nil),
 		pb.String("broker"),
 		pb.String("desc"),
-		pb.String("1.8"),
-		pb.String("true"),
+		pb.String(validator.FabricRuleAddr),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -201,41 +223,6 @@ func (suite *Role) TestGetRuleAddress() {
 	adminNonce2++
 
 	suite.vote(proposalId2, priAdmin3, adminNonce3)
-	adminNonce3++
-
-	// deploy rule
-	bytes, err := ioutil.ReadFile("./test_data/hpc_rule.wasm")
-	suite.Require().Nil(err)
-	ruleAddr1, err := deployContract(suite.api, k1, k1Nonce, bytes)
-	suite.Require().Nil(err)
-	k1Nonce++
-
-	bytes, err = ioutil.ReadFile("./test_data/fabric_policy.wasm")
-	suite.Require().Nil(err)
-	ruleAddr2, err := deployContract(suite.api, k2, k2Nonce, bytes)
-	suite.Require().Nil(err)
-	k2Nonce++
-
-	suite.Require().NotEqual(ruleAddr1, ruleAddr2)
-
-	// register rule
-	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(), "RegisterRule",
-		pb.String(chainID1),
-		pb.String(ruleAddr1.String()),
-		pb.String("reason"),
-	)
-	suite.Require().Nil(err)
-	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
-	k1Nonce++
-	proposalRuleId := gjson.Get(string(ret.Ret), "proposal_id").String()
-
-	suite.vote(proposalRuleId, priAdmin1, adminNonce1)
-	adminNonce1++
-
-	suite.vote(proposalRuleId, priAdmin2, adminNonce2)
-	adminNonce2++
-
-	suite.vote(proposalRuleId, priAdmin3, adminNonce3)
 	adminNonce3++
 
 	// get rule address

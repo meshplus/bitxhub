@@ -644,7 +644,7 @@ func TestGovernance_SubmitProposal_LockLowPriorityProposal(t *testing.T) {
 		ID:      appchainID,
 		Status:  governance.GovernanceAvailable,
 		Desc:    "",
-		Version: "",
+		Version: 0,
 	}
 	chainData, err := json.Marshal(chain)
 	assert.Nil(t, err)
@@ -731,7 +731,7 @@ func TestGovernance_WithdrawProposal(t *testing.T) {
 		ID:      appchainID,
 		Status:  governance.GovernanceAvailable,
 		Desc:    "",
-		Version: "",
+		Version: 0,
 	}
 	chainData, err := json.Marshal(chain)
 	assert.Nil(t, err)

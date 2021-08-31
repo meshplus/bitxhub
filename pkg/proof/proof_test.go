@@ -45,7 +45,7 @@ func TestVerifyPool_CheckProof(t *testing.T) {
 	chain := &appchainMgr.Appchain{
 		ID:      from,
 		Desc:    "",
-		Version: "",
+		Version: 0,
 	}
 
 	chainData, err := json.Marshal(chain)
@@ -135,7 +135,7 @@ func TestVerifyPool_CheckProof2(t *testing.T) {
 		Status:  governance.GovernanceAvailable,
 		ID:      from,
 		Desc:    "",
-		Version: "",
+		Version: 0,
 	}
 
 	keys := make([]crypto.PrivateKey, 0, 4)

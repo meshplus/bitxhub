@@ -169,7 +169,7 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, error) {
 }
 
 func (pl *VerifyPool) getRule(chainId string) (bool, []byte) {
-	ok, data := pl.ledger.Copy().GetState(constant.RuleManagerContractAddr.Address(), []byte(contracts.RuleKey(chainId)))
+	ok, data := pl.ledger.Copy().GetState(constant.RuleManagerContractAddr.Address(), []byte(ruleMgr.RuleKey(chainId)))
 	if !ok {
 		return ok, data
 	}
