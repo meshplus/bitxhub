@@ -14,7 +14,8 @@ git clone https://github.com/meshplus/bitxhub.git
 # 2. 进入bitxhub目录，切换到指定的分支或版本后编译bitxhub二进制
 cd bitxhub && git checkout v1.6.2 && make build
 # 注意⚠️：首次编译需要在build之前先执行 make prepare 完成依赖安装
-# 编译完成后可以在项目的bin目录下看到刚刚生成的bitxhub二进制文件
+# 编译完成后可以在项目的bin目录下看到刚刚生成的bitxhub二进制文件，可以确认下bitxhub版本是v1.6.2
+./bin/bitxhub version
 # 3. 接下来需要编译共识插件，进入到 internal/plugins 目录进行编译
 cd internal/plugins && make plugins
 # 编译完成后可以在项目的internal/plugins/build目录下看到刚刚生成的共识插件文件，raft.so和solo.so
@@ -32,7 +33,13 @@ cd internal/plugins && make plugins
 
 ## 快速启动BitXHub节点
 
-获取到安装包后，接下来要根据您的实际情况修改配置文件。如果您是在本地编译的二进制包，您也可以在项目根目录执行`make cluster`一键启动四节点raft共识的BitXHub集群，或者执行`make solo`一键启动单节点solo共识的BitXHub节点。如果您是直接下载的二进制安装包，为了简化操作，我们也提供了可以直接启动raft/solo共识的节点配置文件示例，其下载地址与二进制包一样，文件名以example开头。需要注意的是，raft共识的示例配置文件是四节点集群，solo共识的示例配置文件是单节点。接下来只需将上一步下载的BitXHub二进制及对应插件拷贝到配置目录即可，具体操作如下：
+获取到安装包后，接下来要根据您的实际情况修改配置文件。
+
+- 如果您是在本地编译的二进制包，您也可以在项目根目录执行`make cluster`一键启动四节点raft共识的BitXHub集群，或者执行`make solo`一键启动单节点solo共识的BitXHub节点。
+
+- 如果您是直接下载的二进制安装包，为了简化操作，我们也提供了可以直接启动raft/solo共识的节点配置文件示例，其下载地址与二进制包一样，文件名以example开头。需要注意的是，raft共识的示例配置文件是四节点集群，solo共识的示例配置文件是单节点
+
+接下来只需将上一步下载的BitXHub二进制及对应插件拷贝到配置目录即可，具体操作如下：
 
 ```
 # 1. 解压二进制压缩包
