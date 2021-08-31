@@ -9,7 +9,6 @@ import (
 	"strconv"
 
 	"github.com/meshplus/bitxhub-core/governance"
-	"github.com/meshplus/bitxhub-core/validator"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-model/constant"
@@ -231,7 +230,6 @@ func (suite *Role) TestGetRuleAddress() {
 	k2Nonce++
 	err = json.Unmarshal(ret.Ret, gRet)
 	suite.Require().Nil(err)
-	id2 := string(gRet.Extra)
 	proposalId2 := gRet.ProposalID
 	// Fabric automatically deploys validation rules
 
@@ -321,12 +319,6 @@ func (suite *Role) TestGetRuleAddress() {
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	suite.Require().Equal(ruleAddr1.String(), string(ret.Ret))
 	k1Nonce++
-
-	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.RuleManagerContractAddr.Address(), "GetAvailableRuleAddr", pb.String(id2))
-	suite.Assert().Nil(err)
-	suite.Require().True(ret.IsSuccess())
-	suite.Require().Equal(validator.FabricRuleAddr, string(ret.Ret))
-	k2Nonce++
 }
 
 func (suite *Role) TestRegisterRoles() {

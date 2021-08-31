@@ -61,9 +61,6 @@ func (am *AppchainManager) Manage(eventTyp string, proposalResult, lastStatus st
 			if !res.Ok {
 				return res
 			}
-			if err = am.chainDefaultConfig(chain); err != nil {
-				return boltvm.Error("chain default config error:" + err.Error())
-			}
 
 			if chain.Rule != "" {
 				res = am.CrossInvoke(constant.RuleManagerContractAddr.String(), "BindRule",

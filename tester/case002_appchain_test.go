@@ -237,6 +237,96 @@ func (suite *RegisterAppchain) TestRegisterV2Appchain() {
 	suite.Require().Equal(string(bitxid.DID(did).GetChainDID()), string(ret.Ret))
 }
 
+//func (suite *RegisterAppchain) TestRegisterV2FabricAppchain() {
+//	k2, err := asym.GenerateKeyPair(crypto.Secp256k1)
+//	suite.Require().Nil(err)
+//	k2Nonce := uint64(0)
+//
+//	addr2, err := k2.PublicKey().Address()
+//	suite.Require().Nil(err)
+//	appchainMethod := fmt.Sprintf("appchain%s", addr2.String())
+//
+//	suite.Require().Nil(transfer(suite.Suite, suite.api, addr2, 10000000000000))
+//
+//	args := []*pb.Arg{
+//		pb.String(appchainMethod),
+//		pb.String(docAddr),
+//		pb.String(docHash),
+//		pb.String(""),
+//		pb.String(""),
+//		pb.String("fabric"),
+//		pb.String("税务链"),
+//		pb.String("趣链税务链"),
+//		pb.String("1.8"),
+//		pb.String(""),
+//		pb.String("reason"),
+//		pb.String(validator.FabricRuleAddr),
+//	}
+//	ret, err := invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "RegisterV2", args...)
+//	suite.Require().Nil(err)
+//	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+//	k2Nonce++
+//	gRet := &governance.GovernanceResult{}
+//	err = json.Unmarshal(ret.Ret, gRet)
+//	suite.Require().Nil(err)
+//	proposalId1 := gRet.ProposalID
+//
+//	path1 := "./test_data/config/node1/key.json"
+//	path2 := "./test_data/config/node2/key.json"
+//	path3 := "./test_data/config/node3/key.json"
+//	keyPath1 := filepath.Join(path1)
+//	keyPath2 := filepath.Join(path2)
+//	keyPath3 := filepath.Join(path3)
+//	priAdmin1, err := asym.RestorePrivateKey(keyPath1, "bitxhub")
+//	suite.Require().Nil(err)
+//	priAdmin2, err := asym.RestorePrivateKey(keyPath2, "bitxhub")
+//	suite.Require().Nil(err)
+//	priAdmin3, err := asym.RestorePrivateKey(keyPath3, "bitxhub")
+//	suite.Require().Nil(err)
+//	fromAdmin1, err := priAdmin1.PublicKey().Address()
+//	suite.Require().Nil(err)
+//	fromAdmin2, err := priAdmin2.PublicKey().Address()
+//	suite.Require().Nil(err)
+//	fromAdmin3, err := priAdmin3.PublicKey().Address()
+//	suite.Require().Nil(err)
+//	adminNonce2 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin2.String())
+//	adminNonce3 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin3.String())
+//	k1, err := asym.GenerateKeyPair(crypto.Secp256k1)
+//
+//	addr1, err := k1.PublicKey().Address()
+//	suite.Require().Nil(err)
+//	suite.Require().Nil(transfer(suite.Suite, suite.api, addr1, 10000000000000))
+//	adminNonce1 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin1.String())
+//
+//	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.GovernanceContractAddr.Address(), "Vote",
+//		pb.String(proposalId1),
+//		pb.String(string(contracts.APPOVED)),
+//		pb.String("reason"),
+//	)
+//	suite.Require().Nil(err)
+//	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+//	adminNonce1++
+//
+//	ret, err = invokeBVMContract(suite.api, priAdmin2, adminNonce2, constant.GovernanceContractAddr.Address(), "Vote",
+//		pb.String(proposalId1),
+//		pb.String(string(contracts.APPOVED)),
+//		pb.String("reason"),
+//	)
+//	suite.Require().Nil(err)
+//	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+//	adminNonce2++
+//
+//	ret, err = invokeBVMContract(suite.api, priAdmin3, adminNonce3, constant.GovernanceContractAddr.Address(), "Vote",
+//		pb.String(proposalId1),
+//		pb.String(string(contracts.APPOVED)),
+//		pb.String("reason"),
+//	)
+//	suite.Require().Nil(err)
+//	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+//	adminNonce3++
+//
+//}
+
 func (suite *RegisterAppchain) TestFetchAppchains() {
 	k1, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
