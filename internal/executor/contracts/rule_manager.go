@@ -6,8 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/meshplus/bitxid"
-
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/governance"
@@ -15,6 +13,7 @@ import (
 	"github.com/meshplus/bitxhub-core/validator"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxid"
 	"github.com/meshplus/eth-kit/ledger"
 	"github.com/tidwall/gjson"
 )
@@ -242,6 +241,13 @@ func (rm *RuleManager) BindRule(chainId string, ruleAddr string) *boltvm.Respons
 
 	if rm.CurrentCaller() != constant.AppchainMgrContractAddr.Address().String() {
 		return boltvm.Error(fmt.Sprintf("current caller %s is not appchain manager contract", rm.Caller()))
+	}
+
+	if ruleAddr == validator.FabricRuleAddr || ruleAddr == validator.SimFabricRuleAddr || ruleAddr == validator.HappyRuleAddr {
+		ok, data := rm.RuleManager.Register(chainId, ruleAddr)
+		if !ok {
+			return boltvm.Error("register error: " + string(data))
+		}
 	}
 
 	ruleRes := rm.GetRuleByAddr(chainId, ruleAddr)

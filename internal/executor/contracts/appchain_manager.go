@@ -8,6 +8,7 @@ import (
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/governance"
+	ruleMgr "github.com/meshplus/bitxhub-core/rule-mgr"
 	"github.com/meshplus/bitxhub-core/validator"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -256,10 +257,20 @@ func (am *AppchainManager) RegisterV2(method string, docAddr, docHash, validator
 	appchainAdminDID := fmt.Sprintf("%s:%s:%s", repo.BitxhubRootPrefix, method, addr)
 	appchainDID := fmt.Sprintf("%s:%s:.", repo.BitxhubRootPrefix, method)
 
-	res = am.CrossInvoke(constant.RuleManagerContractAddr.String(), "GetRuleByAddr",
-		pb.String(appchainDID), pb.String(rule))
-	if !res.Ok {
-		return boltvm.Error(fmt.Sprintf("rule %s is not registered to chain ID %s: %s", rule, appchainDID, string(res.Result)))
+	if rule != validator.FabricRuleAddr && rule != validator.SimFabricRuleAddr && rule != validator.HappyRuleAddr {
+		res = am.CrossInvoke(constant.RuleManagerContractAddr.String(), "GetRuleByAddr",
+			pb.String(appchainDID), pb.String(rule))
+		if !res.Ok {
+			return boltvm.Error(fmt.Sprintf("rule %s is not registered to chain ID %s: %s", rule, appchainDID, string(res.Result)))
+		}
+
+		ruleInfo := &ruleMgr.Rule{}
+		if err := json.Unmarshal(res.Result, ruleInfo); err != nil {
+			return boltvm.Error(fmt.Sprintf("unmarshal rule error: %v", err))
+		}
+		if ruleInfo.Status != governance.GovernanceBindable {
+			return boltvm.Error(fmt.Sprintf("the rule is not bindable: %s", rule))
+		}
 	}
 
 	chain := &appchainMgr.Appchain{
