@@ -618,7 +618,7 @@ func verifyMultiSign(app *appchainMgr.Appchain, ibtp *pb.IBTP, proof []byte) (bo
 		}
 		delete(m, v)
 		addr := types.NewAddressByStr(v)
-		ok, _ := asym.Verify(crypto.Secp256k1, sign, hash[:], *addr)
+		ok, _ := asym.VerifyWithType(sign, hash[:], *addr)
 		if ok {
 			counter++
 		}

@@ -20,7 +20,7 @@ func keyCMD() cli.Command {
 		Subcommands: []cli.Command{
 			{
 				Name:  "gen",
-				Usage: "Create new Secp256k1 private key in specified directory",
+				Usage: "Create new private key in specified directory",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:  "target",
@@ -29,6 +29,12 @@ func keyCMD() cli.Command {
 					cli.StringFlag{
 						Name:     "passwd",
 						Usage:    "Specify password",
+						Required: false,
+					},
+					cli.StringFlag{
+						Name:     "algo",
+						Usage:    "crypto algorithm",
+						Value:    "Secp256k1",
 						Required: false,
 					},
 				},
@@ -75,6 +81,7 @@ func keyCMD() cli.Command {
 func genPrivKey(ctx *cli.Context) error {
 	target := ctx.String("target")
 	passwd := ctx.String("passwd")
+	cryptoAlgo := ctx.String("algo")
 
 	if passwd == "" {
 		passwd = repo.DefaultPasswd
@@ -84,7 +91,16 @@ func genPrivKey(ctx *cli.Context) error {
 		return fmt.Errorf("get absolute key path: %w", err)
 	}
 
-	privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
+	cryptoType, err := crypto.CryptoNameToType(cryptoAlgo)
+	if err != nil {
+		return err
+	}
+
+	if !asym.SupportedKeyType(cryptoType) {
+		return fmt.Errorf("unsupport crypto algo:%s", cryptoAlgo)
+	}
+
+	privKey, err := asym.GenerateKeyPair(cryptoType)
 	if err != nil {
 		return fmt.Errorf("generate key: %w", err)
 	}

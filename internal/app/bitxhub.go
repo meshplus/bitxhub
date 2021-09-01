@@ -11,6 +11,7 @@ import (
 	"github.com/common-nighthawk/go-figure"
 	"github.com/ethereum/go-ethereum/common/fdlimit"
 	"github.com/meshplus/bitxhub-core/agency"
+	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/meshplus/bitxhub-kit/storage/blockfile"
 	"github.com/meshplus/bitxhub/api/gateway"
@@ -109,6 +110,19 @@ func NewBitXHub(rep *repo.Repo) (*BitXHub, error) {
 func GenerateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 	repoRoot := rep.Config.RepoRoot
 	logger := loggers.Logger(loggers.App)
+
+	err := asym.ConfiguredKeyType(rep.Config.Crypto.Algorithms)
+	if err != nil {
+		return nil, err
+	}
+
+	supportCryptoTypeToName := asym.GetConfiguredKeyType()
+	printType := "Supported crypto type:"
+	for _, name := range supportCryptoTypeToName {
+		printType = fmt.Sprintf("%s%s ", printType, name)
+	}
+	printType = fmt.Sprintf("%s\n", printType)
+	fmt.Println(printType)
 
 	if err := storages.Initialize(repoRoot); err != nil {
 		return nil, fmt.Errorf("storages initialize: %w", err)

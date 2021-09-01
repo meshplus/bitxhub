@@ -2,6 +2,7 @@
     github.com/bitxhub/service-mng v0.0.0-20201125031105-f345beee1b42
 	github.com/bitxhub/bitxhub-order-rbft v0.0.0-20210827023248-16204be14339
     github.com/bitxhub/license v0.0.0-20210721031301-66d44925f5f9
+    github.com/bitxhub/crypto-gm v0.0.0-20210825015341-e035b646648d
 
 replace github.com/ultramesh/rbft => git.hyperchain.cn/ultramesh/rbft v0.1.5-0.20210817012908-9d35a610a919
 
@@ -16,3 +17,5 @@ replace github.com/ultramesh/crypto-standard => git.hyperchain.cn/ultramesh/cryp
 replace github.com/ultramesh/crypto => git.hyperchain.cn/ultramesh/crypto.git v0.1.0
 
 replace github.com/hyperchain/gosdk => git.hyperchain.cn/hyperchain/gosdk.git v1.2.8
+
+replace github.com/ultramesh/crypto-gm => git.hyperchain.cn/dmlab/crypto-gm v0.2.14
