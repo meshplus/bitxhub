@@ -31,8 +31,8 @@ func ruleMgrCMD() cli.Command {
 				Action: getRulesList,
 			},
 			cli.Command{
-				Name:  "available",
-				Usage: "query available rule address of a chain",
+				Name:  "master",
+				Usage: "query master rule address of a chain",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "id",
@@ -40,7 +40,7 @@ func ruleMgrCMD() cli.Command {
 						Required: true,
 					},
 				},
-				Action: getAvailableRuleAddress,
+				Action: getMasterRuleAddress,
 			},
 			cli.Command{
 				Name:  "status",
@@ -58,28 +58,6 @@ func ruleMgrCMD() cli.Command {
 					},
 				},
 				Action: getRuleStatus,
-			},
-			cli.Command{
-				Name:  "update",
-				Usage: "update master rule with chain id",
-				Flags: []cli.Flag{
-					cli.StringFlag{
-						Name:     "id",
-						Usage:    "Specify chain id",
-						Required: true,
-					},
-					cli.StringFlag{
-						Name:     "addr",
-						Usage:    "Specify rule address",
-						Required: true,
-					},
-					cli.StringFlag{
-						Name:     "reason",
-						Usage:    "Specify update reason",
-						Required: false,
-					},
-				},
-				Action: updateRule,
 			},
 		},
 	}
@@ -107,16 +85,20 @@ func getRulesList(ctx *cli.Context) error {
 	return nil
 }
 
-func getAvailableRuleAddress(ctx *cli.Context) error {
+func getMasterRuleAddress(ctx *cli.Context) error {
 	id := ctx.String("id")
 
-	receipt, err := invokeBVMContractBySendView(ctx, constant.RuleManagerContractAddr.String(), "GetAvailableRuleAddr", pb.String(id))
+	receipt, err := invokeBVMContractBySendView(ctx, constant.RuleManagerContractAddr.String(), "GetMasterRule", pb.String(id))
 	if err != nil {
+		return err
+	}
+	rule := &ruleMgr.Rule{}
+	if err := json.Unmarshal(receipt.Ret, rule); err != nil {
 		return err
 	}
 
 	if receipt.IsSuccess() {
-		color.Green("available rule address is %s", string(receipt.Ret))
+		color.Green("available rule address is %s", rule.Address)
 	} else {
 		color.Red("get available rule address error: %s\n", string(receipt.Ret))
 	}
@@ -165,11 +147,11 @@ func updateRule(ctx *cli.Context) error {
 
 func printRule(rules []*ruleMgr.Rule) {
 	var table [][]string
-	table = append(table, []string{"ChainId", "RuleAddress", "Status", "Master"})
+	table = append(table, []string{"ChainID", "RuleAddress", "Status", "Master"})
 
 	for _, r := range rules {
 		table = append(table, []string{
-			r.ChainId,
+			r.ChainID,
 			r.Address,
 			string(r.Status),
 			strconv.FormatBool(r.Master),

@@ -3,12 +3,12 @@ package client
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
 
 	"github.com/fatih/color"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
+	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/tidwall/gjson"
 	"github.com/urfave/cli"
 )
@@ -150,7 +150,7 @@ func roleMgrCND() cli.Command {
 func getRoleStatusById(ctx *cli.Context) error {
 	id := ctx.String("id")
 
-	receipt, err := invokeBVMContractBySendView(ctx, constant.RoleContractAddr.String(), "GetRoleById", pb.String(id))
+	receipt, err := invokeBVMContractBySendView(ctx, constant.RoleContractAddr.String(), "GetRoleInfoById", pb.String(id))
 	if err != nil {
 		return err
 	}
@@ -266,7 +266,7 @@ func allRole(ctx *cli.Context) error {
 	var ret *pb.Receipt
 	switch typ {
 	case string(contracts.GovernanceAdmin):
-		receipt, err := invokeBVMContractBySendView(ctx, constant.RoleContractAddr.String(), "GetAdminRoles")
+		receipt, err := invokeBVMContractBySendView(ctx, constant.RoleContractAddr.String(), "GetAllRoles")
 		if err != nil {
 			return err
 		}
@@ -297,15 +297,22 @@ func allRole(ctx *cli.Context) error {
 
 func printRole(roles []*contracts.Role) {
 	var table [][]string
-	table = append(table, []string{"RoleId", "type", "Weight", "NodePid", "Status"})
+	table = append(table, []string{"RoleId", "type", "Status", "NodePid", "AppchainID"})
 
 	for _, r := range roles {
+		var typ string
+		if r.RoleType == contracts.GovernanceAdmin && r.Weight == repo.SuperAdminWeight {
+			typ = string(contracts.SuperGovernanceAdmin)
+		} else {
+			typ = string(contracts.GovernanceAdmin)
+		}
+
 		table = append(table, []string{
 			r.ID,
-			string(r.RoleType),
-			strconv.Itoa(int(r.Weight)),
-			r.NodePid,
+			typ,
 			string(r.Status),
+			r.NodePid,
+			r.AppchainID,
 		})
 	}
 

@@ -80,7 +80,7 @@ func testSendView(suite *API) {
 }
 
 func transfer(suite suite.Suite, api api.CoreAPI, address *types.Address, amount uint64) error {
-	keyPath1 := filepath.Join("./test_data/config/node1/key.json")
+	keyPath1 := filepath.Join("./test_data/config/node4/key.json")
 	priAdmin1, err := asym.RestorePrivateKey(keyPath1, "bitxhub")
 	suite.Require().Nil(err)
 
@@ -90,6 +90,7 @@ func transfer(suite suite.Suite, api api.CoreAPI, address *types.Address, amount
 
 	tx, err := genTransferTransaction(priAdmin1, adminNonce1, address, amount)
 	suite.Require().Nil(err)
+	adminNonce1++
 
 	err = api.Broker().HandleTransaction(tx)
 	suite.Require().Nil(err)
@@ -105,7 +106,7 @@ func transfer(suite suite.Suite, api api.CoreAPI, address *types.Address, amount
 			return nil
 		}
 		return nil
-	}, strategy.Wait(2*time.Second)); err != nil {
+	}, strategy.Wait(1*time.Second)); err != nil {
 	}
 
 	return nil

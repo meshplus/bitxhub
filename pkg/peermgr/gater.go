@@ -53,11 +53,9 @@ func (g *connectionGater) InterceptSecured(d network.Direction, p peer.ID, addr 
 		return false
 	}
 
-	for _, s := range node_mgr.NodeAvailableState {
-		if node.Status == s {
-			g.logger.Infof("Connect with an available node, peer.Pid: %s, peer.Id: %d, peer.status: %s", p, node.VPNodeId, node.Status)
-			return true
-		}
+	if node.IsAvailable() {
+		g.logger.Infof("Connect with an available node, peer.Pid: %s, peer.Id: %d, peer.status: %s", p, node.VPNodeId, node.Status)
+		return true
 	}
 
 	g.logger.Infof("Intercept a connection with an unavailable node, peer.Pid: %s, peer.Id: %d, peer.status: %s", p, node.VPNodeId, node.Status)

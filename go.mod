@@ -35,7 +35,7 @@ require (
 	github.com/libp2p/go-libp2p-core v0.5.6
 	github.com/looplab/fsm v0.2.0
 	github.com/magiconair/properties v1.8.4
-	github.com/meshplus/bitxhub-core v1.3.1-0.20210819114413-70449f8bd324
+	github.com/meshplus/bitxhub-core v1.3.1-0.20210901134750-eb8755d3e50a
 	github.com/meshplus/bitxhub-kit v1.2.1-0.20210901014031-ee93dd4f4ced
 	github.com/meshplus/bitxhub-model v1.2.1-0.20210901014152-aadfe05d27a5
 	github.com/meshplus/eth-kit v0.0.0-20210827081722-ce80fe3a863b
