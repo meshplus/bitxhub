@@ -32,3 +32,10 @@ func (cbs *ChainBrokerService) GetTPS(ctx context.Context, req *pb.GetTPSRequest
 
 	return &pb.Response{Data: data}, nil
 }
+
+func (cbs *ChainBrokerService) GetChainID(ctx context.Context, empty *pb.Empty) (*pb.Response, error) {
+	data := make([]byte, 8)
+	binary.LittleEndian.PutUint64(data, cbs.config.Genesis.ChainID)
+
+	return &pb.Response{Data: data}, nil
+}
