@@ -3,8 +3,8 @@ package app
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"math/big"
-	"os/exec"
 	"path/filepath"
 	"syscall"
 	"time"
@@ -62,8 +62,11 @@ func NewBitXHub(rep *repo.Repo, orderPath string) (*BitXHub, error) {
 		orderRoot = repoRoot
 	} else {
 		orderRoot = orderPath
-		cmd := exec.Command("cp", filepath.Join(orderPath, "order.toml"), filepath.Join(repoRoot, "order.toml"))
-		err := cmd.Run()
+		fileData, err := ioutil.ReadFile(filepath.Join(orderPath, "order.toml"))
+		if err != nil {
+			return nil, err
+		}
+		err = ioutil.WriteFile(filepath.Join(repoRoot, "order.toml"), fileData, 0644)
 		if err != nil {
 			return nil, err
 		}

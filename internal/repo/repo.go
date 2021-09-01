@@ -3,13 +3,11 @@ package repo
 import (
 	"fmt"
 	"io/ioutil"
-	"os/exec"
 	"path/filepath"
-
-	"github.com/spf13/viper"
 
 	"github.com/ethereum/go-ethereum/event"
 	libp2pcert "github.com/meshplus/go-libp2p-cert"
+	"github.com/spf13/viper"
 )
 
 type Repo struct {
@@ -41,8 +39,11 @@ func Load(repoRoot string, passwd string, configPath string, networkPath string)
 		networkConfig, err = loadNetworkConfig(nViper, repoRoot, config.Genesis)
 	} else {
 		networkConfig, err = loadNetworkConfig(nViper, networkPath, config.Genesis)
-		cmd := exec.Command("cp", filepath.Join(networkPath, "network.toml"), filepath.Join(repoRoot, "network.toml"))
-		err := cmd.Run()
+		fileData, err := ioutil.ReadFile(filepath.Join(networkPath, "network.toml"))
+		if err != nil {
+			return nil, err
+		}
+		err = ioutil.WriteFile(filepath.Join(repoRoot, "network.toml"), fileData, 0644)
 		if err != nil {
 			return nil, err
 		}

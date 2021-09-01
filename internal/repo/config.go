@@ -3,8 +3,8 @@ package repo
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -237,8 +237,11 @@ func UnmarshalConfig(viper *viper.Viper, repoRoot string, configPath string) (*C
 		viper.SetConfigFile(filepath.Join(repoRoot, configName))
 	} else {
 		viper.SetConfigFile(filepath.Join(configPath, configName))
-		cmd := exec.Command("cp", filepath.Join(configPath, configName), filepath.Join(repoRoot, configName))
-		err := cmd.Run()
+		fileData, err := ioutil.ReadFile(filepath.Join(configPath, configName))
+		if err != nil {
+			return nil, err
+		}
+		err = ioutil.WriteFile(filepath.Join(repoRoot, configName), fileData, 0644)
 		if err != nil {
 			return nil, err
 		}
