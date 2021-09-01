@@ -3,9 +3,8 @@ package repo
 import (
 	"testing"
 
-	"github.com/spf13/viper"
-
 	"github.com/mitchellh/go-homedir"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

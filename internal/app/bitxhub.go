@@ -61,8 +61,8 @@ func NewBitXHub(rep *repo.Repo, orderPath string) (*BitXHub, error) {
 	if len(orderPath) == 0 {
 		orderRoot = repoRoot
 	} else {
-		orderRoot = orderPath
-		fileData, err := ioutil.ReadFile(filepath.Join(orderPath, "order.toml"))
+		orderRoot = filepath.Dir(orderPath)
+		fileData, err := ioutil.ReadFile(orderPath)
 		if err != nil {
 			return nil, err
 		}

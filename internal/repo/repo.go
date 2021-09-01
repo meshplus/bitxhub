@@ -38,8 +38,9 @@ func Load(repoRoot string, passwd string, configPath string, networkPath string)
 	if len(networkPath) == 0 {
 		networkConfig, err = loadNetworkConfig(nViper, repoRoot, config.Genesis)
 	} else {
-		networkConfig, err = loadNetworkConfig(nViper, networkPath, config.Genesis)
-		fileData, err := ioutil.ReadFile(filepath.Join(networkPath, "network.toml"))
+		networkDir := filepath.Dir(networkPath)
+		networkConfig, err = loadNetworkConfig(nViper, networkDir, config.Genesis)
+		fileData, err := ioutil.ReadFile(networkPath)
 		if err != nil {
 			return nil, err
 		}

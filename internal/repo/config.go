@@ -9,11 +9,10 @@ import (
 	"strings"
 	"time"
 
-	ma "github.com/multiformats/go-multiaddr"
-
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/fsnotify/fsnotify"
 	"github.com/mitchellh/go-homedir"
+	ma "github.com/multiformats/go-multiaddr"
 	"github.com/spf13/viper"
 )
 
@@ -236,8 +235,8 @@ func UnmarshalConfig(viper *viper.Viper, repoRoot string, configPath string) (*C
 	if len(configPath) == 0 {
 		viper.SetConfigFile(filepath.Join(repoRoot, configName))
 	} else {
-		viper.SetConfigFile(filepath.Join(configPath, configName))
-		fileData, err := ioutil.ReadFile(filepath.Join(configPath, configName))
+		viper.SetConfigFile(configPath)
+		fileData, err := ioutil.ReadFile(configPath)
 		if err != nil {
 			return nil, err
 		}
