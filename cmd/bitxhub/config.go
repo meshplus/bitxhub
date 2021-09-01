@@ -3,10 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/spf13/viper"
 
 	"github.com/hokaccha/go-prettyjson"
 	"github.com/meshplus/bitxhub/internal/repo"
+	"github.com/spf13/viper"
 	"github.com/urfave/cli"
 )
 
@@ -28,7 +28,7 @@ func showConfig(ctx *cli.Context) error {
 		}
 	}
 
-	cfg, err := repo.UnmarshalConfig(viper.New(), repoRoot)
+	cfg, err := repo.UnmarshalConfig(viper.New(), repoRoot, "")
 	if err != nil {
 		return err
 	}

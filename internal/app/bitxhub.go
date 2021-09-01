@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"math/big"
 	"path/filepath"
 	"syscall"
@@ -55,8 +56,22 @@ type BitXHub struct {
 	Cancel context.CancelFunc
 }
 
-func NewBitXHub(rep *repo.Repo) (*BitXHub, error) {
+func NewBitXHub(rep *repo.Repo, orderPath string) (*BitXHub, error) {
 	repoRoot := rep.Config.RepoRoot
+	var orderRoot string
+	if len(orderPath) == 0 {
+		orderRoot = repoRoot
+	} else {
+		orderRoot = filepath.Dir(orderPath)
+		fileData, err := ioutil.ReadFile(orderPath)
+		if err != nil {
+			return nil, err
+		}
+		err = ioutil.WriteFile(filepath.Join(repoRoot, "order.toml"), fileData, 0644)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	bxh, err := GenerateBitXHubWithoutOrder(rep)
 	if err != nil {
@@ -74,7 +89,7 @@ func NewBitXHub(rep *repo.Repo) (*BitXHub, error) {
 	}
 
 	order, err := orderCon(
-		order.WithRepoRoot(repoRoot),
+		order.WithRepoRoot(orderRoot),
 		order.WithStoragePath(repo.GetStoragePath(repoRoot, "order")),
 		order.WithOrderType(rep.Config.Order.Type),
 		order.WithNodes(m),
