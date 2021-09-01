@@ -38,7 +38,7 @@ solo = false
   capacity= 10000
 
 [appchain]
-  enable = true
+  enable = false
   eth_header_path="appchain/eth_header.json"
 
 [log]

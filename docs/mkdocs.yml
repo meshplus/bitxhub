@@ -104,6 +104,7 @@ nav:
           - 跨链合约开发: bitxhub/dev/cross_contract.md
           - 应用链插件编写: bitxhub/dev/plugin.md
           - 验证规则编写: bitxhub/dev/rule.md
+          - 验证者信息生成: bitxhub/dev/validator.md
       - 设计文档:
           - 共识算法插件方案: bitxhub/design/consensus_plugin.md
           - 跨链事务方案: bitxhub/design/interchain_transaction.md
@@ -129,3 +130,5 @@ nav:
       - GoSDK使用文档: sdk/gosdk.md
       - JavaSDK使用: sdk/javasdk.md
       - JsSDK使用文档: sdk/jssdk.md
+  - 跨链浏览器体验指南:
+      - 使用文档: scan/index.md

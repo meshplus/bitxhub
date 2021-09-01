@@ -38,7 +38,7 @@ require (
 	github.com/meshplus/bitxhub-core v1.3.1-0.20210819114413-70449f8bd324
 	github.com/meshplus/bitxhub-kit v1.2.1-0.20210901014031-ee93dd4f4ced
 	github.com/meshplus/bitxhub-model v1.2.1-0.20210901014152-aadfe05d27a5
-	github.com/meshplus/eth-kit v0.0.0-20210813021934-4ed1d1931201
+	github.com/meshplus/eth-kit v0.0.0-20210827081722-ce80fe3a863b
 	github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd
 	github.com/meshplus/go-lightp2p v0.0.0-20210617153734-471d08b829f8
 	github.com/miguelmota/go-solidity-sha3 v0.1.1

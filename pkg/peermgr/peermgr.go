@@ -5,7 +5,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/model/events"
-	"github.com/meshplus/bitxhub/internal/repo"
 	network "github.com/meshplus/go-lightp2p"
 )
 
@@ -57,7 +56,7 @@ type PeerManager interface {
 	PierManager() PierManager
 
 	// ReConfig
-	ReConfig(config *repo.Config) error
+	ReConfig(config interface{}) error
 }
 
 type PierManager interface {

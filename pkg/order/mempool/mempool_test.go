@@ -450,3 +450,37 @@ func TestRestore(t *testing.T) {
 	//ast.Equal(uint64(3), newMpi.txStore.nonceCache.getPendingNonce(account1.String()))
 	//ast.Equal(uint64(3), newMpi.txStore.nonceCache.getPendingNonce(account2.String()))
 }
+
+func TestGenerateBlock(t *testing.T) {
+	ast := assert.New(t)
+	storePath, err := ioutil.TempDir("", "mempool")
+	ast.Nil(err)
+	defer os.RemoveAll(storePath)
+	mpi, _ := mockMempoolImpl(storePath)
+	privKey1 := genPrivKey()
+	account1, _ := privKey1.PublicKey().Address()
+	nonce := mpi.GetPendingNonceByAccount(account1.String())
+	ast.Equal(uint64(0), nonce)
+	privKey2 := genPrivKey()
+	//account2, _ := privKey1.PublicKey().Address()
+	tx1 := constructTx(uint64(0), &privKey1)
+	tx2 := constructTx(uint64(1), &privKey1)
+	tx3 := constructTx(uint64(0), &privKey2)
+	//tx4 := constructTx(uint64(1), &privKey2)
+	tx5 := constructTx(uint64(2), &privKey2)
+	time.Sleep(10 * time.Millisecond)
+
+	txList := make([]pb.Transaction, 0)
+	txList = append(txList, tx1, tx2, tx3, tx5)
+	batches := mpi.ProcessTransactions(txList, true, true)
+	ast.Nil(batches)
+	ast.Equal(true, mpi.HasPendingRequest())
+	ast.Equal(uint64(3), mpi.txStore.priorityNonBatchSize)
+	ast.Equal(uint64(2), mpi.txStore.nonceCache.getPendingNonce(tx1.GetFrom().String()))
+
+	blockBatches := mpi.GenerateBlock()
+	ast.Equal(uint64(2), blockBatches.Height)
+	ast.Equal(false, mpi.HasPendingRequest())
+	ast.Equal(uint64(0), mpi.txStore.priorityNonBatchSize)
+	ast.Equal(3, len(blockBatches.TxList.Transactions))
+}
