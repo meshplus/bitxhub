@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/governance"
 	ruleMgr "github.com/meshplus/bitxhub-core/rule-mgr"
@@ -16,6 +17,11 @@ import (
 type RuleManager struct {
 	boltvm.Stub
 	ruleMgr.RuleManager
+}
+
+type UpdataMasterRuleInfo struct {
+	NewRule  *ruleMgr.Rule         `json:"new_rule"`
+	Appchain *appchainMgr.Appchain `json:"appchain"`
 }
 
 func (rm *RuleManager) checkPermission(permissions []string, appchainID string, regulatorAddr string, specificAddrsData []byte) error {
@@ -62,7 +68,8 @@ func (rm *RuleManager) checkPermission(permissions []string, appchainID string, 
 }
 
 // =========== Manage does some subsequent operations when the proposal is over
-// extra: rule info
+// Currently here are only update master rule events
+// extra: UpdataMasterRuleInfo
 func (rm *RuleManager) Manage(eventTyp, proposalResult, lastStatus, ruleAddr string, extra []byte) *boltvm.Response {
 	rm.RuleManager.Persister = rm.Stub
 
@@ -76,33 +83,38 @@ func (rm *RuleManager) Manage(eventTyp, proposalResult, lastStatus, ruleAddr str
 		return boltvm.Error(fmt.Sprintf("check permission error:%v", err))
 	}
 
-	var ruleInfo ruleMgr.Rule
-	if err := json.Unmarshal(extra, &ruleInfo); err != nil {
-		return boltvm.Error(fmt.Sprintf("unmarshal rule error: %v", err))
-	}
-
 	// 2. other operation
 	switch eventTyp {
 	case string(governance.EventUpdate):
-		// get master
-		masterRule, err := rm.RuleManager.GetMaster(ruleInfo.ChainID)
+		info := &UpdataMasterRuleInfo{}
+		if err := json.Unmarshal(extra, &info); err != nil {
+			return boltvm.Error(fmt.Sprintf("unmarshal rule error: %v", err))
+		}
+
+		// 2.1 change old master rule status
+		masterRule, err := rm.RuleManager.GetMaster(info.NewRule.ChainID)
 		if err != nil {
 			return boltvm.Error(fmt.Sprintf("get master error: %v", err))
 		}
-		if masterRule == nil {
-			return boltvm.Error("there is no master rule")
-		}
-		// change master status
 		ok, errData := rm.RuleManager.ChangeStatus(masterRule.Address, proposalResult, string(governance.GovernanceAvailable), []byte(masterRule.ChainID))
 		if !ok {
 			return boltvm.Error(string(errData))
 		}
-	}
 
-	// 3. change status, old master rule status change may influence new mater rule, so do change status after other operation
-	ok, errData := rm.RuleManager.ChangeStatus(ruleAddr, proposalResult, lastStatus, []byte(ruleInfo.ChainID))
-	if !ok {
-		return boltvm.Error(string(errData))
+		// 2.2 change new master status, old master rule status change may influence new mater rule, so do change status after other operation
+		ok, errData = rm.RuleManager.ChangeStatus(ruleAddr, proposalResult, lastStatus, []byte(info.NewRule.ChainID))
+		if !ok {
+			return boltvm.Error(string(errData))
+		}
+
+		// 2.3 If the update succeeds, restore the status of the application chain
+		if proposalResult == string(APPOVED) {
+			res := rm.CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "UnPauseAppchain", pb.String(info.Appchain.ID), pb.String(string(info.Appchain.Status)))
+			if !res.Ok {
+				return boltvm.Error(fmt.Sprintf("cross invoke UnPauseAppchain err: %s", res.Result))
+			}
+		}
+
 	}
 
 	return boltvm.Success(nil)
@@ -113,15 +125,8 @@ func (rm *RuleManager) RegisterRule(chainID string, ruleAddress, ruleUrl string)
 	rm.RuleManager.Persister = rm.Stub
 	event := governance.EventRegister
 
-	// 1. check appchain
-	res := rm.CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "GetAppchain", pb.String(chainID))
-	if res.Ok {
-		// 1.1 check permission: PermissionSelf
-		if err := rm.checkPermission([]string{string(PermissionSelf)}, chainID, rm.CurrentCaller(), nil); err != nil {
-			return boltvm.Error(fmt.Sprintf("check permission error:%v", err))
-		}
-	} else {
-		// 1.2 register appchain admin
+	// 1 check permission: PermissionSelf
+	if err := rm.checkPermission([]string{string(PermissionSelf)}, chainID, rm.Caller(), nil); err != nil {
 		res := rm.CrossInvoke(constant.RoleContractAddr.Address().String(), "RegisterRole",
 			pb.String(rm.Caller()),
 			pb.String(string(AppchainAdmin)),
@@ -130,7 +135,7 @@ func (rm *RuleManager) RegisterRule(chainID string, ruleAddress, ruleUrl string)
 			pb.String(""),
 		)
 		if !res.Ok {
-			return boltvm.Error(fmt.Sprintf("cross invoke role Register error : %s", string(res.Result)))
+			return boltvm.Error(fmt.Sprintf("check permission error:%v , and then cross invoke role Register error : %s", err, string(res.Result)))
 		}
 	}
 
@@ -196,8 +201,13 @@ func (rm *RuleManager) UpdateMasterRule(chainID string, newMasterruleAddress, re
 	}
 
 	// 2. check appchain
-	if res := rm.CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "IsAvailable", pb.String(chainID)); !res.Ok {
-		return boltvm.Error(fmt.Sprintf("cross invoke IsAvailable error: %s", string(res.Result)))
+	res := rm.CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "PauseAppchain", pb.String(chainID))
+	if !res.Ok {
+		return boltvm.Error(fmt.Sprintf("cross invoke PauseAppchain error: %s", string(res.Result)))
+	}
+	appchain := &appchainMgr.Appchain{}
+	if err := json.Unmarshal(res.Result, appchain); err != nil {
+		return boltvm.Error(fmt.Sprintf("unmarshal appchain error: %v", err))
 	}
 
 	// 3. check new rule
@@ -214,7 +224,11 @@ func (rm *RuleManager) UpdateMasterRule(chainID string, newMasterruleAddress, re
 
 	// 5. submit new rule bind proposal
 	// 6. change new rule status
-	res := rm.bindRule(newRule, governance.EventUpdate, reason)
+	info := &UpdataMasterRuleInfo{
+		NewRule:  newRule,
+		Appchain: appchain,
+	}
+	res = rm.bindRule(info, governance.EventUpdate, reason)
 	if !res.Ok {
 		return res
 	}
@@ -224,18 +238,16 @@ func (rm *RuleManager) UpdateMasterRule(chainID string, newMasterruleAddress, re
 	if err != nil {
 		return boltvm.Error(fmt.Sprintf("get master error: %v", err))
 	}
-	if masterRule == nil {
-		return boltvm.Error("there is no master rule")
-	}
 	if ok, data := rm.RuleManager.ChangeStatus(masterRule.Address, string(governance.EventUnbind), string(masterRule.Status), []byte(chainID)); !ok {
 		return boltvm.Error(fmt.Sprintf("change status error: %s", string(data)))
 	}
 	return res
 }
 
-func (rm *RuleManager) bindRule(rule *ruleMgr.Rule, event governance.EventType, reason string) *boltvm.Response {
+func (rm *RuleManager) bindRule(info *UpdataMasterRuleInfo, event governance.EventType, reason string) *boltvm.Response {
 	rm.RuleManager.Persister = rm.Stub
-	ruleData, err := json.Marshal(rule)
+
+	infoData, err := json.Marshal(info)
 	if err != nil {
 		return boltvm.Error(fmt.Sprintf("marshal rule error: %v", err))
 	}
@@ -245,17 +257,17 @@ func (rm *RuleManager) bindRule(rule *ruleMgr.Rule, event governance.EventType, 
 		pb.String(rm.Caller()),
 		pb.String(string(event)),
 		pb.String(string(RuleMgr)),
-		pb.String(rule.Address),
-		pb.String(string(rule.Status)),
+		pb.String(info.NewRule.Address),
+		pb.String(string(info.NewRule.Status)),
 		pb.String(reason),
-		pb.Bytes(ruleData),
+		pb.Bytes(infoData),
 	)
 	if !res.Ok {
 		return boltvm.Error(fmt.Sprintf("cross invoke SubmitProposal error: %s", string(res.Result)))
 	}
 
 	// change status
-	if ok, data := rm.RuleManager.ChangeStatus(rule.Address, string(event), string(rule.Status), []byte(rule.ChainID)); !ok {
+	if ok, data := rm.RuleManager.ChangeStatus(info.NewRule.Address, string(event), string(info.NewRule.Status), []byte(info.NewRule.ChainID)); !ok {
 		return boltvm.Error(fmt.Sprintf("change status error: %s", string(data)))
 	}
 
@@ -271,19 +283,14 @@ func (rm *RuleManager) LogoutRule(chainID string, ruleAddress string) *boltvm.Re
 		return boltvm.Error(fmt.Sprintf("check permission error:%v", err))
 	}
 
-	// 2. check appchain
-	if res := rm.CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "IsAvailable", pb.String(chainID)); !res.Ok {
-		return boltvm.Error(fmt.Sprintf("cross invoke IsAvailable error: %s", string(res.Result)))
-	}
-
-	// 3. pre logout
+	// 2. pre logout
 	ruleInfo, err := rm.RuleManager.GovernancePre(ruleAddress, governance.EventLogout, []byte(chainID))
 	if err != nil {
 		return boltvm.Error(fmt.Sprintf("logout prepare error: %v", err))
 	}
 	rule := ruleInfo.(*ruleMgr.Rule)
 
-	// 4. change status
+	// 3. change status
 	if ok, data := rm.RuleManager.ChangeStatus(ruleAddress, string(governance.EventLogout), string(rule.Status), []byte(chainID)); !ok {
 		return boltvm.Error(string(data))
 	}

@@ -119,18 +119,23 @@ func (role *Role) setFSM(lastStatus governance.GovernanceStatus) {
 }
 
 // GovernancePre checks if the role can do the event. (only check, not modify infomation)
-func (rm *RoleManager) governancePre(roleId string, event governance.EventType, _ []byte) (*Role, error) {
+func (rm *RoleManager) governancePre(roleId string, event governance.EventType, chainID string) (*Role, error) {
 	role := Role{}
+	if chainID != "" {
+		// check if the admin for the appchain is registered
+		if ok := rm.GetObject(AppchainAdminKey(chainID), &role); ok {
+			return nil, fmt.Errorf("admin for appchain(%s) has registered: %s", chainID, role.ID)
+		}
+
+		return &role, nil
+	}
+
 	if ok := rm.GetObject(RoleKey(roleId), &role); !ok {
 		if event == governance.EventRegister {
 			return nil, nil
 		} else {
 			return nil, fmt.Errorf("this role does not exist")
 		}
-	}
-
-	if role.RoleType == AppchainAdmin {
-		return &role, nil
 	}
 
 	for _, s := range roleStateMap[event] {
@@ -293,7 +298,7 @@ func (rm *RoleManager) RegisterRole(roleId, roleType, nodePid, appchainID, reaso
 	}
 
 	// 3. check status
-	if _, err := rm.governancePre(roleId, governance.EventType(event), nil); err != nil {
+	if _, err := rm.governancePre(roleId, governance.EventType(event), appchainID); err != nil {
 		return boltvm.Error(fmt.Sprintf("%s prepare error: %v", event, err))
 	}
 
@@ -310,7 +315,7 @@ func (rm *RoleManager) RegisterRole(roleId, roleType, nodePid, appchainID, reaso
 	case string(AppchainAdmin):
 		role.Status = governance.GovernanceAvailable
 		rm.SetObject(RoleKey(roleId), *role)
-		rm.SetObject(rm.appchainAdminKey(appchainID), *role)
+		rm.SetObject(AppchainAdminKey(appchainID), *role)
 		return getGovernanceRet("", []byte(role.ID))
 	case string(GovernanceAdmin):
 		ok, gb := rm.Get(GenesisBalance)
@@ -358,7 +363,7 @@ func (rm *RoleManager) UpdateAuditAdminNode(roleId, nodePid, reason string) *bol
 	}
 
 	// 2. check status
-	role, err := rm.governancePre(roleId, governance.EventType(event), nil)
+	role, err := rm.governancePre(roleId, governance.EventType(event), "")
 	if err != nil {
 		return boltvm.Error(fmt.Sprintf("%s prepare error: %v", event, err))
 	}
@@ -434,7 +439,7 @@ func (rm *RoleManager) basicGovernance(roleID, reason string, permissions []stri
 	}
 
 	// 2. check status
-	role, err := rm.governancePre(roleID, event, nil)
+	role, err := rm.governancePre(roleID, event, "")
 	if err != nil {
 		return boltvm.Error(fmt.Sprintf("%s prepare error: %v", string(event), err))
 	}
@@ -587,7 +592,7 @@ func (rm *RoleManager) GetRolesByType(roleType string) *boltvm.Response {
 
 func (rm *RoleManager) GetAppchainAdmin(appchainID string) *boltvm.Response {
 	role := &Role{}
-	ok := rm.GetObject(rm.appchainAdminKey(appchainID), role)
+	ok := rm.GetObject(AppchainAdminKey(appchainID), role)
 	if !ok {
 		return boltvm.Error("there is no admin for the appchain")
 	}
@@ -700,6 +705,6 @@ func RoleTypeKey(typ string) string {
 	return fmt.Sprintf("%s-%s", ROLE_TYPE_PREFIX, typ)
 }
 
-func (rm *RoleManager) appchainAdminKey(appchainID string) string {
+func AppchainAdminKey(appchainID string) string {
 	return fmt.Sprintf("%s-%s", APPCHAINADMINPREFIX, appchainID)
 }

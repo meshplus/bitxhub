@@ -46,6 +46,7 @@ func TestTester(t *testing.T) {
 	suite.Run(t, &Store{api: node1})
 	suite.Run(t, &Governance{api: node2})
 	suite.Run(t, &Role{api: node4})
+	suite.Run(t, &Rule{api: node3})
 }
 
 func setupNode(t *testing.T, path string) api.CoreAPI {

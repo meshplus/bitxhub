@@ -11,6 +11,7 @@ import (
 	"github.com/meshplus/bitxhub-core/boltvm/mock_stub"
 	"github.com/meshplus/bitxhub-core/governance"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
+	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/repo"
@@ -276,6 +277,7 @@ func TestGovernance_QueryProposal(t *testing.T) {
 func TestGovernance_Vote(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	mockStub := mock_stub.NewMockStub(mockCtl)
+	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 
 	g := Governance{mockStub}
 

@@ -347,7 +347,7 @@ func TestRoleManager_Query(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 0, len(roles), string(res.Result))
 
-	mockStub.EXPECT().GetObject(rm.appchainAdminKey(appchainID), gomock.Any()).SetArg(1, Role{
+	mockStub.EXPECT().GetObject(AppchainAdminKey(appchainID), gomock.Any()).SetArg(1, Role{
 		ID:       appchainAdminAddr,
 		RoleType: AppchainAdmin,
 	}).Return(true).AnyTimes()

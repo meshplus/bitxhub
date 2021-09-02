@@ -7,12 +7,12 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/meshplus/bitxhub-core/boltvm"
+	"github.com/meshplus/bitxhub-core/governance"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/repo"
-
-	"github.com/meshplus/bitxhub-core/boltvm"
-	"github.com/meshplus/bitxhub-core/governance"
+	"github.com/sirupsen/logrus"
 )
 
 type Governance struct {
@@ -735,6 +735,7 @@ func (g *Governance) Vote(id, approve string, reason string) *boltvm.Response {
 	}
 	if !ok {
 		// the round of the voting is not over, wait the next vote
+		g.Logger().WithFields(logrus.Fields{}).Info("wait next vote")
 		return boltvm.Success(nil)
 	}
 
@@ -742,6 +743,7 @@ func (g *Governance) Vote(id, approve string, reason string) *boltvm.Response {
 	if err = g.handleResult(p); err != nil {
 		return boltvm.Error(err.Error())
 	}
+	g.Logger().WithFields(logrus.Fields{}).Info("vote end")
 	return boltvm.Success(nil)
 }
 
