@@ -37,6 +37,7 @@ type NetworkNodes struct {
 
 func loadNetworkConfig(viper *viper.Viper, repoRoot string, genesis Genesis) (*NetworkConfig, error) {
 	networkConfig := &NetworkConfig{Genesis: genesis}
+	checkReaptAddr := make(map[string]uint64)
 	if err := ReadConfig(viper, filepath.Join(repoRoot, "network.toml"), "toml", networkConfig); err != nil {
 		return nil, err
 	}
@@ -56,6 +57,11 @@ func loadNetworkConfig(viper *viper.Viper, repoRoot string, genesis Genesis) (*N
 				return nil, fmt.Errorf("new multiaddr: %w", err)
 			}
 			networkConfig.LocalAddr = strings.Replace(networkConfig.LocalAddr, ma.Split(addr)[0].String(), "/ip4/0.0.0.0", -1)
+		}
+		if _, ok := checkReaptAddr[node.Hosts[0]]; !ok {
+			checkReaptAddr[node.Hosts[0]] = node.ID
+		} else {
+			return nil, fmt.Errorf("reapt address")
 		}
 	}
 

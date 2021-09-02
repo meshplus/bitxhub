@@ -52,7 +52,7 @@ func New(repoConfig *repo.Repo, logger logrus.FieldLogger, ledger ledger.Ledger)
 	ctx, cancel := context.WithCancel(context.Background())
 	swarm := &Swarm{repo: repoConfig, logger: logger, ledger: ledger, ctx: ctx, cancel: cancel}
 	if err := swarm.init(); err != nil {
-		return nil, err
+		panic(err)
 	}
 
 	return swarm, nil
@@ -469,7 +469,7 @@ func (swarm *Swarm) ReConfig(config interface{}) error {
 		}
 		swarm.repo.NetworkConfig = config
 		if err := swarm.init(); err != nil {
-			return err
+			panic(err)
 		}
 		if err := swarm.Start(); err != nil {
 			return err

@@ -268,6 +268,7 @@ func WatchNetworkConfig(viper *viper.Viper, feed *event.Feed, config *NetworkCon
 			return
 		}
 
+		checkReaptAddr := make(map[string]uint64)
 		for _, node := range config.Nodes {
 			if node.ID == config.ID {
 				if len(node.Hosts) == 0 {
@@ -281,6 +282,14 @@ func WatchNetworkConfig(viper *viper.Viper, feed *event.Feed, config *NetworkCon
 					return
 				}
 				config.LocalAddr = strings.Replace(config.LocalAddr, ma.Split(addr)[0].String(), "/ip4/0.0.0.0", -1)
+			}
+
+			if _, ok := checkReaptAddr[node.Hosts[0]]; !ok {
+				checkReaptAddr[node.Hosts[0]] = node.ID
+			} else {
+				err := fmt.Errorf("reapt address with Node: nodeID = %d,Host = %s \n",
+					checkReaptAddr[node.Hosts[0]], node.Hosts[0])
+				panic(err)
 			}
 		}
 
