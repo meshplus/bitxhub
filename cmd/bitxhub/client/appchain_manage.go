@@ -90,6 +90,16 @@ func appchainMgrCMD() cli.Command {
 						Usage:    "Specify register reason",
 						Required: false,
 					},
+					cli.StringFlag{
+						Name:     "rule",
+						Usage:    "Specify master rule addr",
+						Required: true,
+					},
+					cli.StringFlag{
+						Name:     "ruleUrl",
+						Usage:    "Specify master rule url",
+						Required: true,
+					},
 				},
 				Action: registerAppchain,
 			},
@@ -163,12 +173,14 @@ func registerAppchain(ctx *cli.Context) error {
 	consensus := ctx.String("consensus")
 	pubkey := ctx.String("pubkey")
 	reason := ctx.String("reason")
+	rule := ctx.String("rule")
+	ruleUrl := ctx.String("ruleUrl")
 	validatorData, err := ioutil.ReadFile(validatorsPath)
 	if err != nil {
 		return fmt.Errorf("read validators file: %w", err)
 	}
 
-	receipt, err := invokeBVMContract(ctx, constant.AppchainMgrContractAddr.String(), "Register",
+	receipt, err := invokeBVMContract(ctx, constant.AppchainMgrContractAddr.String(), "RegisterV2",
 		pb.String(method),
 		pb.String(didDocAddr),
 		pb.String(didDocHash),
@@ -180,6 +192,8 @@ func registerAppchain(ctx *cli.Context) error {
 		pb.String(version),
 		pb.String(pubkey),
 		pb.String(reason),
+		pb.String(rule),
+		pb.String(ruleUrl),
 	)
 	if err != nil {
 		return err
