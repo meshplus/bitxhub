@@ -80,11 +80,11 @@ type bxhValidators struct {
 
 // verifyMultiSign .
 func verifyMultiSign(app *appchainMgr.Appchain, ibtp *pb.IBTP, proof []byte) (bool, error) {
-	if app.Validators == "" {
+	if app.TrustRoot == nil {
 		return false, fmt.Errorf("%s: empty validators in relay chain:%s", internalError, app.ID)
 	}
 	var validators bxhValidators
-	if err := json.Unmarshal([]byte(app.Validators), &validators); err != nil {
+	if err := json.Unmarshal(app.TrustRoot, &validators); err != nil {
 		return false, fmt.Errorf("%s: %w", InvalidIBTP, err)
 	}
 
@@ -136,7 +136,7 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, error) {
 
 	from := ibtp.SrcChainID()
 	app := &appchainMgr.Appchain{}
-	ok, data := pl.getAccountState(constant.AppchainMgrContractAddr, appchainMgr.PREFIX+from) // ibtp.From
+	ok, data := pl.getAccountState(constant.AppchainMgrContractAddr, contracts.AppchainKey(from)) // ibtp.From
 	if !ok {
 		return false, fmt.Errorf("%s: cannot get registered appchain", AppchainNotAvailable)
 	}
@@ -158,12 +158,10 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, error) {
 		}
 		validateAddr = rl.Address
 	} else {
-		if app.ChainType != appchainMgr.FabricType {
-			return false, fmt.Errorf(NoBindRule)
-		}
+		return false, fmt.Errorf(NoBindRule)
 	}
 
-	ok, err = pl.ve.Validate(validateAddr, from, proof, ibtp.Payload, app.Validators) // ibtp.From
+	ok, err = pl.ve.Validate(validateAddr, from, proof, ibtp.Payload, string(app.TrustRoot)) // ibtp.From
 	if err != nil {
 		return false, fmt.Errorf("%s: %w", InvalidIBTP, err)
 	}
@@ -171,7 +169,7 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, error) {
 }
 
 func (pl *VerifyPool) getRule(chainId string) (bool, []byte) {
-	ok, data := pl.ledger.Copy().GetState(constant.RuleManagerContractAddr.Address(), []byte(contracts.RuleKey(chainId)))
+	ok, data := pl.ledger.Copy().GetState(constant.RuleManagerContractAddr.Address(), []byte(ruleMgr.RuleKey(chainId)))
 	if !ok {
 		return ok, data
 	}

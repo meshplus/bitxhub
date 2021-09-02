@@ -258,11 +258,11 @@ func testStartRouter(t *testing.T) *InterchainRouter {
 
 	app := &appchain_mgr.Appchain{
 		ID:   srcChainID,
-		Name: "app",
+		Desc: "app",
 	}
 	bxh := &appchain_mgr.Appchain{
 		ID:   dstChainID,
-		Name: "bxh",
+		Desc: "bxh",
 	}
 
 	appchains = append(appchains, app, bxh)

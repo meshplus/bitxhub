@@ -772,8 +772,8 @@ github.com/mattn/go-tty v0.0.0-20180907095812-13ff1204f104/go.mod h1:XPvLUNfbS4f
 github.com/mattn/goveralls v0.0.2/go.mod h1:8d1ZMHsd7fW6IRPKQh46F2WRpyib5/X4FOpevwGNQEw=
 github.com/matttproud/golang_protobuf_extensions v1.0.1 h1:4hp9jkHxhMHkqkrB3Ix0jegS5sx/RkqARlsWZ6pIwiU=
 github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5Ld7szi9bcBfOoFv/3dc6xSMkL2PC0=
-github.com/meshplus/bitxhub-core v1.3.1-0.20210819114413-70449f8bd324 h1:hebLGxmjVAsI4X+AepSKLR08qCLszRImZMXV8hgWBRM=
-github.com/meshplus/bitxhub-core v1.3.1-0.20210819114413-70449f8bd324/go.mod h1:F20O0rZbjGt25mpHJNQiw20z8whY+GsUof9y82MT4pg=
+github.com/meshplus/bitxhub-core v1.3.1-0.20210901134750-eb8755d3e50a h1:mz6kfO+vQL7oogsBLhAM1nlKDKaIHarzU9wZ51finkU=
+github.com/meshplus/bitxhub-core v1.3.1-0.20210901134750-eb8755d3e50a/go.mod h1:F20O0rZbjGt25mpHJNQiw20z8whY+GsUof9y82MT4pg=
 github.com/meshplus/bitxhub-kit v1.1.1/go.mod h1:r4l4iqn0RPJreb/OmoYKfjCjQJrXpZX++6Qc31VG/1k=
 github.com/meshplus/bitxhub-kit v1.2.1-0.20210616114532-4849447f09e1/go.mod h1:wrEdhHp1tktzdwcWb4bOxYsVc+KkcrYL18IYWYeumPQ=
 github.com/meshplus/bitxhub-kit v1.2.1-0.20210830031953-cf5f83f2e1dd/go.mod h1:wrEdhHp1tktzdwcWb4bOxYsVc+KkcrYL18IYWYeumPQ=
@@ -782,10 +782,8 @@ github.com/meshplus/bitxhub-kit v1.2.1-0.20210901014031-ee93dd4f4ced/go.mod h1:w
 github.com/meshplus/bitxhub-model v1.1.1/go.mod h1:lUl9vPZXM9tP+B0ABRW/2eOW/6KCmjFTdoiTj5Vut/A=
 github.com/meshplus/bitxhub-model v1.2.1-0.20210805020100-41c27414badf/go.mod h1:IjgoQrsn1wthW7XcKRqgaZqCSlqNy0SBwF/7lmGSqXc=
 github.com/meshplus/bitxhub-model v1.2.1-0.20210811072725-7664c5307c05/go.mod h1:IjgoQrsn1wthW7XcKRqgaZqCSlqNy0SBwF/7lmGSqXc=
-github.com/meshplus/bitxhub-model v1.2.1-0.20210901095920-582847b32cba h1:S1TUnkHTVbr9M9dNVyczf0vIuO45dEnUqkulxojIyJ8=
-github.com/meshplus/bitxhub-model v1.2.1-0.20210901095920-582847b32cba/go.mod h1:p1rgmd8p3O9FmuvQ2oS4wgrel1dV4K4MlFOtx6Vwod8=
-github.com/meshplus/bitxid v0.0.0-20210412025850-e0eaf0f9063a h1:c4ESPDa60Jd4zfzZIGGTyzhfaVM3vKN+xV2G9BwIDGQ=
-github.com/meshplus/bitxid v0.0.0-20210412025850-e0eaf0f9063a/go.mod h1:vAldSRfDe2Qo7exsSTbchVmZWXPY7fhWQrRw18QJHho=
+github.com/meshplus/bitxhub-model v1.2.1-0.20210901014152-aadfe05d27a5 h1:jVxu8a+zeURaNv9nGOVJ8TkCByDwaH9PWr0i4Z7GeJc=
+github.com/meshplus/bitxhub-model v1.2.1-0.20210901014152-aadfe05d27a5/go.mod h1:f8UBsDLFBUhah5l5hufpomaZRtfaChUtE+xPTm9U6h4=
 github.com/meshplus/eth-kit v0.0.0-20210827081722-ce80fe3a863b h1:fQuZZIeJSBnUVeqTjanTBgc3iw4qGCZgeW5qSYr+ze8=
 github.com/meshplus/eth-kit v0.0.0-20210827081722-ce80fe3a863b/go.mod h1:aAiqR2nb7oOjmGHesqWQ5F0g7zf9TYZuc2H8FPyrniw=
 github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd h1:/8ydT0Pc+nFy3uAeTwxAurPXY4cWfggslGz3bNwJKDg=

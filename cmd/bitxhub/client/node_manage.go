@@ -82,16 +82,8 @@ func nodeMgrCND() cli.Command {
 				Action: logoutNode,
 			},
 			cli.Command{
-				Name:  "all",
-				Usage: "query all nodes info",
-				Flags: []cli.Flag{
-					cli.StringFlag{
-						Name:     "type",
-						Usage:    "Specify node type",
-						Value:    string(node_mgr.VPNode),
-						Required: false,
-					},
-				},
+				Name:   "all",
+				Usage:  "query all nodes info",
 				Action: allNode,
 			},
 		},
@@ -163,9 +155,7 @@ func logoutNode(ctx *cli.Context) error {
 }
 
 func allNode(ctx *cli.Context) error {
-	typ := ctx.String("type")
-
-	receipt, err := invokeBVMContractBySendView(ctx, constant.NodeManagerContractAddr.String(), "Nodes", pb.String(typ))
+	receipt, err := invokeBVMContractBySendView(ctx, constant.NodeManagerContractAddr.String(), "Nodes")
 	if err != nil {
 		return err
 	}

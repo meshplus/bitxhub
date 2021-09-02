@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/meshplus/bitxhub-core/governance"
-
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-kit/crypto"
@@ -246,15 +244,17 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, error) {
 				return nil, fmt.Errorf("%s: source appchain %s is not registered", CurAppchainNotAvailable, ibtp.From)
 			}
 
-			if !isAppchainAvailable(srcAppchain.Status) {
+			if !srcAppchain.IsAvailable() {
+				//if !isAppchainAvailable(srcAppchain.Status) {
 				return nil, fmt.Errorf("%s: source appchain status is %s, can not handle IBTP", CurAppchainNotAvailable, string(srcAppchain.Status))
 			}
 
-			if srcAppchain.ChainType != appchainMgr.RelaychainType {
-				if err := x.checkPubKeyAndCaller(srcAppchain.PublicKey); err != nil {
-					return nil, fmt.Errorf("%s: caller is not bind to ibtp from: %w", InvalidIBTP, err)
-				}
-			}
+			// TODO: ZR
+			//if srcAppchain.ChainType != appchainMgr.RelaychainType {
+			//	if err := x.checkPubKeyAndCaller(srcAppchain.PublicKey); err != nil {
+			//		return nil, fmt.Errorf("%s: caller is not bind to ibtp from: %w", InvalidIBTP, err)
+			//	}
+			//}
 
 			if !dstChainService.IsLocal {
 				idx := interchain.InterchainCounter[dstChainService.getFullServiceId()]
@@ -348,7 +348,7 @@ func (x *InterchainManager) checkAppchain(id string) (*pb.Interchain, *appchainM
 	}
 
 	app := &appchainMgr.Appchain{}
-	res := x.CrossInvoke(constant.AppchainMgrContractAddr.String(), "GetAppchain", pb.String(id))
+	res := x.CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "GetAppchain", pb.String(id))
 	if !res.Ok {
 		return nil, nil, fmt.Errorf("%s: get appchain info error: %s", AppchainNotAvailable, string(res.Result))
 	}
@@ -357,7 +357,8 @@ func (x *InterchainManager) checkAppchain(id string) (*pb.Interchain, *appchainM
 		return nil, nil, fmt.Errorf("unmarshal error: " + err.Error())
 	}
 
-	if !isAppchainAvailable(app.Status) {
+	if !app.IsAvailable() {
+		//if !isAppchainAvailable(app.Status) {
 		return nil, nil, fmt.Errorf("%s: the appchain status is %s, can not handle IBTP", AppchainNotAvailable, string(app.Status))
 	}
 
@@ -380,11 +381,8 @@ func (x *InterchainManager) checkTargetAppchainAvailability(ibtp *pb.IBTP) error
 				return fmt.Errorf("%s: dest appchain id %s is not registered", TargetAppchainNotAvailable, dstChainService.ChainId)
 			}
 			availableFlag := false
-			for _, s := range appchainMgr.AppchainAvailableState {
-				if dstAppchain.Status == s {
-					availableFlag = true
-					break
-				}
+			if dstAppchain.IsAvailable() {
+				availableFlag = true
 			}
 			if !availableFlag {
 				return fmt.Errorf("%s: dest appchain status is %s, can not handle IBTP", TargetAppchainNotAvailable, string(dstAppchain.Status))
@@ -398,7 +396,7 @@ func (x *InterchainManager) checkTargetAppchainAvailability(ibtp *pb.IBTP) error
 // isRelayIBTP returns whether ibtp.from is relaychain type
 func (x *InterchainManager) getAppchainInfo(chainMethod string) (*appchainMgr.Appchain, error) {
 	srcChain := &appchainMgr.Appchain{}
-	res := x.CrossInvoke(constant.AppchainMgrContractAddr.String(), "GetAppchain", pb.String(chainMethod))
+	res := x.CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "GetAppchain", pb.String(chainMethod))
 	if err := json.Unmarshal(res.Result, srcChain); err != nil {
 		return nil, fmt.Errorf("%s: unmarshal appchain info error: %w", internalError, err)
 	}
@@ -425,7 +423,7 @@ func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *pb.Interchain
 			m[dstChainService.ChainId] = x.GetTxIndex()
 			if dstChainService.ChainId == dstChainService.BxhId {
 				data, _ := ibtp.Marshal()
-				res := x.CrossInvoke(constant.InterBrokerContractAddr.String(), "InvokeInterchain", &pb.Arg{Type: pb.Arg_Bytes, Value: data})
+				res := x.CrossInvoke(constant.InterBrokerContractAddr.Address().String(), "InvokeInterchain", &pb.Arg{Type: pb.Arg_Bytes, Value: data})
 				if res.Ok {
 					return res.Result
 				}
@@ -454,7 +452,7 @@ func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *pb.Interchain
 			m[srcChainService.ChainId] = x.GetTxIndex()
 			if srcChainService.ChainId == srcChainService.BxhId {
 				data, _ := ibtp.Marshal()
-				x.CrossInvoke(constant.InterBrokerContractAddr.String(), "InvokeInterchain", &pb.Arg{Type: pb.Arg_Bytes, Value: data})
+				x.CrossInvoke(constant.InterBrokerContractAddr.Address().String(), "InvokeInterchain", &pb.Arg{Type: pb.Arg_Bytes, Value: data})
 			}
 		} else {
 			m[DEFAULT_UNION_PIER_ID] = x.GetTxIndex()
@@ -487,12 +485,12 @@ func (x *InterchainManager) beginMultiTargetsTransaction(srcChainMethod string, 
 		args = append(args, pb.String(childTxId))
 	}
 
-	return x.CrossInvoke(constant.TransactionMgrContractAddr.String(), "BeginMultiTXs", args...)
+	return x.CrossInvoke(constant.TransactionMgrContractAddr.Address().String(), "BeginMultiTXs", args...)
 }
 
 func (x *InterchainManager) beginTransaction(ibtp *pb.IBTP) *boltvm.Response {
 	txId := fmt.Sprintf("%s-%s-%d", ibtp.From, ibtp.To, ibtp.Index)
-	return x.CrossInvoke(constant.TransactionMgrContractAddr.String(), "Begin", pb.String(txId), pb.Uint64(uint64(ibtp.TimeoutHeight)))
+	return x.CrossInvoke(constant.TransactionMgrContractAddr.Address().String(), "Begin", pb.String(txId), pb.Uint64(uint64(ibtp.TimeoutHeight)))
 }
 
 func (x *InterchainManager) reportTransaction(ibtp *pb.IBTP, interchain *pb.Interchain) *boltvm.Response {
@@ -501,7 +499,7 @@ func (x *InterchainManager) reportTransaction(ibtp *pb.IBTP, interchain *pb.Inte
 	if ibtp.Type == pb.IBTP_RECEIPT_FAILURE {
 		result = 1
 	}
-	ret := x.CrossInvoke(constant.TransactionMgrContractAddr.String(), "Report", pb.String(txId), pb.Int32(result))
+	ret := x.CrossInvoke(constant.TransactionMgrContractAddr.Address().String(), "Report", pb.String(txId), pb.Int32(result))
 	if strings.Contains(string(ret.Result), fmt.Sprintf("transaction with Id %s has been rollback", txId)) {
 		interchain.ReceiptCounter[ibtp.To] = ibtp.Index
 		x.setInterchain(ibtp.From, interchain)
@@ -589,11 +587,11 @@ func (x *InterchainManager) checkUnionIBTP(app *appchainMgr.Appchain, ibtp *pb.I
 
 // verifyMultiSign .
 func verifyMultiSign(app *appchainMgr.Appchain, ibtp *pb.IBTP, proof []byte) (bool, error) {
-	if "" == app.Validators {
+	if nil == app.TrustRoot {
 		return false, fmt.Errorf("empty validators in relay chain:%s", app.ID)
 	}
 	var validators BxhValidators
-	if err := json.Unmarshal([]byte(app.Validators), &validators); err != nil {
+	if err := json.Unmarshal(app.TrustRoot, &validators); err != nil {
 		return false, err
 	}
 
@@ -693,7 +691,7 @@ func (x *InterchainManager) getBitXHubID() (string, error) {
 func (x *InterchainManager) getServiceByID(id string) (*Service, error) {
 	service := &Service{}
 
-	res := x.CrossInvoke(constant.ServiceMgrContractAddr.String(), "GetServiceInfo", pb.String(id))
+	res := x.CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "GetServiceInfo", pb.String(id))
 	if !res.Ok {
 		return nil, fmt.Errorf("%s: get service info error: %s", ServiceNotAvailable, string(res.Result))
 	}
@@ -727,12 +725,12 @@ func (x *InterchainManager) indexReceiptInterchainMeta(id string) string {
 	return fmt.Sprintf("index-receipt-interchain-%s", id)
 }
 
-func isAppchainAvailable(state governance.GovernanceStatus) bool {
-	for _, s := range appchainMgr.AppchainAvailableState {
-		if state == s {
-			return true
-		}
-	}
-
-	return false
-}
+//func isAppchainAvailable(state governance.GovernanceStatus) bool {
+//	for _, s := range appchainMgr.AppchainAvailableState {
+//		if state == s {
+//			return true
+//		}
+//	}
+//
+//	return false
+//}

@@ -3,6 +3,7 @@ package proof
 import (
 	"crypto/sha256"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/meshplus/bitxhub/internal/ledger"
@@ -42,14 +43,9 @@ func TestVerifyPool_CheckProof(t *testing.T) {
 	mockEngine := mock_validator.NewMockEngine(mockCtl)
 
 	chain := &appchainMgr.Appchain{
-		ID:            from,
-		Name:          "appchain A",
-		Validators:    "",
-		ConsensusType: "rbft",
-		ChainType:     "fabric",
-		Desc:          "",
-		Version:       "",
-		PublicKey:     "11111",
+		ID:      from,
+		Desc:    "",
+		Version: 0,
 	}
 
 	chainData, err := json.Marshal(chain)
@@ -120,8 +116,8 @@ func TestVerifyPool_CheckProof(t *testing.T) {
 	}
 	txWithIBTP.TransactionHash = txWithIBTP.Hash()
 	ok, err = vp.CheckProof(txWithIBTP)
-	require.Nil(t, err)
-	require.True(t, ok)
+	require.False(t, ok)
+	require.Equal(t, true, strings.Contains(err.Error(), NoBindRule))
 
 	proofData, ok := vp.GetProof(*txWithIBTP.Hash())
 	require.Nil(t, proofData)
@@ -136,15 +132,10 @@ func TestVerifyPool_CheckProof2(t *testing.T) {
 	mockEngine := mock_validator.NewMockEngine(mockCtl)
 
 	chain := &appchainMgr.Appchain{
-		Status:        governance.GovernanceAvailable,
-		ID:            from,
-		Name:          "appchain" + from,
-		Validators:    "",
-		ConsensusType: "rbft",
-		ChainType:     "fabric",
-		Desc:          "",
-		Version:       "",
-		PublicKey:     "pubkey",
+		Status:  governance.GovernanceAvailable,
+		ID:      from,
+		Desc:    "",
+		Version: 0,
 	}
 
 	keys := make([]crypto.PrivateKey, 0, 4)
@@ -188,7 +179,7 @@ func TestVerifyPool_CheckProof2(t *testing.T) {
 	require.NotNil(t, err)
 	require.False(t, ok)
 
-	chain.Validators = string(addrsData)
+	chain.TrustRoot = addrsData
 	ok, err = verifyMultiSign(chain, ibtp, proof)
 	require.Nil(t, err)
 	require.True(t, ok)
