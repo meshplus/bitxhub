@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/meshplus/bitxhub/internal/profile"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -20,6 +19,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/app"
 	"github.com/meshplus/bitxhub/internal/coreapi"
 	"github.com/meshplus/bitxhub/internal/loggers"
+	"github.com/meshplus/bitxhub/internal/profile"
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/urfave/cli"

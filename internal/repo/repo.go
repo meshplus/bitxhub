@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 
 	"github.com/ethereum/go-ethereum/event"
-	"github.com/spf13/viper"
 	libp2pcert "github.com/meshplus/go-libp2p-cert"
+	"github.com/spf13/viper"
 )
 
 type Repo struct {
@@ -32,9 +32,9 @@ func Load(repoRoot string, passwd string, configPath, networkPath string) (*Repo
 
 	var networkConfig *NetworkConfig
 	if len(networkPath) == 0 {
-		networkConfig, err = loadNetworkConfig(repoRoot, config.Genesis)
+		networkConfig, err = loadNetworkConfig(nViper, repoRoot, config.Genesis)
 	} else {
-		networkConfig, err = loadNetworkConfig(filepath.Dir(networkPath), config.Genesis)
+		networkConfig, err = loadNetworkConfig(nViper, filepath.Dir(networkPath), config.Genesis)
 		fileData, err := ioutil.ReadFile(networkPath)
 		if err != nil {
 			return nil, err
@@ -45,7 +45,6 @@ func Load(repoRoot string, passwd string, configPath, networkPath string) (*Repo
 		}
 	}
 
-	networkConfig, err := loadNetworkConfig(nViper, repoRoot, config.Genesis)
 	if err != nil {
 		return nil, fmt.Errorf("load network config: %w", err)
 	}

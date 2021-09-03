@@ -1,10 +1,10 @@
 package repo
 
 import (
-	"github.com/spf13/viper"
 	"testing"
 
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )
 

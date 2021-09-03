@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/meshplus/bitxhub/internal/loggers"
-
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"

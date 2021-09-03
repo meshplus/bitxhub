@@ -3,9 +3,8 @@ package app
 import (
 	"context"
 	"fmt"
-	"github.com/meshplus/bitxhub/api/gateway"
-	"github.com/meshplus/bitxhub/api/grpc"
-	"github.com/meshplus/bitxhub/internal/profile"
+	"io/ioutil"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -13,12 +12,15 @@ import (
 	"github.com/ethereum/go-ethereum/common/fdlimit"
 	"github.com/meshplus/bitxhub-kit/storage/blockfile"
 	"github.com/meshplus/bitxhub-kit/storage/leveldb"
+	"github.com/meshplus/bitxhub/api/gateway"
+	"github.com/meshplus/bitxhub/api/grpc"
 	_ "github.com/meshplus/bitxhub/imports"
 	"github.com/meshplus/bitxhub/internal/executor"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/ledger/genesis"
 	"github.com/meshplus/bitxhub/internal/loggers"
 	orderplg "github.com/meshplus/bitxhub/internal/plugins"
+	"github.com/meshplus/bitxhub/internal/profile"
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/bitxhub/internal/router"
 	"github.com/meshplus/bitxhub/internal/storages"
@@ -238,7 +240,6 @@ func (bxh *BitXHub) Stop() error {
 
 	return nil
 }
-
 
 func (bxh *BitXHub) ReConfig(repo *repo.Repo) {
 	if repo.Config != nil {

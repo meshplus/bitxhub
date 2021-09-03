@@ -3,6 +3,7 @@ package repo
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,8 +11,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/fsnotify/fsnotify"
-	ma "github.com/multiformats/go-multiaddr"
 	"github.com/mitchellh/go-homedir"
+	ma "github.com/multiformats/go-multiaddr"
 	"github.com/spf13/viper"
 )
 
