@@ -712,11 +712,14 @@ func (exec *BlockExecutor) getTimeoutIBTPsMap(height uint64) (map[string][]strin
 
 	for _, value := range timeoutList {
 		listArray := strings.Split(value, "-")
-		_, chainID, _, err := parseChainServiceID(listArray[0])
+		bxhID, chainID, _, err := parseChainServiceID(listArray[0])
 		if err != nil {
 			return nil, err
 		}
 		from := chainID
+		if bxhID != fmt.Sprintf("%d", exec.config.Genesis.ChainID) {
+			from = contracts.DEFAULT_UNION_PIER_ID
+		}
 		if list, has := timeoutIBTPsMap[from]; has {
 			list := append(list, value)
 			timeoutIBTPsMap[from] = list

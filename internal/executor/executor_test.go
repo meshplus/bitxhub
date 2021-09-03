@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/meshplus/bitxhub/internal/executor/contracts"
+
 	"github.com/gogo/protobuf/proto"
 	"github.com/golang/mock/gomock"
 	"github.com/meshplus/bitxhub-kit/crypto"
@@ -343,6 +345,8 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 	require.Nil(t, err)
 	err = ldg.PersistExecutionResult(mockBlock(1, nil), nil, &pb.InterchainMeta{})
 	require.Nil(t, err)
+
+	ldg.SetState(constant.InterchainContractAddr.Address(), []byte(contracts.BitXHubID), []byte("1356"))
 
 	executor, err := New(ldg, log.NewWithModule("executor"), &appchain.Client{}, config, big.NewInt(5000000))
 	require.Nil(t, err)

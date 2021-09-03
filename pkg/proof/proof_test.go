@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/meshplus/bitxhub/internal/ledger"
-
 	ruleMgr "github.com/meshplus/bitxhub-core/rule-mgr"
+
+	"github.com/meshplus/bitxhub/internal/ledger"
 
 	"github.com/meshplus/bitxhub-core/governance"
 
@@ -63,11 +63,11 @@ func TestVerifyPool_CheckProof(t *testing.T) {
 	stateLedger.EXPECT().GetState(constant.RuleManagerContractAddr.Address(), gomock.Any()).Return(false, rlData)
 	mockEngine.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(true, uint64(0), nil).AnyTimes()
 
-	vp := New(mockLedger, log.NewWithModule("test_verify"), wasmGasLimit)
-	vp = &VerifyPool{
-		ledger: mockLedger,
-		ve:     mockEngine,
-		logger: log.NewWithModule("test_verify"),
+	vp := &VerifyPool{
+		ledger:    mockLedger,
+		ve:        mockEngine,
+		logger:    log.NewWithModule("test_verify"),
+		bitxhubID: "1356",
 	}
 
 	engine := vp.ValidationEngine()
