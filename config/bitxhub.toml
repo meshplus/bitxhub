@@ -26,7 +26,7 @@ solo = false
   duration = "15s"
 
 [security]
-  enable_tls = true
+  enable_tls = false
   pem_file_path = "certs/node.cert"
   server_key_path = "certs/node.priv"
   gateway_cert_path = "certs/gateway.cert"
