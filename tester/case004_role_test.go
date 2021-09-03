@@ -244,7 +244,7 @@ func (suite *Role) TestGetRuleAddress() {
 	k2Nonce++
 }
 
-func (suite *Role) TestRegisterRoles() {
+/*func (suite *Role) TestRegisterRoles() {
 	// admin chain
 	path1 := "./test_data/config/node1/key.json"
 	path2 := "./test_data/config/node2/key.json"
@@ -324,7 +324,7 @@ func (suite *Role) TestRegisterRoles() {
 	ret2 := gjson.ParseBytes(r2.Ret)
 	suite.EqualValues(5, len(ret2.Array()))
 	adminNonce1++
-}
+}*/
 
 func (suite *Role) vote(proposalId string, adminKey crypto.PrivateKey, adminNonce uint64) {
 	ret, err := invokeBVMContract(suite.api, adminKey, adminNonce, constant.GovernanceContractAddr.Address(), "Vote",

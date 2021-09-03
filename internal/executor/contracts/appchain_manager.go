@@ -293,6 +293,73 @@ func (am *AppchainManager) basicGovernance(id, reason string, permissions []stri
 	return getGovernanceRet(string(res.Result), nil)
 }
 
+// =========== PauseAppchain freezes appchain without governance
+// This function is triggered when the master rule is updating.
+// Information about the appchain before the pause is returned
+//  so that the appchain can be restored when unpause is invoked.
+func (am *AppchainManager) PauseAppchain(id string) *boltvm.Response {
+	am.AppchainManager.Persister = am.Stub
+	event := governance.EventPause
+
+	// 1. check permission: PermissionSpecific
+	specificAddrs := []string{constant.RuleManagerContractAddr.Address().String()}
+	addrsData, err := json.Marshal(specificAddrs)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("marshal specificAddrs error: %v", err))
+	}
+	if err := am.checkPermission([]string{string(PermissionSpecific)}, id, am.CurrentCaller(), addrsData); err != nil {
+		return boltvm.Error(fmt.Sprintf("check permission error:%v", err))
+	}
+
+	// 2. governance pre: check if exist and status
+	chain, err := am.AppchainManager.GovernancePre(id, event, nil)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("%s prepare error: %v", string(event), err))
+	}
+	chainInfo := chain.(*appchainMgr.Appchain)
+
+	// 3. change status
+	if ok, data := am.AppchainManager.ChangeStatus(id, string(event), string(chainInfo.Status), nil); !ok {
+		return boltvm.Error(fmt.Sprintf("change status error: %s", string(data)))
+	}
+
+	chainData, err := json.Marshal(chainInfo)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("marshal chain error: %v", err))
+	}
+	return boltvm.Success(chainData)
+}
+
+// =========== UnPauseAppchain restores to the state before the appchain was suspended
+// This exist when the rule is update successsfully
+func (am *AppchainManager) UnPauseAppchain(id, lastStatus string) *boltvm.Response {
+	am.AppchainManager.Persister = am.Stub
+	event := governance.EventUnpause
+
+	// 1. check permission: PermissionSpecific
+	specificAddrs := []string{constant.RuleManagerContractAddr.Address().String()}
+	addrsData, err := json.Marshal(specificAddrs)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("marshal specificAddrs error: %v", err))
+	}
+	if err := am.checkPermission([]string{string(PermissionSpecific)}, id, am.CurrentCaller(), addrsData); err != nil {
+		return boltvm.Error(fmt.Sprintf("check permission error:%v", err))
+	}
+
+	// 2. governance pre: check if exist and status
+	_, err = am.AppchainManager.GovernancePre(id, event, nil)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("%s prepare error: %v", string(event), err))
+	}
+
+	// 3. change status
+	if ok, data := am.AppchainManager.ChangeStatus(id, string(event), lastStatus, nil); !ok {
+		return boltvm.Error(fmt.Sprintf("change status error: %s", string(data)))
+	}
+
+	return boltvm.Success(nil)
+}
+
 // ========================== Query interface ========================
 
 // CountAvailableAppchains counts all available appchains
