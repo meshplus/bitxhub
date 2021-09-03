@@ -428,6 +428,14 @@ func (api *PublicEthereumAPI) GetBlockByHash(hash common.Hash, fullTx bool) (map
 func (api *PublicEthereumAPI) GetBlockByNumber(blockNum rpc.BlockNumber, fullTx bool) (map[string]interface{}, error) {
 	api.logger.Debugf("eth_getBlockByNumber, number: %d, full: %v", blockNum, fullTx)
 
+	if blockNum == rpc.PendingBlockNumber || blockNum == rpc.LatestBlockNumber {
+		meta, err := api.api.Chain().Meta()
+		if err != nil {
+			return nil, err
+		}
+		blockNum = rpc.BlockNumber(meta.Height)
+	}
+
 	block, err := api.api.Broker().GetBlock("HEIGHT", fmt.Sprintf("%d", blockNum))
 	if err != nil {
 		return nil, err
