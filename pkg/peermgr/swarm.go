@@ -37,7 +37,7 @@ type Swarm struct {
 	connectedPeers sync.Map
 	notifiee       *notifiee
 	piers          *Piers
-	pingC            chan *repo.Ping
+	pingC          chan *repo.Ping
 
 	ledger           ledger.Ledger
 	orderMessageFeed event.Feed
@@ -110,9 +110,11 @@ func (swarm *Swarm) init() error {
 	}
 	swarm.localID = swarm.repo.NetworkConfig.ID
 	swarm.p2p = p2p
+	swarm.enablePing = swarm.repo.Config.Ping.Enable
+	swarm.pingTimeout = swarm.repo.Config.Ping.Duration
 	swarm.pingC = make(chan *repo.Ping)
-	swarm.routers=routers
-	swarm.multiAddrs=multiAddrs
+	swarm.routers = routers
+	swarm.multiAddrs = multiAddrs
 	if swarm.piers == nil {
 		swarm.piers = newPiers()
 	}
@@ -477,7 +479,6 @@ func (swarm *Swarm) ReConfig(config interface{}) error {
 	}
 	return nil
 }
-
 
 func constructMultiaddr(vpInfo *pb.VpInfo) (*peer.AddrInfo, error) {
 	addrs := make([]ma.Multiaddr, 0)
