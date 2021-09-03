@@ -157,7 +157,7 @@ func (b *BoltStubImpl) CrossInvoke(address, method string, args ...*pb.Arg) *bol
 		return boltvm.Error(err.Error())
 	}
 	bvm := New(ctx, b.ve, nil, b.bvm.contracts)
-	ret, err := bvm.Run(data)
+	ret, _, err := bvm.Run(data, 0)
 	if err != nil {
 		return boltvm.Error(err.Error())
 	}

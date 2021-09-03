@@ -9,7 +9,7 @@ import (
 //go:generate mockgen -destination mock_proof/mock_proof.go -package mock_proof -source verify.go
 type Verify interface {
 	// CheckProof verifies ibtp proof in interchain transaction
-	CheckProof(tx pb.Transaction) (bool, error)
+	CheckProof(tx pb.Transaction) (bool, uint64, error)
 
 	// ValidationEngine returns validation engine
 	ValidationEngine() validator.Engine

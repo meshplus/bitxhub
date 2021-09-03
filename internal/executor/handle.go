@@ -294,6 +294,7 @@ func (exec *BlockExecutor) applyTx(index int, tx pb.Transaction, invalidReason a
 	normalTx := true
 
 	receipt := exec.applyTransaction(index, tx, invalidReason, opt)
+	exec.gasLimit -= receipt.GasUsed
 
 	evs := exec.ledger.Events(tx.GetHash().String())
 	if len(evs) != 0 {
@@ -470,10 +471,12 @@ func (exec *BlockExecutor) applyBxhTransaction(i int, tx *pb.BxhTransaction, inv
 			return nil, GasFailedTx, fmt.Errorf("wrong vm type")
 		}
 
-		ret, err := instance.Run(data.Payload)
+		ret, gasRunUsed, err := instance.Run(data.Payload, exec.gasLimit)
 		if err != nil {
 			exec.ledger.RevertToSnapshot(snapshot)
 		}
+		gasUsed += gasRunUsed
+		exec.logger.WithField("gasUsed", gasUsed).Info("Bxh transaction")
 		return ret, gasUsed, err
 	}
 }
@@ -536,7 +539,7 @@ func (exec *BlockExecutor) evmInterchain(i int, tx *types2.EthTransaction, recei
 			ctx := vm.NewContext(tx, uint64(i), nil, exec.currentHeight, exec.ledger, exec.logger)
 			instance := boltvm.New(ctx, exec.validationEngine, exec.evm, exec.registerBoltContracts())
 
-			ret, err := instance.InvokeBVM(constant.InterBrokerContractAddr.String(), log.Data)
+			ret, _, err := instance.InvokeBVM(constant.InterBrokerContractAddr.String(), log.Data)
 			if err != nil {
 				receipt.Status = pb.Receipt_FAILED
 			}

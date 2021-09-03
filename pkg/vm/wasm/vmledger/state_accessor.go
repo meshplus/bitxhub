@@ -6,17 +6,18 @@ import (
 
 	"github.com/meshplus/eth-kit/ledger"
 
+	"github.com/meshplus/bitxhub-core/wasm"
 	"github.com/meshplus/bitxhub-core/wasm/wasmlib"
 	"github.com/wasmerio/wasmer-go/wasmer"
 )
 
 func getBalance(env interface{}, args []wasmer.Value) ([]wasmer.Value, error) {
-	account := env.(*wasmlib.WasmEnv).Ctx["account"].(ledger.IAccount)
+	account := env.(*wasmlib.WasmEnv).Ctx[wasm.ACCOUNT].(ledger.IAccount)
 	return []wasmer.Value{wasmer.NewI64(account.GetBalance().Int64())}, nil
 }
 
 func setBalance(env interface{}, args []wasmer.Value) ([]wasmer.Value, error) {
-	account := env.(*wasmlib.WasmEnv).Ctx["account"].(ledger.IAccount)
+	account := env.(*wasmlib.WasmEnv).Ctx[wasm.ACCOUNT].(ledger.IAccount)
 	account.SetBalance(new(big.Int).SetUint64(uint64(args[0].I64())))
 	return []wasmer.Value{}, nil
 }
@@ -28,13 +29,13 @@ func getState(env interface{}, args []wasmer.Value) ([]wasmer.Value, error) {
 	if err != nil {
 		return []wasmer.Value{wasmer.NewI32(-1)}, nil
 	}
-	data := ctx["argmap"].(map[int]int)
+	data := ctx[wasm.CONTEXT_ARGMAP].(map[int]int)
 	// alloc := ctx["allocate"].(wasmer.NativeFunction)
 	alloc, err := env.(*wasmlib.WasmEnv).Instance.Exports.GetFunction("allocate")
 	if err != nil {
 		return []wasmer.Value{wasmer.NewI32(-1)}, nil
 	}
-	account := ctx["account"].(ledger.IAccount)
+	account := ctx[wasm.ACCOUNT].(ledger.IAccount)
 	key := mem.Data()[key_ptr : key_ptr+int64(data[int(key_ptr)])]
 	ok, value := account.GetState(key)
 	if !ok {
@@ -69,8 +70,8 @@ func setState(env interface{}, args []wasmer.Value) ([]wasmer.Value, error) {
 	if err != nil {
 		return []wasmer.Value{}, err
 	}
-	data := ctx["argmap"].(map[int]int)
-	account := ctx["account"].(ledger.IAccount)
+	data := ctx[wasm.CONTEXT_ARGMAP].(map[int]int)
+	account := ctx[wasm.ACCOUNT].(ledger.IAccount)
 	key := mem.Data()[key_ptr : key_ptr+int64(data[int(key_ptr)])]
 	value := mem.Data()[value_ptr : value_ptr+int64(data[int(value_ptr)])]
 	account.SetState(key, value)
@@ -85,8 +86,8 @@ func addState(env interface{}, args []wasmer.Value) ([]wasmer.Value, error) {
 	if err != nil {
 		return []wasmer.Value{}, err
 	}
-	data := ctx["argmap"].(map[int]int)
-	account := ctx["account"].(ledger.IAccount)
+	data := ctx[wasm.CONTEXT_ARGMAP].(map[int]int)
+	account := ctx[wasm.ACCOUNT].(ledger.IAccount)
 	key := mem.Data()[key_ptr : key_ptr+int64(data[int(key_ptr)])]
 	value := mem.Data()[value_ptr : value_ptr+int64(data[int(value_ptr)])]
 	account.AddState(key, value)
@@ -139,31 +140,31 @@ func (im *Imports) importLedgerLib(store *wasmer.Store, wasmEnv *wasmlib.WasmEnv
 		wasmEnv,
 		addState,
 	)
-	im.imports.Register(
+	im.imports.GetImportObject().Register(
 		"env",
 		map[string]wasmer.IntoExtern{
 			"get_balance": getBalanceFunc,
 		},
 	)
-	im.imports.Register(
+	im.imports.GetImportObject().Register(
 		"env",
 		map[string]wasmer.IntoExtern{
 			"set_balance": setBalanceFunc,
 		},
 	)
-	im.imports.Register(
+	im.imports.GetImportObject().Register(
 		"env",
 		map[string]wasmer.IntoExtern{
 			"get_state": getStateFunc,
 		},
 	)
-	im.imports.Register(
+	im.imports.GetImportObject().Register(
 		"env",
 		map[string]wasmer.IntoExtern{
 			"set_state": setStateFunc,
 		},
 	)
-	im.imports.Register(
+	im.imports.GetImportObject().Register(
 		"env",
 		map[string]wasmer.IntoExtern{
 			"add_state": addStateFunc,

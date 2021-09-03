@@ -33,7 +33,7 @@ func New(ctx *vm.Context, ve validator.Engine, evm *evm.EVM, contracts map[strin
 	}
 }
 
-func (bvm *BoltVM) Run(input []byte) (ret []byte, err error) {
+func (bvm *BoltVM) Run(input []byte, _ uint64) (ret []byte, gasUsed uint64, err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("%v", e)
@@ -70,16 +70,16 @@ func (bvm *BoltVM) HandleIBTP(ibtp *pb.IBTP) (ret []byte, err error) {
 	return res.Result, err
 }
 
-func (bvm *BoltVM) InvokeBVM(address string, input []byte) (ret []byte, err error) {
+func (bvm *BoltVM) InvokeBVM(address string, input []byte) (ret []byte, _ uint64, err error) {
 	payload := &pb.InvokePayload{}
 	if err := payload.Unmarshal(input); err != nil {
-		return nil, fmt.Errorf("unmarshal invoke payload: %w", err)
+		return nil, 0, fmt.Errorf("unmarshal invoke payload: %w", err)
 	}
 
 	method, ins := payload.Method, payload.Args
 	contract, err := GetBoltContract(address, bvm.contracts)
 	if err != nil {
-		return nil, fmt.Errorf("get bolt contract: %w", err)
+		return nil, 0, fmt.Errorf("get bolt contract: %w", err)
 	}
 
 	rc := reflect.ValueOf(contract)
@@ -93,25 +93,25 @@ func (bvm *BoltVM) InvokeBVM(address string, input []byte) (ret []byte, err erro
 	if stubField.CanSet() {
 		stubField.Set(reflect.ValueOf(stub))
 	} else {
-		return nil, fmt.Errorf("stub filed can`t set")
+		return nil, 0, fmt.Errorf("stub filed can`t set")
 	}
 
 	// judge whether method is valid
 	m := rc.MethodByName(method)
 	if !m.IsValid() {
-		return nil, fmt.Errorf("not such method `%s`", method)
+		return nil, 0, fmt.Errorf("not such method `%s`", method)
 	}
 
 	fnArgs, err := parseArgs(ins)
 	if err != nil {
-		return nil, fmt.Errorf("parse args: %w", err)
+		return nil, 0, fmt.Errorf("parse args: %w", err)
 	}
 
 	res := m.Call(fnArgs)[0].Interface().(*boltvm.Response)
 	if !res.Ok {
-		return nil, fmt.Errorf("call error: %s", res.Result)
+		return nil, 0, fmt.Errorf("call error: %s", res.Result)
 	}
-	return res.Result, err
+	return res.Result, 0, err
 }
 
 func parseArgs(in []*pb.Arg) ([]reflect.Value, error) {

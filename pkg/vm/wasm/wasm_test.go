@@ -5,7 +5,9 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
+	"time"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/meshplus/bitxhub-core/validator/validatorlib"
@@ -40,6 +42,9 @@ IwQkMCKAIG4CB58dq07RqnQt9GKmMABv6hWRK0oDO4FBHFtpDlXUMAoGCCqGSM49
 BAMCA0cAMEQCIFuh8p+nbtjQEZEFg03BN58//9VRsukQXj0xP1eHnrD4AiBwI1jq
 L6FMy96mi64g37R0i/I+T4MC5p2mzZIHvRJ8Rg==
 -----END CERTIFICATE-----`
+
+const wasmGasLimit = 50000000
+const wasmGasLimitNotEnough = 500
 
 func initCreateContext(t *testing.T, name string) *vm.Context {
 	privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
@@ -156,7 +161,7 @@ func TestDeploy(t *testing.T) {
 	wasm, err := New(ctx, imports, instances)
 	require.Nil(t, err)
 
-	_, err = wasm.deploy()
+	_, _, err = wasm.deploy()
 	require.Nil(t, err)
 }
 
@@ -168,7 +173,7 @@ func TestExecute(t *testing.T) {
 	wasm, err := New(ctx, imports, instances)
 	require.Nil(t, err)
 
-	ret, err := wasm.deploy()
+	ret, _, err := wasm.deploy()
 	require.Nil(t, err)
 
 	invokePayload := &pb.InvokePayload{
@@ -195,7 +200,7 @@ func TestExecute(t *testing.T) {
 	require.Nil(t, err)
 	fmt.Println(wasm1.w.Instance.Exports)
 
-	result, err := wasm1.Run(payload)
+	result, _, err := wasm1.Run(payload, wasmGasLimit)
 	require.Nil(t, err)
 	require.Equal(t, "1", string(result))
 
@@ -208,25 +213,86 @@ func TestExecute(t *testing.T) {
 	}
 	payload1, err := invokePayload1.Marshal()
 	require.Nil(t, err)
-	// data1 := &pb.TransactionData{
-	// 	Payload: payload1,
-	// }
-	// ctx2 := &vm.Context{
-	// 	Caller:          ctx.Caller,
-	// 	Callee:          types.NewAddress(ret),
-	// 	TransactionData: data1,
-	// 	Ledger:          ctx.Ledger,
-	// }
 
-	result1, err := wasm1.Run(payload1)
+	result1, _, err := wasm1.Run(payload1, wasmGasLimit)
 	require.Nil(t, err)
-	_, err = wasm1.Run(payload1)
+	_, _, err = wasm1.Run(payload1, wasmGasLimit)
 	require.Nil(t, err)
-	_, err = wasm1.Run(payload1)
+	_, _, err = wasm1.Run(payload1, wasmGasLimit)
 	require.Nil(t, err)
 	require.Equal(t, "1", string(result1))
 	hash := types.NewHashByStr("")
 	fmt.Println(hash)
+}
+
+func TestExecuteWithNotEnoughGas(t *testing.T) {
+	ctx := initCreateContext(t, "execute_with_not_enough_gas")
+	instances := make(map[string]*wasmer.Instance)
+	imports, err := EmptyImports()
+	require.Nil(t, err)
+	wasm, err := New(ctx, imports, instances)
+	require.Nil(t, err)
+
+	ret, _, err := wasm.deploy()
+	require.Nil(t, err)
+
+	invokePayload := &pb.InvokePayload{
+		Method: "state_test_set",
+		Args: []*pb.Arg{
+			{Type: pb.Arg_Bytes, Value: []byte("alice")},
+			{Type: pb.Arg_Bytes, Value: []byte("111")},
+		},
+	}
+	payload, err := invokePayload.Marshal()
+	require.Nil(t, err)
+	data := &pb.TransactionData{
+		Payload: payload,
+	}
+	ctx1 := &vm.Context{
+		Caller:          ctx.Caller,
+		Callee:          types.NewAddress(ret),
+		TransactionData: data,
+		Ledger:          ctx.Ledger,
+	}
+	imports1 := vmledger.New()
+	fmt.Println(imports1)
+	wasm1, err := New(ctx1, imports1, instances)
+	require.Nil(t, err)
+	fmt.Println(wasm1.w.Instance.Exports)
+
+	_, _, err = wasm1.Run(payload, wasmGasLimitNotEnough)
+	require.NotNil(t, err)
+	require.Equal(t, "run out of gas limit", err.Error())
+
+	runtime.GC()
+	time.Sleep(10 * time.Second)
+	//invokePayload1 := &pb.InvokePayload{
+	//	Method: "state_test_get",
+	//	Args: []*pb.Arg{
+	//		{Type: pb.Arg_Bytes, Value: []byte("alice")},
+	//		{Type: pb.Arg_Bytes, Value: []byte("111")},
+	//	},
+	//}
+	//payload1, err := invokePayload1.Marshal()
+	//require.Nil(t, err)
+	//
+	//_, err = wasm1.Run(payload1, wasmGasLimit)
+	//require.NotNil(t, err)
+	//require.Equal(t, "run out of gas limit", err.Error())
+	//_, err = wasm1.Run(payload1, wasmGasLimit)
+	//require.NotNil(t, err)
+	//require.Equal(t, "run out of gas limit", err.Error())
+	//_, err = wasm1.Run(payload1, wasmGasLimit)
+	//require.NotNil(t, err)
+	//require.Equal(t, "run out of gas limit", err.Error())
+	//_, err = wasm1.Run(payload1, wasmGasLimit)
+	//require.NotNil(t, err)
+	//require.Equal(t, "run out of gas limit", err.Error())
+	//hash := types.NewHashByStr("")
+	//fmt.Println(hash)
+	//
+	//runtime.GC()
+	//time.Sleep(10 * time.Second)
 }
 
 func TestWasm_RunFabValidation(t *testing.T) {
@@ -237,7 +303,7 @@ func TestWasm_RunFabValidation(t *testing.T) {
 	wasm, err := New(ctx, imports, instances)
 	require.Nil(t, err)
 
-	ret, err := wasm.deploy()
+	ret, _, err := wasm.deploy()
 	require.Nil(t, err)
 
 	ibtpBytes, err := ioutil.ReadFile("./testdata/ibtp")
@@ -271,7 +337,7 @@ func TestWasm_RunFabValidation(t *testing.T) {
 	wasm1, err := New(ctx1, imports1, instances)
 	require.Nil(t, err)
 
-	result, err := wasm1.Run(payload)
+	result, _, err := wasm1.Run(payload, wasmGasLimit)
 	require.Nil(t, err)
 	require.Equal(t, "0", string(result))
 }
@@ -314,7 +380,7 @@ func BenchmarkRunFabValidation(b *testing.B) {
 	wasm, err := New(ctx, imports, instances)
 	require.Nil(b, err)
 
-	ret, err := wasm.deploy()
+	ret, _, err := wasm.deploy()
 	require.Nil(b, err)
 
 	proof, err := ioutil.ReadFile("./testdata/proof")
@@ -341,7 +407,7 @@ func BenchmarkRunFabValidation(b *testing.B) {
 		wasm1, err := New(ctx1, imports1, instances)
 		require.Nil(b, err)
 
-		result, err := wasm1.Run(payload)
+		result, _, err := wasm1.Run(payload, wasmGasLimit)
 		require.Nil(b, err)
 		require.Equal(b, "0", string(result))
 	}
@@ -360,7 +426,7 @@ func TestWasm_RunWithoutMethod(t *testing.T) {
 	wasm, err := New(ctx, imports, instances)
 	require.Nil(t, err)
 
-	ret, err := wasm.deploy()
+	ret, _, err := wasm.deploy()
 	require.Nil(t, err)
 
 	pl := &pb.InvokePayload{
@@ -385,7 +451,7 @@ func TestWasm_RunWithoutMethod(t *testing.T) {
 	wasm1, err := New(ctx1, imports1, instances)
 	require.Nil(t, err)
 
-	_, err = wasm1.Run(payload)
+	_, _, err = wasm1.Run(payload, wasmGasLimit)
 	assert.Equal(t, errorLackOfMethod, err)
 }
 

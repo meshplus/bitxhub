@@ -27,9 +27,10 @@ import (
 )
 
 const (
-	from     = "1356:chain0:0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
-	to       = "1356:chain1:0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
-	contract = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
+	from         = "1356:chain0:0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
+	to           = "1356:chain1:0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
+	contract     = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
+	wasmGasLimit = 5000000000000000
 )
 
 func TestVerifyPool_CheckProof(t *testing.T) {
@@ -60,9 +61,9 @@ func TestVerifyPool_CheckProof(t *testing.T) {
 	stateLedger.EXPECT().Copy().Return(stateLedger).AnyTimes()
 	stateLedger.EXPECT().GetState(constant.AppchainMgrContractAddr.Address(), gomock.Any()).Return(true, chainData)
 	stateLedger.EXPECT().GetState(constant.RuleManagerContractAddr.Address(), gomock.Any()).Return(false, rlData)
-	mockEngine.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil).AnyTimes()
+	mockEngine.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(true, uint64(0), nil).AnyTimes()
 
-	vp := New(mockLedger, log.NewWithModule("test_verify"))
+	vp := New(mockLedger, log.NewWithModule("test_verify"), wasmGasLimit)
 	vp = &VerifyPool{
 		ledger: mockLedger,
 		ve:     mockEngine,
@@ -79,7 +80,7 @@ func TestVerifyPool_CheckProof(t *testing.T) {
 		Extra: nil,
 	}
 	txWithNoIBTP.TransactionHash = txWithNoIBTP.Hash()
-	ok, err := vp.CheckProof(txWithNoIBTP)
+	ok, _, err := vp.CheckProof(txWithNoIBTP)
 	require.Nil(t, err)
 	require.True(t, ok)
 
@@ -90,7 +91,7 @@ func TestVerifyPool_CheckProof(t *testing.T) {
 		Extra: nil,
 	}
 	txWithNoExtra.TransactionHash = txWithNoIBTP.Hash()
-	ok, err = vp.CheckProof(txWithNoExtra)
+	ok, _, err = vp.CheckProof(txWithNoExtra)
 	require.NotNil(t, err)
 	require.False(t, ok)
 
@@ -101,7 +102,7 @@ func TestVerifyPool_CheckProof(t *testing.T) {
 		Extra: []byte("1"),
 	}
 	txWithNotEqualProofHash.TransactionHash = txWithNoIBTP.Hash()
-	ok, err = vp.CheckProof(txWithNotEqualProofHash)
+	ok, _, err = vp.CheckProof(txWithNotEqualProofHash)
 	require.NotNil(t, err)
 	require.False(t, ok)
 
@@ -115,7 +116,7 @@ func TestVerifyPool_CheckProof(t *testing.T) {
 		Extra: proof,
 	}
 	txWithIBTP.TransactionHash = txWithIBTP.Hash()
-	ok, err = vp.CheckProof(txWithIBTP)
+	ok, _, err = vp.CheckProof(txWithIBTP)
 	require.False(t, ok)
 	require.Equal(t, true, strings.Contains(err.Error(), NoBindRule))
 
@@ -154,7 +155,7 @@ func TestVerifyPool_CheckProof2(t *testing.T) {
 	addrsData, err := json.Marshal(bv)
 	require.Nil(t, err)
 
-	mockEngine.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil).AnyTimes()
+	mockEngine.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(true, uint64(0), nil).AnyTimes()
 
 	ibtp := getIBTP(t, 1, pb.IBTP_RECEIPT_SUCCESS, nil)
 	ibtpHash := ibtp.Hash()
@@ -175,12 +176,12 @@ func TestVerifyPool_CheckProof2(t *testing.T) {
 	require.Nil(t, err)
 	proof := signData
 
-	ok, err := verifyMultiSign(chain, ibtp, nil)
+	ok, _, err := verifyMultiSign(chain, ibtp, nil)
 	require.NotNil(t, err)
 	require.False(t, ok)
 
 	chain.TrustRoot = addrsData
-	ok, err = verifyMultiSign(chain, ibtp, proof)
+	ok, _, err = verifyMultiSign(chain, ibtp, proof)
 	require.Nil(t, err)
 	require.True(t, ok)
 }
@@ -197,7 +198,7 @@ func TestVerifyPool_CheckProof3(t *testing.T) {
 
 	stateLedger.EXPECT().GetState(constant.AppchainMgrContractAddr.Address(), gomock.Any()).Return(true, []byte("123"))
 	stateLedger.EXPECT().Copy().Return(stateLedger).AnyTimes()
-	mockEngine.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil).AnyTimes()
+	mockEngine.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(true, uint64(0), nil).AnyTimes()
 
 	vp := VerifyPool{
 		ledger: mockLedger,
@@ -216,7 +217,7 @@ func TestVerifyPool_CheckProof3(t *testing.T) {
 	}
 
 	txWithIBTP.TransactionHash = txWithIBTP.Hash()
-	ok, err := vp.CheckProof(txWithIBTP)
+	ok, _, err := vp.CheckProof(txWithIBTP)
 	require.NotNil(t, err)
 	require.False(t, ok)
 }
