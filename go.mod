@@ -11,6 +11,7 @@ require (
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f // indirect
 	github.com/ethereum/go-ethereum v1.10.2
 	github.com/fatih/color v1.7.0
+	github.com/fsnotify/fsnotify v1.4.9
 	github.com/gobuffalo/envy v1.9.0 // indirect
 	github.com/gobuffalo/packd v1.0.0
 	github.com/gobuffalo/packr v1.30.1

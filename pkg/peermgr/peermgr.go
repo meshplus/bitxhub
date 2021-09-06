@@ -54,6 +54,9 @@ type PeerManager interface {
 
 	// PierManager
 	PierManager() PierManager
+
+	// ReConfig
+	ReConfig(config interface{}) error
 }
 
 type PierManager interface {

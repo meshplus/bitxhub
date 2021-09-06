@@ -198,7 +198,7 @@ func (nc *nonceCache) getPendingNonce(account string) uint64 {
 	nonce, ok := nc.pendingNonces[account]
 	if !ok {
 		// if nonce is unknown, check if there is committed nonce persisted in db
-		// cause there aer no pending txs in mempool now, pending nonce is equal to committed nonce
+		// cause there are no pending txs in mempool now, pending nonce is equal to committed nonce
 		return nc.getCommitNonce(account) + 1
 	}
 	return nonce

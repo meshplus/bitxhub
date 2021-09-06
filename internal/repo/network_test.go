@@ -4,12 +4,13 @@ import (
 	"testing"
 
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNetworkConfig(t *testing.T) {
 	path := "./testdata"
-	cfg, err := loadNetworkConfig(path, Genesis{
+	cfg, err := loadNetworkConfig(viper.New(), path, Genesis{
 		Admins: []*Admin{
 			&Admin{
 				Address: "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013",

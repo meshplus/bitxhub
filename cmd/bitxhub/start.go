@@ -19,6 +19,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/app"
 	"github.com/meshplus/bitxhub/internal/coreapi"
 	"github.com/meshplus/bitxhub/internal/loggers"
+	"github.com/meshplus/bitxhub/internal/profile"
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/urfave/cli"
@@ -83,19 +84,21 @@ func start(ctx *cli.Context) error {
 
 	loggers.Initialize(repo.Config)
 
-	if repo.Config.PProf.Enable {
-		switch repo.Config.PProf.PType {
-		case "runtime":
-			go runtimePProf(repo.Config.RepoRoot, repo.Config.PProf.Mode, repo.NetworkConfig.ID, repo.Config.PProf.Duration)
-		case "http":
-			httpPProf(repo.Config.Port.PProf)
-		}
+	monitor, err := profile.NewMonitor(repo.Config)
+	if err != nil {
+		return err
+	}
+	if err := monitor.Start(); err != nil {
+		return err
 	}
 
-	if repo.Config.Monitor.Enable {
-		runMonitor(repo.Config.Port.Monitor)
+	pprof, err := profile.NewPprof(repo.Config)
+	if err != nil {
+		return err
 	}
-
+	if err := pprof.Start(); err != nil {
+		return err
+	}
 	printVersion()
 
 	bxh, err := app.NewBitXHub(repo, orderPath)
@@ -119,13 +122,15 @@ func start(ctx *cli.Context) error {
 		return err
 	}
 
-	go func() {
-		logger.WithField("port", repo.Config.Port.Gateway).Info("Gateway service started")
-		err := gateway.Start(repo.Config)
-		if err != nil {
-			fmt.Println(err)
-		}
-	}()
+	gw := gateway.NewGateway(repo.Config)
+	if err := gw.Start(); err != nil {
+		fmt.Println(err)
+	}
+
+	bxh.Monitor = monitor
+	bxh.Pprof = pprof
+	bxh.Grpc = b
+	bxh.Gateway = gw
 
 	var wg sync.WaitGroup
 	wg.Add(1)

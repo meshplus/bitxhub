@@ -5,27 +5,36 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
+	"github.com/ethereum/go-ethereum/event"
 	libp2pcert "github.com/meshplus/go-libp2p-cert"
+	"github.com/spf13/viper"
 )
 
 type Repo struct {
-	Config        *Config
-	NetworkConfig *NetworkConfig
-	Key           *Key
-	Certs         *libp2pcert.Certs
+	Config           *Config
+	NetworkConfig    *NetworkConfig
+	Key              *Key
+	Certs            *libp2pcert.Certs
+	ConfigChangeFeed event.Feed
+}
+
+func (r *Repo) SubscribeConfigChange(ch chan *Repo) event.Subscription {
+	return r.ConfigChangeFeed.Subscribe(ch)
 }
 
 func Load(repoRoot string, passwd string, configPath, networkPath string) (*Repo, error) {
-	config, err := UnmarshalConfig(repoRoot, configPath)
+	bViper := viper.New()
+	nViper := viper.New()
+	config, err := UnmarshalConfig(bViper, repoRoot, configPath)
 	if err != nil {
 		return nil, err
 	}
 
 	var networkConfig *NetworkConfig
 	if len(networkPath) == 0 {
-		networkConfig, err = loadNetworkConfig(repoRoot, config.Genesis)
+		networkConfig, err = loadNetworkConfig(nViper, repoRoot, config.Genesis)
 	} else {
-		networkConfig, err = loadNetworkConfig(filepath.Dir(networkPath), config.Genesis)
+		networkConfig, err = loadNetworkConfig(nViper, filepath.Dir(networkPath), config.Genesis)
 		fileData, err := ioutil.ReadFile(networkPath)
 		if err != nil {
 			return nil, err
@@ -35,6 +44,7 @@ func Load(repoRoot string, passwd string, configPath, networkPath string) (*Repo
 			return nil, err
 		}
 	}
+
 	if err != nil {
 		return nil, fmt.Errorf("load network config: %w", err)
 	}
@@ -49,12 +59,20 @@ func Load(repoRoot string, passwd string, configPath, networkPath string) (*Repo
 		return nil, fmt.Errorf("load private key: %w", err)
 	}
 
-	return &Repo{
+	repo := &Repo{
 		Config:        config,
 		NetworkConfig: networkConfig,
 		Key:           key,
 		Certs:         certs,
-	}, nil
+	}
+
+	// watch bitxhub.toml on changed
+	WatchBitxhubConfig(bViper, &repo.ConfigChangeFeed)
+
+	// watch network.toml on changed
+	WatchNetworkConfig(nViper, &repo.ConfigChangeFeed, &NetworkConfig{Genesis: config.Genesis})
+
+	return repo, nil
 }
 
 func GetAPI(repoRoot string) (string, error) {
