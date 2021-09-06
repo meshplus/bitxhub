@@ -10,7 +10,7 @@ require (
 	github.com/coreos/etcd v3.3.18+incompatible
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
-	github.com/ethereum/go-ethereum v1.10.4
+	github.com/ethereum/go-ethereum v1.10.8
 	github.com/fatih/color v1.7.0
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/gobuffalo/envy v1.9.0 // indirect
@@ -33,7 +33,7 @@ require (
 	github.com/meshplus/bitxhub-core v1.3.1-0.20210906033128-dada2778063e
 	github.com/meshplus/bitxhub-kit v1.2.1-0.20210901014031-ee93dd4f4ced
 	github.com/meshplus/bitxhub-model v1.2.1-0.20210902030154-b203e4a4b3de
-	github.com/meshplus/eth-kit v0.0.0-20210827081722-ce80fe3a863b
+	github.com/meshplus/eth-kit v0.0.0-20210906064541-8dfea98dbf95
 	github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd
 	github.com/meshplus/go-lightp2p v0.0.0-20210617153734-471d08b829f8
 	github.com/meshplus/go-wasm-metering v0.0.0-20210819034552-72b65cfc42ba
