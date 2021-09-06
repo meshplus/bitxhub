@@ -598,8 +598,9 @@ func (sm *ServiceManager) GetServicesByAppchainID(chainID string) *boltvm.Respon
 		return boltvm.Success(nil)
 	}
 
+	sortedIdMap := SortMap(idMap)
 	var ret []*service_mgr.Service
-	for id, _ := range idMap {
+	for id, _ := range sortedIdMap {
 		service, err := sm.ServiceManager.QueryById(id, nil)
 		if err == nil {
 			return boltvm.Error(fmt.Sprintf("cannot get service by id %s", id))
