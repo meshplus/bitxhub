@@ -64,7 +64,7 @@ func (sm *ServiceManager) checkPermission(permissions []string, chainID string, 
 
 // ========================== Governance interface ========================
 // =========== Manage does some subsequent operations when the proposal is over
-// extra: update - service info,  register - chainServiceID
+// extra: update - service info,
 func (sm *ServiceManager) Manage(eventTyp, proposalResult, lastStatus, objId string, extra []byte) *boltvm.Response {
 	sm.ServiceManager.Persister = sm.Stub
 
@@ -100,6 +100,20 @@ func (sm *ServiceManager) Manage(eventTyp, proposalResult, lastStatus, objId str
 			ok, data := sm.ServiceManager.Update(updataInfo)
 			if !ok {
 				return boltvm.Error(fmt.Sprintf("update service error: %s", string(data)))
+			}
+		}
+	} else {
+		switch eventTyp {
+		case string(governance.EventLogout):
+			chainID := strings.Split(objId, ":")[0]
+			res := sm.CrossInvoke(constant.AppchainMgrContractAddr.String(), "IsAvailable", pb.String(chainID))
+			if !res.Ok {
+				boltvm.Error(fmt.Sprintf("cross invoke is available error: %s", string(res.Result)))
+			}
+			if FALSE == string(res.Result) {
+				if err := sm.pauseService(objId); err != nil {
+					return boltvm.Error(fmt.Sprintf("chain is not available, pause service %s err: %v", objId, err))
+				}
 			}
 		}
 	}
@@ -307,6 +321,11 @@ func (sm *ServiceManager) PauseChainService(chainID string) *boltvm.Response {
 	if err != nil {
 		return boltvm.Error(fmt.Sprintf("get id list by chain id error: %v", err))
 	}
+
+	sm.Logger().WithFields(logrus.Fields{
+		"chainID":       chainID,
+		"servicesIdMap": idMap,
+	}).Info("pause chain services")
 
 	// 3. pause services
 	for chainServiceID, _ := range idMap {
