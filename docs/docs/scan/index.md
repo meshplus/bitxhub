@@ -7,7 +7,7 @@
 ### 测试网RPC配置
 选择顶部网络功能，然后选择【自定义RPC】
 
-![网络](../assets/metamask-network.png)
+<img src='../assets/metamask-network.png' width="300" alt="Metamask Network" />
 
 ### BitXHub测试网配置
 
@@ -27,7 +27,7 @@ https://testnet-1.bitxhub.cn:8881
 
 **配置如下图所示**
 
-![网络](../assets/metamask-add-network.png)
+<img src='../assets/metamask-add-network.png' width="300" alt="Network" />
 
 ## 二、应用链环境准备
 
@@ -35,11 +35,11 @@ https://testnet-1.bitxhub.cn:8881
 
 ### 部署跨链合约
 
-可以参考开源文档站[链接](https://meshplus.github.io/bitxhub/bitxhub/usage/single_bitxhub/deploy_pier/#_2)进行跨链合约部署。（注意：文档中提到的二进制或开源项目，均是要对应 v1.11.0的版本）
+可以参考BitXHub文档站[链接](https://meshplus.github.io/bitxhub/bitxhub/usage/single_bitxhub/deploy_pier/#_2)进行跨链合约部署。（注意：文档中提到的二进制或开源项目，均是要对应 v1.11.0的版本）
 
 ### 获取Pier部署包和修改配置
 
-可以参考开源文档站[链接](https://meshplus.github.io/bitxhub/bitxhub/usage/single_bitxhub/deploy_pier/#pier)。
+可以参考BitXHub文档站[链接](https://meshplus.github.io/bitxhub/bitxhub/usage/single_bitxhub/deploy_pier/#pier)。
 
 **注意：**
 
@@ -79,16 +79,16 @@ address: 0xE7f5E3c3963c6a588AB3de753817B3F735a6Ab58
 > 
 > 职业： 学生
 > 
-> 申请人单位：浙江大学
+> 申请人单位：xx大学
 > 
-> 申请人钱包地址：0xE7f5E3c3963c6a588AB3de753817B3F735a6Ab58
+> 申请人地址：0xE7f5E3c3963c6a588AB3de753817B3F735a6Ab58
 
 
 **注意：** 申请人钱包地址需要和Pier地址（由《获取应用链私钥》小节导出的address字段）一致。
 
 第二步：发送邮箱至：bitxhub@hyperchain.cn
 
-📢：申请发送24h内，您的钱包地址将收到1个BXH燃料费，每个用户24h内仅允许申请一次。
+📢：申请发送24h内，您的地址将收到1个BXH燃料费，每个用户24h内仅允许申请一次。
 
 ## 三、浏览器可视化操作
 
@@ -98,17 +98,21 @@ address: 0xE7f5E3c3963c6a588AB3de753817B3F735a6Ab58
 
 注册字段说明：
 
-1. 应用链名称：自定义应用链的名称
+1. 节点ID：系统根据钱包地址自动生成
+
+2. 应用链名称：自定义应用链的名称
    
-2. 应用链类型：分为fabric1.4.3、fabric1.4.4 、hyperchain和 其他 四类
+3. 应用链类型：分为fabric1.4.3、fabric1.4.4 、hyperchain和 其他 四类
    
-3. 版本号：应用链对应的版本号
+4. 版本号：应用链对应的版本号
    
-4. 共识算法：应用链采用的共识算法
+5. 共识算法：应用链采用的共识算法
    
-5. 验证者信息：请参考[验证者信息生成](../bitxhub/dev/validator.md)
+6. 验证者信息：请参考[验证者信息生成](../bitxhub/dev/validator.md)
+
+7. 验证规则：分为fabric1.4.3、fabric1.4.4 、无验证规则和 其他 四类（用户可选择无验证规则模式进行快速跨链体验），根据对应应用链类型选择合适的验证规则。注意其他类型需要提交自定义的验证规则，并附带源码链接。编写规则请参考[验证规则编写](../bitxhub/dev/rule.md)
    
-6. 申请理由：填写申请接入跨链系统的理由
+7. 申请理由：填写申请接入跨链系统的理由
 
 应用链接入BitXHub跨链系统需要获得中继链管理员的准入审批，中继链管理员会在24h内完成应用链注册申请审核，审核通过后，应用链类型为【hyperchain】和【其他】选项的，用户需要进行应用链验证规则的提交申请。
 
