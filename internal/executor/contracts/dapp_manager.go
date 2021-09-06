@@ -3,6 +3,7 @@ package contracts
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -563,8 +564,7 @@ func (dm *DappManager) getOwnerAll(ownerAddr string) ([]*Dapp, error) {
 	var dappMap map[string]struct{}
 	ok := dm.GetObject(OwnerKey(ownerAddr), &dappMap)
 	if ok {
-		sortedDappMap := SortMap(dappMap)
-		for dappID, _ := range sortedDappMap {
+		for dappID, _ := range dappMap {
 			dapp := &Dapp{}
 			if ok := dm.GetObject(DappKey(dappID), dapp); !ok {
 				return nil, fmt.Errorf("the dapp(%s) is not exist", dappID)
@@ -572,6 +572,8 @@ func (dm *DappManager) getOwnerAll(ownerAddr string) ([]*Dapp, error) {
 			ret = append(ret, dapp)
 		}
 	}
+
+	sort.Sort(Dapps(ret))
 
 	return ret, nil
 }
@@ -657,4 +659,14 @@ func DappKey(id string) string {
 
 func OwnerKey(addr string) string {
 	return fmt.Sprintf("%s-%s", OWNERPREFIX, addr)
+}
+
+type Dapps []*Dapp
+
+func (ds Dapps) Len() int { return len(ds) }
+
+func (ds Dapps) Swap(i, j int) { ds[i], ds[j] = ds[j], ds[i] }
+
+func (ds Dapps) Less(i, j int) bool {
+	return ds[i].DappID > ds[j].DappID
 }

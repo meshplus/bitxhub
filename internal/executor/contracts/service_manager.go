@@ -3,6 +3,7 @@ package contracts
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -598,15 +599,16 @@ func (sm *ServiceManager) GetServicesByAppchainID(chainID string) *boltvm.Respon
 		return boltvm.Success(nil)
 	}
 
-	sortedIdMap := SortMap(idMap)
 	var ret []*service_mgr.Service
-	for id, _ := range sortedIdMap {
+	for id, _ := range idMap {
 		service, err := sm.ServiceManager.QueryById(id, nil)
 		if err == nil {
 			return boltvm.Error(fmt.Sprintf("cannot get service by id %s", id))
 		}
 		ret = append(ret, service.(*service_mgr.Service))
 	}
+
+	sort.Sort(Services(ret))
 
 	data, err := json.Marshal(ret)
 	if err != nil {
@@ -687,4 +689,14 @@ func (sm *ServiceManager) checkServiceIDFormat(serviceID string) error {
 	}
 
 	return nil
+}
+
+type Services []*service_mgr.Service
+
+func (ss Services) Len() int { return len(ss) }
+
+func (ss Services) Swap(i, j int) { ss[i], ss[j] = ss[j], ss[i] }
+
+func (ss Services) Less(i, j int) bool {
+	return ss[i].ServiceID > ss[j].ServiceID
 }
