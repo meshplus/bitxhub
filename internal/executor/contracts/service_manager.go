@@ -382,7 +382,7 @@ func (sm *ServiceManager) UnPauseChainService(chainID string) *boltvm.Response {
 	// 2. get services id
 	idMap, err := sm.ServiceManager.GetIDListByChainID(chainID)
 	if err != nil {
-		return boltvm.Error(fmt.Sprintf("get id list by chain id error: %v", err))
+		return boltvm.Success(nil)
 	}
 
 	// 3. unpause services
