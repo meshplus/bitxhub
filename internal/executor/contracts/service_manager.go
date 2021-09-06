@@ -320,7 +320,7 @@ func (sm *ServiceManager) PauseChainService(chainID string) *boltvm.Response {
 	// 2. get services id
 	idMap, err := sm.ServiceManager.GetIDListByChainID(chainID)
 	if err != nil {
-		return boltvm.Error(fmt.Sprintf("get id list by chain id error: %v", err))
+		return boltvm.Success(nil)
 	}
 
 	sm.Logger().WithFields(logrus.Fields{
