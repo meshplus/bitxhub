@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"sort"
 	"strconv"
 
 	"github.com/looplab/fsm"
@@ -310,7 +311,8 @@ func (rm *RoleManager) RegisterRole(roleId, roleType, nodePid, appchainID, reaso
 	roleIdList := map[string]struct{}{}
 	_ = rm.GetObject(RoleTypeKey(roleType), &roleIdList)
 	roleIdList[roleId] = struct{}{}
-	rm.SetObject(RoleTypeKey(roleType), roleIdList)
+	sortedRoleIdList := SortMap(roleIdList)
+	rm.SetObject(RoleTypeKey(roleType), sortedRoleIdList)
 	switch roleType {
 	case string(AppchainAdmin):
 		role.Status = governance.GovernanceAvailable
@@ -573,7 +575,8 @@ func (rm *RoleManager) GetRolesByType(roleType string) *boltvm.Response {
 	roleIdList := map[string]struct{}{}
 	ok := rm.GetObject(RoleTypeKey(roleType), &roleIdList)
 	if ok {
-		for id, _ := range roleIdList {
+		sortedRoleIdList := SortMap(roleIdList)
+		for id, _ := range sortedRoleIdList {
 			role := Role{}
 			ok := rm.GetObject(RoleKey(id), &role)
 			if !ok {
@@ -707,4 +710,20 @@ func RoleTypeKey(typ string) string {
 
 func AppchainAdminKey(appchainID string) string {
 	return fmt.Sprintf("%s-%s", APPCHAINADMINPREFIX, appchainID)
+}
+
+func SortMap(unsortedMap map[string]struct{}) map[string]struct{} {
+	var keys []string
+	for k := range unsortedMap {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+
+	sortedMap := make(map[string]struct{})
+	for _, k := range keys {
+		sortedMap[k] = unsortedMap[k]
+	}
+
+	return sortedMap
 }

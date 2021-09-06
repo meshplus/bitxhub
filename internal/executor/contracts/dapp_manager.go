@@ -563,7 +563,8 @@ func (dm *DappManager) getOwnerAll(ownerAddr string) ([]*Dapp, error) {
 	var dappMap map[string]struct{}
 	ok := dm.GetObject(OwnerKey(ownerAddr), &dappMap)
 	if ok {
-		for dappID, _ := range dappMap {
+		sortedDappMap := SortMap(dappMap)
+		for dappID, _ := range sortedDappMap {
 			dapp := &Dapp{}
 			if ok := dm.GetObject(DappKey(dappID), dapp); !ok {
 				return nil, fmt.Errorf("the dapp(%s) is not exist", dappID)
