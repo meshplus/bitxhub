@@ -102,13 +102,14 @@ func (am *AppchainManager) Manage(eventTyp, proposalResult, lastStatus, objId st
 		case string(governance.EventFreeze):
 			fallthrough
 		case string(governance.EventLogout):
-			if res := am.CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "PauseChainService", pb.String(objId)); !res.Ok {
-				return res
-			}
+			return am.CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "PauseChainService", pb.String(objId))
 		case string(governance.EventActivate):
-			if res := am.CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "UnPauseChainService", pb.String(objId)); !res.Ok {
-				return res
-			}
+			return am.CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "UnPauseChainService", pb.String(objId))
+		}
+	} else {
+		switch eventTyp {
+		case string(governance.EventLogout):
+			return am.CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "UnPauseChainService", pb.String(objId))
 		}
 	}
 
@@ -266,7 +267,16 @@ func (am *AppchainManager) ActivateAppchain(id, reason string) *boltvm.Response 
 // =========== LogoutAppchain logouts appchain
 func (am *AppchainManager) LogoutAppchain(id, reason string) *boltvm.Response {
 	am.AppchainManager.Persister = am.Stub
-	return am.basicGovernance(id, reason, []string{string(PermissionSelf)}, governance.EventLogout)
+	governanceRes := am.basicGovernance(id, reason, []string{string(PermissionSelf)}, governance.EventLogout)
+	if !governanceRes.Ok {
+		return governanceRes
+	}
+
+	if res := am.CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "PauseChainService", pb.String(id)); !res.Ok {
+		return res
+	}
+
+	return governanceRes
 }
 
 func (am *AppchainManager) basicGovernance(id, reason string, permissions []string, event governance.EventType) *boltvm.Response {
@@ -300,6 +310,10 @@ func (am *AppchainManager) basicGovernance(id, reason string, permissions []stri
 	if ok, data := am.AppchainManager.ChangeStatus(id, string(event), string(chainInfo.Status), nil); !ok {
 		return boltvm.Error(string(data))
 	}
+
+	am.Logger().WithFields(logrus.Fields{
+		"id": chainInfo.ID,
+	}).Info(fmt.Sprintf("Appchain is doing event %s", event))
 
 	return getGovernanceRet(string(res.Result), nil)
 }
