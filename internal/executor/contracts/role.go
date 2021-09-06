@@ -311,8 +311,7 @@ func (rm *RoleManager) RegisterRole(roleId, roleType, nodePid, appchainID, reaso
 	roleIdList := map[string]struct{}{}
 	_ = rm.GetObject(RoleTypeKey(roleType), &roleIdList)
 	roleIdList[roleId] = struct{}{}
-	sortedRoleIdList := SortMap(roleIdList)
-	rm.SetObject(RoleTypeKey(roleType), sortedRoleIdList)
+	rm.SetObject(RoleTypeKey(roleType), roleIdList)
 	switch roleType {
 	case string(AppchainAdmin):
 		role.Status = governance.GovernanceAvailable
@@ -575,8 +574,7 @@ func (rm *RoleManager) GetRolesByType(roleType string) *boltvm.Response {
 	roleIdList := map[string]struct{}{}
 	ok := rm.GetObject(RoleTypeKey(roleType), &roleIdList)
 	if ok {
-		sortedRoleIdList := SortMap(roleIdList)
-		for id, _ := range sortedRoleIdList {
+		for id, _ := range roleIdList {
 			role := Role{}
 			ok := rm.GetObject(RoleKey(id), &role)
 			if !ok {
@@ -585,6 +583,8 @@ func (rm *RoleManager) GetRolesByType(roleType string) *boltvm.Response {
 			ret = append(ret, &role)
 		}
 	}
+
+	sort.Sort(Roles(ret))
 
 	data, err := json.Marshal(ret)
 	if err != nil {
@@ -712,18 +712,12 @@ func AppchainAdminKey(appchainID string) string {
 	return fmt.Sprintf("%s-%s", APPCHAINADMINPREFIX, appchainID)
 }
 
-func SortMap(unsortedMap map[string]struct{}) map[string]struct{} {
-	var keys []string
-	for k := range unsortedMap {
-		keys = append(keys, k)
-	}
+type Roles []*Role
 
-	sort.Strings(keys)
+func (rs Roles) Len() int { return len(rs) }
 
-	sortedMap := make(map[string]struct{})
-	for _, k := range keys {
-		sortedMap[k] = unsortedMap[k]
-	}
+func (rs Roles) Swap(i, j int) { rs[i], rs[j] = rs[j], rs[i] }
 
-	return sortedMap
+func (rs Roles) Less(i, j int) bool {
+	return rs[i].ID > rs[j].ID
 }
