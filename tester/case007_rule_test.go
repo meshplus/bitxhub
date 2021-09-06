@@ -6,11 +6,10 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
-	ruleMgr "github.com/meshplus/bitxhub-core/rule-mgr"
-
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
-
 	"github.com/meshplus/bitxhub-core/governance"
+	ruleMgr "github.com/meshplus/bitxhub-core/rule-mgr"
+	service_mgr "github.com/meshplus/bitxhub-core/service-mgr"
 	"github.com/meshplus/bitxhub-core/validator"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
@@ -135,13 +134,13 @@ func (suite *Rule) TestRegisterRuleAppchain() {
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k1Nonce++
 
-	suite.vote(proposalId1, priAdmin1, adminNonce1)
+	suite.vote(proposalId1, priAdmin1, adminNonce1, string(contracts.APPOVED))
 	adminNonce1++
 
-	suite.vote(proposalId1, priAdmin2, adminNonce2)
+	suite.vote(proposalId1, priAdmin2, adminNonce2, string(contracts.APPOVED))
 	adminNonce2++
 
-	suite.vote(proposalId1, priAdmin3, adminNonce3)
+	suite.vote(proposalId1, priAdmin3, adminNonce3, string(contracts.APPOVED))
 	adminNonce3++
 
 	// k2 register rule for chain1, does not have permission
@@ -235,13 +234,13 @@ func (suite *Rule) TestRegisterAppchainRule() {
 	suite.Equal(string(contracts.AppchainAdmin), string(ret.Ret))
 	k1Nonce++
 
-	suite.vote(proposalId1, priAdmin1, adminNonce1)
+	suite.vote(proposalId1, priAdmin1, adminNonce1, string(contracts.APPOVED))
 	adminNonce1++
 
-	suite.vote(proposalId1, priAdmin2, adminNonce2)
+	suite.vote(proposalId1, priAdmin2, adminNonce2, string(contracts.APPOVED))
 	adminNonce2++
 
-	suite.vote(proposalId1, priAdmin3, adminNonce3)
+	suite.vote(proposalId1, priAdmin3, adminNonce3, string(contracts.APPOVED))
 	adminNonce3++
 
 	// k1 register rule for chain1
@@ -365,13 +364,13 @@ func (suite *Rule) TestUpdateMasterRule() {
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k1Nonce++
 
-	suite.vote(proposalId1, priAdmin1, adminNonce1)
+	suite.vote(proposalId1, priAdmin1, adminNonce1, string(contracts.APPOVED))
 	adminNonce1++
 
-	suite.vote(proposalId1, priAdmin2, adminNonce2)
+	suite.vote(proposalId1, priAdmin2, adminNonce2, string(contracts.APPOVED))
 	adminNonce2++
 
-	suite.vote(proposalId1, priAdmin3, adminNonce3)
+	suite.vote(proposalId1, priAdmin3, adminNonce3, string(contracts.APPOVED))
 	adminNonce3++
 
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(), "GetMasterRule",
@@ -397,6 +396,46 @@ func (suite *Rule) TestUpdateMasterRule() {
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k1Nonce++
 
+	serviceID1 := "service1"
+	chainServiceID1 := fmt.Sprintf("%s:%s", chainID1, serviceID1)
+
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.ServiceMgrContractAddr.Address(), "RegisterService",
+		pb.String(chainID1),
+		pb.String(serviceID1),
+		pb.String("name"),
+		pb.String(string(service_mgr.ServiceCallContract)),
+		pb.String("intro"),
+		pb.Bool(true),
+		pb.String(""),
+		pb.String("details"),
+		pb.String("raeson"),
+	)
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k1Nonce++
+	gRet = &governance.GovernanceResult{}
+	err = json.Unmarshal(ret.Ret, gRet)
+	suite.Require().Nil(err)
+	proposalServiceId1 := gRet.ProposalID
+
+	suite.vote(proposalServiceId1, priAdmin1, adminNonce1, string(contracts.APPOVED))
+	adminNonce1++
+
+	suite.vote(proposalServiceId1, priAdmin2, adminNonce2, string(contracts.APPOVED))
+	adminNonce2++
+
+	suite.vote(proposalServiceId1, priAdmin3, adminNonce3, string(contracts.APPOVED))
+	adminNonce3++
+
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.ServiceMgrContractAddr.Address(), "GetServiceInfo", pb.String(chainServiceID1))
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k1Nonce++
+	service := &service_mgr.Service{}
+	err = json.Unmarshal(ret.Ret, service)
+	suite.Require().Nil(err)
+	suite.Equal(governance.GovernanceAvailable, service.Status)
+
 	// update master rule
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(), "UpdateMasterRule",
 		pb.String(chainID1),
@@ -418,13 +457,21 @@ func (suite *Rule) TestUpdateMasterRule() {
 	suite.Require().Nil(err)
 	suite.Equal(governance.GovernanceFrozen, appchain.Status)
 
-	suite.vote(proposalId2, priAdmin1, adminNonce1)
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.ServiceMgrContractAddr.Address(), "GetServiceInfo", pb.String(chainServiceID1))
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k1Nonce++
+	err = json.Unmarshal(ret.Ret, service)
+	suite.Require().Nil(err)
+	suite.Equal(governance.GovernancePause, service.Status)
+
+	suite.vote(proposalId2, priAdmin1, adminNonce1, string(contracts.APPOVED))
 	adminNonce1++
 
-	suite.vote(proposalId2, priAdmin2, adminNonce2)
+	suite.vote(proposalId2, priAdmin2, adminNonce2, string(contracts.APPOVED))
 	adminNonce2++
 
-	suite.vote(proposalId2, priAdmin3, adminNonce3)
+	suite.vote(proposalId2, priAdmin3, adminNonce3, string(contracts.APPOVED))
 	adminNonce3++
 
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID1))
@@ -443,12 +490,81 @@ func (suite *Rule) TestUpdateMasterRule() {
 	err = json.Unmarshal(ret.Ret, rule)
 	suite.Require().Nil(err)
 	suite.Require().Equal(ruleAddr2.String(), rule.Address)
+
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.ServiceMgrContractAddr.Address(), "GetServiceInfo", pb.String(chainServiceID1))
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k1Nonce++
+	err = json.Unmarshal(ret.Ret, service)
+	suite.Require().Nil(err)
+	suite.Equal(governance.GovernanceAvailable, service.Status)
+
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(), "UpdateMasterRule",
+		pb.String(chainID1),
+		pb.String(ruleAddr1.String()),
+		pb.String("reason"))
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k1Nonce++
+	err = json.Unmarshal(ret.Ret, gRet)
+	suite.Require().Nil(err)
+	proposalId3 := gRet.ProposalID
+
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID1))
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k1Nonce++
+	err = json.Unmarshal(ret.Ret, appchain)
+	suite.Require().Nil(err)
+	suite.Equal(governance.GovernanceFrozen, appchain.Status)
+
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.ServiceMgrContractAddr.Address(), "GetServiceInfo", pb.String(chainServiceID1))
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k1Nonce++
+	err = json.Unmarshal(ret.Ret, service)
+	suite.Require().Nil(err)
+	suite.Equal(governance.GovernancePause, service.Status)
+
+	suite.vote(proposalId3, priAdmin1, adminNonce1, string(contracts.REJECTED))
+	adminNonce1++
+
+	suite.vote(proposalId3, priAdmin2, adminNonce2, string(contracts.REJECTED))
+	adminNonce2++
+
+	suite.vote(proposalId3, priAdmin3, adminNonce3, string(contracts.REJECTED))
+	adminNonce3++
+
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID1))
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k1Nonce++
+	err = json.Unmarshal(ret.Ret, appchain)
+	suite.Require().Nil(err)
+	suite.Equal(governance.GovernanceFrozen, appchain.Status)
+
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(), "GetMasterRule",
+		pb.String(chainID1))
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k1Nonce++
+	err = json.Unmarshal(ret.Ret, rule)
+	suite.Require().Nil(err)
+	suite.Require().Equal(ruleAddr2.String(), rule.Address)
+
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.ServiceMgrContractAddr.Address(), "GetServiceInfo", pb.String(chainServiceID1))
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k1Nonce++
+	err = json.Unmarshal(ret.Ret, service)
+	suite.Require().Nil(err)
+	suite.Equal(governance.GovernancePause, service.Status)
 }
 
-func (suite *Rule) vote(proposalId string, adminKey crypto.PrivateKey, adminNonce uint64) {
+func (suite *Rule) vote(proposalId string, adminKey crypto.PrivateKey, adminNonce uint64, info string) {
 	ret, err := invokeBVMContract(suite.api, adminKey, adminNonce, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalId),
-		pb.String(string(contracts.APPOVED)),
+		pb.String(info),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)

@@ -11,6 +11,7 @@ import (
 	ruleMgr "github.com/meshplus/bitxhub-core/rule-mgr"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/sirupsen/logrus"
 )
 
 type AppchainManager struct {
@@ -96,6 +97,16 @@ func (am *AppchainManager) Manage(eventTyp, proposalResult, lastStatus, objId st
 
 			res = am.CrossInvoke(constant.InterchainContractAddr.Address().String(), "Register", pb.String(objId))
 			if !res.Ok {
+				return res
+			}
+		case string(governance.EventFreeze):
+			fallthrough
+		case string(governance.EventLogout):
+			if res := am.CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "PauseChainService", pb.String(objId)); !res.Ok {
+				return res
+			}
+		case string(governance.EventActivate):
+			if res := am.CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "UnPauseChainService", pb.String(objId)); !res.Ok {
 				return res
 			}
 		}
@@ -323,6 +334,15 @@ func (am *AppchainManager) PauseAppchain(id string) *boltvm.Response {
 		return boltvm.Error(fmt.Sprintf("change status error: %s", string(data)))
 	}
 
+	// 4. pause service
+	if res := am.CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "PauseChainService", pb.String(id)); !res.Ok {
+		return res
+	}
+
+	am.Logger().WithFields(logrus.Fields{
+		"chainID": id,
+	}).Info("appchain pause")
+
 	chainData, err := json.Marshal(chainInfo)
 	if err != nil {
 		return boltvm.Error(fmt.Sprintf("marshal chain error: %v", err))
@@ -356,6 +376,17 @@ func (am *AppchainManager) UnPauseAppchain(id, lastStatus string) *boltvm.Respon
 	if ok, data := am.AppchainManager.ChangeStatus(id, string(event), lastStatus, nil); !ok {
 		return boltvm.Error(fmt.Sprintf("change status error: %s", string(data)))
 	}
+
+	// 4. unpause services
+	if string(governance.GovernanceAvailable) == lastStatus {
+		if res := am.CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "UnPauseChainService", pb.String(id)); !res.Ok {
+			return res
+		}
+	}
+
+	am.Logger().WithFields(logrus.Fields{
+		"chainID": id,
+	}).Info("appchain unpause")
 
 	return boltvm.Success(nil)
 }

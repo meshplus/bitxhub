@@ -8,6 +8,7 @@ import (
 
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/boltvm"
+	service_mgr "github.com/meshplus/bitxhub-core/service-mgr"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
@@ -93,7 +94,7 @@ func (x *InterchainManager) Register(chainServiceID string) *boltvm.Response {
 }
 
 func (x *InterchainManager) DeleteInterchain(id string) *boltvm.Response {
-	x.Delete(ServiceKey(id))
+	x.Delete(service_mgr.ServiceKey(id))
 	return boltvm.Success(nil)
 }
 
@@ -131,7 +132,7 @@ func (x *InterchainManager) GetInterchainInfo(chainId string) *boltvm.Response {
 // GetInterchain returns information of the interchain count, Receipt count and SourceReceipt count by id
 func (x *InterchainManager) getInterchain(id string) (*pb.Interchain, bool) {
 	interchain := &pb.Interchain{ID: id}
-	ok, data := x.Get(ServiceKey(id))
+	ok, data := x.Get(service_mgr.ServiceKey(id))
 
 	if ok {
 		if err := interchain.Unmarshal(data); err != nil {
@@ -165,12 +166,12 @@ func (x *InterchainManager) setInterchain(id string, interchain *pb.Interchain) 
 		panic(err)
 	}
 
-	x.Set(ServiceKey(id), data)
+	x.Set(service_mgr.ServiceKey(id), data)
 }
 
 // Interchain returns information of the interchain count, Receipt count and SourceReceipt count
 func (x *InterchainManager) Interchain(id string) *boltvm.Response {
-	ok, data := x.Get(ServiceKey(id))
+	ok, data := x.Get(service_mgr.ServiceKey(id))
 	if !ok {
 		return boltvm.Error(fmt.Errorf("this service does not exist").Error())
 	}
@@ -179,7 +180,7 @@ func (x *InterchainManager) Interchain(id string) *boltvm.Response {
 
 // GetInterchain returns information of the interchain count, Receipt count and SourceReceipt count by id
 func (x *InterchainManager) GetInterchain(id string) *boltvm.Response {
-	ok, data := x.Get(ServiceKey(id))
+	ok, data := x.Get(service_mgr.ServiceKey(id))
 	if !ok {
 		return boltvm.Error(fmt.Errorf("this service does not exist: %s", id).Error())
 	}
@@ -260,7 +261,7 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, error) {
 				return nil, fmt.Errorf(fmt.Sprintf("%s: cannot get service by %s", TargetServiceNotAvailable, dstChainService.getChainServiceId()))
 			}
 
-			if !dstService.checkPermission(srcChainService.getFullServiceId()) {
+			if !dstService.CheckPermission(srcChainService.getFullServiceId()) {
 				return nil, fmt.Errorf(fmt.Sprintf("%s: the service %s is not permitted to visit %s", TargetServiceNotAvailable, srcChainService.getFullServiceId(), dstChainService.getFullServiceId()))
 			}
 
@@ -404,6 +405,15 @@ func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *pb.Interchain
 		ic.SourceReceiptCounter[from] = ibtp.Index
 		x.setInterchain(to, ic)
 		x.SetObject(x.indexReceiptMapKey(getIBTPID(from, to, ibtp.Index)), x.GetTxHash())
+
+		result := true
+		if ibtp.Type == pb.IBTP_RECEIPT_FAILURE {
+			result = false
+		}
+		x.CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "RecordInvokeService",
+			pb.String(to),
+			pb.String(from),
+			pb.Bool(result))
 	}
 
 	if pb.IBTP_RECEIPT_ROLLBACK != ibtp.Type {
@@ -497,7 +507,7 @@ func (x *InterchainManager) handleUnionIBTP(ibtp *pb.IBTP) *boltvm.Response {
 	if ibtp.To == "" {
 		return boltvm.Error("empty destination chain id")
 	}
-	if ok := x.Has(ServiceKey(ibtp.To)); !ok {
+	if ok := x.Has(service_mgr.ServiceKey(ibtp.To)); !ok {
 		return boltvm.Error(fmt.Sprintf("target appchain does not exist: %s", ibtp.To))
 	}
 
@@ -576,10 +586,6 @@ func verifyMultiSign(app *appchainMgr.Appchain, ibtp *pb.IBTP, proof []byte) (bo
 	return false, fmt.Errorf("multi signs verify fail, counter: %d", counter)
 }
 
-func ServiceKey(id string) string {
-	return ServicePreKey + id
-}
-
 func (x *InterchainManager) indexMapKey(id string) string {
 	return fmt.Sprintf("index-tx-%s", id)
 }
@@ -628,6 +634,15 @@ func (x *InterchainManager) parseChainService(id string) (*ChainService, error) 
 	}, nil
 }
 
+func (x *InterchainManager) GetBitXHubID() *boltvm.Response {
+	id, err := x.getBitXHubID()
+	if err != nil {
+		return boltvm.Error(err.Error())
+	} else {
+		return boltvm.Success([]byte(id))
+	}
+}
+
 func (x *InterchainManager) getBitXHubID() (string, error) {
 	ok, val := x.Get(BitXHubID)
 	if !ok {
@@ -637,8 +652,8 @@ func (x *InterchainManager) getBitXHubID() (string, error) {
 	return string(val), nil
 }
 
-func (x *InterchainManager) getServiceByID(id string) (*Service, error) {
-	service := &Service{}
+func (x *InterchainManager) getServiceByID(id string) (*service_mgr.Service, error) {
+	service := &service_mgr.Service{}
 
 	res := x.CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "GetServiceInfo", pb.String(id))
 	if !res.Ok {

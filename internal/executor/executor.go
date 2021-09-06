@@ -343,6 +343,12 @@ func (exec *BlockExecutor) registerBoltContracts() map[string]agency.Contract {
 			Address:  constant.ServiceMgrContractAddr.Address().String(),
 			Contract: &contracts.ServiceManager{},
 		},
+		{
+			Enabled:  true,
+			Name:     "dapp manager service",
+			Address:  constant.DappMgrContractAddr.Address().String(),
+			Contract: &contracts.DappManager{},
+		},
 	}
 
 	ContractsInfo := agency.GetRegisteredContractInfo()
