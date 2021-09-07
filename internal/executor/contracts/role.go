@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
-	"sort"
 	"strconv"
 
+	"github.com/iancoleman/orderedmap"
 	"github.com/looplab/fsm"
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/governance"
@@ -124,11 +124,12 @@ func (rm *RoleManager) governancePre(roleId string, event governance.EventType, 
 	role := Role{}
 	if chainID != "" {
 		// check if the admin for the appchain is registered
-		if ok := rm.GetObject(AppchainAdminKey(chainID), &role); ok {
+		chainAdminID := ""
+		if ok := rm.GetObject(AppchainAdminKey(chainID), &chainAdminID); ok {
 			return nil, fmt.Errorf("admin for appchain(%s) has registered: %s", chainID, role.ID)
 		}
 
-		return &role, nil
+		return nil, nil
 	}
 
 	if ok := rm.GetObject(RoleKey(roleId), &role); !ok {
@@ -308,15 +309,15 @@ func (rm *RoleManager) RegisterRole(roleId, roleType, nodePid, appchainID, reaso
 		"id":       role.ID,
 		"roleType": role.RoleType,
 	}).Info("Role is registering")
-	roleIdList := map[string]struct{}{}
-	_ = rm.GetObject(RoleTypeKey(roleType), &roleIdList)
-	roleIdList[roleId] = struct{}{}
-	rm.SetObject(RoleTypeKey(roleType), roleIdList)
+	roleIdMap := orderedmap.New()
+	_ = rm.GetObject(RoleTypeKey(roleType), roleIdMap)
+	roleIdMap.Set(roleId, struct{}{})
+	rm.SetObject(RoleTypeKey(roleType), roleIdMap)
 	switch roleType {
 	case string(AppchainAdmin):
 		role.Status = governance.GovernanceAvailable
 		rm.SetObject(RoleKey(roleId), *role)
-		rm.SetObject(AppchainAdminKey(appchainID), *role)
+		rm.SetObject(AppchainAdminKey(appchainID), role.ID)
 		return getGovernanceRet("", []byte(role.ID))
 	case string(GovernanceAdmin):
 		ok, gb := rm.Get(GenesisBalance)
@@ -569,10 +570,10 @@ func (rm *RoleManager) getAll() ([]*Role, error) {
 func (rm *RoleManager) GetRolesByType(roleType string) *boltvm.Response {
 	ret := make([]*Role, 0)
 
-	roleIdList := map[string]struct{}{}
-	ok := rm.GetObject(RoleTypeKey(roleType), &roleIdList)
+	roleIdMap := orderedmap.New()
+	ok := rm.GetObject(RoleTypeKey(roleType), roleIdMap)
 	if ok {
-		for id, _ := range roleIdList {
+		for _, id := range roleIdMap.Keys() {
 			role := Role{}
 			ok := rm.GetObject(RoleKey(id), &role)
 			if !ok {
@@ -581,8 +582,6 @@ func (rm *RoleManager) GetRolesByType(roleType string) *boltvm.Response {
 			ret = append(ret, &role)
 		}
 	}
-
-	sort.Sort(Roles(ret))
 
 	data, err := json.Marshal(ret)
 	if err != nil {
@@ -593,9 +592,14 @@ func (rm *RoleManager) GetRolesByType(roleType string) *boltvm.Response {
 
 func (rm *RoleManager) GetAppchainAdmin(appchainID string) *boltvm.Response {
 	role := &Role{}
-	ok := rm.GetObject(AppchainAdminKey(appchainID), role)
+	appchainAdminID := ""
+	ok := rm.GetObject(AppchainAdminKey(appchainID), &appchainAdminID)
 	if !ok {
 		return boltvm.Error("there is no admin for the appchain")
+	}
+	ok = rm.GetObject(RoleKey(appchainAdminID), role)
+	if !ok {
+		return boltvm.Error(fmt.Sprintf("the appchain admin is not exist: %s", appchainAdminID))
 	}
 
 	data, err := json.Marshal(role)
@@ -708,14 +712,4 @@ func RoleTypeKey(typ string) string {
 
 func AppchainAdminKey(appchainID string) string {
 	return fmt.Sprintf("%s-%s", APPCHAINADMINPREFIX, appchainID)
-}
-
-type Roles []*Role
-
-func (rs Roles) Len() int { return len(rs) }
-
-func (rs Roles) Swap(i, j int) { rs[i], rs[j] = rs[j], rs[i] }
-
-func (rs Roles) Less(i, j int) bool {
-	return rs[i].ID > rs[j].ID
 }

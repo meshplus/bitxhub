@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/iancoleman/orderedmap"
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/governance"
@@ -243,10 +244,10 @@ func (am *AppchainManager) RegisterAppchain(appchainID string, trustRoot []byte,
 
 func (am *AppchainManager) registerRelayChain(chainID string) {
 	am.AppchainManager.Persister = am.Stub
-	relayChainIdList := []string{}
-	_ = am.GetObject(appchainMgr.RelaychainType, &relayChainIdList)
-	relayChainIdList = append(relayChainIdList, chainID)
-	am.SetObject(appchainMgr.RelaychainType, relayChainIdList)
+	relayChainIdMap := orderedmap.New()
+	_ = am.GetObject(appchainMgr.RelaychainType, relayChainIdMap)
+	relayChainIdMap.Set(chainID, struct{}{})
+	am.SetObject(appchainMgr.RelaychainType, *relayChainIdMap)
 }
 
 // =========== UpdateAppchain updates appchain info.
@@ -508,10 +509,10 @@ func (am *AppchainManager) IsAvailable(chainID string) *boltvm.Response {
 
 func (am *AppchainManager) GetBitXHubChainIDs() *boltvm.Response {
 	am.AppchainManager.Persister = am.Stub
-	relayChainIdList := []string{}
-	_ = am.GetObject(appchainMgr.RelaychainType, &relayChainIdList)
+	relayChainIdMap := orderedmap.New()
+	_ = am.GetObject(appchainMgr.RelaychainType, relayChainIdMap)
 
-	if data, err := json.Marshal(relayChainIdList); err != nil {
+	if data, err := json.Marshal(relayChainIdMap.Keys()); err != nil {
 		return boltvm.Error(err.Error())
 	} else {
 		return boltvm.Success(data)

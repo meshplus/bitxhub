@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/iancoleman/orderedmap"
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/boltvm/mock_stub"
@@ -170,7 +171,13 @@ func TestGovernance_QueryProposal(t *testing.T) {
 	adminsData, err := json.Marshal(admins)
 	assert.Nil(t, err)
 
-	mockStub.EXPECT().GetObject(ProposalFromKey("idExistent"), gomock.Any()).SetArg(1, []string{idExistent}).Return(true).AnyTimes()
+	idMap := orderedmap.New()
+	idMap.Set(idExistent, struct{}{})
+
+	mockStub.EXPECT().GetObject(ProposalObjKey("objId"), gomock.Any()).SetArg(1, *idMap).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(ProposalFromKey("idExistent"), gomock.Any()).SetArg(1, *idMap).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(ProposalTypKey(string(AppchainMgr)), gomock.Any()).SetArg(1, *idMap).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(ProposalStatusKey(string((PROPOSED))), gomock.Any()).SetArg(1, *idMap).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(ProposalKey(idExistent), gomock.Any()).SetArg(1, proposalExistent).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(ProposalKey(idNonexistent), gomock.Any()).Return(false).AnyTimes()
 	mockStub.EXPECT().Query(gomock.Any()).Return(true, pDatas).AnyTimes()
@@ -698,9 +705,14 @@ func TestGovernance_SubmitProposal_LockLowPriorityProposal(t *testing.T) {
 	mockStub.EXPECT().CurrentCaller().Return("").AnyTimes()
 	mockStub.EXPECT().GetTxTimeStamp().Return(int64(1)).AnyTimes()
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
+	idMap1 := orderedmap.New()
+	idMap2 := orderedmap.New()
+	idMap2.Set(idExistent, struct{}{})
+	mockStub.EXPECT().GetObject(ProposalStatusKey(string((PAUSED))), gomock.Any()).SetArg(1, *idMap1).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(ProposalStatusKey(string((PROPOSED))), gomock.Any()).SetArg(1, *idMap2).Return(true).AnyTimes()
 
 	res := g.SubmitProposal(idExistent, string(governance.EventUpdate), string(AppchainMgr), appchainID, string(governance.GovernanceAvailable), "reason", chainData)
-	assert.False(t, res.Ok, string(res.Result))
+	assert.True(t, res.Ok, string(res.Result))
 	res = g.SubmitProposal(idExistent, string(governance.EventLogout), string(AppchainMgr), appchainID, string(governance.GovernanceAvailable), "reason", chainData)
 	assert.True(t, res.Ok, string(res.Result))
 }
@@ -812,6 +824,13 @@ func TestGovernance_WithdrawProposal(t *testing.T) {
 	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "Manage", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("")).Times(1)
 	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "Manage", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
+	idMap1 := orderedmap.New()
+	idMap2 := orderedmap.New()
+	idMap2.Set(idExistent, struct{}{})
+	mockStub.EXPECT().GetObject(ProposalStatusKey(string((PAUSED))), gomock.Any()).SetArg(1, *idMap1).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(ProposalStatusKey(string((REJECTED))), gomock.Any()).SetArg(1, *idMap1).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(ProposalStatusKey(string((APPROVED))), gomock.Any()).SetArg(1, *idMap1).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(ProposalStatusKey(string((PROPOSED))), gomock.Any()).SetArg(1, *idMap2).Return(true).AnyTimes()
 
 	res := g.WithdrawProposal(idExistent, "reason")
 	assert.False(t, res.Ok, string(res.Result))

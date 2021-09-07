@@ -254,9 +254,13 @@ func (suite *Rule) TestRegisterAppchainRule() {
 	k1Nonce++
 
 	// k2 register rule for chain1, does not have permission
+	ruleAddr2, err := deployContract(suite.api, k1, k1Nonce, bytes)
+	suite.Require().Nil(err)
+	k1Nonce++
+
 	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.RuleManagerContractAddr.Address(), "RegisterRule",
 		pb.String(chainID1),
-		pb.String(ruleAddr1.String()),
+		pb.String(ruleAddr2.String()),
 		pb.String("url"),
 	)
 	suite.Assert().Nil(err)

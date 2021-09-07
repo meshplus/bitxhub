@@ -5,16 +5,15 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/meshplus/bitxhub-model/pb"
-
-	"github.com/meshplus/bitxhub-kit/log"
-
 	"github.com/golang/mock/gomock"
+	"github.com/iancoleman/orderedmap"
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/boltvm/mock_stub"
 	"github.com/meshplus/bitxhub-core/governance"
 	node_mgr "github.com/meshplus/bitxhub-core/node-mgr"
+	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-model/constant"
+	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -26,6 +25,23 @@ var (
 func TestNodeManager_RegisterNode(t *testing.T) {
 	nm, mockStub, nodes, nodesData := nodePrepare(t)
 
+	idMap := orderedmap.New()
+	idMap.Set(nodes[0].Pid, struct{}{})
+	idMap.Set(nodes[1].Pid, struct{}{})
+	idMap.Set(nodes[2].Pid, struct{}{})
+	idMap.Set(nodes[3].Pid, struct{}{})
+	idMap.Set(nodes[4].Pid, struct{}{})
+	idMap.Set(nodes[5].Pid, struct{}{})
+	idMap.Set(nodes[6].Pid, struct{}{})
+
+	mockStub.EXPECT().GetObject(node_mgr.NodeTypeKey(string(node_mgr.VPNode)), gomock.Any()).SetArg(1, *idMap).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[0].Pid), gomock.Any()).SetArg(1, *nodes[0]).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[1].Pid), gomock.Any()).SetArg(1, *nodes[1]).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[2].Pid), gomock.Any()).SetArg(1, *nodes[2]).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[3].Pid), gomock.Any()).SetArg(1, *nodes[3]).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[4].Pid), gomock.Any()).SetArg(1, *nodes[4]).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[5].Pid), gomock.Any()).SetArg(1, *nodes[5]).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[6].Pid), gomock.Any()).SetArg(1, *nodes[6]).Return(true).AnyTimes()
 	mockStub.EXPECT().Caller().Return("").AnyTimes()
 	mockStub.EXPECT().CurrentCaller().Return(noAdminAddr).Times(1)
 	mockStub.EXPECT().CurrentCaller().Return(adminAddr).AnyTimes()
@@ -65,8 +81,27 @@ func TestNodeManager_RegisterNode(t *testing.T) {
 }
 
 func TestNodeManager_LogoutNode(t *testing.T) {
-	nm, mockStub, nodes, nodesData := nodePrepare(t)
+	nm, mockStub, nodes, _ := nodePrepare(t)
 
+	idMap := orderedmap.New()
+	idMap.Set(nodes[0].Pid, struct{}{})
+	idMap.Set(nodes[1].Pid, struct{}{})
+	idMap.Set(nodes[2].Pid, struct{}{})
+	idMap.Set(nodes[3].Pid, struct{}{})
+	idMap.Set(nodes[4].Pid, struct{}{})
+	idMap.Set(nodes[5].Pid, struct{}{})
+	idMap.Set(nodes[6].Pid, struct{}{})
+	idMap1 := orderedmap.New()
+
+	mockStub.EXPECT().GetObject(node_mgr.NodeTypeKey(string(node_mgr.VPNode)), gomock.Any()).SetArg(1, *idMap1).Return(true).Times(1)
+	mockStub.EXPECT().GetObject(node_mgr.NodeTypeKey(string(node_mgr.VPNode)), gomock.Any()).SetArg(1, *idMap).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[0].Pid), gomock.Any()).SetArg(1, *nodes[0]).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[1].Pid), gomock.Any()).SetArg(1, *nodes[1]).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[2].Pid), gomock.Any()).SetArg(1, *nodes[2]).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[3].Pid), gomock.Any()).SetArg(1, *nodes[3]).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[4].Pid), gomock.Any()).SetArg(1, *nodes[4]).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[5].Pid), gomock.Any()).SetArg(1, *nodes[5]).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[6].Pid), gomock.Any()).SetArg(1, *nodes[6]).Return(true).AnyTimes()
 	mockStub.EXPECT().Caller().Return("").AnyTimes()
 	mockStub.EXPECT().CurrentCaller().Return(noAdminAddr).Times(1)
 	mockStub.EXPECT().CurrentCaller().Return(adminAddr).AnyTimes()
@@ -78,15 +113,15 @@ func TestNodeManager_LogoutNode(t *testing.T) {
 	logger := log.NewWithModule("contracts")
 	mockStub.EXPECT().Logger().Return(logger).AnyTimes()
 	governancePreErrReq := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Return(false).Times(1)
-	primaryErrReq := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *nodes[0]).Return(true)
-	primaryOkReq := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *nodes[4]).Return(true)
-	numErrReq := mockStub.EXPECT().Query(node_mgr.NODEPREFIX).Return(false, nil)
-	primaryOkReq1 := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *nodes[4]).Return(true)
-	numOkReq := mockStub.EXPECT().Query(node_mgr.NODEPREFIX).Return(true, nodesData)
-	primaryOkReq2 := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *nodes[4]).Return(true)
-	numOkReq1 := mockStub.EXPECT().Query(node_mgr.NODEPREFIX).Return(true, nodesData)
-	primaryOkReq3 := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *nodes[4]).Return(true)
-	gomock.InOrder(governancePreErrReq, primaryErrReq, primaryOkReq, numErrReq, primaryOkReq1, numOkReq, primaryOkReq2, numOkReq1, primaryOkReq3)
+	primaryErrReq := mockStub.EXPECT().GetObject(NodeKey(NODEPID), gomock.Any()).SetArg(1, *nodes[0]).Return(true)
+	primaryOkReq := mockStub.EXPECT().GetObject(NodeKey(NODEPID), gomock.Any()).SetArg(1, *nodes[4]).Return(true)
+	//numErrReq := mockStub.EXPECT().Query(node_mgr.NODEPREFIX).Return(false, nil)
+	primaryOkReq1 := mockStub.EXPECT().GetObject(NodeKey(NODEPID), gomock.Any()).SetArg(1, *nodes[4]).Return(true)
+	//numOkReq := mockStub.EXPECT().Query(node_mgr.NODEPREFIX).Return(true, nodesData)
+	primaryOkReq2 := mockStub.EXPECT().GetObject(NodeKey(NODEPID), gomock.Any()).SetArg(1, *nodes[4]).Return(true)
+	//numOkReq1 := mockStub.EXPECT().Query(node_mgr.NODEPREFIX).Return(true, nodesData)
+	primaryOkReq3 := mockStub.EXPECT().GetObject(NodeKey(NODEPID), gomock.Any()).SetArg(1, *nodes[4]).Return(true)
+	gomock.InOrder(governancePreErrReq, primaryErrReq, primaryOkReq, primaryOkReq1, primaryOkReq2, primaryOkReq3)
 
 	// 1. CheckPermission error
 	res := nm.LogoutNode(NODEPID, reason)
@@ -133,6 +168,23 @@ func TestNodeManager_Manage(t *testing.T) {
 func TestNodeManager_VPNodeQuery(t *testing.T) {
 	nm, mockStub, nodes, nodesData := nodePrepare(t)
 
+	idMap := orderedmap.New()
+	idMap.Set(nodes[0].Pid, struct{}{})
+	idMap.Set(nodes[1].Pid, struct{}{})
+	idMap.Set(nodes[2].Pid, struct{}{})
+	idMap.Set(nodes[3].Pid, struct{}{})
+	idMap.Set(nodes[4].Pid, struct{}{})
+	idMap.Set(nodes[5].Pid, struct{}{})
+	idMap.Set(nodes[6].Pid, struct{}{})
+
+	mockStub.EXPECT().GetObject(node_mgr.NodeTypeKey(string(node_mgr.VPNode)), gomock.Any()).SetArg(1, *idMap).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[0].Pid), gomock.Any()).SetArg(1, *nodes[0]).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[1].Pid), gomock.Any()).SetArg(1, *nodes[1]).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[2].Pid), gomock.Any()).SetArg(1, *nodes[2]).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[3].Pid), gomock.Any()).SetArg(1, *nodes[3]).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[4].Pid), gomock.Any()).SetArg(1, *nodes[4]).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[5].Pid), gomock.Any()).SetArg(1, *nodes[5]).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[6].Pid), gomock.Any()).SetArg(1, *nodes[6]).Return(true).AnyTimes()
 	mockStub.EXPECT().Query(node_mgr.NODEPREFIX).Return(true, nodesData).AnyTimes()
 	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Return(false).Times(1)
 	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *nodes[0]).Return(true).Times(2)
@@ -183,6 +235,23 @@ func TestNodeManager_checkPermission(t *testing.T) {
 func TestNodeManager_checkNodeInfo(t *testing.T) {
 	nm, mockStub, nodes, nodesData := nodePrepare(t)
 
+	idMap := orderedmap.New()
+	idMap.Set(nodes[0].Pid, struct{}{})
+	idMap.Set(nodes[1].Pid, struct{}{})
+	idMap.Set(nodes[2].Pid, struct{}{})
+	idMap.Set(nodes[3].Pid, struct{}{})
+	idMap.Set(nodes[4].Pid, struct{}{})
+	idMap.Set(nodes[5].Pid, struct{}{})
+	idMap.Set(nodes[6].Pid, struct{}{})
+
+	mockStub.EXPECT().GetObject(node_mgr.NodeTypeKey(string(node_mgr.VPNode)), gomock.Any()).SetArg(1, *idMap).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[0].Pid), gomock.Any()).SetArg(1, *nodes[0]).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[1].Pid), gomock.Any()).SetArg(1, *nodes[1]).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[2].Pid), gomock.Any()).SetArg(1, *nodes[2]).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[3].Pid), gomock.Any()).SetArg(1, *nodes[3]).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[4].Pid), gomock.Any()).SetArg(1, *nodes[4]).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[5].Pid), gomock.Any()).SetArg(1, *nodes[5]).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[6].Pid), gomock.Any()).SetArg(1, *nodes[6]).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(NodeKey(NODEPID), gomock.Any()).SetArg(1, *nodes[0]).Return(true).AnyTimes()
 	err := nm.checkNodeInfo(&node_mgr.Node{
 		Pid:      NODEPID,
@@ -227,7 +296,7 @@ func nodePrepare(t *testing.T) (*NodeManager, *mock_stub.MockStub, []*node_mgr.N
 	for i := 0; i < 7; i++ {
 		node := &node_mgr.Node{
 			VPNodeId: uint64(i + 1),
-			Pid:      NODEPID,
+			Pid:      fmt.Sprintf("%s%d", NODEPID[0:len(NODEPID)-2], i),
 			Account:  NODEACCOUNT,
 			NodeType: node_mgr.VPNode,
 			Status:   governance.GovernanceStatus(nodeStatus[i]),
