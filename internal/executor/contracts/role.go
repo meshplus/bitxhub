@@ -213,7 +213,7 @@ func (rm *RoleManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 	}
 
 	// 3. other operation
-	if proposalResult == string(APPOVED) {
+	if proposalResult == string(APPROVED) {
 		switch eventTyp {
 		case string(governance.EventUpdate):
 			role := &Role{}

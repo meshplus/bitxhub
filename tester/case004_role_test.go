@@ -329,7 +329,7 @@ func (suite *Role) TestGetRuleAddress() {
 func (suite *Role) vote(proposalId string, adminKey crypto.PrivateKey, adminNonce uint64) {
 	ret, err := invokeBVMContract(suite.api, adminKey, adminNonce, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalId),
-		pb.String(string(contracts.APPOVED)),
+		pb.String(string(contracts.APPROVED)),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)

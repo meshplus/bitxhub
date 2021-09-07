@@ -236,7 +236,7 @@ func checkProposalArgs(id, typ, status, from, objId string) error {
 	}
 	if status != "" &&
 		status != string(contracts.PROPOSED) &&
-		status != string(contracts.APPOVED) &&
+		status != string(contracts.APPROVED) &&
 		status != string(contracts.REJECTED) &&
 		status != string(contracts.PAUSED) {
 		return fmt.Errorf("illegal proposal status")
