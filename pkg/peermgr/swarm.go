@@ -136,35 +136,42 @@ func (swarm *Swarm) Start() error {
 	}
 
 	for id, addr := range swarm.multiAddrs {
-		go func(id uint64, addr *peer.AddrInfo) {
+		go func(id uint64, addr *peer.AddrInfo, ctx context.Context) {
 			if err := retry.Retry(func(attempt uint) error {
-				// for restart node, after updating the routing table, some nodes may not exist in routing table
-				routers := swarm.notifiee.getPeers()
-				if _, ok := routers[id]; !ok {
-					swarm.logger.Infof("Can't find node %d from routing table, stopping connect", id)
+				select {
+				case <- swarm.ctx.Done():
+					swarm.cancel()
+					return nil
+
+				default:
+					// for restart node, after updating the routing table, some nodes may not exist in routing table
+					routers := swarm.notifiee.getPeers()
+					if _, ok := routers[id]; !ok {
+						swarm.logger.Infof("Can't find node %d from routing table, stopping connect", id)
+						return nil
+					}
+					if err := swarm.p2p.Connect(*addr); err != nil {
+						swarm.logger.WithFields(logrus.Fields{
+							"node":  id,
+							"error": err,
+						}).Error("Connect failed")
+						return err
+					}
+
+					swarm.logger.WithFields(logrus.Fields{
+						"node": id,
+					}).Info("Connect successfully")
+
+					swarm.connectedPeers.Store(id, addr)
+
 					return nil
 				}
-				if err := swarm.p2p.Connect(*addr); err != nil {
-					swarm.logger.WithFields(logrus.Fields{
-						"node":  id,
-						"error": err,
-					}).Error("Connect failed")
-					return err
-				}
-
-				swarm.logger.WithFields(logrus.Fields{
-					"node": id,
-				}).Info("Connect successfully")
-
-				swarm.connectedPeers.Store(id, addr)
-
-				return nil
 			},
 				strategy.Wait(1*time.Second),
 			); err != nil {
 				swarm.logger.Error(err)
 			}
-		}(id, addr)
+		}(id, addr, swarm.ctx)
 	}
 
 	go swarm.Ping()
@@ -213,6 +220,7 @@ func (swarm *Swarm) Ping() {
 			ticker.Stop()
 			ticker = time.NewTicker(swarm.pingTimeout)
 		case <-swarm.ctx.Done():
+			swarm.cancel()
 			return
 		}
 	}

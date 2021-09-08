@@ -67,6 +67,7 @@ type Node struct {
 	justElected       bool                 // track new leader status
 	getChainMetaFunc  func() *pb.ChainMeta // current chain meta
 	ctx               context.Context      // context
+	cancel 			  context.CancelFunc
 	haltC             chan struct{}        // exit signal
 }
 
@@ -156,6 +157,8 @@ func NewNode(opts ...agency.ConfigOption) (agency.Order, error) {
 		checkInterval = raftConfig.RAFT.CheckInterval
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+
 	node := &Node{
 		id:               config.ID,
 		lastExec:         config.Applied,
@@ -179,7 +182,8 @@ func NewNode(opts ...agency.ConfigOption) (agency.Order, error) {
 		storage:          dbStorage,
 		raftStorage:      raftStorage,
 		readyPool:        readyPool,
-		ctx:              context.Background(),
+		ctx:              ctx,
+		cancel: 		  cancel,
 		mempool:          mempoolInst,
 		checkInterval:    checkInterval,
 	}
@@ -239,7 +243,8 @@ func (n *Node) Start() error {
 
 // Stop the raft node
 func (n *Node) Stop() {
-	n.node.Stop()
+	n.cancel()
+	n.txCache.StopTxListen()
 	n.logger.Infof("Consensus stopped")
 }
 
@@ -362,6 +367,7 @@ func (n *Node) run() {
 					}
 				}
 			case <-n.ctx.Done():
+				n.node.Stop()
 				return
 			}
 		}
