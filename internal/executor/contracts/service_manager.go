@@ -602,7 +602,7 @@ func (sm *ServiceManager) GetServicesByAppchainID(chainID string) *boltvm.Respon
 	var ret []*service_mgr.Service
 	for id, _ := range idMap {
 		service, err := sm.ServiceManager.QueryById(id, nil)
-		if err == nil {
+		if err != nil {
 			return boltvm.Error(fmt.Sprintf("cannot get service by id %s", id))
 		}
 		ret = append(ret, service.(*service_mgr.Service))
