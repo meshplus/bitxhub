@@ -364,19 +364,19 @@ func invokeBVMContract(ctx *cli.Context, contractAddr string, method string, arg
 
 	var data []byte
 	if err = retry.Retry(func(attempt uint) error {
-		time.Sleep(1000 * time.Millisecond)
+		time.Sleep(2 * time.Second)
 		data, err = getTxReceipt(ctx, hash)
 		if err != nil {
-			fmt.Println("get transaction receipt error: " + err.Error() + "... retry later")
+			fmt.Printf("the tx receipt has not been received yet: %v... retry later \n", err)
 			return err
 		} else {
 			m := make(map[string]interface{})
 			if err := json.Unmarshal(data, &m); err != nil {
-				fmt.Println("get transaction receipt error: " + err.Error() + "... retry later")
+				fmt.Printf("the tx receipt has not been received yet: %v... retry later \n", err)
 				return err
 			}
 			if errInfo, ok := m["error"]; ok {
-				fmt.Println("get transaction receipt error: " + errInfo.(string) + "... retry later")
+				fmt.Printf("the tx receipt has not been received yet: %v... retry later \n", errInfo.(string))
 				return fmt.Errorf(errInfo.(string))
 			}
 			return nil
