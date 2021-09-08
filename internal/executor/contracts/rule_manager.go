@@ -384,7 +384,7 @@ func (rm *RuleManager) IsAvailableRule(chainId, ruleAddress string) *boltvm.Resp
 }
 
 func (rm *RuleManager) checkRuleAddress(addr string) error {
-	if addr == validator.FabricRuleAddr || addr == validator.SimFabricRuleAddr {
+	if addr == validator.FabricRuleAddr || addr == validator.SimFabricRuleAddr || addr == validator.HappyRuleAddr {
 		return nil
 	}
 
