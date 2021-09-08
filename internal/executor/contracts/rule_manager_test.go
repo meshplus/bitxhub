@@ -39,7 +39,7 @@ const (
 
 func TestRuleManager_Manage(t *testing.T) {
 	rm, mockStub, rules, _, _, _, _, rolesData := rulePrepare(t)
-	updateExtraInfo0 := UpdataMasterRuleInfo{
+	updateExtraInfo0 := UpdateMasterRuleInfo{
 		NewRule: rules[1],
 		Appchain: &appchainMgr.Appchain{
 			ID: rules[1].ChainID,
@@ -47,7 +47,7 @@ func TestRuleManager_Manage(t *testing.T) {
 	}
 	updateExtraInfoData0, err := json.Marshal(updateExtraInfo0)
 	assert.Nil(t, err)
-	updateExtraInfo3 := UpdataMasterRuleInfo{
+	updateExtraInfo3 := UpdateMasterRuleInfo{
 		NewRule: rules[3],
 		Appchain: &appchainMgr.Appchain{
 			ID: rules[3].ChainID,
@@ -76,19 +76,19 @@ func TestRuleManager_Manage(t *testing.T) {
 	gomock.InOrder(getMasterErrReq, changeMasterErrReq1, changeMasterErrReq2, changeStatusErrReq, okReq1, okReq2)
 
 	// check permission error
-	res := rm.Manage(string(governance.EventUpdate), string(APPOVED), string(governance.GovernanceBindable), rules[1].Address, updateExtraInfoData3)
+	res := rm.Manage(string(governance.EventUpdate), string(APPROVED), string(governance.GovernanceBindable), rules[1].Address, updateExtraInfoData3)
 	assert.False(t, res.Ok, string(res.Result))
 	// get master error
-	res = rm.Manage(string(governance.EventUpdate), string(APPOVED), string(governance.GovernanceBindable), rules[1].Address, updateExtraInfoData0)
+	res = rm.Manage(string(governance.EventUpdate), string(APPROVED), string(governance.GovernanceBindable), rules[1].Address, updateExtraInfoData0)
 	assert.False(t, res.Ok, string(res.Result))
 	// change master error
-	res = rm.Manage(string(governance.EventUpdate), string(APPOVED), string(governance.GovernanceBindable), rules[1].Address, updateExtraInfoData0)
+	res = rm.Manage(string(governance.EventUpdate), string(APPROVED), string(governance.GovernanceBindable), rules[1].Address, updateExtraInfoData0)
 	assert.False(t, res.Ok, string(res.Result))
 	// change status error
-	res = rm.Manage(string(governance.EventUpdate), string(APPOVED), string(governance.GovernanceBindable), rules[1].Address, updateExtraInfoData0)
+	res = rm.Manage(string(governance.EventUpdate), string(APPROVED), string(governance.GovernanceBindable), rules[1].Address, updateExtraInfoData0)
 	assert.False(t, res.Ok, string(res.Result))
 
-	res = rm.Manage(string(governance.EventUpdate), string(APPOVED), string(governance.GovernanceBindable), rules[1].Address, updateExtraInfoData0)
+	res = rm.Manage(string(governance.EventUpdate), string(APPROVED), string(governance.GovernanceBindable), rules[1].Address, updateExtraInfoData0)
 	assert.True(t, res.Ok, string(res.Result))
 }
 

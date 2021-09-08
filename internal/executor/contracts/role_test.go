@@ -49,30 +49,30 @@ func TestRoleManager_Manage(t *testing.T) {
 	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "UpdateAvaliableElectorateNum", gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 
 	// check permission error
-	res := rm.Manage(string(governance.EventUpdate), string(APPOVED), string(governance.GovernanceAvailable), aRoles[0].ID, aRolesData[0])
+	res := rm.Manage(string(governance.EventUpdate), string(APPROVED), string(governance.GovernanceAvailable), aRoles[0].ID, aRolesData[0])
 	assert.False(t, res.Ok, string(res.Result))
 	// change status error
-	res = rm.Manage(string(governance.EventUpdate), string(APPOVED), string(governance.GovernanceAvailable), aRoles[0].ID, aRolesData[0])
+	res = rm.Manage(string(governance.EventUpdate), string(APPROVED), string(governance.GovernanceAvailable), aRoles[0].ID, aRolesData[0])
 	assert.False(t, res.Ok, string(res.Result))
 
-	res = rm.Manage(string(governance.EventUpdate), string(APPOVED), string(governance.GovernanceAvailable), aRoles[0].ID, aRolesData[0])
+	res = rm.Manage(string(governance.EventUpdate), string(APPROVED), string(governance.GovernanceAvailable), aRoles[0].ID, aRolesData[0])
 	assert.True(t, res.Ok, string(res.Result))
 
 	// GetNotClosedProposals error
-	res = rm.Manage(string(governance.EventFreeze), string(APPOVED), string(governance.GovernanceAvailable), aRoles[0].ID, aRolesData[0])
+	res = rm.Manage(string(governance.EventFreeze), string(APPROVED), string(governance.GovernanceAvailable), aRoles[0].ID, aRolesData[0])
 	assert.False(t, res.Ok, string(res.Result))
 	// unmarshal error
-	res = rm.Manage(string(governance.EventLogout), string(APPOVED), string(governance.GovernanceAvailable), aRoles[0].ID, aRolesData[0])
+	res = rm.Manage(string(governance.EventLogout), string(APPROVED), string(governance.GovernanceAvailable), aRoles[0].ID, aRolesData[0])
 	assert.False(t, res.Ok, string(res.Result))
 	// UpdateAvaliableElectorateNum error
-	res = rm.Manage(string(governance.EventFreeze), string(APPOVED), string(governance.GovernanceAvailable), aRoles[0].ID, aRolesData[0])
+	res = rm.Manage(string(governance.EventFreeze), string(APPROVED), string(governance.GovernanceAvailable), aRoles[0].ID, aRolesData[0])
 	assert.False(t, res.Ok, string(res.Result))
 
-	res = rm.Manage(string(governance.EventFreeze), string(APPOVED), string(governance.GovernanceAvailable), aRoles[0].ID, aRolesData[0])
+	res = rm.Manage(string(governance.EventFreeze), string(APPROVED), string(governance.GovernanceAvailable), aRoles[0].ID, aRolesData[0])
 	assert.True(t, res.Ok, string(res.Result))
-	res = rm.Manage(string(governance.EventLogout), string(APPOVED), string(governance.GovernanceAvailable), aRoles[0].ID, aRolesData[0])
+	res = rm.Manage(string(governance.EventLogout), string(APPROVED), string(governance.GovernanceAvailable), aRoles[0].ID, aRolesData[0])
 	assert.True(t, res.Ok, string(res.Result))
-	res = rm.Manage(string(governance.EventActivate), string(APPOVED), string(governance.GovernanceAvailable), aRoles[0].ID, aRolesData[0])
+	res = rm.Manage(string(governance.EventActivate), string(APPROVED), string(governance.GovernanceAvailable), aRoles[0].ID, aRolesData[0])
 	assert.True(t, res.Ok, string(res.Result))
 }
 

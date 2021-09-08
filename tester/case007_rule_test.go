@@ -134,13 +134,13 @@ func (suite *Rule) TestRegisterRuleAppchain() {
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k1Nonce++
 
-	suite.vote(proposalId1, priAdmin1, adminNonce1, string(contracts.APPOVED))
+	suite.vote(proposalId1, priAdmin1, adminNonce1, string(contracts.APPROVED))
 	adminNonce1++
 
-	suite.vote(proposalId1, priAdmin2, adminNonce2, string(contracts.APPOVED))
+	suite.vote(proposalId1, priAdmin2, adminNonce2, string(contracts.APPROVED))
 	adminNonce2++
 
-	suite.vote(proposalId1, priAdmin3, adminNonce3, string(contracts.APPOVED))
+	suite.vote(proposalId1, priAdmin3, adminNonce3, string(contracts.APPROVED))
 	adminNonce3++
 
 	// k2 register rule for chain1, does not have permission
@@ -234,13 +234,13 @@ func (suite *Rule) TestRegisterAppchainRule() {
 	suite.Equal(string(contracts.AppchainAdmin), string(ret.Ret))
 	k1Nonce++
 
-	suite.vote(proposalId1, priAdmin1, adminNonce1, string(contracts.APPOVED))
+	suite.vote(proposalId1, priAdmin1, adminNonce1, string(contracts.APPROVED))
 	adminNonce1++
 
-	suite.vote(proposalId1, priAdmin2, adminNonce2, string(contracts.APPOVED))
+	suite.vote(proposalId1, priAdmin2, adminNonce2, string(contracts.APPROVED))
 	adminNonce2++
 
-	suite.vote(proposalId1, priAdmin3, adminNonce3, string(contracts.APPOVED))
+	suite.vote(proposalId1, priAdmin3, adminNonce3, string(contracts.APPROVED))
 	adminNonce3++
 
 	// k1 register rule for chain1
@@ -364,13 +364,13 @@ func (suite *Rule) TestUpdateMasterRule() {
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k1Nonce++
 
-	suite.vote(proposalId1, priAdmin1, adminNonce1, string(contracts.APPOVED))
+	suite.vote(proposalId1, priAdmin1, adminNonce1, string(contracts.APPROVED))
 	adminNonce1++
 
-	suite.vote(proposalId1, priAdmin2, adminNonce2, string(contracts.APPOVED))
+	suite.vote(proposalId1, priAdmin2, adminNonce2, string(contracts.APPROVED))
 	adminNonce2++
 
-	suite.vote(proposalId1, priAdmin3, adminNonce3, string(contracts.APPOVED))
+	suite.vote(proposalId1, priAdmin3, adminNonce3, string(contracts.APPROVED))
 	adminNonce3++
 
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(), "GetMasterRule",
@@ -418,13 +418,13 @@ func (suite *Rule) TestUpdateMasterRule() {
 	suite.Require().Nil(err)
 	proposalServiceId1 := gRet.ProposalID
 
-	suite.vote(proposalServiceId1, priAdmin1, adminNonce1, string(contracts.APPOVED))
+	suite.vote(proposalServiceId1, priAdmin1, adminNonce1, string(contracts.APPROVED))
 	adminNonce1++
 
-	suite.vote(proposalServiceId1, priAdmin2, adminNonce2, string(contracts.APPOVED))
+	suite.vote(proposalServiceId1, priAdmin2, adminNonce2, string(contracts.APPROVED))
 	adminNonce2++
 
-	suite.vote(proposalServiceId1, priAdmin3, adminNonce3, string(contracts.APPOVED))
+	suite.vote(proposalServiceId1, priAdmin3, adminNonce3, string(contracts.APPROVED))
 	adminNonce3++
 
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.ServiceMgrContractAddr.Address(), "GetServiceInfo", pb.String(chainServiceID1))
@@ -465,13 +465,13 @@ func (suite *Rule) TestUpdateMasterRule() {
 	suite.Require().Nil(err)
 	suite.Equal(governance.GovernancePause, service.Status)
 
-	suite.vote(proposalId2, priAdmin1, adminNonce1, string(contracts.APPOVED))
+	suite.vote(proposalId2, priAdmin1, adminNonce1, string(contracts.APPROVED))
 	adminNonce1++
 
-	suite.vote(proposalId2, priAdmin2, adminNonce2, string(contracts.APPOVED))
+	suite.vote(proposalId2, priAdmin2, adminNonce2, string(contracts.APPROVED))
 	adminNonce2++
 
-	suite.vote(proposalId2, priAdmin3, adminNonce3, string(contracts.APPOVED))
+	suite.vote(proposalId2, priAdmin3, adminNonce3, string(contracts.APPROVED))
 	adminNonce3++
 
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID1))

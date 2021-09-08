@@ -85,7 +85,7 @@ func (sm *ServiceManager) Manage(eventTyp, proposalResult, lastStatus, objId str
 	}
 
 	// 3. other operation
-	if proposalResult == string(APPOVED) {
+	if proposalResult == string(APPROVED) {
 		switch eventTyp {
 		case string(governance.EventRegister):
 			res := sm.CrossInvoke(constant.InterchainContractAddr.String(), "Register", pb.String(objId))

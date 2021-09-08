@@ -390,7 +390,7 @@ func TestGovernance_Vote(t *testing.T) {
 		func(id string, ret interface{}) bool {
 			pro := ret.(*Proposal)
 			pro.Id = idClosed
-			pro.Status = APPOVED
+			pro.Status = APPROVED
 			return true
 		}).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(ProposalKey(idNonexistent), gomock.Any()).Return(false).AnyTimes()
@@ -804,7 +804,7 @@ func TestGovernance_WithdrawProposal(t *testing.T) {
 		func(id string, ret interface{}) bool {
 			pro := ret.(*Proposal)
 			pro.Id = idClosed
-			pro.Status = APPOVED
+			pro.Status = APPROVED
 			return true
 		}).Return(true).AnyTimes()
 	mockStub.EXPECT().AddObject(gomock.Any(), gomock.Any()).AnyTimes()
