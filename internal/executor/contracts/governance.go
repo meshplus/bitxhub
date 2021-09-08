@@ -36,7 +36,7 @@ const (
 	DappMgr             ProposalType = "DappMgr"
 
 	PROPOSED ProposalStatus = "proposed"
-	APPOVED  ProposalStatus = "approve"
+	APPROVED ProposalStatus = "approve"
 	REJECTED ProposalStatus = "reject"
 	PAUSED   ProposalStatus = "pause"
 
@@ -241,7 +241,8 @@ func (g *Governance) lockLowPriorityProposal(objId, eventTyp string) (string, er
 					"proposal": p.Id,
 					"type":     p.Typ,
 					"status":   p.Status,
-					"eventTyp": eventTyp,
+					"objID":    p.ObjId,
+					"eventTyp": p.EventType,
 				}).Info("lock low priority proposal")
 				return p.Id, nil
 			} else {
@@ -303,7 +304,7 @@ func (g *Governance) WithdrawProposal(id, reason string) *boltvm.Response {
 	}
 
 	// 3。 Determine if the proposal has been cloesd
-	if p.Status == APPOVED || p.Status == REJECTED {
+	if p.Status == APPROVED || p.Status == REJECTED {
 		return boltvm.Error(fmt.Sprintf("the current status of the proposal is %s and cannot be withdrawed", string(p.Status)))
 	}
 
@@ -762,7 +763,7 @@ func (g *Governance) handleResult(p *Proposal) (err error) {
 	// unlock low-priority proposal
 	nextEventType := governance.EventType(p.Status)
 	if p.LockProposalId != "" {
-		if p.Status == APPOVED {
+		if p.Status == APPROVED {
 			notRestoreReason := fmt.Sprintf("%s(%s)", string(PriorityReason), p.Id)
 			_, err = g.unlockLowPriorityProposal(p.LockProposalId, false, notRestoreReason)
 		} else {
@@ -792,7 +793,7 @@ func (g *Governance) unlockLowPriorityProposal(lockedProposalId string, restore 
 		lockP.Status = PROPOSED
 		nextEventType = lockP.EventType
 	}
-	g.SetObject(ProposalKey(lockP.Id), lockP)
+	g.SetObject(ProposalKey(lockP.Id), *lockP)
 	g.Logger().WithFields(logrus.Fields{
 		"proposal": lockedProposalId,
 		"type":     lockP.Typ,
@@ -922,7 +923,7 @@ func (g *Governance) countVote(p *Proposal) (bool, error) {
 		return false, fmt.Errorf("this policy is not supported currently")
 	default: // SIMPLE_MAJORITY
 		if p.ApproveNum > p.AgainstNum {
-			p.Status = APPOVED
+			p.Status = APPROVED
 			p.EndReason = NormalReason
 		} else {
 			p.Status = REJECTED
@@ -938,6 +939,7 @@ func (g *Governance) LockLowPriorityProposal(objId, eventTyp string) *boltvm.Res
 	// 1. check permission
 	specificAddrs := []string{
 		constant.ServiceMgrContractAddr.Address().String(),
+		constant.RuleManagerContractAddr.Address().String(),
 	}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
@@ -959,6 +961,7 @@ func (g *Governance) UnLockLowPriorityProposal(objId, eventTyp string) *boltvm.R
 	// 1. check permission
 	specificAddrs := []string{
 		constant.ServiceMgrContractAddr.Address().String(),
+		constant.RuleManagerContractAddr.Address().String(),
 	}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
@@ -1136,7 +1139,7 @@ func checkProposalType(pt ProposalType) error {
 
 func checkProposalStauts(ps ProposalStatus) error {
 	if ps != PROPOSED &&
-		ps != APPOVED &&
+		ps != APPROVED &&
 		ps != REJECTED &&
 		ps != PAUSED {
 		return fmt.Errorf("illegal proposal status")

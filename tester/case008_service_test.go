@@ -82,13 +82,13 @@ func (suite *Service) TestRegisterService() {
 	suite.Require().Nil(err)
 	proposalId1 := gRet.ProposalID
 
-	suite.vote(proposalId1, priAdmin1, adminNonce1, string(contracts.APPOVED))
+	suite.vote(proposalId1, priAdmin1, adminNonce1, string(contracts.APPROVED))
 	adminNonce1++
 
-	suite.vote(proposalId1, priAdmin2, adminNonce2, string(contracts.APPOVED))
+	suite.vote(proposalId1, priAdmin2, adminNonce2, string(contracts.APPROVED))
 	adminNonce2++
 
-	suite.vote(proposalId1, priAdmin3, adminNonce3, string(contracts.APPOVED))
+	suite.vote(proposalId1, priAdmin3, adminNonce3, string(contracts.APPROVED))
 	adminNonce3++
 
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID1))
@@ -119,13 +119,13 @@ func (suite *Service) TestRegisterService() {
 	suite.Require().Nil(err)
 	proposalServiceId1 := gRet.ProposalID
 
-	suite.vote(proposalServiceId1, priAdmin1, adminNonce1, string(contracts.APPOVED))
+	suite.vote(proposalServiceId1, priAdmin1, adminNonce1, string(contracts.APPROVED))
 	adminNonce1++
 
-	suite.vote(proposalServiceId1, priAdmin2, adminNonce2, string(contracts.APPOVED))
+	suite.vote(proposalServiceId1, priAdmin2, adminNonce2, string(contracts.APPROVED))
 	adminNonce2++
 
-	suite.vote(proposalServiceId1, priAdmin3, adminNonce3, string(contracts.APPOVED))
+	suite.vote(proposalServiceId1, priAdmin3, adminNonce3, string(contracts.APPROVED))
 	adminNonce3++
 
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.ServiceMgrContractAddr.Address(), "GetServiceInfo", pb.String(chainServiceID1))
@@ -173,13 +173,13 @@ func (suite *Service) TestRegisterService() {
 	suite.Require().Nil(err)
 	proposalFreezeAppchainId := gRet.ProposalID
 
-	suite.vote(proposalFreezeAppchainId, priAdmin1, adminNonce1, string(contracts.APPOVED))
+	suite.vote(proposalFreezeAppchainId, priAdmin1, adminNonce1, string(contracts.APPROVED))
 	adminNonce1++
 
-	suite.vote(proposalFreezeAppchainId, priAdmin2, adminNonce2, string(contracts.APPOVED))
+	suite.vote(proposalFreezeAppchainId, priAdmin2, adminNonce2, string(contracts.APPROVED))
 	adminNonce2++
 
-	suite.vote(proposalFreezeAppchainId, priAdmin3, adminNonce3, string(contracts.APPOVED))
+	suite.vote(proposalFreezeAppchainId, priAdmin3, adminNonce3, string(contracts.APPROVED))
 	adminNonce3++
 
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID1))
@@ -210,13 +210,13 @@ func (suite *Service) TestRegisterService() {
 	suite.Require().Nil(err)
 	proposalActivateAppchainId := gRet.ProposalID
 
-	suite.vote(proposalActivateAppchainId, priAdmin1, adminNonce1, string(contracts.APPOVED))
+	suite.vote(proposalActivateAppchainId, priAdmin1, adminNonce1, string(contracts.APPROVED))
 	adminNonce1++
 
-	suite.vote(proposalActivateAppchainId, priAdmin2, adminNonce2, string(contracts.APPOVED))
+	suite.vote(proposalActivateAppchainId, priAdmin2, adminNonce2, string(contracts.APPROVED))
 	adminNonce2++
 
-	suite.vote(proposalActivateAppchainId, priAdmin3, adminNonce3, string(contracts.APPOVED))
+	suite.vote(proposalActivateAppchainId, priAdmin3, adminNonce3, string(contracts.APPROVED))
 	adminNonce3++
 
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID1))
@@ -292,13 +292,13 @@ func (suite *Service) TestLogoutAppchainPauseService() {
 	suite.Require().Nil(err)
 	proposalRegisterAppchainId := gRet.ProposalID
 
-	suite.vote(proposalRegisterAppchainId, priAdmin1, adminNonce1, string(contracts.APPOVED))
+	suite.vote(proposalRegisterAppchainId, priAdmin1, adminNonce1, string(contracts.APPROVED))
 	adminNonce1++
 
-	suite.vote(proposalRegisterAppchainId, priAdmin2, adminNonce2, string(contracts.APPOVED))
+	suite.vote(proposalRegisterAppchainId, priAdmin2, adminNonce2, string(contracts.APPROVED))
 	adminNonce2++
 
-	suite.vote(proposalRegisterAppchainId, priAdmin3, adminNonce3, string(contracts.APPOVED))
+	suite.vote(proposalRegisterAppchainId, priAdmin3, adminNonce3, string(contracts.APPROVED))
 	adminNonce3++
 
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID1))
@@ -329,13 +329,13 @@ func (suite *Service) TestLogoutAppchainPauseService() {
 	suite.Require().Nil(err)
 	proposalServiceId := gRet.ProposalID
 
-	suite.vote(proposalServiceId, priAdmin1, adminNonce1, string(contracts.APPOVED))
+	suite.vote(proposalServiceId, priAdmin1, adminNonce1, string(contracts.APPROVED))
 	adminNonce1++
 
-	suite.vote(proposalServiceId, priAdmin2, adminNonce2, string(contracts.APPOVED))
+	suite.vote(proposalServiceId, priAdmin2, adminNonce2, string(contracts.APPROVED))
 	adminNonce2++
 
-	suite.vote(proposalServiceId, priAdmin3, adminNonce3, string(contracts.APPOVED))
+	suite.vote(proposalServiceId, priAdmin3, adminNonce3, string(contracts.APPROVED))
 	adminNonce3++
 
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.ServiceMgrContractAddr.Address(), "GetServiceInfo", pb.String(chainServiceID1))
@@ -412,13 +412,13 @@ func (suite *Service) TestLogoutAppchainPauseService() {
 	suite.Require().Nil(err)
 	suite.Equal(governance.GovernancePause, service.Status)
 
-	suite.vote(proposalLogoutAppchainID2, priAdmin1, adminNonce1, string(contracts.APPOVED))
+	suite.vote(proposalLogoutAppchainID2, priAdmin1, adminNonce1, string(contracts.APPROVED))
 	adminNonce1++
 
-	suite.vote(proposalLogoutAppchainID2, priAdmin2, adminNonce2, string(contracts.APPOVED))
+	suite.vote(proposalLogoutAppchainID2, priAdmin2, adminNonce2, string(contracts.APPROVED))
 	adminNonce2++
 
-	suite.vote(proposalLogoutAppchainID2, priAdmin3, adminNonce3, string(contracts.APPOVED))
+	suite.vote(proposalLogoutAppchainID2, priAdmin3, adminNonce3, string(contracts.APPROVED))
 	adminNonce3++
 
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID1))
@@ -495,13 +495,13 @@ func (suite *Service) TestLogoutService() {
 	suite.Require().Nil(err)
 	proposalRegisterAppchainId := gRet.ProposalID
 
-	suite.vote(proposalRegisterAppchainId, priAdmin1, adminNonce1, string(contracts.APPOVED))
+	suite.vote(proposalRegisterAppchainId, priAdmin1, adminNonce1, string(contracts.APPROVED))
 	adminNonce1++
 
-	suite.vote(proposalRegisterAppchainId, priAdmin2, adminNonce2, string(contracts.APPOVED))
+	suite.vote(proposalRegisterAppchainId, priAdmin2, adminNonce2, string(contracts.APPROVED))
 	adminNonce2++
 
-	suite.vote(proposalRegisterAppchainId, priAdmin3, adminNonce3, string(contracts.APPOVED))
+	suite.vote(proposalRegisterAppchainId, priAdmin3, adminNonce3, string(contracts.APPROVED))
 	adminNonce3++
 
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID1))
@@ -532,13 +532,13 @@ func (suite *Service) TestLogoutService() {
 	suite.Require().Nil(err)
 	proposalServiceId := gRet.ProposalID
 
-	suite.vote(proposalServiceId, priAdmin1, adminNonce1, string(contracts.APPOVED))
+	suite.vote(proposalServiceId, priAdmin1, adminNonce1, string(contracts.APPROVED))
 	adminNonce1++
 
-	suite.vote(proposalServiceId, priAdmin2, adminNonce2, string(contracts.APPOVED))
+	suite.vote(proposalServiceId, priAdmin2, adminNonce2, string(contracts.APPROVED))
 	adminNonce2++
 
-	suite.vote(proposalServiceId, priAdmin3, adminNonce3, string(contracts.APPOVED))
+	suite.vote(proposalServiceId, priAdmin3, adminNonce3, string(contracts.APPROVED))
 	adminNonce3++
 
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.ServiceMgrContractAddr.Address(), "GetServiceInfo", pb.String(chainServiceID1))
@@ -582,13 +582,13 @@ func (suite *Service) TestLogoutService() {
 	suite.Require().Nil(err)
 	suite.Equal(governance.GovernanceLogouting, service.Status)
 
-	suite.vote(proposalLogoutAppchainID, priAdmin1, adminNonce1, string(contracts.APPOVED))
+	suite.vote(proposalLogoutAppchainID, priAdmin1, adminNonce1, string(contracts.APPROVED))
 	adminNonce1++
 
-	suite.vote(proposalLogoutAppchainID, priAdmin2, adminNonce2, string(contracts.APPOVED))
+	suite.vote(proposalLogoutAppchainID, priAdmin2, adminNonce2, string(contracts.APPROVED))
 	adminNonce2++
 
-	suite.vote(proposalLogoutAppchainID, priAdmin3, adminNonce3, string(contracts.APPOVED))
+	suite.vote(proposalLogoutAppchainID, priAdmin3, adminNonce3, string(contracts.APPROVED))
 	adminNonce3++
 
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID1))

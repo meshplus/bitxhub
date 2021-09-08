@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/sirupsen/logrus"
+
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/governance"
@@ -19,7 +21,7 @@ type RuleManager struct {
 	ruleMgr.RuleManager
 }
 
-type UpdataMasterRuleInfo struct {
+type UpdateMasterRuleInfo struct {
 	NewRule  *ruleMgr.Rule         `json:"new_rule"`
 	Appchain *appchainMgr.Appchain `json:"appchain"`
 }
@@ -69,12 +71,14 @@ func (rm *RuleManager) checkPermission(permissions []string, appchainID string, 
 
 // =========== Manage does some subsequent operations when the proposal is over
 // Currently here are only update master rule events
-// extra: UpdataMasterRuleInfo
+// extra: update :UpdateMasterRuleInfo, bind: chainID
 func (rm *RuleManager) Manage(eventTyp, proposalResult, lastStatus, ruleAddr string, extra []byte) *boltvm.Response {
 	rm.RuleManager.Persister = rm.Stub
 
 	// 1. check permission: PermissionSpecific(GovernanceContractAddr)
-	specificAddrs := []string{constant.GovernanceContractAddr.Address().String()}
+	specificAddrs := []string{
+		constant.GovernanceContractAddr.Address().String(),
+		constant.AppchainMgrContractAddr.Address().String()}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
 		return boltvm.Error(fmt.Sprintf("marshal specificAddrs error: %v", err))
@@ -86,7 +90,7 @@ func (rm *RuleManager) Manage(eventTyp, proposalResult, lastStatus, ruleAddr str
 	// 2. other operation
 	switch eventTyp {
 	case string(governance.EventUpdate):
-		info := &UpdataMasterRuleInfo{}
+		info := &UpdateMasterRuleInfo{}
 		if err := json.Unmarshal(extra, &info); err != nil {
 			return boltvm.Error(fmt.Sprintf("unmarshal rule error: %v", err))
 		}
@@ -108,13 +112,17 @@ func (rm *RuleManager) Manage(eventTyp, proposalResult, lastStatus, ruleAddr str
 		}
 
 		// 2.3 If the update succeeds, restore the status of the application chain
-		if proposalResult == string(APPOVED) {
+		if proposalResult == string(APPROVED) {
 			res := rm.CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "UnPauseAppchain", pb.String(info.Appchain.ID), pb.String(string(info.Appchain.Status)))
 			if !res.Ok {
 				return boltvm.Error(fmt.Sprintf("cross invoke UnPauseAppchain err: %s", res.Result))
 			}
 		}
-
+	case string(governance.EventBind):
+		ok, errData := rm.RuleManager.ChangeStatus(ruleAddr, proposalResult, lastStatus, extra)
+		if !ok {
+			return boltvm.Error(string(errData))
+		}
 	}
 
 	return boltvm.Success(nil)
@@ -224,7 +232,7 @@ func (rm *RuleManager) UpdateMasterRule(chainID string, newMasterruleAddress, re
 
 	// 5. submit new rule bind proposal
 	// 6. change new rule status
-	info := &UpdataMasterRuleInfo{
+	info := &UpdateMasterRuleInfo{
 		NewRule:  newRule,
 		Appchain: appchain,
 	}
@@ -244,7 +252,7 @@ func (rm *RuleManager) UpdateMasterRule(chainID string, newMasterruleAddress, re
 	return res
 }
 
-func (rm *RuleManager) bindRule(info *UpdataMasterRuleInfo, event governance.EventType, reason string) *boltvm.Response {
+func (rm *RuleManager) bindRule(info *UpdateMasterRuleInfo, event governance.EventType, reason string) *boltvm.Response {
 	rm.RuleManager.Persister = rm.Stub
 
 	infoData, err := json.Marshal(info)
@@ -296,6 +304,101 @@ func (rm *RuleManager) LogoutRule(chainID string, ruleAddress string) *boltvm.Re
 	}
 
 	return getGovernanceRet("", nil)
+}
+
+// =========== PauseRule pause the proposals about rule of one chain.
+// The rules management module only has updated proposals, which in this case are actually paused proposals.
+func (rm *RuleManager) PauseRule(chainID string) *boltvm.Response {
+	// 1. check permission: PermissionSpecific
+	specificAddrs := []string{
+		constant.AppchainMgrContractAddr.Address().String()}
+	addrsData, err := json.Marshal(specificAddrs)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("marshal specificAddrs error: %v", err))
+	}
+	if err := rm.checkPermission([]string{string(PermissionSpecific)}, "", rm.CurrentCaller(), addrsData); err != nil {
+		return boltvm.Error(fmt.Sprintf("check permission error:%v", err))
+	}
+
+	// 2. pause rule proposal
+	rule, err := rm.RuleManager.GetMaster(chainID)
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+
+	if rule.Status == governance.GovernanceUnbinding {
+		var ruleID string
+		rules, err := rm.RuleManager.All([]byte(chainID))
+		if err != nil {
+			return boltvm.Error(err.Error())
+		}
+		for _, r := range rules.([]*ruleMgr.Rule) {
+			if r.Status == governance.GovernanceBinding {
+				ruleID = r.Address
+				break
+			}
+		}
+		res := rm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "LockLowPriorityProposal",
+			pb.String(ruleID),
+			pb.String(string(governance.EventPause)))
+		if !res.Ok {
+			return boltvm.Error(fmt.Sprintf("cross invoke LockLowPriorityProposal error: %s", string(res.Result)))
+		}
+		rm.Logger().WithFields(logrus.Fields{
+			"chainID":    chainID,
+			"MasterRule": rule,
+			"proposalID": string(res.Result),
+		}).Info("pause rule proposal")
+	}
+
+	return boltvm.Success(nil)
+}
+
+// =========== UnPauseRule unpause the proposals about rule of one chain.
+func (rm *RuleManager) UnPauseRule(chainID string) *boltvm.Response {
+	// 1. check permission: PermissionSpecific
+	specificAddrs := []string{
+		constant.AppchainMgrContractAddr.Address().String()}
+	addrsData, err := json.Marshal(specificAddrs)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("marshal specificAddrs error: %v", err))
+	}
+	if err := rm.checkPermission([]string{string(PermissionSpecific)}, "", rm.CurrentCaller(), addrsData); err != nil {
+		return boltvm.Error(fmt.Sprintf("check permission error:%v", err))
+	}
+
+	// 2. unpause rule proposal
+	rule, err := rm.RuleManager.GetMaster(chainID)
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+	if rule.Status == governance.GovernanceUnbinding {
+		var ruleID string
+		rules, err := rm.RuleManager.All([]byte(chainID))
+		if err != nil {
+			return boltvm.Error(err.Error())
+		}
+		for _, r := range rules.([]*ruleMgr.Rule) {
+			if r.Status == governance.GovernanceBinding {
+				ruleID = r.Address
+				break
+			}
+		}
+		res := rm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "UnLockLowPriorityProposal",
+			pb.String(ruleID),
+			pb.String(string(governance.EventUnpause)))
+		if !res.Ok {
+			return boltvm.Error(fmt.Sprintf("cross invoke LockLowPriorityProposal error: %s", string(res.Result)))
+		}
+		rm.Logger().WithFields(logrus.Fields{
+			"chainID":    chainID,
+			"MasterRule": rule,
+			"proposalID": string(res.Result),
+			"ruleID":     ruleID,
+		}).Info("unpause rule proposal")
+	}
+
+	return boltvm.Success(nil)
 }
 
 // ========================== Query interface ========================
