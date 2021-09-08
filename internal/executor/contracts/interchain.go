@@ -28,6 +28,7 @@ const (
 	ibtpIndexExist             = "index already exists"
 	ibtpIndexWrong             = "wrong index"
 	DEFAULT_UNION_PIER_ID      = "default_union_pier_id"
+	INTERCHAINSERVICE_PREFIX   = "service"
 )
 
 type InterchainMeta struct {
@@ -94,7 +95,7 @@ func (x *InterchainManager) Register(chainServiceID string) *boltvm.Response {
 }
 
 func (x *InterchainManager) DeleteInterchain(id string) *boltvm.Response {
-	x.Delete(service_mgr.ServiceKey(id))
+	x.Delete(serviceKey(id))
 	return boltvm.Success(nil)
 }
 
@@ -132,7 +133,7 @@ func (x *InterchainManager) GetInterchainInfo(chainId string) *boltvm.Response {
 // GetInterchain returns information of the interchain count, Receipt count and SourceReceipt count by id
 func (x *InterchainManager) getInterchain(id string) (*pb.Interchain, bool) {
 	interchain := &pb.Interchain{ID: id}
-	ok, data := x.Get(service_mgr.ServiceKey(id))
+	ok, data := x.Get(serviceKey(id))
 
 	if ok {
 		if err := interchain.Unmarshal(data); err != nil {
@@ -166,12 +167,12 @@ func (x *InterchainManager) setInterchain(id string, interchain *pb.Interchain) 
 		panic(err)
 	}
 
-	x.Set(service_mgr.ServiceKey(id), data)
+	x.Set(serviceKey(id), data)
 }
 
 // Interchain returns information of the interchain count, Receipt count and SourceReceipt count
 func (x *InterchainManager) Interchain(id string) *boltvm.Response {
-	ok, data := x.Get(service_mgr.ServiceKey(id))
+	ok, data := x.Get(serviceKey(id))
 	if !ok {
 		return boltvm.Error(fmt.Errorf("this service does not exist").Error())
 	}
@@ -180,7 +181,7 @@ func (x *InterchainManager) Interchain(id string) *boltvm.Response {
 
 // GetInterchain returns information of the interchain count, Receipt count and SourceReceipt count by id
 func (x *InterchainManager) GetInterchain(id string) *boltvm.Response {
-	ok, data := x.Get(service_mgr.ServiceKey(id))
+	ok, data := x.Get(serviceKey(id))
 	if !ok {
 		return boltvm.Error(fmt.Errorf("this service does not exist: %s", id).Error())
 	}
@@ -507,7 +508,7 @@ func (x *InterchainManager) handleUnionIBTP(ibtp *pb.IBTP) *boltvm.Response {
 	if ibtp.To == "" {
 		return boltvm.Error("empty destination chain id")
 	}
-	if ok := x.Has(service_mgr.ServiceKey(ibtp.To)); !ok {
+	if ok := x.Has(serviceKey(ibtp.To)); !ok {
 		return boltvm.Error(fmt.Sprintf("target appchain does not exist: %s", ibtp.To))
 	}
 
@@ -698,4 +699,8 @@ func (x *InterchainManager) indexSendInterchainMeta(id string) string {
 
 func (x *InterchainManager) indexReceiptInterchainMeta(id string) string {
 	return fmt.Sprintf("index-receipt-interchain-%s", id)
+}
+
+func serviceKey(id string) string {
+	return fmt.Sprintf("%s-%s", INTERCHAINSERVICE_PREFIX, id)
 }
