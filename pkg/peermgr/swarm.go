@@ -139,8 +139,7 @@ func (swarm *Swarm) Start() error {
 		go func(id uint64, addr *peer.AddrInfo, ctx context.Context) {
 			if err := retry.Retry(func(attempt uint) error {
 				select {
-				case <- swarm.ctx.Done():
-					swarm.cancel()
+				case <-swarm.ctx.Done():
 					return nil
 
 				default:
@@ -220,7 +219,6 @@ func (swarm *Swarm) Ping() {
 			ticker.Stop()
 			ticker = time.NewTicker(swarm.pingTimeout)
 		case <-swarm.ctx.Done():
-			swarm.cancel()
 			return
 		}
 	}

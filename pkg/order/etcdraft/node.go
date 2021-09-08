@@ -67,8 +67,8 @@ type Node struct {
 	justElected       bool                 // track new leader status
 	getChainMetaFunc  func() *pb.ChainMeta // current chain meta
 	ctx               context.Context      // context
-	cancel 			  context.CancelFunc
-	haltC             chan struct{}        // exit signal
+	cancel            context.CancelFunc
+	haltC             chan struct{} // exit signal
 }
 
 type GetTxReq struct {
@@ -183,7 +183,7 @@ func NewNode(opts ...agency.ConfigOption) (agency.Order, error) {
 		raftStorage:      raftStorage,
 		readyPool:        readyPool,
 		ctx:              ctx,
-		cancel: 		  cancel,
+		cancel:           cancel,
 		mempool:          mempoolInst,
 		checkInterval:    checkInterval,
 	}
@@ -210,12 +210,18 @@ func NewNode(opts ...agency.ConfigOption) (agency.Order, error) {
 func (n *Node) Start() error {
 
 	if err := retry.Retry(func(attempt uint) error {
-		err := n.checkQuorum()
-		if err != nil {
-			n.logger.Error(err)
-			return err
+		select {
+		case <-n.ctx.Done():
+			return nil
+
+		default:
+			err := n.checkQuorum()
+			if err != nil {
+				n.logger.Error(err)
+				return err
+			}
+			return nil
 		}
-		return nil
 	},
 		strategy.Wait(1*time.Second),
 	); err != nil {
@@ -367,7 +373,6 @@ func (n *Node) run() {
 					}
 				}
 			case <-n.ctx.Done():
-				n.node.Stop()
 				return
 			}
 		}
@@ -510,7 +515,8 @@ func (n *Node) run() {
 			// 4: Call Node.Advance() to signal readiness for the next batch of updates.
 			n.node.Advance()
 		case <-n.ctx.Done():
-			n.Stop()
+			n.node.Stop()
+			return
 		}
 	}
 }
