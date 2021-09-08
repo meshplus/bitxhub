@@ -51,6 +51,7 @@ func (n *Node) Start() error {
 
 func (n *Node) Stop() {
 	n.cancel()
+	n.txCache.StopTxListen()
 }
 
 func (n *Node) GetPendingNonceByAccount(account string) uint64 {

@@ -20,7 +20,7 @@ type TxCache struct {
 	txSet      []pb.Transaction
 	timerC     chan bool
 	stopTimerC chan bool
-	close      chan bool
+	Close      chan bool
 	txSetTick  time.Duration
 	txSetSize  uint64
 	logger     logrus.FieldLogger
@@ -29,7 +29,7 @@ type TxCache struct {
 func NewTxCache(txSliceTimeout time.Duration, txSetSize uint64, logger logrus.FieldLogger) *TxCache {
 	txCache := &TxCache{}
 	txCache.RecvTxC = make(chan pb.Transaction, DefaultTxCacheSize)
-	txCache.close = make(chan bool)
+	txCache.Close = make(chan bool)
 	txCache.TxSetC = make(chan *pb.Transactions)
 	txCache.TxRespC = make(chan *TxWithResp)
 	txCache.timerC = make(chan bool)
@@ -52,7 +52,7 @@ func NewTxCache(txSliceTimeout time.Duration, txSetSize uint64, logger logrus.Fi
 func (tc *TxCache) ListenEvent() {
 	for {
 		select {
-		case <-tc.close:
+		case <-tc.Close:
 			tc.logger.Info("Exit transaction cache")
 			return
 
@@ -110,4 +110,8 @@ func (tc *TxCache) startTxSetTimer() {
 func (tc *TxCache) stopTxSetTimer() {
 	close(tc.stopTimerC)
 	tc.stopTimerC = make(chan bool)
+}
+
+func (tc *TxCache) StopTxListen() {
+	tc.Close <- true
 }
