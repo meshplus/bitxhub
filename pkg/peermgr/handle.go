@@ -1,7 +1,6 @@
 package peermgr
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -17,6 +16,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/model"
 	"github.com/meshplus/bitxhub/internal/model/events"
+	"github.com/meshplus/bitxhub/pkg/utils"
 	network "github.com/meshplus/go-lightp2p"
 	solsha3 "github.com/miguelmota/go-solidity-sha3"
 	"github.com/sirupsen/logrus"
@@ -43,6 +43,10 @@ func (swarm *Swarm) handleMessage(s network.Stream, data []byte) {
 			go swarm.orderMessageFeed.Send(events.OrderMessageEvent{Data: m.Data})
 		case pb.Message_FETCH_BLOCK_SIGN:
 			swarm.handleFetchBlockSignMessage(s, m.Data)
+		case pb.Message_FETCH_IBTP_REQUEST_SIGN:
+			swarm.handleFetchIBTPSignMessage(s, m.Data, true)
+		case pb.Message_FETCH_IBTP_RESPONSE_SIGN:
+			swarm.handleFetchIBTPSignMessage(s, m.Data, false)
 		case pb.Message_FETCH_BURN_SIGN:
 			swarm.handleFetchBurnSignMessage(s, m.Data)
 		case pb.Message_CHECK_MASTER_PIER:
@@ -196,21 +200,10 @@ func (swarm *Swarm) handleFetchBlockSignMessage(s network.Stream, data []byte) {
 func (swarm *Swarm) handleFetchAssetExchangeSignMessage(s network.Stream, data []byte) {
 }
 
-func (swarm *Swarm) handleFetchIBTPSignMessage(s network.Stream, data []byte) {
-	handle := func(id string) (string, []byte, error) {
-		hash := sha256.Sum256([]byte(id))
-		key := swarm.repo.Key
-		sign, err := key.PrivKey.Sign(hash[:])
-		if err != nil {
-			return "", nil, fmt.Errorf("fetch ibtp sign: %w", err)
-		}
-
-		return key.Address, sign, nil
-	}
-
-	address, signed, err := handle(string(data))
+func (swarm *Swarm) handleFetchIBTPSignMessage(s network.Stream, data []byte, isReq bool) {
+	address, signed, err := utils.GetIBTPSign(swarm.ledger, string(data), isReq, swarm.repo.Key.PrivKey)
 	if err != nil {
-		swarm.logger.Errorf("handle fetch-ibtp-sign: %s", err)
+		swarm.logger.Errorf("handle fetch-ibtp-sign for ibtp %s isReq %v: %s", string(data), isReq, err)
 		return
 	}
 

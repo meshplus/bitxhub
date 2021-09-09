@@ -1,7 +1,6 @@
 package coreapi
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -18,6 +17,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/model"
+	"github.com/meshplus/bitxhub/pkg/utils"
 	"github.com/meshplus/eth-kit/ledger"
 	solsha3 "github.com/miguelmota/go-solidity-sha3"
 	"github.com/sirupsen/logrus"
@@ -152,6 +152,7 @@ func (b *BrokerAPI) FetchSignsFromOtherPeers(id string, typ pb.GetMultiSignsRequ
 		lock   = sync.Mutex{}
 	)
 
+	// TODO: calculate threshold
 	wg.Add(len(b.bxh.PeerMgr.OtherPeers()))
 	for pid := range b.bxh.PeerMgr.OtherPeers() {
 		go func(pid uint64, result map[string][]byte, wg *sync.WaitGroup, lock *sync.Mutex) {
@@ -161,6 +162,10 @@ func (b *BrokerAPI) FetchSignsFromOtherPeers(id string, typ pb.GetMultiSignsRequ
 				err     error
 			)
 			switch typ {
+			case pb.GetMultiSignsRequest_IBTP_REQUEST:
+				fallthrough
+			case pb.GetMultiSignsRequest_IBTP_RESPONSE:
+				address, sign, err = b.requestIBTPSignPeer(pid, id, typ)
 			case pb.GetMultiSignsRequest_BLOCK_HEADER:
 				address, sign, err = b.requestBlockHeaderSignFromPeer(pid, id)
 			case pb.GetMultiSignsRequest_BURN:
@@ -171,7 +176,7 @@ func (b *BrokerAPI) FetchSignsFromOtherPeers(id string, typ pb.GetMultiSignsRequ
 				b.logger.WithFields(logrus.Fields{
 					"pid": pid,
 					"err": err.Error(),
-				}).Warnf("Get asset exchange sign with error")
+				}).Warnf("Get multi-sign with error")
 			} else {
 				lock.Lock()
 				result[address] = sign
@@ -186,6 +191,30 @@ func (b *BrokerAPI) FetchSignsFromOtherPeers(id string, typ pb.GetMultiSignsRequ
 	return result
 }
 
+func (b *BrokerAPI) requestIBTPSignPeer(pid uint64, id string, typ pb.GetMultiSignsRequest_Type) (string, []byte, error) {
+	req := pb.Message{
+		Type: pb.Message_FETCH_IBTP_REQUEST_SIGN,
+		Data: []byte(id),
+	}
+	if typ == pb.GetMultiSignsRequest_IBTP_RESPONSE {
+		req.Type = pb.Message_FETCH_IBTP_RESPONSE_SIGN
+	}
+
+	resp, err := b.bxh.PeerMgr.Send(pid, &req)
+	if err != nil {
+		return "", nil, err
+	}
+	if resp == nil || resp.Type != pb.Message_FETCH_IBTP_SIGN_ACK {
+		return "", nil, fmt.Errorf("invalid fetch ibtp sign resp")
+	}
+
+	data := model.MerkleWrapperSign{}
+	if err := data.Unmarshal(resp.Data); err != nil {
+		return "", nil, err
+	}
+
+	return data.Address, data.Signature, nil
+}
 
 func (b *BrokerAPI) requestBlockHeaderSignFromPeer(pid uint64, height string) (string, []byte, error) {
 	req := pb.Message{
@@ -235,6 +264,10 @@ func (b *BrokerAPI) requestBurnSignFromPeer(pid uint64, hash string) (string, []
 
 func (b *BrokerAPI) GetSign(content string, typ pb.GetMultiSignsRequest_Type) (string, []byte, error) {
 	switch typ {
+	case pb.GetMultiSignsRequest_IBTP_REQUEST:
+		return utils.GetIBTPSign(b.bxh.Ledger, content, true, b.bxh.GetPrivKey().PrivKey)
+	case pb.GetMultiSignsRequest_IBTP_RESPONSE:
+		return utils.GetIBTPSign(b.bxh.Ledger, content, false, b.bxh.GetPrivKey().PrivKey)
 	case pb.GetMultiSignsRequest_BLOCK_HEADER:
 		height, err := strconv.ParseUint(content, 10, 64)
 		if err != nil {
@@ -322,16 +355,6 @@ func (b *BrokerAPI) handleMultiSignsBurnReq(hash string) (string, []byte, error)
 		return "", nil, fmt.Errorf("bitxhub sign: %w", err)
 	}
 
-	return key.Address, sign, nil
-}
-
-func (b *BrokerAPI) getSign(content string) (string, []byte, error) {
-	hash := sha256.Sum256([]byte(content))
-	key := b.bxh.GetPrivKey()
-	sign, err := key.PrivKey.Sign(hash[:])
-	if err != nil {
-		return "", nil, fmt.Errorf("bitxhub sign: %w", err)
-	}
 	return key.Address, sign, nil
 }
 
