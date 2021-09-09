@@ -370,7 +370,7 @@ func (dm *DappManager) ActivateDapp(id, reason string) *boltvm.Response {
 }
 
 // =========== TransferDapp transfers dapp
-func (dm *DappManager) TransferDapp(id, reason, newOwnerAddr string) *boltvm.Response {
+func (dm *DappManager) TransferDapp(id, newOwnerAddr, reason string) *boltvm.Response {
 	_, err := types.HexDecodeString(newOwnerAddr)
 	if err != nil {
 		return boltvm.Error(fmt.Sprintf("illegal new owner addr: %s", newOwnerAddr))

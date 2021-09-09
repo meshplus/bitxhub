@@ -437,6 +437,8 @@ github.com/hyperledger/fabric-amcl v0.0.0-20210603140002-2670f91851c8 h1:BCR8ZlO
 github.com/hyperledger/fabric-amcl v0.0.0-20210603140002-2670f91851c8/go.mod h1:X+DIyUsaTmalOpmpQfIvFZjKHQedrURQ5t4YqquX7lE=
 github.com/hyperledger/fabric-protos-go v0.0.0-20201028172056-a3136dde2354 h1:6vLLEpvDbSlmUJFjg1hB5YMBpI+WgKguztlONcAFBoY=
 github.com/hyperledger/fabric-protos-go v0.0.0-20201028172056-a3136dde2354/go.mod h1:xVYTjK4DtZRBxZ2D9aE4y6AbLaPwue2o/criQyQbVD0=
+github.com/iancoleman/orderedmap v0.2.0 h1:sq1N/TFpYH++aViPcaKjys3bDClUEU7s5B+z6jq8pNA=
+github.com/iancoleman/orderedmap v0.2.0/go.mod h1:N0Wam8K1arqPXNWjMo21EXnBPOPp36vB07FNRdD2geA=
 github.com/ianlancetaylor/demangle v0.0.0-20181102032728-5e5cf60278f6/go.mod h1:aSSvb/t6k1mPoxDqO4vJh6VOCGPwU4O0C2/Eqndh1Sc=
 github.com/inconshreveable/mousetrap v1.0.0/go.mod h1:PxqpIevigyE2G7u3NXJIT2ANytuPF1OarO4DADm73n8=
 github.com/influxdata/flux v0.65.1/go.mod h1:J754/zds0vvpfwuq7Gc2wRdVwEodfpCFM7mYlOw2LqY=
@@ -810,8 +812,8 @@ github.com/meshplus/bitxhub-kit v1.2.1-0.20210901014031-ee93dd4f4ced/go.mod h1:w
 github.com/meshplus/bitxhub-model v1.1.1/go.mod h1:lUl9vPZXM9tP+B0ABRW/2eOW/6KCmjFTdoiTj5Vut/A=
 github.com/meshplus/bitxhub-model v1.2.1-0.20210805020100-41c27414badf/go.mod h1:IjgoQrsn1wthW7XcKRqgaZqCSlqNy0SBwF/7lmGSqXc=
 github.com/meshplus/bitxhub-model v1.2.1-0.20210811072725-7664c5307c05/go.mod h1:IjgoQrsn1wthW7XcKRqgaZqCSlqNy0SBwF/7lmGSqXc=
-github.com/meshplus/bitxhub-model v1.2.1-0.20210902030154-b203e4a4b3de h1:GI0WKjsk72d2vykoj61BjM6EH1D3LirqMklSgI4S2Zo=
-github.com/meshplus/bitxhub-model v1.2.1-0.20210902030154-b203e4a4b3de/go.mod h1:p1rgmd8p3O9FmuvQ2oS4wgrel1dV4K4MlFOtx6Vwod8=
+github.com/meshplus/bitxhub-model v1.2.1-0.20210909041632-2041ccc1cc38 h1:GoG8lCes1B6cbpFCJd05AQlmXdUCXXCmbEyn2ka21HU=
+github.com/meshplus/bitxhub-model v1.2.1-0.20210909041632-2041ccc1cc38/go.mod h1:p1rgmd8p3O9FmuvQ2oS4wgrel1dV4K4MlFOtx6Vwod8=
 github.com/meshplus/bitxid v0.0.0-20210412025850-e0eaf0f9063a/go.mod h1:vAldSRfDe2Qo7exsSTbchVmZWXPY7fhWQrRw18QJHho=
 github.com/meshplus/eth-kit v0.0.0-20210906064541-8dfea98dbf95 h1:bCBXI1MpjAzRCN0hodewcbnIACOFUWRtGbJZP4OZj98=
 github.com/meshplus/eth-kit v0.0.0-20210906064541-8dfea98dbf95/go.mod h1:7Uf2QyUOCFCHjg4zXr3ZtjKesdPubptdr4IK0KiQBHY=
