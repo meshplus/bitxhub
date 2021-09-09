@@ -314,7 +314,7 @@ func TestRoleManager_Query(t *testing.T) {
 
 	mockStub.EXPECT().GetObject(RoleKey(adminAddr), gomock.Any()).SetArg(1, *gRoles[3]).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(RoleKey(AUDIT_ADMIN_ROLE_ID), gomock.Any()).SetArg(1, *aRoles[0]).Return(true).AnyTimes()
-	mockStub.EXPECT().GetObject(RoleKey(appchainAdminAddr), gomock.Any()).SetArg(1, &Role{
+	mockStub.EXPECT().GetObject(RoleKey(appchainAdminAddr), gomock.Any()).SetArg(1, Role{
 		ID:       appchainAdminAddr,
 		RoleType: AppchainAdmin,
 	}).Return(true).AnyTimes()
@@ -347,10 +347,7 @@ func TestRoleManager_Query(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 0, len(roles), string(res.Result))
 
-	mockStub.EXPECT().GetObject(AppchainAdminKey(appchainID), gomock.Any()).SetArg(1, Role{
-		ID:       appchainAdminAddr,
-		RoleType: AppchainAdmin,
-	}).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(AppchainAdminKey(appchainID), gomock.Any()).SetArg(1, appchainAdminAddr).Return(true).AnyTimes()
 	res = rm.GetAppchainAdmin(appchainID)
 	assert.True(t, res.Ok, string(res.Result))
 

@@ -3,7 +3,6 @@ package contracts
 import (
 	"encoding/json"
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -318,18 +317,18 @@ func (sm *ServiceManager) PauseChainService(chainID string) *boltvm.Response {
 	}
 
 	// 2. get services id
-	idMap, err := sm.ServiceManager.GetIDListByChainID(chainID)
+	idList, err := sm.ServiceManager.GetIDListByChainID(chainID)
 	if err != nil {
 		return boltvm.Success(nil)
 	}
 
 	sm.Logger().WithFields(logrus.Fields{
-		"chainID":       chainID,
-		"servicesIdMap": idMap,
+		"chainID":        chainID,
+		"servicesIdList": idList,
 	}).Info("pause chain services")
 
 	// 3. pause services
-	for chainServiceID, _ := range idMap {
+	for _, chainServiceID := range idList {
 		if err := sm.pauseService(chainServiceID); err != nil {
 			return boltvm.Error(fmt.Sprintf("pause service %s err: %v", chainServiceID, err))
 		}
@@ -380,13 +379,13 @@ func (sm *ServiceManager) UnPauseChainService(chainID string) *boltvm.Response {
 	}
 
 	// 2. get services id
-	idMap, err := sm.ServiceManager.GetIDListByChainID(chainID)
+	idList, err := sm.ServiceManager.GetIDListByChainID(chainID)
 	if err != nil {
 		return boltvm.Success(nil)
 	}
 
 	// 3. unpause services
-	for chainServiceID, _ := range idMap {
+	for _, chainServiceID := range idList {
 		if err := sm.unPauseService(chainServiceID); err != nil {
 			return boltvm.Error(fmt.Sprintf("pause service %s err: %v", chainServiceID, err))
 		}
@@ -590,17 +589,17 @@ func (sm *ServiceManager) GetPermissionServices() *boltvm.Response {
 // GetServicesByAppchainID return services of an appchain
 func (sm *ServiceManager) GetServicesByAppchainID(chainID string) *boltvm.Response {
 	sm.ServiceManager.Persister = sm.Stub
-	idMap, err := sm.ServiceManager.GetIDListByChainID(chainID)
+	idList, err := sm.ServiceManager.GetIDListByChainID(chainID)
 	if err != nil {
 		return boltvm.Error(err.Error())
 	}
 
-	if len(idMap) == 0 {
+	if len(idList) == 0 {
 		return boltvm.Success(nil)
 	}
 
 	var ret []*service_mgr.Service
-	for id, _ := range idMap {
+	for _, id := range idList {
 		service, err := sm.ServiceManager.QueryById(id, nil)
 		if err != nil {
 			return boltvm.Error(fmt.Sprintf("cannot get service by id %s", id))
@@ -608,7 +607,33 @@ func (sm *ServiceManager) GetServicesByAppchainID(chainID string) *boltvm.Respon
 		ret = append(ret, service.(*service_mgr.Service))
 	}
 
-	sort.Sort(Services(ret))
+	data, err := json.Marshal(ret)
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+	return boltvm.Success(data)
+}
+
+// GetServicesByAppchainID return services of an appchain
+func (sm *ServiceManager) GetServicesByType(typ string) *boltvm.Response {
+	sm.ServiceManager.Persister = sm.Stub
+	idList, err := sm.ServiceManager.GetIDListByType(typ)
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+
+	if len(idList) == 0 {
+		return boltvm.Success(nil)
+	}
+
+	var ret []*service_mgr.Service
+	for _, id := range idList {
+		service, err := sm.ServiceManager.QueryById(id, nil)
+		if err != nil {
+			return boltvm.Error(fmt.Sprintf("cannot get service by id %s", id))
+		}
+		ret = append(ret, service.(*service_mgr.Service))
+	}
 
 	data, err := json.Marshal(ret)
 	if err != nil {
@@ -689,14 +714,4 @@ func (sm *ServiceManager) checkServiceIDFormat(serviceID string) error {
 	}
 
 	return nil
-}
-
-type Services []*service_mgr.Service
-
-func (ss Services) Len() int { return len(ss) }
-
-func (ss Services) Swap(i, j int) { ss[i], ss[j] = ss[j], ss[i] }
-
-func (ss Services) Less(i, j int) bool {
-	return ss[i].ServiceID > ss[j].ServiceID
 }

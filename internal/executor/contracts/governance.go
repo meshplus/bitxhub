@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/iancoleman/orderedmap"
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/governance"
 	"github.com/meshplus/bitxhub-model/constant"
@@ -24,8 +25,11 @@ type ProposalStatus string
 type EndReason string
 
 const (
-	PROPOSAL_PREFIX      = "proposal"
-	PROPOSALFREOM_PREFIX = "from"
+	PROPOSAL_PREFIX       = "proposal"
+	PROPOSALFREOM_PREFIX  = "from"
+	PROPOSALOBJ_PREFIX    = "obj"
+	PROPOSALTYPE_PREFIX   = "type"
+	PROPOSALSTATUS_PREFIX = "status"
 
 	AppchainMgr         ProposalType = "AppchainMgr"
 	RuleMgr             ProposalType = "RuleMgr"
@@ -106,6 +110,50 @@ var SpecialProposalEventType = []governance.EventType{
 var SpecialProposalProposalType = []ProposalType{
 	RoleMgr,
 	ProposalStrategyMgr,
+}
+
+func (g *Governance) addProposal(p *Proposal) {
+	g.AddObject(ProposalKey(p.Id), *p)
+
+	// from
+	from := strings.Split(p.Id, "-")[0]
+	proMap := orderedmap.New()
+	_ = g.GetObject(ProposalFromKey(from), proMap)
+	proMap.Set(p.Id, struct{}{})
+	g.SetObject(ProposalFromKey(from), *proMap)
+
+	// obj
+	proMap = orderedmap.New()
+	_ = g.GetObject(ProposalObjKey(p.ObjId), proMap)
+	proMap.Set(p.Id, struct{}{})
+	g.SetObject(ProposalObjKey(p.ObjId), *proMap)
+
+	// type
+	proMap = orderedmap.New()
+	_ = g.GetObject(ProposalTypKey(string(p.Typ)), proMap)
+	proMap.Set(p.Id, struct{}{})
+	g.SetObject(ProposalTypKey(string(p.Typ)), *proMap)
+
+	// status
+	proMap = orderedmap.New()
+	_ = g.GetObject(ProposalStatusKey(string(p.Status)), proMap)
+	proMap.Set(p.Id, struct{}{})
+	g.SetObject(ProposalStatusKey(string(p.Status)), *proMap)
+}
+
+func (g *Governance) changeProposalStatus(p *Proposal, newStatus ProposalStatus) {
+	lastStatusMap := orderedmap.New()
+	_ = g.GetObject(ProposalStatusKey(string(p.Status)), lastStatusMap)
+	lastStatusMap.Delete(p.Id)
+	g.SetObject(ProposalStatusKey(string(p.Status)), *lastStatusMap)
+
+	newStatusMap := orderedmap.New()
+	_ = g.GetObject(ProposalStatusKey(string(newStatus)), newStatusMap)
+	newStatusMap.Set(p.Id, struct{}{})
+	g.SetObject(ProposalStatusKey(string(newStatus)), *newStatusMap)
+
+	p.Status = newStatus
+	g.SetObject(ProposalKey(p.Id), *p)
 }
 
 func (g *Governance) checkPermission(permissions []string, regulatedAddr, regulatorAddr string, specificAddrsData []byte) error {
@@ -198,16 +246,7 @@ func (g *Governance) SubmitProposal(from, eventTyp, typ, objId, objLastStatus, r
 	}
 	p.IsSpecial = isSpecialProposal(p)
 
-	g.AddObject(ProposalKey(p.Id), *p)
-	var proList []string
-	ok := g.GetObject(ProposalFromKey(from), &proList)
-	if !ok {
-		g.AddObject(ProposalFromKey(from), []string{p.Id})
-	} else {
-		proList = append(proList, p.Id)
-		g.SetObject(ProposalFromKey(from), proList)
-	}
-
+	g.addProposal(p)
 	return boltvm.Success([]byte(p.Id))
 }
 
@@ -235,8 +274,7 @@ func (g *Governance) lockLowPriorityProposal(objId, eventTyp string) (string, er
 	for _, p := range proposals {
 		if p.Status == PROPOSED {
 			if priority[p.EventType] < priority[governance.EventType(eventTyp)] {
-				p.Status = PAUSED
-				g.SetObject(ProposalKey(p.Id), *p)
+				g.changeProposalStatus(p, PAUSED)
 				g.Logger().WithFields(logrus.Fields{
 					"proposal": p.Id,
 					"type":     p.Typ,
@@ -310,9 +348,8 @@ func (g *Governance) WithdrawProposal(id, reason string) *boltvm.Response {
 
 	// 4. Withdraw
 	p.WithdrawReason = reason
-	p.Status = REJECTED
 	p.EndReason = WithdrawnReason
-	g.SetObject(ProposalKey(p.Id), *p)
+	g.changeProposalStatus(p, REJECTED)
 
 	// 5. handel result
 	err := g.handleResult(p)
@@ -370,21 +407,19 @@ func (g *Governance) GetProposalsByObjId(objId string) *boltvm.Response {
 }
 
 func (g *Governance) getProposalsByObjId(objId string) ([]*Proposal, error) {
-	ok, datas := g.Query(PROPOSAL_PREFIX)
-	if !ok {
-		return make([]*Proposal, 0), nil
+	ret := make([]*Proposal, 0)
+
+	idMap := orderedmap.New()
+	if ok := g.GetObject(ProposalObjKey(objId), idMap); !ok {
+		return ret, nil
 	}
 
-	ret := make([]*Proposal, 0)
-	for _, d := range datas {
+	for _, id := range idMap.Keys() {
 		p := &Proposal{}
-		if err := json.Unmarshal(d, &p); err != nil {
-			return nil, err
+		if ok := g.GetObject(ProposalKey(id), p); !ok {
+			return nil, fmt.Errorf("the obj has proposal %s but not exist", id)
 		}
-
-		if objId == p.ObjId {
-			ret = append(ret, p)
-		}
+		ret = append(ret, p)
 	}
 
 	return ret, nil
@@ -404,18 +439,17 @@ func (g *Governance) GetProposalsByFrom(from string) *boltvm.Response {
 	return boltvm.Success(retData)
 }
 
-func (g *Governance) getProposalsByFrom(from string) ([]Proposal, error) {
-	var idList []string
-	ok := g.GetObject(ProposalFromKey(from), &idList)
-	if !ok {
-		return make([]Proposal, 0), nil
+func (g *Governance) getProposalsByFrom(from string) ([]*Proposal, error) {
+	ret := make([]*Proposal, 0)
+
+	idMap := orderedmap.New()
+	if ok := g.GetObject(ProposalFromKey(from), idMap); !ok {
+		return ret, nil
 	}
 
-	ret := make([]Proposal, 0)
-	for _, id := range idList {
-		p := Proposal{}
-		ok := g.GetObject(ProposalKey(id), &p)
-		if !ok {
+	for _, id := range idMap.Keys() {
+		p := &Proposal{}
+		if ok := g.GetObject(ProposalKey(id), p); !ok {
 			return nil, fmt.Errorf("proposal %s is not exist", id)
 		}
 		ret = append(ret, p)
@@ -430,20 +464,9 @@ func (g *Governance) GetProposalsByTyp(typ string) *boltvm.Response {
 		return boltvm.Error(err.Error())
 	}
 
-	ret := make([]Proposal, 0)
-
-	ok, datas := g.Query(PROPOSAL_PREFIX)
-	if ok {
-		for _, d := range datas {
-			p := Proposal{}
-			if err := json.Unmarshal(d, &p); err != nil {
-				return boltvm.Error(err.Error())
-			}
-
-			if ProposalType(typ) == p.Typ {
-				ret = append(ret, p)
-			}
-		}
+	ret, err := g.getProposalsByType(typ)
+	if err != nil {
+		return boltvm.Error(err.Error())
 	}
 
 	retData, err := json.Marshal(ret)
@@ -451,6 +474,25 @@ func (g *Governance) GetProposalsByTyp(typ string) *boltvm.Response {
 		return boltvm.Error(err.Error())
 	}
 	return boltvm.Success(retData)
+}
+
+func (g *Governance) getProposalsByType(typ string) ([]*Proposal, error) {
+	ret := make([]*Proposal, 0)
+
+	idMap := orderedmap.New()
+	if ok := g.GetObject(ProposalTypKey(typ), idMap); !ok {
+		return ret, nil
+	}
+
+	for _, id := range idMap.Keys() {
+		p := &Proposal{}
+		if ok := g.GetObject(ProposalKey(id), p); !ok {
+			return nil, fmt.Errorf("proposal %s is not exist", id)
+		}
+		ret = append(ret, p)
+	}
+
+	return ret, nil
 }
 
 // Query proposals based on proposal status, returning a list of proposal for that status
@@ -459,20 +501,9 @@ func (g *Governance) GetProposalsByStatus(status string) *boltvm.Response {
 		return boltvm.Error(err.Error())
 	}
 
-	ret := make([]Proposal, 0)
-
-	ok, datas := g.Query(PROPOSAL_PREFIX)
-	if ok {
-		for _, d := range datas {
-			p := Proposal{}
-			if err := json.Unmarshal(d, &p); err != nil {
-				return boltvm.Error(err.Error())
-			}
-
-			if ProposalStatus(status) == p.Status {
-				ret = append(ret, p)
-			}
-		}
+	ret, err := g.getProposalsByStatus(status)
+	if err != nil {
+		return boltvm.Error(err.Error())
 	}
 
 	retData, err := json.Marshal(ret)
@@ -482,23 +513,38 @@ func (g *Governance) GetProposalsByStatus(status string) *boltvm.Response {
 	return boltvm.Success(retData)
 }
 
+func (g *Governance) getProposalsByStatus(status string) ([]*Proposal, error) {
+	ret := make([]*Proposal, 0)
+
+	idMap := orderedmap.New()
+	if ok := g.GetObject(ProposalStatusKey(status), idMap); !ok {
+		return ret, nil
+	}
+
+	for _, id := range idMap.Keys() {
+		p := &Proposal{}
+		if ok := g.GetObject(ProposalKey(id), p); !ok {
+			return nil, fmt.Errorf("proposal %s is not exist", id)
+		}
+		ret = append(ret, p)
+	}
+
+	return ret, nil
+}
+
 // get proposal which is not closed (status is proposed or paused)
 func (g *Governance) GetNotClosedProposals() *boltvm.Response {
-	ret := make([]Proposal, 0)
-
-	ok, datas := g.Query(PROPOSAL_PREFIX)
-	if ok {
-		for _, d := range datas {
-			p := Proposal{}
-			if err := json.Unmarshal(d, &p); err != nil {
-				return boltvm.Error(err.Error())
-			}
-
-			if PROPOSED == p.Status || PAUSED == p.Status {
-				ret = append(ret, p)
-			}
-		}
+	ret, err := g.getProposalsByStatus(string(PROPOSED))
+	if err != nil {
+		return boltvm.Error(err.Error())
 	}
+
+	ret2, err := g.getProposalsByStatus(string(PAUSED))
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+
+	ret = append(ret, ret2...)
 
 	retData, err := json.Marshal(ret)
 	if err != nil {
@@ -1017,17 +1063,13 @@ func (g *Governance) getHightestPriorityPausedProposalByObjId(objID string) (*Pr
 func (g *Governance) getProposalsByObjStatus(objID string, status ProposalStatus) ([]*Proposal, error) {
 	ret := make([]*Proposal, 0)
 
-	ok, datas := g.Query(PROPOSAL_PREFIX)
-	if ok {
-		for _, d := range datas {
-			p := &Proposal{}
-			if err := json.Unmarshal(d, p); err != nil {
-				return nil, fmt.Errorf("unmarshal proposal error: %v", err)
-			}
-
-			if status == p.Status && objID == p.ObjId {
-				ret = append(ret, p)
-			}
+	proposals, err := g.getProposalsByObjId(objID)
+	if err != nil {
+		return nil, err
+	}
+	for _, p := range proposals {
+		if status == p.Status {
+			ret = append(ret, p)
 		}
 	}
 
@@ -1127,6 +1169,18 @@ func ProposalKey(id string) string {
 
 func ProposalFromKey(id string) string {
 	return fmt.Sprintf("%s-%s", PROPOSALFREOM_PREFIX, id)
+}
+
+func ProposalObjKey(id string) string {
+	return fmt.Sprintf("%s-%s", PROPOSALOBJ_PREFIX, id)
+}
+
+func ProposalTypKey(typ string) string {
+	return fmt.Sprintf("%s-%s", PROPOSALTYPE_PREFIX, typ)
+}
+
+func ProposalStatusKey(status string) string {
+	return fmt.Sprintf("%s-%s", PROPOSALSTATUS_PREFIX, status)
 }
 
 // Check info =============================================================
