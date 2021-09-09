@@ -216,7 +216,7 @@ func (sm *ServiceManager) UpdateService(chainServiceID, name, intro string, orde
 		if !ok {
 			return boltvm.Error(fmt.Sprintf("update service error: %s", string(data)))
 		}
-		return boltvm.Success(nil)
+		return getGovernanceRet("", nil)
 	}
 
 	// 5. submit proposal

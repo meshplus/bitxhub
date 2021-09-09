@@ -118,6 +118,13 @@ func parseArgs(in []*pb.Arg) ([]reflect.Value, error) {
 	args := make([]reflect.Value, len(in))
 	for i := 0; i < len(in); i++ {
 		switch in[i].Type {
+		case pb.Arg_F64:
+			ret, err := strconv.ParseFloat(string(in[i].Value), 64)
+			if err != nil {
+				return nil, err
+			}
+
+			args[i] = reflect.ValueOf(float64(ret))
 		case pb.Arg_I32:
 			ret, err := strconv.Atoi(string(in[i].Value))
 			if err != nil {
