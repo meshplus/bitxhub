@@ -119,22 +119,22 @@ func TestDappManager_TransferDapp(t *testing.T) {
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 
 	// 1. illegal new owner addr
-	res := dm.TransferDapp(dapps[0].DappID, reason, "1")
+	res := dm.TransferDapp(dapps[0].DappID, "1", reason)
 	assert.Equal(t, false, res.Ok)
 	// 2. governancePre error
-	res = dm.TransferDapp(dapps[0].DappID, reason, ownerAddr1)
+	res = dm.TransferDapp(dapps[0].DappID, ownerAddr1, reason)
 	assert.Equal(t, false, res.Ok)
 	// 3. check permision error
-	res = dm.TransferDapp(dapps[0].DappID, reason, ownerAddr1)
+	res = dm.TransferDapp(dapps[0].DappID, ownerAddr1, reason)
 	assert.Equal(t, false, res.Ok)
 	// 4. submit error
-	res = dm.TransferDapp(dapps[0].DappID, reason, ownerAddr1)
+	res = dm.TransferDapp(dapps[0].DappID, ownerAddr1, reason)
 	assert.Equal(t, false, res.Ok)
 	// 5. change status error
-	res = dm.TransferDapp(dapps[0].DappID, reason, ownerAddr1)
+	res = dm.TransferDapp(dapps[0].DappID, ownerAddr1, reason)
 	assert.Equal(t, false, res.Ok)
 
-	res = dm.TransferDapp(dapps[0].DappID, reason, ownerAddr1)
+	res = dm.TransferDapp(dapps[0].DappID, ownerAddr1, reason)
 	assert.Equal(t, true, res.Ok)
 }
 
