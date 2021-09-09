@@ -1,7 +1,6 @@
 package contracts
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -9,7 +8,6 @@ import (
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/boltvm"
 	service_mgr "github.com/meshplus/bitxhub-core/service-mgr"
-	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -19,11 +17,12 @@ const (
 	BitXHubID                  = "bitxhub-id"
 	CurAppchainNotAvailable    = "current appchain not available"
 	TargetAppchainNotAvailable = "target appchain not available"
-	AppchainNotAvailable       = "the appchain is not available"
-	ServiceNotAvailable        = "the service is not available"
+	SrcBitXHubNotAvailable     = "source bitxhub not available"
+	TargetBitXHubNotAvailable  = "target bitxhub not available"
+	CurServiceNotAvailable     = "current service not available"
+	TargetServiceNotAvailable  = "target service not available"
 	InvalidIBTP                = "invalid ibtp"
 	InvalidTargetService       = "invalid target service"
-	TargetServiceNotAvailable  = "target service not available"
 	internalError              = "internal server error"
 	ibtpIndexExist             = "index already exists"
 	ibtpIndexWrong             = "wrong index"
@@ -244,22 +243,32 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, error) {
 
 	if pb.IBTP_INTERCHAIN == ibtp.Type {
 		// if src chain service is from appchain registered in current bitxhub, check service index
-		fromChain := srcChainService.getFromChainID()
+		if srcChainService.IsLocal {
+			if err := x.checkAppchainAvailable(srcChainService.ChainId); err != nil {
+				return nil, fmt.Errorf("%s: source appchain id is %s", CurAppchainNotAvailable, srcChainService.ChainId)
+			}
 
-		srcAppchain, err := x.getAppchainInfo(fromChain)
-		if err != nil {
-			return nil, fmt.Errorf("%s: source appchain %s is not registered", CurAppchainNotAvailable, fromChain)
-		}
-
-		if !srcAppchain.IsAvailable() {
-			return nil, fmt.Errorf("%s: source appchain status is %s, can not handle IBTP", CurAppchainNotAvailable, string(srcAppchain.Status))
+			if err := x.checkServiceAvailable(srcChainService.getChainServiceId()); err != nil {
+				return nil, fmt.Errorf(fmt.Sprintf("%s: cannot get service by %s", CurServiceNotAvailable, srcChainService.getChainServiceId()))
+			}
+		} else {
+			if err := x.checkBitXHubAvailable(srcChainService.BxhId); err != nil {
+				return nil, fmt.Errorf("%s: source BitXHub %s is not registered", SrcBitXHubNotAvailable, srcChainService.BxhId)
+			}
 		}
 
 		// if dst chain service is from appchain registered in current bitxhub, get service info and check src service's permission
 		if dstChainService.IsLocal {
+			if err := x.checkAppchainAvailable(dstChainService.ChainId); err != nil {
+				return nil, fmt.Errorf("%s: target appchain id is %s", TargetAppchainNotAvailable, dstChainService.ChainId)
+			}
+
 			dstService, err := x.getServiceByID(dstChainService.getChainServiceId())
 			if err != nil {
 				return nil, fmt.Errorf(fmt.Sprintf("%s: cannot get service by %s", TargetServiceNotAvailable, dstChainService.getChainServiceId()))
+			}
+			if !dstService.IsAvailable() {
+				return nil, fmt.Errorf(fmt.Sprintf("%s: service id is %s", TargetServiceNotAvailable, dstChainService.getChainServiceId()))
 			}
 
 			if !dstService.CheckPermission(srcChainService.getFullServiceId()) {
@@ -272,6 +281,9 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, error) {
 				}
 			}
 		} else {
+			if err := x.checkBitXHubAvailable(dstChainService.BxhId); err != nil {
+				return nil, fmt.Errorf("%s, error is %w", TargetBitXHubNotAvailable, err)
+			}
 			if err := checkIndex(interchain.InterchainCounter[dstChainService.getFullServiceId()]+1, ibtp.Index); err != nil {
 				return nil, err
 			}
@@ -283,30 +295,6 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, error) {
 	}
 
 	return interchain, nil
-}
-
-func (x *InterchainManager) checkAppchain(id string) (*pb.Interchain, *appchainMgr.Appchain, error) {
-	interchain, ok := x.getInterchain(id)
-	if !ok {
-		return nil, nil, fmt.Errorf("%s: this appchain does not exist", AppchainNotAvailable)
-	}
-
-	app := &appchainMgr.Appchain{}
-	res := x.CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "GetAppchain", pb.String(id))
-	if !res.Ok {
-		return nil, nil, fmt.Errorf("%s: get appchain info error: %s", AppchainNotAvailable, string(res.Result))
-	}
-
-	if err := json.Unmarshal(res.Result, app); err != nil {
-		return nil, nil, fmt.Errorf("unmarshal error: " + err.Error())
-	}
-
-	if !app.IsAvailable() {
-		//if !isAppchainAvailable(app.Status) {
-		return nil, nil, fmt.Errorf("%s: the appchain status is %s, can not handle IBTP", AppchainNotAvailable, string(app.Status))
-	}
-
-	return interchain, app, nil
 }
 
 func (x *InterchainManager) checkTargetAppchainAvailability(ibtp *pb.IBTP) error {
@@ -338,9 +326,12 @@ func (x *InterchainManager) checkTargetAppchainAvailability(ibtp *pb.IBTP) error
 }
 
 // isRelayIBTP returns whether ibtp.from is relaychain type
-func (x *InterchainManager) getAppchainInfo(chainMethod string) (*appchainMgr.Appchain, error) {
+func (x *InterchainManager) getAppchainInfo(chainID string) (*appchainMgr.Appchain, error) {
 	srcChain := &appchainMgr.Appchain{}
-	res := x.CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "GetAppchain", pb.String(chainMethod))
+	res := x.CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "GetAppchain", pb.String(chainID))
+	if !res.Ok {
+		return nil, fmt.Errorf("chain %s is not registered", chainID)
+	}
 	if err := json.Unmarshal(res.Result, srcChain); err != nil {
 		return nil, fmt.Errorf("%s: unmarshal appchain info error: %w", internalError, err)
 	}
@@ -497,96 +488,6 @@ func (x *InterchainManager) GetIBTPByID(id string, isReq bool) *boltvm.Response 
 	return boltvm.Success(hash.Bytes())
 }
 
-func (x *InterchainManager) handleUnionIBTP(ibtp *pb.IBTP) *boltvm.Response {
-	srcRelayChainID := strings.Split(ibtp.From, "-")[0]
-
-	_, app, err := x.checkAppchain(srcRelayChainID)
-	if err != nil {
-		return boltvm.Error(err.Error())
-	}
-
-	if ibtp.To == "" {
-		return boltvm.Error("empty destination chain id")
-	}
-	if ok := x.Has(serviceKey(ibtp.To)); !ok {
-		return boltvm.Error(fmt.Sprintf("target appchain does not exist: %s", ibtp.To))
-	}
-
-	interchain, ok := x.getInterchain(ibtp.From)
-	if !ok {
-		x.setInterchain(ibtp.From, interchain)
-	}
-
-	if err := x.checkUnionIBTP(app, ibtp, interchain); err != nil {
-		return boltvm.Error(err.Error())
-	}
-
-	x.ProcessIBTP(ibtp, interchain)
-	return boltvm.Success(nil)
-}
-
-func (x *InterchainManager) checkUnionIBTP(app *appchainMgr.Appchain, ibtp *pb.IBTP, interchain *pb.Interchain) error {
-	if pb.IBTP_INTERCHAIN == ibtp.Type {
-
-		idx := interchain.InterchainCounter[ibtp.To]
-		if idx+1 != ibtp.Index {
-			return fmt.Errorf(fmt.Sprintf("wrong index, required %d, but %d", idx+1, ibtp.Index))
-		}
-	} else {
-		idx := interchain.ReceiptCounter[ibtp.To]
-		if idx+1 != ibtp.Index {
-			if interchain.SourceReceiptCounter[ibtp.To]+1 != ibtp.Index {
-				return fmt.Errorf("wrong receipt index, required %d, but %d", idx+1, ibtp.Index)
-			}
-		}
-	}
-
-	_, err := verifyMultiSign(app, ibtp, ibtp.Proof)
-	return err
-}
-
-// verifyMultiSign .
-func verifyMultiSign(app *appchainMgr.Appchain, ibtp *pb.IBTP, proof []byte) (bool, error) {
-	if nil == app.TrustRoot {
-		return false, fmt.Errorf("empty validators in relay chain:%s", app.ID)
-	}
-	var validators BxhValidators
-	if err := json.Unmarshal(app.TrustRoot, &validators); err != nil {
-		return false, err
-	}
-
-	m := make(map[string]struct{}, 0)
-	for _, validator := range validators.Addresses {
-		m[validator] = struct{}{}
-	}
-
-	var signs pb.SignResponse
-	if err := signs.Unmarshal(ibtp.Proof); err != nil {
-		return false, err
-	}
-
-	threshold := (len(validators.Addresses) - 1) / 3 // TODO be dynamic
-	counter := 0
-
-	ibtpHash := ibtp.Hash()
-	hash := sha256.Sum256([]byte(ibtpHash.String()))
-	for v, sign := range signs.Sign {
-		if _, ok := m[v]; !ok {
-			return false, fmt.Errorf("wrong validator: %s", v)
-		}
-		delete(m, v)
-		addr := types.NewAddressByStr(v)
-		ok, _ := asym.VerifyWithType(sign, hash[:], *addr)
-		if ok {
-			counter++
-		}
-		if counter > threshold {
-			return true, nil
-		}
-	}
-	return false, fmt.Errorf("multi signs verify fail, counter: %d", counter)
-}
-
 func (x *InterchainManager) indexMapKey(id string) string {
 	return fmt.Sprintf("index-tx-%s", id)
 }
@@ -658,7 +559,7 @@ func (x *InterchainManager) getServiceByID(id string) (*service_mgr.Service, err
 
 	res := x.CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "GetServiceInfo", pb.String(id))
 	if !res.Ok {
-		return nil, fmt.Errorf("%s: get service info error: %s", ServiceNotAvailable, string(res.Result))
+		return nil, fmt.Errorf("can not get service %s info: %s", id, string(res.Result))
 	}
 
 	if err := json.Unmarshal(res.Result, service); err != nil {
@@ -666,6 +567,49 @@ func (x *InterchainManager) getServiceByID(id string) (*service_mgr.Service, err
 	}
 
 	return service, nil
+}
+
+func (x *InterchainManager) checkAppchainAvailable(id string) error {
+	chain, err := x.getAppchainInfo(id)
+	if err != nil {
+		return err
+	}
+
+	if !chain.IsAvailable() {
+		return fmt.Errorf("appchain %s is not available", id)
+	}
+
+	return nil
+}
+
+func (x *InterchainManager) checkBitXHubAvailable(id string) error {
+	chain, err := x.getAppchainInfo(id)
+	if err != nil {
+		return err
+	}
+
+	if !chain.IsBitXHub() {
+		return fmt.Errorf("chain %s is not BitXHub", id)
+	}
+
+	if !chain.IsAvailable() {
+		return fmt.Errorf("bitxhub %s is not available", id)
+	}
+
+	return nil
+}
+
+func (x *InterchainManager) checkServiceAvailable(chainServiceID string) error {
+	service, err := x.getServiceByID(chainServiceID)
+	if err != nil {
+		return fmt.Errorf("cannot get service by %s", chainServiceID)
+	}
+
+	if !service.IsAvailable() {
+		return fmt.Errorf("service %s is not available", chainServiceID)
+	}
+
+	return nil
 }
 
 func checkIndex(exp, cur uint64) error {
