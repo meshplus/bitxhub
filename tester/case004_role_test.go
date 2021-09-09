@@ -187,7 +187,7 @@ func (suite *Role) TestGetRuleAddress() {
 
 	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalId1),
-		pb.String(string(contracts.APPOVED)),
+		pb.String(string(contracts.APPROVED)),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -196,7 +196,7 @@ func (suite *Role) TestGetRuleAddress() {
 
 	ret, err = invokeBVMContract(suite.api, priAdmin2, adminNonce2, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalId1),
-		pb.String(string(contracts.APPOVED)),
+		pb.String(string(contracts.APPROVED)),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -205,7 +205,7 @@ func (suite *Role) TestGetRuleAddress() {
 
 	ret, err = invokeBVMContract(suite.api, priAdmin3, adminNonce3, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalId1),
-		pb.String(string(contracts.APPOVED)),
+		pb.String(string(contracts.APPROVED)),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -235,7 +235,7 @@ func (suite *Role) TestGetRuleAddress() {
 
 	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalId2),
-		pb.String(string(contracts.APPOVED)),
+		pb.String(string(contracts.APPROVED)),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -244,7 +244,7 @@ func (suite *Role) TestGetRuleAddress() {
 
 	ret, err = invokeBVMContract(suite.api, priAdmin2, adminNonce2, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalId2),
-		pb.String(string(contracts.APPOVED)),
+		pb.String(string(contracts.APPROVED)),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -253,7 +253,7 @@ func (suite *Role) TestGetRuleAddress() {
 
 	ret, err = invokeBVMContract(suite.api, priAdmin3, adminNonce3, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalId2),
-		pb.String(string(contracts.APPOVED)),
+		pb.String(string(contracts.APPROVED)),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -289,7 +289,7 @@ func (suite *Role) TestGetRuleAddress() {
 
 	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalRuleId),
-		pb.String(string(contracts.APPOVED)),
+		pb.String(string(contracts.APPROVED)),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -298,7 +298,7 @@ func (suite *Role) TestGetRuleAddress() {
 
 	ret, err = invokeBVMContract(suite.api, priAdmin2, adminNonce2, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalRuleId),
-		pb.String(string(contracts.APPOVED)),
+		pb.String(string(contracts.APPROVED)),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -307,7 +307,7 @@ func (suite *Role) TestGetRuleAddress() {
 
 	ret, err = invokeBVMContract(suite.api, priAdmin3, adminNonce3, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalRuleId),
-		pb.String(string(contracts.APPOVED)),
+		pb.String(string(contracts.APPROVED)),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -416,7 +416,7 @@ func (suite *Role) TestRegisterRoles() {
 	// vote
 	r, err = invokeBVMContract(suite.api, priAdmin2, adminNonce2, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalId1),
-		pb.String(string(contracts.APPOVED)),
+		pb.String(string(contracts.APPROVED)),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -425,7 +425,7 @@ func (suite *Role) TestRegisterRoles() {
 
 	r, err = invokeBVMContract(suite.api, priAdmin3, adminNonce3, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalId1),
-		pb.String(string(contracts.APPOVED)),
+		pb.String(string(contracts.APPROVED)),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -434,7 +434,7 @@ func (suite *Role) TestRegisterRoles() {
 
 	r, err = invokeBVMContract(suite.api, priAdmin4, adminNonce4, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalId1),
-		pb.String(string(contracts.APPOVED)),
+		pb.String(string(contracts.APPROVED)),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)

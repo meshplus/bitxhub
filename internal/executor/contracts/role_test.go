@@ -30,7 +30,7 @@ func TestRoleManager_Manage(t *testing.T) {
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 
-	res := rm.Manage(string(governance.EventUpdate), string(APPOVED), string(governance.GovernanceAvailable), aRolesData[0])
+	res := rm.Manage(string(governance.EventUpdate), string(APPROVED), string(governance.GovernanceAvailable), aRolesData[0])
 	assert.True(t, res.Ok, string(res.Result))
 }
 

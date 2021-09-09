@@ -32,9 +32,10 @@ const (
 	ServiceMgr          ProposalType = "ServiceMgr"
 	RoleMgr             ProposalType = "RoleMgr"
 	ProposalStrategyMgr ProposalType = "ProposalStrategyMgr"
+	DappMgr             ProposalType = "DappMgr"
 
 	PROPOSED ProposalStatus = "proposed"
-	APPOVED  ProposalStatus = "approve"
+	APPROVED ProposalStatus = "approve"
 	REJECTED ProposalStatus = "reject"
 	PAUSED   ProposalStatus = "pause"
 
@@ -110,6 +111,7 @@ func (g *Governance) SubmitProposal(from, eventTyp, des, typ, objId, objLastStat
 		constant.RuleManagerContractAddr.Address().String(),
 		constant.NodeManagerContractAddr.Address().String(),
 		constant.RoleContractAddr.Address().String(),
+		constant.DappMgrContractAddr.Address().String(),
 	}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
@@ -272,7 +274,7 @@ func (g *Governance) WithdrawProposal(id, reason string) *boltvm.Response {
 	}
 
 	// 3。 Determine if the proposal has been cloesd
-	if p.Status == APPOVED || p.Status == REJECTED {
+	if p.Status == APPROVED || p.Status == REJECTED {
 		return boltvm.Error("the current status of the proposal is " + string(p.Status) + " and cannot be withdrawed")
 	}
 
@@ -784,6 +786,12 @@ func (g *Governance) handleResult(p *Proposal) error {
 			return fmt.Errorf("cross invoke Manager error: %s", string(res.Result))
 		}
 		return nil
+	case DappMgr:
+		res := g.CrossInvoke(constant.DappMgrContractAddr.String(), "Manage", pb.String(string(p.EventType)), pb.String(string(nextEventType)), pb.String(string(p.ObjLastStatus)), pb.String(p.ObjId), pb.Bytes(p.Extra))
+		if !res.Ok {
+			return fmt.Errorf("cross invoke Manager error: %s", string(res.Result))
+		}
+		return nil
 	default: // APPCHAIN_MGR
 		res := g.CrossInvoke(constant.AppchainMgrContractAddr.String(), "Manage", pb.String(string(p.EventType)), pb.String(string(nextEventType)), pb.String(string(p.ObjLastStatus)), pb.Bytes(p.Extra))
 		if !res.Ok {
@@ -802,7 +810,7 @@ func (g *Governance) unlockLowPriorityProposal(p *Proposal) (governance.EventTyp
 			return "", fmt.Errorf("proposal does not exist")
 		}
 
-		if p.Status == APPOVED {
+		if p.Status == APPROVED {
 			lockP.Status = REJECTED
 			lockP.EndReason = EndReason(fmt.Sprintf("%s(%s)", string(PriorityReason), p.Id))
 		} else {
@@ -894,7 +902,7 @@ func (g *Governance) countVote(p *Proposal) (bool, error) {
 		return false, fmt.Errorf("this policy is not supported currently")
 	default: // SIMPLE_MAJORITY
 		if p.ApproveNum > p.AgainstNum {
-			p.Status = APPOVED
+			p.Status = APPROVED
 			p.EndReason = NormalReason
 		} else {
 			p.Status = REJECTED
@@ -1006,7 +1014,8 @@ func checkProposalType(pt ProposalType) error {
 		pt != RuleMgr &&
 		pt != NodeMgr &&
 		pt != ServiceMgr &&
-		pt != RoleMgr {
+		pt != RoleMgr &&
+		pt != DappMgr {
 		return fmt.Errorf("illegal proposal type")
 	}
 	return nil
@@ -1014,7 +1023,7 @@ func checkProposalType(pt ProposalType) error {
 
 func checkProposalStauts(ps ProposalStatus) error {
 	if ps != PROPOSED &&
-		ps != APPOVED &&
+		ps != APPROVED &&
 		ps != REJECTED {
 		return fmt.Errorf("illegal proposal status")
 	}
