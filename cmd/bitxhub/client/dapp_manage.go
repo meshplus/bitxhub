@@ -49,11 +49,6 @@ func dappMgrCMD() cli.Command {
 				Usage: "register dapp",
 				Flags: []cli.Flag{
 					cli.StringFlag{
-						Name:     "id",
-						Usage:    "Specify dapp contract addr",
-						Required: true,
-					},
-					cli.StringFlag{
 						Name:     "name",
 						Usage:    "Specify dapp name",
 						Required: true,
@@ -69,8 +64,13 @@ func dappMgrCMD() cli.Command {
 						Required: true,
 					},
 					cli.StringFlag{
+						Name:     "contractAddrs",
+						Usage:    "Specify dapp contract addr. If there are multiple contract addresses, separate them with ','",
+						Required: true,
+					},
+					cli.StringFlag{
 						Name:     "permission",
-						Usage:    "Specify users which are not allowed to see the dapp",
+						Usage:    "Specify the addr of users which are not allowed to see the dapp. If there are multiple contract addresses, separate them with ','",
 						Required: false,
 					},
 					cli.StringFlag{
@@ -80,6 +80,48 @@ func dappMgrCMD() cli.Command {
 					},
 				},
 				Action: registerDapp,
+			},
+			cli.Command{
+				Name:  "update",
+				Usage: "update dapp",
+				Flags: []cli.Flag{
+					cli.StringFlag{
+						Name:     "id",
+						Usage:    "Specify dapp id",
+						Required: true,
+					},
+					cli.StringFlag{
+						Name:     "name",
+						Usage:    "Specify dapp name",
+						Required: false,
+					},
+					cli.StringFlag{
+						Name:     "type",
+						Usage:    "Specify dapp type",
+						Required: false,
+					},
+					cli.StringFlag{
+						Name:     "desc",
+						Usage:    "Specify dapp description",
+						Required: false,
+					},
+					cli.StringFlag{
+						Name:     "contractAddrs",
+						Usage:    "Specify dapp contract addr. If there are multiple contract addresses, separate them with ','",
+						Required: false,
+					},
+					cli.StringFlag{
+						Name:     "permission",
+						Usage:    "Specify the addr of users which are not allowed to see the dapp. If there are multiple contract addresses, separate them with ','",
+						Required: false,
+					},
+					cli.StringFlag{
+						Name:     "reason",
+						Usage:    "Specify register reason",
+						Required: false,
+					},
+				},
+				Action: updateDapp,
 			},
 			cli.Command{
 				Name:  "freeze",
@@ -131,11 +173,45 @@ func dappMgrCMD() cli.Command {
 					},
 					cli.StringFlag{
 						Name:     "reason",
-						Usage:    "Specify activate reason",
+						Usage:    "Specify freeze reason",
 						Required: false,
 					},
 				},
 				Action: transferDapp,
+			},
+			cli.Command{
+				Name:  "confirm",
+				Usage: "confirm dapp transfer",
+				Flags: []cli.Flag{
+					cli.StringFlag{
+						Name:     "id",
+						Usage:    "Specify dapp id",
+						Required: true,
+					},
+				},
+				Action: confirmDapp,
+			},
+			cli.Command{
+				Name:  "evaluate",
+				Usage: "evaluate dapp",
+				Flags: []cli.Flag{
+					cli.StringFlag{
+						Name:     "id",
+						Usage:    "Specify dapp id",
+						Required: true,
+					},
+					cli.StringFlag{
+						Name:     "desc",
+						Usage:    "Specify evaluate desc",
+						Required: true,
+					},
+					cli.Float64Flag{
+						Name:     "score",
+						Usage:    "Specify evaluate score, [0,5]",
+						Required: false,
+					},
+				},
+				Action: evaluateDapp,
 			},
 		},
 	}
@@ -182,29 +258,19 @@ func getDappByOwnerAddr(ctx *cli.Context) error {
 }
 
 func registerDapp(ctx *cli.Context) error {
-	id := ctx.String("id")
 	name := ctx.String("name")
 	typ := ctx.String("type")
 	desc := ctx.String("desc")
+	contractAddrs := strings.TrimSpace(ctx.String("contractAddrs"))
 	reason := ctx.String("reason")
-	permissionStr := ctx.String("permission")
-	//permissions := strings.Split(permissionStr, ",")
-
-	permissionMap := make(map[string]struct{})
-	for _, p := range strings.Split(permissionStr, ",") {
-		permissionMap[p] = struct{}{}
-	}
-	permissionData, err := json.Marshal(permissionMap)
-	if err != nil {
-		return fmt.Errorf("marshal permission error: %w", err)
-	}
+	permissionStr := strings.TrimSpace(ctx.String("permission"))
 
 	receipt, err := invokeBVMContract(ctx, constant.DappMgrContractAddr.String(), "RegisterDapp",
-		pb.String(id),
 		pb.String(name),
 		pb.String(typ),
 		pb.String(desc),
-		pb.Bytes(permissionData),
+		pb.String(contractAddrs),
+		pb.String(permissionStr),
 		pb.String(reason),
 	)
 	if err != nil {
@@ -219,6 +285,44 @@ func registerDapp(ctx *cli.Context) error {
 		color.Green("proposal id is %s, dapp id is %s", ret.ProposalID, ret.Extra)
 	} else {
 		color.Red("register dapp error: %s\n", string(receipt.Ret))
+	}
+	return nil
+}
+
+func updateDapp(ctx *cli.Context) error {
+	id := ctx.String("id")
+	name := ctx.String("name")
+	typ := ctx.String("type")
+	desc := ctx.String("desc")
+	contractAddrs := strings.TrimSpace(ctx.String("contractAddrs"))
+	reason := ctx.String("reason")
+	permissionStr := strings.TrimSpace(ctx.String("permission"))
+
+	receipt, err := invokeBVMContract(ctx, constant.DappMgrContractAddr.String(), "UpdateDapp",
+		pb.String(id),
+		pb.String(name),
+		pb.String(typ),
+		pb.String(desc),
+		pb.String(contractAddrs),
+		pb.String(permissionStr),
+		pb.String(reason),
+	)
+	if err != nil {
+		return err
+	}
+
+	if receipt.IsSuccess() {
+		ret := &governance.GovernanceResult{}
+		if err := json.Unmarshal(receipt.Ret, ret); err != nil {
+			return err
+		}
+		if ret.ProposalID != "" {
+			color.Green("proposal id is %s", ret.ProposalID)
+		} else {
+			color.Green("update dapp success")
+		}
+	} else {
+		color.Red("update dapp error: %s\n", string(receipt.Ret))
 	}
 	return nil
 }
@@ -273,7 +377,41 @@ func transferDapp(ctx *cli.Context) error {
 		proposalId := gjson.Get(string(receipt.Ret), "proposal_id").String()
 		color.Green("proposal id is %s", proposalId)
 	} else {
-		color.Red("activate dapp error: %s\n", string(receipt.Ret))
+		color.Red("transfer dapp error: %s\n", string(receipt.Ret))
+	}
+	return nil
+}
+
+func confirmDapp(ctx *cli.Context) error {
+	id := ctx.String("id")
+
+	receipt, err := invokeBVMContract(ctx, constant.DappMgrContractAddr.String(), "ConfirmTransfer", pb.String(id))
+	if err != nil {
+		return err
+	}
+
+	if receipt.IsSuccess() {
+		color.Green("confirm dapp transfer success")
+	} else {
+		color.Red("confirm dapp transfer error: %s\n", string(receipt.Ret))
+	}
+	return nil
+}
+
+func evaluateDapp(ctx *cli.Context) error {
+	id := ctx.String("id")
+	desc := ctx.String("addr")
+	score := ctx.Float64("score")
+
+	receipt, err := invokeBVMContract(ctx, constant.DappMgrContractAddr.String(), "EvaluateDapp", pb.String(id), pb.String(desc), pb.Float64(score))
+	if err != nil {
+		return err
+	}
+
+	if receipt.IsSuccess() {
+		color.Green("evaluate dapp success")
+	} else {
+		color.Red("evaluate dapp error: %s\n", string(receipt.Ret))
 	}
 	return nil
 }
