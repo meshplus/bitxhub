@@ -113,6 +113,5 @@ func (tc *TxCache) stopTxSetTimer() {
 }
 
 func (tc *TxCache) StopTxListen() {
-	defer close(tc.close)
-	tc.close <- true
+	close(tc.close)
 }
