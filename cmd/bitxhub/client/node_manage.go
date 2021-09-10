@@ -14,7 +14,7 @@ import (
 	"github.com/urfave/cli"
 )
 
-func nodeMgrCND() cli.Command {
+func nodeMgrCMD() cli.Command {
 	return cli.Command{
 		Name:  "node",
 		Usage: "node manage command",
