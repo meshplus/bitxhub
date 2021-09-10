@@ -53,7 +53,7 @@ func (tc *TxCache) ListenEvent() {
 	for {
 		select {
 		case <-tc.close:
-			tc.logger.Info("Exit transaction cache")
+			tc.logger.Debugf("Exit transaction cache ListenEvent")
 			return
 
 		case tx := <-tc.RecvTxC:
@@ -110,4 +110,8 @@ func (tc *TxCache) startTxSetTimer() {
 func (tc *TxCache) stopTxSetTimer() {
 	close(tc.stopTimerC)
 	tc.stopTimerC = make(chan bool)
+}
+
+func (tc *TxCache) StopTxListen() {
+	close(tc.close)
 }
