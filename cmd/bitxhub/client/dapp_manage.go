@@ -55,7 +55,7 @@ func dappMgrCMD() cli.Command {
 					},
 					cli.StringFlag{
 						Name:     "type",
-						Usage:    "Specify dapp type",
+						Usage:    "Specify dapp type, one of tool, application, game and others",
 						Required: true,
 					},
 					cli.StringFlag{
@@ -97,7 +97,7 @@ func dappMgrCMD() cli.Command {
 					},
 					cli.StringFlag{
 						Name:     "type",
-						Usage:    "Specify dapp type",
+						Usage:    "Specify dapp type, one of tool, application, game and others",
 						Required: false,
 					},
 					cli.StringFlag{
@@ -424,7 +424,7 @@ func printDapp(dapps []*contracts.Dapp) {
 		table = append(table, []string{
 			dapp.DappID,
 			dapp.Name,
-			dapp.Type,
+			string(dapp.Type),
 			dapp.OwnerAddr,
 			strconv.Itoa(int(dapp.CreateTime)),
 			strconv.FormatFloat(dapp.Score, 'g', -1, 64),
