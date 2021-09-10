@@ -50,7 +50,7 @@ func (am *AppchainManager) Manage(eventTyp string, proposalResult, lastStatus st
 		return boltvm.Error(string(errData))
 	}
 
-	if proposalResult == string(APPOVED) {
+	if proposalResult == string(APPROVED) {
 		//relaychainAdmin := relayRootPrefix + am.Caller()
 		switch eventTyp {
 		case string(governance.EventRegister):

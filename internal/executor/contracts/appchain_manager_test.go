@@ -227,23 +227,23 @@ func TestAppchainManager_Manager(t *testing.T) {
 	//	gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil))
 
 	// test without permission
-	res := am.Manage(string(governance.EventUpdate), string(APPOVED), string(governance.GovernanceAvailable), data)
+	res := am.Manage(string(governance.EventUpdate), string(APPROVED), string(governance.GovernanceAvailable), data)
 	assert.False(t, res.Ok)
 	// test with permission
-	res = am.Manage(string(governance.EventUpdate), string(APPOVED), string(governance.GovernanceAvailable), data1)
+	res = am.Manage(string(governance.EventUpdate), string(APPROVED), string(governance.GovernanceAvailable), data1)
 	assert.False(t, res.Ok)
 	res = am.Manage(string(governance.EventUpdate), string(REJECTED), string(governance.GovernanceAvailable), data1)
 	assert.False(t, res.Ok)
-	res = am.Manage(string(governance.EventUpdate), string(APPOVED), string(governance.GovernanceAvailable), data)
+	res = am.Manage(string(governance.EventUpdate), string(APPROVED), string(governance.GovernanceAvailable), data)
 	assert.True(t, res.Ok, string(res.Result))
 	res = am.Manage(string(governance.EventUpdate), string(REJECTED), string(governance.GovernanceAvailable), data)
 	assert.True(t, res.Ok, string(res.Result))
 
 	mockStub.EXPECT().CrossInvoke(constant.InterchainContractAddr.String(), "Register", gomock.Any()).Return(boltvm.Error("")).Times(1)
 	mockStub.EXPECT().CrossInvoke(constant.InterchainContractAddr.String(), "Register", gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
-	res = am.Manage(string(governance.EventRegister), string(APPOVED), string(governance.GovernanceUnavailable), data)
+	res = am.Manage(string(governance.EventRegister), string(APPROVED), string(governance.GovernanceUnavailable), data)
 	assert.False(t, res.Ok)
-	res = am.Manage(string(governance.EventRegister), string(APPOVED), string(governance.GovernanceUnavailable), data)
+	res = am.Manage(string(governance.EventRegister), string(APPROVED), string(governance.GovernanceUnavailable), data)
 	assert.True(t, res.Ok, string(res.Result))
 }
 

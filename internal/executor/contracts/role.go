@@ -163,7 +163,7 @@ func (rm *RoleManager) Manage(eventTyp string, proposalResult, lastStatus string
 	}
 
 	// 3. other handle
-	if proposalResult == string(APPOVED) {
+	if proposalResult == string(APPROVED) {
 		switch eventTyp {
 		case string(governance.EventUpdate):
 			rm.SetObject(rm.roleKey(role.ID), *role)
@@ -674,6 +674,25 @@ func (rm *RoleManager) IsAnyAdmin(roleId string) *boltvm.Response {
 	}
 
 	return boltvm.Success([]byte(strconv.FormatBool(true)))
+}
+
+// IsAdmin determines whether the role is GovernanceAdmin
+func (rm *RoleManager) IsAnyAvailableAdmin(roleId, roleType string) *boltvm.Response {
+	return boltvm.Success([]byte(strconv.FormatBool(rm.isAvailableAdmin(roleId, RoleType(roleType)))))
+}
+
+func (rm *RoleManager) isAvailableAdmin(roleId string, roleType RoleType) bool {
+	role := &Role{}
+	ok := rm.GetObject(rm.roleKey(roleId), role)
+	if !ok {
+		return false
+	}
+
+	if roleType == role.RoleType && rm.isAvailable(roleId) {
+		return true
+	} else {
+		return false
+	}
 }
 
 func (rm *RoleManager) GetRoleWeight(roleId string) *boltvm.Response {

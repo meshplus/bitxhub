@@ -42,7 +42,7 @@ func (nm *NodeManager) Manage(eventTyp string, proposalResult, lastStatus string
 		return boltvm.Error(fmt.Sprintf("unmarshal json error: %v", err))
 	}
 
-	if proposalResult == string(APPOVED) {
+	if proposalResult == string(APPROVED) {
 		switch eventTyp {
 		case string(governance.EventLogout):
 			nodeEvent := &events.NodeEvent{

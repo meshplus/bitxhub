@@ -102,7 +102,7 @@ func (suite *Interchain) TestHandleIBTP() {
 
 	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalId1),
-		pb.String(string(contracts.APPOVED)),
+		pb.String(string(contracts.APPROVED)),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -111,7 +111,7 @@ func (suite *Interchain) TestHandleIBTP() {
 
 	ret, err = invokeBVMContract(suite.api, priAdmin2, adminNonce2, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalId1),
-		pb.String(string(contracts.APPOVED)),
+		pb.String(string(contracts.APPROVED)),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -120,7 +120,7 @@ func (suite *Interchain) TestHandleIBTP() {
 
 	ret, err = invokeBVMContract(suite.api, priAdmin3, adminNonce3, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalId1),
-		pb.String(string(contracts.APPOVED)),
+		pb.String(string(contracts.APPROVED)),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -157,7 +157,7 @@ func (suite *Interchain) TestHandleIBTP() {
 
 	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalId2),
-		pb.String(string(contracts.APPOVED)),
+		pb.String(string(contracts.APPROVED)),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -166,7 +166,7 @@ func (suite *Interchain) TestHandleIBTP() {
 
 	ret, err = invokeBVMContract(suite.api, priAdmin2, adminNonce2, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalId2),
-		pb.String(string(contracts.APPOVED)),
+		pb.String(string(contracts.APPROVED)),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -175,7 +175,7 @@ func (suite *Interchain) TestHandleIBTP() {
 
 	ret, err = invokeBVMContract(suite.api, priAdmin3, adminNonce3, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalId2),
-		pb.String(string(contracts.APPOVED)),
+		pb.String(string(contracts.APPROVED)),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -199,7 +199,7 @@ func (suite *Interchain) TestHandleIBTP() {
 
 	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalRuleId),
-		pb.String(string(contracts.APPOVED)),
+		pb.String(string(contracts.APPROVED)),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -208,7 +208,7 @@ func (suite *Interchain) TestHandleIBTP() {
 
 	ret, err = invokeBVMContract(suite.api, priAdmin2, adminNonce2, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalRuleId),
-		pb.String(string(contracts.APPOVED)),
+		pb.String(string(contracts.APPROVED)),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -217,7 +217,7 @@ func (suite *Interchain) TestHandleIBTP() {
 
 	ret, err = invokeBVMContract(suite.api, priAdmin3, adminNonce3, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalRuleId),
-		pb.String(string(contracts.APPOVED)),
+		pb.String(string(contracts.APPROVED)),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -314,7 +314,7 @@ func (suite *Interchain) TestGetIBTPByID() {
 
 	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalId1),
-		pb.String(string(contracts.APPOVED)),
+		pb.String(string(contracts.APPROVED)),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -323,7 +323,7 @@ func (suite *Interchain) TestGetIBTPByID() {
 
 	ret, err = invokeBVMContract(suite.api, priAdmin2, adminNonce2, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalId1),
-		pb.String(string(contracts.APPOVED)),
+		pb.String(string(contracts.APPROVED)),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -332,7 +332,7 @@ func (suite *Interchain) TestGetIBTPByID() {
 
 	ret, err = invokeBVMContract(suite.api, priAdmin3, adminNonce3, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalId1),
-		pb.String(string(contracts.APPOVED)),
+		pb.String(string(contracts.APPROVED)),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -367,7 +367,7 @@ func (suite *Interchain) TestGetIBTPByID() {
 
 	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalId2),
-		pb.String(string(contracts.APPOVED)),
+		pb.String(string(contracts.APPROVED)),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -376,7 +376,7 @@ func (suite *Interchain) TestGetIBTPByID() {
 
 	ret, err = invokeBVMContract(suite.api, priAdmin2, adminNonce2, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalId2),
-		pb.String(string(contracts.APPOVED)),
+		pb.String(string(contracts.APPROVED)),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -385,7 +385,7 @@ func (suite *Interchain) TestGetIBTPByID() {
 
 	ret, err = invokeBVMContract(suite.api, priAdmin3, adminNonce3, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalId2),
-		pb.String(string(contracts.APPOVED)),
+		pb.String(string(contracts.APPROVED)),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -407,7 +407,7 @@ func (suite *Interchain) TestGetIBTPByID() {
 
 	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalRuleId),
-		pb.String(string(contracts.APPOVED)),
+		pb.String(string(contracts.APPROVED)),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -416,7 +416,7 @@ func (suite *Interchain) TestGetIBTPByID() {
 
 	ret, err = invokeBVMContract(suite.api, priAdmin2, adminNonce2, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalRuleId),
-		pb.String(string(contracts.APPOVED)),
+		pb.String(string(contracts.APPROVED)),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -425,7 +425,7 @@ func (suite *Interchain) TestGetIBTPByID() {
 
 	ret, err = invokeBVMContract(suite.api, priAdmin3, adminNonce3, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalRuleId),
-		pb.String(string(contracts.APPOVED)),
+		pb.String(string(contracts.APPROVED)),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -535,7 +535,7 @@ func (suite *Interchain) TestInterchain() {
 
 	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalId1),
-		pb.String(string(contracts.APPOVED)),
+		pb.String(string(contracts.APPROVED)),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -544,7 +544,7 @@ func (suite *Interchain) TestInterchain() {
 
 	ret, err = invokeBVMContract(suite.api, priAdmin2, adminNonce2, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalId1),
-		pb.String(string(contracts.APPOVED)),
+		pb.String(string(contracts.APPROVED)),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -553,7 +553,7 @@ func (suite *Interchain) TestInterchain() {
 
 	ret, err = invokeBVMContract(suite.api, priAdmin3, adminNonce3, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(proposalId1),
-		pb.String(string(contracts.APPOVED)),
+		pb.String(string(contracts.APPROVED)),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)

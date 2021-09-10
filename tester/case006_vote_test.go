@@ -158,7 +158,7 @@ func (suite *Governance) TestGovernance() {
 	b := &contracts.Ballot{}
 	err = json.Unmarshal(ret.Ret, &b)
 	suite.Require().Nil(err)
-	suite.Require().Equal(string(contracts.APPOVED), b.Approve)
+	suite.Require().Equal(string(contracts.APPROVED), b.Approve)
 
 	// vote2: reject
 	ret, err = invokeBVMContract(suite.api, priAdmin2, adminNonce2, constant.GovernanceContractAddr.Address(), "Vote",
@@ -214,7 +214,7 @@ func (suite *Governance) TestGovernance() {
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	adminNonce1++
 	proposalStatus := string(ret.Ret)
-	suite.Require().Equal(contracts.APPOVED, contracts.ProposalStatus(proposalStatus))
+	suite.Require().Equal(contracts.APPROVED, contracts.ProposalStatus(proposalStatus))
 
 	// get chain status
 	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainId))
