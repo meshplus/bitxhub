@@ -13,7 +13,7 @@ import (
 	"github.com/urfave/cli"
 )
 
-func roleMgrCND() cli.Command {
+func roleMgrCMD() cli.Command {
 	return cli.Command{
 		Name:  "role",
 		Usage: "role manage command",
@@ -304,9 +304,9 @@ func printRole(roles []*contracts.Role) {
 		if r.RoleType == contracts.GovernanceAdmin && r.Weight == repo.SuperAdminWeight {
 			typ = string(contracts.SuperGovernanceAdmin)
 		} else {
-			typ = string(contracts.GovernanceAdmin)
-		}
+			typ = string(r.RoleType)
 
+		}
 		table = append(table, []string{
 			r.ID,
 			typ,
