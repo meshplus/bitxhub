@@ -39,6 +39,4 @@ func TestAppendTx(t *testing.T) {
 		ast.Equal(2, len(txSet.Transactions), "post tx set by size")
 		ast.Equal(0, len(txCache.txSet))
 	}
-	// test exit txCache
-	close(txCache.close)
 }
