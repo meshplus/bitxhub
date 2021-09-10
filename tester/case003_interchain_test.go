@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"strings"
 
 	"github.com/meshplus/bitxhub-core/governance"
 	service_mgr "github.com/meshplus/bitxhub-core/service-mgr"
@@ -131,6 +132,7 @@ func (suite *Interchain) TestHandleIBTP() {
 	serviceID2 := "service2"
 	fullServiceID1 := fmt.Sprintf("1356:%s:%s", chainID1, serviceID1)
 	fullServiceID2 := fmt.Sprintf("1356:%s:%s", chainID2, serviceID2)
+	fullServiceID3 := fmt.Sprintf("1357:%s:%s", chainID2, serviceID2)
 	chainServiceID1 := fmt.Sprintf("%s:%s", chainID1, serviceID1)
 	chainServiceID2 := fmt.Sprintf("%s:%s", chainID2, serviceID2)
 
@@ -226,6 +228,17 @@ func (suite *Interchain) TestHandleIBTP() {
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	ibtpNonce++
+
+	ib = &pb.IBTP{From: fullServiceID1, To: fullServiceID3, Index: ibtpNonce, TimeoutHeight: 10, Proof: proofHash[:]}
+	tx, err = genIBTPTransaction(k1, ib, k1Nonce)
+	suite.Require().Nil(err)
+	k1Nonce++
+
+	tx.Extra = proof
+	ret, err = sendTransactionWithReceipt(suite.api, tx)
+	suite.Require().Nil(err)
+	suite.Require().False(ret.IsSuccess(), string(ret.Ret))
+	suite.Require().True(strings.Contains(string(ret.Ret), contracts.TargetBitXHubNotAvailable))
 
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.ServiceMgrContractAddr.Address(), "GetServiceInfo", pb.String(chainServiceID2))
 	suite.Require().Nil(err)
