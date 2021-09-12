@@ -13,9 +13,9 @@ import (
 	"github.com/libp2p/go-libp2p-core/connmgr"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
+	orderPeerMgr "github.com/meshplus/bitxhub-core/peer-mgr"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/ledger"
-	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/internal/repo"
 	libp2pcert "github.com/meshplus/go-libp2p-cert"
 	network "github.com/meshplus/go-lightp2p"
@@ -224,12 +224,12 @@ func (swarm *Swarm) Ping() {
 	}
 }
 
-func (swarm *Swarm) AsyncSend(id uint64, msg *pb.Message) error {
+func (swarm *Swarm) AsyncSend(id orderPeerMgr.KeyType, msg *pb.Message) error {
 	var (
 		addr string
 		err  error
 	)
-	if addr, err = swarm.findPeer(id); err != nil {
+	if addr, err = swarm.findPeer(id.(uint64)); err != nil {
 		return fmt.Errorf("p2p send: %w", err)
 	}
 
@@ -249,12 +249,12 @@ func (swarm *Swarm) SendWithStream(s network.Stream, msg *pb.Message) error {
 	return s.AsyncSend(data)
 }
 
-func (swarm *Swarm) Send(id uint64, msg *pb.Message) (*pb.Message, error) {
+func (swarm *Swarm) Send(id orderPeerMgr.KeyType, msg *pb.Message) (*pb.Message, error) {
 	var (
 		addr string
 		err  error
 	)
-	if addr, err = swarm.findPeer(id); err != nil {
+	if addr, err = swarm.findPeer(id.(uint64)); err != nil {
 		return nil, fmt.Errorf("check id: %w", err)
 	}
 
@@ -318,7 +318,7 @@ func (swarm *Swarm) OtherPeers() map[uint64]*peer.AddrInfo {
 	return addrInfos
 }
 
-func (swarm *Swarm) SubscribeOrderMessage(ch chan<- events.OrderMessageEvent) event.Subscription {
+func (swarm *Swarm) SubscribeOrderMessage(ch chan<- orderPeerMgr.OrderMessageEvent) event.Subscription {
 	return swarm.orderMessageFeed.Subscribe(ch)
 }
 

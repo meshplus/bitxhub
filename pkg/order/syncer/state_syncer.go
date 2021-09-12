@@ -8,9 +8,9 @@ import (
 
 	"github.com/Rican7/retry"
 	"github.com/Rican7/retry/strategy"
+	orderPeerMgr "github.com/meshplus/bitxhub-core/peer-mgr"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/pkg/peermgr"
 	"github.com/sirupsen/logrus"
 )
 
@@ -19,11 +19,11 @@ var _ Syncer = (*StateSyncer)(nil)
 const defaultBlockFetch = 5
 
 type StateSyncer struct {
-	blockFetch uint64              // amount of blocks to be fetched per retrieval request
-	peerMgr    peermgr.PeerManager // network manager
-	badPeers   *sync.Map           // peer node set who return bad block
-	quorum     uint64              // quorum node numbers
-	peerIds    []uint64            // peers who have current newly consensus state
+	blockFetch uint64                        // amount of blocks to be fetched per retrieval request
+	peerMgr    orderPeerMgr.OrderPeerManager // network manager
+	badPeers   *sync.Map                     // peer node set who return bad block
+	quorum     uint64                        // quorum node numbers
+	peerIds    []uint64                      // peers who have current newly consensus state
 	logger     logrus.FieldLogger
 }
 
@@ -32,7 +32,7 @@ type rangeHeight struct {
 	end   uint64
 }
 
-func New(blockFetch uint64, peerMgr peermgr.PeerManager, quorum uint64, peerIds []uint64, logger logrus.FieldLogger) (*StateSyncer, error) {
+func New(blockFetch uint64, peerMgr orderPeerMgr.OrderPeerManager, quorum uint64, peerIds []uint64, logger logrus.FieldLogger) (*StateSyncer, error) {
 	if blockFetch == 0 {
 		blockFetch = defaultBlockFetch
 	}
@@ -228,7 +228,7 @@ func (s *StateSyncer) calcRangeHeight(begin, end uint64) ([]*rangeHeight, error)
 	}
 	startNo := begin / s.blockFetch
 	rangeHeights := make([]*rangeHeight, 0)
-	for ; begin <= end; {
+	for begin <= end {
 		rangeBegin := begin
 		rangeEnd := (startNo + 1) * s.blockFetch
 		if rangeEnd > end {

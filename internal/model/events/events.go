@@ -21,10 +21,6 @@ type CheckpointEvent struct {
 	Digest types.Hash
 }
 
-type OrderMessageEvent struct {
-	Data []byte
-}
-
 type NodeEvent struct {
 	NodeId        uint64
 	NodeEventType governance.EventType

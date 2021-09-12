@@ -2,6 +2,7 @@ package app
 
 import (
 	"github.com/meshplus/bitxhub-core/governance"
+	orderPeerMgr "github.com/meshplus/bitxhub-core/peer-mgr"
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/sirupsen/logrus"
@@ -28,7 +29,7 @@ func (bxh *BitXHub) start() {
 
 func (bxh *BitXHub) listenEvent() {
 	blockCh := make(chan events.ExecutedEvent)
-	orderMsgCh := make(chan events.OrderMessageEvent)
+	orderMsgCh := make(chan orderPeerMgr.OrderMessageEvent)
 	nodeCh := make(chan events.NodeEvent)
 	configCh := make(chan *repo.Repo)
 
