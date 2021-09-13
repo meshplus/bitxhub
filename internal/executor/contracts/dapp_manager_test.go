@@ -23,6 +23,8 @@ const (
 func TestDappManager_RegisterDapp(t *testing.T) {
 	dm, mockStub, dapps, _ := dappPrepare(t)
 
+	dappContractMap := make(map[string]string)
+	mockStub.EXPECT().GetObject(DAPPCONTRACT_PREFIX, gomock.Any()).SetArg(1, dappContractMap).Return(true).AnyTimes()
 	governancePreErrReq := mockStub.EXPECT().GetObject(DappKey(dappID), gomock.Any()).SetArg(1, *dapps[0]).Return(true).Times(1)
 	submitErrReq := mockStub.EXPECT().GetObject(DappKey(dappID), gomock.Any()).Return(false).Times(2)
 	okReq := mockStub.EXPECT().GetObject(DappKey(dappID), gomock.Any()).Return(false).AnyTimes()
@@ -40,22 +42,24 @@ func TestDappManager_RegisterDapp(t *testing.T) {
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 
 	// 1. check info error
-	res := dm.RegisterDapp(dapps[0].Name, dapps[0].Type, dapps[0].Desc, "", "-", reason)
-	assert.Equal(t, false, res.Ok)
+	res := dm.RegisterDapp(dapps[0].Name, string(dapps[0].Type), dapps[0].Desc, "", "-", reason)
+	assert.Equal(t, false, res.Ok, string(res.Result))
 	// 2. governancePre error
-	res = dm.RegisterDapp(dapps[0].Name, dapps[0].Type, dapps[0].Desc, "", "", reason)
-	assert.Equal(t, false, res.Ok)
+	res = dm.RegisterDapp(dapps[0].Name, string(dapps[0].Type), dapps[0].Desc, "", "", reason)
+	assert.Equal(t, false, res.Ok, string(res.Result))
 	// 3. submit error
-	res = dm.RegisterDapp(dapps[0].Name, dapps[0].Type, dapps[0].Desc, "", "", reason)
-	assert.Equal(t, false, res.Ok)
+	res = dm.RegisterDapp(dapps[0].Name, string(dapps[0].Type), dapps[0].Desc, "", "", reason)
+	assert.Equal(t, false, res.Ok, string(res.Result))
 
-	res = dm.RegisterDapp(dapps[0].Name, dapps[0].Type, dapps[0].Desc, "", "", reason)
-	assert.Equal(t, true, res.Ok)
+	res = dm.RegisterDapp(dapps[0].Name, string(dapps[0].Type), dapps[0].Desc, "", "", reason)
+	assert.Equal(t, true, res.Ok, string(res.Result))
 }
 
 func TestDappManager_UpdateDapp(t *testing.T) {
 	dm, mockStub, dapps, _ := dappPrepare(t)
 
+	dappContractMap := make(map[string]string)
+	mockStub.EXPECT().GetObject(DAPPCONTRACT_PREFIX, gomock.Any()).SetArg(1, dappContractMap).Return(true).AnyTimes()
 	governancePreErrReq := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Return(false).Times(1)
 	checkPermissionErrReq := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *dapps[0]).Return(true).Times(1)
 	checkInfoErrReq := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *dapps[0]).Return(true).Times(1)
@@ -77,22 +81,22 @@ func TestDappManager_UpdateDapp(t *testing.T) {
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 
 	// 1. governancePre error
-	res := dm.UpdateDapp(dapps[0].DappID, dapps[0].Name, dapps[0].Type, dapps[0].Desc, "", "", reason)
+	res := dm.UpdateDapp(dapps[0].DappID, dapps[0].Name, string(dapps[0].Type), dapps[0].Desc, "", "", reason)
 	assert.Equal(t, false, res.Ok)
 	// 2. check permision error
-	res = dm.UpdateDapp(dapps[0].DappID, dapps[0].Name, dapps[0].Type, dapps[0].Desc, "", "", reason)
+	res = dm.UpdateDapp(dapps[0].DappID, dapps[0].Name, string(dapps[0].Type), dapps[0].Desc, "", "", reason)
 	assert.Equal(t, false, res.Ok)
 	// 3. check info error
-	res = dm.UpdateDapp(dapps[0].DappID, dapps[0].Name, dapps[0].Type, dapps[0].Desc, "", "-", reason)
+	res = dm.UpdateDapp(dapps[0].DappID, dapps[0].Name, string(dapps[0].Type), dapps[0].Desc, "", "-", reason)
 	assert.Equal(t, false, res.Ok)
 	// 4. submit error
-	res = dm.UpdateDapp(dapps[0].DappID, dapps[0].Name, dapps[0].Type, dapps[0].Desc, "", "", reason)
+	res = dm.UpdateDapp(dapps[0].DappID, dapps[0].Name, string(dapps[0].Type), dapps[0].Desc, "", "", reason)
 	assert.Equal(t, false, res.Ok)
 	// 5. change status error
-	res = dm.UpdateDapp(dapps[0].DappID, dapps[0].Name, dapps[0].Type, dapps[0].Desc, "", "", reason)
+	res = dm.UpdateDapp(dapps[0].DappID, dapps[0].Name, string(dapps[0].Type), dapps[0].Desc, "", "", reason)
 	assert.Equal(t, false, res.Ok)
 
-	res = dm.UpdateDapp(dapps[0].DappID, dapps[0].Name, dapps[0].Type, dapps[0].Desc, "", "", reason)
+	res = dm.UpdateDapp(dapps[0].DappID, dapps[0].Name, string(dapps[0].Type), dapps[0].Desc, "", "", reason)
 	assert.Equal(t, true, res.Ok)
 }
 
@@ -276,7 +280,7 @@ func dappPrepare(t *testing.T) (*DappManager, *mock_stub.MockStub, []*Dapp, [][]
 		dapp := &Dapp{
 			DappID:       dappID,
 			Name:         "name",
-			Type:         "type",
+			Type:         "tool",
 			Desc:         "desc",
 			ContractAddr: nil,
 			Permission:   nil,

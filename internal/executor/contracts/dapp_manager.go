@@ -18,18 +18,28 @@ import (
 )
 
 const (
-	DAPPPREFIX  = "dapp"
-	OWNERPREFIX = "owner"
+	DAPPPREFIX          = "dapp"
+	OWNERPREFIX         = "owner"
+	DAPPCONTRACT_PREFIX = "contract"
 )
 
 type DappManager struct {
 	boltvm.Stub
 }
 
+type DappType string
+
+var (
+	DappTool        DappType = "tool"
+	DappApplication DappType = "application"
+	DappGame        DappType = "game"
+	DappOthers      DappType = "others"
+)
+
 type Dapp struct {
 	DappID       string              `json:"dapp_id"` // first owner address + num
 	Name         string              `json:"name"`
-	Type         string              `json:"type"`
+	Type         DappType            `json:"type"`
 	Desc         string              `json:"desc"`
 	ContractAddr map[string]struct{} `json:"contract_addr"`
 	Permission   map[string]struct{} `json:"permission"` // users which are not allowed to see the dapp
@@ -182,7 +192,7 @@ func (dm *DappManager) checkPermission(permissions []string, ownerAddr string, r
 
 // ========================== Governance interface ========================
 // =========== Manage does some subsequent operations when the proposal is over
-// extra: update - dapp info, transfer - transfer record
+// extra: update - dapp info, transfer - transfer record, register - dapp
 func (dm *DappManager) Manage(eventTyp, proposalResult, lastStatus, objId string, extra []byte) *boltvm.Response {
 	// 1. check permission: PermissionSpecific(GovernanceContractAddr)
 	specificAddrs := []string{constant.GovernanceContractAddr.Address().String()}
@@ -202,6 +212,10 @@ func (dm *DappManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 	// 3. other operation
 	if proposalResult == string(APPROVED) {
 		switch eventTyp {
+		case string(governance.EventRegister):
+			if err := dm.manegeRegister(objId, extra); err != nil {
+				return boltvm.Error(fmt.Sprintf("manage register error: %v", err))
+			}
 		case string(governance.EventUpdate):
 			if err := dm.manegeUpdate(objId, extra); err != nil {
 				return boltvm.Error(fmt.Sprintf("manage update error: %v", err))
@@ -214,6 +228,23 @@ func (dm *DappManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 	}
 
 	return boltvm.Success(nil)
+}
+
+func (dm *DappManager) manegeRegister(id string, registerData []byte) error {
+	registerInfo := &Dapp{}
+	if err := json.Unmarshal(registerData, registerInfo); err != nil {
+		return fmt.Errorf("unmarshal register data error:%v", err)
+	}
+
+	dappContractMap := make(map[string]string)
+	_ = dm.GetObject(DAPPCONTRACT_PREFIX, &dappContractMap)
+
+	for addr, _ := range registerInfo.ContractAddr {
+		dappContractMap[addr] = registerInfo.DappID
+	}
+
+	dm.SetObject(DAPPCONTRACT_PREFIX, dappContractMap)
+	return nil
 }
 
 func (dm *DappManager) manegeUpdate(id string, updateData []byte) error {
@@ -274,7 +305,7 @@ func (dm *DappManager) RegisterDapp(name, typ, desc, conAddrs, permits, reason s
 	}
 
 	// 2. check dapp info
-	if err := dm.checkDappInfo(dapp); err != nil {
+	if err := dm.checkDappInfo(dapp, true); err != nil {
 		return boltvm.Error(fmt.Sprintf("check dapp info error : %v", err))
 	}
 
@@ -284,6 +315,10 @@ func (dm *DappManager) RegisterDapp(name, typ, desc, conAddrs, permits, reason s
 	}
 
 	// 4. submit proposal
+	dappData, err := json.Marshal(dapp)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("marshal dapp err: %v", err))
+	}
 	res := dm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "SubmitProposal",
 		pb.String(dm.Caller()),
 		pb.String(string(event)),
@@ -291,7 +326,7 @@ func (dm *DappManager) RegisterDapp(name, typ, desc, conAddrs, permits, reason s
 		pb.String(dapp.DappID),
 		pb.String(string(governance.GovernanceUnavailable)),
 		pb.String(reason),
-		pb.Bytes(nil),
+		pb.Bytes(dappData),
 	)
 	if !res.Ok {
 		return boltvm.Error(fmt.Sprintf("submit proposal error: %s", string(res.Result)))
@@ -328,7 +363,7 @@ func (dm *DappManager) UpdateDapp(id, name, typ, desc, conAddrs, permits, reason
 		return boltvm.Error(fmt.Sprintf("get dapp info error: %v", err))
 	}
 	// 4. check info
-	if err := dm.checkDappInfo(newDapp); err != nil {
+	if err := dm.checkDappInfo(newDapp, false); err != nil {
 		return boltvm.Error(fmt.Sprintf("check dapp info error : %v", err))
 	}
 
@@ -617,7 +652,7 @@ func (dm *DappManager) packageDappInfo(dappID, name string, typ string, conAddrs
 	dapp := &Dapp{
 		DappID:            dappID,
 		Name:              name,
-		Type:              typ,
+		Type:              DappType(typ),
 		Desc:              desc,
 		ContractAddr:      contractAddr,
 		Permission:        permission,
@@ -632,9 +667,24 @@ func (dm *DappManager) packageDappInfo(dappID, name string, typ string, conAddrs
 	return dapp, nil
 }
 
-func (dm *DappManager) checkDappInfo(dapp *Dapp) error {
+func (dm *DappManager) checkDappInfo(dapp *Dapp, isRegister bool) error {
+	// check type
+	if dapp.Type != DappTool &&
+		dapp.Type != DappApplication &&
+		dapp.Type != DappGame &&
+		dapp.Type != DappOthers {
+		return fmt.Errorf("illegal dapp type: %s", dapp.Type)
+	}
 	// check contract addr
+	dappContractMap := make(map[string]string)
+	_ = dm.GetObject(DAPPCONTRACT_PREFIX, &dappContractMap)
 	for a, _ := range dapp.ContractAddr {
+		if isRegister {
+			dappID, exist := dappContractMap[a]
+			if exist {
+				return fmt.Errorf("the contract address belongs to dapp %s and cannot be registered repeatedly", dappID)
+			}
+		}
 		account1 := dm.GetAccount(a)
 		account := account1.(ledger.IAccount)
 		if account.Code() == nil {
