@@ -36,7 +36,7 @@ func TestNode_Start(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	mockPeermgr := mock_peermgr.NewMockPeerManager(mockCtl)
 	peers := make(map[uint64]*pb.VpInfo)
-	mockPeermgr.EXPECT().Peers().Return(peers).AnyTimes()
+	mockPeermgr.EXPECT().OrderPeers().Return(peers).AnyTimes()
 
 	nodes := make(map[uint64]*pb.VpInfo)
 	vpInfo := &pb.VpInfo{

@@ -300,7 +300,19 @@ func (swarm *Swarm) Broadcast(msg *pb.Message) error {
 	return swarm.p2p.Broadcast(addrs, data)
 }
 
-func (swarm *Swarm) Peers() map[uint64]*pb.VpInfo {
+func (swarm *Swarm) Peers() map[uint64]*peer.AddrInfo {
+	//TODO: Too much redundant code, Optimize implementation logic.
+	addrInfos := make(map[uint64]*peer.AddrInfo)
+	for _, node := range swarm.notifiee.getPeers() {
+		addrInfo := &peer.AddrInfo{
+			ID: peer.ID(node.Pid),
+		}
+		addrInfos[node.Id] = addrInfo
+	}
+	return addrInfos
+}
+
+func (swarm *Swarm) OrderPeers() map[uint64]*pb.VpInfo {
 	return swarm.notifiee.getPeers()
 }
 
