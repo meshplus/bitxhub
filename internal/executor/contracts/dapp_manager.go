@@ -41,6 +41,7 @@ type Dapp struct {
 	Name         string              `json:"name"`
 	Type         DappType            `json:"type"`
 	Desc         string              `json:"desc"`
+	Url          string              `json:"url"`
 	ContractAddr map[string]struct{} `json:"contract_addr"`
 	Permission   map[string]struct{} `json:"permission"` // users which are not allowed to see the dapp
 	OwnerAddr    string              `json:"owner_addr"`
@@ -295,11 +296,11 @@ func (dm *DappManager) addToOwner(ownerAddr, dappID string) {
 }
 
 // =========== RegisterDapp registers dapp info, returns proposal id and error
-func (dm *DappManager) RegisterDapp(name, typ, desc, conAddrs, permits, reason string) *boltvm.Response {
+func (dm *DappManager) RegisterDapp(name, typ, desc, url, conAddrs, permits, reason string) *boltvm.Response {
 	event := governance.EventRegister
 
 	// 1. get dapp info
-	dapp, err := dm.packageDappInfo("", name, typ, conAddrs, desc, permits, dm.Caller(), 0, dm.GetTxTimeStamp(), make(map[string]*governance.EvaluationRecord), nil, governance.GovernanceRegisting)
+	dapp, err := dm.packageDappInfo("", name, typ, desc, url, conAddrs, permits, dm.Caller(), 0, dm.GetTxTimeStamp(), make(map[string]*governance.EvaluationRecord), nil, governance.GovernanceRegisting)
 	if err != nil {
 		return boltvm.Error(fmt.Sprintf("get dapp info error: %v", err))
 	}
@@ -343,7 +344,7 @@ func (dm *DappManager) RegisterDapp(name, typ, desc, conAddrs, permits, reason s
 }
 
 // =========== UpdateDapp updates dapp info.
-func (dm *DappManager) UpdateDapp(id, name, typ, desc, conAddrs, permits, reason string) *boltvm.Response {
+func (dm *DappManager) UpdateDapp(id, name, typ, desc, url, conAddrs, permits, reason string) *boltvm.Response {
 	event := governance.EventUpdate
 
 	// 1. governance pre: check if exist and status
@@ -358,7 +359,7 @@ func (dm *DappManager) UpdateDapp(id, name, typ, desc, conAddrs, permits, reason
 	}
 
 	// 3. get info
-	newDapp, err := dm.packageDappInfo(id, name, typ, conAddrs, desc, permits, oldDapp.OwnerAddr, oldDapp.Score, oldDapp.CreateTime, oldDapp.EvaluationRecords, oldDapp.TransferRecords, oldDapp.Status)
+	newDapp, err := dm.packageDappInfo(id, name, typ, desc, url, conAddrs, permits, oldDapp.OwnerAddr, oldDapp.Score, oldDapp.CreateTime, oldDapp.EvaluationRecords, oldDapp.TransferRecords, oldDapp.Status)
 	if err != nil {
 		return boltvm.Error(fmt.Sprintf("get dapp info error: %v", err))
 	}
@@ -627,7 +628,7 @@ func (dm *DappManager) isAvailable(dappID string) bool {
 	}
 }
 
-func (dm *DappManager) packageDappInfo(dappID, name string, typ string, conAddrs string, desc string, permits, ownerAddr string,
+func (dm *DappManager) packageDappInfo(dappID, name string, typ string, desc string, url, conAddrs string, permits, ownerAddr string,
 	score float64, createTime int64, evaluationRecord map[string]*governance.EvaluationRecord, transferRecord []*TransferRecord, status governance.GovernanceStatus) (*Dapp, error) {
 	if dappID == "" {
 		// register
@@ -654,6 +655,7 @@ func (dm *DappManager) packageDappInfo(dappID, name string, typ string, conAddrs
 		Name:              name,
 		Type:              DappType(typ),
 		Desc:              desc,
+		Url:               url,
 		ContractAddr:      contractAddr,
 		Permission:        permission,
 		OwnerAddr:         ownerAddr,

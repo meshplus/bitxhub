@@ -42,16 +42,16 @@ func TestDappManager_RegisterDapp(t *testing.T) {
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 
 	// 1. check info error
-	res := dm.RegisterDapp(dapps[0].Name, string(dapps[0].Type), dapps[0].Desc, "", "-", reason)
+	res := dm.RegisterDapp(dapps[0].Name, string(dapps[0].Type), dapps[0].Desc, "url", "", "-", reason)
 	assert.Equal(t, false, res.Ok, string(res.Result))
 	// 2. governancePre error
-	res = dm.RegisterDapp(dapps[0].Name, string(dapps[0].Type), dapps[0].Desc, "", "", reason)
+	res = dm.RegisterDapp(dapps[0].Name, string(dapps[0].Type), dapps[0].Desc, "url", "", "", reason)
 	assert.Equal(t, false, res.Ok, string(res.Result))
 	// 3. submit error
-	res = dm.RegisterDapp(dapps[0].Name, string(dapps[0].Type), dapps[0].Desc, "", "", reason)
+	res = dm.RegisterDapp(dapps[0].Name, string(dapps[0].Type), dapps[0].Desc, "url", "", "", reason)
 	assert.Equal(t, false, res.Ok, string(res.Result))
 
-	res = dm.RegisterDapp(dapps[0].Name, string(dapps[0].Type), dapps[0].Desc, "", "", reason)
+	res = dm.RegisterDapp(dapps[0].Name, string(dapps[0].Type), dapps[0].Desc, "url", "", "", reason)
 	assert.Equal(t, true, res.Ok, string(res.Result))
 }
 
@@ -81,22 +81,22 @@ func TestDappManager_UpdateDapp(t *testing.T) {
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 
 	// 1. governancePre error
-	res := dm.UpdateDapp(dapps[0].DappID, dapps[0].Name, string(dapps[0].Type), dapps[0].Desc, "", "", reason)
+	res := dm.UpdateDapp(dapps[0].DappID, dapps[0].Name, string(dapps[0].Type), dapps[0].Desc, "url", "", "", reason)
 	assert.Equal(t, false, res.Ok)
 	// 2. check permision error
-	res = dm.UpdateDapp(dapps[0].DappID, dapps[0].Name, string(dapps[0].Type), dapps[0].Desc, "", "", reason)
+	res = dm.UpdateDapp(dapps[0].DappID, dapps[0].Name, string(dapps[0].Type), dapps[0].Desc, "url", "", "", reason)
 	assert.Equal(t, false, res.Ok)
 	// 3. check info error
-	res = dm.UpdateDapp(dapps[0].DappID, dapps[0].Name, string(dapps[0].Type), dapps[0].Desc, "", "-", reason)
+	res = dm.UpdateDapp(dapps[0].DappID, dapps[0].Name, string(dapps[0].Type), dapps[0].Desc, "url", "", "-", reason)
 	assert.Equal(t, false, res.Ok)
 	// 4. submit error
-	res = dm.UpdateDapp(dapps[0].DappID, dapps[0].Name, string(dapps[0].Type), dapps[0].Desc, "", "", reason)
+	res = dm.UpdateDapp(dapps[0].DappID, dapps[0].Name, string(dapps[0].Type), dapps[0].Desc, "url", "", "", reason)
 	assert.Equal(t, false, res.Ok)
 	// 5. change status error
-	res = dm.UpdateDapp(dapps[0].DappID, dapps[0].Name, string(dapps[0].Type), dapps[0].Desc, "", "", reason)
+	res = dm.UpdateDapp(dapps[0].DappID, dapps[0].Name, string(dapps[0].Type), dapps[0].Desc, "url", "", "", reason)
 	assert.Equal(t, false, res.Ok)
 
-	res = dm.UpdateDapp(dapps[0].DappID, dapps[0].Name, string(dapps[0].Type), dapps[0].Desc, "", "", reason)
+	res = dm.UpdateDapp(dapps[0].DappID, dapps[0].Name, string(dapps[0].Type), dapps[0].Desc, "url", "", "", reason)
 	assert.Equal(t, true, res.Ok)
 }
 
