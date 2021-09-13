@@ -24,6 +24,11 @@ type RuleManager struct {
 	ruleMgr.RuleManager
 }
 
+type UpdateMasterRuleInfo struct {
+	NewRule  *ruleMgr.Rule         `json:"new_rule"`
+	Appchain *appchainMgr.Appchain `json:"appchain"`
+}
+
 // extra: ruleMgr.rule
 func (rm *RuleManager) Manage(eventTyp string, proposalResult, lastStatus string, extra []byte) *boltvm.Response {
 	specificAddrs := []string{constant.GovernanceContractAddr.Address().String()}
@@ -41,16 +46,16 @@ func (rm *RuleManager) Manage(eventTyp string, proposalResult, lastStatus string
 	}
 
 	rm.RuleManager.Persister = rm.Stub
-	rule := &ruleMgr.Rule{}
-	if err := json.Unmarshal(extra, &rule); err != nil {
-		return boltvm.Error("unmarshal rule error:" + err.Error())
+	info := &UpdateMasterRuleInfo{}
+	if err := json.Unmarshal(extra, &info); err != nil {
+		return boltvm.Error("unmarshal info error:" + err.Error())
 	}
 
 	switch eventTyp {
 	case string(governance.EventUpdate):
 		// get master
 		masterRule := &ruleMgr.Rule{}
-		ok, masterData := rm.RuleManager.GetMaster(rule.ChainId)
+		ok, masterData := rm.RuleManager.GetMaster(info.NewRule.ChainId)
 		if !ok {
 			return boltvm.Error("get master error: " + string(masterData))
 		}
@@ -62,9 +67,17 @@ func (rm *RuleManager) Manage(eventTyp string, proposalResult, lastStatus string
 		if !ok {
 			return boltvm.Error(string(errData))
 		}
+
+		// If the update succeeds, restore the status of the appchain
+		if proposalResult == string(APPROVED) {
+			res := rm.CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "UnPauseAppchain", pb.String(info.Appchain.ID), pb.String(string(info.Appchain.Status)))
+			if !res.Ok {
+				return boltvm.Error(fmt.Sprintf("cross invoke UnPauseAppchain err: %s", res.Result))
+			}
+		}
 	}
 
-	ok, errData := rm.RuleManager.ChangeStatus(rule.Address, proposalResult, lastStatus, []byte(rule.ChainId))
+	ok, errData := rm.RuleManager.ChangeStatus(info.NewRule.Address, proposalResult, lastStatus, []byte(info.NewRule.ChainId))
 	if !ok {
 		return boltvm.Error(string(errData))
 	}
@@ -114,7 +127,13 @@ func (rm *RuleManager) RegisterRule(chainId string, ruleAddress, ruleUrl, reason
 
 	// 6. submit proposal
 	// 7. change status
-	return rm.bindRule(chainId, ruleAddress, governance.EventBind, reason)
+	return rm.bindRule(&UpdateMasterRuleInfo{
+		NewRule: &ruleMgr.Rule{
+			Address: ruleAddress,
+			ChainId: chainId,
+			Status:  governance.GovernanceUnavailable,
+		},
+	}, governance.EventBind, reason)
 }
 
 // Register records the rule, and then automatically binds the rule if there is no master validation rule
@@ -203,8 +222,13 @@ func (rm *RuleManager) UpdateMasterRule(chainId string, newMasterruleAddress, re
 	}
 
 	// 2. check appchain
-	if res := rm.CrossInvoke(constant.AppchainMgrContractAddr.String(), "IsAvailable", pb.String(chainId)); !res.Ok {
-		return boltvm.Error("cross invoke IsAvailable error: " + string(res.Result))
+	res := rm.CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "PauseAppchain", pb.String(chainId))
+	if !res.Ok {
+		return boltvm.Error(fmt.Sprintf("cross invoke PauseAppchain error: %s", string(res.Result)))
+	}
+	appchain := &appchainMgr.Appchain{}
+	if err := json.Unmarshal(res.Result, appchain); err != nil {
+		return boltvm.Error(fmt.Sprintf("unmarshal appchain error: %v", err))
 	}
 
 	// 3. check new rule
@@ -213,13 +237,22 @@ func (rm *RuleManager) UpdateMasterRule(chainId string, newMasterruleAddress, re
 	}
 
 	// 4. new rule pre bind
-	if ok, data := rm.RuleManager.BindPre(chainId, newMasterruleAddress, true); !ok {
+	ok, data := rm.RuleManager.BindPre(chainId, newMasterruleAddress, true)
+	if !ok {
 		return boltvm.Error("bind prepare error: " + string(data))
 	}
 
 	// 5. submit new rule bind proposal
 	// 6. change new rule status
-	res := rm.bindRule(chainId, newMasterruleAddress, governance.EventUpdate, reason)
+	newRule := &ruleMgr.Rule{}
+	if err := json.Unmarshal(data, newRule); err != nil {
+		return boltvm.Error(fmt.Sprintf("unmarshal rule err: %v", err))
+	}
+	info := &UpdateMasterRuleInfo{
+		NewRule:  newRule,
+		Appchain: appchain,
+	}
+	res = rm.bindRule(info, governance.EventUpdate, reason)
 	if !res.Ok {
 		return res
 	}
@@ -270,17 +303,13 @@ func (rm *RuleManager) BindRule(chainId string, ruleAddr, ruleUrl string) *boltv
 	return boltvm.Success(nil)
 }
 
-func (rm *RuleManager) bindRule(chainId string, ruleAddr string, event governance.EventType, reason string) *boltvm.Response {
+func (rm *RuleManager) bindRule(info *UpdateMasterRuleInfo, event governance.EventType, reason string) *boltvm.Response {
 	rm.RuleManager.Persister = rm.Stub
 
 	// submit proposal
-	ruleRes := rm.GetRuleByAddr(chainId, ruleAddr)
-	if !ruleRes.Ok {
-		return boltvm.Error("get rule by addr error: " + string(ruleRes.Result))
-	}
-	rule := &ruleMgr.Rule{}
-	if err := json.Unmarshal(ruleRes.Result, &rule); err != nil {
-		return boltvm.Error("unmarshal rule error:" + err.Error())
+	infoData, err := json.Marshal(info)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("marshal update info error: %v", err))
 	}
 
 	res := rm.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
@@ -288,17 +317,17 @@ func (rm *RuleManager) bindRule(chainId string, ruleAddr string, event governanc
 		pb.String(string(event)),
 		pb.String(""),
 		pb.String(string(RuleMgr)),
-		pb.String(RuleKey(chainId)),
-		pb.String(string(rule.Status)),
+		pb.String(RuleKey(info.NewRule.Address)),
+		pb.String(string(info.NewRule.Status)),
 		pb.String(reason),
-		pb.Bytes(ruleRes.Result),
+		pb.Bytes(infoData),
 	)
 	if !res.Ok {
 		return boltvm.Error("cross invoke SubmitProposal error: " + string(res.Result))
 	}
 
 	// change status
-	if ok, data := rm.RuleManager.ChangeStatus(ruleAddr, string(governance.EventBind), string(rule.Status), []byte(chainId)); !ok {
+	if ok, data := rm.RuleManager.ChangeStatus(info.NewRule.Address, string(governance.EventBind), string(info.NewRule.Status), []byte(info.NewRule.ChainId)); !ok {
 		return boltvm.Error("change status error: " + string(data))
 	}
 
