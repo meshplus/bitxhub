@@ -64,6 +64,11 @@ func dappMgrCMD() cli.Command {
 						Required: true,
 					},
 					cli.StringFlag{
+						Name:     "url",
+						Usage:    "Specify dapp url",
+						Required: true,
+					},
+					cli.StringFlag{
 						Name:     "contractAddrs",
 						Usage:    "Specify dapp contract addr. If there are multiple contract addresses, separate them with ','",
 						Required: true,
@@ -103,6 +108,11 @@ func dappMgrCMD() cli.Command {
 					cli.StringFlag{
 						Name:     "desc",
 						Usage:    "Specify dapp description",
+						Required: false,
+					},
+					cli.StringFlag{
+						Name:     "url",
+						Usage:    "Specify dapp url",
 						Required: false,
 					},
 					cli.StringFlag{
@@ -261,6 +271,7 @@ func registerDapp(ctx *cli.Context) error {
 	name := ctx.String("name")
 	typ := ctx.String("type")
 	desc := ctx.String("desc")
+	url := ctx.String("url")
 	contractAddrs := strings.TrimSpace(ctx.String("contractAddrs"))
 	reason := ctx.String("reason")
 	permissionStr := strings.TrimSpace(ctx.String("permission"))
@@ -270,6 +281,7 @@ func registerDapp(ctx *cli.Context) error {
 		pb.String(name),
 		pb.String(typ),
 		pb.String(desc),
+		pb.String(url),
 		pb.String(contractAddrs),
 		pb.String(permissionStr),
 		pb.String(reason),
@@ -295,15 +307,65 @@ func updateDapp(ctx *cli.Context) error {
 	name := ctx.String("name")
 	typ := ctx.String("type")
 	desc := ctx.String("desc")
+	url := ctx.String("url")
 	contractAddrs := strings.TrimSpace(ctx.String("contractAddrs"))
 	reason := ctx.String("reason")
 	permissionStr := strings.TrimSpace(ctx.String("permission"))
 
-	receipt, err := invokeBVMContract(ctx, constant.DappMgrContractAddr.String(), "UpdateDapp",
+	receipt, err := invokeBVMContractBySendView(ctx, constant.DappMgrContractAddr.String(), "GetDapp",
+		pb.String(id),
+	)
+	if err != nil {
+		return err
+	}
+	if receipt.IsSuccess() {
+		dapp := &contracts.Dapp{}
+		if err := json.Unmarshal(receipt.Ret, dapp); err != nil {
+			return fmt.Errorf("unmarshal receipt error: %w", err)
+		}
+		if name == "" {
+			name = dapp.Name
+		}
+		if typ == "" {
+			typ = string(dapp.Type)
+		}
+		if desc == "" {
+			desc = dapp.Desc
+		}
+		if url == "" {
+			url = dapp.Url
+		}
+		if contractAddrs == "" {
+			for k, _ := range dapp.ContractAddr {
+				if contractAddrs == "" {
+					contractAddrs = k
+				} else {
+					contractAddrs = fmt.Sprintf("%s,%s", contractAddrs, k)
+				}
+			}
+
+		}
+		if permissionStr == "" {
+			for k, _ := range dapp.Permission {
+				if permissionStr == "" {
+					permissionStr = k
+				} else {
+					permissionStr = fmt.Sprintf("%s,%s", permissionStr, k)
+				}
+			}
+
+		}
+	} else {
+		color.Red("get dapp info error: %s\n", string(receipt.Ret))
+		return fmt.Errorf("get dapp info error: %s\n", string(receipt.Ret))
+	}
+
+	receipt, err = invokeBVMContract(ctx, constant.DappMgrContractAddr.String(), "UpdateDapp",
 		pb.String(id),
 		pb.String(name),
 		pb.String(typ),
 		pb.String(desc),
+		pb.String(url),
 		pb.String(contractAddrs),
 		pb.String(permissionStr),
 		pb.String(reason),
