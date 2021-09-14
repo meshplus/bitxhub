@@ -13,6 +13,7 @@ import (
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/repo"
+	"github.com/sirupsen/logrus"
 )
 
 // todo: get this from config file
@@ -546,6 +547,127 @@ func (am *AppchainManager) LogoutAppchain(id, reason string) *boltvm.Response {
 	}
 
 	return getGovernanceRet(string(res.Result), nil)
+}
+
+func (am *AppchainManager) checkPermission(permissions []string, appchainID string, regulatorAddr string, specificAddrsData []byte) error {
+	for _, permission := range permissions {
+		switch permission {
+		case string(PermissionSelf):
+			res := am.CrossInvoke(constant.RoleContractAddr.Address().String(), "GetAppchainAdmin", pb.String(appchainID))
+			if !res.Ok {
+				return fmt.Errorf("cross invoke GetAppchainAdmin error:%s", string(res.Result))
+			}
+			role := &Role{}
+			if err := json.Unmarshal(res.Result, role); err != nil {
+				return err
+			}
+			if regulatorAddr == role.ID {
+				return nil
+			}
+		case string(PermissionAdmin):
+			res := am.CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin",
+				pb.String(regulatorAddr),
+				pb.String(string(GovernanceAdmin)))
+			if !res.Ok {
+				return fmt.Errorf("cross invoke IsAvailableGovernanceAdmin error:%s", string(res.Result))
+			}
+			if "true" == string(res.Result) {
+				return nil
+			}
+		case string(PermissionSpecific):
+			specificAddrs := []string{}
+			if err := json.Unmarshal(specificAddrsData, &specificAddrs); err != nil {
+				return err
+			}
+			for _, addr := range specificAddrs {
+				if addr == regulatorAddr {
+					return nil
+				}
+			}
+		default:
+			return fmt.Errorf("unsupport permission: %s", permission)
+		}
+	}
+
+	return fmt.Errorf("regulatorAddr(%s) does not have the permission", regulatorAddr)
+}
+
+// =========== PauseAppchain freezes appchain without governance
+// This function is triggered when the master rule is updating.
+// Information about the appchain before the pause is returned
+//  so that the appchain can be restored when unpause is invoked.
+func (am *AppchainManager) PauseAppchain(id string) *boltvm.Response {
+	am.AppchainManager.Persister = am.Stub
+	event := governance.EventPause
+
+	// 1. check permission: PermissionSpecific
+	specificAddrs := []string{constant.RuleManagerContractAddr.Address().String()}
+	addrsData, err := json.Marshal(specificAddrs)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("marshal specificAddrs error: %v", err))
+	}
+	if err := am.checkPermission([]string{string(PermissionSpecific)}, id, am.CurrentCaller(), addrsData); err != nil {
+		return boltvm.Error(fmt.Sprintf("check permission error:%v", err))
+	}
+
+	// 2. governance pre: check if exist and status
+	ok, data := am.AppchainManager.GovernancePre(id, event, nil)
+	if !ok {
+		return boltvm.Error(fmt.Sprintf("%s prepare error: %s", string(event), string(data)))
+	}
+	chainInfo := &appchainMgr.Appchain{}
+	if err := json.Unmarshal(data, chainInfo); err != nil {
+		return boltvm.Error(fmt.Sprintf("unmarshal chain error: %v", err))
+	}
+
+	// 3. change status
+	if chainInfo.Status == governance.GovernanceAvailable {
+		if ok, data1 := am.AppchainManager.ChangeStatus(id, string(event), string(chainInfo.Status), nil); !ok {
+			return boltvm.Error(fmt.Sprintf("change status error: %s", string(data1)))
+		}
+	}
+
+	am.Logger().WithFields(logrus.Fields{
+		"chainID": id,
+	}).Info("appchain pause")
+
+	return boltvm.Success(data)
+}
+
+// =========== UnPauseAppchain restores to the state before the appchain was suspended
+// This exist when the rule is update successsfully
+func (am *AppchainManager) UnPauseAppchain(id, lastStatus string) *boltvm.Response {
+	am.AppchainManager.Persister = am.Stub
+	event := governance.EventUnpause
+
+	// 1. check permission: PermissionSpecific
+	specificAddrs := []string{constant.RuleManagerContractAddr.Address().String()}
+	addrsData, err := json.Marshal(specificAddrs)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("marshal specificAddrs error: %v", err))
+	}
+	if err := am.checkPermission([]string{string(PermissionSpecific)}, id, am.CurrentCaller(), addrsData); err != nil {
+		return boltvm.Error(fmt.Sprintf("check permission error:%v", err))
+	}
+
+	// 2. governance pre: check if exist and status
+	ok, data := am.AppchainManager.GovernancePre(id, event, nil)
+	if !ok {
+		return boltvm.Error(fmt.Sprintf("%s prepare error: %s", string(event), string(data)))
+	}
+
+	// 3. change status
+	if governance.GovernanceFrozen != governance.GovernanceStatus(lastStatus) {
+		if ok, data := am.AppchainManager.ChangeStatus(id, string(event), lastStatus, nil); !ok {
+			return boltvm.Error(fmt.Sprintf("change status error: %s", string(data)))
+		}
+	}
+
+	am.Logger().WithFields(logrus.Fields{
+		"chainID": id,
+	}).Info("appchain unpause")
+
+	return boltvm.Success(nil)
 }
 
 // CountAvailableAppchains counts all available appchains
