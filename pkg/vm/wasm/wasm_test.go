@@ -43,12 +43,10 @@ BAMCA0cAMEQCIFuh8p+nbtjQEZEFg03BN58//9VRsukQXj0xP1eHnrD4AiBwI1jq
 L6FMy96mi64g37R0i/I+T4MC5p2mzZIHvRJ8Rg==
 -----END CERTIFICATE-----`
 
-const wasmGasLimit = 50000000
+const wasmGasLimit = 500000000
 const wasmGasLimitNotEnough = 500
 
 func initCreateContext(t *testing.T, name string) *vm.Context {
-	privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
-	assert.Nil(t, err)
 	dir := filepath.Join(os.TempDir(), "wasm", name)
 
 	bytes, err := ioutil.ReadFile("./testdata/ledger_test_gc.wasm")
@@ -57,9 +55,6 @@ func initCreateContext(t *testing.T, name string) *vm.Context {
 	data := &pb.TransactionData{
 		Payload: bytes,
 	}
-
-	caller, err := privKey.PublicKey().Address()
-	assert.Nil(t, err)
 
 	store, err := leveldb.New(filepath.Join(dir, "wasm"))
 	assert.Nil(t, err)
@@ -75,11 +70,61 @@ func initCreateContext(t *testing.T, name string) *vm.Context {
 	ldg, err := ledger.New(createMockRepo(t), store, ldb, blockFile, accountCache, log.NewWithModule("executor"))
 	assert.Nil(t, err)
 
+	tx := &pb.BxhTransaction{
+		TransactionHash: types.NewHashByStr("0x5c170A6ea71f3B7A30267ED0632a7c56cF2c8C0b7Eec477906DfF08F1f4Ac3e2"),
+	}
+
 	return &vm.Context{
-		Caller:          caller,
+		Caller:          types.NewAddressByStr("0x2962b85e2bEe2e1eA9C4CD69f2758cF7bbc3297E"),
+		CurrentCaller:   types.NewAddressByStr("0x2962b85e2bEe2e1eA9C4CD69f2758cF7bbc3297E"),
 		Callee:          &types.Address{},
 		TransactionData: data,
 		Ledger:          ldg,
+		Tx:              tx,
+	}
+}
+
+func initConstantsContext(t *testing.T, name string) *vm.Context {
+	privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
+	assert.Nil(t, err)
+	dir := filepath.Join(os.TempDir(), "constant_wasm", name)
+
+	bytes, err := ioutil.ReadFile("./testdata/constants.wasm")
+	assert.Nil(t, err)
+
+	data := &pb.TransactionData{
+		Payload: bytes,
+	}
+
+	_, err = privKey.PublicKey().Address()
+	assert.Nil(t, err)
+
+	store, err := leveldb.New(filepath.Join(dir, "constants"))
+	assert.Nil(t, err)
+
+	ldb, err := leveldb.New(filepath.Join(dir, "constants_ledger"))
+	assert.Nil(t, err)
+
+	accountCache, err := ledger.NewAccountCache()
+	require.Nil(t, err)
+	logger := log.NewWithModule("constants_test")
+	blockFile, err := blockfile.NewBlockFile(dir, logger)
+	assert.Nil(t, err)
+	ldg, err := ledger.New(createMockRepo(t), store, ldb, blockFile, accountCache, log.NewWithModule("executor"))
+	assert.Nil(t, err)
+
+	tx := &pb.BxhTransaction{
+		TransactionHash: types.NewHashByStr("0x5c170A6ea71f3B7A30267ED0632a7c56cF2c8C0b7Eec477906DfF08F1f4Ac3e2"),
+	}
+
+	return &vm.Context{
+		Caller:          types.NewAddressByStr("0x2962b85e2bEe2e1eA9C4CD69f2758cF7bbc3297E"),
+		CurrentCaller:   types.NewAddressByStr("0x2962b85e2bEe2e1eA9C4CD69f2758cF7bbc3297E"),
+		Callee:          &types.Address{},
+		TransactionData: data,
+		CurrentHeight:   100,
+		Ledger:          ldg,
+		Tx:              tx,
 	}
 }
 
@@ -88,19 +133,14 @@ func initValidationContext(t *testing.T, name string) *vm.Context {
 
 	bytes, err := ioutil.ReadFile("./testdata/validation_test.wasm")
 	require.Nil(t, err)
-	privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
-	require.Nil(t, err)
 
 	data := &pb.TransactionData{
 		Payload: bytes,
 	}
 
-	caller, err := privKey.PublicKey().Address()
-	require.Nil(t, err)
-
 	store, err := leveldb.New(filepath.Join(dir, "validation"))
 	assert.Nil(t, err)
-	ldb, err := leveldb.New(filepath.Join(dir, "ledger"))
+	ldb, err := leveldb.New(filepath.Join(dir, "validation_ledger"))
 	assert.Nil(t, err)
 
 	accountCache, err := ledger.NewAccountCache()
@@ -111,10 +151,17 @@ func initValidationContext(t *testing.T, name string) *vm.Context {
 	ldg, err := ledger.New(createMockRepo(t), store, ldb, blockFile, accountCache, log.NewWithModule("executor"))
 	require.Nil(t, err)
 
+	tx := &pb.BxhTransaction{
+		TransactionHash: types.NewHashByStr("0x5c170A6ea71f3B7A30267ED0632a7c56cF2c8C0b7Eec477906DfF08F1f4Ac3e2"),
+	}
+
 	return &vm.Context{
-		Caller:          caller,
+		Caller:          types.NewAddressByStr("0x2962b85e2bEe2e1eA9C4CD69f2758cF7bbc3297E"),
+		CurrentCaller:   types.NewAddressByStr("0x2962b85e2bEe2e1eA9C4CD69f2758cF7bbc3297E"),
+		Callee:          &types.Address{},
 		TransactionData: data,
 		Ledger:          ldg,
+		Tx:              tx,
 	}
 }
 
@@ -123,15 +170,10 @@ func initFabricContext(t *testing.T, name string) *vm.Context {
 
 	bytes, err := ioutil.ReadFile("./testdata/fabric_policy.wasm")
 	require.Nil(t, err)
-	privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
-	require.Nil(t, err)
 
 	data := &pb.TransactionData{
 		Payload: bytes,
 	}
-
-	caller, err := privKey.PublicKey().Address()
-	require.Nil(t, err)
 
 	store, err := leveldb.New(filepath.Join(dir, "validation_farbic"))
 	assert.Nil(t, err)
@@ -146,10 +188,17 @@ func initFabricContext(t *testing.T, name string) *vm.Context {
 	ldg, err := ledger.New(createMockRepo(t), store, ldb, blockFile, accountCache, log.NewWithModule("executor"))
 	require.Nil(t, err)
 
+	tx := &pb.BxhTransaction{
+		TransactionHash: types.NewHashByStr("0x5c170A6ea71f3B7A30267ED0632a7c56cF2c8C0b7Eec477906DfF08F1f4Ac3e2"),
+	}
+
 	return &vm.Context{
-		Caller:          caller,
+		Caller:          types.NewAddressByStr("0x2962b85e2bEe2e1eA9C4CD69f2758cF7bbc3297E"),
+		CurrentCaller:   types.NewAddressByStr("0x2962b85e2bEe2e1eA9C4CD69f2758cF7bbc3297E"),
+		Callee:          &types.Address{},
 		TransactionData: data,
 		Ledger:          ldg,
+		Tx:              tx,
 	}
 }
 
@@ -190,9 +239,11 @@ func TestExecute(t *testing.T) {
 	}
 	ctx1 := &vm.Context{
 		Caller:          ctx.Caller,
+		CurrentCaller:   ctx.CurrentCaller,
 		Callee:          types.NewAddress(ret),
 		TransactionData: data,
 		Ledger:          ctx.Ledger,
+		Tx:              ctx.Tx,
 	}
 	imports1 := vmledger.New()
 	fmt.Println(imports1)
@@ -225,6 +276,77 @@ func TestExecute(t *testing.T) {
 	fmt.Println(hash)
 }
 
+func TestExecuteContants(t *testing.T) {
+	ctx := initConstantsContext(t, "execute")
+	instances := make(map[string]*wasmer.Instance)
+	imports, err := EmptyImports()
+	require.Nil(t, err)
+	wasm, err := New(ctx, imports, instances)
+	require.Nil(t, err)
+
+	ret, _, err := wasm.deploy()
+	require.Nil(t, err)
+
+	invokePayload := &pb.InvokePayload{
+		Method: "get_current_height",
+		Args:   []*pb.Arg{},
+	}
+	payload, err := invokePayload.Marshal()
+	require.Nil(t, err)
+	data := &pb.TransactionData{
+		Payload: payload,
+	}
+	ctx1 := &vm.Context{
+		Caller:          ctx.Caller,
+		Callee:          types.NewAddress(ret),
+		CurrentCaller:   ctx.CurrentCaller,
+		TransactionData: data,
+		CurrentHeight:   100,
+		Ledger:          ctx.Ledger,
+		Tx:              ctx.Tx,
+	}
+	imports1 := vmledger.New()
+	fmt.Println(imports1)
+	wasm1, err := New(ctx1, imports1, instances)
+	require.Nil(t, err)
+	fmt.Println(wasm1.w.Instance.Exports)
+
+	result, _, err := wasm1.Run(payload, wasmGasLimit)
+	fmt.Println(result)
+	require.Nil(t, err)
+	require.Equal(t, "100", string(result))
+
+	invokePayload1 := &pb.InvokePayload{
+		Method: "test_tx_hash",
+		Args:   []*pb.Arg{},
+	}
+	payload1, err := invokePayload1.Marshal()
+	require.Nil(t, err)
+	result1, _, err := wasm1.Run(payload1, wasmGasLimit)
+	require.Nil(t, err)
+	require.Equal(t, "1", string(result1))
+
+	invokePayload2 := &pb.InvokePayload{
+		Method: "test_caller",
+		Args:   []*pb.Arg{},
+	}
+	payload2, err := invokePayload2.Marshal()
+	require.Nil(t, err)
+	result2, _, err := wasm1.Run(payload2, wasmGasLimit)
+	require.Nil(t, err)
+	require.Equal(t, "1", string(result2))
+
+	invokePayload3 := &pb.InvokePayload{
+		Method: "test_current_caller",
+		Args:   []*pb.Arg{},
+	}
+	payload3, err := invokePayload3.Marshal()
+	require.Nil(t, err)
+	result3, _, err := wasm1.Run(payload3, wasmGasLimit)
+	require.Nil(t, err)
+	require.Equal(t, "1", string(result3))
+}
+
 func TestExecuteWithNotEnoughGas(t *testing.T) {
 	ctx := initCreateContext(t, "execute_with_not_enough_gas")
 	instances := make(map[string]*wasmer.Instance)
@@ -250,9 +372,11 @@ func TestExecuteWithNotEnoughGas(t *testing.T) {
 	}
 	ctx1 := &vm.Context{
 		Caller:          ctx.Caller,
+		CurrentCaller:   ctx.CurrentCaller,
 		Callee:          types.NewAddress(ret),
 		TransactionData: data,
 		Ledger:          ctx.Ledger,
+		Tx:              ctx.Tx,
 	}
 	imports1 := vmledger.New()
 	fmt.Println(imports1)
@@ -329,9 +453,11 @@ func TestWasm_RunFabValidation(t *testing.T) {
 	}
 	ctx1 := &vm.Context{
 		Caller:          ctx.Caller,
+		CurrentCaller:   ctx.CurrentCaller,
 		Callee:          types.NewAddress(ret),
 		TransactionData: data,
 		Ledger:          ctx.Ledger,
+		Tx:              ctx.Tx,
 	}
 	imports1 := validatorlib.New()
 	wasm1, err := New(ctx1, imports1, instances)
@@ -369,10 +495,15 @@ func BenchmarkRunFabValidation(b *testing.B) {
 	assert.Nil(b, err)
 	ldg, err := ledger.New(&repo.Repo{Key: &repo.Key{PrivKey: privKey}}, store, ldb, blockFile, accountCache, log.NewWithModule("executor"))
 	require.Nil(b, err)
+	tx := &pb.BxhTransaction{
+		TransactionHash: types.NewHashByStr("0x5c170A6ea71f3B7A30267ED0632a7c56cF2c8C0b7Eec477906DfF08F1f4Ac3e2"),
+	}
 	ctx := &vm.Context{
 		Caller:          caller,
+		CurrentCaller:   caller,
 		TransactionData: data,
 		Ledger:          ldg,
+		Tx:              tx,
 	}
 	instances := make(map[string]*wasmer.Instance)
 	imports, err := EmptyImports()
@@ -398,9 +529,11 @@ func BenchmarkRunFabValidation(b *testing.B) {
 	require.Nil(b, err)
 	ctx1 := &vm.Context{
 		Caller:          ctx.Caller,
+		CurrentCaller:   ctx.Caller,
 		Callee:          types.NewAddress(ret),
 		TransactionData: data,
 		Ledger:          ctx.Ledger,
+		Tx:              tx,
 	}
 	for i := 0; i < b.N; i++ {
 		imports1 := validatorlib.New()
@@ -443,9 +576,11 @@ func TestWasm_RunWithoutMethod(t *testing.T) {
 	}
 	ctx1 := &vm.Context{
 		Caller:          ctx.Caller,
+		CurrentCaller:   ctx.Caller,
 		Callee:          types.NewAddress(ret),
 		TransactionData: data,
 		Ledger:          ctx.Ledger,
+		Tx:              ctx.Tx,
 	}
 	imports1 := vmledger.New()
 	wasm1, err := New(ctx1, imports1, instances)

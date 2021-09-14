@@ -20,6 +20,7 @@ func New() wasmlib.WasmImport {
 func (imports *Imports) ImportLib(wasmEnv *wasmlib.WasmEnv) {
 	imports.imports.ImportLib(wasmEnv)
 	imports.importLedgerLib(wasmEnv.Store, wasmEnv)
+	imports.importLedgerContants(wasmEnv.Store, wasmEnv)
 }
 
 func (imports *Imports) GetImportObject() *wasmer.ImportObject {
