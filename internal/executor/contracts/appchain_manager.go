@@ -392,13 +392,14 @@ func (am *AppchainManager) PauseAppchain(id string) *boltvm.Response {
 	chainInfo := chain.(*appchainMgr.Appchain)
 
 	// 3. change status
-	if ok, data := am.AppchainManager.ChangeStatus(id, string(event), string(chainInfo.Status), nil); !ok {
-		return boltvm.Error(fmt.Sprintf("change status error: %s", string(data)))
-	}
-
-	// 4. pause service
-	if res := am.CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "PauseChainService", pb.String(id)); !res.Ok {
-		return res
+	if chainInfo.Status == governance.GovernanceAvailable {
+		if ok, data := am.AppchainManager.ChangeStatus(id, string(event), string(chainInfo.Status), nil); !ok {
+			return boltvm.Error(fmt.Sprintf("change status error: %s", string(data)))
+		}
+		// 4. pause service
+		if res := am.CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "PauseChainService", pb.String(id)); !res.Ok {
+			return res
+		}
 	}
 
 	am.Logger().WithFields(logrus.Fields{
@@ -435,14 +436,15 @@ func (am *AppchainManager) UnPauseAppchain(id, lastStatus string) *boltvm.Respon
 	}
 
 	// 3. change status
-	if ok, data := am.AppchainManager.ChangeStatus(id, string(event), lastStatus, nil); !ok {
-		return boltvm.Error(fmt.Sprintf("change status error: %s", string(data)))
-	}
-
-	// 4. unpause services
-	if string(governance.GovernanceAvailable) == lastStatus {
-		if res := am.CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "UnPauseChainService", pb.String(id)); !res.Ok {
-			return res
+	if governance.GovernanceFrozen != governance.GovernanceStatus(lastStatus) {
+		if ok, data := am.AppchainManager.ChangeStatus(id, string(event), lastStatus, nil); !ok {
+			return boltvm.Error(fmt.Sprintf("change status error: %s", string(data)))
+		}
+		// 4. unpause services
+		if string(governance.GovernanceAvailable) == lastStatus {
+			if res := am.CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "UnPauseChainService", pb.String(id)); !res.Ok {
+				return res
+			}
 		}
 	}
 
