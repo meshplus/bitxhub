@@ -218,18 +218,22 @@ func (dm *DappManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 	}
 
 	// 3. other operation
+	dappInfo := &Dapp{}
+	if err := json.Unmarshal(extra, dappInfo); err != nil {
+		return boltvm.Error(fmt.Sprintf("unmarshal register data error:%v", err))
+	}
 	if proposalResult == string(APPROVED) {
 		switch eventTyp {
 		case string(governance.EventRegister):
-			if err := dm.manegeRegister(objId, extra); err != nil {
+			if err := dm.manegeRegister(objId, dappInfo); err != nil {
 				return boltvm.Error(fmt.Sprintf("manage register error: %v", err))
 			}
 		case string(governance.EventUpdate):
-			if err := dm.manegeUpdate(objId, extra); err != nil {
+			if err := dm.manegeUpdate(objId, dappInfo); err != nil {
 				return boltvm.Error(fmt.Sprintf("manage update error: %v", err))
 			}
 		case string(governance.EventTransfer):
-			if err := dm.manegeTransfer(objId, extra); err != nil {
+			if err := dm.manegeTransfer(objId, dappInfo); err != nil {
 				return boltvm.Error(fmt.Sprintf("manage update error: %v", err))
 			}
 		}
@@ -238,56 +242,42 @@ func (dm *DappManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 	return boltvm.Success(nil)
 }
 
-func (dm *DappManager) manegeRegister(id string, registerData []byte) error {
-	registerInfo := &Dapp{}
-	if err := json.Unmarshal(registerData, registerInfo); err != nil {
-		return fmt.Errorf("unmarshal register data error:%v", err)
-	}
-
+func (dm *DappManager) manegeRegister(id string, dappInfo *Dapp) error {
 	dappContractMap := make(map[string]string)
 	_ = dm.GetObject(DAPPCONTRACT_PREFIX, &dappContractMap)
 
-	for addr, _ := range registerInfo.ContractAddr {
-		dappContractMap[addr] = registerInfo.DappID
+	for addr, _ := range dappInfo.ContractAddr {
+		dappContractMap[addr] = dappInfo.DappID
 	}
 
 	dm.SetObject(DAPPCONTRACT_PREFIX, dappContractMap)
 	return nil
 }
 
-func (dm *DappManager) manegeUpdate(id string, updateData []byte) error {
-	updataInfo := &Dapp{}
-	if err := json.Unmarshal(updateData, updataInfo); err != nil {
-		return fmt.Errorf("unmarshal update data error:%v", err)
-	}
-
+func (dm *DappManager) manegeUpdate(id string, dappInfo *Dapp) error {
 	dapp := &Dapp{}
 	ok := dm.GetObject(DappKey(id), dapp)
 	if !ok {
 		return fmt.Errorf("the dapp is not exist")
 	}
 
-	dapp.Name = updataInfo.Name
-	dapp.Type = updataInfo.Type
-	dapp.Desc = updataInfo.Desc
-	dapp.Permission = updataInfo.Permission
+	dapp.Name = dappInfo.Name
+	dapp.Type = dappInfo.Type
+	dapp.Desc = dappInfo.Desc
+	dapp.Permission = dappInfo.Permission
 	dm.SetObject(DappKey(dapp.DappID), *dapp)
 	return nil
 }
 
-func (dm *DappManager) manegeTransfer(id string, transferData []byte) error {
-	transRec := &TransferRecord{}
-	if err := json.Unmarshal(transferData, transRec); err != nil {
-		return fmt.Errorf("unmarshal update data error:%v", err)
-	}
-	transRec.CreateTime = dm.GetTxTimeStamp()
-
+func (dm *DappManager) manegeTransfer(id string, dappInfo *Dapp) error {
 	dapp := &Dapp{}
 	ok := dm.GetObject(DappKey(id), dapp)
 	if !ok {
 		return fmt.Errorf("the dapp is not exist")
 	}
 
+	transRec := dappInfo.TransferRecords[len(dappInfo.TransferRecords)-1]
+	transRec.CreateTime = dm.GetTxTimeStamp()
 	dapp.TransferRecords = append(dapp.TransferRecords, transRec)
 	dapp.OwnerAddr = transRec.To
 	dm.SetObject(DappKey(dapp.DappID), *dapp)
@@ -427,14 +417,11 @@ func (dm *DappManager) TransferDapp(id, newOwnerAddr, reason string) *boltvm.Res
 		Reason:  reason,
 		Confirm: false,
 	}
-	extra, err := json.Marshal(transRec)
-	if err != nil {
-		return boltvm.Error(fmt.Sprintf("marshal extra error: %v", err))
-	}
-	return dm.basicGovernance(id, reason, []string{string(PermissionSelf)}, governance.EventTransfer, extra)
+
+	return dm.basicGovernance(id, reason, []string{string(PermissionSelf)}, governance.EventTransfer, transRec)
 }
 
-func (dm *DappManager) basicGovernance(id, reason string, permissions []string, event governance.EventType, extra []byte) *boltvm.Response {
+func (dm *DappManager) basicGovernance(id, reason string, permissions []string, event governance.EventType, transRec *TransferRecord) *boltvm.Response {
 	// 1. governance pre: check if exist and status
 	dapp, err := dm.governancePre(id, event)
 	if err != nil {
@@ -447,6 +434,13 @@ func (dm *DappManager) basicGovernance(id, reason string, permissions []string, 
 	}
 
 	// 3. submit proposal
+	if event == governance.EventTransfer {
+		dapp.TransferRecords = append(dapp.TransferRecords, transRec)
+	}
+	dappData, err := json.Marshal(dapp)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("marshal dapp error: %v", err))
+	}
 	res := dm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "SubmitProposal",
 		pb.String(dm.Caller()),
 		pb.String(string(event)),
@@ -455,7 +449,7 @@ func (dm *DappManager) basicGovernance(id, reason string, permissions []string, 
 		pb.String(id),
 		pb.String(string(dapp.Status)),
 		pb.String(reason),
-		pb.Bytes(extra),
+		pb.Bytes(dappData),
 	)
 	if !res.Ok {
 		return boltvm.Error(fmt.Sprintf("submit proposal error: %s", string(res.Result)))
