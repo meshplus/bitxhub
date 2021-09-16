@@ -587,12 +587,6 @@ func (dm *DappManager) GetPermissionDapps() *boltvm.Response {
 func (dm *DappManager) GetDappsByOwner(ownerAddr string) *boltvm.Response {
 	ret, err := dm.getOwnerAll(ownerAddr)
 
-	for _, d := range ret {
-		if d.OwnerAddr != ownerAddr {
-			d.Status = governance.GovernanceTransferred
-		}
-	}
-
 	data, err := json.Marshal(ret)
 	if err != nil {
 		return boltvm.Error(err.Error())
@@ -602,6 +596,7 @@ func (dm *DappManager) GetDappsByOwner(ownerAddr string) *boltvm.Response {
 
 func (dm *DappManager) getOwnerAll(ownerAddr string) ([]*Dapp, error) {
 	ret := make([]*Dapp, 0)
+	dappTransferred := make([]*Dapp, 0)
 
 	var dappMap map[string]struct{}
 	ok := dm.GetObject(OwnerKey(ownerAddr), &dappMap)
@@ -611,11 +606,18 @@ func (dm *DappManager) getOwnerAll(ownerAddr string) ([]*Dapp, error) {
 			if ok := dm.GetObject(DappKey(dappID), dapp); !ok {
 				return nil, fmt.Errorf("the dapp(%s) is not exist", dappID)
 			}
-			ret = append(ret, dapp)
+			if dapp.OwnerAddr != ownerAddr {
+				dapp.Status = governance.GovernanceTransferred
+				dappTransferred = append(dappTransferred, dapp)
+			} else {
+				ret = append(ret, dapp)
+			}
 		}
 	}
 
 	sort.Sort(Dapps(ret))
+	sort.Sort(Dapps(dappTransferred))
+	ret = append(ret, dappTransferred...)
 
 	return ret, nil
 }
