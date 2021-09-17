@@ -264,6 +264,8 @@ func (dm *DappManager) manegeUpdate(id string, updateData []byte) error {
 	dapp.Type = updataInfo.Type
 	dapp.Desc = updataInfo.Desc
 	dapp.Permission = updataInfo.Permission
+	dapp.ContractAddr = updataInfo.ContractAddr
+	dapp.Url = updataInfo.Url
 	dm.SetObject(DappKey(dapp.DappID), *dapp)
 	return nil
 }
@@ -306,7 +308,7 @@ func (dm *DappManager) RegisterDapp(name, typ, desc, url, conAddrs, permits, rea
 	}
 
 	// 2. check dapp info
-	if err := dm.checkDappInfo(dapp); err != nil {
+	if err := dm.checkDappInfo(dapp, true); err != nil {
 		return boltvm.Error(fmt.Sprintf("check dapp info error : %v", err))
 	}
 
@@ -364,7 +366,7 @@ func (dm *DappManager) UpdateDapp(id, name, typ, desc, url, conAddrs, permits, r
 		return boltvm.Error(fmt.Sprintf("get dapp info error: %v", err))
 	}
 	// 4. check info
-	if err := dm.checkDappInfo(newDapp); err != nil {
+	if err := dm.checkDappInfo(newDapp, false); err != nil {
 		return boltvm.Error(fmt.Sprintf("check dapp info error : %v", err))
 	}
 
@@ -480,7 +482,7 @@ func (dm *DappManager) ConfirmTransfer(id string) *boltvm.Response {
 		}
 	}
 
-	return boltvm.Success(nil)
+	return getGovernanceRet("", nil)
 }
 
 func (dm *DappManager) EvaluateDapp(id, desc string, score float64) *boltvm.Response {
@@ -514,7 +516,7 @@ func (dm *DappManager) EvaluateDapp(id, desc string, score float64) *boltvm.Resp
 	dapp.EvaluationRecords[dm.Caller()] = evaRec
 	dm.SetObject(DappKey(id), *dapp)
 
-	return boltvm.Success(nil)
+	return getGovernanceRet("", nil)
 }
 
 // ========================== Query interface ========================
@@ -565,12 +567,12 @@ func (dm *DappManager) getAll() ([]*Dapp, error) {
 }
 
 // GetAllDapps returns all dapps
-func (dm *DappManager) GetPermissionDapps() *boltvm.Response {
+func (dm *DappManager) GetPermissionDapps(caller string) *boltvm.Response {
 	var ret []*Dapp
 	all, err := dm.getAll()
 	if err == nil {
 		for _, d := range all {
-			if _, ok := d.Permission[dm.Caller()]; !ok {
+			if _, ok := d.Permission[caller]; !ok {
 				ret = append(ret, d)
 			}
 		}
@@ -677,7 +679,7 @@ func (dm *DappManager) packageDappInfo(dappID, name string, typ string, desc str
 	return dapp, nil
 }
 
-func (dm *DappManager) checkDappInfo(dapp *Dapp) error {
+func (dm *DappManager) checkDappInfo(dapp *Dapp, isRegister bool) error {
 	// check type
 	if dapp.Type != DappTool &&
 		dapp.Type != DappApplication &&
@@ -691,7 +693,11 @@ func (dm *DappManager) checkDappInfo(dapp *Dapp) error {
 	for a, _ := range dapp.ContractAddr {
 		dappID, exist := dappContractMap[a]
 		if exist {
-			return fmt.Errorf("the contract address belongs to dapp %s and cannot be registered repeatedly", dappID)
+			if isRegister {
+				return fmt.Errorf("the contract address belongs to dapp %s and cannot be registered repeatedly", dappID)
+			} else if dappID != dapp.DappID {
+				return fmt.Errorf("the contract address belongs to dapp %s and cannot be update to others", dappID)
+			}
 		}
 		account1 := dm.GetAccount(a)
 		account := account1.(ledger.IAccount)
