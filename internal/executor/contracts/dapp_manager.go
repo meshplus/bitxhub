@@ -265,6 +265,8 @@ func (dm *DappManager) manegeUpdate(id string, dappInfo *Dapp) error {
 	dapp.Type = dappInfo.Type
 	dapp.Desc = dappInfo.Desc
 	dapp.Permission = dappInfo.Permission
+	dapp.ContractAddr = dappInfo.ContractAddr
+	dapp.Url = dappInfo.Url
 	dm.SetObject(DappKey(dapp.DappID), *dapp)
 	return nil
 }
@@ -484,7 +486,7 @@ func (dm *DappManager) ConfirmTransfer(id string) *boltvm.Response {
 		}
 	}
 
-	return boltvm.Success(nil)
+	return getGovernanceRet("", nil)
 }
 
 func (dm *DappManager) EvaluateDapp(id, desc string, score float64) *boltvm.Response {
@@ -518,7 +520,7 @@ func (dm *DappManager) EvaluateDapp(id, desc string, score float64) *boltvm.Resp
 	dapp.EvaluationRecords[dm.Caller()] = evaRec
 	dm.SetObject(DappKey(id), *dapp)
 
-	return boltvm.Success(nil)
+	return getGovernanceRet("", nil)
 }
 
 // ========================== Query interface ========================
@@ -569,12 +571,12 @@ func (dm *DappManager) getAll() ([]*Dapp, error) {
 }
 
 // GetAllDapps returns all dapps
-func (dm *DappManager) GetPermissionDapps() *boltvm.Response {
+func (dm *DappManager) GetPermissionDapps(caller string) *boltvm.Response {
 	var ret []*Dapp
 	all, err := dm.getAll()
 	if err == nil {
 		for _, d := range all {
-			if _, ok := d.Permission[dm.Caller()]; !ok {
+			if _, ok := d.Permission[caller]; !ok {
 				ret = append(ret, d)
 			}
 		}
@@ -693,10 +695,12 @@ func (dm *DappManager) checkDappInfo(dapp *Dapp, isRegister bool) error {
 	dappContractMap := make(map[string]string)
 	_ = dm.GetObject(DAPPCONTRACT_PREFIX, &dappContractMap)
 	for a, _ := range dapp.ContractAddr {
-		if isRegister {
-			dappID, exist := dappContractMap[a]
-			if exist {
+		dappID, exist := dappContractMap[a]
+		if exist {
+			if isRegister {
 				return fmt.Errorf("the contract address belongs to dapp %s and cannot be registered repeatedly", dappID)
+			} else if dappID != dapp.DappID {
+				return fmt.Errorf("the contract address belongs to dapp %s and cannot be update to others", dappID)
 			}
 		}
 		account1 := dm.GetAccount(a)
