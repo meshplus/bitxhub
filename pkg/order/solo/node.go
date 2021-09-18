@@ -8,13 +8,13 @@ import (
 
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/meshplus/bitxhub-core/agency"
+	"github.com/meshplus/bitxhub-core/order"
+	orderPeerMgr "github.com/meshplus/bitxhub-core/peer-mgr"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/pkg/order"
 	"github.com/meshplus/bitxhub/pkg/order/etcdraft"
 	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
 	"github.com/meshplus/bitxhub/pkg/order/mempool"
-	"github.com/meshplus/bitxhub/pkg/peermgr"
 	"github.com/sirupsen/logrus"
 )
 
@@ -28,11 +28,11 @@ type Node struct {
 	stateC       chan *mempool.ChainState
 	txCache      *mempool.TxCache // cache the transactions received from api
 	batchMgr     *etcdraft.BatchTimer
-	blockTimeout time.Duration       // generate block period
-	lastExec     uint64              // the index of the last-applied block
-	packSize     int                 // maximum number of transaction packages
-	blockTick    time.Duration       // block packed period
-	peerMgr      peermgr.PeerManager // network manager
+	blockTimeout time.Duration                 // generate block period
+	lastExec     uint64                        // the index of the last-applied block
+	packSize     int                           // maximum number of transaction packages
+	blockTick    time.Duration                 // block packed period
+	peerMgr      orderPeerMgr.OrderPeerManager // network manager
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -103,10 +103,10 @@ func init() {
 	agency.RegisterOrderConstructor("solo", NewNode)
 }
 
-func NewNode(opts ...agency.ConfigOption) (agency.Order, error) {
+func NewNode(opts ...order.Option) (order.Order, error) {
 	var options []order.Option
 	for i, _ := range opts {
-		options = append(options, opts[i].(order.Option))
+		options = append(options, opts[i])
 	}
 
 	config, err := order.GenerateConfig(options...)

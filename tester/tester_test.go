@@ -10,6 +10,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
+	"github.com/meshplus/bitxhub-core/order"
 	"github.com/meshplus/bitxhub/api/jsonrpc"
 	"github.com/meshplus/bitxhub/internal/app"
 	"github.com/meshplus/bitxhub/internal/coreapi"
@@ -17,7 +18,6 @@ import (
 	"github.com/meshplus/bitxhub/internal/loggers"
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/bitxhub/internal/router"
-	"github.com/meshplus/bitxhub/pkg/order"
 	"github.com/meshplus/bitxhub/pkg/order/etcdraft"
 	"github.com/stretchr/testify/require"
 )

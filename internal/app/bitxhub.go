@@ -12,6 +12,7 @@ import (
 	"github.com/common-nighthawk/go-figure"
 	"github.com/ethereum/go-ethereum/common/fdlimit"
 	"github.com/meshplus/bitxhub-core/agency"
+	"github.com/meshplus/bitxhub-core/order"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/meshplus/bitxhub-kit/storage/blockfile"
@@ -28,7 +29,6 @@ import (
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/bitxhub/internal/router"
 	"github.com/meshplus/bitxhub/internal/storages"
-	"github.com/meshplus/bitxhub/pkg/order"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
 	ledger2 "github.com/meshplus/eth-kit/ledger"
 	"github.com/sirupsen/logrus"
@@ -39,7 +39,7 @@ type BitXHub struct {
 	BlockExecutor executor.Executor
 	ViewExecutor  executor.Executor
 	Router        router.Router
-	Order         agency.Order
+	Order         order.Order
 	PeerMgr       peermgr.PeerManager
 
 	repo   *repo.Repo

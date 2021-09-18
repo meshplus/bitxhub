@@ -2,7 +2,6 @@ package etcdraft
 
 import (
 	"fmt"
-	"github.com/meshplus/bitxhub-core/agency"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -12,11 +11,11 @@ import (
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/golang/mock/gomock"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/meshplus/bitxhub-core/order"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/repo"
-	"github.com/meshplus/bitxhub/pkg/order"
 	"github.com/meshplus/bitxhub/pkg/peermgr/mock_peermgr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -45,7 +44,7 @@ func TestNode_Start(t *testing.T) {
 	peers := make(map[uint64]*pb.VpInfo)
 	otherPeers := make(map[uint64]*peer.AddrInfo, 5)
 	cntPeers := uint64(0)
-	mockPeermgr.EXPECT().Peers().Return(peers).AnyTimes()
+	mockPeermgr.EXPECT().OrderPeers().Return(peers).AnyTimes()
 	mockPeermgr.EXPECT().OtherPeers().Return(otherPeers).AnyTimes()
 	mockPeermgr.EXPECT().Broadcast(gomock.Any()).AnyTimes()
 	mockPeermgr.EXPECT().CountConnectedPeers().Return(cntPeers).AnyTimes()
@@ -99,7 +98,7 @@ func TestMulti_Node_Start(t *testing.T) {
 	fileData, err := ioutil.ReadFile("../../../config/order.toml")
 	require.Nil(t, err)
 
-	orders := make([]agency.Order, 0)
+	orders := make([]order.Order, 0)
 	for i := 0; i < peerCnt; i++ {
 		nodePath := fmt.Sprintf("node%d", i)
 		nodeRepo := filepath.Join(repoRoot, nodePath)
@@ -157,7 +156,7 @@ func TestMulti_Node_Start_Without_Cert_Verification(t *testing.T) {
 	fileData, err := ioutil.ReadFile("../../../config/order.toml")
 	require.Nil(t, err)
 
-	orders := make([]agency.Order, 0)
+	orders := make([]order.Order, 0)
 	for i := 0; i < peerCnt; i++ {
 		nodePath := fmt.Sprintf("node%d", i)
 		nodeRepo := filepath.Join(repoRoot, nodePath)

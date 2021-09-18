@@ -29,7 +29,7 @@ func (swarm *Swarm) AskPierMaster(address string) (bool, error) {
 
 	ch := swarm.piers.pierChan.newChan(address)
 
-	for id := range swarm.Peers() {
+	for id := range swarm.OrderPeers() {
 		if err := swarm.AsyncSend(id, message); err != nil {
 			swarm.logger.Debugf("send tx to:%d %s", id, err.Error())
 			continue

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/meshplus/bitxhub-kit/types"
 	"io/ioutil"
 	"strings"
 	"testing"
@@ -20,7 +21,6 @@ import (
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/crypto/asym/ecdsa"
 	"github.com/meshplus/bitxhub-kit/log"
-	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/ledger"
@@ -207,10 +207,10 @@ func TestSwarm_GetBlockPack(t *testing.T) {
 		Data: []byte("aaa"),
 	}
 	var err error
-	_, err = swarms[0].Send(2, msg)
+	_, err = swarms[0].Send(uint64(2), msg)
 	require.NotNil(t, err)
 	msg.Type = 100
-	_, err = swarms[0].Send(2, msg)
+	_, err = swarms[0].Send(uint64(2), msg)
 	require.NotNil(t, err)
 	for i := 0; i < len(swarms); i++ {
 		err = swarms[i].Stop()
@@ -241,7 +241,7 @@ func TestSwarm_FetchCert(t *testing.T) {
 	var res *pb.Message
 	var err error
 	err = retry.Retry(func(attempt uint) error {
-		res, err = swarms[0].Send(2, msg)
+		res, err = swarms[0].Send(uint64(2), msg)
 		if err != nil {
 			swarms[0].logger.Errorf(err.Error())
 			return err
@@ -265,7 +265,7 @@ func TestSwarm_CheckMasterPier(t *testing.T) {
 		Type: pb.Message_CHECK_MASTER_PIER,
 		Data: []byte("0x111111122222222333333333"),
 	}
-	res, err := swarms[0].Send(2, msg)
+	res, err := swarms[0].Send(uint64(2), msg)
 	require.NotNil(t, err)
 	require.Contains(t, err.Error(), "wait msg timeout")
 	require.Nil(t, res)
@@ -281,7 +281,7 @@ func TestSwarm_CheckMasterPier(t *testing.T) {
 	swarms[0].piers.pierChan.newChan(pierName)
 	swarms[1].piers = piers2
 	msg.Data = []byte(pierName)
-	swarms[0].Send(2, msg)
+	swarms[0].Send(uint64(2), msg)
 	time.Sleep(500 * time.Millisecond)
 	require.NotNil(t, swarms[0].piers.pierChan.checkAddress(pierName))
 }
@@ -302,7 +302,7 @@ func TestSwarm_Send(t *testing.T) {
 	var res *pb.Message
 	var err error
 	err = retry.Retry(func(attempt uint) error {
-		res, err = swarms[0].Send(2, msg)
+		res, err = swarms[0].Send(uint64(2), msg)
 		if err != nil {
 			swarms[0].logger.Errorf(err.Error())
 			return err
@@ -328,7 +328,7 @@ func TestSwarm_Send(t *testing.T) {
 		Data: data,
 	}
 	err = retry.Retry(func(attempt uint) error {
-		res, err = swarms[2].Send(1, fetchBlocksMsg)
+		res, err = swarms[2].Send(uint64(1), fetchBlocksMsg)
 		if err != nil {
 			swarms[2].logger.Errorf(err.Error())
 			return err
@@ -354,7 +354,7 @@ func TestSwarm_Send(t *testing.T) {
 		Data: data,
 	}
 	err = retry.Retry(func(attempt uint) error {
-		res, err = swarms[2].Send(4, fetchBlockHeadersMsg)
+		res, err = swarms[2].Send(uint64(4), fetchBlockHeadersMsg)
 		if err != nil {
 			swarms[2].logger.Errorf(err.Error())
 			return err
@@ -375,7 +375,7 @@ func TestSwarm_Send(t *testing.T) {
 	}
 
 	err = retry.Retry(func(attempt uint) error {
-		res, err = swarms[1].Send(3, fetchBlockSignMsg)
+		res, err = swarms[1].Send(uint64(3), fetchBlockSignMsg)
 		if err != nil {
 			swarms[1].logger.Errorf(err.Error())
 			return err
@@ -384,24 +384,6 @@ func TestSwarm_Send(t *testing.T) {
 	}, strategy.Wait(50*time.Millisecond))
 	require.Nil(t, err)
 	require.Equal(t, pb.Message_FETCH_BLOCK_SIGN_ACK, res.Type)
-	require.NotNil(t, res.Data)
-
-	ibtp := pb.IBTP{}
-	fetchIBTPSignMsg := &pb.Message{
-		Type: pb.Message_FETCH_IBTP_REQUEST_SIGN,
-		Data: []byte(ibtp.ID()),
-	}
-
-	err = retry.Retry(func(attempt uint) error {
-		res, err = swarms[3].Send(1, fetchIBTPSignMsg)
-		if err != nil {
-			swarms[1].logger.Errorf(err.Error())
-			return err
-		}
-		return nil
-	}, strategy.Wait(1*time.Second), strategy.Limit(5))
-	require.Nil(t, err)
-	require.Equal(t, pb.Message_FETCH_IBTP_SIGN_ACK, res.Type)
 	require.NotNil(t, res.Data)
 }
 

@@ -14,7 +14,7 @@ var _ api.NetworkAPI = (*NetworkAPI)(nil)
 
 // PeerInfo collects the peers' info in p2p network.
 func (network *NetworkAPI) PeerInfo() ([]byte, error) {
-	peerInfo := network.bxh.PeerMgr.Peers()
+	peerInfo := network.bxh.PeerMgr.OrderPeers()
 
 	data, err := json.Marshal(peerInfo)
 	if err != nil {

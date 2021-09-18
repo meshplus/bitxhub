@@ -4,26 +4,26 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Rican7/retry"
-	"github.com/Rican7/retry/strategy"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/Rican7/retry"
+	"github.com/Rican7/retry/strategy"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/meshplus/bitxhub-core/agency"
+	"github.com/meshplus/bitxhub-core/order"
+	orderPeerMgr "github.com/meshplus/bitxhub-core/peer-mgr"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/pkg/order"
 	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
 	"github.com/meshplus/bitxhub/pkg/order/mempool"
 	"github.com/meshplus/bitxhub/pkg/order/syncer"
-	"github.com/meshplus/bitxhub/pkg/peermgr"
 	"github.com/sirupsen/logrus"
 )
 
@@ -35,14 +35,14 @@ type Node struct {
 	blockTimeout time.Duration      // generate block period
 	logger       logrus.FieldLogger // logger
 
-	node          raft.Node           // raft node
-	peerMgr       peermgr.PeerManager // network manager
-	peers         []raft.Peer         // raft peers
-	syncer        syncer.Syncer       // state syncer
-	raftStorage   *RaftStorage        // the raft backend storage system
-	storage       storage.Storage     // db
-	mempool       mempool.MemPool     // transaction pool
-	txCache       *mempool.TxCache    // cache the transactions received from api
+	node          raft.Node                     // raft node
+	peerMgr       orderPeerMgr.OrderPeerManager // network manager
+	peers         []raft.Peer                   // raft peers
+	syncer        syncer.Syncer                 // state syncer
+	raftStorage   *RaftStorage                  // the raft backend storage system
+	storage       storage.Storage               // db
+	mempool       mempool.MemPool               // transaction pool
+	txCache       *mempool.TxCache              // cache the transactions received from api
 	batchTimerMgr *BatchTimer
 
 	proposeC          chan *raftproto.RequestBatch // proposed ready, input channel
@@ -81,10 +81,10 @@ func init() {
 }
 
 // NewNode new raft node
-func NewNode(opts ...agency.ConfigOption) (agency.Order, error) {
+func NewNode(opts ...order.Option) (order.Order, error) {
 	var options []order.Option
 	for i, _ := range opts {
-		options = append(options, opts[i].(order.Option))
+		options = append(options, opts[i])
 	}
 
 	config, err := order.GenerateConfig(options...)

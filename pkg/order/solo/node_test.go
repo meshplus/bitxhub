@@ -8,13 +8,13 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
+	"github.com/meshplus/bitxhub-core/order"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/repo"
-	"github.com/meshplus/bitxhub/pkg/order"
 	"github.com/meshplus/bitxhub/pkg/peermgr/mock_peermgr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -36,7 +36,7 @@ func TestNode_Start(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	mockPeermgr := mock_peermgr.NewMockPeerManager(mockCtl)
 	peers := make(map[uint64]*pb.VpInfo)
-	mockPeermgr.EXPECT().Peers().Return(peers).AnyTimes()
+	mockPeermgr.EXPECT().OrderPeers().Return(peers).AnyTimes()
 
 	nodes := make(map[uint64]*pb.VpInfo)
 	vpInfo := &pb.VpInfo{

@@ -10,12 +10,12 @@ import (
 	types2 "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	contracts2 "github.com/meshplus/bitxhub-core/eth-contracts/interchain-contracts"
+	orderPeerMgr "github.com/meshplus/bitxhub-core/peer-mgr"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/model"
-	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/pkg/utils"
 	network "github.com/meshplus/go-lightp2p"
 	solsha3 "github.com/miguelmota/go-solidity-sha3"
@@ -40,7 +40,7 @@ func (swarm *Swarm) handleMessage(s network.Stream, data []byte) {
 		case pb.Message_FETCH_CERT:
 			return swarm.handleFetchCertMessage(s)
 		case pb.Message_CONSENSUS:
-			go swarm.orderMessageFeed.Send(events.OrderMessageEvent{Data: m.Data})
+			go swarm.orderMessageFeed.Send(orderPeerMgr.OrderMessageEvent{Data: m.Data})
 		case pb.Message_FETCH_BLOCK_SIGN:
 			swarm.handleFetchBlockSignMessage(s, m.Data)
 		case pb.Message_FETCH_IBTP_REQUEST_SIGN:
