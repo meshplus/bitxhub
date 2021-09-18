@@ -87,7 +87,7 @@ func (sm *ServiceManager) Manage(eventTyp, proposalResult, lastStatus, objId str
 	if proposalResult == string(APPROVED) {
 		switch eventTyp {
 		case string(governance.EventRegister):
-			res := sm.CrossInvoke(constant.InterchainContractAddr.String(), "Register", pb.String(objId))
+			res := sm.CrossInvoke(constant.InterchainContractAddr.Address().String(), "Register", pb.String(objId))
 			if !res.Ok {
 				return boltvm.Error(fmt.Sprintf("cross invoke register: %s", string(res.Result)))
 			}
@@ -106,9 +106,9 @@ func (sm *ServiceManager) Manage(eventTyp, proposalResult, lastStatus, objId str
 		switch eventTyp {
 		case string(governance.EventLogout):
 			chainID := strings.Split(objId, ":")[0]
-			res := sm.CrossInvoke(constant.AppchainMgrContractAddr.String(), "IsAvailable", pb.String(chainID))
+			res := sm.CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "IsAvailable", pb.String(chainID))
 			if !res.Ok {
-				boltvm.Error(fmt.Sprintf("cross invoke is available error: %s", string(res.Result)))
+				return boltvm.Error(fmt.Sprintf("cross invoke is available error: %s", string(res.Result)))
 			}
 			if FALSE == string(res.Result) {
 				if err := sm.pauseService(objId); err != nil {
@@ -225,7 +225,7 @@ func (sm *ServiceManager) UpdateService(chainServiceID, name, intro string, orde
 		return boltvm.Error(fmt.Sprintf("marshal service error: %v", err))
 	}
 
-	res := sm.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
+	res := sm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "SubmitProposal",
 		pb.String(sm.Caller()),
 		pb.String(string(event)),
 		pb.String(string(ServiceMgr)),
@@ -319,7 +319,7 @@ func (sm *ServiceManager) PauseChainService(chainID string) *boltvm.Response {
 	// 2. get services id
 	idList, err := sm.ServiceManager.GetIDListByChainID(chainID)
 	if err != nil {
-		return boltvm.Success(nil)
+		return getGovernanceRet("", nil)
 	}
 
 	sm.Logger().WithFields(logrus.Fields{
@@ -334,7 +334,7 @@ func (sm *ServiceManager) PauseChainService(chainID string) *boltvm.Response {
 		}
 	}
 
-	return boltvm.Success(nil)
+	return getGovernanceRet("", nil)
 }
 
 func (sm *ServiceManager) pauseService(chainServiceID string) error {
@@ -381,7 +381,7 @@ func (sm *ServiceManager) UnPauseChainService(chainID string) *boltvm.Response {
 	// 2. get services id
 	idList, err := sm.ServiceManager.GetIDListByChainID(chainID)
 	if err != nil {
-		return boltvm.Success(nil)
+		return getGovernanceRet("", nil)
 	}
 
 	// 3. unpause services
@@ -391,7 +391,7 @@ func (sm *ServiceManager) UnPauseChainService(chainID string) *boltvm.Response {
 		}
 	}
 
-	return boltvm.Success(nil)
+	return getGovernanceRet("", nil)
 }
 
 func (sm *ServiceManager) unPauseService(chainServiceID string) error {
@@ -455,13 +455,13 @@ func (sm *ServiceManager) EvaluateService(chainServiceID, desc string, score flo
 	service.Score = num/(num+1)*service.Score + 1/(num+1)*score
 	service.EvaluationRecords[sm.Caller()] = evaRec
 	sm.SetObject(service_mgr.ServiceKey(chainServiceID), *service)
-	return nil
+	return getGovernanceRet("", nil)
 }
 
-func (sm *ServiceManager) RecordInvokeService(fullServiceID, from string, result bool) *boltvm.Response {
+func (sm *ServiceManager) RecordInvokeService(fullServiceID, fromFullServiceID string, result bool) *boltvm.Response {
 	sm.ServiceManager.Persister = sm.Stub
 	toStrs := strings.Split(fullServiceID, ":")
-	fromStrs := strings.Split(from, ":")
+	fromStrs := strings.Split(fromFullServiceID, ":")
 	chainServiceID := fmt.Sprintf("%s:%s", toStrs[1], toStrs[2])
 	fromChainServiceID := fmt.Sprintf("%s:%s", fromStrs[1], fromStrs[2])
 
@@ -484,6 +484,7 @@ func (sm *ServiceManager) RecordInvokeService(fullServiceID, from string, result
 
 	// 3. get invoke record
 	var rec *governance.InvokeRecord
+
 	rec, ok = service.InvokeRecords[fromChainServiceID]
 	if ok {
 		if result {
@@ -522,7 +523,7 @@ func (sm *ServiceManager) RecordInvokeService(fullServiceID, from string, result
 		"fromChainServiceID": fromChainServiceID,
 		"result":             result,
 	}).Info("record invoke service")
-	return nil
+	return boltvm.Success(nil)
 }
 
 // ========================== Query interface ========================
@@ -561,7 +562,7 @@ func (sm *ServiceManager) GetAllServices() *boltvm.Response {
 }
 
 // GetPermissionServices returns all permission dapps
-func (sm *ServiceManager) GetPermissionServices() *boltvm.Response {
+func (sm *ServiceManager) GetPermissionServices(chainServiceId string) *boltvm.Response {
 	sm.ServiceManager.Persister = sm.Stub
 	services, err := sm.ServiceManager.All(nil)
 	if err != nil {
@@ -570,7 +571,7 @@ func (sm *ServiceManager) GetPermissionServices() *boltvm.Response {
 
 	var ret []*service_mgr.Service
 	for _, s := range services.([]*service_mgr.Service) {
-		if _, ok := s.Permission[sm.Caller()]; !ok {
+		if _, ok := s.Permission[chainServiceId]; !ok {
 			ret = append(ret, s)
 		}
 	}
@@ -594,11 +595,7 @@ func (sm *ServiceManager) GetServicesByAppchainID(chainID string) *boltvm.Respon
 		return boltvm.Error(err.Error())
 	}
 
-	if len(idList) == 0 {
-		return boltvm.Success(nil)
-	}
-
-	var ret []*service_mgr.Service
+	ret := make([]*service_mgr.Service, 0)
 	for _, id := range idList {
 		service, err := sm.ServiceManager.QueryById(id, nil)
 		if err != nil {
@@ -622,11 +619,7 @@ func (sm *ServiceManager) GetServicesByType(typ string) *boltvm.Response {
 		return boltvm.Error(err.Error())
 	}
 
-	if len(idList) == 0 {
-		return boltvm.Success(nil)
-	}
-
-	var ret []*service_mgr.Service
+	ret := make([]*service_mgr.Service, 0)
 	for _, id := range idList {
 		service, err := sm.ServiceManager.QueryById(id, nil)
 		if err != nil {
@@ -645,7 +638,7 @@ func (sm *ServiceManager) GetServicesByType(typ string) *boltvm.Response {
 func (sm *ServiceManager) IsAvailable(id string) *boltvm.Response {
 	sm.ServiceManager.Persister = sm.Stub
 	service, err := sm.ServiceManager.QueryById(id, nil)
-	if err == nil {
+	if err != nil {
 		return boltvm.Error(fmt.Sprintf("cannot get service by id %s", id))
 	}
 
@@ -683,6 +676,7 @@ func (sm *ServiceManager) checkServiceInfo(service *service_mgr.Service) error {
 }
 
 func (sm *ServiceManager) checkServiceIDFormat(serviceID string) error {
+	sm.ServiceManager.Persister = sm.Stub
 	addrs := strings.Split(serviceID, ":")
 	if len(addrs) != 3 {
 		return fmt.Errorf("the ID does not contain three parts")

@@ -645,13 +645,8 @@ func (g *Governance) UpdateAvaliableElectorateNum(id string, num uint64) *boltvm
 	if err != nil {
 		return boltvm.Error(fmt.Sprintf("marshal specificAddrs error: %v", err))
 	}
-	res := g.CrossInvoke(constant.RoleContractAddr.Address().String(), "CheckPermission",
-		pb.String(string(PermissionSpecific)),
-		pb.String(""),
-		pb.String(g.CurrentCaller()),
-		pb.Bytes(addrsData))
-	if !res.Ok {
-		return boltvm.Error(fmt.Sprintf("check permission error: %s", string(res.Result)))
+	if err := g.checkPermission([]string{string(PermissionSpecific)}, "", g.CurrentCaller(), addrsData); err != nil {
+		return boltvm.Error(fmt.Sprintf("check permission error: %v", err))
 	}
 
 	// 2. update num

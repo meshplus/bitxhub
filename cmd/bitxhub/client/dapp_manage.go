@@ -21,6 +21,23 @@ func dappMgrCMD() cli.Command {
 		Usage: "dapp manage command",
 		Subcommands: cli.Commands{
 			cli.Command{
+				Name:   "all",
+				Usage:  "query all dapps",
+				Action: getAllDapps,
+			},
+			cli.Command{
+				Name:  "permission",
+				Usage: "query permission dapps",
+				Flags: []cli.Flag{
+					cli.StringFlag{
+						Name:     "caller",
+						Usage:    "Specify caller addr",
+						Required: true,
+					},
+				},
+				Action: getPermissionDapps,
+			},
+			cli.Command{
 				Name:  "status",
 				Usage: "query dapp status by dapp id",
 				Flags: []cli.Flag{
@@ -241,6 +258,43 @@ func getDappStatusById(ctx *cli.Context) error {
 			return fmt.Errorf("unmarshal receipt error: %w", err)
 		}
 		color.Green("dapp %s is %s", dapp.DappID, string(dapp.Status))
+	} else {
+		color.Red("get dapp status error: %s\n", string(receipt.Ret))
+	}
+	return nil
+}
+
+func getAllDapps(ctx *cli.Context) error {
+	receipt, err := invokeBVMContractBySendView(ctx, constant.DappMgrContractAddr.String(), "GetAllDapps")
+	if err != nil {
+		return err
+	}
+
+	if receipt.IsSuccess() {
+		var dapps []*contracts.Dapp
+		if err := json.Unmarshal(receipt.Ret, &dapps); err != nil {
+			return fmt.Errorf("unmarshal receipt error: %w", err)
+		}
+		printDapp(dapps)
+	} else {
+		color.Red("get dapp status error: %s\n", string(receipt.Ret))
+	}
+	return nil
+}
+
+func getPermissionDapps(ctx *cli.Context) error {
+	caller := ctx.String("caller")
+	receipt, err := invokeBVMContractBySendView(ctx, constant.DappMgrContractAddr.String(), "GetPermissionDapps", pb.String(caller))
+	if err != nil {
+		return err
+	}
+
+	if receipt.IsSuccess() {
+		var dapps []*contracts.Dapp
+		if err := json.Unmarshal(receipt.Ret, &dapps); err != nil {
+			return fmt.Errorf("unmarshal receipt error: %w", err)
+		}
+		printDapp(dapps)
 	} else {
 		color.Red("get dapp status error: %s\n", string(receipt.Ret))
 	}
@@ -479,9 +533,13 @@ func evaluateDapp(ctx *cli.Context) error {
 
 func printDapp(dapps []*contracts.Dapp) {
 	var table [][]string
-	table = append(table, []string{"Id", "Name", "Type", "Owner", "Createtime", "Score", "Status"})
+	table = append(table, []string{"Id", "Name", "Type", "Owner", "Createtime", "Score", "Status", "TranRec"})
 
 	for _, dapp := range dapps {
+		transStr := ""
+		for _, t := range dapp.TransferRecords {
+			transStr = fmt.Sprintf("%s,%s-%s-%d", transStr, t.From, t.To, t.CreateTime)
+		}
 		table = append(table, []string{
 			dapp.DappID,
 			dapp.Name,
@@ -490,6 +548,7 @@ func printDapp(dapps []*contracts.Dapp) {
 			strconv.Itoa(int(dapp.CreateTime)),
 			strconv.FormatFloat(dapp.Score, 'g', -1, 64),
 			string(dapp.Status),
+			transStr,
 		})
 	}
 
