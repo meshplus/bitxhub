@@ -3,10 +3,11 @@ package contracts
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
+
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
-	"strings"
 )
 
 // InterBroker manages all interchain ibtp meta data produced on
@@ -15,12 +16,23 @@ type InterBroker struct {
 	boltvm.Stub
 }
 
+type CallFunc struct {
+	CallF string   `json:"call_f"`
+	Args  []string `json:"args"`
+}
+
+type InterchainInvoke struct {
+	CallFunc CallFunc `json:"call_func"`
+	Callback CallFunc `json:"callback"`
+	Rollback CallFunc `json:"rollback"`
+}
+
 func compositeKeys(key1, key2 string) string {
 	return key1 + "-" + key2
 }
 
-func ibtpReqKey(key1 string, key2 string, key3 uint64) string {
-	return fmt.Sprintf("req-%s-%s-%d", key1, key2, key3)
+func outMessageKey(id string) string {
+	return fmt.Sprintf("out-%s", id)
 }
 
 const (
@@ -70,7 +82,7 @@ func (ib *InterBroker) getMeta(key string) map[string]uint64 {
 	if !ok {
 		return meta
 	}
-	json.Unmarshal(data, &meta)
+	_ = json.Unmarshal(data, &meta)
 	return meta
 }
 
@@ -80,13 +92,16 @@ func (ib *InterBroker) EmitInterchain(fromServiceId, toServiceId, funcs, args, a
 	if len(splitFuncs) != 3 {
 		return boltvm.Error("funcs should be (func,funcCb,funcRb)")
 	}
+
+	interInvoke := &InterchainInvoke{
+		CallFunc: CallFunc{CallF: splitFuncs[0], Args: strings.Split(args, ",")},
+		Callback: CallFunc{CallF: splitFuncs[1], Args: strings.Split(argsCb, ",")},
+		Rollback: CallFunc{CallF: splitFuncs[2], Args: strings.Split(argsRb, ",")},
+	}
+
 	content := &pb.Content{
-		Func:     splitFuncs[0],
-		Args:     argsToByteArray(strings.Split(args, ",")),
-		Callback: splitFuncs[1],
-		ArgsCb:   argsToByteArray(strings.Split(argsCb, ",")),
-		Rollback: splitFuncs[2],
-		ArgsRb:   argsToByteArray(strings.Split(argsRb, ",")),
+		Func: interInvoke.CallFunc.CallF,
+		Args: argsToByteArray(interInvoke.CallFunc.Args),
 	}
 	contData, err := content.Marshal()
 	if err != nil {
@@ -100,12 +115,40 @@ func (ib *InterBroker) EmitInterchain(fromServiceId, toServiceId, funcs, args, a
 		Payload: contData,
 	}
 
+	ib.SetObject(outMessageKey(ibtp.ID()), interInvoke)
+
 	data, err := ibtp.Marshal()
 	if err != nil {
 		return boltvm.Error(err.Error())
 	}
-	ib.Set(ibtpReqKey(ibtp.From, ibtp.To, ibtp.Index), data)
-	return ib.CrossInvoke(constant.InterchainContractAddr.String(), "HandleIBTPData", &pb.Arg{Type: pb.Arg_Bytes, Value: data})
+	return ib.CrossInvoke(constant.InterchainContractAddr.String(), "HandleIBTPData", pb.Bytes(data))
+}
+
+func (ib *InterBroker) InvokeReceipt(input []byte) *boltvm.Response {
+	ibtp := &pb.IBTP{}
+	err := ibtp.Unmarshal(input)
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+	ib.incCounter(compositeKeys(ibtp.From, ibtp.To), CallbackCounterKey)
+	chainService := strings.Split(ibtp.To, ":")
+	if len(chainService) != 3 {
+		return boltvm.Error("ibtp.To is not chain service")
+	}
+	interInvoke := &InterchainInvoke{}
+	if ok := ib.GetObject(outMessageKey(ibtp.ID()), &interInvoke); !ok {
+		return boltvm.Error(fmt.Sprintf("not found interchain invoke:%s", ibtp.ID()))
+	}
+
+	if ibtp.Category() == pb.IBTP_RESPONSE && interInvoke.CallFunc.CallF == "" {
+		return boltvm.Success(nil)
+	}
+	evmInput := []byte(interInvoke.Callback.Args[0])
+	if ibtp.Type == pb.IBTP_ROLLBACK {
+		evmInput = []byte(interInvoke.Rollback.Args[0])
+	}
+	_ = ib.CrossInvokeEVM(chainService[2], evmInput)
+	return boltvm.Success(nil)
 }
 
 func (ib *InterBroker) InvokeInterchain(input []byte) *boltvm.Response {
@@ -114,14 +157,7 @@ func (ib *InterBroker) InvokeInterchain(input []byte) *boltvm.Response {
 	if err != nil {
 		return boltvm.Error(err.Error())
 	}
-	if ibtp.Category() == pb.IBTP_RESPONSE {
-		ib.incCounter(compositeKeys(ibtp.From, ibtp.To), CallbackCounterKey)
-		if len(ibtp.GetPayload()) == 0 {
-			return boltvm.Success(nil)
-		}
-	} else {
-		ib.incCounter(compositeKeys(ibtp.From, ibtp.To), InCounterKey)
-	}
+	ib.incCounter(compositeKeys(ibtp.From, ibtp.To), InCounterKey)
 	chainService := strings.Split(ibtp.To, ":")
 	if len(chainService) != 3 {
 		return boltvm.Error("ibtp.To is not chain service")
@@ -151,6 +187,8 @@ func (ib *InterBroker) InvokeInterchain(input []byte) *boltvm.Response {
 		if ibtp.Type == pb.IBTP_INTERCHAIN {
 			newIbtp.Type = pb.IBTP_RECEIPT_FAILURE
 		}
+	} else {
+		content.Args[0] = res.Result
 	}
 	data, _ := newIbtp.Marshal()
 	return boltvm.Success(data)
@@ -158,13 +196,19 @@ func (ib *InterBroker) InvokeInterchain(input []byte) *boltvm.Response {
 
 func (ib *InterBroker) GetInMessage(from, to string, index uint64) *boltvm.Response {
 	key := fmt.Sprintf("%s-%s-%d", from, to, index)
-	return ib.CrossInvoke(constant.InterchainContractAddr.String(), "GetIBTPById", &pb.Arg{Type: pb.Arg_String, Value: []byte(key)}, &pb.Arg{Type: pb.Arg_Bool, Value: []byte("true")})
+	return ib.CrossInvoke(constant.InterchainContractAddr.String(), "GetIBTPById", pb.String(key), pb.Bool(true))
 }
 
 func (ib *InterBroker) GetOutMessage(from, to string, index uint64) *boltvm.Response {
-	ok, data := ib.Get(ibtpReqKey(from, to, index))
+	key := fmt.Sprintf("%s-%s-%d", from, to, index)
+	interInvoke := &InterchainInvoke{}
+	ok := ib.GetObject(outMessageKey(key), &interInvoke)
 	if !ok {
-		return boltvm.Error("not found ibtp")
+		return boltvm.Error(fmt.Sprintf("not found out message:%s", key))
+	}
+	data, err := json.Marshal(interInvoke.CallFunc)
+	if err != nil {
+		return boltvm.Error(err.Error())
 	}
 	return boltvm.Success(data)
 }

@@ -361,23 +361,6 @@ func TestSwarm_Send(t *testing.T) {
 	require.Nil(t, err)
 	require.Equal(t, pb.Message_FETCH_BLOCK_SIGN_ACK, res.Type)
 	require.NotNil(t, res.Data)
-
-	fetchIBTPSignMsg := &pb.Message{
-		Type: pb.Message_FETCH_IBTP_SIGN,
-		Data: []byte("1"),
-	}
-
-	err = retry.Retry(func(attempt uint) error {
-		res, err = swarms[3].Send(1, fetchIBTPSignMsg)
-		if err != nil {
-			swarms[1].logger.Errorf(err.Error())
-			return err
-		}
-		return nil
-	}, strategy.Wait(50*time.Millisecond))
-	require.Nil(t, err)
-	require.Equal(t, pb.Message_FETCH_IBTP_SIGN_ACK, res.Type)
-	require.NotNil(t, res.Data)
 }
 
 //func TestSwarm_AsyncSend(t *testing.T) {

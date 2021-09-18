@@ -161,10 +161,6 @@ func (b *BrokerAPI) FetchSignsFromOtherPeers(id string, typ pb.GetMultiSignsRequ
 				err     error
 			)
 			switch typ {
-			case pb.GetMultiSignsRequest_ASSET_EXCHANGE:
-				address, sign, err = b.requestAssetExchangeSignFromPeer(pid, id)
-			case pb.GetMultiSignsRequest_IBTP:
-				address, sign, err = b.requestIBTPSignPeer(pid, id)
 			case pb.GetMultiSignsRequest_BLOCK_HEADER:
 				address, sign, err = b.requestBlockHeaderSignFromPeer(pid, id)
 			case pb.GetMultiSignsRequest_BURN:
@@ -190,49 +186,6 @@ func (b *BrokerAPI) FetchSignsFromOtherPeers(id string, typ pb.GetMultiSignsRequ
 	return result
 }
 
-func (b *BrokerAPI) requestAssetExchangeSignFromPeer(peerId uint64, assetExchangeId string) (string, []byte, error) {
-	req := pb.Message{
-		Type: pb.Message_FETCH_ASSET_EXCHANGE_SIGN,
-		Data: []byte(assetExchangeId),
-	}
-
-	resp, err := b.bxh.PeerMgr.Send(peerId, &req)
-	if err != nil {
-		return "", nil, err
-	}
-	if resp == nil || resp.Type != pb.Message_FETCH_ASSET_EXCHANGE_SIGN_ACK {
-		return "", nil, fmt.Errorf("invalid asset exchange sign resp")
-	}
-
-	data := model.MerkleWrapperSign{}
-	if err := data.Unmarshal(resp.Data); err != nil {
-		return "", nil, err
-	}
-
-	return data.Address, data.Signature, nil
-}
-
-func (b *BrokerAPI) requestIBTPSignPeer(pid uint64, ibtpHash string) (string, []byte, error) {
-	req := pb.Message{
-		Type: pb.Message_FETCH_IBTP_SIGN,
-		Data: []byte(ibtpHash),
-	}
-
-	resp, err := b.bxh.PeerMgr.Send(pid, &req)
-	if err != nil {
-		return "", nil, err
-	}
-	if resp == nil || resp.Type != pb.Message_FETCH_IBTP_SIGN_ACK {
-		return "", nil, fmt.Errorf("invalid fetch ibtp sign resp")
-	}
-
-	data := model.MerkleWrapperSign{}
-	if err := data.Unmarshal(resp.Data); err != nil {
-		return "", nil, err
-	}
-
-	return data.Address, data.Signature, nil
-}
 
 func (b *BrokerAPI) requestBlockHeaderSignFromPeer(pid uint64, height string) (string, []byte, error) {
 	req := pb.Message{
@@ -282,12 +235,6 @@ func (b *BrokerAPI) requestBurnSignFromPeer(pid uint64, hash string) (string, []
 
 func (b *BrokerAPI) GetSign(content string, typ pb.GetMultiSignsRequest_Type) (string, []byte, error) {
 	switch typ {
-	case pb.GetMultiSignsRequest_IBTP:
-		addr, sign, err := b.getSign(content)
-		if err != nil {
-			return "", nil, fmt.Errorf("get ibtp sign: %w", err)
-		}
-		return addr, sign, nil
 	case pb.GetMultiSignsRequest_BLOCK_HEADER:
 		height, err := strconv.ParseUint(content, 10, 64)
 		if err != nil {

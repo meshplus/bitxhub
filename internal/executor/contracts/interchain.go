@@ -358,7 +358,7 @@ func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *pb.Interchain
 			m[dstChainService.ChainId] = x.GetTxIndex()
 			if dstChainService.ChainId == dstChainService.BxhId {
 				data, _ := ibtp.Marshal()
-				res := x.CrossInvoke(constant.InterBrokerContractAddr.Address().String(), "InvokeInterchain", &pb.Arg{Type: pb.Arg_Bytes, Value: data})
+				res := x.CrossInvoke(constant.InterBrokerContractAddr.Address().String(), "InvokeInterchain", pb.Bytes(data))
 				if res.Ok {
 					return res.Result
 				}
@@ -387,7 +387,7 @@ func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *pb.Interchain
 			m[srcChainService.ChainId] = x.GetTxIndex()
 			if srcChainService.ChainId == srcChainService.BxhId {
 				data, _ := ibtp.Marshal()
-				x.CrossInvoke(constant.InterBrokerContractAddr.Address().String(), "InvokeInterchain", &pb.Arg{Type: pb.Arg_Bytes, Value: data})
+				x.CrossInvoke(constant.InterBrokerContractAddr.Address().String(), "InvokeReceipt", pb.Bytes(data))
 			}
 		} else {
 			m[DEFAULT_UNION_PIER_ID] = x.GetTxIndex()
