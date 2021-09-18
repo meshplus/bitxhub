@@ -1,8 +1,10 @@
 package peermgr
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/meshplus/bitxhub-kit/types"
 	"io/ioutil"
 	"strings"
 	"testing"

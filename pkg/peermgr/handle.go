@@ -16,7 +16,6 @@ import (
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/model"
-	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/pkg/utils"
 	network "github.com/meshplus/go-lightp2p"
 	solsha3 "github.com/miguelmota/go-solidity-sha3"
