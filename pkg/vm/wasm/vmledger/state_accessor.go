@@ -3,6 +3,7 @@ package vmledger
 import (
 	"fmt"
 	"math/big"
+	"strconv"
 
 	"github.com/meshplus/eth-kit/ledger"
 
@@ -39,7 +40,6 @@ func getState(env interface{}, args []wasmer.Value) ([]wasmer.Value, error) {
 	key := mem.Data()[key_ptr : key_ptr+int64(data[int(key_ptr)])]
 	ok, value := account.GetState(key)
 	if !ok {
-		fmt.Println("===========================================")
 		return []wasmer.Value{wasmer.NewI32(-1)}, nil
 	}
 	lengthOfBytes := len(value)
@@ -94,6 +94,66 @@ func addState(env interface{}, args []wasmer.Value) ([]wasmer.Value, error) {
 	return []wasmer.Value{}, nil
 }
 
+func getCurrentHeight(env interface{}, args []wasmer.Value) ([]wasmer.Value, error) {
+	ctx := env.(*wasmlib.WasmEnv).Ctx
+	currentHeight := ctx["currentHeight"].(uint64)
+	strInt64 := strconv.FormatUint(currentHeight, 10)
+	id16, _ := strconv.Atoi(strInt64)
+	return []wasmer.Value{wasmer.NewI32(id16)}, nil
+}
+
+func getTxHash(env interface{}, args []wasmer.Value) ([]wasmer.Value, error) {
+	ctx := env.(*wasmlib.WasmEnv).Ctx
+	instance := env.(*wasmlib.WasmEnv).Instance
+	txHash := ctx["txHash"].(string)
+
+	return setString(instance, txHash)
+}
+
+func getCaller(env interface{}, args []wasmer.Value) ([]wasmer.Value, error) {
+	ctx := env.(*wasmlib.WasmEnv).Ctx
+	instance := env.(*wasmlib.WasmEnv).Instance
+	caller := ctx["caller"].(string)
+
+	return setString(instance, caller)
+}
+
+func getCurrentCaller(env interface{}, args []wasmer.Value) ([]wasmer.Value, error) {
+	ctx := env.(*wasmlib.WasmEnv).Ctx
+	instance := env.(*wasmlib.WasmEnv).Instance
+	currentCaller := ctx["currentCaller"].(string)
+
+	return setString(instance, currentCaller)
+}
+
+func setString(instance *wasmer.Instance, str string) ([]wasmer.Value, error) {
+	alloc, err := instance.Exports.GetFunction("allocate")
+	if err != nil {
+		return []wasmer.Value{wasmer.NewI64(0)}, err
+	}
+	if alloc == nil {
+		return []wasmer.Value{wasmer.NewI64(0)}, fmt.Errorf("not found allocate method")
+	}
+
+	allocResult, err := alloc(len(str))
+	if err != nil {
+		return []wasmer.Value{wasmer.NewI64(0)}, err
+	}
+	inputPointer := allocResult.(int32)
+
+	store, _ := instance.Exports.GetMemory("memory")
+	memory := store.Data()[inputPointer:]
+
+	var i int
+	for i = 0; i < len(str); i++ {
+		memory[i] = str[i]
+	}
+
+	memory[i] = 0
+
+	return []wasmer.Value{wasmer.NewI32(inputPointer)}, nil
+}
+
 func (im *Imports) importLedgerLib(store *wasmer.Store, wasmEnv *wasmlib.WasmEnv) {
 	getBalanceFunc := wasmer.NewFunctionWithEnvironment(
 		store,
@@ -144,30 +204,58 @@ func (im *Imports) importLedgerLib(store *wasmer.Store, wasmEnv *wasmlib.WasmEnv
 		"env",
 		map[string]wasmer.IntoExtern{
 			"get_balance": getBalanceFunc,
-		},
-	)
-	im.imports.GetImportObject().Register(
-		"env",
-		map[string]wasmer.IntoExtern{
 			"set_balance": setBalanceFunc,
+			"get_state":   getStateFunc,
+			"set_state":   setStateFunc,
+			"add_state":   addStateFunc,
 		},
+	)
+}
+
+func (im *Imports) importLedgerContants(store *wasmer.Store, wasmEnv *wasmlib.WasmEnv) {
+	getCurrentHeightFunc := wasmer.NewFunctionWithEnvironment(
+		store,
+		wasmer.NewFunctionType(
+			wasmer.NewValueTypes(),
+			wasmer.NewValueTypes(wasmer.I32),
+		),
+		wasmEnv,
+		getCurrentHeight,
+	)
+	getTxHashFunc := wasmer.NewFunctionWithEnvironment(
+		store,
+		wasmer.NewFunctionType(
+			wasmer.NewValueTypes(),
+			wasmer.NewValueTypes(wasmer.I32),
+		),
+		wasmEnv,
+		getTxHash,
+	)
+	getCallerFunc := wasmer.NewFunctionWithEnvironment(
+		store,
+		wasmer.NewFunctionType(
+			wasmer.NewValueTypes(),
+			wasmer.NewValueTypes(wasmer.I32),
+		),
+		wasmEnv,
+		getCaller,
+	)
+	getCurrentCallerFunc := wasmer.NewFunctionWithEnvironment(
+		store,
+		wasmer.NewFunctionType(
+			wasmer.NewValueTypes(),
+			wasmer.NewValueTypes(wasmer.I32),
+		),
+		wasmEnv,
+		getCurrentCaller,
 	)
 	im.imports.GetImportObject().Register(
 		"env",
 		map[string]wasmer.IntoExtern{
-			"get_state": getStateFunc,
-		},
-	)
-	im.imports.GetImportObject().Register(
-		"env",
-		map[string]wasmer.IntoExtern{
-			"set_state": setStateFunc,
-		},
-	)
-	im.imports.GetImportObject().Register(
-		"env",
-		map[string]wasmer.IntoExtern{
-			"add_state": addStateFunc,
+			"get_height":         getCurrentHeightFunc,
+			"get_tx_hash":        getTxHashFunc,
+			"get_caller":         getCallerFunc,
+			"get_current_caller": getCurrentCallerFunc,
 		},
 	)
 }

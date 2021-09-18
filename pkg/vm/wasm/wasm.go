@@ -65,6 +65,10 @@ func New(ctx *vm.Context, imports wasmlib.WasmImport, instances map[string]*wasm
 	}
 
 	w.SetContext(wasm.ACCOUNT, ctx.Ledger.GetOrCreateAccount(ctx.Callee))
+	w.SetContext("currentHeight", ctx.CurrentHeight)
+	w.SetContext("txHash", ctx.Tx.GetHash().String())
+	w.SetContext("caller", ctx.Caller.String())
+	w.SetContext("currentCaller", ctx.CurrentCaller.String())
 
 	// alloc, err := w.Instance.Exports.GetFunction("allocate")
 	// if err != nil {
