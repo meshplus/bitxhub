@@ -244,7 +244,7 @@ func TestDappManager_Query(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 3, len(theDapps))
 
-	res = dm.GetPermissionDapps()
+	res = dm.GetPermissionDapps(ownerAddr)
 	assert.Equal(t, true, res.Ok)
 	err = json.Unmarshal(res.Result, &theDapps)
 	assert.Nil(t, err)
