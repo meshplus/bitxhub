@@ -353,7 +353,7 @@ func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *pb.Interchain
 		}
 		interchain.InterchainCounter[to]++
 		x.setInterchain(from, interchain)
-		x.AddObject(x.indexMapKey(getIBTPID(from, to, ibtp.Index)), x.GetTxHash())
+		x.AddObject(IndexMapKey(getIBTPID(from, to, ibtp.Index)), x.GetTxHash())
 		if dstChainService.IsLocal {
 			m[dstChainService.ChainId] = x.GetTxIndex()
 			if dstChainService.ChainId == dstChainService.BxhId {
@@ -396,7 +396,7 @@ func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *pb.Interchain
 		ic, _ := x.getInterchain(to)
 		ic.SourceReceiptCounter[from] = ibtp.Index
 		x.setInterchain(to, ic)
-		x.SetObject(x.indexReceiptMapKey(getIBTPID(from, to, ibtp.Index)), x.GetTxHash())
+		x.SetObject(IndexReceiptMapKey(getIBTPID(from, to, ibtp.Index)), x.GetTxHash())
 
 		result := true
 		if ibtp.Type == pb.IBTP_RECEIPT_FAILURE {
@@ -458,7 +458,7 @@ func (x *InterchainManager) reportTransaction(ibtp *pb.IBTP, interchain *pb.Inte
 		ic, _ := x.getInterchain(ibtp.To)
 		ic.SourceReceiptCounter[ibtp.From] = ibtp.Index
 		x.setInterchain(ibtp.To, ic)
-		x.SetObject(x.indexReceiptMapKey(ibtp.ID()), x.GetTxHash())
+		x.SetObject(IndexReceiptMapKey(ibtp.ID()), x.GetTxHash())
 	}
 
 	return ret
@@ -476,9 +476,9 @@ func (x *InterchainManager) GetIBTPByID(id string, isReq bool) *boltvm.Response 
 	)
 
 	if isReq {
-		key = x.indexMapKey(id)
+		key = IndexMapKey(id)
 	} else {
-		key = x.indexReceiptMapKey(id)
+		key = IndexReceiptMapKey(id)
 	}
 	exist := x.GetObject(key, &hash)
 	if !exist {
@@ -488,11 +488,11 @@ func (x *InterchainManager) GetIBTPByID(id string, isReq bool) *boltvm.Response 
 	return boltvm.Success(hash.Bytes())
 }
 
-func (x *InterchainManager) indexMapKey(id string) string {
+func IndexMapKey(id string) string {
 	return fmt.Sprintf("index-tx-%s", id)
 }
 
-func (x *InterchainManager) indexReceiptMapKey(id string) string {
+func IndexReceiptMapKey(id string) string {
 	return fmt.Sprintf("index-receipt-tx-%s", id)
 }
 

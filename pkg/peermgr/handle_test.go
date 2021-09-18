@@ -1,6 +1,7 @@
 package peermgr
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -19,6 +20,7 @@ import (
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/crypto/asym/ecdsa"
 	"github.com/meshplus/bitxhub-kit/log"
+	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/ledger"
@@ -105,20 +107,42 @@ func NewSwarms(t *testing.T, peerCnt int) []*Swarm {
 		},
 	}, nil).AnyTimes()
 
+	ibtp := &pb.IBTP{}
+	tx := &pb.BxhTransaction{IBTP: ibtp}
 	chainLedger.EXPECT().GetBlockSign(gomock.Any()).Return([]byte("sign"), nil).AnyTimes()
-	for i := 0; i < peerCnt; i++ {
-		node := &node_mgr.Node{
-			VPNodeId: uint64(i),
-			Pid:      ids[i],
-			Status:   governance.GovernanceAvailable,
-		}
-		nodeData, err := json.Marshal(node)
-		require.Nil(t, err)
-		//stateLedger.EXPECT().GetState(constant.NodeManagerContractAddr.Address(), []byte(fmt.Sprintf("%s-%s", node_mgr.NODE_PID_PREFIX, ids[i]))).Return(true, []byte(strconv.Itoa(i))).AnyTimes()
-		stateLedger.EXPECT().GetState(constant.NodeManagerContractAddr.Address(), []byte(fmt.Sprintf("%s-%s", node_mgr.NODEPREFIX, ids[i]))).Return(true, nodeData).AnyTimes()
-	}
-	//stateLedger.EXPECT().GetState(gomock.Any(), gomock.Any()).Return(true, data).AnyTimes()
+	chainLedger.EXPECT().GetTransaction(gomock.Any()).Return(tx, nil).AnyTimes()
+	hash, err := json.Marshal(tx.Hash())
+	require.Nil(t, err)
 	stateLedger.EXPECT().Copy().Return(stateLedger).AnyTimes()
+	stateLedger.EXPECT().GetState(gomock.Any(), gomock.Any()).DoAndReturn(func(addr *types.Address, key []byte) (bool, []byte) {
+		switch addr.String() {
+		case constant.InterchainContractAddr.Address().String():
+			return true, hash
+		case constant.TransactionMgrContractAddr.Address().String():
+			record := pb.TransactionRecord{
+				Status: pb.TransactionStatus_SUCCESS,
+			}
+			data, err := json.Marshal(record)
+			require.Nil(t, err)
+			return true, data
+		}
+
+		if addr.String() == constant.NodeManagerContractAddr.Address().String() {
+			for i := 0; i < peerCnt; i++ {
+				node := &node_mgr.Node{
+					VPNodeId: uint64(i),
+					Pid:      ids[i],
+					Status:   governance.GovernanceAvailable,
+				}
+				nodeData, err := json.Marshal(node)
+				require.Nil(t, err)
+				if bytes.Equal(key, []byte(fmt.Sprintf("%s-%s", node_mgr.NODEPREFIX, ids[i]))) {
+					return true, nodeData
+				}
+			}
+		}
+		return false, nil
+	}).AnyTimes()
 
 	agencyData, err := ioutil.ReadFile("testdata/agency.cert")
 	require.Nil(t, err)
@@ -360,6 +384,24 @@ func TestSwarm_Send(t *testing.T) {
 	}, strategy.Wait(50*time.Millisecond))
 	require.Nil(t, err)
 	require.Equal(t, pb.Message_FETCH_BLOCK_SIGN_ACK, res.Type)
+	require.NotNil(t, res.Data)
+
+	ibtp := pb.IBTP{}
+	fetchIBTPSignMsg := &pb.Message{
+		Type: pb.Message_FETCH_IBTP_REQUEST_SIGN,
+		Data: []byte(ibtp.ID()),
+	}
+
+	err = retry.Retry(func(attempt uint) error {
+		res, err = swarms[3].Send(1, fetchIBTPSignMsg)
+		if err != nil {
+			swarms[1].logger.Errorf(err.Error())
+			return err
+		}
+		return nil
+	}, strategy.Wait(1*time.Second), strategy.Limit(5))
+	require.Nil(t, err)
+	require.Equal(t, pb.Message_FETCH_IBTP_SIGN_ACK, res.Type)
 	require.NotNil(t, res.Data)
 }
 

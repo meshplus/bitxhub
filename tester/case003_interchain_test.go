@@ -229,8 +229,8 @@ func (suite *Interchain) TestHandleIBTP() {
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	ibtpNonce++
 
-	ib = &pb.IBTP{From: fullServiceID1, To: fullServiceID3, Index: ibtpNonce, TimeoutHeight: 10, Proof: proofHash[:]}
-	tx, err = genIBTPTransaction(k1, ib, k1Nonce)
+	ib1 := &pb.IBTP{From: fullServiceID1, To: fullServiceID3, Index: ibtpNonce, TimeoutHeight: 10, Proof: proofHash[:]}
+	tx, err = genIBTPTransaction(k1, ib1, k1Nonce)
 	suite.Require().Nil(err)
 	k1Nonce++
 
@@ -274,6 +274,19 @@ func (suite *Interchain) TestHandleIBTP() {
 	suite.Require().Nil(err)
 	suite.Require().False(ret.IsSuccess(), string(ret.Ret))
 	ibtpNonce++
+
+	addr, sign, err := suite.api.Broker().GetSign(ib.ID(), pb.GetMultiSignsRequest_IBTP_REQUEST)
+	suite.Require().Nil(err)
+	suite.Require().Equal(65, len(sign), fmt.Sprintf("signature's length is %d", len(sign)))
+	suite.Require().NotEqual("", addr, fmt.Sprintf("signer is %s", addr))
+
+	signM := suite.api.Broker().FetchSignsFromOtherPeers(ib.ID(), pb.GetMultiSignsRequest_IBTP_REQUEST)
+	suite.Require().Equal(3, len(signM), fmt.Sprintf("signM's size is %d", len(signM)))
+
+	for addr, sign := range signM {
+		suite.Require().Equal(65, len(sign), fmt.Sprintf("signature's length is %d", len(sign)))
+		suite.Require().NotEqual("", addr, fmt.Sprintf("signer is %s", addr))
+	}
 }
 
 func (suite *Interchain) TestHandleIBTP_Rollback() {
