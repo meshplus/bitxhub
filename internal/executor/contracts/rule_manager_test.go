@@ -273,6 +273,66 @@ func TestRuleManager_Query(t *testing.T) {
 	assert.True(t, res.Ok, string(res.Result))
 }
 
+func TestRuleManager_PauseRule(t *testing.T) {
+	rm, mockStub, rules, _, chains, _, _, _ := rulePrepare(t)
+	logger := log.NewWithModule("contracts")
+
+	mockStub.EXPECT().Logger().Return(logger).AnyTimes()
+	mockStub.EXPECT().CurrentCaller().Return(noAdminAddr).Times(1)
+	mockStub.EXPECT().CurrentCaller().Return(constant.AppchainMgrContractAddr.Address().String()).AnyTimes()
+	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().Caller().Return("").AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "LockLowPriorityProposal", gomock.Any(), gomock.Any()).Return(boltvm.Error("LockLowPriorityProposal error")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "LockLowPriorityProposal", gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+	mockStub.EXPECT().GetObject(ruleMgr.RuleKey(chains[0].ID), gomock.Any()).Return(false).Times(1)
+	retRulesMaster := make([]*ruleMgr.Rule, 0)
+	retRulesMaster = append(retRulesMaster, rules[6])
+	mockStub.EXPECT().GetObject(ruleMgr.RuleKey(chains[0].ID), gomock.Any()).SetArg(1, retRulesMaster).Return(true).AnyTimes()
+
+	// check permission error
+	res := rm.PauseRule(chains[0].ID)
+	assert.False(t, res.Ok, string(res.Result))
+	// get master error
+	res = rm.PauseRule(chains[0].ID)
+	assert.False(t, res.Ok, string(res.Result))
+	// LockLowPriorityProposal error
+	res = rm.PauseRule(chains[0].ID)
+	assert.False(t, res.Ok, string(res.Result))
+
+	res = rm.PauseRule(chains[0].ID)
+	assert.True(t, res.Ok, string(res.Result))
+}
+
+func TestRuleManager_UnPauseRule(t *testing.T) {
+	rm, mockStub, rules, _, chains, _, _, _ := rulePrepare(t)
+	logger := log.NewWithModule("contracts")
+
+	mockStub.EXPECT().Logger().Return(logger).AnyTimes()
+	mockStub.EXPECT().CurrentCaller().Return(noAdminAddr).Times(1)
+	mockStub.EXPECT().CurrentCaller().Return(constant.AppchainMgrContractAddr.Address().String()).AnyTimes()
+	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().Caller().Return("").AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "UnLockLowPriorityProposal", gomock.Any(), gomock.Any()).Return(boltvm.Error("UnLockLowPriorityProposal error")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "UnLockLowPriorityProposal", gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+	mockStub.EXPECT().GetObject(ruleMgr.RuleKey(chains[0].ID), gomock.Any()).Return(false).Times(1)
+	retRulesMaster := make([]*ruleMgr.Rule, 0)
+	retRulesMaster = append(retRulesMaster, rules[6])
+	mockStub.EXPECT().GetObject(ruleMgr.RuleKey(chains[0].ID), gomock.Any()).SetArg(1, retRulesMaster).Return(true).AnyTimes()
+
+	// check permission error
+	res := rm.UnPauseRule(chains[0].ID)
+	assert.False(t, res.Ok, string(res.Result))
+	// get master error
+	res = rm.UnPauseRule(chains[0].ID)
+	assert.False(t, res.Ok, string(res.Result))
+	// LockLowPriorityProposal error
+	res = rm.UnPauseRule(chains[0].ID)
+	assert.False(t, res.Ok, string(res.Result))
+
+	res = rm.UnPauseRule(chains[0].ID)
+	assert.True(t, res.Ok, string(res.Result))
+}
+
 func rulePrepare(t *testing.T) (*RuleManager, *mock_stub.MockStub, []*ruleMgr.Rule, [][]byte, []*appchainMgr.Appchain, [][]byte, ledger2.IAccount, [][]byte) {
 	// 1. prepare stub
 	mockCtl := gomock.NewController(t)
@@ -329,6 +389,9 @@ func rulePrepare(t *testing.T) (*RuleManager, *mock_stub.MockStub, []*ruleMgr.Ru
 		case 5:
 			rule.Status = governance.GovernanceBindable
 			rule.Master = false
+		case 6:
+			rule.Status = governance.GovernanceUnbinding
+			rule.Master = true
 		}
 
 		data, err := json.Marshal(rule)

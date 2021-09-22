@@ -223,7 +223,7 @@ func (dm *DappManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 			}
 		case string(governance.EventTransfer):
 			if err := dm.manegeTransfer(objId, extra); err != nil {
-				return boltvm.Error(fmt.Sprintf("manage update error: %v", err))
+				return boltvm.Error(fmt.Sprintf("manage transfer error: %v", err))
 			}
 		}
 	}

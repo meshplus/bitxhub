@@ -309,6 +309,7 @@ func (rm *RuleManager) LogoutRule(chainID string, ruleAddress string) *boltvm.Re
 // =========== PauseRule pause the proposals about rule of one chain.
 // The rules management module only has updated proposals, which in this case are actually paused proposals.
 func (rm *RuleManager) PauseRule(chainID string) *boltvm.Response {
+	rm.RuleManager.Persister = rm.Stub
 	// 1. check permission: PermissionSpecific
 	specificAddrs := []string{
 		constant.AppchainMgrContractAddr.Address().String()}
@@ -356,6 +357,7 @@ func (rm *RuleManager) PauseRule(chainID string) *boltvm.Response {
 
 // =========== UnPauseRule unpause the proposals about rule of one chain.
 func (rm *RuleManager) UnPauseRule(chainID string) *boltvm.Response {
+	rm.RuleManager.Persister = rm.Stub
 	// 1. check permission: PermissionSpecific
 	specificAddrs := []string{
 		constant.AppchainMgrContractAddr.Address().String()}

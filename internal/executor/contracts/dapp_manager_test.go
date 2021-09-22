@@ -2,6 +2,7 @@ package contracts
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -18,7 +19,46 @@ const (
 	ownerAddr  = "0xc0Ff2e0b3189132D815b8eb325bE17285AC898f1"
 	ownerAddr1 = "0xc0Ff2e0b3189132D815b8eb325bE17285AC898f2"
 	dappID     = "0xc0Ff2e0b3189132D815b8eb325bE17285AC898f1-0"
+	conAddr    = "0x12342e0b3189132D815b8eb325bE17285AC898f2"
 )
+
+func TestDappManager_Manage(t *testing.T) {
+	dm, mockStub, dapps, dappsData := dappPrepare(t)
+
+	mockStub.EXPECT().CurrentCaller().Return("addrNoPermission").Times(1)
+	mockStub.EXPECT().CurrentCaller().Return(constant.GovernanceContractAddr.Address().String()).AnyTimes()
+	mockStub.EXPECT().GetObject(DappKey(dapps[0].DappID), gomock.Any()).Return(false).Times(1)
+	mockStub.EXPECT().GetObject(DappKey(dapps[0].DappID), gomock.Any()).SetArg(1, *dapps[0]).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(DappKey(dapps[3].DappID), gomock.Any()).SetArg(1, *dapps[3]).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(DappKey(dapps[4].DappID), gomock.Any()).SetArg(1, *dapps[4]).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(DappKey(dapps[5].DappID), gomock.Any()).SetArg(1, *dapps[5]).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(DAPPCONTRACT_PREFIX, gomock.Any()).SetArg(1, map[string]string{conAddr: dapps[0].DappID}).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(OwnerKey(ownerAddr), gomock.Any()).SetArg(1, map[string]struct{}{}).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(OwnerKey(ownerAddr1), gomock.Any()).SetArg(1, map[string]struct{}{}).Return(true).AnyTimes()
+	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).Return().AnyTimes()
+	mockStub.EXPECT().GetTxTimeStamp().Return(int64(0)).AnyTimes()
+
+	// test without permission
+	res := dm.Manage(string(governance.EventUpdate), string(APPROVED), string(governance.GovernanceAvailable), dapps[0].DappID, dappsData[0])
+	assert.False(t, res.Ok, string(res.Result))
+	// test changestatus error
+	res = dm.Manage(string(governance.EventUpdate), string(APPROVED), string(governance.GovernanceAvailable), dapps[0].DappID, dappsData[0])
+	assert.False(t, res.Ok, string(res.Result))
+
+	// test register
+	res = dm.Manage(string(governance.EventRegister), string(APPROVED), string(governance.GovernanceUnavailable), dapps[3].DappID, dappsData[3])
+	assert.True(t, res.Ok, string(res.Result))
+
+	// test update
+	res = dm.Manage(string(governance.EventUpdate), string(APPROVED), string(governance.GovernanceAvailable), dapps[4].DappID, dappsData[4])
+	assert.True(t, res.Ok, string(res.Result))
+
+	transData, err := json.Marshal(dapps[5].TransferRecords[len(dapps[5].TransferRecords)-1])
+	assert.Nil(t, err)
+	// test transer
+	res = dm.Manage(string(governance.EventTransfer), string(APPROVED), string(governance.GovernanceAvailable), dapps[5].DappID, transData)
+	assert.True(t, res.Ok, string(res.Result))
+}
 
 func TestDappManager_RegisterDapp(t *testing.T) {
 	dm, mockStub, dapps, _ := dappPrepare(t)
@@ -237,13 +277,13 @@ func TestDappManager_Query(t *testing.T) {
 	theDapps := []*Dapp{}
 	err := json.Unmarshal(res.Result, &theDapps)
 	assert.Nil(t, err)
-	assert.Equal(t, 3, len(theDapps))
+	assert.Equal(t, 6, len(theDapps))
 
 	res = dm.GetPermissionDapps(ownerAddr)
 	assert.Equal(t, true, res.Ok)
 	err = json.Unmarshal(res.Result, &theDapps)
 	assert.Nil(t, err)
-	assert.Equal(t, 3, len(theDapps))
+	assert.Equal(t, 6, len(theDapps))
 
 	mockStub.EXPECT().GetObject(OwnerKey(ownerAddr), gomock.Any()).SetArg(1, map[string]struct{}{
 		dapps[0].DappID: struct{}{},
@@ -274,19 +314,29 @@ func dappPrepare(t *testing.T) (*DappManager, *mock_stub.MockStub, []*Dapp, [][]
 
 	var dapps []*Dapp
 	var dappsData [][]byte
-	statusType := []governance.GovernanceStatus{governance.GovernanceAvailable, governance.GovernanceFrozen, governance.GovernanceUnavailable}
+	statusType := []governance.GovernanceStatus{
+		governance.GovernanceAvailable,
+		governance.GovernanceFrozen,
+		governance.GovernanceUnavailable,
+		governance.GovernanceRegisting,
+		governance.GovernanceUpdating,
+		governance.GovernanceTransferring,
+	}
 
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 6; i++ {
+		dappID1 := fmt.Sprintf("%s%d", dappID[:len(dappID)-2], i)
 		dapp := &Dapp{
-			DappID:       dappID,
-			Name:         "name",
-			Type:         "tool",
-			Desc:         "desc",
-			ContractAddr: nil,
-			Permission:   nil,
-			OwnerAddr:    ownerAddr,
-			Status:       statusType[i],
-			Score:        1,
+			DappID: dappID1,
+			Name:   "name",
+			Type:   "tool",
+			Desc:   "desc",
+			ContractAddr: map[string]struct{}{
+				conAddr: struct{}{},
+			},
+			Permission: nil,
+			OwnerAddr:  ownerAddr,
+			Status:     statusType[i],
+			Score:      1,
 			TransferRecords: []*TransferRecord{
 				{
 					From:       ownerAddr1,
@@ -304,6 +354,16 @@ func dappPrepare(t *testing.T) (*DappManager, *mock_stub.MockStub, []*Dapp, [][]
 					CreateTime: 0,
 				},
 			},
+		}
+
+		if dapp.Status == governance.GovernanceTransferring {
+			dapp.TransferRecords = append(dapp.TransferRecords, &TransferRecord{
+				From:       ownerAddr,
+				To:         ownerAddr1,
+				Reason:     reason,
+				Confirm:    false,
+				CreateTime: 0,
+			})
 		}
 
 		data, err := json.Marshal(dapp)
