@@ -9,6 +9,7 @@ import (
 	"github.com/golang/mock/gomock"
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/governance"
+	ruleMgr "github.com/meshplus/bitxhub-core/rule-mgr"
 	"github.com/meshplus/bitxhub-core/validator/mock_validator"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
@@ -52,15 +53,30 @@ func TestVerifyPool_CheckProof(t *testing.T) {
 	chainData, err := json.Marshal(chain)
 	require.Nil(t, err)
 	//
-	//rl := &ruleMgr.Rule{
-	//	Address: contract,
-	//}
-	//rlData, err := json.Marshal(rl)
-	//require.Nil(t, err)
+	rl := &ruleMgr.Rule{
+		Address: contract,
+		Status:  governance.GovernanceAvailable,
+	}
+	rlData, err := json.Marshal([]*ruleMgr.Rule{rl})
+	require.Nil(t, err)
+
+	proof := []byte("test_proof")
+	proofHash := sha256.Sum256(proof)
+
+	originTx := &pb.BxhTransaction{
+		From: types.NewAddressByStr(from),
+		To:   types.NewAddressByStr(to),
+		IBTP: getOriginIBTP(t, 1, pb.IBTP_INTERCHAIN, proofHash[:]),
+	}
+	originHash := types.NewHash([]byte("1111"))
+	originHashBytes, err := json.Marshal(originHash)
+	require.Nil(t, err)
 
 	stateLedger.EXPECT().Copy().Return(stateLedger).AnyTimes()
+	stateLedger.EXPECT().GetState(constant.InterchainContractAddr.Address(), gomock.Any()).Return(true, originHashBytes)
 	stateLedger.EXPECT().GetState(constant.AppchainMgrContractAddr.Address(), gomock.Any()).Return(true, chainData)
-	//stateLedger.EXPECT().GetState(constant.RuleManagerContractAddr.Address(), gomock.Any()).Return(false, rlData)
+	chainLedger.EXPECT().GetTransaction(gomock.Any()).Return(originTx, nil)
+	stateLedger.EXPECT().GetState(constant.RuleManagerContractAddr.Address(), gomock.Any()).Return(true, rlData)
 	mockEngine.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil).AnyTimes()
 
 	vp := New(mockLedger, log.NewWithModule("test_verify"))
@@ -105,9 +121,6 @@ func TestVerifyPool_CheckProof(t *testing.T) {
 	ok, err = vp.CheckProof(txWithNotEqualProofHash)
 	require.NotNil(t, err)
 	require.False(t, ok)
-
-	proof := []byte("test_proof")
-	proofHash := sha256.Sum256(proof)
 
 	txWithIBTP := &pb.BxhTransaction{
 		From:  types.NewAddressByStr(from),
@@ -201,6 +214,19 @@ func TestVerifyPool_CheckProof3(t *testing.T) {
 	}
 	mockEngine := mock_validator.NewMockEngine(mockCtl)
 
+	proof := []byte("test_proof")
+	proofHash := sha256.Sum256(proof)
+
+	originTx := &pb.BxhTransaction{
+		From: types.NewAddressByStr(from),
+		To:   types.NewAddressByStr(to),
+		IBTP: getOriginIBTP(t, 1, pb.IBTP_INTERCHAIN, proofHash[:]),
+	}
+	originHash := types.NewHash([]byte("1111"))
+	originHashBytes, err := json.Marshal(originHash)
+	require.Nil(t, err)
+	chainLedger.EXPECT().GetTransaction(gomock.Any()).Return(originTx, nil)
+	stateLedger.EXPECT().GetState(constant.InterchainContractAddr.Address(), gomock.Any()).Return(true, originHashBytes)
 	stateLedger.EXPECT().GetState(constant.AppchainMgrContractAddr.Address(), gomock.Any()).Return(true, []byte("123"))
 	stateLedger.EXPECT().Copy().Return(stateLedger).AnyTimes()
 	mockEngine.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil).AnyTimes()
@@ -210,9 +236,6 @@ func TestVerifyPool_CheckProof3(t *testing.T) {
 		ve:     mockEngine,
 		logger: log.NewWithModule("test_verify"),
 	}
-
-	proof := []byte("test_proof")
-	proofHash := sha256.Sum256(proof)
 
 	txWithIBTP := &pb.BxhTransaction{
 		From:  types.NewAddressByStr(from),
@@ -233,6 +256,34 @@ func getIBTP(t *testing.T, index uint64, typ pb.IBTP_Type, proof []byte) *pb.IBT
 		DstContractId: to,
 		Func:          "set",
 		Args:          [][]byte{[]byte("Alice")},
+	}
+	c, err := ct.Marshal()
+	require.Nil(t, err)
+
+	pd := pb.Payload{
+		Encrypted: false,
+		Content:   c,
+	}
+	ibtppd, err := pd.Marshal()
+	require.Nil(t, err)
+
+	return &pb.IBTP{
+		From:      from,
+		To:        to,
+		Payload:   ibtppd,
+		Index:     index,
+		Type:      typ,
+		Proof:     proof,
+		Timestamp: time.Now().UnixNano(),
+	}
+}
+
+func getOriginIBTP(t *testing.T, index uint64, typ pb.IBTP_Type, proof []byte) *pb.IBTP {
+	ct := &pb.Content{
+		SrcContractId: from,
+		DstContractId: to,
+		Callback:      "set",
+		ArgsCb:        [][]byte{[]byte("Alice")},
 	}
 	c, err := ct.Marshal()
 	require.Nil(t, err)

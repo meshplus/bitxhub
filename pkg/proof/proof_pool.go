@@ -24,10 +24,12 @@ import (
 )
 
 const (
-	InvalidIBTP          = "invalid ibtp"
-	AppchainNotAvailable = "appchain not available"
-	NoBindRule           = "appchain didn't register rule"
-	internalError        = "internal server error"
+	InvalidIBTP            = "invalid ibtp"
+	AppchainNotAvailable   = "appchain not available"
+	NoBindRule             = "appchain didn't register rule"
+	internalError          = "internal server error"
+	ReceiptSourceNotFound  = "receipt source not found"
+	ReceiptContentCheckErr = "receipt content check error"
 )
 
 type VerifyPool struct {
@@ -132,8 +134,26 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, error) {
 
 	// get real appchain id for union ibtp
 	from := ibtp.From
+	payload := ibtp.Payload
 	if ibtp.Category() == pb.IBTP_RESPONSE {
+		ok, txHashBytes := pl.getAccountState(constant.InterchainContractAddr, contracts.IndexMapKey(ibtp.ID()))
+		if !ok {
+			return false, fmt.Errorf("%s: cannot get tx hash", ReceiptSourceNotFound)
+		}
+		txHash := &types.Hash{}
+		if err := json.Unmarshal(txHashBytes, txHash); err != nil {
+			return false, fmt.Errorf("%s: unmarshal original tx hash fail", ReceiptSourceNotFound)
+		}
+		originTx, err := pl.ledger.GetTransaction(txHash)
+		if err != nil {
+			return false, fmt.Errorf("%s: cannot get original tx", ReceiptSourceNotFound)
+		}
+		err = checkReceipt(ibtp, originTx.GetIBTP(), ibtp.Type)
+		if err != nil {
+			return false, err
+		}
 		from = ibtp.To
+		payload = originTx.GetIBTP().Payload
 	}
 
 	if len(strings.Split(from, "-")) == 2 {
@@ -154,11 +174,11 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, error) {
 		return verifyMultiSign(app, ibtp, proof)
 	}
 
-	if ibtp.Category() == pb.IBTP_RESPONSE {
-		return true, nil
-	}
+	// if ibtp.Category() == pb.IBTP_RESPONSE {
+	// 	return true, nil
+	// }
 
-	validateAddr := validator.SimFabricRuleAddr
+	validateAddr := validator.HappyRuleAddr
 	rl := &ruleMgr.Rule{}
 	ok, data = pl.getRule(from)
 	if ok {
@@ -167,16 +187,14 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, error) {
 		}
 		validateAddr = rl.Address
 	} else {
-		if app.ChainType != appchainMgr.FabricType {
-			return false, fmt.Errorf(NoBindRule)
-		}
+		return false, fmt.Errorf(NoBindRule)
 	}
 
-	ok, err = pl.ve.Validate(validateAddr, from, proof, ibtp.Payload, app.Validators) // ibtp.From
+	ok, err = pl.ve.Validate(validateAddr, from, proof, payload, app.Validators) // ibtp.From
 	if err != nil {
 		return false, fmt.Errorf("%s: %w", InvalidIBTP, err)
 	}
-	return true, nil
+	return ok, nil
 }
 
 func (pl *VerifyPool) getRule(chainId string) (bool, []byte) {
@@ -221,4 +239,59 @@ func (pl *VerifyPool) GetProof(txHash types.Hash) ([]byte, bool) {
 
 func (pl *VerifyPool) DeleteProof(txHash types.Hash) {
 	pl.proofs.Delete(txHash)
+}
+
+func checkReceipt(receipt, origin *pb.IBTP, status pb.IBTP_Type) error {
+	rPayload := &pb.Payload{}
+	if err := rPayload.Unmarshal(receipt.Payload); err != nil {
+		return err
+	}
+	oPayload := &pb.Payload{}
+	if err := oPayload.Unmarshal(origin.Payload); err != nil {
+		return err
+	}
+
+	rContent := &pb.Content{}
+	if err := rContent.Unmarshal(rPayload.Content); err != nil {
+		return err
+	}
+	oContent := &pb.Content{}
+	if err := oContent.Unmarshal(oPayload.Content); err != nil {
+		return err
+	}
+
+	if status == pb.IBTP_RECEIPT_SUCCESS {
+		if rContent.Func != oContent.Callback {
+			return fmt.Errorf("%s: receipt callback func not match", ReceiptContentCheckErr)
+		}
+		if !checkArgs(rContent.Args, oContent.ArgsCb) {
+			return fmt.Errorf("%s: receipt callback args not match", ReceiptContentCheckErr)
+		}
+	}
+
+	if status == pb.IBTP_RECEIPT_FAILURE {
+		if rContent.Func != oContent.Rollback {
+			return fmt.Errorf("%s: receipt rollback func not match", ReceiptContentCheckErr)
+		}
+		if !checkArgs(rContent.Args, oContent.ArgsRb) {
+			return fmt.Errorf("%s: receipt rollback args not match", ReceiptContentCheckErr)
+		}
+	}
+
+	return nil
+}
+
+func checkArgs(args1, args2 [][]byte) bool {
+	if len(args2) == 0 {
+		return true
+	}
+	if len(args1) < len(args2) {
+		return false
+	}
+	for index := range args2 {
+		if !bytes.Equal(args1[index], args2[index]) {
+			return false
+		}
+	}
+	return true
 }

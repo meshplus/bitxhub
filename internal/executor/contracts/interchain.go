@@ -548,6 +548,10 @@ func AppchainKey(id string) string {
 	return appchainMgr.PREFIX + id
 }
 
+func IndexMapKey(id string) string {
+	return fmt.Sprintf("index-tx-%s", id)
+}
+
 func (x *InterchainManager) indexMapKey(id string) string {
 	return fmt.Sprintf("index-tx-%s", id)
 }
