@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	InvalidIBTP          = "invalid ibtp"
+	ProofError           = "proof verify failed"
 	AppchainNotAvailable = "appchain not available"
 	NoBindRule           = "appchain didn't register rule"
 	internalError        = "internal server error"
@@ -88,7 +88,7 @@ func verifyMultiSign(app *appchainMgr.Appchain, ibtp *pb.IBTP, proof []byte) (bo
 	}
 	var validators bxhValidators
 	if err := json.Unmarshal(app.TrustRoot, &validators); err != nil {
-		return false, 0, fmt.Errorf("%s: %w", InvalidIBTP, err)
+		return false, 0, fmt.Errorf("%s: %w", ProofError, err)
 	}
 
 	m := make(map[string]struct{}, 0)
@@ -108,7 +108,7 @@ func verifyMultiSign(app *appchainMgr.Appchain, ibtp *pb.IBTP, proof []byte) (bo
 	hash := sha256.Sum256([]byte(ibtpHash.String()))
 	for v, sign := range signs.Sign {
 		if _, ok := m[v]; !ok {
-			return false, 0, fmt.Errorf("%s: wrong validator: %s", InvalidIBTP, v)
+			return false, 0, fmt.Errorf("%s: wrong validator: %s", ProofError, v)
 		}
 		delete(m, v)
 		addr := types.NewAddressByStr(v)
@@ -120,16 +120,16 @@ func verifyMultiSign(app *appchainMgr.Appchain, ibtp *pb.IBTP, proof []byte) (bo
 			return true, 0, nil
 		}
 	}
-	return false, 0, fmt.Errorf("%s: multi signs verify fail, counter: %d", InvalidIBTP, counter)
+	return false, 0, fmt.Errorf("%s: multi signs verify fail, counter: %d", ProofError, counter)
 }
 
 func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, uint64, error) {
 	if proof == nil {
-		return false, 0, fmt.Errorf("%s:, empty proof", InvalidIBTP)
+		return false, 0, fmt.Errorf("%s:, empty proof", ProofError)
 	}
 	proofHash := sha256.Sum256(proof)
 	if !bytes.Equal(proofHash[:], ibtp.Proof) {
-		return false, 0, fmt.Errorf("%s: proof hash is not correct", InvalidIBTP)
+		return false, 0, fmt.Errorf("%s: proof hash is not correct", ProofError)
 	}
 
 	// get real appchain id for union ibtp
@@ -168,7 +168,7 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, uint64, er
 
 	ok, gasUsed, err := pl.ve.Validate(validateAddr, chainID, proof, ibtp.Payload, string(app.TrustRoot))
 	if err != nil {
-		return false, gasUsed, fmt.Errorf("%s: %w", InvalidIBTP, err)
+		return false, gasUsed, fmt.Errorf("%s: %w", ProofError, err)
 	}
 	return ok, gasUsed, nil
 }
