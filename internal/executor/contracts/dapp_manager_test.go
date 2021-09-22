@@ -285,6 +285,12 @@ func TestDappManager_Query(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 6, len(theDapps))
 
+	res = dm.GetPermissionAvailableDapps(ownerAddr)
+	assert.Equal(t, true, res.Ok)
+	err = json.Unmarshal(res.Result, &theDapps)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(theDapps))
+
 	mockStub.EXPECT().GetObject(OwnerKey(ownerAddr), gomock.Any()).SetArg(1, map[string]struct{}{
 		dapps[0].DappID: struct{}{},
 	}).Return(true).Times(1)

@@ -818,6 +818,8 @@ github.com/meshplus/go-lightp2p v0.0.0-20210617153734-471d08b829f8 h1:HU/rDVIT84
 github.com/meshplus/go-lightp2p v0.0.0-20210617153734-471d08b829f8/go.mod h1:ARRXc4Oo0iZjsj5CB+LTmcMNxK2c1fug7XsEZ7yPJvg=
 github.com/meshplus/go-wasm-metering v0.0.0-20210819034552-72b65cfc42ba h1:4mHSImY5PAnMGwWFMLI/IApVpkNjFS/FCaHEkGiEZFM=
 github.com/meshplus/go-wasm-metering v0.0.0-20210819034552-72b65cfc42ba/go.mod h1:EuDG+FksQ4Fc3b1/aITOEU6PmhzkGnBBg22/ettSZXA=
+github.com/meshplus/go-wasm-metering v0.0.0-20210913105809-61352edd2047 h1:xB023IQpKxi473/8zIbTf5EdyJDftFnIGT8ujx32Qis=
+github.com/meshplus/go-wasm-metering v0.0.0-20210913105809-61352edd2047/go.mod h1:EuDG+FksQ4Fc3b1/aITOEU6PmhzkGnBBg22/ettSZXA=
 github.com/meshplus/wasmer-go v1.0.5-0.20210817103436-19ec68f8bfe2 h1:tgu12zbRlfzFj+y+01WdOuTb3PEZg4XF77gFcoasyCU=
 github.com/meshplus/wasmer-go v1.0.5-0.20210817103436-19ec68f8bfe2/go.mod h1:0gzVdSfg6pysA6QVp6iVRPTagC6Wq9pOE8J86WKb2Fk=
 github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b/go.mod h1:01TrycV0kFyexm33Z7vhZRXopbI8J3TDReVlkTgMUxE=
