@@ -132,4 +132,4 @@ nav:
       - JsSDK使用文档: sdk/jssdk.md
   - 跨链浏览器体验指南:
       - 使用文档: scan/index.md
-      - 跨链网关部接入: scan/deploy_pier_testnet.md
+      - 跨链网关接入: scan/deploy_pier_testnet.md
