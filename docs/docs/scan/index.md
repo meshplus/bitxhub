@@ -4,14 +4,23 @@
 
 我们建议使用 Google Chrome 并安装 [MetaMask](https://github.com/MetaMask/metamask-extension/releases/download/v10.0.1/metamask-chrome-10.0.1.zip) 钱包扩展程序(推荐使用10.0.1及以上)。以下是 [MetaMask 常见问题解答](https://metamask.io/faqs.html) 供参考！
 
-### 测试网RPC配置
-选择顶部网络功能，然后选择【自定义RPC】
+### 测试网自动配置
+
+MetaMask插件安装完成后，点击浏览器【登陆】按钮，系统会弹出测试网自动配置添加页面，用户点击【Approve】，即可成功添加BitXHub测试网。
+
+<img src='../assets/add-network.png' alt="Metamask Network" />
+
+BitXHub测试网络添加成功后，系统会提示您进行网络切换，用户点击【Switch network】，即可成功切换至BitXHub测试网络并进行后续操作。
+
+<img src='../assets/switch-network.png' alt="Metamask Network" />
+
+### 测试网RPC手动配置
+选择顶部网络功能，然后选择【自定义RPC】进入网络配置页面。
 
 <img src='../assets/metamask-network.png' width="300" alt="Metamask Network" />
 
-### BitXHub测试网配置
 
-测试网信息详情：
+### BitXHub测试网配置信息详情
 
 **Chain ID**
 
@@ -48,6 +57,9 @@ https://testnet-1.bitxhub.cn:8881
 2）以上pier配置过程，pier.toml中关于应用链的部分需要特别注意，以fabric为例，[appchain]字段下的配置示例如下，
 
 ```toml
+[mode.relay]
+addrs = ["testnet-1.bitxhub.cn:60111"]
+
 [appchain]
 plugin = "fabric-client-1.4"
 config = "fabric"
@@ -68,33 +80,27 @@ address: 0xE7f5E3c3963c6a588AB3de753817B3F735a6Ab58
 # 将返回的private key的字符串导入到MetaMask钱包即可
 ```
 
-### 测试网燃料费申请
-
-【BXH】为测试网上部署的平台测试燃料费，用于支付用户浏览器操作时产生的费用。
-
-**BXH燃料费申请流程**
-
-第一步：填写申请模板内容如下：
-> 申请人姓名：张三 
-> 
-> 职业： 学生
-> 
-> 申请人单位：xx大学
-> 
-> 申请人地址：0xE7f5E3c3963c6a588AB3de753817B3F735a6Ab58
-
-
-**注意：** 申请人钱包地址需要和Pier地址（由《获取应用链私钥》小节导出的address字段）一致。
-
-第二步：发送邮箱至：bitxhub@hyperchain.cn
-
-📢：申请发送24h内，您的地址将收到1个BXH燃料费，每个用户24h内仅允许申请一次。
-
 ## 三、浏览器可视化操作
+
+### 用户实名绑定
+
+BitXHub测试网络下，新用户首次点击【登陆】，需要完成手机实名绑定，系统会提示【正在为您跳转，请先完成用户注册】，并跳转到注册页面。
+
+![注册](../assets/redirect.png)
+
+注册页面中，用户需要输入手机号进行验证码校验，完成密码设置后，点击【注册】，即可跳转返回跨链浏览器页面。新用户完成注册后，您的地址1h内将收到BitXHub测试网发送的燃料费用于跨链体验。
+
+![注册](../assets/register.png)
 
 ### 应用链注册申请
 
-![注册](../assets/appchain-register.png))
+对于新注册的用户，您的地址1h内将收到BitXHub测试网发送的燃料费用于跨链体验。当您的地址中BitXHub测试网燃料费为0时，系统会提示【您的测试网燃料正分发中，请稍后】。
+
+![注册](../assets/notice.png)
+
+**应用链注册**
+
+![注册](../assets/appchain-register.png)
 
 注册字段说明：
 
@@ -114,19 +120,7 @@ address: 0xE7f5E3c3963c6a588AB3de753817B3F735a6Ab58
    
 7. 申请理由：填写申请接入跨链系统的理由
 
-应用链接入BitXHub跨链系统需要获得中继链管理员的准入审批，中继链管理员会在24h内完成应用链注册申请审核，审核通过后，应用链类型为【hyperchain】和【其他】选项的，用户需要进行应用链验证规则的提交申请。
-
-### 验证规则部署
-
-![部署](../assets/rule-deploy.png)
-
-为了保证中继链能对Pier发送过来的跨链交易能够进行存在性和有效性验证，验证规则的开发指南请参考[链接](https://docs.bitxhub.cn/bitxhub/dev/rule/)。验证规则文件开发完成后，中继链管理员会在24h内完成验证规则申请审核，验证规则由中继链管理员审核通过后才能部署到中继验证引擎。
-
-注意：如果接入的是fabric，我们内置了两个验证规则，需要切换到0x00000000000000000000000000000000000000a1的验证规则。
-
-![部署](../assets/rule-example.png)
-
-点击箭头处的<绑定>后，中继链管理员会在24h内完成验证规则更新的审核。
+应用链接入BitXHub跨链系统需要获得中继链管理员的准入审批，中继链管理员会在24h内完成应用链注册申请审，审核通过即可接入应用链。
 
 ## 四、网关启动
 
