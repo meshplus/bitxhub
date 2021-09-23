@@ -563,16 +563,40 @@ func (dm *DappManager) getAll() ([]*Dapp, error) {
 		}
 	}
 
+	sort.Sort(Dapps(ret))
 	return ret, nil
 }
 
-// GetAllDapps returns all dapps
+// GetPermissionDapps returns all the DApp that the caller is allowed to call
 func (dm *DappManager) GetPermissionDapps(caller string) *boltvm.Response {
 	var ret []*Dapp
 	all, err := dm.getAll()
-	if err == nil {
-		for _, d := range all {
-			if _, ok := d.Permission[caller]; !ok {
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+	for _, d := range all {
+		if _, ok := d.Permission[caller]; !ok {
+			ret = append(ret, d)
+		}
+	}
+
+	data, err := json.Marshal(ret)
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+	return boltvm.Success(data)
+}
+
+// GetPermissionAvailableDapps returns the available DApp that the caller is allowed to call
+func (dm *DappManager) GetPermissionAvailableDapps(caller string) *boltvm.Response {
+	var ret []*Dapp
+	all, err := dm.getAll()
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+	for _, d := range all {
+		if _, ok := d.Permission[caller]; !ok {
+			if d.IsAvailable() {
 				ret = append(ret, d)
 			}
 		}
@@ -588,6 +612,9 @@ func (dm *DappManager) GetPermissionDapps(caller string) *boltvm.Response {
 // get dApps by owner addr, including dApps a person currently owns and the dApps they once owned
 func (dm *DappManager) GetDappsByOwner(ownerAddr string) *boltvm.Response {
 	ret, err := dm.getOwnerAll(ownerAddr)
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
 
 	data, err := json.Marshal(ret)
 	if err != nil {
@@ -732,5 +759,5 @@ func (ds Dapps) Len() int { return len(ds) }
 func (ds Dapps) Swap(i, j int) { ds[i], ds[j] = ds[j], ds[i] }
 
 func (ds Dapps) Less(i, j int) bool {
-	return ds[i].DappID > ds[j].DappID
+	return ds[i].CreateTime > ds[j].CreateTime
 }
