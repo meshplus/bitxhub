@@ -757,7 +757,7 @@ func (suite *Interchain) TestInterchain() {
 	adminNonce3++
 
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.InterchainContractAddr.Address(),
-		"Interchain", pb.String(fullServiceID))
+		"GetInterchain", pb.String(fullServiceID))
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 

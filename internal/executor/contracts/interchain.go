@@ -98,6 +98,7 @@ func (x *InterchainManager) DeleteInterchain(id string) *boltvm.Response {
 	return boltvm.Success(nil)
 }
 
+// todo: the parameter name should be fullServiceID
 func (x *InterchainManager) GetInterchainInfo(chainId string) *boltvm.Response {
 	interchain, ok := x.getInterchain(chainId)
 	info := &InterchainInfo{
@@ -169,15 +170,6 @@ func (x *InterchainManager) setInterchain(id string, interchain *pb.Interchain) 
 	x.Set(serviceKey(id), data)
 }
 
-// Interchain returns information of the interchain count, Receipt count and SourceReceipt count
-func (x *InterchainManager) Interchain(id string) *boltvm.Response {
-	ok, data := x.Get(serviceKey(id))
-	if !ok {
-		return boltvm.Error(fmt.Errorf("this service does not exist").Error())
-	}
-	return boltvm.Success(data)
-}
-
 // GetInterchain returns information of the interchain count, Receipt count and SourceReceipt count by id
 func (x *InterchainManager) GetInterchain(id string) *boltvm.Response {
 	ok, data := x.Get(serviceKey(id))
@@ -205,6 +197,7 @@ func (x *InterchainManager) HandleIBTP(ibtp *pb.IBTP) *boltvm.Response {
 	}
 
 	// ProcessIBTP should always executed even if checkTargetAppchainAvailability failed
+	// todo : re-check the availability of the destination service
 	appchainErr := x.checkTargetAppchainAvailability(ibtp)
 
 	res := boltvm.Success(nil)
