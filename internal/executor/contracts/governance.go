@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -331,6 +332,22 @@ func (g *Governance) GetProposalsByObjId(objId string) *boltvm.Response {
 	if err != nil {
 		return boltvm.Error(err.Error())
 	}
+
+	retData, err := json.Marshal(ret)
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+	return boltvm.Success(retData)
+}
+
+// Query proposals by the ID of the managed chain, returning a list of proposal for that type
+func (g *Governance) GetProposalsByObjIdInCreateTimeOrder(objId string) *boltvm.Response {
+	ret, err := g.getProposalsByObjId(objId)
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+
+	sort.Sort(Proposals(ret))
 
 	retData, err := json.Marshal(ret)
 	if err != nil {
@@ -1058,4 +1075,14 @@ func getGovernanceRet(proposalID string, extra []byte) *boltvm.Response {
 		return boltvm.Error(err.Error())
 	}
 	return boltvm.Success(resData)
+}
+
+type Proposals []*Proposal
+
+func (ps Proposals) Len() int { return len(ps) }
+
+func (ps Proposals) Swap(i, j int) { ps[i], ps[j] = ps[j], ps[i] }
+
+func (ps Proposals) Less(i, j int) bool {
+	return ps[i].CreateTime > ps[j].CreateTime
 }
