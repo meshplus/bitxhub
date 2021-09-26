@@ -55,6 +55,28 @@ type Dapp struct {
 	FSM    *fsm.FSM                    `json:"fsm"`
 }
 
+type UpdateDappInfo struct {
+	DappID       string        `json:"dapp_id"`
+	Name         UpdateInfo    `json:"name"`
+	Type         UpdateInfo    `json:"type"`
+	Desc         UpdateInfo    `json:"desc"`
+	Url          UpdateInfo    `json:"url"`
+	ContractAddr UpdateMapInfo `json:"contract_addr"`
+	Permission   UpdateMapInfo `json:"permission"`
+}
+
+type UpdateInfo struct {
+	OldInfo interface{}
+	NewInfo interface{}
+	IsEdit  bool
+}
+
+type UpdateMapInfo struct {
+	OldInfo map[string]struct{}
+	NewInfo map[string]struct{}
+	IsEdit  bool
+}
+
 type EvaluationRecord struct {
 	Addr       string  `json:"addr"`
 	Score      float64 `json:"score"`
@@ -218,21 +240,29 @@ func (dm *DappManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 	}
 
 	// 3. other operation
-	dappInfo := &Dapp{}
-	if err := json.Unmarshal(extra, dappInfo); err != nil {
-		return boltvm.Error(fmt.Sprintf("unmarshal register data error:%v", err))
-	}
 	if proposalResult == string(APPROVED) {
 		switch eventTyp {
 		case string(governance.EventRegister):
+			dappInfo := &Dapp{}
+			if err := json.Unmarshal(extra, dappInfo); err != nil {
+				return boltvm.Error(fmt.Sprintf("unmarshal register data error:%v", err))
+			}
 			if err := dm.manegeRegister(objId, dappInfo); err != nil {
 				return boltvm.Error(fmt.Sprintf("manage register error: %v", err))
 			}
 		case string(governance.EventUpdate):
-			if err := dm.manegeUpdate(objId, dappInfo); err != nil {
+			dappUpdateInfo := &UpdateDappInfo{}
+			if err := json.Unmarshal(extra, dappUpdateInfo); err != nil {
+				return boltvm.Error(fmt.Sprintf("unmarshal register data error:%v", err))
+			}
+			if err := dm.manegeUpdate(objId, dappUpdateInfo); err != nil {
 				return boltvm.Error(fmt.Sprintf("manage update error: %v", err))
 			}
 		case string(governance.EventTransfer):
+			dappInfo := &Dapp{}
+			if err := json.Unmarshal(extra, dappInfo); err != nil {
+				return boltvm.Error(fmt.Sprintf("unmarshal register data error:%v", err))
+			}
 			if err := dm.manegeTransfer(objId, dappInfo); err != nil {
 				return boltvm.Error(fmt.Sprintf("manage update error: %v", err))
 			}
@@ -254,19 +284,19 @@ func (dm *DappManager) manegeRegister(id string, dappInfo *Dapp) error {
 	return nil
 }
 
-func (dm *DappManager) manegeUpdate(id string, dappInfo *Dapp) error {
+func (dm *DappManager) manegeUpdate(id string, dappUpdateInfo *UpdateDappInfo) error {
 	dapp := &Dapp{}
 	ok := dm.GetObject(DappKey(id), dapp)
 	if !ok {
 		return fmt.Errorf("the dapp is not exist")
 	}
 
-	dapp.Name = dappInfo.Name
-	dapp.Type = dappInfo.Type
-	dapp.Desc = dappInfo.Desc
-	dapp.Permission = dappInfo.Permission
-	dapp.ContractAddr = dappInfo.ContractAddr
-	dapp.Url = dappInfo.Url
+	dapp.Name = dappUpdateInfo.Name.NewInfo.(string)
+	dapp.Type = DappType(dappUpdateInfo.Type.NewInfo.(string))
+	dapp.Desc = dappUpdateInfo.Desc.NewInfo.(string)
+	dapp.Permission = dappUpdateInfo.Permission.NewInfo
+	dapp.ContractAddr = dappUpdateInfo.ContractAddr.NewInfo
+	dapp.Url = dappUpdateInfo.Url.NewInfo.(string)
 	dm.SetObject(DappKey(dapp.DappID), *dapp)
 	return nil
 }
@@ -359,7 +389,7 @@ func (dm *DappManager) UpdateDapp(id, name, typ, desc, url, conAddrs, permits, r
 	}
 
 	// 3. get info
-	newDapp, err := dm.packageDappInfo(id, name, typ, desc, url, conAddrs, permits, oldDapp.OwnerAddr, oldDapp.Score, oldDapp.CreateTime, oldDapp.EvaluationRecords, oldDapp.TransferRecords, oldDapp.Status)
+	newDapp, updateDappInfo, err := dm.packageDappUpdateInfo(id, name, typ, desc, url, conAddrs, permits, oldDapp)
 	if err != nil {
 		return boltvm.Error(fmt.Sprintf("get dapp info error: %v", err))
 	}
@@ -369,7 +399,7 @@ func (dm *DappManager) UpdateDapp(id, name, typ, desc, url, conAddrs, permits, r
 	}
 
 	// 5. submit proposal
-	dappData, err := json.Marshal(newDapp)
+	updateDappInfoData, err := json.Marshal(updateDappInfo)
 	if err != nil {
 		return boltvm.Error(fmt.Sprintf("dapp marshal error: %v", err))
 	}
@@ -382,7 +412,7 @@ func (dm *DappManager) UpdateDapp(id, name, typ, desc, url, conAddrs, permits, r
 		pb.String(id),
 		pb.String(string(oldDapp.Status)),
 		pb.String(reason),
-		pb.Bytes(dappData),
+		pb.Bytes(updateDappInfoData),
 	)
 	if !res.Ok {
 		return boltvm.Error("submit proposal error:" + string(res.Result))
@@ -708,6 +738,86 @@ func (dm *DappManager) packageDappInfo(dappID, name string, typ string, desc str
 	}
 
 	return dapp, nil
+}
+
+func (dm *DappManager) packageDappUpdateInfo(dappID, name string, typ string, desc string, url, conAddrs string, permits string, oldDapp *Dapp) (*Dapp, *UpdateDappInfo, error) {
+	// name
+	UpdateName := UpdateInfo{
+		OldInfo: oldDapp.Name,
+		NewInfo: name,
+		IsEdit:  !(name == oldDapp.Name),
+	}
+
+	// type
+	UpdateType := UpdateInfo{
+		OldInfo: oldDapp.Type,
+		NewInfo: typ,
+		IsEdit:  !(typ == string(oldDapp.Type)),
+	}
+
+	// desc
+	UpdateDesc := UpdateInfo{
+		OldInfo: oldDapp.Desc,
+		NewInfo: desc,
+		IsEdit:  !(desc == oldDapp.Desc),
+	}
+
+	// url
+	UpdateUrl := UpdateInfo{
+		OldInfo: oldDapp.Url,
+		NewInfo: url,
+		IsEdit:  !(url == oldDapp.Url),
+	}
+
+	// contract addr
+	UpdateContractAddr := UpdateMapInfo{
+		OldInfo: oldDapp.ContractAddr,
+		IsEdit:  false,
+	}
+	contractAddr := make(map[string]struct{})
+	for _, con := range strings.Split(conAddrs, ",") {
+		contractAddr[con] = struct{}{}
+		if _, ok := oldDapp.ContractAddr[con]; !ok {
+			UpdateContractAddr.IsEdit = true
+		}
+	}
+	UpdateContractAddr.NewInfo = contractAddr
+
+	// permission
+	UpdatePermission := UpdateMapInfo{
+		OldInfo: oldDapp.Permission,
+		IsEdit:  false,
+	}
+	permission := make(map[string]struct{})
+	for _, id := range strings.Split(permits, ",") {
+		permission[id] = struct{}{}
+		if _, ok := oldDapp.Permission[id]; !ok {
+			UpdatePermission.IsEdit = true
+		}
+	}
+	UpdatePermission.NewInfo = permission
+
+	dapp := &Dapp{
+		DappID:       dappID,
+		Name:         name,
+		Type:         DappType(typ),
+		Desc:         desc,
+		Url:          url,
+		ContractAddr: contractAddr,
+		Permission:   permission,
+	}
+
+	updateDappInfo := &UpdateDappInfo{
+		DappID:       dappID,
+		Name:         UpdateName,
+		Type:         UpdateType,
+		Desc:         UpdateDesc,
+		Url:          UpdateUrl,
+		ContractAddr: UpdateContractAddr,
+		Permission:   UpdatePermission,
+	}
+
+	return dapp, updateDappInfo, nil
 }
 
 func (dm *DappManager) checkDappInfo(dapp *Dapp, isRegister bool) error {
