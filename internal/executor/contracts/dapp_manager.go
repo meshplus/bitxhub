@@ -883,7 +883,7 @@ func (dm *DappManager) GetDappProposalsByTypWithCurDappInfo() *boltvm.Response {
 		return res
 	}
 
-	pros := make([]Proposal, 0)
+	pros := make([]*Proposal, 0)
 	err := json.Unmarshal(res.Result, &pros)
 	if err != nil {
 		return boltvm.Error(err.Error())
