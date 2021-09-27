@@ -603,7 +603,7 @@ func (dm *DappManager) getAll() ([]*Dapp, error) {
 
 // GetPermissionDapps returns all the DApp that the caller is allowed to call
 func (dm *DappManager) GetPermissionDapps(caller string) *boltvm.Response {
-	var ret []*Dapp
+	ret := make([]*Dapp, 0)
 	all, err := dm.getAll()
 	if err != nil {
 		return boltvm.Error(err.Error())
@@ -623,7 +623,7 @@ func (dm *DappManager) GetPermissionDapps(caller string) *boltvm.Response {
 
 // GetPermissionAvailableDapps returns the available DApp that the caller is allowed to call
 func (dm *DappManager) GetPermissionAvailableDapps(caller string) *boltvm.Response {
-	var ret []*Dapp
+	ret := make([]*Dapp, 0)
 	all, err := dm.getAll()
 	if err != nil {
 		return boltvm.Error(err.Error())
@@ -874,4 +874,36 @@ func (ds Dapps) Swap(i, j int) { ds[i], ds[j] = ds[j], ds[i] }
 
 func (ds Dapps) Less(i, j int) bool {
 	return ds[i].CreateTime > ds[j].CreateTime
+}
+
+// dapp proposal interface
+func (dm *DappManager) GetDappProposalsByTypWithCurDappInfo() *boltvm.Response {
+	res := dm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "GetProposalsByTyp", pb.String(string(DappMgr)))
+	if !res.Ok {
+		return res
+	}
+
+	pros := make([]Proposal, 0)
+	err := json.Unmarshal(res.Result, &pros)
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+	for _, p := range pros {
+		dapp := &Dapp{}
+		ok := dm.GetObject(DappKey(p.ObjId), dapp)
+		if !ok {
+			return boltvm.Error("the dapp is not exist")
+		}
+		dappData, err := json.Marshal(dapp)
+		if err != nil {
+			return boltvm.Error(err.Error())
+		}
+		p.Extra = dappData
+	}
+
+	retData, err := json.Marshal(pros)
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+	return boltvm.Success(retData)
 }

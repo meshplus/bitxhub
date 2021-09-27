@@ -270,6 +270,24 @@ func TestDappManager_Query(t *testing.T) {
 	assert.Equal(t, "false", string(res.Result))
 }
 
+func TestDappManager_Query_NULL(t *testing.T) {
+	dm, mockStub, _, _ := dappPrepare(t)
+	mockStub.EXPECT().Query(DAPPPREFIX).Return(true, nil).AnyTimes()
+
+	res := dm.GetPermissionDapps("")
+	assert.Equal(t, true, res.Ok)
+	theDapps := []*Dapp{}
+	err := json.Unmarshal(res.Result, &theDapps)
+	assert.Nil(t, err)
+	assert.Equal(t, 0, len(theDapps))
+
+	res = dm.GetPermissionAvailableDapps("")
+	assert.Equal(t, true, res.Ok)
+	err = json.Unmarshal(res.Result, &theDapps)
+	assert.Nil(t, err)
+	assert.Equal(t, 0, len(theDapps))
+}
+
 func dappPrepare(t *testing.T) (*DappManager, *mock_stub.MockStub, []*Dapp, [][]byte) {
 	mockCtl := gomock.NewController(t)
 	mockStub := mock_stub.NewMockStub(mockCtl)
