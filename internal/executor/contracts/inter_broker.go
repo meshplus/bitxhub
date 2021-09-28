@@ -144,7 +144,7 @@ func (ib *InterBroker) InvokeReceipt(input []byte) *boltvm.Response {
 		return boltvm.Success(nil)
 	}
 	evmInput := []byte(interInvoke.Callback.Args[0])
-	if ibtp.Type == pb.IBTP_ROLLBACK {
+	if ibtp.Type == pb.IBTP_RECEIPT_ROLLBACK {
 		evmInput = []byte(interInvoke.Rollback.Args[0])
 	}
 	_ = ib.CrossInvokeEVM(chainService[2], evmInput)

@@ -107,6 +107,15 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 		panic(err)
 	}
 
+	multiTxIBTPsMap, err := exec.getMultiTxIBTPsMap(block.BlockHeader.Number)
+	if err != nil {
+		panic(err)
+	}
+	multiTxCounter := make(map[string]*pb.StringSlice)
+	for from, list := range multiTxIBTPsMap {
+		multiTxCounter[from] = &pb.StringSlice{Slice: list}
+	}
+
 	block.BlockHeader.TxRoot = l1Root
 	block.BlockHeader.ReceiptRoot = receiptRoot
 	block.BlockHeader.ParentHash = exec.currentBlockHash
@@ -136,6 +145,7 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 		L2Roots:        l2Roots,
 		TimeoutCounter: timeoutCounter,
 		TimeoutL2Roots: timeoutL2Roots,
+		MultiTxCounter: multiTxCounter,
 	}
 
 	data := &ledger.BlockData{
@@ -650,7 +660,7 @@ func (exec *BlockExecutor) setTimeoutRollback(height uint64) error {
 	for _, id := range list {
 		record := pb.TransactionRecord{
 			Height: height,
-			Status: pb.TransactionStatus_ROLLBACK,
+			Status: pb.TransactionStatus_BEGIN_ROLLBACK,
 		}
 
 		if err := exec.setTxRecord(id, record); err != nil {
@@ -673,6 +683,20 @@ func (exec *BlockExecutor) getTimeoutList(height uint64) ([]string, error) {
 	}
 
 	return list, nil
+}
+
+func (exec *BlockExecutor) getMultiTxIBTPsMap(height uint64) (map[string][]string, error) {
+	ok, val := exec.ledger.GetState(constant.InterchainContractAddr.Address(), []byte(contracts.MultiTxNotifyKey(height)))
+	if !ok {
+		return make(map[string][]string), nil
+	}
+
+	m := make(map[string][]string)
+	if err := json.Unmarshal(val, &m); err != nil {
+		return nil, err
+	}
+
+	return m, nil
 }
 
 func (exec *BlockExecutor) setTxRecord(id string, record pb.TransactionRecord) error {

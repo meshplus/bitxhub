@@ -109,8 +109,6 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	stateLedger.EXPECT().Events(gomock.Any()).Return(evs).AnyTimes()
 	stateLedger.EXPECT().Commit(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	stateLedger.EXPECT().Clear().AnyTimes()
-	stateLedger.EXPECT().GetState(constant.TransactionMgrContractAddr.Address(), gomock.Any()).Return(false, nil).AnyTimes()
-	stateLedger.EXPECT().GetState(gomock.Any(), gomock.Any()).Return(true, []byte("10")).AnyTimes()
 	stateLedger.EXPECT().SetState(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	stateLedger.EXPECT().GetBalance(gomock.Any()).Return(new(big.Int).SetUint64(10)).AnyTimes()
 	stateLedger.EXPECT().SetBalance(gomock.Any(), gomock.Any()).AnyTimes()
@@ -129,6 +127,16 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	stateLedger.EXPECT().Close().AnyTimes()
 	chainLedger.EXPECT().Close().AnyTimes()
 
+	stateLedger.EXPECT().GetState(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(addr *types.Address, key []byte) (bool, []byte) {
+			if addr.String() == constant.TransactionMgrContractAddr.Address().String() {
+				return false, nil
+			} else if addr.String() == constant.InterchainContractAddr.Address().String() {
+				return false, nil
+			}
+
+			return true, []byte("10")
+		}).AnyTimes()
 	logger := log.NewWithModule("executor")
 
 	exec, err := New(mockLedger, logger, &appchain.Client{}, config, big.NewInt(5000000))
