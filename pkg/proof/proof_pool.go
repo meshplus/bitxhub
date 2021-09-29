@@ -134,7 +134,11 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, error) {
 
 	// get real appchain id for union ibtp
 	from := ibtp.From
-	payload := ibtp.Payload
+	validatePayload, err := ibtp.Marshal()
+	if err != nil {
+		return false, fmt.Errorf("%s: unmarshal ibtp fail: %w", internalError, err)
+	}
+	// payload := ibtp.Payload
 	if ibtp.Category() == pb.IBTP_RESPONSE {
 		ok, txHashBytes := pl.getAccountState(constant.InterchainContractAddr, contracts.IndexMapKey(ibtp.ID()))
 		if !ok {
@@ -153,7 +157,11 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, error) {
 			return false, err
 		}
 		from = ibtp.To
-		payload = originTx.GetIBTP().Payload
+		validatePayload, err = ibtp.Marshal()
+		if err != nil {
+			return false, fmt.Errorf("%s: unmarshal ibtp fail: %w", internalError, err)
+		}
+		// payload = originTx.GetIBTP().Payload
 	}
 
 	if len(strings.Split(from, "-")) == 2 {
@@ -165,7 +173,7 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, error) {
 	if !ok {
 		return false, fmt.Errorf("%s: cannot get registered appchain", AppchainNotAvailable)
 	}
-	err := json.Unmarshal(data, app)
+	err = json.Unmarshal(data, app)
 	if err != nil {
 		return false, fmt.Errorf("%s: unmarshal appchain data fail: %w", internalError, err)
 	}
@@ -190,7 +198,7 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, error) {
 		return false, fmt.Errorf(NoBindRule)
 	}
 
-	ok, err = pl.ve.Validate(validateAddr, from, proof, payload, app.Validators) // ibtp.From
+	ok, err = pl.ve.Validate(validateAddr, from, proof, validatePayload, app.Validators) // ibtp.From
 	if err != nil {
 		return false, fmt.Errorf("%s: %w", InvalidIBTP, err)
 	}
