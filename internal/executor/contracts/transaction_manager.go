@@ -1,9 +1,14 @@
 package contracts
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"strconv"
+
+	"github.com/meshplus/bitxhub-model/constant"
+
+	"github.com/looplab/fsm"
 
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -16,134 +21,215 @@ const (
 
 type TransactionManager struct {
 	boltvm.Stub
+	fsm *fsm.FSM
 }
 
 type TransactionInfo struct {
-	GlobalState pb.TransactionStatus
-	ChildTxInfo map[string]pb.TransactionStatus
+	GlobalState  pb.TransactionStatus
+	Height       uint64
+	ChildTxInfo  map[string]pb.TransactionStatus
+	ChildTxCount uint64
 }
 
-func (t *TransactionManager) BeginMultiTXs(globalId string, childTxIds ...string) *boltvm.Response {
-	if t.Has(TxInfoKey(globalId)) {
-		return boltvm.Error("Transaction id already exists")
-	}
-
-	txInfo := TransactionInfo{
-		GlobalState: pb.TransactionStatus_BEGIN,
-		ChildTxInfo: make(map[string]pb.TransactionStatus),
-	}
-
-	for _, childTxId := range childTxIds {
-		txInfo.ChildTxInfo[childTxId] = pb.TransactionStatus_BEGIN
-		t.Set(childTxId, []byte(globalId))
-	}
-
-	t.SetObject(t.globalTxInfoKey(globalId), txInfo)
-
-	return boltvm.Success(nil)
+type StatusChange struct {
+	PrevStatus   pb.TransactionStatus
+	CurStatus    pb.TransactionStatus
+	OtherIBTPIDs []string
 }
 
-func (t *TransactionManager) Begin(txId string, timeoutHeight uint64) *boltvm.Response {
+func (c *StatusChange) NotifyFlags() (bool, bool) {
+	if c.CurStatus == c.PrevStatus {
+		return false, false
+	}
+
+	switch c.CurStatus {
+	case pb.TransactionStatus_BEGIN:
+		return false, true
+	case pb.TransactionStatus_BEGIN_FAILURE:
+		return true, true
+	case pb.TransactionStatus_BEGIN_ROLLBACK:
+		return true, true
+	case pb.TransactionStatus_SUCCESS:
+		return true, false
+	case pb.TransactionStatus_FAILURE:
+		if c.PrevStatus == pb.TransactionStatus_BEGIN {
+			return true, false
+		}
+		return false, false
+	case pb.TransactionStatus_ROLLBACK:
+		return false, false
+	}
+
+	return false, false
+}
+
+type TransactionEvent string
+
+func (e TransactionEvent) String() string {
+	return string(e)
+}
+
+const (
+	TransactionEvent_BEGIN         TransactionEvent = "begin"
+	TransactionEvent_BEGIN_FAILURE TransactionEvent = "begin_failure"
+	TransactionEvent_TIMEOUT       TransactionEvent = "timeout"
+	TransactionEvent_FAILURE       TransactionEvent = "failure"
+	TransactionEvent_SUCCESS       TransactionEvent = "success"
+	TransactionEvent_ROLLBACK      TransactionEvent = "rollback"
+	TransactionState_INIT                           = "init"
+)
+
+var receipt2EventM = map[int32]TransactionEvent{
+	int32(pb.IBTP_RECEIPT_FAILURE):  TransactionEvent_FAILURE,
+	int32(pb.IBTP_RECEIPT_SUCCESS):  TransactionEvent_SUCCESS,
+	int32(pb.IBTP_RECEIPT_ROLLBACK): TransactionEvent_ROLLBACK,
+}
+
+func (t *TransactionManager) BeginMultiTXs(globalID, ibtpID string, timeoutHeight uint64, isFailed bool, count uint64) *boltvm.Response {
+	if err := t.checkCurrentCaller(); err != nil {
+		return boltvm.Error(err.Error())
+	}
+
+	change := StatusChange{PrevStatus: -1}
+	txInfo := TransactionInfo{}
+	if ok := t.GetObject(globalTxInfoKey(globalID), &txInfo); !ok {
+		txInfo = TransactionInfo{
+			GlobalState:  pb.TransactionStatus_BEGIN,
+			Height:       t.GetCurrentHeight() + timeoutHeight,
+			ChildTxInfo:  map[string]pb.TransactionStatus{ibtpID: pb.TransactionStatus_BEGIN},
+			ChildTxCount: count,
+		}
+
+		if timeoutHeight == 0 || timeoutHeight >= math.MaxUint64-t.GetCurrentHeight() {
+			txInfo.Height = math.MaxUint64
+		}
+		if isFailed {
+			txInfo.ChildTxInfo[ibtpID] = pb.TransactionStatus_BEGIN_FAILURE
+			txInfo.GlobalState = pb.TransactionStatus_BEGIN_FAILURE
+		}
+		t.Set(ibtpID, []byte(globalID))
+
+		t.AddObject(globalTxInfoKey(globalID), txInfo)
+	} else {
+		if _, ok := txInfo.ChildTxInfo[ibtpID]; ok {
+			return boltvm.Error(fmt.Sprintf("child tx ID %s of global TX %s exists", ibtpID, globalID))
+		}
+
+		if txInfo.GlobalState != pb.TransactionStatus_BEGIN {
+			txInfo.ChildTxInfo[ibtpID] = txInfo.GlobalState
+		} else {
+			if isFailed {
+				for key := range txInfo.ChildTxInfo {
+					change.OtherIBTPIDs = append(change.OtherIBTPIDs, key)
+					txInfo.ChildTxInfo[key] = pb.TransactionStatus_BEGIN_FAILURE
+				}
+				txInfo.ChildTxInfo[ibtpID] = pb.TransactionStatus_BEGIN_FAILURE
+				txInfo.GlobalState = pb.TransactionStatus_BEGIN_FAILURE
+			} else {
+				txInfo.ChildTxInfo[ibtpID] = pb.TransactionStatus_BEGIN
+			}
+		}
+		t.SetObject(globalTxInfoKey(globalID), txInfo)
+	}
+
+	change.CurStatus = txInfo.ChildTxInfo[ibtpID]
+	data, err := json.Marshal(change)
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+
+	return boltvm.Success(data)
+}
+
+func (t *TransactionManager) Begin(txId string, timeoutHeight uint64, isFailed bool) *boltvm.Response {
+	if err := t.checkCurrentCaller(); err != nil {
+		return boltvm.Error(err.Error())
+	}
+
 	record := pb.TransactionRecord{
 		Status: pb.TransactionStatus_BEGIN,
 		Height: t.GetCurrentHeight() + timeoutHeight,
+	}
+
+	if isFailed {
+		record.Status = pb.TransactionStatus_BEGIN_FAILURE
 	}
 
 	if timeoutHeight == 0 || timeoutHeight >= math.MaxUint64-t.GetCurrentHeight() {
 		record.Height = math.MaxUint64
 	}
 
-	var timeoutList []string
-	ok := t.GetObject(TimeoutKey(record.Height), &timeoutList)
-	if !ok {
-		timeoutList = []string{txId}
-	} else {
-		timeoutList = append(timeoutList, txId)
-	}
-	t.SetObject(TimeoutKey(record.Height), timeoutList)
+	t.addToTimeoutList(record.Height, txId)
 	t.AddObject(TxInfoKey(txId), record)
 
-	return boltvm.Success(nil)
+	change := StatusChange{
+		PrevStatus: -1,
+		CurStatus:  record.Status,
+	}
+
+	data, err := json.Marshal(change)
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+
+	return boltvm.Success(data)
 }
 
 func (t *TransactionManager) Report(txId string, result int32) *boltvm.Response {
+	if err := t.checkCurrentCaller(); err != nil {
+		return boltvm.Error(err.Error())
+	}
+
+	change := StatusChange{}
 	var record pb.TransactionRecord
 	ok := t.GetObject(TxInfoKey(txId), &record)
 	if ok {
-		if record.Status == pb.TransactionStatus_ROLLBACK {
-			return boltvm.Error(fmt.Sprintf("transaction with Id %s has been rollback", txId))
+		change.PrevStatus = record.Status
+		if err := t.setFSM(&record.Status, receipt2EventM[result]); err != nil {
+			return boltvm.Error(fmt.Sprintf("transaction %s with state %v get unexpected receipt %v", txId, record.Status, result))
 		}
+		change.CurStatus = record.Status
 
-		if record.Status != pb.TransactionStatus_BEGIN {
-			return boltvm.Error(fmt.Sprintf("transaction with Id %s is finished", txId))
-		}
-
-		if result == 0 {
-			record.Status = pb.TransactionStatus_SUCCESS
-			t.SetObject(TxInfoKey(txId), record)
-		} else {
-			record.Status = pb.TransactionStatus_FAILURE
-			t.SetObject(TxInfoKey(txId), record)
-		}
-
-		var timeoutList []string
-		ok := t.GetObject(TimeoutKey(record.Height), &timeoutList)
-		if ok {
-			for index, value := range timeoutList {
-				if value == txId {
-					timeoutList = append(timeoutList[:index], timeoutList[index+1:]...)
-				}
-			}
-			t.SetObject(TimeoutKey(record.Height), timeoutList)
-		}
-
+		t.SetObject(TxInfoKey(txId), record)
+		t.removeFromTimeoutList(record.Height, txId)
 	} else {
 		ok, val := t.Get(txId)
 		if !ok {
-			return boltvm.Error(fmt.Sprintf("cannot get global id of child tx id %s", txId))
+			return boltvm.Error(fmt.Sprintf("transaction id %s does not exist", txId))
 		}
 
 		globalId := string(val)
 		txInfo := TransactionInfo{}
-		if !t.GetObject(t.globalTxInfoKey(globalId), &txInfo) {
-			return boltvm.Error(fmt.Sprintf("transaction global id %s does not exist", globalId))
+		if !t.GetObject(globalTxInfoKey(globalId), &txInfo) {
+			return boltvm.Error(fmt.Sprintf("transaction global id %s of child id %s does not exist", globalId, txId))
 		}
 
-		if txInfo.GlobalState != pb.TransactionStatus_BEGIN {
-			return boltvm.Error(fmt.Sprintf("transaction with global Id %s is finished", globalId))
-		}
-
-		status, ok := txInfo.ChildTxInfo[txId]
+		_, ok = txInfo.ChildTxInfo[txId]
 		if !ok {
 			return boltvm.Error(fmt.Sprintf("%s is not in transaction %s, %v", txId, globalId, txInfo))
 		}
 
-		if status != pb.TransactionStatus_BEGIN {
-			return boltvm.Error(fmt.Sprintf("%s has already reported result", txId))
+		change.PrevStatus = txInfo.GlobalState
+		if err := t.changeMultiTxStatus(&txInfo, txId, result); err != nil {
+			return boltvm.Error(err.Error())
+		}
+		change.CurStatus = txInfo.GlobalState
+
+		for key := range txInfo.ChildTxInfo {
+			if key != txId {
+				change.OtherIBTPIDs = append(change.OtherIBTPIDs, key)
+			}
 		}
 
-		if result == 0 {
-			txInfo.ChildTxInfo[txId] = pb.TransactionStatus_SUCCESS
-			count := 0
-			for _, res := range txInfo.ChildTxInfo {
-				if res != pb.TransactionStatus_SUCCESS {
-					break
-				}
-				count++
-			}
-
-			if count == len(txInfo.ChildTxInfo) {
-				txInfo.GlobalState = pb.TransactionStatus_SUCCESS
-			}
-		} else {
-			txInfo.ChildTxInfo[txId] = pb.TransactionStatus_FAILURE
-			txInfo.GlobalState = pb.TransactionStatus_FAILURE
-		}
-
-		t.SetObject(t.globalTxInfoKey(globalId), txInfo)
+		t.SetObject(globalTxInfoKey(globalId), txInfo)
 	}
 
-	return boltvm.Success(nil)
+	data, err := json.Marshal(change)
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+
+	return boltvm.Success(data)
 }
 
 func (t *TransactionManager) GetStatus(txId string) *boltvm.Response {
@@ -155,7 +241,7 @@ func (t *TransactionManager) GetStatus(txId string) *boltvm.Response {
 	}
 
 	txInfo := TransactionInfo{}
-	ok = t.GetObject(t.globalTxInfoKey(txId), &txInfo)
+	ok = t.GetObject(globalTxInfoKey(txId), &txInfo)
 	if ok {
 		return boltvm.Success([]byte(strconv.Itoa(int(txInfo.GlobalState))))
 	}
@@ -167,18 +253,119 @@ func (t *TransactionManager) GetStatus(txId string) *boltvm.Response {
 
 	globalId := string(val)
 	txInfo = TransactionInfo{}
-	if !t.GetObject(t.globalTxInfoKey(globalId), &txInfo) {
+	if !t.GetObject(globalTxInfoKey(globalId), &txInfo) {
 		return boltvm.Error(fmt.Sprintf("transaction info for global id %s does not exist", globalId))
 	}
 
 	return boltvm.Success([]byte(strconv.Itoa(int(txInfo.GlobalState))))
 }
 
+func (t *TransactionManager) setFSM(state *pb.TransactionStatus, event TransactionEvent) error {
+	callbackFunc := func(event *fsm.Event) {
+		*state = pb.TransactionStatus(pb.TransactionStatus_value[event.FSM.Current()])
+	}
+
+	t.fsm = fsm.NewFSM(
+		state.String(),
+		fsm.Events{
+			{Name: TransactionEvent_BEGIN.String(), Src: []string{TransactionState_INIT}, Dst: pb.TransactionStatus_BEGIN.String()},
+			{Name: TransactionEvent_BEGIN_FAILURE.String(), Src: []string{TransactionState_INIT, pb.TransactionStatus_BEGIN.String()}, Dst: pb.TransactionStatus_BEGIN_FAILURE.String()},
+			{Name: TransactionEvent_TIMEOUT.String(), Src: []string{pb.TransactionStatus_BEGIN.String()}, Dst: pb.TransactionStatus_BEGIN_ROLLBACK.String()},
+			{Name: TransactionEvent_SUCCESS.String(), Src: []string{pb.TransactionStatus_BEGIN.String()}, Dst: pb.TransactionStatus_SUCCESS.String()},
+			{Name: TransactionEvent_FAILURE.String(), Src: []string{pb.TransactionStatus_BEGIN.String(), pb.TransactionStatus_BEGIN_FAILURE.String()}, Dst: pb.TransactionStatus_FAILURE.String()},
+			{Name: TransactionEvent_ROLLBACK.String(), Src: []string{pb.TransactionStatus_BEGIN_ROLLBACK.String()}, Dst: pb.TransactionStatus_ROLLBACK.String()},
+		},
+		fsm.Callbacks{
+			TransactionEvent_BEGIN.String():         callbackFunc,
+			TransactionEvent_BEGIN_FAILURE.String(): callbackFunc,
+			TransactionEvent_TIMEOUT.String():       callbackFunc,
+			TransactionEvent_SUCCESS.String():       callbackFunc,
+			TransactionEvent_FAILURE.String():       callbackFunc,
+			TransactionEvent_ROLLBACK.String():      callbackFunc,
+		},
+	)
+
+	return t.fsm.Event(event.String())
+}
+
+func (t *TransactionManager) addToTimeoutList(height uint64, txId string) {
+	var timeoutList []string
+	ok := t.GetObject(TimeoutKey(height), &timeoutList)
+	if !ok {
+		timeoutList = []string{txId}
+	} else {
+		timeoutList = append(timeoutList, txId)
+	}
+	t.SetObject(TimeoutKey(height), timeoutList)
+}
+
+func (t *TransactionManager) removeFromTimeoutList(height uint64, txId string) {
+	var timeoutList []string
+	ok := t.GetObject(TimeoutKey(height), &timeoutList)
+	if ok {
+		for index, value := range timeoutList {
+			if value == txId {
+				timeoutList = append(timeoutList[:index], timeoutList[index+1:]...)
+			}
+		}
+		t.SetObject(TimeoutKey(height), timeoutList)
+	}
+}
+
+func (t *TransactionManager) checkCurrentCaller() error {
+	if t.CurrentCaller() != constant.InterchainContractAddr.Address().String() {
+		return fmt.Errorf("current caller %s is not allowed", t.CurrentCaller())
+	}
+
+	return nil
+}
+
+func (t *TransactionManager) changeMultiTxStatus(txInfo *TransactionInfo, txId string, result int32) error {
+	if txInfo.GlobalState == pb.TransactionStatus_BEGIN && result == int32(pb.IBTP_RECEIPT_FAILURE) {
+		for childTx := range txInfo.ChildTxInfo {
+			txInfo.ChildTxInfo[childTx] = pb.TransactionStatus_BEGIN_FAILURE
+		}
+		txInfo.ChildTxInfo[txId] = pb.TransactionStatus_FAILURE
+		txInfo.GlobalState = pb.TransactionStatus_BEGIN_FAILURE
+
+		return nil
+	} else {
+		status := txInfo.ChildTxInfo[txId]
+		if err := t.setFSM(&status, receipt2EventM[result]); err != nil {
+			return fmt.Errorf("child tx %s with state %v get unexpected receipt %v", txId, status, result)
+		}
+
+		txInfo.ChildTxInfo[txId] = status
+
+		if isMultiTxFinished(status, txInfo) {
+			if err := t.setFSM(&txInfo.GlobalState, receipt2EventM[result]); err != nil {
+				return fmt.Errorf("global tx of child tx %s with state %v get unexpected receipt %v", txId, status, result)
+			}
+
+			return nil
+		}
+	}
+
+	return nil
+}
+
+func isMultiTxFinished(childStatus pb.TransactionStatus, txInfo *TransactionInfo) bool {
+	count := uint64(0)
+	for _, res := range txInfo.ChildTxInfo {
+		if res != childStatus {
+			return false
+		}
+		count++
+	}
+
+	return count == txInfo.ChildTxCount
+}
+
 func TxInfoKey(id string) string {
 	return fmt.Sprintf("%s-%s", PREFIX, id)
 }
 
-func (t *TransactionManager) globalTxInfoKey(id string) string {
+func globalTxInfoKey(id string) string {
 	return fmt.Sprintf("global-%s-%s", PREFIX, id)
 }
 

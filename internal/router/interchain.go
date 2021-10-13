@@ -217,6 +217,20 @@ func (router *InterchainRouter) classify(block *pb.Block, meta *pb.InterchainMet
 		target[dest] = wrapper
 	}
 
+	for dest, list := range meta.MultiTxCounter {
+		if wrapper, has := target[dest]; has {
+			wrapper.MultiTxIbtps = list.GetSlice()
+			target[dest] = wrapper
+		} else {
+			wrapper := &pb.InterchainTxWrapper{
+				Height:       block.BlockHeader.Number,
+				L2Roots:      meta.L2Roots,
+				MultiTxIbtps: list.GetSlice(),
+			}
+			target[dest] = wrapper
+		}
+	}
+
 	for dest, txs := range txsM {
 		if wrapper, has := target[dest]; has {
 			wrapper.Transactions = txs
