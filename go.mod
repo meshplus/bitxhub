@@ -71,3 +71,5 @@ replace google.golang.org/grpc => google.golang.org/grpc v1.33.0
 replace github.com/hyperledger/fabric => github.com/hyperledger/fabric v2.0.1+incompatible
 
 replace github.com/wasmerio/wasmer-go v1.0.4 => github.com/meshplus/wasmer-go v1.0.5-0.20210817103436-19ec68f8bfe2
+
+replace github.com/meshplus/bitxhub-core => github.com/meshplus/bitxhub-core v1.3.1-0.20211014024801-c8fa1a00ffa7

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"strconv"
 	"sync"
 	"time"
 
@@ -26,6 +27,8 @@ import (
 const (
 	protocolID protocol.ID = "/B1txHu6/1.0.0" // magic protocol
 )
+
+var _ PeerManager = (*Swarm)(nil)
 
 type Swarm struct {
 	repo    *repo.Repo
@@ -300,14 +303,14 @@ func (swarm *Swarm) Broadcast(msg *pb.Message) error {
 	return swarm.p2p.Broadcast(addrs, data)
 }
 
-func (swarm *Swarm) Peers() map[uint64]*peer.AddrInfo {
+func (swarm *Swarm) Peers() map[string]*peer.AddrInfo {
 	//TODO: Too much redundant code, Optimize implementation logic.
-	addrInfos := make(map[uint64]*peer.AddrInfo)
+	addrInfos := make(map[string]*peer.AddrInfo)
 	for _, node := range swarm.notifiee.getPeers() {
 		addrInfo := &peer.AddrInfo{
 			ID: peer.ID(node.Pid),
 		}
-		addrInfos[node.Id] = addrInfo
+		addrInfos[strconv.FormatUint(node.Id, 10)] = addrInfo
 	}
 	return addrInfos
 }
