@@ -2,6 +2,8 @@ package grpc
 
 import (
 	"context"
+	"fmt"
+	types2 "github.com/meshplus/eth-kit/types"
 
 	"github.com/meshplus/bitxhub-model/pb"
 )
@@ -86,6 +88,43 @@ func (cbs *ChainBrokerService) GetBlocks(ctx context.Context, req *pb.GetBlocksR
 
 	return &pb.GetBlocksResponse{
 		Blocks: blocks,
+	}, nil
+}
+
+func (cbs *ChainBrokerService) GetHappyBlocks(ctx context.Context, req *pb.GetBlocksRequest) (*pb.GetHappyBlocksResponse, error) {
+	blocks, err := cbs.api.Broker().GetBlocks(req.Start, req.End)
+	if err != nil {
+		return nil, err
+	}
+	happyBlocks := make([]*pb.HappyBlock, 0, len(blocks))
+	for _, block := range blocks {
+		bxhTxs := make([]*pb.BxhTransaction, 0)
+		ethTxs := make([][]byte, 0)
+		index := make([]uint64, 0, len(block.Transactions.Transactions))
+		for _, tx := range block.Transactions.Transactions {
+			if bxhTx, ok := tx.(*pb.BxhTransaction); ok {
+				bxhTxs = append(bxhTxs, bxhTx)
+				index = append(index, 0)
+			} else if ethTx, ok := tx.(*types2.EthTransaction); ok {
+				ethTxs = append(ethTxs, ethTx.GetHash().Bytes())
+				index = append(index, 1)
+			} else {
+				return nil, fmt.Errorf("unsupport tx type")
+			}
+		}
+		happyBlocks = append(happyBlocks, &pb.HappyBlock{
+			BlockHeader: block.BlockHeader,
+			BxhTxs:      bxhTxs,
+			EthTxs:      ethTxs,
+			Index:       index,
+			BlockHash:   block.BlockHash,
+			Signature:   block.Signature,
+			Extra:       block.Extra,
+		})
+	}
+
+	return &pb.GetHappyBlocksResponse{
+		Blocks: happyBlocks,
 	}, nil
 }
 
