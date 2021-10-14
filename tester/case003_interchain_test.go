@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"path/filepath"
 
+	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
+
 	"github.com/meshplus/bitxhub-core/governance"
 	service_mgr "github.com/meshplus/bitxhub-core/service-mgr"
 	"github.com/meshplus/bitxhub-core/validator"
@@ -81,11 +83,10 @@ func (suite *Interchain) SetupSuite() {
 	suite.Require().Nil(transfer(suite.Suite, suite.api, addr1, 10000000000000))
 	suite.Require().Nil(transfer(suite.Suite, suite.api, addr2, 10000000000000))
 
-	suite.chainID1 = fmt.Sprintf("appchain%s", addr1.String())
-	suite.chainID2 = fmt.Sprintf("appchain%s", addr2.String())
-
-	suite.registerAppchain(suite.k1, suite.chainID1, validator.HappyRuleAddr)
-	suite.registerAppchain(suite.k2, suite.chainID2, validator.HappyRuleAddr)
+	chainName1 := "应用链1case003"
+	chainName2 := "应用链2case003"
+	suite.chainID1 = suite.registerAppchain(suite.k1, chainName1, validator.HappyRuleAddr, appchainMgr.ChainTypeETH, addr1.String())
+	suite.chainID2 = suite.registerAppchain(suite.k2, chainName2, validator.HappyRuleAddr, appchainMgr.ChainTypeETH, addr2.String())
 
 	suite.serviceID1 = "service1"
 	suite.serviceID2 = "service2"
@@ -95,9 +96,9 @@ func (suite *Interchain) SetupSuite() {
 	fullServiceID2 := fmt.Sprintf("1356:%s:%s", suite.chainID2, suite.serviceID2)
 	fullServiceID3 := fmt.Sprintf("1356:%s:%s", suite.chainID1, suite.serviceID3)
 
-	suite.registerService(suite.k1, suite.chainID1, suite.serviceID1, "")
-	suite.registerService(suite.k1, suite.chainID1, suite.serviceID3, "")
-	suite.registerService(suite.k2, suite.chainID2, suite.serviceID2, fullServiceID3)
+	suite.registerService(suite.k1, suite.chainID1, suite.serviceID1, "服务1case003", "")
+	suite.registerService(suite.k1, suite.chainID1, suite.serviceID3, "服务2case003", "")
+	suite.registerService(suite.k2, suite.chainID2, suite.serviceID2, "服务3case003", fullServiceID3)
 
 	proof := []byte("true")
 	proofHash := sha256.Sum256(proof)
@@ -240,18 +241,35 @@ func (suite *Interchain) TestRegister() {
 	k1Nonce++
 }
 
-func (suite *Interchain) registerAppchain(privKey crypto.PrivateKey, chainID, rule string) {
+func (suite *Interchain) registerAppchain(privKey crypto.PrivateKey, chainName, rule, chainType, adminAddrs string) string {
 	addr, err := privKey.PublicKey().Address()
 	suite.Require().Nil(err)
 	keyNonce := suite.api.Broker().GetPendingNonceByAccount(addr.String())
 
-	ret, err := invokeBVMContract(suite.api, privKey, keyNonce, constant.AppchainMgrContractAddr.Address(), "RegisterAppchain",
-		pb.String(chainID),
+	fabricBroker := appchainMgr.FabricBroker{
+		ChannelID:     "1",
+		ChaincodeID:   "2",
+		BrokerVersion: "3",
+	}
+	fabricBrokerData, err := json.Marshal(fabricBroker)
+	suite.Require().Nil(err)
+	brokerData := []byte("123")
+	if chainType == appchainMgr.ChainTypeFabric1_4_3 || chainType == appchainMgr.ChainTypeFabric1_4_4 {
+		brokerData = fabricBrokerData
+	}
+	args := []*pb.Arg{
+		pb.String(chainName),
+		pb.String(chainType),
 		pb.Bytes(nil),
-		pb.String("broker"),
+		pb.Bytes(brokerData),
 		pb.String("desc"),
 		pb.String(rule),
+		pb.String("url"),
+		pb.String(adminAddrs),
 		pb.String("reason"),
+	}
+	ret, err := invokeBVMContract(suite.api, privKey, keyNonce, constant.AppchainMgrContractAddr.Address(), "RegisterAppchain",
+		args...,
 	)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
@@ -261,11 +279,6 @@ func (suite *Interchain) registerAppchain(privKey crypto.PrivateKey, chainID, ru
 	suite.Require().Nil(err)
 	proposalId1 := gRet.ProposalID
 
-	ret, err = invokeBVMContract(suite.api, privKey, keyNonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID))
-	suite.Require().Nil(err)
-	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
-	keyNonce++
-
 	suite.vote(proposalId1, suite.priAdmin1, suite.adminNonce1)
 	suite.adminNonce1++
 
@@ -274,9 +287,26 @@ func (suite *Interchain) registerAppchain(privKey crypto.PrivateKey, chainID, ru
 
 	suite.vote(proposalId1, suite.priAdmin3, suite.adminNonce3)
 	suite.adminNonce3++
+
+	ret, err = invokeBVMContract(suite.api, privKey, keyNonce, constant.AppchainMgrContractAddr.Address(), "GetAppchainByName", pb.String(chainName))
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	keyNonce++
+	chainInfo := &appchainMgr.Appchain{}
+	err = json.Unmarshal(ret.Ret, chainInfo)
+	suite.Require().Nil(err)
+	suite.Require().Equal(governance.GovernanceAvailable, chainInfo.Status)
+	chainID := chainInfo.ID
+
+	ret, err = invokeBVMContract(suite.api, privKey, keyNonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID))
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	keyNonce++
+
+	return chainID
 }
 
-func (suite *Interchain) registerService(privKey crypto.PrivateKey, chainID, serviceID, blacklist string) {
+func (suite *Interchain) registerService(privKey crypto.PrivateKey, chainID, serviceID, serviceName, blacklist string) {
 	addr, err := privKey.PublicKey().Address()
 	suite.Require().Nil(err)
 	keyNonce := suite.api.Broker().GetPendingNonceByAccount(addr.String())
@@ -284,7 +314,7 @@ func (suite *Interchain) registerService(privKey crypto.PrivateKey, chainID, ser
 	ret, err := invokeBVMContract(suite.api, privKey, keyNonce, constant.ServiceMgrContractAddr.Address(), "RegisterService",
 		pb.String(chainID),
 		pb.String(serviceID),
-		pb.String("name"),
+		pb.String(serviceName),
 		pb.String(string(service_mgr.ServiceCallContract)),
 		pb.String("intro"),
 		pb.Bool(true),

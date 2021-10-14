@@ -91,7 +91,6 @@ func TestMulti_Node_Start(t *testing.T) {
 	swarms, nodes := newSwarms(t, peerCnt, true)
 	defer stopSwarms(t, swarms)
 
-	//time.Sleep(3 * time.Second)
 	repoRoot, err := ioutil.TempDir("", "nodes")
 	defer os.RemoveAll(repoRoot)
 

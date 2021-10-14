@@ -11,7 +11,7 @@ import (
 
 func (router *InterchainRouter) queryAllAppchains() (map[string]*appchain_mgr.Appchain, error) {
 	ret := make(map[string]*appchain_mgr.Appchain, 0)
-	ok, value := router.ledger.Copy().QueryByPrefix(constant.AppchainMgrContractAddr.Address(), appchain_mgr.PREFIX)
+	ok, value := router.ledger.Copy().QueryByPrefix(constant.AppchainMgrContractAddr.Address(), appchain_mgr.Prefix)
 	if !ok {
 		return ret, nil
 	}

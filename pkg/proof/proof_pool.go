@@ -16,7 +16,6 @@ import (
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/sirupsen/logrus"
 )
@@ -212,7 +211,7 @@ func (pl *VerifyPool) getAccountState(address constant.BoltContractAddress, key 
 
 func (pl *VerifyPool) getAppchain(chainID string) (*appchainMgr.Appchain, error) {
 	app := &appchainMgr.Appchain{}
-	ok, data := pl.getAccountState(constant.AppchainMgrContractAddr, contracts.AppchainKey(chainID))
+	ok, data := pl.getAccountState(constant.AppchainMgrContractAddr, appchainMgr.AppchainKey(chainID))
 	if !ok {
 		return nil, fmt.Errorf("%s: cannot get registered appchain", AppchainNotAvailable)
 	}

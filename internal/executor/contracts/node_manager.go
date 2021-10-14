@@ -7,7 +7,7 @@ import (
 
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/governance"
-	node_mgr "github.com/meshplus/bitxhub-core/node-mgr"
+	nodemgr "github.com/meshplus/bitxhub-core/node-mgr"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/model/events"
@@ -15,10 +15,12 @@ import (
 
 type NodeManager struct {
 	boltvm.Stub
-	node_mgr.NodeManager
+	nodemgr.NodeManager
 }
 
-const MinimumVPNode = 4
+const (
+	MinimumVPNode = 4
+)
 
 func (nm *NodeManager) checkPermission(permissions []string, regulatorAddr string, specificAddrsData []byte) error {
 	for _, permission := range permissions {
@@ -53,7 +55,7 @@ func (nm *NodeManager) checkPermission(permissions []string, regulatorAddr strin
 }
 
 // =========== Manage does some subsequent operations when the proposal is over
-// extra: logout - node
+// extra: nil
 func (nm *NodeManager) Manage(eventTyp, proposalResult, lastStatus, objId string, extra []byte) *boltvm.Response {
 	nm.NodeManager.Persister = nm.Stub
 
@@ -77,13 +79,14 @@ func (nm *NodeManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 	if proposalResult == string(APPROVED) {
 		switch eventTyp {
 		case string(governance.EventLogout):
-			node := &node_mgr.Node{}
-			if err := json.Unmarshal(extra, node); err != nil {
-				return boltvm.Error(fmt.Sprintf("unmarshal json error: %v", err))
+			node, err := nm.NodeManager.QueryById(objId, nil)
+			if err != nil {
+				return boltvm.Error(err.Error())
 			}
-			if node_mgr.VPNode == node.NodeType {
+			nodeInfo := node.(*nodemgr.Node)
+			if nodemgr.VPNode == nodeInfo.NodeType {
 				nodeEvent := &events.NodeEvent{
-					NodeId:        node.VPNodeId,
+					NodeId:        nodeInfo.VPNodeId,
 					NodeEventType: governance.EventType(eventTyp),
 				}
 				nm.PostEvent(pb.Event_NODEMGR, nodeEvent)
@@ -105,11 +108,11 @@ func (nm *NodeManager) RegisterNode(nodePid string, nodeVpId uint64, nodeAccount
 	}
 
 	// 2. check info
-	node := &node_mgr.Node{
+	node := &nodemgr.Node{
 		Pid:      nodePid,
 		VPNodeId: nodeVpId,
 		Account:  nodeAccount,
-		NodeType: node_mgr.NodeType(nodeType),
+		NodeType: nodemgr.NodeType(nodeType),
 		Primary:  false,
 		Status:   governance.GovernanceUnavailable,
 	}
@@ -138,12 +141,8 @@ func (nm *NodeManager) RegisterNode(nodePid string, nodeVpId uint64, nodeAccount
 
 	// 5. register info
 	node.Status = governance.GovernanceRegisting
-	nodeData, err := json.Marshal(node)
-	if err != nil {
-		return boltvm.Error(fmt.Sprintf("marshal node error: %v", err))
-	}
 
-	ok, data := nm.NodeManager.Register(nodeData)
+	ok, data := nm.NodeManager.Register(node)
 	if !ok {
 		return boltvm.Error(fmt.Sprintf("register error: %s", string(data)))
 	}
@@ -166,16 +165,16 @@ func (nm *NodeManager) LogoutNode(nodePid, reason string) *boltvm.Response {
 	if err != nil {
 		return boltvm.Error(fmt.Sprintf("%s prepare error: %v", string(event), err))
 	}
-	node := nodeInfo.(*node_mgr.Node)
+	node := nodeInfo.(*nodemgr.Node)
 
 	// 3. check node num
-	if node.NodeType == node_mgr.VPNode {
+	if node.NodeType == nodemgr.VPNode {
 		// 3.1 don't support delete primary vp node
 		if node.Primary {
 			return boltvm.Error(fmt.Sprintf("don't support logout primary vp node"))
 		}
 		// 3.2 don't support delete node when there're only 4 vp nodes
-		ok, data := nm.NodeManager.CountAvailable([]byte(node_mgr.VPNode))
+		ok, data := nm.NodeManager.CountAvailable([]byte(nodemgr.VPNode))
 		if !ok {
 			return boltvm.Error(fmt.Sprintf("count available nodes error: %s", string(data)))
 		}
@@ -196,10 +195,6 @@ func (nm *NodeManager) LogoutNode(nodePid, reason string) *boltvm.Response {
 	}
 
 	// 4. submit proposal
-	nodeData, err := json.Marshal(node)
-	if err != nil {
-		return boltvm.Error(fmt.Sprintf("marshal node error: %v", err))
-	}
 	res := nm.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
 		pb.String(nm.Caller()),
 		pb.String(string(event)),
@@ -207,7 +202,7 @@ func (nm *NodeManager) LogoutNode(nodePid, reason string) *boltvm.Response {
 		pb.String(node.Pid),
 		pb.String(string(node.Status)),
 		pb.String(reason),
-		pb.Bytes(nodeData),
+		pb.Bytes(nil),
 	)
 	if !res.Ok {
 		return boltvm.Error(fmt.Sprintf("submit proposal error: %s", string(res.Result)))
@@ -243,7 +238,7 @@ func (nm *NodeManager) Nodes() *boltvm.Response {
 		return boltvm.Error(err.Error())
 	}
 
-	if data, err := json.Marshal(nodes.([]*node_mgr.Node)); err != nil {
+	if data, err := json.Marshal(nodes.([]*nodemgr.Node)); err != nil {
 		return boltvm.Error(err.Error())
 	} else {
 		return boltvm.Success(data)
@@ -260,7 +255,7 @@ func (nm *NodeManager) IsAvailable(nodePid string) *boltvm.Response {
 		return boltvm.Success([]byte(FALSE))
 	}
 
-	return boltvm.Success([]byte(strconv.FormatBool(node.(*node_mgr.Node).IsAvailable())))
+	return boltvm.Success([]byte(strconv.FormatBool(node.(*nodemgr.Node).IsAvailable())))
 }
 
 // GetNode returns node info by node id
@@ -270,27 +265,27 @@ func (nm *NodeManager) GetNode(nodePid string) *boltvm.Response {
 	if err != nil {
 		return boltvm.Error(err.Error())
 	}
-	if data, err := json.Marshal(node.(*node_mgr.Node)); err != nil {
+	if data, err := json.Marshal(node.(*nodemgr.Node)); err != nil {
 		return boltvm.Error(err.Error())
 	} else {
 		return boltvm.Success(data)
 	}
 }
 
-func (nm *NodeManager) checkNodeInfo(node *node_mgr.Node) error {
+func (nm *NodeManager) checkNodeInfo(node *nodemgr.Node) error {
 	nm.NodeManager.Persister = nm.Stub
 
 	// 1. check noed type
 	switch node.NodeType {
-	case node_mgr.VPNode:
-	case node_mgr.NVPNode:
+	case nodemgr.VPNode:
+	case nodemgr.NVPNode:
 		node.VPNodeId = 0
 	default:
 		return fmt.Errorf("not support node type: %s", node.NodeType)
 	}
 
 	// 2. check vp node id
-	if node.NodeType == node_mgr.VPNode {
+	if node.NodeType == nodemgr.VPNode {
 		ok, data := nm.NodeManager.CountAvailable([]byte(node.NodeType))
 		if !ok {
 			return fmt.Errorf("count all error: %s", string(data))
@@ -307,7 +302,7 @@ func (nm *NodeManager) checkNodeInfo(node *node_mgr.Node) error {
 		return nil
 	}
 	// 3.2 exist && available
-	if nodeInfo.(*node_mgr.Node).Status != governance.GovernanceUnavailable {
+	if nodeInfo.(*nodemgr.Node).Status != governance.GovernanceUnavailable {
 		return fmt.Errorf("node pid is already occupied")
 	}
 

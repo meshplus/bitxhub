@@ -8,7 +8,7 @@ import (
 
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/governance"
-	service_mgr "github.com/meshplus/bitxhub-core/service-mgr"
+	servicemgr "github.com/meshplus/bitxhub-core/service-mgr"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/sirupsen/logrus"
@@ -16,7 +16,14 @@ import (
 
 type ServiceManager struct {
 	boltvm.Stub
-	service_mgr.ServiceManager
+	servicemgr.ServiceManager
+}
+
+type UpdateServiceInfo struct {
+	ServiceName UpdateInfo    `json:"service_name"`
+	Intro       UpdateInfo    `json:"intro"`
+	Details     UpdateInfo    `json:"details"`
+	Permission  UpdateMapInfo `json:"permission"`
 }
 
 func (sm *ServiceManager) checkPermission(permissions []string, chainID string, regulatorAddr string, specificAddrsData []byte) error {
@@ -92,18 +99,46 @@ func (sm *ServiceManager) Manage(eventTyp, proposalResult, lastStatus, objId str
 				return boltvm.Error(fmt.Sprintf("cross invoke register: %s", string(res.Result)))
 			}
 		case string(governance.EventUpdate):
-			updataInfo := &service_mgr.Service{}
-			if err := json.Unmarshal(extra, updataInfo); err != nil {
+			updateInfo := &UpdateServiceInfo{}
+			if err := json.Unmarshal(extra, updateInfo); err != nil {
 				return boltvm.Error(fmt.Sprintf("unmarshal update data error:%v", err))
 			}
 
-			ok, data := sm.ServiceManager.Update(updataInfo)
+			updateService := &servicemgr.Service{
+				ChainID:    strings.Split(objId, ":")[0],
+				ServiceID:  strings.Split(objId, ":")[1],
+				Name:       updateInfo.ServiceName.NewInfo.(string),
+				Intro:      updateInfo.Intro.NewInfo.(string),
+				Permission: updateInfo.Permission.NewInfo,
+				Details:    updateInfo.Details.NewInfo.(string),
+			}
+
+			ok, data := sm.ServiceManager.Update(updateService)
 			if !ok {
 				return boltvm.Error(fmt.Sprintf("update service error: %s", string(data)))
+			}
+
+			if updateInfo.ServiceName.IsEdit {
+				sm.freeServiceName(updateInfo.ServiceName.OldInfo.(string))
 			}
 		}
 	} else {
 		switch eventTyp {
+		case string(governance.EventRegister):
+			service, err := sm.ServiceManager.QueryById(objId, nil)
+			if err != nil {
+				return boltvm.Error(fmt.Sprintf("cannot get service by id %s", objId))
+			}
+			serviceInfo := service.(*servicemgr.Service)
+			sm.freeServiceName(serviceInfo.Name)
+		case string(governance.EventUpdate):
+			serviceUpdateInfo := &UpdateServiceInfo{}
+			if err := json.Unmarshal(extra, serviceUpdateInfo); err != nil {
+				return boltvm.Error(fmt.Sprintf("unmarshal service error: %v", err))
+			}
+			if serviceUpdateInfo.ServiceName.IsEdit {
+				sm.freeServiceName(serviceUpdateInfo.ServiceName.NewInfo.(string))
+			}
 		case string(governance.EventLogout):
 			chainID := strings.Split(objId, ":")[0]
 			res := sm.CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "IsAvailable", pb.String(chainID))
@@ -147,11 +182,14 @@ func (sm *ServiceManager) RegisterService(chainID, serviceID, name, typ, intro s
 	if err != nil {
 		return boltvm.Error(fmt.Sprintf("get service info error: %v", err))
 	}
-	if err := sm.checkServiceInfo(service); err != nil {
+	if err := sm.checkServiceInfo(service, true); err != nil {
 		return boltvm.Error(fmt.Sprintf("check service info error : %v", err))
 	}
 
-	// 5. submit proposal
+	// 5. pre store registration information (name,)
+	sm.occupyServiceName(name, chainServiceID)
+
+	// 6. submit proposal
 	res := sm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "SubmitProposal",
 		pb.String(sm.Caller()),
 		pb.String(string(event)),
@@ -165,7 +203,7 @@ func (sm *ServiceManager) RegisterService(chainID, serviceID, name, typ, intro s
 		return boltvm.Error(fmt.Sprintf("submit proposal error: %s", string(res.Result)))
 	}
 
-	// 6. register info
+	// 7. register info
 	ok, data := sm.ServiceManager.Register(service)
 	if !ok {
 		return boltvm.Error(fmt.Sprintf("register service error: %s", string(data)))
@@ -174,9 +212,19 @@ func (sm *ServiceManager) RegisterService(chainID, serviceID, name, typ, intro s
 	return getGovernanceRet(string(res.Result), []byte(chainServiceID))
 }
 
+func (sm *ServiceManager) occupyServiceName(name string, chainServiceID string) {
+	sm.ServiceManager.Persister = sm.Stub
+	sm.SetObject(servicemgr.ServiceOccupyNameKey(name), chainServiceID)
+}
+
+func (sm *ServiceManager) freeServiceName(name string) {
+	sm.ServiceManager.Persister = sm.Stub
+	sm.Delete(servicemgr.ServiceOccupyNameKey(name))
+}
+
 // =========== UpdateService updates service info.
 // updata permits does not need proposal
-func (sm *ServiceManager) UpdateService(chainServiceID, name, intro string, ordered bool, permits, details, reason string) *boltvm.Response {
+func (sm *ServiceManager) UpdateService(chainServiceID, name, intro, permits, details, reason string) *boltvm.Response {
 	sm.ServiceManager.Persister = sm.Stub
 	event := governance.EventUpdate
 
@@ -185,7 +233,7 @@ func (sm *ServiceManager) UpdateService(chainServiceID, name, intro string, orde
 	if err != nil {
 		return boltvm.Error(fmt.Sprintf("%s prepare error: %v", string(event), err))
 	}
-	oldService := oldServiceInfo.(*service_mgr.Service)
+	oldService := oldServiceInfo.(*servicemgr.Service)
 
 	// 2. check permission: PermissionSelf
 	if err := sm.checkPermission([]string{string(PermissionSelf)}, oldService.ChainID, sm.CurrentCaller(), nil); err != nil {
@@ -198,19 +246,17 @@ func (sm *ServiceManager) UpdateService(chainServiceID, name, intro string, orde
 	}
 
 	// 4. check service info
-	newService, err := sm.ServiceManager.PackageServiceInfo(oldService.ChainID, oldService.ServiceID, name, string(oldService.Type), intro, ordered, permits, details, oldService.CreateTime, oldService.Status)
+	newService, err := sm.ServiceManager.PackageServiceInfo(oldService.ChainID, oldService.ServiceID, name, string(oldService.Type), intro, oldService.Ordered, permits, details, oldService.CreateTime, oldService.Status)
 	if err != nil {
 		return boltvm.Error(fmt.Sprintf("get service info error: %v", err))
 	}
 
-	if err := sm.checkServiceInfo(newService); err != nil {
+	if err := sm.checkServiceInfo(newService, false); err != nil {
 		return boltvm.Error(fmt.Sprintf("check service info error : %v", err))
 	}
 
-	// update permits do not need proposal
+	// update permit or intro do not need proposal
 	if newService.Name == oldService.Name &&
-		newService.Intro == oldService.Intro &&
-		newService.Ordered == oldService.Ordered &&
 		newService.Details == oldService.Details {
 		ok, data := sm.ServiceManager.Update(newService)
 		if !ok {
@@ -219,12 +265,49 @@ func (sm *ServiceManager) UpdateService(chainServiceID, name, intro string, orde
 		return getGovernanceRet("", nil)
 	}
 
-	// 5. submit proposal
-	serviceData, err := json.Marshal(newService)
-	if err != nil {
-		return boltvm.Error(fmt.Sprintf("marshal service error: %v", err))
+	// 5. pre store registration information (name)
+	if newService.Name != oldService.Name {
+		sm.occupyServiceName(name, chainServiceID)
 	}
 
+	// 6. submit proposal
+	updatePermission := false
+	if len(oldService.Permission) != len(newService.Permission) {
+		updatePermission = true
+	} else {
+		for permit, _ := range newService.Permission {
+			if _, ok := oldService.Permission[permit]; !ok {
+				updatePermission = true
+				break
+			}
+		}
+	}
+	updateServiceInfo := &UpdateServiceInfo{
+		ServiceName: UpdateInfo{
+			OldInfo: oldService.Name,
+			NewInfo: newService.Name,
+			IsEdit:  oldService.Name != newService.Name,
+		},
+		Intro: UpdateInfo{
+			OldInfo: oldService.Intro,
+			NewInfo: newService.Intro,
+			IsEdit:  oldService.Intro != newService.Intro,
+		},
+		Details: UpdateInfo{
+			OldInfo: oldService.Details,
+			NewInfo: newService.Details,
+			IsEdit:  oldService.Details != newService.Details,
+		},
+		Permission: UpdateMapInfo{
+			OldInfo: oldService.Permission,
+			NewInfo: newService.Permission,
+			IsEdit:  updatePermission,
+		},
+	}
+	updateServiceInfoData, err := json.Marshal(updateServiceInfo)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("marshal updateServiceInfo error: %v", err))
+	}
 	res := sm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "SubmitProposal",
 		pb.String(sm.Caller()),
 		pb.String(string(event)),
@@ -232,13 +315,13 @@ func (sm *ServiceManager) UpdateService(chainServiceID, name, intro string, orde
 		pb.String(chainServiceID),
 		pb.String(string(oldService.Status)),
 		pb.String(reason),
-		pb.Bytes(serviceData),
+		pb.Bytes(updateServiceInfoData),
 	)
 	if !res.Ok {
-		return boltvm.Error("submit proposal error:" + string(res.Result))
+		return boltvm.Error(fmt.Sprintf("submit proposal error: %s", string(res.Result)))
 	}
 
-	// 6. change status
+	// 7. change status
 	if ok, data := sm.ServiceManager.ChangeStatus(chainServiceID, string(event), string(oldService.Status), nil); !ok {
 		return boltvm.Error(fmt.Sprintf("change status error: %s", string(data)))
 	}
@@ -268,7 +351,7 @@ func (sm *ServiceManager) basicGovernance(chainServiceID, reason string, permiss
 	if err != nil {
 		return boltvm.Error(fmt.Sprintf("%s prepare error: %v", string(event), err))
 	}
-	service := serviceInfo.(*service_mgr.Service)
+	service := serviceInfo.(*servicemgr.Service)
 
 	// 2. check permission
 	if err := sm.checkPermission(permissions, service.ChainID, sm.CurrentCaller(), nil); err != nil {
@@ -431,8 +514,8 @@ func (sm *ServiceManager) EvaluateService(chainServiceID, desc string, score flo
 	}
 
 	// 1. get service
-	service := &service_mgr.Service{}
-	ok := sm.GetObject(service_mgr.ServiceKey(chainServiceID), service)
+	service := &servicemgr.Service{}
+	ok := sm.GetObject(servicemgr.ServiceKey(chainServiceID), service)
 	if !ok {
 		return boltvm.Error("the service is not exist")
 	}
@@ -454,7 +537,7 @@ func (sm *ServiceManager) EvaluateService(chainServiceID, desc string, score flo
 	num := float64(len(service.EvaluationRecords))
 	service.Score = num/(num+1)*service.Score + 1/(num+1)*score
 	service.EvaluationRecords[sm.Caller()] = evaRec
-	sm.SetObject(service_mgr.ServiceKey(chainServiceID), *service)
+	sm.SetObject(servicemgr.ServiceKey(chainServiceID), *service)
 	return getGovernanceRet("", nil)
 }
 
@@ -476,8 +559,8 @@ func (sm *ServiceManager) RecordInvokeService(fullServiceID, fromFullServiceID s
 	}
 
 	// 2. get service
-	service := &service_mgr.Service{}
-	ok := sm.GetObject(service_mgr.ServiceKey(chainServiceID), service)
+	service := &servicemgr.Service{}
+	ok := sm.GetObject(servicemgr.ServiceKey(chainServiceID), service)
 	if !ok {
 		return boltvm.Error("the service is not exist")
 	}
@@ -516,7 +599,7 @@ func (sm *ServiceManager) RecordInvokeService(fullServiceID, fromFullServiceID s
 		}
 	}
 
-	sm.SetObject(service_mgr.ServiceKey(chainServiceID), *service)
+	sm.SetObject(servicemgr.ServiceKey(chainServiceID), *service)
 
 	sm.Logger().WithFields(logrus.Fields{
 		"chainServiceID":     chainServiceID,
@@ -535,7 +618,7 @@ func (sm *ServiceManager) GetServiceInfo(id string) *boltvm.Response {
 		return boltvm.Error(fmt.Sprintf("cannot get service by id %s", id))
 	}
 
-	data, err := json.Marshal(service.(*service_mgr.Service))
+	data, err := json.Marshal(service.(*servicemgr.Service))
 	if err != nil {
 		return boltvm.Error(fmt.Sprintf("marshal service: %s", err.Error()))
 	}
@@ -553,7 +636,7 @@ func (sm *ServiceManager) GetAllServices() *boltvm.Response {
 	if services == nil {
 		return boltvm.Success(nil)
 	} else {
-		if data, err := json.Marshal(services.([]*service_mgr.Service)); err != nil {
+		if data, err := json.Marshal(services.([]*servicemgr.Service)); err != nil {
 			return boltvm.Error(err.Error())
 		} else {
 			return boltvm.Success(data)
@@ -569,8 +652,8 @@ func (sm *ServiceManager) GetPermissionServices(chainServiceId string) *boltvm.R
 		return boltvm.Error(err.Error())
 	}
 
-	var ret []*service_mgr.Service
-	for _, s := range services.([]*service_mgr.Service) {
+	var ret []*servicemgr.Service
+	for _, s := range services.([]*servicemgr.Service) {
 		if _, ok := s.Permission[chainServiceId]; !ok {
 			ret = append(ret, s)
 		}
@@ -595,13 +678,13 @@ func (sm *ServiceManager) GetServicesByAppchainID(chainID string) *boltvm.Respon
 		return boltvm.Error(err.Error())
 	}
 
-	ret := make([]*service_mgr.Service, 0)
+	ret := make([]*servicemgr.Service, 0)
 	for _, id := range idList {
 		service, err := sm.ServiceManager.QueryById(id, nil)
 		if err != nil {
 			return boltvm.Error(fmt.Sprintf("cannot get service by id %s", id))
 		}
-		ret = append(ret, service.(*service_mgr.Service))
+		ret = append(ret, service.(*servicemgr.Service))
 	}
 
 	data, err := json.Marshal(ret)
@@ -619,13 +702,13 @@ func (sm *ServiceManager) GetServicesByType(typ string) *boltvm.Response {
 		return boltvm.Error(err.Error())
 	}
 
-	ret := make([]*service_mgr.Service, 0)
+	ret := make([]*servicemgr.Service, 0)
 	for _, id := range idList {
 		service, err := sm.ServiceManager.QueryById(id, nil)
 		if err != nil {
 			return boltvm.Error(fmt.Sprintf("cannot get service by id %s", id))
 		}
-		ret = append(ret, service.(*service_mgr.Service))
+		ret = append(ret, service.(*servicemgr.Service))
 	}
 
 	data, err := json.Marshal(ret)
@@ -642,7 +725,7 @@ func (sm *ServiceManager) IsAvailable(id string) *boltvm.Response {
 		return boltvm.Error(fmt.Sprintf("cannot get service by id %s", id))
 	}
 
-	return boltvm.Success([]byte(strconv.FormatBool(service.(*service_mgr.Service).IsAvailable())))
+	return boltvm.Success([]byte(strconv.FormatBool(service.(*servicemgr.Service).IsAvailable())))
 }
 
 func (sm *ServiceManager) checkAppchain(chainID string) error {
@@ -657,11 +740,23 @@ func (sm *ServiceManager) checkAppchain(chainID string) error {
 	return nil
 }
 
-func (sm *ServiceManager) checkServiceInfo(service *service_mgr.Service) error {
+func (sm *ServiceManager) checkServiceInfo(service *servicemgr.Service, isRegister bool) error {
+	// check name
+	if service.Name == "" {
+		return fmt.Errorf("service name can not be an empty string")
+	}
+	if serviceID, err := sm.getServiceIdByName(service.Name); err == nil {
+		if isRegister {
+			return fmt.Errorf("the name is already occupied by service %s", serviceID)
+		} else if serviceID != fmt.Sprintf("%s:%s", service.ChainID, service.ServiceID) {
+			return fmt.Errorf("the name is already occupied by service %s", serviceID)
+		}
+	}
+
 	// check type
-	if service.Type != service_mgr.ServiceCallContract &&
-		service.Type != service_mgr.ServiceDepositCertificate &&
-		service.Type != service_mgr.ServiceDataMigration {
+	if service.Type != servicemgr.ServiceCallContract &&
+		service.Type != servicemgr.ServiceDepositCertificate &&
+		service.Type != servicemgr.ServiceDataMigration {
 		return fmt.Errorf("illegal service type")
 	}
 
@@ -708,4 +803,14 @@ func (sm *ServiceManager) checkServiceIDFormat(serviceID string) error {
 	}
 
 	return nil
+}
+
+func (sm *ServiceManager) getServiceIdByName(name string) (string, error) {
+	sm.ServiceManager.Persister = sm.Stub
+	chainServiceId := ""
+	ok := sm.GetObject(servicemgr.ServiceOccupyNameKey(name), &chainServiceId)
+	if !ok {
+		return "", fmt.Errorf("the service of this name does not exist")
+	}
+	return chainServiceId, nil
 }

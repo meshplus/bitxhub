@@ -392,6 +392,9 @@ func invokeBVMContract(ctx *cli.Context, contractAddr string, method string, arg
 		return nil, fmt.Errorf("jsonpb unmarshal receipt error: %w", err)
 	}
 
+	if !receipt.IsSuccess() {
+		return nil, fmt.Errorf(string(receipt.Ret))
+	}
 	return receipt, nil
 }
 
@@ -413,5 +416,8 @@ func invokeBVMContractBySendView(ctx *cli.Context, contractAddr string, method s
 		return nil, fmt.Errorf("jsonpb unmarshal receipt error: %w", err)
 	}
 
+	if !receipt.IsSuccess() {
+		return nil, fmt.Errorf(string(receipt.Ret))
+	}
 	return receipt, nil
 }

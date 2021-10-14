@@ -2,14 +2,12 @@ package tester
 
 import (
 	"encoding/json"
-	"fmt"
 	"path/filepath"
 	"strconv"
 
-	"github.com/meshplus/bitxhub-core/validator"
-
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/governance"
+	"github.com/meshplus/bitxhub-core/validator"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-model/constant"
@@ -66,14 +64,27 @@ func (suite *Governance) TestGovernance() {
 	suite.Require().Nil(transfer(suite.Suite, suite.api, addr, 10000000000000))
 
 	// 1. Register ==============================================
-	chainID1 := fmt.Sprintf("appchain%s", addr.String())
-	ret, err := invokeBVMContract(suite.api, appchainPri, appchainNonce, constant.AppchainMgrContractAddr.Address(), "RegisterAppchain",
-		pb.String(chainID1),
+	fabricBroker := appchainMgr.FabricBroker{
+		ChannelID:     "1",
+		ChaincodeID:   "2",
+		BrokerVersion: "3",
+	}
+	fabricBrokerData, err := json.Marshal(fabricBroker)
+	suite.Require().Nil(err)
+	chainName1 := "应用链1case006"
+	args := []*pb.Arg{
+		pb.String(chainName1),
+		pb.String(appchainMgr.ChainTypeFabric1_4_3),
 		pb.Bytes(nil),
-		pb.String("broker"),
+		pb.Bytes(fabricBrokerData),
 		pb.String("desc"),
 		pb.String(validator.FabricRuleAddr),
+		pb.String("url"),
+		pb.String(addr.String()),
 		pb.String("reason"),
+	}
+	ret, err := invokeBVMContract(suite.api, appchainPri, appchainNonce, constant.AppchainMgrContractAddr.Address(), "RegisterAppchain",
+		args...,
 	)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
@@ -85,12 +96,7 @@ func (suite *Governance) TestGovernance() {
 
 	// repeated registration
 	ret, err = invokeBVMContract(suite.api, appchainPri, appchainNonce, constant.AppchainMgrContractAddr.Address(), "RegisterAppchain",
-		pb.String(fmt.Sprintf("appchain%s", addr.String())),
-		pb.Bytes(nil),
-		pb.String("broker"),
-		pb.String("desc"),
-		pb.String(validator.FabricRuleAddr),
-		pb.String("reason"),
+		args...,
 	)
 	suite.Require().Nil(err)
 	suite.Require().False(ret.IsSuccess(), string(ret.Ret))
@@ -105,16 +111,6 @@ func (suite *Governance) TestGovernance() {
 	err = json.Unmarshal(ret.Ret, &p)
 	suite.Require().Nil(err)
 	suite.Require().Equal(string(governance.EventRegister), string(p.EventType), "event type")
-
-	// get chain status
-	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID1))
-	suite.Require().Nil(err)
-	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
-	adminNonce1++
-	chain := appchainMgr.Appchain{}
-	err = json.Unmarshal(ret.Ret, &chain)
-	suite.Require().Nil(err)
-	suite.Require().Equal(governance.GovernanceRegisting, chain.Status)
 
 	// get role weight
 	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.RoleContractAddr.Address(), "GetRoleWeight", pb.String(fromAdmin1.Address))
@@ -206,11 +202,23 @@ func (suite *Governance) TestGovernance() {
 	suite.Require().Nil(err)
 	suite.Require().Equal(contracts.APPROVED, proposal.Status)
 
+	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.AppchainMgrContractAddr.Address(), "GetAppchainByName", pb.String(chainName1))
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	adminNonce1++
+	chainInfo := &appchainMgr.Appchain{}
+	err = json.Unmarshal(ret.Ret, chainInfo)
+	suite.Require().Nil(err)
+	suite.Require().Equal("desc", chainInfo.Desc)
+	suite.Require().Equal(governance.GovernanceAvailable, chainInfo.Status)
+	chainID1 := chainInfo.ID
+
 	// get chain status
 	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID1))
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	adminNonce1++
+	chain := &appchainMgr.Appchain{}
 	err = json.Unmarshal(ret.Ret, &chain)
 	suite.Require().Nil(err)
 	suite.Require().Equal(governance.GovernanceAvailable, chain.Status)

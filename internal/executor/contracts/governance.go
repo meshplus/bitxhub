@@ -113,6 +113,18 @@ var SpecialProposalProposalType = []ProposalType{
 	ProposalStrategyMgr,
 }
 
+type UpdateInfo struct {
+	OldInfo interface{}
+	NewInfo interface{}
+	IsEdit  bool
+}
+
+type UpdateMapInfo struct {
+	OldInfo map[string]struct{}
+	NewInfo map[string]struct{}
+	IsEdit  bool
+}
+
 func (g *Governance) addProposal(p *Proposal) {
 	g.AddObject(ProposalKey(p.Id), *p)
 
@@ -285,7 +297,7 @@ func (g *Governance) lockLowPriorityProposal(objId, eventTyp string) (string, er
 				}).Info("lock low priority proposal")
 				return p.Id, nil
 			} else {
-				return "", fmt.Errorf("an equal or higher priority proposal is in progress currently, please submit it later")
+				return "", fmt.Errorf("the obj(%s) has an equal or higher priority proposal(%s,%s) is in progress currently, please submit it later", objId, p.EventType, p.Id)
 			}
 		}
 	}
@@ -805,7 +817,9 @@ func (g *Governance) Vote(id, approve string, reason string) *boltvm.Response {
 	}
 	if !ok {
 		// the round of the voting is not over, wait the next vote
-		g.Logger().WithFields(logrus.Fields{}).Info("wait next vote")
+		g.Logger().WithFields(logrus.Fields{
+			"id": p.Id,
+		}).Info("wait next vote")
 		return boltvm.Success(nil)
 	}
 
@@ -897,6 +911,11 @@ func (g *Governance) manageObj(proposalTyp ProposalType, eventType, nextEventTyp
 		res := g.CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "Manage", pb.String(string(eventType)), pb.String(string(nextEventType)), pb.String(string(objLastStatus)), pb.String(objId), pb.Bytes(extra))
 		if !res.Ok {
 			return fmt.Errorf("cross invoke Manager error: %s", string(res.Result))
+		}
+		if eventType == governance.EventRegister {
+			g.Logger().WithFields(logrus.Fields{
+				"chainID": string(res.Result),
+			}).Info("Appchain registering ok")
 		}
 		return nil
 	}

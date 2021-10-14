@@ -118,11 +118,6 @@ func dappMgrCMD() cli.Command {
 						Required: false,
 					},
 					cli.StringFlag{
-						Name:     "type",
-						Usage:    "Specify dapp type, one of tool, application, game and others",
-						Required: false,
-					},
-					cli.StringFlag{
 						Name:     "desc",
 						Usage:    "Specify dapp description",
 						Required: false,
@@ -267,7 +262,7 @@ func getDappStatusById(ctx *cli.Context) error {
 func getAllDapps(ctx *cli.Context) error {
 	receipt, err := invokeBVMContractBySendView(ctx, constant.DappMgrContractAddr.String(), "GetAllDapps")
 	if err != nil {
-		return err
+		return fmt.Errorf("GetAllDapps error: %v", err)
 	}
 
 	if receipt.IsSuccess() {
@@ -358,7 +353,6 @@ func registerDapp(ctx *cli.Context) error {
 func updateDapp(ctx *cli.Context) error {
 	id := ctx.String("id")
 	name := ctx.String("name")
-	typ := ctx.String("type")
 	desc := ctx.String("desc")
 	url := ctx.String("url")
 	contractAddrs := strings.TrimSpace(ctx.String("contractAddrs"))
@@ -378,9 +372,6 @@ func updateDapp(ctx *cli.Context) error {
 		}
 		if name == "" {
 			name = dapp.Name
-		}
-		if typ == "" {
-			typ = string(dapp.Type)
 		}
 		if desc == "" {
 			desc = dapp.Desc
@@ -415,7 +406,6 @@ func updateDapp(ctx *cli.Context) error {
 	receipt, err = invokeBVMContract(ctx, constant.DappMgrContractAddr.String(), "UpdateDapp",
 		pb.String(id),
 		pb.String(name),
-		pb.String(typ),
 		pb.String(desc),
 		pb.String(url),
 		pb.String(contractAddrs),

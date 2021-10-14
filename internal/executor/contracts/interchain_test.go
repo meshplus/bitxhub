@@ -219,7 +219,7 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	wrongBitxhubChain := &appchainMgr.Appchain{
 		ID:     wrongBitxhubID,
 		Status: governance.GovernanceAvailable,
-		Broker: "broker",
+		Broker: []byte("broker"),
 	}
 	wrongBitxhubChainData, err := json.Marshal(wrongBitxhubChain)
 	require.Nil(t, err)
@@ -227,7 +227,7 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	unavailableBitxhubChain := &appchainMgr.Appchain{
 		ID:     unavailableBitxhubID,
 		Status: governance.GovernanceUnavailable,
-		Broker: constant.InterBrokerContractAddr.Address().String(),
+		Broker: []byte(constant.InterBrokerContractAddr.Address().String()),
 	}
 	unavailableBitxhubChainData, err := json.Marshal(unavailableBitxhubChain)
 	require.Nil(t, err)

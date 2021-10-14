@@ -79,27 +79,19 @@ func (suite *RegisterAppchain) TestRegisterAppchain() {
 	suite.Require().Nil(err)
 	k1Nonce++
 
-	// register rule
-	chainID1 := fmt.Sprintf("appchain%s", from1.String())
-	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(), "RegisterRule",
-		pb.String(chainID1),
-		pb.String(ruleAddr1.String()),
-		pb.String("ruleUrl"),
-	)
-	suite.Require().Nil(err)
-	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
-	k1Nonce++
-
-	// register appchain
+	chainName1 := "应用链1case002"
 	args := []*pb.Arg{
-		pb.String(chainID1),
+		pb.String(chainName1),
+		pb.String(appchainMgr.ChainTypeHyperchain1_8_3),
 		pb.Bytes(nil),
-		pb.String("broker"),
+		pb.Bytes([]byte("broker")),
 		pb.String("desc"),
-		pb.String(ruleAddr1.Address),
+		pb.String(ruleAddr1.String()),
+		pb.String("url"),
+		pb.String(from1.String()),
 		pb.String("reason"),
 	}
-	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "RegisterAppchain", args...)
+	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "RegisterAppchain", args...)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k1Nonce++
@@ -109,7 +101,21 @@ func (suite *RegisterAppchain) TestRegisterAppchain() {
 	proposalId := gRet.ProposalID
 	fmt.Printf("========%s", proposalId)
 
-	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID1))
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchainByName", pb.String(chainName1))
+	suite.Require().Nil(err)
+	suite.Require().False(ret.IsSuccess(), string(ret.Ret))
+	k1Nonce++
+
+	suite.vote(proposalId, priAdmin1, adminNonce1, string(contracts.APPROVED))
+	adminNonce1++
+
+	suite.vote(proposalId, priAdmin2, adminNonce2, string(contracts.APPROVED))
+	adminNonce2++
+
+	suite.vote(proposalId, priAdmin3, adminNonce3, string(contracts.APPROVED))
+	adminNonce3++
+
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchainByName", pb.String(chainName1))
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k1Nonce++
@@ -117,7 +123,8 @@ func (suite *RegisterAppchain) TestRegisterAppchain() {
 	err = json.Unmarshal(ret.Ret, chainInfo)
 	suite.Require().Nil(err)
 	suite.Require().Equal("desc", chainInfo.Desc)
-	suite.Require().Equal(governance.GovernanceRegisting, chainInfo.Status)
+	suite.Require().Equal(governance.GovernanceAvailable, chainInfo.Status)
+	chainID1 := chainInfo.ID
 
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(), "GetRuleByAddr",
 		pb.String(chainID1),
@@ -128,16 +135,7 @@ func (suite *RegisterAppchain) TestRegisterAppchain() {
 	ruleInfo := &rule_mgr.Rule{}
 	err = json.Unmarshal(ret.Ret, ruleInfo)
 	suite.Require().Nil(err)
-	suite.Require().Equal(governance.GovernanceBinding, ruleInfo.Status)
-
-	suite.vote(proposalId, priAdmin1, adminNonce1, string(contracts.APPROVED))
-	adminNonce1++
-
-	suite.vote(proposalId, priAdmin2, adminNonce2, string(contracts.APPROVED))
-	adminNonce2++
-
-	suite.vote(proposalId, priAdmin3, adminNonce3, string(contracts.APPROVED))
-	adminNonce3++
+	suite.Require().Equal(governance.GovernanceAvailable, ruleInfo.Status)
 
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID1))
 	suite.Require().Nil(err)
@@ -160,6 +158,28 @@ func (suite *RegisterAppchain) TestRegisterAppchain() {
 }
 
 func (suite *RegisterAppchain) TestFetchAppchains() {
+	path1 := "./test_data/config/node1/key.json"
+	path2 := "./test_data/config/node2/key.json"
+	path3 := "./test_data/config/node3/key.json"
+	keyPath1 := filepath.Join(path1)
+	keyPath2 := filepath.Join(path2)
+	keyPath3 := filepath.Join(path3)
+	priAdmin1, err := asym.RestorePrivateKey(keyPath1, "bitxhub")
+	suite.Require().Nil(err)
+	priAdmin2, err := asym.RestorePrivateKey(keyPath2, "bitxhub")
+	suite.Require().Nil(err)
+	priAdmin3, err := asym.RestorePrivateKey(keyPath3, "bitxhub")
+	suite.Require().Nil(err)
+	fromAdmin1, err := priAdmin1.PublicKey().Address()
+	suite.Require().Nil(err)
+	fromAdmin2, err := priAdmin2.PublicKey().Address()
+	suite.Require().Nil(err)
+	fromAdmin3, err := priAdmin3.PublicKey().Address()
+	suite.Require().Nil(err)
+	adminNonce1 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin1.String())
+	adminNonce2 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin2.String())
+	adminNonce3 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin3.String())
+
 	k1, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
 	k2, err := asym.GenerateKeyPair(crypto.Secp256k1)
@@ -178,26 +198,65 @@ func (suite *RegisterAppchain) TestFetchAppchains() {
 	suite.Require().Nil(transfer(suite.Suite, suite.api, addr1, 10000000000000))
 	suite.Require().Nil(transfer(suite.Suite, suite.api, addr2, 10000000000000))
 
-	id1 := fmt.Sprintf("appchain%s", addr1.String())
+	fabricBroker := appchainMgr.FabricBroker{
+		ChannelID:     "1",
+		ChaincodeID:   "2",
+		BrokerVersion: "3",
+	}
+	fabricBrokerData, err := json.Marshal(fabricBroker)
+	suite.Require().Nil(err)
+	chainName1 := "应用链2case002"
 	args := []*pb.Arg{
-		pb.String(id1),
+		pb.String(chainName1),
+		pb.String(appchainMgr.ChainTypeFabric1_4_3),
 		pb.Bytes(nil),
-		pb.String("broker"),
+		pb.Bytes(fabricBrokerData),
 		pb.String("desc"),
 		pb.String(validator.FabricRuleAddr),
+		pb.String("url"),
+		pb.String(from1.String()),
 		pb.String("reason"),
 	}
 	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "RegisterAppchain", args...)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k1Nonce++
+	gRet := &governance.GovernanceResult{}
+	err = json.Unmarshal(ret.Ret, gRet)
+	suite.Require().Nil(err)
+	proposalId := gRet.ProposalID
+	fmt.Printf("========%s", proposalId)
 
+	suite.vote(proposalId, priAdmin1, adminNonce1, string(contracts.APPROVED))
+	adminNonce1++
+
+	suite.vote(proposalId, priAdmin2, adminNonce2, string(contracts.APPROVED))
+	adminNonce2++
+
+	suite.vote(proposalId, priAdmin3, adminNonce3, string(contracts.APPROVED))
+	adminNonce3++
+
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchainByName", pb.String(chainName1))
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k1Nonce++
+	chainInfo := &appchainMgr.Appchain{}
+	err = json.Unmarshal(ret.Ret, chainInfo)
+	suite.Require().Nil(err)
+	suite.Require().Equal("desc", chainInfo.Desc)
+	suite.Require().Equal(governance.GovernanceAvailable, chainInfo.Status)
+	chainID1 := chainInfo.ID
+
+	chainName2 := "应用链3case002"
 	args = []*pb.Arg{
-		pb.String(fmt.Sprintf("appchain%s", addr2.String())),
+		pb.String(chainName2),
+		pb.String(appchainMgr.ChainTypeFabric1_4_3),
 		pb.Bytes(nil),
-		pb.String("broker"),
+		pb.Bytes(fabricBrokerData),
 		pb.String("desc"),
 		pb.String(validator.SimFabricRuleAddr),
+		pb.String("url"),
+		pb.String(from2.String()),
 		pb.String("reason"),
 	}
 	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "RegisterAppchain", args...)
@@ -224,11 +283,11 @@ func (suite *RegisterAppchain) TestFetchAppchains() {
 	suite.Require().True(ret.IsSuccess())
 	num, err = strconv.Atoi(string(ret.Ret))
 	suite.Require().Nil(err)
-	suite.Require().EqualValues(0, num)
+	suite.Require().EqualValues(1, num)
 	k2Nonce++
 
 	//GetAppchain
-	ret2, err := invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(id1))
+	ret2, err := invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID1))
 	suite.Require().Nil(err)
 	suite.Require().True(ret2.IsSuccess(), string(ret2.Ret))
 	appchain := &appchainMgr.Appchain{}
@@ -268,13 +327,23 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 	k1Nonce := suite.api.Broker().GetPendingNonceByAccount(from1.String())
 	suite.Require().Nil(transfer(suite.Suite, suite.api, from1, 10000000000000))
 
-	id1 := fmt.Sprintf("appchain%s", from1.String())
+	fabricBroker := appchainMgr.FabricBroker{
+		ChannelID:     "1",
+		ChaincodeID:   "2",
+		BrokerVersion: "3",
+	}
+	fabricBrokerData, err := json.Marshal(fabricBroker)
+	suite.Require().Nil(err)
+	chainName1 := "应用链4case002"
 	args := []*pb.Arg{
-		pb.String(id1),
-		pb.Bytes(nil),
-		pb.String("broker"),
+		pb.String(chainName1),
+		pb.String(appchainMgr.ChainTypeFabric1_4_3),
+		pb.Bytes([]byte("")),
+		pb.Bytes(fabricBrokerData),
 		pb.String("desc"),
 		pb.String(validator.FabricRuleAddr),
+		pb.String("url"),
+		pb.String(from1.String()),
 		pb.String("reason"),
 	}
 	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "RegisterAppchain", args...)
@@ -292,8 +361,19 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 	suite.vote(proposalId, priAdmin3, adminNonce3, string(contracts.APPROVED))
 	adminNonce3++
 
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchainByName", pb.String(chainName1))
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k1Nonce++
+	chainInfo := &appchainMgr.Appchain{}
+	err = json.Unmarshal(ret.Ret, chainInfo)
+	suite.Require().Nil(err)
+	suite.Require().Equal("desc", chainInfo.Desc)
+	suite.Require().Equal(governance.GovernanceAvailable, chainInfo.Status)
+	chainID1 := chainInfo.ID
+
 	//GetAppchain
-	ret2, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(id1))
+	ret2, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID1))
 	suite.Require().Nil(err)
 	suite.Require().True(ret2.IsSuccess(), string(ret2.Ret))
 	appchain := &appchainMgr.Appchain{}
@@ -304,16 +384,30 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 
 	//UpdateAppchain
 	args = []*pb.Arg{
-		pb.String(id1),
+		pb.String(chainID1),
+		pb.String("应用链5case002"),
 		pb.String("desc1"),
+		pb.Bytes([]byte("")),
+		pb.String(from1.Address),
+		pb.String("reason"),
 	}
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "UpdateAppchain", args...)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess())
 	k1Nonce++
+	proposalId1 := gjson.Get(string(ret.Ret), "proposal_id").String()
+
+	suite.vote(proposalId1, priAdmin1, adminNonce1, string(contracts.APPROVED))
+	adminNonce1++
+
+	suite.vote(proposalId1, priAdmin2, adminNonce2, string(contracts.APPROVED))
+	adminNonce2++
+
+	suite.vote(proposalId1, priAdmin3, adminNonce3, string(contracts.APPROVED))
+	adminNonce3++
 
 	//GetAppchain
-	ret2, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(id1))
+	ret2, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID1))
 	suite.Require().Nil(err)
 	suite.Require().True(ret2.IsSuccess(), string(ret2.Ret))
 	err = json.Unmarshal(ret2.Ret, appchain)
@@ -352,13 +446,23 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 //	k1Nonce := suite.api.Broker().GetPendingNonceByAccount(from1.String())
 //	suite.Require().Nil(transfer(suite.Suite, suite.api, from1, 10000000000000))
 //
-//	id1 := fmt.Sprintf("appchain%s", from1.String())
+//	fabricBroker := appchainMgr.FabricBroker{
+//		ChannelID:     "1",
+//		ChaincodeID:   "2",
+//		BrokerVersion: "3",
+//	}
+//	fabricBrokerData, err := json.Marshal(fabricBroker)
+//	suite.Require().Nil(err)
+//	chainName1 := "应用链6case002"
 //	args := []*pb.Arg{
-//		pb.String(id1),
+//		pb.String(chainName1),
+//		pb.String(appchainMgr.ChainTypeFabric1_4_3),
 //		pb.Bytes(nil),
-//		pb.String("broker"),
+//		pb.Bytes(fabricBrokerData),
 //		pb.String("desc"),
 //		pb.String(validator.FabricRuleAddr),
+//		pb.String("url"),
+//		pb.String(from1.String()),
 //		pb.String("reason"),
 //	}
 //	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "RegisterAppchain", args...)
@@ -376,8 +480,19 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 //	suite.vote(proposalId, priAdmin3, adminNonce3, string(contracts.APPROVED))
 //	adminNonce3++
 //
+//	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchainByName", pb.String(chainName1))
+//	suite.Require().Nil(err)
+//	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+//	k1Nonce++
+//	chainInfo := &appchainMgr.Appchain{}
+//	err = json.Unmarshal(ret.Ret, chainInfo)
+//	suite.Require().Nil(err)
+//	suite.Require().Equal("desc", chainInfo.Desc)
+//	suite.Require().Equal(governance.GovernanceAvailable, chainInfo.Status)
+//	chainID1 := chainInfo.ID
+//
 //	//GetAppchain
-//	ret2, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(id1))
+//	ret2, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID1))
 //	suite.Require().Nil(err)
 //	suite.Require().True(ret2.IsSuccess(), string(ret2.Ret))
 //	appchain := &appchainMgr.Appchain{}
@@ -394,7 +509,7 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 //	suite.Require().Nil(err)
 //	k1Nonce++
 //	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(), "RegisterRule",
-//		pb.String(id1),
+//		pb.String(chainID1),
 //		pb.String(ruleAddr1.String()),
 //		pb.String("url"),
 //	)
@@ -403,14 +518,14 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 //	k1Nonce++
 //
 //	//UpdateMasterRule
-//	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(), "UpdateMasterRule", pb.String(id1), pb.String(ruleAddr1.String()), pb.String("reason"))
+//	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(), "UpdateMasterRule", pb.String(chainID1), pb.String(ruleAddr1.String()), pb.String("reason"))
 //	suite.Require().Nil(err)
 //	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 //	k1Nonce++
 //	proposalId2 := gjson.Get(string(ret.Ret), "proposal_id").String()
 //
 //	//GetAppchain
-//	ret2, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(id1))
+//	ret2, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID1))
 //	suite.Require().Nil(err)
 //	suite.Require().True(ret2.IsSuccess(), string(ret2.Ret))
 //	err = json.Unmarshal(ret2.Ret, appchain)
@@ -419,7 +534,7 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 //	k1Nonce++
 //
 //	// activate appchain
-//	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "ActivateAppchain", pb.String(id1), pb.String("reason"))
+//	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "ActivateAppchain", pb.String(chainID1), pb.String("reason"))
 //	suite.Require().Nil(err)
 //	suite.Require().False(ret.IsSuccess())
 //	k1Nonce++
@@ -434,7 +549,7 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 //	adminNonce3++
 //
 //	//GetAppchain
-//	ret2, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(id1))
+//	ret2, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID1))
 //	suite.Require().Nil(err)
 //	suite.Require().True(ret2.IsSuccess(), string(ret2.Ret))
 //	err = json.Unmarshal(ret2.Ret, appchain)
@@ -442,7 +557,7 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 //	suite.Equal(governance.GovernanceAvailable, appchain.Status)
 //	k1Nonce++
 //}
-//
+
 //func (suite *RegisterAppchain) TestLogoutAppchain() {
 //	path1 := "./test_data/config/node1/key.json"
 //	path2 := "./test_data/config/node2/key.json"
@@ -473,13 +588,23 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 //	k1Nonce := suite.api.Broker().GetPendingNonceByAccount(from1.String())
 //	suite.Require().Nil(transfer(suite.Suite, suite.api, from1, 10000000000000))
 //
-//	id1 := fmt.Sprintf("appchain%s", from1.String())
+//	fabricBroker := appchainMgr.FabricBroker{
+//		ChannelID:     "1",
+//		ChaincodeID:   "2",
+//		BrokerVersion: "3",
+//	}
+//	fabricBrokerData, err := json.Marshal(fabricBroker)
+//	suite.Require().Nil(err)
+//	chainName1 := "应用链7case002"
 //	args := []*pb.Arg{
-//		pb.String(id1),
+//		pb.String(chainName1),
+//		pb.String(appchainMgr.ChainTypeFabric1_4_3),
 //		pb.Bytes(nil),
-//		pb.String("broker"),
+//		pb.Bytes(fabricBrokerData),
 //		pb.String("desc"),
 //		pb.String(validator.FabricRuleAddr),
+//		pb.String("url"),
+//		pb.String(from1.String()),
 //		pb.String("reason"),
 //	}
 //	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "RegisterAppchain", args...)
@@ -497,8 +622,19 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 //	suite.vote(proposalRegisterAppchainId, priAdmin3, adminNonce3, string(contracts.APPROVED))
 //	adminNonce3++
 //
+//	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchainByName", pb.String(chainName1))
+//	suite.Require().Nil(err)
+//	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+//	k1Nonce++
+//	chainInfo := &appchainMgr.Appchain{}
+//	err = json.Unmarshal(ret.Ret, chainInfo)
+//	suite.Require().Nil(err)
+//	suite.Require().Equal("desc", chainInfo.Desc)
+//	suite.Require().Equal(governance.GovernanceAvailable, chainInfo.Status)
+//	chainID1 := chainInfo.ID
+//
 //	//GetAppchain
-//	ret2, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(id1))
+//	ret2, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID1))
 //	suite.Require().Nil(err)
 //	suite.Require().True(ret2.IsSuccess(), string(ret2.Ret))
 //	appchain := &appchainMgr.Appchain{}
@@ -508,7 +644,7 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 //	k1Nonce++
 //
 //	// logout appchain
-//	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "LogoutAppchain", pb.String(id1), pb.String("reason"))
+//	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "LogoutAppchain", pb.String(chainID1), pb.String("reason"))
 //	suite.Require().Nil(err)
 //	suite.Require().True(ret.IsSuccess())
 //	k1Nonce++
@@ -524,7 +660,7 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 //	adminNonce3++
 //
 //	//GetAppchain
-//	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(id1))
+//	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID1))
 //	suite.Require().Nil(err)
 //	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 //	err = json.Unmarshal(ret.Ret, appchain)
@@ -533,7 +669,7 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 //	k1Nonce++
 //
 //	// logout appchain
-//	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "LogoutAppchain", pb.String(id1), pb.String("reason"))
+//	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "LogoutAppchain", pb.String(chainID1), pb.String("reason"))
 //	suite.Require().Nil(err)
 //	suite.Require().True(ret.IsSuccess())
 //	k1Nonce++
@@ -549,7 +685,7 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 //	adminNonce3++
 //
 //	//GetAppchain
-//	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(id1))
+//	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID1))
 //	suite.Require().Nil(err)
 //	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 //	err = json.Unmarshal(ret.Ret, appchain)
@@ -588,13 +724,23 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 //	k1Nonce := suite.api.Broker().GetPendingNonceByAccount(from1.String())
 //	suite.Require().Nil(transfer(suite.Suite, suite.api, from1, 10000000000000))
 //
-//	id1 := fmt.Sprintf("appchain%s", from1.String())
+//	fabricBroker := appchainMgr.FabricBroker{
+//		ChannelID:     "1",
+//		ChaincodeID:   "2",
+//		BrokerVersion: "3",
+//	}
+//	fabricBrokerData, err := json.Marshal(fabricBroker)
+//	suite.Require().Nil(err)
+//	chainName1 := "应用链8case002"
 //	args := []*pb.Arg{
-//		pb.String(id1),
+//		pb.String(chainName1),
+//		pb.String(appchainMgr.ChainTypeFabric1_4_3),
 //		pb.Bytes(nil),
-//		pb.String("broker"),
+//		pb.Bytes(fabricBrokerData),
 //		pb.String("desc"),
 //		pb.String(validator.FabricRuleAddr),
+//		pb.String("url"),
+//		pb.String(from1.String()),
 //		pb.String("reason"),
 //	}
 //	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "RegisterAppchain", args...)
@@ -612,8 +758,19 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 //	suite.vote(proposalRegisterAppchainId, priAdmin3, adminNonce3, string(contracts.APPROVED))
 //	adminNonce3++
 //
+//	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchainByName", pb.String(chainName1))
+//	suite.Require().Nil(err)
+//	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+//	k1Nonce++
+//	chainInfo := &appchainMgr.Appchain{}
+//	err = json.Unmarshal(ret.Ret, chainInfo)
+//	suite.Require().Nil(err)
+//	suite.Require().Equal("desc", chainInfo.Desc)
+//	suite.Require().Equal(governance.GovernanceAvailable, chainInfo.Status)
+//	chainID1 := chainInfo.ID
+//
 //	//GetAppchain
-//	ret2, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(id1))
+//	ret2, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID1))
 //	suite.Require().Nil(err)
 //	suite.Require().True(ret2.IsSuccess(), string(ret2.Ret))
 //	appchain := &appchainMgr.Appchain{}
@@ -630,7 +787,7 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 //	suite.Require().Nil(err)
 //	k1Nonce++
 //	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(), "RegisterRule",
-//		pb.String(id1),
+//		pb.String(chainID1),
 //		pb.String(ruleAddr1.String()),
 //		pb.String("url"),
 //	)
@@ -639,14 +796,14 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 //	k1Nonce++
 //
 //	//UpdateMasterRule
-//	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(), "UpdateMasterRule", pb.String(id1), pb.String(ruleAddr1.String()), pb.String("reason"))
+//	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(), "UpdateMasterRule", pb.String(chainID1), pb.String(ruleAddr1.String()), pb.String("reason"))
 //	suite.Require().Nil(err)
 //	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 //	k1Nonce++
 //	proposalUpdateRuleId := gjson.Get(string(ret.Ret), "proposal_id").String()
 //
 //	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(), "GetRuleByAddr",
-//		pb.String(id1),
+//		pb.String(chainID1),
 //		pb.String(ruleAddr1.String()))
 //	suite.Require().Nil(err)
 //	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
@@ -657,7 +814,7 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 //	suite.Require().Equal(governance.GovernanceBinding, ruleInfo.Status)
 //
 //	// logout appchain
-//	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "LogoutAppchain", pb.String(id1), pb.String("reason"))
+//	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "LogoutAppchain", pb.String(chainID1), pb.String("reason"))
 //	suite.Require().Nil(err)
 //	suite.Require().True(ret.IsSuccess())
 //	k1Nonce++

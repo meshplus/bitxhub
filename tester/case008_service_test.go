@@ -62,17 +62,27 @@ func (suite *Service) TestRegisterService() {
 	suite.Require().Nil(transfer(suite.Suite, suite.api, addr2, 10000000000000))
 	k1Nonce := suite.api.Broker().GetPendingNonceByAccount(addr1.String())
 
-	chainID1 := fmt.Sprintf("appchain%s", addr1.String())
-	serviceID1 := "service1"
-	chainServiceID1 := fmt.Sprintf("%s:%s", chainID1, serviceID1)
-
-	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "RegisterAppchain",
-		pb.String(chainID1),
+	fabricBroker := appchainMgr.FabricBroker{
+		ChannelID:     "1",
+		ChaincodeID:   "2",
+		BrokerVersion: "3",
+	}
+	fabricBrokerData, err := json.Marshal(fabricBroker)
+	suite.Require().Nil(err)
+	chainName1 := "应用链1case008"
+	args := []*pb.Arg{
+		pb.String(chainName1),
+		pb.String(appchainMgr.ChainTypeFabric1_4_3),
 		pb.Bytes(nil),
-		pb.String("broker"),
+		pb.Bytes(fabricBrokerData),
 		pb.String("desc"),
 		pb.String(validator.FabricRuleAddr),
+		pb.String("url"),
+		pb.String(addr1.String()),
 		pb.String("reason"),
+	}
+	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "RegisterAppchain",
+		args...,
 	)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
@@ -91,6 +101,19 @@ func (suite *Service) TestRegisterService() {
 	suite.vote(proposalId1, priAdmin3, adminNonce3, string(contracts.APPROVED))
 	adminNonce3++
 
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchainByName", pb.String(chainName1))
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k1Nonce++
+	chainInfo := &appchainMgr.Appchain{}
+	err = json.Unmarshal(ret.Ret, chainInfo)
+	suite.Require().Nil(err)
+	suite.Require().Equal("desc", chainInfo.Desc)
+	suite.Require().Equal(governance.GovernanceAvailable, chainInfo.Status)
+	chainID1 := chainInfo.ID
+	serviceID1 := "service1"
+	chainServiceID1 := fmt.Sprintf("%s:%s", chainID1, serviceID1)
+
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID1))
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
@@ -103,7 +126,7 @@ func (suite *Service) TestRegisterService() {
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.ServiceMgrContractAddr.Address(), "RegisterService",
 		pb.String(chainID1),
 		pb.String(serviceID1),
-		pb.String("name"),
+		pb.String("服务1case008"),
 		pb.String(string(service_mgr.ServiceCallContract)),
 		pb.String("intro"),
 		pb.Bool(true),
@@ -141,7 +164,6 @@ func (suite *Service) TestRegisterService() {
 		pb.String(chainServiceID1),
 		pb.String("name1"),
 		pb.String("intro"),
-		pb.Bool(true),
 		pb.String(""),
 		pb.String("details"),
 		pb.String("raeson"),
@@ -272,17 +294,27 @@ func (suite *Service) TestLogoutAppchainPauseService() {
 	suite.Require().Nil(transfer(suite.Suite, suite.api, addr2, 10000000000000))
 	k1Nonce := suite.api.Broker().GetPendingNonceByAccount(addr1.String())
 
-	chainID1 := fmt.Sprintf("appchain%s", addr1.String())
-	serviceID1 := "service1"
-	chainServiceID1 := fmt.Sprintf("%s:%s", chainID1, serviceID1)
-
-	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "RegisterAppchain",
-		pb.String(chainID1),
+	fabricBroker := appchainMgr.FabricBroker{
+		ChannelID:     "1",
+		ChaincodeID:   "2",
+		BrokerVersion: "3",
+	}
+	fabricBrokerData, err := json.Marshal(fabricBroker)
+	suite.Require().Nil(err)
+	chainName1 := "应用链2case008"
+	args := []*pb.Arg{
+		pb.String(chainName1),
+		pb.String(appchainMgr.ChainTypeFabric1_4_3),
 		pb.Bytes(nil),
-		pb.String("broker"),
+		pb.Bytes(fabricBrokerData),
 		pb.String("desc"),
 		pb.String(validator.FabricRuleAddr),
+		pb.String("url"),
+		pb.String(addr1.String()),
 		pb.String("reason"),
+	}
+	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "RegisterAppchain",
+		args...,
 	)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
@@ -301,6 +333,19 @@ func (suite *Service) TestLogoutAppchainPauseService() {
 	suite.vote(proposalRegisterAppchainId, priAdmin3, adminNonce3, string(contracts.APPROVED))
 	adminNonce3++
 
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchainByName", pb.String(chainName1))
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k1Nonce++
+	chainInfo := &appchainMgr.Appchain{}
+	err = json.Unmarshal(ret.Ret, chainInfo)
+	suite.Require().Nil(err)
+	suite.Require().Equal("desc", chainInfo.Desc)
+	suite.Require().Equal(governance.GovernanceAvailable, chainInfo.Status)
+	chainID1 := chainInfo.ID
+	serviceID1 := "service1"
+	chainServiceID1 := fmt.Sprintf("%s:%s", chainID1, serviceID1)
+
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID1))
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
@@ -313,7 +358,7 @@ func (suite *Service) TestLogoutAppchainPauseService() {
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.ServiceMgrContractAddr.Address(), "RegisterService",
 		pb.String(chainID1),
 		pb.String(serviceID1),
-		pb.String("name"),
+		pb.String("服务2case008"),
 		pb.String(string(service_mgr.ServiceCallContract)),
 		pb.String("intro"),
 		pb.Bool(true),
@@ -475,17 +520,27 @@ func (suite *Service) TestLogoutService() {
 	suite.Require().Nil(transfer(suite.Suite, suite.api, addr2, 10000000000000))
 	k1Nonce := suite.api.Broker().GetPendingNonceByAccount(addr1.String())
 
-	chainID1 := fmt.Sprintf("appchain%s", addr1.String())
-	serviceID1 := "service1"
-	chainServiceID1 := fmt.Sprintf("%s:%s", chainID1, serviceID1)
-
-	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "RegisterAppchain",
-		pb.String(chainID1),
+	fabricBroker := appchainMgr.FabricBroker{
+		ChannelID:     "1",
+		ChaincodeID:   "2",
+		BrokerVersion: "3",
+	}
+	fabricBrokerData, err := json.Marshal(fabricBroker)
+	suite.Require().Nil(err)
+	chainName1 := "应用链3case008"
+	args := []*pb.Arg{
+		pb.String(chainName1),
+		pb.String(appchainMgr.ChainTypeFabric1_4_3),
 		pb.Bytes(nil),
-		pb.String("broker"),
+		pb.Bytes(fabricBrokerData),
 		pb.String("desc"),
 		pb.String(validator.FabricRuleAddr),
+		pb.String("url"),
+		pb.String(addr1.String()),
 		pb.String("reason"),
+	}
+	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "RegisterAppchain",
+		args...,
 	)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
@@ -504,6 +559,19 @@ func (suite *Service) TestLogoutService() {
 	suite.vote(proposalRegisterAppchainId, priAdmin3, adminNonce3, string(contracts.APPROVED))
 	adminNonce3++
 
+	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchainByName", pb.String(chainName1))
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	k1Nonce++
+	chainInfo := &appchainMgr.Appchain{}
+	err = json.Unmarshal(ret.Ret, chainInfo)
+	suite.Require().Nil(err)
+	suite.Require().Equal("desc", chainInfo.Desc)
+	suite.Require().Equal(governance.GovernanceAvailable, chainInfo.Status)
+	chainID1 := chainInfo.ID
+	serviceID1 := "service1"
+	chainServiceID1 := fmt.Sprintf("%s:%s", chainID1, serviceID1)
+
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID1))
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
@@ -516,7 +584,7 @@ func (suite *Service) TestLogoutService() {
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.ServiceMgrContractAddr.Address(), "RegisterService",
 		pb.String(chainID1),
 		pb.String(serviceID1),
-		pb.String("name"),
+		pb.String("服务3case008"),
 		pb.String(string(service_mgr.ServiceCallContract)),
 		pb.String("intro"),
 		pb.Bool(true),
