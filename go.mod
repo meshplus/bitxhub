@@ -30,7 +30,7 @@ require (
 	github.com/libp2p/go-libp2p-core v0.5.6
 	github.com/looplab/fsm v0.2.0
 	github.com/magiconair/properties v1.8.4
-	github.com/meshplus/bitxhub-core v1.3.1-0.20210918105020-399b319d967f
+	github.com/meshplus/bitxhub-core v1.3.1-0.20211014054354-ef16531bd389
 	github.com/meshplus/bitxhub-kit v1.2.1-0.20210901014031-ee93dd4f4ced
 	github.com/meshplus/bitxhub-model v1.2.1-0.20211013025747-b1d8b99f2d1e
 	github.com/meshplus/eth-kit v0.0.0-20210906064541-8dfea98dbf95
@@ -72,4 +72,3 @@ replace github.com/hyperledger/fabric => github.com/hyperledger/fabric v2.0.1+in
 
 replace github.com/wasmerio/wasmer-go v1.0.4 => github.com/meshplus/wasmer-go v1.0.5-0.20210817103436-19ec68f8bfe2
 
-replace github.com/meshplus/bitxhub-core => github.com/meshplus/bitxhub-core v1.3.1-0.20211014024801-c8fa1a00ffa7
