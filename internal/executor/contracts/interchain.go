@@ -689,6 +689,27 @@ func serviceKey(id string) string {
 	return fmt.Sprintf("%s-%s", INTERCHAINSERVICE_PREFIX, id)
 }
 
+func (x *InterchainManager) GetAllServiceIDs() *boltvm.Response {
+	ret := make([]string, 0)
+	ok, value := x.Query(INTERCHAINSERVICE_PREFIX)
+	if !ok {
+		return boltvm.Success(nil)
+	}
+	for _, data := range value {
+		interchain := &pb.Interchain{}
+		if err := json.Unmarshal(data, interchain); err != nil {
+			return boltvm.Error(err.Error())
+		}
+		ret = append(ret, interchain.ID)
+	}
+
+	if result, err := json.Marshal(ret); err != nil {
+		return boltvm.Error(err.Error())
+	} else {
+		return boltvm.Success(result)
+	}
+}
+
 func getIBTPID(from, to string, index uint64) string {
 	return fmt.Sprintf("%s-%s-%d", from, to, index)
 }
