@@ -301,18 +301,18 @@ func (am *AppchainManager) recordChainAdmins(chainID string, addrs []string) {
 }
 
 // =========== RegisterAppchain registers appchain info, returns proposal id and error
-func (am *AppchainManager) RegisterAppchain(chainName string, chainType string, trustRoot []byte, broker []byte, desc, masterRuleAddr, masterRuleUrl, adminAddrs, reason string) *boltvm.Response {
+func (am *AppchainManager) RegisterAppchain(chainName string, chainType string, trustRoot []byte, broker string, desc, masterRuleAddr, masterRuleUrl, adminAddrs, reason string) *boltvm.Response {
 	am.AppchainManager.Persister = am.Stub
 	event := governance.EventRegister
 
 	// 1. check
 	// 1.1 check broker
-	if broker == nil || string(broker) == "" {
+	if broker == "" {
 		return boltvm.Error("broker can not be nil")
 	}
 	if strings.Contains(strings.ToLower(chainType), appchainMgr.FabricType) {
 		fabBroker := &appchainMgr.FabricBroker{}
-		if err := json.Unmarshal(broker, fabBroker); err != nil {
+		if err := json.Unmarshal([]byte(broker), fabBroker); err != nil {
 			return boltvm.Error(fmt.Sprintf("unmarshal fabric broker error: %v", err))
 		}
 		if fabBroker.BrokerVersion == "" || fabBroker.ChaincodeID == "" || fabBroker.ChannelID == "" {
@@ -368,7 +368,7 @@ func (am *AppchainManager) RegisterAppchain(chainName string, chainType string, 
 			ChainName: chainName,
 			ChainType: chainType,
 			TrustRoot: trustRoot,
-			Broker:    broker,
+			Broker:    []byte(broker),
 			Desc:      desc,
 			Version:   0,
 			Status:    governance.GovernanceAvailable,
@@ -458,7 +458,7 @@ func (am *AppchainManager) UpdateAppchain(id, name, desc string, trustRoot []byt
 			if _, err := types.HexDecodeString(addr); err != nil {
 				return boltvm.Error(fmt.Sprintf("illegal admin addr: %s", addr))
 			}
-			if chainID, err := am.getChainIdByAdminAddr(addr); err == nil {
+			if chainID, err := am.getChainIdByAdminAddr(addr); err == nil && chainID != id {
 				return boltvm.Error(fmt.Sprintf("the admin addr is already occupied by appchain %s", chainID))
 			}
 		}

@@ -315,11 +315,6 @@ func (rm *RoleManager) register(roleInfo *Role) error {
 	rm.SetObject(RoleTypeKey(string(roleInfo.RoleType)), roleIdMap)
 
 	switch roleInfo.RoleType {
-	case AppchainAdmin:
-		roleInfo.Status = governance.GovernanceAvailable
-		rm.SetObject(RoleKey(roleInfo.ID), *roleInfo)
-		rm.SetObject(RoleAppchainAdminKey(roleInfo.AppchainID), roleInfo.ID)
-		return nil
 	case GovernanceAdmin:
 		ok, gb := rm.Get(GenesisBalance)
 		if !ok {
@@ -354,20 +349,39 @@ func (rm *RoleManager) UpdateAppchainAdmin(appchainID string, adminAddrs string)
 	}
 
 	// 2. update info
-	roleType := string(AppchainAdmin)
-	for _, addr := range strings.Split(adminAddrs, ",") {
-		role := &Role{
-			ID:         addr,
-			RoleType:   RoleType(roleType),
-			AppchainID: appchainID,
-			Status:     governance.GovernanceAvailable,
-		}
-		if err := rm.register(role); err != nil {
-			return boltvm.Error(fmt.Sprintf("register error: %v", err))
-		}
+	if err := rm.updateAppchainAdmin(appchainID, strings.Split(adminAddrs, ",")); err != nil {
+		return boltvm.Error(fmt.Sprintf("update appchain admin error: %v", err))
 	}
 
 	return boltvm.Success(nil)
+}
+
+func (rm *RoleManager) updateAppchainAdmin(appchainID string, adminAddrs []string) error {
+	allAppchainAdminIdMap := orderedmap.New()
+	_ = rm.GetObject(RoleTypeKey(string(AppchainAdmin)), allAppchainAdminIdMap)
+	theAppchainAdminIdMap := orderedmap.New()
+	_ = rm.GetObject(RoleAppchainAdminKey(appchainID), theAppchainAdminIdMap)
+
+	for _, addr := range theAppchainAdminIdMap.Keys() {
+		rm.Delete(RoleKey(addr))
+	}
+
+	for _, addr := range adminAddrs {
+		allAppchainAdminIdMap.Set(addr, struct{}{})
+		theAppchainAdminIdMap.Set(addr, struct{}{})
+
+		role := &Role{
+			ID:         addr,
+			RoleType:   RoleType(AppchainAdmin),
+			AppchainID: appchainID,
+			Status:     governance.GovernanceAvailable,
+		}
+		rm.SetObject(RoleKey(addr), *role)
+	}
+	rm.SetObject(RoleTypeKey(string(AppchainAdmin)), allAppchainAdminIdMap)
+	rm.SetObject(RoleAppchainAdminKey(appchainID), theAppchainAdminIdMap)
+
+	return nil
 }
 
 // =========== FreezeRole freezes role
@@ -543,18 +557,23 @@ func (rm *RoleManager) GetRolesByType(roleType string) *boltvm.Response {
 }
 
 func (rm *RoleManager) GetAppchainAdmin(appchainID string) *boltvm.Response {
-	role := &Role{}
-	appchainAdminID := ""
-	ok := rm.GetObject(RoleAppchainAdminKey(appchainID), &appchainAdminID)
+	theAppchainAdminIdMap := orderedmap.New()
+	ok := rm.GetObject(RoleAppchainAdminKey(appchainID), &theAppchainAdminIdMap)
 	if !ok {
 		return boltvm.Error("there is no admin for the appchain")
 	}
-	ok = rm.GetObject(RoleKey(appchainAdminID), role)
-	if !ok {
-		return boltvm.Error(fmt.Sprintf("the appchain admin is not exist: %s", appchainAdminID))
+
+	ret := []*Role{}
+	for _, addr := range theAppchainAdminIdMap.Keys() {
+		role := &Role{}
+		ok = rm.GetObject(RoleKey(addr), role)
+		if !ok {
+			return boltvm.Error(fmt.Sprintf("the appchain admin is not exist: %s", addr))
+		}
+		ret = append(ret, role)
 	}
 
-	data, err := json.Marshal(role)
+	data, err := json.Marshal(ret)
 	if err != nil {
 		return boltvm.Error(err.Error())
 	}

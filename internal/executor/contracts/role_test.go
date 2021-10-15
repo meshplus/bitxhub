@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/iancoleman/orderedmap"
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/boltvm/mock_stub"
 	"github.com/meshplus/bitxhub-core/governance"
@@ -283,7 +284,9 @@ func TestRoleManager_Query(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 0, len(roles), string(res.Result))
 
-	mockStub.EXPECT().GetObject(RoleAppchainAdminKey(appchainID), gomock.Any()).SetArg(1, appchainAdminAddr).Return(true).AnyTimes()
+	appchainAdminIdMap := orderedmap.New()
+	appchainAdminIdMap.Set(appchainAdminAddr, struct{}{})
+	mockStub.EXPECT().GetObject(RoleAppchainAdminKey(appchainID), gomock.Any()).SetArg(1, appchainAdminIdMap).Return(true).AnyTimes()
 	res = rm.GetAppchainAdmin(appchainID)
 	assert.True(t, res.Ok, string(res.Result))
 

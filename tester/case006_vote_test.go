@@ -76,7 +76,7 @@ func (suite *Governance) TestGovernance() {
 		pb.String(chainName1),
 		pb.String(appchainMgr.ChainTypeFabric1_4_3),
 		pb.Bytes(nil),
-		pb.Bytes(fabricBrokerData),
+		pb.String(string(fabricBrokerData)),
 		pb.String("desc"),
 		pb.String(validator.FabricRuleAddr),
 		pb.String("url"),

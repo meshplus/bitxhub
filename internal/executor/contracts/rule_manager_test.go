@@ -38,7 +38,8 @@ const (
 )
 
 func TestRuleManager_Manage(t *testing.T) {
-	rm, mockStub, rules, _, _, _, _, rolesData := rulePrepare(t)
+	rm, mockStub, rules, _, _, _, _ := rulePrepare(t)
+	_, rolesData := rulePrepareRole(t)
 	updateExtraInfo0 := UpdateMasterRuleInfo{
 		OldRule: rules[0],
 		NewRule: rules[1],
@@ -103,7 +104,7 @@ func TestRuleManager_Manage(t *testing.T) {
 }
 
 func TestRuleManager_RegisterRule(t *testing.T) {
-	rm, mockStub, rules, _, chains, chainsData, account, _ := rulePrepare(t)
+	rm, mockStub, rules, _, chains, chainsData, account := rulePrepare(t)
 
 	logger := log.NewWithModule("contracts")
 	mockStub.EXPECT().Logger().Return(logger).AnyTimes()
@@ -122,7 +123,7 @@ func TestRuleManager_RegisterRule(t *testing.T) {
 		Status:     governance.GovernanceAvailable,
 		FSM:        nil,
 	}
-	appchainRoleData, err := json.Marshal(appchainRole)
+	appchainRoleData, err := json.Marshal([]*Role{appchainRole})
 	assert.Nil(t, err)
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "GetAppchainAdmin", gomock.Any()).Return(boltvm.Success(appchainRoleData)).AnyTimes()
 	mockStub.EXPECT().GetAccount(gomock.Any()).Return(account).AnyTimes()
@@ -132,6 +133,7 @@ func TestRuleManager_RegisterRule(t *testing.T) {
 	OkReq := mockStub.EXPECT().GetObject(ruleMgr.RuleKey(chains[0].ID), gomock.Any()).Return(false).AnyTimes()
 	gomock.InOrder(governancePreErrReq, OkReq)
 	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+	mockStub.EXPECT().GetTxTimeStamp().Return(int64(1)).AnyTimes()
 
 	// check permission error
 	res := rm.RegisterRule(chains[0].ID, rules[0].Address, rules[0].RuleUrl)
@@ -148,7 +150,7 @@ func TestRuleManager_RegisterRule(t *testing.T) {
 }
 
 func TestRuleManager_RegisterRuleFirst(t *testing.T) {
-	rm, mockStub, rules, _, chains, _, _, _ := rulePrepare(t)
+	rm, mockStub, rules, _, chains, _, _ := rulePrepare(t)
 
 	mockStub.EXPECT().CurrentCaller().Return("").Times(1)
 	mockStub.EXPECT().CurrentCaller().Return(constant.AppchainMgrContractAddr.Address().String()).AnyTimes()
@@ -162,6 +164,7 @@ func TestRuleManager_RegisterRuleFirst(t *testing.T) {
 	retRulesBindable := make([]*ruleMgr.Rule, 0)
 	retRulesBindable = append(retRulesBindable, rules[3])
 	mockStub.EXPECT().GetObject(ruleMgr.RuleKey(chains[0].ID), gomock.Any()).SetArg(1, retRulesBindable).Return(true).AnyTimes()
+	mockStub.EXPECT().GetTxTimeStamp().Return(int64(1)).AnyTimes()
 
 	// check permission error
 	res := rm.RegisterRuleFirst(chains[0].ID, chains[0].ChainType, rules[3].Address, rules[3].RuleUrl)
@@ -194,13 +197,16 @@ func TestRuleManager_RegisterRuleFirst(t *testing.T) {
 }
 
 func TestRuleManager_UpdateMasterRule(t *testing.T) {
-	rm, mockStub, rules, _, chains, chainsData, account, rolesData := rulePrepare(t)
+	rm, mockStub, rules, _, chains, chainsData, account := rulePrepare(t)
+	roles, _ := rulePrepareRole(t)
 
 	mockStub.EXPECT().Caller().Return("").AnyTimes()
 	mockStub.EXPECT().CurrentCaller().Return(noAdminAddr).Times(1)
 	mockStub.EXPECT().CurrentCaller().Return(appchainAdminAddr).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "GetAppchainAdmin", gomock.Any()).Return(boltvm.Success(rolesData[0])).AnyTimes()
+	appchainRoleData, err := json.Marshal([]*Role{roles[0]})
+	assert.Nil(t, err)
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "GetAppchainAdmin", gomock.Any()).Return(boltvm.Success(appchainRoleData)).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin", pb.String(noAdminAddr), pb.String(string(GovernanceAdmin))).Return(boltvm.Success([]byte(FALSE))).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin", pb.String(adminAddr), pb.String(string(GovernanceAdmin))).Return(boltvm.Success([]byte(TRUE))).AnyTimes()
 	mockStub.EXPECT().GetAccount(gomock.Any()).Return(account).AnyTimes()
@@ -272,13 +278,16 @@ func TestRuleManager_UpdateMasterRule(t *testing.T) {
 }
 
 func TestRuleManager_LogoutRule(t *testing.T) {
-	rm, mockStub, rules, _, chains, _, _, rolesData := rulePrepare(t)
+	rm, mockStub, rules, _, chains, _, _ := rulePrepare(t)
+	roles, _ := rulePrepareRole(t)
 
 	mockStub.EXPECT().CurrentCaller().Return(noAdminAddr).Times(1)
 	mockStub.EXPECT().CurrentCaller().Return(appchainAdminAddr).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().Caller().Return("").AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "GetAppchainAdmin", gomock.Any()).Return(boltvm.Success(rolesData[0])).AnyTimes()
+	appchainRoleData, err := json.Marshal([]*Role{roles[0]})
+	assert.Nil(t, err)
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "GetAppchainAdmin", gomock.Any()).Return(boltvm.Success(appchainRoleData)).AnyTimes()
 	mockStub.EXPECT().GetObject(ruleMgr.RuleKey(chains[0].ID), gomock.Any()).Return(false).Times(1)
 	retRulesBindable := make([]*ruleMgr.Rule, 0)
 	retRulesBindable = append(retRulesBindable, rules[3])
@@ -296,7 +305,7 @@ func TestRuleManager_LogoutRule(t *testing.T) {
 }
 
 func TestRuleManager_Query(t *testing.T) {
-	rm, mockStub, rules, _, chains, _, _, _ := rulePrepare(t)
+	rm, mockStub, rules, _, chains, _, _ := rulePrepare(t)
 
 	mockStub.EXPECT().GetObject(ruleMgr.RuleKey(chains[0].ID), gomock.Any()).Return(false).Times(2)
 	mockStub.EXPECT().GetObject(ruleMgr.RuleKey(chains[0].ID), gomock.Any()).SetArg(1, rules).Return(true).AnyTimes()
@@ -332,7 +341,7 @@ func TestRuleManager_Query(t *testing.T) {
 }
 
 func TestRuleManager_PauseRule(t *testing.T) {
-	rm, mockStub, rules, _, chains, _, _, _ := rulePrepare(t)
+	rm, mockStub, rules, _, chains, _, _ := rulePrepare(t)
 	logger := log.NewWithModule("contracts")
 
 	mockStub.EXPECT().Logger().Return(logger).AnyTimes()
@@ -362,7 +371,7 @@ func TestRuleManager_PauseRule(t *testing.T) {
 }
 
 func TestRuleManager_UnPauseRule(t *testing.T) {
-	rm, mockStub, rules, _, chains, _, _, _ := rulePrepare(t)
+	rm, mockStub, rules, _, chains, _, _ := rulePrepare(t)
 	logger := log.NewWithModule("contracts")
 
 	mockStub.EXPECT().Logger().Return(logger).AnyTimes()
@@ -391,7 +400,7 @@ func TestRuleManager_UnPauseRule(t *testing.T) {
 	assert.True(t, res.Ok, string(res.Result))
 }
 
-func rulePrepare(t *testing.T) (*RuleManager, *mock_stub.MockStub, []*ruleMgr.Rule, [][]byte, []*appchainMgr.Appchain, [][]byte, ledger2.IAccount, [][]byte) {
+func rulePrepare(t *testing.T) (*RuleManager, *mock_stub.MockStub, []*ruleMgr.Rule, [][]byte, []*appchainMgr.Appchain, [][]byte, ledger2.IAccount) {
 	// 1. prepare stub
 	mockCtl := gomock.NewController(t)
 	mockStub := mock_stub.NewMockStub(mockCtl)
@@ -478,7 +487,30 @@ func rulePrepare(t *testing.T) (*RuleManager, *mock_stub.MockStub, []*ruleMgr.Ru
 	assert.Nil(t, err)
 	rolesData = append(rolesData, data)
 
-	return rm, mockStub, rules, rulesData, chains, chainsData, account, rolesData
+	return rm, mockStub, rules, rulesData, chains, chainsData, account
+}
+
+func rulePrepareRole(t *testing.T) ([]*Role, [][]byte) {
+	var rolesData [][]byte
+	var roles []*Role
+
+	role1 := &Role{
+		ID: appchainAdminAddr,
+	}
+	roles = append(roles, role1)
+	data, err := json.Marshal(role1)
+	assert.Nil(t, err)
+	rolesData = append(rolesData, data)
+
+	role2 := &Role{
+		ID: noAdminAddr,
+	}
+	roles = append(roles, role2)
+	data, err = json.Marshal(role2)
+	assert.Nil(t, err)
+	rolesData = append(rolesData, data)
+
+	return roles, rolesData
 }
 
 func mockAccount(t *testing.T) ledger2.IAccount {

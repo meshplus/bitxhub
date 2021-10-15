@@ -36,12 +36,14 @@ func (rm *RuleManager) checkPermission(permissions []string, appchainID string, 
 			if !res.Ok {
 				return fmt.Errorf("cross invoke GetAppchainAdmin error:%s", string(res.Result))
 			}
-			role := &Role{}
-			if err := json.Unmarshal(res.Result, role); err != nil {
+			roles := []*Role{}
+			if err := json.Unmarshal(res.Result, &roles); err != nil {
 				return err
 			}
-			if regulatorAddr == role.ID {
-				return nil
+			for _, r := range roles {
+				if regulatorAddr == r.ID {
+					return nil
+				}
 			}
 		case string(PermissionAdmin):
 			res := rm.CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin",
@@ -150,7 +152,7 @@ func (rm *RuleManager) RegisterRule(chainID string, ruleAddress, ruleUrl string)
 	}
 
 	// 4. register
-	ok, data := rm.RuleManager.Register(chainID, ruleAddress, ruleUrl)
+	ok, data := rm.RuleManager.Register(chainID, ruleAddress, ruleUrl, rm.GetTxTimeStamp())
 	if !ok {
 		return boltvm.Error(fmt.Sprintf("register error: %s", string(data)))
 	}
@@ -182,7 +184,7 @@ func (rm *RuleManager) RegisterRuleFirst(chainID, chainType, ruleAddress, ruleUr
 
 	// 3. register master rule
 	if !ruleMgr.IsDefault(ruleAddress, chainType) {
-		ok, data := rm.RuleManager.Register(chainID, ruleAddress, ruleUrl)
+		ok, data := rm.RuleManager.Register(chainID, ruleAddress, ruleUrl, rm.GetTxTimeStamp())
 		if !ok {
 			return boltvm.Error(fmt.Sprintf("register master rule error: %s", string(data)))
 		}
@@ -198,7 +200,7 @@ func (rm *RuleManager) RegisterRuleFirst(chainID, chainType, ruleAddress, ruleUr
 }
 
 func (rm *RuleManager) registerDefaultRule(chainID, chainType string) error {
-	ok, data := rm.RuleManager.Register(chainID, validator.HappyRuleAddr, "")
+	ok, data := rm.RuleManager.Register(chainID, validator.HappyRuleAddr, "", rm.GetTxTimeStamp())
 	if !ok {
 		return fmt.Errorf("register error: %v", string(data))
 	}
@@ -207,11 +209,11 @@ func (rm *RuleManager) registerDefaultRule(chainID, chainType string) error {
 	case appchainMgr.ChainTypeFabric1_4_3:
 		fallthrough
 	case appchainMgr.ChainTypeFabric1_4_4:
-		ok, data := rm.RuleManager.Register(chainID, validator.FabricRuleAddr, "")
+		ok, data := rm.RuleManager.Register(chainID, validator.FabricRuleAddr, "", rm.GetTxTimeStamp())
 		if !ok {
 			return fmt.Errorf("register error: %v", string(data))
 		}
-		ok, data = rm.RuleManager.Register(chainID, validator.SimFabricRuleAddr, "")
+		ok, data = rm.RuleManager.Register(chainID, validator.SimFabricRuleAddr, "", rm.GetTxTimeStamp())
 		if !ok {
 			return fmt.Errorf("register error: %v", string(data))
 		}
