@@ -309,7 +309,7 @@ func (api *PublicEthereumAPI) checkTransaction(tx *types2.EthTransaction) error 
 	}
 
 	if tx.GetGasPrice().Cmp((*big.Int)(api.GasPrice())) < 0 {
-		return fmt.Errorf("gas price is too low, at least %s wei is required", api.GasPrice().ToInt().String())
+		return fmt.Errorf("gas price is too low, at least %s is required", api.GasPrice().String())
 	}
 
 	return nil
@@ -681,26 +681,26 @@ func (api *PublicEthereumAPI) formatBlock(block *pb.Block, fullTx bool) (map[str
 	}
 
 	return map[string]interface{}{
-		"number":           block.Height(),
-		"hash":             block.BlockHash.Bytes(),
-		"parentHash":       block.BlockHeader.ParentHash.Bytes(),
-		"nonce":            0,             // PoW specific
-		"sha3Uncles":       common.Hash{}, // No uncles in Tendermint
+		"number":           (*hexutil.Big)(big.NewInt(int64(block.Height()))),
+		"hash":             block.BlockHash,
+		"parentHash":       block.BlockHeader.ParentHash,
+		"nonce":            ethtypes.BlockNonce{}, // PoW specific
+		"sha3Uncles":       common.Hash{},         // No uncles in raft/rbft
 		"logsBloom":        block.BlockHeader.Bloom,
-		"transactionsRoot": block.BlockHeader.TxRoot.Bytes(),
-		"stateRoot":        block.BlockHeader.StateRoot.Bytes(),
+		"transactionsRoot": block.BlockHeader.TxRoot,
+		"stateRoot":        block.BlockHeader.StateRoot,
 		"miner":            common.Address{},
 		"mixHash":          common.Hash{},
-		"difficulty":       0,
-		"totalDifficulty":  0,
+		"difficulty":       (*hexutil.Big)(big.NewInt(0)),
+		"totalDifficulty":  (*hexutil.Big)(big.NewInt(0)),
 		"extraData":        hexutil.Uint64(0),
-		"size":             block.Size(),
-		"gasLimit":         api.config.GasLimit, // Static gas limit
-		"gasUsed":          cumulativeGas,
-		"timestamp":        block.BlockHeader.Timestamp,
+		"size":             hexutil.Uint64(block.Size()),
+		"gasLimit":         hexutil.Uint64(api.config.GasLimit), // Static gas limit
+		"gasUsed":          hexutil.Uint64(cumulativeGas),
+		"timestamp":        hexutil.Uint64(block.BlockHeader.Timestamp),
 		"transactions":     transactions,
 		"uncles":           []string{},
-		"receiptsRoot":     block.BlockHeader.ReceiptRoot.Bytes(),
+		"receiptsRoot":     block.BlockHeader.ReceiptRoot,
 	}, nil
 }
 
