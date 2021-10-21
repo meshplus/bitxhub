@@ -166,6 +166,7 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, error) {
 
 	if len(strings.Split(from, "-")) == 2 {
 		from = strings.Split(from, "-")[1]
+		return true, nil
 	}
 
 	app := &appchainMgr.Appchain{}
@@ -178,9 +179,6 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, error) {
 		return false, fmt.Errorf("%s: unmarshal appchain data fail: %w", internalError, err)
 	}
 
-	if len(strings.Split(from, "-")) == 2 {
-		return verifyMultiSign(app, ibtp, proof)
-	}
 
 	// if ibtp.Category() == pb.IBTP_RESPONSE {
 	// 	return true, nil
