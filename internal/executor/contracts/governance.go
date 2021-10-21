@@ -208,32 +208,32 @@ func (g *Governance) SubmitProposal(from, eventTyp, typ, objId, objLastStatus, r
 	}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
-		return boltvm.Error(fmt.Sprintf("marshal specificAddrs error: %v", err))
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("marshal specificAddrs error: %v", err)))
 	}
 	if err := g.checkPermission([]string{string(PermissionSpecific)}, "", g.CurrentCaller(), addrsData); err != nil {
-		return boltvm.Error(fmt.Sprintf("check permission error: %v", err))
+		return boltvm.Error(boltvm.GovernanceNoPermissionCode, fmt.Sprintf(string(boltvm.GovernanceNoPermissionMsg), g.CurrentCaller(), err.Error()))
 	}
 
 	// 2. get information
 	ret, err := g.getProposalsByFrom(from)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 	}
 
 	electorateList, eletctorateNum, err := g.getElectorate()
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 	}
 
 	thresholdNum, err := g.getThresholdNum(eletctorateNum, ProposalType(typ))
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 	}
 
 	// 3. lock low-priority proposals
 	lockPId, err := g.lockLowPriorityProposal(objId, eventTyp)
 	if err != nil {
-		return boltvm.Error(fmt.Sprintf("close low priority proposals error: %v", err))
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("close low priority proposals error: %v", err)))
 	}
 
 	p := &Proposal{
@@ -345,18 +345,18 @@ func (g *Governance) getThresholdNum(electorateNum int, proposalTyp ProposalType
 func (g *Governance) WithdrawProposal(id, reason string) *boltvm.Response {
 	// 1. check permission
 	if err := g.checkPermission([]string{string(PermissionSelf)}, id[0:strings.Index(id, "-")], g.CurrentCaller(), nil); err != nil {
-		return boltvm.Error(fmt.Sprintf("check permission error: %v", err))
+		return boltvm.Error(boltvm.GovernanceNoPermissionCode, fmt.Sprintf(string(boltvm.GovernanceNoPermissionMsg), g.CurrentCaller(), err.Error()))
 	}
 
 	// 2. Determine if the proposal exists
 	p := &Proposal{}
 	if !g.GetObject(ProposalKey(id), p) {
-		return boltvm.Error("proposal does not exist")
+		return boltvm.Error(boltvm.GovernanceNonexistentProposalCode, fmt.Sprintf(string(boltvm.GovernanceNonexistentProposalMsg), id, ""))
 	}
 
 	// 3。 Determine if the proposal has been cloesd
 	if p.Status == APPROVED || p.Status == REJECTED {
-		return boltvm.Error(fmt.Sprintf("the current status of the proposal is %s and cannot be withdrawed", string(p.Status)))
+		return boltvm.Error(boltvm.GovernanceWithdrawEndProposalCode, fmt.Sprintf(string(boltvm.GovernanceWithdrawEndProposalMsg), id, string(p.Status)))
 	}
 
 	// 4. Withdraw
@@ -367,7 +367,7 @@ func (g *Governance) WithdrawProposal(id, reason string) *boltvm.Response {
 	// 5. handel result
 	err := g.handleResult(p)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 	}
 
 	return boltvm.Success(nil)
@@ -376,17 +376,17 @@ func (g *Governance) WithdrawProposal(id, reason string) *boltvm.Response {
 func (g *Governance) GetBallot(voterAddr, proposalId string) *boltvm.Response {
 	p := &Proposal{}
 	if !g.GetObject(ProposalKey(proposalId), p) {
-		return boltvm.Error("proposal does not exist")
+		return boltvm.Error(boltvm.GovernanceNonexistentProposalCode, fmt.Sprintf(string(boltvm.GovernanceNonexistentProposalMsg), proposalId, ""))
 	}
 
 	ballot, ok := p.BallotMap[voterAddr]
 	if !ok {
-		return boltvm.Error("administrator of the address has not voted")
+		return boltvm.Error(boltvm.GovernanceNotVoteAdminCode, fmt.Sprintf(string(boltvm.GovernanceNotVoteAdminMsg), voterAddr))
 	}
 
 	bData, err := json.Marshal(ballot)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 	}
 	return boltvm.Success(bData)
 }
@@ -395,12 +395,12 @@ func (g *Governance) GetBallot(voterAddr, proposalId string) *boltvm.Response {
 func (g *Governance) GetProposal(id string) *boltvm.Response {
 	p := &Proposal{}
 	if !g.GetObject(ProposalKey(id), p) {
-		return boltvm.Error("proposal does not exist")
+		return boltvm.Error(boltvm.GovernanceNonexistentProposalCode, fmt.Sprintf(string(boltvm.GovernanceNonexistentProposalMsg), id, ""))
 	}
 
 	pData, err := json.Marshal(p)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 	}
 	return boltvm.Success(pData)
 }
@@ -409,12 +409,12 @@ func (g *Governance) GetProposal(id string) *boltvm.Response {
 func (g *Governance) GetProposalsByObjId(objId string) *boltvm.Response {
 	ret, err := g.getProposalsByObjId(objId)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 	}
 
 	retData, err := json.Marshal(ret)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 	}
 	return boltvm.Success(retData)
 }
@@ -423,14 +423,14 @@ func (g *Governance) GetProposalsByObjId(objId string) *boltvm.Response {
 func (g *Governance) GetProposalsByObjIdInCreateTimeOrder(objId string) *boltvm.Response {
 	ret, err := g.getProposalsByObjId(objId)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 	}
 
 	sort.Sort(Proposals(ret))
 
 	retData, err := json.Marshal(ret)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 	}
 	return boltvm.Success(retData)
 }
@@ -458,12 +458,12 @@ func (g *Governance) getProposalsByObjId(objId string) ([]*Proposal, error) {
 func (g *Governance) GetProposalsByFrom(from string) *boltvm.Response {
 	ret, err := g.getProposalsByFrom(from)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 	}
 
 	retData, err := json.Marshal(ret)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 	}
 	return boltvm.Success(retData)
 }
@@ -490,17 +490,17 @@ func (g *Governance) getProposalsByFrom(from string) ([]*Proposal, error) {
 // Query proposals by proposal type, returning a list of proposal for that type
 func (g *Governance) GetProposalsByTyp(typ string) *boltvm.Response {
 	if err := checkProposalType(ProposalType(typ)); err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.GovernanceIllegalProposalTypeCode, fmt.Sprintf(string(boltvm.GovernanceIllegalProposalTypeMsg), typ))
 	}
 
 	ret, err := g.getProposalsByType(typ)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 	}
 
 	retData, err := json.Marshal(ret)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 	}
 	return boltvm.Success(retData)
 }
@@ -527,17 +527,17 @@ func (g *Governance) getProposalsByType(typ string) ([]*Proposal, error) {
 // Query proposals based on proposal status, returning a list of proposal for that status
 func (g *Governance) GetProposalsByStatus(status string) *boltvm.Response {
 	if err := checkProposalStauts(ProposalStatus(status)); err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.GovernanceIllegalProposalStatusCode, fmt.Sprintf(string(boltvm.GovernanceIllegalProposalStatusMsg), status))
 	}
 
 	ret, err := g.getProposalsByStatus(status)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 	}
 
 	retData, err := json.Marshal(ret)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 	}
 	return boltvm.Success(retData)
 }
@@ -565,19 +565,19 @@ func (g *Governance) getProposalsByStatus(status string) ([]*Proposal, error) {
 func (g *Governance) GetNotClosedProposals() *boltvm.Response {
 	ret, err := g.getProposalsByStatus(string(PROPOSED))
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 	}
 
 	ret2, err := g.getProposalsByStatus(string(PAUSED))
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 	}
 
 	ret = append(ret, ret2...)
 
 	retData, err := json.Marshal(ret)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 	}
 	return boltvm.Success(retData)
 }
@@ -586,7 +586,7 @@ func (g *Governance) GetNotClosedProposals() *boltvm.Response {
 func (g *Governance) GetApprove(id string) *boltvm.Response {
 	p := &Proposal{}
 	if !g.GetObject(ProposalKey(id), p) {
-		return boltvm.Error("proposal does not exist")
+		return boltvm.Error(boltvm.GovernanceNonexistentProposalCode, fmt.Sprintf(string(boltvm.GovernanceNonexistentProposalMsg), id, ""))
 	}
 
 	approveMap := map[string]Ballot{}
@@ -598,7 +598,7 @@ func (g *Governance) GetApprove(id string) *boltvm.Response {
 
 	retData, err := json.Marshal(approveMap)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 	}
 	return boltvm.Success(retData)
 }
@@ -607,7 +607,7 @@ func (g *Governance) GetApprove(id string) *boltvm.Response {
 func (g *Governance) GetAgainst(id string) *boltvm.Response {
 	p := &Proposal{}
 	if !g.GetObject(ProposalKey(id), p) {
-		return boltvm.Error("proposal does not exist")
+		return boltvm.Error(boltvm.GovernanceNonexistentProposalCode, fmt.Sprintf(string(boltvm.GovernanceNonexistentProposalMsg), id, ""))
 	}
 
 	againstMap := map[string]Ballot{}
@@ -619,7 +619,7 @@ func (g *Governance) GetAgainst(id string) *boltvm.Response {
 
 	retData, err := json.Marshal(againstMap)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 	}
 	return boltvm.Success(retData)
 }
@@ -628,7 +628,7 @@ func (g *Governance) GetAgainst(id string) *boltvm.Response {
 func (g *Governance) GetApproveNum(id string) *boltvm.Response {
 	p := &Proposal{}
 	if !g.GetObject(ProposalKey(id), p) {
-		return boltvm.Error("proposal does not exist")
+		return boltvm.Error(boltvm.GovernanceNonexistentProposalCode, fmt.Sprintf(string(boltvm.GovernanceNonexistentProposalMsg), id, ""))
 	}
 
 	return boltvm.Success([]byte(strconv.Itoa(int(p.ApproveNum))))
@@ -638,7 +638,7 @@ func (g *Governance) GetApproveNum(id string) *boltvm.Response {
 func (g *Governance) GetAgainstNum(id string) *boltvm.Response {
 	p := &Proposal{}
 	if !g.GetObject(ProposalKey(id), p) {
-		return boltvm.Error("proposal does not exist")
+		return boltvm.Error(boltvm.GovernanceNonexistentProposalCode, fmt.Sprintf(string(boltvm.GovernanceNonexistentProposalMsg), id, ""))
 	}
 
 	return boltvm.Success([]byte(strconv.Itoa(int(p.AgainstNum))))
@@ -648,7 +648,7 @@ func (g *Governance) GetAgainstNum(id string) *boltvm.Response {
 func (g *Governance) GetPrimaryElectorateNum(id string) *boltvm.Response {
 	p := &Proposal{}
 	if !g.GetObject(ProposalKey(id), p) {
-		return boltvm.Error("proposal does not exist")
+		return boltvm.Error(boltvm.GovernanceNonexistentProposalCode, fmt.Sprintf(string(boltvm.GovernanceNonexistentProposalMsg), id, ""))
 	}
 
 	return boltvm.Success([]byte(strconv.Itoa(int(p.InitialElectorateNum))))
@@ -658,7 +658,7 @@ func (g *Governance) GetPrimaryElectorateNum(id string) *boltvm.Response {
 func (g *Governance) GetAvaliableElectorateNum(id string) *boltvm.Response {
 	p := &Proposal{}
 	if !g.GetObject(ProposalKey(id), p) {
-		return boltvm.Error("proposal does not exist")
+		return boltvm.Error(boltvm.GovernanceNonexistentProposalCode, fmt.Sprintf(string(boltvm.GovernanceNonexistentProposalMsg), id, ""))
 	}
 
 	return boltvm.Success([]byte(strconv.Itoa(int(p.AvaliableElectorateNum))))
@@ -672,16 +672,16 @@ func (g *Governance) UpdateAvaliableElectorateNum(id string, num uint64) *boltvm
 	}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
-		return boltvm.Error(fmt.Sprintf("marshal specificAddrs error: %v", err))
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 	}
 	if err := g.checkPermission([]string{string(PermissionSpecific)}, "", g.CurrentCaller(), addrsData); err != nil {
-		return boltvm.Error(fmt.Sprintf("check permission error: %v", err))
+		return boltvm.Error(boltvm.GovernanceNoPermissionCode, fmt.Sprintf(string(boltvm.GovernanceNoPermissionMsg), g.CurrentCaller(), err.Error()))
 	}
 
 	// 2. update num
 	p := &Proposal{}
 	if !g.GetObject(ProposalKey(id), p) {
-		return boltvm.Error("proposal does not exist")
+		return boltvm.Error(boltvm.GovernanceNonexistentProposalCode, fmt.Sprintf(string(boltvm.GovernanceNonexistentProposalMsg), id, ""))
 	}
 
 	p.AvaliableElectorateNum = num
@@ -691,7 +691,7 @@ func (g *Governance) UpdateAvaliableElectorateNum(id string, num uint64) *boltvm
 		g.SetObject(ProposalKey(p.Id), *p)
 		err := g.handleResult(p)
 		if err != nil {
-			return boltvm.Error(err.Error())
+			return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 		}
 	} else {
 		g.SetObject(ProposalKey(p.Id), *p)
@@ -704,7 +704,7 @@ func (g *Governance) UpdateAvaliableElectorateNum(id string, num uint64) *boltvm
 func (g *Governance) GetThresholdNum(id string) *boltvm.Response {
 	p := &Proposal{}
 	if !g.GetObject(ProposalKey(id), p) {
-		return boltvm.Error("proposal does not exist")
+		return boltvm.Error(boltvm.GovernanceNonexistentProposalCode, fmt.Sprintf(string(boltvm.GovernanceNonexistentProposalMsg), id, ""))
 	}
 
 	return boltvm.Success([]byte(strconv.Itoa(int(p.ThresholdElectorateNum))))
@@ -714,7 +714,7 @@ func (g *Governance) GetThresholdNum(id string) *boltvm.Response {
 func (g *Governance) GetVotedNum(id string) *boltvm.Response {
 	p := &Proposal{}
 	if !g.GetObject(ProposalKey(id), p) {
-		return boltvm.Error("proposal does not exist")
+		return boltvm.Error(boltvm.GovernanceNonexistentProposalCode, fmt.Sprintf(string(boltvm.GovernanceNonexistentProposalMsg), id, ""))
 	}
 
 	return boltvm.Success([]byte(strconv.Itoa(len(p.BallotMap))))
@@ -724,12 +724,12 @@ func (g *Governance) GetVotedNum(id string) *boltvm.Response {
 func (g *Governance) GetVoted(id string) *boltvm.Response {
 	p := &Proposal{}
 	if !g.GetObject(ProposalKey(id), p) {
-		return boltvm.Error("proposal does not exist")
+		return boltvm.Error(boltvm.GovernanceNonexistentProposalCode, fmt.Sprintf(string(boltvm.GovernanceNonexistentProposalMsg), id, ""))
 	}
 
 	retData, err := json.Marshal(p.BallotMap)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 	}
 
 	return boltvm.Success(retData)
@@ -739,12 +739,12 @@ func (g *Governance) GetVoted(id string) *boltvm.Response {
 func (g *Governance) GetUnvote(id string) *boltvm.Response {
 	ret, err := g.getUnvote(id)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.GovernanceNonexistentProposalCode, fmt.Sprintf(string(boltvm.GovernanceNonexistentProposalMsg), id, err.Error()))
 	}
 
 	retData, err := json.Marshal(ret)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 	}
 
 	return boltvm.Success(retData)
@@ -779,7 +779,7 @@ func (g *Governance) getUnvote(id string) ([]*repo.Admin, error) {
 func (g *Governance) GetUnvoteNum(id string) *boltvm.Response {
 	ret, err := g.getUnvote(id)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.GovernanceNonexistentProposalCode, fmt.Sprintf(string(boltvm.GovernanceNonexistentProposalMsg), id, err.Error()))
 	}
 
 	return boltvm.Success([]byte(strconv.Itoa(len(ret))))
@@ -791,21 +791,21 @@ func (g *Governance) Vote(id, approve string, reason string) *boltvm.Response {
 	addr := g.Caller()
 	res := g.CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin", pb.String(addr), pb.String(string(GovernanceAdmin)))
 	if !res.Ok {
-		return boltvm.Error(fmt.Sprintf("cross invoke IsAvailable error: %s", string(res.Result)))
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("cross invoke IsAvailable error: %s", string(res.Result))))
 	}
 	if string(res.Result) != "true" {
-		return boltvm.Error("the administrator is currently unavailable")
+		return boltvm.Error(boltvm.GovernanceUnavailableAdminVoteCode, fmt.Sprintf(string(boltvm.GovernanceUnavailableAdminVoteMsg), addr))
 	}
 
 	// 1. Determine if the proposal exists
 	p := &Proposal{}
 	if !g.GetObject(ProposalKey(id), p) {
-		return boltvm.Error("proposal does not exist")
+		return boltvm.Error(boltvm.GovernanceNonexistentProposalCode, fmt.Sprintf(string(boltvm.GovernanceNonexistentProposalMsg), id, ""))
 	}
 
 	// 2. Set vote
-	if err := g.setVote(p, addr, approve, reason); err != nil {
-		return boltvm.Error(fmt.Sprintf("get vote error: %v", err))
+	if res := g.setVote(p, addr, approve, reason); !res.Ok {
+		return res
 	}
 
 	// 3. Count votes
@@ -813,7 +813,7 @@ func (g *Governance) Vote(id, approve string, reason string) *boltvm.Response {
 	// If the policy determines that the current vote has closed, the proposal state is modified.
 	ok, err := g.countVote(p)
 	if err != nil {
-		return boltvm.Error(fmt.Sprintf("count vote error: %v", err))
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("count vote error: %v", err)))
 	}
 	if !ok {
 		// the round of the voting is not over, wait the next vote
@@ -825,7 +825,7 @@ func (g *Governance) Vote(id, approve string, reason string) *boltvm.Response {
 
 	// 4. Handle result
 	if err = g.handleResult(p); err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 	}
 	g.Logger().WithFields(logrus.Fields{}).Info("vote end")
 	return boltvm.Success(nil)
@@ -922,10 +922,10 @@ func (g *Governance) manageObj(proposalTyp ProposalType, eventType, nextEventTyp
 }
 
 // Set vote of an administrator
-func (g *Governance) setVote(p *Proposal, addr string, approve string, reason string) error {
+func (g *Governance) setVote(p *Proposal, addr string, approve string, reason string) *boltvm.Response {
 	// 1. Determine if the proposal has been approved or rejected
 	if p.Status != PROPOSED {
-		return fmt.Errorf("the current status of the proposal is %s and cannot be voted on", p.Status)
+		return boltvm.Error(boltvm.GovernanceVoteEndProposalCode, fmt.Sprintf(string(boltvm.GovernanceVoteEndProposalMsg), p.Status))
 	}
 
 	// 2. Determine if the administrator can vote
@@ -934,7 +934,7 @@ func (g *Governance) setVote(p *Proposal, addr string, approve string, reason st
 
 			// 3. Determine if the administrator has voted
 			if _, ok := p.BallotMap[addr]; ok {
-				return fmt.Errorf("administrator of the address has voted")
+				return boltvm.Error(boltvm.GovernanceAdminRepeatVoteCode, fmt.Sprintf(string(boltvm.GovernanceAdminRepeatVoteMsg), addr))
 			}
 
 			// 4. Record Voting Information
@@ -955,15 +955,15 @@ func (g *Governance) setVote(p *Proposal, addr string, approve string, reason st
 			case BallotReject:
 				p.AgainstNum++
 			default:
-				return fmt.Errorf("the info of vote should be approve or reject")
+				return boltvm.Error(boltvm.GovernanceIllegalVoteInfoCode, fmt.Sprintf(string(boltvm.GovernanceIllegalVoteInfoMsg), approve))
 			}
 
 			g.SetObject(ProposalKey(p.Id), *p)
-			return nil
+			return boltvm.Success(nil)
 		}
 	}
 
-	return fmt.Errorf("the administrator can not vote to the proposal")
+	return boltvm.Error(boltvm.GovernanceAdminNoVotePermissonCode, fmt.Sprintf(string(boltvm.GovernanceAdminNoVotePermissonMsg), addr, p.Id))
 }
 
 // Count votes to see if this round is over.
@@ -1020,15 +1020,15 @@ func (g *Governance) LockLowPriorityProposal(objId, eventTyp string) *boltvm.Res
 	}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
-		return boltvm.Error(fmt.Sprintf("marshal specificAddrs error: %v", err))
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("marshal specificAddrs error: %v", err)))
 	}
 	if err := g.checkPermission([]string{string(PermissionSpecific)}, "", g.CurrentCaller(), addrsData); err != nil {
-		return boltvm.Error(fmt.Sprintf("check permission error: %v", err))
+		return boltvm.Error(boltvm.GovernanceNoPermissionCode, fmt.Sprintf(string(boltvm.GovernanceNoPermissionMsg), g.CurrentCaller(), err.Error()))
 	}
 
 	lockedProId, err := g.lockLowPriorityProposal(objId, eventTyp)
 	if err != nil {
-		return boltvm.Error(fmt.Sprintf("lock low priority proposal error: %v", err))
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("lock low priority proposal error: %v", err)))
 	}
 	return boltvm.Success([]byte(lockedProId))
 }
@@ -1042,16 +1042,16 @@ func (g *Governance) UnLockLowPriorityProposal(objId, eventTyp string) *boltvm.R
 	}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
-		return boltvm.Error(fmt.Sprintf("marshal specificAddrs error: %v", err))
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("marshal specificAddrs error: %v", err)))
 	}
 	if err := g.checkPermission([]string{string(PermissionSpecific)}, "", g.CurrentCaller(), addrsData); err != nil {
-		return boltvm.Error(fmt.Sprintf("check permission error: %v", err))
+		return boltvm.Error(boltvm.GovernanceNoPermissionCode, fmt.Sprintf(string(boltvm.GovernanceNoPermissionMsg), g.CurrentCaller(), err.Error()))
 	}
 
 	// 2. unlock low pro=iority proposak
 	lockedProposal, err := g.getHightestPriorityPausedProposalByObjId(objId)
 	if err != nil {
-		return boltvm.Error(fmt.Sprintf("getHightestPriorityPausedProposalByObjId error: %v", err))
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("getHightestPriorityPausedProposalByObjId err: %v", err)))
 	}
 	if lockedProposal == nil {
 		return boltvm.Success(nil)
@@ -1059,13 +1059,13 @@ func (g *Governance) UnLockLowPriorityProposal(objId, eventTyp string) *boltvm.R
 
 	nextEventType, err := g.unlockLowPriorityProposal(lockedProposal.Id, true, "")
 	if err != nil {
-		return boltvm.Error(fmt.Sprintf("unlock low priority proposal error: %v", err))
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("unlock low priority proposal error: %v", err)))
 	}
 
 	// manage object
 	// - The fourth parameter takes effect when nextEvent is reject. This parameter is not required here.
 	if err := g.manageObj(lockedProposal.Typ, governance.EventType(eventTyp), nextEventType, "", lockedProposal.ObjId, nil); err != nil {
-		return boltvm.Error(fmt.Sprintf("manage object error: %v", err))
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("manage object error: %v", err)))
 	}
 
 	return boltvm.Success(nil)
@@ -1134,12 +1134,12 @@ func (g *Governance) NewProposalStrategy(typ string, participateThreshold float6
 		Extra:                extra,
 	}
 	if err := checkStrategyInfo(ps); err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.GovernanceIllegalProposalStrategyInfoCode, fmt.Sprintf(string(boltvm.GovernanceIllegalProposalStrategyInfoMsg), err.Error()))
 	}
 
 	pData, err := json.Marshal(ps)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 	}
 	return boltvm.Success(pData)
 }
@@ -1148,15 +1148,15 @@ func (g *Governance) NewProposalStrategy(typ string, participateThreshold float6
 func (g *Governance) SetProposalStrategy(pt string, psData []byte) *boltvm.Response {
 	ps := &ProposalStrategy{}
 	if err := json.Unmarshal(psData, ps); err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 	}
 
 	if err := checkProposalType(ProposalType(pt)); err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.GovernanceIllegalProposalTypeCode, fmt.Sprintf(string(boltvm.GovernanceIllegalProposalTypeMsg), pt))
 	}
 
 	if err := checkStrategyInfo(ps); err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.GovernanceIllegalProposalStrategyInfoCode, fmt.Sprintf(string(boltvm.GovernanceIllegalProposalStrategyInfoMsg), err.Error()))
 	}
 
 	g.SetObject(string(pt), *ps)
@@ -1165,32 +1165,19 @@ func (g *Governance) SetProposalStrategy(pt string, psData []byte) *boltvm.Respo
 
 func (g *Governance) GetProposalStrategy(pt string) *boltvm.Response {
 	if err := checkProposalType(ProposalType(pt)); err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.GovernanceIllegalProposalTypeCode, fmt.Sprintf(string(boltvm.GovernanceIllegalProposalTypeMsg), pt))
 	}
 
 	ps := &ProposalStrategy{}
 	if !g.GetObject(string(pt), ps) {
-		return boltvm.Error("strategy does not exists")
+		return boltvm.Error(boltvm.GovernanceNonexistentProposalStrategyCode, fmt.Sprintf(string(boltvm.GovernanceNonexistentProposalStrategyMsg), pt))
 	}
 
 	pData, err := json.Marshal(ps)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 	}
 	return boltvm.Success(pData)
-}
-
-func (g *Governance) GetProposalStrategyType(pt string) *boltvm.Response {
-	if err := checkProposalType(ProposalType(pt)); err != nil {
-		return boltvm.Error(err.Error())
-	}
-
-	ps := &ProposalStrategy{}
-	if !g.GetObject(string(pt), ps) {
-		return boltvm.Error("strategy does not exists")
-	}
-
-	return boltvm.Success([]byte(ps.Typ))
 }
 
 // Key ====================================================================
@@ -1257,7 +1244,7 @@ func getGovernanceRet(proposalID string, extra []byte) *boltvm.Response {
 	}
 	resData, err := json.Marshal(res1)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 	}
 	return boltvm.Success(resData)
 }

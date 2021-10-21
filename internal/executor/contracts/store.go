@@ -1,6 +1,7 @@
 package contracts
 
 import (
+	"fmt"
 	"github.com/meshplus/bitxhub-core/boltvm"
 )
 
@@ -18,7 +19,7 @@ func (s *Store) Get(key string) *boltvm.Response {
 	var v string
 	ok := s.GetObject(key, &v)
 	if !ok {
-		return boltvm.Error("there is not exist key")
+		return boltvm.Error(boltvm.OtherInternalErrCode, fmt.Sprintf(string(boltvm.OtherInternalErrMsg), "there is not exist key"))
 	}
 
 	return boltvm.Success([]byte(v))

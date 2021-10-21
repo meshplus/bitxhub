@@ -53,7 +53,7 @@ func (ib *InterBroker) incCounter(id, key string) uint64 {
 func (ib *InterBroker) GetInMeta() *boltvm.Response {
 	data, err := json.Marshal(ib.getMeta(InCounterKey))
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.BrokerInternalErrCode, fmt.Sprintf(string(boltvm.BrokerInternalErrMsg), err.Error()))
 	}
 	return boltvm.Success(data)
 }
@@ -62,7 +62,7 @@ func (ib *InterBroker) GetInMeta() *boltvm.Response {
 func (ib *InterBroker) GetOutMeta() *boltvm.Response {
 	data, err := json.Marshal(ib.getMeta(OutCounterKey))
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.BrokerInternalErrCode, fmt.Sprintf(string(boltvm.BrokerInternalErrMsg), err.Error()))
 	}
 	return boltvm.Success(data)
 }
@@ -71,7 +71,7 @@ func (ib *InterBroker) GetOutMeta() *boltvm.Response {
 func (ib *InterBroker) GetCallbackMeta() *boltvm.Response {
 	data, err := json.Marshal(ib.getMeta(CallbackCounterKey))
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.BrokerInternalErrCode, fmt.Sprintf(string(boltvm.BrokerInternalErrMsg), err.Error()))
 	}
 	return boltvm.Success(data)
 }
@@ -90,7 +90,7 @@ func (ib *InterBroker) EmitInterchain(fromServiceId, toServiceId, funcs, args, a
 	index := ib.incCounter(compositeKeys(toServiceId, fromServiceId), OutCounterKey)
 	splitFuncs := strings.Split(funcs, ",")
 	if len(splitFuncs) != 3 {
-		return boltvm.Error("funcs should be (func,funcCb,funcRb)")
+		return boltvm.Error(boltvm.BrokerIllegalFunctionCode, fmt.Sprintf(string(boltvm.BrokerIllegalFunctionMsg), funcs))
 	}
 
 	interInvoke := &InterchainInvoke{
@@ -105,7 +105,7 @@ func (ib *InterBroker) EmitInterchain(fromServiceId, toServiceId, funcs, args, a
 	}
 	contData, err := content.Marshal()
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.BrokerInternalErrCode, fmt.Sprintf(string(boltvm.BrokerInternalErrMsg), err.Error()))
 	}
 	ibtp := &pb.IBTP{
 		From:    fromServiceId,
@@ -119,7 +119,7 @@ func (ib *InterBroker) EmitInterchain(fromServiceId, toServiceId, funcs, args, a
 
 	data, err := ibtp.Marshal()
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.BrokerInternalErrCode, fmt.Sprintf(string(boltvm.BrokerInternalErrMsg), err.Error()))
 	}
 	return ib.CrossInvoke(constant.InterchainContractAddr.String(), "HandleIBTPData", pb.Bytes(data))
 }
@@ -128,16 +128,16 @@ func (ib *InterBroker) InvokeReceipt(input []byte) *boltvm.Response {
 	ibtp := &pb.IBTP{}
 	err := ibtp.Unmarshal(input)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.BrokerInternalErrCode, fmt.Sprintf(string(boltvm.BrokerInternalErrMsg), err.Error()))
 	}
 	ib.incCounter(compositeKeys(ibtp.From, ibtp.To), CallbackCounterKey)
 	chainService := strings.Split(ibtp.To, ":")
 	if len(chainService) != 3 {
-		return boltvm.Error("ibtp.To is not chain service")
+		return boltvm.Error(boltvm.BrokerIllegalIBTPToCode, fmt.Sprintf(string(boltvm.BrokerIllegalIBTPToMsg), ibtp.To))
 	}
 	interInvoke := &InterchainInvoke{}
 	if ok := ib.GetObject(outMessageKey(ibtp.ID()), &interInvoke); !ok {
-		return boltvm.Error(fmt.Sprintf("not found interchain invoke:%s", ibtp.ID()))
+		return boltvm.Error(boltvm.BrokerNonexistentInterchainInvokeCode, fmt.Sprintf(string(boltvm.BrokerNonexistentInterchainInvokeMsg), ibtp.ID()))
 	}
 
 	if ibtp.Category() == pb.IBTP_RESPONSE && interInvoke.CallFunc.CallF == "" {
@@ -155,17 +155,17 @@ func (ib *InterBroker) InvokeInterchain(input []byte) *boltvm.Response {
 	ibtp := &pb.IBTP{}
 	err := ibtp.Unmarshal(input)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.BrokerInternalErrCode, fmt.Sprintf(string(boltvm.BrokerInternalErrMsg), err.Error()))
 	}
 	ib.incCounter(compositeKeys(ibtp.From, ibtp.To), InCounterKey)
 	chainService := strings.Split(ibtp.To, ":")
 	if len(chainService) != 3 {
-		return boltvm.Error("ibtp.To is not chain service")
+		return boltvm.Error(boltvm.BrokerIllegalIBTPToCode, fmt.Sprintf(string(boltvm.BrokerIllegalIBTPToMsg), ibtp.To))
 	}
 
 	content := &pb.Content{}
 	if err := content.Unmarshal(ibtp.GetPayload()); err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.BrokerInternalErrCode, fmt.Sprintf(string(boltvm.BrokerInternalErrMsg), err.Error()))
 	}
 	newIbtp := &pb.IBTP{
 		From:          ibtp.From,
@@ -204,11 +204,11 @@ func (ib *InterBroker) GetOutMessage(from, to string, index uint64) *boltvm.Resp
 	interInvoke := &InterchainInvoke{}
 	ok := ib.GetObject(outMessageKey(key), &interInvoke)
 	if !ok {
-		return boltvm.Error(fmt.Sprintf("not found out message:%s", key))
+		return boltvm.Error(boltvm.BrokerNonexistentOutMsgCode, fmt.Sprintf(string(boltvm.BrokerNonexistentOutMsgMsg), key))
 	}
 	data, err := json.Marshal(interInvoke.CallFunc)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.BrokerInternalErrCode, fmt.Sprintf(string(boltvm.BrokerInternalErrMsg), err.Error()))
 	}
 	return boltvm.Success(data)
 }
