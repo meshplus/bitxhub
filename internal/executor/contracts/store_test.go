@@ -27,7 +27,7 @@ func TestStore_Get(t *testing.T) {
 
 	res = im.Get(key1)
 	assert.False(t, res.Ok)
-	assert.Equal(t, "there is not exist key", string(res.Result))
+	assert.Contains(t, string(res.Result), "there is not exist key")
 }
 
 func TestStore_Set(t *testing.T) {

@@ -33,7 +33,7 @@ func TestRoleManager_Manage(t *testing.T) {
 	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Return(false).Times(1)
 	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *aRoles[1]).Return(true).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "GetNotClosedProposals").Return(boltvm.Error("GetNotClosedProposals error")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "GetNotClosedProposals").Return(boltvm.Error("", "GetNotClosedProposals error")).Times(1)
 	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "GetNotClosedProposals").Return(boltvm.Success(nil)).Times(1)
 	var proposals []*Proposal
 	proposals = append(proposals, &Proposal{
@@ -46,7 +46,7 @@ func TestRoleManager_Manage(t *testing.T) {
 	proposalsData, err := json.Marshal(proposals)
 	assert.Nil(t, err)
 	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "GetNotClosedProposals").Return(boltvm.Success(proposalsData)).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "UpdateAvaliableElectorateNum", gomock.Any()).Return(boltvm.Error("UpdateAvaliableElectorateNum error")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "UpdateAvaliableElectorateNum", gomock.Any()).Return(boltvm.Error("", "UpdateAvaliableElectorateNum error")).Times(1)
 	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "UpdateAvaliableElectorateNum", gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 
 	// check permission error
@@ -81,7 +81,7 @@ func TestRoleManager_RegisterRole(t *testing.T) {
 	mockStub.EXPECT().CurrentCaller().Return(SUPER_ADMIN_ROLE_ID).AnyTimes()
 	mockStub.EXPECT().Caller().Return(SUPER_ADMIN_ROLE_ID).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("submit error")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("", "submit error")).Times(1)
 	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	logger := log.NewWithModule("contracts")
 	mockStub.EXPECT().Logger().Return(logger).AnyTimes()
@@ -159,7 +159,7 @@ func TestRoleManager_FreezeRole(t *testing.T) {
 	okReq := mockStub.EXPECT().GetObject(RoleKey(ROLE_ID1), gomock.Any()).SetArg(1, *gRoles[1]).Return(true).Times(2)
 	gomock.InOrder(governancePreErrReq, submitErrreq, changeStatusErrReq1, changeStatusErrReq2, okReq)
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("submit error")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("", "submit error")).Times(1)
 	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	logger := log.NewWithModule("contracts")
 	mockStub.EXPECT().Logger().Return(logger).AnyTimes()

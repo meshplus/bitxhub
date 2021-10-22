@@ -72,7 +72,9 @@ func (suite *Governance) TestGovernance() {
 	fabricBrokerData, err := json.Marshal(fabricBroker)
 	suite.Require().Nil(err)
 	chainName1 := "应用链1case006"
+	chainID1 := "appchain1case006"
 	args := []*pb.Arg{
+		pb.String(chainID1),
 		pb.String(chainName1),
 		pb.String(appchainMgr.ChainTypeFabric1_4_3),
 		pb.Bytes(nil),
@@ -211,7 +213,6 @@ func (suite *Governance) TestGovernance() {
 	suite.Require().Nil(err)
 	suite.Require().Equal("desc", chainInfo.Desc)
 	suite.Require().Equal(governance.GovernanceAvailable, chainInfo.Status)
-	chainID1 := chainInfo.ID
 
 	// get chain status
 	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID1))

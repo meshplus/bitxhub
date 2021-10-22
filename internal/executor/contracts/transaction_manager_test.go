@@ -26,7 +26,7 @@ func TestTransactionManager_BeginMultiTXs(t *testing.T) {
 	mockStub.EXPECT().CurrentCaller().Return(constant.TransactionMgrContractAddr.Address().String()).MaxTimes(2)
 	res := im.BeginMultiTXs(globalId, id0, 10, false, 2)
 	assert.False(t, res.Ok)
-	assert.Equal(t, "current caller 0x000000000000000000000000000000000000000F is not allowed", string(res.Result))
+	assert.Contains(t, string(res.Result), "current caller 0x000000000000000000000000000000000000000F is not allowed")
 
 	mockStub.EXPECT().CurrentCaller().Return(constant.InterchainContractAddr.Address().String()).AnyTimes()
 
@@ -69,7 +69,7 @@ func TestTransactionManager_BeginMultiTXs(t *testing.T) {
 	mockStub.EXPECT().GetObject(globalTxInfoKey(globalId), gomock.Any()).SetArg(1, txInfo).Return(true).MaxTimes(1)
 	res = im.BeginMultiTXs(globalId, id0, 10, false, 2)
 	assert.False(t, res.Ok)
-	assert.Equal(t, fmt.Sprintf("child tx ID %s of global TX %s exists", id0, globalId), string(res.Result))
+	assert.Contains(t, string(res.Result), fmt.Sprintf("child tx %s of global tx %s exists", id0, globalId))
 
 	mockStub.EXPECT().GetObject(globalTxInfoKey(globalId), gomock.Any()).SetArg(1, txInfo).Return(true).MaxTimes(1)
 	expTxInfo := TransactionInfo{
@@ -237,14 +237,14 @@ func TestTransactionManager_Report(t *testing.T) {
 	mockStub.EXPECT().CurrentCaller().Return(constant.TransactionMgrContractAddr.Address().String()).MaxTimes(2)
 	res := im.Report(id, 0)
 	assert.False(t, res.Ok)
-	assert.Equal(t, "current caller 0x000000000000000000000000000000000000000F is not allowed", string(res.Result))
+	assert.Contains(t, string(res.Result), "current caller 0x000000000000000000000000000000000000000F is not allowed")
 
 	mockStub.EXPECT().CurrentCaller().Return(constant.InterchainContractAddr.Address().String()).AnyTimes()
 
 	mockStub.EXPECT().GetObject(TxInfoKey(id), gomock.Any()).SetArg(1, recSuccess).Return(true).MaxTimes(1)
 	res = im.Report(id, 0)
 	assert.False(t, res.Ok)
-	assert.Equal(t, fmt.Sprintf("transaction %s with state %v get unexpected receipt %v", id, recSuccess.Status, 0), string(res.Result))
+	assert.Contains(t, string(res.Result), fmt.Sprintf("transaction %s with state %v get unexpected receipt %v", id, recSuccess.Status, 0))
 
 	mockStub.EXPECT().GetObject(TxInfoKey(id), gomock.Any()).SetArg(1, recBegin).Return(true).MaxTimes(1)
 	mockStub.EXPECT().SetObject(TxInfoKey(id), recSuccess).MaxTimes(1)
@@ -281,13 +281,13 @@ func TestTransactionManager_Report(t *testing.T) {
 	mockStub.EXPECT().Get(id0).Return(false, nil)
 	res = im.Report(id0, int32(pb.IBTP_RECEIPT_SUCCESS))
 	assert.False(t, res.Ok)
-	assert.Equal(t, fmt.Sprintf("transaction id %s does not exist", id0), string(res.Result))
+	assert.Contains(t, string(res.Result), fmt.Sprintf("transaction id %s does not exist", id0))
 
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, []byte(globalID)).AnyTimes()
 	mockStub.EXPECT().GetObject(globalTxInfoKey(globalID), gomock.Any()).Return(false).MaxTimes(1)
 	res = im.Report(id0, int32(pb.IBTP_RECEIPT_SUCCESS))
 	assert.False(t, res.Ok)
-	assert.Equal(t, fmt.Sprintf("transaction global id %s of child id %s does not exist", globalID, id0), string(res.Result))
+	assert.Contains(t, string(res.Result), fmt.Sprintf("global tx %s of child tx %s does not exist", globalID, id0))
 
 	txInfo := TransactionInfo{
 		GlobalState:  pb.TransactionStatus_BEGIN,
@@ -298,12 +298,12 @@ func TestTransactionManager_Report(t *testing.T) {
 	mockStub.EXPECT().GetObject(globalTxInfoKey(globalID), gomock.Any()).SetArg(1, txInfo).Return(true).MaxTimes(1)
 	res = im.Report(id2, int32(pb.IBTP_RECEIPT_SUCCESS))
 	assert.False(t, res.Ok)
-	assert.Equal(t, fmt.Sprintf("%s is not in transaction %s, %v", id2, globalID, txInfo), string(res.Result))
+	assert.Contains(t, string(res.Result), fmt.Sprintf("%s is not in transaction %s, %v", id2, globalID, txInfo))
 
 	mockStub.EXPECT().GetObject(globalTxInfoKey(globalID), gomock.Any()).SetArg(1, txInfo).Return(true).MaxTimes(1)
 	res = im.Report(id0, int32(pb.IBTP_RECEIPT_SUCCESS))
 	assert.False(t, res.Ok)
-	assert.Equal(t, fmt.Sprintf("child tx %s with state %v get unexpected receipt %v", id0, pb.TransactionStatus_SUCCESS, int32(pb.IBTP_RECEIPT_SUCCESS)), string(res.Result))
+	assert.Contains(t, string(res.Result), fmt.Sprintf("child tx %s with state %v get unexpected receipt %v", id0, pb.TransactionStatus_SUCCESS, int32(pb.IBTP_RECEIPT_SUCCESS)))
 
 	txInfo.GlobalState = pb.TransactionStatus_SUCCESS
 	txInfo.ChildTxInfo[id0] = pb.TransactionStatus_BEGIN
@@ -311,7 +311,7 @@ func TestTransactionManager_Report(t *testing.T) {
 	mockStub.EXPECT().GetObject(globalTxInfoKey(globalID), gomock.Any()).SetArg(1, txInfo).Return(true).MaxTimes(1)
 	res = im.Report(id0, int32(pb.IBTP_RECEIPT_SUCCESS))
 	assert.False(t, res.Ok)
-	assert.Equal(t, fmt.Sprintf("global tx of child tx %s with state %v get unexpected receipt %v", id0, txInfo.GlobalState, int32(pb.IBTP_RECEIPT_SUCCESS)), string(res.Result))
+	assert.Contains(t, string(res.Result), fmt.Sprintf("global tx of child tx %s with state %v get unexpected receipt %v", id0, txInfo.GlobalState, int32(pb.IBTP_RECEIPT_SUCCESS)))
 
 	txInfo = TransactionInfo{
 		GlobalState:  pb.TransactionStatus_BEGIN,
@@ -415,7 +415,7 @@ func TestTransactionManager_GetStatus(t *testing.T) {
 	mockStub.EXPECT().Get(id).Return(false, nil).MaxTimes(1)
 	res = im.GetStatus(id)
 	assert.False(t, res.Ok)
-	assert.Equal(t, fmt.Sprintf("cannot get global id of child tx id %s", id), string(res.Result))
+	assert.Contains(t, string(res.Result), fmt.Sprintf("cannot get global id of child tx id %s", id))
 
 	globalId := "globalId"
 	globalIdInfoKey := fmt.Sprintf("global-%s-%s", PREFIX, globalId)
@@ -423,7 +423,7 @@ func TestTransactionManager_GetStatus(t *testing.T) {
 	mockStub.EXPECT().GetObject(globalIdInfoKey, gomock.Any()).Return(false).MaxTimes(1)
 	res = im.GetStatus(id)
 	assert.False(t, res.Ok)
-	assert.Equal(t, fmt.Sprintf("transaction info for global id %s does not exist", globalId), string(res.Result))
+	assert.Contains(t, string(res.Result), fmt.Sprintf("global tx %s of child tx %s does not exist", globalId, id))
 
 	mockStub.EXPECT().GetObject(globalIdInfoKey, gomock.Any()).SetArg(1, txInfo).Return(true).MaxTimes(1)
 	res = im.GetStatus(id)

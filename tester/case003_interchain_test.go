@@ -85,8 +85,10 @@ func (suite *Interchain) SetupSuite() {
 
 	chainName1 := "应用链1case003"
 	chainName2 := "应用链2case003"
-	suite.chainID1 = suite.registerAppchain(suite.k1, chainName1, validator.HappyRuleAddr, appchainMgr.ChainTypeETH, addr1.String())
-	suite.chainID2 = suite.registerAppchain(suite.k2, chainName2, validator.HappyRuleAddr, appchainMgr.ChainTypeETH, addr2.String())
+	suite.chainID1 = "appchain1case003"
+	suite.chainID2 = "appchain2case003"
+	suite.registerAppchain(suite.k1, suite.chainID1, chainName1, validator.HappyRuleAddr, appchainMgr.ChainTypeETH, addr1.String())
+	suite.registerAppchain(suite.k2, suite.chainID2, chainName2, validator.HappyRuleAddr, appchainMgr.ChainTypeETH, addr2.String())
 
 	suite.serviceID1 = "service1"
 	suite.serviceID2 = "service2"
@@ -241,7 +243,7 @@ func (suite *Interchain) TestRegister() {
 	k1Nonce++
 }
 
-func (suite *Interchain) registerAppchain(privKey crypto.PrivateKey, chainName, rule, chainType, adminAddrs string) string {
+func (suite *Interchain) registerAppchain(privKey crypto.PrivateKey, chainId, chainName, rule, chainType, adminAddrs string) {
 	addr, err := privKey.PublicKey().Address()
 	suite.Require().Nil(err)
 	keyNonce := suite.api.Broker().GetPendingNonceByAccount(addr.String())
@@ -258,6 +260,7 @@ func (suite *Interchain) registerAppchain(privKey crypto.PrivateKey, chainName, 
 		brokerData = fabricBrokerData
 	}
 	args := []*pb.Arg{
+		pb.String(chainId),
 		pb.String(chainName),
 		pb.String(chainType),
 		pb.Bytes(nil),
@@ -296,14 +299,11 @@ func (suite *Interchain) registerAppchain(privKey crypto.PrivateKey, chainName, 
 	err = json.Unmarshal(ret.Ret, chainInfo)
 	suite.Require().Nil(err)
 	suite.Require().Equal(governance.GovernanceAvailable, chainInfo.Status)
-	chainID := chainInfo.ID
 
-	ret, err = invokeBVMContract(suite.api, privKey, keyNonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID))
+	ret, err = invokeBVMContract(suite.api, privKey, keyNonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainId))
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	keyNonce++
-
-	return chainID
 }
 
 func (suite *Interchain) registerService(privKey crypto.PrivateKey, chainID, serviceID, serviceName, blacklist string) {

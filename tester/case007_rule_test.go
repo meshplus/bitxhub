@@ -80,7 +80,9 @@ func (suite *Rule) TestRegisterAppchainRule() {
 	fabricBrokerData, err := json.Marshal(fabricBroker)
 	suite.Require().Nil(err)
 	chainName1 := "应用链2case007"
+	chainID1 := "appchain2case007"
 	args := []*pb.Arg{
+		pb.String(chainID1),
 		pb.String(chainName1),
 		pb.String(appchainMgr.ChainTypeFabric1_4_3),
 		pb.Bytes(nil),
@@ -120,7 +122,6 @@ func (suite *Rule) TestRegisterAppchainRule() {
 	suite.Require().Nil(err)
 	suite.Require().Equal("desc", chainInfo.Desc)
 	suite.Require().Equal(governance.GovernanceAvailable, chainInfo.Status)
-	chainID1 := chainInfo.ID
 
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID1))
 	suite.Require().Nil(err)
@@ -212,7 +213,9 @@ func (suite *Rule) TestUpdateMasterRule() {
 
 	// register appchain
 	chainName1 := "应用链1case007"
+	chainID1 := "appchain1case007"
 	args := []*pb.Arg{
+		pb.String(chainID1),
 		pb.String(chainName1),
 		pb.String(appchainMgr.ChainTypeHyperchain1_8_6),
 		pb.Bytes(nil),
@@ -252,7 +255,6 @@ func (suite *Rule) TestUpdateMasterRule() {
 	suite.Require().Nil(err)
 	suite.Require().Equal("desc", chainInfo.Desc)
 	suite.Require().Equal(governance.GovernanceAvailable, chainInfo.Status)
-	chainID1 := chainInfo.ID
 
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID1))
 	suite.Require().Nil(err)

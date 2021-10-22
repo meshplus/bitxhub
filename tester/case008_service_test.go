@@ -70,7 +70,9 @@ func (suite *Service) TestRegisterService() {
 	fabricBrokerData, err := json.Marshal(fabricBroker)
 	suite.Require().Nil(err)
 	chainName1 := "应用链1case008"
+	chainID1 := "appchain1case008"
 	args := []*pb.Arg{
+		pb.String(chainID1),
 		pb.String(chainName1),
 		pb.String(appchainMgr.ChainTypeFabric1_4_3),
 		pb.Bytes(nil),
@@ -110,7 +112,6 @@ func (suite *Service) TestRegisterService() {
 	suite.Require().Nil(err)
 	suite.Require().Equal("desc", chainInfo.Desc)
 	suite.Require().Equal(governance.GovernanceAvailable, chainInfo.Status)
-	chainID1 := chainInfo.ID
 	serviceID1 := "service1"
 	chainServiceID1 := fmt.Sprintf("%s:%s", chainID1, serviceID1)
 
@@ -302,7 +303,9 @@ func (suite *Service) TestLogoutAppchainPauseService() {
 	fabricBrokerData, err := json.Marshal(fabricBroker)
 	suite.Require().Nil(err)
 	chainName1 := "应用链2case008"
+	chainID1 := "appchain2case008"
 	args := []*pb.Arg{
+		pb.String(chainID1),
 		pb.String(chainName1),
 		pb.String(appchainMgr.ChainTypeFabric1_4_3),
 		pb.Bytes(nil),
@@ -342,7 +345,6 @@ func (suite *Service) TestLogoutAppchainPauseService() {
 	suite.Require().Nil(err)
 	suite.Require().Equal("desc", chainInfo.Desc)
 	suite.Require().Equal(governance.GovernanceAvailable, chainInfo.Status)
-	chainID1 := chainInfo.ID
 	serviceID1 := "service1"
 	chainServiceID1 := fmt.Sprintf("%s:%s", chainID1, serviceID1)
 
@@ -528,7 +530,9 @@ func (suite *Service) TestLogoutService() {
 	fabricBrokerData, err := json.Marshal(fabricBroker)
 	suite.Require().Nil(err)
 	chainName1 := "应用链3case008"
+	chainID1 := "appchain3case008"
 	args := []*pb.Arg{
+		pb.String(chainID1),
 		pb.String(chainName1),
 		pb.String(appchainMgr.ChainTypeFabric1_4_3),
 		pb.Bytes(nil),
@@ -568,7 +572,6 @@ func (suite *Service) TestLogoutService() {
 	suite.Require().Nil(err)
 	suite.Require().Equal("desc", chainInfo.Desc)
 	suite.Require().Equal(governance.GovernanceAvailable, chainInfo.Status)
-	chainID1 := chainInfo.ID
 	serviceID1 := "service1"
 	chainServiceID1 := fmt.Sprintf("%s:%s", chainID1, serviceID1)
 

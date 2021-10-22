@@ -195,7 +195,9 @@ func (suite *Role) TestGetRuleAddress() {
 	suite.Require().NotEqual(ruleAddr1, ruleAddr2)
 
 	chainName1 := "应用链1case004"
+	chainID1 := "appchain1case004"
 	args := []*pb.Arg{
+		pb.String(chainID1),
 		pb.String(chainName1),
 		pb.String(appchainMgr.ChainTypeHyperchain1_8_6),
 		pb.Bytes(nil),
@@ -236,7 +238,6 @@ func (suite *Role) TestGetRuleAddress() {
 	suite.Require().Nil(err)
 	suite.Require().Equal("desc", chainInfo.Desc)
 	suite.Require().Equal(governance.GovernanceAvailable, chainInfo.Status)
-	chainID1 := chainInfo.ID
 
 	fabricBroker := appchainMgr.FabricBroker{
 		ChannelID:     "1",
@@ -246,7 +247,9 @@ func (suite *Role) TestGetRuleAddress() {
 	fabricBrokerData, err := json.Marshal(fabricBroker)
 	suite.Require().Nil(err)
 	chainName2 := "应用链2case004"
+	chainID2 := "appchain2case004"
 	args = []*pb.Arg{
+		pb.String(chainID2),
 		pb.String(chainName2),
 		pb.String(appchainMgr.ChainTypeFabric1_4_3),
 		pb.Bytes(nil),
@@ -284,7 +287,6 @@ func (suite *Role) TestGetRuleAddress() {
 	suite.Require().Nil(err)
 	suite.Require().Equal("desc", chainInfo.Desc)
 	suite.Require().Equal(governance.GovernanceAvailable, chainInfo.Status)
-	chainID2 := chainInfo.ID
 
 	// get rule address
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(), "GetMasterRule", pb.String(chainID1))

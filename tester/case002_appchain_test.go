@@ -79,8 +79,10 @@ func (suite *RegisterAppchain) TestRegisterAppchain() {
 	suite.Require().Nil(err)
 	k1Nonce++
 
+	chainID1 := "appchain1case002"
 	chainName1 := "应用链1case002"
 	args := []*pb.Arg{
+		pb.String(chainID1),
 		pb.String(chainName1),
 		pb.String(appchainMgr.ChainTypeHyperchain1_8_3),
 		pb.Bytes(nil),
@@ -124,7 +126,6 @@ func (suite *RegisterAppchain) TestRegisterAppchain() {
 	suite.Require().Nil(err)
 	suite.Require().Equal("desc", chainInfo.Desc)
 	suite.Require().Equal(governance.GovernanceAvailable, chainInfo.Status)
-	chainID1 := chainInfo.ID
 
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.RuleManagerContractAddr.Address(), "GetRuleByAddr",
 		pb.String(chainID1),
@@ -206,7 +207,9 @@ func (suite *RegisterAppchain) TestFetchAppchains() {
 	fabricBrokerData, err := json.Marshal(fabricBroker)
 	suite.Require().Nil(err)
 	chainName1 := "应用链2case002"
+	chainID1 := "appchain2case002"
 	args := []*pb.Arg{
+		pb.String(chainID1),
 		pb.String(chainName1),
 		pb.String(appchainMgr.ChainTypeFabric1_4_3),
 		pb.Bytes(nil),
@@ -245,10 +248,11 @@ func (suite *RegisterAppchain) TestFetchAppchains() {
 	suite.Require().Nil(err)
 	suite.Require().Equal("desc", chainInfo.Desc)
 	suite.Require().Equal(governance.GovernanceAvailable, chainInfo.Status)
-	chainID1 := chainInfo.ID
 
 	chainName2 := "应用链3case002"
+	chainID2 := "appchain3case003"
 	args = []*pb.Arg{
+		pb.String(chainID2),
 		pb.String(chainName2),
 		pb.String(appchainMgr.ChainTypeFabric1_4_3),
 		pb.Bytes(nil),
@@ -335,7 +339,9 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 	fabricBrokerData, err := json.Marshal(fabricBroker)
 	suite.Require().Nil(err)
 	chainName1 := "应用链4case002"
+	chainID1 := "应用链4case002"
 	args := []*pb.Arg{
+		pb.String(chainID1),
 		pb.String(chainName1),
 		pb.String(appchainMgr.ChainTypeFabric1_4_3),
 		pb.Bytes([]byte("")),
@@ -370,7 +376,6 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 	suite.Require().Nil(err)
 	suite.Require().Equal("desc", chainInfo.Desc)
 	suite.Require().Equal(governance.GovernanceAvailable, chainInfo.Status)
-	chainID1 := chainInfo.ID
 
 	//GetAppchain
 	ret2, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID1))
@@ -454,7 +459,9 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 //	fabricBrokerData, err := json.Marshal(fabricBroker)
 //	suite.Require().Nil(err)
 //	chainName1 := "应用链6case002"
+//  chainID1 := "appchain6case002"
 //	args := []*pb.Arg{
+//		pb.String(chainID1),
 //		pb.String(chainName1),
 //		pb.String(appchainMgr.ChainTypeFabric1_4_3),
 //		pb.Bytes(nil),
@@ -489,7 +496,6 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 //	suite.Require().Nil(err)
 //	suite.Require().Equal("desc", chainInfo.Desc)
 //	suite.Require().Equal(governance.GovernanceAvailable, chainInfo.Status)
-//	chainID1 := chainInfo.ID
 //
 //	//GetAppchain
 //	ret2, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID1))
@@ -596,7 +602,9 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 //	fabricBrokerData, err := json.Marshal(fabricBroker)
 //	suite.Require().Nil(err)
 //	chainName1 := "应用链7case002"
+//	chainID1 := "appchain7case002"
 //	args := []*pb.Arg{
+//		pb.String(chainID1),
 //		pb.String(chainName1),
 //		pb.String(appchainMgr.ChainTypeFabric1_4_3),
 //		pb.Bytes(nil),
@@ -631,7 +639,6 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 //	suite.Require().Nil(err)
 //	suite.Require().Equal("desc", chainInfo.Desc)
 //	suite.Require().Equal(governance.GovernanceAvailable, chainInfo.Status)
-//	chainID1 := chainInfo.ID
 //
 //	//GetAppchain
 //	ret2, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID1))
@@ -732,7 +739,9 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 //	fabricBrokerData, err := json.Marshal(fabricBroker)
 //	suite.Require().Nil(err)
 //	chainName1 := "应用链8case002"
+//	chainID1 := "appchain8case002"
 //	args := []*pb.Arg{
+//		pb.String(chainID1),
 //		pb.String(chainName1),
 //		pb.String(appchainMgr.ChainTypeFabric1_4_3),
 //		pb.Bytes(nil),
@@ -767,7 +776,6 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 //	suite.Require().Nil(err)
 //	suite.Require().Equal("desc", chainInfo.Desc)
 //	suite.Require().Equal(governance.GovernanceAvailable, chainInfo.Status)
-//	chainID1 := chainInfo.ID
 //
 //	//GetAppchain
 //	ret2, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID1))

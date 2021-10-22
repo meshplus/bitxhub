@@ -115,24 +115,24 @@ func (role *Role) setFSM(lastStatus governance.GovernanceStatus) {
 }
 
 // GovernancePre checks if the role can do the event. (only check, not modify infomation)
-func (rm *RoleManager) governancePre(roleId string, event governance.EventType) (*Role, error) {
-	role := Role{}
+func (rm *RoleManager) governancePre(roleId string, event governance.EventType) (*Role, *boltvm.BxhError) {
+	role := &Role{}
 
-	if ok := rm.GetObject(RoleKey(roleId), &role); !ok {
+	if ok := rm.GetObject(RoleKey(roleId), role); !ok {
 		if event == governance.EventRegister {
 			return nil, nil
 		} else {
-			return nil, fmt.Errorf("this role does not exist")
+			return nil, boltvm.BError(boltvm.RoleNonexistentRoleCode, fmt.Sprintf(string(boltvm.RoleNonexistentRoleMsg), roleId))
 		}
 	}
 
 	for _, s := range roleStateMap[event] {
 		if role.Status == s {
-			return &role, nil
+			return role, nil
 		}
 	}
 
-	return nil, fmt.Errorf("the role (%s,%s,%s) can not be %s", roleId, string(role.RoleType), string(role.Status), string(event))
+	return nil, boltvm.BError(boltvm.RoleStatusErrorCode, fmt.Sprintf(string(boltvm.RoleStatusErrorMsg), roleId, string(role.Status), string(event)))
 }
 
 func (rm *RoleManager) changeStatus(roleId string, trigger, lastStatus string) (bool, []byte) {
@@ -187,16 +187,16 @@ func (rm *RoleManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 	specificAddrs := []string{constant.GovernanceContractAddr.Address().String()}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
-		return boltvm.Error(fmt.Sprintf("marshal specificAddrs error: %v", err))
+		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), err.Error()))
 	}
 	if err := rm.checkPermission([]string{string(PermissionSpecific)}, "", rm.CurrentCaller(), addrsData); err != nil {
-		return boltvm.Error(fmt.Sprintf("check permission error:%v", err))
+		return boltvm.Error(boltvm.RoleNoPermissionCode, fmt.Sprintf(string(boltvm.RoleNoPermissionMsg), rm.CurrentCaller(), fmt.Sprintf("check permission error:%v", err)))
 	}
 
 	// 2. change status
 	ok, errData := rm.changeStatus(objId, proposalResult, lastStatus)
 	if !ok {
-		return boltvm.Error(fmt.Sprintf("change status error:%s", string(errData)))
+		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("change status error:%s", string(errData))))
 	}
 
 	// 3. other operation
@@ -208,7 +208,7 @@ func (rm *RoleManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 			fallthrough
 		case string(governance.EventActivate):
 			if err := rm.updateRoleRelatedProposalInfo(objId, governance.EventType(eventTyp)); err != nil {
-				return boltvm.Error(err.Error())
+				return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), err.Error()))
 			}
 		}
 	}
@@ -258,7 +258,7 @@ func (rm *RoleManager) RegisterRole(roleId, roleType, nodePid, reason string) *b
 
 	// 1. check permission
 	if err := rm.checkPermission([]string{string(PermissionAdmin)}, roleId, rm.CurrentCaller(), nil); err != nil {
-		return boltvm.Error(fmt.Sprintf("check permission error:%v", err))
+		return boltvm.Error(boltvm.RoleNoPermissionCode, fmt.Sprintf(string(boltvm.RoleNoPermissionMsg), rm.CurrentCaller(), fmt.Sprintf("check permission error:%v", err)))
 	}
 
 	// 2. check info
@@ -269,18 +269,18 @@ func (rm *RoleManager) RegisterRole(roleId, roleType, nodePid, reason string) *b
 		NodePid:  nodePid,
 		Status:   governance.GovernanceUnavailable,
 	}
-	if err := rm.checkRoleInfo(role); err != nil {
-		return boltvm.Error(fmt.Sprintf("check node info error: %s", err.Error()))
+	if res := rm.checkRoleInfo(role); !res.Ok {
+		return res
 	}
 
 	// 3. check status
-	if _, err := rm.governancePre(roleId, governance.EventType(event)); err != nil {
-		return boltvm.Error(fmt.Sprintf("%s prepare error: %v", event, err))
+	if _, bxhErr := rm.governancePre(roleId, governance.EventType(event)); bxhErr != nil {
+		return boltvm.Error(bxhErr.Code, string(bxhErr.Msg))
 	}
 
 	// 4. register
 	if err := rm.register(role); err != nil {
-		return boltvm.Error(fmt.Sprintf("register error: %v", err))
+		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("register error: %v", err)))
 	}
 	rm.Logger().WithFields(logrus.Fields{
 		"id":       role.ID,
@@ -298,12 +298,12 @@ func (rm *RoleManager) RegisterRole(roleId, roleType, nodePid, reason string) *b
 		pb.Bytes(nil),
 	)
 	if !res.Ok {
-		return boltvm.Error(fmt.Sprintf("submit proposal error: %s", string(res.Result)))
+		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("submit proposal error: %s", string(res.Result))))
 	}
 
 	// 6. change status
 	if ok, data := rm.changeStatus(role.ID, event, string(role.Status)); !ok {
-		return boltvm.Error(fmt.Sprintf("change status error: %s, %s", string(data), role.ID))
+		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("change status error: %s, %s", string(data), role.ID)))
 	}
 	return getGovernanceRet(string(res.Result), []byte(role.ID))
 }
@@ -342,15 +342,15 @@ func (rm *RoleManager) UpdateAppchainAdmin(appchainID string, adminAddrs string)
 	specificAddrs := []string{constant.AppchainMgrContractAddr.Address().String()}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
-		return boltvm.Error(fmt.Sprintf("marshal specificAddrs error: %v", err))
+		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("marshal specificAddrs error: %v", err)))
 	}
 	if err := rm.checkPermission([]string{string(PermissionSpecific)}, "", rm.CurrentCaller(), addrsData); err != nil {
-		return boltvm.Error(fmt.Sprintf("check permission error:%v", err))
+		return boltvm.Error(boltvm.RoleNoPermissionCode, fmt.Sprintf(string(boltvm.RoleNoPermissionMsg), rm.CurrentCaller(), fmt.Sprintf("check permission error:%v", err)))
 	}
 
 	// 2. update info
 	if err := rm.updateAppchainAdmin(appchainID, strings.Split(adminAddrs, ",")); err != nil {
-		return boltvm.Error(fmt.Sprintf("update appchain admin error: %v", err))
+		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("update appchain admin error: %v", err)))
 	}
 
 	return boltvm.Success(nil)
@@ -402,19 +402,19 @@ func (rm *RoleManager) LogoutRole(roleId, reason string) *boltvm.Response {
 func (rm *RoleManager) basicGovernance(roleID, reason string, permissions []string, event governance.EventType) *boltvm.Response {
 	// 1. check permission
 	if err := rm.checkPermission(permissions, roleID, rm.CurrentCaller(), nil); err != nil {
-		return boltvm.Error(fmt.Sprintf("check permission error:%v", err))
+		return boltvm.Error(boltvm.RoleNoPermissionCode, fmt.Sprintf(string(boltvm.RoleNoPermissionMsg), rm.CurrentCaller(), fmt.Sprintf("check permission error:%v", err)))
 	}
 
 	// 2. check status
-	role, err := rm.governancePre(roleID, event)
-	if err != nil {
-		return boltvm.Error(fmt.Sprintf("%s prepare error: %v", string(event), err))
+	role, bxhErr := rm.governancePre(roleID, event)
+	if bxhErr != nil {
+		return boltvm.Error(bxhErr.Code, string(bxhErr.Msg))
 	}
 	if role.Weight == repo.SuperAdminWeight {
-		return boltvm.Error(fmt.Sprintf("super governance admin can not be %s", string(event)))
+		return boltvm.Error(boltvm.RoleNonsupportSuperAdminCode, fmt.Sprintf(string(boltvm.RoleNonsupportSuperAdminMsg), roleID, event))
 	}
 	if role.RoleType == AppchainAdmin {
-		return boltvm.Error(fmt.Sprintf("appchain admin can not be %s", string(event)))
+		return boltvm.Error(boltvm.RoleNonsupportAppchainAdminCode, fmt.Sprintf(string(boltvm.RoleNonsupportAppchainAdminMsg), roleID, event))
 	}
 
 	// 3. submit proposal
@@ -428,12 +428,12 @@ func (rm *RoleManager) basicGovernance(roleID, reason string, permissions []stri
 		pb.Bytes(nil),
 	)
 	if !res.Ok {
-		return boltvm.Error(fmt.Sprintf("submit proposal error: %s", string(res.Result)))
+		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("submit proposal error: %s", string(res.Result))))
 	}
 
 	// 4. change status
 	if ok, data := rm.changeStatus(roleID, string(event), string(role.Status)); !ok {
-		return boltvm.Error(string(data))
+		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("change status error: %s", string(data))))
 	}
 
 	return getGovernanceRet(string(res.Result), nil)
@@ -445,7 +445,7 @@ func (rm *RoleManager) basicGovernance(roleID, reason string, permissions []stri
 func (rm *RoleManager) GetRole() *boltvm.Response {
 	res, err := rm.getRole(rm.Caller())
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), err.Error()))
 	} else {
 		return boltvm.Success([]byte(res))
 	}
@@ -455,7 +455,7 @@ func (rm *RoleManager) GetRole() *boltvm.Response {
 func (rm *RoleManager) GetRoleByAddr(addr string) *boltvm.Response {
 	res, err := rm.getRole(addr)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), err.Error()))
 	} else {
 		return boltvm.Success([]byte(res))
 	}
@@ -488,12 +488,12 @@ func (rm *RoleManager) GetRoleInfoById(roleId string) *boltvm.Response {
 	role := &Role{}
 	ok := rm.GetObject(RoleKey(roleId), role)
 	if !ok {
-		return boltvm.Error("the role is not exist")
+		return boltvm.Error(boltvm.RoleNonexistentRoleCode, fmt.Sprintf(string(boltvm.RoleNonexistentRoleMsg), roleId))
 	}
 
 	data, err := json.Marshal(role)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), err.Error()))
 	}
 
 	return boltvm.Success(data)
@@ -503,7 +503,7 @@ func (rm *RoleManager) GetRoleInfoById(roleId string) *boltvm.Response {
 func (rm *RoleManager) GetAllRoles() *boltvm.Response {
 	ret, err := rm.getAll()
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), err.Error()))
 	}
 	if ret == nil {
 		return boltvm.Success(nil)
@@ -511,7 +511,7 @@ func (rm *RoleManager) GetAllRoles() *boltvm.Response {
 
 	data, err := json.Marshal(ret)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), err.Error()))
 	}
 	return boltvm.Success(data)
 }
@@ -543,7 +543,7 @@ func (rm *RoleManager) GetRolesByType(roleType string) *boltvm.Response {
 			role := Role{}
 			ok := rm.GetObject(RoleKey(id), &role)
 			if !ok {
-				return boltvm.Error("the role is not exist")
+				return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("the role(%s) of type(%s) is not exist", id, roleType)))
 			}
 			ret = append(ret, &role)
 		}
@@ -551,7 +551,7 @@ func (rm *RoleManager) GetRolesByType(roleType string) *boltvm.Response {
 
 	data, err := json.Marshal(ret)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), err.Error()))
 	}
 	return boltvm.Success(data)
 }
@@ -560,7 +560,7 @@ func (rm *RoleManager) GetAppchainAdmin(appchainID string) *boltvm.Response {
 	theAppchainAdminIdMap := orderedmap.New()
 	ok := rm.GetObject(RoleAppchainAdminKey(appchainID), &theAppchainAdminIdMap)
 	if !ok {
-		return boltvm.Error("there is no admin for the appchain")
+		return boltvm.Error(boltvm.RoleNoAppchainAdminCode, fmt.Sprintf(string(boltvm.RoleNoAppchainAdminMsg), appchainID))
 	}
 
 	ret := []*Role{}
@@ -568,14 +568,14 @@ func (rm *RoleManager) GetAppchainAdmin(appchainID string) *boltvm.Response {
 		role := &Role{}
 		ok = rm.GetObject(RoleKey(addr), role)
 		if !ok {
-			return boltvm.Error(fmt.Sprintf("the appchain admin is not exist: %s", addr))
+			return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("the appchain admin(%s) is not exist", addr)))
 		}
 		ret = append(ret, role)
 	}
 
 	data, err := json.Marshal(ret)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), err.Error()))
 	}
 
 	return boltvm.Success(data)
@@ -649,11 +649,11 @@ func (rm *RoleManager) GetRoleWeight(roleId string) *boltvm.Response {
 	role := &Role{}
 	ok := rm.GetObject(RoleKey(roleId), role)
 	if !ok {
-		return boltvm.Error("the role is not exist")
+		return boltvm.Error(boltvm.RoleNonexistentRoleCode, fmt.Sprintf(string(boltvm.RoleNonexistentRoleMsg), roleId))
 	}
 
 	if role.RoleType != GovernanceAdmin {
-		return boltvm.Error("the role is not governane admin")
+		return boltvm.Error(boltvm.RoleNotGovernanceAdminCode, fmt.Sprintf(string(boltvm.RoleNotGovernanceAdminMsg), roleId))
 	}
 
 	return boltvm.Success([]byte(strconv.Itoa(int(role.Weight))))
@@ -661,10 +661,10 @@ func (rm *RoleManager) GetRoleWeight(roleId string) *boltvm.Response {
 
 // ======================================================================
 
-func (rm *RoleManager) checkRoleInfo(role *Role) error {
+func (rm *RoleManager) checkRoleInfo(role *Role) *boltvm.Response {
 	_, err := types.HexDecodeString(role.ID)
 	if err != nil {
-		return fmt.Errorf("illegal role id")
+		return boltvm.Error(boltvm.RoleIllegalRoleIDCode, fmt.Sprintf(string(boltvm.RoleIllegalRoleIDMsg), role.ID, err.Error()))
 	}
 
 	switch role.RoleType {
@@ -672,20 +672,20 @@ func (rm *RoleManager) checkRoleInfo(role *Role) error {
 	case AuditAdmin:
 		res := rm.CrossInvoke(constant.NodeManagerContractAddr.Address().String(), "GetNode", pb.String(role.NodePid))
 		if !res.Ok {
-			return fmt.Errorf("CrossInvoke GetNode error: %s", string(res.Result))
+			return boltvm.Error(boltvm.RoleNonexistentNodeCode, fmt.Sprintf(string(boltvm.RoleNonexistentNodeMsg), role.NodePid, string(res.Result)))
 		}
 		var nodeTmp nodemgr.Node
 		if err := json.Unmarshal(res.Result, &nodeTmp); err != nil {
-			return fmt.Errorf("unmarshal node error: %v", err)
+			return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), err.Error()))
 		}
 		if nodemgr.NVPNode != nodeTmp.NodeType {
-			return fmt.Errorf("the node is not a nvp node: %s", string(nodeTmp.NodeType))
+			return boltvm.Error(boltvm.RoleWrongNodeCode, fmt.Sprintf(string(boltvm.RoleWrongNodeMsg), role.NodePid))
 		}
 	default:
-		return fmt.Errorf("registration for %s is not supported currently", role.RoleType)
+		return boltvm.Error(boltvm.RoleIllegalRoleIDCode, fmt.Sprintf(string(boltvm.RoleIllegalRoleTypeMsg), string(role.RoleType)))
 	}
 
-	return nil
+	return boltvm.Success(nil)
 }
 
 func RoleKey(id string) string {

@@ -130,13 +130,13 @@ func (d *Dapp) setFSM(lastStatus governance.GovernanceStatus) {
 }
 
 // GovernancePre checks if the dapp can do the event. (only check, not modify infomation)
-func (dm *DappManager) governancePre(dappID string, event governance.EventType) (*Dapp, error) {
+func (dm *DappManager) governancePre(dappID string, event governance.EventType) (*Dapp, *boltvm.BxhError) {
 	dapp := &Dapp{}
 	if ok := dm.GetObject(DappKey(dappID), dapp); !ok {
 		if event == governance.EventRegister {
 			return nil, nil
 		} else {
-			return nil, fmt.Errorf("this dapp does not exist")
+			return nil, boltvm.BError(boltvm.DappNonexistentDappCode, fmt.Sprintf(string(boltvm.DappNonexistentDappMsg), dappID))
 		}
 	}
 
@@ -146,7 +146,7 @@ func (dm *DappManager) governancePre(dappID string, event governance.EventType) 
 		}
 	}
 
-	return nil, fmt.Errorf("the dapp (%s) can not be %s", string(dapp.Status), string(event))
+	return nil, boltvm.BError(boltvm.DappStatusErrorCode, fmt.Sprintf(string(boltvm.DappStatusErrorMsg), dappID, string(dapp.Status), string(event)))
 }
 
 func (dm *DappManager) changeStatus(dappID, trigger, lastStatus string) (bool, []byte) {
@@ -208,15 +208,15 @@ func (dm *DappManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 	specificAddrs := []string{constant.GovernanceContractAddr.Address().String()}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
-		return boltvm.Error(fmt.Sprintf("marshal specificAddrs error: %v", err))
+		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("marshal specificAddrs error: %v", err)))
 	}
 	if err := dm.checkPermission([]string{string(PermissionSpecific)}, objId, dm.CurrentCaller(), addrsData); err != nil {
-		return boltvm.Error(fmt.Sprintf("check permission error:%v", err))
+		return boltvm.Error(boltvm.DappNoPermissionCode, fmt.Sprintf(string(boltvm.DappNoPermissionMsg), dm.CurrentCaller(), err.Error()))
 	}
 
 	// 2. change status
 	if ok, data := dm.changeStatus(objId, proposalResult, lastStatus); !ok {
-		return boltvm.Error(fmt.Sprintf("change status error:%s", string(data)))
+		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("change status error:%s", string(data))))
 	}
 
 	// 3. other operation
@@ -226,7 +226,7 @@ func (dm *DappManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 			updateInfo := &UpdateDappInfo{}
 			err := json.Unmarshal(extra, updateInfo)
 			if err != nil {
-				return boltvm.Error(fmt.Sprintf("unmarshal updateInfo err: %v", err))
+				return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("unmarshal updateInfo err: %v", err)))
 			}
 			if updateInfo.DappName.IsEdit {
 				dm.freeDappName(updateInfo.DappName.OldInfo.(string))
@@ -243,11 +243,11 @@ func (dm *DappManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 				ContractAddr: updateInfo.ContractAddr.NewInfo,
 				Permission:   updateInfo.Permission.NewInfo,
 			}); err != nil {
-				return boltvm.Error(fmt.Sprintf("update error: %v", err))
+				return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("update error: %v", err)))
 			}
 		case string(governance.EventTransfer):
 			if err := dm.manegeTransfer(objId, extra); err != nil {
-				return boltvm.Error(fmt.Sprintf("manage transfer error: %v", err))
+				return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("manage transfer error: %v", err)))
 			}
 		}
 	} else {
@@ -256,7 +256,7 @@ func (dm *DappManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 			dapp := &Dapp{}
 			ok := dm.GetObject(DappKey(objId), dapp)
 			if !ok {
-				return boltvm.Error("the dapp is not exist")
+				return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), "the dapp is not exist"))
 			}
 			dm.freeDappName(dapp.Name)
 			dm.freeContractAddr(dapp.ContractAddr)
@@ -264,7 +264,7 @@ func (dm *DappManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 			updateInfo := &UpdateDappInfo{}
 			err := json.Unmarshal(extra, updateInfo)
 			if err != nil {
-				return boltvm.Error(fmt.Sprintf("unmarshal updateInfo err: %v", err))
+				return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("unmarshal updateInfo err: %v", err)))
 			}
 			if updateInfo.DappName.IsEdit {
 				dm.freeDappName(updateInfo.DappName.NewInfo.(string))
@@ -329,17 +329,17 @@ func (dm *DappManager) RegisterDapp(name, typ, desc, url, conAddrs, permits, rea
 	// 1. get dapp info
 	dapp, err := dm.packageDappInfo("", name, typ, desc, url, conAddrs, permits, dm.Caller(), 0, dm.GetTxTimeStamp(), make(map[string]*governance.EvaluationRecord), nil, governance.GovernanceRegisting)
 	if err != nil {
-		return boltvm.Error(fmt.Sprintf("get dapp info error: %v", err))
+		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("get dapp info error: %v", err)))
 	}
 
 	// 2. check dapp info
-	if err := dm.checkDappInfo(dapp, true); err != nil {
-		return boltvm.Error(fmt.Sprintf("check dapp info error : %v", err))
+	if res := dm.checkDappInfo(dapp, true); !res.Ok {
+		return res
 	}
 
 	// 3. governancePre: check status
-	if _, err := dm.governancePre(dapp.DappID, event); err != nil {
-		return boltvm.Error(fmt.Sprintf("%s prepare error: %v", string(event), err))
+	if _, be := dm.governancePre(dapp.DappID, event); be != nil {
+		return boltvm.Error(be.Code, string(be.Msg))
 	}
 
 	// 4. pre store dapp contract addr
@@ -357,7 +357,7 @@ func (dm *DappManager) RegisterDapp(name, typ, desc, url, conAddrs, permits, rea
 		pb.Bytes(nil),
 	)
 	if !res.Ok {
-		return boltvm.Error(fmt.Sprintf("submit proposal error: %s", string(res.Result)))
+		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("submit proposal error: %s", string(res.Result))))
 	}
 
 	// 6. register info
@@ -395,24 +395,24 @@ func (dm *DappManager) UpdateDapp(id, name, desc, url, conAddrs, permits, reason
 	event := governance.EventUpdate
 
 	// 1. governance pre: check if exist and status
-	oldDapp, err := dm.governancePre(id, event)
-	if err != nil {
-		return boltvm.Error(fmt.Sprintf("%s prepare error: %v", string(event), err))
+	oldDapp, be := dm.governancePre(id, event)
+	if be != nil {
+		return boltvm.Error(be.Code, string(be.Msg))
 	}
 
 	// 2. check permission: PermissionSelf
 	if err := dm.checkPermission([]string{string(PermissionSelf)}, oldDapp.OwnerAddr, dm.CurrentCaller(), nil); err != nil {
-		return boltvm.Error(fmt.Sprintf("check permission error:%v", err))
+		return boltvm.Error(boltvm.DappNoPermissionCode, fmt.Sprintf(string(boltvm.DappNoPermissionMsg), dm.CurrentCaller(), err.Error()))
 	}
 
 	// 3. get info
 	newDapp, err := dm.packageDappInfo(id, name, string(oldDapp.Type), desc, url, conAddrs, permits, oldDapp.OwnerAddr, oldDapp.Score, oldDapp.CreateTime, oldDapp.EvaluationRecords, oldDapp.TransferRecords, oldDapp.Status)
 	if err != nil {
-		return boltvm.Error(fmt.Sprintf("get dapp info error: %v", err))
+		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("get dapp info error: %v", err)))
 	}
 	// 4. check info
-	if err := dm.checkDappInfo(newDapp, false); err != nil {
-		return boltvm.Error(fmt.Sprintf("check dapp info error : %v", err))
+	if res := dm.checkDappInfo(newDapp, false); !res.Ok {
+		return res
 	}
 
 	// update desc do not need proposal
@@ -442,7 +442,7 @@ func (dm *DappManager) UpdateDapp(id, name, desc, url, conAddrs, permits, reason
 	}
 	if !updateName && !updateUrl && !updateContract && !updatePermission {
 		if err := dm.update(newDapp); err != nil {
-			return boltvm.Error(fmt.Sprintf("update error: %v", err))
+			return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("update error: %v", err)))
 		}
 		return getGovernanceRet("", nil)
 	}
@@ -485,7 +485,7 @@ func (dm *DappManager) UpdateDapp(id, name, desc, url, conAddrs, permits, reason
 	}
 	updateDappData, err := json.Marshal(updateDappInfo)
 	if err != nil {
-		return boltvm.Error(fmt.Sprintf("marshal updateDappInfo error: %v", err))
+		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("marshal updateDappInfo error: %v", err)))
 	}
 	res := dm.CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal",
 		pb.String(dm.Caller()),
@@ -497,12 +497,12 @@ func (dm *DappManager) UpdateDapp(id, name, desc, url, conAddrs, permits, reason
 		pb.Bytes(updateDappData),
 	)
 	if !res.Ok {
-		return boltvm.Error(fmt.Sprintf("submit proposal error: %s", string(res.Result)))
+		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("submit proposal error: %s", string(res.Result))))
 	}
 
 	// 7. change status
 	if ok, data := dm.changeStatus(id, string(event), string(oldDapp.Status)); !ok {
-		return boltvm.Error(fmt.Sprintf("change status error: %s", string(data)))
+		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("change status error: %s", string(data))))
 	}
 
 	return getGovernanceRet(string(res.Result), nil)
@@ -522,7 +522,7 @@ func (dm *DappManager) ActivateDapp(id, reason string) *boltvm.Response {
 func (dm *DappManager) TransferDapp(id, newOwnerAddr, reason string) *boltvm.Response {
 	_, err := types.HexDecodeString(newOwnerAddr)
 	if err != nil {
-		return boltvm.Error(fmt.Sprintf("illegal new owner addr: %s", newOwnerAddr))
+		return boltvm.Error(boltvm.DappIllegalTransferAddrCode, fmt.Sprintf(string(boltvm.DappIllegalTransferAddrMsg), newOwnerAddr, err.Error()))
 	}
 
 	transRec := &TransferRecord{
@@ -533,21 +533,21 @@ func (dm *DappManager) TransferDapp(id, newOwnerAddr, reason string) *boltvm.Res
 	}
 	extra, err := json.Marshal(transRec)
 	if err != nil {
-		return boltvm.Error(fmt.Sprintf("marshal extra error: %v", err))
+		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("marshal extra error: %v", err)))
 	}
 	return dm.basicGovernance(id, reason, []string{string(PermissionSelf)}, governance.EventTransfer, extra)
 }
 
 func (dm *DappManager) basicGovernance(id, reason string, permissions []string, event governance.EventType, extra []byte) *boltvm.Response {
 	// 1. governance pre: check if exist and status
-	dapp, err := dm.governancePre(id, event)
-	if err != nil {
-		return boltvm.Error(fmt.Sprintf("%s prepare error: %v", string(event), err))
+	dapp, be := dm.governancePre(id, event)
+	if be != nil {
+		return boltvm.Error(be.Code, string(be.Msg))
 	}
 
 	// 2. check permission
 	if err := dm.checkPermission(permissions, dapp.OwnerAddr, dm.CurrentCaller(), nil); err != nil {
-		return boltvm.Error(fmt.Sprintf("check permission error:%v", err))
+		return boltvm.Error(boltvm.DappNoPermissionCode, fmt.Sprintf(string(boltvm.DappNoPermissionMsg), dm.CurrentCaller(), err.Error()))
 	}
 
 	// 3. submit proposal
@@ -561,12 +561,12 @@ func (dm *DappManager) basicGovernance(id, reason string, permissions []string, 
 		pb.Bytes(extra),
 	)
 	if !res.Ok {
-		return boltvm.Error(fmt.Sprintf("submit proposal error: %s", string(res.Result)))
+		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("submit proposal error: %s", string(res.Result))))
 	}
 
 	// 4. change status
 	if ok, data := dm.changeStatus(id, string(event), string(dapp.Status)); !ok {
-		return boltvm.Error(fmt.Sprintf("change status error: %s", string(data)))
+		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("change status error: %s", string(data))))
 	}
 
 	return getGovernanceRet(string(res.Result), nil)
@@ -577,12 +577,12 @@ func (dm *DappManager) ConfirmTransfer(id string) *boltvm.Response {
 	dapp := &Dapp{}
 	ok := dm.GetObject(DappKey(id), dapp)
 	if !ok {
-		return boltvm.Error("the dapp is not exist")
+		return boltvm.Error(boltvm.DappNonexistentDappCode, fmt.Sprintf(string(boltvm.DappNonexistentDappMsg), id))
 	}
 
 	// 2. check permission
 	if err := dm.checkPermission([]string{string(PermissionSelf)}, dapp.OwnerAddr, dm.CurrentCaller(), nil); err != nil {
-		return boltvm.Error(fmt.Sprintf("check permission error:%v", err))
+		return boltvm.Error(boltvm.DappNoPermissionCode, fmt.Sprintf(string(boltvm.DappNoPermissionMsg), dm.CurrentCaller(), err.Error()))
 	}
 
 	// 3. confirm
@@ -598,19 +598,19 @@ func (dm *DappManager) ConfirmTransfer(id string) *boltvm.Response {
 
 func (dm *DappManager) EvaluateDapp(id, desc string, score float64) *boltvm.Response {
 	if score < 0 || score > 5 {
-		return boltvm.Error("the score should be in the range [0,5]")
+		return boltvm.Error(boltvm.DappIllegalEvaluateScoreCode, fmt.Sprintf(string(boltvm.DappIllegalEvaluateScoreMsg), strconv.FormatFloat(score, 'f', 2, 64)))
 	}
 
 	// 1. get dapp
 	dapp := &Dapp{}
 	ok := dm.GetObject(DappKey(id), dapp)
 	if !ok {
-		return boltvm.Error("the dapp is not exist")
+		return boltvm.Error(boltvm.DappNonexistentDappCode, fmt.Sprintf(string(boltvm.DappNonexistentDappMsg), id))
 	}
 
 	// 2. Check whether caller has evaluated
 	if _, ok := dapp.EvaluationRecords[dm.Caller()]; ok {
-		return boltvm.Error("the caller has evaluate the dapp")
+		return boltvm.Error(boltvm.DappRepeatEvaluateCode, fmt.Sprintf(string(boltvm.DappRepeatEvaluateMsg), dm.Caller(), id))
 	}
 
 	// 3. get evaluation record
@@ -636,12 +636,12 @@ func (dm *DappManager) GetDapp(id string) *boltvm.Response {
 	dapp := &Dapp{}
 	ok := dm.GetObject(DappKey(id), dapp)
 	if !ok {
-		return boltvm.Error("the dapp is not exist")
+		return boltvm.Error(boltvm.DappNonexistentDappCode, fmt.Sprintf(string(boltvm.DappNonexistentDappMsg), id))
 	}
 
 	data, err := json.Marshal(dapp)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), err.Error()))
 	}
 
 	return boltvm.Success(data)
@@ -651,12 +651,12 @@ func (dm *DappManager) GetDapp(id string) *boltvm.Response {
 func (dm *DappManager) GetAllDapps() *boltvm.Response {
 	ret, err := dm.getAll()
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), err.Error()))
 	}
 
 	data, err := json.Marshal(ret)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), err.Error()))
 	}
 	return boltvm.Success(data)
 }
@@ -683,7 +683,7 @@ func (dm *DappManager) GetPermissionDapps(caller string) *boltvm.Response {
 	var ret []*Dapp
 	all, err := dm.getAll()
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), err.Error()))
 	}
 	for _, d := range all {
 		if _, ok := d.Permission[caller]; !ok {
@@ -693,7 +693,7 @@ func (dm *DappManager) GetPermissionDapps(caller string) *boltvm.Response {
 
 	data, err := json.Marshal(ret)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), err.Error()))
 	}
 	return boltvm.Success(data)
 }
@@ -703,7 +703,7 @@ func (dm *DappManager) GetPermissionAvailableDapps(caller string) *boltvm.Respon
 	var ret []*Dapp
 	all, err := dm.getAll()
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), err.Error()))
 	}
 	for _, d := range all {
 		if _, ok := d.Permission[caller]; !ok {
@@ -715,7 +715,7 @@ func (dm *DappManager) GetPermissionAvailableDapps(caller string) *boltvm.Respon
 
 	data, err := json.Marshal(ret)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), err.Error()))
 	}
 	return boltvm.Success(data)
 }
@@ -724,12 +724,12 @@ func (dm *DappManager) GetPermissionAvailableDapps(caller string) *boltvm.Respon
 func (dm *DappManager) GetDappsByOwner(ownerAddr string) *boltvm.Response {
 	ret, err := dm.getOwnerAll(ownerAddr)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), err.Error()))
 	}
 
 	data, err := json.Marshal(ret)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), err.Error()))
 	}
 	return boltvm.Success(data)
 }
@@ -821,21 +821,21 @@ func (dm *DappManager) packageDappInfo(dappID, name string, typ string, desc str
 	return dapp, nil
 }
 
-func (dm *DappManager) checkDappInfo(dapp *Dapp, isRegister bool) error {
+func (dm *DappManager) checkDappInfo(dapp *Dapp, isRegister bool) *boltvm.Response {
 	// check url
 	if strings.Trim(dapp.Url, " ") == "" {
-		return fmt.Errorf("dapp name can not be an empty string")
+		return boltvm.Error(boltvm.DappEmptyUrlCode, string(boltvm.DappEmptyUrlMsg))
 	}
 
 	// check name
 	if dapp.Name == "" {
-		return fmt.Errorf("dapp name can not be an empty string")
+		return boltvm.Error(boltvm.DappEmptyNameCode, string(boltvm.DappEmptyNameMsg))
 	}
 	if dappID, err := dm.getDappIdByName(dapp.Name); err == nil {
 		if isRegister {
-			return fmt.Errorf("the name is already occupied by dapp %s", dappID)
+			return boltvm.Error(boltvm.DappDuplicateNameCode, fmt.Sprintf(string(boltvm.DappDuplicateNameMsg), dapp.Name, dappID))
 		} else if dappID != dapp.DappID {
-			return fmt.Errorf("the name is already occupied by dapp %s", dappID)
+			return boltvm.Error(boltvm.DappDuplicateNameCode, fmt.Sprintf(string(boltvm.DappDuplicateNameMsg), dapp.Name, dappID))
 		}
 
 	}
@@ -845,27 +845,27 @@ func (dm *DappManager) checkDappInfo(dapp *Dapp, isRegister bool) error {
 		dapp.Type != DappApplication &&
 		dapp.Type != DappGame &&
 		dapp.Type != DappOthers {
-		return fmt.Errorf("illegal dapp type: %s", dapp.Type)
+		return boltvm.Error(boltvm.DappIllegalTypeCode, fmt.Sprintf(string(boltvm.DappIllegalTypeMsg), dapp.Type))
 	}
 
 	// check contract addr
 	for addr, _ := range dapp.ContractAddr {
 		if _, err := types.HexDecodeString(addr); err != nil {
-			return fmt.Errorf("illegal contract addr: %s", addr)
+			return boltvm.Error(boltvm.DappIllegalContractAddrCode, fmt.Sprintf(string(boltvm.DappIllegalContractAddrMsg), addr))
 		}
 
 		if dappID, err := dm.getDappIdByContractAddr(addr); err == nil {
 			if isRegister {
-				return fmt.Errorf("the contract address belongs to dapp %s and cannot be registered repeatedly", dappID)
+				return boltvm.Error(boltvm.DappDuplicateContractRegisterCode, fmt.Sprintf(string(boltvm.DappDuplicateContractRegisterMsg), addr, dappID))
 			} else if dappID != dapp.DappID {
-				return fmt.Errorf("the contract address belongs to dapp %s and cannot be update to others", dappID)
+				return boltvm.Error(boltvm.DappDuplicateContractUpdateCode, fmt.Sprintf(string(boltvm.DappDuplicateContractUpdateMsg), addr, dappID))
 			}
 		}
 
 		account1 := dm.GetAccount(addr)
 		account := account1.(ledger.IAccount)
 		if account.Code() == nil {
-			return fmt.Errorf("the contract addr does not exist")
+			return boltvm.Error(boltvm.DappNonexistentContractCode, fmt.Sprintf(string(boltvm.DappNonexistentContractMsg), addr))
 		}
 	}
 
@@ -873,11 +873,11 @@ func (dm *DappManager) checkDappInfo(dapp *Dapp, isRegister bool) error {
 	for p, _ := range dapp.Permission {
 		_, err := types.HexDecodeString(p)
 		if err != nil {
-			return fmt.Errorf("illegal user addr in permission: %s", p)
+			return boltvm.Error(boltvm.DappIllegalPermissionCode, fmt.Sprintf(string(boltvm.DappIllegalPermissionMsg), p, err.Error()))
 		}
 	}
 
-	return nil
+	return boltvm.Success(nil)
 }
 
 func (dm *DappManager) getDappIdByName(name string) (string, error) {

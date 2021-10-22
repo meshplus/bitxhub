@@ -86,8 +86,8 @@ var receipt2EventM = map[int32]TransactionEvent{
 }
 
 func (t *TransactionManager) BeginMultiTXs(globalID, ibtpID string, timeoutHeight uint64, isFailed bool, count uint64) *boltvm.Response {
-	if err := t.checkCurrentCaller(); err != nil {
-		return boltvm.Error(err.Error())
+	if bxhErr := t.checkCurrentCaller(); bxhErr != nil {
+		return boltvm.Error(bxhErr.Code, string(bxhErr.Msg))
 	}
 
 	change := StatusChange{PrevStatus: -1}
@@ -112,7 +112,7 @@ func (t *TransactionManager) BeginMultiTXs(globalID, ibtpID string, timeoutHeigh
 		t.AddObject(globalTxInfoKey(globalID), txInfo)
 	} else {
 		if _, ok := txInfo.ChildTxInfo[ibtpID]; ok {
-			return boltvm.Error(fmt.Sprintf("child tx ID %s of global TX %s exists", ibtpID, globalID))
+			return boltvm.Error(boltvm.TransactionExistentChildTxCode, fmt.Sprintf(string(boltvm.TransactionExistentChildTxMsg), ibtpID, globalID))
 		}
 
 		if txInfo.GlobalState != pb.TransactionStatus_BEGIN {
@@ -135,15 +135,15 @@ func (t *TransactionManager) BeginMultiTXs(globalID, ibtpID string, timeoutHeigh
 	change.CurStatus = txInfo.ChildTxInfo[ibtpID]
 	data, err := json.Marshal(change)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.TransactionInternalErrCode, fmt.Sprintf(string(boltvm.TransactionInternalErrMsg), err.Error()))
 	}
 
 	return boltvm.Success(data)
 }
 
 func (t *TransactionManager) Begin(txId string, timeoutHeight uint64, isFailed bool) *boltvm.Response {
-	if err := t.checkCurrentCaller(); err != nil {
-		return boltvm.Error(err.Error())
+	if bxhErr := t.checkCurrentCaller(); bxhErr != nil {
+		return boltvm.Error(bxhErr.Code, string(bxhErr.Msg))
 	}
 
 	record := pb.TransactionRecord{
@@ -169,15 +169,15 @@ func (t *TransactionManager) Begin(txId string, timeoutHeight uint64, isFailed b
 
 	data, err := json.Marshal(change)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.TransactionInternalErrCode, fmt.Sprintf(string(boltvm.TransactionInternalErrMsg), err.Error()))
 	}
 
 	return boltvm.Success(data)
 }
 
 func (t *TransactionManager) Report(txId string, result int32) *boltvm.Response {
-	if err := t.checkCurrentCaller(); err != nil {
-		return boltvm.Error(err.Error())
+	if bxhErr := t.checkCurrentCaller(); bxhErr != nil {
+		return boltvm.Error(bxhErr.Code, string(bxhErr.Msg))
 	}
 
 	change := StatusChange{}
@@ -186,7 +186,7 @@ func (t *TransactionManager) Report(txId string, result int32) *boltvm.Response 
 	if ok {
 		change.PrevStatus = record.Status
 		if err := t.setFSM(&record.Status, receipt2EventM[result]); err != nil {
-			return boltvm.Error(fmt.Sprintf("transaction %s with state %v get unexpected receipt %v", txId, record.Status, result))
+			return boltvm.Error(boltvm.TransactionStateErrCode, fmt.Sprintf(string(boltvm.TransactionStateErrMsg), fmt.Sprintf("transaction %s with state %v get unexpected receipt %v", txId, record.Status, result)))
 		}
 		change.CurStatus = record.Status
 
@@ -195,23 +195,23 @@ func (t *TransactionManager) Report(txId string, result int32) *boltvm.Response 
 	} else {
 		ok, val := t.Get(txId)
 		if !ok {
-			return boltvm.Error(fmt.Sprintf("transaction id %s does not exist", txId))
+			return boltvm.Error(boltvm.TransactionNonexistentTxCode, fmt.Sprintf(string(boltvm.TransactionNonexistentTxMsg), txId))
 		}
 
 		globalId := string(val)
 		txInfo := TransactionInfo{}
 		if !t.GetObject(globalTxInfoKey(globalId), &txInfo) {
-			return boltvm.Error(fmt.Sprintf("transaction global id %s of child id %s does not exist", globalId, txId))
+			return boltvm.Error(boltvm.TransactionNonexistentGlobalTxCode, fmt.Sprintf(string(boltvm.TransactionNonexistentGlobalTxMsg), globalId, txId))
 		}
 
 		_, ok = txInfo.ChildTxInfo[txId]
 		if !ok {
-			return boltvm.Error(fmt.Sprintf("%s is not in transaction %s, %v", txId, globalId, txInfo))
+			return boltvm.Error(boltvm.TransactionInternalErrCode, fmt.Sprintf(string(boltvm.TransactionInternalErrMsg), fmt.Sprintf("%s is not in transaction %s, %v", txId, globalId, txInfo)))
 		}
 
 		change.PrevStatus = txInfo.GlobalState
 		if err := t.changeMultiTxStatus(&txInfo, txId, result); err != nil {
-			return boltvm.Error(err.Error())
+			return boltvm.Error(boltvm.TransactionStateErrCode, fmt.Sprintf(string(boltvm.TransactionStateErrMsg), err.Error()))
 		}
 		change.CurStatus = txInfo.GlobalState
 
@@ -226,7 +226,7 @@ func (t *TransactionManager) Report(txId string, result int32) *boltvm.Response 
 
 	data, err := json.Marshal(change)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.TransactionInternalErrCode, fmt.Sprintf(string(boltvm.TransactionInternalErrMsg), err.Error()))
 	}
 
 	return boltvm.Success(data)
@@ -248,13 +248,13 @@ func (t *TransactionManager) GetStatus(txId string) *boltvm.Response {
 
 	ok, val := t.Get(txId)
 	if !ok {
-		return boltvm.Error(fmt.Sprintf("cannot get global id of child tx id %s", txId))
+		return boltvm.Error(boltvm.TransactionNonexistentGlobalIdCode, fmt.Sprintf(string(boltvm.TransactionNonexistentGlobalIdMsg), txId))
 	}
 
 	globalId := string(val)
 	txInfo = TransactionInfo{}
 	if !t.GetObject(globalTxInfoKey(globalId), &txInfo) {
-		return boltvm.Error(fmt.Sprintf("transaction info for global id %s does not exist", globalId))
+		return boltvm.Error(boltvm.TransactionNonexistentGlobalTxCode, fmt.Sprintf(string(boltvm.TransactionNonexistentGlobalTxMsg), globalId, txId))
 	}
 
 	return boltvm.Success([]byte(strconv.Itoa(int(txInfo.GlobalState))))
@@ -312,9 +312,9 @@ func (t *TransactionManager) removeFromTimeoutList(height uint64, txId string) {
 	}
 }
 
-func (t *TransactionManager) checkCurrentCaller() error {
+func (t *TransactionManager) checkCurrentCaller() *boltvm.BxhError {
 	if t.CurrentCaller() != constant.InterchainContractAddr.Address().String() {
-		return fmt.Errorf("current caller %s is not allowed", t.CurrentCaller())
+		return boltvm.BError(boltvm.TransactionNoPermissionCode, fmt.Sprintf(string(boltvm.TransactionNoPermissionMsg), t.CurrentCaller()))
 	}
 
 	return nil
