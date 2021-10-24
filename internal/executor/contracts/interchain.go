@@ -698,7 +698,7 @@ func (x *InterchainManager) GetAllServiceIDs() *boltvm.Response {
 	}
 	for _, data := range value {
 		interchain := &pb.Interchain{}
-		if err := json.Unmarshal(data, interchain); err != nil {
+		if err := interchain.Unmarshal(data); err != nil {
 			return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), err.Error()))
 		}
 		ret = append(ret, interchain.ID)
