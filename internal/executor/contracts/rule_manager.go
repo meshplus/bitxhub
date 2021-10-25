@@ -1,9 +1,11 @@
 package contracts
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/governance"
@@ -519,7 +521,7 @@ func CheckRuleAddress(persister governance.Persister, addr, chainType string) *b
 
 	account1 := persister.GetAccount(addr)
 	account := account1.(ledger.IAccount)
-	if account.Code() == nil {
+	if account.CodeHash() == nil || bytes.Equal(account.CodeHash(), crypto.Keccak256(nil)) {
 		return boltvm.Error(boltvm.RuleNonexistentRuleCode, fmt.Sprintf(string(boltvm.RuleNonexistentRuleMsg), addr))
 	}
 

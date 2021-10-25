@@ -291,7 +291,7 @@ func getProposalsByConditions(ctx *cli.Context, keyPath string, menthod string, 
 
 func printProposal(proposals []contracts.Proposal) {
 	var table [][]string
-	table = append(table, []string{"Id", "ManagedObjectId", "Type", "EventType", "Status", "A/R", "IE/AE/TE", "Special/Super", "CreateTime", "Reason", "EndReason"})
+	table = append(table, []string{"Id", "ManagedObjectId", "Type", "EventType", "Status", "A/R", "IE/AE/TE", "Special/Super", "CreateTime", "Reason", "EndReason", "extra"})
 
 	for _, pro := range proposals {
 		table = append(table, []string{
@@ -306,6 +306,7 @@ func printProposal(proposals []contracts.Proposal) {
 			strconv.Itoa(int(pro.CreateTime)),
 			pro.SubmitReason,
 			string(pro.EndReason),
+			string(pro.Extra),
 		})
 	}
 

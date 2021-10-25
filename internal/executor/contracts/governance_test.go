@@ -91,6 +91,7 @@ func TestGovernance_SubmitProposal(t *testing.T) {
 	mockStub.EXPECT().CurrentCaller().Return("").AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().GetTxTimeStamp().Return(int64(1)).AnyTimes()
+	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 
 	// check permission error
 	res := g.SubmitProposal("", string(governance.EventRegister), string(AppchainMgr), "objId", string(governance.GovernanceUnavailable), "reason", []byte{})

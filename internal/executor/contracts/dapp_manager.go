@@ -1,12 +1,14 @@
 package contracts
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"sort"
 	"strconv"
 	"strings"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/looplab/fsm"
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/governance"
@@ -620,6 +622,10 @@ func (dm *DappManager) EvaluateDapp(id, desc string, score float64) *boltvm.Resp
 		Desc:       desc,
 		CreateTime: dm.GetTxTimeStamp(),
 	}
+	dm.Logger().WithFields(logrus.Fields{
+		"id":     dapp.DappID,
+		"evaRec": evaRec,
+	}).Debug("evaluate dapp")
 
 	// 4. store record
 	num := float64(len(dapp.EvaluationRecords))
@@ -864,7 +870,7 @@ func (dm *DappManager) checkDappInfo(dapp *Dapp, isRegister bool) *boltvm.Respon
 
 		account1 := dm.GetAccount(addr)
 		account := account1.(ledger.IAccount)
-		if account.Code() == nil {
+		if account.CodeHash() == nil || bytes.Equal(account.CodeHash(), crypto.Keccak256(nil)) {
 			return boltvm.Error(boltvm.DappNonexistentContractCode, fmt.Sprintf(string(boltvm.DappNonexistentContractMsg), addr))
 		}
 	}

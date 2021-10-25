@@ -300,6 +300,7 @@ func TestDappManager_EvaluateDapp(t *testing.T) {
 	mockStub.EXPECT().Caller().Return(ownerAddr).Times(1)
 	mockStub.EXPECT().Caller().Return(ownerAddr1).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).Return().AnyTimes()
+	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 
 	// 1. illegal score
 	res := dm.EvaluateDapp(dapps[0].DappID, dapps[0].Desc, 6)

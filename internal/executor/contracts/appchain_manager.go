@@ -1,6 +1,7 @@
 package contracts
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -485,7 +486,7 @@ func (am *AppchainManager) UpdateAppchain(id, name, desc string, trustRoot []byt
 
 	// 3.3 check trustroot
 	updateTrustroot := false
-	if string(trustRoot) != string(chainInfo.TrustRoot) {
+	if !bytes.Equal(trustRoot, chainInfo.TrustRoot) {
 		updateTrustroot = true
 	}
 
@@ -862,4 +863,15 @@ func (am *AppchainManager) getAdminAddrByChainId(chainId string) []string {
 	addrs := []string{}
 	_ = am.GetObject(appchainMgr.AppchainAdminKey(chainId), &addrs)
 	return addrs
+}
+
+func (am *AppchainManager) GetAdminByChainId(chainId string) *boltvm.Response {
+	am.AppchainManager.Persister = am.Stub
+
+	addrs := am.getAdminAddrByChainId(chainId)
+	addrsData, err := json.Marshal(addrs)
+	if err != nil {
+		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), err.Error()))
+	}
+	return boltvm.Success(addrsData)
 }
