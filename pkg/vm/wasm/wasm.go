@@ -98,7 +98,22 @@ func (w *WasmVM) deploy() ([]byte, uint64, error) {
 		return nil, 0, fmt.Errorf("contract cannot be empty")
 	}
 
-	meteredCode, _, err := metering.MeterWASM(w.ctx.TransactionData.Payload, &metering.Options{})
+	var (
+		metaChan = make(chan []byte)
+		err      error
+	)
+
+	go func(err error) {
+		defer func() {
+			if e := recover(); e != nil {
+				err = fmt.Errorf("%v", e)
+			}
+		}()
+
+		meteredCode, _, err := metering.MeterWASM(w.ctx.TransactionData.Payload, &metering.Options{})
+		metaChan <- meteredCode
+	}(err)
+	meteredCode := <-metaChan
 	if err != nil {
 		return nil, 0, err
 	}
