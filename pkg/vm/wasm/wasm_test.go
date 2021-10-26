@@ -90,7 +90,7 @@ func initConstantsContext(t *testing.T, name string) *vm.Context {
 	assert.Nil(t, err)
 	dir := filepath.Join(os.TempDir(), "constant_wasm", name)
 
-	bytes, err := ioutil.ReadFile("./testdata/constants.wasm")
+	bytes, err := ioutil.ReadFile("./testdata/result.wasm")
 	assert.Nil(t, err)
 
 	data := &pb.TransactionData{
@@ -330,7 +330,7 @@ func TestExecuteContants(t *testing.T) {
 	require.Nil(t, err)
 	result1, _, err := wasm1.Run(payload1, wasmGasLimit)
 	require.Nil(t, err)
-	require.Equal(t, "1", string(result1))
+	require.Equal(t, "0x5c170A6ea71f3B7A30267ED0632a7c56cF2c8C0b7Eec477906DfF08F1f4Ac3e2", string(result1))
 
 	invokePayload2 := &pb.InvokePayload{
 		Method: "test_caller",

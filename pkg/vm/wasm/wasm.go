@@ -65,6 +65,7 @@ func New(ctx *vm.Context, imports wasmlib.WasmImport, instances map[string]*wasm
 		return nil, fmt.Errorf("init wasm failed: %w", err)
 	}
 
+	w.SetContext(wasm.LEDGER, ctx.Ledger)
 	w.SetContext(wasm.ACCOUNT, ctx.Ledger.GetOrCreateAccount(ctx.Callee))
 	w.SetContext("currentHeight", ctx.CurrentHeight)
 	w.SetContext("txHash", ctx.Tx.GetHash().String())
