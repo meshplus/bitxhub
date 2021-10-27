@@ -153,6 +153,7 @@ func TestNodeManager_Manage(t *testing.T) {
 	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *nodes[1]).Return(true).Times(1)
 	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *nodes[6]).Return(true).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 
 	// register, CheckPermission error
 	res := nm.Manage(string(governance.EventLogout), BallotApprove, string(governance.GovernanceUnavailable), nodes[1].Pid, nodesData[1])
@@ -188,6 +189,7 @@ func TestNodeManager_VPNodeQuery(t *testing.T) {
 	mockStub.EXPECT().Query(node_mgr.NODEPREFIX).Return(true, nodesData).AnyTimes()
 	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Return(false).Times(1)
 	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *nodes[0]).Return(true).Times(2)
+	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 
 	res := nm.CountAvailableNodes(string(node_mgr.VPNode))
 	assert.True(t, res.Ok, string(res.Result))
@@ -244,6 +246,7 @@ func TestNodeManager_checkNodeInfo(t *testing.T) {
 	idMap.Set(nodes[5].Pid, struct{}{})
 	idMap.Set(nodes[6].Pid, struct{}{})
 
+	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 	mockStub.EXPECT().GetObject(node_mgr.NodeTypeKey(string(node_mgr.VPNode)), gomock.Any()).SetArg(1, *idMap).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[0].Pid), gomock.Any()).SetArg(1, *nodes[0]).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[1].Pid), gomock.Any()).SetArg(1, *nodes[1]).Return(true).AnyTimes()

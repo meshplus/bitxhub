@@ -223,6 +223,9 @@ func TestDappManager_TransferDapp(t *testing.T) {
 	// 1. illegal new owner addr
 	res := dm.TransferDapp(dapps[0].DappID, "1", reason)
 	assert.Equal(t, false, res.Ok)
+	// 2. transfer to self
+	res = dm.TransferDapp(dapps[0].DappID, dapps[0].OwnerAddr, reason)
+	assert.Equal(t, false, res.Ok)
 	// 2. governancePre error
 	res = dm.TransferDapp(dapps[0].DappID, ownerAddr1, reason)
 	assert.Equal(t, false, res.Ok)

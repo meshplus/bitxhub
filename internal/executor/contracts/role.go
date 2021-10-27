@@ -204,10 +204,15 @@ func (rm *RoleManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 		switch eventTyp {
 		case string(governance.EventFreeze):
 			fallthrough
-		case string(governance.EventLogout):
-			fallthrough
 		case string(governance.EventActivate):
 			if err := rm.updateRoleRelatedProposalInfo(objId, governance.EventType(eventTyp)); err != nil {
+				return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), err.Error()))
+			}
+		}
+	} else {
+		switch eventTyp {
+		case string(governance.EventLogout):
+			if err := rm.updateRoleRelatedProposalInfo(objId, governance.EventType(governance.EventReject)); err != nil {
 				return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), err.Error()))
 			}
 		}
@@ -229,6 +234,13 @@ func (rm *RoleManager) updateRoleRelatedProposalInfo(roleID string, eventTyp gov
 	}
 
 	for _, p := range proposals {
+		rm.Logger().WithFields(logrus.Fields{
+			"roleId":                 roleID,
+			"eventType":              eventTyp,
+			"proposalId":             p.Id,
+			"proposalStatus":         p.Status,
+			"AvaliableElectorateNum": p.AvaliableElectorateNum,
+		}).Info("Update role related proposal info")
 		for _, e := range p.ElectorateList {
 			if e.ID == roleID {
 				switch eventTyp {
@@ -237,6 +249,9 @@ func (rm *RoleManager) updateRoleRelatedProposalInfo(roleID string, eventTyp gov
 				case governance.EventLogout:
 					p.AvaliableElectorateNum--
 				case governance.EventActivate:
+					fallthrough
+				case governance.EventReject:
+					// logout reject
 					p.AvaliableElectorateNum++
 				default:
 					break
@@ -396,7 +411,15 @@ func (rm *RoleManager) ActivateRole(roleId, reason string) *boltvm.Response {
 
 // =========== LogoutRole logouts role
 func (rm *RoleManager) LogoutRole(roleId, reason string) *boltvm.Response {
-	return rm.basicGovernance(roleId, reason, []string{string(PermissionAdmin), string(PermissionSelf)}, governance.EventLogout)
+	governanceRes := rm.basicGovernance(roleId, reason, []string{string(PermissionAdmin), string(PermissionSelf)}, governance.EventLogout)
+	if !governanceRes.Ok {
+		return governanceRes
+	}
+
+	if err := rm.updateRoleRelatedProposalInfo(roleId, governance.EventType(governance.EventLogout)); err != nil {
+		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), err.Error()))
+	}
+	return governanceRes
 }
 
 func (rm *RoleManager) basicGovernance(roleID, reason string, permissions []string, event governance.EventType) *boltvm.Response {
