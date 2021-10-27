@@ -25,7 +25,7 @@ func GetIBTPSign(ledger *ledger.Ledger, id string, isReq bool, privKey crypto2.P
 		return "", nil, fmt.Errorf("get tx status of ibtp %s isReq %v: %w", id, isReq, err)
 	}
 
-	hash, err := encodePackedAndHash(ibtp, txStatus)
+	hash, err := EncodePackedAndHash(ibtp, txStatus)
 	if err != nil {
 		return "", nil, fmt.Errorf("encode packed and hash for ibtp %s isReq %v: %w", id, isReq, err)
 	}
@@ -81,7 +81,7 @@ func getTxStatus(ledger *ledger.Ledger, id string) (pb.TransactionStatus, error)
 	return record.Status, nil
 }
 
-func encodePackedAndHash(ibtp *pb.IBTP, txStatus pb.TransactionStatus) ([]byte, error) {
+func EncodePackedAndHash(ibtp *pb.IBTP, txStatus pb.TransactionStatus) ([]byte, error) {
 	var (
 		data []byte
 		pd   pb.Payload

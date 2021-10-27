@@ -6,14 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	ruleMgr "github.com/meshplus/bitxhub-core/rule-mgr"
-
-	"github.com/meshplus/bitxhub/internal/ledger"
-
-	"github.com/meshplus/bitxhub-core/governance"
-
 	"github.com/golang/mock/gomock"
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
+	"github.com/meshplus/bitxhub-core/governance"
+	ruleMgr "github.com/meshplus/bitxhub-core/rule-mgr"
 	"github.com/meshplus/bitxhub-core/validator/mock_validator"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
@@ -22,7 +18,9 @@ import (
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
+	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/ledger/mock_ledger"
+	"github.com/meshplus/bitxhub/pkg/utils"
 	"github.com/stretchr/testify/require"
 )
 
@@ -158,30 +156,37 @@ func TestVerifyPool_CheckProof2(t *testing.T) {
 	mockEngine.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(true, uint64(0), nil).AnyTimes()
 
 	ibtp := getIBTP(t, 1, pb.IBTP_RECEIPT_SUCCESS, nil)
-	ibtpHash := ibtp.Hash()
-	hash := sha256.Sum256([]byte(ibtpHash.String()))
-	sign := &pb.SignResponse{Sign: make(map[string][]byte)}
+	txStatus := pb.TransactionStatus_SUCCESS
+	hash, err := utils.EncodePackedAndHash(ibtp, txStatus)
+	require.Nil(t, err)
+	bxhProof := &pb.BxhProof{TxStatus: txStatus}
 	for _, key := range keys {
-		signData, err := asym.SignWithType(key, hash[:])
+		signData, err := key.Sign(hash[:])
 		require.Nil(t, err)
 
 		address, err := key.PublicKey().Address()
 		require.Nil(t, err)
-		ok, err := asym.VerifyWithType(signData[:], hash[:], *address)
+		ok, err := asym.Verify(crypto.Secp256k1, signData[:], hash[:], *address)
 		require.Nil(t, err)
 		require.True(t, ok)
-		sign.Sign[address.String()] = signData
+		bxhProof.MultiSign = append(bxhProof.MultiSign, signData)
 	}
-	signData, err := sign.Marshal()
+	signData, err := bxhProof.Marshal()
 	require.Nil(t, err)
 	proof := signData
 
-	ok, _, err := verifyMultiSign(chain, ibtp, nil)
+	vp := &VerifyPool{
+		ve:        mockEngine,
+		logger:    log.NewWithModule("test_verify"),
+		bitxhubID: "1356",
+	}
+
+	ok, _, err := vp.verifyMultiSign(chain, ibtp, nil)
 	require.NotNil(t, err)
 	require.False(t, ok)
 
 	chain.TrustRoot = addrsData
-	ok, _, err = verifyMultiSign(chain, ibtp, proof)
+	ok, _, err = vp.verifyMultiSign(chain, ibtp, proof)
 	require.Nil(t, err)
 	require.True(t, ok)
 }
