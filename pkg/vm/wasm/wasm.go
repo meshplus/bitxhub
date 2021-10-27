@@ -13,6 +13,7 @@ import (
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub/pkg/vm"
 	metering "github.com/meshplus/go-wasm-metering"
+	"github.com/sirupsen/logrus"
 	"github.com/wasmerio/wasmer-go/wasmer"
 )
 
@@ -86,7 +87,6 @@ func EmptyImports() (wasmlib.WasmImport, error) {
 
 // Run let the wasm vm excute or deploy the smart contract which depends on whether the callee is empty
 func (w *WasmVM) Run(input []byte, gasLimit uint64) (ret []byte, gasUsed uint64, err error) {
-	fmt.Printf("=====================run\n")
 	if w.ctx.Callee == nil || bytes.Equal(w.ctx.Callee.Bytes(), (&types.Address{}).Bytes()) {
 		return w.deploy()
 	}
@@ -95,7 +95,7 @@ func (w *WasmVM) Run(input []byte, gasLimit uint64) (ret []byte, gasUsed uint64,
 }
 
 func (w *WasmVM) deploy() ([]byte, uint64, error) {
-	fmt.Printf("=====================deploy\n")
+	w.ctx.Logger.WithFields(logrus.Fields{}).Info("Rule is deploying")
 	if len(w.ctx.TransactionData.Payload) == 0 {
 		return nil, 0, fmt.Errorf("contract cannot be empty")
 	}
@@ -112,7 +112,7 @@ func (w *WasmVM) deploy() ([]byte, uint64, error) {
 			}
 		}()
 
-		meteredCode, _, err := metering.MeterWASM(w.ctx.TransactionData.Payload, &metering.Options{})
+		meteredCode, _, err := metering.MeterWASM(w.ctx.TransactionData.Payload, &metering.Options{}, w.ctx.Logger)
 		metaChan <- meteredCode
 	}(err)
 	meteredCode := <-metaChan

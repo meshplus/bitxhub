@@ -36,7 +36,7 @@ require (
 	github.com/meshplus/eth-kit v0.0.0-20210906064541-8dfea98dbf95
 	github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd
 	github.com/meshplus/go-lightp2p v0.0.0-20210617153734-471d08b829f8
-	github.com/meshplus/go-wasm-metering v0.0.0-20211025103438-aae917c29bf6
+	github.com/meshplus/go-wasm-metering v0.0.0-20211027061126-399a9f391310
 	github.com/miguelmota/go-solidity-sha3 v0.1.1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-multiaddr v0.3.0
