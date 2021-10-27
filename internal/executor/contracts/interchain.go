@@ -414,6 +414,13 @@ func (x *InterchainManager) beginTransaction(ibtp *pb.IBTP, isFailed bool) (*Sta
 	// TODO: disable transaction management for inter-bitxhub transaction temporarily
 	if bxhID0 != bxhID1 {
 		timeoutHeight = 0
+		if !isFailed {
+			sourceFailed, err := x.checkTxStatusForTargetBxh(ibtp)
+			if err != nil {
+				return nil, err
+			}
+			isFailed = sourceFailed
+		}
 	}
 
 	res := boltvm.Success(nil)
@@ -708,6 +715,31 @@ func (x *InterchainManager) GetAllServiceIDs() *boltvm.Response {
 	} else {
 		return boltvm.Success(result)
 	}
+}
+
+func (x *InterchainManager) checkTxStatusForTargetBxh(ibtp *pb.IBTP) (bool, error) {
+	targetBxhID, _, _ := ibtp.ParseTo()
+	curBxhID, err := x.getBitXHubID()
+	if err != nil {
+		return false, err
+	}
+
+	if targetBxhID == curBxhID {
+		proof := ibtp.GetExtra()
+		if len(proof) == 0 {
+			return false, fmt.Errorf("get empty proof from source bitxhub for IBTP %s", ibtp.ID())
+		}
+
+		bxhProof := &pb.BxhProof{}
+		if err := bxhProof.Unmarshal(proof); err != nil {
+			return false, err
+		}
+		if bxhProof.TxStatus == pb.TransactionStatus_BEGIN_ROLLBACK || bxhProof.TxStatus == pb.TransactionStatus_BEGIN_FAILURE {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 func getIBTPID(from, to string, index uint64) string {

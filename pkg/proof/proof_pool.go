@@ -11,13 +11,15 @@ import (
 	"github.com/meshplus/bitxhub-core/governance"
 	ruleMgr "github.com/meshplus/bitxhub-core/rule-mgr"
 	"github.com/meshplus/bitxhub-core/validator"
-	"github.com/meshplus/bitxhub-kit/crypto/asym"
+	"github.com/meshplus/bitxhub-kit/crypto"
+	"github.com/meshplus/bitxhub-kit/crypto/asym/ecdsa"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/ledger"
+	"github.com/meshplus/bitxhub/pkg/utils"
 	"github.com/sirupsen/logrus"
 )
 
@@ -82,7 +84,7 @@ type bxhValidators struct {
 }
 
 // verifyMultiSign .
-func verifyMultiSign(app *appchainMgr.Appchain, ibtp *pb.IBTP, proof []byte) (bool, uint64, error) {
+func (pl *VerifyPool) verifyMultiSign(app *appchainMgr.Appchain, ibtp *pb.IBTP, proof []byte) (bool, uint64, error) {
 	if app.TrustRoot == nil {
 		return false, 0, fmt.Errorf("%s: empty validators in relay chain:%s", internalError, app.ID)
 	}
@@ -92,35 +94,57 @@ func verifyMultiSign(app *appchainMgr.Appchain, ibtp *pb.IBTP, proof []byte) (bo
 	}
 
 	m := make(map[string]struct{}, 0)
-	for _, validator := range validators.Addresses {
-		m[validator] = struct{}{}
+	for _, val := range validators.Addresses {
+		m[val] = struct{}{}
 	}
 
-	var signs pb.SignResponse
-	if err := signs.Unmarshal(proof); err != nil {
+	var bxhProof pb.BxhProof
+	if err := bxhProof.Unmarshal(proof); err != nil {
 		return false, 0, err
 	}
 
 	threshold := (len(validators.Addresses) - 1) / 3 // TODO be dynamic
 	counter := 0
 
-	ibtpHash := ibtp.Hash()
-	hash := sha256.Sum256([]byte(ibtpHash.String()))
-	for v, sign := range signs.Sign {
-		if _, ok := m[v]; !ok {
-			return false, 0, fmt.Errorf("%s: wrong validator: %s", ProofError, v)
+	hash, err := utils.EncodePackedAndHash(ibtp, bxhProof.TxStatus)
+	if err != nil {
+		return false, 0, fmt.Errorf("%s: %w", ProofError, err)
+	}
+
+	for _, sign := range bxhProof.MultiSign {
+		addr, err := recoverSignAddress(sign, hash[:])
+		if err != nil {
+			pl.logger.Warnf("recover sign address failed: %s", err.Error())
+			continue
 		}
-		delete(m, v)
-		addr := types.NewAddressByStr(v)
-		ok, _ := asym.VerifyWithType(sign, hash[:], *addr)
-		if ok {
-			counter++
+
+		val := addr.String()
+		_, ok := m[val]
+		if !ok {
+			pl.logger.Warnf("wrong validator: %s", val)
+			continue
 		}
+
+		delete(m, val)
+		counter++
 		if counter > threshold {
 			return true, 0, nil
 		}
 	}
 	return false, 0, fmt.Errorf("%s: multi signs verify fail, counter: %d", ProofError, counter)
+}
+
+func recoverSignAddress(sig, digest []byte) (*types.Address, error) {
+	pubKeyBytes, err := ecdsa.Ecrecover(digest, sig)
+	if err != nil {
+		return nil, err
+	}
+	pubkey, err := ecdsa.UnmarshalPublicKey(pubKeyBytes, crypto.Secp256k1)
+	if err != nil {
+		return nil, err
+	}
+
+	return pubkey.Address()
 }
 
 func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, uint64, error) {
@@ -153,7 +177,7 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, uint64, er
 		if err != nil {
 			return false, 0, err
 		}
-		return verifyMultiSign(app, ibtp, proof)
+		return pl.verifyMultiSign(app, ibtp, proof)
 	}
 
 	app, err := pl.getAppchain(chainID)
