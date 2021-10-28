@@ -186,6 +186,7 @@ func TestGovernance_QueryProposal(t *testing.T) {
 	mockStub.EXPECT().Query(gomock.Any()).Return(true, pDatas).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "GetAdminRoles").Return(boltvm.Error("", "")).Times(1)
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "GetAdminRoles").Return(boltvm.Success(adminsData)).AnyTimes()
+	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 
 	res := g.GetProposal(idExistent)
 	assert.True(t, res.Ok, string(res.Result))
@@ -294,6 +295,10 @@ func TestGovernance_Vote(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	mockStub := mock_stub.NewMockStub(mockCtl)
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
+	mockStub.EXPECT().GetObject(ProposalStatusKey(string(PROPOSED)), gomock.Any()).SetArg(1, *orderedmap.New()).Return(false).AnyTimes()
+	mockStub.EXPECT().GetObject(ProposalStatusKey(string(PAUSED)), gomock.Any()).SetArg(1, *orderedmap.New()).Return(false).AnyTimes()
+	mockStub.EXPECT().GetObject(ProposalStatusKey(string(APPROVED)), gomock.Any()).SetArg(1, *orderedmap.New()).Return(false).AnyTimes()
+	mockStub.EXPECT().GetObject(ProposalStatusKey(string(REJECTED)), gomock.Any()).SetArg(1, *orderedmap.New()).Return(false).AnyTimes()
 
 	g := Governance{mockStub}
 
@@ -908,6 +913,10 @@ func TestGovernance_UpdateAvaliableElectorateNum(t *testing.T) {
 		ThresholdElectorateNum: 3,
 	}
 
+	mockStub.EXPECT().GetObject(ProposalStatusKey(string(PROPOSED)), gomock.Any()).SetArg(1, *orderedmap.New()).Return(false).AnyTimes()
+	mockStub.EXPECT().GetObject(ProposalStatusKey(string(PAUSED)), gomock.Any()).SetArg(1, *orderedmap.New()).Return(false).AnyTimes()
+	mockStub.EXPECT().GetObject(ProposalStatusKey(string(APPROVED)), gomock.Any()).SetArg(1, *orderedmap.New()).Return(false).AnyTimes()
+	mockStub.EXPECT().GetObject(ProposalStatusKey(string(REJECTED)), gomock.Any()).SetArg(1, *orderedmap.New()).Return(false).AnyTimes()
 	mockStub.EXPECT().CurrentCaller().Return(noAdminAddr).Times(1)
 	mockStub.EXPECT().CurrentCaller().Return(constant.RoleContractAddr.Address().String()).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
@@ -1058,6 +1067,10 @@ func TestGovernance_UnLockLowPriorityProposal(t *testing.T) {
 		ThresholdElectorateNum: 3,
 	}
 
+	mockStub.EXPECT().GetObject(ProposalStatusKey(string(PROPOSED)), gomock.Any()).SetArg(1, *orderedmap.New()).Return(false).AnyTimes()
+	mockStub.EXPECT().GetObject(ProposalStatusKey(string(PAUSED)), gomock.Any()).SetArg(1, *orderedmap.New()).Return(false).AnyTimes()
+	mockStub.EXPECT().GetObject(ProposalStatusKey(string(APPROVED)), gomock.Any()).SetArg(1, *orderedmap.New()).Return(false).AnyTimes()
+	mockStub.EXPECT().GetObject(ProposalStatusKey(string(REJECTED)), gomock.Any()).SetArg(1, *orderedmap.New()).Return(false).AnyTimes()
 	mockStub.EXPECT().CurrentCaller().Return(noAdminAddr).Times(1)
 	mockStub.EXPECT().CurrentCaller().Return(constant.ServiceMgrContractAddr.Address().String()).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()

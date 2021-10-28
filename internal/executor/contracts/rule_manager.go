@@ -78,7 +78,7 @@ func (rm *RuleManager) checkPermission(permissions []string, appchainID string, 
 // =========== Manage does some subsequent operations when the proposal is over
 // Currently here are only update master rule events
 // extra: update :UpdateMasterRuleInfo
-func (rm *RuleManager) Manage(eventTyp, proposalResult, lastStatus, ruleAddr string, extra []byte) *boltvm.Response {
+func (rm *RuleManager) Manage(eventTyp, proposalResult, lastStatus, chainRuleID string, extra []byte) *boltvm.Response {
 	rm.RuleManager.Persister = rm.Stub
 
 	// 1. check permission: PermissionSpecific(GovernanceContractAddr)
@@ -107,7 +107,7 @@ func (rm *RuleManager) Manage(eventTyp, proposalResult, lastStatus, ruleAddr str
 		}
 
 		// 2.2 change new master status, old master rule status change may influence new master rule, so do change status after other operation
-		ok, errData = rm.RuleManager.ChangeStatus(ruleAddr, proposalResult, lastStatus, []byte(info.NewRule.ChainID))
+		ok, errData = rm.RuleManager.ChangeStatus(info.NewRule.Address, proposalResult, lastStatus, []byte(info.NewRule.ChainID))
 		if !ok {
 			return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("change new error : %s", string(errData))))
 		}
@@ -282,7 +282,7 @@ func (rm *RuleManager) UpdateMasterRule(chainID string, newMasterruleAddress, re
 		pb.String(rm.Caller()),
 		pb.String(string(event)),
 		pb.String(string(RuleMgr)),
-		pb.String(info.NewRule.Address),
+		pb.String(info.NewRule.GetChainRuleID()),
 		pb.String(string(info.NewRule.Status)),
 		pb.String(reason),
 		pb.Bytes(infoData),

@@ -11,6 +11,7 @@ import (
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/model/events"
+	"github.com/sirupsen/logrus"
 )
 
 type NodeManager struct {
@@ -286,6 +287,9 @@ func (nm *NodeManager) checkNodeInfo(node *nodemgr.Node) *boltvm.Response {
 	// 2. check vp node id
 	if node.NodeType == nodemgr.VPNode {
 		ok, data := nm.NodeManager.CountAvailable([]byte(node.NodeType))
+		nm.Logger().WithFields(logrus.Fields{
+			"num": string(data),
+		}).Debug("available node num")
 		if !ok {
 			return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Errorf("count all error: %s", string(data))))
 		}
@@ -302,7 +306,7 @@ func (nm *NodeManager) checkNodeInfo(node *nodemgr.Node) *boltvm.Response {
 	nodeInfo, err := nm.NodeManager.QueryById(node.Pid, nil)
 	// 3.1 not exist
 	if err != nil {
-		return nil
+		return boltvm.Success(nil)
 	}
 	// 3.2 exist && available
 	if nodeInfo.(*nodemgr.Node).Status != governance.GovernanceUnavailable {

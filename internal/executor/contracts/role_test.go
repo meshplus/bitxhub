@@ -48,6 +48,8 @@ func TestRoleManager_Manage(t *testing.T) {
 	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "GetNotClosedProposals").Return(boltvm.Success(proposalsData)).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "UpdateAvaliableElectorateNum", gomock.Any()).Return(boltvm.Error("", "UpdateAvaliableElectorateNum error")).Times(1)
 	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "UpdateAvaliableElectorateNum", gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+	logger := log.NewWithModule("contracts")
+	mockStub.EXPECT().Logger().Return(logger).AnyTimes()
 
 	// check permission error
 	res := rm.Manage(string(governance.EventFreeze), string(APPROVED), string(governance.GovernanceAvailable), aRoles[1].ID, nil)
@@ -59,7 +61,7 @@ func TestRoleManager_Manage(t *testing.T) {
 	res = rm.Manage(string(governance.EventFreeze), string(APPROVED), string(governance.GovernanceAvailable), aRoles[1].ID, nil)
 	assert.False(t, res.Ok, string(res.Result))
 	// unmarshal error
-	res = rm.Manage(string(governance.EventLogout), string(APPROVED), string(governance.GovernanceAvailable), aRoles[1].ID, nil)
+	res = rm.Manage(string(governance.EventLogout), string(REJECTED), string(governance.GovernanceAvailable), aRoles[1].ID, nil)
 	assert.False(t, res.Ok, string(res.Result))
 	// UpdateAvaliableElectorateNum error
 	res = rm.Manage(string(governance.EventFreeze), string(APPROVED), string(governance.GovernanceAvailable), aRoles[1].ID, nil)
@@ -67,7 +69,7 @@ func TestRoleManager_Manage(t *testing.T) {
 
 	res = rm.Manage(string(governance.EventFreeze), string(APPROVED), string(governance.GovernanceAvailable), aRoles[1].ID, nil)
 	assert.True(t, res.Ok, string(res.Result))
-	res = rm.Manage(string(governance.EventLogout), string(APPROVED), string(governance.GovernanceAvailable), aRoles[1].ID, nil)
+	res = rm.Manage(string(governance.EventLogout), string(REJECTED), string(governance.GovernanceAvailable), aRoles[1].ID, nil)
 	assert.True(t, res.Ok, string(res.Result))
 	res = rm.Manage(string(governance.EventActivate), string(APPROVED), string(governance.GovernanceAvailable), aRoles[1].ID, nil)
 	assert.True(t, res.Ok, string(res.Result))
@@ -198,7 +200,7 @@ func TestRoleManager_ActivateRole(t *testing.T) {
 }
 
 func TestRoleManager_LogoutRole(t *testing.T) {
-	rm, mockStub, gRoles, _, _, _ := rolePrepare(t)
+	rm, mockStub, gRoles, _, aRoles, _ := rolePrepare(t)
 
 	mockStub.EXPECT().CurrentCaller().Return(SUPER_ADMIN_ROLE_ID1).AnyTimes()
 	mockStub.EXPECT().Caller().Return(SUPER_ADMIN_ROLE_ID1).AnyTimes()
@@ -207,8 +209,22 @@ func TestRoleManager_LogoutRole(t *testing.T) {
 	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	logger := log.NewWithModule("contracts")
 	mockStub.EXPECT().Logger().Return(logger).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "GetNotClosedProposals").Return(boltvm.Error("", "GetNotClosedProposals error")).Times(1)
+	var proposals []*Proposal
+	proposals = append(proposals, &Proposal{
+		ElectorateList: []*Role{
+			&Role{
+				ID: aRoles[1].ID,
+			},
+		},
+	})
+	proposalsData, err := json.Marshal(proposals)
+	assert.Nil(t, err)
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "GetNotClosedProposals").Return(boltvm.Success(proposalsData)).AnyTimes()
 
 	res := rm.LogoutRole(ROLE_ID1, reason)
+	assert.False(t, res.Ok, string(res.Result))
+	res = rm.LogoutRole(ROLE_ID1, reason)
 	assert.True(t, res.Ok, string(res.Result))
 }
 

@@ -84,6 +84,9 @@ func TestAppchainManager_Query(t *testing.T) {
 
 	res = am.GetAppchainByName(chains[0].ChainName)
 	assert.Equal(t, true, res.Ok, string(res.Result))
+
+	res = am.GetAdminByChainId(chains[0].ID)
+	assert.Equal(t, true, res.Ok, string(res.Result))
 }
 
 func TestAppchainManager_Register(t *testing.T) {

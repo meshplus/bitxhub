@@ -576,10 +576,22 @@ func (g *Governance) GetNotClosedProposals() *boltvm.Response {
 	if err != nil {
 		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 	}
+	for _, p := range ret {
+		g.Logger().WithFields(logrus.Fields{
+			"proposalId":     p.Id,
+			"proposalStatus": p.Status,
+		}).Debug("get proposed proposal")
+	}
 
 	ret2, err := g.getProposalsByStatus(string(PAUSED))
 	if err != nil {
 		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
+	}
+	for _, p := range ret2 {
+		g.Logger().WithFields(logrus.Fields{
+			"proposalId":     p.Id,
+			"proposalStatus": p.Status,
+		}).Debug("get paused proposal")
 	}
 
 	ret = append(ret, ret2...)
@@ -694,10 +706,13 @@ func (g *Governance) UpdateAvaliableElectorateNum(id string, num uint64) *boltvm
 	}
 
 	p.AvaliableElectorateNum = num
+	g.Logger().WithFields(logrus.Fields{
+		"proposalId":             id,
+		"AvaliableElectorateNum": p.AvaliableElectorateNum,
+	}).Info("Update avaliable electorate num")
 	if p.AvaliableElectorateNum < p.ThresholdElectorateNum {
 		p.EndReason = ElectorateReason
-		p.Status = REJECTED
-		g.SetObject(ProposalKey(p.Id), *p)
+		g.changeProposalStatus(p, REJECTED)
 		err := g.handleResult(p)
 		if err != nil {
 			return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
@@ -868,13 +883,12 @@ func (g *Governance) unlockLowPriorityProposal(lockedProposalId string, restore 
 	}
 
 	if !restore {
-		lockP.Status = REJECTED
 		lockP.EndReason = EndReason(notRestoreReason)
+		g.changeProposalStatus(lockP, REJECTED)
 	} else {
-		lockP.Status = PROPOSED
 		nextEventType = lockP.EventType
+		g.changeProposalStatus(lockP, PROPOSED)
 	}
-	g.SetObject(ProposalKey(lockP.Id), *lockP)
 	g.Logger().WithFields(logrus.Fields{
 		"proposal": lockedProposalId,
 		"type":     lockP.Typ,
@@ -1009,11 +1023,11 @@ func (g *Governance) countVote(p *Proposal) (bool, error) {
 		return false, fmt.Errorf("this policy is not supported currently")
 	default: // SIMPLE_MAJORITY
 		if p.ApproveNum > p.AgainstNum {
-			p.Status = APPROVED
 			p.EndReason = NormalReason
+			g.changeProposalStatus(p, APPROVED)
 		} else {
-			p.Status = REJECTED
 			p.EndReason = NormalReason
+			g.changeProposalStatus(p, REJECTED)
 		}
 		g.SetObject(ProposalKey(p.Id), *p)
 		return true, nil

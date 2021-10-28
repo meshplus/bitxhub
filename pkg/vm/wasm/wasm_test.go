@@ -81,6 +81,7 @@ func initCreateContext(t *testing.T, name string) *vm.Context {
 		TransactionData: data,
 		Ledger:          ldg,
 		Tx:              tx,
+		Logger:          log.NewWithModule("contracts"),
 	}
 }
 
@@ -125,6 +126,7 @@ func initConstantsContext(t *testing.T, name string) *vm.Context {
 		CurrentHeight:   100,
 		Ledger:          ldg,
 		Tx:              tx,
+		Logger:          log.NewWithModule("contracts"),
 	}
 }
 
@@ -162,6 +164,7 @@ func initValidationContext(t *testing.T, name string) *vm.Context {
 		TransactionData: data,
 		Ledger:          ldg,
 		Tx:              tx,
+		Logger:          log.NewWithModule("contracts"),
 	}
 }
 
@@ -199,6 +202,7 @@ func initFabricContext(t *testing.T, name string) *vm.Context {
 		TransactionData: data,
 		Ledger:          ldg,
 		Tx:              tx,
+		Logger:          log.NewWithModule("contracts"),
 	}
 }
 
@@ -210,8 +214,10 @@ func TestDeploy(t *testing.T) {
 	wasm, err := New(ctx, imports, instances)
 	require.Nil(t, err)
 
-	_, _, err = wasm.deploy()
+	deployData, _, err := wasm.deploy()
 	require.Nil(t, err)
+	require.NotNil(t, deployData)
+	fmt.Printf("%s", string(deployData))
 }
 
 func TestExecute(t *testing.T) {

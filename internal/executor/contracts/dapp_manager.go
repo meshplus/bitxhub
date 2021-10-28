@@ -527,6 +527,10 @@ func (dm *DappManager) TransferDapp(id, newOwnerAddr, reason string) *boltvm.Res
 		return boltvm.Error(boltvm.DappIllegalTransferAddrCode, fmt.Sprintf(string(boltvm.DappIllegalTransferAddrMsg), newOwnerAddr, err.Error()))
 	}
 
+	if newOwnerAddr == dm.Caller() {
+		return boltvm.Error(boltvm.DappTransferToSelfCode, fmt.Sprintf(string(boltvm.DappTransferToSelfMsg), newOwnerAddr))
+	}
+
 	transRec := &TransferRecord{
 		From:    dm.Caller(),
 		To:      newOwnerAddr,
