@@ -781,6 +781,9 @@ func (dm *DappManager) packageDappUpdateInfo(dappID, name string, typ string, de
 			UpdateContractAddr.IsEdit = true
 		}
 	}
+	if len(oldDapp.ContractAddr) != len(contractAddr) {
+		UpdateContractAddr.IsEdit = true
+	}
 	UpdateContractAddr.NewInfo = contractAddr
 
 	// permission
@@ -794,6 +797,9 @@ func (dm *DappManager) packageDappUpdateInfo(dappID, name string, typ string, de
 		if _, ok := oldDapp.Permission[id]; !ok {
 			UpdatePermission.IsEdit = true
 		}
+	}
+	if len(oldDapp.Permission) != len(permission) {
+		UpdatePermission.IsEdit = true
 	}
 	UpdatePermission.NewInfo = permission
 
