@@ -58,28 +58,6 @@ func roleMgrCMD() cli.Command {
 				Action: registerRole,
 			},
 			cli.Command{
-				Name:  "update",
-				Usage: "update node for auditAdmin",
-				Flags: []cli.Flag{
-					cli.StringFlag{
-						Name:     "id",
-						Usage:    "Specify auditAdmin id",
-						Required: true,
-					},
-					cli.StringFlag{
-						Name:     "nodePid",
-						Usage:    "Specify node pid",
-						Required: true,
-					},
-					cli.StringFlag{
-						Name:     "reason",
-						Usage:    "Specify update reason",
-						Required: false,
-					},
-				},
-				Action: updateRole,
-			},
-			cli.Command{
 				Name:  "freeze",
 				Usage: "freeze role by role id",
 				Flags: []cli.Flag{

@@ -291,7 +291,7 @@ func getProposalsByConditions(ctx *cli.Context, keyPath string, menthod string, 
 
 func printProposal(proposals []contracts.Proposal) {
 	var table [][]string
-	table = append(table, []string{"Id", "ManagedObjectId", "Type", "EventType", "Status", "A/R", "IE/AE/TE", "Special/Super", "CreateTime", "Reason", "EndReason"})
+	table = append(table, []string{"Id", "ManagedObjectId", "Type", "EventType", "Status", "A/R", "IE/AE/TE", "Special/Super", "CreateTime", "Reason", "EndReason", "extra"})
 
 	for _, pro := range proposals {
 		table = append(table, []string{
@@ -306,6 +306,7 @@ func printProposal(proposals []contracts.Proposal) {
 			strconv.Itoa(int(pro.CreateTime)),
 			pro.SubmitReason,
 			string(pro.EndReason),
+			string(pro.Extra),
 		})
 	}
 
@@ -392,6 +393,9 @@ func invokeBVMContract(ctx *cli.Context, contractAddr string, method string, arg
 		return nil, fmt.Errorf("jsonpb unmarshal receipt error: %w", err)
 	}
 
+	if !receipt.IsSuccess() {
+		return nil, fmt.Errorf(string(receipt.Ret))
+	}
 	return receipt, nil
 }
 
@@ -413,5 +417,8 @@ func invokeBVMContractBySendView(ctx *cli.Context, contractAddr string, method s
 		return nil, fmt.Errorf("jsonpb unmarshal receipt error: %w", err)
 	}
 
+	if !receipt.IsSuccess() {
+		return nil, fmt.Errorf(string(receipt.Ret))
+	}
 	return receipt, nil
 }

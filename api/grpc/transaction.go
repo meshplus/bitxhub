@@ -90,7 +90,7 @@ func (cbs *ChainBrokerService) sendTransaction(tx *pb.BxhTransaction) (string, e
 		return "", err
 	}
 
-	return tx.TransactionHash.String(), nil
+	return tx.GetHash().String(), nil
 }
 
 func (cbs *ChainBrokerService) sendView(tx *pb.BxhTransaction) (*pb.Receipt, error) {

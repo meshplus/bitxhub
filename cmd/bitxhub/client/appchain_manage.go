@@ -3,6 +3,7 @@ package client
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 
 	"github.com/fatih/color"
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
@@ -17,6 +18,18 @@ func appchainMgrCMD() cli.Command {
 		Name:  "chain",
 		Usage: "appchain manage command",
 		Subcommands: cli.Commands{
+			cli.Command{
+				Name:  "info",
+				Usage: "query chain info by chain name",
+				Flags: []cli.Flag{
+					cli.StringFlag{
+						Name:     "name",
+						Usage:    "Specify chain name",
+						Required: true,
+					},
+				},
+				Action: getChainByName,
+			},
 			cli.Command{
 				Name:  "status",
 				Usage: "query chain status by chain id",
@@ -65,6 +78,42 @@ func appchainMgrCMD() cli.Command {
 			},
 		},
 	}
+}
+
+func getChainByName(ctx *cli.Context) error {
+	name := ctx.String("name")
+
+	receipt, err := invokeBVMContractBySendView(ctx, constant.AppchainMgrContractAddr.String(), "GetAppchainByName", pb.String(name))
+	if err != nil {
+		return err
+	}
+
+	if receipt.IsSuccess() {
+		chain := &appchainMgr.Appchain{}
+		if err := json.Unmarshal(receipt.Ret, chain); err != nil {
+			return fmt.Errorf("unmarshal receipt error: %w", err)
+		}
+		printChain(chain)
+	} else {
+		color.Red("get chain error: %s\n", string(receipt.Ret))
+	}
+	return nil
+}
+
+func printChain(chain *appchainMgr.Appchain) {
+	var table [][]string
+	table = append(table, []string{"Id", "Name", "Type", "Broker", "Status", "Desc", "Version"})
+
+	table = append(table, []string{
+		chain.ID,
+		chain.ChainName,
+		chain.ChainType,
+		string(chain.Broker),
+		string(chain.Status),
+		chain.Desc,
+		strconv.Itoa(int(chain.Version)),
+	})
+	PrintTable(table, true)
 }
 
 func getChainStatusById(ctx *cli.Context) error {

@@ -118,11 +118,6 @@ func dappMgrCMD() cli.Command {
 						Required: false,
 					},
 					cli.StringFlag{
-						Name:     "type",
-						Usage:    "Specify dapp type, one of tool, application, game and others",
-						Required: false,
-					},
-					cli.StringFlag{
 						Name:     "desc",
 						Usage:    "Specify dapp description",
 						Required: false,
@@ -267,7 +262,7 @@ func getDappStatusById(ctx *cli.Context) error {
 func getAllDapps(ctx *cli.Context) error {
 	receipt, err := invokeBVMContractBySendView(ctx, constant.DappMgrContractAddr.String(), "GetAllDapps")
 	if err != nil {
-		return err
+		return fmt.Errorf("GetAllDapps error: %v", err)
 	}
 
 	if receipt.IsSuccess() {
@@ -358,7 +353,6 @@ func registerDapp(ctx *cli.Context) error {
 func updateDapp(ctx *cli.Context) error {
 	id := ctx.String("id")
 	name := ctx.String("name")
-	typ := ctx.String("type")
 	desc := ctx.String("desc")
 	url := ctx.String("url")
 	contractAddrs := strings.TrimSpace(ctx.String("contractAddrs"))
@@ -378,9 +372,6 @@ func updateDapp(ctx *cli.Context) error {
 		}
 		if name == "" {
 			name = dapp.Name
-		}
-		if typ == "" {
-			typ = string(dapp.Type)
 		}
 		if desc == "" {
 			desc = dapp.Desc
@@ -415,7 +406,6 @@ func updateDapp(ctx *cli.Context) error {
 	receipt, err = invokeBVMContract(ctx, constant.DappMgrContractAddr.String(), "UpdateDapp",
 		pb.String(id),
 		pb.String(name),
-		pb.String(typ),
 		pb.String(desc),
 		pb.String(url),
 		pb.String(contractAddrs),
@@ -515,7 +505,7 @@ func confirmDapp(ctx *cli.Context) error {
 
 func evaluateDapp(ctx *cli.Context) error {
 	id := ctx.String("id")
-	desc := ctx.String("addr")
+	desc := ctx.String("desc")
 	score := ctx.Float64("score")
 
 	receipt, err := invokeBVMContract(ctx, constant.DappMgrContractAddr.String(), "EvaluateDapp", pb.String(id), pb.String(desc), pb.Float64(score))
@@ -533,13 +523,9 @@ func evaluateDapp(ctx *cli.Context) error {
 
 func printDapp(dapps []*contracts.Dapp) {
 	var table [][]string
-	table = append(table, []string{"Id", "Name", "Type", "Owner", "Createtime", "Score", "Status", "TranRec"})
+	table = append(table, []string{"Id", "Name", "Type", "Owner", "Createtime", "Score", "Status", "TranRec", "EvaRec"})
 
 	for _, dapp := range dapps {
-		transStr := ""
-		for _, t := range dapp.TransferRecords {
-			transStr = fmt.Sprintf("%s,%s-%s-%d", transStr, t.From, t.To, t.CreateTime)
-		}
 		table = append(table, []string{
 			dapp.DappID,
 			dapp.Name,
@@ -548,10 +534,27 @@ func printDapp(dapps []*contracts.Dapp) {
 			strconv.Itoa(int(dapp.CreateTime)),
 			strconv.FormatFloat(dapp.Score, 'g', -1, 64),
 			string(dapp.Status),
-			transStr,
+			printTransferRecords(dapp.TransferRecords),
+			printEvaluationRecords(dapp.EvaluationRecords),
 		})
 	}
 
 	fmt.Println("========================================================================================")
 	PrintTable(table, true)
+}
+
+func printTransferRecords(tr []*contracts.TransferRecord) string {
+	str := ""
+	for _, r := range tr {
+		str = fmt.Sprintf("%s\n%s, %s, %s, %d, %v", str, r.To, r.From, r.Reason, r.CreateTime, r.Confirm)
+	}
+	return str
+}
+
+func printEvaluationRecords(er map[string]*governance.EvaluationRecord) string {
+	str := ""
+	for k, v := range er {
+		str = fmt.Sprintf("%s\n%s, %s, %s, %d, %v", str, k, v.Addr, v.Desc, v.CreateTime, v.Score)
+	}
+	return str
 }

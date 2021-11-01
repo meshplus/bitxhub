@@ -4,15 +4,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"strconv"
 
-	"github.com/meshplus/bitxhub/internal/executor/contracts"
-
+	"github.com/iancoleman/orderedmap"
 	"github.com/meshplus/bitxhub-core/governance"
 	node_mgr "github.com/meshplus/bitxhub-core/node-mgr"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/executor"
+	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/repo"
 )
@@ -52,6 +53,7 @@ func Initialize(genesis *repo.Genesis, nodes []*repo.NetworkNodes, primaryN uint
 		lg.SetState(constant.GovernanceContractAddr.Address(), []byte(k), []byte(v))
 	}
 
+	nodePidMap := orderedmap.New()
 	for i := 0; i < int(primaryN); i++ {
 		node := &node_mgr.Node{
 			VPNodeId: nodes[i].ID,
@@ -65,9 +67,15 @@ func Initialize(genesis *repo.Genesis, nodes []*repo.NetworkNodes, primaryN uint
 		if err != nil {
 			return err
 		}
-		lg.SetState(constant.NodeManagerContractAddr.Address(), []byte(fmt.Sprintf("%s-%d", node_mgr.VP_NODE_ID_PREFIX, node.VPNodeId)), []byte(node.Pid))
-		lg.SetState(constant.NodeManagerContractAddr.Address(), []byte(fmt.Sprintf("%s-%s", node_mgr.NODEPREFIX, node.Pid)), nodeData)
+		lg.SetState(constant.NodeManagerContractAddr.Address(), []byte(node_mgr.VpNodeIdKey(strconv.Itoa(int(node.VPNodeId)))), []byte(node.Pid))
+		lg.SetState(constant.NodeManagerContractAddr.Address(), []byte(node_mgr.NodeKey(node.Pid)), nodeData)
+		nodePidMap.Set(node.Pid, struct{}{})
 	}
+	nodePidMapData, err := json.Marshal(nodePidMap)
+	if err != nil {
+		return err
+	}
+	lg.SetState(constant.NodeManagerContractAddr.Address(), []byte(node_mgr.NodeTypeKey(string(node_mgr.VPNode))), nodePidMapData)
 
 	lg.SetState(constant.InterchainContractAddr.Address(), []byte(contracts.BitXHubID), []byte(fmt.Sprintf("%d", genesis.ChainID)))
 

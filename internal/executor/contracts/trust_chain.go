@@ -26,7 +26,7 @@ func trustKey(key string) string {
 func (t *TrustChain) AddTrustMeta(data []byte) *boltvm.Response {
 	var trustMeta *TrustMeta
 	if err := json.Unmarshal(data, &trustMeta); err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.TrustInternalErrCode, fmt.Sprintf(string(boltvm.TrustInternalErrMsg), err.Error()))
 	}
 	if len(trustMeta.TrustContractAddr) != 0 {
 		return t.CrossInvoke(trustMeta.TrustContractAddr, trustMeta.Method, &pb.Arg{Type: pb.Arg_Bytes, Value: trustMeta.Data})
@@ -38,14 +38,14 @@ func (t *TrustChain) AddTrustMeta(data []byte) *boltvm.Response {
 func (t *TrustChain) GetTrustMeta(key []byte) *boltvm.Response {
 	var trustMeta *TrustMeta
 	if err := json.Unmarshal(key, &trustMeta); err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(boltvm.TrustInternalErrCode, fmt.Sprintf(string(boltvm.TrustInternalErrMsg), err.Error()))
 	}
 	if len(trustMeta.TrustContractAddr) != 0 {
 		return t.CrossInvoke(trustMeta.TrustContractAddr, trustMeta.Method, &pb.Arg{Type: pb.Arg_Bytes, Value: trustMeta.Data})
 	}
 	ok, data := t.Get(trustKey(trustMeta.ChainId))
 	if !ok {
-		return boltvm.Error("not found target trust meta")
+		return boltvm.Error(boltvm.TrustNonexistentTrustDataCode, fmt.Sprintf(string(boltvm.TrustNonexistentTrustDataMsg), trustMeta.ChainId))
 	}
 	return boltvm.Success(data)
 }

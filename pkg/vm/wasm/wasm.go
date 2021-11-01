@@ -13,6 +13,7 @@ import (
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub/pkg/vm"
 	metering "github.com/meshplus/go-wasm-metering"
+	"github.com/sirupsen/logrus"
 	"github.com/wasmerio/wasmer-go/wasmer"
 )
 
@@ -94,11 +95,27 @@ func (w *WasmVM) Run(input []byte, gasLimit uint64) (ret []byte, gasUsed uint64,
 }
 
 func (w *WasmVM) deploy() ([]byte, uint64, error) {
+	w.ctx.Logger.WithFields(logrus.Fields{}).Info("Rule is deploying")
 	if len(w.ctx.TransactionData.Payload) == 0 {
 		return nil, 0, fmt.Errorf("contract cannot be empty")
 	}
 
-	meteredCode, _, err := metering.MeterWASM(w.ctx.TransactionData.Payload, &metering.Options{})
+	var (
+		metaChan = make(chan []byte)
+		err      error
+	)
+
+	go func(err error) {
+		defer func() {
+			if e := recover(); e != nil {
+				err = fmt.Errorf("%v", e)
+			}
+		}()
+
+		meteredCode, _, err := metering.MeterWASM(w.ctx.TransactionData.Payload, &metering.Options{}, w.ctx.Logger)
+		metaChan <- meteredCode
+	}(err)
+	meteredCode := <-metaChan
 	if err != nil {
 		return nil, 0, err
 	}
