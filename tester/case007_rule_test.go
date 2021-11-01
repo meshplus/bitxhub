@@ -306,7 +306,7 @@ func (suite *Rule) TestUpdateMasterRule() {
 		pb.String("服务1case007"),
 		pb.String(string(service_mgr.ServiceCallContract)),
 		pb.String("intro"),
-		pb.Bool(true),
+		pb.Uint64(0),
 		pb.String(""),
 		pb.String("details"),
 		pb.String("raeson"),

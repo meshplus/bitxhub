@@ -317,7 +317,7 @@ func (suite *Interchain) registerService(privKey crypto.PrivateKey, chainID, ser
 		pb.String(serviceName),
 		pb.String(string(service_mgr.ServiceCallContract)),
 		pb.String("intro"),
-		pb.Bool(true),
+		pb.Uint64(0),
 		pb.String(blacklist),
 		pb.String("details"),
 		pb.String("raeson"),
