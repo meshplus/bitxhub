@@ -124,33 +124,33 @@ func TestServiceManager_RegisterService(t *testing.T) {
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 
 	// 1. check permission error
-	res := sm.RegisterService(services[0].ChainID, services[0].ServiceID, services[0].Name, string(services[0].Type), services[0].Intro, services[0].Ordered, "", services[0].Details, reason)
+	res := sm.RegisterService(services[0].ChainID, services[0].ServiceID, services[0].Name, string(services[0].Type), services[0].Intro, 0, "", services[0].Details, reason)
 	assert.Equal(t, false, res.Ok, string(res.Result))
 	// 2. governancePre error
-	res = sm.RegisterService(services[0].ChainID, services[0].ServiceID, services[0].Name, string(services[0].Type), services[0].Intro, services[0].Ordered, "", services[0].Details, reason)
+	res = sm.RegisterService(services[0].ChainID, services[0].ServiceID, services[0].Name, string(services[0].Type), services[0].Intro, 0, "", services[0].Details, reason)
 	assert.Equal(t, false, res.Ok, string(res.Result))
 	// 3. check appchain error
-	res = sm.RegisterService(services[0].ChainID, services[0].ServiceID, services[0].Name, string(services[0].Type), services[0].Intro, services[0].Ordered, "", services[0].Details, reason)
+	res = sm.RegisterService(services[0].ChainID, services[0].ServiceID, services[0].Name, string(services[0].Type), services[0].Intro, 0, "", services[0].Details, reason)
 	assert.Equal(t, false, res.Ok, string(res.Result))
 
 	// 4. check info error
 	// name
-	res = sm.RegisterService(services[0].ChainID, services[0].ServiceID, "", string(services[0].Type), services[0].Intro, services[0].Ordered, "00", services[0].Details, reason)
+	res = sm.RegisterService(services[0].ChainID, services[0].ServiceID, "", string(services[0].Type), services[0].Intro, 0, "00", services[0].Details, reason)
 	assert.Equal(t, false, res.Ok, string(res.Result))
-	res = sm.RegisterService(services[0].ChainID, services[0].ServiceID, services[1].Name, string(services[0].Type), services[0].Intro, services[0].Ordered, "00", services[0].Details, reason)
+	res = sm.RegisterService(services[0].ChainID, services[0].ServiceID, services[1].Name, string(services[0].Type), services[0].Intro, 0, "00", services[0].Details, reason)
 	assert.Equal(t, false, res.Ok, string(res.Result))
 	// type
-	res = sm.RegisterService(services[0].ChainID, services[0].ServiceID, services[1].Name, "123", services[0].Intro, services[0].Ordered, "00", services[0].Details, reason)
+	res = sm.RegisterService(services[0].ChainID, services[0].ServiceID, services[1].Name, "123", services[0].Intro, 0, "00", services[0].Details, reason)
 	assert.Equal(t, false, res.Ok, string(res.Result))
 	// permission
-	res = sm.RegisterService(services[0].ChainID, services[0].ServiceID, services[0].Name, string(services[0].Type), services[0].Intro, services[0].Ordered, "00", services[0].Details, reason)
+	res = sm.RegisterService(services[0].ChainID, services[0].ServiceID, services[0].Name, string(services[0].Type), services[0].Intro, 0, "00", services[0].Details, reason)
 	assert.Equal(t, false, res.Ok, string(res.Result))
 
 	// 5. submit error
-	res = sm.RegisterService(services[0].ChainID, services[0].ServiceID, services[0].Name, string(services[0].Type), services[0].Intro, services[0].Ordered, "", services[0].Details, reason)
+	res = sm.RegisterService(services[0].ChainID, services[0].ServiceID, services[0].Name, string(services[0].Type), services[0].Intro, 0, "", services[0].Details, reason)
 	assert.Equal(t, false, res.Ok, string(res.Result))
 
-	res = sm.RegisterService(services[0].ChainID, services[0].ServiceID, services[0].Name, string(services[0].Type), services[0].Intro, services[0].Ordered, "", services[0].Details, reason)
+	res = sm.RegisterService(services[0].ChainID, services[0].ServiceID, services[0].Name, string(services[0].Type), services[0].Intro, 0, "", services[0].Details, reason)
 	assert.Equal(t, true, res.Ok, string(res.Result))
 }
 

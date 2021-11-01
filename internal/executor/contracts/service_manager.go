@@ -159,7 +159,7 @@ func (sm *ServiceManager) Manage(eventTyp, proposalResult, lastStatus, objId str
 }
 
 // =========== RegisterService registers service info, returns proposal id and error
-func (sm *ServiceManager) RegisterService(chainID, serviceID, name, typ, intro string, ordered bool, permits, details, reason string) *boltvm.Response {
+func (sm *ServiceManager) RegisterService(chainID, serviceID, name, typ, intro string, ordered uint64, permits, details, reason string) *boltvm.Response {
 	sm.ServiceManager.Persister = sm.Stub
 	event := governance.EventRegister
 
@@ -180,7 +180,7 @@ func (sm *ServiceManager) RegisterService(chainID, serviceID, name, typ, intro s
 	}
 
 	// 4. check service info
-	service, err := sm.ServiceManager.PackageServiceInfo(chainID, serviceID, name, typ, intro, ordered, permits, details, sm.GetTxTimeStamp(), governance.GovernanceRegisting)
+	service, err := sm.ServiceManager.PackageServiceInfo(chainID, serviceID, name, typ, intro, ordered == 1, permits, details, sm.GetTxTimeStamp(), governance.GovernanceRegisting)
 	if err != nil {
 		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("get service info error: %v", err)))
 	}
