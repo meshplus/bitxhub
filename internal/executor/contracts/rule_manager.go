@@ -86,57 +86,6 @@ func (rm *RuleManager) Manage(eventTyp string, proposalResult, lastStatus string
 }
 
 // Register records the rule, and then automatically binds the rule if there is no master validation rule
-func (rm *RuleManager) RegisterRule(chainId string, ruleAddress, ruleUrl, reason string) *boltvm.Response {
-	rm.RuleManager.Persister = rm.Stub
-
-	// 1. check permission
-	if err := rm.checkPermission(chainId, PermissionSelfAdmin, nil); err != nil {
-		return boltvm.Error(err.Error())
-	}
-
-	// 2. check appchain
-	if res := rm.CrossInvoke(constant.AppchainMgrContractAddr.String(), "IsAvailable", pb.String(chainId)); !res.Ok {
-		return boltvm.Error("cross invoke IsAvailable error: " + string(res.Result))
-	}
-
-	// 3. check rule
-	if err := rm.checkRuleAddress(ruleAddress); err != nil {
-		return boltvm.Error(err.Error())
-	}
-
-	// 4. register
-	ok, data := rm.RuleManager.Register(chainId, ruleAddress, ruleUrl)
-	if !ok {
-		return boltvm.Error("register error: " + string(data))
-	}
-
-	registerRes := &governance.RegisterResult{}
-	if err := json.Unmarshal(data, registerRes); err != nil {
-		return boltvm.Error("unmarshal error: " + err.Error())
-	}
-	if registerRes.IsRegistered {
-		return boltvm.Error("rule has registered, chain id: " + chainId + ", rule addr: " + ruleAddress)
-	}
-
-	// 5. determine whether to bind, if not bind:
-	// -  existing master validation rules
-	// -  there is already rule in binding
-	if ok, _ := rm.RuleManager.BindPre(chainId, ruleAddress, false); !ok {
-		return getGovernanceRet("", nil)
-	}
-
-	// 6. submit proposal
-	// 7. change status
-	return rm.bindRule(&UpdateMasterRuleInfo{
-		NewRule: &ruleMgr.Rule{
-			Address: ruleAddress,
-			ChainId: chainId,
-			Status:  governance.GovernanceUnavailable,
-		},
-	}, governance.EventBind, reason)
-}
-
-// Register records the rule, and then automatically binds the rule if there is no master validation rule
 func (rm *RuleManager) RegisterRuleV2(chainId, ruleAddress, ruleUrl string) *boltvm.Response {
 	rm.RuleManager.Persister = rm.Stub
 

@@ -10,6 +10,7 @@ import (
 
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/governance"
+	"github.com/meshplus/bitxhub-core/validator"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/types"
@@ -82,8 +83,10 @@ func (suite *RegisterAppchain) TestRegisterAppchain() {
 		//pb.String(hexutil.Encode(pub)),
 		pb.String(base64.StdEncoding.EncodeToString(pub)),
 		pb.String("reason"),
+		pb.String(validator.HappyRuleAddr),
+		pb.String(""),
 	}
-	ret, err := invokeBVMContract(suite.api, suite.privKey, suite.normalNonce, constant.AppchainMgrContractAddr.Address(), "Register", args...)
+	ret, err := invokeBVMContract(suite.api, suite.privKey, suite.normalNonce, constant.AppchainMgrContractAddr.Address(), "RegisterV2", args...)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	suite.normalNonce++
@@ -104,8 +107,10 @@ func (suite *RegisterAppchain) TestRegisterAppchain() {
 		pb.String("1.8"),
 		pb.String(base64.StdEncoding.EncodeToString(pub2)),
 		pb.String("reason"),
+		pb.String(validator.HappyRuleAddr),
+		pb.String(""),
 	}
-	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "Register", args...)
+	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "RegisterV2", args...)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k2Nonce++
@@ -149,8 +154,10 @@ func (suite *RegisterAppchain) TestRegisterAppchain_NoPubKey() {
 		pb.String("1.8"),
 		pb.String(""),
 		pb.String("reason"),
+		pb.String(validator.HappyRuleAddr),
+		pb.String(""),
 	}
-	ret, err := invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "Register", args...)
+	ret, err := invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "RegisterV2", args...)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k2Nonce++
@@ -360,8 +367,10 @@ func (suite *RegisterAppchain) TestFetchAppchains() {
 		pb.String("1.8"),
 		pb.String(base64.StdEncoding.EncodeToString(pub1)),
 		pb.String("reason"),
+		pb.String(validator.HappyRuleAddr),
+		pb.String(""),
 	}
-	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "Register", args...)
+	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "RegisterV2", args...)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k1Nonce++
@@ -381,8 +390,10 @@ func (suite *RegisterAppchain) TestFetchAppchains() {
 		pb.String("1.4"),
 		pb.String(base64.StdEncoding.EncodeToString(pub2)),
 		pb.String("reason"),
+		pb.String(validator.HappyRuleAddr),
+		pb.String(""),
 	}
-	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "Register", args...)
+	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "RegisterV2", args...)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	suite.Require().Nil(err)
 	k2Nonce++
@@ -452,8 +463,10 @@ func (suite *RegisterAppchain) TestGetPubKeyByChainID() {
 		pb.String("1.8"),
 		pb.String(base64.StdEncoding.EncodeToString(pub1)),
 		pb.String("reason"),
+		pb.String(validator.HappyRuleAddr),
+		pb.String(""),
 	}
-	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "Register", args...)
+	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "RegisterV2", args...)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k1Nonce++
@@ -470,8 +483,10 @@ func (suite *RegisterAppchain) TestGetPubKeyByChainID() {
 		pb.String("1.4"),
 		pb.String(base64.StdEncoding.EncodeToString(pub2)),
 		pb.String("reason"),
+		pb.String(validator.HappyRuleAddr),
+		pb.String(""),
 	}
-	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "Register", args...)
+	ret, err = invokeBVMContract(suite.api, k2, k2Nonce, constant.AppchainMgrContractAddr.Address(), "RegisterV2", args...)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	suite.Require().Nil(err)
 	k2Nonce++
@@ -518,8 +533,10 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 		pb.String("1.8"),
 		pb.String(base64.StdEncoding.EncodeToString(pub1)),
 		pb.String("reason"),
+		pb.String(validator.HappyRuleAddr),
+		pb.String(""),
 	}
-	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "Register", args...)
+	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "RegisterV2", args...)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k1Nonce++
@@ -545,8 +562,10 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 		pb.String("1.0"),
 		pb.String(base64.StdEncoding.EncodeToString(pub1)),
 		pb.String("reason"),
+		pb.String(validator.HappyRuleAddr),
+		pb.String(""),
 	}
-	ret, err = invokeBVMContract(suite.api, priAdmin, adminNonce, constant.AppchainMgrContractAddr.Address(), "Register", args...)
+	ret, err = invokeBVMContract(suite.api, priAdmin, adminNonce, constant.AppchainMgrContractAddr.Address(), "RegisterV2", args...)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	adminNonce++

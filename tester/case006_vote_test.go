@@ -9,6 +9,7 @@ import (
 
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/governance"
+	"github.com/meshplus/bitxhub-core/validator"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-model/constant"
@@ -68,7 +69,7 @@ func (suite *Governance) TestGovernance() {
 	adminNonce1 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin1.String())
 
 	// 1. Register ==============================================
-	ret, err := invokeBVMContract(suite.api, appchainPri, appchainNonce, constant.AppchainMgrContractAddr.Address(), "Register",
+	ret, err := invokeBVMContract(suite.api, appchainPri, appchainNonce, constant.AppchainMgrContractAddr.Address(), "RegisterV2",
 		pb.String(fmt.Sprintf("appchain%s", addr.String())),
 		pb.String(docAddr),
 		pb.String(docHash),
@@ -80,6 +81,8 @@ func (suite *Governance) TestGovernance() {
 		pb.String("1.8"),
 		pb.String(base64.StdEncoding.EncodeToString(appchainPub)),
 		pb.String("reason"),
+		pb.String(validator.HappyRuleAddr),
+		pb.String(""),
 	)
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
@@ -91,7 +94,7 @@ func (suite *Governance) TestGovernance() {
 	registerProposalId := gRet.ProposalID
 
 	// repeated registration
-	ret, err = invokeBVMContract(suite.api, appchainPri, appchainNonce, constant.AppchainMgrContractAddr.Address(), "Register",
+	ret, err = invokeBVMContract(suite.api, appchainPri, appchainNonce, constant.AppchainMgrContractAddr.Address(), "RegisterV2",
 		pb.String(fmt.Sprintf("appchain%s", addr.String())),
 		pb.String(docAddr),
 		pb.String(docHash),
@@ -103,6 +106,8 @@ func (suite *Governance) TestGovernance() {
 		pb.String("1.8"),
 		pb.String(string(appchainPub)),
 		pb.String("reason"),
+		pb.String(validator.HappyRuleAddr),
+		pb.String(""),
 	)
 	suite.Require().Nil(err)
 	suite.Require().False(ret.IsSuccess(), string(ret.Ret))
