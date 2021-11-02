@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/meshplus/bitxhub-model/pb"
@@ -30,7 +31,7 @@ func (cbs *ChainBrokerService) GetMultiSigns(ctx context.Context, req *pb.GetMul
 			"id":  req.Content,
 			"err": err.Error(),
 		}).Errorf("Get sign on current node")
-		return nil, err
+		return nil, fmt.Errorf("get sign on current node failed: %w", err)
 	} else {
 		result[address] = sign
 	}

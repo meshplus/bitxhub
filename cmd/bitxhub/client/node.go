@@ -17,10 +17,7 @@ func validatorsCMD() cli.Command {
 }
 
 func getValidators(ctx *cli.Context) error {
-	url, err := getURL(ctx, "info?type=2")
-	if err != nil {
-		return err
-	}
+	url := getURL(ctx, "info?type=2")
 
 	data, err := httpGet(ctx, url)
 	if err != nil {
@@ -62,16 +59,13 @@ func delVPNode(ctx *cli.Context) error {
 		return fmt.Errorf("please input pid")
 	}
 
-	url, err := getURL(ctx, "delvpnode")
-	if err != nil {
-		return err
-	}
+	url := getURL(ctx, "delvpnode")
 
 	p := pb.DelVPNodeRequest{Pid: pid}
 	reqData, err := json.Marshal(p)
 	data, err := httpPost(ctx, url, reqData)
 	if err != nil {
-		return err
+		return fmt.Errorf("httpPost %s to url %s failed: %w", string(reqData), url, err)
 	}
 
 	fmt.Println(string(data))

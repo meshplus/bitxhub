@@ -135,7 +135,7 @@ func (swarm *Swarm) Start() error {
 	swarm.p2p.SetMessageHandler(swarm.handleMessage)
 
 	if err := swarm.p2p.Start(); err != nil {
-		return err
+		return fmt.Errorf("start p2p failed: %w", err)
 	}
 
 	for id, addr := range swarm.multiAddrs {
@@ -157,7 +157,7 @@ func (swarm *Swarm) Start() error {
 							"node":  id,
 							"error": err,
 						}).Error("Connect failed")
-						return err
+						return fmt.Errorf("connect failed: %w", err)
 					}
 
 					swarm.logger.WithFields(logrus.Fields{
@@ -238,7 +238,7 @@ func (swarm *Swarm) AsyncSend(id orderPeerMgr.KeyType, msg *pb.Message) error {
 
 	data, err := msg.Marshal()
 	if err != nil {
-		return err
+		return fmt.Errorf("marshal message error: %w", err)
 	}
 	return swarm.p2p.AsyncSend(addr, data)
 }
@@ -246,7 +246,7 @@ func (swarm *Swarm) AsyncSend(id orderPeerMgr.KeyType, msg *pb.Message) error {
 func (swarm *Swarm) SendWithStream(s network.Stream, msg *pb.Message) error {
 	data, err := msg.Marshal()
 	if err != nil {
-		return err
+		return fmt.Errorf("marshal message error: %w", err)
 	}
 
 	return s.AsyncSend(data)
@@ -263,7 +263,7 @@ func (swarm *Swarm) Send(id orderPeerMgr.KeyType, msg *pb.Message) (*pb.Message,
 
 	data, err := msg.Marshal()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("marshal message error: %w", err)
 	}
 
 	ret, err := swarm.p2p.Send(addr, data)
@@ -273,7 +273,7 @@ func (swarm *Swarm) Send(id orderPeerMgr.KeyType, msg *pb.Message) (*pb.Message,
 
 	m := &pb.Message{}
 	if err := m.Unmarshal(ret); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshal message error: %w", err)
 	}
 
 	return m, nil
@@ -297,7 +297,7 @@ func (swarm *Swarm) Broadcast(msg *pb.Message) error {
 
 	data, err := msg.Marshal()
 	if err != nil {
-		return err
+		return fmt.Errorf("marshal message error: %w", err)
 	}
 
 	return swarm.p2p.Broadcast(addrs, data)
@@ -360,7 +360,7 @@ func (swarm *Swarm) AddNode(newNodeID uint64, vpInfo *pb.VpInfo) {
 	swarm.routers[newNodeID] = vpInfo
 	addInfo, err := constructMultiaddr(vpInfo)
 	if err != nil {
-		swarm.logger.Error("Construct AddrInfo failed")
+		swarm.logger.Errorf("Construct AddrInfo failed: %s", err.Error())
 		return
 	}
 	swarm.connectedPeers.Store(newNodeID, addInfo)
@@ -498,7 +498,7 @@ func constructMultiaddr(vpInfo *pb.VpInfo) (*peer.AddrInfo, error) {
 
 	addrInfo, err := peer.AddrInfoFromP2pAddr(addrs[0])
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("convert multiaddr to addrinfo failed: %w", err)
 	}
 	return addrInfo, nil
 }
@@ -515,14 +515,14 @@ func (swarm *Swarm) ReConfig(config interface{}) error {
 	case *repo.NetworkConfig:
 		config := config.(*repo.NetworkConfig)
 		if err := swarm.Stop(); err != nil {
-			return err
+			return fmt.Errorf("stop swarm failed: %w", err)
 		}
 		swarm.repo.NetworkConfig = config
 		if err := swarm.init(); err != nil {
-			panic(err)
+			return fmt.Errorf("init swarm failed: %w", err)
 		}
 		if err := swarm.Start(); err != nil {
-			return err
+			return fmt.Errorf("start swarm failed: %w", err)
 		}
 	}
 	return nil

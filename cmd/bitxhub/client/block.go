@@ -28,20 +28,17 @@ func getBlock(ctx *cli.Context) error {
 	}
 
 	if err := getBlockByHeight(ctx, height); err != nil {
-		return err
+		return fmt.Errorf("get block with height %d failed: %w", height, err)
 	}
 
 	return nil
 }
 
 func getBlockByHeight(ctx *cli.Context, height uint64) error {
-	url, err := getURL(ctx, fmt.Sprintf("block?type=0&value=%d", height))
-	if err != nil {
-		return err
-	}
+	url := getURL(ctx, fmt.Sprintf("block?type=0&value=%d", height))
 	data, err := httpGet(ctx, url)
 	if err != nil {
-		return err
+		return fmt.Errorf("httpGet from url %s failed: %w", url, err)
 	}
 
 	fmt.Println(string(data))
@@ -50,13 +47,10 @@ func getBlockByHeight(ctx *cli.Context, height uint64) error {
 }
 
 func getBlockByHash(ctx *cli.Context, hash string) error {
-	url, err := getURL(ctx, fmt.Sprintf("block?type=1&value=%s", hash))
-	if err != nil {
-		return err
-	}
+	url := getURL(ctx, fmt.Sprintf("block?type=1&value=%s", hash))
 	data, err := httpGet(ctx, url)
 	if err != nil {
-		return err
+		return fmt.Errorf("httpGet from url %s failed: %w", url, err)
 	}
 
 	fmt.Println(string(data))

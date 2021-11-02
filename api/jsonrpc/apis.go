@@ -1,6 +1,8 @@
 package jsonrpc
 
 import (
+	"fmt"
+
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/meshplus/bitxhub/api/jsonrpc/namespaces/eth"
 	"github.com/meshplus/bitxhub/api/jsonrpc/namespaces/eth/filters"
@@ -26,7 +28,7 @@ func GetAPIs(config *repo.Config, api api.CoreAPI, logger logrus.FieldLogger) ([
 
 	ethAPI, err := eth.NewAPI(config, api, logger)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("init ethereum api failed: %w", err)
 	}
 
 	apis = append(apis,

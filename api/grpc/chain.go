@@ -3,6 +3,7 @@ package grpc
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/meshplus/bitxhub-model/pb"
 )
@@ -26,7 +27,7 @@ func GetValidators(cbs *ChainBrokerService) (*pb.Response, error) {
 
 	v, err := json.Marshal(addresses)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("marshal admin adresses error: %w", err)
 	}
 	return &pb.Response{
 		Data: v,

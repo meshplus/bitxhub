@@ -54,12 +54,12 @@ func (l *ChainLedgerImpl) PutBlock(height uint64, block *pb.Block) error {
 func (l *ChainLedgerImpl) GetBlock(height uint64) (*pb.Block, error) {
 	data, err := l.bf.Get(blockfile.BlockFileBodiesTable, height)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get bodies with height %d from blockfile failed: %w", height, err)
 	}
 
 	block := &pb.Block{}
 	if err := block.Unmarshal(data); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshal block error: %w", err)
 	}
 
 	txHashesData := l.blockchainStore.Get(compositeKey(blockTxSetKey, height))
@@ -68,16 +68,16 @@ func (l *ChainLedgerImpl) GetBlock(height uint64) (*pb.Block, error) {
 	}
 	txHashes := make([]*types.Hash, 0)
 	if err := json.Unmarshal(txHashesData, &txHashes); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshal tx hash data error: %w", err)
 	}
 
 	txs := &pb.Transactions{}
 	txsBytes, err := l.bf.Get(blockfile.BlockFileTXsTable, height)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get transactions with height %d from blockfile failed: %w", height, err)
 	}
 	if err := txs.Unmarshal(txsBytes); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshal txs bytes error: %w", err)
 	}
 
 	block.Transactions = txs
@@ -97,7 +97,7 @@ func (l *ChainLedgerImpl) GetBlockHash(height uint64) *types.Hash {
 func (l *ChainLedgerImpl) GetBlockSign(height uint64) ([]byte, error) {
 	block, err := l.GetBlock(height)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get block with height %d failed: %w", height, err)
 	}
 
 	return block.Signature, nil
@@ -126,15 +126,15 @@ func (l *ChainLedgerImpl) GetTransaction(hash *types.Hash) (pb.Transaction, erro
 	}
 	meta := &pb.TransactionMeta{}
 	if err := meta.Unmarshal(metaBytes); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshal transaction meta bytes error: %w", err)
 	}
 	txsBytes, err := l.bf.Get(blockfile.BlockFileTXsTable, meta.BlockHeight)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get transactions with height %d from blockfile failed: %w", meta.BlockHeight, err)
 	}
 	txs := &pb.Transactions{}
 	if err := txs.Unmarshal(txsBytes); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshal txs bytes error: %w", err)
 	}
 
 	return txs.Transactions[meta.Index], nil
@@ -147,7 +147,7 @@ func (l *ChainLedgerImpl) GetTransactionCount(height uint64) (uint64, error) {
 	}
 	txHashes := make([]types.Hash, 0)
 	if err := json.Unmarshal(txHashesData, &txHashes); err != nil {
-		return 0, err
+		return 0, fmt.Errorf("unmarshal tx hash data error: %w", err)
 	}
 
 	return uint64(len(txHashes)), nil
@@ -162,7 +162,7 @@ func (l *ChainLedgerImpl) GetTransactionMeta(hash *types.Hash) (*pb.TransactionM
 
 	meta := &pb.TransactionMeta{}
 	if err := meta.Unmarshal(data); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshal transaction meta error: %w", err)
 	}
 
 	return meta, nil
@@ -176,15 +176,15 @@ func (l *ChainLedgerImpl) GetReceipt(hash *types.Hash) (*pb.Receipt, error) {
 	}
 	meta := &pb.TransactionMeta{}
 	if err := meta.Unmarshal(metaBytes); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshal transaction meta bytes error: %w", err)
 	}
 	rsBytes, err := l.bf.Get(blockfile.BlockFileReceiptTable, meta.BlockHeight)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get receipts with height %d from blockfile failed: %w", meta.BlockHeight, err)
 	}
 	rs := &pb.Receipts{}
 	if err := rs.Unmarshal(rsBytes); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshal receipt bytes error: %w", err)
 	}
 
 	return rs.Receipts[meta.Index], nil
@@ -202,22 +202,22 @@ func (l *ChainLedgerImpl) PersistExecutionResult(block *pb.Block, receipts []*pb
 
 	rs, err := l.prepareReceipts(batcher, block, receipts)
 	if err != nil {
-		return err
+		return fmt.Errorf("preapare receipts failed: %w", err)
 	}
 
 	ts, err := l.prepareTransactions(batcher, block)
 	if err != nil {
-		return err
+		return fmt.Errorf("prepare transactions failed: %w", err)
 	}
 
 	b, err := l.prepareBlock(batcher, block)
 	if err != nil {
-		return err
+		return fmt.Errorf("prepare block failed: %w", err)
 	}
 
 	im, err := interchainMeta.Marshal()
 	if err != nil {
-		return err
+		return fmt.Errorf("marshal interchain meta error: %w", err)
 	}
 
 	// update chain meta in cache
@@ -233,11 +233,11 @@ func (l *ChainLedgerImpl) PersistExecutionResult(block *pb.Block, receipts []*pb
 	}
 
 	if err := l.bf.AppendBlock(l.chainMeta.Height, block.BlockHash.Bytes(), b, rs, ts, im); err != nil {
-		return err
+		return fmt.Errorf("append block with height %d to blockfile failed: %w", l.chainMeta.Height, err)
 	}
 
 	if err := l.persistChainMeta(batcher, meta); err != nil {
-		return err
+		return fmt.Errorf("persist chain meta failed: %w", err)
 	}
 
 	batcher.Commit()
@@ -283,12 +283,12 @@ func (l *ChainLedgerImpl) LoadChainMeta() *pb.ChainMeta {
 func (l *ChainLedgerImpl) GetInterchainMeta(height uint64) (*pb.InterchainMeta, error) {
 	data, err := l.bf.Get(blockfile.BlockFileInterchainTable, height)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get interchain info with height %d from blockfile failed: %w", height, err)
 	}
 
 	meta := &pb.InterchainMeta{}
 	if err := meta.Unmarshal(data); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshal interchain meta error: %w", err)
 	}
 
 	return meta, nil
@@ -325,7 +325,7 @@ func (l *ChainLedgerImpl) prepareBlock(batcher storage.Batch, block *pb.Block) (
 	// Generate block header signature
 	signed, err := l.repo.Key.PrivKey.Sign(block.BlockHash.Bytes())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("sign block %s failed: %w", block.BlockHash.String(), err)
 	}
 
 	block.Signature = signed
@@ -339,7 +339,7 @@ func (l *ChainLedgerImpl) prepareBlock(batcher storage.Batch, block *pb.Block) (
 	}
 	bs, err := storedBlock.Marshal()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("marshal stored block error: %w", err)
 	}
 
 	height := block.BlockHeader.Number
@@ -351,7 +351,7 @@ func (l *ChainLedgerImpl) prepareBlock(batcher storage.Batch, block *pb.Block) (
 
 	data, err := json.Marshal(txHashes)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("marshal tx hash error: %w", err)
 	}
 
 	batcher.Put(compositeKey(blockTxSetKey, height), data)
@@ -366,7 +366,7 @@ func (l *ChainLedgerImpl) prepareBlock(batcher storage.Batch, block *pb.Block) (
 func (l *ChainLedgerImpl) persistChainMeta(batcher storage.Batch, meta *pb.ChainMeta) error {
 	data, err := meta.Marshal()
 	if err != nil {
-		return err
+		return fmt.Errorf("marshal chain meta error: %w", err)
 	}
 
 	batcher.Put([]byte(chainMetaKey), data)
@@ -377,15 +377,15 @@ func (l *ChainLedgerImpl) persistChainMeta(batcher storage.Batch, meta *pb.Chain
 func (l *ChainLedgerImpl) removeChainDataOnBlock(batch storage.Batch, height uint64) (uint64, error) {
 	block, err := l.GetBlock(height)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("get block with height %d failed: %w", height, err)
 	}
 	interchainMeta, err := l.GetInterchainMeta(height)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("get interchain meta with height %d failed: %w", height, err)
 	}
 
 	if err := l.bf.TruncateBlocks(height - 1); err != nil {
-		return 0, err
+		return 0, fmt.Errorf("truncate blocks failed: %w", err)
 	}
 
 	batch.Delete(compositeKey(blockTxSetKey, height))
@@ -415,7 +415,7 @@ func (l *ChainLedgerImpl) RollbackBlockChain(height uint64) error {
 	for i := meta.Height; i > height; i-- {
 		count, err := l.removeChainDataOnBlock(batch, i)
 		if err != nil {
-			return err
+			return fmt.Errorf("remove chain data on block %d failed: %w", i, err)
 		}
 		meta.InterchainTxCount -= count
 	}
@@ -426,7 +426,7 @@ func (l *ChainLedgerImpl) RollbackBlockChain(height uint64) error {
 	} else {
 		block, err := l.GetBlock(height)
 		if err != nil {
-			return err
+			return fmt.Errorf("get block with height %d failed: %w", height, err)
 		}
 		meta = &pb.ChainMeta{
 			Height:            block.BlockHeader.Number,
@@ -435,7 +435,7 @@ func (l *ChainLedgerImpl) RollbackBlockChain(height uint64) error {
 		}
 
 		if err := l.persistChainMeta(batch, meta); err != nil {
-			return err
+			return fmt.Errorf("persist chain meta failed: %w", err)
 		}
 	}
 

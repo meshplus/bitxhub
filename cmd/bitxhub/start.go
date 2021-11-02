@@ -95,7 +95,7 @@ func start(ctx *cli.Context) error {
 
 	bxh, err := app.NewBitXHub(repo, orderPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("init bitxhub failed: %w", err)
 	}
 
 	monitor, err := profile.NewMonitor(repo.Config)
@@ -127,7 +127,7 @@ func start(ctx *cli.Context) error {
 	}
 
 	if err := b.Start(); err != nil {
-		return err
+		return fmt.Errorf("start chain broker service failed: %w", err)
 	}
 
 	// start json-rpc service
@@ -137,7 +137,7 @@ func start(ctx *cli.Context) error {
 	}
 
 	if err := cbs.Start(); err != nil {
-		return err
+		return fmt.Errorf("start chain broker service failed: %w", err)
 	}
 
 	gw := gateway.NewGateway(repo.Config)
@@ -156,7 +156,7 @@ func start(ctx *cli.Context) error {
 	handleShutdown(bxh, &wg)
 
 	if err := bxh.Start(); err != nil {
-		return err
+		return fmt.Errorf("start bitxhub failed: %w", err)
 	}
 
 	wg.Wait()

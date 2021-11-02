@@ -90,29 +90,32 @@ func (g *Gateway) Start() error {
 	g.logger.WithField("port", g.config.Port.Gateway).Info("Gateway service started")
 	if g.certFile != "" || g.keyFile != "" {
 		cert, err := tls.LoadX509KeyPair(g.gatewayCertFile, g.gatewayKeyFile)
+		if err != nil {
+			return fmt.Errorf("load tls key failed: %w", err)
+		}
 		cred := credentials.NewTLS(&tls.Config{
 			Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true})
 
 		conn, err := grpc.DialContext(g.ctx, g.endpoint, grpc.WithTransportCredentials(cred))
 		if err != nil {
-			return err
+			return fmt.Errorf("dial context failed: %w", err)
 		}
 		err = pb.RegisterChainBrokerHandler(g.ctx, g.mux, conn)
 		if err != nil {
-			return err
+			return fmt.Errorf("register chain broker handler failed: %w", err)
 		}
 
 		go func() {
 			err := g.server.ListenAndServeTLS(g.certFile, g.keyFile)
 			if err != nil {
-				g.logger.Error(err)
+				g.logger.Errorf("ListenAndServeTLS failed: %s", err.Error())
 			}
 		}()
 	} else {
 		opts := []grpc.DialOption{grpc.WithInsecure()}
 		err := pb.RegisterChainBrokerHandlerFromEndpoint(g.ctx, g.mux, g.endpoint, opts)
 		if err != nil {
-			return err
+			return fmt.Errorf("register chain broker handler from endpoint %s failed: %w", g.endpoint, err)
 		}
 
 		go func() {
@@ -141,7 +144,7 @@ func (g *Gateway) ReConfig(config *repo.Config) error {
 		!equalAllowedOrigins(g.config.AllowedOrigins, config.AllowedOrigins) {
 
 		if err := g.Stop(); err != nil {
-			return err
+			return fmt.Errorf("stop gateway failed: %w", err)
 		}
 
 		g.config.Security = config.Security
@@ -152,7 +155,7 @@ func (g *Gateway) ReConfig(config *repo.Config) error {
 		g.init()
 
 		if err := g.Start(); err != nil {
-			return err
+			return fmt.Errorf("start gateway failed: %w", err)
 		}
 	}
 

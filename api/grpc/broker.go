@@ -45,7 +45,7 @@ func NewChainBrokerService(api api.CoreAPI, config *repo.Config, genesis *repo.G
 	}
 
 	if err := cbs.init(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("init chain broker service failed: %w", err)
 	}
 
 	return cbs, nil
@@ -56,7 +56,7 @@ func (cbs *ChainBrokerService) init() error {
 	limiter := cbs.config.Limiter
 	rateLimiter, err := ratelimiter.NewRateLimiterWithQuantum(limiter.Interval, limiter.Capacity, limiter.Quantum)
 	if err != nil {
-		return err
+		return fmt.Errorf("init rate limiter failed: %w", err)
 	}
 
 	grpcOpts := []grpc.ServerOption{
@@ -72,7 +72,7 @@ func (cbs *ChainBrokerService) init() error {
 		serverKeyPath := filepath.Join(config.RepoRoot, config.Security.ServerKeyPath)
 		cert, err := tls.LoadX509KeyPair(pemFilePath, serverKeyPath)
 		if err != nil {
-			return err
+			return fmt.Errorf("load tls key failed: %w", err)
 		}
 		clientCaCert, _ := ioutil.ReadFile(pemFilePath)
 		clientCaCertPool := x509.NewCertPool()
@@ -89,7 +89,7 @@ func (cbs *ChainBrokerService) init() error {
 func (cbs *ChainBrokerService) Start() error {
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", cbs.config.Port.Grpc))
 	if err != nil {
-		return err
+		return fmt.Errorf("init listen grpc port %d failed: %w", cbs.config.Port.Grpc, err)
 	}
 
 	pb.RegisterChainBrokerServer(cbs.server, cbs)
@@ -127,7 +127,7 @@ func (cbs *ChainBrokerService) ReConfig(config *repo.Config) error {
 		cbs.config.Security.EnableTLS != config.Security.EnableTLS ||
 		cbs.config.Grpc != config.Grpc {
 		if err := cbs.Stop(); err != nil {
-			return err
+			return fmt.Errorf("stop chain broker service failed: %w", err)
 		}
 
 		cbs.config.Limiter = config.Limiter
@@ -135,11 +135,11 @@ func (cbs *ChainBrokerService) ReConfig(config *repo.Config) error {
 		cbs.config.Grpc = config.Grpc
 
 		if err := cbs.init(); err != nil {
-			return err
+			return fmt.Errorf("init chain broker service failed: %w", err)
 		}
 
 		if err := cbs.Start(); err != nil {
-			return err
+			return fmt.Errorf("start chain broker service failed: %w", err)
 		}
 	}
 

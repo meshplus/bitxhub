@@ -244,11 +244,11 @@ func UnmarshalConfig(viper *viper.Viper, repoRoot string, configPath string) (*C
 		viper.SetConfigFile(configPath)
 		fileData, err := ioutil.ReadFile(configPath)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("read bitxhub config error: %w", err)
 		}
 		err = ioutil.WriteFile(filepath.Join(repoRoot, configName), fileData, 0644)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("write bitxhub config failed: %w", err)
 		}
 	}
 	viper.SetConfigType("toml")
@@ -257,7 +257,7 @@ func UnmarshalConfig(viper *viper.Viper, repoRoot string, configPath string) (*C
 	replacer := strings.NewReplacer(".", "_")
 	viper.SetEnvKeyReplacer(replacer)
 	if err := viper.ReadInConfig(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("readInConfig error: %w", err)
 	}
 
 	config, err := DefaultConfig()
@@ -266,7 +266,7 @@ func UnmarshalConfig(viper *viper.Viper, repoRoot string, configPath string) (*C
 	}
 
 	if err := viper.Unmarshal(config); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshal config error: %w", err)
 	}
 
 	config.RepoRoot = repoRoot
@@ -349,11 +349,11 @@ func ReadConfig(v *viper.Viper, path, configType string, config interface{}) err
 	v.SetConfigFile(path)
 	v.SetConfigType(configType)
 	if err := v.ReadInConfig(); err != nil {
-		return err
+		return fmt.Errorf("readInConfig error: %w", err)
 	}
 
 	if err := v.Unmarshal(config); err != nil {
-		return err
+		return fmt.Errorf("unmarshal config error: %w", err)
 	}
 
 	return nil

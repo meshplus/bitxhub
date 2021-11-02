@@ -18,7 +18,7 @@ func (network *NetworkAPI) PeerInfo() ([]byte, error) {
 
 	data, err := json.Marshal(peerInfo)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("marshal peer info error: %w", err)
 	}
 
 	return data, nil

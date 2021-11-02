@@ -40,7 +40,7 @@ func defaultTimedConfig() TimedGenBlock {
 func generateSoloConfig(repoRoot string) (time.Duration, MempoolConfig, TimedGenBlock, error) {
 	readConfig, err := readConfig(repoRoot)
 	if err != nil {
-		return 0, MempoolConfig{}, TimedGenBlock{}, err
+		return 0, MempoolConfig{}, TimedGenBlock{}, fmt.Errorf("read solo config error: %w", err)
 	}
 	mempoolConf := MempoolConfig{
 		BatchSize:      readConfig.SOLO.MempoolConfig.BatchSize,
@@ -58,7 +58,7 @@ func readConfig(repoRoot string) (*SOLOConfig, error) {
 	v.SetConfigFile(filepath.Join(repoRoot, "order.toml"))
 	v.SetConfigType("toml")
 	if err := v.ReadInConfig(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("readInConfig error: %w", err)
 	}
 
 	config := &SOLOConfig{
@@ -66,11 +66,11 @@ func readConfig(repoRoot string) (*SOLOConfig, error) {
 	}
 
 	if err := v.Unmarshal(config); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshal config error: %w", err)
 	}
 
 	if err := checkConfig(config); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("check config failed: %w", err)
 	}
 	return config, nil
 }

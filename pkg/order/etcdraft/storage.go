@@ -70,7 +70,7 @@ func CreateStorage(
 
 	sn, err := createSnapshotter(snapDir)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("create snapshotter failed: %w", err)
 	}
 
 	snapshot, err := sn.Load()
@@ -211,21 +211,21 @@ func createOrReadWAL(lg raft.Logger, walDir string, snapshot *raftpb.Snapshot) (
 // Store persists etcd/raft data
 func (rs *RaftStorage) Store(entries []raftpb.Entry, hardstate raftpb.HardState, snapshot raftpb.Snapshot) error {
 	if err := rs.wal.Save(hardstate, entries); err != nil {
-		return err
+		return fmt.Errorf("save hardstate failed: %w", err)
 	}
 
 	if !raft.IsEmptySnap(snapshot) {
 		if err := rs.saveSnap(snapshot); err != nil {
-			return err
+			return fmt.Errorf("save snapshot failed: %w", err)
 		}
 
 		if err := rs.ram.ApplySnapshot(snapshot); err != nil && err != raft.ErrSnapOutOfDate {
-			return err
+			return fmt.Errorf("apply snapshot failed: %w", err)
 		}
 	}
 
 	if err := rs.ram.Append(entries); err != nil {
-		return err
+		return fmt.Errorf("append entries to raft storage failed: %w", err)
 	}
 
 	return nil
@@ -379,7 +379,7 @@ func (rs *RaftStorage) purge(files []string) {
 // Close closes storage
 func (rs *RaftStorage) Close() error {
 	if err := rs.wal.Close(); err != nil {
-		return err
+		return fmt.Errorf("close WAL failed: %w", err)
 	}
 
 	return nil

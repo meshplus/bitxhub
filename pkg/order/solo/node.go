@@ -64,7 +64,7 @@ func (n *Node) DelNode(delID uint64) error {
 
 func (n *Node) Prepare(tx pb.Transaction) error {
 	if err := n.Ready(); err != nil {
-		return err
+		return fmt.Errorf("node get ready failed: %w", err)
 	}
 	n.txCache.RecvTxC <- tx
 	return nil
@@ -243,7 +243,6 @@ func (n *Node) listenReadyBlock() {
 				if batch := n.mempool.GenerateBlock(); batch != nil {
 					n.postProposal(batch)
 					n.batchMgr.StartBatchTimer()
-
 				}
 			} else {
 				n.logger.Debug("The length of priorityIndex is 0, skip the batch timer")

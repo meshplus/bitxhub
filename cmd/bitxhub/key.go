@@ -93,7 +93,7 @@ func genPrivKey(ctx *cli.Context) error {
 
 	cryptoType, err := crypto.CryptoNameToType(cryptoAlgo)
 	if err != nil {
-		return err
+		return fmt.Errorf("change crypto name to type failed: %w", err)
 	}
 
 	if !asym.SupportedKeyType(cryptoType) {
@@ -114,7 +114,7 @@ func genPrivKey(ctx *cli.Context) error {
 	path := filepath.Join(target, repo.KeyName)
 	err = asym.StorePrivateKey(privKey, path, passwd)
 	if err != nil {
-		return err
+		return fmt.Errorf("store private key failed: %w", err)
 	}
 	fmt.Printf("key.json key is generated under directory %s\n", target)
 	return nil
@@ -129,21 +129,21 @@ func showKey(ctx *cli.Context) error {
 
 	privKey, err := asym.RestorePrivateKey(privPath, passwd)
 	if err != nil {
-		return err
+		return fmt.Errorf("restore private key failed: %w", err)
 	}
 
 	data, err := privKey.Bytes()
 	if err != nil {
-		return err
+		return fmt.Errorf("convert private key to bytes failed: %w", err)
 	}
 
 	pubData, err := privKey.PublicKey().Bytes()
 	if err != nil {
-		return err
+		return fmt.Errorf("convert public key to bytes failed: %w", err)
 	}
 	addr, err := privKey.PublicKey().Address()
 	if err != nil {
-		return err
+		return fmt.Errorf("get address from public key failed: %w", err)
 	}
 
 	fmt.Println(fmt.Sprintf("private key: %s", common.Bytes2Hex(data)))
@@ -162,12 +162,12 @@ func getAddress(ctx *cli.Context) error {
 
 	privKey, err := asym.RestorePrivateKey(privPath, passwd)
 	if err != nil {
-		return err
+		return fmt.Errorf("restore private key failed: %w", err)
 	}
 
 	addr, err := privKey.PublicKey().Address()
 	if err != nil {
-		return err
+		return fmt.Errorf("get address from public key failed: %w", err)
 	}
 
 	fmt.Println(addr.String())

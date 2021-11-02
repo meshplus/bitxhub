@@ -24,19 +24,19 @@ func showConfig(ctx *cli.Context) error {
 	var err error
 	if len(repoRoot) == 0 {
 		if repoRoot, err = repo.PathRoot(); err != nil {
-			return err
+			return fmt.Errorf("pathRoot error: %w", err)
 		}
 	}
 
 	cfg, err := repo.UnmarshalConfig(viper.New(), repoRoot, "")
 	if err != nil {
-		return err
+		return fmt.Errorf("unmarshal config error: %w", err)
 	}
 
 	if ctx.NArg() == 0 {
 		s, err := prettyjson.Marshal(cfg)
 		if err != nil {
-			return err
+			return fmt.Errorf("marshal config error: %w", err)
 		}
 
 		fmt.Println(string(s))
@@ -46,18 +46,18 @@ func showConfig(ctx *cli.Context) error {
 	m := make(map[string]interface{})
 	data, err := cfg.Bytes()
 	if err != nil {
-		return err
+		return fmt.Errorf("convert config to bytes failed: %w", err)
 	}
 
 	if err := json.Unmarshal(data, &m); err != nil {
-		return err
+		return fmt.Errorf("unmarshal data error: %w", err)
 	}
 
 	v := m[ctx.Args()[0]]
 
 	s, err := prettyjson.Marshal(v)
 	if err != nil {
-		return err
+		return fmt.Errorf("marshal config error: %w", err)
 	}
 
 	fmt.Println(string(s))

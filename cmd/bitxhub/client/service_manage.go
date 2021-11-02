@@ -85,7 +85,7 @@ func getServiceStatusById(ctx *cli.Context) error {
 
 	receipt, err := invokeBVMContractBySendView(ctx, constant.ServiceMgrContractAddr.String(), "GetServiceInfo", pb.String(id))
 	if err != nil {
-		return err
+		return fmt.Errorf("invoke BVM contract failed when get service status by id %s: %w", id, err)
 	}
 
 	if receipt.IsSuccess() {
@@ -105,7 +105,7 @@ func getServiceByChainID(ctx *cli.Context) error {
 
 	receipt, err := invokeBVMContractBySendView(ctx, constant.ServiceMgrContractAddr.String(), "GetServicesByAppchainID", pb.String(chainID))
 	if err != nil {
-		return err
+		return fmt.Errorf("invoke BVM contract failed when get service by appchainID %s: %w", chainID, err)
 	}
 
 	if receipt.IsSuccess() {
@@ -126,7 +126,7 @@ func freezeService(ctx *cli.Context) error {
 
 	receipt, err := invokeBVMContract(ctx, constant.ServiceMgrContractAddr.String(), "FreezeService", pb.String(id), pb.String(reason))
 	if err != nil {
-		return err
+		return fmt.Errorf("invoke BVM contract failed when freeze service %s for %s: %w", id, reason, err)
 	}
 
 	if receipt.IsSuccess() {
@@ -144,7 +144,7 @@ func activateService(ctx *cli.Context) error {
 
 	receipt, err := invokeBVMContract(ctx, constant.ServiceMgrContractAddr.String(), "ActivateService", pb.String(id), pb.String(reason))
 	if err != nil {
-		return err
+		return fmt.Errorf("invoke BVM contract failed when activate service %s for %s: %w", id, reason, err)
 	}
 
 	if receipt.IsSuccess() {

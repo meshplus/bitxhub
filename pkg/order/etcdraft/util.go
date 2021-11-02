@@ -2,6 +2,7 @@ package etcdraft
 
 import (
 	"encoding/binary"
+	"fmt"
 	"sort"
 	"time"
 
@@ -24,7 +25,7 @@ func generateRaftPeers(config *order.Config) ([]raft.Peer, error) {
 	for id, vpInfo := range config.Nodes {
 		vpIngoBytes, err := vpInfo.Marshal()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("mashal vp info error: %w", err)
 		}
 		peers = append(peers, raft.Peer{ID: id, Context: vpIngoBytes})
 	}
@@ -124,13 +125,13 @@ func (n *Node) getSnapshot() ([]byte, error) {
 func (n *Node) recoverFromSnapshot() {
 	snapshot, err := n.raftStorage.snap.Load()
 	if err != nil {
-		n.logger.Error(err)
+		n.logger.Errorf("load snapshot failed: %s", err.Error())
 		return
 	}
 	targetChainMeta := &pb.ChainMeta{}
 	err = targetChainMeta.Unmarshal(snapshot.Data)
 	if err != nil {
-		n.logger.Error(err)
+		n.logger.Errorf("unmarshal target chain meta error: %s", err.Error())
 		return
 	}
 

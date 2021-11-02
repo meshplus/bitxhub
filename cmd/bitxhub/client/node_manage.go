@@ -95,7 +95,7 @@ func getNodeStatusByPid(ctx *cli.Context) error {
 
 	receipt, err := invokeBVMContractBySendView(ctx, constant.NodeManagerContractAddr.String(), "GetNode", pb.String(pid))
 	if err != nil {
-		return err
+		return fmt.Errorf("invoke BVM contract failed when get node status by pid %s: %w", pid, err)
 	}
 
 	if receipt.IsSuccess() {
@@ -124,7 +124,8 @@ func registerNode(ctx *cli.Context) error {
 		pb.String(typ),
 		pb.String(reason))
 	if err != nil {
-		return err
+		return fmt.Errorf("invoke BVM contract failed when register node \" pid=%s,vpNodeId=%s,account=%s,typ=%s,reason=%s \": %w",
+			pid, vpNodeId, account, typ, reason, err)
 	}
 
 	if receipt.IsSuccess() {
@@ -142,7 +143,7 @@ func logoutNode(ctx *cli.Context) error {
 
 	receipt, err := invokeBVMContract(ctx, constant.NodeManagerContractAddr.String(), "LogoutNode", pb.String(pid), pb.String(reason))
 	if err != nil {
-		return err
+		return fmt.Errorf("invoke BVM contract failed when logout node by pid %s for %s: %w", pid, reason, err)
 	}
 
 	if receipt.IsSuccess() {
@@ -157,7 +158,7 @@ func logoutNode(ctx *cli.Context) error {
 func allNode(ctx *cli.Context) error {
 	receipt, err := invokeBVMContractBySendView(ctx, constant.NodeManagerContractAddr.String(), "Nodes")
 	if err != nil {
-		return err
+		return fmt.Errorf("invoke BVM contract failed when get all node info: %w", err)
 	}
 
 	if receipt.IsSuccess() {

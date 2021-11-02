@@ -33,13 +33,13 @@ func Initialize(genesis *repo.Genesis, nodes []*repo.NetworkNodes, primaryN uint
 		}
 		adminData, err := json.Marshal(admin)
 		if err != nil {
-			return err
+			return fmt.Errorf("marshal admin data error: %w", err)
 		}
 		lg.SetState(constant.RoleContractAddr.Address(), []byte(contracts.RoleKey(admin.ID)), adminData)
 	}
 	idMapData, err := json.Marshal(idMap)
 	if err != nil {
-		return err
+		return fmt.Errorf("marshal id map data error: %w", err)
 	}
 	lg.SetState(constant.RoleContractAddr.Address(), []byte(contracts.RoleTypeKey(string(contracts.GovernanceAdmin))), idMapData)
 
@@ -65,7 +65,7 @@ func Initialize(genesis *repo.Genesis, nodes []*repo.NetworkNodes, primaryN uint
 		}
 		nodeData, err := json.Marshal(node)
 		if err != nil {
-			return err
+			return fmt.Errorf("marshal node data error: %w", err)
 		}
 		lg.SetState(constant.NodeManagerContractAddr.Address(), []byte(node_mgr.VpNodeIdKey(strconv.Itoa(int(node.VPNodeId)))), []byte(node.Pid))
 		lg.SetState(constant.NodeManagerContractAddr.Address(), []byte(node_mgr.NodeKey(node.Pid)), nodeData)
@@ -73,7 +73,7 @@ func Initialize(genesis *repo.Genesis, nodes []*repo.NetworkNodes, primaryN uint
 	}
 	nodePidMapData, err := json.Marshal(nodePidMap)
 	if err != nil {
-		return err
+		return fmt.Errorf("marshal node pid map data error: %w", err)
 	}
 	lg.SetState(constant.NodeManagerContractAddr.Address(), []byte(node_mgr.NodeTypeKey(string(node_mgr.VPNode))), nodePidMapData)
 

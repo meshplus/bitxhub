@@ -69,7 +69,7 @@ func defaultTimedConfig() TimedGenBlock {
 func generateEtcdRaftConfig(id uint64, repoRoot string, logger logrus.FieldLogger, ram MemoryStorage) (*raft.Config, time.Duration, error) {
 	readConfig, err := readConfig(repoRoot)
 	if err != nil {
-		return &raft.Config{}, 100 * time.Millisecond, nil
+		return &raft.Config{}, 100 * time.Millisecond, err
 	}
 	defaultConfig := defaultRaftConfig()
 	defaultConfig.ID = id
@@ -96,7 +96,7 @@ func generateEtcdRaftConfig(id uint64, repoRoot string, logger logrus.FieldLogge
 func generateRaftConfig(repoRoot string) (*RAFTConfig, *TimedGenBlock, error) {
 	readConfig, err := readConfig(repoRoot)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("read config from %s error: %w", repoRoot, err)
 	}
 	timedGenBlock := defaultTimedConfig()
 	timedGenBlock = TimedGenBlock{
@@ -104,7 +104,7 @@ func generateRaftConfig(repoRoot string) (*RAFTConfig, *TimedGenBlock, error) {
 		BlockTimeout: readConfig.TimedGenBlock.BlockTimeout,
 	}
 	if err := checkConfig(readConfig); err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("check config failed: %w", err)
 	}
 	return readConfig, &timedGenBlock, nil
 }
@@ -114,7 +114,7 @@ func readConfig(repoRoot string) (*RAFTConfig, error) {
 	v.SetConfigFile(filepath.Join(repoRoot, "order.toml"))
 	v.SetConfigType("toml")
 	if err := v.ReadInConfig(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("ReadInConfig error: %w", err)
 	}
 
 	config := &RAFTConfig{
@@ -122,11 +122,11 @@ func readConfig(repoRoot string) (*RAFTConfig, error) {
 	}
 
 	if err := v.Unmarshal(config); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshal config error: %w", err)
 	}
 
 	if err := checkConfig(config); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("check config failed: %w", err)
 	}
 
 	return config, nil

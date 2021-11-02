@@ -85,7 +85,7 @@ func getChainByName(ctx *cli.Context) error {
 
 	receipt, err := invokeBVMContractBySendView(ctx, constant.AppchainMgrContractAddr.String(), "GetAppchainByName", pb.String(name))
 	if err != nil {
-		return err
+		return fmt.Errorf("invoke BVM contract failed when get appchain by name %s: %w", name, err)
 	}
 
 	if receipt.IsSuccess() {
@@ -121,7 +121,7 @@ func getChainStatusById(ctx *cli.Context) error {
 
 	receipt, err := invokeBVMContractBySendView(ctx, constant.AppchainMgrContractAddr.String(), "GetAppchain", pb.String(id))
 	if err != nil {
-		return err
+		return fmt.Errorf("invoke BVM contract failed when get appchain status by ID %s: %w", id, err)
 	}
 
 	if receipt.IsSuccess() {
@@ -142,7 +142,7 @@ func freezeAppchain(ctx *cli.Context) error {
 
 	receipt, err := invokeBVMContract(ctx, constant.AppchainMgrContractAddr.String(), "FreezeAppchain", pb.String(id), pb.String(reason))
 	if err != nil {
-		return err
+		return fmt.Errorf("invoke BVM contract failed when freeze appchain %s for %s: %w", id, reason, err)
 	}
 
 	if receipt.IsSuccess() {
@@ -160,7 +160,7 @@ func activateAppchain(ctx *cli.Context) error {
 
 	receipt, err := invokeBVMContract(ctx, constant.AppchainMgrContractAddr.String(), "ActivateAppchain", pb.String(id), pb.String(reason))
 	if err != nil {
-		return err
+		return fmt.Errorf("invoke BVM contract failed when activate appchain %s for %s: %w", id, reason, err)
 	}
 
 	if receipt.IsSuccess() {

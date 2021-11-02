@@ -15,14 +15,11 @@ func networkCMD() cli.Command {
 }
 
 func network(ctx *cli.Context) error {
-	url, err := getURL(ctx, "info?type=1")
-	if err != nil {
-		return err
-	}
+	url := getURL(ctx, "info?type=1")
 
 	data, err := httpGet(ctx, url)
 	if err != nil {
-		return fmt.Errorf("http get: %w", err)
+		return fmt.Errorf("httpGet from url %s failed: %w", url, err)
 	}
 
 	ret, err := parseResponse(data)

@@ -38,7 +38,7 @@ func NewChainBrokerService(coreAPI api.CoreAPI, config *repo.Config) (*ChainBrok
 	}
 
 	if err := cbs.init(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("init chain broker service failed: %w", err)
 	}
 
 	return cbs, nil
@@ -49,13 +49,13 @@ func (cbs *ChainBrokerService) init() error {
 
 	apis, err := GetAPIs(cbs.config, cbs.api, cbs.logger)
 	if err != nil {
-		return err
+		return fmt.Errorf("get apis failed: %w", err)
 	}
 
 	// Register all the APIs exposed by the namespace services
 	for _, api := range apis {
 		if err := cbs.server.RegisterName(api.Namespace, api.Service); err != nil {
-			return err
+			return fmt.Errorf("register name %s for service %v failed: %w", api.Namespace, api.Service, err)
 		}
 	}
 
@@ -74,7 +74,7 @@ func (cbs *ChainBrokerService) Start() error {
 		if err := http.ListenAndServe(fmt.Sprintf(":%d", cbs.config.Port.JsonRpc), router); err != nil {
 			cbs.logger.WithFields(logrus.Fields{
 				"error": err.Error(),
-			}).Error("Failed to start JSON_RPC service")
+			}).Errorf("Failed to start JSON_RPC service: %s", err.Error())
 			return
 		}
 	}()
@@ -95,17 +95,17 @@ func (cbs *ChainBrokerService) Stop() error {
 func (cbs *ChainBrokerService) ReConfig(config *repo.Config) error {
 	if cbs.config.JsonRpc != config.JsonRpc {
 		if err := cbs.Stop(); err != nil {
-			return err
+			return fmt.Errorf("stop chain broker service failed: %w", err)
 		}
 
 		cbs.config.JsonRpc = config.JsonRpc
 
 		if err := cbs.init(); err != nil {
-			return err
+			return fmt.Errorf("init chain broker service failed: %w", err)
 		}
 
 		if err := cbs.Start(); err != nil {
-			return err
+			return fmt.Errorf("start chain broker service failed: %w", err)
 		}
 	}
 

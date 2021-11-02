@@ -65,7 +65,7 @@ func (pl *VerifyPool) CheckProof(tx pb.Transaction) (ok bool, gasUsed uint64, er
 				"hash":  tx.GetHash().String(),
 				"id":    ibtp.ID(),
 				"error": err}).Warn("ibtp verify got error")
-			return false, gasUsed, err
+			return false, gasUsed, fmt.Errorf("ibtp verify got error: %w", err)
 		}
 		if !ok {
 			pl.logger.WithFields(logrus.Fields{"hash": tx.GetHash().String(), "id": ibtp.ID()}).Warn("ibtp verify failed")
@@ -89,7 +89,7 @@ func (pl *VerifyPool) verifyMultiSign(app *appchainMgr.Appchain, ibtp *pb.IBTP, 
 	}
 	var validators bxhValidators
 	if err := json.Unmarshal(app.TrustRoot, &validators); err != nil {
-		return false, 0, fmt.Errorf("%s: %w", ProofError, err)
+		return false, 0, fmt.Errorf("%s: unmarshal trustRoot error: %w", ProofError, err)
 	}
 
 	m := make(map[string]struct{}, 0)
@@ -99,7 +99,7 @@ func (pl *VerifyPool) verifyMultiSign(app *appchainMgr.Appchain, ibtp *pb.IBTP, 
 
 	var bxhProof pb.BxhProof
 	if err := bxhProof.Unmarshal(proof); err != nil {
-		return false, 0, err
+		return false, 0, fmt.Errorf("unmarshal proof error: %w", err)
 	}
 
 	threshold := (len(validators.Addresses) - 1) / 3 // TODO be dynamic
@@ -107,7 +107,7 @@ func (pl *VerifyPool) verifyMultiSign(app *appchainMgr.Appchain, ibtp *pb.IBTP, 
 
 	hash, err := utils.EncodePackedAndHash(ibtp, bxhProof.TxStatus)
 	if err != nil {
-		return false, 0, fmt.Errorf("%s: %w", ProofError, err)
+		return false, 0, fmt.Errorf("%s: EncodePackedAndHash error: %w", ProofError, err)
 	}
 
 	for _, sign := range bxhProof.MultiSign {
@@ -136,11 +136,11 @@ func (pl *VerifyPool) verifyMultiSign(app *appchainMgr.Appchain, ibtp *pb.IBTP, 
 func recoverSignAddress(sig, digest []byte) (*types.Address, error) {
 	pubKeyBytes, err := ecdsa.Ecrecover(digest, sig)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("recover public key failed: %w", err)
 	}
 	pubkey, err := ecdsa.UnmarshalPublicKey(pubKeyBytes, crypto.Secp256k1)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshal public key error: %w", err)
 	}
 
 	return pubkey.Address()
@@ -148,7 +148,7 @@ func recoverSignAddress(sig, digest []byte) (*types.Address, error) {
 
 func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, uint64, error) {
 	if proof == nil {
-		return false, 0, fmt.Errorf("%s:, empty proof", ProofError)
+		return false, 0, fmt.Errorf("%s: empty proof", ProofError)
 	}
 	proofHash := sha256.Sum256(proof)
 	if !bytes.Equal(proofHash[:], ibtp.Proof) {
@@ -157,7 +157,7 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, uint64, er
 
 	// get real appchain id for union ibtp
 	if err := ibtp.CheckServiceID(); err != nil {
-		return false, 0, err
+		return false, 0, fmt.Errorf("check serviceID failed: %w", err)
 	}
 
 	var (
@@ -174,19 +174,19 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, uint64, er
 	if bxhID != pl.bitxhubID {
 		app, err := pl.getAppchain(bxhID)
 		if err != nil {
-			return false, 0, err
+			return false, 0, fmt.Errorf("get appchain %s failed: %w", bxhID, err)
 		}
 		return pl.verifyMultiSign(app, ibtp, proof)
 	}
 
 	app, err := pl.getAppchain(chainID)
 	if err != nil {
-		return false, 0, err
+		return false, 0, fmt.Errorf("get appchain %s failed: %w", chainID, err)
 	}
 
 	validateAddr, err := pl.getValidateAddress(chainID)
 	if err != nil {
-		return false, 0, err
+		return false, 0, fmt.Errorf("get validate address of chain %s failed: %w", chainID, err)
 	}
 
 	ok, gasUsed, err := pl.ve.Validate(validateAddr, chainID, proof, ibtp.Payload, string(app.TrustRoot))

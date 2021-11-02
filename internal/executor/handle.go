@@ -605,7 +605,7 @@ func calcMerkleRoot(contents []merkletree.Content) (*types.Hash, error) {
 
 	tree, err := merkletree.NewTree(contents)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("init merkletree failed: %w", err)
 	}
 
 	return types.NewHash(tree.MerkleRoot()), nil
@@ -654,7 +654,7 @@ func (exec *BlockExecutor) payAdmins(fees *big.Int) {
 func (exec *BlockExecutor) setTimeoutRollback(height uint64) error {
 	list, err := exec.getTimeoutList(height)
 	if err != nil {
-		return err
+		return fmt.Errorf("get timeout list with height %d failed: %w", height, err)
 	}
 
 	for _, id := range list {
@@ -664,7 +664,7 @@ func (exec *BlockExecutor) setTimeoutRollback(height uint64) error {
 		}
 
 		if err := exec.setTxRecord(id, record); err != nil {
-			return err
+			return fmt.Errorf("set tx record failed: %w", err)
 		}
 	}
 
@@ -679,7 +679,7 @@ func (exec *BlockExecutor) getTimeoutList(height uint64) ([]string, error) {
 
 	var list []string
 	if err := json.Unmarshal(val, &list); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshal list error: %w", err)
 	}
 
 	return list, nil
@@ -693,7 +693,7 @@ func (exec *BlockExecutor) getMultiTxIBTPsMap(height uint64) (map[string][]strin
 
 	m := make(map[string][]string)
 	if err := json.Unmarshal(val, &m); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshal multi tx IBTPs map error: %w", err)
 	}
 
 	return m, nil
@@ -702,7 +702,7 @@ func (exec *BlockExecutor) getMultiTxIBTPsMap(height uint64) (map[string][]strin
 func (exec *BlockExecutor) setTxRecord(id string, record pb.TransactionRecord) error {
 	value, err := json.Marshal(record)
 	if err != nil {
-		return err
+		return fmt.Errorf("marshal record error: %w", err)
 	}
 
 	exec.ledger.SetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.TxInfoKey(id)), value)
@@ -728,7 +728,7 @@ func (exec *BlockExecutor) calcTimeoutL2Root(list []string) (types.Hash, error) 
 func (exec *BlockExecutor) getTimeoutIBTPsMap(height uint64) (map[string][]string, error) {
 	timeoutList, err := exec.getTimeoutList(height)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get timeout list failed: %w", err)
 	}
 
 	timeoutIBTPsMap := make(map[string][]string)
@@ -737,7 +737,7 @@ func (exec *BlockExecutor) getTimeoutIBTPsMap(height uint64) (map[string][]strin
 		listArray := strings.Split(value, "-")
 		bxhID, chainID, _, err := parseChainServiceID(listArray[0])
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("parse chain serviceID %s failed: %w", listArray[0], err)
 		}
 		from := chainID
 		if bxhID != fmt.Sprintf("%d", exec.config.Genesis.ChainID) {
