@@ -71,6 +71,8 @@ replace github.com/spf13/afero v1.5.1 => github.com/spf13/afero v1.1.2
 
 replace github.com/spf13/jwalterweatherman v1.1.0 => github.com/spf13/jwalterweatherman v1.0.0
 
+replace github.com/spf13/viper => github.com/spf13/viper v1.7.1
+
 replace github.com/mitchellh/mapstructure v1.4.1 => github.com/mitchellh/mapstructure v1.1.2
 
 replace gopkg.in/ini.v1 v1.62.0 => gopkg.in/ini.v1 v1.51.0
