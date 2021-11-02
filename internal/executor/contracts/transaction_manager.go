@@ -132,6 +132,8 @@ func (t *TransactionManager) BeginMultiTXs(globalID, ibtpID string, timeoutHeigh
 		t.SetObject(globalTxInfoKey(globalID), txInfo)
 	}
 
+	t.Set(ibtpID, []byte(globalID))
+
 	change.CurStatus = txInfo.ChildTxInfo[ibtpID]
 	data, err := json.Marshal(change)
 	if err != nil {
