@@ -12,6 +12,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/meshplus/bitxhub/pkg/utils"
+
 	"github.com/cbergoon/merkletree"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
@@ -24,7 +26,6 @@ import (
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/model/events"
-	"github.com/meshplus/bitxhub/pkg/utils"
 	"github.com/meshplus/bitxhub/pkg/vm"
 	"github.com/meshplus/bitxhub/pkg/vm/boltvm"
 	"github.com/meshplus/bitxhub/pkg/vm/wasm"
@@ -554,13 +555,13 @@ func (exec *BlockExecutor) applyEthTransaction(i int, tx *types2.EthTransaction)
 		return receipt
 	}
 	if result.Failed() {
+		exec.logger.Warnf("execute tx failed: %s", result.Err.Error())
 		receipt.Status = pb.Receipt_FAILED
 		if strings.HasPrefix(result.Err.Error(), vm1.ErrExecutionReverted.Error()) {
 			receipt.Ret = append([]byte(result.Err.Error()), common.CopyBytes(result.ReturnData)...)
 		} else {
 			receipt.Ret = []byte(result.Err.Error())
 		}
-		exec.logger.Warnf("execute tx failed: %s", string(receipt.Ret))
 	} else {
 		receipt.Status = pb.Receipt_SUCCESS
 		receipt.Ret = result.Return()
@@ -646,7 +647,7 @@ func calcMerkleRoot(contents []merkletree.Content) (*types.Hash, error) {
 
 	tree, err := merkletree.NewTree(contents)
 	if err != nil {
-		return nil, fmt.Errorf("init merkletree failed: %w", err)
+		return nil, err
 	}
 
 	return types.NewHash(tree.MerkleRoot()), nil
@@ -695,7 +696,7 @@ func (exec *BlockExecutor) payAdmins(fees *big.Int) {
 func (exec *BlockExecutor) setTimeoutRollback(height uint64) error {
 	list, err := exec.getTimeoutList(height)
 	if err != nil {
-		return fmt.Errorf("get timeout list with height %d failed: %w", height, err)
+		return err
 	}
 
 	for _, id := range list {
@@ -705,7 +706,7 @@ func (exec *BlockExecutor) setTimeoutRollback(height uint64) error {
 		}
 
 		if err := exec.setTxRecord(id, record); err != nil {
-			return fmt.Errorf("set tx record failed: %w", err)
+			return err
 		}
 	}
 
@@ -724,6 +725,20 @@ func (exec *BlockExecutor) getTimeoutList(height uint64) ([]string, error) {
 	}
 
 	return list, nil
+}
+
+func (exec *BlockExecutor) getTxInfoByGlobalID(id string) (*contracts.TransactionInfo, error) {
+	ok, val := exec.ledger.GetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.GlobalTxInfoKey(id)))
+	if !ok {
+		return nil, fmt.Errorf("cannot get tx info by global ID: %s", id)
+	}
+
+	var txInfo contracts.TransactionInfo
+	if err := json.Unmarshal(val, &txInfo); err != nil {
+		return nil, err
+	}
+
+	return &txInfo, nil
 }
 
 func (exec *BlockExecutor) getMultiTxIBTPsMap(height uint64) (map[string][]string, error) {
@@ -751,6 +766,27 @@ func (exec *BlockExecutor) setTxRecord(id string, record pb.TransactionRecord) e
 	return nil
 }
 
+func (exec *BlockExecutor) setGlobalTxStatus(globalID string, status pb.TransactionStatus) error {
+	txInfo, err := exec.getTxInfoByGlobalID(globalID)
+	if err != nil {
+		return err
+	}
+
+	txInfo.GlobalState = status
+	for id := range txInfo.ChildTxInfo {
+		txInfo.ChildTxInfo[id] = status
+	}
+
+	data, err := json.Marshal(txInfo)
+	if err != nil {
+		return fmt.Errorf("marshal txInfo %v: %w", txInfo, err)
+	}
+
+	exec.ledger.SetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.GlobalTxInfoKey(globalID)), data)
+
+	return nil
+}
+
 func (exec *BlockExecutor) calcTimeoutL2Root(list []string) (types.Hash, error) {
 	hashes := make([]merkletree.Content, 0, len(list))
 	for _, id := range list {
@@ -772,27 +808,49 @@ func (exec *BlockExecutor) getTimeoutIBTPsMap(height uint64) (map[string][]strin
 		return nil, fmt.Errorf("get timeout list failed: %w", err)
 	}
 
+	bxhID := fmt.Sprintf("%d", exec.config.Genesis.ChainID)
 	timeoutIBTPsMap := make(map[string][]string)
 
 	for _, value := range timeoutList {
-		listArray := strings.Split(value, "-")
-		bxhID, chainID, _, err := parseChainServiceID(listArray[0])
-		if err != nil {
-			return nil, fmt.Errorf("parse chain serviceID %s failed: %w", listArray[0], err)
-		}
-		from := chainID
-		if bxhID != fmt.Sprintf("%d", exec.config.Genesis.ChainID) {
-			from = contracts.DEFAULT_UNION_PIER_ID
-		}
-		if list, has := timeoutIBTPsMap[from]; has {
-			list := append(list, value)
-			timeoutIBTPsMap[from] = list
+		if isGlobalID(value) {
+			txInfo, err := exec.getTxInfoByGlobalID(value)
+			if err != nil {
+				return nil, err
+			}
+
+			for id := range txInfo.ChildTxInfo {
+				if err := addTxIdToTimeoutIBTPsMap(timeoutIBTPsMap, id, bxhID); err != nil {
+					return nil, err
+				}
+			}
 		} else {
-			timeoutIBTPsMap[from] = []string{value}
+			if err := addTxIdToTimeoutIBTPsMap(timeoutIBTPsMap, value, bxhID); err != nil {
+				return nil, err
+			}
 		}
 	}
 
 	return timeoutIBTPsMap, nil
+}
+
+func addTxIdToTimeoutIBTPsMap(timeoutIBTPsMap map[string][]string, txId string, bitXHubID string) error {
+	listArray := strings.Split(txId, "-")
+	bxhID, chainID, _, err := parseChainServiceID(listArray[0])
+	if err != nil {
+		return err
+	}
+	from := chainID
+	if bxhID != bitXHubID {
+		from = contracts.DEFAULT_UNION_PIER_ID
+	}
+	if list, has := timeoutIBTPsMap[from]; has {
+		list := append(list, txId)
+		timeoutIBTPsMap[from] = list
+	} else {
+		timeoutIBTPsMap[from] = []string{txId}
+	}
+
+	return nil
 }
 
 func parseChainServiceID(id string) (string, string, string, error) {
@@ -803,4 +861,8 @@ func parseChainServiceID(id string) (string, string, string, error) {
 	}
 
 	return splits[0], splits[1], splits[2], nil
+}
+
+func isGlobalID(id string) bool {
+	return !strings.Contains(id, "-")
 }
