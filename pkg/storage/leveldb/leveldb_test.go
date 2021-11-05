@@ -16,7 +16,7 @@ func TestIter_Next(t *testing.T) {
 	_, err = New(dir)
 	require.Nil(t, err)
 	_, err = New(dir)
-	require.EqualValues(t, "resource temporarily unavailable", err.Error())
+	require.EqualValues(t, fmt.Sprintf("open %s failed: resource temporarily unavailable", dir), err.Error())
 }
 
 func TestLdb_Put(t *testing.T) {
