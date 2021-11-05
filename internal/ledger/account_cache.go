@@ -2,6 +2,7 @@ package ledger
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"sync"
 
@@ -23,17 +24,17 @@ type AccountCache struct {
 func NewAccountCache() (*AccountCache, error) {
 	innerAccountCache, err := lru.New(1024 * 1024)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("init innerAccountCache failed: %w", err)
 	}
 
 	stateCache, err := lru.New(1024 * 1024)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("init stateCache failed: %w", err)
 	}
 
 	codeCache, err := lru.New(1024 * 1024)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("init codeCache failed: %w", err)
 	}
 
 	return &AccountCache{
@@ -50,7 +51,7 @@ func NewAccountCache() (*AccountCache, error) {
 func (ac *AccountCache) add(accounts map[string]ledger.IAccount) error {
 	ac.addToWriteBuffer(accounts)
 	if err := ac.addToReadCache(accounts); err != nil {
-		return err
+		return fmt.Errorf("add accounts to read cache failed: %w", err)
 	}
 	return nil
 }
@@ -69,7 +70,7 @@ func (ac *AccountCache) addToReadCache(accounts map[string]ledger.IAccount) erro
 		} else {
 			cache, err := lru.New(1024 * 1024)
 			if err != nil {
-				return err
+				return fmt.Errorf("init lru cache failed: %w", err)
 			}
 			stateCache = cache
 		}

@@ -300,7 +300,7 @@ func (l *SimpleLedger) Commit(height uint64, accounts map[string]ledger.IAccount
 	blockJournal := value.(*BlockJournal)
 	data, err := json.Marshal(blockJournal)
 	if err != nil {
-		return err
+		return fmt.Errorf("marshal block journal error: %w", err)
 	}
 
 	ldbBatch.Put(compositeKey(journalKey, height), data)
@@ -323,7 +323,7 @@ func (l *SimpleLedger) Commit(height uint64, accounts map[string]ledger.IAccount
 
 	if height > 10 {
 		if err := l.removeJournalsBeforeBlock(height - 10); err != nil {
-			return err
+			return fmt.Errorf("remove journals before block %d failed: %w", height-10, err)
 		}
 	}
 

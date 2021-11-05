@@ -62,7 +62,7 @@ func New(ctx *vm.Context, imports wasmlib.WasmImport, instances map[string]*wasm
 
 	w, err := wasm.New(contractByte, imports, &syncInstances)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("init wasm failed: %w", err)
 	}
 
 	w.SetContext(wasm.ACCOUNT, ctx.Ledger.GetOrCreateAccount(ctx.Callee))
@@ -129,7 +129,7 @@ func (w *WasmVM) deploy() ([]byte, uint64, error) {
 	}
 	wasmByte, err := json.Marshal(wasmStruct)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("marshal wasm struct error: %w", err)
 	}
 	w.ctx.Ledger.SetCode(contractAddr, wasmByte)
 

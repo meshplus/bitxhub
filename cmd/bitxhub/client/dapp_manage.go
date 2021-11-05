@@ -244,7 +244,7 @@ func getDappStatusById(ctx *cli.Context) error {
 
 	receipt, err := invokeBVMContractBySendView(ctx, constant.DappMgrContractAddr.String(), "GetDapp", pb.String(id))
 	if err != nil {
-		return err
+		return fmt.Errorf("invoke BVM contract failed when get dapp status by ID %s: %w", id, err)
 	}
 
 	if receipt.IsSuccess() {
@@ -281,7 +281,7 @@ func getPermissionDapps(ctx *cli.Context) error {
 	caller := ctx.String("caller")
 	receipt, err := invokeBVMContractBySendView(ctx, constant.DappMgrContractAddr.String(), "GetPermissionDapps", pb.String(caller))
 	if err != nil {
-		return err
+		return fmt.Errorf("invoke BVM contract failed when get permission dapps for caller %s: %w", caller, err)
 	}
 
 	if receipt.IsSuccess() {
@@ -301,7 +301,7 @@ func getDappByOwnerAddr(ctx *cli.Context) error {
 
 	receipt, err := invokeBVMContractBySendView(ctx, constant.DappMgrContractAddr.String(), "GetDappsByOwner", pb.String(addr))
 	if err != nil {
-		return err
+		return fmt.Errorf("invoke BVM contract failed when get dapps by owner %s: %w", addr, err)
 	}
 
 	if receipt.IsSuccess() {
@@ -335,7 +335,8 @@ func registerDapp(ctx *cli.Context) error {
 		pb.String(reason),
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("invoke BVM contract failed when register dapp \" name=%s,typ=%s,desc=%s,url=%s,contractAddrs=%s,permissionStr=%s,reason=%s \": %w",
+			name, typ, desc, url, contractAddrs, permissionStr, reason, err)
 	}
 
 	if receipt.IsSuccess() {
@@ -363,7 +364,7 @@ func updateDapp(ctx *cli.Context) error {
 		pb.String(id),
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("invoke BVM failed when get dapp %s: %w", id, err)
 	}
 	if receipt.IsSuccess() {
 		dapp := &contracts.Dapp{}
@@ -413,7 +414,8 @@ func updateDapp(ctx *cli.Context) error {
 		pb.String(reason),
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("invoke BVM contract failed when update dapp \" id=%s,name=%s,desc=%s,url=%s,contractAddrs=%s,permissionStr=%s,reason=%s \": %w",
+			id, name, desc, url, contractAddrs, permissionStr, reason, err)
 	}
 
 	if receipt.IsSuccess() {
@@ -438,7 +440,7 @@ func freezeDapp(ctx *cli.Context) error {
 
 	receipt, err := invokeBVMContract(ctx, constant.DappMgrContractAddr.String(), "FreezeDapp", pb.String(id), pb.String(reason))
 	if err != nil {
-		return err
+		return fmt.Errorf("invoke BVM contract failed when freeze dapp %s for %s: %w", id, reason, err)
 	}
 
 	if receipt.IsSuccess() {
@@ -456,7 +458,7 @@ func activateDapp(ctx *cli.Context) error {
 
 	receipt, err := invokeBVMContract(ctx, constant.DappMgrContractAddr.String(), "ActivateDapp", pb.String(id), pb.String(reason))
 	if err != nil {
-		return err
+		return fmt.Errorf("invoke BVM contract failed when activate dapp %s for %s: %w", id, reason, err)
 	}
 
 	if receipt.IsSuccess() {
@@ -475,7 +477,7 @@ func transferDapp(ctx *cli.Context) error {
 
 	receipt, err := invokeBVMContract(ctx, constant.DappMgrContractAddr.String(), "TransferDapp", pb.String(id), pb.String(addr), pb.String(reason))
 	if err != nil {
-		return err
+		return fmt.Errorf("invoke BVM contract failed when transfer dapp %s to %s for %s: %w", id, addr, reason, err)
 	}
 
 	if receipt.IsSuccess() {
@@ -492,7 +494,7 @@ func confirmDapp(ctx *cli.Context) error {
 
 	receipt, err := invokeBVMContract(ctx, constant.DappMgrContractAddr.String(), "ConfirmTransfer", pb.String(id))
 	if err != nil {
-		return err
+		return fmt.Errorf("invoke BVM contract failed when confirm transfer dapp %s: %w", id, err)
 	}
 
 	if receipt.IsSuccess() {
@@ -510,7 +512,7 @@ func evaluateDapp(ctx *cli.Context) error {
 
 	receipt, err := invokeBVMContract(ctx, constant.DappMgrContractAddr.String(), "EvaluateDapp", pb.String(id), pb.String(desc), pb.Float64(score))
 	if err != nil {
-		return err
+		return fmt.Errorf("invoke BVM contract failed when evaluate dapp %s to score %f for %s: %w", id, score, desc, err)
 	}
 
 	if receipt.IsSuccess() {

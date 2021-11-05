@@ -37,8 +37,8 @@ func (b *BrokerAPI) HandleTransaction(tx pb.Transaction) error {
 	}).Debugf("Receive tx")
 
 	if err := b.bxh.Order.Prepare(tx); err != nil {
-		b.logger.Error(err)
-		return err
+		b.logger.Errorf("order prepare for tx %s failed: %s", tx.GetHash().String(), err.Error())
+		return fmt.Errorf("order prepare for tx %s failed: %w", tx.GetHash().String(), err)
 	}
 
 	return nil
@@ -202,7 +202,7 @@ func (b *BrokerAPI) requestIBTPSignPeer(pid uint64, id string, typ pb.GetMultiSi
 
 	resp, err := b.bxh.PeerMgr.Send(pid, &req)
 	if err != nil {
-		return "", nil, err
+		return "", nil, fmt.Errorf("send message to %d failed: %w", pid, err)
 	}
 	if resp == nil || resp.Type != pb.Message_FETCH_IBTP_SIGN_ACK {
 		return "", nil, fmt.Errorf("invalid fetch ibtp sign resp")
@@ -210,7 +210,7 @@ func (b *BrokerAPI) requestIBTPSignPeer(pid uint64, id string, typ pb.GetMultiSi
 
 	data := model.MerkleWrapperSign{}
 	if err := data.Unmarshal(resp.Data); err != nil {
-		return "", nil, err
+		return "", nil, fmt.Errorf("unmarshal merkle wrapper sign error: %w", err)
 	}
 
 	return data.Address, data.Signature, nil
@@ -224,7 +224,7 @@ func (b *BrokerAPI) requestBlockHeaderSignFromPeer(pid uint64, height string) (s
 
 	resp, err := b.bxh.PeerMgr.Send(pid, &req)
 	if err != nil {
-		return "", nil, err
+		return "", nil, fmt.Errorf("send message to %d failed: %w", pid, err)
 	}
 
 	if resp == nil || resp.Type != pb.Message_FETCH_BLOCK_SIGN_ACK {
@@ -233,7 +233,7 @@ func (b *BrokerAPI) requestBlockHeaderSignFromPeer(pid uint64, height string) (s
 
 	data := model.MerkleWrapperSign{}
 	if err := data.Unmarshal(resp.Data); err != nil {
-		return "", nil, err
+		return "", nil, fmt.Errorf("unmarsahl merkle wrapper sign error: %w", err)
 	}
 
 	return data.Address, data.Signature, nil
@@ -247,7 +247,7 @@ func (b *BrokerAPI) requestBurnSignFromPeer(pid uint64, hash string) (string, []
 
 	resp, err := b.bxh.PeerMgr.Send(pid, &req)
 	if err != nil {
-		return "", nil, err
+		return "", nil, fmt.Errorf("send message to %d failed: %w", pid, err)
 	}
 
 	if resp == nil || resp.Type != pb.Message_FETCH_BURN_SIGN_ACK {
@@ -256,7 +256,7 @@ func (b *BrokerAPI) requestBurnSignFromPeer(pid uint64, hash string) (string, []
 
 	data := model.MerkleWrapperSign{}
 	if err := data.Unmarshal(resp.Data); err != nil {
-		return "", nil, err
+		return "", nil, fmt.Errorf("unmarshal merkle wrapper sign error: %w", err)
 	}
 
 	return data.Address, data.Signature, nil
@@ -300,7 +300,7 @@ func (b *BrokerAPI) handleMultiSignsBurnReq(hash string) (string, []byte, error)
 	addr := &contracts.ContractAddr{}
 	err = json.Unmarshal(interchainSwapAddr, &addr)
 	if err != nil {
-		return "", nil, err
+		return "", nil, fmt.Errorf("unmarshal contract addr error: %w", err)
 	}
 	var burn *contracts2.InterchainSwapBurn
 	for _, log := range receipt.GetEvmLogs() {

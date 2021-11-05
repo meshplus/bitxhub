@@ -119,7 +119,7 @@ func withdraw(ctx *cli.Context) error {
 
 	receipt, err := invokeBVMContract(ctx, constant.GovernanceContractAddr.String(), "WithdrawProposal", pb.String(id), pb.String(reason))
 	if err != nil {
-		return err
+		return fmt.Errorf("invoke BVM contract failed when withdraw proposal %s for %s: %w", id, reason, err)
 	}
 
 	if receipt.IsSuccess() {
@@ -141,7 +141,7 @@ func vote(ctx *cli.Context) error {
 
 	receipt, err := invokeBVMContract(ctx, constant.GovernanceContractAddr.String(), "Vote", pb.String(id), pb.String(info), pb.String(reason))
 	if err != nil {
-		return err
+		return fmt.Errorf("invoke BVM contract failed when vote proposal %s to %s for %s: %w", id, info, reason, err)
 	}
 
 	if receipt.IsSuccess() {
@@ -160,12 +160,12 @@ func getProposals(ctx *cli.Context) error {
 	objId := ctx.String("objId")
 
 	if err := checkProposalArgs(id, typ, status, from, objId); err != nil {
-		return err
+		return fmt.Errorf("check proposal args failed \" id=%s,typ=%s,status=%s,from=%s,objID=%s \": %w", id, typ, status, from, objId, err)
 	}
 
 	repoRoot, err := repo.PathRootWithDefault(ctx.GlobalString("repo"))
 	if err != nil {
-		return err
+		return fmt.Errorf("pathRootWithDefault error: %w", err)
 	}
 	keyPath := repo.GetKeyPath(repoRoot)
 
@@ -260,15 +260,15 @@ func getdDuplicateProposals(ps1, ps2 []contracts.Proposal) []contracts.Proposal 
 	return proposals
 }
 
-func getProposalsByConditions(ctx *cli.Context, keyPath string, menthod string, arg string) ([]contracts.Proposal, error) {
-	receipt, err := invokeBVMContractBySendView(ctx, constant.GovernanceContractAddr.String(), menthod, pb.String(arg))
+func getProposalsByConditions(ctx *cli.Context, keyPath string, method string, arg string) ([]contracts.Proposal, error) {
+	receipt, err := invokeBVMContractBySendView(ctx, constant.GovernanceContractAddr.String(), method, pb.String(arg))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invoke BVM contract failed when get proposal by condition %s, %w", arg, err)
 	}
 
 	if receipt.IsSuccess() {
 		proposals := make([]contracts.Proposal, 0)
-		if menthod == "GetProposal" {
+		if method == "GetProposal" {
 			proposal := contracts.Proposal{}
 			err = json.Unmarshal(receipt.Ret, &proposal)
 			if err != nil {
@@ -349,7 +349,7 @@ func addRow(t *tabby.Tabby, rawLine []string, header bool) {
 func invokeBVMContract(ctx *cli.Context, contractAddr string, method string, args ...*pb.Arg) (*pb.Receipt, error) {
 	repoRoot, err := repo.PathRootWithDefault(ctx.GlobalString("repo"))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("pathRootWithDefault error: %w", err)
 	}
 	keyPath := repo.GetKeyPath(repoRoot)
 
@@ -402,7 +402,7 @@ func invokeBVMContract(ctx *cli.Context, contractAddr string, method string, arg
 func invokeBVMContractBySendView(ctx *cli.Context, contractAddr string, method string, args ...*pb.Arg) (*pb.Receipt, error) {
 	repoRoot, err := repo.PathRootWithDefault(ctx.GlobalString("repo"))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("pathRootWithDefault error: %w", err)
 	}
 	keyPath := repo.GetKeyPath(repoRoot)
 

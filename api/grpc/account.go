@@ -53,7 +53,7 @@ func (cbs *ChainBrokerService) GetAccountBalance(ctx context.Context, req *pb.Ad
 
 	data, err := json.Marshal(ret)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("marshal account error: %w", err)
 	}
 
 	return &pb.Response{

@@ -20,7 +20,7 @@ func initCMD() cli.Command {
 func initialize(ctx *cli.Context) error {
 	repoRoot, err := repo.PathRootWithDefault(ctx.GlobalString("repo"))
 	if err != nil {
-		return err
+		return fmt.Errorf("pathRootWithDefault error: %w", err)
 	}
 
 	fmt.Printf("initializing bitxhub at %s\n", repoRoot)

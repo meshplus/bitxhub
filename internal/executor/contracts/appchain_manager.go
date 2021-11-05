@@ -57,7 +57,7 @@ func (am *AppchainManager) checkPermission(permissions []string, appchainID stri
 		case string(PermissionSpecific):
 			specificAddrs := []string{}
 			if err := json.Unmarshal(specificAddrsData, &specificAddrs); err != nil {
-				return err
+				return fmt.Errorf("unmarshal specific addrs error: %w", err)
 			}
 			for _, addr := range specificAddrs {
 				if addr == regulatorAddr {
@@ -77,7 +77,7 @@ func (am *AppchainManager) Manage(eventTyp, proposalResult, lastStatus, objId st
 	am.AppchainManager.Persister = am.Stub
 	am.Logger().WithFields(logrus.Fields{
 		"id": objId,
-	}).Info("Appchain is manageing")
+	}).Info("Appchain is managing")
 	// 1. check permission: PermissionSpecific(GovernanceContractAddr)
 	specificAddrs := []string{constant.GovernanceContractAddr.Address().String()}
 	addrsData, err := json.Marshal(specificAddrs)

@@ -2,6 +2,7 @@ package order
 
 import (
 	"bytes"
+	"fmt"
 	"sync"
 
 	"github.com/meshplus/bitxhub-kit/storage"
@@ -29,10 +30,10 @@ func NewReqLookUp(storage storage.Storage, logger logrus.FieldLogger) (*ReqLookU
 	if filterDB != nil {
 		var b bytes.Buffer
 		if _, err := b.Write(filterDB); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("write to buffer failed: %w", err)
 		}
 		if _, err := filter.ReadFrom(&b); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("read from filter error: %w", err)
 		}
 	}
 	return &ReqLookUp{
@@ -55,7 +56,7 @@ func (r *ReqLookUp) Build() error {
 	r.Lock()
 	defer r.Unlock()
 	if _, err := r.filter.WriteTo(&r.buffer); err != nil {
-		return err
+		return fmt.Errorf("write to buffer failed: %w", err)
 	}
 	r.storage.Put([]byte(filterDbKey), r.buffer.Bytes())
 	r.buffer.Reset()

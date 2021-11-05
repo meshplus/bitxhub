@@ -1,6 +1,8 @@
 package leveldb
 
 import (
+	"fmt"
+
 	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/errors"
@@ -14,7 +16,7 @@ type ldb struct {
 func New(path string) (storage.Storage, error) {
 	db, err := leveldb.OpenFile(path, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("open %s failed: %w", path, err)
 	}
 
 	return &ldb{

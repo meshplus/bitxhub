@@ -3,15 +3,15 @@ package grpc
 import (
 	"context"
 	"fmt"
-	types2 "github.com/meshplus/eth-kit/types"
 
 	"github.com/meshplus/bitxhub-model/pb"
+	types2 "github.com/meshplus/eth-kit/types"
 )
 
 func (cbs *ChainBrokerService) GetInterchainTxWrappers(req *pb.GetInterchainTxWrappersRequest, server pb.ChainBroker_GetInterchainTxWrappersServer) error {
 	meta, err := cbs.api.Chain().Meta()
 	if err != nil {
-		return err
+		return fmt.Errorf("get chain meta from ledger failed: %w", err)
 	}
 
 	if meta.Height < req.End {
@@ -20,7 +20,7 @@ func (cbs *ChainBrokerService) GetInterchainTxWrappers(req *pb.GetInterchainTxWr
 
 	ch := make(chan *pb.InterchainTxWrappers, req.End-req.Begin+1)
 	if err := cbs.api.Broker().GetInterchainTxWrappers(req.Pid, req.Begin, req.End, ch); err != nil {
-		return err
+		return fmt.Errorf("get interchain tx wrappers from router failed: %w", err)
 	}
 
 	for {
@@ -33,7 +33,7 @@ func (cbs *ChainBrokerService) GetInterchainTxWrappers(req *pb.GetInterchainTxWr
 			}
 
 			if err := server.Send(bw); err != nil {
-				return err
+				return fmt.Errorf("send interchain tx wrappers failed: %w", err)
 			}
 		}
 	}
@@ -42,7 +42,7 @@ func (cbs *ChainBrokerService) GetInterchainTxWrappers(req *pb.GetInterchainTxWr
 func (cbs *ChainBrokerService) GetBlockHeader(req *pb.GetBlockHeaderRequest, server pb.ChainBroker_GetBlockHeaderServer) error {
 	meta, err := cbs.api.Chain().Meta()
 	if err != nil {
-		return err
+		return fmt.Errorf("get chain meta from ledger failed: %w", err)
 	}
 
 	if meta.Height < req.End {
@@ -51,7 +51,7 @@ func (cbs *ChainBrokerService) GetBlockHeader(req *pb.GetBlockHeaderRequest, ser
 
 	ch := make(chan *pb.BlockHeader, req.End-req.Begin+1)
 	if err := cbs.api.Broker().GetBlockHeader(req.Begin, req.End, ch); err != nil {
-		return err
+		return fmt.Errorf("get block header from router failed: %w", err)
 	}
 
 	for {
@@ -65,7 +65,7 @@ func (cbs *ChainBrokerService) GetBlockHeader(req *pb.GetBlockHeaderRequest, ser
 			}
 
 			if err := server.Send(w); err != nil {
-				return err
+				return fmt.Errorf("send block header failed: %w", err)
 			}
 
 			if w.Number == req.End {
@@ -83,7 +83,7 @@ func (cbs *ChainBrokerService) GetBlock(ctx context.Context, req *pb.GetBlockReq
 func (cbs *ChainBrokerService) GetBlocks(ctx context.Context, req *pb.GetBlocksRequest) (*pb.GetBlocksResponse, error) {
 	blocks, err := cbs.api.Broker().GetBlocks(req.Start, req.End)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get blocks failed: %w", err)
 	}
 
 	return &pb.GetBlocksResponse{
@@ -94,7 +94,7 @@ func (cbs *ChainBrokerService) GetBlocks(ctx context.Context, req *pb.GetBlocksR
 func (cbs *ChainBrokerService) GetHappyBlocks(ctx context.Context, req *pb.GetBlocksRequest) (*pb.GetHappyBlocksResponse, error) {
 	blocks, err := cbs.api.Broker().GetBlocks(req.Start, req.End)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get blocks failed: %w", err)
 	}
 	happyBlocks := make([]*pb.HappyBlock, 0, len(blocks))
 	for _, block := range blocks {
@@ -131,7 +131,7 @@ func (cbs *ChainBrokerService) GetHappyBlocks(ctx context.Context, req *pb.GetBl
 func (cbs *ChainBrokerService) GetBlockHeaders(ctx context.Context, req *pb.GetBlockHeadersRequest) (*pb.GetBlockHeadersResponse, error) {
 	headers, err := cbs.api.Broker().GetBlockHeaders(req.Start, req.End)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get block headers failed: %w", err)
 	}
 
 	return &pb.GetBlockHeadersResponse{

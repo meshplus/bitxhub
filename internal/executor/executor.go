@@ -2,6 +2,7 @@ package executor
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"sync"
 	"time"
@@ -72,7 +73,7 @@ func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, client *appchain
 
 	txsExecutor, err := agency.GetExecutorConstructor(config.Executor.Type)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get executor constructor failed: %w", err)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())

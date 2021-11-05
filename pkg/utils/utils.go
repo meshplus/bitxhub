@@ -37,7 +37,7 @@ func GetIBTPSign(ledger *ledger.Ledger, id string, isReq bool, privKey crypto2.P
 
 	addr, err := privKey.PublicKey().Address()
 	if err != nil {
-		return "", nil, err
+		return "", nil, fmt.Errorf("get address from public key failed: %w", err)
 	}
 
 	return addr.String(), sign, nil
@@ -56,12 +56,12 @@ func getIBTP(ledger *ledger.Ledger, id string, isReq bool) (*pb.IBTP, error) {
 
 	var hash types.Hash
 	if err := json.Unmarshal(val, &hash); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshal hash error: %w", err)
 	}
 
 	tx, err := ledger.GetTransaction(&hash)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get transaction %s from ledger failed: %w", hash.String(), err)
 	}
 
 	return tx.GetIBTP(), nil
@@ -75,7 +75,7 @@ func getTxStatus(ledger *ledger.Ledger, id string) (pb.TransactionStatus, error)
 	}
 	var record pb.TransactionRecord
 	if err := json.Unmarshal(val, &record); err != nil {
-		return 0, err
+		return 0, fmt.Errorf("unmarshal transaction record error: %w", err)
 	}
 
 	return record.Status, nil
@@ -93,7 +93,7 @@ func EncodePackedAndHash(ibtp *pb.IBTP, txStatus pb.TransactionStatus) ([]byte, 
 	data = append(data, uint64ToBytesInBigEndian(uint64(ibtp.Type))...)
 
 	if err := pd.Unmarshal(ibtp.Payload); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshal ibtp payload error: %w", err)
 	}
 
 	data = append(data, pd.Hash...)

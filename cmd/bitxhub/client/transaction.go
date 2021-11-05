@@ -63,14 +63,11 @@ func getTransaction(ctx *cli.Context) error {
 
 	hash := ctx.Args().Get(0)
 
-	url, err := getURL(ctx, "transaction/"+hash)
-	if err != nil {
-		return err
-	}
+	url := getURL(ctx, "transaction/"+hash)
 
 	data, err := httpGet(ctx, url)
 	if err != nil {
-		return err
+		return fmt.Errorf("get transaction %s failed: %w", hash, err)
 	}
 
 	fmt.Println(string(data))
@@ -92,7 +89,7 @@ func sendTransaction(ctx *cli.Context) error {
 	if keyPath == "" {
 		repoRoot, err := repo.PathRootWithDefault(ctx.GlobalString("repo"))
 		if err != nil {
-			return err
+			return fmt.Errorf("pathRootWithDefault error: %w", err)
 		}
 
 		keyPath = repo.GetKeyPath(repoRoot)
@@ -127,7 +124,7 @@ func sendTxOrView(ctx *cli.Context, sendType, toString string, amount *big.Int, 
 	}
 	invokePayloadData, err := invokePayload.Marshal()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("marshal invoke payload error: %w", err)
 	}
 
 	data := &pb.TransactionData{
@@ -138,22 +135,19 @@ func sendTxOrView(ctx *cli.Context, sendType, toString string, amount *big.Int, 
 	}
 	payload, err := data.Marshal()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("marshal transaction data error: %w", err)
 	}
 
-	getNonceUrl, err := getURL(ctx, fmt.Sprintf("pendingNonce/%s", from.String()))
-	if err != nil {
-		return nil, err
-	}
+	getNonceUrl := getURL(ctx, fmt.Sprintf("pendingNonce/%s", from.String()))
 
 	encodedNonce, err := httpGet(ctx, getNonceUrl)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("httpGet from url %s failed: %w", getNonceUrl, err)
 	}
 
 	ret, err := parseResponse(encodedNonce)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("wrong response: %w", err)
 	}
 
 	nonce, err := strconv.ParseUint(ret, 10, 64)
@@ -170,22 +164,19 @@ func sendTxOrView(ctx *cli.Context, sendType, toString string, amount *big.Int, 
 	}
 
 	if err := tx.Sign(key.PrivKey); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("sign tx error: %s", err)
 	}
 
 	reqData, err := json.Marshal(tx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("marshal tx error: %w", err)
 	}
 
-	url, err := getURL(ctx, sendType)
-	if err != nil {
-		return nil, err
-	}
+	url := getURL(ctx, sendType)
 
 	resp, err := httpPost(ctx, url, reqData)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("httpPost %s to url %s failed: %w", reqData, url, err)
 	}
 
 	return resp, nil

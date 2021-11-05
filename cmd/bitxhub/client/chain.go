@@ -26,14 +26,11 @@ func chainCMD() cli.Command {
 }
 
 func getChainMeta(ctx *cli.Context) error {
-	url, err := getURL(ctx, "chain_meta")
-	if err != nil {
-		return err
-	}
+	url := getURL(ctx, "chain_meta")
 
 	data, err := httpGet(ctx, url)
 	if err != nil {
-		return fmt.Errorf("http get: %w", err)
+		return fmt.Errorf("httpGet from url %s error: %w", url, err)
 	}
 
 	fmt.Println(string(data))
@@ -42,19 +39,16 @@ func getChainMeta(ctx *cli.Context) error {
 }
 
 func getChainStatus(ctx *cli.Context) error {
-	url, err := getURL(ctx, "info?type=0")
-	if err != nil {
-		return err
-	}
+	url := getURL(ctx, "info?type=0")
 
 	data, err := httpGet(ctx, url)
 	if err != nil {
-		return fmt.Errorf("http get: %w", err)
+		return fmt.Errorf("httpGet from url %s failed: %w", url, err)
 	}
 
 	ret, err := parseResponse(data)
 	if err != nil {
-		return err
+		return fmt.Errorf("wrong response: %w", err)
 	}
 
 	fmt.Println(ret)

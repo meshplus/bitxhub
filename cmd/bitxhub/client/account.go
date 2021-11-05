@@ -20,13 +20,10 @@ func getAccount(ctx *cli.Context) error {
 	}
 
 	// get block by height
-	url, err := getURL(ctx, "account_balance/"+ctx.Args().Get(0))
-	if err != nil {
-		return err
-	}
+	url := getURL(ctx, "account_balance/"+ctx.Args().Get(0))
 	data, err := httpGet(ctx, url)
 	if err != nil {
-		return err
+		return fmt.Errorf("httpGet from url %s failed: %w", url, err)
 	}
 
 	ret, err := parseResponse(data)

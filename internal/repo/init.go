@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -22,13 +23,13 @@ func Initialize(repoRoot string) error {
 		if _, err := os.Stat(dir); os.IsNotExist(err) {
 			err := os.MkdirAll(dir, 0755)
 			if err != nil {
-				return err
+				return fmt.Errorf("create folder failed: %w", err)
 			}
 		}
 
 		return ioutil.WriteFile(p, []byte(file.String()), 0644)
 	}); err != nil {
-		return err
+		return fmt.Errorf("traverse failed: %w", err)
 	}
 
 	return nil

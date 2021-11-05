@@ -33,7 +33,7 @@ func (cbs *ChainBrokerService) SendTransaction(ctx context.Context, tx *pb.BxhTr
 
 func (cbs *ChainBrokerService) SendView(_ context.Context, tx *pb.BxhTransaction) (*pb.Receipt, error) {
 	if err := cbs.checkTransaction(tx); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("check transaction %s failed: %w", tx.GetHash().String(), err)
 	}
 
 	result, err := cbs.sendView(tx)
@@ -87,7 +87,7 @@ func (cbs *ChainBrokerService) checkTransaction(tx *pb.BxhTransaction) error {
 func (cbs *ChainBrokerService) sendTransaction(tx *pb.BxhTransaction) (string, error) {
 	err := cbs.api.Broker().HandleTransaction(tx)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("handle transaction %s failed: %w", tx.GetHash().String(), err)
 	}
 
 	return tx.GetHash().String(), nil
@@ -96,7 +96,7 @@ func (cbs *ChainBrokerService) sendTransaction(tx *pb.BxhTransaction) (string, e
 func (cbs *ChainBrokerService) sendView(tx *pb.BxhTransaction) (*pb.Receipt, error) {
 	result, err := cbs.api.Broker().HandleView(tx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("handle read-only transaction %s failed: %w", tx.GetHash().String(), err)
 	}
 
 	return result, nil
@@ -109,7 +109,7 @@ func (cbs *ChainBrokerService) GetTransaction(ctx context.Context, req *pb.Trans
 	}
 	tx, err := cbs.api.Broker().GetTransaction(hash)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get transaction %s failed: %w", tx.GetHash().String(), err)
 	}
 
 	bxhTx, ok := tx.(*pb.BxhTransaction)
@@ -119,7 +119,7 @@ func (cbs *ChainBrokerService) GetTransaction(ctx context.Context, req *pb.Trans
 
 	meta, err := cbs.api.Broker().GetTransactionMeta(hash)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get transaction %s meta failed: %w", tx.GetHash().Hash, err)
 	}
 
 	return &pb.GetTransactionResponse{

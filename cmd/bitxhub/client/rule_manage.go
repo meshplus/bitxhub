@@ -68,7 +68,7 @@ func getRulesList(ctx *cli.Context) error {
 
 	receipt, err := invokeBVMContractBySendView(ctx, constant.RuleManagerContractAddr.String(), "Rules", pb.String(id))
 	if err != nil {
-		return err
+		return fmt.Errorf("invoke BVM contract failed when get rules list: %w", err)
 	}
 
 	if receipt.IsSuccess() {
@@ -90,7 +90,7 @@ func getMasterRuleAddress(ctx *cli.Context) error {
 
 	receipt, err := invokeBVMContractBySendView(ctx, constant.RuleManagerContractAddr.String(), "GetMasterRule", pb.String(id))
 	if err != nil {
-		return err
+		return fmt.Errorf("invoke BVM contract failed when get master rule for chain %s: %w", id, err)
 	}
 	rule := &ruleMgr.Rule{}
 	if err := json.Unmarshal(receipt.Ret, rule); err != nil {
@@ -111,7 +111,7 @@ func getRuleStatus(ctx *cli.Context) error {
 
 	receipt, err := invokeBVMContractBySendView(ctx, constant.RuleManagerContractAddr.String(), "GetRuleByAddr", pb.String(chainId), pb.String(ruleAddr))
 	if err != nil {
-		return err
+		return fmt.Errorf("invoke BVM contract failed when get rule %s for chain %s: %w", ruleAddr, chainId, err)
 	}
 
 	if receipt.IsSuccess() {
@@ -133,7 +133,8 @@ func updateRule(ctx *cli.Context) error {
 
 	receipt, err := invokeBVMContract(ctx, constant.RuleManagerContractAddr.String(), "UpdateMasterRule", pb.String(id), pb.String(addr), pb.String(reason))
 	if err != nil {
-		return err
+		return fmt.Errorf("invoke BVM contract failed when update master rule \" id=%s,addr=%s,reason=%s \": %w",
+			id, addr, reason, err)
 	}
 
 	if receipt.IsSuccess() {

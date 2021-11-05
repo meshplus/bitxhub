@@ -27,27 +27,27 @@ func Load(repoRoot string, passwd string, configPath string, networkPath string)
 	nViper := viper.New()
 	config, err := UnmarshalConfig(bViper, repoRoot, configPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshal bitxhub config error: %w", err)
 	}
 
 	if err := checkConfig(config); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("check bitxhub config failed: %w", err)
 	}
 
 	var networkConfig *NetworkConfig
 	if len(networkPath) == 0 {
 		networkConfig, err = loadNetworkConfig(nViper, repoRoot, config.Genesis)
 	} else {
-		networkDir := filepath.Dir(networkPath)
-		networkConfig, err = loadNetworkConfig(nViper, networkDir, config.Genesis)
 		fileData, err := ioutil.ReadFile(networkPath)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("read network config error: %w", err)
 		}
 		err = ioutil.WriteFile(filepath.Join(repoRoot, "network.toml"), fileData, 0644)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("write network config failed: %w", err)
 		}
+		networkDir := filepath.Dir(networkPath)
+		networkConfig, err = loadNetworkConfig(nViper, networkDir, config.Genesis)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("load network config: %w", err)
@@ -55,7 +55,7 @@ func Load(repoRoot string, passwd string, configPath string, networkPath string)
 
 	certs, err := libp2pcert.LoadCerts(repoRoot, config.NodeCertPath, config.AgencyCertPath, config.CACertPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("load certs failed: %w", err)
 	}
 
 	key, err := loadPrivKey(repoRoot, passwd)
@@ -99,7 +99,7 @@ func checkConfig(config *Config) error {
 func GetAPI(repoRoot string) (string, error) {
 	data, err := ioutil.ReadFile(filepath.Join(repoRoot, APIName))
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("read %s error: %w", filepath.Join(repoRoot, APIName), err)
 	}
 
 	return string(data), nil

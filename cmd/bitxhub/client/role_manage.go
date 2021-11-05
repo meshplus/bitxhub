@@ -130,7 +130,7 @@ func getRoleStatusById(ctx *cli.Context) error {
 
 	receipt, err := invokeBVMContractBySendView(ctx, constant.RoleContractAddr.String(), "GetRoleInfoById", pb.String(id))
 	if err != nil {
-		return err
+		return fmt.Errorf("invoke BVM contract failed when get role info by ID %s: %w", id, err)
 	}
 
 	if receipt.IsSuccess() {
@@ -153,7 +153,8 @@ func registerRole(ctx *cli.Context) error {
 
 	receipt, err := invokeBVMContract(ctx, constant.RoleContractAddr.String(), "RegisterRole", pb.String(addr), pb.String(typ), pb.String(nodePid), pb.String(reason))
 	if err != nil {
-		return err
+		return fmt.Errorf("invoke BVM contract failed when register role \" addr=%s,typ=%s,nodePid=%s,reason=%s \": %w",
+			addr, typ, nodePid, reason, err)
 	}
 
 	if receipt.IsSuccess() {
@@ -190,7 +191,7 @@ func freezeRole(ctx *cli.Context) error {
 
 	receipt, err := invokeBVMContract(ctx, constant.RoleContractAddr.String(), "FreezeRole", pb.String(id), pb.String(reason))
 	if err != nil {
-		return err
+		return fmt.Errorf("invoke BVM contract failed when freeze role %s for %s: %w", id, reason, err)
 	}
 
 	if receipt.IsSuccess() {
@@ -208,7 +209,7 @@ func activateRole(ctx *cli.Context) error {
 
 	receipt, err := invokeBVMContract(ctx, constant.RoleContractAddr.String(), "ActivateRole", pb.String(id), pb.String(reason))
 	if err != nil {
-		return err
+		return fmt.Errorf("invoke BVM contract failed when activate role %s for %s: %w", id, reason, err)
 	}
 
 	if receipt.IsSuccess() {
@@ -226,7 +227,7 @@ func logoutRole(ctx *cli.Context) error {
 
 	receipt, err := invokeBVMContract(ctx, constant.RoleContractAddr.String(), "LogoutRole", pb.String(id), pb.String(reason))
 	if err != nil {
-		return err
+		return fmt.Errorf("invoke BVM contract failed when logout role %s for %s: %w", id, reason, err)
 	}
 
 	if receipt.IsSuccess() {
@@ -246,13 +247,13 @@ func allRole(ctx *cli.Context) error {
 	case string(contracts.GovernanceAdmin):
 		receipt, err := invokeBVMContractBySendView(ctx, constant.RoleContractAddr.String(), "GetAllRoles")
 		if err != nil {
-			return err
+			return fmt.Errorf("invoke BVM contract failed when get all roles: %w", err)
 		}
 		ret = receipt
 	case string(contracts.AuditAdmin):
 		receipt, err := invokeBVMContractBySendView(ctx, constant.RoleContractAddr.String(), "GetAuditAdminRoles")
 		if err != nil {
-			return err
+			return fmt.Errorf("invoke BVM contract failed when get audit admin roles: %w", err)
 		}
 		ret = receipt
 	default:

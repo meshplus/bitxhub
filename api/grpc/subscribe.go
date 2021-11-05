@@ -45,13 +45,13 @@ func (cbs *ChainBrokerService) handleNewBlockSubscription(server pb.ChainBroker_
 		block := ev.Block
 		data, err := block.Marshal()
 		if err != nil {
-			return err
+			return fmt.Errorf("marshal block error: %w", err)
 		}
 
 		if err := server.Send(&pb.Response{
 			Data: data,
 		}); err != nil {
-			return err
+			return fmt.Errorf("send block failed: %w", err)
 		}
 	}
 
@@ -67,13 +67,13 @@ func (cbs *ChainBrokerService) handleBlockHeaderSubscription(server pb.ChainBrok
 		header := ev.Block.BlockHeader
 		data, err := header.Marshal()
 		if err != nil {
-			return err
+			return fmt.Errorf("marshal block header error: %w", err)
 		}
 
 		if err := server.Send(&pb.Response{
 			Data: data,
 		}); err != nil {
-			return err
+			return fmt.Errorf("send block header failed: %w", err)
 		}
 	}
 
@@ -90,8 +90,8 @@ func (cbs *ChainBrokerService) handleInterchainTxSubscription(server pb.ChainBro
 		case ev := <-blockCh:
 			interStatus, err := cbs.interStatus(ev.Block, ev.InterchainMeta)
 			if err != nil {
-				cbs.logger.Fatal(err)
-				return fmt.Errorf("wrap interchain tx status error")
+				cbs.logger.Fatalf("Wrap interchain tx status error: %s", err.Error())
+				return fmt.Errorf("wrap interchain tx status error: %w", err)
 			}
 			if interStatus == nil {
 				continue
@@ -99,13 +99,13 @@ func (cbs *ChainBrokerService) handleInterchainTxSubscription(server pb.ChainBro
 			data, err := json.Marshal(interStatus)
 			if err != nil {
 				cbs.logger.Fatalf("Marshal new block event: %s", err.Error())
-				return fmt.Errorf("marshal interchain tx status failed")
+				return fmt.Errorf("marshal interchain tx status failed: %w", err)
 			}
 			if err := server.Send(&pb.Response{
 				Data: data,
 			}); err != nil {
 				cbs.logger.Warnf("Send new interchain tx event failed %s", err.Error())
-				return fmt.Errorf("send new interchain tx event failed")
+				return fmt.Errorf("send new interchain tx event failed: %w", err)
 			}
 		case <-server.Context().Done():
 			return nil
@@ -119,7 +119,7 @@ func (cbs *ChainBrokerService) handleInterchainTxWrapperSubscription(server pb.C
 	ch, err := cbs.api.Broker().AddPier(pierID)
 	defer cbs.api.Broker().RemovePier(pierID)
 	if err != nil {
-		return err
+		return fmt.Errorf("add pier %s failed: %w", pierID, err)
 	}
 
 	for {
@@ -132,14 +132,14 @@ func (cbs *ChainBrokerService) handleInterchainTxWrapperSubscription(server pb.C
 			}
 			data, err := wrapper.Marshal()
 			if err != nil {
-				return err
+				return fmt.Errorf("marshal interchain tx wrapper error: %w", err)
 			}
 
 			if err := server.Send(&pb.Response{
 				Data: data,
 			}); err != nil {
 				cbs.logger.Warnf("Send new interchain tx wrapper failed %s", err.Error())
-				return fmt.Errorf("send new interchain tx wrapper failed")
+				return fmt.Errorf("send new interchain tx wrapper failed: %w", err)
 			}
 		case <-server.Context().Done():
 			cbs.logger.Errorf("Server lost connection with pier")
@@ -151,7 +151,7 @@ func (cbs *ChainBrokerService) handleInterchainTxWrapperSubscription(server pb.C
 func (cbs *ChainBrokerService) handleEvmLogSubscription(server pb.ChainBroker_SubscribeServer, query []byte) error {
 	filter := filters.FilterQuery{}
 	if err := json.Unmarshal(query, &filter); err != nil {
-		return err
+		return fmt.Errorf("unmarshal filter query error: %w", err)
 	}
 
 	ch := make(chan []*pb.EvmLog)
@@ -172,14 +172,14 @@ func (cbs *ChainBrokerService) handleEvmLogSubscription(server pb.ChainBroker_Su
 				data, err := log.Marshal()
 				if err != nil {
 					cbs.logger.Warnf("Marshal evm log failed %s", err.Error())
-					return fmt.Errorf("marshal evm log failed")
+					return fmt.Errorf("marshal evm log failed: %w", err)
 				}
 
 				if err := server.Send(&pb.Response{
 					Data: data,
 				}); err != nil {
 					cbs.logger.Warnf("Send evm log failed %s", err.Error())
-					return fmt.Errorf("send evm log failed")
+					return fmt.Errorf("send evm log failed: %w", err)
 				}
 			}
 		case <-server.Context().Done():
@@ -210,7 +210,7 @@ func (cbs *ChainBrokerService) interStatus(block *pb.Block, interchainMeta *pb.I
 
 	meta, err := cbs.api.Chain().Meta()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get chain meta from ledger failed: %w", err)
 	}
 
 	ev := &interchainEvent{

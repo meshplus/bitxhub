@@ -30,10 +30,7 @@ func getReceipt(ctx *cli.Context) error {
 }
 
 func getTxReceipt(ctx *cli.Context, hash string) ([]byte, error) {
-	url, err := getURL(ctx, "receipt/"+hash)
-	if err != nil {
-		return nil, err
-	}
+	url := getURL(ctx, "receipt/"+hash)
 
 	data, err := httpGet(ctx, url)
 	if err != nil {

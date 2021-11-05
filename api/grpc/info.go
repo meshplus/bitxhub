@@ -24,7 +24,7 @@ func (cbs *ChainBrokerService) GetInfo(ctx context.Context, req *pb.Request) (*p
 func (cbs *ChainBrokerService) GetTPS(ctx context.Context, req *pb.GetTPSRequest) (*pb.Response, error) {
 	tps, err := cbs.api.Chain().TPS(req.Begin, req.End)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get tps between %d and %d failed: %w", req.Begin, req.End, err)
 	}
 
 	data := make([]byte, 8)

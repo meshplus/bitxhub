@@ -288,7 +288,7 @@ func TestChainLedger_Rollback(t *testing.T) {
 	assert.Equal(t, uint64(4), account0.GetBalance().Uint64())
 
 	err = ledger.Rollback(4)
-	assert.Equal(t, ErrorRollbackToHigherNumber, err)
+	assert.Equal(t, fmt.Sprintf("rollback state to height 4 failed: %s", ErrorRollbackToHigherNumber), err.Error())
 	//
 	//err = ledger.Rollback(0)
 	//assert.Equal(t, ErrorRollbackTooMuch, err)
@@ -310,7 +310,7 @@ func TestChainLedger_Rollback(t *testing.T) {
 	err = ledger.Rollback(2)
 	assert.Nil(t, err)
 	block, err = ledger.GetBlock(3)
-	assert.Equal(t, fmt.Errorf("out of bounds"), err)
+	assert.Equal(t, fmt.Sprintf("get bodies with height 3 from blockfile failed: out of bounds"), err.Error())
 	assert.Nil(t, block)
 	assert.Equal(t, uint64(2), ledger.GetChainMeta().Height)
 	assert.Equal(t, stateRoot2.String(), stateLedger.prevJnlHash.String())
@@ -532,7 +532,7 @@ func TestChainLedger_GetInterchainMeta(t *testing.T) {
 	accounts, journal := ledger.FlushDirtyData()
 
 	meta, err := ledger.GetInterchainMeta(1)
-	require.Equal(t, fmt.Errorf("out of bounds"), err)
+	require.Equal(t, "get interchain info with height 1 from blockfile failed: out of bounds", err.Error())
 	require.Nil(t, meta)
 
 	ledger.PersistBlockData(genBlockData(1, accounts, journal))

@@ -65,17 +65,17 @@ func NewBitXHub(rep *repo.Repo, orderPath string) (*BitXHub, error) {
 		orderRoot = filepath.Dir(orderPath)
 		fileData, err := ioutil.ReadFile(orderPath)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("read order config error: %w", err)
 		}
 		err = ioutil.WriteFile(filepath.Join(repoRoot, "order.toml"), fileData, 0644)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("write order.toml failed: %w", err)
 		}
 	}
 
 	bxh, err := GenerateBitXHubWithoutOrder(rep)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("generate bitxhub without order failed: %w", err)
 	}
 
 	chainMeta := bxh.Ledger.GetChainMeta()
@@ -85,7 +85,7 @@ func NewBitXHub(rep *repo.Repo, orderPath string) (*BitXHub, error) {
 	//Get the order constructor according to different order type.
 	orderCon, err := agency.GetOrderConstructor(rep.Config.Order.Type)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get order %s failed: %w", rep.Config.Order.Type, err)
 	}
 
 	order, err := orderCon(
@@ -104,7 +104,7 @@ func NewBitXHub(rep *repo.Repo, orderPath string) (*BitXHub, error) {
 		order.WithGetAccountNonceFunc(bxh.Ledger.Copy().GetNonce),
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("initialize order failed: %w", err)
 	}
 
 	r, err := router.New(loggers.Logger(loggers.Router), rep, bxh.Ledger, bxh.PeerMgr, order.Quorum())
@@ -128,7 +128,7 @@ func GenerateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 
 	err := asym.ConfiguredKeyType(rep.Config.Crypto.Algorithms)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("set configured key type failed: %w", err)
 	}
 
 	supportCryptoTypeToName := asym.GetConfiguredKeyType()
@@ -162,7 +162,7 @@ func GenerateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 	if rep.Config.Appchain.Enable {
 		appchainClient, err = appchain.NewAppchainClient(filepath.Join(repoRoot, rep.Config.Appchain.EthHeaderPath), repo.GetStoragePath(repoRoot, "appchain_client"), loggers.Logger(loggers.Executor))
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("initialize appchain client failed: %w", err)
 		}
 	}
 
@@ -343,12 +343,12 @@ func (bxh *BitXHub) printLogo() {
 func (bxh *BitXHub) raiseUlimit(limitNew uint64) error {
 	_, err := fdlimit.Raise(limitNew)
 	if err != nil {
-		return err
+		return fmt.Errorf("set limit failed: %w", err)
 	}
 
 	var limit syscall.Rlimit
 	if err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &limit); err != nil {
-		return err
+		return fmt.Errorf("getrlimit error: %w", err)
 	}
 
 	if limit.Cur != limitNew && limit.Cur != limit.Max {

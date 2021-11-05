@@ -100,7 +100,7 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 	dbDir := filepath.Join(config.StoragePath, "state")
 	raftStorage, dbStorage, err := CreateStorage(config.Logger, walDir, snapDir, dbDir, raft.NewMemoryStorage())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("init raft and database storage failed: %w", err)
 	}
 
 	// generate raft peers
@@ -217,7 +217,7 @@ func (n *Node) Start() error {
 		default:
 			err := n.checkQuorum()
 			if err != nil {
-				n.logger.Error(err)
+				n.logger.Errorf("check quorum failed: %s", err.Error())
 				return err
 			}
 			return nil
@@ -257,7 +257,7 @@ func (n *Node) Stop() {
 // Prepare Add the transaction into txpool and broadcast it to other nodes
 func (n *Node) Prepare(tx pb.Transaction) error {
 	if err := n.Ready(); err != nil {
-		return err
+		return fmt.Errorf("node get ready failed: %w", err)
 	}
 	if n.txCache.IsFull() && n.mempool.IsPoolFull() {
 		return errors.New("transaction cache are full, we will drop this transaction")
@@ -356,11 +356,11 @@ func (n *Node) run() {
 			case batch := <-n.proposeC:
 				data, err := batch.Marshal()
 				if err != nil {
-					n.logger.Error("Marshal batch failed")
+					n.logger.Errorf("Marshal batch failed: %s", err.Error())
 				}
 				n.logger.Debugf("Proposed block %d to raft core consensus", batch.Height)
 				if err := n.node.Propose(n.ctx, data); err != nil {
-					n.logger.Errorf("Failed to propose block [%d] to raft: %s", batch.Height, err)
+					n.logger.Errorf("Failed to propose block [%d] to raft: %s", batch.Height, err.Error())
 				}
 			case cc, ok := <-n.confChangeC:
 				if !ok {
@@ -369,7 +369,7 @@ func (n *Node) run() {
 					confChangeCount++
 					cc.ID = confChangeCount
 					if err := n.node.ProposeConfChange(n.ctx, cc); err != nil {
-						n.logger.Errorf("Failed to propose configuration update to Raft node: %s", err)
+						n.logger.Errorf("Failed to propose configuration update to Raft node: %s", err.Error())
 					}
 				}
 			case <-n.ctx.Done():
@@ -468,7 +468,7 @@ func (n *Node) run() {
 			// 1: Write HardState, Entries, and Snapshot to persistent storage if they
 			// are not empty.
 			if err := n.raftStorage.Store(rd.Entries, rd.HardState, rd.Snapshot); err != nil {
-				n.logger.Errorf("Failed to persist etcd/raft data: %s", err)
+				n.logger.Errorf("Failed to persist etcd/raft data: %s", err.Error())
 			}
 
 			if !raft.IsEmptySnap(rd.Snapshot) {
@@ -569,7 +569,7 @@ func (n *Node) publishEntries(ents []raftpb.Entry) bool {
 			}
 			requestBatch := n.readyPool.Get().(*raftproto.RequestBatch)
 			if err := requestBatch.Unmarshal(ents[i].Data); err != nil {
-				n.logger.Error(err)
+				n.logger.Errorf("unmarshal request batch error: %s", err.Error())
 				continue
 			}
 			// strictly avoid writing the same block
@@ -654,12 +654,12 @@ func (n *Node) maybeTriggerSnapshot() {
 	}
 	data, err := n.getSnapshot()
 	if err != nil {
-		n.logger.Error(err)
+		n.logger.Errorf("get snapshot failed: %s", err.Error())
 		return
 	}
 	err = n.raftStorage.TakeSnapshot(n.appliedIndex, n.confState, data)
 	if err != nil {
-		n.logger.Error(err)
+		n.logger.Errorf("take snapshot failed: %s", err.Error())
 		return
 	}
 	n.snapshotIndex = n.appliedIndex
@@ -686,20 +686,20 @@ func (n *Node) reportState(state *mempool.ChainState) {
 func (n *Node) processRaftCoreMsg(msg []byte) error {
 	rm := &raftproto.RaftMessage{}
 	if err := rm.Unmarshal(msg); err != nil {
-		return err
+		return fmt.Errorf("unmarshal raft message error: %w", err)
 	}
 	switch rm.Type {
 	case raftproto.RaftMessage_CONSENSUS:
 		msg := &raftpb.Message{}
 		if err := msg.Unmarshal(rm.Data); err != nil {
-			return err
+			return fmt.Errorf("unmarshal message error: %w", err)
 		}
 		return n.node.Step(context.Background(), *msg)
 
 	case raftproto.RaftMessage_BROADCAST_TX:
 		txSlice := &pb.Transactions{}
 		if err := txSlice.Unmarshal(rm.Data); err != nil {
-			return err
+			return fmt.Errorf("unmarshal transactions error: %w", err)
 		}
 		n.processTransactions(txSlice.Transactions, false)
 
@@ -720,7 +720,7 @@ func (n *Node) send(messages []raftpb.Message) {
 
 			data, err := (&msg).Marshal()
 			if err != nil {
-				n.logger.Error(err)
+				n.logger.Errorf("unmarshal message error: %s", err.Error())
 				return
 			}
 
@@ -730,7 +730,7 @@ func (n *Node) send(messages []raftpb.Message) {
 			}
 			rmData, err := rm.Marshal()
 			if err != nil {
-				n.logger.Error(err)
+				n.logger.Errorf("unmarshal raft message error: %s", err.Error())
 				return
 			}
 			p2pMsg := &pb.Message{
