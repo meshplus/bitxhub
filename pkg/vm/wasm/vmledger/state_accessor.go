@@ -5,10 +5,12 @@ import (
 	"math/big"
 	"strconv"
 
-	"github.com/meshplus/eth-kit/ledger"
-
 	"github.com/meshplus/bitxhub-core/wasm"
 	"github.com/meshplus/bitxhub-core/wasm/wasmlib"
+	"github.com/meshplus/bitxhub-kit/types"
+	"github.com/meshplus/bitxhub-model/pb"
+	ledger1 "github.com/meshplus/bitxhub/internal/ledger"
+	"github.com/meshplus/eth-kit/ledger"
 	"github.com/wasmerio/wasmer-go/wasmer"
 )
 
@@ -91,6 +93,26 @@ func addState(env interface{}, args []wasmer.Value) ([]wasmer.Value, error) {
 	key := mem.Data()[key_ptr : key_ptr+int64(data[int(key_ptr)])]
 	value := mem.Data()[value_ptr : value_ptr+int64(data[int(value_ptr)])]
 	account.AddState(key, value)
+	return []wasmer.Value{}, nil
+}
+
+func addEvent(env interface{}, args []wasmer.Value) ([]wasmer.Value, error) {
+	value_ptr := args[0].I64()
+	value_len := args[1].I64()
+	ctx := env.(*wasmlib.WasmEnv).Ctx
+	txHash := ctx["txHash"].(string)
+	mem, err := env.(*wasmlib.WasmEnv).Instance.Exports.GetMemory("memory")
+	if err != nil {
+		return []wasmer.Value{}, err
+	}
+	ledger := ctx[wasm.LEDGER].(*ledger1.Ledger)
+	value := mem.Data()[value_ptr : value_ptr+value_len]
+	event := &pb.Event{
+		TxHash:    types.NewHashByStr(txHash),
+		Data:      value,
+		EventType: pb.Event_WASM,
+	}
+	ledger.AddEvent(event)
 	return []wasmer.Value{}, nil
 }
 
@@ -200,6 +222,15 @@ func (im *Imports) importLedgerLib(store *wasmer.Store, wasmEnv *wasmlib.WasmEnv
 		wasmEnv,
 		addState,
 	)
+	addEventFunc := wasmer.NewFunctionWithEnvironment(
+		store,
+		wasmer.NewFunctionType(
+			wasmer.NewValueTypes(wasmer.I64, wasmer.I64),
+			wasmer.NewValueTypes(),
+		),
+		wasmEnv,
+		addEvent,
+	)
 	im.imports.GetImportObject().Register(
 		"env",
 		map[string]wasmer.IntoExtern{
@@ -208,6 +239,7 @@ func (im *Imports) importLedgerLib(store *wasmer.Store, wasmEnv *wasmlib.WasmEnv
 			"get_state":   getStateFunc,
 			"set_state":   setStateFunc,
 			"add_state":   addStateFunc,
+			"add_event":   addEventFunc,
 		},
 	)
 }
