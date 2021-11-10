@@ -17,6 +17,7 @@ message request_batch {
     string digest = 1;
     bytes txList = 2 [(gogoproto.customtype) = "github.com/meshplus/bitxhub-model/pb.Transactions"];
     uint64 height = 3;
+    int64 timestamp = 4;
 }
 
 message Ready {

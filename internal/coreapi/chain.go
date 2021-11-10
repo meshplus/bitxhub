@@ -3,6 +3,7 @@ package coreapi
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
@@ -82,11 +83,10 @@ func (api *ChainAPI) TPS(begin, end uint64) (uint64, error) {
 		return 0, fmt.Errorf("error during get block TPS")
 	}
 
-	elapsed := endTime - startTime
+	elapsed := (endTime - startTime) / int64(time.Second)
 
 	if elapsed <= 0 {
 		return 0, fmt.Errorf("incorrect block timestamp")
 	}
-
 	return total.Load() / uint64(elapsed), nil
 }
