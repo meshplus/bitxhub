@@ -208,8 +208,9 @@ func (mpi *mempoolImpl) generateBlock() (*raftproto.RequestBatch, error) {
 	mpi.batchSeqNo++
 	batchSeqNo := mpi.batchSeqNo
 	batch := &raftproto.RequestBatch{
-		TxList: &pb.Transactions{Transactions: txList},
-		Height: batchSeqNo,
+		TxList:    &pb.Transactions{Transactions: txList},
+		Height:    batchSeqNo,
+		Timestamp: time.Now().UnixNano(),
 	}
 	if mpi.txStore.priorityNonBatchSize >= uint64(len(txList)) {
 		mpi.txStore.priorityNonBatchSize = mpi.txStore.priorityNonBatchSize - uint64(len(txList))
