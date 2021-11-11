@@ -76,8 +76,8 @@ type UpdateDappInfo struct {
 
 var dappStateMap = map[governance.EventType][]governance.GovernanceStatus{
 	governance.EventRegister: {governance.GovernanceUnavailable},
-	governance.EventUpdate:   {governance.GovernanceAvailable, governance.GovernanceFrozen},
-	governance.EventFreeze:   {governance.GovernanceAvailable, governance.GovernanceUpdating, governance.GovernanceActivating},
+	governance.EventUpdate:   {governance.GovernanceAvailable, governance.GovernanceFrozen, governance.GovernanceTransferring},
+	governance.EventFreeze:   {governance.GovernanceAvailable, governance.GovernanceTransferring},
 	governance.EventActivate: {governance.GovernanceFrozen},
 	governance.EventTransfer: {governance.GovernanceAvailable},
 }
@@ -106,12 +106,12 @@ func (d *Dapp) setFSM(lastStatus governance.GovernanceStatus) {
 			{Name: string(governance.EventReject), Src: []string{string(governance.GovernanceRegisting)}, Dst: string(lastStatus)},
 
 			// update 1
-			{Name: string(governance.EventUpdate), Src: []string{string(governance.GovernanceAvailable), string(governance.GovernanceFrozen), string(governance.GovernanceFreezing)}, Dst: string(governance.GovernanceUpdating)},
+			{Name: string(governance.EventUpdate), Src: []string{string(governance.GovernanceAvailable), string(governance.GovernanceTransferring), string(governance.GovernanceFrozen)}, Dst: string(governance.GovernanceUpdating)},
 			{Name: string(governance.EventApprove), Src: []string{string(governance.GovernanceUpdating)}, Dst: string(governance.GovernanceAvailable)},
 			{Name: string(governance.EventReject), Src: []string{string(governance.GovernanceUpdating)}, Dst: string(governance.GovernanceFrozen)},
 
 			// freeze 2
-			{Name: string(governance.EventFreeze), Src: []string{string(governance.GovernanceAvailable), string(governance.GovernanceUpdating), string(governance.GovernanceActivating), string(governance.GovernanceTransferring)}, Dst: string(governance.GovernanceFreezing)},
+			{Name: string(governance.EventFreeze), Src: []string{string(governance.GovernanceAvailable), string(governance.GovernanceTransferring)}, Dst: string(governance.GovernanceFreezing)},
 			{Name: string(governance.EventApprove), Src: []string{string(governance.GovernanceFreezing)}, Dst: string(governance.GovernanceFrozen)},
 			{Name: string(governance.EventReject), Src: []string{string(governance.GovernanceFreezing)}, Dst: string(lastStatus)},
 
@@ -121,7 +121,7 @@ func (d *Dapp) setFSM(lastStatus governance.GovernanceStatus) {
 			{Name: string(governance.EventReject), Src: []string{string(governance.GovernanceActivating)}, Dst: string(lastStatus)},
 
 			// transfer 1
-			{Name: string(governance.EventTransfer), Src: []string{string(governance.GovernanceAvailable), string(governance.GovernanceFreezing)}, Dst: string(governance.GovernanceTransferring)},
+			{Name: string(governance.EventTransfer), Src: []string{string(governance.GovernanceAvailable), string(governance.GovernanceFreezing), string(governance.GovernanceUpdating)}, Dst: string(governance.GovernanceTransferring)},
 			{Name: string(governance.EventApprove), Src: []string{string(governance.GovernanceTransferring)}, Dst: string(governance.GovernanceAvailable)},
 			{Name: string(governance.EventReject), Src: []string{string(governance.GovernanceTransferring)}, Dst: string(lastStatus)},
 		},
@@ -175,14 +175,16 @@ func (dm *DappManager) checkPermission(permissions []string, ownerAddr string, r
 				return nil
 			}
 		case string(PermissionAdmin):
-			res := dm.CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin",
-				pb.String(regulatorAddr),
-				pb.String(string(GovernanceAdmin)))
-			if !res.Ok {
-				return fmt.Errorf("cross invoke IsAvailableGovernanceAdmin error:%s", string(res.Result))
-			}
-			if "true" == string(res.Result) {
-				return nil
+			if ownerAddr != regulatorAddr {
+				res := dm.CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin",
+					pb.String(regulatorAddr),
+					pb.String(string(GovernanceAdmin)))
+				if !res.Ok {
+					return fmt.Errorf("cross invoke IsAvailableGovernanceAdmin error:%s", string(res.Result))
+				}
+				if "true" == string(res.Result) {
+					return nil
+				}
 			}
 		case string(PermissionSpecific):
 			specificAddrs := []string{}

@@ -52,6 +52,7 @@ const (
 	WithdrawnReason  EndReason = "withdrawn by the proposal sponsor"
 	PriorityReason   EndReason = "forced shut down by a high-priority proposal"
 	ElectorateReason EndReason = "not enough valid electorate"
+	ClearReason      EndReason = "the proposal was cleared"
 
 	FALSE = "false"
 	TRUE  = "true"
@@ -59,14 +60,15 @@ const (
 
 var priority = map[governance.EventType]int{
 	governance.EventRegister: 3,
-	governance.EventUpdate:   1,
+	governance.EventUpdate:   2,
 	governance.EventFreeze:   2,
 	governance.EventActivate: 1,
 	governance.EventBind:     1,
 	governance.EventUnbind:   1,
 	governance.EventLogout:   3,
-	governance.EventPause:    2,
+	governance.EventPause:    3,
 	governance.EventUnpause:  1,
+	governance.EventCLear:    3,
 }
 
 type Ballot struct {
@@ -306,7 +308,14 @@ func (g *Governance) lockLowPriorityProposal(objId, eventTyp string) (string, er
 				}).Info("lock low priority proposal")
 				return p.Id, nil
 			} else {
-				return "", fmt.Errorf("the obj(%s) has an equal or higher priority proposal(%s,%s) is in progress currently, please submit it later", objId, p.EventType, p.Id)
+				g.Logger().WithFields(logrus.Fields{
+					"proposal": p.Id,
+					"type":     p.Typ,
+					"status":   p.Status,
+					"objID":    p.ObjId,
+					"eventTyp": p.EventType,
+				}).Info("there is an equal or higher proposal which is in progress currently")
+				//return "", fmt.Errorf("the obj(%s) has an equal or higher priority proposal(%s,%s) is in progress currently, please submit it later", objId, p.EventType, p.Id)
 			}
 		}
 	}
@@ -352,31 +361,66 @@ func (g *Governance) getThresholdNum(electorateNum int, proposalTyp ProposalType
 
 // Withdraw the proposal
 func (g *Governance) WithdrawProposal(id, reason string) *boltvm.Response {
-	// 1. check permission
 	if err := g.checkPermission([]string{string(PermissionSelf)}, id[0:strings.Index(id, "-")], g.CurrentCaller(), nil); err != nil {
 		return boltvm.Error(boltvm.GovernanceNoPermissionCode, fmt.Sprintf(string(boltvm.GovernanceNoPermissionMsg), g.CurrentCaller(), err.Error()))
 	}
 
-	// 2. Determine if the proposal exists
+	p, berr := g.endProposal(id, string(WithdrawnReason), []byte(reason))
+	if berr != nil {
+		return boltvm.Error(berr.Code, berr.Error())
+	}
+
+	if err := g.handleResult(p); err != nil {
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
+	}
+
+	return boltvm.Success(nil)
+}
+
+func (g *Governance) endProposal(id, endReason string, extra []byte) (*Proposal, *boltvm.BxhError) {
+	// 1. Determine if the proposal exists
 	p := &Proposal{}
 	if !g.GetObject(ProposalKey(id), p) {
-		return boltvm.Error(boltvm.GovernanceNonexistentProposalCode, fmt.Sprintf(string(boltvm.GovernanceNonexistentProposalMsg), id, ""))
+		return nil, boltvm.BError(boltvm.GovernanceNonexistentProposalCode, fmt.Sprintf(string(boltvm.GovernanceNonexistentProposalMsg), id, ""))
 	}
 
-	// 3。 Determine if the proposal has been cloesd
+	// 2. Determine if the proposal has been cloesd
 	if p.Status == APPROVED || p.Status == REJECTED {
-		return boltvm.Error(boltvm.GovernanceWithdrawEndProposalCode, fmt.Sprintf(string(boltvm.GovernanceWithdrawEndProposalMsg), id, string(p.Status)))
+		return nil, boltvm.BError(boltvm.GovernanceEndEndedProposalCode, fmt.Sprintf(string(boltvm.GovernanceEndEndedProposalMsg), id, string(p.Status)))
 	}
 
-	// 4. Withdraw
-	p.WithdrawReason = reason
-	p.EndReason = WithdrawnReason
+	// 3. End Proposal
+	p.EndReason = EndReason(endReason)
+	switch EndReason(endReason) {
+	case WithdrawnReason:
+		p.WithdrawReason = string(extra)
+	}
 	g.changeProposalStatus(p, REJECTED)
+	return p, nil
+}
 
-	// 5. handel result
-	err := g.handleResult(p)
+// EndCurrentProposal forces the current proposal to be ended and does not process other proposals associated with the proposal
+func (g *Governance) EndCurrentProposal(id, endReason string, extra []byte) *boltvm.Response {
+	// 1. check permission
+	specificAddrs := []string{
+		//constant.AppchainMgrContractAddr.Address().String(),
+		constant.RuleManagerContractAddr.Address().String(),
+		//constant.NodeManagerContractAddr.Address().String(),
+		//constant.RoleContractAddr.Address().String(),
+		//constant.DappMgrContractAddr.Address().String(),
+		constant.ServiceMgrContractAddr.Address().String(),
+	}
+	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
-		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("marshal specificAddrs error: %v", err)))
+	}
+	if err := g.checkPermission([]string{string(PermissionSpecific)}, "", g.CurrentCaller(), addrsData); err != nil {
+		return boltvm.Error(boltvm.GovernanceNoPermissionCode, fmt.Sprintf(string(boltvm.GovernanceNoPermissionMsg), g.CurrentCaller(), err.Error()))
+	}
+
+	// 2. end proposal
+	if _, berr := g.endProposal(id, endReason, extra); berr != nil {
+		return boltvm.Error(berr.Code, berr.Error())
 	}
 
 	return boltvm.Success(nil)

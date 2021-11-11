@@ -100,6 +100,17 @@ func (sm *ServiceManager) Manage(eventTyp, proposalResult, lastStatus, objId str
 			if !res.Ok {
 				return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("cross invoke register: %s", string(res.Result))))
 			}
+
+			chainID := strings.Split(objId, ":")[0]
+			res = sm.CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "IsAvailable", pb.String(chainID))
+			if !res.Ok {
+				return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("cross invoke is available error: %s", string(res.Result))))
+			}
+			if FALSE == string(res.Result) {
+				if err := sm.pauseService(objId); err != nil {
+					return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("chain is not available, pause service %s err: %v", objId, err)))
+				}
+			}
 		case string(governance.EventUpdate):
 			updateInfo := &UpdateServiceInfo{}
 			if err := json.Unmarshal(extra, updateInfo); err != nil {
@@ -122,6 +133,10 @@ func (sm *ServiceManager) Manage(eventTyp, proposalResult, lastStatus, objId str
 
 			if updateInfo.ServiceName.IsEdit {
 				sm.freeServiceName(updateInfo.ServiceName.OldInfo.(string))
+			}
+		case string(governance.EventLogout):
+			if err := sm.clearService(objId); err != nil {
+				return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("clear service %s err: %v", objId, err)))
 			}
 		}
 	} else {
@@ -242,12 +257,7 @@ func (sm *ServiceManager) UpdateService(chainServiceID, name, intro, permits, de
 		return boltvm.Error(boltvm.ServiceNoPermissionCode, fmt.Sprintf(string(boltvm.ServiceNoPermissionMsg), sm.CurrentCaller(), err.Error()))
 	}
 
-	// 3. check appchain
-	if err := sm.checkAppchain(oldService.ChainID); err != nil {
-		return boltvm.Error(boltvm.ServiceUnavailableChainCode, fmt.Sprintf(string(boltvm.ServiceUnavailableChainMsg), oldService.ChainID, chainServiceID, err.Error()))
-	}
-
-	// 4. check service info
+	// 3. check service info
 	newService, err := sm.ServiceManager.PackageServiceInfo(oldService.ChainID, oldService.ServiceID, name, string(oldService.Type), intro, oldService.Ordered, permits, details, oldService.CreateTime, oldService.Status)
 	if err != nil {
 		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("get service info error: %v", err)))
@@ -257,7 +267,7 @@ func (sm *ServiceManager) UpdateService(chainServiceID, name, intro, permits, de
 		return res
 	}
 
-	// update permit or intro do not need proposal
+	// 4. update permit or intro do not need proposal
 	if newService.Name == oldService.Name &&
 		newService.Details == oldService.Details {
 		ok, data := sm.ServiceManager.Update(newService)
@@ -360,12 +370,7 @@ func (sm *ServiceManager) basicGovernance(chainServiceID, reason string, permiss
 		return boltvm.Error(boltvm.ServiceNoPermissionCode, fmt.Sprintf(string(boltvm.ServiceNoPermissionMsg), sm.CurrentCaller(), err.Error()))
 	}
 
-	// 3. check appchain
-	if err := sm.checkAppchain(service.ChainID); err != nil {
-		return boltvm.Error(boltvm.ServiceUnavailableChainCode, fmt.Sprintf(string(boltvm.ServiceUnavailableChainMsg), service.ChainID, chainServiceID, err.Error()))
-	}
-
-	// 4. submit proposal
+	// 3. submit proposal
 	res := sm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "SubmitProposal",
 		pb.String(sm.Caller()),
 		pb.String(string(event)),
@@ -379,7 +384,7 @@ func (sm *ServiceManager) basicGovernance(chainServiceID, reason string, permiss
 		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("submit proposal error: %s", string(res.Result))))
 	}
 
-	// 5. change status
+	// 4. change status
 	if ok, data := sm.ServiceManager.ChangeStatus(chainServiceID, string(event), string(service.Status), nil); !ok {
 		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("change status error: %s", string(data))))
 	}
@@ -426,13 +431,11 @@ func (sm *ServiceManager) pauseService(chainServiceID string) error {
 	event := governance.EventPause
 
 	// 1. governance pre: check if exist and status
-	if _, be := sm.ServiceManager.GovernancePre(chainServiceID, event, nil); be != nil {
-		return nil
-	}
-
-	// 2. change status
-	if ok, data := sm.ServiceManager.ChangeStatus(chainServiceID, string(event), "", nil); !ok {
-		return fmt.Errorf("change status error: %s", string(data))
+	if _, be := sm.ServiceManager.GovernancePre(chainServiceID, event, nil); be == nil {
+		// 2. change status
+		if ok, data := sm.ServiceManager.ChangeStatus(chainServiceID, string(event), "", nil); !ok {
+			return fmt.Errorf("change status error: %s", string(data))
+		}
 	}
 
 	// 3. lockProposal
@@ -484,15 +487,13 @@ func (sm *ServiceManager) unPauseService(chainServiceID string) error {
 	sm.ServiceManager.Persister = sm.Stub
 
 	// 1. governance pre: check if exist and status
-	if _, be := sm.ServiceManager.GovernancePre(chainServiceID, event, nil); be != nil {
-		return nil
+	if _, be := sm.ServiceManager.GovernancePre(chainServiceID, event, nil); be == nil {
+		// 2. change status
+		if ok, data := sm.ServiceManager.ChangeStatus(chainServiceID, string(event), "", nil); !ok {
+			return fmt.Errorf("change status error: %s", string(data))
+		}
 	}
 	//service := serviceInfo.(*service_mgr.Service)
-
-	// 2. change status
-	if ok, data := sm.ServiceManager.ChangeStatus(chainServiceID, string(event), "", nil); !ok {
-		return fmt.Errorf("change status error: %s", string(data))
-	}
 
 	sm.Logger().WithFields(logrus.Fields{
 		"chainServiceID": chainServiceID,
@@ -503,6 +504,81 @@ func (sm *ServiceManager) unPauseService(chainServiceID string) error {
 		pb.String(chainServiceID),
 		pb.String(string(governance.EventUnpause))); !res.Ok {
 		return fmt.Errorf("cross invoke UnLockLowPriorityProposal error: %s", string(res.Result))
+	}
+
+	return nil
+}
+
+// =========== ClearChainService clears services by chainID
+func (sm *ServiceManager) ClearChainService(chainID string) *boltvm.Response {
+	sm.ServiceManager.Persister = sm.Stub
+
+	// 1. check permission
+	specificAddrs := []string{constant.AppchainMgrContractAddr.Address().String()}
+	addrsData, err := json.Marshal(specificAddrs)
+	if err != nil {
+		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("marshal specificAddrs error: %v", err)))
+	}
+	if err := sm.checkPermission([]string{string(PermissionSpecific)}, chainID, sm.CurrentCaller(), addrsData); err != nil {
+		return boltvm.Error(boltvm.ServiceNoPermissionCode, fmt.Sprintf(string(boltvm.ServiceNoPermissionMsg), sm.CurrentCaller(), err.Error()))
+	}
+
+	// 2. get services id
+	idList, err := sm.ServiceManager.GetIDListByChainID(chainID)
+	if err != nil {
+		return getGovernanceRet("", nil)
+	}
+
+	sm.Logger().WithFields(logrus.Fields{
+		"chainID":        chainID,
+		"servicesIdList": idList,
+	}).Info("clear chain services")
+
+	// 3. clear services
+	for _, chainServiceID := range idList {
+		if err := sm.clearService(chainServiceID); err != nil {
+			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("clear service %s err: %v", chainServiceID, err)))
+		}
+	}
+
+	return getGovernanceRet("", nil)
+}
+
+func (sm *ServiceManager) clearService(chainServiceID string) error {
+	event := governance.EventCLear
+
+	// 1. governance pre: check if exist and status
+	if _, be := sm.ServiceManager.GovernancePre(chainServiceID, event, nil); be == nil {
+		// 2. change status
+		if ok, data := sm.ServiceManager.ChangeStatus(chainServiceID, string(event), "", nil); !ok {
+			return fmt.Errorf("change status error: %s", string(data))
+		}
+	}
+
+	// 3. clear proposal
+	res := sm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "GetProposalsByObjId", pb.String(chainServiceID))
+	if !res.Ok {
+		return fmt.Errorf("cross invoke GetProposalsByObjId error: %s", string(res.Result))
+	}
+	ps := make([]*Proposal, 0)
+	if err := json.Unmarshal(res.Result, &ps); err != nil {
+		return fmt.Errorf("json unmarshal error: %s", err.Error())
+	}
+
+	for _, p := range ps {
+		if p.Status == PAUSED || p.Status == PROPOSED {
+			if res := sm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "EndCurrentProposal",
+				pb.String(p.Id),
+				pb.String(string(ClearReason)),
+				pb.Bytes(nil)); !res.Ok {
+				return fmt.Errorf("cross invoke EndCurrentProposal error: %s", string(res.Result))
+			}
+			sm.Logger().WithFields(logrus.Fields{
+				"chainServiceID": p.ObjId,
+				"eventTyp":       p.EventType,
+				"proposalID":     p.Id,
+			}).Info("clear service proposal")
+		}
 	}
 
 	return nil
