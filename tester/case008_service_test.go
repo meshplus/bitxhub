@@ -482,7 +482,7 @@ func (suite *Service) TestLogoutAppchainPauseService() {
 	k1Nonce++
 	err = json.Unmarshal(ret.Ret, service)
 	suite.Require().Nil(err)
-	suite.Equal(governance.GovernancePause, service.Status)
+	suite.Equal(governance.GovernanceForbidden, service.Status)
 
 }
 
@@ -631,7 +631,6 @@ func (suite *Service) TestLogoutService() {
 	gRet = &governance.GovernanceResult{}
 	err = json.Unmarshal(ret.Ret, gRet)
 	suite.Require().Nil(err)
-	proposalLogoutServiceID := gRet.ProposalID
 
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "LogoutAppchain",
 		pb.String(chainID1),
@@ -676,24 +675,7 @@ func (suite *Service) TestLogoutService() {
 	k1Nonce++
 	err = json.Unmarshal(ret.Ret, service)
 	suite.Require().Nil(err)
-	suite.Equal(governance.GovernanceLogouting, service.Status)
-
-	suite.vote(proposalLogoutServiceID, priAdmin1, adminNonce1, string(contracts.REJECTED))
-	adminNonce1++
-
-	suite.vote(proposalLogoutServiceID, priAdmin2, adminNonce2, string(contracts.REJECTED))
-	adminNonce2++
-
-	suite.vote(proposalLogoutServiceID, priAdmin3, adminNonce3, string(contracts.REJECTED))
-	adminNonce3++
-
-	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.ServiceMgrContractAddr.Address(), "GetServiceInfo", pb.String(chainServiceID1))
-	suite.Require().Nil(err)
-	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
-	k1Nonce++
-	err = json.Unmarshal(ret.Ret, service)
-	suite.Require().Nil(err)
-	suite.Equal(governance.GovernancePause, service.Status)
+	suite.Equal(governance.GovernanceForbidden, service.Status)
 }
 
 func (suite *Service) vote(proposalId string, adminKey crypto.PrivateKey, adminNonce uint64, info string) {

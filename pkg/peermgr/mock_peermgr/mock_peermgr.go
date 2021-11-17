@@ -146,17 +146,10 @@ func (mr *MockPeerManagerMockRecorder) OtherPeers() *gomock.Call {
 }
 
 // Peers mocks base method.
-<<<<<<< HEAD
 func (m *MockPeerManager) Peers() map[string]*peer.AddrInfo {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Peers")
 	ret0, _ := ret[0].(map[string]*peer.AddrInfo)
-=======
-func (m *MockPeerManager) Peers() map[uint64]*peer.AddrInfo {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Peers")
-	ret0, _ := ret[0].(map[uint64]*peer.AddrInfo)
->>>>>>> feat: add wasm event
 	return ret0
 }
 

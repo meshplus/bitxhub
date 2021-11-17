@@ -20,20 +20,16 @@ const (
 	serviceID = "0xB2dD6977169c5067d3729E3deB9a82c3e7502BFb"
 )
 
-func TestServiceManager_Manage(t *testing.T) {
+func TestServiceManager_ManageRegister(t *testing.T) {
 	sm, mockStub, services, _ := servicePrepare(t)
 	chainServiceID := fmt.Sprintf("%s:%s", services[0].ChainID, services[0].ServiceID)
 	chainServiceRegisteringID := fmt.Sprintf("%s:%s", services[4].ChainID, services[4].ServiceID)
-	chainServiceUpdatingID := fmt.Sprintf("%s:%s", services[5].ChainID, services[5].ServiceID)
-	chainServiceLogoutingID := fmt.Sprintf("%s:%s", services[6].ChainID, services[6].ServiceID)
 	logger := log.NewWithModule("contracts")
 
 	mockStub.EXPECT().Logger().Return(logger).AnyTimes()
 	mockStub.EXPECT().GetObject(service_mgr.ServiceKey(chainServiceID), gomock.Any()).Return(false).Times(1)
 	mockStub.EXPECT().GetObject(service_mgr.ServiceKey(chainServiceID), gomock.Any()).SetArg(1, *services[0]).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(service_mgr.ServiceKey(chainServiceRegisteringID), gomock.Any()).SetArg(1, *services[4]).Return(true).AnyTimes()
-	mockStub.EXPECT().GetObject(service_mgr.ServiceKey(chainServiceUpdatingID), gomock.Any()).SetArg(1, *services[5]).Return(true).AnyTimes()
-	mockStub.EXPECT().GetObject(service_mgr.ServiceKey(chainServiceLogoutingID), gomock.Any()).SetArg(1, *services[6]).Return(true).AnyTimes()
 	mockStub.EXPECT().CurrentCaller().Return("addrNoPermission").Times(1)
 	mockStub.EXPECT().CurrentCaller().Return(constant.GovernanceContractAddr.Address().String()).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).Return().AnyTimes()
@@ -42,6 +38,8 @@ func TestServiceManager_Manage(t *testing.T) {
 	mockStub.EXPECT().CrossInvoke(constant.InterchainContractAddr.Address().String(), "Register", gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "IsAvailable", gomock.Any()).Return(boltvm.Error("", "crossinvoke isavailable error")).Times(1)
 	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "IsAvailable", gomock.Any()).Return(boltvm.Success([]byte(FALSE))).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "LockLowPriorityProposal", gomock.Any(), gomock.Any()).Return(boltvm.Error("", "LockLowPriorityProposal error")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "LockLowPriorityProposal", gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 
 	// test without permission
 	res := sm.Manage(string(governance.EventUpdate), string(APPROVED), string(governance.GovernanceAvailable), chainServiceID, nil)
@@ -53,9 +51,32 @@ func TestServiceManager_Manage(t *testing.T) {
 	// test register, register error
 	res = sm.Manage(string(governance.EventRegister), string(APPROVED), string(governance.GovernanceUnavailable), chainServiceRegisteringID, nil)
 	assert.False(t, res.Ok, string(res.Result))
-	// test register, ok
+	// is available error
+	res = sm.Manage(string(governance.EventRegister), string(APPROVED), string(governance.GovernanceUnavailable), chainServiceRegisteringID, nil)
+	assert.False(t, res.Ok, string(res.Result))
+	// LockLowPriorityProposal error
+	res = sm.Manage(string(governance.EventRegister), string(APPROVED), string(governance.GovernanceUnavailable), chainServiceRegisteringID, nil)
+	assert.False(t, res.Ok, string(res.Result))
+
+	// test register approve, ok
 	res = sm.Manage(string(governance.EventRegister), string(APPROVED), string(governance.GovernanceUnavailable), chainServiceRegisteringID, nil)
 	assert.True(t, res.Ok, string(res.Result))
+
+	// test register reject, ok
+	res = sm.Manage(string(governance.EventRegister), string(REJECTED), string(governance.GovernanceUnavailable), chainServiceRegisteringID, nil)
+	assert.True(t, res.Ok, string(res.Result))
+}
+
+func TestServiceManager_ManageUpdate(t *testing.T) {
+	sm, mockStub, services, _ := servicePrepare(t)
+	chainServiceUpdatingID := fmt.Sprintf("%s:%s", services[5].ChainID, services[5].ServiceID)
+	logger := log.NewWithModule("contracts")
+
+	mockStub.EXPECT().Logger().Return(logger).AnyTimes()
+	mockStub.EXPECT().GetObject(service_mgr.ServiceKey(chainServiceUpdatingID), gomock.Any()).SetArg(1, *services[5]).Return(true).AnyTimes()
+	mockStub.EXPECT().CurrentCaller().Return(constant.GovernanceContractAddr.Address().String()).AnyTimes()
+	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).Return().AnyTimes()
+	mockStub.EXPECT().Delete(gomock.Any()).Return().AnyTimes()
 
 	// test update
 	updateInfo := &UpdateServiceInfo{
@@ -82,10 +103,53 @@ func TestServiceManager_Manage(t *testing.T) {
 	}
 	updateInfoData, err := json.Marshal(updateInfo)
 	assert.Nil(t, err)
-	res = sm.Manage(string(governance.EventUpdate), string(APPROVED), string(governance.GovernanceAvailable), chainServiceUpdatingID, updateInfoData)
+
+	res := sm.Manage(string(governance.EventUpdate), string(APPROVED), string(governance.GovernanceAvailable), chainServiceUpdatingID, updateInfoData)
 	assert.True(t, res.Ok, string(res.Result))
 
-	// test logout, isavailable error
+	res = sm.Manage(string(governance.EventUpdate), string(REJECTED), string(governance.GovernanceAvailable), chainServiceUpdatingID, updateInfoData)
+	assert.True(t, res.Ok, string(res.Result))
+}
+
+func TestServiceManager_ManageLogout(t *testing.T) {
+	sm, mockStub, services, _ := servicePrepare(t)
+	chainServiceLogoutingID := fmt.Sprintf("%s:%s", services[6].ChainID, services[6].ServiceID)
+	logger := log.NewWithModule("contracts")
+
+	mockStub.EXPECT().Logger().Return(logger).AnyTimes()
+	mockStub.EXPECT().GetObject(service_mgr.ServiceKey(chainServiceLogoutingID), gomock.Any()).SetArg(1, *services[6]).Return(true).AnyTimes()
+	mockStub.EXPECT().CurrentCaller().Return(constant.GovernanceContractAddr.Address().String()).AnyTimes()
+	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).Return().AnyTimes()
+	mockStub.EXPECT().Delete(gomock.Any()).Return().AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "IsAvailable", gomock.Any()).Return(boltvm.Error("", "crossinvoke isavailable error")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "IsAvailable", gomock.Any()).Return(boltvm.Success([]byte(FALSE))).AnyTimes()
+	retProposals := make([]*Proposal, 0)
+	retProposals = append(retProposals, &Proposal{Id: "123", Status: PROPOSED})
+	retProposalsData, err := json.Marshal(retProposals)
+	assert.Nil(t, err)
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "GetProposalsByObjId", gomock.Any()).Return(boltvm.Error("", "GetProposalsByObjId error")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "GetProposalsByObjId", gomock.Any()).Return(boltvm.Success(retProposalsData)).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "EndCurrentProposal", gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("", "EndCurrentProposal error")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "EndCurrentProposal", gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "LockLowPriorityProposal", gomock.Any(), gomock.Any()).Return(boltvm.Error("", "LockLowPriorityProposal error")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "LockLowPriorityProposal", gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+
+	// logout approve
+	// GetProposalsByObjId error
+	res := sm.Manage(string(governance.EventLogout), string(APPROVED), string(governance.GovernanceUnavailable), chainServiceLogoutingID, nil)
+	assert.False(t, res.Ok, string(res.Result))
+	// EndCurrentProposal error
+	res = sm.Manage(string(governance.EventLogout), string(APPROVED), string(governance.GovernanceUnavailable), chainServiceLogoutingID, nil)
+	assert.False(t, res.Ok, string(res.Result))
+	// ok
+	res = sm.Manage(string(governance.EventLogout), string(APPROVED), string(governance.GovernanceUnavailable), chainServiceLogoutingID, nil)
+	assert.True(t, res.Ok, string(res.Result))
+
+	// test logout
+	// isavailable error
+	res = sm.Manage(string(governance.EventLogout), string(REJECTED), string(governance.GovernanceUnavailable), chainServiceLogoutingID, nil)
+	assert.False(t, res.Ok, string(res.Result))
+	// LockLowPriorityProposal error
 	res = sm.Manage(string(governance.EventLogout), string(REJECTED), string(governance.GovernanceUnavailable), chainServiceLogoutingID, nil)
 	assert.False(t, res.Ok, string(res.Result))
 	// test logout, ok
@@ -166,7 +230,6 @@ func TestServiceManager_UpdateService(t *testing.T) {
 	mockStub.EXPECT().Caller().Return(appchainAdminAddr).AnyTimes()
 	governancePreErrReq := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Return(false).Times(1)
 	checkPermissionErrReq := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *services[0]).Return(true).Times(1)
-	checkAppchainErrReq := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *services[0]).Return(true).Times(1)
 	checkInfoErrReq := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *services[0]).Return(true).Times(3)
 	updateErrReq := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *services[0]).Return(true).Times(1)
 	updateErrReq2 := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Return(false).Times(1)
@@ -174,15 +237,13 @@ func TestServiceManager_UpdateService(t *testing.T) {
 	changeStatusErrReq1 := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *services[0]).Return(true).Times(1)
 	changeStatusErrReq2 := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *services[2]).Return(true).Times(1)
 	okReq := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *services[0]).Return(true).Times(2)
-	gomock.InOrder(governancePreErrReq, checkPermissionErrReq, checkAppchainErrReq, checkInfoErrReq, updateErrReq, updateErrReq2, submitErrReq, changeStatusErrReq1, changeStatusErrReq2, okReq)
+	gomock.InOrder(governancePreErrReq, checkPermissionErrReq, checkInfoErrReq, updateErrReq, updateErrReq2, submitErrReq, changeStatusErrReq1, changeStatusErrReq2, okReq)
 
 	mockStub.EXPECT().CurrentCaller().Return(noAdminAddr).Times(1)
 	mockStub.EXPECT().CurrentCaller().Return(appchainAdminAddr).AnyTimes()
 	appchainRoleData, err := json.Marshal([]*Role{roles[0]})
 	assert.Nil(t, err)
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "GetAppchainAdmin", gomock.Any()).Return(boltvm.Success(appchainRoleData)).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "IsAvailable", gomock.Any()).Return(boltvm.Success([]byte(FALSE))).Times(1)
-	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "IsAvailable", gomock.Any()).Return(boltvm.Success([]byte(TRUE))).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("", "submit error")).Times(1)
 	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).Return().AnyTimes()
@@ -192,9 +253,6 @@ func TestServiceManager_UpdateService(t *testing.T) {
 	res := sm.UpdateService(fmt.Sprintf("%s:%s", services[0].ChainID, services[0].ServiceID), services[0].Name, services[0].Intro, "", services[0].Details, reason)
 	assert.Equal(t, false, res.Ok, string(res.Result))
 	// 2. check permision error
-	res = sm.UpdateService(fmt.Sprintf("%s:%s", services[0].ChainID, services[0].ServiceID), services[0].Name, services[0].Intro, "", services[0].Details, reason)
-	assert.Equal(t, false, res.Ok, string(res.Result))
-	// 3. check appchain error
 	res = sm.UpdateService(fmt.Sprintf("%s:%s", services[0].ChainID, services[0].ServiceID), services[0].Name, services[0].Intro, "", services[0].Details, reason)
 	assert.Equal(t, false, res.Ok, string(res.Result))
 
@@ -231,12 +289,11 @@ func TestServiceManager_LogoutService(t *testing.T) {
 	mockStub.EXPECT().Caller().Return(appchainAdminAddr).AnyTimes()
 	governancePreErrReq := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Return(false).Times(1)
 	checkPermissionErrReq := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *services[0]).Return(true).Times(1)
-	checkAppchainErrReq := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *services[0]).Return(true).Times(2)
 	submitErrReq := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *services[0]).Return(true).Times(1)
 	changeStatusErrReq1 := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *services[0]).Return(true).Times(1)
 	changeStatusErrReq2 := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *services[2]).Return(true).Times(1)
 	okReq := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *services[0]).Return(true).Times(2)
-	gomock.InOrder(governancePreErrReq, checkPermissionErrReq, checkAppchainErrReq, submitErrReq, changeStatusErrReq1, changeStatusErrReq2, okReq)
+	gomock.InOrder(governancePreErrReq, checkPermissionErrReq, submitErrReq, changeStatusErrReq1, changeStatusErrReq2, okReq)
 
 	mockStub.EXPECT().CurrentCaller().Return(noAdminAddr).Times(1)
 	mockStub.EXPECT().CurrentCaller().Return(appchainAdminAddr).AnyTimes()
@@ -247,26 +304,17 @@ func TestServiceManager_LogoutService(t *testing.T) {
 	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).Return().AnyTimes()
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "IsAvailable", gomock.Any()).Return(boltvm.Error("", "is available error")).Times(1)
-	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "IsAvailable", gomock.Any()).Return(boltvm.Success([]byte(FALSE))).Times(1)
-	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "IsAvailable", gomock.Any()).Return(boltvm.Success([]byte(TRUE))).AnyTimes()
 
 	// 1. governancePre error
 	res := sm.LogoutService(chainServiceID, reason)
 	assert.Equal(t, false, res.Ok, string(res.Result))
-	// 3. check permision error
+	// 2. check permision error
 	res = sm.LogoutService(chainServiceID, reason)
 	assert.Equal(t, false, res.Ok, string(res.Result))
-	// 4. check appchain error (is available error)
+	// 3. submit error
 	res = sm.LogoutService(chainServiceID, reason)
 	assert.Equal(t, false, res.Ok, string(res.Result))
-	// 5. check appchain error (not available)
-	res = sm.LogoutService(chainServiceID, reason)
-	assert.Equal(t, false, res.Ok, string(res.Result))
-	// 6. submit error
-	res = sm.LogoutService(chainServiceID, reason)
-	assert.Equal(t, false, res.Ok, string(res.Result))
-	// 7. change status error
+	// 4. change status error
 	res = sm.LogoutService(chainServiceID, reason)
 	assert.Equal(t, false, res.Ok, string(res.Result))
 
@@ -286,7 +334,6 @@ func TestServiceManager_FreezeService(t *testing.T) {
 	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).Return().AnyTimes()
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "IsAvailable", gomock.Any()).Return(boltvm.Success([]byte(TRUE))).AnyTimes()
 
 	res := sm.FreezeService(chainServiceID, reason)
 	assert.Equal(t, true, res.Ok, string(res.Result))
@@ -308,7 +355,6 @@ func TestServiceManager_ActivateService(t *testing.T) {
 	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).Return().AnyTimes()
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "IsAvailable", gomock.Any()).Return(boltvm.Success([]byte(TRUE))).AnyTimes()
 
 	res := sm.ActivateService(chainServiceID, reason)
 	assert.Equal(t, true, res.Ok, string(res.Result))
@@ -343,9 +389,6 @@ func TestServiceManager_PauseChainService(t *testing.T) {
 	assert.Equal(t, false, res.Ok, string(res.Result))
 
 	// no services list, ok
-	res = sm.PauseChainService(services[0].ChainID)
-	assert.Equal(t, true, res.Ok, string(res.Result))
-	// no service can be paused, ok
 	res = sm.PauseChainService(services[0].ChainID)
 	assert.Equal(t, true, res.Ok, string(res.Result))
 
@@ -388,15 +431,62 @@ func TestServiceManager_UnPauseChainService(t *testing.T) {
 	// no services list, ok
 	res = sm.UnPauseChainService(services[3].ChainID)
 	assert.Equal(t, true, res.Ok, string(res.Result))
-	// no service can be paused, ok
-	res = sm.UnPauseChainService(services[3].ChainID)
-	assert.Equal(t, true, res.Ok, string(res.Result))
 
 	// LockLowPriorityProposal error
 	res = sm.UnPauseChainService(services[3].ChainID)
 	assert.Equal(t, false, res.Ok, string(res.Result))
 
 	res = sm.UnPauseChainService(services[3].ChainID)
+	assert.Equal(t, true, res.Ok, string(res.Result))
+}
+
+func TestServiceManager_ClearChainService(t *testing.T) {
+	sm, mockStub, services, _ := servicePrepare(t)
+	chainServiceID := fmt.Sprintf("%s:%s", services[0].ChainID, services[0].ServiceID)
+	chainServiceunavailableID := fmt.Sprintf("%s:%s", services[2].ChainID, services[2].ServiceID)
+
+	serviceMap1 := orderedmap.New()
+	serviceMap1.Set(chainServiceunavailableID, struct{}{})
+	serviceMap2 := orderedmap.New()
+	serviceMap2.Set(chainServiceID, struct{}{})
+	mockStub.EXPECT().GetObject(service_mgr.AppchainServicesKey(services[0].ChainID), gomock.Any()).Return(false).Times(1)
+	mockStub.EXPECT().GetObject(service_mgr.AppchainServicesKey(services[0].ChainID), gomock.Any()).SetArg(1, *serviceMap1).Return(true).Times(1)
+	mockStub.EXPECT().GetObject(service_mgr.AppchainServicesKey(services[0].ChainID), gomock.Any()).SetArg(1, *serviceMap2).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(service_mgr.ServiceKey(chainServiceunavailableID), gomock.Any()).SetArg(1, *services[2]).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(service_mgr.ServiceKey(chainServiceID), gomock.Any()).SetArg(1, *services[0]).Return(true).AnyTimes()
+	retProposals := make([]*Proposal, 0)
+	retProposals = append(retProposals, &Proposal{Id: "123", Status: PROPOSED})
+	retProposalsData, err := json.Marshal(retProposals)
+	assert.Nil(t, err)
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "GetProposalsByObjId", gomock.Any()).Return(boltvm.Error("", "GetProposalsByObjId error")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "GetProposalsByObjId", gomock.Any()).Return(boltvm.Success(retProposalsData)).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "EndCurrentProposal", gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("", "EndCurrentProposal error")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "EndCurrentProposal", gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+
+	mockStub.EXPECT().GetTxTimeStamp().Return(int64(0)).AnyTimes()
+	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).Return().AnyTimes()
+	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
+
+	mockStub.EXPECT().CurrentCaller().Return("").Times(1)
+	mockStub.EXPECT().CurrentCaller().Return(constant.AppchainMgrContractAddr.Address().String()).AnyTimes()
+
+	// check permission error
+	res := sm.ClearChainService(services[0].ChainID)
+	assert.Equal(t, false, res.Ok, string(res.Result))
+
+	// no services list, ok
+	res = sm.ClearChainService(services[0].ChainID)
+	assert.Equal(t, true, res.Ok, string(res.Result))
+
+	// GetProposalsByObjId error
+	res = sm.ClearChainService(services[0].ChainID)
+	assert.Equal(t, false, res.Ok, string(res.Result))
+
+	// EndCurrentProposal error
+	res = sm.ClearChainService(services[0].ChainID)
+	assert.Equal(t, false, res.Ok, string(res.Result))
+
+	res = sm.ClearChainService(services[0].ChainID)
 	assert.Equal(t, true, res.Ok, string(res.Result))
 }
 
