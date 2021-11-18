@@ -1,6 +1,7 @@
 .idea
 .DS_Store
 .vscode
+.history/*
 a_main-packr.go
 a_repo-packr.go
 

@@ -179,7 +179,6 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, error) {
 		return false, fmt.Errorf("%s: unmarshal appchain data fail: %w", internalError, err)
 	}
 
-
 	// if ibtp.Category() == pb.IBTP_RESPONSE {
 	// 	return true, nil
 	// }
@@ -252,9 +251,15 @@ func checkReceipt(receipt, origin *pb.IBTP, status pb.IBTP_Type) error {
 	if err := rPayload.Unmarshal(receipt.Payload); err != nil {
 		return err
 	}
+	if rPayload.Encrypted {
+		return nil
+	}
 	oPayload := &pb.Payload{}
 	if err := oPayload.Unmarshal(origin.Payload); err != nil {
 		return err
+	}
+	if oPayload.Encrypted {
+		return nil
 	}
 
 	rContent := &pb.Content{}
