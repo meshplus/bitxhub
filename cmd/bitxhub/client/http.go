@@ -90,7 +90,8 @@ func getHttpsClient(certPath string) (*http.Client, error) {
 	return &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
-				RootCAs: caCertPool,
+				RootCAs:    caCertPool,
+				ServerName: "BitXHub",
 			},
 		},
 	}, nil
