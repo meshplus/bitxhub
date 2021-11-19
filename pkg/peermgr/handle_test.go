@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/meshplus/bitxhub-kit/types"
 	"io/ioutil"
 	"strings"
 	"testing"
@@ -21,6 +20,7 @@ import (
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/crypto/asym/ecdsa"
 	"github.com/meshplus/bitxhub-kit/log"
+	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/ledger"
@@ -31,11 +31,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func genKeysAndConfig(t *testing.T, peerCnt int) ([]crypto2.PrivKey, []crypto.PrivateKey, []string, []string) {
+func genKeysAndConfig(t *testing.T, peerCnt int) ([]crypto2.PrivKey, []crypto.PrivateKey, []string, []string, []string) {
 	var nodeKeys []crypto2.PrivKey
 	var privKeys []crypto.PrivateKey
 	var peers []string
-	var ids []string
+	var pids []string
+	var accounts []string
 
 	port := 5001
 
@@ -46,21 +47,25 @@ func genKeysAndConfig(t *testing.T, peerCnt int) ([]crypto2.PrivKey, []crypto.Pr
 		libp2pKey, err := convertToLibp2pPrivKey(key)
 		require.Nil(t, err)
 		nodeKeys = append(nodeKeys, libp2pKey)
-		id, err := peer.IDFromPublicKey(libp2pKey.GetPublic())
+		pid, err := peer.IDFromPublicKey(libp2pKey.GetPublic())
 		require.Nil(t, err)
 
 		peer := fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/p2p/", port)
 		peers = append(peers, peer)
-		ids = append(ids, id.String())
+		pids = append(pids, pid.String())
 		port++
 
 		privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
 		require.Nil(t, err)
 
 		privKeys = append(privKeys, privKey)
+
+		account, err := privKey.PublicKey().Address()
+		require.Nil(t, err)
+		accounts = append(accounts, account.String())
 	}
 
-	return nodeKeys, privKeys, peers, ids
+	return nodeKeys, privKeys, peers, pids, accounts
 }
 
 func convertToLibp2pPrivKey(privateKey crypto.PrivateKey) (crypto2.PrivKey, error) {
@@ -77,12 +82,12 @@ func convertToLibp2pPrivKey(privateKey crypto.PrivateKey) (crypto2.PrivKey, erro
 	return libp2pPrivKey, nil
 }
 
-func peers(id uint64, addrs []string, ids []string) []*repo.NetworkNodes {
+func peers(id uint64, addrs []string, ids []string, accounts []string) []*repo.NetworkNodes {
 	m := make([]*repo.NetworkNodes, 0, len(addrs))
 	for i, addr := range addrs {
 		m = append(m, &repo.NetworkNodes{
 			ID:      uint64(i + 1),
-			Account: "",
+			Account: accounts[i],
 			Pid:     ids[i],
 			Hosts:   []string{addr},
 		})
@@ -92,7 +97,7 @@ func peers(id uint64, addrs []string, ids []string) []*repo.NetworkNodes {
 
 func NewSwarms(t *testing.T, peerCnt int) []*Swarm {
 	var swarms []*Swarm
-	nodeKeys, privKeys, addrs, ids := genKeysAndConfig(t, peerCnt)
+	nodeKeys, privKeys, addrs, pids, accounts := genKeysAndConfig(t, peerCnt)
 	mockCtl := gomock.NewController(t)
 	chainLedger := mock_ledger.NewMockChainLedger(mockCtl)
 	stateLedger := mock_ledger.NewMockStateLedger(mockCtl)
@@ -125,22 +130,26 @@ func NewSwarms(t *testing.T, peerCnt int) []*Swarm {
 			data, err := json.Marshal(record)
 			require.Nil(t, err)
 			return true, data
-		}
-
-		if addr.String() == constant.NodeManagerContractAddr.Address().String() {
+		case constant.NodeManagerContractAddr.Address().String():
 			for i := 0; i < peerCnt; i++ {
 				node := &node_mgr.Node{
+					Account:  accounts[i],
 					VPNodeId: uint64(i),
-					Pid:      ids[i],
+					Pid:      pids[i],
 					Status:   governance.GovernanceAvailable,
 				}
 				nodeData, err := json.Marshal(node)
 				require.Nil(t, err)
-				if bytes.Equal(key, []byte(fmt.Sprintf("%s-%s", node_mgr.NODEPREFIX, ids[i]))) {
+				if bytes.Equal(key, []byte(node_mgr.NodeKey(accounts[i]))) {
 					return true, nodeData
 				}
+				if bytes.Equal(key, []byte(node_mgr.VpNodePidKey(pids[i]))) {
+					return true, []byte(accounts[i])
+				}
 			}
+			return false, []byte(fmt.Sprintf("error, key: %s", string(key)))
 		}
+
 		return false, nil
 	}).AnyTimes()
 
@@ -182,7 +191,7 @@ func NewSwarms(t *testing.T, peerCnt int) []*Swarm {
 		repo.NetworkConfig.LocalAddr = local
 		repo.Key.Libp2pPrivKey = nodeKeys[i]
 		repo.Key.PrivKey = privKeys[i]
-		repo.NetworkConfig.Nodes = peers(uint64(i), addrs, ids)
+		repo.NetworkConfig.Nodes = peers(uint64(i), addrs, pids, accounts)
 
 		swarm, err := New(repo, log.NewWithModule(fmt.Sprintf("swarm%d", i)), mockLedger)
 		require.Nil(t, err)

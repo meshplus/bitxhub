@@ -23,6 +23,10 @@ func (api *FeedAPI) SubscribeLogsEvent(ch chan<- []*pb.EvmLog) event.Subscriptio
 	return api.bxh.BlockExecutor.SubscribeLogsEvent(ch)
 }
 
+func (api *FeedAPI) SubscribeAuditEvent(ch chan<- *pb.AuditTxInfo) event.Subscription {
+	return api.bxh.BlockExecutor.SubscribeAuditEvent(ch)
+}
+
 func (api *FeedAPI) BloomStatus() (uint64, uint64) {
 	return 4096, 0
 }

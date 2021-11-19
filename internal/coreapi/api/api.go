@@ -16,6 +16,7 @@ type CoreAPI interface {
 	Chain() ChainAPI
 	Feed() FeedAPI
 	Account() AccountAPI
+	Audit() AuditAPI
 }
 
 type BrokerAPI interface {
@@ -69,4 +70,9 @@ type FeedAPI interface {
 
 type AccountAPI interface {
 	GetAccount(addr *types.Address) ledger.IAccount
+}
+
+type AuditAPI interface {
+	HandleAuditNodeSubscription(dataCh chan<- *pb.AuditTxInfo, auditNodeID string, blockStart uint64) error
+	SubscribeAuditEvent(chan<- *pb.AuditTxInfo) event.Subscription
 }

@@ -2,7 +2,6 @@ package peermgr
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/libp2p/go-libp2p-core/control"
 	"github.com/libp2p/go-libp2p-core/network"
@@ -41,15 +40,20 @@ func (g *connectionGater) InterceptAccept(addr network.ConnMultiaddrs) (allow bo
 
 func (g *connectionGater) InterceptSecured(d network.Direction, p peer.ID, addr network.ConnMultiaddrs) (allow bool) {
 	lg := g.ledger.Copy()
-	ok, nodeData := lg.GetState(constant.NodeManagerContractAddr.Address(), []byte(fmt.Sprintf("%s-%s", node_mgr.NODEPREFIX, p)))
+	ok, nodeAccount := lg.GetState(constant.NodeManagerContractAddr.Address(), []byte(node_mgr.VpNodePidKey(p.String())))
 	if !ok {
-		g.logger.Infof("Intercept a connection with an unavailable node(get node err: %s), peer.Pid: %s", string(nodeData), p)
+		g.logger.Infof("Intercept a connection with an unavailable node(get node err: %s), peer.Pid: %s", string(nodeAccount), p)
+		return false
+	}
+	ok, nodeData := lg.GetState(constant.NodeManagerContractAddr.Address(), []byte(node_mgr.NodeKey(string(nodeAccount))))
+	if !ok {
+		g.logger.Errorf("InterceptSecured, node pid %s exist but node %s not exist: %v", string(p), string(nodeAccount), string(nodeData))
 		return false
 	}
 
 	node := &node_mgr.Node{}
 	if err := json.Unmarshal(nodeData, node); err != nil {
-		g.logger.Errorf("InterceptSecured, unmarshal node error: %v, %s", err, string(nodeData))
+		g.logger.Errorf("InterceptSecured, unmarshal node error: %v, nodeData: %s, pid: %s, account: %s", err, string(nodeData), p, string(nodeAccount))
 		return false
 	}
 

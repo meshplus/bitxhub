@@ -53,7 +53,7 @@ func TestInterchainManager_Register(t *testing.T) {
 	interchain.SourceReceiptCounter[dstChainService.getFullServiceId()] = 1
 	data0, err := interchain.Marshal()
 	assert.Nil(t, err)
-	o2 := mockStub.EXPECT().Get(service_mgr.ServiceKey(srcChainService.getFullServiceId())).Return(true, data0)
+	o2 := mockStub.EXPECT().Get(service_mgr.ServiceKey(srcChainService.getFullServiceId())).Return(true, data0).Times(3)
 
 	interchain = pb.Interchain{
 		ID:                   srcChainService.getFullServiceId(),
@@ -63,10 +63,12 @@ func TestInterchainManager_Register(t *testing.T) {
 	}
 	data1, err := interchain.Marshal()
 	assert.Nil(t, err)
-	o3 := mockStub.EXPECT().Get(service_mgr.ServiceKey(srcChainService.getFullServiceId())).Return(true, data1)
+	o3 := mockStub.EXPECT().Get(service_mgr.ServiceKey(srcChainService.getFullServiceId())).Return(true, data1).Times(2)
 	gomock.InOrder(o1, o2, o3)
 
 	im := &InterchainManager{mockStub}
+
+	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
 
 	res := im.Register(srcChainService.getChainServiceId())
 	assert.Equal(t, true, res.Ok)
@@ -81,7 +83,7 @@ func TestInterchainManager_Register(t *testing.T) {
 
 	res = im.Register(srcChainService.getChainServiceId())
 	assert.Equal(t, true, res.Ok)
-	assert.Equal(t, data0, res.Result)
+	assert.Equal(t, string(data0), string(res.Result))
 
 	res = im.Register(srcChainService.getChainServiceId())
 	assert.Equal(t, true, res.Ok)
@@ -185,6 +187,8 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 			return true, data2
 		case BitXHubID:
 			return true, []byte("bxh")
+		default:
+			return true, nil
 		}
 		return false, nil
 	}).AnyTimes()
@@ -327,6 +331,7 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	mockStub.EXPECT().AddObject(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().GetTxIndex().Return(uint64(1)).AnyTimes()
 	mockStub.EXPECT().GetTxHash().Return(&types.Hash{}).AnyTimes()
+	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
 
 	im := &InterchainManager{mockStub}
 	ibtp := &pb.IBTP{}
@@ -453,8 +458,10 @@ func TestInterchainManager_DeleteInterchain(t *testing.T) {
 	im := &InterchainManager{mockStub}
 
 	mockStub.EXPECT().Delete(gomock.Any())
-	res := im.DeleteInterchain("")
-	assert.True(t, res.Ok)
+	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().Get(gomock.Any()).Return(true, nil).AnyTimes()
+	res := im.DeleteInterchain("1356:123:123")
+	assert.True(t, res.Ok, string(res.Result))
 }
 
 func TestInterchainManager_GetIBTPByID(t *testing.T) {

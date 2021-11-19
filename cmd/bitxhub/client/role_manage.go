@@ -276,7 +276,7 @@ func allRole(ctx *cli.Context) error {
 
 func printRole(roles []*contracts.Role) {
 	var table [][]string
-	table = append(table, []string{"RoleId", "type", "Status", "NodePid", "AppchainID"})
+	table = append(table, []string{"RoleId", "type", "Status", "NodeAccount", "AppchainID"})
 
 	for _, r := range roles {
 		var typ string
@@ -290,7 +290,7 @@ func printRole(roles []*contracts.Role) {
 			r.ID,
 			typ,
 			string(r.Status),
-			r.NodePid,
+			r.NodeAccount,
 			r.AppchainID,
 		})
 	}

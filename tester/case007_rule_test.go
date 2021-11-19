@@ -297,7 +297,7 @@ func (suite *Rule) TestUpdateMasterRule() {
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k1Nonce++
 
-	serviceID1 := "service1"
+	serviceID1 := "0xB2dD6977169c5067d3729E3deB9a82c3e7502BF1"
 	chainServiceID1 := fmt.Sprintf("%s:%s", chainID1, serviceID1)
 
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.ServiceMgrContractAddr.Address(), "RegisterService",

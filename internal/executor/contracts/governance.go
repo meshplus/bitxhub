@@ -197,6 +197,7 @@ func (g *Governance) checkPermission(permissions []string, regulatedAddr, regula
 	return fmt.Errorf("regulatorAddr(%s) does not have the permission", regulatorAddr)
 }
 
+// =========== SubmitProposal submits kinds of proposal
 func (g *Governance) SubmitProposal(from, eventTyp, typ, objId, objLastStatus, reason string, extra []byte) *boltvm.Response {
 
 	// 1. check permission
@@ -271,6 +272,11 @@ func (g *Governance) SubmitProposal(from, eventTyp, typ, objId, objLastStatus, r
 		"createtime": p.CreateTime,
 		"extra":      string(p.Extra),
 	}).Debug("submit proposal")
+
+	if err := g.postAuditProposalEvent(p.Id); err != nil {
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("post audit proposal event error: %v", err)))
+	}
+
 	return boltvm.Success([]byte(p.Id))
 }
 
@@ -287,40 +293,6 @@ func isSpecialProposal(p *Proposal) bool {
 	}
 
 	return false
-}
-
-func (g *Governance) lockLowPriorityProposal(objId, eventTyp string) (string, error) {
-	proposals, err := g.getProposalsByObjId(objId)
-	if err != nil {
-		return "", err
-	}
-
-	for _, p := range proposals {
-		if p.Status == PROPOSED {
-			if priority[p.EventType] < priority[governance.EventType(eventTyp)] {
-				g.changeProposalStatus(p, PAUSED)
-				g.Logger().WithFields(logrus.Fields{
-					"proposal": p.Id,
-					"type":     p.Typ,
-					"status":   p.Status,
-					"objID":    p.ObjId,
-					"eventTyp": p.EventType,
-				}).Info("lock low priority proposal")
-				return p.Id, nil
-			} else {
-				g.Logger().WithFields(logrus.Fields{
-					"proposal": p.Id,
-					"type":     p.Typ,
-					"status":   p.Status,
-					"objID":    p.ObjId,
-					"eventTyp": p.EventType,
-				}).Info("there is an equal or higher proposal which is in progress currently")
-				//return "", fmt.Errorf("the obj(%s) has an equal or higher priority proposal(%s,%s) is in progress currently, please submit it later", objId, p.EventType, p.Id)
-			}
-		}
-	}
-
-	return "", nil
 }
 
 func (g *Governance) getElectorate() ([]*Role, int, error) {
@@ -359,7 +331,7 @@ func (g *Governance) getThresholdNum(electorateNum int, proposalTyp ProposalType
 	return int(math.Ceil(float64(electorateNum) * ps.ParticipateThreshold)), nil
 }
 
-// Withdraw the proposal
+// =========== WithdrawProposal withdraws the designated proposal
 func (g *Governance) WithdrawProposal(id, reason string) *boltvm.Response {
 	if err := g.checkPermission([]string{string(PermissionSelf)}, id[0:strings.Index(id, "-")], g.CurrentCaller(), nil); err != nil {
 		return boltvm.Error(boltvm.GovernanceNoPermissionCode, fmt.Sprintf(string(boltvm.GovernanceNoPermissionMsg), g.CurrentCaller(), err.Error()))
@@ -374,6 +346,9 @@ func (g *Governance) WithdrawProposal(id, reason string) *boltvm.Response {
 		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 	}
 
+	if err := g.postAuditProposalEvent(id); err != nil {
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("post audit proposal event error: %v", err)))
+	}
 	return boltvm.Success(nil)
 }
 
@@ -399,7 +374,7 @@ func (g *Governance) endProposal(id, endReason string, extra []byte) (*Proposal,
 	return p, nil
 }
 
-// EndCurrentProposal forces the current proposal to be ended and does not process other proposals associated with the proposal
+// =========== EndCurrentProposal forces the current proposal to be ended and does not process other proposals associated with the proposal
 func (g *Governance) EndCurrentProposal(id, endReason string, extra []byte) *boltvm.Response {
 	// 1. check permission
 	specificAddrs := []string{
@@ -423,9 +398,427 @@ func (g *Governance) EndCurrentProposal(id, endReason string, extra []byte) *bol
 		return boltvm.Error(berr.Code, berr.Error())
 	}
 
+	if err := g.postAuditProposalEvent(id); err != nil {
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("post audit proposal event error: %v", err)))
+	}
+
 	return boltvm.Success(nil)
 }
 
+// =========== Vote add someone's voting information (each person can only vote once)
+func (g *Governance) Vote(id, approve string, reason string) *boltvm.Response {
+	// 0. check role
+	addr := g.Caller()
+	res := g.CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin", pb.String(addr), pb.String(string(GovernanceAdmin)))
+	if !res.Ok {
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("cross invoke IsAvailable error: %s", string(res.Result))))
+	}
+	if string(res.Result) != "true" {
+		return boltvm.Error(boltvm.GovernanceUnavailableAdminVoteCode, fmt.Sprintf(string(boltvm.GovernanceUnavailableAdminVoteMsg), addr))
+	}
+
+	// 1. Determine if the proposal exists
+	p := &Proposal{}
+	if !g.GetObject(ProposalKey(id), p) {
+		return boltvm.Error(boltvm.GovernanceNonexistentProposalCode, fmt.Sprintf(string(boltvm.GovernanceNonexistentProposalMsg), id, ""))
+	}
+
+	// 2. Set vote
+	if res := g.setVote(p, addr, approve, reason); !res.Ok {
+		return res
+	}
+
+	// 3. Count votes
+	// If the threshold for participation is reached, the result of the vote can be judged.
+	// If the policy determines that the current vote has closed, the proposal state is modified.
+	ok, err := g.countVote(p)
+	if err != nil {
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("count vote error: %v", err)))
+	}
+	if !ok {
+		// the round of the voting is not over, wait the next vote
+		g.Logger().WithFields(logrus.Fields{
+			"id": p.Id,
+		}).Info("wait next vote")
+		if err := g.postAuditProposalEvent(id); err != nil {
+			return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("post audit proposal event error: %v", err)))
+		}
+		return boltvm.Success(nil)
+	}
+
+	// 4. Handle result
+	if err = g.handleResult(p); err != nil {
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
+	}
+	g.Logger().WithFields(logrus.Fields{
+		"id": p.Id,
+	}).Info("vote end")
+	if err := g.postAuditProposalEvent(id); err != nil {
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("post audit proposal event error: %v", err)))
+	}
+	return boltvm.Success(nil)
+}
+
+// Set vote of an administrator
+func (g *Governance) setVote(p *Proposal, addr string, approve string, reason string) *boltvm.Response {
+	// 1. Determine if the proposal has been approved or rejected
+	if p.Status != PROPOSED {
+		return boltvm.Error(boltvm.GovernanceVoteEndProposalCode, fmt.Sprintf(string(boltvm.GovernanceVoteEndProposalMsg), p.Status))
+	}
+
+	// 2. Determine if the administrator can vote
+	for _, e := range p.ElectorateList {
+		if addr == e.ID {
+
+			// 3. Determine if the administrator has voted
+			if _, ok := p.BallotMap[addr]; ok {
+				return boltvm.Error(boltvm.GovernanceAdminRepeatVoteCode, fmt.Sprintf(string(boltvm.GovernanceAdminRepeatVoteMsg), addr))
+			}
+
+			// 4. Record Voting Information
+			ballot := Ballot{
+				VoterAddr: addr,
+				Approve:   approve,
+				Num:       e.Weight,
+				Reason:    reason,
+				VoteTime:  g.GetTxTimeStamp(),
+			}
+			if repo.SuperAdminWeight == e.Weight {
+				p.IsSuperAdminVoted = true
+			}
+			p.BallotMap[addr] = ballot
+			switch approve {
+			case BallotApprove:
+				p.ApproveNum++
+			case BallotReject:
+				p.AgainstNum++
+			default:
+				return boltvm.Error(boltvm.GovernanceIllegalVoteInfoCode, fmt.Sprintf(string(boltvm.GovernanceIllegalVoteInfoMsg), approve))
+			}
+
+			g.SetObject(ProposalKey(p.Id), *p)
+			return boltvm.Success(nil)
+		}
+	}
+
+	return boltvm.Error(boltvm.GovernanceAdminNoVotePermissonCode, fmt.Sprintf(string(boltvm.GovernanceAdminNoVotePermissonMsg), addr, p.Id))
+}
+
+// Count votes to see if this round is over.
+// If the vote is over change the status of the proposal.
+func (g *Governance) countVote(p *Proposal) (bool, error) {
+	// 1. Get proposal strategy
+	ps := ProposalStrategy{}
+	if !g.GetObject(string(p.Typ), &ps) {
+		// SimpleMajority is used by default
+		ps.Typ = SimpleMajority
+		ps.ParticipateThreshold = repo.DefaultParticipateThreshold
+		g.SetObject(string(p.Typ), ps)
+	}
+
+	// 2. Special types of proposals require super administrator voting
+	if p.IsSpecial {
+		if !p.IsSuperAdminVoted {
+			return false, nil
+		}
+	}
+
+	// 3. Determine whether the participation threshold for the strategy has been met
+	if p.ApproveNum+p.AgainstNum < p.ThresholdElectorateNum {
+		return false, nil
+	}
+
+	// Votes are counted according to strategy
+	switch ps.Typ {
+	case SuperMajorityApprove:
+		// TODO: SUPER_MAJORITY_APPROVE
+		return false, fmt.Errorf("this policy is not supported currently")
+	case SuperMajorityAgainst:
+		// TODO: SUPER_MAJORITY_AGAINST
+		return false, fmt.Errorf("this policy is not supported currently")
+	default: // SIMPLE_MAJORITY
+		if p.ApproveNum > p.AgainstNum {
+			p.EndReason = NormalReason
+			g.changeProposalStatus(p, APPROVED)
+		} else {
+			p.EndReason = NormalReason
+			g.changeProposalStatus(p, REJECTED)
+		}
+		g.SetObject(ProposalKey(p.Id), *p)
+		return true, nil
+	}
+}
+
+func (g *Governance) handleResult(p *Proposal) (err error) {
+	// unlock low-priority proposal
+	nextEventType := governance.EventType(p.Status)
+	if p.LockProposalId != "" {
+		if p.Status == APPROVED {
+			notRestoreReason := fmt.Sprintf("%s(%s)", string(PriorityReason), p.Id)
+			_, err = g.unlockLowPriorityProposal(p.LockProposalId, false, notRestoreReason)
+		} else {
+			nextEventType, err = g.unlockLowPriorityProposal(p.LockProposalId, true, "")
+		}
+		if err != nil {
+			return fmt.Errorf("unlock low priority proposals error: %v", err)
+		}
+	}
+
+	// manage object
+	return g.manageObj(p.Typ, p.EventType, nextEventType, p.ObjLastStatus, p.ObjId, p.Extra)
+}
+
+func (g *Governance) manageObj(proposalTyp ProposalType, eventType, nextEventType governance.EventType, objLastStatus governance.GovernanceStatus, objId string, extra []byte) error {
+	switch proposalTyp {
+	case RoleMgr:
+		res := g.CrossInvoke(constant.RoleContractAddr.Address().String(), "Manage", pb.String(string(eventType)), pb.String(string(nextEventType)), pb.String(string(objLastStatus)), pb.String(objId), pb.Bytes(extra))
+		if !res.Ok {
+			return fmt.Errorf("cross invoke Manager error: %s", string(res.Result))
+		}
+		return nil
+	case ServiceMgr:
+		res := g.CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "Manage", pb.String(string(eventType)), pb.String(string(nextEventType)), pb.String(string(objLastStatus)), pb.String(objId), pb.Bytes(extra))
+		if !res.Ok {
+			return fmt.Errorf("cross invoke Manager error: %s", string(res.Result))
+		}
+		return nil
+	case NodeMgr:
+		res := g.CrossInvoke(constant.NodeManagerContractAddr.Address().String(), "Manage", pb.String(string(eventType)), pb.String(string(nextEventType)), pb.String(string(objLastStatus)), pb.String(objId), pb.Bytes(extra))
+		if !res.Ok {
+			return fmt.Errorf("cross invoke Manager error: %s", string(res.Result))
+		}
+		return nil
+	case RuleMgr:
+		res := g.CrossInvoke(constant.RuleManagerContractAddr.Address().String(), "Manage", pb.String(string(eventType)), pb.String(string(nextEventType)), pb.String(string(objLastStatus)), pb.String(objId), pb.Bytes(extra))
+		if !res.Ok {
+			return fmt.Errorf("cross invoke Manager error: %s", string(res.Result))
+		}
+		return nil
+	case DappMgr:
+		res := g.CrossInvoke(constant.DappMgrContractAddr.String(), "Manage", pb.String(string(eventType)), pb.String(string(nextEventType)), pb.String(string(objLastStatus)), pb.String(objId), pb.Bytes(extra))
+		if !res.Ok {
+			return fmt.Errorf("cross invoke Manager error: %s", string(res.Result))
+		}
+		return nil
+	default: // APPCHAIN_MGR
+		res := g.CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "Manage", pb.String(string(eventType)), pb.String(string(nextEventType)), pb.String(string(objLastStatus)), pb.String(objId), pb.Bytes(extra))
+		if !res.Ok {
+			return fmt.Errorf("cross invoke Manager error: %s", string(res.Result))
+		}
+		if eventType == governance.EventRegister {
+			g.Logger().WithFields(logrus.Fields{
+				"chainID": string(res.Result),
+			}).Info("Appchain registering ok")
+		}
+		return nil
+	}
+}
+
+// =========== LockLowPriorityProposal locks a proposed proposal for an object
+func (g *Governance) LockLowPriorityProposal(objId, eventTyp string) *boltvm.Response {
+	// 1. check permission
+	specificAddrs := []string{
+		constant.ServiceMgrContractAddr.Address().String(),
+		constant.RuleManagerContractAddr.Address().String(),
+	}
+	addrsData, err := json.Marshal(specificAddrs)
+	if err != nil {
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("marshal specificAddrs error: %v", err)))
+	}
+	if err := g.checkPermission([]string{string(PermissionSpecific)}, "", g.CurrentCaller(), addrsData); err != nil {
+		return boltvm.Error(boltvm.GovernanceNoPermissionCode, fmt.Sprintf(string(boltvm.GovernanceNoPermissionMsg), g.CurrentCaller(), err.Error()))
+	}
+
+	lockedProId, err := g.lockLowPriorityProposal(objId, eventTyp)
+	if err != nil {
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("lock low priority proposal error: %v", err)))
+	}
+
+	return boltvm.Success([]byte(lockedProId))
+}
+
+func (g *Governance) lockLowPriorityProposal(objId, eventTyp string) (string, error) {
+	proposals, err := g.getProposalsByObjId(objId)
+	if err != nil {
+		return "", err
+	}
+
+	for _, p := range proposals {
+		if p.Status == PROPOSED {
+			if priority[p.EventType] < priority[governance.EventType(eventTyp)] {
+				g.changeProposalStatus(p, PAUSED)
+				g.Logger().WithFields(logrus.Fields{
+					"proposal": p.Id,
+					"type":     p.Typ,
+					"status":   p.Status,
+					"objID":    p.ObjId,
+					"eventTyp": p.EventType,
+				}).Info("lock low priority proposal")
+
+				if err := g.postAuditProposalEvent(p.Id); err != nil {
+					return "", fmt.Errorf("post audit proposal event error: %v", err)
+				}
+				return p.Id, nil
+			} else {
+				g.Logger().WithFields(logrus.Fields{
+					"proposal": p.Id,
+					"type":     p.Typ,
+					"status":   p.Status,
+					"objID":    p.ObjId,
+					"eventTyp": p.EventType,
+				}).Info("there is an equal or higher proposal which is in progress currently")
+				//return "", fmt.Errorf("the obj(%s) has an equal or higher priority proposal(%s,%s) is in progress currently, please submit it later", objId, p.EventType, p.Id)
+			}
+		}
+	}
+
+	return "", nil
+}
+
+// =========== UnLockLowPriorityProposal unlocks a suspended proposal for an object
+func (g *Governance) UnLockLowPriorityProposal(objId, eventTyp string) *boltvm.Response {
+	// 1. check permission
+	specificAddrs := []string{
+		constant.ServiceMgrContractAddr.Address().String(),
+		constant.RuleManagerContractAddr.Address().String(),
+	}
+	addrsData, err := json.Marshal(specificAddrs)
+	if err != nil {
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("marshal specificAddrs error: %v", err)))
+	}
+	if err := g.checkPermission([]string{string(PermissionSpecific)}, "", g.CurrentCaller(), addrsData); err != nil {
+		return boltvm.Error(boltvm.GovernanceNoPermissionCode, fmt.Sprintf(string(boltvm.GovernanceNoPermissionMsg), g.CurrentCaller(), err.Error()))
+	}
+
+	// 2. unlock low pro=iority proposak
+	lockedProposal, err := g.getHightestPriorityPausedProposalByObjId(objId)
+	if err != nil {
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("getHightestPriorityPausedProposalByObjId err: %v", err)))
+	}
+	if lockedProposal == nil {
+		return boltvm.Success(nil)
+	}
+
+	nextEventType, err := g.unlockLowPriorityProposal(lockedProposal.Id, true, "")
+	if err != nil {
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("unlock low priority proposal error: %v", err)))
+	}
+
+	// manage object
+	// - The fourth parameter takes effect when nextEvent is reject. This parameter is not required here.
+	if err := g.manageObj(lockedProposal.Typ, governance.EventType(eventTyp), nextEventType, "", lockedProposal.ObjId, nil); err != nil {
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("manage object error: %v", err)))
+	}
+
+	if err := g.postAuditProposalEvent(lockedProposal.Id); err != nil {
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("post audit proposal event error: %v", err)))
+	}
+	return boltvm.Success(nil)
+}
+
+// Only the state is unlocked, and function manageObj needs to be called later
+func (g *Governance) unlockLowPriorityProposal(lockedProposalId string, restore bool, notRestoreReason string) (governance.EventType, error) {
+	var nextEventType governance.EventType
+	lockP := &Proposal{}
+	if !g.GetObject(ProposalKey(lockedProposalId), lockP) {
+		return "", fmt.Errorf("proposal does not exist")
+	}
+
+	if !restore {
+		lockP.EndReason = EndReason(notRestoreReason)
+		g.changeProposalStatus(lockP, REJECTED)
+	} else {
+		nextEventType = lockP.EventType
+		g.changeProposalStatus(lockP, PROPOSED)
+	}
+	g.Logger().WithFields(logrus.Fields{
+		"proposal": lockedProposalId,
+		"type":     lockP.Typ,
+		"status":   lockP.Status,
+		"restore":  restore,
+	}).Info("unlock low priority proposal")
+	return nextEventType, nil
+}
+
+// Queries suspended proposals for an administrated object and returns only the one with the highest priority
+func (g *Governance) getHightestPriorityPausedProposalByObjId(objID string) (*Proposal, error) {
+	pauseProposals, err := g.getProposalsByObjStatus(objID, PAUSED)
+	if err != nil {
+		return nil, err
+	}
+
+	var retP *Proposal
+	if len(pauseProposals) != 0 {
+		retP = pauseProposals[0]
+		for i := 1; i < len(pauseProposals); i++ {
+			if priority[retP.EventType] < priority[pauseProposals[i].EventType] {
+				retP = pauseProposals[i]
+			}
+		}
+	}
+
+	return retP, nil
+}
+
+func (g *Governance) getProposalsByObjStatus(objID string, status ProposalStatus) ([]*Proposal, error) {
+	ret := make([]*Proposal, 0)
+
+	proposals, err := g.getProposalsByObjId(objID)
+	if err != nil {
+		return nil, err
+	}
+	for _, p := range proposals {
+		if status == p.Status {
+			ret = append(ret, p)
+		}
+	}
+
+	return ret, nil
+}
+
+// =========== UpdateAvaliableElectorateNum updates AvaliableElectorateNum for a proposal, because of changes in the number of administrators available
+func (g *Governance) UpdateAvaliableElectorateNum(id string, num uint64) *boltvm.Response {
+	// 1. check permission
+	specificAddrs := []string{
+		constant.RoleContractAddr.Address().String(),
+	}
+	addrsData, err := json.Marshal(specificAddrs)
+	if err != nil {
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
+	}
+	if err := g.checkPermission([]string{string(PermissionSpecific)}, "", g.CurrentCaller(), addrsData); err != nil {
+		return boltvm.Error(boltvm.GovernanceNoPermissionCode, fmt.Sprintf(string(boltvm.GovernanceNoPermissionMsg), g.CurrentCaller(), err.Error()))
+	}
+
+	// 2. update num
+	p := &Proposal{}
+	if !g.GetObject(ProposalKey(id), p) {
+		return boltvm.Error(boltvm.GovernanceNonexistentProposalCode, fmt.Sprintf(string(boltvm.GovernanceNonexistentProposalMsg), id, ""))
+	}
+
+	p.AvaliableElectorateNum = num
+	g.Logger().WithFields(logrus.Fields{
+		"proposalId":             id,
+		"AvaliableElectorateNum": p.AvaliableElectorateNum,
+	}).Info("Update avaliable electorate num")
+	if p.AvaliableElectorateNum < p.ThresholdElectorateNum {
+		p.EndReason = ElectorateReason
+		g.changeProposalStatus(p, REJECTED)
+		err := g.handleResult(p)
+		if err != nil {
+			return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
+		}
+	} else {
+		g.SetObject(ProposalKey(p.Id), *p)
+	}
+
+	if err := g.postAuditProposalEvent(id); err != nil {
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("post audit proposal event error: %v", err)))
+	}
+	return boltvm.Success([]byte(strconv.Itoa(int(p.AvaliableElectorateNum))))
+}
+
+// ========================== Query interface ========================
 func (g *Governance) GetBallot(voterAddr, proposalId string) *boltvm.Response {
 	p := &Proposal{}
 	if !g.GetObject(ProposalKey(proposalId), p) {
@@ -729,45 +1122,6 @@ func (g *Governance) GetAvaliableElectorateNum(id string) *boltvm.Response {
 	return boltvm.Success([]byte(strconv.Itoa(int(p.AvaliableElectorateNum))))
 }
 
-// Get the number of total votes, include all votes cast and all votes not cast
-func (g *Governance) UpdateAvaliableElectorateNum(id string, num uint64) *boltvm.Response {
-	// 1. check permission
-	specificAddrs := []string{
-		constant.RoleContractAddr.Address().String(),
-	}
-	addrsData, err := json.Marshal(specificAddrs)
-	if err != nil {
-		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
-	}
-	if err := g.checkPermission([]string{string(PermissionSpecific)}, "", g.CurrentCaller(), addrsData); err != nil {
-		return boltvm.Error(boltvm.GovernanceNoPermissionCode, fmt.Sprintf(string(boltvm.GovernanceNoPermissionMsg), g.CurrentCaller(), err.Error()))
-	}
-
-	// 2. update num
-	p := &Proposal{}
-	if !g.GetObject(ProposalKey(id), p) {
-		return boltvm.Error(boltvm.GovernanceNonexistentProposalCode, fmt.Sprintf(string(boltvm.GovernanceNonexistentProposalMsg), id, ""))
-	}
-
-	p.AvaliableElectorateNum = num
-	g.Logger().WithFields(logrus.Fields{
-		"proposalId":             id,
-		"AvaliableElectorateNum": p.AvaliableElectorateNum,
-	}).Info("Update avaliable electorate num")
-	if p.AvaliableElectorateNum < p.ThresholdElectorateNum {
-		p.EndReason = ElectorateReason
-		g.changeProposalStatus(p, REJECTED)
-		err := g.handleResult(p)
-		if err != nil {
-			return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
-		}
-	} else {
-		g.SetObject(ProposalKey(p.Id), *p)
-	}
-
-	return boltvm.Success([]byte(strconv.Itoa(int(p.AvaliableElectorateNum))))
-}
-
 // Get the minimum number of votes required for the current voting strategy
 func (g *Governance) GetThresholdNum(id string) *boltvm.Response {
 	p := &Proposal{}
@@ -853,329 +1207,7 @@ func (g *Governance) GetUnvoteNum(id string) *boltvm.Response {
 	return boltvm.Success([]byte(strconv.Itoa(len(ret))))
 }
 
-// Add someone's voting information (each person can only vote once)
-func (g *Governance) Vote(id, approve string, reason string) *boltvm.Response {
-	// 0. check role
-	addr := g.Caller()
-	res := g.CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin", pb.String(addr), pb.String(string(GovernanceAdmin)))
-	if !res.Ok {
-		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("cross invoke IsAvailable error: %s", string(res.Result))))
-	}
-	if string(res.Result) != "true" {
-		return boltvm.Error(boltvm.GovernanceUnavailableAdminVoteCode, fmt.Sprintf(string(boltvm.GovernanceUnavailableAdminVoteMsg), addr))
-	}
-
-	// 1. Determine if the proposal exists
-	p := &Proposal{}
-	if !g.GetObject(ProposalKey(id), p) {
-		return boltvm.Error(boltvm.GovernanceNonexistentProposalCode, fmt.Sprintf(string(boltvm.GovernanceNonexistentProposalMsg), id, ""))
-	}
-
-	// 2. Set vote
-	if res := g.setVote(p, addr, approve, reason); !res.Ok {
-		return res
-	}
-
-	// 3. Count votes
-	// If the threshold for participation is reached, the result of the vote can be judged.
-	// If the policy determines that the current vote has closed, the proposal state is modified.
-	ok, err := g.countVote(p)
-	if err != nil {
-		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("count vote error: %v", err)))
-	}
-	if !ok {
-		// the round of the voting is not over, wait the next vote
-		g.Logger().WithFields(logrus.Fields{
-			"id": p.Id,
-		}).Info("wait next vote")
-		return boltvm.Success(nil)
-	}
-
-	// 4. Handle result
-	if err = g.handleResult(p); err != nil {
-		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
-	}
-	g.Logger().WithFields(logrus.Fields{}).Info("vote end")
-	return boltvm.Success(nil)
-}
-
-func (g *Governance) handleResult(p *Proposal) (err error) {
-	// unlock low-priority proposal
-	nextEventType := governance.EventType(p.Status)
-	if p.LockProposalId != "" {
-		if p.Status == APPROVED {
-			notRestoreReason := fmt.Sprintf("%s(%s)", string(PriorityReason), p.Id)
-			_, err = g.unlockLowPriorityProposal(p.LockProposalId, false, notRestoreReason)
-		} else {
-			nextEventType, err = g.unlockLowPriorityProposal(p.LockProposalId, true, "")
-		}
-		if err != nil {
-			return fmt.Errorf("unlock low priority proposals error: %v", err)
-		}
-	}
-
-	// manage object
-	return g.manageObj(p.Typ, p.EventType, nextEventType, p.ObjLastStatus, p.ObjId, p.Extra)
-}
-
-// Only the state is unlocked, and function manageObj needs to be called later
-func (g *Governance) unlockLowPriorityProposal(lockedProposalId string, restore bool, notRestoreReason string) (governance.EventType, error) {
-	var nextEventType governance.EventType
-	lockP := &Proposal{}
-	if !g.GetObject(ProposalKey(lockedProposalId), lockP) {
-		return "", fmt.Errorf("proposal does not exist")
-	}
-
-	if !restore {
-		lockP.EndReason = EndReason(notRestoreReason)
-		g.changeProposalStatus(lockP, REJECTED)
-	} else {
-		nextEventType = lockP.EventType
-		g.changeProposalStatus(lockP, PROPOSED)
-	}
-	g.Logger().WithFields(logrus.Fields{
-		"proposal": lockedProposalId,
-		"type":     lockP.Typ,
-		"status":   lockP.Status,
-		"restore":  restore,
-	}).Info("unlock low priority proposal")
-	return nextEventType, nil
-}
-
-func (g *Governance) manageObj(proposalTyp ProposalType, eventType, nextEventType governance.EventType, objLastStatus governance.GovernanceStatus, objId string, extra []byte) error {
-	switch proposalTyp {
-	case RoleMgr:
-		res := g.CrossInvoke(constant.RoleContractAddr.Address().String(), "Manage", pb.String(string(eventType)), pb.String(string(nextEventType)), pb.String(string(objLastStatus)), pb.String(objId), pb.Bytes(extra))
-		if !res.Ok {
-			return fmt.Errorf("cross invoke Manager error: %s", string(res.Result))
-		}
-		return nil
-	case ServiceMgr:
-		res := g.CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "Manage", pb.String(string(eventType)), pb.String(string(nextEventType)), pb.String(string(objLastStatus)), pb.String(objId), pb.Bytes(extra))
-		if !res.Ok {
-			return fmt.Errorf("cross invoke Manager error: %s", string(res.Result))
-		}
-		return nil
-	case NodeMgr:
-		res := g.CrossInvoke(constant.NodeManagerContractAddr.Address().String(), "Manage", pb.String(string(eventType)), pb.String(string(nextEventType)), pb.String(string(objLastStatus)), pb.String(objId), pb.Bytes(extra))
-		if !res.Ok {
-			return fmt.Errorf("cross invoke Manager error: %s", string(res.Result))
-		}
-		return nil
-	case RuleMgr:
-		res := g.CrossInvoke(constant.RuleManagerContractAddr.Address().String(), "Manage", pb.String(string(eventType)), pb.String(string(nextEventType)), pb.String(string(objLastStatus)), pb.String(objId), pb.Bytes(extra))
-		if !res.Ok {
-			return fmt.Errorf("cross invoke Manager error: %s", string(res.Result))
-		}
-		return nil
-	case DappMgr:
-		res := g.CrossInvoke(constant.DappMgrContractAddr.String(), "Manage", pb.String(string(eventType)), pb.String(string(nextEventType)), pb.String(string(objLastStatus)), pb.String(objId), pb.Bytes(extra))
-		if !res.Ok {
-			return fmt.Errorf("cross invoke Manager error: %s", string(res.Result))
-		}
-		return nil
-	default: // APPCHAIN_MGR
-		res := g.CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "Manage", pb.String(string(eventType)), pb.String(string(nextEventType)), pb.String(string(objLastStatus)), pb.String(objId), pb.Bytes(extra))
-		if !res.Ok {
-			return fmt.Errorf("cross invoke Manager error: %s", string(res.Result))
-		}
-		if eventType == governance.EventRegister {
-			g.Logger().WithFields(logrus.Fields{
-				"chainID": string(res.Result),
-			}).Info("Appchain registering ok")
-		}
-		return nil
-	}
-}
-
-// Set vote of an administrator
-func (g *Governance) setVote(p *Proposal, addr string, approve string, reason string) *boltvm.Response {
-	// 1. Determine if the proposal has been approved or rejected
-	if p.Status != PROPOSED {
-		return boltvm.Error(boltvm.GovernanceVoteEndProposalCode, fmt.Sprintf(string(boltvm.GovernanceVoteEndProposalMsg), p.Status))
-	}
-
-	// 2. Determine if the administrator can vote
-	for _, e := range p.ElectorateList {
-		if addr == e.ID {
-
-			// 3. Determine if the administrator has voted
-			if _, ok := p.BallotMap[addr]; ok {
-				return boltvm.Error(boltvm.GovernanceAdminRepeatVoteCode, fmt.Sprintf(string(boltvm.GovernanceAdminRepeatVoteMsg), addr))
-			}
-
-			// 4. Record Voting Information
-			ballot := Ballot{
-				VoterAddr: addr,
-				Approve:   approve,
-				Num:       e.Weight,
-				Reason:    reason,
-				VoteTime:  g.GetTxTimeStamp(),
-			}
-			if repo.SuperAdminWeight == e.Weight {
-				p.IsSuperAdminVoted = true
-			}
-			p.BallotMap[addr] = ballot
-			switch approve {
-			case BallotApprove:
-				p.ApproveNum++
-			case BallotReject:
-				p.AgainstNum++
-			default:
-				return boltvm.Error(boltvm.GovernanceIllegalVoteInfoCode, fmt.Sprintf(string(boltvm.GovernanceIllegalVoteInfoMsg), approve))
-			}
-
-			g.SetObject(ProposalKey(p.Id), *p)
-			return boltvm.Success(nil)
-		}
-	}
-
-	return boltvm.Error(boltvm.GovernanceAdminNoVotePermissonCode, fmt.Sprintf(string(boltvm.GovernanceAdminNoVotePermissonMsg), addr, p.Id))
-}
-
-// Count votes to see if this round is over.
-// If the vote is over change the status of the proposal.
-func (g *Governance) countVote(p *Proposal) (bool, error) {
-	// 1. Get proposal strategy
-	ps := ProposalStrategy{}
-	if !g.GetObject(string(p.Typ), &ps) {
-		// SimpleMajority is used by default
-		ps.Typ = SimpleMajority
-		ps.ParticipateThreshold = repo.DefaultParticipateThreshold
-		g.SetObject(string(p.Typ), ps)
-	}
-
-	// 2. Special types of proposals require super administrator voting
-	if p.IsSpecial {
-		if !p.IsSuperAdminVoted {
-			return false, nil
-		}
-	}
-
-	// 3. Determine whether the participation threshold for the strategy has been met
-	if p.ApproveNum+p.AgainstNum < p.ThresholdElectorateNum {
-		return false, nil
-	}
-
-	// Votes are counted according to strategy
-	switch ps.Typ {
-	case SuperMajorityApprove:
-		// TODO: SUPER_MAJORITY_APPROVE
-		return false, fmt.Errorf("this policy is not supported currently")
-	case SuperMajorityAgainst:
-		// TODO: SUPER_MAJORITY_AGAINST
-		return false, fmt.Errorf("this policy is not supported currently")
-	default: // SIMPLE_MAJORITY
-		if p.ApproveNum > p.AgainstNum {
-			p.EndReason = NormalReason
-			g.changeProposalStatus(p, APPROVED)
-		} else {
-			p.EndReason = NormalReason
-			g.changeProposalStatus(p, REJECTED)
-		}
-		g.SetObject(ProposalKey(p.Id), *p)
-		return true, nil
-	}
-}
-
-// Locks a suspended proposal for an object
-func (g *Governance) LockLowPriorityProposal(objId, eventTyp string) *boltvm.Response {
-	// 1. check permission
-	specificAddrs := []string{
-		constant.ServiceMgrContractAddr.Address().String(),
-		constant.RuleManagerContractAddr.Address().String(),
-	}
-	addrsData, err := json.Marshal(specificAddrs)
-	if err != nil {
-		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("marshal specificAddrs error: %v", err)))
-	}
-	if err := g.checkPermission([]string{string(PermissionSpecific)}, "", g.CurrentCaller(), addrsData); err != nil {
-		return boltvm.Error(boltvm.GovernanceNoPermissionCode, fmt.Sprintf(string(boltvm.GovernanceNoPermissionMsg), g.CurrentCaller(), err.Error()))
-	}
-
-	lockedProId, err := g.lockLowPriorityProposal(objId, eventTyp)
-	if err != nil {
-		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("lock low priority proposal error: %v", err)))
-	}
-	return boltvm.Success([]byte(lockedProId))
-}
-
-// Locks a suspended proposal for an object
-func (g *Governance) UnLockLowPriorityProposal(objId, eventTyp string) *boltvm.Response {
-	// 1. check permission
-	specificAddrs := []string{
-		constant.ServiceMgrContractAddr.Address().String(),
-		constant.RuleManagerContractAddr.Address().String(),
-	}
-	addrsData, err := json.Marshal(specificAddrs)
-	if err != nil {
-		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("marshal specificAddrs error: %v", err)))
-	}
-	if err := g.checkPermission([]string{string(PermissionSpecific)}, "", g.CurrentCaller(), addrsData); err != nil {
-		return boltvm.Error(boltvm.GovernanceNoPermissionCode, fmt.Sprintf(string(boltvm.GovernanceNoPermissionMsg), g.CurrentCaller(), err.Error()))
-	}
-
-	// 2. unlock low pro=iority proposak
-	lockedProposal, err := g.getHightestPriorityPausedProposalByObjId(objId)
-	if err != nil {
-		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("getHightestPriorityPausedProposalByObjId err: %v", err)))
-	}
-	if lockedProposal == nil {
-		return boltvm.Success(nil)
-	}
-
-	nextEventType, err := g.unlockLowPriorityProposal(lockedProposal.Id, true, "")
-	if err != nil {
-		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("unlock low priority proposal error: %v", err)))
-	}
-
-	// manage object
-	// - The fourth parameter takes effect when nextEvent is reject. This parameter is not required here.
-	if err := g.manageObj(lockedProposal.Typ, governance.EventType(eventTyp), nextEventType, "", lockedProposal.ObjId, nil); err != nil {
-		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("manage object error: %v", err)))
-	}
-
-	return boltvm.Success(nil)
-}
-
-// Queries suspended proposals for an administrated object and returns only the one with the highest priority
-func (g *Governance) getHightestPriorityPausedProposalByObjId(objID string) (*Proposal, error) {
-	pauseProposals, err := g.getProposalsByObjStatus(objID, PAUSED)
-	if err != nil {
-		return nil, err
-	}
-
-	var retP *Proposal
-	if len(pauseProposals) != 0 {
-		retP = pauseProposals[0]
-		for i := 1; i < len(pauseProposals); i++ {
-			if priority[retP.EventType] < priority[pauseProposals[i].EventType] {
-				retP = pauseProposals[i]
-			}
-		}
-	}
-
-	return retP, nil
-}
-
-func (g *Governance) getProposalsByObjStatus(objID string, status ProposalStatus) ([]*Proposal, error) {
-	ret := make([]*Proposal, 0)
-
-	proposals, err := g.getProposalsByObjId(objID)
-	if err != nil {
-		return nil, err
-	}
-	for _, p := range proposals {
-		if status == p.Status {
-			ret = append(ret, p)
-		}
-	}
-
-	return ret, nil
-}
-
 // Proposal strategy ===============================================================
-
 type ProposalStrategyType string
 
 const (
@@ -1316,6 +1348,7 @@ func getGovernanceRet(proposalID string, extra []byte) *boltvm.Response {
 	return boltvm.Success(resData)
 }
 
+// Others =============================================================
 type Proposals []*Proposal
 
 func (ps Proposals) Len() int { return len(ps) }
@@ -1324,4 +1357,39 @@ func (ps Proposals) Swap(i, j int) { ps[i], ps[j] = ps[j], ps[i] }
 
 func (ps Proposals) Less(i, j int) bool {
 	return ps[i].CreateTime > ps[j].CreateTime
+}
+
+// post event
+func (g *Governance) postAuditProposalEvent(proposalID string) error {
+	ok, proposalData := g.Get(ProposalKey(proposalID))
+	if !ok {
+		return fmt.Errorf("not found proposal %s", proposalID)
+	}
+	auditInfo := &pb.AuditRelatedObjInfo{
+		AuditObj:           proposalData,
+		RelatedChainIDList: map[string][]byte{},
+		RelatedNodeIDList:  map[string][]byte{},
+	}
+
+	proposal := &Proposal{}
+	if err := json.Unmarshal(proposalData, proposal); err != nil {
+		return err
+	}
+
+	switch proposal.Typ {
+	case AppchainMgr:
+		auditInfo.RelatedChainIDList[proposal.ObjId] = []byte{}
+	case RuleMgr:
+		appchainID := strings.Split(proposal.ObjId, ":")[0]
+		auditInfo.RelatedChainIDList[appchainID] = []byte{}
+	case ServiceMgr:
+		appchainID := strings.Split(proposal.ObjId, ":")[0]
+		auditInfo.RelatedChainIDList[appchainID] = []byte{}
+	case NodeMgr:
+		auditInfo.RelatedNodeIDList[proposal.ObjId] = []byte{}
+	}
+
+	g.PostEvent(pb.Event_AUDIT_PROPOSAL, auditInfo)
+
+	return nil
 }

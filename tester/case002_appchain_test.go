@@ -339,7 +339,7 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 	fabricBrokerData, err := json.Marshal(fabricBroker)
 	suite.Require().Nil(err)
 	chainName1 := "应用链4case002"
-	chainID1 := "应用链4case002"
+	chainID1 := "appchain4case002"
 	args := []*pb.Arg{
 		pb.String(chainID1),
 		pb.String(chainName1),
@@ -398,7 +398,7 @@ func (suite *RegisterAppchain) TestUpdateAppchains() {
 	}
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "UpdateAppchain", args...)
 	suite.Require().Nil(err)
-	suite.Require().True(ret.IsSuccess())
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k1Nonce++
 	proposalId1 := gjson.Get(string(ret.Ret), "proposal_id").String()
 

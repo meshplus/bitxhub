@@ -148,7 +148,7 @@ func updateRule(ctx *cli.Context) error {
 
 func printRule(rules []*ruleMgr.Rule) {
 	var table [][]string
-	table = append(table, []string{"ChainID", "RuleAddress", "Status", "Master"})
+	table = append(table, []string{"ChainID", "RuleAddress", "Status", "Master", "CreateTime"})
 
 	for _, r := range rules {
 		table = append(table, []string{
@@ -156,6 +156,7 @@ func printRule(rules []*ruleMgr.Rule) {
 			r.Address,
 			string(r.Status),
 			strconv.FormatBool(r.Master),
+			strconv.Itoa(int(r.CreateTime)),
 		})
 	}
 

@@ -40,3 +40,7 @@ func (api *CoreAPI) Chain() api.ChainAPI {
 func (api *CoreAPI) Feed() api.FeedAPI {
 	return (*FeedAPI)(api)
 }
+
+func (api *CoreAPI) Audit() api.AuditAPI {
+	return (*AuditAPI)(api)
+}

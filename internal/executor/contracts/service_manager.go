@@ -9,6 +9,7 @@ import (
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/governance"
 	servicemgr "github.com/meshplus/bitxhub-core/service-mgr"
+	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/sirupsen/logrus"
@@ -71,6 +72,23 @@ func (sm *ServiceManager) checkPermission(permissions []string, chainID string, 
 	return fmt.Errorf("regulatorAddr(%s) does not have the permission", regulatorAddr)
 }
 
+func (sm *ServiceManager) occupyServiceName(name string, chainServiceID string) {
+	sm.ServiceManager.Persister = sm.Stub
+	sm.SetObject(servicemgr.ServiceOccupyNameKey(name), chainServiceID)
+}
+
+func (sm *ServiceManager) freeServiceName(name string) {
+	sm.ServiceManager.Persister = sm.Stub
+	sm.Delete(servicemgr.ServiceOccupyNameKey(name))
+}
+
+func (sm *ServiceManager) isOccupiedName(name string) (bool, string) {
+	sm.ServiceManager.Persister = sm.Stub
+	chainServiceId := ""
+	ok := sm.GetObject(servicemgr.ServiceOccupyNameKey(name), &chainServiceId)
+	return ok, chainServiceId
+}
+
 // ========================== Governance interface ========================
 // =========== Manage does some subsequent operations when the proposal is over
 // extra: update - service info,
@@ -96,6 +114,13 @@ func (sm *ServiceManager) Manage(eventTyp, proposalResult, lastStatus, objId str
 	if proposalResult == string(APPROVED) {
 		switch eventTyp {
 		case string(governance.EventRegister):
+			service, err := sm.ServiceManager.QueryById(objId, nil)
+			if err != nil {
+				return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("cannot get service by id %s", objId)))
+			}
+			serviceInfo := service.(*servicemgr.Service)
+			sm.ServiceManager.Register(serviceInfo)
+
 			res := sm.CrossInvoke(constant.InterchainContractAddr.Address().String(), "Register", pb.String(objId))
 			if !res.Ok {
 				return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("cross invoke register: %s", string(res.Result))))
@@ -170,6 +195,9 @@ func (sm *ServiceManager) Manage(eventTyp, proposalResult, lastStatus, objId str
 		}
 	}
 
+	if err := sm.postAuditServiceEvent(objId); err != nil {
+		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
+	}
 	return boltvm.Success(nil)
 }
 
@@ -221,22 +249,13 @@ func (sm *ServiceManager) RegisterService(chainID, serviceID, name, typ, intro s
 	}
 
 	// 7. register info
-	ok, data := sm.ServiceManager.Register(service)
-	if !ok {
-		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("register service error: %s", string(data))))
+	sm.ServiceManager.RegisterPre(service)
+
+	if err := sm.postAuditServiceEvent(chainServiceID); err != nil {
+		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
 	}
 
 	return getGovernanceRet(string(res.Result), []byte(chainServiceID))
-}
-
-func (sm *ServiceManager) occupyServiceName(name string, chainServiceID string) {
-	sm.ServiceManager.Persister = sm.Stub
-	sm.SetObject(servicemgr.ServiceOccupyNameKey(name), chainServiceID)
-}
-
-func (sm *ServiceManager) freeServiceName(name string) {
-	sm.ServiceManager.Persister = sm.Stub
-	sm.Delete(servicemgr.ServiceOccupyNameKey(name))
 }
 
 // =========== UpdateService updates service info.
@@ -273,6 +292,10 @@ func (sm *ServiceManager) UpdateService(chainServiceID, name, intro, permits, de
 		ok, data := sm.ServiceManager.Update(newService)
 		if !ok {
 			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("update service error: %s", string(data))))
+		}
+
+		if err := sm.postAuditServiceEvent(chainServiceID); err != nil {
+			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
 		}
 		return getGovernanceRet("", nil)
 	}
@@ -338,6 +361,9 @@ func (sm *ServiceManager) UpdateService(chainServiceID, name, intro, permits, de
 		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("change status error: %s", string(data))))
 	}
 
+	if err := sm.postAuditServiceEvent(chainServiceID); err != nil {
+		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
+	}
 	return getGovernanceRet(string(res.Result), nil)
 }
 
@@ -389,6 +415,9 @@ func (sm *ServiceManager) basicGovernance(chainServiceID, reason string, permiss
 		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("change status error: %s", string(data))))
 	}
 
+	if err := sm.postAuditServiceEvent(chainServiceID); err != nil {
+		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
+	}
 	return getGovernanceRet(string(res.Result), nil)
 }
 
@@ -421,6 +450,10 @@ func (sm *ServiceManager) PauseChainService(chainID string) *boltvm.Response {
 	for _, chainServiceID := range idList {
 		if err := sm.pauseService(chainServiceID); err != nil {
 			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("pause service %s err: %v", chainServiceID, err)))
+		}
+
+		if err := sm.postAuditServiceEvent(chainServiceID); err != nil {
+			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
 		}
 	}
 
@@ -476,6 +509,10 @@ func (sm *ServiceManager) UnPauseChainService(chainID string) *boltvm.Response {
 	for _, chainServiceID := range idList {
 		if err := sm.unPauseService(chainServiceID); err != nil {
 			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("pause service %s err: %v", chainServiceID, err)))
+		}
+
+		if err := sm.postAuditServiceEvent(chainServiceID); err != nil {
+			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
 		}
 	}
 
@@ -538,6 +575,10 @@ func (sm *ServiceManager) ClearChainService(chainID string) *boltvm.Response {
 	for _, chainServiceID := range idList {
 		if err := sm.clearService(chainServiceID); err != nil {
 			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("clear service %s err: %v", chainServiceID, err)))
+		}
+
+		if err := sm.postAuditServiceEvent(chainServiceID); err != nil {
+			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
 		}
 	}
 
@@ -615,6 +656,10 @@ func (sm *ServiceManager) EvaluateService(chainServiceID, desc string, score flo
 	service.Score = num/(num+1)*service.Score + 1/(num+1)*score
 	service.EvaluationRecords[sm.Caller()] = evaRec
 	sm.SetObject(servicemgr.ServiceKey(chainServiceID), *service)
+
+	if err := sm.postAuditServiceEvent(chainServiceID); err != nil {
+		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
+	}
 	return getGovernanceRet("", nil)
 }
 
@@ -683,6 +728,10 @@ func (sm *ServiceManager) RecordInvokeService(fullServiceID, fromFullServiceID s
 		"fromChainServiceID": fromChainServiceID,
 		"result":             result,
 	}).Info("record invoke service")
+
+	if err := sm.postAuditServiceEvent(chainServiceID); err != nil {
+		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
+	}
 	return boltvm.Success(nil)
 }
 
@@ -693,6 +742,26 @@ func (sm *ServiceManager) GetServiceInfo(id string) *boltvm.Response {
 	service, err := sm.ServiceManager.QueryById(id, nil)
 	if err != nil {
 		return boltvm.Error(boltvm.ServiceNonexistentServiceCode, fmt.Sprintf(string(boltvm.ServiceNonexistentServiceMsg), id))
+	}
+
+	data, err := json.Marshal(service.(*servicemgr.Service))
+	if err != nil {
+		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("marshal service: %s", err.Error())))
+	}
+
+	return boltvm.Success(data)
+}
+
+func (sm *ServiceManager) GetServiceByName(name string) *boltvm.Response {
+	sm.ServiceManager.Persister = sm.Stub
+	id, err := sm.ServiceManager.GetServiceIDByName(name)
+	if err != nil {
+		return boltvm.Error(boltvm.ServiceNonexistentServiceCode, fmt.Sprintf(string(boltvm.ServiceNonexistentServiceMsg), name))
+	}
+
+	service, err := sm.ServiceManager.QueryById(id, nil)
+	if err != nil {
+		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("service name %s exist but service %s not exist: %v", name, id, err)))
 	}
 
 	data, err := json.Marshal(service.(*servicemgr.Service))
@@ -822,12 +891,18 @@ func (sm *ServiceManager) checkServiceInfo(service *servicemgr.Service, isRegist
 	if service.Name == "" {
 		return boltvm.Error(boltvm.ServiceEmptyNameCode, string(boltvm.ServiceEmptyNameMsg))
 	}
-	if serviceID, err := sm.getServiceIdByName(service.Name); err == nil {
+	if ok, serviceID := sm.isOccupiedName(service.Name); ok {
 		if isRegister {
 			return boltvm.Error(boltvm.ServiceDuplicateNameCode, fmt.Sprintf(string(boltvm.ServiceDuplicateNameMsg), service.Name, serviceID))
 		} else if serviceID != fmt.Sprintf("%s:%s", service.ChainID, service.ServiceID) {
 			return boltvm.Error(boltvm.ServiceDuplicateNameCode, fmt.Sprintf(string(boltvm.ServiceDuplicateNameMsg), service.Name, serviceID))
 		}
+	}
+
+	// check id
+	_, err := types.HexDecodeString(service.ServiceID)
+	if err != nil {
+		return boltvm.Error(boltvm.ServiceIllegalServiceIDCode, fmt.Sprintf(string(boltvm.ServiceIllegalServiceIDMsg), service.ServiceID, err.Error()))
 	}
 
 	// check type
@@ -839,55 +914,68 @@ func (sm *ServiceManager) checkServiceInfo(service *servicemgr.Service, isRegist
 
 	// check permission info
 	for p, _ := range service.Permission {
-		if err := sm.checkServiceIDFormat(p); err != nil {
-			return boltvm.Error(boltvm.ServiceIllegalPermissionCode, fmt.Sprintf(string(boltvm.ServiceIllegalPermissionMsg), p, err.Error()))
+		if berr := sm.checkPermissionService(p); berr != nil {
+			return boltvm.Error(berr.Code, berr.Error())
 		}
 	}
 
 	return boltvm.Success(nil)
 }
 
-func (sm *ServiceManager) checkServiceIDFormat(serviceID string) error {
+func (sm *ServiceManager) checkPermissionService(fullServiceID string) *boltvm.BxhError {
 	sm.ServiceManager.Persister = sm.Stub
-	addrs := strings.Split(serviceID, ":")
+	addrs := strings.Split(fullServiceID, ":")
 	if len(addrs) != 3 {
-		return fmt.Errorf("the ID does not contain three parts")
+		return boltvm.BError(boltvm.ServiceIllegalPermissionFormatCode, fmt.Sprintf(string(boltvm.ServiceIllegalPermissionFormatMsg), fullServiceID, "the ID does not contain three parts"))
 	}
 
 	if addrs[0] == "" {
-		return fmt.Errorf("BitxhubID is empty")
+		return boltvm.BError(boltvm.ServiceIllegalPermissionFormatCode, fmt.Sprintf(string(boltvm.ServiceIllegalPermissionFormatMsg), fullServiceID, "BitxhubID is empty"))
 	} else {
 		for _, a := range addrs[0] {
 			if a < 48 || a > 57 {
-				return fmt.Errorf("illegal BitxhubID")
+				return boltvm.BError(boltvm.ServiceIllegalPermissionFormatCode, fmt.Sprintf(string(boltvm.ServiceIllegalPermissionFormatMsg), fullServiceID, "illegal BitxhubID"))
 			}
 		}
 	}
 
 	if addrs[1] == "" || addrs[2] == "" {
-		return fmt.Errorf("AppchainID or ServiceID is empty")
+		return boltvm.BError(boltvm.ServiceIllegalPermissionFormatCode, fmt.Sprintf(string(boltvm.ServiceIllegalPermissionFormatMsg), fullServiceID, "AppchainID or ServiceID is empty"))
 	}
 
 	res := sm.CrossInvoke(constant.InterchainContractAddr.Address().String(), "GetBitXHubID")
 	if !res.Ok {
-		return fmt.Errorf("cross invoke GetBitXHubID error: %s", string(res.Result))
+		return boltvm.BError(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("cross invoke GetBitXHubID error: %s", string(res.Result))))
 	}
 	if addrs[0] == string(res.Result) {
-		_, err := sm.ServiceManager.QueryById(fmt.Sprintf("%s:%s", addrs[1], addrs[2]), nil)
+		service, err := sm.ServiceManager.QueryById(fmt.Sprintf("%s:%s", addrs[1], addrs[2]), nil)
 		if err != nil {
-			return fmt.Errorf("the service(%s) is not registered on this relay chain(%s)", addrs[2], string(res.Result))
+			return boltvm.BError(boltvm.ServiceNonexistentPermissionServiceCode, fmt.Sprintf(string(boltvm.ServiceNonexistentPermissionServiceMsg), fullServiceID, string(res.Result), err.Error()))
+		}
+		serviceInfo := service.(*servicemgr.Service)
+		if serviceInfo.Status == governance.GovernanceForbidden {
+			return boltvm.BError(boltvm.ServiceLogoutedPermissionServiceCode, fmt.Sprintf(string(boltvm.ServiceLogoutedPermissionServiceMsg), fullServiceID))
 		}
 	}
 
 	return nil
 }
 
-func (sm *ServiceManager) getServiceIdByName(name string) (string, error) {
+func (sm *ServiceManager) postAuditServiceEvent(chainServiceID string) error {
 	sm.ServiceManager.Persister = sm.Stub
-	chainServiceId := ""
-	ok := sm.GetObject(servicemgr.ServiceOccupyNameKey(name), &chainServiceId)
+	ok, serviceData := sm.Get(servicemgr.ServiceKey(chainServiceID))
 	if !ok {
-		return "", fmt.Errorf("the service of this name does not exist")
+		return fmt.Errorf("not found service %s", chainServiceID)
 	}
-	return chainServiceId, nil
+
+	auditInfo := &pb.AuditRelatedObjInfo{
+		AuditObj: serviceData,
+		RelatedChainIDList: map[string][]byte{
+			strings.Split(chainServiceID, ":")[0]: {},
+		},
+		RelatedNodeIDList: map[string][]byte{},
+	}
+	sm.PostEvent(pb.Event_AUDIT_SERVICE, auditInfo)
+
+	return nil
 }
