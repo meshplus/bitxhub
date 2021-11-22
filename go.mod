@@ -26,7 +26,7 @@ require (
 	github.com/juju/ratelimit v1.0.1
 	github.com/libp2p/go-libp2p-core v0.5.6
 	github.com/magiconair/properties v1.8.4
-	github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20210827053334-12025d3b4fd1
+	github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20211118080800-513bad622a52
 	github.com/meshplus/bitxhub-kit v1.2.0
 	github.com/meshplus/bitxhub-model v1.1.2-0.20210513074749-d31e04a9f41d
 	github.com/meshplus/go-libp2p-cert v0.0.0-20210125063330-7c25fd5b7a49
@@ -76,3 +76,5 @@ replace github.com/spf13/viper => github.com/spf13/viper v1.7.1
 replace github.com/mitchellh/mapstructure v1.4.1 => github.com/mitchellh/mapstructure v1.1.2
 
 replace gopkg.in/ini.v1 v1.62.0 => gopkg.in/ini.v1 v1.51.0
+
+replace golang.org/x/net => golang.org/x/net v0.0.0-20210220033124-5f55cee0dc0d
