@@ -51,6 +51,7 @@ type BlockExecutor struct {
 	blockFeed        event.Feed
 	logsFeed         event.Feed
 	nodeFeed         event.Feed
+	auditFeed        event.Feed
 	ctx              context.Context
 	cancel           context.CancelFunc
 
@@ -152,6 +153,10 @@ func (exec *BlockExecutor) SubscribeLogsEvent(ch chan<- []*pb.EvmLog) event.Subs
 
 func (exec *BlockExecutor) SubscribeNodeEvent(ch chan<- events.NodeEvent) event.Subscription {
 	return exec.nodeFeed.Subscribe(ch)
+}
+
+func (exec *BlockExecutor) SubscribeAuditEvent(ch chan<- *pb.AuditTxInfo) event.Subscription {
+	return exec.auditFeed.Subscribe(ch)
 }
 
 func (exec *BlockExecutor) ApplyReadonlyTransactions(txs []pb.Transaction) []*pb.Receipt {

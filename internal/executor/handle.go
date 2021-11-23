@@ -309,6 +309,11 @@ func (exec *BlockExecutor) applyTx(index int, tx pb.Transaction, invalidReason a
 	evs := exec.ledger.Events(tx.GetHash().String())
 	if len(evs) != 0 {
 		receipt.Events = evs
+
+		auditDataUpdate := false
+		relatedChainIDList := map[string][]byte{}
+		relatedNodeIDList := map[string][]byte{}
+
 		for _, ev := range evs {
 			switch ev.EventType {
 			case pb.Event_INTERCHAIN:
@@ -337,7 +342,55 @@ func (exec *BlockExecutor) applyTx(index int, tx pb.Transaction, invalidReason a
 					panic(err)
 				}
 				exec.postNodeEvent(nodeEvent)
+
+			case pb.Event_AUDIT_PROPOSAL:
+				fallthrough
+			case pb.Event_AUDIT_APPCHAIN:
+				fallthrough
+			case pb.Event_AUDIT_RULE:
+				fallthrough
+			case pb.Event_AUDIT_SERVICE:
+				fallthrough
+			case pb.Event_AUDIT_NODE:
+				fallthrough
+			case pb.Event_AUDIT_ROLE:
+				fallthrough
+			case pb.Event_AUDIT_INTERCHAIN:
+				fallthrough
+			case pb.Event_AUDIT_DAPP:
+				auditDataUpdate = true
+				auditRelatedObjInfo := pb.AuditRelatedObjInfo{}
+				err := json.Unmarshal(ev.Data, &auditRelatedObjInfo)
+				if err != nil {
+					panic(err)
+				}
+				for chainID, _ := range auditRelatedObjInfo.RelatedChainIDList {
+					relatedChainIDList[chainID] = []byte{}
+				}
+				for nodeID, _ := range auditRelatedObjInfo.RelatedNodeIDList {
+					relatedNodeIDList[nodeID] = []byte{}
+				}
 			}
+		}
+		if auditDataUpdate {
+			exec.postAuditEvent(&pb.AuditTxInfo{
+				Tx: &pb.BxhTransaction{
+					Version:         tx.GetVersion(),
+					From:            tx.GetFrom(),
+					To:              tx.GetTo(),
+					Timestamp:       tx.GetTimeStamp(),
+					TransactionHash: tx.GetHash(),
+					Payload:         tx.GetPayload(),
+					IBTP:            tx.GetIBTP(),
+					Nonce:           tx.GetNonce(),
+					Typ:             uint32(tx.GetType()),
+					Signature:       tx.GetSignature(),
+					Extra:           tx.GetExtra(),
+				},
+				Rec:                receipt,
+				RelatedChainIDList: relatedChainIDList,
+				RelatedNodeIDList:  relatedNodeIDList,
+			})
 		}
 	}
 
@@ -346,6 +399,10 @@ func (exec *BlockExecutor) applyTx(index int, tx pb.Transaction, invalidReason a
 	}
 
 	return receipt
+}
+
+func (exec *BlockExecutor) postAuditEvent(auditTxInfo *pb.AuditTxInfo) {
+	go exec.auditFeed.Send(auditTxInfo)
 }
 
 func (exec *BlockExecutor) postNodeEvent(event events.NodeEvent) {

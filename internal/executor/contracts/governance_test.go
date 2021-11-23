@@ -92,6 +92,8 @@ func TestGovernance_SubmitProposal(t *testing.T) {
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().GetTxTimeStamp().Return(int64(1)).AnyTimes()
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
+	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().Get(gomock.Any()).Return(true, pDatas[0]).AnyTimes()
 
 	// check permission error
 	res := g.SubmitProposal("", string(governance.EventRegister), string(AppchainMgr), "objId", string(governance.GovernanceUnavailable), "reason", []byte{})
@@ -540,6 +542,10 @@ func TestGovernance_Vote(t *testing.T) {
 	mockStub.EXPECT().Caller().Return(addrNotVoted11).Times(1)
 	mockStub.EXPECT().Caller().Return(addrNotVoted12).Times(1)
 	mockStub.EXPECT().GetTxTimeStamp().Return(int64(0)).AnyTimes()
+	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	pData, err := json.Marshal(proposalExistent)
+	assert.Nil(t, err)
+	mockStub.EXPECT().Get(gomock.Any()).Return(true, pData).AnyTimes()
 
 	// 1.cross invoke IsAvailable error
 	res := g.Vote(idNonexistent, BallotApprove, "")
@@ -717,6 +723,8 @@ func TestGovernance_SubmitProposal_LockLowPriorityProposal(t *testing.T) {
 	idMap2.Set(idExistent, struct{}{})
 	mockStub.EXPECT().GetObject(ProposalStatusKey(string((PAUSED))), gomock.Any()).SetArg(1, *idMap1).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(ProposalStatusKey(string((PROPOSED))), gomock.Any()).SetArg(1, *idMap2).Return(true).AnyTimes()
+	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().Get(gomock.Any()).Return(true, pData).AnyTimes()
 
 	res := g.SubmitProposal(idExistent, string(governance.EventUpdate), string(AppchainMgr), appchainID, string(governance.GovernanceAvailable), "reason", chainData)
 	assert.True(t, res.Ok, string(res.Result))
@@ -838,6 +846,8 @@ func TestGovernance_WithdrawProposal(t *testing.T) {
 	mockStub.EXPECT().GetObject(ProposalStatusKey(string(REJECTED)), gomock.Any()).SetArg(1, *idMap1).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(ProposalStatusKey(string(APPROVED)), gomock.Any()).SetArg(1, *idMap1).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(ProposalStatusKey(string(PROPOSED)), gomock.Any()).SetArg(1, *idMap2).Return(true).AnyTimes()
+	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().Get(gomock.Any()).Return(true, pData).AnyTimes()
 
 	res := g.WithdrawProposal(idExistent, "reason")
 	assert.False(t, res.Ok, string(res.Result))
@@ -926,6 +936,10 @@ func TestGovernance_UpdateAvaliableElectorateNum(t *testing.T) {
 	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "Manage", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("", "")).Times(1)
 	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "Manage", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
+	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	pData, err := json.Marshal(proposalFreeze)
+	assert.Nil(t, err)
+	mockStub.EXPECT().Get(gomock.Any()).Return(true, pData).AnyTimes()
 
 	// check permission error
 	res := g.UpdateAvaliableElectorateNum(idExistent, 0)
@@ -1009,6 +1023,10 @@ func TestGovernance_LockLowPriorityProposal(t *testing.T) {
 	mockStub.EXPECT().GetObject(ProposalStatusKey(string(REJECTED)), gomock.Any()).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(ProposalStatusKey(string(APPROVED)), gomock.Any()).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(ProposalStatusKey(string(PROPOSED)), gomock.Any()).Return(true).AnyTimes()
+	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	pData, err := json.Marshal(proposalUpdate)
+	assert.Nil(t, err)
+	mockStub.EXPECT().Get(gomock.Any()).Return(true, pData).AnyTimes()
 
 	// check permission error
 	res := g.LockLowPriorityProposal(appchainID, string(governance.EventFreeze))
@@ -1086,6 +1104,10 @@ func TestGovernance_UnLockLowPriorityProposal(t *testing.T) {
 	mockStub.EXPECT().GetObject(ProposalObjKey(appchainID), gomock.Any()).SetArg(1, *idMapOk).Return(true).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "Manage", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("", "")).Times(1)
 	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "Manage", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	pData, err := json.Marshal(proposalUpdate)
+	assert.Nil(t, err)
+	mockStub.EXPECT().Get(gomock.Any()).Return(true, pData).AnyTimes()
 
 	// check permission error
 	res := g.UnLockLowPriorityProposal(appchainID, string(governance.EventFreeze))

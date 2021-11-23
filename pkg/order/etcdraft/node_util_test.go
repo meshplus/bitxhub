@@ -172,12 +172,12 @@ func generateTx() pb.Transaction {
 	return tx
 }
 
-func peers(id uint64, addrs []string, ids []string) []*repo.NetworkNodes {
+func peers(id uint64, addrs []string, ids []string, accounts []string) []*repo.NetworkNodes {
 	m := make([]*repo.NetworkNodes, 0, len(addrs))
 	for i, addr := range addrs {
 		m = append(m, &repo.NetworkNodes{
 			ID:      uint64(i + 1),
-			Account: "",
+			Account: accounts[i],
 			Pid:     ids[i],
 			Hosts:   []string{addr},
 		})
@@ -185,11 +185,12 @@ func peers(id uint64, addrs []string, ids []string) []*repo.NetworkNodes {
 	return m
 }
 
-func genKeysAndConfig(t *testing.T, peerCnt int) ([]crypto2.PrivKey, []crypto.PrivateKey, []string, []string) {
+func genKeysAndConfig(t *testing.T, peerCnt int) ([]crypto2.PrivKey, []crypto.PrivateKey, []string, []string, []string) {
 	var nodeKeys []crypto2.PrivKey
 	var privKeys []crypto.PrivateKey
 	var peers []string
-	var ids []string
+	var pids []string
+	var accounts []string
 
 	port := 5001
 
@@ -205,16 +206,20 @@ func genKeysAndConfig(t *testing.T, peerCnt int) ([]crypto2.PrivKey, []crypto.Pr
 
 		peer := fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/p2p/", port)
 		peers = append(peers, peer)
-		ids = append(ids, id.String())
+		pids = append(pids, id.String())
 		port++
 
 		privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
 		require.Nil(t, err)
 
 		privKeys = append(privKeys, privKey)
+
+		account, err := privKey.PublicKey().Address()
+		require.Nil(t, err)
+		accounts = append(accounts, account.String())
 	}
 
-	return nodeKeys, privKeys, peers, ids
+	return nodeKeys, privKeys, peers, pids, accounts
 }
 
 func convertToLibp2pPrivKey(privateKey crypto.PrivateKey) (crypto2.PrivKey, error) {
@@ -234,7 +239,7 @@ func convertToLibp2pPrivKey(privateKey crypto.PrivateKey) (crypto2.PrivKey, erro
 func newSwarms(t *testing.T, peerCnt int, certVerify bool) ([]*peermgr.Swarm, map[uint64]*pb.VpInfo) {
 	var swarms []*peermgr.Swarm
 	nodes := make(map[uint64]*pb.VpInfo)
-	nodeKeys, privKeys, addrs, ids := genKeysAndConfig(t, peerCnt)
+	nodeKeys, privKeys, addrs, pids, accounts := genKeysAndConfig(t, peerCnt)
 	mockCtl := gomock.NewController(t)
 	chainLedger := mock_ledger.NewMockChainLedger(mockCtl)
 	stateLedger := mock_ledger.NewMockStateLedger(mockCtl)
@@ -245,14 +250,15 @@ func newSwarms(t *testing.T, peerCnt int, certVerify bool) ([]*peermgr.Swarm, ma
 
 	for i := 0; i < peerCnt; i++ {
 		node := &node_mgr.Node{
+			Account:  accounts[i],
 			VPNodeId: uint64(i),
-			Pid:      ids[i],
+			Pid:      pids[i],
 			Status:   governance.GovernanceAvailable,
 		}
 		nodeData, err := json.Marshal(node)
 		require.Nil(t, err)
-		//stateLedger.EXPECT().GetState(constant.NodeManagerContractAddr.Address(), []byte(fmt.Sprintf("%s-%s", node_mgr.NODE_PID_PREFIX, ids[i]))).Return(true, []byte(strconv.Itoa(i))).AnyTimes()
-		stateLedger.EXPECT().GetState(constant.NodeManagerContractAddr.Address(), []byte(fmt.Sprintf("%s-%s", node_mgr.NODEPREFIX, ids[i]))).Return(true, nodeData).AnyTimes()
+		stateLedger.EXPECT().GetState(constant.NodeManagerContractAddr.Address(), []byte(node_mgr.NodeKey(accounts[i]))).Return(true, nodeData).AnyTimes()
+		stateLedger.EXPECT().GetState(constant.NodeManagerContractAddr.Address(), []byte(node_mgr.VpNodePidKey(pids[i]))).Return(true, []byte(accounts[i])).AnyTimes()
 	}
 	stateLedger.EXPECT().Copy().Return(stateLedger).AnyTimes()
 
@@ -299,7 +305,7 @@ func newSwarms(t *testing.T, peerCnt int, certVerify bool) ([]*peermgr.Swarm, ma
 		repo.NetworkConfig.LocalAddr = local
 		repo.Key.Libp2pPrivKey = nodeKeys[i]
 		repo.Key.PrivKey = privKeys[i]
-		repo.NetworkConfig.Nodes = peers(uint64(i), addrs, ids)
+		repo.NetworkConfig.Nodes = peers(uint64(i), addrs, pids, accounts)
 
 		address, err := privKeys[i].PublicKey().Address()
 		require.Nil(t, err)

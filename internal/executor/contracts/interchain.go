@@ -85,11 +85,19 @@ func (x *InterchainManager) Register(chainServiceID string) *boltvm.Response {
 		return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), err.Error()))
 	}
 
+	if err := x.postAuditInterchainEvent(fullServiceID); err != nil {
+		return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), fmt.Sprintf("post audit interchain event error: %v", err)))
+	}
+
 	return boltvm.Success(body)
 }
 
 func (x *InterchainManager) DeleteInterchain(id string) *boltvm.Response {
 	x.Delete(serviceKey(id))
+
+	if err := x.postAuditInterchainEvent(id); err != nil {
+		return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), fmt.Sprintf("post audit interchain event error: %v", err)))
+	}
 	return boltvm.Success(nil)
 }
 
@@ -206,6 +214,12 @@ func (x *InterchainManager) HandleIBTP(ibtp *pb.IBTP) *boltvm.Response {
 
 	ret := x.ProcessIBTP(ibtp, interchain)
 
+	if err := x.postAuditInterchainEvent(ibtp.From); err != nil {
+		return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), fmt.Sprintf("post audit interchain event error: %v", err)))
+	}
+	if err := x.postAuditInterchainEvent(ibtp.To); err != nil {
+		return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), fmt.Sprintf("post audit interchain event error: %v", err)))
+	}
 	return boltvm.Success(ret)
 }
 
@@ -749,4 +763,26 @@ func getIBTPID(from, to string, index uint64) string {
 
 func MultiTxNotifyKey(height uint64) string {
 	return fmt.Sprintf("%s-%d", MULTITX_PREFIX, height)
+}
+
+func (x *InterchainManager) postAuditInterchainEvent(fullServiceID string) error {
+	ok, interchainData := x.Get(serviceKey(fullServiceID))
+	if !ok {
+		return fmt.Errorf("not found interchain %s", fullServiceID)
+	}
+
+	chainService, err := x.parseChainService(fullServiceID)
+	if err != nil {
+		return err
+	}
+	auditInfo := &pb.AuditRelatedObjInfo{
+		AuditObj: interchainData,
+		RelatedChainIDList: map[string][]byte{
+			chainService.ChainId: {},
+		},
+		RelatedNodeIDList: map[string][]byte{},
+	}
+	x.PostEvent(pb.Event_AUDIT_INTERCHAIN, auditInfo)
+
+	return nil
 }

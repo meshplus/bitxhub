@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
-
-	node_mgr "github.com/meshplus/bitxhub-core/node-mgr"
+	"strings"
 
 	"github.com/fatih/color"
+	node_mgr "github.com/meshplus/bitxhub-core/node-mgr"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/tidwall/gjson"
@@ -21,30 +21,20 @@ func nodeMgrCMD() cli.Command {
 		Subcommands: cli.Commands{
 			cli.Command{
 				Name:  "status",
-				Usage: "query node status by node pid",
+				Usage: "query node status by node account",
 				Flags: []cli.Flag{
 					cli.StringFlag{
-						Name:     "pid",
-						Usage:    "Specify node pid",
+						Name:     "account",
+						Usage:    "Specify node account",
 						Required: true,
 					},
 				},
-				Action: getNodeStatusByPid,
+				Action: getNodeStatusByAccount,
 			},
 			cli.Command{
 				Name:  "register",
 				Usage: "register node",
 				Flags: []cli.Flag{
-					cli.StringFlag{
-						Name:     "pid",
-						Usage:    "Specify node pid",
-						Required: true,
-					},
-					cli.Uint64Flag{
-						Name:     "id",
-						Usage:    "Specify vp node id, only useful for VPnode",
-						Required: false,
-					},
 					cli.StringFlag{
 						Name:     "account",
 						Usage:    "Specify node account",
@@ -57,6 +47,26 @@ func nodeMgrCMD() cli.Command {
 						Required: false,
 					},
 					cli.StringFlag{
+						Name:     "pid",
+						Usage:    "Specify vp node pid, only useful for VPnode",
+						Required: false,
+					},
+					cli.Uint64Flag{
+						Name:     "id",
+						Usage:    "Specify vp node id, only useful for VPnode",
+						Required: false,
+					},
+					cli.StringFlag{
+						Name:     "name",
+						Usage:    "Specify nvp node name, only useful for NVPnode",
+						Required: false,
+					},
+					cli.StringFlag{
+						Name:     "permission",
+						Usage:    "Specify nvp node permission, only useful for NVPnode, multiple appchain addresses are separated by commas",
+						Required: false,
+					},
+					cli.StringFlag{
 						Name:     "reason",
 						Usage:    "Specify register reason",
 						Required: false,
@@ -65,12 +75,39 @@ func nodeMgrCMD() cli.Command {
 				Action: registerNode,
 			},
 			cli.Command{
-				Name:  "logout",
-				Usage: "logout node by node pid",
+				Name:  "update",
+				Usage: "update node",
 				Flags: []cli.Flag{
 					cli.StringFlag{
-						Name:     "pid",
-						Usage:    "Specify node pid",
+						Name:     "account",
+						Usage:    "Specify node account",
+						Required: true,
+					},
+					cli.Uint64Flag{
+						Name:     "name",
+						Usage:    "Specify nvp node name, only useful for NVPnode",
+						Required: false,
+					},
+					cli.Uint64Flag{
+						Name:     "permission",
+						Usage:    "Specify nvp node permission, only useful for NVPnode, multiple appchain addresses are separated by commas",
+						Required: false,
+					},
+					cli.StringFlag{
+						Name:     "reason",
+						Usage:    "Specify register reason",
+						Required: false,
+					},
+				},
+				Action: updateNode,
+			},
+			cli.Command{
+				Name:  "logout",
+				Usage: "logout node by node account",
+				Flags: []cli.Flag{
+					cli.StringFlag{
+						Name:     "account",
+						Usage:    "Specify node account",
 						Required: true,
 					},
 					cli.StringFlag{
@@ -90,12 +127,12 @@ func nodeMgrCMD() cli.Command {
 	}
 }
 
-func getNodeStatusByPid(ctx *cli.Context) error {
-	pid := ctx.String("pid")
+func getNodeStatusByAccount(ctx *cli.Context) error {
+	account := ctx.String("account")
 
-	receipt, err := invokeBVMContractBySendView(ctx, constant.NodeManagerContractAddr.String(), "GetNode", pb.String(pid))
+	receipt, err := invokeBVMContractBySendView(ctx, constant.NodeManagerContractAddr.String(), "GetNode", pb.String(account))
 	if err != nil {
-		return fmt.Errorf("invoke BVM contract failed when get node status by pid %s: %w", pid, err)
+		return fmt.Errorf("invoke BVM contract failed when get node status by account %s: %w", account, err)
 	}
 
 	if receipt.IsSuccess() {
@@ -111,21 +148,25 @@ func getNodeStatusByPid(ctx *cli.Context) error {
 }
 
 func registerNode(ctx *cli.Context) error {
-	pid := ctx.String("pid")
-	vpNodeId := ctx.Uint64("id")
 	account := ctx.String("account")
 	typ := ctx.String("type")
+	pid := ctx.String("pid")
+	vpNodeId := ctx.Uint64("id")
+	name := ctx.String("name")
+	permisssion := ctx.String("permission")
 	reason := ctx.String("reason")
 
 	receipt, err := invokeBVMContract(ctx, constant.NodeManagerContractAddr.String(), "RegisterNode",
-		pb.String(pid),
-		pb.Uint64(vpNodeId),
 		pb.String(account),
 		pb.String(typ),
+		pb.String(pid),
+		pb.Uint64(vpNodeId),
+		pb.String(name),
+		pb.String(permisssion),
 		pb.String(reason))
 	if err != nil {
-		return fmt.Errorf("invoke BVM contract failed when register node \" pid=%s,vpNodeId=%s,account=%s,typ=%s,reason=%s \": %w",
-			pid, vpNodeId, account, typ, reason, err)
+		return fmt.Errorf("invoke BVM contract failed when register node \" account=%s,typ=%s,pid=%s,vpNodeId=%d,name=%s,permission=%s,reason=%s \": %w",
+			account, typ, pid, vpNodeId, name, permisssion, reason, err)
 	}
 
 	if receipt.IsSuccess() {
@@ -137,13 +178,38 @@ func registerNode(ctx *cli.Context) error {
 	return nil
 }
 
-func logoutNode(ctx *cli.Context) error {
-	pid := ctx.String("pid")
+func updateNode(ctx *cli.Context) error {
+	account := ctx.String("account")
+	name := ctx.String("name")
+	permisssion := ctx.String("permission")
 	reason := ctx.String("reason")
 
-	receipt, err := invokeBVMContract(ctx, constant.NodeManagerContractAddr.String(), "LogoutNode", pb.String(pid), pb.String(reason))
+	receipt, err := invokeBVMContract(ctx, constant.NodeManagerContractAddr.String(), "UpdateNode",
+		pb.String(account),
+		pb.String(name),
+		pb.String(permisssion),
+		pb.String(reason))
 	if err != nil {
-		return fmt.Errorf("invoke BVM contract failed when logout node by pid %s for %s: %w", pid, reason, err)
+		return fmt.Errorf("invoke BVM contract failed when update node \" account=%s,name=%s, permission=%s,reason=%s \": %w",
+			account, name, permisssion, reason, err)
+	}
+
+	if receipt.IsSuccess() {
+		proposalId := gjson.Get(string(receipt.Ret), "proposal_id").String()
+		color.Green("proposal id is %s\n", proposalId)
+	} else {
+		color.Red("update node error: %s\n", string(receipt.Ret))
+	}
+	return nil
+}
+
+func logoutNode(ctx *cli.Context) error {
+	account := ctx.String("account")
+	reason := ctx.String("reason")
+
+	receipt, err := invokeBVMContract(ctx, constant.NodeManagerContractAddr.String(), "LogoutNode", pb.String(account), pb.String(reason))
+	if err != nil {
+		return fmt.Errorf("invoke BVM contract failed when logout node by account %s for %s: %w", account, reason, err)
 	}
 
 	if receipt.IsSuccess() {
@@ -177,14 +243,21 @@ func allNode(ctx *cli.Context) error {
 
 func printNode(nodes []*node_mgr.Node) {
 	var table [][]string
-	table = append(table, []string{"NodePid", "type", "VpNodeId", "Account", "Status"})
+	table = append(table, []string{"Account", "Type", "Pid", "VpNodeId", "Name", "Permission", "Status"})
 
 	for _, n := range nodes {
+		permits := []string{}
+		for addr, _ := range n.Permissions {
+			permits = append(permits, addr)
+		}
+		permitStr := strings.Join(permits, ",")
 		table = append(table, []string{
-			n.Pid,
-			string(n.NodeType),
-			strconv.Itoa(int(n.VPNodeId)),
 			n.Account,
+			string(n.NodeType),
+			n.Pid,
+			strconv.Itoa(int(n.VPNodeId)),
+			n.Name,
+			permitStr,
 			string(n.Status),
 		})
 	}

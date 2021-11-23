@@ -30,9 +30,9 @@ require (
 	github.com/libp2p/go-libp2p-core v0.5.6
 	github.com/looplab/fsm v0.2.0
 	github.com/magiconair/properties v1.8.4
-	github.com/meshplus/bitxhub-core v1.3.1-0.20211111104725-9aa31c6bdd4f
+	github.com/meshplus/bitxhub-core v1.3.1-0.20211123083543-24684548fd79
 	github.com/meshplus/bitxhub-kit v1.2.1-0.20210902085548-07f4fa85bfc9
-	github.com/meshplus/bitxhub-model v1.2.1-0.20211110055907-3d5f20c419bd
+	github.com/meshplus/bitxhub-model v1.2.1-0.20211123095257-a88a97a00981
 	github.com/meshplus/eth-kit v0.0.0-20210906064541-8dfea98dbf95
 	github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd
 	github.com/meshplus/go-lightp2p v0.0.0-20210617153734-471d08b829f8
@@ -60,7 +60,12 @@ require (
 	github.com/willf/bloom v2.0.3+incompatible
 	go.uber.org/atomic v1.7.0
 	google.golang.org/grpc v1.33.2
+	honnef.co/go/tools v0.2.2 // indirect
 )
+
+replace golang.org/x/net => golang.org/x/net v0.0.0-20200520004742-59133d7f0dd7
+
+replace honnef.co/go/tools => honnef.co/go/tools v0.0.1-2019.2.3
 
 replace github.com/golang/protobuf => github.com/golang/protobuf v1.3.2
 

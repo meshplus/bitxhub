@@ -90,9 +90,9 @@ func (suite *Interchain) SetupSuite() {
 	suite.registerAppchain(suite.k1, suite.chainID1, chainName1, validator.HappyRuleAddr, appchainMgr.ChainTypeETH, addr1.String())
 	suite.registerAppchain(suite.k2, suite.chainID2, chainName2, validator.HappyRuleAddr, appchainMgr.ChainTypeETH, addr2.String())
 
-	suite.serviceID1 = "service1"
-	suite.serviceID2 = "service2"
-	suite.serviceID3 = "service3"
+	suite.serviceID1 = "0xB2dD6977169c5067d3729E3deB9a82c3e7502BF1"
+	suite.serviceID2 = "0xB2dD6977169c5067d3729E3deB9a82c3e7502BF2"
+	suite.serviceID3 = "0xB2dD6977169c5067d3729E3deB9a82c3e7502BF3"
 
 	fullServiceID1 := fmt.Sprintf("1356:%s:%s", suite.chainID1, suite.serviceID1)
 	fullServiceID2 := fmt.Sprintf("1356:%s:%s", suite.chainID2, suite.serviceID2)

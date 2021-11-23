@@ -21,7 +21,8 @@ import (
 
 const (
 	DappPrefix               = "dapp"
-	OwnerPrefix              = "owner"
+	DappOwnerPrefix          = "owner-dapp"
+	DappNamePrefix           = "name-dapp"
 	DappOccupyNamePrefix     = "occupy-dapp-name"
 	DappOccupyContractPrefix = "occupy-dapp-contract"
 )
@@ -204,6 +205,96 @@ func (dm *DappManager) checkPermission(permissions []string, ownerAddr string, r
 	return fmt.Errorf("regulatorAddr(%s) does not have the permission", regulatorAddr)
 }
 
+func (dm *DappManager) occupyDappName(name string, dappID string) {
+	dm.SetObject(DappOccupyNameKey(name), dappID)
+}
+
+func (dm *DappManager) freeDappName(name string) {
+	dm.Delete(DappOccupyNameKey(name))
+}
+
+func (dm *DappManager) isOccupiedName(name string) (bool, string) {
+	dappId := ""
+	ok := dm.GetObject(DappOccupyNameKey(name), &dappId)
+	return ok, dappId
+}
+
+func (dm *DappManager) occupyContractAddr(addrs map[string]struct{}, dappID string) {
+	for addr := range addrs {
+		dm.SetObject(DappOccupyContractKey(addr), dappID)
+	}
+}
+
+func (dm *DappManager) freeContractAddr(addrs map[string]struct{}) {
+	for addr := range addrs {
+		dm.Delete(DappOccupyContractKey(addr))
+	}
+}
+
+func (dm *DappManager) isOccupiedContractAddr(contractAddr string) (bool, string) {
+	dappID := ""
+	ok := dm.GetObject(DappOccupyContractKey(contractAddr), &dappID)
+	return ok, dappID
+}
+
+func (dm *DappManager) addToOwner(ownerAddr, dappID string) {
+	dappMap := make(map[string]struct{})
+	_ = dm.GetObject(OwnerKey(ownerAddr), &dappMap)
+	dappMap[dappID] = struct{}{}
+	dm.SetObject(OwnerKey(ownerAddr), dappMap)
+}
+
+func (dm *DappManager) registerPre(dapp *Dapp) {
+	dm.SetObject(DappKey(dapp.DappID), *dapp)
+}
+
+func (dm *DappManager) register(dapp *Dapp) {
+	dm.SetObject(DappKey(dapp.DappID), *dapp)
+	dm.SetObject(DappNameKey(dapp.Name), dapp.DappID)
+	dm.addToOwner(dapp.OwnerAddr, dapp.DappID)
+	dm.Logger().WithFields(logrus.Fields{
+		"id":   dapp.DappID,
+		"name": dapp.Name,
+	}).Info("Dapp is registering")
+}
+
+func (dm *DappManager) update(updataInfo *Dapp) error {
+	dapp := &Dapp{}
+	ok := dm.GetObject(DappKey(updataInfo.DappID), dapp)
+	if !ok {
+		return fmt.Errorf("the dapp is not exist")
+	}
+
+	oldName := dapp.Name
+	dapp.Name = updataInfo.Name
+	dapp.Desc = updataInfo.Desc
+	dapp.Permission = updataInfo.Permission
+	dapp.ContractAddr = updataInfo.ContractAddr
+	dapp.Url = updataInfo.Url
+	dm.SetObject(DappKey(dapp.DappID), *dapp)
+	if oldName != dapp.Name {
+		dm.Delete(DappNameKey(oldName))
+		dm.SetObject(DappNameKey(oldName), dapp.DappID)
+	}
+	dm.Logger().WithFields(logrus.Fields{
+		"id":   dapp.DappID,
+		"name": dapp.Name,
+	}).Info("Dapp is updating")
+	return nil
+}
+
+func (dm *DappManager) transfer(dapp *Dapp, transRec *TransferRecord) {
+	dapp.TransferRecords = append(dapp.TransferRecords, transRec)
+	dapp.OwnerAddr = transRec.To
+	dm.SetObject(DappKey(dapp.DappID), *dapp)
+	dm.addToOwner(dapp.OwnerAddr, dapp.DappID)
+
+	dm.Logger().WithFields(logrus.Fields{
+		"id":   dapp.DappID,
+		"name": dapp.Name,
+	}).Info("Dapp is registering")
+}
+
 // ========================== Governance interface ========================
 // =========== Manage does some subsequent operations when the proposal is over
 // extra: update - dapp info, transfer - transfer record, register - dapp
@@ -226,6 +317,14 @@ func (dm *DappManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 	// 3. other operation
 	if proposalResult == string(APPROVED) {
 		switch eventTyp {
+		case string(governance.EventRegister):
+			dapp := &Dapp{}
+			ok := dm.GetObject(DappKey(objId), dapp)
+			if !ok {
+				return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), "the dapp is not exist"))
+			}
+			dapp.CreateTime = dm.GetTxTimeStamp()
+			dm.register(dapp)
 		case string(governance.EventUpdate):
 			updateInfo := &UpdateDappInfo{}
 			err := json.Unmarshal(extra, updateInfo)
@@ -250,9 +349,17 @@ func (dm *DappManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 				return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("update error: %v", err)))
 			}
 		case string(governance.EventTransfer):
-			if err := dm.manegeTransfer(objId, extra); err != nil {
-				return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("manage transfer error: %v", err)))
+			transRec := &TransferRecord{}
+			if err := json.Unmarshal(extra, transRec); err != nil {
+				return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("unmarshal update data error:%v", err)))
 			}
+			transRec.CreateTime = dm.GetTxTimeStamp()
+			dapp := &Dapp{}
+			ok := dm.GetObject(DappKey(objId), dapp)
+			if !ok {
+				return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("the dapp is not exist")))
+			}
+			dm.transfer(dapp, transRec)
 		}
 	} else {
 		switch eventTyp {
@@ -280,50 +387,10 @@ func (dm *DappManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 		}
 	}
 
+	if err := dm.postAuditDappEvent(objId); err != nil {
+		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("post audit dapp event error: %v", err)))
+	}
 	return boltvm.Success(nil)
-}
-
-func (dm *DappManager) update(updataInfo *Dapp) error {
-	dapp := &Dapp{}
-	ok := dm.GetObject(DappKey(updataInfo.DappID), dapp)
-	if !ok {
-		return fmt.Errorf("the dapp is not exist")
-	}
-
-	dapp.Name = updataInfo.Name
-	dapp.Desc = updataInfo.Desc
-	dapp.Permission = updataInfo.Permission
-	dapp.ContractAddr = updataInfo.ContractAddr
-	dapp.Url = updataInfo.Url
-	dm.SetObject(DappKey(dapp.DappID), *dapp)
-	return nil
-}
-
-func (dm *DappManager) manegeTransfer(id string, transferData []byte) error {
-	transRec := &TransferRecord{}
-	if err := json.Unmarshal(transferData, transRec); err != nil {
-		return fmt.Errorf("unmarshal update data error:%v", err)
-	}
-	transRec.CreateTime = dm.GetTxTimeStamp()
-
-	dapp := &Dapp{}
-	ok := dm.GetObject(DappKey(id), dapp)
-	if !ok {
-		return fmt.Errorf("the dapp is not exist")
-	}
-
-	dapp.TransferRecords = append(dapp.TransferRecords, transRec)
-	dapp.OwnerAddr = transRec.To
-	dm.SetObject(DappKey(dapp.DappID), *dapp)
-	dm.addToOwner(dapp.OwnerAddr, dapp.DappID)
-	return nil
-}
-
-func (dm *DappManager) addToOwner(ownerAddr, dappID string) {
-	dappMap := make(map[string]struct{})
-	_ = dm.GetObject(OwnerKey(ownerAddr), &dappMap)
-	dappMap[dappID] = struct{}{}
-	dm.SetObject(OwnerKey(ownerAddr), dappMap)
 }
 
 // =========== RegisterDapp registers dapp info, returns proposal id and error
@@ -365,33 +432,13 @@ func (dm *DappManager) RegisterDapp(name, typ, desc, url, conAddrs, permits, rea
 	}
 
 	// 6. register info
-	dm.SetObject(DappKey(dapp.DappID), *dapp)
-	dm.addToOwner(dapp.OwnerAddr, dapp.DappID)
-	dm.Logger().WithFields(logrus.Fields{
-		"id": dapp.DappID,
-	}).Info("Dapp is registering")
+	dm.registerPre(dapp)
+
+	if err := dm.postAuditDappEvent(dapp.DappID); err != nil {
+		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("post audit dapp event error: %v", err)))
+	}
 
 	return getGovernanceRet(string(res.Result), []byte(dapp.DappID))
-}
-
-func (dm *DappManager) occupyDappName(name string, dappID string) {
-	dm.SetObject(DappOccupyNameKey(name), dappID)
-}
-
-func (dm *DappManager) freeDappName(name string) {
-	dm.Delete(DappOccupyNameKey(name))
-}
-
-func (dm *DappManager) occupyContractAddr(addrs map[string]struct{}, dappID string) {
-	for addr := range addrs {
-		dm.SetObject(DappOccupyContractKey(addr), dappID)
-	}
-}
-
-func (dm *DappManager) freeContractAddr(addrs map[string]struct{}) {
-	for addr := range addrs {
-		dm.Delete(DappOccupyContractKey(addr))
-	}
 }
 
 // =========== UpdateDapp updates dapp info.
@@ -447,6 +494,9 @@ func (dm *DappManager) UpdateDapp(id, name, desc, url, conAddrs, permits, reason
 	if !updateName && !updateUrl && !updateContract && !updatePermission {
 		if err := dm.update(newDapp); err != nil {
 			return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("update error: %v", err)))
+		}
+		if err := dm.postAuditDappEvent(id); err != nil {
+			return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("post audit dapp event error: %v", err)))
 		}
 		return getGovernanceRet("", nil)
 	}
@@ -509,6 +559,9 @@ func (dm *DappManager) UpdateDapp(id, name, desc, url, conAddrs, permits, reason
 		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("change status error: %s", string(data))))
 	}
 
+	if err := dm.postAuditDappEvent(id); err != nil {
+		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("post audit dapp event error: %v", err)))
+	}
 	return getGovernanceRet(string(res.Result), nil)
 }
 
@@ -577,6 +630,9 @@ func (dm *DappManager) basicGovernance(id, reason string, permissions []string, 
 		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("change status error: %s", string(data))))
 	}
 
+	if err := dm.postAuditDappEvent(id); err != nil {
+		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("post audit dapp event error: %v", err)))
+	}
 	return getGovernanceRet(string(res.Result), nil)
 }
 
@@ -601,6 +657,9 @@ func (dm *DappManager) ConfirmTransfer(id string) *boltvm.Response {
 		}
 	}
 
+	if err := dm.postAuditDappEvent(id); err != nil {
+		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("post audit dapp event error: %v", err)))
+	}
 	return getGovernanceRet("", nil)
 }
 
@@ -639,6 +698,9 @@ func (dm *DappManager) EvaluateDapp(id, desc string, score float64) *boltvm.Resp
 	dapp.EvaluationRecords[dm.Caller()] = evaRec
 	dm.SetObject(DappKey(id), *dapp)
 
+	if err := dm.postAuditDappEvent(id); err != nil {
+		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("post audit dapp event error: %v", err)))
+	}
 	return getGovernanceRet("", nil)
 }
 
@@ -649,6 +711,26 @@ func (dm *DappManager) GetDapp(id string) *boltvm.Response {
 	ok := dm.GetObject(DappKey(id), dapp)
 	if !ok {
 		return boltvm.Error(boltvm.DappNonexistentDappCode, fmt.Sprintf(string(boltvm.DappNonexistentDappMsg), id))
+	}
+
+	data, err := json.Marshal(dapp)
+	if err != nil {
+		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), err.Error()))
+	}
+
+	return boltvm.Success(data)
+}
+
+func (dm *DappManager) GetDappByName(name string) *boltvm.Response {
+	id := ""
+	ok := dm.GetObject(DappNameKey(name), &id)
+	if !ok {
+		return boltvm.Error(boltvm.DappNonexistentDappCode, fmt.Sprintf(string(boltvm.DappNonexistentDappMsg), name))
+	}
+
+	dapp := &Dapp{}
+	if ok := dm.GetObject(DappKey(id), dapp); !ok {
+		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("dapp name %s exist but dapp %s not exist", name, id)))
 	}
 
 	data, err := json.Marshal(dapp)
@@ -843,7 +925,7 @@ func (dm *DappManager) checkDappInfo(dapp *Dapp, isRegister bool) *boltvm.Respon
 	if dapp.Name == "" {
 		return boltvm.Error(boltvm.DappEmptyNameCode, string(boltvm.DappEmptyNameMsg))
 	}
-	if dappID, err := dm.getDappIdByName(dapp.Name); err == nil {
+	if ok, dappID := dm.isOccupiedName(dapp.Name); ok {
 		if isRegister {
 			return boltvm.Error(boltvm.DappDuplicateNameCode, fmt.Sprintf(string(boltvm.DappDuplicateNameMsg), dapp.Name, dappID))
 		} else if dappID != dapp.DappID {
@@ -866,7 +948,7 @@ func (dm *DappManager) checkDappInfo(dapp *Dapp, isRegister bool) *boltvm.Respon
 			return boltvm.Error(boltvm.DappIllegalContractAddrCode, fmt.Sprintf(string(boltvm.DappIllegalContractAddrMsg), addr))
 		}
 
-		if dappID, err := dm.getDappIdByContractAddr(addr); err == nil {
+		if ok, dappID := dm.isOccupiedContractAddr(addr); ok {
 			if isRegister {
 				return boltvm.Error(boltvm.DappDuplicateContractRegisterCode, fmt.Sprintf(string(boltvm.DappDuplicateContractRegisterMsg), addr, dappID))
 			} else if dappID != dapp.DappID {
@@ -892,30 +974,16 @@ func (dm *DappManager) checkDappInfo(dapp *Dapp, isRegister bool) *boltvm.Respon
 	return boltvm.Success(nil)
 }
 
-func (dm *DappManager) getDappIdByName(name string) (string, error) {
-	dappId := ""
-	ok := dm.GetObject(DappOccupyNameKey(name), &dappId)
-	if !ok {
-		return "", fmt.Errorf("the dapp of this name does not exist")
-	}
-	return dappId, nil
-}
-
-func (dm *DappManager) getDappIdByContractAddr(contractAddr string) (string, error) {
-	dappID := ""
-	ok := dm.GetObject(DappOccupyContractKey(contractAddr), &dappID)
-	if !ok {
-		return "", fmt.Errorf("the dapp of this contract addr does not exist")
-	}
-	return dappID, nil
-}
-
 func DappKey(id string) string {
 	return fmt.Sprintf("%s-%s", DappPrefix, id)
 }
 
 func OwnerKey(addr string) string {
-	return fmt.Sprintf("%s-%s", OwnerPrefix, addr)
+	return fmt.Sprintf("%s-%s", DappOwnerPrefix, addr)
+}
+
+func DappNameKey(name string) string {
+	return fmt.Sprintf("%s-%s", DappNamePrefix, name)
 }
 
 func DappOccupyNameKey(name string) string {
@@ -934,4 +1002,20 @@ func (ds Dapps) Swap(i, j int) { ds[i], ds[j] = ds[j], ds[i] }
 
 func (ds Dapps) Less(i, j int) bool {
 	return ds[i].CreateTime > ds[j].CreateTime
+}
+
+func (dm *DappManager) postAuditDappEvent(dappID string) error {
+	ok, dappData := dm.Get(DappKey(dappID))
+	if !ok {
+		return fmt.Errorf("not found dapp %s", dappID)
+	}
+
+	auditInfo := &pb.AuditRelatedObjInfo{
+		AuditObj:           dappData,
+		RelatedChainIDList: map[string][]byte{},
+		RelatedNodeIDList:  map[string][]byte{},
+	}
+	dm.PostEvent(pb.Event_AUDIT_DAPP, auditInfo)
+
+	return nil
 }
