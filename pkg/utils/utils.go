@@ -12,7 +12,18 @@ import (
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/ledger"
+	"github.com/sirupsen/logrus"
 )
+
+var AuditEventStrHash = types.NewHash([]byte(fmt.Sprintf("event%d%d%d%d%d%d%d%d",
+	pb.Event_AUDIT_PROPOSAL,
+	pb.Event_AUDIT_APPCHAIN,
+	pb.Event_AUDIT_RULE,
+	pb.Event_AUDIT_SERVICE,
+	pb.Event_AUDIT_NODE,
+	pb.Event_AUDIT_ROLE,
+	pb.Event_AUDIT_INTERCHAIN,
+	pb.Event_AUDIT_DAPP)))
 
 func GetIBTPSign(ledger *ledger.Ledger, id string, isReq bool, privKey crypto2.PrivateKey) (string, []byte, error) {
 	ibtp, err := getIBTP(ledger, id, isReq)
@@ -110,4 +121,31 @@ func uint64ToBytesInBigEndian(i uint64) []byte {
 	binary.BigEndian.PutUint64(bytes, i)
 
 	return bytes
+}
+
+func AddAuditPermitBloom(bloom *types.Bloom, relatedChains, relatedNodes map[string][]byte) {
+	bloom.Add(AuditEventStrHash.Bytes())
+	for k, _ := range relatedChains {
+		bloom.Add(types.NewHash([]byte(k)).Bytes())
+	}
+	for k, _ := range relatedNodes {
+		bloom.Add(types.NewHash([]byte(k)).Bytes())
+	}
+}
+
+func TestAuditPermitBloom(logger logrus.FieldLogger, bloom *types.Bloom, relatedChains, relatedNodes map[string]struct{}) bool {
+	if !bloom.Test(AuditEventStrHash.Bytes()) {
+		return false
+	}
+	for k, _ := range relatedChains {
+		if bloom.Test(types.NewHash([]byte(k)).Bytes()) {
+			return true
+		}
+	}
+	for k, _ := range relatedNodes {
+		if bloom.Test(types.NewHash([]byte(k)).Bytes()) {
+			return true
+		}
+	}
+	return false
 }
