@@ -1,7 +1,6 @@
 package ledger
 
 import (
-	types2 "github.com/meshplus/eth-kit/types"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -9,6 +8,7 @@ import (
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	ledger2 "github.com/meshplus/eth-kit/ledger"
+	types2 "github.com/meshplus/eth-kit/types"
 )
 
 func (l *SimpleLedger) CreateEVMAccount(addr common.Address) {
@@ -196,6 +196,9 @@ func CreateBloom(receipts EvmReceipts) *types.Bloom {
 			for _, b := range log.Topics {
 				bin.Add(b.Bytes())
 			}
+		}
+		if receipt.Bloom != nil {
+			bin.OrBloom(receipt.Bloom)
 		}
 	}
 	return &bin

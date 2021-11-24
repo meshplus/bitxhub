@@ -8,8 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/suite"
-
 	"github.com/meshplus/bitxhub-core/order"
 	"github.com/meshplus/bitxhub/api/jsonrpc"
 	"github.com/meshplus/bitxhub/internal/app"
@@ -20,6 +18,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/router"
 	"github.com/meshplus/bitxhub/pkg/order/etcdraft"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
 
 func TestTester(t *testing.T) {
