@@ -18,10 +18,12 @@ func (cbs *ChainBrokerService) SubscribeAuditInfo(req *pb.AuditSubscriptionReque
 func (cbs *ChainBrokerService) handleAuditNodeSubscription(server pb.ChainBroker_SubscribeServer, auditNodeID string, blockStart uint64) error {
 	dataCh := make(chan *pb.AuditTxInfo)
 
-	err := cbs.api.Audit().HandleAuditNodeSubscription(dataCh, auditNodeID, blockStart)
-	if err != nil {
-		return fmt.Errorf("handle audit node subscription: %w", err)
-	}
+	go func() {
+		err := cbs.api.Audit().HandleAuditNodeSubscription(dataCh, auditNodeID, blockStart)
+		if err != nil {
+			cbs.logger.WithField("auditNodeID", auditNodeID).Errorf("Handle audit node subscription: %v", err)
+		}
+	}()
 
 	for auditTxInfo := range dataCh {
 		data, _ := auditTxInfo.Marshal()
