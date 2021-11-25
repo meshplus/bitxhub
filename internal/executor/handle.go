@@ -24,6 +24,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/model/events"
+	"github.com/meshplus/bitxhub/pkg/utils"
 	"github.com/meshplus/bitxhub/pkg/vm"
 	"github.com/meshplus/bitxhub/pkg/vm/boltvm"
 	"github.com/meshplus/bitxhub/pkg/vm/wasm"
@@ -343,21 +344,14 @@ func (exec *BlockExecutor) applyTx(index int, tx pb.Transaction, invalidReason a
 				}
 				exec.postNodeEvent(nodeEvent)
 
-			case pb.Event_AUDIT_PROPOSAL:
-				fallthrough
-			case pb.Event_AUDIT_APPCHAIN:
-				fallthrough
-			case pb.Event_AUDIT_RULE:
-				fallthrough
-			case pb.Event_AUDIT_SERVICE:
-				fallthrough
-			case pb.Event_AUDIT_NODE:
-				fallthrough
-			case pb.Event_AUDIT_ROLE:
-				fallthrough
-			case pb.Event_AUDIT_INTERCHAIN:
-				fallthrough
-			case pb.Event_AUDIT_DAPP:
+			case pb.Event_AUDIT_PROPOSAL,
+				pb.Event_AUDIT_APPCHAIN,
+				pb.Event_AUDIT_RULE,
+				pb.Event_AUDIT_SERVICE,
+				pb.Event_AUDIT_NODE,
+				pb.Event_AUDIT_ROLE,
+				pb.Event_AUDIT_INTERCHAIN,
+				pb.Event_AUDIT_DAPP:
 				auditDataUpdate = true
 				auditRelatedObjInfo := pb.AuditRelatedObjInfo{}
 				err := json.Unmarshal(ev.Data, &auditRelatedObjInfo)
@@ -374,23 +368,12 @@ func (exec *BlockExecutor) applyTx(index int, tx pb.Transaction, invalidReason a
 		}
 		if auditDataUpdate {
 			exec.postAuditEvent(&pb.AuditTxInfo{
-				Tx: &pb.BxhTransaction{
-					Version:         tx.GetVersion(),
-					From:            tx.GetFrom(),
-					To:              tx.GetTo(),
-					Timestamp:       tx.GetTimeStamp(),
-					TransactionHash: tx.GetHash(),
-					Payload:         tx.GetPayload(),
-					IBTP:            tx.GetIBTP(),
-					Nonce:           tx.GetNonce(),
-					Typ:             uint32(tx.GetType()),
-					Signature:       tx.GetSignature(),
-					Extra:           tx.GetExtra(),
-				},
+				Tx:                 tx.(*pb.BxhTransaction),
 				Rec:                receipt,
 				RelatedChainIDList: relatedChainIDList,
 				RelatedNodeIDList:  relatedNodeIDList,
 			})
+			utils.AddAuditPermitBloom(receipt.Bloom, relatedChainIDList, relatedNodeIDList)
 		}
 	}
 

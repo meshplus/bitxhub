@@ -9,6 +9,7 @@ import (
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
+	"github.com/meshplus/bitxhub/pkg/utils"
 )
 
 type AuditAPI CoreAPI
@@ -21,7 +22,7 @@ func (api *AuditAPI) SubscribeAuditEvent(ch chan<- *pb.AuditTxInfo) event.Subscr
 
 func (api AuditAPI) HandleAuditNodeSubscription(dataCh chan<- *pb.AuditTxInfo, auditNodeID string, blockStart uint64) error {
 	// 1. get the auditable appchain id
-	chainIDMap, err := api.getPermitChains(auditNodeID)
+	chainIDMap, auditNodeIDMap, err := api.getPermitChains(auditNodeID)
 	if err != nil {
 		return fmt.Errorf("get permit chains error: %w", err)
 	}
@@ -38,32 +39,37 @@ func (api AuditAPI) HandleAuditNodeSubscription(dataCh chan<- *pb.AuditTxInfo, a
 		if err != nil {
 			return fmt.Errorf("get block error: %v", block)
 		}
-		isPermited := false
-		for _, tx := range block.Transactions.Transactions {
-			if tx.GetType() != pb.NormalBxhTx {
-				continue
-			}
 
-			// 3.1 get receipt
-			receipt, err := api.bxh.Ledger.GetReceipt(tx.GetHash())
-			if err != nil {
-				break
-			}
+		if utils.TestAuditPermitBloom(api.logger, block.BlockHeader.Bloom, chainIDMap, auditNodeIDMap) {
+			for _, tx := range block.Transactions.Transactions {
+				if tx.GetType() != pb.NormalBxhTx {
+					continue
+				}
 
-			// 3.2 get event from receipt and check event info permission
-			for _, ev := range receipt.Events {
-				if isPermited = hasPermitedInfo(ev, auditNodeID, chainIDMap); isPermited {
+				// 3.1 get receipt
+				receipt, err := api.bxh.Ledger.GetReceipt(tx.GetHash())
+				if err != nil {
 					break
 				}
-			}
 
-			// 3.3 send info
-			if isPermited {
-				auditTxInfo := &pb.AuditTxInfo{
-					Tx:  tx.(*pb.BxhTransaction),
-					Rec: receipt,
+				isPermited := false
+				if utils.TestAuditPermitBloom(api.logger, receipt.Bloom, chainIDMap, auditNodeIDMap) {
+					// 3.2 get event from receipt and check event info permission
+					for _, ev := range receipt.Events {
+						if isPermited = hasPermitedInfo(ev, auditNodeIDMap, chainIDMap); isPermited {
+							break
+						}
+					}
+
+					// 3.3 send info
+					if isPermited {
+						auditTxInfo := &pb.AuditTxInfo{
+							Tx:  tx.(*pb.BxhTransaction),
+							Rec: receipt,
+						}
+						dataCh <- auditTxInfo
+					}
 				}
-				dataCh <- auditTxInfo
 			}
 		}
 	}
@@ -71,9 +77,13 @@ func (api AuditAPI) HandleAuditNodeSubscription(dataCh chan<- *pb.AuditTxInfo, a
 	// 4. send real-time audit info
 	for auditTxinfo := range auditTxInfoCh {
 		isPermited := false
-		if _, ok := auditTxinfo.RelatedNodeIDList[auditNodeID]; ok {
-			isPermited = true
+		for nodeID, _ := range auditNodeIDMap {
+			if _, ok := auditTxinfo.RelatedNodeIDList[nodeID]; ok {
+				isPermited = true
+				break
+			}
 		}
+
 		for chainID, _ := range chainIDMap {
 			if _, ok := auditTxinfo.RelatedChainIDList[chainID]; ok {
 				isPermited = true
@@ -89,21 +99,24 @@ func (api AuditAPI) HandleAuditNodeSubscription(dataCh chan<- *pb.AuditTxInfo, a
 	return nil
 }
 
-func (api AuditAPI) getPermitChains(auditNodeID string) (map[string]struct{}, error) {
+func (api AuditAPI) getPermitChains(auditNodeID string) (map[string]struct{}, map[string]struct{}, error) {
 	ok, nodeData := api.bxh.Ledger.GetState(constant.NodeManagerContractAddr.Address(), []byte(nodemgr.NodeKey(auditNodeID)))
 	if !ok {
-		return make(map[string]struct{}), nil
+		return make(map[string]struct{}), make(map[string]struct{}), nil
 	}
 
 	node := &nodemgr.Node{}
 	if err := json.Unmarshal(nodeData, node); err != nil {
-		return nil, fmt.Errorf("json unmarshal node error: %w", err)
+		return make(map[string]struct{}), make(map[string]struct{}), fmt.Errorf("json unmarshal node error: %w", err)
+	}
+	if node.IsAvailable() {
+		return node.Permissions, map[string]struct{}{auditNodeID: {}}, nil
 	}
 
-	return node.Permissions, nil
+	return make(map[string]struct{}), make(map[string]struct{}), nil
 }
 
-func hasPermitedInfo(event *pb.Event, auditNodeID string, permitChains map[string]struct{}) bool {
+func hasPermitedInfo(event *pb.Event, permitNodes, permitChains map[string]struct{}) bool {
 	if !event.IsAuditEvent() {
 		return false
 	}
@@ -113,8 +126,10 @@ func hasPermitedInfo(event *pb.Event, auditNodeID string, permitChains map[strin
 		return false
 	}
 
-	if _, ok := auditRelatedObjInfo.RelatedNodeIDList[auditNodeID]; ok {
-		return true
+	for auditNodeID, _ := range permitNodes {
+		if _, ok := auditRelatedObjInfo.RelatedNodeIDList[auditNodeID]; ok {
+			return true
+		}
 	}
 
 	for chainID, _ := range permitChains {
