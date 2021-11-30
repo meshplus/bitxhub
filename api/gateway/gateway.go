@@ -49,7 +49,7 @@ func (g *Gateway) init() {
 	config := g.config
 	g.mux = runtime.NewServeMux(
 		runtime.WithMarshalerOption(runtime.MIMEWildcard,
-			&runtime.JSONPb{OrigName: true, EmitDefaults: false, EnumsAsInts: true},
+			&runtime.JSONPb{OrigName: true, EmitDefaults: true, EnumsAsInts: true},
 		),
 	)
 	handler := cors.New(cors.Options{
