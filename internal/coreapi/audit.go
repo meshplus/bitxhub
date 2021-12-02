@@ -64,8 +64,9 @@ func (api AuditAPI) HandleAuditNodeSubscription(dataCh chan<- *pb.AuditTxInfo, a
 					// 3.3 send info
 					if isPermited {
 						auditTxInfo := &pb.AuditTxInfo{
-							Tx:  tx.(*pb.BxhTransaction),
-							Rec: receipt,
+							Tx:          tx.(*pb.BxhTransaction),
+							Rec:         receipt,
+							BlockHeight: height,
 						}
 						dataCh <- auditTxInfo
 					}
