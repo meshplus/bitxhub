@@ -23,11 +23,13 @@ type ServiceManager struct {
 }
 
 type ServiceInfo struct {
-	Id     string          `json:"id"`     // service id
-	Name   string          `json:"name"`   // service name
-	Desc   string          `json:"desc"`   // service description
-	Items  map[string]Item `json:"items"`  // service entities
-	Status int32           `json:"status"` // 0 => registered, 1 => approved, -1 => rejected
+	Id      string          `json:"id"`      // service id
+	Name    string          `json:"name"`    // service name
+	Index   int64           `json:"index"`   // service index
+	Desc    string          `json:"desc"`    // service description
+	Address string          `json:"address"` // service
+	Items   map[string]Item `json:"items"`   // service entities
+	Status  int32           `json:"status"`  // 0 => registered, 1 => approved, -1 => rejected
 }
 
 type Item struct {
@@ -55,7 +57,7 @@ func NewServiceMng() agency.Contract {
 	return &ServiceManager{}
 }
 
-func (sm *ServiceManager) Register(name string, desc string, itemData []byte) *boltvm.Response {
+func (sm *ServiceManager) Register(name string, desc string, address string, itemData []byte) *boltvm.Response {
 	id := sm.Caller()
 	// res := sm.CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "GetAppchain", pb.String(id))
 	// if !res.Ok {
@@ -69,30 +71,38 @@ func (sm *ServiceManager) Register(name string, desc string, itemData []byte) *b
 	}
 
 	service := &ServiceInfo{
-		Id:     id,
-		Name:   name,
-		Desc:   desc,
-		Items:  items,
-		Status: REGISTERED,
+		Id:      id,
+		Name:    name,
+		Desc:    desc,
+		Address: address,
+		Items:   items,
+		Status:  REGISTERED,
 	}
-
-	ok := sm.Has(sm.serviceKey(id))
-	if ok {
+	ok, value := sm.Query(sm.servicePreKey(id))
+	if !ok {
+		service.Index = 0
+		sm.SetObject(sm.serviceKey(id, 0), service)
+		body, err := json.Marshal(service)
+		if err != nil {
+			return boltvm.Error(err.Error())
+		}
 		sm.Logger().WithFields(logrus.Fields{
-			"id": id,
-		}).Debug("Service has registered")
-		sm.GetObject(sm.serviceKey(id), service)
-	} else {
-		sm.SetObject(sm.serviceKey(id), service)
-		sm.Logger().WithFields(logrus.Fields{
-			"id": id,
+			"id":    id,
+			"index": 0,
 		}).Info("Service register successfully")
+		return boltvm.Success(body)
 	}
+	index := len(value)
+	service.Index = int64(index)
+	sm.SetObject(sm.serviceKey(id, int64(index)), service)
 	body, err := json.Marshal(service)
 	if err != nil {
 		return boltvm.Error(err.Error())
 	}
-
+	sm.Logger().WithFields(logrus.Fields{
+		"id":    id,
+		"index": index,
+	}).Info("Service register successfully")
 	return boltvm.Success(body)
 }
 
@@ -107,45 +117,45 @@ func (sm *ServiceManager) Call(data []byte) *boltvm.Response {
 	return res
 }
 
-func (sm *ServiceManager) Update(name string, desc string, itemData []byte) *boltvm.Response {
-	id := sm.Caller()
-	ok := sm.Has(sm.serviceKey(id))
-	if !ok {
-		return boltvm.Error("register service firstly")
-	}
+// func (sm *ServiceManager) Update(name string, desc string, itemData []byte) *boltvm.Response {
+// 	id := sm.Caller()
+// 	ok := sm.Has(sm.serviceKey(id))
+// 	if !ok {
+// 		return boltvm.Error("register service firstly")
+// 	}
 
-	service := sm.getServiceInfo(id)
+// 	service := sm.getServiceInfo(id)
 
-	if service.Status == REGISTERED {
-		return boltvm.Error("this service is being audited")
-	}
+// 	if service.Status == REGISTERED {
+// 		return boltvm.Error("this service is being audited")
+// 	}
 
-	var items map[string]Item
-	if err := json.Unmarshal(itemData, &items); err != nil {
-		return boltvm.Error(err.Error())
-	}
-	service = &ServiceInfo{
-		Name:   name,
-		Desc:   desc,
-		Items:  items,
-		Status: service.Status,
-	}
+// 	var items map[string]Item
+// 	if err := json.Unmarshal(itemData, &items); err != nil {
+// 		return boltvm.Error(err.Error())
+// 	}
+// 	service = &ServiceInfo{
+// 		Name:   name,
+// 		Desc:   desc,
+// 		Items:  items,
+// 		Status: service.Status,
+// 	}
 
-	sm.SetObject(sm.serviceKey(id), service)
-	return boltvm.Success(nil)
-}
+// 	sm.SetObject(sm.serviceKey(id), service)
+// 	return boltvm.Success(nil)
+// }
 
-func (sm *ServiceManager) GetServiceInfo(id string) *boltvm.Response {
-	service, err := json.Marshal(sm.getServiceInfo(id))
+func (sm *ServiceManager) GetServiceInfo(id string, index int64) *boltvm.Response {
+	service, err := json.Marshal(sm.getServiceInfo(id, index))
 	if err != nil {
 		return boltvm.Error(err.Error())
 	}
 	return boltvm.Success(service)
 }
 
-func (sm *ServiceManager) getServiceInfo(id string) *ServiceInfo {
+func (sm *ServiceManager) getServiceInfo(id string, index int64) *ServiceInfo {
 	service := &ServiceInfo{}
-	sm.GetObject(sm.serviceKey(id), service)
+	sm.GetObject(sm.serviceKey(id, index), service)
 	return service
 }
 
@@ -171,11 +181,11 @@ func (sm *ServiceManager) ListService() *boltvm.Response {
 	return boltvm.Success(data)
 }
 
-func (sm *ServiceManager) DeleteService(id string) *boltvm.Response {
+func (sm *ServiceManager) DeleteService(id string, index int64) *boltvm.Response {
 	if res := sm.IsAdmin(); !res.Ok {
 		return res
 	}
-	sm.Delete(sm.serviceKey(id))
+	sm.Delete(sm.serviceKey(id, index))
 	return boltvm.Success([]byte(fmt.Sprintf("delete service:%s", id)))
 }
 
@@ -192,8 +202,12 @@ func (sm *ServiceManager) IsAdmin() *boltvm.Response {
 	return boltvm.Success([]byte("1"))
 }
 
-func (sm *ServiceManager) serviceKey(id string) string {
+func (sm *ServiceManager) servicePreKey(id string) string {
 	return ServicePreKey + id
+}
+
+func (sm *ServiceManager) serviceKey(id string, index int64) string {
+	return ServicePreKey + id + "-" + strconv.FormatInt(index, 10)
 }
 
 func (sm *ServiceManager) auditRecordKey(id string) string {
