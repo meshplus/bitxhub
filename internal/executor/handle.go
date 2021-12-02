@@ -370,6 +370,7 @@ func (exec *BlockExecutor) applyTx(index int, tx pb.Transaction, invalidReason a
 			exec.postAuditEvent(&pb.AuditTxInfo{
 				Tx:                 tx.(*pb.BxhTransaction),
 				Rec:                receipt,
+				BlockHeight:        exec.currentHeight,
 				RelatedChainIDList: relatedChainIDList,
 				RelatedNodeIDList:  relatedNodeIDList,
 			})
