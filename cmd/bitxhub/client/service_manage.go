@@ -76,6 +76,28 @@ func serviceMgrCMD() cli.Command {
 				},
 				Action: activateService,
 			},
+			cli.Command{
+				Name:  "evaluate",
+				Usage: "evaluate service",
+				Flags: []cli.Flag{
+					cli.StringFlag{
+						Name:     "id",
+						Usage:    "Specify service id",
+						Required: true,
+					},
+					cli.StringFlag{
+						Name:     "desc",
+						Usage:    "Specify evaluate desc",
+						Required: true,
+					},
+					cli.Float64Flag{
+						Name:     "score",
+						Usage:    "Specify evaluate score, [0,5]",
+						Required: false,
+					},
+				},
+				Action: evaluateService,
+			},
 		},
 	}
 }
@@ -152,6 +174,24 @@ func activateService(ctx *cli.Context) error {
 		color.Green("proposal id is %s", proposalId)
 	} else {
 		color.Red("activate service error: %s\n", string(receipt.Ret))
+	}
+	return nil
+}
+
+func evaluateService(ctx *cli.Context) error {
+	id := ctx.String("id")
+	desc := ctx.String("desc")
+	score := ctx.Float64("score")
+
+	receipt, err := invokeBVMContract(ctx, constant.ServiceMgrContractAddr.String(), "EvaluateService", pb.String(id), pb.String(desc), pb.Float64(score))
+	if err != nil {
+		return fmt.Errorf("invoke BVM contract failed when evaluate service %s to score %f for %s: %w", id, score, desc, err)
+	}
+
+	if receipt.IsSuccess() {
+		color.Green("evaluate service success")
+	} else {
+		color.Red("evaluate service error: %s\n", string(receipt.Ret))
 	}
 	return nil
 }
