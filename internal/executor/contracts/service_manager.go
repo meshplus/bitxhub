@@ -9,7 +9,6 @@ import (
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/governance"
 	servicemgr "github.com/meshplus/bitxhub-core/service-mgr"
-	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/sirupsen/logrus"
@@ -897,12 +896,6 @@ func (sm *ServiceManager) checkServiceInfo(service *servicemgr.Service, isRegist
 		} else if serviceID != fmt.Sprintf("%s:%s", service.ChainID, service.ServiceID) {
 			return boltvm.Error(boltvm.ServiceDuplicateNameCode, fmt.Sprintf(string(boltvm.ServiceDuplicateNameMsg), service.Name, serviceID))
 		}
-	}
-
-	// check id
-	_, err := types.HexDecodeString(service.ServiceID)
-	if err != nil {
-		return boltvm.Error(boltvm.ServiceIllegalServiceIDCode, fmt.Sprintf(string(boltvm.ServiceIllegalServiceIDMsg), service.ServiceID, err.Error()))
 	}
 
 	// check type
