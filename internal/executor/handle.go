@@ -290,8 +290,8 @@ func (exec *BlockExecutor) applyTransaction(i int, tx *pb.Transaction, opt *agen
 	defer exec.ledger.SetNonce(tx.From, curNonce+1)
 
 	if tx.IsIBTP() {
-		_, err := exec.ibtpVerify.CheckProof(tx)
-		if err != nil {
+		ok, err := exec.ibtpVerify.CheckProof(tx)
+		if !ok || err != nil {
 			return nil, fmt.Errorf("verify fail:%w", err)
 		}
 		ctx := vm.NewContext(tx, uint64(i), nil, exec.ledger, exec.logger)
