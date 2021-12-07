@@ -24,7 +24,7 @@ var (
 )
 
 func TestNodeManager_RegisterNode(t *testing.T) {
-	nm, mockStub, nodes, _ := vpNodePrepare(t)
+	nm, mockStub, nodes, nodesData := vpNodePrepare(t)
 
 	accountMap := orderedmap.New()
 	accountMap.Set(nodes[0].Account, struct{}{})
@@ -51,21 +51,25 @@ func TestNodeManager_RegisterNode(t *testing.T) {
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, nil).AnyTimes()
 	mockStub.EXPECT().GetTxTimeStamp().Return(int64(1)).AnyTimes()
+	mockStub.EXPECT().Query(node_mgr.NODEPREFIX).Return(true, nodesData).AnyTimes()
 
 	// 1. CheckPermission error
 	res := nm.RegisterNode(nodes[5].Account, string(node_mgr.VPNode), nodes[5].Pid, 1, NODE_NAME, "", reason)
 	assert.False(t, res.Ok, string(res.Result))
+	// 2. info(id) error
+	res = nm.RegisterNode(nodes[5].Account, string(node_mgr.VPNode), nodes[5].Pid, 1, NODE_NAME, "", reason)
+	assert.False(t, res.Ok, string(res.Result))
 	// 3. info(pid) error
-	res = nm.RegisterNode(nodes[5].Account, string(node_mgr.VPNode), nodes[0].Pid, 2, NODE_NAME, "", reason)
+	res = nm.RegisterNode(nodes[5].Account, string(node_mgr.VPNode), nodes[0].Pid, 6, NODE_NAME, "", reason)
 	assert.False(t, res.Ok, string(res.Result))
 	// 4. governance pre error
-	res = nm.RegisterNode(nodes[1].Account, string(node_mgr.VPNode), nodes[5].Pid, 2, NODE_NAME, "", reason)
+	res = nm.RegisterNode(nodes[1].Account, string(node_mgr.VPNode), nodes[5].Pid, 6, NODE_NAME, "", reason)
 	assert.False(t, res.Ok, string(res.Result))
 	// 5. SubmitProposal error
-	res = nm.RegisterNode(nodes[5].Account, string(node_mgr.VPNode), nodes[5].Pid, 2, NODE_NAME, "", reason)
+	res = nm.RegisterNode(nodes[5].Account, string(node_mgr.VPNode), nodes[5].Pid, 6, NODE_NAME, "", reason)
 	assert.False(t, res.Ok, string(res.Result))
 
-	res = nm.RegisterNode(nodes[5].Account, string(node_mgr.VPNode), nodes[5].Pid, 2, NODE_NAME, "", reason)
+	res = nm.RegisterNode(nodes[5].Account, string(node_mgr.VPNode), nodes[5].Pid, 6, NODE_NAME, "", reason)
 	assert.True(t, res.Ok, string(res.Result))
 }
 
@@ -433,14 +437,6 @@ func TestNodeManager_checkNodeInfo(t *testing.T) {
 	accountMap.Set(nodes[4].Account, struct{}{})
 	accountMap.Set(nodes[5].Account, struct{}{})
 	accountMap.Set(nodes[6].Account, struct{}{})
-	//idMap := orderedmap.New()
-	//idMap.Set(nodes[0].Pid, struct{}{})
-	//idMap.Set(nodes[1].Pid, struct{}{})
-	//idMap.Set(nodes[2].Pid, struct{}{})
-	//idMap.Set(nodes[3].Pid, struct{}{})
-	//idMap.Set(nodes[4].Pid, struct{}{})
-	//idMap.Set(nodes[5].Pid, struct{}{})
-	//idMap.Set(nodes[6].Pid, struct{}{})
 
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 	mockStub.EXPECT().GetObject(node_mgr.NodeTypeKey(string(node_mgr.VPNode)), gomock.Any()).SetArg(1, *accountMap).Return(true).AnyTimes()
@@ -473,12 +469,12 @@ func TestNodeManager_checkNodeInfo(t *testing.T) {
 	assert.NotNil(t, err)
 
 	mockStub.EXPECT().Query(node_mgr.NODEPREFIX).Return(true, nodesData).AnyTimes()
-	//err = nm.checkNodeInfo(&node_mgr.Node{
-	//	Account:  NODE_ACCOUNT,
-	//	Pid:      NODE_PID,
-	//	NodeType: node_mgr.VPNode,
-	//}, true)
-	//assert.NotNil(t, err)
+	err = nm.checkNodeInfo(&node_mgr.Node{
+		Account:  NODE_ACCOUNT,
+		Pid:      NODE_PID,
+		NodeType: node_mgr.VPNode,
+	}, true)
+	assert.NotNil(t, err)
 }
 
 func vpNodePrepare(t *testing.T) (*NodeManager, *mock_stub.MockStub, []*node_mgr.Node, [][]byte) {

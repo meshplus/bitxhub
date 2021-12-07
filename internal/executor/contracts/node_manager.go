@@ -619,17 +619,19 @@ func (nm *NodeManager) GetNextVpID() *boltvm.Response {
 func (nm *NodeManager) getNextVpID() (int, error) {
 	nm.NodeManager.Persister = nm.Stub
 
-	ok, data := nm.NodeManager.CountAvailable([]byte(nodemgr.VPNode))
-	if !ok {
-		return 0, fmt.Errorf("count available error: %s", string(data))
-	}
-
-	vpId, err := strconv.Atoi(string(data))
+	nodes, err := nm.NodeManager.All(nil)
 	if err != nil {
-		return 0, fmt.Errorf("atoi error: %v", err)
+		return 0, fmt.Errorf("get all node error: %v", err)
 	}
 
-	return vpId + 1, nil
+	maxId := 0
+	for _, node := range nodes.([]*nodemgr.Node) {
+		if node.IsAvailable() && int(node.VPNodeId) > maxId {
+			maxId = int(node.VPNodeId)
+		}
+	}
+
+	return maxId + 1, nil
 }
 
 // CountAvailableNodes counts all available node
@@ -761,16 +763,14 @@ func (nm *NodeManager) checkNodeInfo(node *nodemgr.Node, isRegister bool) *boltv
 	// 2. check noed type
 	switch node.NodeType {
 	case nodemgr.VPNode:
-
-		// redundant check
 		// 3. check vp node id
-		//nextVpID, err := nm.getNextVpID()
-		//if err != nil {
-		//	return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), err))
-		//}
-		//if int(node.VPNodeId) != nextVpID {
-		//	return boltvm.Error(boltvm.NodeIllegalVpIdCode, fmt.Sprintf(string(boltvm.NodeIllegalVpIdMsg), node.VPNodeId, nextVpID))
-		//}
+		nextVpID, err := nm.getNextVpID()
+		if err != nil {
+			return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), err))
+		}
+		if int(node.VPNodeId) < nextVpID {
+			return boltvm.Error(boltvm.NodeIllegalVpIdCode, fmt.Sprintf(string(boltvm.NodeIllegalVpIdMsg), node.VPNodeId, fmt.Sprintf("(The id must be larger than that of all current nodes. The minimum id can be %d", nextVpID)))
+		}
 
 		// 4. check node Pid
 		if node.Pid == "" {
