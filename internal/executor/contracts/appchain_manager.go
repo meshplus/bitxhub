@@ -510,6 +510,10 @@ func (am *AppchainManager) UpdateAppchain(id, name, desc string, trustRoot []byt
 	}
 	updateAdmin := false
 	oldAdminList := am.getAdminAddrByChainId(id)
+	oldAdminMap := make(map[string]struct{})
+	for _, addr := range oldAdminList {
+		oldAdminMap[addr] = struct{}{}
+	}
 	newAdminList := strings.Split(adminAddrs, ",")
 	newAdminMap := make(map[string]struct{})
 	for _, addr := range newAdminList {
@@ -527,16 +531,18 @@ func (am *AppchainManager) UpdateAppchain(id, name, desc string, trustRoot []byt
 	}
 	if updateAdmin {
 		for addr := range newAdminMap {
-			if _, err := types.HexDecodeString(addr); err != nil {
-				return boltvm.Error(boltvm.AppchainIllegalAdminAddrCode, fmt.Sprintf(string(boltvm.AppchainIllegalAdminAddrMsg), addr, err.Error()))
-			}
-			res := am.CrossInvoke(constant.RoleContractAddr.String(), "IsOccupiedAccount", pb.String(addr))
-			if !res.Ok {
-				return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("cross invoke IsOccupiedAccount error: %s", string(res.Result))))
+			if _, ok := oldAdminMap[addr]; !ok {
+				if _, err := types.HexDecodeString(addr); err != nil {
+					return boltvm.Error(boltvm.AppchainIllegalAdminAddrCode, fmt.Sprintf(string(boltvm.AppchainIllegalAdminAddrMsg), addr, err.Error()))
+				}
+				res := am.CrossInvoke(constant.RoleContractAddr.String(), "IsOccupiedAccount", pb.String(addr))
+				if !res.Ok {
+					return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("cross invoke IsOccupiedAccount error: %s", string(res.Result))))
 
-			}
-			if string(res.Result) != "" {
-				return boltvm.Error(boltvm.AppchainDuplicateAdminCode, fmt.Sprintf(string(boltvm.AppchainDuplicateAdminMsg), addr, string(res.Result)))
+				}
+				if string(res.Result) != "" {
+					return boltvm.Error(boltvm.AppchainDuplicateAdminCode, fmt.Sprintf(string(boltvm.AppchainDuplicateAdminMsg), addr, string(res.Result)))
+				}
 			}
 		}
 	}

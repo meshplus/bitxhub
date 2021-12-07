@@ -66,7 +66,7 @@ type RoleManager struct {
 
 var roleStateMap = map[governance.EventType][]governance.GovernanceStatus{
 	governance.EventRegister: {governance.GovernanceUnavailable},
-	governance.EventFreeze:   {governance.GovernanceAvailable, governance.GovernanceUpdating, governance.GovernanceActivating},
+	governance.EventFreeze:   {governance.GovernanceAvailable, governance.GovernanceUpdating},
 	governance.EventActivate: {governance.GovernanceFrozen},
 	governance.EventLogout:   {governance.GovernanceAvailable, governance.GovernanceUpdating, governance.GovernanceFreezing, governance.GovernanceActivating, governance.GovernanceFrozen},
 	governance.EventBind:     {governance.GovernanceFrozen},
