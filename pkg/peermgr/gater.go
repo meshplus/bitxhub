@@ -2,6 +2,7 @@ package peermgr
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/libp2p/go-libp2p-core/control"
 	"github.com/libp2p/go-libp2p-core/network"
@@ -42,27 +43,28 @@ func (g *connectionGater) InterceptSecured(d network.Direction, p peer.ID, addr 
 	lg := g.ledger.Copy()
 	ok, nodeAccount := lg.GetState(constant.NodeManagerContractAddr.Address(), []byte(node_mgr.VpNodePidKey(p.String())))
 	if !ok {
-		g.logger.Infof("Intercept a connection with an unavailable node(get node err: %s), peer.Pid: %s", string(nodeAccount), p)
+		g.logger.Infof("Intercept a connection with an unavailable node(get node err: %s), peer.Pid: %s", string(nodeAccount), p.String())
 		return false
 	}
-	ok, nodeData := lg.GetState(constant.NodeManagerContractAddr.Address(), []byte(node_mgr.NodeKey(string(nodeAccount))))
+	nodeAccountStr := strings.Trim(string(nodeAccount), "\"")
+	ok, nodeData := lg.GetState(constant.NodeManagerContractAddr.Address(), []byte(node_mgr.NodeKey(nodeAccountStr)))
 	if !ok {
-		g.logger.Errorf("InterceptSecured, node pid %s exist but node %s not exist: %v", string(p), string(nodeAccount), string(nodeData))
+		g.logger.Errorf("InterceptSecured, node pid %s exist but node %s not exist: %v", p.String(), nodeAccountStr, string(nodeData))
 		return false
 	}
 
 	node := &node_mgr.Node{}
 	if err := json.Unmarshal(nodeData, node); err != nil {
-		g.logger.Errorf("InterceptSecured, unmarshal node error: %v, nodeData: %s, pid: %s, account: %s", err, string(nodeData), p, string(nodeAccount))
+		g.logger.Errorf("InterceptSecured, unmarshal node error: %v, nodeData: %s, pid: %s, account: %s", err, string(nodeData), p.String(), nodeAccountStr)
 		return false
 	}
 
 	if node.IsAvailable() {
-		g.logger.Infof("Connect with an available node, peer.Pid: %s, peer.Id: %d, peer.status: %s", p, node.VPNodeId, node.Status)
+		g.logger.Infof("Connect with an available node, peer.Pid: %s, peer.Id: %d, peer.status: %s", p.String(), node.VPNodeId, node.Status)
 		return true
 	}
 
-	g.logger.Infof("Intercept a connection with an unavailable node, peer.Pid: %s, peer.Id: %d, peer.status: %s", p, node.VPNodeId, node.Status)
+	g.logger.Infof("Intercept a connection with an unavailable node, peer.Pid: %s, peer.Id: %d, peer.status: %s", p.String(), node.VPNodeId, node.Status)
 	return false
 }
 

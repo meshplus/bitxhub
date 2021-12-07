@@ -341,9 +341,9 @@ func (nm *NodeManager) LogoutNode(nodeAccount, reason string) *boltvm.Response {
 		}
 		// 3.3 only support delete last vp node
 		// TODO: solve it
-		if strconv.Itoa(int(node.VPNodeId)) != string(data) {
-			return boltvm.Error(boltvm.NodeLogoutWrongIdNodeCode, fmt.Sprintf(string(boltvm.NodeLogoutWrongIdNodeMsg), string(data)))
-		}
+		//if strconv.Itoa(int(node.VPNodeId)) != string(data) {
+		//	return boltvm.Error(boltvm.NodeLogoutWrongIdNodeCode, fmt.Sprintf(string(boltvm.NodeLogoutWrongIdNodeMsg), string(data)))
+		//}
 	}
 
 	// 5. submit proposal
@@ -761,14 +761,16 @@ func (nm *NodeManager) checkNodeInfo(node *nodemgr.Node, isRegister bool) *boltv
 	// 2. check noed type
 	switch node.NodeType {
 	case nodemgr.VPNode:
+
+		// redundant check
 		// 3. check vp node id
-		nextVpID, err := nm.getNextVpID()
-		if err != nil {
-			return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), err))
-		}
-		if int(node.VPNodeId) != nextVpID {
-			return boltvm.Error(boltvm.NodeIllegalVpIdCode, fmt.Sprintf(string(boltvm.NodeIllegalVpIdMsg), node.VPNodeId, nextVpID))
-		}
+		//nextVpID, err := nm.getNextVpID()
+		//if err != nil {
+		//	return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), err))
+		//}
+		//if int(node.VPNodeId) != nextVpID {
+		//	return boltvm.Error(boltvm.NodeIllegalVpIdCode, fmt.Sprintf(string(boltvm.NodeIllegalVpIdMsg), node.VPNodeId, nextVpID))
+		//}
 
 		// 4. check node Pid
 		if node.Pid == "" {
