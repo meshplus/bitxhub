@@ -83,12 +83,12 @@ func nodeMgrCMD() cli.Command {
 						Usage:    "Specify node account",
 						Required: true,
 					},
-					cli.Uint64Flag{
+					cli.StringFlag{
 						Name:     "name",
 						Usage:    "Specify nvp node name, only useful for NVPnode",
 						Required: false,
 					},
-					cli.Uint64Flag{
+					cli.StringFlag{
 						Name:     "permission",
 						Usage:    "Specify nvp node permission, only useful for NVPnode, multiple appchain addresses are separated by commas",
 						Required: false,
