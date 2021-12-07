@@ -45,8 +45,8 @@ func roleMgrCMD() cli.Command {
 						Value: string(contracts.GovernanceAdmin),
 					},
 					cli.StringFlag{
-						Name:     "nodePid",
-						Usage:    "Specify node pid for auditAdmin, only useful for auditAdmin",
+						Name:     "nodeAccount",
+						Usage:    "Specify node account for auditAdmin, only useful for auditAdmin",
 						Required: false,
 					},
 					cli.StringFlag{
@@ -109,6 +109,28 @@ func roleMgrCMD() cli.Command {
 				Action: logoutRole,
 			},
 			cli.Command{
+				Name:  "bind",
+				Usage: "bind audit role with node",
+				Flags: []cli.Flag{
+					cli.StringFlag{
+						Name:     "id",
+						Usage:    "Specify role id",
+						Required: true,
+					},
+					cli.StringFlag{
+						Name:     "account",
+						Usage:    "Specify node account",
+						Required: true,
+					},
+					cli.StringFlag{
+						Name:     "reason",
+						Usage:    "Specify freeze reason",
+						Required: false,
+					},
+				},
+				Action: bindRole,
+			},
+			cli.Command{
 				Name:  "all",
 				Usage: "query all roles info",
 				Flags: []cli.Flag{
@@ -148,13 +170,13 @@ func getRoleStatusById(ctx *cli.Context) error {
 func registerRole(ctx *cli.Context) error {
 	addr := ctx.String("address")
 	typ := ctx.String("type")
-	nodePid := ctx.String("nodePid")
+	nodeAccount := ctx.String("nodeAccount")
 	reason := ctx.String("reason")
 
-	receipt, err := invokeBVMContract(ctx, constant.RoleContractAddr.String(), "RegisterRole", pb.String(addr), pb.String(typ), pb.String(nodePid), pb.String(reason))
+	receipt, err := invokeBVMContract(ctx, constant.RoleContractAddr.String(), "RegisterRole", pb.String(addr), pb.String(typ), pb.String(nodeAccount), pb.String(reason))
 	if err != nil {
-		return fmt.Errorf("invoke BVM contract failed when register role \" addr=%s,typ=%s,nodePid=%s,reason=%s \": %w",
-			addr, typ, nodePid, reason, err)
+		return fmt.Errorf("invoke BVM contract failed when register role \" addr=%s,typ=%s,nodeAccount=%s,reason=%s \": %w",
+			addr, typ, nodeAccount, reason, err)
 	}
 
 	if receipt.IsSuccess() {
@@ -235,6 +257,25 @@ func logoutRole(ctx *cli.Context) error {
 		color.Green("proposal id is %s\n", proposalId)
 	} else {
 		color.Red("logout role error: %s\n", string(receipt.Ret))
+	}
+	return nil
+}
+
+func bindRole(ctx *cli.Context) error {
+	id := ctx.String("id")
+	account := ctx.String("account")
+	reason := ctx.String("reason")
+
+	receipt, err := invokeBVMContract(ctx, constant.RoleContractAddr.String(), "BindRole", pb.String(id), pb.String(account), pb.String(reason))
+	if err != nil {
+		return fmt.Errorf("invoke BVM contract failed when bind role %s with node %s for %s: %w", id, account, reason, err)
+	}
+
+	if receipt.IsSuccess() {
+		proposalId := gjson.Get(string(receipt.Ret), "proposal_id").String()
+		color.Green("proposal id is %s\n", proposalId)
+	} else {
+		color.Red("bind role error: %s\n", string(receipt.Ret))
 	}
 	return nil
 }
