@@ -55,9 +55,6 @@ func TestNodeManager_RegisterNode(t *testing.T) {
 	// 1. CheckPermission error
 	res := nm.RegisterNode(nodes[5].Account, string(node_mgr.VPNode), nodes[5].Pid, 1, NODE_NAME, "", reason)
 	assert.False(t, res.Ok, string(res.Result))
-	// 2. info(id) error
-	res = nm.RegisterNode(nodes[5].Account, string(node_mgr.VPNode), nodes[5].Pid, 1, NODE_NAME, "", reason)
-	assert.False(t, res.Ok, string(res.Result))
 	// 3. info(pid) error
 	res = nm.RegisterNode(nodes[5].Account, string(node_mgr.VPNode), nodes[0].Pid, 2, NODE_NAME, "", reason)
 	assert.False(t, res.Ok, string(res.Result))
@@ -476,12 +473,12 @@ func TestNodeManager_checkNodeInfo(t *testing.T) {
 	assert.NotNil(t, err)
 
 	mockStub.EXPECT().Query(node_mgr.NODEPREFIX).Return(true, nodesData).AnyTimes()
-	err = nm.checkNodeInfo(&node_mgr.Node{
-		Account:  NODE_ACCOUNT,
-		Pid:      NODE_PID,
-		NodeType: node_mgr.VPNode,
-	}, true)
-	assert.NotNil(t, err)
+	//err = nm.checkNodeInfo(&node_mgr.Node{
+	//	Account:  NODE_ACCOUNT,
+	//	Pid:      NODE_PID,
+	//	NodeType: node_mgr.VPNode,
+	//}, true)
+	//assert.NotNil(t, err)
 }
 
 func vpNodePrepare(t *testing.T) (*NodeManager, *mock_stub.MockStub, []*node_mgr.Node, [][]byte) {

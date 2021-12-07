@@ -74,7 +74,7 @@ func Load(repoRoot string, passwd string, configPath string, networkPath string)
 	WatchBitxhubConfig(bViper, &repo.ConfigChangeFeed)
 
 	// watch network.toml on changed
-	WatchNetworkConfig(nViper, &repo.ConfigChangeFeed, &NetworkConfig{Genesis: config.Genesis})
+	WatchNetworkConfig(nViper, &repo.ConfigChangeFeed)
 
 	return repo, nil
 }

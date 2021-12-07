@@ -343,7 +343,7 @@ func (swarm *Swarm) findPeer(id uint64) (string, error) {
 	}
 	newPeerAddr := swarm.notifiee.newPeer
 	// new node id should be len(swarm.peers)+1
-	if uint64(len(swarm.routers)+1) == id && swarm.notifiee.newPeer != "" {
+	if swarm.notifiee.newPeer != "" {
 		swarm.logger.Debugf("Unicast to new peer %s", swarm.notifiee.newPeer)
 		return newPeerAddr, nil
 	}
