@@ -95,8 +95,8 @@ func TestVerifyPool_CheckProof(t *testing.T) {
 	}
 	txWithNotEqualProofHash.TransactionHash = txWithNoIBTP.Hash()
 	ok, err = vp.CheckProof(txWithNotEqualProofHash)
-	require.NotNil(t, err)
-	require.False(t, ok)
+	require.Nil(t, err)
+	require.True(t, ok)
 
 	proof := []byte("test_proof")
 	proofHash := sha256.Sum256(proof)
@@ -209,8 +209,8 @@ func TestVerifyPool_CheckProof3(t *testing.T) {
 
 	txWithIBTP.TransactionHash = txWithIBTP.Hash()
 	ok, err := vp.CheckProof(txWithIBTP)
-	require.NotNil(t, err)
-	require.False(t, ok)
+	require.Nil(t, err)
+	require.True(t, ok)
 }
 
 func getIBTP(t *testing.T, index uint64, typ pb.IBTP_Type, proof []byte) *pb.IBTP {

@@ -17,16 +17,18 @@ require (
 	github.com/gobuffalo/packr v1.30.1
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/mock v1.5.0
+	github.com/golang/protobuf v1.4.3
 	github.com/google/btree v1.0.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d
 	github.com/hokaccha/go-prettyjson v0.0.0-20190818114111-108c894c2c0e
+	github.com/hyperledger/fabric v2.0.1+incompatible
 	github.com/juju/ratelimit v1.0.1
 	github.com/libp2p/go-libp2p-core v0.5.6
 	github.com/magiconair/properties v1.8.4
-	github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20211118080800-513bad622a52
+	github.com/meshplus/bitxhub-core v0.1.0-rc1.0.20211215032248-ad4f1cf1d87d
 	github.com/meshplus/bitxhub-kit v1.2.0
 	github.com/meshplus/bitxhub-model v1.1.2-0.20210513074749-d31e04a9f41d
 	github.com/meshplus/go-libp2p-cert v0.0.0-20210125063330-7c25fd5b7a49
