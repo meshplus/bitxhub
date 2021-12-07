@@ -35,7 +35,7 @@ func (exec *BlockExecutor) processExecuteEvent(block *pb.Block) *ledger.BlockDat
 		txHashList = append(txHashList, tx.TransactionHash)
 	}
 
-	block = exec.verifyProofs(block)
+	//block = exec.verifyProofs(block)
 	receipts := exec.txsExecutor.ApplyTransactions(block.Transactions)
 
 	applyTxsDuration.Observe(float64(time.Since(current)) / float64(time.Second))
@@ -290,6 +290,10 @@ func (exec *BlockExecutor) applyTransaction(i int, tx *pb.Transaction, opt *agen
 	defer exec.ledger.SetNonce(tx.From, curNonce+1)
 
 	if tx.IsIBTP() {
+		ok, err := exec.ibtpVerify.CheckProof(tx)
+		if !ok || err != nil {
+			return nil, fmt.Errorf("verify fail:%w", err)
+		}
 		ctx := vm.NewContext(tx, uint64(i), nil, exec.ledger, exec.logger)
 		instance := boltvm.New(ctx, exec.validationEngine, exec.getContracts(opt))
 		return instance.HandleIBTP(tx.IBTP)

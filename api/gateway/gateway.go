@@ -88,7 +88,9 @@ func (g *Gateway) Start() error {
 		if err != nil {
 			return err
 		}
-		conn, err := grpc.DialContext(g.ctx, g.endpoint, grpc.WithTransportCredentials(cred))
+		conn, err := grpc.DialContext(g.ctx, g.endpoint, grpc.WithTransportCredentials(cred),
+			grpc.WithDefaultCallOptions(
+				grpc.MaxCallRecvMsgSize(256*1024*1024), grpc.MaxCallSendMsgSize(256*1024*1024)))
 		if err != nil {
 			return err
 		}
@@ -104,8 +106,9 @@ func (g *Gateway) Start() error {
 			}
 		}()
 	} else {
-		opts := []grpc.DialOption{grpc.WithInsecure()}
-		err := pb.RegisterChainBrokerHandlerFromEndpoint(g.ctx, g.mux, g.endpoint, opts)
+		conn, err := grpc.DialContext(g.ctx, g.endpoint, grpc.WithInsecure(), grpc.WithDefaultCallOptions(
+			grpc.MaxCallRecvMsgSize(256*1024*1024), grpc.MaxCallSendMsgSize(256*1024*1024)))
+		err = pb.RegisterChainBrokerHandler(g.ctx, g.mux, conn)
 		if err != nil {
 			return err
 		}
