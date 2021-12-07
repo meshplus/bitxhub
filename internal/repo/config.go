@@ -293,11 +293,11 @@ func WatchBitxhubConfig(viper *viper.Viper, feed *event.Feed) {
 	})
 }
 
-func WatchNetworkConfig(viper *viper.Viper, feed *event.Feed, config *NetworkConfig) {
+func WatchNetworkConfig(viper *viper.Viper, feed *event.Feed) {
 	viper.WatchConfig()
 	viper.OnConfigChange(func(in fsnotify.Event) {
 		fmt.Println("network config file changed: ", in.String())
-
+		var config *NetworkConfig
 		if err := viper.Unmarshal(config); err != nil {
 			fmt.Println("unmarshal config: ", err)
 			return
