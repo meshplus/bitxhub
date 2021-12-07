@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -x
+
 set -e
 
 GREEN='\033[0;32m'
@@ -7,8 +7,7 @@ RED='\033[0;31m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-BITXHUBBINPATH=$HOME/go/bin
-TARGET=$(pwd)
+BITXHUBBIN=$(which bitxhub)
 MODE=$1
 NODE=$2
 
@@ -52,30 +51,30 @@ function x_replace() {
 }
 function addnode() {
   # 1. register addnode
-  account=$(cat node${NODE}/account${NODE}.txt)
-  pid=$(cat node${NODE}/pid${NODE}.txt)
+  account=$(cat build/node${NODE}/account${NODE}.txt)
+  pid=$(cat build/node${NODE}/pid${NODE}.txt)
   echo $account
   echo $pid
 
   # 1. proposal
-  ${BITXHUBBINPATH}/bitxhub --repo=/Users/liruoxin/goproject/meshplus/bitxhub/scripts/addnode/node1 client governance node register --account $account --type vpNode --pid $pid --id $NODE > node${NODE}/proposal.txt
-  proposal=$(cat node${NODE}/proposal.txt | awk '{print $4}')
+  ${BITXHUBBIN} --repo=build/node1 client governance node register --account $account --type vpNode --pid $pid --id $NODE > build/node${NODE}/proposal.txt
+  proposal=$(cat build/node${NODE}/proposal.txt | awk '{print $4}')
   sleep 5s
   #2. vote
 
   for i in {1..3} ; do
-    ${BITXHUBBINPATH}/bitxhub --repo=/Users/liruoxin/goproject/meshplus/bitxhub/scripts/addnode/node$i client governance vote --id $proposal --info approve --reason 1
+    ${BITXHUBBIN} --repo=build/node$i client governance vote --id $proposal --info approve --reason 1
   done
 }
 
 function delNode() {
-  account=`${BITXHUBBINPATH}/bitxhub key address --path ${TARGET}/node$NODE/key.json`
-  ${BITXHUBBINPATH}/bitxhub --repo=/Users/liruoxin/goproject/meshplus/bitxhub/scripts/addnode/node4 client governance node logout --account $account --reason out node$NODE > node${NODE}/proposal.txt
+  account=`${BITXHUBBIN} key address --path build/node$NODE/key.json`
+  ${BITXHUBBINPATH}/bitxhub --repo=build/node4 client governance node logout --account $account --reason out node$NODE > node${NODE}/proposal.txt
   proposal=$(cat node${NODE}/proposal.txt | awk '{print $4}')
   sleep 5s
   #2. vote
   for i in {1..3} ; do
-    ${BITXHUBBINPATH}/bitxhub --repo=/Users/liruoxin/goproject/meshplus/bitxhub/scripts/addnode/node$i client governance vote --id $proposal --info approve --reason 1
+    ${BITXHUBBINPATH}/bitxhub --repo=build/node$i client governance vote --id $proposal --info approve --reason 1
   done
 }
 

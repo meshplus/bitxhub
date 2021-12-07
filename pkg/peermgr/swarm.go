@@ -400,11 +400,7 @@ func (swarm *Swarm) DelNode(delID uint64) {
 	swarm.connectedPeers.Delete(delID)
 
 	// 2. persist routers
-	var isNew bool
-	if swarm.localID > 4 {
-		isNew = true
-	}
-	if err := repo.RewriteNetworkConfig(swarm.repo.Config.RepoRoot, swarm.routers, isNew); err != nil {
+	if err := repo.RewriteNetworkConfig(swarm.repo.Config.RepoRoot, swarm.routers, false); err != nil {
 		swarm.logger.Errorf("Persist routing table failed, err: %s", err.Error())
 		return
 	}

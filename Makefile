@@ -69,6 +69,8 @@ build:
 	@mv ./bitxhub bin
 	@printf "${GREEN}Build bitxhub successfully!${NC}\n"
 
+# !!NOTICE: if using GO1.16+, the one of new features is don't automatically modify go.mod and go.sum
+# using the cmd to solve it: ` go env -w GOFLAGS="-mod=mod" `
 installent:
 	cd internal/repo && packr
 	cp imports/imports.go.template imports/imports.go
