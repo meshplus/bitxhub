@@ -19,6 +19,8 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
+const MAX_MESSAGE_SIZE = 256 * 1024 * 1024
+
 type ChainBrokerService struct {
 	config  *repo.Config
 	genesis *repo.Genesis
@@ -50,7 +52,7 @@ func NewChainBrokerService(api api.CoreAPI, config *repo.Config, genesis *repo.G
 func (cbs *ChainBrokerService) init() error {
 	config := cbs.config
 	limiter := cbs.config.Limiter
-	rateLimiter:= ratelimiter.NewRateLimiterWithQuantum(limiter.Interval, limiter.Capacity, limiter.Quantum)
+	rateLimiter := ratelimiter.NewRateLimiterWithQuantum(limiter.Interval, limiter.Capacity, limiter.Quantum)
 
 	grpcOpts := []grpc.ServerOption{
 		grpc_middleware.WithUnaryServerChain(ratelimit.UnaryServerInterceptor(rateLimiter), grpc_prometheus.UnaryServerInterceptor),
@@ -58,6 +60,8 @@ func (cbs *ChainBrokerService) init() error {
 		grpc.MaxConcurrentStreams(1000),
 		grpc.InitialWindowSize(10 * 1024 * 1024),
 		grpc.InitialConnWindowSize(100 * 1024 * 1024),
+		grpc.MaxSendMsgSize(MAX_MESSAGE_SIZE),
+		grpc.MaxRecvMsgSize(MAX_MESSAGE_SIZE),
 	}
 
 	if config.Security.EnableTLS {
