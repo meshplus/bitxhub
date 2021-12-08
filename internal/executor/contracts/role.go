@@ -514,7 +514,7 @@ func (rm *RoleManager) LogoutRole(roleId, reason string) *boltvm.Response {
 
 // =========== BindRole binds audit admin with audit node
 func (rm *RoleManager) BindRole(roleId, nodeAccount, reason string) *boltvm.Response {
-	governanceRes := rm.basicGovernance(roleId, reason, []string{string(PermissionAdmin), string(PermissionSelf)}, governance.EventBind, []byte(nodeAccount))
+	governanceRes := rm.basicGovernance(roleId, reason, []string{string(PermissionAdmin)}, governance.EventBind, []byte(nodeAccount))
 	if !governanceRes.Ok {
 		return governanceRes
 	}
