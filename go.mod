@@ -63,8 +63,6 @@ require (
 	honnef.co/go/tools v0.2.2 // indirect
 )
 
-replace golang.org/x/net => golang.org/x/net v0.0.0-20200520004742-59133d7f0dd7
-
 replace honnef.co/go/tools => honnef.co/go/tools v0.0.1-2019.2.3
 
 replace github.com/golang/protobuf => github.com/golang/protobuf v1.3.2
@@ -76,3 +74,5 @@ replace google.golang.org/grpc => google.golang.org/grpc v1.33.0
 replace github.com/hyperledger/fabric => github.com/hyperledger/fabric v2.0.1+incompatible
 
 replace github.com/wasmerio/wasmer-go v1.0.4 => github.com/meshplus/wasmer-go v1.0.5-0.20210817103436-19ec68f8bfe2
+
+replace golang.org/x/net => golang.org/x/net v0.0.0-20200520004742-59133d7f0dd7
