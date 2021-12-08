@@ -109,7 +109,7 @@ func (cbs *ChainBrokerService) GetTransaction(ctx context.Context, req *pb.Trans
 	}
 	tx, err := cbs.api.Broker().GetTransaction(hash)
 	if err != nil {
-		return nil, fmt.Errorf("get transaction %s failed: %w", tx.GetHash().String(), err)
+		return nil, fmt.Errorf("get transaction %s failed: %w", hash.String(), err)
 	}
 
 	bxhTx, ok := tx.(*pb.BxhTransaction)
