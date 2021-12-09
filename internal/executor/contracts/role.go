@@ -408,6 +408,9 @@ func (rm *RoleManager) RegisterRole(roleId, roleType, nodeAccount, reason string
 		}
 	}
 
+	// 8. zero permission
+	rm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(res.Result)))
+
 	if err := rm.postAuditRoleEvent(roleId); err != nil {
 		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("post audit role event error: %v", err)))
 	}
@@ -576,6 +579,8 @@ func (rm *RoleManager) basicGovernance(roleId, reason string, permissions []stri
 	if ok, data := rm.changeStatus(roleId, string(event), string(role.Status)); !ok {
 		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("change status error: %s", string(data))))
 	}
+
+	rm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(res.Result)))
 
 	if err := rm.postAuditRoleEvent(roleId); err != nil {
 		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("post audit role event error: %v", err)))

@@ -316,6 +316,8 @@ func (rm *RuleManager) UpdateMasterRule(chainID string, newMasterruleAddress, re
 		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("change status error: %s", string(data))))
 	}
 
+	rm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(res.Result)))
+
 	if err := rm.postAuditRuleEvent(chainID); err != nil {
 		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("post audit rule event error: %v", err)))
 	}

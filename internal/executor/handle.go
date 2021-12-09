@@ -436,10 +436,10 @@ func (exec *BlockExecutor) applyTransaction(i int, tx pb.Transaction, invalidRea
 		} else {
 			//internal invoke evm
 			receipt.EvmLogs = exec.ledger.GetLogs(*tx.GetHash())
-			receipt.Bloom = ledger.CreateBloom(ledger.EvmReceipts{receipt})
 			receipt.Status = pb.Receipt_SUCCESS
 			receipt.Ret = ret
 		}
+		receipt.Bloom = ledger.CreateBloom(ledger.EvmReceipts{receipt})
 		receipt.GasUsed = gasUsed
 
 		if err := exec.payGasFee(tx, gasUsed); err != nil {

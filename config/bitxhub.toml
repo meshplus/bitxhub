@@ -93,10 +93,13 @@ solo = false
     address = "0xc0Ff2e0b3189132D815b8eb325bE17285AC898f8"
     weight = 2
   [genesis.strategy]
-    AppchainMgr = "SimpleMajority"
-    RuleMgr = "SimpleMajority"
-    NodeMgr = "SimpleMajority"
-    ServiceMgr = "SimpleMajority"
+    appchain_mgr = "ZeroPermission"
+    rule_mgr = "ZeroPermission"
+    node_mgr = "ZeroPermission"
+    service_mgr = "ZeroPermission"
+    role_mgr = "ZeroPermission"
+    proposal_strategy_mgr = "ZeroPermission"
+    dapp_mgr = "ZeroPermission"
 
 [license]
   key = "133847740289a8dc5447bfbaedf10ed5ee9460110e4ba6b455e33cf941253527f18dd721515c5142fcea9b6415ddad6b3f1696011a4bbc86f35833ae9296a3ea"

@@ -471,6 +471,8 @@ func (am *AppchainManager) RegisterAppchain(chainID string, chainName string, ch
 		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("submit proposal error: %s", string(proposalRes.Result))))
 	}
 
+	am.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(proposalRes.Result)))
+
 	return getGovernanceRet(string(proposalRes.Result), nil)
 }
 
@@ -646,6 +648,8 @@ func (am *AppchainManager) UpdateAppchain(id, name, desc string, trustRoot []byt
 		return res1
 	}
 
+	am.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(res.Result)))
+
 	am.Logger().WithFields(logrus.Fields{
 		"id": chainInfo.ID,
 	}).Info(fmt.Sprintf("Appchain is doing event %s", event))
@@ -731,6 +735,8 @@ func (am *AppchainManager) basicGovernance(id, reason string, permissions []stri
 	if ok, data := am.AppchainManager.ChangeStatus(id, string(event), string(chainInfo.Status), nil); !ok {
 		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("change status error: %s", string(data))))
 	}
+
+	am.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(res.Result)))
 
 	am.Logger().WithFields(logrus.Fields{
 		"id": chainInfo.ID,

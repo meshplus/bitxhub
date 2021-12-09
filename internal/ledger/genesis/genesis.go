@@ -53,7 +53,12 @@ func Initialize(genesis *repo.Genesis, nodes []*repo.NetworkNodes, primaryN uint
 	lg.SetState(constant.RoleContractAddr.Address(), []byte(contracts.GenesisBalance), []byte(genesis.Balance))
 
 	for k, v := range genesis.Strategy {
-		lg.SetState(constant.GovernanceContractAddr.Address(), []byte(k), []byte(v))
+		ps := &contracts.ProposalStrategy{Typ: contracts.ProposalStrategyType(v)}
+		psData, err := json.Marshal(ps)
+		if err != nil {
+			return err
+		}
+		lg.SetState(constant.GovernanceContractAddr.Address(), []byte(k), psData)
 	}
 
 	// init primary vp node

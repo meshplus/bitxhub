@@ -32,13 +32,13 @@ const (
 	PROPOSALTYPE_PREFIX   = "type"
 	PROPOSALSTATUS_PREFIX = "status"
 
-	AppchainMgr         ProposalType = "AppchainMgr"
-	RuleMgr             ProposalType = "RuleMgr"
-	NodeMgr             ProposalType = "NodeMgr"
-	ServiceMgr          ProposalType = "ServiceMgr"
-	RoleMgr             ProposalType = "RoleMgr"
-	ProposalStrategyMgr ProposalType = "ProposalStrategyMgr"
-	DappMgr             ProposalType = "DappMgr"
+	AppchainMgr         ProposalType = "appchain_mgr"
+	RuleMgr             ProposalType = "rule_mgr"
+	NodeMgr             ProposalType = "node_mgr"
+	ServiceMgr          ProposalType = "service_mgr"
+	RoleMgr             ProposalType = "role_mgr"
+	ProposalStrategyMgr ProposalType = "proposal_strategy_mgr"
+	DappMgr             ProposalType = "dapp_mgr"
 
 	PROPOSED ProposalStatus = "proposed"
 	APPROVED ProposalStatus = "approve"
@@ -278,6 +278,21 @@ func (g *Governance) SubmitProposal(from, eventTyp, typ, objId, objLastStatus, r
 	}
 
 	return boltvm.Success([]byte(p.Id))
+}
+
+func (g *Governance) ZeroPermission(id string) *boltvm.Response {
+	p := &Proposal{}
+	if !g.GetObject(ProposalKey(id), p) {
+		return boltvm.Error(boltvm.GovernanceNonexistentProposalCode, fmt.Sprintf(string(boltvm.GovernanceNonexistentProposalMsg), id, ""))
+	}
+	if p.ThresholdElectorateNum == 0 {
+		p.EndReason = NormalReason
+		g.changeProposalStatus(p, APPROVED)
+		if err := g.handleResult(p); err != nil {
+			return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
+		}
+	}
+	return boltvm.Success(nil)
 }
 
 func isSpecialProposal(p *Proposal) bool {
@@ -1214,6 +1229,7 @@ const (
 	SuperMajorityApprove ProposalStrategyType = "SuperMajorityApprove"
 	SuperMajorityAgainst ProposalStrategyType = "SuperMajorityAgainst"
 	SimpleMajority       ProposalStrategyType = "SimpleMajority"
+	ZeroPermission       ProposalStrategyType = "ZeroPermission"
 )
 
 type ProposalStrategy struct {
@@ -1330,7 +1346,8 @@ func checkStrategyInfo(ps *ProposalStrategy) error {
 func checkStrategyType(pst ProposalStrategyType) error {
 	if pst != SuperMajorityApprove &&
 		pst != SuperMajorityAgainst &&
-		pst != SimpleMajority {
+		pst != SimpleMajority &&
+		pst != ZeroPermission {
 		return fmt.Errorf("illegal proposal strategy type")
 	}
 	return nil
