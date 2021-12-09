@@ -81,6 +81,8 @@ func (cbs *ChainBrokerService) checkTransaction(tx *pb.BxhTransaction) error {
 		return fmt.Errorf("invalid signature: %w", err)
 	}
 
+	tx.TransactionHash = tx.Hash()
+
 	return nil
 }
 
