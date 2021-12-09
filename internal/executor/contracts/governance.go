@@ -48,11 +48,12 @@ const (
 	BallotApprove = "approve"
 	BallotReject  = "reject"
 
-	NormalReason     EndReason = "end of normal voting"
-	WithdrawnReason  EndReason = "withdrawn by the proposal sponsor"
-	PriorityReason   EndReason = "forced shut down by a high-priority proposal"
-	ElectorateReason EndReason = "not enough valid electorate"
-	ClearReason      EndReason = "the proposal was cleared"
+	NormalReason         EndReason = "end of normal voting"
+	ZeroPermissionReason EndReason = "zero permission reason"
+	WithdrawnReason      EndReason = "withdrawn by the proposal sponsor"
+	PriorityReason       EndReason = "forced shut down by a high-priority proposal"
+	ElectorateReason     EndReason = "not enough valid electorate"
+	ClearReason          EndReason = "the proposal was cleared"
 
 	FALSE = "false"
 	TRUE  = "true"
@@ -286,7 +287,7 @@ func (g *Governance) ZeroPermission(id string) *boltvm.Response {
 		return boltvm.Error(boltvm.GovernanceNonexistentProposalCode, fmt.Sprintf(string(boltvm.GovernanceNonexistentProposalMsg), id, ""))
 	}
 	if p.ThresholdElectorateNum == 0 {
-		p.EndReason = NormalReason
+		p.EndReason = ZeroPermissionReason
 		g.changeProposalStatus(p, APPROVED)
 		if err := g.handleResult(p); err != nil {
 			return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))

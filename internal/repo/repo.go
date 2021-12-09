@@ -93,6 +93,33 @@ func checkConfig(config *Config) error {
 	if !hasSuperAdmin {
 		return fmt.Errorf("Set up at least one super administrator in genesis config!")
 	}
+
+	for _, s := range config.Genesis.Strategy {
+		if err := checkStrategyType(s.Typ); err != nil {
+			return err
+		}
+		if s.Typ == SimpleMajority {
+			if s.ParticipateThreshold < 0 || s.ParticipateThreshold > 1 {
+				return fmt.Errorf("illegal proposal %s[ParticipateThreshold]", s.Typ)
+			}
+		}
+		if s.Typ == ZeroPermission {
+			if s.ParticipateThreshold != 0 {
+				return fmt.Errorf("illegal proposal %s[ParticipateThreshold]", s.Typ)
+			}
+		}
+
+	}
+	return nil
+}
+
+func checkStrategyType(pst string) error {
+	if pst != SuperMajorityApprove &&
+		pst != SuperMajorityAgainst &&
+		pst != SimpleMajority &&
+		pst != ZeroPermission {
+		return fmt.Errorf("illegal proposal strategy type:%s", pst)
+	}
 	return nil
 }
 
