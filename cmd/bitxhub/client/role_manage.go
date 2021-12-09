@@ -150,7 +150,7 @@ func roleMgrCMD() cli.Command {
 func getRoleStatusById(ctx *cli.Context) error {
 	id := ctx.String("id")
 
-	receipt, err := invokeBVMContractBySendView(ctx, constant.RoleContractAddr.String(), "GetRoleInfoById", pb.String(id))
+	receipt, err := invokeBVMContractBySendView(ctx, constant.RoleContractAddr.Address().String(), "GetRoleInfoById", pb.String(id))
 	if err != nil {
 		return fmt.Errorf("invoke BVM contract failed when get role info by ID %s: %w", id, err)
 	}
@@ -173,7 +173,7 @@ func registerRole(ctx *cli.Context) error {
 	nodeAccount := ctx.String("nodeAccount")
 	reason := ctx.String("reason")
 
-	receipt, err := invokeBVMContract(ctx, constant.RoleContractAddr.String(), "RegisterRole", pb.String(addr), pb.String(typ), pb.String(nodeAccount), pb.String(reason))
+	receipt, err := invokeBVMContract(ctx, constant.RoleContractAddr.Address().String(), "RegisterRole", pb.String(addr), pb.String(typ), pb.String(nodeAccount), pb.String(reason))
 	if err != nil {
 		return fmt.Errorf("invoke BVM contract failed when register role \" addr=%s,typ=%s,nodeAccount=%s,reason=%s \": %w",
 			addr, typ, nodeAccount, reason, err)
@@ -193,7 +193,7 @@ func updateRole(ctx *cli.Context) error {
 	nodePid := ctx.String("nodePid")
 	reason := ctx.String("reason")
 
-	receipt, err := invokeBVMContract(ctx, constant.RoleContractAddr.String(), "UpdateAuditAdminNode", pb.String(id), pb.String(nodePid), pb.String(reason))
+	receipt, err := invokeBVMContract(ctx, constant.RoleContractAddr.Address().String(), "UpdateAuditAdminNode", pb.String(id), pb.String(nodePid), pb.String(reason))
 	if err != nil {
 		return err
 	}
@@ -211,7 +211,7 @@ func freezeRole(ctx *cli.Context) error {
 	id := ctx.String("id")
 	reason := ctx.String("reason")
 
-	receipt, err := invokeBVMContract(ctx, constant.RoleContractAddr.String(), "FreezeRole", pb.String(id), pb.String(reason))
+	receipt, err := invokeBVMContract(ctx, constant.RoleContractAddr.Address().String(), "FreezeRole", pb.String(id), pb.String(reason))
 	if err != nil {
 		return fmt.Errorf("invoke BVM contract failed when freeze role %s for %s: %w", id, reason, err)
 	}
@@ -229,7 +229,7 @@ func activateRole(ctx *cli.Context) error {
 	id := ctx.String("id")
 	reason := ctx.String("reason")
 
-	receipt, err := invokeBVMContract(ctx, constant.RoleContractAddr.String(), "ActivateRole", pb.String(id), pb.String(reason))
+	receipt, err := invokeBVMContract(ctx, constant.RoleContractAddr.Address().String(), "ActivateRole", pb.String(id), pb.String(reason))
 	if err != nil {
 		return fmt.Errorf("invoke BVM contract failed when activate role %s for %s: %w", id, reason, err)
 	}
@@ -247,7 +247,7 @@ func logoutRole(ctx *cli.Context) error {
 	id := ctx.String("id")
 	reason := ctx.String("reason")
 
-	receipt, err := invokeBVMContract(ctx, constant.RoleContractAddr.String(), "LogoutRole", pb.String(id), pb.String(reason))
+	receipt, err := invokeBVMContract(ctx, constant.RoleContractAddr.Address().String(), "LogoutRole", pb.String(id), pb.String(reason))
 	if err != nil {
 		return fmt.Errorf("invoke BVM contract failed when logout role %s for %s: %w", id, reason, err)
 	}
@@ -266,7 +266,7 @@ func bindRole(ctx *cli.Context) error {
 	account := ctx.String("account")
 	reason := ctx.String("reason")
 
-	receipt, err := invokeBVMContract(ctx, constant.RoleContractAddr.String(), "BindRole", pb.String(id), pb.String(account), pb.String(reason))
+	receipt, err := invokeBVMContract(ctx, constant.RoleContractAddr.Address().String(), "BindRole", pb.String(id), pb.String(account), pb.String(reason))
 	if err != nil {
 		return fmt.Errorf("invoke BVM contract failed when bind role %s with node %s for %s: %w", id, account, reason, err)
 	}
@@ -286,13 +286,13 @@ func allRole(ctx *cli.Context) error {
 	var ret *pb.Receipt
 	switch typ {
 	case string(contracts.GovernanceAdmin):
-		receipt, err := invokeBVMContractBySendView(ctx, constant.RoleContractAddr.String(), "GetAllRoles")
+		receipt, err := invokeBVMContractBySendView(ctx, constant.RoleContractAddr.Address().String(), "GetAllRoles")
 		if err != nil {
 			return fmt.Errorf("invoke BVM contract failed when get all roles: %w", err)
 		}
 		ret = receipt
 	case string(contracts.AuditAdmin):
-		receipt, err := invokeBVMContractBySendView(ctx, constant.RoleContractAddr.String(), "GetAuditAdminRoles")
+		receipt, err := invokeBVMContractBySendView(ctx, constant.RoleContractAddr.Address().String(), "GetAuditAdminRoles")
 		if err != nil {
 			return fmt.Errorf("invoke BVM contract failed when get audit admin roles: %w", err)
 		}
