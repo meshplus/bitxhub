@@ -44,7 +44,7 @@ func (nm *NodeManager) checkPermission(permissions []string, nodeAccount, regula
 				return nil
 			}
 		case string(PermissionAdmin):
-			res := nm.CrossInvoke(constant.RoleContractAddr.String(), "IsAnyAvailableAdmin",
+			res := nm.CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin",
 				pb.String(regulatorAddr),
 				pb.String(string(GovernanceAdmin)))
 			if !res.Ok {
@@ -181,8 +181,10 @@ func (nm *NodeManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 				}
 				nm.PostEvent(pb.Event_NODEMGR, nodeEvent)
 			case nodemgr.NVPNode:
-				if res := nm.CrossInvoke(constant.RoleContractAddr.Address().String(), "PauseAuditAdmin", pb.String(nodeInfo.AuditAdminAddr)); !res.Ok {
-					return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), string(res.Result)))
+				if nodeInfo.AuditAdminAddr != "" {
+					if res := nm.CrossInvoke(constant.RoleContractAddr.Address().String(), "PauseAuditAdmin", pb.String(nodeInfo.AuditAdminAddr)); !res.Ok {
+						return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("cross invoke PauseAuditAdmin error: %s", string(res.Result))))
+					}
 				}
 			}
 		}
@@ -767,7 +769,7 @@ func (nm *NodeManager) checkNodeInfo(node *nodemgr.Node, isRegister bool) *boltv
 			return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), err))
 		}
 		if int(node.VPNodeId) != nextVpID {
-			return boltvm.Error(boltvm.NodeIllegalVpIdCode, fmt.Sprintf(string(boltvm.NodeIllegalVpIdMsg), node.VPNodeId, nextVpID))
+			return boltvm.Error(boltvm.NodeIllegalVpIdCode, fmt.Sprintf(string(boltvm.NodeIllegalVpIdMsg), node.VPNodeId, fmt.Sprintf("the ids of vp nodes should be incremented one by one, it should be %d", nextVpID)))
 		}
 
 		// 4. check node Pid
