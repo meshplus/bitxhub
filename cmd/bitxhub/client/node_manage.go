@@ -42,7 +42,7 @@ func nodeMgrCMD() cli.Command {
 					},
 					cli.StringFlag{
 						Name:     "type",
-						Usage:    "Specify node type (vpNode or nvpNode), currently only VPNode is supported",
+						Usage:    "Specify node type (vpNode or nvpNode)",
 						Value:    "vpNode",
 						Required: false,
 					},
