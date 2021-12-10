@@ -672,7 +672,8 @@ func (am *AppchainManager) FreezeAppchain(id, reason string) *boltvm.Response {
 	if err := json.Unmarshal(res.Result, &gr); err != nil {
 		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 	}
-	return am.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(gr.ProposalID))
+	am.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(gr.ProposalID))
+	return res
 }
 
 // =========== ActivateAppchain activates frozen appchain
@@ -701,7 +702,8 @@ func (am *AppchainManager) ActivateAppchain(id, reason string) *boltvm.Response 
 	if err := json.Unmarshal(res.Result, &gr); err != nil {
 		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 	}
-	return am.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(gr.ProposalID))
+	am.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(gr.ProposalID))
+	return res
 }
 
 // =========== LogoutAppchain logouts appchain

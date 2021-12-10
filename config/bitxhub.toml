@@ -96,6 +96,10 @@ solo = false
     typ = "ZeroPermission"
     participate_threshold = 0
   [[genesis.strategy]]
+    module = "proposal_strategy_mgr"
+    typ = "ZeroPermission"
+    participate_threshold = 0
+  [[genesis.strategy]]
     module = "rule_mgr"
     typ = "ZeroPermission"
     participate_threshold = 0

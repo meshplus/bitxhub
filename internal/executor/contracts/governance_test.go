@@ -612,49 +612,6 @@ func TestGovernance_Vote(t *testing.T) {
 	assert.True(t, res.Ok, string(res.Result))
 }
 
-func TestGovernance_ProposalStrategy(t *testing.T) {
-	mockCtl := gomock.NewController(t)
-	mockStub := mock_stub.NewMockStub(mockCtl)
-
-	g := Governance{mockStub}
-	ps := &ProposalStrategy{
-		Typ:                  SimpleMajority,
-		ParticipateThreshold: 0.5,
-	}
-	psData, err := json.Marshal(ps)
-	assert.Nil(t, err)
-
-	psError := &ProposalStrategy{
-		Typ:                  SimpleMajority,
-		ParticipateThreshold: 1.5,
-	}
-	psErrorData, err := json.Marshal(psError)
-	assert.Nil(t, err)
-
-	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
-	mockStub.EXPECT().GetObject(string(RuleMgr), gomock.Any()).Return(false).AnyTimes()
-	mockStub.EXPECT().GetObject(string(AppchainMgr), gomock.Any()).Return(true).AnyTimes()
-
-	res := g.NewProposalStrategy(string(SimpleMajority), 0.5, []byte{})
-	assert.True(t, res.Ok, string(res.Result))
-	res = g.NewProposalStrategy("", 0.5, []byte{})
-	assert.False(t, res.Ok, string(res.Result))
-
-	res = g.SetProposalStrategy(string(AppchainMgr), psData)
-	assert.True(t, res.Ok, string(res.Result))
-	res = g.SetProposalStrategy("", psData)
-	assert.False(t, res.Ok, string(res.Result))
-	res = g.SetProposalStrategy(string(AppchainMgr), psErrorData)
-	assert.False(t, res.Ok, string(res.Result))
-
-	res = g.GetProposalStrategy(string(AppchainMgr))
-	assert.True(t, res.Ok, string(res.Result))
-	res = g.GetProposalStrategy("")
-	assert.False(t, res.Ok, string(res.Result))
-	res = g.GetProposalStrategy(string(RuleMgr))
-	assert.False(t, res.Ok, string(res.Result))
-}
-
 func TestGovernance_SubmitProposal_LockLowPriorityProposal(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	mockStub := mock_stub.NewMockStub(mockCtl)

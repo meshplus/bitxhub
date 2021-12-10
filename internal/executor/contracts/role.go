@@ -481,12 +481,29 @@ func (rm *RoleManager) updateAppchainAdmin(appchainID string, adminAddrs []strin
 
 // =========== FreezeRole freezes role
 func (rm *RoleManager) FreezeRole(roleId, reason string) *boltvm.Response {
-	return rm.basicGovernance(roleId, reason, []string{string(PermissionAdmin)}, governance.EventFreeze, nil)
+	res := rm.basicGovernance(roleId, reason, []string{string(PermissionAdmin)}, governance.EventFreeze, nil)
+	if !res.Ok {
+		return res
+	}
+	var gr *governance.GovernanceResult
+	if err := json.Unmarshal(res.Result, &gr); err != nil {
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
+	}
+	return rm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(gr.ProposalID))
+
 }
 
 // =========== ActivateRole updates frozen role
 func (rm *RoleManager) ActivateRole(roleId, reason string) *boltvm.Response {
-	return rm.basicGovernance(roleId, reason, []string{string(PermissionAdmin), string(PermissionSelf)}, governance.EventActivate, nil)
+	res := rm.basicGovernance(roleId, reason, []string{string(PermissionAdmin), string(PermissionSelf)}, governance.EventActivate, nil)
+	if !res.Ok {
+		return res
+	}
+	var gr *governance.GovernanceResult
+	if err := json.Unmarshal(res.Result, &gr); err != nil {
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
+	}
+	return rm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(gr.ProposalID))
 }
 
 // =========== LogoutRole logouts role
@@ -512,7 +529,12 @@ func (rm *RoleManager) LogoutRole(roleId, reason string) *boltvm.Response {
 		}
 	}
 
-	return governanceRes
+	var gr *governance.GovernanceResult
+	if err := json.Unmarshal(governanceRes.Result, &gr); err != nil {
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
+	}
+	return rm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(gr.ProposalID))
+
 }
 
 // =========== BindRole binds audit admin with audit node
@@ -531,7 +553,11 @@ func (rm *RoleManager) BindRole(roleId, nodeAccount, reason string) *boltvm.Resp
 		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("cross invoke BindNode error: %s", string(res.Result))))
 	}
 
-	return governanceRes
+	var gr *governance.GovernanceResult
+	if err := json.Unmarshal(governanceRes.Result, &gr); err != nil {
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
+	}
+	return rm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(gr.ProposalID))
 }
 
 func (rm *RoleManager) basicGovernance(roleId, reason string, permissions []string, event governance.EventType, extra []byte) *boltvm.Response {
@@ -579,8 +605,6 @@ func (rm *RoleManager) basicGovernance(roleId, reason string, permissions []stri
 	if ok, data := rm.changeStatus(roleId, string(event), string(role.Status)); !ok {
 		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("change status error: %s", string(data))))
 	}
-
-	rm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(res.Result)))
 
 	if err := rm.postAuditRoleEvent(roleId); err != nil {
 		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("post audit role event error: %v", err)))

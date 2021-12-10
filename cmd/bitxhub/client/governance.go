@@ -109,6 +109,89 @@ func governanceCMD() cli.Command {
 			roleMgrCMD(),
 			dappMgrCMD(),
 			serviceMgrCMD(),
+			proposalStrategyCMD(),
+		},
+	}
+}
+
+func proposalStrategyCMD() cli.Command {
+	return cli.Command{
+		Name:  "strategy",
+		Usage: "proposal strategy command",
+		Subcommands: cli.Commands{
+			cli.Command{
+				Name:  "all",
+				Usage: "query all proposal strategy",
+				Action: func(ctx *cli.Context) error {
+					receipt, err := invokeBVMContractBySendView(ctx, constant.GovernanceContractAddr.String(), "GetAllProposalStrategy")
+					if err != nil {
+						return fmt.Errorf("invoke BVM contract failed when get all proposal strategy: %w", err)
+					}
+
+					if receipt.IsSuccess() {
+						strategies := make([]*contracts.ProposalStrategy, 0)
+						if err := json.Unmarshal(receipt.Ret, &strategies); err != nil {
+							return fmt.Errorf(err.Error())
+						}
+						printProposalStrategy(strategies)
+					} else {
+						color.Red("get all proposal strategy error: %s\n", string(receipt.Ret))
+					}
+					return nil
+				},
+			},
+			cli.Command{
+				Name:  "update",
+				Usage: "update proposal strategy",
+				Flags: []cli.Flag{
+					cli.StringFlag{
+						Name:     "module",
+						Usage:    "module name",
+						Required: true,
+					},
+					cli.StringFlag{
+						Name:     "typ",
+						Usage:    "proposal strategy(SuperMajorityApprove, SuperMajorityAgainst, SimpleMajority or ZeroPermission)",
+						Value:    "SimpleMajority",
+						Required: false,
+					},
+					cli.Float64Flag{
+						Name:     "threshold",
+						Usage:    "participate threshold",
+						Required: true,
+					},
+					cli.StringFlag{
+						Name:     "reason",
+						Usage:    "update reason",
+						Required: true,
+					},
+				},
+				Action: func(ctx *cli.Context) error {
+					module := ctx.String("module")
+					typ := ctx.String("typ")
+					threshold := ctx.Float64("threshold")
+					reason := ctx.String("reason")
+
+					proposalStrategy := &contracts.ProposalStrategy{Typ: contracts.ProposalStrategyType(typ), Module: module, ParticipateThreshold: threshold}
+					err := contracts.CheckStrategyInfo(proposalStrategy)
+					if err != nil {
+						return err
+					}
+					receipt, err := invokeBVMContract(ctx, constant.GovernanceContractAddr.String(), "UpdateProposalStrategy",
+						pb.String(module), pb.String(typ), pb.Float64(threshold), pb.String(reason))
+					if err != nil {
+						return fmt.Errorf("invoke BVM contract failed when get all proposal strategy: %w", err)
+					}
+
+					if receipt.IsSuccess() {
+						proposalId := gjson.Get(string(receipt.Ret), "proposal_id").String()
+						color.Green("proposal id is %s\n", proposalId)
+					} else {
+						color.Red("update proposal strategy error: %s\n", string(receipt.Ret))
+					}
+					return nil
+				},
+			},
 		},
 	}
 }
@@ -421,4 +504,20 @@ func invokeBVMContractBySendView(ctx *cli.Context, contractAddr string, method s
 		return nil, fmt.Errorf(string(receipt.Ret))
 	}
 	return receipt, nil
+}
+
+func printProposalStrategy(strategies []*contracts.ProposalStrategy) {
+	var table [][]string
+	table = append(table, []string{"module", "strategy", "ParticipateThreshold", "Status"})
+	for _, r := range strategies {
+
+		table = append(table, []string{
+			r.Module,
+			string(r.Typ),
+			fmt.Sprintf("%0.2f", r.ParticipateThreshold),
+			string(r.Status),
+		})
+	}
+
+	PrintTable(table, true)
 }
