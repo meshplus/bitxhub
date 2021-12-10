@@ -297,6 +297,26 @@ func (rm *RoleManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 				pb.String(proposalResult)); !res.Ok {
 				return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("cross invoke ManageBindNode error: %s", string(res.Result))))
 			}
+		case string(governance.EventLogout):
+			// approve: Unbind audit node.
+			// reject: If audit node is unavailable(only one possibility is that the node has been logouted), the role need to be paused.
+			if proposalResult == string(APPROVED) {
+				if res := rm.CrossInvoke(constant.NodeManagerContractAddr.Address().String(), "UnbindNode", pb.String(role.NodeAccount)); !res.Ok {
+					return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("cross invoke UnbindNode error: %s", string(res.Result))))
+				}
+			} else {
+				if role.NodeAccount != "" {
+					res := rm.CrossInvoke(constant.NodeManagerContractAddr.Address().String(), "IsAvailable", pb.String(role.NodeAccount))
+					if !res.Ok {
+						return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("cross invoke IsAvailable error: %s", string(res.Result))))
+					}
+					if string(res.Result) == FALSE {
+						if res := rm.pauseAuditAdmin(role.ID); !res.Ok {
+							return res
+						}
+					}
+				}
+			}
 		}
 	}
 
@@ -503,10 +523,6 @@ func (rm *RoleManager) LogoutRole(roleId, reason string) *boltvm.Response {
 		if err := rm.updateRoleRelatedProposalInfo(roleId, governance.EventType(governance.EventLogout)); err != nil {
 			return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), err.Error()))
 		}
-	case AuditAdmin:
-		if res := rm.CrossInvoke(constant.NodeManagerContractAddr.Address().String(), "UnbindNode", pb.String(role.NodeAccount)); !res.Ok {
-			return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("cross invoke UnbindNode error: %s", string(res.Result))))
-		}
 	}
 
 	return governanceRes
@@ -586,8 +602,7 @@ func (rm *RoleManager) basicGovernance(roleId, reason string, permissions []stri
 
 // =========== PauseAuditAdmin frozen audit admin because the audit binds to it is not available
 func (rm *RoleManager) PauseAuditAdmin(roleId string) *boltvm.Response {
-	event := governance.EventPause
-	// 1. check permission: PermissionSpecific(GovernanceContractAddr)
+	// check permission: PermissionSpecific(GovernanceContractAddr)
 	specificAddrs := []string{constant.NodeManagerContractAddr.Address().String()}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
@@ -597,10 +612,24 @@ func (rm *RoleManager) PauseAuditAdmin(roleId string) *boltvm.Response {
 		return boltvm.Error(boltvm.RoleNoPermissionCode, fmt.Sprintf(string(boltvm.RoleNoPermissionMsg), rm.CurrentCaller(), fmt.Sprintf("check permission error:%v", err)))
 	}
 
-	// 2. check status
+	return rm.pauseAuditAdmin(roleId)
+}
+
+func (rm *RoleManager) pauseAuditAdmin(roleId string) *boltvm.Response {
+	event := governance.EventPause
+
+	// 1. check status
 	role, bxhErr := rm.governancePre(roleId, event)
 	if bxhErr != nil {
-		return boltvm.Error(bxhErr.Code, string(bxhErr.Msg))
+		// If the audit admin cannot be suspended, you do not need to suspend the audit administrator. The possibilities are as follows:
+		//- available: ok
+		//- registering /unavailable: The audit node is not yet bound, so it is not possible to enter this method.
+		//- binding: If the node is not bound successfully, it is equivalent to that the audit node is not bound. Therefore, this method cannot be entered.
+		//- forbidden: If the audit administrator is logouted, the audit node is automatically unbound. Therefore, this method cannot be used.
+		//- frozen: If the audit node has been suspended, that is, the audit node has been deregistered and cannot be deregistered repeatedly.Therefore, this method cannot be used.
+		//- logouting: The audit administrator is deregistering. The deregistration event has a higher priority than the suspension event, and the suspension event is not required.
+		//   If the audit administrator fails to log out, pause again. If the log out succeeds, unbind the node directly
+		return boltvm.Success(nil)
 	}
 	switch role.RoleType {
 	case AppchainAdmin:

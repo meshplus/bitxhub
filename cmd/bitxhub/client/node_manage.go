@@ -130,7 +130,7 @@ func nodeMgrCMD() cli.Command {
 func getNodeStatusByAccount(ctx *cli.Context) error {
 	account := ctx.String("account")
 
-	receipt, err := invokeBVMContractBySendView(ctx, constant.NodeManagerContractAddr.String(), "GetNode", pb.String(account))
+	receipt, err := invokeBVMContractBySendView(ctx, constant.NodeManagerContractAddr.Address().String(), "GetNode", pb.String(account))
 	if err != nil {
 		return fmt.Errorf("invoke BVM contract failed when get node status by account %s: %w", account, err)
 	}
@@ -156,7 +156,7 @@ func registerNode(ctx *cli.Context) error {
 	permisssion := ctx.String("permission")
 	reason := ctx.String("reason")
 
-	receipt, err := invokeBVMContract(ctx, constant.NodeManagerContractAddr.String(), "RegisterNode",
+	receipt, err := invokeBVMContract(ctx, constant.NodeManagerContractAddr.Address().String(), "RegisterNode",
 		pb.String(account),
 		pb.String(typ),
 		pb.String(pid),
@@ -184,7 +184,7 @@ func updateNode(ctx *cli.Context) error {
 	permisssion := ctx.String("permission")
 	reason := ctx.String("reason")
 
-	receipt, err := invokeBVMContract(ctx, constant.NodeManagerContractAddr.String(), "UpdateNode",
+	receipt, err := invokeBVMContract(ctx, constant.NodeManagerContractAddr.Address().String(), "UpdateNode",
 		pb.String(account),
 		pb.String(name),
 		pb.String(permisssion),
@@ -207,7 +207,7 @@ func logoutNode(ctx *cli.Context) error {
 	account := ctx.String("account")
 	reason := ctx.String("reason")
 
-	receipt, err := invokeBVMContract(ctx, constant.NodeManagerContractAddr.String(), "LogoutNode", pb.String(account), pb.String(reason))
+	receipt, err := invokeBVMContract(ctx, constant.NodeManagerContractAddr.Address().String(), "LogoutNode", pb.String(account), pb.String(reason))
 	if err != nil {
 		return fmt.Errorf("invoke BVM contract failed when logout node by account %s for %s: %w", account, reason, err)
 	}
@@ -222,7 +222,7 @@ func logoutNode(ctx *cli.Context) error {
 }
 
 func allNode(ctx *cli.Context) error {
-	receipt, err := invokeBVMContractBySendView(ctx, constant.NodeManagerContractAddr.String(), "Nodes")
+	receipt, err := invokeBVMContractBySendView(ctx, constant.NodeManagerContractAddr.Address().String(), "Nodes")
 	if err != nil {
 		return fmt.Errorf("invoke BVM contract failed when get all node info: %w", err)
 	}
