@@ -99,13 +99,13 @@ func checkConfig(config *Config) error {
 			return err
 		}
 		if s.Typ == SimpleMajority {
-			if s.ParticipateThreshold < 0 || s.ParticipateThreshold > 1 {
-				return fmt.Errorf("illegal proposal %s[ParticipateThreshold]", s.Typ)
+			if s.ParticipateThreshold <= 0 || s.ParticipateThreshold > 1 {
+				return fmt.Errorf("illegal strategy %s[ParticipateThreshold]", s.Typ)
 			}
 		}
 		if s.Typ == ZeroPermission {
 			if s.ParticipateThreshold != 0 {
-				return fmt.Errorf("illegal proposal %s[ParticipateThreshold]", s.Typ)
+				return fmt.Errorf("illegal strategy %s[ParticipateThreshold]", s.Typ)
 			}
 		}
 

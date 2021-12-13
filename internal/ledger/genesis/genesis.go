@@ -63,7 +63,7 @@ func Initialize(genesis *repo.Genesis, nodes []*repo.NetworkNodes, primaryN uint
 		if err != nil {
 			return err
 		}
-		lg.SetState(constant.GovernanceContractAddr.Address(), []byte(contracts.ProposalStrategyKey(v.Module)), psData)
+		lg.SetState(constant.ProposalStrategyMgrContractAddr.Address(), []byte(contracts.ProposalStrategyKey(v.Module)), psData)
 	}
 
 	// init primary vp node

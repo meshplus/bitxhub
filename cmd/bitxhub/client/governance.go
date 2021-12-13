@@ -123,7 +123,7 @@ func proposalStrategyCMD() cli.Command {
 				Name:  "all",
 				Usage: "query all proposal strategy",
 				Action: func(ctx *cli.Context) error {
-					receipt, err := invokeBVMContractBySendView(ctx, constant.GovernanceContractAddr.String(), "GetAllProposalStrategy")
+					receipt, err := invokeBVMContractBySendView(ctx, constant.ProposalStrategyMgrContractAddr.String(), "GetAllProposalStrategy")
 					if err != nil {
 						return fmt.Errorf("invoke BVM contract failed when get all proposal strategy: %w", err)
 					}
@@ -146,18 +146,19 @@ func proposalStrategyCMD() cli.Command {
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "module",
-						Usage:    "module name",
+						Usage:    "module name(appchain_mgr, rule_mgr, node_mgr, service_mgr, role_mgr, proposal_strategy_mgr, dapp_mgr)",
 						Required: true,
 					},
 					cli.StringFlag{
 						Name:     "typ",
-						Usage:    "proposal strategy(SuperMajorityApprove, SuperMajorityAgainst, SimpleMajority or ZeroPermission)",
+						Usage:    "proposal strategy(SimpleMajority or ZeroPermission)",
 						Value:    "SimpleMajority",
 						Required: false,
 					},
 					cli.Float64Flag{
 						Name:     "threshold",
 						Usage:    "participate threshold",
+						Value:    0.75,
 						Required: true,
 					},
 					cli.StringFlag{
@@ -177,7 +178,7 @@ func proposalStrategyCMD() cli.Command {
 					if err != nil {
 						return err
 					}
-					receipt, err := invokeBVMContract(ctx, constant.GovernanceContractAddr.String(), "UpdateProposalStrategy",
+					receipt, err := invokeBVMContract(ctx, constant.ProposalStrategyMgrContractAddr.String(), "UpdateProposalStrategy",
 						pb.String(module), pb.String(typ), pb.Float64(threshold), pb.String(reason))
 					if err != nil {
 						return fmt.Errorf("invoke BVM contract failed when get all proposal strategy: %w", err)

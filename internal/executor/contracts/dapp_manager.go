@@ -103,7 +103,7 @@ func (d *Dapp) setFSM(lastStatus governance.GovernanceStatus) {
 		fsm.Events{
 			// register 3
 			{Name: string(governance.EventRegister), Src: []string{string(governance.GovernanceUnavailable)}, Dst: string(governance.GovernanceRegisting)},
-			{Name: string(governance.EventApprove), Src: []string{string(governance.GovernanceRegisting), string(governance.GovernanceUnavailable)}, Dst: string(governance.GovernanceAvailable)},
+			{Name: string(governance.EventApprove), Src: []string{string(governance.GovernanceRegisting)}, Dst: string(governance.GovernanceAvailable)},
 			{Name: string(governance.EventReject), Src: []string{string(governance.GovernanceRegisting)}, Dst: string(lastStatus)},
 
 			// update 1

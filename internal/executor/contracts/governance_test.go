@@ -86,6 +86,10 @@ func TestGovernance_SubmitProposal(t *testing.T) {
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "GetRolesByType", gomock.Any()).Return(boltvm.Error("", "")).Times(1)
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "GetRolesByType", gomock.Any()).Return(boltvm.Success(adminsErrorData)).Times(2)
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "GetRolesByType", gomock.Any()).Return(boltvm.Success(adminsData)).AnyTimes()
+
+	strategy := &ProposalStrategy{ParticipateThreshold: 0.75, Typ: SimpleMajority}
+	data, _ := json.Marshal(strategy)
+	mockStub.EXPECT().CrossInvoke(gomock.Eq(constant.ProposalStrategyMgrContractAddr.String()), gomock.Eq("GetProposalStrategy"), gomock.Any()).Return(boltvm.Success(data)).AnyTimes()
 	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Return(false).AnyTimes()
 	mockStub.EXPECT().AddObject(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().CurrentCaller().Return("").AnyTimes()
@@ -665,7 +669,9 @@ func TestGovernance_SubmitProposal_LockLowPriorityProposal(t *testing.T) {
 	}
 	adminsData, err := json.Marshal(admins)
 	assert.Nil(t, err)
-
+	strategy := &ProposalStrategy{ParticipateThreshold: 0.75, Typ: SimpleMajority}
+	data, _ := json.Marshal(strategy)
+	mockStub.EXPECT().CrossInvoke(gomock.Eq(constant.ProposalStrategyMgrContractAddr.String()), gomock.Eq("GetProposalStrategy"), gomock.Any()).Return(boltvm.Success(data)).AnyTimes()
 	mockStub.EXPECT().CurrentCaller().Return(constant.AppchainMgrContractAddr.Address().String()).AnyTimes()
 	mockStub.EXPECT().Query(gomock.Any()).Return(true, pDatas).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
