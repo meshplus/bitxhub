@@ -78,7 +78,6 @@ solo = false
   chainid = 1356
   gas_limit = 0x5f5e100
   bvm_gas_price = 50000
-  dider = "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013"
   balance = "100000000000000000000000000000000000"
   [[genesis.admins]]
     address = "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013"
@@ -92,11 +91,35 @@ solo = false
   [[genesis.admins]]
     address = "0xc0Ff2e0b3189132D815b8eb325bE17285AC898f8"
     weight = 2
-  [genesis.strategy]
-    AppchainMgr = "SimpleMajority"
-    RuleMgr = "SimpleMajority"
-    NodeMgr = "SimpleMajority"
-    ServiceMgr = "SimpleMajority"
+  [[genesis.strategy]]
+    module = "appchain_mgr"
+    typ = "ZeroPermission"
+    participate_threshold = 0
+  [[genesis.strategy]]
+    module = "proposal_strategy_mgr"
+    typ = "ZeroPermission"
+    participate_threshold = 0
+  [[genesis.strategy]]
+    module = "rule_mgr"
+    typ = "ZeroPermission"
+    participate_threshold = 0
+  [[genesis.strategy]]
+    module = "node_mgr"
+    typ = "ZeroPermission"
+    participate_threshold = 0
+  [[genesis.strategy]]
+    module = "service_mgr"
+    typ = "ZeroPermission"
+    participate_threshold = 0
+  [[genesis.strategy]]
+    module = "role_mgr"
+    typ = "ZeroPermission"
+    participate_threshold = 0
+  [[genesis.strategy]]
+    module = "dapp_mgr"
+    typ = "ZeroPermission"
+    participate_threshold = 0
+
 
 [license]
   key = "133847740289a8dc5447bfbaedf10ed5ee9460110e4ba6b455e33cf941253527f18dd721515c5142fcea9b6415ddad6b3f1696011a4bbc86f35833ae9296a3ea"

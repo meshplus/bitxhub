@@ -194,8 +194,12 @@ func TestServiceManager_RegisterService(t *testing.T) {
 
 	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "IsAvailable", gomock.Any()).Return(boltvm.Success([]byte(FALSE))).Times(1)
 	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "IsAvailable", gomock.Any()).Return(boltvm.Success([]byte(TRUE))).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("", "submit error")).Times(1)
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(gomock.Eq(constant.GovernanceContractAddr.Address().String()), gomock.Eq("SubmitProposal"),
+		gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("", "")).Times(1)
+	mockStub.EXPECT().CrossInvoke(gomock.Eq(constant.GovernanceContractAddr.Address().String()), gomock.Eq("SubmitProposal"),
+		gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(gomock.Eq(constant.GovernanceContractAddr.Address().String()), gomock.Eq("ZeroPermission"),
+		gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).Return().AnyTimes()
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
@@ -260,8 +264,12 @@ func TestServiceManager_UpdateService(t *testing.T) {
 	appchainRoleData, err := json.Marshal([]*Role{roles[0]})
 	assert.Nil(t, err)
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "GetAppchainAdmin", gomock.Any()).Return(boltvm.Success(appchainRoleData)).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("", "submit error")).Times(1)
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(gomock.Eq(constant.GovernanceContractAddr.Address().String()), gomock.Eq("SubmitProposal"),
+		gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("", "")).Times(1)
+	mockStub.EXPECT().CrossInvoke(gomock.Eq(constant.GovernanceContractAddr.Address().String()), gomock.Eq("SubmitProposal"),
+		gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(gomock.Eq(constant.GovernanceContractAddr.Address().String()), gomock.Eq("ZeroPermission"),
+		gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).Return().AnyTimes()
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 
@@ -318,8 +326,12 @@ func TestServiceManager_LogoutService(t *testing.T) {
 	appchainRoleData, err := json.Marshal([]*Role{roles[0]})
 	assert.Nil(t, err)
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "GetAppchainAdmin", gomock.Any()).Return(boltvm.Success(appchainRoleData)).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("", "submit error")).Times(1)
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(gomock.Eq(constant.GovernanceContractAddr.Address().String()), gomock.Eq("SubmitProposal"),
+		gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("", "")).Times(1)
+	mockStub.EXPECT().CrossInvoke(gomock.Eq(constant.GovernanceContractAddr.Address().String()), gomock.Eq("SubmitProposal"),
+		gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(gomock.Eq(constant.GovernanceContractAddr.Address().String()), gomock.Eq("ZeroPermission"),
+		gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).Return().AnyTimes()
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 
@@ -350,6 +362,8 @@ func TestServiceManager_FreezeService(t *testing.T) {
 	mockStub.EXPECT().CurrentCaller().Return(appchainAdminAddr).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin", gomock.Any(), gomock.Any()).Return(boltvm.Success([]byte(TRUE))).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission",
+		gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).Return().AnyTimes()
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
@@ -372,7 +386,10 @@ func TestServiceManager_ActivateService(t *testing.T) {
 	assert.Nil(t, err)
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "GetAppchainAdmin", gomock.Any()).Return(boltvm.Success(appchainRoleData)).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin", gomock.Any(), gomock.Any()).Return(boltvm.Success([]byte(TRUE))).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(gomock.Eq(constant.GovernanceContractAddr.Address().String()), gomock.Eq("SubmitProposal"),
+		gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(gomock.Eq(constant.GovernanceContractAddr.Address().String()), gomock.Eq("ZeroPermission"),
+		gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).Return().AnyTimes()
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()

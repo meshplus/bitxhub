@@ -250,6 +250,8 @@ func (sm *ServiceManager) RegisterService(chainID, serviceID, name, typ, intro s
 	// 7. register info
 	sm.ServiceManager.RegisterPre(service)
 
+	sm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(res.Result)))
+
 	if err := sm.postAuditServiceEvent(chainServiceID); err != nil {
 		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
 	}
@@ -360,6 +362,8 @@ func (sm *ServiceManager) UpdateService(chainServiceID, name, intro, permits, de
 		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("change status error: %s", string(data))))
 	}
 
+	sm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(res.Result)))
+
 	if err := sm.postAuditServiceEvent(chainServiceID); err != nil {
 		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
 	}
@@ -413,6 +417,8 @@ func (sm *ServiceManager) basicGovernance(chainServiceID, reason string, permiss
 	if ok, data := sm.ServiceManager.ChangeStatus(chainServiceID, string(event), string(service.Status), nil); !ok {
 		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("change status error: %s", string(data))))
 	}
+
+	sm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(res.Result)))
 
 	if err := sm.postAuditServiceEvent(chainServiceID); err != nil {
 		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))

@@ -471,6 +471,8 @@ func (am *AppchainManager) RegisterAppchain(chainID string, chainName string, ch
 		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("submit proposal error: %s", string(proposalRes.Result))))
 	}
 
+	am.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(proposalRes.Result)))
+
 	return getGovernanceRet(string(proposalRes.Result), nil)
 }
 
@@ -646,6 +648,8 @@ func (am *AppchainManager) UpdateAppchain(id, name, desc string, trustRoot []byt
 		return res1
 	}
 
+	am.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(res.Result)))
+
 	am.Logger().WithFields(logrus.Fields{
 		"id": chainInfo.ID,
 	}).Info(fmt.Sprintf("Appchain is doing event %s", event))
@@ -660,7 +664,16 @@ func (am *AppchainManager) UpdateAppchain(id, name, desc string, trustRoot []byt
 // =========== FreezeAppchain freezes appchain
 func (am *AppchainManager) FreezeAppchain(id, reason string) *boltvm.Response {
 	am.AppchainManager.Persister = am.Stub
-	return am.basicGovernance(id, reason, []string{string(PermissionAdmin)}, governance.EventFreeze)
+	res := am.basicGovernance(id, reason, []string{string(PermissionAdmin)}, governance.EventFreeze)
+	if !res.Ok {
+		return res
+	}
+	var gr *governance.GovernanceResult
+	if err := json.Unmarshal(res.Result, &gr); err != nil {
+		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), err.Error()))
+	}
+	am.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(gr.ProposalID))
+	return res
 }
 
 // =========== ActivateAppchain activates frozen appchain
@@ -681,7 +694,16 @@ func (am *AppchainManager) ActivateAppchain(id, reason string) *boltvm.Response 
 		return boltvm.Error(boltvm.AppchainRuleUpdatingCode, fmt.Sprintf(string(boltvm.AppchainRuleUpdatingMsg), rule.Address, string(event), id))
 	}
 
-	return am.basicGovernance(id, reason, []string{string(PermissionSelf), string(PermissionAdmin)}, event)
+	res = am.basicGovernance(id, reason, []string{string(PermissionSelf), string(PermissionAdmin)}, event)
+	if !res.Ok {
+		return res
+	}
+	var gr *governance.GovernanceResult
+	if err := json.Unmarshal(res.Result, &gr); err != nil {
+		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), err.Error()))
+	}
+	am.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(gr.ProposalID))
+	return res
 }
 
 // =========== LogoutAppchain logouts appchain
@@ -696,6 +718,12 @@ func (am *AppchainManager) LogoutAppchain(id, reason string) *boltvm.Response {
 	if res := am.CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "PauseChainService", pb.String(id)); !res.Ok {
 		return res
 	}
+	var gr *governance.GovernanceResult
+	if err := json.Unmarshal(governanceRes.Result, &gr); err != nil {
+		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), err.Error()))
+	}
+
+	am.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(gr.ProposalID))
 
 	return governanceRes
 }

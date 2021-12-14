@@ -36,6 +36,19 @@ const (
 	DefaultParticipateThreshold = 0.75
 	//Passwd
 	DefaultPasswd = "bitxhub"
+
+	SuperMajorityApprove = "SuperMajorityApprove"
+	SuperMajorityAgainst = "SuperMajorityAgainst"
+	SimpleMajority       = "SimpleMajority"
+	ZeroPermission       = "ZeroPermission"
+
+	AppchainMgr         = "appchain_mgr"
+	RuleMgr             = "rule_mgr"
+	NodeMgr             = "node_mgr"
+	ServiceMgr          = "service_mgr"
+	RoleMgr             = "role_mgr"
+	ProposalStrategyMgr = "proposal_strategy_mgr"
+	DappMgr             = "dapp_mgr"
 )
 
 type Config struct {
@@ -128,14 +141,19 @@ type LogModule struct {
 	Profile   string `toml:"profile" json:"profile"`
 }
 
+type Strategy struct {
+	Module               string  `json:"module" toml:"module"`
+	Typ                  string  `json:"typ" toml:"typ"`
+	ParticipateThreshold float64 `mapstructure:"participate_threshold" json:"participate_threshold" toml:"participate_threshold"`
+}
+
 type Genesis struct {
-	ChainID     uint64            `json:"chainid" toml:"chainid"`
-	GasLimit    uint64            `mapstructure:"gas_limit" json:"gas_limit" toml:"gas_limit"`
-	BvmGasPrice uint64            `mapstructure:"bvm_gas_price" json:"bvm_gas_price" toml:"bvm_gas_price"`
-	Balance     string            `json:"balance" toml:"balance"`
-	Admins      []*Admin          `json:"admins" toml:"admins"`
-	Strategy    map[string]string `json:"strategy" toml:"strategy"`
-	Dider       string            `json:"dider" toml:"dider"`
+	ChainID     uint64      `json:"chainid" toml:"chainid"`
+	GasLimit    uint64      `mapstructure:"gas_limit" json:"gas_limit" toml:"gas_limit"`
+	BvmGasPrice uint64      `mapstructure:"bvm_gas_price" json:"bvm_gas_price" toml:"bvm_gas_price"`
+	Balance     string      `json:"balance" toml:"balance"`
+	Admins      []*Admin    `json:"admins" toml:"admins"`
+	Strategy    []*Strategy `json:"strategy" toml:"strategy"`
 }
 
 type Admin struct {

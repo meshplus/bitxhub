@@ -434,6 +434,8 @@ func (dm *DappManager) RegisterDapp(name, typ, desc, url, conAddrs, permits, rea
 	// 6. register info
 	dm.registerPre(dapp)
 
+	dm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(res.Result)))
+
 	if err := dm.postAuditDappEvent(dapp.DappID); err != nil {
 		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("post audit dapp event error: %v", err)))
 	}
@@ -559,6 +561,8 @@ func (dm *DappManager) UpdateDapp(id, name, desc, url, conAddrs, permits, reason
 		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("change status error: %s", string(data))))
 	}
 
+	dm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(res.Result)))
+
 	if err := dm.postAuditDappEvent(id); err != nil {
 		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("post audit dapp event error: %v", err)))
 	}
@@ -629,6 +633,8 @@ func (dm *DappManager) basicGovernance(id, reason string, permissions []string, 
 	if ok, data := dm.changeStatus(id, string(event), string(dapp.Status)); !ok {
 		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("change status error: %s", string(data))))
 	}
+
+	dm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(res.Result)))
 
 	if err := dm.postAuditDappEvent(id); err != nil {
 		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("post audit dapp event error: %v", err)))

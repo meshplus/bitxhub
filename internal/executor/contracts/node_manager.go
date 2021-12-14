@@ -293,6 +293,8 @@ func (nm *NodeManager) RegisterNode(nodeAccount, nodeType, nodePid string, nodeV
 	node.Status = governance.GovernanceRegisting
 	nm.NodeManager.RegisterPre(node)
 
+	nm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(res.Result)))
+
 	if err := nm.postAuditNodeEvent(nodeAccount); err != nil {
 		return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("post audit node event error: %v", err)))
 	}
@@ -366,6 +368,8 @@ func (nm *NodeManager) LogoutNode(nodeAccount, reason string) *boltvm.Response {
 	if ok, data := nm.NodeManager.ChangeStatus(nodeAccount, string(event), string(node.Status), nil); !ok {
 		return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("change status error: %s", string(data))))
 	}
+
+	nm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(res.Result)))
 
 	if err := nm.postAuditNodeEvent(nodeAccount); err != nil {
 		return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("post audit node event error: %v", err)))
@@ -467,6 +471,8 @@ func (nm *NodeManager) UpdateNode(nodeAccount, nodeName, permitStr, reason strin
 	if ok, data := nm.NodeManager.ChangeStatus(nodeAccount, string(event), string(node.Status), nil); !ok {
 		return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("change status error: %s", string(data))))
 	}
+
+	nm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(res.Result)))
 
 	if err := nm.postAuditNodeEvent(nodeAccount); err != nil {
 		return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("post audit node event error: %v", err)))

@@ -86,9 +86,3 @@ weight = 2
 [[genesis.admins]]
 address = "0xc0Ff2e0b3189132D815b8eb325bE17285AC898f8"
 weight = 2
-[genesis.strategy]
-AppchainMgr = "SimpleMajority"
-RuleMgr = "SimpleMajority"
-NodeMgr = "SimpleMajority"
-ServiceMgr = "SimpleMajority"
-
