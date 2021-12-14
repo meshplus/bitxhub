@@ -3,9 +3,11 @@ package grpc
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxid"
+	types2 "github.com/meshplus/eth-kit/types"
 )
 
 func (cbs *ChainBrokerService) GetInterchainTxWrappers(req *pb.GetInterchainTxWrappersRequest, server pb.ChainBroker_GetInterchainTxWrappersServer) error {
@@ -80,13 +82,33 @@ func (cbs *ChainBrokerService) GetBlockHeader(req *pb.GetBlockHeaderRequest, ser
 }
 
 func (cbs *ChainBrokerService) GetBlock(ctx context.Context, req *pb.GetBlockRequest) (*pb.Block, error) {
-	return cbs.api.Broker().GetBlock(req.Type.String(), req.Value)
+	block, err := cbs.api.Broker().GetBlock(req.Type.String(), req.Value)
+	if err != nil {
+		return nil, err
+	}
+	for _, tx := range block.Transactions.Transactions {
+		switch tx.(type) {
+		case *types2.EthTransaction:
+			ethTx := tx.(*types2.EthTransaction)
+			ethTx.Time = time.Unix(0, block.BlockHeader.Timestamp)
+		}
+	}
+	return block, nil
 }
 
 func (cbs *ChainBrokerService) GetBlocks(ctx context.Context, req *pb.GetBlocksRequest) (*pb.GetBlocksResponse, error) {
 	blocks, err := cbs.api.Broker().GetBlocks(req.Start, req.End)
 	if err != nil {
 		return nil, err
+	}
+	for _, block := range blocks {
+		for _, tx := range block.Transactions.Transactions {
+			switch tx.(type) {
+			case *types2.EthTransaction:
+				ethTx := tx.(*types2.EthTransaction)
+				ethTx.Time = time.Unix(0, block.BlockHeader.Timestamp)
+			}
+		}
 	}
 
 	return &pb.GetBlocksResponse{
