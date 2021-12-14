@@ -173,8 +173,7 @@ func proposalStrategyCMD() cli.Command {
 					threshold := ctx.Float64("threshold")
 					reason := ctx.String("reason")
 
-					proposalStrategy := &contracts.ProposalStrategy{Typ: contracts.ProposalStrategyType(typ), Module: module, ParticipateThreshold: threshold}
-					err := repo.CheckStrategyInfo(proposalStrategy)
+					err := repo.CheckStrategyInfo(typ, module, threshold)
 					if err != nil {
 						return err
 					}
