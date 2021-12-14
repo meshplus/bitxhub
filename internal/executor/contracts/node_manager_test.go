@@ -326,7 +326,8 @@ func TestNodeManager_Manage_NVPNode(t *testing.T) {
 	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[4].Account), gomock.Any()).SetArg(1, *nodes[4]).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[5].Account), gomock.Any()).SetArg(1, *nodes[5]).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[6].Account), gomock.Any()).SetArg(1, *nodes[6]).Return(true).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "PauseAuditAdmin", pb.String(nodes[6].AuditAdminAddr)).Return(boltvm.Error("", "PauseAuditAdmin error")).AnyTimes()
+	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[7].Account), gomock.Any()).SetArg(1, *nodes[7]).Return(true).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "PauseAuditAdmin", pb.String(nodes[7].AuditAdminAddr)).Return(boltvm.Error("", "PauseAuditAdmin error")).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "FreeAccount",
 		gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 
@@ -358,6 +359,8 @@ func TestNodeManager_Manage_NVPNode(t *testing.T) {
 
 	// logout, approve
 	res = nm.Manage(string(governance.EventLogout), BallotApprove, string(governance.GovernanceAvailable), nodes[6].Account, nil)
+	assert.True(t, res.Ok, string(res.Result))
+	res = nm.Manage(string(governance.EventLogout), BallotApprove, string(governance.GovernanceAvailable), nodes[7].Account, nil)
 	assert.False(t, res.Ok, string(res.Result))
 }
 
@@ -545,8 +548,10 @@ func nvpNodePrepare(t *testing.T) (*NodeManager, *mock_stub.MockStub, []*node_mg
 		string(governance.GovernanceBinded),
 		string(governance.GovernanceRegisting),
 		string(governance.GovernanceUpdating),
-		string(governance.GovernanceLogouting)}
-	for i := 0; i < 7; i++ {
+		string(governance.GovernanceLogouting),
+		string(governance.GovernanceLogouting),
+	}
+	for i := 0; i < 8; i++ {
 		node := &node_mgr.Node{
 			Account: fmt.Sprintf("%s%d", NODE_ACCOUNT[0:len(NODE_ACCOUNT)-1], i),
 			Name:    fmt.Sprintf("%s%d", NODE_NAME, i),
@@ -555,6 +560,9 @@ func nvpNodePrepare(t *testing.T) (*NodeManager, *mock_stub.MockStub, []*node_mg
 			},
 			NodeType: node_mgr.NVPNode,
 			Status:   governance.GovernanceStatus(nvpNodeStatus[i]),
+		}
+		if i == 7 {
+			node.AuditAdminAddr = "111"
 		}
 
 		data, err := json.Marshal(node)
