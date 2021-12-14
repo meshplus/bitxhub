@@ -171,10 +171,8 @@ func (rm *RoleManager) checkPermission(permissions []string, roleId string, regu
 				return nil
 			}
 		case string(PermissionAdmin):
-			if roleId != regulatorAddr {
-				if rm.isAvailableAdmin(regulatorAddr, GovernanceAdmin) {
-					return nil
-				}
+			if rm.isAvailableAdmin(regulatorAddr, GovernanceAdmin) {
+				return nil
 			}
 		case string(PermissionSpecific):
 			specificAddrs := []string{}
@@ -498,6 +496,9 @@ func (rm *RoleManager) updateAppchainAdmin(appchainID string, adminAddrs []strin
 
 // =========== FreezeRole freezes role
 func (rm *RoleManager) FreezeRole(roleId, reason string) *boltvm.Response {
+	if roleId == rm.CurrentCaller() {
+		return boltvm.Error(boltvm.RoleNoPermissionCode, fmt.Sprintf(string(boltvm.RoleNoPermissionMsg), rm.CurrentCaller(), "you can not freeze yourself"))
+	}
 	return rm.basicGovernance(roleId, reason, []string{string(PermissionAdmin)}, governance.EventFreeze, nil)
 }
 
