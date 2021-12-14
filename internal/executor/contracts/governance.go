@@ -304,6 +304,9 @@ func (g *Governance) ZeroPermission(id string) *boltvm.Response {
 		if err := g.handleResult(p); err != nil {
 			return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 		}
+		if err := g.postAuditProposalEvent(p.Id); err != nil {
+			return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("post audit proposal event error: %v", err)))
+		}
 	}
 	return boltvm.Success(nil)
 }
@@ -345,7 +348,7 @@ func (g *Governance) getElectorate() ([]*Role, int, error) {
 }
 
 func (g *Governance) getThresholdNum(electorateNum int, proposalTyp ProposalType) (int, error) {
-	if err := checkProposalType(proposalTyp); err != nil {
+	if err := repo.CheckManageModule(string(proposalTyp)); err != nil {
 		return 0, fmt.Errorf(err.Error())
 	}
 	ps := ProposalStrategy{}
@@ -972,7 +975,7 @@ func (g *Governance) getProposalsByFrom(from string) ([]*Proposal, error) {
 
 // Query proposals by proposal type, returning a list of proposal for that type
 func (g *Governance) GetProposalsByTyp(typ string) *boltvm.Response {
-	if err := checkProposalType(ProposalType(typ)); err != nil {
+	if err := repo.CheckManageModule(typ); err != nil {
 		return boltvm.Error(boltvm.GovernanceIllegalProposalTypeCode, fmt.Sprintf(string(boltvm.GovernanceIllegalProposalTypeMsg), typ))
 	}
 
@@ -1009,7 +1012,7 @@ func (g *Governance) getProposalsByType(typ string) ([]*Proposal, error) {
 
 // Query proposals based on proposal status, returning a list of proposal for that status
 func (g *Governance) GetProposalsByStatus(status string) *boltvm.Response {
-	if err := CheckProposalStatus(ProposalStatus(status)); err != nil {
+	if err := checkProposalStatus(ProposalStatus(status)); err != nil {
 		return boltvm.Error(boltvm.GovernanceIllegalProposalStatusCode, fmt.Sprintf(string(boltvm.GovernanceIllegalProposalStatusMsg), status))
 	}
 
@@ -1320,5 +1323,16 @@ func (g *Governance) postAuditProposalEvent(proposalID string) error {
 
 	g.PostEvent(pb.Event_AUDIT_PROPOSAL, auditInfo)
 
+	return nil
+}
+
+// Check info =============================================================
+func checkProposalStatus(ps ProposalStatus) error {
+	if ps != PROPOSED &&
+		ps != APPROVED &&
+		ps != REJECTED &&
+		ps != PAUSED {
+		return fmt.Errorf("illegal proposal status")
+	}
 	return nil
 }

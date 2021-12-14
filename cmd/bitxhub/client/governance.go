@@ -157,14 +157,14 @@ func proposalStrategyCMD() cli.Command {
 					},
 					cli.Float64Flag{
 						Name:     "threshold",
-						Usage:    "participate threshold",
+						Usage:    "participate threshold, specify what percentage of the popular vote a proposal requires at least. It should be in the [0, 1] range.",
 						Value:    0.75,
-						Required: true,
+						Required: false,
 					},
 					cli.StringFlag{
 						Name:     "reason",
 						Usage:    "update reason",
-						Required: true,
+						Required: false,
 					},
 				},
 				Action: func(ctx *cli.Context) error {
@@ -177,7 +177,7 @@ func proposalStrategyCMD() cli.Command {
 					if err != nil {
 						return err
 					}
-					receipt, err := invokeBVMContract(ctx, constant.ProposalStrategyMgrContractAddr.String(), "UpdateProposalStrategy",
+					receipt, err := invokeBVMContract(ctx, constant.ProposalStrategyMgrContractAddr.Address().String(), "UpdateProposalStrategy",
 						pb.String(module), pb.String(typ), pb.Float64(threshold), pb.String(reason))
 					if err != nil {
 						return fmt.Errorf("invoke BVM contract failed when get all proposal strategy: %w", err)
