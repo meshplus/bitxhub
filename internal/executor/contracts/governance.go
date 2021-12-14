@@ -33,13 +33,13 @@ const (
 	PROPOSALSTRATEGY_PREFIX = "strategy"
 	PROPOSALSTATUS_PREFIX   = "status"
 
-	AppchainMgr         ProposalType = "appchain_mgr"
-	RuleMgr             ProposalType = "rule_mgr"
-	NodeMgr             ProposalType = "node_mgr"
-	ServiceMgr          ProposalType = "service_mgr"
-	RoleMgr             ProposalType = "role_mgr"
-	ProposalStrategyMgr ProposalType = "proposal_strategy_mgr"
-	DappMgr             ProposalType = "dapp_mgr"
+	AppchainMgr         ProposalType = repo.AppchainMgr
+	RuleMgr             ProposalType = repo.RuleMgr
+	NodeMgr             ProposalType = repo.NodeMgr
+	ServiceMgr          ProposalType = repo.ServiceMgr
+	RoleMgr             ProposalType = repo.RoleMgr
+	ProposalStrategyMgr ProposalType = repo.ProposalStrategyMgr
+	DappMgr             ProposalType = repo.DappMgr
 
 	PROPOSED ProposalStatus = "proposed"
 	APPROVED ProposalStatus = "approve"

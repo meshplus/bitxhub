@@ -174,7 +174,7 @@ func proposalStrategyCMD() cli.Command {
 					reason := ctx.String("reason")
 
 					proposalStrategy := &contracts.ProposalStrategy{Typ: contracts.ProposalStrategyType(typ), Module: module, ParticipateThreshold: threshold}
-					err := contracts.CheckStrategyInfo(proposalStrategy)
+					err := repo.CheckStrategyInfo(proposalStrategy)
 					if err != nil {
 						return err
 					}
@@ -314,6 +314,7 @@ func checkProposalArgs(id, typ, status, from, objId string) error {
 		typ != string(contracts.RuleMgr) &&
 		typ != string(contracts.NodeMgr) &&
 		typ != string(contracts.ServiceMgr) &&
+		typ != string(contracts.ProposalStrategyMgr) &&
 		typ != string(contracts.RoleMgr) &&
 		typ != string(contracts.DappMgr) {
 		return fmt.Errorf("illegal proposal type")

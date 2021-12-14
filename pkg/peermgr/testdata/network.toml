@@ -3,13 +3,13 @@ n = 2
 new = false
 
 [[nodes]]
-  account = "0x140E83CCeF2842fA32EF99dAFf014A28EA982792"
+  account = "0x7ff7796e2e3fc80D3A15a3322E08848B6DA6F84C"
   hosts = ["/ip4/127.0.0.1/tcp/5002/p2p/"]
   id = 2
-  pid = "QmPEE236AHSzChMmgqjcM3hYEjnsutpjTTwbd525K9YuvW"
+  pid = "QmYNSQZk48ZGWiJ4gMdRRHMC1JiKhamKkLTob1d6ovn2Y8"
 
 [[nodes]]
-  account = "0x64549747C4F71ab23Bd4d933828510bE10169d16"
+  account = "0x067F94e54E1235C4d0c289269DDdeD4C148A1244"
   hosts = ["/ip4/127.0.0.1/tcp/5003/p2p/"]
   id = 3
-  pid = "QmRjK2bcsVJWEX3oAzs3q9PoyYdoptrzDpKu6hfLK5dBAC"
+  pid = "QmWXgkuNh3nheixCNBUiDwXp6W4ur674gbqiVhBidB2DLz"

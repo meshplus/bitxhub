@@ -45,6 +45,15 @@ type UpdateStrategyInfo struct {
 
 // =========== Manage does some subsequent operations when the proposal is over
 func (g *GovStrategy) Manage(eventTyp, proposalResult, lastStatus, objId string, extra []byte) *boltvm.Response {
+	// 1. check permission: PermissionSpecific(GovernanceContractAddr)
+	specificAddrs := []string{constant.GovernanceContractAddr.Address().String()}
+	addrsData, err := json.Marshal(specificAddrs)
+	if err != nil {
+		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("marshal specificAddrs error: %v", err)))
+	}
+	if err := g.checkPermission([]string{string(PermissionSpecific)}, objId, g.CurrentCaller(), addrsData); err != nil {
+		return boltvm.Error(boltvm.ProposalStrategyNoPermissionCode, fmt.Sprintf(string(boltvm.ProposalStrategyNoPermissionMsg), g.CurrentCaller(), err.Error()))
+	}
 	// 2. change status
 	ok, errData := g.changeStatus(objId, proposalResult, lastStatus)
 	if !ok {
@@ -100,9 +109,9 @@ func (g *GovStrategy) UpdateProposalStrategy(pt string, typ string, participateT
 	}
 	ps := &ProposalStrategy{}
 	if ok := g.GetObject(ProposalStrategyKey(pt), ps); !ok {
-		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyInternalErrMsg), "not found proposal strategy"))
+		return boltvm.Error(boltvm.ProposalStrategyNonexistentProposalStrategyCode, fmt.Sprintf(string(boltvm.ProposalStrategyNonexistentProposalStrategyMsg), pt))
 	}
-	if ps.Status == governance.GovernanceUpdating {
+	if ps.Status != governance.GovernanceAvailable {
 		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyInternalErrMsg), "current proposal strategy is in updating"))
 	}
 	info := &UpdateStrategyInfo{}
@@ -120,7 +129,7 @@ func (g *GovStrategy) UpdateProposalStrategy(pt string, typ string, participateT
 	if err != nil {
 		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf("unmarshal update strategy error: %v", err))
 	}
-	if err := CheckStrategyInfo(ps); err != nil {
+	if err := repo.CheckStrategyInfo(string(ps.Typ), string(ps.Module), ps.ParticipateThreshold); err != nil {
 		return boltvm.Error(boltvm.ProposalStrategyIllegalProposalStrategyInfoCode, fmt.Sprintf(string(boltvm.ProposalStrategyIllegalProposalStrategyInfoMsg), err.Error()))
 	}
 
@@ -249,25 +258,6 @@ func CheckProposalStatus(ps ProposalStatus) error {
 		ps != REJECTED &&
 		ps != PAUSED {
 		return fmt.Errorf("illegal proposal status")
-	}
-	return nil
-}
-
-func CheckStrategyInfo(ps *ProposalStrategy) error {
-	if checkStrategyType(ps.Typ) != nil ||
-		ps.ParticipateThreshold < 0 ||
-		ps.ParticipateThreshold > 1 {
-		return fmt.Errorf("illegal proposal strategy info")
-	}
-	return nil
-}
-
-func checkStrategyType(pst ProposalStrategyType) error {
-	if pst != SuperMajorityApprove &&
-		pst != SuperMajorityAgainst &&
-		pst != SimpleMajority &&
-		pst != ZeroPermission {
-		return fmt.Errorf("illegal proposal strategy type")
 	}
 	return nil
 }

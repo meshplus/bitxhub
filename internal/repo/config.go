@@ -41,6 +41,14 @@ const (
 	SuperMajorityAgainst = "SuperMajorityAgainst"
 	SimpleMajority       = "SimpleMajority"
 	ZeroPermission       = "ZeroPermission"
+
+	AppchainMgr         = "appchain_mgr"
+	RuleMgr             = "rule_mgr"
+	NodeMgr             = "node_mgr"
+	ServiceMgr          = "service_mgr"
+	RoleMgr             = "role_mgr"
+	ProposalStrategyMgr = "proposal_strategy_mgr"
+	DappMgr             = "dapp_mgr"
 )
 
 type Config struct {

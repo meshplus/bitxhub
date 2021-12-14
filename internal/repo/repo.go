@@ -95,20 +95,30 @@ func checkConfig(config *Config) error {
 	}
 
 	for _, s := range config.Genesis.Strategy {
-		if err := checkStrategyType(s.Typ); err != nil {
+		if err := CheckStrategyInfo(s.Typ, s.Module, s.ParticipateThreshold); err != nil {
 			return err
 		}
-		if s.Typ == SimpleMajority {
-			if s.ParticipateThreshold <= 0 || s.ParticipateThreshold > 1 {
-				return fmt.Errorf("illegal strategy %s[ParticipateThreshold]", s.Typ)
-			}
-		}
-		if s.Typ == ZeroPermission {
-			if s.ParticipateThreshold != 0 {
-				return fmt.Errorf("illegal strategy %s[ParticipateThreshold]", s.Typ)
-			}
-		}
+	}
+	return nil
+}
 
+func CheckStrategyInfo(typ, module string, threshold float64) error {
+	if checkStrategyType(typ) != nil {
+		return fmt.Errorf("illegal proposal strategy type:%s", typ)
+	}
+	if checkStrategyModule(module) != nil {
+		return fmt.Errorf("illegal proposal strategy module:%s", typ)
+	}
+	if typ == SimpleMajority {
+		if threshold <= 0 || threshold >= 1 {
+			return fmt.Errorf("illegal SimpleMajority[participate_threshold]=%f", threshold)
+		}
+	}
+
+	if typ == ZeroPermission {
+		if threshold != 0 {
+			return fmt.Errorf("illegal ZeroPermission[participate_threshold]=%f", threshold)
+		}
 	}
 	return nil
 }
@@ -118,7 +128,20 @@ func checkStrategyType(pst string) error {
 		pst != SuperMajorityAgainst &&
 		pst != SimpleMajority &&
 		pst != ZeroPermission {
-		return fmt.Errorf("illegal proposal strategy type:%s", pst)
+		return fmt.Errorf("illegal proposal strategy type")
+	}
+	return nil
+}
+
+func checkStrategyModule(pt string) error {
+	if pt != AppchainMgr &&
+		pt != RoleMgr &&
+		pt != RuleMgr &&
+		pt != DappMgr &&
+		pt != ProposalStrategyMgr &&
+		pt != NodeMgr &&
+		pt != ServiceMgr {
+		return fmt.Errorf("illegal proposal strategy module")
 	}
 	return nil
 }
