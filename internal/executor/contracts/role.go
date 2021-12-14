@@ -721,14 +721,19 @@ func (rm *RoleManager) freeAccount(addr string) {
 	rm.Delete(OccupyAccountKey(addr))
 }
 
-func (rm *RoleManager) IsOccupiedAccount(account string) *boltvm.Response {
-	return boltvm.Success([]byte(rm.isOccupiedAccount(account)))
+func (rm *RoleManager) CheckOccupiedAccount(account string) *boltvm.Response {
+	roleType, ok := rm.checkOccupiedAccount(account)
+	if ok {
+		return boltvm.Error(boltvm.RoleDuplicateAccountCode, fmt.Sprintf(string(boltvm.RoleDuplicateAccountMsg), account, roleType))
+	} else {
+		return boltvm.Success(nil)
+	}
 }
 
-func (rm *RoleManager) isOccupiedAccount(addr string) string {
+func (rm *RoleManager) checkOccupiedAccount(addr string) (string, bool) {
 	roleType := ""
-	_ = rm.GetObject(OccupyAccountKey(addr), &roleType)
-	return roleType
+	ok := rm.GetObject(OccupyAccountKey(addr), &roleType)
+	return roleType, ok
 }
 
 // ========================== Query interface ========================
@@ -957,6 +962,9 @@ func (rm *RoleManager) checkRoleInfo(role *Role) *boltvm.Response {
 	_, err := types.HexDecodeString(role.ID)
 	if err != nil {
 		return boltvm.Error(boltvm.RoleIllegalRoleIDCode, fmt.Sprintf(string(boltvm.RoleIllegalRoleIDMsg), role.ID, err.Error()))
+	}
+	if roleType, ok := rm.checkOccupiedAccount(role.ID); ok {
+		return boltvm.Error(boltvm.RoleDuplicateAccountCode, fmt.Sprintf(string(boltvm.RoleDuplicateAccountMsg), role.ID, roleType))
 	}
 
 	switch role.RoleType {

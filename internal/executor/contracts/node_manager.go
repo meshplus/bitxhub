@@ -21,7 +21,7 @@ type NodeManager struct {
 }
 
 type UpdateNodeInfo struct {
-	NodeName   UpdateInfo    `json:"service_name"`
+	NodeName   UpdateInfo    `json:"node_name"`
 	Permission UpdateMapInfo `json:"permission"`
 }
 
@@ -140,15 +140,16 @@ func (nm *NodeManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 		return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("change status error: %s", string(errData))))
 	}
 
+	node, err := nm.NodeManager.QueryById(objId, nil)
+	if err != nil {
+		return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), err.Error()))
+	}
+	nodeInfo := node.(*nodemgr.Node)
+
 	// 3. other operation
 	if proposalResult == string(APPROVED) {
 		switch eventTyp {
 		case string(governance.EventRegister):
-			node, err := nm.NodeManager.QueryById(objId, nil)
-			if err != nil {
-				return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), err.Error()))
-			}
-			nodeInfo := node.(*nodemgr.Node)
 			nm.NodeManager.Register(nodeInfo)
 		case string(governance.EventUpdate):
 			updateInfo := &UpdateNodeInfo{}
@@ -167,12 +168,13 @@ func (nm *NodeManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 			if updateInfo.NodeName.IsEdit {
 				nm.freeNodeName(updateInfo.NodeName.OldInfo.(string))
 			}
-		case string(governance.EventLogout):
-			node, err := nm.NodeManager.QueryById(objId, nil)
-			if err != nil {
-				return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), err.Error()))
+
+			if nodeInfo.NodeType == nodemgr.NVPNode && nodeInfo.AuditAdminAddr != "" {
+				if res := nm.unbindNode(nodeInfo.Account); !res.Ok {
+					return res
+				}
 			}
-			nodeInfo := node.(*nodemgr.Node)
+		case string(governance.EventLogout):
 			switch nodeInfo.NodeType {
 			case nodemgr.VPNode:
 				nodeEvent := &events.NodeEvent{
@@ -191,11 +193,6 @@ func (nm *NodeManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 	} else {
 		switch eventTyp {
 		case string(governance.EventRegister):
-			node, err := nm.NodeManager.QueryById(objId, nil)
-			if err != nil {
-				return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("cannot get node by account %s", objId)))
-			}
-			nodeInfo := node.(*nodemgr.Node)
 			if res := nm.CrossInvoke(constant.RoleContractAddr.String(), "FreeAccount", pb.String(nodeInfo.Account)); !res.Ok {
 				return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("cross invoke FreeAccount error: %s", string(res.Result))))
 			}
@@ -213,10 +210,22 @@ func (nm *NodeManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 			if nodeUpdateInfo.NodeName.IsEdit {
 				nm.freeNodeName(nodeUpdateInfo.NodeName.NewInfo.(string))
 			}
+
+			if nodeInfo.NodeType == nodemgr.NVPNode && nodeInfo.AuditAdminAddr != "" {
+				if res := nm.unbindNode(nodeInfo.Account); !res.Ok {
+					return res
+				}
+			}
+		case string(governance.EventLogout):
+			if nodeInfo.NodeType == nodemgr.NVPNode && nodeInfo.AuditAdminAddr != "" {
+				if res := nm.unbindNode(nodeInfo.Account); !res.Ok {
+					return res
+				}
+			}
 		}
 	}
 
-	if err := nm.postAuditNodeEvent(objId); err != nil {
+	if err = nm.postAuditNodeEvent(objId); err != nil {
 		return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("post audit node event error: %v", err)))
 	}
 	return boltvm.Success(nil)
@@ -556,9 +565,8 @@ func (nm *NodeManager) ManageBindNode(nodeAccount, auditAdminAddr, resultEvent s
 // =========== UnbindNode unbinds audit node with audit admin
 func (nm *NodeManager) UnbindNode(nodeAccount string) *boltvm.Response {
 	nm.NodeManager.Persister = nm.Stub
-	event := governance.EventUnbind
 
-	// 1. check permission: PermissionSpecific
+	// check permission: PermissionSpecific
 	specificAddrs := []string{constant.RoleContractAddr.Address().String()}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
@@ -568,19 +576,33 @@ func (nm *NodeManager) UnbindNode(nodeAccount string) *boltvm.Response {
 		return boltvm.Error(boltvm.NodeNoPermissionCode, fmt.Sprintf(string(boltvm.NodeNoPermissionMsg), nm.CurrentCaller(), err.Error()))
 	}
 
-	// 2. governancePre: check status
+	return nm.unbindNode(nodeAccount)
+}
+
+func (nm *NodeManager) unbindNode(nodeAccount string) *boltvm.Response {
+	nm.NodeManager.Persister = nm.Stub
+	event := governance.EventUnbind
+
+	// 1. governancePre: check status
 	nodeInfo, be := nm.NodeManager.GovernancePre(nodeAccount, event, nil)
 	if be != nil {
-		return boltvm.Error(be.Code, string(be.Msg))
+		// If the audit node cannot be unbind, you do not need to unbind the audit node. The possibilities are as follows:
+		//- binded: ok
+		//- registering /unavailable/available: The audit node is not yet bound, so it is not possible to enter this method.
+		//- binding: If the node is not bound successfully, it is equivalent to that the audit node is not bound. Therefore, this method cannot be entered.
+		//- updating/logouting: When the update or logout event ends, the system checks whether the audit admin is logouted. If so, the system automatically unbinds the audit admin
+		//- forbidden: There is no need to unbind.
+		return boltvm.Success(nil)
 	}
 	node := nodeInfo.(*nodemgr.Node)
 
-	// 3. check node info
+	// 2. check node info
+	// It doesn't actually go there, because vpNode has no binded state and was returned in the previous state check
 	if node.NodeType == nodemgr.VPNode {
 		return boltvm.Error(boltvm.NodeUnbindVPNodeCode, fmt.Sprintf(string(boltvm.NodeUnbindVPNodeMsg), nodeAccount))
 	}
 
-	// 4. change status
+	// 3. change status
 	if ok, data := nm.NodeManager.ChangeStatus(nodeAccount, string(event), string(node.Status), nil); !ok {
 		return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("change status error: %s", string(data))))
 	}
@@ -758,12 +780,8 @@ func (nm *NodeManager) checkNodeInfo(node *nodemgr.Node, isRegister bool) *boltv
 		return boltvm.Error(boltvm.NodeIllegalAccountCode, fmt.Sprintf(string(boltvm.NodeIllegalAccountMsg), node.Account, err.Error()))
 	}
 	if isRegister {
-		res := nm.CrossInvoke(constant.RoleContractAddr.String(), "IsOccupiedAccount", pb.String(node.Account))
+		res := nm.CrossInvoke(constant.RoleContractAddr.String(), "CheckOccupiedAccount", pb.String(node.Account))
 		if !res.Ok {
-			return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("cross invoke IsOccupiedAccount error: %s", string(res.Result))))
-
-		}
-		if string(res.Result) != "" {
 			return boltvm.Error(boltvm.NodeDuplicateAccountCode, fmt.Sprintf(string(boltvm.NodeDuplicateAccountMsg), node.Account, string(res.Result)))
 		}
 	}
