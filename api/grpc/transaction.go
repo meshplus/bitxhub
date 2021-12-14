@@ -7,6 +7,7 @@ import (
 
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
+	types2 "github.com/meshplus/eth-kit/types"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -115,6 +116,15 @@ func (cbs *ChainBrokerService) GetTransaction(ctx context.Context, req *pb.Trans
 	meta, err := cbs.api.Broker().GetTransactionMeta(hash)
 	if err != nil {
 		return nil, err
+	}
+	switch tx.(type) {
+	case *types2.EthTransaction:
+		ethTx := tx.(*types2.EthTransaction)
+		block, err := cbs.api.Broker().GetBlock("HASH", types.NewHash(meta.BlockHash).String())
+		if err != nil {
+			return nil, err
+		}
+		ethTx.Time = time.Unix(0, block.BlockHeader.Timestamp)
 	}
 
 	return &pb.GetTransactionResponse{
