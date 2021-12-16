@@ -45,11 +45,10 @@ const (
 
 var auditStreamInterfaceMap = map[string]struct{}{
 	"/pb.ChainBroker/SubscribeAuditInfo": {},
-	"/pb.ChainBroker/GetBlockHeader":     {},
 }
 
 var auditUnaryInterfaceMap = map[string]struct{}{
-
+	"/pb.ChainBroker/GetBlockHeaders":          {},
 	"/pb.ChainBroker/SendTransaction":          {},
 	"/pb.ChainBroker/GetPendingNonceByAccount": {},
 }
