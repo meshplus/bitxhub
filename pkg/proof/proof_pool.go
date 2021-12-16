@@ -26,6 +26,7 @@ const (
 	ProofError           = "proof verify failed"
 	AppchainNotAvailable = "appchain not available"
 	NoBindRule           = "appchain didn't register rule"
+	NoAvailabileRule     = "no available rule"
 	internalError        = "internal server error"
 )
 
@@ -189,6 +190,8 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, uint64, er
 		return false, 0, fmt.Errorf("get validate address of chain %s failed: %w", chainID, err)
 	}
 
+	fmt.Println(pl.ledger.Copy().GetCode(types.NewAddressByStr(validateAddr)))
+
 	ibtpBytes, err := ibtp.Marshal()
 	if err != nil {
 		return false, 0, fmt.Errorf("marshal ibtp: %w", err)
@@ -202,36 +205,23 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, uint64, er
 }
 
 func (pl *VerifyPool) getValidateAddress(chainID string) (string, error) {
-	getRuleFunc := func(chainID string) (*ruleMgr.Rule, error) {
-		ok, data := pl.ledger.Copy().GetState(constant.RuleManagerContractAddr.Address(), []byte(ruleMgr.RuleKey(chainID)))
-		if !ok {
-			return nil, nil
-		}
-
-		rules := make([]*ruleMgr.Rule, 0)
-		if err := json.Unmarshal(data, &rules); err != nil {
-			return nil, fmt.Errorf("unmarshal rules error: %w", err)
-		}
-
-		for _, r := range rules {
-			if governance.GovernanceAvailable == r.Status {
-				return r, nil
-			}
-		}
-
-		return nil, nil
+	ok, data := pl.ledger.Copy().GetState(constant.RuleManagerContractAddr.Address(), []byte(ruleMgr.RuleKey(chainID)))
+	if !ok {
+		return "", fmt.Errorf("%s for chainID %s", NoBindRule, chainID)
 	}
 
-	rl, err := getRuleFunc(chainID)
-	if err != nil {
-		return "", err
+	rules := make([]*ruleMgr.Rule, 0)
+	if err := json.Unmarshal(data, &rules); err != nil {
+		return "", fmt.Errorf("unmarshal rules error: %w", err)
 	}
 
-	if rl != nil {
-		return rl.Address, nil
+	for _, r := range rules {
+		if governance.GovernanceAvailable == r.Status {
+			return r.Address, nil
+		}
 	}
 
-	return "", fmt.Errorf("%s for chainID %s", NoBindRule, chainID)
+	return "", fmt.Errorf("%s for chainID %s", NoAvailabileRule, chainID)
 }
 
 func (pl *VerifyPool) getAccountState(address constant.BoltContractAddress, key string) (bool, []byte) {
