@@ -212,7 +212,7 @@ func (b *BoltStubImpl) ValidationEngine() validator.Engine {
 
 func (b *BoltStubImpl) GetAccount(address string) interface{} {
 	addr := types.NewAddressByStr(address)
-	account := b.ctx.Ledger.GetOrCreateAccount(addr)
+	account := b.ctx.Ledger.Copy().GetOrCreateAccount(addr)
 
 	return account
 }

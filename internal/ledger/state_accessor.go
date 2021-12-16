@@ -46,6 +46,12 @@ func (l *SimpleLedger) GetAccount(address *types.Address) ledger.IAccount {
 
 	if innerAccount, ok := l.accountCache.getInnerAccount(address); ok {
 		account.originAccount = innerAccount
+		code, okCode := l.accountCache.getCode(address)
+		if !okCode {
+			code = l.ldb.Get(compositeKey(codeKey, address))
+		}
+		account.originCode = code
+		account.dirtyCode = code
 		l.lock.Lock()
 		l.accounts[addr] = account
 		l.lock.Unlock()
@@ -57,6 +63,9 @@ func (l *SimpleLedger) GetAccount(address *types.Address) ledger.IAccount {
 		if err := account.originAccount.Unmarshal(data); err != nil {
 			panic(err)
 		}
+		code := l.ldb.Get(compositeKey(codeKey, address))
+		account.originCode = code
+		account.dirtyCode = code
 		l.lock.Lock()
 		l.accounts[addr] = account
 		l.lock.Unlock()
