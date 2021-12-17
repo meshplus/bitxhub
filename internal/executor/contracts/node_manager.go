@@ -170,8 +170,14 @@ func (nm *NodeManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 			}
 
 			if nodeInfo.NodeType == nodemgr.NVPNode && nodeInfo.AuditAdminAddr != "" {
-				if res := nm.unbindNode(nodeInfo.Account); !res.Ok {
-					return res
+				res := nm.CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin", pb.String(nodeInfo.AuditAdminAddr), pb.String(string(AuditAdmin)))
+				if !res.Ok {
+					return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("cross invoke IsAnyAvailableAdmin error: %s", string(res.Result))))
+				}
+				if string(res.Result) == FALSE {
+					if res := nm.unbindNode(nodeInfo.Account); !res.Ok {
+						return res
+					}
 				}
 			}
 		case string(governance.EventLogout):
@@ -212,14 +218,26 @@ func (nm *NodeManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 			}
 
 			if nodeInfo.NodeType == nodemgr.NVPNode && nodeInfo.AuditAdminAddr != "" {
-				if res := nm.unbindNode(nodeInfo.Account); !res.Ok {
-					return res
+				res := nm.CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin", pb.String(nodeInfo.AuditAdminAddr), pb.String(string(AuditAdmin)))
+				if !res.Ok {
+					return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("cross invoke IsAnyAvailableAdmin error: %s", string(res.Result))))
+				}
+				if string(res.Result) == FALSE {
+					if res := nm.unbindNode(nodeInfo.Account); !res.Ok {
+						return res
+					}
 				}
 			}
 		case string(governance.EventLogout):
 			if nodeInfo.NodeType == nodemgr.NVPNode && nodeInfo.AuditAdminAddr != "" {
-				if res := nm.unbindNode(nodeInfo.Account); !res.Ok {
-					return res
+				res := nm.CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin", pb.String(nodeInfo.AuditAdminAddr), pb.String(string(AuditAdmin)))
+				if !res.Ok {
+					return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("cross invoke IsAnyAvailableAdmin error: %s", string(res.Result))))
+				}
+				if string(res.Result) == FALSE {
+					if res := nm.unbindNode(nodeInfo.Account); !res.Ok {
+						return res
+					}
 				}
 			}
 		}
