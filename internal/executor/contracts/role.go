@@ -559,12 +559,19 @@ func (rm *RoleManager) basicGovernance(roleId, reason string, permissions []stri
 	if bxhErr != nil {
 		return boltvm.Error(bxhErr.Code, string(bxhErr.Msg))
 	}
+
 	switch role.RoleType {
 	case AppchainAdmin:
 		return boltvm.Error(boltvm.RoleNonsupportAppchainAdminCode, fmt.Sprintf(string(boltvm.RoleNonsupportAppchainAdminMsg), roleId, event))
 	case AuditAdmin:
 		if event == governance.EventFreeze || event == governance.EventActivate {
 			return boltvm.Error(boltvm.RoleNonsupportAuditAdminCode, fmt.Sprintf(string(boltvm.RoleNonsupportAuditAdminMsg), roleId, event))
+		}
+		// The original audit node must have been logoutted when we initiate the audit node binding for the audit administrator.
+		// Therefore, we can directly update the information about the audit node.
+		if event == governance.EventBind {
+			role.NodeAccount = string(extra)
+			rm.SetObject(RoleKey(roleId), *role)
 		}
 	case GovernanceAdmin:
 		if event == governance.EventBind {
