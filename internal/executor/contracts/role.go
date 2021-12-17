@@ -171,10 +171,8 @@ func (rm *RoleManager) checkPermission(permissions []string, roleId string, regu
 				return nil
 			}
 		case string(PermissionAdmin):
-			if roleId != regulatorAddr {
-				if rm.isAvailableAdmin(regulatorAddr, GovernanceAdmin) {
-					return nil
-				}
+			if rm.isAvailableAdmin(regulatorAddr, GovernanceAdmin) {
+				return nil
 			}
 		case string(PermissionSpecific):
 			specificAddrs := []string{}
@@ -501,6 +499,10 @@ func (rm *RoleManager) updateAppchainAdmin(appchainID string, adminAddrs []strin
 
 // =========== FreezeRole freezes role
 func (rm *RoleManager) FreezeRole(roleId, reason string) *boltvm.Response {
+	if roleId == rm.CurrentCaller() {
+		return boltvm.Error(boltvm.RoleNoPermissionCode, fmt.Sprintf(string(boltvm.RoleNoPermissionMsg), rm.CurrentCaller(), "you can not freeze yourself"))
+	}
+
 	res := rm.basicGovernance(roleId, reason, []string{string(PermissionAdmin)}, governance.EventFreeze, nil)
 	if !res.Ok {
 		return res
@@ -509,7 +511,10 @@ func (rm *RoleManager) FreezeRole(roleId, reason string) *boltvm.Response {
 	if err := json.Unmarshal(res.Result, &gr); err != nil {
 		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), err.Error()))
 	}
-	return rm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(gr.ProposalID))
+
+	rm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(gr.ProposalID))
+
+	return res
 
 }
 
@@ -523,7 +528,10 @@ func (rm *RoleManager) ActivateRole(roleId, reason string) *boltvm.Response {
 	if err := json.Unmarshal(res.Result, &gr); err != nil {
 		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), err.Error()))
 	}
-	return rm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(gr.ProposalID))
+
+	rm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(gr.ProposalID))
+
+	return res
 }
 
 // =========== LogoutRole logouts role
@@ -549,8 +557,9 @@ func (rm *RoleManager) LogoutRole(roleId, reason string) *boltvm.Response {
 	if err := json.Unmarshal(governanceRes.Result, &gr); err != nil {
 		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), err.Error()))
 	}
-	return rm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(gr.ProposalID))
+	rm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(gr.ProposalID))
 
+	return governanceRes
 }
 
 // =========== BindRole binds audit admin with audit node
@@ -571,9 +580,11 @@ func (rm *RoleManager) BindRole(roleId, nodeAccount, reason string) *boltvm.Resp
 
 	var gr *governance.GovernanceResult
 	if err := json.Unmarshal(governanceRes.Result, &gr); err != nil {
-		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), err.Error()))
 	}
-	return rm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(gr.ProposalID))
+	rm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(gr.ProposalID))
+
+	return governanceRes
 }
 
 func (rm *RoleManager) basicGovernance(roleId, reason string, permissions []string, event governance.EventType, extra []byte) *boltvm.Response {
@@ -719,14 +730,19 @@ func (rm *RoleManager) freeAccount(addr string) {
 	rm.Delete(OccupyAccountKey(addr))
 }
 
-func (rm *RoleManager) IsOccupiedAccount(account string) *boltvm.Response {
-	return boltvm.Success([]byte(rm.isOccupiedAccount(account)))
+func (rm *RoleManager) CheckOccupiedAccount(account string) *boltvm.Response {
+	roleType, ok := rm.checkOccupiedAccount(account)
+	if ok {
+		return boltvm.Error(boltvm.RoleDuplicateAccountCode, fmt.Sprintf(string(boltvm.RoleDuplicateAccountMsg), account, roleType))
+	} else {
+		return boltvm.Success(nil)
+	}
 }
 
-func (rm *RoleManager) isOccupiedAccount(addr string) string {
+func (rm *RoleManager) checkOccupiedAccount(addr string) (string, bool) {
 	roleType := ""
-	_ = rm.GetObject(OccupyAccountKey(addr), &roleType)
-	return roleType
+	ok := rm.GetObject(OccupyAccountKey(addr), &roleType)
+	return roleType, ok
 }
 
 // ========================== Query interface ========================
@@ -955,6 +971,9 @@ func (rm *RoleManager) checkRoleInfo(role *Role) *boltvm.Response {
 	_, err := types.HexDecodeString(role.ID)
 	if err != nil {
 		return boltvm.Error(boltvm.RoleIllegalRoleIDCode, fmt.Sprintf(string(boltvm.RoleIllegalRoleIDMsg), role.ID, err.Error()))
+	}
+	if roleType, ok := rm.checkOccupiedAccount(role.ID); ok {
+		return boltvm.Error(boltvm.RoleDuplicateAccountCode, fmt.Sprintf(string(boltvm.RoleDuplicateAccountMsg), role.ID, roleType))
 	}
 
 	switch role.RoleType {

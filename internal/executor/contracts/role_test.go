@@ -216,9 +216,8 @@ func TestRoleManager_UpdateAppchainAdmin(t *testing.T) {
 func TestRoleManager_FreezeRole(t *testing.T) {
 	rm, mockStub, gRoles, gRolesData, _, _ := rolePrepare(t)
 
-	mockStub.EXPECT().CurrentCaller().Return(noAdminAddr).Times(1)
+	mockStub.EXPECT().CurrentCaller().Return(ROLE_ID1).Times(1)
 	mockStub.EXPECT().CurrentCaller().Return(SUPER_ADMIN_ROLE_ID).AnyTimes()
-	mockStub.EXPECT().GetObject(RoleKey(noAdminAddr), gomock.Any()).Return(false).AnyTimes()
 	mockStub.EXPECT().GetObject(RoleKey(SUPER_ADMIN_ROLE_ID), gomock.Any()).SetArg(1, *gRoles[1]).Return(true).AnyTimes()
 
 	mockStub.EXPECT().Caller().Return(SUPER_ADMIN_ROLE_ID1).AnyTimes()

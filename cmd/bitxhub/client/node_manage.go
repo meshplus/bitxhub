@@ -243,7 +243,7 @@ func allNode(ctx *cli.Context) error {
 
 func printNode(nodes []*node_mgr.Node) {
 	var table [][]string
-	table = append(table, []string{"Account", "Type", "Pid", "VpNodeId", "Name", "Permission", "Status"})
+	table = append(table, []string{"Account", "Type", "Pid", "VpNodeId", "Name", "Permission", "Status", "AuditAdminAddr"})
 
 	for _, n := range nodes {
 		permits := []string{}
@@ -259,6 +259,7 @@ func printNode(nodes []*node_mgr.Node) {
 			n.Name,
 			permitStr,
 			string(n.Status),
+			n.AuditAdminAddr,
 		})
 	}
 

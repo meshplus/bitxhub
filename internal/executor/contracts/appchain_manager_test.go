@@ -109,11 +109,9 @@ func TestAppchainManager_Register(t *testing.T) {
 		gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(gomock.Eq(constant.GovernanceContractAddr.Address().String()), gomock.Eq("ZeroPermission"),
 		gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "IsOccupiedAccount",
-		pb.String(roles[1].ID)).Return(boltvm.Error("", "IsOccupiedAccount error")).Times(1)
-	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "IsOccupiedAccount",
-		pb.String(roles[1].ID)).Return(boltvm.Success([]byte(AppchainAdmin))).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "IsOccupiedAccount",
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "CheckOccupiedAccount",
+		pb.String(roles[1].ID)).Return(boltvm.Error("", "CheckOccupiedAccount error")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "CheckOccupiedAccount",
 		pb.String(roles[0].ID)).Return(boltvm.Success([]byte(""))).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "OccupyAccount",
 		gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
@@ -145,12 +143,6 @@ func TestAppchainManager_Register(t *testing.T) {
 	res = am.RegisterAppchain(chains[0].ID, chains[0].ChainName, chains[0].ChainType, chains[0].TrustRoot, string(chains[0].Broker), chains[0].Desc, ruleAddr, ruleUrl, fmt.Sprintf("adminaddr,%s", roles[0].ID), reason)
 	assert.False(t, res.Ok, string(res.Result))
 	assert.Contains(t, string(res.Result), string(boltvm.AppchainIllegalAdminAddrCode))
-	res = am.RegisterAppchain(chains[0].ID, chains[0].ChainName, chains[0].ChainType, chains[0].TrustRoot, string(chains[0].Broker), chains[0].Desc, ruleAddr, ruleUrl, fmt.Sprintf("%s,%s", roles[0].ID, roles[1].ID), reason)
-	assert.False(t, res.Ok, string(res.Result))
-	assert.Contains(t, string(res.Result), string(boltvm.AppchainInternalErrCode))
-	res = am.RegisterAppchain(chains[0].ID, chains[0].ChainName, chains[0].ChainType, chains[0].TrustRoot, string(chains[0].Broker), chains[0].Desc, ruleAddr, ruleUrl, fmt.Sprintf("%s,%s", roles[0].ID, roles[1].ID), reason)
-	assert.False(t, res.Ok, string(res.Result))
-	assert.Contains(t, string(res.Result), string(boltvm.AppchainDuplicateAdminCode))
 	res = am.RegisterAppchain(chains[0].ID, chains[0].ChainName, chains[0].ChainType, chains[0].TrustRoot, string(chains[0].Broker), chains[0].Desc, ruleAddr, ruleUrl, fmt.Sprintf("%s,%s", roles[0].ID, roles[1].ID), reason)
 	assert.False(t, res.Ok, string(res.Result))
 	assert.Contains(t, string(res.Result), string(boltvm.AppchainDuplicateAdminCode))
@@ -239,8 +231,8 @@ func TestAppchainManager_UpdateAppchain(t *testing.T) {
 	mockStub.EXPECT().GetObject(appchainMgr.AppchainKey(chains[0].ID), gomock.Any()).SetArg(1, *chains[0]).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(appchainMgr.AppchainOccupyNameKey(chains[0].ChainName), gomock.Any()).Return(false).AnyTimes()
 	mockStub.EXPECT().GetObject(appchainMgr.AppchainOccupyNameKey(chains[1].ChainName), gomock.Any()).SetArg(1, chains[1].ID).Return(true).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "IsOccupiedAccount",
-		gomock.Any()).Return(boltvm.Success([]byte(AppchainAdmin))).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "CheckOccupiedAccount",
+		gomock.Any()).Return(boltvm.Error("", "CheckOccupiedAccount error")).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "OccupyAccount",
 		gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "FreeAccount",

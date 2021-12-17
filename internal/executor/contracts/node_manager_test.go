@@ -18,9 +18,10 @@ import (
 )
 
 var (
-	NODE_PID     = "QmWjeMdhS3L244WyFJGfasU4wDvaZfLTC7URq8aKxWvKmk"
-	NODE_ACCOUNT = "0x9150264e20237Cb2693aa9896e1Ca671e52AF7FD"
-	NODE_NAME    = "nodeName"
+	NODE_PID         = "QmWjeMdhS3L244WyFJGfasU4wDvaZfLTC7URq8aKxWvKmk"
+	NODE_ACCOUNT     = "0x9150264e20237Cb2693aa9896e1Ca671e52AF7FD"
+	NVP_NODE_ACCOUNT = "0x8150264e20237Cb2693aa9896e1Ca671e52AF7FD"
+	NODE_NAME        = "nodeName"
 )
 
 func TestNodeManager_RegisterNode(t *testing.T) {
@@ -49,7 +50,7 @@ func TestNodeManager_RegisterNode(t *testing.T) {
 		gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "OccupyAccount",
 		gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "IsOccupiedAccount",
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "CheckOccupiedAccount",
 		gomock.Any()).Return(boltvm.Success([]byte(""))).AnyTimes()
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
@@ -264,7 +265,7 @@ func TestNodeManager_UnbindNode(t *testing.T) {
 	logger := log.NewWithModule("contracts")
 	mockStub.EXPECT().Logger().Return(logger).AnyTimes()
 
-	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Return(false).Times(1)
+	//mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Return(false).Times(1)
 	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nvpNodes[0].Account), gomock.Any()).SetArg(1, *nvpNodes[0]).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(node_mgr.NodeKey(vpNodes[0].Account), gomock.Any()).SetArg(1, *vpNodes[0]).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nvpNodes[3].Account), gomock.Any()).SetArg(1, *nvpNodes[3]).Return(true).AnyTimes()
@@ -274,14 +275,6 @@ func TestNodeManager_UnbindNode(t *testing.T) {
 
 	// 1. CheckPermission error
 	res := nm.UnbindNode(nvpNodes[0].Account)
-	assert.False(t, res.Ok, string(res.Result))
-
-	// 2. status error(0: forbidden)
-	res = nm.UnbindNode(nvpNodes[0].Account)
-	assert.False(t, res.Ok, string(res.Result))
-
-	// 3. node type error
-	res = nm.UnbindNode(vpNodes[0].Account)
 	assert.False(t, res.Ok, string(res.Result))
 
 	res = nm.UnbindNode(nvpNodes[3].Account)
@@ -459,7 +452,7 @@ func TestNodeManager_checkNodeInfo(t *testing.T) {
 	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[5].Account), gomock.Any()).SetArg(1, *nodes[5]).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[6].Account), gomock.Any()).SetArg(1, *nodes[6]).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(NodeKey(NODE_ACCOUNT), gomock.Any()).SetArg(1, *nodes[0]).Return(true).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "IsOccupiedAccount",
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "CheckOccupiedAccount",
 		gomock.Any()).Return(boltvm.Success([]byte(""))).AnyTimes()
 
 	// check account error
@@ -553,7 +546,7 @@ func nvpNodePrepare(t *testing.T) (*NodeManager, *mock_stub.MockStub, []*node_mg
 	}
 	for i := 0; i < 8; i++ {
 		node := &node_mgr.Node{
-			Account: fmt.Sprintf("%s%d", NODE_ACCOUNT[0:len(NODE_ACCOUNT)-1], i),
+			Account: fmt.Sprintf("%s%d", NVP_NODE_ACCOUNT[0:len(NVP_NODE_ACCOUNT)-1], i),
 			Name:    fmt.Sprintf("%s%d", NODE_NAME, i),
 			Permissions: map[string]struct{}{
 				appchainID: {},

@@ -3,6 +3,7 @@ package contracts
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/looplab/fsm"
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/governance"
@@ -43,45 +44,6 @@ type UpdateStrategyInfo struct {
 	ParticipateThreshold UpdateInfo `json:"participate_threshold"`
 }
 
-// =========== Manage does some subsequent operations when the proposal is over
-func (g *GovStrategy) Manage(eventTyp, proposalResult, lastStatus, objId string, extra []byte) *boltvm.Response {
-	// 1. check permission: PermissionSpecific(GovernanceContractAddr)
-	specificAddrs := []string{constant.GovernanceContractAddr.Address().String()}
-	addrsData, err := json.Marshal(specificAddrs)
-	if err != nil {
-		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("marshal specificAddrs error: %v", err)))
-	}
-	if err := g.checkPermission([]string{string(PermissionSpecific)}, objId, g.CurrentCaller(), addrsData); err != nil {
-		return boltvm.Error(boltvm.ProposalStrategyNoPermissionCode, fmt.Sprintf(string(boltvm.ProposalStrategyNoPermissionMsg), g.CurrentCaller(), err.Error()))
-	}
-	// 2. change status
-	ok, errData := g.changeStatus(objId, proposalResult, lastStatus)
-	if !ok {
-		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyInternalErrMsg), fmt.Sprintf("change %s status error: %s", objId, string(errData))))
-	}
-
-	if proposalResult == string(APPROVED) {
-		if eventTyp == string(governance.EventUpdate) {
-			updateStrategyInfo := &UpdateStrategyInfo{}
-			if err := json.Unmarshal(extra, updateStrategyInfo); err != nil {
-				return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyInternalErrMsg), fmt.Sprintf("unmarshal update strategy")))
-			}
-			ps := &ProposalStrategy{}
-			if ok := g.GetObject(ProposalStrategyKey(objId), ps); !ok {
-				return boltvm.Error(boltvm.ProposalStrategyNonexistentProposalStrategyCode, fmt.Sprintf(string(boltvm.ProposalStrategyNonexistentProposalStrategyMsg), objId))
-			}
-			if updateStrategyInfo.Typ.IsEdit {
-				ps.Typ = ProposalStrategyType(updateStrategyInfo.Typ.NewInfo.(string))
-			}
-			if updateStrategyInfo.ParticipateThreshold.IsEdit {
-				ps.ParticipateThreshold = updateStrategyInfo.ParticipateThreshold.NewInfo.(float64)
-			}
-			g.SetObject(ProposalStrategyKey(ps.Module), ps)
-		}
-	}
-	return boltvm.Success(nil)
-}
-
 func (d *ProposalStrategy) setFSM(lastStatus governance.GovernanceStatus) {
 	d.FSM = fsm.NewFSM(
 		string(d.Status),
@@ -102,6 +64,96 @@ func (d *ProposalStrategy) setFSM(lastStatus governance.GovernanceStatus) {
 	)
 }
 
+func (g *GovStrategy) changeStatus(pt string, trigger, lastStatus string) (bool, []byte) {
+	ps := &ProposalStrategy{}
+	if ok := g.GetObject(ProposalStrategyKey(pt), ps); !ok {
+		return false, []byte("this proposal strategy does not exist")
+	}
+
+	ps.setFSM(governance.GovernanceStatus(lastStatus))
+	err := ps.FSM.Event(trigger)
+	if err != nil {
+		return false, []byte(fmt.Sprintf("change status error: %v", err))
+	}
+
+	g.SetObject(ProposalStrategyKey(pt), *ps)
+	return true, nil
+}
+
+func (g *GovStrategy) checkPermission(permissions []string, regulatedAddr, regulatorAddr string, specificAddrsData []byte) error {
+	for _, permission := range permissions {
+		switch permission {
+		case string(PermissionSelf):
+			if regulatedAddr == regulatorAddr {
+				return nil
+			}
+		case string(PermissionAdmin):
+			res := g.CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin",
+				pb.String(regulatorAddr),
+				pb.String(string(GovernanceAdmin)))
+			if !res.Ok {
+				return fmt.Errorf("cross invoke IsAvailableGovernanceAdmin error:%s", string(res.Result))
+			}
+			if "true" == string(res.Result) {
+				return nil
+			}
+		case string(PermissionSpecific):
+			specificAddrs := []string{}
+			if err := json.Unmarshal(specificAddrsData, &specificAddrs); err != nil {
+				return err
+			}
+			for _, addr := range specificAddrs {
+				if addr == regulatorAddr {
+					return nil
+				}
+			}
+		default:
+			return fmt.Errorf("unsupport permission: %s", permission)
+		}
+	}
+
+	return fmt.Errorf("regulatorAddr(%s) does not have the permission", regulatorAddr)
+}
+
+// =========== Manage does some subsequent operations when the proposal is over
+func (g *GovStrategy) Manage(eventTyp, proposalResult, lastStatus, objId string, extra []byte) *boltvm.Response {
+	// 1. check permission: PermissionSpecific(GovernanceContractAddr)
+	specificAddrs := []string{constant.GovernanceContractAddr.Address().String()}
+	addrsData, err := json.Marshal(specificAddrs)
+	if err != nil {
+		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyInternalErrMsg), fmt.Sprintf("marshal specificAddrs error: %v", err)))
+	}
+	if err := g.checkPermission([]string{string(PermissionSpecific)}, objId, g.CurrentCaller(), addrsData); err != nil {
+		return boltvm.Error(boltvm.ProposalStrategyNoPermissionCode, fmt.Sprintf(string(boltvm.ProposalStrategyNoPermissionMsg), g.CurrentCaller(), err.Error()))
+	}
+	// 2. change status
+	ok, errData := g.changeStatus(objId, proposalResult, lastStatus)
+	if !ok {
+		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyInternalErrMsg), fmt.Sprintf("change %s status error: %s", objId, string(errData))))
+	}
+
+	if proposalResult == string(APPROVED) {
+		if eventTyp == string(governance.EventUpdate) {
+			updateStrategyInfo := &UpdateStrategyInfo{}
+			if err := json.Unmarshal(extra, updateStrategyInfo); err != nil {
+				return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyInternalErrMsg), fmt.Sprintf("unmarshal update strategy")))
+			}
+			ps := &ProposalStrategy{}
+			if ok := g.GetObject(ProposalStrategyKey(objId), ps); !ok {
+				return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyIllegalProposalStrategyInfoMsg), fmt.Sprintf("get proposal strategy %s error", objId)))
+			}
+			if updateStrategyInfo.Typ.IsEdit {
+				ps.Typ = ProposalStrategyType(updateStrategyInfo.Typ.NewInfo.(string))
+			}
+			if updateStrategyInfo.ParticipateThreshold.IsEdit {
+				ps.ParticipateThreshold = updateStrategyInfo.ParticipateThreshold.NewInfo.(float64)
+			}
+			g.SetObject(ProposalStrategyKey(ps.Module), ps)
+		}
+	}
+	return boltvm.Success(nil)
+}
+
 // update proposal strategy for a proposal type
 func (g *GovStrategy) UpdateProposalStrategy(pt string, typ string, participateThreshold float64, reason string) *boltvm.Response {
 	if err := g.checkPermission([]string{string(PermissionAdmin)}, pt, g.CurrentCaller(), nil); err != nil {
@@ -112,7 +164,7 @@ func (g *GovStrategy) UpdateProposalStrategy(pt string, typ string, participateT
 		return boltvm.Error(boltvm.ProposalStrategyNonexistentProposalStrategyCode, fmt.Sprintf(string(boltvm.ProposalStrategyNonexistentProposalStrategyMsg), pt))
 	}
 	if ps.Status != governance.GovernanceAvailable {
-		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyInternalErrMsg), "current proposal strategy is in updating"))
+		return boltvm.Error(boltvm.ProposalStrategyStatusErrorCode, fmt.Sprintf(string(boltvm.ProposalStrategyStatusErrorMsg), typ, ps.Status, governance.EventUpdate))
 	}
 	info := &UpdateStrategyInfo{}
 	info.Typ = UpdateInfo{
@@ -173,91 +225,22 @@ func (g *GovStrategy) GetAllProposalStrategy() *boltvm.Response {
 }
 
 func (g *GovStrategy) GetProposalStrategy(pt string) *boltvm.Response {
-	if err := checkProposalType(ProposalType(pt)); err != nil {
-		return boltvm.Error(boltvm.GovernanceIllegalProposalTypeCode, fmt.Sprintf(string(boltvm.GovernanceIllegalProposalTypeMsg), pt))
+	if err := repo.CheckManageModule(pt); err != nil {
+		return boltvm.Error(boltvm.ProposalStrategyIllegalProposalTypeCode, fmt.Sprintf(string(boltvm.ProposalStrategyIllegalProposalTypeMsg), pt))
 	}
 
 	ps := &ProposalStrategy{}
 	if !g.GetObject(ProposalStrategyKey(pt), ps) {
-		return boltvm.Error(boltvm.GovernanceNonexistentProposalStrategyCode, fmt.Sprintf(string(boltvm.GovernanceNonexistentProposalStrategyMsg), pt))
+		return boltvm.Error(boltvm.ProposalStrategyNonexistentProposalStrategyCode, fmt.Sprintf(string(boltvm.ProposalStrategyNonexistentProposalStrategyMsg), pt))
 	}
 
 	pData, err := json.Marshal(ps)
 	if err != nil {
-		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyInternalErrMsg), err.Error()))
 	}
 	return boltvm.Success(pData)
 }
 
-func (g *GovStrategy) changeStatus(pt string, trigger, lastStatus string) (bool, []byte) {
-	ps := &ProposalStrategy{}
-	if ok := g.GetObject(ProposalStrategyKey(pt), ps); !ok {
-		return false, []byte("this proposal strategy does not exist")
-	}
-
-	ps.setFSM(governance.GovernanceStatus(lastStatus))
-	err := ps.FSM.Event(trigger)
-	if err != nil {
-		return false, []byte(fmt.Sprintf("change status error: %v", err))
-	}
-
-	g.SetObject(ProposalStrategyKey(pt), *ps)
-	return true, nil
-}
-
 func ProposalStrategyKey(ps string) string {
 	return fmt.Sprintf("%s-%s", PROPOSALSTRATEGY_PREFIX, ps)
-}
-
-func (g *GovStrategy) checkPermission(permissions []string, regulatedAddr, regulatorAddr string, specificAddrsData []byte) error {
-	for _, permission := range permissions {
-		switch permission {
-		case string(PermissionSelf):
-			if regulatedAddr == regulatorAddr {
-				return nil
-			}
-		case string(PermissionAdmin):
-			res := g.CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin",
-				pb.String(regulatorAddr),
-				pb.String(string(GovernanceAdmin)))
-			if !res.Ok {
-				return fmt.Errorf("cross invoke IsAvailableGovernanceAdmin error:%s", string(res.Result))
-			}
-			if "true" == string(res.Result) {
-				return nil
-			}
-		case string(PermissionSpecific):
-			specificAddrs := []string{}
-			if err := json.Unmarshal(specificAddrsData, &specificAddrs); err != nil {
-				return err
-			}
-			for _, addr := range specificAddrs {
-				if addr == regulatorAddr {
-					return nil
-				}
-			}
-		default:
-			return fmt.Errorf("unsupport permission: %s", permission)
-		}
-	}
-
-	return fmt.Errorf("regulatorAddr(%s) does not have the permission", regulatorAddr)
-}
-
-// Check info =============================================================
-func checkProposalType(pt ProposalType) error {
-	if pt != AppchainMgr && pt != RuleMgr && pt != NodeMgr && pt != RoleMgr && pt != DappMgr && pt != ServiceMgr && pt != ProposalStrategyMgr {
-		return fmt.Errorf("illegal proposal type")
-	}
-	return nil
-}
-
-func CheckProposalStatus(ps ProposalStatus) error {
-	if ps != PROPOSED &&
-		ps != APPROVED &&
-		ps != REJECTED &&
-		ps != PAUSED {
-		return fmt.Errorf("illegal proposal status")
-	}
-	return nil
 }
