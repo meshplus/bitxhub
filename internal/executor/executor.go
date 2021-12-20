@@ -253,7 +253,7 @@ func (exec *BlockExecutor) verifyProofs(blockWrapper *BlockWrapper) {
 					invalidTxs = append(invalidTxs, i)
 					errM[i] = err.Error()
 				}
-				exec.logger.WithField("gasUsed", gasUsed).Info("Verify proofs")
+				exec.logger.WithField("gasUsed", gasUsed).Debug("Verify proofs")
 				exec.gasLimit -= gasUsed
 			}
 		}(i, tx)
