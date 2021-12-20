@@ -117,6 +117,9 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, error) {
 	if proof == nil {
 		return false, fmt.Errorf("empty proof")
 	}
+	if pb.IBTP_INTERCHAIN != ibtp.Type {
+		return true, nil
+	}
 	proofHash := sha256.Sum256(proof)
 	if !bytes.Equal(proofHash[:], ibtp.Proof) {
 		return false, fmt.Errorf("proof hash is not correct")
