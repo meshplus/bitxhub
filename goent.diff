@@ -19,3 +19,5 @@ replace github.com/ultramesh/crypto => git.hyperchain.cn/ultramesh/crypto.git v0
 replace github.com/hyperchain/gosdk => git.hyperchain.cn/hyperchain/gosdk.git v1.2.8
 
 replace github.com/ultramesh/crypto-gm => git.hyperchain.cn/dmlab/crypto-gm v0.2.14
+
+replace github.com/meshplus/bitxhub-core => github.com/meshplus/bitxhub-core v1.3.1-0.20211220043654-c28bfbd7c1e9
