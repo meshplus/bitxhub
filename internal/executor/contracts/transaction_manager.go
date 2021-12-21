@@ -158,8 +158,8 @@ func (t *TransactionManager) Begin(txId string, timeoutHeight uint64, isFailed b
 	if timeoutHeight == 0 || timeoutHeight >= math.MaxUint64-t.GetCurrentHeight() {
 		record.Height = math.MaxUint64
 	}
-
-	t.addToTimeoutList(record.Height, txId)
+	//todo: for testing
+	//t.addToTimeoutList(record.Height, txId)
 	t.AddObject(TxInfoKey(txId), record)
 
 	change := StatusChange{

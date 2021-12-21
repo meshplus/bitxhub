@@ -54,10 +54,10 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	for _, tx := range block.Transactions.Transactions {
 		txHashList = append(txHashList, tx.GetHash())
 	}
+	//todo: for testing
+	//exec.verifyProofs(blockWrapper)
 
-	exec.verifyProofs(blockWrapper)
-	// TODO: del evm
-	//exec.evm = newEvm(block.Height(), uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateLedger, exec.ledger.ChainLedger, exec.admins[0])
+	exec.evm = newEvm(block.Height(), uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateLedger, exec.ledger.ChainLedger, exec.admins[0])
 	exec.ledger.PrepareBlock(block.BlockHash, block.Height())
 	receipts := exec.txsExecutor.ApplyTransactions(block.Transactions.Transactions, blockWrapper.invalidTx)
 
@@ -65,7 +65,7 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	exec.logger.WithFields(logrus.Fields{
 		"time":  time.Since(current),
 		"count": len(block.Transactions.Transactions),
-	}).Debug("Apply transactions elapsed")
+	}).Info("Apply transactions elapsed")
 
 	calcMerkleStart := time.Now()
 	l1Root, l2Roots, err := exec.buildTxMerkleTree(block.Transactions.Transactions)
@@ -80,21 +80,22 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 
 	calcMerkleDuration.Observe(float64(time.Since(calcMerkleStart)) / float64(time.Second))
 
-	timeoutIBTPsMap, err := exec.getTimeoutIBTPsMap(block.BlockHeader.Number)
+	//todo: for testing
+	//timeoutIBTPsMap, err := exec.getTimeoutIBTPsMap(block.BlockHeader.Number)
 	if err != nil {
 		panic(err)
 	}
 
 	var timeoutL2Roots []types.Hash
 	timeoutCounter := make(map[string]*pb.StringSlice)
-	for from, list := range timeoutIBTPsMap {
-		root, err := exec.calcTimeoutL2Root(list)
-		if err != nil {
-			panic(err)
-		}
-		timeoutCounter[from] = &pb.StringSlice{Slice: list}
-		timeoutL2Roots = append(timeoutL2Roots, root)
-	}
+	//for from, list := range timeoutIBTPsMap {
+	//	root, err := exec.calcTimeoutL2Root(list)
+	//	if err != nil {
+	//		panic(err)
+	//	}
+	//	timeoutCounter[from] = &pb.StringSlice{Slice: list}
+	//	timeoutL2Roots = append(timeoutL2Roots, root)
+	//}
 
 	timeoutRoots := make([]merkletree.Content, 0, len(timeoutL2Roots))
 	sort.Slice(timeoutL2Roots, func(i, j int) bool {
@@ -124,7 +125,8 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	block.BlockHeader.Bloom = ledger.CreateBloom(receipts)
 	block.BlockHeader.TimeoutRoot = timeoutRoot
 
-	exec.setTimeoutRollback(block.BlockHeader.Number)
+	//todo: for testing
+	//exec.setTimeoutRollback(block.BlockHeader.Number)
 	accounts, journalHash := exec.ledger.FlushDirtyData()
 
 	block.BlockHeader.StateRoot = journalHash
