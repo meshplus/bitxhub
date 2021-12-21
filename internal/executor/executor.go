@@ -207,6 +207,13 @@ func (exec *BlockExecutor) listenExecuteEvent() {
 		case blockWrapper := <-exec.blockC:
 			now := time.Now()
 			blockData := exec.processExecuteEvent(blockWrapper)
+			//TODO cal excute block time
+			exec.logger.WithFields(logrus.Fields{
+				"height": blockWrapper.block.BlockHeader.Number,
+				"count":  len(blockWrapper.block.Transactions.Transactions),
+				"elapse": time.Since(now),
+			}).Info("Executed and Persist block")
+
 			if blockData != nil {
 				exec.logger.WithFields(logrus.Fields{
 					"height": blockWrapper.block.BlockHeader.Number,
