@@ -716,13 +716,9 @@ func (exec *BlockExecutor) getTimeoutList(height uint64) ([]string, error) {
 	if !ok {
 		return nil, nil
 	}
+	timeoutList := strings.Split(string(val), ",")
 
-	var list []string
-	if err := json.Unmarshal(val, &list); err != nil {
-		return nil, fmt.Errorf("unmarshal list error: %w", err)
-	}
-
-	return list, nil
+	return timeoutList, nil
 }
 
 func (exec *BlockExecutor) getMultiTxIBTPsMap(height uint64) (map[string][]string, error) {
