@@ -146,7 +146,7 @@ func proposalStrategyCMD() cli.Command {
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "module",
-						Usage:    "module name(appchain_mgr, rule_mgr, node_mgr, service_mgr, role_mgr, proposal_strategy_mgr, dapp_mgr)",
+						Usage:    "module name(appchain_mgr, rule_mgr, node_mgr, service_mgr, role_mgr, proposal_strategy_mgr, dapp_mgr, all_mgr)",
 						Required: true,
 					},
 					cli.StringFlag{
@@ -177,8 +177,15 @@ func proposalStrategyCMD() cli.Command {
 					if err != nil {
 						return err
 					}
-					receipt, err := invokeBVMContract(ctx, constant.ProposalStrategyMgrContractAddr.Address().String(), "UpdateProposalStrategy",
-						pb.String(module), pb.String(typ), pb.Float64(threshold), pb.String(reason))
+					var receipt *pb.Receipt
+					if module == repo.AllMgr {
+						receipt, err = invokeBVMContract(ctx, constant.ProposalStrategyMgrContractAddr.Address().String(), "UpdateAllProposalStrategy",
+							pb.String(typ), pb.Float64(threshold), pb.String(reason))
+					} else {
+						receipt, err = invokeBVMContract(ctx, constant.ProposalStrategyMgrContractAddr.Address().String(), "UpdateProposalStrategy",
+							pb.String(module), pb.String(typ), pb.Float64(threshold), pb.String(reason))
+					}
+
 					if err != nil {
 						return fmt.Errorf("invoke BVM contract failed when get all proposal strategy: %w", err)
 					}
