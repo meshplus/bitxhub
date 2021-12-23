@@ -94,7 +94,7 @@ func (mpi *mempoolImpl) ProcessTransactions(txs []pb.Transaction, isLeader, isLo
 
 	// send tx to mempool store
 	mpi.processDirtyAccount(dirtyAccounts)
-
+	mpi.logger.Errorf("raft mempool size is %d", len(mpi.txStore.txHashMap))
 	// if no timedBlock, generator batch by block size
 	if isLeader && mpi.txStore.priorityNonBatchSize >= mpi.batchSize && !mpi.isTimed {
 		batch, err := mpi.generateBlock()

@@ -1,10 +1,10 @@
     github.com/bitxhub/parallel-executor v0.0.0-20210603034349-c18e7ed17048
     github.com/bitxhub/service-mng v0.0.0-20201125031105-f345beee1b42
-	github.com/bitxhub/bitxhub-order-rbft v1.16.0
+	github.com/bitxhub/bitxhub-order-rbft 79c1ae40493b1b5b495d7e070e73a3660752816c
     github.com/bitxhub/license v0.0.0-20210721031301-66d44925f5f9
     github.com/bitxhub/crypto-gm v0.0.0-20210825015341-e035b646648d
 
-replace github.com/ultramesh/rbft => git.hyperchain.cn/ultramesh/rbft v0.1.5-0.20210817012908-9d35a610a919
+replace github.com/ultramesh/rbft => git.hyperchain.cn/ultramesh/rbft v0.1.5-0.20211223042713-af63099fdc41
 
 replace github.com/ultramesh/txpool => git.hyperchain.cn/ultramesh/txpool v0.1.2
 
