@@ -102,6 +102,7 @@ type Proposal struct {
 	IsSuperAdminVoted      bool                 `json:"is_super_admin_voted"`
 	SubmitReason           string               `json:"submit_reason"`
 	WithdrawReason         string               `json:"withdraw_reason"`
+	StrategyType           ProposalStrategyType `json:"strategy_type"`
 	CreateTime             int64                `json:"create_time"`
 	Extra                  []byte               `json:"extra"`
 }
@@ -241,7 +242,7 @@ func (g *Governance) SubmitProposal(from, eventTyp, typ, objId, objLastStatus, r
 		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 	}
 
-	thresholdNum, err := g.getThresholdNum(eletctorateNum, ProposalType(typ))
+	thresholdNum, strategyTyp, err := g.getStrategyInfo(eletctorateNum, ProposalType(typ))
 	if err != nil {
 		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 	}
@@ -270,6 +271,7 @@ func (g *Governance) SubmitProposal(from, eventTyp, typ, objId, objLastStatus, r
 		IsSuperAdminVoted:      false,
 		SubmitReason:           reason,
 		WithdrawReason:         "",
+		StrategyType:           strategyTyp,
 		CreateTime:             g.GetTxTimeStamp(),
 		Extra:                  extra,
 	}
@@ -347,9 +349,9 @@ func (g *Governance) getElectorate() ([]*Role, int, error) {
 	return availableAdmins, len(availableAdmins), nil
 }
 
-func (g *Governance) getThresholdNum(electorateNum int, proposalTyp ProposalType) (int, error) {
+func (g *Governance) getStrategyInfo(electorateNum int, proposalTyp ProposalType) (int, ProposalStrategyType, error) {
 	if err := repo.CheckManageModule(string(proposalTyp)); err != nil {
-		return 0, fmt.Errorf(err.Error())
+		return 0, "", fmt.Errorf(err.Error())
 	}
 	ps := ProposalStrategy{}
 	res := g.CrossInvoke(constant.ProposalStrategyMgrContractAddr.Address().String(), "GetProposalStrategy", pb.String(string(proposalTyp)))
@@ -359,10 +361,10 @@ func (g *Governance) getThresholdNum(electorateNum int, proposalTyp ProposalType
 		ps.ParticipateThreshold = repo.DefaultParticipateThreshold
 	} else {
 		if err := json.Unmarshal(res.Result, &ps); err != nil {
-			return 0, fmt.Errorf("unmashal proposal strategy")
+			return 0, "", fmt.Errorf("unmashal proposal strategy")
 		}
 	}
-	return int(math.Ceil(float64(electorateNum) * ps.ParticipateThreshold)), nil
+	return int(math.Ceil(float64(electorateNum) * ps.ParticipateThreshold)), ps.Typ, nil
 }
 
 // =========== WithdrawProposal withdraws the designated proposal
@@ -541,29 +543,20 @@ func (g *Governance) setVote(p *Proposal, addr string, approve string, reason st
 // Count votes to see if this round is over.
 // If the vote is over change the status of the proposal.
 func (g *Governance) countVote(p *Proposal) (bool, error) {
-	// 1. Get proposal strategy
-	ps := ProposalStrategy{}
-	if !g.GetObject(string(p.Typ), &ps) {
-		// SimpleMajority is used by default
-		ps.Typ = SimpleMajority
-		ps.ParticipateThreshold = repo.DefaultParticipateThreshold
-		g.SetObject(string(p.Typ), ps)
-	}
-
-	// 2. Special types of proposals require super administrator voting
+	// 1. Special types of proposals require super administrator voting
 	if p.IsSpecial {
 		if !p.IsSuperAdminVoted {
 			return false, nil
 		}
 	}
 
-	// 3. Determine whether the participation threshold for the strategy has been met
+	// 2. Determine whether the participation threshold for the strategy has been met
 	if p.ApproveNum+p.AgainstNum < p.ThresholdElectorateNum {
 		return false, nil
 	}
 
 	// Votes are counted according to strategy
-	switch ps.Typ {
+	switch p.StrategyType {
 	case SuperMajorityApprove:
 		// TODO: SUPER_MAJORITY_APPROVE
 		return false, fmt.Errorf("this policy is not supported currently")
