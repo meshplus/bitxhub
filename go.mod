@@ -33,6 +33,7 @@ require (
 	github.com/meshplus/bitxhub-core v1.3.1-0.20230420024351-6b897b2c1cee
 	github.com/meshplus/bitxhub-kit v1.2.1-0.20220111092827-0ad7ba507bd3
 	github.com/meshplus/bitxhub-model v1.2.1-0.20220304014055-95b0781aece0
+	github.com/meshplus/bitxid v0.0.0-20211224091228-07079626b122
 	github.com/meshplus/eth-kit v0.0.0-20210906064541-8dfea98dbf95
 	github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd
 	github.com/meshplus/go-lightp2p v0.0.0-20220117071358-c37ba4e6dcbc

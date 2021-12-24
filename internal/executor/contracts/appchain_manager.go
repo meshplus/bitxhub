@@ -137,6 +137,16 @@ func (am *AppchainManager) recordChainAdmins(chainID string, addrs []string) {
 	}
 }
 
+func (am *AppchainManager) GetChainIdByAdmin(addr string) *boltvm.Response {
+	am.AppchainManager.Persister = am.Stub
+	id := ""
+	ok := am.GetObject(appchainMgr.AppchainAdminKey(addr), &id)
+	if !ok {
+		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("get chain ID for addr %s failed.", addr)))
+	}
+	return boltvm.Success([]byte(id))
+}
+
 func (am *AppchainManager) getChainIdByAdmin(addr string) (string, error) {
 	am.AppchainManager.Persister = am.Stub
 	id := ""

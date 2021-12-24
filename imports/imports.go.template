@@ -7,4 +7,5 @@ import (
     _ "github.com/bitxhub/parallel-executor"
 	_ "github.com/bitxhub/bitxhub-order-rbft/rbft"
 	_ "github.com/bitxhub/crypto-gm"
+	_ "github.com/bitxhub/did-method-registry"
 )

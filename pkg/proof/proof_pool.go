@@ -5,6 +5,8 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"github.com/meshplus/bitxid"
+	"strings"
 	"sync"
 
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
@@ -163,12 +165,21 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, uint64, er
 	var (
 		bxhID   string
 		chainID string
+		err     error
 	)
 
 	if ibtp.Category() == pb.IBTP_REQUEST {
 		bxhID, chainID, _ = ibtp.ParseFrom()
 	} else {
 		bxhID, chainID, _ = ibtp.ParseTo()
+	}
+
+	if isDID, _ := ibtp.CheckFormat(); isDID {
+		bxhID = pl.bitxhubID
+		chainID, err = pl.getChainIDFromDID(chainID)
+		if err != nil {
+			return false, 0, fmt.Errorf("get chain ID from method ID failed: %w", err)
+		}
 	}
 
 	if bxhID != pl.bitxhubID {
@@ -246,6 +257,33 @@ func (pl *VerifyPool) getAppchain(chainID string) (*appchainMgr.Appchain, error)
 	}
 
 	return app, nil
+}
+
+func (pl *VerifyPool) getChainIDFromDID(methodID string) (string, error) {
+	// get method doc by method ID
+	docKey := "doc-" + "did:bitxhub:" + methodID + ":."
+	methodDoc := &bitxid.MethodDoc{}
+	ok, data := pl.getAccountState(constant.MethodRegistryContractAddr, docKey)
+	if !ok {
+		return "", fmt.Errorf("%s: cannot get method doc for %s", internalError, docKey)
+	}
+
+	if err := methodDoc.Unmarshal(data); err != nil {
+		return "", fmt.Errorf("%s, unmarshal method doc data fail: %w", internalError, err)
+	}
+
+	// get appchain mgr address by method doc
+	addr, err := pb.GetAddrFromDoc(methodDoc)
+	if err != nil {
+		return "", err
+	}
+
+	// get chain ID by appchain mgr address
+	ok, data = pl.getAccountState(constant.AppchainMgrContractAddr, appchainMgr.AppchainAdminKey(addr))
+
+	// get appchain by chain ID
+	chainID := strings.ReplaceAll(string(data), "\"", "")
+	return chainID, nil
 }
 
 func (pl *VerifyPool) putProof(proofHash types.Hash, proof []byte) {

@@ -109,6 +109,7 @@ func governanceCMD() cli.Command {
 			roleMgrCMD(),
 			dappMgrCMD(),
 			serviceMgrCMD(),
+			didMgrCMD(),
 			proposalStrategyCMD(),
 		},
 	}
