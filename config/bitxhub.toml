@@ -63,7 +63,7 @@ solo = false
   ca_cert_path = "certs/ca.cert"
 
 [order]
-  type = "raft"
+  type = "smartbft"
 
 [executor]
   type = "serial"  # opensource version only supports serial type, commercial version supports serial and parallel types

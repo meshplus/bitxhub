@@ -4,6 +4,7 @@ go 1.14
 
 require (
 	github.com/Rican7/retry v0.1.0
+	github.com/SmartBFT-Go/consensus v0.0.0-20211221231656-a2d2cadf5a68
 	github.com/cbergoon/merkletree v0.2.0
 	github.com/cheynewallace/tabby v1.1.1
 	github.com/common-nighthawk/go-figure v0.0.0-20190529165535-67e0ed34491a
@@ -17,8 +18,8 @@ require (
 	github.com/gobuffalo/packr v1.30.1
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/mock v1.6.0
+	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/btree v1.0.0
-	github.com/google/go-cmp v0.5.5 // indirect
 	github.com/gorilla/mux v1.8.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
@@ -59,13 +60,11 @@ require (
 	github.com/willf/bitset v1.1.11 // indirect
 	github.com/willf/bloom v2.0.3+incompatible
 	go.uber.org/atomic v1.7.0
-	google.golang.org/grpc v1.33.2
-	honnef.co/go/tools v0.2.2 // indirect
+	go.uber.org/zap v1.19.0
+	google.golang.org/grpc v1.35.0
 )
 
-replace honnef.co/go/tools => honnef.co/go/tools v0.0.1-2019.2.3
-
-replace github.com/golang/protobuf => github.com/golang/protobuf v1.3.2
+replace github.com/golang/protobuf => github.com/golang/protobuf v1.5.2
 
 replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20200218151345-dad8c97a84f5
 

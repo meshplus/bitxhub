@@ -323,12 +323,14 @@ func (l *ChainLedgerImpl) prepareTransactions(batcher storage.Batch, block *pb.B
 
 func (l *ChainLedgerImpl) prepareBlock(batcher storage.Batch, block *pb.Block) ([]byte, error) {
 	// Generate block header signature
-	signed, err := l.repo.Key.PrivKey.Sign(block.BlockHash.Bytes())
-	if err != nil {
-		return nil, fmt.Errorf("sign block %s failed: %w", block.BlockHash.String(), err)
-	}
+	if block.Signature == nil {
+		signed, err := l.repo.Key.PrivKey.Sign(block.BlockHash.Bytes())
+		if err != nil {
+			return nil, fmt.Errorf("sign block %s failed: %w", block.BlockHash.String(), err)
+		}
 
-	block.Signature = signed
+		block.Signature = signed
+	}
 
 	storedBlock := &pb.Block{
 		BlockHeader:  block.BlockHeader,
