@@ -49,6 +49,7 @@ const (
 	RoleMgr             = "role_mgr"
 	ProposalStrategyMgr = "proposal_strategy_mgr"
 	DappMgr             = "dapp_mgr"
+	AllMgr              = "all_mgr"
 )
 
 type Config struct {

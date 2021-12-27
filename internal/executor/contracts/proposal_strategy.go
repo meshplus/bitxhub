@@ -115,6 +115,8 @@ func (g *GovStrategy) checkPermission(permissions []string, regulatedAddr, regul
 	return fmt.Errorf("regulatorAddr(%s) does not have the permission", regulatorAddr)
 }
 
+var mgrs = []string{repo.AppchainMgr, repo.NodeMgr, repo.DappMgr, repo.RoleMgr, repo.RuleMgr, repo.ServiceMgr, repo.ProposalStrategyMgr}
+
 // =========== Manage does some subsequent operations when the proposal is over
 func (g *GovStrategy) Manage(eventTyp, proposalResult, lastStatus, objId string, extra []byte) *boltvm.Response {
 	// 1. check permission: PermissionSpecific(GovernanceContractAddr)
@@ -126,10 +128,20 @@ func (g *GovStrategy) Manage(eventTyp, proposalResult, lastStatus, objId string,
 	if err := g.checkPermission([]string{string(PermissionSpecific)}, objId, g.CurrentCaller(), addrsData); err != nil {
 		return boltvm.Error(boltvm.ProposalStrategyNoPermissionCode, fmt.Sprintf(string(boltvm.ProposalStrategyNoPermissionMsg), g.CurrentCaller(), err.Error()))
 	}
+
 	// 2. change status
-	ok, errData := g.changeStatus(objId, proposalResult, lastStatus)
-	if !ok {
-		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyInternalErrMsg), fmt.Sprintf("change %s status error: %s", objId, string(errData))))
+	if objId != repo.AllMgr {
+		ok, errData := g.changeStatus(objId, proposalResult, lastStatus)
+		if !ok {
+			return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyInternalErrMsg), fmt.Sprintf("change %s status error: %s", objId, string(errData))))
+		}
+	} else {
+		for _, mgr := range mgrs {
+			ok, errData := g.changeStatus(mgr, proposalResult, lastStatus)
+			if !ok {
+				return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyInternalErrMsg), fmt.Sprintf("change %s status error: %s", objId, string(errData))))
+			}
+		}
 	}
 
 	if proposalResult == string(APPROVED) {
@@ -138,17 +150,33 @@ func (g *GovStrategy) Manage(eventTyp, proposalResult, lastStatus, objId string,
 			if err := json.Unmarshal(extra, updateStrategyInfo); err != nil {
 				return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyInternalErrMsg), fmt.Sprintf("unmarshal update strategy")))
 			}
-			ps := &ProposalStrategy{}
-			if ok := g.GetObject(ProposalStrategyKey(objId), ps); !ok {
-				return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyIllegalProposalStrategyInfoMsg), fmt.Sprintf("get proposal strategy %s error", objId)))
+			if objId == repo.AllMgr {
+				for _, mgr := range mgrs {
+					ps := &ProposalStrategy{}
+					if ok := g.GetObject(ProposalStrategyKey(mgr), ps); !ok {
+						return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyIllegalProposalStrategyInfoMsg), fmt.Sprintf("get proposal strategy %s error", objId)))
+					}
+					if updateStrategyInfo.Typ.IsEdit {
+						ps.Typ = ProposalStrategyType(updateStrategyInfo.Typ.NewInfo.(string))
+					}
+					if updateStrategyInfo.ParticipateThreshold.IsEdit {
+						ps.ParticipateThreshold = updateStrategyInfo.ParticipateThreshold.NewInfo.(float64)
+					}
+					g.SetObject(ProposalStrategyKey(mgr), ps)
+				}
+			} else {
+				ps := &ProposalStrategy{}
+				if ok := g.GetObject(ProposalStrategyKey(objId), ps); !ok {
+					return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyIllegalProposalStrategyInfoMsg), fmt.Sprintf("get proposal strategy %s error", objId)))
+				}
+				if updateStrategyInfo.Typ.IsEdit {
+					ps.Typ = ProposalStrategyType(updateStrategyInfo.Typ.NewInfo.(string))
+				}
+				if updateStrategyInfo.ParticipateThreshold.IsEdit {
+					ps.ParticipateThreshold = updateStrategyInfo.ParticipateThreshold.NewInfo.(float64)
+				}
+				g.SetObject(ProposalStrategyKey(ps.Module), ps)
 			}
-			if updateStrategyInfo.Typ.IsEdit {
-				ps.Typ = ProposalStrategyType(updateStrategyInfo.Typ.NewInfo.(string))
-			}
-			if updateStrategyInfo.ParticipateThreshold.IsEdit {
-				ps.ParticipateThreshold = updateStrategyInfo.ParticipateThreshold.NewInfo.(float64)
-			}
-			g.SetObject(ProposalStrategyKey(ps.Module), ps)
 		}
 	}
 	return boltvm.Success(nil)
@@ -199,6 +227,51 @@ func (g *GovStrategy) UpdateProposalStrategy(pt string, typ string, participateT
 	}
 
 	g.changeStatus(pt, string(governance.EventUpdate), string(ps.Status))
+
+	g.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(res.Result)))
+
+	return getGovernanceRet(string(res.Result), []byte(pt))
+}
+
+// update proposal strategy for a proposal type
+func (g *GovStrategy) UpdateAllProposalStrategy(typ string, participateThreshold float64, reason string) *boltvm.Response {
+	pt := repo.AllMgr
+	if err := g.checkPermission([]string{string(PermissionAdmin)}, pt, g.CurrentCaller(), nil); err != nil {
+		return boltvm.Error(boltvm.ProposalStrategyNoPermissionCode, fmt.Sprintf(string(boltvm.ProposalStrategyNoPermissionMsg), g.CurrentCaller(), fmt.Sprintf("check permission error:%v", err)))
+	}
+	info := &UpdateStrategyInfo{}
+	info.Typ = UpdateInfo{
+		NewInfo: typ,
+		IsEdit:  true,
+	}
+	info.ParticipateThreshold = UpdateInfo{
+		NewInfo: participateThreshold,
+		IsEdit:  true,
+	}
+	extra, err := json.Marshal(info)
+	if err != nil {
+		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf("unmarshal update strategy error: %v", err))
+	}
+	if err := repo.CheckStrategyInfo(typ, pt, participateThreshold); err != nil {
+		return boltvm.Error(boltvm.ProposalStrategyIllegalProposalStrategyInfoCode, fmt.Sprintf(string(boltvm.ProposalStrategyIllegalProposalStrategyInfoMsg), err.Error()))
+	}
+
+	res := g.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "SubmitProposal",
+		pb.String(g.Caller()),
+		pb.String(string(governance.EventUpdate)),
+		pb.String(string(ProposalStrategyMgr)),
+		pb.String(pt),
+		pb.String(string(governance.GovernanceAvailable)),
+		pb.String(reason),
+		pb.Bytes(extra),
+	)
+	if !res.Ok {
+		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyInternalErrMsg), fmt.Sprintf("submit proposal error: %s", string(res.Result))))
+	}
+
+	for _, mgr := range mgrs {
+		g.changeStatus(mgr, string(governance.EventUpdate), string(governance.GovernanceAvailable))
+	}
 
 	g.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(res.Result)))
 
