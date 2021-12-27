@@ -170,8 +170,14 @@ func (nm *NodeManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 			}
 
 			if nodeInfo.NodeType == nodemgr.NVPNode && nodeInfo.AuditAdminAddr != "" {
-				if res := nm.unbindNode(nodeInfo.Account); !res.Ok {
-					return res
+				res := nm.CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin", pb.String(nodeInfo.AuditAdminAddr), pb.String(string(AuditAdmin)))
+				if !res.Ok {
+					return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("cross invoke IsAnyAvailableAdmin error: %s", string(res.Result))))
+				}
+				if string(res.Result) == FALSE {
+					if res := nm.unbindNode(nodeInfo.Account); !res.Ok {
+						return res
+					}
 				}
 			}
 		case string(governance.EventLogout):
@@ -212,14 +218,26 @@ func (nm *NodeManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 			}
 
 			if nodeInfo.NodeType == nodemgr.NVPNode && nodeInfo.AuditAdminAddr != "" {
-				if res := nm.unbindNode(nodeInfo.Account); !res.Ok {
-					return res
+				res := nm.CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin", pb.String(nodeInfo.AuditAdminAddr), pb.String(string(AuditAdmin)))
+				if !res.Ok {
+					return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("cross invoke IsAnyAvailableAdmin error: %s", string(res.Result))))
+				}
+				if string(res.Result) == FALSE {
+					if res := nm.unbindNode(nodeInfo.Account); !res.Ok {
+						return res
+					}
 				}
 			}
 		case string(governance.EventLogout):
 			if nodeInfo.NodeType == nodemgr.NVPNode && nodeInfo.AuditAdminAddr != "" {
-				if res := nm.unbindNode(nodeInfo.Account); !res.Ok {
-					return res
+				res := nm.CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin", pb.String(nodeInfo.AuditAdminAddr), pb.String(string(AuditAdmin)))
+				if !res.Ok {
+					return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("cross invoke IsAnyAvailableAdmin error: %s", string(res.Result))))
+				}
+				if string(res.Result) == FALSE {
+					if res := nm.unbindNode(nodeInfo.Account); !res.Ok {
+						return res
+					}
 				}
 			}
 		}
@@ -263,7 +281,9 @@ func (nm *NodeManager) RegisterNode(nodeAccount, nodeType, nodePid string, nodeV
 		Permissions: permits,
 		Status:      governance.GovernanceUnavailable,
 	}
-
+	if nodeType == string(nodemgr.NVPNode) {
+		node.VPNodeId = 0
+	}
 	if res := nm.checkNodeInfo(node, true); !res.Ok {
 		return res
 	}
@@ -656,7 +676,7 @@ func (nm *NodeManager) getNextVpID() (int, error) {
 
 	maxId := 0
 	for _, node := range nodes.([]*nodemgr.Node) {
-		if node.IsAvailable() && int(node.VPNodeId) > maxId {
+		if node.IsAvailable() && node.NodeType == nodemgr.VPNode && int(node.VPNodeId) > maxId {
 			maxId = int(node.VPNodeId)
 		}
 	}

@@ -124,6 +124,9 @@ func uint64ToBytesInBigEndian(i uint64) []byte {
 }
 
 func AddAuditPermitBloom(bloom *types.Bloom, relatedChains, relatedNodes map[string][]byte) {
+	if bloom == nil {
+		bloom = &types.Bloom{}
+	}
 	bloom.Add(AuditEventStrHash.Bytes())
 	for k, _ := range relatedChains {
 		bloom.Add(types.NewHash([]byte(k)).Bytes())
