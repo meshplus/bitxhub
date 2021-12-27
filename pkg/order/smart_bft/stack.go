@@ -17,7 +17,7 @@ func (n *Node) SendConsensus(targetID uint64, m *smartbftprotos.Message) {
 	n.logger.WithFields(logrus.Fields{
 		"target": targetID,
 		"msg":    m,
-	}).Debug("heartbeat")
+	}).Info("heartbeat")
 
 	mData, err := proto.Marshal(m)
 	if err != nil {
@@ -161,6 +161,7 @@ func (n *Node) Deliver(proposal bft.Proposal, signature []bft.Signature) bft.Rec
 	return bft.Reconfig{InLatestDecision: false}
 }
 
+// Sync TODO:sync block from others peer
 func (n *Node) Sync() bft.SyncResponse {
 	return bft.SyncResponse{}
 }
@@ -170,6 +171,7 @@ func (n *Node) RequestID(req []byte) bft.RequestInfo {
 	if err != nil {
 		n.logger.Errorf("Unable to marshal pb.transaction, error: %v", err)
 	}
+	//TODO:need clientID?
 	return bft.RequestInfo{ID: tx.GetHash().String(), ClientID: strconv.FormatUint(tx.GetNonce(), 10)}
 }
 

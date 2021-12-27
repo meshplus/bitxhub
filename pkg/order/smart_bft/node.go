@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/meshplus/bitxhub-kit/fileutil"
+
 	"github.com/SmartBFT-Go/consensus/pkg/consensus"
 	bft "github.com/SmartBFT-Go/consensus/pkg/types"
 	"github.com/SmartBFT-Go/consensus/pkg/wal"
@@ -59,9 +61,18 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 		return nil, fmt.Errorf("generate config: %w", err)
 	}
 
+	var writeAheadLog *wal.WriteAheadLogFile
 	basicLog, err := zap.NewDevelopment()
 	walDir := filepath.Join(config.StoragePath, "wal")
-	writeAheadLog, err := wal.Create(basicLog.Sugar(), walDir, nil)
+	if fileutil.Exist(walDir) {
+		writeAheadLog, err = wal.Open(basicLog.Sugar(), walDir, nil)
+		if err != nil {
+			return nil, fmt.Errorf("cannot open WAL at %s, err:%v", walDir, err)
+		}
+		_, err = writeAheadLog.ReadAll()
+	} else {
+		writeAheadLog, err = wal.Create(basicLog.Sugar(), walDir, nil)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("cannot create WAL at %s, err:%v", walDir, err)
 	}
@@ -89,6 +100,7 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 	bftConfig := bft.DefaultConfig
 	bftConfig.SelfID = config.ID
 
+	//TODO: generate consensus configuration by file
 	node.node = &consensus.Consensus{
 		Config:             bftConfig,
 		ViewChangerTicker:  node.secondClock.C,
@@ -105,7 +117,8 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 		WAL:                writeAheadLog,
 		Metadata: smartbftprotos.ViewMetadata{
 			LatestSequence: config.Applied,
-			ViewId:         0,
+			//TODO:reload viewId by other peers
+			ViewId: 0,
 		},
 	}
 	return node, nil
