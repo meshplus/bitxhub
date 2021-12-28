@@ -103,14 +103,24 @@ func checkConfig(config *Config) error {
 }
 
 func CheckStrategyInfo(typ, module string, threshold float64) error {
-	if CheckStrategyType(typ) != nil {
+	if CheckStrategyType(typ, threshold) != nil {
 		return fmt.Errorf("illegal proposal strategy type:%s", typ)
 	}
 	if CheckManageModule(module) != nil {
 		return fmt.Errorf("illegal proposal strategy module:%s", typ)
 	}
+	return nil
+}
 
-	if typ == ZeroPermission {
+func CheckStrategyType(pst string, threshold float64) error {
+	if pst != SuperMajorityApprove &&
+		pst != SuperMajorityAgainst &&
+		pst != SimpleMajority &&
+		pst != ZeroPermission {
+		return fmt.Errorf("illegal proposal strategy type")
+	}
+
+	if pst == ZeroPermission {
 		if threshold != 0 {
 			return fmt.Errorf("illegal ZeroPermission[participate_threshold]=%f", threshold)
 		}
@@ -122,16 +132,6 @@ func CheckStrategyInfo(typ, module string, threshold float64) error {
 	return nil
 }
 
-func CheckStrategyType(pst string) error {
-	if pst != SuperMajorityApprove &&
-		pst != SuperMajorityAgainst &&
-		pst != SimpleMajority &&
-		pst != ZeroPermission {
-		return fmt.Errorf("illegal proposal strategy type")
-	}
-	return nil
-}
-
 func CheckManageModule(moduleTyp string) error {
 	if moduleTyp != AppchainMgr &&
 		moduleTyp != RoleMgr &&
@@ -139,7 +139,6 @@ func CheckManageModule(moduleTyp string) error {
 		moduleTyp != DappMgr &&
 		moduleTyp != ProposalStrategyMgr &&
 		moduleTyp != NodeMgr &&
-		moduleTyp != AllMgr &&
 		moduleTyp != ServiceMgr {
 		return fmt.Errorf("illegal manage module type")
 	}
