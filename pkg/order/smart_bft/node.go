@@ -9,10 +9,6 @@ import (
 
 	"github.com/meshplus/bitxhub-kit/fileutil"
 
-	"github.com/SmartBFT-Go/consensus/pkg/consensus"
-	bft "github.com/SmartBFT-Go/consensus/pkg/types"
-	"github.com/SmartBFT-Go/consensus/pkg/wal"
-	"github.com/SmartBFT-Go/consensus/smartbftprotos"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/golang/protobuf/proto"
 	"github.com/meshplus/bitxhub-core/agency"
@@ -23,6 +19,10 @@ import (
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	proto2 "github.com/meshplus/bitxhub/pkg/order/smart_bft/proto"
+	"github.com/meshplus/consensus/pkg/consensus"
+	bft "github.com/meshplus/consensus/pkg/types"
+	"github.com/meshplus/consensus/pkg/wal"
+	"github.com/meshplus/consensus/smartbftprotos"
 	"github.com/sirupsen/logrus"
 	"go.uber.org/zap"
 )

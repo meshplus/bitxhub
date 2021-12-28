@@ -5,11 +5,11 @@ import (
 	"strconv"
 	"time"
 
-	bft "github.com/SmartBFT-Go/consensus/pkg/types"
-	"github.com/SmartBFT-Go/consensus/smartbftprotos"
 	"github.com/golang/protobuf/proto"
 	"github.com/meshplus/bitxhub-model/pb"
 	proto2 "github.com/meshplus/bitxhub/pkg/order/smart_bft/proto"
+	bft "github.com/meshplus/consensus/pkg/types"
+	"github.com/meshplus/consensus/smartbftprotos"
 	"github.com/sirupsen/logrus"
 )
 

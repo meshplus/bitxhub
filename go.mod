@@ -4,7 +4,6 @@ go 1.14
 
 require (
 	github.com/Rican7/retry v0.1.0
-	github.com/SmartBFT-Go/consensus v0.0.0-20211221231656-a2d2cadf5a68
 	github.com/cbergoon/merkletree v0.2.0
 	github.com/cheynewallace/tabby v1.1.1
 	github.com/common-nighthawk/go-figure v0.0.0-20190529165535-67e0ed34491a
@@ -18,7 +17,7 @@ require (
 	github.com/gobuffalo/packr v1.30.1
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/mock v1.6.0
-	github.com/golang/protobuf v1.5.2 // indirect
+	github.com/golang/protobuf v1.5.2
 	github.com/google/btree v1.0.0
 	github.com/gorilla/mux v1.8.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
@@ -34,6 +33,7 @@ require (
 	github.com/meshplus/bitxhub-core v1.3.1-0.20211229110534-fa2f5b4e05db
 	github.com/meshplus/bitxhub-kit v1.2.1-0.20211125010920-547e4651583e
 	github.com/meshplus/bitxhub-model v1.2.1-0.20211228020023-9ad5546d56ec
+	github.com/meshplus/consensus v0.0.0-20211228075008-5f469b198531
 	github.com/meshplus/eth-kit v0.0.0-20210906064541-8dfea98dbf95
 	github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd
 	github.com/meshplus/go-lightp2p v0.0.0-20210617153734-471d08b829f8
@@ -64,7 +64,7 @@ require (
 	google.golang.org/grpc v1.35.0
 )
 
-replace github.com/golang/protobuf => github.com/golang/protobuf v1.5.2
+replace github.com/golang/protobuf => github.com/golang/protobuf v1.3.2
 
 replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20200218151345-dad8c97a84f5
 
