@@ -48,8 +48,8 @@ func TestGovStrategy_UpdateProposalStrategy(t *testing.T) {
 	assert.Nil(t, err)
 	assert.True(t, len(ps1) == len(strategies))
 
-	res = g.UpdateProposalStrategy(strategies[0].Module, string(ZeroPermission), 0, "123")
-	assert.True(t, res.Ok)
+	res = g.UpdateProposalStrategy(strategies[0].Module, string(SimpleMajority), 0.5, "123")
+	assert.True(t, res.Ok, string(res.Result))
 }
 
 func proposalStrategyPrepare(t *testing.T) (*GovStrategy, *mock_stub.MockStub, []*ProposalStrategy) {
