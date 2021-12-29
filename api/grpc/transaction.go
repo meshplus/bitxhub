@@ -129,3 +129,23 @@ func (cbs *ChainBrokerService) GetTransaction(ctx context.Context, req *pb.Trans
 		TxMeta: meta,
 	}, nil
 }
+
+func (cbs *ChainBrokerService) GetPendingTransaction(ctx context.Context, req *pb.TransactionHashMsg) (*pb.GetTransactionResponse, error) {
+	hash := types.NewHashByStr(req.TxHash)
+	if hash == nil {
+		return nil, fmt.Errorf("invalid format of tx hash for querying transaction")
+	}
+	tx := cbs.api.Broker().GetPoolTransaction(hash)
+
+	if tx == nil {
+		return nil, fmt.Errorf("tx:%s not in mempool", hash.String())
+	}
+	bxhTx, ok := tx.(*pb.BxhTransaction)
+	if !ok {
+		return nil, fmt.Errorf("cannot get non bxh tx via grpc")
+	}
+
+	return &pb.GetTransactionResponse{
+		Tx: bxhTx,
+	}, nil
+}
