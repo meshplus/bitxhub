@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package proto;
+
+message BftMessage {
+    enum Type {
+        CONSENSUS = 0;
+        BROADCAST_TX = 1;
+    }
+    Type type = 1;
+    uint64 fromId = 2;
+    bytes data = 3;
+}
+
+message Signatures {
+    repeated Signature signature = 1;
+}
+
+message Signature {
+    uint64 id = 1;
+    bytes value = 2;
+    bytes msg = 3;
+}

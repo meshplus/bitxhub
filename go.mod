@@ -17,8 +17,8 @@ require (
 	github.com/gobuffalo/packr v1.30.1
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/mock v1.6.0
+	github.com/golang/protobuf v1.5.2
 	github.com/google/btree v1.0.0
-	github.com/google/go-cmp v0.5.5 // indirect
 	github.com/gorilla/mux v1.8.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
@@ -33,6 +33,7 @@ require (
 	github.com/meshplus/bitxhub-core v1.3.1-0.20211229110534-fa2f5b4e05db
 	github.com/meshplus/bitxhub-kit v1.2.1-0.20211125010920-547e4651583e
 	github.com/meshplus/bitxhub-model v1.2.1-0.20211228020023-9ad5546d56ec
+	github.com/meshplus/consensus v0.0.0-20211228075008-5f469b198531
 	github.com/meshplus/eth-kit v0.0.0-20210906064541-8dfea98dbf95
 	github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd
 	github.com/meshplus/go-lightp2p v0.0.0-20210617153734-471d08b829f8
@@ -59,11 +60,9 @@ require (
 	github.com/willf/bitset v1.1.11 // indirect
 	github.com/willf/bloom v2.0.3+incompatible
 	go.uber.org/atomic v1.7.0
-	google.golang.org/grpc v1.33.2
-	honnef.co/go/tools v0.2.2 // indirect
+	go.uber.org/zap v1.19.0
+	google.golang.org/grpc v1.35.0
 )
-
-replace honnef.co/go/tools => honnef.co/go/tools v0.0.1-2019.2.3
 
 replace github.com/golang/protobuf => github.com/golang/protobuf v1.3.2
 
