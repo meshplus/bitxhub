@@ -50,11 +50,6 @@ func (swarm *Swarm) AskPierMaster(address string) (bool, error) {
 				cancel()
 				return true, nil
 			}
-			if resp.Status == pb.CheckPierResponse_NO_MASTER {
-				swarm.piers.pierChan.closeChan(address)
-				cancel()
-				return false, nil
-			}
 		case <-ctx.Done():
 			// swarm.logger.Infoln("timeout!")
 			swarm.piers.pierChan.closeChan(address)
@@ -152,6 +147,13 @@ func (pm *pierMap) setMaster(address string, index string, timeout int64) error 
 		timeout:    timeout,
 	}
 	return nil
+}
+
+func (pm *pierMap) rmMaster(address string) {
+	pm.Lock()
+	defer pm.Unlock()
+
+	delete(pm.statusMap, address)
 }
 
 func (pm *pierMap) heartBeat(address string, index string) error {

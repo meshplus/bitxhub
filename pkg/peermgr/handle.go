@@ -426,7 +426,8 @@ func (swarm *Swarm) handleAskPierMaster(s network.Stream, data []byte) {
 		if swarm.piers.pierMap.checkMaster(address) {
 			resp.Status = pb.CheckPierResponse_HAS_MASTER
 		} else {
-			resp.Status = pb.CheckPierResponse_NO_MASTER
+			swarm.piers.pierMap.rmMaster(address)
+			return
 		}
 	}
 	resp.Address = address
