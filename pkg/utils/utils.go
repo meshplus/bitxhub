@@ -25,33 +25,33 @@ var AuditEventStrHash = types.NewHash([]byte(fmt.Sprintf("event%d%d%d%d%d%d%d%d"
 	pb.Event_AUDIT_INTERCHAIN,
 	pb.Event_AUDIT_DAPP)))
 
-func GetIBTPSign(ledger *ledger.Ledger, id string, isReq bool, privKey crypto2.PrivateKey) (string, []byte, error) {
+func GetIBTPSign(ledger *ledger.Ledger, id string, isReq bool, privKey crypto2.PrivateKey) (string, string, []byte, error) {
 	ibtp, err := GetIBTP(ledger, id, isReq)
 	if err != nil {
-		return "", nil, fmt.Errorf("get ibtp %s isReq %v: %w", id, isReq, err)
+		return "", "", nil, fmt.Errorf("get ibtp %s isReq %v: %w", id, isReq, err)
 	}
 
 	txStatus, err := GetTxStatus(ledger, id)
 	if err != nil {
-		return "", nil, fmt.Errorf("get tx status of ibtp %s isReq %v: %w", id, isReq, err)
+		return "", "", nil, fmt.Errorf("get tx status of ibtp %s isReq %v: %w", id, isReq, err)
 	}
 
 	hash, err := EncodePackedAndHash(ibtp, txStatus)
 	if err != nil {
-		return "", nil, fmt.Errorf("encode packed and hash for ibtp %s isReq %v: %w", id, isReq, err)
+		return "", "", nil, fmt.Errorf("encode packed and hash for ibtp %s isReq %v: %w", id, isReq, err)
 	}
 
 	sign, err := privKey.Sign(hash)
 	if err != nil {
-		return "", nil, fmt.Errorf("bitxhub sign ibtp %s isReq %v: %w", id, isReq, err)
+		return "", "", nil, fmt.Errorf("bitxhub sign ibtp %s isReq %v: %w", id, isReq, err)
 	}
 
 	addr, err := privKey.PublicKey().Address()
 	if err != nil {
-		return "", nil, fmt.Errorf("get address from public key failed: %w", err)
+		return "", "", nil, fmt.Errorf("get address from public key failed: %w", err)
 	}
 
-	return addr.String(), sign, nil
+	return string(hash), addr.String(), sign, nil
 }
 
 func GetIBTP(ledger *ledger.Ledger, id string, isReq bool) (*pb.IBTP, error) {

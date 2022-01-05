@@ -265,9 +265,11 @@ func (b *BrokerAPI) requestBurnSignFromPeer(pid uint64, hash string) (string, []
 func (b *BrokerAPI) GetSign(content string, typ pb.GetMultiSignsRequest_Type) (string, []byte, error) {
 	switch typ {
 	case pb.GetMultiSignsRequest_IBTP_REQUEST:
-		return utils.GetIBTPSign(b.bxh.Ledger, content, true, b.bxh.GetPrivKey().PrivKey)
+		_, s, bytes, err := utils.GetIBTPSign(b.bxh.Ledger, content, true, b.bxh.GetPrivKey().PrivKey)
+		return s, bytes, err
 	case pb.GetMultiSignsRequest_IBTP_RESPONSE:
-		return utils.GetIBTPSign(b.bxh.Ledger, content, false, b.bxh.GetPrivKey().PrivKey)
+		_, s, bytes, err := utils.GetIBTPSign(b.bxh.Ledger, content, false, b.bxh.GetPrivKey().PrivKey)
+		return s, bytes, err
 	case pb.GetMultiSignsRequest_BLOCK_HEADER:
 		height, err := strconv.ParseUint(content, 10, 64)
 		if err != nil {
