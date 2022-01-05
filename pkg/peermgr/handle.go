@@ -201,6 +201,11 @@ func (swarm *Swarm) handleFetchAssetExchangeSignMessage(s network.Stream, data [
 }
 
 func (swarm *Swarm) handleFetchIBTPSignMessage(s network.Stream, data []byte, isReq bool) {
+
+	ibtp, err := utils.GetIBTP(swarm.ledger, string(data), isReq)
+	txStatus, err := utils.GetTxStatus(swarm.ledger, string(data))
+	hash, err := utils.EncodePackedAndHash(ibtp, txStatus)
+	swarm.logger.Warnf("current hash is: %s", string(hash))
 	address, signed, err := utils.GetIBTPSign(swarm.ledger, string(data), isReq, swarm.repo.Key.PrivKey)
 	if err != nil {
 		swarm.logger.Errorf("handle fetch-ibtp-sign for ibtp %s isReq %v: %s", string(data), isReq, err.Error())

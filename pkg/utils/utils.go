@@ -26,12 +26,12 @@ var AuditEventStrHash = types.NewHash([]byte(fmt.Sprintf("event%d%d%d%d%d%d%d%d"
 	pb.Event_AUDIT_DAPP)))
 
 func GetIBTPSign(ledger *ledger.Ledger, id string, isReq bool, privKey crypto2.PrivateKey) (string, []byte, error) {
-	ibtp, err := getIBTP(ledger, id, isReq)
+	ibtp, err := GetIBTP(ledger, id, isReq)
 	if err != nil {
 		return "", nil, fmt.Errorf("get ibtp %s isReq %v: %w", id, isReq, err)
 	}
 
-	txStatus, err := getTxStatus(ledger, id)
+	txStatus, err := GetTxStatus(ledger, id)
 	if err != nil {
 		return "", nil, fmt.Errorf("get tx status of ibtp %s isReq %v: %w", id, isReq, err)
 	}
@@ -54,7 +54,7 @@ func GetIBTPSign(ledger *ledger.Ledger, id string, isReq bool, privKey crypto2.P
 	return addr.String(), sign, nil
 }
 
-func getIBTP(ledger *ledger.Ledger, id string, isReq bool) (*pb.IBTP, error) {
+func GetIBTP(ledger *ledger.Ledger, id string, isReq bool) (*pb.IBTP, error) {
 	key := contracts.IndexMapKey(id)
 	if !isReq {
 		key = contracts.IndexReceiptMapKey(id)
@@ -79,7 +79,7 @@ func getIBTP(ledger *ledger.Ledger, id string, isReq bool) (*pb.IBTP, error) {
 }
 
 // TODO: support global status
-func getTxStatus(ledger *ledger.Ledger, id string) (pb.TransactionStatus, error) {
+func GetTxStatus(ledger *ledger.Ledger, id string) (pb.TransactionStatus, error) {
 	ok, val := ledger.Copy().GetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.TxInfoKey(id)))
 	if !ok {
 		return 0, fmt.Errorf("no tx status found for ibtp %s", id)
