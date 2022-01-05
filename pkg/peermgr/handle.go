@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	types2 "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	contracts2 "github.com/meshplus/bitxhub-core/eth-contracts/interchain-contracts"
@@ -203,6 +204,7 @@ func (swarm *Swarm) handleFetchAssetExchangeSignMessage(s network.Stream, data [
 func (swarm *Swarm) handleFetchIBTPSignMessage(s network.Stream, data []byte, isReq bool) {
 	hash, address, signed, err := utils.GetIBTPSign(swarm.ledger, string(data), isReq, swarm.repo.Key.PrivKey)
 	swarm.logger.Warnf("current hash is: %s", hash)
+	swarm.logger.Warnf("hexutil current hash is: %s", hexutil.Encode(hash))
 	if err != nil {
 		swarm.logger.Errorf("handle fetch-ibtp-sign for ibtp %s isReq %v: %s", string(data), isReq, err.Error())
 		return
