@@ -202,9 +202,19 @@ func (swarm *Swarm) handleFetchAssetExchangeSignMessage(s network.Stream, data [
 }
 
 func (swarm *Swarm) handleFetchIBTPSignMessage(s network.Stream, data []byte, isReq bool) {
-	hash, address, signed, err := utils.GetIBTPSign(swarm.ledger, string(data), isReq, swarm.repo.Key.PrivKey)
-	swarm.logger.Warnf("current hash is: %s", hash)
+	txStatus, ibtp, hash, address, signed, err := utils.GetIBTPSign(swarm.ledger, string(data), isReq, swarm.repo.Key.PrivKey)
+
 	swarm.logger.Warnf("hexutil current hash is: %s", hexutil.Encode(hash))
+	var pd pb.Payload
+	if err := pd.Unmarshal(ibtp.Payload); err != nil {
+		return
+	}
+	swarm.logger.Warnf("hexutil current pd hash is: %s", hexutil.Encode(pd.Hash))
+	swarm.logger.Warnf("hexutil current pd from is: %s", ibtp.From)
+	swarm.logger.Warnf("hexutil current pd to is: %s", ibtp.To)
+	swarm.logger.Warnf("hexutil current pd index is: %s", ibtp.Index)
+	swarm.logger.Warnf("hexutil current pd type is: %s", uint64(ibtp.Type))
+	swarm.logger.Warnf("hexutil current pd txStatus is: %s", txStatus)
 	if err != nil {
 		swarm.logger.Errorf("handle fetch-ibtp-sign for ibtp %s isReq %v: %s", string(data), isReq, err.Error())
 		return
