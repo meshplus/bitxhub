@@ -399,18 +399,51 @@ func (api *PublicEthereumAPI) EstimateGas(args types2.CallArgs) (hexutil.Uint64,
 		// Retrieve the block to act as the gas ceiling
 		args.Gas = (*hexutil.Uint64)(&api.config.GasLimit)
 	}
-	tx := &types2.EthTransaction{}
-	tx.FromCallArgs(args)
-
-	result, err := api.api.Broker().HandleView(tx)
-	if err != nil {
-		return 0, err
+	// Determine the lowest and highest possible gas limits to binary search in between
+	var (
+		lo  uint64 = params.TxGas - 1
+		hi  uint64
+		cap uint64
+	)
+	if uint64(*args.Gas) >= params.TxGas {
+		hi = uint64(*args.Gas)
+	} else {
+		hi = api.config.GasLimit
 	}
-	if !result.IsSuccess() && strings.Contains(string(result.Ret), "out of gas") {
-		return 0, fmt.Errorf("gas required exceeds allowance (%d)", (*uint64)(args.Gas))
+	cap = hi
+
+	// Create a helper to check if a gas allowance results in an executable transaction
+	executable := func(gas uint64) (bool, []byte) {
+		tx := &types2.EthTransaction{}
+		args.Gas = (*hexutil.Uint64)(&gas)
+		tx.FromCallArgs(args)
+
+		result, err := api.api.Broker().HandleView(tx)
+		if err != nil || !result.IsSuccess() {
+			return false, result.Ret
+		}
+		return true, nil
 	}
 
-	return hexutil.Uint64(result.GasUsed*2 + 2000), nil
+	// Execute the binary search and hone in on an executable gas limit
+	for lo+1 < hi {
+		mid := (hi + lo) / 2
+		if ok, _ := executable(mid); !ok {
+			lo = mid
+		} else {
+			hi = mid
+		}
+	}
+	// Reject the transaction as invalid if it still fails at the highest allowance
+	if hi == cap {
+		if ok, ret := executable(hi); !ok {
+			if ret != nil {
+				return 0, errors.New(string(ret))
+			}
+			return 0, errors.New("gas required exceeds allowance or always failing transaction")
+		}
+	}
+	return hexutil.Uint64(hi), nil
 }
 
 // GetBlockByHash returns the block identified by hash.
@@ -588,6 +621,9 @@ func (api *PublicEthereumAPI) GetTransactionReceipt(hash common.Hash) (map[strin
 		fields["status"] = hexutil.Uint(1)
 	} else {
 		fields["status"] = hexutil.Uint(0)
+		if receipt.Ret != nil {
+
+		}
 	}
 
 	if receipt.ContractAddress != nil {

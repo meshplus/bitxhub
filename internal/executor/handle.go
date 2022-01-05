@@ -462,13 +462,13 @@ func (exec *BlockExecutor) applyEthTransaction(i int, tx *types2.EthTransaction)
 		return receipt
 	}
 	if result.Failed() {
-		exec.logger.Warnf("execute tx failed: %s", result.Err.Error())
 		receipt.Status = pb.Receipt_FAILED
 		if strings.HasPrefix(result.Err.Error(), vm1.ErrExecutionReverted.Error()) {
 			receipt.Ret = append([]byte(result.Err.Error()), common.CopyBytes(result.ReturnData)...)
 		} else {
 			receipt.Ret = []byte(result.Err.Error())
 		}
+		exec.logger.Warnf("execute tx failed: %s", string(receipt.Ret))
 	} else {
 		receipt.Status = pb.Receipt_SUCCESS
 		receipt.Ret = result.Return()
