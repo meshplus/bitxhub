@@ -225,7 +225,7 @@ func (g *GovStrategy) UpdateProposalStrategy(pt string, typ string, participateT
 	}
 
 	// 4. check strategy info
-	if err := repo.CheckStrategyInfo(string(ps.Typ), string(ps.Module), ps.ParticipateThreshold); err != nil {
+	if err := repo.CheckStrategyInfo(typ, pt, participateThreshold); err != nil {
 		return boltvm.Error(boltvm.ProposalStrategyIllegalProposalStrategyInfoCode, fmt.Sprintf(string(boltvm.ProposalStrategyIllegalProposalStrategyInfoMsg), err.Error()))
 	}
 

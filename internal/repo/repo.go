@@ -104,7 +104,7 @@ func checkConfig(config *Config) error {
 
 func CheckStrategyInfo(typ, module string, threshold float64) error {
 	if CheckStrategyType(typ, threshold) != nil {
-		return fmt.Errorf("illegal proposal strategy type:%s", typ)
+		return fmt.Errorf("illegal proposal strategy type:%s(threshold: %f)", typ, threshold)
 	}
 	if CheckManageModule(module) != nil {
 		return fmt.Errorf("illegal proposal strategy module:%s", typ)
