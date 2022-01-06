@@ -332,16 +332,13 @@ func (g *GovStrategy) UpdateAllProposalStrategy(typ string, participateThreshold
 
 func (g *GovStrategy) GetAllProposalStrategy() *boltvm.Response {
 	ret := make([]*ProposalStrategy, 0)
-	ok, value := g.Query(PROPOSALSTRATEGY_PREFIX)
-	if ok {
-		for _, data := range value {
-			ps := &ProposalStrategy{}
-			if err := json.Unmarshal(data, ps); err != nil {
-				return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf("unmarshal proposal strategy error: %v", err))
-			}
-			ret = append(ret, ps)
-		}
+
+	for _, module := range mgrs {
+		ps := defaultStrategy(module)
+		_ = g.GetObject(ProposalStrategyKey(module), ps)
+		ret = append(ret, ps)
 	}
+
 	data, err := json.Marshal(ret)
 	if err != nil {
 		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf("marshal proposal strategy error: %v", err))
@@ -354,16 +351,24 @@ func (g *GovStrategy) GetProposalStrategy(pt string) *boltvm.Response {
 		return boltvm.Error(boltvm.ProposalStrategyIllegalProposalTypeCode, fmt.Sprintf(string(boltvm.ProposalStrategyIllegalProposalTypeMsg), pt))
 	}
 
-	ps := &ProposalStrategy{}
-	if !g.GetObject(ProposalStrategyKey(pt), ps) {
-		return boltvm.Error(boltvm.ProposalStrategyNonexistentProposalStrategyCode, fmt.Sprintf(string(boltvm.ProposalStrategyNonexistentProposalStrategyMsg), pt))
-	}
+	ps := defaultStrategy(pt)
+	_ = g.GetObject(ProposalStrategyKey(pt), ps)
 
 	pData, err := json.Marshal(ps)
 	if err != nil {
 		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyInternalErrMsg), err.Error()))
 	}
 	return boltvm.Success(pData)
+}
+
+func defaultStrategy(module string) *ProposalStrategy {
+	return &ProposalStrategy{
+		Module:               module,
+		Typ:                  SimpleMajority,
+		ParticipateThreshold: repo.DefaultParticipateThreshold,
+		Extra:                nil,
+		Status:               governance.GovernanceAvailable,
+	}
 }
 
 func ProposalStrategyKey(ps string) string {

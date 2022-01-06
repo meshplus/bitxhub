@@ -43,10 +43,6 @@ func TestGovStrategy_UpdateProposalStrategy(t *testing.T) {
 
 	res := g.GetAllProposalStrategy()
 	assert.True(t, res.Ok)
-	ps1 := make([]*ProposalStrategy, 0)
-	err := json.Unmarshal(res.Result, &ps1)
-	assert.Nil(t, err)
-	assert.True(t, len(ps1) == len(strategies))
 
 	res = g.UpdateProposalStrategy(strategies[0].Module, string(SimpleMajority), 0.5, "123")
 	assert.True(t, res.Ok, string(res.Result))
