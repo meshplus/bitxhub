@@ -87,6 +87,7 @@ func mockRaftNode(t *testing.T) (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
+	ctx, cancel := context.WithCancel(context.Background())
 	node := &Node{
 		id:               uint64(1),
 		lastExec:         uint64(1),
@@ -105,7 +106,8 @@ func mockRaftNode(t *testing.T) (*Node, error) {
 		mempool:          mempoolInst,
 		tickTimeout:      500 * time.Millisecond,
 		checkInterval:    3 * time.Minute,
-		ctx:              context.Background(),
+		ctx:              ctx,
+		cancel:           cancel,
 		peerMgr:          swarms[0],
 		getChainMetaFunc: getChainMetaFunc,
 		isTimed:          mempoolConf.IsTimed,

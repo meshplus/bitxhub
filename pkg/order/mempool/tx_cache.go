@@ -1,6 +1,7 @@
 package mempool
 
 import (
+	"context"
 	"time"
 
 	"github.com/meshplus/bitxhub-model/pb"
@@ -20,7 +21,6 @@ type TxCache struct {
 	txSet      []pb.Transaction
 	timerC     chan bool
 	stopTimerC chan bool
-	close      chan bool
 	txSetTick  time.Duration
 	txSetSize  uint64
 	logger     logrus.FieldLogger
@@ -29,7 +29,6 @@ type TxCache struct {
 func NewTxCache(txSliceTimeout time.Duration, txSetSize uint64, logger logrus.FieldLogger) *TxCache {
 	txCache := &TxCache{}
 	txCache.RecvTxC = make(chan pb.Transaction, DefaultTxCacheSize)
-	txCache.close = make(chan bool)
 	txCache.TxSetC = make(chan *pb.Transactions)
 	txCache.TxRespC = make(chan *TxWithResp)
 	txCache.timerC = make(chan bool)
@@ -49,11 +48,11 @@ func NewTxCache(txSliceTimeout time.Duration, txSetSize uint64, logger logrus.Fi
 	return txCache
 }
 
-func (tc *TxCache) ListenEvent() {
+func (tc *TxCache) ListenEvent(ctx context.Context) {
 	for {
 		select {
-		case <-tc.close:
-			tc.logger.Debugf("Exit transaction cache ListenEvent")
+		case <-ctx.Done():
+			tc.logger.Infof("Exit transaction cache ListenEvent")
 			return
 
 		case tx := <-tc.RecvTxC:
@@ -110,8 +109,4 @@ func (tc *TxCache) startTxSetTimer() {
 func (tc *TxCache) stopTxSetTimer() {
 	close(tc.stopTimerC)
 	tc.stopTimerC = make(chan bool)
-}
-
-func (tc *TxCache) StopTxListen() {
-	defer close(tc.close)
 }

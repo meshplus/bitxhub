@@ -89,6 +89,9 @@ func (n *Node) entriesToApply(allEntries []raftpb.Entry) (entriesToApply []raftp
 	if n.appliedIndex-firstIdx+1 < uint64(len(allEntries)) {
 		entriesToApply = allEntries[n.appliedIndex-firstIdx+1:]
 	}
+	if len(entriesToApply) > 0 {
+		n.logger.Infof("start index:%d, end index:%d", entriesToApply[0].Index, entriesToApply[len(entriesToApply)-1].Index)
+	}
 	return entriesToApply
 }
 

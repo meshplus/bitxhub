@@ -322,7 +322,7 @@ func (mpi *mempoolImpl) GetPendingTransactions(max int) []pb.Transaction {
 		max = int(mpi.txStore.priorityNonBatchSize)
 	}
 
-	// TODO
+	// TODO：Not implemented yet
 
 	return nil
 }

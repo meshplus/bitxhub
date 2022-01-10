@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-func mockSoloNode(t *testing.T) (*Node, error) {
+func mockSoloNode(t *testing.T, enableTimed bool) (*Node, error) {
 	logger := log.NewWithModule("consensus")
 	txCache := mempool.NewTxCache(25*time.Millisecond, uint64(2), logger)
 	repoRoot := "./testdata/"
@@ -38,6 +38,10 @@ func mockSoloNode(t *testing.T) (*Node, error) {
 			return 0
 		},
 	}
+	if enableTimed == true {
+		mempoolConf.IsTimed = true
+	}
+
 	mempoolInst, err := mempool.NewMempool(mempoolConf)
 	if err != nil {
 		return nil, err
@@ -47,7 +51,7 @@ func mockSoloNode(t *testing.T) (*Node, error) {
 
 	soloNode := &Node{
 		ID:           uint64(1),
-		lastExec:     uint64(1),
+		lastExec:     uint64(0),
 		isTimed:      mempoolConf.IsTimed,
 		blockTimeout: mempoolConf.BlockTimeout,
 		commitC:      make(chan *pb.CommitEvent, 1024),

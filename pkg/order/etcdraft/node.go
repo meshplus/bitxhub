@@ -157,8 +157,6 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 		checkInterval = raftConfig.RAFT.CheckInterval
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-
 	node := &Node{
 		id:               config.ID,
 		lastExec:         config.Applied,
@@ -182,8 +180,6 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 		storage:          dbStorage,
 		raftStorage:      raftStorage,
 		readyPool:        readyPool,
-		ctx:              ctx,
-		cancel:           cancel,
 		mempool:          mempoolInst,
 		checkInterval:    checkInterval,
 	}
@@ -208,10 +204,11 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 
 // Start or restart raft node
 func (n *Node) Start() error {
-
+	n.ctx, n.cancel = context.WithCancel(context.Background())
 	if err := retry.Retry(func(attempt uint) error {
 		select {
 		case <-n.ctx.Done():
+			n.logger.Infof("stop checkQuorum")
 			return nil
 
 		default:
@@ -233,7 +230,7 @@ func (n *Node) Start() error {
 	if err != nil {
 		return fmt.Errorf("generate raft config: %w", err)
 	}
-	if restart {
+	if restart.Load() {
 		n.node = raft.RestartNode(rc)
 	} else {
 		n.node = raft.StartNode(rc, n.peers)
@@ -241,7 +238,7 @@ func (n *Node) Start() error {
 	n.tickTimeout = tickTimeout
 
 	go n.run()
-	go n.txCache.ListenEvent()
+	go n.txCache.ListenEvent(n.ctx)
 	n.logger.Info("Consensus module started")
 
 	return nil
@@ -250,7 +247,6 @@ func (n *Node) Start() error {
 // Stop the raft node
 func (n *Node) Stop() {
 	n.cancel()
-	n.txCache.StopTxListen()
 	n.logger.Infof("Consensus stopped")
 }
 
@@ -298,6 +294,7 @@ func (n *Node) Step(msg []byte) error {
 }
 
 func (n *Node) Ready() error {
+	// TODO(lrx): Need to optimize it, the leader exit in memPool although node had already stopped
 	hasLeader := n.leader != 0
 	if !hasLeader {
 		return errors.New("in leader election status")
@@ -320,7 +317,7 @@ func (n *Node) GetPendingTxByHash(hash *types.Hash) pb.Transaction {
 }
 
 // DelNode sends a delete vp request by given id.
-func (n *Node) DelNode(delID uint64) error {
+func (n *Node) DelNode(uint64) error {
 	return nil
 }
 
@@ -339,6 +336,10 @@ func (n *Node) run() {
 	n.confState = snap.Metadata.ConfState
 	n.snapshotIndex = snap.Metadata.Index
 	n.appliedIndex = snap.Metadata.Index
+	//if n.appliedIndex == 0 {
+	//	n.appliedIndex = n.loadAppliedIndex()
+	//}
+	n.logger.Infof("snap index:%d", snap.Metadata.Index)
 	ticker := time.NewTicker(n.tickTimeout)
 	rebroadcastTicker := time.NewTicker(n.checkInterval)
 	defer ticker.Stop()
@@ -373,6 +374,7 @@ func (n *Node) run() {
 					}
 				}
 			case <-n.ctx.Done():
+				n.logger.Infof("stop run1")
 				return
 			}
 		}
@@ -516,6 +518,7 @@ func (n *Node) run() {
 			n.node.Advance()
 		case <-n.ctx.Done():
 			n.node.Stop()
+			n.logger.Infof("stop run2")
 			return
 		}
 	}
@@ -565,6 +568,7 @@ func (n *Node) publishEntries(ents []raftpb.Entry) bool {
 			blockAppliedIndex := n.getBlockAppliedIndex()
 			if blockAppliedIndex >= ents[i].Index {
 				n.appliedIndex = ents[i].Index
+				n.logger.Infof("n.appliedIndex=%d", n.appliedIndex)
 				continue
 			}
 			requestBatch := n.readyPool.Get().(*raftproto.RequestBatch)
@@ -574,8 +578,9 @@ func (n *Node) publishEntries(ents []raftpb.Entry) bool {
 			}
 			// strictly avoid writing the same block
 			if requestBatch.Height != n.lastExec+1 {
-				n.logger.Warningf("Replica %d expects to execute seq=%d, but get seq=%d, ignore it",
-					n.id, n.lastExec+1, requestBatch.Height)
+				n.logger.Warningf("Replica %d expects to execute seq=%d, idx=%d, but get seq=%d, ignore it",
+					n.id, n.lastExec+1, ents[i].Index, requestBatch.Height)
+				n.appliedIndex = ents[i].Index
 				continue
 			}
 			n.mint(requestBatch)
@@ -774,6 +779,17 @@ func (n *Node) checkQuorum() error {
 	n.logger.Infof("=======Quorum = %d, connected peers = %d", n.Quorum(), n.peerMgr.CountConnectedPeers()+1)
 	if n.peerMgr.CountConnectedPeers()+1 < n.Quorum() {
 		return errors.New("the number of connected Peers don't reach Quorum")
+	}
+	return nil
+}
+
+func (n *Node) Restart() error {
+	n.logger.Infof("restart node%d", n.id)
+	n.Stop()
+	restart.Store(true)
+	err := n.Start()
+	if err != nil {
+		return fmt.Errorf("restart node err: %s", err)
 	}
 	return nil
 }
