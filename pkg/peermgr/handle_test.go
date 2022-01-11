@@ -9,6 +9,10 @@ import (
 	"testing"
 	"time"
 
+	peer_mgr "github.com/meshplus/bitxhub-core/peer-mgr"
+
+	swarm "github.com/libp2p/go-libp2p-swarm"
+
 	"github.com/Rican7/retry"
 	"github.com/Rican7/retry/strategy"
 	"github.com/golang/mock/gomock"
@@ -197,6 +201,7 @@ func NewSwarms(t *testing.T, peerCnt int) []*Swarm {
 		require.Nil(t, err)
 		err = swarm.Start()
 		require.Nil(t, err)
+
 		swarms = append(swarms, swarm)
 	}
 	return swarms
@@ -261,6 +266,68 @@ func TestSwarm_FetchCert(t *testing.T) {
 	require.Equal(t, pb.Message_FETCH_CERT_ACK, res.Type)
 }
 
+func TestSwarm_FetchIBTPSigns(t *testing.T) {
+	peerCnt := 4
+	swarms := NewSwarms(t, peerCnt)
+	defer stopSwarms(t, swarms)
+
+	for swarms[0].CountConnectedPeers() != 3 {
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	msg := &pb.Message{
+		Type: pb.Message_FETCH_IBTP_REQUEST_SIGN,
+	}
+	var res *pb.Message
+	var err error
+	err = retry.Retry(func(attempt uint) error {
+		res, err = swarms[0].Send(uint64(2), msg)
+		if err != nil {
+			swarms[0].logger.Errorf(err.Error())
+			return err
+		}
+		return nil
+	}, strategy.Wait(50*time.Millisecond))
+	require.Nil(t, err)
+	require.Equal(t, pb.Message_FETCH_IBTP_SIGN_ACK, res.Type)
+
+	msg = &pb.Message{
+		Type: pb.Message_FETCH_IBTP_RESPONSE_SIGN,
+	}
+	err = retry.Retry(func(attempt uint) error {
+		res, err = swarms[0].Send(uint64(3), msg)
+		if err != nil {
+			swarms[0].logger.Errorf(err.Error())
+			return err
+		}
+		return nil
+	}, strategy.Wait(50*time.Millisecond))
+	require.Nil(t, err)
+	require.Equal(t, pb.Message_FETCH_IBTP_SIGN_ACK, res.Type)
+}
+
+func TestSwarm_Gater(t *testing.T) {
+	peerCnt := 4
+	swarms := NewSwarms(t, peerCnt)
+	defer stopSwarms(t, swarms)
+
+	for swarms[0].CountConnectedPeers() != 3 {
+		time.Sleep(100 * time.Millisecond)
+	}
+	gater := newConnectionGater(swarms[0].logger, swarms[0].ledger)
+	require.True(t, gater.InterceptPeerDial(peer.ID("1")))
+	require.True(t, gater.InterceptAddrDial("1", swarms[1].multiAddrs[1].Addrs[0]))
+	require.True(t, gater.InterceptAccept(new(swarm.Conn)))
+
+	n := newNotifiee(swarms[0].routers, swarms[0].logger)
+	n.Listen(&swarm.Swarm{}, swarms[1].multiAddrs[1].Addrs[0])
+	n.ListenClose(&swarm.Swarm{}, swarms[1].multiAddrs[1].Addrs[0])
+	n.Disconnected(&swarm.Swarm{}, new(swarm.Conn))
+	n.OpenedStream(&swarm.Swarm{}, &swarm.Stream{})
+	n.ClosedStream(&swarm.Swarm{}, &swarm.Stream{})
+
+}
+
 func TestSwarm_CheckMasterPier(t *testing.T) {
 	peerCnt := 4
 	swarms := NewSwarms(t, peerCnt)
@@ -293,6 +360,7 @@ func TestSwarm_CheckMasterPier(t *testing.T) {
 	swarms[0].Send(uint64(2), msg)
 	time.Sleep(500 * time.Millisecond)
 	require.NotNil(t, swarms[0].piers.pierChan.checkAddress(pierName))
+
 }
 
 func TestSwarm_Send(t *testing.T) {
@@ -396,33 +464,33 @@ func TestSwarm_Send(t *testing.T) {
 	require.NotNil(t, res.Data)
 }
 
-//func TestSwarm_AsyncSend(t *testing.T) {
-//	peerCnt := 4
-//	swarms := NewSwarms(t, peerCnt)
-//
-//	for swarms[0].CountConnectedPeers() != 3 {
-//		time.Sleep(100 * time.Millisecond)
-//	}
-//
-//	orderMsgCh := make(chan events.OrderMessageEvent)
-//	orderMsgSub := swarms[2].SubscribeOrderMessage(orderMsgCh)
-//
-//	defer orderMsgSub.Unsubscribe()
-//
-//	msg := &pb.Message{
-//		Type: pb.Message_CONSENSUS,
-//		Data: []byte("1"),
-//	}
-//	var err error
-//	err = retry.Retry(func(attempt uint) error {
-//		err = swarms[0].AsyncSend(3, msg)
-//		if err != nil {
-//			swarms[0].logger.Errorf(err.Error())
-//			return err
-//		}
-//		return nil
-//	}, strategy.Wait(50*time.Millisecond))
-//	require.Nil(t, err)
-//
-//	require.NotNil(t, <-orderMsgCh)
-//}
+func TestSwarm_AsyncSend(t *testing.T) {
+	peerCnt := 4
+	swarms := NewSwarms(t, peerCnt)
+
+	for swarms[0].CountConnectedPeers() != 3 {
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	orderMsgCh := make(chan peer_mgr.OrderMessageEvent)
+	orderMsgSub := swarms[2].SubscribeOrderMessage(orderMsgCh)
+
+	defer orderMsgSub.Unsubscribe()
+
+	msg := &pb.Message{
+		Type: pb.Message_CONSENSUS,
+		Data: []byte("1"),
+	}
+	var err error
+	err = retry.Retry(func(attempt uint) error {
+		err = swarms[0].AsyncSend(uint64(3), msg)
+		if err != nil {
+			swarms[0].logger.Errorf(err.Error())
+			return err
+		}
+		return nil
+	}, strategy.Wait(50*time.Millisecond))
+	require.Nil(t, err)
+
+	require.NotNil(t, <-orderMsgCh)
+}

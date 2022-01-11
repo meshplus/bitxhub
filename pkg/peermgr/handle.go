@@ -1,24 +1,14 @@
 package peermgr
 
 import (
-	"encoding/json"
 	"fmt"
 	"strconv"
-	"strings"
 
-	"github.com/ethereum/go-ethereum/common"
-	types2 "github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	contracts2 "github.com/meshplus/bitxhub-core/eth-contracts/interchain-contracts"
 	orderPeerMgr "github.com/meshplus/bitxhub-core/peer-mgr"
-	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/model"
 	"github.com/meshplus/bitxhub/pkg/utils"
 	network "github.com/meshplus/go-lightp2p"
-	solsha3 "github.com/miguelmota/go-solidity-sha3"
 	"github.com/sirupsen/logrus"
 )
 
@@ -47,8 +37,6 @@ func (swarm *Swarm) handleMessage(s network.Stream, data []byte) {
 			swarm.handleFetchIBTPSignMessage(s, m.Data, true)
 		case pb.Message_FETCH_IBTP_RESPONSE_SIGN:
 			swarm.handleFetchIBTPSignMessage(s, m.Data, false)
-		case pb.Message_FETCH_BURN_SIGN:
-			swarm.handleFetchBurnSignMessage(s, m.Data)
 		case pb.Message_CHECK_MASTER_PIER:
 			swarm.handleAskPierMaster(s, m.Data)
 		case pb.Message_CHECK_MASTER_PIER_ACK:
@@ -225,101 +213,6 @@ func (swarm *Swarm) handleFetchIBTPSignMessage(s network.Stream, data []byte, is
 
 	if err := swarm.SendWithStream(s, msg); err != nil {
 		swarm.logger.Errorf("send asset exchange sign back: %s", err.Error())
-	}
-}
-
-func (swarm *Swarm) handleFetchBurnSignMessage(s network.Stream, data []byte) {
-	handle := func(hash string) (string, []byte, error) {
-		receipt, err := swarm.ledger.GetReceipt(types.NewHashByStr(hash))
-		if err != nil {
-			return "", nil, fmt.Errorf("cannot find receipt with hash %s", hash)
-		}
-		ok, interchainSwapAddr := swarm.ledger.GetState(constant.EthHeaderMgrContractAddr.Address(), []byte(contracts.InterchainSwapAddrKey))
-		if !ok {
-			return "", nil, fmt.Errorf("cannot find interchainswap contract")
-		}
-
-		addr := &contracts.ContractAddr{}
-		err = json.Unmarshal(interchainSwapAddr, &addr)
-		if err != nil {
-			return "", nil, fmt.Errorf("unmarshal contract addr error: %w", err)
-		}
-		var burn *contracts2.InterchainSwapBurn
-		for _, log := range receipt.GetEvmLogs() {
-			if !strings.EqualFold(log.Address.String(), addr.Addr) {
-				continue
-			}
-
-			if log.Removed {
-				continue
-			}
-			interchainSwap, err := contracts2.NewInterchainSwap(common.Address{}, nil)
-			if err != nil {
-				continue
-			}
-			data, err := json.Marshal(log)
-			if err != nil {
-				continue
-			}
-			ethLog := &types2.Log{}
-			err = json.Unmarshal(data, &ethLog)
-			if err != nil {
-				continue
-			}
-			burn, err = interchainSwap.ParseBurn(*ethLog)
-			if err != nil {
-				continue
-			}
-		}
-
-		if burn == nil {
-			return "", nil, fmt.Errorf("not found burn log:%v", receipt.TxHash.Hash)
-		}
-
-		//abi.encodePacked
-		abiHash := solsha3.SoliditySHA3(
-			solsha3.Address(burn.AppToken),
-			solsha3.Address(burn.Burner),
-			solsha3.Address(burn.Recipient),
-			solsha3.Uint256(burn.Amount),
-			solsha3.String(string(data)),
-		)
-		prefixedHash := crypto.Keccak256Hash(
-			[]byte(fmt.Sprintf("\x19Ethereum Signed Message:\n%v", len(abiHash))),
-			abiHash,
-		)
-		key := swarm.repo.Key
-		sign, err := key.PrivKey.Sign(prefixedHash[:])
-		if err != nil {
-			return "", nil, fmt.Errorf("bitxhub sign: %w", err)
-		}
-		return key.Address, sign, nil
-	}
-
-	address, signed, err := handle(string(data))
-	if err != nil {
-		swarm.logger.Errorf("handle fetch-burn-sign: %s", err.Error())
-		return
-	}
-
-	m := model.MerkleWrapperSign{
-		Address:   address,
-		Signature: signed,
-	}
-
-	body, err := m.Marshal()
-	if err != nil {
-		swarm.logger.Errorf("marshal merkle wrapper sign: %s", err.Error())
-		return
-	}
-
-	msg := &pb.Message{
-		Type: pb.Message_FETCH_BURN_SIGN_ACK,
-		Data: body,
-	}
-
-	if err := swarm.SendWithStream(s, msg); err != nil {
-		swarm.logger.Errorf("send burn sign back: %s", err.Error())
 	}
 }
 
