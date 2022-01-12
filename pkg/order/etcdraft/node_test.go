@@ -2,6 +2,7 @@ package etcdraft
 
 import (
 	"fmt"
+	"github.com/meshplus/bitxhub/pkg/peermgr"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -151,6 +152,12 @@ func TestMulti_Node_Start_Without_Cert_Verification(t *testing.T) {
 
 	repoRoot, err := ioutil.TempDir("", "nodes")
 	defer os.RemoveAll(repoRoot)
+	defer func(t *testing.T, swarms []*peermgr.Swarm) {
+		err := stopSwarms(t, swarms)
+		if err != nil {
+			t.Errorf("stop swarm err")
+		}
+	}(t, swarms)
 
 	fileData, err := ioutil.ReadFile("../../../config/order.toml")
 	require.Nil(t, err)
@@ -296,6 +303,12 @@ func TestMulti_Node_Restart(t *testing.T) {
 
 	repoRoot, err := ioutil.TempDir("", "nodes")
 	defer os.RemoveAll(repoRoot)
+	defer func(t *testing.T, swarms []*peermgr.Swarm) {
+		err := stopSwarms(t, swarms)
+		if err != nil {
+			t.Errorf("stop swarm err")
+		}
+	}(t, swarms)
 
 	fileData, err := ioutil.ReadFile("testdata/order.toml")
 	require.Nil(t, err)
@@ -364,4 +377,5 @@ func TestMulti_Node_Restart(t *testing.T) {
 		commitEvent := <-orders[i].Commit()
 		require.Equal(t, uint64(3), commitEvent.Block.BlockHeader.Number)
 	}
+
 }
