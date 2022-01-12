@@ -1,0 +1,12 @@
+[timed_gen_block]
+enable = false
+block_timeout = "-1s"
+
+[solo]
+batch_timeout          = "0.3s"  # Block packaging time period.
+
+[solo.mempool]
+batch_size          = 200   # How many transactions should the primary pack.
+pool_size           = 50000 # How many transactions could the txPool stores in total.
+tx_slice_size       = 10    # How many transactions should the node broadcast at once
+tx_slice_timeout    = "0.1s"  # Node broadcasts transactions if there are cached transactions, although set_size isn't reached yet

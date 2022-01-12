@@ -2,6 +2,7 @@ package etcdraft
 
 import (
 	"fmt"
+	"go.uber.org/atomic"
 	"os"
 	"path/filepath"
 	"sort"
@@ -25,7 +26,7 @@ import (
 // purpose. This MUST be greater equal than 1.
 var MaxSnapshotFiles = 5
 
-var restart = false
+var restart atomic.Bool
 
 var appliedDbKey = []byte("applied")
 
@@ -186,7 +187,7 @@ func createOrReadWAL(lg raft.Logger, walDir string, snapshot *raftpb.Snapshot) (
 			return nil, st, nil, errors.Errorf("failed to close the WAL just created: %s", err)
 		}
 	} else {
-		restart = true
+		restart.Store(true)
 		lg.Infof("Found WAL data at path '%s', replaying it", walDir)
 	}
 

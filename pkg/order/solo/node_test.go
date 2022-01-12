@@ -20,13 +20,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const to = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
+const (
+	to          = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
+	ErrorConfig = "Illegal parameter"
+)
 
 func TestNode_Start(t *testing.T) {
 	repoRoot, err := ioutil.TempDir("", "node")
-	defer os.RemoveAll(repoRoot)
+	defer func(path string) {
+		err := os.RemoveAll(path)
+		if err != nil {
+			t.Logf("close file err")
+		}
+	}(repoRoot)
 	assert.Nil(t, err)
-
 	// write config file for order module
 	fileData, err := ioutil.ReadFile("./testdata/order.toml")
 	require.Nil(t, err)
@@ -45,7 +52,7 @@ func TestNode_Start(t *testing.T) {
 	}
 	nodes[1] = vpInfo
 
-	order, err := NewNode(
+	solo, err := NewNode(
 		order.WithRepoRoot(repoRoot),
 		order.WithStoragePath(repo.GetStoragePath(repoRoot, "order")),
 		order.WithLogger(log.NewWithModule("consensus")),
@@ -60,12 +67,12 @@ func TestNode_Start(t *testing.T) {
 	)
 	require.Nil(t, err)
 
-	_ = order.Start()
+	_ = solo.Start()
 	require.Nil(t, err)
 
 	var msg []byte
-	require.Nil(t, order.Step(msg))
-	require.Equal(t, uint64(1), order.Quorum())
+	require.Nil(t, solo.Step(msg))
+	require.Equal(t, uint64(1), solo.Quorum())
 
 	privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	require.Nil(t, err)
@@ -85,29 +92,34 @@ func TestNode_Start(t *testing.T) {
 
 	for {
 		time.Sleep(200 * time.Millisecond)
-		err := order.Ready()
+		err := solo.Ready()
 		if err == nil {
 			break
 		}
 	}
 
-	err = order.Prepare(tx)
+	err = solo.Prepare(tx)
 	require.Nil(t, err)
 
-	commitEvent := <-order.Commit()
+	commitEvent := <-solo.Commit()
 	require.Equal(t, uint64(2), commitEvent.Block.BlockHeader.Number)
 	require.Equal(t, 1, len(commitEvent.Block.Transactions.Transactions))
 
 	txHashList := make([]*types.Hash, 0)
 	txHashList = append(txHashList, tx.TransactionHash)
-	order.ReportState(commitEvent.Block.Height(), commitEvent.Block.BlockHash, txHashList)
-	order.Stop()
+	solo.ReportState(commitEvent.Block.Height(), commitEvent.Block.BlockHash, txHashList)
+	solo.Stop()
 }
 
 func TestGetPendingNonceByAccount(t *testing.T) {
 	ast := assert.New(t)
-	defer os.RemoveAll("./testdata/storage")
-	node, err := mockSoloNode(t)
+	defer func() {
+		err := os.RemoveAll("./testdata/storage")
+		if err != nil {
+			t.Logf("close file err")
+		}
+	}()
+	node, err := mockSoloNode(t, false)
 	ast.Nil(err)
 	err = node.Start()
 	ast.Nil(err)
@@ -118,8 +130,13 @@ func TestGetPendingNonceByAccount(t *testing.T) {
 
 func TestGetpendingTxByHash(t *testing.T) {
 	ast := assert.New(t)
-	defer os.RemoveAll("./testdata/storage")
-	node, err := mockSoloNode(t)
+	defer func() {
+		err := os.RemoveAll("./testdata/storage")
+		if err != nil {
+			t.Logf("close file err")
+		}
+	}()
+	node, err := mockSoloNode(t, false)
 	ast.Nil(err)
 	err = node.Start()
 	ast.Nil(err)
@@ -129,4 +146,48 @@ func TestGetpendingTxByHash(t *testing.T) {
 	ast.Nil(err)
 	time.Sleep(200 * time.Millisecond)
 	ast.Equal(tx, node.GetPendingTxByHash(tx.GetHash()))
+}
+
+func TestWrongConfig(t *testing.T) {
+	repoRoot, err := ioutil.TempDir("", "node")
+	defer func(path string) {
+		err := os.RemoveAll(path)
+		if err != nil {
+			t.Logf("close file err")
+		}
+	}(repoRoot)
+	assert.Nil(t, err)
+
+	// test read wrong config from order,toml
+	fileData, err := ioutil.ReadFile("./testdata/wrongOrder.toml")
+	require.Nil(t, err)
+	err = ioutil.WriteFile(filepath.Join(repoRoot, "order.toml"), fileData, 0644)
+	require.Nil(t, err)
+	_, err = NewNode(
+		order.WithRepoRoot(repoRoot),
+		order.WithStoragePath(repo.GetStoragePath(repoRoot, "order")),
+		order.WithLogger(log.NewWithModule("consensus")),
+	)
+	require.NotNil(t, err)
+	require.Contains(t, err.Error(), ErrorConfig)
+}
+
+func TestTimedBlock(t *testing.T) {
+	ast := assert.New(t)
+	node, err := mockSoloNode(t, true)
+	ast.Nil(err)
+	defer node.Stop()
+	defer func() {
+		err := os.RemoveAll("./testdata/storage")
+		if err != nil {
+			t.Logf("close file err")
+		}
+	}()
+
+	err = node.Start()
+	ast.Nil(err)
+	event := <-node.commitC
+	ast.NotNil(event)
+	ast.Equal(len(event.Block.Transactions.Transactions), 0)
+
 }

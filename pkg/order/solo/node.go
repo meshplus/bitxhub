@@ -44,21 +44,22 @@ func (n *Node) GetPendingTxByHash(hash *types.Hash) pb.Transaction {
 }
 
 func (n *Node) Start() error {
-	go n.txCache.ListenEvent()
+	n.ctx, n.cancel = context.WithCancel(context.Background())
+	go n.txCache.ListenEvent(n.ctx)
 	go n.listenReadyBlock()
 	return nil
 }
 
 func (n *Node) Stop() {
 	n.cancel()
-	n.txCache.StopTxListen()
+	n.logger.Info("consensus stopped")
 }
 
 func (n *Node) GetPendingNonceByAccount(account string) uint64 {
 	return n.mempool.GetPendingNonceByAccount(account)
 }
 
-func (n *Node) DelNode(delID uint64) error {
+func (n *Node) DelNode(uint64) error {
 	return nil
 }
 
@@ -74,7 +75,7 @@ func (n *Node) Commit() chan *pb.CommitEvent {
 	return n.commitC
 }
 
-func (n *Node) Step(msg []byte) error {
+func (n *Node) Step([]byte) error {
 	return nil
 }
 
@@ -105,7 +106,7 @@ func init() {
 
 func NewNode(opts ...order.Option) (order.Order, error) {
 	var options []order.Option
-	for i, _ := range opts {
+	for i := range opts {
 		options = append(options, opts[i])
 	}
 
@@ -113,11 +114,6 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 	if err != nil {
 		return nil, fmt.Errorf("generate config: %w", err)
 	}
-	if err != nil {
-		return nil, fmt.Errorf("new leveldb: %w", err)
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-
 	batchTimeout, memConfig, timedGenBlock, err := generateSoloConfig(config.RepoRoot)
 	if err != nil {
 		return nil, fmt.Errorf("generate solo txpool config: %w", err)
@@ -143,6 +139,7 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 	}
 	txCache := mempool.NewTxCache(mempoolConf.TxSliceTimeout, mempoolConf.TxSliceSize, config.Logger)
 	batchTimerMgr := etcdraft.NewTimer(batchTimeout, config.Logger)
+
 	soloNode := &Node{
 		ID:           config.ID,
 		isTimed:      mempoolConf.IsTimed,
@@ -156,8 +153,6 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 		peerMgr:      config.PeerMgr,
 		proposeC:     batchC,
 		logger:       config.Logger,
-		ctx:          ctx,
-		cancel:       cancel,
 	}
 	soloNode.logger.Infof("SOLO lastExec = %d", soloNode.lastExec)
 	soloNode.logger.Infof("SOLO batch timeout = %v", batchTimeout)

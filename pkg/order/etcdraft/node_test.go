@@ -49,7 +49,7 @@ func TestNode_Start(t *testing.T) {
 	mockPeermgr.EXPECT().Broadcast(gomock.Any()).AnyTimes()
 	mockPeermgr.EXPECT().CountConnectedPeers().Return(cntPeers).AnyTimes()
 
-	order, err := NewNode(
+	raft, err := NewNode(
 		order.WithRepoRoot(repoRoot),
 		order.WithID(ID),
 		order.WithNodes(nodes),
@@ -63,27 +63,27 @@ func TestNode_Start(t *testing.T) {
 	)
 	require.Nil(t, err)
 
-	err = order.Start()
+	err = raft.Start()
 	require.Nil(t, err)
 
 	for {
 		time.Sleep(200 * time.Millisecond)
-		err := order.Ready()
+		err := raft.Ready()
 		if err == nil {
 			break
 		}
 	}
 	tx := generateTx()
-	err = order.Prepare(tx)
+	err = raft.Prepare(tx)
 	require.Nil(t, err)
 
-	require.Equal(t, tx, order.GetPendingTxByHash(tx.GetHash()))
+	require.Equal(t, tx, raft.GetPendingTxByHash(tx.GetHash()))
 
-	commitEvent := <-order.Commit()
+	commitEvent := <-raft.Commit()
 	require.Equal(t, uint64(2), commitEvent.Block.BlockHeader.Number)
 	require.Equal(t, 1, len(commitEvent.Block.Transactions.Transactions))
 
-	order.Stop()
+	raft.Stop()
 }
 
 func TestMulti_Node_Start(t *testing.T) {
@@ -108,7 +108,7 @@ func TestMulti_Node_Start(t *testing.T) {
 		require.Nil(t, err)
 
 		ID := i + 1
-		order, err := NewNode(
+		raft, err := NewNode(
 			order.WithRepoRoot(nodeRepo),
 			order.WithID(uint64(ID)),
 			order.WithNodes(nodes),
@@ -122,10 +122,10 @@ func TestMulti_Node_Start(t *testing.T) {
 			}),
 		)
 		require.Nil(t, err)
-		err = order.Start()
+		err = raft.Start()
 		require.Nil(t, err)
-		orders = append(orders, order)
-		go listen(t, order, swarms[i])
+		orders = append(orders, raft)
+		go listen(t, raft, swarms[i])
 	}
 
 	for {
@@ -166,7 +166,7 @@ func TestMulti_Node_Start_Without_Cert_Verification(t *testing.T) {
 		require.Nil(t, err)
 
 		ID := i + 1
-		order, err := NewNode(
+		raft, err := NewNode(
 			order.WithRepoRoot(nodeRepo),
 			order.WithID(uint64(ID)),
 			order.WithNodes(nodes),
@@ -180,10 +180,10 @@ func TestMulti_Node_Start_Without_Cert_Verification(t *testing.T) {
 			}),
 		)
 		require.Nil(t, err)
-		err = order.Start()
+		err = raft.Start()
 		require.Nil(t, err)
-		orders = append(orders, order)
-		go listen(t, order, swarms[i])
+		orders = append(orders, raft)
+		go listen(t, raft, swarms[i])
 	}
 
 	for {
@@ -256,4 +256,112 @@ func TestRun(t *testing.T) {
 	txs = append(txs, constructTx(1))
 	node.mempool.ProcessTransactions(txs, false, true)
 	time.Sleep(250 * time.Millisecond)
+}
+
+func TestRestartNode(t *testing.T) {
+	ast := assert.New(t)
+	defer os.RemoveAll("./testdata/storage")
+	node, err := mockRaftNode(t)
+	ast.Nil(err)
+	node.checkInterval = 200 * time.Millisecond
+	err = node.Start()
+	ast.Nil(err)
+	ast.Nil(node.checkQuorum())
+	// test confChangeC
+	node.confChangeC <- raftpb.ConfChange{ID: uint64(2)}
+	// test rebroadcastTicker
+	txs := make([]pb.Transaction, 0)
+	txs = append(txs, constructTx(1))
+	node.mempool.ProcessTransactions(txs, false, true)
+	time.Sleep(250 * time.Millisecond)
+
+	// test restart with snapshot
+	node.Stop()
+	time.Sleep(250 * time.Millisecond)
+	err = node.Start()
+	ast.Nil(err)
+
+	// test restart with snapshot
+	node.Stop()
+	time.Sleep(250 * time.Millisecond)
+	err = node.Start()
+	ast.Nil(err)
+	os.RemoveAll("./testdata/storage")
+
+}
+
+func TestMulti_Node_Restart(t *testing.T) {
+	peerCnt := 4
+	swarms, nodes := newSwarms(t, peerCnt, false)
+
+	repoRoot, err := ioutil.TempDir("", "nodes")
+	defer os.RemoveAll(repoRoot)
+
+	fileData, err := ioutil.ReadFile("testdata/order.toml")
+	require.Nil(t, err)
+
+	orders := make([]order.Order, 0)
+	for i := 0; i < peerCnt; i++ {
+
+		nodePath := fmt.Sprintf("node%d", i)
+		nodeRepo := filepath.Join(repoRoot, nodePath)
+		err := os.Mkdir(nodeRepo, 0744)
+		require.Nil(t, err)
+		orderPath := filepath.Join(nodeRepo, "order.toml")
+		err = ioutil.WriteFile(orderPath, fileData, 0744)
+		require.Nil(t, err)
+
+		ID := i + 1
+
+		raft, err := NewNode(
+			order.WithRepoRoot(nodeRepo),
+			order.WithID(uint64(ID)),
+			order.WithNodes(nodes),
+			order.WithPeerManager(swarms[i]),
+			order.WithStoragePath(repo.GetStoragePath(nodeRepo, "order")),
+			order.WithLogger(log.NewWithModule("consensus")),
+			order.WithGetBlockByHeightFunc(nil),
+			order.WithApplied(1),
+			order.WithGetAccountNonceFunc(func(address *types.Address) uint64 {
+				return 0
+			}),
+		)
+		require.Nil(t, err)
+
+		err = raft.Start()
+		require.Nil(t, err)
+		orders = append(orders, raft)
+		go listen(t, raft, swarms[i])
+	}
+
+	for {
+		time.Sleep(200 * time.Millisecond)
+		err := orders[0].Ready()
+		if err == nil {
+			break
+		}
+	}
+
+	tx0 := generateTx()
+	err = orders[0].Prepare(tx0)
+	require.Nil(t, err)
+	for i := 0; i < len(orders); i++ {
+		commitEvent := <-orders[i].Commit()
+		require.Equal(t, uint64(2), commitEvent.Block.BlockHeader.Number)
+		require.Equal(t, 1, len(commitEvent.Block.Transactions.Transactions))
+	}
+
+	// restart node0
+	time.Sleep(2 * time.Second)
+	err = orders[0].(*Node).Restart()
+	require.Nil(t, err)
+	time.Sleep(2 * time.Second)
+
+	tx1 := generateTx()
+	err = orders[0].Prepare(tx1)
+	require.Nil(t, err)
+	for i := 0; i < len(orders); i++ {
+		commitEvent := <-orders[i].Commit()
+		require.Equal(t, uint64(3), commitEvent.Block.BlockHeader.Number)
+	}
 }
