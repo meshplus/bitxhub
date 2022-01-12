@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/meshplus/eth-kit/ledger"
-
+	"github.com/ethereum/go-ethereum/common"
+	etherTypes "github.com/ethereum/go-ethereum/core/types"
 	crypto1 "github.com/ethereum/go-ethereum/crypto"
 	"github.com/meshplus/bitxhub-kit/bytesutil"
 	"github.com/meshplus/bitxhub-kit/crypto"
@@ -22,6 +22,8 @@ import (
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/repo"
+	"github.com/meshplus/eth-kit/ledger"
+	ledger1 "github.com/meshplus/eth-kit/ledger"
 	libp2pcert "github.com/meshplus/go-libp2p-cert"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -155,7 +157,10 @@ func TestChainLedger_Commit(t *testing.T) {
 	ledger.SetState(account, []byte("a"), []byte("b"))
 	accounts, stateRoot := ledger.FlushDirtyData()
 	err := ledger.Commit(1, accounts, stateRoot)
+	ledger.StateLedger.(*SimpleLedger).GetCommittedState(account, []byte("a"))
 	assert.Nil(t, err)
+	isSuicide := ledger.StateLedger.(*SimpleLedger).HasSuiside(account)
+	assert.Equal(t, isSuicide, false)
 	assert.Equal(t, uint64(1), ledger.Version())
 	assert.Equal(t, "0xA1a6d35708Fa6Cf804B6cF9479F3a55d9A87FbFB83c55a64685AeaBdBa6116B1", stateRoot.String())
 
@@ -208,6 +213,45 @@ func TestChainLedger_Commit(t *testing.T) {
 	assert.Nil(t, entry.PrevStates[hex.EncodeToString([]byte("c"))])
 	assert.True(t, entry.CodeChanged)
 	assert.Nil(t, entry.PrevCode)
+	isExist := ledger.StateLedger.(*SimpleLedger).Exist(account)
+	assert.True(t, isExist)
+	isEmpty := ledger.StateLedger.(*SimpleLedger).Empty(account)
+	assert.False(t, isEmpty)
+	ledger.StateLedger.(*SimpleLedger).AccountCache()
+	err = ledger.StateLedger.(*SimpleLedger).removeJournalsBeforeBlock(10)
+	assert.NotNil(t, err)
+	err = ledger.StateLedger.(*SimpleLedger).removeJournalsBeforeBlock(0)
+	assert.Nil(t, err)
+
+	// Extra Test
+	hash := types.NewHashByStr("0xe9FC370DD36C9BD5f67cCfbc031C909F53A3d8bC7084C01362c55f2D42bA841c")
+	revid := ledger.StateLedger.(*SimpleLedger).Snapshot()
+	ledger.StateLedger.(*SimpleLedger).logs.thash = hash
+	ledger.StateLedger.(*SimpleLedger).AddLog(&pb.EvmLog{})
+	ledger.StateLedger.(*SimpleLedger).GetLogs(*ledger.StateLedger.(*SimpleLedger).logs.thash)
+	ledger.StateLedger.(*SimpleLedger).GetCodeHash(account)
+	ledger.StateLedger.(*SimpleLedger).GetCodeSize(account)
+	currentAccount := ledger.StateLedger.(*SimpleLedger).GetAccount(account)
+	ledger.StateLedger.(*SimpleLedger).setAccount(currentAccount)
+	ledger.StateLedger.(*SimpleLedger).AddBalance(account, big.NewInt(1))
+	ledger.StateLedger.(*SimpleLedger).SubBalance(account, big.NewInt(1))
+	ledger.StateLedger.(*SimpleLedger).AddRefund(1)
+	refund := ledger.StateLedger.(*SimpleLedger).GetRefund()
+	assert.Equal(t, refund, uint64(1))
+	ledger.StateLedger.(*SimpleLedger).SubRefund(1)
+	refund = ledger.StateLedger.(*SimpleLedger).GetRefund()
+	assert.Equal(t, refund, uint64(0))
+	ledger.StateLedger.(*SimpleLedger).AddAddressToAccessList(*account)
+	isInAddressList := ledger.StateLedger.(*SimpleLedger).AddressInAccessList(*account)
+	assert.Equal(t, isInAddressList, true)
+	ledger.StateLedger.(*SimpleLedger).AddSlotToAccessList(*account, *hash)
+	isInSlotAddressList, _ := ledger.StateLedger.(*SimpleLedger).SlotInAccessList(*account, *hash)
+	assert.Equal(t, isInSlotAddressList, true)
+	ledger.StateLedger.(*SimpleLedger).AddPreimage(*hash, []byte("11"))
+	ledger.StateLedger.(*SimpleLedger).PrepareAccessList(*account, account, []types.Address{}, ledger1.AccessTupleList{})
+	ledger.StateLedger.(*SimpleLedger).Suiside(account)
+	ledger.StateLedger.(*SimpleLedger).RevertToSnapshot(revid)
+	ledger.StateLedger.(*SimpleLedger).ClearChangerAndRefund()
 
 	ledger.Close()
 
@@ -231,6 +275,80 @@ func TestChainLedger_Commit(t *testing.T) {
 
 	ver := ldg.Version()
 	assert.Equal(t, uint64(0), ver)
+
+}
+
+func TestChainLedger_OpenStateDB(t *testing.T) {
+	repoRoot, err := ioutil.TempDir("", "simstorage")
+	assert.Nil(t, err)
+	repoRoot1, err := ioutil.TempDir("", "ethstorage")
+	assert.Nil(t, err)
+	logger := log.NewWithModule("opendb_test")
+	_, err = OpenStateDB(repoRoot, "simple")
+	assert.Nil(t, err)
+	ldb, err := OpenStateDB(repoRoot1, "complex")
+	assert.Nil(t, err)
+	blockFile, err := blockfile.NewBlockFile("", logger)
+	assert.NotNil(t, err)
+	blockStorage, err := leveldb.New(filepath.Join("", "ledger"))
+	assert.Nil(t, err)
+	accountCache, err := NewAccountCache()
+	assert.Nil(t, err)
+	_, err = New(createMockRepo(t), blockStorage, ldb, blockFile, accountCache, log.NewWithModule("executor"))
+	assert.Nil(t, err)
+}
+
+func TestChainLedger_EVMAccessor(t *testing.T) {
+	ledger, _ := initLedger(t, "")
+
+	hash := common.HexToHash("0xe9FC370DD36C9BD5f67cCfbc031C909F53A3d8bC7084C01362c55f2D42bA841c")
+	// create an account
+	account := common.BytesToAddress(bytesutil.LeftPadBytes([]byte{100}, 20))
+
+	ledger.StateLedger.(*SimpleLedger).CreateEVMAccount(account)
+	ledger.StateLedger.(*SimpleLedger).AddEVMBalance(account, big.NewInt(2))
+	balance := ledger.StateLedger.(*SimpleLedger).GetEVMBalance(account)
+	assert.Equal(t, balance, big.NewInt(2))
+	ledger.StateLedger.(*SimpleLedger).SubEVMBalance(account, big.NewInt(1))
+	balance = ledger.StateLedger.(*SimpleLedger).GetEVMBalance(account)
+	assert.Equal(t, balance, big.NewInt(1))
+	ledger.StateLedger.(*SimpleLedger).SetEVMNonce(account, 10)
+	nonce := ledger.StateLedger.(*SimpleLedger).GetEVMNonce(account)
+	assert.Equal(t, nonce, uint64(10))
+	ledger.StateLedger.(*SimpleLedger).GetEVMCodeHash(account)
+	ledger.StateLedger.(*SimpleLedger).SetEVMCode(account, []byte("111"))
+	code := ledger.StateLedger.(*SimpleLedger).GetEVMCode(account)
+	assert.Equal(t, code, []byte("111"))
+	codeSize := ledger.StateLedger.(*SimpleLedger).GetEVMCodeSize(account)
+	assert.Equal(t, codeSize, 3)
+	ledger.StateLedger.(*SimpleLedger).AddEVMRefund(2)
+	refund := ledger.StateLedger.(*SimpleLedger).GetEVMRefund()
+	assert.Equal(t, refund, uint64(2))
+	ledger.StateLedger.(*SimpleLedger).SubEVMRefund(1)
+	refund = ledger.StateLedger.(*SimpleLedger).GetEVMRefund()
+	assert.Equal(t, refund, uint64(1))
+	ledger.StateLedger.(*SimpleLedger).GetEVMCommittedState(account, hash)
+	ledger.StateLedger.(*SimpleLedger).SetEVMState(account, hash, hash)
+	value := ledger.StateLedger.(*SimpleLedger).GetEVMState(account, hash)
+	assert.Equal(t, value, hash)
+	ledger.StateLedger.(*SimpleLedger).SuisideEVM(account)
+	isSuicide := ledger.StateLedger.(*SimpleLedger).HasSuisideEVM(account)
+	assert.Equal(t, isSuicide, false)
+	isExist := ledger.StateLedger.(*SimpleLedger).ExistEVM(account)
+	assert.Equal(t, isExist, true)
+	isEmpty := ledger.StateLedger.(*SimpleLedger).EmptyEVM(account)
+	assert.Equal(t, isEmpty, false)
+	ledger.StateLedger.(*SimpleLedger).PrepareEVMAccessList(account, &account, []common.Address{}, etherTypes.AccessList{})
+	ledger.StateLedger.(*SimpleLedger).AddAddressToEVMAccessList(account)
+	isIn := ledger.StateLedger.(*SimpleLedger).AddressInEVMAccessList(account)
+	assert.Equal(t, isIn, true)
+	ledger.StateLedger.(*SimpleLedger).AddSlotToEVMAccessList(account, hash)
+	isSlotIn, _ := ledger.StateLedger.(*SimpleLedger).SlotInEVMAceessList(account, hash)
+	assert.Equal(t, isSlotIn, true)
+	ledger.StateLedger.(*SimpleLedger).AddEVMPreimage(hash, []byte("1111"))
+	ledger.StateLedger.(*SimpleLedger).PrepareEVM(hash, 1)
+	ledger.StateLedger.(*SimpleLedger).StateDB()
+	ledger.StateLedger.(*SimpleLedger).AddEVMLog(&etherTypes.Log{})
 }
 
 func TestChainLedger_Rollback(t *testing.T) {
