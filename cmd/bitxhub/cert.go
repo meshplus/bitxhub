@@ -173,10 +173,6 @@ var issueCMD = cli.Command{
 			Name:  "target",
 			Usage: "Specific target directory",
 		},
-		cli.StringFlag{
-			Name:  "target_name",
-			Usage: "Specific target file name",
-		},
 	},
 	Action: func(ctx *cli.Context) error {
 		csrPath := ctx.String("csr")

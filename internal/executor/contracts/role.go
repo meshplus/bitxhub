@@ -846,8 +846,16 @@ func (rm *RoleManager) getAll() ([]*Role, error) {
 	return ret, nil
 }
 
+// The role contract includes three role types currently :
+// - "governanceAdmin"
+// - "auditAdmin"
+// - "appchainAdmin"
 func (rm *RoleManager) GetRolesByType(roleType string) *boltvm.Response {
 	ret := make([]*Role, 0)
+
+	if roleType != string(GovernanceAdmin) && roleType != string(AuditAdmin) && roleType != string(AppchainAdmin) {
+		return boltvm.Error(boltvm.RoleIllegalRoleTypeCode, fmt.Sprintf(string(boltvm.RoleIllegalRoleTypeMsg), roleType))
+	}
 
 	roleIdMap := orderedmap.New()
 	ok := rm.GetObject(RoleTypeKey(roleType), roleIdMap)

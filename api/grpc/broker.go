@@ -199,7 +199,7 @@ func checkPermissionUnary(accounts []string, info *grpc.UnaryServerInfo, l *ledg
 	logger.WithFields(logrus.Fields{
 		"accounts": accounts,
 		"method":   info.FullMethod,
-	}).Debug("audit node has permission to the unary method")
+	}).Debug("the account has permission to the unary method")
 	return true, nil
 }
 
