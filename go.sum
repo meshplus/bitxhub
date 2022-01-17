@@ -762,8 +762,8 @@ github.com/meshplus/eth-kit v0.0.0-20210906064541-8dfea98dbf95 h1:bCBXI1MpjAzRCN
 github.com/meshplus/eth-kit v0.0.0-20210906064541-8dfea98dbf95/go.mod h1:7Uf2QyUOCFCHjg4zXr3ZtjKesdPubptdr4IK0KiQBHY=
 github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd h1:/8ydT0Pc+nFy3uAeTwxAurPXY4cWfggslGz3bNwJKDg=
 github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd/go.mod h1:rS4AYMqKypLn2IPEnHICP//V2v16SZo4CWUbwMdihl0=
-github.com/meshplus/go-lightp2p v0.0.0-20220114064215-303068b3b887 h1:AwBaJJ6r5HOgYHDjBiv8U0QDZ3/f0Hdr3C3Gd724Mho=
-github.com/meshplus/go-lightp2p v0.0.0-20220114064215-303068b3b887/go.mod h1:ARRXc4Oo0iZjsj5CB+LTmcMNxK2c1fug7XsEZ7yPJvg=
+github.com/meshplus/go-lightp2p v0.0.0-20220117062309-77f399ade57e h1:cY4wgIqCWkxq3lMfQYzOmqhf3HHYTGsYLK8lZQthTwo=
+github.com/meshplus/go-lightp2p v0.0.0-20220117062309-77f399ade57e/go.mod h1:ARRXc4Oo0iZjsj5CB+LTmcMNxK2c1fug7XsEZ7yPJvg=
 github.com/meshplus/go-wasm-metering v0.0.0-20211027061126-399a9f391310 h1:5ixU8zsAIdb9m1mZOOO+FoReRvX6luacCwfGhljg650=
 github.com/meshplus/go-wasm-metering v0.0.0-20211027061126-399a9f391310/go.mod h1:6yjsXoEefYqdsaSV+z4MGfslcqGS7Rd3eQI6bQYtYzs=
 github.com/meshplus/wasmer-go v1.0.5-0.20210817103436-19ec68f8bfe2 h1:tgu12zbRlfzFj+y+01WdOuTb3PEZg4XF77gFcoasyCU=
