@@ -12,6 +12,7 @@ import (
 	"github.com/meshplus/bitxhub-core/wasm/wasmlib"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub/pkg/vm"
+	"github.com/meshplus/bitxhub/pkg/vm/wasm/vmledger"
 	metering "github.com/meshplus/go-wasm-metering"
 	"github.com/sirupsen/logrus"
 	"github.com/wasmerio/wasmer-go/wasmer"
@@ -110,15 +111,37 @@ func (w *WasmVM) deploy() ([]byte, uint64, error) {
 		defer func() {
 			if e := recover(); e != nil {
 				err = fmt.Errorf("%v", e)
+				metaChan <- nil
 			}
 		}()
 
+		engine := wasmer.NewEngine()
+		store := wasmer.NewStore(engine)
+		module, err := wasmer.NewModule(store, w.ctx.TransactionData.Payload)
+		if err != nil {
+			w.ctx.Logger.WithFields(logrus.Fields{}).Error("new module:", err)
+			metaChan <- nil
+			return
+		}
+		env := &wasmlib.WasmEnv{}
+		env.Store = store
+		imports := vmledger.New()
+		imports.ImportLib(env)
+		_, err = wasmer.NewInstance(module, imports.GetImportObject())
+		if err != nil {
+			w.ctx.Logger.WithFields(logrus.Fields{}).Error("new instance:", err)
+			metaChan <- nil
+			return
+		}
 		meteredCode, _, err := metering.MeterWASM(w.ctx.TransactionData.Payload, &metering.Options{}, w.ctx.Logger)
 		metaChan <- meteredCode
 	}(err)
 	meteredCode := <-metaChan
 	if err != nil {
 		return nil, 0, err
+	}
+	if meteredCode == nil {
+		return nil, 0, fmt.Errorf("wasm code format is not correct")
 	}
 
 	contractNonce := w.ctx.Ledger.GetNonce(w.ctx.Caller)
