@@ -28,6 +28,7 @@ require (
 	github.com/iancoleman/orderedmap v0.2.0
 	github.com/juju/ratelimit v1.0.1
 	github.com/libp2p/go-libp2p-core v0.5.6
+	github.com/libp2p/go-libp2p-swarm v0.2.4
 	github.com/looplab/fsm v0.2.0
 	github.com/magiconair/properties v1.8.4
 	github.com/meshplus/bitxhub-core v1.3.1-0.20211229110534-fa2f5b4e05db
@@ -36,7 +37,7 @@ require (
 	github.com/meshplus/consensus v0.0.0-20211228075008-5f469b198531
 	github.com/meshplus/eth-kit v0.0.0-20220105081940-c90e9f2aa162
 	github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd
-	github.com/meshplus/go-lightp2p v0.0.0-20210617153734-471d08b829f8
+	github.com/meshplus/go-lightp2p v0.0.0-20220117071358-c37ba4e6dcbc
 	github.com/meshplus/go-wasm-metering v0.0.0-20211027061126-399a9f391310
 	github.com/miguelmota/go-solidity-sha3 v0.1.1
 	github.com/mitchellh/go-homedir v1.1.0
