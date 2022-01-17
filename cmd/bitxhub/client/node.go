@@ -1,10 +1,8 @@
 package client
 
 import (
-	"encoding/json"
 	"fmt"
 
-	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/urfave/cli"
 )
 
@@ -36,38 +34,5 @@ func getValidators(ctx *cli.Context) error {
 
 	fmt.Println(retJson)
 
-	return nil
-}
-
-func delVPNodeCMD() cli.Command {
-	return cli.Command{
-		Name:  "delVPNode",
-		Usage: "delete a vp node",
-		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name:  "pid",
-				Usage: "pid of vp node",
-			},
-		},
-		Action: delVPNode,
-	}
-}
-
-func delVPNode(ctx *cli.Context) error {
-	pid := ctx.String("pid")
-	if pid == "" {
-		return fmt.Errorf("please input pid")
-	}
-
-	url := getURL(ctx, "delvpnode")
-
-	p := pb.DelVPNodeRequest{Pid: pid}
-	reqData, err := json.Marshal(p)
-	data, err := httpPost(ctx, url, reqData)
-	if err != nil {
-		return fmt.Errorf("httpPost %s to url %s failed: %w", string(reqData), url, err)
-	}
-
-	fmt.Println(string(data))
 	return nil
 }
