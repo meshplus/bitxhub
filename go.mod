@@ -77,4 +77,4 @@ replace github.com/hyperledger/fabric => github.com/hyperledger/fabric v2.0.1+in
 
 replace github.com/wasmerio/wasmer-go v1.0.4 => github.com/meshplus/wasmer-go v1.0.5-0.20210817103436-19ec68f8bfe2
 
-replace github.com/meshplus/go-lightp2p => github.com/meshplus/go-lightp2p v0.0.0-20220117062309-77f399ade57e
+replace github.com/meshplus/go-lightp2p => github.com/meshplus/go-lightp2p v0.0.0-20220117071358-c37ba4e6dcbc
