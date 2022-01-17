@@ -1,18 +1,18 @@
 package vmledger
 
 import (
-	"github.com/meshplus/bitxhub-core/usegas"
+	"github.com/meshplus/bitxhub-core/validator/validatorlib"
 	"github.com/meshplus/bitxhub-core/wasm/wasmlib"
 	"github.com/wasmerio/wasmer-go/wasmer"
 )
 
 type Imports struct {
-	imports *usegas.Imports
+	imports wasmlib.WasmImport
 }
 
 func New() wasmlib.WasmImport {
 	imports := &Imports{
-		imports: usegas.New(),
+		imports: validatorlib.New(),
 	}
 	return imports
 }
