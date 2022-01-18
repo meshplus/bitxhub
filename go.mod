@@ -3,6 +3,7 @@ module github.com/meshplus/bitxhub
 go 1.14
 
 require (
+	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
 	github.com/Rican7/retry v0.1.0
 	github.com/cbergoon/merkletree v0.2.0
 	github.com/cheynewallace/tabby v1.1.1
