@@ -165,10 +165,10 @@ func (suite *Governance) TestGovernance() {
 	suite.Require().Nil(err)
 	suite.Require().Equal(string(contracts.APPROVED), b.Approve)
 
-	// vote2: reject
+	// vote2: approve
 	ret, err = invokeBVMContract(suite.api, priAdmin2, adminNonce2, constant.GovernanceContractAddr.Address(), "Vote",
 		pb.String(registerProposalId),
-		pb.String(contracts.BallotReject),
+		pb.String(contracts.BallotApprove),
 		pb.String("reason"),
 	)
 	suite.Require().Nil(err)
@@ -202,7 +202,7 @@ func (suite *Governance) TestGovernance() {
 	adminNonce1++
 	num, err := strconv.Atoi(string(ret.Ret))
 	suite.Require().Nil(err)
-	suite.Require().Equal(2, num, "approveNum")
+	suite.Require().Equal(3, num, "approveNum")
 
 	// get against num
 	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.GovernanceContractAddr.Address(), "GetAgainstNum", pb.String(registerProposalId))
@@ -211,7 +211,7 @@ func (suite *Governance) TestGovernance() {
 	adminNonce1++
 	num, err = strconv.Atoi(string(ret.Ret))
 	suite.Require().Nil(err)
-	suite.Require().Equal(1, num, "againstNum")
+	suite.Require().Equal(0, num, "againstNum")
 
 	// get proposal status
 	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.GovernanceContractAddr.Address(), "GetStatus", pb.String(registerProposalId))

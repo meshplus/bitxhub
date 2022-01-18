@@ -148,7 +148,7 @@ func TestGovernance_QueryProposal(t *testing.T) {
 		AgainstNum:             1,
 		InitialElectorateNum:   4,
 		AvaliableElectorateNum: 4,
-		ThresholdElectorateNum: 3,
+		StrategyExpression:     repo.DefaultSimpleMajorityExpression,
 	}
 
 	pData, err := json.Marshal(proposalExistent)
@@ -256,11 +256,6 @@ func TestGovernance_QueryProposal(t *testing.T) {
 	res = g.GetAvaliableElectorateNum(idNonexistent)
 	assert.False(t, res.Ok, string(res.Result))
 
-	res = g.GetThresholdNum(idExistent)
-	assert.True(t, res.Ok, string(res.Result))
-	res = g.GetThresholdNum(idNonexistent)
-	assert.False(t, res.Ok, string(res.Result))
-
 	var v = &Ballot{}
 	res = g.GetBallot(addrApproved, idNonexistent)
 	assert.False(t, res.Ok, string(res.Result))
@@ -352,7 +347,7 @@ func TestGovernance_Vote(t *testing.T) {
 		AgainstNum:             1,
 		InitialElectorateNum:   4,
 		AvaliableElectorateNum: 4,
-		ThresholdElectorateNum: 3,
+		StrategyExpression:     repo.DefaultSimpleMajorityExpression,
 		ElectorateList: []*Role{
 			{
 				ID: addrApproved,
@@ -433,7 +428,9 @@ func TestGovernance_Vote(t *testing.T) {
 			pro.ApproveNum = 1
 			pro.AgainstNum = 1
 			pro.ElectorateList = proposalExistent.ElectorateList
-			pro.ThresholdElectorateNum = 4
+			pro.StrategyExpression = repo.DefaultSimpleMajorityExpression
+			pro.AvaliableElectorateNum = 4
+			pro.InitialElectorateNum = 4
 			return true
 		}).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(ProposalKey(idLockProposalNonexistent), gomock.Any()).Do(
@@ -443,9 +440,11 @@ func TestGovernance_Vote(t *testing.T) {
 			pro.Typ = AppchainMgr
 			pro.Status = PROPOSED
 			pro.BallotMap = proposalExistent.BallotMap
-			pro.ApproveNum = 1
+			pro.ApproveNum = 2
 			pro.AgainstNum = 1
-			pro.ThresholdElectorateNum = 3
+			pro.StrategyExpression = repo.DefaultSimpleMajorityExpression
+			pro.AvaliableElectorateNum = 4
+			pro.InitialElectorateNum = 4
 			pro.ElectorateList = proposalExistent.ElectorateList
 			pro.LockProposalId = idNonexistent
 			return true
@@ -459,7 +458,9 @@ func TestGovernance_Vote(t *testing.T) {
 			pro.BallotMap = proposalExistent.BallotMap
 			pro.ApproveNum = 1
 			pro.AgainstNum = 1
-			pro.ThresholdElectorateNum = 3
+			pro.StrategyExpression = repo.DefaultSimpleMajorityExpression
+			pro.AvaliableElectorateNum = 4
+			pro.InitialElectorateNum = 4
 			pro.ElectorateList = proposalExistent.ElectorateList
 			return true
 		}).Return(true).AnyTimes()
@@ -472,7 +473,9 @@ func TestGovernance_Vote(t *testing.T) {
 			pro.BallotMap = proposalExistent.BallotMap
 			pro.ApproveNum = 1
 			pro.AgainstNum = 1
-			pro.ThresholdElectorateNum = 3
+			pro.StrategyExpression = repo.DefaultSimpleMajorityExpression
+			pro.AvaliableElectorateNum = 4
+			pro.InitialElectorateNum = 4
 			pro.ElectorateList = proposalExistent.ElectorateList
 			return true
 		}).Return(true).AnyTimes()
@@ -485,7 +488,9 @@ func TestGovernance_Vote(t *testing.T) {
 			pro.BallotMap = proposalExistent.BallotMap
 			pro.ApproveNum = 1
 			pro.AgainstNum = 1
-			pro.ThresholdElectorateNum = 3
+			pro.StrategyExpression = repo.DefaultSimpleMajorityExpression
+			pro.AvaliableElectorateNum = 4
+			pro.InitialElectorateNum = 4
 			pro.ElectorateList = proposalExistent.ElectorateList
 			return true
 		}).Return(true).AnyTimes()
@@ -498,7 +503,9 @@ func TestGovernance_Vote(t *testing.T) {
 			pro.BallotMap = proposalExistent.BallotMap
 			pro.ApproveNum = 1
 			pro.AgainstNum = 1
-			pro.ThresholdElectorateNum = 3
+			pro.StrategyExpression = repo.DefaultSimpleMajorityExpression
+			pro.AvaliableElectorateNum = 4
+			pro.InitialElectorateNum = 4
 			pro.ElectorateList = proposalExistent.ElectorateList
 			return true
 		}).Return(true).AnyTimes()
@@ -534,7 +541,6 @@ func TestGovernance_Vote(t *testing.T) {
 	mockStub.EXPECT().Caller().Return(addrNotVoted9).Times(1)
 	mockStub.EXPECT().Caller().Return(addrNotVoted10).Times(1)
 	mockStub.EXPECT().Caller().Return(addrNotVoted11).Times(1)
-	mockStub.EXPECT().Caller().Return(addrNotVoted12).Times(1)
 	mockStub.EXPECT().GetTxTimeStamp().Return(int64(0)).AnyTimes()
 
 	// 1.cross invoke IsAvailable error
@@ -564,9 +570,6 @@ func TestGovernance_Vote(t *testing.T) {
 	// countVote
 	// 8.special proposal not end
 	res = g.Vote(idSpecial, BallotApprove, "")
-	assert.True(t, res.Ok, string(res.Result))
-	// 9.not reach threshold
-	res = g.Vote(idNotReachThreshold, BallotApprove, "")
 	assert.True(t, res.Ok, string(res.Result))
 
 	// handle result
@@ -607,48 +610,11 @@ func TestGovernance_ProposalStrategy(t *testing.T) {
 	mockStub := mock_stub.NewMockStub(mockCtl)
 
 	g := Governance{mockStub}
-	ps := &ProposalStrategy{
-		Typ:                  SimpleMajority,
-		ParticipateThreshold: 0.5,
-	}
-	psData, err := json.Marshal(ps)
-	assert.Nil(t, err)
-
-	psError := &ProposalStrategy{
-		Typ:                  SimpleMajority,
-		ParticipateThreshold: 1.5,
-	}
-	psErrorData, err := json.Marshal(psError)
-	assert.Nil(t, err)
-
-	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
-	mockStub.EXPECT().GetObject(string(RuleMgr), gomock.Any()).Return(false).AnyTimes()
 	mockStub.EXPECT().GetObject(string(AppchainMgr), gomock.Any()).Return(true).AnyTimes()
 
-	res := g.NewProposalStrategy(string(SimpleMajority), 0.5, []byte{})
-	assert.True(t, res.Ok, string(res.Result))
-	res = g.NewProposalStrategy("", 0.5, []byte{})
-	assert.False(t, res.Ok, string(res.Result))
-
-	res = g.SetProposalStrategy(string(AppchainMgr), psData)
-	assert.True(t, res.Ok, string(res.Result))
-	res = g.SetProposalStrategy("", psData)
-	assert.False(t, res.Ok, string(res.Result))
-	res = g.SetProposalStrategy(string(AppchainMgr), psErrorData)
-	assert.False(t, res.Ok, string(res.Result))
-
-	res = g.GetProposalStrategy(string(AppchainMgr))
+	res := g.GetProposalStrategy(string(AppchainMgr))
 	assert.True(t, res.Ok, string(res.Result))
 	res = g.GetProposalStrategy("")
-	assert.False(t, res.Ok, string(res.Result))
-	res = g.GetProposalStrategy(string(RuleMgr))
-	assert.False(t, res.Ok, string(res.Result))
-
-	res = g.GetProposalStrategyType(string(AppchainMgr))
-	assert.True(t, res.Ok, string(res.Result))
-	res = g.GetProposalStrategyType("")
-	assert.False(t, res.Ok, string(res.Result))
-	res = g.GetProposalStrategyType(string(RuleMgr))
 	assert.False(t, res.Ok, string(res.Result))
 }
 

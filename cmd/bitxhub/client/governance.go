@@ -63,7 +63,7 @@ func governanceCMD() cli.Command {
 							},
 							cli.StringFlag{
 								Name:     "type",
-								Usage:    "proposal type, currently only AppchainMgr, RuleMgr, NodeMgr, RoleMgr are supported",
+								Usage:    "proposal type, currently only appchain_mgr, rule_mgr, node_mgr, service_mgr, role_mgr and dapp_mgr are supported",
 								Required: false,
 							},
 							cli.StringFlag{
@@ -290,7 +290,7 @@ func getProposalsByConditions(ctx *cli.Context, keyPath string, menthod string, 
 
 func printProposal(proposals []contracts.Proposal) {
 	var table [][]string
-	table = append(table, []string{"Id", "ManagedObjectId", "Type", "EventType", "Status", "A/R", "IE/AE/TE", "Special/Super", "CreateTime", "Description", "EndReason"})
+	table = append(table, []string{"Id", "ManagedObjectId", "Type", "EventType", "Status", "A/R", "IE/AE", "Special/Super", "StrategyExp", "CreateTime", "Description", "EndReason"})
 
 	for _, pro := range proposals {
 		table = append(table, []string{
@@ -300,8 +300,9 @@ func printProposal(proposals []contracts.Proposal) {
 			string(pro.EventType),
 			string(pro.Status),
 			fmt.Sprintf("%s/%s", strconv.Itoa(int(pro.ApproveNum)), strconv.Itoa(int(pro.AgainstNum))),
-			fmt.Sprintf("%s/%s/%s", strconv.Itoa(int(pro.InitialElectorateNum)), strconv.Itoa(int(pro.AvaliableElectorateNum)), strconv.Itoa(int(pro.ThresholdElectorateNum))),
+			fmt.Sprintf("%s/%s", strconv.Itoa(int(pro.InitialElectorateNum)), strconv.Itoa(int(pro.AvaliableElectorateNum))),
 			fmt.Sprintf("%s/%s", strconv.FormatBool(pro.IsSpecial), strconv.FormatBool(pro.IsSuperAdminVoted)),
+			pro.StrategyExpression,
 			strconv.Itoa(int(pro.CreateTime)),
 			pro.Des,
 			string(pro.EndReason),
