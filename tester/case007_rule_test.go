@@ -433,9 +433,6 @@ func (suite *Rule) TestUpdateMasterRule() {
 	suite.vote(proposalId3, priAdmin2, adminNonce2, string(contracts.REJECTED))
 	adminNonce2++
 
-	suite.vote(proposalId3, priAdmin3, adminNonce3, string(contracts.REJECTED))
-	adminNonce3++
-
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID1))
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))

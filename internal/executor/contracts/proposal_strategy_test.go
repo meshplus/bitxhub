@@ -43,12 +43,8 @@ func TestGovStrategy_UpdateProposalStrategy(t *testing.T) {
 
 	res := g.GetAllProposalStrategy()
 	assert.True(t, res.Ok)
-	ps1 := make([]*ProposalStrategy, 0)
-	err := json.Unmarshal(res.Result, &ps1)
-	assert.Nil(t, err)
-	assert.True(t, len(ps1) == len(strategies))
 
-	res = g.UpdateProposalStrategy(strategies[0].Module, string(SimpleMajority), 0.5, "123")
+	res = g.UpdateProposalStrategy(strategies[0].Module, string(SimpleMajority), repo.DefaultSimpleMajorityExpression, "123")
 	assert.True(t, res.Ok, string(res.Result))
 }
 
@@ -61,10 +57,10 @@ func proposalStrategyPrepare(t *testing.T) (*GovStrategy, *mock_stub.MockStub, [
 	strategies := make([]*ProposalStrategy, 0)
 	for i := 0; i < 5; i++ {
 		ps := &ProposalStrategy{
-			Module:               repo.AppchainMgr,
-			Typ:                  ZeroPermission,
-			Status:               governance.GovernanceAvailable,
-			ParticipateThreshold: 0,
+			Module: repo.AppchainMgr,
+			Typ:    ZeroPermission,
+			Status: governance.GovernanceAvailable,
+			Extra:  "0",
 		}
 		strategies = append(strategies, ps)
 	}

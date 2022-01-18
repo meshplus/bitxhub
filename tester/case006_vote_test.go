@@ -30,31 +30,31 @@ func (suite *Governance) TestGovernance() {
 	path1 := "./test_data/config/node1/key.json"
 	path2 := "./test_data/config/node2/key.json"
 	path3 := "./test_data/config/node3/key.json"
-	//path4 := "./test_data/config/node4/key.json"
+	path4 := "./test_data/config/node4/key.json"
 	keyPath1 := filepath.Join(path1)
 	keyPath2 := filepath.Join(path2)
 	keyPath3 := filepath.Join(path3)
-	//keyPath4 := filepath.Join(path4)
+	keyPath4 := filepath.Join(path4)
 	priAdmin1, err := asym.RestorePrivateKey(keyPath1, "bitxhub")
 	suite.Require().Nil(err)
 	priAdmin2, err := asym.RestorePrivateKey(keyPath2, "bitxhub")
 	suite.Require().Nil(err)
 	priAdmin3, err := asym.RestorePrivateKey(keyPath3, "bitxhub")
 	suite.Require().Nil(err)
-	//priAdmin4, err := asym.RestorePrivateKey(keyPath4, "bitxhub")
-	//suite.Require().Nil(err)
+	priAdmin4, err := asym.RestorePrivateKey(keyPath4, "bitxhub")
+	suite.Require().Nil(err)
 	fromAdmin1, err := priAdmin1.PublicKey().Address()
 	suite.Require().Nil(err)
 	fromAdmin2, err := priAdmin2.PublicKey().Address()
 	suite.Require().Nil(err)
 	fromAdmin3, err := priAdmin3.PublicKey().Address()
 	suite.Require().Nil(err)
-	//fromAdmin4, err := priAdmin4.PublicKey().Address()
-	//suite.Require().Nil(err)
+	fromAdmin4, err := priAdmin4.PublicKey().Address()
+	suite.Require().Nil(err)
 	adminNonce1 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin1.String())
 	adminNonce2 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin2.String())
 	adminNonce3 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin3.String())
-	//adminNonce4 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin4.String())
+	adminNonce4 := suite.api.Broker().GetPendingNonceByAccount(fromAdmin4.String())
 
 	appchainPri, err := asym.GenerateKeyPair(crypto.Secp256k1)
 	suite.Require().Nil(err)
@@ -166,6 +166,18 @@ func (suite *Governance) TestGovernance() {
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	adminNonce3++
 
+	// todo: fix?
+	adminNonce4++
+	// vote4: approve -> proposal approve
+	ret, err = invokeBVMContract(suite.api, priAdmin4, adminNonce4, constant.GovernanceContractAddr.Address(), "Vote",
+		pb.String(registerProposalId),
+		pb.String(contracts.BallotApprove),
+		pb.String("reason"),
+	)
+	suite.Require().Nil(err)
+	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
+	adminNonce4++
+
 	//// vote4: error, the proposal is closed
 	//ret, err = invokeBVMContract(suite.api, priAdmin4, adminNonce4, constant.GovernanceContractAddr.Address(), "Vote",
 	//	pb.String(registerProposalId),
@@ -183,7 +195,7 @@ func (suite *Governance) TestGovernance() {
 	adminNonce1++
 	num, err := strconv.Atoi(string(ret.Ret))
 	suite.Require().Nil(err)
-	suite.Require().Equal(2, num, "approveNum")
+	suite.Require().Equal(3, num, "approveNum")
 
 	// get against num
 	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.GovernanceContractAddr.Address(), "GetAgainstNum", pb.String(registerProposalId))

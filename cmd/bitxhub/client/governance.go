@@ -155,10 +155,11 @@ func proposalStrategyCMD() cli.Command {
 						Value:    "SimpleMajority",
 						Required: false,
 					},
-					cli.Float64Flag{
-						Name:     "threshold",
-						Usage:    "participate threshold, specify what percentage of the popular vote a proposal requires at least. It should be in the [0, 1] range.",
-						Value:    0.75,
+					cli.StringFlag{
+						Name:  "extra",
+						Usage: "expression of strategy. In this expression, 'a' represents the number of people approve, 'r' represents the number of people against, and 't' represents the total number of people who can vote.",
+						//Usage:    "extra info of strategy. For example, SimpleMajority strategy require a majority ratio and it should be in the [0, 1] range.",
+						Value:    "a > 0.5 * t",
 						Required: false,
 					},
 					cli.StringFlag{
@@ -170,20 +171,20 @@ func proposalStrategyCMD() cli.Command {
 				Action: func(ctx *cli.Context) error {
 					module := ctx.String("module")
 					typ := ctx.String("typ")
-					threshold := ctx.Float64("threshold")
+					extra := ctx.String("extra")
 					reason := ctx.String("reason")
 
-					err := repo.CheckStrategyInfo(typ, module, threshold)
+					err := repo.CheckStrategyInfo(typ, module, extra)
 					if err != nil {
 						return err
 					}
 					var receipt *pb.Receipt
 					if module == repo.AllMgr {
 						receipt, err = invokeBVMContract(ctx, constant.ProposalStrategyMgrContractAddr.Address().String(), "UpdateAllProposalStrategy",
-							pb.String(typ), pb.Float64(threshold), pb.String(reason))
+							pb.String(typ), pb.Bytes([]byte(extra)), pb.String(reason))
 					} else {
 						receipt, err = invokeBVMContract(ctx, constant.ProposalStrategyMgrContractAddr.Address().String(), "UpdateProposalStrategy",
-							pb.String(module), pb.String(typ), pb.Float64(threshold), pb.String(reason))
+							pb.String(module), pb.String(typ), pb.String(extra), pb.String(reason))
 					}
 
 					if err != nil {
@@ -382,7 +383,7 @@ func getProposalsByConditions(ctx *cli.Context, keyPath string, method string, a
 
 func printProposal(proposals []contracts.Proposal) {
 	var table [][]string
-	table = append(table, []string{"Id", "ManagedObjectId", "Type", "EventType", "Status", "A/R", "IE/AE/TE", "Special/Super", "CreateTime", "Reason", "EndReason", "extra"})
+	table = append(table, []string{"Id", "ManagedObjectId", "Type", "EventType", "Status", "A/R", "IE/AE", "Special/Super", "StrategyExp", "CreateTime", "Reason", "EndReason", "extra"})
 
 	for _, pro := range proposals {
 		table = append(table, []string{
@@ -392,8 +393,9 @@ func printProposal(proposals []contracts.Proposal) {
 			string(pro.EventType),
 			string(pro.Status),
 			fmt.Sprintf("%s/%s", strconv.Itoa(int(pro.ApproveNum)), strconv.Itoa(int(pro.AgainstNum))),
-			fmt.Sprintf("%s/%s/%s", strconv.Itoa(int(pro.InitialElectorateNum)), strconv.Itoa(int(pro.AvaliableElectorateNum)), strconv.Itoa(int(pro.ThresholdElectorateNum))),
+			fmt.Sprintf("%s/%s", strconv.Itoa(int(pro.InitialElectorateNum)), strconv.Itoa(int(pro.AvaliableElectorateNum))),
 			fmt.Sprintf("%s/%s", strconv.FormatBool(pro.IsSpecial), strconv.FormatBool(pro.IsSuperAdminVoted)),
+			pro.StrategyExpression,
 			strconv.Itoa(int(pro.CreateTime)),
 			pro.SubmitReason,
 			string(pro.EndReason),
@@ -516,13 +518,13 @@ func invokeBVMContractBySendView(ctx *cli.Context, contractAddr string, method s
 
 func printProposalStrategy(strategies []*contracts.ProposalStrategy) {
 	var table [][]string
-	table = append(table, []string{"module", "strategy", "ParticipateThreshold", "Status"})
+	table = append(table, []string{"module", "strategy", "Extra", "Status"})
 	for _, r := range strategies {
 
 		table = append(table, []string{
 			r.Module,
 			string(r.Typ),
-			fmt.Sprintf("%0.2f", r.ParticipateThreshold),
+			r.Extra,
 			string(r.Status),
 		})
 	}
