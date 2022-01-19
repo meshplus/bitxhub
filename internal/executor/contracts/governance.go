@@ -3,7 +3,6 @@ package contracts
 import (
 	"encoding/json"
 	"fmt"
-	"math"
 	"sort"
 	"strconv"
 	"strings"
@@ -94,7 +93,6 @@ type Proposal struct {
 	ElectorateList         []*Role              `json:"electorate_list"`
 	InitialElectorateNum   uint64               `json:"initial_electorate_num"`
 	AvaliableElectorateNum uint64               `json:"avaliable_electorate_num"`
-	ThresholdElectorateNum uint64               `json:"threshold_electorate_num"`
 	EventType              governance.EventType `json:"event_type"`
 	EndReason              EndReason            `json:"end_reason"`
 	LockProposalId         string               `json:"lock_proposal_id"`
@@ -103,6 +101,7 @@ type Proposal struct {
 	SubmitReason           string               `json:"submit_reason"`
 	WithdrawReason         string               `json:"withdraw_reason"`
 	StrategyType           ProposalStrategyType `json:"strategy_type"`
+	StrategyExpression     string               `json:"strategy_expression"`
 	CreateTime             int64                `json:"create_time"`
 	Extra                  []byte               `json:"extra"`
 }
@@ -242,7 +241,7 @@ func (g *Governance) SubmitProposal(from, eventTyp, typ, objId, objLastStatus, r
 		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 	}
 
-	thresholdNum, strategyTyp, err := g.getStrategyInfo(eletctorateNum, ProposalType(typ))
+	expression, strategyTyp, err := g.getStrategyInfo(ProposalType(typ))
 	if err != nil {
 		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 	}
@@ -266,12 +265,12 @@ func (g *Governance) SubmitProposal(from, eventTyp, typ, objId, objLastStatus, r
 		ElectorateList:         electorateList,
 		InitialElectorateNum:   uint64(eletctorateNum),
 		AvaliableElectorateNum: uint64(eletctorateNum),
-		ThresholdElectorateNum: uint64(thresholdNum),
 		LockProposalId:         lockPId,
 		IsSuperAdminVoted:      false,
 		SubmitReason:           reason,
 		WithdrawReason:         "",
 		StrategyType:           strategyTyp,
+		StrategyExpression:     expression,
 		CreateTime:             g.GetTxTimeStamp(),
 		Extra:                  extra,
 	}
@@ -300,7 +299,7 @@ func (g *Governance) ZeroPermission(id string) *boltvm.Response {
 	if !g.GetObject(ProposalKey(id), p) {
 		return boltvm.Error(boltvm.GovernanceNonexistentProposalCode, fmt.Sprintf(string(boltvm.GovernanceNonexistentProposalMsg), id, ""))
 	}
-	if p.ThresholdElectorateNum == 0 {
+	if p.StrategyType == ZeroPermission {
 		p.EndReason = ZeroPermissionReason
 		g.changeProposalStatus(p, APPROVED)
 		if err := g.handleResult(p); err != nil {
@@ -349,22 +348,22 @@ func (g *Governance) getElectorate() ([]*Role, int, error) {
 	return availableAdmins, len(availableAdmins), nil
 }
 
-func (g *Governance) getStrategyInfo(electorateNum int, proposalTyp ProposalType) (int, ProposalStrategyType, error) {
-	if err := repo.CheckManageModule(string(proposalTyp)); err != nil {
-		return 0, "", fmt.Errorf(err.Error())
+func (g *Governance) getStrategyInfo(module ProposalType) (string, ProposalStrategyType, error) {
+	if err := repo.CheckManageModule(string(module)); err != nil {
+		return "", "", fmt.Errorf(err.Error())
 	}
-	ps := ProposalStrategy{}
-	res := g.CrossInvoke(constant.ProposalStrategyMgrContractAddr.Address().String(), "GetProposalStrategy", pb.String(string(proposalTyp)))
+	ps := &ProposalStrategy{}
+	res := g.CrossInvoke(constant.ProposalStrategyMgrContractAddr.Address().String(), "GetProposalStrategy", pb.String(string(module)))
 	if !res.Ok {
 		// SimpleMajority is used by default
-		ps.Typ = SimpleMajority
-		ps.ParticipateThreshold = repo.DefaultParticipateThreshold
+		ps = defaultStrategy(string(module))
 	} else {
 		if err := json.Unmarshal(res.Result, &ps); err != nil {
-			return 0, "", fmt.Errorf("unmashal proposal strategy")
+			return "", "", fmt.Errorf("unmashal proposal strategy")
 		}
 	}
-	return int(math.Ceil(float64(electorateNum) * ps.ParticipateThreshold)), ps.Typ, nil
+
+	return ps.Extra, ps.Typ, nil
 }
 
 // =========== WithdrawProposal withdraws the designated proposal
@@ -550,29 +549,23 @@ func (g *Governance) countVote(p *Proposal) (bool, error) {
 		}
 	}
 
-	// 2. Determine whether the participation threshold for the strategy has been met
-	if p.ApproveNum+p.AgainstNum < p.ThresholdElectorateNum {
-		return false, nil
+	// 2. Determine whether the vote is end or not
+	isEnd, isApprove, err := repo.MakeStrategyDecision(p.StrategyExpression, p.ApproveNum, p.AgainstNum, p.InitialElectorateNum, p.AvaliableElectorateNum)
+	if err != nil {
+		return false, err
 	}
 
-	// Votes are counted according to strategy
-	switch p.StrategyType {
-	case SuperMajorityApprove:
-		// TODO: SUPER_MAJORITY_APPROVE
-		return false, fmt.Errorf("this policy is not supported currently")
-	case SuperMajorityAgainst:
-		// TODO: SUPER_MAJORITY_AGAINST
-		return false, fmt.Errorf("this policy is not supported currently")
-	default: // SIMPLE_MAJORITY
-		if p.ApproveNum > p.AgainstNum {
-			p.EndReason = NormalReason
+	if isEnd {
+		p.EndReason = NormalReason
+		if isApprove {
 			g.changeProposalStatus(p, APPROVED)
 		} else {
-			p.EndReason = NormalReason
 			g.changeProposalStatus(p, REJECTED)
 		}
-		g.SetObject(ProposalKey(p.Id), *p)
 		return true, nil
+	} else {
+		// wait next vote
+		return false, nil
 	}
 }
 
@@ -834,9 +827,18 @@ func (g *Governance) UpdateAvaliableElectorateNum(id string, num uint64) *boltvm
 		"proposalId":             id,
 		"AvaliableElectorateNum": p.AvaliableElectorateNum,
 	}).Info("Update avaliable electorate num")
-	if p.AvaliableElectorateNum < p.ThresholdElectorateNum {
+	isEnd, isApprove, err := repo.MakeStrategyDecision(p.StrategyExpression, p.ApproveNum, p.AgainstNum, p.InitialElectorateNum, p.AvaliableElectorateNum)
+	if err != nil {
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("MakeStrategyDecision err: %v", err)))
+	}
+
+	if isEnd {
 		p.EndReason = ElectorateReason
-		g.changeProposalStatus(p, REJECTED)
+		if isApprove {
+			g.changeProposalStatus(p, APPROVED)
+		} else {
+			g.changeProposalStatus(p, REJECTED)
+		}
 		err := g.handleResult(p)
 		if err != nil {
 			return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
@@ -1153,16 +1155,6 @@ func (g *Governance) GetAvaliableElectorateNum(id string) *boltvm.Response {
 	}
 
 	return boltvm.Success([]byte(strconv.Itoa(int(p.AvaliableElectorateNum))))
-}
-
-// Get the minimum number of votes required for the current voting strategy
-func (g *Governance) GetThresholdNum(id string) *boltvm.Response {
-	p := &Proposal{}
-	if !g.GetObject(ProposalKey(id), p) {
-		return boltvm.Error(boltvm.GovernanceNonexistentProposalCode, fmt.Sprintf(string(boltvm.GovernanceNonexistentProposalMsg), id, ""))
-	}
-
-	return boltvm.Success([]byte(strconv.Itoa(int(p.ThresholdElectorateNum))))
 }
 
 // Get the number of people who have voted

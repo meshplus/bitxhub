@@ -27,21 +27,16 @@ const (
 )
 
 type ProposalStrategy struct {
-	Module string               `json:"module"`
-	Typ    ProposalStrategyType `json:"typ"`
-	// The minimum participation threshold.
-	// Only when the number of voting participants reaches this proportion,
-	// the proposal will take effect. That is, the proposal can be judged
-	// according to the voting situation.
-	ParticipateThreshold float64                     `json:"participate_threshold"`
-	Extra                []byte                      `json:"extra"`
-	Status               governance.GovernanceStatus `json:"status"`
-	FSM                  *fsm.FSM                    `json:"fsm"`
+	Module string                      `json:"module"`
+	Typ    ProposalStrategyType        `json:"typ"`
+	Extra  string                      `json:"extra"`
+	Status governance.GovernanceStatus `json:"status"`
+	FSM    *fsm.FSM                    `json:"fsm"`
 }
 
 type UpdateStrategyInfo struct {
-	Typ                  UpdateInfo `json:"typ"`
-	ParticipateThreshold UpdateInfo `json:"participate_threshold"`
+	Typ   UpdateInfo `json:"typ"`
+	Extra UpdateInfo `json:"extra"`
 }
 
 var strategyStateMap = map[governance.EventType][]governance.GovernanceStatus{
@@ -162,8 +157,8 @@ func (g *GovStrategy) Manage(eventTyp, proposalResult, lastStatus, objId string,
 				if mInfo.Typ.IsEdit {
 					ps.Typ = ProposalStrategyType(mInfo.Typ.NewInfo.(string))
 				}
-				if mInfo.ParticipateThreshold.IsEdit {
-					ps.ParticipateThreshold = mInfo.ParticipateThreshold.NewInfo.(float64)
+				if mInfo.Extra.IsEdit {
+					ps.Extra = mInfo.Extra.NewInfo.(string)
 				}
 				g.SetObject(ProposalStrategyKey(mgr), ps)
 			}
@@ -176,13 +171,7 @@ func (g *GovStrategy) governancePre(module, event string) (*ProposalStrategy, *b
 	ps := &ProposalStrategy{}
 	if ok := g.GetObject(ProposalStrategyKey(module), ps); !ok {
 		// If the strategy does not exist, the current module has used the default SimpleMajority strategy until now.
-		ps = &ProposalStrategy{
-			Module:               module,
-			Typ:                  SimpleMajority,
-			ParticipateThreshold: repo.DefaultParticipateThreshold,
-			Extra:                nil,
-			Status:               governance.GovernanceAvailable,
-		}
+		ps = defaultStrategy(module)
 	}
 
 	for _, s := range strategyStateMap[governance.EventType(event)] {
@@ -195,43 +184,43 @@ func (g *GovStrategy) governancePre(module, event string) (*ProposalStrategy, *b
 }
 
 // update proposal strategy for a proposal type
-func (g *GovStrategy) UpdateProposalStrategy(pt string, typ string, participateThreshold float64, reason string) *boltvm.Response {
+func (g *GovStrategy) UpdateProposalStrategy(module string, typ string, strategyExtra string, reason string) *boltvm.Response {
 	// 1. check premission
-	if err := g.checkPermission([]string{string(PermissionAdmin)}, pt, g.CurrentCaller(), nil); err != nil {
+	if err := g.checkPermission([]string{string(PermissionAdmin)}, module, g.CurrentCaller(), nil); err != nil {
 		return boltvm.Error(boltvm.ProposalStrategyNoPermissionCode, fmt.Sprintf(string(boltvm.ProposalStrategyNoPermissionMsg), g.CurrentCaller(), fmt.Sprintf("check permission error:%v", err)))
 	}
 
 	// 2. check strategy status (check whether the strategy is being updated)
-	ps, bxhErr := g.governancePre(pt, string(governance.EventUpdate))
+	strategy, bxhErr := g.governancePre(module, string(governance.EventUpdate))
 	if bxhErr != nil {
 		return boltvm.Error(bxhErr.Code, string(bxhErr.Msg))
 	}
 
 	info := UpdateStrategyInfo{}
 	info.Typ = UpdateInfo{
-		OldInfo: ps.Typ,
+		OldInfo: strategy.Typ,
 		NewInfo: typ,
-		IsEdit:  string(ps.Typ) != typ,
+		IsEdit:  string(strategy.Typ) != typ,
 	}
-	info.ParticipateThreshold = UpdateInfo{
-		OldInfo: ps.ParticipateThreshold,
-		NewInfo: participateThreshold,
-		IsEdit:  ps.ParticipateThreshold != participateThreshold,
+	info.Extra = UpdateInfo{
+		OldInfo: strategy.Extra,
+		NewInfo: strategyExtra,
+		IsEdit:  strategy.Extra != strategyExtra,
 	}
 
 	// 3. check whether the updated information is consistent with the previous information
-	if !info.Typ.IsEdit && !info.ParticipateThreshold.IsEdit {
+	if !info.Typ.IsEdit && !info.Extra.IsEdit {
 		return boltvm.Error(boltvm.ProposalStrategyNotUpdateCode, string(boltvm.ProposalStrategyNotUpdateMsg))
 	}
 
 	// 4. check strategy info
-	if err := repo.CheckStrategyInfo(string(ps.Typ), string(ps.Module), ps.ParticipateThreshold); err != nil {
+	if err := repo.CheckStrategyInfo(typ, module, strategyExtra); err != nil {
 		return boltvm.Error(boltvm.ProposalStrategyIllegalProposalStrategyInfoCode, fmt.Sprintf(string(boltvm.ProposalStrategyIllegalProposalStrategyInfoMsg), err.Error()))
 	}
 
 	// 5. submit proposal
 	infoMap := map[string]UpdateStrategyInfo{}
-	infoMap[pt] = info
+	infoMap[module] = info
 	extra, err := json.Marshal(infoMap)
 	if err != nil {
 		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf("unmarshal update strategy error: %v", err))
@@ -240,8 +229,8 @@ func (g *GovStrategy) UpdateProposalStrategy(pt string, typ string, participateT
 		pb.String(g.Caller()),
 		pb.String(string(governance.EventUpdate)),
 		pb.String(string(ProposalStrategyMgr)),
-		pb.String(pt),
-		pb.String(string(ps.Status)),
+		pb.String(module),
+		pb.String(string(strategy.Status)),
 		pb.String(reason),
 		pb.Bytes(extra),
 	)
@@ -249,15 +238,15 @@ func (g *GovStrategy) UpdateProposalStrategy(pt string, typ string, participateT
 		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyInternalErrMsg), fmt.Sprintf("submit proposal error: %s", string(res.Result))))
 	}
 
-	g.changeStatus(pt, string(governance.EventUpdate), string(ps.Status))
+	g.changeStatus(module, string(governance.EventUpdate), string(strategy.Status))
 
 	g.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(res.Result)))
 
-	return getGovernanceRet(string(res.Result), []byte(pt))
+	return getGovernanceRet(string(res.Result), []byte(module))
 }
 
 // update proposal strategy for a proposal type
-func (g *GovStrategy) UpdateAllProposalStrategy(typ string, participateThreshold float64, reason string) *boltvm.Response {
+func (g *GovStrategy) UpdateAllProposalStrategy(typ string, strategyExtra string, reason string) *boltvm.Response {
 	pt := repo.AllMgr
 
 	// 1. check premission
@@ -278,10 +267,10 @@ func (g *GovStrategy) UpdateAllProposalStrategy(typ string, participateThreshold
 				NewInfo: typ,
 				IsEdit:  string(moduleStrategy.Typ) != typ,
 			},
-			ParticipateThreshold: UpdateInfo{
-				OldInfo: moduleStrategy.ParticipateThreshold,
-				NewInfo: participateThreshold,
-				IsEdit:  moduleStrategy.ParticipateThreshold != participateThreshold,
+			Extra: UpdateInfo{
+				OldInfo: moduleStrategy.Extra,
+				NewInfo: strategyExtra,
+				IsEdit:  moduleStrategy.Extra != strategyExtra,
 			},
 		}
 	}
@@ -289,7 +278,7 @@ func (g *GovStrategy) UpdateAllProposalStrategy(typ string, participateThreshold
 	// 3. check whether the updated information is consistent with the previous information
 	isEdit := false
 	for _, info := range infoMap {
-		if info.Typ.IsEdit || info.ParticipateThreshold.IsEdit {
+		if info.Typ.IsEdit || info.Extra.IsEdit {
 			isEdit = true
 			break
 		}
@@ -299,7 +288,7 @@ func (g *GovStrategy) UpdateAllProposalStrategy(typ string, participateThreshold
 	}
 
 	// 4. check strategy info
-	if err := repo.CheckStrategyType(typ, participateThreshold); err != nil {
+	if err := repo.CheckStrategyType(typ, strategyExtra); err != nil {
 		return boltvm.Error(boltvm.ProposalStrategyIllegalProposalStrategyInfoCode, fmt.Sprintf(string(boltvm.ProposalStrategyIllegalProposalStrategyInfoMsg), err.Error()))
 	}
 
@@ -332,16 +321,12 @@ func (g *GovStrategy) UpdateAllProposalStrategy(typ string, participateThreshold
 
 func (g *GovStrategy) GetAllProposalStrategy() *boltvm.Response {
 	ret := make([]*ProposalStrategy, 0)
-	ok, value := g.Query(PROPOSALSTRATEGY_PREFIX)
-	if ok {
-		for _, data := range value {
-			ps := &ProposalStrategy{}
-			if err := json.Unmarshal(data, ps); err != nil {
-				return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf("unmarshal proposal strategy error: %v", err))
-			}
-			ret = append(ret, ps)
-		}
+	for _, module := range mgrs {
+		ps := defaultStrategy(module)
+		_ = g.GetObject(ProposalStrategyKey(module), ps)
+		ret = append(ret, ps)
 	}
+
 	data, err := json.Marshal(ret)
 	if err != nil {
 		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf("marshal proposal strategy error: %v", err))
@@ -354,10 +339,8 @@ func (g *GovStrategy) GetProposalStrategy(pt string) *boltvm.Response {
 		return boltvm.Error(boltvm.ProposalStrategyIllegalProposalTypeCode, fmt.Sprintf(string(boltvm.ProposalStrategyIllegalProposalTypeMsg), pt))
 	}
 
-	ps := &ProposalStrategy{}
-	if !g.GetObject(ProposalStrategyKey(pt), ps) {
-		return boltvm.Error(boltvm.ProposalStrategyNonexistentProposalStrategyCode, fmt.Sprintf(string(boltvm.ProposalStrategyNonexistentProposalStrategyMsg), pt))
-	}
+	ps := defaultStrategy(pt)
+	_ = g.GetObject(ProposalStrategyKey(pt), ps)
 
 	pData, err := json.Marshal(ps)
 	if err != nil {
@@ -368,4 +351,13 @@ func (g *GovStrategy) GetProposalStrategy(pt string) *boltvm.Response {
 
 func ProposalStrategyKey(ps string) string {
 	return fmt.Sprintf("%s-%s", PROPOSALSTRATEGY_PREFIX, ps)
+}
+
+func defaultStrategy(module string) *ProposalStrategy {
+	return &ProposalStrategy{
+		Module: module,
+		Typ:    SimpleMajority,
+		Extra:  repo.DefaultSimpleMajorityExpression,
+		Status: governance.GovernanceAvailable,
+	}
 }

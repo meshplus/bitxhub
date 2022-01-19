@@ -54,10 +54,10 @@ func Initialize(genesis *repo.Genesis, nodes []*repo.NetworkNodes, primaryN uint
 
 	for _, v := range genesis.Strategy {
 		ps := &contracts.ProposalStrategy{
-			Module:               v.Module,
-			Typ:                  contracts.ProposalStrategyType(v.Typ),
-			ParticipateThreshold: v.ParticipateThreshold,
-			Status:               governance.GovernanceAvailable,
+			Module: v.Module,
+			Typ:    contracts.ProposalStrategyType(v.Typ),
+			Extra:  v.Extra,
+			Status: governance.GovernanceAvailable,
 		}
 		psData, err := json.Marshal(ps)
 		if err != nil {

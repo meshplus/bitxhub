@@ -420,9 +420,6 @@ func (suite *Service) TestLogoutAppchainAffectService() {
 	suite.vote(proposalLogoutAppchainID, priAdmin2, adminNonce2, string(contracts.REJECTED))
 	adminNonce2++
 
-	suite.vote(proposalLogoutAppchainID, priAdmin3, adminNonce3, string(contracts.REJECTED))
-	adminNonce3++
-
 	ret, err = invokeBVMContract(suite.api, k1, k1Nonce, constant.AppchainMgrContractAddr.Address(), "GetAppchain", pb.String(chainID1))
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
