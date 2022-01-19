@@ -68,6 +68,10 @@ func (exec *BlockExecutor) GetBoltContracts() map[string]agency.Contract {
 	return exec.txsExecutor.GetBoltContracts()
 }
 
+func (exec *BlockExecutor) GetTxsExecutor() agency.TxsExecutor {
+	return exec.txsExecutor
+}
+
 // New creates executor instance
 func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, client *appchain.Client, config *repo.Config, gasPrice *big.Int) (*BlockExecutor, error) {
 	ibtpVerify := proof.New(chainLedger, logger, config.ChainID, config.GasLimit)
