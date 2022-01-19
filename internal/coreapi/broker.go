@@ -33,8 +33,9 @@ func (b *BrokerAPI) HandleTransaction(tx pb.Transaction) error {
 	}
 
 	b.logger.WithFields(logrus.Fields{
-		"hash": tx.GetHash().String(),
-	}).Debugf("Receive tx")
+		"hash":  tx.GetHash().String(),
+		"nonce": tx.GetNonce(),
+	}).Infof("Receive tx")
 
 	if err := b.bxh.Order.Prepare(tx); err != nil {
 		b.logger.Errorf("order prepare for tx %s failed: %s", tx.GetHash().String(), err.Error())
