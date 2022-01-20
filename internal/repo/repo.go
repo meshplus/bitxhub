@@ -110,7 +110,7 @@ func CheckStrategyInfo(typ, module string, extra string) error {
 		return fmt.Errorf("illegal proposal strategy type:%s, err: %v", typ, err)
 	}
 	if CheckManageModule(module) != nil {
-		return fmt.Errorf("illegal proposal strategy module:%s", typ)
+		return fmt.Errorf("illegal proposal strategy module:%s", module)
 	}
 	return nil
 }
