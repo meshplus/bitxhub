@@ -307,9 +307,12 @@ func (exec *BlockExecutor) applyTx(index int, tx pb.Transaction, invalidReason a
 	receipt := exec.applyTransaction(index, tx, invalidReason, opt)
 	if tx.IsIBTP() {
 		exec.logger.WithFields(logrus.Fields{
-			"from": tx.GetIBTP().From,
-			"to":   tx.GetIBTP().To,
-			"now":  time.Now().UnixNano(),
+			"from":       tx.GetIBTP().From,
+			"to":         tx.GetIBTP().To,
+			"rRet":       string(receipt.Ret),
+			"rBloomSize": receipt.Bloom.Size(),
+			"rEvmLogs":   receipt.EvmLogs,
+			"rEvents":    receipt.Events,
 		}).Debug(fmt.Sprintf("---- run interchain: %d", time.Since(time1).Nanoseconds()))
 	} else {
 		exec.logger.WithFields(logrus.Fields{
