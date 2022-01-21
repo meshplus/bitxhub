@@ -218,6 +218,7 @@ func (x *InterchainManager) HandleIBTP(ibtp *pb.IBTP) *boltvm.Response {
 		"from": ibtp.From,
 		"to":   ibtp.To,
 	}).Debug(fmt.Sprintf("1: %d", time.Since(time1).Nanoseconds()))
+	time2 := time.Now()
 	var change *StatusChange
 	var err error
 	if pb.IBTP_REQUEST == ibtp.Category() {
@@ -232,19 +233,22 @@ func (x *InterchainManager) HandleIBTP(ibtp *pb.IBTP) *boltvm.Response {
 	x.Logger().WithFields(logrus.Fields{
 		"from": ibtp.From,
 		"to":   ibtp.To,
-	}).Debug(fmt.Sprintf("2: %d", time.Since(time1).Nanoseconds()))
+	}).Debug(fmt.Sprintf("2: %d", time.Since(time2).Nanoseconds()))
+	time3 := time.Now()
 	x.notifySrcDst(ibtp, change)
 
 	x.Logger().WithFields(logrus.Fields{
 		"from": ibtp.From,
 		"to":   ibtp.To,
-	}).Debug(fmt.Sprintf("3: %d", time.Since(time1).Nanoseconds()))
+	}).Debug(fmt.Sprintf("3: %d", time.Since(time3).Nanoseconds()))
+	time4 := time.Now()
 	ret := x.ProcessIBTP(ibtp, interchain)
 
 	x.Logger().WithFields(logrus.Fields{
 		"from": ibtp.From,
 		"to":   ibtp.To,
-	}).Debug(fmt.Sprintf("4: %d", time.Since(time1).Nanoseconds()))
+	}).Debug(fmt.Sprintf("4: %d", time.Since(time4).Nanoseconds()))
+	time5 := time.Now()
 	if err := x.postAuditInterchainEvent(ibtp.From); err != nil {
 		return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), fmt.Sprintf("post audit interchain event error: %v", err)))
 	}
@@ -255,7 +259,7 @@ func (x *InterchainManager) HandleIBTP(ibtp *pb.IBTP) *boltvm.Response {
 	x.Logger().WithFields(logrus.Fields{
 		"from": ibtp.From,
 		"to":   ibtp.To,
-	}).Debug(fmt.Sprintf("5: %d", time.Since(time1).Nanoseconds()))
+	}).Debug(fmt.Sprintf("5: %d", time.Since(time5).Nanoseconds()))
 	return boltvm.Success(ret)
 }
 

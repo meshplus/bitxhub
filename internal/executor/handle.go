@@ -439,13 +439,13 @@ func (exec *BlockExecutor) applyTransaction(i int, tx pb.Transaction, invalidRea
 		TxHash:  tx.GetHash(),
 	}
 
-	exec.ledger.PrepareEVM(common.BytesToHash(tx.GetHash().Bytes()), i)
+	//exec.ledger.PrepareEVM(common.BytesToHash(tx.GetHash().Bytes()), i)
 
 	switch tx.(type) {
 	case *pb.BxhTransaction:
 		bxhTx := tx.(*pb.BxhTransaction)
-		snapshot := exec.ledger.Snapshot()
-		ret, gasUsed, err := exec.applyBxhTransaction(i, bxhTx, invalidReason, opt)
+		//snapshot := exec.ledger.Snapshot()
+		ret, _, err := exec.applyBxhTransaction(i, bxhTx, invalidReason, opt)
 		if err != nil {
 			receipt.Status = pb.Receipt_FAILED
 			receipt.Ret = []byte(err.Error())
@@ -455,15 +455,15 @@ func (exec *BlockExecutor) applyTransaction(i int, tx pb.Transaction, invalidRea
 			receipt.Status = pb.Receipt_SUCCESS
 			receipt.Ret = ret
 		}
-		receipt.Bloom = ledger.CreateBloom(ledger.EvmReceipts{receipt})
-		receipt.GasUsed = gasUsed
-
-		if err := exec.payGasFee(tx, gasUsed); err != nil {
-			exec.ledger.RevertToSnapshot(snapshot)
-			receipt.Status = pb.Receipt_FAILED
-			receipt.Ret = []byte(err.Error())
-			exec.payLeftAsGasFee(tx)
-		}
+		//receipt.Bloom = ledger.CreateBloom(ledger.EvmReceipts{receipt})
+		//receipt.GasUsed = gasUsed
+		//
+		//if err := exec.payGasFee(tx, gasUsed); err != nil {
+		//	exec.ledger.RevertToSnapshot(snapshot)
+		//	receipt.Status = pb.Receipt_FAILED
+		//	receipt.Ret = []byte(err.Error())
+		//	exec.payLeftAsGasFee(tx)
+		//}
 		return receipt
 	case *types2.EthTransaction:
 		ethTx := tx.(*types2.EthTransaction)

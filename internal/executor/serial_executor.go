@@ -33,6 +33,7 @@ func (se *SerialExecutor) ApplyTransactions(txs []pb.Transaction, invalidTxs map
 	receipts := make([]*pb.Receipt, 0, len(txs))
 
 	for i, tx := range txs {
+		se.logger.Debugf("serial executor executed %d tx", i)
 		receipts = append(receipts, se.applyTxFunc(i, tx, invalidTxs[i], nil))
 	}
 

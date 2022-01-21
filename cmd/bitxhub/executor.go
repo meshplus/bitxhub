@@ -242,6 +242,7 @@ func testExecutor(ctx *cli.Context) error {
 			break
 		}
 	}
+	execLogger.Infoln("end block", height)
 
 	return nil
 }
@@ -495,7 +496,7 @@ func genNormalTxs(repoRoot string, addresses []*types.Address, logger logrus.Fie
 }
 
 func applyTransaction(txsExec agency.TxsExecutor, rwLdg *ledger.Ledger, txs []pb.Transaction, addressMap map[string]uint64, height uint64, execLogger logrus.FieldLogger, isInterchain bool) {
-	//execLogger.Infoln("begin block", height)
+	execLogger.Debugln("begin block", height)
 	block := &pb.Block{
 		BlockHeader: &pb.BlockHeader{
 			Number:      uint64(height),
