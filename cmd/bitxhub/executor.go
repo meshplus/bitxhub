@@ -60,9 +60,14 @@ func executeCMD() cli.Command {
 				Usage: "bitxhub order config path",
 			},
 			cli.IntFlag{
-				Name:  "txNum",
+				Name:  "interchainTxNum",
 				Usage: "the number of txs in a block",
 				Value: 1000,
+			},
+			cli.IntFlag{
+				Name:  "normalTxNum",
+				Usage: "the number of txs in a block",
+				Value: 0,
 			},
 			cli.IntFlag{
 				Name:  "fromNum",
@@ -87,7 +92,8 @@ func testExecutor(ctx *cli.Context) error {
 	passwd := ctx.String("passwd")
 	configPath := ctx.String("config")
 	networkPath := ctx.String("network")
-	txNum := ctx.Int("txNum")
+	interchainTxNum := ctx.Int("interchainTxNum")
+	normalTxNum := ctx.Int("normalTxNum")
 	fromNum := ctx.Int("fromNum")
 	duration := ctx.Int("duration")
 
@@ -219,14 +225,17 @@ func testExecutor(ctx *cli.Context) error {
 
 	// ======================================================================================== test
 	execLogger.WithFields(logrus.Fields{
-		"txNum":    txNum,
-		"fromNum":  fromNum,
-		"duration": duration,
+		"interchainTxNum": interchainTxNum,
+		"normalTxNum":     normalTxNum,
+		"fromNum":         fromNum,
+		"duration":        duration,
 	}).Info("start exec test...")
 	startTime := time.Now()
 	for {
 		//execLogger.Infoln("generate ibtp transactions...")
-		txs2 := genTransactions(addresses, addressMap, txNum, fromNum)
+		interchainTxs := genInterchainTxs(addresses, addressMap, interchainTxNum, fromNum)
+		normalTxs := genNormalTxs(repoRoot, addresses, execLogger, normalTxNum, fromNum)
+		txs2 := mergeTxs(interchainTxs, normalTxs, 1)
 		applyTransaction(txsExec, rwLdg, txs2, addressMap, uint64(height), execLogger, true)
 		height++
 		if time.Since(startTime).Milliseconds() >= int64(duration) {
@@ -235,6 +244,41 @@ func testExecutor(ctx *cli.Context) error {
 	}
 
 	return nil
+}
+
+func mergeTxs(interchainTxs []pb.Transaction, normalTxs []pb.Transaction, normalGatherN int) []pb.Transaction {
+	interchainN := len(interchainTxs)
+	normalN := len(normalTxs)
+	secN := normalN / normalGatherN
+	interchainGatherN := interchainN / secN
+
+	var txs []pb.Transaction
+	interchainJ := 0
+	normalJ := 0
+	for i := 0; i < secN; i++ {
+		for j := 0; j < interchainGatherN; j++ {
+			if interchainJ >= interchainN {
+				break
+			}
+			txs = append(txs, interchainTxs[interchainJ])
+			interchainJ++
+		}
+		for j := 0; j < normalGatherN; j++ {
+			if normalJ >= normalN {
+				break
+			}
+			txs = append(txs, normalTxs[normalJ])
+			normalJ++
+		}
+	}
+	for ; interchainJ < interchainN; interchainJ++ {
+		txs = append(txs, interchainTxs[interchainJ])
+	}
+	for ; normalJ < normalN; normalJ++ {
+		txs = append(txs, normalTxs[normalJ])
+	}
+
+	return txs
 }
 
 func initSeveralAddress(num int) ([]*types.Address, error) {
@@ -377,7 +421,7 @@ func genRegisterTransactions(addresses []*types.Address) []pb.Transaction {
 	return txs
 }
 
-func genTransactions(addresses []*types.Address, addressMap map[string]uint64, txNum, fromNum int) []pb.Transaction {
+func genInterchainTxs(addresses []*types.Address, addressMap map[string]uint64, txNum, fromNum int) []pb.Transaction {
 	var txs []pb.Transaction
 	content := &pb.Content{
 		Func: "interchainCharge",
@@ -410,6 +454,40 @@ func genTransactions(addresses []*types.Address, addressMap map[string]uint64, t
 		txs = append(txs, tx)
 		addressMap[addresses[randIndex].String()] = addressMap[addresses[randIndex].String()] + 1
 	}
+	return txs
+}
+
+func genNormalTxs(repoRoot string, addresses []*types.Address, logger logrus.FieldLogger, txNum, fromNum int) []pb.Transaction {
+	keyPath1 := filepath.Join(repoRoot, "key.json")
+	priAdmin1, _ := asym.RestorePrivateKey(keyPath1, "bitxhub")
+	fromAdmin1, _ := priAdmin1.PublicKey().Address()
+	//adminNonce1 := api.Broker().GetPendingNonceByAccount(fromAdmin1.String())
+
+	td := &pb.TransactionData{
+		Type:   pb.TransactionData_NORMAL,
+		Amount: "1",
+	}
+
+	payload, _ := td.Marshal()
+
+	var txs []pb.Transaction
+	for i := 0; i < txNum; i++ {
+		rand.Seed(time.Now().UnixNano())
+		randIndex := rand.Intn(fromNum)
+		tx := &pb.BxhTransaction{
+			From:      fromAdmin1,
+			To:        addresses[randIndex],
+			Payload:   payload,
+			Timestamp: time.Now().UnixNano(),
+			//Nonce:     nonce,
+		}
+		tx.Sign(priAdmin1)
+
+		tx.TransactionHash = tx.Hash()
+
+		txs = append(txs, tx)
+	}
+
 	return txs
 }
 

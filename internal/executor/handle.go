@@ -310,7 +310,11 @@ func (exec *BlockExecutor) applyTx(index int, tx pb.Transaction, invalidReason a
 			"from": tx.GetIBTP().From,
 			"to":   tx.GetIBTP().To,
 			"now":  time.Now().UnixNano(),
-		}).Debug(fmt.Sprintf("1: %d", time.Since(time1).Nanoseconds()))
+		}).Debug(fmt.Sprintf("---- run interchain: %d", time.Since(time1).Nanoseconds()))
+	} else {
+		exec.logger.WithFields(logrus.Fields{
+			"now": time.Now().UnixNano(),
+		}).Debug(fmt.Sprintf("---------------------------------------------- run normal: %d", time.Since(time1).Nanoseconds()))
 	}
 	evs := exec.ledger.Events(tx.GetHash().String())
 	if len(evs) != 0 {
