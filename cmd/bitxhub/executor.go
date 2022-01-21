@@ -250,6 +250,9 @@ func mergeTxs(interchainTxs []pb.Transaction, normalTxs []pb.Transaction, normal
 	interchainN := len(interchainTxs)
 	normalN := len(normalTxs)
 	secN := normalN / normalGatherN
+	if secN == 0 {
+		secN = 1
+	}
 	interchainGatherN := interchainN / secN
 
 	var txs []pb.Transaction
