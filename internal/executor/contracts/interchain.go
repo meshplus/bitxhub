@@ -271,46 +271,46 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, *boltvm.Bx
 		return nil, nil, boltvm.BError(boltvm.InterchainInvalidIBTPParseSourceErrorCode, fmt.Sprintf(string(boltvm.InterchainInvalidIBTPParseSourceErrorMsg), err.Error()))
 	}
 
-	dstChainService, err := x.parseChainService(ibtp.To)
-	if err != nil {
-		return nil, nil, boltvm.BError(boltvm.InterchainInvalidIBTPParseDestErrorCode, fmt.Sprintf(string(boltvm.InterchainInvalidIBTPParseDestErrorMsg), err.Error()))
-	}
+	//dstChainService, err := x.parseChainService(ibtp.To)
+	//if err != nil {
+	//	return nil, nil, boltvm.BError(boltvm.InterchainInvalidIBTPParseDestErrorCode, fmt.Sprintf(string(boltvm.InterchainInvalidIBTPParseDestErrorMsg), err.Error()))
+	//}
 
 	interchain, _ := x.getInterchain(srcChainService.getFullServiceId())
 
-	if pb.IBTP_REQUEST == ibtp.Category() {
-		// if src chain service is from appchain registered in current bitxhub, check service index
-		if srcChainService.IsLocal {
-			if err := x.checkSourceAvailability(srcChainService); err != nil {
-				return nil, nil, err
-			}
-
-			targetError = x.checkTargetAvailability(srcChainService, dstChainService, ibtp.Type)
-
-			// if dst chain service is from appchain registered in current bitxhub, get service info and check index
-			if err := x.checkServiceIndex(ibtp, interchain.InterchainCounter, dstChainService); err != nil {
-				return nil, nil, err
-			}
-		} else {
-			if !dstChainService.IsLocal {
-				return nil, nil, boltvm.BError(boltvm.InterchainInvalidIBTPNotInCurBXHCode, fmt.Sprintf(string(boltvm.InterchainInvalidIBTPNotInCurBXHMsg), ibtp.ID()))
-			}
-
-			if err := x.checkBitXHubAvailability(srcChainService.BxhId); err != nil {
-				return nil, nil, boltvm.BError(boltvm.InterchainSourceBitXHubNotAvailableCode, fmt.Sprintf(string(boltvm.InterchainSourceBitXHubNotAvailableMsg), srcChainService.BxhId, err))
-			}
-
-			if err := x.checkServiceIndex(ibtp, interchain.InterchainCounter, dstChainService); err != nil {
-				return nil, nil, err
-			}
-		}
-	} else if ibtp.Category() == pb.IBTP_RESPONSE {
-		if err := x.checkServiceIndex(ibtp, interchain.ReceiptCounter, dstChainService); err != nil {
-			return nil, nil, err
-		}
-	} else {
-		return nil, nil, boltvm.BError(boltvm.InterchainInvalidIBTPIllegalTypeCode, fmt.Sprintf(string(boltvm.InterchainInvalidIBTPIllegalTypeMsg), ibtp.Type))
-	}
+	//if pb.IBTP_REQUEST == ibtp.Category() {
+	//	// if src chain service is from appchain registered in current bitxhub, check service index
+	//	if srcChainService.IsLocal {
+	//		if err := x.checkSourceAvailability(srcChainService); err != nil {
+	//			return nil, nil, err
+	//		}
+	//
+	//		targetError = x.checkTargetAvailability(srcChainService, dstChainService, ibtp.Type)
+	//
+	//		// if dst chain service is from appchain registered in current bitxhub, get service info and check index
+	//		if err := x.checkServiceIndex(ibtp, interchain.InterchainCounter, dstChainService); err != nil {
+	//			return nil, nil, err
+	//		}
+	//	} else {
+	//		if !dstChainService.IsLocal {
+	//			return nil, nil, boltvm.BError(boltvm.InterchainInvalidIBTPNotInCurBXHCode, fmt.Sprintf(string(boltvm.InterchainInvalidIBTPNotInCurBXHMsg), ibtp.ID()))
+	//		}
+	//
+	//		if err := x.checkBitXHubAvailability(srcChainService.BxhId); err != nil {
+	//			return nil, nil, boltvm.BError(boltvm.InterchainSourceBitXHubNotAvailableCode, fmt.Sprintf(string(boltvm.InterchainSourceBitXHubNotAvailableMsg), srcChainService.BxhId, err))
+	//		}
+	//
+	//		if err := x.checkServiceIndex(ibtp, interchain.InterchainCounter, dstChainService); err != nil {
+	//			return nil, nil, err
+	//		}
+	//	}
+	//} else if ibtp.Category() == pb.IBTP_RESPONSE {
+	//	if err := x.checkServiceIndex(ibtp, interchain.ReceiptCounter, dstChainService); err != nil {
+	//		return nil, nil, err
+	//	}
+	//} else {
+	//	return nil, nil, boltvm.BError(boltvm.InterchainInvalidIBTPIllegalTypeCode, fmt.Sprintf(string(boltvm.InterchainInvalidIBTPIllegalTypeMsg), ibtp.Type))
+	//}
 
 	return interchain, targetError, nil
 }
