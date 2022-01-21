@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"time"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/meshplus/bitxhub-model/constant"
 
@@ -146,6 +149,7 @@ func (t *TransactionManager) BeginMultiTXs(globalID, ibtpID string, timeoutHeigh
 }
 
 func (t *TransactionManager) Begin(txId string, timeoutHeight uint64, isFailed bool) *boltvm.Response {
+	time1 := time.Now()
 	if bxhErr := t.checkCurrentCaller(); bxhErr != nil {
 		return boltvm.Error(bxhErr.Code, string(bxhErr.Msg))
 	}
@@ -159,13 +163,18 @@ func (t *TransactionManager) Begin(txId string, timeoutHeight uint64, isFailed b
 		record.Height = math.MaxUint64
 	}
 
+	t.Logger().WithFields(logrus.Fields{}).Debug(fmt.Sprintf("221 %d", time.Since(time1).Nanoseconds()))
+
 	if isFailed {
 		record.Status = pb.TransactionStatus_BEGIN_FAILURE
 	} else {
 		t.addToTimeoutList(record.Height, txId)
 	}
+	t.Logger().WithFields(logrus.Fields{}).Debug(fmt.Sprintf("222: %d", time.Since(time1).Nanoseconds()))
 
 	t.AddObject(TxInfoKey(txId), record)
+
+	t.Logger().WithFields(logrus.Fields{}).Debug(fmt.Sprintf("223: %d", time.Since(time1).Nanoseconds()))
 
 	change := StatusChange{
 		PrevStatus: -1,
@@ -295,13 +304,16 @@ func (t *TransactionManager) setFSM(state *pb.TransactionStatus, event Transacti
 
 func (t *TransactionManager) addToTimeoutList(height uint64, txId string) {
 	var timeoutList []string
+	time1 := time.Now()
 	ok := t.GetObject(TimeoutKey(height), &timeoutList)
 	if !ok {
 		timeoutList = []string{txId}
 	} else {
 		timeoutList = append(timeoutList, txId)
 	}
+	t.Logger().WithFields(logrus.Fields{}).Debug(fmt.Sprintf("2221: %d", time.Since(time1).Nanoseconds()))
 	t.SetObject(TimeoutKey(height), timeoutList)
+	t.Logger().WithFields(logrus.Fields{}).Debug(fmt.Sprintf("2222: %d", time.Since(time1).Nanoseconds()))
 }
 
 func (t *TransactionManager) removeFromTimeoutList(height uint64, txId string) {

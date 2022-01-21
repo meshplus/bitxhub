@@ -12,8 +12,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/meshplus/bitxhub/pkg/utils"
-
 	"github.com/cbergoon/merkletree"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
@@ -26,6 +24,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/model/events"
+	"github.com/meshplus/bitxhub/pkg/utils"
 	"github.com/meshplus/bitxhub/pkg/vm"
 	"github.com/meshplus/bitxhub/pkg/vm/boltvm"
 	"github.com/meshplus/bitxhub/pkg/vm/wasm"
@@ -304,9 +303,15 @@ func (exec *BlockExecutor) verifySign(commitEvent *pb.CommitEvent) *BlockWrapper
 
 func (exec *BlockExecutor) applyTx(index int, tx pb.Transaction, invalidReason agency.InvalidReason, opt *agency.TxOpt) *pb.Receipt {
 	normalTx := true
-
+	time1 := time.Now()
 	receipt := exec.applyTransaction(index, tx, invalidReason, opt)
-
+	if tx.IsIBTP() {
+		exec.logger.WithFields(logrus.Fields{
+			"from": tx.GetIBTP().From,
+			"to":   tx.GetIBTP().To,
+			"now":  time.Now().UnixNano(),
+		}).Debug(fmt.Sprintf("1: %d", time.Since(time1).Nanoseconds()))
+	}
 	evs := exec.ledger.Events(tx.GetHash().String())
 	if len(evs) != 0 {
 		receipt.Events = evs
@@ -382,6 +387,13 @@ func (exec *BlockExecutor) applyTx(index int, tx pb.Transaction, invalidReason a
 		exec.txsExecutor.AddNormalTx(tx.GetHash())
 	}
 
+	if tx.IsIBTP() {
+		exec.logger.WithFields(logrus.Fields{
+			"from": tx.GetIBTP().From,
+			"to":   tx.GetIBTP().To,
+			"now":  time.Now().UnixNano(),
+		}).Debug(time.Since(time1).Nanoseconds())
+	}
 	return receipt
 }
 
@@ -646,7 +658,7 @@ func calcMerkleRoot(contents []merkletree.Content) (*types.Hash, error) {
 
 	tree, err := merkletree.NewTree(contents)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("init merkletree failed: %w", err)
 	}
 
 	return types.NewHash(tree.MerkleRoot()), nil
@@ -695,7 +707,7 @@ func (exec *BlockExecutor) payAdmins(fees *big.Int) {
 func (exec *BlockExecutor) setTimeoutRollback(height uint64) error {
 	list, err := exec.getTimeoutList(height)
 	if err != nil {
-		return err
+		return fmt.Errorf("get timeout list with height %d failed: %w", height, err)
 	}
 
 	for _, id := range list {
@@ -705,7 +717,7 @@ func (exec *BlockExecutor) setTimeoutRollback(height uint64) error {
 		}
 
 		if err := exec.setTxRecord(id, record); err != nil {
-			return err
+			return fmt.Errorf("set tx record failed: %w", err)
 		}
 	}
 

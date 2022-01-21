@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/boltvm"
@@ -12,6 +13,7 @@ import (
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -193,12 +195,29 @@ func (x *InterchainManager) HandleIBTPData(input []byte) *boltvm.Response {
 }
 
 func (x *InterchainManager) HandleIBTP(ibtp *pb.IBTP) *boltvm.Response {
+	//x.Logger().WithFields(logrus.Fields{
+	//	"from": ibtp.From,
+	//	"to":   ibtp.To,
+	//}).Info("Handle IBTP...")
+	time1 := time.Now()
 	// Pier should retry if checkIBTP failed
 	interchain, targetErr, bxhErr := x.checkIBTP(ibtp)
+	if targetErr != nil || bxhErr != nil {
+		x.Logger().WithFields(logrus.Fields{
+			"from":      ibtp.From,
+			"to":        ibtp.To,
+			"bxhErr":    bxhErr,
+			"targetErr": targetErr,
+		}).Error("Handle IBTP...")
+	}
 	if bxhErr != nil {
 		return boltvm.Error(bxhErr.Code, string(bxhErr.Msg))
 	}
 
+	x.Logger().WithFields(logrus.Fields{
+		"from": ibtp.From,
+		"to":   ibtp.To,
+	}).Debug(fmt.Sprintf("1: %d", time.Since(time1).Nanoseconds()))
 	var change *StatusChange
 	var err error
 	if pb.IBTP_REQUEST == ibtp.Category() {
@@ -210,16 +229,33 @@ func (x *InterchainManager) HandleIBTP(ibtp *pb.IBTP) *boltvm.Response {
 		return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), err.Error()))
 	}
 
+	x.Logger().WithFields(logrus.Fields{
+		"from": ibtp.From,
+		"to":   ibtp.To,
+	}).Debug(fmt.Sprintf("2: %d", time.Since(time1).Nanoseconds()))
 	x.notifySrcDst(ibtp, change)
 
+	x.Logger().WithFields(logrus.Fields{
+		"from": ibtp.From,
+		"to":   ibtp.To,
+	}).Debug(fmt.Sprintf("3: %d", time.Since(time1).Nanoseconds()))
 	ret := x.ProcessIBTP(ibtp, interchain)
 
+	x.Logger().WithFields(logrus.Fields{
+		"from": ibtp.From,
+		"to":   ibtp.To,
+	}).Debug(fmt.Sprintf("4: %d", time.Since(time1).Nanoseconds()))
 	if err := x.postAuditInterchainEvent(ibtp.From); err != nil {
 		return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), fmt.Sprintf("post audit interchain event error: %v", err)))
 	}
 	if err := x.postAuditInterchainEvent(ibtp.To); err != nil {
 		return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), fmt.Sprintf("post audit interchain event error: %v", err)))
 	}
+
+	x.Logger().WithFields(logrus.Fields{
+		"from": ibtp.From,
+		"to":   ibtp.To,
+	}).Debug(fmt.Sprintf("5: %d", time.Since(time1).Nanoseconds()))
 	return boltvm.Success(ret)
 }
 
@@ -438,6 +474,7 @@ func (x *InterchainManager) beginTransaction(ibtp *pb.IBTP, isFailed bool) (*Sta
 		}
 	}
 
+	time1 := time.Now()
 	res := boltvm.Success(nil)
 	if ibtp.Group == nil {
 		res = x.CrossInvoke(constant.TransactionMgrContractAddr.Address().String(), "Begin", pb.String(txId), pb.Uint64(timeoutHeight), pb.Bool(isFailed))
@@ -455,6 +492,12 @@ func (x *InterchainManager) beginTransaction(ibtp *pb.IBTP, isFailed bool) (*Sta
 			return nil, fmt.Errorf(string(res.Result))
 		}
 	}
+
+	x.Logger().WithFields(logrus.Fields{
+		//"ibtp": ibtp,
+		"from": ibtp.From,
+		"to":   ibtp.To,
+	}).Debug(fmt.Sprintf("22: %d", time.Since(time1).Nanoseconds()))
 
 	change := StatusChange{}
 	if err := json.Unmarshal(res.Result, &change); err != nil {
@@ -654,12 +697,12 @@ func (x *InterchainManager) checkServiceIndex(ibtp *pb.IBTP, counter map[string]
 }
 
 func checkIndex(exp, cur uint64) *boltvm.BxhError {
-	if cur < exp {
-		return boltvm.BError(boltvm.InterchainIbtpIndexExistCode, fmt.Sprintf(string(boltvm.InterchainIbtpIndexExistMsg), exp, cur))
-	}
-	if cur > exp {
-		return boltvm.BError(boltvm.InterchainIbtpIndexWrongCode, fmt.Sprintf(string(boltvm.InterchainIbtpIndexWrongMsg), exp, cur))
-	}
+	//if cur < exp {
+	//	return boltvm.BError(boltvm.InterchainIbtpIndexExistCode, fmt.Sprintf(string(boltvm.InterchainIbtpIndexExistMsg), exp, cur))
+	//}
+	//if cur > exp {
+	//	return boltvm.BError(boltvm.InterchainIbtpIndexWrongCode, fmt.Sprintf(string(boltvm.InterchainIbtpIndexWrongMsg), exp, cur))
+	//}
 
 	return nil
 }
