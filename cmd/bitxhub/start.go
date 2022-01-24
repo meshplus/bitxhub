@@ -153,6 +153,7 @@ func start(ctx *cli.Context) error {
 
 	var wg sync.WaitGroup
 	wg.Add(1)
+	handleLicenceCheck(bxh, repo, &wg)
 	handleShutdown(bxh, &wg)
 
 	if err := bxh.Start(); err != nil {
@@ -182,6 +183,25 @@ func printVersion() {
 	fmt.Println()
 }
 
+func handleLicenceCheck(node *app.BitXHub, repo *repo.Repo, wg *sync.WaitGroup) {
+	go func() {
+		ticker := time.NewTicker(time.Minute)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				if err := checkLicense(repo); err != nil {
+					fmt.Printf("verify license fail:%v", err)
+					if err := node.Stop(); err != nil {
+						panic(err)
+					}
+					wg.Done()
+					os.Exit(0)
+				}
+			}
+		}
+	}()
+}
 func handleShutdown(node *app.BitXHub, wg *sync.WaitGroup) {
 	var stop = make(chan os.Signal)
 	signal.Notify(stop, syscall.SIGTERM)
