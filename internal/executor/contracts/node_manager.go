@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/governance"
 	nodemgr "github.com/meshplus/bitxhub-core/node-mgr"
@@ -120,7 +122,15 @@ func (nm *NodeManager) hasVpNodeGoverned() bool {
 }
 
 // =========== Manage does some subsequent operations when the proposal is over
-// extra: nil
+// other operation:
+// - register - approve : register info
+// - register - reject : free occupation info
+// - update(only nvp) - approve : 1. update info; 2. if the bound audit admin is unavailable, need to unbind the node
+// - update(only nvp) - reject : 1. free occupation info; 2. if the bound audit admin is unavailable, need to unbind the node
+// - logout - approve - vp : post logout event
+// - logout - reject - vp : no other operation
+// - logout - approve - nvp : 1. reject the proposal for the role registration or binding if the bound audit admin has; 2. pause the role (going into the unavailable or frozen state)
+// - logout - reject - nvp : 1. restore the proposal for the role registration or binding if the bound audit admin has; 2. if the bound audit admin is unavailable, need to unbind the node; 3. if the audit admin which would be bound is unavailable, need to reject binding proposal
 func (nm *NodeManager) Manage(eventTyp, proposalResult, lastStatus, objId string, extra []byte) *boltvm.Response {
 	nm.NodeManager.Persister = nm.Stub
 
@@ -189,11 +199,7 @@ func (nm *NodeManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 				}
 				nm.PostEvent(pb.Event_NODEMGR, nodeEvent)
 			case nodemgr.NVPNode:
-				if nodeInfo.AuditAdminAddr != "" {
-					if res := nm.CrossInvoke(constant.RoleContractAddr.Address().String(), "PauseAuditAdmin", pb.String(nodeInfo.AuditAdminAddr)); !res.Ok {
-						return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("cross invoke PauseAuditAdmin error: %s", string(res.Result))))
-					}
-				}
+				nm.CrossInvoke(constant.RoleContractAddr.Address().String(), "PauseAuditAdmin", pb.String(objId))
 			}
 		}
 	} else {
@@ -229,14 +235,30 @@ func (nm *NodeManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 				}
 			}
 		case string(governance.EventLogout):
-			if nodeInfo.NodeType == nodemgr.NVPNode && nodeInfo.AuditAdminAddr != "" {
-				res := nm.CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin", pb.String(nodeInfo.AuditAdminAddr), pb.String(string(AuditAdmin)))
-				if !res.Ok {
-					return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("cross invoke IsAnyAvailableAdmin error: %s", string(res.Result))))
-				}
-				if string(res.Result) == FALSE {
-					if res := nm.unbindNode(nodeInfo.Account); !res.Ok {
-						return res
+			if nodeInfo.NodeType == nodemgr.NVPNode {
+				if nodeInfo.AuditAdminAddr != "" {
+					res := nm.CrossInvoke(constant.RoleContractAddr.Address().String(), "GetRoleInfoById", pb.String(nodeInfo.AuditAdminAddr))
+					if !res.Ok {
+						return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("cross invoke GetRoleInfoById error: %s", string(res.Result))))
+					}
+					role := &Role{}
+					if err := json.Unmarshal(res.Result, role); err != nil {
+						return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("unmarshal role error: %v", err)))
+					}
+
+					nm.Logger().WithFields(logrus.Fields{
+						"account":    nodeInfo.Account,
+						"auditAdmin": nodeInfo.AuditAdminAddr,
+						"roleStatus": role.Status,
+					}).Info("nvp node is logout reject")
+					if role.Status == governance.GovernanceForbidden {
+						if res := nm.unbindNode(nodeInfo.Account); !res.Ok {
+							return res
+						}
+					} else if role.Status == governance.GovernanceBinding || role.Status == governance.GovernanceRegisting {
+						if res := nm.CrossInvoke(constant.RoleContractAddr.Address().String(), "RestoreAuditAdminBinding", pb.String(nodeInfo.Account)); !res.Ok {
+							return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("cross invoke RestoreAuditAdminBinding error: %s", string(res.Result))))
+						}
 					}
 				}
 			}
@@ -250,6 +272,7 @@ func (nm *NodeManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 }
 
 // =========== RegisterNode registers node info, returns proposal id and error
+// Only the unavailable state can be registered, need to occupy info such as the accout, name, pid
 func (nm *NodeManager) RegisterNode(nodeAccount, nodeType, nodePid string, nodeVpId uint64, nodeName, permitStr, reason string) *boltvm.Response {
 	nm.NodeManager.Persister = nm.Stub
 	event := governance.EventRegister
@@ -332,6 +355,28 @@ func (nm *NodeManager) RegisterNode(nodeAccount, nodeType, nodePid string, nodeV
 }
 
 // =========== LogoutNode logouts node
+// Logout scenarios in different node states:
+// - unavailable: cannot log out without successfully registering
+// - registering: cannot log out without successfully registering
+// - available(vp) : logout if consensus conditions are met
+// - available(nvp) : logout according to the normal management process
+// - binding(only nvp): when submitting a proposal, 1. need to pause the proposal for the role registration or binding
+//                      when proposal approved, if bound role is still registering or binding, 1. need to reject the proposal for the role registration or binding; 2. pause the role (going into the unavailable or frozen state)
+//                                              if bound role is forbidden, 1. need to reject the proposal for the role registration or binding; 2. pause the role (not change state)
+//                      when proposal rejected, if bound role is still registering or binding, 1. need to restore the proposal for the role registration or binding
+//                                              if bound role is forbidden, 1. need to reject the proposal for the role registration or binding;
+// - binded(only nvp): when submitting a proposal, no additional operations
+//                     when proposal approved, if bound role is available 1. need to pause the role (going into the frozen state)
+//                                             if bound role is forbidden 1. need to pause the role (not change state)
+//                     when proposal rejected, if bound role is available, no additional operation
+//                                             if bound role is forbidden, unbind node
+// - updating(only nvp): when submitting a proposal, no additional operations
+//                       when proposal approved, if bound role is available, 1. need to pause the role (going into the frozen state)
+//                                               if bound role is forbidden, 1. need to pause the role (not change state)
+//                       when proposal rejected, if bound role is available, no additional operation
+//                                               if bound role is forbidden, unbind node
+// - logouting: logout cannot be logged out again
+// - forbidden: logout cannot be logged out again
 func (nm *NodeManager) LogoutNode(nodeAccount, reason string) *boltvm.Response {
 	nm.NodeManager.Persister = nm.Stub
 	event := governance.EventLogout
@@ -396,6 +441,13 @@ func (nm *NodeManager) LogoutNode(nodeAccount, reason string) *boltvm.Response {
 	// 6. change status
 	if ok, data := nm.NodeManager.ChangeStatus(nodeAccount, string(event), string(node.Status), nil); !ok {
 		return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("change status error: %s", string(data))))
+	}
+
+	// 7. If the node is being bound, need to pause the binding proposal.
+	if node.Status == governance.GovernanceBinding {
+		if res := nm.CrossInvoke(constant.RoleContractAddr.Address().String(), "PauseAuditAdminBinding", pb.String(nodeAccount)); !res.Ok {
+			return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("cross invoke PauseAuditAdminBinding error: %s", string(res.Result))))
+		}
 	}
 
 	nm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(res.Result)))
@@ -511,7 +563,7 @@ func (nm *NodeManager) UpdateNode(nodeAccount, nodeName, permitStr, reason strin
 }
 
 // =========== BindNode binds audit node to audit admin
-func (nm *NodeManager) BindNode(nodeAccount string) *boltvm.Response {
+func (nm *NodeManager) BindNode(nodeAccount, auditAdminAddr string) *boltvm.Response {
 	nm.NodeManager.Persister = nm.Stub
 	event := governance.EventBind
 
@@ -537,7 +589,12 @@ func (nm *NodeManager) BindNode(nodeAccount string) *boltvm.Response {
 		return boltvm.Error(boltvm.NodeBindVPNodeCode, fmt.Sprintf(string(boltvm.NodeBindVPNodeMsg), nodeAccount))
 	}
 
-	// 4. change status
+	// 4. record node bind info
+	if ok, data := nm.NodeManager.Bind(nodeAccount, auditAdminAddr); !ok {
+		return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("record bind admin error: %s", string(data))))
+	}
+
+	// 5. change status
 	if ok, data := nm.NodeManager.ChangeStatus(nodeAccount, string(event), string(node.Status), nil); !ok {
 		return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("change status error: %s", string(data))))
 	}
@@ -569,8 +626,8 @@ func (nm *NodeManager) ManageBindNode(nodeAccount, auditAdminAddr, resultEvent s
 	}
 
 	// 3. record bind admin
-	if event == governance.EventApprove {
-		if ok, data := nm.NodeManager.Bind(nodeAccount, auditAdminAddr); !ok {
+	if event == governance.EventReject {
+		if ok, data := nm.NodeManager.Bind(nodeAccount, ""); !ok {
 			return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("record bind admin error: %s", string(data))))
 		}
 	}

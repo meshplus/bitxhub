@@ -602,29 +602,11 @@ func (sm *ServiceManager) clearService(chainServiceID string) error {
 	}
 
 	// 3. clear proposal
-	res := sm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "GetProposalsByObjId", pb.String(chainServiceID))
-	if !res.Ok {
-		return fmt.Errorf("cross invoke GetProposalsByObjId error: %s", string(res.Result))
-	}
-	ps := make([]*Proposal, 0)
-	if err := json.Unmarshal(res.Result, &ps); err != nil {
-		return fmt.Errorf("json unmarshal error: %s", err.Error())
-	}
-
-	for _, p := range ps {
-		if p.Status == PAUSED || p.Status == PROPOSED {
-			if res := sm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "EndCurrentProposal",
-				pb.String(p.Id),
-				pb.String(string(ClearReason)),
-				pb.Bytes(nil)); !res.Ok {
-				return fmt.Errorf("cross invoke EndCurrentProposal error: %s", string(res.Result))
-			}
-			sm.Logger().WithFields(logrus.Fields{
-				"chainServiceID": p.ObjId,
-				"eventTyp":       p.EventType,
-				"proposalID":     p.Id,
-			}).Info("clear service proposal")
-		}
+	if res := sm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "EndObjProposal",
+		pb.String(chainServiceID),
+		pb.String(string(ClearReason)),
+		pb.Bytes(nil)); !res.Ok {
+		return fmt.Errorf("cross invoke EndObjProposal error: %s", string(res.Result))
 	}
 
 	return nil
