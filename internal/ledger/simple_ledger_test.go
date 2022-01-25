@@ -290,7 +290,7 @@ func TestChainLedger_OpenStateDB(t *testing.T) {
 	assert.Nil(t, err)
 	blockFile, err := blockfile.NewBlockFile("", logger)
 	assert.NotNil(t, err)
-	blockStorage, err := leveldb.New(filepath.Join("", "ledger"))
+	blockStorage, err := leveldb.New(filepath.Join(repoRoot, "ledger"))
 	assert.Nil(t, err)
 	accountCache, err := NewAccountCache()
 	assert.Nil(t, err)
