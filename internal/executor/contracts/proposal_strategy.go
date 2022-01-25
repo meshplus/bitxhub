@@ -119,6 +119,10 @@ var mgrs = []string{repo.AppchainMgr, repo.NodeMgr, repo.DappMgr, repo.RoleMgr, 
 
 // =========== Manage does some subsequent operations when the proposal is over
 func (g *GovStrategy) Manage(eventTyp, proposalResult, lastStatus, objId string, extra []byte) *boltvm.Response {
+	g.Logger().WithFields(logrus.Fields{
+		"id": objId,
+	}).Info("proposal strategy is managing")
+
 	// 1. check permission: PermissionSpecific(GovernanceContractAddr)
 	specificAddrs := []string{constant.GovernanceContractAddr.Address().String()}
 	addrsData, err := json.Marshal(specificAddrs)

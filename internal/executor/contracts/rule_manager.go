@@ -16,7 +16,6 @@ import (
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/eth-kit/ledger"
-	"github.com/sirupsen/logrus"
 )
 
 // RuleManager is the contract manage validation rules
@@ -404,30 +403,36 @@ func (rm *RuleManager) ClearRule(chainID string) *boltvm.Response {
 	}
 
 	// 3. clear rule proposal
-	if bindingChainRuleID != "" {
-		res := rm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "GetProposalsByObjId", pb.String(bindingChainRuleID))
-		if !res.Ok {
-			return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("cross invoke GetProposalsByObjId error: %s", string(res.Result))))
-		}
-		ps := make([]*Proposal, 0)
-		if err := json.Unmarshal(res.Result, &ps); err != nil {
-			return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("json unmarshal error: %s", err.Error())))
-		}
-
-		for _, p := range ps {
-			if res := rm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "EndCurrentProposal",
-				pb.String(p.Id),
-				pb.String(string(ClearReason)),
-				pb.Bytes(nil)); !res.Ok {
-				return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("cross invoke EndCurrentProposal error: %s", string(res.Result))))
-			}
-			rm.Logger().WithFields(logrus.Fields{
-				"chainRuleID": p.ObjId,
-				"eventTyp":    p.EventType,
-				"proposalID":  p.Id,
-			}).Info("clear rule proposal")
-		}
+	if res := rm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "EndObjProposal",
+		pb.String(bindingChainRuleID),
+		pb.String(string(ClearReason)),
+		pb.Bytes(nil)); !res.Ok {
+		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("cross invoke EndObjProposal error: %s", string(res.Result))))
 	}
+	//if bindingChainRuleID != "" {
+	//	res := rm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "GetProposalsByObjId", pb.String(bindingChainRuleID))
+	//	if !res.Ok {
+	//		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("cross invoke GetProposalsByObjId error: %s", string(res.Result))))
+	//	}
+	//	ps := make([]*Proposal, 0)
+	//	if err := json.Unmarshal(res.Result, &ps); err != nil {
+	//		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("json unmarshal error: %s", err.Error())))
+	//	}
+	//
+	//	for _, p := range ps {
+	//		if res := rm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "EndCurrentProposal",
+	//			pb.String(p.Id),
+	//			pb.String(string(ClearReason)),
+	//			pb.Bytes(nil)); !res.Ok {
+	//			return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("cross invoke EndCurrentProposal error: %s", string(res.Result))))
+	//		}
+	//		rm.Logger().WithFields(logrus.Fields{
+	//			"chainRuleID": p.ObjId,
+	//			"eventTyp":    p.EventType,
+	//			"proposalID":  p.Id,
+	//		}).Info("clear rule proposal")
+	//	}
+	//}
 
 	if err := rm.postAuditRuleEvent(chainID); err != nil {
 		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("post audit rule event error: %v", err)))
