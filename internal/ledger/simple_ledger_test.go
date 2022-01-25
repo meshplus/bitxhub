@@ -290,7 +290,7 @@ func TestChainLedger_OpenStateDB(t *testing.T) {
 	assert.Nil(t, err)
 	blockFile, err := blockfile.NewBlockFile("", logger)
 	assert.NotNil(t, err)
-	blockStorage, err := leveldb.New(filepath.Join("", "ledger"))
+	blockStorage, err := leveldb.New(filepath.Join(repoRoot, "ledger"))
 	assert.Nil(t, err)
 	accountCache, err := NewAccountCache()
 	assert.Nil(t, err)
@@ -574,9 +574,6 @@ func TestChainLedger_GetCode(t *testing.T) {
 
 	vals = ledger.GetCode(addr)
 	assert.Equal(t, code, vals)
-
-	vals = ledger.GetCode(addr)
-	assert.Equal(t, code, vals)
 }
 
 func TestChainLedger_AddAccountsToCache(t *testing.T) {
@@ -595,6 +592,9 @@ func TestChainLedger_AddAccountsToCache(t *testing.T) {
 
 	accounts, stateRoot := ledger.FlushDirtyData()
 	ledger.Clear()
+
+	mycode := ledger.GetCode(addr)
+	fmt.Println(mycode)
 
 	innerAccount, ok := stateLedger.accountCache.getInnerAccount(addr)
 	assert.True(t, ok)
