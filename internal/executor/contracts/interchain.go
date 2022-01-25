@@ -149,14 +149,12 @@ func (x *InterchainManager) HandleIBTPData(input []byte) *boltvm.Response {
 }
 
 func (x *InterchainManager) HandleIBTP(ibtp *pb.IBTP) *boltvm.Response {
-	x.Logger().Infof("start handle ibtp: %v", ibtp)
 	// Pier should retry if checkIBTP failed
 	interchain, targetErr, bxhErr := x.checkIBTP(ibtp)
 	if bxhErr != nil {
 		return boltvm.Error(bxhErr.Code, string(bxhErr.Msg))
 	}
 
-	x.Logger().Infof("check IBTP success: %v", interchain)
 	var change *StatusChange
 	var err error
 	if pb.IBTP_REQUEST == ibtp.Category() {
@@ -167,11 +165,9 @@ func (x *InterchainManager) HandleIBTP(ibtp *pb.IBTP) *boltvm.Response {
 	if err != nil {
 		return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), err.Error()))
 	}
-	x.Logger().Infof("end process transaction: %v", change)
 
 	x.notifySrcDst(ibtp, change)
 
-	x.Logger().Infof("notifySrcDst success")
 	ret := x.ProcessIBTP(ibtp, interchain, targetErr != nil)
 
 	if err := x.postAuditInterchainEvent(ibtp.From); err != nil {
@@ -180,7 +176,15 @@ func (x *InterchainManager) HandleIBTP(ibtp *pb.IBTP) *boltvm.Response {
 	if err := x.postAuditInterchainEvent(ibtp.To); err != nil {
 		return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), fmt.Sprintf("post audit interchain event error: %v", err)))
 	}
-	x.Logger().Infof("process IBTP success")
+
+	if ibtp.Extra != nil {
+		x.Logger().Infof(string(ibtp.Extra))
+		resp := x.CrossInvoke(constant.SuperviseMgrContractAddr.String(), "Record", pb.String(ibtp.From), pb.String(ibtp.To), pb.Bytes(ibtp.Extra))
+		if !resp.Ok {
+			return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), string(resp.Result)))
+		}
+	}
+
 	return boltvm.Success(ret)
 }
 
@@ -194,13 +198,11 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, *boltvm.Bx
 	if err != nil {
 		return nil, nil, boltvm.BError(boltvm.InterchainInvalidIBTPParseSourceErrorCode, fmt.Sprintf(string(boltvm.InterchainInvalidIBTPParseSourceErrorMsg), err.Error()))
 	}
-	x.Logger().Infof("srcChainService %v", srcChainService)
 
 	dstChainService, err := x.parseChainService(ibtp.To)
 	if err != nil {
 		return nil, nil, boltvm.BError(boltvm.InterchainInvalidIBTPParseDestErrorCode, fmt.Sprintf(string(boltvm.InterchainInvalidIBTPParseDestErrorMsg), err.Error()))
 	}
-	x.Logger().Infof("dstChainService %v", dstChainService)
 
 	var interchain *pb.Interchain
 	if isDID, _ := ibtp.CheckFormat(); isDID {
@@ -208,7 +210,6 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, *boltvm.Bx
 	} else {
 		interchain, _ = x.getInterchain(srcChainService.getFullServiceId())
 	}
-	x.Logger().Infof("get interchain %v", interchain)
 
 	if pb.IBTP_REQUEST == ibtp.Category() {
 		// if src chain service is from appchain registered in current bitxhub, check service index
@@ -553,22 +554,18 @@ func (x *InterchainManager) parseChainService(id string) (*ChainService, error) 
 	}
 
 	methodDID := "did:bitxhub:" + splits[2] + ":."
-	x.Logger().Infof("methodDID %s", methodDID)
 	resp := x.CrossInvoke(constant.MethodRegistryContractAddr.String(), "ResolveWithDoc", pb.String(methodDID))
 	if !resp.Ok {
 		return nil, fmt.Errorf("get method doc from %s failed: %s", methodDID, string(resp.Result))
 	}
-	x.Logger().Infof("get method doc success, response %v", resp)
 	var methodDoc *bitxid.MethodDoc
 	if err := json.Unmarshal(resp.Result, &methodDoc); err != nil {
 		return nil, fmt.Errorf("unmarshal method doc error: %w", err)
 	}
-	x.Logger().Infof("get method doc %v", methodDoc)
 	addr, err := pb.GetAddrFromDoc(methodDoc)
 	if err != nil {
 		return nil, err
 	}
-	x.Logger().Infof("get addr from method doc %s", addr)
 	resp = x.CrossInvoke(constant.AppchainMgrContractAddr.String(), "GetChainIdByAdmin", pb.String(addr))
 	if !resp.Ok {
 		return nil, fmt.Errorf(string(resp.Result))

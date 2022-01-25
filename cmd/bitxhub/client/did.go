@@ -1,6 +1,7 @@
 package client
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/fatih/color"
@@ -36,6 +37,18 @@ func didMgrCMD() cli.Command {
 				Name:   "init",
 				Usage:  "init did method registry",
 				Action: initRegistry,
+			},
+			cli.Command{
+				Name:  "query",
+				Usage: "query supervise info",
+				Flags: []cli.Flag{
+					cli.StringFlag{
+						Name:     "index",
+						Usage:    "Specify supervise info index",
+						Required: true,
+					},
+				},
+				Action: querySuperviseInfo,
 			},
 		},
 	}
@@ -87,6 +100,25 @@ func initRegistry(ctx *cli.Context) error {
 		color.Green("init did method registry successfully")
 	} else {
 		color.Red("init did method registry failed: %s", string(receipt.Ret))
+	}
+	return nil
+}
+
+func querySuperviseInfo(ctx *cli.Context) error {
+	index := ctx.String("index")
+
+	receipt, err := invokeBVMContractBySendView(ctx, constant.SuperviseMgrContractAddr.String(), "GetIssuePath", pb.String(index))
+	if err != nil {
+		return fmt.Errorf("invoke BVM contract failed when query superviseInfo: %w", err)
+	}
+	if receipt.IsSuccess() {
+		var issuePath []string
+		if err := json.Unmarshal(receipt.Ret, &issuePath); err != nil {
+			fmt.Printf("unmarshal receipt failed: %s", err.Error())
+		}
+		fmt.Println(issuePath)
+	} else {
+		fmt.Printf("get issue path with index(%s) failed: %s", index, string(receipt.Ret))
 	}
 	return nil
 }

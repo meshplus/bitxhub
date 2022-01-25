@@ -354,6 +354,12 @@ func (exec *BlockExecutor) registerBoltContracts() map[string]agency.Contract {
 			Address:  constant.ProposalStrategyMgrContractAddr.Address().String(),
 			Contract: &contracts.GovStrategy{},
 		},
+		{
+			Enabled:  true,
+			Name:     "supervise manager service",
+			Address:  constant.SuperviseMgrContractAddr.Address().String(),
+			Contract: &contracts.SuperviseManager{},
+		},
 	}
 
 	ContractsInfo := agency.GetRegisteredContractInfo()
