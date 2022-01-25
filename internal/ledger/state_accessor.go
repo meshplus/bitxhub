@@ -336,8 +336,6 @@ func (l *SimpleLedger) Commit(height uint64, accounts map[string]ledger.IAccount
 		}
 	}
 
-	l.blockJournals = sync.Map{}
-
 	return nil
 }
 
