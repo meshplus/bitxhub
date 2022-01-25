@@ -335,7 +335,6 @@ func (l *SimpleLedger) Commit(height uint64, accounts map[string]ledger.IAccount
 			return fmt.Errorf("remove journals before block %d failed: %w", height-10, err)
 		}
 	}
-	l.blockJournals = sync.Map{}
 
 	return nil
 }
