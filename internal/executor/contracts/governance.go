@@ -61,7 +61,7 @@ const (
 )
 
 var priority = map[governance.EventType]int{
-	governance.EventRegister: 3,
+	governance.EventRegister: 1,
 	governance.EventUpdate:   2,
 	governance.EventFreeze:   2,
 	governance.EventActivate: 1,
@@ -300,6 +300,11 @@ func (g *Governance) ZeroPermission(id string) *boltvm.Response {
 	if !g.GetObject(ProposalKey(id), p) {
 		return boltvm.Error(boltvm.GovernanceNonexistentProposalCode, fmt.Sprintf(string(boltvm.GovernanceNonexistentProposalMsg), id, ""))
 	}
+	g.Logger().WithFields(logrus.Fields{
+		"proposal_id":            id,
+		"ThresholdElectorateNum": p.ThresholdElectorateNum,
+		"bool":                   p.ThresholdElectorateNum == 0,
+	}).Info("ZeroPermission")
 	if p.ThresholdElectorateNum == 0 {
 		p.EndReason = ZeroPermissionReason
 		g.changeProposalStatus(p, APPROVED)
@@ -410,14 +415,14 @@ func (g *Governance) endProposal(id, endReason string, extra []byte) (*Proposal,
 	return p, nil
 }
 
-// =========== EndCurrentProposal forces the current proposal to be ended and does not process other proposals associated with the proposal
-func (g *Governance) EndCurrentProposal(id, endReason string, extra []byte) *boltvm.Response {
+// =========== EndCurrentProposal forces proposals about an object to be ended and does not process other proposals associated with the proposal
+func (g *Governance) EndObjProposal(objId, endReason string, extra []byte) *boltvm.Response {
 	// 1. check permission
 	specificAddrs := []string{
 		//constant.AppchainMgrContractAddr.Address().String(),
 		constant.RuleManagerContractAddr.Address().String(),
 		//constant.NodeManagerContractAddr.Address().String(),
-		//constant.RoleContractAddr.Address().String(),
+		constant.RoleContractAddr.Address().String(),
 		//constant.DappMgrContractAddr.Address().String(),
 		constant.ServiceMgrContractAddr.Address().String(),
 	}
@@ -429,17 +434,63 @@ func (g *Governance) EndCurrentProposal(id, endReason string, extra []byte) *bol
 		return boltvm.Error(boltvm.GovernanceNoPermissionCode, fmt.Sprintf(string(boltvm.GovernanceNoPermissionMsg), g.CurrentCaller(), err.Error()))
 	}
 
-	// 2. end proposal
-	if _, berr := g.endProposal(id, endReason, extra); berr != nil {
-		return boltvm.Error(berr.Code, berr.Error())
+	// 2. get proposals
+	proposals, err := g.getProposalsByObjId(objId)
+	if err != nil {
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf("getProposalsByObjId err: %v", err))
 	}
 
-	if err := g.postAuditProposalEvent(id); err != nil {
-		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("post audit proposal event error: %v", err)))
+	// 3. end proposals
+	for _, p := range proposals {
+		if p.Status == PAUSED || p.Status == PROPOSED {
+			if _, berr := g.endProposal(p.Id, endReason, extra); berr != nil {
+				return boltvm.Error(berr.Code, berr.Error())
+			}
+
+			if err := g.postAuditProposalEvent(p.Id); err != nil {
+				return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("post audit proposal event error: %v", err)))
+			}
+
+			g.Logger().WithFields(logrus.Fields{
+				"objId":      objId,
+				"proposalID": p.Id,
+			}).Info("reject proposal")
+		}
 	}
 
 	return boltvm.Success(nil)
 }
+
+//// =========== EndCurrentProposal forces the current proposal to be ended and does not process other proposals associated with the proposal
+//func (g *Governance) EndCurrentProposal(id, endReason string, extra []byte) *boltvm.Response {
+//	// 1. check permission
+//	specificAddrs := []string{
+//		//constant.AppchainMgrContractAddr.Address().String(),
+//		constant.RuleManagerContractAddr.Address().String(),
+//		//constant.NodeManagerContractAddr.Address().String(),
+//		//constant.RoleContractAddr.Address().String(),
+//		//constant.DappMgrContractAddr.Address().String(),
+//		constant.ServiceMgrContractAddr.Address().String(),
+//	}
+//	addrsData, err := json.Marshal(specificAddrs)
+//	if err != nil {
+//		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("marshal specificAddrs error: %v", err)))
+//	}
+//	if err := g.checkPermission([]string{string(PermissionSpecific)}, "", g.CurrentCaller(), addrsData); err != nil {
+//		return boltvm.Error(boltvm.GovernanceNoPermissionCode, fmt.Sprintf(string(boltvm.GovernanceNoPermissionMsg), g.CurrentCaller(), err.Error()))
+//	}
+//
+//	// 2. end proposal
+//	if _, berr := g.endProposal(id, endReason, extra); berr != nil {
+//		return boltvm.Error(berr.Code, berr.Error())
+//	}
+//
+//	if err := g.postAuditProposalEvent(id); err != nil {
+//		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("post audit proposal event error: %v", err)))
+//	}
+//
+//	return boltvm.Success(nil)
+//}
 
 // =========== Vote add someone's voting information (each person can only vote once)
 func (g *Governance) Vote(id, approve string, reason string) *boltvm.Response {
@@ -579,6 +630,10 @@ func (g *Governance) countVote(p *Proposal) (bool, error) {
 func (g *Governance) handleResult(p *Proposal) (err error) {
 	// unlock low-priority proposal
 	nextEventType := governance.EventType(p.Status)
+	g.Logger().WithFields(logrus.Fields{
+		"proposal_id":     p.Id,
+		"lockProposalIds": p.LockProposalId,
+	}).Info("proposal is handling result")
 	if p.LockProposalId != "" {
 		if p.Status == APPROVED {
 			notRestoreReason := fmt.Sprintf("%s(%s)", string(PriorityReason), p.Id)
@@ -652,6 +707,7 @@ func (g *Governance) LockLowPriorityProposal(objId, eventTyp string) *boltvm.Res
 	// 1. check permission
 	specificAddrs := []string{
 		constant.ServiceMgrContractAddr.Address().String(),
+		constant.RoleContractAddr.Address().String(),
 		constant.RuleManagerContractAddr.Address().String(),
 	}
 	addrsData, err := json.Marshal(specificAddrs)
@@ -713,6 +769,7 @@ func (g *Governance) UnLockLowPriorityProposal(objId, eventTyp string) *boltvm.R
 	// 1. check permission
 	specificAddrs := []string{
 		constant.ServiceMgrContractAddr.Address().String(),
+		constant.RoleContractAddr.Address().String(),
 		constant.RuleManagerContractAddr.Address().String(),
 	}
 	addrsData, err := json.Marshal(specificAddrs)
@@ -723,7 +780,7 @@ func (g *Governance) UnLockLowPriorityProposal(objId, eventTyp string) *boltvm.R
 		return boltvm.Error(boltvm.GovernanceNoPermissionCode, fmt.Sprintf(string(boltvm.GovernanceNoPermissionMsg), g.CurrentCaller(), err.Error()))
 	}
 
-	// 2. unlock low pro=iority proposak
+	// 2. unlock low proiority proposak
 	lockedProposal, err := g.getHightestPriorityPausedProposalByObjId(objId)
 	if err != nil {
 		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("getHightestPriorityPausedProposalByObjId err: %v", err)))

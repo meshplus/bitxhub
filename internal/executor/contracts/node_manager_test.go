@@ -204,18 +204,18 @@ func TestNodeManager_BindNode(t *testing.T) {
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, nil).AnyTimes()
 
 	// 1. CheckPermission error
-	res := nm.BindNode(nvpNodes[0].Account)
+	res := nm.BindNode(nvpNodes[0].Account, "")
 	assert.False(t, res.Ok, string(res.Result))
 
 	// 2. status error(0: forbidden)
-	res = nm.BindNode(nvpNodes[0].Account)
+	res = nm.BindNode(nvpNodes[0].Account, "")
 	assert.False(t, res.Ok, string(res.Result))
 
 	// 3. node type error
-	res = nm.BindNode(vpNodes[0].Account)
+	res = nm.BindNode(vpNodes[0].Account, "")
 	assert.False(t, res.Ok, string(res.Result))
 
-	res = nm.BindNode(nvpNodes[1].Account)
+	res = nm.BindNode(nvpNodes[1].Account, "")
 	assert.True(t, res.Ok, string(res.Result))
 }
 
@@ -320,7 +320,7 @@ func TestNodeManager_Manage_NVPNode(t *testing.T) {
 	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[5].Account), gomock.Any()).SetArg(1, *nodes[5]).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[6].Account), gomock.Any()).SetArg(1, *nodes[6]).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[7].Account), gomock.Any()).SetArg(1, *nodes[7]).Return(true).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "PauseAuditAdmin", pb.String(nodes[7].AuditAdminAddr)).Return(boltvm.Error("", "PauseAuditAdmin error")).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "PauseAuditAdmin", pb.String(nodes[7].Account)).Return(boltvm.Error("", "PauseAuditAdmin error")).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "FreeAccount",
 		gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 
