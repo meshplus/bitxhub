@@ -385,19 +385,9 @@ func TestRuleManager_ClearRule(t *testing.T) {
 	mockStub.EXPECT().CurrentCaller().Return(constant.AppchainMgrContractAddr.Address().String()).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().Caller().Return("").AnyTimes()
-	retProposals := make([]*Proposal, 0)
-	retProposals = append(retProposals, &Proposal{Id: "123", Status: PROPOSED})
-	retProposalsData, err := json.Marshal(retProposals)
-	assert.Nil(t, err)
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "GetProposalsByObjId", gomock.Any()).Return(boltvm.Error("", "GetProposalsByObjId error")).Times(1)
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "GetProposalsByObjId", gomock.Any()).Return(boltvm.Success(retProposalsData)).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "EndCurrentProposal", gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("", "EndCurrentProposal error")).Times(1)
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "EndCurrentProposal", gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "EndObjProposal", gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("", "EndObjProposal error")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "EndObjProposal", gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 
-	retRules := make([]*ruleMgr.Rule, 0)
-	retRules = append(retRules, rules[6])
-	retRules = append(retRules, rules[1])
-	mockStub.EXPECT().GetObject(ruleMgr.RuleKey(chains[0].ID), gomock.Any()).SetArg(1, retRules).Return(true).Times(3)
 	retRules1 := make([]*ruleMgr.Rule, 0)
 	retRules1 = append(retRules1, &ruleMgr.Rule{
 		Address: rules[6].Address,
@@ -427,10 +417,7 @@ func TestRuleManager_ClearRule(t *testing.T) {
 	// check permission error
 	res := rm.ClearRule(chains[0].ID)
 	assert.False(t, res.Ok, string(res.Result))
-	// GetProposalsByObjId error
-	res = rm.ClearRule(chains[0].ID)
-	assert.False(t, res.Ok, string(res.Result))
-	// EndCurrentProposal error
+	// EndObjProposal error
 	res = rm.ClearRule(chains[0].ID)
 	assert.False(t, res.Ok, string(res.Result))
 
