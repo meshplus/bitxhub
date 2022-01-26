@@ -305,7 +305,6 @@ func (exec *BlockExecutor) applyTx(index int, tx pb.Transaction, invalidReason a
 	normalTx := true
 
 	receipt := exec.applyTransaction(index, tx, invalidReason, opt)
-	exec.gasLimit -= receipt.GasUsed
 
 	evs := exec.ledger.Events(tx.GetHash().String())
 	if len(evs) != 0 {
