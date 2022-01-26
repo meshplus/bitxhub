@@ -177,15 +177,9 @@ func proposalStrategyCMD() cli.Command {
 					var receipt *pb.Receipt
 					var err error
 					if module == repo.AllMgr {
-						if err = repo.CheckStrategyType(typ, extra); err != nil {
-							return err
-						}
 						receipt, err = invokeBVMContract(ctx, constant.ProposalStrategyMgrContractAddr.Address().String(), "UpdateAllProposalStrategy",
 							pb.String(typ), pb.String(extra), pb.String(reason))
 					} else {
-						if err = repo.CheckStrategyInfo(typ, module, extra); err != nil {
-							return err
-						}
 						receipt, err = invokeBVMContract(ctx, constant.ProposalStrategyMgrContractAddr.Address().String(), "UpdateProposalStrategy",
 							pb.String(module), pb.String(typ), pb.String(extra), pb.String(reason))
 					}
