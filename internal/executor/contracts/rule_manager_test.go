@@ -425,6 +425,26 @@ func TestRuleManager_ClearRule(t *testing.T) {
 	assert.True(t, res.Ok, string(res.Result))
 }
 
+func TestRuleManager_checkPermission(t *testing.T) {
+	rm, mockStub, _, _, _, _, _ := rulePrepare(t)
+
+	// 2. PermissionAdmin
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin", pb.String(adminAddr), pb.String(string(GovernanceAdmin))).Return(boltvm.Error("", "invoke error")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin", pb.String(noAdminAddr), pb.String(string(GovernanceAdmin))).Return(boltvm.Success([]byte(FALSE))).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin", pb.String(adminAddr), pb.String(string(GovernanceAdmin))).Return(boltvm.Success([]byte(TRUE))).AnyTimes()
+	// crossinvoke error
+	err := rm.checkPermission([]string{string(PermissionAdmin)}, "", adminAddr, nil)
+	assert.NotNil(t, err)
+	// normal
+	err = rm.checkPermission([]string{string(PermissionAdmin)}, "", adminAddr, nil)
+	assert.Nil(t, err)
+	err = rm.checkPermission([]string{string(PermissionAdmin)}, "", noAdminAddr, nil)
+	assert.NotNil(t, err)
+
+	err = rm.checkPermission([]string{""}, "", "", nil)
+	assert.NotNil(t, err)
+}
+
 func rulePrepare(t *testing.T) (*RuleManager, *mock_stub.MockStub, []*ruleMgr.Rule, [][]byte, []*appchainMgr.Appchain, [][]byte, ledger2.IAccount) {
 	// 1. prepare stub
 	mockCtl := gomock.NewController(t)

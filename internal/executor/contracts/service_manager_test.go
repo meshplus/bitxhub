@@ -575,8 +575,6 @@ func TestServiceManager_Query(t *testing.T) {
 	sm, mockStub, services, servicesData := servicePrepare(t)
 	chainServiceID := fmt.Sprintf("%s:%s", services[0].ChainID, services[0].ServiceID)
 
-	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
-	mockStub.EXPECT().Get(gomock.Any()).Return(true, nil).AnyTimes()
 	mockStub.EXPECT().GetObject(service_mgr.ServiceKey(chainServiceID), gomock.Any()).Return(false).Times(1)
 	mockStub.EXPECT().GetObject(service_mgr.ServiceKey(chainServiceID), gomock.Any()).SetArg(1, *services[0]).Return(true).Times(1)
 	// get error
@@ -586,7 +584,7 @@ func TestServiceManager_Query(t *testing.T) {
 	res = sm.GetServiceInfo(chainServiceID)
 	assert.Equal(t, true, res.Ok, string(res.Result))
 
-	mockStub.EXPECT().Query(service_mgr.ServicePrefix).Return(true, servicesData).AnyTimes()
+	mockStub.EXPECT().Query(service_mgr.ServicePrefix).Return(true, servicesData).Times(1)
 	// ok
 	res = sm.GetAllServices()
 	assert.Equal(t, true, res.Ok, string(res.Result))
@@ -595,17 +593,26 @@ func TestServiceManager_Query(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 7, len(theServices))
 
+	mockStub.EXPECT().Query(service_mgr.ServicePrefix).Return(true, servicesData).Times(1)
+	mockStub.EXPECT().Query(service_mgr.ServicePrefix).Return(false, nil).Times(1)
 	res = sm.GetPermissionServices(chainServiceID)
 	assert.Equal(t, true, res.Ok, string(res.Result))
 	err = json.Unmarshal(res.Result, &theServices)
 	assert.Nil(t, err)
 	assert.Equal(t, 7, len(theServices))
+	res = sm.GetPermissionServices(chainServiceID)
+	assert.Equal(t, true, res.Ok, string(res.Result))
+	err = json.Unmarshal(res.Result, &theServices)
+	assert.Nil(t, err)
+	assert.Equal(t, 0, len(theServices))
 
 	serviceMap := orderedmap.New()
 	serviceMap.Set(chainServiceID, struct{}{})
 
+	mockStub.EXPECT().Query(service_mgr.ServicePrefix).Return(false, nil).AnyTimes()
 	mockStub.EXPECT().GetObject(service_mgr.AppchainServicesKey(services[0].ChainID), gomock.Any()).Return(false).Times(1)
 	mockStub.EXPECT().GetObject(service_mgr.AppchainServicesKey(services[0].ChainID), gomock.Any()).SetArg(1, *serviceMap).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(serviceKey(chainServiceID), gomock.Any()).Return(false).Times(1)
 	mockStub.EXPECT().GetObject(serviceKey(chainServiceID), gomock.Any()).SetArg(1, *services[0]).Return(true).Times(1)
 	// 0
 	res = sm.GetServicesByAppchainID(services[0].ChainID)
@@ -615,27 +622,46 @@ func TestServiceManager_Query(t *testing.T) {
 	assert.Equal(t, 0, len(theServices))
 	// 1
 	res = sm.GetServicesByAppchainID(services[0].ChainID)
+	assert.Equal(t, false, res.Ok, string(res.Result))
+	res = sm.GetServicesByAppchainID(services[0].ChainID)
 	assert.Equal(t, true, res.Ok, string(res.Result))
 	err = json.Unmarshal(res.Result, &theServices)
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(theServices))
 
 	mockStub.EXPECT().GetObject(service_mgr.ServicesTypeKey(string(services[0].Type)), gomock.Any()).SetArg(1, *serviceMap).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(serviceKey(chainServiceID), gomock.Any()).Return(false).Times(1)
 	mockStub.EXPECT().GetObject(serviceKey(chainServiceID), gomock.Any()).SetArg(1, *services[0]).Return(true).Times(1)
+	res = sm.GetServicesByType(string(services[0].Type))
+	assert.Equal(t, false, res.Ok, string(res.Result))
 	res = sm.GetServicesByType(string(services[0].Type))
 	assert.Equal(t, true, res.Ok, string(res.Result))
 	err = json.Unmarshal(res.Result, &theServices)
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(theServices))
 
+	mockStub.EXPECT().GetObject(serviceKey(chainServiceID), gomock.Any()).Return(false).Times(1)
 	mockStub.EXPECT().GetObject(serviceKey(chainServiceID), gomock.Any()).SetArg(1, *services[0]).Return(true).Times(1)
 	mockStub.EXPECT().GetObject(serviceKey(chainServiceID), gomock.Any()).SetArg(1, *services[1]).Return(true).Times(1)
+	res = sm.IsAvailable(chainServiceID)
+	assert.Equal(t, false, res.Ok, string(res.Result))
 	res = sm.IsAvailable(chainServiceID)
 	assert.Equal(t, true, res.Ok, string(res.Result))
 	assert.Equal(t, "true", string(res.Result))
 	res = sm.IsAvailable(chainServiceID)
 	assert.Equal(t, true, res.Ok, string(res.Result))
 	assert.Equal(t, "false", string(res.Result))
+
+	mockStub.EXPECT().Get(service_mgr.ServicesNameKey(services[0].Name)).Return(false, nil).Times(1)
+	mockStub.EXPECT().Get(service_mgr.ServicesNameKey(services[0].Name)).Return(true, []byte(services[0].ServiceID)).AnyTimes()
+	mockStub.EXPECT().GetObject(service_mgr.ServiceKey(services[0].ServiceID), gomock.Any()).Return(false).Times(1)
+	mockStub.EXPECT().GetObject(service_mgr.ServiceKey(services[0].ServiceID), gomock.Any()).SetArg(1, *services[0]).Return(true).AnyTimes()
+	res = sm.GetServiceByName(services[0].Name)
+	assert.Equal(t, false, res.Ok)
+	res = sm.GetServiceByName(services[0].Name)
+	assert.Equal(t, false, res.Ok)
+	res = sm.GetServiceByName(services[0].Name)
+	assert.Equal(t, true, res.Ok)
 }
 
 func TestServiceManager_CheckPermissionService(t *testing.T) {

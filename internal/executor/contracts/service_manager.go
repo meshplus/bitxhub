@@ -766,14 +766,10 @@ func (sm *ServiceManager) GetAllServices() *boltvm.Response {
 	if err != nil {
 		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), err.Error()))
 	}
-	if services == nil {
-		return boltvm.Success(nil)
+	if data, err := json.Marshal(services.([]*servicemgr.Service)); err != nil {
+		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), err.Error()))
 	} else {
-		if data, err := json.Marshal(services.([]*servicemgr.Service)); err != nil {
-			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), err.Error()))
-		} else {
-			return boltvm.Success(data)
-		}
+		return boltvm.Success(data)
 	}
 }
 
@@ -790,10 +786,6 @@ func (sm *ServiceManager) GetPermissionServices(chainServiceId string) *boltvm.R
 		if _, ok := s.Permission[chainServiceId]; !ok {
 			ret = append(ret, s)
 		}
-	}
-
-	if len(ret) == 0 {
-		return boltvm.Success(nil)
 	}
 
 	data, err := json.Marshal(ret)

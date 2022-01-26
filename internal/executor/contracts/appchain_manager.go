@@ -533,7 +533,7 @@ func (am *AppchainManager) UpdateAppchain(id, name, desc string, trustRoot []byt
 		}
 	}
 	if updateAdmin {
-		for addr := range newAdminMap {
+		for addr, _ := range newAdminMap {
 			if _, ok := oldAdminMap[addr]; !ok {
 				if _, err := types.HexDecodeString(addr); err != nil {
 					return boltvm.Error(boltvm.AppchainIllegalAdminAddrCode, fmt.Sprintf(string(boltvm.AppchainIllegalAdminAddrMsg), addr, err.Error()))

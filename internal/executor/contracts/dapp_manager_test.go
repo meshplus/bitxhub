@@ -49,11 +49,14 @@ func TestDappManager_Manage(t *testing.T) {
 	res = dm.Manage(string(governance.EventUpdate), string(APPROVED), string(governance.GovernanceAvailable), dapps[0].DappID, dappsData[0])
 	assert.False(t, res.Ok, string(res.Result))
 
-	// test register
+	// test register approve
 	res = dm.Manage(string(governance.EventRegister), string(APPROVED), string(governance.GovernanceUnavailable), dapps[3].DappID, dappsData[3])
 	assert.True(t, res.Ok, string(res.Result))
+	// test register reject
+	res = dm.Manage(string(governance.EventRegister), string(REJECTED), string(governance.GovernanceUnavailable), dapps[3].DappID, dappsData[3])
+	assert.True(t, res.Ok, string(res.Result))
 
-	// test update
+	// test update approve
 	updateInfo := &UpdateDappInfo{
 		DappName: UpdateInfo{
 			OldInfo: dapps[0].Name,
@@ -84,6 +87,9 @@ func TestDappManager_Manage(t *testing.T) {
 	updateInfoData, err := json.Marshal(updateInfo)
 	assert.Nil(t, err)
 	res = dm.Manage(string(governance.EventUpdate), string(APPROVED), string(governance.GovernanceAvailable), dapps[4].DappID, updateInfoData)
+	assert.True(t, res.Ok, string(res.Result))
+	// test update reject
+	res = dm.Manage(string(governance.EventUpdate), string(REJECTED), string(governance.GovernanceAvailable), dapps[4].DappID, updateInfoData)
 	assert.True(t, res.Ok, string(res.Result))
 
 	// test transer
@@ -406,6 +412,17 @@ func TestDappManager_Query(t *testing.T) {
 	res = dm.IsAvailable(dapps[0].DappID)
 	assert.Equal(t, true, res.Ok)
 	assert.Equal(t, "false", string(res.Result))
+
+	mockStub.EXPECT().GetObject(DappNameKey(dapps[0].Name), gomock.Any()).Return(false).Times(1)
+	mockStub.EXPECT().GetObject(DappNameKey(dapps[0].Name), gomock.Any()).SetArg(1, dapps[0].DappID).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(DappKey(dapps[0].DappID), gomock.Any()).Return(false).Times(1)
+	mockStub.EXPECT().GetObject(DappKey(dapps[0].DappID), gomock.Any()).SetArg(1, *dapps[0]).Return(true).AnyTimes()
+	res = dm.GetDappByName(dapps[0].Name)
+	assert.Equal(t, false, res.Ok)
+	res = dm.GetDappByName(dapps[0].Name)
+	assert.Equal(t, false, res.Ok)
+	res = dm.GetDappByName(dapps[0].Name)
+	assert.Equal(t, true, res.Ok)
 }
 
 func dappPrepare(t *testing.T) (*DappManager, *mock_stub.MockStub, []*Dapp, [][]byte) {

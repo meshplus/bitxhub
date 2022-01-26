@@ -767,12 +767,6 @@ func (rm *RoleManager) pauseAuditAdmin(roleId string) *boltvm.Response {
 		//   If the audit administrator fails to log out, pause again. If the log out succeeds, unbind the node directly
 		return boltvm.Success(nil)
 	}
-	switch role.RoleType {
-	case AppchainAdmin:
-		return boltvm.Error(boltvm.RoleNonsupportAppchainAdminCode, fmt.Sprintf(string(boltvm.RoleNonsupportAppchainAdminMsg), roleId, event))
-	case GovernanceAdmin:
-		return boltvm.Error(boltvm.RoleNonsupportGovernanceAdminCode, fmt.Sprintf(string(boltvm.RoleNonsupportGovernanceAdminMsg), roleId, event))
-	}
 
 	// 2. change status
 	if ok, data := rm.changeStatus(roleId, string(event), string(role.Status)); !ok {
@@ -879,12 +873,6 @@ func (rm *RoleManager) restoreAuditAdmin(roleId string) *boltvm.Response {
 		//- frozen: not possible to enter this method
 		//- logouting: The logout priority is higher so no proposals need to be restored. Pending proposals are processed when the logout is complete
 		return boltvm.Success(nil)
-	}
-	switch role.RoleType {
-	case AppchainAdmin:
-		return boltvm.Error(boltvm.RoleNonsupportAppchainAdminCode, fmt.Sprintf(string(boltvm.RoleNonsupportAppchainAdminMsg), roleId, event))
-	case GovernanceAdmin:
-		return boltvm.Error(boltvm.RoleNonsupportGovernanceAdminCode, fmt.Sprintf(string(boltvm.RoleNonsupportGovernanceAdminMsg), roleId, event))
 	}
 
 	// 2. restore proposals

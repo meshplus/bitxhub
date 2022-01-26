@@ -199,11 +199,7 @@ func (nm *NodeManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 				}
 				nm.PostEvent(pb.Event_NODEMGR, nodeEvent)
 			case nodemgr.NVPNode:
-				//if nodeInfo.AuditAdminAddr != "" {
-				if res := nm.CrossInvoke(constant.RoleContractAddr.Address().String(), "PauseAuditAdmin", pb.String(objId)); !res.Ok {
-					return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("cross invoke PauseAuditAdmin error: %s", string(res.Result))))
-				}
-				//}
+				nm.CrossInvoke(constant.RoleContractAddr.Address().String(), "PauseAuditAdmin", pb.String(objId))
 			}
 		}
 	} else {
@@ -668,11 +664,11 @@ func (nm *NodeManager) unbindNode(nodeAccount string) *boltvm.Response {
 	nodeInfo, be := nm.NodeManager.GovernancePre(nodeAccount, event, nil)
 	if be != nil {
 		// If the audit node cannot be unbind, you do not need to unbind the audit node. The possibilities are as follows:
-		//- binded: ok
-		//- registering /unavailable/available: The audit node is not yet bound, so it is not possible to enter this method.
-		//- binding: If the node is not bound successfully, it is equivalent to that the audit node is not bound. Therefore, this method cannot be entered.
-		//- updating/logouting: When the update or logout event ends, the system checks whether the audit admin is logouted. If so, the system automatically unbinds the audit admin
-		//- forbidden: There is no need to unbind.
+		// - binded: ok
+		// - registering /unavailable/available: The audit node is not yet bound, so it is not possible to enter this method.
+		// - binding: If the node is not bound successfully, it is equivalent to that the audit node is not bound. Therefore, this method cannot be entered.
+		// - updating/logouting: When the update or logout event ends, the system checks whether the audit admin is logouted. If so, the system automatically unbinds the audit admin
+		// - forbidden: There is no need to unbind.
 		return boltvm.Success(nil)
 	}
 	node := nodeInfo.(*nodemgr.Node)
@@ -836,7 +832,7 @@ func (nm *NodeManager) GetVpNodeByPid(nodePid string) *boltvm.Response {
 
 func (nm *NodeManager) GetVpNodeByVpId(nodeVpId string) *boltvm.Response {
 	nm.NodeManager.Persister = nm.Stub
-	nodeAccount, err := nm.NodeManager.GetAccountByPid(nodeVpId)
+	nodeAccount, err := nm.NodeManager.GetAccountByVpId(nodeVpId)
 	if err != nil {
 		return boltvm.Error(boltvm.NodeNonexistentNodeCode, fmt.Sprintf(string(boltvm.NodeNonexistentNodeMsg), nodeVpId))
 	}

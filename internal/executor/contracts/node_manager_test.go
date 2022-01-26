@@ -3,6 +3,7 @@ package contracts
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -65,22 +66,24 @@ func TestNodeManager_RegisterNode(t *testing.T) {
 	res = nm.RegisterNode(nodes[5].Account, string(node_mgr.VPNode), nodes[5].Pid, 1, NODE_NAME, "", reason)
 	assert.False(t, res.Ok, string(res.Result))
 	// 3. info(pid) error
-	res = nm.RegisterNode(nodes[5].Account, string(node_mgr.VPNode), nodes[0].Pid, 6, NODE_NAME, "", reason)
+	res = nm.RegisterNode(nodes[5].Account, string(node_mgr.VPNode), nodes[0].Pid, 9, NODE_NAME, "", reason)
 	assert.False(t, res.Ok, string(res.Result))
 	// 4. governance pre error
-	res = nm.RegisterNode(nodes[1].Account, string(node_mgr.VPNode), nodes[5].Pid, 6, NODE_NAME, "", reason)
+	res = nm.RegisterNode(nodes[1].Account, string(node_mgr.VPNode), nodes[5].Pid, 9, NODE_NAME, "", reason)
 	assert.False(t, res.Ok, string(res.Result))
 	// 5. SubmitProposal error
-	res = nm.RegisterNode(nodes[5].Account, string(node_mgr.VPNode), nodes[5].Pid, 6, NODE_NAME, "", reason)
+	res = nm.RegisterNode(nodes[5].Account, string(node_mgr.VPNode), nodes[5].Pid, 9, NODE_NAME, "", reason)
 	assert.False(t, res.Ok, string(res.Result))
 
-	res = nm.RegisterNode(nodes[5].Account, string(node_mgr.VPNode), nodes[5].Pid, 6, NODE_NAME, "", reason)
+	res = nm.RegisterNode(nodes[5].Account, string(node_mgr.VPNode), nodes[5].Pid, 9, NODE_NAME, "", reason)
 	assert.True(t, res.Ok, string(res.Result))
 }
 
 func TestNodeManager_LogoutNode(t *testing.T) {
 	nm, mockStub, nodes, _ := vpNodePrepare(t)
 
+	cannotLogoutAccountMap := orderedmap.New()
+	cannotLogoutAccountMap.Set(nodes[6].Account, struct{}{})
 	accountMap := orderedmap.New()
 	accountMap.Set(nodes[0].Account, struct{}{})
 	accountMap.Set(nodes[1].Account, struct{}{})
@@ -90,7 +93,8 @@ func TestNodeManager_LogoutNode(t *testing.T) {
 	accountMap.Set(nodes[5].Account, struct{}{})
 	accountMap1 := orderedmap.New()
 
-	mockStub.EXPECT().GetObject(node_mgr.NodeTypeKey(string(node_mgr.VPNode)), gomock.Any()).SetArg(1, *accountMap1).Return(true).Times(1)
+	mockStub.EXPECT().GetObject(node_mgr.NodeTypeKey(string(node_mgr.VPNode)), gomock.Any()).SetArg(1, *cannotLogoutAccountMap).Return(true).Times(1)
+	mockStub.EXPECT().GetObject(node_mgr.NodeTypeKey(string(node_mgr.VPNode)), gomock.Any()).SetArg(1, *accountMap1).Return(true).Times(3)
 	mockStub.EXPECT().GetObject(node_mgr.NodeTypeKey(string(node_mgr.VPNode)), gomock.Any()).SetArg(1, *accountMap).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[0].Account), gomock.Any()).SetArg(1, *nodes[0]).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[1].Account), gomock.Any()).SetArg(1, *nodes[1]).Return(true).AnyTimes()
@@ -98,16 +102,27 @@ func TestNodeManager_LogoutNode(t *testing.T) {
 	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[3].Account), gomock.Any()).SetArg(1, *nodes[3]).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[4].Account), gomock.Any()).SetArg(1, *nodes[4]).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[5].Account), gomock.Any()).SetArg(1, *nodes[5]).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[6].Account), gomock.Any()).SetArg(1, *nodes[6]).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[7].Account), gomock.Any()).SetArg(1, *nodes[7]).Return(true).AnyTimes()
+
 	mockStub.EXPECT().Caller().Return("").AnyTimes()
 	mockStub.EXPECT().CurrentCaller().Return(noAdminAddr).Times(1)
 	mockStub.EXPECT().CurrentCaller().Return(adminAddr).AnyTimes()
+
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "IsAnyAvailableAdmin", pb.String(noAdminAddr), pb.String(string(GovernanceAdmin))).Return(boltvm.Success([]byte(FALSE))).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "IsAnyAvailableAdmin", pb.String(adminAddr), pb.String(string(GovernanceAdmin))).Return(boltvm.Success([]byte(TRUE))).AnyTimes()
+
 	mockStub.EXPECT().CrossInvoke(gomock.Eq(constant.GovernanceContractAddr.Address().String()), gomock.Eq("SubmitProposal"),
 		gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("", "")).Times(1)
 	mockStub.EXPECT().CrossInvoke(gomock.Eq(constant.GovernanceContractAddr.Address().String()), gomock.Eq("SubmitProposal"),
 		gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+
+	mockStub.EXPECT().CrossInvoke(gomock.Eq(constant.RoleContractAddr.Address().String()), gomock.Eq("PauseAuditAdminBinding"),
+		gomock.Any()).Return(boltvm.Error("", "PauseAuditAdminBinding error")).Times(1)
+	mockStub.EXPECT().CrossInvoke(gomock.Eq(constant.RoleContractAddr.Address().String()), gomock.Eq("PauseAuditAdminBinding"),
+		gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+
 	mockStub.EXPECT().CrossInvoke(gomock.Eq(constant.GovernanceContractAddr.Address().String()), gomock.Eq("ZeroPermission"),
 		gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
@@ -115,19 +130,29 @@ func TestNodeManager_LogoutNode(t *testing.T) {
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, nil).AnyTimes()
 
 	// 1. CheckPermission error
-	res := nm.LogoutNode(nodes[4].Account, reason)
+	res := nm.LogoutNode(nodes[1].Account, reason)
 	assert.False(t, res.Ok, string(res.Result))
 	// 2. status error
 	res = nm.LogoutNode(nodes[5].Account, reason)
 	assert.False(t, res.Ok, string(res.Result))
-	// 3. primary error
+	// 3. has vp node governed error
+	res = nm.LogoutNode(nodes[1].Account, reason)
+	assert.False(t, res.Ok, string(res.Result))
+	// 4. primary error
 	res = nm.LogoutNode(nodes[0].Account, reason)
 	assert.False(t, res.Ok, string(res.Result))
-	// 4. SubmitProposal error
-	res = nm.LogoutNode(nodes[4].Account, reason)
+	// 5. 0 available node error
+	res = nm.LogoutNode(nodes[1].Account, reason)
+	assert.False(t, res.Ok, string(res.Result))
+	// 6. SubmitProposal error
+	res = nm.LogoutNode(nodes[1].Account, reason)
+	assert.False(t, res.Ok, string(res.Result))
+	// 7. PauseAuditAdminBinding error
+	res = nm.LogoutNode(nodes[7].Account, reason)
 	assert.False(t, res.Ok, string(res.Result))
 
-	res = nm.LogoutNode(nodes[4].Account, reason)
+	// ok
+	res = nm.LogoutNode(nodes[7].Account, reason)
 	assert.True(t, res.Ok, string(res.Result))
 }
 
@@ -153,6 +178,8 @@ func TestNodeManager_UpdateNode(t *testing.T) {
 	mockStub.EXPECT().GetObject(node_mgr.NodeKey(vpNodes[0].Account), gomock.Any()).SetArg(1, *vpNodes[0]).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nvpNodes[1].Account), gomock.Any()).SetArg(1, *nvpNodes[1]).Return(true).AnyTimes()
 
+	mockStub.EXPECT().CrossInvoke(gomock.Eq(constant.GovernanceContractAddr.Address().String()), gomock.Eq("ZeroPermission"),
+		gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, nil).AnyTimes()
 
@@ -180,7 +207,7 @@ func TestNodeManager_UpdateNode(t *testing.T) {
 	res = nm.UpdateNode(nvpNodes[1].Account, nvpNodes[2].Name, appchainID, reason)
 	assert.False(t, res.Ok, string(res.Result))
 
-	res = nm.UpdateNode(nvpNodes[1].Account, nvpNodes[1].Name, appchainID, reason)
+	res = nm.UpdateNode(nvpNodes[1].Account, nvpNodes[2].Name, appchainID, reason)
 	assert.True(t, res.Ok, string(res.Result))
 }
 
@@ -252,6 +279,9 @@ func TestNodeManager_ManageBindNode(t *testing.T) {
 
 	res = nm.ManageBindNode(nvpNodes[2].Account, "", string(APPROVED))
 	assert.True(t, res.Ok, string(res.Result))
+
+	res = nm.ManageBindNode(nvpNodes[2].Account, "", string(REJECTED))
+	assert.True(t, res.Ok, string(res.Result))
 }
 
 func TestNodeManager_UnbindNode(t *testing.T) {
@@ -277,6 +307,11 @@ func TestNodeManager_UnbindNode(t *testing.T) {
 	res := nm.UnbindNode(nvpNodes[0].Account)
 	assert.False(t, res.Ok, string(res.Result))
 
+	// forbidden node
+	res = nm.UnbindNode(nvpNodes[0].Account)
+	assert.True(t, res.Ok, string(res.Result))
+
+	// binded node
 	res = nm.UnbindNode(nvpNodes[3].Account)
 	assert.True(t, res.Ok, string(res.Result))
 }
@@ -288,12 +323,20 @@ func TestNodeManager_Manage_VPNode(t *testing.T) {
 	mockStub.EXPECT().CurrentCaller().Return(noAdminAddr).Times(1)
 	mockStub.EXPECT().CurrentCaller().Return(constant.GovernanceContractAddr.String()).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().Delete(gomock.Any()).Return().AnyTimes()
 	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *nodes[1]).Return(true).Times(1)
+	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *nodes[6]).Return(true).Times(1)
+	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Return(false).Times(1)
 	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *nodes[6]).Return(true).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, nil).AnyTimes()
+
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "FreeAccount",
+		gomock.Any()).Return(boltvm.Error("", "FreeAccount error")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "FreeAccount",
+		gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 
 	// CheckPermission error
 	res := nm.Manage(string(governance.EventLogout), BallotApprove, string(governance.GovernanceUnavailable), nodes[1].Account, nodesData[1])
@@ -301,7 +344,19 @@ func TestNodeManager_Manage_VPNode(t *testing.T) {
 	// ChangeStatus error
 	res = nm.Manage(string(governance.EventLogout), BallotApprove, string(governance.GovernanceUnavailable), nodes[1].Account, nodesData[1])
 	assert.False(t, res.Ok, string(res.Result))
+	// get role error
+	res = nm.Manage(string(governance.EventLogout), BallotApprove, string(governance.GovernanceUnavailable), nodes[1].Account, nodesData[1])
+	assert.False(t, res.Ok, string(res.Result))
 
+	// register, reject
+	// FreeAccount error
+	res = nm.Manage(string(governance.EventRegister), BallotReject, string(governance.GovernanceUnavailable), nodes[1].Account, nodesData[6])
+	assert.False(t, res.Ok, string(res.Result))
+	// ok
+	res = nm.Manage(string(governance.EventRegister), BallotReject, string(governance.GovernanceUnavailable), nodes[1].Account, nodesData[6])
+	assert.True(t, res.Ok, string(res.Result))
+
+	// logout, approve
 	res = nm.Manage(string(governance.EventLogout), BallotApprove, string(governance.GovernanceUnavailable), nodes[1].Account, nodesData[6])
 	assert.True(t, res.Ok, string(res.Result))
 }
@@ -321,12 +376,20 @@ func TestNodeManager_Manage_NVPNode(t *testing.T) {
 	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[6].Account), gomock.Any()).SetArg(1, *nodes[6]).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[7].Account), gomock.Any()).SetArg(1, *nodes[7]).Return(true).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "PauseAuditAdmin", pb.String(nodes[6].Account)).Return(boltvm.Error("", "PauseAuditAdmin error")).AnyTimes()
+
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "FreeAccount",
 		gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 
-	// register, reject
+	// register, approve
 	res := nm.Manage(string(governance.EventRegister), BallotReject, string(governance.GovernanceUnavailable), nodes[4].Account, nil)
 	assert.True(t, res.Ok, string(res.Result))
+
+	// register, reject
+	res = nm.Manage(string(governance.EventRegister), BallotReject, string(governance.GovernanceUnavailable), nodes[4].Account, nil)
+	assert.True(t, res.Ok, string(res.Result))
+
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin", gomock.Any(), gomock.Any()).Return(boltvm.Error("", "IsAnyAvailableAdmin error")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin", gomock.Any(), gomock.Any()).Return(boltvm.Success([]byte(FALSE))).Times(1)
 
 	// update, approve
 	nodeUpdateInfo := &UpdateNodeInfo{
@@ -343,20 +406,65 @@ func TestNodeManager_Manage_NVPNode(t *testing.T) {
 	}
 	nodeUpdateInfoData, err := json.Marshal(nodeUpdateInfo)
 	assert.Nil(t, err)
+	// IsAnyAvailableAdmin error
+	res = nm.Manage(string(governance.EventUpdate), BallotApprove, string(governance.GovernanceAvailable), nodes[5].Account, nodeUpdateInfoData)
+	assert.False(t, res.Ok, string(res.Result))
+	// ok
 	res = nm.Manage(string(governance.EventUpdate), BallotApprove, string(governance.GovernanceAvailable), nodes[5].Account, nodeUpdateInfoData)
 	assert.True(t, res.Ok, string(res.Result))
 
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin", gomock.Any(), gomock.Any()).Return(boltvm.Error("", "IsAnyAvailableAdmin error")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin", gomock.Any(), gomock.Any()).Return(boltvm.Success([]byte(FALSE))).Times(1)
+
 	// update, reject
+	// IsAnyAvailableAdmin error
+	res = nm.Manage(string(governance.EventUpdate), BallotReject, string(governance.GovernanceAvailable), nodes[5].Account, nodeUpdateInfoData)
+	assert.False(t, res.Ok, string(res.Result))
+	// ok
 	res = nm.Manage(string(governance.EventUpdate), BallotReject, string(governance.GovernanceAvailable), nodes[5].Account, nodeUpdateInfoData)
 	assert.True(t, res.Ok, string(res.Result))
 
 	// logout, approve
 	res = nm.Manage(string(governance.EventLogout), BallotApprove, string(governance.GovernanceAvailable), nodes[6].Account, nil)
+	assert.True(t, res.Ok, string(res.Result))
+
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "GetRoleInfoById", gomock.Any()).Return(boltvm.Error("", "GetRoleInfoById error")).Times(1)
+	forbiddenRole := &Role{
+		ID:     nodes[6].AuditAdminAddr,
+		Status: governance.GovernanceForbidden,
+	}
+	forbiddenRoleData, err := json.Marshal(forbiddenRole)
+	assert.Nil(t, err)
+	bindingRole := &Role{
+		ID:     nodes[6].AuditAdminAddr,
+		Status: governance.GovernanceBinding,
+	}
+	bindingRoleData, err := json.Marshal(bindingRole)
+	assert.Nil(t, err)
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "GetRoleInfoById", gomock.Any()).Return(boltvm.Success(forbiddenRoleData)).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "GetRoleInfoById", gomock.Any()).Return(boltvm.Success(bindingRoleData)).AnyTimes()
+
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "RestoreAuditAdminBinding", gomock.Any()).Return(boltvm.Error("", "RestoreAuditAdminBinding error")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "RestoreAuditAdminBinding", gomock.Any()).Return(boltvm.Success(nil)).Times(1)
+
+	// logout, reject
+	// GetRoleInfoById error
+	res = nm.Manage(string(governance.EventLogout), BallotReject, string(governance.GovernanceAvailable), nodes[6].Account, nil)
 	assert.False(t, res.Ok, string(res.Result))
+	// logout node with role which is forbidden
+	res = nm.Manage(string(governance.EventLogout), BallotReject, string(governance.GovernanceAvailable), nodes[6].Account, nil)
+	assert.True(t, res.Ok, string(res.Result))
+	// logout node with role which is binding
+	// RestoreAuditAdminBinding error
+	res = nm.Manage(string(governance.EventLogout), BallotReject, string(governance.GovernanceAvailable), nodes[6].Account, nil)
+	assert.False(t, res.Ok, string(res.Result))
+	res = nm.Manage(string(governance.EventLogout), BallotReject, string(governance.GovernanceAvailable), nodes[6].Account, nil)
+	assert.True(t, res.Ok, string(res.Result))
 }
 
-func TestNodeManager_VPNodeQuery(t *testing.T) {
+func TestNodeManager_NodeQuery(t *testing.T) {
 	nm, mockStub, nodes, nodesData := vpNodePrepare(t)
+	_, _, nvpNodes, _ := nvpNodePrepare(t)
 
 	idMap := orderedmap.New()
 	idMap.Set(nodes[0].Pid, struct{}{})
@@ -400,6 +508,38 @@ func TestNodeManager_VPNodeQuery(t *testing.T) {
 
 	res = nm.GetNode(NODE_PID)
 	assert.True(t, res.Ok, string(res.Result))
+
+	res = nm.GetNextVpID()
+	assert.True(t, res.Ok, string(res.Result))
+	assert.Equal(t, "9", string(res.Result))
+
+	mockStub.EXPECT().Get(gomock.Any()).Return(false, nil).Times(1)
+	mockStub.EXPECT().Get(gomock.Any()).Return(true, nodesData[0]).Times(1)
+	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *nodes[0]).Return(true).Times(1)
+
+	res = nm.GetVpNodeByVpId(strconv.Itoa(int(nodes[0].VPNodeId)))
+	assert.False(t, res.Ok, string(res.Result))
+	res = nm.GetVpNodeByVpId(strconv.Itoa(int(nodes[0].VPNodeId)))
+	assert.True(t, res.Ok, string(res.Result))
+
+	mockStub.EXPECT().Get(gomock.Any()).Return(false, nil).Times(1)
+	mockStub.EXPECT().Get(gomock.Any()).Return(true, nodesData[0]).Times(1)
+	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *nodes[0]).Return(true).Times(1)
+
+	res = nm.GetVpNodeByPid(nodes[0].Pid)
+	assert.False(t, res.Ok, string(res.Result))
+	res = nm.GetVpNodeByPid(nodes[0].Pid)
+	assert.True(t, res.Ok, string(res.Result))
+
+	mockStub.EXPECT().Get(gomock.Any()).Return(false, nil).Times(1)
+	mockStub.EXPECT().Get(gomock.Any()).Return(true, nodesData[0]).Times(1)
+	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *nodes[0]).Return(true).Times(1)
+
+	res = nm.GetNvpNodeByName(nvpNodes[0].Name)
+	assert.False(t, res.Ok, string(res.Result))
+	res = nm.GetNvpNodeByName(nodes[0].Name)
+	assert.True(t, res.Ok, string(res.Result))
+
 }
 
 func TestNodeManager_checkPermission(t *testing.T) {
@@ -497,8 +637,10 @@ func vpNodePrepare(t *testing.T) (*NodeManager, *mock_stub.MockStub, []*node_mgr
 		string(governance.GovernanceAvailable),
 		string(governance.GovernanceAvailable),
 		string(governance.GovernanceUnavailable),
-		string(governance.GovernanceRegisting)}
-	for i := 0; i < 7; i++ {
+		string(governance.GovernanceRegisting),
+		string(governance.GovernanceBinding),
+	}
+	for i := 0; i < 8; i++ {
 		node := &node_mgr.Node{
 			VPNodeId: uint64(i + 1),
 			Pid:      fmt.Sprintf("%s%d", NODE_PID[0:len(NODE_PID)-1], i),
@@ -549,8 +691,9 @@ func nvpNodePrepare(t *testing.T) (*NodeManager, *mock_stub.MockStub, []*node_mg
 			Permissions: map[string]struct{}{
 				appchainID: {},
 			},
-			NodeType: node_mgr.NVPNode,
-			Status:   governance.GovernanceStatus(nvpNodeStatus[i]),
+			NodeType:       node_mgr.NVPNode,
+			Status:         governance.GovernanceStatus(nvpNodeStatus[i]),
+			AuditAdminAddr: AUDIT_ADMIN_ROLE_ID,
 		}
 		if i == 7 {
 			node.AuditAdminAddr = "111"
