@@ -76,15 +76,15 @@ func checkConfig(config *Config) error {
 
 	// check strategy
 	for _, s := range config.Genesis.Strategy {
-		if err := CheckStrategyInfo(s.Typ, s.Module, s.Extra); err != nil {
+		if err := CheckStrategyInfo(s.Typ, s.Module, s.Extra, len(config.Genesis.Admins)); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func CheckStrategyInfo(typ, module string, extra string) error {
-	if err := CheckStrategyType(typ, extra); err != nil {
+func CheckStrategyInfo(typ, module string, extra string, adminsNum int) error {
+	if err := CheckStrategyType(typ, extra, adminsNum); err != nil {
 		return fmt.Errorf("illegal proposal strategy type:%s, err: %v", typ, err)
 	}
 	if CheckManageModule(module) != nil {
@@ -93,22 +93,40 @@ func CheckStrategyInfo(typ, module string, extra string) error {
 	return nil
 }
 
-func CheckStrategyType(typ string, extra string) error {
+func CheckStrategyType(typ string, extra string, adminsNum int) error {
 	if typ != SuperMajorityApprove &&
 		typ != SuperMajorityAgainst &&
 		typ != SimpleMajority {
 		return fmt.Errorf("illegal proposal strategy type")
 	}
 
-	isEnd, _, err := MakeStrategyDecision(extra, 1, 0, 1, 1)
+	err := CheckStrategyExpression(extra, adminsNum)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func CheckStrategyExpression(expressionStr string, adminsNum int) error {
+	expression, err := govaluate.NewEvaluableExpression(expressionStr)
 	if err != nil {
 		return fmt.Errorf("illegal strategy expression: %w", err)
 	}
-	if !isEnd {
-		return fmt.Errorf("illegal strategy expression: under this exp(%s), the proposal may never be concluded", extra)
+
+	parameters := make(map[string]interface{}, 8)
+	parameters["a"] = adminsNum
+	parameters["r"] = 0
+	parameters["t"] = adminsNum
+	result, err := expression.Evaluate(parameters)
+	if err != nil {
+		return fmt.Errorf("illegal strategy expression: %w", err)
 	}
 
-	return nil
+	if result.(bool) {
+		return nil
+	} else {
+		return fmt.Errorf("illegal strategy expression: under this exp(%s), the proposal may never be concluded", expressionStr)
+	}
 }
 
 // return:

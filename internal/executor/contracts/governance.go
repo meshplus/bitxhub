@@ -12,6 +12,7 @@ import (
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/repo"
+	"github.com/sirupsen/logrus"
 )
 
 type Governance struct {
@@ -80,6 +81,7 @@ type Proposal struct {
 	ElectorateList         []*Role              `json:"electorate_list"`
 	InitialElectorateNum   uint64               `json:"initial_electorate_num"`
 	AvaliableElectorateNum uint64               `json:"avaliable_electorate_num"`
+	ThresholdApproveNum    uint64               `json:"threshold_approve_num"`
 	StrategyType           ProposalStrategyType `json:"strategy_type"`
 	StrategyExpression     string               `json:"strategy_expression"`
 	EventType              governance.EventType `json:"event_type"`
@@ -138,7 +140,7 @@ func (g *Governance) SubmitProposal(from, eventTyp, des, typ, objId, objLastStat
 		return boltvm.Error(err.Error())
 	}
 
-	expression, strategyTyp, err := g.getStrategyInfo(ProposalType(typ))
+	expression, strategyTyp, thresholdApproveNum, err := g.getStrategyInfo(ProposalType(typ), uint64(eletctorateNum))
 	if err != nil {
 		return boltvm.Error(err.Error())
 	}
@@ -163,6 +165,7 @@ func (g *Governance) SubmitProposal(from, eventTyp, des, typ, objId, objLastStat
 		ElectorateList:         electorateList,
 		InitialElectorateNum:   uint64(eletctorateNum),
 		AvaliableElectorateNum: uint64(eletctorateNum),
+		ThresholdApproveNum:    uint64(thresholdApproveNum),
 		StrategyType:           strategyTyp,
 		StrategyExpression:     expression,
 		LockProposalId:         lockPId,
@@ -242,9 +245,9 @@ func (g *Governance) getElectorate() ([]*Role, int, error) {
 	return admins, len(admins), nil
 }
 
-func (g *Governance) getStrategyInfo(module ProposalType) (string, ProposalStrategyType, error) {
+func (g *Governance) getStrategyInfo(module ProposalType, eletctorateNum uint64) (string, ProposalStrategyType, uint64, error) {
 	if err := repo.CheckManageModule(string(module)); err != nil {
-		return "", "", fmt.Errorf(err.Error())
+		return "", "", 0, fmt.Errorf(err.Error())
 	}
 	ps := &ProposalStrategy{}
 	if !g.GetObject(string(module), &ps) {
@@ -252,7 +255,25 @@ func (g *Governance) getStrategyInfo(module ProposalType) (string, ProposalStrat
 		g.AddObject(string(module), ps)
 	}
 
-	return ps.Extra, ps.Typ, nil
+	thresholdApproveNum, err := getCurThresholdApproveNum(ps.Extra, 0, 0, eletctorateNum, eletctorateNum)
+	if err != nil {
+		return "", "", 0, err
+	}
+	return ps.Extra, ps.Typ, thresholdApproveNum, nil
+}
+
+func getCurThresholdApproveNum(strategyExp string, approve, reject, tolal, availableNum uint64) (uint64, error) {
+	thresholdApproveNum := approve
+	for ; thresholdApproveNum <= tolal; thresholdApproveNum++ {
+		_, isPass, err := repo.MakeStrategyDecision(strategyExp, thresholdApproveNum, reject, tolal, availableNum)
+		if err != nil {
+			return 0, err
+		}
+		if isPass {
+			return thresholdApproveNum, nil
+		}
+	}
+	return 0, fmt.Errorf("illegal strategy expressopm(%s), the proposal may mot pass", strategyExp)
 }
 
 //func (g *Governance) getStrategyInfo(proposalTyp ProposalType) (int, error) {
@@ -646,9 +667,19 @@ func (g *Governance) UpdateAvaliableElectorateNum(id string, num uint64) *boltvm
 	}
 
 	p.AvaliableElectorateNum = num
+	thresholdApproveNum, err := getCurThresholdApproveNum(p.StrategyExpression, p.ApproveNum, p.AgainstNum, p.InitialElectorateNum, p.AvaliableElectorateNum)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("getCurThresholdApproveNum err: %s", err))
+	}
+	p.ThresholdApproveNum = uint64(thresholdApproveNum)
+
+	g.Logger().WithFields(logrus.Fields{
+		"proposalId":             id,
+		"AvaliableElectorateNum": p.AvaliableElectorateNum,
+	}).Info("Update avaliable electorate num")
 	isEnd, isApprove, err := repo.MakeStrategyDecision(p.StrategyExpression, p.ApproveNum, p.AgainstNum, p.InitialElectorateNum, p.AvaliableElectorateNum)
 	if err != nil {
-		return boltvm.Error(err.Error())
+		return boltvm.Error(fmt.Sprintf("MakeStrategyDecision err: %v", err))
 	}
 
 	if isEnd {
@@ -891,6 +922,12 @@ func (g *Governance) setVote(p *Proposal, addr string, approve string, reason st
 				return fmt.Errorf("the info of vote should be approve or reject")
 			}
 
+			thresholdApproveNum, err := getCurThresholdApproveNum(p.StrategyExpression, p.ApproveNum, p.AgainstNum, p.InitialElectorateNum, p.AvaliableElectorateNum)
+			if err != nil {
+				return err
+			}
+			p.ThresholdApproveNum = uint64(thresholdApproveNum)
+
 			g.SetObject(ProposalKey(p.Id), *p)
 			return nil
 		}
@@ -963,24 +1000,45 @@ type ProposalStrategy struct {
 //	return boltvm.Success(pData)
 //}
 //
-//// set proposal strategy for a proposal type
-//func (g *Governance) SetProposalStrategy(pt string, psData []byte) *boltvm.Response {
-//	ps := &ProposalStrategy{}
-//	if err := json.Unmarshal(psData, ps); err != nil {
-//		return boltvm.Error(err.Error())
-//	}
-//
-//	if err := checkProposalType(ProposalType(pt)); err != nil {
-//		return boltvm.Error(err.Error())
-//	}
-//
-//	if err := checkStrategyInfo(ps); err != nil {
-//		return boltvm.Error(err.Error())
-//	}
-//
-//	g.SetObject(string(pt), *ps)
-//	return boltvm.Success(nil)
-//}
+var mgrs = []string{repo.AppchainMgr, repo.NodeMgr, repo.DappMgr, repo.RoleMgr, repo.RuleMgr, repo.ServiceMgr, repo.ProposalStrategyMgr}
+
+func (g *Governance) UpdateProposalStrategyByRolesChange(availableNum uint64) *boltvm.Response {
+	// 1. check permission
+	specificAddrs := []string{
+		constant.RoleContractAddr.Address().String(),
+	}
+	addrsData, err := json.Marshal(specificAddrs)
+	if err != nil {
+		return boltvm.Error("marshal specificAddrs error:" + string(err.Error()))
+	}
+	res := g.CrossInvoke(constant.RoleContractAddr.String(), "CheckPermission",
+		pb.String(string(PermissionSpecific)),
+		pb.String(""),
+		pb.String(g.CurrentCaller()),
+		pb.Bytes(addrsData))
+	if !res.Ok {
+		return boltvm.Error("check permission error:" + string(res.Result))
+	}
+
+	// 2. update strategy
+	for _, module := range mgrs {
+		strategy := defaultStrategy(module)
+		ok := g.GetObject(module, strategy)
+		if !ok {
+			continue
+		}
+		if _, err := getCurThresholdApproveNum(strategy.Extra, 0, 0, availableNum, availableNum); err != nil {
+			g.Logger().WithFields(logrus.Fields{
+				"module": module,
+				"old":    strategy,
+				"new":    defaultStrategy(module),
+			}).Info("update module strategy because of roles change")
+			g.SetObject(module, *defaultStrategy(module))
+		}
+	}
+
+	return boltvm.Success(nil)
+}
 
 func (g *Governance) GetProposalStrategy(module string) *boltvm.Response {
 	if err := repo.CheckManageModule(module); err != nil {
