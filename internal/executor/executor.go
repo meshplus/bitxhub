@@ -235,30 +235,30 @@ func (exec *BlockExecutor) verifyProofs(blockWrapper *BlockWrapper) {
 
 	var (
 		invalidTxs = make([]int, 0)
-		wg         sync.WaitGroup
-		lock       sync.Mutex
+		// wg         sync.WaitGroup
+		lock sync.Mutex
 	)
 	txs := block.Transactions.Transactions
 
-	wg.Add(len(txs))
+	// wg.Add(len(txs))
 	errM := make(map[int]string)
 	for i, tx := range txs {
-		go func(i int, tx pb.Transaction) {
-			defer wg.Done()
-			if _, ok := blockWrapper.invalidTx[i]; !ok {
-				ok, gasUsed, err := exec.ibtpVerify.CheckProof(tx)
-				if !ok {
-					lock.Lock()
-					defer lock.Unlock()
-					invalidTxs = append(invalidTxs, i)
-					errM[i] = err.Error()
-				}
-				exec.logger.WithField("gasUsed", gasUsed).Info("Verify proofs")
-				exec.gasLimit -= gasUsed
+		// go func(i int, tx pb.Transaction) {
+		// 	defer wg.Done()
+		if _, ok := blockWrapper.invalidTx[i]; !ok {
+			ok, gasUsed, err := exec.ibtpVerify.CheckProof(tx)
+			if !ok {
+				lock.Lock()
+				defer lock.Unlock()
+				invalidTxs = append(invalidTxs, i)
+				errM[i] = err.Error()
 			}
-		}(i, tx)
+			exec.logger.WithField("gasUsed", gasUsed).Info("Verify proofs")
+			exec.gasLimit -= gasUsed
+		}
+		// }(i, tx)
 	}
-	wg.Wait()
+	// wg.Wait()
 
 	for _, i := range invalidTxs {
 		blockWrapper.invalidTx[i] = agency.InvalidReason(errM[i])
