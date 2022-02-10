@@ -700,13 +700,19 @@ func (exec *BlockExecutor) setTimeoutRollback(height uint64) error {
 	}
 
 	for _, id := range list {
-		record := pb.TransactionRecord{
-			Height: height,
-			Status: pb.TransactionStatus_BEGIN_ROLLBACK,
-		}
+		if isGlobalID(id) {
+			if err := exec.setGlobalTxStatus(id, pb.TransactionStatus_BEGIN_ROLLBACK); err != nil {
+				return fmt.Errorf("set global tx status of id %s: %w", id, err)
+			}
+		} else {
+			record := pb.TransactionRecord{
+				Height: height,
+				Status: pb.TransactionStatus_BEGIN_ROLLBACK,
+			}
 
-		if err := exec.setTxRecord(id, record); err != nil {
-			return err
+			if err := exec.setTxRecord(id, record); err != nil {
+				return fmt.Errorf("set tx status of id %s: %w", id, err)
+			}
 		}
 	}
 

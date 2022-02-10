@@ -235,7 +235,7 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, *boltvm.Bx
 		// - The dst service needs to be invoked sequentially：dstService.Ordered
 		dstService, _ := x.getServiceByID(dstChainService.getChainServiceId())
 		if dstService == nil || dstService.Ordered {
-			if err := checkIndex(interchain.InterchainCounter[dstChainService.getFullServiceId()]+1, ibtp.Index); err != nil {
+			if err := checkIndex(interchain.ReceiptCounter[dstChainService.getFullServiceId()]+1, ibtp.Index); err != nil {
 				return nil, nil, err
 			}
 		}

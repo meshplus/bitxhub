@@ -1,5 +1,5 @@
 [timed_gen_block]
-enable = true
+enable = false
 block_timeout = "2s"
 
 [raft]
