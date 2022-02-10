@@ -85,7 +85,17 @@ func (ac *AccountCache) addToReadCache(accounts map[string]ledger.IAccount) erro
 		}
 
 		if !bytes.Equal(account.originCode, account.dirtyCode) {
-			ac.codeCache.Add(addr, account.dirtyCode)
+			if !bytes.Equal(account.originCode, account.dirtyCode) {
+				if account.dirtyAccount != nil {
+					if account.originAccount != nil {
+						if !bytes.Equal(account.dirtyAccount.CodeHash, account.originAccount.CodeHash) {
+							ac.codeCache.Add(addr, account.dirtyCode)
+						}
+					} else {
+						ac.codeCache.Add(addr, account.dirtyCode)
+					}
+				}
+			}
 		}
 	}
 	return nil
@@ -115,7 +125,15 @@ func (ac *AccountCache) addToWriteBuffer(accounts map[string]ledger.IAccount) {
 		}
 
 		if !bytes.Equal(account.originCode, account.dirtyCode) {
-			ac.codes[addr] = account.dirtyCode
+			if account.dirtyAccount != nil {
+				if account.originAccount != nil {
+					if !bytes.Equal(account.dirtyAccount.CodeHash, account.originAccount.CodeHash) {
+						ac.codes[addr] = account.dirtyCode
+					}
+				} else {
+					ac.codes[addr] = account.dirtyCode
+				}
+			}
 		}
 	}
 }

@@ -46,12 +46,13 @@ func (l *SimpleLedger) GetAccount(address *types.Address) ledger.IAccount {
 
 	if innerAccount, ok := l.accountCache.getInnerAccount(address); ok {
 		account.originAccount = innerAccount
-		code, okCode := l.accountCache.getCode(address)
-		if !okCode {
-			code = l.ldb.Get(compositeKey(codeKey, address))
+		if !bytes.Equal(innerAccount.CodeHash, nil) {
+			code, okCode := l.accountCache.getCode(address)
+			if !okCode {
+				code = l.ldb.Get(compositeKey(codeKey, address))
+			}
+			account.originCode = code
 		}
-		account.originCode = code
-		account.dirtyCode = code
 		l.lock.Lock()
 		l.accounts[addr] = account
 		l.lock.Unlock()
@@ -63,9 +64,10 @@ func (l *SimpleLedger) GetAccount(address *types.Address) ledger.IAccount {
 		if err := account.originAccount.Unmarshal(data); err != nil {
 			panic(err)
 		}
-		code := l.ldb.Get(compositeKey(codeKey, address))
-		account.originCode = code
-		account.dirtyCode = code
+		if !bytes.Equal(account.originAccount.CodeHash, nil) {
+			code := l.ldb.Get(compositeKey(codeKey, address))
+			account.originCode = code
+		}
 		l.lock.Lock()
 		l.accounts[addr] = account
 		l.lock.Unlock()
@@ -277,7 +279,13 @@ func (l *SimpleLedger) Commit(height uint64, accounts map[string]ledger.IAccount
 			if account.dirtyCode != nil {
 				ldbBatch.Put(compositeKey(codeKey, account.Addr), account.dirtyCode)
 			} else {
-				ldbBatch.Delete(compositeKey(codeKey, account.Addr))
+				if account.dirtyAccount != nil {
+					if !bytes.Equal(account.originAccount.CodeHash, account.dirtyAccount.CodeHash) {
+						if bytes.Equal(account.dirtyAccount.CodeHash, nil) {
+							ldbBatch.Delete(compositeKey(codeKey, account.Addr))
+						}
+					}
+				}
 			}
 		}
 
@@ -335,6 +343,7 @@ func (l *SimpleLedger) Commit(height uint64, accounts map[string]ledger.IAccount
 			return fmt.Errorf("remove journals before block %d failed: %w", height-10, err)
 		}
 	}
+	l.blockJournals = sync.Map{}
 
 	return nil
 }
