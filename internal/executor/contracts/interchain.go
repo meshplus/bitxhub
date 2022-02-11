@@ -235,7 +235,7 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, *boltvm.Bx
 		// - The dst service needs to be invoked sequentially：dstService.Ordered
 		dstService, _ := x.getServiceByID(dstChainService.getChainServiceId())
 		if dstService == nil || dstService.Ordered {
-			if err := checkIndex(interchain.InterchainCounter[dstChainService.getFullServiceId()]+1, ibtp.Index); err != nil {
+			if err := checkIndex(interchain.ReceiptCounter[dstChainService.getFullServiceId()]+1, ibtp.Index); err != nil {
 				return nil, nil, err
 			}
 		}
@@ -406,11 +406,12 @@ func (x *InterchainManager) beginTransaction(ibtp *pb.IBTP, isFailed bool) (*Sta
 			return nil, fmt.Errorf(string(res.Result))
 		}
 	} else {
+		count := uint64(len(ibtp.Group.Keys) + 1)
 		globalID, err := genGlobalTxID(ibtp)
 		if err != nil {
 			return nil, err
 		}
-		res = x.CrossInvoke(constant.TransactionMgrContractAddr.Address().String(), "BeginMultiTXs", pb.String(globalID), pb.Uint64(timeoutHeight), pb.Bool(isFailed), pb.String(ibtp.To))
+		res = x.CrossInvoke(constant.TransactionMgrContractAddr.Address().String(), "BeginMultiTXs", pb.String(globalID), pb.String(ibtp.ID()), pb.Uint64(timeoutHeight), pb.Bool(isFailed), pb.Uint64(count))
 		if !res.Ok {
 			return nil, fmt.Errorf(string(res.Result))
 		}
