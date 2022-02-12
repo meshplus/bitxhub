@@ -24,7 +24,6 @@ import (
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/model/events"
-	"github.com/meshplus/bitxhub/pkg/utils"
 	"github.com/meshplus/bitxhub/pkg/vm"
 	"github.com/meshplus/bitxhub/pkg/vm/boltvm"
 	"github.com/meshplus/bitxhub/pkg/vm/wasm"
@@ -302,7 +301,7 @@ func (exec *BlockExecutor) verifySign(commitEvent *pb.CommitEvent) *BlockWrapper
 }
 
 func (exec *BlockExecutor) applyTx(index int, tx pb.Transaction, invalidReason agency.InvalidReason, opt *agency.TxOpt) *pb.Receipt {
-	normalTx := true
+	//normalTx := true
 	time1 := time.Now()
 	receipt := exec.applyTransaction(index, tx, invalidReason, opt)
 	if tx.IsIBTP() {
@@ -319,80 +318,80 @@ func (exec *BlockExecutor) applyTx(index int, tx pb.Transaction, invalidReason a
 			"now": time.Now().UnixNano(),
 		}).Debug(fmt.Sprintf("---------------------------------------------- run normal: %d", time.Since(time1).Nanoseconds()))
 	}
-	evs := exec.ledger.Events(tx.GetHash().String())
-	if len(evs) != 0 {
-		receipt.Events = evs
-
-		auditDataUpdate := false
-		relatedChainIDList := map[string][]byte{}
-		relatedNodeIDList := map[string][]byte{}
-
-		for _, ev := range evs {
-			switch ev.EventType {
-			case pb.Event_INTERCHAIN:
-				m := make(map[string]uint64)
-				err := json.Unmarshal(ev.Data, &m)
-				if err != nil {
-					panic(err)
-				}
-
-				for k, v := range m {
-					valid := true
-					if receipt.Status == pb.Receipt_FAILED &&
-						strings.Contains(string(receipt.Ret), contracts.TargetAppchainNotAvailable) {
-						valid = false
-					}
-					exec.txsExecutor.AddInterchainCounter(k, &pb.VerifiedIndex{
-						Index: v,
-						Valid: valid,
-					})
-				}
-				normalTx = false
-			case pb.Event_NODEMGR:
-				nodeEvent := events.NodeEvent{}
-				err := json.Unmarshal(ev.Data, &nodeEvent)
-				if err != nil {
-					panic(err)
-				}
-				exec.postNodeEvent(nodeEvent)
-
-			case pb.Event_AUDIT_PROPOSAL,
-				pb.Event_AUDIT_APPCHAIN,
-				pb.Event_AUDIT_RULE,
-				pb.Event_AUDIT_SERVICE,
-				pb.Event_AUDIT_NODE,
-				pb.Event_AUDIT_ROLE,
-				pb.Event_AUDIT_INTERCHAIN,
-				pb.Event_AUDIT_DAPP:
-				auditDataUpdate = true
-				auditRelatedObjInfo := pb.AuditRelatedObjInfo{}
-				err := json.Unmarshal(ev.Data, &auditRelatedObjInfo)
-				if err != nil {
-					panic(err)
-				}
-				for chainID, _ := range auditRelatedObjInfo.RelatedChainIDList {
-					relatedChainIDList[chainID] = []byte{}
-				}
-				for nodeID, _ := range auditRelatedObjInfo.RelatedNodeIDList {
-					relatedNodeIDList[nodeID] = []byte{}
-				}
-			}
-		}
-		if auditDataUpdate {
-			exec.postAuditEvent(&pb.AuditTxInfo{
-				Tx:                 tx.(*pb.BxhTransaction),
-				Rec:                receipt,
-				BlockHeight:        exec.currentHeight,
-				RelatedChainIDList: relatedChainIDList,
-				RelatedNodeIDList:  relatedNodeIDList,
-			})
-			utils.AddAuditPermitBloom(receipt.Bloom, relatedChainIDList, relatedNodeIDList)
-		}
-	}
-
-	if normalTx {
-		exec.txsExecutor.AddNormalTx(tx.GetHash())
-	}
+	//evs := exec.ledger.Events(tx.GetHash().String())
+	//if len(evs) != 0 {
+	//	receipt.Events = evs
+	//
+	//	auditDataUpdate := false
+	//	relatedChainIDList := map[string][]byte{}
+	//	relatedNodeIDList := map[string][]byte{}
+	//
+	//	for _, ev := range evs {
+	//		switch ev.EventType {
+	//		case pb.Event_INTERCHAIN:
+	//			m := make(map[string]uint64)
+	//			err := json.Unmarshal(ev.Data, &m)
+	//			if err != nil {
+	//				panic(err)
+	//			}
+	//
+	//			for k, v := range m {
+	//				valid := true
+	//				if receipt.Status == pb.Receipt_FAILED &&
+	//					strings.Contains(string(receipt.Ret), contracts.TargetAppchainNotAvailable) {
+	//					valid = false
+	//				}
+	//				exec.txsExecutor.AddInterchainCounter(k, &pb.VerifiedIndex{
+	//					Index: v,
+	//					Valid: valid,
+	//				})
+	//			}
+	//			normalTx = false
+	//		case pb.Event_NODEMGR:
+	//			nodeEvent := events.NodeEvent{}
+	//			err := json.Unmarshal(ev.Data, &nodeEvent)
+	//			if err != nil {
+	//				panic(err)
+	//			}
+	//			exec.postNodeEvent(nodeEvent)
+	//
+	//		case pb.Event_AUDIT_PROPOSAL,
+	//			pb.Event_AUDIT_APPCHAIN,
+	//			pb.Event_AUDIT_RULE,
+	//			pb.Event_AUDIT_SERVICE,
+	//			pb.Event_AUDIT_NODE,
+	//			pb.Event_AUDIT_ROLE,
+	//			pb.Event_AUDIT_INTERCHAIN,
+	//			pb.Event_AUDIT_DAPP:
+	//			auditDataUpdate = true
+	//			auditRelatedObjInfo := pb.AuditRelatedObjInfo{}
+	//			err := json.Unmarshal(ev.Data, &auditRelatedObjInfo)
+	//			if err != nil {
+	//				panic(err)
+	//			}
+	//			for chainID, _ := range auditRelatedObjInfo.RelatedChainIDList {
+	//				relatedChainIDList[chainID] = []byte{}
+	//			}
+	//			for nodeID, _ := range auditRelatedObjInfo.RelatedNodeIDList {
+	//				relatedNodeIDList[nodeID] = []byte{}
+	//			}
+	//		}
+	//	}
+	//	if auditDataUpdate {
+	//		exec.postAuditEvent(&pb.AuditTxInfo{
+	//			Tx:                 tx.(*pb.BxhTransaction),
+	//			Rec:                receipt,
+	//			BlockHeight:        exec.currentHeight,
+	//			RelatedChainIDList: relatedChainIDList,
+	//			RelatedNodeIDList:  relatedNodeIDList,
+	//		})
+	//		utils.AddAuditPermitBloom(receipt.Bloom, relatedChainIDList, relatedNodeIDList)
+	//	}
+	//}
+	//
+	//if normalTx {
+	//	exec.txsExecutor.AddNormalTx(tx.GetHash())
+	//}
 
 	if tx.IsIBTP() {
 		exec.logger.WithFields(logrus.Fields{
