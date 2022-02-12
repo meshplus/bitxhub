@@ -303,16 +303,17 @@ func (t *TransactionManager) setFSM(state *pb.TransactionStatus, event Transacti
 }
 
 func (t *TransactionManager) addToTimeoutList(height uint64, txId string) {
-	var timeoutList []string
+	var timeoutList string
 	time1 := time.Now()
-	ok := t.GetObject(TimeoutKey(height), &timeoutList)
+	ok, timeoutListByte := t.Get(TimeoutKey(height))
 	if !ok {
-		timeoutList = []string{txId}
+		timeoutList = txId
 	} else {
-		timeoutList = append(timeoutList, txId)
+		timeoutList = string(timeoutListByte) + "," + txId
 	}
 	t.Logger().WithFields(logrus.Fields{}).Debug(fmt.Sprintf("2221: %d", time.Since(time1).Nanoseconds()))
-	t.SetObject(TimeoutKey(height), timeoutList)
+
+	t.Set(TimeoutKey(height), []byte(timeoutList))
 	t.Logger().WithFields(logrus.Fields{}).Debug(fmt.Sprintf("2222: %d", time.Since(time1).Nanoseconds()))
 }
 
