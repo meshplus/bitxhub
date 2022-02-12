@@ -139,19 +139,23 @@ func CheckStrategyExpression(expressionStr string, adminsNum int) error {
 	}
 
 	parameters := make(map[string]interface{}, 8)
-	parameters["a"] = adminsNum
 	parameters["r"] = 0
 	parameters["t"] = adminsNum
-	result, err := expression.Evaluate(parameters)
-	if err != nil {
-		return fmt.Errorf("illegal strategy expression: %w", err)
+	for i := 0; i <= adminsNum; i++ {
+		parameters["a"] = i
+		result, err := expression.Evaluate(parameters)
+		if err != nil {
+			return fmt.Errorf("illegal strategy expression: %w", err)
+		}
+
+		if result.(bool) {
+			return nil
+		} else {
+			continue
+		}
 	}
 
-	if result.(bool) {
-		return nil
-	} else {
-		return fmt.Errorf("illegal strategy expression: under this exp(%s), the proposal may never be concluded", expressionStr)
-	}
+	return fmt.Errorf("illegal strategy expression: under this exp(%s), the proposal may never be concluded", expressionStr)
 }
 
 // return:
