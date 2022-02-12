@@ -79,34 +79,34 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 
 	calcMerkleDuration.Observe(float64(time.Since(calcMerkleStart)) / float64(time.Second))
 
-	timeoutIBTPsMap, err := exec.getTimeoutIBTPsMap(block.BlockHeader.Number)
-	if err != nil {
-		panic(err)
-	}
+	//timeoutIBTPsMap, err := exec.getTimeoutIBTPsMap(block.BlockHeader.Number)
+	//if err != nil {
+	//	panic(err)
+	//}
 
-	var timeoutL2Roots []types.Hash
-	timeoutCounter := make(map[string]*pb.StringSlice)
-	for from, list := range timeoutIBTPsMap {
-		root, err := exec.calcTimeoutL2Root(list)
-		if err != nil {
-			panic(err)
-		}
-		timeoutCounter[from] = &pb.StringSlice{Slice: list}
-		timeoutL2Roots = append(timeoutL2Roots, root)
-	}
-
-	timeoutRoots := make([]merkletree.Content, 0, len(timeoutL2Roots))
-	sort.Slice(timeoutL2Roots, func(i, j int) bool {
-		return bytes.Compare(timeoutL2Roots[i].Bytes(), timeoutL2Roots[j].Bytes()) < 0
-	})
-	for _, root := range timeoutL2Roots {
-		r := root
-		timeoutRoots = append(timeoutRoots, &r)
-	}
-	timeoutRoot, err := calcMerkleRoot(timeoutRoots)
-	if err != nil {
-		panic(err)
-	}
+	//var timeoutL2Roots []types.Hash
+	//timeoutCounter := make(map[string]*pb.StringSlice)
+	//for from, list := range timeoutIBTPsMap {
+	//	root, err := exec.calcTimeoutL2Root(list)
+	//	if err != nil {
+	//		panic(err)
+	//	}
+	//	timeoutCounter[from] = &pb.StringSlice{Slice: list}
+	//	timeoutL2Roots = append(timeoutL2Roots, root)
+	//}
+	//
+	//timeoutRoots := make([]merkletree.Content, 0, len(timeoutL2Roots))
+	//sort.Slice(timeoutL2Roots, func(i, j int) bool {
+	//	return bytes.Compare(timeoutL2Roots[i].Bytes(), timeoutL2Roots[j].Bytes()) < 0
+	//})
+	//for _, root := range timeoutL2Roots {
+	//	r := root
+	//	timeoutRoots = append(timeoutRoots, &r)
+	//}
+	//timeoutRoot, err := calcMerkleRoot(timeoutRoots)
+	//if err != nil {
+	//	panic(err)
+	//}
 
 	multiTxIBTPsMap, err := exec.getMultiTxIBTPsMap(block.BlockHeader.Number)
 	if err != nil {
@@ -121,9 +121,9 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	block.BlockHeader.ReceiptRoot = receiptRoot
 	block.BlockHeader.ParentHash = exec.currentBlockHash
 	block.BlockHeader.Bloom = ledger.CreateBloom(receipts)
-	block.BlockHeader.TimeoutRoot = timeoutRoot
+	//block.BlockHeader.TimeoutRoot = timeoutRoot
 
-	exec.setTimeoutRollback(block.BlockHeader.Number)
+	//exec.setTimeoutRollback(block.BlockHeader.Number)
 	accounts, journalHash := exec.ledger.FlushDirtyData()
 
 	block.BlockHeader.StateRoot = journalHash
@@ -142,10 +142,10 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 		counter[k] = &pb.VerifiedIndexSlice{Slice: v}
 	}
 	interchainMeta := &pb.InterchainMeta{
-		Counter:        counter,
-		L2Roots:        l2Roots,
-		TimeoutCounter: timeoutCounter,
-		TimeoutL2Roots: timeoutL2Roots,
+		Counter: counter,
+		L2Roots: l2Roots,
+		//TimeoutCounter: timeoutCounter,
+		//TimeoutL2Roots: timeoutL2Roots,
 		MultiTxCounter: multiTxCounter,
 	}
 
