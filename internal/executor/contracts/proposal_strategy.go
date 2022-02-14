@@ -10,6 +10,7 @@ import (
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/repo"
+	"github.com/sirupsen/logrus"
 )
 
 type GovStrategy struct {
@@ -149,6 +150,20 @@ func (g *GovStrategy) Manage(eventTyp, proposalResult, lastStatus, objId string,
 			if err := json.Unmarshal(extra, &updateStrategyInfo); err != nil {
 				return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyInternalErrMsg), fmt.Sprintf("unmarshal update strategy")))
 			}
+			res := g.CrossInvoke(constant.RoleContractAddr.Address().String(), "GetRolesByType", pb.String(string(GovernanceAdmin)))
+			if !res.Ok {
+				return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyInternalErrMsg), fmt.Sprintf("cross invoke GetRolesByType error: %s", string(res.Result))))
+			}
+			roles := []*Role{}
+			if err := json.Unmarshal(res.Result, &roles); err != nil {
+				return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyInternalErrMsg), fmt.Sprintf("json unmarshal error: %s", err.Error())))
+			}
+			availableNum := 0
+			for _, r := range roles {
+				if r.IsAvailable() {
+					availableNum++
+				}
+			}
 			for mgr, mInfo := range updateStrategyInfo {
 				ps := &ProposalStrategy{}
 				if ok := g.GetObject(ProposalStrategyKey(mgr), ps); !ok {
@@ -160,7 +175,18 @@ func (g *GovStrategy) Manage(eventTyp, proposalResult, lastStatus, objId string,
 				if mInfo.Extra.IsEdit {
 					ps.Extra = mInfo.Extra.NewInfo.(string)
 				}
-				g.SetObject(ProposalStrategyKey(mgr), ps)
+				if ps.Typ == ZeroPermission {
+					g.SetObject(ProposalStrategyKey(mgr), ps)
+				} else if _, err := getCurThresholdApproveNum(ps.Extra, 0, 0, uint64(availableNum), uint64(availableNum)); err != nil {
+					g.Logger().WithFields(logrus.Fields{
+						"module": mgr,
+						"old":    ps,
+						"new":    defaultStrategy(mgr),
+					}).Info("update module strategy because of roles change")
+					g.SetObject(ProposalStrategyKey(mgr), defaultStrategy(mgr))
+				} else {
+					g.SetObject(ProposalStrategyKey(mgr), ps)
+				}
 			}
 		}
 	}
@@ -214,7 +240,21 @@ func (g *GovStrategy) UpdateProposalStrategy(module string, typ string, strategy
 	}
 
 	// 4. check strategy info
-	if err := repo.CheckStrategyInfo(typ, module, strategyExtra); err != nil {
+	availableAdminNum := 0
+	res := g.CrossInvoke(constant.RoleContractAddr.Address().String(), "GetRolesByType", pb.String(string(GovernanceAdmin)))
+	if !res.Ok {
+		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyInternalErrMsg), fmt.Sprintf("cross invoke GetRolesByType error: %s", string(res.Result))))
+	}
+	roles := make([]*Role, 0)
+	if err := json.Unmarshal(res.Result, &roles); err != nil {
+		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyInternalErrMsg), fmt.Sprintf("unmarshal error: %v", err)))
+	}
+	for _, role := range roles {
+		if role.IsAvailable() {
+			availableAdminNum++
+		}
+	}
+	if err := repo.CheckStrategyInfo(typ, module, strategyExtra, availableAdminNum); err != nil {
 		return boltvm.Error(boltvm.ProposalStrategyIllegalProposalStrategyInfoCode, fmt.Sprintf(string(boltvm.ProposalStrategyIllegalProposalStrategyInfoMsg), err.Error()))
 	}
 
@@ -225,7 +265,7 @@ func (g *GovStrategy) UpdateProposalStrategy(module string, typ string, strategy
 	if err != nil {
 		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf("unmarshal update strategy error: %v", err))
 	}
-	res := g.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "SubmitProposal",
+	res = g.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "SubmitProposal",
 		pb.String(g.Caller()),
 		pb.String(string(governance.EventUpdate)),
 		pb.String(string(ProposalStrategyMgr)),
@@ -288,7 +328,21 @@ func (g *GovStrategy) UpdateAllProposalStrategy(typ string, strategyExtra string
 	}
 
 	// 4. check strategy info
-	if err := repo.CheckStrategyType(typ, strategyExtra); err != nil {
+	availableAdminNum := 0
+	res := g.CrossInvoke(constant.RoleContractAddr.Address().String(), "GetRolesByType", pb.String(string(GovernanceAdmin)))
+	if !res.Ok {
+		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyInternalErrMsg), fmt.Sprintf("cross invoke GetRolesByType error: %s", string(res.Result))))
+	}
+	roles := make([]*Role, 0)
+	if err := json.Unmarshal(res.Result, &roles); err != nil {
+		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyInternalErrMsg), fmt.Sprintf("unmarshal error: %v", err)))
+	}
+	for _, role := range roles {
+		if role.IsAvailable() {
+			availableAdminNum++
+		}
+	}
+	if err := repo.CheckStrategyType(typ, strategyExtra, availableAdminNum); err != nil {
 		return boltvm.Error(boltvm.ProposalStrategyIllegalProposalStrategyInfoCode, fmt.Sprintf(string(boltvm.ProposalStrategyIllegalProposalStrategyInfoMsg), err.Error()))
 	}
 
@@ -297,7 +351,7 @@ func (g *GovStrategy) UpdateAllProposalStrategy(typ string, strategyExtra string
 	if err != nil {
 		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf("unmarshal update strategy error: %v", err))
 	}
-	res := g.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "SubmitProposal",
+	res = g.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "SubmitProposal",
 		pb.String(g.Caller()),
 		pb.String(string(governance.EventUpdate)),
 		pb.String(string(ProposalStrategyMgr)),
@@ -317,6 +371,39 @@ func (g *GovStrategy) UpdateAllProposalStrategy(typ string, strategyExtra string
 	g.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(res.Result)))
 
 	return getGovernanceRet(string(res.Result), []byte(pt))
+}
+
+// update proposal strategy for a proposal type
+func (g *GovStrategy) UpdateProposalStrategyByRolesChange(availableNum uint64) *boltvm.Response {
+	// 1. check premission
+	specificAddrs := []string{constant.RoleContractAddr.Address().String()}
+	addrsData, err := json.Marshal(specificAddrs)
+	if err != nil {
+		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyInternalErrMsg), fmt.Sprintf("marshal specificAddrs error: %v", err)))
+	}
+
+	if err := g.checkPermission([]string{string(PermissionSpecific)}, repo.AllMgr, g.CurrentCaller(), addrsData); err != nil {
+		return boltvm.Error(boltvm.ProposalStrategyNoPermissionCode, fmt.Sprintf(string(boltvm.ProposalStrategyNoPermissionMsg), g.CurrentCaller(), fmt.Sprintf("check permission error:%v", err)))
+	}
+
+	// 2. update strategy
+	for _, module := range mgrs {
+		strategy := defaultStrategy(module)
+		ok := g.GetObject(ProposalStrategyKey(module), strategy)
+		if !ok || strategy.Status == governance.GovernanceUpdating || strategy.Typ == ZeroPermission {
+			continue
+		}
+		if _, err := getCurThresholdApproveNum(strategy.Extra, 0, 0, availableNum, availableNum); err != nil {
+			g.Logger().WithFields(logrus.Fields{
+				"module": module,
+				"old":    strategy,
+				"new":    defaultStrategy(module),
+			}).Info("update module strategy because of roles change")
+			g.SetObject(ProposalStrategyKey(module), defaultStrategy(module))
+		}
+	}
+
+	return boltvm.Success(nil)
 }
 
 func (g *GovStrategy) GetAllProposalStrategy() *boltvm.Response {

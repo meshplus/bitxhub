@@ -121,6 +121,15 @@ func TestRoleManager_ManageFreezeActivateLogout(t *testing.T) {
 	proposalsData, err := json.Marshal(proposals)
 	assert.Nil(t, err)
 	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "GetNotClosedProposals").Return(boltvm.Success(proposalsData)).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.ProposalStrategyMgrContractAddr.Address().String(), "UpdateProposalStrategyByRolesChange", gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+
+	roleIdMap := orderedmap.New()
+	roleIdMap.Set(gRoles[4].ID, struct{}{})
+	roleIdMap.Set(gRoles[5].ID, struct{}{})
+	roleIdMap.Set(gRoles[6].ID, struct{}{})
+	roleIdMap.Set(gRoles[7].ID, struct{}{})
+	roleIdMap.Set(gRoles[8].ID, struct{}{})
+	mockStub.EXPECT().GetObject(RoleTypeKey(string(GovernanceAdmin)), gomock.Any()).SetArg(1, *roleIdMap).Return(true).AnyTimes()
 
 	// freeze, approve
 	res := rm.Manage(string(governance.EventFreeze), string(APPROVED), string(governance.GovernanceAvailable), gRoles[4].ID, nil)
@@ -281,6 +290,13 @@ func TestRoleManager_LogoutRole(t *testing.T) {
 
 	mockStub.EXPECT().CurrentCaller().Return(SUPER_ADMIN_ROLE_ID1).AnyTimes()
 	mockStub.EXPECT().Caller().Return(SUPER_ADMIN_ROLE_ID1).AnyTimes()
+	roleIdMap := orderedmap.New()
+	roleIdMap.Set(gRoles[1].ID, struct{}{})
+	roleIdMap.Set(gRoles[5].ID, struct{}{})
+	roleIdMap.Set(gRoles[6].ID, struct{}{})
+	roleIdMap.Set(gRoles[7].ID, struct{}{})
+	roleIdMap.Set(gRoles[8].ID, struct{}{})
+	mockStub.EXPECT().GetObject(RoleTypeKey(string(GovernanceAdmin)), gomock.Any()).SetArg(1, *roleIdMap).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *gRoles[1]).Return(true).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(gomock.Eq(constant.GovernanceContractAddr.Address().String()), gomock.Eq("SubmitProposal"),
@@ -303,6 +319,7 @@ func TestRoleManager_LogoutRole(t *testing.T) {
 	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "GetNotClosedProposals").Return(boltvm.Success(proposalsData)).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, rRolesData[0]).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.ProposalStrategyMgrContractAddr.Address().String(), "UpdateProposalStrategyByRolesChange", gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 
 	res := rm.LogoutRole(ROLE_ID1, reason)
 	assert.False(t, res.Ok, string(res.Result))
