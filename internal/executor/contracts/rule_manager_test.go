@@ -388,6 +388,9 @@ func TestRuleManager_ClearRule(t *testing.T) {
 	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "EndObjProposal", gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("", "EndObjProposal error")).Times(1)
 	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "EndObjProposal", gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 
+	retRules := make([]*ruleMgr.Rule, 0)
+	retRules = append(retRules, rules[6])
+	retRules = append(retRules, rules[1])
 	retRules1 := make([]*ruleMgr.Rule, 0)
 	retRules1 = append(retRules1, &ruleMgr.Rule{
 		Address: rules[6].Address,

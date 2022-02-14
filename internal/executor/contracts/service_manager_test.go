@@ -141,7 +141,7 @@ func TestServiceManager_ManageLogout(t *testing.T) {
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, nil).AnyTimes()
 
 	// logout approve
-	// EndCurrentProposal error
+	// EndObjProposal error
 	res := sm.Manage(string(governance.EventLogout), string(APPROVED), string(governance.GovernanceUnavailable), chainServiceLogoutingID, nil)
 	assert.False(t, res.Ok, string(res.Result))
 	// ok
@@ -509,7 +509,7 @@ func TestServiceManager_ClearChainService(t *testing.T) {
 	res = sm.ClearChainService(services[0].ChainID)
 	assert.Equal(t, true, res.Ok, string(res.Result))
 
-	// EndCurrentProposal error
+	// EndObjProposal error
 	res = sm.ClearChainService(services[0].ChainID)
 	assert.Equal(t, false, res.Ok, string(res.Result))
 
