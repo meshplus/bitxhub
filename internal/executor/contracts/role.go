@@ -259,6 +259,9 @@ func (rm *RoleManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 				if err := rm.register(role); err != nil {
 					return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("register error: %v", err)))
 				}
+				if berr := rm.updateStrategyInfo(); berr != nil {
+					return boltvm.Error(berr.Code, berr.Error())
+				}
 			} else {
 				rm.freeAccount(role.ID)
 			}
