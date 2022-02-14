@@ -165,6 +165,10 @@ func (rm *RoleManager) Manage(eventTyp string, proposalResult, lastStatus string
 	// 3. other handle
 	if proposalResult == string(APPROVED) {
 		switch eventTyp {
+		case string(governance.EventRegister):
+			if err := rm.updateStrategyInfo(); err != nil {
+				return boltvm.Error(err.Error())
+			}
 		case string(governance.EventUpdate):
 			rm.SetObject(rm.roleKey(role.ID), *role)
 		case string(governance.EventFreeze):
@@ -173,6 +177,9 @@ func (rm *RoleManager) Manage(eventTyp string, proposalResult, lastStatus string
 			fallthrough
 		case string(governance.EventActivate):
 			if err := rm.updateRoleRelatedProposalInfo(role.ID, governance.EventType(eventTyp)); err != nil {
+				return boltvm.Error(err.Error())
+			}
+			if err := rm.updateStrategyInfo(); err != nil {
 				return boltvm.Error(err.Error())
 			}
 		}
@@ -214,6 +221,26 @@ func (rm *RoleManager) updateRoleRelatedProposalInfo(roleID string, eventTyp gov
 			}
 		}
 	}
+	return nil
+}
+
+func (rm *RoleManager) updateStrategyInfo() error {
+	roles, err := rm.getRoles(string(GovernanceAdmin))
+	if err != nil {
+		return err
+	}
+	availableNum := 0
+	for _, r := range roles {
+		if rm.isAvailable(r.ID) {
+			availableNum++
+		}
+	}
+
+	res := rm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "UpdateProposalStrategyByRolesChange", pb.Uint64(uint64(availableNum)))
+	if !res.Ok {
+		return fmt.Errorf(string(res.Result))
+	}
+
 	return nil
 }
 
@@ -542,28 +569,9 @@ func (rm *RoleManager) GetRoleById(roleId string) *boltvm.Response {
 }
 
 func (rm *RoleManager) GetAdminRoles() *boltvm.Response {
-	return rm.getRoles(string(GovernanceAdmin))
-}
-
-func (rm *RoleManager) GetAuditAdminRoles() *boltvm.Response {
-	return rm.getRoles(string(AuditAdmin))
-}
-
-func (rm *RoleManager) getRoles(roleType string) *boltvm.Response {
-	ok, value := rm.Query(ROLEPREFIX)
-	if !ok {
-		return boltvm.Error("there is no admins")
-	}
-
-	ret := make([]*Role, 0)
-	for _, data := range value {
-		role := &Role{}
-		if err := json.Unmarshal(data, role); err != nil {
-			return boltvm.Error(fmt.Sprintf("unmarshal role error: %v", err.Error()))
-		}
-		if role.RoleType == RoleType((roleType)) {
-			ret = append(ret, role)
-		}
+	ret, err := rm.getRoles(string(GovernanceAdmin))
+	if err != nil {
+		return boltvm.Error(err.Error())
 	}
 
 	data, err := json.Marshal(ret)
@@ -572,6 +580,40 @@ func (rm *RoleManager) getRoles(roleType string) *boltvm.Response {
 	}
 
 	return boltvm.Success(data)
+}
+
+func (rm *RoleManager) GetAuditAdminRoles() *boltvm.Response {
+	ret, err := rm.getRoles(string(AuditAdmin))
+	if err != nil {
+		return boltvm.Error(err.Error())
+	}
+
+	data, err := json.Marshal(ret)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("marshal role error: %v", err.Error()))
+	}
+
+	return boltvm.Success(data)
+}
+
+func (rm *RoleManager) getRoles(roleType string) ([]*Role, error) {
+	ok, value := rm.Query(ROLEPREFIX)
+	if !ok {
+		return make([]*Role, 0), fmt.Errorf("there is no admins")
+	}
+
+	ret := make([]*Role, 0)
+	for _, data := range value {
+		role := &Role{}
+		if err := json.Unmarshal(data, role); err != nil {
+			return nil, fmt.Errorf("unmarshal role error: %v", err)
+		}
+		if role.RoleType == RoleType((roleType)) {
+			ret = append(ret, role)
+		}
+	}
+
+	return ret, nil
 }
 
 func (rm *RoleManager) GetAvailableRoles(roleTypesData []byte) *boltvm.Response {

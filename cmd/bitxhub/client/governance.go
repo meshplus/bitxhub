@@ -63,7 +63,7 @@ func governanceCMD() cli.Command {
 							},
 							cli.StringFlag{
 								Name:     "type",
-								Usage:    "proposal type, currently only AppchainMgr, RuleMgr, NodeMgr, RoleMgr are supported",
+								Usage:    "proposal type, currently only appchain_mgr, rule_mgr, node_mgr, service_mgr, role_mgr and dapp_mgr are supported",
 								Required: false,
 							},
 							cli.StringFlag{
@@ -108,6 +108,7 @@ func governanceCMD() cli.Command {
 			nodeMgrCND(),
 			roleMgrCND(),
 			dappMgrCMD(),
+			proposalStrategyCMD(),
 		},
 	}
 }
@@ -290,7 +291,7 @@ func getProposalsByConditions(ctx *cli.Context, keyPath string, menthod string, 
 
 func printProposal(proposals []contracts.Proposal) {
 	var table [][]string
-	table = append(table, []string{"Id", "ManagedObjectId", "Type", "EventType", "Status", "A/R", "IE/AE/TE", "Special/Super", "CreateTime", "Description", "EndReason"})
+	table = append(table, []string{"Id", "ManagedObjectId", "Type", "EventType", "Status", "A/R", "IE/AE", "Special/Super", "StrategyExp", "CreateTime", "Description", "EndReason"})
 
 	for _, pro := range proposals {
 		table = append(table, []string{
@@ -300,8 +301,9 @@ func printProposal(proposals []contracts.Proposal) {
 			string(pro.EventType),
 			string(pro.Status),
 			fmt.Sprintf("%s/%s", strconv.Itoa(int(pro.ApproveNum)), strconv.Itoa(int(pro.AgainstNum))),
-			fmt.Sprintf("%s/%s/%s", strconv.Itoa(int(pro.InitialElectorateNum)), strconv.Itoa(int(pro.AvaliableElectorateNum)), strconv.Itoa(int(pro.ThresholdElectorateNum))),
+			fmt.Sprintf("%s/%s", strconv.Itoa(int(pro.InitialElectorateNum)), strconv.Itoa(int(pro.AvaliableElectorateNum))),
 			fmt.Sprintf("%s/%s", strconv.FormatBool(pro.IsSpecial), strconv.FormatBool(pro.IsSuperAdminVoted)),
+			pro.StrategyExpression,
 			strconv.Itoa(int(pro.CreateTime)),
 			pro.Des,
 			string(pro.EndReason),
@@ -413,4 +415,49 @@ func invokeBVMContractBySendView(ctx *cli.Context, contractAddr string, method s
 	}
 
 	return receipt, nil
+}
+
+func proposalStrategyCMD() cli.Command {
+	return cli.Command{
+		Name:  "strategy",
+		Usage: "proposal strategy command",
+		Subcommands: cli.Commands{
+			cli.Command{
+				Name:  "all",
+				Usage: "query all proposal strategy",
+				Action: func(ctx *cli.Context) error {
+					receipt, err := invokeBVMContractBySendView(ctx, constant.GovernanceContractAddr.String(), "GetAllProposalStrategy")
+					if err != nil {
+						return fmt.Errorf("invoke BVM contract failed when get all proposal strategy: %w", err)
+					}
+
+					if receipt.IsSuccess() {
+						strategies := make([]*contracts.ProposalStrategy, 0)
+						if err := json.Unmarshal(receipt.Ret, &strategies); err != nil {
+							return fmt.Errorf(err.Error())
+						}
+						printProposalStrategy(strategies)
+					} else {
+						color.Red("get all proposal strategy error: %s\n", string(receipt.Ret))
+					}
+					return nil
+				},
+			},
+		},
+	}
+}
+
+func printProposalStrategy(strategies []*contracts.ProposalStrategy) {
+	var table [][]string
+	table = append(table, []string{"module", "strategy", "Extra"})
+	for _, r := range strategies {
+
+		table = append(table, []string{
+			r.Module,
+			string(r.Typ),
+			r.Extra,
+		})
+	}
+
+	PrintTable(table, true)
 }
