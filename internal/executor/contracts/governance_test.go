@@ -58,22 +58,26 @@ func TestGovernance_SubmitProposal(t *testing.T) {
 	pDatas := make([][]byte, 0)
 	pDatas = append(pDatas, pData)
 
-	admins := []*repo.Admin{
-		&repo.Admin{
-			Address: "addr1",
-			Weight:  1,
+	admins := []*Role{
+		&Role{
+			ID:       "addr1",
+			RoleType: GovernanceAdmin,
+			Status:   governance.GovernanceAvailable,
 		},
-		&repo.Admin{
-			Address: "addr2",
-			Weight:  1,
+		&Role{
+			ID:       "addr2",
+			RoleType: GovernanceAdmin,
+			Status:   governance.GovernanceAvailable,
 		},
-		&repo.Admin{
-			Address: "addr3",
-			Weight:  1,
+		&Role{
+			ID:       "addr3",
+			RoleType: GovernanceAdmin,
+			Status:   governance.GovernanceAvailable,
 		},
-		&repo.Admin{
-			Address: "addr4",
-			Weight:  1,
+		&Role{
+			ID:       "addr4",
+			RoleType: GovernanceAdmin,
+			Status:   governance.GovernanceAvailable,
 		},
 	}
 	adminsData, err := json.Marshal(admins)
@@ -87,7 +91,7 @@ func TestGovernance_SubmitProposal(t *testing.T) {
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "GetRolesByType", gomock.Any()).Return(boltvm.Success(adminsErrorData)).Times(2)
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.String(), "GetRolesByType", gomock.Any()).Return(boltvm.Success(adminsData)).AnyTimes()
 
-	strategy := &ProposalStrategy{ParticipateThreshold: 0.75, Typ: SimpleMajority}
+	strategy := &ProposalStrategy{Extra: repo.DefaultSimpleMajorityExpression, Typ: SimpleMajority}
 	data, _ := json.Marshal(strategy)
 	mockStub.EXPECT().CrossInvoke(gomock.Eq(constant.ProposalStrategyMgrContractAddr.String()), gomock.Eq("GetProposalStrategy"), gomock.Any()).Return(boltvm.Success(data)).AnyTimes()
 	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Return(false).AnyTimes()
@@ -149,7 +153,7 @@ func TestGovernance_QueryProposal(t *testing.T) {
 		AgainstNum:             1,
 		InitialElectorateNum:   4,
 		AvaliableElectorateNum: 4,
-		ThresholdElectorateNum: 3,
+		StrategyExpression:     repo.DefaultSimpleMajorityExpression,
 	}
 
 	pData, err := json.Marshal(proposalExistent)
@@ -157,22 +161,26 @@ func TestGovernance_QueryProposal(t *testing.T) {
 	pDatas := make([][]byte, 0)
 	pDatas = append(pDatas, pData)
 
-	admins := []*repo.Admin{
-		&repo.Admin{
-			Address: "addr1",
-			Weight:  1,
+	admins := []*Role{
+		&Role{
+			ID:       "addr1",
+			RoleType: GovernanceAdmin,
+			Status:   governance.GovernanceAvailable,
 		},
-		&repo.Admin{
-			Address: "addr2",
-			Weight:  1,
+		&Role{
+			ID:       "addr2",
+			RoleType: GovernanceAdmin,
+			Status:   governance.GovernanceAvailable,
 		},
-		&repo.Admin{
-			Address: "addr3",
-			Weight:  1,
+		&Role{
+			ID:       "addr3",
+			RoleType: GovernanceAdmin,
+			Status:   governance.GovernanceAvailable,
 		},
-		&repo.Admin{
-			Address: "addr4",
-			Weight:  1,
+		&Role{
+			ID:       "addr4",
+			RoleType: GovernanceAdmin,
+			Status:   governance.GovernanceAvailable,
 		},
 	}
 	adminsData, err := json.Marshal(admins)
@@ -259,11 +267,6 @@ func TestGovernance_QueryProposal(t *testing.T) {
 	res = g.GetAvaliableElectorateNum(idExistent)
 	assert.True(t, res.Ok, string(res.Result))
 	res = g.GetAvaliableElectorateNum(idNonexistent)
-	assert.False(t, res.Ok, string(res.Result))
-
-	res = g.GetThresholdNum(idExistent)
-	assert.True(t, res.Ok, string(res.Result))
-	res = g.GetThresholdNum(idNonexistent)
 	assert.False(t, res.Ok, string(res.Result))
 
 	var v = &Ballot{}
@@ -361,52 +364,67 @@ func TestGovernance_Vote(t *testing.T) {
 		AgainstNum:             1,
 		InitialElectorateNum:   4,
 		AvaliableElectorateNum: 4,
-		ThresholdElectorateNum: 3,
+		StrategyExpression:     repo.DefaultSimpleMajorityExpression,
 		ElectorateList: []*Role{
 			{
-				ID: addrApproved,
+				ID:     addrApproved,
+				Status: governance.GovernanceAvailable,
 			},
 			{
-				ID: addrAganisted,
+				ID:     addrAganisted,
+				Status: governance.GovernanceAvailable,
 			},
 			{
-				ID: addrNotVoted,
+				ID:     addrNotVoted,
+				Status: governance.GovernanceAvailable,
 			},
 			{
-				ID: addrNotVoted1,
+				ID:     addrNotVoted1,
+				Status: governance.GovernanceAvailable,
 			},
 			{
-				ID: addrNotVoted2,
+				ID:     addrNotVoted2,
+				Status: governance.GovernanceAvailable,
 			},
 			{
-				ID: addrNotVoted3,
+				ID:     addrNotVoted3,
+				Status: governance.GovernanceAvailable,
 			},
 			{
-				ID: addrNotVoted4,
+				ID:     addrNotVoted4,
+				Status: governance.GovernanceAvailable,
 			},
 			{
-				ID: addrNotVoted5,
+				ID:     addrNotVoted5,
+				Status: governance.GovernanceAvailable,
 			},
 			{
-				ID: addrNotVoted6,
+				ID:     addrNotVoted6,
+				Status: governance.GovernanceAvailable,
 			},
 			{
-				ID: addrNotVoted7,
+				ID:     addrNotVoted7,
+				Status: governance.GovernanceAvailable,
 			},
 			{
-				ID: addrNotVoted8,
+				ID:     addrNotVoted8,
+				Status: governance.GovernanceAvailable,
 			},
 			{
-				ID: addrNotVoted9,
+				ID:     addrNotVoted9,
+				Status: governance.GovernanceAvailable,
 			},
 			{
-				ID: addrNotVoted10,
+				ID:     addrNotVoted10,
+				Status: governance.GovernanceAvailable,
 			},
 			{
-				ID: addrNotVoted11,
+				ID:     addrNotVoted11,
+				Status: governance.GovernanceAvailable,
 			},
 			{
-				ID: addrNotVoted12,
+				ID:     addrNotVoted12,
+				Status: governance.GovernanceAvailable,
 			},
 		},
 	}
@@ -430,6 +448,10 @@ func TestGovernance_Vote(t *testing.T) {
 			pro.BallotMap = proposalExistent.BallotMap
 			pro.IsSpecial = true
 			pro.ElectorateList = proposalExistent.ElectorateList
+			pro.StrategyType = SimpleMajority
+			pro.StrategyExpression = repo.DefaultSimpleMajorityExpression
+			pro.InitialElectorateNum = 4
+			pro.AvaliableElectorateNum = 4
 			return true
 		}).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(ProposalKey(idNotReachThreshold), gomock.Any()).Do(
@@ -442,7 +464,9 @@ func TestGovernance_Vote(t *testing.T) {
 			pro.ApproveNum = 1
 			pro.AgainstNum = 1
 			pro.ElectorateList = proposalExistent.ElectorateList
-			pro.ThresholdElectorateNum = 4
+			pro.StrategyExpression = repo.DefaultSimpleMajorityExpression
+			pro.AvaliableElectorateNum = 4
+			pro.InitialElectorateNum = 4
 			return true
 		}).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(ProposalKey(idLockProposalNonexistent), gomock.Any()).Do(
@@ -452,11 +476,13 @@ func TestGovernance_Vote(t *testing.T) {
 			pro.Typ = AppchainMgr
 			pro.Status = PROPOSED
 			pro.BallotMap = proposalExistent.BallotMap
-			pro.ApproveNum = 1
+			pro.ApproveNum = 2
 			pro.AgainstNum = 1
-			pro.ThresholdElectorateNum = 3
+			pro.StrategyExpression = repo.DefaultSimpleMajorityExpression
 			pro.ElectorateList = proposalExistent.ElectorateList
 			pro.LockProposalId = idNonexistent
+			pro.AvaliableElectorateNum = 4
+			pro.InitialElectorateNum = 4
 			return true
 		}).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(ProposalKey(idRoleMgr), gomock.Any()).Do(
@@ -468,8 +494,10 @@ func TestGovernance_Vote(t *testing.T) {
 			pro.BallotMap = proposalExistent.BallotMap
 			pro.ApproveNum = 1
 			pro.AgainstNum = 1
-			pro.ThresholdElectorateNum = 3
+			pro.StrategyExpression = repo.DefaultSimpleMajorityExpression
 			pro.ElectorateList = proposalExistent.ElectorateList
+			pro.AvaliableElectorateNum = 4
+			pro.InitialElectorateNum = 4
 			return true
 		}).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(ProposalKey(idNodeMgr), gomock.Any()).Do(
@@ -481,8 +509,10 @@ func TestGovernance_Vote(t *testing.T) {
 			pro.BallotMap = proposalExistent.BallotMap
 			pro.ApproveNum = 1
 			pro.AgainstNum = 1
-			pro.ThresholdElectorateNum = 3
+			pro.StrategyExpression = repo.DefaultSimpleMajorityExpression
 			pro.ElectorateList = proposalExistent.ElectorateList
+			pro.AvaliableElectorateNum = 4
+			pro.InitialElectorateNum = 4
 			return true
 		}).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(ProposalKey(idServiceMgr), gomock.Any()).Do(
@@ -494,7 +524,9 @@ func TestGovernance_Vote(t *testing.T) {
 			pro.BallotMap = proposalExistent.BallotMap
 			pro.ApproveNum = 1
 			pro.AgainstNum = 1
-			pro.ThresholdElectorateNum = 3
+			pro.StrategyExpression = repo.DefaultSimpleMajorityExpression
+			pro.AvaliableElectorateNum = 4
+			pro.InitialElectorateNum = 4
 			pro.ElectorateList = proposalExistent.ElectorateList
 			return true
 		}).Return(true).AnyTimes()
@@ -507,8 +539,10 @@ func TestGovernance_Vote(t *testing.T) {
 			pro.BallotMap = proposalExistent.BallotMap
 			pro.ApproveNum = 1
 			pro.AgainstNum = 1
-			pro.ThresholdElectorateNum = 3
+			pro.AvaliableElectorateNum = 4
+			pro.InitialElectorateNum = 4
 			pro.ElectorateList = proposalExistent.ElectorateList
+			pro.StrategyExpression = repo.DefaultSimpleMajorityExpression
 			return true
 		}).Return(true).AnyTimes()
 
@@ -544,7 +578,6 @@ func TestGovernance_Vote(t *testing.T) {
 	mockStub.EXPECT().Caller().Return(addrNotVoted9).Times(1)
 	mockStub.EXPECT().Caller().Return(addrNotVoted10).Times(1)
 	mockStub.EXPECT().Caller().Return(addrNotVoted11).Times(1)
-	mockStub.EXPECT().Caller().Return(addrNotVoted12).Times(1)
 	mockStub.EXPECT().GetTxTimeStamp().Return(int64(0)).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
 	pData, err := json.Marshal(proposalExistent)
@@ -578,9 +611,6 @@ func TestGovernance_Vote(t *testing.T) {
 	// countVote
 	// 8.special proposal not end
 	res = g.Vote(idSpecial, BallotApprove, "")
-	assert.True(t, res.Ok, string(res.Result))
-	// 9.not reach threshold
-	res = g.Vote(idNotReachThreshold, BallotApprove, "")
 	assert.True(t, res.Ok, string(res.Result))
 
 	// handle result
@@ -649,27 +679,31 @@ func TestGovernance_SubmitProposal_LockLowPriorityProposal(t *testing.T) {
 	pDatas := make([][]byte, 0)
 	pDatas = append(pDatas, pData)
 
-	admins := []*repo.Admin{
-		&repo.Admin{
-			Address: "addr1",
-			Weight:  1,
+	admins := []*Role{
+		&Role{
+			ID:       "addr1",
+			RoleType: GovernanceAdmin,
+			Status:   governance.GovernanceAvailable,
 		},
-		&repo.Admin{
-			Address: "addr2",
-			Weight:  1,
+		&Role{
+			ID:       "addr2",
+			RoleType: GovernanceAdmin,
+			Status:   governance.GovernanceAvailable,
 		},
-		&repo.Admin{
-			Address: "addr3",
-			Weight:  1,
+		&Role{
+			ID:       "addr3",
+			RoleType: GovernanceAdmin,
+			Status:   governance.GovernanceAvailable,
 		},
-		&repo.Admin{
-			Address: "addr4",
-			Weight:  1,
+		&Role{
+			ID:       "addr4",
+			RoleType: GovernanceAdmin,
+			Status:   governance.GovernanceAvailable,
 		},
 	}
 	adminsData, err := json.Marshal(admins)
 	assert.Nil(t, err)
-	strategy := &ProposalStrategy{ParticipateThreshold: 0.75, Typ: SimpleMajority}
+	strategy := &ProposalStrategy{Extra: repo.DefaultSimpleMajorityExpression, Typ: SimpleMajority}
 	data, _ := json.Marshal(strategy)
 	mockStub.EXPECT().CrossInvoke(gomock.Eq(constant.ProposalStrategyMgrContractAddr.String()), gomock.Eq("GetProposalStrategy"), gomock.Any()).Return(boltvm.Success(data)).AnyTimes()
 	mockStub.EXPECT().CurrentCaller().Return(constant.AppchainMgrContractAddr.Address().String()).AnyTimes()
@@ -762,22 +796,26 @@ func TestGovernance_WithdrawProposal(t *testing.T) {
 	pDatas := make([][]byte, 0)
 	pDatas = append(pDatas, pData, pData1)
 
-	admins := []*repo.Admin{
-		&repo.Admin{
-			Address: "addr1",
-			Weight:  1,
+	admins := []*Role{
+		&Role{
+			ID:       "addr1",
+			RoleType: GovernanceAdmin,
+			Status:   governance.GovernanceAvailable,
 		},
-		&repo.Admin{
-			Address: "addr2",
-			Weight:  1,
+		&Role{
+			ID:       "addr2",
+			RoleType: GovernanceAdmin,
+			Status:   governance.GovernanceAvailable,
 		},
-		&repo.Admin{
-			Address: "addr3",
-			Weight:  1,
+		&Role{
+			ID:       "addr3",
+			RoleType: GovernanceAdmin,
+			Status:   governance.GovernanceAvailable,
 		},
-		&repo.Admin{
-			Address: "addr4",
-			Weight:  1,
+		&Role{
+			ID:       "addr4",
+			RoleType: GovernanceAdmin,
+			Status:   governance.GovernanceAvailable,
 		},
 	}
 	adminsData, err := json.Marshal(admins)
@@ -870,7 +908,9 @@ func TestGovernance_UpdateAvaliableElectorateNum(t *testing.T) {
 		AgainstNum:             1,
 		LockProposalId:         idExistent2,
 		Extra:                  chainData,
-		ThresholdElectorateNum: 3,
+		StrategyExpression:     repo.DefaultSimpleMajorityExpression,
+		InitialElectorateNum:   4,
+		AvaliableElectorateNum: 4,
 	}
 
 	proposalUpdate := &Proposal{
@@ -883,7 +923,9 @@ func TestGovernance_UpdateAvaliableElectorateNum(t *testing.T) {
 		ApproveNum:             1,
 		AgainstNum:             1,
 		Extra:                  chainData,
-		ThresholdElectorateNum: 3,
+		StrategyExpression:     repo.DefaultSimpleMajorityExpression,
+		InitialElectorateNum:   4,
+		AvaliableElectorateNum: 4,
 	}
 
 	mockStub.EXPECT().GetObject(ProposalStatusKey(string(PROPOSED)), gomock.Any()).SetArg(1, *orderedmap.New()).Return(false).AnyTimes()
@@ -957,16 +999,16 @@ func TestGovernance_LockLowPriorityProposal(t *testing.T) {
 	assert.Nil(t, err)
 
 	proposalUpdate := &Proposal{
-		Id:                     idExistent2,
-		EventType:              governance.EventUpdate,
-		ObjId:                  appchainID,
-		Typ:                    AppchainMgr,
-		Status:                 PROPOSED,
-		BallotMap:              map[string]Ballot{addrApproved: approveBallot, addrAganisted: againstBallot},
-		ApproveNum:             1,
-		AgainstNum:             1,
-		Extra:                  chainData,
-		ThresholdElectorateNum: 3,
+		Id:                 idExistent2,
+		EventType:          governance.EventUpdate,
+		ObjId:              appchainID,
+		Typ:                AppchainMgr,
+		Status:             PROPOSED,
+		BallotMap:          map[string]Ballot{addrApproved: approveBallot, addrAganisted: againstBallot},
+		ApproveNum:         1,
+		AgainstNum:         1,
+		Extra:              chainData,
+		StrategyExpression: repo.DefaultSimpleMajorityExpression,
 	}
 
 	mockStub.EXPECT().CurrentCaller().Return(noAdminAddr).Times(1)
@@ -1036,16 +1078,16 @@ func TestGovernance_UnLockLowPriorityProposal(t *testing.T) {
 	assert.Nil(t, err)
 
 	proposalUpdate := &Proposal{
-		Id:                     idExistent2,
-		EventType:              governance.EventUpdate,
-		ObjId:                  appchainID,
-		Typ:                    AppchainMgr,
-		Status:                 PAUSED,
-		BallotMap:              map[string]Ballot{addrApproved: approveBallot, addrAganisted: againstBallot},
-		ApproveNum:             1,
-		AgainstNum:             1,
-		Extra:                  chainData,
-		ThresholdElectorateNum: 3,
+		Id:                 idExistent2,
+		EventType:          governance.EventUpdate,
+		ObjId:              appchainID,
+		Typ:                AppchainMgr,
+		Status:             PAUSED,
+		BallotMap:          map[string]Ballot{addrApproved: approveBallot, addrAganisted: againstBallot},
+		ApproveNum:         1,
+		AgainstNum:         1,
+		Extra:              chainData,
+		StrategyExpression: repo.DefaultSimpleMajorityExpression,
 	}
 
 	mockStub.EXPECT().GetObject(ProposalStatusKey(string(PROPOSED)), gomock.Any()).SetArg(1, *orderedmap.New()).Return(false).AnyTimes()

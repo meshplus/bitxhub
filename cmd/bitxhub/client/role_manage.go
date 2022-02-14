@@ -136,7 +136,7 @@ func roleMgrCMD() cli.Command {
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "type",
-						Usage:    "Specify role type",
+						Usage:    "Specify role type (governanceAdmin, auditAdmin or appchainAdmin)",
 						Value:    string(contracts.GovernanceAdmin),
 						Required: false,
 					},
@@ -160,7 +160,7 @@ func getRoleStatusById(ctx *cli.Context) error {
 		if err := json.Unmarshal(receipt.Ret, role); err != nil {
 			return fmt.Errorf("unmarshal receipt error: %v", err)
 		}
-		color.Green("role %d is %s\n", role.ID, string(role.Status))
+		color.Green("role %s is %s\n", role.ID, string(role.Status))
 	} else {
 		color.Red("get role status error: %s\n", string(receipt.Ret))
 	}
@@ -283,22 +283,9 @@ func bindRole(ctx *cli.Context) error {
 func allRole(ctx *cli.Context) error {
 	typ := ctx.String("type")
 
-	var ret *pb.Receipt
-	switch typ {
-	case string(contracts.GovernanceAdmin):
-		receipt, err := invokeBVMContractBySendView(ctx, constant.RoleContractAddr.Address().String(), "GetAllRoles")
-		if err != nil {
-			return fmt.Errorf("invoke BVM contract failed when get all roles: %w", err)
-		}
-		ret = receipt
-	case string(contracts.AuditAdmin):
-		receipt, err := invokeBVMContractBySendView(ctx, constant.RoleContractAddr.Address().String(), "GetAuditAdminRoles")
-		if err != nil {
-			return fmt.Errorf("invoke BVM contract failed when get audit admin roles: %w", err)
-		}
-		ret = receipt
-	default:
-		return fmt.Errorf("illegal role type")
+	ret, err := invokeBVMContractBySendView(ctx, constant.RoleContractAddr.Address().String(), "GetRolesByType", pb.String(typ))
+	if err != nil {
+		return fmt.Errorf("invoke BVM contract failed when get all roles: %w", err)
 	}
 
 	if ret.IsSuccess() {

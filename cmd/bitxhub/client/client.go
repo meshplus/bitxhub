@@ -32,7 +32,6 @@ var clientCMD = cli.Command{
 		receiptCMD(),
 		txCMD(),
 		validatorsCMD(),
-		delVPNodeCMD(),
 		governanceCMD(),
 	},
 }

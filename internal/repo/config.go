@@ -33,7 +33,8 @@ const (
 	SuperAdminWeight  = 2
 	NormalAdminWeight = 1
 	// governance strategy default participate threshold
-	DefaultParticipateThreshold = 0.75
+	DefaultSimpleMajorityExpression = "a > 0.5 * t"
+	DefaultZeroStrategyExpression   = "a >= 0"
 	//Passwd
 	DefaultPasswd = "bitxhub"
 
@@ -143,9 +144,9 @@ type LogModule struct {
 }
 
 type Strategy struct {
-	Module               string  `json:"module" toml:"module"`
-	Typ                  string  `json:"typ" toml:"typ"`
-	ParticipateThreshold float64 `mapstructure:"participate_threshold" json:"participate_threshold" toml:"participate_threshold"`
+	Module string `json:"module" toml:"module"`
+	Typ    string `json:"typ" toml:"typ"`
+	Extra  string `json:"extra" toml:"extra"`
 }
 
 type Genesis struct {

@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"reflect"
 
+	"github.com/Knetic/govaluate"
 	"github.com/ethereum/go-ethereum/event"
 	libp2pcert "github.com/meshplus/go-libp2p-cert"
 	"github.com/spf13/viper"
@@ -80,7 +82,8 @@ func Load(repoRoot string, passwd string, configPath string, networkPath string)
 }
 
 func checkConfig(config *Config) error {
-	// check genesis admin info
+	// check genesis admin info:
+	// - There is at least one super administrator.
 	hasSuperAdmin := false
 	for _, admin := range config.Genesis.Admins {
 		if admin.Weight == SuperAdminWeight {
@@ -94,42 +97,104 @@ func checkConfig(config *Config) error {
 		return fmt.Errorf("Set up at least one super administrator in genesis config!")
 	}
 
+	// check strategy
 	for _, s := range config.Genesis.Strategy {
-		if err := CheckStrategyInfo(s.Typ, s.Module, s.ParticipateThreshold); err != nil {
+		if err := CheckStrategyInfo(s.Typ, s.Module, s.Extra, len(config.Genesis.Admins)); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func CheckStrategyInfo(typ, module string, threshold float64) error {
-	if CheckStrategyType(typ, threshold) != nil {
-		return fmt.Errorf("illegal proposal strategy type:%s", typ)
+func CheckStrategyInfo(typ, module string, extra string, adminsNum int) error {
+	if err := CheckStrategyType(typ, extra, adminsNum); err != nil {
+		return fmt.Errorf("illegal proposal strategy type:%s, err: %v", typ, err)
 	}
 	if CheckManageModule(module) != nil {
-		return fmt.Errorf("illegal proposal strategy module:%s", typ)
+		return fmt.Errorf("illegal proposal strategy module:%s", module)
 	}
 	return nil
 }
 
-func CheckStrategyType(pst string, threshold float64) error {
-	if pst != SuperMajorityApprove &&
-		pst != SuperMajorityAgainst &&
-		pst != SimpleMajority &&
-		pst != ZeroPermission {
+func CheckStrategyType(typ string, extra string, adminsNum int) error {
+	if typ != SimpleMajority &&
+		typ != ZeroPermission {
 		return fmt.Errorf("illegal proposal strategy type")
 	}
 
-	if pst == ZeroPermission {
-		if threshold != 0 {
-			return fmt.Errorf("illegal ZeroPermission[participate_threshold]=%f", threshold)
-		}
-	} else {
-		if threshold <= 0 || threshold > 1 {
-			return fmt.Errorf("illegal SimpleMajority[participate_threshold]=%f", threshold)
+	if typ != ZeroPermission {
+		err := CheckStrategyExpression(extra, adminsNum)
+		if err != nil {
+			return err
 		}
 	}
+
 	return nil
+}
+
+func CheckStrategyExpression(expressionStr string, adminsNum int) error {
+	expression, err := govaluate.NewEvaluableExpression(expressionStr)
+	if err != nil {
+		return fmt.Errorf("illegal strategy expression: %w", err)
+	}
+
+	parameters := make(map[string]interface{}, 8)
+	parameters["r"] = 0
+	parameters["t"] = adminsNum
+	for i := 0; i <= adminsNum; i++ {
+		parameters["a"] = i
+		result, err := expression.Evaluate(parameters)
+		if err != nil {
+			return fmt.Errorf("illegal strategy expression: %w", err)
+		}
+
+		if result.(bool) {
+			return nil
+		} else {
+			continue
+		}
+	}
+
+	return fmt.Errorf("illegal strategy expression: under this exp(%s), the proposal may never be concluded", expressionStr)
+}
+
+// return:
+// - whether the proposal is over, if not, you need to wait for the vote
+// - whether the proposal is pass, that is, it has ended, may be passed or rejected
+// - error
+func MakeStrategyDecision(expressionStr string, approve, reject, total, avaliableNum uint64) (bool, bool, error) {
+	expression, err := govaluate.NewEvaluableExpression(expressionStr)
+	if err != nil {
+		return false, false, err
+	}
+
+	parameters := make(map[string]interface{}, 8)
+	parameters["a"] = approve
+	parameters["r"] = reject
+	parameters["t"] = total
+	result, err := expression.Evaluate(parameters)
+	if err != nil {
+		return false, false, err
+	}
+
+	if reflect.TypeOf(result).String() != "bool" {
+		return false, false, fmt.Errorf("illegal expressionStr: %s", expressionStr)
+	}
+	if result.(bool) {
+		return true, true, nil
+	}
+
+	parameters["a"] = avaliableNum - reject
+	result, err = expression.Evaluate(parameters)
+	if err != nil {
+		return false, false, err
+	}
+
+	if result.(bool) {
+		return false, false, nil
+	} else {
+		return true, false, nil
+	}
 }
 
 func CheckManageModule(moduleTyp string) error {
