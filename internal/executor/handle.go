@@ -447,16 +447,17 @@ func (exec *BlockExecutor) applyTransaction(i int, tx pb.Transaction, invalidRea
 	case *pb.BxhTransaction:
 		bxhTx := tx.(*pb.BxhTransaction)
 		//snapshot := exec.ledger.Snapshot()
-		ret, _, err := exec.applyBxhTransaction(i, bxhTx, invalidReason, opt)
-		if err != nil {
-			receipt.Status = pb.Receipt_FAILED
-			receipt.Ret = []byte(err.Error())
-		} else {
-			//internal invoke evm
-			receipt.EvmLogs = exec.ledger.GetLogs(*tx.GetHash())
-			receipt.Status = pb.Receipt_SUCCESS
-			receipt.Ret = ret
-		}
+		exec.applyBxhTransaction(i, bxhTx, invalidReason, opt)
+		//ret, _, err := exec.applyBxhTransaction(i, bxhTx, invalidReason, opt)
+		//if err != nil {
+		//	receipt.Status = pb.Receipt_FAILED
+		//	receipt.Ret = []byte(err.Error())
+		//} else {
+		//	//internal invoke evm
+		//	receipt.EvmLogs = exec.ledger.GetLogs(*tx.GetHash())
+		//	receipt.Status = pb.Receipt_SUCCESS
+		//	receipt.Ret = ret
+		//}
 		//receipt.Bloom = ledger.CreateBloom(ledger.EvmReceipts{receipt})
 		//receipt.GasUsed = gasUsed
 		//
