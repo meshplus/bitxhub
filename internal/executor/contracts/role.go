@@ -827,6 +827,7 @@ func (rm *RoleManager) PauseAuditAdminBinding(nodeId string) *boltvm.Response {
 	return getGovernanceRet("", nil)
 }
 
+// An audit node can only be bound or in binding state for an audit admin
 func (rm *RoleManager) getBindRoleByNodeID(nodeId string) (*Role, error) {
 	roles, err := rm.getAll()
 	if err != nil {
@@ -834,7 +835,10 @@ func (rm *RoleManager) getBindRoleByNodeID(nodeId string) (*Role, error) {
 	}
 
 	for _, role := range roles {
-		if role.NodeAccount == nodeId {
+		if role.Status == governance.GovernanceAvailable && role.NodeAccount == nodeId {
+			return role, nil
+		}
+		if role.Status == governance.GovernanceBinding && role.NodeAccount == nodeId {
 			return role, nil
 		}
 	}
