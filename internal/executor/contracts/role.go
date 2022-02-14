@@ -165,6 +165,10 @@ func (rm *RoleManager) Manage(eventTyp string, proposalResult, lastStatus string
 	// 3. other handle
 	if proposalResult == string(APPROVED) {
 		switch eventTyp {
+		case string(governance.EventRegister):
+			if err := rm.updateStrategyInfo(); err != nil {
+				return boltvm.Error(err.Error())
+			}
 		case string(governance.EventUpdate):
 			rm.SetObject(rm.roleKey(role.ID), *role)
 		case string(governance.EventFreeze):

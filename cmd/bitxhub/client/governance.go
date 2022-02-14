@@ -108,6 +108,7 @@ func governanceCMD() cli.Command {
 			nodeMgrCND(),
 			roleMgrCND(),
 			dappMgrCMD(),
+			proposalStrategyCMD(),
 		},
 	}
 }
@@ -414,4 +415,49 @@ func invokeBVMContractBySendView(ctx *cli.Context, contractAddr string, method s
 	}
 
 	return receipt, nil
+}
+
+func proposalStrategyCMD() cli.Command {
+	return cli.Command{
+		Name:  "strategy",
+		Usage: "proposal strategy command",
+		Subcommands: cli.Commands{
+			cli.Command{
+				Name:  "all",
+				Usage: "query all proposal strategy",
+				Action: func(ctx *cli.Context) error {
+					receipt, err := invokeBVMContractBySendView(ctx, constant.GovernanceContractAddr.String(), "GetAllProposalStrategy")
+					if err != nil {
+						return fmt.Errorf("invoke BVM contract failed when get all proposal strategy: %w", err)
+					}
+
+					if receipt.IsSuccess() {
+						strategies := make([]*contracts.ProposalStrategy, 0)
+						if err := json.Unmarshal(receipt.Ret, &strategies); err != nil {
+							return fmt.Errorf(err.Error())
+						}
+						printProposalStrategy(strategies)
+					} else {
+						color.Red("get all proposal strategy error: %s\n", string(receipt.Ret))
+					}
+					return nil
+				},
+			},
+		},
+	}
+}
+
+func printProposalStrategy(strategies []*contracts.ProposalStrategy) {
+	var table [][]string
+	table = append(table, []string{"module", "strategy", "Extra"})
+	for _, r := range strategies {
+
+		table = append(table, []string{
+			r.Module,
+			string(r.Typ),
+			r.Extra,
+		})
+	}
+
+	PrintTable(table, true)
 }

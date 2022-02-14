@@ -1000,7 +1000,7 @@ type ProposalStrategy struct {
 //	return boltvm.Success(pData)
 //}
 //
-var mgrs = []string{repo.AppchainMgr, repo.NodeMgr, repo.DappMgr, repo.RoleMgr, repo.RuleMgr, repo.ServiceMgr, repo.ProposalStrategyMgr}
+var mgrs = []string{repo.AppchainMgr, repo.NodeMgr, repo.DappMgr, repo.RoleMgr, repo.RuleMgr}
 
 func (g *Governance) UpdateProposalStrategyByRolesChange(availableNum uint64) *boltvm.Response {
 	// 1. check permission
@@ -1038,6 +1038,21 @@ func (g *Governance) UpdateProposalStrategyByRolesChange(availableNum uint64) *b
 	}
 
 	return boltvm.Success(nil)
+}
+
+func (g *Governance) GetAllProposalStrategy() *boltvm.Response {
+	ret := make([]*ProposalStrategy, 0)
+	for _, module := range mgrs {
+		ps := defaultStrategy(module)
+		_ = g.GetObject(module, ps)
+		ret = append(ret, ps)
+	}
+
+	data, err := json.Marshal(ret)
+	if err != nil {
+		return boltvm.Error(fmt.Sprintf("marshal proposal strategy error: %v", err))
+	}
+	return boltvm.Success(data)
 }
 
 func (g *Governance) GetProposalStrategy(module string) *boltvm.Response {

@@ -87,8 +87,24 @@ solo = false
   [[genesis.admins]]
     address = "0xc0Ff2e0b3189132D815b8eb325bE17285AC898f8"
     weight = 2
-   [[genesis.strategy]]
+  [[genesis.strategy]]
        module = "appchain_mgr"
+       typ = "SimpleMajority"
+       extra = "a > 0.5 * t"
+  [[genesis.strategy]]
+       module = "rule_mgr"
+       typ = "SimpleMajority"
+       extra = "a > 0.5 * t"
+  [[genesis.strategy]]
+       module = "node_mgr"
+       typ = "SimpleMajority"
+       extra = "a > 0.5 * t"
+  [[genesis.strategy]]
+       module = "role_mgr"
+       typ = "SimpleMajority"
+       extra = "a > 0.5 * t"
+  [[genesis.strategy]]
+       module = "dapp_mgr"
        typ = "SimpleMajority"
        extra = "a > 0.5 * t"
 
