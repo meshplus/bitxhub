@@ -36,7 +36,7 @@ import (
 )
 
 //var storeLogger = log.NewWithModule("cmd")
-const TIMEOUT_HEIGHT = 0
+const TIMEOUT_HEIGHT = 5
 
 func executeCMD() cli.Command {
 	return cli.Command{
@@ -564,7 +564,7 @@ func applyTransaction(txsExec agency.TxsExecutor, rwLdg *ledger.Ledger, txs []pb
 		txHashList = append(txHashList, tx.GetHash())
 	}
 
-	rwLdg.SetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.TimeoutKey(height)), []byte("==========================================================="))
+	rwLdg.SetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.TimeoutKey(height+TIMEOUT_HEIGHT)), []byte("==========================================================="))
 	accounts, journalHash := rwLdg.FlushDirtyData()
 	data := &ledger.BlockData{
 		Block:          block,
