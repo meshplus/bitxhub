@@ -312,7 +312,15 @@ func (t *TransactionManager) addToTimeoutList(height uint64, txId string) {
 	} else {
 		timeoutList = string(timeoutListByte) + "," + txId
 	}
-	t.Logger().WithFields(logrus.Fields{}).Debug(fmt.Sprintf("2221: %d", time.Since(time1).Nanoseconds()))
+	ok, timeoutListByte2 := t.Get(TimeoutKey(2))
+	if !ok {
+		timeoutList = ""
+	}
+	t.Logger().WithFields(logrus.Fields{
+		"height2":   string(timeoutListByte2),
+		"nowHeight": height,
+		"nowList":   timeoutList,
+	}).Debug(fmt.Sprintf("2221: %d", time.Since(time1).Nanoseconds()))
 
 	t.Set(TimeoutKey(height), []byte(timeoutList))
 	t.Logger().WithFields(logrus.Fields{}).Debug(fmt.Sprintf("2222: %d", time.Since(time1).Nanoseconds()))
