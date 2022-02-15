@@ -563,7 +563,7 @@ func applyTransaction(blockExec *executor.BlockExecutor, rwLdg *ledger.Ledger, t
 		txHashList = append(txHashList, tx.GetHash())
 	}
 
-	rwLdg.SetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.TimeoutKey(height+TIMEOUT_HEIGHT-1)), []byte(""))
+	//rwLdg.SetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.TimeoutKey(height+TIMEOUT_HEIGHT-1)), []byte(""))
 	accounts, journalHash := rwLdg.FlushDirtyData()
 	data := &ledger.BlockData{
 		Block:          block,
