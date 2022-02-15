@@ -81,9 +81,13 @@ func TestRoleManager_ManageRegisterGvernanceAdmin(t *testing.T) {
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, []byte("100000000000000000000000000000000000")).AnyTimes()
 	mockStub.EXPECT().Delete(gomock.Any()).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.ProposalStrategyMgrContractAddr.Address().String(), "UpdateProposalStrategyByRolesChange", gomock.Any()).Return(boltvm.Error("", "crossinvoke UpdateProposalStrategyByRolesChange error")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.ProposalStrategyMgrContractAddr.Address().String(), "UpdateProposalStrategyByRolesChange", gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 
 	// approve
 	res := rm.Manage(string(governance.EventRegister), string(APPROVED), string(governance.GovernanceUnavailable), gRoles[9].ID, nil)
+	assert.False(t, res.Ok, string(res.Result))
+	res = rm.Manage(string(governance.EventRegister), string(APPROVED), string(governance.GovernanceUnavailable), gRoles[9].ID, nil)
 	assert.True(t, res.Ok, string(res.Result))
 
 	// reject
@@ -471,9 +475,9 @@ func TestRoleManager_PauseAuditAdmin(t *testing.T) {
 	res = rm.PauseAuditAdmin(aRoles[0].NodeAccount)
 	assert.False(t, res.Ok, string(res.Result))
 
-	// pause frozen node, ok
+	// pause frozen node, not ok
 	res = rm.PauseAuditAdmin(aRoles[2].NodeAccount)
-	assert.True(t, res.Ok, string(res.Result))
+	assert.False(t, res.Ok, string(res.Result))
 
 	// EndObjProposal error
 	res = rm.PauseAuditAdmin(aRoles[0].NodeAccount)
@@ -551,9 +555,9 @@ func TestRoleManager_RestoreAuditAdminBinding(t *testing.T) {
 	res = rm.RestoreAuditAdminBinding(aRoles[3].NodeAccount)
 	assert.False(t, res.Ok, string(res.Result))
 
-	// restore logouting admin, ok
+	// restore logouting admin, not ok
 	res = rm.RestoreAuditAdminBinding(aRoles[4].NodeAccount)
-	assert.True(t, res.Ok, string(res.Result))
+	assert.False(t, res.Ok, string(res.Result))
 
 	// UnLockLowPriorityProposal error
 	res = rm.RestoreAuditAdminBinding(aRoles[3].NodeAccount)

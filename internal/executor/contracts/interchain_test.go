@@ -446,8 +446,8 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 		Keys: []string{"111"},
 		Vals: []uint64{1},
 	}
-	mockStub.EXPECT().CrossInvoke(constant.TransactionMgrContractAddr.Address().String(), gomock.Eq("BeginMultiTXs"), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("", "BeginMultiTXs error")).Times(1)
-	mockStub.EXPECT().CrossInvoke(constant.TransactionMgrContractAddr.Address().String(), gomock.Eq("BeginMultiTXs"), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(data)).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.TransactionMgrContractAddr.Address().String(), gomock.Eq("BeginMultiTXs"), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("", "BeginMultiTXs error")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.TransactionMgrContractAddr.Address().String(), gomock.Eq("BeginMultiTXs"), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(data)).Times(1)
 	res = im.HandleIBTP(ibtp)
 	assert.False(t, res.Ok, string(res.Result))
 	res = im.HandleIBTP(ibtp)
