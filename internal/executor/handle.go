@@ -12,6 +12,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/meshplus/bitxhub/pkg/utils"
+
 	"github.com/cbergoon/merkletree"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
@@ -78,34 +80,34 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 
 	calcMerkleDuration.Observe(float64(time.Since(calcMerkleStart)) / float64(time.Second))
 
-	//timeoutIBTPsMap, err := exec.getTimeoutIBTPsMap(block.BlockHeader.Number)
-	//if err != nil {
-	//	panic(err)
-	//}
+	timeoutIBTPsMap, err := exec.getTimeoutIBTPsMap(block.BlockHeader.Number)
+	if err != nil {
+		panic(err)
+	}
 
-	//var timeoutL2Roots []types.Hash
-	//timeoutCounter := make(map[string]*pb.StringSlice)
-	//for from, list := range timeoutIBTPsMap {
-	//	root, err := exec.calcTimeoutL2Root(list)
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//	timeoutCounter[from] = &pb.StringSlice{Slice: list}
-	//	timeoutL2Roots = append(timeoutL2Roots, root)
-	//}
-	//
-	//timeoutRoots := make([]merkletree.Content, 0, len(timeoutL2Roots))
-	//sort.Slice(timeoutL2Roots, func(i, j int) bool {
-	//	return bytes.Compare(timeoutL2Roots[i].Bytes(), timeoutL2Roots[j].Bytes()) < 0
-	//})
-	//for _, root := range timeoutL2Roots {
-	//	r := root
-	//	timeoutRoots = append(timeoutRoots, &r)
-	//}
-	//timeoutRoot, err := calcMerkleRoot(timeoutRoots)
-	//if err != nil {
-	//	panic(err)
-	//}
+	var timeoutL2Roots []types.Hash
+	timeoutCounter := make(map[string]*pb.StringSlice)
+	for from, list := range timeoutIBTPsMap {
+		root, err := exec.calcTimeoutL2Root(list)
+		if err != nil {
+			panic(err)
+		}
+		timeoutCounter[from] = &pb.StringSlice{Slice: list}
+		timeoutL2Roots = append(timeoutL2Roots, root)
+	}
+
+	timeoutRoots := make([]merkletree.Content, 0, len(timeoutL2Roots))
+	sort.Slice(timeoutL2Roots, func(i, j int) bool {
+		return bytes.Compare(timeoutL2Roots[i].Bytes(), timeoutL2Roots[j].Bytes()) < 0
+	})
+	for _, root := range timeoutL2Roots {
+		r := root
+		timeoutRoots = append(timeoutRoots, &r)
+	}
+	timeoutRoot, err := calcMerkleRoot(timeoutRoots)
+	if err != nil {
+		panic(err)
+	}
 
 	multiTxIBTPsMap, err := exec.getMultiTxIBTPsMap(block.BlockHeader.Number)
 	if err != nil {
@@ -120,9 +122,9 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	block.BlockHeader.ReceiptRoot = receiptRoot
 	block.BlockHeader.ParentHash = exec.CurrentBlockHash
 	block.BlockHeader.Bloom = ledger.CreateBloom(receipts)
-	//block.BlockHeader.TimeoutRoot = timeoutRoot
+	block.BlockHeader.TimeoutRoot = timeoutRoot
 
-	//exec.setTimeoutRollback(block.BlockHeader.Number)
+	exec.setTimeoutRollback(block.BlockHeader.Number)
 	accounts, journalHash := exec.ledger.FlushDirtyData()
 
 	block.BlockHeader.StateRoot = journalHash
@@ -141,10 +143,10 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 		counter[k] = &pb.VerifiedIndexSlice{Slice: v}
 	}
 	interchainMeta := &pb.InterchainMeta{
-		Counter: counter,
-		L2Roots: l2Roots,
-		//TimeoutCounter: timeoutCounter,
-		//TimeoutL2Roots: timeoutL2Roots,
+		Counter:        counter,
+		L2Roots:        l2Roots,
+		TimeoutCounter: timeoutCounter,
+		TimeoutL2Roots: timeoutL2Roots,
 		MultiTxCounter: multiTxCounter,
 	}
 
@@ -301,7 +303,7 @@ func (exec *BlockExecutor) verifySign(commitEvent *pb.CommitEvent) *BlockWrapper
 }
 
 func (exec *BlockExecutor) applyTx(index int, tx pb.Transaction, invalidReason agency.InvalidReason, opt *agency.TxOpt) *pb.Receipt {
-	//normalTx := true
+	normalTx := true
 	time1 := time.Now()
 	receipt := exec.applyTransaction(index, tx, invalidReason, opt)
 	if tx.IsIBTP() {
@@ -318,80 +320,80 @@ func (exec *BlockExecutor) applyTx(index int, tx pb.Transaction, invalidReason a
 			"now": time.Now().UnixNano(),
 		}).Debug(fmt.Sprintf("---------------------------------------------- run normal: %d", time.Since(time1).Nanoseconds()))
 	}
-	//evs := exec.ledger.Events(tx.GetHash().String())
-	//if len(evs) != 0 {
-	//	receipt.Events = evs
-	//
-	//	auditDataUpdate := false
-	//	relatedChainIDList := map[string][]byte{}
-	//	relatedNodeIDList := map[string][]byte{}
-	//
-	//	for _, ev := range evs {
-	//		switch ev.EventType {
-	//		case pb.Event_INTERCHAIN:
-	//			m := make(map[string]uint64)
-	//			err := json.Unmarshal(ev.Data, &m)
-	//			if err != nil {
-	//				panic(err)
-	//			}
-	//
-	//			for k, v := range m {
-	//				valid := true
-	//				if receipt.Status == pb.Receipt_FAILED &&
-	//					strings.Contains(string(receipt.Ret), contracts.TargetAppchainNotAvailable) {
-	//					valid = false
-	//				}
-	//				exec.txsExecutor.AddInterchainCounter(k, &pb.VerifiedIndex{
-	//					Index: v,
-	//					Valid: valid,
-	//				})
-	//			}
-	//			normalTx = false
-	//		case pb.Event_NODEMGR:
-	//			nodeEvent := events.NodeEvent{}
-	//			err := json.Unmarshal(ev.Data, &nodeEvent)
-	//			if err != nil {
-	//				panic(err)
-	//			}
-	//			exec.postNodeEvent(nodeEvent)
-	//
-	//		case pb.Event_AUDIT_PROPOSAL,
-	//			pb.Event_AUDIT_APPCHAIN,
-	//			pb.Event_AUDIT_RULE,
-	//			pb.Event_AUDIT_SERVICE,
-	//			pb.Event_AUDIT_NODE,
-	//			pb.Event_AUDIT_ROLE,
-	//			pb.Event_AUDIT_INTERCHAIN,
-	//			pb.Event_AUDIT_DAPP:
-	//			auditDataUpdate = true
-	//			auditRelatedObjInfo := pb.AuditRelatedObjInfo{}
-	//			err := json.Unmarshal(ev.Data, &auditRelatedObjInfo)
-	//			if err != nil {
-	//				panic(err)
-	//			}
-	//			for chainID, _ := range auditRelatedObjInfo.RelatedChainIDList {
-	//				relatedChainIDList[chainID] = []byte{}
-	//			}
-	//			for nodeID, _ := range auditRelatedObjInfo.RelatedNodeIDList {
-	//				relatedNodeIDList[nodeID] = []byte{}
-	//			}
-	//		}
-	//	}
-	//	if auditDataUpdate {
-	//		exec.postAuditEvent(&pb.AuditTxInfo{
-	//			Tx:                 tx.(*pb.BxhTransaction),
-	//			Rec:                receipt,
-	//			BlockHeight:        exec.currentHeight,
-	//			RelatedChainIDList: relatedChainIDList,
-	//			RelatedNodeIDList:  relatedNodeIDList,
-	//		})
-	//		utils.AddAuditPermitBloom(receipt.Bloom, relatedChainIDList, relatedNodeIDList)
-	//	}
-	//}
-	//
-	//if normalTx {
-	//	exec.txsExecutor.AddNormalTx(tx.GetHash())
-	//}
+	evs := exec.ledger.Events(tx.GetHash().String())
+	if len(evs) != 0 {
+		receipt.Events = evs
+
+		auditDataUpdate := false
+		relatedChainIDList := map[string][]byte{}
+		relatedNodeIDList := map[string][]byte{}
+
+		for _, ev := range evs {
+			switch ev.EventType {
+			case pb.Event_INTERCHAIN:
+				m := make(map[string]uint64)
+				err := json.Unmarshal(ev.Data, &m)
+				if err != nil {
+					panic(err)
+				}
+
+				for k, v := range m {
+					valid := true
+					if receipt.Status == pb.Receipt_FAILED &&
+						strings.Contains(string(receipt.Ret), contracts.TargetAppchainNotAvailable) {
+						valid = false
+					}
+					exec.txsExecutor.AddInterchainCounter(k, &pb.VerifiedIndex{
+						Index: v,
+						Valid: valid,
+					})
+				}
+				normalTx = false
+			case pb.Event_NODEMGR:
+				nodeEvent := events.NodeEvent{}
+				err := json.Unmarshal(ev.Data, &nodeEvent)
+				if err != nil {
+					panic(err)
+				}
+				exec.postNodeEvent(nodeEvent)
+
+			case pb.Event_AUDIT_PROPOSAL,
+				pb.Event_AUDIT_APPCHAIN,
+				pb.Event_AUDIT_RULE,
+				pb.Event_AUDIT_SERVICE,
+				pb.Event_AUDIT_NODE,
+				pb.Event_AUDIT_ROLE,
+				pb.Event_AUDIT_INTERCHAIN,
+				pb.Event_AUDIT_DAPP:
+				auditDataUpdate = true
+				auditRelatedObjInfo := pb.AuditRelatedObjInfo{}
+				err := json.Unmarshal(ev.Data, &auditRelatedObjInfo)
+				if err != nil {
+					panic(err)
+				}
+				for chainID, _ := range auditRelatedObjInfo.RelatedChainIDList {
+					relatedChainIDList[chainID] = []byte{}
+				}
+				for nodeID, _ := range auditRelatedObjInfo.RelatedNodeIDList {
+					relatedNodeIDList[nodeID] = []byte{}
+				}
+			}
+		}
+		if auditDataUpdate {
+			exec.postAuditEvent(&pb.AuditTxInfo{
+				Tx:                 tx.(*pb.BxhTransaction),
+				Rec:                receipt,
+				BlockHeight:        exec.CurrentHeight,
+				RelatedChainIDList: relatedChainIDList,
+				RelatedNodeIDList:  relatedNodeIDList,
+			})
+			utils.AddAuditPermitBloom(receipt.Bloom, relatedChainIDList, relatedNodeIDList)
+		}
+	}
+
+	if normalTx {
+		exec.txsExecutor.AddNormalTx(tx.GetHash())
+	}
 
 	if tx.IsIBTP() {
 		exec.logger.WithFields(logrus.Fields{
@@ -441,32 +443,31 @@ func (exec *BlockExecutor) applyTransaction(i int, tx pb.Transaction, invalidRea
 		TxHash:  tx.GetHash(),
 	}
 
-	//exec.ledger.PrepareEVM(common.BytesToHash(tx.GetHash().Bytes()), i)
+	exec.ledger.PrepareEVM(common.BytesToHash(tx.GetHash().Bytes()), i)
 
 	switch tx.(type) {
 	case *pb.BxhTransaction:
 		bxhTx := tx.(*pb.BxhTransaction)
-		//snapshot := exec.ledger.Snapshot()
-		exec.applyBxhTransaction(i, bxhTx, invalidReason, opt)
-		//ret, _, err := exec.applyBxhTransaction(i, bxhTx, invalidReason, opt)
-		//if err != nil {
-		//	receipt.Status = pb.Receipt_FAILED
-		//	receipt.Ret = []byte(err.Error())
-		//} else {
-		//	//internal invoke evm
-		//	receipt.EvmLogs = exec.ledger.GetLogs(*tx.GetHash())
-		//	receipt.Status = pb.Receipt_SUCCESS
-		//	receipt.Ret = ret
-		//}
-		//receipt.Bloom = ledger.CreateBloom(ledger.EvmReceipts{receipt})
-		//receipt.GasUsed = gasUsed
-		//
-		//if err := exec.payGasFee(tx, gasUsed); err != nil {
-		//	exec.ledger.RevertToSnapshot(snapshot)
-		//	receipt.Status = pb.Receipt_FAILED
-		//	receipt.Ret = []byte(err.Error())
-		//	exec.payLeftAsGasFee(tx)
-		//}
+		snapshot := exec.ledger.Snapshot()
+		ret, gasUsed, err := exec.applyBxhTransaction(i, bxhTx, invalidReason, opt)
+		if err != nil {
+			receipt.Status = pb.Receipt_FAILED
+			receipt.Ret = []byte(err.Error())
+		} else {
+			//internal invoke evm
+			receipt.EvmLogs = exec.ledger.GetLogs(*tx.GetHash())
+			receipt.Status = pb.Receipt_SUCCESS
+			receipt.Ret = ret
+		}
+		receipt.Bloom = ledger.CreateBloom(ledger.EvmReceipts{receipt})
+		receipt.GasUsed = gasUsed
+
+		if err := exec.payGasFee(tx, gasUsed); err != nil {
+			exec.ledger.RevertToSnapshot(snapshot)
+			receipt.Status = pb.Receipt_FAILED
+			receipt.Ret = []byte(err.Error())
+			exec.payLeftAsGasFee(tx)
+		}
 		return receipt
 	case *types2.EthTransaction:
 		ethTx := tx.(*types2.EthTransaction)
