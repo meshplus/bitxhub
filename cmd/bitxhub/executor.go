@@ -36,6 +36,7 @@ import (
 )
 
 //var storeLogger = log.NewWithModule("cmd")
+const TIMEOUT_HEIGHT = 10
 
 func executeCMD() cli.Command {
 	return cli.Command{
@@ -231,12 +232,16 @@ func testExecutor(ctx *cli.Context) error {
 		"duration":        duration,
 	}).Info("start exec test...")
 	startTime := time.Now()
+	testHeightStart := height
 	for {
 		//execLogger.Infoln("generate ibtp transactions...")
 		interchainTxs := genInterchainTxs(addresses, addressMap, interchainTxNum, fromNum)
 		normalTxs := genNormalTxs(repoRoot, addresses, execLogger, normalTxNum, fromNum)
 		txs2 := mergeTxs(interchainTxs, normalTxs, 1)
 		applyTransaction(txsExec, rwLdg, txs2, addressMap, uint64(height), execLogger, true)
+		if height-TIMEOUT_HEIGHT >= testHeightStart {
+			rwLdg.SetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.TimeoutKey(uint64(height-TIMEOUT_HEIGHT))), nil)
+		}
 		height++
 		if time.Since(startTime).Milliseconds() >= int64(duration) {
 			break
@@ -450,7 +455,7 @@ func genInterchainTxs(addresses []*types.Address, addressMap map[string]uint64, 
 				From:          fmt.Sprintf("%s:%s:%s", "1356", fmt.Sprintf("appchain%d", randIndex), "serviceA"),
 				To:            fmt.Sprintf("%s:%s:%s", "1356", fmt.Sprintf("appchain%d", (randIndex+1)%fromNum), "serviceA"),
 				Index:         addressMap[addresses[randIndex].String()],
-				TimeoutHeight: 10,
+				TimeoutHeight: TIMEOUT_HEIGHT,
 				Payload:       ibtppd,
 				Proof:         proof,
 			},

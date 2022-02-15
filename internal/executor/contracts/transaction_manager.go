@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -318,15 +319,16 @@ func (t *TransactionManager) addToTimeoutList(height uint64, txId string) {
 }
 
 func (t *TransactionManager) removeFromTimeoutList(height uint64, txId string) {
-	var timeoutList []string
-	ok := t.GetObject(TimeoutKey(height), &timeoutList)
+	ok, timeoutListByte := t.Get(TimeoutKey(height))
 	if ok {
-		for index, value := range timeoutList {
-			if value == txId {
-				timeoutList = append(timeoutList[:index], timeoutList[index+1:]...)
+		var newTimeoutList []string
+		timeoutList := strings.Split(string(timeoutListByte), ",")
+		for _, value := range timeoutList {
+			if value != txId {
+				newTimeoutList = append(newTimeoutList, value)
 			}
 		}
-		t.SetObject(TimeoutKey(height), timeoutList)
+		t.SetObject(TimeoutKey(height), strings.Join(newTimeoutList, ","))
 	}
 }
 
