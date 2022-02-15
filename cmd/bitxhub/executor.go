@@ -36,7 +36,7 @@ import (
 )
 
 //var storeLogger = log.NewWithModule("cmd")
-const TIMEOUT_HEIGHT = 5
+const TIMEOUT_HEIGHT = 0
 
 func executeCMD() cli.Command {
 	return cli.Command{
