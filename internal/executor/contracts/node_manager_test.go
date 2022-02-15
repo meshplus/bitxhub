@@ -56,12 +56,13 @@ func TestNodeManager_RegisterNode(t *testing.T) {
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, nil).AnyTimes()
 	mockStub.EXPECT().GetTxTimeStamp().Return(int64(1)).AnyTimes()
-	mockStub.EXPECT().Query(node_mgr.NODEPREFIX).Return(true, nodesData).AnyTimes()
+	mockStub.EXPECT().Query(gomock.Any()).Return(true, nodesData).Times(1)
+	mockStub.EXPECT().Query(gomock.Any()).Return(false, nil).AnyTimes()
 
 	// 1. CheckPermission error
 	res := nm.RegisterNode(nodes[5].Account, string(node_mgr.VPNode), nodes[5].Pid, 1, NODE_NAME, "", reason)
 	assert.False(t, res.Ok, string(res.Result))
-	// 2. info(id) error
+	// 2. a vp node is governed
 	res = nm.RegisterNode(nodes[5].Account, string(node_mgr.VPNode), nodes[5].Pid, 1, NODE_NAME, "", reason)
 	assert.False(t, res.Ok, string(res.Result))
 	// 3. info(pid) error
@@ -79,7 +80,7 @@ func TestNodeManager_RegisterNode(t *testing.T) {
 }
 
 func TestNodeManager_LogoutNode(t *testing.T) {
-	nm, mockStub, nodes, _ := vpNodePrepare(t)
+	nm, mockStub, nodes, nodesData := vpNodePrepare(t)
 
 	accountMap := orderedmap.New()
 	accountMap.Set(nodes[0].Account, struct{}{})
@@ -113,6 +114,8 @@ func TestNodeManager_LogoutNode(t *testing.T) {
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, nil).AnyTimes()
+	mockStub.EXPECT().Query(gomock.Any()).Return(true, nodesData).Times(1)
+	mockStub.EXPECT().Query(gomock.Any()).Return(false, nil).AnyTimes()
 
 	// 1. CheckPermission error
 	res := nm.LogoutNode(nodes[4].Account, reason)
@@ -120,10 +123,16 @@ func TestNodeManager_LogoutNode(t *testing.T) {
 	// 2. status error
 	res = nm.LogoutNode(nodes[5].Account, reason)
 	assert.False(t, res.Ok, string(res.Result))
-	// 3. primary error
+	// 3. a vp node is governed
 	res = nm.LogoutNode(nodes[0].Account, reason)
 	assert.False(t, res.Ok, string(res.Result))
-	// 4. SubmitProposal error
+	// 4. primary error
+	res = nm.LogoutNode(nodes[0].Account, reason)
+	assert.False(t, res.Ok, string(res.Result))
+	// 5. <= 4 cannot logout
+	res = nm.LogoutNode(nodes[4].Account, reason)
+	assert.False(t, res.Ok, string(res.Result))
+	// 6. SubmitProposal error
 	res = nm.LogoutNode(nodes[4].Account, reason)
 	assert.False(t, res.Ok, string(res.Result))
 

@@ -107,14 +107,14 @@ func (nm *NodeManager) isOccupiedPid(pid string) (bool, string) {
 
 func (nm *NodeManager) hasVpNodeGoverned() bool {
 	nm.NodeManager.Persister = nm.Stub
-	accountMap := nm.NodeManager.GetAccountMapByType(string(nodemgr.VPNode))
+	nodesTmp, err := nm.NodeManager.All(nil)
+	if err != nil {
+		return false
+	}
+	nodes := nodesTmp.([]*nodemgr.Node)
 
-	for _, account := range accountMap.Keys() {
-		node, err := nm.QueryById(account, nil)
-		if err != nil {
-			return false
-		}
-		if node.(*nodemgr.Node).Status == governance.GovernanceRegisting || node.(*nodemgr.Node).Status == governance.GovernanceLogouting {
+	for _, node := range nodes {
+		if node.Status == governance.GovernanceRegisting || node.Status == governance.GovernanceLogouting {
 			return true
 		}
 	}
