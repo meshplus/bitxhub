@@ -232,13 +232,16 @@ func testExecutor(ctx *cli.Context) error {
 		"duration":        duration,
 	}).Info("start exec test...")
 	startTime := time.Now()
-	//testHeightStart := height
+	testHeightStart := height
 	for {
 		//execLogger.Infoln("generate ibtp transactions...")
 		interchainTxs := genInterchainTxs(addresses, addressMap, interchainTxNum, fromNum)
 		normalTxs := genNormalTxs(repoRoot, addresses, execLogger, normalTxNum, fromNum)
 		txs2 := mergeTxs(interchainTxs, normalTxs, 1)
 		applyTransaction(txsExec, rwLdg, txs2, addressMap, uint64(height), execLogger, true)
+		if height-TIMEOUT_HEIGHT >= testHeightStart {
+			rwLdg.SetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.TimeoutKey(uint64(height))), []byte("==========================================================="))
+		}
 		height++
 		if time.Since(startTime).Milliseconds() >= int64(duration) {
 			break
@@ -564,7 +567,6 @@ func applyTransaction(txsExec agency.TxsExecutor, rwLdg *ledger.Ledger, txs []pb
 		txHashList = append(txHashList, tx.GetHash())
 	}
 
-	rwLdg.SetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.TimeoutKey(height+TIMEOUT_HEIGHT)), []byte("==========================================================="))
 	accounts, journalHash := rwLdg.FlushDirtyData()
 	data := &ledger.BlockData{
 		Block:          block,
