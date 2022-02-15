@@ -44,8 +44,8 @@ type BlockExecutor struct {
 	persistC         chan *ledger.BlockData
 	ibtpVerify       proof.Verify
 	validationEngine validator.Engine
-	currentHeight    uint64
-	currentBlockHash *types.Hash
+	CurrentHeight    uint64
+	CurrentBlockHash *types.Hash
 	wasmInstances    map[string]*wasmer.Instance
 	txsExecutor      agency.TxsExecutor
 	blockFeed        event.Feed
@@ -94,8 +94,8 @@ func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, client *appchain
 		persistC:         make(chan *ledger.BlockData, persistChanNumber),
 		ibtpVerify:       ibtpVerify,
 		validationEngine: ibtpVerify.ValidationEngine(),
-		currentHeight:    chainLedger.GetChainMeta().Height,
-		currentBlockHash: chainLedger.GetChainMeta().BlockHash,
+		CurrentHeight:    chainLedger.GetChainMeta().Height,
+		CurrentBlockHash: chainLedger.GetChainMeta().BlockHash,
 		wasmInstances:    make(map[string]*wasmer.Instance),
 		evmChainCfg:      newEVMChainCfg(config),
 		config:           *config,
@@ -124,8 +124,8 @@ func (exec *BlockExecutor) Start() error {
 	go exec.persistData()
 
 	exec.logger.WithFields(logrus.Fields{
-		"height": exec.currentHeight,
-		"hash":   exec.currentBlockHash.String(),
+		"height": exec.CurrentHeight,
+		"hash":   exec.CurrentBlockHash.String(),
 		"desc":   exec.txsExecutor.GetDescription(),
 	}).Infof("BlockExecutor started")
 

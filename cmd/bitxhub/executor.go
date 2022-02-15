@@ -173,7 +173,6 @@ func testExecutor(ctx *cli.Context) error {
 		fmt.Println(fmt.Errorf("create BlockExecutor: %w", err))
 		return fmt.Errorf("create BlockExecutor: %w", err)
 	}
-	txsExec := blockExec.GetTxsExecutor()
 
 	// 4. prepare =================================================================================
 	// start proof
@@ -216,12 +215,12 @@ func testExecutor(ctx *cli.Context) error {
 	height := 2
 	// ======================================================================================== transfer
 	txs := genTransferTransaction(repoRoot, addresses, execLogger)
-	applyTransaction(txsExec, rwLdg, txs, addressMap, uint64(height), execLogger, false)
+	applyTransaction(blockExec, rwLdg, txs, addressMap, uint64(height), execLogger, false)
 	height++
 
 	// ======================================================================================== register
 	txs1 := genRegisterTransactions(addresses)
-	applyTransaction(txsExec, rwLdg, txs1, addressMap, uint64(height), execLogger, false)
+	applyTransaction(blockExec, rwLdg, txs1, addressMap, uint64(height), execLogger, false)
 	height++
 
 	// ======================================================================================== test
@@ -232,16 +231,12 @@ func testExecutor(ctx *cli.Context) error {
 		"duration":        duration,
 	}).Info("start exec test...")
 	startTime := time.Now()
-	testHeightStart := height
 	for {
 		//execLogger.Infoln("generate ibtp transactions...")
 		interchainTxs := genInterchainTxs(addresses, addressMap, interchainTxNum, fromNum)
 		normalTxs := genNormalTxs(repoRoot, addresses, execLogger, normalTxNum, fromNum)
 		txs2 := mergeTxs(interchainTxs, normalTxs, 1)
-		applyTransaction(txsExec, rwLdg, txs2, addressMap, uint64(height), execLogger, true)
-		if height-TIMEOUT_HEIGHT >= testHeightStart {
-			rwLdg.SetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.TimeoutKey(uint64(height))), []byte("==========================================================="))
-		}
+		applyTransaction(blockExec, rwLdg, txs2, addressMap, uint64(height), execLogger, true)
 		height++
 		if time.Since(startTime).Milliseconds() >= int64(duration) {
 			break
@@ -500,7 +495,8 @@ func genNormalTxs(repoRoot string, addresses []*types.Address, logger logrus.Fie
 	return txs
 }
 
-func applyTransaction(txsExec agency.TxsExecutor, rwLdg *ledger.Ledger, txs []pb.Transaction, addressMap map[string]uint64, height uint64, execLogger logrus.FieldLogger, isInterchain bool) {
+func applyTransaction(blockExec *executor.BlockExecutor, rwLdg *ledger.Ledger, txs []pb.Transaction, addressMap map[string]uint64, height uint64, execLogger logrus.FieldLogger, isInterchain bool) {
+	txsExec := blockExec.GetTxsExecutor()
 	execLogger.Debugln("begin block", height)
 	block := &pb.Block{
 		BlockHeader: &pb.BlockHeader{
@@ -567,6 +563,7 @@ func applyTransaction(txsExec agency.TxsExecutor, rwLdg *ledger.Ledger, txs []pb
 		txHashList = append(txHashList, tx.GetHash())
 	}
 
+	rwLdg.SetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.TimeoutKey(height+TIMEOUT_HEIGHT-1)), []byte(""))
 	accounts, journalHash := rwLdg.FlushDirtyData()
 	data := &ledger.BlockData{
 		Block:          block,
@@ -577,6 +574,9 @@ func applyTransaction(txsExec agency.TxsExecutor, rwLdg *ledger.Ledger, txs []pb
 	}
 	data.Block.BlockHeader.StateRoot = journalHash
 	rwLdg.PersistBlockData(data)
+
+	blockExec.CurrentHeight = block.BlockHeader.Number
+	blockExec.CurrentBlockHash = block.BlockHash
 	accounts = nil
 	rwLdg.Clear()
 	runtime.GC()

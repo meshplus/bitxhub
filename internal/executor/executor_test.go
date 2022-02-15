@@ -72,8 +72,8 @@ func TestNew(t *testing.T) {
 	assert.NotNil(t, executor.persistC)
 	assert.NotNil(t, executor.ibtpVerify)
 	assert.NotNil(t, executor.validationEngine)
-	assert.Equal(t, chainMeta.BlockHash, executor.currentBlockHash)
-	assert.Equal(t, chainMeta.Height, executor.currentHeight)
+	assert.Equal(t, chainMeta.BlockHash, executor.CurrentBlockHash)
+	assert.Equal(t, chainMeta.Height, executor.CurrentHeight)
 	assert.NotNil(t, executor.wasmInstances)
 	assert.Equal(t, 0, len(executor.wasmInstances))
 }
