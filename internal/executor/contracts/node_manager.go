@@ -114,6 +114,9 @@ func (nm *NodeManager) hasVpNodeGoverned() bool {
 	nodes := nodesTmp.([]*nodemgr.Node)
 
 	for _, node := range nodes {
+		if node.NodeType == nodemgr.NVPNode {
+			continue
+		}
 		if node.Status == governance.GovernanceRegisting || node.Status == governance.GovernanceLogouting {
 			return true
 		}
