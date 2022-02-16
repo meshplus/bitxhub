@@ -80,6 +80,17 @@ func executeCMD() cli.Command {
 				Usage: "program run time, ms",
 				Value: 10000,
 			},
+			cli.StringFlag{
+				Name:  "randFrom",
+				Usage: "whether the from addrs are randomly distributed",
+				Value: "false",
+			},
+			//normalGatherN
+			cli.IntFlag{
+				Name:  "normalGatherN",
+				Usage: "normal tx gather num",
+				Value: 1,
+			},
 		},
 		Action: testExecutor,
 	}
@@ -97,6 +108,8 @@ func testExecutor(ctx *cli.Context) error {
 	normalTxNum := ctx.Int("normalTxNum")
 	fromNum := ctx.Int("fromNum")
 	duration := ctx.Int("duration")
+	randFrom := ctx.String("randFrom")
+	normalGatherN := ctx.Int("normalGatherN")
 
 	repo1, err := repo.Load(repoRoot, passwd, configPath, networkPath)
 	if err != nil {
@@ -233,9 +246,9 @@ func testExecutor(ctx *cli.Context) error {
 	startTime := time.Now()
 	for {
 		//execLogger.Infoln("generate ibtp transactions...")
-		interchainTxs := genInterchainTxs(addresses, addressMap, interchainTxNum, fromNum)
+		interchainTxs := genInterchainTxs(addresses, addressMap, interchainTxNum, fromNum, randFrom)
 		normalTxs := genNormalTxs(repoRoot, addresses, execLogger, normalTxNum, fromNum)
-		txs2 := mergeTxs(interchainTxs, normalTxs, 1)
+		txs2 := mergeTxs(interchainTxs, normalTxs, normalGatherN)
 		applyTransaction(blockExec, rwLdg, txs2, addressMap, uint64(height), execLogger, true)
 		height++
 		if time.Since(startTime).Milliseconds() >= int64(duration) {
@@ -425,7 +438,7 @@ func genRegisterTransactions(addresses []*types.Address) []pb.Transaction {
 	return txs
 }
 
-func genInterchainTxs(addresses []*types.Address, addressMap map[string]uint64, txNum, fromNum int) []pb.Transaction {
+func genInterchainTxs(addresses []*types.Address, addressMap map[string]uint64, txNum, fromNum int, randFrom string) []pb.Transaction {
 	var txs []pb.Transaction
 	content := &pb.Content{
 		Func: "interchainCharge",
@@ -438,25 +451,30 @@ func genInterchainTxs(addresses []*types.Address, addressMap map[string]uint64, 
 	}
 	ibtppd, _ := payload.Marshal()
 	proof := []byte("")
+	orderIndex := 0
 	for i := 0; i < txNum; i++ {
-		rand.Seed(time.Now().UnixNano())
-		randIndex := rand.Intn(fromNum)
+		orderIndex++
+		fromIndex := orderIndex % fromNum
+		if randFrom == "true" {
+			rand.Seed(time.Now().UnixNano())
+			fromIndex = rand.Intn(fromNum)
+		}
 		hash := sha256.Sum256([]byte(randString(20)))
 		tx := &pb.BxhTransaction{
-			From:            addresses[randIndex],
+			From:            addresses[fromIndex],
 			To:              constant.InterchainContractAddr.Address(),
 			TransactionHash: types.NewHash(hash[:]),
 			IBTP: &pb.IBTP{
-				From:          fmt.Sprintf("%s:%s:%s", "1356", fmt.Sprintf("appchain%d", randIndex), "serviceA"),
-				To:            fmt.Sprintf("%s:%s:%s", "1356", fmt.Sprintf("appchain%d", (randIndex+1)%fromNum), "serviceA"),
-				Index:         addressMap[addresses[randIndex].String()],
+				From:          fmt.Sprintf("%s:%s:%s", "1356", fmt.Sprintf("appchain%d", fromIndex), "serviceA"),
+				To:            fmt.Sprintf("%s:%s:%s", "1356", fmt.Sprintf("appchain%d", (fromIndex+1)%fromNum), "serviceA"),
+				Index:         addressMap[addresses[fromIndex].String()],
 				TimeoutHeight: TIMEOUT_HEIGHT,
 				Payload:       ibtppd,
 				Proof:         proof,
 			},
 		}
 		txs = append(txs, tx)
-		addressMap[addresses[randIndex].String()] = addressMap[addresses[randIndex].String()] + 1
+		addressMap[addresses[fromIndex].String()] = addressMap[addresses[fromIndex].String()] + 1
 	}
 	return txs
 }
