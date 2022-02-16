@@ -319,7 +319,7 @@ func genTransferTransaction(repoRoot string, addresses []*types.Address, logger 
 
 	td := &pb.TransactionData{
 		Type:   pb.TransactionData_NORMAL,
-		Amount: "1000000000000000",
+		Amount: "10000000000000000000000000000000",
 	}
 
 	payload, _ := td.Marshal()
