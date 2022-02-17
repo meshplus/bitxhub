@@ -91,6 +91,11 @@ func executeCMD() cli.Command {
 				Usage: "normal tx gather num",
 				Value: 1,
 			},
+			cli.StringFlag{
+				Name:  "normalTxType",
+				Usage: "normal tx type, transfer or bvm",
+				Value: "bvm",
+			},
 		},
 		Action: testExecutor,
 	}
@@ -110,6 +115,7 @@ func testExecutor(ctx *cli.Context) error {
 	duration := ctx.Int("duration")
 	randFrom := ctx.String("randFrom")
 	normalGatherN := ctx.Int("normalGatherN")
+	normalTxType := ctx.String("normalTxType")
 
 	repo1, err := repo.Load(repoRoot, passwd, configPath, networkPath)
 	if err != nil {
@@ -247,7 +253,12 @@ func testExecutor(ctx *cli.Context) error {
 	for {
 		//execLogger.Infoln("generate ibtp transactions...")
 		interchainTxs := genInterchainTxs(addresses, addressMap, interchainTxNum, fromNum, randFrom)
-		normalTxs := genNormalTxs(repoRoot, addresses, execLogger, normalTxNum, fromNum)
+		var normalTxs []pb.Transaction
+		if normalTxType == "bvm" {
+			normalTxs = genNormalBvmTxs(repoRoot, addresses, execLogger, normalTxNum, fromNum)
+		} else {
+			normalTxs = genNormalTxs(repoRoot, addresses, execLogger, normalTxNum, fromNum)
+		}
 		txs2 := mergeTxs(interchainTxs, normalTxs, normalGatherN)
 		applyTransaction(blockExec, rwLdg, txs2, addressMap, uint64(height), execLogger, true)
 		height++
@@ -504,6 +515,56 @@ func genNormalTxs(repoRoot string, addresses []*types.Address, logger logrus.Fie
 			//Nonce:     nonce,
 		}
 		tx.Sign(priAdmin1)
+
+		tx.TransactionHash = tx.Hash()
+
+		txs = append(txs, tx)
+	}
+
+	return txs
+}
+
+func genNormalBvmTxs(repoRoot string, addresses []*types.Address, logger logrus.FieldLogger, txNum, fromNum int) []pb.Transaction {
+	//keyPath1 := filepath.Join(repoRoot, "key.json")
+	//priAdmin1, _ := asym.RestorePrivateKey(keyPath1, "bitxhub")
+	//fromAdmin1, _ := priAdmin1.PublicKey().Address()
+	//adminNonce1 := api.Broker().GetPendingNonceByAccount(fromAdmin1.String())
+
+	var txs []pb.Transaction
+	for i := 0; i < txNum; i++ {
+		rand.Seed(time.Now().UnixNano())
+		randIndex := rand.Intn(fromNum)
+
+		args := []*pb.Arg{
+			pb.String(fmt.Sprintf("appchain%d", randIndex)),
+			pb.String(fmt.Sprintf("应用链%s", addresses[randIndex])),
+			pb.String(fmt.Sprintf("desc%s", time.Now().String())),
+			pb.Bytes(nil),
+			pb.String(addresses[randIndex].String()),
+			pb.String("reason"),
+		}
+		invokePayload := &pb.InvokePayload{
+			Method: "UpdateAppchain",
+			Args:   args,
+		}
+		invokePayloadData, _ := invokePayload.Marshal()
+
+		td := &pb.TransactionData{
+			Type:    pb.TransactionData_INVOKE,
+			VmType:  pb.TransactionData_BVM,
+			Payload: invokePayloadData,
+		}
+
+		payload, _ := td.Marshal()
+
+		tx := &pb.BxhTransaction{
+			From:      addresses[randIndex],
+			To:        constant.AppchainMgrContractAddr.Address(),
+			Payload:   payload,
+			Timestamp: time.Now().UnixNano(),
+			//Nonce:     nonce,
+		}
+		//tx.Sign(priAdmin1)
 
 		tx.TransactionHash = tx.Hash()
 
