@@ -546,7 +546,7 @@ func (exec *BlockExecutor) applyBxhTransaction(i int, tx *pb.BxhTransaction, inv
 			exec.ledger.RevertToSnapshot(snapshot)
 		}
 		gasUsed += gasRunUsed
-		exec.logger.WithField("gasUsed", gasUsed).Info("Bxh transaction")
+		exec.logger.WithField("gasUsed", gasUsed).Debug("Bxh transaction")
 		return ret, gasUsed, err
 	}
 }
