@@ -829,6 +829,9 @@ func (rm *RoleManager) getBindRoleByNodeID(nodeId string) (*Role, error) {
 	}
 
 	for _, role := range roles {
+		if role.Status == governance.GovernanceRegisting && role.NodeAccount == nodeId {
+			return role, nil
+		}
 		if role.Status == governance.GovernanceAvailable && role.NodeAccount == nodeId {
 			return role, nil
 		}
