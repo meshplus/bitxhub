@@ -1017,11 +1017,17 @@ func addTxIdToTimeoutIBTPsMap(timeoutIBTPsMap map[string][]string, txId string, 
 func parseChainServiceID(id string) (string, string, string, error) {
 	splits := strings.Split(id, ":")
 
-	if len(splits) != 3 {
+	if len(splits) == 3 {
+		return splits[0], splits[1], splits[2], nil
+	} else if len(splits) != 4 || splits[0] != "did" || splits[1] != "bitxhub" || splits[2] == "" || splits[3] == "" {
 		return "", "", "", fmt.Errorf("invalid chain service id %s", id)
 	}
 
-	return splits[0], splits[1], splits[2], nil
+	//if len(splits) != 3 {
+	//	return "", "", "", fmt.Errorf("invalid chain service id %s", id)
+	//}
+
+	return splits[0] + ":" + splits[1], splits[2], splits[3], nil
 }
 
 func isGlobalID(id string) bool {
