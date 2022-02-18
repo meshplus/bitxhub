@@ -23,3 +23,17 @@ func TestMerkleWrapperSign_Unmarshal(t *testing.T) {
 	require.Nil(t, err)
 	require.EqualValues(t, "0xba30d0dd7876318da451582", s.Address)
 }
+
+func TestCertsMessage_Marshal(t *testing.T) {
+	c := CertsMessage{
+		AgencyCert: []byte("123456"),
+		NodeCert:   []byte("123456"),
+	}
+
+	data, err := c.Marshal()
+	require.Nil(t, err)
+
+	c1 := CertsMessage{}
+	err = c1.Unmarshal(data)
+	require.Nil(t, err)
+}

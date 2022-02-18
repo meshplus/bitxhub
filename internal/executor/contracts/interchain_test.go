@@ -123,10 +123,6 @@ func TestInterchainManager_GetInterchain(t *testing.T) {
 
 func TestInterchainManager_HandleIBTP(t *testing.T) {
 	srcChainService, dstChainService := mockChainService()
-	//unavailableChainID := "appchain3"
-	//unexistChainID := "appchain4"
-	//unexistChainServiceID := fmt.Sprintf("bxh:%s:service", unexistChainID)
-	//unavailableChainServiceID := fmt.Sprintf("bxh:%s:service", unavailableChainID)
 
 	unexistServiceID := "service3"
 	unexistServiceChainServiceID := fmt.Sprintf("%s:%s", srcChainID, unexistServiceID)
@@ -143,9 +139,11 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	unPermissionServiceChainServiceID := fmt.Sprintf("%s:%s", dstChainID, unPermissionServiceID)
 	unPermissionServiceServiceID := fmt.Sprintf("bxh:%s", unPermissionServiceChainServiceID)
 
-	wrongBitxhubID := "bxh2"
+	otherBitxhubID := "bxh2"
+	otherBitxhubServiceID := fmt.Sprintf("%s:appchain:service", otherBitxhubID)
+	otherBitxhubServiceID1 := fmt.Sprintf("%s:appchain1:service", otherBitxhubID)
+
 	unavailableBitxhubID := "bxh3"
-	wrongBitxhubServiceID := fmt.Sprintf("%s:appchain:service", wrongBitxhubID)
 	unavailableBitxhubServiceID := fmt.Sprintf("%s:appchain:service", unavailableBitxhubID)
 
 	mockCtl := gomock.NewController(t)
@@ -154,8 +152,9 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	mockStub.EXPECT().Set(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().GetTxTimeStamp().Return(int64(1)).AnyTimes()
-	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Return(true).AnyTimes()
 	mockStub.EXPECT().GetCurrentHeight().Return(uint64(100)).AnyTimes()
+	mockStub.EXPECT().GetObject(MultiTxNotifyKey(100), gomock.Any()).SetArg(1, make(map[string][]string)).AnyTimes()
+	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Return(true).AnyTimes()
 
 	interchain := pb.Interchain{
 		ID:                   srcChainService.getFullServiceId(),
@@ -191,49 +190,6 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 		}
 		return false, nil
 	}).AnyTimes()
-
-	//appchain := &appchainMgr.Appchain{
-	//	ID:      srcChainID,
-	//	Status:  governance.GovernanceAvailable,
-	//	Desc:    "Relay1",
-	//	Version: 0,
-	//}
-	//appchainData, err := json.Marshal(appchain)
-	//require.Nil(t, err)
-	//
-	//dstAppchain := &appchainMgr.Appchain{
-	//	ID:      dstChainID,
-	//	Status:  governance.GovernanceAvailable,
-	//	Desc:    "Relay2",
-	//	Version: 0,
-	//}
-	//dstAppchainData, err := json.Marshal(dstAppchain)
-	//assert.Nil(t, err)
-
-	//unavailableChain := &appchainMgr.Appchain{
-	//	ID:      unavailableChainID,
-	//	Status:  governance.GovernanceFrozen,
-	//	Desc:    "Relay1",
-	//	Version: 0,
-	//}
-	//unavailableChainData, err := json.Marshal(unavailableChain)
-	//require.Nil(t, err)
-
-	//wrongBitxhubChain := &appchainMgr.Appchain{
-	//	ID:     wrongBitxhubID,
-	//	Status: governance.GovernanceAvailable,
-	//	Broker: []byte("broker"),
-	//}
-	//wrongBitxhubChainData, err := json.Marshal(wrongBitxhubChain)
-	//require.Nil(t, err)
-	//
-	//unavailableBitxhubChain := &appchainMgr.Appchain{
-	//	ID:     unavailableBitxhubID,
-	//	Status: governance.GovernanceUnavailable,
-	//	Broker: []byte(constant.InterBrokerContractAddr.Address().String()),
-	//}
-	//unavailableBitxhubChainData, err := json.Marshal(unavailableBitxhubChain)
-	//require.Nil(t, err)
 
 	unavailableService := &service_mgr.Service{
 		ServiceID: unavailableServiceChainServiceID,
@@ -272,42 +228,12 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	unPermissionServiceData, err := json.Marshal(unPermissionService)
 	require.Nil(t, err)
 
-	//mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), gomock.Any(), gomock.Any()).DoAndReturn(
-	//	func(addr string, method string, args ...*pb.Arg) *boltvm.Response {
-	//		if method == "IsAvailable" {
-	//			switch string(args[0].GetValue()) {
-	//			case srcChainID:
-	//				return boltvm.Success([]byte(TRUE))
-	//			//case dstChainID:
-	//			//	return boltvm.Success([]byte(TRUE))
-	//			case unexistChainID:
-	//				return boltvm.Error("", "")
-	//			case unavailableChainID:
-	//				return boltvm.Success([]byte(FALSE))
-	//				//case wrongBitxhubID:
-	//				//	return boltvm.Success(wrongBitxhubChainData)
-	//				//case unavailableBitxhubID:
-	//				//	return boltvm.Success(unavailableBitxhubChainData)
-	//			}
-	//		}
-	//
-	//		return boltvm.Error("", "")
-	//	}).AnyTimes()
-
 	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), gomock.Any(), gomock.Any()).DoAndReturn(
 		func(addr string, method string, args ...*pb.Arg) *boltvm.Response {
 			if method == "IsAvailableBitxhub" {
 				switch string(args[0].GetValue()) {
-				//case srcChainID:
-				//	return boltvm.Success([]byte(TRUE))
-				//case dstChainID:
-				//	return boltvm.Success([]byte(TRUE))
-				//case unexistChainID:
-				//	return boltvm.Error("", "")
-				//case unavailableChainID:
-				//	return boltvm.Success([]byte(FALSE))
-				case wrongBitxhubID:
-					return boltvm.Success([]byte(FALSE))
+				case otherBitxhubID:
+					return boltvm.Success([]byte(TRUE))
 				case unavailableBitxhubID:
 					return boltvm.Success([]byte(FALSE))
 				}
@@ -358,19 +284,6 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 
 	mockStub.EXPECT().CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "RecordInvokeService", gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 
-	mockStub.EXPECT().CrossInvoke(gomock.Eq(constant.TransactionMgrContractAddr.Address().String()), gomock.Eq("Begin"), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
-		func(addr string, method string, args ...*pb.Arg) *boltvm.Response {
-			change := StatusChange{
-				PrevStatus: -1,
-				CurStatus:  pb.TransactionStatus_BEGIN,
-			}
-			if b, _ := strconv.ParseBool(string(args[2].Value)); b {
-				change.CurStatus = pb.TransactionStatus_BEGIN_FAILURE
-			}
-			data, _ := json.Marshal(change)
-			return boltvm.Success(data)
-		}).AnyTimes()
-
 	mockStub.EXPECT().AddObject(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().GetTxIndex().Return(uint64(1)).AnyTimes()
 	mockStub.EXPECT().GetTxHash().Return(&types.Hash{}).AnyTimes()
@@ -388,18 +301,9 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	assert.False(t, res.Ok)
 	assert.Contains(t, string(res.Result), string(boltvm.InterchainInvalidIBTPParseDestErrorCode))
 
-	//ibtp.From = unexistChainServiceID
-	//ibtp.To = dstChainService.getChainServiceId()
-	//res = im.HandleIBTP(ibtp)
-	//assert.False(t, res.Ok)
-	//assert.Contains(t, string(res.Result), string(boltvm.InterchainSourceAppchainNotAvailableCode))
-
-	//ibtp.From = unavailableChainServiceID
-	//res = im.HandleIBTP(ibtp)
-	//assert.False(t, res.Ok)
-	//assert.Contains(t, string(res.Result), string(boltvm.InterchainSourceAppchainNotAvailableCode))
-
-	// source check failed
+	// 1. request
+	// 1.1 source local
+	// 1.1.1 source check failed
 	ibtp.To = dstChainService.getChainServiceId()
 	ibtp.From = unexistServiceFullServiceID
 	res = im.HandleIBTP(ibtp)
@@ -411,30 +315,28 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	assert.False(t, res.Ok)
 	assert.Contains(t, string(res.Result), string(boltvm.InterchainSourceServiceNotAvailableCode))
 
-	ibtp.From = wrongBitxhubServiceID
-	res = im.HandleIBTP(ibtp)
-	assert.False(t, res.Ok)
-	assert.Contains(t, string(res.Result), string(boltvm.InterchainSourceBitXHubNotAvailableCode))
-	assert.Equal(t, true, strings.Contains(string(res.Result), "not available"))
+	// 1.1.2 destination check failed
+	mockStub.EXPECT().CrossInvoke(gomock.Eq(constant.TransactionMgrContractAddr.Address().String()), gomock.Eq("Begin"), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("", "Begin error")).Times(1)
+	mockStub.EXPECT().CrossInvoke(gomock.Eq(constant.TransactionMgrContractAddr.Address().String()), gomock.Eq("Begin"), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(addr string, method string, args ...*pb.Arg) *boltvm.Response {
+			change := StatusChange{
+				PrevStatus: -1,
+				CurStatus:  pb.TransactionStatus_BEGIN,
+			}
+			if b, _ := strconv.ParseBool(string(args[2].Value)); b {
+				change.CurStatus = pb.TransactionStatus_BEGIN_FAILURE
+			}
+			data, _ := json.Marshal(change)
+			return boltvm.Success(data)
+		}).AnyTimes()
 
-	ibtp.From = unavailableBitxhubServiceID
-	res = im.HandleIBTP(ibtp)
-	assert.False(t, res.Ok)
-	assert.Contains(t, string(res.Result), string(boltvm.InterchainSourceBitXHubNotAvailableCode))
-
-	//ibtp.From = srcChainService.getChainServiceId()
-	//ibtp.To = unavailableChainServiceID
-	//ibtp.Index = 1
-	//mockStub.EXPECT().PostInterchainEvent(map[string]uint64{srcChainService.ChainId: 1, unavailableChainID: 1}).MaxTimes(1)
-	//res = im.HandleIBTP(ibtp)
-	//assert.True(t, res.Ok)
-
-	// destination check failed
 	ibtp.From = srcChainService.getChainServiceId()
 	ibtp.To = unavailableDstServiceFullServiceID
 	ibtp.Index = 1
 	mockStub.EXPECT().PostInterchainEvent(map[string]uint64{srcChainService.ChainId: 1, dstChainID: 1}).MaxTimes(1)
 	mockStub.EXPECT().PostInterchainEvent(map[string]uint64{dstChainID: 1}).MaxTimes(1)
+	res = im.HandleIBTP(ibtp)
+	assert.False(t, res.Ok)
 	res = im.HandleIBTP(ibtp)
 	assert.True(t, res.Ok)
 
@@ -468,7 +370,7 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	assert.Equal(t, true, strings.Contains(string(res.Result), ibtpIndexExist))
 
 	mockStub.EXPECT().PostInterchainEvent(gomock.Any()).AnyTimes()
-	//check ok
+	// 1.1.3 check ok (targetErr nil)
 	ibtp.Index = 2
 	ibtp.Type = pb.IBTP_INTERCHAIN
 	ibtp.From = srcChainService.getChainServiceId()
@@ -476,8 +378,53 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	res = im.HandleIBTP(ibtp)
 	assert.True(t, res.Ok)
 
+	// 1.1.4 check ok (targetErr not nil)
+	ibtp.Index = 1
+	ibtp.To = unavailableDstServiceFullServiceID
+	res = im.HandleIBTP(ibtp)
+	assert.True(t, res.Ok, string(res.Result))
+
+	// 1.2 source not local
+	ibtp.From = otherBitxhubServiceID
+	ibtp.To = otherBitxhubServiceID1
+	ibtp.Type = pb.IBTP_INTERCHAIN
+	res = im.HandleIBTP(ibtp)
+	assert.False(t, res.Ok, string(res.Result))
+	assert.Equal(t, true, strings.Contains(string(res.Result), string(boltvm.InterchainInvalidIBTPNotInCurBXHCode)))
+
+	ibtp.From = unavailableBitxhubServiceID
+	ibtp.To = dstChainService.getChainServiceId()
+	res = im.HandleIBTP(ibtp)
+	assert.False(t, res.Ok)
+	assert.Contains(t, string(res.Result), string(boltvm.InterchainSourceBitXHubNotAvailableCode))
+
+	ibtp.Index = 2
+	ibtp.From = otherBitxhubServiceID
+	ibtp.To = dstChainService.getChainServiceId()
+	res = im.HandleIBTP(ibtp)
+	assert.False(t, res.Ok, string(res.Result))
+	assert.Equal(t, true, strings.Contains(string(res.Result), ibtpIndexWrong), string(res.Result))
+
+	// 2. response
+	ibtp.From = srcChainService.getChainServiceId()
+	ibtp.To = dstChainService.getChainServiceId()
 	ibtp.Type = pb.IBTP_RECEIPT_FAILURE
-	mockStub.EXPECT().CrossInvoke(constant.TransactionMgrContractAddr.Address().String(), gomock.Eq("Report"), gomock.Any(), gomock.Any()).Return(boltvm.Error("", "begin error")).Times(1)
+	ibtp.Index = 1
+	res = im.HandleIBTP(ibtp)
+	assert.False(t, res.Ok, string(res.Result))
+	assert.Equal(t, true, strings.Contains(string(res.Result), ibtpIndexExist), string(res.Result))
+
+	// 3. other
+	ibtp.Type = -1
+	res = im.HandleIBTP(ibtp)
+	assert.False(t, res.Ok, string(res.Result))
+	assert.Equal(t, true, strings.Contains(string(res.Result), string(boltvm.InterchainInvalidIBTPIllegalTypeCode)), string(res.Result))
+
+	// =======================check ibtp end
+
+	ibtp.Index = 2
+	ibtp.Type = pb.IBTP_RECEIPT_FAILURE
+	mockStub.EXPECT().CrossInvoke(constant.TransactionMgrContractAddr.Address().String(), gomock.Eq("Report"), gomock.Any(), gomock.Any()).Return(boltvm.Error("", "Report error")).Times(1)
 	res = im.HandleIBTP(ibtp)
 	assert.False(t, res.Ok, string(res.Result))
 
@@ -487,6 +434,35 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	}
 	data, _ := json.Marshal(change)
 	mockStub.EXPECT().CrossInvoke(constant.TransactionMgrContractAddr.Address().String(), gomock.Eq("Report"), gomock.Any(), gomock.Any()).Return(boltvm.Success(data)).Times(1)
+	res = im.HandleIBTP(ibtp)
+	assert.True(t, res.Ok, string(res.Result))
+
+	// ======================== ibtp group not nil
+	ibtp.Type = pb.IBTP_INTERCHAIN
+	ibtp.Index = 2
+	ibtp.From = srcChainService.getChainServiceId()
+	ibtp.To = dstChainService.getChainServiceId()
+	ibtp.Group = &pb.StringUint64Map{
+		Keys: []string{"111"},
+		Vals: []uint64{1},
+	}
+	mockStub.EXPECT().CrossInvoke(constant.TransactionMgrContractAddr.Address().String(), gomock.Eq("BeginMultiTXs"), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("", "BeginMultiTXs error")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.TransactionMgrContractAddr.Address().String(), gomock.Eq("BeginMultiTXs"), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(data)).Times(1)
+	res = im.HandleIBTP(ibtp)
+	assert.False(t, res.Ok, string(res.Result))
+	res = im.HandleIBTP(ibtp)
+	assert.True(t, res.Ok, string(res.Result))
+
+	// ========================= test notifySrcDst
+	ibtp.Type = pb.IBTP_RECEIPT_FAILURE
+	ibtp.Index = 2
+	change1 := StatusChange{
+		PrevStatus:   pb.TransactionStatus_BEGIN,
+		CurStatus:    pb.TransactionStatus_SUCCESS,
+		OtherIBTPIDs: []string{fmt.Sprintf("%s-%s-1", fromServiceId, toServiceId)},
+	}
+	data1, _ := json.Marshal(change1)
+	mockStub.EXPECT().CrossInvoke(constant.TransactionMgrContractAddr.Address().String(), gomock.Eq("Report"), gomock.Any(), gomock.Any()).Return(boltvm.Success(data1)).Times(1)
 	res = im.HandleIBTP(ibtp)
 	assert.True(t, res.Ok, string(res.Result))
 }
@@ -532,6 +508,54 @@ func TestInterchainManager_GetIBTPByID(t *testing.T) {
 	validID := getIBTPID(srcChainService.getFullServiceId(), dstChainService.getChainServiceId(), 1)
 	mockStub.EXPECT().GetObject(fmt.Sprintf("index-tx-%s", validID), gomock.Any()).Return(true)
 	res = im.GetIBTPByID(validID, true)
+	assert.True(t, res.Ok)
+}
+
+func TestInterchainManager_HandleIBTPData(t *testing.T) {
+	mockCtl := gomock.NewController(t)
+	mockStub := mock_stub.NewMockStub(mockCtl)
+	im := &InterchainManager{mockStub}
+
+	srcChainService, dstChainService := mockChainService()
+	ibtp := &pb.IBTP{
+		From:  srcChainService.getChainServiceId(),
+		To:    dstChainService.getChainServiceId(),
+		Index: 0,
+		Type:  pb.IBTP_INTERCHAIN,
+	}
+	input, err := ibtp.Marshal()
+	assert.Nil(t, err)
+
+	mockStub.EXPECT().Get(gomock.Any()).Return(false, nil).AnyTimes()
+
+	res := im.HandleIBTPData(input)
+	assert.False(t, res.Ok, string(res.Result))
+}
+
+func TestInterchainManager_GetAllServiceIDs(t *testing.T) {
+	mockCtl := gomock.NewController(t)
+	mockStub := mock_stub.NewMockStub(mockCtl)
+	im := &InterchainManager{mockStub}
+
+	mockStub.EXPECT().Query(gomock.Any()).Return(false, nil).Times(1)
+	res := im.GetAllServiceIDs()
+	assert.True(t, res.Ok)
+
+	interchain := &pb.Interchain{}
+	interchainData, err := interchain.Marshal()
+	assert.Nil(t, err)
+	data := [][]byte{}
+	data = append(data, interchainData)
+	mockStub.EXPECT().Query(gomock.Any()).Return(true, data).Times(1)
+
+	res = im.GetAllServiceIDs()
+	assert.True(t, res.Ok)
+
+	mockStub.EXPECT().Get(gomock.Any()).Return(false, nil).Times(1)
+	mockStub.EXPECT().Get(gomock.Any()).Return(true, []byte("bxh")).Times(1)
+	res = im.GetBitXHubID()
+	assert.False(t, res.Ok)
+	res = im.GetBitXHubID()
 	assert.True(t, res.Ok)
 }
 

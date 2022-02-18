@@ -321,6 +321,8 @@ func TestGovernance_Vote(t *testing.T) {
 	idServiceMgr := "idServiceMgr-9"
 	idNodeMgr := "idNodeMgr-10"
 	idRuleMgr := "idRuleMgr-11"
+	idDappMgr := "idDappMgr-12"
+	idStrategyMgr := "idStrategyMgr-13"
 
 	addrUnavaliable := "addrUnavaliable"
 	addrCanNotVote := "addrCanNotVote"
@@ -339,6 +341,8 @@ func TestGovernance_Vote(t *testing.T) {
 	addrNotVoted10 := "addrNotVoted10"
 	addrNotVoted11 := "addrNotVoted11"
 	addrNotVoted12 := "addrNotVoted12"
+	addrNotVoted13 := "addrNotVoted13"
+	addrNotVoted14 := "addrNotVoted14"
 
 	approveBallot := Ballot{
 		VoterAddr: addrApproved,
@@ -425,6 +429,12 @@ func TestGovernance_Vote(t *testing.T) {
 			{
 				ID:     addrNotVoted12,
 				Status: governance.GovernanceAvailable,
+			},
+			{
+				ID: addrNotVoted13,
+			},
+			{
+				ID: addrNotVoted14,
 			},
 		},
 	}
@@ -545,6 +555,36 @@ func TestGovernance_Vote(t *testing.T) {
 			pro.StrategyExpression = repo.DefaultSimpleMajorityExpression
 			return true
 		}).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(ProposalKey(idDappMgr), gomock.Any()).Do(
+		func(id string, ret interface{}) bool {
+			pro := ret.(*Proposal)
+			pro.Id = idDappMgr
+			pro.Typ = DappMgr
+			pro.Status = PROPOSED
+			pro.BallotMap = proposalExistent.BallotMap
+			pro.ApproveNum = 1
+			pro.AgainstNum = 1
+			pro.AvaliableElectorateNum = 4
+			pro.InitialElectorateNum = 4
+			pro.ElectorateList = proposalExistent.ElectorateList
+			pro.StrategyExpression = repo.DefaultSimpleMajorityExpression
+			return true
+		}).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(ProposalKey(idStrategyMgr), gomock.Any()).Do(
+		func(id string, ret interface{}) bool {
+			pro := ret.(*Proposal)
+			pro.Id = idStrategyMgr
+			pro.Typ = ProposalStrategyMgr
+			pro.Status = PROPOSED
+			pro.BallotMap = proposalExistent.BallotMap
+			pro.ApproveNum = 1
+			pro.AgainstNum = 1
+			pro.AvaliableElectorateNum = 4
+			pro.InitialElectorateNum = 4
+			pro.ElectorateList = proposalExistent.ElectorateList
+			pro.StrategyExpression = repo.DefaultSimpleMajorityExpression
+			return true
+		}).Return(true).AnyTimes()
 
 	mockStub.EXPECT().GetObject(string(AppchainMgr), gomock.Any()).Return(false).AnyTimes()
 	mockStub.EXPECT().GetObject(string(RuleMgr), gomock.Any()).Return(false).AnyTimes()
@@ -563,6 +603,8 @@ func TestGovernance_Vote(t *testing.T) {
 	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "Manage", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("", "")).Times(1)
 	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "Manage", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "Manage", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.DappMgrContractAddr.Address().String(), "Manage", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.ProposalStrategyMgrContractAddr.Address().String(), "Manage", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().Caller().Return(addrUnavaliable).Times(2)
 	mockStub.EXPECT().Caller().Return(addrCanNotVote).Times(3)
 	mockStub.EXPECT().Caller().Return(addrApproved).Times(1)
@@ -578,6 +620,8 @@ func TestGovernance_Vote(t *testing.T) {
 	mockStub.EXPECT().Caller().Return(addrNotVoted9).Times(1)
 	mockStub.EXPECT().Caller().Return(addrNotVoted10).Times(1)
 	mockStub.EXPECT().Caller().Return(addrNotVoted11).Times(1)
+	mockStub.EXPECT().Caller().Return(addrNotVoted12).Times(1)
+	mockStub.EXPECT().Caller().Return(addrNotVoted13).Times(1)
 	mockStub.EXPECT().GetTxTimeStamp().Return(int64(0)).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
 	pData, err := json.Marshal(proposalExistent)
@@ -643,6 +687,12 @@ func TestGovernance_Vote(t *testing.T) {
 	assert.True(t, res.Ok, string(res.Result))
 	// 19.service success
 	res = g.Vote(idServiceMgr, BallotReject, "")
+	assert.True(t, res.Ok, string(res.Result))
+	// 20. dapp success
+	res = g.Vote(idDappMgr, BallotReject, "")
+	assert.True(t, res.Ok, string(res.Result))
+	// 21. strategy success
+	res = g.Vote(idStrategyMgr, BallotReject, "")
 	assert.True(t, res.Ok, string(res.Result))
 }
 
@@ -1125,6 +1175,151 @@ func TestGovernance_UnLockLowPriorityProposal(t *testing.T) {
 	assert.False(t, res.Ok, string(res.Result))
 
 	res = g.UnLockLowPriorityProposal(appchainID, string(governance.EventFreeze))
+	assert.True(t, res.Ok, string(res.Result))
+}
+
+func TestGovernance_ZeroPermission(t *testing.T) {
+	mockCtl := gomock.NewController(t)
+	mockStub := mock_stub.NewMockStub(mockCtl)
+	g := Governance{mockStub}
+
+	idNotExistent := "idNotExistent-1"
+	idExistent2 := "idExistent-2"
+
+	addrApproved := "addrApproved"
+	addrAganisted := "addrAganisted"
+	approveBallot := Ballot{
+		VoterAddr: addrApproved,
+		Approve:   BallotApprove,
+		Num:       1,
+		Reason:    "",
+	}
+	againstBallot := Ballot{
+		VoterAddr: addrAganisted,
+		Approve:   BallotReject,
+		Num:       1,
+		Reason:    "",
+	}
+
+	chain := &appchainMgr.Appchain{
+		ID:      appchainID,
+		Status:  governance.GovernanceAvailable,
+		Desc:    "",
+		Version: 0,
+	}
+	chainData, err := json.Marshal(chain)
+	assert.Nil(t, err)
+
+	proposalUpdate := &Proposal{
+		Id:           idExistent2,
+		EventType:    governance.EventUpdate,
+		ObjId:        appchainID,
+		Typ:          AppchainMgr,
+		Status:       PAUSED,
+		BallotMap:    map[string]Ballot{addrApproved: approveBallot, addrAganisted: againstBallot},
+		ApproveNum:   1,
+		AgainstNum:   1,
+		Extra:        chainData,
+		StrategyType: ZeroPermission,
+	}
+
+	mockStub.EXPECT().GetObject(ProposalKey(idNotExistent), gomock.Any()).Return(false).AnyTimes()
+	mockStub.EXPECT().GetObject(ProposalKey(idExistent2), gomock.Any()).SetArg(1, *proposalUpdate).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Return(false).AnyTimes()
+
+	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "Manage", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("", "")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "Manage", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
+	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	pData, err := json.Marshal(proposalUpdate)
+	assert.Nil(t, err)
+	mockStub.EXPECT().Get(gomock.Any()).Return(true, pData).AnyTimes()
+
+	// proposal not existent
+	res := g.ZeroPermission(idNotExistent)
+	assert.False(t, res.Ok, string(res.Result))
+	// handle result error
+	res = g.ZeroPermission(idExistent2)
+	assert.False(t, res.Ok, string(res.Result))
+	// ok
+	res = g.ZeroPermission(idExistent2)
+	assert.True(t, res.Ok, string(res.Result))
+}
+
+func TestGovernance_EndObjProposal(t *testing.T) {
+	mockCtl := gomock.NewController(t)
+	mockStub := mock_stub.NewMockStub(mockCtl)
+	g := Governance{mockStub}
+
+	idNotExistent := "idNotExistent-1"
+	idExistent2 := "idExistent-2"
+
+	addrApproved := "addrApproved"
+	addrAganisted := "addrAganisted"
+	approveBallot := Ballot{
+		VoterAddr: addrApproved,
+		Approve:   BallotApprove,
+		Num:       1,
+		Reason:    "",
+	}
+	againstBallot := Ballot{
+		VoterAddr: addrAganisted,
+		Approve:   BallotReject,
+		Num:       1,
+		Reason:    "",
+	}
+
+	chain := &appchainMgr.Appchain{
+		ID:      appchainID,
+		Status:  governance.GovernanceAvailable,
+		Desc:    "",
+		Version: 0,
+	}
+	chainData, err := json.Marshal(chain)
+	assert.Nil(t, err)
+
+	proposalUpdate := &Proposal{
+		Id:           idExistent2,
+		EventType:    governance.EventUpdate,
+		ObjId:        appchainID,
+		Typ:          AppchainMgr,
+		Status:       PAUSED,
+		BallotMap:    map[string]Ballot{addrApproved: approveBallot, addrAganisted: againstBallot},
+		ApproveNum:   1,
+		AgainstNum:   1,
+		Extra:        chainData,
+		StrategyType: ZeroPermission,
+	}
+
+	mockStub.EXPECT().CurrentCaller().Return(noAdminAddr).Times(1)
+	mockStub.EXPECT().CurrentCaller().Return(constant.ServiceMgrContractAddr.Address().String()).AnyTimes()
+
+	errorIdMap := orderedmap.New()
+	errorIdMap.Set(idNotExistent, struct{}{})
+	idMap := orderedmap.New()
+	idMap.Set(idExistent2, struct{}{})
+	mockStub.EXPECT().GetObject(ProposalObjKey(serviceID), gomock.Any()).SetArg(1, *errorIdMap).Return(true).Times(1)
+	mockStub.EXPECT().GetObject(ProposalObjKey(serviceID), gomock.Any()).SetArg(1, *idMap).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(ProposalKey(idNotExistent), gomock.Any()).Return(false).AnyTimes()
+	mockStub.EXPECT().GetObject(ProposalKey(idExistent2), gomock.Any()).SetArg(1, *proposalUpdate).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Return(false).AnyTimes()
+
+	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
+	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	pData, err := json.Marshal(proposalUpdate)
+	assert.Nil(t, err)
+	mockStub.EXPECT().Get(gomock.Any()).Return(true, pData).AnyTimes()
+
+	// check permission error
+	res := g.EndObjProposal(serviceID, string(ClearReason), nil)
+	assert.False(t, res.Ok, string(res.Result))
+	// get proposals error
+	res = g.EndObjProposal(serviceID, string(ClearReason), nil)
+	assert.False(t, res.Ok, string(res.Result))
+	// ok
+	res = g.EndObjProposal(serviceID, string(ClearReason), nil)
 	assert.True(t, res.Ok, string(res.Result))
 }
 

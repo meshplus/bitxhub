@@ -131,16 +131,8 @@ func roleMgrCMD() cli.Command {
 				Action: bindRole,
 			},
 			cli.Command{
-				Name:  "all",
-				Usage: "query all roles info",
-				Flags: []cli.Flag{
-					cli.StringFlag{
-						Name:     "type",
-						Usage:    "Specify role type (governanceAdmin, auditAdmin or appchainAdmin)",
-						Value:    string(contracts.GovernanceAdmin),
-						Required: false,
-					},
-				},
+				Name:   "all",
+				Usage:  "query all roles info",
 				Action: allRole,
 			},
 		},
@@ -281,9 +273,7 @@ func bindRole(ctx *cli.Context) error {
 }
 
 func allRole(ctx *cli.Context) error {
-	typ := ctx.String("type")
-
-	ret, err := invokeBVMContractBySendView(ctx, constant.RoleContractAddr.Address().String(), "GetRolesByType", pb.String(typ))
+	ret, err := invokeBVMContractBySendView(ctx, constant.RoleContractAddr.Address().String(), "GetAllRoles")
 	if err != nil {
 		return fmt.Errorf("invoke BVM contract failed when get all roles: %w", err)
 	}

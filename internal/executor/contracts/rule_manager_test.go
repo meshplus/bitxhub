@@ -385,19 +385,9 @@ func TestRuleManager_ClearRule(t *testing.T) {
 	mockStub.EXPECT().CurrentCaller().Return(constant.AppchainMgrContractAddr.Address().String()).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().Caller().Return("").AnyTimes()
-	retProposals := make([]*Proposal, 0)
-	retProposals = append(retProposals, &Proposal{Id: "123", Status: PROPOSED})
-	retProposalsData, err := json.Marshal(retProposals)
-	assert.Nil(t, err)
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "GetProposalsByObjId", gomock.Any()).Return(boltvm.Error("", "GetProposalsByObjId error")).Times(1)
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "GetProposalsByObjId", gomock.Any()).Return(boltvm.Success(retProposalsData)).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "EndCurrentProposal", gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("", "EndCurrentProposal error")).Times(1)
-	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "EndCurrentProposal", gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "EndObjProposal", gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("", "EndObjProposal error")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "EndObjProposal", gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 
-	retRules := make([]*ruleMgr.Rule, 0)
-	retRules = append(retRules, rules[6])
-	retRules = append(retRules, rules[1])
-	mockStub.EXPECT().GetObject(ruleMgr.RuleKey(chains[0].ID), gomock.Any()).SetArg(1, retRules).Return(true).Times(3)
 	retRules1 := make([]*ruleMgr.Rule, 0)
 	retRules1 = append(retRules1, &ruleMgr.Rule{
 		Address: rules[6].Address,
@@ -427,15 +417,32 @@ func TestRuleManager_ClearRule(t *testing.T) {
 	// check permission error
 	res := rm.ClearRule(chains[0].ID)
 	assert.False(t, res.Ok, string(res.Result))
-	// GetProposalsByObjId error
-	res = rm.ClearRule(chains[0].ID)
-	assert.False(t, res.Ok, string(res.Result))
-	// EndCurrentProposal error
+	// EndObjProposal error
 	res = rm.ClearRule(chains[0].ID)
 	assert.False(t, res.Ok, string(res.Result))
 
 	res = rm.ClearRule(chains[0].ID)
 	assert.True(t, res.Ok, string(res.Result))
+}
+
+func TestRuleManager_checkPermission(t *testing.T) {
+	rm, mockStub, _, _, _, _, _ := rulePrepare(t)
+
+	// 2. PermissionAdmin
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin", pb.String(adminAddr), pb.String(string(GovernanceAdmin))).Return(boltvm.Error("", "invoke error")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin", pb.String(noAdminAddr), pb.String(string(GovernanceAdmin))).Return(boltvm.Success([]byte(FALSE))).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin", pb.String(adminAddr), pb.String(string(GovernanceAdmin))).Return(boltvm.Success([]byte(TRUE))).AnyTimes()
+	// crossinvoke error
+	err := rm.checkPermission([]string{string(PermissionAdmin)}, "", adminAddr, nil)
+	assert.NotNil(t, err)
+	// normal
+	err = rm.checkPermission([]string{string(PermissionAdmin)}, "", adminAddr, nil)
+	assert.Nil(t, err)
+	err = rm.checkPermission([]string{string(PermissionAdmin)}, "", noAdminAddr, nil)
+	assert.NotNil(t, err)
+
+	err = rm.checkPermission([]string{""}, "", "", nil)
+	assert.NotNil(t, err)
 }
 
 func rulePrepare(t *testing.T) (*RuleManager, *mock_stub.MockStub, []*ruleMgr.Rule, [][]byte, []*appchainMgr.Appchain, [][]byte, ledger2.IAccount) {

@@ -88,6 +88,9 @@ func TestAppchainManager_Query(t *testing.T) {
 
 	res = am.GetAdminByChainId(chains[0].ID)
 	assert.Equal(t, true, res.Ok, string(res.Result))
+
+	res = am.IsAvailableBitxhub(chains[0].ID)
+	assert.Equal(t, true, res.Ok, string(res.Result))
 }
 
 func TestAppchainManager_Register(t *testing.T) {
@@ -231,8 +234,11 @@ func TestAppchainManager_UpdateAppchain(t *testing.T) {
 	mockStub.EXPECT().GetObject(appchainMgr.AppchainKey(chains[0].ID), gomock.Any()).SetArg(1, *chains[0]).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(appchainMgr.AppchainOccupyNameKey(chains[0].ChainName), gomock.Any()).Return(false).AnyTimes()
 	mockStub.EXPECT().GetObject(appchainMgr.AppchainOccupyNameKey(chains[1].ChainName), gomock.Any()).SetArg(1, chains[1].ID).Return(true).AnyTimes()
+	mockStub.EXPECT().GetObject(appchainMgr.AppchainOccupyNameKey("newName"), gomock.Any()).Return(false).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "CheckOccupiedAccount",
-		gomock.Any()).Return(boltvm.Error("", "CheckOccupiedAccount error")).AnyTimes()
+		pb.String(roles[2].ID)).Return(boltvm.Success(nil)).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "CheckOccupiedAccount",
+		pb.String(roles[1].ID)).Return(boltvm.Error("", "CheckOccupiedAccount error")).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "OccupyAccount",
 		gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "FreeAccount",
@@ -249,6 +255,10 @@ func TestAppchainManager_UpdateAppchain(t *testing.T) {
 	mockStub.EXPECT().GetObject(appchainMgr.AppchainAdminKey(roles[0].ID), gomock.Any()).SetArg(1, chains[0].ID).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(appchainMgr.AppchainAdminKey(roles[1].ID), gomock.Any()).Return(false).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "PauseChainService", gomock.Any()).Return(boltvm.Error("", "PauseChainService error")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "PauseChainService", gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(gomock.Eq(constant.GovernanceContractAddr.Address().String()), gomock.Eq("ZeroPermission"),
+		gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 
 	// promission error
 	res := am.UpdateAppchain(chains[0].ID, chains[0].ChainName, chains[0].Desc, chains[0].TrustRoot, am.Caller(), reason)
@@ -262,26 +272,29 @@ func TestAppchainManager_UpdateAppchain(t *testing.T) {
 	res = am.UpdateAppchain(chains[0].ID, chains[1].ChainName, chains[0].Desc, chains[0].TrustRoot, am.Caller(), reason)
 	assert.False(t, res.Ok, string(res.Result))
 	// check admin error
-	res = am.UpdateAppchain(chains[0].ID, chains[0].ChainName, chains[0].Desc, chains[0].TrustRoot, "123", reason)
+	res = am.UpdateAppchain(chains[0].ID, "newName", chains[0].Desc, chains[0].TrustRoot, "123", reason)
 	assert.False(t, res.Ok, string(res.Result))
-	res = am.UpdateAppchain(chains[0].ID, chains[0].ChainName, chains[0].Desc, chains[0].TrustRoot, fmt.Sprintf("123,%s", am.Caller()), reason)
+	res = am.UpdateAppchain(chains[0].ID, "newName", chains[0].Desc, chains[0].TrustRoot, fmt.Sprintf("123,%s", am.Caller()), reason)
 	assert.False(t, res.Ok, string(res.Result))
-	res = am.UpdateAppchain(chains[0].ID, chains[0].ChainName, chains[0].Desc, chains[0].TrustRoot, fmt.Sprintf("%s,%s", roles[1].ID, am.Caller()), reason)
+	res = am.UpdateAppchain(chains[0].ID, "newName", chains[0].Desc, chains[0].TrustRoot, fmt.Sprintf("%s,%s", roles[1].ID, am.Caller()), reason)
 	assert.False(t, res.Ok, string(res.Result))
 	// no proposal update
 	res = am.UpdateAppchain(chains[0].ID, chains[0].ChainName, chains[0].Desc, chains[0].TrustRoot, am.Caller(), reason)
 	assert.True(t, res.Ok, string(res.Result))
 	// get master error
-	res = am.UpdateAppchain(chains[0].ID, chains[0].ChainName, chains[0].Desc, []byte("111"), am.Caller(), reason)
+	res = am.UpdateAppchain(chains[0].ID, "newName", chains[0].Desc, []byte("111"), fmt.Sprintf("%s,%s", am.Caller(), roles[2].ID), reason)
 	assert.False(t, res.Ok, string(res.Result))
 	// master updating
-	res = am.UpdateAppchain(chains[0].ID, chains[0].ChainName, chains[0].Desc, []byte("111"), am.Caller(), reason)
+	res = am.UpdateAppchain(chains[0].ID, "newName", chains[0].Desc, []byte("111"), fmt.Sprintf("%s,%s", am.Caller(), roles[2].ID), reason)
 	assert.False(t, res.Ok, string(res.Result))
 	// submit proposal error
-	res = am.UpdateAppchain(chains[0].ID, chains[0].ChainName, chains[0].Desc, []byte("111"), am.Caller(), reason)
+	res = am.UpdateAppchain(chains[0].ID, "newName", chains[0].Desc, []byte("111"), fmt.Sprintf("%s,%s", am.Caller(), roles[2].ID), reason)
+	assert.False(t, res.Ok, string(res.Result))
+	// PauseChainService error
+	res = am.UpdateAppchain(chains[0].ID, "newName", chains[0].Desc, chains[0].TrustRoot, fmt.Sprintf("%s,%s", am.Caller(), roles[2].ID), reason)
 	assert.False(t, res.Ok, string(res.Result))
 	// ok
-	res = am.UpdateAppchain(chains[0].ID, chains[0].ChainName, chains[0].Desc, chains[0].TrustRoot, am.Caller(), reason)
+	res = am.UpdateAppchain(chains[0].ID, "newName", chains[0].Desc, chains[0].TrustRoot, fmt.Sprintf("%s,%s", am.Caller(), roles[2].ID), reason)
 	assert.True(t, res.Ok, string(res.Result))
 }
 
@@ -701,6 +714,7 @@ func prepareRole(t *testing.T) ([]*Role, [][]byte) {
 	// prepare role
 	var rolesData [][]byte
 	var roles []*Role
+
 	role1 := &Role{
 		ID: appchainAdminAddr,
 	}
@@ -708,6 +722,7 @@ func prepareRole(t *testing.T) ([]*Role, [][]byte) {
 	assert.Nil(t, err)
 	rolesData = append(rolesData, data)
 	roles = append(roles, role1)
+
 	role2 := &Role{
 		ID: noAdminAddr,
 	}
@@ -715,6 +730,14 @@ func prepareRole(t *testing.T) ([]*Role, [][]byte) {
 	assert.Nil(t, err)
 	rolesData = append(rolesData, data)
 	roles = append(roles, role2)
+
+	role3 := &Role{
+		ID: address,
+	}
+	data, err = json.Marshal(role3)
+	assert.Nil(t, err)
+	rolesData = append(rolesData, data)
+	roles = append(roles, role3)
 
 	return roles, rolesData
 }

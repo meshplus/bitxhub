@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strings"
 
-	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/boltvm"
 	service_mgr "github.com/meshplus/bitxhub-core/service-mgr"
 	"github.com/meshplus/bitxhub-kit/types"
@@ -294,18 +293,18 @@ func (x *InterchainManager) checkTargetAvailability(srcChainService, dstChainSer
 	return ordered, nil
 }
 
-// getAppchainInfo returns the appchain info by chain ID
-func (x *InterchainManager) getAppchainInfo(chainID string) (*appchainMgr.Appchain, error) {
-	appchain := &appchainMgr.Appchain{}
-	res := x.CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "GetAppchain", pb.String(chainID))
-	if !res.Ok {
-		return nil, fmt.Errorf("chain %s is not registered", chainID)
-	}
-	if err := json.Unmarshal(res.Result, appchain); err != nil {
-		return nil, fmt.Errorf("%s: unmarshal appchain info error: %w", internalError, err)
-	}
-	return appchain, nil
-}
+//// getAppchainInfo returns the appchain info by chain ID
+//func (x *InterchainManager) getAppchainInfo(chainID string) (*appchainMgr.Appchain, error) {
+//	appchain := &appchainMgr.Appchain{}
+//	res := x.CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "GetAppchain", pb.String(chainID))
+//	if !res.Ok {
+//		return nil, fmt.Errorf("chain %s is not registered", chainID)
+//	}
+//	if err := json.Unmarshal(res.Result, appchain); err != nil {
+//		return nil, fmt.Errorf("%s: unmarshal appchain info error: %w", internalError, err)
+//	}
+//	return appchain, nil
+//}
 
 func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *pb.Interchain) []byte {
 	srcChainService, _ := x.parseChainService(ibtp.From)
@@ -554,14 +553,14 @@ func (x *InterchainManager) getServiceByID(id string) (*service_mgr.Service, err
 	return service, nil
 }
 
-func (x *InterchainManager) checkAppchainAvailability(id string) error {
-	res := x.CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "IsAvailable", pb.String(id))
-	if !res.Ok || string(res.Result) == FALSE {
-		return fmt.Errorf("appchain %s is not available", id)
-	}
-
-	return nil
-}
+//func (x *InterchainManager) checkAppchainAvailability(id string) error {
+//	res := x.CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "IsAvailable", pb.String(id))
+//	if !res.Ok || string(res.Result) == FALSE {
+//		return fmt.Errorf("appchain %s is not available", id)
+//	}
+//
+//	return nil
+//}
 
 func (x *InterchainManager) checkBitXHubAvailability(id string) error {
 	res := x.CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "IsAvailableBitxhub", pb.String(id))
@@ -581,22 +580,22 @@ func (x *InterchainManager) checkServiceAvailability(chainServiceID string) erro
 	return nil
 }
 
-func (x *InterchainManager) checkServiceIndex(ibtp *pb.IBTP, counter map[string]uint64, dstChainService *ChainService) *boltvm.BxhError {
-	if dstChainService.IsLocal {
-		dstService, _ := x.getServiceByID(dstChainService.getChainServiceId())
-		if dstService == nil || dstService.Ordered {
-			if err := checkIndex(counter[dstChainService.getFullServiceId()]+1, ibtp.Index); err != nil {
-				return err
-			}
-		}
-	} else {
-		if err := checkIndex(counter[dstChainService.getFullServiceId()]+1, ibtp.Index); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
+//func (x *InterchainManager) checkServiceIndex(ibtp *pb.IBTP, counter map[string]uint64, dstChainService *ChainService) *boltvm.BxhError {
+//	if dstChainService.IsLocal {
+//		dstService, _ := x.getServiceByID(dstChainService.getChainServiceId())
+//		if dstService == nil || dstService.Ordered {
+//			if err := checkIndex(counter[dstChainService.getFullServiceId()]+1, ibtp.Index); err != nil {
+//				return err
+//			}
+//		}
+//	} else {
+//		if err := checkIndex(counter[dstChainService.getFullServiceId()]+1, ibtp.Index); err != nil {
+//			return err
+//		}
+//	}
+//
+//	return nil
+//}
 
 func checkIndex(exp, cur uint64) *boltvm.BxhError {
 	if cur < exp {
