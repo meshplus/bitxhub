@@ -358,8 +358,10 @@ func TestRoleManager_PauseAuditAdmin(t *testing.T) {
 	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, aRolesData[0]).AnyTimes()
+	mockStub.EXPECT().Query(RolePrefix).Return(true, aRolesData).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "EndObjProposal", gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 
-	res := rm.PauseAuditAdmin(aRoles[0].ID)
+	res := rm.PauseAuditAdmin(aRoles[0].NodeAccount)
 	assert.True(t, res.Ok, string(res.Result))
 }
 

@@ -3,6 +3,7 @@ package contracts
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/looplab/fsm"
 	"github.com/meshplus/bitxhub-core/boltvm"
@@ -119,6 +120,10 @@ var mgrs = []string{repo.AppchainMgr, repo.NodeMgr, repo.DappMgr, repo.RoleMgr, 
 
 // =========== Manage does some subsequent operations when the proposal is over
 func (g *GovStrategy) Manage(eventTyp, proposalResult, lastStatus, objId string, extra []byte) *boltvm.Response {
+	g.Logger().WithFields(logrus.Fields{
+		"id": objId,
+	}).Info("proposal strategy is managing")
+
 	// 1. check permission: PermissionSpecific(GovernanceContractAddr)
 	specificAddrs := []string{constant.GovernanceContractAddr.Address().String()}
 	addrsData, err := json.Marshal(specificAddrs)
@@ -229,9 +234,9 @@ func (g *GovStrategy) UpdateProposalStrategy(module string, typ string, strategy
 		IsEdit:  string(strategy.Typ) != typ,
 	}
 	info.Extra = UpdateInfo{
-		OldInfo: strategy.Extra,
-		NewInfo: strategyExtra,
-		IsEdit:  strategy.Extra != strategyExtra,
+		OldInfo: strings.Replace(strategy.Extra, " ", "", -1),
+		NewInfo: strings.Replace(strategyExtra, " ", "", -1),
+		IsEdit:  strings.Replace(strategy.Extra, " ", "", -1) != strings.Replace(strategyExtra, " ", "", -1),
 	}
 
 	// 3. check whether the updated information is consistent with the previous information
@@ -308,9 +313,9 @@ func (g *GovStrategy) UpdateAllProposalStrategy(typ string, strategyExtra string
 				IsEdit:  string(moduleStrategy.Typ) != typ,
 			},
 			Extra: UpdateInfo{
-				OldInfo: moduleStrategy.Extra,
-				NewInfo: strategyExtra,
-				IsEdit:  moduleStrategy.Extra != strategyExtra,
+				OldInfo: strings.Replace(moduleStrategy.Extra, " ", "", -1),
+				NewInfo: strings.Replace(strategyExtra, " ", "", -1),
+				IsEdit:  strings.Replace(moduleStrategy.Extra, " ", "", -1) != strings.Replace(strategyExtra, " ", "", -1),
 			},
 		}
 	}

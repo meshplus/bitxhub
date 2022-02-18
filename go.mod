@@ -32,7 +32,7 @@ require (
 	github.com/libp2p/go-libp2p-swarm v0.2.4
 	github.com/looplab/fsm v0.2.0
 	github.com/magiconair/properties v1.8.4
-	github.com/meshplus/bitxhub-core v1.3.1-0.20211229110534-fa2f5b4e05db
+	github.com/meshplus/bitxhub-core v1.3.1-0.20220218084831-3aaff0fe2b53
 	github.com/meshplus/bitxhub-kit v1.2.1-0.20220111092827-0ad7ba507bd3
 	github.com/meshplus/bitxhub-model v1.2.1-0.20211228020023-9ad5546d56ec
 	github.com/meshplus/consensus v0.0.0-20211228075008-5f469b198531
