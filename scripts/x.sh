@@ -21,7 +21,7 @@ function print_red() {
 function x_replace() {
   system=$(uname)
 
-  if [ "${system}" = "Linux" ]; then
+  if [ "${system}" = "Linux" ] || [[ "${system}" =~ "MINGW" ]]; then
     sed -i "$@"
   else
     sed -i '' "$@"
