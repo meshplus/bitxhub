@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"math"
 	"math/big"
 	"sort"
 	"strings"
@@ -65,7 +66,7 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	exec.logger.WithFields(logrus.Fields{
 		"time":  time.Since(current),
 		"count": len(block.Transactions.Transactions),
-	}).Debug("Apply transactions elapsed")
+	}).Info("Apply transactions elapsed")
 
 	calcMerkleStart := time.Now()
 	l1Root, l2Roots, err := exec.buildTxMerkleTree(block.Transactions.Transactions)
@@ -79,6 +80,11 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	}
 
 	calcMerkleDuration.Observe(float64(time.Since(calcMerkleStart)) / float64(time.Second))
+
+	err = exec.setTimeoutList(block.BlockHeader.Number, block.Transactions.Transactions)
+	if err != nil {
+		panic(err)
+	}
 
 	timeoutIBTPsMap, err := exec.getTimeoutIBTPsMap(block.BlockHeader.Number)
 	if err != nil {
@@ -124,7 +130,10 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	block.BlockHeader.Bloom = ledger.CreateBloom(receipts)
 	block.BlockHeader.TimeoutRoot = timeoutRoot
 
-	exec.setTimeoutRollback(block.BlockHeader.Number)
+	err = exec.setTimeoutRollback(block.BlockHeader.Number)
+	if err != nil {
+		panic(err)
+	}
 	accounts, journalHash := exec.ledger.FlushDirtyData()
 
 	block.BlockHeader.StateRoot = journalHash
@@ -157,6 +166,12 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 		InterchainMeta: interchainMeta,
 		TxHashList:     txHashList,
 	}
+
+	exec.logger.WithFields(logrus.Fields{
+		"height": blockWrapper.block.BlockHeader.Number,
+		"count":  len(blockWrapper.block.Transactions.Transactions),
+		"elapse": time.Since(current),
+	}).Info("Executed block")
 
 	now := time.Now()
 	exec.ledger.PersistBlockData(data)
@@ -715,6 +730,8 @@ func (exec *BlockExecutor) setTimeoutRollback(height uint64) error {
 		}
 	}
 
+	// TODO: Is it necessary remove timeout ibtp from the timeoutList after handle it？
+
 	return nil
 }
 
@@ -725,11 +742,123 @@ func (exec *BlockExecutor) getTimeoutList(height uint64) ([]string, error) {
 	}
 
 	var list []string
-	if err := json.Unmarshal(val, &list); err != nil {
-		return nil, fmt.Errorf("unmarshal list error: %w", err)
+	list = strings.Split(string(val), ",")
+	if list[0] == "" {
+		return nil, nil
 	}
-
 	return list, nil
+}
+
+func (exec *BlockExecutor) setTimeoutList(height uint64, txList []pb.Transaction) error {
+	addTimeoutListMap := make(map[uint64]string, len(txList))
+	removeTimeoutListMap := make(map[uint64]string, len(txList))
+	for _, tx := range txList {
+		switch tx.(type) {
+		case *types2.EthTransaction:
+			continue
+		case *pb.BxhTransaction:
+			if !tx.IsIBTP() {
+				continue
+			}
+			ibtp := tx.GetIBTP()
+			txId := fmt.Sprintf("%s-%s-%d", ibtp.From, ibtp.To, ibtp.Index)
+			ok, val := exec.ledger.GetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.TxInfoKey(txId)))
+			if !ok {
+				err := fmt.Errorf("can't read record from leadger")
+				return err
+			}
+			record := pb.TransactionRecord{}
+			if err := json.Unmarshal(val, &record); err != nil {
+				return err
+			}
+			// if tx status is abnormal, needn't add timeoutList
+			if record.Status != pb.TransactionStatus_BEGIN {
+				continue
+			}
+
+			if pb.IBTP_REQUEST == ibtp.Category() {
+				// record timeout height
+				var timeoutHeight uint64
+				if ibtp.TimeoutHeight <= 0 || uint64(ibtp.TimeoutHeight) >= math.MaxUint64-height {
+					timeoutHeight = math.MaxUint64
+				} else {
+					timeoutHeight = height + uint64(ibtp.TimeoutHeight)
+				}
+				str, ok := addTimeoutListMap[timeoutHeight]
+				if !ok {
+					var builder strings.Builder
+					builder.WriteString(txId)
+					addTimeoutListMap[timeoutHeight] = builder.String()
+				} else {
+					addTimeoutListMap[timeoutHeight] = exec.writeToStr(str, txId)
+				}
+			}
+			if pb.IBTP_RESPONSE == ibtp.Category() {
+				str, ok := removeTimeoutListMap[record.Height]
+				if !ok {
+					var builder strings.Builder
+					builder.WriteString(txId)
+					removeTimeoutListMap[record.Height] = builder.String()
+				} else {
+					removeTimeoutListMap[record.Height] = exec.writeToStr(str, txId)
+				}
+			}
+		}
+
+	}
+	for timeoutHeight, txidList := range addTimeoutListMap {
+		newStr := exec.addTimeoutList(timeoutHeight, txidList)
+		exec.ledger.SetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.TimeoutKey(timeoutHeight)), []byte(newStr))
+	}
+	for recordHeight, txidList := range removeTimeoutListMap {
+		newStr := exec.removeTimeoutList(recordHeight, txidList)
+		exec.ledger.SetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.TimeoutKey(recordHeight)), []byte(newStr))
+	}
+	return nil
+}
+
+func (exec *BlockExecutor) addTimeoutList(timeoutHeight uint64, txIdList string) string {
+	ok, val := exec.ledger.GetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.TimeoutKey(timeoutHeight)))
+	if !ok {
+		exec.ledger.SetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.TimeoutKey(timeoutHeight)), []byte(txIdList))
+		return ""
+	}
+	newstr := exec.writeToStr(string(val), txIdList)
+	return newstr
+
+}
+func (exec *BlockExecutor) removeTimeoutList(recordHeight uint64, txidList string) string {
+	ok, val := exec.ledger.GetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.TimeoutKey(recordHeight)))
+	if !ok {
+		exec.logger.Errorf("there is wrong TimeoutHeight:[%s]", recordHeight)
+	}
+	currentStr := string(val)
+	for _, txId := range strings.Split(txidList, ",") {
+		currentStr = exec.removeFromStr(currentStr, txId)
+	}
+	return currentStr
+}
+
+func (exec *BlockExecutor) writeToStr(str string, txId string) string {
+	var builder strings.Builder
+	if str == "" {
+		builder.WriteString(txId)
+		return builder.String()
+	}
+	builder.WriteString(str)
+	builder.WriteString(",")
+	builder.WriteString(txId)
+	return builder.String()
+}
+
+func (exec *BlockExecutor) removeFromStr(str string, txId string) string {
+	list := strings.Split(str, ",")
+	for index, val := range list {
+		if val == txId {
+			list = append(list[:index], list[index+1:]...)
+		}
+	}
+	return strings.Join(list, ",")
 }
 
 func (exec *BlockExecutor) getTxInfoByGlobalID(id string) (*contracts.TransactionInfo, error) {

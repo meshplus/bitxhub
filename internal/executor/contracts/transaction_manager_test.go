@@ -203,9 +203,7 @@ func TestTransactionManager_Begin(t *testing.T) {
 	res := im.Begin(id, 0, false)
 	assert.False(t, res.Ok)
 
-	var timeoutList []string
 	mockStub.EXPECT().CurrentCaller().Return(constant.InterchainContractAddr.Address().String()).AnyTimes()
-	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, timeoutList).Return(false)
 	res = im.Begin(id, 10, false)
 	assert.True(t, res.Ok)
 	statusChange := StatusChange{}
