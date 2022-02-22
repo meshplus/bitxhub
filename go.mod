@@ -19,7 +19,6 @@ require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/mock v1.6.0
 	github.com/google/btree v1.0.0
-	github.com/google/go-cmp v0.5.5 // indirect
 	github.com/gorilla/mux v1.8.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
@@ -33,7 +32,7 @@ require (
 	github.com/magiconair/properties v1.8.4
 	github.com/meshplus/bitxhub-core v1.3.1-0.20220218084831-3aaff0fe2b53
 	github.com/meshplus/bitxhub-kit v1.2.1-0.20220111092827-0ad7ba507bd3
-	github.com/meshplus/bitxhub-model v1.2.1-0.20211228020023-9ad5546d56ec
+	github.com/meshplus/bitxhub-model v1.2.1-0.20220301021904-c82a870205e5
 	github.com/meshplus/eth-kit v0.0.0-20210906064541-8dfea98dbf95
 	github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd
 	github.com/meshplus/go-lightp2p v0.0.0-20220117071358-c37ba4e6dcbc
