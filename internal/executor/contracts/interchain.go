@@ -163,7 +163,6 @@ func (x *InterchainManager) HandleIBTP(ibtp *pb.IBTP) *boltvm.Response {
 	if err != nil {
 		return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), err.Error()))
 	}
-
 	x.notifySrcDst(ibtp, change)
 
 	ret := x.ProcessIBTP(ibtp, interchain)
@@ -180,6 +179,8 @@ func (x *InterchainManager) HandleIBTP(ibtp *pb.IBTP) *boltvm.Response {
 func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, *boltvm.BxhError, *boltvm.BxhError) {
 	var targetError *boltvm.BxhError
 
+	// In the full crossChain, the pier ensures that the format is correct,
+	// if a format problem occurs, the pier is evil, this situation is not credible.
 	srcChainService, err := x.parseChainService(ibtp.From)
 	if err != nil {
 		return nil, nil, boltvm.BError(boltvm.InterchainInvalidIBTPParseSourceErrorCode, fmt.Sprintf(string(boltvm.InterchainInvalidIBTPParseSourceErrorMsg), err.Error()))
@@ -322,9 +323,7 @@ func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *pb.Interchain
 		if dstChainService.ChainId == dstChainService.BxhId {
 			data, _ := ibtp.Marshal()
 			res := x.CrossInvoke(constant.InterBrokerContractAddr.Address().String(), "InvokeInterchain", pb.Bytes(data))
-			if res.Ok {
-				return res.Result
-			}
+			return res.Result
 		}
 
 		ic, _ := x.getInterchain(ibtp.To)

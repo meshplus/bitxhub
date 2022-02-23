@@ -25,10 +25,10 @@ import (
 )
 
 const (
-	from         = "1356:chain0:0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
-	to           = "1356:chain1:0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
-	contract     = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
-	wasmGasLimit = 5000000000000000
+	from          = "1356:chain0:0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
+	to            = "1356:chain1:0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
+	HappyRuleAddr = "0x00000000000000000000000000000000000000a2"
+	wasmGasLimit  = 5000000000000000
 )
 
 func TestVerifyPool_CheckProof(t *testing.T) {
@@ -50,15 +50,18 @@ func TestVerifyPool_CheckProof(t *testing.T) {
 	chainData, err := json.Marshal(chain)
 	require.Nil(t, err)
 
+	rules := make([]*ruleMgr.Rule, 0)
 	rl := &ruleMgr.Rule{
-		Address: contract,
+		Address: HappyRuleAddr,
+		Status:  governance.GovernanceAvailable,
 	}
-	rlData, err := json.Marshal(rl)
+	rules = append(rules, rl)
+	rlData, err := json.Marshal(rules)
 	require.Nil(t, err)
 
 	stateLedger.EXPECT().Copy().Return(stateLedger).AnyTimes()
 	stateLedger.EXPECT().GetState(constant.AppchainMgrContractAddr.Address(), gomock.Any()).Return(true, chainData)
-	stateLedger.EXPECT().GetState(constant.RuleManagerContractAddr.Address(), gomock.Any()).Return(false, rlData)
+	stateLedger.EXPECT().GetState(constant.RuleManagerContractAddr.Address(), gomock.Any()).Return(true, rlData)
 	mockEngine.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(true, uint64(0), nil).AnyTimes()
 
 	vp := &VerifyPool{
@@ -71,6 +74,21 @@ func TestVerifyPool_CheckProof(t *testing.T) {
 	engine := vp.ValidationEngine()
 	require.NotNil(t, engine)
 
+	proof := []byte("1")
+	proofHash := sha256.Sum256(proof)
+
+	normalTx := &pb.BxhTransaction{
+		From:  types.NewAddressByStr(from),
+		To:    types.NewAddressByStr(to),
+		IBTP:  getIBTP(t, 1, pb.IBTP_RECEIPT_SUCCESS, proofHash[:]),
+		Extra: []byte("1"),
+	}
+
+	normalTx.TransactionHash = normalTx.Hash()
+	ok, _, err := vp.CheckProof(normalTx)
+	require.Nil(t, err)
+	require.True(t, ok)
+
 	txWithNoIBTP := &pb.BxhTransaction{
 		From:  types.NewAddressByStr(from),
 		To:    types.NewAddressByStr(to),
@@ -78,7 +96,7 @@ func TestVerifyPool_CheckProof(t *testing.T) {
 		Extra: nil,
 	}
 	txWithNoIBTP.TransactionHash = txWithNoIBTP.Hash()
-	ok, _, err := vp.CheckProof(txWithNoIBTP)
+	ok, _, err = vp.CheckProof(txWithNoIBTP)
 	require.Nil(t, err)
 	require.True(t, ok)
 
@@ -104,8 +122,11 @@ func TestVerifyPool_CheckProof(t *testing.T) {
 	require.NotNil(t, err)
 	require.False(t, ok)
 
-	proof := []byte("test_proof")
-	proofHash := sha256.Sum256(proof)
+	proof = []byte("test_proof")
+	proofHash = sha256.Sum256(proof)
+
+	stateLedger.EXPECT().GetState(constant.AppchainMgrContractAddr.Address(), gomock.Any()).Return(true, chainData)
+	stateLedger.EXPECT().GetState(constant.RuleManagerContractAddr.Address(), gomock.Any()).Return(false, rlData).Times(1)
 
 	txWithIBTP := &pb.BxhTransaction{
 		From:  types.NewAddressByStr(from),

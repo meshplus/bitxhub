@@ -66,7 +66,7 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	exec.logger.WithFields(logrus.Fields{
 		"time":  time.Since(current),
 		"count": len(block.Transactions.Transactions),
-	}).Info("Apply transactions elapsed")
+	}).Debug("Apply transactions elapsed")
 
 	calcMerkleStart := time.Now()
 	l1Root, l2Roots, err := exec.buildTxMerkleTree(block.Transactions.Transactions)
@@ -81,14 +81,19 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 
 	calcMerkleDuration.Observe(float64(time.Since(calcMerkleStart)) / float64(time.Second))
 
-	err = exec.setTimeoutList(block.BlockHeader.Number, block.Transactions.Transactions)
+	invalidTxHashMap, recordFailTxHashMap, err := exec.filterValidTx(receipts)
 	if err != nil {
-		panic(err)
+		exec.logger.Errorf("filterValidTx err: %s", err)
+	}
+
+	err = exec.setTimeoutList(block.BlockHeader.Number, blockWrapper.block.Transactions.Transactions, invalidTxHashMap, recordFailTxHashMap)
+	if err != nil {
+		exec.logger.Errorf("setTimeoutList err: %s", err)
 	}
 
 	timeoutIBTPsMap, err := exec.getTimeoutIBTPsMap(block.BlockHeader.Number)
 	if err != nil {
-		panic(err)
+		exec.logger.Errorf("getTimeoutIBTPsMap err: %s", err)
 	}
 
 	var timeoutL2Roots []types.Hash
@@ -132,7 +137,7 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 
 	err = exec.setTimeoutRollback(block.BlockHeader.Number)
 	if err != nil {
-		panic(err)
+		exec.logger.Errorf("setTimeoutRollback err: %s", err)
 	}
 	accounts, journalHash := exec.ledger.FlushDirtyData()
 
@@ -749,9 +754,15 @@ func (exec *BlockExecutor) getTimeoutList(height uint64) ([]string, error) {
 	return list, nil
 }
 
-func (exec *BlockExecutor) setTimeoutList(height uint64, txList []pb.Transaction) error {
+func (exec *BlockExecutor) setTimeoutList(height uint64, txList []pb.Transaction, invalidMap map[string]bool, failMap map[string]bool) error {
 	addTimeoutListMap := make(map[uint64]string, len(txList))
 	removeTimeoutListMap := make(map[uint64]string, len(txList))
+
+	ok, val := exec.ledger.GetState(constant.InterchainContractAddr.Address(), []byte("bitxhub-id"))
+	if !ok {
+		return fmt.Errorf("can't get local bxhId from ledger")
+	}
+	bxhID := string(val)
 	for _, tx := range txList {
 		switch tx.(type) {
 		case *types2.EthTransaction:
@@ -761,20 +772,21 @@ func (exec *BlockExecutor) setTimeoutList(height uint64, txList []pb.Transaction
 				continue
 			}
 			ibtp := tx.GetIBTP()
-			txId := fmt.Sprintf("%s-%s-%d", ibtp.From, ibtp.To, ibtp.Index)
-			ok, val := exec.ledger.GetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.TxInfoKey(txId)))
-			if !ok {
-				err := fmt.Errorf("can't read record from leadger")
-				return err
-			}
-			record := pb.TransactionRecord{}
-			if err := json.Unmarshal(val, &record); err != nil {
-				return err
-			}
-			// if tx status is abnormal, needn't add timeoutList
-			if record.Status != pb.TransactionStatus_BEGIN {
+
+			// if bxh is destAppchain, needn't add into timeoutList
+			if exec.isDstChainFromBxh(ibtp.To, bxhID) {
 				continue
 			}
+
+			// invalidTx needn't add into timeoutList
+			// tx of status is begin_fail needn't add into timeoutList
+			if ok = invalidMap[tx.GetHash().String()]; ok {
+				continue
+			} else if ok = failMap[tx.GetHash().String()]; ok {
+				continue
+			}
+
+			txId := fmt.Sprintf("%s-%s-%d", ibtp.From, ibtp.To, ibtp.Index)
 
 			if pb.IBTP_REQUEST == ibtp.Category() {
 				// record timeout height
@@ -794,6 +806,16 @@ func (exec *BlockExecutor) setTimeoutList(height uint64, txList []pb.Transaction
 				}
 			}
 			if pb.IBTP_RESPONSE == ibtp.Category() {
+				ok, val := exec.ledger.GetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.TxInfoKey(txId)))
+				if !ok {
+					err := fmt.Errorf("can't read record from leadger")
+					return err
+				}
+				record := pb.TransactionRecord{}
+				if err := json.Unmarshal(val, &record); err != nil {
+					return err
+				}
+
 				str, ok := removeTimeoutListMap[record.Height]
 				if !ok {
 					var builder strings.Builder
@@ -820,8 +842,7 @@ func (exec *BlockExecutor) setTimeoutList(height uint64, txList []pb.Transaction
 func (exec *BlockExecutor) addTimeoutList(timeoutHeight uint64, txIdList string) string {
 	ok, val := exec.ledger.GetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.TimeoutKey(timeoutHeight)))
 	if !ok {
-		exec.ledger.SetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.TimeoutKey(timeoutHeight)), []byte(txIdList))
-		return ""
+		return exec.writeToStr("", txIdList)
 	}
 	newstr := exec.writeToStr(string(val), txIdList)
 	return newstr
@@ -830,7 +851,7 @@ func (exec *BlockExecutor) addTimeoutList(timeoutHeight uint64, txIdList string)
 func (exec *BlockExecutor) removeTimeoutList(recordHeight uint64, txidList string) string {
 	ok, val := exec.ledger.GetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.TimeoutKey(recordHeight)))
 	if !ok {
-		exec.logger.Errorf("there is wrong TimeoutHeight:[%s]", recordHeight)
+		exec.logger.Errorf("there is wrong TimeoutHeight:[%d]", recordHeight)
 	}
 	currentStr := string(val)
 	for _, txId := range strings.Split(txidList, ",") {
@@ -999,4 +1020,33 @@ func parseChainServiceID(id string) (string, string, string, error) {
 
 func isGlobalID(id string) bool {
 	return !strings.Contains(id, "-")
+}
+
+func (exec *BlockExecutor) filterValidTx(receipts []*pb.Receipt) (map[string]bool, map[string]bool, error) {
+	// filter invalidTx
+	recordFailTxHashMap := make(map[string]bool)
+	invalidTxHashMap := make(map[string]bool)
+
+	for _, receipt := range receipts {
+		// failTx is not validTx
+		if receipt.IsSuccess() && receipt.TxStatus == pb.TransactionStatus_BEGIN_FAILURE {
+			failTxHash := receipt.TxHash
+			recordFailTxHashMap[failTxHash.String()] = true
+		}
+		if !receipt.IsSuccess() {
+			invalidTxHash := receipt.TxHash
+			invalidTxHashMap[invalidTxHash.String()] = true
+		}
+	}
+
+	return invalidTxHashMap, recordFailTxHashMap, nil
+
+}
+
+func (exec *BlockExecutor) isDstChainFromBxh(to string, bxhId string) bool {
+	_, chainId, _, _ := parseChainServiceID(to)
+	if chainId == bxhId {
+		return true
+	}
+	return false
 }
