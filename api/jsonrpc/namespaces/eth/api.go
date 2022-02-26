@@ -92,6 +92,24 @@ func (api *PublicEthereumAPI) GasPrice() *hexutil.Big {
 	return (*hexutil.Big)(out)
 }
 
+// MaxPriorityFeePerGas returns a suggestion for a gas tip cap for dynamic transactions.
+func (api *PublicEthereumAPI) MaxPriorityFeePerGas(ctx context.Context) (*hexutil.Big, error) {
+	api.logger.Debug("eth_maxPriorityFeePerGas")
+	return (*hexutil.Big)(new(big.Int)), nil
+}
+
+type feeHistoryResult struct {
+	OldestBlock  rpc.BlockNumber  `json:"oldestBlock"`
+	Reward       [][]*hexutil.Big `json:"reward,omitempty"`
+	BaseFee      []*hexutil.Big   `json:"baseFeePerGas,omitempty"`
+	GasUsedRatio []float64        `json:"gasUsedRatio"`
+}
+
+func (api *PublicEthereumAPI) FeeHistory(ctx context.Context, blockCount rpctypes.DecimalOrHex, lastBlock rpc.BlockNumber, rewardPercentiles []float64) (*feeHistoryResult, error) {
+	api.logger.Debug("eth_feeHistory")
+	return &feeHistoryResult{}, nil
+}
+
 // BlockNumber returns the current block number.
 func (api *PublicEthereumAPI) BlockNumber() (hexutil.Uint64, error) {
 	api.logger.Debug("eth_blockNumber")
@@ -407,8 +425,16 @@ func (api *PublicEthereumAPI) GetBlockByHash(hash common.Hash, fullTx bool) (map
 }
 
 // GetBlockByNumber returns the block identified by number.
-func (api *PublicEthereumAPI) GetBlockByNumber(blockNum uint64, fullTx bool) (map[string]interface{}, error) {
+func (api *PublicEthereumAPI) GetBlockByNumber(blockNum rpc.BlockNumber, fullTx bool) (map[string]interface{}, error) {
 	api.logger.Debugf("eth_getBlockByNumber, number: %d, full: %v", blockNum, fullTx)
+
+	if blockNum == rpc.PendingBlockNumber || blockNum == rpc.LatestBlockNumber {
+		meta, err := api.api.Chain().Meta()
+		if err != nil {
+			return nil, err
+		}
+		blockNum = rpc.BlockNumber(meta.Height)
+	}
 
 	block, err := api.api.Broker().GetBlock("HEIGHT", fmt.Sprintf("%d", blockNum))
 	if err != nil {
@@ -562,6 +588,9 @@ func (api *PublicEthereumAPI) GetTransactionReceipt(hash common.Hash) (map[strin
 		fields["status"] = hexutil.Uint(1)
 	} else {
 		fields["status"] = hexutil.Uint(0)
+		if receipt.Ret != nil {
+
+		}
 	}
 
 	if receipt.ContractAddress != nil {
@@ -655,26 +684,26 @@ func (api *PublicEthereumAPI) formatBlock(block *pb.Block, fullTx bool) (map[str
 	}
 
 	return map[string]interface{}{
-		"number":           block.Height,
-		"hash":             block.BlockHash.Bytes(),
-		"parentHash":       block.BlockHeader.ParentHash.Bytes(),
-		"nonce":            0,             // PoW specific
-		"sha3Uncles":       common.Hash{}, // No uncles in Tendermint
-		"logsBloom":        block.BlockHeader.Bloom,
-		"transactionsRoot": block.BlockHeader.TxRoot.Bytes(),
-		"stateRoot":        block.BlockHeader.StateRoot.Bytes(),
+		"number":     (*hexutil.Big)(big.NewInt(int64(block.Height()))),
+		"hash":       block.BlockHash,
+		"parentHash": block.BlockHeader.ParentHash,
+		"nonce":      ethtypes.BlockNonce{}, // PoW specific
+		"sha3Uncles": common.Hash{},         // No uncles in raft/rbft
+		//"logsBloom":        block.BlockHeader.Bloom,
+		"transactionsRoot": block.BlockHeader.TxRoot,
+		"stateRoot":        block.BlockHeader.StateRoot,
 		"miner":            common.Address{},
 		"mixHash":          common.Hash{},
-		"difficulty":       0,
-		"totalDifficulty":  0,
+		"difficulty":       (*hexutil.Big)(big.NewInt(0)),
+		"totalDifficulty":  (*hexutil.Big)(big.NewInt(0)),
 		"extraData":        hexutil.Uint64(0),
-		"size":             block.Size(),
-		"gasLimit":         api.config.GasLimit, // Static gas limit
-		"gasUsed":          cumulativeGas,
-		"timestamp":        block.BlockHeader.Timestamp,
+		"size":             hexutil.Uint64(block.Size()),
+		"gasLimit":         hexutil.Uint64(api.config.GasLimit), // Static gas limit
+		"gasUsed":          hexutil.Uint64(cumulativeGas),
+		"timestamp":        hexutil.Uint64(block.BlockHeader.Timestamp),
 		"transactions":     transactions,
 		"uncles":           []string{},
-		"receiptsRoot":     block.BlockHeader.ReceiptRoot.Bytes(),
+		"receiptsRoot":     block.BlockHeader.ReceiptRoot,
 	}, nil
 }
 
@@ -706,11 +735,21 @@ func newRPCTransaction(tx pb.Transaction, blockHash common.Hash, blockNumber uin
 		result.BlockNumber = (*hexutil.Big)(new(big.Int).SetUint64(blockNumber))
 		result.TransactionIndex = (*hexutil.Uint64)(&index)
 	}
-	if tx.GetType() == ethtypes.AccessListTxType {
+
+	switch tx.GetType() {
+	case ethtypes.AccessListTxType:
 		al := tx.(*types2.EthTransaction).GetInner().GetAccessList()
 		result.Accesses = &al
 		result.ChainID = (*hexutil.Big)(tx.GetChainID())
+	case ethtypes.DynamicFeeTxType:
+		al := tx.(*types2.EthTransaction).GetInner().GetAccessList()
+		result.Accesses = &al
+		result.ChainID = (*hexutil.Big)(tx.GetChainID())
+		result.GasFeeCap = (*hexutil.Big)(tx.(*types2.EthTransaction).GetInner().GetGasFeeCap())
+		result.GasTipCap = (*hexutil.Big)(tx.(*types2.EthTransaction).GetInner().GetGasTipCap())
+		result.GasPrice = result.GasFeeCap
 	}
+
 	return result
 }
 
