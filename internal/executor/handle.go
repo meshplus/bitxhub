@@ -457,6 +457,9 @@ func (exec *BlockExecutor) applyTransaction(i int, tx pb.Transaction, invalidRea
 			//internal invoke evm
 			receipt.EvmLogs = exec.ledger.GetLogs(*tx.GetHash())
 			receipt.Status = pb.Receipt_SUCCESS
+			if string(ret) == "begin_failure" {
+				receipt.TxStatus = pb.TransactionStatus_BEGIN_FAILURE
+			}
 			receipt.Ret = ret
 		}
 		receipt.Bloom = ledger.CreateBloom(ledger.EvmReceipts{receipt})

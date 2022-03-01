@@ -165,7 +165,7 @@ func (x *InterchainManager) HandleIBTP(ibtp *pb.IBTP) *boltvm.Response {
 	}
 	x.notifySrcDst(ibtp, change)
 
-	ret := x.ProcessIBTP(ibtp, interchain)
+	ret := x.ProcessIBTP(ibtp, interchain, targetErr != nil)
 
 	if err := x.postAuditInterchainEvent(ibtp.From); err != nil {
 		return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), fmt.Sprintf("post audit interchain event error: %v", err)))
@@ -308,7 +308,7 @@ func (x *InterchainManager) getAppchainInfo(chainID string) (*appchainMgr.Appcha
 	return appchain, nil
 }
 
-func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *pb.Interchain) []byte {
+func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *pb.Interchain, isTargetFail bool) []byte {
 	srcChainService, _ := x.parseChainService(ibtp.From)
 	dstChainService, _ := x.parseChainService(ibtp.To)
 
@@ -352,6 +352,11 @@ func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *pb.Interchain
 			pb.Bool(result))
 	}
 
+	if isTargetFail {
+		res := &boltvm.Response{}
+		res.Result = []byte("begin_failure")
+		return res.Result
+	}
 	return nil
 }
 
