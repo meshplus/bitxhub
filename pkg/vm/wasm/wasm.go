@@ -6,16 +6,14 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"sync"
 
+	"github.com/bytecodealliance/wasmtime-go"
 	"github.com/meshplus/bitxhub-core/wasm"
 	"github.com/meshplus/bitxhub-core/wasm/wasmlib"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub/pkg/vm"
 	"github.com/meshplus/bitxhub/pkg/vm/wasm/vmledger"
-	metering "github.com/meshplus/go-wasm-metering"
 	"github.com/sirupsen/logrus"
-	"github.com/wasmerio/wasmer-go/wasmer"
 )
 
 const GasXVMDeploy = 21000 * 10
@@ -44,8 +42,12 @@ type Contract struct {
 	Hash types.Hash
 }
 
+func NewStore() *wasmtime.Store {
+	return wasm.NewStore()
+}
+
 // New creates a wasm vm instance
-func New(ctx *vm.Context, imports wasmlib.WasmImport, instances map[string]*wasmer.Instance) (*WasmVM, error) {
+func New(ctx *vm.Context, libs []*wasmlib.ImportLib, context map[string]interface{}, store *wasmtime.Store) (*WasmVM, error) {
 	wasmVM := &WasmVM{
 		ctx: ctx,
 	}
@@ -55,36 +57,27 @@ func New(ctx *vm.Context, imports wasmlib.WasmImport, instances map[string]*wasm
 	}
 
 	contractByte := ctx.Ledger.GetCode(ctx.Callee)
-
-	syncInstances := sync.Map{}
-	for k, instance := range instances {
-		syncInstances.Store(k, instance)
+	if contractByte == nil {
+		return nil, fmt.Errorf("this rule address %s does not exist", ctx.Callee)
 	}
-
-	w, err := wasm.New(contractByte, imports, &syncInstances)
+	contract := &wasm.Contract{}
+	if err := json.Unmarshal(contractByte, contract); err != nil {
+		return nil, fmt.Errorf("contract byte not correct")
+	}
+	w, err := wasm.NewWithStore(contract.Code, context, libs, store)
 	if err != nil {
 		return nil, fmt.Errorf("init wasm failed: %w", err)
 	}
 
-	w.SetContext(wasm.LEDGER, ctx.Ledger)
-	w.SetContext(wasm.ACCOUNT, ctx.Ledger.GetOrCreateAccount(ctx.Callee))
-	w.SetContext("currentHeight", ctx.CurrentHeight)
-	w.SetContext("txHash", ctx.Tx.GetHash().String())
-	w.SetContext("caller", ctx.Caller.String())
-	w.SetContext("currentCaller", ctx.CurrentCaller.String())
-
-	// alloc, err := w.Instance.Exports.GetFunction("allocate")
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// w.SetContext(wasm.ALLOC_MEM, alloc)
+	w.SetContext(vmledger.LEDGER, ctx.Ledger)
+	w.SetContext(vmledger.ACCOUNT, ctx.Ledger.GetOrCreateAccount(ctx.Callee))
+	w.SetContext(vmledger.CURRENT_HEIGHT, ctx.CurrentHeight)
+	w.SetContext(vmledger.TX_HASH, ctx.Tx.GetHash().String())
+	w.SetContext(vmledger.CALLER, ctx.Caller.String())
+	w.SetContext(vmledger.CURRENT_CALLER, ctx.CurrentCaller.String())
 	wasmVM.w = w
 
 	return wasmVM, nil
-}
-
-func EmptyImports() (wasmlib.WasmImport, error) {
-	return wasm.NewEmptyImports(), nil
 }
 
 // Run let the wasm vm excute or deploy the smart contract which depends on whether the callee is empty
@@ -101,54 +94,19 @@ func (w *WasmVM) deploy() ([]byte, uint64, error) {
 	if len(w.ctx.TransactionData.Payload) == 0 {
 		return nil, 0, fmt.Errorf("contract cannot be empty")
 	}
-
-	var (
-		metaChan = make(chan []byte)
-		err      error
-	)
-
-	go func(err error) {
-		defer func() {
-			if e := recover(); e != nil {
-				err = fmt.Errorf("%v", e)
-				metaChan <- nil
-			}
-		}()
-
-		engine := wasmer.NewEngine()
-		store := wasmer.NewStore(engine)
-		module, err := wasmer.NewModule(store, w.ctx.TransactionData.Payload)
-		if err != nil {
-			w.ctx.Logger.WithFields(logrus.Fields{}).Error("new module:", err)
-			metaChan <- nil
-			return
-		}
-		env := &wasmlib.WasmEnv{}
-		env.Store = store
-		imports := vmledger.New()
-		imports.ImportLib(env)
-		_, err = wasmer.NewInstance(module, imports.GetImportObject())
-		if err != nil {
-			w.ctx.Logger.WithFields(logrus.Fields{}).Error("new instance:", err)
-			metaChan <- nil
-			return
-		}
-		meteredCode, _, err := metering.MeterWASM(w.ctx.TransactionData.Payload, &metering.Options{}, w.ctx.Logger)
-		metaChan <- meteredCode
-	}(err)
-	meteredCode := <-metaChan
+	context := make(map[string]interface{})
+	store := wasm.NewStore()
+	libs := vmledger.NewLedgerWasmLibs(context, store)
+	_, err := wasm.NewWithStore(w.ctx.TransactionData.Payload, context, libs, store)
 	if err != nil {
+		w.ctx.Logger.WithFields(logrus.Fields{}).Error("new instance:", err)
 		return nil, 0, err
 	}
-	if meteredCode == nil {
-		return nil, 0, fmt.Errorf("wasm code format is not correct")
-	}
-
 	contractNonce := w.ctx.Ledger.GetNonce(w.ctx.Caller)
 
 	contractAddr := createAddress(w.ctx.Caller, contractNonce)
 	wasmStruct := &Contract{
-		Code: meteredCode,
+		Code: w.ctx.TransactionData.Payload,
 		Hash: *types.NewHash(w.ctx.TransactionData.Payload),
 	}
 	wasmByte, err := json.Marshal(wasmStruct)

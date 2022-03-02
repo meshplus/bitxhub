@@ -9,8 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
-	"github.com/meshplus/bitxhub-core/validator/validatorlib"
+	"github.com/meshplus/bitxhub-core/wasm/wasmlib"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/log"
@@ -25,7 +24,6 @@ import (
 	libp2pcert "github.com/meshplus/go-libp2p-cert"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/wasmerio/wasmer-go/wasmer"
 )
 
 const cert1 = `-----BEGIN CERTIFICATE-----
@@ -208,10 +206,10 @@ func initFabricContext(t *testing.T, name string) *vm.Context {
 
 func TestDeploy(t *testing.T) {
 	ctx := initCreateContext(t, "create")
-	instances := make(map[string]*wasmer.Instance)
-	imports, err := EmptyImports()
-	require.Nil(t, err)
-	wasm, err := New(ctx, imports, instances)
+	context := make(map[string]interface{})
+	store := NewStore()
+	var libs []*wasmlib.ImportLib
+	wasm, err := New(ctx, libs, context, store)
 	require.Nil(t, err)
 
 	deployData, _, err := wasm.deploy()
@@ -222,10 +220,10 @@ func TestDeploy(t *testing.T) {
 
 func TestExecute(t *testing.T) {
 	ctx := initCreateContext(t, "execute")
-	instances := make(map[string]*wasmer.Instance)
-	imports, err := EmptyImports()
-	require.Nil(t, err)
-	wasm, err := New(ctx, imports, instances)
+	context := make(map[string]interface{})
+	store := NewStore()
+	var libs []*wasmlib.ImportLib
+	wasm, err := New(ctx, libs, context, store)
 	require.Nil(t, err)
 
 	ret, _, err := wasm.deploy()
@@ -251,11 +249,12 @@ func TestExecute(t *testing.T) {
 		Ledger:          ctx.Ledger,
 		Tx:              ctx.Tx,
 	}
-	imports1 := vmledger.New()
-	fmt.Println(imports1)
-	wasm1, err := New(ctx1, imports1, instances)
+	context1 := make(map[string]interface{})
+	store1 := NewStore()
+	libs1 := vmledger.NewLedgerWasmLibs(context1, store1)
+	fmt.Println(libs1)
+	wasm1, err := New(ctx1, libs1, context1, store1)
 	require.Nil(t, err)
-	fmt.Println(wasm1.w.Instance.Exports)
 
 	result, _, err := wasm1.Run(payload, wasmGasLimit)
 	require.Nil(t, err)
@@ -265,36 +264,36 @@ func TestExecute(t *testing.T) {
 		Method: "state_test_get",
 		Args: []*pb.Arg{
 			{Type: pb.Arg_Bytes, Value: []byte("alice")},
-			{Type: pb.Arg_Bytes, Value: []byte("111")},
 		},
 	}
 	payload1, err := invokePayload1.Marshal()
 	require.Nil(t, err)
 
-	result1, _, err := wasm1.Run(payload1, wasmGasLimit)
+	context2 := make(map[string]interface{})
+	store2 := NewStore()
+	libs2 := vmledger.NewLedgerWasmLibs(context2, store2)
+	wasm2, err := New(ctx1, libs2, context2, store2)
 	require.Nil(t, err)
-	_, _, err = wasm1.Run(payload1, wasmGasLimit)
+	result1, _, err := wasm2.Run(payload1, wasmGasLimit)
 	require.Nil(t, err)
-	_, _, err = wasm1.Run(payload1, wasmGasLimit)
-	require.Nil(t, err)
-	require.Equal(t, "1", string(result1))
+	require.Equal(t, "111", string(result1))
 	hash := types.NewHashByStr("")
 	fmt.Println(hash)
 }
 
 func TestExecuteContants(t *testing.T) {
 	ctx := initConstantsContext(t, "execute")
-	instances := make(map[string]*wasmer.Instance)
-	imports, err := EmptyImports()
-	require.Nil(t, err)
-	wasm, err := New(ctx, imports, instances)
+	context := make(map[string]interface{})
+	store := NewStore()
+	var libs []*wasmlib.ImportLib
+	wasm, err := New(ctx, libs, context, store)
 	require.Nil(t, err)
 
 	ret, _, err := wasm.deploy()
 	require.Nil(t, err)
 
 	invokePayload := &pb.InvokePayload{
-		Method: "get_current_height",
+		Method: "test_current_height",
 		Args:   []*pb.Arg{},
 	}
 	payload, err := invokePayload.Marshal()
@@ -311,14 +310,13 @@ func TestExecuteContants(t *testing.T) {
 		Ledger:          ctx.Ledger,
 		Tx:              ctx.Tx,
 	}
-	imports1 := vmledger.New()
-	fmt.Println(imports1)
-	wasm1, err := New(ctx1, imports1, instances)
+	context1 := make(map[string]interface{})
+	store1 := NewStore()
+	libs1 := vmledger.NewLedgerWasmLibs(context1, store1)
+	wasm1, err := New(ctx1, libs1, context1, store1)
 	require.Nil(t, err)
-	fmt.Println(wasm1.w.Instance.Exports)
 
 	result, _, err := wasm1.Run(payload, wasmGasLimit)
-	fmt.Println(result)
 	require.Nil(t, err)
 	require.Equal(t, "100", string(result))
 
@@ -326,9 +324,14 @@ func TestExecuteContants(t *testing.T) {
 		Method: "test_tx_hash",
 		Args:   []*pb.Arg{},
 	}
+	context2 := make(map[string]interface{})
+	store2 := NewStore()
+	libs2 := vmledger.NewLedgerWasmLibs(context2, store2)
+	wasm2, err := New(ctx1, libs2, context2, store2)
+	require.Nil(t, err)
 	payload1, err := invokePayload1.Marshal()
 	require.Nil(t, err)
-	result1, _, err := wasm1.Run(payload1, wasmGasLimit)
+	result1, _, err := wasm2.Run(payload1, wasmGasLimit)
 	require.Nil(t, err)
 	require.Equal(t, "0x5c170A6ea71f3B7A30267ED0632a7c56cF2c8C0b7Eec477906DfF08F1f4Ac3e2", string(result1))
 
@@ -336,29 +339,39 @@ func TestExecuteContants(t *testing.T) {
 		Method: "test_caller",
 		Args:   []*pb.Arg{},
 	}
+	context3 := make(map[string]interface{})
+	store3 := NewStore()
+	libs3 := vmledger.NewLedgerWasmLibs(context3, store3)
+	wasm3, err := New(ctx1, libs3, context3, store3)
+	require.Nil(t, err)
 	payload2, err := invokePayload2.Marshal()
 	require.Nil(t, err)
-	result2, _, err := wasm1.Run(payload2, wasmGasLimit)
+	result2, _, err := wasm3.Run(payload2, wasmGasLimit)
 	require.Nil(t, err)
-	require.Equal(t, "1", string(result2))
+	require.Equal(t, "0x2962b85e2bEe2e1eA9C4CD69f2758cF7bbc3297E", string(result2))
 
 	invokePayload3 := &pb.InvokePayload{
 		Method: "test_current_caller",
 		Args:   []*pb.Arg{},
 	}
+	context4 := make(map[string]interface{})
+	store4 := NewStore()
+	libs4 := vmledger.NewLedgerWasmLibs(context4, store4)
+	wasm4, err := New(ctx1, libs4, context4, store4)
+	require.Nil(t, err)
 	payload3, err := invokePayload3.Marshal()
 	require.Nil(t, err)
-	result3, _, err := wasm1.Run(payload3, wasmGasLimit)
+	result3, _, err := wasm4.Run(payload3, wasmGasLimit)
 	require.Nil(t, err)
-	require.Equal(t, "1", string(result3))
+	require.Equal(t, "0x2962b85e2bEe2e1eA9C4CD69f2758cF7bbc3297E", string(result3))
 }
 
 func TestExecuteWithNotEnoughGas(t *testing.T) {
 	ctx := initCreateContext(t, "execute_with_not_enough_gas")
-	instances := make(map[string]*wasmer.Instance)
-	imports, err := EmptyImports()
-	require.Nil(t, err)
-	wasm, err := New(ctx, imports, instances)
+	context := make(map[string]interface{})
+	store := NewStore()
+	var libs []*wasmlib.ImportLib
+	wasm, err := New(ctx, libs, context, store)
 	require.Nil(t, err)
 
 	ret, _, err := wasm.deploy()
@@ -384,15 +397,16 @@ func TestExecuteWithNotEnoughGas(t *testing.T) {
 		Ledger:          ctx.Ledger,
 		Tx:              ctx.Tx,
 	}
-	imports1 := vmledger.New()
-	fmt.Println(imports1)
-	wasm1, err := New(ctx1, imports1, instances)
+	context1 := make(map[string]interface{})
+	store1 := NewStore()
+	libs1 := vmledger.NewLedgerWasmLibs(context1, store1)
+	fmt.Println(libs1)
+	wasm1, err := New(ctx1, libs1, context1, store1)
 	require.Nil(t, err)
-	fmt.Println(wasm1.w.Instance.Exports)
 
 	_, _, err = wasm1.Run(payload, wasmGasLimitNotEnough)
 	require.NotNil(t, err)
-	require.Equal(t, "run out of gas limit", err.Error())
+	require.Equal(t, "all fuel consumed by WebAssembly", err.Error())
 
 	runtime.GC()
 	time.Sleep(10 * time.Second)
@@ -425,177 +439,6 @@ func TestExecuteWithNotEnoughGas(t *testing.T) {
 	//time.Sleep(10 * time.Second)
 }
 
-func TestWasm_RunFabValidation(t *testing.T) {
-	ctx := initFabricContext(t, "execute")
-	instances := make(map[string]*wasmer.Instance)
-	imports, err := EmptyImports()
-	require.Nil(t, err)
-	wasm, err := New(ctx, imports, instances)
-	require.Nil(t, err)
-
-	ret, _, err := wasm.deploy()
-	require.Nil(t, err)
-
-	ibtpBytes, err := ioutil.ReadFile("./testdata/ibtp")
-	require.Nil(t, err)
-	ibtp := &pb.IBTP{}
-	err = proto.Unmarshal(ibtpBytes, ibtp)
-	require.Nil(t, err)
-
-	validator, err := ioutil.ReadFile("./testdata/validator")
-	require.Nil(t, err)
-	invokePayload := &pb.InvokePayload{
-		Method: "start_verify",
-		Args: []*pb.Arg{
-			{Type: pb.Arg_Bytes, Value: ibtp.Proof},
-			{Type: pb.Arg_Bytes, Value: validator},
-			{Type: pb.Arg_Bytes, Value: ibtp.Payload},
-		},
-	}
-	payload, err := invokePayload.Marshal()
-	require.Nil(t, err)
-	data := &pb.TransactionData{
-		Payload: payload,
-	}
-	ctx1 := &vm.Context{
-		Caller:          ctx.Caller,
-		CurrentCaller:   ctx.CurrentCaller,
-		Callee:          types.NewAddress(ret),
-		TransactionData: data,
-		Ledger:          ctx.Ledger,
-		Tx:              ctx.Tx,
-	}
-	imports1 := validatorlib.New()
-	wasm1, err := New(ctx1, imports1, instances)
-	require.Nil(t, err)
-
-	result, _, err := wasm1.Run(payload, wasmGasLimit)
-	require.Nil(t, err)
-	require.Equal(t, "0", string(result))
-}
-
-func BenchmarkRunFabValidation(b *testing.B) {
-	dir := filepath.Join(os.TempDir(), "bmark", "execute")
-
-	bytes, err := ioutil.ReadFile("./testdata/fabric_policy.wasm")
-	require.Nil(b, err)
-	privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
-	require.Nil(b, err)
-
-	data := &pb.TransactionData{
-		Payload: bytes,
-	}
-
-	caller, err := privKey.PublicKey().Address()
-	require.Nil(b, err)
-
-	store, err := leveldb.New(filepath.Join(dir, "111"))
-	assert.Nil(b, err)
-	ldb, err := leveldb.New(filepath.Join(dir, "ledger"))
-	assert.Nil(b, err)
-
-	accountCache, err := ledger.NewAccountCache()
-	assert.Nil(b, err)
-	logger := log.NewWithModule("account_test")
-	blockFile, err := blockfile.NewBlockFile(dir, logger)
-	assert.Nil(b, err)
-	ldg, err := ledger.New(&repo.Repo{Key: &repo.Key{PrivKey: privKey}}, store, ldb, blockFile, accountCache, log.NewWithModule("executor"))
-	require.Nil(b, err)
-	tx := &pb.BxhTransaction{
-		TransactionHash: types.NewHashByStr("0x5c170A6ea71f3B7A30267ED0632a7c56cF2c8C0b7Eec477906DfF08F1f4Ac3e2"),
-	}
-	ctx := &vm.Context{
-		Caller:          caller,
-		CurrentCaller:   caller,
-		TransactionData: data,
-		Ledger:          ldg,
-		Tx:              tx,
-	}
-	instances := make(map[string]*wasmer.Instance)
-	imports, err := EmptyImports()
-	require.Nil(b, err)
-	wasm, err := New(ctx, imports, instances)
-	require.Nil(b, err)
-
-	ret, _, err := wasm.deploy()
-	require.Nil(b, err)
-
-	proof, err := ioutil.ReadFile("./testdata/proof")
-	require.Nil(b, err)
-	validator, err := ioutil.ReadFile("./testdata/validator")
-	require.Nil(b, err)
-	invokePayload := &pb.InvokePayload{
-		Method: "start_verify",
-		Args: []*pb.Arg{
-			{Type: pb.Arg_Bytes, Value: proof},
-			{Type: pb.Arg_Bytes, Value: validator},
-		},
-	}
-	payload, err := invokePayload.Marshal()
-	require.Nil(b, err)
-	ctx1 := &vm.Context{
-		Caller:          ctx.Caller,
-		CurrentCaller:   ctx.Caller,
-		Callee:          types.NewAddress(ret),
-		TransactionData: data,
-		Ledger:          ctx.Ledger,
-		Tx:              tx,
-	}
-	for i := 0; i < b.N; i++ {
-		imports1 := validatorlib.New()
-		wasm1, err := New(ctx1, imports1, instances)
-		require.Nil(b, err)
-
-		result, _, err := wasm1.Run(payload, wasmGasLimit)
-		require.Nil(b, err)
-		require.Equal(b, "0", string(result))
-	}
-	ctx.Ledger.Close()
-	store.Close()
-}
-
-// TestWasm_RunValidation has been deprecated. See test in BitXHub-Core instead
-func TestWasm_RunValidation(t *testing.T) {}
-
-func TestWasm_RunWithoutMethod(t *testing.T) {
-	ctx := initCreateContext(t, "execute_without_method")
-	instances := make(map[string]*wasmer.Instance)
-	imports, err := EmptyImports()
-	require.Nil(t, err)
-	wasm, err := New(ctx, imports, instances)
-	require.Nil(t, err)
-
-	ret, _, err := wasm.deploy()
-	require.Nil(t, err)
-
-	pl := &pb.InvokePayload{
-		// Method: "",
-		Args: []*pb.Arg{
-			{Type: pb.Arg_I32, Value: []byte(fmt.Sprintf("%d", 1))},
-			{Type: pb.Arg_I32, Value: []byte(fmt.Sprintf("%d", 2))},
-		},
-	}
-	payload, err := pl.Marshal()
-	require.Nil(t, err)
-	data := &pb.TransactionData{
-		Payload: payload,
-	}
-	ctx1 := &vm.Context{
-		Caller:          ctx.Caller,
-		CurrentCaller:   ctx.Caller,
-		Callee:          types.NewAddress(ret),
-		TransactionData: data,
-		Ledger:          ctx.Ledger,
-		Tx:              ctx.Tx,
-	}
-	imports1 := vmledger.New()
-	wasm1, err := New(ctx1, imports1, instances)
-	require.Nil(t, err)
-
-	_, _, err = wasm1.Run(payload, wasmGasLimit)
-	assert.Equal(t, errorLackOfMethod, err)
-}
-
 func createMockRepo(t *testing.T) *repo.Repo {
 	key := `-----BEGIN EC PRIVATE KEY-----
 BcNwjTDCxyxLNjFKQfMAc6sY6iJs+Ma59WZyC/4uhjE=
@@ -613,43 +456,4 @@ BcNwjTDCxyxLNjFKQfMAc6sY6iJs+Ma59WZyC/4uhjE=
 			Address: address.String(),
 		},
 	}
-}
-
-func TestContext(t *testing.T) {
-	privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
-	assert.Nil(t, err)
-	bytes, err := ioutil.ReadFile("./testdata/fabric_policy.wasm")
-	require.Nil(t, err)
-
-	data := &pb.TransactionData{
-		Payload: bytes,
-	}
-
-	addr, err := privKey.PublicKey().Address()
-	require.Nil(t, err)
-
-	dir := filepath.Join(os.TempDir(), "ctx_test")
-	store, err := leveldb.New(filepath.Join(dir, "validation"))
-	assert.Nil(t, err)
-	ldb, err := leveldb.New(filepath.Join(dir, "ledger"))
-	assert.Nil(t, err)
-
-	accountCache, err := ledger.NewAccountCache()
-	require.Nil(t, err)
-	logger := log.NewWithModule("ctx_test")
-	blockFile, err := blockfile.NewBlockFile(dir, logger)
-	assert.Nil(t, err)
-	ldg, err := ledger.New(createMockRepo(t), store, ldb, blockFile, accountCache, log.NewWithModule("executor"))
-	require.Nil(t, err)
-
-	tx := &pb.BxhTransaction{
-		From: addr,
-		To:   addr,
-	}
-
-	ctx := NewContext(tx, data, ldg, logger)
-
-	require.Equal(t, ctx.Caller(), addr.String())
-	require.Equal(t, ctx.Callee(), addr.String())
-	require.NotNil(t, ctx.Logger())
 }
