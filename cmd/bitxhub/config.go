@@ -13,7 +13,7 @@ import (
 func configCMD() cli.Command {
 	return cli.Command{
 		Name:   "config",
-		Usage:  "Operate bitxhub config",
+		Usage:  "Show BitXHub config",
 		Action: showConfig,
 		Flags:  []cli.Flag{},
 	}

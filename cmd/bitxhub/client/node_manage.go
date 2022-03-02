@@ -17,11 +17,16 @@ import (
 func nodeMgrCMD() cli.Command {
 	return cli.Command{
 		Name:  "node",
-		Usage: "node manage command",
+		Usage: "Node manage command",
 		Subcommands: cli.Commands{
 			cli.Command{
+				Name:   "all",
+				Usage:  "Query all nodes info",
+				Action: allNode,
+			},
+			cli.Command{
 				Name:  "status",
-				Usage: "query node status by node account",
+				Usage: "Query node status by node account",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "account",
@@ -33,7 +38,7 @@ func nodeMgrCMD() cli.Command {
 			},
 			cli.Command{
 				Name:  "register",
-				Usage: "register node",
+				Usage: "Register node",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "account",
@@ -48,22 +53,22 @@ func nodeMgrCMD() cli.Command {
 					},
 					cli.StringFlag{
 						Name:     "pid",
-						Usage:    "Specify vp node pid, only useful for VPnode",
+						Usage:    "Specify vp node pid, only useful for vpNode",
 						Required: false,
 					},
 					cli.Uint64Flag{
 						Name:     "id",
-						Usage:    "Specify vp node id, only useful for VPnode",
+						Usage:    "Specify vp node id, only useful for vpNode",
 						Required: false,
 					},
 					cli.StringFlag{
 						Name:     "name",
-						Usage:    "Specify nvp node name, only useful for NVPnode",
+						Usage:    "Specify nvp node name, only useful for nvpNode",
 						Required: false,
 					},
 					cli.StringFlag{
 						Name:     "permission",
-						Usage:    "Specify nvp node permission, only useful for NVPnode, multiple appchain addresses are separated by commas",
+						Usage:    "Specify nvp node permission, only useful for nvpNode, multiple appchain addresses are separated by commas",
 						Required: false,
 					},
 					cli.StringFlag{
@@ -76,7 +81,7 @@ func nodeMgrCMD() cli.Command {
 			},
 			cli.Command{
 				Name:  "update",
-				Usage: "update node",
+				Usage: "Update node info",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "account",
@@ -85,17 +90,17 @@ func nodeMgrCMD() cli.Command {
 					},
 					cli.StringFlag{
 						Name:     "name",
-						Usage:    "Specify nvp node name, only useful for NVPnode",
+						Usage:    "Specify nvp node name, only useful for nvpNode",
 						Required: false,
 					},
 					cli.StringFlag{
 						Name:     "permission",
-						Usage:    "Specify nvp node permission, only useful for NVPnode, multiple appchain addresses are separated by commas",
+						Usage:    "Specify nvp node permission, only useful for nvpNode, multiple appchain addresses are separated by commas",
 						Required: false,
 					},
 					cli.StringFlag{
 						Name:     "reason",
-						Usage:    "Specify register reason",
+						Usage:    "Specify update reason",
 						Required: false,
 					},
 				},
@@ -103,7 +108,7 @@ func nodeMgrCMD() cli.Command {
 			},
 			cli.Command{
 				Name:  "logout",
-				Usage: "logout node by node account",
+				Usage: "Logout node by node account",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "account",
@@ -117,11 +122,6 @@ func nodeMgrCMD() cli.Command {
 					},
 				},
 				Action: logoutNode,
-			},
-			cli.Command{
-				Name:   "all",
-				Usage:  "query all nodes info",
-				Action: allNode,
 			},
 		},
 	}

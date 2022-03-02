@@ -98,7 +98,7 @@ var csrCMD = cli.Command{
 		},
 		cli.StringFlag{
 			Name:  "target",
-			Usage: "Specific target directory",
+			Usage: "Specify target directory",
 		},
 	},
 	Action: func(ctx *cli.Context) error {
@@ -263,11 +263,11 @@ var issueCMD = cli.Command{
 
 var parseCMD = cli.Command{
 	Name:  "parse",
-	Usage: "parse certification",
+	Usage: "Parse certification",
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:     "path",
-			Usage:    "certification path",
+			Usage:    "Specify certification path",
 			Required: true,
 		},
 	},
@@ -305,12 +305,12 @@ var privCMD = cli.Command{
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:     "name",
-					Usage:    "Specific private key name",
+					Usage:    "Specify private key name",
 					Required: true,
 				},
 				cli.StringFlag{
 					Name:  "target",
-					Usage: "Specific target directory",
+					Usage: "Specify target directory",
 				},
 			},
 			Action: func(ctx *cli.Context) error {
@@ -323,7 +323,7 @@ var privCMD = cli.Command{
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:     "path",
-					Usage:    "Specific private key path",
+					Usage:    "Specify private key path",
 					Required: true,
 				},
 			},
@@ -344,16 +344,16 @@ var privCMD = cli.Command{
 
 var verifyCMD = cli.Command{
 	Name:  "verify",
-	Usage: "verify cert",
+	Usage: "Verify cert",
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:     "sub",
-			Usage:    "sub cert path",
+			Usage:    "Specify sub cert path",
 			Required: true,
 		},
 		cli.StringFlag{
 			Name:     "ca",
-			Usage:    "ca cert path",
+			Usage:    "Specify ca cert path",
 			Required: true,
 		},
 	},

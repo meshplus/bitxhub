@@ -16,15 +16,15 @@ import (
 func ruleMgrCMD() cli.Command {
 	return cli.Command{
 		Name:  "rule",
-		Usage: "rule manage command",
+		Usage: "Rule manage command",
 		Subcommands: cli.Commands{
 			cli.Command{
 				Name:  "all",
-				Usage: "query all rules info of one chain",
+				Usage: "Query all rules info of one appchain",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "id",
-						Usage:    "Specify chain id",
+						Usage:    "Specify appchain id",
 						Required: true,
 					},
 				},
@@ -32,11 +32,11 @@ func ruleMgrCMD() cli.Command {
 			},
 			cli.Command{
 				Name:  "master",
-				Usage: "query master rule address of a chain",
+				Usage: "Query master rule address of one appchain",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "id",
-						Usage:    "Specify chain id",
+						Usage:    "Specify appchain id",
 						Required: true,
 					},
 				},
@@ -44,11 +44,11 @@ func ruleMgrCMD() cli.Command {
 			},
 			cli.Command{
 				Name:  "status",
-				Usage: "query rule status by rule address and chain id",
+				Usage: "Query rule status by rule address and appchain id",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "id",
-						Usage:    "Specify chain id",
+						Usage:    "Specify appchain id",
 						Required: true,
 					},
 					cli.StringFlag{

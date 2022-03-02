@@ -10,7 +10,7 @@ import (
 func blockCMD() cli.Command {
 	return cli.Command{
 		Name:   "block",
-		Usage:  "Query block",
+		Usage:  "Query block by block hash or block height",
 		Action: getBlock,
 	}
 }

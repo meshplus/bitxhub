@@ -16,11 +16,16 @@ import (
 func roleMgrCMD() cli.Command {
 	return cli.Command{
 		Name:  "role",
-		Usage: "role manage command",
+		Usage: "Role manage command",
 		Subcommands: cli.Commands{
 			cli.Command{
+				Name:   "all",
+				Usage:  "Query all roles info",
+				Action: allRole,
+			},
+			cli.Command{
 				Name:  "status",
-				Usage: "query role status by role id",
+				Usage: "Query role status by role id",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "id",
@@ -32,7 +37,7 @@ func roleMgrCMD() cli.Command {
 			},
 			cli.Command{
 				Name:  "register",
-				Usage: "register role",
+				Usage: "Register role",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "address",
@@ -59,7 +64,7 @@ func roleMgrCMD() cli.Command {
 			},
 			cli.Command{
 				Name:  "freeze",
-				Usage: "freeze role by role id",
+				Usage: "Freeze role by role id",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "id",
@@ -76,7 +81,7 @@ func roleMgrCMD() cli.Command {
 			},
 			cli.Command{
 				Name:  "activate",
-				Usage: "activate role by role id",
+				Usage: "Activate role by role id",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "id",
@@ -93,11 +98,11 @@ func roleMgrCMD() cli.Command {
 			},
 			cli.Command{
 				Name:  "logout",
-				Usage: "logout role by role id",
+				Usage: "Logout role by role id",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "id",
-						Usage:    "Specify role pid",
+						Usage:    "Specify role id",
 						Required: true,
 					},
 					cli.StringFlag{
@@ -110,7 +115,7 @@ func roleMgrCMD() cli.Command {
 			},
 			cli.Command{
 				Name:  "bind",
-				Usage: "bind audit role with node",
+				Usage: "Bind audit role with node",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "id",
@@ -124,16 +129,11 @@ func roleMgrCMD() cli.Command {
 					},
 					cli.StringFlag{
 						Name:     "reason",
-						Usage:    "Specify freeze reason",
+						Usage:    "Specify bind reason",
 						Required: false,
 					},
 				},
 				Action: bindRole,
-			},
-			cli.Command{
-				Name:   "all",
-				Usage:  "query all roles info",
-				Action: allRole,
 			},
 		},
 	}

@@ -16,15 +16,15 @@ import (
 func keyCMD() cli.Command {
 	return cli.Command{
 		Name:  "key",
-		Usage: "Create and show key information",
+		Usage: "BitXHub private key tools",
 		Subcommands: []cli.Command{
 			{
 				Name:  "gen",
-				Usage: "Create new private key in specified directory",
+				Usage: "Generate new private key in specified directory",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:  "target",
-						Usage: "Specific target directory",
+						Usage: "Specify target directory",
 					},
 					cli.StringFlag{
 						Name:     "passwd",
@@ -33,7 +33,7 @@ func keyCMD() cli.Command {
 					},
 					cli.StringFlag{
 						Name:     "algo",
-						Usage:    "crypto algorithm",
+						Usage:    "Specify crypto algorithm",
 						Value:    "Secp256k1",
 						Required: false,
 					},
@@ -41,9 +41,8 @@ func keyCMD() cli.Command {
 				Action: genPrivKey,
 			},
 			{
-				Name:   "show",
-				Usage:  "Show BitXHub key from repo",
-				Action: showKey,
+				Name:  "show",
+				Usage: "Show BitXHub private key info",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "path",
@@ -56,11 +55,11 @@ func keyCMD() cli.Command {
 						Required: false,
 					},
 				},
+				Action: showKey,
 			},
 			{
-				Name:   "address",
-				Usage:  "Show address from Secp256k1 private key",
-				Action: getAddress,
+				Name:  "address",
+				Usage: "Show address from BitXHub private key",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "path",
@@ -73,6 +72,7 @@ func keyCMD() cli.Command {
 						Required: false,
 					},
 				},
+				Action: getAddress,
 			},
 		},
 	}

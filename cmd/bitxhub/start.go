@@ -31,24 +31,24 @@ var logger = log.NewWithModule("cmd")
 func startCMD() cli.Command {
 	return cli.Command{
 		Name:  "start",
-		Usage: "Start a long-running start process",
+		Usage: "Start a long-running daemon process",
 		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name:     "passwd",
-				Usage:    "bitxhub key password",
-				Required: false,
-			},
-			cli.StringFlag{
 				Name:  "config",
-				Usage: "bitxhub config path",
+				Usage: "Specify BitXHub config path",
 			},
 			cli.StringFlag{
 				Name:  "network",
-				Usage: "bitxhub network config path",
+				Usage: "Specify BitXHub network config path",
 			},
 			cli.StringFlag{
 				Name:  "order",
-				Usage: "bitxhub order config path",
+				Usage: "Specify BitXHub order config path",
+			},
+			cli.StringFlag{
+				Name:     "passwd",
+				Usage:    "Specify BitXHub node private key password",
+				Required: false,
 			},
 		},
 		Action: start,
