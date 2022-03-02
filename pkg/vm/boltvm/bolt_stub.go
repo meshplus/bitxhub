@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"strings"
 
+	"github.com/meshplus/bitxhub-kit/log"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/meshplus/bitxhub-core/boltvm"
@@ -23,6 +25,8 @@ type BoltStubImpl struct {
 	ctx *vm.Context
 	ve  validator.Engine
 }
+
+var logger = log.NewWithModule("bvm")
 
 func (b *BoltStubImpl) Caller() string {
 	return b.ctx.Caller.String()
@@ -178,17 +182,19 @@ func (b *BoltStubImpl) CrossInvokeEVM(address string, data []byte) *boltvm.Respo
 	gp := new(core.GasPool).AddGas(10000000)
 	msg := ledger.NewMessageFromBxh(tx)
 	statedb := ctx.Ledger.StateLedger
-	statedb.PrepareEVM(common.BytesToHash(ctx.Tx.TransactionHash.Bytes()), int(ctx.TransactionIndex))
-	snapshot := statedb.Snapshot()
 	txContext := vm1.NewEVMTxContext(msg)
+	snapshot := statedb.Snapshot()
 	b.bvm.evm.Reset(txContext, statedb)
 	result, err := vm1.ApplyMessage(b.bvm.evm, msg, gp)
 	if err != nil {
+		logger.Errorf("apply msg failed: %s", err.Error())
 		statedb.RevertToSnapshot(snapshot)
-		ctx.Ledger.ClearChangerAndRefund()
+		ctx.Ledger.Finalise(true)
 		return boltvm.Error(err.Error())
 	}
 	if result.Failed() {
+		logger.Warnf("execute tx failed: %s", result.Err.Error())
+		ctx.Ledger.Finalise(true)
 		if strings.HasPrefix(result.Err.Error(), vm1.ErrExecutionReverted.Error()) {
 			return boltvm.Error(string(append([]byte(result.Err.Error()), common.CopyBytes(result.ReturnData)...)))
 		} else {
@@ -196,7 +202,11 @@ func (b *BoltStubImpl) CrossInvokeEVM(address string, data []byte) *boltvm.Respo
 		}
 	}
 	ret := result.Return()
-	ctx.Ledger.Finalise(false)
+	ctx.Ledger.Finalise(true)
+
+	if ctx.Ledger.GetLogs(*tx.GetHash()) == nil {
+		panic("no evm logs")
+	}
 	return boltvm.Success(ret)
 }
 

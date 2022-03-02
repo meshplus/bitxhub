@@ -13,9 +13,9 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/meshplus/bitxhub-core/boltvm"
-	"github.com/meshplus/bitxhub-core/eth-contracts/escrows-contracts"
-	"github.com/meshplus/bitxhub-core/eth-contracts/interchain-contracts"
-	"github.com/meshplus/bitxhub-core/eth-contracts/proxy-contracts"
+	escrows_contracts "github.com/meshplus/bitxhub-core/eth-contracts/escrows-contracts"
+	interchain_contracts "github.com/meshplus/bitxhub-core/eth-contracts/interchain-contracts"
+	proxy_contracts "github.com/meshplus/bitxhub-core/eth-contracts/proxy-contracts"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/executor/oracle/appchain"
@@ -200,8 +200,10 @@ func (ehm *EthHeaderManager) Mint(receiptData []byte, proofData []byte) *boltvm.
 		ehm.Logger().Info("proxy txhash is :" + ehm.GetTxHash().String())
 		res := ehm.CrossInvokeEVM(proxyAddr.Addr, input)
 		if res.Ok {
+			ehm.Logger().Info("proxy success")
 			ehm.Set(EthTxKey(receipt.TxHash.String()), res.Result)
 		} else {
+			ehm.Logger().Info("proxy fail")
 			// error swap will burn back to himself
 			res = ehm.handleErrorSwap(escrowsLockEvent, receipt)
 			if res.Ok {
@@ -246,7 +248,6 @@ func (ehm *EthHeaderManager) handleErrorSwap(escrowsLockEvent *escrows_contracts
 	input, err := interchainSwapAbi.Pack("lockRollback",
 		escrowsLockEvent.EthToken, escrowsLockEvent.RelayToken, escrowsLockEvent.Locker,
 		common.HexToAddress(escrowsLockEvent.Recipient), escrowsLockEvent.Amount, receipt.TxHash.String(), escrowsLockEvent.AppchainIndex)
-	ehm.Logger().Info("lock txhash is :" + ehm.GetTxHash().String())
 	if err != nil {
 		return boltvm.Error(err.Error())
 	}
