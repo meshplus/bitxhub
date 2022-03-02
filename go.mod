@@ -34,7 +34,7 @@ require (
 	github.com/magiconair/properties v1.8.4
 	github.com/meshplus/bitxhub-core v1.3.1-0.20220218084831-3aaff0fe2b53
 	github.com/meshplus/bitxhub-kit v1.2.1-0.20220111092827-0ad7ba507bd3
-	github.com/meshplus/bitxhub-model v1.2.1-0.20211228020023-9ad5546d56ec
+	github.com/meshplus/bitxhub-model v1.2.1-0.20220301021904-c82a870205e5
 	github.com/meshplus/consensus v0.0.0-20211228075008-5f469b198531
 	github.com/meshplus/eth-kit v0.0.0-20220105081940-c90e9f2aa162
 	github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd
@@ -48,7 +48,6 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.5.0
 	github.com/prometheus/procfs v0.0.10 // indirect
-	github.com/rogpeppe/go-internal v1.8.0 // indirect
 	github.com/rs/cors v1.7.0
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cast v1.3.1
