@@ -216,10 +216,10 @@ func NewMessageFromBxh(tx *pb.BxhTransaction) etherTypes.Message {
 	data := tx.GetPayload()
 	accessList := new(etherTypes.AccessList)
 
-	checkNonce := true
+	isFake := false
 	if v, _, _ := tx.GetRawSignature(); v == nil {
-		checkNonce = false
+		isFake = true
 	}
 
-	return etherTypes.NewMessage(from, to, nonce, amount, gas, gasPrice, gasFeeCap, gasTipCap, data, *accessList, checkNonce)
+	return etherTypes.NewMessage(from, to, nonce, amount, gas, gasPrice, gasFeeCap, gasTipCap, data, *accessList, isFake)
 }
