@@ -24,7 +24,6 @@ import (
 	vm "github.com/meshplus/eth-kit/evm"
 	ledger2 "github.com/meshplus/eth-kit/ledger"
 	"github.com/sirupsen/logrus"
-	"github.com/wasmerio/wasmer-go/wasmer"
 )
 
 const (
@@ -46,7 +45,6 @@ type BlockExecutor struct {
 	validationEngine validator.Engine
 	currentHeight    uint64
 	currentBlockHash *types.Hash
-	wasmInstances    map[string]*wasmer.Instance
 	txsExecutor      agency.TxsExecutor
 	blockFeed        event.Feed
 	logsFeed         event.Feed
@@ -92,7 +90,6 @@ func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, client *appchain
 		validationEngine: ibtpVerify.ValidationEngine(),
 		currentHeight:    chainLedger.GetChainMeta().Height,
 		currentBlockHash: chainLedger.GetChainMeta().BlockHash,
-		wasmInstances:    make(map[string]*wasmer.Instance),
 		evmChainCfg:      newEVMChainCfg(config),
 		config:           *config,
 		bxhGasPrice:      gasPrice,

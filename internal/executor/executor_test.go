@@ -104,8 +104,6 @@ func TestNew(t *testing.T) {
 	assert.NotNil(t, executor.validationEngine)
 	assert.Equal(t, chainMeta.BlockHash, executor.currentBlockHash)
 	assert.Equal(t, chainMeta.Height, executor.currentHeight)
-	assert.NotNil(t, executor.wasmInstances)
-	assert.Equal(t, 0, len(executor.wasmInstances))
 }
 
 func TestBlockExecutor_ExecuteBlock(t *testing.T) {
