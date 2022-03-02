@@ -36,7 +36,7 @@ ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/lib
 # Init bitxhub config
 RUN bitxhub --repo=/root/.bitxhub init \
     && sed -i "s/solo = false/solo = true/g" /root/.bitxhub/bitxhub.toml \
-    && sed -i "s/raft.so/solo.so/g" /root/.bitxhub/bitxhub.toml
+    && sed -i "s/raft/solo/g" /root/.bitxhub/bitxhub.toml
 
 EXPOSE 8881 60011 9091 53121 40011
 
