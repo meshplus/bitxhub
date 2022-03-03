@@ -161,7 +161,7 @@ func (l *SimpleLedger) AddEVMLog(log *etherTypes.Log) {
 }
 
 type evmLogs struct {
-	logs         map[types.Hash][]*pb.EvmLog
+	logs         map[string][]*pb.EvmLog
 	logSize      uint
 	thash, bhash *types.Hash
 	txIndex      int
@@ -169,7 +169,7 @@ type evmLogs struct {
 
 func NewEvmLogs() *evmLogs {
 	return &evmLogs{
-		logs: make(map[types.Hash][]*pb.EvmLog),
+		logs: make(map[string][]*pb.EvmLog),
 	}
 }
 

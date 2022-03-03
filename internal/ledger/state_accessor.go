@@ -512,12 +512,16 @@ func (l *SimpleLedger) AddLog(log *pb.EvmLog) {
 	log.BlockHash = l.logs.bhash
 	log.TxIndex = uint64(l.logs.txIndex)
 	log.Index = uint64(l.logs.logSize)
-	l.logs.logs[*l.logs.thash] = append(l.logs.logs[*l.logs.thash], log)
+	l.logs.logs[l.logs.thash.String()] = append(l.logs.logs[l.logs.thash.String()], log)
 	l.logs.logSize++
 }
 
 func (l *SimpleLedger) GetLogs(hash types.Hash) []*pb.EvmLog {
-	return l.logs.logs[hash]
+	for h, logs := range l.logs.logs {
+		marshal, _ := json.Marshal(logs)
+		l.logger.Infof("evmLogs:[%v][%v]", h, string(marshal))
+	}
+	return l.logs.logs[hash.String()]
 }
 
 func (l *SimpleLedger) Logs() []*pb.EvmLog {

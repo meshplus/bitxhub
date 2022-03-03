@@ -213,11 +213,11 @@ func (ch accessListAddSlotChange) dirtied() *types.Address {
 }
 
 func (ch addLogChange) revert(l *SimpleLedger) {
-	logs := l.logs.logs[*ch.txHash]
+	logs := l.logs.logs[ch.txHash.String()]
 	if len(logs) == 1 {
-		delete(l.logs.logs, *ch.txHash)
+		delete(l.logs.logs, ch.txHash.String())
 	} else {
-		l.logs.logs[*ch.txHash] = logs[:len(logs)-1]
+		l.logs.logs[ch.txHash.String()] = logs[:len(logs)-1]
 	}
 	l.logs.logSize--
 }
