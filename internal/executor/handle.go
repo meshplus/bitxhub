@@ -8,6 +8,7 @@ import (
 	"math"
 	"math/big"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -85,8 +86,10 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	if err != nil {
 		exec.logger.Errorf("filterValidTx err: %s", err)
 	}
-
-	err = exec.setTimeoutList(block.BlockHeader.Number, blockWrapper.block.Transactions.Transactions, invalidTxHashMap, recordFailTxHashMap)
+	height := block.BlockHeader.Number
+	txList := blockWrapper.block.Transactions.Transactions
+	bxhId := strconv.FormatUint(exec.config.ChainID, 10)
+	err = exec.setTimeoutList(height, txList, invalidTxHashMap, recordFailTxHashMap, bxhId)
 	if err != nil {
 		exec.logger.Errorf("setTimeoutList err: %s", err)
 	}
@@ -759,15 +762,10 @@ func (exec *BlockExecutor) getTimeoutList(height uint64) ([]string, error) {
 	return list, nil
 }
 
-func (exec *BlockExecutor) setTimeoutList(height uint64, txList []pb.Transaction, invalidMap map[string]bool, failMap map[string]bool) error {
+func (exec *BlockExecutor) setTimeoutList(height uint64, txList []pb.Transaction, invalidMap map[string]bool, failMap map[string]bool, bxhId string) error {
 	addTimeoutListMap := make(map[uint64]string, len(txList))
 	removeTimeoutListMap := make(map[uint64]string, len(txList))
 
-	ok, val := exec.ledger.GetState(constant.InterchainContractAddr.Address(), []byte("bitxhub-id"))
-	if !ok {
-		return fmt.Errorf("can't get local bxhId from ledger")
-	}
-	bxhID := string(val)
 	for _, tx := range txList {
 		switch tx.(type) {
 		case *types2.EthTransaction:
@@ -779,13 +777,13 @@ func (exec *BlockExecutor) setTimeoutList(height uint64, txList []pb.Transaction
 			ibtp := tx.GetIBTP()
 
 			// if bxh is destAppchain, needn't add into timeoutList
-			if exec.isDstChainFromBxh(ibtp.To, bxhID) {
+			if exec.isDstChainFromBxh(ibtp.To, bxhId) {
 				continue
 			}
 
 			// invalidTx needn't add into timeoutList
 			// tx of status is begin_fail needn't add into timeoutList
-			if ok = invalidMap[tx.GetHash().String()]; ok {
+			if ok := invalidMap[tx.GetHash().String()]; ok {
 				continue
 			} else if ok = failMap[tx.GetHash().String()]; ok {
 				continue
@@ -803,9 +801,7 @@ func (exec *BlockExecutor) setTimeoutList(height uint64, txList []pb.Transaction
 				}
 				str, ok := addTimeoutListMap[timeoutHeight]
 				if !ok {
-					var builder strings.Builder
-					builder.WriteString(txId)
-					addTimeoutListMap[timeoutHeight] = builder.String()
+					addTimeoutListMap[timeoutHeight] = txId
 				} else {
 					addTimeoutListMap[timeoutHeight] = exec.writeToStr(str, txId)
 				}
@@ -823,9 +819,7 @@ func (exec *BlockExecutor) setTimeoutList(height uint64, txList []pb.Transaction
 
 				str, ok := removeTimeoutListMap[record.Height]
 				if !ok {
-					var builder strings.Builder
-					builder.WriteString(txId)
-					removeTimeoutListMap[record.Height] = builder.String()
+					removeTimeoutListMap[record.Height] = txId
 				} else {
 					removeTimeoutListMap[record.Height] = exec.writeToStr(str, txId)
 				}
