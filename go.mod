@@ -6,7 +6,12 @@ require (
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
 	github.com/Rican7/retry v0.1.0
 	github.com/binance-chain/tss-lib v1.3.3-0.20210411025750-fffb56b30511
-	github.com/bytecodealliance/wasmtime-go v0.34.0
+	github.com/bitxhub/bitxhub-order-rbft v1.23.1-0.20220830054713-1b1101a98f5c
+	github.com/bitxhub/crypto-gm v0.0.0-20210825015341-e035b646648d
+	github.com/bitxhub/license v0.0.0-20210721031301-66d44925f5f9
+	github.com/bitxhub/parallel-executor v0.0.0-20220824125722-9ad69f249cda
+	github.com/bitxhub/service-mng v0.0.0-20201125031105-f345beee1b42
+	github.com/bytecodealliance/wasmtime-go v0.37.0
 	github.com/cbergoon/merkletree v0.2.0
 	github.com/cheynewallace/tabby v1.1.1
 	github.com/common-nighthawk/go-figure v0.0.0-20190529165535-67e0ed34491a
@@ -15,7 +20,6 @@ require (
 	github.com/ethereum/go-ethereum v1.10.8
 	github.com/fatih/color v1.7.0
 	github.com/fsnotify/fsnotify v1.4.9
-	github.com/gobuffalo/envy v1.9.0 // indirect
 	github.com/gobuffalo/packd v1.0.1
 	github.com/gobuffalo/packr/v2 v2.8.3
 	github.com/gogo/protobuf v1.3.2
@@ -34,8 +38,8 @@ require (
 	github.com/libp2p/go-libp2p-swarm v0.2.4
 	github.com/looplab/fsm v0.2.0
 	github.com/magiconair/properties v1.8.5
-	github.com/meshplus/bitxhub-core v1.3.1-0.20220919013043-3bfcb2b45a32
-	github.com/meshplus/bitxhub-kit v1.2.1-0.20220815090757-6256823a7426
+	github.com/meshplus/bitxhub-core v1.3.1-0.20220927021127-645700e66121
+	github.com/meshplus/bitxhub-kit v1.2.1-0.20220818091754-5d20bc284c36
 	github.com/meshplus/bitxhub-model v1.2.1-0.20220815081129-609df840b044
 	github.com/meshplus/consensus v0.0.0-20211228075008-5f469b198531
 	github.com/meshplus/eth-kit v0.0.0-20220628031226-4b30a994a2a6
@@ -57,6 +61,7 @@ require (
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	github.com/tidwall/gjson v1.6.8
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5
+	github.com/ultramesh/rbft v0.1.3
 	github.com/urfave/cli v1.22.1
 	github.com/willf/bitset v1.1.11 // indirect
 	github.com/willf/bloom v2.0.3+incompatible
@@ -80,3 +85,19 @@ replace github.com/agl/ed25519 => github.com/binance-chain/edwards25519 v0.0.0-2
 replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4
 
 replace github.com/golang/protobuf => github.com/golang/protobuf v1.3.2
+
+replace github.com/ultramesh/rbft => git.hyperchain.cn/dmlab/rbft v0.1.5-0.20220830054443-ae90fc5536ca
+
+replace github.com/ultramesh/txpool => git.hyperchain.cn/ultramesh/txpool v0.1.2
+
+replace github.com/ultramesh/fancylogger => git.hyperchain.cn/ultramesh/fancylogger v0.1.0
+
+replace github.com/dmlab/go-common-utils => git.hyperchain.cn/dmlab/go-common-utils v0.0.2-0.20210309022359-686159648ac6
+
+replace github.com/ultramesh/crypto-standard => git.hyperchain.cn/ultramesh/crypto-standard.git v0.1.0
+
+replace github.com/ultramesh/crypto => git.hyperchain.cn/ultramesh/crypto.git v0.1.0
+
+replace github.com/hyperchain/gosdk => git.hyperchain.cn/hyperchain/gosdk.git v1.2.8
+
+replace github.com/ultramesh/crypto-gm => git.hyperchain.cn/dmlab/crypto-gm v0.2.14
