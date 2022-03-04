@@ -319,7 +319,7 @@ func (t *TransactionManager) removeFromTimeoutList(height uint64, txId string) {
 				list = append(list[:index], list[index+1:]...)
 			}
 		}
-		t.SetObject(TimeoutKey(height), timeoutList)
+		t.SetObject(TimeoutKey(height), strings.Join(list, ","))
 	}
 }
 
