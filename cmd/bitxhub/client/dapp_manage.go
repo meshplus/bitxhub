@@ -18,16 +18,16 @@ import (
 func dappMgrCMD() cli.Command {
 	return cli.Command{
 		Name:  "dapp",
-		Usage: "dapp manage command",
+		Usage: "Dapp manage command",
 		Subcommands: cli.Commands{
 			cli.Command{
 				Name:   "all",
-				Usage:  "query all dapps",
+				Usage:  "Query all dapps",
 				Action: getAllDapps,
 			},
 			cli.Command{
 				Name:  "permission",
-				Usage: "query permission dapps",
+				Usage: "Query permission dapps",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "caller",
@@ -39,7 +39,7 @@ func dappMgrCMD() cli.Command {
 			},
 			cli.Command{
 				Name:  "status",
-				Usage: "query dapp status by dapp id",
+				Usage: "Query dapp status by dapp id",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "id",
@@ -51,7 +51,7 @@ func dappMgrCMD() cli.Command {
 			},
 			cli.Command{
 				Name:  "myDapps",
-				Usage: "query dapps by owner addr",
+				Usage: "Query dapps by owner addr",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "addr",
@@ -63,7 +63,7 @@ func dappMgrCMD() cli.Command {
 			},
 			cli.Command{
 				Name:  "register",
-				Usage: "register dapp",
+				Usage: "Register dapp",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "name",
@@ -105,7 +105,7 @@ func dappMgrCMD() cli.Command {
 			},
 			cli.Command{
 				Name:  "update",
-				Usage: "update dapp",
+				Usage: "Update dapp info",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "id",
@@ -139,7 +139,7 @@ func dappMgrCMD() cli.Command {
 					},
 					cli.StringFlag{
 						Name:     "reason",
-						Usage:    "Specify register reason",
+						Usage:    "Specify update reason",
 						Required: false,
 					},
 				},
@@ -147,7 +147,7 @@ func dappMgrCMD() cli.Command {
 			},
 			cli.Command{
 				Name:  "freeze",
-				Usage: "freeze dapp by dapp id",
+				Usage: "Freeze dapp by dapp id",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "id",
@@ -164,7 +164,7 @@ func dappMgrCMD() cli.Command {
 			},
 			cli.Command{
 				Name:  "activate",
-				Usage: "activate dapp by dapp id",
+				Usage: "Activate dapp by dapp id",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "id",
@@ -181,7 +181,7 @@ func dappMgrCMD() cli.Command {
 			},
 			cli.Command{
 				Name:  "transfer",
-				Usage: "transfer dapp to other user",
+				Usage: "Transfer dapp to other user",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "id",
@@ -195,7 +195,7 @@ func dappMgrCMD() cli.Command {
 					},
 					cli.StringFlag{
 						Name:     "reason",
-						Usage:    "Specify freeze reason",
+						Usage:    "Specify transfer reason",
 						Required: false,
 					},
 				},
@@ -203,7 +203,7 @@ func dappMgrCMD() cli.Command {
 			},
 			cli.Command{
 				Name:  "confirm",
-				Usage: "confirm dapp transfer",
+				Usage: "Confirm dapp transfer",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "id",
@@ -215,7 +215,7 @@ func dappMgrCMD() cli.Command {
 			},
 			cli.Command{
 				Name:  "evaluate",
-				Usage: "evaluate dapp",
+				Usage: "Evaluate dapp",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "id",

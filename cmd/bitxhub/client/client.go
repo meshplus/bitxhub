@@ -29,6 +29,7 @@ var clientCMD = cli.Command{
 		chainCMD(),
 		blockCMD(),
 		networkCMD(),
+		transferCMD(),
 		receiptCMD(),
 		txCMD(),
 		validatorsCMD(),

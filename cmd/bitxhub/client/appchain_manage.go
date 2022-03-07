@@ -15,16 +15,16 @@ import (
 
 func appchainMgrCMD() cli.Command {
 	return cli.Command{
-		Name:  "chain",
-		Usage: "appchain manage command",
+		Name:  "appchain",
+		Usage: "Appchain manage command",
 		Subcommands: cli.Commands{
 			cli.Command{
 				Name:  "info",
-				Usage: "query chain info by chain name",
+				Usage: "Query appchain info by appchain name",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "name",
-						Usage:    "Specify chain name",
+						Usage:    "Specify appchain name",
 						Required: true,
 					},
 				},
@@ -32,11 +32,11 @@ func appchainMgrCMD() cli.Command {
 			},
 			cli.Command{
 				Name:  "status",
-				Usage: "query chain status by chain id",
+				Usage: "Query chain status by appchain id",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "id",
-						Usage:    "Specify chain id",
+						Usage:    "Specify appchain id",
 						Required: true,
 					},
 				},
@@ -44,11 +44,11 @@ func appchainMgrCMD() cli.Command {
 			},
 			cli.Command{
 				Name:  "freeze",
-				Usage: "freeze appchain by chain id",
+				Usage: "Freeze appchain by appchain id",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "id",
-						Usage:    "Specify chain id",
+						Usage:    "Specify appchain id",
 						Required: true,
 					},
 					cli.StringFlag{
@@ -61,11 +61,11 @@ func appchainMgrCMD() cli.Command {
 			},
 			cli.Command{
 				Name:  "activate",
-				Usage: "activate chain by chain id",
+				Usage: "Activate appchain by appchain id",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "id",
-						Usage:    "Specify chain id",
+						Usage:    "Specify appchain id",
 						Required: true,
 					},
 					cli.StringFlag{

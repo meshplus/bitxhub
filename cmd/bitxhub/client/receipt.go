@@ -9,7 +9,7 @@ import (
 func receiptCMD() cli.Command {
 	return cli.Command{
 		Name:   "receipt",
-		Usage:  "Query receipt",
+		Usage:  "Query transaction receipt by transaction hash",
 		Action: getReceipt,
 	}
 }

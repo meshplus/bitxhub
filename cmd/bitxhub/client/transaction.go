@@ -20,38 +20,9 @@ const (
 
 func txCMD() cli.Command {
 	return cli.Command{
-		Name:  "tx",
-		Usage: "Transaction manipulation",
-		Subcommands: []cli.Command{
-			{
-				Name:   "get",
-				Usage:  "Query transaction",
-				Action: getTransaction,
-			},
-			{
-				Name:  "send",
-				Usage: "Send transaction",
-				Flags: []cli.Flag{
-					cli.StringFlag{
-						Name:  "key",
-						Usage: "Private key path",
-					},
-					cli.StringFlag{
-						Name:  "to",
-						Usage: "Target address",
-					},
-					cli.StringFlag{
-						Name:  "amount",
-						Usage: "Transfer amount",
-					},
-					cli.Uint64Flag{
-						Name:  "type",
-						Usage: "Transaction type",
-					},
-				},
-				Action: sendTransaction,
-			},
-		},
+		Name:   "tx",
+		Usage:  "Query transaction by transaction hash",
+		Action: getTransaction,
 	}
 
 }
@@ -72,35 +43,6 @@ func getTransaction(ctx *cli.Context) error {
 
 	fmt.Println(string(data))
 
-	return nil
-}
-
-func sendTransaction(ctx *cli.Context) error {
-	toString := ctx.String("to")
-	amountStr := ctx.String("amount")
-	txType := ctx.Uint64("type")
-	keyPath := ctx.String("key")
-
-	amount, ok := new(big.Int).SetString(amountStr, 10)
-	if !ok {
-		return fmt.Errorf("invalid amount")
-	}
-
-	if keyPath == "" {
-		repoRoot, err := repo.PathRootWithDefault(ctx.GlobalString("repo"))
-		if err != nil {
-			return fmt.Errorf("pathRootWithDefault error: %w", err)
-		}
-
-		keyPath = repo.GetKeyPath(repoRoot)
-	}
-
-	resp, err := sendTxOrView(ctx, sendTx, toString, amount, txType, keyPath, 0, "")
-	if err != nil {
-		return fmt.Errorf("send transaction: %w", err)
-	}
-
-	fmt.Println(string(resp))
 	return nil
 }
 

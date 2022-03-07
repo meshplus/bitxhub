@@ -24,25 +24,25 @@ import (
 func governanceCMD() cli.Command {
 	return cli.Command{
 		Name:  "governance",
-		Usage: "governance command",
+		Usage: "BitXHub governance command",
 		Subcommands: cli.Commands{
 			cli.Command{
 				Name:  "vote",
-				Usage: "vote to a proposal",
+				Usage: "Vote to a proposal",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "id",
-						Usage:    "proposal id",
+						Usage:    "Specify proposal id",
 						Required: true,
 					},
 					cli.StringFlag{
 						Name:     "info",
-						Usage:    "voting information, approve or reject",
+						Usage:    "Specify voting information, approve or reject",
 						Required: true,
 					},
 					cli.StringFlag{
 						Name:     "reason",
-						Usage:    "reason to vote",
+						Usage:    "Specify reason to vote",
 						Required: true,
 					},
 				},
@@ -50,35 +50,35 @@ func governanceCMD() cli.Command {
 			},
 			cli.Command{
 				Name:  "proposal",
-				Usage: "proposal manage command",
+				Usage: "Proposal manage command",
 				Subcommands: cli.Commands{
 					cli.Command{
 						Name:  "query",
-						Usage: "query proposals based on the condition",
+						Usage: "Query proposals based on the condition",
 						Flags: []cli.Flag{
 							cli.StringFlag{
 								Name:     "id",
-								Usage:    "proposal id",
+								Usage:    "Specify proposal id",
 								Required: false,
 							},
 							cli.StringFlag{
 								Name:     "type",
-								Usage:    "proposal type, currently only appchain_mgr, rule_mgr, node_mgr, service_mgr, role_mgr, proposal_strategy_mgr and dapp_mgr are supported",
+								Usage:    "Specify proposal type, currently only appchain_mgr, rule_mgr, node_mgr, service_mgr, role_mgr, proposal_strategy_mgr and dapp_mgr are supported",
 								Required: false,
 							},
 							cli.StringFlag{
 								Name:     "status",
-								Usage:    "proposal status, one of proposed, paused, approve or reject",
+								Usage:    "Specify proposal status, one of proposed, paused, approve or reject",
 								Required: false,
 							},
 							cli.StringFlag{
 								Name:     "from",
-								Usage:    "the address of the account to which the proposal was made",
+								Usage:    "Specify the address of the account to which the proposal was made",
 								Required: false,
 							},
 							cli.StringFlag{
 								Name:     "objId",
-								Usage:    "the ID of the managed object",
+								Usage:    "Specify the ID of the managed object",
 								Required: false,
 							},
 						},
@@ -86,16 +86,16 @@ func governanceCMD() cli.Command {
 					},
 					cli.Command{
 						Name:  "withdraw",
-						Usage: "withdraw a proposal",
+						Usage: "Withdraw a proposal",
 						Flags: []cli.Flag{
 							cli.StringFlag{
 								Name:     "id",
-								Usage:    "proposal id",
+								Usage:    "Specify proposal id",
 								Required: true,
 							},
 							cli.StringFlag{
 								Name:     "reason",
-								Usage:    "withdraw reason",
+								Usage:    "Specify withdraw reason",
 								Required: false,
 							},
 						},
@@ -117,11 +117,11 @@ func governanceCMD() cli.Command {
 func proposalStrategyCMD() cli.Command {
 	return cli.Command{
 		Name:  "strategy",
-		Usage: "proposal strategy command",
+		Usage: "Proposal strategy command",
 		Subcommands: cli.Commands{
 			cli.Command{
 				Name:  "all",
-				Usage: "query all proposal strategy",
+				Usage: "Query all proposal strategy",
 				Action: func(ctx *cli.Context) error {
 					receipt, err := invokeBVMContractBySendView(ctx, constant.ProposalStrategyMgrContractAddr.String(), "GetAllProposalStrategy")
 					if err != nil {
@@ -142,29 +142,29 @@ func proposalStrategyCMD() cli.Command {
 			},
 			cli.Command{
 				Name:  "update",
-				Usage: "update proposal strategy",
+				Usage: "Update proposal strategy",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "module",
-						Usage:    "module name(appchain_mgr, rule_mgr, node_mgr, service_mgr, role_mgr, proposal_strategy_mgr, dapp_mgr, all_mgr)",
+						Usage:    "Specify module name(appchain_mgr, rule_mgr, node_mgr, service_mgr, role_mgr, proposal_strategy_mgr, dapp_mgr, all_mgr)",
 						Required: true,
 					},
 					cli.StringFlag{
 						Name:     "typ",
-						Usage:    "proposal strategy(SimpleMajority or ZeroPermission)",
+						Usage:    "Specify proposal strategy(SimpleMajority or ZeroPermission)",
 						Value:    "SimpleMajority",
 						Required: false,
 					},
 					cli.StringFlag{
 						Name:  "extra",
-						Usage: "expression of strategy. In this expression, 'a' represents the number of people approve, 'r' represents the number of people against, and 't' represents the total number of people who can vote.",
+						Usage: "Specify expression of strategy. In this expression, 'a' represents the number of people approve, 'r' represents the number of people against, and 't' represents the total number of people who can vote.",
 						//Usage:    "extra info of strategy. For example, SimpleMajority strategy require a majority ratio and it should be in the [0, 1] range.",
 						Value:    "a > 0.5 * t",
 						Required: false,
 					},
 					cli.StringFlag{
 						Name:     "reason",
-						Usage:    "update reason",
+						Usage:    "Specify Update reason",
 						Required: false,
 					},
 				},

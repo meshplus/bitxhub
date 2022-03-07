@@ -9,16 +9,16 @@ import (
 func chainCMD() cli.Command {
 	return cli.Command{
 		Name:  "chain",
-		Usage: "Query bitxhub chain info",
+		Usage: "Query BitXHub chain info",
 		Subcommands: []cli.Command{
 			{
 				Name:   "meta",
-				Usage:  "Query bitxhub chain meta",
+				Usage:  "Query BitXHub chain meta",
 				Action: getChainMeta,
 			},
 			{
 				Name:   "status",
-				Usage:  "Query bitxhub chain status",
+				Usage:  "Query BitXHub chain status",
 				Action: getChainStatus,
 			},
 		},

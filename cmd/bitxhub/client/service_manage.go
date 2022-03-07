@@ -16,11 +16,11 @@ import (
 func serviceMgrCMD() cli.Command {
 	return cli.Command{
 		Name:  "service",
-		Usage: "service manage command",
+		Usage: "Service manage command",
 		Subcommands: cli.Commands{
 			cli.Command{
 				Name:  "status",
-				Usage: "query service status by chainService id",
+				Usage: "Query service status by chainService id",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "id",
@@ -32,7 +32,7 @@ func serviceMgrCMD() cli.Command {
 			},
 			cli.Command{
 				Name:  "appServices",
-				Usage: "query services by appchain id",
+				Usage: "Query services by appchain id",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "chainID",
@@ -44,7 +44,7 @@ func serviceMgrCMD() cli.Command {
 			},
 			cli.Command{
 				Name:  "freeze",
-				Usage: "freeze service by chainService id",
+				Usage: "Freeze service by chainService id",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "id",
@@ -61,7 +61,7 @@ func serviceMgrCMD() cli.Command {
 			},
 			cli.Command{
 				Name:  "activate",
-				Usage: "activate service by chainService id",
+				Usage: "Activate service by chainService id",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "id",
@@ -78,7 +78,7 @@ func serviceMgrCMD() cli.Command {
 			},
 			cli.Command{
 				Name:  "evaluate",
-				Usage: "evaluate service",
+				Usage: "Evaluate service",
 				Flags: []cli.Flag{
 					cli.StringFlag{
 						Name:     "id",
