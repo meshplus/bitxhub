@@ -535,8 +535,10 @@ func (exec *BlockExecutor) applyBxhTransaction(i int, tx *pb.BxhTransaction, inv
 		case pb.TransactionData_XVM:
 			var err error
 			ctx := vm.NewContext(tx, uint64(i), data, exec.currentHeight, exec.ledger, exec.logger)
-			imports := vmledger.New()
-			instance, err = wasm.New(ctx, imports, exec.wasmInstances)
+			context := make(map[string]interface{})
+			store := wasm.NewStore()
+			libs := vmledger.NewLedgerWasmLibs(context, store)
+			instance, err = wasm.New(ctx, libs, context, store)
 			if err != nil {
 				return nil, GasFailedTx, err
 			}
