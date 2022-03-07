@@ -48,6 +48,7 @@ const (
 	PREFIX         = "tx"
 	TIMEOUT_PREFIX = "timeout"
 	HappyRuleAddr  = "0x00000000000000000000000000000000000000a2"
+	bxhID          = "1356"
 )
 
 const wasmGasLimit = 5000000000000000
@@ -298,7 +299,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 
 	recordLedger = mockRecordLedger(recordLedger, timeoutTxs1, 2)
 
-	err = exec.setTimeoutList(2, timeoutTxs1, invalidTxHashMap, nil)
+	err = exec.setTimeoutList(2, timeoutTxs1, invalidTxHashMap, nil, bxhID)
 	assert.Nil(t, err)
 	txId1 := "1:chain0:0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997-1:chain1:0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997-1"
 	txId2 := "1:chain0:0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997-1:chain1:0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997-2"
@@ -327,7 +328,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	tx4 := mockTx1(t, NormalData, receipt1)
 	timeoutTxs2 = append(timeoutTxs2, tx4)
 	recordLedger = mockRecordLedger(recordLedger, timeoutTxs2, 3)
-	err = exec.setTimeoutList(3, timeoutTxs2, invalidTxHashMap, nil)
+	err = exec.setTimeoutList(3, timeoutTxs2, invalidTxHashMap, nil, bxhID)
 	assert.Nil(t, err)
 	val, ok = timeListLedger["timeout-3"]
 	assert.True(t, ok)
