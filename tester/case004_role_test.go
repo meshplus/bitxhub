@@ -186,7 +186,7 @@ func (suite *Role) TestGetRuleAddress() {
 	suite.Require().Nil(err)
 	k1Nonce++
 
-	bytes, err = ioutil.ReadFile("./test_data/fabric_policy.wasm")
+	bytes, err = ioutil.ReadFile("./test_data/hpc_rule.wasm")
 	suite.Require().Nil(err)
 	ruleAddr2, err := deployContract(suite.api, k2, k2Nonce, bytes)
 	suite.Require().Nil(err)
