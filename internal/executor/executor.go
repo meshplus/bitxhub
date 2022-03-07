@@ -205,16 +205,7 @@ func (exec *BlockExecutor) listenExecuteEvent() {
 	for {
 		select {
 		case blockWrapper := <-exec.blockC:
-			now := time.Now()
-			blockData := exec.processExecuteEvent(blockWrapper)
-			if blockData != nil {
-				exec.logger.WithFields(logrus.Fields{
-					"height": blockWrapper.block.BlockHeader.Number,
-					"count":  len(blockWrapper.block.Transactions.Transactions),
-					"elapse": time.Since(now),
-				}).Debug("Executed block")
-				exec.persistC <- blockData
-			}
+			exec.processExecuteEvent(blockWrapper)
 		case <-exec.ctx.Done():
 			close(exec.persistC)
 			return
@@ -253,8 +244,13 @@ func (exec *BlockExecutor) verifyProofs(blockWrapper *BlockWrapper) {
 				invalidTxs = append(invalidTxs, i)
 				errM[i] = err.Error()
 			}
-			exec.logger.WithField("gasUsed", gasUsed).Info("Verify proofs")
-			// exec.gasLimit -= gasUsed
+			exec.logger.WithField("gasUsed", gasUsed).Debug("Verify proofs")
+			// if err := exec.payGasFee(tx, gasUsed); err != nil {
+			// 	lock.Lock()
+			// 	defer lock.Unlock()
+			// 	invalidTxs = append(invalidTxs, i)
+			// 	errM[i] = "run out of gas"
+			// }
 		}
 		// }(i, tx)
 	}
