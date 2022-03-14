@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/boltvm/mock_stub"
 	"github.com/meshplus/bitxhub-core/governance"
@@ -124,21 +123,21 @@ func TestInterchainManager_GetInterchain(t *testing.T) {
 
 func TestInterchainManager_HandleIBTP(t *testing.T) {
 	srcChainService, dstChainService := mockChainService()
-	unavailableChainID := "appchain3"
-	unexistChainID := "appchain4"
-	unexistChainServiceID := fmt.Sprintf("bxh:%s:service", unexistChainID)
-	unavailableChainServiceID := fmt.Sprintf("bxh:%s:service", unavailableChainID)
+	//unavailableChainID := "appchain3"
+	//unexistChainID := "appchain4"
+	//unexistChainServiceID := fmt.Sprintf("bxh:%s:service", unexistChainID)
+	//unavailableChainServiceID := fmt.Sprintf("bxh:%s:service", unavailableChainID)
 
 	unexistServiceID := "service3"
 	unexistServiceChainServiceID := fmt.Sprintf("%s:%s", srcChainID, unexistServiceID)
-	unexistServiceServiceID := fmt.Sprintf("bxh:%s", unexistServiceChainServiceID)
+	unexistServiceFullServiceID := fmt.Sprintf("bxh:%s", unexistServiceChainServiceID)
 
 	unavailableServiceID := "service4"
 	unavailableServiceChainServiceID := fmt.Sprintf("%s:%s", srcChainID, unavailableServiceID)
-	unavailableServiceServiceID := fmt.Sprintf("bxh:%s", unavailableServiceChainServiceID)
+	unavailableServiceFullServiceID := fmt.Sprintf("bxh:%s", unavailableServiceChainServiceID)
 
 	unavailableDstServiceChainServiceID := fmt.Sprintf("%s:%s", dstChainID, unavailableServiceID)
-	unavailableDstServiceServiceID := fmt.Sprintf("bxh:%s", unavailableDstServiceChainServiceID)
+	unavailableDstServiceFullServiceID := fmt.Sprintf("bxh:%s", unavailableDstServiceChainServiceID)
 
 	unPermissionServiceID := "service5"
 	unPermissionServiceChainServiceID := fmt.Sprintf("%s:%s", dstChainID, unPermissionServiceID)
@@ -193,52 +192,54 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 		return false, nil
 	}).AnyTimes()
 
-	appchain := &appchainMgr.Appchain{
-		ID:      srcChainID,
-		Status:  governance.GovernanceAvailable,
-		Desc:    "Relay1",
-		Version: 0,
-	}
-	appchainData, err := json.Marshal(appchain)
-	require.Nil(t, err)
+	//appchain := &appchainMgr.Appchain{
+	//	ID:      srcChainID,
+	//	Status:  governance.GovernanceAvailable,
+	//	Desc:    "Relay1",
+	//	Version: 0,
+	//}
+	//appchainData, err := json.Marshal(appchain)
+	//require.Nil(t, err)
+	//
+	//dstAppchain := &appchainMgr.Appchain{
+	//	ID:      dstChainID,
+	//	Status:  governance.GovernanceAvailable,
+	//	Desc:    "Relay2",
+	//	Version: 0,
+	//}
+	//dstAppchainData, err := json.Marshal(dstAppchain)
+	//assert.Nil(t, err)
 
-	dstAppchain := &appchainMgr.Appchain{
-		ID:      dstChainID,
-		Status:  governance.GovernanceAvailable,
-		Desc:    "Relay2",
-		Version: 0,
-	}
-	dstAppchainData, err := json.Marshal(dstAppchain)
-	assert.Nil(t, err)
+	//unavailableChain := &appchainMgr.Appchain{
+	//	ID:      unavailableChainID,
+	//	Status:  governance.GovernanceFrozen,
+	//	Desc:    "Relay1",
+	//	Version: 0,
+	//}
+	//unavailableChainData, err := json.Marshal(unavailableChain)
+	//require.Nil(t, err)
 
-	unavailableChain := &appchainMgr.Appchain{
-		ID:      unavailableChainID,
-		Status:  governance.GovernanceFrozen,
-		Desc:    "Relay1",
-		Version: 0,
-	}
-	unavailableChainData, err := json.Marshal(unavailableChain)
-	require.Nil(t, err)
-
-	wrongBitxhubChain := &appchainMgr.Appchain{
-		ID:     wrongBitxhubID,
-		Status: governance.GovernanceAvailable,
-		Broker: []byte("broker"),
-	}
-	wrongBitxhubChainData, err := json.Marshal(wrongBitxhubChain)
-	require.Nil(t, err)
-
-	unavailableBitxhubChain := &appchainMgr.Appchain{
-		ID:     unavailableBitxhubID,
-		Status: governance.GovernanceUnavailable,
-		Broker: []byte(constant.InterBrokerContractAddr.Address().String()),
-	}
-	unavailableBitxhubChainData, err := json.Marshal(unavailableBitxhubChain)
-	require.Nil(t, err)
+	//wrongBitxhubChain := &appchainMgr.Appchain{
+	//	ID:     wrongBitxhubID,
+	//	Status: governance.GovernanceAvailable,
+	//	Broker: []byte("broker"),
+	//}
+	//wrongBitxhubChainData, err := json.Marshal(wrongBitxhubChain)
+	//require.Nil(t, err)
+	//
+	//unavailableBitxhubChain := &appchainMgr.Appchain{
+	//	ID:     unavailableBitxhubID,
+	//	Status: governance.GovernanceUnavailable,
+	//	Broker: []byte(constant.InterBrokerContractAddr.Address().String()),
+	//}
+	//unavailableBitxhubChainData, err := json.Marshal(unavailableBitxhubChain)
+	//require.Nil(t, err)
 
 	unavailableService := &service_mgr.Service{
-		ServiceID: unavailableChainServiceID,
+		ServiceID: unavailableServiceChainServiceID,
+		ChainID:   srcChainID,
 		Status:    governance.GovernanceUnavailable,
+		Ordered:   true,
 	}
 	unavailableServiceData, err := json.Marshal(unavailableService)
 	require.Nil(t, err)
@@ -271,22 +272,44 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	unPermissionServiceData, err := json.Marshal(unPermissionService)
 	require.Nil(t, err)
 
+	//mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), gomock.Any(), gomock.Any()).DoAndReturn(
+	//	func(addr string, method string, args ...*pb.Arg) *boltvm.Response {
+	//		if method == "IsAvailable" {
+	//			switch string(args[0].GetValue()) {
+	//			case srcChainID:
+	//				return boltvm.Success([]byte(TRUE))
+	//			//case dstChainID:
+	//			//	return boltvm.Success([]byte(TRUE))
+	//			case unexistChainID:
+	//				return boltvm.Error("", "")
+	//			case unavailableChainID:
+	//				return boltvm.Success([]byte(FALSE))
+	//				//case wrongBitxhubID:
+	//				//	return boltvm.Success(wrongBitxhubChainData)
+	//				//case unavailableBitxhubID:
+	//				//	return boltvm.Success(unavailableBitxhubChainData)
+	//			}
+	//		}
+	//
+	//		return boltvm.Error("", "")
+	//	}).AnyTimes()
+
 	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), gomock.Any(), gomock.Any()).DoAndReturn(
 		func(addr string, method string, args ...*pb.Arg) *boltvm.Response {
-			if method == "GetAppchain" {
+			if method == "IsAvailableBitxhub" {
 				switch string(args[0].GetValue()) {
-				case srcChainID:
-					return boltvm.Success(appchainData)
-				case dstChainID:
-					return boltvm.Success(dstAppchainData)
-				case unexistChainID:
-					return boltvm.Error("", "")
-				case unavailableChainID:
-					return boltvm.Success(unavailableChainData)
+				//case srcChainID:
+				//	return boltvm.Success([]byte(TRUE))
+				//case dstChainID:
+				//	return boltvm.Success([]byte(TRUE))
+				//case unexistChainID:
+				//	return boltvm.Error("", "")
+				//case unavailableChainID:
+				//	return boltvm.Success([]byte(FALSE))
 				case wrongBitxhubID:
-					return boltvm.Success(wrongBitxhubChainData)
+					return boltvm.Success([]byte(FALSE))
 				case unavailableBitxhubID:
-					return boltvm.Success(unavailableBitxhubChainData)
+					return boltvm.Success([]byte(FALSE))
 				}
 			}
 
@@ -300,7 +323,7 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 				return boltvm.Error("", "")
 			case unavailableServiceChainServiceID:
 				return boltvm.Success(unavailableServiceData)
-			case unavailableDstServiceServiceID:
+			case unavailableDstServiceChainServiceID:
 				return boltvm.Success(unavailableServiceData)
 			case srcChainService.getChainServiceId():
 				return boltvm.Success(srcServiceData)
@@ -308,6 +331,26 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 				return boltvm.Success(dstServiceData)
 			case unPermissionServiceChainServiceID:
 				return boltvm.Success(unPermissionServiceData)
+			}
+
+			return boltvm.Error("", "")
+		}).AnyTimes()
+
+	mockStub.EXPECT().CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "IsAvailable", gomock.Any()).DoAndReturn(
+		func(addr string, method string, args ...*pb.Arg) *boltvm.Response {
+			switch string(args[0].GetValue()) {
+			case unexistServiceChainServiceID:
+				return boltvm.Error("", "")
+			case unavailableServiceChainServiceID:
+				return boltvm.Success([]byte(FALSE))
+			case unavailableDstServiceChainServiceID:
+				return boltvm.Success([]byte(FALSE))
+			case srcChainService.getChainServiceId():
+				return boltvm.Success([]byte(TRUE))
+			case dstChainService.getChainServiceId():
+				return boltvm.Success([]byte(TRUE))
+			case unPermissionServiceChainServiceID:
+				return boltvm.Success([]byte(TRUE))
 			}
 
 			return boltvm.Error("", "")
@@ -345,24 +388,25 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	assert.False(t, res.Ok)
 	assert.Contains(t, string(res.Result), string(boltvm.InterchainInvalidIBTPParseDestErrorCode))
 
+	//ibtp.From = unexistChainServiceID
+	//ibtp.To = dstChainService.getChainServiceId()
+	//res = im.HandleIBTP(ibtp)
+	//assert.False(t, res.Ok)
+	//assert.Contains(t, string(res.Result), string(boltvm.InterchainSourceAppchainNotAvailableCode))
+
+	//ibtp.From = unavailableChainServiceID
+	//res = im.HandleIBTP(ibtp)
+	//assert.False(t, res.Ok)
+	//assert.Contains(t, string(res.Result), string(boltvm.InterchainSourceAppchainNotAvailableCode))
+
 	// source check failed
-	ibtp.From = unexistChainServiceID
 	ibtp.To = dstChainService.getChainServiceId()
-	res = im.HandleIBTP(ibtp)
-	assert.False(t, res.Ok)
-	assert.Contains(t, string(res.Result), string(boltvm.InterchainSourceAppchainNotAvailableCode))
-
-	ibtp.From = unavailableChainServiceID
-	res = im.HandleIBTP(ibtp)
-	assert.False(t, res.Ok)
-	assert.Contains(t, string(res.Result), string(boltvm.InterchainSourceAppchainNotAvailableCode))
-
-	ibtp.From = unexistServiceServiceID
+	ibtp.From = unexistServiceFullServiceID
 	res = im.HandleIBTP(ibtp)
 	assert.False(t, res.Ok)
 	assert.Contains(t, string(res.Result), string(boltvm.InterchainSourceServiceNotAvailableCode))
 
-	ibtp.From = unavailableServiceServiceID
+	ibtp.From = unavailableServiceFullServiceID
 	res = im.HandleIBTP(ibtp)
 	assert.False(t, res.Ok)
 	assert.Contains(t, string(res.Result), string(boltvm.InterchainSourceServiceNotAvailableCode))
@@ -378,16 +422,19 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	assert.False(t, res.Ok)
 	assert.Contains(t, string(res.Result), string(boltvm.InterchainSourceBitXHubNotAvailableCode))
 
+	//ibtp.From = srcChainService.getChainServiceId()
+	//ibtp.To = unavailableChainServiceID
+	//ibtp.Index = 1
+	//mockStub.EXPECT().PostInterchainEvent(map[string]uint64{srcChainService.ChainId: 1, unavailableChainID: 1}).MaxTimes(1)
+	//res = im.HandleIBTP(ibtp)
+	//assert.True(t, res.Ok)
+
 	// destination check failed
 	ibtp.From = srcChainService.getChainServiceId()
-	ibtp.To = unavailableChainServiceID
+	ibtp.To = unavailableDstServiceFullServiceID
 	ibtp.Index = 1
-	mockStub.EXPECT().PostInterchainEvent(map[string]uint64{srcChainService.ChainId: 1, unavailableChainID: 1}).MaxTimes(1)
-	res = im.HandleIBTP(ibtp)
-	assert.True(t, res.Ok)
-
-	ibtp.To = unavailableDstServiceServiceID
-	mockStub.EXPECT().PostInterchainEvent(map[string]uint64{srcChainService.ChainId: 1, dstChainService.ChainId: 1}).MaxTimes(1)
+	mockStub.EXPECT().PostInterchainEvent(map[string]uint64{srcChainService.ChainId: 1, dstChainID: 1}).MaxTimes(1)
+	mockStub.EXPECT().PostInterchainEvent(map[string]uint64{dstChainID: 1}).MaxTimes(1)
 	res = im.HandleIBTP(ibtp)
 	assert.True(t, res.Ok)
 
@@ -443,13 +490,13 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	res = im.HandleIBTP(ibtp)
 	assert.True(t, res.Ok, string(res.Result))
 
-	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Return(true).AnyTimes()
-	res = im.GetInterchainInfo(srcChainService.getFullServiceId())
-	assert.True(t, res.Ok, string(res.Result))
-	info := &InterchainInfo{}
-	err = json.Unmarshal(res.Result, info)
-	assert.Nil(t, err)
-	assert.Equal(t, uint64(1), info.InterchainCounter)
+	//mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Return(true).AnyTimes()
+	//res = im.GetInterchainInfo(srcChainService.getFullServiceId())
+	//assert.True(t, res.Ok, string(res.Result))
+	//info := &InterchainInfo{}
+	//err = json.Unmarshal(res.Result, info)
+	//assert.Nil(t, err)
+	//assert.Equal(t, uint64(1), info.InterchainCounter)
 }
 
 func TestInterchainManager_DeleteInterchain(t *testing.T) {

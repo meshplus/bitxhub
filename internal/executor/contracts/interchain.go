@@ -101,37 +101,36 @@ func (x *InterchainManager) DeleteInterchain(id string) *boltvm.Response {
 	return boltvm.Success(nil)
 }
 
-// todo: the parameter name should be fullServiceID
-func (x *InterchainManager) GetInterchainInfo(chainId string) *boltvm.Response {
-	interchain, ok := x.getInterchain(chainId)
-	info := &InterchainInfo{
-		ChainId:            chainId,
-		SendInterchains:    []*InterchainMeta{},
-		ReceiptInterchains: []*InterchainMeta{},
-	}
-	if !ok {
-		interchain = &pb.Interchain{
-			ID:                   chainId,
-			InterchainCounter:    make(map[string]uint64),
-			ReceiptCounter:       make(map[string]uint64),
-			SourceReceiptCounter: make(map[string]uint64),
-		}
-	}
-	for _, counter := range interchain.InterchainCounter {
-		info.InterchainCounter += counter
-	}
-
-	for _, counter := range interchain.ReceiptCounter {
-		info.ReceiptCounter += counter
-	}
-	x.GetObject(x.indexSendInterchainMeta(chainId), &info.SendInterchains)
-	x.GetObject(x.indexReceiptInterchainMeta(chainId), &info.ReceiptInterchains)
-	data, err := json.Marshal(&info)
-	if err != nil {
-		return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), err.Error()))
-	}
-	return boltvm.Success(data)
-}
+//func (x *InterchainManager) GetInterchainInfo(chainId string) *boltvm.Response {
+//	interchain, ok := x.getInterchain(chainId)
+//	info := &InterchainInfo{
+//		ChainId:            chainId,
+//		SendInterchains:    []*InterchainMeta{},
+//		ReceiptInterchains: []*InterchainMeta{},
+//	}
+//	if !ok {
+//		interchain = &pb.Interchain{
+//			ID:                   chainId,
+//			InterchainCounter:    make(map[string]uint64),
+//			ReceiptCounter:       make(map[string]uint64),
+//			SourceReceiptCounter: make(map[string]uint64),
+//		}
+//	}
+//	for _, counter := range interchain.InterchainCounter {
+//		info.InterchainCounter += counter
+//	}
+//
+//	for _, counter := range interchain.ReceiptCounter {
+//		info.ReceiptCounter += counter
+//	}
+//	x.GetObject(x.indexSendInterchainMeta(chainId), &info.SendInterchains)
+//	x.GetObject(x.indexReceiptInterchainMeta(chainId), &info.ReceiptInterchains)
+//	data, err := json.Marshal(&info)
+//	if err != nil {
+//		return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), err.Error()))
+//	}
+//	return boltvm.Success(data)
+//}
 
 // getInterchain returns information of the interchain count, Receipt count and SourceReceipt count by id
 func (x *InterchainManager) getInterchain(id string) (*pb.Interchain, bool) {
@@ -277,9 +276,9 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, *boltvm.Bx
 }
 
 func (x *InterchainManager) checkSourceAvailability(srcChainService *ChainService) *boltvm.BxhError {
-	if err := x.checkAppchainAvailability(srcChainService.ChainId); err != nil {
-		return boltvm.BError(boltvm.InterchainSourceAppchainNotAvailableCode, fmt.Sprintf(string(boltvm.InterchainSourceAppchainNotAvailableMsg), srcChainService.ChainId, err.Error()))
-	}
+	//if err := x.checkAppchainAvailability(srcChainService.ChainId); err != nil {
+	//	return boltvm.BError(boltvm.InterchainSourceAppchainNotAvailableCode, fmt.Sprintf(string(boltvm.InterchainSourceAppchainNotAvailableMsg), srcChainService.ChainId, err.Error()))
+	//}
 
 	if err := x.checkServiceAvailability(srcChainService.getChainServiceId()); err != nil {
 		return boltvm.BError(boltvm.InterchainSourceServiceNotAvailableCode, fmt.Sprintf(string(boltvm.InterchainSourceServiceNotAvailableMsg), srcChainService.getChainServiceId(), err.Error()))
@@ -295,9 +294,9 @@ func (x *InterchainManager) checkTargetAvailability(srcChainService, dstChainSer
 				return nil
 			}
 
-			if err := x.checkAppchainAvailability(dstChainService.ChainId); err != nil {
-				return boltvm.BError(boltvm.InterchainTargetAppchainNotAvailableCode, fmt.Sprintf(string(boltvm.InterchainTargetAppchainNotAvailableMsg), dstChainService.ChainId, err.Error()))
-			}
+			//if err := x.checkAppchainAvailability(dstChainService.ChainId); err != nil {
+			//	return boltvm.BError(boltvm.InterchainTargetAppchainNotAvailableCode, fmt.Sprintf(string(boltvm.InterchainTargetAppchainNotAvailableMsg), dstChainService.ChainId, err.Error()))
+			//}
 
 			dstService, err := x.getServiceByID(dstChainService.getChainServiceId())
 			if err != nil {
