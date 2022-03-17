@@ -10,7 +10,7 @@ BitXHub is committed to building a scalable, robust, and pluggable inter-blockch
 reference implementation, that can provide reliable technical support for the formation
 of a blockchain internet and intercommunication of value islands.
 
-For more details please visit our [whitepaper](https://upload.hyperchain.cn/BitXHub%20Whitepaper.pdf) | [白皮书](https://upload.hyperchain.cn/BitXHub%E7%99%BD%E7%9A%AE%E4%B9%A6.pdf).
+**For more details please visit our [documentation](https://docs.bitxhub.cn/) and [whitepaper](https://upload.hyperchain.cn/BitXHub%20Whitepaper.pdf) | [白皮书](https://upload.hyperchain.cn/BitXHub%E7%99%BD%E7%9A%AE%E4%B9%A6.pdf).**
 
 ## Start
 
