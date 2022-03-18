@@ -956,6 +956,20 @@ func (am *AppchainManager) IsAvailable(chainID string) *boltvm.Response {
 	return boltvm.Success([]byte(strconv.FormatBool(chain.(*appchainMgr.Appchain).IsAvailable())))
 }
 
+func (am *AppchainManager) IsAvailableBitxhub(chainID string) *boltvm.Response {
+	am.AppchainManager.Persister = am.Stub
+	chain, err := am.AppchainManager.QueryById(chainID, nil)
+	if err != nil {
+		return boltvm.Error(boltvm.AppchainNonexistentChainCode, fmt.Sprintf(string(boltvm.AppchainNonexistentChainMsg), chainID, err.Error()))
+	}
+
+	if chain.(*appchainMgr.Appchain).IsAvailable() && chain.(*appchainMgr.Appchain).IsBitXHub() {
+		return boltvm.Success([]byte(TRUE))
+	} else {
+		return boltvm.Success([]byte(FALSE))
+	}
+}
+
 func (am *AppchainManager) GetBitXHubChainIDs() *boltvm.Response {
 	am.AppchainManager.Persister = am.Stub
 	relayChainIdMap := orderedmap.New()
