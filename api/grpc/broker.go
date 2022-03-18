@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
-	"github.com/grpc-ecosystem/go-grpc-middleware/ratelimit"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	node_mgr "github.com/meshplus/bitxhub-core/node-mgr"
 	"github.com/meshplus/bitxhub-model/constant"
@@ -20,7 +19,6 @@ import (
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/loggers"
 	"github.com/meshplus/bitxhub/internal/repo"
-	"github.com/meshplus/bitxhub/pkg/ratelimiter"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -74,11 +72,11 @@ func NewChainBrokerService(api api.CoreAPI, config *repo.Config, genesis *repo.G
 
 func (cbs *ChainBrokerService) init() error {
 	config := cbs.config
-	limiter := cbs.config.Limiter
-	rateLimiter, err := ratelimiter.NewRateLimiterWithQuantum(limiter.Interval, limiter.Capacity, limiter.Quantum)
-	if err != nil {
-		return fmt.Errorf("init rate limiter failed: %w", err)
-	}
+	//limiter := cbs.config.Limiter
+	//rateLimiter, err := ratelimiter.NewRateLimiterWithQuantum(limiter.Interval, limiter.Capacity, limiter.Quantum)
+	//if err != nil {
+	//	return fmt.Errorf("init rate limiter failed: %w", err)
+	//}
 
 	checkPermissionUnaryServerInterceptor := func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		md, ok := metadata.FromIncomingContext(ctx)
@@ -107,8 +105,15 @@ func (cbs *ChainBrokerService) init() error {
 	}
 
 	grpcOpts := []grpc.ServerOption{
-		grpc_middleware.WithUnaryServerChain(ratelimit.UnaryServerInterceptor(rateLimiter), grpc_prometheus.UnaryServerInterceptor, checkPermissionUnaryServerInterceptor),
-		grpc_middleware.WithStreamServerChain(ratelimit.StreamServerInterceptor(rateLimiter), grpc_prometheus.StreamServerInterceptor, checkPermissionStreamServerInterceptor),
+		grpc_middleware.WithUnaryServerChain(
+			//ratelimit.UnaryServerInterceptor(rateLimiter),
+			grpc_prometheus.UnaryServerInterceptor,
+			checkPermissionUnaryServerInterceptor),
+
+		grpc_middleware.WithStreamServerChain(
+			//ratelimit.StreamServerInterceptor(rateLimiter),
+			grpc_prometheus.StreamServerInterceptor,
+			checkPermissionStreamServerInterceptor),
 		grpc.MaxConcurrentStreams(1000),
 		grpc.InitialWindowSize(10 * 1024 * 1024),
 		grpc.InitialConnWindowSize(100 * 1024 * 1024),
