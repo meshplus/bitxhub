@@ -1,0 +1,24 @@
+pipeline{
+    agent any
+
+    tools{
+        go 'go1.15.15'
+    }
+    stages{
+        stage("Check out code"){
+            steps{
+                echo "Check out code"
+            }
+        }
+        stage("Run smoke test"){
+             steps{
+                echo "Run smoke test"
+            }
+        }
+        stage("Call DingTalk"){
+             steps{
+                echo "Call DingTalk"
+            }
+        }
+    }
+}
