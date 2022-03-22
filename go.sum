@@ -111,6 +111,8 @@ github.com/btcsuite/snappy-go v0.0.0-20151229074030-0bdef8d06723/go.mod h1:8woku
 github.com/btcsuite/snappy-go v1.0.0/go.mod h1:8woku9dyThutzjeg+3xrA5iCpBRH8XEEg3lh6TiUghc=
 github.com/btcsuite/websocket v0.0.0-20150119174127-31079b680792/go.mod h1:ghJtEyQwv5/p4Mg4C0fgbePVuGr935/5ddU9Z3TmDRY=
 github.com/btcsuite/winsvc v1.0.0/go.mod h1:jsenWakMcC0zFBFurPLEAyrnc/teJEM1O46fmI40EZs=
+github.com/bytecodealliance/wasmtime-go v0.34.0 h1:PaWS0DUusaXaU3aNoSYjag6WmuxjyPYBHgkrC4EXips=
+github.com/bytecodealliance/wasmtime-go v0.34.0/go.mod h1:q320gUxqyI8yB+ZqRuaJOEnGkAnHh6WtJjMaT2CW4wI=
 github.com/c-bata/go-prompt v0.2.2/go.mod h1:VzqtzE2ksDBcdln8G7mk2RX9QyGjH+OVqOCSiVIqS34=
 github.com/casbin/casbin/v2 v2.1.2/go.mod h1:YcPU1XXisHhLzuxH9coDNf2FbKpjGlbCg3n9yuLkIJQ=
 github.com/cbergoon/merkletree v0.2.0 h1:Bttqr3OuoiZEo4ed1L7fTasHka9II+BF9fhBfbNEEoQ=
@@ -749,6 +751,8 @@ github.com/matttproud/golang_protobuf_extensions v1.0.1 h1:4hp9jkHxhMHkqkrB3Ix0j
 github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5Ld7szi9bcBfOoFv/3dc6xSMkL2PC0=
 github.com/meshplus/bitxhub-core v1.3.1-0.20220218084831-3aaff0fe2b53 h1:wWf9dQFkmE6MS3yT4xLYLy2vlO2F/d3BGGN0ubrft/s=
 github.com/meshplus/bitxhub-core v1.3.1-0.20220218084831-3aaff0fe2b53/go.mod h1:DdG+dfeNS57Wi+0bcDA4iel3sZgHNY9oDmNSDVj4ZME=
+github.com/meshplus/bitxhub-core v1.3.1-0.20220307022914-641e6627c753 h1:EbTGgiS4zu6CGT0nCoOb+6PWri68e+/C4YFDzFkDXwE=
+github.com/meshplus/bitxhub-core v1.3.1-0.20220307022914-641e6627c753/go.mod h1:+srD4/8+p91CEiBQ1OeM/iTauhNknQx/TE/wEnG5pVQ=
 github.com/meshplus/bitxhub-kit v1.1.1/go.mod h1:r4l4iqn0RPJreb/OmoYKfjCjQJrXpZX++6Qc31VG/1k=
 github.com/meshplus/bitxhub-kit v1.2.1-0.20210616114532-4849447f09e1/go.mod h1:wrEdhHp1tktzdwcWb4bOxYsVc+KkcrYL18IYWYeumPQ=
 github.com/meshplus/bitxhub-kit v1.2.1-0.20210902085548-07f4fa85bfc9/go.mod h1:wrEdhHp1tktzdwcWb4bOxYsVc+KkcrYL18IYWYeumPQ=
