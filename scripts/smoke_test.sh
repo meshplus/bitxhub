@@ -70,37 +70,23 @@ function start_bxh_solo() {
     cd ../ && make install && cd scripts
     print_blue "Start Solo"
     nohup bash solo.sh 2>gc.log 1>solo.log &
-    sleep 100
+    # sleep 100
 }
 
-function bitxhub_tester() {
+function smoke_tester() {
     print_blue "Start git clone Premo"
     echo "$BRANCH_NAME"
     cd ../ && git clone -b "$BRANCH_NAME" https://github.com/meshplus/premo.git
     cd premo && make install && premo init
     print_blue "Start test"
-    make bitxhub-tester REPORT=Y
+    make smoke-tester
 }
 
-function create_EnvProperties() {
-    OS=''
-    Get_PM_Name null OS
-    GO=$(go version | awk '{print $3}')
-    BitXHubVersion=$(bitxhub version|grep 'BitXHub version:'|awk '{print $3}')
-    PremoVersion=$(premo version|grep 'Premo version:'|awk '{print $3}')
-    cat >>./tester/bxh_tester/allure-results/environment.properties<<EOF
-OS=$OS
-GO=$GO
-BitXHubVersion=$BitXHubVersion
-PremoVersion=$PremoVersion
-EOF
-}
 
 function bxh_test() {
     prepare
     start_bxh_solo
-    bitxhub_tester
-    create_EnvProperties
+    smoke_tester
 }
 
 while getopts "h?b:" opt; do
