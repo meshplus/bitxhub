@@ -114,7 +114,6 @@ func getCurrentHeight(context map[string]interface{}, store *wasmtime.Store) *wa
 		Module: "env",
 		Name:   "get_current_height",
 		Func: func(caller *wasmtime.Caller) int64 {
-			fmt.Println("--------------------")
 			return int64(context[CURRENT_HEIGHT].(uint64))
 		},
 	}
