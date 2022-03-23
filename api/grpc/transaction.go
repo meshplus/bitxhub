@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"time"
 
@@ -42,11 +43,10 @@ func (cbs *ChainBrokerService) SendTransactions(ctx context.Context, txs *pb.Mul
 			cbs.logger.Errorf("api checkTransaction err: nonce is %d", tx.GetNonce())
 			return nil, status.Newf(codes.InvalidArgument, "check transaction fail for %s", err.Error()).Err()
 		}
-
+		var buf = make([]byte, 8)
+		binary.LittleEndian.PutUint64(buf, uint64(time.Now().UnixNano()))
+		tx.Extra = buf
 		hash, err := cbs.sendTransaction(tx)
-		if tx.IsIBTP() {
-			cbs.logger.Infof("get transaction:appchain is %s, nonce is %d, index is %d", tx.GetFrom().String(), tx.GetNonce(), tx.GetIBTP().Index)
-		}
 		if err != nil {
 			return nil, status.Newf(codes.Internal, "internal handling transaction fail %s", err.Error()).Err()
 		}
