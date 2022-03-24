@@ -31,8 +31,8 @@ func TestTransactionManager_BeginMultiTXs(t *testing.T) {
 	mockStub.EXPECT().CurrentCaller().Return(constant.InterchainContractAddr.Address().String()).AnyTimes()
 
 	mockStub.EXPECT().GetObject(GlobalTxInfoKey(globalId), gomock.Any()).SetArg(1, TransactionInfo{}).Return(false).MaxTimes(1)
-	mockStub.EXPECT().GetObject(TimeoutKey(uint64(110)), gomock.Any()).SetArg(1, "").Return(false).MaxTimes(1)
-	mockStub.EXPECT().SetObject(TimeoutKey(uint64(110)), globalId).MaxTimes(1)
+	mockStub.EXPECT().Get(TimeoutKey(uint64(110))).Return(false, nil).MaxTimes(1)
+	mockStub.EXPECT().Set(TimeoutKey(uint64(110)), []byte(globalId)).MaxTimes(1)
 
 	mockStub.EXPECT().Set(id0, []byte(globalId))
 	txInfo := TransactionInfo{
@@ -105,8 +105,8 @@ func TestTransactionManager_BeginMultiTXs(t *testing.T) {
 	}
 	mockStub.EXPECT().GetObject(GlobalTxInfoKey(globalId), gomock.Any()).SetArg(1, txInfo).Return(true).MaxTimes(1)
 	mockStub.EXPECT().SetObject(GlobalTxInfoKey(globalId), expTxInfo).MaxTimes(1)
-	mockStub.EXPECT().GetObject(TimeoutKey(uint64(110)), gomock.Any()).SetArg(1, "").Return(false).MaxTimes(1)
-	mockStub.EXPECT().SetObject(TimeoutKey(uint64(110)), globalId).MaxTimes(1)
+	mockStub.EXPECT().Get(TimeoutKey(uint64(110))).Return(false, nil).MaxTimes(1)
+	mockStub.EXPECT().Set(TimeoutKey(uint64(110)), []byte(globalId)).MaxTimes(1)
 	mockStub.EXPECT().Set(id1, []byte(globalId))
 	res = im.BeginMultiTXs(globalId, id1, 10, false, 2)
 	assert.True(t, res.Ok)
@@ -130,8 +130,8 @@ func TestTransactionManager_BeginMultiTXs(t *testing.T) {
 	}
 	mockStub.EXPECT().GetObject(GlobalTxInfoKey(globalId), gomock.Any()).SetArg(1, txInfo).Return(true).MaxTimes(1)
 	mockStub.EXPECT().SetObject(GlobalTxInfoKey(globalId), expTxInfo)
-	mockStub.EXPECT().GetObject(TimeoutKey(uint64(110)), gomock.Any()).SetArg(1, "").Return(false).MaxTimes(1)
-	mockStub.EXPECT().SetObject(TimeoutKey(uint64(110)), globalId).MaxTimes(1)
+	mockStub.EXPECT().Get(TimeoutKey(uint64(110))).Return(false, nil).MaxTimes(1)
+	mockStub.EXPECT().SetObject(TimeoutKey(uint64(110)), []byte(globalId)).MaxTimes(1)
 	mockStub.EXPECT().Set(id1, []byte(globalId))
 	res = im.BeginMultiTXs(globalId, id1, 10, true, 2)
 	assert.True(t, res.Ok)
@@ -256,8 +256,6 @@ func TestTransactionManager_Report(t *testing.T) {
 
 	mockStub.EXPECT().GetObject(TxInfoKey(id), gomock.Any()).SetArg(1, recBegin).Return(true).MaxTimes(1)
 	mockStub.EXPECT().SetObject(TxInfoKey(id), recSuccess).MaxTimes(1)
-	mockStub.EXPECT().GetObject(TimeoutKey(100), gomock.Any()).SetArg(1, id).Return(true).MaxTimes(1)
-	mockStub.EXPECT().SetObject(TimeoutKey(100), "").MaxTimes(1)
 	res = im.Report(id, int32(pb.IBTP_RECEIPT_SUCCESS))
 	assert.True(t, res.Ok)
 	statusChange := StatusChange{}
@@ -269,8 +267,6 @@ func TestTransactionManager_Report(t *testing.T) {
 
 	mockStub.EXPECT().GetObject(TxInfoKey(id), gomock.Any()).SetArg(1, recBegin).Return(true).MaxTimes(1)
 	mockStub.EXPECT().SetObject(TxInfoKey(id), recFailure).MaxTimes(1)
-	mockStub.EXPECT().GetObject(TimeoutKey(100), gomock.Any()).SetArg(1, id).Return(true).MaxTimes(1)
-	mockStub.EXPECT().SetObject(TimeoutKey(100), "").MaxTimes(1)
 	res = im.Report(id, int32(pb.IBTP_RECEIPT_FAILURE))
 	assert.True(t, res.Ok)
 	err = json.Unmarshal(res.Result, &statusChange)
@@ -335,8 +331,8 @@ func TestTransactionManager_Report(t *testing.T) {
 		ChildTxCount: txInfo.ChildTxCount,
 	}
 	mockStub.EXPECT().SetObject(GlobalTxInfoKey(globalID), expTxInfo).MaxTimes(1)
-	mockStub.EXPECT().GetObject(TimeoutKey(txInfo.Height), gomock.Any()).SetArg(1, globalID).Return(true).MaxTimes(1)
-	mockStub.EXPECT().SetObject(TimeoutKey(txInfo.Height), "").MaxTimes(1)
+	mockStub.EXPECT().Get(TimeoutKey(txInfo.Height)).Return(true, []byte(globalID)).MaxTimes(1)
+	mockStub.EXPECT().Set(TimeoutKey(txInfo.Height), []byte{}).MaxTimes(1)
 	res = im.Report(id0, int32(pb.IBTP_RECEIPT_SUCCESS))
 	assert.True(t, res.Ok)
 	err = json.Unmarshal(res.Result, &statusChange)
@@ -359,8 +355,8 @@ func TestTransactionManager_Report(t *testing.T) {
 		ChildTxCount: txInfo.ChildTxCount,
 	}
 	mockStub.EXPECT().SetObject(GlobalTxInfoKey(globalID), expTxInfo).MaxTimes(1)
-	mockStub.EXPECT().GetObject(TimeoutKey(txInfo.Height), gomock.Any()).SetArg(1, globalID).Return(true).MaxTimes(1)
-	mockStub.EXPECT().SetObject(TimeoutKey(txInfo.Height), "").MaxTimes(1)
+	mockStub.EXPECT().Get(TimeoutKey(txInfo.Height)).Return(true, []byte(globalID)).MaxTimes(1)
+	mockStub.EXPECT().Set(TimeoutKey(txInfo.Height), []byte{}).MaxTimes(1)
 	res = im.Report(id0, int32(pb.IBTP_RECEIPT_SUCCESS))
 	assert.True(t, res.Ok)
 	err = json.Unmarshal(res.Result, &statusChange)
@@ -383,8 +379,8 @@ func TestTransactionManager_Report(t *testing.T) {
 		ChildTxCount: txInfo.ChildTxCount,
 	}
 	mockStub.EXPECT().SetObject(GlobalTxInfoKey(globalID), expTxInfo).MaxTimes(1)
-	mockStub.EXPECT().GetObject(TimeoutKey(txInfo.Height), gomock.Any()).SetArg(1, globalID).Return(true).MaxTimes(1)
-	mockStub.EXPECT().SetObject(TimeoutKey(txInfo.Height), "").MaxTimes(1)
+	mockStub.EXPECT().Get(TimeoutKey(txInfo.Height)).Return(true, []byte(globalID)).MaxTimes(1)
+	mockStub.EXPECT().Set(TimeoutKey(txInfo.Height), []byte{}).MaxTimes(1)
 	res = im.Report(id0, int32(pb.IBTP_RECEIPT_FAILURE))
 	assert.True(t, res.Ok)
 	err = json.Unmarshal(res.Result, &statusChange)
