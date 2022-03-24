@@ -31,6 +31,31 @@ func (cbs *ChainBrokerService) SendTransaction(ctx context.Context, tx *pb.BxhTr
 	return &pb.TransactionHashMsg{TxHash: hash}, nil
 }
 
+func (cbs *ChainBrokerService) SendTransactions(ctx context.Context, txs *pb.MultiTransaction) (*pb.MultiTransactionHash, error) {
+	err := cbs.api.Broker().OrderReady()
+	if err != nil {
+		return nil, status.Newf(codes.Internal, "the system is temporarily unavailable %s", err.Error()).Err()
+	}
+	hashList := make([]*pb.TransactionHashMsg, 0, len(txs.Txs))
+	for _, tx := range txs.Txs {
+		if err := cbs.checkTransaction(tx); err != nil {
+			cbs.logger.Errorf("api checkTransaction err: nonce is %d", tx.GetNonce())
+			return nil, status.Newf(codes.InvalidArgument, "check transaction fail for %s", err.Error()).Err()
+		}
+
+		hash, err := cbs.sendTransaction(tx)
+		if tx.IsIBTP() {
+			cbs.logger.Infof("get transaction:appchain is %s, nonce is %d, index is %d", tx.GetFrom().String(), tx.GetNonce(), tx.GetIBTP().Index)
+		}
+		if err != nil {
+			return nil, status.Newf(codes.Internal, "internal handling transaction fail %s", err.Error()).Err()
+		}
+		hashList = append(hashList, &pb.TransactionHashMsg{TxHash: hash})
+	}
+
+	return &pb.MultiTransactionHash{TxHashList: hashList}, nil
+}
+
 func (cbs *ChainBrokerService) SendView(_ context.Context, tx *pb.BxhTransaction) (*pb.Receipt, error) {
 	if err := cbs.checkTransaction(tx); err != nil {
 		return nil, fmt.Errorf("check transaction %s failed: %w", tx.GetHash().String(), err)
