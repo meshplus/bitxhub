@@ -86,10 +86,11 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	if err != nil {
 		exec.logger.Errorf("filterValidTx err: %s", err)
 	}
-	height := block.BlockHeader.Number
+	// this block is not in ledger
+	currentHeight := block.BlockHeader.Number - 1
 	txList := blockWrapper.block.Transactions.Transactions
 	bxhId := strconv.FormatUint(exec.config.ChainID, 10)
-	err = exec.setTimeoutList(height, txList, invalidTxHashMap, recordFailTxHashMap, bxhId)
+	err = exec.setTimeoutList(currentHeight, txList, invalidTxHashMap, recordFailTxHashMap, bxhId)
 	if err != nil {
 		exec.logger.Errorf("setTimeoutList err: %s", err)
 	}
