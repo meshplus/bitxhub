@@ -725,33 +725,65 @@ func (exec *BlockExecutor) setTimeoutRollback(height uint64) error {
 	}
 
 	for _, id := range list {
-		record := pb.TransactionRecord{
-			Height: height,
-			Status: pb.TransactionStatus_BEGIN_ROLLBACK,
-		}
+		if isGlobalID(id) {
+			if err := exec.setGlobalTxStatus(id, pb.TransactionStatus_BEGIN_ROLLBACK); err != nil {
+				return fmt.Errorf("set global tx status of id %s: %w", id, err)
+			}
+		} else {
+			record := pb.TransactionRecord{
+				Height: height,
+				Status: pb.TransactionStatus_BEGIN_ROLLBACK,
+			}
 
-		if err := exec.setTxRecord(id, record); err != nil {
-			return err
+			if err := exec.setTxRecord(id, record); err != nil {
+				return fmt.Errorf("set tx status of id %s: %w", id, err)
+			}
 		}
 	}
 
-	// TODO: Is it necessary remove timeout ibtp from the timeoutList after handle it？
-
 	return nil
 }
-
 func (exec *BlockExecutor) getTimeoutList(height uint64) ([]string, error) {
 	ok, val := exec.ledger.GetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.TimeoutKey(height)))
 	if !ok {
 		return nil, nil
 	}
-
 	var list []string
-	list = strings.Split(string(val), ",")
-	if list[0] == "" {
-		return nil, nil
+	if err := json.Unmarshal(val, &list); err != nil {
+		return nil, fmt.Errorf("unmarshal list error: %w", err)
 	}
 	return list, nil
+}
+
+func (exec *BlockExecutor) getTimeoutIBTPsMap(height uint64) (map[string][]string, error) {
+	timeoutList, err := exec.getTimeoutList(height)
+	if err != nil {
+		return nil, fmt.Errorf("get timeout list failed: %w", err)
+	}
+
+	bxhID := fmt.Sprintf("%d", exec.config.Genesis.ChainID)
+	timeoutIBTPsMap := make(map[string][]string)
+
+	for _, value := range timeoutList {
+		if isGlobalID(value) {
+			txInfo, err := exec.getTxInfoByGlobalID(value)
+			if err != nil {
+				return nil, err
+			}
+
+			for id := range txInfo.ChildTxInfo {
+				if err := addTxIdToTimeoutIBTPsMap(timeoutIBTPsMap, id, bxhID); err != nil {
+					return nil, err
+				}
+			}
+		} else {
+			if err := addTxIdToTimeoutIBTPsMap(timeoutIBTPsMap, value, bxhID); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return timeoutIBTPsMap, nil
 }
 
 func (exec *BlockExecutor) setTimeoutList(height uint64, txList []pb.Transaction, invalidMap map[string]bool, failMap map[string]bool, bxhId string) error {
@@ -946,37 +978,6 @@ func (exec *BlockExecutor) calcTimeoutL2Root(list []string) (types.Hash, error) 
 	}
 
 	return *types.NewHash(tree.MerkleRoot()), nil
-}
-
-func (exec *BlockExecutor) getTimeoutIBTPsMap(height uint64) (map[string][]string, error) {
-	timeoutList, err := exec.getTimeoutList(height)
-	if err != nil {
-		return nil, fmt.Errorf("get timeout list failed: %w", err)
-	}
-
-	bxhID := fmt.Sprintf("%d", exec.config.Genesis.ChainID)
-	timeoutIBTPsMap := make(map[string][]string)
-
-	for _, value := range timeoutList {
-		if isGlobalID(value) {
-			txInfo, err := exec.getTxInfoByGlobalID(value)
-			if err != nil {
-				return nil, err
-			}
-
-			for id := range txInfo.ChildTxInfo {
-				if err := addTxIdToTimeoutIBTPsMap(timeoutIBTPsMap, id, bxhID); err != nil {
-					return nil, err
-				}
-			}
-		} else {
-			if err := addTxIdToTimeoutIBTPsMap(timeoutIBTPsMap, value, bxhID); err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	return timeoutIBTPsMap, nil
 }
 
 func addTxIdToTimeoutIBTPsMap(timeoutIBTPsMap map[string][]string, txId string, bitXHubID string) error {
