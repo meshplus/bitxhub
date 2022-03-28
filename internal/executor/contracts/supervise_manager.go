@@ -47,6 +47,13 @@ func (sr *SuperviseManager) Record(from, to string, extra []byte) *boltvm.Respon
 		if err != nil {
 			return boltvm.Error(boltvm.SuperviseGetChainIdErrCode, fmt.Sprintf(string(boltvm.SuperviseGetChainIdErrMsg), to, err.Error()))
 		}
+		// check if recorded
+		for _, chainId := range info.IssuePath {
+			if chainId == toChainId {
+				// issue repeatedly
+				return boltvm.Success(nil)
+			}
+		}
 		info.IssuePath = append(info.IssuePath, toChainId)
 		info.CurrentChainId = toChainId
 	} else {

@@ -3,7 +3,7 @@
 	github.com/bitxhub/bitxhub-order-rbft v1.18.0
     github.com/bitxhub/license v0.0.0-20210721031301-66d44925f5f9
     github.com/bitxhub/crypto-gm v0.0.0-20210825015341-e035b646648d
-    github.com/bitxhub/did-method-registry v0.0.0-20220325093903-3597857b293a
+    github.com/bitxhub/did-method-registry v0.0.0-20220325100300-203d968dc9af
 
 replace github.com/ultramesh/rbft => git.hyperchain.cn/ultramesh/rbft v0.1.5-0.20211207095220-a9677b5605e6
 
