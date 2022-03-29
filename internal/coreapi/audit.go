@@ -42,35 +42,36 @@ func (api AuditAPI) HandleAuditNodeSubscription(dataCh chan<- *pb.AuditTxInfo, a
 
 		if utils.TestAuditPermitBloom(api.logger, block.BlockHeader.Bloom, chainIDMap, auditNodeIDMap) {
 			for _, tx := range block.Transactions.Transactions {
-				if tx.GetType() != pb.NormalBxhTx {
-					continue
-				}
-
-				// 3.1 get receipt
-				receipt, err := api.bxh.Ledger.GetReceipt(tx.GetHash())
-				if err != nil {
-					break
-				}
-
-				isPermited := false
-				if utils.TestAuditPermitBloom(api.logger, receipt.Bloom, chainIDMap, auditNodeIDMap) {
-					// 3.2 get event from receipt and check event info permission
-					for _, ev := range receipt.Events {
-						if isPermited = hasPermitedInfo(ev, auditNodeIDMap, chainIDMap); isPermited {
-							break
-						}
+				// support bxhTx
+				switch tx.(type) {
+				case *pb.BxhTransaction:
+					// 3.1 get receipt
+					receipt, err := api.bxh.Ledger.GetReceipt(tx.GetHash())
+					if err != nil {
+						break
 					}
 
-					// 3.3 send info
-					if isPermited {
-						auditTxInfo := &pb.AuditTxInfo{
-							Tx:          tx.(*pb.BxhTransaction),
-							Rec:         receipt,
-							BlockHeight: height,
+					isPermited := false
+					if utils.TestAuditPermitBloom(api.logger, receipt.Bloom, chainIDMap, auditNodeIDMap) {
+						// 3.2 get event from receipt and check event info permission
+						for _, ev := range receipt.Events {
+							if isPermited = hasPermitedInfo(ev, auditNodeIDMap, chainIDMap); isPermited {
+								break
+							}
 						}
-						dataCh <- auditTxInfo
+
+						// 3.3 send info
+						if isPermited {
+							auditTxInfo := &pb.AuditTxInfo{
+								Tx:          tx.(*pb.BxhTransaction),
+								Rec:         receipt,
+								BlockHeight: height,
+							}
+							dataCh <- auditTxInfo
+						}
 					}
 				}
+
 			}
 		}
 	}
