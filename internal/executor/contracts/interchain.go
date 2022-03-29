@@ -191,7 +191,6 @@ func (x *InterchainManager) HandleIBTP(ibtp *pb.IBTP) *boltvm.Response {
 func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, *boltvm.BxhError, *boltvm.BxhError) {
 	var targetError *boltvm.BxhError
 
-	x.Logger().Infof("start parse src ChainService")
 	// In the full crossChain, the pier ensures that the format is correct,
 	// if a format problem occurs, the pier is evil, this situation is not credible.
 	srcChainService, err := x.parseChainService(ibtp.From)
@@ -226,7 +225,7 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, *boltvm.Bx
 			ordered, targetError = x.checkTargetAvailability(srcChainService, dstChainService, ibtp.Type)
 
 			if ordered {
-				if err := checkIndex(interchain.InterchainCounter[dstChainService.getFullServiceId()]+1, ibtp.Index); err != nil {
+				if err := checkIndex(interchain.InterchainCounter[ibtp.To]+1, ibtp.Index); err != nil {
 					return nil, nil, err
 				}
 			}
@@ -254,7 +253,7 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, *boltvm.Bx
 		// - The dst service needs to be invoked sequentially：dstService.Ordered
 		dstService, _ := x.getServiceByID(dstChainService.getChainServiceId())
 		if dstService == nil || dstService.Ordered {
-			if err := checkIndex(interchain.ReceiptCounter[dstChainService.getFullServiceId()]+1, ibtp.Index); err != nil {
+			if err := checkIndex(interchain.ReceiptCounter[ibtp.To]+1, ibtp.Index); err != nil {
 				return nil, nil, err
 			}
 		}
