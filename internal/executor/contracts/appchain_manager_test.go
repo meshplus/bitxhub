@@ -180,8 +180,6 @@ func TestAppchainManager_ManageRegister(t *testing.T) {
 	chainIdMap := orderedmap.New()
 	chainIdMap.Set(chains[1].ID, struct{}{})
 	mockStub.EXPECT().GetObject(appchainMgr.ChainOccupyIdPrefix, gomock.Any()).SetArg(1, *chainIdMap).Return(true).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.InterchainContractAddr.Address().String(), "Register", gomock.Any()).Return(boltvm.Error("", "")).Times(1)
-	mockStub.EXPECT().CrossInvoke(constant.InterchainContractAddr.Address().String(), "Register", gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "UpdateAppchainAdmin", gomock.Any(), gomock.Any()).Return(boltvm.Error("", "UpdateAppchainAdmin error")).Times(1)
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "UpdateAppchainAdmin", gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.RuleManagerContractAddr.Address().String(), "RegisterRuleFirst", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("", "RegisterRuleFirst error")).Times(1)
@@ -207,9 +205,6 @@ func TestAppchainManager_ManageRegister(t *testing.T) {
 	res = am.Manage(string(governance.EventRegister), string(APPROVED), string(governance.GovernanceUnavailable), chains[0].ID, registerInfoData)
 	assert.False(t, res.Ok, string(res.Result))
 	// RegisterRuleFirst error
-	res = am.Manage(string(governance.EventRegister), string(APPROVED), string(governance.GovernanceUnavailable), chains[0].ID, registerInfoData)
-	assert.False(t, res.Ok, string(res.Result))
-	// interchain register error
 	res = am.Manage(string(governance.EventRegister), string(APPROVED), string(governance.GovernanceUnavailable), chains[0].ID, registerInfoData)
 	assert.False(t, res.Ok, string(res.Result))
 	// approve: ok
