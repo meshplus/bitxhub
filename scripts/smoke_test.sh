@@ -79,28 +79,13 @@ function bitxhub_tester() {
     cd ../ && git clone -b "$BRANCH_NAME" https://github.com/meshplus/premo.git
     cd premo && make install && premo init
     print_blue "Start test"
-    make bitxhub-tester REPORT=Y
-}
-
-function create_EnvProperties() {
-    OS=''
-    Get_PM_Name null OS
-    GO=$(go version | awk '{print $3}')
-    BitXHubVersion=$(bitxhub version|grep 'BitXHub version:'|awk '{print $3}')
-    PremoVersion=$(premo version|grep 'Premo version:'|awk '{print $3}')
-    cat >>./tester/bxh_tester/allure-results/environment.properties<<EOF
-OS=$OS
-GO=$GO
-BitXHubVersion=$BitXHubVersion
-PremoVersion=$PremoVersion
-EOF
+    make smoke-tester
 }
 
 function bxh_test() {
     prepare
     start_bxh_solo
     bitxhub_tester
-    create_EnvProperties
 }
 
 while getopts "h?b:" opt; do
