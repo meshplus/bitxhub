@@ -767,6 +767,8 @@ github.com/meshplus/consensus v0.0.0-20211228075008-5f469b198531 h1:lU2XI7vWdapT
 github.com/meshplus/consensus v0.0.0-20211228075008-5f469b198531/go.mod h1:2Sv1u1sOFta9dAO6OuHyxLaN1Z6/AdrIol99qi5ZZ0k=
 github.com/meshplus/eth-kit v0.0.0-20220105081940-c90e9f2aa162 h1:AInrDpD8BcoHxRrEmY+FrfgJML+a7UusCwrojOCMq3Y=
 github.com/meshplus/eth-kit v0.0.0-20220105081940-c90e9f2aa162/go.mod h1:7Uf2QyUOCFCHjg4zXr3ZtjKesdPubptdr4IK0KiQBHY=
+github.com/meshplus/eth-kit v0.0.0-20220329095221-eef8a241e0d9 h1:dKo7EIte5vyHQp73vWhkJvzA7CSstWTzRIwIoflUr7s=
+github.com/meshplus/eth-kit v0.0.0-20220329095221-eef8a241e0d9/go.mod h1:7Uf2QyUOCFCHjg4zXr3ZtjKesdPubptdr4IK0KiQBHY=
 github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd h1:/8ydT0Pc+nFy3uAeTwxAurPXY4cWfggslGz3bNwJKDg=
 github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd/go.mod h1:rS4AYMqKypLn2IPEnHICP//V2v16SZo4CWUbwMdihl0=
 github.com/meshplus/go-lightp2p v0.0.0-20220117071358-c37ba4e6dcbc h1:i/VwmBoNxMuQEyWaT6/1m/LpracPLtBgqtqzWcnDuhQ=
