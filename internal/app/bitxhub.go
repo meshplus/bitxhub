@@ -2,20 +2,33 @@ package app
 
 import (
 	"context"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"math/big"
+	"path"
 	"path/filepath"
+	"strings"
+	"sync"
 	"syscall"
 	"time"
 
+	"github.com/Rican7/retry"
+	"github.com/Rican7/retry/strategy"
+	bkg "github.com/binance-chain/tss-lib/ecdsa/keygen"
 	"github.com/common-nighthawk/go-figure"
 	"github.com/ethereum/go-ethereum/common/fdlimit"
+	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/meshplus/bitxhub-core/agency"
 	"github.com/meshplus/bitxhub-core/order"
+	"github.com/meshplus/bitxhub-core/tss"
+	"github.com/meshplus/bitxhub-core/tss/conversion"
+	"github.com/meshplus/bitxhub-core/tss/keygen"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/meshplus/bitxhub-kit/storage/blockfile"
+	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/api/gateway"
 	"github.com/meshplus/bitxhub/api/grpc"
 	"github.com/meshplus/bitxhub/api/jsonrpc"
@@ -41,6 +54,7 @@ type BitXHub struct {
 	Router        router.Router
 	Order         order.Order
 	PeerMgr       peermgr.PeerManager
+	TssMgr        tss.Tss
 
 	repo   *repo.Repo
 	logger logrus.FieldLogger
@@ -210,6 +224,20 @@ func GenerateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 		return nil, fmt.Errorf("create peer manager: %w", err)
 	}
 
+	tssMgr := &tss.TssManager{}
+	if rep.Config.Tss.EnableTSS {
+		preParams, err := getPreparams(repoRoot)
+		if err != nil {
+			return nil, fmt.Errorf("get preparams error: %w", err)
+		}
+
+		tssMgr, err = tss.NewTss(repoRoot, peerMgr, rep.Config.Tss, 0, rep.Key.Libp2pPrivKey, loggers.Logger(loggers.TSS), filepath.Join(repoRoot, rep.Config.Tss.TssConfPath), preParams[rep.NetworkConfig.ID-1])
+		if err != nil {
+			return nil, fmt.Errorf("create tss manager: %w, %v", err, rep.Config.Tss.PreParamTimeout)
+		}
+		peerMgr.Tss = tssMgr
+	}
+
 	return &BitXHub{
 		repo:          rep,
 		logger:        logger,
@@ -217,7 +245,30 @@ func GenerateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 		BlockExecutor: txExec,
 		ViewExecutor:  viewExec,
 		PeerMgr:       peerMgr,
+		TssMgr:        tssMgr,
 	}, nil
+}
+
+func getPreparams(repoRoot string) ([]*bkg.LocalPreParams, error) {
+	const (
+		preParamTestFile = "preParam_test.data"
+	)
+	var preParamArray []*bkg.LocalPreParams
+	buf, err := ioutil.ReadFile(path.Join(repoRoot, preParamTestFile))
+	if err != nil {
+		return nil, fmt.Errorf("get preparams error: %v", err)
+	}
+	preParamsStr := strings.Split(string(buf), "\n")
+	for _, item := range preParamsStr {
+		var preParam bkg.LocalPreParams
+		val, err := hex.DecodeString(item)
+		if err != nil {
+			return nil, fmt.Errorf("get preparams error: %v", err)
+		}
+		err = json.Unmarshal(val, &preParam)
+		preParamArray = append(preParamArray, &preParam)
+	}
+	return preParamArray, nil
 }
 
 func (bxh *BitXHub) Start() error {
@@ -252,6 +303,16 @@ func (bxh *BitXHub) Start() error {
 
 	bxh.printLogo()
 
+	if bxh.repo.Config.Tss.EnableTSS {
+		bxh.TssMgr.Start(bxh.Order.Quorum() - 1)
+		time1 := time.Now()
+		if err := bxh.keygen(); err != nil {
+			return fmt.Errorf("tss key generate: %w", err)
+		}
+		timeKeygen := time.Since(time1).Milliseconds()
+		bxh.logger.Infof("=============================keygen time: %d", timeKeygen)
+	}
+
 	return nil
 }
 
@@ -275,6 +336,8 @@ func (bxh *BitXHub) Stop() error {
 	}
 
 	bxh.Order.Stop()
+
+	bxh.TssMgr.Stop()
 
 	bxh.Cancel()
 
@@ -364,4 +427,90 @@ func (bxh *BitXHub) raiseUlimit(limitNew uint64) error {
 
 func (bxh *BitXHub) GetPrivKey() *repo.Key {
 	return bxh.repo.Key
+}
+
+func (bxh *BitXHub) keygen() error {
+	var (
+		keys   = []crypto.PubKey{bxh.repo.Key.Libp2pPrivKey.GetPublic()}
+		result = make(map[uint64]crypto.PubKey)
+		wg     = sync.WaitGroup{}
+	)
+
+	wg.Add(1)
+	go func(result map[uint64]crypto.PubKey) {
+		for _, key := range bxh.fetchPkFromOtherPeers() {
+			keys = append(keys, key)
+		}
+		wg.Done()
+	}(result)
+	wg.Wait()
+
+	bxh.logger.WithFields(logrus.Fields{
+		"pubkeys": keys,
+	}).Infof("tss keygen peer pubkeys")
+
+	_, err := bxh.TssMgr.Keygen(keygen.NewRequest(keys))
+	if err != nil {
+		return fmt.Errorf("tss key generate: %w", err)
+	}
+
+	return nil
+}
+
+func (bxh *BitXHub) requestPkFromPeer(pid uint64) (crypto.PubKey, error) {
+	req := pb.Message{
+		Type: pb.Message_FETCH_P2P_PUBKEY,
+	}
+
+	resp, err := bxh.PeerMgr.Send(pid, &req)
+	if err != nil {
+		return nil, fmt.Errorf("send message to %d failed1: %w", pid, err)
+	}
+	if resp == nil || resp.Type != pb.Message_FETCH_P2P_PUBKEY_ACK {
+		return nil, fmt.Errorf("invalid fetch peer cert resp")
+	}
+
+	return conversion.GetPubKeyFromPubKeyData(resp.Data)
+}
+
+func (bxh *BitXHub) fetchPkFromOtherPeers() map[uint64]crypto.PubKey {
+	var (
+		result = make(map[uint64]crypto.PubKey)
+		wg     = sync.WaitGroup{}
+		lock   = sync.Mutex{}
+	)
+
+	wg.Add(len(bxh.PeerMgr.OtherPeers()))
+	for pid := range bxh.PeerMgr.OtherPeers() {
+		go func(pid uint64, result map[uint64]crypto.PubKey, wg *sync.WaitGroup, lock *sync.Mutex) {
+			if err := retry.Retry(func(attempt uint) error {
+				time.Sleep(2 * time.Second)
+				pk, err := bxh.requestPkFromPeer(pid)
+				if err != nil {
+					bxh.logger.WithFields(logrus.Fields{
+						"pid": pid,
+						"err": err.Error(),
+					}).Warnf("Get peer pubkey with error")
+					return err
+				} else {
+					lock.Lock()
+					result[pid] = pk
+					lock.Unlock()
+					return nil
+				}
+			}, strategy.Wait(500*time.Millisecond),
+			); err != nil {
+				bxh.logger.WithFields(logrus.Fields{
+					"pid": pid,
+					"err": err.Error(),
+				}).Warnf("retry error")
+			}
+
+			wg.Done()
+		}(pid, result, &wg, &lock)
+	}
+
+	wg.Wait()
+
+	return result
 }

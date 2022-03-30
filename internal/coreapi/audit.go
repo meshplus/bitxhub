@@ -37,7 +37,7 @@ func (api AuditAPI) HandleAuditNodeSubscription(dataCh chan<- *pb.AuditTxInfo, a
 	for height := blockStart; height <= blockCur; height++ {
 		block, err := api.bxh.Ledger.GetBlock(height)
 		if err != nil {
-			return fmt.Errorf("get block error: %v", block)
+			return fmt.Errorf("get block error: %v", err)
 		}
 
 		if utils.TestAuditPermitBloom(api.logger, block.BlockHeader.Bloom, chainIDMap, auditNodeIDMap) {
@@ -71,7 +71,6 @@ func (api AuditAPI) HandleAuditNodeSubscription(dataCh chan<- *pb.AuditTxInfo, a
 						}
 					}
 				}
-
 			}
 		}
 	}

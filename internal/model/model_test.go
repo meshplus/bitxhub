@@ -15,7 +15,7 @@ func TestMerkleWrapperSign_Unmarshal(t *testing.T) {
 	data, err := m.Marshal()
 	require.Nil(t, err)
 	require.EqualValues(t,
-		`{"address":"0xba30d0dd7876318da451582","signature":"MTIzNDU2"}`,
+		`{"address":"0xba30d0dd7876318da451582","signature":"MTIzNDU2","culprit_ids":null}`,
 		string(data))
 
 	s := &MerkleWrapperSign{}

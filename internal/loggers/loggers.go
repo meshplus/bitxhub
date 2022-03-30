@@ -16,6 +16,7 @@ const (
 	CoreAPI  = "coreapi"
 	Storage  = "storage"
 	Profile  = "profile"
+	TSS      = "tss"
 )
 
 var w *LoggerWrapper
@@ -44,6 +45,8 @@ func Initialize(config *repo.Config) {
 	m[Storage].Logger.SetLevel(log.ParseLevel(config.Log.Module.Storage))
 	m[Profile] = log.NewWithModule(Profile)
 	m[Profile].Logger.SetLevel(log.ParseLevel(config.Log.Module.Profile))
+	m[TSS] = log.NewWithModule(TSS)
+	m[TSS].Logger.SetLevel(log.ParseLevel(config.Log.Module.TSS))
 
 	w = &LoggerWrapper{loggers: m}
 }

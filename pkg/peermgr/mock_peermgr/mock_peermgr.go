@@ -258,6 +258,34 @@ func (mr *MockPeerManagerMockRecorder) SubscribeOrderMessage(ch interface{}) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubscribeOrderMessage", reflect.TypeOf((*MockPeerManager)(nil).SubscribeOrderMessage), ch)
 }
 
+// SubscribeTssMessage mocks base method.
+func (m *MockPeerManager) SubscribeTssMessage(ch chan<- *pb.Message) event.Subscription {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SubscribeTssMessage", ch)
+	ret0, _ := ret[0].(event.Subscription)
+	return ret0
+}
+
+// SubscribeTssMessage indicates an expected call of SubscribeTssMessage.
+func (mr *MockPeerManagerMockRecorder) SubscribeTssMessage(ch interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubscribeTssMessage", reflect.TypeOf((*MockPeerManager)(nil).SubscribeTssMessage), ch)
+}
+
+// SubscribeTssSignRes mocks base method.
+func (m *MockPeerManager) SubscribeTssSignRes(ch chan<- *pb.Message) event.Subscription {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SubscribeTssSignRes", ch)
+	ret0, _ := ret[0].(event.Subscription)
+	return ret0
+}
+
+// SubscribeTssSignRes indicates an expected call of SubscribeTssSignRes.
+func (mr *MockPeerManagerMockRecorder) SubscribeTssSignRes(ch interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubscribeTssSignRes", reflect.TypeOf((*MockPeerManager)(nil).SubscribeTssSignRes), ch)
+}
+
 // UpdateRouter mocks base method.
 func (m *MockPeerManager) UpdateRouter(vpInfos map[uint64]*pb.VpInfo, isNew bool) bool {
 	m.ctrl.T.Helper()

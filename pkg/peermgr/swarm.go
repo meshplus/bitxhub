@@ -15,6 +15,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	orderPeerMgr "github.com/meshplus/bitxhub-core/peer-mgr"
+	"github.com/meshplus/bitxhub-core/tss"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/repo"
@@ -35,6 +36,7 @@ type Swarm struct {
 	localID uint64
 	p2p     network.Network
 	logger  logrus.FieldLogger
+	Tss     tss.Tss
 
 	routers        map[uint64]*pb.VpInfo // trace the vp nodes
 	multiAddrs     map[uint64]*peer.AddrInfo
@@ -43,11 +45,13 @@ type Swarm struct {
 	piers          *Piers
 	gater          connmgr.ConnectionGater
 
-	ledger           *ledger.Ledger
-	orderMessageFeed event.Feed
-	enablePing       bool
-	pingTimeout      time.Duration
-	pingC            chan *repo.Ping
+	ledger            *ledger.Ledger
+	orderMessageFeed  event.Feed
+	tssMessageFeed    event.Feed
+	tssSignResultFeed event.Feed
+	enablePing        bool
+	pingTimeout       time.Duration
+	pingC             chan *repo.Ping
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -526,4 +530,12 @@ func (swarm *Swarm) ReConfig(config interface{}) error {
 		}
 	}
 	return nil
+}
+
+func (swarm *Swarm) SubscribeTssMessage(ch chan<- *pb.Message) event.Subscription {
+	return swarm.tssMessageFeed.Subscribe(ch)
+}
+
+func (swarm *Swarm) SubscribeTssSignRes(ch chan<- *pb.Message) event.Subscription {
+	return swarm.tssSignResultFeed.Subscribe(ch)
 }

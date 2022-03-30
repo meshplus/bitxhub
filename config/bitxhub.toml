@@ -22,7 +22,7 @@ solo = false
     allowed_origins = ["*"]
 
 [ping]
-  enable = true
+  enable = false
   duration = "15s"
 
 [security]
@@ -31,6 +31,14 @@ solo = false
   server_key_path = "certs/node.priv"
   gateway_cert_path = "certs/gateway.cert"
   gateway_key_path = "certs/gateway.priv"
+
+[tss]
+  enable_tss = true
+  party_timeout = "10s"
+  key_gen_timeout = "90s"
+  key_sign_timeout = "90s"
+  pre_param_timeout = "100s"
+  tss_conf_path = "tss"
 
 [limiter]
   interval= "50ms"
@@ -55,6 +63,7 @@ solo = false
     coreapi = "info"
     storage = "info"
     profile = "info"
+    tss = "info"
 
 [cert]
   verify = true
