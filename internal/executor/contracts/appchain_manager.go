@@ -266,12 +266,6 @@ func (am *AppchainManager) manageRegisterApprove(registerInfoData []byte) error 
 		return fmt.Errorf("cross invoke RegisterRuleFirst error: %s", string(res.Result))
 	}
 
-	// 4. register interchain
-	res = am.CrossInvoke(constant.InterchainContractAddr.Address().String(), "Register", pb.String(registerInfo.ChainInfo.ID))
-	if !res.Ok {
-		return fmt.Errorf("cross invoke interchain Register error: %s", string(res.Result))
-	}
-
 	return nil
 }
 
