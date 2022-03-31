@@ -47,7 +47,7 @@ const wasmGasLimitNotEnough = 500
 func initCreateContext(t *testing.T, name string) *vm.Context {
 	dir := filepath.Join(os.TempDir(), "wasm", name)
 
-	bytes, err := ioutil.ReadFile("./testdata/ledger_test_gc.wasm")
+	bytes, err := ioutil.ReadFile("./testdata/optimized.wasm")
 	assert.Nil(t, err)
 
 	data := &pb.TransactionData{
@@ -88,7 +88,7 @@ func initConstantsContext(t *testing.T, name string) *vm.Context {
 	assert.Nil(t, err)
 	dir := filepath.Join(os.TempDir(), "constant_wasm", name)
 
-	bytes, err := ioutil.ReadFile("./testdata/result.wasm")
+	bytes, err := ioutil.ReadFile("./testdata/optimized.wasm")
 	assert.Nil(t, err)
 
 	data := &pb.TransactionData{
