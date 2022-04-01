@@ -140,9 +140,43 @@ func (l *SimpleLedger) SetCode(addr *types.Address, code []byte) {
 }
 
 // GetCode get contract code
-func (l *SimpleLedger) GetCode(addr *types.Address) []byte {
-	account := l.GetOrCreateAccount(addr)
-	return account.Code()
+func (l *SimpleLedger) GetCode(address *types.Address) []byte {
+	addr := address.String()
+
+	l.lock.RLock()
+	value, ok := l.accounts[addr]
+	l.lock.RUnlock()
+	if ok {
+		return value.Code()
+	}
+
+	account := newAccount(l.ldb, l.accountCache, address, l.changer)
+
+	if innerAccount, ok := l.accountCache.getInnerAccount(address); ok {
+		account.originAccount = innerAccount
+		if !bytes.Equal(innerAccount.CodeHash, nil) {
+			code, okCode := l.accountCache.getCode(address)
+			if !okCode {
+				code = l.ldb.Get(compositeKey(codeKey, address))
+			}
+			return code
+		}
+		return account.Code()
+	}
+
+	if data := l.ldb.Get(compositeKey(accountKey, address)); data != nil {
+		account.originAccount = &ledger.InnerAccount{Balance: big.NewInt(0)}
+		if err := account.originAccount.Unmarshal(data); err != nil {
+			panic(err)
+		}
+		if !bytes.Equal(account.originAccount.CodeHash, nil) {
+			code := l.ldb.Get(compositeKey(codeKey, address))
+			return code
+		}
+		return account.Code()
+	}
+
+	return nil
 }
 
 func (l *SimpleLedger) GetCodeHash(addr *types.Address) *types.Hash {
