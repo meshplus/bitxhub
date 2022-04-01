@@ -757,7 +757,6 @@ func (exec *BlockExecutor) getTimeoutList(height uint64) ([]string, error) {
 
 	var list []string
 	list = strings.Split(string(val), ",")
-	fmt.Println(list[0])
 	if list[0] == "" {
 		return nil, nil
 	}
@@ -841,12 +840,10 @@ func (exec *BlockExecutor) setTimeoutList(height uint64, txList []pb.Transaction
 	for timeoutHeight, txidList := range addTimeoutListMap {
 		newStr := exec.addTimeoutList(timeoutHeight, txidList)
 		exec.ledger.SetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.TimeoutKey(timeoutHeight)), []byte(newStr))
-		fmt.Printf("=========！！！timeouList is : [ %s ]\n", newStr)
 	}
 	for recordHeight, txidList := range removeTimeoutListMap {
 		newStr := exec.removeTimeoutList(recordHeight, txidList)
 		exec.ledger.SetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.TimeoutKey(recordHeight)), []byte(newStr))
-		fmt.Printf("=========！！！timeouList is : [ %s ]\n", newStr)
 	}
 	return nil
 }
@@ -895,7 +892,6 @@ func (exec *BlockExecutor) removeFromStr(str string, txId string) string {
 
 func (exec *BlockExecutor) getTxInfoByGlobalID(id string) (*contracts.TransactionInfo, error) {
 	ok, val := exec.ledger.GetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.GlobalTxInfoKey(id)))
-	fmt.Printf("==============get global id is : %s\n", contracts.GlobalTxInfoKey(id))
 	if !ok {
 		return nil, fmt.Errorf("cannot get tx info by global ID: %s", id)
 	}

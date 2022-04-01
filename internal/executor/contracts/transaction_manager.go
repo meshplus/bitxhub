@@ -308,7 +308,6 @@ func (t *TransactionManager) addToTimeoutList(height uint64, txId string) {
 		timeoutList = builder.String()
 	}
 	t.Set(TimeoutKey(height), []byte(timeoutList))
-	fmt.Printf("=========！！！timeouList is : [ %s ]\n", timeoutList)
 }
 
 func (t *TransactionManager) removeFromTimeoutList(height uint64, txId string) {
@@ -321,7 +320,6 @@ func (t *TransactionManager) removeFromTimeoutList(height uint64, txId string) {
 			}
 		}
 		t.Set(TimeoutKey(height), []byte(strings.Join(list, ",")))
-		fmt.Printf("=========！！！timeouList is : [ %s ]\n", timeoutList)
 	}
 }
 

@@ -215,7 +215,7 @@ func NewBxhTxFromEth(tx *types2.EthTransaction) *pb.BxhTransaction {
 		IBTP:            tx.GetIBTP(),
 		Nonce:           tx.GetNonce(),
 		Amount:          tx.GetValue().String(),
-		Typ:             uint32(tx.GetType()),
+		Typ:             pb.TxType_EthSignedBxhTx,
 		Signature:       tx.GetSignature(),
 		Extra:           tx.GetExtra(),
 	}
