@@ -237,7 +237,8 @@ func (suite *Interchain) TestRegister() {
 	k1Nonce := suite.api.Broker().GetPendingNonceByAccount(from1.String())
 	suite.Require().Nil(transfer(suite.Suite, suite.api, from1, 10000000000000))
 
-	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.InterchainContractAddr.Address(), "Register", pb.String(from1.Address))
+	chainServiceID := fmt.Sprintf("%s:%s", suite.chainID1, from1.Address)
+	ret, err := invokeBVMContract(suite.api, k1, k1Nonce, constant.InterchainContractAddr.Address(), "Register", pb.String(chainServiceID))
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	k1Nonce++

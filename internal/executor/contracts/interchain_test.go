@@ -296,15 +296,16 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	assert.False(t, res.Ok)
 	assert.Equal(t, true, strings.Contains(string(res.Result), InvalidIBTP))
 
+	// no bxhid is illegal
 	ibtp.From = srcChainService.getChainServiceId()
 	res = im.HandleIBTP(ibtp)
 	assert.False(t, res.Ok)
-	assert.Contains(t, string(res.Result), string(boltvm.InterchainInvalidIBTPParseDestErrorCode))
+	assert.Contains(t, string(res.Result), string(boltvm.InterchainInvalidIBTPParseSourceErrorCode))
 
 	// 1. request
 	// 1.1 source local
 	// 1.1.1 source check failed
-	ibtp.To = dstChainService.getChainServiceId()
+	ibtp.To = dstChainService.getFullServiceId()
 	ibtp.From = unexistServiceFullServiceID
 	res = im.HandleIBTP(ibtp)
 	assert.False(t, res.Ok)
@@ -330,7 +331,7 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 			return boltvm.Success(data)
 		}).AnyTimes()
 
-	ibtp.From = srcChainService.getChainServiceId()
+	ibtp.From = srcChainService.getFullServiceId()
 	ibtp.To = unavailableDstServiceFullServiceID
 	ibtp.Index = 1
 	mockStub.EXPECT().PostInterchainEvent(map[string]uint64{srcChainService.ChainId: 1, dstChainID: 1}).MaxTimes(1)
@@ -352,7 +353,7 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	assert.True(t, res.Ok)
 
 	ibtp.Index = 3
-	ibtp.To = dstChainService.getChainServiceId()
+	ibtp.To = dstChainService.getFullServiceId()
 	res = im.HandleIBTP(ibtp)
 	assert.False(t, res.Ok)
 	assert.Equal(t, true, strings.Contains(string(res.Result), ibtpIndexWrong))
@@ -363,7 +364,7 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	assert.Equal(t, true, strings.Contains(string(res.Result), ibtpIndexExist))
 
 	ibtp.Type = pb.IBTP_RECEIPT_FAILURE
-	ibtp.To = dstChainService.getChainServiceId()
+	ibtp.To = dstChainService.getFullServiceId()
 	ibtp.Index = 1
 	res = im.HandleIBTP(ibtp)
 	assert.False(t, res.Ok)
@@ -373,8 +374,8 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	// 1.1.3 check ok (targetErr nil)
 	ibtp.Index = 2
 	ibtp.Type = pb.IBTP_INTERCHAIN
-	ibtp.From = srcChainService.getChainServiceId()
-	ibtp.To = dstChainService.getChainServiceId()
+	ibtp.From = srcChainService.getFullServiceId()
+	ibtp.To = dstChainService.getFullServiceId()
 	res = im.HandleIBTP(ibtp)
 	assert.True(t, res.Ok)
 
@@ -393,21 +394,21 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	assert.Equal(t, true, strings.Contains(string(res.Result), string(boltvm.InterchainInvalidIBTPNotInCurBXHCode)))
 
 	ibtp.From = unavailableBitxhubServiceID
-	ibtp.To = dstChainService.getChainServiceId()
+	ibtp.To = dstChainService.getFullServiceId()
 	res = im.HandleIBTP(ibtp)
 	assert.False(t, res.Ok)
 	assert.Contains(t, string(res.Result), string(boltvm.InterchainSourceBitXHubNotAvailableCode))
 
 	ibtp.Index = 2
 	ibtp.From = otherBitxhubServiceID
-	ibtp.To = dstChainService.getChainServiceId()
+	ibtp.To = dstChainService.getFullServiceId()
 	res = im.HandleIBTP(ibtp)
 	assert.False(t, res.Ok, string(res.Result))
 	assert.Equal(t, true, strings.Contains(string(res.Result), ibtpIndexWrong), string(res.Result))
 
 	// 2. response
-	ibtp.From = srcChainService.getChainServiceId()
-	ibtp.To = dstChainService.getChainServiceId()
+	ibtp.From = srcChainService.getFullServiceId()
+	ibtp.To = dstChainService.getFullServiceId()
 	ibtp.Type = pb.IBTP_RECEIPT_FAILURE
 	ibtp.Index = 1
 	res = im.HandleIBTP(ibtp)
@@ -440,8 +441,8 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	// ======================== ibtp group not nil
 	ibtp.Type = pb.IBTP_INTERCHAIN
 	ibtp.Index = 2
-	ibtp.From = srcChainService.getChainServiceId()
-	ibtp.To = dstChainService.getChainServiceId()
+	ibtp.From = srcChainService.getFullServiceId()
+	ibtp.To = dstChainService.getFullServiceId()
 	ibtp.Group = &pb.StringUint64Map{
 		Keys: []string{"111"},
 		Vals: []uint64{1},

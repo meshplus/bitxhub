@@ -65,7 +65,7 @@ func (pl *VerifyPool) CheckProof(tx pb.Transaction) (ok bool, gasUsed uint64, er
 				"hash":  tx.GetHash().String(),
 				"id":    ibtp.ID(),
 				"error": err}).Warn("ibtp verify got error")
-			return false, gasUsed, fmt.Errorf("ibtp verify got error: %w", err)
+			return false, gasUsed, fmt.Errorf("ibtp %s : %w", ProofError, err)
 		}
 		if !ok {
 			pl.logger.WithFields(logrus.Fields{"hash": tx.GetHash().String(), "id": ibtp.ID()}).Warn("ibtp verify failed")
@@ -155,10 +155,11 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, uint64, er
 		return false, 0, fmt.Errorf("%s: proof hash is not correct", ProofError)
 	}
 
-	// get real appchain id for union ibtp
-	if err := ibtp.CheckServiceID(); err != nil {
-		return false, 0, fmt.Errorf("check serviceID failed: %w", err)
-	}
+	// check ibtp format move to Interchain's checkIBTP
+	//// get real appchain id for union ibtp
+	//if err := ibtp.CheckServiceID(); err != nil {
+	//	return false, 0, fmt.Errorf("%s: check serviceID failed: %w", ProofError, err)
+	//}
 
 	var (
 		bxhID   string

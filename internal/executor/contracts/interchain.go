@@ -496,24 +496,13 @@ func IndexReceiptMapKey(id string) string {
 func (x *InterchainManager) parseChainService(id string) (*ChainService, error) {
 	splits := strings.Split(id, ":")
 
-	size := len(splits)
-
-	if size != 2 && size != 3 {
+	if len(splits) != 3 {
 		return nil, fmt.Errorf("invalid chain service id %s", id)
 	}
 
 	bxhId, err := x.getBitXHubID()
 	if err != nil {
 		return nil, err
-	}
-
-	if len(splits) == 2 {
-		return &ChainService{
-			BxhId:     bxhId,
-			ChainId:   splits[0],
-			ServiceId: splits[1],
-			IsLocal:   true,
-		}, nil
 	}
 
 	return &ChainService{
