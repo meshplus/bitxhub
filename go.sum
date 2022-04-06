@@ -758,6 +758,8 @@ github.com/meshplus/bitxhub-model v1.2.1-0.20210805020100-41c27414badf/go.mod h1
 github.com/meshplus/bitxhub-model v1.2.1-0.20211122062102-4e6856663e73/go.mod h1:sPko8fD+G3MYOnH/44Ju4T4jD/tlEU3IJDIJ4hjrzxg=
 github.com/meshplus/bitxhub-model v1.2.1-0.20211207095229-a43d4b219b66 h1:qAAZFq5QmBgtwxY82bnz6RnfxQLCfiSIWq9KtIwb/xI=
 github.com/meshplus/bitxhub-model v1.2.1-0.20211207095229-a43d4b219b66/go.mod h1:sPko8fD+G3MYOnH/44Ju4T4jD/tlEU3IJDIJ4hjrzxg=
+github.com/meshplus/bitxhub-model v1.2.1-0.20220406113755-8cefea117756 h1:AdK3W16kBqlusA+AD+MbAKxEJ0EZXaqgRapxqwBPC5w=
+github.com/meshplus/bitxhub-model v1.2.1-0.20220406113755-8cefea117756/go.mod h1:sPko8fD+G3MYOnH/44Ju4T4jD/tlEU3IJDIJ4hjrzxg=
 github.com/meshplus/eth-kit v0.0.0-20210906064541-8dfea98dbf95 h1:bCBXI1MpjAzRCN0hodewcbnIACOFUWRtGbJZP4OZj98=
 github.com/meshplus/eth-kit v0.0.0-20210906064541-8dfea98dbf95/go.mod h1:7Uf2QyUOCFCHjg4zXr3ZtjKesdPubptdr4IK0KiQBHY=
 github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd h1:/8ydT0Pc+nFy3uAeTwxAurPXY4cWfggslGz3bNwJKDg=

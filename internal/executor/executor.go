@@ -205,16 +205,7 @@ func (exec *BlockExecutor) listenExecuteEvent() {
 	for {
 		select {
 		case blockWrapper := <-exec.blockC:
-			now := time.Now()
-			blockData := exec.processExecuteEvent(blockWrapper)
-			if blockData != nil {
-				exec.logger.WithFields(logrus.Fields{
-					"height": blockWrapper.block.BlockHeader.Number,
-					"count":  len(blockWrapper.block.Transactions.Transactions),
-					"elapse": time.Since(now),
-				}).Debug("Executed block")
-				exec.persistC <- blockData
-			}
+			exec.processExecuteEvent(blockWrapper)
 		case <-exec.ctx.Done():
 			close(exec.persistC)
 			return

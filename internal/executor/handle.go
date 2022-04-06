@@ -157,6 +157,12 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 		TxHashList:     txHashList,
 	}
 
+	exec.logger.WithFields(logrus.Fields{
+		"height": blockWrapper.block.BlockHeader.Number,
+		"count":  len(blockWrapper.block.Transactions.Transactions),
+		"elapse": time.Since(current),
+	}).Info("Executed block")
+
 	now := time.Now()
 	exec.ledger.PersistBlockData(data)
 	exec.postBlockEvent(data.Block, data.InterchainMeta, data.TxHashList)
