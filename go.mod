@@ -5,6 +5,7 @@ go 1.14
 require (
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
 	github.com/Rican7/retry v0.1.0
+	github.com/bytecodealliance/wasmtime-go v0.35.0
 	github.com/cbergoon/merkletree v0.2.0
 	github.com/cheynewallace/tabby v1.1.1
 	github.com/common-nighthawk/go-figure v0.0.0-20190529165535-67e0ed34491a
@@ -30,7 +31,7 @@ require (
 	github.com/libp2p/go-libp2p-core v0.5.6
 	github.com/looplab/fsm v0.2.0
 	github.com/magiconair/properties v1.8.4
-	github.com/meshplus/bitxhub-core v1.3.1-0.20220218084831-3aaff0fe2b53
+	github.com/meshplus/bitxhub-core v1.3.1-0.20220407025206-0341f306b5ea
 	github.com/meshplus/bitxhub-kit v1.2.1-0.20220111092827-0ad7ba507bd3
 	github.com/meshplus/bitxhub-model v1.2.1-0.20220304014055-95b0781aece0
 	github.com/meshplus/eth-kit v0.0.0-20210906064541-8dfea98dbf95
