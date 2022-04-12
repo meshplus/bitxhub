@@ -27,6 +27,10 @@ func (api *FeedAPI) SubscribeAuditEvent(ch chan<- *pb.AuditTxInfo) event.Subscri
 	return api.bxh.BlockExecutor.SubscribeAuditEvent(ch)
 }
 
+func (api *FeedAPI) SubscribeTssSignRes(ch chan<- *pb.Message) event.Subscription {
+	return api.bxh.PeerMgr.SubscribeTssSignRes(ch)
+}
+
 func (api *FeedAPI) BloomStatus() (uint64, uint64) {
 	return 4096, 0
 }

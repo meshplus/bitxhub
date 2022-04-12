@@ -1,6 +1,8 @@
 package api
 
 import (
+	"crypto/ecdsa"
+
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -45,9 +47,11 @@ type BrokerAPI interface {
 	// OrderReady
 	OrderReady() error
 
-	FetchSignsFromOtherPeers(content string, typ pb.GetMultiSignsRequest_Type) map[string][]byte
-	GetSign(content string, typ pb.GetMultiSignsRequest_Type) (string, []byte, error)
+	FetchSignsFromOtherPeers(req *pb.GetSignsRequest) map[string][]byte
+	GetSign(req *pb.GetSignsRequest) (string, []byte, []string, error)
 	GetBlockHeaders(start uint64, end uint64) ([]*pb.BlockHeader, error)
+	GetQuorum() uint64
+	GetTssPubkey() (string, *ecdsa.PublicKey, error)
 }
 
 type NetworkAPI interface {
@@ -65,6 +69,7 @@ type FeedAPI interface {
 	SubscribeLogsEvent(chan<- []*pb.EvmLog) event.Subscription
 	SubscribeNewTxEvent(chan<- pb.Transactions) event.Subscription
 	SubscribeNewBlockEvent(chan<- events.ExecutedEvent) event.Subscription
+	SubscribeTssSignRes(ch chan<- *pb.Message) event.Subscription
 	BloomStatus() (uint64, uint64)
 }
 

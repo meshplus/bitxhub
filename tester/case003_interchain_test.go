@@ -173,12 +173,20 @@ func (suite *Interchain) TestHandleIBTP() {
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 
-	addr, sign, err := suite.api.Broker().GetSign(ib.ID(), pb.GetMultiSignsRequest_IBTP_REQUEST)
+	addr, sign, _, err := suite.api.Broker().GetSign(&pb.GetSignsRequest{
+		Type:    pb.GetSignsRequest_MULTI_IBTP_REQUEST,
+		Content: ib.ID(),
+		Extra:   nil,
+	})
 	suite.Require().Nil(err)
 	suite.Require().Equal(65, len(sign), fmt.Sprintf("signature's length is %d", len(sign)))
 	suite.Require().NotEqual("", addr, fmt.Sprintf("signer is %s", addr))
 
-	signM := suite.api.Broker().FetchSignsFromOtherPeers(ib.ID(), pb.GetMultiSignsRequest_IBTP_REQUEST)
+	signM := suite.api.Broker().FetchSignsFromOtherPeers(&pb.GetSignsRequest{
+		Type:    pb.GetSignsRequest_MULTI_IBTP_REQUEST,
+		Content: ib.ID(),
+		Extra:   nil,
+	})
 	suite.Require().Equal(3, len(signM), fmt.Sprintf("signM's size is %d", len(signM)))
 
 	for addr, sign := range signM {

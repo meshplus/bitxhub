@@ -3,8 +3,9 @@ package model
 import "encoding/json"
 
 type MerkleWrapperSign struct {
-	Address   string `json:"address"`
-	Signature []byte `json:"signature"`
+	Address    string   `json:"address"`
+	Signature  []byte   `json:"signature"`
+	CulpritIDs []string `json:"culprit_ids"`
 }
 
 func (m *MerkleWrapperSign) Marshal() ([]byte, error) {

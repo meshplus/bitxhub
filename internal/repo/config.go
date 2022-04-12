@@ -11,6 +11,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/fsnotify/fsnotify"
+	"github.com/meshplus/bitxhub-core/tss"
 	"github.com/mitchellh/go-homedir"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/spf13/viper"
@@ -71,9 +72,10 @@ type Config struct {
 	Executor `json:"executor"`
 	Ledger   `json:"ledger"`
 	Genesis  `json:"genesis"`
-	Security Security `toml:"security" json:"security"`
-	License  License  `toml:"license" json:"license"`
-	Crypto   Crypto   `toml:"crypto" json:"crypto"`
+	Security Security      `toml:"security" json:"security"`
+	License  License       `toml:"license" json:"license"`
+	Crypto   Crypto        `toml:"crypto" json:"crypto"`
+	Tss      tss.TssConfig `toml:"tss" json:"tss"`
 }
 
 // Security are files used to setup connection with tls
@@ -141,6 +143,7 @@ type LogModule struct {
 	CoreAPI   string `mapstructure:"coreapi" toml:"coreapi" json:"coreapi"`
 	Storage   string `toml:"storage" json:"storage"`
 	Profile   string `toml:"profile" json:"profile"`
+	TSS       string `toml:"tss" json:"tss"`
 }
 
 type Strategy struct {
@@ -229,6 +232,7 @@ func DefaultConfig() (*Config, error) {
 				Router:    "info",
 				API:       "info",
 				CoreAPI:   "info",
+				TSS:       "info",
 			},
 		},
 		Cert: Cert{

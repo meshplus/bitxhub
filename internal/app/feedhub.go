@@ -3,6 +3,7 @@ package app
 import (
 	"github.com/meshplus/bitxhub-core/governance"
 	orderPeerMgr "github.com/meshplus/bitxhub-core/peer-mgr"
+	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/sirupsen/logrus"
@@ -32,19 +33,24 @@ func (bxh *BitXHub) listenEvent() {
 	orderMsgCh := make(chan orderPeerMgr.OrderMessageEvent)
 	nodeCh := make(chan events.NodeEvent)
 	configCh := make(chan *repo.Repo)
+	tssMsgCh := make(chan *pb.Message)
 
 	blockSub := bxh.BlockExecutor.SubscribeBlockEvent(blockCh)
 	orderMsgSub := bxh.PeerMgr.SubscribeOrderMessage(orderMsgCh)
 	nodeSub := bxh.BlockExecutor.SubscribeNodeEvent(nodeCh)
 	configSub := bxh.repo.SubscribeConfigChange(configCh)
+	tssSub := bxh.PeerMgr.SubscribeTssMessage(tssMsgCh)
 
 	defer blockSub.Unsubscribe()
 	defer orderMsgSub.Unsubscribe()
 	defer nodeSub.Unsubscribe()
 	defer configSub.Unsubscribe()
+	defer tssSub.Unsubscribe()
 
 	for {
 		select {
+		case msg := <-tssMsgCh:
+			go bxh.TssMgr.PutTssMsg(msg)
 		case ev := <-blockCh:
 			go bxh.Order.ReportState(ev.Block.BlockHeader.Number, ev.Block.BlockHash, ev.TxHashList)
 			go bxh.Router.PutBlockAndMeta(ev.Block, ev.InterchainMeta)

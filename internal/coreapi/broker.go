@@ -1,6 +1,7 @@
 package coreapi
 
 import (
+	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -26,6 +27,14 @@ import (
 type BrokerAPI CoreAPI
 
 var _ api.BrokerAPI = (*BrokerAPI)(nil)
+
+func (b *BrokerAPI) GetQuorum() uint64 {
+	return b.bxh.Order.Quorum()
+}
+
+func (b *BrokerAPI) GetTssPubkey() (string, *ecdsa.PublicKey, error) {
+	return b.bxh.TssMgr.GetTssPubkey()
+}
 
 func (b *BrokerAPI) HandleTransaction(tx pb.Transaction) error {
 	if tx.GetHash() == nil {
@@ -145,7 +154,7 @@ func (b *BrokerAPI) OrderReady() error {
 	return b.bxh.Order.Ready()
 }
 
-func (b *BrokerAPI) FetchSignsFromOtherPeers(id string, typ pb.GetMultiSignsRequest_Type) map[string][]byte {
+func (b *BrokerAPI) FetchSignsFromOtherPeers(req *pb.GetSignsRequest) map[string][]byte {
 	var (
 		result = make(map[string][]byte)
 		wg     = sync.WaitGroup{}
@@ -161,26 +170,33 @@ func (b *BrokerAPI) FetchSignsFromOtherPeers(id string, typ pb.GetMultiSignsRequ
 				sign    []byte
 				err     error
 			)
-			switch typ {
-			case pb.GetMultiSignsRequest_IBTP_REQUEST:
+			switch req.Type {
+			case pb.GetSignsRequest_MULTI_IBTP_REQUEST:
 				fallthrough
-			case pb.GetMultiSignsRequest_IBTP_RESPONSE:
-				address, sign, err = b.requestIBTPSignPeer(pid, id, typ)
-			case pb.GetMultiSignsRequest_BLOCK_HEADER:
-				address, sign, err = b.requestBlockHeaderSignFromPeer(pid, id)
-			case pb.GetMultiSignsRequest_BURN:
-				address, sign, err = b.requestBurnSignFromPeer(pid, id)
+			case pb.GetSignsRequest_MULTI_IBTP_RESPONSE:
+				address, sign, err = b.requestIBTPSignPeer(pid, req.Content, req.Type)
+			case pb.GetSignsRequest_MULTI_BLOCK_HEADER:
+				address, sign, err = b.requestBlockHeaderSignFromPeer(pid, req.Content)
+			case pb.GetSignsRequest_MULTI_BURN:
+				address, sign, err = b.requestBurnSignFromPeer(pid, req.Content)
+			case pb.GetSignsRequest_TSS_IBTP_REQUEST:
+				fallthrough
+			case pb.GetSignsRequest_TSS_IBTP_RESPONSE:
+				_, _, err = b.requestIBTPTssSignPeer(pid, req)
 			}
 
 			if err != nil {
 				b.logger.WithFields(logrus.Fields{
 					"pid": pid,
 					"err": err.Error(),
-				}).Warnf("Get multi-sign with error")
+				}).Warnf("fetch signs from other peers with error")
 			} else {
-				lock.Lock()
-				result[address] = sign
-				lock.Unlock()
+				// 门限签名需要向其他参与方发起签名请求，但不需要返回结果
+				if req.Type != pb.GetSignsRequest_TSS_IBTP_REQUEST && req.Type != pb.GetSignsRequest_TSS_IBTP_RESPONSE {
+					lock.Lock()
+					result[address] = sign
+					lock.Unlock()
+				}
 			}
 			wg.Done()
 		}(pid, result, &wg, &lock)
@@ -191,12 +207,12 @@ func (b *BrokerAPI) FetchSignsFromOtherPeers(id string, typ pb.GetMultiSignsRequ
 	return result
 }
 
-func (b *BrokerAPI) requestIBTPSignPeer(pid uint64, id string, typ pb.GetMultiSignsRequest_Type) (string, []byte, error) {
+func (b *BrokerAPI) requestIBTPSignPeer(pid uint64, id string, typ pb.GetSignsRequest_Type) (string, []byte, error) {
 	req := pb.Message{
 		Type: pb.Message_FETCH_IBTP_REQUEST_SIGN,
 		Data: []byte(id),
 	}
-	if typ == pb.GetMultiSignsRequest_IBTP_RESPONSE {
+	if typ == pb.GetSignsRequest_MULTI_IBTP_RESPONSE {
 		req.Type = pb.Message_FETCH_IBTP_RESPONSE_SIGN
 	}
 
@@ -214,6 +230,28 @@ func (b *BrokerAPI) requestIBTPSignPeer(pid uint64, id string, typ pb.GetMultiSi
 	}
 
 	return data.Address, data.Signature, nil
+}
+
+func (b *BrokerAPI) requestIBTPTssSignPeer(pid uint64, req *pb.GetSignsRequest) (string, []byte, error) {
+	keysignReqData, err := req.Marshal()
+	if err != nil {
+		return "", nil, fmt.Errorf("GetSignsRequest marshal error: %w", err)
+	}
+
+	msg := pb.Message{
+		Type: pb.Message_FETCH_IBTP_REQUEST_TSS_SIGN,
+		Data: keysignReqData,
+	}
+	if req.Type == pb.GetSignsRequest_TSS_IBTP_RESPONSE {
+		msg.Type = pb.Message_FETCH_IBTP_RESPONSE_TSS_SIGN
+	}
+
+	err = b.bxh.PeerMgr.AsyncSend(pid, &msg)
+	if err != nil {
+		return "", nil, fmt.Errorf("send message to %d failed: %w", pid, err)
+	}
+
+	return "", nil, nil
 }
 
 func (b *BrokerAPI) requestBlockHeaderSignFromPeer(pid uint64, height string) (string, []byte, error) {
@@ -262,29 +300,34 @@ func (b *BrokerAPI) requestBurnSignFromPeer(pid uint64, hash string) (string, []
 	return data.Address, data.Signature, nil
 }
 
-func (b *BrokerAPI) GetSign(content string, typ pb.GetMultiSignsRequest_Type) (string, []byte, error) {
-	switch typ {
-	case pb.GetMultiSignsRequest_IBTP_REQUEST:
-		return utils.GetIBTPSign(b.bxh.Ledger, content, true, b.bxh.GetPrivKey().PrivKey)
-	case pb.GetMultiSignsRequest_IBTP_RESPONSE:
-		return utils.GetIBTPSign(b.bxh.Ledger, content, false, b.bxh.GetPrivKey().PrivKey)
-	case pb.GetMultiSignsRequest_BLOCK_HEADER:
-		height, err := strconv.ParseUint(content, 10, 64)
-		if err != nil {
-			return "", nil, fmt.Errorf("get block header sign: %w", err)
-		}
+func (b *BrokerAPI) GetSign(req *pb.GetSignsRequest) (string, []byte, []string, error) {
+	addr := b.bxh.GetPrivKey().Address
+	signData := []byte{}
+	culpritIDs := []string{}
+	var err error
 
-		sign, err := b.bxh.Ledger.GetBlockSign(height)
+	switch req.Type {
+	case pb.GetSignsRequest_MULTI_IBTP_REQUEST:
+		addr, signData, err = utils.GetIBTPSign(b.bxh.Ledger, req.Content, true, b.bxh.GetPrivKey().PrivKey)
+	case pb.GetSignsRequest_MULTI_IBTP_RESPONSE:
+		addr, signData, err = utils.GetIBTPSign(b.bxh.Ledger, req.Content, false, b.bxh.GetPrivKey().PrivKey)
+	case pb.GetSignsRequest_TSS_IBTP_REQUEST:
+		signData, culpritIDs, err = utils.GetIBTPTssSign(b.bxh.TssMgr, b.bxh.Ledger, req.Content, true, req.Extra)
+	case pb.GetSignsRequest_TSS_IBTP_RESPONSE:
+		signData, culpritIDs, err = utils.GetIBTPTssSign(b.bxh.TssMgr, b.bxh.Ledger, req.Content, false, req.Extra)
+	case pb.GetSignsRequest_MULTI_BLOCK_HEADER:
+		height, err := strconv.ParseUint(req.Content, 10, 64)
 		if err != nil {
-			return "", nil, fmt.Errorf("get block sign: %w", err)
+			return "", nil, nil, fmt.Errorf("get block header sign: %w", err)
 		}
-
-		return b.bxh.GetPrivKey().Address, sign, nil
-	case pb.GetMultiSignsRequest_BURN:
-		return b.handleMultiSignsBurnReq(content)
+		signData, err = b.bxh.Ledger.GetBlockSign(height)
+	case pb.GetSignsRequest_MULTI_BURN:
+		addr, signData, err = b.handleMultiSignsBurnReq(req.Content)
 	default:
-		return "", nil, fmt.Errorf("unsupported get sign type")
+		err = fmt.Errorf("unsupported get sign type")
 	}
+
+	return addr, signData, culpritIDs, err
 }
 
 func (b *BrokerAPI) handleMultiSignsBurnReq(hash string) (string, []byte, error) {

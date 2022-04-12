@@ -5,6 +5,7 @@ go 1.14
 require (
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
 	github.com/Rican7/retry v0.1.0
+	github.com/binance-chain/tss-lib v0.0.0-20201118045712-70b2cb4bf916
 	github.com/bytecodealliance/wasmtime-go v0.34.0
 	github.com/cbergoon/merkletree v0.2.0
 	github.com/cheynewallace/tabby v1.1.1
@@ -33,16 +34,16 @@ require (
 	github.com/libp2p/go-libp2p-swarm v0.2.4
 	github.com/looplab/fsm v0.2.0
 	github.com/magiconair/properties v1.8.4
-	github.com/meshplus/bitxhub-core v1.3.1-0.20220322055427-d5776ef94e8b
-	github.com/meshplus/bitxhub-kit v1.2.1-0.20220111092827-0ad7ba507bd3
-	github.com/meshplus/bitxhub-model v1.2.1-0.20220329015942-cfe8fd16bc9c
+	github.com/meshplus/bitxhub-core v1.3.1-0.20220412081707-f923bd1fbc64
+	github.com/meshplus/bitxhub-kit v1.2.1-0.20220325052414-bc17176c509d
+	github.com/meshplus/bitxhub-model v1.2.1-0.20220412064024-c35cae241eb2
 	github.com/meshplus/consensus v0.0.0-20211228075008-5f469b198531
 	github.com/meshplus/eth-kit v0.0.0-20220105081940-c90e9f2aa162
 	github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd
 	github.com/meshplus/go-lightp2p v0.0.0-20220117071358-c37ba4e6dcbc
 	github.com/miguelmota/go-solidity-sha3 v0.1.1
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/multiformats/go-multiaddr v0.3.0
+	github.com/multiformats/go-multiaddr v0.3.1
 	github.com/orcaman/concurrent-map v0.0.0-20210501183033-44dafcb38ecc
 	github.com/pelletier/go-toml v1.8.1
 	github.com/pkg/errors v0.9.1
@@ -64,8 +65,6 @@ require (
 	google.golang.org/grpc v1.35.0
 )
 
-replace github.com/golang/protobuf => github.com/golang/protobuf v1.3.2
-
 replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20200218151345-dad8c97a84f5
 
 replace google.golang.org/grpc => google.golang.org/grpc v1.33.0
@@ -73,3 +72,9 @@ replace google.golang.org/grpc => google.golang.org/grpc v1.33.0
 replace github.com/hyperledger/fabric => github.com/hyperledger/fabric v2.0.1+incompatible
 
 replace golang.org/x/net => golang.org/x/net v0.0.0-20200520004742-59133d7f0dd7
+
+replace github.com/binance-chain/tss-lib => github.com/dawn-to-dusk/tss-lib v1.3.3-0.20220330081758-f404e10a1268
+
+replace github.com/agl/ed25519 => github.com/binance-chain/edwards25519 v0.0.0-20200305024217-f36fc4b53d43
+
+replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4

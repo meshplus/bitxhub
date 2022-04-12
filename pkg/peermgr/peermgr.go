@@ -10,6 +10,8 @@ import (
 type PeerManager interface {
 	orderPeerMgr.OrderPeerManager
 
+	orderPeerMgr.TssPeerManager
+
 	// SendWithStream sends message using existed stream
 	SendWithStream(network.Stream, *pb.Message) error
 

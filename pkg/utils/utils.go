@@ -1,11 +1,20 @@
 package utils
 
 import (
+	"crypto/ecdsa"
+	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"math/big"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/crypto"
+	crypto3 "github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/meshplus/bitxhub-core/tss"
+	"github.com/meshplus/bitxhub-core/tss/conversion"
+	"github.com/meshplus/bitxhub-core/tss/keysign"
 	crypto2 "github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
@@ -26,12 +35,12 @@ var AuditEventStrHash = types.NewHash([]byte(fmt.Sprintf("event%d%d%d%d%d%d%d%d"
 	pb.Event_AUDIT_DAPP)))
 
 func GetIBTPSign(ledger *ledger.Ledger, id string, isReq bool, privKey crypto2.PrivateKey) (string, []byte, error) {
-	ibtp, err := getIBTP(ledger, id, isReq)
+	ibtp, err := GetIBTP(ledger, id, isReq)
 	if err != nil {
 		return "", nil, fmt.Errorf("get ibtp %s isReq %v: %w", id, isReq, err)
 	}
 
-	txStatus, err := getTxStatus(ledger, id)
+	txStatus, err := GetTxStatus(ledger, id)
 	if err != nil {
 		return "", nil, fmt.Errorf("get tx status of ibtp %s isReq %v: %w", id, isReq, err)
 	}
@@ -54,7 +63,114 @@ func GetIBTPSign(ledger *ledger.Ledger, id string, isReq bool, privKey crypto2.P
 	return addr.String(), sign, nil
 }
 
-func getIBTP(ledger *ledger.Ledger, id string, isReq bool) (*pb.IBTP, error) {
+// return :
+// - signature data
+// - blame nodes id list
+// - error
+func GetIBTPTssSign(tssMgr tss.Tss, ledger *ledger.Ledger, content string, isReq bool, extra []byte) ([]byte, []string, error) {
+	// 1. get msgs to sign
+	msgs, err := getMsgToSign(ledger, content, isReq)
+	if err != nil {
+		return nil, nil, fmt.Errorf("get msg to sign err: %w", err)
+	}
+
+	// 2. get pool pubkey
+	_, pk, err := tssMgr.GetTssPubkey()
+	if err != nil {
+		return nil, nil, fmt.Errorf("get tss pubkey error: %w", err)
+	}
+
+	// 3. get signers pk
+	signersID := strings.Split(string(extra), ",")
+	partiesPkMap, err := tssMgr.GetTssKeyGenPartiesPkMap()
+	if err != nil {
+		return nil, nil, fmt.Errorf("fail to get keygen parties pk map error: %w", err)
+	}
+	signersPk := []crypto3.PubKey{}
+	for _, id := range signersID {
+		data, ok := partiesPkMap[id]
+		if !ok {
+			return nil, nil, fmt.Errorf("party %s is not keygen party", id)
+		}
+		pk, err := conversion.GetPubKeyFromPubKeyData(data)
+		if err != nil {
+			return nil, nil, fmt.Errorf("fail to conversion pubkeydata to pubkey: %w", err)
+		}
+		signersPk = append(signersPk, pk)
+	}
+
+	// 4, new req to sign
+	keysignReq := keysign.NewRequest(pk, msgs, signersPk)
+	resp, err := tssMgr.Keysign(keysignReq)
+
+	if err != nil {
+		if errors.Is(err, tss.ErrNotActiveSigner) {
+			return nil, nil, err
+		} else if len(resp.Blame.BlameNodes) != 0 {
+			culpritIDs := []string{}
+			for _, node := range resp.Blame.BlameNodes {
+				culpritIDs = append(culpritIDs, node.PartyID)
+			}
+			return nil, culpritIDs, err
+		} else {
+			return nil, nil, fmt.Errorf("failed to tss key sign: %v", err)
+		}
+	}
+
+	signData, err := json.Marshal(resp.Signatures)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to marshal tss signatures: %v", err)
+	}
+
+	return signData, nil, nil
+}
+
+func getMsgToSign(ledger *ledger.Ledger, content string, isReq bool) ([]string, error) {
+	ids := strings.Split(strings.Replace(content, " ", "", -1), ",")
+	msgs := []string{}
+	for _, id := range ids {
+		ibtp, err := GetIBTP(ledger, id, isReq)
+		if err != nil {
+			return nil, fmt.Errorf("get ibtp %s isReq %v: %w", id, isReq, err)
+		}
+		txStatus, err := GetTxStatus(ledger, id)
+		if err != nil {
+			return nil, fmt.Errorf("get tx status of ibtp %s isReq %v: %w", id, isReq, err)
+		}
+
+		hash, err := EncodePackedAndHash(ibtp, txStatus)
+		if err != nil {
+			return nil, fmt.Errorf("encode packed and hash for ibtp %s isReq %v: %w", id, isReq, err)
+		}
+
+		msgs = append(msgs, base64.StdEncoding.EncodeToString(hash))
+	}
+
+	return msgs, nil
+}
+
+func VerifyTssSigns(signData []byte, pub *ecdsa.PublicKey, l logrus.FieldLogger) error {
+	signs := []conversion.Signature{}
+	if err := json.Unmarshal(signData, &signs); err != nil {
+		return fmt.Errorf("unmarshal signData err: %w", err)
+	}
+
+	for _, sign := range signs {
+		msgData, err := base64.StdEncoding.DecodeString(sign.Msg)
+		rData, err := base64.StdEncoding.DecodeString(sign.R)
+		sData, err := base64.StdEncoding.DecodeString(sign.S)
+		if err != nil {
+			return fmt.Errorf("sign convert error: %s", err)
+		}
+		if !ecdsa.Verify(pub, msgData, new(big.Int).SetBytes(rData), new(big.Int).SetBytes(sData)) {
+			return fmt.Errorf("fail to verify sign")
+		}
+	}
+
+	return nil
+}
+
+func GetIBTP(ledger *ledger.Ledger, id string, isReq bool) (*pb.IBTP, error) {
 	key := contracts.IndexMapKey(id)
 	if !isReq {
 		key = contracts.IndexReceiptMapKey(id)
@@ -79,7 +195,7 @@ func getIBTP(ledger *ledger.Ledger, id string, isReq bool) (*pb.IBTP, error) {
 }
 
 // TODO: support global status
-func getTxStatus(ledger *ledger.Ledger, id string) (pb.TransactionStatus, error) {
+func GetTxStatus(ledger *ledger.Ledger, id string) (pb.TransactionStatus, error) {
 	ok, val := ledger.Copy().GetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.TxInfoKey(id)))
 	if !ok {
 		return 0, fmt.Errorf("no tx status found for ibtp %s", id)
