@@ -252,7 +252,7 @@ func (mpi *mempoolImpl) processCommitTransactions(state *ChainState) {
 			removedTxs := list.forward(commitNonce)
 			// remove index smaller than commitNonce delete index.
 			var wg sync.WaitGroup
-			wg.Add(4)
+			wg.Add(5)
 			go func(ready map[string][]pb.Transaction) {
 				defer wg.Done()
 				list.index.removeBySortedNonceKey(removedTxs)
@@ -265,6 +265,10 @@ func (mpi *mempoolImpl) processCommitTransactions(state *ChainState) {
 				defer wg.Done()
 				mpi.txStore.ttlIndex.removeByTtlKey(removedTxs)
 				mpi.txStore.updateEarliestTimestamp()
+			}(removedTxs)
+			go func(ready map[string][]pb.Transaction) {
+				defer wg.Done()
+				mpi.txStore.removeTimeoutIndex.removeByTtlKey(removedTxs)
 			}(removedTxs)
 			go func(ready map[string][]pb.Transaction) {
 				defer wg.Done()
@@ -315,6 +319,96 @@ func (mpi *mempoolImpl) GetTimeoutTransactions(rebroadcastDuration time.Duration
 	}
 	// shard txList into fixed size in case txList is too large to broadcast one time
 	return mpi.shardTxList(timeoutItems, mpi.txSliceSize)
+}
+
+// getPoolTxByTxnPointer gets transaction by account address + nonce
+func (txStore *transactionStore) getPoolTxByTxnPointer(account string, nonce uint64) *txItem {
+	if list, ok := txStore.allTxs[account]; ok {
+		return list.items[nonce]
+	}
+	return nil
+}
+
+// RemoveAliveTimeoutTxs remove the remained local txs in timeoutIndex and removeTxs in memPool by tolerance time.
+func (mpi *mempoolImpl) RemoveAliveTimeoutTxs(removeDuration time.Duration) uint64 {
+	now := time.Now().UnixNano()
+	removedTxs := make(map[string][]pb.Transaction)
+	var removeCnt uint64
+
+	mpi.txStore.removeTimeoutIndex.index.Ascend(func(i btree.Item) bool {
+		item := i.(*orderedTimeoutKey)
+		txIt := mpi.txStore.getPoolTxByTxnPointer(item.account, item.nonce)
+		if txIt == nil {
+			mpi.logger.Error("Get nil txItem from txStore")
+			return true
+		}
+		// if this tx has not exceeded the remove duration, break iteration
+		if (now - item.timestamp) > removeDuration.Nanoseconds() {
+			orderedKey := &orderedTimeoutKey{txIt.account, txIt.tx.GetNonce(),
+				txIt.tx.GetTimeStamp()}
+			// for those batched txs, we don't need to add removedTxs temporarily.
+			if _, ok := mpi.txStore.batchedTxs[orderedIndexKey{item.account, item.nonce}]; ok {
+				mpi.logger.Debugf("find tx[account: %s, nonce:%d] from batchedTxs, ignore remove request",
+					item.account, item.nonce)
+				return true
+			}
+			if tx := mpi.txStore.priorityIndex.data.Get(orderedKey); tx != nil {
+				mpi.logger.Debugf("find tx[account: %s, nonce:%d] from priorityIndex, ignore remove request",
+					orderedKey.account, orderedKey.nonce)
+				return true
+			}
+
+			orderedIndxKey := &orderedIndexKey{txIt.account, txIt.tx.GetNonce()}
+			if tx := mpi.txStore.parkingLotIndex.data.Get(orderedIndxKey); tx != nil {
+				if _, ok := removedTxs[orderedKey.account]; !ok {
+					removedTxs[orderedKey.account] = make([]pb.Transaction, 0)
+				}
+				// record need removedTxs and the count
+				removedTxs[orderedKey.account] = append(removedTxs[orderedKey.account], txIt.tx)
+				removeCnt++
+				// remove txHashMap
+				txHash := txIt.tx.GetHash().String()
+				delete(mpi.txStore.txHashMap, txHash)
+				return true
+			}
+		} else {
+			return false
+		}
+		return true
+	})
+
+	for account, txs := range removedTxs {
+		if list, ok := mpi.txStore.allTxs[account]; ok {
+			// remove index from removedTxs
+			var wg sync.WaitGroup
+			wg.Add(5)
+			go func(ready map[string][]pb.Transaction) {
+				defer wg.Done()
+				list.index.removeBySortedNonceKey(ready)
+				for _, tx := range txs {
+					delete(list.items, tx.GetNonce())
+				}
+			}(removedTxs)
+			go func(ready map[string][]pb.Transaction) {
+				defer wg.Done()
+				mpi.txStore.priorityIndex.removeByTimeoutKey(ready)
+			}(removedTxs)
+			go func(ready map[string][]pb.Transaction) {
+				defer wg.Done()
+				mpi.txStore.parkingLotIndex.removeByOrderedQueueKey(ready)
+			}(removedTxs)
+			go func(ready map[string][]pb.Transaction) {
+				defer wg.Done()
+				mpi.txStore.ttlIndex.removeByTtlKey(ready)
+			}(removedTxs)
+			go func(ready map[string][]pb.Transaction) {
+				defer wg.Done()
+				mpi.txStore.removeTimeoutIndex.removeByTtlKey(ready)
+			}(removedTxs)
+			wg.Wait()
+		}
+	}
+	return removeCnt
 }
 
 func (mpi *mempoolImpl) GetPendingTransactions(max int) []pb.Transaction {

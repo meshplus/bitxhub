@@ -106,6 +106,7 @@ func mockRaftNode(t *testing.T) (*Node, error) {
 		mempool:          mempoolInst,
 		tickTimeout:      500 * time.Millisecond,
 		checkInterval:    3 * time.Minute,
+		checkAlive:       DefaultCheckAlive,
 		ctx:              ctx,
 		cancel:           cancel,
 		peerMgr:          swarms[0],

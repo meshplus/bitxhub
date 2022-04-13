@@ -51,6 +51,7 @@ type Node struct {
 	errorC            chan<- error                 // errors from raft session
 	tickTimeout       time.Duration                // tick timeout
 	checkInterval     time.Duration                // interval for rebroadcast
+	checkAlive        time.Duration                // tx Maximum alive in memPool
 	msgC              chan []byte                  // receive messages from remote peer
 	stateC            chan *mempool.ChainState     // receive the executed block state
 	rebroadcastTicker chan *raftproto.TxSlice      // receive the executed block state
@@ -157,6 +158,13 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 		checkInterval = raftConfig.RAFT.CheckInterval
 	}
 
+	var checkAlive time.Duration
+	if raftConfig.RAFT.CheckAlive == 0 {
+		checkAlive = DefaultCheckAlive
+	} else {
+		checkAlive = raftConfig.RAFT.CheckAlive
+	}
+
 	node := &Node{
 		id:               config.ID,
 		lastExec:         config.Applied,
@@ -182,6 +190,7 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 		readyPool:        readyPool,
 		mempool:          mempoolInst,
 		checkInterval:    checkInterval,
+		checkAlive:       checkAlive,
 	}
 	node.raftStorage.SnapshotCatchUpEntries = node.snapCount
 
@@ -342,9 +351,10 @@ func (n *Node) run() {
 	n.logger.Infof("snap index:%d", snap.Metadata.Index)
 	ticker := time.NewTicker(n.tickTimeout)
 	rebroadcastTicker := time.NewTicker(n.checkInterval)
+	removeTxTicker := time.NewTicker(n.checkAlive)
 	defer ticker.Stop()
 	defer rebroadcastTicker.Stop()
-
+	defer removeTxTicker.Stop()
 	// handle input request
 	go func() {
 		//
@@ -433,6 +443,14 @@ func (n *Node) run() {
 				pbMsg := msgToConsensusPbMsg(data, raftproto.RaftMessage_BROADCAST_TX, n.id)
 				_ = n.peerMgr.Broadcast(pbMsg)
 			}
+		case <-removeTxTicker.C:
+			removedLen := n.mempool.RemoveAliveTimeoutTxs(n.checkAlive)
+			if removedLen == 0 {
+				n.logger.Debugf("Replica %d in normal finds 0 remained reqs, need not remove it", n.id)
+				return
+			}
+			n.logger.Debugf("Replica %d successful remove %d tx in local memPool ", n.id, removedLen)
+
 		case <-n.batchTimerMgr.BatchTimeoutEvent():
 			n.batchTimerMgr.StopBatchTimer()
 			// call txPool module to generate a tx batch

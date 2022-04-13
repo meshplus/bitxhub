@@ -387,13 +387,58 @@ func TestGetTimeoutTransaction(t *testing.T) {
 	mpi.CommitTransactions(state)
 	time.Sleep(100 * time.Millisecond)
 	ast.Equal(0, mpi.txStore.ttlIndex.index.Len())
+	ast.Equal(0, mpi.txStore.removeTimeoutIndex.index.Len())
 	ast.Equal(0, len(mpi.txStore.ttlIndex.items))
+	ast.Equal(0, len(mpi.txStore.removeTimeoutIndex.items))
 	ast.Equal(int64(math.MaxInt64), mpi.txStore.earliestTimestamp)
 	ast.Equal(0, mpi.txStore.priorityIndex.size())
 	ast.Equal(0, mpi.txStore.parkingLotIndex.size())
 	ast.Equal(0, len(mpi.txStore.batchedTxs))
 	ast.Equal(0, len(mpi.txStore.txHashMap))
 	ast.Equal(uint64(0), mpi.txStore.priorityNonBatchSize)
+}
+
+func TestRemoveAliveTimeoutTxs(t *testing.T) {
+	ast := assert.New(t)
+	storePath, err := ioutil.TempDir("", "mempool")
+	ast.Nil(err)
+	defer os.RemoveAll(storePath)
+	mpi, _ := mockMempoolImpl(storePath)
+	mpi.txSliceSize = 6
+
+	txList := make([]pb.Transaction, 0)
+	privKey1 := genPrivKey()
+	privKey2 := genPrivKey()
+	tx1 := constructTx(0, &privKey1)
+	tx2 := constructTx(0, &privKey2)
+	tx3 := constructTx(2, &privKey1)
+	tx4 := constructTx(2, &privKey2)
+	tx5 := constructTx(3, &privKey1)
+	tx6 := constructTx(3, &privKey2)
+	txList = append(txList, tx1, tx2, tx3, tx4, tx5, tx6)
+	batch1 := mpi.ProcessTransactions(txList, true, true)
+	ast.Nil(batch1)
+	batch2 := mpi.GenerateBlock()
+	ast.Equal(2, len(batch2.TxList.Transactions))
+	ast.Equal(6, mpi.txStore.removeTimeoutIndex.index.Len())
+	ast.Equal(6, mpi.txStore.ttlIndex.index.Len())
+	ast.Equal(2, mpi.txStore.priorityIndex.size())
+	ast.Equal(4, mpi.txStore.parkingLotIndex.size())
+	ast.Equal(2, len(mpi.txStore.batchedTxs))
+	ast.Equal(6, len(mpi.txStore.txHashMap))
+	ast.Equal(6, mpi.txStore.removeTimeoutIndex.index.Len())
+
+	time.Sleep(110 * time.Millisecond)
+	// tx3,tx4,tx5,tx8 should be timeout
+	timeoutTxsLen := mpi.RemoveAliveTimeoutTxs(100 * time.Millisecond)
+	ast.NotNil(timeoutTxsLen)
+	ast.Equal(4, int(timeoutTxsLen))
+	ast.Equal(2, mpi.txStore.ttlIndex.index.Len())
+	ast.Equal(2, mpi.txStore.priorityIndex.size())
+	ast.Equal(0, mpi.txStore.parkingLotIndex.size())
+	ast.Equal(2, len(mpi.txStore.batchedTxs))
+	ast.Equal(2, len(mpi.txStore.txHashMap))
+	ast.Equal(2, mpi.txStore.removeTimeoutIndex.index.Len())
 }
 
 func TestRestore(t *testing.T) {

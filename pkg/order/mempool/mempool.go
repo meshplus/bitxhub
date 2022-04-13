@@ -28,6 +28,9 @@ type MemPool interface {
 
 	GetTimeoutTransactions(rebroadcastDuration time.Duration) [][]pb.Transaction
 
+	// RemoveAliveTimeoutTxs get the remained local txs in timeoutIndex and removeTxs in memPool by tolerance time.
+	RemoveAliveTimeoutTxs(removeDuration time.Duration) uint64
+
 	SubscribeTxEvent(chan<- pb.Transactions) event.Subscription
 
 	External
