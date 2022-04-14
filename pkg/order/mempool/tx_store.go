@@ -3,6 +3,7 @@ package mempool
 import (
 	"math"
 	"sync"
+	"time"
 
 	"github.com/google/btree"
 	"github.com/meshplus/bitxhub-kit/types"
@@ -21,6 +22,8 @@ type transactionStore struct {
 	earliestTimestamp int64
 	// keep track of the livetime of ready txs in priorityIndex
 	ttlIndex *txLiveTimeMap
+	// keep track of the arrived time of all txs in memPool
+	removeTimeoutIndex *txArrivedTimeMap
 	// keeps track of "non-ready" txs (txs that can't be included in next block)
 	// only used to help remove some txs if pool is full.
 	parkingLotIndex *btreeIndex
@@ -34,17 +37,19 @@ type transactionStore struct {
 
 func newTransactionStore(f GetAccountNonceFunc, logger logrus.FieldLogger) *transactionStore {
 	return &transactionStore{
-		txHashMap:       make(map[string]*orderedIndexKey, 0),
-		allTxs:          make(map[string]*txSortedMap),
-		batchedTxs:      make(map[orderedIndexKey]bool),
-		parkingLotIndex: newBtreeIndex(),
-		priorityIndex:   newBtreeIndex(),
-		ttlIndex:        newTxLiveTimeMap(),
-		nonceCache:      newNonceCache(f, logger),
+		txHashMap:          make(map[string]*orderedIndexKey, 0),
+		allTxs:             make(map[string]*txSortedMap),
+		batchedTxs:         make(map[orderedIndexKey]bool),
+		parkingLotIndex:    newBtreeIndex(),
+		priorityIndex:      newBtreeIndex(),
+		ttlIndex:           newTxLiveTimeMap(),
+		removeTimeoutIndex: newTxArrivedTimeMap(),
+		nonceCache:         newNonceCache(f, logger),
 	}
 }
 
 func (txStore *transactionStore) insertTxs(txs map[string][]pb.Transaction, isLocal bool) map[string]bool {
+	now := time.Now().UnixNano()
 	dirtyAccounts := make(map[string]bool)
 	for account, list := range txs {
 		for _, tx := range list {
@@ -71,6 +76,7 @@ func (txStore *transactionStore) insertTxs(txs map[string][]pb.Transaction, isLo
 				// no need to rebroadcast tx from other nodes to reduce network overhead
 				txStore.ttlIndex.insertOrUpdateByTtlKey(account, tx.GetNonce(), tx.GetTimeStamp())
 			}
+			txStore.removeTimeoutIndex.insertOrUpdateByTtlKey(account, tx.GetNonce(), now)
 		}
 		dirtyAccounts[account] = true
 	}
@@ -266,4 +272,50 @@ func (tlm *txLiveTimeMap) insertOrUpdateByTtlKey(account string, nonce uint64, l
 		tlm.index.Delete(&orderedTimeoutKey{account, nonce, oldTime})
 	}
 	tlm.insertByTtlKey(account, nonce, liveTime)
+}
+
+// since the live time field in sortedTtlKey may vary during process
+// we need to track the latest live time since its latest broadcast.
+type txArrivedTimeMap struct {
+	items map[string]int64 // map account to its latest live time
+	index *btree.BTree     // index for txs
+}
+
+func newTxArrivedTimeMap() *txArrivedTimeMap {
+	return &txArrivedTimeMap{
+		index: btree.New(btreeDegree),
+		items: make(map[string]int64),
+	}
+}
+
+func (tam *txArrivedTimeMap) insertByTtlKey(account string, nonce uint64, liveTime int64) {
+	tam.index.ReplaceOrInsert(&orderedTimeoutKey{account, nonce, liveTime})
+	tam.items[makeAccountNonceKey(account, nonce)] = liveTime
+}
+
+func (tam *txArrivedTimeMap) removeByTtlKey(txs map[string][]pb.Transaction) {
+	for account, list := range txs {
+		for _, tx := range list {
+			liveTime, ok := tam.items[makeAccountNonceKey(account, tx.GetNonce())]
+			if !ok {
+				continue
+			}
+			tam.index.Delete(&orderedTimeoutKey{account, tx.GetNonce(), liveTime})
+			delete(tam.items, makeAccountNonceKey(account, tx.GetNonce()))
+		}
+	}
+}
+
+func (tam *txArrivedTimeMap) updateByTtlKey(originalKey *orderedTimeoutKey, newTime int64) {
+	tam.index.Delete(originalKey)
+	delete(tam.items, makeAccountNonceKey(originalKey.account, originalKey.nonce))
+	tam.insertByTtlKey(originalKey.account, originalKey.nonce, newTime)
+}
+
+func (tam *txArrivedTimeMap) insertOrUpdateByTtlKey(account string, nonce uint64, liveTime int64) {
+	accountNonceKey := makeAccountNonceKey(account, nonce)
+	if oldTime, ok := tam.items[accountNonceKey]; ok {
+		tam.index.Delete(&orderedTimeoutKey{account, nonce, oldTime})
+	}
+	tam.insertByTtlKey(account, nonce, liveTime)
 }
