@@ -36,6 +36,10 @@ func (b *BrokerAPI) GetTssPubkey() (string, *ecdsa.PublicKey, error) {
 	return b.bxh.TssMgr.GetTssPubkey()
 }
 
+func (b *BrokerAPI) GetTssKeyGenPartiesPkMap() (map[string][]byte, error) {
+	return b.bxh.TssMgr.GetTssKeyGenPartiesPkMap()
+}
+
 func (b *BrokerAPI) HandleTransaction(tx pb.Transaction) error {
 	if tx.GetHash() == nil {
 		return fmt.Errorf("transaction hash is nil")
@@ -161,9 +165,15 @@ func (b *BrokerAPI) FetchSignsFromOtherPeers(req *pb.GetSignsRequest) map[string
 		lock   = sync.Mutex{}
 	)
 
+	signers := []uint64{}
+	for _, id := range strings.Split(string(req.Extra), ",") {
+		idInt, _ := strconv.ParseUint(id, 10, 64)
+		signers = append(signers, idInt)
+	}
+
 	// TODO: calculate threshold
-	wg.Add(len(b.bxh.PeerMgr.OtherPeers()))
-	for pid := range b.bxh.PeerMgr.OtherPeers() {
+	wg.Add(len(signers))
+	for _, pid := range signers {
 		go func(pid uint64, result map[string][]byte, wg *sync.WaitGroup, lock *sync.Mutex) {
 			var (
 				address string
@@ -300,7 +310,7 @@ func (b *BrokerAPI) requestBurnSignFromPeer(pid uint64, hash string) (string, []
 	return data.Address, data.Signature, nil
 }
 
-func (b *BrokerAPI) GetSign(req *pb.GetSignsRequest) (string, []byte, []string, error) {
+func (b *BrokerAPI) GetSign(req *pb.GetSignsRequest, signers []string) (string, []byte, []string, error) {
 	addr := b.bxh.GetPrivKey().Address
 	signData := []byte{}
 	culpritIDs := []string{}
@@ -312,9 +322,9 @@ func (b *BrokerAPI) GetSign(req *pb.GetSignsRequest) (string, []byte, []string, 
 	case pb.GetSignsRequest_MULTI_IBTP_RESPONSE:
 		addr, signData, err = utils.GetIBTPSign(b.bxh.Ledger, req.Content, false, b.bxh.GetPrivKey().PrivKey)
 	case pb.GetSignsRequest_TSS_IBTP_REQUEST:
-		signData, culpritIDs, err = utils.GetIBTPTssSign(b.bxh.TssMgr, b.bxh.Ledger, req.Content, true, req.Extra)
+		signData, culpritIDs, err = utils.GetIBTPTssSign(b.bxh.TssMgr, b.bxh.Ledger, req.Content, true, signers)
 	case pb.GetSignsRequest_TSS_IBTP_RESPONSE:
-		signData, culpritIDs, err = utils.GetIBTPTssSign(b.bxh.TssMgr, b.bxh.Ledger, req.Content, false, req.Extra)
+		signData, culpritIDs, err = utils.GetIBTPTssSign(b.bxh.TssMgr, b.bxh.Ledger, req.Content, false, signers)
 	case pb.GetSignsRequest_MULTI_BLOCK_HEADER:
 		height, err := strconv.ParseUint(req.Content, 10, 64)
 		if err != nil {

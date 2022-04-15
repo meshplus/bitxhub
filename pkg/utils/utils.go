@@ -67,7 +67,7 @@ func GetIBTPSign(ledger *ledger.Ledger, id string, isReq bool, privKey crypto2.P
 // - signature data
 // - blame nodes id list
 // - error
-func GetIBTPTssSign(tssMgr tss.Tss, ledger *ledger.Ledger, content string, isReq bool, extra []byte) ([]byte, []string, error) {
+func GetIBTPTssSign(tssMgr tss.Tss, ledger *ledger.Ledger, content string, isReq bool, signers []string) ([]byte, []string, error) {
 	// 1. get msgs to sign
 	msgs, err := getMsgToSign(ledger, content, isReq)
 	if err != nil {
@@ -81,13 +81,12 @@ func GetIBTPTssSign(tssMgr tss.Tss, ledger *ledger.Ledger, content string, isReq
 	}
 
 	// 3. get signers pk
-	signersID := strings.Split(string(extra), ",")
 	partiesPkMap, err := tssMgr.GetTssKeyGenPartiesPkMap()
 	if err != nil {
 		return nil, nil, fmt.Errorf("fail to get keygen parties pk map error: %w", err)
 	}
 	signersPk := []crypto3.PubKey{}
-	for _, id := range signersID {
+	for _, id := range signers {
 		data, ok := partiesPkMap[id]
 		if !ok {
 			return nil, nil, fmt.Errorf("party %s is not keygen party", id)
@@ -267,4 +266,13 @@ func TestAuditPermitBloom(logger logrus.FieldLogger, bloom *types.Bloom, related
 		}
 	}
 	return false
+}
+
+func IsTssReq(req *pb.GetSignsRequest) bool {
+	switch req.Type {
+	case pb.GetSignsRequest_TSS_IBTP_REQUEST, pb.GetSignsRequest_TSS_IBTP_RESPONSE:
+		return true
+	default:
+		return false
+	}
 }

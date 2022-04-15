@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -24,6 +25,12 @@ func (cbs *ChainBrokerService) GetMultiSigns(ctx context.Context, req *pb.GetSig
 		result = make(map[string][]byte)
 	)
 
+	signers := []string{}
+	for id := range cbs.api.Network().OtherPeers() {
+		signers = append(signers, strconv.Itoa(int(id)))
+	}
+	req.Extra = []byte(strings.Join(signers, ","))
+
 	wg.Add(1)
 	go func(result map[string][]byte) {
 		for k, v := range cbs.api.Broker().FetchSignsFromOtherPeers(req) {
@@ -32,7 +39,7 @@ func (cbs *ChainBrokerService) GetMultiSigns(ctx context.Context, req *pb.GetSig
 		wg.Done()
 	}(result)
 
-	address, sign, _, err := cbs.api.Broker().GetSign(req)
+	address, sign, _, err := cbs.api.Broker().GetSign(req, nil)
 	wg.Wait()
 
 	if err != nil {
@@ -56,17 +63,24 @@ func (cbs *ChainBrokerService) GetTssSigns(ctx context.Context, req *pb.GetSigns
 	)
 
 	// 1. check req type
-	if !isTssReq(req) {
+	if !utils.IsTssReq(req) {
 		return nil, fmt.Errorf("req type is not tss req")
+	}
+
+	partiesPkMap, err := cbs.api.Broker().GetTssKeyGenPartiesPkMap()
+	if err != nil {
+		return nil, fmt.Errorf("get tss keygen parties pubkey map: %v", err)
+	}
+	signersALL := []string{}
+	for id, _ := range partiesPkMap {
+		signersALL = append(signersALL, id)
 	}
 
 	// 2. make a tss req with threshold signers
 	tssReq := &pb.GetSignsRequest{
 		Type:    req.Type,
 		Content: req.Content,
-		Extra:   req.Extra,
 	}
-	signersALL := strings.Split(strings.Replace(string(tssReq.Extra), " ", "", -1), ",")
 
 	for {
 
@@ -84,8 +98,8 @@ func (cbs *ChainBrokerService) GetTssSigns(ctx context.Context, req *pb.GetSigns
 		for _, i := range nums {
 			tssSigners = append(tssSigners, signersALL[i])
 		}
-		tssReq.Extra = []byte(strings.Join(tssSigners, ","))
-		cbs.logger.Infof("====================== tss signers: %s", string(tssReq.Extra))
+		cbs.logger.Infof("====================== tss signers: %s", strings.Join(signersALL, ","))
+		tssReq.Extra = []byte(strings.Join(signersALL, ","))
 
 		// 5. send sign req to others
 		wg.Add(1)
@@ -129,7 +143,7 @@ func (cbs *ChainBrokerService) GetTssSigns(ctx context.Context, req *pb.GetSigns
 		}()
 
 		// 6. get sign by ourself
-		addr, sign, culprits, err := cbs.api.Broker().GetSign(tssReq)
+		addr, sign, culprits, err := cbs.api.Broker().GetSign(tssReq, tssSigners)
 		wg.Wait()
 		if err == nil {
 			return &pb.SignResponse{
@@ -188,15 +202,6 @@ func convertSignData(signData []byte) []byte {
 	signs1Data, _ := json.Marshal(signs1)
 
 	return signs1Data
-}
-
-func isTssReq(req *pb.GetSignsRequest) bool {
-	switch req.Type {
-	case pb.GetSignsRequest_TSS_IBTP_REQUEST, pb.GetSignsRequest_TSS_IBTP_RESPONSE:
-		return true
-	default:
-		return false
-	}
 }
 
 func RandRangeNumbers(min, max, count int) []int {

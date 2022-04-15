@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -307,7 +308,8 @@ func (bxh *BitXHub) Start() error {
 		bxh.TssMgr.Start(bxh.Order.Quorum() - 1)
 		time1 := time.Now()
 		if err := bxh.keygen(); err != nil {
-			return fmt.Errorf("tss key generate: %w", err)
+			bxh.logger.Errorf("tss key generate error: %v", err)
+			//return fmt.Errorf("tss key generate: %w", err)
 		}
 		timeKeygen := time.Since(time1).Milliseconds()
 		bxh.logger.Infof("=============================keygen time: %d", timeKeygen)
@@ -430,31 +432,89 @@ func (bxh *BitXHub) GetPrivKey() *repo.Key {
 }
 
 func (bxh *BitXHub) keygen() error {
+	myStatus := true
+	var poolPkMap = map[string]string{}
+
+	// 1. 获取本地持久化公钥信息
+	myPoolPkAddr, _, err := bxh.TssMgr.GetTssPubkey()
+	if err != nil {
+		myStatus = false
+	}
+	poolPkMap[strconv.Itoa(int(bxh.repo.NetworkConfig.ID))] = myPoolPkAddr
+
+	// 2. 向其他节点获取公钥
+	for id, addr := range bxh.fetchTssPkFromOtherPeers() {
+		poolPkMap[id] = addr
+	}
+
+	// 3. 检查公钥一致个数
+	ok, ids, err := checkPoolPkMap(poolPkMap, bxh.Order.Quorum())
+	if err != nil {
+		return fmt.Errorf("check pool pk map: %w", err)
+	}
+	if myStatus {
+		if ok {
+			// 如累计一致的公钥达到q，将不一致的参与方踢出tss节点
+			if err := bxh.TssMgr.DeleteCulpritsFromLocalState(ids); err != nil {
+				return fmt.Errorf("handle culprits: %w", err)
+			}
+			return nil
+		}
+	}
+
+	// 4. 公钥个数不一致，开始keygen
 	var (
-		keys   = []crypto.PubKey{bxh.repo.Key.Libp2pPrivKey.GetPublic()}
-		result = make(map[uint64]crypto.PubKey)
-		wg     = sync.WaitGroup{}
+		keys = []crypto.PubKey{bxh.repo.Key.Libp2pPrivKey.GetPublic()}
 	)
 
-	wg.Add(1)
-	go func(result map[uint64]crypto.PubKey) {
-		for _, key := range bxh.fetchPkFromOtherPeers() {
+	idMap := map[string]struct{}{}
+	for _, id := range ids {
+		idMap[id] = struct{}{}
+	}
+	for id, key := range bxh.fetchPkFromOtherPeers() {
+		if _, ok := idMap[strconv.Itoa(int(id))]; !ok {
 			keys = append(keys, key)
 		}
-		wg.Done()
-	}(result)
-	wg.Wait()
+	}
 
 	bxh.logger.WithFields(logrus.Fields{
 		"pubkeys": keys,
 	}).Infof("tss keygen peer pubkeys")
 
-	_, err := bxh.TssMgr.Keygen(keygen.NewRequest(keys))
+	_, err = bxh.TssMgr.Keygen(keygen.NewRequest(keys))
 	if err != nil {
 		return fmt.Errorf("tss key generate: %w", err)
 	}
 
 	return nil
+}
+
+func checkPoolPkMap(pkAddrMap map[string]string, quorum uint64) (bool, []string, error) {
+	freq := make(map[string]int, len(pkAddrMap))
+	for _, addr := range pkAddrMap {
+		freq[addr]++
+	}
+	maxFreq := -1
+	var pkAddr string
+	for key, counter := range freq {
+		if counter > maxFreq {
+			maxFreq = counter
+			pkAddr = key
+		}
+	}
+
+	if maxFreq < int(quorum) {
+		return false, nil, nil
+	}
+
+	ids := []string{}
+	for id, addr := range pkAddrMap {
+		if addr != pkAddr {
+			ids = append(ids, id)
+		}
+	}
+
+	return true, ids, nil
 }
 
 func (bxh *BitXHub) requestPkFromPeer(pid uint64) (crypto.PubKey, error) {
@@ -464,13 +524,29 @@ func (bxh *BitXHub) requestPkFromPeer(pid uint64) (crypto.PubKey, error) {
 
 	resp, err := bxh.PeerMgr.Send(pid, &req)
 	if err != nil {
-		return nil, fmt.Errorf("send message to %d failed1: %w", pid, err)
+		return nil, fmt.Errorf("send message to %d failed: %w", pid, err)
 	}
 	if resp == nil || resp.Type != pb.Message_FETCH_P2P_PUBKEY_ACK {
-		return nil, fmt.Errorf("invalid fetch peer cert resp")
+		return nil, fmt.Errorf("invalid fetch p2p pk resp")
 	}
 
 	return conversion.GetPubKeyFromPubKeyData(resp.Data)
+}
+
+func (bxh *BitXHub) requestTssPkFromPeer(pid uint64) (string, error) {
+	req := pb.Message{
+		Type: pb.Message_FETCH_TSS_PUBKEY,
+	}
+
+	resp, err := bxh.PeerMgr.Send(pid, &req)
+	if err != nil {
+		return "", fmt.Errorf("send message to %d failed: %w", pid, err)
+	}
+	if resp == nil || resp.Type != pb.Message_FETCH_TSS_PUBKEY_ACK {
+		return "", fmt.Errorf("invalid fetch tss pk resp")
+	}
+
+	return string(resp.Data), nil
 }
 
 func (bxh *BitXHub) fetchPkFromOtherPeers() map[uint64]crypto.PubKey {
@@ -484,7 +560,6 @@ func (bxh *BitXHub) fetchPkFromOtherPeers() map[uint64]crypto.PubKey {
 	for pid := range bxh.PeerMgr.OtherPeers() {
 		go func(pid uint64, result map[uint64]crypto.PubKey, wg *sync.WaitGroup, lock *sync.Mutex) {
 			if err := retry.Retry(func(attempt uint) error {
-				time.Sleep(2 * time.Second)
 				pk, err := bxh.requestPkFromPeer(pid)
 				if err != nil {
 					bxh.logger.WithFields(logrus.Fields{
@@ -495,6 +570,47 @@ func (bxh *BitXHub) fetchPkFromOtherPeers() map[uint64]crypto.PubKey {
 				} else {
 					lock.Lock()
 					result[pid] = pk
+					lock.Unlock()
+					return nil
+				}
+			}, strategy.Wait(500*time.Millisecond),
+			); err != nil {
+				bxh.logger.WithFields(logrus.Fields{
+					"pid": pid,
+					"err": err.Error(),
+				}).Warnf("retry error")
+			}
+
+			wg.Done()
+		}(pid, result, &wg, &lock)
+	}
+
+	wg.Wait()
+
+	return result
+}
+
+func (bxh *BitXHub) fetchTssPkFromOtherPeers() map[string]string {
+	var (
+		result = make(map[string]string)
+		wg     = sync.WaitGroup{}
+		lock   = sync.Mutex{}
+	)
+
+	wg.Add(len(bxh.PeerMgr.OtherPeers()))
+	for pid := range bxh.PeerMgr.OtherPeers() {
+		go func(pid uint64, result map[string]string, wg *sync.WaitGroup, lock *sync.Mutex) {
+			if err := retry.Retry(func(attempt uint) error {
+				pkAddr, err := bxh.requestTssPkFromPeer(pid)
+				if err != nil {
+					bxh.logger.WithFields(logrus.Fields{
+						"pid": pid,
+						"err": err.Error(),
+					}).Warnf("Get peer tss pubkey with error")
+					return err
+				} else {
+					lock.Lock()
+					result[strconv.Itoa(int(pid))] = pkAddr
 					lock.Unlock()
 					return nil
 				}
