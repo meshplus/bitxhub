@@ -3,6 +3,7 @@ package executor
 import (
 	"context"
 	"fmt"
+	"math"
 	"math/big"
 	"sync"
 	"time"
@@ -29,6 +30,8 @@ import (
 const (
 	blockChanNumber   = 1024
 	persistChanNumber = 1024
+
+	maxGroup = 5
 )
 
 var _ Executor = (*BlockExecutor)(nil)
@@ -222,40 +225,50 @@ func (exec *BlockExecutor) verifyProofs(blockWrapper *BlockWrapper) {
 	}
 
 	var (
-		invalidTxs = make([]int, 0)
-		// wg         sync.WaitGroup
+		wg   sync.WaitGroup
 		lock sync.Mutex
 	)
 	txs := block.Transactions.Transactions
 
-	// wg.Add(len(txs))
-	errM := make(map[int]string)
-	for i, tx := range txs {
-		// go func(i int, tx pb.Transaction) {
-		// 	defer wg.Done()
-		if _, ok := blockWrapper.invalidTx[i]; !ok {
-			ok, gasUsed, err := exec.ibtpVerify.CheckProof(tx)
-			if !ok {
-				lock.Lock()
-				defer lock.Unlock()
-				invalidTxs = append(invalidTxs, i)
-				errM[i] = err.Error()
+	groupNum := maxGroup
+	if len(txs) < maxGroup {
+		groupNum = len(txs)
+	}
+	groupLen := int(math.Ceil(float64(len(txs)) / float64(groupNum)))
+	wg.Add(groupNum)
+	for i := 0; i < groupNum; i++ {
+		go func(i int) {
+			defer wg.Done()
+			groupInvalidTx := make([]int, 0)
+			groupErrM := make(map[int]string)
+			if i == groupNum-1 {
+				for j, tx := range txs[i*groupLen:] {
+					ok, gasUsed, err := exec.ibtpVerify.CheckProof(tx)
+					if !ok {
+						groupInvalidTx = append(groupInvalidTx, i*groupLen+j)
+						groupErrM[i*groupLen+j] = err.Error()
+					}
+					exec.logger.WithField("gasUsed", gasUsed).Debug("Verify proofs")
+				}
+			} else {
+				for j, tx := range txs[i*groupLen : (i+1)*groupLen] {
+					ok, gasUsed, err := exec.ibtpVerify.CheckProof(tx)
+					if !ok {
+						groupInvalidTx = append(groupInvalidTx, i*groupLen+j)
+						groupErrM[i*groupLen+j] = err.Error()
+					}
+					exec.logger.WithField("gasUsed", gasUsed).Debug("Verify proofs")
+				}
 			}
-			exec.logger.WithField("gasUsed", gasUsed).Debug("Verify proofs")
-			// if err := exec.payGasFee(tx, gasUsed); err != nil {
-			// 	lock.Lock()
-			// 	defer lock.Unlock()
-			// 	invalidTxs = append(invalidTxs, i)
-			// 	errM[i] = "run out of gas"
-			// }
-		}
-		// }(i, tx)
-	}
-	// wg.Wait()
+			lock.Lock()
+			defer lock.Unlock()
 
-	for _, i := range invalidTxs {
-		blockWrapper.invalidTx[i] = agency.InvalidReason(errM[i])
+			for _, index := range groupInvalidTx {
+				blockWrapper.invalidTx[index] = agency.InvalidReason(groupErrM[index])
+			}
+		}(i)
 	}
+	wg.Wait()
 }
 
 func (exec *BlockExecutor) persistData() {
