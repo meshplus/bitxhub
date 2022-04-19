@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"strconv"
+	"strings"
 
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 
@@ -176,16 +178,19 @@ func (suite *Interchain) TestHandleIBTP() {
 	addr, sign, _, err := suite.api.Broker().GetSign(&pb.GetSignsRequest{
 		Type:    pb.GetSignsRequest_MULTI_IBTP_REQUEST,
 		Content: ib.ID(),
-		Extra:   nil,
-	})
+	}, nil)
 	suite.Require().Nil(err)
 	suite.Require().Equal(65, len(sign), fmt.Sprintf("signature's length is %d", len(sign)))
 	suite.Require().NotEqual("", addr, fmt.Sprintf("signer is %s", addr))
 
+	signers := []string{}
+	for i := range suite.api.Network().OtherPeers() {
+		signers = append(signers, strconv.Itoa(int(i)))
+	}
 	signM := suite.api.Broker().FetchSignsFromOtherPeers(&pb.GetSignsRequest{
 		Type:    pb.GetSignsRequest_MULTI_IBTP_REQUEST,
 		Content: ib.ID(),
-		Extra:   nil,
+		Extra:   []byte(strings.Join(signers, ",")),
 	})
 	suite.Require().Equal(3, len(signM), fmt.Sprintf("signM's size is %d", len(signM)))
 

@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 
 	"github.com/ethereum/go-ethereum/event"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/model/events"
@@ -48,15 +49,17 @@ type BrokerAPI interface {
 	OrderReady() error
 
 	FetchSignsFromOtherPeers(req *pb.GetSignsRequest) map[string][]byte
-	GetSign(req *pb.GetSignsRequest) (string, []byte, []string, error)
+	GetSign(req *pb.GetSignsRequest, signers []string) (string, []byte, []string, error)
 	GetBlockHeaders(start uint64, end uint64) ([]*pb.BlockHeader, error)
 	GetQuorum() uint64
 	GetTssPubkey() (string, *ecdsa.PublicKey, error)
+	GetTssKeyGenPartiesPkMap() (map[string][]byte, error)
 }
 
 type NetworkAPI interface {
 	PeerInfo() ([]byte, error)
 	PierManager() peermgr.PierManager
+	OtherPeers() map[uint64]*peer.AddrInfo
 }
 
 type ChainAPI interface {

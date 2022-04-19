@@ -3,6 +3,7 @@ package peermgr
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	orderPeerMgr "github.com/meshplus/bitxhub-core/peer-mgr"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -31,6 +32,8 @@ func (swarm *Swarm) handleMessage(s network.Stream, data []byte) {
 			return swarm.handleFetchCertMessage(s)
 		case pb.Message_FETCH_P2P_PUBKEY:
 			return swarm.handleFetchP2PPubkey(s)
+		case pb.Message_FETCH_TSS_PUBKEY:
+			return swarm.handleFetchTssPubkey(s)
 		case pb.Message_CONSENSUS:
 			go swarm.orderMessageFeed.Send(orderPeerMgr.OrderMessageEvent{Data: m.Data})
 		case pb.Message_FETCH_BLOCK_SIGN:
@@ -172,6 +175,25 @@ func (swarm *Swarm) handleFetchP2PPubkey(s network.Stream) error {
 	return nil
 }
 
+func (swarm *Swarm) handleFetchTssPubkey(s network.Stream) error {
+	addr, _, err := swarm.Tss.GetTssPubkey()
+	if err != nil {
+		swarm.logger.Infof("we do not have tss pubkey info: %v", err)
+	}
+
+	msg := &pb.Message{
+		Type: pb.Message_FETCH_TSS_PUBKEY_ACK,
+		Data: []byte(addr),
+	}
+
+	err = swarm.SendWithStream(s, msg)
+	if err != nil {
+		return fmt.Errorf("send msg: %w", err)
+	}
+
+	return nil
+}
+
 func (swarm *Swarm) handleFetchBlockSignMessage(s network.Stream, data []byte) {
 	handle := func(data []byte) ([]byte, error) {
 		height, err := strconv.ParseUint(string(data), 10, 64)
@@ -254,7 +276,7 @@ func (swarm *Swarm) handleFetchIBTPTssSignMessage(s network.Stream, data []byte,
 		return
 	}
 
-	signed, culpritIDs, err := utils.GetIBTPTssSign(swarm.Tss, swarm.ledger, req.Content, isReq, req.Extra)
+	signed, culpritIDs, err := utils.GetIBTPTssSign(swarm.Tss, swarm.ledger, req.Content, isReq, strings.Split(string(req.Extra), ","))
 	if err != nil {
 		swarm.logger.Errorf("handle fetch-ibtp-sign for ibtp %s isReq %v: %s", string(data), isReq, err.Error())
 		return
