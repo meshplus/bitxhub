@@ -5,7 +5,7 @@ go 1.14
 require (
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
 	github.com/Rican7/retry v0.1.0
-	github.com/binance-chain/tss-lib v0.0.0-20201118045712-70b2cb4bf916
+	github.com/binance-chain/tss-lib v1.3.3-0.20210411025750-fffb56b30511
 	github.com/bytecodealliance/wasmtime-go v0.34.0
 	github.com/cbergoon/merkletree v0.2.0
 	github.com/cheynewallace/tabby v1.1.1
@@ -34,9 +34,9 @@ require (
 	github.com/libp2p/go-libp2p-swarm v0.2.4
 	github.com/looplab/fsm v0.2.0
 	github.com/magiconair/properties v1.8.4
-	github.com/meshplus/bitxhub-core v1.3.1-0.20220419015433-0fc9632c8a9c
+	github.com/meshplus/bitxhub-core v1.3.1-0.20220421034250-63aed722fbec
 	github.com/meshplus/bitxhub-kit v1.2.1-0.20220412092457-5836414df781
-	github.com/meshplus/bitxhub-model v1.2.1-0.20220415095224-3a9571aa1d15
+	github.com/meshplus/bitxhub-model v1.2.1-0.20220419071920-bd5cc4a17768
 	github.com/meshplus/consensus v0.0.0-20211228075008-5f469b198531
 	github.com/meshplus/eth-kit v0.0.0-20220105081940-c90e9f2aa162
 	github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd
