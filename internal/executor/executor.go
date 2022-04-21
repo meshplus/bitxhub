@@ -3,7 +3,6 @@ package executor
 import (
 	"context"
 	"fmt"
-	"math"
 	"math/big"
 	"sync"
 	"time"
@@ -234,7 +233,7 @@ func (exec *BlockExecutor) verifyProofs(blockWrapper *BlockWrapper) {
 	if len(txs) < maxGroup {
 		groupNum = len(txs)
 	}
-	groupLen := int(math.Ceil(float64(len(txs)) / float64(groupNum)))
+	groupLen := len(txs) / groupNum
 	wg.Add(groupNum)
 	for i := 0; i < groupNum; i++ {
 		go func(i int) {
