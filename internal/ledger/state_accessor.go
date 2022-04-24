@@ -52,6 +52,7 @@ func (l *SimpleLedger) GetAccount(address *types.Address) ledger.IAccount {
 				code = l.ldb.Get(compositeKey(codeKey, address))
 			}
 			account.originCode = code
+			account.dirtyCode = code
 		}
 		l.lock.Lock()
 		l.accounts[addr] = account
@@ -67,6 +68,7 @@ func (l *SimpleLedger) GetAccount(address *types.Address) ledger.IAccount {
 		if !bytes.Equal(account.originAccount.CodeHash, nil) {
 			code := l.ldb.Get(compositeKey(codeKey, address))
 			account.originCode = code
+			account.dirtyCode = code
 		}
 		l.lock.Lock()
 		l.accounts[addr] = account
