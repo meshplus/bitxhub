@@ -208,6 +208,7 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 	node.logger.Infof("Raft localID = %d", node.id)
 	node.logger.Infof("Raft lastExec = %d  ", node.lastExec)
 	node.logger.Infof("Raft snapshotCount = %d", node.snapCount)
+	node.logger.Infof("Raft checkAlive = %ds", node.checkAlive.Seconds())
 	return node, nil
 }
 
@@ -444,12 +445,13 @@ func (n *Node) run() {
 				_ = n.peerMgr.Broadcast(pbMsg)
 			}
 		case <-removeTxTicker.C:
+			n.logger.Infof("Replica %d removeTxTicker is expired，startRemoveAliveTimeoutTxs", n.id)
 			removedLen := n.mempool.RemoveAliveTimeoutTxs(n.checkAlive)
 			if removedLen == 0 {
-				n.logger.Debugf("Replica %d in normal finds 0 remained reqs, need not remove it", n.id)
-				return
+				n.logger.Infof("Replica %d in normal finds 0 remained reqs, need not remove it", n.id)
+				continue
 			}
-			n.logger.Debugf("Replica %d successful remove %d tx in local memPool ", n.id, removedLen)
+			n.logger.Infof("Replica %d successful remove %d tx in local memPool ", n.id, removedLen)
 
 		case <-n.batchTimerMgr.BatchTimeoutEvent():
 			n.batchTimerMgr.StopBatchTimer()
