@@ -444,39 +444,41 @@ func (bxh *BitXHub) keygen() error {
 	}
 	poolPkMap[strconv.Itoa(int(bxh.repo.NetworkConfig.ID))] = myPoolPkAddr
 
-	// 2. 向其他节点获取公钥
-	for id, addr := range bxh.fetchTssPkFromOtherPeers() {
-		poolPkMap[id] = addr
-	}
-
-	// 3. 检查公钥一致个数
-	ok, ids, err := checkPoolPkMap(poolPkMap, bxh.Order.Quorum())
-	if err != nil {
-		return fmt.Errorf("check pool pk map: %w", err)
-	}
+	// 2. 如果自己有持久化数据，向其他节点请求公钥，验证是否一致
+	// 如果自己没有持久化数据，直接keygen
 	if myStatus {
+		// 2.1 向其他节点获取公钥
+		for id, addr := range bxh.fetchTssPkFromOtherPeers() {
+			poolPkMap[id] = addr
+		}
+
+		// 2.2 检查公钥一致个数
+		ok, ids, err := checkPoolPkMap(poolPkMap, bxh.Order.Quorum())
+		if err != nil {
+			return fmt.Errorf("check pool pk map: %w", err)
+		}
+		// 2.3 如果检查累计一致的公钥个数达到q，门限签名可以正常使用，将不一致的节点踢出签名组合即可
+		// 如果检查不通过，当前的门限签名已经不能正常使用，需要重新keygen
 		if ok {
-			// 如累计一致的公钥达到q，将不一致的参与方踢出tss节点
+			bxh.logger.WithFields(logrus.Fields{
+				"ids": ids,
+			}).Infof("delete culprits from localState")
+			// 将不一致的参与方踢出tss节点
 			if err := bxh.TssMgr.DeleteCulpritsFromLocalState(ids); err != nil {
 				return fmt.Errorf("handle culprits: %w", err)
 			}
+			// 继续使用之前的公钥
 			return nil
 		}
 	}
 
-	// 4. 公钥个数不一致，开始keygen
+	// 3. 开始keygen
 	var (
 		keys = []crypto.PubKey{bxh.repo.Key.Libp2pPrivKey.GetPublic()}
 	)
 
-	idMap := map[string]struct{}{}
-	for _, id := range ids {
-		idMap[id] = struct{}{}
-	}
-	for id, key := range bxh.fetchPkFromOtherPeers() {
-		if _, ok := idMap[strconv.Itoa(int(id))]; !ok {
-			keys = append(keys, key)
-		}
+	for _, key := range bxh.fetchPkFromOtherPeers() {
+		keys = append(keys, key)
 	}
 
 	bxh.logger.WithFields(logrus.Fields{
@@ -503,6 +505,10 @@ func checkPoolPkMap(pkAddrMap map[string]string, quorum uint64) (bool, []string,
 			maxFreq = counter
 			pkAddr = key
 		}
+	}
+
+	if pkAddr == "" {
+		return false, nil, nil
 	}
 
 	if maxFreq < int(quorum) {

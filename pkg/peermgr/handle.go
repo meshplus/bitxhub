@@ -34,6 +34,8 @@ func (swarm *Swarm) handleMessage(s network.Stream, data []byte) {
 			return swarm.handleFetchP2PPubkey(s)
 		case pb.Message_FETCH_TSS_PUBKEY:
 			return swarm.handleFetchTssPubkey(s)
+		case pb.Message_FETCH_TSS_INFO:
+			return swarm.handleFetchTssInfo(s)
 		case pb.Message_CONSENSUS:
 			go swarm.orderMessageFeed.Send(orderPeerMgr.OrderMessageEvent{Data: m.Data})
 		case pb.Message_FETCH_BLOCK_SIGN:
@@ -184,6 +186,39 @@ func (swarm *Swarm) handleFetchTssPubkey(s network.Stream) error {
 	msg := &pb.Message{
 		Type: pb.Message_FETCH_TSS_PUBKEY_ACK,
 		Data: []byte(addr),
+	}
+
+	err = swarm.SendWithStream(s, msg)
+	if err != nil {
+		return fmt.Errorf("send msg: %w", err)
+	}
+
+	return nil
+}
+
+func (swarm *Swarm) handleFetchTssInfo(s network.Stream) error {
+	info, err := swarm.Tss.GetTssInfo()
+	if err != nil {
+		return fmt.Errorf("we do not know tss keygen parties pk: %v", err)
+	}
+
+	//ids := []string{}
+	//for id, _ := range info {
+	//	ids = append(ids, id)
+	//}
+	//
+	//sort.Slice(ids, func(i, j int) bool {
+	//	return ids[i] > ids[j]
+	//})
+	//
+	//idsStr := strings.Join(ids, ",")
+	data, err := info.Marshal()
+	if err != nil {
+		return fmt.Errorf("tss info marshal error: %v", err)
+	}
+	msg := &pb.Message{
+		Type: pb.Message_FETCH_TSS_INFO_ACK,
+		Data: data,
 	}
 
 	err = swarm.SendWithStream(s, msg)

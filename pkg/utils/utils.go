@@ -81,13 +81,13 @@ func GetIBTPTssSign(tssMgr tss.Tss, ledger *ledger.Ledger, content string, isReq
 	}
 
 	// 3. get signers pk
-	partiesPkMap, err := tssMgr.GetTssKeyGenPartiesPkMap()
+	tssInfo, err := tssMgr.GetTssInfo()
 	if err != nil {
 		return nil, nil, fmt.Errorf("fail to get keygen parties pk map error: %w", err)
 	}
 	signersPk := []crypto3.PubKey{}
 	for _, id := range signers {
-		data, ok := partiesPkMap[id]
+		data, ok := tssInfo.PartiesPkMap[id]
 		if !ok {
 			return nil, nil, fmt.Errorf("party %s is not keygen party", id)
 		}

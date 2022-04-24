@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/meshplus/bitxhub/internal/repo"
+
 	"github.com/ethereum/go-ethereum/common"
 	types2 "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -36,8 +38,12 @@ func (b *BrokerAPI) GetTssPubkey() (string, *ecdsa.PublicKey, error) {
 	return b.bxh.TssMgr.GetTssPubkey()
 }
 
-func (b *BrokerAPI) GetTssKeyGenPartiesPkMap() (map[string][]byte, error) {
-	return b.bxh.TssMgr.GetTssKeyGenPartiesPkMap()
+func (b *BrokerAPI) GetTssInfo() (*pb.TssInfo, error) {
+	return b.bxh.TssMgr.GetTssInfo()
+}
+
+func (b *BrokerAPI) GetPrivKey() *repo.Key {
+	return b.bxh.GetPrivKey()
 }
 
 func (b *BrokerAPI) HandleTransaction(tx pb.Transaction) error {
@@ -426,4 +432,63 @@ func (b BrokerAPI) GetPoolTransaction(hash *types.Hash) pb.Transaction {
 
 func (b BrokerAPI) GetStateLedger() ledger.StateLedger {
 	return b.bxh.Ledger.StateLedger
+}
+
+func (b *BrokerAPI) FetchTssInfoFromOtherPeers() []*pb.TssInfo {
+	var (
+		result = []*pb.TssInfo{}
+		wg     = sync.WaitGroup{}
+		lock   = sync.Mutex{}
+	)
+
+	wg.Add(len(b.bxh.PeerMgr.OtherPeers()))
+	for pid, _ := range b.bxh.PeerMgr.OtherPeers() {
+		go func(pid uint64, wg *sync.WaitGroup, lock *sync.Mutex) {
+			var (
+				err error
+			)
+
+			infoData, err := b.requestTssInfo(pid)
+			if err != nil {
+				b.logger.WithFields(logrus.Fields{
+					"pid": pid,
+					"err": err.Error(),
+				}).Warnf("fetch tss parties from other peers with error")
+			} else {
+				info := &pb.TssInfo{}
+				if err := info.Unmarshal(infoData); err != nil {
+					b.logger.WithFields(logrus.Fields{
+						"pid": pid,
+						"err": err.Error(),
+					}).Warnf("unmarshal tss info error")
+				} else {
+					lock.Lock()
+					result = append(result, info)
+					lock.Unlock()
+				}
+			}
+			wg.Done()
+		}(pid, &wg, &lock)
+	}
+	wg.Wait()
+
+	return result
+}
+
+func (b *BrokerAPI) requestTssInfo(pid uint64) ([]byte, error) {
+	req := pb.Message{
+		Type: pb.Message_FETCH_TSS_INFO,
+	}
+
+	resp, err := b.bxh.PeerMgr.Send(pid, &req)
+	if err != nil {
+		return nil, fmt.Errorf("send message to %d failed: %w", pid, err)
+	}
+	if resp == nil || resp.Type != pb.Message_FETCH_TSS_INFO_ACK {
+		return nil, fmt.Errorf("invalid fetch info pk")
+	}
+
+	//b.logger.Infof("requestTssInfo: %s", string(resp.Data))
+
+	return resp.Data, nil
 }
