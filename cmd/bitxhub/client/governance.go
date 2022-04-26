@@ -314,7 +314,7 @@ func printProposal(proposals []contracts.Proposal) {
 	PrintTable(table, true)
 	fmt.Println("========================================================================================")
 	fmt.Println("* A/R：approve num / reject num")
-	fmt.Println("* IE/AE/TE：the total number of electorate at the time of the initial proposal / the number of available electorate currently /the minimum threshold for votes to take effect")
+	fmt.Println("* IE/AE/TE：the total number of electorate at the time of the initial proposal / the number of available electorate currently")
 	fmt.Println("* Special/Super：is special proposal / is super admin voted")
 }
 
