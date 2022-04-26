@@ -765,8 +765,6 @@ github.com/mattn/go-sqlite3 v1.11.0/go.mod h1:FPy6KqzDD04eiIsT53CuJW3U88zkxoIYsO
 github.com/mattn/go-tty v0.0.0-20180907095812-13ff1204f104/go.mod h1:XPvLUNfbS4fJH25nqRHfWLMa1ONC8Amw+mIA639KxkE=
 github.com/matttproud/golang_protobuf_extensions v1.0.1 h1:4hp9jkHxhMHkqkrB3Ix0jegS5sx/RkqARlsWZ6pIwiU=
 github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5Ld7szi9bcBfOoFv/3dc6xSMkL2PC0=
-github.com/meshplus/bitxhub-core v1.3.1-0.20220419015433-0fc9632c8a9c h1:LNX5HHIw2iHdT2+Hxvfo7TWU3fAgL46iEHNVRq7Xdro=
-github.com/meshplus/bitxhub-core v1.3.1-0.20220419015433-0fc9632c8a9c/go.mod h1:4XwpJi5KRDb7Uwzf8mCy3XZVrLw2HOA3pngpvyGLtLU=
 github.com/meshplus/bitxhub-core v1.3.1-0.20220421034250-63aed722fbec h1:IsI1+1wP6R0jTszA/gWk4EF6g59p75eSE/kIsSOm9TM=
 github.com/meshplus/bitxhub-core v1.3.1-0.20220421034250-63aed722fbec/go.mod h1:0PY1yb7MUJFJs3uy5atskS1qgJTRJXMe9pjnsRwo3dM=
 github.com/meshplus/bitxhub-kit v1.0.0-rc1/go.mod h1:ra/AhOkPvpElI+wXrB9G6DjdcrdxFU3vMwA5MYKr9D0=
@@ -779,9 +777,6 @@ github.com/meshplus/bitxhub-kit v1.2.1-0.20220412092457-5836414df781 h1:xFu/v4zA
 github.com/meshplus/bitxhub-kit v1.2.1-0.20220412092457-5836414df781/go.mod h1:wrEdhHp1tktzdwcWb4bOxYsVc+KkcrYL18IYWYeumPQ=
 github.com/meshplus/bitxhub-model v1.0.0-rc3/go.mod h1:ZCctQIYTlE3vJ8Lhkrgs9bWwNA+Dw4JzojOSIzLVU6E=
 github.com/meshplus/bitxhub-model v1.2.1-0.20210805020100-41c27414badf/go.mod h1:IjgoQrsn1wthW7XcKRqgaZqCSlqNy0SBwF/7lmGSqXc=
-github.com/meshplus/bitxhub-model v1.2.1-0.20220407083019-e55040281b3f/go.mod h1:sPko8fD+G3MYOnH/44Ju4T4jD/tlEU3IJDIJ4hjrzxg=
-github.com/meshplus/bitxhub-model v1.2.1-0.20220415095224-3a9571aa1d15 h1:8BP+MSBMq2r5UquhNrAA/ZOdNLmCgNWBUnvZpxIWAjU=
-github.com/meshplus/bitxhub-model v1.2.1-0.20220415095224-3a9571aa1d15/go.mod h1:sPko8fD+G3MYOnH/44Ju4T4jD/tlEU3IJDIJ4hjrzxg=
 github.com/meshplus/bitxhub-model v1.2.1-0.20220419071920-bd5cc4a17768 h1:OMfyCVQAHsGYh/J24MQmJfrcMxCKwZ9nmWlqBMyS+s8=
 github.com/meshplus/bitxhub-model v1.2.1-0.20220419071920-bd5cc4a17768/go.mod h1:sPko8fD+G3MYOnH/44Ju4T4jD/tlEU3IJDIJ4hjrzxg=
 github.com/meshplus/consensus v0.0.0-20211228075008-5f469b198531 h1:lU2XI7vWdapTLJfObY3A+e+a3rvHbnT0pHN9LEghwRk=
