@@ -385,7 +385,6 @@ func (n *Node) run() {
 					}
 				}
 			case <-n.ctx.Done():
-				n.logger.Infof("stop run1")
 				return
 			}
 		}
@@ -538,7 +537,6 @@ func (n *Node) run() {
 			n.node.Advance()
 		case <-n.ctx.Done():
 			n.node.Stop()
-			n.logger.Infof("stop run2")
 			return
 		}
 	}
