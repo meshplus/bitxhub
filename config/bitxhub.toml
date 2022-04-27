@@ -33,7 +33,7 @@ solo = false
   gateway_key_path = "certs/gateway.priv"
 
 [tss]
-  enable_tss = true
+  enable_tss = false
   party_timeout = "10s"
   key_gen_timeout = "90s"
   key_sign_timeout = "90s"
