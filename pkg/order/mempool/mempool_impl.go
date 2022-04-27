@@ -353,7 +353,7 @@ func (mpi *mempoolImpl) RemoveAliveTimeoutTxs(removeDuration time.Duration) uint
 				return true
 			}
 			if tx := mpi.txStore.priorityIndex.data.Get(orderedKey); tx != nil {
-				mpi.logger.Debugf("find tx[account: %s, nonce:%d] from priorityIndex, ignore remove request",
+				mpi.logger.Warningf("find tx[account: %s, nonce:%d] from priorityIndex, ignore remove request",
 					orderedKey.account, orderedKey.nonce)
 				return true
 			}
