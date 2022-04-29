@@ -754,7 +754,6 @@ func (exec *BlockExecutor) getTimeoutList(height uint64) ([]string, error) {
 
 	var list []string
 	list = strings.Split(string(val), ",")
-	fmt.Println(list[0])
 	if list[0] == "" {
 		return nil, nil
 	}

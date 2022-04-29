@@ -188,8 +188,11 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, uint64, er
 	if err != nil {
 		return false, 0, fmt.Errorf("get validate address of chain %s failed: %w", chainID, err)
 	}
-
-	ok, gasUsed, err := pl.ve.Validate(validateAddr, chainID, proof, ibtp.Payload, string(app.TrustRoot))
+	ibtpBytes, err := ibtp.Marshal()
+	if err != nil {
+		return false, 0, fmt.Errorf("marshal ibtp: %w", err)
+	}
+	ok, gasUsed, err := pl.ve.Validate(validateAddr, chainID, proof, ibtpBytes, string(app.TrustRoot))
 	if err != nil {
 		return false, gasUsed, fmt.Errorf("%s: %w", ProofError, err)
 	}
