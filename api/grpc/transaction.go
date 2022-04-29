@@ -42,17 +42,18 @@ func (cbs *ChainBrokerService) SendTransactions(ctx context.Context, txs *pb.Mul
 			cbs.logger.Errorf("api checkTransaction err: nonce is %d", tx.GetNonce())
 			return nil, status.Newf(codes.InvalidArgument, "check transaction fail for %s", err.Error()).Err()
 		}
-		extraWrapper := &pb.ExtraWrapper{}
-		err = extraWrapper.Unmarshal(tx.GetExtra())
-		if err != nil {
-			return nil, status.Newf(codes.InvalidArgument, "set transaction extra timestamp fail for %s", err.Error()).Err()
-		}
-		extraWrapper.ApiTimestamp = time.Now().UnixNano()
-		b, err := extraWrapper.Marshal()
-		if err != nil {
-			return nil, err
-		}
-		tx.Extra = b
+		//extraWrapper := &pb.ExtraWrapper{}
+		//err = extraWrapper.Unmarshal(tx.GetExtra())
+		//if err != nil {
+		//	return nil, status.Newf(codes.InvalidArgument, "set transaction extra timestamp fail for %s", err.Error()).Err()
+		//}
+		//extraWrapper.ApiTimestamp = time.Now().UnixNano()
+		//b, err := extraWrapper.Marshal()
+		//if err != nil {
+		//	return nil, err
+		//}
+		//tx.Extra = b
+		tx.ReceiveTimestamp = time.Now().UnixNano()
 		hash, err := cbs.sendTransaction(tx)
 		if err != nil {
 			return nil, status.Newf(codes.Internal, "internal handling transaction fail %s", err.Error()).Err()
