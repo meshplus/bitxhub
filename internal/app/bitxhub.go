@@ -339,7 +339,9 @@ func (bxh *BitXHub) Stop() error {
 
 	bxh.Order.Stop()
 
-	bxh.TssMgr.Stop()
+	if bxh.repo.Config.Tss.EnableTSS {
+		bxh.TssMgr.Stop()
+	}
 
 	bxh.Cancel()
 

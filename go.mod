@@ -34,7 +34,7 @@ require (
 	github.com/libp2p/go-libp2p-swarm v0.2.4
 	github.com/looplab/fsm v0.2.0
 	github.com/magiconair/properties v1.8.4
-	github.com/meshplus/bitxhub-core v1.3.1-0.20220421034250-63aed722fbec
+	github.com/meshplus/bitxhub-core v1.3.1-0.20220427070334-f9d0e120ee11
 	github.com/meshplus/bitxhub-kit v1.2.1-0.20220412092457-5836414df781
 	github.com/meshplus/bitxhub-model v1.2.1-0.20220419071920-bd5cc4a17768
 	github.com/meshplus/consensus v0.0.0-20211228075008-5f469b198531
@@ -73,8 +73,10 @@ replace github.com/hyperledger/fabric => github.com/hyperledger/fabric v2.0.1+in
 
 replace golang.org/x/net => golang.org/x/net v0.0.0-20200520004742-59133d7f0dd7
 
-replace github.com/binance-chain/tss-lib => github.com/dawn-to-dusk/tss-lib v1.3.3-0.20220330081758-f404e10a1268
+replace github.com/binance-chain/tss-lib => github.com/dawn-to-dusk/tss-lib v1.3.2-0.20220422023240-5ddc16a330ed
 
 replace github.com/agl/ed25519 => github.com/binance-chain/edwards25519 v0.0.0-20200305024217-f36fc4b53d43
 
 replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4
+
+replace github.com/golang/protobuf => github.com/golang/protobuf v1.3.2
