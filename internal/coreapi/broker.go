@@ -174,7 +174,9 @@ func (b *BrokerAPI) FetchSignsFromOtherPeers(req *pb.GetSignsRequest) map[string
 	signers := []uint64{}
 	for _, id := range strings.Split(string(req.Extra), ",") {
 		idInt, _ := strconv.ParseUint(id, 10, 64)
-		signers = append(signers, idInt)
+		if _, ok := b.bxh.PeerMgr.OtherPeers()[idInt]; ok {
+			signers = append(signers, idInt)
+		}
 	}
 
 	// TODO: calculate threshold
@@ -441,6 +443,7 @@ func (b *BrokerAPI) FetchTssInfoFromOtherPeers() []*pb.TssInfo {
 		lock   = sync.Mutex{}
 	)
 
+	//todo fbz: 重试次数
 	wg.Add(len(b.bxh.PeerMgr.OtherPeers()))
 	for pid, _ := range b.bxh.PeerMgr.OtherPeers() {
 		go func(pid uint64, wg *sync.WaitGroup, lock *sync.Mutex) {

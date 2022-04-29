@@ -566,6 +566,7 @@ func (bxh *BitXHub) fetchPkFromOtherPeers() map[uint64]crypto.PubKey {
 
 	wg.Add(len(bxh.PeerMgr.OtherPeers()))
 	for pid := range bxh.PeerMgr.OtherPeers() {
+		// 当某节点重试一定次数后仍未拿到可以不要，只要有门限以上个即可，在创建密钥时会做数量的检查
 		go func(pid uint64, result map[uint64]crypto.PubKey, wg *sync.WaitGroup, lock *sync.Mutex) {
 			if err := retry.Retry(func(attempt uint) error {
 				pk, err := bxh.requestPkFromPeer(pid)
@@ -581,7 +582,7 @@ func (bxh *BitXHub) fetchPkFromOtherPeers() map[uint64]crypto.PubKey {
 					lock.Unlock()
 					return nil
 				}
-			}, strategy.Wait(500*time.Millisecond),
+			}, strategy.Limit(5), strategy.Wait(500*time.Millisecond),
 			); err != nil {
 				bxh.logger.WithFields(logrus.Fields{
 					"pid": pid,
@@ -606,6 +607,7 @@ func (bxh *BitXHub) fetchTssPkFromOtherPeers() map[string]string {
 	)
 
 	wg.Add(len(bxh.PeerMgr.OtherPeers()))
+	// todo fbz: 重试一定次数拿不到赋值""返回
 	for pid := range bxh.PeerMgr.OtherPeers() {
 		go func(pid uint64, result map[string]string, wg *sync.WaitGroup, lock *sync.Mutex) {
 			if err := retry.Retry(func(attempt uint) error {

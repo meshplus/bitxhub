@@ -21,6 +21,9 @@ func (swarm *Swarm) handleMessage(s network.Stream, data []byte) {
 	}
 
 	handler := func() error {
+		if m.Type != pb.Message_CONSENSUS {
+			swarm.logger.Debugf("handle msg: %s", m.Type)
+		}
 		switch m.Type {
 		case pb.Message_GET_BLOCK:
 			return swarm.handleGetBlockPack(s, m)
@@ -55,6 +58,7 @@ func (swarm *Swarm) handleMessage(s network.Stream, data []byte) {
 		case pb.Message_CHECK_MASTER_PIER_ACK:
 			swarm.handleReplyPierMaster(s, m.Data)
 		case pb.Message_TSS_KEY_GEN, pb.Message_TSS_KEY_SIGN, pb.Message_TSS_KEY_GEN_VER, pb.Message_TSS_KEY_SIGN_VER, pb.Message_TSS_CONTROL, pb.Message_TSS_TASK_DONE, pb.Message_TSS_UNKNOW:
+			swarm.logger.Debugf("handle tss msg")
 			go swarm.tssMessageFeed.Send(m)
 		default:
 			swarm.logger.WithField("module", "p2p").Errorf("can't handle msg[type: %v]", m.Type)
@@ -311,6 +315,7 @@ func (swarm *Swarm) handleFetchIBTPTssSignMessage(s network.Stream, data []byte,
 		return
 	}
 
+	swarm.logger.Debugf("handleFetchIBTPTssSignMessage, signers: %s", string(req.Extra))
 	signed, culpritIDs, err := utils.GetIBTPTssSign(swarm.Tss, swarm.ledger, req.Content, isReq, strings.Split(string(req.Extra), ","))
 	if err != nil {
 		swarm.logger.Errorf("handle fetch-ibtp-sign for ibtp %s isReq %v: %s", string(data), isReq, err.Error())

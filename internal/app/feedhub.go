@@ -50,6 +50,7 @@ func (bxh *BitXHub) listenEvent() {
 	for {
 		select {
 		case msg := <-tssMsgCh:
+			bxh.logger.Debugf("get tss msg to put")
 			go bxh.TssMgr.PutTssMsg(msg)
 		case ev := <-blockCh:
 			go bxh.Order.ReportState(ev.Block.BlockHeader.Number, ev.Block.BlockHash, ev.TxHashList)

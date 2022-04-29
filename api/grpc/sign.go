@@ -71,6 +71,7 @@ func (cbs *ChainBrokerService) GetTssSigns(ctx context.Context, req *pb.GetSigns
 	// 2. get tss info
 	signersALL := []string{}
 	poolPkData := []byte{}
+	// todo fbz:从内存拿tss
 	tssInfo, err := cbs.api.Broker().GetTssInfo()
 	tssFlag := true
 	if err != nil {
@@ -100,7 +101,7 @@ func (cbs *ChainBrokerService) GetTssSigns(ctx context.Context, req *pb.GetSigns
 
 	for {
 		// 4. check signers num
-		if len(signersALL) <= 0 {
+		if len(signersALL) < int(cbs.api.Broker().GetQuorum()) {
 			cbs.logger.WithFields(logrus.Fields{
 				"signers": signersALL,
 			}).Errorf("too less signers")
@@ -113,8 +114,8 @@ func (cbs *ChainBrokerService) GetTssSigns(ctx context.Context, req *pb.GetSigns
 		for _, i := range nums {
 			tssSigners = append(tssSigners, signersALL[i])
 		}
-		cbs.logger.Infof("====================== tss signers: %s", strings.Join(signersALL, ","))
-		tssReq.Extra = []byte(strings.Join(signersALL, ","))
+		cbs.logger.Infof("====================== tss all signers: %s, signers: %s", strings.Join(signersALL, ","), strings.Join(tssSigners, ","))
+		tssReq.Extra = []byte(strings.Join(tssSigners, ","))
 
 		// 6. send sign req to others
 		wg.Add(1)
@@ -123,29 +124,32 @@ func (cbs *ChainBrokerService) GetTssSigns(ctx context.Context, req *pb.GetSigns
 			tssSignResCh := make(chan *pb.Message)
 			tssSignResSub := cbs.api.Feed().SubscribeTssSignRes(tssSignResCh)
 			defer tssSignResSub.Unsubscribe()
-			select {
-			case m := <-tssSignResCh:
-				signRes := &model.MerkleWrapperSign{}
-				if err := signRes.Unmarshal(m.Data); err != nil {
-					cbs.logger.WithFields(logrus.Fields{
-						"err": err,
-					}).Errorf("unmarshal sign res error")
-					break
-				}
+			for {
+				select {
+				case m := <-tssSignResCh:
+					signRes := &model.MerkleWrapperSign{}
+					if err := signRes.Unmarshal(m.Data); err != nil {
+						cbs.logger.WithFields(logrus.Fields{
+							"err": err,
+						}).Errorf("unmarshal sign res error")
+						continue
+						//return
+					}
 
-				if err := utils.VerifyTssSigns(signRes.Signature, poolPk, cbs.logger); err != nil {
-					cbs.logger.WithFields(logrus.Fields{}).Errorf("Verify tss signs error")
-					break
-				} else {
-					result = append(result, signRes.Signature)
-					cbs.logger.WithFields(logrus.Fields{}).Debug("get verified tss signature from other peers")
+					if err := utils.VerifyTssSigns(signRes.Signature, poolPk, cbs.logger); err != nil {
+						cbs.logger.WithFields(logrus.Fields{}).Errorf("Verify tss signs error")
+						//break
+					} else {
+						result = append(result, signRes.Signature)
+						cbs.logger.WithFields(logrus.Fields{}).Debug("get verified tss signature from other peers")
+						wg.Done()
+						return
+					}
+				case <-time.After(cbs.config.Tss.KeySignTimeout):
+					cbs.logger.WithFields(logrus.Fields{}).Warnf("wait for sign from other peers timeout: %v", cbs.config.Tss.KeySignTimeout)
 					wg.Done()
 					return
 				}
-			case <-time.After(cbs.config.Tss.KeySignTimeout):
-				cbs.logger.WithFields(logrus.Fields{}).Warnf("wait for sign from other peers timeout: %v", cbs.config.Tss.KeySignTimeout)
-				wg.Done()
-				return
 			}
 		}()
 
@@ -153,6 +157,7 @@ func (cbs *ChainBrokerService) GetTssSigns(ctx context.Context, req *pb.GetSigns
 		if tssFlag {
 			addr, sign, culprits, err := cbs.api.Broker().GetSign(tssReq, tssSigners)
 			wg.Wait()
+			// todo fbz: 优先取result结果
 			if err == nil {
 				return &pb.SignResponse{
 					Sign: map[string][]byte{
