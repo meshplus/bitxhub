@@ -59,6 +59,11 @@ func (pl *VerifyPool) ValidationEngine() validator.Engine {
 func (pl *VerifyPool) CheckProof(tx pb.Transaction) (ok bool, gasUsed uint64, err error) {
 	ibtp := tx.GetIBTP()
 	if ibtp != nil {
+		//extraWrapper := &pb.ExtraWrapper{}
+		//err := extraWrapper.Unmarshal(tx.GetExtra())
+		//if err != nil {
+		//	return false, gasUsed, fmt.Errorf("get proof: %w", err)
+		//}
 		ok, gasUsed, err = pl.verifyProof(ibtp, tx.GetExtra())
 		if err != nil {
 			pl.logger.WithFields(logrus.Fields{
