@@ -230,6 +230,9 @@ func (exec *BlockExecutor) verifyProofs(blockWrapper *BlockWrapper) {
 	txs := block.Transactions.Transactions
 
 	groupNum := maxGroup
+	if len(txs) == 0 {
+		return
+	}
 	if len(txs) < maxGroup {
 		groupNum = len(txs)
 	}
