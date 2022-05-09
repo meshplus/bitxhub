@@ -38,8 +38,8 @@ func (cbs *ChainBrokerService) SendTransactions(ctx context.Context, txs *pb.Mul
 	}
 	hashList := make([]*pb.TransactionHashMsg, 0, len(txs.Txs))
 	for _, tx := range txs.Txs {
-		if err := cbs.checkTransaction(tx); err != nil {
-			cbs.logger.Errorf("api checkTransaction err: nonce is %d", tx.GetNonce())
+		if err = cbs.checkTransaction(tx); err != nil {
+			cbs.logger.Errorf("api checkTransaction err: nonce is %d, err is : %s", tx.GetNonce(), err)
 			return nil, status.Newf(codes.InvalidArgument, "check transaction fail for %s", err.Error()).Err()
 		}
 		//extraWrapper := &pb.ExtraWrapper{}
