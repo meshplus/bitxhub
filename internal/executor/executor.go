@@ -245,6 +245,7 @@ func (exec *BlockExecutor) verifyProofs(blockWrapper *BlockWrapper) {
 				errM[i] = err.Error()
 			}
 			exec.logger.WithField("gasUsed", gasUsed).Debug("Verify proofs")
+			txs[i].(*pb.BxhTransaction).IBTP.Proof = nil
 			// if err := exec.payGasFee(tx, gasUsed); err != nil {
 			// 	lock.Lock()
 			// 	defer lock.Unlock()
