@@ -49,6 +49,7 @@ type BlockExecutor struct {
 	currentBlockHash *types.Hash
 	txsExecutor      agency.TxsExecutor
 	blockFeed        event.Feed
+	outerBlockFeed   event.Feed
 	logsFeed         event.Feed
 	nodeFeed         event.Feed
 	auditFeed        event.Feed
@@ -144,6 +145,11 @@ func (exec *BlockExecutor) ExecuteBlock(block *pb.CommitEvent) {
 // SubscribeBlockEvent registers a subscription of ExecutedEvent.
 func (exec *BlockExecutor) SubscribeBlockEvent(ch chan<- events.ExecutedEvent) event.Subscription {
 	return exec.blockFeed.Subscribe(ch)
+}
+
+// SubscribeBlockEvent registers a subscription of ExecutedEvent.
+func (exec *BlockExecutor) SubscribeOuterBlockEvent(ch chan<- events.ExecutedEvent) event.Subscription {
+	return exec.outerBlockFeed.Subscribe(ch)
 }
 
 func (exec *BlockExecutor) SubscribeLogsEvent(ch chan<- []*pb.EvmLog) event.Subscription {
@@ -247,6 +253,9 @@ func (exec *BlockExecutor) verifyProofs(blockWrapper *BlockWrapper) {
 						groupInvalidTx = append(groupInvalidTx, i*groupLen+j)
 						groupErrM[i*groupLen+j] = err.Error()
 					}
+					if txs[i*groupLen+j].IsIBTP() {
+						txs[i*groupLen+j].(*pb.BxhTransaction).IBTP.Proof = nil
+					}
 					exec.logger.WithField("gasUsed", gasUsed).Debug("Verify proofs")
 				}
 			} else {
@@ -255,6 +264,9 @@ func (exec *BlockExecutor) verifyProofs(blockWrapper *BlockWrapper) {
 					if !ok {
 						groupInvalidTx = append(groupInvalidTx, i*groupLen+j)
 						groupErrM[i*groupLen+j] = err.Error()
+					}
+					if txs[i*groupLen+j].IsIBTP() {
+						txs[i*groupLen+j].(*pb.BxhTransaction).IBTP.Proof = nil
 					}
 					exec.logger.WithField("gasUsed", gasUsed).Debug("Verify proofs")
 				}

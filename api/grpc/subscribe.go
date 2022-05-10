@@ -42,28 +42,15 @@ func (cbs *ChainBrokerService) handleNewBlockSubscription(server pb.ChainBroker_
 	defer sub.Unsubscribe()
 
 	for ev := range blockCh {
-		errCh := make(chan error)
 		block := ev.Block
 		data, err := block.Marshal()
 		if err != nil {
 			return fmt.Errorf("marshal block error: %w", err)
 		}
-		go func() {
-			if err := server.Send(&pb.Response{
-				Data: data,
-			}); err != nil {
-				errCh <- fmt.Errorf("send block failed: %w", err)
-				return
-			}
-			errCh <- nil
-		}()
-
-		select {
-		case err := <-errCh:
-			if err != nil {
-				close(errCh)
-				return err
-			}
+		if err := server.Send(&pb.Response{
+			Data: data,
+		}); err != nil {
+			return err
 		}
 	}
 
@@ -76,28 +63,15 @@ func (cbs *ChainBrokerService) handleBlockHeaderSubscription(server pb.ChainBrok
 	defer sub.Unsubscribe()
 
 	for ev := range blockCh {
-		errCh := make(chan error)
 		header := ev.Block.BlockHeader
 		data, err := header.Marshal()
 		if err != nil {
 			return fmt.Errorf("marshal block header error: %w", err)
 		}
-		go func() {
-			if err := server.Send(&pb.Response{
-				Data: data,
-			}); err != nil {
-				errCh <- fmt.Errorf("send block header failed: %w", err)
-				return
-			}
-			errCh <- nil
-		}()
-
-		select {
-		case err := <-errCh:
-			if err != nil {
-				close(errCh)
-				return err
-			}
+		if err := server.Send(&pb.Response{
+			Data: data,
+		}); err != nil {
+			return err
 		}
 	}
 
