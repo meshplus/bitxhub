@@ -184,6 +184,7 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 
 	now := time.Now()
 	exec.ledger.PersistBlockData(data)
+	exec.persistC <- data
 	exec.postBlockEvent(data.Block, data.InterchainMeta, data.TxHashList)
 	exec.postLogsEvent(data.Receipts)
 	exec.logger.WithFields(logrus.Fields{
@@ -191,7 +192,7 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 		"hash":   data.Block.BlockHash.String(),
 		"count":  len(data.Block.Transactions.Transactions),
 		"elapse": time.Since(now),
-	}).Info("Persisted block")
+	}).Info("Persisted Commit block")
 
 	exec.currentHeight = block.BlockHeader.Number
 	exec.currentBlockHash = block.BlockHash

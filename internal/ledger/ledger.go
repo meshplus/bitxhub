@@ -87,16 +87,10 @@ func New(repo *repo.Repo, blockchainStore storage.Storage, ldb stateStorage, bf 
 func (l *Ledger) PersistBlockData(blockData *BlockData) {
 	current := time.Now()
 	block := blockData.Block
-	receipts := blockData.Receipts
 	accounts := blockData.Accounts
-	meta := blockData.InterchainMeta
 
 	err := l.StateLedger.Commit(block.BlockHeader.Number, accounts, block.BlockHeader.StateRoot)
 	if err != nil {
-		panic(err)
-	}
-
-	if err := l.ChainLedger.PersistExecutionResult(block, receipts, meta); err != nil {
 		panic(err)
 	}
 

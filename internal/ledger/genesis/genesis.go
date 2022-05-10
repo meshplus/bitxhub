@@ -123,6 +123,10 @@ func Initialize(genesis *repo.Genesis, nodes []*repo.NetworkNodes, primaryN uint
 	}
 
 	lg.PersistBlockData(blockData)
+	err = lg.PersistExecutionResult(blockData.Block, blockData.Receipts, blockData.InterchainMeta)
+	if err != nil {
+		panic(err)
+	}
 
 	return nil
 }

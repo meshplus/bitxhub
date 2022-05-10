@@ -116,7 +116,7 @@ func (exec *BlockExecutor) Start() error {
 
 	go exec.listenPreExecuteEvent()
 
-	go exec.persistData()
+	go exec.persistExecutionResult()
 
 	exec.logger.WithFields(logrus.Fields{
 		"height": exec.currentHeight,
@@ -270,18 +270,22 @@ func (exec *BlockExecutor) verifyProofs(blockWrapper *BlockWrapper) {
 	wg.Wait()
 }
 
-func (exec *BlockExecutor) persistData() {
-	for data := range exec.persistC {
+func (exec *BlockExecutor) persistExecutionResult() {
+	for blockData := range exec.persistC {
 		now := time.Now()
-		exec.ledger.PersistBlockData(data)
-		exec.postBlockEvent(data.Block, data.InterchainMeta, data.TxHashList)
-		exec.postLogsEvent(data.Receipts)
+		block := blockData.Block
+		receipts := blockData.Receipts
+		meta := blockData.InterchainMeta
+		if err := exec.ledger.PersistExecutionResult(block, receipts, meta); err != nil {
+			panic(err)
+		}
+
 		exec.logger.WithFields(logrus.Fields{
-			"height": data.Block.BlockHeader.Number,
-			"hash":   data.Block.BlockHash.String(),
-			"count":  len(data.Block.Transactions.Transactions),
+			"height": blockData.Block.BlockHeader.Number,
+			"hash":   blockData.Block.BlockHash.String(),
+			"count":  len(blockData.Block.Transactions.Transactions),
 			"elapse": time.Since(now),
-		}).Info("Persisted block")
+		}).Debug("PersistExecutionResult block")
 	}
 	exec.ledger.Close()
 }
