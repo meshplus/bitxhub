@@ -43,14 +43,12 @@ func (cbs *ChainBrokerService) handleNewBlockSubscription(server pb.ChainBroker_
 
 	for ev := range blockCh {
 		errCh := make(chan error)
+		block := ev.Block
+		data, err := block.Marshal()
+		if err != nil {
+			return fmt.Errorf("marshal block error: %w", err)
+		}
 		go func() {
-			block := ev.Block
-			data, err := block.Marshal()
-			if err != nil {
-				errCh <- fmt.Errorf("marshal block error: %w", err)
-				return
-			}
-
 			if err := server.Send(&pb.Response{
 				Data: data,
 			}); err != nil {
@@ -79,13 +77,12 @@ func (cbs *ChainBrokerService) handleBlockHeaderSubscription(server pb.ChainBrok
 
 	for ev := range blockCh {
 		errCh := make(chan error)
+		header := ev.Block.BlockHeader
+		data, err := header.Marshal()
+		if err != nil {
+			return fmt.Errorf("marshal block header error: %w", err)
+		}
 		go func() {
-			header := ev.Block.BlockHeader
-			data, err := header.Marshal()
-			if err != nil {
-				errCh <- fmt.Errorf("marshal block header error: %w", err)
-				return
-			}
 			if err := server.Send(&pb.Response{
 				Data: data,
 			}); err != nil {
@@ -172,14 +169,12 @@ func (cbs *ChainBrokerService) handleInterchainTxWrapperSubscription(server pb.C
 				cbs.logger.Errorf("subs closed")
 				return nil
 			}
+			data, err := wrapper.Marshal()
+			if err != nil {
+				return fmt.Errorf("marshal interchain tx wrapper error: %w", err)
+			}
 			errCh := make(chan error)
 			go func() {
-				data, err := wrapper.Marshal()
-				if err != nil {
-					errCh <- fmt.Errorf("marshal interchain tx wrapper error: %w", err)
-					return
-				}
-
 				if err := server.Send(&pb.Response{
 					Data: data,
 				}); err != nil {
