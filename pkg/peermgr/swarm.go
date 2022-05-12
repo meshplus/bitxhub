@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -18,20 +20,25 @@ import (
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/internal/repo"
 	libp2pcert "github.com/meshplus/go-libp2p-cert"
-	network "github.com/meshplus/go-lightp2p"
+	lightp2p "github.com/meshplus/go-lightp2p"
+	network "github.com/meshplus/go-lightp2p/hybrid"
+	network_pb "github.com/meshplus/go-lightp2p/pb"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 const (
-	protocolID protocol.ID = "/B1txHu6/1.0.0" // magic protocol
+	protocolID protocol.ID = "/pangolin/1.0.0" // magic protocol
 )
 
 type Swarm struct {
-	repo    *repo.Repo
-	localID uint64
-	p2p     network.Network
-	logger  logrus.FieldLogger
+	grpcClient pb.ChainBrokerClient
+	repo       *repo.Repo
+	localID    uint64
+	p2p        *network.HybridNet
+	logger     logrus.FieldLogger
 
 	routers        map[uint64]*pb.VpInfo // trace the vp nodes
 	multiAddrs     map[uint64]*peer.AddrInfo
@@ -51,7 +58,7 @@ type Swarm struct {
 }
 
 func New(repoConfig *repo.Repo, logger logrus.FieldLogger, ledger *ledger.Ledger) (*Swarm, error) {
-	var protocolIDs = []string{string(protocolID)}
+	//var protocolIDs = []string{string(protocolID)}
 	// init peers with ips and hosts
 	routers := repoConfig.NetworkConfig.GetVpInfos()
 	bootstrap := make([]string, 0)
@@ -83,7 +90,7 @@ func New(repoConfig *repo.Repo, logger logrus.FieldLogger, ledger *ledger.Ledger
 	opts := []network.Option{
 		network.WithLocalAddr(repoConfig.NetworkConfig.LocalAddr),
 		network.WithPrivateKey(repoConfig.Key.Libp2pPrivKey),
-		network.WithProtocolIDs(protocolIDs),
+		network.WithProtocolID(protocolID),
 		network.WithLogger(logger),
 		// enable discovery
 		network.WithBootstrap(bootstrap),
@@ -98,14 +105,37 @@ func New(repoConfig *repo.Repo, logger logrus.FieldLogger, ledger *ledger.Ledger
 		)
 	}
 
-	p2p, err := network.New(opts...)
+	p2p, err := network.NewHybridNet(opts...)
+	//p2p, err := network.New(opts...)
 	if err != nil {
 		return nil, fmt.Errorf("create p2p: %w", err)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	endpoint := fmt.Sprintf("localhost:%d", repoConfig.Config.Port.Grpc)
+	var conn *grpc.ClientConn
+	if repoConfig.Config.Security.EnableTLS {
+		certFile := filepath.Join(repoConfig.Config.RepoRoot, repoConfig.Config.Security.PemFilePath)
+		cred, err := credentials.NewClientTLSFromFile(certFile, "BitXHub")
+		if err != nil {
+			return nil, err
+		}
 
+		conn, err = grpc.DialContext(context.Background(), endpoint, grpc.WithTransportCredentials(cred))
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		opts := []grpc.DialOption{grpc.WithInsecure()}
+
+		conn, err = grpc.Dial(endpoint, opts...)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
 	return &Swarm{
+		grpcClient:     pb.NewChainBrokerClient(conn),
 		repo:           repoConfig,
 		localID:        repoConfig.NetworkConfig.ID,
 		p2p:            p2p,
@@ -141,7 +171,7 @@ func (swarm *Swarm) Start() error {
 					swarm.logger.Infof("Can't find node %d from routing table, stopping connect", id)
 					return nil
 				}
-				if err := swarm.p2p.Connect(*addr); err != nil {
+				if err := swarm.p2p.Connect(addr); err != nil {
 					swarm.logger.WithFields(logrus.Fields{
 						"node":  id,
 						"error": err,
@@ -163,6 +193,32 @@ func (swarm *Swarm) Start() error {
 			}
 		}(id, addr)
 	}
+
+	go func() {
+		swarm.logger.Infof("Connect to pangolin")
+		if err := retry.Retry(func(attempt uint) error {
+			// /peer/bxh连接的pangolin地址（用做p2p连接）/netgap/bxh连接的pangolin地址（用来识别p2n写文件）/peer/bxh地址（用做p2n连接）
+			pangolinAddr := fmt.Sprintf("/peer%s/netgap%s/peer%s/p2p/%s", swarm.repo.Config.Pangolin.Addr, swarm.repo.Config.Pangolin.Addr, swarm.repo.NetworkConfig.LocalAddr, swarm.repo.NetworkConfig.Nodes[swarm.repo.NetworkConfig.ID-1].Pid)
+			if err := swarm.p2p.ConnectByMultiAddr(pangolinAddr); err != nil {
+				swarm.logger.WithFields(logrus.Fields{
+					"addr":  pangolinAddr,
+					"error": err,
+				}).Error("Connect pangolin failed")
+				return err
+			}
+
+			swarm.logger.WithFields(logrus.Fields{
+				"addr": pangolinAddr,
+				//"node": id,
+			}).Info("Connect pangolin successfully")
+			return nil
+		},
+			strategy.Limit(5),
+			strategy.Wait(1*time.Second),
+		); err != nil {
+			swarm.logger.Error(err)
+		}
+	}()
 
 	go swarm.Ping()
 
@@ -217,21 +273,28 @@ func (swarm *Swarm) Ping() {
 
 func (swarm *Swarm) AsyncSend(id uint64, msg *pb.Message) error {
 	var (
-		addr string
-		err  error
+		addrInfo *peer.AddrInfo
+		err      error
 	)
-	if addr, err = swarm.findPeer(id); err != nil {
-		return fmt.Errorf("p2p send: %w", err)
+
+	if addrInfo, err = swarm.findPeerAddr(id); err != nil {
+		return fmt.Errorf("find peer addr: %w", err)
 	}
 
 	data, err := msg.Marshal()
 	if err != nil {
 		return err
 	}
-	return swarm.p2p.AsyncSend(addr, data)
+
+	msg1 := &network_pb.Message{
+		Data: data,
+		Msg:  network_pb.Message_DATA_ASYNC,
+	}
+
+	return swarm.p2p.AsyncSend(addrInfo, msg1)
 }
 
-func (swarm *Swarm) SendWithStream(s network.Stream, msg *pb.Message) error {
+func (swarm *Swarm) SendWithStream(s lightp2p.Stream, msg *pb.Message) error {
 	data, err := msg.Marshal()
 	if err != nil {
 		return err
@@ -242,11 +305,13 @@ func (swarm *Swarm) SendWithStream(s network.Stream, msg *pb.Message) error {
 
 func (swarm *Swarm) Send(id uint64, msg *pb.Message) (*pb.Message, error) {
 	var (
-		addr string
-		err  error
+		//addr string
+		addrInfo *peer.AddrInfo
+		err      error
 	)
-	if addr, err = swarm.findPeer(id); err != nil {
-		return nil, fmt.Errorf("check id: %w", err)
+
+	if addrInfo, err = swarm.findPeerAddr(id); err != nil {
+		return nil, fmt.Errorf("find peer addr: %w", err)
 	}
 
 	data, err := msg.Marshal()
@@ -254,13 +319,23 @@ func (swarm *Swarm) Send(id uint64, msg *pb.Message) (*pb.Message, error) {
 		return nil, err
 	}
 
-	ret, err := swarm.p2p.Send(addr, data)
+	msg1 := &network_pb.Message{
+		Data: data,
+		Msg:  network_pb.Message_DATA,
+	}
+
+	ret, err := swarm.p2p.Send(addrInfo, msg1)
 	if err != nil {
 		return nil, fmt.Errorf("sync send: %w", err)
 	}
 
+	retMsg := &network_pb.Message{}
+	if err := retMsg.Unmarshal(ret.Data); err != nil {
+		return nil, fmt.Errorf("send ret msg unmarshal error: %v", err)
+	}
+
 	m := &pb.Message{}
-	if err := m.Unmarshal(ret); err != nil {
+	if err := m.Unmarshal(retMsg.Data); err != nil {
 		return nil, err
 	}
 
@@ -268,19 +343,31 @@ func (swarm *Swarm) Send(id uint64, msg *pb.Message) (*pb.Message, error) {
 }
 
 func (swarm *Swarm) Broadcast(msg *pb.Message) error {
-	addrs := make([]string, 0, len(swarm.routers))
+	addrInfos := make([]*peer.AddrInfo, 0, len(swarm.routers))
 	for _, router := range swarm.routers {
 		if router.Id == swarm.localID {
 			continue
 		}
-		addrs = append(addrs, router.Pid)
+		info, ok := swarm.connectedPeers.Load(router.Id)
+		if !ok {
+			return fmt.Errorf("can not get node addr info: %d", router.Id)
+		}
+		addrInfos = append(addrInfos, info.(*peer.AddrInfo))
 	}
 
 	// if we are in adding node but hasn't finished updateN, new node hash will be temporarily recorded
 	// in swarm.notifiee.newPeer.
-	if swarm.notifiee.newPeer != "" {
+	// todo: 暂不考虑增删节点，忽略连接的pangolin地址
+	if swarm.notifiee.newPeer != "" && !strings.Contains(swarm.repo.Config.Pangolin.Addr, swarm.notifiee.newPeer) {
 		swarm.logger.Debugf("Broadcast to new peer %s", swarm.notifiee.newPeer)
-		addrs = append(addrs, swarm.notifiee.newPeer)
+		peerID, err := peer.Decode(swarm.notifiee.newPeer)
+		if err != nil {
+			return err
+		}
+		addrInfos = append(addrInfos, &peer.AddrInfo{
+			ID:    peerID,
+			Addrs: nil,
+		})
 	}
 
 	data, err := msg.Marshal()
@@ -288,7 +375,12 @@ func (swarm *Swarm) Broadcast(msg *pb.Message) error {
 		return err
 	}
 
-	return swarm.p2p.Broadcast(addrs, data)
+	msg1 := &network_pb.Message{
+		Data: data,
+		Msg:  network_pb.Message_DATA,
+	}
+
+	return swarm.p2p.Broadcast(addrInfos, msg1)
 }
 
 func (swarm *Swarm) Peers() map[uint64]*pb.VpInfo {
@@ -324,6 +416,30 @@ func (swarm *Swarm) findPeer(id uint64) (string, error) {
 		return newPeerAddr, nil
 	}
 	return "", fmt.Errorf("wrong id: %d", id)
+}
+
+func (swarm *Swarm) findPeerAddr(id uint64) (*peer.AddrInfo, error) {
+	if swarm.routers[id] != nil {
+		info, ok := swarm.connectedPeers.Load(swarm.routers[id].Id)
+		if !ok {
+			return nil, fmt.Errorf("can not get node addr info: %d", swarm.routers[id].Id)
+		}
+		return info.(*peer.AddrInfo), nil
+	}
+	// new node id should be len(swarm.peers)+1
+	// todo: 暂不考虑增删节点，忽略连接的pangolin地址
+	if uint64(len(swarm.routers)+1) == id && swarm.notifiee.newPeer != "" && !strings.Contains(swarm.repo.Config.Pangolin.Addr, swarm.notifiee.newPeer) {
+		swarm.logger.Debugf("Unicast to new peer %s", swarm.notifiee.newPeer)
+		peerID, err := peer.Decode(swarm.notifiee.newPeer)
+		if err != nil {
+			return nil, err
+		}
+		return &peer.AddrInfo{
+			ID:    peerID,
+			Addrs: nil,
+		}, nil
+	}
+	return nil, fmt.Errorf("wrong id: %d", id)
 }
 
 func (swarm *Swarm) AddNode(newNodeID uint64, vpInfo *pb.VpInfo) {
@@ -436,7 +552,12 @@ func (swarm *Swarm) UpdateRouter(vpInfos map[uint64]*pb.VpInfo, isNew bool) bool
 
 func (swarm *Swarm) Disconnect(vpInfos map[uint64]*pb.VpInfo) {
 	for id, info := range vpInfos {
-		if err := swarm.p2p.Disconnect(info.Pid); err != nil {
+		addrInfo, ok := swarm.connectedPeers.Load(id)
+		if !ok {
+			swarm.logger.Errorf("get disconnect node addr info: %d", id)
+		}
+
+		if err := swarm.p2p.Disconnect(addrInfo.(*peer.AddrInfo)); err != nil {
 			swarm.logger.Errorf("Disconnect peer %s failed, err: %s", err.Error())
 		}
 		swarm.logger.Infof("Disconnect peer [ID: %d, Pid: %s]", id, info.Pid)

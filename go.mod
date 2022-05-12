@@ -23,14 +23,13 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d
 	github.com/hokaccha/go-prettyjson v0.0.0-20190818114111-108c894c2c0e
-	github.com/hyperledger/fabric-amcl v0.0.0-20210603140002-2670f91851c8 // indirect
 	github.com/juju/ratelimit v1.0.1
 	github.com/libp2p/go-libp2p-core v0.5.6
 	github.com/looplab/fsm v0.2.0
 	github.com/magiconair/properties v1.8.4
 	github.com/meshplus/bitxhub-core v1.3.1-0.20220129100150-aa3fd98079e4
 	github.com/meshplus/bitxhub-kit v1.2.1-0.20210830031953-cf5f83f2e1dd
-	github.com/meshplus/bitxhub-model v1.2.1-0.20210909055322-3025ed2ba82f
+	github.com/meshplus/bitxhub-model v1.2.1-0.20220425093801-4cc50cc6bc61
 	github.com/meshplus/bitxid v0.0.0-20210412025850-e0eaf0f9063a
 	github.com/meshplus/did-registry v0.0.0-20210413035015-509c6c3a0bae
 	github.com/meshplus/eth-kit v0.0.0-20220105083141-5ec7a17a3dea
@@ -70,3 +69,15 @@ replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20200218
 replace google.golang.org/grpc => google.golang.org/grpc v1.33.0
 
 replace github.com/hyperledger/fabric => github.com/hyperledger/fabric v2.0.1+incompatible
+
+replace github.com/meshplus/go-lightp2p => git.hyperchain.cn/dmlab/go-lightp2p v0.0.0-20220513125259-25519f9c6fa3
+
+replace git.hyperchain.cn/dmlab/go-common-utils => git.hyperchain.cn/dmlab/go-common-utils.git v0.0.0-20200323065116-07edae98cb7a
+
+replace github.com/hyperchain/gosdk => git.hyperchain.cn/hyperchain/gosdk.git v1.2.16
+
+replace github.com/ultramesh/crypto-standard => git.hyperchain.cn/ultramesh/crypto-standard.git v0.1.0
+
+replace github.com/ultramesh/crypto => git.hyperchain.cn/ultramesh/crypto.git v0.1.0
+
+replace github.com/ipfs/go-cid => github.com/ipfs/go-cid v0.0.5

@@ -4,12 +4,14 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
 	types2 "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/libp2p/go-libp2p-core/peer"
 	contracts2 "github.com/meshplus/bitxhub-core/eth-contracts/interchain-contracts"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
@@ -18,9 +20,13 @@ import (
 	"github.com/meshplus/bitxhub/internal/model"
 	"github.com/meshplus/bitxhub/internal/model/events"
 	network "github.com/meshplus/go-lightp2p"
+	network_pb "github.com/meshplus/go-lightp2p/pb"
 	solsha3 "github.com/miguelmota/go-solidity-sha3"
+	ma "github.com/multiformats/go-multiaddr"
 	"github.com/sirupsen/logrus"
 )
+
+const SubscribeResponse = "Successfully subscribe"
 
 func (swarm *Swarm) handleMessage(s network.Stream, data []byte) {
 	m := &pb.Message{}
@@ -53,6 +59,76 @@ func (swarm *Swarm) handleMessage(s network.Stream, data []byte) {
 			swarm.handleAskPierMaster(s, m.Data)
 		case pb.Message_CHECK_MASTER_PIER_ACK:
 			swarm.handleReplyPierMaster(s, m.Data)
+		case pb.Message_PIER_SEND_TRANSACTION:
+			payload := &pb.PierPayload{}
+			if err := payload.Unmarshal(m.Data); err != nil {
+				swarm.logger.WithFields(logrus.Fields{"data": string(m.Data), "err": err.Error()}).Errorf("unmarshal pier payload error")
+				return nil
+			}
+			swarm.handlePierSendTransaction(s, payload.Data)
+		case pb.Message_PIER_GET_TRANSACTION:
+			payload := &pb.PierPayload{}
+			if err := payload.Unmarshal(m.Data); err != nil {
+				swarm.logger.WithFields(logrus.Fields{"data": string(m.Data), "err": err.Error()}).Errorf("unmarshal pier payload error")
+				return nil
+			}
+			swarm.handlePierGetTransaction(s, payload.Data)
+		case pb.Message_PIER_SEND_VIEW:
+			payload := &pb.PierPayload{}
+			if err := payload.Unmarshal(m.Data); err != nil {
+				swarm.logger.WithFields(logrus.Fields{"data": string(m.Data), "err": err.Error()}).Errorf("unmarshal pier payload error")
+				return nil
+			}
+			swarm.handlePierSendView(s, payload.Data)
+		case pb.Message_PIER_GET_RECEIPT:
+			payload := &pb.PierPayload{}
+			if err := payload.Unmarshal(m.Data); err != nil {
+				swarm.logger.WithFields(logrus.Fields{"data": string(m.Data), "err": err.Error()}).Errorf("unmarshal pier payload error")
+				return nil
+			}
+			swarm.handlePierGetReceipt(s, payload.Data)
+		case pb.Message_PIER_GET_MULTI_SIGNS:
+			payload := &pb.PierPayload{}
+			if err := payload.Unmarshal(m.Data); err != nil {
+				swarm.logger.WithFields(logrus.Fields{"data": string(m.Data), "err": err.Error()}).Errorf("unmarshal pier payload error")
+				return nil
+			}
+			swarm.handlePierGetMultiSigns(s, payload.Data)
+		case pb.Message_PIER_GET_CHAIN_META:
+			payload := &pb.PierPayload{}
+			if err := payload.Unmarshal(m.Data); err != nil {
+				swarm.logger.WithFields(logrus.Fields{"data": string(m.Data), "err": err.Error()}).Errorf("unmarshal pier payload error")
+				return nil
+			}
+			swarm.handlePierGetChainMeta(s, payload.Data)
+		case pb.Message_PIER_GET_PENDING_NONCE_BY_ACCOUNT:
+			payload := &pb.PierPayload{}
+			if err := payload.Unmarshal(m.Data); err != nil {
+				swarm.logger.WithFields(logrus.Fields{"data": string(m.Data), "err": err.Error()}).Errorf("unmarshal pier payload error")
+				return nil
+			}
+			swarm.handlePierGetPendingNonceByAccount(s, payload.Data)
+		case pb.Message_PIER_SUBSCRIBE_BLOCK_HEADER, pb.Message_PIER_SUBSCRIBE_INTERCHAIN_TX_WRAPPERS:
+			payload := &pb.PierPayload{}
+			if err := payload.Unmarshal(m.Data); err != nil {
+				swarm.logger.WithFields(logrus.Fields{"data": string(m.Data), "err": err.Error()}).Errorf("unmarshal pier payload error")
+				return nil
+			}
+			go swarm.handlePierSubscribe(s, payload.Data, m.From)
+		case pb.Message_PIER_GET_INTERCHAIN_TX_WRAPPERS:
+			payload := &pb.PierPayload{}
+			if err := payload.Unmarshal(m.Data); err != nil {
+				swarm.logger.WithFields(logrus.Fields{"data": string(m.Data), "err": err.Error()}).Errorf("unmarshal pier payload error")
+				return nil
+			}
+			go swarm.handlePierGetInterchainTxWrappers(s, payload.Data)
+		case pb.Message_PIER_GET_BLOCK_HEADER:
+			payload := &pb.PierPayload{}
+			if err := payload.Unmarshal(m.Data); err != nil {
+				swarm.logger.WithFields(logrus.Fields{"data": string(m.Data), "err": err.Error()}).Errorf("unmarshal pier payload error")
+				return nil
+			}
+			swarm.handlePierGetBlockHeader(s, payload.Data)
 		default:
 			swarm.logger.WithField("module", "p2p").Errorf("can't handle msg[type: %v]", m.Type)
 			return nil
@@ -446,7 +522,16 @@ func (swarm *Swarm) handleAskPierMaster(s network.Stream, data []byte) {
 		return
 	}
 
-	if err := swarm.p2p.AsyncSend(s.RemotePeerID(), msg); err != nil {
+	msg1 := &network_pb.Message{
+		Data: msg,
+		Msg:  network_pb.Message_DATA_ASYNC,
+	}
+
+	addr := &peer.AddrInfo{
+		ID:    s.RemotePeerID(),
+		Addrs: []ma.Multiaddr{s.RemotePeerAddr()},
+	}
+	if err := swarm.p2p.AsyncSend(addr, msg1); err != nil {
 		swarm.logger.Errorf("send response: %s", err)
 		return
 	}
@@ -460,4 +545,377 @@ func (swarm *Swarm) handleReplyPierMaster(s network.Stream, data []byte) {
 		return
 	}
 	swarm.piers.pierChan.writeChan(resp)
+}
+
+func (swarm *Swarm) handlePierSendTransaction(s network.Stream, data []byte) {
+	bxhTx := &pb.BxhTransaction{}
+	if err := bxhTx.Unmarshal(data); err != nil {
+		swarm.logger.Errorf("unmarshal BxhTransaction: %v", err)
+		return
+	}
+	ret, err := swarm.grpcClient.SendTransaction(swarm.ctx, bxhTx)
+	if err != nil {
+		swarm.logger.Errorf("send transaction: %v", err)
+		return
+	}
+	retData, err := ret.Marshal()
+	if err != nil {
+		swarm.logger.Errorf("marshal response: %v", err)
+		return
+	}
+
+	if err := s.AsyncSend(retData); err != nil {
+		swarm.logger.Errorf("send with stream: %v", err)
+		return
+	}
+}
+
+func (swarm *Swarm) handlePierGetTransaction(s network.Stream, data []byte) {
+	txHashMsg := &pb.TransactionHashMsg{}
+	if err := txHashMsg.Unmarshal(data); err != nil {
+		swarm.logger.Errorf("unmarshal TransactionHashMsg: %v", err)
+		return
+	}
+	ret, err := swarm.grpcClient.GetTransaction(swarm.ctx, txHashMsg)
+	if err != nil {
+		swarm.logger.Errorf("get transaction: %v", err)
+		return
+	}
+	retData, err := ret.Marshal()
+	if err != nil {
+		swarm.logger.Errorf("marshal response: %v", err)
+		return
+	}
+
+	if err := s.AsyncSend(retData); err != nil {
+		swarm.logger.Errorf("send with stream: %v", err)
+		return
+	}
+}
+
+func (swarm *Swarm) handlePierSendView(s network.Stream, data []byte) {
+	bxhTx := &pb.BxhTransaction{}
+	if err := bxhTx.Unmarshal(data); err != nil {
+		swarm.logger.Errorf("unmarshal BxhTransaction: %v", err)
+		return
+	}
+	td := &pb.TransactionData{}
+	err := td.Unmarshal(bxhTx.Payload)
+	if err != nil {
+		swarm.logger.Errorf("bxhTx unmarshal payload err")
+	}
+
+	ret, err := swarm.grpcClient.SendView(swarm.ctx, bxhTx)
+	if err != nil {
+		swarm.logger.Errorf("send view: %v", err)
+		return
+	}
+	retData, err := ret.Marshal()
+	if err != nil {
+		swarm.logger.Errorf("marshal response: %v", err)
+		return
+	}
+
+	if err := s.AsyncSend(retData); err != nil {
+		swarm.logger.Errorf("send with stream: %v", err)
+		return
+	}
+}
+
+func (swarm *Swarm) handlePierGetReceipt(s network.Stream, data []byte) {
+	txHashMsg := &pb.TransactionHashMsg{}
+	if err := txHashMsg.Unmarshal(data); err != nil {
+		swarm.logger.Errorf("unmarshal TransactionHashMsg: %v", err)
+		return
+	}
+	ret, err := swarm.grpcClient.GetReceipt(swarm.ctx, txHashMsg)
+	if err != nil {
+		swarm.logger.Errorf("get receipt: %v", err)
+		return
+	}
+	retData, err := ret.Marshal()
+	if err != nil {
+		swarm.logger.Errorf("marshal response: %v", err)
+		return
+	}
+
+	if err := s.AsyncSend(retData); err != nil {
+		swarm.logger.Errorf("send with stream: %v", err)
+		return
+	}
+}
+
+func (swarm *Swarm) handlePierGetMultiSigns(s network.Stream, data []byte) {
+	req := &pb.GetMultiSignsRequest{}
+	if err := req.Unmarshal(data); err != nil {
+		swarm.logger.Errorf("unmarshal GetMultiSignsRequest: %v", err)
+		return
+	}
+	ret, err := swarm.grpcClient.GetMultiSigns(swarm.ctx, req)
+	if err != nil {
+		swarm.logger.Errorf("get multi signs: %v", err)
+		return
+	}
+	retData, err := ret.Marshal()
+	if err != nil {
+		swarm.logger.Errorf("marshal response: %v", err)
+		return
+	}
+
+	if err := s.AsyncSend(retData); err != nil {
+		swarm.logger.Errorf("send with stream: %v", err)
+		return
+	}
+}
+
+func (swarm *Swarm) handlePierGetChainMeta(s network.Stream, data []byte) {
+	req := &pb.Request{}
+	if err := req.Unmarshal(data); err != nil {
+		swarm.logger.Errorf("unmarshal Request: %v", err)
+		return
+	}
+	ret, err := swarm.grpcClient.GetChainMeta(swarm.ctx, req)
+	if err != nil {
+		swarm.logger.Errorf("get chain meta: %v", err)
+		return
+	}
+	retData, err := ret.Marshal()
+	if err != nil {
+		swarm.logger.Errorf("marshal response: %v", err)
+		return
+	}
+
+	if err := s.AsyncSend(retData); err != nil {
+		swarm.logger.Errorf("send with stream: %v", err)
+		return
+	}
+}
+
+func (swarm *Swarm) handlePierGetPendingNonceByAccount(s network.Stream, data []byte) {
+	req := &pb.Address{}
+	if err := req.Unmarshal(data); err != nil {
+		swarm.logger.Errorf("unmarshal Address: %v", err)
+		return
+	}
+	ret, err := swarm.grpcClient.GetPendingNonceByAccount(swarm.ctx, req)
+	if err != nil {
+		swarm.logger.Errorf("get pending nonce by account: %v", err)
+		return
+	}
+	retData, err := ret.Marshal()
+	if err != nil {
+		swarm.logger.Errorf("marshal response: %v", err)
+		return
+	}
+
+	if err := s.AsyncSend(retData); err != nil {
+		swarm.logger.Errorf("send with stream: %v", err)
+		return
+	}
+}
+
+func (swarm *Swarm) handlePierSubscribe(s network.Stream, data []byte, from string) {
+	if err := s.AsyncSend([]byte(fmt.Sprintf("bxhNodeId: %d %s", swarm.localID, SubscribeResponse))); err != nil {
+		swarm.logger.Errorf("send with stream: %v", err)
+		return
+	}
+
+	req := &pb.SubscriptionRequest{}
+	if err := req.Unmarshal(data); err != nil {
+		swarm.logger.Errorf("unmarshal SubscriptionRequest: %v", err)
+		return
+	}
+
+	// 1. 调用grpc订阅接口拿到grpcClient流
+	stream, err := swarm.grpcClient.Subscribe(swarm.ctx, req)
+	if err != nil || stream == nil {
+		swarm.logger.Errorf("subscribe: %v", err)
+		return
+	}
+
+	// 2. 起协程接收数据：从流中获取数据，放进subResCh
+	subResCh := make(chan *pb.Response)
+	go func() {
+		for {
+			resp, err := stream.Recv()
+			if err == io.EOF {
+				return
+			}
+			if err != nil {
+				swarm.logger.Errorf("get response from grpc client stream: %v", err)
+				return
+			}
+			subResCh <- resp
+		}
+	}()
+
+	// 3. 发送channel中的数据
+	toAddr := swarm.getPierMultiAddr(from)
+	sendType := getSubMsgType(req.Type)
+	for {
+		select {
+		case info := <-subResCh:
+			swarm.logger.WithFields(logrus.Fields{
+				"to": toAddr,
+				//"info": info,
+				"type": req.Type,
+			}).Infof("subscirbe info get")
+
+			sendData, err := info.Marshal()
+			if err != nil {
+				swarm.logger.Errorf("marshal subscribe response: %v", err)
+				return
+			}
+
+			m := &pb.Message{
+				Type: sendType,
+				Data: sendData,
+			}
+			mData, err := m.Marshal()
+			if err != nil {
+				swarm.logger.Errorf("marshal subscribe response ack msg: %v", err)
+				return
+			}
+
+			resp, err := swarm.p2p.SendByMultiAddr(toAddr, mData)
+			if err != nil {
+				swarm.logger.Errorf("send subscribe response ack by multi addr: %v", err)
+				return
+			}
+			if !strings.Contains(string(resp), SubscribeResponse) {
+				err = fmt.Errorf("pier is not recieve subscribe ack")
+				swarm.logger.Errorf("swarm SendByMultiAddr subscrbe err: %w", err)
+				return
+			}
+		case <-swarm.ctx.Done():
+			close(subResCh)
+			return
+		}
+	}
+}
+
+func (swarm *Swarm) handlePierGetInterchainTxWrappers(s network.Stream, data []byte) {
+	req := &pb.GetInterchainTxWrappersRequest{}
+	if err := req.Unmarshal(data); err != nil {
+		swarm.logger.Errorf("unmarshal GetInterchainTxWrappersRequest: %v", err)
+		return
+	}
+
+	// 1. 根据grpcClient获取待发送数据
+	ch := make(chan *pb.InterchainTxWrappers, req.End-req.Begin+1)
+	swarm.getInterchainTxWrappers(req, ch)
+
+	// 2. 发数据
+	multiTxWrappers := &pb.MultiInterchainTxWrappers{}
+	for {
+		select {
+		case info, ok := <-ch:
+			if !ok {
+				sendData, err := multiTxWrappers.Marshal()
+				if err != nil {
+					swarm.logger.Errorf("marshal info: %v", err)
+					return
+				}
+
+				if err := s.AsyncSend(sendData); err != nil {
+					swarm.logger.Errorf("send with stream: %v", err)
+					return
+				}
+
+				return
+			}
+
+			multiTxWrappers.MultiWrappers = append(multiTxWrappers.MultiWrappers, info)
+		case <-swarm.ctx.Done():
+			break
+		}
+	}
+}
+
+func (swarm *Swarm) getInterchainTxWrappers(req *pb.GetInterchainTxWrappersRequest, ch chan *pb.InterchainTxWrappers) {
+	defer close(ch)
+
+	stream, err := swarm.grpcClient.GetInterchainTxWrappers(swarm.ctx, req)
+	if err != nil || stream == nil {
+		swarm.logger.Errorf("get interchain tx wrappers: %v", err)
+		return
+	}
+
+	for {
+		info, err := stream.Recv()
+		if err == io.EOF {
+			return
+		}
+		if err != nil {
+			swarm.logger.Errorf("get info from grpc client stream: %v", err)
+			return
+		}
+		ch <- info
+	}
+}
+
+func (swarm *Swarm) handlePierGetBlockHeader(s network.Stream, data []byte) {
+	req := &pb.GetBlockHeadersRequest{}
+	if err := req.Unmarshal(data); err != nil {
+		swarm.logger.Errorf("unmarshal GetBlockHeadersRequest: %v", err)
+		return
+	}
+
+	ret, err := swarm.grpcClient.GetBlockHeaders(swarm.ctx, req)
+	if err != nil {
+		swarm.logger.Errorf("get block headers: %v", err)
+		return
+	}
+
+	retData, err := ret.Marshal()
+	if err != nil {
+		swarm.logger.Errorf("marshal response: %v", err)
+		return
+	}
+
+	if err := s.AsyncSend(retData); err != nil {
+		swarm.logger.Errorf("send with stream: %v", err)
+		return
+	}
+}
+
+//func (swarm *Swarm) connectByMultiAddr(addr string) {
+//	if _, ok := swarm.connectedPiers.Load(addr); !ok {
+//		if err := retry.Retry(func(attempt uint) error {
+//			if err := swarm.p2p.ConnectByMultiAddr(addr); err != nil {
+//				swarm.logger.WithFields(logrus.Fields{
+//					"addr":  addr,
+//					"error": err,
+//				}).Error("Connect failed")
+//				return err
+//			}
+//
+//			swarm.logger.WithFields(logrus.Fields{
+//				"addr": addr,
+//			}).Info("Connect successfully")
+//
+//			swarm.connectedPiers.Store(addr, struct{}{})
+//			return nil
+//		},
+//			strategy.Wait(1*time.Second),
+//		); err != nil {
+//			swarm.logger.Error(err)
+//		}
+//	}
+//}
+
+func (swarm *Swarm) getPierMultiAddr(addrStr string) string {
+	addrs := strings.Split(strings.Replace(addrStr, " ", "", -1), ",")
+	return fmt.Sprintf("/peer%s/netgap%s/peer%s/peer%s", swarm.repo.Config.Pangolin.Addr, swarm.repo.Config.Pangolin.Addr, addrs[1], addrs[0])
+}
+
+func getSubMsgType(request_type pb.SubscriptionRequest_Type) pb.Message_Type {
+	switch request_type {
+	case pb.SubscriptionRequest_BLOCK_HEADER:
+		return pb.Message_PIER_SUBSCRIBE_BLOCK_HEADER_ACK
+	case pb.SubscriptionRequest_INTERCHAIN_TX_WRAPPER:
+		return pb.Message_PIER_SUBSCRIBE_INTERCHAIN_TX_WRAPPERS_ACK
+	default:
+		panic(fmt.Errorf("unsupported type: %v", request_type))
+	}
 }

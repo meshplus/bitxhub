@@ -144,7 +144,7 @@ func (x *InterchainManager) setInterchain(id string, interchain *pb.Interchain) 
 func (x *InterchainManager) Interchain(method string) *boltvm.Response {
 	ok, data := x.Get(AppchainKey(method))
 	if !ok {
-		return boltvm.Error(fmt.Errorf("this appchain does not exist").Error())
+		return boltvm.Error(fmt.Errorf("this appchain does not exist: %s", method).Error())
 	}
 	return boltvm.Success(data)
 }
@@ -153,7 +153,7 @@ func (x *InterchainManager) Interchain(method string) *boltvm.Response {
 func (x *InterchainManager) GetInterchain(id string) *boltvm.Response {
 	ok, data := x.Get(AppchainKey(id))
 	if !ok {
-		return boltvm.Error(fmt.Errorf("this appchain does not exist").Error())
+		return boltvm.Error(fmt.Errorf("this appchain does not exist: %s", id).Error())
 	}
 	return boltvm.Success(data)
 }

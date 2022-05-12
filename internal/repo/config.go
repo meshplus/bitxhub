@@ -73,6 +73,11 @@ type Config struct {
 	Genesis  `json:"genesis"`
 	Security Security `toml:"security" json:"security"`
 	License  License  `toml:"license" json:"license"`
+	Pangolin Pangolin `toml:"pangolin" json:"pangolin"`
+}
+
+type Pangolin struct {
+	Addr string `toml:"addr" json:"addr"`
 }
 
 // Security are files used to setup connection with tls
