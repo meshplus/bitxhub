@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strconv"
 	"strings"
 	"time"
 
@@ -173,6 +174,7 @@ func (api *PublicEthereumAPI) GetBlockTransactionCountByHash(hash common.Hash) *
 
 	block, err := api.api.Broker().GetBlock("HASH", hash.String())
 	if err != nil {
+		api.logger.Debugf("eth api GetBlockTransactionCountByHash err:%s", err)
 		return nil
 	}
 
@@ -181,12 +183,27 @@ func (api *PublicEthereumAPI) GetBlockTransactionCountByHash(hash common.Hash) *
 	return (*hexutil.Uint)(&count)
 }
 
-// GetBlockTransactionCountByNumber returns the number of transactions in the block identified by its height.
-func (api *PublicEthereumAPI) GetBlockTransactionCountByNumber(blockNum uint64) *hexutil.Uint {
-	api.logger.Debugf("eth_getBlockTransactionCountByNumber, block number: %d", blockNum)
-
-	block, err := api.api.Broker().GetBlock("HEIGHT", fmt.Sprintf("%d", blockNum))
+// ParseInt parse hex string value to int
+func ParseInt(value string) (int, error) {
+	i, err := strconv.ParseInt(strings.TrimPrefix(value, "0x"), 16, 64)
 	if err != nil {
+		return 0, fmt.Errorf("parse hex to int err")
+	}
+
+	return int(i), nil
+}
+
+// GetBlockTransactionCountByNumber returns the number of transactions in the block identified by its height.
+func (api *PublicEthereumAPI) GetBlockTransactionCountByNumber(blockNum string) *hexutil.Uint {
+	num, err := ParseInt(blockNum)
+	if err != nil {
+		api.logger.Errorf("eth api GetBlockTransactionCountByNumber err:%s", err)
+		return nil
+	}
+	api.logger.Debugf("eth_getBlockTransactionCountByNumber, block number: %d", num)
+	block, err := api.api.Broker().GetBlock("HEIGHT", fmt.Sprintf("%d", num))
+	if err != nil {
+		api.logger.Debugf("eth api GetBlockTransactionCountByNumber err:%s", err)
 		return nil
 	}
 
@@ -543,13 +560,13 @@ func (api *PublicEthereumAPI) GetTransactionReceipt(hash common.Hash) (map[strin
 	tx, meta, err := api.GetEthTransactionByHash(txHash)
 	if err != nil {
 		api.logger.Debugf("no tx found for hash %s", txHash.String())
-		return nil, nil
+		return nil, err
 	}
 
 	receipt, err := api.api.Broker().GetReceipt(txHash)
 	if err != nil {
 		api.logger.Debugf("no receipt found for tx %s", txHash.String())
-		return nil, nil
+		return nil, err
 	}
 
 	block, err := api.api.Broker().GetBlock("HEIGHT", fmt.Sprintf("%d", meta.BlockHeight))
