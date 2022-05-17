@@ -194,31 +194,31 @@ func (swarm *Swarm) Start() error {
 		}(id, addr)
 	}
 
-	go func() {
-		swarm.logger.Infof("Connect to pangolin")
-		if err := retry.Retry(func(attempt uint) error {
-			// /peer/bxh连接的pangolin地址（用做p2p连接）/netgap/bxh连接的pangolin地址（用来识别p2n写文件）/peer/bxh地址（用做p2n连接）
-			pangolinAddr := fmt.Sprintf("/peer%s/netgap%s/peer%s/p2p/%s", swarm.repo.Config.Pangolin.Addr, swarm.repo.Config.Pangolin.Addr, swarm.repo.NetworkConfig.LocalAddr, swarm.repo.NetworkConfig.Nodes[swarm.repo.NetworkConfig.ID-1].Pid)
-			if err := swarm.p2p.ConnectByMultiAddr(pangolinAddr); err != nil {
-				swarm.logger.WithFields(logrus.Fields{
-					"addr":  pangolinAddr,
-					"error": err,
-				}).Error("Connect pangolin failed")
-				return err
-			}
-
-			swarm.logger.WithFields(logrus.Fields{
-				"addr": pangolinAddr,
-				//"node": id,
-			}).Info("Connect pangolin successfully")
-			return nil
-		},
-			strategy.Limit(5),
-			strategy.Wait(1*time.Second),
-		); err != nil {
-			swarm.logger.Error(err)
-		}
-	}()
+	//go func() {
+	//	swarm.logger.Infof("Connect to pangolin")
+	//	if err := retry.Retry(func(attempt uint) error {
+	//		// /peer/bxh连接的pangolin地址（用做p2p连接）/netgap/bxh连接的pangolin地址（用来识别p2n写文件）/peer/bxh地址（用做p2n连接）
+	// 		pangolinAddr := fmt.Sprintf("/peer%s/netgap%s/peer%s/p2p/%s", swarm.repo.Config.Pangolin.Addr, swarm.repo.Config.Pangolin.Addr, swarm.repo.NetworkConfig.LocalAddr, swarm.repo.NetworkConfig.Nodes[swarm.repo.NetworkConfig.ID-1].Pid)
+	//		if err := swarm.p2p.ConnectByMultiAddr(pangolinAddr); err != nil {
+	//			swarm.logger.WithFields(logrus.Fields{
+	//				"addr":  pangolinAddr,
+	//				"error": err,
+	//			}).Error("Connect pangolin failed")
+	//			return err
+	//		}
+	//
+	//		swarm.logger.WithFields(logrus.Fields{
+	//			"addr": pangolinAddr,
+	//			//"node": id,
+	//		}).Info("Connect pangolin successfully")
+	//		return nil
+	//	},
+	//		strategy.Limit(5),
+	//		strategy.Wait(1*time.Second),
+	//	); err != nil {
+	//		swarm.logger.Error(err)
+	//	}
+	//}()
 
 	go swarm.Ping()
 
