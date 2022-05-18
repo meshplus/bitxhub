@@ -8,6 +8,7 @@ import (
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/model/events"
+	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
 	"github.com/meshplus/eth-kit/ledger"
 )
@@ -49,11 +50,13 @@ type BrokerAPI interface {
 	OrderReady() error
 
 	FetchSignsFromOtherPeers(req *pb.GetSignsRequest) map[string][]byte
+	FetchTssInfoFromOtherPeers() []*pb.TssInfo
 	GetSign(req *pb.GetSignsRequest, signers []string) (string, []byte, []string, error)
 	GetBlockHeaders(start uint64, end uint64) ([]*pb.BlockHeader, error)
 	GetQuorum() uint64
 	GetTssPubkey() (string, *ecdsa.PublicKey, error)
-	GetTssKeyGenPartiesPkMap() (map[string][]byte, error)
+	GetTssInfo() (*pb.TssInfo, error)
+	GetPrivKey() *repo.Key
 }
 
 type NetworkAPI interface {

@@ -59,7 +59,7 @@ func (cbs *ChainBrokerService) SetMasterPier(ctx context.Context, req *pb.PierIn
 func (cbs *ChainBrokerService) HeartBeat(ctx context.Context, req *pb.PierInfo) (*pb.Response, error) {
 	err := cbs.api.Network().PierManager().Piers().HeartBeat(req.Address, req.Index)
 	if err != nil {
-		return nil, fmt.Errorf("send heart beat to %s with index %d failed: %w", req.Address, req.Index, err)
+		return nil, fmt.Errorf("send heart beat to %s with index %s failed: %w", req.Address, req.Index, err)
 	}
 
 	resp := &pb.CheckPierResponse{

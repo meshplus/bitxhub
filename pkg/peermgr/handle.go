@@ -21,6 +21,9 @@ func (swarm *Swarm) handleMessage(s network.Stream, data []byte) {
 	}
 
 	handler := func() error {
+		if m.Type != pb.Message_CONSENSUS {
+			swarm.logger.Debugf("handle msg: %s", m.Type)
+		}
 		switch m.Type {
 		case pb.Message_GET_BLOCK:
 			return swarm.handleGetBlockPack(s, m)
@@ -34,6 +37,8 @@ func (swarm *Swarm) handleMessage(s network.Stream, data []byte) {
 			return swarm.handleFetchP2PPubkey(s)
 		case pb.Message_FETCH_TSS_PUBKEY:
 			return swarm.handleFetchTssPubkey(s)
+		case pb.Message_FETCH_TSS_INFO:
+			return swarm.handleFetchTssInfo(s)
 		case pb.Message_CONSENSUS:
 			go swarm.orderMessageFeed.Send(orderPeerMgr.OrderMessageEvent{Data: m.Data})
 		case pb.Message_FETCH_BLOCK_SIGN:
@@ -53,6 +58,7 @@ func (swarm *Swarm) handleMessage(s network.Stream, data []byte) {
 		case pb.Message_CHECK_MASTER_PIER_ACK:
 			swarm.handleReplyPierMaster(s, m.Data)
 		case pb.Message_TSS_KEY_GEN, pb.Message_TSS_KEY_SIGN, pb.Message_TSS_KEY_GEN_VER, pb.Message_TSS_KEY_SIGN_VER, pb.Message_TSS_CONTROL, pb.Message_TSS_TASK_DONE, pb.Message_TSS_UNKNOW:
+			swarm.logger.Debugf("handle tss msg")
 			go swarm.tssMessageFeed.Send(m)
 		default:
 			swarm.logger.WithField("module", "p2p").Errorf("can't handle msg[type: %v]", m.Type)
@@ -194,6 +200,39 @@ func (swarm *Swarm) handleFetchTssPubkey(s network.Stream) error {
 	return nil
 }
 
+func (swarm *Swarm) handleFetchTssInfo(s network.Stream) error {
+	info, err := swarm.Tss.GetTssInfo()
+	if err != nil {
+		return fmt.Errorf("we do not know tss keygen parties pk: %v", err)
+	}
+
+	//ids := []string{}
+	//for id, _ := range info {
+	//	ids = append(ids, id)
+	//}
+	//
+	//sort.Slice(ids, func(i, j int) bool {
+	//	return ids[i] > ids[j]
+	//})
+	//
+	//idsStr := strings.Join(ids, ",")
+	data, err := info.Marshal()
+	if err != nil {
+		return fmt.Errorf("tss info marshal error: %v", err)
+	}
+	msg := &pb.Message{
+		Type: pb.Message_FETCH_TSS_INFO_ACK,
+		Data: data,
+	}
+
+	err = swarm.SendWithStream(s, msg)
+	if err != nil {
+		return fmt.Errorf("send msg: %w", err)
+	}
+
+	return nil
+}
+
 func (swarm *Swarm) handleFetchBlockSignMessage(s network.Stream, data []byte) {
 	handle := func(data []byte) ([]byte, error) {
 		height, err := strconv.ParseUint(string(data), 10, 64)
@@ -276,6 +315,7 @@ func (swarm *Swarm) handleFetchIBTPTssSignMessage(s network.Stream, data []byte,
 		return
 	}
 
+	swarm.logger.Debugf("handleFetchIBTPTssSignMessage, signers: %s", string(req.Extra))
 	signed, culpritIDs, err := utils.GetIBTPTssSign(swarm.Tss, swarm.ledger, req.Content, isReq, strings.Split(string(req.Extra), ","))
 	if err != nil {
 		swarm.logger.Errorf("handle fetch-ibtp-sign for ibtp %s isReq %v: %s", string(data), isReq, err.Error())

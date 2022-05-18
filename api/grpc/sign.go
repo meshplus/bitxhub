@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -67,121 +68,145 @@ func (cbs *ChainBrokerService) GetTssSigns(ctx context.Context, req *pb.GetSigns
 		return nil, fmt.Errorf("req type is not tss req")
 	}
 
-	partiesPkMap, err := cbs.api.Broker().GetTssKeyGenPartiesPkMap()
-	if err != nil {
-		return nil, fmt.Errorf("get tss keygen parties pubkey map: %v", err)
-	}
+	// 2. get tss info
 	signersALL := []string{}
-	for id, _ := range partiesPkMap {
-		signersALL = append(signersALL, id)
+	poolPkData := []byte{}
+	// todo fbz:从内存拿tss
+	tssInfo, err := cbs.api.Broker().GetTssInfo()
+	tssFlag := true
+	if err != nil {
+		// 当前节点没有tss信息，向其他节点请求
+		tssInfos := cbs.api.Broker().FetchTssInfoFromOtherPeers()
+		signersALL, poolPkData, err = getConsensusTssInfoParties(tssInfos, cbs.api.Broker().GetQuorum())
+		if err != nil {
+			return nil, fmt.Errorf("get tss info from other peers error: %v", err)
+		}
+		tssFlag = false
+	} else {
+		for id, _ := range tssInfo.PartiesPkMap {
+			signersALL = append(signersALL, id)
+		}
+		poolPkData = tssInfo.Pubkey
+	}
+	poolPk, err := conversion.GetECDSAPubKeyFromPubKeyData(poolPkData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get ECDSA pubKey from pubkey data: %v", err)
 	}
 
-	// 2. make a tss req with threshold signers
+	// 3. make a tss req with threshold signers
 	tssReq := &pb.GetSignsRequest{
 		Type:    req.Type,
 		Content: req.Content,
 	}
 
 	for {
-
-		// 3. check signers num
-		if len(signersALL) <= 0 {
+		// 4. check signers num
+		if len(signersALL) < int(cbs.api.Broker().GetQuorum()) {
 			cbs.logger.WithFields(logrus.Fields{
 				"signers": signersALL,
 			}).Errorf("too less signers")
 			break
 		}
 
-		// 4. choose signers randomly
+		// 5. choose signers randomly
 		nums := RandRangeNumbers(0, len(signersALL)-1, int(cbs.api.Broker().GetQuorum()))
 		tssSigners := []string{}
 		for _, i := range nums {
 			tssSigners = append(tssSigners, signersALL[i])
 		}
-		cbs.logger.Infof("====================== tss signers: %s", strings.Join(signersALL, ","))
-		tssReq.Extra = []byte(strings.Join(signersALL, ","))
+		cbs.logger.Infof("====================== tss all signers: %s, signers: %s", strings.Join(signersALL, ","), strings.Join(tssSigners, ","))
+		tssReq.Extra = []byte(strings.Join(tssSigners, ","))
 
-		// 5. send sign req to others
+		// 6. send sign req to others
 		wg.Add(1)
 		go func() {
 			cbs.api.Broker().FetchSignsFromOtherPeers(tssReq)
 			tssSignResCh := make(chan *pb.Message)
 			tssSignResSub := cbs.api.Feed().SubscribeTssSignRes(tssSignResCh)
 			defer tssSignResSub.Unsubscribe()
-			select {
-			case m := <-tssSignResCh:
-				signRes := &model.MerkleWrapperSign{}
-				if err := signRes.Unmarshal(m.Data); err != nil {
-					cbs.logger.WithFields(logrus.Fields{
-						"err": err,
-					}).Errorf("unmarshal sign res error")
-					break
-				}
+			for {
+				select {
+				case m := <-tssSignResCh:
+					signRes := &model.MerkleWrapperSign{}
+					if err := signRes.Unmarshal(m.Data); err != nil {
+						cbs.logger.WithFields(logrus.Fields{
+							"err": err,
+						}).Errorf("unmarshal sign res error")
+						continue
+						//return
+					}
 
-				_, pub, err := cbs.api.Broker().GetTssPubkey()
-				if err != nil {
-					cbs.logger.WithFields(logrus.Fields{
-						"err": err,
-					}).Errorf("Get tss pubkey error")
-					break
-				}
-
-				if err := utils.VerifyTssSigns(signRes.Signature, pub, cbs.logger); err != nil {
-					cbs.logger.WithFields(logrus.Fields{}).Errorf("Verify tss signs error")
-					break
-				} else {
-					result = append(result, signRes.Signature)
-					cbs.logger.WithFields(logrus.Fields{}).Debug("get verified tss signature from other peers")
+					if err := utils.VerifyTssSigns(signRes.Signature, poolPk, cbs.logger); err != nil {
+						cbs.logger.WithFields(logrus.Fields{}).Errorf("Verify tss signs error")
+						//break
+					} else {
+						result = append(result, signRes.Signature)
+						cbs.logger.WithFields(logrus.Fields{}).Debug("get verified tss signature from other peers")
+						wg.Done()
+						return
+					}
+				case <-time.After(cbs.config.Tss.KeySignTimeout):
+					cbs.logger.WithFields(logrus.Fields{}).Warnf("wait for sign from other peers timeout: %v", cbs.config.Tss.KeySignTimeout)
 					wg.Done()
 					return
 				}
-			case <-time.After(cbs.config.Tss.KeySignTimeout):
-				cbs.logger.WithFields(logrus.Fields{}).Warnf("wait for sign from other peers timeout: %v", cbs.config.Tss.KeySignTimeout)
-				wg.Done()
-				return
 			}
 		}()
 
-		// 6. get sign by ourself
-		addr, sign, culprits, err := cbs.api.Broker().GetSign(tssReq, tssSigners)
-		wg.Wait()
-		if err == nil {
-			return &pb.SignResponse{
-				Sign: map[string][]byte{
-					addr: convertSignData(sign),
-				},
-			}, nil
-		} else if errors.Is(err, tss.ErrNotActiveSigner) {
+		// 7. get sign by ourself
+		if tssFlag {
+			addr, sign, culprits, err := cbs.api.Broker().GetSign(tssReq, tssSigners)
+			wg.Wait()
+			// todo fbz: 优先取result结果
+			if err == nil {
+				return &pb.SignResponse{
+					Sign: map[string][]byte{
+						addr: convertSignData(sign),
+					},
+				}, nil
+			} else if errors.Is(err, tss.ErrNotActiveSigner) {
+				if len(result) != 0 {
+					return &pb.SignResponse{
+						Sign: map[string][]byte{
+							addr: convertSignData(result[0]),
+						},
+					}, nil
+				} else {
+					return nil, fmt.Errorf("get tss signs error")
+				}
+			}
+			// 8. handle culprits
+			cbs.logger.WithFields(logrus.Fields{
+				"id":       req.Content,
+				"culprits": culprits,
+				"err":      err.Error(),
+			}).Errorf("Get tss sign on current node")
+
+			if culprits == nil {
+				return nil, err
+			}
+			for _, idC := range culprits {
+				for i, idS := range signersALL {
+					if idC == idS {
+						if i == 0 {
+							signersALL = signersALL[1:]
+						} else {
+							signersALL = append(signersALL[:i-1], signersALL[i+1:]...)
+						}
+					}
+				}
+			}
+		} else {
+			// 自己不是签名节点，无法签名
+			wg.Wait()
 			if len(result) != 0 {
 				return &pb.SignResponse{
 					Sign: map[string][]byte{
-						addr: convertSignData(result[0]),
+						cbs.api.Broker().GetPrivKey().Address: convertSignData(result[0]),
 					},
 				}, nil
 			} else {
 				return nil, fmt.Errorf("get tss signs error")
-			}
-		}
-
-		// 7. handle culprits
-		cbs.logger.WithFields(logrus.Fields{
-			"id":       req.Content,
-			"culprits": culprits,
-			"err":      err.Error(),
-		}).Errorf("Get tss sign on current node")
-
-		if culprits == nil {
-			return nil, err
-		}
-		for _, idC := range culprits {
-			for i, idS := range signersALL {
-				if idC == idS {
-					if i == 0 {
-						signersALL = signersALL[1:]
-					} else {
-						signersALL = append(signersALL[:i-1], signersALL[i+1:]...)
-					}
-				}
 			}
 		}
 	}
@@ -239,4 +264,37 @@ func RandRangeNumbers(min, max, count int) []int {
 		nums[position] = 0
 	}
 	return nums[0:count]
+}
+
+func getConsensusTssInfoParties(infos []*pb.TssInfo, quorum uint64) ([]string, []byte, error) {
+	freqInfos := make(map[string]int, len(infos))
+	for _, info := range infos {
+		ids := []string{}
+		for id, _ := range info.PartiesPkMap {
+			ids = append(ids, id)
+		}
+		sort.Slice(ids, func(i, j int) bool {
+			return ids[i] > ids[j]
+		})
+		idsStr := strings.Join(ids, ",")
+		infosStr := fmt.Sprintf("%s-%s", idsStr, string(info.Pubkey))
+		freqInfos[infosStr]++
+	}
+	maxFreq := -1
+	var consensusInfo string
+	for infoStr, counter := range freqInfos {
+		if counter > maxFreq {
+			maxFreq = counter
+			consensusInfo = infoStr
+		}
+	}
+
+	if maxFreq < int(quorum) {
+		return nil, nil, fmt.Errorf("there is no consensus parties, maxFreq: %d, quorum: %d", maxFreq, quorum)
+	}
+
+	idsAddr := strings.Split(strings.Split(consensusInfo, "-")[0], ",")
+	pk := strings.Split(consensusInfo, "-")[1]
+
+	return idsAddr, []byte(pk), nil
 }
