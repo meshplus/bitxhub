@@ -102,11 +102,12 @@ func getChainByName(ctx *cli.Context) error {
 
 func printChain(chain *appchainMgr.Appchain) {
 	var table [][]string
-	table = append(table, []string{"Id", "Name", "Type", "Broker", "Status", "Desc", "Version"})
+	table = append(table, []string{"Id", "Name", "DID", "Type", "Broker", "Status", "Desc", "Version"})
 
 	table = append(table, []string{
 		chain.ID,
 		chain.ChainName,
+		chain.DID,
 		chain.ChainType,
 		string(chain.Broker),
 		string(chain.Status),
