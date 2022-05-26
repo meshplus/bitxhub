@@ -54,6 +54,13 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	current := time.Now()
 	block := blockWrapper.block
 
+	// check executor handle the right block
+	if block.BlockHeader.Number != exec.currentHeight+1 {
+		exec.logger.WithFields(logrus.Fields{"block height": block.BlockHeader.Number,
+			"matchedHeight": exec.currentHeight + 1}).Warning("current block height is not matched")
+		return nil
+	}
+
 	for _, tx := range block.Transactions.Transactions {
 		txHashList = append(txHashList, tx.GetHash())
 	}
