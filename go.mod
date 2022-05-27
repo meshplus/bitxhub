@@ -29,7 +29,7 @@ require (
 	github.com/magiconair/properties v1.8.4
 	github.com/meshplus/bitxhub-core v1.3.1-0.20220129100150-aa3fd98079e4
 	github.com/meshplus/bitxhub-kit v1.2.1-0.20210830031953-cf5f83f2e1dd
-	github.com/meshplus/bitxhub-model v1.2.1-0.20220425093801-4cc50cc6bc61
+	github.com/meshplus/bitxhub-model v1.2.1-0.20220524072608-c1e04c1f060b
 	github.com/meshplus/bitxid v0.0.0-20210412025850-e0eaf0f9063a
 	github.com/meshplus/did-registry v0.0.0-20210413035015-509c6c3a0bae
 	github.com/meshplus/eth-kit v0.0.0-20220105083141-5ec7a17a3dea
@@ -70,7 +70,7 @@ replace google.golang.org/grpc => google.golang.org/grpc v1.33.0
 
 replace github.com/hyperledger/fabric => github.com/hyperledger/fabric v2.0.1+incompatible
 
-replace github.com/meshplus/go-lightp2p => git.hyperchain.cn/dmlab/go-lightp2p v0.0.0-20220513125259-25519f9c6fa3
+replace github.com/meshplus/go-lightp2p => git.hyperchain.cn/dmlab/go-lightp2p v0.0.0-20220531083846-4be489c05a9c
 
 replace git.hyperchain.cn/dmlab/go-common-utils => git.hyperchain.cn/dmlab/go-common-utils.git v0.0.0-20200323065116-07edae98cb7a
 

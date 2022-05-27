@@ -80,6 +80,11 @@ func checkConfig(config *Config) error {
 			return err
 		}
 	}
+
+	// check pangolin todo(fbz):should be 2
+	if len(config.Pangolin.SendAddrs) < 1 || len(config.Pangolin.RecvAddrs) < 1 {
+		return fmt.Errorf("Set up at least one send pangolin(%d) addr and one recv pangolin addr(%d)!", len(config.Pangolin.SendAddrs), len(config.Pangolin.RecvAddrs))
+	}
 	return nil
 }
 

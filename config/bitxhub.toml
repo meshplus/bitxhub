@@ -113,4 +113,5 @@ solo = false
   verifier = "https://172.16.5.3:11443/v1/validation"
 
 [pangolin]
-  addr = "/ip4/0.0.0.0/tcp/4011/p2p/QmUFqbYftLFda93CjyuKJ5c8WA431xww3QfmJe6pePvBWR"
+  recv_addrs = ["/ip4/0.0.0.0/tcp/4221/p2p/QmVuPe9faLjVmf1bcUqVsa6Ui88c9U7aG4Dse9izToGKA6","/ip4/0.0.0.0/tcp/4222/p2p/QmX49p6tr72FGHnqXnaSEuVrVrfMFYvigi2gsDTh2gZm2x"]
+  send_addrs = ["/ip4/0.0.0.0/tcp/4223/p2p/QmUFqbYftLFda93CjyuKJ5c8WA431xww3QfmJe6pePvBWR","/ip4/0.0.0.0/tcp/4224/p2p/QmcDZp5Liob5mRXNbeqsP9Fs1cRFFvKKSALZ61EVhQNsAc"]

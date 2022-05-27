@@ -7,7 +7,11 @@ import (
 	"io"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
+	"github.com/Rican7/retry"
+	"github.com/Rican7/retry/strategy"
 	"github.com/ethereum/go-ethereum/common"
 	types2 "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -20,6 +24,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/model"
 	"github.com/meshplus/bitxhub/internal/model/events"
 	network "github.com/meshplus/go-lightp2p"
+	"github.com/meshplus/go-lightp2p/hybrid"
 	network_pb "github.com/meshplus/go-lightp2p/pb"
 	solsha3 "github.com/miguelmota/go-solidity-sha3"
 	ma "github.com/multiformats/go-multiaddr"
@@ -27,6 +32,7 @@ import (
 )
 
 const SubscribeResponse = "Successfully subscribe"
+const GetPangolinAddrResponse = "Successfully get pangolin addr"
 
 func (swarm *Swarm) handleMessage(s network.Stream, data []byte) {
 	m := &pb.Message{}
@@ -129,6 +135,14 @@ func (swarm *Swarm) handleMessage(s network.Stream, data []byte) {
 				return nil
 			}
 			swarm.handlePierGetBlockHeader(s, payload.Data)
+		case pb.Message_PIER_GET_RECEIVE_PANGOLIN_ADDR:
+			// 连接消息
+			payload := &pb.PierPayload{}
+			if err := payload.Unmarshal(m.Data); err != nil {
+				swarm.logger.WithFields(logrus.Fields{"data": string(m.Data), "err": err.Error()}).Errorf("unmarshal pier payload error")
+				return nil
+			}
+			swarm.handlePierSendAddr(s, payload.Data, m.From)
 		default:
 			swarm.logger.WithField("module", "p2p").Errorf("can't handle msg[type: %v]", m.Type)
 			return nil
@@ -750,13 +764,13 @@ func (swarm *Swarm) handlePierSubscribe(s network.Stream, data []byte, from stri
 	}()
 
 	// 3. 发送channel中的数据
-	toAddr := swarm.getPierMultiAddr(from)
+	//toAddr := swarm.getPierMultiAddr(from)
 	sendType := getSubMsgType(req.Type)
 	for {
 		select {
 		case info := <-subResCh:
 			swarm.logger.WithFields(logrus.Fields{
-				"to": toAddr,
+				"to": from,
 				//"info": info,
 				"type": req.Type,
 			}).Infof("subscirbe info get")
@@ -777,7 +791,7 @@ func (swarm *Swarm) handlePierSubscribe(s network.Stream, data []byte, from stri
 				return
 			}
 
-			resp, err := swarm.p2p.SendByMultiAddr(toAddr, mData)
+			resp, err := swarm.SendByMultiAddr(from, mData)
 			if err != nil {
 				swarm.logger.Errorf("send subscribe response ack by multi addr: %v", err)
 				return
@@ -879,6 +893,120 @@ func (swarm *Swarm) handlePierGetBlockHeader(s network.Stream, data []byte) {
 	}
 }
 
+func (swarm *Swarm) handlePierSendAddr(s network.Stream, data []byte, pierAddr string) {
+	addrs := strings.Split(strings.Replace(string(data), " ", "", -1), ",")
+	pangolinAddrs := []string{}
+	// * len(swarm.repo.Config.Pangolin.SendAddrs)
+	bxhPangolinMap := map[string]bool{}
+	for _, bxhPangolinAddr := range swarm.repo.Config.Pangolin.SendAddrs {
+		bxhPangolinMap[bxhPangolinAddr] = false
+	}
+	for _, addr := range addrs {
+		if err := checkPangolinAddr(addr, bxhPangolinMap); err == nil {
+			pangolinAddrs = append(pangolinAddrs, addr)
+		} else {
+			swarm.logger.WithFields(logrus.Fields{
+				"addr":  addr,
+				"error": err,
+			}).Errorf("wrong pangolinAddr")
+		}
+	}
+
+	wg := sync.WaitGroup{}
+	wg.Add(len(pangolinAddrs))
+	swarm.logger.WithFields(logrus.Fields{
+		"addr":          addrs,
+		"pangolinAddrs": pangolinAddrs,
+	}).Infof("Connect to pangolin start")
+
+	ch := make(chan string, len(pangolinAddrs))
+	for _, pangolinAddr := range pangolinAddrs {
+		go func(pangolinAddr string) {
+			defer wg.Done()
+			connectAddr := fmt.Sprintf("%s/peer%s", pangolinAddr, pierAddr)
+			swarm.logger.WithFields(logrus.Fields{
+				"pierAddr": connectAddr,
+			}).Infof("Connect to pangolin")
+			success := false
+			if err := retry.Retry(func(attempt uint) error {
+				if err := swarm.p2p.ConnectByMultiAddr(connectAddr); err != nil {
+					swarm.logger.WithFields(logrus.Fields{
+						"pierAddr": connectAddr,
+						"error":    err,
+						"attempt":  attempt,
+					}).Warnf("Connect pier failed")
+					return err
+				}
+
+				success = true
+				return nil
+			},
+				strategy.Limit(5),
+				strategy.Wait(1*time.Second),
+			); err != nil {
+				swarm.logger.WithFields(logrus.Fields{
+					"pierAddr": connectAddr,
+					"error":    err,
+				}).Error("Connect pier failed")
+			}
+
+			if success {
+				ch <- connectAddr
+				swarm.logger.WithFields(logrus.Fields{
+					"addr": connectAddr,
+				}).Info("Connect pier successfully")
+			}
+		}(pangolinAddr)
+
+	}
+
+	wg.Wait()
+	close(ch)
+	connectedAddrs := []string{}
+	for addr := range ch {
+		connectedAddrs = append(connectedAddrs, addr)
+	}
+
+	if len(connectedAddrs) != 0 {
+		swarm.connectedPiers.Store(pierAddr, connectedAddrs)
+		if err := s.AsyncSend([]byte(fmt.Sprintf("bxhNodeId: %d %s", swarm.localID, GetPangolinAddrResponse))); err != nil {
+			swarm.logger.Errorf("send with stream: %v", err)
+			return
+		}
+	} else {
+		swarm.logger.WithFields(logrus.Fields{
+			"pierAddr":     pierAddr,
+			"pangolinAddr": pangolinAddrs,
+		}).Error("All pier connect failed")
+		if err := s.AsyncSend([]byte(fmt.Sprintf("bxhNodeId: %d All pier connect failed", swarm.localID))); err != nil {
+			swarm.logger.Errorf("send with stream: %v", err)
+			return
+		}
+	}
+}
+
+func checkPangolinAddr(addrStr string, bxhSendPangolinMap map[string]bool) error {
+	addr, err := hybrid.StrToMultiAddr(addrStr)
+	if err != nil {
+		return fmt.Errorf("StrToMultiAddr error: %v", err)
+	}
+	addrList, err := hybrid.GetMultiAddressList(addr)
+	if err != nil {
+		return fmt.Errorf("GetMultiAddressList error: %v", err)
+	}
+	first := addrList.GetFirstMultiInfo()
+
+	used, exist := bxhSendPangolinMap[first.AddrStr]
+	if !exist {
+		return fmt.Errorf("wrong bxh send pangolin addr: %s(%s)", first.AddrStr, addrStr)
+	} else if used {
+		return fmt.Errorf("the bxh send pangolin addr has been used: %s(%s)", first.AddrStr, addrStr)
+	} else {
+		bxhSendPangolinMap[first.AddrStr] = true
+		return nil
+	}
+}
+
 //func (swarm *Swarm) connectByMultiAddr(addr string) {
 //	if _, ok := swarm.connectedPiers.Load(addr); !ok {
 //		if err := retry.Retry(func(attempt uint) error {
@@ -904,10 +1032,17 @@ func (swarm *Swarm) handlePierGetBlockHeader(s network.Stream, data []byte) {
 //	}
 //}
 
-func (swarm *Swarm) getPierMultiAddr(addrStr string) string {
-	addrs := strings.Split(strings.Replace(addrStr, " ", "", -1), ",")
-	return fmt.Sprintf("/peer%s/netgap%s/peer%s/peer%s", swarm.repo.Config.Pangolin.Addr, swarm.repo.Config.Pangolin.Addr, addrs[1], addrs[0])
-}
+//func (swarm *Swarm) getPierMultiAddr(pierAddrStr string) string {
+//
+//	// 选取自己的主备pangolin
+//
+//	// 选取pier接收的主备pangolin
+//
+//	// 第一个是pier地址，后面是主备pangolin地址
+//	addrs := strings.Split(strings.Replace(pierAddrStr, " ", "", -1), ",")
+//	//pierAddr := addrs[0]
+//	return fmt.Sprintf("/peer%s/netgap%s/peer%s/peer%s", swarm.repo.Config.Pangolin.Addrs[0], swarm.repo.Config.Pangolin.Addrs[0], addrs[1], addrs[0])
+//}
 
 func getSubMsgType(request_type pb.SubscriptionRequest_Type) pb.Message_Type {
 	switch request_type {

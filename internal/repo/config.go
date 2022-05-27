@@ -77,7 +77,8 @@ type Config struct {
 }
 
 type Pangolin struct {
-	Addr string `toml:"addr" json:"addr"`
+	SendAddrs []string `mapstructure:"send_addrs" json:"sendAddrs"`
+	RecvAddrs []string `mapstructure:"recv_addrs" json:"recvAddrs"`
 }
 
 // Security are files used to setup connection with tls

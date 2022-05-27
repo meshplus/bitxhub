@@ -177,6 +177,14 @@ func NewSwarms(t *testing.T, peerCnt int) []*Swarm {
 	return swarms
 }
 
+func TestSwarm_checkPangolinAddr(t *testing.T) {
+	myMap := map[string]bool{
+		"/ip4/0.0.0.0/tcp/4223/p2p/QmUFqbYftLFda93CjyuKJ5c8WA431xww3QfmJe6pePvBWR": false,
+	}
+	err := checkPangolinAddr("/peer/ip4/0.0.0.0/tcp/4223/p2p/QmUFqbYftLFda93CjyuKJ5c8WA431xww3QfmJe6pePvBWR/netgap/ip4/0.0.0.0/tcp/4113/p2p/QmaiJ1jGbryxxKR2ESRH9d3DoEWTMpQ5JctWxmpqXWHboM/peer/ip4/0.0.0.0/tcp/4113/p2p/QmaiJ1jGbryxxKR2ESRH9d3DoEWTMpQ5JctWxmpqXWHboM", myMap)
+	require.Nil(t, err)
+}
+
 func TestSwarm_GetBlockPack(t *testing.T) {
 	peerCnt := 4
 	swarms := NewSwarms(t, peerCnt)

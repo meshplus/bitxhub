@@ -58,6 +58,8 @@ type PeerManager interface {
 
 	// ReConfig
 	ReConfig(config *repo.Config) error
+
+	SendByMultiAddr(string, []byte) ([]byte, error)
 }
 
 type PierManager interface {

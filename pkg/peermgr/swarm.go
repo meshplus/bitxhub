@@ -43,9 +43,13 @@ type Swarm struct {
 	routers        map[uint64]*pb.VpInfo // trace the vp nodes
 	multiAddrs     map[uint64]*peer.AddrInfo
 	connectedPeers sync.Map
-	notifiee       *notifiee
-	piers          *Piers
-	gater          connmgr.ConnectionGater
+	connectedPiers sync.Map //map[string]sync.Map
+	//connectedPiers     map[string][]string
+	//connectedPiersLock sync.RWMutex
+	//pierPangolinPtr    sync.Map
+	notifiee *notifiee
+	piers    *Piers
+	gater    connmgr.ConnectionGater
 
 	ledger           *ledger.Ledger
 	orderMessageFeed event.Feed
@@ -96,6 +100,7 @@ func New(repoConfig *repo.Repo, logger logrus.FieldLogger, ledger *ledger.Ledger
 		network.WithBootstrap(bootstrap),
 		network.WithNotify(notifiee),
 		network.WithConnectionGater(gater),
+		network.WithHybridMode(network.P2P_ONLY),
 	}
 
 	if repoConfig.Config.Cert.Verify {
@@ -148,6 +153,7 @@ func New(repoConfig *repo.Repo, logger logrus.FieldLogger, ledger *ledger.Ledger
 		multiAddrs:     multiAddrs,
 		piers:          newPiers(),
 		connectedPeers: sync.Map{},
+		connectedPiers: sync.Map{},
 		notifiee:       notifiee,
 		gater:          gater,
 		ctx:            ctx,
@@ -193,32 +199,6 @@ func (swarm *Swarm) Start() error {
 			}
 		}(id, addr)
 	}
-
-	//go func() {
-	//	swarm.logger.Infof("Connect to pangolin")
-	//	if err := retry.Retry(func(attempt uint) error {
-	//		// /peer/bxh连接的pangolin地址（用做p2p连接）/netgap/bxh连接的pangolin地址（用来识别p2n写文件）/peer/bxh地址（用做p2n连接）
-	// 		pangolinAddr := fmt.Sprintf("/peer%s/netgap%s/peer%s/p2p/%s", swarm.repo.Config.Pangolin.Addr, swarm.repo.Config.Pangolin.Addr, swarm.repo.NetworkConfig.LocalAddr, swarm.repo.NetworkConfig.Nodes[swarm.repo.NetworkConfig.ID-1].Pid)
-	//		if err := swarm.p2p.ConnectByMultiAddr(pangolinAddr); err != nil {
-	//			swarm.logger.WithFields(logrus.Fields{
-	//				"addr":  pangolinAddr,
-	//				"error": err,
-	//			}).Error("Connect pangolin failed")
-	//			return err
-	//		}
-	//
-	//		swarm.logger.WithFields(logrus.Fields{
-	//			"addr": pangolinAddr,
-	//			//"node": id,
-	//		}).Info("Connect pangolin successfully")
-	//		return nil
-	//	},
-	//		strategy.Limit(5),
-	//		strategy.Wait(1*time.Second),
-	//	); err != nil {
-	//		swarm.logger.Error(err)
-	//	}
-	//}()
 
 	go swarm.Ping()
 
@@ -358,16 +338,34 @@ func (swarm *Swarm) Broadcast(msg *pb.Message) error {
 	// if we are in adding node but hasn't finished updateN, new node hash will be temporarily recorded
 	// in swarm.notifiee.newPeer.
 	// todo: 暂不考虑增删节点，忽略连接的pangolin地址
-	if swarm.notifiee.newPeer != "" && !strings.Contains(swarm.repo.Config.Pangolin.Addr, swarm.notifiee.newPeer) {
-		swarm.logger.Debugf("Broadcast to new peer %s", swarm.notifiee.newPeer)
-		peerID, err := peer.Decode(swarm.notifiee.newPeer)
-		if err != nil {
-			return err
+	if swarm.notifiee.newPeer != "" {
+		isPangolin := false
+		for _, addr := range swarm.repo.Config.Pangolin.SendAddrs {
+			if strings.Contains(addr, swarm.notifiee.newPeer) {
+				isPangolin = true
+				break
+			}
 		}
-		addrInfos = append(addrInfos, &peer.AddrInfo{
-			ID:    peerID,
-			Addrs: nil,
-		})
+		if !isPangolin {
+			for _, addr := range swarm.repo.Config.Pangolin.RecvAddrs {
+				if strings.Contains(addr, swarm.notifiee.newPeer) {
+					isPangolin = true
+					break
+				}
+			}
+		}
+
+		if !isPangolin {
+			swarm.logger.Debugf("Broadcast to new peer %s", swarm.notifiee.newPeer)
+			peerID, err := peer.Decode(swarm.notifiee.newPeer)
+			if err != nil {
+				return err
+			}
+			addrInfos = append(addrInfos, &peer.AddrInfo{
+				ID:    peerID,
+				Addrs: nil,
+			})
+		}
 	}
 
 	data, err := msg.Marshal()
@@ -428,16 +426,34 @@ func (swarm *Swarm) findPeerAddr(id uint64) (*peer.AddrInfo, error) {
 	}
 	// new node id should be len(swarm.peers)+1
 	// todo: 暂不考虑增删节点，忽略连接的pangolin地址
-	if uint64(len(swarm.routers)+1) == id && swarm.notifiee.newPeer != "" && !strings.Contains(swarm.repo.Config.Pangolin.Addr, swarm.notifiee.newPeer) {
-		swarm.logger.Debugf("Unicast to new peer %s", swarm.notifiee.newPeer)
-		peerID, err := peer.Decode(swarm.notifiee.newPeer)
-		if err != nil {
-			return nil, err
+	if uint64(len(swarm.routers)+1) == id && swarm.notifiee.newPeer != "" {
+		isPangolin := false
+		for _, addr := range swarm.repo.Config.Pangolin.SendAddrs {
+			if strings.Contains(addr, swarm.notifiee.newPeer) {
+				isPangolin = true
+				break
+			}
 		}
-		return &peer.AddrInfo{
-			ID:    peerID,
-			Addrs: nil,
-		}, nil
+		if !isPangolin {
+			for _, addr := range swarm.repo.Config.Pangolin.RecvAddrs {
+				if strings.Contains(addr, swarm.notifiee.newPeer) {
+					isPangolin = true
+					break
+				}
+			}
+		}
+
+		if !isPangolin {
+			swarm.logger.Debugf("Unicast to new peer %s", swarm.notifiee.newPeer)
+			peerID, err := peer.Decode(swarm.notifiee.newPeer)
+			if err != nil {
+				return nil, err
+			}
+			return &peer.AddrInfo{
+				ID:    peerID,
+				Addrs: nil,
+			}, nil
+		}
 	}
 	return nil, fmt.Errorf("wrong id: %d", id)
 }
@@ -607,4 +623,47 @@ func (swarm *Swarm) PierManager() PierManager {
 func (swarm *Swarm) ReConfig(config *repo.Config) error {
 	swarm.pingC <- &config.Ping
 	return nil
+}
+
+func (swarm *Swarm) SendByMultiAddr(pierAddr string, data []byte) ([]byte, error) {
+	var (
+		resp    []byte
+		err     error
+		success bool
+	)
+
+	connectedAddrsTmp, ok := swarm.connectedPiers.Load(pierAddr)
+	if !ok {
+		swarm.logger.WithFields(logrus.Fields{
+			"pier":  pierAddr,
+			"piers": swarm.connectedPiers,
+		}).Errorf("please connecnt with the pier first")
+		return nil, fmt.Errorf("not connecnt with the pier: %s", pierAddr)
+	}
+	connectedAddrs := connectedAddrsTmp.([]string)
+	if err := retry.Retry(func(attempt uint) error {
+		for i := 0; i < len(connectedAddrs); i++ {
+			multiAddr := connectedAddrs[i]
+			resp, err = swarm.p2p.SendByMultiAddr(multiAddr, data)
+			if err != nil {
+				swarm.logger.WithFields(logrus.Fields{
+					"node":  multiAddr,
+					"error": err,
+				}).Error("SendByMultiAddr failed")
+				continue
+			}
+			success = true
+			// if successfully send msg, stop the range
+			break
+		}
+		if !success {
+			return fmt.Errorf("AsyncSendByMultiAddr err: all multiAddr connect failed")
+		}
+		return nil
+	}, strategy.Limit(5), strategy.Wait(500*time.Millisecond)); err != nil {
+		swarm.logger.WithFields(logrus.Fields{
+			"err": err.Error(),
+		}).Warnf("retry error")
+	}
+	return resp, nil
 }
