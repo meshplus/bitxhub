@@ -58,6 +58,9 @@ func (cbs *ChainBrokerService) GetMultiSigns(ctx context.Context, req *pb.GetSig
 }
 
 func (cbs *ChainBrokerService) GetTssSigns(ctx context.Context, req *pb.GetSignsRequest) (*pb.SignResponse, error) {
+	if !cbs.config.Tss.EnableTSS {
+		return nil, fmt.Errorf("the TSS switch of the bitxhub is not enabled, so the TSS signature cannot be obtained")
+	}
 	var (
 		wg     = sync.WaitGroup{}
 		result = [][]byte{}
@@ -219,14 +222,17 @@ func convertSignData(signData []byte) []byte {
 	signs := []conversion.Signature{}
 	_ = json.Unmarshal(signData, &signs)
 
-	signs1 := [][]byte{}
-	for _, sign := range signs {
-		signs1 = append(signs1, sign.SignEthData)
-	}
+	return signs[0].SignEthData
 
-	signs1Data, _ := json.Marshal(signs1)
-
-	return signs1Data
+	//// todo: fbz，支持批量签名
+	//signDatas := [][]byte{}
+	//for _, sign := range signs {
+	//	signDatas = append(signDatas, sign.SignEthData)
+	//}
+	//
+	//signDatasByte, _ := json.Marshal(signDatas)
+	//
+	//return signDatasByte
 }
 
 func RandRangeNumbers(min, max, count int) []int {
