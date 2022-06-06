@@ -220,7 +220,10 @@ func (cbs *ChainBrokerService) GetTssSigns(ctx context.Context, req *pb.GetSigns
 
 func convertSignData(signData []byte) []byte {
 	signs := []conversion.Signature{}
-	_ = json.Unmarshal(signData, &signs)
+	err := json.Unmarshal(signData, &signs)
+	if err != nil || len(signs) < 1 {
+		fmt.Printf("convertSignData: %v", err)
+	}
 
 	return signs[0].SignEthData
 

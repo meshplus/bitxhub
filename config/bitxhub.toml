@@ -102,31 +102,31 @@ solo = false
     weight = 2
   [[genesis.strategy]]
     module = "appchain_mgr"
-    typ = "ZeroPermission"
+    typ = "SimpleMajority"
     extra = "a > 0.5 * t"
   [[genesis.strategy]]
     module = "proposal_strategy_mgr"
-    typ = "ZeroPermission"
+    typ = "SimpleMajority"
     extra = "a > 0.5 * t"
   [[genesis.strategy]]
     module = "rule_mgr"
-    typ = "ZeroPermission"
+    typ = "SimpleMajority"
     extra = "a > 0.5 * t"
   [[genesis.strategy]]
     module = "node_mgr"
-    typ = "ZeroPermission"
+    typ = "SimpleMajority"
     extra = "a > 0.5 * t"
   [[genesis.strategy]]
     module = "service_mgr"
-    typ = "ZeroPermission"
+    typ = "SimpleMajority"
     extra = "a > 0.5 * t"
   [[genesis.strategy]]
     module = "role_mgr"
-    typ = "ZeroPermission"
+    typ = "SimpleMajority"
     extra = "a > 0.5 * t"
   [[genesis.strategy]]
     module = "dapp_mgr"
-    typ = "ZeroPermission"
+    typ = "SimpleMajority"
     extra = "a > 0.5 * t"
 
 
