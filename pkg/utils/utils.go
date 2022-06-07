@@ -177,7 +177,7 @@ func GetIBTP(ledger *ledger.Ledger, id string, isReq bool) (*pb.IBTP, error) {
 
 	ok, val := ledger.Copy().GetState(constant.InterchainContractAddr.Address(), []byte(key))
 	if !ok {
-		return nil, fmt.Errorf("cannot get the tx hash which contains the IBTP %s", id)
+		return nil, fmt.Errorf("cannot get the tx hash which contains the IBTP, id:%s, key:%s", id, key)
 	}
 
 	var hash types.Hash
