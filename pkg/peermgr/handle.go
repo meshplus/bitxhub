@@ -318,7 +318,7 @@ func (swarm *Swarm) handleFetchIBTPTssSignMessage(s network.Stream, data []byte,
 	swarm.logger.Debugf("handleFetchIBTPTssSignMessage, signers: %s", string(req.Extra))
 	signed, culpritIDs, err := utils.GetIBTPTssSign(swarm.Tss, swarm.ledger, req.Content, isReq, strings.Split(string(req.Extra), ","))
 	if err != nil {
-		swarm.logger.Errorf("handle fetch-ibtp-sign for ibtp %s isReq %v: %s", string(data), isReq, err.Error())
+		swarm.logger.Errorf("handle fetch-ibtp-tss-sign for ibtp: %s isReq %v: %s", string(data), isReq, err.Error())
 		return
 	}
 

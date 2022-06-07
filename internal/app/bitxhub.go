@@ -473,21 +473,34 @@ func (bxh *BitXHub) keygen() error {
 	}
 
 	// 3. 开始keygen
-	var (
-		keys = []crypto.PubKey{bxh.repo.Key.Libp2pPrivKey.GetPublic()}
-	)
+	if err = retry.Retry(func(attempt uint) error {
+		var (
+			keys = []crypto.PubKey{bxh.repo.Key.Libp2pPrivKey.GetPublic()}
+		)
 
-	for _, key := range bxh.fetchPkFromOtherPeers() {
-		keys = append(keys, key)
-	}
+		for _, key := range bxh.fetchPkFromOtherPeers() {
+			keys = append(keys, key)
+		}
 
-	bxh.logger.WithFields(logrus.Fields{
-		"pubkeys": keys,
-	}).Infof("tss keygen peer pubkeys")
+		bxh.logger.WithFields(logrus.Fields{
+			"pubkeys": keys,
+		}).Infof("tss keygen peer pubkeys")
 
-	_, err = bxh.TssMgr.Keygen(keygen.NewRequest(keys))
-	if err != nil {
-		return fmt.Errorf("tss key generate: %w", err)
+		_, err = bxh.TssMgr.Keygen(keygen.NewRequest(keys))
+		if err != nil {
+			bxh.logger.WithFields(logrus.Fields{
+				"pubkeys": keys,
+				"error":   err,
+			}).Warnf("tss keygen error, retry later...")
+			return fmt.Errorf("tss key generate: %w", err)
+		}
+		return nil
+	}, strategy.Wait(500*time.Millisecond), strategy.Limit(5),
+	); err != nil {
+		bxh.repo.Config.Tss.EnableTSS = false
+		bxh.logger.WithFields(logrus.Fields{
+			"error": err,
+		}).Errorf("tss keygen failed, the TSS switch is reset to false")
 	}
 
 	return nil
