@@ -407,6 +407,18 @@ func TestChainLedger_Rollback(t *testing.T) {
 
 	err = ledger.Rollback(4)
 	assert.Equal(t, fmt.Sprintf("rollback state to height 4 failed: %s", ErrorRollbackToHigherNumber), err.Error())
+
+	hash := ledger.GetBlockHash(3)
+	assert.NotNil(t, hash)
+
+	hash = ledger.GetBlockHash(100)
+	assert.NotNil(t, hash)
+
+	num, err := ledger.GetTransactionCount(3)
+	assert.NotNil(t, num)
+
+	meta := ledger.LoadChainMeta()
+	assert.NotNil(t, meta)
 	//
 	//err = ledger.Rollback(0)
 	//assert.Equal(t, ErrorRollbackTooMuch, err)
@@ -455,6 +467,11 @@ func TestChainLedger_Rollback(t *testing.T) {
 
 	err = ledger.Rollback(1)
 	assert.Nil(t, err)
+	err = ledger.Rollback(0)
+	assert.Nil(t, err)
+
+	err = ledger.Rollback(100)
+	assert.NotNil(t, err)
 }
 
 func TestChainLedger_QueryByPrefix(t *testing.T) {
@@ -882,6 +899,9 @@ func TestPrepare(t *testing.T) {
 	require.Nil(t, err)
 	_, err = ledger.ChainLedger.(*ChainLedgerImpl).prepareTransactions(batch, block)
 	require.Nil(t, err)
+
+	bloomRes := CreateBloom(receipts)
+	require.NotNil(t, bloomRes)
 }
 
 func genBlockData(height uint64, accounts map[string]ledger.IAccount, stateRoot *types.Hash) *BlockData {
