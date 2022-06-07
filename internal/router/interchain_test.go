@@ -171,10 +171,13 @@ func TestInterchainRouter_AddPier(t *testing.T) {
 	router.RemovePier(dstChainID)
 
 	require.Nil(t, router.Stop())
+	router.RemovePier("")
 }
 
 func TestInterchainRouter_AddNonexistentPier(t *testing.T) {
 	router := testStartRouter(t)
+
+	router.PutBlockAndMeta(mockBlock(1, nil), nil)
 
 	interchainWrappersC, err := router.AddPier(dstChainID)
 	require.Nil(t, err)
@@ -210,6 +213,12 @@ func TestInterchainRouter_AddNonexistentPier(t *testing.T) {
 	router.RemovePier(dstChainID)
 
 	require.Nil(t, router.Stop())
+}
+
+func TestCalcTimeoutL2Root(t *testing.T) {
+	router := testStartRouter(t)
+	list := []string{"11", "22"}
+	router.calcTimeoutL2Root(list)
 }
 
 //func TestInterchainRouter_AddUnionPier(t *testing.T) {
