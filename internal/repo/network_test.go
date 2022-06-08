@@ -1,10 +1,10 @@
 package repo
 
 import (
-	"github.com/spf13/viper"
 	"testing"
 
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )
 
@@ -45,7 +45,6 @@ func TestNetworkConfig(t *testing.T) {
 	vpInfos := cfg.GetVpInfos()
 	require.Equal(t, 4, len(vpInfos))
 
-	path = ""
 	cfg, err = loadNetworkConfig(viper.New(), path, genesis)
 	require.Nil(t, err)
 }

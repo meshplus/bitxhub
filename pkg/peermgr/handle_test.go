@@ -9,17 +9,15 @@ import (
 	"testing"
 	"time"
 
-	peer_mgr "github.com/meshplus/bitxhub-core/peer-mgr"
-
-	swarm "github.com/libp2p/go-libp2p-swarm"
-
 	"github.com/Rican7/retry"
 	"github.com/Rican7/retry/strategy"
 	"github.com/golang/mock/gomock"
 	crypto2 "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
+	swarm "github.com/libp2p/go-libp2p-swarm"
 	"github.com/meshplus/bitxhub-core/governance"
 	node_mgr "github.com/meshplus/bitxhub-core/node-mgr"
+	peer_mgr "github.com/meshplus/bitxhub-core/peer-mgr"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/crypto/asym/ecdsa"

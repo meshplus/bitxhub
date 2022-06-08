@@ -2,11 +2,11 @@ package appchain
 
 import (
 	"bytes"
-	"github.com/ethereum/go-ethereum/common"
 	"io/ioutil"
 	"os"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/light"
 	"github.com/ethereum/go-ethereum/rlp"

@@ -3,64 +3,90 @@ title = "BitXHub configuration file"
 solo = false
 
 [port]
-grpc = 60011
-gateway = 9091
-pprof = 53121
-monitor = 40011
+  jsonrpc = 8881
+  grpc = 60011
+  gateway = 9091
+  pprof = 53121
+  monitor = 40011
 
 [pprof]
-enable = true
-ptype = "http" # including two types: runtime (recommended for use during the development phase) and http
-mode = "memory" # only required for runtime ptype, including two modes: cpu、memory
-duration = "30s" # only required for runtime ptype, every duration will generation a profile.
+  enable = true
+  ptype = "http" # including two types: runtime (recommended for use during the development phase) and http
+  mode = "memory" # only required for runtime ptype, including two modes: cpu、memory
+  duration = "30s" # only required for runtime ptype, every duration will generation a profile.
 
 [monitor]
-enable = true
+  enable = true
 
 [gateway]
-allowed_origins = ["*"]
+    allowed_origins = ["*"]
 
 [ping]
-enable = true
-duration = "15s"
+  enable = false
+  duration = "15s"
 
 [security]
-enable_tls = false
-pem_file_path = "certs/server.pem"
-server_key_path = "certs/server.key"
+  enable_tls = false
+  pem_file_path = "certs/node.cert"
+  server_key_path = "certs/node.priv"
+  gateway_cert_path = "certs/gateway.cert"
+  gateway_key_path = "certs/gateway.priv"
+
+[tss]
+  enable_tss = false
+  party_timeout = "10s"
+  key_gen_timeout = "90s"
+  key_sign_timeout = "90s"
+  pre_param_timeout = "100s"
+  tss_conf_path = "tss"
+
+[limiter]
+  interval= "50ms"
+  quantum= 500
+  capacity= 10000
+
+[appchain]
+  enable = false
+  eth_header_path="appchain/eth_header.json"
 
 [log]
-level = "info"
-dir = "logs"
-filename = "bitxhub.log"
-report_caller = false
-[log.module]
-p2p = "info"
-consensus = "info"
-executor = "info"
-router = "info"
-api = "info"
-coreapi = "info"
-storage = "info"
+  level = "info"
+  dir = "logs"
+  filename = "bitxhub.log"
+  report_caller = false
+  [log.module]
+    p2p = "info"
+    consensus = "info"
+    executor = "info"
+    router = "info"
+    api = "info"
+    coreapi = "info"
+    storage = "info"
+    profile = "info"
+    tss = "info"
 
 [cert]
-verify = true
-node_cert_path = "certs/node.cert"
-agency_cert_path = "certs/agency.cert"
-ca_cert_path = "certs/ca.cert"
+  verify = true
+  node_cert_path = "certs/node.cert"
+  agency_cert_path = "certs/agency.cert"
+  ca_cert_path = "certs/ca.cert"
 
 [order]
-type = "raft"
+  type = "raft"
 
 [executor]
-type = "serial"  # opensource version only supports serial type, commercial version supports serial and parallel types
+  type = "serial"  # opensource version only supports serial type, commercial version supports serial and parallel types
+
+[crypto]
+  algorithms = ["Secp256k1", "ECDSA_P256", "ECDSA_P384","ECDSA_P521"]
+
+[ledger]
+  type = "simple"
 
 [genesis]
   chainid = 1356
   gas_limit = 0x5f5e100
-  wasm_gas_limit = 0x5f5e100
   bvm_gas_price = 50000
-  dider = "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013"
   balance = "100000000000000000000000000000000000"
   [[genesis.admins]]
     address = "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013"
@@ -74,24 +100,36 @@ type = "serial"  # opensource version only supports serial type, commercial vers
   [[genesis.admins]]
     address = "0xc0Ff2e0b3189132D815b8eb325bE17285AC898f8"
     weight = 2
-[[genesis.strategy]]
-module = "appchain_mgr"
-typ = "ZeroPermission"
-[[genesis.strategy]]
-module = "proposal_strategy_mgr"
-typ = "ZeroPermission"
-[[genesis.strategy]]
-module = "rule_mgr"
-typ = "ZeroPermission"
-[[genesis.strategy]]
-module = "node_mgr"
-typ = "ZeroPermission"
-[[genesis.strategy]]
-module = "service_mgr"
-typ = "ZeroPermission"
-[[genesis.strategy]]
-module = "role_mgr"
-typ = "ZeroPermission"
-[[genesis.strategy]]
-module = "dapp_mgr"
-typ = "ZeroPermission"
+  [[genesis.strategy]]
+    module = "appchain_mgr"
+    typ = "SimpleMajority"
+    extra = "a > 0.5 * t"
+  [[genesis.strategy]]
+    module = "proposal_strategy_mgr"
+    typ = "SimpleMajority"
+    extra = "a > 0.5 * t"
+  [[genesis.strategy]]
+    module = "rule_mgr"
+    typ = "SimpleMajority"
+    extra = "a > 0.5 * t"
+  [[genesis.strategy]]
+    module = "node_mgr"
+    typ = "SimpleMajority"
+    extra = "a > 0.5 * t"
+  [[genesis.strategy]]
+    module = "service_mgr"
+    typ = "SimpleMajority"
+    extra = "a > 0.5 * t"
+  [[genesis.strategy]]
+    module = "role_mgr"
+    typ = "SimpleMajority"
+    extra = "a > 0.5 * t"
+  [[genesis.strategy]]
+    module = "dapp_mgr"
+    typ = "SimpleMajority"
+    extra = "a > 0.5 * t"
+
+
+[license]
+  key = "133847740289a8dc5447bfbaedf10ed5ee9460110e4ba6b455e33cf941253527f18dd721515c5142fcea9b6415ddad6b3f1696011a4bbc86f35833ae9296a3ea"
+  verifier = "https://172.16.5.3:11443/v1/validation"

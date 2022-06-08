@@ -3,8 +3,6 @@ package proof
 import (
 	"crypto/sha256"
 	"encoding/json"
-	"github.com/meshplus/bitxhub/internal/repo"
-	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
 
@@ -22,7 +20,9 @@ import (
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/ledger/mock_ledger"
+	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/bitxhub/pkg/utils"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 

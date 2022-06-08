@@ -1,11 +1,11 @@
 package etcdraft
 
 import (
-	"github.com/meshplus/bitxhub-kit/log"
 	"os"
 	"testing"
 
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/stretchr/testify/assert"

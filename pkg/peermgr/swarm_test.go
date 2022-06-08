@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/meshplus/bitxhub-model/pb"
-
 	"github.com/stretchr/testify/require"
 )
 
