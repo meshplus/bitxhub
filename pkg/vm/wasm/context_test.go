@@ -1,6 +1,8 @@
 package wasm
 
 import (
+	"testing"
+
 	"github.com/golang/mock/gomock"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -8,7 +10,6 @@ import (
 	"github.com/meshplus/bitxhub/internal/ledger/mock_ledger"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 const (

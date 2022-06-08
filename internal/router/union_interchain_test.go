@@ -3,6 +3,8 @@ package router
 import (
 	"encoding/json"
 	"fmt"
+	"testing"
+
 	"github.com/golang/mock/gomock"
 	appchainMgr "github.com/meshplus/bitxhub-core/appchain-mgr"
 	"github.com/meshplus/bitxhub-core/governance"
@@ -15,7 +17,6 @@ import (
 	"github.com/meshplus/bitxhub/pkg/peermgr/mock_peermgr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 const (
@@ -26,7 +27,7 @@ func Test(t *testing.T) {
 	var chainsData [][]byte
 	chainStatus := []string{string(governance.GovernanceAvailable), string(governance.GovernanceUpdating), string(governance.GovernanceFrozen), string(governance.GovernanceFreezing), string(governance.GovernanceActivating), string(governance.GovernanceLogouting)}
 	var chains []*appchainMgr.Appchain
-	for i := 0; i < 6; i++ {
+	for i := 0; i < len(chainStatus); i++ {
 		chain := &appchainMgr.Appchain{
 			ChainName: fmt.Sprintf("应用链%d", i),
 			ChainType: appchainMgr.ChainTypeFabric1_4_3,

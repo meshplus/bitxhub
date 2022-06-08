@@ -5,9 +5,6 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/meshplus/bitxhub-kit/hexutil"
-	types2 "github.com/meshplus/eth-kit/types"
 	"io/ioutil"
 	"math"
 	"math/big"
@@ -18,24 +15,26 @@ import (
 	"testing"
 	"time"
 
-	"github.com/meshplus/bitxhub/internal/executor/contracts"
-
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/gogo/protobuf/proto"
 	"github.com/golang/mock/gomock"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
+	"github.com/meshplus/bitxhub-kit/hexutil"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/storage/blockfile"
 	"github.com/meshplus/bitxhub-kit/storage/leveldb"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/executor/oracle/appchain"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/ledger/mock_ledger"
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/internal/repo"
 	ledger2 "github.com/meshplus/eth-kit/ledger"
+	types2 "github.com/meshplus/eth-kit/types"
 	types3 "github.com/meshplus/eth-kit/types"
 	libp2pcert "github.com/meshplus/go-libp2p-cert"
 	"github.com/stretchr/testify/assert"
@@ -438,7 +437,7 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 
 	invalidIbtp := mockIBTP1(t, 0, pb.IBTP_INTERCHAIN)
 	NormalData := mockTxData(t, pb.TransactionData_NORMAL, pb.TransactionData_BVM, invalidIbtp)
-	tx2 := mockTx2(t, NormalData, invalidIbtp)
+	tx2 := mockTx1(t, NormalData, invalidIbtp)
 	txs = append(txs, tx, tx2)
 	receipts := exec.ApplyReadonlyTransactions(txs)
 	assert.Equal(t, 2, len(receipts))
@@ -535,22 +534,6 @@ func mockTx(t *testing.T, data *pb.TransactionData) *pb.BxhTransaction {
 }
 
 func mockTx1(t *testing.T, data *pb.TransactionData, ibtp *pb.IBTP) *pb.BxhTransaction {
-	var content []byte
-	if data != nil {
-		content, _ = data.Marshal()
-	}
-	to := &types.Address{
-		Address: "0x000000000000000000000000000000000000000f",
-	}
-	return &pb.BxhTransaction{
-		To:      to,
-		Payload: content,
-		Nonce:   uint64(rand.Int63()),
-		IBTP:    ibtp,
-	}
-}
-
-func mockTx2(t *testing.T, data *pb.TransactionData, ibtp *pb.IBTP) *pb.BxhTransaction {
 	var content []byte
 	if data != nil {
 		content, _ = data.Marshal()

@@ -1,6 +1,8 @@
 package boltvm
 
 import (
+	"testing"
+
 	"github.com/golang/mock/gomock"
 	"github.com/meshplus/bitxhub-core/validator/mock_validator"
 	"github.com/meshplus/bitxhub-kit/log"
@@ -11,7 +13,6 @@ import (
 	"github.com/meshplus/bitxhub/internal/ledger/mock_ledger"
 	"github.com/meshplus/bitxhub/pkg/vm"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func Test(t *testing.T) {

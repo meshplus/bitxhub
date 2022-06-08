@@ -1,10 +1,11 @@
 package appchain
 
 import (
-	"github.com/meshplus/bitxhub-kit/log"
-	"github.com/stretchr/testify/require"
 	"io/ioutil"
 	"testing"
+
+	"github.com/meshplus/bitxhub-kit/log"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewAppchainClient(t *testing.T) {
