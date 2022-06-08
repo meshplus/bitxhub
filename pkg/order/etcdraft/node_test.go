@@ -84,6 +84,9 @@ func TestNode_Start(t *testing.T) {
 	require.Equal(t, uint64(2), commitEvent.Block.BlockHeader.Number)
 	require.Equal(t, 1, len(commitEvent.Block.Transactions.Transactions))
 
+	channel := make(chan pb.Transactions, 1024)
+	raft.SubscribeTxEvent(channel)
+
 	raft.Stop()
 }
 

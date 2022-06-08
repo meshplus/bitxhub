@@ -76,4 +76,9 @@ func Test(t *testing.T) {
 	stateLedger.EXPECT().QueryByPrefix(constant.AppchainMgrContractAddr.Address(), "appchain").Return(false, nil)
 	router.queryAllAppchains()
 
+	chainsData = append(chainsData, []byte{'a', 'b'})
+	stateLedger.EXPECT().QueryByPrefix(constant.AppchainMgrContractAddr.Address(), "appchain").Return(true, chainsData).AnyTimes()
+	router.queryAllAppchains()
+	router.generateUnionInterchainTxWrappers(ret, block, meta)
+
 }

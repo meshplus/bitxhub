@@ -21,4 +21,7 @@ func TestLoadKey(t *testing.T) {
 	_, err = loadPrivKey("testd", "")
 	require.NotNil(t, err)
 
+	_, err = loadPrivKey("", "")
+	require.NotNil(t, err)
+
 }

@@ -195,9 +195,25 @@ func TestInterchainRouter_AddNonexistentPier(t *testing.T) {
 	m[otherChainID] = &pb.VerifiedIndexSlice{
 		Slice: []*pb.VerifiedIndex{{0, true}},
 	}
+
+	timeCounter := make(map[string]*pb.StringSlice, 0)
+	timeCounter[otherChainID] = &pb.StringSlice{
+		Slice: []string{"aa"},
+	}
+
+	multiTxCounter := make(map[string]*pb.StringSlice, 0)
+	multiTxCounter[otherChainID] = &pb.StringSlice{
+		Slice: []string{"aa"},
+	}
+	multiTxCounter["appchain4"] = &pb.StringSlice{
+		Slice: []string{"aa"},
+	}
+
 	im := &pb.InterchainMeta{
-		Counter: m,
-		L2Roots: nil,
+		Counter:        m,
+		L2Roots:        nil,
+		TimeoutCounter: timeCounter,
+		MultiTxCounter: multiTxCounter,
 	}
 
 	router.PutBlockAndMeta(mockBlock(1, txs), im)
@@ -219,6 +235,12 @@ func TestCalcTimeoutL2Root(t *testing.T) {
 	router := testStartRouter(t)
 	list := []string{"11", "22"}
 	router.calcTimeoutL2Root(list)
+}
+
+func TestFetchSigns(t *testing.T) {
+	router := testStartRouter(t)
+	router.fetchSigns(1)
+
 }
 
 //func TestInterchainRouter_AddUnionPier(t *testing.T) {
@@ -366,4 +388,5 @@ func mockIBTP(t *testing.T, index uint64, typ pb.IBTP_Type) *pb.IBTP {
 		Index:   index,
 		Type:    typ,
 	}
+
 }

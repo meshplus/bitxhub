@@ -47,7 +47,7 @@ func TestNetworkConfig(t *testing.T) {
 
 	path = ""
 	cfg, err = loadNetworkConfig(viper.New(), path, genesis)
-	require.NotNil(t, err)
+	require.Nil(t, err)
 }
 
 func TestRewriteNetworkConfig(t *testing.T) {

@@ -24,4 +24,13 @@ func TestNewRateLimiterWithQuantum(t *testing.T) {
 	limiter, _ := NewRateLimiterWithQuantum(50*time.Millisecond, 10000, 500)
 	ok := limiter.Limit()
 	assert.False(t, ok)
+
+	_, err := NewRateLimiterWithQuantum(0, 10000, 500)
+	assert.NotNil(t, err)
+
+	_, err = NewRateLimiterWithQuantum(50*time.Millisecond, -1, 500)
+	assert.NotNil(t, err)
+
+	_, err = NewRateLimiterWithQuantum(50*time.Millisecond, 10000, -1)
+	assert.NotNil(t, err)
 }

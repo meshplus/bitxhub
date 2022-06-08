@@ -18,4 +18,8 @@ func TestReqLookUp_Add(t *testing.T) {
 	err = r.Build()
 	require.Nil(t, err)
 	require.True(t, r.LookUp([]byte("abcd")))
+	storage.Put([]byte("bloom_filter"), []byte{'1'})
+	r, err = NewReqLookUp(storage, log.NewWithModule("bloom_filter"))
+	require.NotNil(t, err)
+	storage.Delete([]byte("bloom_filter"))
 }

@@ -27,10 +27,25 @@ const (
 func GetBoltContracts() map[string]agency.Contract {
 	boltContracts := []*BoltContract{
 		{
+			Enabled:  false,
+			Name:     "store service",
+			Address:  constant.StoreContractAddr.Address().String(),
+			Contract: &contracts.Store{},
+		},
+	}
+	Register(boltContracts)
+	boltContracts = []*BoltContract{
+		{
 			Enabled:  true,
 			Name:     "store service",
 			Address:  constant.StoreContractAddr.Address().String(),
 			Contract: &contracts.Store{},
+		},
+		{
+			Enabled:  true,
+			Name:     "rule service",
+			Address:  constant.RuleManagerContractAddr.Address().String(),
+			Contract: &contracts.RuleManager{},
 		},
 	}
 
@@ -43,12 +58,13 @@ func GetBoltContracts() map[string]agency.Contract {
 			Contract: info.Constructor(),
 		})
 	}
+
 	return Register(boltContracts)
 }
 
 func TestRegister(t *testing.T) {
 	registers := GetBoltContracts()
-	require.Equal(t, len(registers), 1)
+	require.Equal(t, len(registers), 2)
 
 	contract, err := GetBoltContract(constant.StoreContractAddr.Address().String(), registers)
 	require.Nil(t, err)
