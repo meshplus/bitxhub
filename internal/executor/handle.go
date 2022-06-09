@@ -87,10 +87,9 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 		exec.logger.Errorf("filterValidTx err: %s", err)
 	}
 	// this block is not in ledger
-	currentHeight := block.BlockHeader.Number - 1
 	txList := blockWrapper.block.Transactions.Transactions
 	bxhId := strconv.FormatUint(exec.config.ChainID, 10)
-	err = exec.setTimeoutList(currentHeight, txList, invalidTxHashMap, recordFailTxHashMap, bxhId)
+	err = exec.setTimeoutList(exec.currentHeight, txList, invalidTxHashMap, recordFailTxHashMap, bxhId)
 	if err != nil {
 		exec.logger.Errorf("setTimeoutList err: %s", err)
 	}
@@ -827,6 +826,10 @@ func (exec *BlockExecutor) setTimeoutList(height uint64, txList []pb.Transaction
 					return err
 				}
 
+				// The  , don't execute timeoutRollback
+				if ibtp.Type == pb.IBTP_RECEIPT_FAILURE && record.Status == pb.TransactionStatus_FAILURE {
+					continue
+				}
 				str, ok := removeTimeoutListMap[record.Height]
 				if !ok {
 					removeTimeoutListMap[record.Height] = txId
