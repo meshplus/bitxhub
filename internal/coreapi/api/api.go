@@ -76,6 +76,7 @@ type FeedAPI interface {
 	SubscribeNewTxEvent(chan<- pb.Transactions) event.Subscription
 	SubscribeNewBlockEvent(chan<- events.ExecutedEvent) event.Subscription
 	SubscribeTssSignRes(ch chan<- *pb.Message) event.Subscription
+	SubscribeTssCulprits(ch chan<- *pb.Message) event.Subscription
 	BloomStatus() (uint64, uint64)
 }
 

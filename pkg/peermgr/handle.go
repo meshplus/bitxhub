@@ -57,9 +57,12 @@ func (swarm *Swarm) handleMessage(s network.Stream, data []byte) {
 			swarm.handleAskPierMaster(s, m.Data)
 		case pb.Message_CHECK_MASTER_PIER_ACK:
 			swarm.handleReplyPierMaster(s, m.Data)
-		case pb.Message_TSS_KEY_GEN, pb.Message_TSS_KEY_SIGN, pb.Message_TSS_KEY_GEN_VER, pb.Message_TSS_KEY_SIGN_VER, pb.Message_TSS_CONTROL, pb.Message_TSS_TASK_DONE, pb.Message_TSS_UNKNOW:
+		case pb.Message_TSS:
 			swarm.logger.Debugf("handle tss msg")
 			go swarm.tssMessageFeed.Send(m)
+		case pb.Message_TSS_CULPRITS:
+			swarm.logger.Debugf("handle tss culprits msg")
+			go swarm.tssCulpritsFeed.Send(m)
 		default:
 			swarm.logger.WithField("module", "p2p").Errorf("can't handle msg[type: %v]", m.Type)
 			return nil
@@ -185,6 +188,7 @@ func (swarm *Swarm) handleFetchTssPubkey(s network.Stream) error {
 	addr, _, err := swarm.Tss.GetTssPubkey()
 	if err != nil {
 		swarm.logger.Infof("we do not have tss pubkey info: %v", err)
+		return fmt.Errorf("we do not have tss pubkey info: %v", err)
 	}
 
 	msg := &pb.Message{
@@ -315,8 +319,10 @@ func (swarm *Swarm) handleFetchIBTPTssSignMessage(s network.Stream, data []byte,
 		return
 	}
 
-	swarm.logger.Debugf("handleFetchIBTPTssSignMessage, signers: %s", string(req.Extra))
-	signed, culpritIDs, err := utils.GetIBTPTssSign(swarm.Tss, swarm.ledger, req.Content, isReq, strings.Split(string(req.Extra), ","))
+	signInfo := strings.Split(string(req.Extra), "-")
+
+	swarm.logger.Debugf("handleFetchIBTPTssSignMessage, signers: %s", signInfo[0])
+	signed, culpritIDs, err := utils.GetIBTPTssSign(swarm.Tss, swarm.ledger, req.Content, isReq, strings.Split(signInfo[0], ","), signInfo[1])
 	if err != nil {
 		swarm.logger.Errorf("handle fetch-ibtp-tss-sign for ibtp: %s isReq %v: %s", string(data), isReq, err.Error())
 		return

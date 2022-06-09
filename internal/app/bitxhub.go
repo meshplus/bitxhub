@@ -9,27 +9,18 @@ import (
 	"math/big"
 	"path"
 	"path/filepath"
-	"strconv"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 
-	"github.com/Rican7/retry"
-	"github.com/Rican7/retry/strategy"
 	bkg "github.com/binance-chain/tss-lib/ecdsa/keygen"
 	"github.com/common-nighthawk/go-figure"
 	"github.com/ethereum/go-ethereum/common/fdlimit"
-	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/meshplus/bitxhub-core/agency"
 	"github.com/meshplus/bitxhub-core/order"
-	"github.com/meshplus/bitxhub-core/tss"
-	"github.com/meshplus/bitxhub-core/tss/conversion"
-	"github.com/meshplus/bitxhub-core/tss/keygen"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/meshplus/bitxhub-kit/storage/blockfile"
-	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/api/gateway"
 	"github.com/meshplus/bitxhub/api/grpc"
 	"github.com/meshplus/bitxhub/api/jsonrpc"
@@ -44,6 +35,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/router"
 	"github.com/meshplus/bitxhub/internal/storages"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
+	"github.com/meshplus/bitxhub/pkg/tssmgr"
 	ledger2 "github.com/meshplus/eth-kit/ledger"
 	"github.com/sirupsen/logrus"
 )
@@ -55,7 +47,7 @@ type BitXHub struct {
 	Router        router.Router
 	Order         order.Order
 	PeerMgr       peermgr.PeerManager
-	TssMgr        tss.Tss
+	TssMgr        *tssmgr.TssMgr
 
 	repo   *repo.Repo
 	logger logrus.FieldLogger
@@ -225,18 +217,20 @@ func GenerateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 		return nil, fmt.Errorf("create peer manager: %w", err)
 	}
 
-	tssMgr := &tss.TssManager{}
+	tssMgr := &tssmgr.TssMgr{}
 	if rep.Config.Tss.EnableTSS {
 		preParams, err := getPreparams(repoRoot)
 		if err != nil {
 			return nil, fmt.Errorf("get preparams error: %w", err)
 		}
 
-		tssMgr, err = tss.NewTss(repoRoot, peerMgr, rep.Config.Tss, 0, rep.Key.Libp2pPrivKey, loggers.Logger(loggers.TSS), filepath.Join(repoRoot, rep.Config.Tss.TssConfPath), preParams[rep.NetworkConfig.ID-1])
+		tssMgr, err = tssmgr.NewTssMgr(rep.NetworkConfig.ID, rep.Key.Libp2pPrivKey, rep.Config.Tss, repoRoot, preParams[rep.NetworkConfig.ID-1], peerMgr, loggers.Logger(loggers.TSS))
+		//tssMgr, err = tss.NewTss(repoRoot, peerMgr, rep.Config.Tss, 0, rep.Key.Libp2pPrivKey, loggers.Logger(loggers.TSS), filepath.Join(repoRoot, rep.Config.Tss.TssConfPath), preParams[rep.NetworkConfig.ID-1])
 		if err != nil {
 			return nil, fmt.Errorf("create tss manager: %w, %v", err, rep.Config.Tss.PreParamTimeout)
 		}
 		peerMgr.Tss = tssMgr
+		//tssPools.Put(tssMgr)
 	}
 
 	return &BitXHub{
@@ -307,9 +301,9 @@ func (bxh *BitXHub) Start() error {
 	if bxh.repo.Config.Tss.EnableTSS {
 		bxh.TssMgr.Start(bxh.Order.Quorum() - 1)
 		time1 := time.Now()
-		if err := bxh.keygen(); err != nil {
+		if err := bxh.TssMgr.Keygen(); err != nil {
 			bxh.logger.Errorf("tss key generate error: %v", err)
-			//return fmt.Errorf("tss key generate: %w", err)
+			return fmt.Errorf("tss key generate: %w", err)
 		}
 		timeKeygen := time.Since(time1).Milliseconds()
 		bxh.logger.Infof("=============================keygen time: %d", timeKeygen)
@@ -431,225 +425,4 @@ func (bxh *BitXHub) raiseUlimit(limitNew uint64) error {
 
 func (bxh *BitXHub) GetPrivKey() *repo.Key {
 	return bxh.repo.Key
-}
-
-func (bxh *BitXHub) keygen() error {
-	myStatus := true
-	var poolPkMap = map[string]string{}
-
-	// 1. 获取本地持久化公钥信息
-	myPoolPkAddr, _, err := bxh.TssMgr.GetTssPubkey()
-	if err != nil {
-		myStatus = false
-	}
-	poolPkMap[strconv.Itoa(int(bxh.repo.NetworkConfig.ID))] = myPoolPkAddr
-
-	// 2. 如果自己有持久化数据，向其他节点请求公钥，验证是否一致
-	// 如果自己没有持久化数据，直接keygen
-	if myStatus {
-		// 2.1 向其他节点获取公钥
-		for id, addr := range bxh.fetchTssPkFromOtherPeers() {
-			poolPkMap[id] = addr
-		}
-
-		// 2.2 检查公钥一致个数
-		ok, ids, err := checkPoolPkMap(poolPkMap, bxh.Order.Quorum())
-		if err != nil {
-			return fmt.Errorf("check pool pk map: %w", err)
-		}
-		// 2.3 如果检查累计一致的公钥个数达到q，门限签名可以正常使用，将不一致的节点踢出签名组合即可
-		// 如果检查不通过，当前的门限签名已经不能正常使用，需要重新keygen
-		if ok {
-			bxh.logger.WithFields(logrus.Fields{
-				"ids": ids,
-			}).Infof("delete culprits from localState")
-			// 将不一致的参与方踢出tss节点
-			if err := bxh.TssMgr.DeleteCulpritsFromLocalState(ids); err != nil {
-				return fmt.Errorf("handle culprits: %w", err)
-			}
-			// 继续使用之前的公钥
-			return nil
-		}
-	}
-
-	// 3. 开始keygen
-	if err = retry.Retry(func(attempt uint) error {
-		var (
-			keys = []crypto.PubKey{bxh.repo.Key.Libp2pPrivKey.GetPublic()}
-		)
-
-		for _, key := range bxh.fetchPkFromOtherPeers() {
-			keys = append(keys, key)
-		}
-
-		bxh.logger.WithFields(logrus.Fields{
-			"pubkeys": keys,
-		}).Infof("tss keygen peer pubkeys")
-
-		_, err = bxh.TssMgr.Keygen(keygen.NewRequest(keys))
-		if err != nil {
-			bxh.logger.WithFields(logrus.Fields{
-				"pubkeys": keys,
-				"error":   err,
-			}).Warnf("tss keygen error, retry later...")
-			return fmt.Errorf("tss key generate: %w", err)
-		}
-		return nil
-	}, strategy.Wait(500*time.Millisecond), strategy.Limit(5),
-	); err != nil {
-		bxh.repo.Config.Tss.EnableTSS = false
-		bxh.logger.WithFields(logrus.Fields{
-			"error": err,
-		}).Errorf("tss keygen failed, the TSS switch is reset to false")
-	}
-
-	return nil
-}
-
-func checkPoolPkMap(pkAddrMap map[string]string, quorum uint64) (bool, []string, error) {
-	freq := make(map[string]int, len(pkAddrMap))
-	for _, addr := range pkAddrMap {
-		freq[addr]++
-	}
-	maxFreq := -1
-	var pkAddr string
-	for key, counter := range freq {
-		if counter > maxFreq {
-			maxFreq = counter
-			pkAddr = key
-		}
-	}
-
-	if pkAddr == "" {
-		return false, nil, nil
-	}
-
-	if maxFreq < int(quorum) {
-		return false, nil, nil
-	}
-
-	ids := []string{}
-	for id, addr := range pkAddrMap {
-		if addr != pkAddr {
-			ids = append(ids, id)
-		}
-	}
-
-	return true, ids, nil
-}
-
-func (bxh *BitXHub) requestPkFromPeer(pid uint64) (crypto.PubKey, error) {
-	req := pb.Message{
-		Type: pb.Message_FETCH_P2P_PUBKEY,
-	}
-
-	resp, err := bxh.PeerMgr.Send(pid, &req)
-	if err != nil {
-		return nil, fmt.Errorf("send message to %d failed: %w", pid, err)
-	}
-	if resp == nil || resp.Type != pb.Message_FETCH_P2P_PUBKEY_ACK {
-		return nil, fmt.Errorf("invalid fetch p2p pk resp")
-	}
-
-	return conversion.GetPubKeyFromPubKeyData(resp.Data)
-}
-
-func (bxh *BitXHub) requestTssPkFromPeer(pid uint64) (string, error) {
-	req := pb.Message{
-		Type: pb.Message_FETCH_TSS_PUBKEY,
-	}
-
-	resp, err := bxh.PeerMgr.Send(pid, &req)
-	if err != nil {
-		return "", fmt.Errorf("send message to %d failed: %w", pid, err)
-	}
-	if resp == nil || resp.Type != pb.Message_FETCH_TSS_PUBKEY_ACK {
-		return "", fmt.Errorf("invalid fetch tss pk resp")
-	}
-
-	return string(resp.Data), nil
-}
-
-func (bxh *BitXHub) fetchPkFromOtherPeers() map[uint64]crypto.PubKey {
-	var (
-		result = make(map[uint64]crypto.PubKey)
-		wg     = sync.WaitGroup{}
-		lock   = sync.Mutex{}
-	)
-
-	wg.Add(len(bxh.PeerMgr.OtherPeers()))
-	for pid := range bxh.PeerMgr.OtherPeers() {
-		// 当某节点重试一定次数后仍未拿到可以不要，只要有门限以上个即可，在创建密钥时会做数量的检查
-		go func(pid uint64, result map[uint64]crypto.PubKey, wg *sync.WaitGroup, lock *sync.Mutex) {
-			if err := retry.Retry(func(attempt uint) error {
-				pk, err := bxh.requestPkFromPeer(pid)
-				if err != nil {
-					bxh.logger.WithFields(logrus.Fields{
-						"pid": pid,
-						"err": err.Error(),
-					}).Warnf("Get peer pubkey with error")
-					return err
-				} else {
-					lock.Lock()
-					result[pid] = pk
-					lock.Unlock()
-					return nil
-				}
-			}, strategy.Limit(5), strategy.Wait(500*time.Millisecond),
-			); err != nil {
-				bxh.logger.WithFields(logrus.Fields{
-					"pid": pid,
-					"err": err.Error(),
-				}).Warnf("retry error")
-			}
-
-			wg.Done()
-		}(pid, result, &wg, &lock)
-	}
-
-	wg.Wait()
-
-	return result
-}
-
-func (bxh *BitXHub) fetchTssPkFromOtherPeers() map[string]string {
-	var (
-		result = make(map[string]string)
-		wg     = sync.WaitGroup{}
-		lock   = sync.Mutex{}
-	)
-
-	wg.Add(len(bxh.PeerMgr.OtherPeers()))
-	// todo fbz: 重试一定次数拿不到赋值""返回
-	for pid := range bxh.PeerMgr.OtherPeers() {
-		go func(pid uint64, result map[string]string, wg *sync.WaitGroup, lock *sync.Mutex) {
-			if err := retry.Retry(func(attempt uint) error {
-				pkAddr, err := bxh.requestTssPkFromPeer(pid)
-				if err != nil {
-					bxh.logger.WithFields(logrus.Fields{
-						"pid": pid,
-						"err": err.Error(),
-					}).Warnf("Get peer tss pubkey with error")
-					return err
-				} else {
-					lock.Lock()
-					result[strconv.Itoa(int(pid))] = pkAddr
-					lock.Unlock()
-					return nil
-				}
-			}, strategy.Wait(500*time.Millisecond),
-			); err != nil {
-				bxh.logger.WithFields(logrus.Fields{
-					"pid": pid,
-					"err": err.Error(),
-				}).Warnf("retry error")
-			}
-
-			wg.Done()
-		}(pid, result, &wg, &lock)
-	}
-
-	wg.Wait()
-
-	return result
 }

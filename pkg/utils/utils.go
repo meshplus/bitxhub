@@ -5,22 +5,22 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
 	"strings"
+	"time"
 
+	"github.com/Rican7/retry"
+	"github.com/Rican7/retry/strategy"
 	"github.com/ethereum/go-ethereum/crypto"
-	crypto3 "github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/meshplus/bitxhub-core/tss"
 	"github.com/meshplus/bitxhub-core/tss/conversion"
-	"github.com/meshplus/bitxhub-core/tss/keysign"
 	crypto2 "github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/ledger"
+	"github.com/meshplus/bitxhub/pkg/tssmgr"
 	"github.com/sirupsen/logrus"
 )
 
@@ -67,61 +67,13 @@ func GetIBTPSign(ledger *ledger.Ledger, id string, isReq bool, privKey crypto2.P
 // - signature data
 // - blame nodes id list
 // - error
-func GetIBTPTssSign(tssMgr tss.Tss, ledger *ledger.Ledger, content string, isReq bool, signers []string) ([]byte, []string, error) {
-	// 1. get msgs to sign
+func GetIBTPTssSign(tssMgr *tssmgr.TssMgr, ledger *ledger.Ledger, content string, isReq bool, signers []string, randomN string) ([]byte, []string, error) {
 	msgs, err := getMsgToSign(ledger, content, isReq)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get msg to sign err: %w", err)
 	}
 
-	// 2. get pool pubkey
-	_, pk, err := tssMgr.GetTssPubkey()
-	if err != nil {
-		return nil, nil, fmt.Errorf("get tss pubkey error: %w", err)
-	}
-
-	// 3. get signers pk
-	tssInfo, err := tssMgr.GetTssInfo()
-	if err != nil {
-		return nil, nil, fmt.Errorf("fail to get keygen parties pk map error: %w", err)
-	}
-	signersPk := []crypto3.PubKey{}
-	for _, id := range signers {
-		data, ok := tssInfo.PartiesPkMap[id]
-		if !ok {
-			return nil, nil, fmt.Errorf("party %s is not keygen party", id)
-		}
-		pk, err := conversion.GetPubKeyFromPubKeyData(data)
-		if err != nil {
-			return nil, nil, fmt.Errorf("fail to conversion pubkeydata to pubkey: %w", err)
-		}
-		signersPk = append(signersPk, pk)
-	}
-
-	// 4, new req to sign
-	keysignReq := keysign.NewRequest(pk, msgs, signersPk)
-	resp, err := tssMgr.Keysign(keysignReq)
-
-	if err != nil {
-		if errors.Is(err, tss.ErrNotActiveSigner) {
-			return nil, nil, err
-		} else if len(resp.Blame.BlameNodes) != 0 {
-			culpritIDs := []string{}
-			for _, node := range resp.Blame.BlameNodes {
-				culpritIDs = append(culpritIDs, node.PartyID)
-			}
-			return nil, culpritIDs, err
-		} else {
-			return nil, nil, fmt.Errorf("failed to tss key sign: %v", err)
-		}
-	}
-
-	signData, err := json.Marshal(resp.Signatures)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to marshal tss signatures: %v", err)
-	}
-
-	return signData, nil, nil
+	return tssMgr.Keysign(signers, msgs, randomN)
 }
 
 func getMsgToSign(ledger *ledger.Ledger, content string, isReq bool) ([]string, error) {
@@ -175,19 +127,30 @@ func GetIBTP(ledger *ledger.Ledger, id string, isReq bool) (*pb.IBTP, error) {
 		key = contracts.IndexReceiptMapKey(id)
 	}
 
-	ok, val := ledger.Copy().GetState(constant.InterchainContractAddr.Address(), []byte(key))
-	if !ok {
-		return nil, fmt.Errorf("cannot get the tx hash which contains the IBTP, id:%s, key:%s", id, key)
-	}
+	var val []byte
+	var ok bool
+	var tx pb.Transaction
+	var err error
+	if err := retry.Retry(func(attempt uint) error {
+		ok, val = ledger.Copy().GetState(constant.InterchainContractAddr.Address(), []byte(key))
+		if !ok {
+			return fmt.Errorf("cannot get the tx hash which contains the IBTP, id:%s, key:%s", id, key)
+		}
 
-	var hash types.Hash
-	if err := json.Unmarshal(val, &hash); err != nil {
-		return nil, fmt.Errorf("unmarshal hash error: %w", err)
-	}
+		var hash types.Hash
+		if err := json.Unmarshal(val, &hash); err != nil {
+			return fmt.Errorf("unmarshal hash error: %w", err)
+		}
 
-	tx, err := ledger.GetTransaction(&hash)
-	if err != nil {
-		return nil, fmt.Errorf("get transaction %s from ledger failed: %w", hash.String(), err)
+		tx, err = ledger.GetTransaction(&hash)
+		if err != nil {
+			return fmt.Errorf("get transaction %s from ledger failed: %w", hash.String(), err)
+		}
+
+		return nil
+	}, strategy.Wait(100*time.Millisecond), strategy.Limit(5),
+	); err != nil {
+		return nil, fmt.Errorf("retry error: %v", err)
 	}
 
 	return tx.GetIBTP(), nil

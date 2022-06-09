@@ -33,7 +33,7 @@ solo = false
   gateway_key_path = "certs/gateway.priv"
 
 [tss]
-  enable_tss = false
+  enable_tss = true
   party_timeout = "10s"
   key_gen_timeout = "90s"
   key_sign_timeout = "90s"
@@ -102,31 +102,31 @@ solo = false
     weight = 2
   [[genesis.strategy]]
     module = "appchain_mgr"
-    typ = "SimpleMajority"
+    typ = "ZeroPermission"
     extra = "a > 0.5 * t"
   [[genesis.strategy]]
     module = "proposal_strategy_mgr"
-    typ = "SimpleMajority"
+    typ = "ZeroPermission"
     extra = "a > 0.5 * t"
   [[genesis.strategy]]
     module = "rule_mgr"
-    typ = "SimpleMajority"
+    typ = "ZeroPermission"
     extra = "a > 0.5 * t"
   [[genesis.strategy]]
     module = "node_mgr"
-    typ = "SimpleMajority"
+    typ = "ZeroPermission"
     extra = "a > 0.5 * t"
   [[genesis.strategy]]
     module = "service_mgr"
-    typ = "SimpleMajority"
+    typ = "ZeroPermission"
     extra = "a > 0.5 * t"
   [[genesis.strategy]]
     module = "role_mgr"
-    typ = "SimpleMajority"
+    typ = "ZeroPermission"
     extra = "a > 0.5 * t"
   [[genesis.strategy]]
     module = "dapp_mgr"
-    typ = "SimpleMajority"
+    typ = "ZeroPermission"
     extra = "a > 0.5 * t"
 
 

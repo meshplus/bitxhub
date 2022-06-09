@@ -7,9 +7,10 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
-	"github.com/meshplus/bitxhub/internal/repo"
-
+	"github.com/Rican7/retry"
+	"github.com/Rican7/retry/strategy"
 	"github.com/ethereum/go-ethereum/common"
 	types2 "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -20,6 +21,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/model"
+	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/bitxhub/pkg/utils"
 	"github.com/meshplus/eth-kit/ledger"
 	solsha3 "github.com/miguelmota/go-solidity-sha3"
@@ -171,8 +173,9 @@ func (b *BrokerAPI) FetchSignsFromOtherPeers(req *pb.GetSignsRequest) map[string
 		lock   = sync.Mutex{}
 	)
 
+	signerStr := strings.Split(string(req.Extra), "-")[0]
 	signers := []uint64{}
-	for _, id := range strings.Split(string(req.Extra), ",") {
+	for _, id := range strings.Split(signerStr, ",") {
 		idInt, _ := strconv.ParseUint(id, 10, 64)
 		if _, ok := b.bxh.PeerMgr.OtherPeers()[idInt]; ok {
 			signers = append(signers, idInt)
@@ -330,9 +333,19 @@ func (b *BrokerAPI) GetSign(req *pb.GetSignsRequest, signers []string) (string, 
 	case pb.GetSignsRequest_MULTI_IBTP_RESPONSE:
 		addr, signData, err = utils.GetIBTPSign(b.bxh.Ledger, req.Content, false, b.bxh.GetPrivKey().PrivKey)
 	case pb.GetSignsRequest_TSS_IBTP_REQUEST:
-		signData, culpritIDs, err = utils.GetIBTPTssSign(b.bxh.TssMgr, b.bxh.Ledger, req.Content, true, signers)
+		signInfo := strings.Split(string(req.Extra), "-")
+		if len(signInfo) != 2 {
+			err = fmt.Errorf("wrong tss req extra: %s", string(req.Extra))
+		} else {
+			signData, culpritIDs, err = utils.GetIBTPTssSign(b.bxh.TssMgr, b.bxh.Ledger, req.Content, true, signers, signInfo[1])
+		}
 	case pb.GetSignsRequest_TSS_IBTP_RESPONSE:
-		signData, culpritIDs, err = utils.GetIBTPTssSign(b.bxh.TssMgr, b.bxh.Ledger, req.Content, false, signers)
+		signInfo := strings.Split(string(req.Extra), "-")
+		if len(signInfo) != 2 {
+			err = fmt.Errorf("wrong tss req extra: %s", string(req.Extra))
+		} else {
+			signData, culpritIDs, err = utils.GetIBTPTssSign(b.bxh.TssMgr, b.bxh.Ledger, req.Content, false, signers, signInfo[1])
+		}
 	case pb.GetSignsRequest_MULTI_BLOCK_HEADER:
 		height, err := strconv.ParseUint(req.Content, 10, 64)
 		if err != nil {
@@ -443,33 +456,31 @@ func (b *BrokerAPI) FetchTssInfoFromOtherPeers() []*pb.TssInfo {
 		lock   = sync.Mutex{}
 	)
 
-	//todo fbz: 重试次数
 	wg.Add(len(b.bxh.PeerMgr.OtherPeers()))
 	for pid, _ := range b.bxh.PeerMgr.OtherPeers() {
 		go func(pid uint64, wg *sync.WaitGroup, lock *sync.Mutex) {
-			var (
-				err error
-			)
-
-			infoData, err := b.requestTssInfo(pid)
-			if err != nil {
-				b.logger.WithFields(logrus.Fields{
-					"pid": pid,
-					"err": err.Error(),
-				}).Warnf("fetch tss parties from other peers with error")
-			} else {
-				info := &pb.TssInfo{}
-				if err := info.Unmarshal(infoData); err != nil {
+			if err := retry.Retry(func(attempt uint) error {
+				info, err := b.requestTssInfo(pid)
+				if err != nil {
 					b.logger.WithFields(logrus.Fields{
 						"pid": pid,
 						"err": err.Error(),
-					}).Warnf("unmarshal tss info error")
+					}).Warnf("fetch tss info from other peers error")
+					return err
 				} else {
 					lock.Lock()
 					result = append(result, info)
 					lock.Unlock()
+					return nil
 				}
+			}, strategy.Limit(5), strategy.Wait(500*time.Millisecond),
+			); err != nil {
+				b.logger.WithFields(logrus.Fields{
+					"pid": pid,
+					"err": err.Error(),
+				}).Warnf("retry error")
 			}
+
 			wg.Done()
 		}(pid, &wg, &lock)
 	}
@@ -478,7 +489,7 @@ func (b *BrokerAPI) FetchTssInfoFromOtherPeers() []*pb.TssInfo {
 	return result
 }
 
-func (b *BrokerAPI) requestTssInfo(pid uint64) ([]byte, error) {
+func (b *BrokerAPI) requestTssInfo(pid uint64) (*pb.TssInfo, error) {
 	req := pb.Message{
 		Type: pb.Message_FETCH_TSS_INFO,
 	}
@@ -488,10 +499,13 @@ func (b *BrokerAPI) requestTssInfo(pid uint64) ([]byte, error) {
 		return nil, fmt.Errorf("send message to %d failed: %w", pid, err)
 	}
 	if resp == nil || resp.Type != pb.Message_FETCH_TSS_INFO_ACK {
-		return nil, fmt.Errorf("invalid fetch info pk")
+		return nil, fmt.Errorf("invalid fetch info pk, resp: %v", resp)
 	}
 
-	//b.logger.Infof("requestTssInfo: %s", string(resp.Data))
-
-	return resp.Data, nil
+	info := &pb.TssInfo{}
+	if err := info.Unmarshal(resp.Data); err != nil {
+		return nil, fmt.Errorf("unmarshal tss info error, info: %v, err: %v", resp.Data, err)
+	} else {
+		return info, nil
+	}
 }

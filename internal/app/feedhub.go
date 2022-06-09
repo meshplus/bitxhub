@@ -1,8 +1,12 @@
 package app
 
 import (
+	"encoding/json"
+	"fmt"
+
 	"github.com/meshplus/bitxhub-core/governance"
 	orderPeerMgr "github.com/meshplus/bitxhub-core/peer-mgr"
+	"github.com/meshplus/bitxhub-core/tss/message"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/internal/repo"
@@ -51,7 +55,14 @@ func (bxh *BitXHub) listenEvent() {
 		select {
 		case msg := <-tssMsgCh:
 			bxh.logger.Debugf("get tss msg to put")
-			go bxh.TssMgr.PutTssMsg(msg)
+			go func() {
+				wireMsg := &message.WireMessage{}
+				if err := json.Unmarshal(msg.Data, wireMsg); err != nil {
+					bxh.logger.Errorf(fmt.Sprintf("unmarshal wire msg error: %v", err))
+				} else {
+					bxh.TssMgr.PutTssMsg(msg, wireMsg.MsgID)
+				}
+			}()
 		case ev := <-blockCh:
 			go bxh.Order.ReportState(ev.Block.BlockHeader.Number, ev.Block.BlockHash, ev.TxHashList)
 			go bxh.Router.PutBlockAndMeta(ev.Block, ev.InterchainMeta)
