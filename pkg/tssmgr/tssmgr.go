@@ -18,6 +18,7 @@ import (
 	"github.com/meshplus/bitxhub-core/tss/conversion"
 	"github.com/meshplus/bitxhub-core/tss/storage"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/sirupsen/logrus"
 )
 
@@ -28,24 +29,27 @@ type TssMgr struct {
 	localPrivK crypto.PrivKey
 	localPubK  crypto.PubKey
 
-	threshold uint64
-	tssConf   tss.TssConfig
-	tssRepo   string
+	threshold       uint64
+	thresholdLocker *sync.Mutex
+	tssConf         tss.TssConfig
+	netConf         *repo.NetworkConfig
+	tssRepo         string
 
 	keygenPreParams  *bkg.LocalPreParams
 	keygenLocalState *storage.KeygenLocalState
 	tssPools         *sync.Pool
 	tssInstances     *sync.Map
 
-	stateMgr storage.LocalStateManager
-	peerMgr  peer_mgr.OrderPeerManager
-	logger   logrus.FieldLogger
+	stateMgr       storage.LocalStateManager
+	stateMgrLocker *sync.Mutex
+	peerMgr        peer_mgr.OrderPeerManager
+	logger         logrus.FieldLogger
 }
 
 func NewTssMgr(
-	id uint64,
 	privKey crypto.PrivKey,
 	tssConf tss.TssConfig,
+	netConf *repo.NetworkConfig,
 	repoRoot string,
 	preParams *bkg.LocalPreParams,
 	peerMgr peer_mgr.OrderPeerManager,
@@ -80,23 +84,26 @@ func NewTssMgr(
 		},
 	}
 	return &TssMgr{
-		localID:         id,
+		localID:         netConf.ID,
 		localPrivK:      privKey,
 		localPubK:       privKey.GetPublic(),
+		thresholdLocker: &sync.Mutex{},
 		tssConf:         tssConf,
+		netConf:         netConf,
 		tssRepo:         tssRepo,
 		keygenPreParams: preParams,
 		tssPools:        tssPools,
 		tssInstances:    &sync.Map{},
 		peerMgr:         peerMgr,
 		stateMgr:        stateManager,
+		stateMgrLocker:  &sync.Mutex{},
 		logger:          logger,
 	}, nil
 }
 
 func (t *TssMgr) Start(threshold uint64) {
 	// 1. set threshold
-	t.threshold = threshold
+	t.UpdateThreshold(threshold)
 
 	// 2. load tss local state
 	if err := t.loadTssLocalState(); err != nil {
@@ -104,6 +111,16 @@ func (t *TssMgr) Start(threshold uint64) {
 	}
 
 	t.logger.Infof("Starting the TSS Manager: t-%d", threshold)
+}
+
+func (t *TssMgr) GetThreshold() uint64 {
+	return t.threshold
+}
+
+func (t *TssMgr) UpdateThreshold(threshold uint64) {
+	t.thresholdLocker.Lock()
+	t.threshold = threshold
+	t.thresholdLocker.Unlock()
 }
 
 func (t *TssMgr) loadTssLocalState() error {
@@ -124,7 +141,9 @@ func (t *TssMgr) loadTssLocalState() error {
 		return fmt.Errorf("failed to get local state: %s,  %v", string(buf), err)
 	}
 
+	t.stateMgrLocker.Lock()
 	t.keygenLocalState = state
+	t.stateMgrLocker.Unlock()
 	return nil
 }
 
@@ -174,7 +193,9 @@ func (t *TssMgr) GetTssInfo() (*pb.TssInfo, error) {
 	}, nil
 }
 
-func (t *TssMgr) DeleteCulprits(culprits []string) error {
+func (t *TssMgr) DeleteTssNodes(nodes []string) error {
+	t.stateMgrLocker.Lock()
+	defer t.stateMgrLocker.Unlock()
 	// 1. get pool addr from file
 	filePath := filepath.Join(t.tssRepo, storage.PoolPkAddrFileName)
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
@@ -193,10 +214,15 @@ func (t *TssMgr) DeleteCulprits(culprits []string) error {
 	}
 
 	// 3. delete culprits
-	for _, id := range culprits {
+	for _, id := range nodes {
 		delete(state.ParticipantPksMap, id)
 	}
 
 	// 4. update local state
-	return t.stateMgr.SaveLocalState(state)
+	err = t.stateMgr.SaveLocalState(state)
+	if err != nil {
+		return fmt.Errorf("save local state error: %v", err)
+	}
+
+	return nil
 }

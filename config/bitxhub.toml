@@ -34,7 +34,6 @@ solo = false
 
 [tss]
   enable_tss = true
-  party_timeout = "10s"
   key_gen_timeout = "90s"
   key_sign_timeout = "90s"
   pre_param_timeout = "100s"
@@ -72,7 +71,7 @@ solo = false
   ca_cert_path = "certs/ca.cert"
 
 [order]
-  type = "raft"
+  type = "rbft"
 
 [executor]
   type = "serial"  # opensource version only supports serial type, commercial version supports serial and parallel types

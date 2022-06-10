@@ -3,6 +3,8 @@ package app
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"time"
 
 	"github.com/meshplus/bitxhub-core/governance"
 	orderPeerMgr "github.com/meshplus/bitxhub-core/peer-mgr"
@@ -38,18 +40,21 @@ func (bxh *BitXHub) listenEvent() {
 	nodeCh := make(chan events.NodeEvent)
 	configCh := make(chan *repo.Repo)
 	tssMsgCh := make(chan *pb.Message)
+	tssKeygenReqCh := make(chan *pb.Message)
 
 	blockSub := bxh.BlockExecutor.SubscribeBlockEvent(blockCh)
 	orderMsgSub := bxh.PeerMgr.SubscribeOrderMessage(orderMsgCh)
 	nodeSub := bxh.BlockExecutor.SubscribeNodeEvent(nodeCh)
 	configSub := bxh.repo.SubscribeConfigChange(configCh)
 	tssSub := bxh.PeerMgr.SubscribeTssMessage(tssMsgCh)
+	tssKeygenReqSub := bxh.PeerMgr.SubscribeTssKeygenReq(tssKeygenReqCh)
 
 	defer blockSub.Unsubscribe()
 	defer orderMsgSub.Unsubscribe()
 	defer nodeSub.Unsubscribe()
 	defer configSub.Unsubscribe()
 	defer tssSub.Unsubscribe()
+	defer tssKeygenReqSub.Unsubscribe()
 
 	for {
 		select {
@@ -73,9 +78,10 @@ func (bxh *BitXHub) listenEvent() {
 				}
 			}()
 		case ev := <-nodeCh:
-			switch ev.NodeEventType {
-			case governance.EventLogout:
-				go func() {
+			go func() {
+				switch ev.NodeEventType {
+				case governance.EventLogout:
+					// order
 					if err := bxh.Order.Ready(); err != nil {
 						bxh.logger.Error(err)
 						return
@@ -83,7 +89,35 @@ func (bxh *BitXHub) listenEvent() {
 					if err := bxh.Order.DelNode(ev.NodeId); err != nil {
 						bxh.logger.Error(err)
 					}
-				}()
+
+					// tss
+					if bxh.repo.Config.Tss.EnableTSS {
+						// 1. delete node
+						err := bxh.TssMgr.DeleteTssNodes([]string{strconv.Itoa(int(ev.NodeId))})
+						if err != nil {
+							bxh.logger.Errorf("delete tss node error: %v", err)
+						}
+
+						// 2. update threshold
+						bxh.TssMgr.UpdateThreshold(bxh.Order.Quorum() - 1)
+					}
+
+				}
+			}()
+		case reqMsg := <-tssKeygenReqCh:
+			if reqMsg.Type == pb.Message_TSS_KEYGEN_REQ {
+				// update threshold
+				bxh.TssMgr.UpdateThreshold(bxh.Order.Quorum() - 1)
+
+				// keygen
+				time1 := time.Now()
+				bxh.logger.Infof("...... tss req key gen")
+				if err := bxh.TssMgr.Keygen(true); err != nil {
+					bxh.logger.Errorf("tss key generate error: %v", err)
+
+				}
+				timeKeygen := time.Since(time1).Milliseconds()
+				bxh.logger.Infof("=============================keygen time: %d", timeKeygen)
 			}
 		case config := <-configCh:
 			bxh.ReConfig(config)

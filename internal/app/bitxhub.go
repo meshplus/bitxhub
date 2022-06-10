@@ -224,13 +224,18 @@ func GenerateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 			return nil, fmt.Errorf("get preparams error: %w", err)
 		}
 
-		tssMgr, err = tssmgr.NewTssMgr(rep.NetworkConfig.ID, rep.Key.Libp2pPrivKey, rep.Config.Tss, repoRoot, preParams[rep.NetworkConfig.ID-1], peerMgr, loggers.Logger(loggers.TSS))
-		//tssMgr, err = tss.NewTss(repoRoot, peerMgr, rep.Config.Tss, 0, rep.Key.Libp2pPrivKey, loggers.Logger(loggers.TSS), filepath.Join(repoRoot, rep.Config.Tss.TssConfPath), preParams[rep.NetworkConfig.ID-1])
+		var preParam *bkg.LocalPreParams
+		if len(preParams) <= int(rep.NetworkConfig.ID) {
+			preParam = nil
+		} else {
+			preParam = preParams[rep.NetworkConfig.ID-1]
+		}
+
+		tssMgr, err = tssmgr.NewTssMgr(rep.Key.Libp2pPrivKey, rep.Config.Tss, rep.NetworkConfig, repoRoot, preParam, peerMgr, loggers.Logger(loggers.TSS))
 		if err != nil {
 			return nil, fmt.Errorf("create tss manager: %w, %v", err, rep.Config.Tss.PreParamTimeout)
 		}
 		peerMgr.Tss = tssMgr
-		//tssPools.Put(tssMgr)
 	}
 
 	return &BitXHub{
@@ -301,7 +306,8 @@ func (bxh *BitXHub) Start() error {
 	if bxh.repo.Config.Tss.EnableTSS {
 		bxh.TssMgr.Start(bxh.Order.Quorum() - 1)
 		time1 := time.Now()
-		if err := bxh.TssMgr.Keygen(); err != nil {
+		bxh.logger.Debugf("...... tss start key gen")
+		if err := bxh.TssMgr.Keygen(false); err != nil {
 			bxh.logger.Errorf("tss key generate error: %v", err)
 			return fmt.Errorf("tss key generate: %w", err)
 		}

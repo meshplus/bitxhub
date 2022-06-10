@@ -12,7 +12,7 @@ type TssManager interface {
 
 	Stop()
 
-	Keygen() error
+	Keygen(isKeygenReq bool) error
 
 	Keysign(signers []string, msgs []string, randomN string) ([]byte, []string, error)
 
@@ -24,5 +24,9 @@ type TssManager interface {
 	// GetTssInfo returns tss pubkey and participants pubkey info
 	GetTssInfo() (*pb.TssInfo, error)
 
-	DeleteCulprits(culprits []string) error
+	DeleteTssNodes(nodes []string) error
+
+	UpdateThreshold(threshold uint64)
+
+	GetThreshold() uint64
 }

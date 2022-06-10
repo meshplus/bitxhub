@@ -57,7 +57,7 @@ func (swarm *Swarm) handleMessage(s network.Stream, data []byte) {
 			swarm.handleAskPierMaster(s, m.Data)
 		case pb.Message_CHECK_MASTER_PIER_ACK:
 			swarm.handleReplyPierMaster(s, m.Data)
-		case pb.Message_TSS:
+		case pb.Message_TSS_TASK:
 			swarm.logger.Debugf("handle tss msg")
 			go swarm.tssMessageFeed.Send(m)
 		case pb.Message_TSS_CULPRITS:

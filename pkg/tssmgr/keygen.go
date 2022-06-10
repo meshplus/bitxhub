@@ -16,49 +16,53 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func (t *TssMgr) Keygen() error {
-	// 1. 获取本地持久化公钥信息
-	tssStatus := true // specify whether the current node is a TSS node
-	myPoolPkAddr, _, err := t.GetTssPubkey()
-	if err != nil {
-		tssStatus = false
-	}
-
-	// 2. 如果自己有持久化数据，向其他节点请求公钥，验证是否一致
-	// 如果自己没有持久化数据，直接keygen
-	if tssStatus {
-		// record the TSS public key information stored on all nodes
-		tssPkMap := map[string]string{}
-		tssPkMap[strconv.Itoa(int(t.localID))] = myPoolPkAddr
-
-		// 2.1 向其他节点获取公钥
-		for id, addr := range t.fetchTssPkFromOtherPeers() {
-			tssPkMap[id] = addr
-		}
-
-		// 2.2 检查公钥一致个数
-		ok, ids, err := checkTssPkMap(tssPkMap, t.threshold+1)
+func (t *TssMgr) Keygen(isKeygenReq bool) error {
+	t.logger.Infof("============== Keygen start, %v", isKeygenReq)
+	// 如果是因为新增节点收到了keygen req,不需要检查本地tss信息，直接keygen
+	if !isKeygenReq {
+		// 1. 获取本地持久化公钥信息
+		tssStatus := true // specify whether the current node is a TSS node
+		myPoolPkAddr, _, err := t.GetTssPubkey()
 		if err != nil {
-			return fmt.Errorf("check pool pk map: %w", err)
+			tssStatus = false
 		}
 
-		// 2.3 如果检查累计一致的公钥个数达到t+1，门限签名可以正常使用，将不一致的节点踢出签名组合即可
-		// 如果检查不通过，当前的门限签名已经不能正常使用，需要重新keygen
-		if ok {
-			t.logger.WithFields(logrus.Fields{
-				"ids": ids,
-			}).Infof("delete culprits from localState")
-			// 将不一致的参与方踢出tss节点
-			if err := t.DeleteCulprits(ids); err != nil {
-				return fmt.Errorf("handle culprits: %w", err)
+		// 2. 如果自己有持久化数据，向其他节点请求公钥，验证是否一致
+		// 如果自己没有持久化数据，直接keygen
+		if tssStatus {
+			// record the TSS public key information stored on all nodes
+			tssPkMap := map[string]string{}
+			tssPkMap[strconv.Itoa(int(t.localID))] = myPoolPkAddr
+
+			// 2.1 向其他节点获取公钥
+			for id, addr := range t.fetchTssPkFromOtherPeers() {
+				tssPkMap[id] = addr
 			}
-			// 继续使用之前的公钥
-			return nil
+
+			// 2.2 检查公钥一致个数
+			ok, ids, err := checkTssPkMap(tssPkMap, t.threshold+1)
+			if err != nil {
+				return fmt.Errorf("check pool pk map: %w", err)
+			}
+
+			// 2.3 如果检查累计一致的公钥个数达到t+1，门限签名可以正常使用，将不一致的节点踢出签名组合即可
+			// 如果检查不通过，当前的门限签名已经不能正常使用，需要重新keygen
+			if ok {
+				t.logger.WithFields(logrus.Fields{
+					"ids": ids,
+				}).Infof("delete culprits from localState")
+				// 将不一致的参与方踢出tss节点
+				if err := t.DeleteTssNodes(ids); err != nil {
+					return fmt.Errorf("handle culprits: %w", err)
+				}
+				// 继续使用之前的公钥
+				return nil
+			}
 		}
 	}
 
 	// 3. 开始keygen
-	if err = retry.Retry(func(attempt uint) error {
+	if err := retry.Retry(func(attempt uint) error {
 		// 3.1 获取参与keygen节点的公钥
 		var (
 			keys = []crypto.PubKey{t.localPubK}
@@ -76,9 +80,9 @@ func (t *TssMgr) Keygen() error {
 		if err != nil {
 			return err
 		}
-		tssInstance := t.tssPools.Get()
+		tssInstance := t.tssPools.Get().(*tss.TssInstance)
 		defer t.tssPools.Put(tssInstance)
-		err = tssInstance.(*tss.TssInstance).InitTssInfo(msgID, 1, t.localPrivK, t.threshold, t.tssConf, t.keygenPreParams, t.keygenLocalState, t.peerMgr, t.logger)
+		err = tssInstance.InitTssInfo(msgID, 1, t.localPrivK, t.threshold, t.tssConf, t.keygenPreParams, t.keygenLocalState, t.peerMgr, t.logger)
 		if err != nil {
 			t.logger.WithFields(logrus.Fields{
 				"pubkeys": keys,
@@ -88,11 +92,17 @@ func (t *TssMgr) Keygen() error {
 		}
 		_, ok := t.tssInstances.Load(msgID)
 		if ok {
+			t.logger.WithFields(logrus.Fields{
+				"pubkeys": keys,
+				"msgID":   msgID,
+			}).Warnf("repeated msgID tss")
+			// 如果keygen的msgid相同，可能当前有未结束的keygen，等一个keygen超时再重试
+			time.Sleep(t.tssConf.KeyGenTimeout)
 			return fmt.Errorf("repeated msgID: %s", msgID)
 		}
 		t.tssInstances.Store(msgID, tssInstance)
 		defer t.tssInstances.Delete(msgID)
-		resp, err := tssInstance.(*tss.TssInstance).Keygen(keygenReq)
+		resp, err := tssInstance.Keygen(keygenReq)
 		if err != nil {
 			t.logger.WithFields(logrus.Fields{
 				"pubkeys": keys,
@@ -106,7 +116,7 @@ func (t *TssMgr) Keygen() error {
 			}
 			return nil
 		}
-	}, strategy.Wait(500*time.Millisecond), strategy.Limit(5),
+	}, strategy.Wait(500*time.Millisecond),
 	); err != nil {
 		t.logger.WithFields(logrus.Fields{
 			"error": err,
@@ -174,7 +184,7 @@ func (t *TssMgr) fetchPkFromOtherPeers() map[uint64]crypto.PubKey {
 					lock.Unlock()
 					return nil
 				}
-			}, strategy.Limit(5), strategy.Wait(500*time.Millisecond),
+			}, strategy.Limit(60), strategy.Wait(500*time.Millisecond),
 			); err != nil {
 				t.logger.WithFields(logrus.Fields{
 					"pid": pid,
@@ -232,7 +242,7 @@ func (t *TssMgr) fetchTssPkFromOtherPeers() map[string]string {
 					lock.Unlock()
 					return nil
 				}
-			}, strategy.Wait(500*time.Millisecond),
+			}, strategy.Wait(500*time.Millisecond), strategy.Limit(60),
 			); err != nil {
 				t.logger.WithFields(logrus.Fields{
 					"pid": pid,

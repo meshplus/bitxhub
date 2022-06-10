@@ -50,6 +50,7 @@ type Swarm struct {
 	tssMessageFeed    event.Feed
 	tssSignResultFeed event.Feed
 	tssCulpritsFeed   event.Feed
+	tssKeygenReqFeed  event.Feed
 	enablePing        bool
 	pingTimeout       time.Duration
 	pingC             chan *repo.Ping
@@ -387,6 +388,13 @@ func (swarm *Swarm) AddNode(newNodeID uint64, vpInfo *pb.VpInfo) {
 	} else if swarm.notifiee.newPeer != "" {
 		swarm.logger.Warningf("Received vpInfo %v, but it doesn't equal to  notifiee newPeer %s", vpInfo, swarm.notifiee.newPeer)
 	}
+
+	// 4. send tss keygen req
+	if newNodeID != swarm.localID {
+		swarm.tssKeygenReqFeed.Send(&pb.Message{
+			Type: pb.Message_TSS_KEYGEN_REQ,
+		})
+	}
 }
 
 func (swarm *Swarm) DelNode(delID uint64) {
@@ -543,4 +551,8 @@ func (swarm *Swarm) SubscribeTssSignRes(ch chan<- *pb.Message) event.Subscriptio
 
 func (swarm *Swarm) SubscribeTssCulprits(ch chan<- *pb.Message) event.Subscription {
 	return swarm.tssCulpritsFeed.Subscribe(ch)
+}
+
+func (swarm *Swarm) SubscribeTssKeygenReq(ch chan<- *pb.Message) event.Subscription {
+	return swarm.tssKeygenReqFeed.Subscribe(ch)
 }
