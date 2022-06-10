@@ -30,7 +30,7 @@ const (
 	blockChanNumber   = 1024
 	persistChanNumber = 1024
 
-	maxGroup = 1
+	maxGroup = 16
 )
 
 var _ Executor = (*BlockExecutor)(nil)

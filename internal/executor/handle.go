@@ -64,8 +64,13 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	for _, tx := range block.Transactions.Transactions {
 		txHashList = append(txHashList, tx.GetHash())
 	}
-
+	current1 := time.Now()
 	exec.verifyProofs(blockWrapper)
+	exec.logger.WithFields(logrus.Fields{
+		"time":  time.Since(current1),
+		"count": len(block.Transactions.Transactions),
+	}).Info("verify proof elapsed")
+
 	exec.evm = newEvm(block.Height(), uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateLedger, exec.ledger.ChainLedger, exec.admins[0])
 	exec.ledger.PrepareBlock(block.BlockHash, block.Height())
 	receipts := exec.txsExecutor.ApplyTransactions(block.Transactions.Transactions, blockWrapper.invalidTx)
