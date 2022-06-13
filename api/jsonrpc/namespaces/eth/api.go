@@ -629,7 +629,7 @@ func (api *PublicEthereumAPI) GetTransactionReceipt(hash common.Hash) (map[strin
 	} else {
 		fields["logsBloom"] = *receipt.Bloom
 	}
-
+	api.logger.WithFields(logrus.Fields{"evmLog": receipt.EvmLogs}).Debug("get evm log")
 	if len(receipt.EvmLogs) == 0 {
 		fields["logs"] = make([]*pb.EvmLog, 0)
 	}

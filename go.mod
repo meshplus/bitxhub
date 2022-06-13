@@ -35,7 +35,7 @@ require (
 	github.com/looplab/fsm v0.2.0
 	github.com/magiconair/properties v1.8.4
 	github.com/meshplus/bitxhub-core v1.3.1-0.20220607070129-b45fc4336d23
-	github.com/meshplus/bitxhub-kit v1.2.1-0.20220412092457-5836414df781
+	github.com/meshplus/bitxhub-kit v1.2.1-0.20220610092251-68e35ef37b7a
 	github.com/meshplus/bitxhub-model v1.2.1-0.20220518021418-f077f3a036b2
 	github.com/meshplus/consensus v0.0.0-20211228075008-5f469b198531
 	github.com/meshplus/eth-kit v0.0.0-20220105081940-c90e9f2aa162
