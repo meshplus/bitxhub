@@ -440,6 +440,7 @@ func (am *AppchainManager) RegisterAppchain(chainID string, chainName string, ch
 			Desc:      desc,
 			Version:   0,
 			Status:    governance.GovernanceAvailable,
+			DID:       "did:bitxhub:" + chainID + ":.",
 		},
 		MasterRule: &ruleMgr.Rule{
 			Address: masterRuleAddr,
