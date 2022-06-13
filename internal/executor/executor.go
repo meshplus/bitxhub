@@ -295,7 +295,7 @@ func (exec *BlockExecutor) registerBoltContracts() map[string]agency.Contract {
 			Enabled:  true,
 			Name:     "interchain manager contract",
 			Address:  constant.InterchainContractAddr.Address().String(),
-			Contract: &contracts.InterchainManager{},
+			Contract: contracts.NewInterchainManager(),
 		},
 		{
 			Enabled:  true,
