@@ -216,7 +216,7 @@ func (g *GovStrategy) governancePre(module, event string) (*ProposalStrategy, *b
 
 // update proposal strategy for a proposal type
 func (g *GovStrategy) UpdateProposalStrategy(module string, typ string, strategyExtra string, reason string) *boltvm.Response {
-	// 1. check premission
+	// 1. check permission
 	if err := g.checkPermission([]string{string(PermissionAdmin)}, module, g.CurrentCaller(), nil); err != nil {
 		return boltvm.Error(boltvm.ProposalStrategyNoPermissionCode, fmt.Sprintf(string(boltvm.ProposalStrategyNoPermissionMsg), g.CurrentCaller(), fmt.Sprintf("check permission error:%v", err)))
 	}
@@ -294,7 +294,7 @@ func (g *GovStrategy) UpdateProposalStrategy(module string, typ string, strategy
 func (g *GovStrategy) UpdateAllProposalStrategy(typ string, strategyExtra string, reason string) *boltvm.Response {
 	pt := repo.AllMgr
 
-	// 1. check premission
+	// 1. check permission
 	if err := g.checkPermission([]string{string(PermissionAdmin)}, pt, g.CurrentCaller(), nil); err != nil {
 		return boltvm.Error(boltvm.ProposalStrategyNoPermissionCode, fmt.Sprintf(string(boltvm.ProposalStrategyNoPermissionMsg), g.CurrentCaller(), fmt.Sprintf("check permission error:%v", err)))
 	}
@@ -380,7 +380,7 @@ func (g *GovStrategy) UpdateAllProposalStrategy(typ string, strategyExtra string
 
 // update proposal strategy for a proposal type
 func (g *GovStrategy) UpdateProposalStrategyByRolesChange(availableNum uint64) *boltvm.Response {
-	// 1. check premission
+	// 1. check permission
 	specificAddrs := []string{constant.RoleContractAddr.Address().String()}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {

@@ -35,12 +35,12 @@ func httpGet(ctx *cli.Context, url string) ([]byte, error) {
 
 	c, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("read reponse body error: %w", err)
+		return nil, fmt.Errorf("read response body error: %w", err)
 	}
 
 	err = resp.Body.Close()
 	if err != nil {
-		return nil, fmt.Errorf("close reponse body failed: %w", err)
+		return nil, fmt.Errorf("close response body failed: %w", err)
 	}
 
 	return c, nil
@@ -65,7 +65,7 @@ func httpPost(ctx *cli.Context, url string, data []byte) ([]byte, error) {
 	/* #nosec */
 	resp, err := client.Post(url, "application/json", buffer)
 	if err != nil {
-		return nil, fmt.Errorf("get reponse from http POST request failed: %w", err)
+		return nil, fmt.Errorf("get response from http POST request failed: %w", err)
 	}
 	c, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -74,7 +74,7 @@ func httpPost(ctx *cli.Context, url string, data []byte) ([]byte, error) {
 
 	err = resp.Body.Close()
 	if err != nil {
-		return nil, fmt.Errorf("close reponse body failed: %w", err)
+		return nil, fmt.Errorf("close response body failed: %w", err)
 	}
 
 	return c, nil

@@ -128,7 +128,7 @@ func (role *Role) setFSM(lastStatus governance.GovernanceStatus) {
 	)
 }
 
-// GovernancePre checks if the role can do the event. (only check, not modify infomation)
+// GovernancePre checks if the role can do the event. (only check, not modify information)
 func (rm *RoleManager) governancePre(roleId string, event governance.EventType) (*Role, *boltvm.BxhError) {
 	role := &Role{}
 
