@@ -43,14 +43,14 @@ func (bvm *BoltVM) Run(input []byte, _ uint64) (ret []byte, gasUsed uint64, err 
 	return bvm.InvokeBVM(bvm.ctx.Callee.String(), input)
 }
 
-func (bvm *BoltVM) HandleIBTP(ibtp *pb.IBTP) (ret []byte, err error) {
+func (bvm *BoltVM) HandleIBTP(ibtp *pb.IBTP, con *contracts.InterchainManager) (ret []byte, err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("%v", e)
 		}
 	}()
 
-	con := &contracts.InterchainManager{}
+	//con := &contracts.InterchainManager{}
 	con.Stub = &BoltStubImpl{
 		bvm: bvm,
 		ctx: bvm.ctx,

@@ -23,6 +23,9 @@ type Executor interface {
 	// SubscribeBlockEvent
 	SubscribeBlockEvent(chan<- events.ExecutedEvent) event.Subscription
 
+	// SubscribeBlockEventForRemote
+	SubscribeBlockEventForRemote(chan<- events.ExecutedEvent) event.Subscription
+
 	// SubscribeLogEvent
 	SubscribeLogsEvent(chan<- []*pb.EvmLog) event.Subscription
 

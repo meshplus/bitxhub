@@ -16,7 +16,7 @@ func (api *FeedAPI) SubscribeNewTxEvent(ch chan<- pb.Transactions) event.Subscri
 }
 
 func (api *FeedAPI) SubscribeNewBlockEvent(ch chan<- events.ExecutedEvent) event.Subscription {
-	return api.bxh.BlockExecutor.SubscribeBlockEvent(ch)
+	return api.bxh.BlockExecutor.SubscribeBlockEventForRemote(ch)
 }
 
 func (api *FeedAPI) SubscribeLogsEvent(ch chan<- []*pb.EvmLog) event.Subscription {
