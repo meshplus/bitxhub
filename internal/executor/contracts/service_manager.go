@@ -199,7 +199,7 @@ func (sm *ServiceManager) Manage(eventTyp, proposalResult, lastStatus, objId str
 	}
 
 	// record updated service in interchain contract cache
-	if err = sm.InvokeInterchainServiceCache(objId); err != nil {
+	if err = sm.postServiceEvent(objId); err != nil {
 		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("invoke Interchain serviceCache error: %v", err)))
 	}
 
@@ -263,8 +263,8 @@ func (sm *ServiceManager) RegisterService(chainID, serviceID, name, typ, intro s
 	}
 
 	// record updated service in interchain contract cache
-	if err = sm.InvokeInterchainServiceCache(chainServiceID); err != nil {
-		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("invoke Interchain serviceCache error: %v", err)))
+	if err = sm.postServiceEvent(chainServiceID); err != nil {
+		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post excutor serviceCache event error: %v", err)))
 	}
 
 	return getGovernanceRet(string(res.Result), []byte(chainServiceID))
@@ -311,7 +311,7 @@ func (sm *ServiceManager) UpdateService(chainServiceID, name, intro, permits, de
 		}
 
 		// record updated service in interchain contract cache
-		if err = sm.InvokeInterchainServiceCache(chainServiceID); err != nil {
+		if err = sm.postServiceEvent(chainServiceID); err != nil {
 			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("invoke Interchain serviceCache error: %v", err)))
 		}
 
@@ -386,7 +386,7 @@ func (sm *ServiceManager) UpdateService(chainServiceID, name, intro, permits, de
 	}
 
 	// record updated service in interchain contract cache
-	if err = sm.InvokeInterchainServiceCache(chainServiceID); err != nil {
+	if err = sm.postServiceEvent(chainServiceID); err != nil {
 		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("invoke Interchain serviceCache error: %v", err)))
 	}
 	return getGovernanceRet(string(res.Result), nil)
@@ -447,7 +447,7 @@ func (sm *ServiceManager) basicGovernance(chainServiceID, reason string, permiss
 	}
 
 	// record updated service in interchain contract cache
-	if err := sm.InvokeInterchainServiceCache(chainServiceID); err != nil {
+	if err := sm.postServiceEvent(chainServiceID); err != nil {
 		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("invoke Interchain serviceCache error: %v", err)))
 	}
 	return getGovernanceRet(string(res.Result), nil)
@@ -488,7 +488,7 @@ func (sm *ServiceManager) PauseChainService(chainID string) *boltvm.Response {
 			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
 		}
 		// record updated service in interchain contract cache
-		if err = sm.InvokeInterchainServiceCache(chainServiceID); err != nil {
+		if err = sm.postServiceEvent(chainServiceID); err != nil {
 			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("invoke Interchain serviceCache error: %v", err)))
 		}
 	}
@@ -551,7 +551,7 @@ func (sm *ServiceManager) UnPauseChainService(chainID string) *boltvm.Response {
 			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
 		}
 		// record updated service in interchain contract cache
-		if err = sm.InvokeInterchainServiceCache(chainServiceID); err != nil {
+		if err = sm.postServiceEvent(chainServiceID); err != nil {
 			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("invoke Interchain serviceCache error: %v", err)))
 		}
 	}
@@ -621,7 +621,7 @@ func (sm *ServiceManager) ClearChainService(chainID string) *boltvm.Response {
 			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
 		}
 		// record updated service in interchain contract cache
-		if err = sm.InvokeInterchainServiceCache(chainServiceID); err != nil {
+		if err = sm.postServiceEvent(chainServiceID); err != nil {
 			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("invoke Interchain serviceCache error: %v", err)))
 		}
 	}
@@ -687,7 +687,7 @@ func (sm *ServiceManager) EvaluateService(chainServiceID, desc string, score flo
 		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
 	}
 	// record updated service in interchain contract cache
-	if err := sm.InvokeInterchainServiceCache(chainServiceID); err != nil {
+	if err := sm.postServiceEvent(chainServiceID); err != nil {
 		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("invoke Interchain serviceCache error: %v", err)))
 	}
 	return getGovernanceRet("", nil)
@@ -764,7 +764,7 @@ func (sm *ServiceManager) RecordInvokeService(fullServiceID, fromFullServiceID s
 	}
 
 	// record updated service in interchain contract cache
-	if err = sm.InvokeInterchainServiceCache(chainServiceID); err != nil {
+	if err = sm.postServiceEvent(chainServiceID); err != nil {
 		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("invoke Interchain serviceCache error: %v", err)))
 	}
 	return boltvm.Success(nil)
@@ -1001,20 +1001,15 @@ func (sm *ServiceManager) postAuditServiceEvent(chainServiceID string) error {
 	return nil
 }
 
-// InvokeInterchainServiceCache record changed service in interchain contract cache
-func (sm *ServiceManager) InvokeInterchainServiceCache(chainServiceID string) error {
+// postServiceEvent record changed service in executor's interchain contract cache
+func (sm *ServiceManager) postServiceEvent(chainServiceID string) error {
 	sm.ServiceManager.Persister = sm.Stub
-	ok, data := sm.Get(servicemgr.ServiceKey(chainServiceID))
+	service := &servicemgr.Service{}
+	ok := sm.GetObject(servicemgr.ServiceKey(chainServiceID), service)
 	if !ok {
 		return fmt.Errorf("not found service %s", chainServiceID)
 	}
 
-	res := sm.CrossInvoke(constant.InterchainContractAddr.Address().String(), "SetServiceCache",
-		pb.String(chainServiceID), pb.Bytes(data))
-
-	if !res.Ok {
-		return boltvm.BError(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg),
-			fmt.Sprintf("cross invoke InterchainServiceCache error: %s", string(res.Result))))
-	}
+	sm.PostEvent(pb.Event_SERVICE, service)
 	return nil
 }
