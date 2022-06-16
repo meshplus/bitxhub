@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/meshplus/bitxhub-core/boltvm"
 	service_mgr "github.com/meshplus/bitxhub-core/service-mgr"
@@ -33,6 +34,13 @@ const (
 
 type InterchainManager struct {
 	boltvm.Stub
+	ServiceCache *sync.Map
+}
+
+func NewInterchainManager() *InterchainManager {
+	return &InterchainManager{
+		ServiceCache: &sync.Map{},
+	}
 }
 
 type BxhValidators struct {
@@ -52,6 +60,48 @@ func (cs *ChainService) getFullServiceId() string {
 
 func (cs *ChainService) getChainServiceId() string {
 	return fmt.Sprintf("%s:%s", cs.ChainId, cs.ServiceId)
+}
+
+func (x *InterchainManager) GetServiceCache(key string) *boltvm.Response {
+	servece, ok := x.getServiceCache(key)
+	if !ok {
+		return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), fmt.Errorf("interchain's serviceCache doesn't store %s", key)))
+	}
+	data, err := json.Marshal(&servece)
+	if err != nil {
+		return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), err.Error()))
+	}
+	return boltvm.Success(data)
+}
+
+func (x *InterchainManager) getServiceCache(key string) (*service_mgr.Service, bool) {
+	service := &service_mgr.Service{}
+	val, ok := x.ServiceCache.Load(key)
+	if ok {
+		service = val.(*service_mgr.Service)
+	}
+	return service, ok
+}
+
+func (x *InterchainManager) InitServiceCache() {
+	x.ServiceCache = &sync.Map{}
+}
+
+//func (x *InterchainManager) SetServiceCache(key string, data []byte) *boltvm.Response {
+//	service := &service_mgr.Service{}
+//	err := json.Unmarshal(data, service)
+//	if err != nil {
+//		return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), err.Error()))
+//	}
+//	x.setServiceCache(key, service)
+//	return boltvm.Success(nil)
+//}
+
+func (x *InterchainManager) SetServiceCache(key string, service *service_mgr.Service) {
+	if x.ServiceCache == nil {
+		x.ServiceCache = &sync.Map{}
+	}
+	x.ServiceCache.LoadOrStore(key, service)
 }
 
 func (x *InterchainManager) Register(chainServiceID string) *boltvm.Response {
@@ -166,12 +216,12 @@ func (x *InterchainManager) HandleIBTP(ibtp *pb.IBTP) *boltvm.Response {
 
 	ret := x.ProcessIBTP(ibtp, interchain, targetErr != nil)
 
-	if err := x.postAuditInterchainEvent(ibtp.From); err != nil {
-		return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), fmt.Sprintf("post audit interchain event error: %v", err)))
-	}
-	if err := x.postAuditInterchainEvent(ibtp.To); err != nil {
-		return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), fmt.Sprintf("post audit interchain event error: %v", err)))
-	}
+	//if err := x.postAuditInterchainEvent(ibtp.From); err != nil {
+	//	return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), fmt.Sprintf("post audit interchain event error: %v", err)))
+	//}
+	//if err := x.postAuditInterchainEvent(ibtp.To); err != nil {
+	//	return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), fmt.Sprintf("post audit interchain event error: %v", err)))
+	//}
 	return boltvm.Success(ret)
 }
 
@@ -534,13 +584,16 @@ func (x *InterchainManager) getBitXHubID() (string, error) {
 func (x *InterchainManager) getServiceByID(id string) (*service_mgr.Service, error) {
 	service := &service_mgr.Service{}
 
-	res := x.CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "GetServiceInfo", pb.String(id))
-	if !res.Ok {
-		return nil, fmt.Errorf("can not get service %s info: %s", id, string(res.Result))
-	}
-
-	if err := json.Unmarshal(res.Result, service); err != nil {
-		return nil, fmt.Errorf("unmarshal service of ID %s: %w", id, err)
+	service, ok := x.getServiceCache(id)
+	if !ok {
+		res := x.CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "GetServiceInfo", pb.String(id))
+		if !res.Ok {
+			return nil, fmt.Errorf("can not get service %s info: %s", id, string(res.Result))
+		}
+		if err := json.Unmarshal(res.Result, service); err != nil {
+			return nil, fmt.Errorf("unmarshal service of ID %s: %w", id, err)
+		}
+		x.ServiceCache.LoadOrStore(id, service)
 	}
 
 	return service, nil
@@ -565,8 +618,8 @@ func (x *InterchainManager) checkBitXHubAvailability(id string) error {
 }
 
 func (x *InterchainManager) checkServiceAvailability(chainServiceID string) error {
-	res := x.CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "IsAvailable", pb.String(chainServiceID))
-	if !res.Ok || string(res.Result) == FALSE {
+	service, err := x.getServiceByID(chainServiceID)
+	if err != nil || !service.IsAvailable() {
 		return fmt.Errorf("service %s is not available", chainServiceID)
 	}
 

@@ -26,6 +26,7 @@ func TestServiceManager_ManageRegister(t *testing.T) {
 	chainServiceRegisteringID := fmt.Sprintf("%s:%s", services[4].ChainID, services[4].ServiceID)
 	logger := log.NewWithModule("contracts")
 
+	//mockStub.EXPECT().PostServiceEvent(gomock.Any()).Return(nil).AnyTimes()
 	mockStub.EXPECT().Logger().Return(logger).AnyTimes()
 	mockStub.EXPECT().GetObject(service_mgr.ServiceKey(chainServiceID), gomock.Any()).Return(false).Times(1)
 	mockStub.EXPECT().GetObject(service_mgr.ServiceKey(chainServiceID), gomock.Any()).SetArg(1, *services[0]).Return(true).AnyTimes()
@@ -179,9 +180,10 @@ func TestServiceManager_RegisterService(t *testing.T) {
 	checkAppchainErrReq := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *services[2]).Return(true).Times(1)
 	checkInfoErrReq := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *services[2]).Return(true).Times(4)
 	submitErrReq := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *services[2]).Return(true).Times(1)
+	cacheReq := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *services[0]).Return(true).Times(1)
 
-	okReq := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Return(false).AnyTimes()
-	gomock.InOrder(governancePreErrReq, checkAppchainErrReq, checkInfoErrReq, submitErrReq, okReq)
+	okReq := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Return(false).Times(1)
+	gomock.InOrder(governancePreErrReq, checkAppchainErrReq, checkInfoErrReq, submitErrReq, okReq, cacheReq)
 
 	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "IsAvailable", gomock.Any()).Return(boltvm.Success([]byte(FALSE))).Times(1)
 	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "IsAvailable", gomock.Any()).Return(boltvm.Success([]byte(TRUE))).AnyTimes()
@@ -247,7 +249,7 @@ func TestServiceManager_UpdateService(t *testing.T) {
 	submitErrReq := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *services[0]).Return(true).Times(1)
 	changeStatusErrReq1 := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *services[0]).Return(true).Times(1)
 	changeStatusErrReq2 := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *services[2]).Return(true).Times(1)
-	okReq := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *services[0]).Return(true).Times(2)
+	okReq := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *services[0]).Return(true).Times(3)
 	gomock.InOrder(governancePreErrReq, checkPermissionErrReq, checkInfoErrReq, updateErrReq, updateErrReq2, submitErrReq, changeStatusErrReq1, changeStatusErrReq2, okReq)
 
 	mockStub.EXPECT().CurrentCaller().Return(noAdminAddr).Times(1)
@@ -309,7 +311,7 @@ func TestServiceManager_LogoutService(t *testing.T) {
 	submitErrReq := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *services[0]).Return(true).Times(1)
 	changeStatusErrReq1 := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *services[0]).Return(true).Times(1)
 	changeStatusErrReq2 := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *services[2]).Return(true).Times(1)
-	okReq := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *services[0]).Return(true).Times(2)
+	okReq := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *services[0]).Return(true).Times(3)
 	gomock.InOrder(governancePreErrReq, checkPermissionErrReq, submitErrReq, changeStatusErrReq1, changeStatusErrReq2, okReq)
 
 	mockStub.EXPECT().CurrentCaller().Return(noAdminAddr).Times(1)

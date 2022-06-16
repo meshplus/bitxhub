@@ -2,6 +2,7 @@ package executor
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"sync"
@@ -10,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/meshplus/bitxhub-core/agency"
+	service_mgr "github.com/meshplus/bitxhub-core/service-mgr"
 	"github.com/meshplus/bitxhub-core/validator"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
@@ -37,23 +39,24 @@ var _ Executor = (*BlockExecutor)(nil)
 
 // BlockExecutor executes block from order
 type BlockExecutor struct {
-	client           *appchain.Client
-	ledger           *ledger.Ledger
-	logger           logrus.FieldLogger
-	blockC           chan *BlockWrapper
-	preBlockC        chan *pb.CommitEvent
-	persistC         chan *ledger.BlockData
-	ibtpVerify       proof.Verify
-	validationEngine validator.Engine
-	currentHeight    uint64
-	currentBlockHash *types.Hash
-	txsExecutor      agency.TxsExecutor
-	blockFeed        event.Feed
-	logsFeed         event.Feed
-	nodeFeed         event.Feed
-	auditFeed        event.Feed
-	ctx              context.Context
-	cancel           context.CancelFunc
+	client            *appchain.Client
+	ledger            *ledger.Ledger
+	logger            logrus.FieldLogger
+	blockC            chan *BlockWrapper
+	preBlockC         chan *pb.CommitEvent
+	persistC          chan *ledger.BlockData
+	ibtpVerify        proof.Verify
+	validationEngine  validator.Engine
+	interchainManager *contracts.InterchainManager
+	currentHeight     uint64
+	currentBlockHash  *types.Hash
+	txsExecutor       agency.TxsExecutor
+	blockFeed         event.Feed
+	logsFeed          event.Feed
+	nodeFeed          event.Feed
+	auditFeed         event.Feed
+	ctx               context.Context
+	cancel            context.CancelFunc
 
 	evm         *vm.EVM
 	evmChainCfg *params.ChainConfig
@@ -80,23 +83,24 @@ func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, client *appchain
 	ctx, cancel := context.WithCancel(context.Background())
 
 	blockExecutor := &BlockExecutor{
-		client:           client,
-		ledger:           chainLedger,
-		logger:           logger,
-		ctx:              ctx,
-		cancel:           cancel,
-		blockC:           make(chan *BlockWrapper, blockChanNumber),
-		preBlockC:        make(chan *pb.CommitEvent, blockChanNumber),
-		persistC:         make(chan *ledger.BlockData, persistChanNumber),
-		ibtpVerify:       ibtpVerify,
-		validationEngine: ibtpVerify.ValidationEngine(),
-		currentHeight:    chainLedger.GetChainMeta().Height,
-		currentBlockHash: chainLedger.GetChainMeta().BlockHash,
-		evmChainCfg:      newEVMChainCfg(config),
-		config:           *config,
-		bxhGasPrice:      gasPrice,
-		gasLimit:         config.GasLimit,
-		lock:             &sync.Mutex{},
+		client:            client,
+		ledger:            chainLedger,
+		logger:            logger,
+		ctx:               ctx,
+		cancel:            cancel,
+		blockC:            make(chan *BlockWrapper, blockChanNumber),
+		preBlockC:         make(chan *pb.CommitEvent, blockChanNumber),
+		persistC:          make(chan *ledger.BlockData, persistChanNumber),
+		ibtpVerify:        ibtpVerify,
+		validationEngine:  ibtpVerify.ValidationEngine(),
+		currentHeight:     chainLedger.GetChainMeta().Height,
+		currentBlockHash:  chainLedger.GetChainMeta().BlockHash,
+		evmChainCfg:       newEVMChainCfg(config),
+		interchainManager: &contracts.InterchainManager{},
+		config:            *config,
+		bxhGasPrice:       gasPrice,
+		gasLimit:          config.GasLimit,
+		lock:              &sync.Mutex{},
 	}
 
 	for _, admin := range config.Genesis.Admins {
@@ -110,6 +114,26 @@ func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, client *appchain
 	return blockExecutor, nil
 }
 
+func (exec *BlockExecutor) loadServiceCache() error {
+	ok, value := exec.ledger.Copy().QueryByPrefix(constant.ServiceMgrContractAddr.Address(), service_mgr.ServicePrefix)
+	if !ok {
+		exec.logger.Debug("loadServiceCache return nil")
+		return nil
+	}
+
+	for _, data := range value {
+		service := &service_mgr.Service{}
+		if err := json.Unmarshal(data, service); err != nil {
+			exec.logger.Errorf("unmarshal service error:%v", err)
+			return fmt.Errorf("unmarshal service error:%v", err)
+		}
+		chainServiceID := fmt.Sprintf("%s:%s", service.ChainID, service.ServiceID)
+		exec.interchainManager.SetServiceCache(chainServiceID, service)
+		exec.logger.WithFields(logrus.Fields{"key": chainServiceID, "service": service}).Infof("succefful store service fron leader")
+	}
+	return nil
+}
+
 // Start starts executor
 func (exec *BlockExecutor) Start() error {
 	go exec.listenExecuteEvent()
@@ -117,6 +141,11 @@ func (exec *BlockExecutor) Start() error {
 	go exec.listenPreExecuteEvent()
 
 	go exec.persistData()
+
+	err := exec.loadServiceCache()
+	if err != nil {
+		return fmt.Errorf("executor load serviceCache from ledger failed, err:%s", err)
+	}
 
 	exec.logger.WithFields(logrus.Fields{
 		"height": exec.currentHeight,

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -65,7 +66,7 @@ func TestInterchainManager_Register(t *testing.T) {
 	o3 := mockStub.EXPECT().Get(service_mgr.ServiceKey(srcChainService.getFullServiceId())).Return(true, data1).Times(2)
 	gomock.InOrder(o1, o2, o3)
 
-	im := &InterchainManager{mockStub}
+	im := &InterchainManager{mockStub, &sync.Map{}}
 
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
 
@@ -115,7 +116,7 @@ func TestInterchainManager_GetInterchain(t *testing.T) {
 	o2 := mockStub.EXPECT().Get(service_mgr.ServiceKey(srcChainService.getFullServiceId())).Return(true, data0)
 	gomock.InOrder(o1, o2)
 
-	im := &InterchainManager{mockStub}
+	im := &InterchainManager{mockStub, &sync.Map{}}
 
 	res := im.GetInterchain(srcChainService.getFullServiceId())
 	assert.False(t, res.Ok)
@@ -293,7 +294,7 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	mockStub.EXPECT().GetTxHash().Return(&types.Hash{}).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
 
-	im := &InterchainManager{mockStub}
+	im := &InterchainManager{mockStub, &sync.Map{}}
 	ibtp := &pb.IBTP{}
 
 	res := im.HandleIBTP(ibtp)
@@ -475,7 +476,7 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 func TestInterchainManager_DeleteInterchain(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	mockStub := mock_stub.NewMockStub(mockCtl)
-	im := &InterchainManager{mockStub}
+	im := &InterchainManager{mockStub, &sync.Map{}}
 
 	mockStub.EXPECT().Delete(gomock.Any())
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
@@ -492,7 +493,7 @@ func TestInterchainManager_GetIBTPByID(t *testing.T) {
 	from := types.NewAddress([]byte{0}).String()
 
 	mockStub.EXPECT().Caller().Return(from).AnyTimes()
-	im := &InterchainManager{mockStub}
+	im := &InterchainManager{mockStub, &sync.Map{}}
 
 	res := im.GetIBTPByID("a", true)
 	assert.False(t, res.Ok)
@@ -519,7 +520,7 @@ func TestInterchainManager_GetIBTPByID(t *testing.T) {
 func TestInterchainManager_HandleIBTPData(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	mockStub := mock_stub.NewMockStub(mockCtl)
-	im := &InterchainManager{mockStub}
+	im := &InterchainManager{mockStub, &sync.Map{}}
 
 	srcChainService, dstChainService := mockChainService()
 	ibtp := &pb.IBTP{
@@ -540,7 +541,7 @@ func TestInterchainManager_HandleIBTPData(t *testing.T) {
 func TestInterchainManager_GetAllServiceIDs(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	mockStub := mock_stub.NewMockStub(mockCtl)
-	im := &InterchainManager{mockStub}
+	im := &InterchainManager{mockStub, &sync.Map{}}
 
 	mockStub.EXPECT().Query(gomock.Any()).Return(false, nil).Times(1)
 	res := im.GetAllServiceIDs()
@@ -625,7 +626,7 @@ func TestInterchainManager_GetAllServiceIDs(t *testing.T) {
 //	mockStub.EXPECT().PostInterchainEvent(gomock.Any()).AnyTimes()
 //	mockStub.EXPECT().GetTxHash().Return(&types.Hash{}).AnyTimes()
 //
-//	im := &InterchainManager{mockStub}
+//	im := &InterchainManager{mockStub, &sync.Map{}}
 //
 //	ibtp := &pb.IBTP{
 //		From:    appchainMethod + "-" + appchainMethod,
