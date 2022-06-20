@@ -45,6 +45,7 @@ test:
 	@$(GO) test -timeout 300s ${TEST_PKGS} -count=1
 
 ## make test-coverage: Test project with cover
+
 test-coverage:
 	go generate ./...
 	@go test -timeout 300s -short -coverprofile cover.out -covermode=atomic ${TEST_PKGS2}
