@@ -6,7 +6,7 @@ ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/lib
 WORKDIR /root/.bitxhub
 
 # Copy essential binaries from build
-COPY ./build/bitxhub /usr/local/bin/
+COPY ./bin/bitxhub /usr/local/bin/
 
 # Generate configuration
 RUN bitxhub --repo=/root/.bitxhub init \
