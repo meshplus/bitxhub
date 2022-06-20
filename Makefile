@@ -22,7 +22,7 @@ GOLDFLAGS += -X "${VERSION_DIR}.CurrentVersion=${APP_VERSION}"
 
 GO  = GO111MODULE=on go
 TEST_PKGS := $(shell $(GO) list ./... | grep -v 'mock_*' | grep -v 'tester' | grep -v 'proto' | grep -v 'cmd'| grep -v 'api')
-TEST_PKGS2 := $(shell $(GO) list ./... | grep -v 'pkg' |grep -v 'asset_manager.go' | grep -v 'rule_manager.go' | grep -v "governance.go" |grep -v 'node_manager.go' | grep 'handle.go' | grep -v 'ledger' | grep -v 'appchain' | grep -v 'repo' | grep -v 'router' | grep -v 'mock_*' | grep -v 'tester' | grep -v 'proto' | grep -v 'cmd'| grep -v 'api')
+TEST_PKGS2 := $(shell $(GO) list ./... | grep -v 'pkg' |grep -v 'asset_manager' | grep -v 'rule_manager' | grep -v "governance" |grep -v 'node_manager' | grep 'handle' | grep -v 'ledger' | grep -v 'appchain' | grep -v 'repo' | grep -v 'router' | grep -v 'mock_*' | grep -v 'tester' | grep -v 'proto' | grep -v 'cmd'| grep -v 'api')
 
 RED=\033[0;31m
 GREEN=\033[0;32m
