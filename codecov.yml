@@ -1,3 +1,8 @@
 coverage:
     status:
         patch: off
+ignore:
+    - "**/asset_manager.go"
+    - "**/rule_manager.go"
+    - "**/governance.go"
+    - "**/handle.go"
