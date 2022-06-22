@@ -1,7 +1,3 @@
 coverage:
     status:
         patch: off
-ignore:
-    - "**/asset_*.go"
-    - "**/rule_*.go"
-    - "**/handl*.go"

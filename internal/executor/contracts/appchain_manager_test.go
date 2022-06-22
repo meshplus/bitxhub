@@ -162,6 +162,8 @@ func TestAppchainManager_Register(t *testing.T) {
 
 	res = am.RegisterAppchain(chains[2].ID, chains[0].ChainName, chains[0].ChainType, chains[0].TrustRoot, string(chains[0].Broker), chains[0].Desc, ruleAddr, ruleUrl, roles[0].ID, reason)
 	assert.True(t, res.Ok, string(res.Result))
+
+	am.registerRelayChain(chains[0].ID)
 }
 
 func TestAppchainManager_ManageRegister(t *testing.T) {
@@ -213,6 +215,15 @@ func TestAppchainManager_ManageRegister(t *testing.T) {
 	// reject: ok
 	res = am.Manage(string(governance.EventRegister), string(REJECTED), string(governance.GovernanceUnavailable), chains[0].ID, registerInfoData)
 	assert.True(t, res.Ok, string(res.Result))
+
+	res = am.Manage(string(governance.EventRegister), string(REJECTED), string(governance.GovernanceUnavailable), chains[0].ID, []byte{'1', '2', '3'})
+
+	mockStub.EXPECT().Get(appchainMgr.AppchainKey(chains[1].ID)).Return(false, chainsData[1]).AnyTimes()
+	res = am.Manage(string(governance.EventRegister), string(APPROVED), string(governance.GovernanceUnavailable), chains[1].ID, registerInfoData)
+
+	mockStub.EXPECT().CrossInvoke(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("err", "")).AnyTimes()
+	res = am.Manage(string(governance.EventRegister), string(REJECTED), string(governance.GovernanceUnavailable), chains[0].ID, registerInfoData)
+
 }
 
 func TestAppchainManager_UpdateAppchain(t *testing.T) {
@@ -360,6 +371,7 @@ func TestAppchainManager_ManageUpdate(t *testing.T) {
 	// reject ok
 	res = am.Manage(string(governance.EventUpdate), string(REJECTED), string(governance.GovernanceAvailable), chains[1].ID, updateInfoData)
 	assert.True(t, res.Ok, string(res.Result))
+	res = am.Manage(string(governance.EventUpdate), string(REJECTED), string(governance.GovernanceAvailable), chains[1].ID, []byte{'1', '2'})
 }
 
 func TestAppchainManager_ManageFreezeActivateLogout(t *testing.T) {
