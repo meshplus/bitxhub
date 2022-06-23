@@ -2,6 +2,7 @@ package executor
 
 import (
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -14,24 +15,27 @@ import (
 	"testing"
 	"time"
 
-	"github.com/meshplus/bitxhub/internal/executor/contracts"
-
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/gogo/protobuf/proto"
 	"github.com/golang/mock/gomock"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
+	"github.com/meshplus/bitxhub-kit/hexutil"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/storage/blockfile"
 	"github.com/meshplus/bitxhub-kit/storage/leveldb"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/executor/oracle/appchain"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/ledger/mock_ledger"
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/internal/repo"
 	ledger2 "github.com/meshplus/eth-kit/ledger"
+	types2 "github.com/meshplus/eth-kit/types"
+	types3 "github.com/meshplus/eth-kit/types"
 	libp2pcert "github.com/meshplus/go-libp2p-cert"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -107,6 +111,33 @@ func TestNew(t *testing.T) {
 	assert.Equal(t, chainMeta.Height, executor.currentHeight)
 }
 
+func TestGetBoltContracts(t *testing.T) {
+	executor := executor_start(t)
+	contracts := executor.GetBoltContracts()
+	assert.NotNil(t, contracts)
+}
+
+func TestSubscribeLogsEvent(t *testing.T) {
+	executor := executor_start(t)
+	ch := make(chan []*pb.EvmLog, 10)
+	subscription := executor.SubscribeLogsEvent(ch)
+	assert.NotNil(t, subscription)
+}
+
+func TestSubscribeNodeEvent(t *testing.T) {
+	executor := executor_start(t)
+	nodeCh := make(chan events.NodeEvent)
+	subscription := executor.SubscribeNodeEvent(nodeCh)
+	assert.NotNil(t, subscription)
+}
+
+func TestSubscribeAuditEvent(t *testing.T) {
+	executor := executor_start(t)
+	auditCh := make(chan *pb.AuditTxInfo, 1024)
+	subscription := executor.SubscribeAuditEvent(auditCh)
+	assert.NotNil(t, subscription)
+}
+
 func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	config := generateMockConfig(t)
 	mockCtl := gomock.NewController(t)
@@ -133,7 +164,18 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 		Data:      data,
 		EventType: pb.Event_INTERCHAIN,
 	}
-	evs = append(evs, ev)
+	ev2 := &pb.Event{
+		TxHash:    types.NewHash([]byte(from)),
+		Data:      data,
+		EventType: pb.Event_NODEMGR,
+	}
+	ev3 := &pb.Event{
+		TxHash:    types.NewHash([]byte(from)),
+		Data:      data,
+		EventType: pb.Event_AUDIT_APPCHAIN,
+	}
+
+	evs = append(evs, ev, ev2, ev3)
 	chainLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
 	stateLedger.EXPECT().Events(gomock.Any()).Return(evs).AnyTimes()
 	stateLedger.EXPECT().Commit(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
@@ -157,6 +199,8 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 
 	timeListLedger := make(map[string][]byte)
 	recordLedger := make(map[string][]byte)
+	timeListLedger["timeout-1"] = []byte{'1', '0'}
+	timeListLedger["timeout-2"] = []byte{'t', '-', '2'}
 	stateLedger.EXPECT().SetState(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
 		func(addr *types.Address, key []byte, value []byte) {
 
@@ -351,6 +395,7 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 	}
 
 	privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
+
 	assert.Nil(t, err)
 
 	id := fmt.Sprintf("%s-%s-%d", srcMethod, dstMethod, 1)
@@ -390,11 +435,52 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 	tx, err := genBVMContractTransaction(privKey, 1, contractAddr, "GetIBTPByID", pb.String(id), pb.Bool(true))
 	assert.Nil(t, err)
 
-	txs = append(txs, tx)
+	invalidIbtp := mockIBTP1(t, 0, pb.IBTP_INTERCHAIN)
+	NormalData := mockTxData(t, pb.TransactionData_NORMAL, pb.TransactionData_BVM, invalidIbtp)
+	tx2 := mockTx1(t, NormalData, invalidIbtp)
+	txs = append(txs, tx, tx2)
 	receipts := exec.ApplyReadonlyTransactions(txs)
-	assert.Equal(t, 1, len(receipts))
+	assert.Equal(t, 2, len(receipts))
 	assert.Equal(t, hash.Bytes(), receipts[0].Ret)
 	assert.Equal(t, pb.Receipt_SUCCESS, receipts[0].Status)
+
+	var txs2 []pb.Transaction
+	privKey2, _ := asym.GenerateKeyPair(crypto.Secp256k1)
+	tx3, _ := genBVMContractTransaction(privKey2, 1, contractAddr, "GetIBTPByID", pb.String(id), pb.Bool(true))
+	txs2 = append(txs2, tx3)
+	exec.bxhGasPrice = big.NewInt(100000000000000)
+	receipts = exec.ApplyReadonlyTransactions(txs2)
+	assert.Equal(t, 1, len(receipts))
+	assert.Equal(t, pb.Receipt_FAILED, receipts[0].Status)
+
+	/*var data []byte
+	addr := "0x72c445Bc9285ff4275Eda950Fb2e17389935F3D9"
+	ethAddr := common.BytesToAddress([]byte(addr))*/
+
+	rawTx := "0xf86c8085147d35700082520894f927bb571eaab8c9a361ab405c9e4891c5024380880de0b6b3a76400008025a00b8e3b66c1e7ae870802e3ef75f1ec741f19501774bd5083920ce181c2140b99a0040c122b7ebfb3d33813927246cbbad1c6bf210474f5d28053990abff0fd4f53"
+	tx4 := &types2.EthTransaction{}
+	tx4.Unmarshal(hexutil.Decode(rawTx))
+
+	stateLedger.EXPECT().GetEVMNonce(gomock.Any()).Return(uint64(0)).AnyTimes()
+	stateLedger.EXPECT().GetEVMBalance(gomock.Any()).Return(big.NewInt(1000000000000000000)).AnyTimes()
+	stateLedger.EXPECT().SubEVMBalance(gomock.Any(), gomock.Any()).AnyTimes()
+	stateLedger.EXPECT().ExistEVM(gomock.Any()).AnyTimes()
+	stateLedger.EXPECT().CreateEVMAccount(gomock.Any()).AnyTimes()
+	stateLedger.EXPECT().AddEVMBalance(gomock.Any(), gomock.Any()).AnyTimes()
+	stateLedger.EXPECT().GetEVMCode(gomock.Any()).AnyTimes()
+	stateLedger.EXPECT().GetEVMRefund().AnyTimes()
+	var txs3 []pb.Transaction
+	txs3 = append(txs3, tx4)
+	types2.InitEIP155Signer(big.NewInt(1))
+	exec.ApplyReadonlyTransactions(txs3)
+
+}
+
+func TestCalcTimeoutL2Root(t *testing.T) {
+	exec := executor_start(t)
+	hashres, err := exec.calcTimeoutL2Root([]string{"1", "2", "3"})
+	require.Nil(t, err)
+	require.NotNil(t, hashres)
 }
 
 func listenBlock(wg *sync.WaitGroup, done chan bool, blockCh chan events.ExecutedEvent) {
@@ -453,7 +539,7 @@ func mockTx1(t *testing.T, data *pb.TransactionData, ibtp *pb.IBTP) *pb.BxhTrans
 		content, _ = data.Marshal()
 	}
 	to := &types.Address{
-		Address: "0x000000000000000000000000000000000000000A",
+		Address: "0x000000000000000000000000000000000000000f",
 	}
 	return &pb.BxhTransaction{
 		To:      to,
@@ -579,6 +665,41 @@ func genBVMContractTransaction(privateKey crypto.PrivateKey, nonce uint64, addre
 
 func genXVMContractTransaction(privateKey crypto.PrivateKey, nonce uint64, address *types.Address, method string, args ...*pb.Arg) (pb.Transaction, error) {
 	return genContractTransaction(pb.TransactionData_XVM, privateKey, nonce, address, method, args...)
+}
+
+func genEthTransaction(nonce uint64, address *common.Address, value *big.Int, data []byte) (pb.Transaction, error) {
+	t := time.Now()
+	txData := &types3.LegacyTx{
+		Nonce:    nonce,
+		GasPrice: big.NewInt(10000),
+		Gas:      uint64(1000000),
+		To:       address,
+		Value:    value,
+		Data:     data,
+	}
+	hash := types2.RlpHash([]interface{}{
+		txData.GetNonce(),
+		txData.GetGasPrice(),
+		txData.GetGas(),
+		txData.GetTo(),
+		txData.GetValue(),
+		txData.GetData(),
+	})
+	privkey, _ := asym.GenerateKeyPair(crypto.Secp256k1)
+	signature, _ := asym.SignWithType(privkey, hash.Bytes())
+
+	r := big.NewInt(int64(binary.LittleEndian.Uint32(signature[0:32])))
+	s := big.NewInt(int64(binary.LittleEndian.Uint32(signature[32:64])))
+	v := big.NewInt(int64(signature[64]))
+	txData.R = r
+	txData.S = s
+	txData.V = v
+	tx := &types2.EthTransaction{
+		Inner: txData,
+		Time:  t,
+	}
+
+	return tx, nil
 }
 
 func genContractTransaction(vmType pb.TransactionData_VMType, privateKey crypto.PrivateKey, nonce uint64, address *types.Address, method string, args ...*pb.Arg) (pb.Transaction, error) {
@@ -1021,4 +1142,26 @@ func mockRecordLedger(ledger map[string][]byte, txList []pb.Transaction, height 
 		}
 	}
 	return ledger
+}
+
+func executor_start(t *testing.T) *BlockExecutor {
+	config := generateMockConfig(t)
+	mockCtl := gomock.NewController(t)
+	chainLedger := mock_ledger.NewMockChainLedger(mockCtl)
+	stateLedger := mock_ledger.NewMockStateLedger(mockCtl)
+	mockLedger := &ledger.Ledger{
+		ChainLedger: chainLedger,
+		StateLedger: stateLedger,
+	}
+
+	// mock data for ledger
+	chainMeta := &pb.ChainMeta{
+		Height:    1,
+		BlockHash: types.NewHashByStr(from),
+	}
+	chainLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
+
+	logger := log.NewWithModule("executor")
+	executor, _ := New(mockLedger, logger, &appchain.Client{}, config, big.NewInt(5000000))
+	return executor
 }

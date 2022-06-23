@@ -9,17 +9,15 @@ import (
 	"testing"
 	"time"
 
-	peer_mgr "github.com/meshplus/bitxhub-core/peer-mgr"
-
-	swarm "github.com/libp2p/go-libp2p-swarm"
-
 	"github.com/Rican7/retry"
 	"github.com/Rican7/retry/strategy"
 	"github.com/golang/mock/gomock"
 	crypto2 "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
+	swarm "github.com/libp2p/go-libp2p-swarm"
 	"github.com/meshplus/bitxhub-core/governance"
 	node_mgr "github.com/meshplus/bitxhub-core/node-mgr"
+	peer_mgr "github.com/meshplus/bitxhub-core/peer-mgr"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/crypto/asym/ecdsa"
@@ -230,6 +228,32 @@ func TestSwarm_GetBlockPack(t *testing.T) {
 		err = swarms[i].Stop()
 		require.Nil(t, err)
 	}
+}
+
+func TestMessage_FETCH_P2P_PUBKEY(t *testing.T) {
+	peerCnt := 4
+	swarms := NewSwarms(t, peerCnt)
+	defer stopSwarms(t, swarms)
+
+	for swarms[0].CountConnectedPeers() != 3 {
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	msg := &pb.Message{
+		Type: pb.Message_FETCH_P2P_PUBKEY,
+	}
+	var res *pb.Message
+	var err error
+	err = retry.Retry(func(attempt uint) error {
+		res, err = swarms[0].Send(uint64(2), msg)
+		if err != nil {
+			swarms[0].logger.Errorf(err.Error())
+			return err
+		}
+		return nil
+	}, strategy.Wait(50*time.Millisecond))
+	require.Nil(t, err)
+	require.Equal(t, pb.Message_FETCH_P2P_PUBKEY_ACK, res.Type)
 }
 
 func stopSwarms(t *testing.T, swarms []*Swarm) error {

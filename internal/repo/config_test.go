@@ -40,7 +40,10 @@ func TestReadConfig(t *testing.T) {
 
 	_, err = UnmarshalConfig(v, "../../config", "")
 	require.Nil(t, err)
-
+	_, err = UnmarshalConfig(v, "../../config", "path")
+	require.NotNil(t, err)
+	_, err = UnmarshalConfig(v, "../../config", "../../config/bitxhub.toml")
+	require.Nil(t, err)
 	pathRoot, err := PathRoot()
 	require.Nil(t, err)
 	dir, err := homedir.Expand(defaultPathRoot)

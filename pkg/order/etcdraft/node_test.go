@@ -2,7 +2,6 @@ package etcdraft
 
 import (
 	"fmt"
-	"github.com/meshplus/bitxhub/pkg/peermgr"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -17,6 +16,7 @@ import (
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/repo"
+	"github.com/meshplus/bitxhub/pkg/peermgr"
 	"github.com/meshplus/bitxhub/pkg/peermgr/mock_peermgr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -83,6 +83,9 @@ func TestNode_Start(t *testing.T) {
 	commitEvent := <-raft.Commit()
 	require.Equal(t, uint64(2), commitEvent.Block.BlockHeader.Number)
 	require.Equal(t, 1, len(commitEvent.Block.Transactions.Transactions))
+
+	channel := make(chan pb.Transactions, 1024)
+	raft.SubscribeTxEvent(channel)
 
 	raft.Stop()
 }

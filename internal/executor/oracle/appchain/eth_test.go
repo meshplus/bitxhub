@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/light"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -104,5 +105,14 @@ func TestVerifyProof(t *testing.T) {
 
 	MinConfirmNum = 0
 	err = oracle.VerifyProof(receipts[index], proof)
+	tmp := receipts[index].Status
+	receipts[index].Status = 0
+	oracle.VerifyProof(receipts[index], proof)
+	receipts[index].Status = tmp
+
+	tmp2 := receipts[index].BlockHash
+	receipts[index].BlockHash = common.Hash{}
+	oracle.VerifyProof(receipts[index], proof)
+	receipts[index].BlockHash = tmp2
 	require.Nil(t, err)
 }

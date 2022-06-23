@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/stretchr/testify/assert"
@@ -78,6 +79,18 @@ func TestTakeSnapshotAndGC(t *testing.T) {
 	err = node.raftStorage.TakeSnapshot(uint64(6), node.confState, []byte("test6"))
 	ast.Equal(5, len(node.raftStorage.snapshotIndex), "gc Snap and wal 1")
 
+	entries = []raftpb.Entry{raftpb.Entry{Term: uint64(1), Index: uint64(6)}}
+	node.raftStorage.ram.Append(entries)
+	tmp := node.raftStorage.snapDir
+	node.raftStorage.snapDir = ""
+	err = node.raftStorage.TakeSnapshot(uint64(6), node.confState, []byte("test6"))
+	node.raftStorage.snapDir = tmp
+
+	entries = []raftpb.Entry{raftpb.Entry{Term: uint64(1), Index: uint64(6)}}
+	node.raftStorage.ram.Append(entries)
+	node.raftStorage.walDir = ""
+	err = node.raftStorage.TakeSnapshot(uint64(6), node.confState, []byte("test6"))
+
 	err = node.raftStorage.Close()
 	ast.Nil(err)
 }
@@ -112,4 +125,10 @@ func TestCreateOrReadWAL(t *testing.T) {
 	ast.Nil(err1)
 	ast.Equal(uint64(1), st.Term)
 	ast.Equal(1, len(ents))
+}
+
+func TestListSnapshots(t *testing.T) {
+	logger := log.NewWithModule("consensus")
+	ListSnapshots(logger, "")
+
 }

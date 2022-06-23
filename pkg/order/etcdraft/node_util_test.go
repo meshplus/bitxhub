@@ -10,25 +10,23 @@ import (
 	"testing"
 	"time"
 
-	"github.com/meshplus/bitxhub-core/governance"
-	node_mgr "github.com/meshplus/bitxhub-core/node-mgr"
-	"github.com/meshplus/bitxhub-core/order"
-	orderPeerMgr "github.com/meshplus/bitxhub-core/peer-mgr"
-	"github.com/meshplus/bitxhub-model/constant"
-
-	"github.com/meshplus/bitxhub/internal/ledger"
-
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/golang/mock/gomock"
 	crypto2 "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/meshplus/bitxhub-core/governance"
+	node_mgr "github.com/meshplus/bitxhub-core/node-mgr"
+	"github.com/meshplus/bitxhub-core/order"
+	orderPeerMgr "github.com/meshplus/bitxhub-core/peer-mgr"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/crypto/asym/ecdsa"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/types"
+	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/ledger/mock_ledger"
 	"github.com/meshplus/bitxhub/internal/repo"
 	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
@@ -55,6 +53,15 @@ func constructTx(nonce uint64) pb.Transaction {
 	return tx
 }
 
+func TestCreateStorageErr(t *testing.T) {
+	logger := log.NewWithModule("consensus")
+	walDir := filepath.Join("./storage", "wal")
+	snapDir := filepath.Join("./storage", "snap")
+	dbDir := filepath.Join("./storage", "state")
+	CreateStorage(logger, walDir, "", dbDir, raft.NewMemoryStorage())
+	CreateStorage(logger, walDir, snapDir, "", raft.NewMemoryStorage())
+}
+
 func mockRaftNode(t *testing.T) (*Node, error) {
 	logger := log.NewWithModule("consensus")
 	batchTimerMgr := NewTimer(500*time.Millisecond, logger)
@@ -63,6 +70,7 @@ func mockRaftNode(t *testing.T) (*Node, error) {
 	snapDir := filepath.Join("./testdata/storage", "snap")
 	dbDir := filepath.Join("./testdata/storage", "state")
 	raftStorage, dbStorage, _ := CreateStorage(logger, walDir, snapDir, dbDir, raft.NewMemoryStorage())
+
 	repoRoot := "./testdata/"
 	raftConfig, timedGenBlock, _ := generateRaftConfig(repoRoot)
 	peerCnt := 4

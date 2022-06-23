@@ -1,16 +1,16 @@
 package repo
 
 import (
-	"github.com/spf13/viper"
 	"testing"
 
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNetworkConfig(t *testing.T) {
 	path := "./testdata"
-	cfg, err := loadNetworkConfig(viper.New(), path, Genesis{
+	genesis := Genesis{
 		Admins: []*Admin{
 			&Admin{
 				Address: "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013",
@@ -29,8 +29,8 @@ func TestNetworkConfig(t *testing.T) {
 				Weight:  1,
 			},
 		},
-	})
-
+	}
+	cfg, err := loadNetworkConfig(viper.New(), path, genesis)
 	require.Nil(t, err)
 	peers, err := cfg.GetNetworkPeers()
 	require.Nil(t, err)
@@ -44,6 +44,9 @@ func TestNetworkConfig(t *testing.T) {
 
 	vpInfos := cfg.GetVpInfos()
 	require.Equal(t, 4, len(vpInfos))
+
+	cfg, err = loadNetworkConfig(viper.New(), path, genesis)
+	require.Nil(t, err)
 }
 
 func TestRewriteNetworkConfig(t *testing.T) {
@@ -76,7 +79,11 @@ func TestRewriteNetworkConfig(t *testing.T) {
 	}
 	err := RewriteNetworkConfig("./testdata", infos, false)
 	require.Nil(t, err)
-
+	err = RewriteNetworkConfig("./testa", infos, false)
+	require.NotNil(t, err)
 	_, err = GetPidFromPrivFile("testdata/certs/node.priv")
 	require.Nil(t, err)
+	_, err = GetPidFromPrivFile("testdata/certs/nod")
+	require.NotNil(t, err)
+
 }

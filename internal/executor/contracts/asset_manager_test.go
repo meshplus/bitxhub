@@ -103,4 +103,6 @@ func TestEthHeaderManager(t *testing.T) {
 	res = ehm.Mint([]byte((receiptJson1)), nil)
 	require.True(t, !res.Ok)
 
+	ehm.GetPrefixedHash("hash")
+
 }

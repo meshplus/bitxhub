@@ -22,6 +22,7 @@ GOLDFLAGS += -X "${VERSION_DIR}.CurrentVersion=${APP_VERSION}"
 
 GO  = GO111MODULE=on go
 TEST_PKGS := $(shell $(GO) list ./... | grep -v 'mock_*' | grep -v 'tester' | grep -v 'proto' | grep -v 'cmd'| grep -v 'api')
+TEST_PKGS2 := $(shell $(GO) list ./... | grep -v 'etcdraft' | grep -v 'syncer' | grep -v 'peermgr'| grep -v 'vm' | grep -v 'proof'  | grep -v 'appchain' | grep -v 'repo' | grep -v 'mock_*' | grep -v 'tester' | grep -v 'proto' | grep -v 'cmd'| grep -v 'api')
 
 RED=\033[0;31m
 GREEN=\033[0;32m
@@ -46,7 +47,7 @@ test:
 ## make test-coverage: Test project with cover
 test-coverage:
 	go generate ./...
-	@go test -timeout 300s -short -coverprofile cover.out -covermode=atomic ${TEST_PKGS}
+	@go test -timeout 300s -short -coverprofile cover.out -covermode=atomic ${TEST_PKGS2}
 	@cat cover.out | grep -v "pb.go" >> coverage.txt
 
 ## make tester: Run integration test

@@ -66,10 +66,15 @@ func TestStateSyncer_SyncCFTBlocks(t *testing.T) {
 	syncer, err := New(10, mockPeerMgr, 2, peerIds, logger)
 	require.Nil(t, err)
 
+	syncer2, err2 := New(0, mockPeerMgr, 0, peerIds, logger)
+	require.NotNil(t, err2)
+	require.Nil(t, syncer2)
+
 	begin := 2
 	end := 100
 	blockCh := make(chan *pb.Block, 1024)
 	go syncer.SyncCFTBlocks(uint64(begin), uint64(end), blockCh)
+	go syncer.SyncCFTBlocks(uint64(end), uint64(begin), blockCh)
 
 	blocks := make([]*pb.Block, 0)
 	for block := range blockCh {
@@ -96,6 +101,7 @@ func TestStateSyncer_SyncBFTBlocks(t *testing.T) {
 
 	metaHash := types.NewHashByStr("0xbC1C6897f97782F3161492d5CcfBE0691502f15894A0b2f2f40069C995E33cCB")
 	go syncer.SyncBFTBlocks(uint64(begin), uint64(end), metaHash, blockCh)
+	go syncer.SyncBFTBlocks(uint64(end), uint64(begin), metaHash, blockCh)
 
 	blocks := make([]*pb.Block, 0)
 	for block := range blockCh {
@@ -106,6 +112,10 @@ func TestStateSyncer_SyncBFTBlocks(t *testing.T) {
 	}
 
 	require.Equal(t, len(blocks), end-begin+1)
+
+	syncer.fetchBlocks(1, 100, 1)
+	syncer.verifyBlockHeaders(nil, []*pb.BlockHeader{})
+	syncer.verifyBlock(nil, nil)
 }
 
 func genBlocks(count int) []*pb.Block {

@@ -83,4 +83,10 @@ func TestAccount_AccountBalance(t *testing.T) {
 	account.AddBalance(big.NewInt(1))
 	account.SubBalance(big.NewInt(1))
 
+	account.SubBalance(big.NewInt(0))
+
+	account.setCodeAndHash([]byte{'1'})
+	account.dirtyAccount = nil
+	account.setBalance(big.NewInt(1))
+
 }

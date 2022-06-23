@@ -20,7 +20,9 @@ import (
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/ledger/mock_ledger"
+	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/bitxhub/pkg/utils"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -30,6 +32,47 @@ const (
 	HappyRuleAddr = "0x00000000000000000000000000000000000000a2"
 	wasmGasLimit  = 5000000000000000
 )
+
+func TestNew(t *testing.T) {
+	config := generateMockConfig(t)
+	mockCtl := gomock.NewController(t)
+	chainLedger := mock_ledger.NewMockChainLedger(mockCtl)
+	stateLedger := mock_ledger.NewMockStateLedger(mockCtl)
+
+	mockLedger := &ledger.Ledger{
+		ChainLedger: chainLedger,
+		StateLedger: stateLedger,
+	}
+	logger := log.NewWithModule("executor")
+
+	ve := New(mockLedger, logger, config.ChainID, config.GasLimit)
+	assert.NotNil(t, ve)
+}
+
+func TestPutProof(t *testing.T) {
+	mockCtl := gomock.NewController(t)
+	chainLedger := mock_ledger.NewMockChainLedger(mockCtl)
+	stateLedger := mock_ledger.NewMockStateLedger(mockCtl)
+	mockLedger := &ledger.Ledger{
+		ChainLedger: chainLedger,
+		StateLedger: stateLedger,
+	}
+	mockEngine := mock_validator.NewMockEngine(mockCtl)
+	vp := &VerifyPool{
+		ledger:    mockLedger,
+		ve:        mockEngine,
+		logger:    log.NewWithModule("test_verify"),
+		bitxhubID: "1356",
+	}
+	hash := types.Hash{}
+	proof := []byte{'1'}
+	vp.putProof(hash, proof)
+
+	var err bool
+	proof, err = vp.GetProof(hash)
+	assert.Equal(t, err, true)
+
+}
 
 func TestVerifyPool_CheckProof(t *testing.T) {
 	mockCtl := gomock.NewController(t)
@@ -271,4 +314,18 @@ func getIBTP(t *testing.T, index uint64, typ pb.IBTP_Type, proof []byte) *pb.IBT
 		Type:    typ,
 		Proof:   proof,
 	}
+}
+
+func generateMockConfig(t *testing.T) *repo.Config {
+	config, err := repo.DefaultConfig()
+	assert.Nil(t, err)
+
+	for i := 0; i < 4; i++ {
+		config.Admins = append(config.Admins, &repo.Admin{
+			Address: types.NewAddress([]byte{byte(1)}).String(),
+			Weight:  2,
+		})
+	}
+
+	return config
 }

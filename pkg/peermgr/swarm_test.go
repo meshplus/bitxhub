@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/meshplus/bitxhub-model/pb"
-
 	"github.com/stretchr/testify/require"
 )
 
@@ -91,4 +90,24 @@ func TestSwarm_Disconnect(t *testing.T) {
 	m[4] = &pb.VpInfo{Id: 4}
 	swarms[0].Disconnect(m)
 	require.Equal(t, 4, len(swarms[0].routers))
+}
+
+/*func TestSwarm_ReConfig(t *testing.T) {
+	peerCnt := 4
+	swarms := NewSwarms(t, peerCnt)
+	defer stopSwarms(t, swarms)
+	config := &repo.NetworkConfig{}
+	swarms[0].ReConfig(config)
+	config2 := &repo.Config{}
+	swarms[0].ReConfig(config2)
+}*/
+
+func TestSubscribeTssMessage(t *testing.T) {
+	peerCnt := 4
+	swarms := NewSwarms(t, peerCnt)
+	defer stopSwarms(t, swarms)
+	tssMsgCh := make(chan *pb.Message)
+	swarms[0].SubscribeTssMessage(tssMsgCh)
+	swarms[0].SubscribeTssSignRes(tssMsgCh)
+
 }

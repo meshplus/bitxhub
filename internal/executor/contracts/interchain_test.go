@@ -87,6 +87,10 @@ func TestInterchainManager_Register(t *testing.T) {
 	res = im.Register(srcChainService.getChainServiceId())
 	assert.Equal(t, true, res.Ok)
 	assert.Equal(t, data1, res.Result)
+
+	ibtp := &pb.IBTP{}
+	ibtp.To = "bxh:appchain:00x123"
+	im.checkTxStatusForTargetBxh(ibtp)
 }
 
 func TestInterchainManager_GetInterchain(t *testing.T) {
