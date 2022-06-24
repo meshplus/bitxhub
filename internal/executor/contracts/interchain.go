@@ -101,7 +101,7 @@ func (x *InterchainManager) SetServiceCache(key string, service *service_mgr.Ser
 	if x.ServiceCache == nil {
 		x.ServiceCache = &sync.Map{}
 	}
-	x.ServiceCache.LoadOrStore(key, service)
+	x.ServiceCache.Store(key, service)
 }
 
 func (x *InterchainManager) Register(chainServiceID string) *boltvm.Response {
@@ -216,12 +216,12 @@ func (x *InterchainManager) HandleIBTP(ibtp *pb.IBTP) *boltvm.Response {
 
 	ret := x.ProcessIBTP(ibtp, interchain, targetErr != nil)
 
-	//if err := x.postAuditInterchainEvent(ibtp.From); err != nil {
-	//	return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), fmt.Sprintf("post audit interchain event error: %v", err)))
-	//}
-	//if err := x.postAuditInterchainEvent(ibtp.To); err != nil {
-	//	return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), fmt.Sprintf("post audit interchain event error: %v", err)))
-	//}
+	if err := x.postAuditInterchainEvent(ibtp.From); err != nil {
+		return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), fmt.Sprintf("post audit interchain event error: %v", err)))
+	}
+	if err := x.postAuditInterchainEvent(ibtp.To); err != nil {
+		return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), fmt.Sprintf("post audit interchain event error: %v", err)))
+	}
 	return boltvm.Success(ret)
 }
 
