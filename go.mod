@@ -34,11 +34,11 @@ require (
 	github.com/libp2p/go-libp2p-swarm v0.2.4
 	github.com/looplab/fsm v0.2.0
 	github.com/magiconair/properties v1.8.4
-	github.com/meshplus/bitxhub-core v1.3.1-0.20220629073255-b461090d935e
+	github.com/meshplus/bitxhub-core v1.3.1-0.20220607070129-b45fc4336d23
 	github.com/meshplus/bitxhub-kit v1.2.1-0.20220610092251-68e35ef37b7a
-	github.com/meshplus/bitxhub-model v1.2.1-0.20220613013608-1109d065eb6b
+	github.com/meshplus/bitxhub-model v1.2.1-0.20220610034930-e87191588edd
 	github.com/meshplus/consensus v0.0.0-20211228075008-5f469b198531
-	github.com/meshplus/eth-kit v0.0.0-20220628031226-4b30a994a2a6
+	github.com/meshplus/eth-kit v0.0.0-20220105081940-c90e9f2aa162
 	github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd
 	github.com/meshplus/go-lightp2p v0.0.0-20220117071358-c37ba4e6dcbc
 	github.com/miguelmota/go-solidity-sha3 v0.1.1
@@ -80,3 +80,7 @@ replace github.com/agl/ed25519 => github.com/binance-chain/edwards25519 v0.0.0-2
 replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4
 
 replace github.com/golang/protobuf => github.com/golang/protobuf v1.3.2
+
+replace github.com/meshplus/bitxhub-core => github.com/meshplus/bitxhub-core v1.3.1-0.20220624071258-4e2baa777bc6
+
+replace github.com/meshplus/bitxhub-model => github.com/meshplus/bitxhub-model v1.2.1-0.20220624071707-bf35c8b1b443

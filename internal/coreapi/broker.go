@@ -186,6 +186,7 @@ func (b *BrokerAPI) FetchSignsFromOtherPeers(req *pb.GetSignsRequest) map[string
 	wg.Add(len(signers))
 	for _, pid := range signers {
 		go func(pid uint64, result map[string][]byte, wg *sync.WaitGroup, lock *sync.Mutex) {
+			defer wg.Done()
 			var (
 				address string
 				sign    []byte
@@ -219,12 +220,9 @@ func (b *BrokerAPI) FetchSignsFromOtherPeers(req *pb.GetSignsRequest) map[string
 					lock.Unlock()
 				}
 			}
-			wg.Done()
 		}(pid, result, &wg, &lock)
 	}
-
 	wg.Wait()
-
 	return result
 }
 
@@ -459,6 +457,7 @@ func (b *BrokerAPI) FetchTssInfoFromOtherPeers() []*pb.TssInfo {
 	wg.Add(len(b.bxh.PeerMgr.OtherPeers()))
 	for pid, _ := range b.bxh.PeerMgr.OtherPeers() {
 		go func(pid uint64, wg *sync.WaitGroup, lock *sync.Mutex) {
+			defer wg.Done()
 			if err := retry.Retry(func(attempt uint) error {
 				info, err := b.requestTssInfo(pid)
 				if err != nil {
@@ -480,8 +479,6 @@ func (b *BrokerAPI) FetchTssInfoFromOtherPeers() []*pb.TssInfo {
 					"err": err.Error(),
 				}).Warnf("retry error")
 			}
-
-			wg.Done()
 		}(pid, &wg, &lock)
 	}
 	wg.Wait()

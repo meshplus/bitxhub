@@ -16,10 +16,13 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func (t *TssMgr) Keygen(isKeygenReq bool) error {
-	t.logger.Infof("============== Keygen start, %v", isKeygenReq)
+func (t *TssMgr) Keygen(isAddNodeReq bool) error {
+	t.logger.Infof("============== Keygen start, %v", isAddNodeReq)
+	t.keyGenLocker.Lock()
+	defer t.keyGenLocker.Unlock()
+	t.keyRoundDone.Store(false)
 	// 如果是因为新增节点收到了keygen req,不需要检查本地tss信息，直接keygen
-	if !isKeygenReq {
+	if !isAddNodeReq {
 		// 1. 获取本地持久化公钥信息
 		tssStatus := true // specify whether the current node is a TSS node
 		myPoolPkAddr, _, err := t.GetTssPubkey()
@@ -96,8 +99,6 @@ func (t *TssMgr) Keygen(isKeygenReq bool) error {
 				"pubkeys": keys,
 				"msgID":   msgID,
 			}).Warnf("repeated msgID tss")
-			// 如果keygen的msgid相同，可能当前有未结束的keygen，等一个keygen超时再重试
-			time.Sleep(t.tssConf.KeyGenTimeout)
 			return fmt.Errorf("repeated msgID: %s", msgID)
 		}
 		t.tssInstances.Store(msgID, tssInstance)
@@ -105,7 +106,7 @@ func (t *TssMgr) Keygen(isKeygenReq bool) error {
 		resp, err := tssInstance.Keygen(keygenReq)
 		if err != nil {
 			t.logger.WithFields(logrus.Fields{
-				"pubkeys": keys,
+				"pubKeys": keys,
 				"error":   err,
 			}).Warnf("tss keygen error, retry later...")
 			return fmt.Errorf("tss key generate: %w", err)
@@ -123,7 +124,7 @@ func (t *TssMgr) Keygen(isKeygenReq bool) error {
 		}).Errorf("tss keygen failed")
 		return fmt.Errorf("tss keygen failed: %v", err)
 	}
-
+	t.keyRoundDone.Store(true)
 	return nil
 }
 

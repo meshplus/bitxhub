@@ -33,7 +33,7 @@ solo = false
   gateway_key_path = "certs/gateway.priv"
 
 [tss]
-  enable_tss = true
+  enable_tss = false
   key_gen_timeout = "90s"
   key_sign_timeout = "90s"
   pre_param_timeout = "100s"
@@ -71,7 +71,7 @@ solo = false
   ca_cert_path = "certs/ca.cert"
 
 [order]
-  type = "rbft"
+  type = "raft"
 
 [executor]
   type = "serial"  # opensource version only supports serial type, commercial version supports serial and parallel types
@@ -101,31 +101,31 @@ solo = false
     weight = 2
   [[genesis.strategy]]
     module = "appchain_mgr"
-    typ = "ZeroPermission"
+    typ = "SimpleMajority"
     extra = "a > 0.5 * t"
   [[genesis.strategy]]
     module = "proposal_strategy_mgr"
-    typ = "ZeroPermission"
+    typ = "SimpleMajority"
     extra = "a > 0.5 * t"
   [[genesis.strategy]]
     module = "rule_mgr"
-    typ = "ZeroPermission"
+    typ = "SimpleMajority"
     extra = "a > 0.5 * t"
   [[genesis.strategy]]
     module = "node_mgr"
-    typ = "ZeroPermission"
+    typ = "SimpleMajority"
     extra = "a > 0.5 * t"
   [[genesis.strategy]]
     module = "service_mgr"
-    typ = "ZeroPermission"
+    typ = "SimpleMajority"
     extra = "a > 0.5 * t"
   [[genesis.strategy]]
     module = "role_mgr"
-    typ = "ZeroPermission"
+    typ = "SimpleMajority"
     extra = "a > 0.5 * t"
   [[genesis.strategy]]
     module = "dapp_mgr"
-    typ = "ZeroPermission"
+    typ = "SimpleMajority"
     extra = "a > 0.5 * t"
 
 

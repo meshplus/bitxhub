@@ -390,7 +390,7 @@ func (swarm *Swarm) AddNode(newNodeID uint64, vpInfo *pb.VpInfo) {
 	}
 
 	// 4. send tss keygen req
-	if newNodeID != swarm.localID {
+	if swarm.repo.Config.Tss.EnableTSS && newNodeID != swarm.localID {
 		swarm.tssKeygenReqFeed.Send(&pb.Message{
 			Type: pb.Message_TSS_KEYGEN_REQ,
 		})

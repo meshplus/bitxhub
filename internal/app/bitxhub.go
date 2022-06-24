@@ -311,8 +311,8 @@ func (bxh *BitXHub) Start() error {
 			bxh.logger.Errorf("tss key generate error: %v", err)
 			return fmt.Errorf("tss key generate: %w", err)
 		}
-		timeKeygen := time.Since(time1).Milliseconds()
-		bxh.logger.Infof("=============================keygen time: %d", timeKeygen)
+		timeKeygen := time.Since(time1)
+		bxh.logger.Infof("=============================keygen time: %v", timeKeygen)
 	}
 
 	return nil

@@ -23,6 +23,8 @@ import (
 // - blame nodes id list
 // - error
 func (t *TssMgr) Keysign(signers []string, msgs []string, randomN string) ([]byte, []string, error) {
+	t.keyRoundDone.Store(false)
+	defer t.keyRoundDone.Store(true)
 	// 1. get pool pubkey
 	_, pk, err := t.GetTssPubkey()
 	if err != nil {
@@ -34,7 +36,7 @@ func (t *TssMgr) Keysign(signers []string, msgs []string, randomN string) ([]byt
 	if err != nil {
 		return nil, nil, fmt.Errorf("fail to get keygen parties pk map error: %w", err)
 	}
-	signersPk := []crypto3.PubKey{}
+	signersPk := make([]crypto3.PubKey, 0)
 	for _, id := range signers {
 		data, ok := tssInfo.PartiesPkMap[id]
 		if !ok {
@@ -53,9 +55,9 @@ func (t *TssMgr) Keysign(signers []string, msgs []string, randomN string) ([]byt
 	if err != nil {
 		return nil, nil, err
 	}
-	tssInstance := t.tssPools.Get()
+	tssInstance := t.tssPools.Get().(*tss.TssInstance)
 	defer t.tssPools.Put(tssInstance)
-	err = tssInstance.(*tss.TssInstance).InitTssInfo(msgID, len(keysignReq.Messages), t.localPrivK, t.threshold, t.tssConf, t.keygenPreParams, t.keygenLocalState, t.peerMgr, t.logger)
+	err = tssInstance.InitTssInfo(msgID, len(keysignReq.Messages), t.localPrivK, t.threshold, t.tssConf, t.keygenPreParams, t.keygenLocalState, t.peerMgr, t.logger)
 	if err != nil {
 		return nil, nil, fmt.Errorf("tss init error: %v", err)
 	}
@@ -65,7 +67,8 @@ func (t *TssMgr) Keysign(signers []string, msgs []string, randomN string) ([]byt
 	}
 	t.tssInstances.Store(msgID, tssInstance)
 	defer t.tssInstances.Delete(msgID)
-	resp, err := tssInstance.(*tss.TssInstance).Keysign(keysignReq)
+	resp, err := tssInstance.Keysign(keysignReq)
+	t.logger.WithFields(logrus.Fields{"resp": resp, "err": err}).Debug("get key sign")
 	if err != nil {
 		if errors.Is(err, tss.ErrNotActiveSigner) {
 			return nil, nil, err

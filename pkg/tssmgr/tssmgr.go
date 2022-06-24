@@ -1,12 +1,16 @@
 package tssmgr
 
 import (
+	"context"
 	"crypto/ecdsa"
+	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/Rican7/retry"
@@ -16,6 +20,7 @@ import (
 	peer_mgr "github.com/meshplus/bitxhub-core/peer-mgr"
 	"github.com/meshplus/bitxhub-core/tss"
 	"github.com/meshplus/bitxhub-core/tss/conversion"
+	"github.com/meshplus/bitxhub-core/tss/message"
 	"github.com/meshplus/bitxhub-core/tss/storage"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/repo"
@@ -34,6 +39,8 @@ type TssMgr struct {
 	tssConf         tss.TssConfig
 	netConf         *repo.NetworkConfig
 	tssRepo         string
+	orderReadyPeers map[uint64]bool
+	keyRoundDone    atomic.Value
 
 	keygenPreParams  *bkg.LocalPreParams
 	keygenLocalState *storage.KeygenLocalState
@@ -44,6 +51,10 @@ type TssMgr struct {
 	stateMgrLocker *sync.Mutex
 	peerMgr        peer_mgr.OrderPeerManager
 	logger         logrus.FieldLogger
+	keyGenLocker   *sync.Mutex
+
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 func NewTssMgr(
@@ -83,6 +94,9 @@ func NewTssMgr(
 			return new(tss.TssInstance)
 		},
 	}
+	ctx, cancel := context.WithCancel(context.Background())
+	var keyRoundDone atomic.Value
+	keyRoundDone.Store(false)
 	return &TssMgr{
 		localID:         netConf.ID,
 		localPrivK:      privKey,
@@ -93,24 +107,99 @@ func NewTssMgr(
 		tssRepo:         tssRepo,
 		keygenPreParams: preParams,
 		tssPools:        tssPools,
+		orderReadyPeers: make(map[uint64]bool),
+		keyRoundDone:    keyRoundDone,
 		tssInstances:    &sync.Map{},
 		peerMgr:         peerMgr,
 		stateMgr:        stateManager,
 		stateMgrLocker:  &sync.Mutex{},
+		keyGenLocker:    &sync.Mutex{},
 		logger:          logger,
+		ctx:             ctx,
+		cancel:          cancel,
 	}, nil
 }
 
+func (t *TssMgr) SetOrderReadyPeers(id uint64) {
+	t.orderReadyPeers[id] = true
+}
+
+func (t *TssMgr) GetTssStatus() bool {
+	return t.keyRoundDone.Load().(bool)
+}
+
+func (t *TssMgr) CountOrderReadyPeers() int {
+	return len(t.orderReadyPeers)
+}
+
 func (t *TssMgr) Start(threshold uint64) {
+	if err := retry.Retry(func(attempt uint) error {
+		select {
+		case <-t.ctx.Done():
+			t.logger.Infof("stop checkQuorum")
+			return nil
+
+		default:
+			err := t.CheckThreshold()
+			if err != nil {
+				t.logger.WithFields(logrus.Fields{"config num": len(t.peerMgr.OrderPeers()),
+					"order ready peer": t.orderReadyPeers}).Warning(err)
+				return err
+			}
+			return nil
+		}
+	}, strategy.Wait(2*time.Second)); err != nil {
+		panic(err)
+	}
+
 	// 1. set threshold
+	// 2. load tss local state
+
 	t.UpdateThreshold(threshold)
 
-	// 2. load tss local state
-	if err := t.loadTssLocalState(); err != nil {
-		t.logger.Warn("load tss info error: %v", err)
+	// 1. get pool addr from file
+	filePath := filepath.Join(t.tssRepo, storage.PoolPkAddrFileName)
+	if _, err := os.Stat(filePath); os.IsExist(err) {
+		if err := t.loadTssLocalState(filePath); err != nil {
+			t.logger.Warn("load tss info error: %v", err)
+		}
 	}
 
 	t.logger.Infof("Starting the TSS Manager: t-%d", threshold)
+}
+
+func (t *TssMgr) sendOrderReady() error {
+	if ok := t.orderReadyPeers[t.localID]; !ok {
+		t.orderReadyPeers[t.localID] = true
+	}
+	data := make([]byte, 8)
+	binary.LittleEndian.PutUint64(data, t.localID)
+	msg := &pb.Message{
+		Type: pb.Message_FERCH_TSS_NODES,
+		Data: data,
+	}
+	err := t.peerMgr.Broadcast(msg)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// make sure bitxhub have t+1 connected nodes
+func (t *TssMgr) CheckThreshold() error {
+	var (
+		err          error
+		broadcastErr error
+	)
+	if len(t.orderReadyPeers) < len(t.peerMgr.Peers()) {
+		err = fmt.Errorf("the number of connected Peers don't reach network config")
+	}
+	// ensure last node receive latest nodes msg
+	broadcastErr = t.sendOrderReady()
+	if broadcastErr != nil {
+		return fmt.Errorf("broadcast local nodes order ready err : %s", broadcastErr)
+	}
+	return err
 }
 
 func (t *TssMgr) GetThreshold() uint64 {
@@ -123,13 +212,7 @@ func (t *TssMgr) UpdateThreshold(threshold uint64) {
 	t.thresholdLocker.Unlock()
 }
 
-func (t *TssMgr) loadTssLocalState() error {
-	// 1. get pool addr from file
-	filePath := filepath.Join(t.tssRepo, storage.PoolPkAddrFileName)
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		return err
-	}
-
+func (t *TssMgr) loadTssLocalState(filePath string) error {
 	buf, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		return fmt.Errorf("file to read from file(%s): %w", filePath, err)
@@ -148,6 +231,7 @@ func (t *TssMgr) loadTssLocalState() error {
 }
 
 func (t *TssMgr) Stop() {
+	t.cancel()
 	t.logger.Info("The Tss and p2p server has been stopped successfully")
 }
 
@@ -155,6 +239,12 @@ func (t *TssMgr) PutTssMsg(msg *pb.Message, msgID string) {
 	if err := retry.Retry(func(attempt uint) error {
 		instance, ok := t.tssInstances.Load(msgID)
 		if !ok {
+			wireMsg := &message.WireMessage{}
+			if err := json.Unmarshal(msg.Data, wireMsg); err != nil {
+				return fmt.Errorf("wire msg unmarshal error: %v", err)
+			}
+
+			t.logger.WithFields(logrus.Fields{"msgID": wireMsg.MsgID, "type": wireMsg.MsgType}).Debug("wrong tss msg")
 			return fmt.Errorf("tss instance not found, msgID: %s", msgID)
 		} else {
 			instance.(*tss.TssInstance).PutTssMsg(msg)
