@@ -303,14 +303,14 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	go listenBlock(&wg, done, ch)
 
 	// send blocks to executor
-	commitEvent1 := mockCommitEvent(uint64(1), nil)
+	commitEvent1 := mockCommitEvent(uint64(2), nil)
 
 	transactions := make([]pb.Transaction, 0)
 	for _, tx := range txs {
 		transactions = append(transactions, tx)
 	}
 
-	commitEvent2 := mockCommitEvent(uint64(2), transactions)
+	commitEvent2 := mockCommitEvent(uint64(3), transactions)
 	exec.ExecuteBlock(commitEvent1)
 	exec.ExecuteBlock(commitEvent2)
 
