@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math"
 	"strconv"
-	"strings"
 
 	"github.com/meshplus/bitxhub-model/constant"
 
@@ -163,7 +162,7 @@ func (t *TransactionManager) Begin(txId string, timeoutHeight uint64, isFailed b
 	if isFailed {
 		record.Status = pb.TransactionStatus_BEGIN_FAILURE
 	} else {
-		//t.addToTimeoutList(record.Height, txId)
+		t.addToTimeoutList(record.Height, txId)
 	}
 
 	t.AddObject(TxInfoKey(txId), record)
@@ -197,7 +196,7 @@ func (t *TransactionManager) Report(txId string, result int32) *boltvm.Response 
 		change.CurStatus = record.Status
 
 		t.SetObject(TxInfoKey(txId), record)
-		//t.removeFromTimeoutList(record.Height, txId)
+		t.removeFromTimeoutList(record.Height, txId)
 	} else {
 		ok, val := t.Get(txId)
 		if !ok {
@@ -295,31 +294,26 @@ func (t *TransactionManager) setFSM(state *pb.TransactionStatus, event Transacti
 }
 
 func (t *TransactionManager) addToTimeoutList(height uint64, txId string) {
-	var timeoutList string
-	var builder strings.Builder
-	ok, val := t.Get(TimeoutKey(height))
+	var timeoutList []string
+	ok := t.GetObject(TimeoutKey(height), &timeoutList)
 	if !ok {
-		timeoutList = txId
+		timeoutList = []string{txId}
 	} else {
-		timeoutList = string(val)
-		builder.WriteString(timeoutList)
-		builder.WriteString(",")
-		builder.WriteString(txId)
-		timeoutList = builder.String()
+		timeoutList = append(timeoutList, txId)
 	}
-	t.Set(TimeoutKey(height), []byte(timeoutList))
+	t.SetObject(TimeoutKey(height), timeoutList)
 }
 
 func (t *TransactionManager) removeFromTimeoutList(height uint64, txId string) {
-	ok, timeoutList := t.Get(TimeoutKey(height))
+	var timeoutList []string
+	ok := t.GetObject(TimeoutKey(height), &timeoutList)
 	if ok {
-		list := strings.Split(string(timeoutList), ",")
-		for index, value := range list {
+		for index, value := range timeoutList {
 			if value == txId {
-				list = append(list[:index], list[index+1:]...)
+				timeoutList = append(timeoutList[:index], timeoutList[index+1:]...)
 			}
 		}
-		t.Set(TimeoutKey(height), []byte(strings.Join(list, ",")))
+		t.SetObject(TimeoutKey(height), timeoutList)
 	}
 }
 
