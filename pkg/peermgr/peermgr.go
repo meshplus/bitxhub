@@ -64,4 +64,6 @@ type PierManager interface {
 	Piers() *Piers
 
 	AskPierMaster(string) (bool, error)
+
+	IsChecked(string) bool
 }

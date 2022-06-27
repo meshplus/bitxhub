@@ -31,7 +31,7 @@ func (cbs *ChainBrokerService) CheckMasterPier(ctx context.Context, req *pb.Addr
 }
 
 func (cbs *ChainBrokerService) SetMasterPier(ctx context.Context, req *pb.PierInfo) (*pb.Response, error) {
-	ret, err := cbs.checkMasterPier(req.Address)
+	ret, err := cbs.doubleCheckMasterPier(req.Address)
 	if err != nil {
 		return nil, err
 	}
@@ -84,5 +84,16 @@ func (cbs *ChainBrokerService) checkMasterPier(address string) (bool, error) {
 	} else {
 		// cbs.logger.Infoln("remote master")
 		return pmgr.AskPierMaster(address)
+	}
+}
+
+func (cbs *ChainBrokerService) doubleCheckMasterPier(address string) (bool, error) {
+	pmgr := cbs.api.Network().PierManager()
+	if pmgr.Piers().HasPier(address) {
+		// cbs.logger.Infoln("native master")
+		return pmgr.Piers().CheckMaster(address), nil
+	} else {
+		// cbs.logger.Infoln("remote master")
+		return pmgr.IsChecked(address), nil
 	}
 }
