@@ -147,32 +147,32 @@ func (x *InterchainManager) HandleIBTPData(input []byte) *boltvm.Response {
 
 func (x *InterchainManager) HandleIBTP(ibtp *pb.IBTP) *boltvm.Response {
 	// Pier should retry if checkIBTP failed
-	interchain, targetErr, bxhErr := x.checkIBTP(ibtp)
+	_, _, bxhErr := x.checkIBTP(ibtp)
 	if bxhErr != nil {
 		return boltvm.Error(bxhErr.Code, string(bxhErr.Msg))
 	}
 
-	var change *StatusChange
-	var err error
-	if pb.IBTP_REQUEST == ibtp.Category() {
-		change, err = x.beginTransaction(ibtp, targetErr != nil)
-	} else if pb.IBTP_RESPONSE == ibtp.Category() {
-		change, err = x.reportTransaction(ibtp)
-	}
-	if err != nil {
-		return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), err.Error()))
-	}
-	x.notifySrcDst(ibtp, change)
-
-	ret := x.ProcessIBTP(ibtp, interchain, targetErr != nil)
-
-	//if err := x.postAuditInterchainEvent(ibtp.From); err != nil {
-	//	return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), fmt.Sprintf("post audit interchain event error: %v", err)))
+	//var change *StatusChange
+	//var err error
+	//if pb.IBTP_REQUEST == ibtp.Category() {
+	//	change, err = x.beginTransaction(ibtp, targetErr != nil)
+	//} else if pb.IBTP_RESPONSE == ibtp.Category() {
+	//	change, err = x.reportTransaction(ibtp)
 	//}
-	//if err := x.postAuditInterchainEvent(ibtp.To); err != nil {
-	//	return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), fmt.Sprintf("post audit interchain event error: %v", err)))
+	//if err != nil {
+	//	return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), err.Error()))
 	//}
-	return boltvm.Success(ret)
+	//x.notifySrcDst(ibtp, change)
+	//
+	//ret := x.ProcessIBTP(ibtp, interchain, targetErr != nil)
+	//
+	////if err := x.postAuditInterchainEvent(ibtp.From); err != nil {
+	////	return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), fmt.Sprintf("post audit interchain event error: %v", err)))
+	////}
+	////if err := x.postAuditInterchainEvent(ibtp.To); err != nil {
+	////	return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), fmt.Sprintf("post audit interchain event error: %v", err)))
+	////}
+	return boltvm.Success(nil)
 }
 
 func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, *boltvm.BxhError, *boltvm.BxhError) {
