@@ -52,7 +52,6 @@ type BlockWrapper struct {
 
 func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledger.BlockData {
 	var txHashList []*types.Hash
-	current := time.Now()
 	block := blockWrapper.block
 
 	// check executor handle the right block
@@ -69,13 +68,20 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	exec.verifyProofs(blockWrapper)
 	exec.evm = newEvm(block.Height(), uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateLedger, exec.ledger.ChainLedger, exec.admins[0])
 	exec.ledger.PrepareBlock(block.BlockHash, block.Height())
+	current := time.Now()
+
 	receipts := exec.txsExecutor.ApplyTransactions(block.Transactions.Transactions, blockWrapper.invalidTx)
 	applyTxsDuration.Observe(float64(time.Since(current)) / float64(time.Second))
-	exec.logger.WithFields(logrus.Fields{
-		"time":  time.Since(current),
-		"count": len(block.Transactions.Transactions),
-	}).Debug("Apply transactions elapsed")
+	//exec.logger.WithFields(logrus.Fields{
+	//	"time":  time.Since(current),
+	//	"count": len(block.Transactions.Transactions),
+	//}).Debug("Apply transactions elapsed")
 
+	exec.logger.WithFields(logrus.Fields{
+		"height": blockWrapper.block.BlockHeader.Number,
+		"count":  len(blockWrapper.block.Transactions.Transactions),
+		"elapse": time.Since(current),
+	}).Info("Executed block")
 	calcMerkleStart := time.Now()
 	l1Root, l2Roots, err := exec.buildTxMerkleTree(block.Transactions.Transactions)
 	if err != nil {
@@ -182,11 +188,11 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 		TxHashList:     txHashList,
 	}
 
-	exec.logger.WithFields(logrus.Fields{
-		"height": blockWrapper.block.BlockHeader.Number,
-		"count":  len(blockWrapper.block.Transactions.Transactions),
-		"elapse": time.Since(current),
-	}).Info("Executed block")
+	//exec.logger.WithFields(logrus.Fields{
+	//	"height": blockWrapper.block.BlockHeader.Number,
+	//	"count":  len(blockWrapper.block.Transactions.Transactions),
+	//	"elapse": time.Since(current),
+	//}).Info("Executed block")
 
 	now := time.Now()
 	exec.ledger.PersistBlockData(data)
