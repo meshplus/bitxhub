@@ -52,7 +52,7 @@ func (swarm *Swarm) AskPierMaster(address string) (bool, error) {
 			}
 		case <-ctx.Done():
 			// swarm.logger.Infoln("timeout!")
-			swarm.piers.pierChan.closeChan(address)
+			// swarm.piers.pierChan.closeChan(address)
 			cancel()
 			return false, nil
 		}
@@ -96,7 +96,17 @@ func (p *Piers) CheckMaster(address string) bool {
 }
 
 func (p *Piers) SetMaster(address string, index string, timeout int64) error {
-	return p.pierMap.setMaster(address, index, timeout)
+	err := p.pierMap.setMaster(address, index, timeout)
+	if err != nil {
+		return err
+	}
+	if p.pierChan.chanMap[address] != nil {
+		if p.pierChan.chanMap[address] != nil {
+			close(p.pierChan.chanMap[address])
+			delete(p.pierChan.chanMap, address)
+		}
+	}
+	return nil
 }
 
 func (p *Piers) HeartBeat(address string, index string) error {
@@ -204,6 +214,10 @@ func (pc *pierChan) newChan(address string) chan *pb.CheckPierResponse {
 	pc.Lock()
 	defer pc.Unlock()
 
+	if pc.chanMap[address] != nil {
+		close(pc.chanMap[address])
+		delete(pc.chanMap, address)
+	}
 	ch := make(chan *pb.CheckPierResponse, 1)
 	pc.chanMap[address] = ch
 
