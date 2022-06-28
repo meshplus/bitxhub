@@ -229,11 +229,17 @@ func (exec *BlockExecutor) verifyProofs(blockWrapper *BlockWrapper) {
 	)
 	txs := block.Transactions.Transactions
 
-	groupNum := maxGroup
+	var configGroup int
+	if exec.config.ProofType == "parallel" {
+		configGroup = maxGroup
+	} else if exec.config.ProofType == "serial" {
+		configGroup = 1
+	}
+	groupNum := configGroup
 	if len(txs) == 0 {
 		return
 	}
-	if len(txs) < maxGroup {
+	if len(txs) < configGroup {
 		groupNum = len(txs)
 	}
 	groupLen := len(txs) / groupNum

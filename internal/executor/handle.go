@@ -67,8 +67,9 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	current1 := time.Now()
 	exec.verifyProofs(blockWrapper)
 	exec.logger.WithFields(logrus.Fields{
-		"time":  time.Since(current1),
-		"count": len(block.Transactions.Transactions),
+		"time":        time.Since(current1),
+		"count":       len(block.Transactions.Transactions),
+		"verify_type": exec.config.ProofType,
 	}).Info("verify proof elapsed")
 
 	exec.evm = newEvm(block.Height(), uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateLedger, exec.ledger.ChainLedger, exec.admins[0])
@@ -192,7 +193,7 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 		"height": blockWrapper.block.BlockHeader.Number,
 		"count":  len(blockWrapper.block.Transactions.Transactions),
 		"elapse": time.Since(current),
-	}).Info("Executed block")
+	}).Debug("Executed block")
 
 	now := time.Now()
 	exec.ledger.PersistBlockData(data)
