@@ -438,6 +438,11 @@ func (exec *BlockExecutor) postBlockEvent(block *pb.Block, interchainMeta *pb.In
 		InterchainMeta: interchainMeta,
 		TxHashList:     txHashList,
 	})
+	go exec.blockFeedForRemote.Send(events.ExecutedEvent{
+		Block:          block,
+		InterchainMeta: interchainMeta,
+		TxHashList:     txHashList,
+	})
 }
 
 func (exec *BlockExecutor) postLogsEvent(receipts []*pb.Receipt) {

@@ -44,9 +44,6 @@ func (cbs *ChainBrokerService) SendTransactions(ctx context.Context, txs *pb.Mul
 		}
 
 		hash, err := cbs.sendTransaction(tx)
-		if tx.IsIBTP() {
-			cbs.logger.Infof("get transaction:appchain is %s, nonce is %d, index is %d", tx.GetFrom().String(), tx.GetNonce(), tx.GetIBTP().Index)
-		}
 		if err != nil {
 			return nil, status.Newf(codes.Internal, "internal handling transaction fail %s", err.Error()).Err()
 		}

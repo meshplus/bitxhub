@@ -39,24 +39,25 @@ var _ Executor = (*BlockExecutor)(nil)
 
 // BlockExecutor executes block from order
 type BlockExecutor struct {
-	client            *appchain.Client
-	ledger            *ledger.Ledger
-	logger            logrus.FieldLogger
-	blockC            chan *BlockWrapper
-	preBlockC         chan *pb.CommitEvent
-	persistC          chan *ledger.BlockData
-	ibtpVerify        proof.Verify
-	validationEngine  validator.Engine
-	interchainManager *contracts.InterchainManager
-	currentHeight     uint64
-	currentBlockHash  *types.Hash
-	txsExecutor       agency.TxsExecutor
-	blockFeed         event.Feed
-	logsFeed          event.Feed
-	nodeFeed          event.Feed
-	auditFeed         event.Feed
-	ctx               context.Context
-	cancel            context.CancelFunc
+	client             *appchain.Client
+	ledger             *ledger.Ledger
+	logger             logrus.FieldLogger
+	blockC             chan *BlockWrapper
+	preBlockC          chan *pb.CommitEvent
+	persistC           chan *ledger.BlockData
+	ibtpVerify         proof.Verify
+	validationEngine   validator.Engine
+	interchainManager  *contracts.InterchainManager
+	currentHeight      uint64
+	currentBlockHash   *types.Hash
+	txsExecutor        agency.TxsExecutor
+	blockFeed          event.Feed
+	blockFeedForRemote event.Feed
+	logsFeed           event.Feed
+	nodeFeed           event.Feed
+	auditFeed          event.Feed
+	ctx                context.Context
+	cancel             context.CancelFunc
 
 	evm         *vm.EVM
 	evmChainCfg *params.ChainConfig
@@ -173,6 +174,11 @@ func (exec *BlockExecutor) ExecuteBlock(block *pb.CommitEvent) {
 // SubscribeBlockEvent registers a subscription of ExecutedEvent.
 func (exec *BlockExecutor) SubscribeBlockEvent(ch chan<- events.ExecutedEvent) event.Subscription {
 	return exec.blockFeed.Subscribe(ch)
+}
+
+// SubscribeBlockEvent registers a subscription of ExecutedEvent.
+func (exec *BlockExecutor) SubscribeBlockEventForRemote(ch chan<- events.ExecutedEvent) event.Subscription {
+	return exec.blockFeedForRemote.Subscribe(ch)
 }
 
 func (exec *BlockExecutor) SubscribeLogsEvent(ch chan<- []*pb.EvmLog) event.Subscription {

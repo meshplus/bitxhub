@@ -42,30 +42,16 @@ func (cbs *ChainBrokerService) handleNewBlockSubscription(server pb.ChainBroker_
 	defer sub.Unsubscribe()
 
 	for ev := range blockCh {
-		errCh := make(chan error)
-		go func() {
-			block := ev.Block
-			data, err := block.Marshal()
-			if err != nil {
-				errCh <- fmt.Errorf("marshal block error: %w", err)
-				return
-			}
+		block := ev.Block
+		data, err := block.Marshal()
+		if err != nil {
+			return fmt.Errorf("marshal block error: %w", err)
+		}
 
-			if err := server.Send(&pb.Response{
-				Data: data,
-			}); err != nil {
-				errCh <- fmt.Errorf("send block failed: %w", err)
-				return
-			}
-			errCh <- nil
-		}()
-
-		select {
-		case err := <-errCh:
-			if err != nil {
-				close(errCh)
-				return err
-			}
+		if err := server.Send(&pb.Response{
+			Data: data,
+		}); err != nil {
+			return fmt.Errorf("send block failed: %w", err)
 		}
 	}
 
@@ -78,29 +64,16 @@ func (cbs *ChainBrokerService) handleBlockHeaderSubscription(server pb.ChainBrok
 	defer sub.Unsubscribe()
 
 	for ev := range blockCh {
-		errCh := make(chan error)
-		go func() {
-			header := ev.Block.BlockHeader
-			data, err := header.Marshal()
-			if err != nil {
-				errCh <- fmt.Errorf("marshal block header error: %w", err)
-				return
-			}
-			if err := server.Send(&pb.Response{
-				Data: data,
-			}); err != nil {
-				errCh <- fmt.Errorf("send block header failed: %w", err)
-				return
-			}
-			errCh <- nil
-		}()
+		header := ev.Block.BlockHeader
+		data, err := header.Marshal()
+		if err != nil {
+			return fmt.Errorf("marshal block header error: %w", err)
+		}
 
-		select {
-		case err := <-errCh:
-			if err != nil {
-				close(errCh)
-				return err
-			}
+		if err := server.Send(&pb.Response{
+			Data: data,
+		}); err != nil {
+			return fmt.Errorf("send block header failed: %w", err)
 		}
 	}
 
@@ -115,39 +88,24 @@ func (cbs *ChainBrokerService) handleInterchainTxSubscription(server pb.ChainBro
 	for {
 		select {
 		case ev := <-blockCh:
-			errCh := make(chan error)
-			go func() {
-				interStatus, err := cbs.interStatus(ev.Block, ev.InterchainMeta)
-				if err != nil {
-					cbs.logger.Fatalf("Wrap interchain tx status error: %s", err.Error())
-					errCh <- fmt.Errorf("wrap interchain tx status error: %w", err)
-					return
-				}
-				if interStatus == nil {
-					return
-				}
-				data, err := json.Marshal(interStatus)
-				if err != nil {
-					cbs.logger.Fatalf("Marshal new block event: %s", err.Error())
-					errCh <- fmt.Errorf("marshal interchain tx status failed: %w", err)
-					return
-				}
-				if err := server.Send(&pb.Response{
-					Data: data,
-				}); err != nil {
-					cbs.logger.Warnf("Send new interchain tx event failed %s", err.Error())
-					errCh <- fmt.Errorf("send new interchain tx event failed: %w", err)
-					return
-				}
-				errCh <- nil
-			}()
-
-			select {
-			case err := <-errCh:
-				if err != nil {
-					close(errCh)
-					return err
-				}
+			interStatus, err := cbs.interStatus(ev.Block, ev.InterchainMeta)
+			if err != nil {
+				cbs.logger.Fatalf("Wrap interchain tx status error: %s", err.Error())
+				return fmt.Errorf("wrap interchain tx status error: %w", err)
+			}
+			if interStatus == nil {
+				continue
+			}
+			data, err := json.Marshal(interStatus)
+			if err != nil {
+				cbs.logger.Fatalf("Marshal new block event: %s", err.Error())
+				return fmt.Errorf("marshal interchain tx status failed: %w", err)
+			}
+			if err := server.Send(&pb.Response{
+				Data: data,
+			}); err != nil {
+				cbs.logger.Warnf("Send new interchain tx event failed %s", err.Error())
+				return fmt.Errorf("send new interchain tx event failed: %w", err)
 			}
 		case <-server.Context().Done():
 			return nil
@@ -172,30 +130,16 @@ func (cbs *ChainBrokerService) handleInterchainTxWrapperSubscription(server pb.C
 				cbs.logger.Errorf("subs closed")
 				return nil
 			}
-			errCh := make(chan error)
-			go func() {
-				data, err := wrapper.Marshal()
-				if err != nil {
-					errCh <- fmt.Errorf("marshal interchain tx wrapper error: %w", err)
-					return
-				}
+			data, err := wrapper.Marshal()
+			if err != nil {
+				return fmt.Errorf("marshal interchain tx wrapper error: %w", err)
+			}
 
-				if err := server.Send(&pb.Response{
-					Data: data,
-				}); err != nil {
-					cbs.logger.Warnf("Send new interchain tx wrapper failed %s", err.Error())
-					errCh <- fmt.Errorf("send new interchain tx wrapper failed: %w", err)
-					return
-				}
-				errCh <- nil
-			}()
-
-			select {
-			case err := <-errCh:
-				if err != nil {
-					close(errCh)
-					return err
-				}
+			if err := server.Send(&pb.Response{
+				Data: data,
+			}); err != nil {
+				cbs.logger.Warnf("Send new interchain tx wrapper failed %s", err.Error())
+				return fmt.Errorf("send new interchain tx wrapper failed: %w", err)
 			}
 		case <-server.Context().Done():
 			cbs.logger.Errorf("Server lost connection with pier")
@@ -223,33 +167,19 @@ func (cbs *ChainBrokerService) handleEvmLogSubscription(server pb.ChainBroker_Su
 				return nil
 			}
 
-			errCh := make(chan error)
-			go func() {
-				matchedLogs := filters.FilterLogs(logs, filter.FromBlock, filter.ToBlock, filter.Addresses, filter.Topics)
-				for _, log := range matchedLogs {
-					data, err := log.Marshal()
-					if err != nil {
-						cbs.logger.Warnf("Marshal evm log failed %s", err.Error())
-						errCh <- fmt.Errorf("marshal evm log failed: %w", err)
-						return
-					}
-
-					if err := server.Send(&pb.Response{
-						Data: data,
-					}); err != nil {
-						cbs.logger.Warnf("Send evm log failed %s", err.Error())
-						errCh <- fmt.Errorf("send evm log failed: %w", err)
-						return
-					}
-				}
-				errCh <- nil
-			}()
-
-			select {
-			case err := <-errCh:
+			matchedLogs := filters.FilterLogs(logs, filter.FromBlock, filter.ToBlock, filter.Addresses, filter.Topics)
+			for _, log := range matchedLogs {
+				data, err := log.Marshal()
 				if err != nil {
-					close(errCh)
-					return err
+					cbs.logger.Warnf("Marshal evm log failed %s", err.Error())
+					return fmt.Errorf("marshal evm log failed: %w", err)
+				}
+
+				if err := server.Send(&pb.Response{
+					Data: data,
+				}); err != nil {
+					cbs.logger.Warnf("Send evm log failed %s", err.Error())
+					return fmt.Errorf("send evm log failed: %w", err)
 				}
 			}
 		case <-server.Context().Done():
