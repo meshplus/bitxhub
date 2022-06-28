@@ -183,7 +183,8 @@ type Order struct {
 }
 
 type Executor struct {
-	Type string `toml:"type" json:"type"`
+	Type      string `toml:"type" json:"type"`
+	ProofType string `mapstructure:"proof_type" json:"proof_type"`
 }
 
 type Ledger struct {
@@ -249,7 +250,8 @@ func DefaultConfig() (*Config, error) {
 			Type: "raft",
 		},
 		Executor: Executor{
-			Type: "serial",
+			Type:      "serial",
+			ProofType: "parallel",
 		},
 		Genesis: Genesis{
 			ChainID:  1,
