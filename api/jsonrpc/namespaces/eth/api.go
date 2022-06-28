@@ -2,6 +2,7 @@ package eth
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -13,6 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	types3 "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/meshplus/bitxhub-kit/types"
@@ -616,7 +618,6 @@ func (api *PublicEthereumAPI) GetTransactionReceipt(hash common.Hash) (map[strin
 	fields := map[string]interface{}{
 		"type":              hexutil.Uint(tx.GetType()),
 		"cumulativeGasUsed": hexutil.Uint64(cumulativeGasUsed),
-		"logs":              receipt.EvmLogs,
 		"transactionHash":   hash,
 		"gasUsed":           hexutil.Uint64(receipt.GasUsed),
 		"blockHash":         common.BytesToHash(meta.BlockHash),
@@ -629,10 +630,22 @@ func (api *PublicEthereumAPI) GetTransactionReceipt(hash common.Hash) (map[strin
 	} else {
 		fields["logsBloom"] = *receipt.Bloom
 	}
-	api.logger.WithFields(logrus.Fields{"evmLog": receipt.EvmLogs}).Debug("get evm log")
-	if len(receipt.EvmLogs) == 0 {
-		fields["logs"] = make([]*pb.EvmLog, 0)
+	ethLogs := make([]*types3.Log, 0)
+	for _, log := range receipt.EvmLogs {
+		ethLog := &types3.Log{}
+		data, err := json.Marshal(log)
+		if err != nil {
+			return nil, err
+		}
+		err = json.Unmarshal(data, ethLog)
+		if err != nil {
+			api.logger.Errorf("unmarshal ethLog err:%s", err)
+			return nil, err
+		}
+		api.logger.WithFields(logrus.Fields{"ethLog": ethLog}).Debug("get eth log")
+		ethLogs = append(ethLogs, ethLog)
 	}
+	fields["logs"] = ethLogs
 
 	if receipt.Status == pb.Receipt_SUCCESS {
 		fields["status"] = hexutil.Uint(1)
@@ -746,7 +759,7 @@ func (api *PublicEthereumAPI) formatBlock(block *pb.Block, fullTx bool) (map[str
 		"mixHash":          common.Hash{},
 		"difficulty":       (*hexutil.Big)(big.NewInt(0)),
 		"totalDifficulty":  (*hexutil.Big)(big.NewInt(0)),
-		"extraData":        hexutil.Uint64(0),
+		"extraData":        []byte{},
 		"size":             hexutil.Uint64(block.Size()),
 		"gasLimit":         hexutil.Uint64(api.config.GasLimit), // Static gas limit
 		"gasUsed":          hexutil.Uint64(cumulativeGas),

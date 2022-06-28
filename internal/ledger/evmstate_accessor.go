@@ -148,15 +148,15 @@ func (l *SimpleLedger) AddEVMLog(log *etherTypes.Log) {
 		topics = append(topics, *types.NewHash(topic.Bytes()))
 	}
 	logs := &pb.EvmLog{
-		Address:     types.NewAddress(log.Address.Bytes()),
-		Topics:      topics,
-		Data:        log.Data,
-		BlockNumber: log.BlockNumber,
-		TxHash:      types.NewHash(log.TxHash.Bytes()),
-		TxIndex:     uint64(log.TxIndex),
-		BlockHash:   types.NewHash(log.BlockHash.Bytes()),
-		Index:       uint64(log.Index),
-		Removed:     log.Removed,
+		Address:          types.NewAddress(log.Address.Bytes()),
+		Topics:           topics,
+		Data:             log.Data,
+		BlockNumber:      log.BlockNumber,
+		TransactionHash:  types.NewHash(log.TxHash.Bytes()),
+		TransactionIndex: uint64(log.TxIndex),
+		BlockHash:        types.NewHash(log.BlockHash.Bytes()),
+		LogIndex:         uint64(log.Index),
+		Removed:          log.Removed,
 	}
 	l.AddLog(logs)
 }

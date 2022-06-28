@@ -528,10 +528,10 @@ func (l *SimpleLedger) PrepareBlock(hash *types.Hash, height uint64) {
 func (l *SimpleLedger) AddLog(log *pb.EvmLog) {
 	l.changer.append(addLogChange{txHash: l.logs.thash})
 
-	log.TxHash = l.logs.thash
+	log.TransactionHash = l.logs.thash
 	log.BlockHash = l.logs.bhash
-	log.TxIndex = uint64(l.logs.txIndex)
-	log.Index = uint64(l.logs.logSize)
+	log.TransactionIndex = uint64(l.logs.txIndex)
+	log.LogIndex = uint64(l.logs.logSize)
 	l.logs.logs[*l.logs.thash] = append(l.logs.logs[*l.logs.thash], log)
 	l.logs.logSize++
 }
