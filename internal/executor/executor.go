@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"runtime"
 	"sync"
 	"time"
 
@@ -29,8 +30,6 @@ import (
 const (
 	blockChanNumber   = 1024
 	persistChanNumber = 1024
-
-	maxGroup = 16
 )
 
 var _ Executor = (*BlockExecutor)(nil)
@@ -229,11 +228,12 @@ func (exec *BlockExecutor) verifyProofs(blockWrapper *BlockWrapper) {
 	)
 	txs := block.Transactions.Transactions
 
-	var configGroup int
+	configGroup := 1
 	if exec.config.ProofType == "parallel" {
-		configGroup = maxGroup
-	} else if exec.config.ProofType == "serial" {
-		configGroup = 1
+		configGroup = runtime.GOMAXPROCS(runtime.NumCPU())
+	} else if exec.config.ProofType != "serial" {
+		exec.logger.Errorf("verify proof type is not support:%s", exec.config.ProofType)
+		return
 	}
 	groupNum := configGroup
 	if len(txs) == 0 {
