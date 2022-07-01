@@ -755,6 +755,8 @@ github.com/meshplus/bitxhub-core v1.3.1-0.20220610035143-199b11073c43 h1:qTSlq/R
 github.com/meshplus/bitxhub-core v1.3.1-0.20220610035143-199b11073c43/go.mod h1:WmIpbqw28N5A8sqz1J5MOyWvsFy1OW2b1RBqXGBTSic=
 github.com/meshplus/bitxhub-core v1.3.1-0.20220624071258-4e2baa777bc6 h1:n179SNQgC+/LLo6UqJs0n7gXWf3TQiugNvcvUKJIUcw=
 github.com/meshplus/bitxhub-core v1.3.1-0.20220624071258-4e2baa777bc6/go.mod h1:WmIpbqw28N5A8sqz1J5MOyWvsFy1OW2b1RBqXGBTSic=
+github.com/meshplus/bitxhub-core v1.3.1-0.20220701090824-788a823e6049 h1:JEmBHfy/yS+4o+PiDRBkcZKUV7PCWPvguW8wb1C+t/w=
+github.com/meshplus/bitxhub-core v1.3.1-0.20220701090824-788a823e6049/go.mod h1:WmIpbqw28N5A8sqz1J5MOyWvsFy1OW2b1RBqXGBTSic=
 github.com/meshplus/bitxhub-kit v1.0.0-rc1/go.mod h1:ra/AhOkPvpElI+wXrB9G6DjdcrdxFU3vMwA5MYKr9D0=
 github.com/meshplus/bitxhub-kit v1.0.0/go.mod h1:7cWyhXWZfrQ3+EaxkRoXfuiG3Y5R9DXYJomeZKkETW8=
 github.com/meshplus/bitxhub-kit v1.1.1/go.mod h1:r4l4iqn0RPJreb/OmoYKfjCjQJrXpZX++6Qc31VG/1k=
@@ -769,10 +771,14 @@ github.com/meshplus/bitxhub-model v1.2.1-0.20220610034930-e87191588edd h1:0pg/LA
 github.com/meshplus/bitxhub-model v1.2.1-0.20220610034930-e87191588edd/go.mod h1:sPko8fD+G3MYOnH/44Ju4T4jD/tlEU3IJDIJ4hjrzxg=
 github.com/meshplus/bitxhub-model v1.2.1-0.20220624071707-bf35c8b1b443 h1:aFSOlTrc5b6MCiZKnwB/1MF/R+yF0jxehaFyob7cdVs=
 github.com/meshplus/bitxhub-model v1.2.1-0.20220624071707-bf35c8b1b443/go.mod h1:sPko8fD+G3MYOnH/44Ju4T4jD/tlEU3IJDIJ4hjrzxg=
+github.com/meshplus/bitxhub-model v1.2.1-0.20220705090611-2a1e897ee1f7 h1:kvmzk7uZxwGVGy6FpS5lOkgQBKgmMXYubbt65Oq6LTk=
+github.com/meshplus/bitxhub-model v1.2.1-0.20220705090611-2a1e897ee1f7/go.mod h1:sPko8fD+G3MYOnH/44Ju4T4jD/tlEU3IJDIJ4hjrzxg=
 github.com/meshplus/consensus v0.0.0-20211228075008-5f469b198531 h1:lU2XI7vWdapTLJfObY3A+e+a3rvHbnT0pHN9LEghwRk=
 github.com/meshplus/consensus v0.0.0-20211228075008-5f469b198531/go.mod h1:2Sv1u1sOFta9dAO6OuHyxLaN1Z6/AdrIol99qi5ZZ0k=
 github.com/meshplus/eth-kit v0.0.0-20220105081940-c90e9f2aa162 h1:AInrDpD8BcoHxRrEmY+FrfgJML+a7UusCwrojOCMq3Y=
 github.com/meshplus/eth-kit v0.0.0-20220105081940-c90e9f2aa162/go.mod h1:7Uf2QyUOCFCHjg4zXr3ZtjKesdPubptdr4IK0KiQBHY=
+github.com/meshplus/eth-kit v0.0.0-20220628031226-4b30a994a2a6 h1:lynes143n+SG1uG8xcTXPQ9te/NKEks/9Kvx+EwIop4=
+github.com/meshplus/eth-kit v0.0.0-20220628031226-4b30a994a2a6/go.mod h1:7Uf2QyUOCFCHjg4zXr3ZtjKesdPubptdr4IK0KiQBHY=
 github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd h1:/8ydT0Pc+nFy3uAeTwxAurPXY4cWfggslGz3bNwJKDg=
 github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd/go.mod h1:rS4AYMqKypLn2IPEnHICP//V2v16SZo4CWUbwMdihl0=
 github.com/meshplus/go-lightp2p v0.0.0-20200817105923-6b3aee40fa54/go.mod h1:G89UJaeqCQFxFdp8wzy1AdKfMtDEhpySau0pjDNeeaw=
