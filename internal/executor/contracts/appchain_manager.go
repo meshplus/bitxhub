@@ -364,7 +364,7 @@ func (am *AppchainManager) manageUpdateReject(appchainId string, updateInfoData 
 }
 
 // =========== RegisterAppchain registers appchain info, returns proposal id and error
-func (am *AppchainManager) RegisterAppchain(chainID string, chainName string, chainType string, trustRoot []byte, broker string, desc, masterRuleAddr, masterRuleUrl, adminAddrs, reason string) *boltvm.Response {
+func (am *AppchainManager) RegisterAppchain(chainID string, chainName string, pubKey []byte, chainType string, trustRoot []byte, broker string, desc, masterRuleAddr, masterRuleUrl, adminAddrs, reason string) *boltvm.Response {
 	am.AppchainManager.Persister = am.Stub
 	event := governance.EventRegister
 
@@ -441,6 +441,7 @@ func (am *AppchainManager) RegisterAppchain(chainID string, chainName string, ch
 			Version:   0,
 			Status:    governance.GovernanceAvailable,
 			DID:       "did:bitxhub:" + chainID + ":.",
+			PubKey:    pubKey,
 		},
 		MasterRule: &ruleMgr.Rule{
 			Address: masterRuleAddr,
@@ -939,6 +940,15 @@ func (am *AppchainManager) GetAdminByChainId(chainId string) *boltvm.Response {
 		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), err.Error()))
 	}
 	return boltvm.Success(addrsData)
+}
+
+func (am *AppchainManager) GetPubKeyByChainID(id string) *boltvm.Response {
+	am.AppchainManager.Persister = am.Stub
+	chain, err := am.AppchainManager.QueryById(id, nil)
+	if err != nil {
+		return boltvm.Error(boltvm.AppchainNonexistentChainCode, fmt.Sprintf(string(boltvm.AppchainNonexistentChainMsg), id, err.Error()))
+	}
+	return boltvm.Success(chain.(*appchainMgr.Appchain).PubKey)
 }
 
 func (am *AppchainManager) IsAvailable(chainID string) *boltvm.Response {
