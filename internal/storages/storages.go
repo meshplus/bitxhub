@@ -6,6 +6,7 @@ import (
 	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/meshplus/bitxhub-kit/storage/leveldb"
 	"github.com/meshplus/bitxhub/internal/repo"
+	"github.com/syndtr/goleveldb/leveldb/opt"
 )
 
 const (
@@ -21,7 +22,9 @@ type wrapper struct {
 }
 
 func Initialize(repoRoot string) error {
-	bcStorage, err := leveldb.New(repo.GetStoragePath(repoRoot, BlockChain))
+	bcStorage, err := leveldb.NewWithOpt(repo.GetStoragePath(repoRoot, BlockChain), &opt.Options{
+		WriteBuffer: 40 * opt.MiB,
+	})
 	if err != nil {
 		return fmt.Errorf("create blockchain storage: %w", err)
 	}

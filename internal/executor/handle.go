@@ -76,13 +76,13 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	exec.evm = newEvm(block.Height(), uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateLedger, exec.ledger.ChainLedger, exec.admins[0])
 	exec.ledger.PrepareBlock(block.BlockHash, block.Height())
 	receipts := exec.txsExecutor.ApplyTransactions(block.Transactions.Transactions, blockWrapper.invalidTx)
-	applyTxsDuration.Observe(float64(time.Since(current)) / float64(time.Second))
-	//exec.logger.WithFields(logrus.Fields{
+	// applyTxsDuration.Observe(float64(time.Since(current)) / float64(time.Second))
+	// exec.logger.WithFields(logrus.Fields{
 	//	"time":  time.Since(current),
 	//	"count": len(block.Transactions.Transactions),
-	//}).Debug("Apply transactions elapsed")
+	// }).Debug("Apply transactions elapsed")
 
-	calcMerkleStart := time.Now()
+	// calcMerkleStart := time.Now()
 	l1Root, l2Roots, err := exec.buildTxMerkleTree(block.Transactions.Transactions)
 	if err != nil {
 		panic(err)
@@ -93,7 +93,7 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 		panic(err)
 	}
 
-	calcMerkleDuration.Observe(float64(time.Since(calcMerkleStart)) / float64(time.Second))
+	// calcMerkleDuration.Observe(float64(time.Since(calcMerkleStart)) / float64(time.Second))
 
 	invalidTxHashMap, recordFailTxHashMap, err := exec.filterValidTx(receipts)
 	if err != nil {
@@ -165,8 +165,8 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 		"receipt_root": block.BlockHeader.ReceiptRoot.String(),
 		"state_root":   block.BlockHeader.StateRoot.String(),
 	}).Debug("block meta")
-	calcBlockSize.Observe(float64(block.Size()))
-	executeBlockDuration.Observe(float64(time.Since(current)) / float64(time.Second))
+	// calcBlockSize.Observe(float64(block.Size()))
+	// executeBlockDuration.Observe(float64(time.Since(current)) / float64(time.Second))
 
 	counter := make(map[string]*pb.VerifiedIndexSlice)
 	for k, v := range exec.txsExecutor.GetInterchainCounter() {
@@ -196,14 +196,14 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 
 	now := time.Now()
 	exec.ledger.PersistBlockData(data)
-	exec.postBlockEvent(data.Block, data.InterchainMeta, data.TxHashList)
-	exec.postLogsEvent(data.Receipts)
 	exec.logger.WithFields(logrus.Fields{
 		"height": data.Block.BlockHeader.Number,
 		"hash":   data.Block.BlockHash.String(),
 		"count":  len(data.Block.Transactions.Transactions),
 		"elapse": time.Since(now),
 	}).Info("Persisted block")
+	exec.postBlockEvent(data.Block, data.InterchainMeta, data.TxHashList)
+	exec.postLogsEvent(data.Receipts)
 
 	exec.currentHeight = block.BlockHeader.Number
 	exec.currentBlockHash = block.BlockHash
@@ -479,7 +479,7 @@ func (exec *BlockExecutor) applyTransaction(i int, tx pb.Transaction, invalidRea
 			receipt.Status = pb.Receipt_FAILED
 			receipt.Ret = []byte(err.Error())
 		} else {
-			//internal invoke evm
+			// internal invoke evm
 			receipt.EvmLogs = exec.ledger.GetLogs(*tx.GetHash())
 			receipt.Status = pb.Receipt_SUCCESS
 			if string(ret) == "begin_failure" {
