@@ -15,6 +15,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/eth-kit/ledger"
 	"github.com/sirupsen/logrus"
+	"github.com/syndtr/goleveldb/leveldb/opt"
 )
 
 type Ledger struct {
@@ -127,7 +128,9 @@ func OpenStateDB(file string, typ string) (stateStorage, error) {
 	var err error
 
 	if typ == "simple" {
-		storage, err = leveldb.New(file)
+		storage, err = leveldb.NewWithOpt(file, &opt.Options{
+			WriteBuffer: 40 * opt.MiB,
+		})
 		if err != nil {
 			return nil, fmt.Errorf("init leveldb failed: %w", err)
 		}

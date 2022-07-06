@@ -163,10 +163,10 @@ func (t *TransactionManager) Begin(txId string, timeoutHeight uint64, isFailed b
 	if isFailed {
 		record.Status = pb.TransactionStatus_BEGIN_FAILURE
 	} else {
-		//t.addToTimeoutList(record.Height, txId)
+		// t.addToTimeoutList(record.Height, txId)
 	}
 
-	t.AddObject(TxInfoKey(txId), record)
+	// t.AddObject(TxInfoKey(txId), record)
 
 	change := StatusChange{
 		PrevStatus: -1,
@@ -197,7 +197,7 @@ func (t *TransactionManager) Report(txId string, result int32) *boltvm.Response 
 		change.CurStatus = record.Status
 
 		t.SetObject(TxInfoKey(txId), record)
-		//t.removeFromTimeoutList(record.Height, txId)
+		// t.removeFromTimeoutList(record.Height, txId)
 	} else {
 		ok, val := t.Get(txId)
 		if !ok {

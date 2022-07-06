@@ -262,10 +262,6 @@ func (l *SimpleLedger) FlushDirtyData() (map[string]ledger.IAccount, *types.Hash
 // Commit commit the state
 func (l *SimpleLedger) Commit(height uint64, accounts map[string]ledger.IAccount, stateRoot *types.Hash) error {
 	st := time.Now()
-	defer l.logger.WithFields(logrus.Fields{
-		"height": height,
-		"time":   time.Since(st),
-	}).Infof("Commit end")
 
 	ldbBatch := l.ldb.NewBatch()
 
@@ -354,6 +350,11 @@ func (l *SimpleLedger) Commit(height uint64, accounts map[string]ledger.IAccount
 		}
 	}
 	l.blockJournals = sync.Map{}
+
+	l.logger.WithFields(logrus.Fields{
+		"height": height,
+		"time":   time.Since(st),
+	}).Infof("Commit end")
 
 	return nil
 }
