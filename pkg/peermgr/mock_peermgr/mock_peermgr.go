@@ -258,6 +258,34 @@ func (mr *MockPeerManagerMockRecorder) SubscribeOrderMessage(ch interface{}) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubscribeOrderMessage", reflect.TypeOf((*MockPeerManager)(nil).SubscribeOrderMessage), ch)
 }
 
+// SubscribeTssCulprits mocks base method.
+func (m *MockPeerManager) SubscribeTssCulprits(ch chan<- *pb.Message) event.Subscription {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SubscribeTssCulprits", ch)
+	ret0, _ := ret[0].(event.Subscription)
+	return ret0
+}
+
+// SubscribeTssCulprits indicates an expected call of SubscribeTssCulprits.
+func (mr *MockPeerManagerMockRecorder) SubscribeTssCulprits(ch interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubscribeTssCulprits", reflect.TypeOf((*MockPeerManager)(nil).SubscribeTssCulprits), ch)
+}
+
+// SubscribeTssKeygenReq mocks base method.
+func (m *MockPeerManager) SubscribeTssKeygenReq(ch chan<- *pb.Message) event.Subscription {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SubscribeTssKeygenReq", ch)
+	ret0, _ := ret[0].(event.Subscription)
+	return ret0
+}
+
+// SubscribeTssKeygenReq indicates an expected call of SubscribeTssKeygenReq.
+func (mr *MockPeerManagerMockRecorder) SubscribeTssKeygenReq(ch interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubscribeTssKeygenReq", reflect.TypeOf((*MockPeerManager)(nil).SubscribeTssKeygenReq), ch)
+}
+
 // SubscribeTssMessage mocks base method.
 func (m *MockPeerManager) SubscribeTssMessage(ch chan<- *pb.Message) event.Subscription {
 	m.ctrl.T.Helper()

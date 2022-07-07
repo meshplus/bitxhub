@@ -224,14 +224,13 @@ func (n *Node) Start() error {
 		default:
 			err := n.checkQuorum()
 			if err != nil {
-				n.logger.Errorf("check quorum failed: %s", err.Error())
+				n.logger.Warnf("check quorum failed: %s", err.Error())
 				return err
 			}
 			return nil
 		}
 	},
-		strategy.Wait(1*time.Second),
-	); err != nil {
+		strategy.Wait(1*time.Second)); err != nil {
 		n.logger.Error(err)
 	}
 

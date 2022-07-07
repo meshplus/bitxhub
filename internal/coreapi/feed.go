@@ -31,6 +31,10 @@ func (api *FeedAPI) SubscribeTssSignRes(ch chan<- *pb.Message) event.Subscriptio
 	return api.bxh.PeerMgr.SubscribeTssSignRes(ch)
 }
 
+func (api *FeedAPI) SubscribeTssCulprits(ch chan<- *pb.Message) event.Subscription {
+	return api.bxh.PeerMgr.SubscribeTssCulprits(ch)
+}
+
 func (api *FeedAPI) BloomStatus() (uint64, uint64) {
 	return 4096, 0
 }

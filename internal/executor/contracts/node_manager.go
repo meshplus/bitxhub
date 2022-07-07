@@ -164,6 +164,13 @@ func (nm *NodeManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 		switch eventTyp {
 		case string(governance.EventRegister):
 			nm.NodeManager.Register(nodeInfo)
+			if nodeInfo.NodeType == nodemgr.VPNode {
+				nodeEvent := &events.NodeEvent{
+					NodeId:        nodeInfo.VPNodeId,
+					NodeEventType: governance.EventType(eventTyp),
+				}
+				nm.PostEvent(pb.Event_NODEMGR, nodeEvent)
+			}
 		case string(governance.EventUpdate):
 			updateInfo := &UpdateNodeInfo{}
 			if err := json.Unmarshal(extra, updateInfo); err != nil {

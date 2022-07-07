@@ -15,10 +15,10 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	orderPeerMgr "github.com/meshplus/bitxhub-core/peer-mgr"
-	"github.com/meshplus/bitxhub-core/tss"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/repo"
+	"github.com/meshplus/bitxhub/pkg/tssmgr"
 	libp2pcert "github.com/meshplus/go-libp2p-cert"
 	network "github.com/meshplus/go-lightp2p"
 	ma "github.com/multiformats/go-multiaddr"
@@ -36,7 +36,7 @@ type Swarm struct {
 	localID uint64
 	p2p     network.Network
 	logger  logrus.FieldLogger
-	Tss     tss.Tss
+	Tss     *tssmgr.TssMgr
 
 	routers        map[uint64]*pb.VpInfo // trace the vp nodes
 	multiAddrs     map[uint64]*peer.AddrInfo
@@ -49,6 +49,8 @@ type Swarm struct {
 	orderMessageFeed  event.Feed
 	tssMessageFeed    event.Feed
 	tssSignResultFeed event.Feed
+	tssCulpritsFeed   event.Feed
+	tssKeygenReqFeed  event.Feed
 	enablePing        bool
 	pingTimeout       time.Duration
 	pingC             chan *repo.Ping
@@ -386,6 +388,13 @@ func (swarm *Swarm) AddNode(newNodeID uint64, vpInfo *pb.VpInfo) {
 	} else if swarm.notifiee.newPeer != "" {
 		swarm.logger.Warningf("Received vpInfo %v, but it doesn't equal to  notifiee newPeer %s", vpInfo, swarm.notifiee.newPeer)
 	}
+
+	// 4. send tss keygen req
+	if swarm.repo.Config.Tss.EnableTSS && newNodeID != swarm.localID {
+		swarm.tssKeygenReqFeed.Send(&pb.Message{
+			Type: pb.Message_TSS_KEYGEN_REQ,
+		})
+	}
 }
 
 func (swarm *Swarm) DelNode(delID uint64) {
@@ -538,4 +547,12 @@ func (swarm *Swarm) SubscribeTssMessage(ch chan<- *pb.Message) event.Subscriptio
 
 func (swarm *Swarm) SubscribeTssSignRes(ch chan<- *pb.Message) event.Subscription {
 	return swarm.tssSignResultFeed.Subscribe(ch)
+}
+
+func (swarm *Swarm) SubscribeTssCulprits(ch chan<- *pb.Message) event.Subscription {
+	return swarm.tssCulpritsFeed.Subscribe(ch)
+}
+
+func (swarm *Swarm) SubscribeTssKeygenReq(ch chan<- *pb.Message) event.Subscription {
+	return swarm.tssKeygenReqFeed.Subscribe(ch)
 }
