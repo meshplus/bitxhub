@@ -133,38 +133,34 @@ func (t *TssMgr) CountOrderReadyPeers() int {
 }
 
 func (t *TssMgr) Start(threshold uint64) {
-	if err := retry.Retry(func(attempt uint) error {
-		select {
-		case <-t.ctx.Done():
-			t.logger.Infof("stop checkQuorum")
-			return nil
-
-		default:
-			err := t.CheckThreshold()
-			if err != nil {
-				t.logger.WithFields(logrus.Fields{"config num": len(t.peerMgr.OrderPeers()),
-					"order ready peer": t.orderReadyPeers}).Warning(err)
-				return err
-			}
-			return nil
-		}
-	}, strategy.Wait(2*time.Second)); err != nil {
-		panic(err)
-	}
-
 	// 1. set threshold
 	// 2. load tss local state
 
 	t.UpdateThreshold(threshold)
 
 	// 1. get pool addr from file
-	filePath := filepath.Join(t.tssRepo, storage.PoolPkAddrFileName)
-	if _, err := os.Stat(filePath); os.IsExist(err) {
-		if err := t.loadTssLocalState(filePath); err != nil {
-			t.logger.Warn("load tss info error: %v", err)
+
+	if err := t.loadTssLocalState(); err != nil {
+		t.logger.Warn("load tss info error: %v", err)
+		if checkeErr := retry.Retry(func(attempt uint) error {
+			select {
+			case <-t.ctx.Done():
+				t.logger.Infof("stop checkQuorum")
+				return nil
+
+			default:
+				checkeErr := t.CheckThreshold()
+				if checkeErr != nil {
+					t.logger.WithFields(logrus.Fields{"config num": len(t.peerMgr.OrderPeers()),
+						"order ready peer": t.orderReadyPeers}).Warning(checkeErr)
+					return checkeErr
+				}
+				return nil
+			}
+		}, strategy.Wait(2*time.Second)); checkeErr != nil {
+			panic(checkeErr)
 		}
 	}
-
 	t.logger.Infof("Starting the TSS Manager: t-%d", threshold)
 }
 
@@ -212,7 +208,12 @@ func (t *TssMgr) UpdateThreshold(threshold uint64) {
 	t.thresholdLocker.Unlock()
 }
 
-func (t *TssMgr) loadTssLocalState(filePath string) error {
+func (t *TssMgr) loadTssLocalState() error {
+	// 1. get pool addr from file
+	filePath := filepath.Join(t.tssRepo, storage.PoolPkAddrFileName)
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		return err
+	}
 	buf, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		return fmt.Errorf("file to read from file(%s): %w", filePath, err)

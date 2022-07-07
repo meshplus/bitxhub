@@ -51,14 +51,18 @@ func (t *TssMgr) Keygen(isAddNodeReq bool) error {
 			// 2.3 如果检查累计一致的公钥个数达到t+1，门限签名可以正常使用，将不一致的节点踢出签名组合即可
 			// 如果检查不通过，当前的门限签名已经不能正常使用，需要重新keygen
 			if ok {
-				t.logger.WithFields(logrus.Fields{
-					"ids": ids,
-				}).Infof("delete culprits from localState")
-				// 将不一致的参与方踢出tss节点
-				if err := t.DeleteTssNodes(ids); err != nil {
-					return fmt.Errorf("handle culprits: %w", err)
+				if len(ids) != 0 {
+					t.logger.WithFields(logrus.Fields{
+						"ids": ids,
+					}).Infof("delete culprits from localState")
+					// 将不一致的参与方踢出tss节点
+					if err := t.DeleteTssNodes(ids); err != nil {
+						return fmt.Errorf("handle culprits: %w", err)
+					}
+					// 继续使用之前的公钥
 				}
-				// 继续使用之前的公钥
+
+				t.logger.Infof("load tss successful, keygen stopped")
 				return nil
 			}
 		}
