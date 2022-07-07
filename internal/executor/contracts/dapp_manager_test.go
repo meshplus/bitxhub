@@ -142,7 +142,7 @@ func TestDappManager_RegisterDapp(t *testing.T) {
 	res = dm.RegisterDapp(dapps[1].Name, string(dapps[0].Type), dapps[0].Desc, "url", "123", "-", reason)
 	assert.Equal(t, false, res.Ok, string(res.Result))
 	res = dm.RegisterDapp(dapps[1].Name, string(dapps[0].Type), dapps[0].Desc, "url", conAddr2, "-", reason)
-	// premission
+	// permission
 	res = dm.RegisterDapp(dapps[1].Name, string(dapps[0].Type), dapps[0].Desc, "url", conAddr1, "-", reason)
 	assert.Equal(t, false, res.Ok, string(res.Result))
 

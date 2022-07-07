@@ -153,7 +153,7 @@ func registerNode(ctx *cli.Context) error {
 	pid := ctx.String("pid")
 	vpNodeId := ctx.Uint64("id")
 	name := ctx.String("name")
-	permisssion := ctx.String("permission")
+	permission := ctx.String("permission")
 	reason := ctx.String("reason")
 
 	receipt, err := invokeBVMContract(ctx, constant.NodeManagerContractAddr.Address().String(), "RegisterNode",
@@ -162,11 +162,11 @@ func registerNode(ctx *cli.Context) error {
 		pb.String(pid),
 		pb.Uint64(vpNodeId),
 		pb.String(name),
-		pb.String(permisssion),
+		pb.String(permission),
 		pb.String(reason))
 	if err != nil {
 		return fmt.Errorf("invoke BVM contract failed when register node \" account=%s,typ=%s,pid=%s,vpNodeId=%d,name=%s,permission=%s,reason=%s \": %w",
-			account, typ, pid, vpNodeId, name, permisssion, reason, err)
+			account, typ, pid, vpNodeId, name, permission, reason, err)
 	}
 
 	if receipt.IsSuccess() {
@@ -181,17 +181,17 @@ func registerNode(ctx *cli.Context) error {
 func updateNode(ctx *cli.Context) error {
 	account := ctx.String("account")
 	name := ctx.String("name")
-	permisssion := ctx.String("permission")
+	permission := ctx.String("permission")
 	reason := ctx.String("reason")
 
 	receipt, err := invokeBVMContract(ctx, constant.NodeManagerContractAddr.Address().String(), "UpdateNode",
 		pb.String(account),
 		pb.String(name),
-		pb.String(permisssion),
+		pb.String(permission),
 		pb.String(reason))
 	if err != nil {
 		return fmt.Errorf("invoke BVM contract failed when update node \" account=%s,name=%s, permission=%s,reason=%s \": %w",
-			account, name, permisssion, reason, err)
+			account, name, permission, reason, err)
 	}
 
 	if receipt.IsSuccess() {

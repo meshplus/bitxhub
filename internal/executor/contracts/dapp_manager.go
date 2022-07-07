@@ -132,7 +132,7 @@ func (d *Dapp) setFSM(lastStatus governance.GovernanceStatus) {
 	)
 }
 
-// GovernancePre checks if the dapp can do the event. (only check, not modify infomation)
+// GovernancePre checks if the dapp can do the event. (only check, not modify information)
 func (dm *DappManager) governancePre(dappID string, event governance.EventType) (*Dapp, *boltvm.BxhError) {
 	dapp := &Dapp{}
 	if ok := dm.GetObject(DappKey(dappID), dapp); !ok {
