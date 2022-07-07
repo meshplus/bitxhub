@@ -176,6 +176,8 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	}
 
 	evs = append(evs, ev, ev2, ev3)
+	stateLedger.EXPECT().Copy().Return(stateLedger).AnyTimes()
+	stateLedger.EXPECT().QueryByPrefix(gomock.Any(), gomock.Any()).Return(false, nil).AnyTimes()
 	chainLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
 	stateLedger.EXPECT().Events(gomock.Any()).Return(evs).AnyTimes()
 	stateLedger.EXPECT().Commit(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
@@ -301,14 +303,14 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	go listenBlock(&wg, done, ch)
 
 	// send blocks to executor
-	commitEvent1 := mockCommitEvent(uint64(1), nil)
+	commitEvent1 := mockCommitEvent(uint64(2), nil)
 
 	transactions := make([]pb.Transaction, 0)
 	for _, tx := range txs {
 		transactions = append(transactions, tx)
 	}
 
-	commitEvent2 := mockCommitEvent(uint64(2), transactions)
+	commitEvent2 := mockCommitEvent(uint64(3), transactions)
 	exec.ExecuteBlock(commitEvent1)
 	exec.ExecuteBlock(commitEvent2)
 

@@ -116,7 +116,7 @@ func TestBoltVM_Run(t *testing.T) {
 	ctxInterchain := vm.NewContext(txInterchain, 1, nil, 100, mockLedger, log.NewWithModule("vm"))
 	boltVMInterchain := New(ctxInterchain, mockEngine, nil, cons)
 	ibtp := mockIBTP(t, 1, pb.IBTP_INTERCHAIN)
-	_, err = boltVMInterchain.HandleIBTP(ibtp)
+	_, err = boltVMInterchain.HandleIBTP(ibtp, &contracts.InterchainManager{})
 	require.NotNil(t, err)
 }
 

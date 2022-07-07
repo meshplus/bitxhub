@@ -22,6 +22,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/meshplus/bitxhub-core/agency"
+	servicemgr "github.com/meshplus/bitxhub-core/service-mgr"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -54,6 +55,13 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	current := time.Now()
 	block := blockWrapper.block
 
+	// check executor handle the right block
+	if block.BlockHeader.Number != exec.currentHeight+1 {
+		exec.logger.WithFields(logrus.Fields{"block height": block.BlockHeader.Number,
+			"matchedHeight": exec.currentHeight + 1}).Warning("current block height is not matched")
+		return nil
+	}
+
 	for _, tx := range block.Transactions.Transactions {
 		txHashList = append(txHashList, tx.GetHash())
 	}
@@ -62,7 +70,6 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	exec.evm = newEvm(block.Height(), uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateLedger, exec.ledger.ChainLedger, exec.admins[0])
 	exec.ledger.PrepareBlock(block.BlockHash, block.Height())
 	receipts := exec.txsExecutor.ApplyTransactions(block.Transactions.Transactions, blockWrapper.invalidTx)
-
 	applyTxsDuration.Observe(float64(time.Since(current)) / float64(time.Second))
 	exec.logger.WithFields(logrus.Fields{
 		"time":  time.Since(current),
@@ -387,6 +394,15 @@ func (exec *BlockExecutor) applyTx(index int, tx pb.Transaction, invalidReason a
 				for nodeID, _ := range auditRelatedObjInfo.RelatedNodeIDList {
 					relatedNodeIDList[nodeID] = []byte{}
 				}
+			case pb.Event_SERVICE:
+				serviceInfo := &servicemgr.Service{}
+				err := json.Unmarshal(ev.Data, &serviceInfo)
+				if err != nil {
+					panic(err)
+				}
+				chainServiceID := fmt.Sprintf("%s:%s", serviceInfo.ChainID, serviceInfo.ServiceID)
+				exec.logger.WithFields(logrus.Fields{"key": chainServiceID, "service": serviceInfo}).Debug("record service change in cache")
+				exec.interchainManager.SetServiceCache(chainServiceID, serviceInfo)
 			}
 		}
 		if auditDataUpdate {
@@ -418,6 +434,11 @@ func (exec *BlockExecutor) postNodeEvent(event events.NodeEvent) {
 
 func (exec *BlockExecutor) postBlockEvent(block *pb.Block, interchainMeta *pb.InterchainMeta, txHashList []*types.Hash) {
 	go exec.blockFeed.Send(events.ExecutedEvent{
+		Block:          block,
+		InterchainMeta: interchainMeta,
+		TxHashList:     txHashList,
+	})
+	go exec.blockFeedForRemote.Send(events.ExecutedEvent{
 		Block:          block,
 		InterchainMeta: interchainMeta,
 		TxHashList:     txHashList,
@@ -502,7 +523,7 @@ func (exec *BlockExecutor) applyBxhTransaction(i int, tx *pb.BxhTransaction, inv
 	if tx.IsIBTP() {
 		ctx := vm.NewContext(tx, uint64(i), nil, exec.currentHeight, exec.ledger, exec.logger)
 		instance := boltvm.New(ctx, exec.validationEngine, exec.evm, exec.getContracts(opt))
-		ret, err := instance.HandleIBTP(tx.GetIBTP())
+		ret, err := instance.HandleIBTP(tx.GetIBTP(), exec.interchainManager)
 		return ret, GasBVMTx, err
 	}
 
@@ -727,7 +748,7 @@ func (exec *BlockExecutor) setTimeoutRollback(height uint64) error {
 	}
 
 	for _, id := range list {
-		if isGlobalID(id) {
+		if exec.isGlobalID(id) {
 			if err := exec.setGlobalTxStatus(id, pb.TransactionStatus_BEGIN_ROLLBACK); err != nil {
 				return fmt.Errorf("set global tx status of id %s: %w", id, err)
 			}
@@ -978,19 +999,19 @@ func (exec *BlockExecutor) getTimeoutIBTPsMap(height uint64) (map[string][]strin
 	timeoutIBTPsMap := make(map[string][]string)
 
 	for _, value := range timeoutList {
-		if isGlobalID(value) {
+		if exec.isGlobalID(value) {
 			txInfo, err := exec.getTxInfoByGlobalID(value)
 			if err != nil {
 				return nil, err
 			}
 
 			for id := range txInfo.ChildTxInfo {
-				if err := addTxIdToTimeoutIBTPsMap(timeoutIBTPsMap, id, bxhID); err != nil {
+				if err := exec.addTxIdToTimeoutIBTPsMap(timeoutIBTPsMap, id, bxhID); err != nil {
 					return nil, err
 				}
 			}
 		} else {
-			if err := addTxIdToTimeoutIBTPsMap(timeoutIBTPsMap, value, bxhID); err != nil {
+			if err := exec.addTxIdToTimeoutIBTPsMap(timeoutIBTPsMap, value, bxhID); err != nil {
 				return nil, err
 			}
 		}
@@ -999,9 +1020,9 @@ func (exec *BlockExecutor) getTimeoutIBTPsMap(height uint64) (map[string][]strin
 	return timeoutIBTPsMap, nil
 }
 
-func addTxIdToTimeoutIBTPsMap(timeoutIBTPsMap map[string][]string, txId string, bitXHubID string) error {
+func (exec *BlockExecutor) addTxIdToTimeoutIBTPsMap(timeoutIBTPsMap map[string][]string, txId string, bitXHubID string) error {
 	listArray := strings.Split(txId, "-")
-	bxhID, chainID, _, err := parseChainServiceID(listArray[0])
+	bxhID, chainID, _, err := exec.parseChainServiceID(listArray[0])
 	if err != nil {
 		return err
 	}
@@ -1019,7 +1040,7 @@ func addTxIdToTimeoutIBTPsMap(timeoutIBTPsMap map[string][]string, txId string, 
 	return nil
 }
 
-func parseChainServiceID(id string) (string, string, string, error) {
+func (exec *BlockExecutor) parseChainServiceID(id string) (string, string, string, error) {
 	splits := strings.Split(id, ":")
 
 	if len(splits) != 3 {
@@ -1029,7 +1050,7 @@ func parseChainServiceID(id string) (string, string, string, error) {
 	return splits[0], splits[1], splits[2], nil
 }
 
-func isGlobalID(id string) bool {
+func (exec *BlockExecutor) isGlobalID(id string) bool {
 	return !strings.Contains(id, "-")
 }
 
@@ -1055,7 +1076,7 @@ func (exec *BlockExecutor) filterValidTx(receipts []*pb.Receipt) (map[string]boo
 }
 
 func (exec *BlockExecutor) isDstChainFromBxh(to string, bxhId string) bool {
-	_, chainId, _, _ := parseChainServiceID(to)
+	_, chainId, _, _ := exec.parseChainServiceID(to)
 	if chainId == bxhId {
 		return true
 	}
