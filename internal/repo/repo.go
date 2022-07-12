@@ -231,3 +231,26 @@ func GetStoragePath(repoRoot string, subPath ...string) string {
 
 	return p
 }
+
+//func RewriteBxhConfig(repoRoot string, isTss bool) error {
+//	config := &Config{}
+//	v := viper.New()
+//	v.SetConfigFile(filepath.Join(repoRoot, "bitxhub.toml"))
+//	v.SetConfigType("toml")
+//	if err := v.ReadInConfig(); err != nil {
+//		return fmt.Errorf("readInConfig error: %w", err)
+//	}
+//	if err := v.Unmarshal(config); err != nil {
+//		return fmt.Errorf("unmarshal network config error: %w", err)
+//	}
+//	config.Tss.EnableTSS = isTss
+//	data, err := toml.Marshal(*config)
+//	if err != nil {
+//		return fmt.Errorf("marshal network config error: %w", err)
+//	}
+//	err = v.ReadConfig(bytes.NewBuffer(data))
+//	if err != nil {
+//		return fmt.Errorf("readConfig error: %w", err)
+//	}
+//	return v.WriteConfig()
+//}

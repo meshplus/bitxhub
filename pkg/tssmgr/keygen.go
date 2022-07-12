@@ -189,7 +189,7 @@ func (t *TssMgr) fetchPkFromOtherPeers() map[uint64]crypto.PubKey {
 					lock.Unlock()
 					return nil
 				}
-			}, strategy.Limit(60), strategy.Wait(500*time.Millisecond),
+			}, strategy.Limit(10), strategy.Wait(1*time.Second),
 			); err != nil {
 				t.logger.WithFields(logrus.Fields{
 					"pid": pid,
@@ -247,7 +247,7 @@ func (t *TssMgr) fetchTssPkFromOtherPeers() map[string]string {
 					lock.Unlock()
 					return nil
 				}
-			}, strategy.Wait(500*time.Millisecond), strategy.Limit(60),
+			}, strategy.Wait(1*time.Second), strategy.Limit(10),
 			); err != nil {
 				t.logger.WithFields(logrus.Fields{
 					"pid": pid,

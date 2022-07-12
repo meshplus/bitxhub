@@ -432,3 +432,41 @@ func (bxh *BitXHub) raiseUlimit(limitNew uint64) error {
 func (bxh *BitXHub) GetPrivKey() *repo.Key {
 	return bxh.repo.Key
 }
+
+//func (bxh *BitXHub) getSignType() {
+//	var (
+//		wg   *sync.WaitGroup
+//		lock *sync.Mutex
+//	)
+//	signNodes := make(map[uint64]pb.SignType, 0)
+//	wg.Add(int(bxh.Order.Quorum()) - 1)
+//	for id := range bxh.PeerMgr.OtherPeers() {
+//		go func(id uint64, signNodes map[uint64]pb.SignType, wg *sync.WaitGroup, lock *sync.Mutex) {
+//			defer wg.Done()
+//			if err := retry.Retry(func(attempt uint) error {
+//				msg := &pb.Message{
+//					Type: pb.Message_FETCH_SUPPORT_TSS,
+//				}
+//				resp, err := bxh.PeerMgr.Send(id, msg)
+//				if err != nil {
+//					return err
+//				}
+//				lock.Lock()
+//				defer lock.Unlock()
+//				if string(resp.Data) == pb.SignType_TSS.String() {
+//					signNodes[id] = pb.SignType_TSS
+//				} else {
+//					signNodes[id] = pb.SignType_MultiSign
+//				}
+//				return nil
+//			}, strategy.Wait(1*time.Second), strategy.Limit(10),
+//			); err != nil {
+//				bxh.logger.WithFields(logrus.Fields{
+//					"id":  id,
+//					"err": err.Error(),
+//				}).Warnf("retry error")
+//			}
+//		}(id, signNodes, wg, lock)
+//	}
+//	wg.Wait()
+//}

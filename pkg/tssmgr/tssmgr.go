@@ -40,7 +40,8 @@ type TssMgr struct {
 	netConf         *repo.NetworkConfig
 	tssRepo         string
 	orderReadyPeers map[uint64]bool
-	keyRoundDone    atomic.Value
+	lock            sync.Mutex
+	keyRoundDone    *atomic.Value
 
 	keygenPreParams  *bkg.LocalPreParams
 	keygenLocalState *storage.KeygenLocalState
@@ -95,7 +96,7 @@ func NewTssMgr(
 		},
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	var keyRoundDone atomic.Value
+	keyRoundDone := &atomic.Value{}
 	keyRoundDone.Store(false)
 	return &TssMgr{
 		localID:         netConf.ID,
@@ -121,6 +122,8 @@ func NewTssMgr(
 }
 
 func (t *TssMgr) SetOrderReadyPeers(id uint64) {
+	t.lock.Lock()
+	defer t.lock.Unlock()
 	t.orderReadyPeers[id] = true
 }
 
@@ -171,7 +174,7 @@ func (t *TssMgr) sendOrderReady() error {
 	data := make([]byte, 8)
 	binary.LittleEndian.PutUint64(data, t.localID)
 	msg := &pb.Message{
-		Type: pb.Message_FERCH_TSS_NODES,
+		Type: pb.Message_FETCH_TSS_NODES,
 		Data: data,
 	}
 	err := t.peerMgr.Broadcast(msg)

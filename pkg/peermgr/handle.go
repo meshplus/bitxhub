@@ -57,8 +57,7 @@ func (swarm *Swarm) handleMessage(s network.Stream, data []byte) {
 			swarm.handleAskPierMaster(s, m.Data)
 		case pb.Message_CHECK_MASTER_PIER_ACK:
 			swarm.handleReplyPierMaster(s, m.Data)
-		case pb.Message_TSS_TASK, pb.Message_FERCH_TSS_NODES:
-			swarm.logger.Debugf("handle tss msg")
+		case pb.Message_TSS_TASK, pb.Message_FETCH_TSS_NODES:
 			go swarm.tssMessageFeed.Send(m)
 		case pb.Message_TSS_CULPRITS:
 			swarm.logger.Debugf("handle tss culprits msg")
@@ -429,3 +428,20 @@ func (swarm *Swarm) handleReplyPierMaster(s network.Stream, data []byte) {
 	}
 	swarm.piers.pierChan.writeChan(resp)
 }
+
+//func (swarm *Swarm) handleSupportTss(s network.Stream) {
+//	var msg *pb.Message
+//	if swarm.repo.Config.Tss.EnableTSS {
+//		msg = &pb.Message{
+//			Data: []byte(pb.SignType_TSS.String()),
+//		}
+//	} else {
+//		msg = &pb.Message{
+//			Data: []byte(pb.SignType_MultiSign.String()),
+//		}
+//	}
+//	err := swarm.SendWithStream(s, msg)
+//	if err != nil {
+//		return
+//	}
+//}
