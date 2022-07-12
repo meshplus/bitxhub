@@ -165,21 +165,22 @@ func (swarm *Swarm) handleFetchCertMessage(s network.Stream) error {
 }
 
 func (swarm *Swarm) handleFetchP2PPubkey(s network.Stream) error {
-	pubkeyData, err := swarm.p2p.PrivKey().GetPublic().Raw()
-	if err != nil {
-		return fmt.Errorf("get p2p pubkey data error: %w", err)
-	}
+	if swarm.repo.Config.Tss.EnableTSS {
+		pubkeyData, err := swarm.p2p.PrivKey().GetPublic().Raw()
+		if err != nil {
+			return fmt.Errorf("get p2p pubkey data error: %w", err)
+		}
 
-	msg := &pb.Message{
-		Type: pb.Message_FETCH_P2P_PUBKEY_ACK,
-		Data: pubkeyData,
-	}
+		msg := &pb.Message{
+			Type: pb.Message_FETCH_P2P_PUBKEY_ACK,
+			Data: pubkeyData,
+		}
 
-	err = swarm.SendWithStream(s, msg)
-	if err != nil {
-		return fmt.Errorf("send msg: %w", err)
+		err = swarm.SendWithStream(s, msg)
+		if err != nil {
+			return fmt.Errorf("send msg: %w", err)
+		}
 	}
-
 	return nil
 }
 
