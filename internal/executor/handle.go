@@ -76,8 +76,8 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	exec.evm = newEvm(block.Height(), uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateLedger, exec.ledger.ChainLedger, exec.admins[0])
 	exec.ledger.PrepareBlock(block.BlockHash, block.Height())
 	receipts := exec.txsExecutor.ApplyTransactions(block.Transactions.Transactions, blockWrapper.invalidTx)
-	// applyTxsDuration.Observe(float64(time.Since(current)) / float64(time.Second))
-	// exec.logger.WithFields(logrus.Fields{
+	//applyTxsDuration.Observe(float64(time.Since(current)) / float64(time.Second))
+	//exec.logger.WithFields(logrus.Fields{
 	//	"time":  time.Since(current),
 	//	"count": len(block.Transactions.Transactions),
 	// }).Debug("Apply transactions elapsed")
@@ -820,8 +820,9 @@ func (exec *BlockExecutor) setTimeoutList(height uint64, txList []pb.Transaction
 			if pb.IBTP_REQUEST == ibtp.Category() {
 				// record timeout height
 				var timeoutHeight uint64
+				// if ibtp have not timeoutHeight, needn't record it
 				if ibtp.TimeoutHeight <= 0 || uint64(ibtp.TimeoutHeight) >= math.MaxUint64-height {
-					timeoutHeight = math.MaxUint64
+					continue
 				} else {
 					timeoutHeight = height + uint64(ibtp.TimeoutHeight)
 				}

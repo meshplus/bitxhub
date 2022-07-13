@@ -232,32 +232,29 @@ func (l *ChainLedgerImpl) PersistExecutionResult(block *pb.Block, receipts []*pb
 		InterchainTxCount: count + l.chainMeta.InterchainTxCount,
 	}
 
-	appendBlockSt := time.Now()
+	//appendBlockSt := time.Now()
 	if err := l.bf.AppendBlock(l.chainMeta.Height, block.BlockHash.Bytes(), b, rs, ts, im); err != nil {
 		return fmt.Errorf("append block with height %d to blockfile failed: %w", l.chainMeta.Height, err)
 	}
-	l.logger.WithFields(logrus.Fields{
-		"height": block.Height(),
-		"time":   time.Since(appendBlockSt),
-	}).Info("bf.AppendBlock end")
+	//l.logger.WithFields(logrus.Fields{
+	//	"height": block.Height(),
+	//	"time":   time.Since(appendBlockSt),
+	//}).Info("bf.AppendBlock end")
 
 	if err := l.persistChainMeta(batcher, meta); err != nil {
 		return fmt.Errorf("persist chain meta failed: %w", err)
 	}
 
-	batcherCommitSt := time.Now()
+	//batcherCommitSt := time.Now()
 	batcher.Commit()
-	l.logger.WithFields(logrus.Fields{
-		"height": block.Height(),
-		"time":   time.Since(batcherCommitSt),
-	}).Info("leveldb batcher.Commit end")
+	//l.logger.WithFields(logrus.Fields{
+	//	"height": block.Height(),
+	//	"time":   time.Since(batcherCommitSt),
+	//}).Info("leveldb batcher.Commit end")
 
 	l.UpdateChainMeta(meta)
 
-	l.logger.WithFields(logrus.Fields{
-		"height": block.Height(),
-		"time":   time.Since(current),
-	}).Info("PersistExecutionResult end")
+	l.logger.WithField("time", time.Since(current)).Debug("persist execution result elapsed")
 
 	return nil
 }

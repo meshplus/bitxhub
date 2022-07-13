@@ -166,7 +166,7 @@ func (t *TransactionManager) Begin(txId string, timeoutHeight uint64, isFailed b
 		// t.addToTimeoutList(record.Height, txId)
 	}
 
-	// t.AddObject(TxInfoKey(txId), record)
+	t.AddObject(TxInfoKey(txId), record)
 
 	change := StatusChange{
 		PrevStatus: -1,
