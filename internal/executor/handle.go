@@ -71,16 +71,19 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	exec.logger.WithFields(logrus.Fields{
 		"time":        time.Since(current1),
 		"count":       len(block.Transactions.Transactions),
+		"height":      block.Height(),
 		"verify_type": exec.config.ProofType,
 	}).Info("verify proof elapsed")
 	exec.evm = newEvm(block.Height(), uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateLedger, exec.ledger.ChainLedger, exec.admins[0])
 	exec.ledger.PrepareBlock(block.BlockHash, block.Height())
+	ApplyTransactionsSt := time.Now()
 	receipts := exec.txsExecutor.ApplyTransactions(block.Transactions.Transactions, blockWrapper.invalidTx)
-	//applyTxsDuration.Observe(float64(time.Since(current)) / float64(time.Second))
-	//exec.logger.WithFields(logrus.Fields{
-	//	"time":  time.Since(current),
-	//	"count": len(block.Transactions.Transactions),
-	// }).Debug("Apply transactions elapsed")
+	// applyTxsDuration.Observe(float64(time.Since(current)) / float64(time.Second))
+	exec.logger.WithFields(logrus.Fields{
+		"time":   time.Since(ApplyTransactionsSt),
+		"height": block.Height(),
+		"count":  len(block.Transactions.Transactions),
+	}).Info("Apply transactions elapsed")
 
 	// calcMerkleStart := time.Now()
 	l1Root, l2Roots, err := exec.buildTxMerkleTree(block.Transactions.Transactions)
@@ -102,7 +105,12 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	// this block is not in ledger
 	txList := blockWrapper.block.Transactions.Transactions
 	bxhId := strconv.FormatUint(exec.config.ChainID, 10)
+	setTimeoutListSt := time.Now()
 	err = exec.setTimeoutList(exec.currentHeight, txList, invalidTxHashMap, recordFailTxHashMap, bxhId)
+	exec.logger.WithFields(logrus.Fields{
+		"time":   time.Since(setTimeoutListSt),
+		"height": block.Height(),
+	}).Info("setTimeoutList elapsed")
 	if err != nil {
 		exec.logger.Errorf("setTimeoutList err: %s", err)
 	}

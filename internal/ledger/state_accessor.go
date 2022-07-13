@@ -354,7 +354,7 @@ func (l *SimpleLedger) Commit(height uint64, accounts map[string]ledger.IAccount
 	l.logger.WithFields(logrus.Fields{
 		"height": height,
 		"time":   time.Since(st),
-	}).Infof("Commit end")
+	}).Info("Commit end")
 
 	return nil
 }
