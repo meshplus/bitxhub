@@ -72,7 +72,7 @@ func (t *TssMgr) Keysign(signers []string, msgs []string, randomN string) ([]byt
 	if err != nil {
 		if errors.Is(err, tss.ErrNotActiveSigner) {
 			return nil, nil, err
-		} else if len(resp.Blame.BlameNodes) != 0 {
+		} else if resp != nil && len(resp.Blame.BlameNodes) != 0 {
 			culpritIDs := []string{}
 			for _, node := range resp.Blame.BlameNodes {
 				culpritIDs = append(culpritIDs, node.PartyID)

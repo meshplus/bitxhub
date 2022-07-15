@@ -8,7 +8,6 @@ import (
 	"github.com/meshplus/bitxhub/internal/loggers"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
 	"github.com/meshplus/bitxhub/pkg/tssmgr"
-	"strconv"
 	"time"
 
 	"github.com/Rican7/retry"
@@ -132,18 +131,6 @@ func (bxh *BitXHub) listenEvent() {
 					}
 					if err := bxh.Order.DelNode(ev.NodeId); err != nil {
 						bxh.logger.Error(err)
-					}
-
-					// tss
-					if bxh.repo.Config.Tss.EnableTSS {
-						// 1. delete node
-						needRestartKeyGen, err := bxh.TssMgr.DeleteTssNodes([]string{strconv.Itoa(int(ev.NodeId))})
-						if err != nil {
-							bxh.logger.Errorf("delete tss node error: %v", err)
-						}
-						if needRestartKeyGen {
-							tssKeygenReqCh <- &pb.Message{Type: pb.Message_TSS_KEYGEN_REQ}
-						}
 					}
 
 				}

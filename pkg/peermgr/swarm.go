@@ -423,6 +423,18 @@ func (swarm *Swarm) DelNode(delID uint64) {
 	// 3. update notifiee info
 	swarm.notifiee.setPeers(swarm.routers)
 
+	// tss
+	if swarm.repo.Config.Tss.EnableTSS && delID != swarm.localID {
+		// 1. delete node
+		needRestartKeyGen, err := swarm.Tss.DeleteTssNodes([]string{strconv.Itoa(int(delID))})
+		if err != nil {
+			swarm.logger.Errorf("delete tss node error: %v", err)
+		}
+		if needRestartKeyGen {
+			go swarm.tssKeygenReqFeed.Send(&pb.Message{Type: pb.Message_TSS_KEYGEN_REQ})
+		}
+	}
+
 	// 4. deleted node itself will exit the cluster
 	if delID == swarm.localID {
 		swarm.reset()
