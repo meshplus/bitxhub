@@ -287,36 +287,42 @@ func (t *TssMgr) GetTssInfo() (*pb.TssInfo, error) {
 	}, nil
 }
 
-func (t *TssMgr) DeleteTssNodes(nodes []string) error {
+func (t *TssMgr) DeleteTssNodes(nodes []string) (bool, error) {
+	var needRestartKeyGen bool
 	t.stateMgrLocker.Lock()
 	defer t.stateMgrLocker.Unlock()
 	// 1. get pool addr from file
 	filePath := filepath.Join(t.tssRepo, storage.PoolPkAddrFileName)
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		return err
+		return needRestartKeyGen, err
 	}
 
 	buf, err := ioutil.ReadFile(filePath)
 	if err != nil {
-		return fmt.Errorf("file to read from file(%s): %w", filePath, err)
+		return needRestartKeyGen, fmt.Errorf("file to read from file(%s): %w", filePath, err)
 	}
 
 	// 2. get local state by pool addr
 	state, err := t.stateMgr.GetLocalState(string(buf))
 	if err != nil {
-		return fmt.Errorf("failed to get local state: %s,  %v", string(buf), err)
+		return needRestartKeyGen, fmt.Errorf("failed to get local state: %s,  %v", string(buf), err)
 	}
 
 	// 3. delete culprits
 	for _, id := range nodes {
 		delete(state.ParticipantPksMap, id)
+		t.logger.WithFields(logrus.Fields{"remove Id": id, "ParticipantPksMap size": len(state.ParticipantPksMap),
+			"threshold": t.threshold}).Infof("delete tss node")
 	}
-
+	if len(state.ParticipantPksMap) <= int(t.threshold) {
+		t.logger.WithFields(logrus.Fields{"ParticipantPksMap size": len(state.ParticipantPksMap),
+			"threshold": t.threshold}).Infof("not meet threshold, need restart keygen")
+		needRestartKeyGen = true
+	}
 	// 4. update local state
 	err = t.stateMgr.SaveLocalState(state)
 	if err != nil {
-		return fmt.Errorf("save local state error: %v", err)
+		return needRestartKeyGen, fmt.Errorf("save local state error: %v", err)
 	}
-
-	return nil
+	return needRestartKeyGen, nil
 }

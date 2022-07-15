@@ -137,13 +137,13 @@ func (bxh *BitXHub) listenEvent() {
 					// tss
 					if bxh.repo.Config.Tss.EnableTSS {
 						// 1. delete node
-						err := bxh.TssMgr.DeleteTssNodes([]string{strconv.Itoa(int(ev.NodeId))})
+						needRestartKeyGen, err := bxh.TssMgr.DeleteTssNodes([]string{strconv.Itoa(int(ev.NodeId))})
 						if err != nil {
 							bxh.logger.Errorf("delete tss node error: %v", err)
 						}
-
-						// 2. update threshold
-						bxh.TssMgr.UpdateThreshold(bxh.Order.Quorum() - 1)
+						if needRestartKeyGen {
+							tssKeygenReqCh <- &pb.Message{Type: pb.Message_TSS_KEYGEN_REQ}
+						}
 					}
 
 				}

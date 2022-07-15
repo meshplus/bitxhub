@@ -56,7 +56,7 @@ func (t *TssMgr) Keygen(isAddNodeReq bool) error {
 						"ids": ids,
 					}).Infof("delete culprits from localState")
 					// 将不一致的参与方踢出tss节点
-					if err := t.DeleteTssNodes(ids); err != nil {
+					if _, err = t.DeleteTssNodes(ids); err != nil {
 						return fmt.Errorf("handle culprits: %w", err)
 					}
 					// 继续使用之前的公钥
