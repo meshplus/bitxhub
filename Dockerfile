@@ -21,7 +21,7 @@ RUN go env -w GOPROXY=https://goproxy.cn,direct \
     && rm -rf /go/src/github.com/meshplus/bitxhub \
     && go clean -modcache
 
-FROM frolvlad/alpine-glibc
+FROM frolvlad/alpine-glibc:glibc-2.32
 
 COPY --from=0 /go/bin/bitxhub /usr/local/bin/bitxhub
 COPY --from=0 /root/.bitxhub /root/.bitxhub
