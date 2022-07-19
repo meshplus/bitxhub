@@ -57,8 +57,7 @@ func (swarm *Swarm) handleMessage(s network.Stream, data []byte) {
 			swarm.handleAskPierMaster(s, m.Data)
 		case pb.Message_CHECK_MASTER_PIER_ACK:
 			swarm.handleReplyPierMaster(s, m.Data)
-		case pb.Message_TSS_TASK, pb.Message_FERCH_TSS_NODES:
-			swarm.logger.Debugf("handle tss msg")
+		case pb.Message_TSS_TASK, pb.Message_FETCH_TSS_NODES:
 			go swarm.tssMessageFeed.Send(m)
 		case pb.Message_TSS_CULPRITS:
 			swarm.logger.Debugf("handle tss culprits msg")
@@ -166,21 +165,22 @@ func (swarm *Swarm) handleFetchCertMessage(s network.Stream) error {
 }
 
 func (swarm *Swarm) handleFetchP2PPubkey(s network.Stream) error {
-	pubkeyData, err := swarm.p2p.PrivKey().GetPublic().Raw()
-	if err != nil {
-		return fmt.Errorf("get p2p pubkey data error: %w", err)
-	}
+	if swarm.repo.Config.Tss.EnableTSS {
+		pubkeyData, err := swarm.p2p.PrivKey().GetPublic().Raw()
+		if err != nil {
+			return fmt.Errorf("get p2p pubkey data error: %w", err)
+		}
 
-	msg := &pb.Message{
-		Type: pb.Message_FETCH_P2P_PUBKEY_ACK,
-		Data: pubkeyData,
-	}
+		msg := &pb.Message{
+			Type: pb.Message_FETCH_P2P_PUBKEY_ACK,
+			Data: pubkeyData,
+		}
 
-	err = swarm.SendWithStream(s, msg)
-	if err != nil {
-		return fmt.Errorf("send msg: %w", err)
+		err = swarm.SendWithStream(s, msg)
+		if err != nil {
+			return fmt.Errorf("send msg: %w", err)
+		}
 	}
-
 	return nil
 }
 
@@ -429,3 +429,20 @@ func (swarm *Swarm) handleReplyPierMaster(s network.Stream, data []byte) {
 	}
 	swarm.piers.pierChan.writeChan(resp)
 }
+
+//func (swarm *Swarm) handleSupportTss(s network.Stream) {
+//	var msg *pb.Message
+//	if swarm.repo.Config.Tss.EnableTSS {
+//		msg = &pb.Message{
+//			Data: []byte(pb.SignType_TSS.String()),
+//		}
+//	} else {
+//		msg = &pb.Message{
+//			Data: []byte(pb.SignType_MultiSign.String()),
+//		}
+//	}
+//	err := swarm.SendWithStream(s, msg)
+//	if err != nil {
+//		return
+//	}
+//}
