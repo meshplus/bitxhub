@@ -849,273 +849,6 @@ func generateMockConfig(t *testing.T) *repo.Config {
 	return config
 }
 
-//func TestBlockExecutor_setTimeoutList(t *testing.T) {
-//	config := generateMockConfig(t)
-//	mockCtl := gomock.NewController(t)
-//	chainLedger := mock_ledger.NewMockChainLedger(mockCtl)
-//	stateLedger := mock_ledger.NewMockStateLedger(mockCtl)
-//	mockLedger := &ledger.Ledger{
-//		ChainLedger: chainLedger,
-//		StateLedger: stateLedger,
-//	}
-//	timeListLedger := make(map[string][]byte)
-//	recordLedger := make(map[string][]byte)
-//
-//	// mock data for ledger
-//	chainMeta := &pb.ChainMeta{
-//		Height:    1,
-//		BlockHash: types.NewHash([]byte(from)),
-//	}
-//
-//	evs := make([]*pb.Event, 0)
-//	m := make(map[string]uint64)
-//	m[from] = 1
-//	data, err := json.Marshal(m)
-//	assert.Nil(t, err)
-//	ev := &pb.Event{
-//		TxHash:    types.NewHash([]byte(from)),
-//		Data:      data,
-//		EventType: pb.Event_INTERCHAIN,
-//	}
-//	evs = append(evs, ev)
-//	chainLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
-//	stateLedger.EXPECT().Events(gomock.Any()).Return(evs).AnyTimes()
-//	stateLedger.EXPECT().Commit(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-//	stateLedger.EXPECT().Clear().AnyTimes()
-//
-//	chain := &appchainMgr.Appchain{
-//		ID:      fromServiceID,
-//		Desc:    "",
-//		Version: 0,
-//	}
-//
-//	chainData, err := json.Marshal(chain)
-//	require.Nil(t, err)
-//
-//	rules := make([]*ruleMgr.Rule, 0)
-//	rl := &ruleMgr.Rule{
-//		Address: HappyRuleAddr,
-//		Status:  governance.GovernanceAvailable,
-//	}
-//	rules = append(rules, rl)
-//	rlData, err := json.Marshal(rules)
-//	require.Nil(t, err)
-//	stateLedger.EXPECT().Copy().Return(stateLedger).AnyTimes()
-//
-//	stateLedger.EXPECT().GetBalance(gomock.Any()).Return(new(big.Int).SetUint64(10000000000000)).AnyTimes()
-//	stateLedger.EXPECT().SetBalance(gomock.Any(), gomock.Any()).AnyTimes()
-//	stateLedger.EXPECT().SetNonce(gomock.Any(), gomock.Any()).AnyTimes()
-//	stateLedger.EXPECT().GetNonce(gomock.Any()).Return(uint64(0)).AnyTimes()
-//	stateLedger.EXPECT().SetCode(gomock.Any(), gomock.Any()).AnyTimes()
-//	stateLedger.EXPECT().GetCode(gomock.Any()).Return([]byte("10")).AnyTimes()
-//	stateLedger.EXPECT().GetLogs(gomock.Any()).Return(nil).AnyTimes()
-//	chainLedger.EXPECT().PersistExecutionResult(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-//	stateLedger.EXPECT().FlushDirtyData().Return(make(map[string]ledger2.IAccount), &types.Hash{}).AnyTimes()
-//	stateLedger.EXPECT().PrepareBlock(gomock.Any(), gomock.Any()).AnyTimes()
-//	stateLedger.EXPECT().Finalise(gomock.Any()).AnyTimes()
-//	stateLedger.EXPECT().Snapshot().Return(1).AnyTimes()
-//	stateLedger.EXPECT().RevertToSnapshot(1).AnyTimes()
-//	stateLedger.EXPECT().PrepareEVM(gomock.Any(), gomock.Any()).AnyTimes()
-//	stateLedger.EXPECT().Close().AnyTimes()
-//	chainLedger.EXPECT().Close().AnyTimes()
-//
-//	stateLedger.EXPECT().GetState(constant.AppchainMgrContractAddr.Address(), gomock.Any()).Return(true, chainData)
-//	stateLedger.EXPECT().GetState(constant.RuleManagerContractAddr.Address(), gomock.Any()).Return(true, rlData)
-//	stateLedger.EXPECT().SetState(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
-//		func(addr *types.Address, key []byte, value []byte) {
-//
-//			if addr.String() == constant.TransactionMgrContractAddr.Address().String() {
-//				// manager timeout list
-//				if strings.HasPrefix(string(key), TIMEOUT_PREFIX) {
-//					timeListLedger[string(key)] = value
-//				}
-//				if strings.HasPrefix(string(key), PREFIX) {
-//					recordLedger[string(key)] = value
-//				}
-//			}
-//
-//		}).AnyTimes()
-//
-//	stateLedger.EXPECT().GetState(gomock.Any(), gomock.Any()).DoAndReturn(
-//		func(addr *types.Address, key []byte) (bool, []byte) {
-//			if addr.String() == constant.TransactionMgrContractAddr.Address().String() {
-//				if strings.HasPrefix(string(key), TIMEOUT_PREFIX) {
-//					return true, timeListLedger[string(key)]
-//				}
-//				if strings.HasPrefix(string(key), PREFIX) {
-//					return true, recordLedger[string(key)]
-//				}
-//				return false, nil
-//			}
-//			if addr.String() == constant.InterchainContractAddr.Address().String() {
-//				if string(key) == "bitxhub-id" {
-//					return true, []byte("1")
-//				}
-//				return false, nil
-//			}
-//			if addr.String() == constant.AppchainMgrContractAddr.Address().String() {
-//				return true, chainData
-//			}
-//			if addr.String() == constant.RuleManagerContractAddr.Address().String() {
-//				return true, rlData
-//			}
-//			return false, nil
-//		}).AnyTimes()
-//
-//	logger := log.NewWithModule("executor")
-//
-//	exec, err := New(mockLedger, logger, &appchain.Client{}, config, big.NewInt(5000000))
-//	assert.Nil(t, err)
-//
-//	// mock data for block
-//	var txs1 []*pb.BxhTransaction
-//	var txs2 []*pb.BxhTransaction
-//	var txs3 []*pb.BxhTransaction
-//	privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
-//	assert.Nil(t, err)
-//	pubKey := privKey.PublicKey()
-//
-//	// set tx of TimeoutHeight 1 for block 2
-//	ibtp1 := mockIBTP1(t, 1, pb.IBTP_INTERCHAIN)
-//	ibtp1.TimeoutHeight = 1
-//	NormalData := mockTxData(t, pb.TransactionData_NORMAL, pb.TransactionData_BVM, ibtp1)
-//	tx1 := mockTx1(t, NormalData, ibtp1)
-//	txs1 = append(txs1, tx1)
-//
-//	// set tx of TimeoutHeight is max for block 2
-//	ibtp2 := mockIBTP1(t, 2, pb.IBTP_INTERCHAIN)
-//	NormalData = mockTxData(t, pb.TransactionData_NORMAL, pb.TransactionData_BVM, ibtp2)
-//	tx2 := mockTx1(t, NormalData, ibtp2)
-//	txs1 = append(txs1, tx2)
-//
-//	// set tx of TimeoutHeight 1 for block 3
-//	ibtp3 := mockIBTP1(t, 3, pb.IBTP_INTERCHAIN)
-//	ibtp3.TimeoutHeight = 1
-//	NormalData = mockTxData(t, pb.TransactionData_NORMAL, pb.TransactionData_BVM, ibtp3)
-//	tx3 := mockTx1(t, NormalData, ibtp3)
-//	txs2 = append(txs2, tx3)
-//
-//	// set tx of TimeoutHeight is max for block 3
-//	ibtp4 := mockIBTP1(t, 4, pb.IBTP_INTERCHAIN)
-//	NormalData = mockTxData(t, pb.TransactionData_NORMAL, pb.TransactionData_BVM, ibtp4)
-//	tx4 := mockTx1(t, NormalData, ibtp4)
-//	txs2 = append(txs2, tx4)
-//
-//	// the receipt of tx3
-//	receipt1 := mockIBTP1(t, 1, pb.IBTP_RECEIPT_SUCCESS)
-//	NormalData = mockTxData(t, pb.TransactionData_NORMAL, pb.TransactionData_BVM, receipt1)
-//	tx5 := mockTx1(t, NormalData, receipt1)
-//	txs3 = append(txs3, tx5)
-//
-//	// the receipt of tx3
-//	receipt3 := mockIBTP1(t, 3, pb.IBTP_RECEIPT_SUCCESS)
-//	NormalData = mockTxData(t, pb.TransactionData_NORMAL, pb.TransactionData_BVM, receipt3)
-//	tx6 := mockTx1(t, NormalData, receipt3)
-//	txs3 = append(txs3, tx6)
-//
-//	// set signature for txs1
-//	for _, tx := range txs1 {
-//		tx.From, err = pubKey.Address()
-//		assert.Nil(t, err)
-//		body, err := tx.Marshal()
-//		assert.Nil(t, err)
-//		ret := sha256.Sum256(body)
-//
-//		sig, err := asym.SignWithType(privKey, types.NewHash(ret[:]).Bytes())
-//		assert.Nil(t, err)
-//		tx.Signature = sig
-//		tx.TransactionHash = tx.Hash()
-//		tx.Extra = []byte("1")
-//	}
-//
-//	// set signature for txs2
-//	for _, tx := range txs2 {
-//		tx.From, err = pubKey.Address()
-//		assert.Nil(t, err)
-//		body, err := tx.Marshal()
-//		assert.Nil(t, err)
-//		ret := sha256.Sum256(body)
-//
-//		sig, err := asym.SignWithType(privKey, types.NewHash(ret[:]).Bytes())
-//		assert.Nil(t, err)
-//		tx.Signature = sig
-//		tx.TransactionHash = tx.Hash()
-//		tx.Extra = []byte("1")
-//	}
-//
-//	// set signature for txs3
-//	for _, tx := range txs3 {
-//		tx.From, err = pubKey.Address()
-//		assert.Nil(t, err)
-//		body, err := tx.Marshal()
-//		assert.Nil(t, err)
-//		ret := sha256.Sum256(body)
-//
-//		sig, err := asym.SignWithType(privKey, types.NewHash(ret[:]).Bytes())
-//		assert.Nil(t, err)
-//		tx.Signature = sig
-//		tx.TransactionHash = tx.Hash()
-//		tx.Extra = []byte("1")
-//	}
-//
-//	recordLedger = mockRecordLedger(recordLedger, txs1, 2)
-//	recordLedger = mockRecordLedger(recordLedger, txs2, 3)
-//	recordLedger = mockRecordLedger(recordLedger, txs3, 4)
-//	assert.Nil(t, exec.Start())
-//
-//	done := make(chan bool)
-//	ch := make(chan events.ExecutedEvent)
-//	blockSub := exec.SubscribeBlockEvent(ch)
-//	defer blockSub.Unsubscribe()
-//
-//	// count received block to end test
-//	var wg sync.WaitGroup
-//	wg.Add(4)
-//	go listenBlock(&wg, done, ch)
-//
-//	// send blocks to executor
-//	commitEvent1 := mockCommitEvent(uint64(1), nil)
-//
-//	transactions1 := make([]pb.Transaction, 0)
-//	for _, tx := range txs1 {
-//		transactions1 = append(transactions1, tx)
-//	}
-//
-//	transactions2 := make([]pb.Transaction, 0)
-//	for _, tx := range txs2 {
-//		transactions2 = append(transactions2, tx)
-//	}
-//
-//	transactions3 := make([]pb.Transaction, 0)
-//	for _, tx := range txs3 {
-//		transactions3 = append(transactions3, tx)
-//	}
-//	commitEvent2 := mockCommitEvent(uint64(2), transactions1)
-//	commitEvent3 := mockCommitEvent(uint64(3), transactions2)
-//	commitEvent4 := mockCommitEvent(uint64(4), transactions3)
-//	exec.ExecuteBlock(commitEvent1)
-//	exec.ExecuteBlock(commitEvent2)
-//	exec.ExecuteBlock(commitEvent3)
-//	exec.ExecuteBlock(commitEvent4)
-//
-//	wg.Wait()
-//	done <- true
-//	txId1 := "1:appchain1:0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997-1:appchain2:0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b111-1"
-//	txId3 := "1:appchain1:0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997-1:appchain2:0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b111-3"
-//	val1 := recordLedger[contracts.TxInfoKey(txId1)]
-//	val3 := recordLedger[contracts.TxInfoKey(txId3)]
-//	var record1 pb.TransactionRecord
-//	var record3 pb.TransactionRecord
-//	err = json.Unmarshal(val1, &record1)
-//	err = json.Unmarshal(val3, &record3)
-//	assert.Nil(t, err)
-//	assert.Equal(t, record1.Height, uint64(3))
-//	assert.Equal(t, record3.Height, uint64(4))
-//	assert.Equal(t, record1.Status, pb.TransactionStatus_BEGIN_ROLLBACK)
-//	assert.Equal(t, record3.Status, pb.TransactionStatus_BEGIN)
-//	assert.Nil(t, exec.Stop())
-//}
-
 func mockRecordLedger(ledger map[string][]byte, txList []pb.Transaction, height uint64) map[string][]byte {
 	var timeoutHeight uint64
 	for _, tx := range txList {
@@ -1166,4 +899,166 @@ func executor_start(t *testing.T) *BlockExecutor {
 	logger := log.NewWithModule("executor")
 	executor, _ := New(mockLedger, logger, &appchain.Client{}, config, big.NewInt(5000000))
 	return executor
+}
+
+func TestRollback(t *testing.T) {
+	config := generateMockConfig(t)
+	mockCtl := gomock.NewController(t)
+	chainLedger := mock_ledger.NewMockChainLedger(mockCtl)
+	stateLedger := mock_ledger.NewMockStateLedger(mockCtl)
+	mockLedger := &ledger.Ledger{
+		ChainLedger: chainLedger,
+		StateLedger: stateLedger,
+	}
+
+	// mock data for ledger
+	chainMeta := &pb.ChainMeta{
+		Height:    1,
+		BlockHash: types.NewHash([]byte(from)),
+	}
+
+	evs := make([]*pb.Event, 0)
+	m := make(map[string]uint64)
+	m[from] = 3
+	data, err := json.Marshal(m)
+	assert.Nil(t, err)
+	ev := &pb.Event{
+		TxHash:    types.NewHash([]byte(from)),
+		Data:      data,
+		EventType: pb.Event_INTERCHAIN,
+	}
+	ev2 := &pb.Event{
+		TxHash:    types.NewHash([]byte(from)),
+		Data:      data,
+		EventType: pb.Event_NODEMGR,
+	}
+	ev3 := &pb.Event{
+		TxHash:    types.NewHash([]byte(from)),
+		Data:      data,
+		EventType: pb.Event_AUDIT_APPCHAIN,
+	}
+
+	evs = append(evs, ev, ev2, ev3)
+	stateLedger.EXPECT().Copy().Return(stateLedger).AnyTimes()
+	stateLedger.EXPECT().QueryByPrefix(gomock.Any(), gomock.Any()).Return(false, nil).AnyTimes()
+	chainLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
+	stateLedger.EXPECT().Events(gomock.Any()).Return(evs).AnyTimes()
+	stateLedger.EXPECT().Commit(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	stateLedger.EXPECT().Clear().AnyTimes()
+	stateLedger.EXPECT().GetBalance(gomock.Any()).Return(new(big.Int).SetUint64(1050000000000)).AnyTimes()
+	stateLedger.EXPECT().SetBalance(gomock.Any(), gomock.Any()).AnyTimes()
+	stateLedger.EXPECT().SetNonce(gomock.Any(), gomock.Any()).AnyTimes()
+	stateLedger.EXPECT().GetNonce(gomock.Any()).Return(uint64(0)).AnyTimes()
+	stateLedger.EXPECT().SetCode(gomock.Any(), gomock.Any()).AnyTimes()
+	stateLedger.EXPECT().GetCode(gomock.Any()).Return([]byte("10")).AnyTimes()
+	stateLedger.EXPECT().GetLogs(gomock.Any()).Return(nil).AnyTimes()
+	chainLedger.EXPECT().PersistExecutionResult(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	stateLedger.EXPECT().FlushDirtyData().Return(make(map[string]ledger2.IAccount), &types.Hash{}).AnyTimes()
+	stateLedger.EXPECT().PrepareBlock(gomock.Any(), gomock.Any()).AnyTimes()
+	stateLedger.EXPECT().Finalise(gomock.Any()).AnyTimes()
+	stateLedger.EXPECT().Snapshot().Return(1).AnyTimes()
+	stateLedger.EXPECT().RevertToSnapshot(1).AnyTimes()
+	stateLedger.EXPECT().PrepareEVM(gomock.Any(), gomock.Any()).AnyTimes()
+	stateLedger.EXPECT().Close().AnyTimes()
+	chainLedger.EXPECT().Close().AnyTimes()
+	stateLedger.EXPECT().GetState(gomock.Any(), gomock.Any()).Return(false, nil).AnyTimes()
+	stateLedger.EXPECT().SetState(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+
+	logger := log.NewWithModule("executor")
+
+	exec, err := New(mockLedger, logger, &appchain.Client{}, config, big.NewInt(5000000))
+	assert.Nil(t, err)
+
+	// mock data for block
+	var txs1 []*pb.BxhTransaction
+	var txs2 []*pb.BxhTransaction
+	privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
+	assert.Nil(t, err)
+	pubKey := privKey.PublicKey()
+
+	for i := 1; i <= 10; i++ {
+		// set tx of illegal TransactionData_BVM type
+		ibtp := mockIBTP(t, uint64(i), pb.IBTP_INTERCHAIN)
+		BVMData := mockTxData(t, pb.TransactionData_INVOKE, pb.TransactionData_BVM, ibtp)
+		tx := mockTx(t, BVMData)
+		txs1 = append(txs1, tx)
+	}
+
+	for i := 1; i <= 10; i++ {
+		// set tx of illegal TransactionData_BVM type
+		ibtp := mockIBTP(t, uint64(i), pb.IBTP_INTERCHAIN)
+		BVMData := mockTxData(t, pb.TransactionData_NORMAL, pb.TransactionData_BVM, ibtp)
+		tx := mockTx(t, BVMData)
+		txs2 = append(txs2, tx)
+	}
+
+	// set signature for txs
+	txs1, err = signForTx(txs1, privKey, pubKey)
+	assert.Nil(t, err)
+	txs2, err = signForTx(txs2, privKey, pubKey)
+	assert.Nil(t, err)
+
+	assert.Nil(t, exec.Start())
+
+	done := make(chan bool)
+	ch := make(chan events.ExecutedEvent)
+	blockSub := exec.SubscribeBlockEvent(ch)
+	defer blockSub.Unsubscribe()
+
+	// count received block to end test
+	var wg sync.WaitGroup
+	wg.Add(3)
+	go listenBlock(&wg, done, ch)
+
+	// send blocks to executor
+	commitEvent1 := mockCommitEvent(uint64(2), nil)
+
+	transactions1 := make([]pb.Transaction, 0)
+	transactions2 := make([]pb.Transaction, 0)
+	for _, tx := range txs1 {
+		transactions1 = append(transactions1, tx)
+	}
+	for _, tx := range txs2 {
+		transactions2 = append(transactions2, tx)
+	}
+
+	commitEvent2 := mockCommitEvent(uint64(3), transactions1)
+	commitEvent3 := mockCommitEvent(uint64(3), transactions2)
+
+	chainLedger.EXPECT().GetBlock(uint64(3)).Return(commitEvent2.Block, nil).Times(1)
+	chainLedger.EXPECT().GetBlock(uint64(2)).Return(commitEvent1.Block, nil).Times(1)
+	stateLedger.EXPECT().RollbackState(uint64(2)).Return(nil).Times(1)
+	chainLedger.EXPECT().RollbackBlockChain(uint64(2)).Return(nil).Times(1)
+
+	exec.ExecuteBlock(commitEvent1)
+	exec.ExecuteBlock(commitEvent2)
+	exec.ExecuteBlock(commitEvent3)
+
+	wg.Wait()
+	done <- true
+	assert.Nil(t, exec.Stop())
+	assert.Equal(t, exec.currentHeight, uint64(3))
+}
+
+func signForTx(txs []*pb.BxhTransaction, privKey crypto.PrivateKey, pubKey crypto.PublicKey) ([]*pb.BxhTransaction, error) {
+	var err error
+	for _, tx := range txs {
+		tx.From, err = pubKey.Address()
+		if err != nil {
+			return nil, err
+		}
+		body, err := tx.Marshal()
+		if err != nil {
+			return nil, err
+		}
+		ret := sha256.Sum256(body)
+
+		sig, err := asym.SignWithType(privKey, types.NewHash(ret[:]).Bytes())
+		if err != nil {
+			return nil, err
+		}
+		tx.Signature = sig
+		tx.TransactionHash = tx.Hash()
+	}
+	return txs, nil
 }

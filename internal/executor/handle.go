@@ -16,6 +16,8 @@ import (
 
 	"github.com/meshplus/bitxhub/pkg/utils"
 
+	"github.com/Rican7/retry"
+	"github.com/Rican7/retry/strategy"
 	"github.com/cbergoon/merkletree"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
@@ -43,11 +45,69 @@ const (
 	GasNormalTx = 21000
 	GasFailedTx = 21000
 	GasBVMTx    = 21000 * 10
+	repeatBlock = "new block is the same as the block in local ledger"
 )
 
 type BlockWrapper struct {
 	block     *pb.Block
 	invalidTx map[int]agency.InvalidReason
+}
+
+func (exec *BlockExecutor) rollbackBlocks(newBlock *pb.Block) error {
+	var (
+		oldBlock *pb.Block
+		err      error
+	)
+	if err = retry.Retry(func(attempt uint) error {
+		oldBlock, err = exec.ledger.GetBlock(newBlock.Height())
+		if err != nil {
+			exec.logger.WithFields(logrus.Fields{
+				"height": newBlock.Height(),
+				"err":    err.Error(),
+			}).Errorf("get block from ledger error")
+			return err
+		}
+		return nil
+	}, strategy.Limit(5), strategy.Wait(1*time.Second),
+	); err != nil {
+		exec.logger.WithFields(logrus.Fields{
+			"height": newBlock.Height(),
+			"err":    err.Error(),
+		}).Errorf("retry error")
+		panic(err)
+	}
+	// consensus ensure newBlock is approved by quorum nodes
+	if oldBlock.BlockHash.String() != newBlock.Hash().String() {
+		// query last checked block for generating right parent blockHash
+		lastCheckedBlock, err := exec.ledger.GetBlock(newBlock.Height() - 1)
+		if err != nil {
+			exec.logger.WithFields(logrus.Fields{
+				"height": lastCheckedBlock.Height(),
+				"err":    err.Error(),
+			}).Errorf("get last checked block from ledger error")
+			return err
+		}
+
+		// rollback from stateLedger、chainLedger and blockFile
+		err = exec.ledger.Rollback(oldBlock.Height() - 1)
+		if err != nil {
+			exec.logger.WithFields(logrus.Fields{
+				"begin height": oldBlock.Height(),
+				"end height":   exec.currentHeight,
+				"err":          err.Error(),
+			}).Errorf("rollback block error")
+			return err
+		}
+		exec.currentHeight = lastCheckedBlock.Height()
+		exec.currentBlockHash = lastCheckedBlock.BlockHash
+		exec.logger.WithFields(logrus.Fields{
+			"begin height":   oldBlock.Height(),
+			"current height": exec.currentHeight,
+		}).Info("rollback block end")
+	} else {
+		return fmt.Errorf("does not need to be repeated executor:%s", repeatBlock)
+	}
+	return nil
 }
 
 func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledger.BlockData {
@@ -59,7 +119,13 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	if block.BlockHeader.Number != exec.currentHeight+1 {
 		exec.logger.WithFields(logrus.Fields{"block height": block.BlockHeader.Number,
 			"matchedHeight": exec.currentHeight + 1}).Warning("current block height is not matched")
-		return nil
+		err := exec.rollbackBlocks(block)
+		if err != nil {
+			if strings.Contains(err.Error(), repeatBlock) {
+				return nil
+			}
+			panic(err)
+		}
 	}
 
 	for _, tx := range block.Transactions.Transactions {
