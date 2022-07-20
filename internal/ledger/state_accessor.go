@@ -338,8 +338,6 @@ func (l *SimpleLedger) Commit(height uint64, accounts map[string]ledger.IAccount
 
 	l.journalMutex.Unlock()
 
-	l.accountCache.remove(accounts)
-
 	if height > 10 {
 		if err := l.removeJournalsBeforeBlock(height - 10); err != nil {
 			return fmt.Errorf("remove journals before block %d failed: %w", height-10, err)
