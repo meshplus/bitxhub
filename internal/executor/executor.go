@@ -59,13 +59,14 @@ type BlockExecutor struct {
 	ctx                context.Context
 	cancel             context.CancelFunc
 
-	evm         *vm.EVM
-	evmChainCfg *params.ChainConfig
-	gasLimit    uint64
-	config      repo.Config
-	bxhGasPrice *big.Int
-	lock        *sync.Mutex
-	admins      []string
+	evm           *vm.EVM
+	evmChainCfg   *params.ChainConfig
+	gasLimit      uint64
+	config        repo.Config
+	bxhGasPrice   *big.Int
+	lock          *sync.Mutex
+	admins        []string
+	maliciousTime int
 }
 
 func (exec *BlockExecutor) GetBoltContracts() map[string]agency.Contract {

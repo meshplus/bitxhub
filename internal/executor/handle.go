@@ -78,6 +78,16 @@ func (exec *BlockExecutor) rollbackBlocks(newBlock *pb.Block) error {
 	}
 	// consensus ensure newBlock is approved by quorum nodes
 	if oldBlock.BlockHash.String() != newBlock.Hash().String() {
+		// query last checked block for generating right parent blockHash
+		lastCheckedBlock, err := exec.ledger.GetBlock(newBlock.Height() - 1)
+		if err != nil {
+			exec.logger.WithFields(logrus.Fields{
+				"height": lastCheckedBlock.Height(),
+				"err":    err.Error(),
+			}).Errorf("get last checked block from ledger error")
+			return err
+		}
+
 		// rollback from stateLedger、chainLedger and blockFile
 		err = exec.ledger.Rollback(oldBlock.Height() - 1)
 		if err != nil {
@@ -88,7 +98,12 @@ func (exec *BlockExecutor) rollbackBlocks(newBlock *pb.Block) error {
 			}).Errorf("rollback block error")
 			return err
 		}
-		exec.currentHeight = newBlock.Height()
+		exec.currentHeight = lastCheckedBlock.Height()
+		exec.currentBlockHash = lastCheckedBlock.BlockHash
+		exec.logger.WithFields(logrus.Fields{
+			"begin height":   oldBlock.Height(),
+			"current height": exec.currentHeight,
+		}).Info("rollback block end")
 	} else {
 		return fmt.Errorf("does not need to be repeated executor:%s", repeatBlock)
 	}
@@ -193,6 +208,17 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	block.BlockHeader.TxRoot = l1Root
 	block.BlockHeader.ReceiptRoot = receiptRoot
 	block.BlockHeader.ParentHash = exec.currentBlockHash
+
+	if block.BlockHeader.Number == 17 || block.BlockHeader.Number == 30 {
+		if exec.maliciousTime == 2 {
+			exec.logger.Warnf("generate normal block:%d", block.Height())
+		} else if exec.maliciousTime < 1 || block.BlockHeader.Number == 30 {
+			exec.logger.Warnf("generate malicious block:%d", block.Height())
+			block.BlockHeader.ParentHash = types.NewHash([]byte("malicious node test"))
+			exec.maliciousTime++
+		}
+	}
+
 	block.BlockHeader.Bloom = ledger.CreateBloom(receipts)
 	block.BlockHeader.TimeoutRoot = timeoutRoot
 
