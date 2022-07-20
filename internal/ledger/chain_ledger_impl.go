@@ -231,16 +231,24 @@ func (l *ChainLedgerImpl) PersistExecutionResult(block *pb.Block, receipts []*pb
 		BlockHash:         block.BlockHash,
 		InterchainTxCount: count + l.chainMeta.InterchainTxCount,
 	}
-
-	if err := l.bf.AppendBlock(l.chainMeta.Height, block.BlockHash.Bytes(), b, rs, ts, im); err != nil {
-		return fmt.Errorf("append block with height %d to blockfile failed: %w", l.chainMeta.Height, err)
-	}
-
 	if err := l.persistChainMeta(batcher, meta); err != nil {
 		return fmt.Errorf("persist chain meta failed: %w", err)
 	}
 
-	batcher.Commit()
+	// append to BlockFile and commit to blockchain leveldb concurrently
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		if err := l.bf.AppendBlock(l.chainMeta.Height, block.BlockHash.Bytes(), b, rs, ts, im); err != nil {
+			panic(fmt.Errorf("append block with height %d to blockfile failed: %w", l.chainMeta.Height, err))
+		}
+		wg.Done()
+	}()
+	go func() {
+		batcher.Commit()
+		wg.Done()
+	}()
+	wg.Wait()
 
 	l.UpdateChainMeta(meta)
 
