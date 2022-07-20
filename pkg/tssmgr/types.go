@@ -24,7 +24,7 @@ type TssManager interface {
 	// GetTssInfo returns tss pubkey and participants pubkey info
 	GetTssInfo() (*pb.TssInfo, error)
 
-	DeleteTssNodes(nodes []string) error
+	DeleteTssNodes(nodes []string) (bool, error)
 
 	UpdateThreshold(threshold uint64)
 

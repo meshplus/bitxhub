@@ -1,35 +1,34 @@
-FROM golang:1.14.2 as builder
+FROM golang:1.15.15 as builder
 
-RUN mkdir -p /go/src/github.com/meshplus/bitxhub
 WORKDIR /go/src/github.com/meshplus/bitxhub
+ARG http_proxy=""
+ARG https_proxy=""
+ENV PATH=$PATH:/go/bin
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/lib
+COPY . /go/src/github.com/meshplus/bitxhub/
 
-# Cache dependencies
-COPY go.mod .
-COPY go.sum .
+RUN go env -w GOPROXY=https://goproxy.cn,direct \
+    && go get -u github.com/gobuffalo/packr/packr \
+    && make install \
+    && cp ./build/wasm/lib/linux-amd64/libwasmer.so /lib \
+    && bitxhub init \
+    && cp /go/src/github.com/meshplus/bitxhub/scripts/certs/node1/key.json /root/.bitxhub/ \
+    && cp -r /go/src/github.com/meshplus/bitxhub/scripts/certs/node1/certs/* /root/.bitxhub/certs \
+    && sed -i 's/solo = false/solo = true/g' /root/.bitxhub/bitxhub.toml \
+    && sed -i 's/raft/solo/g' /root/.bitxhub/bitxhub.toml \
+    # Clean Cache 
+    && cd \ 
+    && rm -rf /go/src/github.com/meshplus/bitxhub \
+    && go clean -modcache
 
-RUN go env -w GOPROXY=https://goproxy.cn,direct
-RUN go mod download -x
+FROM frolvlad/alpine-glibc:glibc-2.32
 
-# Build real binaries
-COPY . .
-
-RUN go get -u github.com/gobuffalo/packr/packr
-
-# Build bitxhub node
-RUN make install
-
-
-
-# Copy over binaries from the builder
-COPY --from=builder /go/bin/bitxhub /usr/local/bin
-COPY --from=builder /go/bin/packr /usr/local/bin
-
-COPY ./build/wasm/lib/linux-amd64/libwasmer.so /lib
+COPY --from=0 /go/bin/bitxhub /usr/local/bin/bitxhub
+COPY --from=0 /root/.bitxhub /root/.bitxhub
+COPY --from=0 /lib/libwasmer.so /lib/libwasmer.so
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/lib
 
-
-EXPOSE 8881 60011 9091 53121 40011
-
+EXPOSE 8881 60011 9091 53121 40001
 ENTRYPOINT ["bitxhub", "start"]
 
 
