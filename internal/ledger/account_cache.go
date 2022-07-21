@@ -10,8 +10,10 @@ import (
 )
 
 const (
-	accCacheSize      = 1024        // innerAccountCache,stateCache,codeCache layer1 size(1KB)
-	accStateCacheSize = 1024 * 1024 // stateCache layer2 size(1MB)
+	innerAccountCacheSize = 1024 * 1024
+	codeCacheSize         = 1024 * 1024
+	stateCacheLayer1Size  = 1024        // stateCache layer1 size(1KB)
+	stateCacheLayer2Size  = 1024 * 1024 // stateCache layer2 size(1MB)
 )
 
 type AccountCache struct {
@@ -21,17 +23,17 @@ type AccountCache struct {
 }
 
 func NewAccountCache() (*AccountCache, error) {
-	innerAccountCache, err := lru.New(accCacheSize)
+	innerAccountCache, err := lru.New(innerAccountCacheSize)
 	if err != nil {
 		return nil, fmt.Errorf("init innerAccountCache failed: %w", err)
 	}
 
-	stateCache, err := lru.New(accCacheSize)
+	stateCache, err := lru.New(stateCacheLayer1Size)
 	if err != nil {
 		return nil, fmt.Errorf("init stateCache failed: %w", err)
 	}
 
-	codeCache, err := lru.New(accCacheSize)
+	codeCache, err := lru.New(codeCacheSize)
 	if err != nil {
 		return nil, fmt.Errorf("init codeCache failed: %w", err)
 	}
@@ -55,7 +57,7 @@ func (ac *AccountCache) add(accounts map[string]ledger.IAccount) error {
 		if ok {
 			stateCache = value.(*lru.Cache)
 		} else {
-			cache, err := lru.New(accStateCacheSize)
+			cache, err := lru.New(stateCacheLayer2Size)
 			if err != nil {
 				return fmt.Errorf("init lru cache failed: %w", err)
 			}

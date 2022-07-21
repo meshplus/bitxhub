@@ -193,7 +193,7 @@ func TestChainLedger_Commit(t *testing.T) {
 	err = ledger.Commit(5, accounts, stateRoot)
 	assert.Nil(t, err)
 	assert.Equal(t, uint64(5), ledger.Version())
-	//assert.Equal(t, uint64(5), ledger.maxJnlHeight)
+	// assert.Equal(t, uint64(5), ledger.maxJnlHeight)
 
 	stateLedger := ledger.StateLedger.(*SimpleLedger)
 	minHeight, maxHeight := getJournalRange(stateLedger.ldb)
@@ -420,12 +420,12 @@ func TestChainLedger_Rollback(t *testing.T) {
 	meta := ledger.LoadChainMeta()
 	assert.NotNil(t, meta)
 	//
-	//err = ledger.Rollback(0)
-	//assert.Equal(t, ErrorRollbackTooMuch, err)
+	// err = ledger.Rollback(0)
+	// assert.Equal(t, ErrorRollbackTooMuch, err)
 	//
-	//err = ledger.Rollback(1)
-	//assert.Equal(t, ErrorRollbackTooMuch, err)
-	//assert.Equal(t, uint64(3), ledger.GetChainMeta().Height)
+	// err = ledger.Rollback(1)
+	// assert.Equal(t, ErrorRollbackTooMuch, err)
+	// assert.Equal(t, uint64(3), ledger.GetChainMeta().Height)
 
 	err = ledger.Rollback(3)
 	assert.Nil(t, err)
@@ -488,8 +488,6 @@ func TestChainLedger_QueryByPrefix(t *testing.T) {
 	ledger.SetState(addr, key2, []byte("2"))
 	ledger.SetState(addr, key3, []byte("2"))
 
-	accounts, stateRoot := ledger.FlushDirtyData()
-
 	ok, vals := ledger.QueryByPrefix(addr, string([]byte{100}))
 	assert.True(t, ok)
 	assert.Equal(t, 3, len(vals))
@@ -497,6 +495,7 @@ func TestChainLedger_QueryByPrefix(t *testing.T) {
 	assert.Equal(t, []byte("1"), vals[1])
 	assert.Equal(t, []byte("2"), vals[2])
 
+	accounts, stateRoot := ledger.FlushDirtyData()
 	err := ledger.Commit(1, accounts, stateRoot)
 	assert.Nil(t, err)
 
