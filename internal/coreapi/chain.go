@@ -2,11 +2,12 @@ package coreapi
 
 import (
 	"fmt"
-	"sync"
+	"runtime"
 	"time"
 
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
+	"github.com/meshplus/bitxhub/pkg/utils"
 	"go.uber.org/atomic"
 )
 
@@ -33,8 +34,9 @@ func (api *ChainAPI) TPS(begin, end uint64) (uint64, error) {
 		total     atomic.Uint64
 		startTime int64
 		endTime   int64
-		wg        sync.WaitGroup
 	)
+
+	pool := utils.NewGoPool(runtime.GOMAXPROCS(runtime.NumCPU()))
 
 	if int(begin) <= 0 {
 		return 0, fmt.Errorf("begin number should be greater than zero")
@@ -44,21 +46,24 @@ func (api *ChainAPI) TPS(begin, end uint64) (uint64, error) {
 		return 0, fmt.Errorf("begin number should be smaller than end number")
 	}
 
-	wg.Add(int(end - begin + 1))
+	// calculate all tx counts
 	for i := begin + 1; i <= end-1; i++ {
-		go func(height uint64, wg *sync.WaitGroup) {
-			defer wg.Done()
+		pool.Add()
+		go func(height uint64, pool *utils.Pool) {
+			defer pool.Done()
 			count, err := api.bxh.Ledger.GetTransactionCount(height)
 			if err != nil {
 				errCount.Inc()
 			} else {
 				total.Add(count)
 			}
-		}(i, &wg)
+		}(i, pool)
 	}
 
-	go func() {
-		defer wg.Done()
+	// get begin block
+	pool.Add()
+	go func(pool *utils.Pool) {
+		defer pool.Done()
 		block, err := api.bxh.Ledger.GetBlock(begin)
 		if err != nil {
 			errCount.Inc()
@@ -66,9 +71,12 @@ func (api *ChainAPI) TPS(begin, end uint64) (uint64, error) {
 			total.Add(uint64(len(block.Transactions.Transactions)))
 			startTime = block.BlockHeader.Timestamp
 		}
-	}()
-	go func() {
-		defer wg.Done()
+	}(pool)
+
+	// get end block
+	pool.Add()
+	go func(pool *utils.Pool) {
+		defer pool.Done()
 		block, err := api.bxh.Ledger.GetBlock(end)
 		if err != nil {
 			errCount.Inc()
@@ -76,8 +84,9 @@ func (api *ChainAPI) TPS(begin, end uint64) (uint64, error) {
 			total.Add(uint64(len(block.Transactions.Transactions)))
 			endTime = block.BlockHeader.Timestamp
 		}
-	}()
-	wg.Wait()
+	}(pool)
+
+	pool.Wait()
 
 	if errCount.Load() != 0 {
 		return 0, fmt.Errorf("error during get block TPS")
