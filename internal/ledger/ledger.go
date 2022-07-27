@@ -2,6 +2,7 @@ package ledger
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/core/state"
@@ -91,14 +92,23 @@ func (l *Ledger) PersistBlockData(blockData *BlockData) {
 	accounts := blockData.Accounts
 	meta := blockData.InterchainMeta
 
-	err := l.StateLedger.Commit(block.BlockHeader.Number, accounts, block.BlockHeader.StateRoot)
-	if err != nil {
-		panic(err)
-	}
-
-	if err := l.ChainLedger.PersistExecutionResult(block, receipts, meta); err != nil {
-		panic(err)
-	}
+	// persist StateLedger and ChainLedger concurrently
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		err := l.StateLedger.Commit(block.BlockHeader.Number, accounts, block.BlockHeader.StateRoot)
+		if err != nil {
+			panic(err)
+		}
+		wg.Done()
+	}()
+	go func() {
+		if err := l.ChainLedger.PersistExecutionResult(block, receipts, meta); err != nil {
+			panic(err)
+		}
+		wg.Done()
+	}()
+	wg.Wait()
 
 	// PersistBlockDuration.Observe(float64(time.Since(current)) / float64(time.Second))
 }
