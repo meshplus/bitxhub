@@ -252,8 +252,6 @@ func (o *SimpleAccount) Query(prefix string) (bool, [][]byte) {
 	var ret [][]byte
 	stored := make(map[string][]byte)
 
-	cached := o.cache.query(o.Addr, prefix)
-
 	begin, end := bytesPrefix(append(o.Addr.Bytes(), prefix...))
 	it := o.ldb.Iterator(begin, end)
 
@@ -263,10 +261,6 @@ func (o *SimpleAccount) Query(prefix string) (bool, [][]byte) {
 		copy(key, it.Key())
 		copy(val, it.Value())
 		stored[string(key)] = val
-	}
-
-	for key, val := range cached {
-		stored[key] = val
 	}
 
 	o.dirtyState.Range(func(key, value interface{}) bool {
