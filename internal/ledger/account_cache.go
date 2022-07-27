@@ -12,13 +12,13 @@ import (
 const (
 	innerAccountCacheSize = 1024 * 1024
 	codeCacheSize         = 1024 * 1024
-	stateCacheLayer1Size  = 1024        // stateCache layer1 size(1KB)
+	stateCacheLayer1Size  = 4 * 1024    // stateCache layer1 size(4KB)
 	stateCacheLayer2Size  = 1024 * 1024 // stateCache layer2 size(1MB)
 )
 
 type AccountCache struct {
 	innerAccountCache *lru.Cache
-	stateCache        *lru.Cache // 2 layer cache: accountAddr -> stateKey -> stateValue
+	stateCache        *lru.Cache // 2 layer cache: accountAddr -> stateKey -> stateValue, sum size: 4KB*1MB=4GB
 	codeCache         *lru.Cache
 }
 
