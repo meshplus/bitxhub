@@ -138,9 +138,9 @@ func OpenStateDB(file string, typ string) (stateStorage, error) {
 	var err error
 
 	if typ == "simple" {
-		storage, err = leveldb.NewWithOpt(file, &opt.Options{
+		storage, err = leveldb.NewMultiLdb(file, &opt.Options{
 			WriteBuffer: 40 * opt.MiB,
-		})
+		}, 40*opt.GiB)
 		if err != nil {
 			return nil, fmt.Errorf("init leveldb failed: %w", err)
 		}
