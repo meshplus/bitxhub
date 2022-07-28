@@ -240,13 +240,23 @@ func (l *ChainLedgerImpl) PersistExecutionResult(block *pb.Block, receipts []*pb
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
+		st := time.Now()
 		if err := l.bf.AppendBlock(l.chainMeta.Height, block.BlockHash.Bytes(), b, rs, ts, im); err != nil {
 			panic(fmt.Errorf("append block with height %d to blockfile failed: %w", l.chainMeta.Height, err))
 		}
+		l.logger.WithFields(logrus.Fields{
+			"height": block.BlockHeader.Number,
+			"time":   time.Since(st),
+		}).Info("Append BlockFile elapsed")
 		wg.Done()
 	}()
 	go func() {
+		st := time.Now()
 		batcher.Commit()
+		l.logger.WithFields(logrus.Fields{
+			"height": block.BlockHeader.Number,
+			"time":   time.Since(st),
+		}).Info("Commit ChainLedger elapsed")
 		wg.Done()
 	}()
 	wg.Wait()
