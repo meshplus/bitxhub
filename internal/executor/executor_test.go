@@ -155,8 +155,11 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	}
 
 	evs := make([]*pb.Event, 0)
-	m := make(map[string]uint64)
-	m[from] = 3
+	m := make(map[string]*pb.EventWrapper)
+	m[from] = &pb.EventWrapper{
+		IsBatch: false,
+		Index:   3,
+	}
 	data, err := json.Marshal(m)
 	assert.Nil(t, err)
 	ev := &pb.Event{

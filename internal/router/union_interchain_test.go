@@ -65,7 +65,7 @@ func Test(t *testing.T) {
 	txs = append(txs, BVMTx)
 	m := make(map[string]*pb.VerifiedIndexSlice, 0)
 	m[otherChainID] = &pb.VerifiedIndexSlice{
-		Slice: []*pb.VerifiedIndex{{0, true}},
+		Slice: []*pb.VerifiedIndex{{0, true, false}},
 	}
 	meta := &pb.InterchainMeta{
 		Counter: m,
