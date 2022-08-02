@@ -23,8 +23,10 @@ type wrapper struct {
 
 func Initialize(repoRoot string) error {
 	bcStorage, err := leveldb.NewMultiLdb(repo.GetStoragePath(repoRoot, BlockChain), &opt.Options{
-		WriteBuffer: 40 * opt.MiB,
-	}, 40*opt.GiB)
+		WriteBuffer:         40 * opt.MiB,
+		CompactionTableSize: 20 * opt.MiB,
+		CompactionTotalSize: 100 * opt.MiB,
+	}, 30*opt.GiB)
 	if err != nil {
 		return fmt.Errorf("create blockchain storage: %w", err)
 	}
