@@ -14,7 +14,7 @@ require (
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f // indirect
 	github.com/ethereum/go-ethereum v1.10.8
 	github.com/fatih/color v1.7.0
-	github.com/fsnotify/fsnotify v1.4.9
+	github.com/fsnotify/fsnotify v1.5.4
 	github.com/gobuffalo/envy v1.9.0 // indirect
 	github.com/gobuffalo/packd v1.0.0
 	github.com/gobuffalo/packr v1.30.1
@@ -35,7 +35,7 @@ require (
 	github.com/looplab/fsm v0.2.0
 	github.com/magiconair/properties v1.8.4
 	github.com/meshplus/bitxhub-core v1.3.1-0.20220516100805-2b35880f052c
-	github.com/meshplus/bitxhub-kit v1.2.1-0.20220728065552-435ebb6c5e82
+	github.com/meshplus/bitxhub-kit v1.2.1-0.20220802083441-61c876fb9cf2
 	github.com/meshplus/bitxhub-model v1.2.1-0.20220616035251-897c138aff77
 	github.com/meshplus/consensus v0.0.0-20211228075008-5f469b198531
 	github.com/meshplus/eth-kit v0.0.0-20220105081940-c90e9f2aa162
@@ -53,8 +53,8 @@ require (
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cast v1.3.1
 	github.com/spf13/viper v1.7.1
-	github.com/stretchr/testify v1.7.0
-	github.com/syndtr/goleveldb v1.0.1-0.20210305035536-64b5b1c73954
+	github.com/stretchr/testify v1.7.2
+	github.com/syndtr/goleveldb v1.0.1-0.20220614013038-64ee5596c38a
 	github.com/tidwall/gjson v1.6.8
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5
 	github.com/urfave/cli v1.22.1

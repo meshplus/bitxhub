@@ -14,6 +14,7 @@ import (
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/eth-kit/ledger"
 	"github.com/sirupsen/logrus"
+	"github.com/syndtr/goleveldb/leveldb"
 )
 
 var _ ledger.StateLedger = (*SimpleLedger)(nil)
@@ -349,9 +350,18 @@ func (l *SimpleLedger) Commit(height uint64, accounts map[string]ledger.IAccount
 	}
 	l.blockJournals = sync.Map{}
 
+	stats, err := l.ldb.GetStats()
+	if err != nil {
+		return err
+	}
+	openFileCnt := 0
+	for _, stat := range stats.([]*leveldb.DBStats) {
+		openFileCnt += stat.OpenedTablesCount
+	}
 	l.logger.WithFields(logrus.Fields{
-		"height": height,
-		"time":   time.Since(st),
+		"height":      height,
+		"time":        time.Since(st),
+		"openFileCnt": openFileCnt,
 	}).Info("Commit StateLedger elapsed")
 
 	return nil

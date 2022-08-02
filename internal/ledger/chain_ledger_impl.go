@@ -14,6 +14,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/eth-kit/ledger"
 	"github.com/sirupsen/logrus"
+	"github.com/syndtr/goleveldb/leveldb"
 )
 
 var _ ledger.ChainLedger = (*ChainLedgerImpl)(nil)
@@ -253,9 +254,15 @@ func (l *ChainLedgerImpl) PersistExecutionResult(block *pb.Block, receipts []*pb
 	go func() {
 		st := time.Now()
 		batcher.Commit()
+		stats, _ := l.blockchainStore.GetStats()
+		openFileCnt := 0
+		for _, stat := range stats.([]*leveldb.DBStats) {
+			openFileCnt += stat.OpenedTablesCount
+		}
 		l.logger.WithFields(logrus.Fields{
-			"height": block.BlockHeader.Number,
-			"time":   time.Since(st),
+			"height":      block.BlockHeader.Number,
+			"time":        time.Since(st),
+			"openFileCnt": openFileCnt,
 		}).Info("Commit ChainLedger elapsed")
 		wg.Done()
 	}()
