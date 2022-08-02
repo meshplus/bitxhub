@@ -214,7 +214,7 @@ func (x *InterchainManager) HandleIBTP(ibtp *pb.IBTP) *boltvm.Response {
 	}
 	x.notifySrcDst(ibtp, change, isBatch)
 
-	ret := x.ProcessIBTP(ibtp, interchain, targetErr != nil)
+	ret := x.ProcessIBTP(ibtp, interchain, targetErr != nil, isBatch)
 
 	if err := x.postAuditInterchainEvent(ibtp.From); err != nil {
 		return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), fmt.Sprintf("post audit interchain event error: %v", err)))
@@ -285,9 +285,10 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, bool, *bol
 		// - Bitxhub service：dstService == nil
 		// - The dst service needs to be invoked sequentially：dstService.Ordered
 
-		// bxh need notify src pier whether src appchain support batch receipt
-		srcService, _ := x.getServiceByID(srcChainService.getChainServiceId())
-		isBatch = !srcService.Ordered
+		// todo: {abandon} bxh need notify src pier whether src appchain support batch receipt
+		//srcService, _ := x.getServiceByID(srcChainService.getChainServiceId())
+		//isBatch = !srcService.Ordered
+
 		//if dstService == nil || dstService.Ordered {
 		if err := checkIndex(interchain.ReceiptCounter[dstChainService.getFullServiceId()]+1, ibtp.Index); err != nil {
 			return nil, isBatch, nil, err
@@ -361,7 +362,7 @@ func (x *InterchainManager) checkTargetAvailability(srcChainService, dstChainSer
 //	return appchain, nil
 //}
 
-func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *pb.Interchain, isTargetFail bool) []byte {
+func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *pb.Interchain, isTargetFail, isBatch bool) []byte {
 	srcChainService, _ := x.parseChainService(ibtp.From)
 	dstChainService, _ := x.parseChainService(ibtp.To)
 
@@ -405,6 +406,11 @@ func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *pb.Interchain
 			pb.Bool(result))
 	}
 
+	if isBatch {
+		res := &boltvm.Response{}
+		res.Result = []byte("batch_ibtp")
+		return res.Result
+	}
 	if isTargetFail {
 		res := &boltvm.Response{}
 		res.Result = []byte("begin_failure")

@@ -1129,11 +1129,12 @@ func (exec *BlockExecutor) filterValidTx(receipts []*pb.Receipt) (map[string]boo
 
 	for _, receipt := range receipts {
 		// failTx is not validTx
-		if receipt.IsSuccess() && receipt.TxStatus == pb.TransactionStatus_BEGIN_FAILURE {
+		if receipt.TxStatus == pb.TransactionStatus_BEGIN_FAILURE {
 			failTxHash := receipt.TxHash
 			recordFailTxHashMap[failTxHash.String()] = true
 		}
-		if !receipt.IsSuccess() {
+		// batch ibtp needn't rollback
+		if !receipt.IsSuccess() || string(receipt.Ret) == "batch_ibtp" {
 			invalidTxHash := receipt.TxHash
 			invalidTxHashMap[invalidTxHash.String()] = true
 		}
