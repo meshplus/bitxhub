@@ -285,9 +285,8 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, bool, *bol
 		// - Bitxhub service：dstService == nil
 		// - The dst service needs to be invoked sequentially：dstService.Ordered
 
-		// todo: {abandon} bxh need notify src pier whether src appchain support batch receipt
-		//srcService, _ := x.getServiceByID(srcChainService.getChainServiceId())
-		//isBatch = !srcService.Ordered
+		srcService, _ := x.getServiceByID(srcChainService.getChainServiceId())
+		isBatch = !srcService.Ordered
 
 		//if dstService == nil || dstService.Ordered {
 		if err := checkIndex(interchain.ReceiptCounter[dstChainService.getFullServiceId()]+1, ibtp.Index); err != nil {
