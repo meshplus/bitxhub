@@ -15,18 +15,17 @@ RUN go env -w GOPROXY=https://goproxy.cn,direct \
     && cp /go/src/github.com/meshplus/bitxhub/scripts/certs/node1/key.json /root/.bitxhub/ \
     && cp -r /go/src/github.com/meshplus/bitxhub/scripts/certs/node1/certs/* /root/.bitxhub/certs \
     && sed -i 's/solo = false/solo = true/g' /root/.bitxhub/bitxhub.toml \
-    && sed -i 's/raft/solo/g' /root/.bitxhub/bitxhub.toml \
-    # Clean Cache 
-    && cd \ 
-    && rm -rf /go/src/github.com/meshplus/bitxhub \
-    && go clean -modcache
+    && sed -i 's/raft/solo/g' /root/.bitxhub/bitxhub.toml
 
 FROM frolvlad/alpine-glibc:glibc-2.32
 
 COPY --from=0 /go/bin/bitxhub /usr/local/bin/bitxhub
 COPY --from=0 /root/.bitxhub /root/.bitxhub
 COPY --from=0 /lib/libwasmer.so /lib/libwasmer.so
+COPY --from=0 /go/src/github.com/meshplus/bitxhub/scripts/healthcheck.sh /root/.bitxhub/
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/lib
+ARG GateWayPort=$(grep -m 1 gateway < .bitxhub/bitxhub.toml | awk '{print $3}')
+HEALTHCHECK --interval=30s --timeout=30s --start-period=10s --retries=3 CMD [ ./bitxhub/healthcheck.sh ]
 
 EXPOSE 8881 60011 9091 53121 40001
 ENTRYPOINT ["bitxhub", "start"]
