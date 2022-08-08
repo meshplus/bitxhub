@@ -198,8 +198,9 @@ func (router *InterchainRouter) classify(block *pb.Block, meta *pb.InterchainMet
 		for _, vi := range vs.Slice {
 			tx, _ := block.Transactions.Transactions[vi.Index].(*pb.BxhTransaction)
 			txs = append(txs, &pb.VerifiedTx{
-				Tx:    tx,
-				Valid: vi.Valid,
+				Tx:      tx,
+				Valid:   vi.Valid,
+				IsBatch: vi.IsBatch,
 			})
 		}
 		txsM[k] = txs

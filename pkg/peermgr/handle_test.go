@@ -235,6 +235,9 @@ func TestMessage_FETCH_P2P_PUBKEY(t *testing.T) {
 	swarms := NewSwarms(t, peerCnt)
 	defer stopSwarms(t, swarms)
 
+	for _, swarm := range swarms {
+		swarm.repo.Config.Tss.EnableTSS = true
+	}
 	for swarms[0].CountConnectedPeers() != 3 {
 		time.Sleep(100 * time.Millisecond)
 	}

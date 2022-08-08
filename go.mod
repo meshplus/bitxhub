@@ -36,7 +36,7 @@ require (
 	github.com/magiconair/properties v1.8.4
 	github.com/meshplus/bitxhub-core v1.3.1-0.20220701090824-788a823e6049
 	github.com/meshplus/bitxhub-kit v1.2.1-0.20220808015652-3962637570f9
-	github.com/meshplus/bitxhub-model v1.2.1-0.20220712083007-dde80b7c4a84
+	github.com/meshplus/bitxhub-model v1.2.1-0.20220803022708-9ab7a71abdbf
 	github.com/meshplus/consensus v0.0.0-20211228075008-5f469b198531
 	github.com/meshplus/eth-kit v0.0.0-20220628031226-4b30a994a2a6
 	github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd
@@ -54,7 +54,6 @@ require (
 	github.com/spf13/cast v1.3.1
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.7.2
-	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	github.com/tidwall/gjson v1.6.8
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5
 	github.com/urfave/cli v1.22.1
