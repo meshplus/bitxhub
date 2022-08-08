@@ -433,6 +433,10 @@ func (bxh *BitXHub) GetPrivKey() *repo.Key {
 	return bxh.repo.Key
 }
 
+func (bxh *BitXHub) GetSoloType() bool {
+	return bxh.repo.Config.Solo
+}
+
 //func (bxh *BitXHub) getSignType() {
 //	var (
 //		wg   *sync.WaitGroup

@@ -167,6 +167,10 @@ func (b *BrokerAPI) OrderReady() error {
 }
 
 func (b *BrokerAPI) FetchSignsFromOtherPeers(req *pb.GetSignsRequest) map[string][]byte {
+	// if type is solo, needn't fetch sign from others
+	if b.bxh.GetSoloType() {
+		return nil
+	}
 	var (
 		result = make(map[string][]byte)
 		wg     = sync.WaitGroup{}
