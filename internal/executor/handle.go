@@ -307,8 +307,9 @@ func (exec *BlockExecutor) buildTxMerkleTree(txs []pb.Transaction) (*types.Hash,
 			verifiedTx := make([]merkletree.Content, 0, len(txIndexes))
 			for _, txIndex := range txIndexes {
 				verifiedTx = append(verifiedTx, &pb.VerifiedTx{
-					Tx:    txs[txIndex.Index].(*pb.BxhTransaction),
-					Valid: txIndex.Valid,
+					Tx:      txs[txIndex.Index].(*pb.BxhTransaction),
+					Valid:   txIndex.Valid,
+					IsBatch: txIndex.IsBatch,
 				})
 			}
 
@@ -414,7 +415,7 @@ func (exec *BlockExecutor) applyTx(index int, tx pb.Transaction, invalidReason a
 		for _, ev := range evs {
 			switch ev.EventType {
 			case pb.Event_INTERCHAIN:
-				m := make(map[string]uint64)
+				m := make(map[string]*pb.EventWrapper)
 				err := json.Unmarshal(ev.Data, &m)
 				if err != nil {
 					panic(err)
@@ -427,8 +428,9 @@ func (exec *BlockExecutor) applyTx(index int, tx pb.Transaction, invalidReason a
 						valid = false
 					}
 					exec.txsExecutor.AddInterchainCounter(k, &pb.VerifiedIndex{
-						Index: v,
-						Valid: valid,
+						Index:   v.Index,
+						Valid:   valid,
+						IsBatch: v.IsBatch,
 					})
 				}
 				normalTx = false
@@ -1127,11 +1129,12 @@ func (exec *BlockExecutor) filterValidTx(receipts []*pb.Receipt) (map[string]boo
 
 	for _, receipt := range receipts {
 		// failTx is not validTx
-		if receipt.IsSuccess() && receipt.TxStatus == pb.TransactionStatus_BEGIN_FAILURE {
+		if receipt.TxStatus == pb.TransactionStatus_BEGIN_FAILURE {
 			failTxHash := receipt.TxHash
 			recordFailTxHashMap[failTxHash.String()] = true
 		}
-		if !receipt.IsSuccess() {
+		// batch ibtp needn't rollback
+		if !receipt.IsSuccess() || string(receipt.Ret) == "batch_ibtp" {
 			invalidTxHash := receipt.TxHash
 			invalidTxHashMap[invalidTxHash.String()] = true
 		}

@@ -339,21 +339,23 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	ibtp.From = srcChainService.getFullServiceId()
 	ibtp.To = unavailableDstServiceFullServiceID
 	ibtp.Index = 1
-	mockStub.EXPECT().PostInterchainEvent(map[string]uint64{srcChainService.ChainId: 1, dstChainID: 1}).MaxTimes(1)
-	mockStub.EXPECT().PostInterchainEvent(map[string]uint64{dstChainID: 1}).MaxTimes(1)
+
+	event := &pb.EventWrapper{IsBatch: false, Index: 1}
+	mockStub.EXPECT().PostInterchainEvent(map[string]*pb.EventWrapper{srcChainService.ChainId: event, dstChainID: event}).MaxTimes(1)
+	mockStub.EXPECT().PostInterchainEvent(map[string]*pb.EventWrapper{dstChainID: event}).MaxTimes(1)
 	res = im.HandleIBTP(ibtp)
 	assert.False(t, res.Ok)
 	res = im.HandleIBTP(ibtp)
 	assert.True(t, res.Ok)
 
 	ibtp.To = unPermissionServiceServiceID
-	mockStub.EXPECT().PostInterchainEvent(map[string]uint64{srcChainService.ChainId: 1, dstChainService.ChainId: 1}).MaxTimes(1)
+	mockStub.EXPECT().PostInterchainEvent(map[string]*pb.EventWrapper{srcChainService.ChainId: event, dstChainService.ChainId: event}).MaxTimes(1)
 	res = im.HandleIBTP(ibtp)
 	assert.True(t, res.Ok)
 
 	ibtp.Index = 1
 	ibtp.To = unavailableBitxhubServiceID
-	mockStub.EXPECT().PostInterchainEvent(map[string]uint64{srcChainService.ChainId: 1, DEFAULT_UNION_PIER_ID: 1}).MaxTimes(1)
+	mockStub.EXPECT().PostInterchainEvent(map[string]*pb.EventWrapper{srcChainService.ChainId: event, DEFAULT_UNION_PIER_ID: event}).MaxTimes(1)
 	res = im.HandleIBTP(ibtp)
 	assert.True(t, res.Ok)
 

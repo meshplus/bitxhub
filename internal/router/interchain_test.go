@@ -39,7 +39,7 @@ func TestInterchainRouter_GetInterchainTxWrappers(t *testing.T) {
 	m := make(map[string]*pb.VerifiedIndexSlice, 0)
 
 	m[dstChainID] = &pb.VerifiedIndexSlice{
-		Slice: []*pb.VerifiedIndex{{0, true}},
+		Slice: []*pb.VerifiedIndex{{0, true, false}},
 	}
 	im := &pb.InterchainMeta{
 		Counter: m,
@@ -150,7 +150,7 @@ func TestInterchainRouter_AddPier(t *testing.T) {
 	m := make(map[string]*pb.VerifiedIndexSlice, 0)
 
 	m[dstChainID] = &pb.VerifiedIndexSlice{
-		Slice: []*pb.VerifiedIndex{{0, true}},
+		Slice: []*pb.VerifiedIndex{{0, true, false}},
 	}
 	im := &pb.InterchainMeta{
 		Counter: m,
@@ -193,7 +193,7 @@ func TestInterchainRouter_AddNonexistentPier(t *testing.T) {
 
 	// pier of other is not added
 	m[otherChainID] = &pb.VerifiedIndexSlice{
-		Slice: []*pb.VerifiedIndex{{0, true}},
+		Slice: []*pb.VerifiedIndex{{0, true, false}},
 	}
 
 	timeCounter := make(map[string]*pb.StringSlice, 0)
