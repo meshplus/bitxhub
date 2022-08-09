@@ -34,9 +34,9 @@ require (
 	github.com/libp2p/go-libp2p-swarm v0.2.4
 	github.com/looplab/fsm v0.2.0
 	github.com/magiconair/properties v1.8.4
-	github.com/meshplus/bitxhub-core v1.3.1-0.20220701090824-788a823e6049
-	github.com/meshplus/bitxhub-kit v1.2.1-0.20220808015652-3962637570f9
-	github.com/meshplus/bitxhub-model v1.2.1-0.20220803022708-9ab7a71abdbf
+	github.com/meshplus/bitxhub-core v1.3.1-0.20220810080906-e29855b55db6
+	github.com/meshplus/bitxhub-kit v1.2.1-0.20220815090757-6256823a7426
+	github.com/meshplus/bitxhub-model v1.2.1-0.20220815081129-609df840b044
 	github.com/meshplus/consensus v0.0.0-20211228075008-5f469b198531
 	github.com/meshplus/eth-kit v0.0.0-20220628031226-4b30a994a2a6
 	github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd
@@ -53,7 +53,7 @@ require (
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cast v1.3.1
 	github.com/spf13/viper v1.7.1
-	github.com/stretchr/testify v1.7.2
+	github.com/stretchr/testify v1.8.0
 	github.com/tidwall/gjson v1.6.8
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5
 	github.com/urfave/cli v1.22.1
@@ -61,7 +61,7 @@ require (
 	github.com/willf/bloom v2.0.3+incompatible
 	go.uber.org/atomic v1.7.0
 	go.uber.org/zap v1.19.0
-	google.golang.org/grpc v1.35.0
+	google.golang.org/grpc v1.48.0
 )
 
 replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20200218151345-dad8c97a84f5
