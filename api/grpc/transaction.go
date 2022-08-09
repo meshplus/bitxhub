@@ -42,7 +42,7 @@ func (cbs *ChainBrokerService) SendTransactions(ctx context.Context, txs *pb.Mul
 			cbs.logger.Errorf("api checkTransaction err: nonce is %d", tx.GetNonce())
 			return nil, status.Newf(codes.InvalidArgument, "check transaction fail for %s", err.Error()).Err()
 		}
-
+		tx.ReceiveTimestamp = time.Now().UnixNano()
 		hash, err := cbs.sendTransaction(tx)
 		if err != nil {
 			return nil, status.Newf(codes.Internal, "internal handling transaction fail %s", err.Error()).Err()
