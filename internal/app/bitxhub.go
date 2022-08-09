@@ -33,7 +33,6 @@ import (
 	"github.com/meshplus/bitxhub/internal/profile"
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/bitxhub/internal/router"
-	"github.com/meshplus/bitxhub/internal/storages"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
 	"github.com/meshplus/bitxhub/pkg/tssmgr"
 	ledger2 "github.com/meshplus/eth-kit/ledger"
@@ -146,18 +145,14 @@ func GenerateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 	printType = fmt.Sprintf("%s\n", printType)
 	fmt.Println(printType)
 
-	if err := storages.Initialize(repoRoot); err != nil {
-		return nil, fmt.Errorf("storages initialize: %w", err)
-	}
-
-	bcStorage, err := storages.Get(storages.BlockChain)
+	bcStorage, err := ledger.OpenChainDB(repo.GetStoragePath(repoRoot, "blockchain"), rep.Config.Ledger)
 	if err != nil {
 		return nil, fmt.Errorf("create blockchain storage: %w", err)
 	}
 
-	stateStorage, err := ledger.OpenStateDB(repo.GetStoragePath(repoRoot, "ledger"), rep.Config.Ledger.Type)
+	stateStorage, err := ledger.OpenStateDB(repo.GetStoragePath(repoRoot, "ledger"), rep.Config.Ledger)
 	if err != nil {
-		return nil, fmt.Errorf("create tm-leveldb: %w", err)
+		return nil, fmt.Errorf("create state storage: %w", err)
 	}
 
 	bf, err := blockfile.NewBlockFile(repoRoot, loggers.Logger(loggers.Storage))
@@ -182,7 +177,7 @@ func GenerateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 	viewLdg := &ledger.Ledger{
 		ChainLedger: rwLdg.ChainLedger,
 	}
-	if rep.Config.Ledger.Type == "simple" {
+	if rep.Config.Ledger.Type == ledger.SimpleLedgerTyp {
 		// create read only ledger
 		viewLdg.StateLedger, err = ledger.NewSimpleLedger(rep, stateStorage.(storage.Storage), nil, loggers.Logger(loggers.Executor))
 		if err != nil {

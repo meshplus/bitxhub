@@ -110,7 +110,7 @@ type Limiter struct {
 	Interval          time.Duration `toml:"interval" json:"interval"`
 	Quantum           int64         `toml:"quantum" json:"quantum"`
 	Capacity          int64         `toml:"capacity" json:"capacity"`
-	MaxOpenFilesLimit uint64        `toml:"max_open_files_limit" json:"max_open_files_limit"`
+	MaxOpenFilesLimit uint64        `mapstructure:"max_open_files_limit" json:"max_open_files_limit"`
 }
 
 type Appchain struct {
@@ -188,7 +188,10 @@ type Executor struct {
 }
 
 type Ledger struct {
-	Type string `toml:"type" json:"type"`
+	Type               string `toml:"type" json:"type"`
+	LeveldbType        string `mapstructure:"leveldb_type" json:"leveldb_type"`
+	LeveldbWriteBuffer int    `mapstructure:"leveldb_write_buffer" json:"leveldb_write_buffer"`
+	MultiLdbThreshold  int64  `mapstructure:"multi_leveldb_threshold" json:"multi_leveldb_threshold"`
 }
 
 type License struct {
@@ -257,7 +260,12 @@ func DefaultConfig() (*Config, error) {
 			GasLimit: 0x5f5e100,
 			Balance:  "100000000000000000000000000000000000",
 		},
-		Ledger: Ledger{Type: "complex"},
+		Ledger: Ledger{
+			Type:               "complex",
+			LeveldbType:        "normal",
+			LeveldbWriteBuffer: 4194304,
+			MultiLdbThreshold:  107374182400,
+		},
 		Crypto: Crypto{Algorithms: []string{"Secp256k1"}},
 	}, nil
 }

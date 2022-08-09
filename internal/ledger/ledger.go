@@ -17,6 +17,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/eth-kit/ledger"
 	"github.com/sirupsen/logrus"
+	"github.com/syndtr/goleveldb/leveldb/opt"
 )
 
 type Ledger struct {
@@ -131,25 +132,86 @@ func (l *Ledger) Close() {
 	l.StateLedger.Close()
 }
 
+const (
+	SimpleLedgerTyp  = "simple"  // use custom DB
+	ComplexLedgerTyp = "complex" // use DB defined by Ethereum
+)
+
 type stateStorage interface{}
 
-func OpenStateDB(file string, typ string) (stateStorage, error) {
-	var storage stateStorage
+// OpenStateDB open db that storage state. Why return 'stateStorage' type?
+// Because simple return 'storage.Storage' type, and complex return 'ethdb.Database' type.
+func OpenStateDB(path string, ledgerConf repo.Ledger) (stateStorage, error) {
+	var s stateStorage
 	var err error
 
-	if typ == "simple" {
-		storage, err = leveldb.New(file)
+	if ledgerConf.Type == SimpleLedgerTyp {
+		// simple: new custom DB, return 'storage.Storage' type
+		s, err = NewLevelDB(path, ledgerConf.LeveldbType, ledgerConf.LeveldbWriteBuffer, ledgerConf.MultiLdbThreshold)
 		if err != nil {
 			return nil, fmt.Errorf("init leveldb failed: %w", err)
 		}
-	} else if typ == "complex" {
-		storage, err = rawdb.NewLevelDBDatabase(file, 0, 0, "", false)
+	} else if ledgerConf.Type == ComplexLedgerTyp {
+		// complex: new DB defined by Ethereum, return 'ethdb.Database' type
+		s, err = rawdb.NewLevelDBDatabase(path, 0, 0, "", false)
 		if err != nil {
 			return nil, fmt.Errorf("init rawdb failed: %w", err)
 		}
 	} else {
-		return nil, fmt.Errorf("unknow storage type %s, expect simple or complex", typ)
+		return nil, fmt.Errorf("unknow storage type %s, expect simple or complex", ledgerConf.Type)
 	}
 
-	return storage, nil
+	return s, nil
+}
+
+// OpenChainDB open db that storage chain meta, e.g. tx -> blockHeight, blockHash -> blockHeight.
+func OpenChainDB(path string, ledgerConf repo.Ledger) (storage.Storage, error) {
+	s, err := NewLevelDB(path, ledgerConf.LeveldbType, ledgerConf.LeveldbWriteBuffer, ledgerConf.MultiLdbThreshold)
+	if err != nil {
+		return nil, fmt.Errorf("init leveldb failed: %w", err)
+	}
+	return s, nil
+}
+
+const (
+	NormalLeveldb            = "normal" // a normal leveldb provided by 'github.com/syndtr/goleveldb/'
+	MultiLeveldb             = "multi"  // a multi-layer leveldb that encapsulation of 'github.com/syndtr/goleveldb/'
+	defaultWriteBuffer       = 4 * opt.MiB
+	defaultMultiLdbThreshold = 100 * opt.GiB
+)
+
+// NewLevelDB create leveldb under path.
+//
+// writeBuffer defines maximum size of a 'memdb' for leveldb. The default value is 4MiB.
+// Larger values increase performance, especially during bulk loads.
+//
+// multiLdbThreshold defines maximum size of each layer in multi-leveldb. The default value is 100GiB.
+func NewLevelDB(path string, typ string, writeBuffer int, multiLdbThreshold int64) (storage.Storage, error) {
+	var (
+		s   storage.Storage
+		err error
+	)
+
+	if writeBuffer <= 0 {
+		writeBuffer = defaultWriteBuffer
+	}
+	if multiLdbThreshold <= 0 {
+		multiLdbThreshold = defaultMultiLdbThreshold
+	}
+
+	if typ == NormalLeveldb {
+		s, err = leveldb.NewWithOpt(path, &opt.Options{WriteBuffer: writeBuffer})
+		if err != nil {
+			return nil, fmt.Errorf("init normal leveldb failed: %w", err)
+		}
+	} else if typ == MultiLeveldb {
+		s, err = leveldb.NewMultiLdb(path, &opt.Options{WriteBuffer: writeBuffer}, multiLdbThreshold)
+		if err != nil {
+			return nil, fmt.Errorf("init normal leveldb failed: %w", err)
+		}
+	} else {
+		return nil, fmt.Errorf("unknow leveldb type: %s, expect: %s or %s", typ, NormalLeveldb, MultiLeveldb)
+	}
+
+	return s, nil
 }

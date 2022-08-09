@@ -81,7 +81,10 @@ solo = false
   algorithms = ["Secp256k1", "ECDSA_P256", "ECDSA_P384","ECDSA_P521"]
 
 [ledger]
-  type = "simple"
+  type = "simple" # simple or complex
+  leveldb_type = "normal" # normal or multi
+  leveldb_write_buffer = 4194304 # 4*102*1024(Byte), 'memdb' size of leveldb, larger values increase performance of leveldb
+  multi_leveldb_threshold = 107374182400 # 100*1024*1024*1024(Byte), the threshold of size for each layer leveldb
 
 [genesis]
   chainid = 1356

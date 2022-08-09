@@ -34,7 +34,6 @@ solo = false
 
 [tss]
   enable_tss = false
-  party_timeout = "10s"
   key_gen_timeout = "90s"
   key_sign_timeout = "90s"
   pre_param_timeout = "100s"
@@ -44,6 +43,7 @@ solo = false
   interval= "50ms"
   quantum= 500
   capacity= 10000
+  max_open_files_limit = 2048 # the limit of max open files of bitxhub
 
 [appchain]
   enable = false
@@ -81,7 +81,10 @@ solo = false
   algorithms = ["Secp256k1", "ECDSA_P256", "ECDSA_P384","ECDSA_P521"]
 
 [ledger]
-  type = "simple"
+  type = "simple" # simple or complex
+  leveldb_type = "normal" # normal or multi
+  leveldb_write_buffer = 4194304 # 4*102*1024(Byte), 'memdb' size of leveldb, larger values increase performance of leveldb
+  multi_leveldb_threshold = 107374182400 # 100*1024*1024*1024(Byte), the threshold of size for each layer leveldb
 
 [genesis]
   chainid = 1356
