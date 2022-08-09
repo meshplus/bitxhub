@@ -1022,3 +1022,16 @@ func mockRecordLedger(ledger map[string][]byte, txList []pb.Transaction, height 
 	}
 	return ledger
 }
+
+func TestHandle(t *testing.T) {
+
+	receipt := &pb.Receipt{
+		Status: 1,
+		Ret:    []byte{},
+	}
+	for i := 0; i < 5; i++ {
+		hash := receipt.Hash()
+		fmt.Println(hash)
+	}
+
+}

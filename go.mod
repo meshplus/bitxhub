@@ -6,6 +6,7 @@ require (
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
 	github.com/Rican7/retry v0.1.0
 	github.com/binance-chain/tss-lib v1.3.3-0.20210411025750-fffb56b30511
+	github.com/bitxhub/parallel-executor v0.0.0-20210603034349-c18e7ed17048 // indirect
 	github.com/bytecodealliance/wasmtime-go v0.34.0
 	github.com/cbergoon/merkletree v0.2.0
 	github.com/cheynewallace/tabby v1.1.1

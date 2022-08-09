@@ -54,6 +54,12 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	current := time.Now()
 	block := blockWrapper.block
 
+	// check executor handle the right block
+	if block.BlockHeader.Number != exec.currentHeight+1 {
+		exec.logger.WithFields(logrus.Fields{"block height": block.BlockHeader.Number,
+			"matchedHeight": exec.currentHeight + 1}).Warning("current block height is not matched")
+		return nil
+	}
 	for _, tx := range block.Transactions.Transactions {
 		txHashList = append(txHashList, tx.GetHash())
 	}
@@ -63,6 +69,8 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	exec.ledger.PrepareBlock(block.BlockHash, block.Height())
 	receipts := exec.txsExecutor.ApplyTransactions(block.Transactions.Transactions, blockWrapper.invalidTx)
 
+	exec.logger.Info("receipts", receipts)
+
 	applyTxsDuration.Observe(float64(time.Since(current)) / float64(time.Second))
 	exec.logger.WithFields(logrus.Fields{
 		"time":  time.Since(current),
@@ -70,15 +78,17 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	}).Debug("Apply transactions elapsed")
 
 	calcMerkleStart := time.Now()
-	l1Root, l2Roots, err := exec.buildTxMerkleTree(block.Transactions.Transactions)
+	l1Root, err := exec.buildTxMerkleTree(block.Transactions.Transactions)
 	if err != nil {
 		panic(err)
 	}
-
+	exec.logger.Info("l1Root", l1Root)
 	receiptRoot, err := exec.calcReceiptMerkleRoot(receipts)
 	if err != nil {
 		panic(err)
 	}
+
+	exec.logger.Info("receiptRoot", receiptRoot)
 
 	calcMerkleDuration.Observe(float64(time.Since(calcMerkleStart)) / float64(time.Second))
 
@@ -162,7 +172,6 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	}
 	interchainMeta := &pb.InterchainMeta{
 		Counter:        counter,
-		L2Roots:        l2Roots,
 		TimeoutCounter: timeoutCounter,
 		TimeoutL2Roots: timeoutL2Roots,
 		MultiTxCounter: multiTxCounter,
@@ -218,43 +227,39 @@ func (exec *BlockExecutor) listenPreExecuteEvent() {
 	}
 }
 
-func (exec *BlockExecutor) buildTxMerkleTree(txs []pb.Transaction) (*types.Hash, []types.Hash, error) {
+func (exec *BlockExecutor) buildTxMerkleTree(txs []pb.Transaction) (*types.Hash, error) {
 	var (
 		groupCnt = len(exec.txsExecutor.GetInterchainCounter()) + 1
 		wg       = sync.WaitGroup{}
-		lock     = sync.Mutex{}
-		l2Roots  = make([]types.Hash, 0, groupCnt)
 		errorCnt = int32(0)
 	)
 
 	wg.Add(groupCnt - 1)
-	for addr, txIndexes := range exec.txsExecutor.GetInterchainCounter() {
-		go func(addr string, txIndexes []*pb.VerifiedIndex) {
-			defer wg.Done()
 
-			verifiedTx := make([]merkletree.Content, 0, len(txIndexes))
-			for _, txIndex := range txIndexes {
-				verifiedTx = append(verifiedTx, &pb.VerifiedTx{
-					Tx:    txs[txIndex.Index].(*pb.BxhTransaction),
-					Valid: txIndex.Valid,
-				})
-			}
+	//for addr, txIndexes := range exec.txsExecutor.GetInterchainCounter() {
+	//	go func(addr string, txIndexes []*pb.VerifiedIndex) {
+	//		defer wg.Done()
+	//		verifiedTx := make([]merkletree.Content, 0, len(txIndexes))
+	//		for _, txIndex := range txIndexes {
+	//			verifiedTx = append(verifiedTx, &pb.VerifiedTx{
+	//				Tx:    txs[txIndex.Index].(*pb.BxhTransaction),
+	//				Valid: txIndex.Valid,
+	//			})
+	//		}
+	//		hash, err := calcMerkleRoot(verifiedTx)
+	//		if err != nil {
+	//			atomic.AddInt32(&errorCnt, 1)
+	//			return
+	//		}
+	//		lock.Lock()
+	//		defer lock.Unlock()
+	//		l2Roots = append(l2Roots, *hash)
+	//	}(addr, txIndexes)
+	//}
 
-			hash, err := calcMerkleRoot(verifiedTx)
-			if err != nil {
-				atomic.AddInt32(&errorCnt, 1)
-				return
-			}
-
-			lock.Lock()
-			defer lock.Unlock()
-			l2Roots = append(l2Roots, *hash)
-		}(addr, txIndexes)
-	}
-
-	txHashes := make([]merkletree.Content, 0, len(exec.txsExecutor.GetNormalTxs()))
-	for _, txHash := range exec.txsExecutor.GetNormalTxs() {
-		txHashes = append(txHashes, txHash)
+	txHashes := make([]merkletree.Content, 0, len(txs))
+	for _, tx := range txs {
+		txHashes = append(txHashes, tx.GetHash())
 	}
 
 	hash, err := calcMerkleRoot(txHashes)
@@ -262,30 +267,7 @@ func (exec *BlockExecutor) buildTxMerkleTree(txs []pb.Transaction) (*types.Hash,
 		atomic.AddInt32(&errorCnt, 1)
 	}
 
-	lock.Lock()
-	l2Roots = append(l2Roots, *hash)
-	lock.Unlock()
-
-	wg.Wait()
-	if errorCnt != 0 {
-		return nil, nil, fmt.Errorf("build tx merkle tree error")
-	}
-
-	sort.Slice(l2Roots, func(i, j int) bool {
-		return bytes.Compare(l2Roots[i].Bytes(), l2Roots[j].Bytes()) < 0
-	})
-
-	contents := make([]merkletree.Content, 0, groupCnt)
-	for _, l2Root := range l2Roots {
-		r := l2Root
-		contents = append(contents, &r)
-	}
-	root, err := calcMerkleRoot(contents)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return root, l2Roots, nil
+	return hash, nil
 }
 
 func (exec *BlockExecutor) verifySign(commitEvent *pb.CommitEvent) *BlockWrapper {
@@ -653,7 +635,6 @@ func (exec *BlockExecutor) transfer(from, to *types.Address, value *big.Int) err
 
 func (exec *BlockExecutor) calcReceiptMerkleRoot(receipts []*pb.Receipt) (*types.Hash, error) {
 	current := time.Now()
-
 	receiptHashes := make([]merkletree.Content, 0, len(receipts))
 	for _, receipt := range receipts {
 		receiptHashes = append(receiptHashes, receipt.Hash())
