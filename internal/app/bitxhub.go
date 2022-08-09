@@ -89,7 +89,7 @@ func NewBitXHub(rep *repo.Repo, orderPath string) (*BitXHub, error) {
 
 	m := rep.NetworkConfig.GetVpInfos()
 
-	//Get the order constructor according to different order type.
+	// Get the order constructor according to different order type.
 	orderCon, err := agency.GetOrderConstructor(rep.Config.Order.Type)
 	if err != nil {
 		return nil, fmt.Errorf("get order %s failed: %w", rep.Config.Order.Type, err)
@@ -273,7 +273,7 @@ func getPreparams(repoRoot string) ([]*bkg.LocalPreParams, error) {
 
 func (bxh *BitXHub) Start() error {
 
-	if err := bxh.raiseUlimit(2048); err != nil {
+	if err := bxh.raiseUlimit(bxh.repo.Config.MaxOpenFilesLimit); err != nil {
 		return fmt.Errorf("raise ulimit: %w", err)
 	}
 
@@ -437,7 +437,7 @@ func (bxh *BitXHub) GetSoloType() bool {
 	return bxh.repo.Config.Solo
 }
 
-//func (bxh *BitXHub) getSignType() {
+// func (bxh *BitXHub) getSignType() {
 //	var (
 //		wg   *sync.WaitGroup
 //		lock *sync.Mutex
@@ -473,4 +473,4 @@ func (bxh *BitXHub) GetSoloType() bool {
 //		}(id, signNodes, wg, lock)
 //	}
 //	wg.Wait()
-//}
+// }

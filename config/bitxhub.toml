@@ -43,6 +43,7 @@ solo = false
   interval= "50ms"
   quantum= 500
   capacity= 10000
+  max_open_files_limit = 2048 # the limit of max open files of bitxhub
 
 [appchain]
   enable = false

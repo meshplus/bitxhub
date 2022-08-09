@@ -36,7 +36,7 @@ const (
 	// governance strategy default participate threshold
 	DefaultSimpleMajorityExpression = "a > 0.5 * t"
 	DefaultZeroStrategyExpression   = "a >= 0"
-	//Passwd
+	// Passwd
 	DefaultPasswd = "bitxhub"
 
 	SuperMajorityApprove = "SuperMajorityApprove"
@@ -107,9 +107,10 @@ type PProf struct {
 }
 
 type Limiter struct {
-	Interval time.Duration `toml:"interval" json:"interval"`
-	Quantum  int64         `toml:"quantum" json:"quantum"`
-	Capacity int64         `toml:"capacity" json:"capacity"`
+	Interval          time.Duration `toml:"interval" json:"interval"`
+	Quantum           int64         `toml:"quantum" json:"quantum"`
+	Capacity          int64         `toml:"capacity" json:"capacity"`
+	MaxOpenFilesLimit uint64        `toml:"max_open_files_limit" json:"max_open_files_limit"`
 }
 
 type Appchain struct {
