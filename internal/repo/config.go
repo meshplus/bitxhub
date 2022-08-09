@@ -22,6 +22,8 @@ const (
 	defaultPathName = ".bitxhub"
 	// defaultPathRoot is the path to the default config dir location.
 	defaultPathRoot = "~/" + defaultPathName
+	// defaultMaxOpenFilesLimit
+	defaultMaxOpenFilesLimit = 2048
 	// envDir is the environment variable used to change the path root.
 	envDir = "BITXHUB_PATH"
 	// Config name
@@ -111,6 +113,13 @@ type Limiter struct {
 	Quantum           int64         `toml:"quantum" json:"quantum"`
 	Capacity          int64         `toml:"capacity" json:"capacity"`
 	MaxOpenFilesLimit uint64        `mapstructure:"max_open_files_limit" json:"max_open_files_limit"`
+}
+
+func (l *Limiter) GetMaxOpenFilesLimit() uint64 {
+	if l.MaxOpenFilesLimit <= 0 {
+		return defaultMaxOpenFilesLimit
+	}
+	return l.MaxOpenFilesLimit
 }
 
 type Appchain struct {
@@ -223,6 +232,7 @@ func DefaultConfig() (*Config, error) {
 			Monitor: 40011,
 		},
 		PProf:   PProf{Enable: false},
+		Limiter: Limiter{MaxOpenFilesLimit: defaultMaxOpenFilesLimit},
 		Ping:    Ping{Enable: false},
 		Gateway: Gateway{AllowedOrigins: []string{"*"}},
 		Log: Log{

@@ -268,7 +268,7 @@ func getPreparams(repoRoot string) ([]*bkg.LocalPreParams, error) {
 
 func (bxh *BitXHub) Start() error {
 
-	if err := bxh.raiseUlimit(bxh.repo.Config.MaxOpenFilesLimit); err != nil {
+	if err := bxh.raiseUlimit(bxh.repo.Config.GetMaxOpenFilesLimit()); err != nil {
 		return fmt.Errorf("raise ulimit: %w", err)
 	}
 
