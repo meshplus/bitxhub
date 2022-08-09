@@ -55,6 +55,7 @@ const (
 	RoleMgr             = "role_mgr"
 	ProposalStrategyMgr = "proposal_strategy_mgr"
 	DappMgr             = "dapp_mgr"
+	BnsMgr              = "bns_mgr"
 	AllMgr              = "all_mgr"
 )
 

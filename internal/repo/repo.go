@@ -204,7 +204,8 @@ func CheckManageModule(moduleTyp string) error {
 		moduleTyp != DappMgr &&
 		moduleTyp != ProposalStrategyMgr &&
 		moduleTyp != NodeMgr &&
-		moduleTyp != ServiceMgr {
+		moduleTyp != ServiceMgr &&
+		moduleTyp != BnsMgr {
 		return fmt.Errorf("illegal manage module type")
 	}
 	return nil
