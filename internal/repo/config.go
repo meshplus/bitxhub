@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -197,10 +199,18 @@ type Executor struct {
 }
 
 type Ledger struct {
-	Type               string `toml:"type" json:"type"`
-	LeveldbType        string `mapstructure:"leveldb_type" json:"leveldb_type"`
-	LeveldbWriteBuffer int    `mapstructure:"leveldb_write_buffer" json:"leveldb_write_buffer"`
-	MultiLdbThreshold  int64  `mapstructure:"multi_leveldb_threshold" json:"multi_leveldb_threshold"`
+	Type                  string `toml:"type" json:"type"`
+	LeveldbType           string `mapstructure:"leveldb_type" json:"leveldb_type"`
+	LeveldbWriteBufferStr string `mapstructure:"leveldb_write_buffer" json:"leveldb_write_buffer"`
+	MultiLdbThresholdStr  string `mapstructure:"multi_leveldb_threshold" json:"multi_leveldb_threshold"`
+}
+
+func (l *Ledger) GetLeveldbWriteBuffer() int64 {
+	return ByteStrToNum(l.LeveldbWriteBufferStr)
+}
+
+func (l *Ledger) GetMultiLdbThreshold() int64 {
+	return ByteStrToNum(l.MultiLdbThresholdStr)
 }
 
 type License struct {
@@ -271,10 +281,10 @@ func DefaultConfig() (*Config, error) {
 			Balance:  "100000000000000000000000000000000000",
 		},
 		Ledger: Ledger{
-			Type:               "complex",
-			LeveldbType:        "normal",
-			LeveldbWriteBuffer: 4194304,
-			MultiLdbThreshold:  107374182400,
+			Type:                  "complex",
+			LeveldbType:           "normal",
+			LeveldbWriteBufferStr: "4MB",
+			MultiLdbThresholdStr:  "100GB",
 		},
 		Crypto: Crypto{Algorithms: []string{"Secp256k1"}},
 	}, nil
@@ -417,4 +427,37 @@ func PathRootWithDefault(path string) (string, error) {
 	}
 
 	return path, nil
+}
+
+// ByteStrToNum string with byte unit to int64. Supported byte unit: B, KB, MB, GB.
+// If conversion failed, return -1.
+func ByteStrToNum(str string) int64 {
+	s := strings.ToUpper(str)
+
+	// find string of unit and string of number
+	unitR, _ := regexp.Compile("[A-Z]?B$")
+	unit := unitR.FindString(s)
+	numR, _ := regexp.Compile("^\\d+")
+	numStr := numR.FindString(s)
+	if unit == "" || numStr == "" || len(unit)+len(numStr) != len(s) {
+		return -1
+	}
+
+	// convert string of number to int
+	num, err := strconv.Atoi(numStr)
+	if err != nil {
+		return -1
+	}
+
+	switch unit {
+	case "B":
+		return int64(num)
+	case "KB":
+		return int64(1024 * num)
+	case "MB":
+		return int64(1024 * 1024 * num)
+	case "GB":
+		return int64(1024 * 1024 * 1024 * num)
+	}
+	return -1
 }

@@ -141,13 +141,14 @@ type stateStorage interface{}
 
 // OpenStateDB open db that storage state. Why return 'stateStorage' type?
 // Because simple return 'storage.Storage' type, and complex return 'ethdb.Database' type.
-func OpenStateDB(path string, ledgerConf repo.Ledger) (stateStorage, error) {
+func OpenStateDB(path string, ledgerConf *repo.Ledger) (stateStorage, error) {
 	var s stateStorage
 	var err error
 
 	if ledgerConf.Type == SimpleLedgerTyp {
 		// simple: new custom DB, return 'storage.Storage' type
-		s, err = NewLevelDB(path, ledgerConf.LeveldbType, ledgerConf.LeveldbWriteBuffer, ledgerConf.MultiLdbThreshold)
+		s, err = NewLevelDB(path, ledgerConf.LeveldbType,
+			ledgerConf.GetLeveldbWriteBuffer(), ledgerConf.GetMultiLdbThreshold())
 		if err != nil {
 			return nil, fmt.Errorf("init leveldb failed: %w", err)
 		}
@@ -165,8 +166,9 @@ func OpenStateDB(path string, ledgerConf repo.Ledger) (stateStorage, error) {
 }
 
 // OpenChainDB open db that storage chain meta, e.g. tx -> blockHeight, blockHash -> blockHeight.
-func OpenChainDB(path string, ledgerConf repo.Ledger) (storage.Storage, error) {
-	s, err := NewLevelDB(path, ledgerConf.LeveldbType, ledgerConf.LeveldbWriteBuffer, ledgerConf.MultiLdbThreshold)
+func OpenChainDB(path string, ledgerConf *repo.Ledger) (storage.Storage, error) {
+	s, err := NewLevelDB(path, ledgerConf.LeveldbType,
+		ledgerConf.GetLeveldbWriteBuffer(), ledgerConf.GetMultiLdbThreshold())
 	if err != nil {
 		return nil, fmt.Errorf("init leveldb failed: %w", err)
 	}
@@ -182,30 +184,37 @@ const (
 
 // NewLevelDB create leveldb under path.
 //
-// writeBuffer defines maximum size of a 'memdb' for leveldb. The default value is 4MiB.
+// 'writeBuffer' defines maximum size of a 'memdb' for leveldb. The default value is 4MiB.
 // Larger values increase performance, especially during bulk loads.
 //
-// multiLdbThreshold defines maximum size of each layer in multi-leveldb. The default value is 100GiB.
-func NewLevelDB(path string, typ string, writeBuffer int, multiLdbThreshold int64) (storage.Storage, error) {
+// 'multiLdbThreshold' defines maximum size of each layer in multi-leveldb. The default value is 100GiB.
+func NewLevelDB(path string, typ string, writeBuffer int64, multiLdbThreshold int64) (storage.Storage, error) {
 	var (
 		s   storage.Storage
 		err error
 	)
 
-	if writeBuffer <= 0 {
+	// check params
+	if writeBuffer < 0 {
+		return nil, fmt.Errorf("the 'writeBuffer' value of leveldb is error: %d", writeBuffer)
+	} else if int(writeBuffer) < 0 {
+		return nil, fmt.Errorf("the 'writeBuffer' value of leveldb exceed INT_MAX: %d", writeBuffer)
+	} else if writeBuffer == 0 {
 		writeBuffer = defaultWriteBuffer
 	}
-	if multiLdbThreshold <= 0 {
+	if multiLdbThreshold < 0 {
+		return nil, fmt.Errorf("the 'multiLdbThreshold' value of multi-leveldb is error: %d", writeBuffer)
+	} else if multiLdbThreshold == 0 {
 		multiLdbThreshold = defaultMultiLdbThreshold
 	}
 
 	if typ == NormalLeveldb {
-		s, err = leveldb.NewWithOpt(path, &opt.Options{WriteBuffer: writeBuffer})
+		s, err = leveldb.NewWithOpt(path, &opt.Options{WriteBuffer: int(writeBuffer)})
 		if err != nil {
 			return nil, fmt.Errorf("init normal leveldb failed: %w", err)
 		}
 	} else if typ == MultiLeveldb {
-		s, err = leveldb.NewMultiLdb(path, &opt.Options{WriteBuffer: writeBuffer}, multiLdbThreshold)
+		s, err = leveldb.NewMultiLdb(path, &opt.Options{WriteBuffer: int(writeBuffer)}, multiLdbThreshold)
 		if err != nil {
 			return nil, fmt.Errorf("init normal leveldb failed: %w", err)
 		}

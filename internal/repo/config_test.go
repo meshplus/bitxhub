@@ -54,3 +54,14 @@ func TestReadConfig(t *testing.T) {
 	require.Nil(t, err)
 	require.Equal(t, "../../config", rootWithDefault)
 }
+
+func TestByteStrToNum(t *testing.T) {
+	assert.Equal(t, int64(40000), ByteStrToNum("40000B"))
+	assert.Equal(t, int64(2048000), ByteStrToNum("2000KB"))
+	assert.Equal(t, int64(4194304), ByteStrToNum("4MB"))
+	assert.Equal(t, int64(107374182400), ByteStrToNum("100GB"))
+	assert.Equal(t, int64(-1), ByteStrToNum("100"))
+	assert.Equal(t, int64(-1), ByteStrToNum("GB"))
+	assert.Equal(t, int64(-1), ByteStrToNum("100 GB"))
+	assert.Equal(t, int64(-1), ByteStrToNum("100ZB"))
+}

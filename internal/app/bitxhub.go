@@ -145,12 +145,12 @@ func GenerateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 	printType = fmt.Sprintf("%s\n", printType)
 	fmt.Println(printType)
 
-	bcStorage, err := ledger.OpenChainDB(repo.GetStoragePath(repoRoot, "blockchain"), rep.Config.Ledger)
+	bcStorage, err := ledger.OpenChainDB(repo.GetStoragePath(repoRoot, "blockchain"), &rep.Config.Ledger)
 	if err != nil {
 		return nil, fmt.Errorf("create blockchain storage: %w", err)
 	}
 
-	stateStorage, err := ledger.OpenStateDB(repo.GetStoragePath(repoRoot, "ledger"), rep.Config.Ledger)
+	stateStorage, err := ledger.OpenStateDB(repo.GetStoragePath(repoRoot, "ledger"), &rep.Config.Ledger)
 	if err != nil {
 		return nil, fmt.Errorf("create state storage: %w", err)
 	}
@@ -268,7 +268,7 @@ func getPreparams(repoRoot string) ([]*bkg.LocalPreParams, error) {
 
 func (bxh *BitXHub) Start() error {
 
-	if err := bxh.raiseUlimit(bxh.repo.Config.GetMaxOpenFilesLimit()); err != nil {
+	if err := bxh.raiseUlimit(bxh.repo.Config.Limiter.GetMaxOpenFilesLimit()); err != nil {
 		return fmt.Errorf("raise ulimit: %w", err)
 	}
 
