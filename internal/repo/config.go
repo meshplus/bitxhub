@@ -430,8 +430,12 @@ func PathRootWithDefault(path string) (string, error) {
 }
 
 // ByteStrToNum string with byte unit to int64. Supported byte unit: B, KB, MB, GB.
-// If conversion failed, return -1.
+// If str is empty, return 0. If conversion failed, return -1.
 func ByteStrToNum(str string) int64 {
+	if str == "" {
+		return 0
+	}
+
 	s := strings.ToUpper(str)
 
 	// find string of unit and string of number

@@ -284,12 +284,12 @@ func TestChainLedger_OpenStateDB(t *testing.T) {
 	repoRoot1, err := ioutil.TempDir("", "ethstorage")
 	assert.Nil(t, err)
 	logger := log.NewWithModule("opendb_test")
-	_, err = OpenStateDB(repoRoot, repo.Ledger{
+	_, err = OpenStateDB(repoRoot, &repo.Ledger{
 		Type:        SimpleLedgerTyp,
 		LeveldbType: NormalLeveldb,
 	})
 	assert.Nil(t, err)
-	ldb, err := OpenStateDB(repoRoot1, repo.Ledger{
+	ldb, err := OpenStateDB(repoRoot1, &repo.Ledger{
 		Type:        ComplexLedgerTyp,
 		LeveldbType: NormalLeveldb,
 	})
@@ -307,11 +307,11 @@ func TestChainLedger_OpenStateDB(t *testing.T) {
 func TestChainLedger_OpenChainDB(t *testing.T) {
 	repoRoot, err := ioutil.TempDir("", "test-storage")
 	assert.Nil(t, err)
-	_, err = OpenChainDB(repoRoot, repo.Ledger{
+	_, err = OpenChainDB(repoRoot, &repo.Ledger{
 		LeveldbType: NormalLeveldb,
 	})
 	assert.Nil(t, err)
-	_, err = OpenChainDB(repoRoot, repo.Ledger{})
+	_, err = OpenChainDB(repoRoot, &repo.Ledger{})
 	assert.NotNil(t, err)
 }
 
