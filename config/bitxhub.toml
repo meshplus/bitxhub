@@ -43,6 +43,7 @@ solo = false
   interval= "50ms"
   quantum= 500
   capacity= 10000
+  max_open_files_limit = 2048 # the limit of max open files of bitxhub
 
 [appchain]
   enable = false
@@ -81,7 +82,11 @@ solo = false
   algorithms = ["Secp256k1", "ECDSA_P256", "ECDSA_P384","ECDSA_P521"]
 
 [ledger]
-  type = "simple"
+  type = "simple" # simple or complex
+  leveldb_type = "normal" # normal or multi
+  # supported: B, KB, MB, GB
+  leveldb_write_buffer = "4MB" # defines 'memdb' size of leveldb, larger values can increase performance
+  multi_leveldb_threshold = "100GB" # defines the threshold of size for each layer in multi-leveldb
 
 [genesis]
   chainid = 1356

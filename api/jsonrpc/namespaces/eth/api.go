@@ -21,6 +21,7 @@ import (
 	"github.com/meshplus/bitxhub-model/pb"
 	rpctypes "github.com/meshplus/bitxhub/api/jsonrpc/types"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
+	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/repo"
 	vm1 "github.com/meshplus/eth-kit/evm"
 	ledger2 "github.com/meshplus/eth-kit/ledger"
@@ -276,7 +277,7 @@ func (api *PublicEthereumAPI) SendRawTransaction(data hexutil.Bytes) (common.Has
 }
 
 func (api *PublicEthereumAPI) getStateLedgerAt(blockNum rpctypes.BlockNumber) (ledger2.StateLedger, error) {
-	if api.config.Ledger.Type == "simple" {
+	if api.config.Ledger.Type == ledger.SimpleLedgerTyp {
 		return api.api.Broker().GetStateLedger(), nil
 	}
 

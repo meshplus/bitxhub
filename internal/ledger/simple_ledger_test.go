@@ -284,9 +284,15 @@ func TestChainLedger_OpenStateDB(t *testing.T) {
 	repoRoot1, err := ioutil.TempDir("", "ethstorage")
 	assert.Nil(t, err)
 	logger := log.NewWithModule("opendb_test")
-	_, err = OpenStateDB(repoRoot, "simple")
+	_, err = OpenStateDB(repoRoot, &repo.Ledger{
+		Type:        SimpleLedgerTyp,
+		LeveldbType: NormalLeveldb,
+	})
 	assert.Nil(t, err)
-	ldb, err := OpenStateDB(repoRoot1, "complex")
+	ldb, err := OpenStateDB(repoRoot1, &repo.Ledger{
+		Type:        ComplexLedgerTyp,
+		LeveldbType: NormalLeveldb,
+	})
 	assert.Nil(t, err)
 	blockFile, err := blockfile.NewBlockFile("", logger)
 	assert.NotNil(t, err)
@@ -296,6 +302,30 @@ func TestChainLedger_OpenStateDB(t *testing.T) {
 	assert.Nil(t, err)
 	_, err = New(createMockRepo(t), blockStorage, ldb, blockFile, accountCache, log.NewWithModule("executor"))
 	assert.Nil(t, err)
+}
+
+func TestChainLedger_OpenChainDB(t *testing.T) {
+	repoRoot, err := ioutil.TempDir("", "test-storage")
+	assert.Nil(t, err)
+	_, err = OpenChainDB(repoRoot, &repo.Ledger{
+		LeveldbType: NormalLeveldb,
+	})
+	assert.Nil(t, err)
+	_, err = OpenChainDB(repoRoot, &repo.Ledger{})
+	assert.NotNil(t, err)
+}
+
+func TestChainLedger_NewLevelDB(t *testing.T) {
+	path1, err := ioutil.TempDir("", "normal_leveldb")
+	assert.Nil(t, err)
+	path2, err := ioutil.TempDir("", "multi_leveldb")
+	assert.Nil(t, err)
+	_, err = NewLevelDB(path1, NormalLeveldb, 0, 0)
+	assert.Nil(t, err)
+	_, err = NewLevelDB(path2, MultiLeveldb, 0, 0)
+	assert.Nil(t, err)
+	_, err = NewLevelDB(path1, "test", 0, 0)
+	assert.NotNil(t, err)
 }
 
 func TestChainLedger_EVMAccessor(t *testing.T) {
