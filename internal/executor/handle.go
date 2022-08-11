@@ -137,10 +137,10 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	exec.ledger.PrepareBlock(block.BlockHash, block.Height())
 	receipts := exec.txsExecutor.ApplyTransactions(block.Transactions.Transactions, blockWrapper.invalidTx)
 	applyTxsDuration.Observe(float64(time.Since(current)) / float64(time.Second))
-	exec.logger.WithFields(logrus.Fields{
-		"time":  time.Since(current),
-		"count": len(block.Transactions.Transactions),
-	}).Debug("Apply transactions elapsed")
+	//exec.logger.WithFields(logrus.Fields{
+	//	"time":  time.Since(current),
+	//	"count": len(block.Transactions.Transactions),
+	//}).Debug("Apply transactions elapsed")
 
 	calcMerkleStart := time.Now()
 	l1Root, l2Roots, err := exec.buildTxMerkleTree(block.Transactions.Transactions)
@@ -887,8 +887,9 @@ func (exec *BlockExecutor) setTimeoutList(height uint64, txList []pb.Transaction
 			if pb.IBTP_REQUEST == ibtp.Category() {
 				// record timeout height
 				var timeoutHeight uint64
+				// timeoutHeight illegal, not record it
 				if ibtp.TimeoutHeight <= 0 || uint64(ibtp.TimeoutHeight) >= math.MaxUint64-height {
-					timeoutHeight = math.MaxUint64
+					continue
 				} else {
 					timeoutHeight = height + uint64(ibtp.TimeoutHeight)
 				}
