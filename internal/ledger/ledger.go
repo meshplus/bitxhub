@@ -194,16 +194,18 @@ func NewLevelDB(path string, typ string, writeBuffer int64, multiLdbThreshold in
 		err error
 	)
 
-	// check params
+	// check writeBuffer
 	if writeBuffer < 0 {
 		return nil, fmt.Errorf("the 'writeBuffer' value of leveldb is error: %d", writeBuffer)
-	} else if int(writeBuffer) < 0 {
+	} else if writeBuffer > int64(^uint(0)>>1) {
 		return nil, fmt.Errorf("the 'writeBuffer' value of leveldb exceed INT_MAX: %d", writeBuffer)
 	} else if writeBuffer == 0 {
 		writeBuffer = defaultWriteBuffer
 	}
+
+	// check multiLdbThreshold
 	if multiLdbThreshold < 0 {
-		return nil, fmt.Errorf("the 'multiLdbThreshold' value of multi-leveldb is error: %d", writeBuffer)
+		return nil, fmt.Errorf("the 'multiLdbThreshold' value of multi-leveldb is error: %d", multiLdbThreshold)
 	} else if multiLdbThreshold == 0 {
 		multiLdbThreshold = defaultMultiLdbThreshold
 	}
