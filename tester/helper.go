@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"strings"
 	"time"
 
+	"github.com/Rican7/retry"
+	"github.com/Rican7/retry/backoff"
+	"github.com/Rican7/retry/strategy"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/types"
@@ -125,22 +127,29 @@ func sendTransactionWithReceipt(api api.CoreAPI, tx pb.Transaction) (*pb.Receipt
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
+	var receiptErr error
+	receipt := &pb.Receipt{}
 	for {
 		select {
 		case <-ctx.Done():
 			return nil, fmt.Errorf("get receipt timeout")
 		default:
 			time.Sleep(200 * time.Millisecond)
-			receipt, err := api.Broker().GetReceipt(tx.GetHash())
-			if err != nil {
-				if strings.Contains(err.Error(), "not found") {
-					continue
+			err = retry.Retry(func(attempt uint) error {
+				receipt, err = api.Broker().GetReceipt(tx.GetHash())
+				if err != nil {
+					return err
 				}
 
-				return nil, err
+				return nil
+			},
+				strategy.Limit(5),
+				strategy.Backoff(backoff.Fibonacci(200*time.Millisecond)),
+			)
+			if err != nil {
+				receiptErr = err
 			}
-
-			return receipt, nil
+			return receipt, receiptErr
 		}
 	}
 
