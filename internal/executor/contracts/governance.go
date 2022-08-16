@@ -39,6 +39,7 @@ const (
 	RoleMgr             ProposalType = repo.RoleMgr
 	ProposalStrategyMgr ProposalType = repo.ProposalStrategyMgr
 	DappMgr             ProposalType = repo.DappMgr
+	BnsMgr              ProposalType = repo.BnsMgr
 
 	PROPOSED ProposalStatus = "proposed"
 	APPROVED ProposalStatus = "approve"
@@ -82,7 +83,7 @@ type Ballot struct {
 
 type Proposal struct {
 	Id            string                      `json:"id"`
-	Typ           ProposalType                `json:"typ"`
+	Typ           ProposalType                `json:"Typ"`
 	Status        ProposalStatus              `json:"status"`
 	ObjId         string                      `json:"obj_id"`
 	ObjLastStatus governance.GovernanceStatus `json:"obj_last_status"`
@@ -222,6 +223,7 @@ func (g *Governance) SubmitProposal(from, eventTyp, typ, objId, objLastStatus, r
 		constant.ServiceMgrContractAddr.Address().String(),
 		constant.GovernanceContractAddr.Address().String(),
 		constant.ProposalStrategyMgrContractAddr.Address().String(),
+		constant.ServiceRegistryContractAddr.Address().String(),
 	}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
@@ -283,7 +285,7 @@ func (g *Governance) SubmitProposal(from, eventTyp, typ, objId, objLastStatus, r
 		"id":         p.Id,
 		"objId":      p.ObjId,
 		"eventTyp":   p.EventType,
-		"typ":        p.Typ,
+		"Typ":        p.Typ,
 		"status":     p.Status,
 		"createtime": p.CreateTime,
 		"extra":      string(p.Extra),
@@ -699,6 +701,12 @@ func (g *Governance) manageObj(proposalTyp ProposalType, eventType, nextEventTyp
 		return nil
 	case ProposalStrategyMgr:
 		res := g.CrossInvoke(constant.ProposalStrategyMgrContractAddr.Address().String(), "Manage", pb.String(string(eventType)), pb.String(string(nextEventType)), pb.String(string(objLastStatus)), pb.String(objId), pb.Bytes(extra))
+		if !res.Ok {
+			return fmt.Errorf("invoke Manager error: %s", string(res.Result))
+		}
+		return nil
+	case BnsMgr:
+		res := g.CrossInvoke(constant.ServiceRegistryContractAddr.Address().String(), "Manage", pb.String(string(eventType)), pb.String(string(nextEventType)), pb.String(string(objLastStatus)), pb.String(objId), pb.Bytes(extra))
 		if !res.Ok {
 			return fmt.Errorf("invoke Manager error: %s", string(res.Result))
 		}

@@ -124,5 +124,47 @@ func Initialize(genesis *repo.Genesis, nodes []*repo.NetworkNodes, primaryN uint
 
 	lg.PersistBlockData(blockData)
 
+	initBNSData(lg)
+
+	return nil
+}
+
+func initBNSData(lg *ledger.Ledger) error {
+	priceLevel := contracts.PriceLevel{
+		Price1Letter: 1,
+		Price2Letter: 2,
+		Price3Letter: 3,
+		Price4Letter: 4,
+		Price5Letter: 5,
+	}
+	priceLevelBytes, err := json.Marshal(priceLevel)
+	if err != nil {
+		return fmt.Errorf("marshal node account map data error: %w", err)
+	}
+	lg.SetState(constant.ServiceRegistryContractAddr.Address(), []byte(contracts.PriceLenLevel), priceLevelBytes)
+
+	tokenPriceBytes, err := json.Marshal(uint64(1))
+	if err != nil {
+		return fmt.Errorf("marshal data error: %w", err)
+	}
+	lg.SetState(constant.ServiceRegistryContractAddr.Address(), []byte(contracts.BitxhubTokenPrice), tokenPriceBytes)
+
+	resolverMap := make(map[string]bool)
+	resolverMap["0x0000000000000000000000000000000000000023"] = true
+	resolverMapBytes, err := json.Marshal(resolverMap)
+	if err != nil {
+		return fmt.Errorf("marshal data error: %w", err)
+	}
+	lg.SetState(constant.ServiceRegistryContractAddr.Address(), []byte(contracts.ResolverMap), resolverMapBytes)
+
+	permissionController := make(map[string]map[string]bool)
+	permissionController[string(constant.ServiceRegistryContractAddr)] = make(map[string]bool)
+	permissionController[string(constant.ServiceRegistryContractAddr)][string(constant.ServiceResolverContractAddr)] = true
+	permissionControllerBytes, err := json.Marshal(permissionController)
+	if err != nil {
+		return fmt.Errorf("marshal node account map data error: %w", err)
+	}
+	lg.SetState(constant.ServiceRegistryContractAddr.Address(), []byte(contracts.PermissionController), permissionControllerBytes)
+
 	return nil
 }
