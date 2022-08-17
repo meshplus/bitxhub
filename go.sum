@@ -719,6 +719,8 @@ github.com/lightstep/lightstep-tracer-common/golang/gogo v0.0.0-20190605223551-b
 github.com/lightstep/lightstep-tracer-go v0.18.1/go.mod h1:jlF1pusYV4pidLvZ+XD0UBX0ZE6WURAspgAczcDHrL4=
 github.com/looplab/fsm v0.2.0 h1:M8hf5EF4AYLcT1FNKVUX8nu7D0xfp291iGeuigSxfrw=
 github.com/looplab/fsm v0.2.0/go.mod h1:p+IElwgCnAByqr2DWMuNbPjgMwqcHvTRZZn3dvKEke0=
+github.com/looplab/fsm v0.3.0 h1:kIgNS3Yyud1tyxhG8kDqh853B7QqwnlWdgL3TD2s3Sw=
+github.com/looplab/fsm v0.3.0/go.mod h1:PmD3fFvQEIsjMEfvZdrCDZ6y8VwKTwWNjlpEr6IKPO4=
 github.com/magiconair/properties v1.8.0/go.mod h1:PppfXfuXeibc/6YijjN8zIbojt8czPbwD3XqdrwzmxQ=
 github.com/magiconair/properties v1.8.1/go.mod h1:PppfXfuXeibc/6YijjN8zIbojt8czPbwD3XqdrwzmxQ=
 github.com/magiconair/properties v1.8.4 h1:8KGKTcQQGm0Kv7vEbKFErAoAOFyyacLStRtQSeYtvkY=
@@ -771,8 +773,8 @@ github.com/meshplus/bitxhub-model v1.2.1-0.20220815081129-609df840b044 h1:uzj0wL
 github.com/meshplus/bitxhub-model v1.2.1-0.20220815081129-609df840b044/go.mod h1:KIevoE50DZC7Tghvf7368FQ7hRBmK/4HWqiQbFrQlog=
 github.com/meshplus/consensus v0.0.0-20211228075008-5f469b198531 h1:lU2XI7vWdapTLJfObY3A+e+a3rvHbnT0pHN9LEghwRk=
 github.com/meshplus/consensus v0.0.0-20211228075008-5f469b198531/go.mod h1:2Sv1u1sOFta9dAO6OuHyxLaN1Z6/AdrIol99qi5ZZ0k=
-github.com/meshplus/eth-kit v0.0.0-20220628031226-4b30a994a2a6 h1:lynes143n+SG1uG8xcTXPQ9te/NKEks/9Kvx+EwIop4=
-github.com/meshplus/eth-kit v0.0.0-20220628031226-4b30a994a2a6/go.mod h1:7Uf2QyUOCFCHjg4zXr3ZtjKesdPubptdr4IK0KiQBHY=
+github.com/meshplus/eth-kit v0.0.0-20220628081546-b5a85face78c h1:iFbSvCorWwD2QUD9esv8KECuCIYKiNrvj1PyeCyFb9s=
+github.com/meshplus/eth-kit v0.0.0-20220628081546-b5a85face78c/go.mod h1:7Uf2QyUOCFCHjg4zXr3ZtjKesdPubptdr4IK0KiQBHY=
 github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd h1:/8ydT0Pc+nFy3uAeTwxAurPXY4cWfggslGz3bNwJKDg=
 github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd/go.mod h1:rS4AYMqKypLn2IPEnHICP//V2v16SZo4CWUbwMdihl0=
 github.com/meshplus/go-lightp2p v0.0.0-20200817105923-6b3aee40fa54/go.mod h1:G89UJaeqCQFxFdp8wzy1AdKfMtDEhpySau0pjDNeeaw=
@@ -1070,6 +1072,7 @@ github.com/stretchr/testify v1.5.1/go.mod h1:5W2xD1RspED5o8YsWQXVCued0rvSQ+mT+I5
 github.com/stretchr/testify v1.6.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.7.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
+github.com/stretchr/testify v1.7.2 h1:4jaiDzPyXQvSd7D0EjG45355tLlV3VOECpq10pLC+8s=
 github.com/stretchr/testify v1.7.2/go.mod h1:R6va5+xMeoiuVRoj+gSkQ7d3FALtqAAGI1FQKckRals=
 github.com/stretchr/testify v1.8.0 h1:pSgiaMZlXftHpm5L7V1+rVB+AZJydKsMxsQBIJw4PKk=
 github.com/stretchr/testify v1.8.0/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO+kdMU+MU=
@@ -1301,6 +1304,7 @@ golang.org/x/sys v0.0.0-20210324051608-47abb6519492/go.mod h1:h1NjWce9XRLGQEsW7w
 golang.org/x/sys v0.0.0-20210420205809-ac73e9fd8988/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20210510120138-977fb7262007/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20210615035016-665e8c7367d1/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+golang.org/x/sys v0.0.0-20210816183151-1e6c022a8912 h1:uCLL3g5wH2xjxVREVuAbP9JM5PPKjRbXKRa6IBjkzmU=
 golang.org/x/sys v0.0.0-20210816183151-1e6c022a8912/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20220804214406-8e32c043e418 h1:9vYwv7OjYaky/tlAeD7C4oC9EsPTlaFl1H2jS++V+ME=
 golang.org/x/sys v0.0.0-20220804214406-8e32c043e418/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=

@@ -1,7 +1,6 @@
 package contracts
 
 import (
-	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -30,12 +29,12 @@ func TestTransactionManager_BeginMultiTXs(t *testing.T) {
 
 	mockStub.EXPECT().CurrentCaller().Return(constant.InterchainContractAddr.Address().String()).AnyTimes()
 
-	mockStub.EXPECT().GetObject(GlobalTxInfoKey(globalId), gomock.Any()).SetArg(1, TransactionInfo{}).Return(false).MaxTimes(1)
+	mockStub.EXPECT().GetObject(GlobalTxInfoKey(globalId), gomock.Any()).SetArg(1, pb.TransactionInfo{}).Return(false).MaxTimes(1)
 	mockStub.EXPECT().Get(TimeoutKey(uint64(110))).Return(false, nil).MaxTimes(1)
 	mockStub.EXPECT().Set(TimeoutKey(uint64(110)), []byte(globalId)).MaxTimes(1)
 
 	mockStub.EXPECT().Set(id0, []byte(globalId))
-	txInfo := TransactionInfo{
+	txInfo := pb.TransactionInfo{
 		GlobalState:  pb.TransactionStatus_BEGIN,
 		ChildTxInfo:  map[string]pb.TransactionStatus{id0: pb.TransactionStatus_BEGIN},
 		Height:       110,
@@ -45,16 +44,16 @@ func TestTransactionManager_BeginMultiTXs(t *testing.T) {
 
 	res = im.BeginMultiTXs(globalId, id0, 10, false, 2)
 	assert.True(t, res.Ok)
-	statusChange := StatusChange{}
-	err := json.Unmarshal(res.Result, &statusChange)
+	statusChange := pb.StatusChange{}
+	err := statusChange.Unmarshal(res.Result)
 	assert.Nil(t, err)
 	assert.Equal(t, pb.TransactionStatus(-1), statusChange.PrevStatus)
 	assert.Equal(t, pb.TransactionStatus_BEGIN, statusChange.CurStatus)
 	assert.Equal(t, 0, len(statusChange.OtherIBTPIDs))
 
-	mockStub.EXPECT().GetObject(GlobalTxInfoKey(globalId), gomock.Any()).SetArg(1, TransactionInfo{}).Return(false).MaxTimes(1)
+	mockStub.EXPECT().GetObject(GlobalTxInfoKey(globalId), gomock.Any()).SetArg(1, pb.TransactionInfo{}).Return(false).MaxTimes(1)
 	mockStub.EXPECT().Set(id0, []byte(globalId))
-	txInfo = TransactionInfo{
+	txInfo = pb.TransactionInfo{
 		GlobalState:  pb.TransactionStatus_BEGIN_FAILURE,
 		ChildTxInfo:  map[string]pb.TransactionStatus{id0: pb.TransactionStatus_BEGIN_FAILURE},
 		Height:       110,
@@ -63,7 +62,8 @@ func TestTransactionManager_BeginMultiTXs(t *testing.T) {
 	mockStub.EXPECT().AddObject(GlobalTxInfoKey(globalId), txInfo)
 	res = im.BeginMultiTXs(globalId, id0, 10, true, 2)
 	assert.True(t, res.Ok)
-	err = json.Unmarshal(res.Result, &statusChange)
+	statusChange = pb.StatusChange{}
+	err = statusChange.Unmarshal(res.Result)
 	assert.Nil(t, err)
 	assert.Equal(t, pb.TransactionStatus(-1), statusChange.PrevStatus)
 	assert.Equal(t, pb.TransactionStatus_BEGIN_FAILURE, statusChange.CurStatus)
@@ -75,7 +75,7 @@ func TestTransactionManager_BeginMultiTXs(t *testing.T) {
 	assert.Contains(t, string(res.Result), fmt.Sprintf("child tx %s of global tx %s exists", id0, globalId))
 
 	mockStub.EXPECT().GetObject(GlobalTxInfoKey(globalId), gomock.Any()).SetArg(1, txInfo).Return(true).MaxTimes(1)
-	expTxInfo := TransactionInfo{
+	expTxInfo := pb.TransactionInfo{
 		GlobalState:  pb.TransactionStatus_BEGIN_FAILURE,
 		ChildTxInfo:  map[string]pb.TransactionStatus{id0: pb.TransactionStatus_BEGIN_FAILURE, id1: pb.TransactionStatus_BEGIN_FAILURE},
 		Height:       110,
@@ -85,19 +85,20 @@ func TestTransactionManager_BeginMultiTXs(t *testing.T) {
 	mockStub.EXPECT().Set(id1, []byte(globalId))
 	res = im.BeginMultiTXs(globalId, id1, 10, false, 2)
 	assert.True(t, res.Ok)
-	err = json.Unmarshal(res.Result, &statusChange)
+	statusChange = pb.StatusChange{}
+	err = statusChange.Unmarshal(res.Result)
 	assert.Nil(t, err)
 	assert.Equal(t, pb.TransactionStatus(-1), statusChange.PrevStatus)
 	assert.Equal(t, pb.TransactionStatus_BEGIN_FAILURE, statusChange.CurStatus)
 	assert.Equal(t, 0, len(statusChange.OtherIBTPIDs))
 
-	txInfo = TransactionInfo{
+	txInfo = pb.TransactionInfo{
 		GlobalState:  pb.TransactionStatus_BEGIN,
 		ChildTxInfo:  map[string]pb.TransactionStatus{id0: pb.TransactionStatus_BEGIN},
 		Height:       110,
 		ChildTxCount: 2,
 	}
-	expTxInfo = TransactionInfo{
+	expTxInfo = pb.TransactionInfo{
 		GlobalState:  pb.TransactionStatus_BEGIN,
 		ChildTxInfo:  map[string]pb.TransactionStatus{id0: pb.TransactionStatus_BEGIN, id1: pb.TransactionStatus_BEGIN},
 		Height:       110,
@@ -110,19 +111,20 @@ func TestTransactionManager_BeginMultiTXs(t *testing.T) {
 	mockStub.EXPECT().Set(id1, []byte(globalId))
 	res = im.BeginMultiTXs(globalId, id1, 10, false, 2)
 	assert.True(t, res.Ok)
-	err = json.Unmarshal(res.Result, &statusChange)
+	statusChange = pb.StatusChange{}
+	err = statusChange.Unmarshal(res.Result)
 	assert.Nil(t, err)
 	assert.Equal(t, pb.TransactionStatus(-1), statusChange.PrevStatus)
 	assert.Equal(t, pb.TransactionStatus_BEGIN, statusChange.CurStatus)
 	assert.Equal(t, 0, len(statusChange.OtherIBTPIDs))
 
-	txInfo = TransactionInfo{
+	txInfo = pb.TransactionInfo{
 		GlobalState:  pb.TransactionStatus_BEGIN,
 		ChildTxInfo:  map[string]pb.TransactionStatus{id0: pb.TransactionStatus_BEGIN},
 		Height:       110,
 		ChildTxCount: 2,
 	}
-	expTxInfo = TransactionInfo{
+	expTxInfo = pb.TransactionInfo{
 		GlobalState:  pb.TransactionStatus_BEGIN_FAILURE,
 		ChildTxInfo:  map[string]pb.TransactionStatus{id0: pb.TransactionStatus_BEGIN_FAILURE, id1: pb.TransactionStatus_BEGIN_FAILURE},
 		Height:       110,
@@ -135,20 +137,21 @@ func TestTransactionManager_BeginMultiTXs(t *testing.T) {
 	mockStub.EXPECT().Set(id1, []byte(globalId))
 	res = im.BeginMultiTXs(globalId, id1, 10, true, 2)
 	assert.True(t, res.Ok)
-	err = json.Unmarshal(res.Result, &statusChange)
+	statusChange = pb.StatusChange{}
+	err = statusChange.Unmarshal(res.Result)
 	assert.Nil(t, err)
 	assert.Equal(t, pb.TransactionStatus(-1), statusChange.PrevStatus)
 	assert.Equal(t, pb.TransactionStatus_BEGIN_FAILURE, statusChange.CurStatus)
 	assert.Equal(t, 1, len(statusChange.OtherIBTPIDs))
 	assert.Equal(t, id0, statusChange.OtherIBTPIDs[0])
 
-	txInfo = TransactionInfo{
+	txInfo = pb.TransactionInfo{
 		GlobalState:  pb.TransactionStatus_BEGIN_FAILURE,
 		ChildTxInfo:  map[string]pb.TransactionStatus{id0: pb.TransactionStatus_BEGIN_FAILURE},
 		Height:       110,
 		ChildTxCount: 2,
 	}
-	expTxInfo = TransactionInfo{
+	expTxInfo = pb.TransactionInfo{
 		GlobalState:  pb.TransactionStatus_BEGIN_FAILURE,
 		ChildTxInfo:  map[string]pb.TransactionStatus{id0: pb.TransactionStatus_BEGIN_FAILURE, id1: pb.TransactionStatus_BEGIN_FAILURE},
 		Height:       110,
@@ -159,19 +162,20 @@ func TestTransactionManager_BeginMultiTXs(t *testing.T) {
 	mockStub.EXPECT().Set(id1, []byte(globalId))
 	res = im.BeginMultiTXs(globalId, id1, 10, false, 2)
 	assert.True(t, res.Ok)
-	err = json.Unmarshal(res.Result, &statusChange)
+	statusChange = pb.StatusChange{}
+	err = statusChange.Unmarshal(res.Result)
 	assert.Nil(t, err)
 	assert.Equal(t, pb.TransactionStatus(-1), statusChange.PrevStatus)
 	assert.Equal(t, pb.TransactionStatus_BEGIN_FAILURE, statusChange.CurStatus)
 	assert.Equal(t, 0, len(statusChange.OtherIBTPIDs))
 
-	txInfo = TransactionInfo{
+	txInfo = pb.TransactionInfo{
 		GlobalState:  pb.TransactionStatus_BEGIN_ROLLBACK,
 		ChildTxInfo:  map[string]pb.TransactionStatus{id0: pb.TransactionStatus_BEGIN_ROLLBACK},
 		Height:       110,
 		ChildTxCount: 2,
 	}
-	expTxInfo = TransactionInfo{
+	expTxInfo = pb.TransactionInfo{
 		GlobalState:  pb.TransactionStatus_BEGIN_ROLLBACK,
 		ChildTxInfo:  map[string]pb.TransactionStatus{id0: pb.TransactionStatus_BEGIN_ROLLBACK, id1: pb.TransactionStatus_BEGIN_ROLLBACK},
 		Height:       110,
@@ -182,7 +186,8 @@ func TestTransactionManager_BeginMultiTXs(t *testing.T) {
 	mockStub.EXPECT().Set(id1, []byte(globalId))
 	res = im.BeginMultiTXs(globalId, id1, 10, false, 2)
 	assert.True(t, res.Ok)
-	err = json.Unmarshal(res.Result, &statusChange)
+	statusChange = pb.StatusChange{}
+	err = statusChange.Unmarshal(res.Result)
 	assert.Nil(t, err)
 	assert.Equal(t, pb.TransactionStatus(-1), statusChange.PrevStatus)
 	assert.Equal(t, pb.TransactionStatus_BEGIN_ROLLBACK, statusChange.CurStatus)
@@ -206,8 +211,8 @@ func TestTransactionManager_Begin(t *testing.T) {
 	mockStub.EXPECT().CurrentCaller().Return(constant.InterchainContractAddr.Address().String()).AnyTimes()
 	res = im.Begin(id, 10, false)
 	assert.True(t, res.Ok)
-	statusChange := StatusChange{}
-	err := json.Unmarshal(res.Result, &statusChange)
+	statusChange := pb.StatusChange{}
+	err := statusChange.Unmarshal(res.Result)
 	assert.Nil(t, err)
 	assert.Equal(t, pb.TransactionStatus(-1), statusChange.PrevStatus)
 	assert.Equal(t, pb.TransactionStatus_BEGIN, statusChange.CurStatus)
@@ -215,7 +220,8 @@ func TestTransactionManager_Begin(t *testing.T) {
 
 	res = im.Begin(id, 10, true)
 	assert.True(t, res.Ok)
-	err = json.Unmarshal(res.Result, &statusChange)
+	statusChange = pb.StatusChange{}
+	err = statusChange.Unmarshal(res.Result)
 	assert.Nil(t, err)
 	assert.Equal(t, pb.TransactionStatus(-1), statusChange.PrevStatus)
 	assert.Equal(t, pb.TransactionStatus_BEGIN_FAILURE, statusChange.CurStatus)
@@ -258,8 +264,8 @@ func TestTransactionManager_Report(t *testing.T) {
 	mockStub.EXPECT().SetObject(TxInfoKey(id), recSuccess).MaxTimes(1)
 	res = im.Report(id, int32(pb.IBTP_RECEIPT_SUCCESS))
 	assert.True(t, res.Ok)
-	statusChange := StatusChange{}
-	err := json.Unmarshal(res.Result, &statusChange)
+	statusChange := pb.StatusChange{}
+	err := statusChange.Unmarshal(res.Result)
 	assert.Nil(t, err)
 	assert.Equal(t, pb.TransactionStatus_BEGIN, statusChange.PrevStatus)
 	assert.Equal(t, pb.TransactionStatus_SUCCESS, statusChange.CurStatus)
@@ -269,7 +275,8 @@ func TestTransactionManager_Report(t *testing.T) {
 	mockStub.EXPECT().SetObject(TxInfoKey(id), recFailure).MaxTimes(1)
 	res = im.Report(id, int32(pb.IBTP_RECEIPT_FAILURE))
 	assert.True(t, res.Ok)
-	err = json.Unmarshal(res.Result, &statusChange)
+	statusChange = pb.StatusChange{}
+	err = statusChange.Unmarshal(res.Result)
 	assert.Nil(t, err)
 	assert.Equal(t, pb.TransactionStatus_BEGIN, statusChange.PrevStatus)
 	assert.Equal(t, pb.TransactionStatus_FAILURE, statusChange.CurStatus)
@@ -293,7 +300,7 @@ func TestTransactionManager_Report(t *testing.T) {
 	assert.False(t, res.Ok)
 	assert.Contains(t, string(res.Result), fmt.Sprintf("global tx %s of child tx %s does not exist", globalID, id0))
 
-	txInfo := TransactionInfo{
+	txInfo := pb.TransactionInfo{
 		GlobalState:  pb.TransactionStatus_BEGIN,
 		Height:       110,
 		ChildTxInfo:  map[string]pb.TransactionStatus{id0: pb.TransactionStatus_SUCCESS, id1: pb.TransactionStatus_BEGIN},
@@ -317,14 +324,14 @@ func TestTransactionManager_Report(t *testing.T) {
 	assert.False(t, res.Ok)
 	assert.Contains(t, string(res.Result), fmt.Sprintf("global tx of child tx %s with state %v get unexpected receipt %v", id0, txInfo.GlobalState, int32(pb.IBTP_RECEIPT_SUCCESS)))
 
-	txInfo = TransactionInfo{
+	txInfo = pb.TransactionInfo{
 		GlobalState:  pb.TransactionStatus_BEGIN,
 		Height:       txInfo.Height,
 		ChildTxInfo:  map[string]pb.TransactionStatus{id0: pb.TransactionStatus_BEGIN, id1: pb.TransactionStatus_SUCCESS},
 		ChildTxCount: txInfo.ChildTxCount,
 	}
 	mockStub.EXPECT().GetObject(GlobalTxInfoKey(globalID), gomock.Any()).SetArg(1, txInfo).Return(true).MaxTimes(1)
-	expTxInfo := TransactionInfo{
+	expTxInfo := pb.TransactionInfo{
 		GlobalState:  pb.TransactionStatus_SUCCESS,
 		Height:       txInfo.Height,
 		ChildTxInfo:  map[string]pb.TransactionStatus{id0: pb.TransactionStatus_SUCCESS, id1: pb.TransactionStatus_SUCCESS},
@@ -335,20 +342,21 @@ func TestTransactionManager_Report(t *testing.T) {
 	mockStub.EXPECT().Set(TimeoutKey(txInfo.Height), []byte{}).MaxTimes(1)
 	res = im.Report(id0, int32(pb.IBTP_RECEIPT_SUCCESS))
 	assert.True(t, res.Ok)
-	err = json.Unmarshal(res.Result, &statusChange)
+	statusChange = pb.StatusChange{}
+	err = statusChange.Unmarshal(res.Result)
 	assert.Nil(t, err)
 	assert.Equal(t, pb.TransactionStatus_BEGIN, statusChange.PrevStatus)
 	assert.Equal(t, pb.TransactionStatus_SUCCESS, statusChange.CurStatus)
 	assert.Equal(t, 1, len(statusChange.OtherIBTPIDs))
 
-	txInfo = TransactionInfo{
+	txInfo = pb.TransactionInfo{
 		GlobalState:  pb.TransactionStatus_BEGIN,
 		Height:       txInfo.Height,
 		ChildTxInfo:  map[string]pb.TransactionStatus{id0: pb.TransactionStatus_BEGIN, id1: pb.TransactionStatus_BEGIN},
 		ChildTxCount: txInfo.ChildTxCount,
 	}
 	mockStub.EXPECT().GetObject(GlobalTxInfoKey(globalID), gomock.Any()).SetArg(1, txInfo).Return(true).MaxTimes(1)
-	expTxInfo = TransactionInfo{
+	expTxInfo = pb.TransactionInfo{
 		GlobalState:  pb.TransactionStatus_BEGIN,
 		Height:       txInfo.Height,
 		ChildTxInfo:  map[string]pb.TransactionStatus{id0: pb.TransactionStatus_SUCCESS, id1: pb.TransactionStatus_BEGIN},
@@ -359,20 +367,21 @@ func TestTransactionManager_Report(t *testing.T) {
 	mockStub.EXPECT().Set(TimeoutKey(txInfo.Height), []byte{}).MaxTimes(1)
 	res = im.Report(id0, int32(pb.IBTP_RECEIPT_SUCCESS))
 	assert.True(t, res.Ok)
-	err = json.Unmarshal(res.Result, &statusChange)
+	statusChange = pb.StatusChange{}
+	err = statusChange.Unmarshal(res.Result)
 	assert.Nil(t, err)
 	assert.Equal(t, pb.TransactionStatus_BEGIN, statusChange.PrevStatus)
 	assert.Equal(t, pb.TransactionStatus_BEGIN, statusChange.CurStatus)
 	assert.Equal(t, 1, len(statusChange.OtherIBTPIDs))
 
-	txInfo = TransactionInfo{
+	txInfo = pb.TransactionInfo{
 		GlobalState:  pb.TransactionStatus_BEGIN,
 		Height:       txInfo.Height,
 		ChildTxInfo:  map[string]pb.TransactionStatus{id0: pb.TransactionStatus_BEGIN, id1: pb.TransactionStatus_BEGIN},
 		ChildTxCount: txInfo.ChildTxCount,
 	}
 	mockStub.EXPECT().GetObject(GlobalTxInfoKey(globalID), gomock.Any()).SetArg(1, txInfo).Return(true).MaxTimes(1)
-	expTxInfo = TransactionInfo{
+	expTxInfo = pb.TransactionInfo{
 		GlobalState:  pb.TransactionStatus_BEGIN_FAILURE,
 		Height:       txInfo.Height,
 		ChildTxInfo:  map[string]pb.TransactionStatus{id0: pb.TransactionStatus_FAILURE, id1: pb.TransactionStatus_BEGIN_FAILURE},
@@ -383,7 +392,8 @@ func TestTransactionManager_Report(t *testing.T) {
 	mockStub.EXPECT().Set(TimeoutKey(txInfo.Height), []byte{}).MaxTimes(1)
 	res = im.Report(id0, int32(pb.IBTP_RECEIPT_FAILURE))
 	assert.True(t, res.Ok)
-	err = json.Unmarshal(res.Result, &statusChange)
+	statusChange = pb.StatusChange{}
+	err = statusChange.Unmarshal(res.Result)
 	assert.Nil(t, err)
 	assert.Equal(t, pb.TransactionStatus_BEGIN, statusChange.PrevStatus)
 	assert.Equal(t, pb.TransactionStatus_BEGIN_FAILURE, statusChange.CurStatus)
@@ -411,7 +421,7 @@ func TestTransactionManager_GetStatus(t *testing.T) {
 	assert.True(t, res.Ok)
 	assert.Equal(t, "3", string(res.Result))
 
-	txInfo := TransactionInfo{
+	txInfo := pb.TransactionInfo{
 		GlobalState: pb.TransactionStatus_BEGIN,
 		ChildTxInfo: make(map[string]pb.TransactionStatus),
 	}

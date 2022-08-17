@@ -73,14 +73,6 @@ var priority = map[governance.EventType]int{
 	governance.EventCLear:    3,
 }
 
-type Ballot struct {
-	VoterAddr string `json:"voter_addr"`
-	Approve   string `json:"approve"`
-	Num       uint64 `json:"num"`
-	Reason    string `json:"reason"`
-	VoteTime  int64  `json:"vote_time"`
-}
-
 type Proposal struct {
 	Id            string                      `json:"id"`
 	Typ           ProposalType                `json:"Typ"`
@@ -88,7 +80,7 @@ type Proposal struct {
 	ObjId         string                      `json:"obj_id"`
 	ObjLastStatus governance.GovernanceStatus `json:"obj_last_status"`
 	// ballot information: voter address -> ballot
-	BallotMap              map[string]Ballot    `json:"ballot_map"`
+	BallotMap              map[string]pb.Ballot `json:"ballot_map"`
 	ApproveNum             uint64               `json:"approve_num"`
 	AgainstNum             uint64               `json:"against_num"`
 	ElectorateList         []*Role              `json:"electorate_list"`
@@ -262,7 +254,7 @@ func (g *Governance) SubmitProposal(from, eventTyp, typ, objId, objLastStatus, r
 		Status:                 PROPOSED,
 		ObjId:                  objId,
 		ObjLastStatus:          governance.GovernanceStatus(objLastStatus),
-		BallotMap:              make(map[string]Ballot, 0),
+		BallotMap:              make(map[string]pb.Ballot, 0),
 		ApproveNum:             0,
 		AgainstNum:             0,
 		ElectorateList:         electorateList,
@@ -440,11 +432,11 @@ func (g *Governance) endProposal(id, endReason string, extra []byte) (*Proposal,
 func (g *Governance) EndObjProposal(objId, endReason string, extra []byte) *boltvm.Response {
 	// 1. check permission
 	specificAddrs := []string{
-		//constant.AppchainMgrContractAddr.Address().String(),
+		// constant.AppchainMgrContractAddr.Address().String(),
 		constant.RuleManagerContractAddr.Address().String(),
-		//constant.NodeManagerContractAddr.Address().String(),
+		// constant.NodeManagerContractAddr.Address().String(),
 		constant.RoleContractAddr.Address().String(),
-		//constant.DappMgrContractAddr.Address().String(),
+		// constant.DappMgrContractAddr.Address().String(),
 		constant.ServiceMgrContractAddr.Address().String(),
 	}
 	addrsData, err := json.Marshal(specificAddrs)
@@ -482,8 +474,8 @@ func (g *Governance) EndObjProposal(objId, endReason string, extra []byte) *bolt
 	return boltvm.Success(nil)
 }
 
-//// =========== EndCurrentProposal forces the current proposal to be ended and does not process other proposals associated with the proposal
-//func (g *Governance) EndCurrentProposal(id, endReason string, extra []byte) *boltvm.Response {
+// // =========== EndCurrentProposal forces the current proposal to be ended and does not process other proposals associated with the proposal
+// func (g *Governance) EndCurrentProposal(id, endReason string, extra []byte) *boltvm.Response {
 //	// 1. check permission
 //	specificAddrs := []string{
 //		//constant.AppchainMgrContractAddr.Address().String(),
@@ -511,7 +503,7 @@ func (g *Governance) EndObjProposal(objId, endReason string, extra []byte) *bolt
 //	}
 //
 //	return boltvm.Success(nil)
-//}
+// }
 
 // =========== Vote add someone's voting information (each person can only vote once)
 func (g *Governance) Vote(id, approve string, reason string) *boltvm.Response {
@@ -584,7 +576,7 @@ func (g *Governance) setVote(p *Proposal, addr string, approve string, reason st
 			}
 
 			// 4. Record Voting Information
-			ballot := Ballot{
+			ballot := pb.Ballot{
 				VoterAddr: addr,
 				Approve:   approve,
 				Num:       e.Weight,
@@ -779,7 +771,7 @@ func (g *Governance) lockLowPriorityProposal(objId, eventTyp string) (string, er
 					"objID":    p.ObjId,
 					"eventTyp": p.EventType,
 				}).Info("there is an equal or higher proposal which is in progress currently")
-				//return "", fmt.Errorf("the obj(%s) has an equal or higher priority proposal(%s,%s) is in progress currently, please submit it later", objId, p.EventType, p.Id)
+				// return "", fmt.Errorf("the obj(%s) has an equal or higher priority proposal(%s,%s) is in progress currently, please submit it later", objId, p.EventType, p.Id)
 			}
 		}
 	}
@@ -960,7 +952,7 @@ func (g *Governance) GetBallot(voterAddr, proposalId string) *boltvm.Response {
 		return boltvm.Error(boltvm.GovernanceNotVoteAdminCode, fmt.Sprintf(string(boltvm.GovernanceNotVoteAdminMsg), voterAddr))
 	}
 
-	bData, err := json.Marshal(ballot)
+	bData, err := ballot.Marshal()
 	if err != nil {
 		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 	}
@@ -1177,7 +1169,7 @@ func (g *Governance) GetApprove(id string) *boltvm.Response {
 		return boltvm.Error(boltvm.GovernanceNonexistentProposalCode, fmt.Sprintf(string(boltvm.GovernanceNonexistentProposalMsg), id, ""))
 	}
 
-	approveMap := map[string]Ballot{}
+	approveMap := map[string]pb.Ballot{}
 	for k, v := range p.BallotMap {
 		if v.Approve == BallotApprove {
 			approveMap[k] = v
@@ -1198,7 +1190,7 @@ func (g *Governance) GetAgainst(id string) *boltvm.Response {
 		return boltvm.Error(boltvm.GovernanceNonexistentProposalCode, fmt.Sprintf(string(boltvm.GovernanceNonexistentProposalMsg), id, ""))
 	}
 
-	againstMap := map[string]Ballot{}
+	againstMap := map[string]pb.Ballot{}
 	for k, v := range p.BallotMap {
 		if v.Approve == BallotReject {
 			againstMap[k] = v

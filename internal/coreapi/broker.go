@@ -392,7 +392,7 @@ func (b *BrokerAPI) handleMultiSignsBurnReq(hash string) (string, []byte, error)
 		if err != nil {
 			continue
 		}
-		data, err := json.Marshal(log)
+		data, err := log.Marshal()
 		if err != nil {
 			continue
 		}
@@ -411,7 +411,7 @@ func (b *BrokerAPI) handleMultiSignsBurnReq(hash string) (string, []byte, error)
 		return "", nil, fmt.Errorf("not found burn log:%v", receipt.TxHash.Hash)
 	}
 
-	//abi.encodePacked
+	// abi.encodePacked
 	abiHash := solsha3.SoliditySHA3(
 		solsha3.Address(burn.AppToken.String()),
 		solsha3.Address(burn.Burner.String()),
