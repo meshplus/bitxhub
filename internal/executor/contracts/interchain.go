@@ -216,12 +216,12 @@ func (x *InterchainManager) HandleIBTP(ibtp *pb.IBTP) *boltvm.Response {
 
 	ret := x.ProcessIBTP(ibtp, interchain, targetErr != nil, isBatch)
 
-	if err := x.postAuditInterchainEvent(ibtp.From); err != nil {
-		return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), fmt.Sprintf("post audit interchain event error: %v", err)))
-	}
-	if err := x.postAuditInterchainEvent(ibtp.To); err != nil {
-		return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), fmt.Sprintf("post audit interchain event error: %v", err)))
-	}
+	// if err := x.postAuditInterchainEvent(ibtp.From); err != nil {
+	// 	return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), fmt.Sprintf("post audit interchain event error: %v", err)))
+	// }
+	// if err := x.postAuditInterchainEvent(ibtp.To); err != nil {
+	// 	return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), fmt.Sprintf("post audit interchain event error: %v", err)))
+	// }
 	return boltvm.Success(ret)
 }
 
