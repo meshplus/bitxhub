@@ -151,7 +151,7 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 		"count": len(block.Transactions.Transactions),
 	}).Debug("Apply transactions elapsed")
 
-	calcMerkleStart := time.Now()
+	// calcMerkleStart := time.Now()
 	txRoot, err := exec.buildTxMerkleTree(block.Transactions.Transactions)
 	if err != nil {
 		panic(err)
@@ -162,7 +162,7 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 		panic(err)
 	}
 
-	calcMerkleDuration.Observe(float64(time.Since(calcMerkleStart)) / float64(time.Second))
+	// calcMerkleDuration.Observe(float64(time.Since(calcMerkleStart)) / float64(time.Second))
 
 	invalidTxHashMap, recordFailTxHashMap, err := exec.filterValidTx(receipts)
 	if err != nil {
@@ -234,8 +234,8 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 		"receipt_root": block.BlockHeader.ReceiptRoot.String(),
 		"state_root":   block.BlockHeader.StateRoot.String(),
 	}).Debug("block meta")
-	calcBlockSize.Observe(float64(block.Size()))
-	executeBlockDuration.Observe(float64(time.Since(current)) / float64(time.Second))
+	// calcBlockSize.Observe(float64(block.Size()))
+	// executeBlockDuration.Observe(float64(time.Since(current)) / float64(time.Second))
 
 	counter := make(map[string]*pb.VerifiedIndexSlice)
 	for k, v := range exec.txsExecutor.GetInterchainCounter() {
@@ -892,7 +892,7 @@ func (exec *BlockExecutor) setTimeoutList(height uint64, txList []pb.Transaction
 
 				}
 				record := pb.TransactionRecord{}
-				if err := json.Unmarshal(val, &record); err != nil {
+				if err := record.Unmarshal(val); err != nil {
 					return err
 				}
 
@@ -992,7 +992,7 @@ func (exec *BlockExecutor) getMultiTxIBTPsMap(height uint64) (map[string][]strin
 }
 
 func (exec *BlockExecutor) setTxRecord(id string, record pb.TransactionRecord) error {
-	value, err := json.Marshal(record)
+	value, err := record.Marshal()
 	if err != nil {
 		return fmt.Errorf("marshal record error: %w", err)
 	}
