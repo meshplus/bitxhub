@@ -3,7 +3,6 @@ package ledger
 import (
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/core/state"
@@ -87,7 +86,7 @@ func New(repo *repo.Repo, blockchainStore storage.Storage, ldb stateStorage, bf 
 
 // PersistBlockData persists block data
 func (l *Ledger) PersistBlockData(blockData *BlockData) {
-	current := time.Now()
+	//current := time.Now()
 	block := blockData.Block
 	receipts := blockData.Receipts
 	accounts := blockData.Accounts
@@ -111,7 +110,7 @@ func (l *Ledger) PersistBlockData(blockData *BlockData) {
 	}()
 	wg.Wait()
 
-	PersistBlockDuration.Observe(float64(time.Since(current)) / float64(time.Second))
+	//PersistBlockDuration.Observe(float64(time.Since(current)) / float64(time.Second))
 }
 
 // Rollback rollback ledger to history version
