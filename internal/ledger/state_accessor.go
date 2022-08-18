@@ -8,10 +8,12 @@ import (
 	"math/big"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/eth-kit/ledger"
+	"github.com/sirupsen/logrus"
 )
 
 var _ ledger.StateLedger = (*SimpleLedger)(nil)
@@ -259,6 +261,8 @@ func (l *SimpleLedger) FlushDirtyData() (map[string]ledger.IAccount, *types.Hash
 
 // Commit commit the state
 func (l *SimpleLedger) Commit(height uint64, accounts map[string]ledger.IAccount, stateRoot *types.Hash) error {
+	st := time.Now()
+
 	ldbBatch := l.ldb.NewBatch()
 
 	for _, acc := range accounts {
@@ -344,6 +348,11 @@ func (l *SimpleLedger) Commit(height uint64, accounts map[string]ledger.IAccount
 		}
 	}
 	l.blockJournals = sync.Map{}
+
+	l.logger.WithFields(logrus.Fields{
+		"height": height,
+		"time":   time.Since(st),
+	}).Info("Commit StateLedger elapsed")
 
 	return nil
 }
