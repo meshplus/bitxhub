@@ -40,6 +40,7 @@ func (cbs *ChainBrokerService) SendTransactions(ctx context.Context, txs *pb.Mul
 	for _, tx := range txs.Txs {
 		if err := cbs.checkTransaction(tx); err != nil {
 			cbs.logger.Errorf("api checkTransaction err: nonce is %d", tx.GetNonce())
+			cbs.logger.Errorf("api checkTransaction err: %s", err.Error())
 			return nil, status.Newf(codes.InvalidArgument, "check transaction fail for %s", err.Error()).Err()
 		}
 		tx.ReceiveTimestamp = time.Now().UnixNano()
