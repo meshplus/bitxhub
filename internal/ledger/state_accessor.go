@@ -18,14 +18,14 @@ var _ ledger.StateLedger = (*SimpleLedger)(nil)
 
 // GetOrCreateAccount get the account, if not exist, create a new account
 func (l *SimpleLedger) GetOrCreateAccount(addr *types.Address) ledger.IAccount {
+	l.lock.Lock()
+	defer l.lock.Unlock()
 	account := l.GetAccount(addr)
 	if account == nil {
 		account = newAccount(l.ldb, l.accountCache, addr, l.changer)
 		l.changer.append(createObjectChange{account: addr})
 
-		l.lock.Lock()
 		l.accounts[addr.String()] = account
-		l.lock.Unlock()
 	}
 
 	return account
@@ -35,9 +35,9 @@ func (l *SimpleLedger) GetOrCreateAccount(addr *types.Address) ledger.IAccount {
 func (l *SimpleLedger) GetAccount(address *types.Address) ledger.IAccount {
 	addr := address.String()
 
-	l.lock.RLock()
+	l.accountsLock.Lock()
+	defer l.accountsLock.Unlock()
 	value, ok := l.accounts[addr]
-	l.lock.RUnlock()
 	if ok {
 		return value
 	}
@@ -54,9 +54,7 @@ func (l *SimpleLedger) GetAccount(address *types.Address) ledger.IAccount {
 			account.originCode = code
 			account.dirtyCode = code
 		}
-		l.lock.Lock()
 		l.accounts[addr] = account
-		l.lock.Unlock()
 		return account
 	}
 
@@ -70,9 +68,7 @@ func (l *SimpleLedger) GetAccount(address *types.Address) ledger.IAccount {
 			account.originCode = code
 			account.dirtyCode = code
 		}
-		l.lock.Lock()
 		l.accounts[addr] = account
-		l.lock.Unlock()
 		return account
 	}
 
@@ -228,12 +224,13 @@ func (l *SimpleLedger) FlushDirtyData() (map[string]ledger.IAccount, *types.Hash
 	l.lock.RLock()
 	for addr, acc := range l.accounts {
 		account := acc.(*SimpleAccount)
-		journal := account.getJournalIfModified()
+		journal := account.getJournalIfModified(l.logger)
 		if journal != nil {
 			journals = append(journals, journal)
 			sortedAddr = append(sortedAddr, addr)
 			accountData[addr] = account.getDirtyData()
 			dirtyAccounts[addr] = account
+			//l.logger.Infof("journal:%v", journal)
 		}
 	}
 	l.lock.RUnlock()
@@ -241,8 +238,10 @@ func (l *SimpleLedger) FlushDirtyData() (map[string]ledger.IAccount, *types.Hash
 	sort.Strings(sortedAddr)
 	for _, addr := range sortedAddr {
 		dirtyAccountData = append(dirtyAccountData, accountData[addr]...)
+		//l.logger.Infof("addr:%s, data:%v", addr, accountData[addr])
 	}
 	dirtyAccountData = append(dirtyAccountData, l.prevJnlHash.Bytes()...)
+	//l.logger.Infof("prevJnlHash:%v", l.prevJnlHash.Bytes())
 	journalHash := sha256.Sum256(dirtyAccountData)
 
 	blockJournal := &BlockJournal{
@@ -452,6 +451,39 @@ func (l *SimpleLedger) RevertToSnapshot(revid int) {
 
 	l.changer.revert(l, snapshot)
 	l.validRevisions = l.validRevisions[:idx]
+}
+
+func (l *SimpleLedger) ReleaseChangeInstance(instance *changeInstance) {
+	defer l.changeInstance.Put(instance)
+	if len(instance.changer.changes) > 0 {
+		instance.changer = newChanger()
+		l.refund = 0
+	}
+	instance.validRevisions = instance.validRevisions[:0]
+	instance.nextRevisionId = 0
+}
+
+func (l *SimpleLedger) GetInstance() *changeInstance {
+	return l.changeInstance.Get().(*changeInstance)
+}
+func (l *SimpleLedger) SnapshotForParallel(instance *changeInstance) int {
+	id := instance.nextRevisionId
+	instance.nextRevisionId++
+	instance.validRevisions = append(instance.validRevisions, revision{id, instance.changer.length()})
+	return id
+}
+
+func (l *SimpleLedger) RevertToSnapshotForParallel(revid int, change *changeInstance) {
+	idx := sort.Search(len(change.validRevisions), func(i int) bool {
+		return change.validRevisions[i].id >= revid
+	})
+	if idx == len(change.validRevisions) || change.validRevisions[idx].id != revid {
+		panic(fmt.Errorf("revision id %v cannod be reverted", revid))
+	}
+	instance := change.validRevisions[idx].changerIndex
+
+	change.changer.revert(l, instance)
+	change.validRevisions = change.validRevisions[:idx]
 }
 
 func (l *SimpleLedger) ClearChangerAndRefund() {

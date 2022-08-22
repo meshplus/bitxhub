@@ -12,6 +12,7 @@ import (
 	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/eth-kit/ledger"
+	"github.com/sirupsen/logrus"
 )
 
 var _ ledger.IAccount = (*SimpleAccount)(nil)
@@ -281,12 +282,21 @@ func (o *SimpleAccount) Query(prefix string) (bool, [][]byte) {
 	return len(ret) != 0, ret
 }
 
-func (o *SimpleAccount) getJournalIfModified() *blockJournalEntry {
+func (o *SimpleAccount) getJournalIfModified(logger logrus.FieldLogger) *blockJournalEntry {
 	entry := &blockJournalEntry{Address: o.Addr}
 
 	if ledger.InnerAccountChanged(o.originAccount, o.dirtyAccount) {
 		entry.AccountChanged = true
 		entry.PrevAccount = o.originAccount
+		//if o.originAccount != nil {
+		//	logger.Infof("account:%s, equal nonce:%v, equal code:%v, prev balance:%d, new balance: %d",
+		//		o.Addr, o.originAccount.Nonce == o.dirtyAccount.Nonce,
+		//		bytes.Equal(o.originAccount.CodeHash, o.dirtyAccount.CodeHash),
+		//		o.originAccount.Balance,
+		//		o.dirtyAccount.Balance,
+		//	)
+		//
+		//}
 	}
 
 	if o.originCode == nil && !(o.originAccount == nil || o.originAccount.CodeHash == nil) {
@@ -298,7 +308,7 @@ func (o *SimpleAccount) getJournalIfModified() *blockJournalEntry {
 		entry.PrevCode = o.originCode
 	}
 
-	prevStates := o.getStateJournalAndComputeHash()
+	prevStates := o.getStateJournalAndComputeHash(logger)
 	if len(prevStates) != 0 {
 		entry.PrevStates = prevStates
 	}
@@ -310,7 +320,7 @@ func (o *SimpleAccount) getJournalIfModified() *blockJournalEntry {
 	return nil
 }
 
-func (o *SimpleAccount) getStateJournalAndComputeHash() map[string][]byte {
+func (o *SimpleAccount) getStateJournalAndComputeHash(logger logrus.FieldLogger) map[string][]byte {
 	prevStates := make(map[string][]byte)
 	var dirtyStateKeys []string
 	var dirtyStateData []byte
@@ -334,6 +344,7 @@ func (o *SimpleAccount) getStateJournalAndComputeHash() map[string][]byte {
 	for _, key := range dirtyStateKeys {
 		dirtyStateData = append(dirtyStateData, key...)
 		dirtyVal, _ := o.dirtyState.Load(key)
+		//logger.Infof("account:%s, dirtyKey:%s, dirtyVal:%v", o.Addr.String(), key, dirtyVal)
 		dirtyStateData = append(dirtyStateData, dirtyVal.([]byte)...)
 	}
 	hash := sha256.Sum256(dirtyStateData)
