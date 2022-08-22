@@ -404,6 +404,18 @@ func (exec *BlockExecutor) registerBoltContracts() map[string]agency.Contract {
 			Address:  constant.ProposalStrategyMgrContractAddr.Address().String(),
 			Contract: &contracts.GovStrategy{},
 		},
+		{
+			Enabled:  true,
+			Name:     "bitxhub name service register",
+			Address:  constant.ServiceRegistryContractAddr.Address().String(),
+			Contract: &contracts.ServiceRegistry{},
+		},
+		{
+			Enabled:  true,
+			Name:     "bitxhub name service resolver",
+			Address:  constant.ServiceResolverContractAddr.Address().String(),
+			Contract: &contracts.ServiceResolver{},
+		},
 	}
 
 	ContractsInfo := agency.GetRegisteredContractInfo()
