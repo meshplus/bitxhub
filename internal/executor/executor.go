@@ -46,7 +46,8 @@ type BlockExecutor struct {
 	persistC           chan *ledger.BlockData
 	ibtpVerify         proof.Verify
 	validationEngine   validator.Engine
-	interchainManager  *contracts.InterchainManager
+	serviceCache       *sync.Map
+	supportParallel    bool
 	currentHeight      uint64
 	currentBlockHash   *types.Hash
 	txsExecutor        agency.TxsExecutor
@@ -64,6 +65,7 @@ type BlockExecutor struct {
 	config      repo.Config
 	bxhGasPrice *big.Int
 	lock        *sync.Mutex
+	gasLock     *sync.Mutex
 	admins      []string
 }
 
@@ -83,24 +85,25 @@ func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, client *appchain
 	ctx, cancel := context.WithCancel(context.Background())
 
 	blockExecutor := &BlockExecutor{
-		client:            client,
-		ledger:            chainLedger,
-		logger:            logger,
-		ctx:               ctx,
-		cancel:            cancel,
-		blockC:            make(chan *BlockWrapper, blockChanNumber),
-		preBlockC:         make(chan *pb.CommitEvent, blockChanNumber),
-		persistC:          make(chan *ledger.BlockData, persistChanNumber),
-		ibtpVerify:        ibtpVerify,
-		validationEngine:  ibtpVerify.ValidationEngine(),
-		currentHeight:     chainLedger.GetChainMeta().Height,
-		currentBlockHash:  chainLedger.GetChainMeta().BlockHash,
-		evmChainCfg:       newEVMChainCfg(config),
-		interchainManager: &contracts.InterchainManager{},
-		config:            *config,
-		bxhGasPrice:       gasPrice,
-		gasLimit:          config.GasLimit,
-		lock:              &sync.Mutex{},
+		client:           client,
+		ledger:           chainLedger,
+		logger:           logger,
+		ctx:              ctx,
+		cancel:           cancel,
+		blockC:           make(chan *BlockWrapper, blockChanNumber),
+		preBlockC:        make(chan *pb.CommitEvent, blockChanNumber),
+		persistC:         make(chan *ledger.BlockData, persistChanNumber),
+		ibtpVerify:       ibtpVerify,
+		validationEngine: ibtpVerify.ValidationEngine(),
+		currentHeight:    chainLedger.GetChainMeta().Height,
+		currentBlockHash: chainLedger.GetChainMeta().BlockHash,
+		evmChainCfg:      newEVMChainCfg(config),
+		serviceCache:     &sync.Map{},
+		config:           *config,
+		bxhGasPrice:      gasPrice,
+		gasLimit:         config.GasLimit,
+		lock:             &sync.Mutex{},
+		gasLock:          &sync.Mutex{},
 	}
 
 	for _, admin := range config.Genesis.Admins {
@@ -110,6 +113,11 @@ func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, client *appchain
 	blockExecutor.evm = newEvm(1, uint64(0), blockExecutor.evmChainCfg, blockExecutor.ledger, blockExecutor.ledger.ChainLedger, blockExecutor.admins[0])
 
 	blockExecutor.txsExecutor = txsExecutor(blockExecutor.applyTx, blockExecutor.registerBoltContracts, logger)
+
+	// parallel executor just support simple ledger temporary
+	if config.Executor.Type == parallel && config.Ledger.Type == simplle {
+		blockExecutor.supportParallel = true
+	}
 
 	return blockExecutor, nil
 }
@@ -128,7 +136,7 @@ func (exec *BlockExecutor) loadServiceCache() error {
 			return fmt.Errorf("unmarshal service error:%v", err)
 		}
 		chainServiceID := fmt.Sprintf("%s:%s", service.ChainID, service.ServiceID)
-		exec.interchainManager.SetServiceCache(chainServiceID, service)
+		//exec.interchainManager.SetServiceCache(chainServiceID, service)
 		exec.logger.WithFields(logrus.Fields{"key": chainServiceID, "service": service}).Infof("succefful store service fron leader")
 	}
 	return nil

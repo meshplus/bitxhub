@@ -97,12 +97,12 @@ func (x *InterchainManager) InitServiceCache() {
 //	return boltvm.Success(nil)
 //}
 
-func (x *InterchainManager) SetServiceCache(key string, service *service_mgr.Service) {
-	if x.ServiceCache == nil {
-		x.ServiceCache = &sync.Map{}
-	}
-	x.ServiceCache.Store(key, service)
-}
+//func (x *InterchainManager) SetServiceCache(key string, service *service_mgr.Service) {
+//	if x.ServiceCache == nil {
+//		x.ServiceCache = &sync.Map{}
+//	}
+//	x.ServiceCache.Store(key, service)
+//}
 
 func (x *InterchainManager) Register(chainServiceID string) *boltvm.Response {
 	bxhID, err := x.getBitXHubID()
@@ -599,6 +599,7 @@ func (x *InterchainManager) getServiceByID(id string) (*service_mgr.Service, err
 
 	service, ok := x.getServiceCache(id)
 	if !ok {
+		x.Logger().Errorf("not read serviceCache")
 		res := x.CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "GetServiceInfo", pb.String(id))
 		if !res.Ok {
 			return nil, fmt.Errorf("can not get service %s info: %s", id, string(res.Result))
@@ -606,7 +607,6 @@ func (x *InterchainManager) getServiceByID(id string) (*service_mgr.Service, err
 		if err := json.Unmarshal(res.Result, service); err != nil {
 			return nil, fmt.Errorf("unmarshal service of ID %s: %w", id, err)
 		}
-		x.ServiceCache.LoadOrStore(id, service)
 	}
 
 	return service, nil
