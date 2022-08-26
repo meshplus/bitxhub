@@ -30,7 +30,7 @@ const (
 )
 
 type VerifyPool struct {
-	proofs    sync.Map //ibtp proof cache
+	proofs    sync.Map // ibtp proof cache
 	ledger    *ledger.Ledger
 	ve        validator.Engine
 	logger    logrus.FieldLogger
@@ -72,8 +72,8 @@ func (pl *VerifyPool) CheckProof(tx pb.Transaction) (ok bool, gasUsed uint64, er
 			return false, gasUsed, nil
 		}
 
-		//TODO(jz): need to remove the proof
-		//tx.Extra = nil
+		// TODO(jz): need to remove the proof
+		// tx.Extra = nil
 	}
 	return true, gasUsed, nil
 }
@@ -83,12 +83,12 @@ type bxhValidators struct {
 }
 
 // verifyMultiSign .
-func (pl *VerifyPool) verifyMultiSign(app *appchainMgr.Appchain, ibtp *pb.IBTP, proof []byte) (bool, uint64, error) {
-	if app.TrustRoot == nil {
-		return false, 0, fmt.Errorf("%s: empty validators in relay chain:%s", internalError, app.ID)
+func (pl *VerifyPool) verifyMultiSign(appchainID string, trustRoot []byte, ibtp *pb.IBTP, proof []byte) (bool, uint64, error) {
+	if trustRoot == nil {
+		return false, 0, fmt.Errorf("%s: empty validators in relay chain:%s", internalError, appchainID)
 	}
 	var validators bxhValidators
-	if err := json.Unmarshal(app.TrustRoot, &validators); err != nil {
+	if err := json.Unmarshal(trustRoot, &validators); err != nil {
 		return false, 0, fmt.Errorf("%s: unmarshal trustRoot error: %w", ProofError, err)
 	}
 
@@ -156,10 +156,10 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, uint64, er
 	}
 
 	// check ibtp format move to Interchain's checkIBTP
-	//// get real appchain id for union ibtp
-	//if err := ibtp.CheckServiceID(); err != nil {
+	// // get real appchain id for union ibtp
+	// if err := ibtp.CheckServiceID(); err != nil {
 	//	return false, 0, fmt.Errorf("%s: check serviceID failed: %w", ProofError, err)
-	//}
+	// }
 
 	var (
 		bxhID   string
@@ -173,14 +173,14 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, uint64, er
 	}
 
 	if bxhID != pl.bitxhubID {
-		app, err := pl.getAppchain(bxhID)
+		trustRoot, err := pl.getAppchainTrustRoot(bxhID)
 		if err != nil {
 			return false, 0, fmt.Errorf("get appchain %s failed: %w", bxhID, err)
 		}
-		return pl.verifyMultiSign(app, ibtp, proof)
+		return pl.verifyMultiSign(bxhID, trustRoot, ibtp, proof)
 	}
 
-	app, err := pl.getAppchain(chainID)
+	trustRoot, err := pl.getAppchainTrustRoot(chainID)
 	if err != nil {
 		return false, 0, fmt.Errorf("get appchain %s failed: %w", chainID, err)
 	}
@@ -194,7 +194,7 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, uint64, er
 	if err != nil {
 		return false, 0, fmt.Errorf("marshal ibtp: %w", err)
 	}
-	ok, gasUsed, err := pl.ve.Validate(validateAddr, chainID, proof, ibtpBytes, string(app.TrustRoot))
+	ok, gasUsed, err := pl.ve.Validate(validateAddr, chainID, proof, ibtpBytes, string(trustRoot))
 	if err != nil {
 		return false, gasUsed, fmt.Errorf("%s: %w", ProofError, err)
 	}
@@ -238,19 +238,13 @@ func (pl *VerifyPool) getAccountState(address constant.BoltContractAddress, key 
 	return pl.ledger.Copy().GetState(address.Address(), []byte(key))
 }
 
-func (pl *VerifyPool) getAppchain(chainID string) (*appchainMgr.Appchain, error) {
-	app := &appchainMgr.Appchain{}
-	ok, data := pl.getAccountState(constant.AppchainMgrContractAddr, appchainMgr.AppchainKey(chainID))
+func (pl *VerifyPool) getAppchainTrustRoot(chainID string) ([]byte, error) {
+	ok, data := pl.getAccountState(constant.AppchainMgrContractAddr, appchainMgr.AppchainTrustRootKey(chainID))
 	if !ok {
-		return nil, fmt.Errorf("%s: cannot get registered appchain", AppchainNotAvailable)
+		return nil, fmt.Errorf("%s: cannot get TrustRoot of registered appchain", AppchainNotAvailable)
 	}
 
-	err := json.Unmarshal(data, app)
-	if err != nil {
-		return nil, fmt.Errorf("%s: unmarshal appchain data fail: %w", internalError, err)
-	}
-
-	return app, nil
+	return data, nil
 }
 
 func (pl *VerifyPool) putProof(proofHash types.Hash, proof []byte) {
