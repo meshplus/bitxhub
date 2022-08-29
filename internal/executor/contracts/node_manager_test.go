@@ -55,6 +55,7 @@ func TestNodeManager_RegisterNode(t *testing.T) {
 		gomock.Any()).Return(boltvm.Success([]byte(""))).AnyTimes()
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, nil).AnyTimes()
 	mockStub.EXPECT().GetTxTimeStamp().Return(int64(1)).AnyTimes()
 	mockStub.EXPECT().Query(gomock.Any()).Return(true, nodesData).Times(1)
@@ -126,6 +127,7 @@ func TestNodeManager_LogoutNode(t *testing.T) {
 		gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, nil).AnyTimes()
 	mockStub.EXPECT().Query(gomock.Any()).Return(true, nodesData).Times(1)
 	mockStub.EXPECT().Query(gomock.Any()).Return(false, nil).AnyTimes()
@@ -182,6 +184,7 @@ func TestNodeManager_UpdateNode(t *testing.T) {
 	mockStub.EXPECT().CrossInvoke(gomock.Eq(constant.GovernanceContractAddr.Address().String()), gomock.Eq("ZeroPermission"),
 		gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, nil).AnyTimes()
 
 	// 1. CheckPermission error
@@ -229,6 +232,7 @@ func TestNodeManager_BindNode(t *testing.T) {
 	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nvpNodes[1].Account), gomock.Any()).SetArg(1, *nvpNodes[1]).Return(true).AnyTimes()
 
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, nil).AnyTimes()
 
 	// 1. CheckPermission error
@@ -264,6 +268,7 @@ func TestNodeManager_ManageBindNode(t *testing.T) {
 	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nvpNodes[2].Account), gomock.Any()).SetArg(1, *nvpNodes[2]).Return(true).AnyTimes()
 
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, nil).AnyTimes()
 
 	// 1. CheckPermission error
@@ -302,6 +307,7 @@ func TestNodeManager_UnbindNode(t *testing.T) {
 	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nvpNodes[3].Account), gomock.Any()).SetArg(1, *nvpNodes[3]).Return(true).AnyTimes()
 
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, nil).AnyTimes()
 
 	// 1. CheckPermission error
@@ -332,6 +338,7 @@ func TestNodeManager_Manage_VPNode(t *testing.T) {
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, nil).AnyTimes()
 
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "FreeAccount",
@@ -370,6 +377,7 @@ func TestNodeManager_Manage_NVPNode(t *testing.T) {
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().Delete(gomock.Any()).Return().AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, nil).AnyTimes()
 	mockStub.EXPECT().GetObject(node_mgr.NodeKey(nodes[4].Account), gomock.Any()).SetArg(1, *nodes[4]).Return(true).AnyTimes()

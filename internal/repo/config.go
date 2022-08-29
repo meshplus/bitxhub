@@ -196,8 +196,9 @@ type Order struct {
 }
 
 type Executor struct {
-	Type      string `toml:"type" json:"type"`
-	ProofType string `mapstructure:"proof_type" json:"proof_type"`
+	EnableAudit bool   `mapstructure:"enable_audit" json:"enable_audit" toml:"enable_audit"`
+	Type        string `toml:"type" json:"type"`
+	ProofType   string `mapstructure:"proof_type" json:"proof_type"`
 }
 
 type Ledger struct {
@@ -275,8 +276,9 @@ func DefaultConfig() (*Config, error) {
 			Type: "raft",
 		},
 		Executor: Executor{
-			Type:      "serial",
-			ProofType: "parallel",
+			EnableAudit: true,
+			Type:        "serial",
+			ProofType:   "parallel",
 		},
 		Genesis: Genesis{
 			ChainID:  1,

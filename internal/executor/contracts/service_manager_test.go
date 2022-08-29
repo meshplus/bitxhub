@@ -42,6 +42,7 @@ func TestServiceManager_ManageRegister(t *testing.T) {
 	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "LockLowPriorityProposal", gomock.Any(), gomock.Any()).Return(boltvm.Error("", "LockLowPriorityProposal error")).Times(1)
 	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "LockLowPriorityProposal", gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, nil).AnyTimes()
 	serviceMap2 := orderedmap.New()
 	serviceMap2.Set(chainServiceID, struct{}{})
@@ -87,6 +88,7 @@ func TestServiceManager_ManageUpdate(t *testing.T) {
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).Return().AnyTimes()
 	mockStub.EXPECT().Delete(gomock.Any()).Return().AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, nil).AnyTimes()
 
 	// test update
@@ -139,6 +141,7 @@ func TestServiceManager_ManageLogout(t *testing.T) {
 	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "LockLowPriorityProposal", gomock.Any(), gomock.Any()).Return(boltvm.Error("", "LockLowPriorityProposal error")).Times(1)
 	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "LockLowPriorityProposal", gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, nil).AnyTimes()
 
 	// logout approve
@@ -196,6 +199,7 @@ func TestServiceManager_RegisterService(t *testing.T) {
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).Return().AnyTimes()
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, nil).AnyTimes()
 
 	// 1. check permission error
@@ -240,6 +244,7 @@ func TestServiceManager_UpdateService(t *testing.T) {
 	mockStub.EXPECT().GetTxTimeStamp().Return(int64(0)).AnyTimes()
 	mockStub.EXPECT().Caller().Return(appchainAdminAddr).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, nil).AnyTimes()
 	governancePreErrReq := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Return(false).Times(1)
 	checkPermissionErrReq := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *services[0]).Return(true).Times(1)
@@ -305,6 +310,7 @@ func TestServiceManager_LogoutService(t *testing.T) {
 	mockStub.EXPECT().GetTxTimeStamp().Return(int64(0)).AnyTimes()
 	mockStub.EXPECT().Caller().Return(appchainAdminAddr).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, nil).AnyTimes()
 	governancePreErrReq := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).Return(false).Times(1)
 	checkPermissionErrReq := mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *services[0]).Return(true).Times(1)
@@ -360,6 +366,7 @@ func TestServiceManager_FreezeService(t *testing.T) {
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).Return().AnyTimes()
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, nil).AnyTimes()
 
 	res := sm.FreezeService(chainServiceID, reason)
@@ -386,6 +393,7 @@ func TestServiceManager_ActivateService(t *testing.T) {
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).Return().AnyTimes()
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, nil).AnyTimes()
 
 	res := sm.ActivateService(chainServiceID, reason)
@@ -413,6 +421,7 @@ func TestServiceManager_PauseChainService(t *testing.T) {
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).Return().AnyTimes()
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, nil).AnyTimes()
 
 	mockStub.EXPECT().CurrentCaller().Return("").Times(1)
@@ -453,6 +462,7 @@ func TestServiceManager_UnPauseChainService(t *testing.T) {
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).Return().AnyTimes()
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, nil).AnyTimes()
 
 	mockStub.EXPECT().CurrentCaller().Return("").Times(1)
@@ -501,6 +511,7 @@ func TestServiceManager_ClearChainService(t *testing.T) {
 	mockStub.EXPECT().CurrentCaller().Return(constant.AppchainMgrContractAddr.Address().String()).AnyTimes()
 
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, nil).AnyTimes()
 
 	// check permission error
@@ -530,6 +541,7 @@ func TestServiceManager_EvaluateService(t *testing.T) {
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).Return().AnyTimes()
 	mockStub.EXPECT().GetTxTimeStamp().Return(int64(0)).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, nil).AnyTimes()
 
 	// 1. illegal score
@@ -560,6 +572,7 @@ func TestServiceManager_RecordInvokeService(t *testing.T) {
 	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *services[0]).Return(true).AnyTimes()
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).Return().AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, nil).AnyTimes()
 
 	// 1. permission error
@@ -686,6 +699,7 @@ func TestServiceManager_CheckPermissionService(t *testing.T) {
 	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *services[0]).Return(false).Times(1)
 	mockStub.EXPECT().GetObject(gomock.Any(), gomock.Any()).SetArg(1, *services[0]).Return(true).Times(1)
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, nil).AnyTimes()
 
 	err = sm.checkPermissionService("1:1:1")

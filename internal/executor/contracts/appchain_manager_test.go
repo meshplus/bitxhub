@@ -189,6 +189,7 @@ func TestAppchainManager_ManageRegister(t *testing.T) {
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "FreeAccount",
 		gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 	mockStub.EXPECT().GetTxTimeStamp().Return(int64(1)).AnyTimes()
 
 	// test without permission
@@ -261,6 +262,7 @@ func TestAppchainManager_UpdateAppchain(t *testing.T) {
 	mockStub.EXPECT().GetObject(appchainMgr.AppchainAdminKey(roles[0].ID), gomock.Any()).SetArg(1, chains[0].ID).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(appchainMgr.AppchainAdminKey(roles[1].ID), gomock.Any()).Return(false).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "PauseChainService", gomock.Any()).Return(boltvm.Error("", "PauseChainService error")).Times(1)
 	mockStub.EXPECT().CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "PauseChainService", gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(gomock.Eq(constant.GovernanceContractAddr.Address().String()), gomock.Eq("ZeroPermission"),
@@ -326,6 +328,7 @@ func TestAppchainManager_ManageUpdate(t *testing.T) {
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "FreeAccount",
 		gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 
 	// test changestatus error
 	res := am.Manage(string(governance.EventUpdate), string(APPROVED), string(governance.GovernanceAvailable), chains[0].ID, nil)
@@ -395,6 +398,7 @@ func TestAppchainManager_ManageFreezeActivateLogout(t *testing.T) {
 	mockStub.EXPECT().CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "UnPauseChainService", gomock.Any()).Return(boltvm.Error("", "UnPauseChainService error")).Times(1)
 	mockStub.EXPECT().CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "UnPauseChainService", gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 
 	// test freeze
 	res := am.Manage(string(governance.EventFreeze), string(APPROVED), string(governance.GovernanceAvailable), chains[3].ID, nil)
@@ -462,6 +466,7 @@ func TestAppchainManager_FreezeActivateLogout(t *testing.T) {
 	mockStub.EXPECT().CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "PauseChainService", gomock.Any()).Return(boltvm.Error("", "pause chain error")).Times(1)
 	mockStub.EXPECT().CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "PauseChainService", gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 
 	// test FreezeAppchain
 	res := am.FreezeAppchain(chains[0].ID, reason)
@@ -495,6 +500,7 @@ func TestManageChain_WithoutPermission(t *testing.T) {
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, chainsData[0]).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.RuleManagerContractAddr.Address().String(), "GetMasterRule", gomock.Any()).Return(boltvm.Success(rulesData[1])).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 
 	// test UpdateAppchain
 	res := am.UpdateAppchain(chains[0].ID, chains[0].ChainName, chains[0].Desc, chains[0].TrustRoot, am.Caller(), reason)
@@ -523,6 +529,7 @@ func TestManageChain_baseGovernanceError(t *testing.T) {
 	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("", "")).Times(1)
 	mockStub.EXPECT().CrossInvoke(constant.GovernanceContractAddr.Address().String(), "SubmitProposal", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 
 	// governance pre error
 	res := am.FreezeAppchain(caller, reason)
@@ -550,6 +557,7 @@ func TestAppchainManager_PauseAppchain(t *testing.T) {
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).Return().AnyTimes()
 	mockStub.EXPECT().Logger().Return(logger).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 
 	// check permision error
 	res := am.PauseAppchain(appchainID)
@@ -583,6 +591,7 @@ func TestAppchainManager_UnPauseAppchain(t *testing.T) {
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).Return().AnyTimes()
 	mockStub.EXPECT().Logger().Return(logger).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 
 	// check permision error
 	res := am.UnPauseAppchain(appchainID, string(governance.GovernanceAvailable))
