@@ -127,6 +127,7 @@ var csrCMD = cli.Command{
 				PostalCode:         []string{"324000"},
 				CommonName:         "BitXHub",
 			},
+			DNSNames: []string{"BitXHub"},
 		}
 		data, err := x509.CreateCertificateRequest(rand.Reader, template, privKey)
 		if err != nil {
@@ -239,6 +240,7 @@ var issueCMD = cli.Command{
 				x509.KeyUsageCRLSign,
 			ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
 			Subject:     csr.Subject,
+			DNSNames:    csr.DNSNames,
 		}
 
 		x509certEncode, err := x509.CreateCertificate(rand.Reader, template, caCert, csr.PublicKey, privKey)
