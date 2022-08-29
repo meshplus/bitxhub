@@ -120,8 +120,10 @@ func (x *InterchainManager) Register(chainServiceID string) *boltvm.Response {
 		return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), err.Error()))
 	}
 
-	if err := x.postAuditInterchainEvent(fullServiceID); err != nil {
-		return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), fmt.Sprintf("post audit interchain event error: %v", err)))
+	if x.EnableAudit() {
+		if err := x.postAuditInterchainEvent(fullServiceID); err != nil {
+			return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), fmt.Sprintf("post audit interchain event error: %v", err)))
+		}
 	}
 
 	return boltvm.Success(body)
@@ -130,8 +132,10 @@ func (x *InterchainManager) Register(chainServiceID string) *boltvm.Response {
 func (x *InterchainManager) DeleteInterchain(id string) *boltvm.Response {
 	x.Delete(serviceKey(id))
 
-	if err := x.postAuditInterchainEvent(id); err != nil {
-		return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), fmt.Sprintf("post audit interchain event error: %v", err)))
+	if x.EnableAudit() {
+		if err := x.postAuditInterchainEvent(id); err != nil {
+			return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), fmt.Sprintf("post audit interchain event error: %v", err)))
+		}
 	}
 	return boltvm.Success(nil)
 }
@@ -216,11 +220,13 @@ func (x *InterchainManager) HandleIBTP(ibtp *pb.IBTP) *boltvm.Response {
 
 	ret := x.ProcessIBTP(ibtp, interchain, targetErr != nil, isBatch)
 
-	if err := x.postAuditInterchainEvent(ibtp.From); err != nil {
-		return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), fmt.Sprintf("post audit interchain event error: %v", err)))
-	}
-	if err := x.postAuditInterchainEvent(ibtp.To); err != nil {
-		return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), fmt.Sprintf("post audit interchain event error: %v", err)))
+	if x.EnableAudit() {
+		if err := x.postAuditInterchainEvent(ibtp.From); err != nil {
+			return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), fmt.Sprintf("post audit interchain event error: %v", err)))
+		}
+		if err := x.postAuditInterchainEvent(ibtp.To); err != nil {
+			return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), fmt.Sprintf("post audit interchain event error: %v", err)))
+		}
 	}
 	return boltvm.Success(ret)
 }
@@ -285,8 +291,14 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, bool, *bol
 		// - Bitxhub service：dstService == nil
 		// - The dst service needs to be invoked sequentially：dstService.Ordered
 
-		srcService, _ := x.getServiceByID(srcChainService.getChainServiceId())
-		isBatch = !srcService.Ordered
+		if srcChainService.IsLocal {
+			srcService, _ := x.getServiceByID(srcChainService.getChainServiceId())
+			isBatch = !srcService.Ordered
+		} else {
+			if !dstChainService.IsLocal {
+				return nil, isBatch, nil, boltvm.BError(boltvm.InterchainInvalidIBTPNotInCurBXHCode, fmt.Sprintf(string(boltvm.InterchainInvalidIBTPNotInCurBXHMsg), ibtp.ID()))
+			}
+		}
 
 		//if dstService == nil || dstService.Ordered {
 		if err := checkIndex(interchain.ReceiptCounter[dstChainService.getFullServiceId()]+1, ibtp.Index); err != nil {

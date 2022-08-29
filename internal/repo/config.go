@@ -170,6 +170,7 @@ type Genesis struct {
 	GasLimit    uint64      `mapstructure:"gas_limit" json:"gas_limit" toml:"gas_limit"`
 	BvmGasPrice uint64      `mapstructure:"bvm_gas_price" json:"bvm_gas_price" toml:"bvm_gas_price"`
 	Balance     string      `json:"balance" toml:"balance"`
+	EnableAudit bool        `mapstructure:"enable_audit" json:"enable_audit" toml:"enable_audit"`
 	Admins      []*Admin    `json:"admins" toml:"admins"`
 	Strategy    []*Strategy `json:"strategy" toml:"strategy"`
 }
@@ -279,9 +280,10 @@ func DefaultConfig() (*Config, error) {
 			ProofType: "parallel",
 		},
 		Genesis: Genesis{
-			ChainID:  1,
-			GasLimit: 0x5f5e100,
-			Balance:  "100000000000000000000000000000000000",
+			ChainID:     1,
+			GasLimit:    0x5f5e100,
+			Balance:     "100000000000000000000000000000000000",
+			EnableAudit: true,
 		},
 		Ledger: Ledger{
 			Type:                  "complex",

@@ -25,6 +25,10 @@ type BoltStubImpl struct {
 	ve  validator.Engine
 }
 
+func (b *BoltStubImpl) EnableAudit() bool {
+	return b.ctx.EnableAudit
+}
+
 func (b *BoltStubImpl) Caller() string {
 	return b.ctx.Caller.String()
 }

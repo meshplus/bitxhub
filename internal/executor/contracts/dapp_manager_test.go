@@ -41,6 +41,7 @@ func TestDappManager_Manage(t *testing.T) {
 	mockStub.EXPECT().GetTxTimeStamp().Return(int64(0)).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, dappsData[0]).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 
 	// test without permission
 	res := dm.Manage(string(governance.EventUpdate), string(APPROVED), string(governance.GovernanceAvailable), dapps[0].DappID, dappsData[0])
@@ -128,6 +129,7 @@ func TestDappManager_RegisterDapp(t *testing.T) {
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, dappsData[0]).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 
 	// 1. check info error
 	// url
@@ -183,6 +185,7 @@ func TestDappManager_UpdateDapp(t *testing.T) {
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, dappsData[0]).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 
 	// 1. governancePre error
 	res := dm.UpdateDapp(dapps[0].DappID, dapps[0].Name, dapps[0].Desc, "url", conAddr1, "", reason)
@@ -246,6 +249,7 @@ func TestDappManager_TransferDapp(t *testing.T) {
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, dappsData[0]).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 
 	// 1. illegal new owner addr
 	res := dm.TransferDapp(dapps[0].DappID, "1", reason)
@@ -285,6 +289,7 @@ func TestDappManager_FreezeDapp(t *testing.T) {
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, dappsData[0]).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 
 	res := dm.FreezeDapp(dapps[0].DappID, reason)
 	assert.Equal(t, true, res.Ok)
@@ -305,6 +310,7 @@ func TestDappManager_ActivateDapp(t *testing.T) {
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, dappsData[0]).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 
 	res := dm.ActivateDapp(dapps[1].DappID, reason)
 	assert.Equal(t, true, res.Ok)
@@ -320,6 +326,7 @@ func TestDappManager_ConfirmTransfer(t *testing.T) {
 	mockStub.EXPECT().SetObject(gomock.Any(), gomock.Any()).Return().AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, dappsData[0]).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 
 	// 1. get dapp error
 	res := dm.ConfirmTransfer(dapps[0].DappID)
@@ -345,6 +352,7 @@ func TestDappManager_EvaluateDapp(t *testing.T) {
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, dappsData[0]).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 
 	// 1. illegal score
 	res := dm.EvaluateDapp(dapps[0].DappID, dapps[0].Desc, 6)

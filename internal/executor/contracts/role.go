@@ -349,8 +349,10 @@ func (rm *RoleManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 		}
 	}
 
-	if err := rm.postAuditRoleEvent(objId); err != nil {
-		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("post audit role event error: %v", err)))
+	if rm.EnableAudit() {
+		if err := rm.postAuditRoleEvent(objId); err != nil {
+			return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("post audit role event error: %v", err)))
+		}
 	}
 
 	return boltvm.Success(nil)
@@ -480,8 +482,10 @@ func (rm *RoleManager) RegisterRole(roleId, roleType, nodeAccount, reason string
 	// 8. zero permission
 	rm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(res.Result)))
 
-	if err := rm.postAuditRoleEvent(roleId); err != nil {
-		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("post audit role event error: %v", err)))
+	if rm.EnableAudit() {
+		if err := rm.postAuditRoleEvent(roleId); err != nil {
+			return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("post audit role event error: %v", err)))
+		}
 	}
 
 	return getGovernanceRet(string(res.Result), []byte(role.ID))
@@ -507,9 +511,11 @@ func (rm *RoleManager) UpdateAppchainAdmin(appchainID string, adminAddrs string)
 		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("update appchain admin error: %v", err)))
 	}
 
-	for _, addr := range strings.Split(adminAddrs, ",") {
-		if err := rm.postAuditRoleEvent(addr); err != nil {
-			return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("post audit role event error: %v", err)))
+	if rm.EnableAudit() {
+		for _, addr := range strings.Split(adminAddrs, ",") {
+			if err := rm.postAuditRoleEvent(addr); err != nil {
+				return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("post audit role event error: %v", err)))
+			}
 		}
 	}
 
@@ -719,8 +725,10 @@ func (rm *RoleManager) basicGovernance(roleId, reason string, permissions []stri
 		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("change status error: %s", string(data))))
 	}
 
-	if err := rm.postAuditRoleEvent(roleId); err != nil {
-		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("post audit role event error: %v", err)))
+	if rm.EnableAudit() {
+		if err := rm.postAuditRoleEvent(roleId); err != nil {
+			return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("post audit role event error: %v", err)))
+		}
 	}
 
 	return getGovernanceRet(string(res.Result), nil)
@@ -782,8 +790,10 @@ func (rm *RoleManager) pauseAuditAdmin(roleId string) *boltvm.Response {
 	}
 
 	// 4. post event
-	if err := rm.postAuditRoleEvent(roleId); err != nil {
-		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("post audit role event error: %v", err)))
+	if rm.EnableAudit() {
+		if err := rm.postAuditRoleEvent(roleId); err != nil {
+			return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("post audit role event error: %v", err)))
+		}
 	}
 
 	return getGovernanceRet("", nil)
@@ -814,8 +824,10 @@ func (rm *RoleManager) PauseAuditAdminBinding(nodeId string) *boltvm.Response {
 		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("cross invoke LockLowPriorityProposal error: %s", string(res.Result))))
 	}
 
-	if err := rm.postAuditRoleEvent(role.ID); err != nil {
-		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("post audit role event error: %v", err)))
+	if rm.EnableAudit() {
+		if err := rm.postAuditRoleEvent(role.ID); err != nil {
+			return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("post audit role event error: %v", err)))
+		}
 	}
 
 	return getGovernanceRet("", nil)
@@ -890,8 +902,10 @@ func (rm *RoleManager) restoreAuditAdmin(roleId string) *boltvm.Response {
 	}
 
 	// 4. post event
-	if err := rm.postAuditRoleEvent(roleId); err != nil {
-		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("post audit role event error: %v", err)))
+	if rm.EnableAudit() {
+		if err := rm.postAuditRoleEvent(roleId); err != nil {
+			return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("post audit role event error: %v", err)))
+		}
 	}
 
 	return getGovernanceRet("", nil)

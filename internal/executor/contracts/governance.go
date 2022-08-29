@@ -291,8 +291,10 @@ func (g *Governance) SubmitProposal(from, eventTyp, typ, objId, objLastStatus, r
 		"extra":      string(p.Extra),
 	}).Debug("submit proposal")
 
-	if err := g.postAuditProposalEvent(p.Id); err != nil {
-		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("post audit proposal event error: %v", err)))
+	if g.EnableAudit() {
+		if err := g.postAuditProposalEvent(p.Id); err != nil {
+			return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("post audit proposal event error: %v", err)))
+		}
 	}
 
 	return boltvm.Success([]byte(p.Id))
@@ -309,8 +311,10 @@ func (g *Governance) ZeroPermission(id string) *boltvm.Response {
 		if err := g.handleResult(p); err != nil {
 			return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 		}
-		if err := g.postAuditProposalEvent(p.Id); err != nil {
-			return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("post audit proposal event error: %v", err)))
+		if g.EnableAudit() {
+			if err := g.postAuditProposalEvent(p.Id); err != nil {
+				return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("post audit proposal event error: %v", err)))
+			}
 		}
 	}
 	return boltvm.Success(nil)
@@ -408,8 +412,10 @@ func (g *Governance) WithdrawProposal(id, reason string) *boltvm.Response {
 		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), err.Error()))
 	}
 
-	if err := g.postAuditProposalEvent(id); err != nil {
-		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("post audit proposal event error: %v", err)))
+	if g.EnableAudit() {
+		if err := g.postAuditProposalEvent(id); err != nil {
+			return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("post audit proposal event error: %v", err)))
+		}
 	}
 	return boltvm.Success(nil)
 }
@@ -468,8 +474,10 @@ func (g *Governance) EndObjProposal(objId, endReason string, extra []byte) *bolt
 				return boltvm.Error(berr.Code, berr.Error())
 			}
 
-			if err := g.postAuditProposalEvent(p.Id); err != nil {
-				return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("post audit proposal event error: %v", err)))
+			if g.EnableAudit() {
+				if err := g.postAuditProposalEvent(p.Id); err != nil {
+					return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("post audit proposal event error: %v", err)))
+				}
 			}
 
 			g.Logger().WithFields(logrus.Fields{
@@ -548,8 +556,10 @@ func (g *Governance) Vote(id, approve string, reason string) *boltvm.Response {
 		g.Logger().WithFields(logrus.Fields{
 			"id": p.Id,
 		}).Info("wait next vote")
-		if err := g.postAuditProposalEvent(id); err != nil {
-			return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("post audit proposal event error: %v", err)))
+		if g.EnableAudit() {
+			if err := g.postAuditProposalEvent(id); err != nil {
+				return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("post audit proposal event error: %v", err)))
+			}
 		}
 		return boltvm.Success(nil)
 	}
@@ -561,8 +571,10 @@ func (g *Governance) Vote(id, approve string, reason string) *boltvm.Response {
 	g.Logger().WithFields(logrus.Fields{
 		"id": p.Id,
 	}).Info("vote end")
-	if err := g.postAuditProposalEvent(id); err != nil {
-		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("post audit proposal event error: %v", err)))
+	if g.EnableAudit() {
+		if err := g.postAuditProposalEvent(id); err != nil {
+			return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("post audit proposal event error: %v", err)))
+		}
 	}
 	return boltvm.Success(nil)
 }
@@ -767,8 +779,10 @@ func (g *Governance) lockLowPriorityProposal(objId, eventTyp string) (string, er
 					"eventTyp": p.EventType,
 				}).Info("lock low priority proposal")
 
-				if err := g.postAuditProposalEvent(p.Id); err != nil {
-					return "", fmt.Errorf("post audit proposal event error: %v", err)
+				if g.EnableAudit() {
+					if err := g.postAuditProposalEvent(p.Id); err != nil {
+						return "", fmt.Errorf("post audit proposal event error: %v", err)
+					}
 				}
 				return p.Id, nil
 			} else {
@@ -823,8 +837,10 @@ func (g *Governance) UnLockLowPriorityProposal(objId, eventTyp string) *boltvm.R
 		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("manage object error: %v", err)))
 	}
 
-	if err := g.postAuditProposalEvent(lockedProposal.Id); err != nil {
-		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("post audit proposal event error: %v", err)))
+	if g.EnableAudit() {
+		if err := g.postAuditProposalEvent(lockedProposal.Id); err != nil {
+			return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("post audit proposal event error: %v", err)))
+		}
 	}
 	return boltvm.Success(nil)
 }
@@ -941,8 +957,10 @@ func (g *Governance) UpdateAvaliableElectorateNum(id string, num uint64) *boltvm
 			g.SetObject(ProposalKey(p.Id), *p)
 		}
 
-		if err := g.postAuditProposalEvent(id); err != nil {
-			return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("post audit proposal event error: %v", err)))
+		if g.EnableAudit() {
+			if err := g.postAuditProposalEvent(id); err != nil {
+				return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.GovernanceInternalErrMsg), fmt.Sprintf("post audit proposal event error: %v", err)))
+			}
 		}
 	}
 	return boltvm.Success([]byte(strconv.Itoa(int(p.AvaliableElectorateNum))))
