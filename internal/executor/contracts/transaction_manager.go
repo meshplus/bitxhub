@@ -53,7 +53,7 @@ func (t *TransactionManager) BeginMultiTXs(globalID, ibtpID string, timeoutHeigh
 
 	change := pb.StatusChange{PrevStatus: -1}
 	txInfo := pb.TransactionInfo{}
-	if ok := t.GetObject(GlobalTxInfoKey(globalID), &txInfo); !ok {
+	if ok, txInfoData := t.Get(GlobalTxInfoKey(globalID)); !ok {
 		txInfo = pb.TransactionInfo{
 			GlobalState:  pb.TransactionStatus_BEGIN,
 			Height:       t.GetCurrentHeight() + timeoutHeight,
@@ -71,8 +71,17 @@ func (t *TransactionManager) BeginMultiTXs(globalID, ibtpID string, timeoutHeigh
 			t.addToTimeoutList(txInfo.Height, globalID)
 		}
 
-		t.AddObject(GlobalTxInfoKey(globalID), txInfo)
+		data, err := txInfo.Marshal()
+		if err != nil {
+			return boltvm.Error(boltvm.TransactionInternalErrCode, fmt.Sprintf(string(boltvm.TransactionInternalErrMsg), err.Error()))
+		}
+		t.Add(GlobalTxInfoKey(globalID), data)
 	} else {
+		err := txInfo.Unmarshal(txInfoData)
+		if err != nil {
+			return boltvm.Error(boltvm.TransactionInternalErrCode, fmt.Sprintf(string(boltvm.TransactionInternalErrMsg), err.Error()))
+		}
+
 		if _, ok := txInfo.ChildTxInfo[ibtpID]; ok {
 			return boltvm.Error(boltvm.TransactionExistentChildTxCode, fmt.Sprintf(string(boltvm.TransactionExistentChildTxMsg), ibtpID, globalID))
 		}
@@ -92,7 +101,12 @@ func (t *TransactionManager) BeginMultiTXs(globalID, ibtpID string, timeoutHeigh
 				txInfo.ChildTxInfo[ibtpID] = pb.TransactionStatus_BEGIN
 			}
 		}
-		t.SetObject(GlobalTxInfoKey(globalID), txInfo)
+
+		data, err := txInfo.Marshal()
+		if err != nil {
+			return boltvm.Error(boltvm.TransactionInternalErrCode, fmt.Sprintf(string(boltvm.TransactionInternalErrMsg), err.Error()))
+		}
+		t.Set(GlobalTxInfoKey(globalID), data)
 	}
 
 	t.Set(ibtpID, []byte(globalID))
@@ -126,7 +140,11 @@ func (t *TransactionManager) Begin(txId string, timeoutHeight uint64, isFailed b
 		// t.addToTimeoutList(record.Height, txId)
 	}
 
-	t.AddObject(TxInfoKey(txId), record)
+	recordData, err := record.Marshal()
+	if err != nil {
+		return boltvm.Error(boltvm.TransactionInternalErrCode, fmt.Sprintf(string(boltvm.TransactionInternalErrMsg), err.Error()))
+	}
+	t.Add(TxInfoKey(txId), recordData)
 
 	change := pb.StatusChange{
 		PrevStatus: -1,
@@ -147,16 +165,24 @@ func (t *TransactionManager) Report(txId string, result int32) *boltvm.Response 
 	}
 
 	change := pb.StatusChange{}
-	var record pb.TransactionRecord
-	ok := t.GetObject(TxInfoKey(txId), &record)
-	if ok {
+	if ok, recordData := t.Get(TxInfoKey(txId)); ok {
+		record := pb.TransactionRecord{}
+		err := record.Unmarshal(recordData)
+		if err != nil {
+			return boltvm.Error(boltvm.TransactionInternalErrCode, fmt.Sprintf(string(boltvm.TransactionInternalErrMsg), err.Error()))
+		}
+
 		change.PrevStatus = record.Status
 		if err := t.setFSM(&record.Status, receipt2EventM[result]); err != nil {
 			return boltvm.Error(boltvm.TransactionStateErrCode, fmt.Sprintf(string(boltvm.TransactionStateErrMsg), fmt.Sprintf("transaction %s with state %v get unexpected receipt %v", txId, record.Status, result)))
 		}
 		change.CurStatus = record.Status
 
-		t.SetObject(TxInfoKey(txId), record)
+		data, err := record.Marshal()
+		if err != nil {
+			return boltvm.Error(boltvm.TransactionInternalErrCode, fmt.Sprintf(string(boltvm.TransactionInternalErrMsg), err.Error()))
+		}
+		t.Set(TxInfoKey(txId), data)
 		// t.removeFromTimeoutList(record.Height, txId)
 	} else {
 		ok, val := t.Get(txId)
@@ -165,9 +191,15 @@ func (t *TransactionManager) Report(txId string, result int32) *boltvm.Response 
 		}
 
 		globalId := string(val)
-		txInfo := pb.TransactionInfo{}
-		if !t.GetObject(GlobalTxInfoKey(globalId), &txInfo) {
+
+		ok, txInfoData := t.Get(GlobalTxInfoKey(globalId))
+		if !ok {
 			return boltvm.Error(boltvm.TransactionNonexistentGlobalTxCode, fmt.Sprintf(string(boltvm.TransactionNonexistentGlobalTxMsg), globalId, txId))
+		}
+		txInfo := pb.TransactionInfo{}
+		err := txInfo.Unmarshal(txInfoData)
+		if err != nil {
+			return boltvm.Error(boltvm.TransactionInternalErrCode, fmt.Sprintf(string(boltvm.TransactionInternalErrMsg), err.Error()))
 		}
 
 		_, ok = txInfo.ChildTxInfo[txId]
@@ -177,7 +209,7 @@ func (t *TransactionManager) Report(txId string, result int32) *boltvm.Response 
 
 		change.PrevStatus = txInfo.GlobalState
 		if err := t.changeMultiTxStatus(globalId, &txInfo, txId, result); err != nil {
-			return boltvm.Error(boltvm.TransactionStateErrCode, fmt.Sprintf(string(boltvm.TransactionStateErrMsg), err.Error()))
+			return boltvm.Error(boltvm.TransactionStateErrCode, fmt.Sprintf(string(boltvm.TransactionInternalErrMsg), err.Error()))
 		}
 		change.CurStatus = txInfo.GlobalState
 
@@ -187,7 +219,11 @@ func (t *TransactionManager) Report(txId string, result int32) *boltvm.Response 
 			}
 		}
 
-		t.SetObject(GlobalTxInfoKey(globalId), txInfo)
+		data, err := txInfo.Marshal()
+		if err != nil {
+			return boltvm.Error(boltvm.TransactionInternalErrCode, fmt.Sprintf(string(boltvm.TransactionInternalErrMsg), err.Error()))
+		}
+		t.Set(GlobalTxInfoKey(globalId), data)
 	}
 
 	data, err := change.Marshal()
@@ -199,16 +235,24 @@ func (t *TransactionManager) Report(txId string, result int32) *boltvm.Response 
 }
 
 func (t *TransactionManager) GetStatus(txId string) *boltvm.Response {
-	var record pb.TransactionRecord
-	ok := t.GetObject(TxInfoKey(txId), &record)
+	ok, recordData := t.Get(TxInfoKey(txId))
 	if ok {
+		record := pb.TransactionRecord{}
+		err := record.Unmarshal(recordData)
+		if err != nil {
+			return boltvm.Error(boltvm.TransactionInternalErrCode, fmt.Sprintf(string(boltvm.TransactionInternalErrMsg), err.Error()))
+		}
 		status := record.Status
 		return boltvm.Success([]byte(strconv.Itoa(int(status))))
 	}
 
-	txInfo := pb.TransactionInfo{}
-	ok = t.GetObject(GlobalTxInfoKey(txId), &txInfo)
+	ok, txInfoDate := t.Get(GlobalTxInfoKey(txId))
 	if ok {
+		txInfo := pb.TransactionInfo{}
+		err := txInfo.Unmarshal(txInfoDate)
+		if err != nil {
+			return boltvm.Error(boltvm.TransactionInternalErrCode, fmt.Sprintf(string(boltvm.TransactionInternalErrMsg), err.Error()))
+		}
 		return boltvm.Success([]byte(strconv.Itoa(int(txInfo.GlobalState))))
 	}
 
@@ -218,9 +262,14 @@ func (t *TransactionManager) GetStatus(txId string) *boltvm.Response {
 	}
 
 	globalId := string(val)
-	txInfo = pb.TransactionInfo{}
-	if !t.GetObject(GlobalTxInfoKey(globalId), &txInfo) {
+	ok, txInfoDate = t.Get(GlobalTxInfoKey(globalId))
+	if !ok {
 		return boltvm.Error(boltvm.TransactionNonexistentGlobalTxCode, fmt.Sprintf(string(boltvm.TransactionNonexistentGlobalTxMsg), globalId, txId))
+	}
+
+	txInfo := pb.TransactionInfo{}
+	if err := txInfo.Unmarshal(txInfoDate); err != nil {
+		return boltvm.Error(boltvm.TransactionInternalErrCode, fmt.Sprintf(string(boltvm.TransactionInternalErrMsg), err.Error()))
 	}
 
 	return boltvm.Success([]byte(strconv.Itoa(int(txInfo.GlobalState))))
