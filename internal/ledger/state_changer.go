@@ -29,8 +29,8 @@ func newChanger() *stateChanger {
 	}
 }
 
-func newChangeInstance() *changeInstance {
-	return &changeInstance{
+func newChangeInstance() *ChangeInstance {
+	return &ChangeInstance{
 		changer:        newChanger(),
 		validRevisions: make([]revision, 0)}
 }

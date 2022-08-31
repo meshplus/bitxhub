@@ -227,6 +227,7 @@ func TestChainLedger_Commit(t *testing.T) {
 	hash := types.NewHashByStr("0xe9FC370DD36C9BD5f67cCfbc031C909F53A3d8bC7084C01362c55f2D42bA841c")
 	revid := ledger.StateLedger.(*SimpleLedger).Snapshot()
 	ledger.StateLedger.(*SimpleLedger).logs.thash = hash
+	ledger.StateLedger.(*SimpleLedger).SetState(account, []byte("tmp"), []byte("need revert"))
 	ledger.StateLedger.(*SimpleLedger).AddLog(&pb.EvmLog{})
 	ledger.StateLedger.(*SimpleLedger).GetLogs(*ledger.StateLedger.(*SimpleLedger).logs.thash)
 	ledger.StateLedger.(*SimpleLedger).GetCodeHash(account)
@@ -250,8 +251,60 @@ func TestChainLedger_Commit(t *testing.T) {
 	ledger.StateLedger.(*SimpleLedger).AddPreimage(*hash, []byte("11"))
 	ledger.StateLedger.(*SimpleLedger).PrepareAccessList(*account, account, []types.Address{}, ledger1.AccessTupleList{})
 	ledger.StateLedger.(*SimpleLedger).Suiside(account)
+	// before revert
+	ok, _ := ledger.StateLedger.(*SimpleLedger).GetState(account, []byte("tmp"))
+	assert.True(t, ok)
 	ledger.StateLedger.(*SimpleLedger).RevertToSnapshot(revid)
 	ledger.StateLedger.(*SimpleLedger).ClearChangerAndRefund()
+	// after revert, state changes is removed in ledger
+	ok, _ = ledger.GetState(account, []byte("tmp"))
+	assert.False(t, ok)
+
+	// set state before snapshot, not affect
+	ok, _ = ledger.GetState(account, []byte("b"))
+	assert.True(t, ok)
+
+	//changer1 := &stateChanger{
+	//	dirties: make(map[types.Address]int),
+	//}
+	//instance1 := &ChangeInstance{
+	//	changer:        changer1,
+	//	validRevisions: make([]revision, 0),
+	//}
+	//
+	//changer2 := &stateChanger{
+	//	dirties: make(map[types.Address]int),
+	//}
+	//instance2 := &ChangeInstance{
+	//	changer:        changer2,
+	//	validRevisions: make([]revision, 0),
+	//}
+	//
+	//done := make(chan struct{})
+	//go func() {
+	//	revid1 := ledger.StateLedger.(*SimpleLedger).SnapshotForParallel(instance1)
+	//	ledger.StateLedger.(*SimpleLedger).SetState(account, []byte("tx1"), []byte("tx1"))
+	//	ledger.StateLedger.(*SimpleLedger).SetState(account, []byte("tx2"), []byte("tx2"))
+	//	ledger.StateLedger.(*SimpleLedger).RevertToSnapshotForParallel(revid1, instance1)
+	//	done <- struct{}{}
+	//}()
+	//
+	//var revid2 int
+	//go func() {
+	//	revid2 = ledger.StateLedger.(*SimpleLedger).SnapshotForParallel(instance2)
+	//	ledger.StateLedger.(*SimpleLedger).SetState(account, []byte("tx3"), []byte("tx3"))
+	//}()
+	//
+	//<-done
+	//ok, _ = ledger.StateLedger.(*SimpleLedger).GetState(account, []byte("tx1"))
+	//assert.False(t, ok)
+	//
+	//ok, _ = ledger.StateLedger.(*SimpleLedger).GetState(account, []byte("tx3"))
+	//assert.True(t, ok)
+	//
+	//ledger.StateLedger.(*SimpleLedger).RevertToSnapshotForParallel(revid2, instance2)
+	//ok, _ = ledger.StateLedger.(*SimpleLedger).GetState(account, []byte("tx3"))
+	//assert.False(t, ok)
 
 	ledger.Close()
 
@@ -261,7 +314,7 @@ func TestChainLedger_Commit(t *testing.T) {
 	assert.Equal(t, uint64(0), stateLedger.maxJnlHeight)
 	assert.Equal(t, &types.Hash{}, stateLedger.prevJnlHash)
 
-	ok, _ := ldg.GetState(account, []byte("a"))
+	ok, _ = ldg.GetState(account, []byte("a"))
 	assert.False(t, ok)
 
 	ok, _ = ldg.GetState(account, []byte("b"))

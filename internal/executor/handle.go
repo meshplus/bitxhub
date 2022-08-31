@@ -46,7 +46,7 @@ const (
 	GasBVMTx    = 21000 * 10
 	repeatBlock = "new block is the same as the block in local ledger"
 	parallel    = "parallel"
-	simplle     = "simple"
+	simple      = "simple"
 )
 
 type BlockWrapper struct {
@@ -443,69 +443,6 @@ func (exec *BlockExecutor) applyTx(index int, tx pb.Transaction, invalidReason a
 	return receipt
 }
 
-func (exec *BlockExecutor) parallelApplyTx(i int, tx pb.Transaction, invalidReason agency.InvalidReason, opt *agency.TxOpt) *pb.Receipt {
-	// make sure each tx has an instance to record ledger changed
-	change := exec.ledger.StateLedger.(*ledger.SimpleLedger).GetInstance()
-	defer func() {
-		exec.ledger.SetNonce(tx.GetFrom(), tx.GetNonce()+1)
-		//exec.logger.Infof("tx From:%s, nonce:%d", tx.GetFrom(), tx.GetNonce())
-		// release change to instance pool
-		exec.ledger.StateLedger.(*ledger.SimpleLedger).ReleaseChangeInstance(change)
-	}()
-	receipt := &pb.Receipt{
-		Version: tx.GetVersion(),
-		TxHash:  tx.GetHash(),
-	}
-
-	exec.ledger.PrepareEVM(common.BytesToHash(tx.GetHash().Bytes()), i)
-
-	switch tx.(type) {
-	case *pb.BxhTransaction:
-		bxhTx := tx.(*pb.BxhTransaction)
-		snapshot := exec.ledger.StateLedger.(*ledger.SimpleLedger).SnapshotForParallel(change)
-		ret, gasUsed, err := exec.applyBxhTransaction(i, bxhTx, invalidReason, opt)
-		if err != nil {
-			receipt.Status = pb.Receipt_FAILED
-			receipt.Ret = []byte(err.Error())
-		} else {
-			//internal invoke evm
-			receipt.EvmLogs = exec.ledger.GetLogs(*tx.GetHash())
-			receipt.Status = pb.Receipt_SUCCESS
-			if string(ret) == "begin_failure" {
-				receipt.TxStatus = pb.TransactionStatus_BEGIN_FAILURE
-			}
-			receipt.Ret = ret
-		}
-		receipt.Bloom = ledger.CreateBloom(ledger.EvmReceipts{receipt})
-		receipt.GasUsed = gasUsed
-
-		if err := exec.payGasFee(tx, gasUsed); err != nil {
-			// revert to prev state, need input tx's unique change instance
-			exec.ledger.StateLedger.(*ledger.SimpleLedger).RevertToSnapshotForParallel(snapshot, change)
-			receipt.Status = pb.Receipt_FAILED
-			receipt.Ret = []byte(err.Error())
-			exec.payLeftAsGasFee(tx)
-		}
-		return receipt
-	case *types2.EthTransaction:
-		ethTx := tx.(*types2.EthTransaction)
-		receipt := exec.applyEthTransaction(i, ethTx)
-		exec.evmInterchain(i, ethTx, receipt)
-
-		return receipt
-	}
-
-	receipt.Status = pb.Receipt_FAILED
-	receipt.GasUsed = GasFailedTx
-	receipt.Ret = []byte(fmt.Errorf("unknown tx type").Error())
-	if err := exec.payGasFee(tx, receipt.GasUsed); err != nil {
-		receipt.Ret = []byte(err.Error())
-		exec.payLeftAsGasFee(tx)
-	}
-
-	return receipt
-}
-
 func (exec *BlockExecutor) postAuditEvent(auditTxInfo *pb.AuditTxInfo) {
 	go exec.auditFeed.Send(auditTxInfo)
 }
@@ -539,10 +476,25 @@ func (exec *BlockExecutor) postLogsEvent(receipts []*pb.Receipt) {
 }
 
 func (exec *BlockExecutor) applyTransaction(i int, tx pb.Transaction, invalidReason agency.InvalidReason, opt *agency.TxOpt) *pb.Receipt {
-	defer func() {
-		exec.ledger.SetNonce(tx.GetFrom(), tx.GetNonce()+1)
-		exec.ledger.Finalise(true)
-	}()
+	// todo(lrx): need refactor state changer
+	var change *ledger.ChangeInstance
+	if exec.supportParallel {
+		// make sure each tx has an instance to record ledger changed
+		change = exec.ledger.StateLedger.(*ledger.SimpleLedger).GetInstance()
+		defer func() {
+			exec.ledger.SetNonce(tx.GetFrom(), tx.GetNonce()+1)
+			// release change to instance pool
+			exec.ledger.StateLedger.(*ledger.SimpleLedger).ReleaseChangeInstance(change)
+		}()
+	} else {
+		defer func() {
+			if exec.supportParallel {
+
+			}
+			exec.ledger.SetNonce(tx.GetFrom(), tx.GetNonce()+1)
+			exec.ledger.Finalise(true)
+		}()
+	}
 
 	receipt := &pb.Receipt{
 		Version: tx.GetVersion(),
@@ -550,11 +502,15 @@ func (exec *BlockExecutor) applyTransaction(i int, tx pb.Transaction, invalidRea
 	}
 
 	exec.ledger.PrepareEVM(common.BytesToHash(tx.GetHash().Bytes()), i)
-
+	var snapshot int
 	switch tx.(type) {
 	case *pb.BxhTransaction:
 		bxhTx := tx.(*pb.BxhTransaction)
-		snapshot := exec.ledger.Snapshot()
+		if !exec.supportParallel {
+			snapshot = exec.ledger.Snapshot()
+		} else {
+			snapshot = exec.ledger.StateLedger.(*ledger.SimpleLedger).SnapshotForParallel(change)
+		}
 		ret, gasUsed, err := exec.applyBxhTransaction(i, bxhTx, invalidReason, opt)
 		if err != nil {
 			receipt.Status = pb.Receipt_FAILED
@@ -572,7 +528,12 @@ func (exec *BlockExecutor) applyTransaction(i int, tx pb.Transaction, invalidRea
 		receipt.GasUsed = gasUsed
 
 		if err := exec.payGasFee(tx, gasUsed); err != nil {
-			exec.ledger.RevertToSnapshot(snapshot)
+			if !exec.supportParallel {
+				exec.ledger.RevertToSnapshot(snapshot)
+			} else {
+				// revert to prev state, need input unique change instance
+				exec.ledger.StateLedger.(*ledger.SimpleLedger).RevertToSnapshotForParallel(snapshot, change)
+			}
 			receipt.Status = pb.Receipt_FAILED
 			receipt.Ret = []byte(err.Error())
 			exec.payLeftAsGasFee(tx)

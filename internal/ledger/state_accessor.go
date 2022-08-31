@@ -453,8 +453,8 @@ func (l *SimpleLedger) RevertToSnapshot(revid int) {
 	l.validRevisions = l.validRevisions[:idx]
 }
 
-func (l *SimpleLedger) ReleaseChangeInstance(instance *changeInstance) {
-	defer l.changeInstance.Put(instance)
+func (l *SimpleLedger) ReleaseChangeInstance(instance *ChangeInstance) {
+	defer l.changeInstancePool.Put(instance)
 	if len(instance.changer.changes) > 0 {
 		instance.changer = newChanger()
 		l.refund = 0
@@ -463,17 +463,20 @@ func (l *SimpleLedger) ReleaseChangeInstance(instance *changeInstance) {
 	instance.nextRevisionId = 0
 }
 
-func (l *SimpleLedger) GetInstance() *changeInstance {
-	return l.changeInstance.Get().(*changeInstance)
+func (l *SimpleLedger) GetInstance() *ChangeInstance {
+	return l.changeInstancePool.Get().(*ChangeInstance)
 }
-func (l *SimpleLedger) SnapshotForParallel(instance *changeInstance) int {
+func (l *SimpleLedger) SnapshotForParallel(instance *ChangeInstance) int {
 	id := instance.nextRevisionId
 	instance.nextRevisionId++
 	instance.validRevisions = append(instance.validRevisions, revision{id, instance.changer.length()})
 	return id
 }
 
-func (l *SimpleLedger) RevertToSnapshotForParallel(revid int, change *changeInstance) {
+// RevertToSnapshotForParallel every group have changeInstance to record state change,
+// different groups have no common key value changes,
+// so if one tx need revert prev value, it doesn't affect other tx changes.
+func (l *SimpleLedger) RevertToSnapshotForParallel(revid int, change *ChangeInstance) {
 	idx := sort.Search(len(change.validRevisions), func(i int) bool {
 		return change.validRevisions[i].id >= revid
 	})

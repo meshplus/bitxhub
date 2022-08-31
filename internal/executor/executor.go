@@ -116,7 +116,7 @@ func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, client *appchain
 	blockExecutor.txsExecutor = txsExecutor(blockExecutor.applyTx, blockExecutor.registerBoltContracts, logger)
 
 	// parallel executor just support simple ledger temporary
-	if config.Executor.Type == parallel && config.Ledger.Type == simplle {
+	if config.Executor.Type == parallel && config.Ledger.Type == simple {
 		blockExecutor.supportParallel = true
 	}
 

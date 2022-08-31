@@ -26,7 +26,7 @@ type revision struct {
 	changerIndex int
 }
 
-type changeInstance struct {
+type ChangeInstance struct {
 	changer        *stateChanger
 	validRevisions []revision
 	nextRevisionId int
@@ -45,12 +45,12 @@ type SimpleLedger struct {
 	repo          *repo.Repo
 	blockHeight   uint64
 
-	journalMutex   sync.RWMutex
-	lock           sync.RWMutex
-	accountsLock   sync.RWMutex // GetAccount lock, ensure the function have not Concurrent problem
-	changeInstance *sync.Pool
-	validRevisions []revision
-	nextRevisionId int
+	journalMutex       sync.RWMutex
+	lock               sync.RWMutex
+	accountsLock       sync.RWMutex // GetAccount lock, ensure the function have not Concurrent problem
+	changeInstancePool *sync.Pool
+	validRevisions     []revision
+	nextRevisionId     int
 
 	changer *stateChanger
 
@@ -105,7 +105,7 @@ func NewSimpleLedger(repo *repo.Repo, ldb storage.Storage, accountCache *Account
 		logs:         NewEvmLogs(),
 	}
 
-	ledger.changeInstance = &sync.Pool{
+	ledger.changeInstancePool = &sync.Pool{
 		New: func() interface{} {
 			return newChangeInstance()
 		},
