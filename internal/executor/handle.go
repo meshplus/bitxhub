@@ -11,7 +11,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/meshplus/bitxhub/pkg/utils"
@@ -46,6 +45,8 @@ const (
 	GasFailedTx = 21000
 	GasBVMTx    = 21000 * 10
 	repeatBlock = "new block is the same as the block in local ledger"
+	parallel    = "parallel"
+	simple      = "simple"
 )
 
 type BlockWrapper struct {
@@ -133,17 +134,25 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	}
 
 	exec.verifyProofs(blockWrapper)
+	exec.logger.WithFields(logrus.Fields{
+		"time":  time.Since(current),
+		"type":  exec.config.Executor.ProofType,
+		"count": len(block.Transactions.Transactions),
+	}).Infof("verify proof elapsed")
+
 	exec.evm = newEvm(block.Height(), uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateLedger, exec.ledger.ChainLedger, exec.admins[0])
 	exec.ledger.PrepareBlock(block.BlockHash, block.Height())
+	current2 := time.Now()
 	receipts := exec.txsExecutor.ApplyTransactions(block.Transactions.Transactions, blockWrapper.invalidTx)
-	applyTxsDuration.Observe(float64(time.Since(current)) / float64(time.Second))
-	//exec.logger.WithFields(logrus.Fields{
-	//	"time":  time.Since(current),
-	//	"count": len(block.Transactions.Transactions),
-	//}).Debug("Apply transactions elapsed")
+
+	applyTxsDuration.Observe(float64(time.Since(current2)) / float64(time.Second))
+	exec.logger.WithFields(logrus.Fields{
+		"time":  time.Since(current2),
+		"count": len(block.Transactions.Transactions),
+	}).Debug("Apply transactions elapsed")
 
 	calcMerkleStart := time.Now()
-	l1Root, l2Roots, err := exec.buildTxMerkleTree(block.Transactions.Transactions)
+	txRoot, err := exec.buildTxMerkleTree(block.Transactions.Transactions)
 	if err != nil {
 		panic(err)
 	}
@@ -205,7 +214,7 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 		multiTxCounter[from] = &pb.StringSlice{Slice: list}
 	}
 
-	block.BlockHeader.TxRoot = l1Root
+	block.BlockHeader.TxRoot = txRoot
 	block.BlockHeader.ReceiptRoot = receiptRoot
 	block.BlockHeader.ParentHash = exec.currentBlockHash
 	block.BlockHeader.Bloom = ledger.CreateBloom(receipts)
@@ -234,7 +243,6 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	}
 	interchainMeta := &pb.InterchainMeta{
 		Counter:        counter,
-		L2Roots:        l2Roots,
 		TimeoutCounter: timeoutCounter,
 		TimeoutL2Roots: timeoutL2Roots,
 		MultiTxCounter: multiTxCounter,
@@ -256,8 +264,6 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 
 	now := time.Now()
 	exec.ledger.PersistBlockData(data)
-	exec.postBlockEvent(data.Block, data.InterchainMeta, data.TxHashList)
-	exec.postLogsEvent(data.Receipts)
 	exec.logger.WithFields(logrus.Fields{
 		"height": data.Block.BlockHeader.Number,
 		"hash":   data.Block.BlockHash.String(),
@@ -267,6 +273,8 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 
 	exec.currentHeight = block.BlockHeader.Number
 	exec.currentBlockHash = block.BlockHash
+	exec.postBlockEvent(data.Block, data.InterchainMeta, data.TxHashList)
+	exec.postLogsEvent(data.Receipts)
 	exec.clear()
 
 	return nil
@@ -290,75 +298,18 @@ func (exec *BlockExecutor) listenPreExecuteEvent() {
 	}
 }
 
-func (exec *BlockExecutor) buildTxMerkleTree(txs []pb.Transaction) (*types.Hash, []types.Hash, error) {
-	var (
-		groupCnt = len(exec.txsExecutor.GetInterchainCounter()) + 1
-		wg       = sync.WaitGroup{}
-		lock     = sync.Mutex{}
-		l2Roots  = make([]types.Hash, 0, groupCnt)
-		errorCnt = int32(0)
-	)
-
-	wg.Add(groupCnt - 1)
-	for addr, txIndexes := range exec.txsExecutor.GetInterchainCounter() {
-		go func(addr string, txIndexes []*pb.VerifiedIndex) {
-			defer wg.Done()
-
-			verifiedTx := make([]merkletree.Content, 0, len(txIndexes))
-			for _, txIndex := range txIndexes {
-				verifiedTx = append(verifiedTx, &pb.VerifiedTx{
-					Tx:      txs[txIndex.Index].(*pb.BxhTransaction),
-					Valid:   txIndex.Valid,
-					IsBatch: txIndex.IsBatch,
-				})
-			}
-
-			hash, err := calcMerkleRoot(verifiedTx)
-			if err != nil {
-				atomic.AddInt32(&errorCnt, 1)
-				return
-			}
-
-			lock.Lock()
-			defer lock.Unlock()
-			l2Roots = append(l2Roots, *hash)
-		}(addr, txIndexes)
+func (exec *BlockExecutor) buildTxMerkleTree(txs []pb.Transaction) (*types.Hash, error) {
+	txHashes := make([]merkletree.Content, 0, len(txs))
+	for _, tx := range txs {
+		txHashes = append(txHashes, tx.GetHash())
 	}
 
-	txHashes := make([]merkletree.Content, 0, len(exec.txsExecutor.GetNormalTxs()))
-	for _, txHash := range exec.txsExecutor.GetNormalTxs() {
-		txHashes = append(txHashes, txHash)
-	}
-
-	hash, err := calcMerkleRoot(txHashes)
+	root, err := calcMerkleRoot(txHashes)
 	if err != nil {
-		atomic.AddInt32(&errorCnt, 1)
+		return nil, fmt.Errorf("build tx merkle tree error")
 	}
 
-	lock.Lock()
-	l2Roots = append(l2Roots, *hash)
-	lock.Unlock()
-
-	wg.Wait()
-	if errorCnt != 0 {
-		return nil, nil, fmt.Errorf("build tx merkle tree error")
-	}
-
-	sort.Slice(l2Roots, func(i, j int) bool {
-		return bytes.Compare(l2Roots[i].Bytes(), l2Roots[j].Bytes()) < 0
-	})
-
-	contents := make([]merkletree.Content, 0, groupCnt)
-	for _, l2Root := range l2Roots {
-		r := l2Root
-		contents = append(contents, &r)
-	}
-	root, err := calcMerkleRoot(contents)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return root, l2Roots, nil
+	return root, nil
 }
 
 func (exec *BlockExecutor) verifySign(commitEvent *pb.CommitEvent) *BlockWrapper {
@@ -456,10 +407,10 @@ func (exec *BlockExecutor) applyTx(index int, tx pb.Transaction, invalidReason a
 				if err != nil {
 					panic(err)
 				}
-				for chainID, _ := range auditRelatedObjInfo.RelatedChainIDList {
+				for chainID := range auditRelatedObjInfo.RelatedChainIDList {
 					relatedChainIDList[chainID] = []byte{}
 				}
-				for nodeID, _ := range auditRelatedObjInfo.RelatedNodeIDList {
+				for nodeID := range auditRelatedObjInfo.RelatedNodeIDList {
 					relatedNodeIDList[nodeID] = []byte{}
 				}
 			case pb.Event_SERVICE:
@@ -470,7 +421,7 @@ func (exec *BlockExecutor) applyTx(index int, tx pb.Transaction, invalidReason a
 				}
 				chainServiceID := fmt.Sprintf("%s:%s", serviceInfo.ChainID, serviceInfo.ServiceID)
 				exec.logger.WithFields(logrus.Fields{"key": chainServiceID, "service": serviceInfo}).Debug("record service change in cache")
-				exec.interchainManager.SetServiceCache(chainServiceID, serviceInfo)
+				exec.serviceCache.Store(chainServiceID, serviceInfo)
 			}
 		}
 		if auditDataUpdate {
@@ -525,10 +476,25 @@ func (exec *BlockExecutor) postLogsEvent(receipts []*pb.Receipt) {
 }
 
 func (exec *BlockExecutor) applyTransaction(i int, tx pb.Transaction, invalidReason agency.InvalidReason, opt *agency.TxOpt) *pb.Receipt {
-	defer func() {
-		exec.ledger.SetNonce(tx.GetFrom(), tx.GetNonce()+1)
-		exec.ledger.Finalise(true)
-	}()
+	// todo(lrx): need refactor state changer
+	var change *ledger.ChangeInstance
+	if exec.supportParallel {
+		// make sure each tx has an instance to record ledger changed
+		change = exec.ledger.StateLedger.(*ledger.SimpleLedger).GetInstance()
+		defer func() {
+			exec.ledger.SetNonce(tx.GetFrom(), tx.GetNonce()+1)
+			// release change to instance pool
+			exec.ledger.StateLedger.(*ledger.SimpleLedger).ReleaseChangeInstance(change)
+		}()
+	} else {
+		defer func() {
+			if exec.supportParallel {
+
+			}
+			exec.ledger.SetNonce(tx.GetFrom(), tx.GetNonce()+1)
+			exec.ledger.Finalise(true)
+		}()
+	}
 
 	receipt := &pb.Receipt{
 		Version: tx.GetVersion(),
@@ -536,17 +502,21 @@ func (exec *BlockExecutor) applyTransaction(i int, tx pb.Transaction, invalidRea
 	}
 
 	exec.ledger.PrepareEVM(common.BytesToHash(tx.GetHash().Bytes()), i)
-
+	var snapshot int
 	switch tx.(type) {
 	case *pb.BxhTransaction:
 		bxhTx := tx.(*pb.BxhTransaction)
-		snapshot := exec.ledger.Snapshot()
+		if !exec.supportParallel {
+			snapshot = exec.ledger.Snapshot()
+		} else {
+			snapshot = exec.ledger.StateLedger.(*ledger.SimpleLedger).SnapshotForParallel(change)
+		}
 		ret, gasUsed, err := exec.applyBxhTransaction(i, bxhTx, invalidReason, opt)
 		if err != nil {
 			receipt.Status = pb.Receipt_FAILED
 			receipt.Ret = []byte(err.Error())
 		} else {
-			//internal invoke evm
+			// internal invoke evm
 			receipt.EvmLogs = exec.ledger.GetLogs(*tx.GetHash())
 			receipt.Status = pb.Receipt_SUCCESS
 			if string(ret) == "begin_failure" {
@@ -558,7 +528,12 @@ func (exec *BlockExecutor) applyTransaction(i int, tx pb.Transaction, invalidRea
 		receipt.GasUsed = gasUsed
 
 		if err := exec.payGasFee(tx, gasUsed); err != nil {
-			exec.ledger.RevertToSnapshot(snapshot)
+			if !exec.supportParallel {
+				exec.ledger.RevertToSnapshot(snapshot)
+			} else {
+				// revert to prev state, need input unique change instance
+				exec.ledger.StateLedger.(*ledger.SimpleLedger).RevertToSnapshotForParallel(snapshot, change)
+			}
 			receipt.Status = pb.Receipt_FAILED
 			receipt.Ret = []byte(err.Error())
 			exec.payLeftAsGasFee(tx)
@@ -591,7 +566,7 @@ func (exec *BlockExecutor) applyBxhTransaction(i int, tx *pb.BxhTransaction, inv
 	if tx.IsIBTP() {
 		ctx := vm.NewContext(tx, uint64(i), nil, exec.currentHeight, exec.ledger, exec.logger)
 		instance := boltvm.New(ctx, exec.validationEngine, exec.evm, exec.getContracts(opt))
-		ret, err := instance.HandleIBTP(tx.GetIBTP(), exec.interchainManager)
+		ret, err := instance.HandleIBTP(tx.GetIBTP(), exec.serviceCache)
 		return ret, GasBVMTx, err
 	}
 
@@ -802,6 +777,11 @@ func (exec *BlockExecutor) payLeftAsGasFee(tx pb.Transaction) {
 
 func (exec *BlockExecutor) payAdmins(fees *big.Int) {
 	fee := new(big.Int).Div(fees, big.NewInt(int64(len(exec.admins))))
+	// lock when pay admin gas parallel
+	if exec.supportParallel {
+		exec.gasLock.Lock()
+		defer exec.gasLock.Unlock()
+	}
 	for _, admin := range exec.admins {
 		addr := types.NewAddressByStr(admin)
 		balance := exec.ledger.GetBalance(addr)

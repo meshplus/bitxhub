@@ -26,6 +26,12 @@ type revision struct {
 	changerIndex int
 }
 
+type ChangeInstance struct {
+	changer        *stateChanger
+	validRevisions []revision
+	nextRevisionId int
+}
+
 type SimpleLedger struct {
 	logger        logrus.FieldLogger
 	ldb           storage.Storage
@@ -39,17 +45,20 @@ type SimpleLedger struct {
 	repo          *repo.Repo
 	blockHeight   uint64
 
-	journalMutex sync.RWMutex
-	lock         sync.RWMutex
+	journalMutex       sync.RWMutex
+	lock               sync.RWMutex
+	accountsLock       sync.RWMutex // GetAccount lock, ensure the function have not Concurrent problem
+	changeInstancePool *sync.Pool
+	validRevisions     []revision
+	nextRevisionId     int
 
-	validRevisions []revision
-	nextRevisionId int
-	changer        *stateChanger
+	changer *stateChanger
 
 	accessList *ledger.AccessList
 	preimages  map[types.Hash][]byte
-	refund     uint64
-	logs       *evmLogs
+	// todo(lrx) What is the role of refund
+	refund uint64
+	logs   *evmLogs
 }
 
 func (l *SimpleLedger) Copy() ledger.StateLedger {
@@ -94,6 +103,12 @@ func NewSimpleLedger(repo *repo.Repo, ldb storage.Storage, accountCache *Account
 		changer:      newChanger(),
 		accessList:   ledger.NewAccessList(),
 		logs:         NewEvmLogs(),
+	}
+
+	ledger.changeInstancePool = &sync.Pool{
+		New: func() interface{} {
+			return newChangeInstance()
+		},
 	}
 
 	return ledger, nil

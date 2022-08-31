@@ -2,6 +2,7 @@ package boltvm
 
 import (
 	"encoding/json"
+	"sync"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -116,7 +117,7 @@ func TestBoltVM_Run(t *testing.T) {
 	ctxInterchain := vm.NewContext(txInterchain, 1, nil, 100, mockLedger, log.NewWithModule("vm"))
 	boltVMInterchain := New(ctxInterchain, mockEngine, nil, cons)
 	ibtp := mockIBTP(t, 1, pb.IBTP_INTERCHAIN)
-	_, err = boltVMInterchain.HandleIBTP(ibtp, &contracts.InterchainManager{})
+	_, err = boltVMInterchain.HandleIBTP(ibtp, &sync.Map{})
 	require.NotNil(t, err)
 }
 

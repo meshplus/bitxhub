@@ -28,10 +28,13 @@ function compile() {
 function start() {
   print_blue "===> Start solo bitxhub"
   bitxhub --repo="${BUILD_PATH}" init
-  cd ${BUILD_PATH} && cp -r ../certs/node1/* ./
+  cd ${BUILD_PATH} && cp -r ../certs/node1/key.json ./
   bitxhubConfig=${BUILD_PATH}/bitxhub.toml
   x_replace "s/solo = false/solo = true/g" "${bitxhubConfig}"
-  x_replace "s/raft/solo/g" "${bitxhubConfig}"
+   order_line=$(sed -n '/\[order\]/=' ${bitxhubConfig} | head -n 1)
+   order_line=$(expr $order_line + 1)
+   x_replace "$order_line s/type.*= .*/type = \"solo\"/" ${bitxhubConfig}
+
   bitxhub --repo="${BUILD_PATH}" start
 }
 

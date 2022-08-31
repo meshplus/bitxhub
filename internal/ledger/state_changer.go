@@ -29,6 +29,11 @@ func newChanger() *stateChanger {
 	}
 }
 
+func newChangeInstance() *ChangeInstance {
+	return &ChangeInstance{
+		changer:        newChanger(),
+		validRevisions: make([]revision, 0)}
+}
 func (s *stateChanger) append(change stateChange) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
