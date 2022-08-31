@@ -18,7 +18,6 @@ require (
 	github.com/gobuffalo/envy v1.9.0 // indirect
 	github.com/gobuffalo/packd v1.0.0
 	github.com/gobuffalo/packr v1.30.1
-	github.com/gobuffalo/packr/v2 v2.5.1
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/mock v1.6.0
 	github.com/golang/protobuf v1.5.2
@@ -36,7 +35,7 @@ require (
 	github.com/looplab/fsm v0.3.0
 	github.com/magiconair/properties v1.8.4
 	github.com/meshplus/bitxhub-core v1.3.1-0.20220829061832-bc5e830c749d
-	github.com/meshplus/bitxhub-kit v1.2.1-0.20220815090757-6256823a7426
+	github.com/meshplus/bitxhub-kit v1.2.1-0.20220808015652-3962637570f9
 	github.com/meshplus/bitxhub-model v1.2.1-0.20220815081129-609df840b044
 	github.com/meshplus/consensus v0.0.0-20211228075008-5f469b198531
 	github.com/meshplus/eth-kit v0.0.0-20220628081546-b5a85face78c
