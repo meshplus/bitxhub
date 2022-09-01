@@ -93,7 +93,7 @@ func TestDappManager_Manage(t *testing.T) {
 	assert.True(t, res.Ok, string(res.Result))
 
 	// test transer
-	transData, err := json.Marshal(dapps[5].TransferRecords[len(dapps[5].TransferRecords)-1])
+	transData, err := dapps[5].TransferRecords[len(dapps[5].TransferRecords)-1].Marshal()
 	assert.Nil(t, err)
 	res = dm.Manage(string(governance.EventTransfer), string(APPROVED), string(governance.GovernanceAvailable), dapps[5].DappID, transData)
 	assert.True(t, res.Ok, string(res.Result))
@@ -458,7 +458,7 @@ func dappPrepare(t *testing.T) (*DappManager, *mock_stub.MockStub, []*Dapp, [][]
 			OwnerAddr:  ownerAddr,
 			Status:     statusType[i],
 			Score:      1,
-			TransferRecords: []*TransferRecord{
+			TransferRecords: []*pb.TransferRecord{
 				{
 					From:       ownerAddr1,
 					To:         ownerAddr,
@@ -478,7 +478,7 @@ func dappPrepare(t *testing.T) (*DappManager, *mock_stub.MockStub, []*Dapp, [][]
 		}
 
 		if dapp.Status == governance.GovernanceTransferring {
-			dapp.TransferRecords = append(dapp.TransferRecords, &TransferRecord{
+			dapp.TransferRecords = append(dapp.TransferRecords, &pb.TransferRecord{
 				From:       ownerAddr,
 				To:         ownerAddr1,
 				Reason:     reason,

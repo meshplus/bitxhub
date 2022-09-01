@@ -58,7 +58,7 @@ const (
 const wasmGasLimit = 5000000000000000
 
 //
-//func TestSign(t *testing.T) {
+// func TestSign(t *testing.T) {
 //	privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
 //	assert.Nil(t, err)
 //	pubKey := privKey.PublicKey()
@@ -76,7 +76,7 @@ const wasmGasLimit = 5000000000000000
 //	if err != nil {
 //		return false, err
 //	}
-//}
+// }
 
 func TestNew(t *testing.T) {
 	config := generateMockConfig(t)
@@ -357,11 +357,11 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	var record1 pb.TransactionRecord
 	var record2 pb.TransactionRecord
 	var record3 pb.TransactionRecord
-	err = json.Unmarshal(val1, &record1)
+	err = record1.Unmarshal(val1)
 	assert.Nil(t, err)
-	err = json.Unmarshal(val2, &record2)
+	err = record2.Unmarshal(val2)
 	assert.Nil(t, err)
-	err = json.Unmarshal(val3, &record3)
+	err = record3.Unmarshal(val3)
 	assert.Nil(t, err)
 	assert.Equal(t, record1.Height, uint64(3))
 	assert.Equal(t, record1.Status, pb.TransactionStatus_BEGIN)
@@ -778,10 +778,11 @@ func mockIBTP(t *testing.T, index uint64, typ pb.IBTP_Type) *pb.IBTP {
 	bytes, err := content.Marshal()
 	assert.Nil(t, err)
 
-	ibtppd, err := json.Marshal(pb.Payload{
+	payload := pb.Payload{
 		Encrypted: false,
 		Content:   bytes,
-	})
+	}
+	ibtppd, err := payload.Marshal()
 	assert.Nil(t, err)
 
 	return &pb.IBTP{
@@ -801,10 +802,11 @@ func mockIBTP1(t *testing.T, index uint64, typ pb.IBTP_Type) *pb.IBTP {
 	bytes, err := content.Marshal()
 	assert.Nil(t, err)
 
-	ibtppd, err := json.Marshal(pb.Payload{
+	payload := pb.Payload{
 		Encrypted: false,
 		Content:   bytes,
-	})
+	}
+	ibtppd, err := payload.Marshal()
 	assert.Nil(t, err)
 
 	proof := []byte("1")
@@ -875,7 +877,7 @@ func mockRecordLedger(ledger map[string][]byte, txList []pb.Transaction, height 
 				Height: height + timeoutHeight,
 				Status: pb.TransactionStatus_BEGIN,
 			}
-			status, _ := json.Marshal(record)
+			status, _ := record.Marshal()
 			ledger[contracts.TxInfoKey(txId)] = status
 		}
 	}

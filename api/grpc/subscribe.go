@@ -9,12 +9,6 @@ import (
 	"github.com/meshplus/bitxhub/internal/model/events"
 )
 
-type InterchainStatus struct {
-	From string `json:"from"`
-	To   string `json:"to"`
-	Hash string `json:"hash"`
-}
-
 // Subscribe implements the interface for client to Subscribe the certain type of event
 // arose in bitxhub. This request will establish a websocket conn with client.
 func (cbs *ChainBrokerService) Subscribe(req *pb.SubscriptionRequest, server pb.ChainBroker_SubscribeServer) error {
@@ -96,7 +90,7 @@ func (cbs *ChainBrokerService) handleInterchainTxSubscription(server pb.ChainBro
 			if interStatus == nil {
 				continue
 			}
-			data, err := json.Marshal(interStatus)
+			data, err := interStatus.Marshal()
 			if err != nil {
 				cbs.logger.Fatalf("Marshal new block event: %s", err.Error())
 				return fmt.Errorf("marshal interchain tx status failed: %w", err)
@@ -189,20 +183,12 @@ func (cbs *ChainBrokerService) handleEvmLogSubscription(server pb.ChainBroker_Su
 	}
 }
 
-type interchainEvent struct {
-	InterchainTx      []*InterchainStatus `json:"interchain_tx"`
-	InterchainReceipt []*InterchainStatus `json:"interchain_receipt"`
-	InterchainConfirm []*InterchainStatus `json:"interchain_confirm"`
-	InterchainTxCount uint64              `json:"interchain_tx_count"`
-	BlockHeight       uint64              `json:"block_height"`
-}
-
 type SubscriptionKey struct {
 	PierID      string `json:"pier_id"`
 	AppchainDID string `json:"appchain_did"`
 }
 
-func (cbs *ChainBrokerService) interStatus(block *pb.Block, interchainMeta *pb.InterchainMeta) (*interchainEvent, error) {
+func (cbs *ChainBrokerService) interStatus(block *pb.Block, interchainMeta *pb.InterchainMeta) (*pb.InterchainEvent, error) {
 	// empty interchain tx
 	if len(interchainMeta.Counter) == 0 {
 		return nil, nil
@@ -213,9 +199,9 @@ func (cbs *ChainBrokerService) interStatus(block *pb.Block, interchainMeta *pb.I
 		return nil, fmt.Errorf("get chain meta from ledger failed: %w", err)
 	}
 
-	ev := &interchainEvent{
-		InterchainTx:      make([]*InterchainStatus, 0),
-		InterchainReceipt: make([]*InterchainStatus, 0),
+	ev := &pb.InterchainEvent{
+		InterchainTx:      make([]*pb.InterchainStatus, 0),
+		InterchainReceipt: make([]*pb.InterchainStatus, 0),
 		InterchainTxCount: meta.InterchainTxCount,
 		BlockHeight:       block.BlockHeader.Number,
 	}
@@ -228,7 +214,7 @@ func (cbs *ChainBrokerService) interStatus(block *pb.Block, interchainMeta *pb.I
 				return nil, fmt.Errorf("ibtp is empty")
 			}
 
-			status := &InterchainStatus{
+			status := &pb.InterchainStatus{
 				From: ibtp.From,
 				To:   ibtp.To,
 				Hash: ibtp.ID(),

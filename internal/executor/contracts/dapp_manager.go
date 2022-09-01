@@ -53,18 +53,10 @@ type Dapp struct {
 
 	Score             float64                                 `json:"score"`
 	EvaluationRecords map[string]*governance.EvaluationRecord `json:"evaluation_records"`
-	TransferRecords   []*TransferRecord                       `json:"transfer_records"`
+	TransferRecords   []*pb.TransferRecord                    `json:"transfer_records"`
 
 	Status governance.GovernanceStatus `json:"status"`
 	FSM    *fsm.FSM                    `json:"fsm"`
-}
-
-type TransferRecord struct {
-	From       string `json:"from"`
-	To         string `json:"to"`
-	Reason     string `json:"reason"`
-	Confirm    bool   `json:"confirm"`
-	CreateTime int64  `json:"create_time"`
 }
 
 type UpdateDappInfo struct {
@@ -283,7 +275,7 @@ func (dm *DappManager) update(updataInfo *Dapp) error {
 	return nil
 }
 
-func (dm *DappManager) transfer(dapp *Dapp, transRec *TransferRecord) {
+func (dm *DappManager) transfer(dapp *Dapp, transRec *pb.TransferRecord) {
 	dapp.TransferRecords = append(dapp.TransferRecords, transRec)
 	dapp.OwnerAddr = transRec.To
 	dm.SetObject(DappKey(dapp.DappID), *dapp)
@@ -349,8 +341,8 @@ func (dm *DappManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 				return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("update error: %v", err)))
 			}
 		case string(governance.EventTransfer):
-			transRec := &TransferRecord{}
-			if err := json.Unmarshal(extra, transRec); err != nil {
+			transRec := &pb.TransferRecord{}
+			if err := transRec.Unmarshal(extra); err != nil {
 				return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("unmarshal update data error:%v", err)))
 			}
 			transRec.CreateTime = dm.GetTxTimeStamp()
@@ -590,13 +582,13 @@ func (dm *DappManager) TransferDapp(id, newOwnerAddr, reason string) *boltvm.Res
 		return boltvm.Error(boltvm.DappTransferToSelfCode, fmt.Sprintf(string(boltvm.DappTransferToSelfMsg), newOwnerAddr))
 	}
 
-	transRec := &TransferRecord{
+	transRec := &pb.TransferRecord{
 		From:    dm.Caller(),
 		To:      newOwnerAddr,
 		Reason:  reason,
 		Confirm: false,
 	}
-	extra, err := json.Marshal(transRec)
+	extra, err := transRec.Marshal()
 	if err != nil {
 		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("marshal extra error: %v", err)))
 	}
@@ -877,7 +869,7 @@ func (dm *DappManager) isAvailable(dappID string) bool {
 }
 
 func (dm *DappManager) packageDappInfo(dappID, name string, typ string, desc string, url, conAddrs string, permits, ownerAddr string,
-	score float64, createTime int64, evaluationRecord map[string]*governance.EvaluationRecord, transferRecord []*TransferRecord, status governance.GovernanceStatus) (*Dapp, error) {
+	score float64, createTime int64, evaluationRecord map[string]*governance.EvaluationRecord, transferRecord []*pb.TransferRecord, status governance.GovernanceStatus) (*Dapp, error) {
 	if dappID == "" {
 		// register
 		dappMap := make(map[string]struct{})
