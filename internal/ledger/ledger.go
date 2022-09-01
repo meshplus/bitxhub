@@ -86,7 +86,7 @@ func New(repo *repo.Repo, blockchainStore storage.Storage, ldb stateStorage, bf 
 
 // PersistBlockData persists block data
 func (l *Ledger) PersistBlockData(blockData *BlockData) {
-	//current := time.Now()
+	// current := time.Now()
 	block := blockData.Block
 	receipts := blockData.Receipts
 	accounts := blockData.Accounts
@@ -110,7 +110,7 @@ func (l *Ledger) PersistBlockData(blockData *BlockData) {
 	}()
 	wg.Wait()
 
-	//PersistBlockDuration.Observe(float64(time.Since(current)) / float64(time.Second))
+	// PersistBlockDuration.Observe(float64(time.Since(current)) / float64(time.Second))
 }
 
 // Rollback rollback ledger to history version
@@ -209,13 +209,24 @@ func NewLevelDB(path string, typ string, writeBuffer int64, multiLdbThreshold in
 		multiLdbThreshold = defaultMultiLdbThreshold
 	}
 
+	// generate option of leveldb
+	multiplier := int(writeBuffer) / opt.DefaultWriteBuffer
+	ldbOpt := &opt.Options{
+		WriteBuffer:            opt.DefaultWriteBuffer * multiplier,
+		CompactionTableSize:    opt.DefaultCompactionTableSize * multiplier,
+		CompactionTotalSize:    opt.DefaultCompactionTotalSize * multiplier,
+		CompactionL0Trigger:    opt.DefaultCompactionL0Trigger * multiplier,
+		WriteL0SlowdownTrigger: opt.DefaultWriteL0SlowdownTrigger * multiplier,
+		WriteL0PauseTrigger:    opt.DefaultWriteL0PauseTrigger * multiplier,
+	}
+
 	if typ == NormalLeveldb {
-		s, err = leveldb.NewWithOpt(path, &opt.Options{WriteBuffer: int(writeBuffer)})
+		s, err = leveldb.NewWithOpt(path, ldbOpt)
 		if err != nil {
 			return nil, fmt.Errorf("init normal leveldb failed: %w", err)
 		}
 	} else if typ == MultiLeveldb {
-		s, err = leveldb.NewMultiLdb(path, &opt.Options{WriteBuffer: int(writeBuffer)}, multiLdbThreshold)
+		s, err = leveldb.NewMultiLdb(path, ldbOpt, multiLdbThreshold)
 		if err != nil {
 			return nil, fmt.Errorf("init normal leveldb failed: %w", err)
 		}
