@@ -119,45 +119,45 @@ func TestAppchainManager_Register(t *testing.T) {
 	mockStub.EXPECT().GetTxTimeStamp().Return(int64(1)).AnyTimes()
 
 	// check id error
-	res := am.RegisterAppchain("", chains[0].ChainName, chains[0].ChainType, chains[0].TrustRoot, "", chains[0].Desc, ruleAddr, ruleUrl, roles[0].ID, reason)
+	res := am.RegisterAppchain("", chains[0].ChainName, []byte(""), chains[0].ChainType, chains[0].TrustRoot, "", chains[0].Desc, ruleAddr, ruleUrl, roles[0].ID, reason)
 	assert.False(t, res.Ok, string(res.Result))
-	res = am.RegisterAppchain(chains[1].ID, chains[0].ChainName, chains[0].ChainType, chains[0].TrustRoot, "1", chains[0].Desc, ruleAddr, ruleUrl, roles[0].ID, reason)
+	res = am.RegisterAppchain(chains[1].ID, chains[0].ChainName, []byte(""), chains[0].ChainType, chains[0].TrustRoot, "1", chains[0].Desc, ruleAddr, ruleUrl, roles[0].ID, reason)
 	assert.False(t, res.Ok, string(res.Result))
 
 	// check broker error
-	res = am.RegisterAppchain(chains[0].ID, chains[0].ChainName, chains[0].ChainType, chains[0].TrustRoot, "", chains[0].Desc, ruleAddr, ruleUrl, roles[0].ID, reason)
+	res = am.RegisterAppchain(chains[0].ID, chains[0].ChainName, []byte(""), chains[0].ChainType, chains[0].TrustRoot, "", chains[0].Desc, ruleAddr, ruleUrl, roles[0].ID, reason)
 	assert.False(t, res.Ok, string(res.Result))
-	res = am.RegisterAppchain(chains[0].ID, chains[0].ChainName, chains[0].ChainType, chains[0].TrustRoot, "1", chains[0].Desc, ruleAddr, ruleUrl, roles[0].ID, reason)
+	res = am.RegisterAppchain(chains[0].ID, chains[0].ChainName, []byte(""), chains[0].ChainType, chains[0].TrustRoot, "1", chains[0].Desc, ruleAddr, ruleUrl, roles[0].ID, reason)
 	assert.False(t, res.Ok, string(res.Result))
 
 	// check name error
-	res = am.RegisterAppchain(chains[0].ID, "", chains[0].ChainType, chains[0].TrustRoot, string(chains[0].Broker), chains[0].Desc, ruleAddr, ruleUrl, roles[0].ID, reason)
+	res = am.RegisterAppchain(chains[0].ID, "", []byte(""), chains[0].ChainType, chains[0].TrustRoot, string(chains[0].Broker), chains[0].Desc, ruleAddr, ruleUrl, roles[0].ID, reason)
 	assert.False(t, res.Ok, string(res.Result))
-	res = am.RegisterAppchain(chains[0].ID, chains[1].ChainName, chains[0].ChainType, chains[0].TrustRoot, string(chains[0].Broker), chains[0].Desc, ruleAddr, ruleUrl, roles[0].ID, reason)
+	res = am.RegisterAppchain(chains[0].ID, chains[1].ChainName, []byte(""), chains[0].ChainType, chains[0].TrustRoot, string(chains[0].Broker), chains[0].Desc, ruleAddr, ruleUrl, roles[0].ID, reason)
 	assert.False(t, res.Ok, string(res.Result))
 
 	// check admin error
-	res = am.RegisterAppchain(chains[0].ID, chains[0].ChainName, chains[0].ChainType, chains[0].TrustRoot, string(chains[0].Broker), chains[0].Desc, ruleAddr, ruleUrl, "", reason)
+	res = am.RegisterAppchain(chains[0].ID, chains[0].ChainName, []byte(""), chains[0].ChainType, chains[0].TrustRoot, string(chains[0].Broker), chains[0].Desc, ruleAddr, ruleUrl, "", reason)
 	assert.False(t, res.Ok, string(res.Result))
 	assert.Contains(t, string(res.Result), string(boltvm.AppchainIncompleteAdminListCode))
-	res = am.RegisterAppchain(chains[0].ID, chains[0].ChainName, chains[0].ChainType, chains[0].TrustRoot, string(chains[0].Broker), chains[0].Desc, ruleAddr, ruleUrl, fmt.Sprintf("adminaddr,%s", roles[0].ID), reason)
+	res = am.RegisterAppchain(chains[0].ID, chains[0].ChainName, []byte(""), chains[0].ChainType, chains[0].TrustRoot, string(chains[0].Broker), chains[0].Desc, ruleAddr, ruleUrl, fmt.Sprintf("adminaddr,%s", roles[0].ID), reason)
 	assert.False(t, res.Ok, string(res.Result))
 	assert.Contains(t, string(res.Result), string(boltvm.AppchainIllegalAdminAddrCode))
-	res = am.RegisterAppchain(chains[0].ID, chains[0].ChainName, chains[0].ChainType, chains[0].TrustRoot, string(chains[0].Broker), chains[0].Desc, ruleAddr, ruleUrl, fmt.Sprintf("%s,%s", roles[0].ID, roles[1].ID), reason)
+	res = am.RegisterAppchain(chains[0].ID, chains[0].ChainName, []byte(""), chains[0].ChainType, chains[0].TrustRoot, string(chains[0].Broker), chains[0].Desc, ruleAddr, ruleUrl, fmt.Sprintf("%s,%s", roles[0].ID, roles[1].ID), reason)
 	assert.False(t, res.Ok, string(res.Result))
 	assert.Contains(t, string(res.Result), string(boltvm.AppchainDuplicateAdminCode))
 
 	// check rule url error
-	res = am.RegisterAppchain(chains[0].ID, chains[0].ChainName, chains[0].ChainType, chains[0].TrustRoot, string(chains[0].Broker), chains[0].Desc, ruleAddr, "", roles[0].ID, reason)
+	res = am.RegisterAppchain(chains[0].ID, chains[0].ChainName, []byte(""), chains[0].ChainType, chains[0].TrustRoot, string(chains[0].Broker), chains[0].Desc, ruleAddr, "", roles[0].ID, reason)
 	assert.False(t, res.Ok, string(res.Result))
 	assert.Contains(t, string(res.Result), string(boltvm.AppchainEmptyRuleUrlCode))
 
 	// submit proposal error
-	res = am.RegisterAppchain(chains[0].ID, chains[0].ChainName, chains[0].ChainType, chains[0].TrustRoot, string(chains[0].Broker), chains[0].Desc, ruleAddr, ruleUrl, roles[0].ID, reason)
+	res = am.RegisterAppchain(chains[0].ID, chains[0].ChainName, []byte(""), chains[0].ChainType, chains[0].TrustRoot, string(chains[0].Broker), chains[0].Desc, ruleAddr, ruleUrl, roles[0].ID, reason)
 	assert.False(t, res.Ok, string(res.Result))
 	assert.Contains(t, string(res.Result), string(boltvm.AppchainInternalErrCode))
 
-	res = am.RegisterAppchain(chains[2].ID, chains[0].ChainName, chains[0].ChainType, chains[0].TrustRoot, string(chains[0].Broker), chains[0].Desc, ruleAddr, ruleUrl, roles[0].ID, reason)
+	res = am.RegisterAppchain(chains[2].ID, chains[0].ChainName, []byte(""), chains[0].ChainType, chains[0].TrustRoot, string(chains[0].Broker), chains[0].Desc, ruleAddr, ruleUrl, roles[0].ID, reason)
 	assert.True(t, res.Ok, string(res.Result))
 }
 

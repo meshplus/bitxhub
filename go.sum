@@ -748,8 +748,8 @@ github.com/mattn/go-sqlite3 v1.11.0/go.mod h1:FPy6KqzDD04eiIsT53CuJW3U88zkxoIYsO
 github.com/mattn/go-tty v0.0.0-20180907095812-13ff1204f104/go.mod h1:XPvLUNfbS4fJH25nqRHfWLMa1ONC8Amw+mIA639KxkE=
 github.com/matttproud/golang_protobuf_extensions v1.0.1 h1:4hp9jkHxhMHkqkrB3Ix0jegS5sx/RkqARlsWZ6pIwiU=
 github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5Ld7szi9bcBfOoFv/3dc6xSMkL2PC0=
-github.com/meshplus/bitxhub-core v1.3.1-0.20220407025206-0341f306b5ea h1:ukqB2rpxFlUUhfTbbTXhgCo/bWskbu0Oz8QhiVhoxz4=
-github.com/meshplus/bitxhub-core v1.3.1-0.20220407025206-0341f306b5ea/go.mod h1:QIXQd/2h6FeT667j4SXVTnhUIN+/ix0cF3LKcr3ibiA=
+github.com/meshplus/bitxhub-core v1.3.1-0.20220905084944-11702bce122f h1:HI5Al6lH2TN8GLOiDykoNHoPzBqzHqCYUspCvPmsDJk=
+github.com/meshplus/bitxhub-core v1.3.1-0.20220905084944-11702bce122f/go.mod h1:QIXQd/2h6FeT667j4SXVTnhUIN+/ix0cF3LKcr3ibiA=
 github.com/meshplus/bitxhub-kit v1.1.1/go.mod h1:r4l4iqn0RPJreb/OmoYKfjCjQJrXpZX++6Qc31VG/1k=
 github.com/meshplus/bitxhub-kit v1.2.1-0.20210616114532-4849447f09e1/go.mod h1:wrEdhHp1tktzdwcWb4bOxYsVc+KkcrYL18IYWYeumPQ=
 github.com/meshplus/bitxhub-kit v1.2.1-0.20210902085548-07f4fa85bfc9/go.mod h1:wrEdhHp1tktzdwcWb4bOxYsVc+KkcrYL18IYWYeumPQ=
@@ -765,8 +765,6 @@ github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd h1:/8ydT0P
 github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd/go.mod h1:rS4AYMqKypLn2IPEnHICP//V2v16SZo4CWUbwMdihl0=
 github.com/meshplus/go-lightp2p v0.0.0-20220117071358-c37ba4e6dcbc h1:i/VwmBoNxMuQEyWaT6/1m/LpracPLtBgqtqzWcnDuhQ=
 github.com/meshplus/go-lightp2p v0.0.0-20220117071358-c37ba4e6dcbc/go.mod h1:ARRXc4Oo0iZjsj5CB+LTmcMNxK2c1fug7XsEZ7yPJvg=
-github.com/meshplus/go-wasm-metering v0.0.0-20211027061126-399a9f391310 h1:5ixU8zsAIdb9m1mZOOO+FoReRvX6luacCwfGhljg650=
-github.com/meshplus/go-wasm-metering v0.0.0-20211027061126-399a9f391310/go.mod h1:6yjsXoEefYqdsaSV+z4MGfslcqGS7Rd3eQI6bQYtYzs=
 github.com/meshplus/wasmer-go v1.0.5-0.20210817103436-19ec68f8bfe2 h1:tgu12zbRlfzFj+y+01WdOuTb3PEZg4XF77gFcoasyCU=
 github.com/meshplus/wasmer-go v1.0.5-0.20210817103436-19ec68f8bfe2/go.mod h1:0gzVdSfg6pysA6QVp6iVRPTagC6Wq9pOE8J86WKb2Fk=
 github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b/go.mod h1:01TrycV0kFyexm33Z7vhZRXopbI8J3TDReVlkTgMUxE=

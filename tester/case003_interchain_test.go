@@ -262,6 +262,7 @@ func (suite *Interchain) registerAppchain(privKey crypto.PrivateKey, chainId, ch
 	args := []*pb.Arg{
 		pb.String(chainId),
 		pb.String(chainName),
+		pb.Bytes([]byte("")),
 		pb.String(chainType),
 		pb.Bytes(nil),
 		pb.String(string(brokerData)),
