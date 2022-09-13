@@ -15,6 +15,15 @@ function print_red() {
   printf "${RED}%s${NC}\n" "$1"
 }
 
+function go_install() {
+  version=$(go env GOVERSION)
+  if [[ ! "$version" < "go1.16" ]];then
+      go install "$@"
+  else
+      go get "$@"
+  fi
+}
+
 # The sed commend with system judging
 # Examples:
 # sed -i 's/a/b/g' bob.txt => x_replace 's/a/b/g' bob.txt
@@ -27,3 +36,4 @@ function x_replace() {
     sed -i '' "$@"
   fi
 }
+
