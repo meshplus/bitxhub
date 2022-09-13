@@ -8,7 +8,7 @@ ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/lib
 COPY . /go/src/github.com/meshplus/bitxhub/
 
 RUN go env -w GOPROXY=https://goproxy.cn,direct \
-    && go get -u github.com/gobuffalo/packr/packr \
+    && go get github.com/gobuffalo/packr/packr@v1.30.1 \
     && make install \
     && cp ./build/wasm/lib/linux-amd64/libwasmer.so /lib \
     && bitxhub init \
