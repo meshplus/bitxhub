@@ -752,7 +752,7 @@ func (api *PublicEthereumAPI) formatBlock(block *pb.Block, fullTx bool) (map[str
 		"hash":             block.BlockHash,
 		"parentHash":       block.BlockHeader.ParentHash,
 		"nonce":            ethtypes.BlockNonce{}, // PoW specific
-		"sha3Uncles":       common.Hash{},         // No uncles in raft/rbft
+		"sha3Uncles":       types3.EmptyUncleHash, // No uncles in raft/rbft
 		"logsBloom":        block.BlockHeader.Bloom,
 		"transactionsRoot": block.BlockHeader.TxRoot,
 		"stateRoot":        block.BlockHeader.StateRoot,
