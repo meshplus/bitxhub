@@ -48,7 +48,7 @@ function Get_PM_Name(){
 function prepare() {
     print_blue "===> 1. Install packr"
     if ! type packr >/dev/null 2>&1; then
-      go get -u github.com/gobuffalo/packr/packr
+      go get github.com/gobuffalo/packr/packr@v1.30.1
     fi
     print_blue "===> 2. Install tmux with package manager"
     if ! type tmux >/dev/null 2>&1; then
