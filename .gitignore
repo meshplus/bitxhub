@@ -25,6 +25,7 @@ coverage.txt
 docs/.vuepress/dist
 testdata/storage
 internal/plugins/build
+config/License
 
 imports/imports.go
 goent.mod
