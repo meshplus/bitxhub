@@ -57,13 +57,13 @@ tester:
 
 ## make install: Go install the project
 install:
-	cd internal/repo && packr
+	cd internal/repo && packr2
 	rm -f imports/imports.go
 	$(GO) install -ldflags '${GOLDFLAGS}' ./cmd/${APP_NAME}
 	@printf "${GREEN}Install bitxhub successfully!${NC}\n"
 
 build:
-	cd internal/repo && packr
+	cd internal/repo && packr2
 	@mkdir -p bin
 	rm -f imports/imports.go
 	$(GO) build -ldflags '${GOLDFLAGS}' ./cmd/${APP_NAME}
@@ -73,7 +73,7 @@ build:
 # !!NOTICE: if using GO1.16+, the one of new features is don't automatically modify go.mod and go.sum
 # using the cmd to solve it: ` go env -w GOFLAGS="-mod=mod" `
 installent:
-	cd internal/repo && packr
+	cd internal/repo && packr2
 	cp imports/imports.go.template imports/imports.go
 	@sed "s?)?$(MODS))?" go.mod  | tr '@' '\n' > goent.mod
 	@cat goent.diff | grep '^replace' >> goent.mod
@@ -81,7 +81,7 @@ installent:
 	@printf "${GREEN}Install bitxhub ent successfully!${NC}\n"
 
 buildent:
-	cd internal/repo && packr
+	cd internal/repo && packr2
 	@mkdir -p bin
 	cp imports/imports.go.template imports/imports.go
 	@sed "s?)?$(MODS))?" go.mod  | tr '@' '\n' > goent.mod

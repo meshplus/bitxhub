@@ -1,8 +1,15 @@
-#!/usr/bin/env sh
-
+#!/usr/bin/env bash
+function go_install() {
+  version=$(go env GOVERSION)
+  if [[ ! "$version" < "go1.16" ]];then
+      go install "$@"
+  else
+      go get "$@"
+  fi
+}
 go env -w GO111MODULE=on
 go env -w GOPROXY=https://goproxy.cn,direct
-go get -u github.com/gobuffalo/packr/packr
+go_install github.com/gobuffalo/packr/v2/packr2@v2.8.3
 cd /code/bitxhub || exit
 make install
 mkdir -p /code/bitxhub/bin
