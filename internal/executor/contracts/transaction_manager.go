@@ -58,6 +58,9 @@ func (c *StatusChange) NotifyFlags() (bool, bool) {
 		}
 		return false, false
 	case pb.TransactionStatus_ROLLBACK:
+		if c.PrevStatus == pb.TransactionStatus_BEGIN {
+			return true, false
+		}
 		return false, false
 	}
 
@@ -77,6 +80,8 @@ const (
 	TransactionEvent_FAILURE       TransactionEvent = "failure"
 	TransactionEvent_SUCCESS       TransactionEvent = "success"
 	TransactionEvent_ROLLBACK      TransactionEvent = "rollback"
+	TransactionEvent_DstROLLBACK   TransactionEvent = "dst_rollback"
+	TransactionEvent_DstFAILURE    TransactionEvent = "dst_failure"
 	TransactionState_INIT                           = "init"
 )
 
@@ -84,6 +89,11 @@ var receipt2EventM = map[int32]TransactionEvent{
 	int32(pb.IBTP_RECEIPT_FAILURE):  TransactionEvent_FAILURE,
 	int32(pb.IBTP_RECEIPT_SUCCESS):  TransactionEvent_SUCCESS,
 	int32(pb.IBTP_RECEIPT_ROLLBACK): TransactionEvent_ROLLBACK,
+}
+
+var txStatus2EventM = map[int32]TransactionEvent{
+	int32(pb.TransactionStatus_BEGIN_FAILURE):  TransactionEvent_DstFAILURE,
+	int32(pb.TransactionStatus_BEGIN_ROLLBACK): TransactionEvent_DstROLLBACK,
 }
 
 func (t *TransactionManager) BeginMultiTXs(globalID, ibtpID string, timeoutHeight uint64, isFailed bool, count uint64) *boltvm.Response {
@@ -171,6 +181,56 @@ func (t *TransactionManager) Begin(txId string, timeoutHeight uint64, isFailed b
 	change := StatusChange{
 		PrevStatus: -1,
 		CurStatus:  record.Status,
+	}
+
+	data, err := json.Marshal(change)
+	if err != nil {
+		return boltvm.Error(boltvm.TransactionInternalErrCode, fmt.Sprintf(string(boltvm.TransactionInternalErrMsg), err.Error()))
+	}
+
+	return boltvm.Success(data)
+}
+
+// BeginInterBitXHub transaction management for inter-bitxhub transaction
+// - if curStatus == BEGIN && txStatus == BEGIN_FAIL, then change curStatus to FAIL and notify src chain
+// - if curStatus == BEGIN && txStatus == BEGIN_ROLLBACK, then change curStatus to ROLLBACK and notify src chain
+// - isFailed note that whether dstBitXHub is available
+func (t *TransactionManager) BeginInterBitXHub(txId string, timeoutHeight uint64, txStatus int32, isFailed bool) *boltvm.Response {
+	if bxhErr := t.checkCurrentCaller(); bxhErr != nil {
+		return boltvm.Error(bxhErr.Code, string(bxhErr.Msg))
+	}
+
+	change := StatusChange{}
+	var record pb.TransactionRecord
+	ok := t.GetObject(TxInfoKey(txId), &record)
+	if ok {
+		change.PrevStatus = record.Status
+		if err := t.setFSM(&record.Status, txStatus2EventM[txStatus]); err != nil {
+			return boltvm.Error(boltvm.TransactionStateErrCode, fmt.Sprintf(string(boltvm.TransactionStateErrMsg), fmt.Sprintf("transaction %s with state %v get unexpected receipt %v", txId, record.Status, txStatus)))
+		}
+		change.CurStatus = record.Status
+
+		t.SetObject(TxInfoKey(txId), record)
+	} else {
+		record := pb.TransactionRecord{
+			Status: pb.TransactionStatus_BEGIN,
+			Height: t.GetCurrentHeight() + timeoutHeight,
+		}
+
+		if timeoutHeight == 0 || timeoutHeight >= math.MaxUint64-t.GetCurrentHeight() {
+			record.Height = math.MaxUint64
+		}
+
+		if isFailed {
+			record.Status = pb.TransactionStatus_BEGIN_FAILURE
+		}
+
+		t.AddObject(TxInfoKey(txId), record)
+
+		change = StatusChange{
+			PrevStatus: -1,
+			CurStatus:  record.Status,
+		}
 	}
 
 	data, err := json.Marshal(change)
@@ -280,6 +340,8 @@ func (t *TransactionManager) setFSM(state *pb.TransactionStatus, event Transacti
 			{Name: TransactionEvent_SUCCESS.String(), Src: []string{pb.TransactionStatus_BEGIN.String()}, Dst: pb.TransactionStatus_SUCCESS.String()},
 			{Name: TransactionEvent_FAILURE.String(), Src: []string{pb.TransactionStatus_BEGIN.String(), pb.TransactionStatus_BEGIN_FAILURE.String()}, Dst: pb.TransactionStatus_FAILURE.String()},
 			{Name: TransactionEvent_ROLLBACK.String(), Src: []string{pb.TransactionStatus_BEGIN_ROLLBACK.String()}, Dst: pb.TransactionStatus_ROLLBACK.String()},
+			{Name: TransactionEvent_DstFAILURE.String(), Src: []string{pb.TransactionStatus_BEGIN.String()}, Dst: pb.TransactionStatus_FAILURE.String()},
+			{Name: TransactionEvent_DstROLLBACK.String(), Src: []string{pb.TransactionStatus_BEGIN.String()}, Dst: pb.TransactionStatus_ROLLBACK.String()},
 		},
 		fsm.Callbacks{
 			TransactionEvent_BEGIN.String():         callbackFunc,
@@ -288,6 +350,8 @@ func (t *TransactionManager) setFSM(state *pb.TransactionStatus, event Transacti
 			TransactionEvent_SUCCESS.String():       callbackFunc,
 			TransactionEvent_FAILURE.String():       callbackFunc,
 			TransactionEvent_ROLLBACK.String():      callbackFunc,
+			TransactionEvent_DstFAILURE.String():    callbackFunc,
+			TransactionEvent_DstROLLBACK.String():   callbackFunc,
 		},
 	)
 
