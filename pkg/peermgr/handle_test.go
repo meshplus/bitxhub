@@ -129,7 +129,7 @@ func NewSwarms(t *testing.T, peerCnt int) []*Swarm {
 			record := pb.TransactionRecord{
 				Status: pb.TransactionStatus_SUCCESS,
 			}
-			data, err := json.Marshal(record)
+			data, err := record.Marshal()
 			require.Nil(t, err)
 			return true, data
 		case constant.NodeManagerContractAddr.Address().String():

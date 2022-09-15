@@ -1,12 +1,12 @@
 package contracts
 
 import (
-	"encoding/json"
 	"testing"
 
 	"github.com/golang/mock/gomock"
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/boltvm/mock_stub"
+	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/stretchr/testify/require"
 )
 
@@ -17,14 +17,14 @@ func TestTrustChain_AddTrustMeta(t *testing.T) {
 		Stub: mockStub,
 	}
 
-	trustMeta := &TrustMeta{
+	trustMeta := &pb.TrustMeta{
 		TrustContractAddr: "TrustContractAddr",
 	}
-	trustMetaData, err := json.Marshal(trustMeta)
+	trustMetaData, err := trustMeta.Marshal()
 	require.Nil(t, err)
 
-	trustMeta1 := &TrustMeta{}
-	trustMetaData1, err := json.Marshal(trustMeta1)
+	trustMeta1 := &pb.TrustMeta{}
+	trustMetaData1, err := trustMeta1.Marshal()
 	require.Nil(t, err)
 
 	mockStub.EXPECT().CrossInvoke(trustMeta.TrustContractAddr, gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
@@ -43,13 +43,13 @@ func TestTrustChain_GetTrustMeta(t *testing.T) {
 		Stub: mockStub,
 	}
 
-	trustMeta := &TrustMeta{
+	trustMeta := &pb.TrustMeta{
 		TrustContractAddr: "TrustContractAddr",
 	}
-	trustMetaData, err := json.Marshal(trustMeta)
+	trustMetaData, err := trustMeta.Marshal()
 	require.Nil(t, err)
-	trustMeta1 := &TrustMeta{}
-	trustMetaData1, err := json.Marshal(trustMeta1)
+	trustMeta1 := &pb.TrustMeta{}
+	trustMetaData1, err := trustMeta1.Marshal()
 	require.Nil(t, err)
 
 	mockStub.EXPECT().CrossInvoke(trustMeta.TrustContractAddr, gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()

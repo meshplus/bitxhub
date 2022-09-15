@@ -31,13 +31,13 @@ require (
 	github.com/juju/ratelimit v1.0.1
 	github.com/libp2p/go-libp2p-core v0.5.6
 	github.com/libp2p/go-libp2p-swarm v0.2.4
-	github.com/looplab/fsm v0.2.0
-	github.com/magiconair/properties v1.8.5
-	github.com/meshplus/bitxhub-core v1.3.1-0.20220810080906-e29855b55db6
-	github.com/meshplus/bitxhub-kit v1.2.1-0.20220815090757-6256823a7426
+	github.com/looplab/fsm v0.3.0
+	github.com/magiconair/properties v1.8.4
+	github.com/meshplus/bitxhub-core v1.3.1-0.20220829061832-bc5e830c749d
+	github.com/meshplus/bitxhub-kit v1.2.1-0.20220808015652-3962637570f9
 	github.com/meshplus/bitxhub-model v1.2.1-0.20220815081129-609df840b044
 	github.com/meshplus/consensus v0.0.0-20211228075008-5f469b198531
-	github.com/meshplus/eth-kit v0.0.0-20220628031226-4b30a994a2a6
+	github.com/meshplus/eth-kit v0.0.0-20220628081546-b5a85face78c
 	github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd
 	github.com/meshplus/go-lightp2p v0.0.0-20220712082352-ed86b78e8baf
 	github.com/miguelmota/go-solidity-sha3 v0.1.1

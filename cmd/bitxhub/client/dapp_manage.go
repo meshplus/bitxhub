@@ -545,7 +545,7 @@ func printDapp(dapps []*contracts.Dapp) {
 	PrintTable(table, true)
 }
 
-func printTransferRecords(tr []*contracts.TransferRecord) string {
+func printTransferRecords(tr []*pb.TransferRecord) string {
 	str := ""
 	for _, r := range tr {
 		str = fmt.Sprintf("%s\n%s, %s, %s, %d, %v", str, r.To, r.From, r.Reason, r.CreateTime, r.Confirm)

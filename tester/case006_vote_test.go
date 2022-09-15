@@ -142,8 +142,8 @@ func (suite *Governance) TestGovernance() {
 	suite.Require().Nil(err)
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	adminNonce1++
-	b := &contracts.Ballot{}
-	err = json.Unmarshal(ret.Ret, &b)
+	b := &pb.Ballot{}
+	err = b.Unmarshal(ret.Ret)
 	suite.Require().Nil(err)
 	suite.Require().Equal(string(contracts.APPROVED), b.Approve)
 
@@ -179,15 +179,15 @@ func (suite *Governance) TestGovernance() {
 	suite.Require().True(ret.IsSuccess(), string(ret.Ret))
 	adminNonce4++
 
-	//// vote4: error, the proposal is closed
-	//ret, err = invokeBVMContract(suite.api, priAdmin4, adminNonce4, constant.GovernanceContractAddr.Address(), "Vote",
+	// // vote4: error, the proposal is closed
+	// ret, err = invokeBVMContract(suite.api, priAdmin4, adminNonce4, constant.GovernanceContractAddr.Address(), "Vote",
 	//	pb.String(registerProposalId),
 	//	pb.String(contracts.BallotApprove),
 	//	pb.String("reason"),
-	//)
-	//suite.Require().Nil(err)
-	//suite.Require().False(ret.IsSuccess(), string(ret.Ret))
-	//adminNonce4++
+	// )
+	// suite.Require().Nil(err)
+	// suite.Require().False(ret.IsSuccess(), string(ret.Ret))
+	// adminNonce4++
 
 	// get approve num
 	ret, err = invokeBVMContract(suite.api, priAdmin1, adminNonce1, constant.GovernanceContractAddr.Address(), "GetApproveNum", pb.String(registerProposalId))

@@ -1,7 +1,6 @@
 package client
 
 import (
-	"encoding/json"
 	"fmt"
 	"math/big"
 	"strconv"
@@ -109,7 +108,7 @@ func sendTxOrView(ctx *cli.Context, sendType, toString string, amount *big.Int, 
 		return nil, fmt.Errorf("sign tx error: %s", err)
 	}
 
-	reqData, err := json.Marshal(tx)
+	reqData, err := tx.Marshal()
 	if err != nil {
 		return nil, fmt.Errorf("marshal tx error: %w", err)
 	}
