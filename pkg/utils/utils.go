@@ -164,7 +164,7 @@ func GetTxStatus(ledger *ledger.Ledger, id string) (pb.TransactionStatus, error)
 		return 0, fmt.Errorf("no tx status found for ibtp %s", id)
 	}
 	var record pb.TransactionRecord
-	if err := json.Unmarshal(val, &record); err != nil {
+	if err := record.Unmarshal(val); err != nil {
 		return 0, fmt.Errorf("unmarshal transaction record error: %w", err)
 	}
 

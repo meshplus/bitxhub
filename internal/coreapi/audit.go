@@ -123,7 +123,7 @@ func hasPermitedInfo(event *pb.Event, permitNodes, permitChains map[string]struc
 	}
 
 	auditRelatedObjInfo := pb.AuditRelatedObjInfo{}
-	if err := json.Unmarshal(event.Data, &auditRelatedObjInfo); err != nil {
+	if err := auditRelatedObjInfo.Unmarshal(event.Data); err != nil {
 		return false
 	}
 

@@ -33,13 +33,13 @@ func TestGovernance_SubmitProposal(t *testing.T) {
 	idExistent := "idExistent-1"
 	addrApproved := "addrApproved"
 	addrAganisted := "addrAganisted"
-	approveBallot := Ballot{
+	approveBallot := pb.Ballot{
 		VoterAddr: addrApproved,
 		Approve:   BallotApprove,
 		Num:       1,
 		Reason:    "",
 	}
-	againstBallot := Ballot{
+	againstBallot := pb.Ballot{
 		VoterAddr: addrAganisted,
 		Approve:   BallotReject,
 		Num:       1,
@@ -49,7 +49,7 @@ func TestGovernance_SubmitProposal(t *testing.T) {
 		Id:         idExistent,
 		Typ:        AppchainMgr,
 		Status:     PROPOSED,
-		BallotMap:  map[string]Ballot{addrApproved: approveBallot, addrAganisted: againstBallot},
+		BallotMap:  map[string]pb.Ballot{addrApproved: approveBallot, addrAganisted: againstBallot},
 		ApproveNum: 1,
 		AgainstNum: 1,
 	}
@@ -131,13 +131,13 @@ func TestGovernance_QueryProposal(t *testing.T) {
 	addrAganisted := "addrAganisted"
 	addrNotVoted := "addrNotVoted"
 
-	approveBallot := Ballot{
+	approveBallot := pb.Ballot{
 		VoterAddr: addrApproved,
 		Approve:   BallotApprove,
 		Num:       1,
 		Reason:    "",
 	}
-	againstBallot := Ballot{
+	againstBallot := pb.Ballot{
 		VoterAddr: addrAganisted,
 		Approve:   BallotReject,
 		Num:       1,
@@ -148,7 +148,7 @@ func TestGovernance_QueryProposal(t *testing.T) {
 		Typ:                    AppchainMgr,
 		Status:                 PROPOSED,
 		ObjId:                  "objId",
-		BallotMap:              map[string]Ballot{addrApproved: approveBallot, addrAganisted: againstBallot},
+		BallotMap:              map[string]pb.Ballot{addrApproved: approveBallot, addrAganisted: againstBallot},
 		ApproveNum:             1,
 		AgainstNum:             1,
 		InitialElectorateNum:   4,
@@ -269,20 +269,22 @@ func TestGovernance_QueryProposal(t *testing.T) {
 	res = g.GetAvaliableElectorateNum(idNonexistent)
 	assert.False(t, res.Ok, string(res.Result))
 
-	var v = &Ballot{}
+	var v = &pb.Ballot{}
 	res = g.GetBallot(addrApproved, idNonexistent)
 	assert.False(t, res.Ok, string(res.Result))
 	res = g.GetBallot(addrNotVoted, idExistent)
 	assert.False(t, res.Ok, string(res.Result))
 	res = g.GetBallot(addrApproved, idExistent)
 	assert.True(t, res.Ok, string(res.Result))
-	err = json.Unmarshal(res.Result, v)
+	v = &pb.Ballot{}
+	err = v.Unmarshal(res.Result)
 	assert.Nil(t, err)
 	assert.Equal(t, BallotApprove, v.Approve)
 	assert.Equal(t, uint64(1), v.Num)
 	res = g.GetBallot(addrAganisted, idExistent)
 	assert.True(t, res.Ok, string(res.Result))
-	err = json.Unmarshal(res.Result, v)
+	v = &pb.Ballot{}
+	err = v.Unmarshal(res.Result)
 	assert.Nil(t, err)
 	assert.Equal(t, BallotReject, v.Approve)
 	assert.Equal(t, uint64(1), v.Num)
@@ -344,13 +346,13 @@ func TestGovernance_Vote(t *testing.T) {
 	addrNotVoted13 := "addrNotVoted13"
 	addrNotVoted14 := "addrNotVoted14"
 
-	approveBallot := Ballot{
+	approveBallot := pb.Ballot{
 		VoterAddr: addrApproved,
 		Approve:   BallotApprove,
 		Num:       1,
 		Reason:    "",
 	}
-	againstBallot := Ballot{
+	againstBallot := pb.Ballot{
 		VoterAddr: addrAganisted,
 		Approve:   BallotReject,
 		Num:       1,
@@ -362,7 +364,7 @@ func TestGovernance_Vote(t *testing.T) {
 		Status:                 PROPOSED,
 		ObjId:                  "objId",
 		IsSpecial:              false,
-		BallotMap:              map[string]Ballot{addrApproved: approveBallot, addrAganisted: againstBallot},
+		BallotMap:              map[string]pb.Ballot{addrApproved: approveBallot, addrAganisted: againstBallot},
 		LockProposalId:         idNotReachThreshold,
 		ApproveNum:             1,
 		AgainstNum:             1,
@@ -792,13 +794,13 @@ func TestGovernance_WithdrawProposal(t *testing.T) {
 	addrApproved := "addrApproved"
 	addrAganisted := "addrAganisted"
 
-	approveBallot := Ballot{
+	approveBallot := pb.Ballot{
 		VoterAddr: addrApproved,
 		Approve:   BallotApprove,
 		Num:       1,
 		Reason:    "",
 	}
-	againstBallot := Ballot{
+	againstBallot := pb.Ballot{
 		VoterAddr: addrAganisted,
 		Approve:   BallotReject,
 		Num:       1,
@@ -820,7 +822,7 @@ func TestGovernance_WithdrawProposal(t *testing.T) {
 		ObjId:          appchainID,
 		Typ:            AppchainMgr,
 		Status:         PROPOSED,
-		BallotMap:      map[string]Ballot{addrApproved: approveBallot, addrAganisted: againstBallot},
+		BallotMap:      map[string]pb.Ballot{addrApproved: approveBallot, addrAganisted: againstBallot},
 		ApproveNum:     1,
 		AgainstNum:     1,
 		LockProposalId: idExistent2,
@@ -835,7 +837,7 @@ func TestGovernance_WithdrawProposal(t *testing.T) {
 		ObjId:      appchainID,
 		Typ:        AppchainMgr,
 		Status:     PAUSED,
-		BallotMap:  map[string]Ballot{addrApproved: approveBallot, addrAganisted: againstBallot},
+		BallotMap:  map[string]pb.Ballot{addrApproved: approveBallot, addrAganisted: againstBallot},
 		ApproveNum: 1,
 		AgainstNum: 1,
 		Extra:      chainData,
@@ -886,7 +888,7 @@ func TestGovernance_WithdrawProposal(t *testing.T) {
 			return true
 		}).Return(true).AnyTimes()
 	mockStub.EXPECT().AddObject(gomock.Any(), gomock.Any()).AnyTimes()
-	//mockStub.EXPECT().CurrentCaller().Return("").AnyTimes()
+	// mockStub.EXPECT().CurrentCaller().Return("").AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "Manage", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("", "")).Times(1)
 	mockStub.EXPECT().CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "Manage", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
@@ -925,13 +927,13 @@ func TestGovernance_UpdateAvaliableElectorateNum(t *testing.T) {
 	addrApproved := "addrApproved"
 	addrAganisted := "addrAganisted"
 
-	approveBallot := Ballot{
+	approveBallot := pb.Ballot{
 		VoterAddr: addrApproved,
 		Approve:   BallotApprove,
 		Num:       1,
 		Reason:    "",
 	}
-	againstBallot := Ballot{
+	againstBallot := pb.Ballot{
 		VoterAddr: addrAganisted,
 		Approve:   BallotReject,
 		Num:       1,
@@ -953,7 +955,7 @@ func TestGovernance_UpdateAvaliableElectorateNum(t *testing.T) {
 		ObjId:                  appchainID,
 		Typ:                    AppchainMgr,
 		Status:                 PROPOSED,
-		BallotMap:              map[string]Ballot{addrApproved: approveBallot, addrAganisted: againstBallot},
+		BallotMap:              map[string]pb.Ballot{addrApproved: approveBallot, addrAganisted: againstBallot},
 		ApproveNum:             1,
 		AgainstNum:             1,
 		LockProposalId:         idExistent2,
@@ -969,7 +971,7 @@ func TestGovernance_UpdateAvaliableElectorateNum(t *testing.T) {
 		ObjId:                  appchainID,
 		Typ:                    AppchainMgr,
 		Status:                 PROPOSED,
-		BallotMap:              map[string]Ballot{addrApproved: approveBallot, addrAganisted: againstBallot},
+		BallotMap:              map[string]pb.Ballot{addrApproved: approveBallot, addrAganisted: againstBallot},
 		ApproveNum:             1,
 		AgainstNum:             1,
 		Extra:                  chainData,
@@ -1026,13 +1028,13 @@ func TestGovernance_LockLowPriorityProposal(t *testing.T) {
 	addrApproved := "addrApproved"
 	addrAganisted := "addrAganisted"
 
-	approveBallot := Ballot{
+	approveBallot := pb.Ballot{
 		VoterAddr: addrApproved,
 		Approve:   BallotApprove,
 		Num:       1,
 		Reason:    "",
 	}
-	againstBallot := Ballot{
+	againstBallot := pb.Ballot{
 		VoterAddr: addrAganisted,
 		Approve:   BallotReject,
 		Num:       1,
@@ -1054,7 +1056,7 @@ func TestGovernance_LockLowPriorityProposal(t *testing.T) {
 		ObjId:              appchainID,
 		Typ:                AppchainMgr,
 		Status:             PROPOSED,
-		BallotMap:          map[string]Ballot{addrApproved: approveBallot, addrAganisted: againstBallot},
+		BallotMap:          map[string]pb.Ballot{addrApproved: approveBallot, addrAganisted: againstBallot},
 		ApproveNum:         1,
 		AgainstNum:         1,
 		Extra:              chainData,
@@ -1105,13 +1107,13 @@ func TestGovernance_UnLockLowPriorityProposal(t *testing.T) {
 	addrApproved := "addrApproved"
 	addrAganisted := "addrAganisted"
 
-	approveBallot := Ballot{
+	approveBallot := pb.Ballot{
 		VoterAddr: addrApproved,
 		Approve:   BallotApprove,
 		Num:       1,
 		Reason:    "",
 	}
-	againstBallot := Ballot{
+	againstBallot := pb.Ballot{
 		VoterAddr: addrAganisted,
 		Approve:   BallotReject,
 		Num:       1,
@@ -1133,7 +1135,7 @@ func TestGovernance_UnLockLowPriorityProposal(t *testing.T) {
 		ObjId:              appchainID,
 		Typ:                AppchainMgr,
 		Status:             PAUSED,
-		BallotMap:          map[string]Ballot{addrApproved: approveBallot, addrAganisted: againstBallot},
+		BallotMap:          map[string]pb.Ballot{addrApproved: approveBallot, addrAganisted: againstBallot},
 		ApproveNum:         1,
 		AgainstNum:         1,
 		Extra:              chainData,
@@ -1188,13 +1190,13 @@ func TestGovernance_ZeroPermission(t *testing.T) {
 
 	addrApproved := "addrApproved"
 	addrAganisted := "addrAganisted"
-	approveBallot := Ballot{
+	approveBallot := pb.Ballot{
 		VoterAddr: addrApproved,
 		Approve:   BallotApprove,
 		Num:       1,
 		Reason:    "",
 	}
-	againstBallot := Ballot{
+	againstBallot := pb.Ballot{
 		VoterAddr: addrAganisted,
 		Approve:   BallotReject,
 		Num:       1,
@@ -1216,7 +1218,7 @@ func TestGovernance_ZeroPermission(t *testing.T) {
 		ObjId:        appchainID,
 		Typ:          AppchainMgr,
 		Status:       PAUSED,
-		BallotMap:    map[string]Ballot{addrApproved: approveBallot, addrAganisted: againstBallot},
+		BallotMap:    map[string]pb.Ballot{addrApproved: approveBallot, addrAganisted: againstBallot},
 		ApproveNum:   1,
 		AgainstNum:   1,
 		Extra:        chainData,
@@ -1257,13 +1259,13 @@ func TestGovernance_EndObjProposal(t *testing.T) {
 
 	addrApproved := "addrApproved"
 	addrAganisted := "addrAganisted"
-	approveBallot := Ballot{
+	approveBallot := pb.Ballot{
 		VoterAddr: addrApproved,
 		Approve:   BallotApprove,
 		Num:       1,
 		Reason:    "",
 	}
-	againstBallot := Ballot{
+	againstBallot := pb.Ballot{
 		VoterAddr: addrAganisted,
 		Approve:   BallotReject,
 		Num:       1,
@@ -1285,7 +1287,7 @@ func TestGovernance_EndObjProposal(t *testing.T) {
 		ObjId:        appchainID,
 		Typ:          AppchainMgr,
 		Status:       PAUSED,
-		BallotMap:    map[string]Ballot{addrApproved: approveBallot, addrAganisted: againstBallot},
+		BallotMap:    map[string]pb.Ballot{addrApproved: approveBallot, addrAganisted: againstBallot},
 		ApproveNum:   1,
 		AgainstNum:   1,
 		Extra:        chainData,

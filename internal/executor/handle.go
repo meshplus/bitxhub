@@ -892,7 +892,7 @@ func (exec *BlockExecutor) setTimeoutList(height uint64, txList []pb.Transaction
 
 				}
 				record := pb.TransactionRecord{}
-				if err := json.Unmarshal(val, &record); err != nil {
+				if err := record.Unmarshal(val); err != nil {
 					return err
 				}
 
@@ -963,14 +963,14 @@ func (exec *BlockExecutor) removeFromStr(str string, txId string) string {
 	return strings.Join(list, ",")
 }
 
-func (exec *BlockExecutor) getTxInfoByGlobalID(id string) (*contracts.TransactionInfo, error) {
+func (exec *BlockExecutor) getTxInfoByGlobalID(id string) (*pb.TransactionInfo, error) {
 	ok, val := exec.ledger.GetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.GlobalTxInfoKey(id)))
 	if !ok {
 		return nil, fmt.Errorf("cannot get tx info by global ID: %s", id)
 	}
 
-	var txInfo contracts.TransactionInfo
-	if err := json.Unmarshal(val, &txInfo); err != nil {
+	var txInfo pb.TransactionInfo
+	if err := txInfo.Unmarshal(val); err != nil {
 		return nil, err
 	}
 
@@ -992,7 +992,7 @@ func (exec *BlockExecutor) getMultiTxIBTPsMap(height uint64) (map[string][]strin
 }
 
 func (exec *BlockExecutor) setTxRecord(id string, record pb.TransactionRecord) error {
-	value, err := json.Marshal(record)
+	value, err := record.Marshal()
 	if err != nil {
 		return fmt.Errorf("marshal record error: %w", err)
 	}
@@ -1013,7 +1013,7 @@ func (exec *BlockExecutor) setGlobalTxStatus(globalID string, status pb.Transact
 		txInfo.ChildTxInfo[id] = status
 	}
 
-	data, err := json.Marshal(txInfo)
+	data, err := txInfo.Marshal()
 	if err != nil {
 		return fmt.Errorf("marshal txInfo %v: %w", txInfo, err)
 	}
