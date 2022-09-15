@@ -13,7 +13,7 @@ RUN go mod download -x
 # Build real binaries
 COPY . .
 
-RUN go get -u github.com/gobuffalo/packr/packr
+RUN go get github.com/gobuffalo/packr/v2/packr2@v2.8.3
 
 # Build bitxhub node
 RUN make install

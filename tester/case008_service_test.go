@@ -74,6 +74,7 @@ func (suite *Service) TestRegisterService() {
 	args := []*pb.Arg{
 		pb.String(chainID1),
 		pb.String(chainName1),
+		pb.Bytes([]byte("")),
 		pb.String(appchainMgr.ChainTypeFabric1_4_3),
 		pb.Bytes(nil),
 		pb.String(string(fabricBrokerData)),
@@ -307,6 +308,7 @@ func (suite *Service) TestLogoutAppchainAffectService() {
 	args := []*pb.Arg{
 		pb.String(chainID1),
 		pb.String(chainName1),
+		pb.Bytes([]byte("")),
 		pb.String(appchainMgr.ChainTypeFabric1_4_3),
 		pb.Bytes(nil),
 		pb.String(string(fabricBrokerData)),
@@ -531,6 +533,7 @@ func (suite *Service) TestLogoutService() {
 	args := []*pb.Arg{
 		pb.String(chainID1),
 		pb.String(chainName1),
+		pb.Bytes([]byte("")),
 		pb.String(appchainMgr.ChainTypeFabric1_4_3),
 		pb.Bytes(nil),
 		pb.String(string(fabricBrokerData)),

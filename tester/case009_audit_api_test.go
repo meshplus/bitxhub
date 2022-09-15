@@ -185,6 +185,7 @@ func (suite *AuditAPI) registerAppchain(k1 crypto.PrivateKey, kNonce1 uint64, ad
 	args := []*pb.Arg{
 		pb.String(chainId),
 		pb.String(chainName),
+		pb.Bytes([]byte("")),
 		pb.String(chainType),
 		pb.Bytes(nil),
 		pb.String("broker"),
