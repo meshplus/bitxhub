@@ -963,14 +963,14 @@ func (exec *BlockExecutor) removeFromStr(str string, txId string) string {
 	return strings.Join(list, ",")
 }
 
-func (exec *BlockExecutor) getTxInfoByGlobalID(id string) (*pb.TransactionInfo, error) {
+func (exec *BlockExecutor) getTxInfoByGlobalID(id string) (*contracts.TransactionInfo, error) {
 	ok, val := exec.ledger.GetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.GlobalTxInfoKey(id)))
 	if !ok {
 		return nil, fmt.Errorf("cannot get tx info by global ID: %s", id)
 	}
 
-	var txInfo pb.TransactionInfo
-	if err := txInfo.Unmarshal(val); err != nil {
+	var txInfo contracts.TransactionInfo
+	if err := json.Unmarshal(val, &txInfo); err != nil {
 		return nil, err
 	}
 
@@ -1013,7 +1013,7 @@ func (exec *BlockExecutor) setGlobalTxStatus(globalID string, status pb.Transact
 		txInfo.ChildTxInfo[id] = status
 	}
 
-	data, err := txInfo.Marshal()
+	data, err := json.Marshal(txInfo)
 	if err != nil {
 		return fmt.Errorf("marshal txInfo %v: %w", txInfo, err)
 	}
