@@ -379,8 +379,10 @@ func (dm *DappManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 		}
 	}
 
-	if err := dm.postAuditDappEvent(objId); err != nil {
-		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("post audit dapp event error: %v", err)))
+	if dm.EnableAudit() {
+		if err := dm.postAuditDappEvent(objId); err != nil {
+			return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("post audit dapp event error: %v", err)))
+		}
 	}
 	return boltvm.Success(nil)
 }
@@ -428,8 +430,10 @@ func (dm *DappManager) RegisterDapp(name, typ, desc, url, conAddrs, permits, rea
 
 	dm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(res.Result)))
 
-	if err := dm.postAuditDappEvent(dapp.DappID); err != nil {
-		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("post audit dapp event error: %v", err)))
+	if dm.EnableAudit() {
+		if err := dm.postAuditDappEvent(dapp.DappID); err != nil {
+			return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("post audit dapp event error: %v", err)))
+		}
 	}
 
 	return getGovernanceRet(string(res.Result), []byte(dapp.DappID))
@@ -489,8 +493,10 @@ func (dm *DappManager) UpdateDapp(id, name, desc, url, conAddrs, permits, reason
 		if err := dm.update(newDapp); err != nil {
 			return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("update error: %v", err)))
 		}
-		if err := dm.postAuditDappEvent(id); err != nil {
-			return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("post audit dapp event error: %v", err)))
+		if dm.EnableAudit() {
+			if err := dm.postAuditDappEvent(id); err != nil {
+				return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("post audit dapp event error: %v", err)))
+			}
 		}
 		return getGovernanceRet("", nil)
 	}
@@ -555,8 +561,10 @@ func (dm *DappManager) UpdateDapp(id, name, desc, url, conAddrs, permits, reason
 
 	dm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(res.Result)))
 
-	if err := dm.postAuditDappEvent(id); err != nil {
-		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("post audit dapp event error: %v", err)))
+	if dm.EnableAudit() {
+		if err := dm.postAuditDappEvent(id); err != nil {
+			return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("post audit dapp event error: %v", err)))
+		}
 	}
 	return getGovernanceRet(string(res.Result), nil)
 }
@@ -628,8 +636,10 @@ func (dm *DappManager) basicGovernance(id, reason string, permissions []string, 
 
 	dm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(res.Result)))
 
-	if err := dm.postAuditDappEvent(id); err != nil {
-		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("post audit dapp event error: %v", err)))
+	if dm.EnableAudit() {
+		if err := dm.postAuditDappEvent(id); err != nil {
+			return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("post audit dapp event error: %v", err)))
+		}
 	}
 	return getGovernanceRet(string(res.Result), nil)
 }
@@ -655,8 +665,10 @@ func (dm *DappManager) ConfirmTransfer(id string) *boltvm.Response {
 		}
 	}
 
-	if err := dm.postAuditDappEvent(id); err != nil {
-		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("post audit dapp event error: %v", err)))
+	if dm.EnableAudit() {
+		if err := dm.postAuditDappEvent(id); err != nil {
+			return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("post audit dapp event error: %v", err)))
+		}
 	}
 	return getGovernanceRet("", nil)
 }
@@ -696,8 +708,10 @@ func (dm *DappManager) EvaluateDapp(id, desc string, score float64) *boltvm.Resp
 	dapp.EvaluationRecords[dm.Caller()] = evaRec
 	dm.SetObject(DappKey(id), *dapp)
 
-	if err := dm.postAuditDappEvent(id); err != nil {
-		return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("post audit dapp event error: %v", err)))
+	if dm.EnableAudit() {
+		if err := dm.postAuditDappEvent(id); err != nil {
+			return boltvm.Error(boltvm.DappInternalErrCode, fmt.Sprintf(string(boltvm.DappInternalErrMsg), fmt.Sprintf("post audit dapp event error: %v", err)))
+		}
 	}
 	return getGovernanceRet("", nil)
 }

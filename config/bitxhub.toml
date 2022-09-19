@@ -75,6 +75,7 @@ solo = false
   type = "raft"
 
 [executor]
+  enable_audit = true
   type = "serial"  # opensource version only supports serial type, commercial version supports serial and parallel types
   proof_type = "serial"
 

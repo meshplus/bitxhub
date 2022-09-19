@@ -121,8 +121,10 @@ func (rm *RuleManager) Manage(eventTyp, proposalResult, lastStatus, chainRuleID 
 		}
 	}
 
-	if err := rm.postAuditRuleEvent(strings.Split(chainRuleID, ":")[0]); err != nil {
-		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("post audit rule event error: %v", err)))
+	if rm.EnableAudit() {
+		if err := rm.postAuditRuleEvent(strings.Split(chainRuleID, ":")[0]); err != nil {
+			return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("post audit rule event error: %v", err)))
+		}
 	}
 	return boltvm.Success(nil)
 }
@@ -169,8 +171,10 @@ func (rm *RuleManager) RegisterRule(chainID string, ruleAddress, ruleUrl string)
 	// 6. register
 	rm.RuleManager.Register(chainID, ruleAddress, ruleUrl, rm.GetTxTimeStamp(), isDefault)
 
-	if err := rm.postAuditRuleEvent(chainID); err != nil {
-		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("post audit rule event error: %v", err)))
+	if rm.EnableAudit() {
+		if err := rm.postAuditRuleEvent(chainID); err != nil {
+			return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("post audit rule event error: %v", err)))
+		}
 	}
 	return getGovernanceRet("", nil)
 }
@@ -208,8 +212,10 @@ func (rm *RuleManager) RegisterRuleFirst(chainID, chainType, ruleAddress, ruleUr
 		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("change status error: %s", string(data))))
 	}
 
-	if err := rm.postAuditRuleEvent(chainID); err != nil {
-		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("post audit rule event error: %v", err)))
+	if rm.EnableAudit() {
+		if err := rm.postAuditRuleEvent(chainID); err != nil {
+			return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("post audit rule event error: %v", err)))
+		}
 	}
 
 	return boltvm.Success(nil)
@@ -317,8 +323,10 @@ func (rm *RuleManager) UpdateMasterRule(chainID string, newMasterruleAddress, re
 
 	rm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(res.Result)))
 
-	if err := rm.postAuditRuleEvent(chainID); err != nil {
-		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("post audit rule event error: %v", err)))
+	if rm.EnableAudit() {
+		if err := rm.postAuditRuleEvent(chainID); err != nil {
+			return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("post audit rule event error: %v", err)))
+		}
 	}
 	return getGovernanceRet(string(res.Result), nil)
 }
@@ -364,8 +372,10 @@ func (rm *RuleManager) LogoutRule(chainID string, ruleAddress string) *boltvm.Re
 		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("change status error: %v", string(data))))
 	}
 
-	if err := rm.postAuditRuleEvent(chainID); err != nil {
-		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("post audit rule event error: %v", err)))
+	if rm.EnableAudit() {
+		if err := rm.postAuditRuleEvent(chainID); err != nil {
+			return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("post audit rule event error: %v", err)))
+		}
 	}
 	return getGovernanceRet("", nil)
 }
@@ -434,8 +444,10 @@ func (rm *RuleManager) ClearRule(chainID string) *boltvm.Response {
 	//	}
 	//}
 
-	if err := rm.postAuditRuleEvent(chainID); err != nil {
-		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("post audit rule event error: %v", err)))
+	if rm.EnableAudit() {
+		if err := rm.postAuditRuleEvent(chainID); err != nil {
+			return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("post audit rule event error: %v", err)))
+		}
 	}
 
 	return boltvm.Success(nil)

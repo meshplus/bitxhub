@@ -41,6 +41,7 @@ func TestGovStrategy_UpdateProposalStrategy(t *testing.T) {
 	mockStub.EXPECT().CrossInvoke(gomock.Eq(constant.GovernanceContractAddr.Address().String()), gomock.Eq("ZeroPermission"),
 		gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, nil).AnyTimes()
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 	mockStub.EXPECT().Caller().Return(adminAddr).AnyTimes()
@@ -116,6 +117,7 @@ func TestGovStrategy_UpdateAllProposalStrategy(t *testing.T) {
 	mockStub.EXPECT().CrossInvoke(gomock.Eq(constant.GovernanceContractAddr.Address().String()), gomock.Eq("ZeroPermission"),
 		gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, nil).AnyTimes()
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 	mockStub.EXPECT().Caller().Return(adminAddr).AnyTimes()
@@ -218,6 +220,7 @@ func TestGovStrategy_Manage(t *testing.T) {
 	mockStub.EXPECT().CrossInvoke(gomock.Eq(constant.GovernanceContractAddr.Address().String()), gomock.Eq("ZeroPermission"),
 		gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().PostEvent(gomock.Any(), gomock.Any()).AnyTimes()
+	mockStub.EXPECT().EnableAudit().Return(true).AnyTimes()
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, nil).AnyTimes()
 	mockStub.EXPECT().Logger().Return(log.NewWithModule("contracts")).AnyTimes()
 	mockStub.EXPECT().Caller().Return(adminAddr).AnyTimes()

@@ -29,7 +29,7 @@ func Test(t *testing.T) {
 		To:   constant.InterchainContractAddr.Address(),
 	}
 	cons := GetBoltContracts()
-	ctxInterchain := vm.NewContext(txInterchain, 1, nil, 100, mockLedger, log.NewWithModule("vm"))
+	ctxInterchain := vm.NewContext(txInterchain, 1, nil, 100, mockLedger, log.NewWithModule("vm"), true)
 	boltVMInterchain := New(ctxInterchain, mockEngine, nil, cons)
 
 	stateLedger.EXPECT().GetState(gomock.Any(), gomock.Any()).Return(true, nil).AnyTimes()

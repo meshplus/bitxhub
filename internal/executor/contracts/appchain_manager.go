@@ -219,9 +219,11 @@ func (am *AppchainManager) Manage(eventTyp, proposalResult, lastStatus, objId st
 	// The appchain ID does not exist when the appchain fails to register.
 	// Therefore, you do not need to throw an appchain event.
 	// This is the same principle as registering appchains without throwing events.
-	if eventTyp != string(governance.EventRegister) || proposalResult != string(REJECTED) {
-		if err := am.postAuditAppchainEvent(objId); err != nil {
-			return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("post audit appchain event error: %v", err)))
+	if am.EnableAudit() {
+		if eventTyp != string(governance.EventRegister) || proposalResult != string(REJECTED) {
+			if err := am.postAuditAppchainEvent(objId); err != nil {
+				return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("post audit appchain event error: %v", err)))
+			}
 		}
 	}
 
@@ -561,8 +563,10 @@ func (am *AppchainManager) UpdateAppchain(id, name, desc string, trustRoot []byt
 			return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("update appchain error: %s", string(data))))
 		}
 
-		if err := am.postAuditAppchainEvent(id); err != nil {
-			return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("post audit appchain event error: %v", err)))
+		if am.EnableAudit() {
+			if err := am.postAuditAppchainEvent(id); err != nil {
+				return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("post audit appchain event error: %v", err)))
+			}
 		}
 
 		return getGovernanceRet("", nil)
@@ -647,8 +651,10 @@ func (am *AppchainManager) UpdateAppchain(id, name, desc string, trustRoot []byt
 		"id": chainInfo.ID,
 	}).Info(fmt.Sprintf("Appchain is doing event %s", event))
 
-	if err := am.postAuditAppchainEvent(id); err != nil {
-		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("post audit appchain event error: %v", err)))
+	if am.EnableAudit() {
+		if err := am.postAuditAppchainEvent(id); err != nil {
+			return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("post audit appchain event error: %v", err)))
+		}
 	}
 
 	return getGovernanceRet(string(res.Result), nil)
@@ -757,8 +763,10 @@ func (am *AppchainManager) basicGovernance(id, reason string, permissions []stri
 		"id": chainInfo.ID,
 	}).Info(fmt.Sprintf("Appchain is doing event %s", event))
 
-	if err := am.postAuditAppchainEvent(id); err != nil {
-		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("post audit appchain event error: %v", err)))
+	if am.EnableAudit() {
+		if err := am.postAuditAppchainEvent(id); err != nil {
+			return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("post audit appchain event error: %v", err)))
+		}
 	}
 
 	return getGovernanceRet(string(res.Result), nil)
@@ -809,8 +817,10 @@ func (am *AppchainManager) PauseAppchain(id string) *boltvm.Response {
 		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("marshal chain error: %v", err)))
 	}
 
-	if err := am.postAuditAppchainEvent(id); err != nil {
-		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("post audit appchain event error: %v", err)))
+	if am.EnableAudit() {
+		if err := am.postAuditAppchainEvent(id); err != nil {
+			return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("post audit appchain event error: %v", err)))
+		}
 	}
 	return boltvm.Success(chainData)
 }
@@ -854,8 +864,10 @@ func (am *AppchainManager) UnPauseAppchain(id, lastStatus string) *boltvm.Respon
 		"chainID": id,
 	}).Info("appchain unpause")
 
-	if err := am.postAuditAppchainEvent(id); err != nil {
-		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("post audit appchain event error: %v", err)))
+	if am.EnableAudit() {
+		if err := am.postAuditAppchainEvent(id); err != nil {
+			return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("post audit appchain event error: %v", err)))
+		}
 	}
 
 	return boltvm.Success(nil)

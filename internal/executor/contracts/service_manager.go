@@ -194,8 +194,10 @@ func (sm *ServiceManager) Manage(eventTyp, proposalResult, lastStatus, objId str
 		}
 	}
 
-	if err = sm.postAuditServiceEvent(objId); err != nil {
-		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
+	if sm.EnableAudit() {
+		if err = sm.postAuditServiceEvent(objId); err != nil {
+			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
+		}
 	}
 
 	// record updated service in interchain contract cache
@@ -258,8 +260,10 @@ func (sm *ServiceManager) RegisterService(chainID, serviceID, name, typ, intro s
 
 	sm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(res.Result)))
 
-	if err := sm.postAuditServiceEvent(chainServiceID); err != nil {
-		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
+	if sm.EnableAudit() {
+		if err := sm.postAuditServiceEvent(chainServiceID); err != nil {
+			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
+		}
 	}
 
 	// record updated service in interchain contract cache
@@ -306,8 +310,10 @@ func (sm *ServiceManager) UpdateService(chainServiceID, name, intro, permits, de
 			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("update service error: %s", string(data))))
 		}
 
-		if err := sm.postAuditServiceEvent(chainServiceID); err != nil {
-			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
+		if sm.EnableAudit() {
+			if err := sm.postAuditServiceEvent(chainServiceID); err != nil {
+				return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
+			}
 		}
 
 		// record updated service in interchain contract cache
@@ -381,8 +387,10 @@ func (sm *ServiceManager) UpdateService(chainServiceID, name, intro, permits, de
 
 	sm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(res.Result)))
 
-	if err := sm.postAuditServiceEvent(chainServiceID); err != nil {
-		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
+	if sm.EnableAudit() {
+		if err := sm.postAuditServiceEvent(chainServiceID); err != nil {
+			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
+		}
 	}
 
 	// record updated service in interchain contract cache
@@ -442,8 +450,10 @@ func (sm *ServiceManager) basicGovernance(chainServiceID, reason string, permiss
 
 	sm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(res.Result)))
 
-	if err := sm.postAuditServiceEvent(chainServiceID); err != nil {
-		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
+	if sm.EnableAudit() {
+		if err := sm.postAuditServiceEvent(chainServiceID); err != nil {
+			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
+		}
 	}
 
 	// record updated service in interchain contract cache
@@ -484,8 +494,10 @@ func (sm *ServiceManager) PauseChainService(chainID string) *boltvm.Response {
 			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("pause service %s err: %v", chainServiceID, err)))
 		}
 
-		if err = sm.postAuditServiceEvent(chainServiceID); err != nil {
-			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
+		if sm.EnableAudit() {
+			if err = sm.postAuditServiceEvent(chainServiceID); err != nil {
+				return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
+			}
 		}
 		// record updated service in interchain contract cache
 		if err = sm.postServiceEvent(chainServiceID); err != nil {
@@ -547,8 +559,10 @@ func (sm *ServiceManager) UnPauseChainService(chainID string) *boltvm.Response {
 			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("pause service %s err: %v", chainServiceID, err)))
 		}
 
-		if err := sm.postAuditServiceEvent(chainServiceID); err != nil {
-			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
+		if sm.EnableAudit() {
+			if err := sm.postAuditServiceEvent(chainServiceID); err != nil {
+				return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
+			}
 		}
 		// record updated service in interchain contract cache
 		if err = sm.postServiceEvent(chainServiceID); err != nil {
@@ -617,8 +631,10 @@ func (sm *ServiceManager) ClearChainService(chainID string) *boltvm.Response {
 			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("clear service %s err: %v", chainServiceID, err)))
 		}
 
-		if err := sm.postAuditServiceEvent(chainServiceID); err != nil {
-			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
+		if sm.EnableAudit() {
+			if err := sm.postAuditServiceEvent(chainServiceID); err != nil {
+				return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
+			}
 		}
 		// record updated service in interchain contract cache
 		if err = sm.postServiceEvent(chainServiceID); err != nil {
@@ -683,8 +699,10 @@ func (sm *ServiceManager) EvaluateService(chainServiceID, desc string, score flo
 	service.EvaluationRecords[sm.Caller()] = evaRec
 	sm.SetObject(servicemgr.ServiceKey(chainServiceID), *service)
 
-	if err := sm.postAuditServiceEvent(chainServiceID); err != nil {
-		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
+	if sm.EnableAudit() {
+		if err := sm.postAuditServiceEvent(chainServiceID); err != nil {
+			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
+		}
 	}
 	// record updated service in interchain contract cache
 	if err := sm.postServiceEvent(chainServiceID); err != nil {
@@ -759,8 +777,10 @@ func (sm *ServiceManager) RecordInvokeService(fullServiceID, fromFullServiceID s
 		"result":             result,
 	}).Info("record invoke service")
 
-	if err = sm.postAuditServiceEvent(chainServiceID); err != nil {
-		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
+	if sm.EnableAudit() {
+		if err = sm.postAuditServiceEvent(chainServiceID); err != nil {
+			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
+		}
 	}
 
 	// record updated service in interchain contract cache

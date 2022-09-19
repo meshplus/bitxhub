@@ -275,8 +275,10 @@ func (nm *NodeManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 		}
 	}
 
-	if err = nm.postAuditNodeEvent(objId); err != nil {
-		return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("post audit node event error: %v", err)))
+	if nm.EnableAudit() {
+		if err = nm.postAuditNodeEvent(objId); err != nil {
+			return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("post audit node event error: %v", err)))
+		}
 	}
 	return boltvm.Success(nil)
 }
@@ -357,8 +359,10 @@ func (nm *NodeManager) RegisterNode(nodeAccount, nodeType, nodePid string, nodeV
 
 	nm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(res.Result)))
 
-	if err := nm.postAuditNodeEvent(nodeAccount); err != nil {
-		return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("post audit node event error: %v", err)))
+	if nm.EnableAudit() {
+		if err := nm.postAuditNodeEvent(nodeAccount); err != nil {
+			return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("post audit node event error: %v", err)))
+		}
 	}
 
 	return getGovernanceRet(string(res.Result), []byte(node.Account))
@@ -462,8 +466,10 @@ func (nm *NodeManager) LogoutNode(nodeAccount, reason string) *boltvm.Response {
 
 	nm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(res.Result)))
 
-	if err := nm.postAuditNodeEvent(nodeAccount); err != nil {
-		return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("post audit node event error: %v", err)))
+	if nm.EnableAudit() {
+		if err := nm.postAuditNodeEvent(nodeAccount); err != nil {
+			return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("post audit node event error: %v", err)))
+		}
 	}
 
 	return getGovernanceRet(string(res.Result), nil)
@@ -565,8 +571,10 @@ func (nm *NodeManager) UpdateNode(nodeAccount, nodeName, permitStr, reason strin
 
 	nm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(res.Result)))
 
-	if err := nm.postAuditNodeEvent(nodeAccount); err != nil {
-		return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("post audit node event error: %v", err)))
+	if nm.EnableAudit() {
+		if err := nm.postAuditNodeEvent(nodeAccount); err != nil {
+			return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("post audit node event error: %v", err)))
+		}
 	}
 
 	return getGovernanceRet(string(res.Result), nil)
@@ -609,8 +617,10 @@ func (nm *NodeManager) BindNode(nodeAccount, auditAdminAddr string) *boltvm.Resp
 		return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("change status error: %s", string(data))))
 	}
 
-	if err := nm.postAuditNodeEvent(nodeAccount); err != nil {
-		return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("post audit node event error: %v", err)))
+	if nm.EnableAudit() {
+		if err := nm.postAuditNodeEvent(nodeAccount); err != nil {
+			return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("post audit node event error: %v", err)))
+		}
 	}
 
 	return getGovernanceRet("", nil)
@@ -642,8 +652,10 @@ func (nm *NodeManager) ManageBindNode(nodeAccount, auditAdminAddr, resultEvent s
 		}
 	}
 
-	if err := nm.postAuditNodeEvent(nodeAccount); err != nil {
-		return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("post audit node event error: %v", err)))
+	if nm.EnableAudit() {
+		if err := nm.postAuditNodeEvent(nodeAccount); err != nil {
+			return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("post audit node event error: %v", err)))
+		}
 	}
 
 	return getGovernanceRet("", nil)
@@ -694,8 +706,10 @@ func (nm *NodeManager) unbindNode(nodeAccount string) *boltvm.Response {
 		return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("change status error: %s", string(data))))
 	}
 
-	if err := nm.postAuditNodeEvent(nodeAccount); err != nil {
-		return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("post audit node event error: %v", err)))
+	if nm.EnableAudit() {
+		if err := nm.postAuditNodeEvent(nodeAccount); err != nil {
+			return boltvm.Error(boltvm.NodeInternalErrCode, fmt.Sprintf(string(boltvm.NodeInternalErrMsg), fmt.Sprintf("post audit node event error: %v", err)))
+		}
 	}
 
 	return getGovernanceRet("", nil)
