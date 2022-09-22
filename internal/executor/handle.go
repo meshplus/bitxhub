@@ -22,6 +22,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/pkg/vm"
 	"github.com/meshplus/bitxhub/pkg/vm/boltvm"
+	"github.com/meshplus/bitxhub/pkg/vm/wasm"
 	"github.com/sirupsen/logrus"
 )
 
@@ -316,16 +317,13 @@ func (exec *BlockExecutor) applyTransaction(i int, tx *pb.Transaction, opt *agen
 		case pb.TransactionData_BVM:
 			ctx := vm.NewContext(tx, uint64(i), data, exec.ledger, exec.logger)
 			instance = boltvm.New(ctx, exec.validationEngine, exec.getContracts(opt))
-		// case pb.TransactionData_XVM:
-		// 	ctx := vm.NewContext(tx, uint64(i), data, exec.ledger, exec.logger)
-		// 	imports, err := vmledger.New()
-		// 	if err != nil {
-		// 		return nil, err
-		// 	}
-		// 	instance, err = wasm.New(ctx, imports, exec.wasmInstances)
-		// 	if err != nil {
-		// 		return nil, err
-		// 	}
+		case pb.TransactionData_XVM:
+			ctx := vm.NewContext(tx, uint64(i), data, exec.ledger, exec.logger)
+			var err error
+			instance, err = wasm.New(ctx)
+			if err != nil {
+				return nil, err
+			}
 		default:
 			return nil, fmt.Errorf("wrong vm type")
 		}
