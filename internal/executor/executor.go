@@ -18,7 +18,6 @@ import (
 	"github.com/meshplus/bitxhub/pkg/proof"
 	"github.com/meshplus/bitxhub/pkg/vm/boltvm"
 	"github.com/sirupsen/logrus"
-	"github.com/wasmerio/go-ext-wasm/wasmer"
 )
 
 const (
@@ -39,7 +38,6 @@ type BlockExecutor struct {
 	validationEngine validator.Engine
 	currentHeight    uint64
 	currentBlockHash *types.Hash
-	wasmInstances    map[string]wasmer.Instance
 	txsExecutor      agency.TxsExecutor
 	blockFeed        event.Feed
 	ctx              context.Context
@@ -69,7 +67,6 @@ func New(chainLedger ledger.Ledger, logger logrus.FieldLogger, typ string) (*Blo
 		validationEngine: ibtpVerify.ValidationEngine(),
 		currentHeight:    chainLedger.GetChainMeta().Height,
 		currentBlockHash: chainLedger.GetChainMeta().BlockHash,
-		wasmInstances:    make(map[string]wasmer.Instance),
 	}
 	blockExecutor.txsExecutor = txsExecutor(blockExecutor.applyTx, registerBoltContracts, logger)
 
