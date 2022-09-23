@@ -15,10 +15,11 @@ require (
 	github.com/ethereum/go-ethereum v1.10.8
 	github.com/fatih/color v1.7.0
 	github.com/fsnotify/fsnotify v1.4.9
-	github.com/gobuffalo/envy v1.9.0 // indirect
-	github.com/gobuffalo/packd v1.0.0
-	github.com/gobuffalo/packr v1.30.1
-	github.com/gobuffalo/packr/v2 v2.5.1
+	github.com/gobuffalo/envy v1.10.2 // indirect
+	github.com/gobuffalo/logger v1.0.7 // indirect
+	github.com/gobuffalo/packd v1.0.2
+	github.com/gobuffalo/packr v1.30.1 // indirect
+	github.com/gobuffalo/packr/v2 v2.8.3
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/mock v1.6.0
 	github.com/golang/protobuf v1.5.2
@@ -31,10 +32,11 @@ require (
 	github.com/hokaccha/go-prettyjson v0.0.0-20190818114111-108c894c2c0e
 	github.com/iancoleman/orderedmap v0.2.0
 	github.com/juju/ratelimit v1.0.1
+	github.com/karrick/godirwalk v1.17.0 // indirect
 	github.com/libp2p/go-libp2p-core v0.5.6
 	github.com/libp2p/go-libp2p-swarm v0.2.4
 	github.com/looplab/fsm v0.2.0
-	github.com/magiconair/properties v1.8.4
+	github.com/magiconair/properties v1.8.5
 	github.com/meshplus/bitxhub-core v1.3.1-0.20220919013043-3bfcb2b45a32
 	github.com/meshplus/bitxhub-kit v1.2.1-0.20220815090757-6256823a7426
 	github.com/meshplus/bitxhub-model v1.2.1-0.20220815081129-609df840b044
@@ -46,14 +48,15 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-multiaddr v0.3.1
 	github.com/orcaman/concurrent-map v0.0.0-20210501183033-44dafcb38ecc
-	github.com/pelletier/go-toml v1.8.1
+	github.com/pelletier/go-toml v1.9.3
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.5.0
 	github.com/prometheus/procfs v0.0.10 // indirect
 	github.com/rs/cors v1.7.0
-	github.com/sirupsen/logrus v1.8.1
+	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cast v1.3.1
-	github.com/spf13/viper v1.7.1
+	github.com/spf13/cobra v1.6.0 // indirect
+	github.com/spf13/viper v1.8.1
 	github.com/stretchr/testify v1.8.0
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	github.com/tidwall/gjson v1.6.8
@@ -63,6 +66,9 @@ require (
 	github.com/willf/bloom v2.0.3+incompatible
 	go.uber.org/atomic v1.7.0
 	go.uber.org/zap v1.19.0
+	golang.org/x/sync v0.0.0-20220929204114-8fcdb60fdcc0 // indirect
+	golang.org/x/sys v0.0.0-20221010170243-090e33056c14 // indirect
+	golang.org/x/term v0.0.0-20220919170432-7a66f970e087 // indirect
 	google.golang.org/grpc v1.48.0
 )
 
