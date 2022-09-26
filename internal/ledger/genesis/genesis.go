@@ -37,20 +37,20 @@ func Initialize(genesis *repo.Genesis, nodes []*repo.NetworkNodes, primaryN uint
 		if err != nil {
 			return fmt.Errorf("marshal admin data error: %w", err)
 		}
-		lg.SetState(constant.RoleContractAddr.Address(), []byte(contracts.RoleKey(admin.ID)), adminData)
+		lg.SetState(constant.RoleContractAddr.Address(), []byte(contracts.RoleKey(admin.ID)), adminData, nil)
 	}
 	idMapData, err := json.Marshal(idMap)
 	if err != nil {
 		return fmt.Errorf("marshal id map data error: %w", err)
 	}
-	lg.SetState(constant.RoleContractAddr.Address(), []byte(contracts.RoleTypeKey(string(contracts.GovernanceAdmin))), idMapData)
+	lg.SetState(constant.RoleContractAddr.Address(), []byte(contracts.RoleTypeKey(string(contracts.GovernanceAdmin))), idMapData, nil)
 
 	// init super governance admin balance
 	balance, _ := new(big.Int).SetString(genesis.Balance, 10)
 	for _, admin := range genesis.Admins {
 		lg.SetBalance(types.NewAddressByStr(admin.Address), balance)
 	}
-	lg.SetState(constant.RoleContractAddr.Address(), []byte(contracts.GenesisBalance), []byte(genesis.Balance))
+	lg.SetState(constant.RoleContractAddr.Address(), []byte(contracts.GenesisBalance), []byte(genesis.Balance), nil)
 
 	for _, v := range genesis.Strategy {
 		ps := &contracts.ProposalStrategy{
@@ -63,7 +63,7 @@ func Initialize(genesis *repo.Genesis, nodes []*repo.NetworkNodes, primaryN uint
 		if err != nil {
 			return err
 		}
-		lg.SetState(constant.ProposalStrategyMgrContractAddr.Address(), []byte(contracts.ProposalStrategyKey(v.Module)), psData)
+		lg.SetState(constant.ProposalStrategyMgrContractAddr.Address(), []byte(contracts.ProposalStrategyKey(v.Module)), psData, nil)
 	}
 
 	// init primary vp node
@@ -81,19 +81,19 @@ func Initialize(genesis *repo.Genesis, nodes []*repo.NetworkNodes, primaryN uint
 		if err != nil {
 			return fmt.Errorf("marshal node data error: %w", err)
 		}
-		lg.SetState(constant.NodeManagerContractAddr.Address(), []byte(node_mgr.NodeKey(node.Account)), nodeData)
-		lg.SetState(constant.NodeManagerContractAddr.Address(), []byte(node_mgr.VpNodeIdKey(strconv.Itoa(int(node.VPNodeId)))), []byte(node.Account))
-		lg.SetState(constant.NodeManagerContractAddr.Address(), []byte(node_mgr.VpNodePidKey(node.Pid)), []byte(node.Account))
+		lg.SetState(constant.NodeManagerContractAddr.Address(), []byte(node_mgr.NodeKey(node.Account)), nodeData, nil)
+		lg.SetState(constant.NodeManagerContractAddr.Address(), []byte(node_mgr.VpNodeIdKey(strconv.Itoa(int(node.VPNodeId)))), []byte(node.Account), nil)
+		lg.SetState(constant.NodeManagerContractAddr.Address(), []byte(node_mgr.VpNodePidKey(node.Pid)), []byte(node.Account), nil)
 		nodeAccountMap.Set(node.Account, struct{}{})
 	}
 	nodeAccountMapData, err := json.Marshal(nodeAccountMap)
 	if err != nil {
 		return fmt.Errorf("marshal node account map data error: %w", err)
 	}
-	lg.SetState(constant.NodeManagerContractAddr.Address(), []byte(node_mgr.NodeTypeKey(string(node_mgr.VPNode))), nodeAccountMapData)
+	lg.SetState(constant.NodeManagerContractAddr.Address(), []byte(node_mgr.NodeTypeKey(string(node_mgr.VPNode))), nodeAccountMapData, nil)
 
 	// init bitxhub id
-	lg.SetState(constant.InterchainContractAddr.Address(), []byte(contracts.BitXHubID), []byte(fmt.Sprintf("%d", genesis.ChainID)))
+	lg.SetState(constant.InterchainContractAddr.Address(), []byte(contracts.BitXHubID), []byte(fmt.Sprintf("%d", genesis.ChainID)), nil)
 
 	// avoid being deleted by complex state ledger
 	for addr := range executor.GetBoltContracts() {
@@ -141,13 +141,13 @@ func initBNSData(lg *ledger.Ledger) error {
 	if err != nil {
 		return fmt.Errorf("marshal node account map data error: %w", err)
 	}
-	lg.SetState(constant.ServiceRegistryContractAddr.Address(), []byte(contracts.PriceLenLevel), priceLevelBytes)
+	lg.SetState(constant.ServiceRegistryContractAddr.Address(), []byte(contracts.PriceLenLevel), priceLevelBytes, nil)
 
 	tokenPriceBytes, err := json.Marshal(uint64(1))
 	if err != nil {
 		return fmt.Errorf("marshal data error: %w", err)
 	}
-	lg.SetState(constant.ServiceRegistryContractAddr.Address(), []byte(contracts.BitxhubTokenPrice), tokenPriceBytes)
+	lg.SetState(constant.ServiceRegistryContractAddr.Address(), []byte(contracts.BitxhubTokenPrice), tokenPriceBytes, nil)
 
 	resolverMap := make(map[string]bool)
 	resolverMap["0x0000000000000000000000000000000000000023"] = true
@@ -155,7 +155,7 @@ func initBNSData(lg *ledger.Ledger) error {
 	if err != nil {
 		return fmt.Errorf("marshal data error: %w", err)
 	}
-	lg.SetState(constant.ServiceRegistryContractAddr.Address(), []byte(contracts.ResolverMap), resolverMapBytes)
+	lg.SetState(constant.ServiceRegistryContractAddr.Address(), []byte(contracts.ResolverMap), resolverMapBytes, nil)
 
 	permissionController := make(map[string]map[string]bool)
 	permissionController[string(constant.ServiceRegistryContractAddr)] = make(map[string]bool)
@@ -164,7 +164,7 @@ func initBNSData(lg *ledger.Ledger) error {
 	if err != nil {
 		return fmt.Errorf("marshal node account map data error: %w", err)
 	}
-	lg.SetState(constant.ServiceRegistryContractAddr.Address(), []byte(contracts.PermissionController), permissionControllerBytes)
+	lg.SetState(constant.ServiceRegistryContractAddr.Address(), []byte(contracts.PermissionController), permissionControllerBytes, nil)
 
 	return nil
 }

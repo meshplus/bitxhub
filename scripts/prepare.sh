@@ -17,7 +17,7 @@ function go_install() {
 }
 
 print_blue "===> 1. Install packr"
-if ! type packr >/dev/null 2>&1; then
+if ! type packr2 >/dev/null 2>&1; then
   go_install github.com/gobuffalo/packr/v2/packr2@v2.8.3
 fi
 

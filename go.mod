@@ -6,7 +6,7 @@ require (
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
 	github.com/Rican7/retry v0.1.0
 	github.com/binance-chain/tss-lib v1.3.3-0.20210411025750-fffb56b30511
-	github.com/bytecodealliance/wasmtime-go v0.34.0
+	github.com/bytecodealliance/wasmtime-go v1.0.0
 	github.com/cbergoon/merkletree v0.2.0
 	github.com/cheynewallace/tabby v1.1.1
 	github.com/common-nighthawk/go-figure v0.0.0-20190529165535-67e0ed34491a
@@ -16,8 +16,9 @@ require (
 	github.com/fatih/color v1.7.0
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/gobuffalo/envy v1.9.0 // indirect
-	github.com/gobuffalo/packd v1.0.1
-	github.com/gobuffalo/packr/v2 v2.8.3
+	github.com/gobuffalo/packd v1.0.0
+	github.com/gobuffalo/packr v1.30.1
+	github.com/gobuffalo/packr/v2 v2.5.1
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/mock v1.6.0
 	github.com/golang/protobuf v1.5.2
@@ -33,26 +34,26 @@ require (
 	github.com/libp2p/go-libp2p-core v0.5.6
 	github.com/libp2p/go-libp2p-swarm v0.2.4
 	github.com/looplab/fsm v0.2.0
-	github.com/magiconair/properties v1.8.5
-	github.com/meshplus/bitxhub-core v1.3.1-0.20220919013043-3bfcb2b45a32
-	github.com/meshplus/bitxhub-kit v1.2.1-0.20220815090757-6256823a7426
+	github.com/magiconair/properties v1.8.4
+	github.com/meshplus/bitxhub-core v1.3.1-0.20220927021127-645700e66121
+	github.com/meshplus/bitxhub-kit v1.2.1-0.20220818091754-5d20bc284c36
 	github.com/meshplus/bitxhub-model v1.2.1-0.20220815081129-609df840b044
 	github.com/meshplus/consensus v0.0.0-20211228075008-5f469b198531
-	github.com/meshplus/eth-kit v0.0.0-20220628031226-4b30a994a2a6
+	github.com/meshplus/eth-kit v0.0.0-20220927021041-caf7b2fcc40f
 	github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd
 	github.com/meshplus/go-lightp2p v0.0.0-20220712082352-ed86b78e8baf
 	github.com/miguelmota/go-solidity-sha3 v0.1.1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-multiaddr v0.3.1
 	github.com/orcaman/concurrent-map v0.0.0-20210501183033-44dafcb38ecc
-	github.com/pelletier/go-toml v1.9.3
+	github.com/pelletier/go-toml v1.8.1
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.5.0
 	github.com/prometheus/procfs v0.0.10 // indirect
 	github.com/rs/cors v1.7.0
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cast v1.3.1
-	github.com/spf13/viper v1.8.1
+	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.8.0
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	github.com/tidwall/gjson v1.6.8

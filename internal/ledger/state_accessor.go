@@ -120,9 +120,9 @@ func (l *SimpleLedger) GetCommittedState(addr *types.Address, key []byte) []byte
 }
 
 // SetState set account state value using account Address and key
-func (l *SimpleLedger) SetState(addr *types.Address, key []byte, v []byte) {
+func (l *SimpleLedger) SetState(addr *types.Address, key []byte, v []byte, changer interface{}) {
 	account := l.GetOrCreateAccount(addr)
-	account.SetState(key, v)
+	account.SetState(key, v, changer)
 }
 
 // AddState add account state value using account Address and key

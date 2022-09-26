@@ -93,15 +93,33 @@ func (o *SimpleAccount) GetCommittedState(key []byte) []byte {
 }
 
 // SetState Set account state
-func (o *SimpleAccount) SetState(key []byte, value []byte) {
+func (o *SimpleAccount) SetState(key []byte, value []byte, changer interface{}) {
 	_, prev := o.GetState(key)
 	o.dirtyState.Store(string(key), value)
 
-	o.changer.append(storageChange{
-		account:  o.Addr,
-		key:      key,
-		prevalue: prev,
-	})
+	if isNil(changer) {
+		o.changer.append(storageChange{
+			account:  o.Addr,
+			key:      key,
+			prevalue: prev,
+		})
+	} else {
+		changer.(*ChangeInstance).changer.append(storageChange{
+			account:  o.Addr,
+			key:      key,
+			prevalue: prev,
+		})
+	}
+}
+
+func isNil(changer interface{}) bool {
+	if changer == nil {
+		return true
+	}
+	if changer.(*ChangeInstance) == nil {
+		return true
+	}
+	return false
 }
 
 func (o *SimpleAccount) setState(key []byte, value []byte) {

@@ -76,8 +76,9 @@ func (l *SimpleLedger) GetEVMState(addr common.Address, hash common.Hash) common
 	return common.BytesToHash(ret)
 }
 
+// SetEVMState todo(lrx): evm tx is not support parallel executor tx
 func (l *SimpleLedger) SetEVMState(addr common.Address, key, value common.Hash) {
-	l.SetState(types.NewAddress(addr.Bytes()), key.Bytes(), value.Bytes())
+	l.SetState(types.NewAddress(addr.Bytes()), key.Bytes(), value.Bytes(), nil)
 }
 
 func (l *SimpleLedger) SuisideEVM(addr common.Address) bool {
