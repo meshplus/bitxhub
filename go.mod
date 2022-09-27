@@ -6,7 +6,7 @@ require (
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
 	github.com/Rican7/retry v0.1.0
 	github.com/binance-chain/tss-lib v1.3.3-0.20210411025750-fffb56b30511
-	github.com/bytecodealliance/wasmtime-go v1.0.0
+	github.com/bytecodealliance/wasmtime-go v0.37.0
 	github.com/cbergoon/merkletree v0.2.0
 	github.com/cheynewallace/tabby v1.1.1
 	github.com/common-nighthawk/go-figure v0.0.0-20190529165535-67e0ed34491a
@@ -17,7 +17,6 @@ require (
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/gobuffalo/envy v1.9.0 // indirect
 	github.com/gobuffalo/packd v1.0.0
-	github.com/gobuffalo/packr v1.30.1
 	github.com/gobuffalo/packr/v2 v2.5.1
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/mock v1.6.0
