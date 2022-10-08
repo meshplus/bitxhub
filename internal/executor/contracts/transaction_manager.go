@@ -195,7 +195,7 @@ func (t *TransactionManager) Begin(txId string, timeoutHeight uint64, isFailed b
 // - if curStatus == BEGIN && txStatus == BEGIN_FAIL, then change curStatus to FAIL and notify src chain
 // - if curStatus == BEGIN && txStatus == BEGIN_ROLLBACK, then change curStatus to ROLLBACK and notify src chain
 // - isFailed note that whether dstBitXHub is available
-func (t *TransactionManager) BeginInterBitXHub(txId string, timeoutHeight uint64, txStatus int32, isFailed bool) *boltvm.Response {
+func (t *TransactionManager) BeginInterBitXHub(txId string, timeoutHeight uint64, proof []byte, isFailed bool) *boltvm.Response {
 	if bxhErr := t.checkCurrentCaller(); bxhErr != nil {
 		return boltvm.Error(bxhErr.Code, string(bxhErr.Msg))
 	}
@@ -204,6 +204,11 @@ func (t *TransactionManager) BeginInterBitXHub(txId string, timeoutHeight uint64
 	var record pb.TransactionRecord
 	ok := t.GetObject(TxInfoKey(txId), &record)
 	if ok {
+		bxhProof := &pb.BxhProof{}
+		if err := bxhProof.Unmarshal(proof); err != nil {
+			return boltvm.Error(boltvm.TransactionStateErrCode, fmt.Sprintf(string(boltvm.TransactionInternalErrMsg), fmt.Sprintf("unmarshal proof from dst BitXHub for ibtp %s failed: %s", txId, err.Error())))
+		}
+		txStatus := int32(bxhProof.TxStatus)
 		change.PrevStatus = record.Status
 		if err := t.setFSM(&record.Status, txStatus2EventM[txStatus]); err != nil {
 			return boltvm.Error(boltvm.TransactionStateErrCode, fmt.Sprintf(string(boltvm.TransactionStateErrMsg), fmt.Sprintf("transaction %s with state %v get unexpected receipt %v", txId, record.Status, txStatus)))
