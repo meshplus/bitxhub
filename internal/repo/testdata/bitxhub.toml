@@ -75,6 +75,7 @@ solo = false
   type = "raft"
 
 [executor]
+  enable_audit = true
   type = "serial"  # opensource version only supports serial type, commercial version supports serial and parallel types
   proof_type = "serial"
 
@@ -93,7 +94,6 @@ solo = false
   gas_limit = 0x5f5e100
   bvm_gas_price = 50000
   balance = "100000000000000000000000000000000000"
-  enable_audit = true
   [[genesis.admins]]
     address = "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013"
     weight = 2 # 1：General Administrator 2: Super Administrator (Genesis Administrator)

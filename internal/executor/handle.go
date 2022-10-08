@@ -13,7 +13,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/meshplus/bitxhub/internal/executor/contracts"
+	"github.com/meshplus/bitxhub/internal/ledger"
+	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/pkg/utils"
+	"github.com/meshplus/bitxhub/pkg/vm"
+	"github.com/meshplus/bitxhub/pkg/vm/boltvm"
+	"github.com/meshplus/bitxhub/pkg/vm/wasm"
+	"github.com/meshplus/bitxhub/pkg/vm/wasm/vmledger"
 
 	"github.com/Rican7/retry"
 	"github.com/Rican7/retry/strategy"
@@ -27,13 +34,6 @@ import (
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/internal/executor/contracts"
-	"github.com/meshplus/bitxhub/internal/ledger"
-	"github.com/meshplus/bitxhub/internal/model/events"
-	"github.com/meshplus/bitxhub/pkg/vm"
-	"github.com/meshplus/bitxhub/pkg/vm/boltvm"
-	"github.com/meshplus/bitxhub/pkg/vm/wasm"
-	"github.com/meshplus/bitxhub/pkg/vm/wasm/vmledger"
 	vm1 "github.com/meshplus/eth-kit/evm"
 	ledger2 "github.com/meshplus/eth-kit/ledger"
 	types2 "github.com/meshplus/eth-kit/types"
@@ -256,12 +256,6 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 		TxHashList:     txHashList,
 	}
 
-	exec.logger.WithFields(logrus.Fields{
-		"height": blockWrapper.block.BlockHeader.Number,
-		"count":  len(blockWrapper.block.Transactions.Transactions),
-		"elapse": time.Since(current),
-	}).Info("Executed block")
-
 	now := time.Now()
 	exec.ledger.PersistBlockData(data)
 	exec.logger.WithFields(logrus.Fields{
@@ -274,6 +268,12 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	exec.currentHeight = block.BlockHeader.Number
 	exec.currentBlockHash = block.BlockHash
 	exec.postBlockEvent(data.Block, data.InterchainMeta, data.TxHashList)
+
+	exec.logger.WithFields(logrus.Fields{
+		"height": blockWrapper.block.BlockHeader.Number,
+		"count":  len(blockWrapper.block.Transactions.Transactions),
+		"elapse": time.Since(current),
+	}).Info("Executed and Persisted block")
 	exec.postLogsEvent(data.Receipts)
 	exec.clear()
 
@@ -904,7 +904,7 @@ func (exec *BlockExecutor) setTimeoutList(height uint64, txList []pb.Transaction
 					return err
 				}
 
-				// The  , don't execute timeoutRollback
+				// The fail receipt had already rollback, don't execute timeoutRollback
 				if ibtp.Type == pb.IBTP_RECEIPT_FAILURE && record.Status == pb.TransactionStatus_FAILURE {
 					continue
 				}
@@ -920,7 +920,7 @@ func (exec *BlockExecutor) setTimeoutList(height uint64, txList []pb.Transaction
 	}
 	for timeoutHeight, txidList := range addTimeoutListMap {
 		newStr := exec.addTimeoutList(timeoutHeight, txidList)
-		exec.ledger.SetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.TimeoutKey(timeoutHeight)), []byte(newStr), nil)
+		exec.ledger.AddState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.TimeoutKey(timeoutHeight)), []byte(newStr))
 	}
 	for recordHeight, txidList := range removeTimeoutListMap {
 		newStr := exec.removeTimeoutList(recordHeight, txidList)

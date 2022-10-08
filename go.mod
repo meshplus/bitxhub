@@ -15,9 +15,8 @@ require (
 	github.com/ethereum/go-ethereum v1.10.8
 	github.com/fatih/color v1.7.0
 	github.com/fsnotify/fsnotify v1.4.9
-	github.com/gobuffalo/envy v1.9.0 // indirect
-	github.com/gobuffalo/packd v1.0.0
-	github.com/gobuffalo/packr/v2 v2.5.1
+	github.com/gobuffalo/packd v1.0.1
+	github.com/gobuffalo/packr/v2 v2.8.3
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/mock v1.6.0
 	github.com/golang/protobuf v1.5.2
@@ -33,26 +32,26 @@ require (
 	github.com/libp2p/go-libp2p-core v0.5.6
 	github.com/libp2p/go-libp2p-swarm v0.2.4
 	github.com/looplab/fsm v0.2.0
-	github.com/magiconair/properties v1.8.4
+	github.com/magiconair/properties v1.8.5
 	github.com/meshplus/bitxhub-core v1.3.1-0.20220927021127-645700e66121
-	github.com/meshplus/bitxhub-kit v1.2.1-0.20220818091754-5d20bc284c36
+	github.com/meshplus/bitxhub-kit v1.2.1-0.20220815090757-6256823a7426
 	github.com/meshplus/bitxhub-model v1.2.1-0.20220815081129-609df840b044
 	github.com/meshplus/consensus v0.0.0-20211228075008-5f469b198531
-	github.com/meshplus/eth-kit v0.0.0-20220927021041-caf7b2fcc40f
+	github.com/meshplus/eth-kit v0.0.0-20220927085337-728dd17c0bef
 	github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd
 	github.com/meshplus/go-lightp2p v0.0.0-20220712082352-ed86b78e8baf
 	github.com/miguelmota/go-solidity-sha3 v0.1.1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-multiaddr v0.3.1
 	github.com/orcaman/concurrent-map v0.0.0-20210501183033-44dafcb38ecc
-	github.com/pelletier/go-toml v1.8.1
+	github.com/pelletier/go-toml v1.9.3
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.5.0
 	github.com/prometheus/procfs v0.0.10 // indirect
 	github.com/rs/cors v1.7.0
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cast v1.3.1
-	github.com/spf13/viper v1.7.1
+	github.com/spf13/viper v1.8.1
 	github.com/stretchr/testify v1.8.0
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	github.com/tidwall/gjson v1.6.8
