@@ -474,7 +474,13 @@ func (x *InterchainManager) beginTransaction(ibtp *pb.IBTP, isFailed bool) (*Sta
 	timeoutHeight := uint64(ibtp.TimeoutHeight)
 	res := boltvm.Success(nil)
 	if bxhID0 != bxhID1 {
-		timeoutHeight = 0
+		currentBxhId, err := x.getBitXHubID()
+		if err != nil {
+			return nil, err
+		}
+		if currentBxhId == bxhID0 {
+			timeoutHeight = 0
+		}
 		//proof := &pb.BxhProof{}
 		//if err := proof.Unmarshal(ibtp.Proof); err != nil {
 		//	return nil, fmt.Errorf("unmarshal proof from dst BitXHub for ibtp %s failed: %s", ibtp.ID(), err.Error())
