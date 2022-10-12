@@ -69,7 +69,7 @@ func (l *SimpleLedger) Finalise(b bool) {
 	l.ClearChangerAndRefund()
 }
 
-// New create a new ledger instance
+// NewSimpleLedger create a new ledger instance
 func NewSimpleLedger(repo *repo.Repo, ldb storage.Storage, accountCache *AccountCache, logger logrus.FieldLogger) (ledger.StateLedger, error) {
 	var err error
 	minJnlHeight, maxJnlHeight := getJournalRange(ldb)

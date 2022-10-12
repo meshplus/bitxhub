@@ -74,7 +74,7 @@ func (b *BoltStubImpl) Get(key string) (bool, []byte) {
 }
 
 func (b *BoltStubImpl) Delete(key string) {
-	b.ctx.Ledger.SetState(b.ctx.Callee, []byte(key), nil)
+	b.ctx.Ledger.SetState(b.ctx.Callee, []byte(key), nil, b.ctx.Changer)
 }
 
 func (b *BoltStubImpl) GetObject(key string, ret interface{}) bool {
@@ -88,7 +88,7 @@ func (b *BoltStubImpl) GetObject(key string, ret interface{}) bool {
 }
 
 func (b *BoltStubImpl) Set(key string, value []byte) {
-	b.ctx.Ledger.SetState(b.ctx.Callee, []byte(key), value)
+	b.ctx.Ledger.SetState(b.ctx.Callee, []byte(key), value, b.ctx.Changer)
 }
 
 func (b *BoltStubImpl) Add(key string, value []byte) {

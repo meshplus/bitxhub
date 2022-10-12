@@ -13,7 +13,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/meshplus/bitxhub/internal/executor/contracts"
+	"github.com/meshplus/bitxhub/internal/ledger"
+	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/pkg/utils"
+	"github.com/meshplus/bitxhub/pkg/vm"
+	"github.com/meshplus/bitxhub/pkg/vm/boltvm"
+	"github.com/meshplus/bitxhub/pkg/vm/wasm"
+	"github.com/meshplus/bitxhub/pkg/vm/wasm/vmledger"
 
 	"github.com/Rican7/retry"
 	"github.com/Rican7/retry/strategy"
@@ -27,13 +34,6 @@ import (
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/internal/executor/contracts"
-	"github.com/meshplus/bitxhub/internal/ledger"
-	"github.com/meshplus/bitxhub/internal/model/events"
-	"github.com/meshplus/bitxhub/pkg/vm"
-	"github.com/meshplus/bitxhub/pkg/vm/boltvm"
-	"github.com/meshplus/bitxhub/pkg/vm/wasm"
-	"github.com/meshplus/bitxhub/pkg/vm/wasm/vmledger"
 	vm1 "github.com/meshplus/eth-kit/evm"
 	ledger2 "github.com/meshplus/eth-kit/ledger"
 	types2 "github.com/meshplus/eth-kit/types"
@@ -149,7 +149,7 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	exec.logger.WithFields(logrus.Fields{
 		"time":  time.Since(current2),
 		"count": len(block.Transactions.Transactions),
-	}).Debug("Apply transactions elapsed")
+	}).Info("Apply transactions elapsed")
 
 	calcMerkleStart := time.Now()
 	txRoot, err := exec.buildTxMerkleTree(block.Transactions.Transactions)
@@ -256,12 +256,6 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 		TxHashList:     txHashList,
 	}
 
-	exec.logger.WithFields(logrus.Fields{
-		"height": blockWrapper.block.BlockHeader.Number,
-		"count":  len(blockWrapper.block.Transactions.Transactions),
-		"elapse": time.Since(current),
-	}).Info("Executed block")
-
 	now := time.Now()
 	exec.ledger.PersistBlockData(data)
 	exec.logger.WithFields(logrus.Fields{
@@ -274,6 +268,12 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	exec.currentHeight = block.BlockHeader.Number
 	exec.currentBlockHash = block.BlockHash
 	exec.postBlockEvent(data.Block, data.InterchainMeta, data.TxHashList)
+
+	exec.logger.WithFields(logrus.Fields{
+		"height": blockWrapper.block.BlockHeader.Number,
+		"count":  len(blockWrapper.block.Transactions.Transactions),
+		"elapse": time.Since(current),
+	}).Info("Executed and Persisted block")
 	exec.postLogsEvent(data.Receipts)
 	exec.clear()
 
@@ -477,20 +477,18 @@ func (exec *BlockExecutor) postLogsEvent(receipts []*pb.Receipt) {
 
 func (exec *BlockExecutor) applyTransaction(i int, tx pb.Transaction, invalidReason agency.InvalidReason, opt *agency.TxOpt) *pb.Receipt {
 	// todo(lrx): need refactor state changer
-	var change *ledger.ChangeInstance
-	if exec.supportParallel {
+	var changer *ledger.ChangeInstance
+	if exec.supportParallel && tx.IsIBTP() {
 		// make sure each tx has an instance to record ledger changed
-		change = exec.ledger.StateLedger.(*ledger.SimpleLedger).GetInstance()
+		changer = exec.ledger.StateLedger.(*ledger.SimpleLedger).GetInstance()
+		opt.Changer = changer
 		defer func() {
 			exec.ledger.SetNonce(tx.GetFrom(), tx.GetNonce()+1)
 			// release change to instance pool
-			exec.ledger.StateLedger.(*ledger.SimpleLedger).ReleaseChangeInstance(change)
+			exec.ledger.StateLedger.(*ledger.SimpleLedger).ReleaseChangeInstance(changer)
 		}()
 	} else {
 		defer func() {
-			if exec.supportParallel {
-
-			}
 			exec.ledger.SetNonce(tx.GetFrom(), tx.GetNonce()+1)
 			exec.ledger.Finalise(true)
 		}()
@@ -506,10 +504,10 @@ func (exec *BlockExecutor) applyTransaction(i int, tx pb.Transaction, invalidRea
 	switch tx.(type) {
 	case *pb.BxhTransaction:
 		bxhTx := tx.(*pb.BxhTransaction)
-		if !exec.supportParallel {
-			snapshot = exec.ledger.Snapshot()
+		if exec.supportParallel && tx.IsIBTP() {
+			snapshot = exec.ledger.StateLedger.(*ledger.SimpleLedger).SnapshotForParallel(changer)
 		} else {
-			snapshot = exec.ledger.StateLedger.(*ledger.SimpleLedger).SnapshotForParallel(change)
+			snapshot = exec.ledger.Snapshot()
 		}
 		ret, gasUsed, err := exec.applyBxhTransaction(i, bxhTx, invalidReason, opt)
 		if err != nil {
@@ -528,11 +526,11 @@ func (exec *BlockExecutor) applyTransaction(i int, tx pb.Transaction, invalidRea
 		receipt.GasUsed = gasUsed
 
 		if err := exec.payGasFee(tx, gasUsed); err != nil {
-			if !exec.supportParallel {
+			if !exec.supportParallel || !tx.IsIBTP() {
 				exec.ledger.RevertToSnapshot(snapshot)
 			} else {
 				// revert to prev state, need input unique change instance
-				exec.ledger.StateLedger.(*ledger.SimpleLedger).RevertToSnapshotForParallel(snapshot, change)
+				exec.ledger.StateLedger.(*ledger.SimpleLedger).RevertToSnapshotForParallel(snapshot, changer)
 			}
 			receipt.Status = pb.Receipt_FAILED
 			receipt.Ret = []byte(err.Error())
@@ -564,7 +562,9 @@ func (exec *BlockExecutor) applyBxhTransaction(i int, tx *pb.BxhTransaction, inv
 	}
 
 	if tx.IsIBTP() {
-		ctx := vm.NewContext(tx, uint64(i), nil, exec.currentHeight, exec.ledger, exec.logger, exec.config.EnableAudit)
+		ctx := vm.NewContext(tx, uint64(i), nil, exec.currentHeight, exec.ledger, exec.logger,
+			exec.config.EnableAudit, exec.getChanger(opt))
+
 		instance := boltvm.New(ctx, exec.validationEngine, exec.evm, exec.getContracts(opt))
 		ret, err := instance.HandleIBTP(tx.GetIBTP(), exec.serviceCache)
 		return ret, GasBVMTx, err
@@ -596,12 +596,12 @@ func (exec *BlockExecutor) applyBxhTransaction(i int, tx *pb.BxhTransaction, inv
 		var gasUsed uint64
 		switch data.VmType {
 		case pb.TransactionData_BVM:
-			ctx := vm.NewContext(tx, uint64(i), data, exec.currentHeight, exec.ledger, exec.logger, exec.config.EnableAudit)
+			ctx := vm.NewContext(tx, uint64(i), data, exec.currentHeight, exec.ledger, exec.logger, exec.config.EnableAudit, nil)
 			instance = boltvm.New(ctx, exec.validationEngine, exec.evm, exec.getContracts(opt))
 			gasUsed = GasBVMTx
 		case pb.TransactionData_XVM:
 			var err error
-			ctx := vm.NewContext(tx, uint64(i), data, exec.currentHeight, exec.ledger, exec.logger, exec.config.EnableAudit)
+			ctx := vm.NewContext(tx, uint64(i), data, exec.currentHeight, exec.ledger, exec.logger, exec.config.EnableAudit, nil)
 			context := make(map[string]interface{})
 			store := wasm.NewStore()
 			libs := vmledger.NewLedgerWasmLibs(context, store)
@@ -623,7 +623,7 @@ func (exec *BlockExecutor) applyBxhTransaction(i int, tx *pb.BxhTransaction, inv
 	}
 }
 
-func (exec *BlockExecutor) applyEthTransaction(i int, tx *types2.EthTransaction) *pb.Receipt {
+func (exec *BlockExecutor) applyEthTransaction(_ int, tx *types2.EthTransaction) *pb.Receipt {
 	receipt := &pb.Receipt{
 		Version: tx.GetVersion(),
 		TxHash:  tx.GetHash(),
@@ -678,7 +678,7 @@ func (exec *BlockExecutor) evmInterchain(i int, tx *types2.EthTransaction, recei
 
 	for _, log := range receipt.EvmLogs {
 		if strings.EqualFold(log.Address.String(), constant.InterBrokerContractAddr.String()) {
-			ctx := vm.NewContext(tx, uint64(i), nil, exec.currentHeight, exec.ledger, exec.logger, exec.config.EnableAudit)
+			ctx := vm.NewContext(tx, uint64(i), nil, exec.currentHeight, exec.ledger, exec.logger, exec.config.EnableAudit, nil)
 			instance := boltvm.New(ctx, exec.validationEngine, exec.evm, exec.registerBoltContracts())
 
 			ret, _, err := instance.InvokeBVM(constant.InterBrokerContractAddr.String(), log.Data)
@@ -750,6 +750,14 @@ func (exec *BlockExecutor) getContracts(opt *agency.TxOpt) map[string]agency.Con
 	}
 
 	return exec.txsExecutor.GetBoltContracts()
+}
+
+func (exec *BlockExecutor) getChanger(opt *agency.TxOpt) *ledger.ChangeInstance {
+	if opt != nil && opt.Changer != nil {
+		return opt.Changer.(*ledger.ChangeInstance)
+	}
+
+	return nil
 }
 
 func newEvm(number uint64, timestamp uint64, chainCfg *params.ChainConfig, db ledger2.StateLedger, chainLedger ledger2.ChainLedger, admin string) *vm1.EVM {
@@ -896,7 +904,7 @@ func (exec *BlockExecutor) setTimeoutList(height uint64, txList []pb.Transaction
 					return err
 				}
 
-				// The  , don't execute timeoutRollback
+				// The fail receipt had already rollback, don't execute timeoutRollback
 				if ibtp.Type == pb.IBTP_RECEIPT_FAILURE && record.Status == pb.TransactionStatus_FAILURE {
 					continue
 				}
@@ -912,11 +920,11 @@ func (exec *BlockExecutor) setTimeoutList(height uint64, txList []pb.Transaction
 	}
 	for timeoutHeight, txidList := range addTimeoutListMap {
 		newStr := exec.addTimeoutList(timeoutHeight, txidList)
-		exec.ledger.SetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.TimeoutKey(timeoutHeight)), []byte(newStr))
+		exec.ledger.AddState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.TimeoutKey(timeoutHeight)), []byte(newStr))
 	}
 	for recordHeight, txidList := range removeTimeoutListMap {
 		newStr := exec.removeTimeoutList(recordHeight, txidList)
-		exec.ledger.SetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.TimeoutKey(recordHeight)), []byte(newStr))
+		exec.ledger.SetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.TimeoutKey(recordHeight)), []byte(newStr), nil)
 	}
 	return nil
 }
@@ -997,7 +1005,7 @@ func (exec *BlockExecutor) setTxRecord(id string, record pb.TransactionRecord) e
 		return fmt.Errorf("marshal record error: %w", err)
 	}
 
-	exec.ledger.SetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.TxInfoKey(id)), value)
+	exec.ledger.SetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.TxInfoKey(id)), value, nil)
 
 	return nil
 }
@@ -1018,7 +1026,7 @@ func (exec *BlockExecutor) setGlobalTxStatus(globalID string, status pb.Transact
 		return fmt.Errorf("marshal txInfo %v: %w", txInfo, err)
 	}
 
-	exec.ledger.SetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.GlobalTxInfoKey(globalID)), data)
+	exec.ledger.SetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.GlobalTxInfoKey(globalID)), data, nil)
 
 	return nil
 }

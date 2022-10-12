@@ -69,7 +69,7 @@ func setState(context map[string]interface{}, store *wasmtime.Store) *wasmlib.Im
 			argmap := context[wasm.CONTEXT_ARGMAP].(map[int32]int32)
 			key := mem[key_ptr : key_ptr+argmap[key_ptr]]
 			value := mem[value_ptr : value_ptr+argmap[value_ptr]]
-			account.SetState(key, value)
+			account.SetState(key, value, nil)
 		},
 	}
 }

@@ -29,11 +29,11 @@ func Test(t *testing.T) {
 		To:   constant.InterchainContractAddr.Address(),
 	}
 	cons := GetBoltContracts()
-	ctxInterchain := vm.NewContext(txInterchain, 1, nil, 100, mockLedger, log.NewWithModule("vm"), true)
+	ctxInterchain := vm.NewContext(txInterchain, 1, nil, 100, mockLedger, log.NewWithModule("vm"), true, nil)
 	boltVMInterchain := New(ctxInterchain, mockEngine, nil, cons)
 
 	stateLedger.EXPECT().GetState(gomock.Any(), gomock.Any()).Return(true, nil).AnyTimes()
-	stateLedger.EXPECT().SetState(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	stateLedger.EXPECT().SetState(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	stateLedger.EXPECT().AddState(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	stateLedger.EXPECT().QueryByPrefix(gomock.Any(), gomock.Any()).AnyTimes()
 	stateLedger.EXPECT().AddEvent(gomock.Any()).AnyTimes()

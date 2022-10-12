@@ -206,9 +206,8 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	recordLedger := make(map[string][]byte)
 	timeListLedger["timeout-1"] = []byte{'1', '0'}
 	timeListLedger["timeout-2"] = []byte{'t', '-', '2'}
-	stateLedger.EXPECT().SetState(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
-		func(addr *types.Address, key []byte, value []byte) {
-
+	stateLedger.EXPECT().SetState(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(addr *types.Address, key []byte, value []byte, _ interface{}) {
 			if addr.String() == constant.TransactionMgrContractAddr.Address().String() {
 				// manager timeout list
 				if strings.HasPrefix(string(key), TIMEOUT_PREFIX) {
@@ -219,6 +218,17 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 				}
 			}
 		}).AnyTimes()
+
+	stateLedger.EXPECT().AddState(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(addr *types.Address, key []byte, value []byte) {
+			if addr.String() == constant.TransactionMgrContractAddr.Address().String() {
+				// manager timeout list
+				if strings.HasPrefix(string(key), TIMEOUT_PREFIX) {
+					timeListLedger[string(key)] = value
+				}
+			}
+		}).AnyTimes()
+
 	stateLedger.EXPECT().GetState(gomock.Any(), gomock.Any()).DoAndReturn(
 		func(addr *types.Address, key []byte) (bool, []byte) {
 			if addr.String() == constant.TransactionMgrContractAddr.Address().String() {
@@ -379,7 +389,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	assert.Nil(t, err)
 	val, ok = timeListLedger["timeout-3"]
 	assert.True(t, ok)
-	assert.Equal(t, val, []byte{})
+	assert.Equal(t, []byte{}, val)
 
 }
 
@@ -581,7 +591,7 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 	err = ldg.PersistExecutionResult(mockBlock(1, nil), nil, &pb.InterchainMeta{})
 	require.Nil(t, err)
 
-	ldg.SetState(constant.InterchainContractAddr.Address(), []byte(contracts.BitXHubID), []byte("1"))
+	ldg.SetState(constant.InterchainContractAddr.Address(), []byte(contracts.BitXHubID), []byte("1"), nil)
 
 	executor, err := New(ldg, log.NewWithModule("executor"), &appchain.Client{}, config, big.NewInt(5000000))
 	require.Nil(t, err)
@@ -967,7 +977,7 @@ func TestRollback(t *testing.T) {
 	stateLedger.EXPECT().Close().AnyTimes()
 	chainLedger.EXPECT().Close().AnyTimes()
 	stateLedger.EXPECT().GetState(gomock.Any(), gomock.Any()).Return(false, nil).AnyTimes()
-	stateLedger.EXPECT().SetState(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	stateLedger.EXPECT().SetState(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 
 	logger := log.NewWithModule("executor")
 

@@ -114,7 +114,7 @@ func TestBoltVM_Run(t *testing.T) {
 		To:   constant.InterchainContractAddr.Address(),
 	}
 	txInterchain.TransactionHash = txInterchain.Hash()
-	ctxInterchain := vm.NewContext(txInterchain, 1, nil, 100, mockLedger, log.NewWithModule("vm"), true)
+	ctxInterchain := vm.NewContext(txInterchain, 1, nil, 100, mockLedger, log.NewWithModule("vm"), true, nil)
 	boltVMInterchain := New(ctxInterchain, mockEngine, nil, cons)
 	ibtp := mockIBTP(t, 1, pb.IBTP_INTERCHAIN)
 	_, err = boltVMInterchain.HandleIBTP(ibtp, &sync.Map{})

@@ -3,6 +3,7 @@ package boltvm
 import (
 	"fmt"
 	"reflect"
+	"runtime/debug"
 	"strconv"
 	"sync"
 
@@ -38,6 +39,7 @@ func (bvm *BoltVM) Run(input []byte, _ uint64) (ret []byte, gasUsed uint64, err 
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("%v", e)
+			debug.PrintStack()
 		}
 	}()
 

@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"math/big"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -143,7 +144,7 @@ func TestChainLedger_PersistBlockData(t *testing.T) {
 	// create an account
 	account := types.NewAddress(bytesutil.LeftPadBytes([]byte{100}, 20))
 
-	ledger.SetState(account, []byte("a"), []byte("b"))
+	ledger.SetState(account, []byte("a"), []byte("b"), nil)
 	accounts, journal := ledger.FlushDirtyData()
 	ledger.PersistBlockData(genBlockData(1, accounts, journal))
 }
@@ -154,7 +155,7 @@ func TestChainLedger_Commit(t *testing.T) {
 	// create an account
 	account := types.NewAddress(bytesutil.LeftPadBytes([]byte{100}, 20))
 
-	ledger.SetState(account, []byte("a"), []byte("b"))
+	ledger.SetState(account, []byte("a"), []byte("b"), nil)
 	accounts, stateRoot := ledger.FlushDirtyData()
 	err := ledger.Commit(1, accounts, stateRoot)
 	ledger.StateLedger.(*SimpleLedger).GetCommittedState(account, []byte("a"))
@@ -170,8 +171,8 @@ func TestChainLedger_Commit(t *testing.T) {
 	assert.Equal(t, uint64(2), ledger.Version())
 	assert.Equal(t, "0xF09F0198C06D549316D4ee7C497C9eaeF9D24f5b1075e7bCEF3D0a82DfA742cF", stateRoot.String())
 
-	ledger.SetState(account, []byte("a"), []byte("3"))
-	ledger.SetState(account, []byte("a"), []byte("2"))
+	ledger.SetState(account, []byte("a"), []byte("3"), nil)
+	ledger.SetState(account, []byte("a"), []byte("2"), nil)
 	accounts, stateRoot = ledger.FlushDirtyData()
 	err = ledger.Commit(3, accounts, stateRoot)
 	assert.Nil(t, err)
@@ -187,8 +188,8 @@ func TestChainLedger_Commit(t *testing.T) {
 
 	code := bytesutil.RightPadBytes([]byte{100}, 100)
 	ledger.SetCode(account, code)
-	ledger.SetState(account, []byte("b"), []byte("3"))
-	ledger.SetState(account, []byte("c"), []byte("2"))
+	ledger.SetState(account, []byte("b"), []byte("3"), nil)
+	ledger.SetState(account, []byte("c"), []byte("2"), nil)
 	accounts, stateRoot = ledger.FlushDirtyData()
 	err = ledger.Commit(5, accounts, stateRoot)
 	assert.Nil(t, err)
@@ -227,7 +228,7 @@ func TestChainLedger_Commit(t *testing.T) {
 	hash := types.NewHashByStr("0xe9FC370DD36C9BD5f67cCfbc031C909F53A3d8bC7084C01362c55f2D42bA841c")
 	revid := ledger.StateLedger.(*SimpleLedger).Snapshot()
 	ledger.StateLedger.(*SimpleLedger).logs.thash = hash
-	ledger.StateLedger.(*SimpleLedger).SetState(account, []byte("tmp"), []byte("need revert"))
+	ledger.StateLedger.(*SimpleLedger).SetState(account, []byte("tmp"), []byte("need revert"), nil)
 	ledger.StateLedger.(*SimpleLedger).AddLog(&pb.EvmLog{})
 	ledger.StateLedger.(*SimpleLedger).GetLogs(*ledger.StateLedger.(*SimpleLedger).logs.thash)
 	ledger.StateLedger.(*SimpleLedger).GetCodeHash(account)
@@ -264,47 +265,57 @@ func TestChainLedger_Commit(t *testing.T) {
 	ok, _ = ledger.GetState(account, []byte("b"))
 	assert.True(t, ok)
 
-	//changer1 := &stateChanger{
-	//	dirties: make(map[types.Address]int),
-	//}
-	//instance1 := &ChangeInstance{
-	//	changer:        changer1,
-	//	validRevisions: make([]revision, 0),
-	//}
-	//
-	//changer2 := &stateChanger{
-	//	dirties: make(map[types.Address]int),
-	//}
-	//instance2 := &ChangeInstance{
-	//	changer:        changer2,
-	//	validRevisions: make([]revision, 0),
-	//}
-	//
-	//done := make(chan struct{})
-	//go func() {
-	//	revid1 := ledger.StateLedger.(*SimpleLedger).SnapshotForParallel(instance1)
-	//	ledger.StateLedger.(*SimpleLedger).SetState(account, []byte("tx1"), []byte("tx1"))
-	//	ledger.StateLedger.(*SimpleLedger).SetState(account, []byte("tx2"), []byte("tx2"))
-	//	ledger.StateLedger.(*SimpleLedger).RevertToSnapshotForParallel(revid1, instance1)
-	//	done <- struct{}{}
-	//}()
-	//
-	//var revid2 int
-	//go func() {
-	//	revid2 = ledger.StateLedger.(*SimpleLedger).SnapshotForParallel(instance2)
-	//	ledger.StateLedger.(*SimpleLedger).SetState(account, []byte("tx3"), []byte("tx3"))
-	//}()
-	//
-	//<-done
-	//ok, _ = ledger.StateLedger.(*SimpleLedger).GetState(account, []byte("tx1"))
-	//assert.False(t, ok)
-	//
-	//ok, _ = ledger.StateLedger.(*SimpleLedger).GetState(account, []byte("tx3"))
-	//assert.True(t, ok)
-	//
-	//ledger.StateLedger.(*SimpleLedger).RevertToSnapshotForParallel(revid2, instance2)
-	//ok, _ = ledger.StateLedger.(*SimpleLedger).GetState(account, []byte("tx3"))
-	//assert.False(t, ok)
+	changer1 := &stateChanger{
+		dirties: make(map[types.Address]int),
+	}
+	instance1 := &ChangeInstance{
+		changer:        changer1,
+		validRevisions: make([]revision, 0),
+	}
+
+	changer2 := &stateChanger{
+		dirties: make(map[types.Address]int),
+	}
+	instance2 := &ChangeInstance{
+		changer:        changer2,
+		validRevisions: make([]revision, 0),
+	}
+
+	var revid1, revid2 int
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	// tx1 setState
+	go func() {
+		defer wg.Done()
+		revid1 = ledger.StateLedger.(*SimpleLedger).SnapshotForParallel(instance1)
+		ledger.StateLedger.(*SimpleLedger).SetState(account, []byte("tx1-1"), []byte("tx1-1"), instance1)
+		ledger.StateLedger.(*SimpleLedger).SetState(account, []byte("tx1-2"), []byte("tx1-2"), instance1)
+
+	}()
+	// tx2 setState
+	go func() {
+		defer wg.Done()
+		ledger.StateLedger.(*SimpleLedger).SetState(account, []byte("tx2-1"), []byte("tx2-1"), instance2)
+		revid2 = ledger.StateLedger.(*SimpleLedger).SnapshotForParallel(instance2)
+		ledger.StateLedger.(*SimpleLedger).SetState(account, []byte("tx2-2"), []byte("tx2-2"), instance2)
+	}()
+	wg.Wait()
+
+	// revert tx1, doesn't affect the change of tx2
+	ledger.StateLedger.(*SimpleLedger).RevertToSnapshotForParallel(revid1, instance1)
+	ok, _ = ledger.StateLedger.(*SimpleLedger).GetState(account, []byte("tx1-1"))
+	assert.False(t, ok)
+	ok, _ = ledger.StateLedger.(*SimpleLedger).GetState(account, []byte("tx2-1"))
+	assert.True(t, ok)
+	ok, _ = ledger.StateLedger.(*SimpleLedger).GetState(account, []byte("tx2-2"))
+	assert.True(t, ok)
+
+	// revert tx2 to revid2, the key of tx2-1 setting before revid2, doesn't affect
+	ledger.StateLedger.(*SimpleLedger).RevertToSnapshotForParallel(revid2, instance2)
+	ok, _ = ledger.StateLedger.(*SimpleLedger).GetState(account, []byte("tx2-1"))
+	assert.True(t, ok)
+	ok, _ = ledger.StateLedger.(*SimpleLedger).GetState(account, []byte("tx2-2"))
+	assert.False(t, ok)
 
 	ledger.Close()
 
@@ -452,7 +463,7 @@ func TestChainLedger_Rollback(t *testing.T) {
 
 	ledger.PrepareBlock(nil, 2)
 	ledger.SetBalance(addr0, new(big.Int).SetInt64(2))
-	ledger.SetState(addr0, []byte("a"), []byte("2"))
+	ledger.SetState(addr0, []byte("a"), []byte("2"), nil)
 
 	code := sha256.Sum256([]byte("code"))
 	ret := crypto1.Keccak256Hash(code[:])
@@ -468,8 +479,8 @@ func TestChainLedger_Rollback(t *testing.T) {
 
 	ledger.SetBalance(addr1, new(big.Int).SetInt64(3))
 	ledger.SetBalance(addr0, new(big.Int).SetInt64(4))
-	ledger.SetState(addr0, []byte("a"), []byte("3"))
-	ledger.SetState(addr0, []byte("b"), []byte("4"))
+	ledger.SetState(addr0, []byte("a"), []byte("3"), nil)
+	ledger.SetState(addr0, []byte("b"), []byte("4"), nil)
 
 	code1 := sha256.Sum256([]byte("code1"))
 	ret1 := crypto1.Keccak256Hash(code1[:])
@@ -566,10 +577,10 @@ func TestChainLedger_QueryByPrefix(t *testing.T) {
 	key2 := []byte{100, 102}
 	key3 := []byte{10, 102}
 
-	ledger.SetState(addr, key0, []byte("0"))
-	ledger.SetState(addr, key1, []byte("1"))
-	ledger.SetState(addr, key2, []byte("2"))
-	ledger.SetState(addr, key3, []byte("2"))
+	ledger.SetState(addr, key0, []byte("0"), nil)
+	ledger.SetState(addr, key1, []byte("1"), nil)
+	ledger.SetState(addr, key2, []byte("2"), nil)
+	ledger.SetState(addr, key3, []byte("2"), nil)
 
 	ok, vals := ledger.QueryByPrefix(addr, string([]byte{100}))
 	assert.True(t, ok)
@@ -604,8 +615,8 @@ func TestChainLedger_GetAccount(t *testing.T) {
 	account.SetNonce(2)
 	account.SetCodeAndHash(code)
 
-	account.SetState(key0, key1)
-	account.SetState(key1, key0)
+	account.SetState(key0, key1, nil)
+	account.SetState(key1, key0, nil)
 
 	accounts, stateRoot := ledger.FlushDirtyData()
 	err := ledger.Commit(1, accounts, stateRoot)
@@ -626,16 +637,16 @@ func TestChainLedger_GetAccount(t *testing.T) {
 
 	key2 := []byte{100, 102}
 	val2 := []byte{111}
-	ledger.SetState(addr, key0, val0)
-	ledger.SetState(addr, key2, val2)
-	ledger.SetState(addr, key0, val1)
+	ledger.SetState(addr, key0, val0, nil)
+	ledger.SetState(addr, key2, val2, nil)
+	ledger.SetState(addr, key0, val1, nil)
 	accounts, stateRoot = ledger.FlushDirtyData()
 	err = ledger.Commit(2, accounts, stateRoot)
 	assert.Nil(t, err)
 
-	ledger.SetState(addr, key0, val0)
-	ledger.SetState(addr, key0, val1)
-	ledger.SetState(addr, key2, nil)
+	ledger.SetState(addr, key0, val0, nil)
+	ledger.SetState(addr, key0, val1, nil)
+	ledger.SetState(addr, key2, nil, nil)
 	accounts, stateRoot = ledger.FlushDirtyData()
 	err = ledger.Commit(3, accounts, stateRoot)
 	assert.Nil(t, err)
@@ -686,7 +697,7 @@ func TestChainLedger_AddAccountsToCache(t *testing.T) {
 
 	ledger.SetBalance(addr, new(big.Int).SetInt64(100))
 	ledger.SetNonce(addr, 1)
-	ledger.SetState(addr, key, val)
+	ledger.SetState(addr, key, val, nil)
 	ledger.SetCode(addr, code)
 
 	accounts, stateRoot := ledger.FlushDirtyData()
@@ -745,7 +756,7 @@ func TestChainLedger_GetInterchainMeta(t *testing.T) {
 
 	// create an account
 	account := types.NewAddress(bytesutil.LeftPadBytes([]byte{100}, 20))
-	ledger.SetState(account, []byte("a"), []byte("b"))
+	ledger.SetState(account, []byte("a"), []byte("b"), nil)
 	accounts, journal := ledger.FlushDirtyData()
 
 	meta, err := ledger.GetInterchainMeta(1)
@@ -797,7 +808,7 @@ func TestChainLedger_AddState(t *testing.T) {
 	key1 := "101"
 	value0 = []byte{99}
 	value1 := []byte{101}
-	ledger.SetState(account, []byte(key0), value0)
+	ledger.SetState(account, []byte(key0), value0, nil)
 	ledger.AddState(account, []byte(key1), value1)
 	accounts, journal = ledger.FlushDirtyData()
 

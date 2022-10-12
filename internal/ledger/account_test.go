@@ -39,7 +39,7 @@ func TestAccount_GetState(t *testing.T) {
 	addr1 := account.GetAddress()
 	assert.Equal(t, addr, addr1)
 
-	account.SetState([]byte("a"), []byte("b"))
+	account.SetState([]byte("a"), []byte("b"), nil)
 	ok, v := account.GetState([]byte("a"))
 	assert.True(t, ok)
 	assert.Equal(t, []byte("b"), v)
@@ -48,15 +48,11 @@ func TestAccount_GetState(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, []byte("b"), v)
 
-	account.SetState([]byte("a"), nil)
+	account.SetState([]byte("a"), nil, nil)
 	ok, v = account.GetState([]byte("a"))
 	assert.False(t, ok)
 	assert.Nil(t, v)
 	account.GetCommittedState([]byte("a"))
-}
-
-func TestAccount_AddState(t *testing.T) {
-
 }
 
 func TestAccount_AccountBalance(t *testing.T) {

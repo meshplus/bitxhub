@@ -681,15 +681,15 @@ func (mr *MockStateLedgerMockRecorder) SetNonce(arg0, arg1 interface{}) *gomock.
 }
 
 // SetState mocks base method.
-func (m *MockStateLedger) SetState(arg0 *types0.Address, arg1, arg2 []byte) {
+func (m *MockStateLedger) SetState(arg0 *types0.Address, arg1, arg2 []byte, arg3 interface{}) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetState", arg0, arg1, arg2)
+	m.ctrl.Call(m, "SetState", arg0, arg1, arg2, arg3)
 }
 
 // SetState indicates an expected call of SetState.
-func (mr *MockStateLedgerMockRecorder) SetState(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockStateLedgerMockRecorder) SetState(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetState", reflect.TypeOf((*MockStateLedger)(nil).SetState), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetState", reflect.TypeOf((*MockStateLedger)(nil).SetState), arg0, arg1, arg2, arg3)
 }
 
 // SlotInEVMAceessList mocks base method.
@@ -986,15 +986,15 @@ func (mr *MockStateAccessorMockRecorder) SetNonce(arg0, arg1 interface{}) *gomoc
 }
 
 // SetState mocks base method.
-func (m *MockStateAccessor) SetState(arg0 *types0.Address, arg1, arg2 []byte) {
+func (m *MockStateAccessor) SetState(arg0 *types0.Address, arg1, arg2 []byte, arg3 interface{}) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetState", arg0, arg1, arg2)
+	m.ctrl.Call(m, "SetState", arg0, arg1, arg2, arg3)
 }
 
 // SetState indicates an expected call of SetState.
-func (mr *MockStateAccessorMockRecorder) SetState(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockStateAccessorMockRecorder) SetState(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetState", reflect.TypeOf((*MockStateAccessor)(nil).SetState), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetState", reflect.TypeOf((*MockStateAccessor)(nil).SetState), arg0, arg1, arg2, arg3)
 }
 
 // MockIAccount is a mock of IAccount interface.
@@ -1209,15 +1209,15 @@ func (mr *MockIAccountMockRecorder) SetNonce(nonce interface{}) *gomock.Call {
 }
 
 // SetState mocks base method.
-func (m *MockIAccount) SetState(key, value []byte) {
+func (m *MockIAccount) SetState(key, value []byte, changer interface{}) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetState", key, value)
+	m.ctrl.Call(m, "SetState", key, value, changer)
 }
 
 // SetState indicates an expected call of SetState.
-func (mr *MockIAccountMockRecorder) SetState(key, value interface{}) *gomock.Call {
+func (mr *MockIAccountMockRecorder) SetState(key, value, changer interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetState", reflect.TypeOf((*MockIAccount)(nil).SetState), key, value)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetState", reflect.TypeOf((*MockIAccount)(nil).SetState), key, value, changer)
 }
 
 // SetSuicided mocks base method.
