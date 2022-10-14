@@ -75,7 +75,6 @@ func (api *PublicEthereumAPI) Syncing() (map[string]hexutil.Uint64, error) {
 	syncBlock := make(map[string]hexutil.Uint64)
 
 	meta, err := api.api.Chain().Meta()
-
 	if err != nil {
 		syncBlock["result"] = hexutil.Uint64(0)
 		return syncBlock, err
@@ -85,8 +84,6 @@ func (api *PublicEthereumAPI) Syncing() (map[string]hexutil.Uint64, error) {
 	syncBlock["currentBlock"] = syncBlock["highestBlock"]
 	syncBlock["startingBlock"] = hexutil.Uint64(1)
 	return syncBlock, nil
-
-	//return nil, nil
 }
 
 // Mining returns whether or not this node is currently mining. Always false.
