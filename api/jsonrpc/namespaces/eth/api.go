@@ -83,11 +83,10 @@ func (api *PublicEthereumAPI) Syncing() (map[string]string, error) {
 
 	syncBlock["highestBlock"] = string(meta.Height)
 	syncBlock["currentBlock"] = syncBlock["highestBlock"]
-	syncBlock["startingBlock"] = string(1)
-	//return syncBlock, nil
-	//TODO
+	syncBlock["startingBlock"] = string(hexutil.Uint64(1))
+	return syncBlock, nil
 
-	return nil, nil
+	//return nil, nil
 }
 
 // Mining returns whether or not this node is currently mining. Always false.
