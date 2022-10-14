@@ -80,9 +80,9 @@ func (api *PublicEthereumAPI) Syncing() (map[string]string, error) {
 		return syncBlock, err
 	}
 
-	syncBlock["startingBlock"] = string(hexutil.Uint64(1))
-	syncBlock["highestBlock"] = string(hexutil.Uint64(meta.Height))
+	syncBlock["highestBlock"] = string(meta.Height)
 	syncBlock["currentBlock"] = syncBlock["highestBlock"]
+	syncBlock["startingBlock"] = string(hexutil.Uint64(1))
 	return syncBlock, nil
 	//TODO
 
