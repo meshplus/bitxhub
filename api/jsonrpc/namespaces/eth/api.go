@@ -71,6 +71,7 @@ func (api *PublicEthereumAPI) ChainId() (hexutil.Uint, error) { // nolint
 // outlining the state of the sync if it is.
 func (api *PublicEthereumAPI) Syncing() (map[string]string, error) {
 	api.logger.Debug("eth_syncing")
+
 	syncBlock := make(map[string]string)
 
 	meta, err := api.api.Chain().Meta()
@@ -82,7 +83,7 @@ func (api *PublicEthereumAPI) Syncing() (map[string]string, error) {
 
 	syncBlock["highestBlock"] = string(meta.Height)
 	syncBlock["currentBlock"] = syncBlock["highestBlock"]
-	syncBlock["startingBlock"] = string(hexutil.Uint64(1))
+	syncBlock["startingBlock"] = string(1)
 	return syncBlock, nil
 	//TODO
 
