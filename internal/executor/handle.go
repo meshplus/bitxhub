@@ -44,6 +44,7 @@ const (
 	GasNormalTx = 21000
 	GasFailedTx = 21000
 	GasBVMTx    = 21000 * 10
+	GasEvmTx    = 5000000000000
 	repeatBlock = "new block is the same as the block in local ledger"
 	parallel    = "parallel"
 	simple      = "simple"
