@@ -41,8 +41,8 @@ solo = false
 
 [limiter]
   interval= "50ms"
-  quantum= 500
-  capacity= 10000
+  quantum= 5000
+  capacity= 100000
   max_open_files_limit = 2048 # the limit of max open files of bitxhub
 
 [appchain]
@@ -72,7 +72,9 @@ solo = false
   ca_cert_path = "certs/ca.cert"
 
 [order]
-  type = "raft"
+  type = "rbft"
+  benchmark = true
+
 
 [executor]
   enable_audit = true

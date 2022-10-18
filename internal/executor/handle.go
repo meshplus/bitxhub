@@ -284,14 +284,25 @@ func (exec *BlockExecutor) listenPreExecuteEvent() {
 	for {
 		select {
 		case commitEvent := <-exec.preBlockC:
-			now := time.Now()
-			blockWrapper := exec.verifySign(commitEvent)
-			exec.logger.WithFields(logrus.Fields{
-				"height": commitEvent.Block.BlockHeader.Number,
-				"count":  len(commitEvent.Block.Transactions.Transactions),
-				"elapse": time.Since(now),
-			}).Debug("Verified signature")
-			exec.blockC <- blockWrapper
+			if exec.orderBenchmark && commitEvent.Block.BlockHeader.Number > 30 {
+				block := &pb.Block{}
+				block = commitEvent.Block
+				block.BlockHash = block.Hash()
+				txHashList := make([]*types.Hash, 0)
+				for _, tx := range commitEvent.Block.Transactions.Transactions {
+					txHashList = append(txHashList, tx.GetHash())
+				}
+				exec.postBlockEvent(block, nil, txHashList)
+			} else {
+				now := time.Now()
+				blockWrapper := exec.verifySign(commitEvent)
+				exec.logger.WithFields(logrus.Fields{
+					"height": commitEvent.Block.BlockHeader.Number,
+					"count":  len(commitEvent.Block.Transactions.Transactions),
+					"elapse": time.Since(now),
+				}).Debug("Verified signature")
+				exec.blockC <- blockWrapper
+			}
 		case <-exec.ctx.Done():
 			return
 		}

@@ -60,14 +60,15 @@ type BlockExecutor struct {
 	ctx                context.Context
 	cancel             context.CancelFunc
 
-	evm         *vm.EVM
-	evmChainCfg *params.ChainConfig
-	gasLimit    uint64
-	config      repo.Config
-	bxhGasPrice *big.Int
-	lock        *sync.Mutex
-	gasLock     *sync.Mutex
-	admins      []string
+	evm            *vm.EVM
+	evmChainCfg    *params.ChainConfig
+	gasLimit       uint64
+	config         repo.Config
+	bxhGasPrice    *big.Int
+	lock           *sync.Mutex
+	gasLock        *sync.Mutex
+	admins         []string
+	orderBenchmark bool
 }
 
 func (exec *BlockExecutor) GetBoltContracts() map[string]agency.Contract {
@@ -105,6 +106,7 @@ func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, client *appchain
 		gasLimit:         config.GasLimit,
 		lock:             &sync.Mutex{},
 		gasLock:          &sync.Mutex{},
+		orderBenchmark:   config.Benchmark,
 	}
 
 	for _, admin := range config.Genesis.Admins {

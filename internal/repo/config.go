@@ -192,7 +192,8 @@ type Txpool struct {
 }
 
 type Order struct {
-	Type string `toml:"type" json:"type"`
+	Type      string `toml:"type" json:"type"`
+	Benchmark bool   `toml:"benchmark" json:"benchmark"`
 }
 
 type Executor struct {
@@ -273,7 +274,8 @@ func DefaultConfig() (*Config, error) {
 			BatchTimeout: 500 * time.Millisecond,
 		},
 		Order: Order{
-			Type: "raft",
+			Type:      "raft",
+			Benchmark: false,
 		},
 		Executor: Executor{
 			EnableAudit: true,
