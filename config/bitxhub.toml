@@ -76,6 +76,7 @@ solo = false
 
 [executor]
   enable_audit = true
+  evm_max_size = 44576
   type = "serial"  # opensource version only supports serial type, commercial version supports serial and parallel types
   proof_type = "serial"
 
