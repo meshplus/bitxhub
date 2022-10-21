@@ -67,17 +67,26 @@ func (api *PublicEthereumAPI) ChainId() (hexutil.Uint, error) { // nolint
 	return hexutil.Uint(api.chainID.Uint64()), nil
 }
 
-// Syncing returns whether or not the current node is syncing with other peers. Returns false if not, or a struct
+// Syncing returns whether the current node is syncing with other peers. Returns false if not, or a struct
 // outlining the state of the sync if it is.
-func (api *PublicEthereumAPI) Syncing() (interface{}, error) {
+func (api *PublicEthereumAPI) Syncing() (map[string]string, error) {
 	api.logger.Debug("eth_syncing")
+	syncBlock := make(map[string]string)
 
-	// TODO
+	meta, err := api.api.Chain().Meta()
 
-	return nil, nil
+	if err != nil {
+		syncBlock["result"] = "false"
+		return syncBlock, err
+	}
+
+	syncBlock["startingBlock"] = string(hexutil.Uint64(1))
+	syncBlock["highestBlock"] = string(hexutil.Uint64(meta.Height))
+	syncBlock["currentBlock"] = syncBlock["highestBlock"]
+	return syncBlock, nil
 }
 
-// Mining returns whether or not this node is currently mining. Always false.
+// Mining returns whether this node is currently mining. Always false.
 func (api *PublicEthereumAPI) Mining() bool {
 	api.logger.Debug("eth_mining")
 	return false
