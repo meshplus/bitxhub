@@ -31,6 +31,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+const cumulativeGas = 1000
 // PublicEthereumAPI is the eth_ prefixed set of APIs in the Web3 JSON-RPC spec.
 type PublicEthereumAPI struct {
 	ctx     context.Context
@@ -84,6 +85,14 @@ func (api *PublicEthereumAPI) Syncing() (map[string]string, error) {
 	syncBlock["highestBlock"] = string(hexutil.Uint64(meta.Height))
 	syncBlock["currentBlock"] = syncBlock["highestBlock"]
 	return syncBlock, nil
+}
+
+// Accounts returns the collection of accounts this node manages.
+func (api *PublicEthereumAPI) Accounts() ([]string, error) {
+	api.logger.Debug("eth_accounts")
+	var accounts []string
+	accounts = make([]string, 0)
+	return accounts, nil
 }
 
 // Mining returns whether this node is currently mining. Always false.
@@ -614,20 +623,20 @@ func (api *PublicEthereumAPI) GetTransactionReceipt(hash common.Hash) (map[strin
 		return nil, err
 	}
 
-	block, err := api.api.Broker().GetBlock("HEIGHT", fmt.Sprintf("%d", meta.BlockHeight))
-	if err != nil {
-		api.logger.Debugf("no block found for height %d", meta.BlockHeight)
-		return nil, err
-	}
+	//block, err := api.api.Broker().GetBlock("HEIGHT", fmt.Sprintf("%d", meta.BlockHeight))
+	//if err != nil {
+	//	api.logger.Debugf("no block found for height %d", meta.BlockHeight)
+	//	return nil, err
+	//}
 
-	cumulativeGasUsed, err := api.getBlockCumulativeGas(block, meta.Index)
-	if err != nil {
-		return nil, err
-	}
+	//cumulativeGasUsed, err := api.getBlockCumulativeGas(block, meta.Index)
+	//if err != nil {
+	//	return nil, err
+	//}
 
 	fields := map[string]interface{}{
 		"type":              hexutil.Uint(tx.GetType()),
-		"cumulativeGasUsed": hexutil.Uint64(cumulativeGasUsed),
+		"cumulativeGasUsed": hexutil.Uint64(cumulativeGas),
 		"transactionHash":   hash,
 		"gasUsed":           hexutil.Uint64(receipt.GasUsed),
 		"blockHash":         common.BytesToHash(meta.BlockHash),
@@ -772,7 +781,7 @@ func (api *PublicEthereumAPI) formatBlock(block *pb.Block, fullTx bool) (map[str
 		"extraData":        []byte{},
 		"size":             hexutil.Uint64(block.Size()),
 		"gasLimit":         hexutil.Uint64(api.config.GasLimit), // Static gas limit
-		"gasUsed":          hexutil.Uint64(1000),
+		"gasUsed":          hexutil.Uint64(cumulativeGas),
 		"timestamp":        hexutil.Uint64(block.BlockHeader.Timestamp),
 		"transactions":     transactions,
 		"uncles":           []string{},
