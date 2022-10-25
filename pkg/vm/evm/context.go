@@ -15,8 +15,8 @@ type EvmBlockContext struct {
 	vmConfig vm.Config
 }
 
-func NewEvmBlockContext(number uint64, timestamp uint64, db ledger.StateLedger, db2 ledger.ChainLedger, admin string) *EvmBlockContext {
-	blkCtx := vm.NewEVMBlockContext(number, timestamp, db, db2, admin)
+func NewEvmBlockContext(number uint64, timestamp uint64, db ledger.StateLedger, db2 ledger.ChainLedger, admin string, maxCodeSize uint64) *EvmBlockContext {
+	blkCtx := vm.NewEVMBlockContext(number, timestamp, maxCodeSize, db, db2, admin)
 
 	return &EvmBlockContext{
 		BlkCtx:   blkCtx,

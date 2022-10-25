@@ -726,11 +726,11 @@ func (api *PublicEthereumAPI) getTxByBlockInfoAndIndex(mode string, key string, 
 // FormatBlock creates an ethereum block from a tendermint header and ethereum-formatted
 // transactions.
 func (api *PublicEthereumAPI) formatBlock(block *pb.Block, fullTx bool) (map[string]interface{}, error) {
-	cumulativeGas, err := api.getBlockCumulativeGas(block, uint64(len(block.Transactions.Transactions)-1))
-	if err != nil {
-		return nil, err
-	}
-
+	//cumulativeGas, err := api.getBlockCumulativeGas(block, uint64(len(block.Transactions.Transactions)-1))
+	//if err != nil {
+	//	return nil, err
+	//}
+	var err error
 	formatTx := func(tx pb.Transaction, index uint64) (interface{}, error) {
 		return tx.GetHash(), nil
 	}
@@ -763,7 +763,7 @@ func (api *PublicEthereumAPI) formatBlock(block *pb.Block, fullTx bool) (map[str
 		"extraData":        []byte{},
 		"size":             hexutil.Uint64(block.Size()),
 		"gasLimit":         hexutil.Uint64(api.config.GasLimit), // Static gas limit
-		"gasUsed":          hexutil.Uint64(cumulativeGas),
+		"gasUsed":          hexutil.Uint64(1000),
 		"timestamp":        hexutil.Uint64(block.BlockHeader.Timestamp),
 		"transactions":     transactions,
 		"uncles":           []string{},

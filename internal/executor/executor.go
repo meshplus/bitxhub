@@ -61,6 +61,7 @@ type BlockExecutor struct {
 	cancel             context.CancelFunc
 
 	evm         *vm.EVM
+	evmMaxSize  uint64
 	evmChainCfg *params.ChainConfig
 	gasLimit    uint64
 	config      repo.Config
@@ -105,17 +106,23 @@ func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, client *appchain
 		gasLimit:         config.GasLimit,
 		lock:             &sync.Mutex{},
 		gasLock:          &sync.Mutex{},
+		evmMaxSize:       repo.EvmMaxCodeSize,
 	}
 
 	for _, admin := range config.Genesis.Admins {
 		blockExecutor.admins = append(blockExecutor.admins, admin.Address)
 	}
 
-	blockExecutor.evm = newEvm(1, uint64(0), blockExecutor.evmChainCfg, blockExecutor.ledger, blockExecutor.ledger.ChainLedger, blockExecutor.admins[0])
+	// parallel executor just support simple ledger temporary
+	if config.EvmMaxSize > repo.EvmMaxCodeSize {
+		blockExecutor.evmMaxSize = config.EvmMaxSize
+	}
+
+	blockExecutor.evm = newEvm(1, uint64(0), blockExecutor.evmChainCfg, blockExecutor.ledger,
+		blockExecutor.ledger.ChainLedger, blockExecutor.admins[0], blockExecutor.evmMaxSize)
 
 	blockExecutor.txsExecutor = txsExecutor(blockExecutor.applyTx, blockExecutor.registerBoltContracts, logger)
 
-	// parallel executor just support simple ledger temporary
 	if config.Executor.Type == parallel && config.Ledger.Type == simple {
 		blockExecutor.supportParallel = true
 	}
@@ -226,7 +233,8 @@ func (exec *BlockExecutor) ApplyReadonlyTransactions(txs []pb.Transaction) []*pb
 	}
 
 	exec.ledger.PrepareBlock(meta.BlockHash, meta.Height)
-	exec.evm = newEvm(meta.Height, uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateLedger, exec.ledger.ChainLedger, exec.admins[0])
+	exec.evm = newEvm(meta.Height, uint64(block.BlockHeader.Timestamp), exec.evmChainCfg,
+		exec.ledger.StateLedger, exec.ledger.ChainLedger, exec.admins[0], exec.evmMaxSize)
 	for i, tx := range txs {
 		receipt := exec.applyTransaction(i, tx, "", nil)
 
