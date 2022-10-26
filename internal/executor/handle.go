@@ -140,7 +140,9 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 		"count": len(block.Transactions.Transactions),
 	}).Infof("verify proof elapsed")
 
-	exec.evm = newEvm(block.Height(), uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateLedger, exec.ledger.ChainLedger, exec.admins[0])
+	exec.evm = newEvm(block.Height(), uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateLedger,
+		exec.ledger.ChainLedger, exec.admins[0], exec.evmMaxSize)
+
 	exec.ledger.PrepareBlock(block.BlockHash, block.Height())
 	current2 := time.Now()
 	receipts := exec.txsExecutor.ApplyTransactions(block.Transactions.Transactions, blockWrapper.invalidTx)
@@ -760,8 +762,8 @@ func (exec *BlockExecutor) getChanger(opt *agency.TxOpt) *ledger.ChangeInstance 
 	return nil
 }
 
-func newEvm(number uint64, timestamp uint64, chainCfg *params.ChainConfig, db ledger2.StateLedger, chainLedger ledger2.ChainLedger, admin string) *vm1.EVM {
-	blkCtx := vm1.NewEVMBlockContext(number, timestamp, db, chainLedger, admin)
+func newEvm(number uint64, timestamp uint64, chainCfg *params.ChainConfig, db ledger2.StateLedger, chainLedger ledger2.ChainLedger, admin string, maxCodeSize uint64) *vm1.EVM {
+	blkCtx := vm1.NewEVMBlockContext(number, timestamp, maxCodeSize, db, chainLedger, admin)
 
 	return vm1.NewEVM(blkCtx, vm1.TxContext{}, db, chainCfg, vm1.Config{})
 }

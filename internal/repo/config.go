@@ -41,7 +41,8 @@ const (
 	DefaultSimpleMajorityExpression = "a > 0.5 * t"
 	DefaultZeroStrategyExpression   = "a >= 0"
 	// Passwd
-	DefaultPasswd = "bitxhub"
+	DefaultPasswd  = "bitxhub"
+	EvmMaxCodeSize = 24576
 
 	SuperMajorityApprove = "SuperMajorityApprove"
 	SuperMajorityAgainst = "SuperMajorityAgainst"
@@ -197,6 +198,7 @@ type Order struct {
 
 type Executor struct {
 	EnableAudit bool   `mapstructure:"enable_audit" json:"enable_audit" toml:"enable_audit"`
+	EvmMaxSize  uint64 `mapstructure:"evm_max_size" json:"evm_max_size" toml:"evm_max_size"`
 	Type        string `toml:"type" json:"type"`
 	ProofType   string `mapstructure:"proof_type" json:"proof_type"`
 }
@@ -277,6 +279,7 @@ func DefaultConfig() (*Config, error) {
 		},
 		Executor: Executor{
 			EnableAudit: true,
+			EvmMaxSize:  EvmMaxCodeSize,
 			Type:        "serial",
 			ProofType:   "parallel",
 		},

@@ -31,6 +31,8 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+const cumulativeGas = 1000
+
 // PublicEthereumAPI is the eth_ prefixed set of APIs in the Web3 JSON-RPC spec.
 type PublicEthereumAPI struct {
 	ctx     context.Context
@@ -67,17 +69,32 @@ func (api *PublicEthereumAPI) ChainId() (hexutil.Uint, error) { // nolint
 	return hexutil.Uint(api.chainID.Uint64()), nil
 }
 
-// Syncing returns whether or not the current node is syncing with other peers. Returns false if not, or a struct
+// Syncing returns whether the current node is syncing with other peers. Returns false if not, or a struct
 // outlining the state of the sync if it is.
-func (api *PublicEthereumAPI) Syncing() (interface{}, error) {
+func (api *PublicEthereumAPI) Syncing() (map[string]string, error) {
 	api.logger.Debug("eth_syncing")
+	syncBlock := make(map[string]string)
 
-	// TODO
+	meta, err := api.api.Chain().Meta()
 
-	return nil, nil
+	if err != nil {
+		syncBlock["result"] = "false"
+		return syncBlock, err
+	}
+
+	syncBlock["startingBlock"] = string(hexutil.Uint64(1))
+	syncBlock["highestBlock"] = string(hexutil.Uint64(meta.Height))
+	syncBlock["currentBlock"] = syncBlock["highestBlock"]
+	return syncBlock, nil
 }
 
-// Mining returns whether or not this node is currently mining. Always false.
+// Accounts returns the collection of accounts this node manages.
+func (api *PublicEthereumAPI) Accounts() ([]string, error) {
+	api.logger.Debug("eth_accounts")
+	return make([]string, 0), nil
+}
+
+// Mining returns whether this node is currently mining. Always false.
 func (api *PublicEthereumAPI) Mining() bool {
 	api.logger.Debug("eth_mining")
 	return false
@@ -605,20 +622,20 @@ func (api *PublicEthereumAPI) GetTransactionReceipt(hash common.Hash) (map[strin
 		return nil, err
 	}
 
-	block, err := api.api.Broker().GetBlock("HEIGHT", fmt.Sprintf("%d", meta.BlockHeight))
-	if err != nil {
-		api.logger.Debugf("no block found for height %d", meta.BlockHeight)
-		return nil, err
-	}
+	//block, err := api.api.Broker().GetBlock("HEIGHT", fmt.Sprintf("%d", meta.BlockHeight))
+	//if err != nil {
+	//	api.logger.Debugf("no block found for height %d", meta.BlockHeight)
+	//	return nil, err
+	//}
 
-	cumulativeGasUsed, err := api.getBlockCumulativeGas(block, meta.Index)
-	if err != nil {
-		return nil, err
-	}
+	//cumulativeGasUsed, err := api.getBlockCumulativeGas(block, meta.Index)
+	//if err != nil {
+	//	return nil, err
+	//}
 
 	fields := map[string]interface{}{
 		"type":              hexutil.Uint(tx.GetType()),
-		"cumulativeGasUsed": hexutil.Uint64(cumulativeGasUsed),
+		"cumulativeGasUsed": hexutil.Uint64(cumulativeGas),
 		"transactionHash":   hash,
 		"gasUsed":           hexutil.Uint64(receipt.GasUsed),
 		"blockHash":         common.BytesToHash(meta.BlockHash),
@@ -726,11 +743,11 @@ func (api *PublicEthereumAPI) getTxByBlockInfoAndIndex(mode string, key string, 
 // FormatBlock creates an ethereum block from a tendermint header and ethereum-formatted
 // transactions.
 func (api *PublicEthereumAPI) formatBlock(block *pb.Block, fullTx bool) (map[string]interface{}, error) {
-	cumulativeGas, err := api.getBlockCumulativeGas(block, uint64(len(block.Transactions.Transactions)-1))
-	if err != nil {
-		return nil, err
-	}
-
+	//cumulativeGas, err := api.getBlockCumulativeGas(block, uint64(len(block.Transactions.Transactions)-1))
+	//if err != nil {
+	//	return nil, err
+	//}
+	var err error
 	formatTx := func(tx pb.Transaction, index uint64) (interface{}, error) {
 		return tx.GetHash(), nil
 	}
