@@ -133,7 +133,7 @@ func (router *InterchainRouter) GetBlockHeader(begin, end uint64, ch chan<- *pb.
 	defer close(ch)
 
 	for i := begin; i <= end; i++ {
-		block, err := router.ledger.GetBlock(i)
+		block, err := router.ledger.GetBlock(i, false)
 		if err != nil {
 			return fmt.Errorf("get block: %w", err)
 		}
@@ -149,7 +149,7 @@ func (router *InterchainRouter) GetInterchainTxWrappers(appchainID string, begin
 	defer close(ch)
 
 	for i := begin; i <= end; i++ {
-		block, err := router.ledger.GetBlock(i)
+		block, err := router.ledger.GetBlock(i, true)
 		if err != nil {
 			return fmt.Errorf("get block: %w", err)
 		}

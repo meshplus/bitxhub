@@ -15,7 +15,6 @@ require (
 	github.com/ethereum/go-ethereum v1.10.8
 	github.com/fatih/color v1.7.0
 	github.com/fsnotify/fsnotify v1.4.9
-	github.com/gobuffalo/envy v1.9.0 // indirect
 	github.com/gobuffalo/packd v1.0.1
 	github.com/gobuffalo/packr/v2 v2.8.3
 	github.com/gogo/protobuf v1.3.2
@@ -34,11 +33,11 @@ require (
 	github.com/libp2p/go-libp2p-swarm v0.2.4
 	github.com/looplab/fsm v0.2.0
 	github.com/magiconair/properties v1.8.5
-	github.com/meshplus/bitxhub-core v1.3.1-0.20220927021127-645700e66121
+	github.com/meshplus/bitxhub-core v1.3.1-0.20221027121437-e904eb78f5d5
 	github.com/meshplus/bitxhub-kit v1.2.1-0.20221010033511-7093f5492564
-	github.com/meshplus/bitxhub-model v1.2.1-0.20221011093115-0a1f9264c58c
+	github.com/meshplus/bitxhub-model v1.2.1-0.20221028080400-ce3ab02d9ef8
 	github.com/meshplus/consensus v0.0.0-20211228075008-5f469b198531
-	github.com/meshplus/eth-kit v0.0.0-20221020152328-caeec38b9a34
+	github.com/meshplus/eth-kit v0.0.0-20221027120404-e69d0c24dbd4
 	github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd
 	github.com/meshplus/go-lightp2p v0.0.0-20220712082352-ed86b78e8baf
 	github.com/miguelmota/go-solidity-sha3 v0.1.1

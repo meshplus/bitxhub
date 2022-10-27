@@ -60,7 +60,7 @@ func (exec *BlockExecutor) rollbackBlocks(newBlock *pb.Block) error {
 		err      error
 	)
 	if err = retry.Retry(func(attempt uint) error {
-		oldBlock, err = exec.ledger.GetBlock(newBlock.Height())
+		oldBlock, err = exec.ledger.GetBlock(newBlock.Height(), false)
 		if err != nil {
 			exec.logger.WithFields(logrus.Fields{
 				"height": newBlock.Height(),
@@ -80,7 +80,7 @@ func (exec *BlockExecutor) rollbackBlocks(newBlock *pb.Block) error {
 	// consensus ensure newBlock is approved by quorum nodes
 	if oldBlock.BlockHash.String() != newBlock.Hash().String() {
 		// query last checked block for generating right parent blockHash
-		lastCheckedBlock, err := exec.ledger.GetBlock(newBlock.Height() - 1)
+		lastCheckedBlock, err := exec.ledger.GetBlock(newBlock.Height()-1, false)
 		if err != nil {
 			exec.logger.WithFields(logrus.Fields{
 				"height": lastCheckedBlock.Height(),

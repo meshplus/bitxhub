@@ -51,7 +51,7 @@ func (l *ChainLedgerImpl) PutBlock(height uint64, block *pb.Block) error {
 }
 
 // GetBlock get block with height
-func (l *ChainLedgerImpl) GetBlock(height uint64) (*pb.Block, error) {
+func (l *ChainLedgerImpl) GetBlock(height uint64, fullTx bool) (*pb.Block, error) {
 	data, err := l.bf.Get(blockfile.BlockFileBodiesTable, height)
 	if err != nil {
 		return nil, fmt.Errorf("get bodies with height %d from blockfile failed: %w", height, err)
@@ -62,22 +62,29 @@ func (l *ChainLedgerImpl) GetBlock(height uint64) (*pb.Block, error) {
 		return nil, fmt.Errorf("unmarshal block error: %w", err)
 	}
 
-	txHashesData := l.blockchainStore.Get(compositeKey(blockTxSetKey, height))
-	if txHashesData == nil {
-		return nil, fmt.Errorf("cannot get tx hashes of block")
-	}
-	txHashes := make([]*types.Hash, 0)
-	if err := json.Unmarshal(txHashesData, &txHashes); err != nil {
-		return nil, fmt.Errorf("unmarshal tx hash data error: %w", err)
-	}
-
 	txs := &pb.Transactions{}
-	txsBytes, err := l.bf.Get(blockfile.BlockFileTXsTable, height)
-	if err != nil {
-		return nil, fmt.Errorf("get transactions with height %d from blockfile failed: %w", height, err)
-	}
-	if err := txs.Unmarshal(txsBytes); err != nil {
-		return nil, fmt.Errorf("unmarshal txs bytes error: %w", err)
+	if !fullTx {
+		txHashesData := l.blockchainStore.Get(compositeKey(blockTxSetKey, height))
+		if txHashesData == nil {
+			return nil, fmt.Errorf("cannot get tx hashes of block")
+		}
+		txHashes := make([]*types.Hash, 0)
+		if err := json.Unmarshal(txHashesData, &txHashes); err != nil {
+			return nil, fmt.Errorf("unmarshal tx hash data error: %w", err)
+		}
+		bxhTxs := make([]pb.Transaction, len(txHashes))
+		for i, hash := range txHashes {
+			bxhTxs[i] = &pb.BxhTransaction{TransactionHash: hash}
+		}
+		txs.Transactions = bxhTxs
+	} else {
+		txsBytes, err := l.bf.Get(blockfile.BlockFileTXsTable, height)
+		if err != nil {
+			return nil, fmt.Errorf("get transactions with height %d from blockfile failed: %w", height, err)
+		}
+		if err := txs.Unmarshal(txsBytes); err != nil {
+			return nil, fmt.Errorf("unmarshal txs bytes error: %w", err)
+		}
 	}
 
 	block.Transactions = txs
@@ -95,7 +102,7 @@ func (l *ChainLedgerImpl) GetBlockHash(height uint64) *types.Hash {
 
 // GetBlockSign get the signature of block
 func (l *ChainLedgerImpl) GetBlockSign(height uint64) ([]byte, error) {
-	block, err := l.GetBlock(height)
+	block, err := l.GetBlock(height, false)
 	if err != nil {
 		return nil, fmt.Errorf("get block with height %d failed: %w", height, err)
 	}
@@ -104,7 +111,7 @@ func (l *ChainLedgerImpl) GetBlockSign(height uint64) ([]byte, error) {
 }
 
 // GetBlockByHash get the block using block hash
-func (l *ChainLedgerImpl) GetBlockByHash(hash *types.Hash) (*pb.Block, error) {
+func (l *ChainLedgerImpl) GetBlockByHash(hash *types.Hash, fullTx bool) (*pb.Block, error) {
 	data := l.blockchainStore.Get(compositeKey(blockHashKey, hash.String()))
 	if data == nil {
 		return nil, storage.ErrorNotFound
@@ -115,7 +122,7 @@ func (l *ChainLedgerImpl) GetBlockByHash(hash *types.Hash) (*pb.Block, error) {
 		return nil, fmt.Errorf("wrong height, %w", err)
 	}
 
-	return l.GetBlock(uint64(height))
+	return l.GetBlock(uint64(height), fullTx)
 }
 
 // GetTransaction get the transaction using transaction hash
@@ -385,7 +392,7 @@ func (l *ChainLedgerImpl) persistChainMeta(batcher storage.Batch, meta *pb.Chain
 }
 
 func (l *ChainLedgerImpl) removeChainDataOnBlock(batch storage.Batch, height uint64) (uint64, error) {
-	block, err := l.GetBlock(height)
+	block, err := l.GetBlock(height, false)
 	if err != nil {
 		return 0, fmt.Errorf("get block with height %d failed: %w", height, err)
 	}
@@ -434,7 +441,7 @@ func (l *ChainLedgerImpl) RollbackBlockChain(height uint64) error {
 		batch.Delete([]byte(chainMetaKey))
 		meta = &pb.ChainMeta{}
 	} else {
-		block, err := l.GetBlock(height)
+		block, err := l.GetBlock(height, false)
 		if err != nil {
 			return fmt.Errorf("get block with height %d failed: %w", height, err)
 		}

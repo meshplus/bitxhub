@@ -192,7 +192,7 @@ func (api *PublicEthereumAPI) GetTransactionCount(address common.Address, blockN
 func (api *PublicEthereumAPI) GetBlockTransactionCountByHash(hash common.Hash) *hexutil.Uint {
 	api.logger.Debugf("eth_getBlockTransactionCountByHash, hash: %s", hash.String())
 
-	block, err := api.api.Broker().GetBlock("HASH", hash.String())
+	block, err := api.api.Broker().GetBlock("HASH", hash.String(), false)
 	if err != nil {
 		api.logger.Debugf("eth api GetBlockTransactionCountByHash err:%s", err)
 		return nil
@@ -221,7 +221,7 @@ func (api *PublicEthereumAPI) GetBlockTransactionCountByNumber(blockNum string) 
 		return nil
 	}
 	api.logger.Debugf("eth_getBlockTransactionCountByNumber, block number: %d", num)
-	block, err := api.api.Broker().GetBlock("HEIGHT", fmt.Sprintf("%d", num))
+	block, err := api.api.Broker().GetBlock("HEIGHT", fmt.Sprintf("%d", num), false)
 	if err != nil {
 		api.logger.Debugf("eth api GetBlockTransactionCountByNumber err:%s", err)
 		return nil
@@ -307,7 +307,7 @@ func (api *PublicEthereumAPI) getStateLedgerAt(blockNum rpctypes.BlockNumber) (l
 		blockNum = rpctypes.BlockNumber(meta.Height)
 	}
 
-	block, err := api.api.Broker().GetBlock("HEIGHT", fmt.Sprintf("%d", blockNum))
+	block, err := api.api.Broker().GetBlock("HEIGHT", fmt.Sprintf("%d", blockNum), false)
 	if err != nil {
 		return nil, err
 	}
@@ -487,7 +487,7 @@ func (api *PublicEthereumAPI) EstimateGas(args types2.CallArgs) (hexutil.Uint64,
 func (api *PublicEthereumAPI) GetBlockByHash(hash common.Hash, fullTx bool) (map[string]interface{}, error) {
 	api.logger.Debugf("eth_getBlockByHash, hash: %s, full: %v", hash.String(), fullTx)
 
-	block, err := api.api.Broker().GetBlock("HASH", hash.String())
+	block, err := api.api.Broker().GetBlock("HASH", hash.String(), fullTx)
 	if err != nil {
 		return nil, err
 	}
@@ -506,7 +506,7 @@ func (api *PublicEthereumAPI) GetBlockByNumber(blockNum rpc.BlockNumber, fullTx 
 		blockNum = rpc.BlockNumber(meta.Height)
 	}
 
-	block, err := api.api.Broker().GetBlock("HEIGHT", fmt.Sprintf("%d", blockNum))
+	block, err := api.api.Broker().GetBlock("HEIGHT", fmt.Sprintf("%d", blockNum), fullTx)
 	if err != nil {
 		return nil, err
 	}
@@ -718,7 +718,7 @@ func (api *PublicEthereumAPI) GetUncleByBlockNumberAndIndex(number hexutil.Uint,
 }
 
 func (api *PublicEthereumAPI) getTxByBlockInfoAndIndex(mode string, key string, idx hexutil.Uint) (*rpctypes.RPCTransaction, error) {
-	block, err := api.api.Broker().GetBlock(mode, key)
+	block, err := api.api.Broker().GetBlock(mode, key, true)
 	if err != nil {
 		return nil, err
 	}
@@ -743,10 +743,6 @@ func (api *PublicEthereumAPI) getTxByBlockInfoAndIndex(mode string, key string, 
 // FormatBlock creates an ethereum block from a tendermint header and ethereum-formatted
 // transactions.
 func (api *PublicEthereumAPI) formatBlock(block *pb.Block, fullTx bool) (map[string]interface{}, error) {
-	//cumulativeGas, err := api.getBlockCumulativeGas(block, uint64(len(block.Transactions.Transactions)-1))
-	//if err != nil {
-	//	return nil, err
-	//}
 	var err error
 	formatTx := func(tx pb.Transaction, index uint64) (interface{}, error) {
 		return tx.GetHash(), nil
@@ -797,13 +793,23 @@ func newRPCTransaction(tx pb.Transaction, blockHash common.Hash, blockNumber uin
 		to = &toAddr
 	}
 	v, r, s := tx.GetRawSignature()
+
+	// classify bxhTransaction and ethTransaction
+	var input hexutil.Bytes
+	switch tx.(type) {
+	case *pb.BxhTransaction:
+		input = []byte(tx.(*pb.BxhTransaction).Typ.String())
+	case *types2.EthTransaction:
+		input = tx.GetPayload()
+	}
+
 	result := &rpctypes.RPCTransaction{
 		Type:     hexutil.Uint64(tx.GetType()),
 		From:     from,
 		Gas:      hexutil.Uint64(tx.GetGas()),
 		GasPrice: (*hexutil.Big)(tx.GetGasPrice()),
 		Hash:     tx.GetHash().RawHash,
-		Input:    hexutil.Bytes(tx.GetPayload()),
+		Input:    input,
 		Nonce:    hexutil.Uint64(tx.GetNonce()),
 		To:       to,
 		Value:    (*hexutil.Big)(tx.GetValue()),

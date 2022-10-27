@@ -64,7 +64,7 @@ func (api *ChainAPI) TPS(begin, end uint64) (uint64, error) {
 	pool.Add()
 	go func(pool *utils.Pool) {
 		defer pool.Done()
-		block, err := api.bxh.Ledger.GetBlock(begin)
+		block, err := api.bxh.Ledger.GetBlock(begin, false)
 		if err != nil {
 			errCount.Inc()
 		} else {
@@ -77,7 +77,7 @@ func (api *ChainAPI) TPS(begin, end uint64) (uint64, error) {
 	pool.Add()
 	go func(pool *utils.Pool) {
 		defer pool.Done()
-		block, err := api.bxh.Ledger.GetBlock(end)
+		block, err := api.bxh.Ledger.GetBlock(end, false)
 		if err != nil {
 			errCount.Inc()
 		} else {

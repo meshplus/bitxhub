@@ -77,11 +77,11 @@ func (cbs *ChainBrokerService) GetBlockHeader(req *pb.GetBlockHeaderRequest, ser
 }
 
 func (cbs *ChainBrokerService) GetBlock(ctx context.Context, req *pb.GetBlockRequest) (*pb.Block, error) {
-	return cbs.api.Broker().GetBlock(req.Type.String(), req.Value)
+	return cbs.api.Broker().GetBlock(req.Type.String(), req.Value, req.FullTx)
 }
 
 func (cbs *ChainBrokerService) GetBlocks(ctx context.Context, req *pb.GetBlocksRequest) (*pb.GetBlocksResponse, error) {
-	blocks, err := cbs.api.Broker().GetBlocks(req.Start, req.End)
+	blocks, err := cbs.api.Broker().GetBlocks(req.Start, req.End, req.FullTx)
 	if err != nil {
 		return nil, fmt.Errorf("get blocks failed: %w", err)
 	}
@@ -92,7 +92,7 @@ func (cbs *ChainBrokerService) GetBlocks(ctx context.Context, req *pb.GetBlocksR
 }
 
 func (cbs *ChainBrokerService) GetHappyBlocks(ctx context.Context, req *pb.GetBlocksRequest) (*pb.GetHappyBlocksResponse, error) {
-	blocks, err := cbs.api.Broker().GetBlocks(req.Start, req.End)
+	blocks, err := cbs.api.Broker().GetBlocks(req.Start, req.End, true)
 	if err != nil {
 		return nil, fmt.Errorf("get blocks failed: %w", err)
 	}
