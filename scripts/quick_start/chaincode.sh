@@ -21,6 +21,15 @@ function x_replace() {
   fi
 }
 
+function go_install() {
+  version=$(go env GOVERSION)
+  if [[ ! "$version" < "go1.16" ]];then
+      go install "$@"
+  else
+      go get "$@"
+  fi
+}
+
 function print_blue() {
   printf "${BLUE}%s${NC}\n" "$1"
 }
@@ -49,7 +58,7 @@ function printHelp() {
 function prepare() {
   if ! type fabric-cli >/dev/null 2>&1; then
     print_blue "===> Install fabric-cli"
-    go get github.com/securekey/fabric-examples/fabric-cli/cmd/fabric-cli
+    go_install github.com/securekey/fabric-examples/fabric-cli/cmd/fabric-cli
   fi
 
   if [ ! -d contracts ]; then

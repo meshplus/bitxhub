@@ -45,10 +45,19 @@ function Get_PM_Name(){
   eval "$2=$DISTRO"
 }
 
+function go_install() {
+  version=$(go env GOVERSION)
+  if [[ ! "$version" < "go1.16" ]];then
+      go install "$@"
+  else
+      go get "$@"
+  fi
+}
+
 function prepare() {
     print_blue "===> 1. Install packr"
     if ! type packr >/dev/null 2>&1; then
-      go get -u github.com/gobuffalo/packr/packr
+      go_install github.com/gobuffalo/packr/v2/packr2@v2.8.3
     fi
     print_blue "===> 2. Install tmux with package manager"
     if ! type tmux >/dev/null 2>&1; then
