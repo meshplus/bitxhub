@@ -5,6 +5,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	etherTypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	ledger2 "github.com/meshplus/eth-kit/ledger"
@@ -206,6 +207,9 @@ func CreateBloom(receipts EvmReceipts) *types.Bloom {
 }
 
 func NewBxhTxFromEth(tx *types2.EthTransaction) *pb.BxhTransaction {
+	const ethCryptoType = "Secp256k1"
+	sign := []byte{byte(crypto.CryptoNameType[ethCryptoType])}
+	sign = append(sign, tx.GetSignature()...)
 	return &pb.BxhTransaction{
 		Version:         tx.GetVersion(),
 		From:            tx.GetFrom(),
@@ -217,7 +221,7 @@ func NewBxhTxFromEth(tx *types2.EthTransaction) *pb.BxhTransaction {
 		Nonce:           tx.GetNonce(),
 		Amount:          tx.GetValue().String(),
 		Typ:             pb.TxType_EthSignedBxhTx,
-		Signature:       tx.GetSignature(),
+		Signature:       sign,
 		Extra:           tx.GetExtra(),
 	}
 }

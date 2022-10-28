@@ -435,7 +435,7 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 	stateLedger.EXPECT().RevertToSnapshot(1).AnyTimes()
 	chainLedger.EXPECT().LoadChainMeta().Return(chainMeta).AnyTimes()
 	stateLedger.EXPECT().GetLogs(gomock.Any()).Return(nil).AnyTimes()
-	chainLedger.EXPECT().GetBlock(gomock.Any()).Return(mockBlock(10, nil), nil).AnyTimes()
+	chainLedger.EXPECT().GetBlock(gomock.Any(), gomock.Any()).Return(mockBlock(10, nil), nil).AnyTimes()
 	stateLedger.EXPECT().PrepareEVM(gomock.Any(), gomock.Any()).AnyTimes()
 	stateLedger.EXPECT().PrepareBlock(gomock.Any(), gomock.Any()).AnyTimes()
 	stateLedger.EXPECT().GetBalance(gomock.Any()).Return(big.NewInt(10000000000000)).AnyTimes()
@@ -1040,8 +1040,8 @@ func TestRollback(t *testing.T) {
 	commitEvent2 := mockCommitEvent(uint64(3), transactions1)
 	commitEvent3 := mockCommitEvent(uint64(3), transactions2)
 
-	chainLedger.EXPECT().GetBlock(uint64(3)).Return(commitEvent2.Block, nil).Times(1)
-	chainLedger.EXPECT().GetBlock(uint64(2)).Return(commitEvent1.Block, nil).Times(1)
+	chainLedger.EXPECT().GetBlock(uint64(3), gomock.Any()).Return(commitEvent2.Block, nil).Times(1)
+	chainLedger.EXPECT().GetBlock(uint64(2), gomock.Any()).Return(commitEvent1.Block, nil).Times(1)
 	stateLedger.EXPECT().RollbackState(uint64(2)).Return(nil).Times(1)
 	chainLedger.EXPECT().RollbackBlockChain(uint64(2)).Return(nil).Times(1)
 

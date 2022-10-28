@@ -108,7 +108,7 @@ func NewSwarms(t *testing.T, peerCnt int) []*Swarm {
 		StateLedger: stateLedger,
 	}
 
-	chainLedger.EXPECT().GetBlock(gomock.Any()).Return(&pb.Block{
+	chainLedger.EXPECT().GetBlock(gomock.Any(), gomock.Any()).Return(&pb.Block{
 		BlockHeader: &pb.BlockHeader{
 			Number: 1,
 		},
