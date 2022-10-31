@@ -1,13 +1,13 @@
 package repo
 
 import (
+	"io/ioutil"
+	"path/filepath"
+
 	"github.com/libp2p/go-libp2p-core/crypto"
 	crypto2 "github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	libp2pcert "github.com/meshplus/go-libp2p-cert"
-	"io/ioutil"
-	"path/filepath"
-	"strings"
 )
 
 type Key struct {
@@ -34,10 +34,6 @@ func LoadKey(path string) (*Key, error) {
 }
 
 func loadPrivKey(repoRoot string, passwd string) (*Key, error) {
-	if strings.TrimSpace(passwd) == "" {
-		passwd = DefaultPasswd
-	}
-
 	privKey, err := asym.RestorePrivateKey(filepath.Join(repoRoot, KeyName), passwd)
 	if err != nil {
 		return nil, err

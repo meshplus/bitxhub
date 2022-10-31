@@ -29,9 +29,6 @@ const (
 	KeyName = "key.json"
 	// API name
 	APIName = "api"
-
-	//Passwd
-	DefaultPasswd = "bitxhub"
 )
 
 type Config struct {
@@ -202,7 +199,7 @@ func DefaultConfig() (*Config, error) {
 	}, nil
 }
 
-func UnmarshalConfig(viper *viper.Viper, repoRoot string,  configPath string) (*Config, error) {
+func UnmarshalConfig(viper *viper.Viper, repoRoot string, configPath string) (*Config, error) {
 	if len(configPath) == 0 {
 		viper.SetConfigFile(filepath.Join(repoRoot, configName))
 	} else {

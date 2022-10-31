@@ -64,9 +64,6 @@ func genPrivKey(ctx *cli.Context) error {
 	target := ctx.String("target")
 	passwd := ctx.String("passwd")
 
-	if passwd == "" {
-		passwd = repo.DefaultPasswd
-	}
 	target, err := filepath.Abs(target)
 	if err != nil {
 		return fmt.Errorf("get absolute key path: %w", err)
@@ -112,9 +109,6 @@ func showKey(ctx *cli.Context) error {
 func getAddress(ctx *cli.Context) error {
 	privPath := ctx.String("path")
 	passwd := ctx.String("passwd")
-	if passwd == "" {
-		passwd = repo.DefaultPasswd
-	}
 
 	privKey, err := asym.RestorePrivateKey(privPath, passwd)
 	if err != nil {

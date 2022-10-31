@@ -87,7 +87,7 @@ function start() {
   for ((i = 0; i < N; i = i + 1)); do
     tmux selectw -t $(($i / 4))
     tmux selectp -t $(($i % 4))
-    tmux send-keys "bitxhub --repo=${BUILD_PATH}/node$(($i + 1)) start" C-m
+    tmux send-keys "bitxhub --repo=${BUILD_PATH}/node$(($i + 1)) start --passwd bitxhub" C-m
   done
   tmux selectw -t 0
   tmux attach-session -t bitxhub
