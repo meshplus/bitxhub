@@ -341,6 +341,16 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 			return boltvm.Success(data)
 		}).AnyTimes()
 
+	mockStub.EXPECT().CrossInvoke(gomock.Eq(constant.TransactionMgrContractAddr.Address().String()), gomock.Eq("BeginInterBitXHub"), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(addr string, method string, args ...*pb.Arg) *boltvm.Response {
+			change := pb.StatusChange{
+				PrevStatus: -1,
+				CurStatus:  pb.TransactionStatus_BEGIN,
+			}
+			data, _ := change.Marshal()
+			return boltvm.Success(data)
+		}).AnyTimes()
+
 	ibtp.From = srcChainService.getFullServiceId()
 	ibtp.To = unavailableDstServiceFullServiceID
 	ibtp.Index = 1
@@ -360,7 +370,7 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 
 	ibtp.Index = 1
 	ibtp.To = unavailableBitxhubServiceID
-	mockStub.EXPECT().PostInterchainEvent(map[string]*pb.EventWrapper{srcChainService.ChainId: event, DEFAULT_UNION_PIER_ID: event}).MaxTimes(1)
+	mockStub.EXPECT().PostInterchainEvent(map[string]*pb.EventWrapper{DEFAULT_UNION_PIER_ID: event}).MaxTimes(1)
 	res = im.HandleIBTP(ibtp)
 	assert.True(t, res.Ok)
 

@@ -248,8 +248,13 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, bool, *bol
 
 	interchain, _ := x.getInterchain(srcChainService.getFullServiceId())
 
-	if pb.IBTP_REQUEST == ibtp.Category() {
-		// if src chain service is from appchain registered in current bitxhub, check service index
+	isNotification, err := x.checkTxStatusForSourceBxh(ibtp)
+	if err != nil {
+		return nil, isBatch, nil, boltvm.BError(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), err.Error()))
+	}
+
+	if pb.IBTP_REQUEST == ibtp.Category() && !isNotification {
+		// if src chain service is from appchain registered in current bitxhub && not notification for src chain service rollback, check service index
 		if srcChainService.IsLocal {
 			if err := x.checkSourceAvailability(srcChainService); err != nil {
 				return nil, isBatch, nil, err
@@ -286,7 +291,7 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, bool, *bol
 			}
 			// }
 		}
-	} else if ibtp.Category() == pb.IBTP_RESPONSE {
+	} else if ibtp.Category() == pb.IBTP_RESPONSE || isNotification {
 		// Situation which need to check the index
 		// - Bitxhub service：dstService == nil
 		// - The dst service needs to be invoked sequentially：dstService.Ordered
@@ -377,7 +382,9 @@ func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *pb.Interchain
 	srcChainService, _ := x.parseChainService(ibtp.From)
 	dstChainService, _ := x.parseChainService(ibtp.To)
 
-	if pb.IBTP_REQUEST == ibtp.Category() {
+	isNotification, _ := x.checkTxStatusForSourceBxh(ibtp)
+
+	if pb.IBTP_REQUEST == ibtp.Category() && !isNotification {
 		if interchain.InterchainCounter == nil {
 			x.Logger().Info("interchain counter is nil, make one")
 			interchain.InterchainCounter = make(map[string]uint64)
@@ -408,7 +415,7 @@ func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *pb.Interchain
 		x.SetObject(IndexReceiptMapKey(getIBTPID(ibtp.From, ibtp.To, ibtp.Index)), x.GetTxHash())
 
 		result := true
-		if ibtp.Type == pb.IBTP_RECEIPT_FAILURE {
+		if ibtp.Type == pb.IBTP_RECEIPT_FAILURE || isNotification {
 			result = false
 		}
 		x.CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "RecordInvokeService",
@@ -465,33 +472,35 @@ func (x *InterchainManager) beginTransaction(ibtp *pb.IBTP, isFailed bool) (*pb.
 	bxhID0, _, _ := ibtp.ParseFrom()
 	bxhID1, _, _ := ibtp.ParseTo()
 	timeoutHeight := uint64(ibtp.TimeoutHeight)
-	// TODO: disable transaction management for inter-bitxhub transaction temporarily
-	if bxhID0 != bxhID1 {
-		timeoutHeight = 0
-		if !isFailed {
-			sourceFailed, err := x.checkTxStatusForTargetBxh(ibtp)
-			if err != nil {
-				return nil, err
-			}
-			isFailed = sourceFailed
-		}
-	}
-
 	res := boltvm.Success(nil)
-	if ibtp.Group == nil {
-		res = x.CrossInvoke(constant.TransactionMgrContractAddr.Address().String(), "Begin", pb.String(txId), pb.Uint64(timeoutHeight), pb.Bool(isFailed))
+	if bxhID0 != bxhID1 {
+		currentBxhId, err := x.getBitXHubID()
+		if err != nil {
+			return nil, err
+		}
+		if currentBxhId == bxhID0 {
+			timeoutHeight = 0
+		}
+		res = x.CrossInvoke(constant.TransactionMgrContractAddr.Address().String(), "BeginInterBitXHub", pb.String(txId), pb.Uint64(timeoutHeight), pb.Bytes(ibtp.Extra), pb.Bool(isFailed))
 		if !res.Ok {
 			return nil, fmt.Errorf(string(res.Result))
 		}
 	} else {
-		count := uint64(len(ibtp.Group.Keys) + 1)
-		globalID, err := genGlobalTxID(ibtp)
-		if err != nil {
-			return nil, err
-		}
-		res = x.CrossInvoke(constant.TransactionMgrContractAddr.Address().String(), "BeginMultiTXs", pb.String(globalID), pb.String(ibtp.ID()), pb.Uint64(timeoutHeight), pb.Bool(isFailed), pb.Uint64(count))
-		if !res.Ok {
-			return nil, fmt.Errorf(string(res.Result))
+		if ibtp.Group == nil {
+			res = x.CrossInvoke(constant.TransactionMgrContractAddr.Address().String(), "Begin", pb.String(txId), pb.Uint64(timeoutHeight), pb.Bool(isFailed))
+			if !res.Ok {
+				return nil, fmt.Errorf(string(res.Result))
+			}
+		} else {
+			count := uint64(len(ibtp.Group.Keys) + 1)
+			globalID, err := genGlobalTxID(ibtp)
+			if err != nil {
+				return nil, err
+			}
+			res = x.CrossInvoke(constant.TransactionMgrContractAddr.Address().String(), "BeginMultiTXs", pb.String(globalID), pb.String(ibtp.ID()), pb.Uint64(timeoutHeight), pb.Bool(isFailed), pb.Uint64(count))
+			if !res.Ok {
+				return nil, fmt.Errorf(string(res.Result))
+			}
 		}
 	}
 
@@ -728,6 +737,30 @@ func (x *InterchainManager) GetAllServiceIDs() *boltvm.Response {
 	} else {
 		return boltvm.Success(result)
 	}
+}
+
+// checkTxStatusForSourceBxh check whether ibtp is the notification for source chain rollback
+// - BEGIN_FAIL: dst chain service not existed, notify src chain rollback
+// - BEGIN_ROLLBACK: dst chain don't receive receipt after timeout height, notify src & dst chain rollback
+// - only happen in inter-bitxhub, ibtp type is always IBTP_INTERCHAIN
+func (x *InterchainManager) checkTxStatusForSourceBxh(ibtp *pb.IBTP) (bool, error) {
+	sourceBxhId, _, _ := ibtp.ParseFrom()
+	targetBxhId, _, _ := ibtp.ParseTo()
+	if sourceBxhId == targetBxhId || ibtp.Category() == pb.IBTP_RESPONSE {
+		return false, nil
+	}
+	var txHash string
+	ok := x.GetObject(IndexMapKey(ibtp.ID()), &txHash)
+	if ok {
+		proof := &pb.BxhProof{}
+		if err := proof.Unmarshal(ibtp.Extra); err != nil {
+			return false, fmt.Errorf("unmarshal proof from dst bitxhub for IBTP %s failed: %s", ibtp.ID(), err.Error())
+		}
+		if proof.TxStatus == pb.TransactionStatus_BEGIN_FAILURE || proof.TxStatus == pb.TransactionStatus_BEGIN_ROLLBACK {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (x *InterchainManager) checkTxStatusForTargetBxh(ibtp *pb.IBTP) (bool, error) {

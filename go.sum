@@ -814,8 +814,9 @@ github.com/meshplus/bitxhub-kit v1.2.1-0.20221010033511-7093f5492564 h1:cipj0umW
 github.com/meshplus/bitxhub-kit v1.2.1-0.20221010033511-7093f5492564/go.mod h1:S8qKlxfXRFS9HQgXyD4r+o1/0u6EJOQoMZyXtlEM8vM=
 github.com/meshplus/bitxhub-model v1.0.0-rc3/go.mod h1:ZCctQIYTlE3vJ8Lhkrgs9bWwNA+Dw4JzojOSIzLVU6E=
 github.com/meshplus/bitxhub-model v1.2.1-0.20220803022708-9ab7a71abdbf/go.mod h1:sPko8fD+G3MYOnH/44Ju4T4jD/tlEU3IJDIJ4hjrzxg=
-github.com/meshplus/bitxhub-model v1.2.1-0.20220815081129-609df840b044 h1:uzj0wLXYzG1NvKlRdiVTHl+ikqbkL8+AzwmFK3b7OHA=
 github.com/meshplus/bitxhub-model v1.2.1-0.20220815081129-609df840b044/go.mod h1:KIevoE50DZC7Tghvf7368FQ7hRBmK/4HWqiQbFrQlog=
+github.com/meshplus/bitxhub-model v1.2.1-0.20221011093115-0a1f9264c58c h1:FdV/mEbNWLm6Cjq89jjHOygJhAupVwNNz0WH/kjqgNQ=
+github.com/meshplus/bitxhub-model v1.2.1-0.20221011093115-0a1f9264c58c/go.mod h1:KIevoE50DZC7Tghvf7368FQ7hRBmK/4HWqiQbFrQlog=
 github.com/meshplus/consensus v0.0.0-20211228075008-5f469b198531 h1:lU2XI7vWdapTLJfObY3A+e+a3rvHbnT0pHN9LEghwRk=
 github.com/meshplus/consensus v0.0.0-20211228075008-5f469b198531/go.mod h1:2Sv1u1sOFta9dAO6OuHyxLaN1Z6/AdrIol99qi5ZZ0k=
 github.com/meshplus/eth-kit v0.0.0-20221020152328-caeec38b9a34 h1:VFoV/CQXI93Z5upAgHupSfEXxAcXNGAX2G8FMi/sLTw=
