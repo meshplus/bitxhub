@@ -772,7 +772,7 @@ func (exec *BlockExecutor) payGasFee(tx pb.Transaction, gasUsed uint64) error {
 	fees := new(big.Int).Mul(new(big.Int).SetUint64(gasUsed), exec.bxhGasPrice)
 	have := exec.ledger.GetBalance(tx.GetFrom())
 	if have.Cmp(fees) < 0 {
-		return fmt.Errorf("insufficeient balance: address %v have %v want %v", tx.GetFrom().String(), have, fees)
+		return fmt.Errorf("insufficient balance: address %v have %v want %v", tx.GetFrom().String(), have, fees)
 	}
 	exec.ledger.SetBalance(tx.GetFrom(), new(big.Int).Sub(have, fees))
 	exec.payAdmins(fees)

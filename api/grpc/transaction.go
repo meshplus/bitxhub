@@ -3,6 +3,7 @@ package grpc
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/meshplus/bitxhub-kit/types"
@@ -142,6 +143,70 @@ func (cbs *ChainBrokerService) GetTransaction(ctx context.Context, req *pb.Trans
 	}
 
 	meta, err := cbs.api.Broker().GetTransactionMeta(hash)
+	if err != nil {
+		return nil, fmt.Errorf("get transaction %s meta failed: %w", tx.GetHash().Hash, err)
+	}
+
+	return &pb.GetTransactionResponse{
+		Tx:     bxhTx,
+		TxMeta: meta,
+	}, nil
+}
+
+func (cbs *ChainBrokerService) GetTransactionByBlockHashAndIndex(ctx context.Context, req *pb.TransactionBlockHashAndIndexMsg) (*pb.GetTransactionResponse, error) {
+	blockTyp := pb.GetBlockRequest_HASH
+	block, err := cbs.api.Broker().GetBlock(blockTyp.String(), req.BlockHash, true)
+	if err != nil {
+		return nil, fmt.Errorf("invalid format of blockHash for querying block")
+	}
+	if int(req.Index) >= len(block.Transactions.Transactions) {
+		return nil, fmt.Errorf("invalid format of tx index for querying transaction in a specified block")
+	}
+	txHash := block.Transactions.Transactions[req.Index].GetHash()
+
+	tx, err := cbs.api.Broker().GetTransaction(txHash)
+	if err != nil {
+		return nil, fmt.Errorf("get transaction %s failed: %w", txHash.String(), err)
+	}
+
+	bxhTx, ok := tx.(*pb.BxhTransaction)
+	if !ok {
+		return nil, fmt.Errorf("cannot get non bxh tx via grpc")
+	}
+
+	meta, err := cbs.api.Broker().GetTransactionMeta(txHash)
+	if err != nil {
+		return nil, fmt.Errorf("get transaction %s meta failed: %w", tx.GetHash().Hash, err)
+	}
+
+	return &pb.GetTransactionResponse{
+		Tx:     bxhTx,
+		TxMeta: meta,
+	}, nil
+}
+
+func (cbs *ChainBrokerService) GetTransactionByBlockNumberAndIndex(ctx context.Context, req *pb.TransactionBlockNumberAndIndexMsg) (*pb.GetTransactionResponse, error) {
+	blockTyp := pb.GetBlockRequest_HEIGHT
+	block, err := cbs.api.Broker().GetBlock(blockTyp.String(), strconv.FormatUint(req.BlockNumber, 10), true)
+	if err != nil {
+		return nil, fmt.Errorf("invalid format of blockNumber for querying block")
+	}
+	if int(req.Index) >= len(block.Transactions.Transactions) {
+		return nil, fmt.Errorf("invalid format of tx index for querying transaction in a specified block")
+	}
+	txHash := block.Transactions.Transactions[req.Index].GetHash()
+
+	tx, err := cbs.api.Broker().GetTransaction(txHash)
+	if err != nil {
+		return nil, fmt.Errorf("get transaction %s failed: %w", txHash.String(), err)
+	}
+
+	bxhTx, ok := tx.(*pb.BxhTransaction)
+	if !ok {
+		return nil, fmt.Errorf("cannot get non bxh tx via grpc")
+	}
+
+	meta, err := cbs.api.Broker().GetTransactionMeta(txHash)
 	if err != nil {
 		return nil, fmt.Errorf("get transaction %s meta failed: %w", tx.GetHash().Hash, err)
 	}
