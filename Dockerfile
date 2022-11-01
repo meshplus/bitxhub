@@ -1,4 +1,4 @@
-FROM golang:1.15.15 as builder
+FROM golang:1.18.2 as builder
 
 WORKDIR /go/src/github.com/meshplus/bitxhub
 ARG http_proxy=""
@@ -8,7 +8,8 @@ ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/lib
 COPY . /go/src/github.com/meshplus/bitxhub/
 
 RUN go env -w GOPROXY=https://goproxy.cn,direct \
-    && go get github.com/gobuffalo/packr/v2/packr2@v2.8.3 \
+    && go env -w GOFLAGS="--mod=mod" \
+    && go install github.com/gobuffalo/packr/v2/packr2@v2.8.3 \
     && make install \
     && cp ./build/wasm/lib/linux-amd64/libwasmer.so /lib \
     && bitxhub init \
@@ -28,6 +29,6 @@ ARG GateWayPort=$(grep -m 1 gateway < .bitxhub/bitxhub.toml | awk '{print $3}')
 HEALTHCHECK --interval=30s --timeout=30s --start-period=10s --retries=3 CMD [ ./bitxhub/healthcheck.sh ]
 
 EXPOSE 8881 60011 9091 53121 40001
-ENTRYPOINT ["bitxhub", "start"]
+ENTRYPOINT ["/bin/sh", "-c","bitxhub start"]
 
 
