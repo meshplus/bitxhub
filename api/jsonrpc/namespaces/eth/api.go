@@ -17,6 +17,7 @@ import (
 	types3 "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	rpctypes "github.com/meshplus/bitxhub/api/jsonrpc/types"
@@ -31,7 +32,10 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-const cumulativeGas = 1000
+const (
+	cumulativeGas = 1000
+	waitReceipt   = 200 * time.Millisecond
+)
 
 // PublicEthereumAPI is the eth_ prefixed set of APIs in the Web3 JSON-RPC spec.
 type PublicEthereumAPI struct {
@@ -178,13 +182,7 @@ func (api *PublicEthereumAPI) GetStorageAt(address common.Address, key string, b
 func (api *PublicEthereumAPI) GetTransactionCount(address common.Address, blockNum rpctypes.BlockNumber) (*hexutil.Uint64, error) {
 	api.logger.Debugf("eth_getTransactionCount, address: %s, block number: %d", address, blockNum)
 
-	stateLedger, err := api.getStateLedgerAt(blockNum)
-	if err != nil {
-		return nil, err
-	}
-
-	nonce := stateLedger.GetNonce(types.NewAddress(address.Bytes()))
-
+	nonce := api.api.Broker().GetPendingNonceByAccount(types.NewAddress(address.Bytes()).Address)
 	return (*hexutil.Uint64)(&nonce), nil
 }
 
@@ -517,9 +515,10 @@ func (api *PublicEthereumAPI) GetBlockByNumber(blockNum rpc.BlockNumber, fullTx 
 // GetTransactionByHash returns the transaction identified by hash.
 func (api *PublicEthereumAPI) GetTransactionByHash(hash common.Hash) (*rpctypes.RPCTransaction, error) {
 	api.logger.Debugf("eth_getTransactionByHash, hash: %s", hash.String())
-
+	time.Sleep(waitReceipt)
 	ethTx, meta, err := api.GetEthTransactionByHash(types.NewHash(hash.Bytes()))
 	if err != nil {
+		api.logger.Errorf("GetTransactionByHash err:%s", err)
 		return nil, err
 	}
 
@@ -532,7 +531,7 @@ func (api *PublicEthereumAPI) GetEthTransactionByHash(hash *types.Hash) (*types2
 
 	tx := api.api.Broker().GetPoolTransaction(hash)
 	if tx == nil {
-		api.logger.Debugf("tx %s is not in mempool", hash.String())
+		api.logger.Info("tx %s is not in mempool", hash.String())
 		tx, err = api.api.Broker().GetTransaction(hash)
 		if err != nil {
 			api.logger.Debugf("tx %s is not in ledger", hash.String())
@@ -608,31 +607,23 @@ func (api *PublicEthereumAPI) GetTransactionByBlockNumberAndIndex(blockNum rpcty
 // GetTransactionReceipt returns the transaction receipt identified by hash.
 func (api *PublicEthereumAPI) GetTransactionReceipt(hash common.Hash) (map[string]interface{}, error) {
 	api.logger.Debugf("eth_getTransactionReceipt, hash: %s", hash.String())
-
+	var receipt *pb.Receipt
 	txHash := types.NewHash(hash.Bytes())
 	tx, meta, err := api.GetEthTransactionByHash(txHash)
 	if err != nil {
-		api.logger.Debugf("no tx found for hash %s", txHash.String())
+		api.logger.Errorf("no tx found for hash %s", txHash.String())
 		return nil, err
 	}
-
-	receipt, err := api.api.Broker().GetReceipt(txHash)
+	receipt, err = api.api.Broker().GetReceipt(txHash)
 	if err != nil {
-		api.logger.Debugf("no receipt found for tx %s", txHash.String())
-		return nil, err
+		if strings.Contains(err.Error(), storage.ErrorNotFound.Error()) {
+			time.Sleep(waitReceipt)
+			receipt, err = api.api.Broker().GetReceipt(txHash)
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
-
-	//block, err := api.api.Broker().GetBlock("HEIGHT", fmt.Sprintf("%d", meta.BlockHeight))
-	//if err != nil {
-	//	api.logger.Debugf("no block found for height %d", meta.BlockHeight)
-	//	return nil, err
-	//}
-
-	//cumulativeGasUsed, err := api.getBlockCumulativeGas(block, meta.Index)
-	//if err != nil {
-	//	return nil, err
-	//}
-
 	fields := map[string]interface{}{
 		"type":              hexutil.Uint(tx.GetType()),
 		"cumulativeGasUsed": hexutil.Uint64(cumulativeGas),
@@ -669,9 +660,7 @@ func (api *PublicEthereumAPI) GetTransactionReceipt(hash common.Hash) (map[strin
 		fields["status"] = hexutil.Uint(1)
 	} else {
 		fields["status"] = hexutil.Uint(0)
-		if receipt.Ret != nil {
-
-		}
+		err = errors.New(string(receipt.Ret))
 	}
 
 	if receipt.ContractAddress != nil {
@@ -684,7 +673,7 @@ func (api *PublicEthereumAPI) GetTransactionReceipt(hash common.Hash) (map[strin
 
 	api.logger.Debugf("eth_getTransactionReceipt: %v", fields)
 
-	return fields, nil
+	return fields, err
 }
 
 // PendingTransactions returns the transactions that are in the transaction pool
