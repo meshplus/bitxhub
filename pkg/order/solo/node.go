@@ -33,6 +33,7 @@ type Node struct {
 	packSize     int                           // maximum number of transaction packages
 	blockTick    time.Duration                 // block packed period
 	peerMgr      orderPeerMgr.OrderPeerManager // network manager
+	getTxC       chan *mempool.GetTxReq        // api get tx channel
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -40,6 +41,14 @@ type Node struct {
 }
 
 func (n *Node) GetPendingTxByHash(hash *types.Hash) pb.Transaction {
+	getTxReq := &mempool.GetTxReq{
+		Hash: hash,
+		Tx:   make(chan pb.Transaction),
+	}
+	n.getTxC <- getTxReq
+
+	return <-getTxReq.Tx
+
 	return n.mempool.GetTransaction(hash)
 }
 
@@ -146,6 +155,7 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 		blockTimeout: mempoolConf.BlockTimeout,
 		commitC:      make(chan *pb.CommitEvent, 1024),
 		stateC:       make(chan *mempool.ChainState),
+		getTxC:       make(chan *mempool.GetTxReq),
 		lastExec:     config.Applied,
 		mempool:      mempoolInst,
 		txCache:      txCache,
@@ -197,6 +207,9 @@ func (n *Node) listenReadyBlock() {
 				}
 				n.commitC <- executeEvent
 				n.lastExec++
+
+			case getTxReq := <-n.getTxC:
+				getTxReq.Tx <- n.mempool.GetTransaction(getTxReq.Hash)
 			}
 		}
 	}()
@@ -228,8 +241,8 @@ func (n *Node) listenReadyBlock() {
 					"height": state.Height,
 					"hash":   state.BlockHash.String(),
 				}).Info("Report checkpoint")
+				n.mempool.CommitTransactions(state)
 			}
-			n.mempool.CommitTransactions(state)
 
 		case <-n.batchMgr.BatchTimeoutEvent():
 			n.batchMgr.StopBatchTimer()

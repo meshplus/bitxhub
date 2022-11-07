@@ -6,6 +6,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Rican7/retry"
+	"github.com/Rican7/retry/backoff"
+	"github.com/Rican7/retry/strategy"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"google.golang.org/grpc/codes"
@@ -141,16 +144,19 @@ func (cbs *ChainBrokerService) GetTransaction(ctx context.Context, req *pb.Trans
 	if !ok {
 		return nil, fmt.Errorf("cannot get non bxh tx via grpc")
 	}
-
-	meta, err := cbs.api.Broker().GetTransactionMeta(hash)
-	if err != nil {
-		return nil, fmt.Errorf("get transaction %s meta failed: %w", tx.GetHash().Hash, err)
-	}
+	meta := &pb.TransactionMeta{}
+	err = retry.Retry(func(attempt uint) error {
+		meta, err = cbs.api.Broker().GetTransactionMeta(hash)
+		if err != nil {
+			return fmt.Errorf("get transaction %s meta failed: %w", tx.GetHash().Hash, err)
+		}
+		return nil
+	}, strategy.Limit(5), strategy.Backoff(backoff.Fibonacci(200*time.Millisecond)))
 
 	return &pb.GetTransactionResponse{
 		Tx:     bxhTx,
 		TxMeta: meta,
-	}, nil
+	}, err
 }
 
 func (cbs *ChainBrokerService) GetTransactionByBlockHashAndIndex(ctx context.Context, req *pb.TransactionBlockHashAndIndexMsg) (*pb.GetTransactionResponse, error) {
@@ -174,15 +180,19 @@ func (cbs *ChainBrokerService) GetTransactionByBlockHashAndIndex(ctx context.Con
 		return nil, fmt.Errorf("cannot get non bxh tx via grpc")
 	}
 
-	meta, err := cbs.api.Broker().GetTransactionMeta(txHash)
-	if err != nil {
-		return nil, fmt.Errorf("get transaction %s meta failed: %w", tx.GetHash().Hash, err)
-	}
+	meta := &pb.TransactionMeta{}
+	err = retry.Retry(func(attempt uint) error {
+		meta, err = cbs.api.Broker().GetTransactionMeta(txHash)
+		if err != nil {
+			return fmt.Errorf("get transaction %s meta failed: %w", tx.GetHash().Hash, err)
+		}
+		return nil
+	}, strategy.Limit(5), strategy.Backoff(backoff.Fibonacci(200*time.Millisecond)))
 
 	return &pb.GetTransactionResponse{
 		Tx:     bxhTx,
 		TxMeta: meta,
-	}, nil
+	}, err
 }
 
 func (cbs *ChainBrokerService) GetTransactionByBlockNumberAndIndex(ctx context.Context, req *pb.TransactionBlockNumberAndIndexMsg) (*pb.GetTransactionResponse, error) {
@@ -206,15 +216,19 @@ func (cbs *ChainBrokerService) GetTransactionByBlockNumberAndIndex(ctx context.C
 		return nil, fmt.Errorf("cannot get non bxh tx via grpc")
 	}
 
-	meta, err := cbs.api.Broker().GetTransactionMeta(txHash)
-	if err != nil {
-		return nil, fmt.Errorf("get transaction %s meta failed: %w", tx.GetHash().Hash, err)
-	}
+	meta := &pb.TransactionMeta{}
+	err = retry.Retry(func(attempt uint) error {
+		meta, err = cbs.api.Broker().GetTransactionMeta(txHash)
+		if err != nil {
+			return fmt.Errorf("get transaction %s meta failed: %w", tx.GetHash().Hash, err)
+		}
+		return nil
+	}, strategy.Limit(5), strategy.Backoff(backoff.Fibonacci(200*time.Millisecond)))
 
 	return &pb.GetTransactionResponse{
 		Tx:     bxhTx,
 		TxMeta: meta,
-	}, nil
+	}, err
 }
 
 func (cbs *ChainBrokerService) GetPendingTransaction(ctx context.Context, req *pb.TransactionHashMsg) (*pb.GetTransactionResponse, error) {

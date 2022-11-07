@@ -10,6 +10,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Rican7/retry"
+	"github.com/Rican7/retry/backoff"
+	"github.com/Rican7/retry/strategy"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -34,7 +37,7 @@ import (
 
 const (
 	cumulativeGas = 1000
-	waitReceipt   = 200 * time.Millisecond
+	waitReceipt   = 300 * time.Millisecond
 )
 
 // PublicEthereumAPI is the eth_ prefixed set of APIs in the Web3 JSON-RPC spec.
@@ -267,7 +270,7 @@ func (api *PublicEthereumAPI) GetTransactionLogs(txHash common.Hash) ([]*pb.EvmL
 
 // SendRawTransaction send a raw Ethereum transaction.
 func (api *PublicEthereumAPI) SendRawTransaction(data hexutil.Bytes) (common.Hash, error) {
-	api.logger.Debugf("eth_sendRawTransaction, data: %s", data.String())
+	api.logger.Debugf("eth_sendRawTransaction")
 
 	tx := &types2.EthTransaction{}
 	if err := tx.Unmarshal(data); err != nil {
@@ -515,7 +518,6 @@ func (api *PublicEthereumAPI) GetBlockByNumber(blockNum rpc.BlockNumber, fullTx 
 // GetTransactionByHash returns the transaction identified by hash.
 func (api *PublicEthereumAPI) GetTransactionByHash(hash common.Hash) (*rpctypes.RPCTransaction, error) {
 	api.logger.Debugf("eth_getTransactionByHash, hash: %s", hash.String())
-	time.Sleep(waitReceipt)
 	ethTx, meta, err := api.GetEthTransactionByHash(types.NewHash(hash.Bytes()))
 	if err != nil {
 		api.logger.Errorf("GetTransactionByHash err:%s", err)
@@ -531,26 +533,38 @@ func (api *PublicEthereumAPI) GetEthTransactionByHash(hash *types.Hash) (*types2
 
 	tx := api.api.Broker().GetPoolTransaction(hash)
 	if tx == nil {
-		api.logger.Info("tx %s is not in mempool", hash.String())
+		api.logger.Warnf("tx %s is not in mempool", hash.String())
 		tx, err = api.api.Broker().GetTransaction(hash)
 		if err != nil {
-			api.logger.Debugf("tx %s is not in ledger", hash.String())
+			api.logger.Errorf("tx %s is not in ledger", hash.String())
 			return nil, nil, fmt.Errorf("get tx from ledger: %w", err)
 		}
 
-		meta, err = api.api.Broker().GetTransactionMeta(hash)
-		if err != nil {
-			api.logger.Debugf("tx meta for %s is not found", hash.String())
-			return nil, nil, fmt.Errorf("get tx meta from ledger: %w", err)
-		}
-	} else {
-		api.logger.Debugf("tx %s is found in mempool", hash.String())
-		if strings.Contains(strings.ToLower(api.config.Order.Type), "rbft") {
+		err = retry.Retry(func(attempt uint) error {
 			meta, err = api.api.Broker().GetTransactionMeta(hash)
 			if err != nil {
 				api.logger.Debugf("tx meta for %s is not found", hash.String())
-				meta = &pb.TransactionMeta{}
+				return err
 			}
+			return nil
+		}, strategy.Limit(5), strategy.Backoff(backoff.Fibonacci(200*time.Millisecond)))
+		if err != nil {
+			meta = &pb.TransactionMeta{}
+			return nil, meta, err
+		}
+	} else {
+		api.logger.Debugf("tx %s is found in mempool", hash.String())
+		err = retry.Retry(func(attempt uint) error {
+			meta, err = api.api.Broker().GetTransactionMeta(hash)
+			if err != nil {
+				api.logger.Debugf("tx meta for %s is not found", hash.String())
+				return err
+			}
+			return nil
+		}, strategy.Limit(5), strategy.Backoff(backoff.Fibonacci(200*time.Millisecond)))
+		if err != nil {
+			meta = &pb.TransactionMeta{}
+			return nil, meta, err
 		}
 	}
 
@@ -671,8 +685,6 @@ func (api *PublicEthereumAPI) GetTransactionReceipt(hash common.Hash) (map[strin
 		fields["to"] = common.BytesToAddress(tx.GetTo().Bytes())
 	}
 
-	api.logger.Debugf("eth_getTransactionReceipt: %v", fields)
-
 	return fields, err
 }
 
@@ -721,8 +733,17 @@ func (api *PublicEthereumAPI) getTxByBlockInfoAndIndex(mode string, key string, 
 		return nil, fmt.Errorf("tx is not in eth format")
 	}
 
-	meta, err := api.api.Broker().GetTransactionMeta(ethTx.GetHash())
+	meta := &pb.TransactionMeta{}
+	err = retry.Retry(func(attempt uint) error {
+		meta, err = api.api.Broker().GetTransactionMeta(ethTx.GetHash())
+		if err != nil {
+			api.logger.Debugf("tx meta for %s is not found", ethTx.GetHash().String())
+			return err
+		}
+		return nil
+	}, strategy.Limit(5), strategy.Backoff(backoff.Fibonacci(200*time.Millisecond)))
 	if err != nil {
+		meta = &pb.TransactionMeta{}
 		return nil, err
 	}
 

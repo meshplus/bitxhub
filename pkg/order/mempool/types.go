@@ -48,3 +48,8 @@ type ChainState struct {
 	BlockHash  *types.Hash
 	TxHashList []*types.Hash
 }
+
+type GetTxReq struct {
+	Hash *types.Hash
+	Tx   chan pb.Transaction
+}

@@ -40,5 +40,5 @@ function start() {
 
 prepare
 config
-#compile
+compile
 start
