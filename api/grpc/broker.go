@@ -40,7 +40,7 @@ type ChainBrokerService struct {
 }
 
 const (
-	ACCOUNT_KEY = "account"
+	AccountKey = "account"
 )
 
 var auditStreamInterfaceMap = map[string]struct{}{
@@ -85,10 +85,10 @@ func (cbs *ChainBrokerService) init() error {
 		if !ok {
 			return nil, fmt.Errorf("missing meta data!")
 		}
-		if ok, err := checkPermissionUnary(md[ACCOUNT_KEY], info, cbs.ledger, cbs.logger); err != nil {
+		if ok, err := checkPermissionUnary(md[AccountKey], info, cbs.ledger, cbs.logger); err != nil {
 			return nil, fmt.Errorf("checkPermissionUnary err: %v", err)
 		} else if !ok {
-			return nil, fmt.Errorf("no permission request, account: %s, method: %s", md[ACCOUNT_KEY], info.FullMethod)
+			return nil, fmt.Errorf("no permission request, account: %s, method: %s", md[AccountKey], info.FullMethod)
 		}
 		return handler(ctx, req)
 	}
@@ -98,10 +98,10 @@ func (cbs *ChainBrokerService) init() error {
 		if !ok {
 			return fmt.Errorf("missing meta data!")
 		}
-		if ok, err := checkPermissionStream(md[ACCOUNT_KEY], info, cbs.ledger, cbs.logger); err != nil {
+		if ok, err := checkPermissionStream(md[AccountKey], info, cbs.ledger, cbs.logger); err != nil {
 			return fmt.Errorf("checkPermissionStream err: %v", err)
 		} else if !ok {
-			return fmt.Errorf("no permission request, account: %s, method: %s", md[ACCOUNT_KEY], info.FullMethod)
+			return fmt.Errorf("no permission request, account: %s, method: %s", md[AccountKey], info.FullMethod)
 		}
 		return handler(srv, ss)
 	}

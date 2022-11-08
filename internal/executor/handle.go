@@ -60,7 +60,7 @@ func (exec *BlockExecutor) rollbackBlocks(newBlock *pb.Block) error {
 		err      error
 	)
 	if err = retry.Retry(func(attempt uint) error {
-		oldBlock, err = exec.ledger.GetBlock(newBlock.Height())
+		oldBlock, err = exec.ledger.GetBlock(newBlock.Height(), false)
 		if err != nil {
 			exec.logger.WithFields(logrus.Fields{
 				"height": newBlock.Height(),
@@ -80,7 +80,7 @@ func (exec *BlockExecutor) rollbackBlocks(newBlock *pb.Block) error {
 	// consensus ensure newBlock is approved by quorum nodes
 	if oldBlock.BlockHash.String() != newBlock.Hash().String() {
 		// query last checked block for generating right parent blockHash
-		lastCheckedBlock, err := exec.ledger.GetBlock(newBlock.Height() - 1)
+		lastCheckedBlock, err := exec.ledger.GetBlock(newBlock.Height()-1, false)
 		if err != nil {
 			exec.logger.WithFields(logrus.Fields{
 				"height": lastCheckedBlock.Height(),
@@ -772,7 +772,7 @@ func (exec *BlockExecutor) payGasFee(tx pb.Transaction, gasUsed uint64) error {
 	fees := new(big.Int).Mul(new(big.Int).SetUint64(gasUsed), exec.bxhGasPrice)
 	have := exec.ledger.GetBalance(tx.GetFrom())
 	if have.Cmp(fees) < 0 {
-		return fmt.Errorf("insufficeient balance: address %v have %v want %v", tx.GetFrom().String(), have, fees)
+		return fmt.Errorf("insufficient balance: address %v have %v want %v", tx.GetFrom().String(), have, fees)
 	}
 	exec.ledger.SetBalance(tx.GetFrom(), new(big.Int).Sub(have, fees))
 	exec.payAdmins(fees)

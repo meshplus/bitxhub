@@ -53,9 +53,9 @@ func TestInterchainRouter_GetInterchainTxWrappers(t *testing.T) {
 		ChainLedger: chainLedger,
 		StateLedger: stateLedger,
 	}
-	chainLedger.EXPECT().GetBlock(uint64(1)).Return(mockBlock(1, txs), nil).AnyTimes()
-	chainLedger.EXPECT().GetBlock(uint64(2)).Return(nil, fmt.Errorf("get block error")).AnyTimes()
-	chainLedger.EXPECT().GetBlock(uint64(3)).Return(mockBlock(1, txs), nil).AnyTimes()
+	chainLedger.EXPECT().GetBlock(uint64(1), gomock.Any()).Return(mockBlock(1, txs), nil).AnyTimes()
+	chainLedger.EXPECT().GetBlock(uint64(2), gomock.Any()).Return(nil, fmt.Errorf("get block error")).AnyTimes()
+	chainLedger.EXPECT().GetBlock(uint64(3), gomock.Any()).Return(mockBlock(1, txs), nil).AnyTimes()
 	chainLedger.EXPECT().GetInterchainMeta(uint64(1)).Return(im, nil).AnyTimes()
 	chainLedger.EXPECT().GetInterchainMeta(uint64(2)).Return(im, nil).AnyTimes()
 	chainLedger.EXPECT().GetInterchainMeta(uint64(3)).Return(nil, fmt.Errorf("get interchain meta error")).AnyTimes()
@@ -100,12 +100,12 @@ func TestInterchainRouter_GetBlockHeader(t *testing.T) {
 		ChainLedger: chainLedger,
 		StateLedger: stateLedger,
 	}
-	chainLedger.EXPECT().GetBlock(uint64(1)).Return(&pb.Block{
+	chainLedger.EXPECT().GetBlock(uint64(1), gomock.Any()).Return(&pb.Block{
 		BlockHeader: &pb.BlockHeader{
 			Number: 1,
 		},
 	}, nil).AnyTimes()
-	chainLedger.EXPECT().GetBlock(uint64(2)).Return(nil, fmt.Errorf("get block error")).AnyTimes()
+	chainLedger.EXPECT().GetBlock(uint64(2), gomock.Any()).Return(nil, fmt.Errorf("get block error")).AnyTimes()
 
 	mockPeerMgr := mock_peermgr.NewMockPeerManager(mockCtl)
 

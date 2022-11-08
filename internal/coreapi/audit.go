@@ -35,7 +35,7 @@ func (api AuditAPI) HandleAuditNodeSubscription(dataCh chan<- *pb.AuditTxInfo, a
 	// 3. send historical audit info from the current block height
 	blockCur := api.bxh.Ledger.GetChainMeta().Height
 	for height := blockStart; height <= blockCur; height++ {
-		block, err := api.bxh.Ledger.GetBlock(height)
+		block, err := api.bxh.Ledger.GetBlock(height, true)
 		if err != nil {
 			return fmt.Errorf("get block error: %v", err)
 		}

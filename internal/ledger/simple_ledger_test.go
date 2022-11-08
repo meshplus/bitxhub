@@ -491,7 +491,7 @@ func TestChainLedger_Rollback(t *testing.T) {
 	ledger.PersistBlockData(genBlockData(3, accounts, stateRoot3))
 
 	assert.Equal(t, stateRoot3, stateLedger.prevJnlHash)
-	block, err := ledger.GetBlock(3)
+	block, err := ledger.GetBlock(3, false)
 	assert.Nil(t, err)
 	assert.NotNil(t, block)
 	assert.Equal(t, uint64(3), ledger.GetChainMeta().Height)
@@ -524,7 +524,7 @@ func TestChainLedger_Rollback(t *testing.T) {
 	err = ledger.Rollback(3)
 	assert.Nil(t, err)
 	assert.Equal(t, stateRoot3, stateLedger.prevJnlHash)
-	block, err = ledger.GetBlock(3)
+	block, err = ledger.GetBlock(3, false)
 	assert.Nil(t, err)
 	assert.NotNil(t, block)
 	assert.Equal(t, uint64(3), ledger.GetChainMeta().Height)
@@ -533,7 +533,7 @@ func TestChainLedger_Rollback(t *testing.T) {
 
 	err = ledger.Rollback(2)
 	assert.Nil(t, err)
-	block, err = ledger.GetBlock(3)
+	block, err = ledger.GetBlock(3, false)
 	assert.Equal(t, fmt.Sprintf("get bodies with height 3 from blockfile failed: out of bounds"), err.Error())
 	assert.Nil(t, block)
 	assert.Equal(t, uint64(2), ledger.GetChainMeta().Height)
@@ -884,10 +884,10 @@ func TestGetBlockSign(t *testing.T) {
 
 func TestGetBlockByHash(t *testing.T) {
 	ledger, _ := initLedger(t, "")
-	_, err := ledger.GetBlockByHash(types.NewHash([]byte("1")))
+	_, err := ledger.GetBlockByHash(types.NewHash([]byte("1")), false)
 	assert.Equal(t, storage.ErrorNotFound, err)
 	ledger.ChainLedger.(*ChainLedgerImpl).blockchainStore.Put(compositeKey(blockHashKey, types.NewHash([]byte("1")).String()), []byte("1"))
-	_, err = ledger.GetBlockByHash(types.NewHash([]byte("1")))
+	_, err = ledger.GetBlockByHash(types.NewHash([]byte("1")), false)
 	assert.NotNil(t, err)
 }
 

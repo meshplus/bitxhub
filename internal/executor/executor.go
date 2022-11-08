@@ -216,7 +216,7 @@ func (exec *BlockExecutor) ApplyReadonlyTransactions(txs []pb.Transaction) []*pb
 	defer exec.lock.Unlock()
 
 	meta := exec.ledger.GetChainMeta()
-	block, err := exec.ledger.GetBlock(meta.Height)
+	block, err := exec.ledger.GetBlock(meta.Height, false)
 	if err != nil {
 		exec.logger.Errorf("fail to get block at %d: %v", meta.Height, err.Error())
 		return nil

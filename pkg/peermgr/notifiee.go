@@ -1,15 +1,16 @@
 package peermgr
 
 import (
+	"sync"
+
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/meshplus/bitxhub-model/pb"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/sirupsen/logrus"
-	"sync"
 )
 
 type notifiee struct {
-	peers   map[uint64]*pb.VpInfo
+	peers map[uint64]*pb.VpInfo
 	// TODO (Peer): keep access goroutine safety
 	newPeer string
 	mu      sync.RWMutex
@@ -18,7 +19,7 @@ type notifiee struct {
 
 func newNotifiee(peers map[uint64]*pb.VpInfo, logger logrus.FieldLogger) *notifiee {
 	return &notifiee{
-		peers: peers,
+		peers:  peers,
 		logger: logger,
 	}
 }

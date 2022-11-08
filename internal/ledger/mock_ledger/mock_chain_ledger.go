@@ -48,33 +48,33 @@ func (mr *MockChainLedgerMockRecorder) Close() *gomock.Call {
 }
 
 // GetBlock mocks base method.
-func (m *MockChainLedger) GetBlock(height uint64) (*pb.Block, error) {
+func (m *MockChainLedger) GetBlock(height uint64, fullTx bool) (*pb.Block, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetBlock", height)
+	ret := m.ctrl.Call(m, "GetBlock", height, fullTx)
 	ret0, _ := ret[0].(*pb.Block)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetBlock indicates an expected call of GetBlock.
-func (mr *MockChainLedgerMockRecorder) GetBlock(height interface{}) *gomock.Call {
+func (mr *MockChainLedgerMockRecorder) GetBlock(height, fullTx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBlock", reflect.TypeOf((*MockChainLedger)(nil).GetBlock), height)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBlock", reflect.TypeOf((*MockChainLedger)(nil).GetBlock), height, fullTx)
 }
 
 // GetBlockByHash mocks base method.
-func (m *MockChainLedger) GetBlockByHash(hash *types.Hash) (*pb.Block, error) {
+func (m *MockChainLedger) GetBlockByHash(hash *types.Hash, fullTx bool) (*pb.Block, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetBlockByHash", hash)
+	ret := m.ctrl.Call(m, "GetBlockByHash", hash, fullTx)
 	ret0, _ := ret[0].(*pb.Block)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetBlockByHash indicates an expected call of GetBlockByHash.
-func (mr *MockChainLedgerMockRecorder) GetBlockByHash(hash interface{}) *gomock.Call {
+func (mr *MockChainLedgerMockRecorder) GetBlockByHash(hash, fullTx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBlockByHash", reflect.TypeOf((*MockChainLedger)(nil).GetBlockByHash), hash)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBlockByHash", reflect.TypeOf((*MockChainLedger)(nil).GetBlockByHash), hash, fullTx)
 }
 
 // GetBlockHash mocks base method.

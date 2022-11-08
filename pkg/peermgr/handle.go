@@ -86,7 +86,7 @@ func (swarm *Swarm) handleGetBlockPack(s network.Stream, msg *pb.Message) error 
 		return fmt.Errorf("convert %s string to int failed: %w", string(msg.Data), err)
 	}
 
-	block, err := swarm.ledger.GetBlock(num)
+	block, err := swarm.ledger.GetBlock(num, true)
 	if err != nil {
 		return fmt.Errorf("get block with height %d failed: %w", num, err)
 	}
@@ -117,7 +117,7 @@ func (swarm *Swarm) handleGetBlockHeadersPack(s network.Stream, msg *pb.Message)
 	res := &pb.GetBlockHeadersResponse{}
 	blockHeaders := make([]*pb.BlockHeader, 0)
 	for i := req.Start; i <= req.End; i++ {
-		block, err := swarm.ledger.GetBlock(i)
+		block, err := swarm.ledger.GetBlock(i, false)
 		if err != nil {
 			return fmt.Errorf("get block with height %d from ledger failed: %w", i, err)
 		}
@@ -359,7 +359,7 @@ func (swarm *Swarm) handleGetBlocksPack(s network.Stream, msg *pb.Message) error
 	res := &pb.GetBlocksResponse{}
 	blocks := make([]*pb.Block, 0)
 	for i := req.Start; i <= req.End; i++ {
-		block, err := swarm.ledger.GetBlock(i)
+		block, err := swarm.ledger.GetBlock(i, true)
 		if err != nil {
 			return fmt.Errorf("get block with height %d from ledger failed: %w", i, err)
 		}

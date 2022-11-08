@@ -55,7 +55,7 @@ type Node struct {
 	msgC              chan []byte                  // receive messages from remote peer
 	stateC            chan *mempool.ChainState     // receive the executed block state
 	rebroadcastTicker chan *raftproto.TxSlice      // receive the executed block state
-	getTxC            chan *GetTxReq
+	getTxC            chan *mempool.GetTxReq
 
 	confState         raftpb.ConfState     // raft requires ConfState to be persisted within snapshot
 	blockAppliedIndex sync.Map             // mapping of block height and apply index in raft log
@@ -70,11 +70,6 @@ type Node struct {
 	ctx               context.Context      // context
 	cancel            context.CancelFunc
 	haltC             chan struct{} // exit signal
-}
-
-type GetTxReq struct {
-	Hash *types.Hash
-	Tx   chan pb.Transaction
 }
 
 func init() {
@@ -176,7 +171,7 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 		msgC:             make(chan []byte),
 		stateC:           make(chan *mempool.ChainState),
 		proposeC:         make(chan *raftproto.RequestBatch),
-		getTxC:           make(chan *GetTxReq),
+		getTxC:           make(chan *mempool.GetTxReq),
 		snapCount:        snapCount,
 		repoRoot:         repoRoot,
 		peerMgr:          config.PeerMgr,
@@ -316,7 +311,7 @@ func (n *Node) GetPendingNonceByAccount(account string) uint64 {
 }
 
 func (n *Node) GetPendingTxByHash(hash *types.Hash) pb.Transaction {
-	getTxReq := &GetTxReq{
+	getTxReq := &mempool.GetTxReq{
 		Hash: hash,
 		Tx:   make(chan pb.Transaction),
 	}

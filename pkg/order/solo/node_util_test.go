@@ -2,6 +2,9 @@ package solo
 
 import (
 	"context"
+	"testing"
+	"time"
+
 	"github.com/golang/mock/gomock"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
@@ -12,8 +15,6 @@ import (
 	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
 	"github.com/meshplus/bitxhub/pkg/order/mempool"
 	"github.com/meshplus/bitxhub/pkg/peermgr/mock_peermgr"
-	"testing"
-	"time"
 )
 
 func mockSoloNode(t *testing.T, enableTimed bool) (*Node, error) {
@@ -47,6 +48,7 @@ func mockSoloNode(t *testing.T, enableTimed bool) (*Node, error) {
 		return nil, err
 	}
 	batchC := make(chan *raftproto.RequestBatch)
+	getTxC := make(chan *mempool.GetTxReq)
 	ctx, cancel := context.WithCancel(context.Background())
 
 	soloNode := &Node{
@@ -61,6 +63,7 @@ func mockSoloNode(t *testing.T, enableTimed bool) (*Node, error) {
 		batchMgr:     batchTimerMgr,
 		peerMgr:      mockPeermgr,
 		proposeC:     batchC,
+		getTxC:       getTxC,
 		logger:       logger,
 		ctx:          ctx,
 		cancel:       cancel,

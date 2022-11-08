@@ -96,7 +96,7 @@ func newFilter(api api.CoreAPI, addresses []*types2.Address, topics [][]*types2.
 func (f *Filter) Logs(ctx context.Context) ([]*pb.EvmLog, error) {
 	// If we're doing singleton block filtering, execute and return
 	if f.block != nil {
-		block, err := f.api.Broker().GetBlock("HASH", f.block.String())
+		block, err := f.api.Broker().GetBlock("HASH", f.block.String(), false)
 		if err != nil {
 			return nil, err
 		}
@@ -175,7 +175,7 @@ func (f *Filter) checkMatches(ctx context.Context, blockNum uint64) (logs []*pb.
 func (f *Filter) getBlockReceipts(blockNum uint64) ([]*pb.Receipt, error) {
 	var receipts []*pb.Receipt
 
-	block, err := f.api.Broker().GetBlock("HEIGHT", fmt.Sprintf("%d", blockNum))
+	block, err := f.api.Broker().GetBlock("HEIGHT", fmt.Sprintf("%d", blockNum), false)
 	if err != nil {
 		return nil, err
 	}

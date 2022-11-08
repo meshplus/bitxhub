@@ -58,7 +58,7 @@ func New(repo *repo.Repo, blockchainStore storage.Storage, ldb stateStorage, bf 
 
 		root := &types.Hash{}
 		if meta.Height > 0 {
-			block, err := chainLedger.GetBlock(meta.Height)
+			block, err := chainLedger.GetBlock(meta.Height, false)
 			if err != nil {
 				return nil, fmt.Errorf("get block with height %d failed: %w", meta.Height, err)
 			}

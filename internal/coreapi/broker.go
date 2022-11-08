@@ -103,26 +103,30 @@ func (b *BrokerAPI) GetInterchainTxWrappers(appchainID string, begin, end uint64
 	return b.bxh.Router.GetInterchainTxWrappers(appchainID, begin, end, ch)
 }
 
-func (b *BrokerAPI) GetBlock(mode string, value string) (*pb.Block, error) {
+func (b *BrokerAPI) GetBlock(mode string, value string, fullTx bool) (*pb.Block, error) {
 	switch mode {
 	case "HEIGHT":
 		height, err := strconv.ParseUint(value, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("wrong block number: %s", value)
 		}
-		return b.bxh.Ledger.GetBlock(height)
+		return b.bxh.Ledger.GetBlock(height, fullTx)
 	case "HASH":
 		hash := types.NewHashByStr(value)
 		if hash == nil {
 			return nil, fmt.Errorf("invalid format of block hash for querying block")
 		}
-		return b.bxh.Ledger.GetBlockByHash(hash)
+		return b.bxh.Ledger.GetBlockByHash(hash, fullTx)
+	case "LATEST":
+		meta := b.bxh.Ledger.GetChainMeta()
+		height := meta.Height
+		return b.bxh.Ledger.GetBlock(height, fullTx)
 	default:
 		return nil, fmt.Errorf("wrong args about getting block: %s", mode)
 	}
 }
 
-func (b *BrokerAPI) GetBlocks(start uint64, end uint64) ([]*pb.Block, error) {
+func (b *BrokerAPI) GetBlocks(start uint64, end uint64, fullTx bool) ([]*pb.Block, error) {
 	meta := b.bxh.Ledger.GetChainMeta()
 
 	var blocks []*pb.Block
@@ -130,7 +134,7 @@ func (b *BrokerAPI) GetBlocks(start uint64, end uint64) ([]*pb.Block, error) {
 		end = meta.Height
 	}
 	for i := start; i > 0 && i <= end; i++ {
-		b, err := b.GetBlock("HEIGHT", strconv.Itoa(int(i)))
+		b, err := b.GetBlock("HEIGHT", strconv.Itoa(int(i)), fullTx)
 		if err != nil {
 			continue
 		}
@@ -148,7 +152,7 @@ func (b *BrokerAPI) GetBlockHeaders(start uint64, end uint64) ([]*pb.BlockHeader
 		end = meta.Height
 	}
 	for i := start; i > 0 && i <= end; i++ {
-		b, err := b.GetBlock("HEIGHT", strconv.Itoa(int(i)))
+		b, err := b.GetBlock("HEIGHT", strconv.Itoa(int(i)), false)
 		if err != nil {
 			continue
 		}

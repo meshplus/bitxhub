@@ -29,8 +29,8 @@ type BrokerAPI interface {
 	GetTransaction(*types.Hash) (pb.Transaction, error)
 	GetTransactionMeta(*types.Hash) (*pb.TransactionMeta, error)
 	GetReceipt(*types.Hash) (*pb.Receipt, error)
-	GetBlock(mode string, key string) (*pb.Block, error)
-	GetBlocks(start uint64, end uint64) ([]*pb.Block, error)
+	GetBlock(mode string, key string, fullTx bool) (*pb.Block, error)
+	GetBlocks(start uint64, end uint64, fullTx bool) ([]*pb.Block, error)
 	GetPendingNonceByAccount(account string) uint64
 	GetPendingTransactions(max int) []pb.Transaction
 	GetPoolTransaction(hash *types.Hash) pb.Transaction
