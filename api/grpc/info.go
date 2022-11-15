@@ -27,10 +27,7 @@ func (cbs *ChainBrokerService) GetTPS(ctx context.Context, req *pb.GetTPSRequest
 		return nil, fmt.Errorf("get tps between %d and %d failed: %w", req.Begin, req.End, err)
 	}
 
-	data := make([]byte, 8)
-	binary.LittleEndian.PutUint64(data, tps)
-
-	return &pb.Response{Data: data}, nil
+	return &pb.Response{Data: []byte(tps)}, nil
 }
 
 func (cbs *ChainBrokerService) GetChainID(ctx context.Context, empty *pb.Empty) (*pb.Response, error) {

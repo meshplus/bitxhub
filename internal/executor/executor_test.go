@@ -842,12 +842,16 @@ BcNwjTDCxyxLNjFKQfMAc6sY6iJs+Ma59WZyC/4uhjE=
 	address, err := privKey.PublicKey().Address()
 	require.Nil(t, err)
 
-	return &repo.Repo{
+	rep := &repo.Repo{
 		Key: &repo.Key{
 			PrivKey: privKey,
 			Address: address.String(),
 		},
+		Config: &repo.Config{},
 	}
+	rep.Config.Executor.Type = "serial"
+
+	return rep
 }
 
 func generateMockConfig(t *testing.T) *repo.Config {

@@ -28,7 +28,7 @@ func (api *ChainAPI) Meta() (*pb.ChainMeta, error) {
 	return api.bxh.Ledger.GetChainMeta(), nil
 }
 
-func (api *ChainAPI) TPS(begin, end uint64) (uint64, error) {
+func (api *ChainAPI) TPS(begin, end uint64) (string, error) {
 	var (
 		errCount  atomic.Int64
 		total     atomic.Uint64
@@ -39,11 +39,11 @@ func (api *ChainAPI) TPS(begin, end uint64) (uint64, error) {
 	pool := utils.NewGoPool(runtime.GOMAXPROCS(runtime.NumCPU()))
 
 	if int(begin) <= 0 {
-		return 0, fmt.Errorf("begin number should be greater than zero")
+		return "", fmt.Errorf("begin number should be greater than zero")
 	}
 
 	if int(begin) >= int(end) {
-		return 0, fmt.Errorf("begin number should be smaller than end number")
+		return "", fmt.Errorf("begin number should be smaller than end number")
 	}
 
 	// calculate all tx counts
@@ -89,13 +89,14 @@ func (api *ChainAPI) TPS(begin, end uint64) (uint64, error) {
 	pool.Wait()
 
 	if errCount.Load() != 0 {
-		return 0, fmt.Errorf("error during get block TPS")
+		return "", fmt.Errorf("error during get block TPS")
 	}
 
-	elapsed := (endTime - startTime) / int64(time.Second)
+	elapsed := float64(endTime-startTime) / float64(time.Second)
 
 	if elapsed <= 0 {
-		return 0, fmt.Errorf("incorrect block timestamp")
+		return "", fmt.Errorf("incorrect block timestamp")
 	}
-	return total.Load() / uint64(elapsed), nil
+	tps := float64(total.Load()) / elapsed
+	return fmt.Sprintf("total tx count:%d, tps is %f", total.Load(), tps), nil
 }

@@ -238,11 +238,11 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, bool, *bol
 			isBatch, targetError = x.checkTargetAvailability(srcChainService, dstChainService, ibtp.Type)
 
 			// abandon it because of all service must be ordered
-			// if ordered {
-			if err := checkIndex(interchain.InterchainCounter[dstChainService.getFullServiceId()]+1, ibtp.Index); err != nil {
-				return nil, isBatch, nil, err
+			if !isBatch {
+				if err := checkIndex(interchain.InterchainCounter[dstChainService.getFullServiceId()]+1, ibtp.Index); err != nil {
+					return nil, isBatch, nil, err
+				}
 			}
-			// }
 		} else {
 			if !dstChainService.IsLocal {
 				return nil, isBatch, nil, boltvm.BError(boltvm.InterchainInvalidIBTPNotInCurBXHCode, fmt.Sprintf(string(boltvm.InterchainInvalidIBTPNotInCurBXHMsg), ibtp.ID()))
@@ -254,11 +254,11 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, bool, *bol
 
 			isBatch, targetError = x.checkTargetAvailability(srcChainService, dstChainService, ibtp.Type)
 
-			// if ordered {
-			if err := checkIndex(interchain.InterchainCounter[dstChainService.getFullServiceId()]+1, ibtp.Index); err != nil {
-				return nil, isBatch, nil, err
+			if !isBatch {
+				if err := checkIndex(interchain.InterchainCounter[dstChainService.getFullServiceId()]+1, ibtp.Index); err != nil {
+					return nil, isBatch, nil, err
+				}
 			}
-			// }
 		}
 	} else if ibtp.Category() == pb.IBTP_RESPONSE || isNotification {
 		// Situation which need to check the index
@@ -273,12 +273,10 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, bool, *bol
 				return nil, isBatch, nil, boltvm.BError(boltvm.InterchainInvalidIBTPNotInCurBXHCode, fmt.Sprintf(string(boltvm.InterchainInvalidIBTPNotInCurBXHMsg), ibtp.ID()))
 			}
 		}
-
-		// if dstService == nil || dstService.Ordered {
+		// todo(lrx): adapt receipt batch
 		if err := checkIndex(interchain.ReceiptCounter[dstChainService.getFullServiceId()]+1, ibtp.Index); err != nil {
 			return nil, isBatch, nil, err
 		}
-		// }
 	} else {
 		return nil, isBatch, nil, boltvm.BError(boltvm.InterchainInvalidIBTPIllegalTypeCode, fmt.Sprintf(string(boltvm.InterchainInvalidIBTPIllegalTypeMsg), ibtp.Type))
 	}
