@@ -35,7 +35,7 @@ require (
 	github.com/magiconair/properties v1.8.5
 	github.com/meshplus/bitxhub-core v1.3.1-0.20221027121437-e904eb78f5d5
 	github.com/meshplus/bitxhub-kit v1.2.1-0.20221104030503-b7107821941e
-	github.com/meshplus/bitxhub-model v1.2.1-0.20221031060115-cd3292575517
+	github.com/meshplus/bitxhub-model v1.2.1-0.20221216071922-172cad9ff0c6
 	github.com/meshplus/consensus v0.0.0-20211228075008-5f469b198531
 	github.com/meshplus/eth-kit v0.0.0-20221027120404-e69d0c24dbd4
 	github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd
@@ -61,7 +61,7 @@ require (
 	github.com/willf/bloom v2.0.3+incompatible
 	go.uber.org/atomic v1.7.0
 	go.uber.org/zap v1.19.0
-	google.golang.org/grpc v1.48.0
+	google.golang.org/grpc v1.50.1
 )
 
 replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20200218151345-dad8c97a84f5
@@ -79,3 +79,5 @@ replace github.com/agl/ed25519 => github.com/binance-chain/edwards25519 v0.0.0-2
 replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4
 
 replace github.com/golang/protobuf => github.com/golang/protobuf v1.3.2
+
+replace github.com/meshplus/bitxhub-model => github.com/meshplus/bitxhub-model v1.2.1-0.20221122030632-27f43e713e6b
