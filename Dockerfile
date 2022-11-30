@@ -25,10 +25,7 @@ COPY --from=0 /root/.bitxhub /root/.bitxhub
 COPY --from=0 /lib/libwasmer.so /lib/libwasmer.so
 COPY --from=0 /go/src/github.com/meshplus/bitxhub/scripts/healthcheck.sh /root/.bitxhub/
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/lib
-ARG GateWayPort=$(grep -m 1 gateway < .bitxhub/bitxhub.toml | awk '{print $3}')
-HEALTHCHECK --interval=30s --timeout=30s --start-period=10s --retries=3 CMD [ ./bitxhub/healthcheck.sh ]
+HEALTHCHECK --interval=30s --timeout=30s --start-period=10s --retries=3 CMD [ "/root/.bitxhub/healthcheck.sh" ]
 
 EXPOSE 8881 60011 9091 53121 40001
-ENTRYPOINT ["/bin/sh", "-c","bitxhub start"]
-
-
+ENTRYPOINT ["bitxhub", "start"]
