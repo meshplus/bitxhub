@@ -482,7 +482,7 @@ func TestInterchainManager_HandleIBTP(t *testing.T) {
 	change1 := pb.StatusChange{
 		PrevStatus:   pb.TransactionStatus_BEGIN,
 		CurStatus:    pb.TransactionStatus_SUCCESS,
-		OtherIBTPIDs: []string{fmt.Sprintf("%s-%s-1", fromServiceId, toServiceId)},
+		ChildIBTPIDs: []string{fmt.Sprintf("%s-%s-1", fromServiceId, toServiceId)},
 	}
 	data1, _ := change1.Marshal()
 	mockStub.EXPECT().CrossInvoke(constant.TransactionMgrContractAddr.Address().String(), gomock.Eq("Report"), gomock.Any(), gomock.Any()).Return(boltvm.Success(data1)).Times(1)

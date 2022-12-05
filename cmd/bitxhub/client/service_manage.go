@@ -110,12 +110,17 @@ func getServiceStatusById(ctx *cli.Context) error {
 		return fmt.Errorf("invoke BVM contract failed when get service status by id %s: %w", id, err)
 	}
 
-	if receipt.IsSuccess() {
+	receipt1, err := invokeBVMContractBySendView(ctx, constant.ServiceMgrContractAddr.String(), "IsAvailable", pb.String(id))
+	if err != nil {
+		return fmt.Errorf("invoke BVM contract failed when get service status by id %s: %w", id, err)
+	}
+
+	if receipt.IsSuccess() && receipt1.IsSuccess() {
 		service := &service_mgr.Service{}
 		if err := json.Unmarshal(receipt.Ret, service); err != nil {
 			return fmt.Errorf("unmarshal receipt error: %w", err)
 		}
-		color.Green("service %s is %s", fmt.Sprintf("%s:%s", service.ChainID, service.ServiceID), string(service.Status))
+		color.Green("service %s is %s, Available is %s", fmt.Sprintf("%s:%s", service.ChainID, service.ServiceID), string(service.Status), string(receipt1.Ret))
 	} else {
 		color.Red("get service status error: %s\n", string(receipt.Ret))
 	}

@@ -24,7 +24,7 @@ func getReceipt(ctx *cli.Context) error {
 		return err
 	}
 
-	fmt.Println(string(data))
+	fmt.Println(prettyJson(string(data)))
 
 	return nil
 }

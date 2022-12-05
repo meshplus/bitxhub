@@ -173,7 +173,7 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	// this block is not in ledger
 	txList := blockWrapper.block.Transactions.Transactions
 	bxhId := strconv.FormatUint(exec.config.ChainID, 10)
-	err = exec.setTimeoutList(exec.currentHeight, txList, invalidTxHashMap, recordFailTxHashMap, bxhId)
+	err = exec.setTimeoutList(block.BlockHeader.Number, txList, invalidTxHashMap, recordFailTxHashMap, bxhId)
 	if err != nil {
 		exec.logger.Errorf("setTimeoutList err: %s", err)
 	}
@@ -207,7 +207,7 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 		panic(err)
 	}
 
-	multiTxIBTPsMap, err := exec.getMultiTxIBTPsMap(block.BlockHeader.Number)
+	multiTxIBTPsMap, err := exec.getMultiTxIBTPsMap(exec.currentHeight + 1)
 	if err != nil {
 		panic(err)
 	}
@@ -478,7 +478,6 @@ func (exec *BlockExecutor) postLogsEvent(receipts []*pb.Receipt) {
 }
 
 func (exec *BlockExecutor) applyTransaction(i int, tx pb.Transaction, invalidReason agency.InvalidReason, opt *agency.TxOpt) *pb.Receipt {
-	// todo(lrx): need refactor state changer
 	var changer *ledger.ChangeInstance
 	if exec.supportParallel && tx.IsIBTP() {
 		// make sure each tx has an instance to record ledger changed
@@ -564,7 +563,7 @@ func (exec *BlockExecutor) applyBxhTransaction(i int, tx *pb.BxhTransaction, inv
 	}
 
 	if tx.IsIBTP() {
-		ctx := vm.NewContext(tx, uint64(i), nil, exec.currentHeight, exec.ledger, exec.logger,
+		ctx := vm.NewContext(tx, uint64(i), nil, exec.currentHeight+1, exec.ledger, exec.logger,
 			exec.config.EnableAudit, exec.getChanger(opt))
 
 		instance := boltvm.New(ctx, exec.validationEngine, exec.evm, exec.getContracts(opt))
@@ -1065,12 +1064,19 @@ func (exec *BlockExecutor) getTimeoutIBTPsMap(height uint64) (map[string][]strin
 			}
 
 			for id := range txInfo.ChildTxInfo {
-				if err := exec.addTxIdToTimeoutIBTPsMap(timeoutIBTPsMap, id, bxhID); err != nil {
+				if err := exec.addTxIdToSrcTimeoutIBTPsMap(timeoutIBTPsMap, id, bxhID, pb.NotifyChain_NOTIFY_SRC); err != nil {
 					return nil, err
+				}
+				childStatus := txInfo.ChildTxInfo[id]
+				// if childStatus had arrived final status, bxh need notify ibtp to rollback
+				if pb.IsFinalStatus(childStatus) {
+					if err := exec.addTxIdToSrcTimeoutIBTPsMap(timeoutIBTPsMap, id, bxhID, pb.NotifyChain_NOTIFY_DEST); err != nil {
+						return nil, err
+					}
 				}
 			}
 		} else {
-			if err := exec.addTxIdToTimeoutIBTPsMap(timeoutIBTPsMap, value, bxhID); err != nil {
+			if err := exec.addTxIdToSrcTimeoutIBTPsMap(timeoutIBTPsMap, value, bxhID, pb.NotifyChain_NOTIFY_SRC); err != nil {
 				return nil, err
 			}
 		}
@@ -1079,21 +1085,21 @@ func (exec *BlockExecutor) getTimeoutIBTPsMap(height uint64) (map[string][]strin
 	return timeoutIBTPsMap, nil
 }
 
-func (exec *BlockExecutor) addTxIdToTimeoutIBTPsMap(timeoutIBTPsMap map[string][]string, txId string, bitXHubID string) error {
+func (exec *BlockExecutor) addTxIdToSrcTimeoutIBTPsMap(timeoutIBTPsMap map[string][]string, txId string, bitXHubID string, notifyFlag pb.NotifyChain) error {
 	listArray := strings.Split(txId, "-")
-	bxhID, chainID, _, err := exec.parseChainServiceID(listArray[0])
+	bxhID, chainID, _, err := exec.parseChainServiceID(listArray[notifyFlag])
 	if err != nil {
 		return err
 	}
-	from := chainID
+	notifyChain := chainID
 	if bxhID != bitXHubID {
-		from = contracts.DEFAULT_UNION_PIER_ID
+		notifyChain = contracts.DEFAULT_UNION_PIER_ID
 	}
-	if list, has := timeoutIBTPsMap[from]; has {
+	if list, has := timeoutIBTPsMap[notifyChain]; has {
 		list := append(list, txId)
-		timeoutIBTPsMap[from] = list
+		timeoutIBTPsMap[notifyChain] = list
 	} else {
-		timeoutIBTPsMap[from] = []string{txId}
+		timeoutIBTPsMap[notifyChain] = []string{txId}
 	}
 
 	return nil

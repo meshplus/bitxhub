@@ -11,6 +11,7 @@ import (
 	"github.com/Rican7/retry/strategy"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -28,6 +29,9 @@ func (cbs *ChainBrokerService) SendTransaction(ctx context.Context, tx *pb.BxhTr
 	}
 
 	hash, err := cbs.sendTransaction(tx)
+	if tx.IsIBTP() {
+		cbs.logger.WithFields(logrus.Fields{"from": tx.From, "hash": tx.Hash(), "nonce": tx.Nonce, "to": tx.IBTP.To, "type": tx.IBTP.Type, "index": tx.IBTP.Index}).Debug("get local tx")
+	}
 	if err != nil {
 		return nil, status.Newf(codes.Internal, "internal handling transaction fail %s", err.Error()).Err()
 	}

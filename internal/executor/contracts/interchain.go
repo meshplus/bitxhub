@@ -12,19 +12,13 @@ import (
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/sirupsen/logrus"
 )
 
 const (
 	BitXHubID                  = "bitxhub-id"
-	CurAppchainNotAvailable    = "current appchain not available"
 	TargetAppchainNotAvailable = "target appchain not available"
-	SrcBitXHubNotAvailable     = "source bitxhub not available"
-	TargetBitXHubNotAvailable  = "target bitxhub not available"
-	CurServiceNotAvailable     = "current service not available"
-	TargetServiceNotAvailable  = "target service not available"
 	InvalidIBTP                = "invalid ibtp"
-	InvalidTargetService       = "invalid target service"
-	internalError              = "internal server error"
 	ibtpIndexExist             = "index already exists"
 	ibtpIndexWrong             = "wrong index"
 	DEFAULT_UNION_PIER_ID      = "default_union_pier_id"
@@ -35,12 +29,6 @@ const (
 type InterchainManager struct {
 	boltvm.Stub
 	ServiceCache *sync.Map
-}
-
-func NewInterchainManager() *InterchainManager {
-	return &InterchainManager{
-		ServiceCache: &sync.Map{},
-	}
 }
 
 type BxhValidators struct {
@@ -86,23 +74,6 @@ func (x *InterchainManager) getServiceCache(key string) (*service_mgr.Service, b
 func (x *InterchainManager) InitServiceCache() {
 	x.ServiceCache = &sync.Map{}
 }
-
-// func (x *InterchainManager) SetServiceCache(key string, data []byte) *boltvm.Response {
-//	service := &service_mgr.Service{}
-//	err := json.Unmarshal(data, service)
-//	if err != nil {
-//		return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), err.Error()))
-//	}
-//	x.setServiceCache(key, service)
-//	return boltvm.Success(nil)
-// }
-
-//func (x *InterchainManager) SetServiceCache(key string, service *service_mgr.Service) {
-//	if x.ServiceCache == nil {
-//		x.ServiceCache = &sync.Map{}
-//	}
-//	x.ServiceCache.Store(key, service)
-//}
 
 func (x *InterchainManager) Register(chainServiceID string) *boltvm.Response {
 	bxhID, err := x.getBitXHubID()
@@ -218,7 +189,7 @@ func (x *InterchainManager) HandleIBTP(ibtp *pb.IBTP) *boltvm.Response {
 	}
 	x.notifySrcDst(ibtp, change, isBatch)
 
-	ret := x.ProcessIBTP(ibtp, interchain, targetErr != nil, isBatch)
+	ret := x.ProcessIBTP(ibtp, interchain, targetErr != nil, isBatch, change.CurStatus, change.ChildIBTPIDs)
 
 	if x.EnableAudit() {
 		if err := x.postAuditInterchainEvent(ibtp.From); err != nil {
@@ -232,15 +203,14 @@ func (x *InterchainManager) HandleIBTP(ibtp *pb.IBTP) *boltvm.Response {
 }
 
 func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, bool, *boltvm.BxhError, *boltvm.BxhError) {
-	var targetError *boltvm.BxhError
-	var isBatch bool
-	// In the full crossChain, the pier ensures that the format is correct,
-	// if a format problem occurs, the pier is evil, this situation is not credible.
+	var (
+		targetError *boltvm.BxhError
+		isBatch     bool
+	)
 	srcChainService, err := x.parseChainService(ibtp.From)
 	if err != nil {
 		return nil, isBatch, nil, boltvm.BError(boltvm.InterchainInvalidIBTPParseSourceErrorCode, fmt.Sprintf(string(boltvm.InterchainInvalidIBTPParseSourceErrorMsg), err.Error()))
 	}
-
 	dstChainService, err := x.parseChainService(ibtp.To)
 	if err != nil {
 		return nil, isBatch, nil, boltvm.BError(boltvm.InterchainInvalidIBTPParseDestErrorCode, fmt.Sprintf(string(boltvm.InterchainInvalidIBTPParseDestErrorMsg), err.Error()))
@@ -252,7 +222,6 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, bool, *bol
 	if err != nil {
 		return nil, isBatch, nil, boltvm.BError(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), err.Error()))
 	}
-
 	if pb.IBTP_REQUEST == ibtp.Category() && !isNotification {
 		// if src chain service is from appchain registered in current bitxhub && not notification for src chain service rollback, check service index
 		if srcChainService.IsLocal {
@@ -377,8 +346,14 @@ func (x *InterchainManager) checkTargetAvailability(srcChainService, dstChainSer
 //	}
 //	return appchain, nil
 // }
-
-func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *pb.Interchain, isTargetFail, isBatch bool) []byte {
+func (x *InterchainManager) isFinalGlobalStatus(curStatus pb.TransactionStatus) bool {
+	if pb.IsFinalStatus(curStatus) {
+		return true
+	}
+	return false
+}
+func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *pb.Interchain,
+	isTargetFail, isBatch bool, curStatus pb.TransactionStatus, childIbtps []string) []byte {
 	srcChainService, _ := x.parseChainService(ibtp.From)
 	dstChainService, _ := x.parseChainService(ibtp.To)
 
@@ -402,26 +377,30 @@ func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *pb.Interchain
 		ic.SourceInterchainCounter[ibtp.From] = ibtp.Index
 		x.setInterchain(ibtp.To, ic)
 	} else {
-		interchain.ReceiptCounter[ibtp.To] = ibtp.Index
-		x.setInterchain(ibtp.From, interchain)
-		if srcChainService.ChainId == srcChainService.BxhId {
-			data, _ := ibtp.Marshal()
-			x.CrossInvoke(constant.InterBrokerContractAddr.Address().String(), "InvokeReceipt", pb.Bytes(data))
+		// In one to multi IBTP, needn't record child ibtp's receipt from dest when global state is not in final status
+		// if some error happened, pier will restart and recover the same ibtp's receipt from dest chain to bxh
+		// if global state is still not in final status, just repeat the following process
+		if x.isFinalGlobalStatus(curStatus) {
+			if len(childIbtps) != 0 {
+				x.Logger().WithFields(logrus.Fields{"status": curStatus.String()}).Info("start handleMultiIbtpInterchain")
+				// when global state reaches the final status, add all child ibtp's dst srcInterchain counter
+				if err := x.handleMultiIbtpInterchain(childIbtps, srcChainService, ibtp, curStatus); err != nil {
+					x.Logger().Errorf("handleMultiIbtpInterchain: parse childIbtps err:%s", err)
+					return nil
+				}
+			} else {
+				// for single IBTP
+				x.setDestInterchain(ibtp.From, ibtp.To, ibtp.Index, interchain)
+				result := true
+				if ibtp.Type == pb.IBTP_RECEIPT_FAILURE || isNotification {
+					result = false
+				}
+				x.recordService(ibtp.From, ibtp.To, result)
+			}
 		}
 
-		ic, _ := x.getInterchain(ibtp.To)
-		ic.SourceReceiptCounter[ibtp.From] = ibtp.Index
-		x.setInterchain(ibtp.To, ic)
+		// all IBTP need record ibtp to txHash
 		x.SetObject(IndexReceiptMapKey(getIBTPID(ibtp.From, ibtp.To, ibtp.Index)), x.GetTxHash())
-
-		result := true
-		if ibtp.Type == pb.IBTP_RECEIPT_FAILURE || isNotification {
-			result = false
-		}
-		x.CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "RecordInvokeService",
-			pb.String(ibtp.To),
-			pb.String(ibtp.From),
-			pb.Bool(result))
 	}
 
 	if isBatch {
@@ -437,6 +416,44 @@ func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *pb.Interchain
 	return nil
 }
 
+func (x *InterchainManager) handleMultiIbtpInterchain(childIbtps []string,
+	srcChainService *ChainService, ibtp *pb.IBTP, globalState pb.TransactionStatus) error {
+	for _, ibtpId := range childIbtps {
+		from, to, index, err := pb.ParseIBTPID(ibtpId)
+		if err != nil {
+			return err
+		}
+		fromInterchain, _ := x.getInterchain(from)
+		x.setDestInterchain(from, to, index, fromInterchain)
+		if srcChainService.ChainId == srcChainService.BxhId {
+			data, _ := ibtp.Marshal()
+			x.CrossInvoke(constant.InterBrokerContractAddr.Address().String(), "InvokeReceipt", pb.Bytes(data))
+		}
+		result := true
+		if globalState == pb.TransactionStatus_FAILURE {
+			result = false
+		}
+		x.recordService(from, to, result)
+	}
+	return nil
+}
+
+func (x *InterchainManager) setDestInterchain(from, to string, index uint64, interchain *pb.Interchain) {
+	interchain.ReceiptCounter[to] = index
+	x.setInterchain(from, interchain)
+	ic, _ := x.getInterchain(to)
+	ic.SourceReceiptCounter[from] = index
+	x.setInterchain(to, ic)
+}
+
+// update service record
+func (x *InterchainManager) recordService(from, to string, result bool) {
+	x.CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "RecordInvokeService",
+		pb.String(to),
+		pb.String(from),
+		pb.Bool(result))
+}
+
 func (x *InterchainManager) notifySrcDst(ibtp *pb.IBTP, statusChange *pb.StatusChange, isBatch bool) {
 	m := make(map[string]*pb.EventWrapper)
 	srcChainService, _ := x.parseChainService(ibtp.From)
@@ -450,15 +467,19 @@ func (x *InterchainManager) notifySrcDst(ibtp *pb.IBTP, statusChange *pb.StatusC
 	if notifySrc {
 		if srcChainService.IsLocal {
 			m[srcChainService.ChainId] = wrapper
-			x.addToMultiTxNotifyMap(x.GetCurrentHeight(), statusChange.OtherIBTPIDs, true)
+			x.addToMultiTxNotifyMap(x.GetCurrentHeight(), statusChange.NotifySrcIBTPIDs, true)
 		} else {
 			m[DEFAULT_UNION_PIER_ID] = wrapper
 		}
 	}
 	if notifyDst {
 		if dstChainService.IsLocal {
-			m[dstChainService.ChainId] = wrapper
-			x.addToMultiTxNotifyMap(x.GetCurrentHeight(), statusChange.OtherIBTPIDs, false)
+			// if this ibtp is belong to multiIBTP, and the receipt is fail
+			// need not notify dest chain rollback this ibtp
+			if !statusChange.IsFailChildIBTP {
+				m[dstChainService.ChainId] = wrapper
+			}
+			x.addToMultiTxNotifyMap(x.GetCurrentHeight(), statusChange.NotifyDstIBTPIDs, false)
 		} else {
 			m[DEFAULT_UNION_PIER_ID] = wrapper
 		}
@@ -492,7 +513,7 @@ func (x *InterchainManager) beginTransaction(ibtp *pb.IBTP, isFailed bool) (*pb.
 				return nil, fmt.Errorf(string(res.Result))
 			}
 		} else {
-			count := uint64(len(ibtp.Group.Keys) + 1)
+			count := uint64(len(ibtp.Group.Keys))
 			globalID, err := genGlobalTxID(ibtp)
 			if err != nil {
 				return nil, err
@@ -554,7 +575,6 @@ func (x *InterchainManager) GetIBTPByID(id string, isReq bool) *boltvm.Response 
 func genGlobalTxID(ibtp *pb.IBTP) (string, error) {
 	m := make(map[string]uint64)
 
-	m[ibtp.To] = ibtp.Index
 	for i, key := range ibtp.Group.Keys {
 		m[key] = ibtp.Group.Vals[i]
 	}
@@ -620,7 +640,7 @@ func (x *InterchainManager) getServiceByID(id string) (*service_mgr.Service, err
 
 	service, ok := x.getServiceCache(id)
 	if !ok {
-		x.Logger().Errorf("not read serviceCache")
+		x.Logger().Warning("getServiceByID: not read serviceCache")
 		res := x.CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "GetServiceInfo", pb.String(id))
 		if !res.Ok {
 			return nil, fmt.Errorf("can not get service %s info: %s", id, string(res.Result))

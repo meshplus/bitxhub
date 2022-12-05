@@ -104,6 +104,7 @@ func governanceCMD() cli.Command {
 				},
 			},
 			appchainMgrCMD(),
+			interchainMgrCMD(),
 			ruleMgrCMD(),
 			nodeMgrCMD(),
 			roleMgrCMD(),
