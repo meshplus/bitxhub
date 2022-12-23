@@ -19,6 +19,14 @@ import (
 	"github.com/meshplus/bitxhub/internal/repo"
 )
 
+const (
+	PriceLetterOne   = 1
+	PriceLetterTwo   = 2
+	PriceLetterThree = 3
+	PriceLetterFour  = 4
+	PriceLetterFive  = 5
+)
+
 // Initialize initialize block
 func Initialize(genesis *repo.Genesis, nodes []*repo.NetworkNodes, primaryN uint64, lg *ledger.Ledger, executor executor.Executor) error {
 	lg.PrepareBlock(nil, 1)
@@ -131,11 +139,11 @@ func Initialize(genesis *repo.Genesis, nodes []*repo.NetworkNodes, primaryN uint
 
 func initBNSData(lg *ledger.Ledger) error {
 	priceLevel := contracts.PriceLevel{
-		Price1Letter: 1,
-		Price2Letter: 2,
-		Price3Letter: 3,
-		Price4Letter: 4,
-		Price5Letter: 5,
+		Price1Letter: PriceLetterOne,
+		Price2Letter: PriceLetterTwo,
+		Price3Letter: PriceLetterThree,
+		Price4Letter: PriceLetterFour,
+		Price5Letter: PriceLetterFive,
 	}
 	priceLevelBytes, err := json.Marshal(priceLevel)
 	if err != nil {
@@ -150,7 +158,7 @@ func initBNSData(lg *ledger.Ledger) error {
 	lg.SetState(constant.ServiceRegistryContractAddr.Address(), []byte(contracts.BitxhubTokenPrice), tokenPriceBytes, nil)
 
 	resolverMap := make(map[string]bool)
-	resolverMap["0x0000000000000000000000000000000000000023"] = true
+	resolverMap[string(constant.ServiceResolverContractAddr)] = true
 	resolverMapBytes, err := json.Marshal(resolverMap)
 	if err != nil {
 		return fmt.Errorf("marshal data error: %w", err)

@@ -59,7 +59,7 @@ func TestSetAddr(t *testing.T) {
 	mockStub.EXPECT().CrossInvoke(constant.ServiceRegistryContractAddr.Address().String(), "IsApproved",
 		pb.String(string(constant.ServiceRegistryContractAddr)), pb.String(string(constant.ServiceResolverContractAddr))).Return(
 		boltvm.Success([]byte("true"))).Times(1)
-	reverseName := make(map[string]string)
+	reverseName := make(map[string][]string)
 
 	mockStub.EXPECT().GetObject("reverseMap", gomock.Any()).SetArg(1, reverseName).Return(true)
 
@@ -73,14 +73,13 @@ func TestGetReverseName(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	mockStub := mock_stub.NewMockStub(mockCtl)
 
-	reverseName := make(map[string]string)
-	reverseName["1356:xxx:xxxx"] = "appchain.hub"
+	reverseName := make(map[string][]string)
+	reverseName["1356:xxx:xxxx"] = []string{"appchain.hub"}
 	mockStub.EXPECT().GetObject("reverseMap", gomock.Any()).SetArg(1, reverseName).Return(true).AnyTimes()
 	sr := &ServiceResolver{mockStub}
 	res := sr.GetReverseName("1356:xxx:xxxx")
 	assert.True(t, res.Ok)
-	assert.Equal(t, string(res.Result), "appchain.hub")
 
 	res = sr.GetReverseName("1356:xxx:xx")
-	assert.Equal(t, res.Result, []byte{})
+	assert.Equal(t, string(res.Result), "null")
 }
