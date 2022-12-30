@@ -53,3 +53,8 @@ type GetTxReq struct {
 	Hash *types.Hash
 	Tx   chan pb.Transaction
 }
+
+type txnPointer struct {
+	account string
+	nonce   uint64
+}

@@ -64,6 +64,8 @@ func newMempoolImpl(config *Config) (*mempoolImpl, error) {
 func (mpi *mempoolImpl) ProcessTransactions(txs []pb.Transaction, isLeader, isLocal bool) *raftproto.RequestBatch {
 	validTxs := make(map[string][]pb.Transaction)
 	validTxList := make([]pb.Transaction, 0)
+	mpi.logger.Debugf("ProcessTransactions [len:%d]", len(txs))
+	txnPointersM := make(map[txnPointer]string)
 
 	for _, tx := range txs {
 		// check the sequence number of tx
@@ -73,6 +75,21 @@ func (mpi *mempoolImpl) ProcessTransactions(txs []pb.Transaction, isLeader, isLo
 			mpi.logger.Warningf("Account %s, current sequence number is %d, required %d", txAccount, tx.GetNonce(), currentSeqNo)
 			continue
 		}
+
+		ptr := txnPointer{
+			account: tx.GetFrom().String(),
+			nonce:   tx.GetNonce(),
+		}
+
+		// when some tx have the same of nonce in one txs, ignore illegal tx
+		if oldHash, ok := txnPointersM[ptr]; ok {
+			mpi.logger.Warningf("Receive transaction [account: %s, nonce: %d, hash: %s], "+
+				"but mempool had already existed other tx[hash:%s]", txAccount, tx.GetNonce(), tx.GetHash().String(), oldHash)
+			continue
+		}
+		mpi.logger.Debugf("Record transaction [account: %s, nonce: %d, hash: %s] in txnPointersM", txAccount, tx.GetNonce(), tx.GetHash().String())
+		txnPointersM[ptr] = tx.GetHash().String()
+
 		// check the existence of hash of this tx
 		txHash := tx.GetHash().String()
 		if txPointer := mpi.txStore.txHashMap[txHash]; txPointer != nil {

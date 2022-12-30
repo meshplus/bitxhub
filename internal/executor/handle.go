@@ -147,6 +147,13 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	current2 := time.Now()
 	receipts := exec.txsExecutor.ApplyTransactions(block.Transactions.Transactions, blockWrapper.invalidTx)
 
+	//for i, receipt := range receipts {
+	//	exec.logger.WithFields(logrus.Fields{
+	//		"receipt": receipt,
+	//		"height":  block.Height(),
+	//	}).Infof("get receipt %d", i)
+	//}
+
 	applyTxsDuration.Observe(float64(time.Since(current2)) / float64(time.Second))
 	exec.logger.WithFields(logrus.Fields{
 		"time":  time.Since(current2),
