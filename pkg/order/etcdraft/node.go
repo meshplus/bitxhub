@@ -79,7 +79,7 @@ func init() {
 // NewNode new raft node
 func NewNode(opts ...order.Option) (order.Order, error) {
 	var options []order.Option
-	for i, _ := range opts {
+	for i := range opts {
 		options = append(options, opts[i])
 	}
 
@@ -191,7 +191,7 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 
 	otherPeers := node.peerMgr.OtherPeers()
 	peerIds := make([]uint64, 0, len(otherPeers))
-	for id, _ := range otherPeers {
+	for id := range otherPeers {
 		peerIds = append(peerIds, id)
 	}
 	stateSyncer, err := syncer.New(raftConfig.RAFT.SyncerConfig.SyncBlocks, config.PeerMgr, node.Quorum(), peerIds, log.NewWithModule("syncer"))
@@ -537,7 +537,6 @@ func (n *Node) run() {
 }
 
 func (n *Node) processTransactions(txList []pb.Transaction, isLocal bool) {
-
 	if !n.isTimed {
 		// leader node would check if this transaction triggered generating a batch or not
 		if n.isLeader() {
