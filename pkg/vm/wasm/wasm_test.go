@@ -450,10 +450,13 @@ BcNwjTDCxyxLNjFKQfMAc6sY6iJs+Ma59WZyC/4uhjE=
 	address, err := privKey.PublicKey().Address()
 	require.Nil(t, err)
 
-	return &repo.Repo{
+	repo := &repo.Repo{
 		Key: &repo.Key{
 			PrivKey: privKey,
 			Address: address.String(),
 		},
+		Config: &repo.Config{},
 	}
+	repo.Config.Executor.Type = "serial"
+	return repo
 }
