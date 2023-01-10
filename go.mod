@@ -6,7 +6,7 @@ require (
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
 	github.com/Rican7/retry v0.1.0
 	github.com/binance-chain/tss-lib v1.3.3-0.20210411025750-fffb56b30511
-	github.com/bytecodealliance/wasmtime-go v0.34.0
+	github.com/bytecodealliance/wasmtime-go v0.37.0
 	github.com/cbergoon/merkletree v0.2.0
 	github.com/cheynewallace/tabby v1.1.1
 	github.com/common-nighthawk/go-figure v0.0.0-20190529165535-67e0ed34491a
@@ -33,13 +33,13 @@ require (
 	github.com/libp2p/go-libp2p-swarm v0.2.4
 	github.com/looplab/fsm v0.2.0
 	github.com/magiconair/properties v1.8.5
-	github.com/meshplus/bitxhub-core v1.3.1-0.20220701090824-788a823e6049
-	github.com/meshplus/bitxhub-kit v1.2.1-0.20220610092251-68e35ef37b7a
-	github.com/meshplus/bitxhub-model v1.2.1-0.20220705090611-2a1e897ee1f7
+	github.com/meshplus/bitxhub-core v1.20.0
+	github.com/meshplus/bitxhub-kit v1.20.0
+	github.com/meshplus/bitxhub-model v1.20.1
 	github.com/meshplus/consensus v0.0.0-20211228075008-5f469b198531
-	github.com/meshplus/eth-kit v0.0.0-20220628031226-4b30a994a2a6
-	github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd
-	github.com/meshplus/go-lightp2p v0.0.0-20220117071358-c37ba4e6dcbc
+	github.com/meshplus/eth-kit v1.20.1
+	github.com/meshplus/go-libp2p-cert v1.20.0
+	github.com/meshplus/go-lightp2p v1.20.0
 	github.com/miguelmota/go-solidity-sha3 v0.1.1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-multiaddr v0.3.1
@@ -52,7 +52,7 @@ require (
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cast v1.3.1
 	github.com/spf13/viper v1.8.1
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.8.0
 	github.com/syndtr/goleveldb v1.0.1-0.20210305035536-64b5b1c73954
 	github.com/tidwall/gjson v1.6.8
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5
