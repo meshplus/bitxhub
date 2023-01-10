@@ -16,7 +16,10 @@ func TestGetBlock(t *testing.T) {
 	ast := assert.New(t)
 	storePath, err := ioutil.TempDir("", "mempool")
 	ast.Nil(err)
-	defer os.RemoveAll(storePath)
+	defer func() {
+		err = os.RemoveAll(storePath)
+		ast.Nil(err)
+	}()
 	mpi, _ := mockMempoolImpl(storePath)
 	privKey1 := genPrivKey()
 	privKey2 := genPrivKey()
@@ -45,7 +48,10 @@ func TestGetPendingNonceByAccount(t *testing.T) {
 	ast := assert.New(t)
 	storePath, err := ioutil.TempDir("", "mempool")
 	ast.Nil(err)
-	defer os.RemoveAll(storePath)
+	defer func() {
+		err = os.RemoveAll(storePath)
+		ast.Nil(err)
+	}()
 	mpi, _ := mockMempoolImpl(storePath)
 	privKey1 := genPrivKey()
 	account1, _ := privKey1.PublicKey().Address()
@@ -75,7 +81,10 @@ func TestCommitTransactions(t *testing.T) {
 	ast := assert.New(t)
 	storePath, err := ioutil.TempDir("", "mempool")
 	ast.Nil(err)
-	defer os.RemoveAll(storePath)
+	defer func() {
+		err = os.RemoveAll(storePath)
+		ast.Nil(err)
+	}()
 	mpi, batchC := mockMempoolImpl(storePath)
 	privKey1 := genPrivKey()
 	account1, _ := privKey1.PublicKey().Address()
@@ -121,7 +130,10 @@ func TestIncreaseChainHeight(t *testing.T) {
 	ast := assert.New(t)
 	storePath, err := ioutil.TempDir("", "mempool")
 	ast.Nil(err)
-	defer os.RemoveAll(storePath)
+	defer func() {
+		err = os.RemoveAll(storePath)
+		ast.Nil(err)
+	}()
 	mpi, _ := mockMempoolImpl(storePath)
 	ast.Equal(uint64(1), mpi.batchSeqNo)
 	mpi.batchSeqNo++
@@ -133,7 +145,10 @@ func TestProcessTransactions(t *testing.T) {
 	ast := assert.New(t)
 	storePath, err := ioutil.TempDir("", "mempool")
 	ast.Nil(err)
-	defer os.RemoveAll(storePath)
+	defer func() {
+		err = os.RemoveAll(storePath)
+		ast.Nil(err)
+	}()
 	mpi, _ := mockMempoolImpl(storePath)
 	txList := make([]pb.Transaction, 0)
 	privKey1 := genPrivKey()
@@ -174,13 +189,35 @@ func TestProcessTransactions(t *testing.T) {
 	ast.Equal(4, mpi.txStore.allTxs[account2.String()].index.size())
 	ast.Equal(uint64(3), mpi.txStore.nonceCache.getPendingNonce(account1.String()))
 	ast.Equal(uint64(2), mpi.txStore.nonceCache.getPendingNonce(account2.String()))
+
+	// test same nonce
+	tx8 := constructTx(uint64(3), &privKey1)
+	tx9 := constructTx(uint64(3), &privKey1)
+	// handle lack nonce
+	tx10 := constructTx(uint64(2), &privKey2)
+	txList = make([]pb.Transaction, 0)
+	txList = append(txList, tx8, tx9, tx10)
+	batch = mpi.ProcessTransactions(txList, true, true)
+	ast.Equal(4, len(batch.TxList.Transactions))
+	ast.Equal(uint64(3), batch.Height)
+	ast.Equal(uint64(1), mpi.txStore.priorityNonBatchSize)
+	ast.Equal(9, mpi.txStore.priorityIndex.size())
+	ast.Equal(2, mpi.txStore.parkingLotIndex.size())
+	ast.Equal(9, len(mpi.txStore.txHashMap))
+	ast.Equal(4, mpi.txStore.allTxs[account1.String()].index.size())
+	ast.Equal(5, mpi.txStore.allTxs[account2.String()].index.size())
+	ast.Equal(uint64(4), mpi.txStore.nonceCache.getPendingNonce(account1.String()))
+	ast.Equal(uint64(5), mpi.txStore.nonceCache.getPendingNonce(account2.String()))
 }
 
 func TestForward(t *testing.T) {
 	ast := assert.New(t)
 	storePath, err := ioutil.TempDir("", "mempool")
 	ast.Nil(err)
-	defer os.RemoveAll(storePath)
+	defer func() {
+		err = os.RemoveAll(storePath)
+		ast.Nil(err)
+	}()
 	mpi, _ := mockMempoolImpl(storePath)
 	txList := make([]pb.Transaction, 0)
 	privKey1 := genPrivKey()
@@ -209,7 +246,10 @@ func TestUnorderedIncomingTxs(t *testing.T) {
 	ast := assert.New(t)
 	storePath, err := ioutil.TempDir("", "mempool")
 	ast.Nil(err)
-	defer os.RemoveAll(storePath)
+	defer func() {
+		err = os.RemoveAll(storePath)
+		ast.Nil(err)
+	}()
 	mpi, _ := mockMempoolImpl(storePath)
 	mpi.batchSize = 5
 
@@ -309,7 +349,10 @@ func TestGetTimeoutTransaction(t *testing.T) {
 	ast := assert.New(t)
 	storePath, err := ioutil.TempDir("", "mempool")
 	ast.Nil(err)
-	defer os.RemoveAll(storePath)
+	defer func() {
+		err = os.RemoveAll(storePath)
+		ast.Nil(err)
+	}()
 	mpi, _ := mockMempoolImpl(storePath)
 	mpi.txSliceSize = 3
 	allTxHashes := make([]*types.Hash, 0)
@@ -402,7 +445,10 @@ func TestRemoveAliveTimeoutTxs(t *testing.T) {
 	ast := assert.New(t)
 	storePath, err := ioutil.TempDir("", "mempool")
 	ast.Nil(err)
-	defer os.RemoveAll(storePath)
+	defer func() {
+		err = os.RemoveAll(storePath)
+		ast.Nil(err)
+	}()
 	mpi, _ := mockMempoolImpl(storePath)
 	mpi.txSliceSize = 6
 
@@ -445,7 +491,10 @@ func TestRestore(t *testing.T) {
 	ast := assert.New(t)
 	storePath, err := ioutil.TempDir("", "mempool")
 	ast.Nil(err)
-	defer os.RemoveAll(storePath)
+	defer func() {
+		err = os.RemoveAll(storePath)
+		ast.Nil(err)
+	}()
 	mpi, batchC := mockMempoolImpl(storePath)
 	privKey1 := genPrivKey()
 	account1, _ := privKey1.PublicKey().Address()
@@ -500,7 +549,10 @@ func TestGenerateBlock(t *testing.T) {
 	ast := assert.New(t)
 	storePath, err := ioutil.TempDir("", "mempool")
 	ast.Nil(err)
-	defer os.RemoveAll(storePath)
+	defer func() {
+		err = os.RemoveAll(storePath)
+		ast.Nil(err)
+	}()
 	mpi, _ := mockMempoolImpl(storePath)
 	privKey1 := genPrivKey()
 	account1, _ := privKey1.PublicKey().Address()

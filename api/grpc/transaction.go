@@ -11,13 +11,14 @@ import (
 	"github.com/Rican7/retry/strategy"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 // SendTransaction handles transaction sent by the client.
 // If the transaction is valid, it will return the transaction hash.
-func (cbs *ChainBrokerService) SendTransaction(ctx context.Context, tx *pb.BxhTransaction) (*pb.TransactionHashMsg, error) {
+func (cbs *ChainBrokerService) SendTransaction(_ context.Context, tx *pb.BxhTransaction) (*pb.TransactionHashMsg, error) {
 	err := cbs.api.Broker().OrderReady()
 	if err != nil {
 		return nil, status.Newf(codes.Internal, "the system is temporarily unavailable %s", err.Error()).Err()
@@ -28,6 +29,11 @@ func (cbs *ChainBrokerService) SendTransaction(ctx context.Context, tx *pb.BxhTr
 	}
 
 	hash, err := cbs.sendTransaction(tx)
+	if tx.IsIBTP() {
+		cbs.logger.WithFields(logrus.Fields{"from": tx.From, "hash": tx.Hash(), "nonce": tx.Nonce, "to": tx.IBTP.To, "type": tx.IBTP.Type, "index": tx.IBTP.Index}).Debug("get local ibtp")
+	} else {
+		cbs.logger.WithFields(logrus.Fields{"from": tx.From, "hash": tx.Hash(), "nonce": tx.Nonce}).Debug("get local tx")
+	}
 	if err != nil {
 		return nil, status.Newf(codes.Internal, "internal handling transaction fail %s", err.Error()).Err()
 	}
@@ -35,7 +41,7 @@ func (cbs *ChainBrokerService) SendTransaction(ctx context.Context, tx *pb.BxhTr
 	return &pb.TransactionHashMsg{TxHash: hash}, nil
 }
 
-func (cbs *ChainBrokerService) SendTransactions(ctx context.Context, txs *pb.MultiTransaction) (*pb.MultiTransactionHash, error) {
+func (cbs *ChainBrokerService) SendTransactions(_ context.Context, txs *pb.MultiTransaction) (*pb.MultiTransactionHash, error) {
 	err := cbs.api.Broker().OrderReady()
 	if err != nil {
 		return nil, status.Newf(codes.Internal, "the system is temporarily unavailable %s", err.Error()).Err()
@@ -130,7 +136,7 @@ func (cbs *ChainBrokerService) sendView(tx *pb.BxhTransaction) (*pb.Receipt, err
 	return result, nil
 }
 
-func (cbs *ChainBrokerService) GetTransaction(ctx context.Context, req *pb.TransactionHashMsg) (*pb.GetTransactionResponse, error) {
+func (cbs *ChainBrokerService) GetTransaction(_ context.Context, req *pb.TransactionHashMsg) (*pb.GetTransactionResponse, error) {
 	hash := types.NewHashByStr(req.TxHash)
 	if hash == nil {
 		return nil, fmt.Errorf("invalid format of tx hash for querying transaction")
@@ -159,7 +165,7 @@ func (cbs *ChainBrokerService) GetTransaction(ctx context.Context, req *pb.Trans
 	}, err
 }
 
-func (cbs *ChainBrokerService) GetTransactionByBlockHashAndIndex(ctx context.Context, req *pb.TransactionBlockHashAndIndexMsg) (*pb.GetTransactionResponse, error) {
+func (cbs *ChainBrokerService) GetTransactionByBlockHashAndIndex(_ context.Context, req *pb.TransactionBlockHashAndIndexMsg) (*pb.GetTransactionResponse, error) {
 	blockTyp := pb.GetBlockRequest_HASH
 	block, err := cbs.api.Broker().GetBlock(blockTyp.String(), req.BlockHash, true)
 	if err != nil {
@@ -195,7 +201,7 @@ func (cbs *ChainBrokerService) GetTransactionByBlockHashAndIndex(ctx context.Con
 	}, err
 }
 
-func (cbs *ChainBrokerService) GetTransactionByBlockNumberAndIndex(ctx context.Context, req *pb.TransactionBlockNumberAndIndexMsg) (*pb.GetTransactionResponse, error) {
+func (cbs *ChainBrokerService) GetTransactionByBlockNumberAndIndex(_ context.Context, req *pb.TransactionBlockNumberAndIndexMsg) (*pb.GetTransactionResponse, error) {
 	blockTyp := pb.GetBlockRequest_HEIGHT
 	block, err := cbs.api.Broker().GetBlock(blockTyp.String(), strconv.FormatUint(req.BlockNumber, 10), true)
 	if err != nil {
@@ -231,7 +237,7 @@ func (cbs *ChainBrokerService) GetTransactionByBlockNumberAndIndex(ctx context.C
 	}, err
 }
 
-func (cbs *ChainBrokerService) GetPendingTransaction(ctx context.Context, req *pb.TransactionHashMsg) (*pb.GetTransactionResponse, error) {
+func (cbs *ChainBrokerService) GetPendingTransaction(_ context.Context, req *pb.TransactionHashMsg) (*pb.GetTransactionResponse, error) {
 	hash := types.NewHashByStr(req.TxHash)
 	if hash == nil {
 		return nil, fmt.Errorf("invalid format of tx hash for querying transaction")

@@ -3,10 +3,12 @@ package contracts
 import (
 	"fmt"
 	"math"
+	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/meshplus/bitxhub-model/constant"
+	"github.com/sirupsen/logrus"
 
 	"github.com/looplab/fsm"
 
@@ -70,13 +72,14 @@ func (t *TransactionManager) BeginMultiTXs(globalID, ibtpID string, timeoutHeigh
 	if ok := t.GetObject(GlobalTxInfoKey(globalID), &txInfo); !ok {
 		txInfo = TransactionInfo{
 			GlobalState:  pb.TransactionStatus_BEGIN,
-			Height:       t.GetCurrentHeight() + timeoutHeight,
 			ChildTxInfo:  map[string]pb.TransactionStatus{ibtpID: pb.TransactionStatus_BEGIN},
 			ChildTxCount: count,
 		}
 
 		if timeoutHeight == 0 || timeoutHeight >= math.MaxUint64-t.GetCurrentHeight() {
 			txInfo.Height = math.MaxUint64
+		} else {
+			txInfo.Height = t.GetCurrentHeight() + timeoutHeight
 		}
 		if isFailed {
 			txInfo.ChildTxInfo[ibtpID] = pb.TransactionStatus_BEGIN_FAILURE
@@ -90,13 +93,19 @@ func (t *TransactionManager) BeginMultiTXs(globalID, ibtpID string, timeoutHeigh
 		if _, ok := txInfo.ChildTxInfo[ibtpID]; ok {
 			return boltvm.Error(boltvm.TransactionExistentChildTxCode, fmt.Sprintf(string(boltvm.TransactionExistentChildTxMsg), ibtpID, globalID))
 		}
-
+		// globalState is fail, child state is fail
 		if txInfo.GlobalState != pb.TransactionStatus_BEGIN {
 			txInfo.ChildTxInfo[ibtpID] = txInfo.GlobalState
 		} else {
 			if isFailed {
-				for key := range txInfo.ChildTxInfo {
-					change.OtherIBTPIDs = append(change.OtherIBTPIDs, key)
+				for key, childStatus := range txInfo.ChildTxInfo {
+					// need all child ibtps which received success receipt rollback on src chain,
+					// but just need success status ibtp rollback on dest chain,
+					// because if child ibtp's status is begin, bxh can handle dest rollback when it receives the receipt
+					if childStatus == pb.TransactionStatus_SUCCESS {
+						change.NotifyDstIBTPIDs = append(change.NotifyDstIBTPIDs, key)
+					}
+					change.NotifySrcIBTPIDs = append(change.NotifySrcIBTPIDs, key)
 					txInfo.ChildTxInfo[key] = pb.TransactionStatus_BEGIN_FAILURE
 				}
 				txInfo.ChildTxInfo[ibtpID] = pb.TransactionStatus_BEGIN_FAILURE
@@ -108,15 +117,19 @@ func (t *TransactionManager) BeginMultiTXs(globalID, ibtpID string, timeoutHeigh
 		}
 		t.SetObject(GlobalTxInfoKey(globalID), txInfo)
 	}
-
+	// record globalID
 	t.Set(ibtpID, []byte(globalID))
 
 	change.CurStatus = txInfo.ChildTxInfo[ibtpID]
+	for id, _ := range txInfo.ChildTxInfo {
+		change.ChildIBTPIDs = append(change.ChildIBTPIDs, id)
+	}
+
 	data, err := change.Marshal()
 	if err != nil {
 		return boltvm.Error(boltvm.TransactionInternalErrCode, fmt.Sprintf(string(boltvm.TransactionInternalErrMsg), err.Error()))
 	}
-
+	t.Logger().WithFields(logrus.Fields{"id": ibtpID, "globalID": globalID, "change": change, "globalState": txInfo}).Info("BeginMultiTXs")
 	return boltvm.Success(data)
 }
 
@@ -170,7 +183,7 @@ func (t *TransactionManager) BeginInterBitXHub(txId string, timeoutHeight uint64
 
 	change := pb.StatusChange{}
 	var record pb.TransactionRecord
-	ok := t.GetObject(TxInfoKey(txId), &record)
+	ok, _ := t.Get(TxInfoKey(txId))
 	if ok {
 		bxhProof := &pb.BxhProof{}
 		if err := bxhProof.Unmarshal(proof); err != nil {
@@ -189,7 +202,7 @@ func (t *TransactionManager) BeginInterBitXHub(txId string, timeoutHeight uint64
 		}
 		t.Add(TxInfoKey(txId), recordData)
 	} else {
-		record := pb.TransactionRecord{
+		record = pb.TransactionRecord{
 			Status: pb.TransactionStatus_BEGIN,
 			Height: t.GetCurrentHeight() + timeoutHeight,
 		}
@@ -227,7 +240,10 @@ func (t *TransactionManager) Report(txId string, result int32) *boltvm.Response 
 		return boltvm.Error(bxhErr.Code, string(bxhErr.Msg))
 	}
 
-	change := pb.StatusChange{}
+	var (
+		change   pb.StatusChange
+		globalId string
+	)
 	if ok, recordData := t.Get(TxInfoKey(txId)); ok {
 		record := pb.TransactionRecord{}
 		err := record.Unmarshal(recordData)
@@ -246,14 +262,13 @@ func (t *TransactionManager) Report(txId string, result int32) *boltvm.Response 
 			return boltvm.Error(boltvm.TransactionInternalErrCode, fmt.Sprintf(string(boltvm.TransactionInternalErrMsg), err.Error()))
 		}
 		t.Set(TxInfoKey(txId), data)
-		// t.removeFromTimeoutList(record.Height, txId)
 	} else {
 		ok, val := t.Get(txId)
 		if !ok {
 			return boltvm.Error(boltvm.TransactionNonexistentTxCode, fmt.Sprintf(string(boltvm.TransactionNonexistentTxMsg), txId))
 		}
 
-		globalId := string(val)
+		globalId = string(val)
 		txInfo := TransactionInfo{}
 		if !t.GetObject(GlobalTxInfoKey(globalId), &txInfo) {
 			return boltvm.Error(boltvm.TransactionNonexistentGlobalTxCode, fmt.Sprintf(string(boltvm.TransactionNonexistentGlobalTxMsg), globalId, txId))
@@ -270,13 +285,32 @@ func (t *TransactionManager) Report(txId string, result int32) *boltvm.Response 
 		}
 		change.CurStatus = txInfo.GlobalState
 
-		for key := range txInfo.ChildTxInfo {
+		for key, childStatus := range txInfo.ChildTxInfo {
 			if key != txId {
-				change.OtherIBTPIDs = append(change.OtherIBTPIDs, key)
+				// when the child ibtp's receipt is fail,
+				// wrapper child ibtp which status is success to notify dest chain rollback
+				if change.PrevStatus == pb.TransactionStatus_BEGIN && change.CurStatus == pb.TransactionStatus_BEGIN_FAILURE {
+					// current child IBTP needn't notify dest chain rollback,
+					// because it has already update InCounter and not executed successfully
+					change.IsFailChildIBTP = true
+					if childStatus == pb.TransactionStatus_SUCCESS {
+						change.NotifyDstIBTPIDs = append(change.NotifyDstIBTPIDs, key)
+					}
+				}
+				// when bxh receive all success receipt, globalStatus modify from begin->success
+				// wrapper all child ibtpid in multiIBTPs to notify src chain
+				change.NotifySrcIBTPIDs = append(change.NotifySrcIBTPIDs, key)
 			}
 		}
+		change.ChildIBTPIDs = make([]string, 0, len(txInfo.ChildTxInfo))
+		for id, _ := range txInfo.ChildTxInfo {
+			change.ChildIBTPIDs = append(change.ChildIBTPIDs, id)
+		}
+		// ensure all nodes ChildIBTPIDs is equal
+		sort.Strings(change.ChildIBTPIDs)
 
 		t.SetObject(GlobalTxInfoKey(globalId), txInfo)
+		t.Logger().WithFields(logrus.Fields{"id": txId, "globalID": globalId, "change": change, "globalState": txInfo}).Info("Report")
 	}
 
 	data, err := change.Marshal()
@@ -333,6 +367,8 @@ func (t *TransactionManager) setFSM(state *pb.TransactionStatus, event Transacti
 			{Name: TransactionEvent_SUCCESS.String(), Src: []string{pb.TransactionStatus_BEGIN.String()}, Dst: pb.TransactionStatus_SUCCESS.String()},
 			{Name: TransactionEvent_FAILURE.String(), Src: []string{pb.TransactionStatus_BEGIN.String(), pb.TransactionStatus_BEGIN_FAILURE.String()}, Dst: pb.TransactionStatus_FAILURE.String()},
 			{Name: TransactionEvent_ROLLBACK.String(), Src: []string{pb.TransactionStatus_BEGIN_ROLLBACK.String()}, Dst: pb.TransactionStatus_ROLLBACK.String()},
+			// if receive receipt fail, the previous status is begin rollback
+			{Name: TransactionEvent_FAILURE.String(), Src: []string{pb.TransactionStatus_BEGIN_ROLLBACK.String()}, Dst: pb.TransactionStatus_ROLLBACK.String()},
 			{Name: TransactionEvent_DstFAILURE.String(), Src: []string{pb.TransactionStatus_BEGIN.String()}, Dst: pb.TransactionStatus_FAILURE.String()},
 			{Name: TransactionEvent_DstROLLBACK.String(), Src: []string{pb.TransactionStatus_BEGIN.String()}, Dst: pb.TransactionStatus_ROLLBACK.String()},
 		},
@@ -401,8 +437,15 @@ func (t *TransactionManager) changeMultiTxStatus(globalID string, txInfo *Transa
 		return nil
 	} else {
 		status := txInfo.ChildTxInfo[txId]
-		if err := t.setFSM(&status, receipt2EventM[result]); err != nil {
-			return fmt.Errorf("child tx %s with state %v get unexpected receipt %v", txId, status, result)
+
+		// if bxh had received child IBTP receipt success, but other child IBTP receipt missing,
+		// pier need handleMissing all child IBTP because of child IBTP's SrcReceiptCounter does not add 1
+		if status == pb.TransactionStatus_SUCCESS && result == int32(pb.IBTP_RECEIPT_SUCCESS) {
+			status = pb.TransactionStatus_SUCCESS
+		} else {
+			if err := t.setFSM(&status, receipt2EventM[result]); err != nil {
+				return fmt.Errorf("child tx %s with state %v get unexpected receipt %v", txId, status, result)
+			}
 		}
 
 		txInfo.ChildTxInfo[txId] = status

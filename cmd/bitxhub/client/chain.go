@@ -33,7 +33,7 @@ func getChainMeta(ctx *cli.Context) error {
 		return fmt.Errorf("httpGet from url %s error: %w", url, err)
 	}
 
-	fmt.Println(string(data))
+	fmt.Println(prettyJson(string(data)))
 
 	return nil
 }

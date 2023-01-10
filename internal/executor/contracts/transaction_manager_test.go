@@ -6,6 +6,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/meshplus/bitxhub-core/boltvm/mock_stub"
+	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/stretchr/testify/assert"
@@ -20,10 +21,11 @@ func TestTransactionManager_BeginMultiTXs(t *testing.T) {
 		mockCtl := gomock.NewController(t)
 		mockStub := mock_stub.NewMockStub(mockCtl)
 		mockStub.EXPECT().GetCurrentHeight().Return(uint64(100)).AnyTimes()
+		logger := log.NewWithModule("transaction_contract")
+		mockStub.EXPECT().Logger().Return(logger).AnyTimes()
 		im := &TransactionManager{Stub: mockStub}
 		return mockStub, im
 	}
-
 	// check current caller
 	t.Run("case1", func(t *testing.T) {
 		mockStub, im := setup(t)
@@ -59,7 +61,7 @@ func TestTransactionManager_BeginMultiTXs(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, pb.TransactionStatus(-1), statusChange.PrevStatus)
 		assert.Equal(t, pb.TransactionStatus_BEGIN, statusChange.CurStatus)
-		assert.Equal(t, 0, len(statusChange.OtherIBTPIDs))
+		assert.Equal(t, 1, len(statusChange.ChildIBTPIDs))
 	})
 
 	// add failed tx
@@ -83,7 +85,7 @@ func TestTransactionManager_BeginMultiTXs(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, pb.TransactionStatus(-1), statusChange.PrevStatus)
 		assert.Equal(t, pb.TransactionStatus_BEGIN_FAILURE, statusChange.CurStatus)
-		assert.Equal(t, 0, len(statusChange.OtherIBTPIDs))
+		assert.Equal(t, 1, len(statusChange.ChildIBTPIDs))
 	})
 
 	// add existing child tx
@@ -130,7 +132,7 @@ func TestTransactionManager_BeginMultiTXs(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, pb.TransactionStatus(-1), statusChange.PrevStatus)
 		assert.Equal(t, pb.TransactionStatus_BEGIN_FAILURE, statusChange.CurStatus)
-		assert.Equal(t, 0, len(statusChange.OtherIBTPIDs))
+		assert.Equal(t, 2, len(statusChange.ChildIBTPIDs))
 	})
 
 	// add child tx when GlobalState is BEGIN
@@ -160,7 +162,7 @@ func TestTransactionManager_BeginMultiTXs(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, pb.TransactionStatus(-1), statusChange.PrevStatus)
 		assert.Equal(t, pb.TransactionStatus_BEGIN, statusChange.CurStatus)
-		assert.Equal(t, 0, len(statusChange.OtherIBTPIDs))
+		assert.Equal(t, 2, len(statusChange.ChildIBTPIDs))
 	})
 
 	// add failed child tx when GlobalState is BEGIN
@@ -192,12 +194,47 @@ func TestTransactionManager_BeginMultiTXs(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, pb.TransactionStatus(-1), statusChange.PrevStatus)
 		assert.Equal(t, pb.TransactionStatus_BEGIN_FAILURE, statusChange.CurStatus)
-		assert.Equal(t, 1, len(statusChange.OtherIBTPIDs))
-		assert.Equal(t, id0, statusChange.OtherIBTPIDs[0])
+		assert.Equal(t, 2, len(statusChange.ChildIBTPIDs))
+	})
+
+	// add failed child tx when GlobalState is BEGIN, last child tx is Success
+	t.Run("case8", func(t *testing.T) {
+		mockStub, im := setup(t)
+		mockStub.EXPECT().CurrentCaller().Return(constant.InterchainContractAddr.Address().String()).MaxTimes(1)
+
+		txInfo := TransactionInfo{
+			GlobalState:  pb.TransactionStatus_BEGIN,
+			ChildTxInfo:  map[string]pb.TransactionStatus{id0: pb.TransactionStatus_SUCCESS},
+			Height:       110,
+			ChildTxCount: 2,
+		}
+		expTxInfo := TransactionInfo{
+			GlobalState:  pb.TransactionStatus_BEGIN_FAILURE,
+			ChildTxInfo:  map[string]pb.TransactionStatus{id0: pb.TransactionStatus_BEGIN_FAILURE, id1: pb.TransactionStatus_BEGIN_FAILURE},
+			Height:       110,
+			ChildTxCount: 2,
+		}
+		mockStub.EXPECT().GetObject(GlobalTxInfoKey(globalId), gomock.Any()).SetArg(1, txInfo).Return(true).MaxTimes(1)
+		mockStub.EXPECT().SetObject(GlobalTxInfoKey(globalId), expTxInfo)
+		mockStub.EXPECT().Get(TimeoutKey(uint64(110))).Return(false, nil).MaxTimes(1)
+		mockStub.EXPECT().Set(TimeoutKey(uint64(110)), []byte(globalId)).MaxTimes(1)
+		mockStub.EXPECT().Set(id1, []byte(globalId)).MaxTimes(1)
+		res := im.BeginMultiTXs(globalId, id1, 10, true, 2)
+		assert.True(t, res.Ok)
+		statusChange := pb.StatusChange{}
+		err := statusChange.Unmarshal(res.Result)
+		assert.Nil(t, err)
+		assert.Equal(t, pb.TransactionStatus(-1), statusChange.PrevStatus)
+		assert.Equal(t, pb.TransactionStatus_BEGIN_FAILURE, statusChange.CurStatus)
+		assert.Equal(t, 2, len(statusChange.ChildIBTPIDs))
+		assert.Equal(t, 1, len(statusChange.NotifySrcIBTPIDs))
+		assert.Equal(t, 1, len(statusChange.NotifyDstIBTPIDs))
+		assert.Equal(t, id0, statusChange.NotifySrcIBTPIDs[0])
+		assert.Equal(t, id0, statusChange.NotifyDstIBTPIDs[0])
 	})
 
 	// add failed child tx when GlobalState is BEGIN_FAILURE
-	t.Run("case8", func(t *testing.T) {
+	t.Run("case9", func(t *testing.T) {
 		mockStub, im := setup(t)
 		mockStub.EXPECT().CurrentCaller().Return(constant.InterchainContractAddr.Address().String()).MaxTimes(1)
 
@@ -223,11 +260,13 @@ func TestTransactionManager_BeginMultiTXs(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, pb.TransactionStatus(-1), statusChange.PrevStatus)
 		assert.Equal(t, pb.TransactionStatus_BEGIN_FAILURE, statusChange.CurStatus)
-		assert.Equal(t, 0, len(statusChange.OtherIBTPIDs))
+		assert.Equal(t, 2, len(statusChange.ChildIBTPIDs))
+		assert.Equal(t, 0, len(statusChange.NotifySrcIBTPIDs))
+		assert.Equal(t, 0, len(statusChange.NotifyDstIBTPIDs))
 	})
 
 	// add child tx when GlobalState is BEGIN_ROLLBACK
-	t.Run("case9", func(t *testing.T) {
+	t.Run("case10", func(t *testing.T) {
 		mockStub, im := setup(t)
 		mockStub.EXPECT().CurrentCaller().Return(constant.InterchainContractAddr.Address().String()).MaxTimes(1)
 
@@ -253,7 +292,9 @@ func TestTransactionManager_BeginMultiTXs(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, pb.TransactionStatus(-1), statusChange.PrevStatus)
 		assert.Equal(t, pb.TransactionStatus_BEGIN_ROLLBACK, statusChange.CurStatus)
-		assert.Equal(t, 0, len(statusChange.OtherIBTPIDs))
+		assert.Equal(t, 2, len(statusChange.ChildIBTPIDs))
+		assert.Equal(t, 0, len(statusChange.NotifySrcIBTPIDs))
+		assert.Equal(t, 0, len(statusChange.NotifyDstIBTPIDs))
 	})
 }
 
@@ -279,7 +320,7 @@ func TestTransactionManager_Begin(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, pb.TransactionStatus(-1), statusChange.PrevStatus)
 	assert.Equal(t, pb.TransactionStatus_BEGIN, statusChange.CurStatus)
-	assert.Equal(t, 0, len(statusChange.OtherIBTPIDs))
+	assert.Equal(t, 0, len(statusChange.ChildIBTPIDs))
 
 	res = im.Begin(id, 10, true)
 	assert.True(t, res.Ok)
@@ -288,12 +329,14 @@ func TestTransactionManager_Begin(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, pb.TransactionStatus(-1), statusChange.PrevStatus)
 	assert.Equal(t, pb.TransactionStatus_BEGIN_FAILURE, statusChange.CurStatus)
-	assert.Equal(t, 0, len(statusChange.OtherIBTPIDs))
+	assert.Equal(t, 0, len(statusChange.ChildIBTPIDs))
 }
 
 func TestTransactionManager_Report(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	mockStub := mock_stub.NewMockStub(mockCtl)
+	logger := log.NewWithModule("transaction_contract")
+	mockStub.EXPECT().Logger().Return(logger).AnyTimes()
 
 	id := "1356:chain0:service0-1356:chain1:service1-1"
 	recBegin := pb.TransactionRecord{
@@ -338,7 +381,7 @@ func TestTransactionManager_Report(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, pb.TransactionStatus_BEGIN, statusChange.PrevStatus)
 	assert.Equal(t, pb.TransactionStatus_SUCCESS, statusChange.CurStatus)
-	assert.Equal(t, 0, len(statusChange.OtherIBTPIDs))
+	assert.Equal(t, 0, len(statusChange.ChildIBTPIDs))
 
 	mockStub.EXPECT().Get(TxInfoKey(id)).Return(true, recBeginData).MaxTimes(1)
 	mockStub.EXPECT().Set(TxInfoKey(id), recFailureData).MaxTimes(1)
@@ -349,8 +392,9 @@ func TestTransactionManager_Report(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, pb.TransactionStatus_BEGIN, statusChange.PrevStatus)
 	assert.Equal(t, pb.TransactionStatus_FAILURE, statusChange.CurStatus)
-	assert.Equal(t, 0, len(statusChange.OtherIBTPIDs))
+	assert.Equal(t, 0, len(statusChange.ChildIBTPIDs))
 
+	// multi IBTP report test
 	id0 := "1356:chain0:service0"
 	id1 := "1356:chain1:service1"
 	id2 := "1356:chain2:service2"
@@ -380,10 +424,10 @@ func TestTransactionManager_Report(t *testing.T) {
 	assert.False(t, res.Ok)
 	assert.Contains(t, string(res.Result), fmt.Sprintf("%s is not in transaction %s, %v", id2, globalID, txInfo))
 
+	mockStub.EXPECT().SetObject(GlobalTxInfoKey(globalID), txInfo).MaxTimes(1)
 	mockStub.EXPECT().GetObject(GlobalTxInfoKey(globalID), gomock.Any()).SetArg(1, txInfo).Return(true).MaxTimes(1)
 	res = im.Report(id0, int32(pb.IBTP_RECEIPT_SUCCESS))
-	assert.False(t, res.Ok)
-	assert.Contains(t, string(res.Result), fmt.Sprintf("child tx %s with state %v get unexpected receipt %v", id0, pb.TransactionStatus_SUCCESS, int32(pb.IBTP_RECEIPT_SUCCESS)))
+	assert.True(t, res.Ok)
 
 	txInfo.GlobalState = pb.TransactionStatus_SUCCESS
 	txInfo.ChildTxInfo[id0] = pb.TransactionStatus_BEGIN
@@ -416,7 +460,8 @@ func TestTransactionManager_Report(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, pb.TransactionStatus_BEGIN, statusChange.PrevStatus)
 	assert.Equal(t, pb.TransactionStatus_SUCCESS, statusChange.CurStatus)
-	assert.Equal(t, 1, len(statusChange.OtherIBTPIDs))
+	assert.Equal(t, 2, len(statusChange.ChildIBTPIDs))
+	assert.Equal(t, 1, len(statusChange.NotifySrcIBTPIDs))
 
 	txInfo = TransactionInfo{
 		GlobalState:  pb.TransactionStatus_BEGIN,
@@ -441,7 +486,7 @@ func TestTransactionManager_Report(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, pb.TransactionStatus_BEGIN, statusChange.PrevStatus)
 	assert.Equal(t, pb.TransactionStatus_BEGIN, statusChange.CurStatus)
-	assert.Equal(t, 1, len(statusChange.OtherIBTPIDs))
+	assert.Equal(t, 2, len(statusChange.ChildIBTPIDs))
 
 	txInfo = TransactionInfo{
 		GlobalState:  pb.TransactionStatus_BEGIN,
@@ -466,8 +511,30 @@ func TestTransactionManager_Report(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, pb.TransactionStatus_BEGIN, statusChange.PrevStatus)
 	assert.Equal(t, pb.TransactionStatus_BEGIN_FAILURE, statusChange.CurStatus)
-	assert.Equal(t, 1, len(statusChange.OtherIBTPIDs))
-	assert.Equal(t, id1, statusChange.OtherIBTPIDs[0])
+	assert.Equal(t, 2, len(statusChange.ChildIBTPIDs))
+	assert.Equal(t, 1, len(statusChange.NotifySrcIBTPIDs))
+	assert.Equal(t, 0, len(statusChange.NotifyDstIBTPIDs))
+
+	txInfo = TransactionInfo{
+		GlobalState:  pb.TransactionStatus_BEGIN_FAILURE,
+		Height:       txInfo.Height,
+		ChildTxInfo:  map[string]pb.TransactionStatus{id0: pb.TransactionStatus_BEGIN_FAILURE, id1: pb.TransactionStatus_FAILURE},
+		ChildTxCount: txInfo.ChildTxCount,
+	}
+
+	expTxInfo = TransactionInfo{
+		GlobalState:  pb.TransactionStatus_FAILURE,
+		Height:       txInfo.Height,
+		ChildTxInfo:  map[string]pb.TransactionStatus{id0: pb.TransactionStatus_BEGIN_FAILURE, id1: pb.TransactionStatus_FAILURE},
+		ChildTxCount: txInfo.ChildTxCount,
+	}
+	mockStub.EXPECT().SetObject(GlobalTxInfoKey(globalID), expTxInfo).MaxTimes(1)
+	mockStub.EXPECT().GetObject(GlobalTxInfoKey(globalID), gomock.Any()).SetArg(1, txInfo).Return(true).MaxTimes(1)
+	mockStub.EXPECT().Get(TimeoutKey(txInfo.Height)).Return(true, []byte(globalID)).MaxTimes(1)
+	mockStub.EXPECT().Set(TimeoutKey(txInfo.Height), []byte{}).MaxTimes(1)
+	res = im.Report(id0, int32(pb.IBTP_RECEIPT_SUCCESS))
+	assert.False(t, res.Ok)
+	assert.Contains(t, string(res.Result), fmt.Sprintf("child tx %s with state %v get unexpected receipt %v", id0, txInfo.GlobalState, int32(pb.IBTP_RECEIPT_SUCCESS)))
 }
 
 func TestTransactionManager_GetStatus(t *testing.T) {

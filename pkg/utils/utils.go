@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"encoding/base64"
 	"encoding/binary"
@@ -159,9 +160,29 @@ func GetIBTP(ledger *ledger.Ledger, id string, isReq bool) (*pb.IBTP, error) {
 
 // TODO: support global status
 func GetTxStatus(ledger *ledger.Ledger, id string) (pb.TransactionStatus, error) {
-	ok, val := ledger.Copy().GetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.TxInfoKey(id)))
+	var (
+		ok  bool
+		val []byte
+	)
+	ok, val = ledger.Copy().GetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.TxInfoKey(id)))
 	if !ok {
-		return 0, fmt.Errorf("no tx status found for ibtp %s", id)
+		// try to find globalID
+		ok, val = ledger.Copy().GetState(constant.TransactionMgrContractAddr.Address(), []byte(id))
+		if !ok {
+			return 0, fmt.Errorf("no tx status found for ibtp %s", id)
+		}
+		globalId := string(val)
+		ok, val = ledger.Copy().GetState(constant.TransactionMgrContractAddr.Address(), []byte(contracts.GlobalTxInfoKey(globalId)))
+		if !ok {
+			return 0, fmt.Errorf("no tx status found for multi ibtp %s", id)
+		}
+
+		// every child one2multi IBTP follow the global state
+		txInfo := contracts.TransactionInfo{}
+		if err := json.Unmarshal(val, &txInfo); err != nil {
+			return 0, fmt.Errorf("unmarshal global transaction info error: %w", err)
+		}
+		return txInfo.GlobalState, nil
 	}
 	var record pb.TransactionRecord
 	if err := record.Unmarshal(val); err != nil {
@@ -268,4 +289,20 @@ func (p *Pool) Done() {
 
 func (p *Pool) Wait() {
 	p.wg.Wait()
+}
+
+func PrettyPrint(v interface{}) {
+	b, err := json.Marshal(v)
+	if err != nil {
+		fmt.Println(v)
+		return
+	}
+
+	var out bytes.Buffer
+	err = json.Indent(&out, b, "", "  ")
+	if err != nil {
+		fmt.Println(v)
+		return
+	}
+	fmt.Println(out.String())
 }
