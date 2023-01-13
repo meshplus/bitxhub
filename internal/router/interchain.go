@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/cbergoon/merkletree"
 	"github.com/ethereum/go-ethereum/event"
@@ -100,8 +101,15 @@ func (router *InterchainRouter) PutBlockAndMeta(block *pb.Block, meta *pb.Interc
 	if router.count.Load() == 0 {
 		return
 	}
+	current := time.Now()
 
 	ret := router.classify(block, meta)
+	router.logger.WithFields(logrus.Fields{
+		"height": block.BlockHeader.Number,
+		"count":  len(block.Transactions.Transactions),
+		"elapse": time.Since(current),
+	}).Info("classify block")
+
 	router.piers.Range(func(k, value interface{}) bool {
 		key := k.(string)
 		w := value.(*event.Feed)
@@ -127,6 +135,11 @@ func (router *InterchainRouter) PutBlockAndMeta(block *pb.Block, meta *pb.Interc
 
 		return true
 	})
+	router.logger.WithFields(logrus.Fields{
+		"height": block.BlockHeader.Number,
+		"count":  len(block.Transactions.Transactions),
+		"elapse": time.Since(current),
+	}).Info("end send block to pier")
 }
 
 func (router *InterchainRouter) GetBlockHeader(begin, end uint64, ch chan<- *pb.BlockHeader) error {

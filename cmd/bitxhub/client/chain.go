@@ -21,6 +21,23 @@ func chainCMD() cli.Command {
 				Usage:  "Query BitXHub chain status",
 				Action: getChainStatus,
 			},
+			{
+				Name:  "tps",
+				Usage: "Query BitXHub tps",
+				Flags: []cli.Flag{
+					cli.Uint64Flag{
+						Name:     "begin",
+						Usage:    "Specify begin block number",
+						Required: true,
+					},
+					cli.Uint64Flag{
+						Name:     "end",
+						Usage:    "Specify end block num",
+						Required: true,
+					},
+				},
+				Action: getTps,
+			},
 		},
 	}
 }
@@ -55,4 +72,24 @@ func getChainStatus(ctx *cli.Context) error {
 
 	return nil
 
+}
+
+func getTps(ctx *cli.Context) error {
+	begin := ctx.Uint64("begin")
+	end := ctx.Uint64("end")
+	url := getURL(ctx, fmt.Sprintf("tps/%d/%d", begin, end))
+
+	data, err := httpGet(ctx, url)
+	if err != nil {
+		return fmt.Errorf("httpGet from url %s failed: %w", url, err)
+	}
+
+	ret, err := parseResponse(data)
+	if err != nil {
+		return fmt.Errorf("wrong response: %w", err)
+	}
+
+	fmt.Println(ret)
+
+	return nil
 }

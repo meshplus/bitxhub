@@ -1052,7 +1052,9 @@ BcNwjTDCxyxLNjFKQfMAc6sY6iJs+Ma59WZyC/4uhjE=
 			Cert:     repo.Cert{},
 			Txpool:   repo.Txpool{},
 			Order:    repo.Order{},
-			Executor: repo.Executor{},
+			Executor: repo.Executor{
+				Type: "serial",
+			},
 			Ledger: repo.Ledger{
 				Type: "simple",
 			},

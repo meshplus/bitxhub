@@ -18,8 +18,10 @@ var _ ledger.StateLedger = (*SimpleLedger)(nil)
 
 // GetOrCreateAccount get the account, if not exist, create a new account
 func (l *SimpleLedger) GetOrCreateAccount(addr *types.Address) ledger.IAccount {
-	l.lock.Lock()
-	defer l.lock.Unlock()
+	if l.exeParallel == true {
+		l.lock.Lock()
+		defer l.lock.Unlock()
+	}
 	account := l.GetAccount(addr)
 	if account == nil {
 		account = newAccount(l.ldb, l.accountCache, addr, l.changer)

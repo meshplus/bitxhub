@@ -2,6 +2,7 @@ package contracts
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -427,7 +428,9 @@ func TestTransactionManager_Report(t *testing.T) {
 	mockStub.EXPECT().SetObject(GlobalTxInfoKey(globalID), txInfo).MaxTimes(1)
 	mockStub.EXPECT().GetObject(GlobalTxInfoKey(globalID), gomock.Any()).SetArg(1, txInfo).Return(true).MaxTimes(1)
 	res = im.Report(id0, int32(pb.IBTP_RECEIPT_SUCCESS))
-	assert.True(t, res.Ok)
+	assert.False(t, res.Ok)
+	const FinalSuccessStatus = "state SUCCESS get unexpected receipt"
+	assert.True(t, strings.Contains(string(res.Result), FinalSuccessStatus))
 
 	txInfo.GlobalState = pb.TransactionStatus_SUCCESS
 	txInfo.ChildTxInfo[id0] = pb.TransactionStatus_BEGIN
