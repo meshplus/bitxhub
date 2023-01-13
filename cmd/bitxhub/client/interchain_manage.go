@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/fatih/color"
 	"github.com/meshplus/bitxhub-kit/types"
@@ -45,6 +46,18 @@ func interchainMgrCMD() cli.Command {
 				},
 				Action: getIbtpTxHash,
 			},
+			cli.Command{
+				Name:  "status",
+				Usage: "Query tx status by full ibtp id",
+				Flags: []cli.Flag{
+					cli.StringFlag{
+						Name:     "id",
+						Usage:    "Specify full ibtp id",
+						Required: true,
+					},
+				},
+				Action: getIbtpStatus,
+			},
 		},
 	}
 }
@@ -82,6 +95,27 @@ func getIbtpTxHash(ctx *cli.Context) error {
 		hash := &types.Hash{}
 		hash.SetBytes(receipt.Ret)
 		fmt.Println(hash.String())
+	} else {
+		color.Red("get interchain counter error: %s\n", string(receipt.Ret))
+	}
+	return nil
+}
+
+func getIbtpStatus(ctx *cli.Context) error {
+	id := ctx.String("id")
+
+	receipt, err := invokeBVMContractBySendView(ctx, constant.TransactionMgrContractAddr.String(), "GetStatus", pb.String(id))
+	if err != nil {
+		return fmt.Errorf("invoke BVM contract failed when get ibtp status by id %s: %w", id, err)
+	}
+
+	if receipt.IsSuccess() {
+		status := string(receipt.Ret)
+		res, err := strconv.Atoi(status)
+		if err != nil {
+			return err
+		}
+		fmt.Println("status is:", pb.TransactionStatus(res))
 	} else {
 		color.Red("get interchain counter error: %s\n", string(receipt.Ret))
 	}
