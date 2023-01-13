@@ -438,14 +438,11 @@ func (t *TransactionManager) changeMultiTxStatus(globalID string, txInfo *Transa
 	} else {
 		status := txInfo.ChildTxInfo[txId]
 
-		// if bxh had received child IBTP receipt success, but other child IBTP receipt missing,
+		// if bxh had received child IBTP receipt success/fail/rollback, but other child IBTP receipt missing,
 		// pier need handleMissing all child IBTP because of child IBTP's SrcReceiptCounter does not add 1
-		if status == pb.TransactionStatus_SUCCESS && result == int32(pb.IBTP_RECEIPT_SUCCESS) {
-			status = pb.TransactionStatus_SUCCESS
-		} else {
-			if err := t.setFSM(&status, receipt2EventM[result]); err != nil {
-				return fmt.Errorf("child tx %s with state %v get unexpected receipt %v", txId, status, result)
-			}
+		// so bxh will return err with the ibtp had already reached the final state to pier.
+		if err := t.setFSM(&status, receipt2EventM[result]); err != nil {
+			return fmt.Errorf("child tx %s with state %v get unexpected receipt %v", txId, status, result)
 		}
 
 		txInfo.ChildTxInfo[txId] = status

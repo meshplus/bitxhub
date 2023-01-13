@@ -839,6 +839,7 @@ github.com/matttproud/golang_protobuf_extensions v1.0.1 h1:4hp9jkHxhMHkqkrB3Ix0j
 github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5Ld7szi9bcBfOoFv/3dc6xSMkL2PC0=
 github.com/meshplus/bitxhub-core v1.3.1-0.20221027121437-e904eb78f5d5 h1:azcRN40eThQy7ybQA3ZQSOngJLPYG5JQN6XyMIrKRsA=
 github.com/meshplus/bitxhub-core v1.3.1-0.20221027121437-e904eb78f5d5/go.mod h1:82cW0N9ZHq3Xn/bu34J8vuAqjhoinPIZ1iD6dGJSopo=
+github.com/meshplus/bitxhub-core v1.3.1-0.20230113085923-64d8298ac1d9 h1:RdAaHu2VwXfqEVRJppLwjSh6zU4tUXZsx8X1PyA+m4U=
 github.com/meshplus/bitxhub-core v1.3.1-0.20230113085923-64d8298ac1d9/go.mod h1:IBuvd602vQr37BgXxCJeSQVp8lnKAj5flBoZ9uf2PeA=
 github.com/meshplus/bitxhub-kit v1.0.0-rc1/go.mod h1:ra/AhOkPvpElI+wXrB9G6DjdcrdxFU3vMwA5MYKr9D0=
 github.com/meshplus/bitxhub-kit v1.0.0/go.mod h1:7cWyhXWZfrQ3+EaxkRoXfuiG3Y5R9DXYJomeZKkETW8=
@@ -859,6 +860,7 @@ github.com/meshplus/bitxhub-model v1.2.1-0.20221031060115-cd3292575517/go.mod h1
 github.com/meshplus/bitxhub-model v1.2.1-0.20221216071442-fd226b10045c/go.mod h1:EehJ/neXJcXy0o1jglfdD1/vsU7tsXveNr9pGZTDtrY=
 github.com/meshplus/bitxhub-model v1.2.1-0.20230104100829-cc630d893aaa h1:M/PflpIFkRQ3Vxjav8dRjXx5o7mr2Zh1bizABj3qS88=
 github.com/meshplus/bitxhub-model v1.2.1-0.20230104100829-cc630d893aaa/go.mod h1:EehJ/neXJcXy0o1jglfdD1/vsU7tsXveNr9pGZTDtrY=
+github.com/meshplus/bitxhub-model v1.20.2-0.20230113083618-3407ac676767 h1:eUKUvSeQWzbRmlJT9Ijk5flHMRR7DSiBRR0oGg1tVfM=
 github.com/meshplus/bitxhub-model v1.20.2-0.20230113083618-3407ac676767/go.mod h1:EehJ/neXJcXy0o1jglfdD1/vsU7tsXveNr9pGZTDtrY=
 github.com/meshplus/consensus v0.0.0-20211228075008-5f469b198531 h1:lU2XI7vWdapTLJfObY3A+e+a3rvHbnT0pHN9LEghwRk=
 github.com/meshplus/consensus v0.0.0-20211228075008-5f469b198531/go.mod h1:2Sv1u1sOFta9dAO6OuHyxLaN1Z6/AdrIol99qi5ZZ0k=
