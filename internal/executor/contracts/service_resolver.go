@@ -28,8 +28,6 @@ type ServDomainData struct {
 	Dids        []string          `json:"dids"`
 }
 
-var reverseName map[string]string
-
 func (sr ServiceResolver) SetServDomainData(name string, coinTyp uint64, addr string, serviceName string, des string, dids string) *boltvm.Response {
 	/*if !checkBxhAddress(addr) {
 		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), fmt.Sprintf("The address is not valid")))
@@ -140,12 +138,16 @@ func (sr ServiceResolver) SetReverse(serviceName string, name string) *boltvm.Re
 }
 
 func (sr ServiceResolver) GetReverseName(serviceName string) *boltvm.Response {
-	reverseName := make(map[string]string)
+	reverseName := make(map[string][]string)
 	ok := sr.GetObject(ReverseMap, &reverseName)
 	if !ok {
 		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), "there is not exist key"))
 	}
-	return boltvm.Success([]byte(reverseName[serviceName]))
+	reverseNameBytes, err := json.Marshal(reverseName[serviceName])
+	if err != nil {
+		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), fmt.Sprintf("marshal servDomainData error: %v", err)))
+	}
+	return boltvm.Success(reverseNameBytes)
 }
 
 func (sr ServiceResolver) GetServiceName(name string) *boltvm.Response {
@@ -173,10 +175,18 @@ func (sr ServiceResolver) DeleteServDomainData(name string) *boltvm.Response {
 	}
 	serviceName := servDomainData.ServiceName
 	sr.Delete(name)
-	reverseName := make(map[string]string)
+	reverseName := make(map[string][]string)
 	sr.GetObject(ReverseMap, &reverseName)
-	if reverseName[serviceName] == name {
-		reverseName[serviceName] = ""
+	reverseNameArr := reverseName[serviceName]
+	index := -1
+	for i, v := range reverseNameArr {
+		if v == name {
+			index = i
+			break
+		}
+	}
+	if index != -1 {
+		reverseNameArr = append(reverseNameArr[:index], reverseNameArr[(index+1):]...)
 	}
 	sr.SetObject(ReverseMap, reverseName)
 	return boltvm.Success(nil)
@@ -189,9 +199,14 @@ func (sr ServiceResolver) getDataByDomain(name string) (ServDomainData, error) {
 }
 
 func (sr ServiceResolver) setReverseName(serviceName string, name string) error {
-	reverseName := make(map[string]string)
+	reverseName := make(map[string][]string)
 	sr.GetObject(ReverseMap, &reverseName)
-	reverseName[serviceName] = name
+	reverseNameArr := reverseName[serviceName]
+	exist := isContain(reverseNameArr, name)
+	if !exist {
+		reverseNameArr = append(reverseNameArr, name)
+	}
+	reverseName[serviceName] = reverseNameArr
 	sr.SetObject(ReverseMap, reverseName)
 	return nil
 }
@@ -226,4 +241,13 @@ func (sr ServiceResolver) checkDomainAvaliable(name string) bool {
 		return false
 	}
 	return true
+}
+
+func isContain(items []string, item string) bool {
+	for _, eachItem := range items {
+		if eachItem == item {
+			return true
+		}
+	}
+	return false
 }

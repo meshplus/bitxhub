@@ -27,6 +27,11 @@ const (
 	PermissionController = "permissionController"
 	GRACEPERIOD          = uint64(90 * 24 * 60 * 60)
 	SecondTime           = int64(time.Second)
+	LevelZero            = 0
+	LevelOne             = 1
+	LevelTwo             = 2
+	RegisteredDomain     = 1
+	ReviewedDomain       = 0
 )
 
 type ServiceRegistry struct {
@@ -47,10 +52,11 @@ type PriceLevel struct {
 }
 
 type ServDomainRec struct {
-	Owner     string          `json:"owner"`
-	Resolver  string          `json:"resolver"`
-	SubDomain map[string]bool `json:"subDomain"`
-	Parent    string          `json:"parent"`
+	Owner             string          `json:"owner"`
+	Resolver          string          `json:"resolver"`
+	SubDomain         map[string]bool `json:"subDomain"`
+	SubDomainInReview map[string]bool `json:"subDomainInReview"` //审核中子域名
+	Parent            string          `json:"parent"`
 }
 
 type SubDomainProposalData struct {
@@ -59,6 +65,14 @@ type SubDomainProposalData struct {
 	SonName     string `json:"son_name"`
 	Onwer       string `json:"owner"`
 	Resolver    string `json:"resolver"`
+	ServiceName string `json:"service_name"`
+}
+
+type ServDomain struct {
+	Name       string `json:"name"`
+	Level      int    `json:"level"`
+	Status     int    `json:"status"`
+	ParentName string `json:"parent_name"`
 }
 
 //Register a first-level domain name
@@ -147,7 +161,7 @@ func (sr ServiceRegistry) Renew(name string, duration uint64) *boltvm.Response {
 	return boltvm.Success(nil)
 }
 
-func (sr ServiceRegistry) AllocateSubDomain(parentName string, sonName string, owner string, resolver string) *boltvm.Response {
+func (sr ServiceRegistry) AllocateSubDomain(parentName string, sonName string, owner string, resolver string, serviceName string) *boltvm.Response {
 	if parentName == "" {
 		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), "The parentDomain name can not be an empty string"))
 	}
@@ -170,6 +184,18 @@ func (sr ServiceRegistry) AllocateSubDomain(parentName string, sonName string, o
 		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), "The domain name does not belong to you"))
 	}
 
+	sonDomain := generateSubDomain(parentName, sonName)
+	parentDomainRec := ServDomainRec{}
+	ok := sr.GetObject(parentName, &parentDomainRec)
+	if !ok {
+		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), "parentName not exist"))
+	}
+	if parentDomainRec.SubDomainInReview == nil {
+		parentDomainRec.SubDomainInReview = make(map[string]bool)
+	}
+	parentDomainRec.SubDomainInReview[sonDomain] = true
+	sr.SetObject(parentName, parentDomainRec)
+
 	preRegister := make(map[string]bool)
 	sr.GetObject(PreRegister, &preRegister)
 	if preRegister[parentName] {
@@ -181,6 +207,7 @@ func (sr ServiceRegistry) AllocateSubDomain(parentName string, sonName string, o
 		SonName:     sonName,
 		Onwer:       owner,
 		Resolver:    resolver,
+		ServiceName: serviceName,
 	}
 	subDomainProposalDataBytes, err := json.Marshal(subDomainProposalData)
 	if err != nil {
@@ -241,7 +268,7 @@ func (sr ServiceRegistry) manageRegisterApprove(extra []byte) error {
 
 	res := sr.CrossInvoke(resolver, "SetServDomainData",
 		pb.String(sonDomain),
-		pb.Uint64(1), pb.String(owner), pb.String(""), pb.String(""), pb.String(""))
+		pb.Uint64(1), pb.String(owner), pb.String(domainData.ServiceName), pb.String(""), pb.String(""))
 	if !res.Ok {
 		return fmt.Errorf("register servDomainData error: %v", res.Result)
 	}
@@ -262,6 +289,22 @@ func (sr ServiceRegistry) manageRegisterReject(extra []byte) error {
 
 	preRegister := make(map[string]bool)
 	parentName := domainData.ParentName
+
+	parentDomainRec := ServDomainRec{}
+	ok := sr.GetObject(parentName, &parentDomainRec)
+	if !ok {
+		return fmt.Errorf("parentName not exist")
+	}
+	sonDomain := generateSubDomain(parentName, domainData.SonName)
+	if parentDomainRec.SubDomain == nil {
+		parentDomainRec.SubDomain = make(map[string]bool)
+	}
+	if parentDomainRec.SubDomainInReview == nil {
+		parentDomainRec.SubDomainInReview = make(map[string]bool)
+	}
+	parentDomainRec.SubDomainInReview[sonDomain] = false
+	sr.SetObject(parentName, parentDomainRec)
+
 	sr.GetObject(PreRegister, &preRegister)
 	preRegister[parentName] = false
 	sr.SetObject(PreRegister, preRegister)
@@ -544,6 +587,10 @@ func (sr ServiceRegistry) setSubDomainOwner(parentName string, sonName string, o
 	if parentDomainRec.SubDomain == nil {
 		parentDomainRec.SubDomain = make(map[string]bool)
 	}
+	if parentDomainRec.SubDomainInReview == nil {
+		parentDomainRec.SubDomainInReview = make(map[string]bool)
+	}
+	parentDomainRec.SubDomainInReview[sonDomain] = false
 	parentDomainRec.SubDomain[sonDomain] = true
 	sr.SetObject(parentName, parentDomainRec)
 	sonDomainRec := ServDomainRec{}
@@ -576,5 +623,65 @@ func (sr ServiceRegistry) checkResolverAddress(resolver string) bool {
 func (sr ServiceRegistry) checkNameAvailable(name string) bool {
 	res := sr.Has(name)
 	return res
+}
+
+func (sr ServiceRegistry) GetAllDomains() *boltvm.Response {
+	root := ServDomain{
+		Name:   RootDomain,
+		Level:  LevelZero,
+		Status: RegisteredDomain,
+	}
+	var res []*ServDomain
+	res = append(res, &root)
+
+	//处理一级域名
+	var servDomain map[string]uint64
+	ok := sr.GetObject(Level1Domain, &servDomain)
+	if ok {
+		for firstDomain, _ := range servDomain {
+			first := ServDomain{
+				Name:       firstDomain,
+				Level:      LevelOne,
+				Status:     RegisteredDomain,
+				ParentName: root.Name,
+			}
+			res = append(res, &first)
+
+			serviceDomainFirst := ServDomainRec{}
+			ok := sr.GetObject(firstDomain, &serviceDomainFirst)
+			if !ok {
+				return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), "there is not exist key"))
+			}
+			for secondDomain, _ := range serviceDomainFirst.SubDomain {
+				if serviceDomainFirst.SubDomain[secondDomain] {
+					second := ServDomain{
+						Name:       secondDomain,
+						Level:      LevelTwo,
+						Status:     RegisteredDomain,
+						ParentName: first.Name,
+					}
+					res = append(res, &second)
+				}
+			}
+			for secondDomain, _ := range serviceDomainFirst.SubDomainInReview {
+				if serviceDomainFirst.SubDomainInReview[secondDomain] {
+					second := ServDomain{
+						Name:       secondDomain,
+						Level:      LevelTwo,
+						Status:     ReviewedDomain,
+						ParentName: first.Name,
+					}
+					res = append(res, &second)
+				}
+			}
+
+		}
+	}
+
+	resBytes, err := json.Marshal(res)
+	if err != nil {
+		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), fmt.Sprintf("marshal servDomainData error: %v", err)))
+	}
+	return boltvm.Success(resBytes)
 
 }
