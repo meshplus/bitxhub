@@ -30,7 +30,7 @@ func (cbs *ChainBrokerService) SendTransaction(_ context.Context, tx *pb.BxhTran
 
 	hash, err := cbs.sendTransaction(tx)
 	if tx.IsIBTP() {
-		cbs.logger.WithFields(logrus.Fields{"from": tx.From, "hash": tx.Hash(), "nonce": tx.Nonce, "to": tx.IBTP.To, "type": tx.IBTP.Type, "index": tx.IBTP.Index}).Debug("get local ibtp")
+		cbs.logger.WithFields(logrus.Fields{"from": tx.From, "hash": tx.Hash(), "nonce": tx.Nonce, "to": tx.IBTP.To, "type": tx.IBTP.Type, "index": tx.IBTP.Index}).Info("get local ibtp")
 	} else {
 		cbs.logger.WithFields(logrus.Fields{"from": tx.From, "hash": tx.Hash(), "nonce": tx.Nonce}).Debug("get local tx")
 	}
