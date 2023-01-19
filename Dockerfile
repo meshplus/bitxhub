@@ -13,7 +13,7 @@ RUN go mod download -x
 # Build real binaries
 COPY . .
 
-RUN go get -u github.com/gobuffalo/packr/packr
+RUN go get -u github.com/gobuffalo/packr/v2/packr2@v2.8.3
 
 # Build bitxhub node
 RUN make install
@@ -22,7 +22,7 @@ RUN make install
 
 # Copy over binaries from the builder
 COPY --from=builder /go/bin/bitxhub /usr/local/bin
-COPY --from=builder /go/bin/packr /usr/local/bin
+COPY --from=builder /go/bin/packr2 /usr/local/bin
 
 COPY ./build/wasm/lib/linux-amd64/libwasmer.so /lib
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/lib
