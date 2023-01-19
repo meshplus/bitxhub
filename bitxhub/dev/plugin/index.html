@@ -1,0 +1,2003 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../cross_contract/">
+      
+      
+        <link rel="next" href="../rule/">
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.4.2, mkdocs-material-9.0.5">
+    
+    
+      
+        <title>应用链插件编写 - Bitxhub Document</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.558e4712.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.2505c338.min.css">
+      
+      
+
+    
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue">
+  
+    
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="Bitxhub Document" class="md-header__button md-logo" aria-label="Bitxhub Document" data-md-component="logo">
+      
+  <img src="../../../assets/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Bitxhub Document
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              应用链插件编写
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/meshplus/bitxhub" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    meshplus/bitxhub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-tabs__inner md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+    
+  
+
+
+  
+  
+  
+    
+
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../introduction/summary/" class="md-tabs__link md-tabs__link--active">
+        Home
+      </a>
+    </li>
+  
+
+  
+
+      
+        
+  
+  
+
+
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../goduck/" class="md-tabs__link">
+        Goduck
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+
+
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../premo/usage/" class="md-tabs__link">
+        Premo
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+
+
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../sdk/gosdk/" class="md-tabs__link">
+        SDK文档
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+
+
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../scan/" class="md-tabs__link">
+        跨链浏览器体验指南
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="Bitxhub Document" class="md-nav__button md-logo" aria-label="Bitxhub Document" data-md-component="logo">
+      
+  <img src="../../../assets/logo.png" alt="logo">
+
+    </a>
+    Bitxhub Document
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/meshplus/bitxhub" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    meshplus/bitxhub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+  
+  
+    
+  
+  
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_1" type="checkbox" id="__nav_1" checked>
+      
+      
+      
+        <label class="md-nav__link" for="__nav_1" tabindex="0" aria-expanded="true">
+          Home
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Home" data-md-level="1">
+        <label class="md-nav__title" for="__nav_1">
+          <span class="md-nav__icon md-icon"></span>
+          Home
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_1_1" type="checkbox" id="__nav_1_1" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_1_1" tabindex="0" aria-expanded="false">
+          产品介绍
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="产品介绍" data-md-level="2">
+        <label class="md-nav__title" for="__nav_1_1">
+          <span class="md-nav__icon md-icon"></span>
+          产品介绍
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../introduction/summary/" class="md-nav__link">
+        平台介绍
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../introduction/conception/" class="md-nav__link">
+        基本概念
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../introduction/arch/" class="md-nav__link">
+        技术架构
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../introduction/advantage/" class="md-nav__link">
+        产品优势
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../introduction/scenaries/" class="md-nav__link">
+        应用场景
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quick_start/" class="md-nav__link">
+        快速开始
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_1_3" type="checkbox" id="__nav_1_3" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_1_3" tabindex="0" aria-expanded="false">
+          部署使用
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="部署使用" data-md-level="2">
+        <label class="md-nav__title" for="__nav_1_3">
+          <span class="md-nav__icon md-icon"></span>
+          部署使用
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/env/" class="md-nav__link">
+        环境准备
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/overall_description/" class="md-nav__link">
+        整体说明
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_1_3_3" type="checkbox" id="__nav_1_3_3" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_1_3_3" tabindex="0" aria-expanded="false">
+          单中继架构部署
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="单中继架构部署" data-md-level="3">
+        <label class="md-nav__title" for="__nav_1_3_3">
+          <span class="md-nav__icon md-icon"></span>
+          单中继架构部署
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/single_bitxhub/deploy_bitxhub/" class="md-nav__link">
+        中继链部署
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/single_bitxhub/deploy_pier/" class="md-nav__link">
+        跨链网关部署
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/direct_mode_pier/pier_direct_mode_deploy/" class="md-nav__link">
+        跨链网关直连模式部署
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/status_verification/" class="md-nav__link">
+        系统验证
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_1_4" type="checkbox" id="__nav_1_4" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_1_4" tabindex="0" aria-expanded="false">
+          产品功能
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="产品功能" data-md-level="2">
+        <label class="md-nav__title" for="__nav_1_4">
+          <span class="md-nav__icon md-icon"></span>
+          产品功能
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../function/appchain/" class="md-nav__link">
+        应用链管理
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../function/cert_manage/" class="md-nav__link">
+        证书管理
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../function/cross_invoke/" class="md-nav__link">
+        跨链合约调用
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+    
+  
+  
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_1_5" type="checkbox" id="__nav_1_5" checked>
+      
+      
+      
+        <label class="md-nav__link" for="__nav_1_5" tabindex="0" aria-expanded="true">
+          开发手册
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="开发手册" data-md-level="2">
+        <label class="md-nav__title" for="__nav_1_5">
+          <span class="md-nav__icon md-icon"></span>
+          开发手册
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cross_contract/" class="md-nav__link">
+        跨链合约开发
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          应用链插件编写
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        应用链插件编写
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    开发要求
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    教程章节
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    重要概念
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#plugin" class="md-nav__link">
+    Plugin接口
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    程序目的
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    开始编写你的程序
+  </a>
+  
+    <nav class="md-nav" aria-label="开始编写你的程序">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#client" class="md-nav__link">
+    Client对象
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#consumer" class="md-nav__link">
+    consumer
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event" class="md-nav__link">
+    Event
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    读取配置
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#submitibtp" class="md-nav__link">
+    SubmitIBTP
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#plugin_1" class="md-nav__link">
+    编译你的Plugin
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rule/" class="md-nav__link">
+        验证规则编写
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../validator/" class="md-nav__link">
+        验证者信息生成
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_1_6" type="checkbox" id="__nav_1_6" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_1_6" tabindex="0" aria-expanded="false">
+          设计文档
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="设计文档" data-md-level="2">
+        <label class="md-nav__title" for="__nav_1_6">
+          <span class="md-nav__icon md-icon"></span>
+          设计文档
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/consensus_plugin/" class="md-nav__link">
+        共识算法插件方案
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/interchain_transaction/" class="md-nav__link">
+        跨链事务方案
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/pier/" class="md-nav__link">
+        跨链网关设计方案
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/privacy_protection/" class="md-nav__link">
+        隐私保护方案
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/rate-limiter/" class="md-nav__link">
+        API流控设计
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_1_7" type="checkbox" id="__nav_1_7" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_1_7" tabindex="0" aria-expanded="false">
+          运维
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="运维" data-md-level="2">
+        <label class="md-nav__title" for="__nav_1_7">
+          <span class="md-nav__icon md-icon"></span>
+          运维
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operation/node_log_view/" class="md-nav__link">
+        查看日志
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operation/node_status_check/" class="md-nav__link">
+        节点状态检测
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operation/exception_problem_handling/" class="md-nav__link">
+        异常问题处
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_1_8" type="checkbox" id="__nav_1_8" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_1_8" tabindex="0" aria-expanded="false">
+          版本发布记录
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="版本发布记录" data-md-level="2">
+        <label class="md-nav__title" for="__nav_1_8">
+          <span class="md-nav__icon md-icon"></span>
+          版本发布记录
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/bitxhub_v1.5.0/" class="md-nav__link">
+        BitXHub v1.5.0
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/bitxhub_v1.4.0/" class="md-nav__link">
+        BitXHub v1.4.0
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/bitxhub_v1.3.0/" class="md-nav__link">
+        BitXHub v1.3.0
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../community_introduction/" class="md-nav__link">
+        社区介绍
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../join_us/" class="md-nav__link">
+        加入我们
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../faq/" class="md-nav__link">
+        FAQ
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_2" type="checkbox" id="__nav_2" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_2" tabindex="0" aria-expanded="false">
+          Goduck
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Goduck" data-md-level="1">
+        <label class="md-nav__title" for="__nav_2">
+          <span class="md-nav__icon md-icon"></span>
+          Goduck
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../goduck/" class="md-nav__link">
+        Getting started
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_3" type="checkbox" id="__nav_3" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_3" tabindex="0" aria-expanded="false">
+          Premo
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Premo" data-md-level="1">
+        <label class="md-nav__title" for="__nav_3">
+          <span class="md-nav__icon md-icon"></span>
+          Premo
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../premo/usage/" class="md-nav__link">
+        使用文档
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_4" type="checkbox" id="__nav_4" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4" tabindex="0" aria-expanded="false">
+          SDK文档
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="SDK文档" data-md-level="1">
+        <label class="md-nav__title" for="__nav_4">
+          <span class="md-nav__icon md-icon"></span>
+          SDK文档
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../sdk/gosdk/" class="md-nav__link">
+        GoSDK使用文档
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../sdk/javasdk/" class="md-nav__link">
+        JavaSDK使用
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../sdk/jssdk/" class="md-nav__link">
+        JsSDK使用文档
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5" type="checkbox" id="__nav_5" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5" tabindex="0" aria-expanded="false">
+          跨链浏览器体验指南
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="跨链浏览器体验指南" data-md-level="1">
+        <label class="md-nav__title" for="__nav_5">
+          <span class="md-nav__icon md-icon"></span>
+          跨链浏览器体验指南
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../scan/" class="md-nav__link">
+        使用文档
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../scan/deploy_pier_testnet/" class="md-nav__link">
+        跨链网关接入
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    开发要求
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    教程章节
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    重要概念
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#plugin" class="md-nav__link">
+    Plugin接口
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    程序目的
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    开始编写你的程序
+  </a>
+  
+    <nav class="md-nav" aria-label="开始编写你的程序">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#client" class="md-nav__link">
+    Client对象
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#consumer" class="md-nav__link">
+    consumer
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event" class="md-nav__link">
+    Event
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    读取配置
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#submitibtp" class="md-nav__link">
+    SubmitIBTP
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#plugin_1" class="md-nav__link">
+    编译你的Plugin
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+
+<h1 id="_1">应用链插件编写</h1>
+<p>在本教程中，你将构建一个完整功能的 Plugin。过程中能学习基本的概念和具体使用细节。该示例将展示如何快速、轻松地接入自己的区块链到跨链平台中来。</p>
+<p>如果你需要接入自己开发的区块链到BitXHub跨链平台来的话，可以根据你们自己的区块链来定制开发Plugin，通过跨链网关来加入到跨链平台。</p>
+<h2 id="_2">开发要求</h2>
+<ul>
+<li>
+<p>安装 <a href="https://golang.org/doc/install"><strong>go1.13+</strong></a></p>
+</li>
+<li>
+<p>设置好$GOPATH等环境</p>
+</li>
+</ul>
+<h2 id="_3">教程章节</h2>
+<ol>
+<li>
+<p>重要概念</p>
+</li>
+<li>
+<p>Plugin接口</p>
+</li>
+<li>
+<p>程序目标</p>
+</li>
+<li>
+<p>开始编写程序</p>
+</li>
+<li>
+<p>编译你的Plugin</p>
+</li>
+</ol>
+<h2 id="_4">重要概念</h2>
+<p>在解释具体的接口之前，先明确几个概念：</p>
+<p><strong>跨链请求</strong>：如果有两条区块链A和B，A链需要向B链发起任何操作，需要按照IBTP规则向中继链发出一个请求包，我们称之为跨链请求A-&gt;B。</p>
+<p><strong>IBTP包</strong>：满足IBTP的一个package，跨链请求都需要通过IBTP包进行。</p>
+<p><strong>来源链</strong>：在跨链请求A-&gt;B中，A即为来源链。</p>
+<p><strong>目的链</strong>：在跨链请求A-&gt;B中，B即为目的链。</p>
+<h2 id="plugin">Plugin接口</h2>
+<p>为了更加便捷的开发Plugin接入到Pier中来，我们规定了下面一些必要的接口。</p>
+<div class="highlight"><pre><span></span><code><span class="kd">type</span><span class="w"> </span><span class="nx">Client</span><span class="w"> </span><span class="kd">interface</span><span class="w"> </span><span class="p">{</span>
+
+<span class="w">    </span><span class="c1">// 初始化Plugin服务</span>
+<span class="w">    </span><span class="nx">Initialize</span><span class="p">(</span><span class="nx">configPath</span><span class="w"> </span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="nx">pierID</span><span class="w"> </span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="nx">extra</span><span class="w"> </span><span class="p">[]</span><span class="kt">byte</span><span class="p">)</span><span class="w"> </span><span class="kt">error</span>
+
+<span class="w">    </span><span class="c1">// 启动Plugin服务的接口</span>
+<span class="w">    </span><span class="nx">Start</span><span class="p">()</span><span class="w"> </span><span class="kt">error</span>
+
+<span class="w">    </span><span class="c1">// 停止Plugin服务的接口</span>
+<span class="w">    </span><span class="nx">Stop</span><span class="p">()</span><span class="w"> </span><span class="kt">error</span>
+
+<span class="w">    </span><span class="c1">// Plugin负责将区块链上产生的跨链事件转化为标准的IBTP格式，Pier通过GetIBTP接口获取跨链请求再进行处理</span>
+<span class="w">    </span><span class="nx">GetIBTP</span><span class="p">()</span><span class="w"> </span><span class="kd">chan</span><span class="w"> </span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">IBTP</span>
+
+<span class="w">    </span><span class="c1">// Plugin 负责执行来源链过来的跨链请求，Pier调用SubmitIBTP提交收到的跨链请求。</span>
+<span class="w">    </span><span class="nx">SubmitIBTP</span><span class="p">(</span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">IBTP</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">SubmitIBTPResponse</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span>
+
+<span class="w">    </span><span class="c1">// GetOutMessage 负责在跨链合约中查询历史跨链请求。查询键值中to指定目的链，idx指定序号，查询结果为以Plugin负责的区块链作为来源链的跨链请求。</span>
+<span class="w">    </span><span class="nx">GetOutMessage</span><span class="p">(</span><span class="nx">to</span><span class="w"> </span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="nx">idx</span><span class="w"> </span><span class="kt">uint64</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">IBTP</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span>
+
+<span class="w">    </span><span class="c1">// GetInMessage 负责在跨链合约中查询历史跨链请求。查询键值中from指定来源链，idx指定序号，查询结果为以Plugin负责的区块链作为目的链的跨链请求。</span>
+<span class="w">    </span><span class="nx">GetInMessage</span><span class="p">(</span><span class="nx">from</span><span class="w"> </span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="nx">idx</span><span class="w"> </span><span class="kt">uint64</span><span class="p">)</span><span class="w"> </span><span class="p">([][]</span><span class="kt">byte</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span>
+
+<span class="w">    </span><span class="c1">// GetInMeta 是获取跨链请求相关的Meta信息的接口。以Plugin负责的区块链为目的链的一系列跨链请求的序号信息。如果Plugin负责A链，则可能有多条链和A进行跨链，如B-&gt;A:3; C-&gt;A:5。返回的map中，key值为来源链ID，value对应该来源链已发送的最新的跨链请求的序号，如{B:3, C:5}。</span>
+<span class="w">    </span><span class="nx">GetInMeta</span><span class="p">()</span><span class="w"> </span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">uint64</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span>
+
+<span class="w">    </span><span class="c1">// GetOutMeta 是获取跨链请求相关的Meta信息的接口。以Plugin负责的区块链为来源链的一系列跨链请求的序号信息。如果Plugin负责A链，则A可能和多条链进行跨链，如A-&gt;B:3; A-&gt;C:5。返回的map中，key值为目的链ID，value对应已发送到该目的链的最新跨链请求的序号，如{B:3, C:5}。</span>
+<span class="w">    </span><span class="nx">GetOutMeta</span><span class="p">()</span><span class="w"> </span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">uint64</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span>
+
+<span class="w">    </span><span class="c1">// GetCallbackMeta 是获取跨链请求相关的Meta信息的接口。以Plugin负责的区块链为来源链的一系列跨链请求的序号信息。如果Plugin负责A链，则A可能和多条链进行跨链，如A-&gt;B:3; A-&gt;C:5；同时由于跨链请求中支持回调操作，即A-&gt;B-&gt;A为一次完整的跨链操作，我们需要记录回调请求的序号信息，如A-&gt;B-&gt;:2; A-&gt;C—&gt;A:4。返回的map中，key值为目的链ID，value对应到该目的链最新的带回调跨链请求的序号，如{B:2, C:4}。（注意 CallbackMeta序号可能和outMeta是不一致的，这是由于由A发出的跨链请求部分是没有回调的）</span>
+<span class="w">    </span><span class="nx">GetCallbackMeta</span><span class="p">()</span><span class="w"> </span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">uint64</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span>
+
+<span class="w">    </span><span class="c1">// CommitCallback 执行完IBTP包之后进行一些回调操作。</span>
+<span class="w">    </span><span class="nx">CommitCallback</span><span class="p">(</span><span class="nx">ibtp</span><span class="w"> </span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">IBTP</span><span class="p">)</span><span class="w"> </span><span class="kt">error</span>
+
+<span class="w">    </span><span class="c1">// GetReceipt 获取一个已被执行IBTP的回执</span>
+<span class="w">    </span><span class="nx">GetReceipt</span><span class="p">(</span><span class="nx">ibtp</span><span class="w"> </span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">IBTP</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">IBTP</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span>
+
+<span class="w">    </span><span class="c1">// Name 描述Plugin负责的区块链的自定义名称，一般和业务相关，如司法链等。</span>
+<span class="w">    </span><span class="nx">Name</span><span class="p">()</span><span class="w"> </span><span class="kt">string</span>
+
+<span class="w">    </span><span class="c1">// Type 描述Plugin负责的区块链类型，比如Fabric</span>
+<span class="w">    </span><span class="nx">Type</span><span class="p">()</span><span class="w"> </span><span class="kt">string</span>
+<span class="p">}</span>
+</code></pre></div>
+<h2 id="_5">程序目的</h2>
+<p>本教程以开发一个简单的连接Fabric区块链网络的Plugin为例，最终的程序能够实现从负责的区块链获取<code>Hello World</code>信息并返回到跨链平台中。</p>
+<h2 id="_6">开始编写你的程序</h2>
+<p>首先选择你的工程目录，按照正常的GO程序的流程建立项目</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>go<span class="w"> </span>version<span class="w"> </span>//<span class="w"> </span>确认你安装的GO版本
+$<span class="w"> </span>mkdir<span class="w"> </span><span class="si">${</span><span class="nv">YOUR_PROJECT</span><span class="si">}</span>
+$<span class="w"> </span><span class="nb">cd</span><span class="w"> </span><span class="si">${</span><span class="nv">YOUR_PROJECT</span><span class="si">}</span>
+$<span class="w"> </span>go<span class="w"> </span>mod<span class="w"> </span>init<span class="w"> </span>exmple/fabric-plugin
+</code></pre></div>
+<h3 id="client">Client对象</h3>
+<p>首先创建一个<code>client.go</code>文件，这个文件是Plugin的核心和入口。</p>
+<p>在该文件中，应该定义你的Plugin如何获取client 实例，以及如何启动和停止Plugin服务。</p>
+<p>现在我们需要创建一个自定义的Client 结构，跨链网关最终拿到的应该是这个结构的一个实例，先来看看这个结构中都需要什么。</p>
+<p>首先来看看<code>Client自定义</code>具体结构</p>
+<div class="highlight"><pre><span></span><code><span class="kd">type</span><span class="w"> </span><span class="nx">Client</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">   </span><span class="nx">meta</span><span class="w">     </span><span class="o">*</span><span class="nx">ContractMeta</span>
+<span class="w">   </span><span class="nx">consumer</span><span class="w"> </span><span class="o">*</span><span class="nx">Consumer</span>
+<span class="w">   </span><span class="nx">eventC</span><span class="w">   </span><span class="kd">chan</span><span class="w"> </span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">IBTP</span>
+<span class="w">   </span><span class="nx">pierId</span><span class="w">   </span><span class="kt">string</span>
+<span class="w">   </span><span class="nx">name</span><span class="w">     </span><span class="kt">string</span>
+<span class="p">}</span>
+
+<span class="kd">type</span><span class="w"> </span><span class="nx">ContractMeta</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">   </span><span class="nx">EventFilter</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="s">`json:&quot;event_filter&quot;`</span>
+<span class="w">   </span><span class="nx">Username</span><span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="s">`json:&quot;username&quot;`</span>
+<span class="w">   </span><span class="nx">CCID</span><span class="w">        </span><span class="kt">string</span><span class="w"> </span><span class="s">`json:&quot;ccid&quot;`</span>
+<span class="w">   </span><span class="nx">ChannelID</span><span class="w">   </span><span class="kt">string</span><span class="w"> </span><span class="s">`json:&quot;channel_id&quot;`</span>
+<span class="w">   </span><span class="nx">ORG</span><span class="w">         </span><span class="kt">string</span><span class="w"> </span><span class="s">`json:&quot;org&quot;`</span>
+<span class="p">}</span>
+</code></pre></div>
+<ul>
+<li>
+<p>meta：Plugin直接和跨链合约交互，需要保存你的合约的一些基础信息。由于我们需要连接一个Fabric网络，这些Meta信息包括 <strong>Fabric中跨链事件的名称、Fabric中的用户名称、Chaincode合约的名称、你的组织名称Org以及组织所在的channel。</strong></p>
+</li>
+<li>
+<p>consumer：可以理解为Fabric上跨链事件的“监听器”，这个监听器也是一个自定义的结构，具体的结构在后面会详细介绍。</p>
+</li>
+<li>
+<p>eventC：为跨链网关提供读取监听到的跨链事件的通道。</p>
+</li>
+<li>
+<p>name：自定的区块链的名称。</p>
+</li>
+<li>
+<p>pierId：跨链网关注册在跨链平台中后产生的唯一ID，作为应用链的标识。</p>
+</li>
+</ul>
+<p>然后应该提供一个Client的实例化的接口（类似于构造函数），具体代码如下：</p>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">c</span><span class="w"> </span><span class="o">*</span><span class="nx">Client</span><span class="p">)</span><span class="w"> </span><span class="nx">Initialize</span><span class="p">(</span><span class="nx">configPath</span><span class="p">,</span><span class="w"> </span><span class="nx">pierId</span><span class="w"> </span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="nx">extra</span><span class="w"> </span><span class="p">[]</span><span class="kt">byte</span><span class="p">)</span><span class="w"> </span><span class="kt">error</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">eventC</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nb">make</span><span class="p">(</span><span class="kd">chan</span><span class="w"> </span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">IBTP</span><span class="p">)</span>
+<span class="w">    </span><span class="c1">// read config from files</span>
+<span class="w">    </span><span class="nx">fabricConfig</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">UnmarshalConfig</span><span class="p">(</span><span class="nx">configPath</span><span class="p">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">       </span><span class="k">return</span><span class="w"> </span><span class="kc">nil</span><span class="p">,</span><span class="w"> </span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;unmarshal config for plugin :%w&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="p">)</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// some basic configs about your chaincode </span>
+<span class="w">    </span><span class="nx">contractmeta</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">ContractMeta</span><span class="p">{</span>
+<span class="w">          </span><span class="nx">EventFilter</span><span class="p">:</span><span class="w"> </span><span class="nx">fabricConfig</span><span class="p">.</span><span class="nx">EventFilter</span><span class="p">,</span>
+<span class="w">          </span><span class="nx">Username</span><span class="p">:</span><span class="w">    </span><span class="nx">fabricConfig</span><span class="p">.</span><span class="nx">Username</span><span class="p">,</span>
+<span class="w">          </span><span class="nx">CCID</span><span class="p">:</span><span class="w">        </span><span class="nx">fabricConfig</span><span class="p">.</span><span class="nx">CCID</span><span class="p">,</span>
+<span class="w">          </span><span class="nx">ChannelID</span><span class="p">:</span><span class="w">   </span><span class="nx">fabricConfig</span><span class="p">.</span><span class="nx">ChannelId</span><span class="p">,</span>
+<span class="w">          </span><span class="nx">ORG</span><span class="p">:</span><span class="w">         </span><span class="nx">fabricConfig</span><span class="p">.</span><span class="nx">Org</span><span class="p">,</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// handler for listening on inter-chain events posted on your Fabric</span>
+<span class="w">    </span><span class="nx">mgh</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">newFabricHandler</span><span class="p">(</span><span class="nx">contractmeta</span><span class="p">.</span><span class="nx">EventFilter</span><span class="p">,</span><span class="w"> </span><span class="nx">eventC</span><span class="p">,</span><span class="w"> </span><span class="nx">pierId</span><span class="p">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="nx">err</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="nx">done</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nb">make</span><span class="p">(</span><span class="kd">chan</span><span class="w"> </span><span class="kt">bool</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">csm</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">NewConsumer</span><span class="p">(</span><span class="nx">configPath</span><span class="p">,</span><span class="w"> </span><span class="nx">contractmeta</span><span class="p">,</span><span class="w"> </span><span class="nx">mgh</span><span class="p">,</span><span class="w"> </span><span class="nx">done</span><span class="p">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="nx">err</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="nx">c</span><span class="p">.</span><span class="nx">consumer</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">csm</span>
+<span class="w">    </span><span class="nx">c</span><span class="p">.</span><span class="nx">eventC</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">eventC</span>
+<span class="w">    </span><span class="nx">c</span><span class="p">.</span><span class="nx">meta</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">contractmeta</span>
+<span class="w">    </span><span class="nx">c</span><span class="p">.</span><span class="nx">pierId</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">pierId</span>
+<span class="w">    </span><span class="nx">c</span><span class="p">.</span><span class="nx">name</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">fabricConfig</span><span class="p">.</span><span class="nx">Name</span>
+<span class="w">    </span><span class="nx">c</span><span class="p">.</span><span class="nx">outMeta</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">m</span>
+<span class="w">    </span><span class="nx">c</span><span class="p">.</span><span class="nx">ticker</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">time</span><span class="p">.</span><span class="nx">NewTicker</span><span class="p">(</span><span class="mi">2</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="nx">time</span><span class="p">.</span><span class="nx">Second</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">c</span><span class="p">.</span><span class="nx">done</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">done</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="kc">nil</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="consumer">consumer</h3>
+<p>consumer 负责监听区块链上的由跨链合约抛出的跨链事件以及和调用chaincode。</p>
+<p>我们新建 <code>./consumer.go</code> 文件</p>
+<div class="highlight"><pre><span></span><code><span class="kd">type</span><span class="w"> </span><span class="nx">Consumer</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">   </span><span class="nx">eventClient</span><span class="w">     </span><span class="o">*</span><span class="nx">event</span><span class="p">.</span><span class="nx">Client</span>
+<span class="w">   </span><span class="nx">meta</span><span class="w">            </span><span class="o">*</span><span class="nx">ContractMeta</span>
+<span class="w">   </span><span class="nx">msgH</span><span class="w">            </span><span class="nx">MessageHandler</span>
+<span class="w">   </span><span class="nx">channelProvider</span><span class="w"> </span><span class="nx">context</span><span class="p">.</span><span class="nx">ChannelProvider</span>
+<span class="w">   </span><span class="nx">ChannelClient</span><span class="w">   </span><span class="o">*</span><span class="nx">channel</span><span class="p">.</span><span class="nx">Client</span>
+<span class="w">   </span><span class="nx">registration</span><span class="w">    </span><span class="nx">fab</span><span class="p">.</span><span class="nx">Registration</span>
+<span class="w">   </span><span class="nx">ctx</span><span class="w">             </span><span class="kd">chan</span><span class="w"> </span><span class="kt">bool</span>
+<span class="p">}</span>
+</code></pre></div>
+<ul>
+<li>
+<p>eventClient：fabric gosdk提供的事件Client</p>
+</li>
+<li>
+<p>meta Fabric：相关的参数信息</p>
+</li>
+<li>
+<p>msgH：事件handler，在监听到指定事件之后负责处理的函数</p>
+</li>
+<li>
+<p>channelProvider：fabric gosdk提供的和chaincode交互</p>
+</li>
+<li>
+<p>ChannelClient：fabric gosdk 提供的和调用chaincode的对象</p>
+</li>
+<li>
+<p>registeration：fabric gosdk 提供的订阅特定事件的对象</p>
+</li>
+<li>
+<p>ctx：用来结束consumer的goroutine</p>
+</li>
+</ul>
+<h3 id="event">Event</h3>
+<p>由于在Fabric上抛出的事件内容是可以自定义的，而跨链请求要在跨链平台上传递的话，需要使用IBTP包，所以我们需要一定的代码来执行这种转换。</p>
+<p>我们新建 <code>./event.go</code> 文件</p>
+<div class="highlight"><pre><span></span><code><span class="kd">type</span><span class="w"> </span><span class="nx">Event</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">   </span><span class="nx">Index</span><span class="w">         </span><span class="kt">uint64</span><span class="w"> </span><span class="s">`json:&quot;index&quot;`</span>
+<span class="w">   </span><span class="nx">DstChainID</span><span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="s">`json:&quot;dst_chain_id&quot;`</span>
+<span class="w">   </span><span class="nx">SrcContractID</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="s">`json:&quot;src_contract_id&quot;`</span>
+<span class="w">   </span><span class="nx">DstContractID</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="s">`json:&quot;dst_contract_id&quot;`</span>
+<span class="w">   </span><span class="nx">Func</span><span class="w">          </span><span class="kt">string</span><span class="w"> </span><span class="s">`json:&quot;func&quot;`</span>
+<span class="w">   </span><span class="nx">Args</span><span class="w">          </span><span class="kt">string</span><span class="w"> </span><span class="s">`json:&quot;args&quot;`</span>
+<span class="w">   </span><span class="nx">Argscb</span><span class="w">        </span><span class="kt">string</span><span class="w"> </span><span class="s">`json:&quot;argscb&quot;`</span>
+<span class="w">   </span><span class="nx">Rollback</span><span class="w">      </span><span class="kt">string</span><span class="w"> </span><span class="s">`json:&quot;rollback&quot;`</span>
+<span class="w">   </span><span class="nx">Argsrb</span><span class="w">        </span><span class="kt">string</span><span class="w"> </span><span class="s">`json:&quot;argsrb&quot;`</span>
+<span class="w">   </span><span class="nx">Callback</span><span class="w">      </span><span class="kt">string</span><span class="w"> </span><span class="s">`json:&quot;callback&quot;`</span>
+<span class="w">   </span><span class="nx">Proof</span><span class="w">         </span><span class="p">[]</span><span class="kt">byte</span><span class="w"> </span><span class="s">`json:&quot;proof&quot;`</span>
+<span class="w">   </span><span class="nx">Extra</span><span class="w">         </span><span class="p">[]</span><span class="kt">byte</span><span class="w"> </span><span class="s">`json:&quot;extra&quot;`</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Event结构也是自定义的，需要和在你的跨链合约中抛出的事件结构一致。一个跨链交易事件，一般来说需要指定目标应用链的ID <code>DstChainID</code>，目标应用链上智能合约的地址或者ID（Fabric上的chaincode没有合约地址）<code>DstContractID</code>，这次跨链交易的发起者的合约地址<code>SrcContractID</code>，跨链调用的函数名 <code>Func</code>，该函数的参数 <code>Args</code>，是否有跨链调用之后要执行的回调函数 <code>Callback</code>，为了该应用链上对于该事件的证明 <code>Proof</code>，用户可自定义的部分 <code>Extra</code>。</p>
+<h3 id="_7">读取配置</h3>
+<p>Plugin的配置文件路径是通过Initialize的方法动态传入的，这意味着你可以方便的修改关于你的区块链的参数信息。我们新建文件 <code>./config.go</code> 文件，负责配置读取的所有操作。</p>
+<p>这里使用的是 <code>github.com/spf13/viper</code>库和TOML文件作为配置，当然你也可以使用任何你熟悉的工具来读取配置。</p>
+<div class="highlight"><pre><span></span><code><span class="kn">package</span><span class="w"> </span><span class="nx">main</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="p">(</span>
+<span class="w">   </span><span class="s">&quot;path/filepath&quot;</span>
+<span class="w">   </span><span class="s">&quot;strings&quot;</span>
+
+<span class="w">   </span><span class="s">&quot;github.com/spf13/viper&quot;</span>
+<span class="p">)</span>
+
+<span class="kd">const</span><span class="w"> </span><span class="p">(</span>
+<span class="w">   </span><span class="nx">ConfigName</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">&quot;fabric.toml&quot;</span>
+<span class="p">)</span>
+
+<span class="kd">type</span><span class="w"> </span><span class="nx">Fabric</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">   </span><span class="nx">Addr</span><span class="w">        </span><span class="kt">string</span><span class="w"> </span><span class="s">`toml:&quot;addr&quot; json:&quot;addr&quot;`</span>
+<span class="w">   </span><span class="nx">Name</span><span class="w">        </span><span class="kt">string</span><span class="w"> </span><span class="s">`toml:&quot;name&quot; json:&quot;name&quot;`</span>
+<span class="w">   </span><span class="nx">EventFilter</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="s">`mapstructure:&quot;event_filter&quot; toml:&quot;event_filter&quot; json:&quot;event_filter&quot;`</span>
+<span class="w">   </span><span class="nx">Username</span><span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="s">`toml:&quot;username&quot; json:&quot;username&quot;`</span>
+<span class="w">   </span><span class="nx">CCID</span><span class="w">        </span><span class="kt">string</span><span class="w"> </span><span class="s">`toml:&quot;ccid&quot; json:&quot;ccid&quot;`</span>
+<span class="w">   </span><span class="nx">ChannelId</span><span class="w">   </span><span class="kt">string</span><span class="w"> </span><span class="s">`mapstructure:&quot;channel_id&quot; toml:&quot;channel_id&quot; json:&quot;channel_id&quot;`</span>
+<span class="w">   </span><span class="nx">Org</span><span class="w">         </span><span class="kt">string</span><span class="w"> </span><span class="s">`toml:&quot;org&quot; json:&quot;org&quot;`</span>
+<span class="p">}</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="nx">DefaultConfig</span><span class="p">()</span><span class="w"> </span><span class="o">*</span><span class="nx">Fabric</span><span class="w"> </span><span class="p">{</span>
+<span class="w">   </span><span class="k">return</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">Fabric</span><span class="p">{</span>
+<span class="w">      </span><span class="nx">Addr</span><span class="p">:</span><span class="w">        </span><span class="s">&quot;localhost:10053&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nx">Name</span><span class="p">:</span><span class="w">        </span><span class="s">&quot;fabric&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nx">EventFilter</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;CrosschainEventName&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nx">Username</span><span class="p">:</span><span class="w">    </span><span class="s">&quot;Admin&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nx">CCID</span><span class="p">:</span><span class="w">        </span><span class="s">&quot;Broker-001&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nx">ChannelId</span><span class="p">:</span><span class="w">   </span><span class="s">&quot;mychannel&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nx">Org</span><span class="p">:</span><span class="w">         </span><span class="s">&quot;org2&quot;</span><span class="p">,</span>
+<span class="w">   </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="nx">UnmarshalConfig</span><span class="p">(</span><span class="nx">configPath</span><span class="w"> </span><span class="kt">string</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="nx">Fabric</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">   </span><span class="nx">viper</span><span class="p">.</span><span class="nx">SetConfigFile</span><span class="p">(</span><span class="nx">filepath</span><span class="p">.</span><span class="nx">Join</span><span class="p">(</span><span class="nx">configPath</span><span class="p">,</span><span class="w"> </span><span class="nx">ConfigName</span><span class="p">))</span>
+<span class="w">   </span><span class="nx">viper</span><span class="p">.</span><span class="nx">SetConfigType</span><span class="p">(</span><span class="s">&quot;toml&quot;</span><span class="p">)</span>
+<span class="w">   </span><span class="nx">viper</span><span class="p">.</span><span class="nx">AutomaticEnv</span><span class="p">()</span>
+<span class="w">   </span><span class="nx">viper</span><span class="p">.</span><span class="nx">SetEnvPrefix</span><span class="p">(</span><span class="s">&quot;FABRIC&quot;</span><span class="p">)</span>
+<span class="w">   </span><span class="nx">replacer</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">strings</span><span class="p">.</span><span class="nx">NewReplacer</span><span class="p">(</span><span class="s">&quot;.&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;_&quot;</span><span class="p">)</span>
+<span class="w">   </span><span class="nx">viper</span><span class="p">.</span><span class="nx">SetEnvKeyReplacer</span><span class="p">(</span><span class="nx">replacer</span><span class="p">)</span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">viper</span><span class="p">.</span><span class="nx">ReadInConfig</span><span class="p">();</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="k">return</span><span class="w"> </span><span class="kc">nil</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span>
+<span class="w">   </span><span class="p">}</span>
+
+<span class="w">   </span><span class="nx">config</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">DefaultConfig</span><span class="p">()</span>
+
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">viper</span><span class="p">.</span><span class="nx">Unmarshal</span><span class="p">(</span><span class="nx">config</span><span class="p">);</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="k">return</span><span class="w"> </span><span class="kc">nil</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span>
+<span class="w">   </span><span class="p">}</span>
+
+<span class="w">   </span><span class="k">return</span><span class="w"> </span><span class="nx">config</span><span class="p">,</span><span class="w"> </span><span class="kc">nil</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="submitibtp">SubmitIBTP</h3>
+<p>该接口主要负责将其他链发送过来的IBTP包解析并构造成当前目的链的交易，发送到目的链的跨链合约中。
+如果来源链要求将本链调用合约的结果返回的话，还需要构造相应的IBTP回执发回来源链。</p>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">c</span><span class="w"> </span><span class="o">*</span><span class="nx">Client</span><span class="p">)</span><span class="w"> </span><span class="nx">SubmitIBTP</span><span class="p">(</span><span class="nx">ibtp</span><span class="w"> </span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">IBTP</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">SubmitIBTPResponse</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">pd</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">pb</span><span class="p">.</span><span class="nx">Payload</span><span class="p">{}</span>
+<span class="w">    </span><span class="nx">ret</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">pb</span><span class="p">.</span><span class="nx">SubmitIBTPResponse</span><span class="p">{}</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">pd</span><span class="p">.</span><span class="nx">Unmarshal</span><span class="p">(</span><span class="nx">ibtp</span><span class="p">.</span><span class="nx">Payload</span><span class="p">);</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="nx">ret</span><span class="p">,</span><span class="w"> </span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;ibtp payload unmarshal: %w&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="p">)</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="nx">content</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">pb</span><span class="p">.</span><span class="nx">Content</span><span class="p">{}</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">content</span><span class="p">.</span><span class="nx">Unmarshal</span><span class="p">(</span><span class="nx">pd</span><span class="p">.</span><span class="nx">Content</span><span class="p">);</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="nx">ret</span><span class="p">,</span><span class="w"> </span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;ibtp content unmarshal: %w&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="p">)</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">ibtp</span><span class="p">.</span><span class="nx">Category</span><span class="p">()</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nx">pb</span><span class="p">.</span><span class="nx">IBTP_UNKNOWN</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="kc">nil</span><span class="p">,</span><span class="w"> </span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;invalid ibtp category&quot;</span><span class="p">)</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="nx">logger</span><span class="p">.</span><span class="nx">Info</span><span class="p">(</span><span class="s">&quot;submit ibtp&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;id&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">ibtp</span><span class="p">.</span><span class="nx">ID</span><span class="p">(),</span><span class="w"> </span><span class="s">&quot;contract&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">content</span><span class="p">.</span><span class="nx">DstContractId</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;func&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">content</span><span class="p">.</span><span class="nx">Func</span><span class="p">)</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="nx">i</span><span class="p">,</span><span class="w"> </span><span class="nx">arg</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">content</span><span class="p">.</span><span class="nx">Args</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">logger</span><span class="p">.</span><span class="nx">Info</span><span class="p">(</span><span class="s">&quot;arg&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">strconv</span><span class="p">.</span><span class="nx">Itoa</span><span class="p">(</span><span class="nx">i</span><span class="p">),</span><span class="w"> </span><span class="nb">string</span><span class="p">(</span><span class="nx">arg</span><span class="p">))</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">ibtp</span><span class="p">.</span><span class="nx">Category</span><span class="p">()</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nx">pb</span><span class="p">.</span><span class="nx">IBTP_RESPONSE</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nx">content</span><span class="p">.</span><span class="nx">Func</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">logger</span><span class="p">.</span><span class="nx">Info</span><span class="p">(</span><span class="s">&quot;InvokeIndexUpdate&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;ibtp&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">ibtp</span><span class="p">.</span><span class="nx">ID</span><span class="p">())</span>
+<span class="w">        </span><span class="nx">_</span><span class="p">,</span><span class="w"> </span><span class="nx">resp</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">c</span><span class="p">.</span><span class="nx">InvokeIndexUpdate</span><span class="p">(</span><span class="nx">ibtp</span><span class="p">.</span><span class="nx">From</span><span class="p">,</span><span class="w"> </span><span class="nx">ibtp</span><span class="p">.</span><span class="nx">Index</span><span class="p">,</span><span class="w"> </span><span class="nx">ibtp</span><span class="p">.</span><span class="nx">Category</span><span class="p">())</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="kc">nil</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">        </span><span class="nx">ret</span><span class="p">.</span><span class="nx">Status</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">resp</span><span class="p">.</span><span class="nx">OK</span>
+<span class="w">        </span><span class="nx">ret</span><span class="p">.</span><span class="nx">Message</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">resp</span><span class="p">.</span><span class="nx">Message</span>
+
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="nx">ret</span><span class="p">,</span><span class="w"> </span><span class="kc">nil</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nx">result</span><span class="w"> </span><span class="p">[][]</span><span class="kt">byte</span>
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nx">chResp</span><span class="w"> </span><span class="o">*</span><span class="nx">channel</span><span class="p">.</span><span class="nx">Response</span>
+<span class="w">    </span><span class="nx">callFunc</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">CallFunc</span><span class="p">{</span>
+<span class="w">        </span><span class="nx">Func</span><span class="p">:</span><span class="w"> </span><span class="nx">content</span><span class="p">.</span><span class="nx">Func</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">Args</span><span class="p">:</span><span class="w"> </span><span class="nx">content</span><span class="p">.</span><span class="nx">Args</span><span class="p">,</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="nx">bizData</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">json</span><span class="p">.</span><span class="nx">Marshal</span><span class="p">(</span><span class="nx">callFunc</span><span class="p">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">ret</span><span class="p">.</span><span class="nx">Status</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="w">        </span><span class="nx">ret</span><span class="p">.</span><span class="nx">Message</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Sprintf</span><span class="p">(</span><span class="s">&quot;marshal ibtp %s func %s and args: %s&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">ibtp</span><span class="p">.</span><span class="nx">ID</span><span class="p">(),</span><span class="w"> </span><span class="nx">callFunc</span><span class="p">.</span><span class="nx">Func</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="p">.</span><span class="nx">Error</span><span class="p">())</span>
+
+<span class="w">        </span><span class="nx">res</span><span class="p">,</span><span class="w"> </span><span class="nx">_</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">c</span><span class="p">.</span><span class="nx">InvokeIndexUpdate</span><span class="p">(</span><span class="nx">ibtp</span><span class="p">.</span><span class="nx">From</span><span class="p">,</span><span class="w"> </span><span class="nx">ibtp</span><span class="p">.</span><span class="nx">Index</span><span class="p">,</span><span class="w"> </span><span class="nx">ibtp</span><span class="p">.</span><span class="nx">Category</span><span class="p">())</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="kc">nil</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">        </span><span class="nx">chResp</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">res</span>
+<span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">res</span><span class="p">,</span><span class="w"> </span><span class="nx">resp</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">c</span><span class="p">.</span><span class="nx">InvokeInterchain</span><span class="p">(</span><span class="nx">ibtp</span><span class="p">.</span><span class="nx">From</span><span class="p">,</span><span class="w"> </span><span class="nx">ibtp</span><span class="p">.</span><span class="nx">Index</span><span class="p">,</span><span class="w"> </span><span class="nx">content</span><span class="p">.</span><span class="nx">DstContractId</span><span class="p">,</span><span class="w"> </span><span class="nx">ibtp</span><span class="p">.</span><span class="nx">Category</span><span class="p">(),</span><span class="w"> </span><span class="nx">bizData</span><span class="p">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="kc">nil</span><span class="p">,</span><span class="w"> </span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;invoke interchain for ibtp %s to call %s: %w&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">ibtp</span><span class="p">.</span><span class="nx">ID</span><span class="p">(),</span><span class="w"> </span><span class="nx">content</span><span class="p">.</span><span class="nx">Func</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="p">)</span>
+<span class="w">        </span><span class="p">}</span>
+
+<span class="w">        </span><span class="nx">ret</span><span class="p">.</span><span class="nx">Status</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">resp</span><span class="p">.</span><span class="nx">OK</span>
+<span class="w">        </span><span class="nx">ret</span><span class="p">.</span><span class="nx">Message</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">resp</span><span class="p">.</span><span class="nx">Message</span>
+
+<span class="w">        </span><span class="c1">// if there is callback function, parse returned value</span>
+<span class="w">        </span><span class="nx">result</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">util</span><span class="p">.</span><span class="nx">ToChaincodeArgs</span><span class="p">(</span><span class="nx">strings</span><span class="p">.</span><span class="nx">Split</span><span class="p">(</span><span class="nb">string</span><span class="p">(</span><span class="nx">resp</span><span class="p">.</span><span class="nx">Data</span><span class="p">),</span><span class="w"> </span><span class="s">&quot;,&quot;</span><span class="p">)</span><span class="o">...</span><span class="p">)</span>
+<span class="w">        </span><span class="nx">chResp</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">res</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// If is response IBTP, then simply return</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">ibtp</span><span class="p">.</span><span class="nx">Category</span><span class="p">()</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="nx">pb</span><span class="p">.</span><span class="nx">IBTP_RESPONSE</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="nx">ret</span><span class="p">,</span><span class="w"> </span><span class="kc">nil</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="nx">proof</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">c</span><span class="p">.</span><span class="nx">getProof</span><span class="p">(</span><span class="o">*</span><span class="nx">chResp</span><span class="p">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="nx">ret</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="nx">ret</span><span class="p">.</span><span class="nx">Result</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">c</span><span class="p">.</span><span class="nx">generateCallback</span><span class="p">(</span><span class="nx">ibtp</span><span class="p">,</span><span class="w"> </span><span class="nx">result</span><span class="p">,</span><span class="w"> </span><span class="nx">proof</span><span class="p">,</span><span class="w"> </span><span class="nx">ret</span><span class="p">.</span><span class="nx">Status</span><span class="p">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="kc">nil</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">ret</span><span class="p">,</span><span class="w"> </span><span class="kc">nil</span>
+<span class="p">}</span>
+</code></pre></div>
+<h2 id="plugin_1">编译你的Plugin</h2>
+<p>我们采用GO语言提供的插件模式，实现Pier对于你编写的Plugin的动态加载。</p>
+<p>MacOS和Linux平台：</p>
+<p>运行下面的命令，能够得到 <code>your_plugin.so</code>文件。</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span><span class="nb">cd</span><span class="w"> </span><span class="si">${</span><span class="nv">YOUR_PROJECT_PATH</span><span class="si">}</span>
+$<span class="w"> </span>go<span class="w"> </span>build<span class="w"> </span>--buildmode<span class="o">=</span>plugin<span class="w"> </span>-o<span class="w"> </span>your_plugin.so<span class="w"> </span>./*.go
+</code></pre></div>
+<p>将你编写的动态链接文件，放到Pier配置文件夹下，配合我们提供的Pier，就能接入到跨链平台来。</p>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+        </div>
+        
+          <a href="#" class="md-top md-icon" data-md-component="top" hidden>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12Z"/></svg>
+            Back to top
+          </a>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    <script id="__config" type="application/json">{"base": "../../..", "features": ["navigation.tabs", "navigation.top", "search.highlight"], "search": "../../../assets/javascripts/workers/search.e5c33ebb.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.51d95adb.min.js"></script>
+      
+    
+  </body>
+</html>

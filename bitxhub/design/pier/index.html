@@ -1,0 +1,2837 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../interchain_transaction/">
+      
+      
+        <link rel="next" href="../privacy_protection/">
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.4.2, mkdocs-material-9.0.5">
+    
+    
+      
+        <title>跨链网关设计方案 - Bitxhub Document</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.558e4712.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.2505c338.min.css">
+      
+      
+
+    
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue">
+  
+    
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="Bitxhub Document" class="md-header__button md-logo" aria-label="Bitxhub Document" data-md-component="logo">
+      
+  <img src="../../../assets/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Bitxhub Document
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              跨链网关设计方案
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/meshplus/bitxhub" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    meshplus/bitxhub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-tabs__inner md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+    
+  
+
+
+  
+  
+  
+    
+
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../introduction/summary/" class="md-tabs__link md-tabs__link--active">
+        Home
+      </a>
+    </li>
+  
+
+  
+
+      
+        
+  
+  
+
+
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../goduck/" class="md-tabs__link">
+        Goduck
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+
+
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../premo/usage/" class="md-tabs__link">
+        Premo
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+
+
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../sdk/gosdk/" class="md-tabs__link">
+        SDK文档
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+
+
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../scan/" class="md-tabs__link">
+        跨链浏览器体验指南
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="Bitxhub Document" class="md-nav__button md-logo" aria-label="Bitxhub Document" data-md-component="logo">
+      
+  <img src="../../../assets/logo.png" alt="logo">
+
+    </a>
+    Bitxhub Document
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/meshplus/bitxhub" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    meshplus/bitxhub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+  
+  
+    
+  
+  
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_1" type="checkbox" id="__nav_1" checked>
+      
+      
+      
+        <label class="md-nav__link" for="__nav_1" tabindex="0" aria-expanded="true">
+          Home
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Home" data-md-level="1">
+        <label class="md-nav__title" for="__nav_1">
+          <span class="md-nav__icon md-icon"></span>
+          Home
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_1_1" type="checkbox" id="__nav_1_1" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_1_1" tabindex="0" aria-expanded="false">
+          产品介绍
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="产品介绍" data-md-level="2">
+        <label class="md-nav__title" for="__nav_1_1">
+          <span class="md-nav__icon md-icon"></span>
+          产品介绍
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../introduction/summary/" class="md-nav__link">
+        平台介绍
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../introduction/conception/" class="md-nav__link">
+        基本概念
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../introduction/arch/" class="md-nav__link">
+        技术架构
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../introduction/advantage/" class="md-nav__link">
+        产品优势
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../introduction/scenaries/" class="md-nav__link">
+        应用场景
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quick_start/" class="md-nav__link">
+        快速开始
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_1_3" type="checkbox" id="__nav_1_3" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_1_3" tabindex="0" aria-expanded="false">
+          部署使用
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="部署使用" data-md-level="2">
+        <label class="md-nav__title" for="__nav_1_3">
+          <span class="md-nav__icon md-icon"></span>
+          部署使用
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/env/" class="md-nav__link">
+        环境准备
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/overall_description/" class="md-nav__link">
+        整体说明
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_1_3_3" type="checkbox" id="__nav_1_3_3" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_1_3_3" tabindex="0" aria-expanded="false">
+          单中继架构部署
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="单中继架构部署" data-md-level="3">
+        <label class="md-nav__title" for="__nav_1_3_3">
+          <span class="md-nav__icon md-icon"></span>
+          单中继架构部署
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/single_bitxhub/deploy_bitxhub/" class="md-nav__link">
+        中继链部署
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/single_bitxhub/deploy_pier/" class="md-nav__link">
+        跨链网关部署
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/direct_mode_pier/pier_direct_mode_deploy/" class="md-nav__link">
+        跨链网关直连模式部署
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/status_verification/" class="md-nav__link">
+        系统验证
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_1_4" type="checkbox" id="__nav_1_4" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_1_4" tabindex="0" aria-expanded="false">
+          产品功能
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="产品功能" data-md-level="2">
+        <label class="md-nav__title" for="__nav_1_4">
+          <span class="md-nav__icon md-icon"></span>
+          产品功能
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../function/appchain/" class="md-nav__link">
+        应用链管理
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../function/cert_manage/" class="md-nav__link">
+        证书管理
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../function/cross_invoke/" class="md-nav__link">
+        跨链合约调用
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_1_5" type="checkbox" id="__nav_1_5" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_1_5" tabindex="0" aria-expanded="false">
+          开发手册
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="开发手册" data-md-level="2">
+        <label class="md-nav__title" for="__nav_1_5">
+          <span class="md-nav__icon md-icon"></span>
+          开发手册
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/cross_contract/" class="md-nav__link">
+        跨链合约开发
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/plugin/" class="md-nav__link">
+        应用链插件编写
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/rule/" class="md-nav__link">
+        验证规则编写
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/validator/" class="md-nav__link">
+        验证者信息生成
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+    
+  
+  
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_1_6" type="checkbox" id="__nav_1_6" checked>
+      
+      
+      
+        <label class="md-nav__link" for="__nav_1_6" tabindex="0" aria-expanded="true">
+          设计文档
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="设计文档" data-md-level="2">
+        <label class="md-nav__title" for="__nav_1_6">
+          <span class="md-nav__icon md-icon"></span>
+          设计文档
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../consensus_plugin/" class="md-nav__link">
+        共识算法插件方案
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../interchain_transaction/" class="md-nav__link">
+        跨链事务方案
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          跨链网关设计方案
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        跨链网关设计方案
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    整体架构
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    处理流程
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    模块依赖关系
+  </a>
+  
+    <nav class="md-nav" aria-label="模块依赖关系">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    在中继链模式下
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    在直连模式下
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    错误场景处理
+  </a>
+  
+    <nav class="md-nav" aria-label="错误场景处理">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#executor" class="md-nav__link">
+    Executor 开源版本错误分析
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#monitor" class="md-nav__link">
+    Monitor 模块错误场景分析
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#exchanger" class="md-nav__link">
+    Exchanger 模块设计
+  </a>
+  
+    <nav class="md-nav" aria-label="Exchanger 模块设计">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    架构图
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    恢复机制
+  </a>
+  
+    <nav class="md-nav" aria-label="恢复机制">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_10" class="md-nav__link">
+    未提交的跨链交易
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_11" class="md-nav__link">
+    未执行的跨链交易
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#monitor_1" class="md-nav__link">
+    Monitor 模块设计
+  </a>
+  
+    <nav class="md-nav" aria-label="Monitor 模块设计">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_12" class="md-nav__link">
+    接口设计
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_13" class="md-nav__link">
+    错误处理
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_14" class="md-nav__link">
+    主备模块设计
+  </a>
+  
+    <nav class="md-nav" aria-label="主备模块设计">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_15" class="md-nav__link">
+    接口设计
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_16" class="md-nav__link">
+    错误处理
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#executor_1" class="md-nav__link">
+    Executor模块设计
+  </a>
+  
+    <nav class="md-nav" aria-label="Executor模块设计">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_17" class="md-nav__link">
+    接口设计
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_18" class="md-nav__link">
+    错误处理
+  </a>
+  
+    <nav class="md-nav" aria-label="错误处理">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_19" class="md-nav__link">
+    提交交易到应用链
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#syncer" class="md-nav__link">
+    Syncer 模块设计
+  </a>
+  
+    <nav class="md-nav" aria-label="Syncer 模块设计">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_20" class="md-nav__link">
+    接口设计
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_21" class="md-nav__link">
+    恢复处理
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_22" class="md-nav__link">
+    插件设计
+  </a>
+  
+    <nav class="md-nav" aria-label="插件设计">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_23" class="md-nav__link">
+    概述
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#plugin" class="md-nav__link">
+    Plugin接口设计
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_24" class="md-nav__link">
+    设计说明
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_25" class="md-nav__link">
+    跨链合约设计
+  </a>
+  
+    <nav class="md-nav" aria-label="跨链合约设计">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#broker" class="md-nav__link">
+    Broker合约
+  </a>
+  
+    <nav class="md-nav" aria-label="Broker合约">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_26" class="md-nav__link">
+    交易序号
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_27" class="md-nav__link">
+    历史交易
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_28" class="md-nav__link">
+    错误处理
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_29" class="md-nav__link">
+    大规模跨链
+  </a>
+  
+    <nav class="md-nav" aria-label="大规模跨链">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_30" class="md-nav__link">
+    概述
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_31" class="md-nav__link">
+    详细设计
+  </a>
+  
+    <nav class="md-nav" aria-label="详细设计">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_32" class="md-nav__link">
+    路由传输
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dht" class="md-nav__link">
+    DHT
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ibtp" class="md-nav__link">
+    IBTP验证
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../privacy_protection/" class="md-nav__link">
+        隐私保护方案
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rate-limiter/" class="md-nav__link">
+        API流控设计
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_1_7" type="checkbox" id="__nav_1_7" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_1_7" tabindex="0" aria-expanded="false">
+          运维
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="运维" data-md-level="2">
+        <label class="md-nav__title" for="__nav_1_7">
+          <span class="md-nav__icon md-icon"></span>
+          运维
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operation/node_log_view/" class="md-nav__link">
+        查看日志
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operation/node_status_check/" class="md-nav__link">
+        节点状态检测
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operation/exception_problem_handling/" class="md-nav__link">
+        异常问题处
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_1_8" type="checkbox" id="__nav_1_8" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_1_8" tabindex="0" aria-expanded="false">
+          版本发布记录
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="版本发布记录" data-md-level="2">
+        <label class="md-nav__title" for="__nav_1_8">
+          <span class="md-nav__icon md-icon"></span>
+          版本发布记录
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/bitxhub_v1.5.0/" class="md-nav__link">
+        BitXHub v1.5.0
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/bitxhub_v1.4.0/" class="md-nav__link">
+        BitXHub v1.4.0
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/bitxhub_v1.3.0/" class="md-nav__link">
+        BitXHub v1.3.0
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../community_introduction/" class="md-nav__link">
+        社区介绍
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../join_us/" class="md-nav__link">
+        加入我们
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../faq/" class="md-nav__link">
+        FAQ
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_2" type="checkbox" id="__nav_2" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_2" tabindex="0" aria-expanded="false">
+          Goduck
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Goduck" data-md-level="1">
+        <label class="md-nav__title" for="__nav_2">
+          <span class="md-nav__icon md-icon"></span>
+          Goduck
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../goduck/" class="md-nav__link">
+        Getting started
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_3" type="checkbox" id="__nav_3" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_3" tabindex="0" aria-expanded="false">
+          Premo
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Premo" data-md-level="1">
+        <label class="md-nav__title" for="__nav_3">
+          <span class="md-nav__icon md-icon"></span>
+          Premo
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../premo/usage/" class="md-nav__link">
+        使用文档
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_4" type="checkbox" id="__nav_4" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4" tabindex="0" aria-expanded="false">
+          SDK文档
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="SDK文档" data-md-level="1">
+        <label class="md-nav__title" for="__nav_4">
+          <span class="md-nav__icon md-icon"></span>
+          SDK文档
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../sdk/gosdk/" class="md-nav__link">
+        GoSDK使用文档
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../sdk/javasdk/" class="md-nav__link">
+        JavaSDK使用
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../sdk/jssdk/" class="md-nav__link">
+        JsSDK使用文档
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5" type="checkbox" id="__nav_5" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5" tabindex="0" aria-expanded="false">
+          跨链浏览器体验指南
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="跨链浏览器体验指南" data-md-level="1">
+        <label class="md-nav__title" for="__nav_5">
+          <span class="md-nav__icon md-icon"></span>
+          跨链浏览器体验指南
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../scan/" class="md-nav__link">
+        使用文档
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../scan/deploy_pier_testnet/" class="md-nav__link">
+        跨链网关接入
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    整体架构
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    处理流程
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    模块依赖关系
+  </a>
+  
+    <nav class="md-nav" aria-label="模块依赖关系">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    在中继链模式下
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    在直连模式下
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    错误场景处理
+  </a>
+  
+    <nav class="md-nav" aria-label="错误场景处理">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#executor" class="md-nav__link">
+    Executor 开源版本错误分析
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#monitor" class="md-nav__link">
+    Monitor 模块错误场景分析
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#exchanger" class="md-nav__link">
+    Exchanger 模块设计
+  </a>
+  
+    <nav class="md-nav" aria-label="Exchanger 模块设计">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    架构图
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    恢复机制
+  </a>
+  
+    <nav class="md-nav" aria-label="恢复机制">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_10" class="md-nav__link">
+    未提交的跨链交易
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_11" class="md-nav__link">
+    未执行的跨链交易
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#monitor_1" class="md-nav__link">
+    Monitor 模块设计
+  </a>
+  
+    <nav class="md-nav" aria-label="Monitor 模块设计">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_12" class="md-nav__link">
+    接口设计
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_13" class="md-nav__link">
+    错误处理
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_14" class="md-nav__link">
+    主备模块设计
+  </a>
+  
+    <nav class="md-nav" aria-label="主备模块设计">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_15" class="md-nav__link">
+    接口设计
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_16" class="md-nav__link">
+    错误处理
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#executor_1" class="md-nav__link">
+    Executor模块设计
+  </a>
+  
+    <nav class="md-nav" aria-label="Executor模块设计">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_17" class="md-nav__link">
+    接口设计
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_18" class="md-nav__link">
+    错误处理
+  </a>
+  
+    <nav class="md-nav" aria-label="错误处理">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_19" class="md-nav__link">
+    提交交易到应用链
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#syncer" class="md-nav__link">
+    Syncer 模块设计
+  </a>
+  
+    <nav class="md-nav" aria-label="Syncer 模块设计">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_20" class="md-nav__link">
+    接口设计
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_21" class="md-nav__link">
+    恢复处理
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_22" class="md-nav__link">
+    插件设计
+  </a>
+  
+    <nav class="md-nav" aria-label="插件设计">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_23" class="md-nav__link">
+    概述
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#plugin" class="md-nav__link">
+    Plugin接口设计
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_24" class="md-nav__link">
+    设计说明
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_25" class="md-nav__link">
+    跨链合约设计
+  </a>
+  
+    <nav class="md-nav" aria-label="跨链合约设计">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#broker" class="md-nav__link">
+    Broker合约
+  </a>
+  
+    <nav class="md-nav" aria-label="Broker合约">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_26" class="md-nav__link">
+    交易序号
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_27" class="md-nav__link">
+    历史交易
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_28" class="md-nav__link">
+    错误处理
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_29" class="md-nav__link">
+    大规模跨链
+  </a>
+  
+    <nav class="md-nav" aria-label="大规模跨链">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_30" class="md-nav__link">
+    概述
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_31" class="md-nav__link">
+    详细设计
+  </a>
+  
+    <nav class="md-nav" aria-label="详细设计">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_32" class="md-nav__link">
+    路由传输
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dht" class="md-nav__link">
+    DHT
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ibtp" class="md-nav__link">
+    IBTP验证
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+
+<h1 id="_1">跨链网关设计方案</h1>
+<h2 id="_2">整体架构</h2>
+<p>在中继链的设计中，对于跨链网关的主要功能作了简要的介绍。本文主要详细介绍跨链网关的主要设计架构思想。</p>
+<p>从跨链网关的**功能**上来说，设计上需要解决的难点包括以下几点：</p>
+<ol>
+<li>
+<p><strong>跨链网关需要对接不同架构的区块链，如何简化跨链网关接入不同区块链的跨链网关设计上需要考虑的问题。</strong></p>
+</li>
+<li>
+<p><strong>跨链网关需要支持中继模式（直接和中继链连接）和直连模式（直接和其他的跨链网关进行连接），如何在不同模式间切换时设计上需要考虑的问题。</strong></p>
+</li>
+</ol>
+<p><strong>从总体架构来说，跨链网关根据不同的功能采取了模块划分的方式，主要的功能模块有Monitor，Executor，Exchanger</strong>，Validate Engine，Appchain Manager，Network等。</p>
+<p><img alt="" src="../../../assets/pier.png" /></p>
+<h2 id="_3">处理流程</h2>
+<p>一次完整的跨链交易的处理过程如下：</p>
+<p>A．Monitor监听</p>
+<p>跨链网关PA启动之后，Appchain A发起一笔跨链交易，Monitor模块监听到该跨链交易，跨链网关对于该跨链交易做出检查之后，保存相应的跨链交易。</p>
+<p>B．Exchanger转发</p>
+<p>Exchanger获取Monitor收到的跨链交易，作相应的检查后，进行转发。转发过程中，根据跨链交易的目的链ID以及连接的是中继链还是直连的其他跨链网关等信息，转发到正确的路由路径。</p>
+<ol>
+<li>中继链模式</li>
+</ol>
+<p>通过中继链的SDK，提交跨链交易到中继链的内置合约上，中继链记录并执行验证，转发等操作。</p>
+<ol>
+<li>直连模式</li>
+</ol>
+<p>通过P2P网络连接其他跨链网关，通过跨链交易的目的链ID来转发到相应的跨链网关。</p>
+<p>C. Exchanger接受外部跨链交易</p>
+<ol>
+<li>中继链模式</li>
+</ol>
+<p>Exchanger 的子模块Lite和Syncer负责同步中继链的区块头和跨链交易的信息，对于验证通过的跨链交易，Exchanger进行转送到Executor中。</p>
+<ol>
+<li>直连模式</li>
+</ol>
+<p>Exchanger通过P2P网络收到对方跨链网关发送的跨链交易，并作出相应的验证操作。验证通过的跨链交易转送到Executor中。</p>
+<p>Executor提交跨链交易到应用链上，并根据执行的结果，构造返回的回执类型的IBTP包，转送到Exchanger进行下一步的转发工作。</p>
+<p>C．跨链交易在目的链执行之后，返回回执信息。</p>
+<ol>
+<li>中继链模式</li>
+</ol>
+<p>Exchanger 的子模块Lite和Syncer负责同步中继链的区块头和跨链交易的信息，对于验证通过的跨链交易和回执信息，Exchanger进行转送到Executor中。</p>
+<ol>
+<li>直连模式</li>
+</ol>
+<p>Exchanger通过P2P网络收到对方跨链网关发送的跨链交易，并作出相应的验证操作。验证通过的跨链交易或者回执转送到Executor中。</p>
+<p>以上，就是一次完整的跨链交易的执行过程。</p>
+<h2 id="_4">模块依赖关系</h2>
+<h3 id="_5">在中继链模式下</h3>
+<p><img alt="" src="../../../assets/pier2.png" /></p>
+<h3 id="_6">在直连模式下</h3>
+<p><img alt="" src="../../../assets/pier3.png" /></p>
+<h2 id="_7">错误场景处理</h2>
+<p>在我们的设计中，极端情况下，跨链网关可以在没有保存任何跨链相关的数据就能正确启动。当然这需要不断的恢复之前的数据，重启的网络通信代价比较大。为了减少网络传输的启动负担，我们在对于一些关键的跨链信息还是进行了数据库的保存操作。</p>
+<h3 id="executor">Executor 开源版本错误分析</h3>
+<p><strong>中继链清除数据</strong></p>
+<p>中继链清除数据之后：</p>
+<ol>
+<li>如果A链的跨链网关不重启，再从其他链（如B链）发来交易B-1。Exchanger 模块必定是忽略这些交易的。这种情况下只需多发几条交易覆盖前面序号的跨链交易即可。</li>
+</ol>
+<p><strong>但是如果从该跨链网关发送新的跨链交易到中继链，中继链会有序号不对的报错。但是跨链网关对这部分还没有相应的错误处理机制。</strong></p>
+<ol>
+<li>如果A链的跨链网关重启</li>
+</ol>
+<p>执行模块对比两边的最新序号，无法进行有效操作。因为已经有跨链交易写入应用链的账本了，再次执行的话可能会有潜在的风险（比如转账的操作）</p>
+<p><strong>合约清除数据</strong></p>
+<p>合约清除数据之后</p>
+<ol>
+<li>如果跨链网关不重启，执行模块内存中还是正确的序号。</li>
+</ol>
+<p>接受其他链的交易，执行模块会认为正常——但是提交到合约上时会有序号错误的出错情况，从而执行模块构造跨链交易失败的回执（来源链上可能会采取回滚操作）。后续的执行全部都会是这种失败的情况。</p>
+<ol>
+<li>如果跨链网关重启</li>
+</ol>
+<p>执行模块查询的最新序号为 0 ，“其他方”可能为5。该种情况会重新上链执行，但是发回的回执信息会**因为序号错乱被“其他方”拒绝**。（潜在风险是重新执行的结果和之前的不一致）但是覆盖完之前的序号之后，能够正常跨链。</p>
+<h3 id="monitor">Monitor 模块错误场景分析</h3>
+<p><strong>中继链清除数据</strong></p>
+<p>中继链清除数据之后，分两种情况分析</p>
+<ol>
+<li>
+<p>如果跨链网关不重启，插件出现新的交易的话，Monitor 正常抛给其他模块，发送到中继链，会因为 IBTP的 Index 被拒绝执行。
+按照现在的情况，会不断重试</p>
+</li>
+<li>
+<p>如果跨链网关重启，中继链记录的 Index 值清零。Monitor 按照应用链记录的交易全部重发。如果目的链的记录没有清空的话，之前处理过的会被应用链拒绝，后续可以正常工作；如果目的链记录清空的话，会造成交易重复执行（看场景能不能接受重复执行）</p>
+</li>
+</ol>
+<p><strong>合约清除数据</strong></p>
+<p>合约清空</p>
+<ol>
+<li>
+<p>Pier 不重启，新的交易过来的话，会被Monitor 模块拒绝（可能需要多发几笔无用交易覆盖），之后能够重新工作。</p>
+</li>
+<li>
+<p>Pier 重启的话，Monitor 查询的交易为空，中继链却有记录，Monitor 没有有效的处理手段，必须有外部来推送新交易。</p>
+</li>
+</ol>
+<h2 id="exchanger">Exchanger 模块设计</h2>
+<p>在新的设计中，统一由Exchanger模块维护 Index 相关的信息，需要满足以下的几个功能点。</p>
+<ol>
+<li>
+<p>接受来自 Monitor模块的交易并校验index，校验成功后交与 Syncer 模块提交给中继链执行IBTP；</p>
+</li>
+<li>
+<p>接受来自 Syncer 模块的交易并校验 index，校验成功交与Excuter模块提交给应用链执行IBTP； 然后处理IBTP回执。</p>
+</li>
+<li>
+<p>对于丢失的IBTP交易，要求 Syncer 和 Monitor 提供按照 IBTP_ID  的查询方式；</p>
+</li>
+<li>
+<p>对于丢失的IBTP回执，要求 Executor 提供按照 IBTP_ID  的查询方式；</p>
+</li>
+</ol>
+<p>错误处理</p>
+<p>由于Exchanger作为中继链和应用链的模块中的转发模块，对Index的校验的要求非常高，要求一定要根据From按序进行。</p>
+<p><strong>中继链 -&gt; 跨链网关</strong></p>
+<p>如果Exchanger模块收到了Sycner来的跨链交易，执行以下操作：</p>
+<p>比较收到的IBTP的序号 Index1 和内存中维护的序号信息 Index2 ：</p>
+<ol>
+<li>
+<p>Index1 = Index2 + 1，是正常处理的逻辑</p>
+</li>
+<li>
+<p>Index1 &lt; Index2 + 1</p>
+</li>
+</ol>
+<p>说明Agent重复提交了该IBTP，直接抛弃该IBTP即可。</p>
+<ol>
+<li>Index1 &gt; Index2 + 1</li>
+</ol>
+<p>说明Sycner漏掉了某些IBTP没有发送，按照漏掉的 IBTP 的 IBTP_ID ，调用Agent的查询接口恢复漏掉的 IBTP 即可。</p>
+<p><strong>跨链网关 -&gt; 中继链</strong></p>
+<p>如果Exchanger模块收到了从Monitor来的跨链交易，执行以下操作：</p>
+<p>比较收到的IBTP的序号 Index1 和内存中维护的序号信息 Index2 ：</p>
+<ol>
+<li>
+<p>Index1 = Index2 + 1，是正常处理的逻辑</p>
+</li>
+<li>
+<p>Index1 &lt; Index2 + 1</p>
+</li>
+</ol>
+<p>说明Monitor重复提交了该IBTP，直接抛弃该IBTP即可。</p>
+<ol>
+<li>Index1 &gt; Index2 + 1</li>
+</ol>
+<p>说明Monitor漏掉了某些IBTP没有发送，按照漏掉的 IBTP 的 IBTP_ID ，调用Monitor的查询接口恢复漏掉的 IBTP 即可。</p>
+<p>如果在恢复IBTP的过程中出错，则交由相应模块一直retry（不考虑中继链和应用链删除数据的情况）。</p>
+<h3 id="_8">架构图</h3>
+<p><img alt="" src="../../../assets/pier4.png" /></p>
+<h3 id="_9">恢复机制</h3>
+<h4 id="_10">未提交的跨链交易</h4>
+<p><img alt="" src="../../../assets/pier5.png" /></p>
+<p>pier在宕机重启后，需要把应用链中未提交到中继链的跨链交易提交到中继链，那么需要进行以下步骤：</p>
+<ol>
+<li>
+<p>从Monitor模块获取应用链当前的跨链交易信息，合约中使用outterMeta保存</p>
+</li>
+<li>
+<p>从Sync模块中获取已经提交到中继链的跨链交易信息，中继链中使用interchainMeta保存</p>
+</li>
+<li>
+<p>遍历outterMeta和interchainMeta对比还没提交到中继链的跨链交易，然后调用Monitor模块获取相应的跨链交易并提交到中继链</p>
+</li>
+</ol>
+<h4 id="_11">未执行的跨链交易</h4>
+<p><img alt="" src="../../../assets/pier6.png" /></p>
+<p>在 pier 宕机重启之后，有三种类型的未执行交易：</p>
+<ul>
+<li>从其他链发过来的跨链交易未执行</li>
+</ul>
+<p>由于网关都是按照中继链高度顺序执行的，这部分不用特殊的恢复机制。重启之后 Syncer 从上次记录的高度重新执行。</p>
+<ul>
+<li>已经执行的跨链交易，但是回执未发回去</li>
+</ul>
+<p>通过 Executor 模块获取 InnerMeta，再从 Syncer 获取 SourceReceiptCounter</p>
+<p>遍历 InnerMeta 和 SourceReceiptCounter 对比能够知道那些交易已经执行但是回执还没返回给中继链，并通过 Executor 模块去应用链获取IBTP 回执。</p>
+<ul>
+<li>还未执行的Callback 交易（对应自己已经发出的带Callback的跨链交易）</li>
+</ul>
+<p>由于跨链交易回执也是一种**跨链交易，中继链会打包在 InterchainWrapper中，跨链网关按照顺序来自然会执行到，不用额外的恢复机制。**</p>
+<h2 id="monitor_1">Monitor 模块设计</h2>
+<p>Monitor不再维护index相关的信息，由Exchanger统一进行维护。需要满足一下的几个功能点：</p>
+<ol>
+<li>
+<p>通过插件监听区块链上的跨链交易</p>
+</li>
+<li>
+<p>提供查询IBTP的接口（根据ibtp id）</p>
+</li>
+<li>
+<p>提供查询应用链上跨链交易Meta信息的接口</p>
+</li>
+</ol>
+<h3 id="_12">接口设计</h3>
+<div class="highlight"><pre><span></span><code><span class="kd">type</span><span class="w"> </span><span class="nx">Monitor</span><span class="w"> </span><span class="kd">interface</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Start starts the service of monitor</span>
+<span class="w">    </span><span class="nx">Start</span><span class="p">()</span><span class="w"> </span><span class="kt">error</span>
+
+<span class="w">    </span><span class="c1">// Stop stops the service of monitor</span>
+<span class="w">    </span><span class="nx">Stop</span><span class="p">()</span><span class="w"> </span><span class="kt">error</span>
+
+<span class="w">    </span><span class="c1">// listen on interchain ibtp from appchain</span>
+<span class="w">    </span><span class="nx">ListenIBTP</span><span class="p">()</span><span class="w"> </span><span class="o">&lt;-</span><span class="kd">chan</span><span class="w"> </span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">IBTP</span>
+
+<span class="w">    </span><span class="c1">// query historical ibtp by its id</span>
+<span class="w">    </span><span class="nx">QueryIBTP</span><span class="p">(</span><span class="nx">id</span><span class="w"> </span><span class="kt">string</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">IBTP</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span>
+
+<span class="w">    </span><span class="c1">// QueryOuterMeta queries latest index map of ibtps throwed on appchain</span>
+<span class="w">    </span><span class="nx">QueryOuterMeta</span><span class="p">()</span><span class="w"> </span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">uint64</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="_13">错误处理</h3>
+<ol>
+<li>
+<p>应用链监听出问题</p>
+</li>
+<li>
+<p>查询IBTP可能出现以下错误：</p>
+<ul>
+<li>
+<p>输入的IBTP ID格式有误</p>
+</li>
+<li>
+<p>index不存在（只要合约不动，就不会出现这个情况）</p>
+</li>
+<li>
+<p>合约调用出错，比如合约地址不对，方法名出错等（重试，需要打log进行排查或者更换配置）</p>
+</li>
+<li>
+<p>调用时网络出错（需要重试）</p>
+</li>
+</ul>
+</li>
+<li>
+<p>查询meta出错，需要retry</p>
+</li>
+</ol>
+<h2 id="_14">主备模块设计</h2>
+<p>在新的设计中，主备高可用将会成为一个单独的模块，并且在Pier的配置文件中移除主备节点编号的配置项，改为再主备节点启动时随机生成序号的方案。需要满足以下的几个功能点：</p>
+<ol>
+<li>
+<p>能够在启动时自主发现自己是主节点还是备用节点</p>
+</li>
+<li>
+<p>备用节点能够在主节点宕机的情况下主动升级成为主节点，继续完成跨链请求</p>
+</li>
+<li>
+<p>主备节点之间不会互相干扰，不会出现跨链交易的重复执行</p>
+</li>
+</ol>
+<h3 id="_15">接口设计</h3>
+<div class="highlight"><pre><span></span><code><span class="kd">type</span><span class="w"> </span><span class="nx">HAMng</span><span class="w"> </span><span class="kd">interface</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">Start</span><span class="p">()</span><span class="w"> </span><span class="kt">error</span><span class="w"> </span><span class="c1">// 启动Pier的主从模式</span>
+
+<span class="w">    </span><span class="nx">Stop</span><span class="p">()</span><span class="w">  </span><span class="kt">error</span><span class="w"> </span><span class="c1">// 停止Pier的主从模式</span>
+
+<span class="w">    </span><span class="nx">IsMain</span><span class="p">()</span><span class="w">  </span><span class="o">&lt;-</span><span class="kd">chan</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="c1">// 判断是主节点还是备用节点</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="_16">错误处理</h3>
+<p><strong>同时有两个主节点：</strong></p>
+<ol>
+<li>
+<p>如果主备两个节点同时连接中继链的一个节点，同时有两个主节点的错误不会产生；</p>
+</li>
+<li>
+<p>如果主备两个节点连接中继链的两个不同节点，有极低概率产生同时有两个主节点的错误。</p>
+</li>
+</ol>
+<p><strong>解决方案</strong>：针对该问题，新的设计将会在中继链节点收到广播询问后查询本地的主节点列表通道，如果有通道请求将会返回已有主节点的回复，并且缓冲回复给Pier，让Pier的主备节点发起新一轮的竞争。</p>
+<h2 id="executor_1">Executor模块设计</h2>
+<p>在新的设计中，Executor 不再维护 Index 相关的信息，只是作为单纯的执行器。需要满足以下的几个功能点。</p>
+<ol>
+<li>
+<p>接受来自 Exchanger 模块的交易，并提交到插件执行</p>
+</li>
+<li>
+<p>对于执行的结果，构造出新的IBTP，发回给 Exchanger 模块</p>
+</li>
+<li>
+<p>对于丢失的IBTP交易，提供按照 From + Index 的查询方式</p>
+</li>
+<li>
+<p>重启之后查询应用了上最新的已执行的 Meta 信息</p>
+</li>
+</ol>
+<h3 id="_17">接口设计</h3>
+<div class="highlight"><pre><span></span><code><span class="kd">type</span><span class="w"> </span><span class="nx">Executor</span><span class="w"> </span><span class="kd">interface</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">Start</span><span class="p">()</span><span class="w"> </span><span class="kt">error</span><span class="w"> </span><span class="c1">// 启动Executor模块</span>
+
+<span class="w">    </span><span class="nx">Stop</span><span class="p">()</span><span class="w">  </span><span class="kt">error</span><span class="w"> </span><span class="c1">// 停止Executor模块</span>
+
+<span class="w">    </span><span class="c1">// 执行IBTP并返回结果，如果没有执行结果，返回 nil</span>
+<span class="w">    </span><span class="nx">ExecuteIBTP</span><span class="p">(</span><span class="nx">ibtp</span><span class="w"> </span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">IBTP</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">IBTP</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span>
+
+<span class="w">    </span><span class="c1">// 查询最新的链上已执行的 Meta 信息</span>
+<span class="w">    </span><span class="nx">QueryInterchainMeta</span><span class="p">()</span><span class="w"> </span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">uint64</span>
+
+<span class="w">    </span><span class="c1">// 查询最新的链上已收到回调的 Meta 信息</span>
+<span class="w">    </span><span class="nx">QueryCallbackMeta</span><span class="p">()</span><span class="w"> </span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">uint64</span>
+
+<span class="w">    </span><span class="c1">// 查询历史跨链交易的执行结果的回执</span>
+<span class="w">    </span><span class="nx">QueryIBTPReceipt</span><span class="p">(</span><span class="nx">from</span><span class="w"> </span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="nx">index</span><span class="w"> </span><span class="kt">uint64</span><span class="p">,</span><span class="w"> </span><span class="nx">originalIBTP</span><span class="w"> </span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">IBTP</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">IBTP</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="_18">错误处理</h3>
+<p>执行模块相信执行传进来的IBTP是有序的，序号的维护由其他模块维护。现在该模块只需要提交交易上链即可。</p>
+<h4 id="_19">提交交易到应用链</h4>
+<p>因为跨链网关提交交易到应用链也可能会有很多情况出现，不同场景下的处理方式不一致。</p>
+<div class="highlight"><pre><span></span><code>- 因为网络出错导致提交交易无法成功（其他类型需要重试的情况）
+</code></pre></div>
+<p>这种情况执行重试即可 <strong>（但是必须确定是网络错误）</strong></p>
+<div class="highlight"><pre><span></span><code>- 因为跨链交易参数设置出错
+
+- 函数或者函数参数出错，或者ABI文件配置出错
+</code></pre></div>
+<p>这种情况下调用合约的专门的出错函数，使得该 Index 被消耗。</p>
+<div class="highlight"><pre><span></span><code>- 函数参数都正确，但是合约执行时目的合约不存在等错误
+</code></pre></div>
+<p>直接在合约记录该交易为失败，并返回，Index 被消耗。</p>
+<div class="highlight"><pre><span></span><code>- 提交上链成功，但是构造回执失败（Core打印错误）
+</code></pre></div>
+<p>由于回执IBTP是由插件进行构造的，所以跨链网关需要预设插件一定会构造回执返回出来。（跨链网关**需要对插件返回的东西进行检查，防止不必要的Panic**）</p>
+<h2 id="syncer">Syncer 模块设计</h2>
+<p>Syncer 模块负责和中继链的交互，Exchanger 有任何从中继链获取信息的需求都是通过 Syncer 模块进行。Syncer 需要提供的功能：</p>
+<ol>
+<li>
+<p>监听中继链上的跨链交易，并推送跨链交易到 Exchanger 中</p>
+</li>
+<li>
+<p>根据应用链 ID 查询中继链上的Meta信息</p>
+</li>
+<li>
+<p>根据 IBTP ID 查询中继链上跨链交易</p>
+</li>
+<li>
+<p>发送跨链交易到中继链上</p>
+</li>
+<li>
+<p>向中继链查询资产交换类型跨链交易的多签信息</p>
+</li>
+</ol>
+<h3 id="_20">接口设计</h3>
+<p>结合现在 Exchanger 的设计，Syncer 需要提供以下的接口</p>
+<div class="highlight"><pre><span></span><code><span class="kd">type</span><span class="w"> </span><span class="nx">Syncer</span><span class="w"> </span><span class="kd">interface</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// 启动Syncer模块</span>
+<span class="w">    </span><span class="nx">Start</span><span class="p">()</span><span class="w"> </span><span class="kt">error</span><span class="w"> </span>
+
+<span class="w">    </span><span class="c1">// 停止Syncer模块</span>
+<span class="w">    </span><span class="nx">Stop</span><span class="p">()</span><span class="w">  </span><span class="kt">error</span><span class="w"> </span>
+
+<span class="w">    </span><span class="c1">// 查询中继链上已收到的跨链交易的最新 Index 的Meta信息</span>
+<span class="w">    </span><span class="nx">QueryInterchainMeta</span><span class="p">()</span><span class="w"> </span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">uint64</span><span class="w"> </span>
+
+<span class="w">    </span><span class="c1">// 根据 IBTP 的 ID 查询中继链上的记录</span>
+<span class="w">    </span><span class="nx">QueryIBTP</span><span class="p">(</span><span class="nx">ibtpID</span><span class="w"> </span><span class="kt">string</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">IBTP</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span>
+
+<span class="w">    </span><span class="c1">// 监听链上抛出的跨链交易</span>
+<span class="w">    </span><span class="nx">ListenIBTP</span><span class="p">()</span><span class="w"> </span><span class="o">&lt;-</span><span class="kd">chan</span><span class="w"> </span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">IBTP</span>
+
+<span class="w">    </span><span class="c1">// 发送其他链的 IBTP 到应用链上执行。</span>
+<span class="w">    </span><span class="nx">SendIBTP</span><span class="p">(</span><span class="nx">ibtp</span><span class="w"> </span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">IBTP</span><span class="p">)</span><span class="w"> </span><span class="kt">error</span>
+
+<span class="w">    </span><span class="c1">// 从中继链获取资产交换的多签信息</span>
+<span class="w">    </span><span class="nx">GetAssetExchangeSigns</span><span class="p">(</span><span class="nx">id</span><span class="w"> </span><span class="kt">string</span><span class="p">)</span><span class="w"> </span><span class="p">([]</span><span class="kt">byte</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span>
+
+<span class="w">    </span><span class="c1">// 从中继链集群获取IBTP的多签信息</span>
+<span class="w">    </span><span class="nx">GetIBTPSigns</span><span class="p">(</span><span class="nx">ibtp</span><span class="w"> </span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">IBTP</span><span class="p">)</span><span class="w"> </span><span class="p">([]</span><span class="kt">byte</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span>
+
+<span class="w">    </span><span class="c1">// 从中继链获取已注册的应用链组</span>
+<span class="w">    </span><span class="nx">GetAppchains</span><span class="p">()</span><span class="w"> </span><span class="p">([]</span><span class="o">*</span><span class="nx">rpcx</span><span class="p">.</span><span class="nx">Appchain</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span>
+
+<span class="w">    </span><span class="c1">// 通过appchain id获取 interchain meta信息</span>
+<span class="w">    </span><span class="nx">GetInterchainById</span><span class="p">(</span><span class="nx">from</span><span class="w"> </span><span class="kt">string</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">Interchain</span>
+
+<span class="w">    </span><span class="c1">// 注册Union模式下的recover处理器</span>
+<span class="w">    </span><span class="nx">RegisterRecoverHandler</span><span class="p">(</span><span class="nx">RecoverUnionHandler</span><span class="p">)</span><span class="w"> </span><span class="kt">error</span>
+
+<span class="w">    </span><span class="c1">// 注册可拉取appchains信息的处理器</span>
+<span class="w">    </span><span class="nx">RegisterAppchainHandler</span><span class="p">(</span><span class="nx">handler</span><span class="w"> </span><span class="nx">AppchainHandler</span><span class="p">)</span><span class="w"> </span><span class="kt">error</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="_21">恢复处理</h3>
+<p>Syncer 从中继链同步到的信息，可以暂时存放在本地的存储中。需要记录的信息是：</p>
+<ol>
+<li>
+<p>上次执行到最后一个区块高度</p>
+</li>
+<li>
+<p>已经接收到的IBTP的信息</p>
+</li>
+</ol>
+<p>重启之后，有两种情况：</p>
+<ul>
+<li>
+<p>如果存储没有删除，查询到最后一个处理过的区块高度，从这个高度开始进行跨链交易的处理（可能会有部分跨链交易重复提交，但是没关系，Exchanger会忽略这些重复提交的交易）</p>
+</li>
+<li>
+<p>如果存储被删除，Syncer 重第一个区块开始同步，并提交这些区块的所有交易（这里也会由 Exchanger 模块来忽略已经执行过的交易）</p>
+</li>
+</ul>
+<h2 id="_22">插件设计</h2>
+<h3 id="_23">概述</h3>
+<p>由于现在采用区块链服务的各种应用可能在使用多种不同架构的区块链，所以如果跨链平台想要获得对接各种区块链的跨链能力的话，必然使得适配异构区块链的部分过于复杂。</p>
+<p>为了简化跨链网关对于不同架构的区块链的适配工作，我们将所有直接和应用链直接交互的部分抽象到Plugin中，Plugin为跨链网关提供必要的查询应用链状态、提交跨链交易到应用链等服务的接口，做到了对于应用链本身架构复杂性对于跨链网关是透明的。</p>
+<p>Plugin模式的一大特点是将Pier与应用链的交互模块和Pier核心模块进行解耦，从而方便更多的应用链加入跨链系统中。Plugin作为一个和Pier相对独立的一个模块，是通过Pier运行时外部启动服务的方式进行使用。为了能实现与应用链的交互能力，Plugin需要根据不同区块链的机制具体实现特定的接口。接口需要满足以下几个功能：</p>
+<ul>
+<li>
+<p>监听相应区块链上的跨链事件并传递给Pier处理；</p>
+</li>
+<li>
+<p>执行来自于其他区块链的跨链请求；</p>
+</li>
+<li>
+<p>能够查询相应区块链上跨链交易相关的元数据。</p>
+</li>
+<li>
+<p>能够查询执行跨链交易和跨链请求的历史数据</p>
+</li>
+</ul>
+<p>总的来说，采用Plugin机制的优势有如下两点：</p>
+<ul>
+<li>
+<p>方便更新，能够在不停止Pier的方式下更新Plugin；</p>
+</li>
+<li>
+<p>方便适配不同的区块链，而不用改动Pier。</p>
+</li>
+</ul>
+<h3 id="plugin">Plugin接口设计</h3>
+<p>为了减少Pier core和应用链之间的耦合，我们设计了Plugin的统一的接口，Plugin主要为Pier core提供向应用链的状态查询和资源调用的接口。具体的接口和说明如下：</p>
+<div class="highlight"><pre><span></span><code><span class="kd">type</span><span class="w"> </span><span class="nx">Client</span><span class="w"> </span><span class="kd">interface</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// 传递相应的信息进行初始化</span>
+<span class="w">    </span><span class="nx">Initialize</span><span class="p">(</span><span class="nx">configPath</span><span class="w"> </span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="nx">pierID</span><span class="w"> </span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="nx">extra</span><span class="w"> </span><span class="p">[]</span><span class="kt">byte</span><span class="p">)</span><span class="w"> </span><span class="kt">error</span>
+
+<span class="w">   </span><span class="c1">// 启动Plugin服务的接口</span>
+<span class="w">   </span><span class="nx">Start</span><span class="p">()</span><span class="w"> </span><span class="kt">error</span>
+<span class="err">​</span>
+<span class="w">   </span><span class="c1">// 停止Plugin服务的接口</span>
+<span class="w">   </span><span class="nx">Stop</span><span class="p">()</span><span class="w"> </span><span class="kt">error</span>
+<span class="err">​</span>
+<span class="w">   </span><span class="c1">// Plugin负责将区块链上产生的跨链事件转化为标准的IBTP格式，Pier通过GetIBTP接口获取跨链请求再进行处理</span>
+<span class="w">   </span><span class="nx">GetIBTP</span><span class="p">()</span><span class="w"> </span><span class="kd">chan</span><span class="w"> </span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">IBTP</span>
+<span class="err">​</span>
+<span class="w">   </span><span class="c1">// Plugin 负责执行其他链过来的跨链请求，Pier调用SubmitIBTP提交收到的跨链请求。[][]byte 为执行跨链请求的结果。</span>
+<span class="w">   </span><span class="nx">SubmitIBTP</span><span class="p">(</span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">IBTP</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">SubmitIBTPResponse</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span>
+<span class="w">   </span>
+<span class="w">   </span><span class="c1">// GetOutMessage 负责在跨链合约中查询历史跨链请求。查询键值中to指定目的链，idx指定序号，查询结果为以Plugin负责的区块链作为来源链的跨链请求。</span>
+<span class="w">   </span><span class="nx">GetOutMessage</span><span class="p">(</span><span class="nx">to</span><span class="w"> </span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="nx">idx</span><span class="w"> </span><span class="kt">uint64</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">IBTP</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span>
+<span class="err">​</span>
+<span class="w">   </span><span class="c1">// GetInMessage 负责在跨链合约中查询历史跨链请求。查询键值中from指定来源链，idx指定序号，查询结果为以Plugin负责的区块链作为目的链的跨链请求。</span>
+<span class="w">   </span><span class="nx">GetInMessage</span><span class="p">(</span><span class="nx">from</span><span class="w"> </span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="nx">idx</span><span class="w"> </span><span class="kt">uint64</span><span class="p">)</span><span class="w"> </span><span class="p">([][]</span><span class="kt">byte</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span>
+<span class="err">​</span>
+<span class="w">   </span><span class="c1">// GetInMeta 是获取跨链请求相关的Meta信息的接口。以Plugin负责的区块链为目的链的一系列跨链请求的序号信息。如果Plugin负责A链，则可能有多条链和A进行跨链，如B-&gt;A:3; C-&gt;A:5。返回的map中，key值为来源链ID，value对应该来源链已发送的最新的跨链请求的序号，如{B:3, C:5}。</span>
+<span class="w">   </span><span class="nx">GetInMeta</span><span class="p">()</span><span class="w"> </span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">uint64</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span>
+<span class="err">​</span>
+<span class="w">   </span><span class="c1">// GetOutMeta 是获取跨链请求相关的Meta信息的接口。以Plugin负责的区块链为来源链的一系列跨链请求的序号信息。如果Plugin负责A链，则A可能和多条链进行跨链，如A-&gt;B:3; A-&gt;C:5。返回的map中，key值为目的链ID，value对应已发送到该目的链的最新跨链请求的序号，如{B:3, C:5}。</span>
+<span class="w">   </span><span class="nx">GetOutMeta</span><span class="p">()</span><span class="w"> </span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">uint64</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span>
+<span class="err">​</span>
+<span class="w">   </span><span class="c1">// GetCallbackMeta 是获取跨链请求相关的Meta信息的接口。以Plugin负责的区块链为来源链的一系列跨链请求的序号信息。如果Plugin负责A链，则A可能和多条链进行跨链，如A-&gt;B:3; A-&gt;C:5；同时由于跨链请求中支持回调操作，即A-&gt;B-&gt;A为一次完整的跨链操作，我们需要记录回调请求的序号信息，如A-&gt;B-&gt;:2; A-&gt;C—&gt;A:4。返回的map中，key值为目的链ID，value对应到该目的链最新的带回调跨链请求的序号，如{B:2, C:4}。（注意 CallbackMeta序号可能和outMeta是不一致的，这是由于由A发出的跨链请求部分是没有回调的）</span>
+<span class="w">   </span><span class="nx">GetCallbackMeta</span><span class="p">()</span><span class="w"> </span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">uint64</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span>
+<span class="err">​</span>
+<span class="w">   </span><span class="c1">// CommitCallback 执行完IBTP包之后进行一些回调操作。</span>
+<span class="w">   </span><span class="nx">CommitCallback</span><span class="p">(</span><span class="nx">ibtp</span><span class="w"> </span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">IBTP</span><span class="p">)</span><span class="w"> </span><span class="kt">error</span>
+<span class="err">​</span>
+<span class="w">   </span><span class="c1">// Name 描述Plugin负责的区块链的自定义名称，一般和业务相关，如司法链等。</span>
+<span class="w">   </span><span class="nx">Name</span><span class="p">()</span><span class="w"> </span><span class="kt">string</span>
+<span class="err">​</span>
+<span class="w">   </span><span class="c1">// Type 描述Plugin负责的区块链类型，比如Fabric</span>
+<span class="w">   </span><span class="nx">Type</span><span class="p">()</span><span class="w"> </span><span class="kt">string</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="_24">设计说明</h3>
+<p>由于不同类型的区块链在架构上的不同，具体实现上述的接口必然有所不同，我们没发从代码层面仔细介绍，但是能够大概介绍一下Plugin的实现的思路。</p>
+<p>在我们的设计中，跨链网关和Plugin之间涉及到跨链交易的接口都是通过IBTP来交互的，跨链网关不需要关心在应用链上跨链请求不同的数据格式，需要处理的都是IBTP Package。所以在实现Plugin上也需要围绕IBTP Package作出一定的适配。总的来说具体需要做到如下的几点：</p>
+<ol>
+<li>
+<p>监听应用区块链上的跨链事件，并传递给Pier core进行处理。这个一般可以通过订阅区块链的事件的功能来做到。需要注意的是，Plugin需要负责跨链事件到IBTP Package的转换。Plugin重要的特点之一就是屏蔽了底层应用链不同数据格式之间的复杂性，向Pier core提供了统一的IBTP Package的数据结构，这对于Pier core的处理来说更加便捷。</p>
+</li>
+<li>
+<p>提供查询应用链跨链合约维护的跨链Meta信息接口。Pier本身是不保存跨链交易的状态信息的，需要长时间存储的跨链交易记录信息都应该在中继链和应用链上进行记录。所以Pier无论什么时候都应该可以从宕机等情况中恢复，恢复的过程也正需要这些接口进行查询。</p>
+</li>
+<li>
+<p>提交其他链上来的跨链请求。这一步是监听本应用链跨链请求的逆操作，但是Plugin和Pier core在交互上都应该是IBTP格式的Package，所以这部分功能中，Plugin需要解开IBTP package，转化为应用链可以识别的数据结构，在提交到跨链合约上进行执行。同时对于跨链交易可能的执行出错，Plugin也应该提供一定的错误处理能力。对于执行的结果，也需要为Pier core 提供统一的Response数据结构。</p>
+</li>
+</ol>
+<h2 id="_25">跨链合约设计</h2>
+<p>按照IBTP结构的设计的话，BitxHub只负责记录应用链这个粒度的跨链交易的Index。但是在Pier调用应用链智能合约执行跨链交易时，有多个智能合约的情况下，很难维护一个应用链层面的Index。</p>
+<p>所以我们考虑在各个应用链上维护两个不同的合约。一个合约负责对接跨链网关Pier，为跨链管理合约Broker；一个合约负责具体的业务场景，为业务合约。业务合约需要跨链时，要统一将跨链请求提交到Broker合约上，Broker统一和Pier进行交互。一个Broker合约可以负责对接多个业务合约。</p>
+<h3 id="broker">Broker合约</h3>
+<p>Broker有三部分主要的内容需要维护：交易序号、历史交易、错误处理</p>
+<h4 id="_26"><strong>交易序号</strong></h4>
+<p>该合约有三个跨链交易的序号需要维护：</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// key值为目的链地址to,value为发往该链的最后index</span>
+<span class="nx">mapping</span><span class="p">(</span><span class="nx">address</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">uint64</span><span class="p">)</span><span class="w"> </span><span class="nx">outerMeta</span><span class="p">;</span>
+
+<span class="c1">// key值为来源链地址from,value为从该链发过来的最后index</span>
+<span class="nx">map</span><span class="p">(</span><span class="nx">address</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">uint64</span><span class="p">)</span><span class="w"> </span><span class="nx">innerMeta</span><span class="p">;</span>
+
+<span class="c1">// key值为目的链地址to,value为该链已经执行回调的最后index</span>
+<span class="nx">map</span><span class="p">(</span><span class="nx">address</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">uint64</span><span class="p">)</span><span class="w"> </span><span class="nx">callbackrMeta</span><span class="p">;</span>
+</code></pre></div>
+<p>上述的三个序号主要能够防止重放攻击和保证跨链网关提交交易的幂等性（某些场景下跨链网关能够放心的多次提交而不用担心重复上链）。</p>
+<h4 id="_27"><strong>历史交易</strong></h4>
+<p>历史数据又可以分为两个部分，一个是自身链上发起的跨链请求（发送到其他链上去）；一个是从其他链收到的跨链交易，执行完成后的记录。</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// 目的链地址 + 交易序号作为序号，自身链上发起的跨链请求内容作为 value</span>
+<span class="nx">mapping</span><span class="p">(</span><span class="nx">address</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">uint64</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">record</span><span class="p">)</span><span class="w"> </span><span class="nx">outMessages</span><span class="p">;</span>
+
+<span class="c1">// 来源链地址 + 交易序号作为序号，其他链发起的跨链交易执行结果作为 value</span>
+<span class="nx">mapping</span><span class="p">(</span><span class="nx">address</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">uint64</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">result</span><span class="p">))</span><span class="w"> </span><span class="nx">inMessages</span><span class="p">;</span>
+</code></pre></div>
+<p>通过在 Broker 合约上记录历史数据，可以让跨链网关在重启、交易丢失等情况下恢复。以上只是伪代码的描述，具体在不同区块链的智能合约上实现时会有不同的策略。</p>
+<h3 id="_28"><strong>错误处理</strong></h3>
+<p>由于Broker 上执行跨链交易要求交易序号严格递增。这导致在某些跨链交易因为参数错误等原因无法调用到跨链交易处理函数，序号无法消耗，从而后面所有的交易都被认为是无效的情况。</p>
+<p>为了应对这种情况，我们在Broker 合约专门提供了错误处理函数。当某个跨链交易无法处理的时候，通过调用该函数可以消耗该跨链交易的序号，让后面的跨链交易能够正常进行。</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// 用来消耗执行其他链发起的跨链交易出错时的序号</span>
+<span class="kd">function</span><span class="w"> </span><span class="nx">interchainError</span><span class="p">(</span><span class="nx">address</span><span class="w"> </span><span class="nx">sourceChainID</span><span class="p">,</span><span class="w"> </span><span class="nx">uint64</span><span class="w"> </span><span class="nx">index</span><span class="p">)</span><span class="w"> </span><span class="kr">public</span><span class="w"> </span><span class="nx">returns</span><span class="p">(</span><span class="nx">bool</span><span class="p">);</span>
+
+<span class="c1">// 用来消耗执行其他链返回的回调交易出错时的序号</span>
+<span class="kd">function</span><span class="w"> </span><span class="nx">interchainConfirmError</span><span class="p">(</span><span class="nx">address</span><span class="w"> </span><span class="nx">sourceChainID</span><span class="p">,</span><span class="w"> </span><span class="nx">uint64</span><span class="w"> </span><span class="nx">index</span><span class="p">)</span><span class="w"> </span><span class="kr">public</span><span class="w"> </span><span class="nx">returns</span><span class="p">(</span><span class="nx">bool</span><span class="p">);</span>
+</code></pre></div>
+<h2 id="_29">大规模跨链</h2>
+<h3 id="_30">概述</h3>
+<p>现有的跨链网络分为**中继链+跨链网关**模式和**跨链网关直连**模式，如果要组成大规模混合跨链网络的万链互连系统，就需要跨链网关添加**分布式哈希表DHT**和**跨链交易路由**的功能。</p>
+<p><img alt="" src="../../../assets/pier7.png" />
+<strong>跨链交易路由流程：</strong></p>
+<ol>
+<li>
+<p>中继链A中应用链A‘抛出跨链事件，目的链是中继链B中的应用链B’。</p>
+</li>
+<li>
+<p>应用链A‘的跨链网关收到跨链事件，发送IBTP给中继链A，中继链A验证跨链交易的有效性，验证成功后将该笔交易打包出块。</p>
+</li>
+<li>
+<p>跨链网关A解析中继链A的区块，解析到IBTP的目的链不属于中继链A管理的应用链，随后跨链网关A根据DHT路由到目的中继链B的跨链网关B。</p>
+</li>
+<li>
+<p>跨链网关B收到IBTP，将跨链交易发送到相应的中继链。</p>
+</li>
+<li>
+<p>中继链B验证跨链交易的有效性，验证成功后将该笔交易打包出块。</p>
+</li>
+<li>
+<p>应用链B‘的跨链网关同步中继链B的区块，收到中继链B‘路由的跨链交易，发送给应用链B’执行跨链交易。</p>
+</li>
+</ol>
+<h3 id="_31">详细设计</h3>
+<p>在大规模跨链网络中，网络拓扑图如下：</p>
+<p><img alt="" src="../../../assets/pier8.png" /></p>
+<h4 id="_32">路由传输</h4>
+<p>每个跨链网关维护两个表，一个为**跨链网关路由表(PTable)**，记录应用链ID和应用链网络地址的关联关系，具体实现为DHT，如下表所示：</p>
+<table>
+<thead>
+<tr>
+<th>AppID</th>
+<th>AppAddr</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0xe6f8c9cf6e38bd506fae93b73ee5e80cc8f73667</td>
+<td>/ip4/111.132.1.111/quic/5001/p2p/QmZZFk1Tj6p25ecz98SpyHxb6joDPxR3wVPptDwuc8fue1</td>
+</tr>
+<tr>
+<td>0x8374bb1e41d4a4bb4ac465e74caa37d242825efc</td>
+<td>/ip4/171.132.1.131/quic/4002/p2p/QmNRgD6djYJERNpDpHqRn3mxjJ9SYiiGWzExNSy4sEmSNL</td>
+</tr>
+</tbody>
+</table>
+<p>另一个本地缓存的**网关中继关联表(PBTable)**，记录应用链ID和中继链的关系。如下表所示：</p>
+<table>
+<thead>
+<tr>
+<th>AppID</th>
+<th>BxhID</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0xe6f8c9cf6e38bd506fae93b73ee5e80cc8f73667</td>
+<td>bxhA</td>
+</tr>
+<tr>
+<td>0xe1sdddcf6e38bdxxxae93b73ecscs0cc8f73112</td>
+<td>bxhA</td>
+</tr>
+</tbody>
+</table>
+<p><strong>种子节点：**由每个接入到路由网络的跨链网关维护，如上图种子节点可以是PierA和PierB</strong>。**</p>
+<p><strong>Pier新增：</strong></p>
+<ol>
+<li>
+<p>Pier连接到中继链，中继链路由模块发生Add Pier动作后，将所属中继链管理的所有应用链信息广播给所属的Pier，Pier构造本地的**网关中继关联表**；</p>
+</li>
+<li>
+<p>Pier加入路由网络，连接种子节点，构造**跨链网关路由表**；</p>
+</li>
+<li>
+<p>路由网络中其它Pier收到了广播的信息，更新本地的**跨链网关路由表；**</p>
+</li>
+<li>
+<p>如果应用链方只是想加入该中继联盟的跨链网络，并不想加入整个大规模网络中，可以在应用链注册时添加字段用于判断是否支持大规模跨链。</p>
+</li>
+</ol>
+<p><strong>Pier更新：</strong></p>
+<ol>
+<li>类似Pier新增。</li>
+</ol>
+<p><strong>Pier删除：</strong></p>
+<ol>
+<li>Pier在加入路由网络后，长时间Ping_Pier无响应，**跨链网关路由表**会自动删除该Pier信息。</li>
+</ol>
+<p><strong>IBTP传输流程图：</strong></p>
+<p><img alt="" src="../../../assets/pier9.png" /></p>
+<p><strong>跨链网关路由模块接口定义：</strong></p>
+<div class="highlight"><pre><span></span><code><span class="kd">type</span><span class="w"> </span><span class="nx">Router</span><span class="w"> </span><span class="kd">interface</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Start starts the router module</span>
+<span class="w">    </span><span class="nx">Start</span><span class="p">()</span><span class="w"> </span><span class="kt">error</span>
+
+<span class="w">    </span><span class="c1">// Stop</span>
+<span class="w">    </span><span class="nx">Stop</span><span class="p">()</span><span class="w"> </span><span class="kt">error</span>
+
+<span class="w">    </span><span class="c1">//Broadcast broadcasts the registered appchain ids to the union network</span>
+<span class="w">    </span><span class="nx">Broadcast</span><span class="p">(</span><span class="nx">ids</span><span class="w"> </span><span class="p">[]</span><span class="kt">string</span><span class="p">)</span><span class="w"> </span><span class="kt">error</span>
+
+<span class="w">    </span><span class="c1">//Route sends ibtp to the union pier in target relay chain</span>
+<span class="w">    </span><span class="nx">Route</span><span class="p">(</span><span class="nx">ibtp</span><span class="w"> </span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">IBTP</span><span class="p">)</span><span class="w"> </span><span class="kt">error</span>
+
+<span class="w">    </span><span class="c1">//ExistAppchain returns if appchain id exit in route map</span>
+<span class="w">    </span><span class="nx">ExistAppchain</span><span class="p">(</span><span class="nx">id</span><span class="w"> </span><span class="kt">string</span><span class="p">)</span><span class="w"> </span><span class="kt">bool</span>
+
+<span class="w">    </span><span class="c1">//AddAppchains adds appchains to route map and broadcast them to union network</span>
+<span class="w">    </span><span class="nx">AddAppchains</span><span class="p">(</span><span class="nx">appchains</span><span class="w"> </span><span class="p">[]</span><span class="o">*</span><span class="nx">rpcx</span><span class="p">.</span><span class="nx">Appchain</span><span class="p">)</span><span class="w"> </span><span class="kt">error</span>
+<span class="p">}</span>
+</code></pre></div>
+<h4 id="dht">DHT</h4>
+<p>分布式哈希表采用S/Kademlia，相较于Kademlia提高了安全性，能够抵御不同程度的日蚀攻击、女巫攻击。</p>
+<p><img alt="" src="../../../assets/pier10.png" /></p>
+<p>libp2p提供了对应的DHT库：<a href="https://github.com/libp2p/go-libp2p-kad-dht"><strong>https://github.com/libp2p/go-libp2p-kad-dht</strong></a></p>
+<h4 id="ibtp">IBTP验证</h4>
+<p>目的中继链验证来自跨链网关的IBTP是否真正在来源中继链验证成功并且执行上链，提供以下两种证明方式：</p>
+<p><strong>多重签名：</strong></p>
+<p>来源中继链产生的跨链交易需要来源中继链节点的多重签名，最少签名阈值为Quorum数量，跨链网关路由传递IBTP的时候把对应多重签名信息带上。</p>
+<p><strong>SPV证明：（需要同步全网中继链的区块头）</strong></p>
+<p>目的中继链通过跨链网关同步来源中继链的区块头，验证IBTP的跨链交易是否存在于来源链的区块内，验证成功即表示IBTP是有效的。</p>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+        </div>
+        
+          <a href="#" class="md-top md-icon" data-md-component="top" hidden>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12Z"/></svg>
+            Back to top
+          </a>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    <script id="__config" type="application/json">{"base": "../../..", "features": ["navigation.tabs", "navigation.top", "search.highlight"], "search": "../../../assets/javascripts/workers/search.e5c33ebb.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.51d95adb.min.js"></script>
+      
+    
+  </body>
+</html>

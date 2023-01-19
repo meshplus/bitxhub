@@ -1,0 +1,2181 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../../dev/validator/">
+      
+      
+        <link rel="next" href="../interchain_transaction/">
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.4.2, mkdocs-material-9.0.5">
+    
+    
+      
+        <title>共识算法插件方案 - Bitxhub Document</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.558e4712.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.2505c338.min.css">
+      
+      
+
+    
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue">
+  
+    
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="Bitxhub Document" class="md-header__button md-logo" aria-label="Bitxhub Document" data-md-component="logo">
+      
+  <img src="../../../assets/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Bitxhub Document
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              共识算法插件方案
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/meshplus/bitxhub" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    meshplus/bitxhub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-tabs__inner md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+    
+  
+
+
+  
+  
+  
+    
+
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../introduction/summary/" class="md-tabs__link md-tabs__link--active">
+        Home
+      </a>
+    </li>
+  
+
+  
+
+      
+        
+  
+  
+
+
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../goduck/" class="md-tabs__link">
+        Goduck
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+
+
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../premo/usage/" class="md-tabs__link">
+        Premo
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+
+
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../sdk/gosdk/" class="md-tabs__link">
+        SDK文档
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+
+
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../scan/" class="md-tabs__link">
+        跨链浏览器体验指南
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="Bitxhub Document" class="md-nav__button md-logo" aria-label="Bitxhub Document" data-md-component="logo">
+      
+  <img src="../../../assets/logo.png" alt="logo">
+
+    </a>
+    Bitxhub Document
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/meshplus/bitxhub" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    meshplus/bitxhub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+  
+  
+    
+  
+  
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_1" type="checkbox" id="__nav_1" checked>
+      
+      
+      
+        <label class="md-nav__link" for="__nav_1" tabindex="0" aria-expanded="true">
+          Home
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Home" data-md-level="1">
+        <label class="md-nav__title" for="__nav_1">
+          <span class="md-nav__icon md-icon"></span>
+          Home
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_1_1" type="checkbox" id="__nav_1_1" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_1_1" tabindex="0" aria-expanded="false">
+          产品介绍
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="产品介绍" data-md-level="2">
+        <label class="md-nav__title" for="__nav_1_1">
+          <span class="md-nav__icon md-icon"></span>
+          产品介绍
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../introduction/summary/" class="md-nav__link">
+        平台介绍
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../introduction/conception/" class="md-nav__link">
+        基本概念
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../introduction/arch/" class="md-nav__link">
+        技术架构
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../introduction/advantage/" class="md-nav__link">
+        产品优势
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../introduction/scenaries/" class="md-nav__link">
+        应用场景
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quick_start/" class="md-nav__link">
+        快速开始
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_1_3" type="checkbox" id="__nav_1_3" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_1_3" tabindex="0" aria-expanded="false">
+          部署使用
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="部署使用" data-md-level="2">
+        <label class="md-nav__title" for="__nav_1_3">
+          <span class="md-nav__icon md-icon"></span>
+          部署使用
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/env/" class="md-nav__link">
+        环境准备
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/overall_description/" class="md-nav__link">
+        整体说明
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_1_3_3" type="checkbox" id="__nav_1_3_3" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_1_3_3" tabindex="0" aria-expanded="false">
+          单中继架构部署
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="单中继架构部署" data-md-level="3">
+        <label class="md-nav__title" for="__nav_1_3_3">
+          <span class="md-nav__icon md-icon"></span>
+          单中继架构部署
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/single_bitxhub/deploy_bitxhub/" class="md-nav__link">
+        中继链部署
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/single_bitxhub/deploy_pier/" class="md-nav__link">
+        跨链网关部署
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/direct_mode_pier/pier_direct_mode_deploy/" class="md-nav__link">
+        跨链网关直连模式部署
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/status_verification/" class="md-nav__link">
+        系统验证
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_1_4" type="checkbox" id="__nav_1_4" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_1_4" tabindex="0" aria-expanded="false">
+          产品功能
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="产品功能" data-md-level="2">
+        <label class="md-nav__title" for="__nav_1_4">
+          <span class="md-nav__icon md-icon"></span>
+          产品功能
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../function/appchain/" class="md-nav__link">
+        应用链管理
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../function/cert_manage/" class="md-nav__link">
+        证书管理
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../function/cross_invoke/" class="md-nav__link">
+        跨链合约调用
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_1_5" type="checkbox" id="__nav_1_5" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_1_5" tabindex="0" aria-expanded="false">
+          开发手册
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="开发手册" data-md-level="2">
+        <label class="md-nav__title" for="__nav_1_5">
+          <span class="md-nav__icon md-icon"></span>
+          开发手册
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/cross_contract/" class="md-nav__link">
+        跨链合约开发
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/plugin/" class="md-nav__link">
+        应用链插件编写
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/rule/" class="md-nav__link">
+        验证规则编写
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/validator/" class="md-nav__link">
+        验证者信息生成
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+    
+  
+  
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_1_6" type="checkbox" id="__nav_1_6" checked>
+      
+      
+      
+        <label class="md-nav__link" for="__nav_1_6" tabindex="0" aria-expanded="true">
+          设计文档
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="设计文档" data-md-level="2">
+        <label class="md-nav__title" for="__nav_1_6">
+          <span class="md-nav__icon md-icon"></span>
+          设计文档
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          共识算法插件方案
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        共识算法插件方案
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1" class="md-nav__link">
+    1. 开发要求
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2" class="md-nav__link">
+    2. 准备
+  </a>
+  
+    <nav class="md-nav" aria-label="2. 准备">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-order" class="md-nav__link">
+    2.1 Order接口
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-config" class="md-nav__link">
+    2.2 Config参数
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3" class="md-nav__link">
+    3. 程序目的
+  </a>
+  
+    <nav class="md-nav" aria-label="3. 程序目的">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31" class="md-nav__link">
+    3.1 开始编写你的程序
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-node" class="md-nav__link">
+    3.2 Node对象
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#33-node" class="md-nav__link">
+    3.3 Node主要方法
+  </a>
+  
+    <nav class="md-nav" aria-label="3.3 Node主要方法">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#331-start" class="md-nav__link">
+    3.3.1 Start方法
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#332-stop" class="md-nav__link">
+    3.3.2 Stop方法
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#333-prepare" class="md-nav__link">
+    3.3.3 Prepare方法
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#334-commit" class="md-nav__link">
+    3.3.4 Commit方法
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#335-step" class="md-nav__link">
+    3.3.5 Step方法
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#336-ready" class="md-nav__link">
+    3.3.6 Ready方法
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#337-reportstate" class="md-nav__link">
+    3.3.7 ReportState方法
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#338-quorum" class="md-nav__link">
+    3.3.8 Quorum方法
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#339-getpendingnoncebyaccount" class="md-nav__link">
+    3.3.9 GetPendingNonceByAccount方法
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3310-delnode" class="md-nav__link">
+    3.3.10 DelNode方法
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4" class="md-nav__link">
+    4. 接入共识算法
+  </a>
+  
+    <nav class="md-nav" aria-label="4. 接入共识算法">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41" class="md-nav__link">
+    4.1 配置文件
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42" class="md-nav__link">
+    4.2 项目结构
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-plugin" class="md-nav__link">
+    4.3 编译Plugin
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../interchain_transaction/" class="md-nav__link">
+        跨链事务方案
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pier/" class="md-nav__link">
+        跨链网关设计方案
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../privacy_protection/" class="md-nav__link">
+        隐私保护方案
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rate-limiter/" class="md-nav__link">
+        API流控设计
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_1_7" type="checkbox" id="__nav_1_7" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_1_7" tabindex="0" aria-expanded="false">
+          运维
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="运维" data-md-level="2">
+        <label class="md-nav__title" for="__nav_1_7">
+          <span class="md-nav__icon md-icon"></span>
+          运维
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operation/node_log_view/" class="md-nav__link">
+        查看日志
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operation/node_status_check/" class="md-nav__link">
+        节点状态检测
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operation/exception_problem_handling/" class="md-nav__link">
+        异常问题处
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_1_8" type="checkbox" id="__nav_1_8" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_1_8" tabindex="0" aria-expanded="false">
+          版本发布记录
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="版本发布记录" data-md-level="2">
+        <label class="md-nav__title" for="__nav_1_8">
+          <span class="md-nav__icon md-icon"></span>
+          版本发布记录
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/bitxhub_v1.5.0/" class="md-nav__link">
+        BitXHub v1.5.0
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/bitxhub_v1.4.0/" class="md-nav__link">
+        BitXHub v1.4.0
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/bitxhub_v1.3.0/" class="md-nav__link">
+        BitXHub v1.3.0
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../community_introduction/" class="md-nav__link">
+        社区介绍
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../join_us/" class="md-nav__link">
+        加入我们
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../faq/" class="md-nav__link">
+        FAQ
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_2" type="checkbox" id="__nav_2" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_2" tabindex="0" aria-expanded="false">
+          Goduck
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Goduck" data-md-level="1">
+        <label class="md-nav__title" for="__nav_2">
+          <span class="md-nav__icon md-icon"></span>
+          Goduck
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../goduck/" class="md-nav__link">
+        Getting started
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_3" type="checkbox" id="__nav_3" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_3" tabindex="0" aria-expanded="false">
+          Premo
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Premo" data-md-level="1">
+        <label class="md-nav__title" for="__nav_3">
+          <span class="md-nav__icon md-icon"></span>
+          Premo
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../premo/usage/" class="md-nav__link">
+        使用文档
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_4" type="checkbox" id="__nav_4" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4" tabindex="0" aria-expanded="false">
+          SDK文档
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="SDK文档" data-md-level="1">
+        <label class="md-nav__title" for="__nav_4">
+          <span class="md-nav__icon md-icon"></span>
+          SDK文档
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../sdk/gosdk/" class="md-nav__link">
+        GoSDK使用文档
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../sdk/javasdk/" class="md-nav__link">
+        JavaSDK使用
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../sdk/jssdk/" class="md-nav__link">
+        JsSDK使用文档
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5" type="checkbox" id="__nav_5" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5" tabindex="0" aria-expanded="false">
+          跨链浏览器体验指南
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="跨链浏览器体验指南" data-md-level="1">
+        <label class="md-nav__title" for="__nav_5">
+          <span class="md-nav__icon md-icon"></span>
+          跨链浏览器体验指南
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../scan/" class="md-nav__link">
+        使用文档
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../scan/deploy_pier_testnet/" class="md-nav__link">
+        跨链网关接入
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1" class="md-nav__link">
+    1. 开发要求
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2" class="md-nav__link">
+    2. 准备
+  </a>
+  
+    <nav class="md-nav" aria-label="2. 准备">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-order" class="md-nav__link">
+    2.1 Order接口
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-config" class="md-nav__link">
+    2.2 Config参数
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3" class="md-nav__link">
+    3. 程序目的
+  </a>
+  
+    <nav class="md-nav" aria-label="3. 程序目的">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31" class="md-nav__link">
+    3.1 开始编写你的程序
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-node" class="md-nav__link">
+    3.2 Node对象
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#33-node" class="md-nav__link">
+    3.3 Node主要方法
+  </a>
+  
+    <nav class="md-nav" aria-label="3.3 Node主要方法">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#331-start" class="md-nav__link">
+    3.3.1 Start方法
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#332-stop" class="md-nav__link">
+    3.3.2 Stop方法
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#333-prepare" class="md-nav__link">
+    3.3.3 Prepare方法
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#334-commit" class="md-nav__link">
+    3.3.4 Commit方法
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#335-step" class="md-nav__link">
+    3.3.5 Step方法
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#336-ready" class="md-nav__link">
+    3.3.6 Ready方法
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#337-reportstate" class="md-nav__link">
+    3.3.7 ReportState方法
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#338-quorum" class="md-nav__link">
+    3.3.8 Quorum方法
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#339-getpendingnoncebyaccount" class="md-nav__link">
+    3.3.9 GetPendingNonceByAccount方法
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3310-delnode" class="md-nav__link">
+    3.3.10 DelNode方法
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4" class="md-nav__link">
+    4. 接入共识算法
+  </a>
+  
+    <nav class="md-nav" aria-label="4. 接入共识算法">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41" class="md-nav__link">
+    4.1 配置文件
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42" class="md-nav__link">
+    4.2 项目结构
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-plugin" class="md-nav__link">
+    4.3 编译Plugin
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+
+<h1 id="_1">共识算法插件</h1>
+<p>在本教程中，你将构建一个完整功能的共识服务。过程中能学习基本的概念和具体使用细节。该示例将展示如何快速、轻松地**接入自己的共识算法到BitXHub中来**。</p>
+<h2 id="1">1. 开发要求</h2>
+<ul>
+<li>
+<p>安装 <a href="https://golang.org/doc/install"><strong>go1.13+</strong></a></p>
+</li>
+<li>
+<p>设置好$GOPATH等环境</p>
+</li>
+</ul>
+<h2 id="2">2. 准备</h2>
+<p>为了更加便捷的开发共识服务接入到<code>BitXHub</code>中来，我们提供了一些接口和参数。</p>
+<h3 id="21-order">2.1 Order接口</h3>
+<p>我们规定了下面一些必要的接口，这些接口是<code>BitXHub</code>与共识服务的交互接口。</p>
+<div class="highlight"><pre><span></span><code><span class="kd">type</span><span class="w"> </span><span class="nx">Order</span><span class="w"> </span><span class="kd">interface</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">//开启共识服务</span>
+<span class="w">    </span><span class="nx">Start</span><span class="p">()</span><span class="w"> </span><span class="kt">error</span>
+
+<span class="w">    </span><span class="c1">//停止共识服务，关闭共识服务资源</span>
+<span class="w">    </span><span class="nx">Stop</span><span class="p">()</span>
+
+<span class="w">    </span><span class="c1">//交易发送到共识服务，共识服务将处理并打包该交易</span>
+<span class="w">    </span><span class="nx">Prepare</span><span class="p">(</span><span class="nx">tx</span><span class="w"> </span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">Transaction</span><span class="p">)</span><span class="w"> </span><span class="kt">error</span>
+
+<span class="w">    </span><span class="c1">//返回打包的区块</span>
+<span class="w">    </span><span class="nx">Commit</span><span class="p">()</span><span class="w"> </span><span class="kd">chan</span><span class="w"> </span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">Block</span>
+
+<span class="w">    </span><span class="c1">//从网络接收到的共识消息</span>
+<span class="w">    </span><span class="nx">Step</span><span class="p">(</span><span class="nx">ctx</span><span class="w"> </span><span class="nx">context</span><span class="p">.</span><span class="nx">Context</span><span class="p">,</span><span class="w"> </span><span class="nx">msg</span><span class="w"> </span><span class="p">[]</span><span class="kt">byte</span><span class="p">)</span><span class="w"> </span><span class="kt">error</span>
+
+<span class="w">    </span><span class="c1">//集群中产生了新Leader，系统通过该接口判断共识服务是否正常</span>
+<span class="w">    </span><span class="nx">Ready</span><span class="p">()</span><span class="w"> </span><span class="kt">bool</span>
+
+<span class="w">    </span><span class="c1">//系统会通知该接口已经持久化的区块，</span>
+<span class="w">    </span><span class="nx">ReportState</span><span class="p">(</span><span class="nx">height</span><span class="w"> </span><span class="kt">uint64</span><span class="p">,</span><span class="w"> </span><span class="nx">hash</span><span class="w"> </span><span class="nx">types</span><span class="p">.</span><span class="nx">Hash</span><span class="p">)</span>
+
+<span class="w">    </span><span class="c1">//集群中可以正常工作的最少节点数量，如在raft中要求正常节点数是N/2+1</span>
+<span class="w">    </span><span class="nx">Quorum</span><span class="p">()</span><span class="w"> </span><span class="kt">uint64</span>
+
+<span class="w">    </span><span class="c1">//获取账户最新的nonce</span>
+<span class="w">    </span><span class="nx">GetPendingNonceByAccount</span><span class="p">(</span><span class="nx">account</span><span class="w"> </span><span class="kt">string</span><span class="p">)</span><span class="w"> </span><span class="kt">uint64</span>
+
+<span class="w">    </span><span class="c1">//从共识删除指定的节点</span>
+<span class="w">    </span><span class="nx">DelNode</span><span class="p">(</span><span class="nx">delID</span><span class="w"> </span><span class="kt">uint64</span><span class="p">)</span><span class="w"> </span><span class="kt">error</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="22-config">2.2 Config参数</h3>
+<p>我们规定了下面一些参数可以从BitXHub传递给共识服务。</p>
+<div class="highlight"><pre><span></span><code><span class="kd">type</span><span class="w"> </span><span class="nx">Config</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">   </span><span class="nx">Id</span><span class="w">                 </span><span class="kt">uint64</span><span class="w"> </span><span class="c1">//节点ID</span>
+<span class="w">   </span><span class="nx">RepoRoot</span><span class="w">           </span><span class="kt">string</span><span class="w"> </span><span class="c1">//根路径</span>
+<span class="w">   </span><span class="nx">StoragePath</span><span class="w">        </span><span class="kt">string</span><span class="w"> </span><span class="c1">//存储文件路径</span>
+<span class="w">   </span><span class="nx">PluginPath</span><span class="w">         </span><span class="kt">string</span><span class="w"> </span><span class="c1">//插件文件路径</span>
+<span class="w">   </span><span class="nx">PeerMgr</span><span class="w">            </span><span class="nx">peermgr</span><span class="p">.</span><span class="nx">PeerManager</span><span class="w"> </span><span class="c1">//网络模块组件</span>
+<span class="w">   </span><span class="nx">PrivKey</span><span class="w">            </span><span class="nx">crypto</span><span class="p">.</span><span class="nx">PrivateKey</span><span class="w"> </span><span class="c1">//节点私钥</span>
+<span class="w">   </span><span class="nx">Logger</span><span class="w">             </span><span class="nx">logrus</span><span class="p">.</span><span class="nx">FieldLogger</span><span class="w"> </span><span class="c1">//日志组件</span>
+<span class="w">   </span><span class="nx">Nodes</span><span class="w">              </span><span class="kd">map</span><span class="p">[</span><span class="kt">uint64</span><span class="p">]</span><span class="nx">types</span><span class="p">.</span><span class="nx">Address</span><span class="w"> </span><span class="c1">//集群节点网络地址</span>
+<span class="w">   </span><span class="nx">Applied</span><span class="w">            </span><span class="kt">uint64</span><span class="w"> </span><span class="c1">//当前区块高度</span>
+<span class="w">   </span><span class="nx">Digest</span><span class="w">             </span><span class="kt">string</span><span class="w"> </span><span class="c1">//当前区块哈希</span>
+<span class="w">   </span><span class="nx">GetTransactionFunc</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">hash</span><span class="w"> </span><span class="nx">types</span><span class="p">.</span><span class="nx">Hash</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">Transaction</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span><span class="w"> </span><span class="c1">// 获取已经持久化的交易函数</span>
+<span class="w">   </span><span class="nx">GetBlockByHeight</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">height</span><span class="w"> </span><span class="kt">uint64</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">Block</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span><span class="w"> </span><span class="c1">// 获取指定高度的区块</span>
+<span class="w">   </span><span class="nx">GetAccountNonce</span><span class="w">  </span><span class="kd">func</span><span class="p">(</span><span class="nx">address</span><span class="w"> </span><span class="o">*</span><span class="nx">types</span><span class="p">.</span><span class="nx">Address</span><span class="p">)</span><span class="w"> </span><span class="kt">uint64</span><span class="w"> </span><span class="c1">// 获取指定账户的nonce</span>
+<span class="p">}</span>
+</code></pre></div>
+<h2 id="3">3. 程序目的</h2>
+<p>本教程以开发一个简单Solo版本的共识算法为例。</p>
+<h3 id="31">3.1 开始编写你的程序</h3>
+<p>首先选择你的工程目录，按照正常的GO程序的流程建立项目</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>go<span class="w"> </span>version<span class="w"> </span>//<span class="w"> </span>确认你安装的GO版本
+$<span class="w"> </span>mkdir<span class="w"> </span><span class="si">${</span><span class="nv">YOUR_PROJECT</span><span class="si">}</span>
+$<span class="w"> </span><span class="nb">cd</span><span class="w"> </span><span class="si">${</span><span class="nv">YOUR_PROJECT</span><span class="si">}</span>
+$<span class="w"> </span>go<span class="w"> </span>mod<span class="w"> </span>init
+</code></pre></div>
+<h3 id="32-node">3.2 Node对象</h3>
+<p>首先创建一个<code>node.go</code>文件，这个文件是共识Plugin的核心和入口，来看看<code>Node</code>具体结构</p>
+<div class="highlight"><pre><span></span><code><span class="kd">type</span><span class="w"> </span><span class="nx">Node</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">ID</span><span class="w">        </span><span class="kt">uint64</span>
+<span class="w">    </span><span class="nx">commitC</span><span class="w">   </span><span class="kd">chan</span><span class="w"> </span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">CommitEvent</span><span class="w">         </span><span class="c1">// block channel</span>
+<span class="w">    </span><span class="nx">logger</span><span class="w">    </span><span class="nx">logrus</span><span class="p">.</span><span class="nx">FieldLogger</span><span class="w">           </span><span class="c1">// logger</span>
+<span class="w">    </span><span class="nx">mempool</span><span class="w">   </span><span class="nx">mempool</span><span class="p">.</span><span class="nx">MemPool</span><span class="w">              </span><span class="c1">// transaction pool</span>
+<span class="w">    </span><span class="nx">proposeC</span><span class="w">  </span><span class="kd">chan</span><span class="w"> </span><span class="o">*</span><span class="nx">raftproto</span><span class="p">.</span><span class="nx">RequestBatch</span><span class="w"> </span><span class="c1">// proposed listenReadyBlock, input channel</span>
+<span class="w">    </span><span class="nx">stateC</span><span class="w">    </span><span class="kd">chan</span><span class="w"> </span><span class="o">*</span><span class="nx">mempool</span><span class="p">.</span><span class="nx">ChainState</span>
+<span class="w">    </span><span class="nx">txCache</span><span class="w">   </span><span class="o">*</span><span class="nx">mempool</span><span class="p">.</span><span class="nx">TxCache</span><span class="w"> </span><span class="c1">// cache the transactions received from api</span>
+<span class="w">    </span><span class="nx">batchMgr</span><span class="w">  </span><span class="o">*</span><span class="nx">etcdraft</span><span class="p">.</span><span class="nx">BatchTimer</span>
+<span class="w">    </span><span class="nx">lastExec</span><span class="w">  </span><span class="kt">uint64</span><span class="w">              </span><span class="c1">// the index of the last-applied block</span>
+<span class="w">    </span><span class="nx">packSize</span><span class="w">  </span><span class="kt">int</span><span class="w">                 </span><span class="c1">// maximum number of transaction packages</span>
+<span class="w">    </span><span class="nx">blockTick</span><span class="w"> </span><span class="nx">time</span><span class="p">.</span><span class="nx">Duration</span><span class="w">       </span><span class="c1">// block packed period</span>
+<span class="w">    </span><span class="nx">peerMgr</span><span class="w">   </span><span class="nx">peermgr</span><span class="p">.</span><span class="nx">PeerManager</span><span class="w"> </span><span class="c1">// network manager</span>
+
+<span class="w">    </span><span class="nx">ctx</span><span class="w">    </span><span class="nx">context</span><span class="p">.</span><span class="nx">Context</span>
+<span class="w">    </span><span class="nx">cancel</span><span class="w"> </span><span class="nx">context</span><span class="p">.</span><span class="nx">CancelFunc</span>
+<span class="w">    </span><span class="nx">sync</span><span class="p">.</span><span class="nx">RWMutex</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>然后应该提供一个<code>Order</code>的实例化的接口（类似于构造函数），具体代码如下：</p>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">NewNode</span><span class="p">(</span><span class="nx">opts</span><span class="w"> </span><span class="o">...</span><span class="nx">order</span><span class="p">.</span><span class="nx">Option</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="nx">order</span><span class="p">.</span><span class="nx">Order</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">//处理Order参数</span>
+<span class="w">    </span><span class="nx">config</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">order</span><span class="p">.</span><span class="nx">GenerateConfig</span><span class="p">(</span><span class="nx">opts</span><span class="o">...</span><span class="p">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="kc">nil</span><span class="p">,</span><span class="w"> </span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;generate config: %w&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="p">)</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">cancel</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">context</span><span class="p">.</span><span class="nx">WithCancel</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">Background</span><span class="p">())</span>
+
+<span class="w">    </span><span class="c1">//读取mempool相关配置，batchTimeout出块时间，memConfig配置</span>
+<span class="w">    </span><span class="nx">batchTimeout</span><span class="p">,</span><span class="w"> </span><span class="nx">memConfig</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">generateSoloConfig</span><span class="p">(</span><span class="nx">config</span><span class="p">.</span><span class="nx">RepoRoot</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">mempoolConf</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">mempool</span><span class="p">.</span><span class="nx">Config</span><span class="p">{</span>
+<span class="w">        </span><span class="nx">ID</span><span class="p">:</span><span class="w">              </span><span class="nx">config</span><span class="p">.</span><span class="nx">ID</span><span class="p">,</span><span class="w"> </span><span class="c1">//节点ID</span>
+<span class="w">        </span><span class="nx">ChainHeight</span><span class="p">:</span><span class="w">     </span><span class="nx">config</span><span class="p">.</span><span class="nx">Applied</span><span class="p">,</span><span class="w"> </span><span class="c1">//当前区块高度</span>
+<span class="w">        </span><span class="nx">Logger</span><span class="p">:</span><span class="w">          </span><span class="nx">config</span><span class="p">.</span><span class="nx">Logger</span><span class="p">,</span><span class="w">  </span><span class="c1">//日志组件</span>
+<span class="w">        </span><span class="nx">StoragePath</span><span class="p">:</span><span class="w">     </span><span class="nx">config</span><span class="p">.</span><span class="nx">StoragePath</span><span class="p">,</span><span class="w"> </span><span class="c1">//存储路径</span>
+<span class="w">        </span><span class="nx">GetAccountNonce</span><span class="p">:</span><span class="w"> </span><span class="nx">config</span><span class="p">.</span><span class="nx">GetAccountNonce</span><span class="p">,</span><span class="w"> </span><span class="c1">// 获取账户nonce</span>
+
+<span class="w">        </span><span class="nx">BatchSize</span><span class="p">:</span><span class="w">      </span><span class="nx">memConfig</span><span class="p">.</span><span class="nx">BatchSize</span><span class="p">,</span><span class="w"> </span><span class="c1">//区块最大交易数</span>
+<span class="w">        </span><span class="nx">PoolSize</span><span class="p">:</span><span class="w">       </span><span class="nx">memConfig</span><span class="p">.</span><span class="nx">PoolSize</span><span class="p">,</span><span class="w"> </span><span class="c1">//交易池容纳最大交易数</span>
+<span class="w">        </span><span class="nx">TxSliceSize</span><span class="p">:</span><span class="w">    </span><span class="nx">memConfig</span><span class="p">.</span><span class="nx">TxSliceSize</span><span class="p">,</span><span class="w"> </span><span class="c1">//单次广播最大交易数  </span>
+<span class="w">        </span><span class="nx">TxSliceTimeout</span><span class="p">:</span><span class="w"> </span><span class="nx">memConfig</span><span class="p">.</span><span class="nx">TxSliceTimeout</span><span class="p">,</span><span class="w"> </span><span class="c1">//单次广播交易间隔</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="nx">batchC</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nb">make</span><span class="p">(</span><span class="kd">chan</span><span class="w"> </span><span class="o">*</span><span class="nx">raftproto</span><span class="p">.</span><span class="nx">RequestBatch</span><span class="p">)</span>
+
+<span class="w">    </span><span class="c1">//实例化mempool，mempool的作用是交易排序</span>
+<span class="w">    </span><span class="nx">mempoolInst</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">mempool</span><span class="p">.</span><span class="nx">NewMempool</span><span class="p">(</span><span class="nx">mempoolConf</span><span class="p">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="kc">nil</span><span class="p">,</span><span class="w"> </span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;create mempool instance: %w&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="p">)</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">//实例化txCache交易池</span>
+<span class="w">    </span><span class="nx">txCache</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">mempool</span><span class="p">.</span><span class="nx">NewTxCache</span><span class="p">(</span><span class="nx">mempoolConf</span><span class="p">.</span><span class="nx">TxSliceTimeout</span><span class="p">,</span><span class="w"> </span><span class="nx">mempoolConf</span><span class="p">.</span><span class="nx">TxSliceSize</span><span class="p">,</span><span class="w"> </span><span class="nx">config</span><span class="p">.</span><span class="nx">Logger</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">batchTimerMgr</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">etcdraft</span><span class="p">.</span><span class="nx">NewTimer</span><span class="p">(</span><span class="nx">batchTimeout</span><span class="p">,</span><span class="w"> </span><span class="nx">config</span><span class="p">.</span><span class="nx">Logger</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">soloNode</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">Node</span><span class="p">{</span>
+<span class="w">        </span><span class="nx">ID</span><span class="p">:</span><span class="w">       </span><span class="nx">config</span><span class="p">.</span><span class="nx">ID</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">commitC</span><span class="p">:</span><span class="w">  </span><span class="nb">make</span><span class="p">(</span><span class="kd">chan</span><span class="w"> </span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">CommitEvent</span><span class="p">,</span><span class="w"> </span><span class="mi">1024</span><span class="p">),</span>
+<span class="w">        </span><span class="nx">stateC</span><span class="p">:</span><span class="w">   </span><span class="nb">make</span><span class="p">(</span><span class="kd">chan</span><span class="w"> </span><span class="o">*</span><span class="nx">mempool</span><span class="p">.</span><span class="nx">ChainState</span><span class="p">),</span>
+<span class="w">        </span><span class="nx">lastExec</span><span class="p">:</span><span class="w"> </span><span class="nx">config</span><span class="p">.</span><span class="nx">Applied</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">mempool</span><span class="p">:</span><span class="w">  </span><span class="nx">mempoolInst</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">txCache</span><span class="p">:</span><span class="w">  </span><span class="nx">txCache</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">batchMgr</span><span class="p">:</span><span class="w"> </span><span class="nx">batchTimerMgr</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">peerMgr</span><span class="p">:</span><span class="w">  </span><span class="nx">config</span><span class="p">.</span><span class="nx">PeerMgr</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">proposeC</span><span class="p">:</span><span class="w"> </span><span class="nx">batchC</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">logger</span><span class="p">:</span><span class="w">   </span><span class="nx">config</span><span class="p">.</span><span class="nx">Logger</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">ctx</span><span class="p">:</span><span class="w">      </span><span class="nx">ctx</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">cancel</span><span class="p">:</span><span class="w">   </span><span class="nx">cancel</span><span class="p">,</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="nx">soloNode</span><span class="p">.</span><span class="nx">logger</span><span class="p">.</span><span class="nx">Infof</span><span class="p">(</span><span class="s">&quot;SOLO lastExec = %d&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">soloNode</span><span class="p">.</span><span class="nx">lastExec</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">soloNode</span><span class="p">.</span><span class="nx">logger</span><span class="p">.</span><span class="nx">Infof</span><span class="p">(</span><span class="s">&quot;SOLO batch timeout = %v&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">batchTimeout</span><span class="p">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">soloNode</span><span class="p">,</span><span class="w"> </span><span class="kc">nil</span>
+<span class="p">}</span>
+</code></pre></div>
+<h2 id="33-node">3.3 Node主要方法</h2>
+<p>通过描述Node的主要方法，介绍pending的交易是如何被打包到区块中以及如何与<code>BitXHub</code>系统进行交互。</p>
+<h3 id="331-start">3.3.1 Start方法</h3>
+<p>功能：定时在交易池中扫描交易并出块。</p>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">n</span><span class="w"> </span><span class="o">*</span><span class="nx">Node</span><span class="p">)</span><span class="w"> </span><span class="nx">Start</span><span class="p">()</span><span class="w"> </span><span class="kt">error</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">//交易池打包区块</span>
+<span class="w">    </span><span class="k">go</span><span class="w"> </span><span class="nx">n</span><span class="p">.</span><span class="nx">txCache</span><span class="p">.</span><span class="nx">ListenEvent</span><span class="p">()</span>
+
+<span class="w">    </span><span class="c1">//solo监听新区块</span>
+<span class="w">    </span><span class="k">go</span><span class="w"> </span><span class="nx">n</span><span class="p">.</span><span class="nx">listenReadyBlock</span><span class="p">()</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="kc">nil</span>
+<span class="p">}</span>
+
+<span class="c1">// Schedule to collect txs to the listenReadyBlock channel</span>
+<span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">n</span><span class="w"> </span><span class="o">*</span><span class="nx">Node</span><span class="p">)</span><span class="w"> </span><span class="nx">listenReadyBlock</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">go</span><span class="w"> </span><span class="kd">func</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">select</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="nx">proposal</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="o">&lt;-</span><span class="nx">n</span><span class="p">.</span><span class="nx">proposeC</span><span class="p">:</span>
+<span class="w">                </span><span class="nx">n</span><span class="p">.</span><span class="nx">logger</span><span class="p">.</span><span class="nx">WithFields</span><span class="p">(</span><span class="nx">logrus</span><span class="p">.</span><span class="nx">Fields</span><span class="p">{</span>
+<span class="w">                    </span><span class="s">&quot;proposal_height&quot;</span><span class="p">:</span><span class="w"> </span><span class="nx">proposal</span><span class="p">.</span><span class="nx">Height</span><span class="p">,</span>
+<span class="w">                    </span><span class="s">&quot;tx_count&quot;</span><span class="p">:</span><span class="w">        </span><span class="nb">len</span><span class="p">(</span><span class="nx">proposal</span><span class="p">.</span><span class="nx">TxList</span><span class="p">),</span>
+<span class="w">                </span><span class="p">}).</span><span class="nx">Debugf</span><span class="p">(</span><span class="s">&quot;Receive proposal from mempool&quot;</span><span class="p">)</span>
+
+<span class="w">                </span><span class="k">if</span><span class="w"> </span><span class="nx">proposal</span><span class="p">.</span><span class="nx">Height</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="nx">n</span><span class="p">.</span><span class="nx">lastExec</span><span class="o">+</span><span class="mi">1</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                    </span><span class="nx">n</span><span class="p">.</span><span class="nx">logger</span><span class="p">.</span><span class="nx">Warningf</span><span class="p">(</span><span class="s">&quot;Expects to execute seq=%d, but get seq=%d, ignore it&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">n</span><span class="p">.</span><span class="nx">lastExec</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="nx">proposal</span><span class="p">.</span><span class="nx">Height</span><span class="p">)</span>
+<span class="w">                    </span><span class="k">return</span>
+<span class="w">                </span><span class="p">}</span>
+<span class="w">                </span><span class="nx">n</span><span class="p">.</span><span class="nx">logger</span><span class="p">.</span><span class="nx">Infof</span><span class="p">(</span><span class="s">&quot;======== Call execute, height=%d&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">proposal</span><span class="p">.</span><span class="nx">Height</span><span class="p">)</span>
+<span class="w">                </span><span class="nx">block</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">pb</span><span class="p">.</span><span class="nx">Block</span><span class="p">{</span>
+<span class="w">                    </span><span class="nx">BlockHeader</span><span class="p">:</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">pb</span><span class="p">.</span><span class="nx">BlockHeader</span><span class="p">{</span>
+<span class="w">                        </span><span class="nx">Version</span><span class="p">:</span><span class="w">   </span><span class="p">[]</span><span class="nb">byte</span><span class="p">(</span><span class="s">&quot;1.0.0&quot;</span><span class="p">),</span>
+<span class="w">                        </span><span class="nx">Number</span><span class="p">:</span><span class="w">    </span><span class="nx">proposal</span><span class="p">.</span><span class="nx">Height</span><span class="p">,</span>
+<span class="w">                        </span><span class="nx">Timestamp</span><span class="p">:</span><span class="w"> </span><span class="nx">time</span><span class="p">.</span><span class="nx">Now</span><span class="p">().</span><span class="nx">UnixNano</span><span class="p">(),</span>
+<span class="w">                    </span><span class="p">},</span>
+<span class="w">                    </span><span class="nx">Transactions</span><span class="p">:</span><span class="w"> </span><span class="nx">proposal</span><span class="p">.</span><span class="nx">TxList</span><span class="p">,</span>
+<span class="w">                </span><span class="p">}</span>
+<span class="w">                </span><span class="nx">localList</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nb">make</span><span class="p">([]</span><span class="kt">bool</span><span class="p">,</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="nx">proposal</span><span class="p">.</span><span class="nx">TxList</span><span class="p">))</span>
+<span class="w">                </span><span class="k">for</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="p">&lt;</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="nx">proposal</span><span class="p">.</span><span class="nx">TxList</span><span class="p">);</span><span class="w"> </span><span class="nx">i</span><span class="o">++</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                    </span><span class="nx">localList</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="w">                </span><span class="p">}</span>
+<span class="w">                </span><span class="nx">executeEvent</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">pb</span><span class="p">.</span><span class="nx">CommitEvent</span><span class="p">{</span>
+<span class="w">                    </span><span class="nx">Block</span><span class="p">:</span><span class="w">     </span><span class="nx">block</span><span class="p">,</span>
+<span class="w">                    </span><span class="nx">LocalList</span><span class="p">:</span><span class="w"> </span><span class="nx">localList</span><span class="p">,</span>
+<span class="w">                </span><span class="p">}</span>
+<span class="w">                </span><span class="nx">n</span><span class="p">.</span><span class="nx">commitC</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nx">executeEvent</span>
+<span class="w">                </span><span class="nx">n</span><span class="p">.</span><span class="nx">lastExec</span><span class="o">++</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}()</span>
+
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">select</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="o">&lt;-</span><span class="nx">n</span><span class="p">.</span><span class="nx">ctx</span><span class="p">.</span><span class="nx">Done</span><span class="p">():</span>
+<span class="w">            </span><span class="nx">n</span><span class="p">.</span><span class="nx">logger</span><span class="p">.</span><span class="nx">Info</span><span class="p">(</span><span class="s">&quot;----- Exit listen ready block loop -----&quot;</span><span class="p">)</span>
+<span class="w">            </span><span class="k">return</span>
+
+<span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="nx">txSet</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="o">&lt;-</span><span class="nx">n</span><span class="p">.</span><span class="nx">txCache</span><span class="p">.</span><span class="nx">TxSetC</span><span class="p">:</span>
+<span class="w">            </span><span class="c1">// start batch timer when this node receives the first transaction</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">!</span><span class="nx">n</span><span class="p">.</span><span class="nx">batchMgr</span><span class="p">.</span><span class="nx">IsBatchTimerActive</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="nx">n</span><span class="p">.</span><span class="nx">batchMgr</span><span class="p">.</span><span class="nx">StartBatchTimer</span><span class="p">()</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="nx">batch</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">n</span><span class="p">.</span><span class="nx">mempool</span><span class="p">.</span><span class="nx">ProcessTransactions</span><span class="p">(</span><span class="nx">txSet</span><span class="p">.</span><span class="nx">TxList</span><span class="p">,</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"> </span><span class="kc">true</span><span class="p">);</span><span class="w"> </span><span class="nx">batch</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="nx">n</span><span class="p">.</span><span class="nx">batchMgr</span><span class="p">.</span><span class="nx">StopBatchTimer</span><span class="p">()</span>
+<span class="w">                </span><span class="nx">n</span><span class="p">.</span><span class="nx">proposeC</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nx">batch</span>
+<span class="w">            </span><span class="p">}</span>
+
+<span class="w">      </span><span class="k">case</span><span class="w"> </span><span class="nx">state</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="o">&lt;-</span><span class="nx">n</span><span class="p">.</span><span class="nx">stateC</span><span class="p">:</span>
+<span class="w">         </span><span class="c1">//每十个区块做一个Check Point</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="nx">state</span><span class="p">.</span><span class="nx">Height</span><span class="o">%</span><span class="mi">10</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="nx">n</span><span class="p">.</span><span class="nx">logger</span><span class="p">.</span><span class="nx">WithFields</span><span class="p">(</span><span class="nx">logrus</span><span class="p">.</span><span class="nx">Fields</span><span class="p">{</span>
+<span class="w">                    </span><span class="s">&quot;height&quot;</span><span class="p">:</span><span class="w"> </span><span class="nx">state</span><span class="p">.</span><span class="nx">Height</span><span class="p">,</span>
+<span class="w">                    </span><span class="s">&quot;hash&quot;</span><span class="p">:</span><span class="w">   </span><span class="nx">state</span><span class="p">.</span><span class="nx">BlockHash</span><span class="p">.</span><span class="nx">String</span><span class="p">(),</span>
+<span class="w">                </span><span class="p">}).</span><span class="nx">Info</span><span class="p">(</span><span class="s">&quot;Report checkpoint&quot;</span><span class="p">)</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">            </span><span class="nx">n</span><span class="p">.</span><span class="nx">mempool</span><span class="p">.</span><span class="nx">CommitTransactions</span><span class="p">(</span><span class="nx">state</span><span class="p">)</span>
+
+<span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="o">&lt;-</span><span class="nx">n</span><span class="p">.</span><span class="nx">batchMgr</span><span class="p">.</span><span class="nx">BatchTimeoutEvent</span><span class="p">():</span>
+<span class="w">            </span><span class="nx">n</span><span class="p">.</span><span class="nx">batchMgr</span><span class="p">.</span><span class="nx">StopBatchTimer</span><span class="p">()</span>
+<span class="w">            </span><span class="nx">n</span><span class="p">.</span><span class="nx">logger</span><span class="p">.</span><span class="nx">Debug</span><span class="p">(</span><span class="s">&quot;Batch timer expired, try to create a batch&quot;</span><span class="p">)</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="nx">n</span><span class="p">.</span><span class="nx">mempool</span><span class="p">.</span><span class="nx">HasPendingRequest</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="k">if</span><span class="w"> </span><span class="nx">batch</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">n</span><span class="p">.</span><span class="nx">mempool</span><span class="p">.</span><span class="nx">GenerateBlock</span><span class="p">();</span><span class="w"> </span><span class="nx">batch</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                    </span><span class="nx">n</span><span class="p">.</span><span class="nx">postProposal</span><span class="p">(</span><span class="nx">batch</span><span class="p">)</span>
+<span class="w">                </span><span class="p">}</span>
+<span class="w">            </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="nx">n</span><span class="p">.</span><span class="nx">logger</span><span class="p">.</span><span class="nx">Debug</span><span class="p">(</span><span class="s">&quot;The length of priorityIndex is 0, skip the batch timer&quot;</span><span class="p">)</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="332-stop">3.3.2 Stop方法</h3>
+<p>功能：停止共识，释放共识相关资源。</p>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">n</span><span class="w"> </span><span class="o">*</span><span class="nx">Node</span><span class="p">)</span><span class="w"> </span><span class="nx">Stop</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">   </span><span class="nx">n</span><span class="p">.</span><span class="nx">cancel</span><span class="p">()</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="333-prepare">3.3.3 Prepare方法</h3>
+<p>功能：从<code>BitXHub</code>系统中传入交易，收集进交易池。</p>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">n</span><span class="w"> </span><span class="o">*</span><span class="nx">Node</span><span class="p">)</span><span class="w"> </span><span class="nx">Prepare</span><span class="p">(</span><span class="nx">tx</span><span class="w"> </span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">Transaction</span><span class="p">)</span><span class="w"> </span><span class="kt">error</span><span class="w"> </span><span class="p">{</span>
+<span class="w">   </span><span class="c1">//判断当前共识是否正常</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">n</span><span class="p">.</span><span class="nx">Ready</span><span class="p">();</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="nx">err</span>
+<span class="w">   </span><span class="p">}</span>
+<span class="w">   </span><span class="c1">//交易进入交易池</span>
+<span class="w">    </span><span class="nx">n</span><span class="p">.</span><span class="nx">txCache</span><span class="p">.</span><span class="nx">RecvTxC</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nx">tx</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="kc">nil</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="334-commit">3.3.4 Commit方法</h3>
+<p>功能：返回新区块的<code>channel</code>。</p>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">n</span><span class="w"> </span><span class="o">*</span><span class="nx">Node</span><span class="p">)</span><span class="w"> </span><span class="nx">Commit</span><span class="p">()</span><span class="w"> </span><span class="kd">chan</span><span class="w"> </span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">Block</span><span class="w"> </span><span class="p">{</span>
+<span class="w">   </span><span class="k">return</span><span class="w"> </span><span class="nx">n</span><span class="p">.</span><span class="nx">commitC</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="335-step">3.3.5 Step方法</h3>
+<p>功能：通过该接口接收共识的网络消息。</p>
+<div class="highlight"><pre><span></span><code><span class="c1">//由于示例是Solo的版本，故具体不实现该方法</span>
+<span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">n</span><span class="w"> </span><span class="o">*</span><span class="nx">Node</span><span class="p">)</span><span class="w"> </span><span class="nx">Step</span><span class="p">(</span><span class="nx">ctx</span><span class="w"> </span><span class="nx">context</span><span class="p">.</span><span class="nx">Context</span><span class="p">,</span><span class="w"> </span><span class="nx">msg</span><span class="w"> </span><span class="p">[]</span><span class="kt">byte</span><span class="p">)</span><span class="w"> </span><span class="kt">error</span><span class="w"> </span><span class="p">{</span>
+<span class="w">   </span><span class="k">return</span><span class="w"> </span><span class="kc">nil</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="336-ready">3.3.6 Ready方法</h3>
+<p>功能：判断共识是否完成，Leader是否完成选举。</p>
+<div class="highlight"><pre><span></span><code><span class="c1">//由于示例是Solo的版本，单节点直接返回True</span>
+<span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">n</span><span class="w"> </span><span class="o">*</span><span class="nx">Node</span><span class="p">)</span><span class="w"> </span><span class="nx">Ready</span><span class="p">()</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="p">{</span>
+<span class="w">   </span><span class="k">return</span><span class="w"> </span><span class="kc">true</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="337-reportstate">3.3.7 ReportState方法</h3>
+<p>功能：新区块被持久化后，<code>BitXHub</code>会调用该接口通知共识服务</p>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">n</span><span class="w"> </span><span class="o">*</span><span class="nx">Node</span><span class="p">)</span><span class="w"> </span><span class="nx">ReportState</span><span class="p">(</span><span class="nx">height</span><span class="w"> </span><span class="kt">uint64</span><span class="p">,</span><span class="w"> </span><span class="nx">blockHash</span><span class="w"> </span><span class="o">*</span><span class="nx">types</span><span class="p">.</span><span class="nx">Hash</span><span class="p">,</span><span class="w"> </span><span class="nx">txHashList</span><span class="w"> </span><span class="p">[]</span><span class="o">*</span><span class="nx">types</span><span class="p">.</span><span class="nx">Hash</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">state</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">mempool</span><span class="p">.</span><span class="nx">ChainState</span><span class="p">{</span>
+<span class="w">        </span><span class="nx">Height</span><span class="p">:</span><span class="w">     </span><span class="nx">height</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">BlockHash</span><span class="p">:</span><span class="w">  </span><span class="nx">blockHash</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">TxHashList</span><span class="p">:</span><span class="w"> </span><span class="nx">txHashList</span><span class="p">,</span>
+<span class="w">   </span><span class="p">}</span>
+<span class="w">   </span><span class="c1">//结合listenReadyBlock()，账本落盘区块后通知共识清理相关资源</span>
+<span class="w">    </span><span class="nx">n</span><span class="p">.</span><span class="nx">stateC</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nx">state</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="338-quorum">3.3.8 Quorum方法</h3>
+<p>功能：集群中可以正常工作的最少节点数量（比如在raft中要求正常节点数是N/2+1）。</p>
+<div class="highlight"><pre><span></span><code><span class="c1">//由于示例是Solo的版本，直接返回1</span>
+<span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">n</span><span class="w"> </span><span class="o">*</span><span class="nx">Node</span><span class="p">)</span><span class="w"> </span><span class="nx">Quorum</span><span class="p">()</span><span class="w"> </span><span class="kt">uint64</span><span class="w"> </span><span class="p">{</span>
+<span class="w">   </span><span class="k">return</span><span class="w"> </span><span class="mi">1</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="339-getpendingnoncebyaccount">3.3.9 GetPendingNonceByAccount方法</h3>
+<p>功能：获取指定账户最新的nonce值。</p>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">n</span><span class="w"> </span><span class="o">*</span><span class="nx">Node</span><span class="p">)</span><span class="w"> </span><span class="nx">GetPendingNonceByAccount</span><span class="p">(</span><span class="nx">account</span><span class="w"> </span><span class="kt">string</span><span class="p">)</span><span class="w"> </span><span class="kt">uint64</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// 直接从交易池中获取当前账户的最新nonce，由于交易池中可能有该账号的多笔交易，</span>
+<span class="w">    </span><span class="c1">// 需要把符合条件的nonce刷选出。</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">n</span><span class="p">.</span><span class="nx">mempool</span><span class="p">.</span><span class="nx">GetPendingNonceByAccount</span><span class="p">(</span><span class="nx">account</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="3310-delnode">3.3.10 DelNode方法</h3>
+<p>功能：删除指定的共识节点。</p>
+<div class="highlight"><pre><span></span><code><span class="c1">//由于示例是Solo的版本，直接返回nil</span>
+<span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">n</span><span class="w"> </span><span class="o">*</span><span class="nx">Node</span><span class="p">)</span><span class="w"> </span><span class="nx">DelNode</span><span class="p">(</span><span class="nx">delID</span><span class="w"> </span><span class="kt">uint64</span><span class="p">)</span><span class="w"> </span><span class="kt">error</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="kc">nil</span>
+<span class="p">}</span>
+</code></pre></div>
+<h2 id="4">4. 接入共识算法</h2>
+<h3 id="41">4.1 配置文件</h3>
+<p>可以通过配置<code>order.toml</code>文件，自定义你的共识算法。</p>
+<div class="highlight"><pre><span></span><code>[solo]
+batch_timeout = &quot;0.3s&quot;  # Block packaging time period.
+
+   [solo.mempool]
+        batch_size          = 200   # How many transactions should the primary pack.
+        pool_size           = 50000 # How many transactions could the txPool stores in total.
+        tx_slice_size       = 10    # How many transactions should the node broadcast at once
+        tx_slice_timeout    = &quot;0.1s&quot;  # Node broadcasts transactions if there are cached transactions, although set_size isn&#39;t reached yet
+</code></pre></div>
+<h3 id="42">4.2 项目结构</h3>
+<p>该项目为BitXHub提供共识算法的插件化，具体项目结构如下：</p>
+<div class="highlight"><pre><span></span><code>./
+├── Makefile //编译文件
+├── README.md
+├── build
+│ └── rbft.so //编译后的共识算法二进制插件
+├── go.mod
+├── go.sum
+├── order.toml //共识配置文件
+└── rbft //共识算法代码
+    ├── config.go
+    ├── node.go
+    └── stack.go
+</code></pre></div>
+<p>其中注意在<code>go.mod</code>中需要引用BitXHub项目源码，需要让该插件项目与BitXHub在同一目录下（建议在$GOPATH路径下）。</p>
+<div class="highlight"><pre><span></span><code>replace github.com/meshplus/bitxhub =&gt; ../bitxhub/
+</code></pre></div>
+<h3 id="43-plugin">4.3 编译Plugin</h3>
+<p>我们采用GO语言提供的插件模式，实现<code>BitXHub</code>对于Plugin的动态加载。</p>
+<p>编写<code>Makefile</code>编译文件：</p>
+<div class="highlight"><pre><span></span><code>SHELL<span class="w"> </span>:<span class="o">=</span><span class="w"> </span>/bin/bash
+<span class="nv">CURRENT_PATH</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">$(</span>shell<span class="w"> </span><span class="nb">pwd</span><span class="k">)</span>
+<span class="nv">GO</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="nv">GO111MODULE</span><span class="o">=</span>on<span class="w"> </span>go
+plugin:
+<span class="w">   </span>@mkdir<span class="w"> </span>-p<span class="w"> </span>build
+<span class="w">   </span><span class="k">$(</span>GO<span class="k">)</span><span class="w"> </span>build<span class="w"> </span>--buildmode<span class="o">=</span>plugin<span class="w"> </span>-o<span class="w"> </span>build/rbft.so<span class="w"> </span>rbft/*.go
+</code></pre></div>
+<p>运行下面的命令，能够得到 <code>rbft.so</code>文件。</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>make<span class="w"> </span>plugin
+</code></pre></div>
+<p>修改节点的<code>bitxhub.toml</code></p>
+<div class="highlight"><pre><span></span><code>[order]
+  plugin = &quot;plugins/rbft.so&quot;
+</code></pre></div>
+<p>将你编写的动态链接文件和<code>order.toml</code>文件，分别放到节点的plugins文件夹和配置文件下。</p>
+<div class="highlight"><pre><span></span><code>./
+├── api
+├── bitxhub.toml
+├── certs
+│ ├── agency.cert
+│ ├── ca.cert
+│ ├── node.cert
+│ └── node.priv
+├── key.json
+├── logs
+├── network.toml
+├── order.toml //共识算法配置文件
+├── plugins
+│ ├── rbft.so //共识算法插件
+├── start.sh
+└── storage
+</code></pre></div>
+<p>结合我们提供的<code>BitXHub</code>中继链，就能接入到跨链平台来。</p>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+        </div>
+        
+          <a href="#" class="md-top md-icon" data-md-component="top" hidden>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12Z"/></svg>
+            Back to top
+          </a>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    <script id="__config" type="application/json">{"base": "../../..", "features": ["navigation.tabs", "navigation.top", "search.highlight"], "search": "../../../assets/javascripts/workers/search.e5c33ebb.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.51d95adb.min.js"></script>
+      
+    
+  </body>
+</html>

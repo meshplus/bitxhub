@@ -1,0 +1,123 @@
+
+:root {
+  --md-default-fg-color--lighter: #0076D9;
+  --md-default-fg-color--light: #292929;
+  --hub-blockquote-bg: #F2F8FD;
+  --hub-table-th: #fafafa;
+  --hub-table-th-color: #121212;
+}
+
+[data-md-color-primary=black] {
+  --md-typeset-a-color: #0076D9;
+}
+
+[data-md-color-scheme=slate] {
+  --md-default-fg-color--lighter: #0076D9;
+  --hub-blockquote-bg: #292a3a; 
+  --hub-table-th: #242533;
+  --hub-table-th-color: #fafafa;
+}
+
+.md-header .md-logo {
+  padding: 0;
+}
+
+.md-header__title {
+  margin-left: 5px;
+  font-weight: bold;
+}
+
+.md-header .md-logo img {
+  width: auto;
+  height: 2rem;
+}
+
+.md-sidebar--secondary .md-nav {
+  font-size: 13px;
+}
+
+.md-content .md-typeset h1 {
+  margin-top: 0 !important;
+  font-size: 30px;
+  color: inherit;
+}
+
+.md-content .md-typeset h2 {
+  font-size: 24px;
+}
+
+.md-content .md-typeset h1,
+.md-content .md-typeset h2, 
+.md-content .md-typeset h3 {
+  margin: 40px 0;
+  font-weight: 500;
+}
+
+.md-content .md-typeset blockquote {
+  padding: 13px 20px;
+  background: var(--hub-blockquote-bg);
+}
+
+.md-content .md-typeset blockquote p {
+  margin: 0;
+}
+
+.md-typeset__table table:not([class]) {
+  font-size: 14px;
+  box-shadow: none;
+}
+
+.md-typeset table:not([class]) th {
+  font-weight: 500;
+  background-color: var(--hub-table-th);
+  color: var(--hub-table-th-color);
+  padding: 13px 12px;
+  border-bottom: 1px solid #e7e7e7;
+}
+
+.md-typeset pre {
+  margin: 1em 0;
+}
+
+.md-typeset pre>code {
+  padding: 1.5em 2em;
+  border-radius: 4px;
+}
+
+.md-typeset a {
+  font-weight: 600;
+}
+
+.md-typeset {
+  /*font-size: 0.8rem;*/
+}
+
+.md-typeset img {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@media screen and (min-width: 100em) {
+  .md-typeset {
+    font-size: 0.726rem;
+  }
+}
+
+@media screen and (min-width: 100em) {
+  .md-nav {
+    font-size: 0.65rem;
+  }
+}
+
+.md-content__inner {
+  margin-bottom: 3.5rem;
+}
+
+.md-content__button {
+  width: 18px;
+}
+
+.md-typeset pre>code::-webkit-scrollbar-thumb {
+  background-color: transparent !important;
+}

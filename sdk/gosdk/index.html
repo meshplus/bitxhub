@@ -1,0 +1,2574 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../../premo/usage/">
+      
+      
+        <link rel="next" href="../javasdk/">
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.4.2, mkdocs-material-9.0.5">
+    
+    
+      
+        <title>GoSDK使用文档 - Bitxhub Document</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.558e4712.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.2505c338.min.css">
+      
+      
+
+    
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue">
+  
+    
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#go-sdk" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Bitxhub Document" class="md-header__button md-logo" aria-label="Bitxhub Document" data-md-component="logo">
+      
+  <img src="../../assets/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Bitxhub Document
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              GoSDK使用文档
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/meshplus/bitxhub" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    meshplus/bitxhub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-tabs__inner md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+
+
+  
+  
+  
+    
+
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../bitxhub/introduction/summary/" class="md-tabs__link">
+        Home
+      </a>
+    </li>
+  
+
+  
+
+      
+        
+  
+  
+
+
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../goduck/" class="md-tabs__link">
+        Goduck
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+
+
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../premo/usage/" class="md-tabs__link">
+        Premo
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+    
+  
+
+
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="./" class="md-tabs__link md-tabs__link--active">
+        SDK文档
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+
+
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../scan/" class="md-tabs__link">
+        跨链浏览器体验指南
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Bitxhub Document" class="md-nav__button md-logo" aria-label="Bitxhub Document" data-md-component="logo">
+      
+  <img src="../../assets/logo.png" alt="logo">
+
+    </a>
+    Bitxhub Document
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/meshplus/bitxhub" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    meshplus/bitxhub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_1" type="checkbox" id="__nav_1" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_1" tabindex="0" aria-expanded="false">
+          Home
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Home" data-md-level="1">
+        <label class="md-nav__title" for="__nav_1">
+          <span class="md-nav__icon md-icon"></span>
+          Home
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_1_1" type="checkbox" id="__nav_1_1" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_1_1" tabindex="0" aria-expanded="false">
+          产品介绍
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="产品介绍" data-md-level="2">
+        <label class="md-nav__title" for="__nav_1_1">
+          <span class="md-nav__icon md-icon"></span>
+          产品介绍
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bitxhub/introduction/summary/" class="md-nav__link">
+        平台介绍
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bitxhub/introduction/conception/" class="md-nav__link">
+        基本概念
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bitxhub/introduction/arch/" class="md-nav__link">
+        技术架构
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bitxhub/introduction/advantage/" class="md-nav__link">
+        产品优势
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bitxhub/introduction/scenaries/" class="md-nav__link">
+        应用场景
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bitxhub/quick_start/" class="md-nav__link">
+        快速开始
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_1_3" type="checkbox" id="__nav_1_3" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_1_3" tabindex="0" aria-expanded="false">
+          部署使用
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="部署使用" data-md-level="2">
+        <label class="md-nav__title" for="__nav_1_3">
+          <span class="md-nav__icon md-icon"></span>
+          部署使用
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bitxhub/usage/env/" class="md-nav__link">
+        环境准备
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bitxhub/usage/overall_description/" class="md-nav__link">
+        整体说明
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_1_3_3" type="checkbox" id="__nav_1_3_3" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_1_3_3" tabindex="0" aria-expanded="false">
+          单中继架构部署
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="单中继架构部署" data-md-level="3">
+        <label class="md-nav__title" for="__nav_1_3_3">
+          <span class="md-nav__icon md-icon"></span>
+          单中继架构部署
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bitxhub/usage/single_bitxhub/deploy_bitxhub/" class="md-nav__link">
+        中继链部署
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bitxhub/usage/single_bitxhub/deploy_pier/" class="md-nav__link">
+        跨链网关部署
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bitxhub/usage/direct_mode_pier/pier_direct_mode_deploy/" class="md-nav__link">
+        跨链网关直连模式部署
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bitxhub/usage/status_verification/" class="md-nav__link">
+        系统验证
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_1_4" type="checkbox" id="__nav_1_4" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_1_4" tabindex="0" aria-expanded="false">
+          产品功能
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="产品功能" data-md-level="2">
+        <label class="md-nav__title" for="__nav_1_4">
+          <span class="md-nav__icon md-icon"></span>
+          产品功能
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bitxhub/function/appchain/" class="md-nav__link">
+        应用链管理
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bitxhub/function/cert_manage/" class="md-nav__link">
+        证书管理
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bitxhub/function/cross_invoke/" class="md-nav__link">
+        跨链合约调用
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_1_5" type="checkbox" id="__nav_1_5" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_1_5" tabindex="0" aria-expanded="false">
+          开发手册
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="开发手册" data-md-level="2">
+        <label class="md-nav__title" for="__nav_1_5">
+          <span class="md-nav__icon md-icon"></span>
+          开发手册
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bitxhub/dev/cross_contract/" class="md-nav__link">
+        跨链合约开发
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bitxhub/dev/plugin/" class="md-nav__link">
+        应用链插件编写
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bitxhub/dev/rule/" class="md-nav__link">
+        验证规则编写
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bitxhub/dev/validator/" class="md-nav__link">
+        验证者信息生成
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_1_6" type="checkbox" id="__nav_1_6" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_1_6" tabindex="0" aria-expanded="false">
+          设计文档
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="设计文档" data-md-level="2">
+        <label class="md-nav__title" for="__nav_1_6">
+          <span class="md-nav__icon md-icon"></span>
+          设计文档
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bitxhub/design/consensus_plugin/" class="md-nav__link">
+        共识算法插件方案
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bitxhub/design/interchain_transaction/" class="md-nav__link">
+        跨链事务方案
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bitxhub/design/pier/" class="md-nav__link">
+        跨链网关设计方案
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bitxhub/design/privacy_protection/" class="md-nav__link">
+        隐私保护方案
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bitxhub/design/rate-limiter/" class="md-nav__link">
+        API流控设计
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_1_7" type="checkbox" id="__nav_1_7" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_1_7" tabindex="0" aria-expanded="false">
+          运维
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="运维" data-md-level="2">
+        <label class="md-nav__title" for="__nav_1_7">
+          <span class="md-nav__icon md-icon"></span>
+          运维
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bitxhub/operation/node_log_view/" class="md-nav__link">
+        查看日志
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bitxhub/operation/node_status_check/" class="md-nav__link">
+        节点状态检测
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bitxhub/operation/exception_problem_handling/" class="md-nav__link">
+        异常问题处
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_1_8" type="checkbox" id="__nav_1_8" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_1_8" tabindex="0" aria-expanded="false">
+          版本发布记录
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="版本发布记录" data-md-level="2">
+        <label class="md-nav__title" for="__nav_1_8">
+          <span class="md-nav__icon md-icon"></span>
+          版本发布记录
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bitxhub/changelog/bitxhub_v1.5.0/" class="md-nav__link">
+        BitXHub v1.5.0
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bitxhub/changelog/bitxhub_v1.4.0/" class="md-nav__link">
+        BitXHub v1.4.0
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bitxhub/changelog/bitxhub_v1.3.0/" class="md-nav__link">
+        BitXHub v1.3.0
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bitxhub/community_introduction/" class="md-nav__link">
+        社区介绍
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bitxhub/join_us/" class="md-nav__link">
+        加入我们
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bitxhub/faq/" class="md-nav__link">
+        FAQ
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_2" type="checkbox" id="__nav_2" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_2" tabindex="0" aria-expanded="false">
+          Goduck
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Goduck" data-md-level="1">
+        <label class="md-nav__title" for="__nav_2">
+          <span class="md-nav__icon md-icon"></span>
+          Goduck
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../goduck/" class="md-nav__link">
+        Getting started
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_3" type="checkbox" id="__nav_3" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_3" tabindex="0" aria-expanded="false">
+          Premo
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Premo" data-md-level="1">
+        <label class="md-nav__title" for="__nav_3">
+          <span class="md-nav__icon md-icon"></span>
+          Premo
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../premo/usage/" class="md-nav__link">
+        使用文档
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+    
+  
+  
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_4" type="checkbox" id="__nav_4" checked>
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4" tabindex="0" aria-expanded="true">
+          SDK文档
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="SDK文档" data-md-level="1">
+        <label class="md-nav__title" for="__nav_4">
+          <span class="md-nav__icon md-icon"></span>
+          SDK文档
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          GoSDK使用文档
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        GoSDK使用文档
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1" class="md-nav__link">
+    1 前言
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2" class="md-nav__link">
+    2 接口使用流程示例
+  </a>
+  
+    <nav class="md-nav" aria-label="2 接口使用流程示例">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21" class="md-nav__link">
+    2.1 基础流程示例
+  </a>
+  
+    <nav class="md-nav" aria-label="2.1 基础流程示例">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#211-client" class="md-nav__link">
+    2.1.1 初始化Client
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#212" class="md-nav__link">
+    2.1.2 部署合约
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#213" class="md-nav__link">
+    2.1.3 调用合约
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#214" class="md-nav__link">
+    2.1.4 返回值解析
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#215" class="md-nav__link">
+    2.1.5 完整示例
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22" class="md-nav__link">
+    2.2 应用链管理流程示例
+  </a>
+  
+    <nav class="md-nav" aria-label="2.2 应用链管理流程示例">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#221" class="md-nav__link">
+    2.2.1 应用链注册
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#222" class="md-nav__link">
+    2.2.2 应用链审核
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#223" class="md-nav__link">
+    2.2.3 应用链注销
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23" class="md-nav__link">
+    2.3 验证规则使用示例
+  </a>
+  
+    <nav class="md-nav" aria-label="2.3 验证规则使用示例">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#231" class="md-nav__link">
+    2.3.1 验证规则注册
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#232" class="md-nav__link">
+    2.3.2 验证规则审核
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#233-webassembly-fabric" class="md-nav__link">
+    2.3.3 验证规则示例（WebAssembly合约, Fabric实例）
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-sdk" class="md-nav__link">
+    3 SDK文档
+  </a>
+  
+    <nav class="md-nav" aria-label="3 SDK文档">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31" class="md-nav__link">
+    3.1 初始化和启动
+  </a>
+  
+    <nav class="md-nav" aria-label="3.1 初始化和启动">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#311-client" class="md-nav__link">
+    3.1.1 初始化Client
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#312-client" class="md-nav__link">
+    3.1.2 停止Client
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32" class="md-nav__link">
+    3.2 交易接口
+  </a>
+  
+    <nav class="md-nav" aria-label="3.2 交易接口">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#321" class="md-nav__link">
+    3.2.1 发送交易
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#322" class="md-nav__link">
+    3.2.2 查询交易回执
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#323" class="md-nav__link">
+    3.2.3 查询交易
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33" class="md-nav__link">
+    3.3 合约接口
+  </a>
+  
+    <nav class="md-nav" aria-label="3.3 合约接口">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#331" class="md-nav__link">
+    3.3.1 部署合约
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#332" class="md-nav__link">
+    3.3.2 调用合约
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34" class="md-nav__link">
+    3.4 区块接口
+  </a>
+  
+    <nav class="md-nav" aria-label="3.4 区块接口">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#341" class="md-nav__link">
+    3.4.1 查询区块
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#342" class="md-nav__link">
+    3.4.2 批量查询区块
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#343-meta" class="md-nav__link">
+    3.4.3 查询区块Meta
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#344" class="md-nav__link">
+    3.4.4 查询区块链状态
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#35" class="md-nav__link">
+    3.5 订阅接口
+  </a>
+  
+    <nav class="md-nav" aria-label="3.5 订阅接口">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#351" class="md-nav__link">
+    3.5.1 订阅事件
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#352-merklewrapper" class="md-nav__link">
+    3.5.2 获取MerkleWrapper
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#36" class="md-nav__link">
+    3.6 其它接口
+  </a>
+  
+    <nav class="md-nav" aria-label="3.6 其它接口">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#361" class="md-nav__link">
+    3.6.1 查询节点网络信息
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#362" class="md-nav__link">
+    3.6.2 查询账户余额
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#363" class="md-nav__link">
+    3.6.3 删除节点
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../javasdk/" class="md-nav__link">
+        JavaSDK使用
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../jssdk/" class="md-nav__link">
+        JsSDK使用文档
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5" type="checkbox" id="__nav_5" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5" tabindex="0" aria-expanded="false">
+          跨链浏览器体验指南
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="跨链浏览器体验指南" data-md-level="1">
+        <label class="md-nav__title" for="__nav_5">
+          <span class="md-nav__icon md-icon"></span>
+          跨链浏览器体验指南
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../scan/" class="md-nav__link">
+        使用文档
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../scan/deploy_pier_testnet/" class="md-nav__link">
+        跨链网关接入
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1" class="md-nav__link">
+    1 前言
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2" class="md-nav__link">
+    2 接口使用流程示例
+  </a>
+  
+    <nav class="md-nav" aria-label="2 接口使用流程示例">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21" class="md-nav__link">
+    2.1 基础流程示例
+  </a>
+  
+    <nav class="md-nav" aria-label="2.1 基础流程示例">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#211-client" class="md-nav__link">
+    2.1.1 初始化Client
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#212" class="md-nav__link">
+    2.1.2 部署合约
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#213" class="md-nav__link">
+    2.1.3 调用合约
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#214" class="md-nav__link">
+    2.1.4 返回值解析
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#215" class="md-nav__link">
+    2.1.5 完整示例
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22" class="md-nav__link">
+    2.2 应用链管理流程示例
+  </a>
+  
+    <nav class="md-nav" aria-label="2.2 应用链管理流程示例">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#221" class="md-nav__link">
+    2.2.1 应用链注册
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#222" class="md-nav__link">
+    2.2.2 应用链审核
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#223" class="md-nav__link">
+    2.2.3 应用链注销
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23" class="md-nav__link">
+    2.3 验证规则使用示例
+  </a>
+  
+    <nav class="md-nav" aria-label="2.3 验证规则使用示例">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#231" class="md-nav__link">
+    2.3.1 验证规则注册
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#232" class="md-nav__link">
+    2.3.2 验证规则审核
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#233-webassembly-fabric" class="md-nav__link">
+    2.3.3 验证规则示例（WebAssembly合约, Fabric实例）
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-sdk" class="md-nav__link">
+    3 SDK文档
+  </a>
+  
+    <nav class="md-nav" aria-label="3 SDK文档">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31" class="md-nav__link">
+    3.1 初始化和启动
+  </a>
+  
+    <nav class="md-nav" aria-label="3.1 初始化和启动">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#311-client" class="md-nav__link">
+    3.1.1 初始化Client
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#312-client" class="md-nav__link">
+    3.1.2 停止Client
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32" class="md-nav__link">
+    3.2 交易接口
+  </a>
+  
+    <nav class="md-nav" aria-label="3.2 交易接口">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#321" class="md-nav__link">
+    3.2.1 发送交易
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#322" class="md-nav__link">
+    3.2.2 查询交易回执
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#323" class="md-nav__link">
+    3.2.3 查询交易
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33" class="md-nav__link">
+    3.3 合约接口
+  </a>
+  
+    <nav class="md-nav" aria-label="3.3 合约接口">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#331" class="md-nav__link">
+    3.3.1 部署合约
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#332" class="md-nav__link">
+    3.3.2 调用合约
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34" class="md-nav__link">
+    3.4 区块接口
+  </a>
+  
+    <nav class="md-nav" aria-label="3.4 区块接口">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#341" class="md-nav__link">
+    3.4.1 查询区块
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#342" class="md-nav__link">
+    3.4.2 批量查询区块
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#343-meta" class="md-nav__link">
+    3.4.3 查询区块Meta
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#344" class="md-nav__link">
+    3.4.4 查询区块链状态
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#35" class="md-nav__link">
+    3.5 订阅接口
+  </a>
+  
+    <nav class="md-nav" aria-label="3.5 订阅接口">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#351" class="md-nav__link">
+    3.5.1 订阅事件
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#352-merklewrapper" class="md-nav__link">
+    3.5.2 获取MerkleWrapper
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#36" class="md-nav__link">
+    3.6 其它接口
+  </a>
+  
+    <nav class="md-nav" aria-label="3.6 其它接口">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#361" class="md-nav__link">
+    3.6.1 查询节点网络信息
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#362" class="md-nav__link">
+    3.6.2 查询账户余额
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#363" class="md-nav__link">
+    3.6.3 删除节点
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+
+<h1 id="go-sdk">Go SDK</h1>
+<h2 id="1">1 前言</h2>
+<p>此SDK文档面向BitXHub平台的应用开发者，提供BitXHub Go SDK的使用指南。</p>
+<h2 id="2">2 接口使用流程示例</h2>
+<h3 id="21">2.1 基础流程示例</h3>
+<p>为了更好的理解接口的使用，本示例将从初始化Client，部署合约，调用合约和返回值解析这个大致流程作介绍，具体详细接口可参考第三章SDK文档。</p>
+<h4 id="211-client">2.1.1 初始化Client</h4>
+<p>配置集群网络地址、日志以及密钥。</p>
+<p>例如：</p>
+<div class="highlight"><pre><span></span><code><span class="nx">privKey</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">asym</span><span class="p">.</span><span class="nx">GenerateKeyPair</span><span class="p">(</span><span class="nx">crypto</span><span class="p">.</span><span class="nx">Secp256k1</span><span class="p">)</span>
+<span class="kd">var</span><span class="w"> </span><span class="nx">cfg</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">config</span><span class="p">{</span>
+<span class="w">   </span><span class="nx">addrs</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="kt">string</span><span class="p">{</span>
+<span class="w">      </span><span class="s">&quot;localhost:60011&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="s">&quot;localhost:60012&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="s">&quot;localhost:60013&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="s">&quot;localhost:60014&quot;</span><span class="p">,</span>
+<span class="w">   </span><span class="p">},</span>
+<span class="w">   </span><span class="nx">logger</span><span class="p">:</span><span class="w"> </span><span class="nx">logrus</span><span class="p">.</span><span class="nx">New</span><span class="p">(),</span>
+<span class="w">   </span><span class="nx">privateKey</span><span class="p">:</span><span class="w"> </span><span class="nx">privKey</span><span class="p">,</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>初始化Client，所有RPC操作将通过该接口与BitXHub交互。</p>
+<p>例如：</p>
+<div class="highlight"><pre><span></span><code><span class="nx">cli</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">New</span><span class="p">(</span>
+<span class="w">   </span><span class="nx">WithAddrs</span><span class="p">(</span><span class="nx">cfg</span><span class="p">.</span><span class="nx">addrs</span><span class="p">),</span>
+<span class="w">   </span><span class="nx">WithLogger</span><span class="p">(</span><span class="nx">cfg</span><span class="p">.</span><span class="nx">logger</span><span class="p">),</span>
+<span class="w">   </span><span class="nx">WithPrivateKey</span><span class="p">(</span><span class="nx">cfg</span><span class="p">.</span><span class="nx">privateKey</span><span class="p">),</span>
+<span class="p">)</span>
+</code></pre></div>
+<h4 id="212">2.1.2 部署合约</h4>
+<p>开发者需提供已经编译的<code>WebAssembly</code>文件。</p>
+<p>例如：</p>
+<div class="highlight"><pre><span></span><code><span class="nx">contract</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">ioutil</span><span class="p">.</span><span class="nx">ReadFile</span><span class="p">(</span><span class="s">&quot;./testdata/example.wasm&quot;</span><span class="p">)</span>
+</code></pre></div>
+<p>通过client部署合约，部署完成后可以获取合约地址<code>addr</code>。</p>
+<p>例如：</p>
+<div class="highlight"><pre><span></span><code><span class="nx">addr</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">cli</span><span class="p">.</span><span class="nx">DeployContract</span><span class="p">(</span><span class="nx">contract</span><span class="p">,</span><span class="w"> </span><span class="kc">nil</span><span class="p">)</span><span class="w"> </span><span class="c1">// 第二个参数为跨链交易nonce，为nil时可以自动获取</span>
+</code></pre></div>
+<h4 id="213">2.1.3 调用合约</h4>
+<p>调用合约需传入合约地址、合约方法名和对应的参数。</p>
+<p>例如：</p>
+<div class="highlight"><pre><span></span><code><span class="nx">result</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">cli</span><span class="p">.</span><span class="nx">InvokeXVMContract</span><span class="p">(</span><span class="nx">addr</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;a&quot;</span><span class="p">,</span><span class="w"> </span><span class="kc">nil</span><span class="p">,</span><span class="w"> </span><span class="nx">Int32</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span><span class="w"> </span><span class="nx">Int32</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span><span class="w"> </span><span class="c1">// 方法名为a，跨链交易nonce，传参1，传参2</span>
+</code></pre></div>
+<h4 id="214">2.1.4 返回值解析</h4>
+<p>得到返回值结果后，获得状态码可以判断是否调用成功，若调用成功，解析返回值可看到调用之后的结果。</p>
+<p>例如：</p>
+<div class="highlight"><pre><span></span><code><span class="k">if</span><span class="w"> </span><span class="nx">cli</span><span class="p">.</span><span class="nx">CheckReceipt</span><span class="p">(</span><span class="nx">result</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nb">string</span><span class="p">(</span><span class="nx">result</span><span class="p">.</span><span class="nx">Ret</span><span class="p">))</span>
+<span class="p">}</span>
+</code></pre></div>
+<h4 id="215">2.1.5 完整示例</h4>
+<div class="highlight"><pre><span></span><code><span class="c1">//获取wasm合约字节数组</span>
+<span class="nx">contract</span><span class="p">,</span><span class="w"> </span><span class="nx">_</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">ioutil</span><span class="p">.</span><span class="nx">ReadFile</span><span class="p">(</span><span class="s">&quot;./testdata/example.wasm&quot;</span><span class="p">)</span>
+
+<span class="c1">//部署合约，获取合约地址</span>
+<span class="nx">addr</span><span class="p">,</span><span class="w"> </span><span class="nx">_</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">cli</span><span class="p">.</span><span class="nx">DeployContract</span><span class="p">(</span><span class="nx">contract</span><span class="p">,</span><span class="w"> </span><span class="kc">nil</span><span class="p">)</span>
+
+<span class="c1">//调用合约，获取交易回执</span>
+<span class="nx">result</span><span class="p">,</span><span class="w"> </span><span class="nx">_</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">cli</span><span class="p">.</span><span class="nx">InvokeXVMContract</span><span class="p">(</span><span class="nx">addr</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;a&quot;</span><span class="p">,</span><span class="w"> </span><span class="kc">nil</span><span class="p">,</span><span class="w"> </span><span class="nx">Int32</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span><span class="w"> </span><span class="nx">Int32</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span>
+
+<span class="c1">//判断合约调用交易成功与否，打印合约调用数据</span>
+<span class="k">if</span><span class="w"> </span><span class="nx">cli</span><span class="p">.</span><span class="nx">CheckReceipt</span><span class="p">(</span><span class="nx">result</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nb">string</span><span class="p">(</span><span class="nx">result</span><span class="p">.</span><span class="nx">Ret</span><span class="p">))</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="22">2.2 应用链管理流程示例</h3>
+<p>本示例展示应用链管理流程中的注册、审核以及注销操作。</p>
+<h4 id="221">2.2.1 应用链注册</h4>
+<p>调用BVM合约的<code>Register</code>方法，向BitXHub注册应用链。</p>
+<p>例如：</p>
+<div class="highlight"><pre><span></span><code><span class="nx">args</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="p">[]</span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">Arg</span><span class="p">{</span>
+<span class="w">    </span><span class="nx">rpcx</span><span class="p">.</span><span class="nx">String</span><span class="p">(</span><span class="s">&quot;&quot;</span><span class="p">),</span><span class="w"> </span><span class="c1">//validators</span>
+<span class="w">    </span><span class="nx">rpcx</span><span class="p">.</span><span class="nx">Int32</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span><span class="w"> </span><span class="c1">//consensus_type</span>
+<span class="w">    </span><span class="nx">rpcx</span><span class="p">.</span><span class="nx">String</span><span class="p">(</span><span class="s">&quot;hyperchain&quot;</span><span class="p">),</span><span class="w"> </span><span class="c1">//chain_type</span>
+<span class="w">    </span><span class="nx">rpcx</span><span class="p">.</span><span class="nx">String</span><span class="p">(</span><span class="s">&quot;税务链&quot;</span><span class="p">),</span><span class="w"> </span><span class="c1">//name</span>
+<span class="w">    </span><span class="nx">rpcx</span><span class="p">.</span><span class="nx">String</span><span class="p">(</span><span class="s">&quot;趣链税务链&quot;</span><span class="p">),</span><span class="w"> </span><span class="c1">//desc</span>
+<span class="w">    </span><span class="nx">rpcx</span><span class="p">.</span><span class="nx">String</span><span class="p">(</span><span class="s">&quot;1.8&quot;</span><span class="p">),</span><span class="w"> </span><span class="c1">//version</span>
+<span class="p">}</span>
+
+<span class="nx">ret</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">cli</span><span class="p">.</span><span class="nx">InvokeBVMContract</span><span class="p">(</span><span class="nx">constant</span><span class="p">.</span><span class="nx">InterchainContractAddr</span><span class="p">.</span><span class="nx">Address</span><span class="p">(),</span><span class="w"> </span><span class="s">&quot;Register&quot;</span><span class="p">,</span><span class="w"> </span><span class="kc">nil</span><span class="p">,</span><span class="w"> </span><span class="nx">args</span><span class="o">...</span><span class="p">)</span>
+</code></pre></div>
+<p>获取到成功的交易回执后，解析交易回执内容。</p>
+<p>例如：</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="s">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;0x5098cc26b0d485145fb8258d2e79c49886cd4662&quot;</span><span class="p">,</span><span class="w"> </span><span class="err">\\</span><span class="nx">应用链ID</span>
+<span class="w">    </span><span class="s">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;税务链&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s">&quot;validators&quot;</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="p">,</span><span class="w"> </span>
+<span class="w">    </span><span class="s">&quot;consensus_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">    </span><span class="s">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">    </span><span class="s">&quot;chain_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;hyperchain&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s">&quot;desc&quot;</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;趣链税务链&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s">&quot;version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;1.8&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+<h4 id="222">2.2.2 应用链审核</h4>
+<p>调用BVM合约的<code>Aduit</code>方法，向BitXHub审核应用链。</p>
+<p>例如：</p>
+<div class="highlight"><pre><span></span><code><span class="nx">args</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="p">[]</span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">Arg</span><span class="p">{</span>
+<span class="w">    </span><span class="nx">rpcx</span><span class="p">.</span><span class="nx">String</span><span class="p">(</span><span class="nx">appchainID</span><span class="p">),</span><span class="w"> </span>
+<span class="w">    </span><span class="nx">rpcx</span><span class="p">.</span><span class="nx">Int32</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span><span class="w"> </span><span class="c1">//审核通过</span>
+<span class="w">    </span><span class="nx">rpcx</span><span class="p">.</span><span class="nx">String</span><span class="p">(</span><span class="s">&quot;&quot;</span><span class="p">),</span><span class="w"> </span><span class="c1">//desc</span>
+<span class="p">}</span>
+<span class="nx">ret</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">cli</span><span class="p">.</span><span class="nx">InvokeBVMContract</span><span class="p">(</span><span class="nx">constant</span><span class="p">.</span><span class="nx">InterchainContractAddr</span><span class="p">.</span><span class="nx">Address</span><span class="p">(),</span><span class="s">&quot;Aduit&quot;</span><span class="p">,</span><span class="w"> </span><span class="kc">nil</span><span class="p">,</span><span class="w"> </span><span class="nx">args</span><span class="o">...</span><span class="p">)</span>
+</code></pre></div>
+<h4 id="223">2.2.3 应用链注销</h4>
+<p>调用BVM合约的<code>DeleteAppchain</code>方法，向BitXHub注销应用链。</p>
+<p>例如：</p>
+<div class="highlight"><pre><span></span><code><span class="nx">ret</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">cli</span><span class="p">.</span><span class="nx">InvokeBVMContract</span><span class="p">(</span><span class="nx">constant</span><span class="p">.</span><span class="nx">InterchainContractAddr</span><span class="p">.</span><span class="nx">Address</span><span class="p">(),</span><span class="w"> </span><span class="s">&quot;DeleteAppchain&quot;</span><span class="p">,</span><span class="w"> </span><span class="kc">nil</span><span class="p">,</span><span class="w"> </span><span class="nx">rpcx</span><span class="p">.</span><span class="nx">String</span><span class="p">(</span><span class="nx">appchainID</span><span class="p">))</span>
+</code></pre></div>
+<h3 id="23">2.3 验证规则使用示例</h3>
+<p>本示例展示验证规则中的注册、审核操作，以及WebAssembly合约示例。</p>
+<h4 id="231">2.3.1 验证规则注册</h4>
+<p>调用BVM合约的<code>RegisterRule</code>方法，向应用链注册验证规则（WebAssembly合约），这里我们需要先注册应用链和部署验证规则合约，然后获取应用链ID和合约地址。</p>
+<p>例如：</p>
+<div class="highlight"><pre><span></span><code><span class="nx">ret</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">cli</span><span class="p">.</span><span class="nx">InvokeBVMContract</span><span class="p">(</span><span class="nx">constant</span><span class="p">.</span><span class="nx">RoleContractAddr</span><span class="p">.</span><span class="nx">Address</span><span class="p">(),</span><span class="w"> </span><span class="s">&quot;RegisterRule&quot;</span><span class="p">,</span><span class="w"> </span><span class="kc">nil</span><span class="p">,</span><span class="w"> </span><span class="nx">rpcx</span><span class="p">.</span><span class="nx">String</span><span class="p">(</span><span class="nx">chainAddr</span><span class="p">),</span><span class="w"> </span><span class="nx">rpcx</span><span class="p">.</span><span class="nx">String</span><span class="p">(</span><span class="nx">contractAddr</span><span class="p">))</span>
+</code></pre></div>
+<h4 id="232">2.3.2 验证规则审核</h4>
+<p>调用BVM合约的<code>Aduit</code>方法，向BitXHub审核验证规则。</p>
+<p>例如：</p>
+<div class="highlight"><pre><span></span><code><span class="nx">args</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="p">[]</span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">Arg</span><span class="p">{</span>
+<span class="w">    </span><span class="nx">rpcx</span><span class="p">.</span><span class="nx">String</span><span class="p">(</span><span class="nx">appchainID</span><span class="p">),</span><span class="w"> </span>
+<span class="w">    </span><span class="nx">rpcx</span><span class="p">.</span><span class="nx">Int32</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span><span class="w"> </span><span class="c1">//审核通过</span>
+<span class="w">    </span><span class="nx">rpcx</span><span class="p">.</span><span class="nx">String</span><span class="p">(</span><span class="s">&quot;&quot;</span><span class="p">),</span><span class="w"> </span><span class="c1">//desc</span>
+<span class="p">}</span>
+<span class="nx">ret</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">cli</span><span class="p">.</span><span class="nx">InvokeBVMContract</span><span class="p">(</span><span class="nx">constant</span><span class="p">.</span><span class="nx">RuleManagerContractAddr</span><span class="p">.</span><span class="nx">Address</span><span class="p">(),</span><span class="s">&quot;Aduit&quot;</span><span class="p">,</span><span class="w"> </span><span class="kc">nil</span><span class="p">,</span><span class="w"> </span><span class="nx">args</span><span class="o">...</span><span class="p">)</span>
+</code></pre></div>
+<h4 id="233-webassembly-fabric">2.3.3 验证规则示例（WebAssembly合约, Fabric实例）</h4>
+<div class="highlight"><pre><span></span><code><span class="k">extern</span><span class="w"> </span><span class="k">crate</span><span class="w"> </span><span class="n">protobuf</span><span class="p">;</span>
+<span class="k">extern</span><span class="w"> </span><span class="k">crate</span><span class="w"> </span><span class="n">sha2</span><span class="p">;</span>
+
+
+<span class="k">use</span><span class="w"> </span><span class="k">crate</span>::<span class="n">crypto</span>::<span class="n">ecdsa</span><span class="p">;</span>
+<span class="k">use</span><span class="w"> </span><span class="k">crate</span>::<span class="n">model</span>::<span class="n">transaction</span><span class="p">;</span>
+<span class="k">use</span><span class="w"> </span><span class="n">sha2</span>::<span class="p">{</span><span class="n">Digest</span><span class="p">,</span><span class="w"> </span><span class="n">Sha256</span><span class="p">};</span>
+
+
+<span class="k">pub</span><span class="w"> </span><span class="k">fn</span> <span class="nf">verify</span><span class="p">(</span><span class="n">proof</span>: <span class="kp">&amp;</span><span class="p">[</span><span class="kt">u8</span><span class="p">],</span><span class="w"> </span><span class="n">validator</span>: <span class="kp">&amp;</span><span class="p">[</span><span class="kt">u8</span><span class="p">])</span><span class="w"> </span>-&gt; <span class="kt">bool</span> <span class="p">{</span>
+<span class="w">  </span><span class="kd">let</span><span class="w"> </span><span class="n">cap</span><span class="w"> </span><span class="o">=</span>
+<span class="w">    </span><span class="n">protobuf</span>::<span class="n">parse_from_bytes</span>::<span class="o">&lt;</span><span class="n">transaction</span>::<span class="n">ChaincodeActionPayload</span><span class="o">&gt;</span><span class="p">(</span><span class="n">proof</span><span class="p">).</span><span class="n">expect</span><span class="p">(</span><span class="s">&quot;error&quot;</span><span class="p">);</span>
+<span class="w">  </span><span class="kd">let</span><span class="w"> </span><span class="n">cap_act</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cap</span><span class="p">.</span><span class="n">action</span><span class="p">.</span><span class="n">unwrap</span><span class="p">();</span>
+<span class="w">  </span><span class="kd">let</span><span class="w"> </span><span class="n">endorsers</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cap_act</span><span class="p">.</span><span class="n">endorsements</span><span class="p">;</span>
+
+<span class="w">  </span><span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">digest</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Sha256</span>::<span class="n">new</span><span class="p">();</span>
+<span class="w">  </span><span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">payload</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cap_act</span><span class="p">.</span><span class="n">proposal_response_payload</span><span class="p">.</span><span class="n">to_owned</span><span class="p">();</span>
+
+<span class="w">  </span><span class="n">payload</span><span class="p">.</span><span class="n">extend</span><span class="p">(</span><span class="o">&amp;</span><span class="n">endorsers</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">endorser</span><span class="p">);</span>
+<span class="w">  </span><span class="n">digest</span><span class="p">.</span><span class="n">input</span><span class="p">(</span><span class="o">&amp;</span><span class="n">payload</span><span class="p">);</span>
+
+<span class="w">  </span><span class="kd">let</span><span class="w"> </span><span class="n">digest_byte</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">digest</span><span class="p">.</span><span class="n">result</span><span class="p">();</span>
+
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="n">ecdsa</span>::<span class="n">verify</span><span class="p">(</span>
+<span class="w">    </span><span class="o">&amp;</span><span class="n">endorsers</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">signature</span><span class="p">,</span>
+<span class="w">    </span><span class="o">&amp;</span><span class="n">digest_byte</span><span class="p">,</span>
+<span class="w">    </span><span class="o">&amp;</span><span class="n">validator</span><span class="p">,</span>
+<span class="w">    </span><span class="n">ecdsa</span>::<span class="n">EcdsaAlgorithmn</span>::<span class="n">P256</span><span class="p">,</span>
+<span class="w">  </span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div>
+<h2 id="3-sdk">3 SDK文档</h2>
+<h3 id="31">3.1 初始化和启动</h3>
+<h4 id="311-client">3.1.1 初始化Client</h4>
+<p>用途：调用该接口获取与中继链交互的Client。</p>
+<p>参数：</p>
+<ul>
+<li><code>opts</code> 是中继链的网络地址，日志以及密钥的配置。</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">New</span><span class="p">(</span><span class="nx">opts</span><span class="w"> </span><span class="o">...</span><span class="nx">Option</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="nx">ChainClient</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span>
+</code></pre></div>
+<h4 id="312-client">3.1.2 停止Client</h4>
+<p>用途：调用该接口将与中继链交互的<code>Client</code>关闭。</p>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">Stop</span><span class="p">()</span><span class="w"> </span><span class="kt">error</span>
+</code></pre></div>
+<h3 id="32">3.2 交易接口</h3>
+<h4 id="321">3.2.1 发送交易</h4>
+<p>用途：调用该接口向中继链发送交易，交易类型包括普通交易、跨链交易和智能合约。</p>
+<p>参数：</p>
+<ul>
+<li><code>tx</code>交易实例。</li>
+<li><code>opts</code>跨链交易nonce。</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">SendTransaction</span><span class="p">(</span><span class="nx">tx</span><span class="w"> </span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">Transaction</span><span class="p">,</span><span class="w"> </span><span class="nx">opts</span><span class="w"> </span><span class="o">*</span><span class="nx">TransactOpts</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span>
+</code></pre></div>
+<h4 id="322">3.2.2 查询交易回执</h4>
+<p>用途：调用该接口向BitXHub查询交易回执。</p>
+<p>参数：</p>
+<ul>
+<li><code>hash</code>交易哈希。</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">GetReceipt</span><span class="p">(</span><span class="nx">hash</span><span class="w"> </span><span class="kt">string</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">Receipt</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span>
+</code></pre></div>
+<p>用例：</p>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">TestChainClient_SendTransactionWithReceipt</span><span class="p">(</span><span class="nx">t</span><span class="w"> </span><span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">T</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">   </span><span class="c1">// 生成from私钥</span>
+<span class="w">   </span><span class="nx">privKey</span><span class="p">,</span><span class="w"> </span><span class="nx">_</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">asym</span><span class="p">.</span><span class="nx">GenerateKeyPair</span><span class="p">(</span><span class="nx">crypto</span><span class="p">.</span><span class="nx">Secp256k1</span><span class="p">)</span>
+
+<span class="w">   </span><span class="c1">// 生成to私钥</span>
+<span class="w">   </span><span class="nx">toPrivKey</span><span class="p">,</span><span class="w"> </span><span class="nx">_</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">asym</span><span class="p">.</span><span class="nx">GenerateKeyPair</span><span class="p">(</span><span class="nx">crypto</span><span class="p">.</span><span class="nx">Secp256k1</span><span class="p">)</span>
+
+<span class="w">   </span><span class="c1">// 配置Client</span>
+<span class="w">   </span><span class="nx">cli</span><span class="p">,</span><span class="w"> </span><span class="nx">_</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">New</span><span class="p">(</span>
+<span class="w">      </span><span class="nx">WithAddrs</span><span class="p">(</span><span class="nx">cfg</span><span class="p">.</span><span class="nx">addrs</span><span class="p">),</span>
+<span class="w">      </span><span class="nx">WithLogger</span><span class="p">(</span><span class="nx">cfg</span><span class="p">.</span><span class="nx">logger</span><span class="p">),</span>
+<span class="w">      </span><span class="nx">WithPrivateKey</span><span class="p">(</span><span class="nx">privKey</span><span class="p">),</span>
+<span class="w">   </span><span class="p">)</span>
+
+<span class="w">   </span><span class="c1">// 获取from地址</span>
+<span class="w">   </span><span class="nx">from</span><span class="p">,</span><span class="w"> </span><span class="nx">_</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">privKey</span><span class="p">.</span><span class="nx">PublicKey</span><span class="p">().</span><span class="nx">Address</span><span class="p">()</span>
+
+<span class="w">   </span><span class="c1">// 获取to地址</span>
+<span class="w">   </span><span class="nx">to</span><span class="p">,</span><span class="w"> </span><span class="nx">_</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">toPrivKey</span><span class="p">.</span><span class="nx">PublicKey</span><span class="p">().</span><span class="nx">Address</span><span class="p">()</span>
+
+<span class="w">   </span><span class="c1">// 构建交易体</span>
+<span class="w">   </span><span class="nx">tx</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">pb</span><span class="p">.</span><span class="nx">Transaction</span><span class="p">{</span>
+<span class="w">      </span><span class="nx">From</span><span class="p">:</span><span class="w"> </span><span class="nx">from</span><span class="p">,</span>
+<span class="w">      </span><span class="nx">To</span><span class="p">:</span><span class="w">   </span><span class="nx">to</span><span class="p">,</span>
+<span class="w">      </span><span class="nx">Data</span><span class="p">:</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">pb</span><span class="p">.</span><span class="nx">TransactionData</span><span class="p">{</span>
+<span class="w">         </span><span class="nx">Amount</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span>
+<span class="w">      </span><span class="p">},</span>
+<span class="w">      </span><span class="nx">Timestamp</span><span class="p">:</span><span class="w"> </span><span class="nx">time</span><span class="p">.</span><span class="nx">Now</span><span class="p">().</span><span class="nx">UnixNano</span><span class="p">(),</span>
+<span class="w">      </span><span class="nx">Nonce</span><span class="p">:</span><span class="w">     </span><span class="nx">rand</span><span class="p">.</span><span class="nx">Int63</span><span class="p">(),</span>
+<span class="w">   </span><span class="p">}</span>
+
+<span class="w">   </span><span class="c1">// 用from的私钥签名交易</span>
+<span class="w">   </span><span class="nx">_</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">tx</span><span class="p">.</span><span class="nx">Sign</span><span class="p">(</span><span class="nx">privKey</span><span class="p">)</span>
+
+<span class="w">   </span><span class="c1">// 通过client发送交易</span>
+<span class="w">   </span><span class="nx">hash</span><span class="p">,</span><span class="w"> </span><span class="nx">_</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">cli</span><span class="p">.</span><span class="nx">SendTransaction</span><span class="p">(</span><span class="nx">tx</span><span class="p">,</span><span class="w"> </span><span class="kc">nil</span><span class="p">)</span>
+
+<span class="w">   </span><span class="c1">// 获取交易回执，判断交易执行状态</span>
+<span class="w">   </span><span class="nx">ret</span><span class="p">,</span><span class="w"> </span><span class="nx">_</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">cli</span><span class="p">.</span><span class="nx">GetReceipt</span><span class="p">(</span><span class="nx">hash</span><span class="p">)</span>
+<span class="w">   </span><span class="nx">require</span><span class="p">.</span><span class="nx">Equal</span><span class="p">(</span><span class="nx">t</span><span class="p">,</span><span class="w"> </span><span class="nx">tx</span><span class="p">.</span><span class="nx">Hash</span><span class="p">().</span><span class="nx">String</span><span class="p">(),</span><span class="w"> </span><span class="nx">ret</span><span class="p">.</span><span class="nx">TxHash</span><span class="p">.</span><span class="nx">String</span><span class="p">())</span>
+
+<span class="w">   </span><span class="c1">// 停止client</span>
+<span class="w">   </span><span class="nx">_</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">cli</span><span class="p">.</span><span class="nx">Stop</span><span class="p">()</span>
+<span class="p">}</span>
+</code></pre></div>
+<h4 id="323">3.2.3 查询交易</h4>
+<p>用途：调用该接口向BitXHub查询交易。</p>
+<p>参数：</p>
+<ul>
+<li><code>hash</code>交易哈希。</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">GetTransaction</span><span class="p">(</span><span class="nx">hash</span><span class="w"> </span><span class="kt">string</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="nx">proto</span><span class="p">.</span><span class="nx">GetTransactionResponse</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="33">3.3 合约接口</h3>
+<p>合约类型：</p>
+<ul>
+<li>
+<p>BVM：BitXHub内置合约。</p>
+</li>
+<li>
+<p>XVM：WebAssembly合约。</p>
+</li>
+</ul>
+<h4 id="331">3.3.1 部署合约</h4>
+<p>用途：调用该接口向BitXHub部署XVM合约，返回合约地址。</p>
+<p>参数：</p>
+<ul>
+<li><code>contract</code>wasm合约编译后的字节数据。</li>
+<li><code>opts</code>跨链交易nonce。</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">DeployContract</span><span class="p">(</span><span class="nx">contract</span><span class="w"> </span><span class="p">[]</span><span class="kt">byte</span><span class="p">,</span><span class="w"> </span><span class="nx">opts</span><span class="w"> </span><span class="o">*</span><span class="nx">TransactOpts</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="nx">contractAddr</span><span class="w"> </span><span class="o">*</span><span class="nx">types</span><span class="p">.</span><span class="nx">Address</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span>
+</code></pre></div>
+<h4 id="332">3.3.2 调用合约</h4>
+<p>用途：该接口向中继链调用合约获取交易回执。</p>
+<p>参数：</p>
+<ul>
+<li>
+<p><code>vmType</code>合约类型：BVM和XVM；</p>
+</li>
+<li>
+<p><code>address</code>合约地址；</p>
+</li>
+<li>
+<p><code>method</code>合约方法；</p>
+</li>
+<li>
+<p><code>opts</code>跨链交易nonce；</p>
+</li>
+<li>
+<p><code>args</code>合约方法参数。</p>
+</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">InvokeContract</span><span class="p">(</span><span class="nx">vmType</span><span class="w"> </span><span class="nx">pb</span><span class="p">.</span><span class="nx">TransactionData_VMType</span><span class="p">,</span><span class="w"> </span><span class="nx">address</span><span class="w"> </span><span class="nx">types</span><span class="p">.</span><span class="nx">Address</span><span class="p">,</span><span class="w"> </span><span class="nx">method</span><span class="w"> </span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="nx">opts</span><span class="w"> </span><span class="o">*</span><span class="nx">TransactOpts</span><span class="p">,</span><span class="w"> </span><span class="nx">args</span><span class="w"> </span><span class="o">...*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">Arg</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">Receipt</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span>
+</code></pre></div>
+<p>调用XVM合约用例：</p>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">TestChainClient_InvokeXVMContract</span><span class="p">(</span><span class="nx">t</span><span class="w"> </span><span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">T</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">   </span><span class="nx">privKey</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">asym</span><span class="p">.</span><span class="nx">GenerateKeyPair</span><span class="p">(</span><span class="nx">crypto</span><span class="p">.</span><span class="nx">Secp256k1</span><span class="p">)</span>
+<span class="w">   </span><span class="nx">require</span><span class="p">.</span><span class="nx">Nil</span><span class="p">(</span><span class="nx">t</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="p">)</span>
+
+<span class="w">   </span><span class="nx">cli</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">New</span><span class="p">(</span>
+<span class="w">      </span><span class="nx">WithAddrs</span><span class="p">(</span><span class="nx">cfg</span><span class="p">.</span><span class="nx">addrs</span><span class="p">),</span>
+<span class="w">      </span><span class="nx">WithLogger</span><span class="p">(</span><span class="nx">cfg</span><span class="p">.</span><span class="nx">logger</span><span class="p">),</span>
+<span class="w">      </span><span class="nx">WithPrivateKey</span><span class="p">(</span><span class="nx">privKey</span><span class="p">),</span>
+<span class="w">   </span><span class="p">)</span>
+<span class="w">   </span><span class="nx">require</span><span class="p">.</span><span class="nx">Nil</span><span class="p">(</span><span class="nx">t</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="p">)</span>
+
+<span class="w">   </span><span class="nx">contract</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">ioutil</span><span class="p">.</span><span class="nx">ReadFile</span><span class="p">(</span><span class="s">&quot;./testdata/example.wasm&quot;</span><span class="p">)</span>
+<span class="w">   </span><span class="nx">require</span><span class="p">.</span><span class="nx">Nil</span><span class="p">(</span><span class="nx">t</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="p">)</span>
+
+<span class="w">   </span><span class="nx">addr</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">cli</span><span class="p">.</span><span class="nx">DeployContract</span><span class="p">(</span><span class="nx">contract</span><span class="p">,</span><span class="w"> </span><span class="kc">nil</span><span class="p">)</span>
+<span class="w">   </span><span class="nx">require</span><span class="p">.</span><span class="nx">Nil</span><span class="p">(</span><span class="nx">t</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="p">)</span>
+
+<span class="w">   </span><span class="nx">result</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">cli</span><span class="p">.</span><span class="nx">InvokeXVMContract</span><span class="p">(</span><span class="nx">addr</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;a&quot;</span><span class="p">,</span><span class="w"> </span><span class="kc">nil</span><span class="p">,</span><span class="w"> </span><span class="nx">Int32</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span><span class="w"> </span><span class="nx">Int32</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span>
+<span class="w">   </span><span class="nx">require</span><span class="p">.</span><span class="nx">Nil</span><span class="p">(</span><span class="nx">t</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="p">)</span>
+<span class="w">   </span><span class="nx">require</span><span class="p">.</span><span class="nx">Equal</span><span class="p">(</span><span class="nx">t</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;336&quot;</span><span class="p">,</span><span class="w"> </span><span class="nb">string</span><span class="p">(</span><span class="nx">result</span><span class="p">.</span><span class="nx">Ret</span><span class="p">))</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>调用BVM合约用例：</p>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">TestChainClient_InvokeBVMContract</span><span class="p">(</span><span class="nx">t</span><span class="w"> </span><span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">T</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">   </span><span class="nx">privKey</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">asym</span><span class="p">.</span><span class="nx">GenerateKeyPair</span><span class="p">(</span><span class="nx">crypto</span><span class="p">.</span><span class="nx">Secp256k1</span><span class="p">)</span>
+<span class="w">   </span><span class="nx">require</span><span class="p">.</span><span class="nx">Nil</span><span class="p">(</span><span class="nx">t</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="p">)</span>
+
+<span class="w">   </span><span class="nx">cli</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">New</span><span class="p">(</span>
+<span class="w">      </span><span class="nx">WithAddrs</span><span class="p">(</span><span class="nx">cfg</span><span class="p">.</span><span class="nx">addrs</span><span class="p">),</span>
+<span class="w">      </span><span class="nx">WithLogger</span><span class="p">(</span><span class="nx">cfg</span><span class="p">.</span><span class="nx">logger</span><span class="p">),</span>
+<span class="w">      </span><span class="nx">WithPrivateKey</span><span class="p">(</span><span class="nx">privKey</span><span class="p">),</span>
+<span class="w">   </span><span class="p">)</span>
+<span class="w">   </span><span class="nx">require</span><span class="p">.</span><span class="nx">Nil</span><span class="p">(</span><span class="nx">t</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="p">)</span>
+
+<span class="w">   </span><span class="nx">result</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">cli</span><span class="p">.</span><span class="nx">InvokeBVMContract</span><span class="p">(</span><span class="nx">constant</span><span class="p">.</span><span class="nx">StoreContractAddr</span><span class="p">.</span><span class="nx">Address</span><span class="p">(),</span><span class="w"> </span><span class="s">&quot;Set&quot;</span><span class="p">,</span><span class="w"> </span><span class="kc">nil</span><span class="p">,</span><span class="w"> </span><span class="nx">String</span><span class="p">(</span><span class="s">&quot;a&quot;</span><span class="p">),</span><span class="w"> </span><span class="nx">String</span><span class="p">(</span><span class="s">&quot;10&quot;</span><span class="p">))</span>
+<span class="w">   </span><span class="nx">require</span><span class="p">.</span><span class="nx">Nil</span><span class="p">(</span><span class="nx">t</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="p">)</span>
+<span class="w">   </span><span class="nx">require</span><span class="p">.</span><span class="nx">Nil</span><span class="p">(</span><span class="nx">t</span><span class="p">,</span><span class="w"> </span><span class="nx">result</span><span class="p">.</span><span class="nx">Ret</span><span class="p">)</span>
+
+<span class="w">   </span><span class="nx">res</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">cli</span><span class="p">.</span><span class="nx">InvokeBVMContract</span><span class="p">(</span><span class="nx">constant</span><span class="p">.</span><span class="nx">StoreContractAddr</span><span class="p">.</span><span class="nx">Address</span><span class="p">(),</span><span class="w"> </span><span class="s">&quot;Get&quot;</span><span class="p">,</span><span class="w"> </span><span class="kc">nil</span><span class="p">,</span><span class="w"> </span><span class="nx">String</span><span class="p">(</span><span class="s">&quot;a&quot;</span><span class="p">))</span>
+<span class="w">   </span><span class="nx">require</span><span class="p">.</span><span class="nx">Nil</span><span class="p">(</span><span class="nx">t</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="p">)</span>
+<span class="w">   </span><span class="nx">require</span><span class="p">.</span><span class="nx">Equal</span><span class="p">(</span><span class="nx">t</span><span class="p">,</span><span class="w"> </span><span class="nb">string</span><span class="p">(</span><span class="nx">res</span><span class="p">.</span><span class="nx">Ret</span><span class="p">),</span><span class="w"> </span><span class="s">&quot;10&quot;</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="34">3.4 区块接口</h3>
+<h4 id="341">3.4.1 查询区块</h4>
+<p>参数：</p>
+<ul>
+<li><code>value</code>区块高度或者区块哈希。</li>
+<li><code>blockType</code> 查询类型。</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="nx">GetBlock</span><span class="p">(</span><span class="nx">value</span><span class="w"> </span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="nx">blockType</span><span class="w"> </span><span class="nx">pb</span><span class="p">.</span><span class="nx">GetBlockRequest_Type</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">Block</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span>
+</code></pre></div>
+<h4 id="342">3.4.2 批量查询区块</h4>
+<p>用途：批量查询区块，返回指定块高度范围（start到end）的区块信息。</p>
+<p>参数：</p>
+<ul>
+<li><code>start</code>指定范围的起始区块高度。</li>
+<li><code>end</code>指定范围的结束区块高度。</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">GetBlocks</span><span class="p">(</span><span class="nx">start</span><span class="w"> </span><span class="kt">uint64</span><span class="p">,</span><span class="w"> </span><span class="nx">end</span><span class="w"> </span><span class="kt">uint64</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">GetBlocksResponse</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span>
+</code></pre></div>
+<h4 id="343-meta">3.4.3 查询区块Meta</h4>
+<p>用途：返回当前链的高度和区块哈希。</p>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">GetChainMeta</span><span class="p">()</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">ChainMeta</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span>
+</code></pre></div>
+<h4 id="344">3.4.4 查询区块链状态</h4>
+<p>用途：返回当前区块链共识的状态（正常或者不正常）。</p>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">GetChainStatus</span><span class="p">()</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">Response</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="35">3.5 订阅接口</h3>
+<h4 id="351">3.5.1 订阅事件</h4>
+<p>用途：调用该接口向中继链发起订阅事件的。</p>
+<p>参数：</p>
+<ul>
+<li><code>type</code> 事件类型，包含区块事件，区块头事件，跨链交易事件。</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">Subscribe</span><span class="p">(</span><span class="nx">ctx</span><span class="w"> </span><span class="nx">context</span><span class="p">.</span><span class="nx">Context</span><span class="p">,</span><span class="w"> </span><span class="nx">typ</span><span class="w"> </span><span class="nx">pb</span><span class="p">.</span><span class="nx">SubscriptionRequest_Type</span><span class="p">,</span><span class="w"> </span><span class="nx">extra</span><span class="w"> </span><span class="p">[]</span><span class="kt">byte</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="o">&lt;-</span><span class="kd">chan</span><span class="w"> </span><span class="kd">interface</span><span class="p">{},</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span>
+</code></pre></div>
+<p>用例：</p>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">TestChainClient_Subscribe</span><span class="p">(</span><span class="nx">t</span><span class="w"> </span><span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">T</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">   </span><span class="nx">privKey</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">asym</span><span class="p">.</span><span class="nx">GenerateKeyPair</span><span class="p">(</span><span class="nx">crypto</span><span class="p">.</span><span class="nx">Secp256k1</span><span class="p">)</span>
+<span class="w">   </span><span class="nx">require</span><span class="p">.</span><span class="nx">Nil</span><span class="p">(</span><span class="nx">t</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="p">)</span>
+
+<span class="w">   </span><span class="nx">from</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">privKey</span><span class="p">.</span><span class="nx">PublicKey</span><span class="p">().</span><span class="nx">Address</span><span class="p">()</span>
+<span class="w">   </span><span class="nx">require</span><span class="p">.</span><span class="nx">Nil</span><span class="p">(</span><span class="nx">t</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="p">)</span>
+
+<span class="w">   </span><span class="nx">cli</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">New</span><span class="p">(</span>
+<span class="w">      </span><span class="nx">WithAddrs</span><span class="p">(</span><span class="nx">cfg</span><span class="p">.</span><span class="nx">addrs</span><span class="p">),</span>
+<span class="w">      </span><span class="nx">WithLogger</span><span class="p">(</span><span class="nx">cfg</span><span class="p">.</span><span class="nx">logger</span><span class="p">),</span>
+<span class="w">      </span><span class="nx">WithPrivateKey</span><span class="p">(</span><span class="nx">privKey</span><span class="p">),</span>
+<span class="w">   </span><span class="p">)</span>
+<span class="w">   </span><span class="nx">require</span><span class="p">.</span><span class="nx">Nil</span><span class="p">(</span><span class="nx">t</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="p">)</span>
+
+<span class="w">   </span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">cancel</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">context</span><span class="p">.</span><span class="nx">WithCancel</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">Background</span><span class="p">())</span>
+<span class="w">   </span><span class="k">defer</span><span class="w"> </span><span class="nx">cancel</span><span class="p">()</span>
+
+<span class="w">   </span><span class="nx">c</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">cli</span><span class="p">.</span><span class="nx">Subscribe</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">pb</span><span class="p">.</span><span class="nx">SubscriptionRequest_BLOCK</span><span class="p">,</span><span class="w"> </span><span class="kc">nil</span><span class="p">)</span>
+<span class="w">   </span><span class="nx">assert</span><span class="p">.</span><span class="nx">Nil</span><span class="p">(</span><span class="nx">t</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="p">)</span>
+<span class="w">   </span><span class="k">go</span><span class="w"> </span><span class="kd">func</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nx">tx</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">pb</span><span class="p">.</span><span class="nx">Transaction</span><span class="p">{</span>
+<span class="w">         </span><span class="nx">From</span><span class="p">:</span><span class="w">      </span><span class="nx">from</span><span class="p">,</span>
+<span class="w">         </span><span class="nx">To</span><span class="p">:</span><span class="w">        </span><span class="nx">from</span><span class="p">,</span>
+<span class="w">         </span><span class="nx">Timestamp</span><span class="p">:</span><span class="w"> </span><span class="nx">time</span><span class="p">.</span><span class="nx">Now</span><span class="p">().</span><span class="nx">UnixNano</span><span class="p">(),</span>
+<span class="w">         </span><span class="nx">Nonce</span><span class="p">:</span><span class="w">     </span><span class="nx">rand</span><span class="p">.</span><span class="nx">Int63</span><span class="p">(),</span>
+<span class="w">      </span><span class="p">}</span>
+
+<span class="w">      </span><span class="nx">err</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">tx</span><span class="p">.</span><span class="nx">Sign</span><span class="p">(</span><span class="nx">privKey</span><span class="p">)</span>
+<span class="w">      </span><span class="nx">require</span><span class="p">.</span><span class="nx">Nil</span><span class="p">(</span><span class="nx">t</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="p">)</span>
+
+<span class="w">      </span><span class="nx">hash</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">cli</span><span class="p">.</span><span class="nx">SendTransaction</span><span class="p">(</span><span class="nx">tx</span><span class="p">,</span><span class="w"> </span><span class="kc">nil</span><span class="p">)</span>
+<span class="w">      </span><span class="nx">require</span><span class="p">.</span><span class="nx">Nil</span><span class="p">(</span><span class="nx">t</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="p">)</span>
+
+<span class="w">      </span><span class="nx">require</span><span class="p">.</span><span class="nx">EqualValues</span><span class="p">(</span><span class="nx">t</span><span class="p">,</span><span class="w"> </span><span class="mi">66</span><span class="p">,</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="nx">hash</span><span class="p">))</span>
+
+<span class="w">   </span><span class="p">}()</span>
+
+<span class="w">   </span><span class="k">for</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="k">select</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="k">case</span><span class="w"> </span><span class="nx">block</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="o">&lt;-</span><span class="nx">c</span><span class="p">:</span>
+<span class="w">         </span><span class="k">if</span><span class="w"> </span><span class="nx">block</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="nx">assert</span><span class="p">.</span><span class="nx">Error</span><span class="p">(</span><span class="nx">t</span><span class="p">,</span><span class="w"> </span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">&quot;channel is closed&quot;</span><span class="p">))</span>
+<span class="w">            </span><span class="k">return</span>
+<span class="w">         </span><span class="p">}</span>
+<span class="w">         </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">cli</span><span class="p">.</span><span class="nx">Stop</span><span class="p">();</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">return</span>
+<span class="w">         </span><span class="p">}</span>
+<span class="w">         </span><span class="k">return</span>
+<span class="w">      </span><span class="k">case</span><span class="w"> </span><span class="o">&lt;-</span><span class="nx">ctx</span><span class="p">.</span><span class="nx">Done</span><span class="p">():</span>
+<span class="w">         </span><span class="k">return</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">   </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h4 id="352-merklewrapper">3.5.2 获取MerkleWrapper</h4>
+<p>用途：获取指定区块高度范围的MerkleWrapper</p>
+<p>参数：</p>
+<ul>
+<li><code>pid</code> 应用链ID。</li>
+<li><code>begin</code> 起始区块高度。</li>
+<li><code>end</code> 结束区块高度。</li>
+<li><code>ch</code> Merkle Wrapper的通道。</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">GetInterchainTxWrappers</span><span class="p">(</span><span class="nx">ctx</span><span class="w"> </span><span class="nx">context</span><span class="p">.</span><span class="nx">Context</span><span class="p">,</span><span class="w"> </span><span class="nx">pid</span><span class="w"> </span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="nx">begin</span><span class="p">,</span><span class="w"> </span><span class="nx">end</span><span class="w"> </span><span class="kt">uint64</span><span class="p">,</span><span class="w"> </span><span class="nx">ch</span><span class="w"> </span><span class="kd">chan</span><span class="o">&lt;-</span><span class="w"> </span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">InterchainTxWrapper</span><span class="p">)</span><span class="w"> </span><span class="kt">error</span>
+</code></pre></div>
+<h3 id="36">3.6 其它接口</h3>
+<h4 id="361">3.6.1 查询节点网络信息</h4>
+<p>用途：返回当前区块链网络的节点信息。</p>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">GetNetworkMeta</span><span class="p">()</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">Response</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span>
+</code></pre></div>
+<h4 id="362">3.6.2 查询账户余额</h4>
+<p>参数：</p>
+<ul>
+<li><code>address</code>地址。</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">GetAccountBalance</span><span class="p">(</span><span class="nx">address</span><span class="w"> </span><span class="kt">string</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">Response</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span>
+</code></pre></div>
+<h4 id="363">3.6.3 删除节点</h4>
+<p>用途：删除区块链网络中的节点（须往f+1个节点发送请求才可以删除）</p>
+<p>参数：</p>
+<ul>
+<li><code>pid</code>节点的pid</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">DelVPNode</span><span class="p">(</span><span class="nx">pid</span><span class="w"> </span><span class="kt">string</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="nx">pb</span><span class="p">.</span><span class="nx">Response</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span>
+</code></pre></div>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+        </div>
+        
+          <a href="#" class="md-top md-icon" data-md-component="top" hidden>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12Z"/></svg>
+            Back to top
+          </a>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.tabs", "navigation.top", "search.highlight"], "search": "../../assets/javascripts/workers/search.e5c33ebb.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.51d95adb.min.js"></script>
+      
+    
+  </body>
+</html>
