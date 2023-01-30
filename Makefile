@@ -4,7 +4,7 @@ CURRENT_PATH = $(shell pwd)
 APP_NAME = bitxhub
 export GODEBUG=x509ignoreCN=0
 
-# build with verison infos
+# build with version infos
 VERSION_DIR = github.com/meshplus/${APP_NAME}
 BUILD_DATE = $(shell date +%FT%T)
 GIT_COMMIT = $(shell git log --pretty=format:'%h' -n 1)
@@ -40,18 +40,18 @@ prepare:
 	@cd scripts && bash prepare.sh
 
 ## make test: Run go unittest
-test:
+test: prepare
 	go generate ./...
 	@$(GO) test -timeout 300s ${TEST_PKGS} -count=1
 
 ## make test-coverage: Test project with cover
-test-coverage:
+test-coverage: prepare
 	go generate ./...
 	@go test -timeout 300s -short -coverprofile cover.out -covermode=atomic ${TEST_PKGS2}
 	@cat cover.out | grep -v "pb.go" >> coverage.txt
 
 ## make tester: Run integration test
-tester:
+tester: prepare
 	go generate ./...
 	cd tester && $(GO) test -v -run TestTester
 
@@ -62,6 +62,7 @@ install:
 	$(GO) install -ldflags '${GOLDFLAGS}' ./cmd/${APP_NAME}
 	@printf "${GREEN}Install bitxhub successfully!${NC}\n"
 
+## make build: go build the project
 build:
 	cd internal/repo && packr2
 	@mkdir -p bin
@@ -70,8 +71,13 @@ build:
 	@mv ./bitxhub bin
 	@printf "${GREEN}Build bitxhub successfully!${NC}\n"
 
+## make build-docker: docker build the project
+build-docker:
+	echo "TODO(jiuhuche120): build docker)"
+
 # !!NOTICE: if using GO1.16+, the one of new features is don't automatically modify go.mod and go.sum
 # using the cmd to solve it: ` go env -w GOFLAGS="-mod=mod" `
+## make installent: go install the project with commercial version
 installent:
 	cd internal/repo && packr2
 	cp imports/imports.go.template imports/imports.go
@@ -80,6 +86,7 @@ installent:
 	$(GO) install -tags ent -ldflags '${GOLDFLAGS}' -modfile goent.mod ./cmd/${APP_NAME}
 	@printf "${GREEN}Install bitxhub ent successfully!${NC}\n"
 
+## make buildent: go build the project with commercial version
 buildent:
 	cd internal/repo && packr2
 	@mkdir -p bin

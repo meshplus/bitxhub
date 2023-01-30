@@ -9,8 +9,8 @@ jobs:
     name: notify on DingTalk
     runs-on: ubuntu-latest
     steps:
-      - name: Check out code
-        uses: actions/checkout@v2
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v3
 
       - name: Ding Talk PR Notify
         uses: lijinke666/ding-talk-pr-notify@main
