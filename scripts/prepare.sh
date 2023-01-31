@@ -23,7 +23,12 @@ fi
 
 print_blue "===> 2. Install golangci-lint"
 if ! type golanci-lint >/dev/null 2>&1; then
-  go_install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.23.0
+    version=$(go env GOVERSION)
+    if [[ ! "$version" < "go1.16" ]];then
+        go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.50.1
+    else
+        go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.23.0
+    fi
 fi
 
 print_blue "===> 3. Install go mock tool"

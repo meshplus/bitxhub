@@ -11,15 +11,15 @@ jobs:
     runs-on: ${{matrix.os}}
     strategy:
       matrix:
-        os: [macos-10.15, ubuntu-18.04]
+        os: [macos-10.15, ubuntu-latest]
     steps:
-      - name: Set up Go
-        uses: actions/setup-go@v2
+      - name: Set up Go 1.18
+        uses: actions/setup-go@v3
         with:
-          go-version: 1.15
+          go-version: 1.18
 
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Build Binary
         run: make release-binary
@@ -31,39 +31,40 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  release-docker:
-    name: Release docker-images of bitxhub and bitxhub-solo
-    runs-on: ${{matrix.os}}
-    strategy:
-      matrix:
-        os: [ubuntu-18.04]
-        go_version: [1.15]
-    steps:
-      - name: Set up Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: ${{ matrix.go_version }}
-
-      - name: Check out code
-        uses: actions/checkout@v2
-
-      - name: Build Binary
-        run: make release-binary
-
-      - name: Build and push bitxhub image with raft consensus
-        uses: elgohr/Publish-Docker-Github-Action@master
-        with:
-          name: meshplus/bitxhub
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-          dockerfile: Dockerfile-raft
-          tag_names: true
-
-      - name: Build and push bitxhub image with solo consensus
-        uses: elgohr/Publish-Docker-Github-Action@master
-        with:
-          name: meshplus/bitxhub-solo
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-          dockerfile: Dockerfile-solo
-          tag_names: true
+# TODO: update release docker
+#  release-docker:
+#    name: Release docker-images of bitxhub and bitxhub-solo
+#    runs-on: ${{matrix.os}}
+#    strategy:
+#      matrix:
+#        os: [ubuntu-latest]
+#        go_version: [1.15]
+#    steps:
+#      - name: Set up Go
+#        uses: actions/setup-go@v3
+#        with:
+#          go-version: ${{ matrix.go_version }}
+#
+#      - name: Check out code
+#        uses: actions/checkout@v3
+#
+#      - name: Build Binary
+#        run: make release-binary
+#
+#      - name: Build and push bitxhub image with raft consensus
+#        uses: elgohr/Publish-Docker-Github-Action@master
+#        with:
+#          name: meshplus/bitxhub
+#          username: ${{ secrets.DOCKER_USERNAME }}
+#          password: ${{ secrets.DOCKER_PASSWORD }}
+#          dockerfile: Dockerfile-raft
+#          tag_names: true
+#
+#      - name: Build and push bitxhub image with solo consensus
+#        uses: elgohr/Publish-Docker-Github-Action@master
+#        with:
+#          name: meshplus/bitxhub-solo
+#          username: ${{ secrets.DOCKER_USERNAME }}
+#          password: ${{ secrets.DOCKER_PASSWORD }}
+#          dockerfile: Dockerfile-solo
+#          tag_names: true
