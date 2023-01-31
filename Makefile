@@ -14,6 +14,9 @@ ifeq (${GIT_BRANCH},HEAD)
 else
   APP_VERSION = dev
 endif
+ifndef (${TAG})
+  TAG = latest
+endif
 
 GOLDFLAGS += -X "${VERSION_DIR}.BuildDate=${BUILD_DATE}"
 GOLDFLAGS += -X "${VERSION_DIR}.CurrentCommit=${GIT_COMMIT}"
@@ -73,7 +76,8 @@ build:
 
 ## make build-docker: docker build the project
 build-docker:
-	echo "TODO(jiuhuche120): build docker)"
+	docker build -t meshplus/bitxhub:${TAG} .
+	@printf "${GREEN}Build images meshplus/bitxhub:${TAG} successfully!${NC}\n"
 
 # !!NOTICE: if using GO1.16+, the one of new features is don't automatically modify go.mod and go.sum
 # using the cmd to solve it: ` go env -w GOFLAGS="-mod=mod" `
