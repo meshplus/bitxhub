@@ -47,9 +47,9 @@ jobs:
         run: make test-coverage
 
       - name: Upload Coverage report to CodeCov
-        uses: codecov/codecov-action@v1.0.13
+        uses: codecov/codecov-action@v3
         with:
-          file: ./coverage.txt
+          files: ./coverage.txt
 
   integration-test:
     name: Run integration test
