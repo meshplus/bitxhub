@@ -347,6 +347,8 @@ func TestChainLedger_OpenStateDB(t *testing.T) {
 	assert.Nil(t, err)
 	repoRoot1, err := ioutil.TempDir("", "ethstorage")
 	assert.Nil(t, err)
+	repoRoot2, err := ioutil.TempDir("", "blockfile")
+	assert.Nil(t, err)
 	logger := log.NewWithModule("opendb_test")
 	_, err = OpenStateDB(repoRoot, &repo.Ledger{
 		Type:        SimpleLedgerTyp,
@@ -358,8 +360,8 @@ func TestChainLedger_OpenStateDB(t *testing.T) {
 		LeveldbType: NormalLeveldb,
 	})
 	assert.Nil(t, err)
-	blockFile, err := blockfile.NewBlockFile("", logger)
-	assert.NotNil(t, err)
+	blockFile, err := blockfile.NewBlockFile(repoRoot2, logger)
+	assert.Nil(t, err)
 	blockStorage, err := leveldb.New(filepath.Join(repoRoot, "ledger"))
 	assert.Nil(t, err)
 	accountCache, err := NewAccountCache()
