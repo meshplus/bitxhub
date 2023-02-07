@@ -54,8 +54,7 @@ type SimpleLedger struct {
 	validRevisions     []revision
 	nextRevisionId     int
 
-	changer     *stateChanger
-	exeParallel bool
+	changer *stateChanger
 
 	accessList *ledger.AccessList
 	preimages  map[types.Hash][]byte
@@ -93,11 +92,6 @@ func NewSimpleLedger(repo *repo.Repo, ldb storage.Storage, accountCache *Account
 		}
 	}
 
-	var exeParallel bool
-	if repo.Config.Executor.Type == parallel {
-		exeParallel = true
-	}
-
 	ledger := &SimpleLedger{
 		repo:         repo,
 		logger:       logger,
@@ -111,7 +105,6 @@ func NewSimpleLedger(repo *repo.Repo, ldb storage.Storage, accountCache *Account
 		changer:      newChanger(),
 		accessList:   ledger.NewAccessList(),
 		logs:         NewEvmLogs(),
-		exeParallel:  exeParallel,
 	}
 
 	ledger.changeInstancePool = &sync.Pool{
