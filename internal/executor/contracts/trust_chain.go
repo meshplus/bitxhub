@@ -18,7 +18,7 @@ func trustKey(key string) string {
 func (t *TrustChain) AddTrustMeta(data []byte) *boltvm.Response {
 	trustMeta := &pb.TrustMeta{}
 	if err := trustMeta.Unmarshal(data); err != nil {
-		return boltvm.Error(boltvm.TrustInternalErrCode, fmt.Sprintf(string(boltvm.TrustInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.TrustInternalErrCode, err.Error())
 	}
 	if len(trustMeta.TrustContractAddr) != 0 {
 		return t.CrossInvoke(trustMeta.TrustContractAddr, trustMeta.Method, &pb.Arg{Type: pb.Arg_Bytes, Value: trustMeta.Data})
@@ -30,7 +30,7 @@ func (t *TrustChain) AddTrustMeta(data []byte) *boltvm.Response {
 func (t *TrustChain) GetTrustMeta(key []byte) *boltvm.Response {
 	trustMeta := &pb.TrustMeta{}
 	if err := trustMeta.Unmarshal(key); err != nil {
-		return boltvm.Error(boltvm.TrustInternalErrCode, fmt.Sprintf(string(boltvm.TrustInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.TrustInternalErrCode, err.Error())
 	}
 	if len(trustMeta.TrustContractAddr) != 0 {
 		return t.CrossInvoke(trustMeta.TrustContractAddr, trustMeta.Method, &pb.Arg{Type: pb.Arg_Bytes, Value: trustMeta.Data})

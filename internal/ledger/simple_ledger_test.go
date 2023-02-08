@@ -985,12 +985,12 @@ func TestPrepare(t *testing.T) {
 	}
 	_, err := ledger.ChainLedger.(*ChainLedgerImpl).prepareBlock(batch, block)
 	require.Nil(t, err)
-	receipts := []*pb.Receipt{}
+	receipts := make([]*pb.Receipt, 0)
 	receipt := &pb.Receipt{
 		TxHash: types.NewHash([]byte("1")),
 	}
 	receipts = append(receipts, receipt)
-	_, err = ledger.ChainLedger.(*ChainLedgerImpl).prepareReceipts(batch, block, receipts)
+	_, err = ledger.ChainLedger.(*ChainLedgerImpl).prepareReceipts(receipts)
 	require.Nil(t, err)
 	_, err = ledger.ChainLedger.(*ChainLedgerImpl).prepareTransactions(batch, block)
 	require.Nil(t, err)

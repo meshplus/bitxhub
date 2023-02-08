@@ -53,7 +53,7 @@ func (ib *InterBroker) incCounter(id, key string) uint64 {
 func (ib *InterBroker) GetInMeta() *boltvm.Response {
 	data, err := json.Marshal(ib.getMeta(InCounterKey))
 	if err != nil {
-		return boltvm.Error(boltvm.BrokerInternalErrCode, fmt.Sprintf(string(boltvm.BrokerInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.BrokerInternalErrCode, err.Error())
 	}
 	return boltvm.Success(data)
 }
@@ -62,7 +62,7 @@ func (ib *InterBroker) GetInMeta() *boltvm.Response {
 func (ib *InterBroker) GetOutMeta() *boltvm.Response {
 	data, err := json.Marshal(ib.getMeta(OutCounterKey))
 	if err != nil {
-		return boltvm.Error(boltvm.BrokerInternalErrCode, fmt.Sprintf(string(boltvm.BrokerInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.BrokerInternalErrCode, err.Error())
 	}
 	return boltvm.Success(data)
 }
@@ -71,7 +71,7 @@ func (ib *InterBroker) GetOutMeta() *boltvm.Response {
 func (ib *InterBroker) GetCallbackMeta() *boltvm.Response {
 	data, err := json.Marshal(ib.getMeta(CallbackCounterKey))
 	if err != nil {
-		return boltvm.Error(boltvm.BrokerInternalErrCode, fmt.Sprintf(string(boltvm.BrokerInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.BrokerInternalErrCode, err.Error())
 	}
 	return boltvm.Success(data)
 }
@@ -105,7 +105,7 @@ func (ib *InterBroker) EmitInterchain(fromServiceId, toServiceId, funcs, args, a
 	}
 	contData, err := content.Marshal()
 	if err != nil {
-		return boltvm.Error(boltvm.BrokerInternalErrCode, fmt.Sprintf(string(boltvm.BrokerInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.BrokerInternalErrCode, err.Error())
 	}
 	ibtp := &pb.IBTP{
 		From:    fromServiceId,
@@ -119,7 +119,7 @@ func (ib *InterBroker) EmitInterchain(fromServiceId, toServiceId, funcs, args, a
 
 	data, err := ibtp.Marshal()
 	if err != nil {
-		return boltvm.Error(boltvm.BrokerInternalErrCode, fmt.Sprintf(string(boltvm.BrokerInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.BrokerInternalErrCode, err.Error())
 	}
 	return ib.CrossInvoke(constant.InterchainContractAddr.String(), "HandleIBTPData", pb.Bytes(data))
 }
@@ -128,7 +128,7 @@ func (ib *InterBroker) InvokeReceipt(input []byte) *boltvm.Response {
 	ibtp := &pb.IBTP{}
 	err := ibtp.Unmarshal(input)
 	if err != nil {
-		return boltvm.Error(boltvm.BrokerInternalErrCode, fmt.Sprintf(string(boltvm.BrokerInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.BrokerInternalErrCode, err.Error())
 	}
 	ib.incCounter(compositeKeys(ibtp.From, ibtp.To), CallbackCounterKey)
 	chainService := strings.Split(ibtp.To, ":")
@@ -155,7 +155,7 @@ func (ib *InterBroker) InvokeInterchain(input []byte) *boltvm.Response {
 	ibtp := &pb.IBTP{}
 	err := ibtp.Unmarshal(input)
 	if err != nil {
-		return boltvm.Error(boltvm.BrokerInternalErrCode, fmt.Sprintf(string(boltvm.BrokerInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.BrokerInternalErrCode, err.Error())
 	}
 	ib.incCounter(compositeKeys(ibtp.From, ibtp.To), InCounterKey)
 	chainService := strings.Split(ibtp.To, ":")
@@ -165,7 +165,7 @@ func (ib *InterBroker) InvokeInterchain(input []byte) *boltvm.Response {
 
 	content := &pb.Content{}
 	if err := content.Unmarshal(ibtp.GetPayload()); err != nil {
-		return boltvm.Error(boltvm.BrokerInternalErrCode, fmt.Sprintf(string(boltvm.BrokerInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.BrokerInternalErrCode, err.Error())
 	}
 	newIbtp := &pb.IBTP{
 		From:          ibtp.From,
@@ -208,7 +208,7 @@ func (ib *InterBroker) GetOutMessage(from, to string, index uint64) *boltvm.Resp
 	}
 	data, err := json.Marshal(interInvoke.CallFunc)
 	if err != nil {
-		return boltvm.Error(boltvm.BrokerInternalErrCode, fmt.Sprintf(string(boltvm.BrokerInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.BrokerInternalErrCode, err.Error())
 	}
 	return boltvm.Success(data)
 }

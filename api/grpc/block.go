@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/meshplus/bitxhub-model/pb"
-	types2 "github.com/meshplus/eth-kit/types"
+	"github.com/meshplus/eth-kit/types"
 )
 
 func (cbs *ChainBrokerService) GetInterchainTxWrappers(req *pb.GetInterchainTxWrappersRequest, server pb.ChainBroker_GetInterchainTxWrappersServer) error {
@@ -76,11 +76,11 @@ func (cbs *ChainBrokerService) GetBlockHeader(req *pb.GetBlockHeaderRequest, ser
 	}
 }
 
-func (cbs *ChainBrokerService) GetBlock(ctx context.Context, req *pb.GetBlockRequest) (*pb.Block, error) {
+func (cbs *ChainBrokerService) GetBlock(_ context.Context, req *pb.GetBlockRequest) (*pb.Block, error) {
 	return cbs.api.Broker().GetBlock(req.Type.String(), req.Value, req.FullTx)
 }
 
-func (cbs *ChainBrokerService) GetBlocks(ctx context.Context, req *pb.GetBlocksRequest) (*pb.GetBlocksResponse, error) {
+func (cbs *ChainBrokerService) GetBlocks(_ context.Context, req *pb.GetBlocksRequest) (*pb.GetBlocksResponse, error) {
 	blocks, err := cbs.api.Broker().GetBlocks(req.Start, req.End, req.FullTx)
 	if err != nil {
 		return nil, fmt.Errorf("get blocks failed: %w", err)
@@ -91,7 +91,7 @@ func (cbs *ChainBrokerService) GetBlocks(ctx context.Context, req *pb.GetBlocksR
 	}, nil
 }
 
-func (cbs *ChainBrokerService) GetHappyBlocks(ctx context.Context, req *pb.GetBlocksRequest) (*pb.GetHappyBlocksResponse, error) {
+func (cbs *ChainBrokerService) GetHappyBlocks(_ context.Context, req *pb.GetBlocksRequest) (*pb.GetHappyBlocksResponse, error) {
 	blocks, err := cbs.api.Broker().GetBlocks(req.Start, req.End, true)
 	if err != nil {
 		return nil, fmt.Errorf("get blocks failed: %w", err)
@@ -102,15 +102,17 @@ func (cbs *ChainBrokerService) GetHappyBlocks(ctx context.Context, req *pb.GetBl
 		ethTxs := make([][]byte, 0)
 		index := make([]uint64, 0, len(block.Transactions.Transactions))
 		for _, tx := range block.Transactions.Transactions {
-			if bxhTx, ok := tx.(*pb.BxhTransaction); ok {
-				bxhTxs = append(bxhTxs, bxhTx)
+			switch transaction := tx.(type) {
+			case *pb.BxhTransaction:
+				bxhTxs = append(bxhTxs, transaction)
 				index = append(index, 0)
-			} else if ethTx, ok := tx.(*types2.EthTransaction); ok {
-				ethTxs = append(ethTxs, ethTx.GetHash().Bytes())
+			case *types.EthTransaction:
+				ethTxs = append(ethTxs, transaction.GetHash().Bytes())
 				index = append(index, 1)
-			} else {
+			default:
 				return nil, fmt.Errorf("unsupport tx type")
 			}
+
 		}
 		happyBlocks = append(happyBlocks, &pb.HappyBlock{
 			BlockHeader: block.BlockHeader,
@@ -128,7 +130,7 @@ func (cbs *ChainBrokerService) GetHappyBlocks(ctx context.Context, req *pb.GetBl
 	}, nil
 }
 
-func (cbs *ChainBrokerService) GetBlockHeaders(ctx context.Context, req *pb.GetBlockHeadersRequest) (*pb.GetBlockHeadersResponse, error) {
+func (cbs *ChainBrokerService) GetBlockHeaders(_ context.Context, req *pb.GetBlockHeadersRequest) (*pb.GetBlockHeadersResponse, error) {
 	headers, err := cbs.api.Broker().GetBlockHeaders(req.Start, req.End)
 	if err != nil {
 		return nil, fmt.Errorf("get block headers failed: %w", err)

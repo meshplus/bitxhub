@@ -30,8 +30,6 @@ type Node struct {
 	batchMgr     *etcdraft.BatchTimer
 	blockTimeout time.Duration                 // generate block period
 	lastExec     uint64                        // the index of the last-applied block
-	packSize     int                           // maximum number of transaction packages
-	blockTick    time.Duration                 // block packed period
 	peerMgr      orderPeerMgr.OrderPeerManager // network manager
 	getTxC       chan *mempool.GetTxReq        // api get tx channel
 
@@ -48,8 +46,6 @@ func (n *Node) GetPendingTxByHash(hash *types.Hash) pb.Transaction {
 	n.getTxC <- getTxReq
 
 	return <-getTxReq.Tx
-
-	return n.mempool.GetTransaction(hash)
 }
 
 func (n *Node) Start() error {
@@ -142,7 +138,7 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 		TxSliceTimeout: memConfig.TxSliceTimeout,
 	}
 	batchC := make(chan *raftproto.RequestBatch)
-	mempoolInst, err := mempool.NewMempool(mempoolConf)
+	mempoolInst := mempool.NewMemPool(mempoolConf)
 	if err != nil {
 		return nil, fmt.Errorf("create mempool instance: %w", err)
 	}

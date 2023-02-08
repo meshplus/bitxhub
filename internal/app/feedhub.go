@@ -4,10 +4,6 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	bkg "github.com/binance-chain/tss-lib/ecdsa/keygen"
-	"github.com/meshplus/bitxhub/internal/loggers"
-	"github.com/meshplus/bitxhub/pkg/peermgr"
-	"github.com/meshplus/bitxhub/pkg/tssmgr"
 	"time"
 
 	"github.com/Rican7/retry"
@@ -178,38 +174,4 @@ func (bxh *BitXHub) listenEvent() {
 			return
 		}
 	}
-}
-
-func (bxh *BitXHub) generateAndStartTss() error {
-	repoRoot := bxh.repo.Config.RepoRoot
-	preParams, err := getPreparams(repoRoot)
-	if err != nil {
-		return fmt.Errorf("get preparams error: %w", err)
-	}
-
-	var preParam *bkg.LocalPreParams
-	if len(preParams) <= int(bxh.repo.NetworkConfig.ID) {
-		preParam = nil
-	} else {
-		preParam = preParams[bxh.repo.NetworkConfig.ID-1]
-	}
-
-	tssMgr, err := tssmgr.NewTssMgr(bxh.repo.Key.Libp2pPrivKey, bxh.repo.Config.Tss, bxh.repo.NetworkConfig, repoRoot, preParam, bxh.PeerMgr, loggers.Logger(loggers.TSS))
-	if err != nil {
-		return fmt.Errorf("create tss manager: %w, %v", err, bxh.repo.Config.Tss.PreParamTimeout)
-	}
-	bxh.PeerMgr.(*peermgr.Swarm).Tss = tssMgr
-	bxh.TssMgr = tssMgr
-
-	bxh.TssMgr.Start(bxh.Order.Quorum() - 1)
-
-	time1 := time.Now()
-	bxh.logger.Debugf("...... tss start key gen")
-	if err := bxh.TssMgr.Keygen(false); err != nil {
-		bxh.logger.Errorf("tss key generate error: %v", err)
-		return fmt.Errorf("tss key generate: %w", err)
-	}
-	timeKeygen := time.Since(time1)
-	bxh.logger.Infof("=============================keygen time: %v", timeKeygen)
-	return nil
 }

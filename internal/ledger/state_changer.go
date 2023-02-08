@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/eth-kit/ledger"
 )
 
 type stateChange interface {
@@ -40,7 +39,7 @@ func (s *stateChanger) append(change stateChange) {
 
 	s.changes = append(s.changes, change)
 	if addr := change.dirtied(); addr != nil {
-		s.dirties[*addr]++
+		s.dirty(*addr)
 	}
 }
 
@@ -73,13 +72,11 @@ type (
 	createObjectChange struct {
 		account *types.Address
 	}
-	resetObjectChange struct {
-		prev ledger.IAccount
-	}
+
 	suicideChange struct {
 		account     *types.Address
 		prev        bool
-		prevbalance *big.Int
+		prevBalance *big.Int
 	}
 	balanceChange struct {
 		account *types.Address
@@ -106,9 +103,6 @@ type (
 	addPreimageChange struct {
 		hash types.Hash
 	}
-	touchChange struct {
-		account *types.Address
-	}
 	accessListAddAccountChange struct {
 		address *types.Address
 	}
@@ -127,29 +121,14 @@ func (ch createObjectChange) dirtied() *types.Address {
 	return ch.account
 }
 
-func (ch resetObjectChange) revert(l *SimpleLedger) {
-	l.setAccount(ch.prev)
-}
-
-func (ch resetObjectChange) dirtied() *types.Address {
-	return nil
-}
-
 func (ch suicideChange) revert(l *SimpleLedger) {
 	acc := l.GetOrCreateAccount(ch.account)
 	account := acc.(*SimpleAccount)
 	account.suicided = ch.prev
-	account.setBalance(ch.prevbalance)
+	account.setBalance(ch.prevBalance)
 }
 
 func (ch suicideChange) dirtied() *types.Address {
-	return ch.account
-}
-
-func (ch touchChange) revert(l *SimpleLedger) {
-}
-
-func (ch touchChange) dirtied() *types.Address {
 	return ch.account
 }
 

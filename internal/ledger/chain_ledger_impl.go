@@ -207,7 +207,7 @@ func (l *ChainLedgerImpl) PersistExecutionResult(block *pb.Block, receipts []*pb
 
 	batcher := l.blockchainStore.NewBatch()
 
-	rs, err := l.prepareReceipts(batcher, block, receipts)
+	rs, err := l.prepareReceipts(receipts)
 	if err != nil {
 		return fmt.Errorf("preapare receipts failed: %w", err)
 	}
@@ -309,7 +309,7 @@ func (l *ChainLedgerImpl) GetInterchainMeta(height uint64) (*pb.InterchainMeta, 
 	return meta, nil
 }
 
-func (l *ChainLedgerImpl) prepareReceipts(batcher storage.Batch, block *pb.Block, receipts []*pb.Receipt) ([]byte, error) {
+func (l *ChainLedgerImpl) prepareReceipts(receipts []*pb.Receipt) ([]byte, error) {
 	rs := &pb.Receipts{
 		Receipts: receipts,
 	}

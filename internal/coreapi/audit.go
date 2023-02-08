@@ -20,7 +20,7 @@ func (api *AuditAPI) SubscribeAuditEvent(ch chan<- *pb.AuditTxInfo) event.Subscr
 	return api.bxh.BlockExecutor.SubscribeAuditEvent(ch)
 }
 
-func (api AuditAPI) HandleAuditNodeSubscription(dataCh chan<- *pb.AuditTxInfo, auditNodeID string, blockStart uint64) error {
+func (api *AuditAPI) HandleAuditNodeSubscription(dataCh chan<- *pb.AuditTxInfo, auditNodeID string, blockStart uint64) error {
 	// 1. get the auditable appchain id
 	chainIDMap, auditNodeIDMap, err := api.getPermitChains(auditNodeID)
 	if err != nil {
@@ -40,35 +40,36 @@ func (api AuditAPI) HandleAuditNodeSubscription(dataCh chan<- *pb.AuditTxInfo, a
 			return fmt.Errorf("get block error: %v", err)
 		}
 
-		if utils.TestAuditPermitBloom(api.logger, block.BlockHeader.Bloom, chainIDMap, auditNodeIDMap) {
+		if utils.TestAuditPermitBloom(block.BlockHeader.Bloom, chainIDMap, auditNodeIDMap) {
 			for _, tx := range block.Transactions.Transactions {
 				// support bxhTx
-				switch tx.(type) {
-				case *pb.BxhTransaction:
-					// 3.1 get receipt
-					receipt, err := api.bxh.Ledger.GetReceipt(tx.GetHash())
-					if err != nil {
-						break
+				bxhTx, ok := tx.(*pb.BxhTransaction)
+				if !ok {
+					return fmt.Errorf("not support tx type for audit")
+				}
+				// 3.1 get receipt
+				receipt, err := api.bxh.Ledger.GetReceipt(bxhTx.GetHash())
+				if err != nil {
+					break
+				}
+
+				isPermited := false
+				if utils.TestAuditPermitBloom(receipt.Bloom, chainIDMap, auditNodeIDMap) {
+					// 3.2 get event from receipt and check event info permission
+					for _, ev := range receipt.Events {
+						if isPermited = hasPermitedInfo(ev, auditNodeIDMap, chainIDMap); isPermited {
+							break
+						}
 					}
 
-					isPermited := false
-					if utils.TestAuditPermitBloom(api.logger, receipt.Bloom, chainIDMap, auditNodeIDMap) {
-						// 3.2 get event from receipt and check event info permission
-						for _, ev := range receipt.Events {
-							if isPermited = hasPermitedInfo(ev, auditNodeIDMap, chainIDMap); isPermited {
-								break
-							}
+					// 3.3 send info
+					if isPermited {
+						auditTxInfo := &pb.AuditTxInfo{
+							Tx:          bxhTx,
+							Rec:         receipt,
+							BlockHeight: height,
 						}
-
-						// 3.3 send info
-						if isPermited {
-							auditTxInfo := &pb.AuditTxInfo{
-								Tx:          tx.(*pb.BxhTransaction),
-								Rec:         receipt,
-								BlockHeight: height,
-							}
-							dataCh <- auditTxInfo
-						}
+						dataCh <- auditTxInfo
 					}
 				}
 			}
@@ -78,14 +79,14 @@ func (api AuditAPI) HandleAuditNodeSubscription(dataCh chan<- *pb.AuditTxInfo, a
 	// 4. send real-time audit info
 	for auditTxinfo := range auditTxInfoCh {
 		isPermited := false
-		for nodeID, _ := range auditNodeIDMap {
+		for nodeID := range auditNodeIDMap {
 			if _, ok := auditTxinfo.RelatedNodeIDList[nodeID]; ok {
 				isPermited = true
 				break
 			}
 		}
 
-		for chainID, _ := range chainIDMap {
+		for chainID := range chainIDMap {
 			if _, ok := auditTxinfo.RelatedChainIDList[chainID]; ok {
 				isPermited = true
 				break
@@ -100,7 +101,7 @@ func (api AuditAPI) HandleAuditNodeSubscription(dataCh chan<- *pb.AuditTxInfo, a
 	return nil
 }
 
-func (api AuditAPI) getPermitChains(auditNodeID string) (map[string]struct{}, map[string]struct{}, error) {
+func (api *AuditAPI) getPermitChains(auditNodeID string) (map[string]struct{}, map[string]struct{}, error) {
 	ok, nodeData := api.bxh.Ledger.GetState(constant.NodeManagerContractAddr.Address(), []byte(nodemgr.NodeKey(auditNodeID)))
 	if !ok {
 		return make(map[string]struct{}), make(map[string]struct{}), nil
@@ -127,13 +128,13 @@ func hasPermitedInfo(event *pb.Event, permitNodes, permitChains map[string]struc
 		return false
 	}
 
-	for auditNodeID, _ := range permitNodes {
+	for auditNodeID := range permitNodes {
 		if _, ok := auditRelatedObjInfo.RelatedNodeIDList[auditNodeID]; ok {
 			return true
 		}
 	}
 
-	for chainID, _ := range permitChains {
+	for chainID := range permitChains {
 		if _, ok := auditRelatedObjInfo.RelatedChainIDList[chainID]; ok {
 			return true
 		}

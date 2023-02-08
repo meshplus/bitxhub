@@ -158,7 +158,7 @@ func (f *Filter) blockLogs(ctx context.Context, header *pb.BlockHeader) (logs []
 
 // checkMatches checks if the receipts belonging to the given header contain any log events that
 // match the filter criteria. This function is called when the bloom filter signals a potential match.
-func (f *Filter) checkMatches(ctx context.Context, blockNum uint64) (logs []*pb.EvmLog, err error) {
+func (f *Filter) checkMatches(_ context.Context, blockNum uint64) (logs []*pb.EvmLog, err error) {
 	// Get the logs of the block
 	receipts, err := f.getBlockReceipts(blockNum)
 	if err != nil {

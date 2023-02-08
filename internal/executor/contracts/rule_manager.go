@@ -54,7 +54,7 @@ func (rm *RuleManager) checkPermission(permissions []string, appchainID string, 
 			if !res.Ok {
 				return fmt.Errorf("cross invoke IsAvailableGovernanceAdmin error:%s", string(res.Result))
 			}
-			if "true" == string(res.Result) {
+			if TRUE == string(res.Result) {
 				return nil
 			}
 		case string(PermissionSpecific):
@@ -86,7 +86,7 @@ func (rm *RuleManager) Manage(eventTyp, proposalResult, lastStatus, chainRuleID 
 		constant.GovernanceContractAddr.Address().String()}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
-		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.RuleInternalErrCode, err.Error())
 	}
 	if err := rm.checkPermission([]string{string(PermissionSpecific)}, "", rm.CurrentCaller(), addrsData); err != nil {
 		return boltvm.Error(boltvm.RuleNoPermissionCode, fmt.Sprintf(string(boltvm.RuleNoPermissionMsg), rm.CurrentCaller(), err.Error()))
@@ -97,33 +97,33 @@ func (rm *RuleManager) Manage(eventTyp, proposalResult, lastStatus, chainRuleID 
 	case string(governance.EventUpdate):
 		info := &UpdateMasterRuleInfo{}
 		if err := json.Unmarshal(extra, &info); err != nil {
-			return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), err.Error()))
+			return boltvm.Error(boltvm.RuleInternalErrCode, err.Error())
 		}
 
 		// 2.1 change old master rule status
 		ok, errData := rm.RuleManager.ChangeStatus(info.OldRule.Address, proposalResult, string(info.OldRule.Status), []byte(info.OldRule.ChainID))
 		if !ok {
-			return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("change master error : %s", string(errData))))
+			return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf("change master error : %s", string(errData)))
 		}
 
 		// 2.2 change new master status, old master rule status change may influence new master rule, so do change status after other operation
 		ok, errData = rm.RuleManager.ChangeStatus(info.NewRule.Address, proposalResult, lastStatus, []byte(info.NewRule.ChainID))
 		if !ok {
-			return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("change new error : %s", string(errData))))
+			return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf("change new error : %s", string(errData)))
 		}
 
 		// 2.3 If the update succeeds, restore the status of the application chain
 		if proposalResult == string(APPROVED) {
 			res := rm.CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "UnPauseAppchain", pb.String(info.AppchainInfo.ID), pb.String(string(info.AppchainInfo.Status)))
 			if !res.Ok {
-				return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("cross invoke UnPauseAppchain err: %s", res.Result)))
+				return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf("cross invoke UnPauseAppchain err: %s", res.Result))
 			}
 		}
 	}
 
 	if rm.EnableAudit() {
 		if err := rm.postAuditRuleEvent(strings.Split(chainRuleID, ":")[0]); err != nil {
-			return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("post audit rule event error: %v", err)))
+			return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf("post audit rule event error: %v", err))
 		}
 	}
 	return boltvm.Success(nil)
@@ -146,7 +146,7 @@ func (rm *RuleManager) RegisterRule(chainID string, ruleAddress, ruleUrl string)
 	}
 	appchainInfo := &appchainMgr.Appchain{}
 	if err := json.Unmarshal(res.Result, appchainInfo); err != nil {
-		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.RuleInternalErrCode, err.Error())
 	}
 	if appchainInfo.Status == governance.GovernanceForbidden {
 		return boltvm.Error(boltvm.RuleAppchainForbiddenCode, fmt.Sprintf(string(boltvm.RuleAppchainForbiddenMsg), appchainInfo.ID))
@@ -173,7 +173,7 @@ func (rm *RuleManager) RegisterRule(chainID string, ruleAddress, ruleUrl string)
 
 	if rm.EnableAudit() {
 		if err := rm.postAuditRuleEvent(chainID); err != nil {
-			return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("post audit rule event error: %v", err)))
+			return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf("post audit rule event error: %v", err))
 		}
 	}
 	return getGovernanceRet("", nil)
@@ -182,7 +182,7 @@ func (rm *RuleManager) RegisterRule(chainID string, ruleAddress, ruleUrl string)
 // =========== RegisterRuleFirst registers the default rule and binds the specified master rule
 // Only called after the appchain registration proposal has been voted through
 // The master rule is checked(has deployed if not default) before the call
-//   and is checked when submitting appchain register proposal
+// and is checked when submitting appchain register proposal
 func (rm *RuleManager) RegisterRuleFirst(chainID, chainType, ruleAddress, ruleUrl string) *boltvm.Response {
 	rm.RuleManager.Persister = rm.Stub
 
@@ -190,16 +190,14 @@ func (rm *RuleManager) RegisterRuleFirst(chainID, chainType, ruleAddress, ruleUr
 	specificAddrs := []string{constant.AppchainMgrContractAddr.Address().String()}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
-		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("marshal specificAddrs error: %v", err)))
+		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf("marshal specificAddrs error: %v", err))
 	}
 	if err := rm.checkPermission([]string{string(PermissionSpecific)}, chainID, rm.CurrentCaller(), addrsData); err != nil {
 		return boltvm.Error(boltvm.RuleNoPermissionCode, fmt.Sprintf(string(boltvm.RuleNoPermissionMsg), rm.CurrentCaller(), err.Error()))
 	}
 
 	// 2. register default rule
-	if err := rm.registerDefaultRule(chainID, chainType); err != nil {
-		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("register default rule error: %v", err)))
-	}
+	rm.registerDefaultRule(chainID, chainType)
 
 	// 3. register master rule
 	if !ruleMgr.IsDefault(ruleAddress, chainType) {
@@ -209,19 +207,19 @@ func (rm *RuleManager) RegisterRuleFirst(chainID, chainType, ruleAddress, ruleUr
 	// 4. bind master rule
 	ok, data := rm.RuleManager.ChangeStatus(ruleAddress, string(governance.EventBind), string(governance.GovernanceBindable), []byte(chainID))
 	if !ok {
-		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("change status error: %s", string(data))))
+		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf("change status error: %s", string(data)))
 	}
 
 	if rm.EnableAudit() {
 		if err := rm.postAuditRuleEvent(chainID); err != nil {
-			return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("post audit rule event error: %v", err)))
+			return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf("post audit rule event error: %v", err))
 		}
 	}
 
 	return boltvm.Success(nil)
 }
 
-func (rm *RuleManager) registerDefaultRule(chainID, chainType string) error {
+func (rm *RuleManager) registerDefaultRule(chainID, chainType string) {
 	rm.RuleManager.Register(chainID, validator.HappyRuleAddr, "", rm.GetTxTimeStamp(), true)
 
 	switch chainType {
@@ -240,12 +238,10 @@ func (rm *RuleManager) registerDefaultRule(chainID, chainType string) error {
 	case appchainMgr.ChainTypeETH:
 		// Todo(fbz): register default rule
 	}
-
-	return nil
 }
 
-// =========== UpdateMasterRule binds the validation rule address with the chain id and unbinds the master rule
-func (rm *RuleManager) UpdateMasterRule(chainID string, newMasterruleAddress, reason string) *boltvm.Response {
+// UpdateMasterRule binds the validation rule address with the chain id and unbinds the master rule
+func (rm *RuleManager) UpdateMasterRule(chainID string, newMasterRuleAddress, reason string) *boltvm.Response {
 	rm.RuleManager.Persister = rm.Stub
 	event := governance.EventUpdate
 
@@ -261,19 +257,19 @@ func (rm *RuleManager) UpdateMasterRule(chainID string, newMasterruleAddress, re
 	}
 	appchainInfo := &appchainMgr.Appchain{}
 	if err := json.Unmarshal(res.Result, appchainInfo); err != nil {
-		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.RuleInternalErrCode, err.Error())
 	}
 	if appchainInfo.Status != governance.GovernanceAvailable && appchainInfo.Status != governance.GovernanceFrozen {
 		return boltvm.Error(boltvm.RuleAppchainStatusErrorCode, fmt.Sprintf(string(boltvm.RuleAppchainStatusErrorMsg), appchainInfo.ID, string(appchainInfo.Status)))
 	}
 
 	// 3. check new rule
-	if res := CheckRuleAddress(rm.Persister, newMasterruleAddress, appchainInfo.ChainType); !res.Ok {
+	if res := CheckRuleAddress(rm.Persister, newMasterRuleAddress, appchainInfo.ChainType); !res.Ok {
 		return res
 	}
 
 	// 4. new rule governance pre: check if exist and status
-	ruleInfo, be := rm.RuleManager.GovernancePre(newMasterruleAddress, governance.EventUpdate, []byte(chainID))
+	ruleInfo, be := rm.RuleManager.GovernancePre(newMasterRuleAddress, governance.EventUpdate, []byte(chainID))
 	if be != nil {
 		return boltvm.Error(be.Code, string(be.Msg))
 	}
@@ -281,13 +277,13 @@ func (rm *RuleManager) UpdateMasterRule(chainID string, newMasterruleAddress, re
 
 	// 5. pause appchain
 	if res = rm.CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "PauseAppchain", pb.String(chainID)); !res.Ok {
-		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("cross invoke PauseAppchain error: %s", string(res.Result))))
+		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf("cross invoke PauseAppchain error: %s", string(res.Result)))
 	}
 
 	// 6. submit proposal
 	masterRule, err := rm.RuleManager.GetMaster(chainID)
 	if err != nil {
-		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.RuleInternalErrCode, err.Error())
 	}
 	info := &UpdateMasterRuleInfo{
 		OldRule:      masterRule,
@@ -296,7 +292,7 @@ func (rm *RuleManager) UpdateMasterRule(chainID string, newMasterruleAddress, re
 	}
 	infoData, err := json.Marshal(info)
 	if err != nil {
-		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("marshal rule error: %v", err)))
+		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf("marshal rule error: %v", err))
 	}
 	res = rm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "SubmitProposal",
 		pb.String(rm.Caller()),
@@ -308,24 +304,24 @@ func (rm *RuleManager) UpdateMasterRule(chainID string, newMasterruleAddress, re
 		pb.Bytes(infoData),
 	)
 	if !res.Ok {
-		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("cross invoke SubmitProposal error: %s", string(res.Result))))
+		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf("cross invoke SubmitProposal error: %s", string(res.Result)))
 	}
 
 	// 7. change new rule status
 	if ok, data := rm.RuleManager.ChangeStatus(info.NewRule.Address, string(event), string(info.NewRule.Status), []byte(chainID)); !ok {
-		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("change status error: %s", string(data))))
+		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf("change status error: %s", string(data)))
 	}
 
 	// 8. operate master rule
 	if ok, data := rm.RuleManager.ChangeStatus(masterRule.Address, string(governance.EventUnbind), string(masterRule.Status), []byte(chainID)); !ok {
-		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("change status error: %s", string(data))))
+		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf("change status error: %s", string(data)))
 	}
 
 	rm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(res.Result)))
 
 	if rm.EnableAudit() {
 		if err := rm.postAuditRuleEvent(chainID); err != nil {
-			return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("post audit rule event error: %v", err)))
+			return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf("post audit rule event error: %v", err))
 		}
 	}
 	return getGovernanceRet(string(res.Result), nil)
@@ -348,7 +344,7 @@ func (rm *RuleManager) LogoutRule(chainID string, ruleAddress string) *boltvm.Re
 	}
 	appchainInfo := &appchainMgr.Appchain{}
 	if err := json.Unmarshal(res.Result, appchainInfo); err != nil {
-		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.RuleInternalErrCode, err.Error())
 	}
 	if appchainInfo.Status == governance.GovernanceForbidden {
 		return boltvm.Error(boltvm.RuleAppchainForbiddenCode, fmt.Sprintf(string(boltvm.RuleAppchainForbiddenMsg), appchainInfo.ID))
@@ -369,12 +365,12 @@ func (rm *RuleManager) LogoutRule(chainID string, ruleAddress string) *boltvm.Re
 
 	// 5. change status
 	if ok, data := rm.RuleManager.ChangeStatus(ruleAddress, string(event), string(rule.Status), []byte(chainID)); !ok {
-		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("change status error: %v", string(data))))
+		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf("change status error: %v", string(data)))
 	}
 
 	if rm.EnableAudit() {
 		if err := rm.postAuditRuleEvent(chainID); err != nil {
-			return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("post audit rule event error: %v", err)))
+			return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf("post audit rule event error: %v", err))
 		}
 	}
 	return getGovernanceRet("", nil)
@@ -389,7 +385,7 @@ func (rm *RuleManager) ClearRule(chainID string) *boltvm.Response {
 		constant.AppchainMgrContractAddr.Address().String()}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
-		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("marshal specificAddrs error: %v", err)))
+		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf("marshal specificAddrs error: %v", err))
 	}
 	if err := rm.checkPermission([]string{string(PermissionSpecific)}, "", rm.CurrentCaller(), addrsData); err != nil {
 		return boltvm.Error(boltvm.RuleNoPermissionCode, fmt.Sprintf(string(boltvm.RuleNoPermissionMsg), rm.CurrentCaller(), err.Error()))
@@ -398,7 +394,7 @@ func (rm *RuleManager) ClearRule(chainID string) *boltvm.Response {
 	// 2. clear rule
 	rules, err := rm.RuleManager.All([]byte(chainID))
 	if err != nil {
-		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.RuleInternalErrCode, err.Error())
 	}
 
 	bindingChainRuleID := ""
@@ -408,7 +404,7 @@ func (rm *RuleManager) ClearRule(chainID string) *boltvm.Response {
 		}
 
 		if ok, data := rm.RuleManager.ChangeStatus(r.Address, string(governance.EventCLear), string(r.Status), []byte(chainID)); !ok {
-			return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("change status error: %v", string(data))))
+			return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf("change status error: %v", string(data)))
 		}
 	}
 
@@ -417,16 +413,16 @@ func (rm *RuleManager) ClearRule(chainID string) *boltvm.Response {
 		pb.String(bindingChainRuleID),
 		pb.String(string(ClearReason)),
 		pb.Bytes(nil)); !res.Ok {
-		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("cross invoke EndObjProposal error: %s", string(res.Result))))
+		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf("cross invoke EndObjProposal error: %s", string(res.Result)))
 	}
-	//if bindingChainRuleID != "" {
+	// if bindingChainRuleID != "" {
 	//	res := rm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "GetProposalsByObjId", pb.String(bindingChainRuleID))
 	//	if !res.Ok {
-	//		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("cross invoke GetProposalsByObjId error: %s", string(res.Result))))
+	//		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf("cross invoke GetProposalsByObjId error: %s", string(res.Result)))
 	//	}
 	//	ps := make([]*Proposal, 0)
 	//	if err := json.Unmarshal(res.Result, &ps); err != nil {
-	//		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("json unmarshal error: %s", err.Error())))
+	//		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf("json unmarshal error: %s", err.Error()))
 	//	}
 	//
 	//	for _, p := range ps {
@@ -434,7 +430,7 @@ func (rm *RuleManager) ClearRule(chainID string) *boltvm.Response {
 	//			pb.String(p.Id),
 	//			pb.String(string(ClearReason)),
 	//			pb.Bytes(nil)); !res.Ok {
-	//			return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("cross invoke EndCurrentProposal error: %s", string(res.Result))))
+	//			return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf("cross invoke EndCurrentProposal error: %s", string(res.Result)))
 	//		}
 	//		rm.Logger().WithFields(logrus.Fields{
 	//			"chainRuleID": p.ObjId,
@@ -442,11 +438,11 @@ func (rm *RuleManager) ClearRule(chainID string) *boltvm.Response {
 	//			"proposalID":  p.Id,
 	//		}).Info("clear rule proposal")
 	//	}
-	//}
+	// }
 
 	if rm.EnableAudit() {
 		if err := rm.postAuditRuleEvent(chainID); err != nil {
-			return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("post audit rule event error: %v", err)))
+			return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf("post audit rule event error: %v", err))
 		}
 	}
 
@@ -459,12 +455,12 @@ func (rm *RuleManager) GetAllRules() *boltvm.Response {
 
 	rules, err := rm.AllRules()
 	if err != nil {
-		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("get all rules error: %v", err)))
+		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf("get all rules error: %v", err))
 	}
 
 	rulesData, err := json.Marshal(rules)
 	if err != nil {
-		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), fmt.Sprintf("marshal rules error: %v", err)))
+		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf("marshal rules error: %v", err))
 	}
 
 	return boltvm.Success(rulesData)
@@ -487,11 +483,11 @@ func (rm *RuleManager) Rules(chainID string) *boltvm.Response {
 	rm.RuleManager.Persister = rm.Stub
 	rules, err := rm.RuleManager.All([]byte(chainID))
 	if err != nil {
-		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.RuleInternalErrCode, err.Error())
 	}
 
 	if data, err := json.Marshal(rules.([]*ruleMgr.Rule)); err != nil {
-		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.RuleInternalErrCode, err.Error())
 	} else {
 		return boltvm.Success(data)
 	}
@@ -503,10 +499,10 @@ func (rm *RuleManager) GetRuleByAddr(chainID, ruleAddr string) *boltvm.Response 
 	rm.RuleManager.Persister = rm.Stub
 	rule, err := rm.RuleManager.QueryById(ruleAddr, []byte(chainID))
 	if err != nil {
-		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.RuleInternalErrCode, err.Error())
 	}
 	if data, err := json.Marshal(rule.(*ruleMgr.Rule)); err != nil {
-		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.RuleInternalErrCode, err.Error())
 	} else {
 		return boltvm.Success(data)
 	}
@@ -517,10 +513,10 @@ func (rm *RuleManager) GetMasterRule(chainID string) *boltvm.Response {
 	rm.RuleManager.Persister = rm.Stub
 	rule, err := rm.RuleManager.GetMaster(chainID)
 	if err != nil {
-		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.RuleInternalErrCode, err.Error())
 	}
 	if data, err := json.Marshal(rule); err != nil {
-		return boltvm.Error(boltvm.RuleInternalErrCode, fmt.Sprintf(string(boltvm.RuleInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.RuleInternalErrCode, err.Error())
 	} else {
 		return boltvm.Success(data)
 	}

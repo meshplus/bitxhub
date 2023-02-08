@@ -66,7 +66,7 @@ func TestPutProof(t *testing.T) {
 	}
 	hash := types.Hash{}
 	proof := []byte{'1'}
-	vp.putProof(hash, proof)
+	vp.proofs.Store(hash, proof)
 
 	var err bool
 	proof, err = vp.GetProof(hash)

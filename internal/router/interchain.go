@@ -2,14 +2,11 @@ package router
 
 import (
 	"context"
-	"crypto/sha256"
 	"fmt"
 	"sync"
 	"time"
 
-	"github.com/cbergoon/merkletree"
 	"github.com/ethereum/go-ethereum/event"
-	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/repo"
@@ -25,16 +22,14 @@ const (
 )
 
 type InterchainRouter struct {
-	logger             logrus.FieldLogger
-	repo               *repo.Repo
-	piers              sync.Map
-	unionPiers         sync.Map
-	subscriptions      sync.Map
-	unionSubscriptions sync.Map
-	count              atomic.Int64
-	ledger             *ledger.Ledger
-	peerMgr            peermgr.PeerManager
-	quorum             uint64
+	logger        logrus.FieldLogger
+	repo          *repo.Repo
+	piers         sync.Map
+	subscriptions sync.Map
+	count         atomic.Int64
+	ledger        *ledger.Ledger
+	peerMgr       peermgr.PeerManager
+	quorum        uint64
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -83,16 +78,13 @@ func (router *InterchainRouter) AddPier(pierID string) (chan *pb.InterchainTxWra
 }
 
 func (router *InterchainRouter) RemovePier(pierID string) {
-	unsubscribeAndDel := func(r sync.Map) {
-		raw, ok := r.Load(pierID)
-		if !ok {
-			return
-		}
-		sub := raw.(event.Subscription)
-		sub.Unsubscribe()
-		r.Delete(pierID)
+	raw, ok := router.subscriptions.Load(pierID)
+	if !ok {
+		return
 	}
-	unsubscribeAndDel(router.subscriptions)
+	sub := raw.(event.Subscription)
+	sub.Unsubscribe()
+	router.subscriptions.Delete(pierID)
 
 	router.count.Dec()
 }
@@ -198,10 +190,10 @@ func (router *InterchainRouter) GetInterchainTxWrappers(appchainID string, begin
 	return nil
 }
 
-func (router *InterchainRouter) fetchSigns(height uint64) (map[string][]byte, error) {
-	// TODO(xcc): fetch block sign from other nodes
-	return nil, nil
-}
+// TODO(xcc): fetch block sign from other nodes
+//func (router *InterchainRouter) fetchSigns(_ uint64) (map[string][]byte, error) {
+//	return nil, nil
+//}
 
 func (router *InterchainRouter) classify(block *pb.Block, meta *pb.InterchainMeta) map[string]*pb.InterchainTxWrapper {
 	txsM := make(map[string][]*pb.VerifiedTx)
@@ -260,19 +252,4 @@ func (router *InterchainRouter) classify(block *pb.Block, meta *pb.InterchainMet
 	}
 
 	return target
-}
-
-func (router *InterchainRouter) calcTimeoutL2Root(list []string) (types.Hash, error) {
-	hashes := make([]merkletree.Content, 0, len(list))
-	for _, id := range list {
-		hash := sha256.Sum256([]byte(id))
-		hashes = append(hashes, types.NewHash(hash[:]))
-	}
-
-	tree, err := merkletree.NewTree(hashes)
-	if err != nil {
-		return types.Hash{}, fmt.Errorf("init merkle tree: %w", err)
-	}
-
-	return *types.NewHash(tree.MerkleRoot()), nil
 }

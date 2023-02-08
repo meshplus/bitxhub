@@ -247,7 +247,7 @@ func printNode(nodes []*node_mgr.Node) {
 
 	for _, n := range nodes {
 		permits := []string{}
-		for addr, _ := range n.Permissions {
+		for addr := range n.Permissions {
 			permits = append(permits, addr)
 		}
 		permitStr := strings.Join(permits, ",")

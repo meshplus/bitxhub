@@ -30,9 +30,7 @@ import (
 type GetAccountNonceFunc func(address *types.Address) uint64
 
 type Node struct {
-	id                  uint64                        // raft id
-	leader              uint64                        // leader id
-	repoRoot            string                        // project path
+	id                  uint64                        // smart-bft id
 	storage             storage.Storage               // db
 	logger              logrus.FieldLogger            // logger
 	peerMgr             orderPeerMgr.OrderPeerManager // network manager
@@ -53,7 +51,7 @@ func init() {
 // NewNode new smartbft node
 func NewNode(opts ...order.Option) (order.Order, error) {
 	var options []order.Option
-	for i, _ := range opts {
+	for i := range opts {
 		options = append(options, opts[i])
 	}
 	config, err := order.GenerateConfig(options...)
@@ -63,6 +61,9 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 
 	var writeAheadLog *wal.WriteAheadLogFile
 	basicLog, err := zap.NewDevelopment()
+	if err != nil {
+		return nil, fmt.Errorf("build a development Logger err:%w", err)
+	}
 	walDir := filepath.Join(config.StoragePath, "wal")
 	if fileutil.Exist(walDir) {
 		writeAheadLog, err = wal.Open(basicLog.Sugar(), walDir, nil)
@@ -189,7 +190,7 @@ func (n *Node) ReportState(height uint64, blockHash *types.Hash, txHashList []*t
 
 func (n *Node) Quorum() uint64 {
 	N := len(n.Nodes())
-	F := (int(N) - 1) / 3
+	F := (N - 1) / 3
 	Q := uint64(math.Ceil((float64(N) + float64(F) + 1) / 2.0))
 	return Q
 }

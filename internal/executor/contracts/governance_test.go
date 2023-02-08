@@ -153,7 +153,7 @@ func TestGovernance_QueryProposal(t *testing.T) {
 		ApproveNum:             1,
 		AgainstNum:             1,
 		InitialElectorateNum:   4,
-		AvaliableElectorateNum: 4,
+		AvailableElectorateNum: 4,
 		StrategyExpression:     repo.DefaultSimpleMajorityExpression,
 	}
 
@@ -265,9 +265,9 @@ func TestGovernance_QueryProposal(t *testing.T) {
 	res = g.GetPrimaryElectorateNum(idNonexistent)
 	assert.False(t, res.Ok, string(res.Result))
 
-	res = g.GetAvaliableElectorateNum(idExistent)
+	res = g.GetAvailableElectorateNum(idExistent)
 	assert.True(t, res.Ok, string(res.Result))
-	res = g.GetAvaliableElectorateNum(idNonexistent)
+	res = g.GetAvailableElectorateNum(idNonexistent)
 	assert.False(t, res.Ok, string(res.Result))
 
 	var v = &pb.Ballot{}
@@ -327,7 +327,7 @@ func TestGovernance_Vote(t *testing.T) {
 	idDappMgr := "idDappMgr-12"
 	idStrategyMgr := "idStrategyMgr-13"
 
-	addrUnavaliable := "addrUnavaliable"
+	addrUnavailable := "addrUnavailable"
 	addrCanNotVote := "addrCanNotVote"
 	addrApproved := "addrApproved"
 	addrAganisted := "addrAganisted"
@@ -370,7 +370,7 @@ func TestGovernance_Vote(t *testing.T) {
 		ApproveNum:             1,
 		AgainstNum:             1,
 		InitialElectorateNum:   4,
-		AvaliableElectorateNum: 4,
+		AvailableElectorateNum: 4,
 		StrategyExpression:     repo.DefaultSimpleMajorityExpression,
 		ElectorateList: []*Role{
 			{
@@ -464,7 +464,7 @@ func TestGovernance_Vote(t *testing.T) {
 			pro.StrategyType = SimpleMajority
 			pro.StrategyExpression = repo.DefaultSimpleMajorityExpression
 			pro.InitialElectorateNum = 4
-			pro.AvaliableElectorateNum = 4
+			pro.AvailableElectorateNum = 4
 			return true
 		}).Return(true).AnyTimes()
 	mockStub.EXPECT().GetObject(ProposalKey(idNotReachThreshold), gomock.Any()).Do(
@@ -478,7 +478,7 @@ func TestGovernance_Vote(t *testing.T) {
 			pro.AgainstNum = 1
 			pro.ElectorateList = proposalExistent.ElectorateList
 			pro.StrategyExpression = repo.DefaultSimpleMajorityExpression
-			pro.AvaliableElectorateNum = 4
+			pro.AvailableElectorateNum = 4
 			pro.InitialElectorateNum = 4
 			return true
 		}).Return(true).AnyTimes()
@@ -494,7 +494,7 @@ func TestGovernance_Vote(t *testing.T) {
 			pro.StrategyExpression = repo.DefaultSimpleMajorityExpression
 			pro.ElectorateList = proposalExistent.ElectorateList
 			pro.LockProposalId = idNonexistent
-			pro.AvaliableElectorateNum = 4
+			pro.AvailableElectorateNum = 4
 			pro.InitialElectorateNum = 4
 			return true
 		}).Return(true).AnyTimes()
@@ -509,7 +509,7 @@ func TestGovernance_Vote(t *testing.T) {
 			pro.AgainstNum = 1
 			pro.StrategyExpression = repo.DefaultSimpleMajorityExpression
 			pro.ElectorateList = proposalExistent.ElectorateList
-			pro.AvaliableElectorateNum = 4
+			pro.AvailableElectorateNum = 4
 			pro.InitialElectorateNum = 4
 			return true
 		}).Return(true).AnyTimes()
@@ -524,7 +524,7 @@ func TestGovernance_Vote(t *testing.T) {
 			pro.AgainstNum = 1
 			pro.StrategyExpression = repo.DefaultSimpleMajorityExpression
 			pro.ElectorateList = proposalExistent.ElectorateList
-			pro.AvaliableElectorateNum = 4
+			pro.AvailableElectorateNum = 4
 			pro.InitialElectorateNum = 4
 			return true
 		}).Return(true).AnyTimes()
@@ -538,7 +538,7 @@ func TestGovernance_Vote(t *testing.T) {
 			pro.ApproveNum = 1
 			pro.AgainstNum = 1
 			pro.StrategyExpression = repo.DefaultSimpleMajorityExpression
-			pro.AvaliableElectorateNum = 4
+			pro.AvailableElectorateNum = 4
 			pro.InitialElectorateNum = 4
 			pro.ElectorateList = proposalExistent.ElectorateList
 			return true
@@ -552,7 +552,7 @@ func TestGovernance_Vote(t *testing.T) {
 			pro.BallotMap = proposalExistent.BallotMap
 			pro.ApproveNum = 1
 			pro.AgainstNum = 1
-			pro.AvaliableElectorateNum = 4
+			pro.AvailableElectorateNum = 4
 			pro.InitialElectorateNum = 4
 			pro.ElectorateList = proposalExistent.ElectorateList
 			pro.StrategyExpression = repo.DefaultSimpleMajorityExpression
@@ -567,7 +567,7 @@ func TestGovernance_Vote(t *testing.T) {
 			pro.BallotMap = proposalExistent.BallotMap
 			pro.ApproveNum = 1
 			pro.AgainstNum = 1
-			pro.AvaliableElectorateNum = 4
+			pro.AvailableElectorateNum = 4
 			pro.InitialElectorateNum = 4
 			pro.ElectorateList = proposalExistent.ElectorateList
 			pro.StrategyExpression = repo.DefaultSimpleMajorityExpression
@@ -582,7 +582,7 @@ func TestGovernance_Vote(t *testing.T) {
 			pro.BallotMap = proposalExistent.BallotMap
 			pro.ApproveNum = 1
 			pro.AgainstNum = 1
-			pro.AvaliableElectorateNum = 4
+			pro.AvailableElectorateNum = 4
 			pro.InitialElectorateNum = 4
 			pro.ElectorateList = proposalExistent.ElectorateList
 			pro.StrategyExpression = repo.DefaultSimpleMajorityExpression
@@ -594,8 +594,8 @@ func TestGovernance_Vote(t *testing.T) {
 	mockStub.EXPECT().GetObject(string(NodeMgr), gomock.Any()).Return(false).AnyTimes()
 	mockStub.EXPECT().GetObject(string(ServiceMgr), gomock.Any()).Return(false).AnyTimes()
 	mockStub.EXPECT().GetObject(string(RoleMgr), gomock.Any()).Return(false).AnyTimes()
-	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin", pb.String(addrUnavaliable), pb.String(string(GovernanceAdmin))).Return(boltvm.Error("", "cross invoke IsAvailable error")).Times(1)
-	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin", pb.String(addrUnavaliable), pb.String(string(GovernanceAdmin))).Return(boltvm.Success([]byte("false"))).AnyTimes()
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin", pb.String(addrUnavailable), pb.String(string(GovernanceAdmin))).Return(boltvm.Error("", "cross invoke IsAvailable error")).Times(1)
+	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin", pb.String(addrUnavailable), pb.String(string(GovernanceAdmin))).Return(boltvm.Success([]byte("false"))).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin", gomock.Any(), pb.String(string(GovernanceAdmin))).Return(boltvm.Success([]byte("true"))).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "Manage", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Error("", "")).Times(1)
 	mockStub.EXPECT().CrossInvoke(constant.RoleContractAddr.Address().String(), "Manage", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
@@ -608,7 +608,7 @@ func TestGovernance_Vote(t *testing.T) {
 	mockStub.EXPECT().CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "Manage", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.DappMgrContractAddr.Address().String(), "Manage", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
 	mockStub.EXPECT().CrossInvoke(constant.ProposalStrategyMgrContractAddr.Address().String(), "Manage", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(boltvm.Success(nil)).AnyTimes()
-	mockStub.EXPECT().Caller().Return(addrUnavaliable).Times(2)
+	mockStub.EXPECT().Caller().Return(addrUnavailable).Times(2)
 	mockStub.EXPECT().Caller().Return(addrCanNotVote).Times(3)
 	mockStub.EXPECT().Caller().Return(addrApproved).Times(1)
 	mockStub.EXPECT().Caller().Return(addrNotVoted).Times(1)
@@ -920,7 +920,7 @@ func TestGovernance_WithdrawProposal(t *testing.T) {
 	assert.True(t, res.Ok, string(res.Result))
 }
 
-func TestGovernance_UpdateAvaliableElectorateNum(t *testing.T) {
+func TestGovernance_UpdateAvailableElectorateNum(t *testing.T) {
 	mockCtl := gomock.NewController(t)
 	mockStub := mock_stub.NewMockStub(mockCtl)
 
@@ -966,7 +966,7 @@ func TestGovernance_UpdateAvaliableElectorateNum(t *testing.T) {
 		Extra:                  chainData,
 		StrategyExpression:     repo.DefaultSimpleMajorityExpression,
 		InitialElectorateNum:   4,
-		AvaliableElectorateNum: 4,
+		AvailableElectorateNum: 4,
 	}
 
 	proposalUpdate := &Proposal{
@@ -981,7 +981,7 @@ func TestGovernance_UpdateAvaliableElectorateNum(t *testing.T) {
 		Extra:                  chainData,
 		StrategyExpression:     repo.DefaultSimpleMajorityExpression,
 		InitialElectorateNum:   4,
-		AvaliableElectorateNum: 4,
+		AvailableElectorateNum: 4,
 	}
 
 	mockStub.EXPECT().GetObject(ProposalStatusKey(string(PROPOSED)), gomock.Any()).SetArg(1, *orderedmap.New()).Return(false).AnyTimes()
@@ -1004,21 +1004,21 @@ func TestGovernance_UpdateAvaliableElectorateNum(t *testing.T) {
 	mockStub.EXPECT().Get(gomock.Any()).Return(true, pData).AnyTimes()
 
 	// check permission error
-	res := g.UpdateAvaliableElectorateNum(idExistent, 0)
+	res := g.UpdateAvailableElectorateNum(idExistent, 0)
 	assert.False(t, res.Ok, string(res.Result))
 	// get proposal id error
-	res = g.UpdateAvaliableElectorateNum(idExistent, 0)
+	res = g.UpdateAvailableElectorateNum(idExistent, 0)
 	assert.False(t, res.Ok, string(res.Result))
 
 	// subtract num error: manage error
-	res = g.UpdateAvaliableElectorateNum(idExistent, 2)
+	res = g.UpdateAvailableElectorateNum(idExistent, 2)
 	assert.False(t, res.Ok, string(res.Result))
 	// subtract num ok
-	res = g.UpdateAvaliableElectorateNum(idExistent, 2)
+	res = g.UpdateAvailableElectorateNum(idExistent, 2)
 	assert.True(t, res.Ok, string(res.Result))
 
 	// add num ok
-	res = g.UpdateAvaliableElectorateNum(idExistent, 4)
+	res = g.UpdateAvailableElectorateNum(idExistent, 4)
 	assert.True(t, res.Ok, string(res.Result))
 }
 

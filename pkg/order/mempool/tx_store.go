@@ -306,12 +306,6 @@ func (tam *txArrivedTimeMap) removeByTtlKey(txs map[string][]pb.Transaction) {
 	}
 }
 
-func (tam *txArrivedTimeMap) updateByTtlKey(originalKey *orderedTimeoutKey, newTime int64) {
-	tam.index.Delete(originalKey)
-	delete(tam.items, makeAccountNonceKey(originalKey.account, originalKey.nonce))
-	tam.insertByTtlKey(originalKey.account, originalKey.nonce, newTime)
-}
-
 func (tam *txArrivedTimeMap) insertOrUpdateByTtlKey(account string, nonce uint64, liveTime int64) {
 	accountNonceKey := makeAccountNonceKey(account, nonce)
 	if oldTime, ok := tam.items[accountNonceKey]; ok {

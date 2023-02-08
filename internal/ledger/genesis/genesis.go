@@ -132,7 +132,10 @@ func Initialize(genesis *repo.Genesis, nodes []*repo.NetworkNodes, primaryN uint
 
 	lg.PersistBlockData(blockData)
 
-	initBNSData(lg)
+	err = initBNSData(lg)
+	if err != nil {
+		return fmt.Errorf("initBNSData err: %w", err)
+	}
 
 	return nil
 }

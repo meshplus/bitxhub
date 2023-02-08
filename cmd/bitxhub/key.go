@@ -146,9 +146,9 @@ func showKey(ctx *cli.Context) error {
 		return fmt.Errorf("get address from public key failed: %w", err)
 	}
 
-	fmt.Println(fmt.Sprintf("private key: %s", common.Bytes2Hex(data)))
-	fmt.Println(fmt.Sprintf("public key: %s", common.Bytes2Hex(pubData)))
-	fmt.Println(fmt.Sprintf("address: %s", addr))
+	fmt.Printf("private key: %s\n", common.Bytes2Hex(data))
+	fmt.Printf("public key: %s\n", common.Bytes2Hex(pubData))
+	fmt.Printf("address: %s\n", addr)
 
 	return nil
 }

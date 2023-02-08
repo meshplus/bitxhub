@@ -53,7 +53,7 @@ func (am *AppchainManager) checkPermission(permissions []string, appchainID stri
 			if !res.Ok {
 				return fmt.Errorf("cross invoke IsAvailableGovernanceAdmin error:%s", string(res.Result))
 			}
-			if "true" == string(res.Result) {
+			if TRUE == string(res.Result) {
 				return nil
 			}
 		case string(PermissionSpecific):
@@ -158,7 +158,7 @@ func (am *AppchainManager) Manage(eventTyp, proposalResult, lastStatus, objId st
 	specificAddrs := []string{constant.GovernanceContractAddr.Address().String()}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
-		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("marshal specificAddrs error: %v", err)))
+		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf("marshal specificAddrs error: %v", err))
 	}
 	if err := am.checkPermission([]string{string(PermissionSpecific)}, objId, am.CurrentCaller(), addrsData); err != nil {
 		return boltvm.Error(boltvm.AppchainNoPermissionCode, fmt.Sprintf(string(boltvm.AppchainNoPermissionMsg), am.CurrentCaller(), err.Error()))
@@ -167,7 +167,7 @@ func (am *AppchainManager) Manage(eventTyp, proposalResult, lastStatus, objId st
 	// 2. change status
 	if eventTyp != string(governance.EventRegister) {
 		if ok, data := am.AppchainManager.ChangeStatus(objId, proposalResult, lastStatus, nil); !ok {
-			return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("change status error:%s", string(data))))
+			return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf("change status error:%s", string(data)))
 		}
 	}
 
@@ -176,11 +176,11 @@ func (am *AppchainManager) Manage(eventTyp, proposalResult, lastStatus, objId st
 		switch eventTyp {
 		case string(governance.EventRegister):
 			if err := am.manageRegisterApprove(extra); err != nil {
-				return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("manage register approve error: %v", err)))
+				return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf("manage register approve error: %v", err))
 			}
 		case string(governance.EventUpdate):
 			if err := am.manageUpdateApprove(objId, extra); err != nil {
-				return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("manage update approve error: %v", err)))
+				return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf("manage update approve error: %v", err))
 			}
 		case string(governance.EventFreeze):
 			if res := am.CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "PauseChainService", pb.String(objId)); !res.Ok {
@@ -203,11 +203,11 @@ func (am *AppchainManager) Manage(eventTyp, proposalResult, lastStatus, objId st
 		switch eventTyp {
 		case string(governance.EventRegister):
 			if err := am.manageRegisterReject(extra); err != nil {
-				return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("manage register reject error: %v", err)))
+				return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf("manage register reject error: %v", err))
 			}
 		case string(governance.EventUpdate):
 			if err := am.manageUpdateReject(objId, extra); err != nil {
-				return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("manage update reject error: %v", err)))
+				return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf("manage update reject error: %v", err))
 			}
 		case string(governance.EventLogout):
 			if res := am.CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "UnPauseChainService", pb.String(objId)); !res.Ok {
@@ -222,7 +222,7 @@ func (am *AppchainManager) Manage(eventTyp, proposalResult, lastStatus, objId st
 	if am.EnableAudit() {
 		if eventTyp != string(governance.EventRegister) || proposalResult != string(REJECTED) {
 			if err := am.postAuditAppchainEvent(objId); err != nil {
-				return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("post audit appchain event error: %v", err)))
+				return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf("post audit appchain event error: %v", err))
 			}
 		}
 	}
@@ -343,7 +343,7 @@ func (am *AppchainManager) manageUpdateApprove(appchainId string, updateInfoData
 	return nil
 }
 
-func (am *AppchainManager) manageUpdateReject(appchainId string, updateInfoData []byte) error {
+func (am *AppchainManager) manageUpdateReject(_ string, updateInfoData []byte) error {
 	updateInfo := &UpdateAppchainInfo{}
 	if err := json.Unmarshal(updateInfoData, &updateInfo); err != nil {
 		return fmt.Errorf("unmarshal updateInfoData error: %v", err)
@@ -386,10 +386,10 @@ func (am *AppchainManager) RegisterAppchain(chainID string, chainName string, pu
 	if strings.Contains(strings.ToLower(chainType), appchainMgr.FabricType) {
 		fabBroker := &appchainMgr.FabricBroker{}
 		if err := json.Unmarshal([]byte(broker), fabBroker); err != nil {
-			return boltvm.Error(boltvm.AppchainIllegalFabricBrokerCode, fmt.Sprintf(string(boltvm.AppchainIllegalFabricBrokerMsg), string(broker), err.Error()))
+			return boltvm.Error(boltvm.AppchainIllegalFabricBrokerCode, fmt.Sprintf(string(boltvm.AppchainIllegalFabricBrokerMsg), broker, err.Error()))
 		}
 		if fabBroker.BrokerVersion == "" || fabBroker.ChaincodeID == "" || fabBroker.ChannelID == "" {
-			return boltvm.Error(boltvm.AppchainIllegalFabricBrokerCode, fmt.Sprintf(string(boltvm.AppchainIllegalFabricBrokerMsg), string(broker), "fabric broker info can not be nil"))
+			return boltvm.Error(boltvm.AppchainIllegalFabricBrokerCode, fmt.Sprintf(string(boltvm.AppchainIllegalFabricBrokerMsg), broker, "fabric broker info can not be nil"))
 		}
 	}
 
@@ -428,7 +428,7 @@ func (am *AppchainManager) RegisterAppchain(chainID string, chainName string, pu
 	am.occupyChainID(chainID)
 	am.occupyChainName(chainName, chainID)
 	if res := am.CrossInvoke(constant.RoleContractAddr.String(), "OccupyAccount", pb.String(adminAddrs), pb.String(string(AppchainAdmin))); !res.Ok {
-		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("cross invoke OccupyAccount error: %s", string(res.Result))))
+		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf("cross invoke OccupyAccount error: %s", string(res.Result)))
 	}
 
 	// 3. submit proposal
@@ -455,7 +455,7 @@ func (am *AppchainManager) RegisterAppchain(chainID string, chainName string, pu
 	}
 	registerInfoData, err := json.Marshal(registerInfo)
 	if err != nil {
-		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.AppchainInternalErrCode, err.Error())
 	}
 	proposalRes := am.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "SubmitProposal",
 		pb.String(am.Caller()),
@@ -467,7 +467,7 @@ func (am *AppchainManager) RegisterAppchain(chainID string, chainName string, pu
 		pb.Bytes(registerInfoData),
 	)
 	if !proposalRes.Ok {
-		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("submit proposal error: %s", string(proposalRes.Result))))
+		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf("submit proposal error: %s", string(proposalRes.Result)))
 	}
 
 	am.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(proposalRes.Result)))
@@ -475,8 +475,9 @@ func (am *AppchainManager) RegisterAppchain(chainID string, chainName string, pu
 	return getGovernanceRet(string(proposalRes.Result), nil)
 }
 
-// =========== UpdateAppchain updates appchain info.
+// UpdateAppchain updates appchain info.
 func (am *AppchainManager) UpdateAppchain(id, name, desc string, trustRoot []byte, adminAddrs, reason string) *boltvm.Response {
+	var res *boltvm.Response
 	am.AppchainManager.Persister = am.Stub
 	event := governance.EventUpdate
 
@@ -493,21 +494,130 @@ func (am *AppchainManager) UpdateAppchain(id, name, desc string, trustRoot []byt
 	chainInfo := chainInfoTmp.(*appchainMgr.Appchain)
 
 	// 3. check info
+	var (
+		bvmErr                                   *boltvm.Response
+		oldAdminList, newAdminList               []string
+		updateName, updateAdmin, updateTrustRoot bool
+	)
+	updateName, updateAdmin, updateTrustRoot, oldAdminList, newAdminList, bvmErr = am.checkInfo(chainInfo, name, adminAddrs, id, trustRoot)
+	if !bvmErr.Ok {
+		return bvmErr
+	}
+
+	// 4. update info without proposal
+	if !updateName && !updateAdmin && !updateTrustRoot {
+		updateInfo := &appchainMgr.Appchain{
+			ID:        id,
+			ChainName: name,
+			TrustRoot: trustRoot,
+			Desc:      desc,
+		}
+		ok, data := am.AppchainManager.Update(updateInfo)
+		if !ok {
+			return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf("update appchain error: %s", string(data)))
+		}
+
+		if am.EnableAudit() {
+			if err := am.postAuditAppchainEvent(id); err != nil {
+				return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf("post audit appchain event error: %v", err))
+			}
+		}
+
+		return getGovernanceRet("", nil)
+	}
+
+	// 5. check rule
+	res = am.CrossInvoke(constant.RuleManagerContractAddr.Address().String(), "GetMasterRule", pb.String(id))
+	if !res.Ok {
+		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf("cross invoke GetMasterRule error: %s", string(res.Result)))
+	}
+	rule := &ruleMgr.Rule{}
+	if err := json.Unmarshal(res.Result, rule); err != nil {
+		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf("unmarshal rule error: %v", err))
+	}
+	if rule.Status != governance.GovernanceAvailable {
+		return boltvm.Error(boltvm.AppchainRuleUpdatingCode, fmt.Sprintf(string(boltvm.AppchainRuleUpdatingMsg), rule.Address, string(event), id))
+	}
+
+	// 6. pre store update information (name, adminAddrs)
+	if updateName {
+		am.occupyChainName(name, id)
+	}
+	if updateAdmin {
+		if res := am.CrossInvoke(constant.RoleContractAddr.String(), "OccupyAccount", pb.String(adminAddrs), pb.String(string(AppchainAdmin))); !res.Ok {
+			return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf("cross invoke OccupyAccount error: %s", string(res.Result)))
+		}
+	}
+
+	// 7. submit proposal
+	updateAppchainInfo := UpdateAppchainInfo{
+		Name: UpdateInfo{
+			OldInfo: chainInfo.ChainName,
+			NewInfo: name,
+			IsEdit:  updateName,
+		},
+		Desc: UpdateInfo{
+			OldInfo: chainInfo.Desc,
+			NewInfo: desc,
+			IsEdit:  !(desc == chainInfo.Desc),
+		},
+		TrustRoot: UpdateInfo{
+			OldInfo: chainInfo.TrustRoot,
+			NewInfo: trustRoot,
+			IsEdit:  updateTrustRoot,
+		},
+		AdminAddrs: UpdateInfo{
+			OldInfo: strings.Join(oldAdminList, ","),
+			NewInfo: strings.Join(newAdminList, ","),
+			IsEdit:  updateAdmin,
+		},
+	}
+	if res = am.submitProposal(updateAppchainInfo, chainInfo, event, id, reason); !res.Ok {
+		return res
+	}
+
+	// 8. change status
+	if ok, data := am.AppchainManager.ChangeStatus(id, string(event), string(chainInfo.Status), nil); !ok {
+		return boltvm.Error(boltvm.AppchainInternalErrCode, string(data))
+	}
+
+	// 9. pause service
+	if res1 := am.CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "PauseChainService", pb.String(id)); !res1.Ok {
+		return res1
+	}
+
+	am.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(res.Result)))
+
+	am.Logger().WithFields(logrus.Fields{
+		"id": chainInfo.ID,
+	}).Info(fmt.Sprintf("Appchain is doing event %s", event))
+
+	if am.EnableAudit() {
+		if err := am.postAuditAppchainEvent(id); err != nil {
+			return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf("post audit appchain event error: %v", err))
+		}
+	}
+
+	return getGovernanceRet(string(res.Result), nil)
+}
+
+func (am *AppchainManager) checkInfo(chainInfo *appchainMgr.Appchain, name, adminAddrs, id string,
+	trustRoot []byte) (bool, bool, bool, []string, []string, *boltvm.Response) {
 	// 3.1 check name
 	if name == "" {
-		return boltvm.Error(boltvm.AppchainEmptyChainNameCode, string(boltvm.AppchainEmptyChainNameMsg))
+		return false, false, false, nil, nil, boltvm.Error(boltvm.AppchainEmptyChainNameCode, string(boltvm.AppchainEmptyChainNameMsg))
 	}
 	updateName := false
 	if name != chainInfo.ChainName {
 		if ok, chainID := am.isOccupiedName(name); ok {
-			return boltvm.Error(boltvm.AppchainDuplicateChainNameCode, fmt.Sprintf(string(boltvm.AppchainDuplicateChainNameMsg), name, chainID))
+			return false, false, false, nil, nil, boltvm.Error(boltvm.AppchainDuplicateChainNameCode, fmt.Sprintf(string(boltvm.AppchainDuplicateChainNameMsg), name, chainID))
 		}
 		updateName = true
 	}
 
 	// 3.2 check admins
 	if !strings.Contains(adminAddrs, am.Caller()) {
-		return boltvm.Error(boltvm.AppchainIncompleteAdminListCode, fmt.Sprintf(string(boltvm.AppchainIncompleteAdminListMsg), am.Caller()))
+		return false, false, false, nil, nil, boltvm.Error(boltvm.AppchainIncompleteAdminListCode, fmt.Sprintf(string(boltvm.AppchainIncompleteAdminListMsg), am.Caller()))
 	}
 	updateAdmin := false
 	oldAdminList := am.getAdminAddrByChainId(id)
@@ -531,14 +641,14 @@ func (am *AppchainManager) UpdateAppchain(id, name, desc string, trustRoot []byt
 		}
 	}
 	if updateAdmin {
-		for addr, _ := range newAdminMap {
+		for addr := range newAdminMap {
 			if _, ok := oldAdminMap[addr]; !ok {
 				if _, err := types.HexDecodeString(addr); err != nil {
-					return boltvm.Error(boltvm.AppchainIllegalAdminAddrCode, fmt.Sprintf(string(boltvm.AppchainIllegalAdminAddrMsg), addr, err.Error()))
+					return false, false, false, nil, nil, boltvm.Error(boltvm.AppchainIllegalAdminAddrCode, fmt.Sprintf(string(boltvm.AppchainIllegalAdminAddrMsg), addr, err.Error()))
 				}
 				res := am.CrossInvoke(constant.RoleContractAddr.String(), "CheckOccupiedAccount", pb.String(addr))
 				if !res.Ok {
-					return boltvm.Error(boltvm.AppchainDuplicateAdminCode, fmt.Sprintf(string(boltvm.AppchainDuplicateAdminMsg), addr, string(res.Result)))
+					return false, false, false, nil, nil, boltvm.Error(boltvm.AppchainDuplicateAdminCode, fmt.Sprintf(string(boltvm.AppchainDuplicateAdminMsg), addr, string(res.Result)))
 				}
 			}
 		}
@@ -550,79 +660,16 @@ func (am *AppchainManager) UpdateAppchain(id, name, desc string, trustRoot []byt
 		updateTrustroot = true
 	}
 
-	// 4. update info without proposal
-	if !updateName && !updateAdmin && !updateTrustroot {
-		updateInfo := &appchainMgr.Appchain{
-			ID:        id,
-			ChainName: name,
-			TrustRoot: trustRoot,
-			Desc:      desc,
-		}
-		ok, data := am.AppchainManager.Update(updateInfo)
-		if !ok {
-			return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("update appchain error: %s", string(data))))
-		}
+	return updateName, updateAdmin, updateTrustroot, oldAdminList, newAdminList, boltvm.Success(nil)
+}
 
-		if am.EnableAudit() {
-			if err := am.postAuditAppchainEvent(id); err != nil {
-				return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("post audit appchain event error: %v", err)))
-			}
-		}
-
-		return getGovernanceRet("", nil)
-	}
-
-	// 5. check rule
-	res := am.CrossInvoke(constant.RuleManagerContractAddr.Address().String(), "GetMasterRule", pb.String(id))
-	if !res.Ok {
-		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("cross invoke GetMasterRule error: %s", string(res.Result))))
-	}
-	rule := &ruleMgr.Rule{}
-	if err := json.Unmarshal(res.Result, rule); err != nil {
-		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("unmarshal rule error: %v", err)))
-	}
-	if rule.Status != governance.GovernanceAvailable {
-		return boltvm.Error(boltvm.AppchainRuleUpdatingCode, fmt.Sprintf(string(boltvm.AppchainRuleUpdatingMsg), rule.Address, string(event), id))
-	}
-
-	// 6. pre store update information (name, adminAddrs)
-	if updateName {
-		am.occupyChainName(name, id)
-	}
-	if updateAdmin {
-		if res := am.CrossInvoke(constant.RoleContractAddr.String(), "OccupyAccount", pb.String(adminAddrs), pb.String(string(AppchainAdmin))); !res.Ok {
-			return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("cross invoke OccupyAccount error: %s", string(res.Result))))
-		}
-	}
-
-	// 7. submit proposal
-	updateAppchainInfo := UpdateAppchainInfo{
-		Name: UpdateInfo{
-			OldInfo: chainInfo.ChainName,
-			NewInfo: name,
-			IsEdit:  updateName,
-		},
-		Desc: UpdateInfo{
-			OldInfo: chainInfo.Desc,
-			NewInfo: desc,
-			IsEdit:  !(desc == chainInfo.Desc),
-		},
-		TrustRoot: UpdateInfo{
-			OldInfo: chainInfo.TrustRoot,
-			NewInfo: trustRoot,
-			IsEdit:  updateTrustroot,
-		},
-		AdminAddrs: UpdateInfo{
-			OldInfo: strings.Join(oldAdminList, ","),
-			NewInfo: strings.Join(newAdminList, ","),
-			IsEdit:  updateAdmin,
-		},
-	}
+func (am *AppchainManager) submitProposal(updateAppchainInfo UpdateAppchainInfo, chainInfo *appchainMgr.Appchain,
+	event governance.EventType, id, reason string) *boltvm.Response {
 	updateAppchainInfoData, err := json.Marshal(updateAppchainInfo)
 	if err != nil {
-		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.AppchainInternalErrCode, err.Error())
 	}
-	res = am.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "SubmitProposal",
+	res := am.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "SubmitProposal",
 		pb.String(am.Caller()),
 		pb.String(string(event)),
 		pb.String(string(AppchainMgr)),
@@ -632,32 +679,9 @@ func (am *AppchainManager) UpdateAppchain(id, name, desc string, trustRoot []byt
 		pb.Bytes(updateAppchainInfoData),
 	)
 	if !res.Ok {
-		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("submit proposal error: %s", string(res.Result))))
+		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf("submit proposal error: %s", string(res.Result)))
 	}
-
-	// 8. change status
-	if ok, data := am.AppchainManager.ChangeStatus(id, string(event), string(chainInfo.Status), nil); !ok {
-		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), string(data)))
-	}
-
-	// 9. pause service
-	if res1 := am.CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "PauseChainService", pb.String(id)); !res1.Ok {
-		return res1
-	}
-
-	am.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(res.Result)))
-
-	am.Logger().WithFields(logrus.Fields{
-		"id": chainInfo.ID,
-	}).Info(fmt.Sprintf("Appchain is doing event %s", event))
-
-	if am.EnableAudit() {
-		if err := am.postAuditAppchainEvent(id); err != nil {
-			return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("post audit appchain event error: %v", err)))
-		}
-	}
-
-	return getGovernanceRet(string(res.Result), nil)
+	return res
 }
 
 // =========== FreezeAppchain freezes appchain
@@ -669,7 +693,7 @@ func (am *AppchainManager) FreezeAppchain(id, reason string) *boltvm.Response {
 	}
 	var gr *governance.GovernanceResult
 	if err := json.Unmarshal(res.Result, &gr); err != nil {
-		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.AppchainInternalErrCode, err.Error())
 	}
 	am.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(gr.ProposalID))
 	return res
@@ -683,11 +707,11 @@ func (am *AppchainManager) ActivateAppchain(id, reason string) *boltvm.Response 
 	// check rule
 	res := am.CrossInvoke(constant.RuleManagerContractAddr.Address().String(), "GetMasterRule", pb.String(id))
 	if !res.Ok {
-		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("cross invoke GetMasterRule error: %s", string(res.Result))))
+		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf("cross invoke GetMasterRule error: %s", string(res.Result)))
 	}
 	rule := &ruleMgr.Rule{}
 	if err := json.Unmarshal(res.Result, rule); err != nil {
-		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("unmarshal rule error: %v", err)))
+		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf("unmarshal rule error: %v", err))
 	}
 	if rule.Status != governance.GovernanceAvailable {
 		return boltvm.Error(boltvm.AppchainRuleUpdatingCode, fmt.Sprintf(string(boltvm.AppchainRuleUpdatingMsg), rule.Address, string(event), id))
@@ -699,7 +723,7 @@ func (am *AppchainManager) ActivateAppchain(id, reason string) *boltvm.Response 
 	}
 	var gr *governance.GovernanceResult
 	if err := json.Unmarshal(res.Result, &gr); err != nil {
-		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.AppchainInternalErrCode, err.Error())
 	}
 	am.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(gr.ProposalID))
 	return res
@@ -719,7 +743,7 @@ func (am *AppchainManager) LogoutAppchain(id, reason string) *boltvm.Response {
 	}
 	var gr *governance.GovernanceResult
 	if err := json.Unmarshal(governanceRes.Result, &gr); err != nil {
-		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.AppchainInternalErrCode, err.Error())
 	}
 
 	am.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(gr.ProposalID))
@@ -751,12 +775,12 @@ func (am *AppchainManager) basicGovernance(id, reason string, permissions []stri
 		pb.Bytes(nil),
 	)
 	if !res.Ok {
-		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("submit proposal error: %s", string(res.Result))))
+		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf("submit proposal error: %s", string(res.Result)))
 	}
 
 	// 4. change status
 	if ok, data := am.AppchainManager.ChangeStatus(id, string(event), string(chainInfo.Status), nil); !ok {
-		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("change status error: %s", string(data))))
+		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf("change status error: %s", string(data)))
 	}
 
 	am.Logger().WithFields(logrus.Fields{
@@ -765,17 +789,17 @@ func (am *AppchainManager) basicGovernance(id, reason string, permissions []stri
 
 	if am.EnableAudit() {
 		if err := am.postAuditAppchainEvent(id); err != nil {
-			return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("post audit appchain event error: %v", err)))
+			return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf("post audit appchain event error: %v", err))
 		}
 	}
 
 	return getGovernanceRet(string(res.Result), nil)
 }
 
-// =========== PauseAppchain freezes appchain without governance
+// PauseAppchain freezes appchain without governance
 // This function is triggered when the master rule is updating.
 // Information about the appchain before the pause is returned
-//  so that the appchain can be restored when unpause is invoked.
+// so that the appchain can be restored when unpause is invoked.
 func (am *AppchainManager) PauseAppchain(id string) *boltvm.Response {
 	am.AppchainManager.Persister = am.Stub
 	event := governance.EventPause
@@ -784,7 +808,7 @@ func (am *AppchainManager) PauseAppchain(id string) *boltvm.Response {
 	specificAddrs := []string{constant.RuleManagerContractAddr.Address().String()}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
-		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("marshal specificAddrs error: %v", err)))
+		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf("marshal specificAddrs error: %v", err))
 	}
 	if err := am.checkPermission([]string{string(PermissionSpecific)}, id, am.CurrentCaller(), addrsData); err != nil {
 		return boltvm.Error(boltvm.AppchainNoPermissionCode, fmt.Sprintf(string(boltvm.AppchainNoPermissionMsg), am.CurrentCaller(), err.Error()))
@@ -800,7 +824,7 @@ func (am *AppchainManager) PauseAppchain(id string) *boltvm.Response {
 	// 3. change status
 	if chainInfo.Status == governance.GovernanceAvailable {
 		if ok, data := am.AppchainManager.ChangeStatus(id, string(event), string(chainInfo.Status), nil); !ok {
-			return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("change status error: %s", string(data))))
+			return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf("change status error: %s", string(data)))
 		}
 		// 4. pause service
 		if res := am.CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "PauseChainService", pb.String(id)); !res.Ok {
@@ -814,12 +838,12 @@ func (am *AppchainManager) PauseAppchain(id string) *boltvm.Response {
 
 	chainData, err := json.Marshal(chainInfo)
 	if err != nil {
-		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("marshal chain error: %v", err)))
+		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf("marshal chain error: %v", err))
 	}
 
 	if am.EnableAudit() {
 		if err := am.postAuditAppchainEvent(id); err != nil {
-			return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("post audit appchain event error: %v", err)))
+			return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf("post audit appchain event error: %v", err))
 		}
 	}
 	return boltvm.Success(chainData)
@@ -835,7 +859,7 @@ func (am *AppchainManager) UnPauseAppchain(id, lastStatus string) *boltvm.Respon
 	specificAddrs := []string{constant.RuleManagerContractAddr.Address().String()}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
-		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("marshal specificAddrs error: %v", err)))
+		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf("marshal specificAddrs error: %v", err))
 	}
 	if err := am.checkPermission([]string{string(PermissionSpecific)}, id, am.CurrentCaller(), addrsData); err != nil {
 		return boltvm.Error(boltvm.AppchainNoPermissionCode, fmt.Sprintf(string(boltvm.AppchainNoPermissionMsg), am.CurrentCaller(), err.Error()))
@@ -850,7 +874,7 @@ func (am *AppchainManager) UnPauseAppchain(id, lastStatus string) *boltvm.Respon
 	// 3. change status
 	if governance.GovernanceFrozen != governance.GovernanceStatus(lastStatus) {
 		if ok, data := am.AppchainManager.ChangeStatus(id, string(event), lastStatus, nil); !ok {
-			return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("change status error: %s", string(data))))
+			return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf("change status error: %s", string(data)))
 		}
 		// 4. unpause services
 		if string(governance.GovernanceAvailable) == lastStatus {
@@ -866,7 +890,7 @@ func (am *AppchainManager) UnPauseAppchain(id, lastStatus string) *boltvm.Respon
 
 	if am.EnableAudit() {
 		if err := am.postAuditAppchainEvent(id); err != nil {
-			return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("post audit appchain event error: %v", err)))
+			return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf("post audit appchain event error: %v", err))
 		}
 	}
 
@@ -892,11 +916,11 @@ func (am *AppchainManager) Appchains() *boltvm.Response {
 	am.AppchainManager.Persister = am.Stub
 	chains, err := am.AppchainManager.All(nil)
 	if err != nil {
-		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.AppchainInternalErrCode, err.Error())
 	}
 
 	if data, err := json.Marshal(chains.([]*appchainMgr.Appchain)); err != nil {
-		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.AppchainInternalErrCode, err.Error())
 	} else {
 		return boltvm.Success(data)
 	}
@@ -911,7 +935,7 @@ func (am *AppchainManager) GetAppchain(id string) *boltvm.Response {
 		return boltvm.Error(boltvm.AppchainNonexistentChainCode, fmt.Sprintf(string(boltvm.AppchainNonexistentChainMsg), id, err.Error()))
 	}
 	if data, err := json.Marshal(chain.(*appchainMgr.Appchain)); err != nil {
-		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.AppchainInternalErrCode, err.Error())
 	} else {
 		return boltvm.Success(data)
 	}
@@ -926,10 +950,10 @@ func (am *AppchainManager) GetAppchainByName(name string) *boltvm.Response {
 	}
 	chain, err := am.AppchainManager.QueryById(id, nil)
 	if err != nil {
-		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("appchain name %s exist but appchain %s not exist: %v", name, id, err)))
+		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf("appchain name %s exist but appchain %s not exist: %v", name, id, err))
 	}
 	if data, err := json.Marshal(chain.(*appchainMgr.Appchain)); err != nil {
-		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.AppchainInternalErrCode, err.Error())
 	} else {
 		return boltvm.Success(data)
 	}
@@ -949,7 +973,7 @@ func (am *AppchainManager) GetAdminByChainId(chainId string) *boltvm.Response {
 	addrs := am.getAdminAddrByChainId(chainId)
 	addrsData, err := json.Marshal(addrs)
 	if err != nil {
-		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.AppchainInternalErrCode, err.Error())
 	}
 	return boltvm.Success(addrsData)
 }
@@ -993,7 +1017,7 @@ func (am *AppchainManager) GetBitXHubChainIDs() *boltvm.Response {
 	_ = am.GetObject(appchainMgr.RelaychainType, relayChainIdMap)
 
 	if data, err := json.Marshal(relayChainIdMap.Keys()); err != nil {
-		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.AppchainInternalErrCode, err.Error())
 	} else {
 		return boltvm.Success(data)
 	}

@@ -26,8 +26,6 @@ import (
 	"github.com/urfave/cli"
 )
 
-var logger = log.NewWithModule("cmd")
-
 func startCMD() cli.Command {
 	return cli.Command{
 		Name:  "start",
@@ -189,6 +187,8 @@ func handleLicenceCheck(node *app.BitXHub, repo *repo.Repo, wg *sync.WaitGroup) 
 		defer ticker.Stop()
 		for {
 			select {
+			case <-node.Ctx.Done():
+				return
 			case <-ticker.C:
 				if err := checkLicense(repo); err != nil {
 					fmt.Printf("verify license fail:%v", err)
@@ -203,7 +203,7 @@ func handleLicenceCheck(node *app.BitXHub, repo *repo.Repo, wg *sync.WaitGroup) 
 	}()
 }
 func handleShutdown(node *app.BitXHub, wg *sync.WaitGroup) {
-	var stop = make(chan os.Signal)
+	var stop = make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGTERM)
 	signal.Notify(stop, syscall.SIGINT)
 

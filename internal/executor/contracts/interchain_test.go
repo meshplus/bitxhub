@@ -93,7 +93,6 @@ func TestInterchainManager_Register(t *testing.T) {
 
 	ibtp := &pb.IBTP{}
 	ibtp.To = "bxh:appchain:00x123"
-	im.checkTxStatusForTargetBxh(ibtp)
 }
 
 func TestInterchainManager_GetInterchain(t *testing.T) {

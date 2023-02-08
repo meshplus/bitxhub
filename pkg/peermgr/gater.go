@@ -14,7 +14,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-//ConnectionGater
+// connectionGater
 type connectionGater struct {
 	logger logrus.FieldLogger
 	ledger *ledger.Ledger

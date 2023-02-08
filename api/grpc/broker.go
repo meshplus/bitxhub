@@ -41,6 +41,8 @@ type ChainBrokerService struct {
 
 const (
 	AccountKey = "account"
+	Unary      = "Unary"
+	Stream     = "Stream"
 )
 
 var auditStreamInterfaceMap = map[string]struct{}{
@@ -85,7 +87,7 @@ func (cbs *ChainBrokerService) init() error {
 		if !ok {
 			return nil, fmt.Errorf("missing meta data!")
 		}
-		if ok, err := checkPermissionUnary(md[AccountKey], info, cbs.ledger, cbs.logger); err != nil {
+		if ok, err := checkPermission(Unary, md[AccountKey], info, cbs.ledger, cbs.logger); err != nil {
 			return nil, fmt.Errorf("checkPermissionUnary err: %v", err)
 		} else if !ok {
 			return nil, fmt.Errorf("no permission request, account: %s, method: %s", md[AccountKey], info.FullMethod)
@@ -98,7 +100,7 @@ func (cbs *ChainBrokerService) init() error {
 		if !ok {
 			return fmt.Errorf("missing meta data!")
 		}
-		if ok, err := checkPermissionStream(md[AccountKey], info, cbs.ledger, cbs.logger); err != nil {
+		if ok, err := checkPermission(Stream, md[AccountKey], info, cbs.ledger, cbs.logger); err != nil {
 			return fmt.Errorf("checkPermissionStream err: %v", err)
 		} else if !ok {
 			return fmt.Errorf("no permission request, account: %s, method: %s", md[AccountKey], info.FullMethod)
@@ -133,11 +135,19 @@ func (cbs *ChainBrokerService) init() error {
 	return nil
 }
 
-func checkPermissionStream(accounts []string, info *grpc.StreamServerInfo, l *ledger.Ledger, logger logrus.FieldLogger) (bool, error) {
+func checkPermission(typ string, accounts []string, info interface{}, l *ledger.Ledger, logger logrus.FieldLogger) (bool, error) {
+	var method string
+	switch typ {
+	case Unary:
+		method = info.(*grpc.UnaryServerInfo).FullMethod
+	case Stream:
+		method = info.(*grpc.StreamServerInfo).FullMethod
+	}
+
 	logger.WithFields(logrus.Fields{
 		"accounts": accounts,
-		"method":   info.FullMethod,
-	}).Debug("check permission stream")
+		"method":   method,
+	}).Debugf("check permission %s", typ)
 
 	for _, addr := range accounts {
 		isAudit, isAvailable, err := checkAuditAccount(addr, l, logger)
@@ -148,58 +158,31 @@ func checkPermissionStream(accounts []string, info *grpc.StreamServerInfo, l *le
 			if !isAvailable {
 				logger.WithFields(logrus.Fields{
 					"addr":   addr,
-					"method": info.FullMethod,
-				}).Debug("audit node is not available, no permission stream")
+					"method": method,
+				}).Debugf("audit node is not available, no permission %s", typ)
 				return false, nil
-			} else if _, ok := auditStreamInterfaceMap[info.FullMethod]; !ok {
-				logger.WithFields(logrus.Fields{
-					"addr":   addr,
-					"method": info.FullMethod,
-				}).Debug("audit node has no permission to the stream method")
-				return false, nil
+			} else {
+				var ok bool
+				switch typ {
+				case Unary:
+					_, ok = auditUnaryInterfaceMap[method]
+				case Stream:
+					_, ok = auditStreamInterfaceMap[method]
+				}
+				if !ok {
+					logger.WithFields(logrus.Fields{
+						"addr":   addr,
+						"method": method,
+					}).Debugf("audit node has no permission to the %s method", typ)
+					return false, nil
+				}
 			}
 		}
 	}
-
 	logger.WithFields(logrus.Fields{
 		"accounts": accounts,
-		"method":   info.FullMethod,
-	}).Debug("audit node has permission to the stream method")
-	return true, nil
-}
-
-func checkPermissionUnary(accounts []string, info *grpc.UnaryServerInfo, l *ledger.Ledger, logger logrus.FieldLogger) (bool, error) {
-	logger.WithFields(logrus.Fields{
-		"accounts": accounts,
-		"method":   info.FullMethod,
-	}).Debug("check permission unary")
-
-	for _, addr := range accounts {
-		isAudit, isAvailable, err := checkAuditAccount(addr, l, logger)
-		if err != nil {
-			return false, err
-		}
-		if isAudit {
-			if !isAvailable {
-				logger.WithFields(logrus.Fields{
-					"addr":   addr,
-					"method": info.FullMethod,
-				}).Debug("audit node is not available, no permission unary")
-				return false, nil
-			} else if _, ok := auditUnaryInterfaceMap[info.FullMethod]; !ok {
-				logger.WithFields(logrus.Fields{
-					"addr":   addr,
-					"method": info.FullMethod,
-				}).Debug("audit node has no permission to the unary method")
-				return false, nil
-			}
-		}
-	}
-
-	logger.WithFields(logrus.Fields{
-		"accounts": accounts,
-		"method":   info.FullMethod,
-	}).Debug("the account has permission to the unary method")
+		"method":   method,
+	}).Debugf("audit node has permission to the %s method", typ)
 	return true, nil
 }
 

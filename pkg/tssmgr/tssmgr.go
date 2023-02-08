@@ -259,9 +259,7 @@ func (t *TssMgr) PutTssMsg(msg *pb.Message, msgID string) {
 		t.logger.WithFields(logrus.Fields{
 			"msgID": msgID,
 		}).Warnf("tss instance not found")
-		return
 	}
-	return
 }
 
 func (t *TssMgr) GetTssPubkey() (string, *ecdsa.PublicKey, error) {

@@ -127,7 +127,7 @@ func parseArgs(in []*pb.Arg) ([]reflect.Value, error) {
 				return nil, err
 			}
 
-			args[i] = reflect.ValueOf(float64(ret))
+			args[i] = reflect.ValueOf(ret)
 		case pb.Arg_I32:
 			ret, err := strconv.Atoi(string(in[i].Value))
 			if err != nil {

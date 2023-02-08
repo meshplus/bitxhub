@@ -43,6 +43,28 @@ func ruleMgrCMD() cli.Command {
 				Action: getMasterRuleAddress,
 			},
 			cli.Command{
+				Name:  "update",
+				Usage: "Update master rule of one appchain",
+				Flags: []cli.Flag{
+					cli.StringFlag{
+						Name:     "id",
+						Usage:    "Specify appchain id",
+						Required: true,
+					},
+					cli.StringFlag{
+						Name:     "addr",
+						Usage:    "Specify new master rule addr",
+						Required: true,
+					},
+					cli.StringFlag{
+						Name:     "reason",
+						Usage:    "update reason",
+						Required: false,
+					},
+				},
+				Action: updateRule,
+			},
+			cli.Command{
 				Name:  "status",
 				Usage: "Query rule status by rule address and appchain id",
 				Flags: []cli.Flag{

@@ -43,10 +43,7 @@ func (t *TssMgr) Keygen(isAddNodeReq bool) error {
 			}
 
 			// 2.2 检查公钥一致个数
-			ok, ids, err := checkTssPkMap(tssPkMap, t.threshold+1)
-			if err != nil {
-				return fmt.Errorf("check pool pk map: %w", err)
-			}
+			ok, ids := checkTssPkMap(tssPkMap, t.threshold+1)
 
 			// 2.3 如果检查累计一致的公钥个数达到t+1，门限签名可以正常使用，将不一致的节点踢出签名组合即可
 			// 如果检查不通过，当前的门限签名已经不能正常使用，需要重新keygen
@@ -132,7 +129,7 @@ func (t *TssMgr) Keygen(isAddNodeReq bool) error {
 	return nil
 }
 
-func checkTssPkMap(pkAddrMap map[string]string, threshold uint64) (bool, []string, error) {
+func checkTssPkMap(pkAddrMap map[string]string, threshold uint64) (bool, []string) {
 	freq := make(map[string]int, len(pkAddrMap))
 	for _, addr := range pkAddrMap {
 		freq[addr]++
@@ -147,11 +144,11 @@ func checkTssPkMap(pkAddrMap map[string]string, threshold uint64) (bool, []strin
 	}
 
 	if pkAddr == "" {
-		return false, nil, nil
+		return false, nil
 	}
 
 	if maxFreq < int(threshold) {
-		return false, nil, nil
+		return false, nil
 	}
 
 	ids := []string{}
@@ -161,7 +158,7 @@ func checkTssPkMap(pkAddrMap map[string]string, threshold uint64) (bool, []strin
 		}
 	}
 
-	return true, ids, nil
+	return true, ids
 }
 
 func (t *TssMgr) fetchPkFromOtherPeers() map[uint64]crypto.PubKey {

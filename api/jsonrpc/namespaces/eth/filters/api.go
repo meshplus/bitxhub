@@ -28,7 +28,6 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/rpc"
 	types2 "github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
@@ -52,8 +51,6 @@ type filter struct {
 // information related to the Ethereum protocol such als blocks, transactions and logs.
 type PublicFilterAPI struct {
 	api       api.CoreAPI
-	mux       *event.TypeMux
-	quit      chan struct{}
 	events    *EventSystem
 	filtersMu sync.Mutex
 	filters   map[rpc.ID]*filter
@@ -61,7 +58,7 @@ type PublicFilterAPI struct {
 	logger    logrus.FieldLogger
 }
 
-// NewPublicFilterAPI returns a new PublicFilterAPI instance.
+// NewAPI returns a new PublicFilterAPI instance.
 func NewAPI(api api.CoreAPI, logger logrus.FieldLogger) *PublicFilterAPI {
 	filterAPI := &PublicFilterAPI{
 		api:     api,
@@ -163,7 +160,10 @@ func (api *PublicFilterAPI) NewPendingTransactions(ctx context.Context) (*rpc.Su
 				// To keep the original behaviour, send a single tx hash in one notification.
 				// TODO(rjl493456442) Send a batch of tx hashes in one notification
 				for _, h := range hashes {
-					notifier.Notify(rpcSub.ID, h)
+					err := notifier.Notify(rpcSub.ID, h)
+					if err != nil {
+						api.logger.Warnf("notify hash err: %s", err)
+					}
 				}
 			case <-rpcSub.Err():
 				pendingTxSub.Unsubscribe()
@@ -229,7 +229,10 @@ func (api *PublicFilterAPI) NewHeads(ctx context.Context) (*rpc.Subscription, er
 		for {
 			select {
 			case h := <-headers:
-				notifier.Notify(rpcSub.ID, h)
+				err := notifier.Notify(rpcSub.ID, h)
+				if err != nil {
+					api.logger.Warnf("notify header err: %s", err)
+				}
 			case <-rpcSub.Err():
 				headersSub.Unsubscribe()
 				return
@@ -261,12 +264,14 @@ func (api *PublicFilterAPI) Logs(ctx context.Context, crit FilterCriteria) (*rpc
 	}
 
 	go func() {
-
 		for {
 			select {
 			case logs := <-matchedLogs:
 				for _, log := range logs {
-					notifier.Notify(rpcSub.ID, &log)
+					err = notifier.Notify(rpcSub.ID, &log)
+					if err != nil {
+						api.logger.Warnf("notify log err: %s", err)
+					}
 				}
 			case <-rpcSub.Err(): // client send an unsubscribe request
 				logsSub.Unsubscribe()

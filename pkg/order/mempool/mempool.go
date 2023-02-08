@@ -50,8 +50,8 @@ type External interface {
 	IsPoolFull() bool
 }
 
-// NewMempool return the mempool instance.
-func NewMempool(config *Config) (MemPool, error) {
+// NewMemPool return the mempool instance.
+func NewMemPool(config *Config) MemPool {
 	return newMempoolImpl(config)
 }
 
@@ -77,7 +77,7 @@ func (mpi *mempoolImpl) HasPendingRequest() bool {
 func (mpi *mempoolImpl) CommitTransactions(state *ChainState) {
 	gcStartTime := time.Now()
 	mpi.processCommitTransactions(state)
-	duration := time.Now().Sub(gcStartTime).Nanoseconds()
+	duration := time.Since(gcStartTime)
 	mpi.logger.Debugf("GC duration %v", duration)
 }
 

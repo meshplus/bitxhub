@@ -76,13 +76,14 @@ func (l *SimpleLedger) GetAccount(address *types.Address) ledger.IAccount {
 	return nil
 }
 
+// nolint
 func (l *SimpleLedger) setAccount(account ledger.IAccount) {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 	l.accounts[account.GetAddress().String()] = account
 }
 
-// GetBalanec get account balance using account Address
+// GetBalance get account balance using account Address
 func (l *SimpleLedger) GetBalance(addr *types.Address) *big.Int {
 	account := l.GetOrCreateAccount(addr)
 	return account.GetBalance()
@@ -252,7 +253,10 @@ func (l *SimpleLedger) FlushDirtyData() (map[string]ledger.IAccount, *types.Hash
 	l.blockJournals.Store(blockJournal.ChangedHash.String(), blockJournal)
 	l.prevJnlHash = blockJournal.ChangedHash
 	l.Clear()
-	l.accountCache.add(dirtyAccounts)
+	err := l.accountCache.add(dirtyAccounts)
+	if err != nil {
+		l.logger.Errorf("add accountCache err: %s", err)
+	}
 
 	return dirtyAccounts, blockJournal.ChangedHash
 }
@@ -410,7 +414,7 @@ func (l *SimpleLedger) Suiside(addr *types.Address) bool {
 	l.changer.append(suicideChange{
 		account:     addr,
 		prev:        account.Suicided(),
-		prevbalance: new(big.Int).Set(account.GetBalance()),
+		prevBalance: new(big.Int).Set(account.GetBalance()),
 	})
 	account.SetSuicided(true)
 	account.SetBalance(new(big.Int))

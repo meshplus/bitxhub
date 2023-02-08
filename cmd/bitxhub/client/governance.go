@@ -350,7 +350,7 @@ func getdDuplicateProposals(ps1, ps2 []contracts.Proposal) []contracts.Proposal 
 	return proposals
 }
 
-func getProposalsByConditions(ctx *cli.Context, keyPath string, method string, arg string) ([]contracts.Proposal, error) {
+func getProposalsByConditions(ctx *cli.Context, _ string, method string, arg string) ([]contracts.Proposal, error) {
 	receipt, err := invokeBVMContractBySendView(ctx, constant.GovernanceContractAddr.String(), method, pb.String(arg))
 	if err != nil {
 		return nil, fmt.Errorf("invoke BVM contract failed when get proposal by condition %s, %w", arg, err)
@@ -391,7 +391,7 @@ func printProposal(proposals []contracts.Proposal) {
 			string(pro.EventType),
 			string(pro.Status),
 			fmt.Sprintf("%s/%s", strconv.Itoa(int(pro.ApproveNum)), strconv.Itoa(int(pro.AgainstNum))),
-			fmt.Sprintf("%s/%s", strconv.Itoa(int(pro.InitialElectorateNum)), strconv.Itoa(int(pro.AvaliableElectorateNum))),
+			fmt.Sprintf("%s/%s", strconv.Itoa(int(pro.InitialElectorateNum)), strconv.Itoa(int(pro.AvailableElectorateNum))),
 			fmt.Sprintf("%s/%s", strconv.FormatBool(pro.IsSpecial), strconv.FormatBool(pro.IsSuperAdminVoted)),
 			pro.StrategyExpression,
 			strconv.Itoa(int(pro.CreateTime)),

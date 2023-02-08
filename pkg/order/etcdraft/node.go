@@ -45,17 +45,16 @@ type Node struct {
 	txCache       *mempool.TxCache              // cache the transactions received from api
 	batchTimerMgr *BatchTimer
 
-	proposeC          chan *raftproto.RequestBatch // proposed ready, input channel
-	confChangeC       chan raftpb.ConfChange       // proposed cluster config changes
-	commitC           chan *pb.CommitEvent         // the hash commit channel
-	errorC            chan<- error                 // errors from raft session
-	tickTimeout       time.Duration                // tick timeout
-	checkInterval     time.Duration                // interval for rebroadcast
-	checkAlive        time.Duration                // tx Maximum alive in memPool
-	msgC              chan []byte                  // receive messages from remote peer
-	stateC            chan *mempool.ChainState     // receive the executed block state
-	rebroadcastTicker chan *raftproto.TxSlice      // receive the executed block state
-	getTxC            chan *mempool.GetTxReq
+	proposeC      chan *raftproto.RequestBatch // proposed ready, input channel
+	confChangeC   chan raftpb.ConfChange       // proposed cluster config changes
+	commitC       chan *pb.CommitEvent         // the hash commit channel
+	errorC        chan<- error                 // errors from raft session
+	tickTimeout   time.Duration                // tick timeout
+	checkInterval time.Duration                // interval for rebroadcast
+	checkAlive    time.Duration                // tx Maximum alive in memPool
+	msgC          chan []byte                  // receive messages from remote peer
+	stateC        chan *mempool.ChainState     // receive the executed block state
+	getTxC        chan *mempool.GetTxReq
 
 	confState         raftpb.ConfState     // raft requires ConfState to be persisted within snapshot
 	blockAppliedIndex sync.Map             // mapping of block height and apply index in raft log
@@ -106,7 +105,7 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 		return nil, fmt.Errorf("generate raft peers: %w", err)
 	}
 
-	raftConfig, timedGenBlock, err := generateRaftConfig(repoRoot)
+	raftConfig, err := generateRaftConfig(repoRoot)
 	if err != nil {
 		return nil, fmt.Errorf("generate raft txpool config: %w", err)
 	}
@@ -121,12 +120,9 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 		PoolSize:       raftConfig.RAFT.MempoolConfig.PoolSize,
 		TxSliceSize:    raftConfig.RAFT.MempoolConfig.TxSliceSize,
 		TxSliceTimeout: raftConfig.RAFT.MempoolConfig.TxSliceTimeout,
-		IsTimed:        timedGenBlock.Enable,
+		IsTimed:        raftConfig.TimedGenBlock.Enable,
 	}
-	mempoolInst, err := mempool.NewMempool(mempoolConf)
-	if err != nil {
-		return nil, fmt.Errorf("create mempool instance: %w", err)
-	}
+	mempoolInst := mempool.NewMemPool(mempoolConf)
 
 	var batchTimeout time.Duration
 	if raftConfig.RAFT.BatchTimeout == 0 {
@@ -163,8 +159,8 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 	node := &Node{
 		id:               config.ID,
 		lastExec:         config.Applied,
-		isTimed:          timedGenBlock.Enable,
-		blockTimeout:     timedGenBlock.BlockTimeout,
+		isTimed:          raftConfig.TimedGenBlock.Enable,
+		blockTimeout:     raftConfig.TimedGenBlock.BlockTimeout,
 		confChangeC:      make(chan raftpb.ConfChange),
 		commitC:          make(chan *pb.CommitEvent, 1024),
 		errorC:           make(chan<- error),
@@ -203,7 +199,7 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 	node.logger.Infof("Raft localID = %d", node.id)
 	node.logger.Infof("Raft lastExec = %d  ", node.lastExec)
 	node.logger.Infof("Raft snapshotCount = %d", node.snapCount)
-	node.logger.Infof("Raft checkAlive = %ds", node.checkAlive.Seconds())
+	node.logger.Infof("Raft checkAlive = %fs", node.checkAlive.Seconds())
 	return node, nil
 }
 
@@ -329,10 +325,41 @@ func (n *Node) DelNode(uint64) error {
 func (n *Node) SubscribeTxEvent(events chan<- pb.Transactions) event.Subscription {
 	return n.mempool.SubscribeTxEvent(events)
 }
+func (n *Node) handleRequestMsg() {
+	//
+	// TODO: does it matter that this will restart from 0 whenever we restart a cluster?
+	//
+	confChangeCount := uint64(0)
+
+	for n.proposeC != nil && n.confChangeC != nil {
+		select {
+		case batch := <-n.proposeC:
+			data, err := batch.Marshal()
+			if err != nil {
+				n.logger.Errorf("Marshal batch failed: %s", err.Error())
+			}
+			n.logger.Debugf("Proposed block %d to raft core consensus", batch.Height)
+			if err := n.node.Propose(n.ctx, data); err != nil {
+				n.logger.Errorf("Failed to propose block [%d] to raft: %s", batch.Height, err.Error())
+			}
+		case cc, ok := <-n.confChangeC:
+			if !ok {
+				n.confChangeC = nil
+			} else {
+				confChangeCount++
+				cc.ID = confChangeCount
+				if err := n.node.ProposeConfChange(n.ctx, cc); err != nil {
+					n.logger.Errorf("Failed to propose configuration update to Raft node: %s", err.Error())
+				}
+			}
+		case <-n.ctx.Done():
+			return
+		}
+	}
+}
 
 // main work loop
 func (n *Node) run() {
-	var blockTicker <-chan time.Time
 	snap, err := n.raftStorage.ram.Snapshot()
 	if err != nil {
 		n.logger.Panic(err)
@@ -340,52 +367,26 @@ func (n *Node) run() {
 	n.confState = snap.Metadata.ConfState
 	n.snapshotIndex = snap.Metadata.Index
 	n.appliedIndex = snap.Metadata.Index
-	//if n.appliedIndex == 0 {
+	// if n.appliedIndex == 0 {
 	//	n.appliedIndex = n.loadAppliedIndex()
-	//}
+	// }
 	n.logger.Infof("snap index:%d", snap.Metadata.Index)
+
+	// handle input request
+	go n.handleRequestMsg()
+
+	// handle messages from raft state machine
+	n.listenRaftMsg()
+}
+
+func (n *Node) listenRaftMsg() {
+	var blockTicker <-chan time.Time
 	ticker := time.NewTicker(n.tickTimeout)
 	rebroadcastTicker := time.NewTicker(n.checkInterval)
 	removeTxTicker := time.NewTicker(n.checkAlive)
 	defer ticker.Stop()
 	defer rebroadcastTicker.Stop()
 	defer removeTxTicker.Stop()
-	// handle input request
-	go func() {
-		//
-		// TODO: does it matter that this will restart from 0 whenever we restart a cluster?
-		//
-		confChangeCount := uint64(0)
-
-		for n.proposeC != nil && n.confChangeC != nil {
-			select {
-			case batch := <-n.proposeC:
-				data, err := batch.Marshal()
-				if err != nil {
-					n.logger.Errorf("Marshal batch failed: %s", err.Error())
-				}
-				n.logger.Debugf("Proposed block %d to raft core consensus", batch.Height)
-				if err := n.node.Propose(n.ctx, data); err != nil {
-					n.logger.Errorf("Failed to propose block [%d] to raft: %s", batch.Height, err.Error())
-				}
-			case cc, ok := <-n.confChangeC:
-				if !ok {
-					n.confChangeC = nil
-				} else {
-					confChangeCount++
-					cc.ID = confChangeCount
-					if err := n.node.ProposeConfChange(n.ctx, cc); err != nil {
-						n.logger.Errorf("Failed to propose configuration update to Raft node: %s", err.Error())
-					}
-				}
-			case <-n.ctx.Done():
-				return
-			}
-		}
-
-	}()
-
-	// handle messages from raft state machine
 	for {
 		if n.isTimed && n.isLeader() {
 			// leader start the Block timer
@@ -404,16 +405,9 @@ func (n *Node) run() {
 
 		case txSet := <-n.txCache.TxSetC:
 			// 1. send transactions to other peer
-			data, err := txSet.Marshal()
-			if err != nil {
-				n.logger.Errorf("Marshal failed, err: %s", err.Error())
-				return
-			}
-			pbMsg := msgToConsensusPbMsg(data, raftproto.RaftMessage_BROADCAST_TX, n.id)
-			_ = n.peerMgr.Broadcast(pbMsg)
+			n.broadcastTx(txSet)
 
 		// 2. process transactions
-		//n.processTransactions(txSet.Transactions, true)
 		case txWithResp := <-n.txCache.TxRespC:
 			n.processTransactions([]pb.Transaction{txWithResp.Tx}, true)
 			txWithResp.Ch <- true
@@ -425,57 +419,16 @@ func (n *Node) run() {
 			n.reportState(state)
 
 		case <-rebroadcastTicker.C:
-			// check periodically if there are long-pending txs in mempool
-			rebroadcastTxs := n.mempool.GetTimeoutTransactions(n.checkInterval)
-			for _, txSlice := range rebroadcastTxs {
-				txSet := &pb.Transactions{Transactions: txSlice}
-				data, err := txSet.Marshal()
-				if err != nil {
-					n.logger.Errorf("Marshal failed, err: %s", err.Error())
-					return
-				}
-				pbMsg := msgToConsensusPbMsg(data, raftproto.RaftMessage_BROADCAST_TX, n.id)
-				_ = n.peerMgr.Broadcast(pbMsg)
-			}
+			n.reBroadcastTx()
+
 		case <-removeTxTicker.C:
-			n.logger.Infof("Replica %d removeTxTicker is expired，startRemoveAliveTimeoutTxs", n.id)
-			removedLen := n.mempool.RemoveAliveTimeoutTxs(n.checkAlive)
-			if removedLen == 0 {
-				n.logger.Infof("Replica %d in normal finds 0 remained reqs, need not remove it", n.id)
-				continue
-			}
-			n.logger.Infof("Replica %d successful remove %d tx in local memPool ", n.id, removedLen)
+			n.handleRemoveTx()
 
 		case <-n.batchTimerMgr.BatchTimeoutEvent():
-			n.batchTimerMgr.StopBatchTimer()
-			// call txPool module to generate a tx batch
-			if n.isLeader() {
-				n.logger.Debug("Leader batch timer expired, try to create a batch")
-				if n.mempool.HasPendingRequest() {
-					if batch := n.mempool.GenerateBlock(); batch != nil {
-						n.postProposal(batch)
-						n.batchTimerMgr.StartBatchTimer()
-					}
-				} else {
-					n.logger.Debug("The length of priorityIndex is 0, skip the batch timer")
-				}
-			} else {
-				n.logger.Warningf("Replica %d try to generate batch, but the leader is %d", n.id, n.leader)
-			}
+			n.processBatchTimeout()
 
 		case <-blockTicker:
-			// call txPool module to generate a tx batch
-			if n.isLeader() {
-				//blockTicker = nil
-				n.logger.Debug("Leader block timer expired, try to create a block")
-				if !n.mempool.HasPendingRequest() {
-					n.logger.Debug("start create empty block")
-				}
-				batch := n.mempool.GenerateBlock()
-				n.postProposal(batch)
-			} else {
-				n.logger.Warningf("Replica %d try to generate batch, but the leader is %d", n.id, n.leader)
-			}
+			n.processGenerateBlockTimeout()
 
 		// when the node is first ready it gives us entries to commit and messages
 		// to immediately publish
@@ -533,6 +486,74 @@ func (n *Node) run() {
 			n.node.Stop()
 			return
 		}
+	}
+}
+
+func (n *Node) broadcastTx(txSet *pb.Transactions) {
+	data, err := txSet.Marshal()
+	if err != nil {
+		n.logger.Errorf("Marshal failed, err: %s", err.Error())
+		return
+	}
+	pbMsg := msgToConsensusPbMsg(data, raftproto.RaftMessage_BROADCAST_TX, n.id)
+	_ = n.peerMgr.Broadcast(pbMsg)
+}
+
+func (n *Node) reBroadcastTx() {
+	// check periodically if there are long-pending txs in mempool
+	rebroadcastTxs := n.mempool.GetTimeoutTransactions(n.checkInterval)
+	for _, txSlice := range rebroadcastTxs {
+		txSet := &pb.Transactions{Transactions: txSlice}
+		data, err := txSet.Marshal()
+		if err != nil {
+			n.logger.Errorf("Marshal failed, err: %s", err.Error())
+			return
+		}
+		pbMsg := msgToConsensusPbMsg(data, raftproto.RaftMessage_BROADCAST_TX, n.id)
+		_ = n.peerMgr.Broadcast(pbMsg)
+	}
+}
+
+func (n *Node) handleRemoveTx() {
+	n.logger.Infof("Replica %d removeTxTicker is expired，startRemoveAliveTimeoutTxs", n.id)
+	removedLen := n.mempool.RemoveAliveTimeoutTxs(n.checkAlive)
+	if removedLen == 0 {
+		n.logger.Infof("Replica %d in normal finds 0 remained reqs, need not remove it", n.id)
+		return
+	}
+	n.logger.Infof("Replica %d successful remove %d tx in local memPool ", n.id, removedLen)
+}
+
+func (n *Node) processBatchTimeout() {
+	n.batchTimerMgr.StopBatchTimer()
+	// call txPool module to generate a tx batch
+	if n.isLeader() {
+		n.logger.Debug("Leader batch timer expired, try to create a batch")
+		if n.mempool.HasPendingRequest() {
+			if batch := n.mempool.GenerateBlock(); batch != nil {
+				n.postProposal(batch)
+				n.batchTimerMgr.StartBatchTimer()
+			}
+		} else {
+			n.logger.Debug("The length of priorityIndex is 0, skip the batch timer")
+		}
+	} else {
+		n.logger.Warningf("Replica %d try to generate batch, but the leader is %d", n.id, n.leader)
+	}
+}
+
+func (n *Node) processGenerateBlockTimeout() {
+	// call txPool module to generate a tx batch
+	if n.isLeader() {
+		// blockTicker = nil
+		n.logger.Debug("Leader block timer expired, try to create a block")
+		if !n.mempool.HasPendingRequest() {
+			n.logger.Debug("start create empty block")
+		}
+		batch := n.mempool.GenerateBlock()
+		n.postProposal(batch)
+	} else {
+		n.logger.Warningf("Replica %d try to generate batch, but the leader is %d", n.id, n.leader)
 	}
 }
 
@@ -610,14 +631,14 @@ func (n *Node) publishEntries(ents []raftpb.Entry) bool {
 			n.confState = *n.node.ApplyConfChange(cc)
 			switch cc.Type {
 			case raftpb.ConfChangeAddNode:
-				//if len(cc.Context) > 0 {
+				// if len(cc.Context) > 0 {
 				//	_ := types.Bytes2Address(cc.Context)
-				//}
+				// }
 			case raftpb.ConfChangeRemoveNode:
-				//if cc.NodeID == n.id {
+				// if cc.NodeID == n.id {
 				//	n.logger.Infoln("I've been removed from the cluster! Shutting down.")
 				//	continue
-				//}
+				// }
 			}
 		}
 
@@ -663,7 +684,7 @@ func (n *Node) mint(requestBatch *raftproto.RequestBatch) {
 	n.commitC <- executeEvent
 }
 
-//Determines whether the current apply index triggers a snapshot
+// Determines whether the current apply index triggers a snapshot
 func (n *Node) maybeTriggerSnapshot() {
 	if n.appliedIndex-n.snapshotIndex < n.snapCount {
 		return

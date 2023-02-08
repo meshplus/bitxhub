@@ -17,8 +17,8 @@ import (
 )
 
 const (
-	PREFIX         = "tx"
-	TIMEOUT_PREFIX = "timeout"
+	PREFIX        = "tx"
+	TimeoutPrefix = "timeout"
 )
 
 type TransactionManager struct {
@@ -40,26 +40,26 @@ func (e TransactionEvent) String() string {
 }
 
 const (
-	TransactionEvent_BEGIN         TransactionEvent = "begin"
-	TransactionEvent_BEGIN_FAILURE TransactionEvent = "begin_failure"
-	TransactionEvent_TIMEOUT       TransactionEvent = "timeout"
-	TransactionEvent_FAILURE       TransactionEvent = "failure"
-	TransactionEvent_SUCCESS       TransactionEvent = "success"
-	TransactionEvent_ROLLBACK      TransactionEvent = "rollback"
-	TransactionEvent_DstROLLBACK   TransactionEvent = "dst_rollback"
-	TransactionEvent_DstFAILURE    TransactionEvent = "dst_failure"
-	TransactionState_INIT                           = "init"
+	TransactionEventBegin        TransactionEvent = "begin"
+	TransactionEventBeginFailure TransactionEvent = "begin_failure"
+	TransactionEventTimeout      TransactionEvent = "timeout"
+	TransactionEventFailure      TransactionEvent = "failure"
+	TransactionEventSuccess      TransactionEvent = "success"
+	TransactionEventRollback     TransactionEvent = "rollback"
+	TransactionEventDstRollback  TransactionEvent = "dst_rollback"
+	TransactionEventDstFailure   TransactionEvent = "dst_failure"
+	TransactionStateInit                          = "init"
 )
 
 var receipt2EventM = map[int32]TransactionEvent{
-	int32(pb.IBTP_RECEIPT_FAILURE):  TransactionEvent_FAILURE,
-	int32(pb.IBTP_RECEIPT_SUCCESS):  TransactionEvent_SUCCESS,
-	int32(pb.IBTP_RECEIPT_ROLLBACK): TransactionEvent_ROLLBACK,
+	int32(pb.IBTP_RECEIPT_FAILURE):  TransactionEventFailure,
+	int32(pb.IBTP_RECEIPT_SUCCESS):  TransactionEventSuccess,
+	int32(pb.IBTP_RECEIPT_ROLLBACK): TransactionEventRollback,
 }
 
 var txStatus2EventM = map[int32]TransactionEvent{
-	int32(pb.TransactionStatus_BEGIN_FAILURE):  TransactionEvent_DstFAILURE,
-	int32(pb.TransactionStatus_BEGIN_ROLLBACK): TransactionEvent_DstROLLBACK,
+	int32(pb.TransactionStatus_BEGIN_FAILURE):  TransactionEventDstFailure,
+	int32(pb.TransactionStatus_BEGIN_ROLLBACK): TransactionEventDstRollback,
 }
 
 func (t *TransactionManager) BeginMultiTXs(globalID, ibtpID string, timeoutHeight uint64, isFailed bool, count uint64) *boltvm.Response {
@@ -121,13 +121,13 @@ func (t *TransactionManager) BeginMultiTXs(globalID, ibtpID string, timeoutHeigh
 	t.Set(ibtpID, []byte(globalID))
 
 	change.CurStatus = txInfo.ChildTxInfo[ibtpID]
-	for id, _ := range txInfo.ChildTxInfo {
+	for id := range txInfo.ChildTxInfo {
 		change.ChildIBTPIDs = append(change.ChildIBTPIDs, id)
 	}
 
 	data, err := change.Marshal()
 	if err != nil {
-		return boltvm.Error(boltvm.TransactionInternalErrCode, fmt.Sprintf(string(boltvm.TransactionInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.TransactionInternalErrCode, err.Error())
 	}
 	t.Logger().WithFields(logrus.Fields{"id": ibtpID, "globalID": globalID, "change": change, "globalState": txInfo}).Info("BeginMultiTXs")
 	return boltvm.Success(data)
@@ -155,7 +155,7 @@ func (t *TransactionManager) Begin(txId string, timeoutHeight uint64, isFailed b
 
 	recordData, err := record.Marshal()
 	if err != nil {
-		return boltvm.Error(boltvm.TransactionInternalErrCode, fmt.Sprintf(string(boltvm.TransactionInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.TransactionInternalErrCode, err.Error())
 	}
 	t.Add(TxInfoKey(txId), recordData)
 
@@ -166,7 +166,7 @@ func (t *TransactionManager) Begin(txId string, timeoutHeight uint64, isFailed b
 
 	data, err := change.Marshal()
 	if err != nil {
-		return boltvm.Error(boltvm.TransactionInternalErrCode, fmt.Sprintf(string(boltvm.TransactionInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.TransactionInternalErrCode, err.Error())
 	}
 
 	return boltvm.Success(data)
@@ -187,7 +187,7 @@ func (t *TransactionManager) BeginInterBitXHub(txId string, timeoutHeight uint64
 	if ok {
 		bxhProof := &pb.BxhProof{}
 		if err := bxhProof.Unmarshal(proof); err != nil {
-			return boltvm.Error(boltvm.TransactionStateErrCode, fmt.Sprintf(string(boltvm.TransactionInternalErrMsg), fmt.Sprintf("unmarshal proof from dst BitXHub for ibtp %s failed: %s", txId, err.Error())))
+			return boltvm.Error(boltvm.TransactionStateErrCode, fmt.Sprintf("unmarshal proof from dst BitXHub for ibtp %s failed: %s", txId, err.Error()))
 		}
 		txStatus := int32(bxhProof.TxStatus)
 		change.PrevStatus = record.Status
@@ -198,7 +198,7 @@ func (t *TransactionManager) BeginInterBitXHub(txId string, timeoutHeight uint64
 
 		recordData, err := record.Marshal()
 		if err != nil {
-			return boltvm.Error(boltvm.TransactionInternalErrCode, fmt.Sprintf(string(boltvm.TransactionInternalErrMsg), err.Error()))
+			return boltvm.Error(boltvm.TransactionInternalErrCode, err.Error())
 		}
 		t.Add(TxInfoKey(txId), recordData)
 	} else {
@@ -217,7 +217,7 @@ func (t *TransactionManager) BeginInterBitXHub(txId string, timeoutHeight uint64
 
 		recordData, err := record.Marshal()
 		if err != nil {
-			return boltvm.Error(boltvm.TransactionInternalErrCode, fmt.Sprintf(string(boltvm.TransactionInternalErrMsg), err.Error()))
+			return boltvm.Error(boltvm.TransactionInternalErrCode, err.Error())
 		}
 		t.Add(TxInfoKey(txId), recordData)
 
@@ -229,7 +229,7 @@ func (t *TransactionManager) BeginInterBitXHub(txId string, timeoutHeight uint64
 
 	data, err := change.Marshal()
 	if err != nil {
-		return boltvm.Error(boltvm.TransactionInternalErrCode, fmt.Sprintf(string(boltvm.TransactionInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.TransactionInternalErrCode, err.Error())
 	}
 
 	return boltvm.Success(data)
@@ -248,7 +248,7 @@ func (t *TransactionManager) Report(txId string, result int32) *boltvm.Response 
 		record := pb.TransactionRecord{}
 		err := record.Unmarshal(recordData)
 		if err != nil {
-			return boltvm.Error(boltvm.TransactionInternalErrCode, fmt.Sprintf(string(boltvm.TransactionInternalErrMsg), err.Error()))
+			return boltvm.Error(boltvm.TransactionInternalErrCode, err.Error())
 		}
 
 		change.PrevStatus = record.Status
@@ -259,7 +259,7 @@ func (t *TransactionManager) Report(txId string, result int32) *boltvm.Response 
 
 		data, err := record.Marshal()
 		if err != nil {
-			return boltvm.Error(boltvm.TransactionInternalErrCode, fmt.Sprintf(string(boltvm.TransactionInternalErrMsg), err.Error()))
+			return boltvm.Error(boltvm.TransactionInternalErrCode, err.Error())
 		}
 		t.Set(TxInfoKey(txId), data)
 	} else {
@@ -276,12 +276,12 @@ func (t *TransactionManager) Report(txId string, result int32) *boltvm.Response 
 
 		_, ok = txInfo.ChildTxInfo[txId]
 		if !ok {
-			return boltvm.Error(boltvm.TransactionInternalErrCode, fmt.Sprintf(string(boltvm.TransactionInternalErrMsg), fmt.Sprintf("%s is not in transaction %s, %v", txId, globalId, txInfo)))
+			return boltvm.Error(boltvm.TransactionInternalErrCode, fmt.Sprintf("%s is not in transaction %s, %v", txId, globalId, txInfo))
 		}
 
 		change.PrevStatus = txInfo.GlobalState
 		if err := t.changeMultiTxStatus(globalId, &txInfo, txId, result); err != nil {
-			return boltvm.Error(boltvm.TransactionStateErrCode, fmt.Sprintf(string(boltvm.TransactionInternalErrMsg), err.Error()))
+			return boltvm.Error(boltvm.TransactionStateErrCode, err.Error())
 		}
 		change.CurStatus = txInfo.GlobalState
 
@@ -303,7 +303,7 @@ func (t *TransactionManager) Report(txId string, result int32) *boltvm.Response 
 			}
 		}
 		change.ChildIBTPIDs = make([]string, 0, len(txInfo.ChildTxInfo))
-		for id, _ := range txInfo.ChildTxInfo {
+		for id := range txInfo.ChildTxInfo {
 			change.ChildIBTPIDs = append(change.ChildIBTPIDs, id)
 		}
 		// ensure all nodes ChildIBTPIDs is equal
@@ -315,7 +315,7 @@ func (t *TransactionManager) Report(txId string, result int32) *boltvm.Response 
 
 	data, err := change.Marshal()
 	if err != nil {
-		return boltvm.Error(boltvm.TransactionInternalErrCode, fmt.Sprintf(string(boltvm.TransactionInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.TransactionInternalErrCode, err.Error())
 	}
 
 	return boltvm.Success(data)
@@ -327,7 +327,7 @@ func (t *TransactionManager) GetStatus(txId string) *boltvm.Response {
 		record := pb.TransactionRecord{}
 		err := record.Unmarshal(recordData)
 		if err != nil {
-			return boltvm.Error(boltvm.TransactionInternalErrCode, fmt.Sprintf(string(boltvm.TransactionInternalErrMsg), err.Error()))
+			return boltvm.Error(boltvm.TransactionInternalErrCode, err.Error())
 		}
 		status := record.Status
 		return boltvm.Success([]byte(strconv.Itoa(int(status))))
@@ -361,26 +361,26 @@ func (t *TransactionManager) setFSM(state *pb.TransactionStatus, event Transacti
 	t.fsm = fsm.NewFSM(
 		state.String(),
 		fsm.Events{
-			{Name: TransactionEvent_BEGIN.String(), Src: []string{TransactionState_INIT}, Dst: pb.TransactionStatus_BEGIN.String()},
-			{Name: TransactionEvent_BEGIN_FAILURE.String(), Src: []string{TransactionState_INIT, pb.TransactionStatus_BEGIN.String()}, Dst: pb.TransactionStatus_BEGIN_FAILURE.String()},
-			{Name: TransactionEvent_TIMEOUT.String(), Src: []string{pb.TransactionStatus_BEGIN.String()}, Dst: pb.TransactionStatus_BEGIN_ROLLBACK.String()},
-			{Name: TransactionEvent_SUCCESS.String(), Src: []string{pb.TransactionStatus_BEGIN.String()}, Dst: pb.TransactionStatus_SUCCESS.String()},
-			{Name: TransactionEvent_FAILURE.String(), Src: []string{pb.TransactionStatus_BEGIN.String(), pb.TransactionStatus_BEGIN_FAILURE.String()}, Dst: pb.TransactionStatus_FAILURE.String()},
-			{Name: TransactionEvent_ROLLBACK.String(), Src: []string{pb.TransactionStatus_BEGIN_ROLLBACK.String()}, Dst: pb.TransactionStatus_ROLLBACK.String()},
+			{Name: TransactionEventBegin.String(), Src: []string{TransactionStateInit}, Dst: pb.TransactionStatus_BEGIN.String()},
+			{Name: TransactionEventBeginFailure.String(), Src: []string{TransactionStateInit, pb.TransactionStatus_BEGIN.String()}, Dst: pb.TransactionStatus_BEGIN_FAILURE.String()},
+			{Name: TransactionEventTimeout.String(), Src: []string{pb.TransactionStatus_BEGIN.String()}, Dst: pb.TransactionStatus_BEGIN_ROLLBACK.String()},
+			{Name: TransactionEventSuccess.String(), Src: []string{pb.TransactionStatus_BEGIN.String()}, Dst: pb.TransactionStatus_SUCCESS.String()},
+			{Name: TransactionEventFailure.String(), Src: []string{pb.TransactionStatus_BEGIN.String(), pb.TransactionStatus_BEGIN_FAILURE.String()}, Dst: pb.TransactionStatus_FAILURE.String()},
+			{Name: TransactionEventRollback.String(), Src: []string{pb.TransactionStatus_BEGIN_ROLLBACK.String()}, Dst: pb.TransactionStatus_ROLLBACK.String()},
 			// if receive receipt fail, the previous status is begin rollback
-			{Name: TransactionEvent_FAILURE.String(), Src: []string{pb.TransactionStatus_BEGIN_ROLLBACK.String()}, Dst: pb.TransactionStatus_ROLLBACK.String()},
-			{Name: TransactionEvent_DstFAILURE.String(), Src: []string{pb.TransactionStatus_BEGIN.String()}, Dst: pb.TransactionStatus_FAILURE.String()},
-			{Name: TransactionEvent_DstROLLBACK.String(), Src: []string{pb.TransactionStatus_BEGIN.String()}, Dst: pb.TransactionStatus_ROLLBACK.String()},
+			{Name: TransactionEventFailure.String(), Src: []string{pb.TransactionStatus_BEGIN_ROLLBACK.String()}, Dst: pb.TransactionStatus_ROLLBACK.String()},
+			{Name: TransactionEventDstFailure.String(), Src: []string{pb.TransactionStatus_BEGIN.String()}, Dst: pb.TransactionStatus_FAILURE.String()},
+			{Name: TransactionEventDstRollback.String(), Src: []string{pb.TransactionStatus_BEGIN.String()}, Dst: pb.TransactionStatus_ROLLBACK.String()},
 		},
 		fsm.Callbacks{
-			TransactionEvent_BEGIN.String():         callbackFunc,
-			TransactionEvent_BEGIN_FAILURE.String(): callbackFunc,
-			TransactionEvent_TIMEOUT.String():       callbackFunc,
-			TransactionEvent_SUCCESS.String():       callbackFunc,
-			TransactionEvent_FAILURE.String():       callbackFunc,
-			TransactionEvent_ROLLBACK.String():      callbackFunc,
-			TransactionEvent_DstFAILURE.String():    callbackFunc,
-			TransactionEvent_DstROLLBACK.String():   callbackFunc,
+			TransactionEventBegin.String():        callbackFunc,
+			TransactionEventBeginFailure.String(): callbackFunc,
+			TransactionEventTimeout.String():      callbackFunc,
+			TransactionEventSuccess.String():      callbackFunc,
+			TransactionEventFailure.String():      callbackFunc,
+			TransactionEventRollback.String():     callbackFunc,
+			TransactionEventDstFailure.String():   callbackFunc,
+			TransactionEventDstRollback.String():  callbackFunc,
 		},
 	)
 
@@ -482,5 +482,5 @@ func GlobalTxInfoKey(id string) string {
 }
 
 func TimeoutKey(height uint64) string {
-	return fmt.Sprintf("%s-%d", TIMEOUT_PREFIX, height)
+	return fmt.Sprintf("%s-%d", TimeoutPrefix, height)
 }

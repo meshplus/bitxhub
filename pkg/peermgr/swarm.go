@@ -148,7 +148,7 @@ func (swarm *Swarm) Start() error {
 		go func(id uint64, addr *peer.AddrInfo, ctx context.Context) {
 			if err := retry.Retry(func(attempt uint) error {
 				select {
-				case <-swarm.ctx.Done():
+				case <-ctx.Done():
 					return nil
 
 				default:
@@ -449,7 +449,7 @@ func (swarm *Swarm) UpdateRouter(vpInfos map[uint64]*pb.VpInfo, isNew bool) bool
 	// 1. update routing table, multiAddrs and connectedPeers
 	oldRouters := swarm.routers
 	swarm.routers = vpInfos
-	for id, _ := range oldRouters {
+	for id := range oldRouters {
 		if _, ok := vpInfos[id]; !ok {
 			delete(swarm.multiAddrs, id)
 			swarm.connectedPeers.Delete(id)
@@ -467,7 +467,7 @@ func (swarm *Swarm) UpdateRouter(vpInfos map[uint64]*pb.VpInfo, isNew bool) bool
 
 	// 4. check if a restart node is exist in the routing table, if not, then exit the cluster
 	var isExist bool
-	for id, _ := range vpInfos {
+	for id := range vpInfos {
 		if id == swarm.localID {
 			isExist = true
 			break
@@ -514,7 +514,7 @@ func constructMultiaddr(vpInfo *pb.VpInfo) (*peer.AddrInfo, error) {
 		return nil, fmt.Errorf("no hosts found by node:%d", vpInfo.Id)
 	}
 	for _, host := range vpInfo.Hosts {
-		addr, err := ma.NewMultiaddr(fmt.Sprintf("%s%s", host, vpInfo.Pid))
+		addr, err := ma.NewMultiaddr(fmt.Sprintf(host, vpInfo.Pid))
 		if err != nil {
 			return nil, fmt.Errorf("new Multiaddr error:%w", err)
 		}
@@ -533,16 +533,14 @@ func (swarm *Swarm) PierManager() PierManager {
 }
 
 func (swarm *Swarm) ReConfig(config interface{}) error {
-	switch config.(type) {
+	switch cf := config.(type) {
 	case *repo.Config:
-		config := config.(*repo.Config)
-		swarm.pingC <- &config.Ping
+		swarm.pingC <- &cf.Ping
 	case *repo.NetworkConfig:
-		config := config.(*repo.NetworkConfig)
 		if err := swarm.Stop(); err != nil {
 			return fmt.Errorf("stop swarm failed: %w", err)
 		}
-		swarm.repo.NetworkConfig = config
+		swarm.repo.NetworkConfig = cf
 		if err := swarm.init(); err != nil {
 			return fmt.Errorf("init swarm failed: %w", err)
 		}
