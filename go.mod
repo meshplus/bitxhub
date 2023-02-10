@@ -39,7 +39,7 @@ require (
 	github.com/meshplus/consensus v0.0.0-20211228075008-5f469b198531
 	github.com/meshplus/eth-kit v0.0.0-20221027120404-e69d0c24dbd4
 	github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd
-	github.com/meshplus/go-lightp2p v0.0.0-20220712082352-ed86b78e8baf
+	github.com/meshplus/go-lightp2p v1.26.0
 	github.com/miguelmota/go-solidity-sha3 v0.1.1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-multiaddr v0.3.1
@@ -61,7 +61,7 @@ require (
 	github.com/willf/bloom v2.0.3+incompatible
 	go.uber.org/atomic v1.7.0
 	go.uber.org/zap v1.19.0
-	google.golang.org/grpc v1.48.0
+	google.golang.org/grpc v1.50.1
 )
 
 replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20200218151345-dad8c97a84f5
