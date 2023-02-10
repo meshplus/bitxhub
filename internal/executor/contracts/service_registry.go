@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -469,8 +470,10 @@ func (sr ServiceRegistry) GetSubDomain(name string) *boltvm.Response {
 				subDomains = append(subDomains, k)
 			}
 		}
-
 	}
+
+	// ensure subDomains is equal in all nodes
+	sort.Strings(subDomains)
 	subDomainsBytes, err := json.Marshal(subDomains)
 	if err != nil {
 		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf("marshal servDomainData error: %v", err))
@@ -670,6 +673,14 @@ func (sr ServiceRegistry) GetAllDomains() *boltvm.Response {
 
 		}
 	}
+
+	// ensure res is equal in all nodes
+	sort.Slice(res, func(i, j int) bool {
+		if res[i].ParentName != res[j].ParentName {
+			return res[i].ParentName < res[j].ParentName
+		}
+		return res[i].Name < res[j].Name
+	})
 
 	resBytes, err := json.Marshal(res)
 	if err != nil {
