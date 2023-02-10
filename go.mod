@@ -40,7 +40,7 @@ require (
 	github.com/meshplus/consensus v0.0.0-20211228075008-5f469b198531
 	github.com/meshplus/eth-kit v0.0.0-20221020152328-caeec38b9a34
 	github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd
-	github.com/meshplus/go-lightp2p v0.0.0-20220712082352-ed86b78e8baf
+	github.com/meshplus/go-lightp2p v1.25.0
 	github.com/miguelmota/go-solidity-sha3 v0.1.1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-multiaddr v0.3.1

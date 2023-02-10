@@ -828,6 +828,8 @@ github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd/go.mod h1:
 github.com/meshplus/go-lightp2p v0.0.0-20200817105923-6b3aee40fa54/go.mod h1:G89UJaeqCQFxFdp8wzy1AdKfMtDEhpySau0pjDNeeaw=
 github.com/meshplus/go-lightp2p v0.0.0-20220712082352-ed86b78e8baf h1:lFEXO5F2mKFwB6GcxkpsYpOIeh4JJrbOZt/k+dWHu10=
 github.com/meshplus/go-lightp2p v0.0.0-20220712082352-ed86b78e8baf/go.mod h1:ARRXc4Oo0iZjsj5CB+LTmcMNxK2c1fug7XsEZ7yPJvg=
+github.com/meshplus/go-lightp2p v1.25.0 h1:m099N1VuzRjtijg0biE/66rw9syOtPlU5cBXIIxzzWk=
+github.com/meshplus/go-lightp2p v1.25.0/go.mod h1:ARRXc4Oo0iZjsj5CB+LTmcMNxK2c1fug7XsEZ7yPJvg=
 github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b/go.mod h1:01TrycV0kFyexm33Z7vhZRXopbI8J3TDReVlkTgMUxE=
 github.com/miekg/dns v1.0.14/go.mod h1:W1PPwlIAgtquWBMBEV9nkV9Cazfe8ScdGz/Lj7v3Nrg=
 github.com/miekg/dns v1.1.12/go.mod h1:W1PPwlIAgtquWBMBEV9nkV9Cazfe8ScdGz/Lj7v3Nrg=
