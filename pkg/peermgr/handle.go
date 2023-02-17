@@ -281,9 +281,6 @@ func (swarm *Swarm) handleFetchBlockSignMessage(s network.Stream, data []byte) {
 	}
 }
 
-func (swarm *Swarm) handleFetchAssetExchangeSignMessage(s network.Stream, data []byte) {
-}
-
 func (swarm *Swarm) handleFetchIBTPSignMessage(s network.Stream, data []byte, isReq bool) {
 	address, signed, err := utils.GetIBTPSign(swarm.ledger, string(data), isReq, swarm.repo.Key.PrivKey)
 	if err != nil {
@@ -312,7 +309,7 @@ func (swarm *Swarm) handleFetchIBTPSignMessage(s network.Stream, data []byte, is
 	}
 }
 
-func (swarm *Swarm) handleFetchIBTPTssSignMessage(s network.Stream, data []byte, isReq bool) {
+func (swarm *Swarm) handleFetchIBTPTssSignMessage(_ network.Stream, data []byte, isReq bool) {
 	req := &pb.GetSignsRequest{}
 	if err := req.Unmarshal(data); err != nil {
 		swarm.logger.Errorf("handle fetch-ibtp-tss-sign unmarshal req error: %v", err)
@@ -420,7 +417,7 @@ func (swarm *Swarm) handleAskPierMaster(s network.Stream, data []byte) {
 	}
 }
 
-func (swarm *Swarm) handleReplyPierMaster(s network.Stream, data []byte) {
+func (swarm *Swarm) handleReplyPierMaster(_ network.Stream, data []byte) {
 	resp := &pb.CheckPierResponse{}
 	err := resp.Unmarshal(data)
 	if err != nil {

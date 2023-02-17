@@ -3,6 +3,7 @@
 .vscode
 a_main-packr.go
 a_repo-packr.go
+packed-packr.go
 
 bin/*
 datastore

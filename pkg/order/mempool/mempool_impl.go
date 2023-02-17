@@ -1,20 +1,16 @@
 package mempool
 
 import (
+	"fmt"
 	"math"
-	"os"
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/google/btree"
-	"github.com/meshplus/bitxhub-kit/storage"
-	"github.com/meshplus/bitxhub-kit/storage/leveldb"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -30,7 +26,7 @@ type mempoolImpl struct {
 	txFeed      event.Feed
 }
 
-func newMempoolImpl(config *Config) (*mempoolImpl, error) {
+func newMempoolImpl(config *Config) *mempoolImpl {
 	mpi := &mempoolImpl{
 		localID:     config.ID,
 		batchSeqNo:  config.ChainHeight,
@@ -58,7 +54,7 @@ func newMempoolImpl(config *Config) (*mempoolImpl, error) {
 	mpi.logger.Infof("MemPool tx slice size = %d", mpi.batchSize)
 	mpi.logger.Infof("MemPool batch seqNo = %d", mpi.batchSeqNo)
 	mpi.logger.Infof("MemPool pool size = %d", mpi.poolSize)
-	return mpi, nil
+	return mpi
 }
 
 func (mpi *mempoolImpl) ProcessTransactions(txs []pb.Transaction, isLeader, isLocal bool) *raftproto.RequestBatch {
@@ -211,9 +207,10 @@ func (mpi *mempoolImpl) generateBlock() (*raftproto.RequestBatch, error) {
 	})
 
 	if !mpi.isTimed && len(result) == 0 && mpi.txStore.priorityNonBatchSize > 0 {
-		mpi.logger.Error("===== NOTE!!! Leader generate a batch with 0 txs")
+		err := fmt.Errorf("===== NOTE!!! Leader generate a batch with 0 txs")
+		mpi.logger.WithFields(logrus.Fields{"primary": fmt.Sprintf("node%d", mpi.localID)}).Error(err)
 		mpi.txStore.priorityNonBatchSize = 0
-		return nil, nil
+		return nil, err
 	}
 
 	// convert transaction pointers to real values
@@ -270,24 +267,24 @@ func (mpi *mempoolImpl) processCommitTransactions(state *ChainState) {
 			// remove index smaller than commitNonce delete index.
 			var wg sync.WaitGroup
 			wg.Add(5)
-			go func(ready map[string][]pb.Transaction) {
+			go func(removedTxs map[string][]pb.Transaction) {
 				defer wg.Done()
 				list.index.removeBySortedNonceKey(removedTxs)
 			}(removedTxs)
-			go func(ready map[string][]pb.Transaction) {
+			go func(removedTxs map[string][]pb.Transaction) {
 				defer wg.Done()
 				mpi.txStore.priorityIndex.removeByTimeoutKey(removedTxs)
 			}(removedTxs)
-			go func(ready map[string][]pb.Transaction) {
+			go func(removedTxs map[string][]pb.Transaction) {
 				defer wg.Done()
 				mpi.txStore.ttlIndex.removeByTtlKey(removedTxs)
 				mpi.txStore.updateEarliestTimestamp()
 			}(removedTxs)
-			go func(ready map[string][]pb.Transaction) {
+			go func(removedTxs map[string][]pb.Transaction) {
 				defer wg.Done()
 				mpi.txStore.removeTimeoutIndex.removeByTtlKey(removedTxs)
 			}(removedTxs)
-			go func(ready map[string][]pb.Transaction) {
+			go func(removedTxs map[string][]pb.Transaction) {
 				defer wg.Done()
 				mpi.txStore.parkingLotIndex.removeByOrderedQueueKey(removedTxs)
 			}(removedTxs)
@@ -428,13 +425,8 @@ func (mpi *mempoolImpl) RemoveAliveTimeoutTxs(removeDuration time.Duration) uint
 	return removeCnt
 }
 
-func (mpi *mempoolImpl) GetPendingTransactions(max int) []pb.Transaction {
-	if max < 0 {
-		max = int(mpi.txStore.priorityNonBatchSize)
-	}
-
+func (mpi *mempoolImpl) GetPendingTransactions(_ int) []pb.Transaction {
 	// TODO：Not implemented yet
-
 	return nil
 }
 
@@ -476,22 +468,13 @@ func (mpi *mempoolImpl) shardTxList(timeoutItems []*orderedTimeoutKey, batchLen 
 
 		shardedList := make([]pb.Transaction, actualLen)
 		for j := uint64(0); j < batchLen && begin <= end; j++ {
-			txMap, _ := mpi.txStore.allTxs[timeoutItems[begin].account]
+			txMap := mpi.txStore.allTxs[timeoutItems[begin].account]
 			shardedList[j] = txMap.items[timeoutItems[begin].nonce].tx
 			begin++
 		}
 		shardedLists = append(shardedLists, shardedList)
 	}
 	return shardedLists
-}
-
-func loadOrCreateStorage(memPoolDir string) (storage.Storage, error) {
-	if !fileutil.Exist(memPoolDir) {
-		if err := os.MkdirAll(memPoolDir, os.ModePerm); err != nil {
-			return nil, errors.Errorf("failed to mkdir '%s' for mem pool: %s", memPoolDir, err)
-		}
-	}
-	return leveldb.New(memPoolDir)
 }
 
 func (mpi *mempoolImpl) SubscribeTxEvent(ch chan<- pb.Transactions) event.Subscription {

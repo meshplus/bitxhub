@@ -14,8 +14,6 @@ import (
 
 var _ ledger.StateLedger = (*SimpleLedger)(nil)
 
-const parallel = "parallel"
-
 var (
 	ErrorRollbackToHigherNumber  = fmt.Errorf("rollback to higher blockchain height")
 	ErrorRollbackWithoutJournal  = fmt.Errorf("rollback to blockchain height without journal")

@@ -2,7 +2,6 @@ package boltvm
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -159,12 +158,12 @@ func (b *BoltStubImpl) CrossInvoke(address, method string, args ...*pb.Arg) *bol
 
 	data, err := payload.Marshal()
 	if err != nil {
-		return boltvm.Error(boltvm.OtherInternalErrCode, fmt.Sprintf(string(boltvm.OtherInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.OtherInternalErrCode, err.Error())
 	}
 	bvm := New(ctx, b.ve, nil, b.bvm.contracts)
 	ret, _, err := bvm.Run(data, 0)
 	if err != nil {
-		return boltvm.Error(boltvm.OtherInternalErrCode, fmt.Sprintf(string(boltvm.OtherInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.OtherInternalErrCode, err.Error())
 	}
 
 	return boltvm.Success(ret)
@@ -196,13 +195,13 @@ func (b *BoltStubImpl) CrossInvokeEVM(address string, data []byte) *boltvm.Respo
 	if err != nil {
 		statedb.RevertToSnapshot(snapshot)
 		ctx.Ledger.ClearChangerAndRefund()
-		return boltvm.Error(boltvm.OtherInternalErrCode, fmt.Sprintf(string(boltvm.OtherInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.OtherInternalErrCode, err.Error())
 	}
 	if result.Failed() {
 		if strings.HasPrefix(result.Err.Error(), vm1.ErrExecutionReverted.Error()) {
-			return boltvm.Error(boltvm.OtherInternalErrCode, fmt.Sprintf(string(boltvm.OtherInternalErrMsg), string(append([]byte(result.Err.Error()), common.CopyBytes(result.ReturnData)...))))
+			return boltvm.Error(boltvm.OtherInternalErrCode, string(append([]byte(result.Err.Error()), common.CopyBytes(result.ReturnData)...)))
 		} else {
-			return boltvm.Error(boltvm.OtherInternalErrCode, fmt.Sprintf(string(boltvm.OtherInternalErrMsg), string(append([]byte(result.Err.Error()), result.Revert()...))))
+			return boltvm.Error(boltvm.OtherInternalErrCode, string(append([]byte(result.Err.Error()), result.Revert()...)))
 		}
 	}
 	ret := result.Return()

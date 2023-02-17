@@ -2,11 +2,12 @@ package etcdraft
 
 import (
 	"fmt"
-	"go.uber.org/atomic"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"go.uber.org/atomic"
 
 	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/raft"

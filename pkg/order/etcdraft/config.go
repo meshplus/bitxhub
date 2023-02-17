@@ -94,20 +94,15 @@ func generateEtcdRaftConfig(id uint64, repoRoot string, logger logrus.FieldLogge
 	return &defaultConfig, readConfig.RAFT.TickTimeout, nil
 }
 
-func generateRaftConfig(repoRoot string) (*RAFTConfig, *TimedGenBlock, error) {
-	readConfig, err := readConfig(repoRoot)
+func generateRaftConfig(repoRoot string) (*RAFTConfig, error) {
+	cf, err := readConfig(repoRoot)
 	if err != nil {
-		return nil, nil, fmt.Errorf("read config from %s error: %w", repoRoot, err)
+		return nil, fmt.Errorf("read config from %s error: %w", repoRoot, err)
 	}
-	timedGenBlock := defaultTimedConfig()
-	timedGenBlock = TimedGenBlock{
-		Enable:       readConfig.TimedGenBlock.Enable,
-		BlockTimeout: readConfig.TimedGenBlock.BlockTimeout,
+	if err := checkConfig(cf); err != nil {
+		return nil, fmt.Errorf("check config failed: %w", err)
 	}
-	if err := checkConfig(readConfig); err != nil {
-		return nil, nil, fmt.Errorf("check config failed: %w", err)
-	}
-	return readConfig, &timedGenBlock, nil
+	return cf, nil
 }
 
 func readConfig(repoRoot string) (*RAFTConfig, error) {

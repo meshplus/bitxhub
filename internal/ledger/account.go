@@ -362,7 +362,7 @@ func (o *SimpleAccount) getStateJournalAndComputeHash(logger logrus.FieldLogger)
 	for _, key := range dirtyStateKeys {
 		dirtyStateData = append(dirtyStateData, key...)
 		dirtyVal, _ := o.dirtyState.Load(key)
-		//logger.Infof("account:%s, dirtyKey:%s, dirtyVal:%v", o.Addr.String(), key, dirtyVal)
+		logger.Debugf("account:%s, dirtyKey:%s, dirtyVal:%v", o.Addr.String(), key, dirtyVal)
 		dirtyStateData = append(dirtyStateData, dirtyVal.([]byte)...)
 	}
 	hash := sha256.Sum256(dirtyStateData)
@@ -392,7 +392,7 @@ func (o *SimpleAccount) SetSuicided(suicided bool) {
 }
 
 func (o *SimpleAccount) IsEmpty() bool {
-	return o.GetBalance().Sign() == 0 && o.GetNonce() == 0 && o.Code() == nil && o.suicided == false
+	return o.GetBalance().Sign() == 0 && o.GetNonce() == 0 && o.Code() == nil && !o.suicided
 }
 
 func (o *SimpleAccount) Suicided() bool {

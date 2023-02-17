@@ -18,13 +18,9 @@ import (
 
 const GasXVMDeploy = 21000 * 10
 
-var (
-	errorLackOfMethod = fmt.Errorf("wasm execute: lack of method name")
-)
-
 var _ vm.VM = (*WasmVM)(nil)
 
-// Wasm represents the wasm vm in BitXHub
+// WasmVM represents the wasm vm in BitXHub
 type WasmVM struct {
 	// contract context
 	ctx *vm.Context

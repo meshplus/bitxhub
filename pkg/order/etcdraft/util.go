@@ -36,7 +36,7 @@ func generateRaftPeers(config *order.Config) ([]raft.Peer, error) {
 	return peers, nil
 }
 
-//Get the raft apply index of the highest block
+// Get the raft apply index of the highest block
 func (n *Node) getBlockAppliedIndex() uint64 {
 	height := uint64(0)
 	n.blockAppliedIndex.Range(
@@ -54,7 +54,7 @@ func (n *Node) getBlockAppliedIndex() uint64 {
 	return appliedIndex.(uint64)
 }
 
-//Load the lastAppliedIndex of block height
+// Load the lastAppliedIndex of block height
 func (n *Node) loadAppliedIndex() uint64 {
 	dat := n.storage.Get(appliedDbKey)
 	var lastAppliedIndex uint64
@@ -67,7 +67,7 @@ func (n *Node) loadAppliedIndex() uint64 {
 	return lastAppliedIndex
 }
 
-//Write the lastAppliedIndex
+// Write the lastAppliedIndex
 func (n *Node) writeAppliedIndex(index uint64) {
 	buf := make([]byte, 8)
 	binary.LittleEndian.PutUint64(buf, index)
@@ -78,7 +78,7 @@ func (n *Node) isLeader() bool {
 	return n.leader == n.id
 }
 
-//Determine whether the current apply index is normal
+// Determine whether the current apply index is normal
 func (n *Node) entriesToApply(allEntries []raftpb.Entry) (entriesToApply []raftpb.Entry) {
 	if len(allEntries) == 0 {
 		return
@@ -148,7 +148,15 @@ func (n *Node) recoverFromSnapshot() {
 		}).Info("State Update")
 
 		blockCh := make(chan *pb.Block, 1024)
-		go n.syncer.SyncCFTBlocks(chainMeta.Height+1, targetChainMeta.Height, blockCh)
+		go func() {
+			begin := chainMeta.Height + 1
+			end := targetChainMeta.Height
+			err = n.syncer.SyncCFTBlocks(begin, end, blockCh)
+			if err != nil {
+				n.logger.WithFields(logrus.Fields{"begin": begin, "end": end}).Errorf("syncBlocks err:%s", err)
+				return
+			}
+		}()
 		for block := range blockCh {
 			// indicates that the synchronization blocks function has been completed
 			if block == nil {

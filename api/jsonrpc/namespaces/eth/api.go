@@ -89,8 +89,8 @@ func (api *PublicEthereumAPI) Syncing() (map[string]string, error) {
 		return syncBlock, err
 	}
 
-	syncBlock["startingBlock"] = string(hexutil.Uint64(1))
-	syncBlock["highestBlock"] = string(hexutil.Uint64(meta.Height))
+	syncBlock["startingBlock"] = fmt.Sprintf("%d", hexutil.Uint64(1))
+	syncBlock["highestBlock"] = fmt.Sprintf("%d", hexutil.Uint64(meta.Height))
 	syncBlock["currentBlock"] = syncBlock["highestBlock"]
 	return syncBlock, nil
 }
@@ -806,11 +806,11 @@ func newRPCTransaction(tx pb.Transaction, blockHash common.Hash, blockNumber uin
 
 	// classify bxhTransaction and ethTransaction
 	var input hexutil.Bytes
-	switch tx.(type) {
+	switch t := tx.(type) {
 	case *pb.BxhTransaction:
-		input = []byte(tx.(*pb.BxhTransaction).Typ.String())
+		input = []byte(t.Typ.String())
 	case *types2.EthTransaction:
-		input = tx.GetPayload()
+		input = t.GetPayload()
 	}
 
 	result := &rpctypes.RPCTransaction{
@@ -848,21 +848,4 @@ func newRPCTransaction(tx pb.Transaction, blockHash common.Hash, blockNumber uin
 	}
 
 	return result
-}
-
-// GetBlockCumulativeGas returns the cumulative gas used on a block up to a given transaction index (inclusive)
-func (api *PublicEthereumAPI) getBlockCumulativeGas(block *pb.Block, idx uint64) (uint64, error) {
-	var gasUsed uint64
-	txs := block.Transactions.Transactions
-
-	for i := 0; i <= int(idx) && i < len(txs); i++ {
-		receipt, err := api.api.Broker().GetReceipt(txs[i].GetHash())
-		if err != nil {
-			return 0, err
-		}
-
-		gasUsed += receipt.GetGasUsed()
-	}
-
-	return gasUsed, nil
 }

@@ -59,8 +59,6 @@ const (
 	// txChanSize is the size of channel listening to NewTxsEvent.
 	// The number is referenced from the size of tx pool.
 	txChanSize = 4096
-	// rmLogsChanSize is the size of channel listening to RemovedLogsEvent.
-	rmLogsChanSize = 10
 	// logsChanSize is the size of channel listening to LogsEvent.
 	logsChanSize = 10
 	// chainEvChanSize is the size of channel listening to ChainEvent.
@@ -92,7 +90,6 @@ type FilterQuery struct {
 type EventSystem struct {
 	api       api.CoreAPI
 	lightMode bool
-	lastHead  *pb.BlockHeader
 
 	// Subscriptions
 	txsSub  event.Subscription // Subscription for new transaction event
@@ -317,18 +314,6 @@ func (es *EventSystem) handleLogs(filters filterIndex, ev []*pb.EvmLog) {
 	}
 	for _, f := range filters[LogsSubscription] {
 		matchedLogs := FilterLogs(ev, f.logsCrit.FromBlock, f.logsCrit.ToBlock, f.logsCrit.Addresses, f.logsCrit.Topics)
-		if len(matchedLogs) > 0 {
-			f.logs <- matchedLogs
-		}
-	}
-}
-
-func (es *EventSystem) handlePendingLogs(filters filterIndex, ev []*pb.EvmLog) {
-	if len(ev) == 0 {
-		return
-	}
-	for _, f := range filters[PendingLogsSubscription] {
-		matchedLogs := FilterLogs(ev, nil, f.logsCrit.ToBlock, f.logsCrit.Addresses, f.logsCrit.Topics)
 		if len(matchedLogs) > 0 {
 			f.logs <- matchedLogs
 		}

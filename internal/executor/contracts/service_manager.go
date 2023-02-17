@@ -14,6 +14,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const (
+	pause = "pause"
+	clear = "clear"
+)
+
 type ServiceManager struct {
 	boltvm.Stub
 	servicemgr.ServiceManager
@@ -34,7 +39,7 @@ func (sm *ServiceManager) checkPermission(permissions []string, chainID string, 
 			if !res.Ok {
 				return fmt.Errorf("cross invoke GetAppchainAdmin error:%s", string(res.Result))
 			}
-			roles := []*Role{}
+			roles := make([]*Role, 0)
 			if err := json.Unmarshal(res.Result, &roles); err != nil {
 				return err
 			}
@@ -50,11 +55,11 @@ func (sm *ServiceManager) checkPermission(permissions []string, chainID string, 
 			if !res.Ok {
 				return fmt.Errorf("cross invoke IsAvailableGovernanceAdmin error:%s", string(res.Result))
 			}
-			if "true" == string(res.Result) {
+			if TRUE == string(res.Result) {
 				return nil
 			}
 		case string(PermissionSpecific):
-			specificAddrs := []string{}
+			specificAddrs := make([]string, 0)
 			if err := json.Unmarshal(specificAddrsData, &specificAddrs); err != nil {
 				return err
 			}
@@ -98,7 +103,7 @@ func (sm *ServiceManager) Manage(eventTyp, proposalResult, lastStatus, objId str
 	specificAddrs := []string{constant.GovernanceContractAddr.Address().String()}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
-		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("marshal specificAddrs error: %v", err)))
+		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("marshal specificAddrs error: %v", err))
 	}
 	if err := sm.checkPermission([]string{string(PermissionSpecific)}, objId, sm.CurrentCaller(), addrsData); err != nil {
 		return boltvm.Error(boltvm.ServiceNoPermissionCode, fmt.Sprintf(string(boltvm.ServiceNoPermissionMsg), sm.CurrentCaller(), err.Error()))
@@ -106,7 +111,7 @@ func (sm *ServiceManager) Manage(eventTyp, proposalResult, lastStatus, objId str
 
 	// 2. change status
 	if ok, data := sm.ChangeStatus(objId, proposalResult, lastStatus, nil); !ok {
-		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("change status error:%s", string(data))))
+		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("change status error:%s", string(data)))
 	}
 
 	// 3. other operation
@@ -115,30 +120,30 @@ func (sm *ServiceManager) Manage(eventTyp, proposalResult, lastStatus, objId str
 		case string(governance.EventRegister):
 			service, err := sm.ServiceManager.QueryById(objId, nil)
 			if err != nil {
-				return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("cannot get service by id %s", objId)))
+				return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("cannot get service by id %s", objId))
 			}
 			serviceInfo := service.(*servicemgr.Service)
 			sm.ServiceManager.Register(serviceInfo)
 
 			res := sm.CrossInvoke(constant.InterchainContractAddr.Address().String(), "Register", pb.String(objId))
 			if !res.Ok {
-				return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("cross invoke register: %s", string(res.Result))))
+				return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("cross invoke register: %s", string(res.Result)))
 			}
 
 			chainID := strings.Split(objId, ":")[0]
 			res = sm.CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "IsAvailable", pb.String(chainID))
 			if !res.Ok {
-				return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("cross invoke is available error: %s", string(res.Result))))
+				return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("cross invoke is available error: %s", string(res.Result)))
 			}
 			if FALSE == string(res.Result) {
 				if err := sm.pauseService(objId); err != nil {
-					return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("chain is not available, pause service %s err: %v", objId, err)))
+					return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("chain is not available, pause service %s err: %v", objId, err))
 				}
 			}
 		case string(governance.EventUpdate):
 			updateInfo := &UpdateServiceInfo{}
 			if err := json.Unmarshal(extra, updateInfo); err != nil {
-				return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("unmarshal update data error:%v", err)))
+				return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("unmarshal update data error:%v", err))
 			}
 
 			updateService := &servicemgr.Service{
@@ -152,7 +157,7 @@ func (sm *ServiceManager) Manage(eventTyp, proposalResult, lastStatus, objId str
 
 			ok, data := sm.ServiceManager.Update(updateService)
 			if !ok {
-				return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("update service error: %s", string(data))))
+				return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("update service error: %s", string(data)))
 			}
 
 			if updateInfo.ServiceName.IsEdit {
@@ -160,7 +165,7 @@ func (sm *ServiceManager) Manage(eventTyp, proposalResult, lastStatus, objId str
 			}
 		case string(governance.EventLogout):
 			if err := sm.clearService(objId); err != nil {
-				return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("clear service %s err: %v", objId, err)))
+				return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("clear service %s err: %v", objId, err))
 			}
 		}
 	} else {
@@ -168,14 +173,14 @@ func (sm *ServiceManager) Manage(eventTyp, proposalResult, lastStatus, objId str
 		case string(governance.EventRegister):
 			service, err := sm.ServiceManager.QueryById(objId, nil)
 			if err != nil {
-				return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("cannot get service by id %s", objId)))
+				return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("cannot get service by id %s", objId))
 			}
 			serviceInfo := service.(*servicemgr.Service)
 			sm.freeServiceName(serviceInfo.Name)
 		case string(governance.EventUpdate):
 			serviceUpdateInfo := &UpdateServiceInfo{}
 			if err := json.Unmarshal(extra, serviceUpdateInfo); err != nil {
-				return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("unmarshal service error: %v", err)))
+				return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("unmarshal service error: %v", err))
 			}
 			if serviceUpdateInfo.ServiceName.IsEdit {
 				sm.freeServiceName(serviceUpdateInfo.ServiceName.NewInfo.(string))
@@ -184,11 +189,11 @@ func (sm *ServiceManager) Manage(eventTyp, proposalResult, lastStatus, objId str
 			chainID := strings.Split(objId, ":")[0]
 			res := sm.CrossInvoke(constant.AppchainMgrContractAddr.Address().String(), "IsAvailable", pb.String(chainID))
 			if !res.Ok {
-				return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("cross invoke is available error: %s", string(res.Result))))
+				return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("cross invoke is available error: %s", string(res.Result)))
 			}
 			if FALSE == string(res.Result) {
 				if err := sm.pauseService(objId); err != nil {
-					return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("chain is not available, pause service %s err: %v", objId, err)))
+					return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("chain is not available, pause service %s err: %v", objId, err))
 				}
 			}
 		}
@@ -196,19 +201,19 @@ func (sm *ServiceManager) Manage(eventTyp, proposalResult, lastStatus, objId str
 
 	if sm.EnableAudit() {
 		if err = sm.postAuditServiceEvent(objId); err != nil {
-			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
+			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("post audit service event error: %v", err))
 		}
 	}
 
 	// record updated service in interchain contract cache
 	if err = sm.postServiceEvent(objId); err != nil {
-		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("invoke Interchain serviceCache error: %v", err)))
+		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("invoke Interchain serviceCache error: %v", err))
 	}
 
 	return boltvm.Success(nil)
 }
 
-// =========== RegisterService registers service info, returns proposal id and error
+// RegisterService registers service info, returns proposal id and error
 func (sm *ServiceManager) RegisterService(chainID, serviceID, name, typ, intro string, ordered uint64, permits, details, reason string) *boltvm.Response {
 	sm.ServiceManager.Persister = sm.Stub
 	event := governance.EventRegister
@@ -232,7 +237,7 @@ func (sm *ServiceManager) RegisterService(chainID, serviceID, name, typ, intro s
 	// 4. check service info
 	service, err := sm.ServiceManager.PackageServiceInfo(chainID, serviceID, name, typ, intro, ordered == 1, permits, details, sm.GetTxTimeStamp(), governance.GovernanceRegisting)
 	if err != nil {
-		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("get service info error: %v", err)))
+		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("get service info error: %v", err))
 	}
 	if res := sm.checkServiceInfo(service, true); !res.Ok {
 		return res
@@ -252,7 +257,7 @@ func (sm *ServiceManager) RegisterService(chainID, serviceID, name, typ, intro s
 		pb.Bytes(nil),
 	)
 	if !res.Ok {
-		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("submit proposal error: %s", string(res.Result))))
+		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("submit proposal error: %s", string(res.Result)))
 	}
 
 	// 7. register info
@@ -262,13 +267,13 @@ func (sm *ServiceManager) RegisterService(chainID, serviceID, name, typ, intro s
 
 	if sm.EnableAudit() {
 		if err := sm.postAuditServiceEvent(chainServiceID); err != nil {
-			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
+			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("post audit service event error: %v", err))
 		}
 	}
 
 	// record updated service in interchain contract cache
 	if err = sm.postServiceEvent(chainServiceID); err != nil {
-		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post excutor serviceCache event error: %v", err)))
+		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("post excutor serviceCache event error: %v", err))
 	}
 
 	return getGovernanceRet(string(res.Result), []byte(chainServiceID))
@@ -295,7 +300,7 @@ func (sm *ServiceManager) UpdateService(chainServiceID, name, intro, permits, de
 	// 3. check service info
 	newService, err := sm.ServiceManager.PackageServiceInfo(oldService.ChainID, oldService.ServiceID, name, string(oldService.Type), intro, oldService.Ordered, permits, details, oldService.CreateTime, oldService.Status)
 	if err != nil {
-		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("get service info error: %v", err)))
+		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("get service info error: %v", err))
 	}
 
 	if res := sm.checkServiceInfo(newService, false); !res.Ok {
@@ -307,18 +312,18 @@ func (sm *ServiceManager) UpdateService(chainServiceID, name, intro, permits, de
 		newService.Details == oldService.Details {
 		ok, data := sm.ServiceManager.Update(newService)
 		if !ok {
-			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("update service error: %s", string(data))))
+			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("update service error: %s", string(data)))
 		}
 
 		if sm.EnableAudit() {
 			if err := sm.postAuditServiceEvent(chainServiceID); err != nil {
-				return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
+				return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("post audit service event error: %v", err))
 			}
 		}
 
 		// record updated service in interchain contract cache
 		if err = sm.postServiceEvent(chainServiceID); err != nil {
-			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("invoke Interchain serviceCache error: %v", err)))
+			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("invoke Interchain serviceCache error: %v", err))
 		}
 
 		return getGovernanceRet("", nil)
@@ -334,7 +339,7 @@ func (sm *ServiceManager) UpdateService(chainServiceID, name, intro, permits, de
 	if len(oldService.Permission) != len(newService.Permission) {
 		updatePermission = true
 	} else {
-		for permit, _ := range newService.Permission {
+		for permit := range newService.Permission {
 			if _, ok := oldService.Permission[permit]; !ok {
 				updatePermission = true
 				break
@@ -365,7 +370,7 @@ func (sm *ServiceManager) UpdateService(chainServiceID, name, intro, permits, de
 	}
 	updateServiceInfoData, err := json.Marshal(updateServiceInfo)
 	if err != nil {
-		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("marshal updateServiceInfo error: %v", err)))
+		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("marshal updateServiceInfo error: %v", err))
 	}
 	res := sm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "SubmitProposal",
 		pb.String(sm.Caller()),
@@ -377,25 +382,25 @@ func (sm *ServiceManager) UpdateService(chainServiceID, name, intro, permits, de
 		pb.Bytes(updateServiceInfoData),
 	)
 	if !res.Ok {
-		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("submit proposal error: %s", string(res.Result))))
+		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("submit proposal error: %s", string(res.Result)))
 	}
 
 	// 7. change status
 	if ok, data := sm.ServiceManager.ChangeStatus(chainServiceID, string(event), string(oldService.Status), nil); !ok {
-		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("change status error: %s", string(data))))
+		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("change status error: %s", string(data)))
 	}
 
 	sm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(res.Result)))
 
 	if sm.EnableAudit() {
 		if err := sm.postAuditServiceEvent(chainServiceID); err != nil {
-			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
+			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("post audit service event error: %v", err))
 		}
 	}
 
 	// record updated service in interchain contract cache
 	if err = sm.postServiceEvent(chainServiceID); err != nil {
-		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("invoke Interchain serviceCache error: %v", err)))
+		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("invoke Interchain serviceCache error: %v", err))
 	}
 	return getGovernanceRet(string(res.Result), nil)
 }
@@ -440,72 +445,27 @@ func (sm *ServiceManager) basicGovernance(chainServiceID, reason string, permiss
 		pb.Bytes(extra),
 	)
 	if !res.Ok {
-		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("submit proposal error: %s", string(res.Result))))
+		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("submit proposal error: %s", string(res.Result)))
 	}
 
 	// 4. change status
 	if ok, data := sm.ServiceManager.ChangeStatus(chainServiceID, string(event), string(service.Status), nil); !ok {
-		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("change status error: %s", string(data))))
+		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("change status error: %s", string(data)))
 	}
 
 	sm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(string(res.Result)))
 
 	if sm.EnableAudit() {
 		if err := sm.postAuditServiceEvent(chainServiceID); err != nil {
-			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
+			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("post audit service event error: %v", err))
 		}
 	}
 
 	// record updated service in interchain contract cache
 	if err := sm.postServiceEvent(chainServiceID); err != nil {
-		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("invoke Interchain serviceCache error: %v", err)))
+		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("invoke Interchain serviceCache error: %v", err))
 	}
 	return getGovernanceRet(string(res.Result), nil)
-}
-
-// =========== PauseChainService pauses services by chainID
-func (sm *ServiceManager) PauseChainService(chainID string) *boltvm.Response {
-	sm.ServiceManager.Persister = sm.Stub
-
-	// 1. check permission
-	specificAddrs := []string{constant.AppchainMgrContractAddr.Address().String()}
-	addrsData, err := json.Marshal(specificAddrs)
-	if err != nil {
-		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("marshal specificAddrs error: %v", err)))
-	}
-	if err := sm.checkPermission([]string{string(PermissionSpecific)}, chainID, sm.CurrentCaller(), addrsData); err != nil {
-		return boltvm.Error(boltvm.ServiceNoPermissionCode, fmt.Sprintf(string(boltvm.ServiceNoPermissionMsg), sm.CurrentCaller(), err.Error()))
-	}
-
-	// 2. get services id
-	idList, err := sm.ServiceManager.GetIDListByChainID(chainID)
-	if err != nil {
-		return getGovernanceRet("", nil)
-	}
-
-	sm.Logger().WithFields(logrus.Fields{
-		"chainID":        chainID,
-		"servicesIdList": idList,
-	}).Info("pause chain services")
-
-	// 3. pause services
-	for _, chainServiceID := range idList {
-		if err = sm.pauseService(chainServiceID); err != nil {
-			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("pause service %s err: %v", chainServiceID, err)))
-		}
-
-		if sm.EnableAudit() {
-			if err = sm.postAuditServiceEvent(chainServiceID); err != nil {
-				return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
-			}
-		}
-		// record updated service in interchain contract cache
-		if err = sm.postServiceEvent(chainServiceID); err != nil {
-			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("invoke Interchain serviceCache error: %v", err)))
-		}
-	}
-
-	return getGovernanceRet("", nil)
 }
 
 func (sm *ServiceManager) pauseService(chainServiceID string) error {
@@ -541,7 +501,7 @@ func (sm *ServiceManager) UnPauseChainService(chainID string) *boltvm.Response {
 	specificAddrs := []string{constant.AppchainMgrContractAddr.Address().String()}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
-		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("marshal specificAddrs error: %v", err)))
+		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("marshal specificAddrs error: %v", err))
 	}
 	if err := sm.checkPermission([]string{string(PermissionSpecific)}, chainID, sm.CurrentCaller(), addrsData); err != nil {
 		return boltvm.Error(boltvm.ServiceNoPermissionCode, fmt.Sprintf(string(boltvm.ServiceNoPermissionMsg), sm.CurrentCaller(), err.Error()))
@@ -556,17 +516,17 @@ func (sm *ServiceManager) UnPauseChainService(chainID string) *boltvm.Response {
 	// 3. unpause services
 	for _, chainServiceID := range idList {
 		if err := sm.unPauseService(chainServiceID); err != nil {
-			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("pause service %s err: %v", chainServiceID, err)))
+			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("pause service %s err: %v", chainServiceID, err))
 		}
 
 		if sm.EnableAudit() {
 			if err := sm.postAuditServiceEvent(chainServiceID); err != nil {
-				return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
+				return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("post audit service event error: %v", err))
 			}
 		}
 		// record updated service in interchain contract cache
 		if err = sm.postServiceEvent(chainServiceID); err != nil {
-			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("invoke Interchain serviceCache error: %v", err)))
+			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("invoke Interchain serviceCache error: %v", err))
 		}
 	}
 
@@ -584,7 +544,7 @@ func (sm *ServiceManager) unPauseService(chainServiceID string) error {
 			return fmt.Errorf("change status error: %s", string(data))
 		}
 	}
-	//service := serviceInfo.(*service_mgr.Service)
+	// service := serviceInfo.(*service_mgr.Service)
 
 	sm.Logger().WithFields(logrus.Fields{
 		"chainServiceID": chainServiceID,
@@ -600,15 +560,19 @@ func (sm *ServiceManager) unPauseService(chainServiceID string) error {
 	return nil
 }
 
-// =========== ClearChainService clears services by chainID
-func (sm *ServiceManager) ClearChainService(chainID string) *boltvm.Response {
+// PauseChainService pauses services by chainID
+func (sm *ServiceManager) PauseChainService(chainID string) *boltvm.Response {
+	return sm.pauseOrClearChainService(chainID, pause)
+}
+
+func (sm *ServiceManager) pauseOrClearChainService(chainID string, typ string) *boltvm.Response {
 	sm.ServiceManager.Persister = sm.Stub
 
 	// 1. check permission
 	specificAddrs := []string{constant.AppchainMgrContractAddr.Address().String()}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
-		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("marshal specificAddrs error: %v", err)))
+		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("marshal specificAddrs error: %v", err))
 	}
 	if err := sm.checkPermission([]string{string(PermissionSpecific)}, chainID, sm.CurrentCaller(), addrsData); err != nil {
 		return boltvm.Error(boltvm.ServiceNoPermissionCode, fmt.Sprintf(string(boltvm.ServiceNoPermissionMsg), sm.CurrentCaller(), err.Error()))
@@ -623,26 +587,37 @@ func (sm *ServiceManager) ClearChainService(chainID string) *boltvm.Response {
 	sm.Logger().WithFields(logrus.Fields{
 		"chainID":        chainID,
 		"servicesIdList": idList,
-	}).Info("clear chain services")
+	}).Infof("%s chain services", typ)
 
-	// 3. clear services
+	// 3. pause or clear services
 	for _, chainServiceID := range idList {
-		if err := sm.clearService(chainServiceID); err != nil {
-			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("clear service %s err: %v", chainServiceID, err)))
+		switch typ {
+		case pause:
+			if err = sm.pauseService(chainServiceID); err != nil {
+				return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("pause service %s err: %v", chainServiceID, err))
+			}
+		case clear:
+			if err = sm.clearService(chainServiceID); err != nil {
+				return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("clear service %s err: %v", chainServiceID, err))
+			}
 		}
-
 		if sm.EnableAudit() {
 			if err := sm.postAuditServiceEvent(chainServiceID); err != nil {
-				return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
+				return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("post audit service event error: %v", err))
 			}
 		}
 		// record updated service in interchain contract cache
 		if err = sm.postServiceEvent(chainServiceID); err != nil {
-			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("invoke Interchain serviceCache error: %v", err)))
+			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("invoke Interchain serviceCache error: %v", err))
 		}
 	}
 
 	return getGovernanceRet("", nil)
+}
+
+// ClearChainService clears services by chainID
+func (sm *ServiceManager) ClearChainService(chainID string) *boltvm.Response {
+	return sm.pauseOrClearChainService(chainID, clear)
 }
 
 func (sm *ServiceManager) clearService(chainServiceID string) error {
@@ -701,12 +676,12 @@ func (sm *ServiceManager) EvaluateService(chainServiceID, desc string, score flo
 
 	if sm.EnableAudit() {
 		if err := sm.postAuditServiceEvent(chainServiceID); err != nil {
-			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
+			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("post audit service event error: %v", err))
 		}
 	}
 	// record updated service in interchain contract cache
 	if err := sm.postServiceEvent(chainServiceID); err != nil {
-		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("invoke Interchain serviceCache error: %v", err)))
+		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("invoke Interchain serviceCache error: %v", err))
 	}
 	return getGovernanceRet("", nil)
 }
@@ -722,7 +697,7 @@ func (sm *ServiceManager) RecordInvokeService(fullServiceID, fromFullServiceID s
 	specificAddrs := []string{constant.InterchainContractAddr.Address().String()}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
-		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("marshal specificAddrs error: %v", err)))
+		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("marshal specificAddrs error: %v", err))
 	}
 	if err := sm.checkPermission([]string{string(PermissionSpecific)}, "", sm.CurrentCaller(), addrsData); err != nil {
 		return boltvm.Error(boltvm.ServiceNoPermissionCode, fmt.Sprintf(string(boltvm.ServiceNoPermissionMsg), sm.CurrentCaller(), err.Error()))
@@ -779,13 +754,13 @@ func (sm *ServiceManager) RecordInvokeService(fullServiceID, fromFullServiceID s
 
 	if sm.EnableAudit() {
 		if err = sm.postAuditServiceEvent(chainServiceID); err != nil {
-			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("post audit service event error: %v", err)))
+			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("post audit service event error: %v", err))
 		}
 	}
 
 	// record updated service in interchain contract cache
 	if err = sm.postServiceEvent(chainServiceID); err != nil {
-		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("invoke Interchain serviceCache error: %v", err)))
+		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("invoke Interchain serviceCache error: %v", err))
 	}
 	return boltvm.Success(nil)
 }
@@ -801,7 +776,7 @@ func (sm *ServiceManager) GetServiceInfo(id string) *boltvm.Response {
 
 	data, err := json.Marshal(service.(*servicemgr.Service))
 	if err != nil {
-		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("marshal service: %s", err.Error())))
+		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("marshal service: %s", err.Error()))
 	}
 
 	return boltvm.Success(data)
@@ -816,12 +791,12 @@ func (sm *ServiceManager) GetServiceByName(name string) *boltvm.Response {
 
 	service, err := sm.ServiceManager.QueryById(id, nil)
 	if err != nil {
-		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("service name %s exist but service %s not exist: %v", name, id, err)))
+		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("service name %s exist but service %s not exist: %v", name, id, err))
 	}
 
 	data, err := json.Marshal(service.(*servicemgr.Service))
 	if err != nil {
-		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("marshal service: %s", err.Error())))
+		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("marshal service: %s", err.Error()))
 	}
 
 	return boltvm.Success(data)
@@ -832,10 +807,10 @@ func (sm *ServiceManager) GetAllServices() *boltvm.Response {
 	sm.ServiceManager.Persister = sm.Stub
 	services, err := sm.ServiceManager.All(nil)
 	if err != nil {
-		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.ServiceInternalErrCode, err.Error())
 	}
 	if data, err := json.Marshal(services.([]*servicemgr.Service)); err != nil {
-		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.ServiceInternalErrCode, err.Error())
 	} else {
 		return boltvm.Success(data)
 	}
@@ -846,7 +821,7 @@ func (sm *ServiceManager) GetPermissionServices(chainServiceId string) *boltvm.R
 	sm.ServiceManager.Persister = sm.Stub
 	services, err := sm.ServiceManager.All(nil)
 	if err != nil {
-		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.ServiceInternalErrCode, err.Error())
 	}
 
 	var ret []*servicemgr.Service
@@ -858,7 +833,7 @@ func (sm *ServiceManager) GetPermissionServices(chainServiceId string) *boltvm.R
 
 	data, err := json.Marshal(ret)
 	if err != nil {
-		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.ServiceInternalErrCode, err.Error())
 	}
 	return boltvm.Success(data)
 }
@@ -868,21 +843,21 @@ func (sm *ServiceManager) GetServicesByAppchainID(chainID string) *boltvm.Respon
 	sm.ServiceManager.Persister = sm.Stub
 	idList, err := sm.ServiceManager.GetIDListByChainID(chainID)
 	if err != nil {
-		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.ServiceInternalErrCode, err.Error())
 	}
 
 	ret := make([]*servicemgr.Service, 0)
 	for _, id := range idList {
 		service, err := sm.ServiceManager.QueryById(id, nil)
 		if err != nil {
-			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("cannot get service by id %s", id)))
+			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("cannot get service by id %s", id))
 		}
 		ret = append(ret, service.(*servicemgr.Service))
 	}
 
 	data, err := json.Marshal(ret)
 	if err != nil {
-		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.ServiceInternalErrCode, err.Error())
 	}
 	return boltvm.Success(data)
 }
@@ -892,21 +867,21 @@ func (sm *ServiceManager) GetServicesByType(typ string) *boltvm.Response {
 	sm.ServiceManager.Persister = sm.Stub
 	idList, err := sm.ServiceManager.GetIDListByType(typ)
 	if err != nil {
-		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.ServiceInternalErrCode, err.Error())
 	}
 
 	ret := make([]*servicemgr.Service, 0)
 	for _, id := range idList {
 		service, err := sm.ServiceManager.QueryById(id, nil)
 		if err != nil {
-			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("cannot get service by id %s", id)))
+			return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf("cannot get service by id %s", id))
 		}
 		ret = append(ret, service.(*servicemgr.Service))
 	}
 
 	data, err := json.Marshal(ret)
 	if err != nil {
-		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.ServiceInternalErrCode, err.Error())
 	}
 	return boltvm.Success(data)
 }
@@ -926,7 +901,7 @@ func (sm *ServiceManager) checkAppchain(chainID string) error {
 	if !res.Ok {
 		return fmt.Errorf("cross invoke IsAvailable error: %s", string(res.Result))
 	}
-	if "false" == string(res.Result) {
+	if string(res.Result) == FALSE {
 		return fmt.Errorf("the appchain is not available: %s", chainID)
 	}
 
@@ -954,9 +929,9 @@ func (sm *ServiceManager) checkServiceInfo(service *servicemgr.Service, isRegist
 	}
 
 	// check permission info
-	for p, _ := range service.Permission {
-		if berr := sm.checkPermissionService(p); berr != nil {
-			return boltvm.Error(berr.Code, berr.Error())
+	for p := range service.Permission {
+		if bErr := sm.checkPermissionService(p); bErr != nil {
+			return boltvm.Error(bErr.Code, bErr.Error())
 		}
 	}
 
@@ -986,7 +961,7 @@ func (sm *ServiceManager) checkPermissionService(fullServiceID string) *boltvm.B
 
 	res := sm.CrossInvoke(constant.InterchainContractAddr.Address().String(), "GetBitXHubID")
 	if !res.Ok {
-		return boltvm.BError(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), fmt.Sprintf("cross invoke GetBitXHubID error: %s", string(res.Result))))
+		return boltvm.BError(boltvm.ServiceInternalErrCode, fmt.Sprintf("cross invoke GetBitXHubID error: %s", string(res.Result)))
 	}
 	if addrs[0] == string(res.Result) {
 		service, err := sm.ServiceManager.QueryById(fmt.Sprintf("%s:%s", addrs[1], addrs[2]), nil)

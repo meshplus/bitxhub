@@ -1,3 +1,4 @@
+//nolint
 package mempool
 
 import (
@@ -38,7 +39,7 @@ func mockMempoolImpl(path string) (*mempoolImpl, chan *raftproto.Ready) {
 		GetAccountNonce: mockGetAccountNonce,
 	}
 	proposalC := make(chan *raftproto.Ready)
-	mempool, _ := NewMempool(config)
+	mempool := NewMemPool(config)
 	mempoolImpl, ok := mempool.(*mempoolImpl)
 	if !ok {
 		return nil, nil

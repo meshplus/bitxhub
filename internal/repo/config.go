@@ -372,7 +372,7 @@ func WatchNetworkConfig(viper *viper.Viper, feed *event.Feed) {
 					return
 				}
 				config.LocalAddr = node.Hosts[0]
-				addr, err := ma.NewMultiaddr(fmt.Sprintf("%s%s", node.Hosts[0], node.Pid))
+				addr, err := ma.NewMultiaddr(fmt.Sprintf(node.Hosts[0], node.Pid))
 				if err != nil {
 					fmt.Printf("new multiaddr: %v \n", err)
 					return
@@ -449,7 +449,7 @@ func ByteStrToNum(str string) int64 {
 	// find string of unit and string of number
 	unitR, _ := regexp.Compile("[A-Z]?B$")
 	unit := unitR.FindString(s)
-	numR, _ := regexp.Compile("^\\d+")
+	numR, _ := regexp.Compile(`(^\d+)`)
 	numStr := numR.FindString(s)
 	if unit == "" || numStr == "" || len(unit)+len(numStr) != len(s) {
 		return -1

@@ -14,11 +14,10 @@ import (
 )
 
 type ChainBrokerService struct {
-	config  *repo.Config
-	genesis *repo.Genesis
-	api     api.CoreAPI
-	server  *rpc.Server
-	logger  logrus.FieldLogger
+	config *repo.Config
+	api    api.CoreAPI
+	server *rpc.Server
+	logger logrus.FieldLogger
 
 	ctx    context.Context
 	cancel context.CancelFunc

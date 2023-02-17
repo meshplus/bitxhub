@@ -101,7 +101,7 @@ func (t *TssMgr) broadcastCulprits(culprits []string) {
 	)
 
 	wg.Add(len(t.peerMgr.OtherPeers()))
-	for pid, _ := range t.peerMgr.OtherPeers() {
+	for pid := range t.peerMgr.OtherPeers() {
 		go func(pid uint64, wg *sync.WaitGroup) {
 			if err := retry.Retry(func(attempt uint) error {
 				err := t.sendCulprits(pid, culprits)

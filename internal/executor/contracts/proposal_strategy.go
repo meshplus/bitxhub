@@ -81,41 +81,6 @@ func (g *GovStrategy) changeStatus(pt string, trigger, lastStatus string) (bool,
 	return true, nil
 }
 
-func (g *GovStrategy) checkPermission(permissions []string, regulatedAddr, regulatorAddr string, specificAddrsData []byte) error {
-	for _, permission := range permissions {
-		switch permission {
-		case string(PermissionSelf):
-			if regulatedAddr == regulatorAddr {
-				return nil
-			}
-		case string(PermissionAdmin):
-			res := g.CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin",
-				pb.String(regulatorAddr),
-				pb.String(string(GovernanceAdmin)))
-			if !res.Ok {
-				return fmt.Errorf("cross invoke IsAvailableGovernanceAdmin error:%s", string(res.Result))
-			}
-			if "true" == string(res.Result) {
-				return nil
-			}
-		case string(PermissionSpecific):
-			specificAddrs := []string{}
-			if err := json.Unmarshal(specificAddrsData, &specificAddrs); err != nil {
-				return err
-			}
-			for _, addr := range specificAddrs {
-				if addr == regulatorAddr {
-					return nil
-				}
-			}
-		default:
-			return fmt.Errorf("unsupport permission: %s", permission)
-		}
-	}
-
-	return fmt.Errorf("regulatorAddr(%s) does not have the permission", regulatorAddr)
-}
-
 var mgrs = []string{repo.AppchainMgr, repo.NodeMgr, repo.DappMgr, repo.RoleMgr, repo.RuleMgr, repo.ServiceMgr, repo.ProposalStrategyMgr}
 
 // =========== Manage does some subsequent operations when the proposal is over
@@ -128,9 +93,9 @@ func (g *GovStrategy) Manage(eventTyp, proposalResult, lastStatus, objId string,
 	specificAddrs := []string{constant.GovernanceContractAddr.Address().String()}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
-		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyInternalErrMsg), fmt.Sprintf("marshal specificAddrs error: %v", err)))
+		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf("marshal specificAddrs error: %v", err))
 	}
-	if err := g.checkPermission([]string{string(PermissionSpecific)}, objId, g.CurrentCaller(), addrsData); err != nil {
+	if err := checkPermission(g.Stub, []string{string(PermissionSpecific)}, objId, g.CurrentCaller(), addrsData); err != nil {
 		return boltvm.Error(boltvm.ProposalStrategyNoPermissionCode, fmt.Sprintf(string(boltvm.ProposalStrategyNoPermissionMsg), g.CurrentCaller(), err.Error()))
 	}
 
@@ -138,13 +103,13 @@ func (g *GovStrategy) Manage(eventTyp, proposalResult, lastStatus, objId string,
 	if objId != repo.AllMgr {
 		ok, errData := g.changeStatus(objId, proposalResult, lastStatus)
 		if !ok {
-			return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyInternalErrMsg), fmt.Sprintf("change %s status error: %s", objId, string(errData))))
+			return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf("change %s status error: %s", objId, string(errData)))
 		}
 	} else {
 		for _, mgr := range mgrs {
 			ok, errData := g.changeStatus(mgr, proposalResult, lastStatus)
 			if !ok {
-				return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyInternalErrMsg), fmt.Sprintf("change %s status error: %s", objId, string(errData))))
+				return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf("change %s status error: %s", objId, string(errData)))
 			}
 		}
 	}
@@ -153,15 +118,15 @@ func (g *GovStrategy) Manage(eventTyp, proposalResult, lastStatus, objId string,
 		if eventTyp == string(governance.EventUpdate) {
 			updateStrategyInfo := map[string]UpdateStrategyInfo{}
 			if err := json.Unmarshal(extra, &updateStrategyInfo); err != nil {
-				return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyInternalErrMsg), fmt.Sprintf("unmarshal update strategy")))
+				return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, "unmarshal update strategy")
 			}
 			res := g.CrossInvoke(constant.RoleContractAddr.Address().String(), "GetRolesByType", pb.String(string(GovernanceAdmin)))
 			if !res.Ok {
-				return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyInternalErrMsg), fmt.Sprintf("cross invoke GetRolesByType error: %s", string(res.Result))))
+				return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf("cross invoke GetRolesByType error: %s", string(res.Result)))
 			}
 			roles := []*Role{}
 			if err := json.Unmarshal(res.Result, &roles); err != nil {
-				return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyInternalErrMsg), fmt.Sprintf("json unmarshal error: %s", err.Error())))
+				return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf("json unmarshal error: %s", err.Error()))
 			}
 			availableNum := 0
 			for _, r := range roles {
@@ -172,7 +137,7 @@ func (g *GovStrategy) Manage(eventTyp, proposalResult, lastStatus, objId string,
 			for mgr, mInfo := range updateStrategyInfo {
 				ps := &ProposalStrategy{}
 				if ok := g.GetObject(ProposalStrategyKey(mgr), ps); !ok {
-					return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyInternalErrMsg), fmt.Sprintf("get proposal strategy %s error", objId)))
+					return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf("get proposal strategy %s error", objId))
 				}
 				if mInfo.Typ.IsEdit {
 					ps.Typ = ProposalStrategyType(mInfo.Typ.NewInfo.(string))
@@ -214,10 +179,10 @@ func (g *GovStrategy) governancePre(module, event string) (*ProposalStrategy, *b
 	return nil, boltvm.BError(boltvm.ProposalStrategyStatusErrorCode, fmt.Sprintf(string(boltvm.ProposalStrategyStatusErrorMsg), module, ps.Status, event))
 }
 
-// update proposal strategy for a proposal type
+// UpdateProposalStrategy update proposal strategy for a proposal type
 func (g *GovStrategy) UpdateProposalStrategy(module string, typ string, strategyExtra string, reason string) *boltvm.Response {
 	// 1. check permission
-	if err := g.checkPermission([]string{string(PermissionAdmin)}, module, g.CurrentCaller(), nil); err != nil {
+	if err := checkPermission(g.Stub, []string{string(PermissionAdmin)}, module, g.CurrentCaller(), nil); err != nil {
 		return boltvm.Error(boltvm.ProposalStrategyNoPermissionCode, fmt.Sprintf(string(boltvm.ProposalStrategyNoPermissionMsg), g.CurrentCaller(), fmt.Sprintf("check permission error:%v", err)))
 	}
 
@@ -248,11 +213,11 @@ func (g *GovStrategy) UpdateProposalStrategy(module string, typ string, strategy
 	availableAdminNum := 0
 	res := g.CrossInvoke(constant.RoleContractAddr.Address().String(), "GetRolesByType", pb.String(string(GovernanceAdmin)))
 	if !res.Ok {
-		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyInternalErrMsg), fmt.Sprintf("cross invoke GetRolesByType error: %s", string(res.Result))))
+		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf("cross invoke GetRolesByType error: %s", string(res.Result)))
 	}
 	roles := make([]*Role, 0)
 	if err := json.Unmarshal(res.Result, &roles); err != nil {
-		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyInternalErrMsg), fmt.Sprintf("unmarshal error: %v", err)))
+		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf("unmarshal error: %v", err))
 	}
 	for _, role := range roles {
 		if role.IsAvailable() {
@@ -280,7 +245,7 @@ func (g *GovStrategy) UpdateProposalStrategy(module string, typ string, strategy
 		pb.Bytes(extra),
 	)
 	if !res.Ok {
-		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyInternalErrMsg), fmt.Sprintf("submit proposal error: %s", string(res.Result))))
+		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf("submit proposal error: %s", string(res.Result)))
 	}
 
 	g.changeStatus(module, string(governance.EventUpdate), string(strategy.Status))
@@ -295,7 +260,7 @@ func (g *GovStrategy) UpdateAllProposalStrategy(typ string, strategyExtra string
 	pt := repo.AllMgr
 
 	// 1. check permission
-	if err := g.checkPermission([]string{string(PermissionAdmin)}, pt, g.CurrentCaller(), nil); err != nil {
+	if err := checkPermission(g.Stub, []string{string(PermissionAdmin)}, pt, g.CurrentCaller(), nil); err != nil {
 		return boltvm.Error(boltvm.ProposalStrategyNoPermissionCode, fmt.Sprintf(string(boltvm.ProposalStrategyNoPermissionMsg), g.CurrentCaller(), fmt.Sprintf("check permission error:%v", err)))
 	}
 
@@ -336,11 +301,11 @@ func (g *GovStrategy) UpdateAllProposalStrategy(typ string, strategyExtra string
 	availableAdminNum := 0
 	res := g.CrossInvoke(constant.RoleContractAddr.Address().String(), "GetRolesByType", pb.String(string(GovernanceAdmin)))
 	if !res.Ok {
-		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyInternalErrMsg), fmt.Sprintf("cross invoke GetRolesByType error: %s", string(res.Result))))
+		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf("cross invoke GetRolesByType error: %s", string(res.Result)))
 	}
 	roles := make([]*Role, 0)
 	if err := json.Unmarshal(res.Result, &roles); err != nil {
-		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyInternalErrMsg), fmt.Sprintf("unmarshal error: %v", err)))
+		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf("unmarshal error: %v", err))
 	}
 	for _, role := range roles {
 		if role.IsAvailable() {
@@ -366,7 +331,7 @@ func (g *GovStrategy) UpdateAllProposalStrategy(typ string, strategyExtra string
 		pb.Bytes(extra),
 	)
 	if !res.Ok {
-		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyInternalErrMsg), fmt.Sprintf("submit proposal error: %s", string(res.Result))))
+		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf("submit proposal error: %s", string(res.Result)))
 	}
 
 	for _, mgr := range mgrs {
@@ -384,10 +349,10 @@ func (g *GovStrategy) UpdateProposalStrategyByRolesChange(availableNum uint64) *
 	specificAddrs := []string{constant.RoleContractAddr.Address().String()}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
-		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyInternalErrMsg), fmt.Sprintf("marshal specificAddrs error: %v", err)))
+		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf("marshal specificAddrs error: %v", err))
 	}
 
-	if err := g.checkPermission([]string{string(PermissionSpecific)}, repo.AllMgr, g.CurrentCaller(), addrsData); err != nil {
+	if err := checkPermission(g.Stub, []string{string(PermissionSpecific)}, repo.AllMgr, g.CurrentCaller(), addrsData); err != nil {
 		return boltvm.Error(boltvm.ProposalStrategyNoPermissionCode, fmt.Sprintf(string(boltvm.ProposalStrategyNoPermissionMsg), g.CurrentCaller(), fmt.Sprintf("check permission error:%v", err)))
 	}
 
@@ -436,7 +401,7 @@ func (g *GovStrategy) GetProposalStrategy(pt string) *boltvm.Response {
 
 	pData, err := json.Marshal(ps)
 	if err != nil {
-		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, fmt.Sprintf(string(boltvm.ProposalStrategyInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.ProposalStrategyInternalErrCode, err.Error())
 	}
 	return boltvm.Success(pData)
 }

@@ -103,17 +103,23 @@ func getMsgToSign(ledger *ledger.Ledger, content string, isReq bool) ([]string, 
 }
 
 func VerifyTssSigns(signData []byte, pub *ecdsa.PublicKey, l logrus.FieldLogger) error {
-	signs := []conversion.Signature{}
+	signs := make([]conversion.Signature, 0)
 	if err := json.Unmarshal(signData, &signs); err != nil {
 		return fmt.Errorf("unmarshal signData err: %w", err)
 	}
 
 	for _, sign := range signs {
 		msgData, err := base64.StdEncoding.DecodeString(sign.Msg)
+		if err != nil {
+			return fmt.Errorf("sign convert Msg error: %s", err)
+		}
 		rData, err := base64.StdEncoding.DecodeString(sign.R)
+		if err != nil {
+			return fmt.Errorf("sign convert R error: %s", err)
+		}
 		sData, err := base64.StdEncoding.DecodeString(sign.S)
 		if err != nil {
-			return fmt.Errorf("sign convert error: %s", err)
+			return fmt.Errorf("sign convert S error: %s", err)
 		}
 		if !ecdsa.Verify(pub, msgData, new(big.Int).SetBytes(rData), new(big.Int).SetBytes(sData)) {
 			return fmt.Errorf("fail to verify sign")
@@ -228,24 +234,24 @@ func AddAuditPermitBloom(bloom *types.Bloom, relatedChains, relatedNodes map[str
 		bloom = &types.Bloom{}
 	}
 	bloom.Add(AuditEventStrHash.Bytes())
-	for k, _ := range relatedChains {
+	for k := range relatedChains {
 		bloom.Add(types.NewHash([]byte(k)).Bytes())
 	}
-	for k, _ := range relatedNodes {
+	for k := range relatedNodes {
 		bloom.Add(types.NewHash([]byte(k)).Bytes())
 	}
 }
 
-func TestAuditPermitBloom(logger logrus.FieldLogger, bloom *types.Bloom, relatedChains, relatedNodes map[string]struct{}) bool {
+func TestAuditPermitBloom(bloom *types.Bloom, relatedChains, relatedNodes map[string]struct{}) bool {
 	if !bloom.Test(AuditEventStrHash.Bytes()) {
 		return false
 	}
-	for k, _ := range relatedChains {
+	for k := range relatedChains {
 		if bloom.Test(types.NewHash([]byte(k)).Bytes()) {
 			return true
 		}
 	}
-	for k, _ := range relatedNodes {
+	for k := range relatedNodes {
 		if bloom.Test(types.NewHash([]byte(k)).Bytes()) {
 			return true
 		}

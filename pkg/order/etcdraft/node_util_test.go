@@ -72,7 +72,7 @@ func mockRaftNode(t *testing.T) (*Node, error) {
 	raftStorage, dbStorage, _ := CreateStorage(logger, walDir, snapDir, dbDir, raft.NewMemoryStorage())
 
 	repoRoot := "./testdata/"
-	raftConfig, timedGenBlock, _ := generateRaftConfig(repoRoot)
+	raftConfig, _ := generateRaftConfig(repoRoot)
 	peerCnt := 4
 	swarms, _ := newSwarms(t, peerCnt, false)
 	mempoolConf := &mempool.Config{
@@ -88,10 +88,10 @@ func mockRaftNode(t *testing.T) (*Node, error) {
 			return 0
 		},
 
-		IsTimed:      timedGenBlock.Enable,
-		BlockTimeout: timedGenBlock.BlockTimeout,
+		IsTimed:      raftConfig.TimedGenBlock.Enable,
+		BlockTimeout: raftConfig.TimedGenBlock.BlockTimeout,
 	}
-	mempoolInst, err := mempool.NewMempool(mempoolConf)
+	mempoolInst, err := mempool.NewMemPool(mempoolConf)
 	if err != nil {
 		return nil, err
 	}

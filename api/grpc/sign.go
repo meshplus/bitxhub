@@ -214,7 +214,7 @@ func (cbs *ChainBrokerService) getLocalTssSign(tssFlag bool, tssReq *pb.GetSigns
 
 func (cbs *ChainBrokerService) getTssInfo() ([]string, *ecdsa.PublicKey, bool, error) {
 	signersALL := make([]string, 0)
-	poolPkData := make([]byte, 0)
+	var poolPkData []byte
 	tssFlag := true
 	tssInfo, err := cbs.api.Broker().GetTssInfo()
 	if err != nil {
@@ -226,7 +226,7 @@ func (cbs *ChainBrokerService) getTssInfo() ([]string, *ecdsa.PublicKey, bool, e
 			return nil, nil, tssFlag, fmt.Errorf("get tss info from other peers error: %v", err)
 		}
 	} else {
-		for id, _ := range tssInfo.PartiesPkMap {
+		for id := range tssInfo.PartiesPkMap {
 			signersALL = append(signersALL, id)
 		}
 		poolPkData = tssInfo.Pubkey
@@ -312,7 +312,7 @@ func getConsensusTssInfoParties(infos []*pb.TssInfo, quorum uint64) ([]string, [
 	freqInfos := make(map[string]int, len(infos))
 	for _, info := range infos {
 		ids := []string{}
-		for id, _ := range info.PartiesPkMap {
+		for id := range info.PartiesPkMap {
 			ids = append(ids, id)
 		}
 		sort.Slice(ids, func(i, j int) bool {

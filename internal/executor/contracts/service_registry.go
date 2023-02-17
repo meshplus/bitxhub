@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -55,7 +56,7 @@ type ServDomainRec struct {
 	Owner             string          `json:"owner"`
 	Resolver          string          `json:"resolver"`
 	SubDomain         map[string]bool `json:"subDomain"`
-	SubDomainInReview map[string]bool `json:"subDomainInReview"` //审核中子域名
+	SubDomainInReview map[string]bool `json:"subDomainInReview"` // 审核中子域名
 	Parent            string          `json:"parent"`
 }
 
@@ -75,22 +76,22 @@ type ServDomain struct {
 	ParentName string `json:"parent_name"`
 }
 
-//Register a first-level domain name
+// Register a first-level domain name
 func (sr ServiceRegistry) Register(name string, duration uint64, resolver string) *boltvm.Response {
 	if name == "" {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), fmt.Sprintf("The domain id can not be an empty string")))
+		return boltvm.Error(boltvm.BnsErrCode, "The domain id can not be an empty string")
 	}
 	owner := sr.Caller()
 	if !checkBxhAddress(owner) {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), fmt.Sprintf("The address is not valid")))
+		return boltvm.Error(boltvm.BnsErrCode, "The address is not valid")
 	}
 
 	if resolver == "" || !sr.checkResolverAddress(resolver) {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), fmt.Sprintf("The resolver is not in the list")))
+		return boltvm.Error(boltvm.BnsErrCode, "The resolver is not in the list")
 	}
 
 	if duration == 0 {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), fmt.Sprintf("The duration can not be zero")))
+		return boltvm.Error(boltvm.BnsErrCode, "The duration can not be zero")
 	}
 
 	account := sr.GetAccount(owner).(ledger.IAccount)
@@ -99,16 +100,16 @@ func (sr ServiceRegistry) Register(name string, duration uint64, resolver string
 	level1Domain := sr.getLevel1Domain()
 	registerName := generateSubDomain(RootDomain, name)
 	if level1Domain[registerName]+GRACEPERIOD > uint64(sr.GetTxTimeStamp()/SecondTime) || uint64(sr.GetTxTimeStamp()/SecondTime)+duration+GRACEPERIOD < uint64(sr.GetTxTimeStamp()/SecondTime)+GRACEPERIOD {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), fmt.Sprintf("The domain id registered or in GRACEPERIOD ")))
+		return boltvm.Error(boltvm.BnsErrCode, "The domain id registered or in GRACEPERIOD")
 	}
 
 	price, err := sr.getPrice(name, level1Domain[name], duration)
 	if err != nil {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), fmt.Sprintf("get register price: %v", err)))
+		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf("get register price: %v", err))
 	}
 	registerCost := price.premium + price.base
 	if balance < registerCost {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), fmt.Sprintf("Not enough Bitxhub Token provided")))
+		return boltvm.Error(boltvm.BnsErrCode, "Not enough Bitxhub Token provided")
 	}
 	sr.setSubDomainOwner(RootDomain, name, owner)
 	sr.setRecord(registerName, owner, resolver, RootDomain)
@@ -120,7 +121,7 @@ func (sr ServiceRegistry) Register(name string, duration uint64, resolver string
 		pb.String(registerName),
 		pb.Uint64(1), pb.String(owner), pb.String(""), pb.String(""), pb.String(""))
 	if !res.Ok {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), fmt.Sprintf("register servDomainData error: %v", err)))
+		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf("register servDomainData error: %v", err))
 	}
 
 	account.SubBalance(new(big.Int).SetUint64(registerCost))
@@ -128,31 +129,31 @@ func (sr ServiceRegistry) Register(name string, duration uint64, resolver string
 	return boltvm.Success(nil)
 }
 
-//First-level domain name renewal
+// Renew First-level domain name renewal
 func (sr ServiceRegistry) Renew(name string, duration uint64) *boltvm.Response {
 	if name == "" {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), fmt.Sprintf("The domain id can not be an empty string")))
+		return boltvm.Error(boltvm.BnsErrCode, "The domain id can not be an empty string")
 	}
 	if duration == 0 {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), fmt.Sprintf("The duration can not be zero")))
+		return boltvm.Error(boltvm.BnsErrCode, "The duration can not be zero")
 	}
 	if !sr.checkNameAvailable(name) {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), fmt.Sprintf("The domain must register first")))
+		return boltvm.Error(boltvm.BnsErrCode, "The domain must register first")
 	}
 	account := sr.GetAccount(sr.Caller()).(ledger.IAccount)
 	balance := account.GetBalance().Uint64()
 
 	level1Domain := sr.getLevel1Domain()
 	if level1Domain[name]+GRACEPERIOD < uint64(sr.GetTxTimeStamp()/SecondTime) || uint64(sr.GetTxTimeStamp()/SecondTime)+duration+GRACEPERIOD < uint64(sr.GetTxTimeStamp()/SecondTime)+GRACEPERIOD {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), fmt.Sprintf("The domain id must registered in GRACEPERIOD ")))
+		return boltvm.Error(boltvm.BnsErrCode, "The domain id must registered in GRACEPERIOD ")
 	}
 	price, err := sr.getPrice(name, level1Domain[name], duration)
 	if err != nil {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), fmt.Sprintf("get register price: %v", err)))
+		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf("get register price: %v", err))
 	}
 	registerCost := price.premium + price.base
 	if balance < registerCost {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), fmt.Sprintf("Not enough Bitxhub Token provided")))
+		return boltvm.Error(boltvm.BnsErrCode, "Not enough Bitxhub Token provided")
 	}
 	level1Domain[name] = level1Domain[name] + duration
 	sr.SetObject(Level1Domain, level1Domain)
@@ -163,32 +164,32 @@ func (sr ServiceRegistry) Renew(name string, duration uint64) *boltvm.Response {
 
 func (sr ServiceRegistry) AllocateSubDomain(parentName string, sonName string, owner string, resolver string, serviceName string) *boltvm.Response {
 	if parentName == "" {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), "The parentDomain name can not be an empty string"))
+		return boltvm.Error(boltvm.BnsErrCode, "The parentDomain name can not be an empty string")
 	}
 	if sonName == "" {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), "The sonDomain name can not be an empty string"))
+		return boltvm.Error(boltvm.BnsErrCode, "The sonDomain name can not be an empty string")
 	}
 	if !sr.checkNameAvailable(parentName) {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), fmt.Sprintf("The domain must register first")))
+		return boltvm.Error(boltvm.BnsErrCode, "The domain must register first")
 	}
 
 	if !checkBxhAddress(owner) {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), fmt.Sprintf("The address is not valid")))
+		return boltvm.Error(boltvm.BnsErrCode, "The address is not valid")
 	}
 
 	if resolver == "" || !sr.checkResolverAddress(resolver) {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), fmt.Sprintf("The resolver is not in the list")))
+		return boltvm.Error(boltvm.BnsErrCode, "The resolver is not in the list")
 	}
 
 	if !sr.authorised(parentName) {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), "The domain name does not belong to you"))
+		return boltvm.Error(boltvm.BnsErrCode, "The domain name does not belong to you")
 	}
 
 	sonDomain := generateSubDomain(parentName, sonName)
 	parentDomainRec := ServDomainRec{}
 	ok := sr.GetObject(parentName, &parentDomainRec)
 	if !ok {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), "parentName not exist"))
+		return boltvm.Error(boltvm.BnsErrCode, "parentName not exist")
 	}
 	if parentDomainRec.SubDomainInReview == nil {
 		parentDomainRec.SubDomainInReview = make(map[string]bool)
@@ -199,7 +200,7 @@ func (sr ServiceRegistry) AllocateSubDomain(parentName string, sonName string, o
 	preRegister := make(map[string]bool)
 	sr.GetObject(PreRegister, &preRegister)
 	if preRegister[parentName] {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), "current proposal is not end"))
+		return boltvm.Error(boltvm.BnsErrCode, "current proposal is not end")
 	}
 	subDomainProposalData := SubDomainProposalData{
 		ParentName:  parentName,
@@ -211,7 +212,7 @@ func (sr ServiceRegistry) AllocateSubDomain(parentName string, sonName string, o
 	}
 	subDomainProposalDataBytes, err := json.Marshal(subDomainProposalData)
 	if err != nil {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), "marshal err"))
+		return boltvm.Error(boltvm.BnsErrCode, "marshal err")
 	}
 	event := governance.EventRegister
 	proposalRes := sr.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "SubmitProposal",
@@ -224,7 +225,7 @@ func (sr ServiceRegistry) AllocateSubDomain(parentName string, sonName string, o
 		pb.Bytes(subDomainProposalDataBytes),
 	)
 	if !proposalRes.Ok {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), fmt.Sprintf("submit proposal error: %s", string(proposalRes.Result))))
+		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf("submit proposal error: %s", string(proposalRes.Result)))
 	}
 
 	preRegister[parentName] = true
@@ -233,19 +234,19 @@ func (sr ServiceRegistry) AllocateSubDomain(parentName string, sonName string, o
 	return getGovernanceRet(string(proposalRes.Result), subDomainProposalDataBytes)
 }
 
-func (sr ServiceRegistry) Manage(eventTyp, proposalResult, lastStatus, objId string, extra []byte) *boltvm.Response {
+func (sr ServiceRegistry) Manage(eventTyp, proposalResult, _, _ string, extra []byte) *boltvm.Response {
 	if proposalResult == string(APPROVED) {
 		switch eventTyp {
 		case string(governance.EventRegister):
 			if err := sr.manageRegisterApprove(extra); err != nil {
-				return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), fmt.Sprintf("manage register approve error: %v", err)))
+				return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf("manage register approve error: %v", err))
 			}
 		}
 	} else {
 		switch eventTyp {
 		case string(governance.EventRegister):
 			if err := sr.manageRegisterReject(extra); err != nil {
-				return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), fmt.Sprintf("manage register approve error: %v", err)))
+				return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf("manage register approve error: %v", err))
 			}
 		}
 	}
@@ -313,45 +314,45 @@ func (sr ServiceRegistry) manageRegisterReject(extra []byte) error {
 
 func (sr ServiceRegistry) DeleteSecondDomain(name string) *boltvm.Response {
 	if name == "" {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), "The domain name can not be an empty string"))
+		return boltvm.Error(boltvm.BnsErrCode, "The domain name can not be an empty string")
 	}
 	nameArr := strings.Split(name, ".")
 	if len(nameArr) != 3 {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), "The domain name must be second"))
+		return boltvm.Error(boltvm.BnsErrCode, "The domain name must be second")
 	}
 	if !sr.checkNameAvailable(name) {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), fmt.Sprintf("The domain must be Allocate first")))
+		return boltvm.Error(boltvm.BnsErrCode, "The domain must be Allocate first")
 	}
 	if !sr.authorised(name) {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), "The domain name does not belong to you"))
+		return boltvm.Error(boltvm.BnsErrCode, "The domain name does not belong to you")
 	}
 	serviceDomainRec := ServDomainRec{}
 	ok := sr.GetObject(name, &serviceDomainRec)
 	if !ok {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), "there is not exist key"))
+		return boltvm.Error(boltvm.BnsErrCode, "there is not exist key")
 	}
 	parentServiceDomainRec := ServDomainRec{}
 	ok = sr.GetObject(serviceDomainRec.Parent, &parentServiceDomainRec)
 	if !ok {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), "there is not exist key"))
+		return boltvm.Error(boltvm.BnsErrCode, "there is not exist key")
 	}
 	parentServiceDomainRec.SubDomain[name] = false
 	sr.SetObject(serviceDomainRec.Parent, parentServiceDomainRec)
 	res := sr.CrossInvoke(serviceDomainRec.Resolver, "DeleteServDomainData",
 		pb.String(name))
 	if !res.Ok {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), fmt.Sprintf("delete servDomainData error: %v", res.Result)))
+		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf("delete servDomainData error: %v", res.Result))
 	}
 	sr.Delete(name)
 	return boltvm.Success(nil)
 }
 
-//Update registration price
+// SetPriceLevel Update registration price
 func (sr ServiceRegistry) SetPriceLevel(price1Letter uint64, price2Letter uint64, price3Letter uint64, price4Letter uint64, price5Letter uint64) *boltvm.Response {
 	addr := sr.Caller()
 	res := sr.CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin", pb.String(addr), pb.String(string(GovernanceAdmin)))
 	if !res.Ok || "false" == string(res.Result) {
-		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), fmt.Sprintf("you have no permission")))
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, "you have no permission")
 	}
 	priceLevel := PriceLevel{
 		Price1Letter: price1Letter,
@@ -368,23 +369,23 @@ func (sr ServiceRegistry) GetPriceLevel() *boltvm.Response {
 	priceLevel := PriceLevel{}
 	ok := sr.GetObject(PriceLenLevel, &priceLevel)
 	if !ok {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), "there is not exist key"))
+		return boltvm.Error(boltvm.BnsErrCode, "there is not exist key")
 	}
 	servDomainBytes, err := json.Marshal(priceLevel)
 	if err != nil {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), fmt.Sprintf("marshal servDomainData error: %v", err)))
+		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf("marshal servDomainData error: %v", err))
 	}
 	return boltvm.Success(servDomainBytes)
 }
 
 func (sr ServiceRegistry) SetTokenPrice(tokenPrice uint64) *boltvm.Response {
 	if tokenPrice == 0 {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), fmt.Sprintf("The Token Price can not be zero")))
+		return boltvm.Error(boltvm.BnsErrCode, "The Token Price can not be zero")
 	}
 	addr := sr.Caller()
 	res := sr.CrossInvoke(constant.RoleContractAddr.Address().String(), "IsAnyAvailableAdmin", pb.String(addr), pb.String(string(GovernanceAdmin)))
 	if !res.Ok || "false" == string(res.Result) {
-		return boltvm.Error(boltvm.GovernanceInternalErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), fmt.Sprintf("you have no permission")))
+		return boltvm.Error(boltvm.GovernanceInternalErrCode, "you have no permission")
 	}
 	sr.SetObject(BitxhubTokenPrice, tokenPrice)
 	return boltvm.Success(nil)
@@ -394,21 +395,21 @@ func (sr ServiceRegistry) GetTokenPrice() *boltvm.Response {
 	var tokenPrice uint64
 	ok := sr.GetObject(BitxhubTokenPrice, &tokenPrice)
 	if !ok {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), "there is not exist key"))
+		return boltvm.Error(boltvm.BnsErrCode, "there is not exist key")
 	}
 	res := make([]byte, 8)
 	binary.BigEndian.PutUint64(res, tokenPrice)
 	return boltvm.Success(res)
 }
 
-//Get the expiration time of the first-level domain name
+// GetDomainExpires Get the expiration time of the first-level domain name
 func (sr ServiceRegistry) GetDomainExpires(name string) *boltvm.Response {
 	if name == "" {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), fmt.Sprintf("The domain id can not be an empty string")))
+		return boltvm.Error(boltvm.BnsErrCode, "The domain id can not be an empty string")
 	}
 	expires := sr.getLevel1Domain()
 	if expires[name] == 0 {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), fmt.Sprintf("The domain id is not registered")))
+		return boltvm.Error(boltvm.BnsErrCode, "The domain id is not registered")
 	}
 	res := make([]byte, 8)
 	binary.BigEndian.PutUint64(res, expires[name])
@@ -417,7 +418,7 @@ func (sr ServiceRegistry) GetDomainExpires(name string) *boltvm.Response {
 
 func (sr ServiceRegistry) RecordExists(name string) *boltvm.Response {
 	if name == "" {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), fmt.Sprintf("The domain id can not be an empty string")))
+		return boltvm.Error(boltvm.BnsErrCode, "The domain id can not be an empty string")
 	}
 	ok := sr.Has(name)
 	return boltvm.Success([]byte(strconv.FormatBool(ok)))
@@ -425,24 +426,24 @@ func (sr ServiceRegistry) RecordExists(name string) *boltvm.Response {
 
 func (sr ServiceRegistry) Owner(name string) *boltvm.Response {
 	if name == "" || !sr.checkNameAvailable(name) {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), fmt.Sprintf("The domain id must be registered")))
+		return boltvm.Error(boltvm.BnsErrCode, "The domain id must be registered")
 	}
 	serviceDomainRec := ServDomainRec{}
 	ok := sr.GetObject(name, &serviceDomainRec)
 	if !ok {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), "there is not exist key"))
+		return boltvm.Error(boltvm.BnsErrCode, "there is not exist key")
 	}
 	return boltvm.Success([]byte(serviceDomainRec.Owner))
 }
 
 func (sr ServiceRegistry) Resolver(name string) *boltvm.Response {
 	if name == "" || !sr.checkNameAvailable(name) {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), fmt.Sprintf("The domain id must be registered")))
+		return boltvm.Error(boltvm.BnsErrCode, "The domain id must be registered")
 	}
 	serviceDomainRec := ServDomainRec{}
 	ok := sr.GetObject(name, &serviceDomainRec)
 	if !ok {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), "there is not exist key"))
+		return boltvm.Error(boltvm.BnsErrCode, "there is not exist key")
 	}
 	return boltvm.Success([]byte(serviceDomainRec.Resolver))
 }
@@ -453,27 +454,29 @@ func (sr ServiceRegistry) GetSubDomain(name string) *boltvm.Response {
 		var servDomain map[string]uint64
 		ok := sr.GetObject(Level1Domain, &servDomain)
 		if !ok {
-			return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), "there is not exist key"))
+			return boltvm.Error(boltvm.BnsErrCode, "there is not exist key")
 		}
-		for k, _ := range servDomain {
+		for k := range servDomain {
 			subDomains = append(subDomains, k)
 		}
 	} else {
 		serviceDomainRec := ServDomainRec{}
 		ok := sr.GetObject(name, &serviceDomainRec)
 		if !ok {
-			return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), "there is not exist key"))
+			return boltvm.Error(boltvm.BnsErrCode, "there is not exist key")
 		}
-		for k, _ := range serviceDomainRec.SubDomain {
+		for k := range serviceDomainRec.SubDomain {
 			if serviceDomainRec.SubDomain[k] {
 				subDomains = append(subDomains, k)
 			}
 		}
-
 	}
+
+	// ensure subDomains is equal in all nodes
+	sort.Strings(subDomains)
 	subDomainsBytes, err := json.Marshal(subDomains)
 	if err != nil {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), fmt.Sprintf("marshal servDomainData error: %v", err)))
+		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf("marshal servDomainData error: %v", err))
 	}
 	return boltvm.Success(subDomainsBytes)
 }
@@ -501,15 +504,15 @@ func (sr ServiceRegistry) getPrice(name string, expires uint64, duration uint64)
 		return price, fmt.Errorf("there is not exist key")
 	}
 
-	len := len(name)
+	nameLen := len(name)
 	var basePrice uint64
-	if len >= 5 {
+	if nameLen >= 5 {
 		basePrice = priceLevel.Price5Letter * duration
-	} else if len == 4 {
+	} else if nameLen == 4 {
 		basePrice = priceLevel.Price4Letter * duration
-	} else if len == 3 {
+	} else if nameLen == 3 {
 		basePrice = priceLevel.Price3Letter * duration
-	} else if len == 2 {
+	} else if nameLen == 2 {
 		basePrice = priceLevel.Price2Letter * duration
 	} else {
 		basePrice = priceLevel.Price1Letter * duration
@@ -519,7 +522,7 @@ func (sr ServiceRegistry) getPrice(name string, expires uint64, duration uint64)
 	return price, nil
 }
 
-func (sr ServiceRegistry) premium(name string, expires uint64, duration uint64) uint64 {
+func (sr ServiceRegistry) premium(_ string, _ uint64, _ uint64) uint64 {
 	return 0
 }
 
@@ -564,13 +567,6 @@ func (sr ServiceRegistry) setResolver(name string, resolver string) {
 	servDomainRec := ServDomainRec{}
 	sr.GetObject(name, &servDomainRec)
 	servDomainRec.Resolver = resolver
-	sr.SetObject(name, servDomainRec)
-}
-
-func (sr ServiceRegistry) setOwner(name string, owner string) {
-	servDomainRec := ServDomainRec{}
-	sr.GetObject(name, &servDomainRec)
-	servDomainRec.Owner = owner
 	sr.SetObject(name, servDomainRec)
 }
 
@@ -634,11 +630,11 @@ func (sr ServiceRegistry) GetAllDomains() *boltvm.Response {
 	var res []*ServDomain
 	res = append(res, &root)
 
-	//处理一级域名
+	// 处理一级域名
 	var servDomain map[string]uint64
 	ok := sr.GetObject(Level1Domain, &servDomain)
 	if ok {
-		for firstDomain, _ := range servDomain {
+		for firstDomain := range servDomain {
 			first := ServDomain{
 				Name:       firstDomain,
 				Level:      LevelOne,
@@ -650,9 +646,9 @@ func (sr ServiceRegistry) GetAllDomains() *boltvm.Response {
 			serviceDomainFirst := ServDomainRec{}
 			ok := sr.GetObject(firstDomain, &serviceDomainFirst)
 			if !ok {
-				return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), "there is not exist key"))
+				return boltvm.Error(boltvm.BnsErrCode, "there is not exist key")
 			}
-			for secondDomain, _ := range serviceDomainFirst.SubDomain {
+			for secondDomain := range serviceDomainFirst.SubDomain {
 				if serviceDomainFirst.SubDomain[secondDomain] {
 					second := ServDomain{
 						Name:       secondDomain,
@@ -663,7 +659,7 @@ func (sr ServiceRegistry) GetAllDomains() *boltvm.Response {
 					res = append(res, &second)
 				}
 			}
-			for secondDomain, _ := range serviceDomainFirst.SubDomainInReview {
+			for secondDomain := range serviceDomainFirst.SubDomainInReview {
 				if serviceDomainFirst.SubDomainInReview[secondDomain] {
 					second := ServDomain{
 						Name:       secondDomain,
@@ -678,9 +674,17 @@ func (sr ServiceRegistry) GetAllDomains() *boltvm.Response {
 		}
 	}
 
+	// ensure res is equal in all nodes
+	sort.Slice(res, func(i, j int) bool {
+		if res[i].ParentName != res[j].ParentName {
+			return res[i].ParentName < res[j].ParentName
+		}
+		return res[i].Name < res[j].Name
+	})
+
 	resBytes, err := json.Marshal(res)
 	if err != nil {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf(string(boltvm.BnsErrMsg), fmt.Sprintf("marshal servDomainData error: %v", err)))
+		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf("marshal servDomainData error: %v", err))
 	}
 	return boltvm.Success(resBytes)
 

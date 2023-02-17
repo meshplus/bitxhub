@@ -381,7 +381,7 @@ func updateDapp(ctx *cli.Context) error {
 			url = dapp.Url
 		}
 		if contractAddrs == "" {
-			for k, _ := range dapp.ContractAddr {
+			for k := range dapp.ContractAddr {
 				if contractAddrs == "" {
 					contractAddrs = k
 				} else {
@@ -391,7 +391,7 @@ func updateDapp(ctx *cli.Context) error {
 
 		}
 		if permissionStr == "" {
-			for k, _ := range dapp.Permission {
+			for k := range dapp.Permission {
 				if permissionStr == "" {
 					permissionStr = k
 				} else {

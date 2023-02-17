@@ -177,7 +177,7 @@ func (rm *RoleManager) checkPermission(permissions []string, roleId string, regu
 				return nil
 			}
 		case string(PermissionSpecific):
-			specificAddrs := []string{}
+			specificAddrs := make([]string, 0)
 			if err := json.Unmarshal(specificAddrsData, &specificAddrs); err != nil {
 				return err
 			}
@@ -217,7 +217,6 @@ func (rm *RoleManager) register(roleInfo *Role) error {
 		account := rm.GetAccount(roleInfo.ID)
 		acc := account.(ledger.IAccount)
 		acc.AddBalance(balance)
-		//rm.SetObject(RoleKey(roleInfo.ID), *roleInfo)
 	default:
 		return fmt.Errorf("registration for %s is not supported currently", roleInfo.RoleType)
 	}
@@ -229,14 +228,14 @@ func (rm *RoleManager) register(roleInfo *Role) error {
 	return nil
 }
 
-// =========== Manage does some subsequent operations when the proposal is over
+// Manage does some subsequent operations when the proposal is over
 // extra: update - role info
-func (rm *RoleManager) Manage(eventTyp, proposalResult, lastStatus, objId string, extra []byte) *boltvm.Response {
+func (rm *RoleManager) Manage(eventTyp, proposalResult, lastStatus, objId string, _ []byte) *boltvm.Response {
 	// 1. check permission: PermissionSpecific(GovernanceContractAddr)
 	specificAddrs := []string{constant.GovernanceContractAddr.Address().String()}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
-		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.RoleInternalErrCode, err.Error())
 	}
 	if err := rm.checkPermission([]string{string(PermissionSpecific)}, "", rm.CurrentCaller(), addrsData); err != nil {
 		return boltvm.Error(boltvm.RoleNoPermissionCode, fmt.Sprintf(string(boltvm.RoleNoPermissionMsg), rm.CurrentCaller(), fmt.Sprintf("check permission error:%v", err)))
@@ -249,112 +248,127 @@ func (rm *RoleManager) Manage(eventTyp, proposalResult, lastStatus, objId string
 	// 2. change status
 	ok, errData := rm.changeStatus(objId, proposalResult, lastStatus)
 	if !ok {
-		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("change %s status error: %s", objId, string(errData))))
+		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf("change %s status error: %s", objId, string(errData)))
 	}
 
 	// 3. other operation
 	role := &Role{}
+	var bvmErr *boltvm.Response
 	if ok := rm.GetObject(RoleKey(objId), role); !ok {
-		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("not found role %s", objId)))
+		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf("not found role %s", objId))
 	}
 	switch role.RoleType {
 	case GovernanceAdmin:
-		switch eventTyp {
-		case string(governance.EventRegister):
-			if proposalResult == string(APPROVED) {
-				if err := rm.register(role); err != nil {
-					return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("register error: %v", err)))
-				}
-				if berr := rm.updateStrategyInfo(); berr != nil {
-					return boltvm.Error(berr.Code, berr.Error())
-				}
-			} else {
-				rm.freeAccount(role.ID)
-			}
-		case string(governance.EventFreeze):
-			fallthrough
-		case string(governance.EventActivate):
-			if proposalResult == string(APPROVED) {
-				if err := rm.updateRoleRelatedProposalInfo(objId, governance.EventType(eventTyp)); err != nil {
-					return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), err.Error()))
-				}
-				if berr := rm.updateStrategyInfo(); berr != nil {
-					return boltvm.Error(berr.Code, berr.Error())
-				}
-			}
-		case string(governance.EventLogout):
-			if proposalResult == string(REJECTED) {
-				if role.IsAvailable() {
-					if err := rm.updateRoleRelatedProposalInfo(objId, governance.EventReject); err != nil {
-						return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), err.Error()))
-					}
-					if berr := rm.updateStrategyInfo(); berr != nil {
-						return boltvm.Error(berr.Code, berr.Error())
-					}
-				}
-			}
+		if bvmErr = rm.handleGovernanceAdmin(eventTyp, proposalResult, objId, role); !bvmErr.Ok {
+			return bvmErr
 		}
 	case AuditAdmin:
-		switch eventTyp {
-		case string(governance.EventRegister):
-			if proposalResult == string(APPROVED) {
-				if err := rm.register(role); err != nil {
-					return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("register error: %v", err)))
-				}
-			} else {
-				rm.freeAccount(role.ID)
-			}
-			fallthrough
-		case string(governance.EventBind):
-			if res := rm.CrossInvoke(constant.NodeManagerContractAddr.Address().String(), "ManageBindNode",
-				pb.String(role.NodeAccount),
-				pb.String(objId),
-				pb.String(proposalResult)); !res.Ok {
-				return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("cross invoke ManageBindNode error: %s", string(res.Result))))
-			}
-		case string(governance.EventLogout):
-			// approve: Unbind audit node, clear proposal
-			// reject: If audit node is unavailable(only one possibility is that the node has been logouted), the role need to be paused.
-			if proposalResult == string(APPROVED) {
-				if res := rm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "EndObjProposal",
-					pb.String(role.ID),
-					pb.String(string(ClearReason)),
-					pb.Bytes(nil)); !res.Ok {
-					return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("cross invoke EndObjProposal error: %s", string(res.Result))))
-				}
-				if res := rm.CrossInvoke(constant.NodeManagerContractAddr.Address().String(), "UnbindNode", pb.String(role.NodeAccount)); !res.Ok {
-					return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("cross invoke UnbindNode error: %s", string(res.Result))))
-				}
-			} else {
-				if role.NodeAccount != "" {
-					res := rm.CrossInvoke(constant.NodeManagerContractAddr.Address().String(), "GetNode", pb.String(role.NodeAccount))
-					if !res.Ok {
-						return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("cross invoke GetNode error: %s", string(res.Result))))
-					}
-					node := &nodemgr.Node{}
-					if err := json.Unmarshal(res.Result, node); err != nil {
-						return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("unmarshal node error: %v", err)))
-					}
-					if node.Status == governance.GovernanceForbidden {
-						if res := rm.pauseAuditAdmin(role.ID); !res.Ok {
-							return res
-						}
-					} else if node.Status == governance.GovernanceBinding {
-						if res := rm.restoreAuditAdmin(role.ID); !res.Ok {
-							return res
-						}
-					}
-				}
-			}
+		if bvmErr = rm.handleAuditAdmin(eventTyp, proposalResult, objId, role); !bvmErr.Ok {
+			return bvmErr
 		}
 	}
 
 	if rm.EnableAudit() {
 		if err := rm.postAuditRoleEvent(objId); err != nil {
-			return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("post audit role event error: %v", err)))
+			return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf("post audit role event error: %v", err))
 		}
 	}
 
+	return boltvm.Success(nil)
+}
+
+func (rm *RoleManager) handleGovernanceAdmin(eventTyp, proposalResult, objId string, role *Role) *boltvm.Response {
+	switch eventTyp {
+	case string(governance.EventRegister):
+		if proposalResult == string(APPROVED) {
+			if err := rm.register(role); err != nil {
+				return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf("register error: %v", err))
+			}
+			if berr := rm.updateStrategyInfo(); berr != nil {
+				return boltvm.Error(berr.Code, berr.Error())
+			}
+		} else {
+			rm.freeAccount(role.ID)
+		}
+	case string(governance.EventFreeze):
+		fallthrough
+	case string(governance.EventActivate):
+		if proposalResult == string(APPROVED) {
+			if err := rm.updateRoleRelatedProposalInfo(objId, governance.EventType(eventTyp)); err != nil {
+				return boltvm.Error(boltvm.RoleInternalErrCode, err.Error())
+			}
+			if berr := rm.updateStrategyInfo(); berr != nil {
+				return boltvm.Error(berr.Code, berr.Error())
+			}
+		}
+	case string(governance.EventLogout):
+		if proposalResult == string(REJECTED) {
+			if role.IsAvailable() {
+				if err := rm.updateRoleRelatedProposalInfo(objId, governance.EventReject); err != nil {
+					return boltvm.Error(boltvm.RoleInternalErrCode, err.Error())
+				}
+				if berr := rm.updateStrategyInfo(); berr != nil {
+					return boltvm.Error(berr.Code, berr.Error())
+				}
+			}
+		}
+	}
+	return boltvm.Success(nil)
+}
+
+func (rm *RoleManager) handleAuditAdmin(eventTyp, proposalResult, objId string, role *Role) *boltvm.Response {
+	switch eventTyp {
+	case string(governance.EventRegister):
+		if proposalResult == string(APPROVED) {
+			if err := rm.register(role); err != nil {
+				return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf("register error: %v", err))
+			}
+		} else {
+			rm.freeAccount(role.ID)
+		}
+		fallthrough
+	case string(governance.EventBind):
+		if res := rm.CrossInvoke(constant.NodeManagerContractAddr.Address().String(), "ManageBindNode",
+			pb.String(role.NodeAccount),
+			pb.String(objId),
+			pb.String(proposalResult)); !res.Ok {
+			return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf("cross invoke ManageBindNode error: %s", string(res.Result)))
+		}
+	case string(governance.EventLogout):
+		// approve: Unbind audit node, clear proposal
+		// reject: If audit node is unavailable(only one possibility is that the node has been logouted), the role need to be paused.
+		if proposalResult == string(APPROVED) {
+			if res := rm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "EndObjProposal",
+				pb.String(role.ID),
+				pb.String(string(ClearReason)),
+				pb.Bytes(nil)); !res.Ok {
+				return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf("cross invoke EndObjProposal error: %s", string(res.Result)))
+			}
+			if res := rm.CrossInvoke(constant.NodeManagerContractAddr.Address().String(), "UnbindNode", pb.String(role.NodeAccount)); !res.Ok {
+				return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf("cross invoke UnbindNode error: %s", string(res.Result)))
+			}
+		} else {
+			if role.NodeAccount != "" {
+				res := rm.CrossInvoke(constant.NodeManagerContractAddr.Address().String(), "GetNode", pb.String(role.NodeAccount))
+				if !res.Ok {
+					return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf("cross invoke GetNode error: %s", string(res.Result)))
+				}
+				node := &nodemgr.Node{}
+				if err := json.Unmarshal(res.Result, node); err != nil {
+					return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf("unmarshal node error: %v", err))
+				}
+				if node.Status == governance.GovernanceForbidden {
+					if res := rm.pauseAuditAdmin(role.ID); !res.Ok {
+						return res
+					}
+				} else if node.Status == governance.GovernanceBinding {
+					if res := rm.restoreAuditAdmin(role.ID); !res.Ok {
+						return res
+					}
+				}
+			}
+		}
+	}
 	return boltvm.Success(nil)
 }
 
@@ -376,7 +390,7 @@ func (rm *RoleManager) updateRoleRelatedProposalInfo(roleId string, eventTyp gov
 			"eventType":              eventTyp,
 			"proposalId":             p.Id,
 			"proposalStatus":         p.Status,
-			"AvaliableElectorateNum": p.AvaliableElectorateNum,
+			"AvailableElectorateNum": p.AvailableElectorateNum,
 		}).Info("Update role related proposal info")
 		for _, e := range p.ElectorateList {
 			if e.ID == roleId {
@@ -384,18 +398,18 @@ func (rm *RoleManager) updateRoleRelatedProposalInfo(roleId string, eventTyp gov
 				case governance.EventFreeze:
 					fallthrough
 				case governance.EventLogout:
-					p.AvaliableElectorateNum--
+					p.AvailableElectorateNum--
 				case governance.EventActivate:
 					fallthrough
 				case governance.EventReject:
 					// logout reject
-					p.AvaliableElectorateNum++
+					p.AvailableElectorateNum++
 				default:
 					break
 				}
-				res := rm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "UpdateAvaliableElectorateNum", pb.String(p.Id), pb.Uint64(p.AvaliableElectorateNum))
+				res := rm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "UpdateAvailableElectorateNum", pb.String(p.Id), pb.Uint64(p.AvailableElectorateNum))
 				if !res.Ok {
-					return fmt.Errorf("cross invoke UpdateAvaliableElectorateNum error: %s", string(res.Result))
+					return fmt.Errorf("cross invoke UpdateAvailableElectorateNum error: %s", string(res.Result))
 				}
 				break
 			}
@@ -418,13 +432,13 @@ func (rm *RoleManager) updateStrategyInfo() *boltvm.BxhError {
 
 	res := rm.CrossInvoke(constant.ProposalStrategyMgrContractAddr.Address().String(), "UpdateProposalStrategyByRolesChange", pb.Uint64(uint64(availableNum)))
 	if !res.Ok {
-		return boltvm.BError(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), string(res.Result)))
+		return boltvm.BError(boltvm.RoleInternalErrCode, string(res.Result))
 	}
 
 	return nil
 }
 
-// =========== RegisterRole registers role info, returns proposal id and error
+// RegisterRole registers role info, returns proposal id and error
 func (rm *RoleManager) RegisterRole(roleId, roleType, nodeAccount, reason string) *boltvm.Response {
 	event := string(governance.EventRegister)
 
@@ -464,12 +478,12 @@ func (rm *RoleManager) RegisterRole(roleId, roleType, nodeAccount, reason string
 		pb.Bytes(nil),
 	)
 	if !res.Ok {
-		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("submit proposal error: %s", string(res.Result))))
+		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf("submit proposal error: %s", string(res.Result)))
 	}
 
 	// 6. change status
 	if ok, data := rm.changeStatus(role.ID, event, string(role.Status)); !ok {
-		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("change status error: %s, %s", string(data), role.ID)))
+		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf("change status error: %s, %s", string(data), role.ID))
 	}
 
 	// 7. node bind
@@ -484,37 +498,34 @@ func (rm *RoleManager) RegisterRole(roleId, roleType, nodeAccount, reason string
 
 	if rm.EnableAudit() {
 		if err := rm.postAuditRoleEvent(roleId); err != nil {
-			return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("post audit role event error: %v", err)))
+			return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf("post audit role event error: %v", err))
 		}
 	}
 
 	return getGovernanceRet(string(res.Result), []byte(role.ID))
 }
 
-// =========== UpdateAppchainAdmin update appchain admin
+// UpdateAppchainAdmin update appchain admin
 // Only called after the appchain registration proposal has been voted through
 // The admin addrs are checked(format is valid and registrable) before the call
-//   and is checked when submitting appchain register proposal
+// and is checked when submitting appchain register proposal
 func (rm *RoleManager) UpdateAppchainAdmin(appchainID string, adminAddrs string) *boltvm.Response {
 	// 1. check permission
 	specificAddrs := []string{constant.AppchainMgrContractAddr.Address().String()}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
-		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("marshal specificAddrs error: %v", err)))
+		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf("marshal specificAddrs error: %v", err))
 	}
 	if err := rm.checkPermission([]string{string(PermissionSpecific)}, "", rm.CurrentCaller(), addrsData); err != nil {
 		return boltvm.Error(boltvm.RoleNoPermissionCode, fmt.Sprintf(string(boltvm.RoleNoPermissionMsg), rm.CurrentCaller(), fmt.Sprintf("check permission error:%v", err)))
 	}
 
 	// 2. update info
-	if err := rm.updateAppchainAdmin(appchainID, strings.Split(adminAddrs, ",")); err != nil {
-		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("update appchain admin error: %v", err)))
-	}
-
+	rm.updateAppchainAdmin(appchainID, strings.Split(adminAddrs, ","))
 	if rm.EnableAudit() {
 		for _, addr := range strings.Split(adminAddrs, ",") {
 			if err := rm.postAuditRoleEvent(addr); err != nil {
-				return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("post audit role event error: %v", err)))
+				return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf("post audit role event error: %v", err))
 			}
 		}
 	}
@@ -522,7 +533,7 @@ func (rm *RoleManager) UpdateAppchainAdmin(appchainID string, adminAddrs string)
 	return boltvm.Success(nil)
 }
 
-func (rm *RoleManager) updateAppchainAdmin(appchainID string, adminAddrs []string) error {
+func (rm *RoleManager) updateAppchainAdmin(appchainID string, adminAddrs []string) {
 	allAppchainAdminIdMap := orderedmap.New()
 	_ = rm.GetObject(RoleTypeKey(string(AppchainAdmin)), allAppchainAdminIdMap)
 	theAppchainAdminIdMap := orderedmap.New()
@@ -538,7 +549,7 @@ func (rm *RoleManager) updateAppchainAdmin(appchainID string, adminAddrs []strin
 
 		role := &Role{
 			ID:         addr,
-			RoleType:   RoleType(AppchainAdmin),
+			RoleType:   AppchainAdmin,
 			AppchainID: appchainID,
 			Status:     governance.GovernanceAvailable,
 		}
@@ -551,10 +562,9 @@ func (rm *RoleManager) updateAppchainAdmin(appchainID string, adminAddrs []strin
 		"chainID": appchainID,
 		"admins":  adminAddrs,
 	}).Info("Appchain admin is updating")
-	return nil
 }
 
-// =========== FreezeRole freezes role
+// FreezeRole freezes role
 func (rm *RoleManager) FreezeRole(roleId, reason string) *boltvm.Response {
 	if roleId == rm.CurrentCaller() {
 		return boltvm.Error(boltvm.RoleNoPermissionCode, fmt.Sprintf(string(boltvm.RoleNoPermissionMsg), rm.CurrentCaller(), "you can not freeze yourself"))
@@ -566,7 +576,7 @@ func (rm *RoleManager) FreezeRole(roleId, reason string) *boltvm.Response {
 	}
 	var gr *governance.GovernanceResult
 	if err := json.Unmarshal(res.Result, &gr); err != nil {
-		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.RoleInternalErrCode, err.Error())
 	}
 
 	rm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(gr.ProposalID))
@@ -575,7 +585,7 @@ func (rm *RoleManager) FreezeRole(roleId, reason string) *boltvm.Response {
 
 }
 
-// =========== ActivateRole updates frozen role
+// ActivateRole updates frozen role
 func (rm *RoleManager) ActivateRole(roleId, reason string) *boltvm.Response {
 	res := rm.basicGovernance(roleId, reason, []string{string(PermissionAdmin), string(PermissionSelf)}, governance.EventActivate, nil)
 	if !res.Ok {
@@ -583,7 +593,7 @@ func (rm *RoleManager) ActivateRole(roleId, reason string) *boltvm.Response {
 	}
 	var gr *governance.GovernanceResult
 	if err := json.Unmarshal(res.Result, &gr); err != nil {
-		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.RoleInternalErrCode, err.Error())
 	}
 
 	rm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(gr.ProposalID))
@@ -591,30 +601,38 @@ func (rm *RoleManager) ActivateRole(roleId, reason string) *boltvm.Response {
 	return res
 }
 
-// =========== LogoutRole logouts role
+// LogoutRole logouts role
 // Logout scenarios in different role states:
-// - unavailable/registering : cannot log out without successfully registering
-// - available (governance): when submitting a proposal, available state(available) to unavailable state(logouting), need to update role related proposal info
-//                            when proposal is approved, unavailable state(logouting) to unavailable state(forbidden), no other operation
-//                            when proposal is rejected, unavailable state(logouting) to available state(available), need to update role related proposal info
-// - available (audit) : when submitting a proposal, no other operation
-//                       when proposal is approved, clear proposal, unbind bound node(if node is forbidden, not need to unbind)
-//                       when proposal is rejected, if bound node is available, no other operation
-//                                                  if bound node is forbidden, need to pause role(going to forzen state)
-// - freezing (only governance): when submitting a proposal, available state(freezing) to unavailable state(logouting), update role related proposal info
-//                               when proposal is approved, unavailable state(logouting) to unavailable state(forbidden), no other operation
-//                               when proposal is rejected, unavailable state(logouting) to available state(freezing), update role related proposal info
-// - activating (only governance):  when submitting a proposal, unavailable state(activating) to unavailable state(logouting), no other operation
-//                                  when proposal is approved, unavailable state(logouting) to unavailable state(forbidden), no other operation
-//                                  when proposal is rejected, unavailable state(logouting) to unavailable state(activating), no other operation
-// - frozen (governance): when submitting a proposal, unavailable state(frozen) to unavailable state(logouting), no other operation
-//                        when proposal is approved, unavailable state(logouting) to unavailable state(forbidden), no other operation
-//                        when proposal is rejected, unavailable state(logouting) to unavailable state(frozen), no other operation
-// - frozen (audit): when submitting a proposal / proposal approved / proposal rejected, no bound node, no other operation
-// - binding (only audit) : when submitting a proposal, role binding proposal will be paused, no other operation
-//                          when proposal is approved, clear proposal, role binding proposal will be rejected, no other operation
-//                          when proposal is rejected, role binding proposal will be retored, if node is forbidden, need to rejected binding proposal
-// - logouting/forbidden: logout cannot be logged out again
+//   - unavailable/registering : cannot log out without successfully registering
+//   - available (governance):
+//     when submitting a proposal, available state(available) to unavailable state(logouting), need to update role related proposal info
+//     when proposal is approved, unavailable state(logouting) to unavailable state(forbidden), no other operation
+//     when proposal is rejected, unavailable state(logouting) to available state(available), need to update role related proposal info
+//   - available (audit):
+//     when submitting a proposal, no other operation
+//     when proposal is approved, clear proposal, unbind bound node(if node is forbidden, not need to unbind)
+//     when proposal is rejected,
+//     if bound node is available, no other operation
+//     if bound node is forbidden, need to pause role(going to forzen state)
+//   - freezing (only governance):
+//     when submitting a proposal, available state(freezing) to unavailable state(logouting), update role related proposal info
+//     when proposal is approved, unavailable state(logouting) to unavailable state(forbidden), no other operation
+//     when proposal is rejected, unavailable state(logouting) to available state(freezing), update role related proposal info
+//   - activating (only governance):
+//     when submitting a proposal, unavailable state(activating) to unavailable state(logouting), no other operation
+//     when proposal is approved, unavailable state(logouting) to unavailable state(forbidden), no other operation
+//     when proposal is rejected, unavailable state(logouting) to unavailable state(activating), no other operation
+//   - frozen (governance):
+//     when submitting a proposal, unavailable state(frozen) to unavailable state(logouting), no other operation
+//     when proposal is approved, unavailable state(logouting) to unavailable state(forbidden), no other operation
+//     when proposal is rejected, unavailable state(logouting) to unavailable state(frozen), no other operation
+//   - frozen (audit):
+//     when submitting a proposal / proposal approved / proposal rejected, no bound node, no other operation
+//   - binding (only audit):
+//     when submitting a proposal, role binding proposal will be paused, no other operation
+//     when proposal is approved, clear proposal, role binding proposal will be rejected, no other operation
+//     when proposal is rejected, role binding proposal will be retored, if node is forbidden, need to rejected binding proposal
+//   - logouting/forbidden: logout cannot be logged out again
 func (rm *RoleManager) LogoutRole(roleId, reason string) *boltvm.Response {
 	governanceRes := rm.basicGovernance(roleId, reason, []string{string(PermissionAdmin), string(PermissionSelf)}, governance.EventLogout, nil)
 	if !governanceRes.Ok {
@@ -624,13 +642,13 @@ func (rm *RoleManager) LogoutRole(roleId, reason string) *boltvm.Response {
 	role := &Role{}
 	ok := rm.GetObject(RoleKey(roleId), role)
 	if !ok {
-		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("not found role %s", roleId)))
+		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf("not found role %s", roleId))
 	}
 	switch role.RoleType {
 	case GovernanceAdmin:
 		if role.IsAvailable() {
 			if err := rm.updateRoleRelatedProposalInfo(roleId, governance.EventLogout); err != nil {
-				return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), err.Error()))
+				return boltvm.Error(boltvm.RoleInternalErrCode, err.Error())
 			}
 			if berr := rm.updateStrategyInfo(); berr != nil {
 				return boltvm.Error(berr.Code, berr.Error())
@@ -640,14 +658,14 @@ func (rm *RoleManager) LogoutRole(roleId, reason string) *boltvm.Response {
 
 	var gr *governance.GovernanceResult
 	if err := json.Unmarshal(governanceRes.Result, &gr); err != nil {
-		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.RoleInternalErrCode, err.Error())
 	}
 	rm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(gr.ProposalID))
 
 	return governanceRes
 }
 
-// =========== BindRole binds audit admin with audit node
+// BindRole binds audit admin with audit node
 func (rm *RoleManager) BindRole(roleId, nodeAccount, reason string) *boltvm.Response {
 	governanceRes := rm.basicGovernance(roleId, reason, []string{string(PermissionAdmin)}, governance.EventBind, []byte(nodeAccount))
 	if !governanceRes.Ok {
@@ -657,15 +675,15 @@ func (rm *RoleManager) BindRole(roleId, nodeAccount, reason string) *boltvm.Resp
 	role := &Role{}
 	ok := rm.GetObject(RoleKey(roleId), role)
 	if !ok {
-		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("not found role %s", roleId)))
+		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf("not found role %s", roleId))
 	}
 	if res := rm.CrossInvoke(constant.NodeManagerContractAddr.Address().String(), "BindNode", pb.String(role.NodeAccount), pb.String(role.ID)); !res.Ok {
-		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("cross invoke BindNode error: %s", string(res.Result))))
+		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf("cross invoke BindNode error: %s", string(res.Result)))
 	}
 
 	var gr *governance.GovernanceResult
 	if err := json.Unmarshal(governanceRes.Result, &gr); err != nil {
-		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.RoleInternalErrCode, err.Error())
 	}
 	rm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "ZeroPermission", pb.String(gr.ProposalID))
 
@@ -717,24 +735,24 @@ func (rm *RoleManager) basicGovernance(roleId, reason string, permissions []stri
 		pb.Bytes(extra),
 	)
 	if !res.Ok {
-		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("submit proposal error: %s", string(res.Result))))
+		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf("submit proposal error: %s", string(res.Result)))
 	}
 
 	// 4. change status
 	if ok, data := rm.changeStatus(roleId, string(event), string(role.Status)); !ok {
-		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("change status error: %s", string(data))))
+		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf("change status error: %s", string(data)))
 	}
 
 	if rm.EnableAudit() {
 		if err := rm.postAuditRoleEvent(roleId); err != nil {
-			return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("post audit role event error: %v", err)))
+			return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf("post audit role event error: %v", err))
 		}
 	}
 
 	return getGovernanceRet(string(res.Result), nil)
 }
 
-// =========== PauseAuditAdmin pause audit admin when the audit node which is bound or would be bound is not available
+// PauseAuditAdmin pause audit admin when the audit node which is bound or would be bound is not available
 // 1. audit admin going to frozen
 // 2. if there is proposal about the role, need to reject it
 func (rm *RoleManager) PauseAuditAdmin(nodeId string) *boltvm.Response {
@@ -742,7 +760,7 @@ func (rm *RoleManager) PauseAuditAdmin(nodeId string) *boltvm.Response {
 	specificAddrs := []string{constant.NodeManagerContractAddr.Address().String()}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
-		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.RoleInternalErrCode, err.Error())
 	}
 	if err := rm.checkPermission([]string{string(PermissionSpecific)}, "", rm.CurrentCaller(), addrsData); err != nil {
 		return boltvm.Error(boltvm.RoleNoPermissionCode, fmt.Sprintf(string(boltvm.RoleNoPermissionMsg), rm.CurrentCaller(), fmt.Sprintf("check permission error:%v", err)))
@@ -765,20 +783,20 @@ func (rm *RoleManager) pauseAuditAdmin(roleId string) *boltvm.Response {
 	role, bxhErr := rm.governancePre(roleId, event)
 	if bxhErr != nil {
 		// If the audit admin cannot be suspended, you do not need to suspend the audit administrator. The possibilities are as follows:
-		//- available: Ok. When an audit admin is available, you need to suspend the audit admin if the audit node is successfully deregistered.
-		//- registering: Ok. When an audit admin is registering, you need to suspend the audit admin if an audit node is successfully deregistered.
-		//- binding: Ok. When an audit admin is binding, you need to suspend the audit admin if an audit node is successfully deregistered.
-		//- unavailable: The audit node is not yet bound, so it is not possible to enter this method.
-		//- forbidden: If the audit administrator is logouted, the audit node is automatically unbound. Therefore, this method cannot be used.
-		//- frozen: If the audit node has been suspended, that is, the audit node has been deregistered and cannot be deregistered repeatedly.Therefore, this method cannot be used.
-		//- logouting: The audit administrator is deregistering. The deregistration event has a higher priority than the suspension event, and the suspension event is not required.
+		// - available: Ok. When an audit admin is available, you need to suspend the audit admin if the audit node is successfully deregistered.
+		// - registering: Ok. When an audit admin is registering, you need to suspend the audit admin if an audit node is successfully deregistered.
+		// - binding: Ok. When an audit admin is binding, you need to suspend the audit admin if an audit node is successfully deregistered.
+		// - unavailable: The audit node is not yet bound, so it is not possible to enter this method.
+		// - forbidden: If the audit administrator is logouted, the audit node is automatically unbound. Therefore, this method cannot be used.
+		// - frozen: If the audit node has been suspended, that is, the audit node has been deregistered and cannot be deregistered repeatedly.Therefore, this method cannot be used.
+		// - logouting: The audit administrator is deregistering. The deregistration event has a higher priority than the suspension event, and the suspension event is not required.
 		//   If the audit administrator fails to log out, pause again. If the log out succeeds, unbind the node directly
 		return boltvm.Success(nil)
 	}
 
 	// 2. change status
 	if ok, data := rm.changeStatus(roleId, string(event), string(role.Status)); !ok {
-		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("change status error: %s", string(data))))
+		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf("change status error: %s", string(data)))
 	}
 
 	// 3. reject proposals
@@ -786,26 +804,26 @@ func (rm *RoleManager) pauseAuditAdmin(roleId string) *boltvm.Response {
 		pb.String(roleId),
 		pb.String(string(ClearReason)),
 		pb.Bytes(nil)); !res.Ok {
-		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("cross invoke EndObjProposal error: %s", string(res.Result))))
+		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf("cross invoke EndObjProposal error: %s", string(res.Result)))
 	}
 
 	// 4. post event
 	if rm.EnableAudit() {
 		if err := rm.postAuditRoleEvent(roleId); err != nil {
-			return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("post audit role event error: %v", err)))
+			return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf("post audit role event error: %v", err))
 		}
 	}
 
 	return getGovernanceRet("", nil)
 }
 
-// =========== PauseAuditAdminBinding pause audit admin binding proposal when the audit node is logouting
+// PauseAuditAdminBinding pause audit admin binding proposal when the audit node is logouting
 func (rm *RoleManager) PauseAuditAdminBinding(nodeId string) *boltvm.Response {
 	// 1. check permission: PermissionSpecific (NodeManagerContractAddr)
 	specificAddrs := []string{constant.NodeManagerContractAddr.Address().String()}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
-		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.RoleInternalErrCode, err.Error())
 	}
 	if err := rm.checkPermission([]string{string(PermissionSpecific)}, "", rm.CurrentCaller(), addrsData); err != nil {
 		return boltvm.Error(boltvm.RoleNoPermissionCode, fmt.Sprintf(string(boltvm.RoleNoPermissionMsg), rm.CurrentCaller(), fmt.Sprintf("check permission error:%v", err)))
@@ -821,12 +839,12 @@ func (rm *RoleManager) PauseAuditAdminBinding(nodeId string) *boltvm.Response {
 	if res := rm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "LockLowPriorityProposal",
 		pb.String(role.ID),
 		pb.String(string(governance.EventPause))); !res.Ok {
-		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("cross invoke LockLowPriorityProposal error: %s", string(res.Result))))
+		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf("cross invoke LockLowPriorityProposal error: %s", string(res.Result)))
 	}
 
 	if rm.EnableAudit() {
 		if err := rm.postAuditRoleEvent(role.ID); err != nil {
-			return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("post audit role event error: %v", err)))
+			return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf("post audit role event error: %v", err))
 		}
 	}
 
@@ -855,13 +873,13 @@ func (rm *RoleManager) getBindRoleByNodeID(nodeId string) (*Role, error) {
 	return nil, fmt.Errorf("there is no audit admin currently bound to this audit node(%s)", nodeId)
 }
 
-// =========== RestoreAuditAdminBinding restore audit admin binding proposal when the audit node logout proposal is end
+// RestoreAuditAdminBinding restore audit admin binding proposal when the audit node logout proposal is end
 func (rm *RoleManager) RestoreAuditAdminBinding(nodeId string) *boltvm.Response {
 	// 1. check permission: PermissionSpecific (NodeManagerContractAddr)
 	specificAddrs := []string{constant.NodeManagerContractAddr.Address().String()}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
-		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.RoleInternalErrCode, err.Error())
 	}
 	if err := rm.checkPermission([]string{string(PermissionSpecific)}, "", rm.CurrentCaller(), addrsData); err != nil {
 		return boltvm.Error(boltvm.RoleNoPermissionCode, fmt.Sprintf(string(boltvm.RoleNoPermissionMsg), rm.CurrentCaller(), fmt.Sprintf("check permission error:%v", err)))
@@ -884,13 +902,13 @@ func (rm *RoleManager) restoreAuditAdmin(roleId string) *boltvm.Response {
 	role, bxhErr := rm.governancePre(roleId, event)
 	if bxhErr != nil {
 		// If the audit admin cannot be suspended, you do not need to suspend the audit administrator. The possibilities are as follows:
-		//- available: not possible to enter this method
-		//- registering: Ok. When an audit admin is registering, you need to restore the audit admin if an audit node fails to be deregistered
-		//- binding: Ok. When an audit admin is binding, you need to restore the audit admin if an audit node fails to be deregistered
-		//- unavailable: not possible to enter this method
-		//- forbidden: The logout priority is higher so no proposals need to be restored. Pending proposals are processed when the logout is complete
-		//- frozen: not possible to enter this method
-		//- logouting: The logout priority is higher so no proposals need to be restored. Pending proposals are processed when the logout is complete
+		// - available: not possible to enter this method
+		// - registering: Ok. When an audit admin is registering, you need to restore the audit admin if an audit node fails to be deregistered
+		// - binding: Ok. When an audit admin is binding, you need to restore the audit admin if an audit node fails to be deregistered
+		// - unavailable: not possible to enter this method
+		// - forbidden: The logout priority is higher so no proposals need to be restored. Pending proposals are processed when the logout is complete
+		// - frozen: not possible to enter this method
+		// - logouting: The logout priority is higher so no proposals need to be restored. Pending proposals are processed when the logout is complete
 		return boltvm.Success(nil)
 	}
 
@@ -898,13 +916,13 @@ func (rm *RoleManager) restoreAuditAdmin(roleId string) *boltvm.Response {
 	if res := rm.CrossInvoke(constant.GovernanceContractAddr.Address().String(), "UnLockLowPriorityProposal",
 		pb.String(role.ID),
 		pb.String(string(governance.EventUnpause))); !res.Ok {
-		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("cross invoke UnLockLowPriorityProposal error: %s", string(res.Result))))
+		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf("cross invoke UnLockLowPriorityProposal error: %s", string(res.Result)))
 	}
 
 	// 4. post event
 	if rm.EnableAudit() {
 		if err := rm.postAuditRoleEvent(roleId); err != nil {
-			return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("post audit role event error: %v", err)))
+			return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf("post audit role event error: %v", err))
 		}
 	}
 
@@ -915,7 +933,7 @@ func (rm *RoleManager) OccupyAccount(addrs string, roleType string) *boltvm.Resp
 	specificAddrs := []string{constant.AppchainMgrContractAddr.Address().String(), constant.NodeManagerContractAddr.Address().String()}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
-		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.RoleInternalErrCode, err.Error())
 	}
 	if err := rm.checkPermission([]string{string(PermissionSpecific)}, "", rm.CurrentCaller(), addrsData); err != nil {
 		return boltvm.Error(boltvm.RoleNoPermissionCode, fmt.Sprintf(string(boltvm.RoleNoPermissionMsg), rm.CurrentCaller(), fmt.Sprintf("check permission error:%v", err)))
@@ -935,7 +953,7 @@ func (rm *RoleManager) FreeAccount(addrs string) *boltvm.Response {
 	specificAddrs := []string{constant.AppchainMgrContractAddr.Address().String(), constant.NodeManagerContractAddr.Address().String()}
 	addrsData, err := json.Marshal(specificAddrs)
 	if err != nil {
-		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.RoleInternalErrCode, err.Error())
 	}
 	if err := rm.checkPermission([]string{string(PermissionSpecific)}, "", rm.CurrentCaller(), addrsData); err != nil {
 		return boltvm.Error(boltvm.RoleNoPermissionCode, fmt.Sprintf(string(boltvm.RoleNoPermissionMsg), rm.CurrentCaller(), fmt.Sprintf("check permission error:%v", err)))
@@ -970,44 +988,36 @@ func (rm *RoleManager) checkOccupiedAccount(addr string) (string, bool) {
 
 // GetRole return the role of the caller
 func (rm *RoleManager) GetRole() *boltvm.Response {
-	res, err := rm.getRole(rm.Caller())
-	if err != nil {
-		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), err.Error()))
-	} else {
-		return boltvm.Success([]byte(res))
-	}
+	res := rm.getRole(rm.Caller())
+	return boltvm.Success([]byte(res))
 }
 
-// GetRole return the role of the addr
+// GetRoleByAddr return the role of the addr
 func (rm *RoleManager) GetRoleByAddr(addr string) *boltvm.Response {
-	res, err := rm.getRole(addr)
-	if err != nil {
-		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), err.Error()))
-	} else {
-		return boltvm.Success([]byte(res))
-	}
+	res := rm.getRole(addr)
+	return boltvm.Success([]byte(res))
 }
 
-func (rm *RoleManager) getRole(addr string) (string, error) {
+func (rm *RoleManager) getRole(addr string) string {
 	role := &Role{}
 	ok := rm.GetObject(RoleKey(addr), role)
 	if !ok {
-		return string(NoRole), nil
+		return string(NoRole)
 	}
 
 	switch role.RoleType {
 	case GovernanceAdmin:
 		if role.Weight == repo.SuperAdminWeight {
-			return string(SuperGovernanceAdmin), nil
+			return string(SuperGovernanceAdmin)
 		} else {
-			return string(GovernanceAdmin), nil
+			return string(GovernanceAdmin)
 		}
 	case AuditAdmin:
-		return string(AuditAdmin), nil
+		return string(AuditAdmin)
 	case AppchainAdmin:
-		return string(AppchainAdmin), nil
+		return string(AppchainAdmin)
 	}
-	return string(NoRole), nil
+	return string(NoRole)
 }
 
 // GetRoleInfoById query a role info by roleId
@@ -1020,7 +1030,7 @@ func (rm *RoleManager) GetRoleInfoById(roleId string) *boltvm.Response {
 
 	data, err := json.Marshal(role)
 	if err != nil {
-		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.RoleInternalErrCode, err.Error())
 	}
 
 	return boltvm.Success(data)
@@ -1030,7 +1040,7 @@ func (rm *RoleManager) GetRoleInfoById(roleId string) *boltvm.Response {
 func (rm *RoleManager) GetAllRoles() *boltvm.Response {
 	ret, err := rm.getAll()
 	if err != nil {
-		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.RoleInternalErrCode, err.Error())
 	}
 	if ret == nil {
 		return boltvm.Success(nil)
@@ -1038,7 +1048,7 @@ func (rm *RoleManager) GetAllRoles() *boltvm.Response {
 
 	data, err := json.Marshal(ret)
 	if err != nil {
-		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.RoleInternalErrCode, err.Error())
 	}
 	return boltvm.Success(data)
 }
@@ -1060,7 +1070,7 @@ func (rm *RoleManager) getAll() ([]*Role, error) {
 	return ret, nil
 }
 
-// The role contract includes three role types currently :
+// GetRolesByType The role contract includes three role types currently :
 // - "governanceAdmin"
 // - "auditAdmin"
 // - "appchainAdmin"
@@ -1073,7 +1083,7 @@ func (rm *RoleManager) GetRolesByType(roleType string) *boltvm.Response {
 
 	data, err := json.Marshal(roles)
 	if err != nil {
-		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.RoleInternalErrCode, err.Error())
 	}
 	return boltvm.Success(data)
 }
@@ -1092,7 +1102,7 @@ func (rm *RoleManager) getRolesByType(roleType string) ([]*Role, *boltvm.BxhErro
 			role := Role{}
 			ok := rm.GetObject(RoleKey(id), &role)
 			if !ok {
-				return nil, boltvm.BError(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("the role(%s) of type(%s) is not exist", id, roleType)))
+				return nil, boltvm.BError(boltvm.RoleInternalErrCode, fmt.Sprintf("the role(%s) of type(%s) is not exist", id, roleType))
 			}
 			ret = append(ret, &role)
 		}
@@ -1108,25 +1118,25 @@ func (rm *RoleManager) GetAppchainAdmin(appchainID string) *boltvm.Response {
 		return boltvm.Error(boltvm.RoleNoAppchainAdminCode, fmt.Sprintf(string(boltvm.RoleNoAppchainAdminMsg), appchainID))
 	}
 
-	ret := []*Role{}
+	ret := make([]*Role, 0)
 	for _, addr := range theAppchainAdminIdMap.Keys() {
 		role := &Role{}
 		ok = rm.GetObject(RoleKey(addr), role)
 		if !ok {
-			return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), fmt.Sprintf("the appchain admin(%s) is not exist", addr)))
+			return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf("the appchain admin(%s) is not exist", addr))
 		}
 		ret = append(ret, role)
 	}
 
 	data, err := json.Marshal(ret)
 	if err != nil {
-		return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), err.Error()))
+		return boltvm.Error(boltvm.RoleInternalErrCode, err.Error())
 	}
 
 	return boltvm.Success(data)
 }
 
-// IsAdmin determines whether the role is GovernanceAdmin
+// IsAnyAdmin determines whether the role is GovernanceAdmin
 func (rm *RoleManager) IsAnyAdmin(roleId, roleType string) *boltvm.Response {
 	return boltvm.Success([]byte(strconv.FormatBool(rm.isAdmin(roleId, RoleType(roleType)))))
 }
@@ -1150,7 +1160,7 @@ func (rm *RoleManager) isAdmin(roleId string, roleType RoleType) bool {
 	}
 }
 
-// IsAdmin determines whether the role is GovernanceAdmin
+// IsAnyAvailableAdmin determines whether the role is available GovernanceAdmin
 func (rm *RoleManager) IsAnyAvailableAdmin(roleId, roleType string) *boltvm.Response {
 	return boltvm.Success([]byte(strconv.FormatBool(rm.isAvailableAdmin(roleId, RoleType(roleType)))))
 }
@@ -1224,7 +1234,7 @@ func (rm *RoleManager) checkRoleInfo(role *Role) *boltvm.Response {
 		}
 		var nodeTmp nodemgr.Node
 		if err := json.Unmarshal(res.Result, &nodeTmp); err != nil {
-			return boltvm.Error(boltvm.RoleInternalErrCode, fmt.Sprintf(string(boltvm.RoleInternalErrMsg), err.Error()))
+			return boltvm.Error(boltvm.RoleInternalErrCode, err.Error())
 		}
 		if nodemgr.NVPNode != nodeTmp.NodeType {
 			return boltvm.Error(boltvm.RoleWrongNodeCode, fmt.Sprintf(string(boltvm.RoleWrongNodeMsg), role.NodeAccount))

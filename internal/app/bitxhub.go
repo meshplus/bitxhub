@@ -94,7 +94,7 @@ func NewBitXHub(rep *repo.Repo, orderPath string) (*BitXHub, error) {
 		return nil, fmt.Errorf("get order %s failed: %w", rep.Config.Order.Type, err)
 	}
 
-	order, err := orderCon(
+	consensus, err := orderCon(
 		order.WithRepoRoot(orderRoot),
 		order.WithStoragePath(repo.GetStoragePath(repoRoot, "order")),
 		order.WithOrderType(rep.Config.Order.Type),
@@ -113,7 +113,7 @@ func NewBitXHub(rep *repo.Repo, orderPath string) (*BitXHub, error) {
 		return nil, fmt.Errorf("initialize order failed: %w", err)
 	}
 
-	r, err := router.New(loggers.Logger(loggers.Router), rep, bxh.Ledger, bxh.PeerMgr, order.Quorum())
+	r, err := router.New(loggers.Logger(loggers.Router), rep, bxh.Ledger, bxh.PeerMgr, consensus.Quorum())
 	if err != nil {
 		return nil, fmt.Errorf("create InterchainRouter: %w", err)
 	}
@@ -122,7 +122,7 @@ func NewBitXHub(rep *repo.Repo, orderPath string) (*BitXHub, error) {
 
 	bxh.Ctx = ctx
 	bxh.Cancel = cancel
-	bxh.Order = order
+	bxh.Order = consensus
 	bxh.Router = r
 
 	return bxh, nil
@@ -184,7 +184,11 @@ func GenerateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 			return nil, fmt.Errorf("create readonly ledger: %w", err)
 		}
 	} else {
-		viewLdg.StateLedger = rwLdg.StateLedger.(*ledger2.ComplexStateLedger).Copy()
+		complexLedger, ok := rwLdg.StateLedger.(*ledger2.ComplexStateLedger)
+		if !ok {
+			return nil, fmt.Errorf("config wrong ledger type")
+		}
+		viewLdg.StateLedger = complexLedger.Copy()
 	}
 
 	// 1. create executor and view executor
@@ -261,6 +265,9 @@ func getPreparams(repoRoot string) ([]*bkg.LocalPreParams, error) {
 			return nil, fmt.Errorf("get preparams error: %v", err)
 		}
 		err = json.Unmarshal(val, &preParam)
+		if err != nil {
+			return nil, fmt.Errorf("unmarshal preparam error: %v", err)
+		}
 		preParamArray = append(preParamArray, &preParam)
 	}
 	return preParamArray, nil

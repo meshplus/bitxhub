@@ -1,10 +1,11 @@
 package etcdraft
 
 import (
-	cmap "github.com/orcaman/concurrent-map"
-	"github.com/sirupsen/logrus"
 	"strconv"
 	"time"
+
+	cmap "github.com/orcaman/concurrent-map"
+	"github.com/sirupsen/logrus"
 )
 
 type BatchTimer struct {

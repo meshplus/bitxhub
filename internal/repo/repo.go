@@ -39,6 +39,9 @@ func Load(repoRoot string, passwd string, configPath string, networkPath string)
 	var networkConfig *NetworkConfig
 	if len(networkPath) == 0 {
 		networkConfig, err = loadNetworkConfig(nViper, repoRoot, config.Genesis)
+		if err != nil {
+			return nil, fmt.Errorf("load network config: %w", err)
+		}
 	} else {
 		fileData, err := ioutil.ReadFile(networkPath)
 		if err != nil {
@@ -50,9 +53,9 @@ func Load(repoRoot string, passwd string, configPath string, networkPath string)
 		}
 		networkDir := filepath.Dir(networkPath)
 		networkConfig, err = loadNetworkConfig(nViper, networkDir, config.Genesis)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("load network config: %w", err)
+		if err != nil {
+			return nil, fmt.Errorf("load network config: %w", err)
+		}
 	}
 
 	certs, err := libp2pcert.LoadCerts(repoRoot, config.NodeCertPath, config.AgencyCertPath, config.CACertPath)
@@ -162,7 +165,7 @@ func CheckStrategyExpression(expressionStr string, adminsNum int) error {
 // - whether the proposal is over, if not, you need to wait for the vote
 // - whether the proposal is pass, that is, it has ended, may be passed or rejected
 // - error
-func MakeStrategyDecision(expressionStr string, approve, reject, total, avaliableNum uint64) (bool, bool, error) {
+func MakeStrategyDecision(expressionStr string, approve, reject, total, availableNum uint64) (bool, bool, error) {
 	expression, err := govaluate.NewEvaluableExpression(expressionStr)
 	if err != nil {
 		return false, false, err
@@ -184,7 +187,7 @@ func MakeStrategyDecision(expressionStr string, approve, reject, total, avaliabl
 		return true, true, nil
 	}
 
-	parameters["a"] = avaliableNum - reject
+	parameters["a"] = availableNum - reject
 	result, err = expression.Evaluate(parameters)
 	if err != nil {
 		return false, false, err

@@ -13,7 +13,7 @@ import (
 	"github.com/meshplus/eth-kit/ledger"
 )
 
-func getBalance(context map[string]interface{}, store *wasmtime.Store) *wasmlib.ImportLib {
+func getBalance(context map[string]interface{}) *wasmlib.ImportLib {
 	return &wasmlib.ImportLib{
 		Module: "env",
 		Name:   "get_balance",
@@ -24,7 +24,7 @@ func getBalance(context map[string]interface{}, store *wasmtime.Store) *wasmlib.
 	}
 }
 
-func setBalance(context map[string]interface{}, store *wasmtime.Store) *wasmlib.ImportLib {
+func setBalance(context map[string]interface{}) *wasmlib.ImportLib {
 	return &wasmlib.ImportLib{
 		Module: "env",
 		Name:   "set_balance",
@@ -109,7 +109,7 @@ func addEvent(context map[string]interface{}, store *wasmtime.Store) *wasmlib.Im
 	}
 }
 
-func getCurrentHeight(context map[string]interface{}, store *wasmtime.Store) *wasmlib.ImportLib {
+func getCurrentHeight(context map[string]interface{}) *wasmlib.ImportLib {
 	return &wasmlib.ImportLib{
 		Module: "env",
 		Name:   "get_current_height",
@@ -218,13 +218,13 @@ func setBytes(caller *wasmtime.Caller, store *wasmtime.Store, str []byte) (int32
 
 func ImportLedgerLib(context map[string]interface{}, store *wasmtime.Store) []*wasmlib.ImportLib {
 	var libs []*wasmlib.ImportLib
-	libs = append(libs, getBalance(context, store))
-	libs = append(libs, setBalance(context, store))
+	libs = append(libs, getBalance(context))
+	libs = append(libs, setBalance(context))
 	libs = append(libs, getState(context, store))
 	libs = append(libs, setState(context, store))
 	libs = append(libs, addState(context, store))
 	libs = append(libs, addEvent(context, store))
-	libs = append(libs, getCurrentHeight(context, store))
+	libs = append(libs, getCurrentHeight(context))
 	libs = append(libs, getTxHash(context, store))
 	libs = append(libs, getCaller(context, store))
 	libs = append(libs, getCurrentCaller(context, store))

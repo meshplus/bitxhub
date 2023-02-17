@@ -212,7 +212,7 @@ func (b *BrokerAPI) FetchSignsFromOtherPeers(req *pb.GetSignsRequest) map[string
 			case pb.GetSignsRequest_TSS_IBTP_REQUEST:
 				fallthrough
 			case pb.GetSignsRequest_TSS_IBTP_RESPONSE:
-				_, _, err = b.requestIBTPTssSignPeer(pid, req)
+				err = b.requestIBTPTssSignPeer(pid, req)
 			}
 
 			if err != nil {
@@ -259,10 +259,10 @@ func (b *BrokerAPI) requestIBTPSignPeer(pid uint64, id string, typ pb.GetSignsRe
 	return data.Address, data.Signature, nil
 }
 
-func (b *BrokerAPI) requestIBTPTssSignPeer(pid uint64, req *pb.GetSignsRequest) (string, []byte, error) {
+func (b *BrokerAPI) requestIBTPTssSignPeer(pid uint64, req *pb.GetSignsRequest) error {
 	keysignReqData, err := req.Marshal()
 	if err != nil {
-		return "", nil, fmt.Errorf("GetSignsRequest marshal error: %w", err)
+		return fmt.Errorf("GetSignsRequest marshal error: %w", err)
 	}
 
 	msg := pb.Message{
@@ -275,10 +275,10 @@ func (b *BrokerAPI) requestIBTPTssSignPeer(pid uint64, req *pb.GetSignsRequest) 
 
 	err = b.bxh.PeerMgr.AsyncSend(pid, &msg)
 	if err != nil {
-		return "", nil, fmt.Errorf("send message to %d failed: %w", pid, err)
+		return fmt.Errorf("send message to %d failed: %w", pid, err)
 	}
 
-	return "", nil, nil
+	return nil
 }
 
 func (b *BrokerAPI) requestBlockHeaderSignFromPeer(pid uint64, height string) (string, []byte, error) {
@@ -358,6 +358,9 @@ func (b *BrokerAPI) GetSign(req *pb.GetSignsRequest, signers []string) (string, 
 			return "", nil, nil, fmt.Errorf("get block header sign: %w", err)
 		}
 		signData, err = b.bxh.Ledger.GetBlockSign(height)
+		if err != nil {
+			return "", nil, nil, fmt.Errorf("get block header sign: %w", err)
+		}
 	case pb.GetSignsRequest_MULTI_BURN:
 		addr, signData, err = b.handleMultiSignsBurnReq(req.Content)
 	default:
@@ -438,20 +441,20 @@ func (b *BrokerAPI) handleMultiSignsBurnReq(hash string) (string, []byte, error)
 	return key.Address, sign, nil
 }
 
-func (b BrokerAPI) GetPendingNonceByAccount(account string) uint64 {
+func (b *BrokerAPI) GetPendingNonceByAccount(account string) uint64 {
 	return b.bxh.Order.GetPendingNonceByAccount(account)
 }
 
-func (b BrokerAPI) GetPendingTransactions(max int) []pb.Transaction {
+func (b *BrokerAPI) GetPendingTransactions(_ int) []pb.Transaction {
 	// TODO
 	return nil
 }
 
-func (b BrokerAPI) GetPoolTransaction(hash *types.Hash) pb.Transaction {
+func (b *BrokerAPI) GetPoolTransaction(hash *types.Hash) pb.Transaction {
 	return b.bxh.Order.GetPendingTxByHash(hash)
 }
 
-func (b BrokerAPI) GetStateLedger() ledger.StateLedger {
+func (b *BrokerAPI) GetStateLedger() ledger.StateLedger {
 	return b.bxh.Ledger.StateLedger
 }
 
@@ -463,7 +466,7 @@ func (b *BrokerAPI) FetchTssInfoFromOtherPeers() []*pb.TssInfo {
 	)
 
 	wg.Add(len(b.bxh.PeerMgr.OtherPeers()))
-	for pid, _ := range b.bxh.PeerMgr.OtherPeers() {
+	for pid := range b.bxh.PeerMgr.OtherPeers() {
 		go func(pid uint64, wg *sync.WaitGroup, lock *sync.Mutex) {
 			defer wg.Done()
 			if err := retry.Retry(func(attempt uint) error {

@@ -180,25 +180,6 @@ func registerRole(ctx *cli.Context) error {
 	return nil
 }
 
-func updateRole(ctx *cli.Context) error {
-	id := ctx.String("id")
-	nodePid := ctx.String("nodePid")
-	reason := ctx.String("reason")
-
-	receipt, err := invokeBVMContract(ctx, constant.RoleContractAddr.Address().String(), "UpdateAuditAdminNode", pb.String(id), pb.String(nodePid), pb.String(reason))
-	if err != nil {
-		return err
-	}
-
-	if receipt.IsSuccess() {
-		proposalId := gjson.Get(string(receipt.Ret), "proposal_id").String()
-		color.Green("proposal id is %s\n", proposalId)
-	} else {
-		color.Red("update auditAdmin node error: %s\n", string(receipt.Ret))
-	}
-	return nil
-}
-
 func freezeRole(ctx *cli.Context) error {
 	id := ctx.String("id")
 	reason := ctx.String("reason")

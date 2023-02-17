@@ -231,18 +231,6 @@ func TestInterchainRouter_AddNonexistentPier(t *testing.T) {
 	require.Nil(t, router.Stop())
 }
 
-func TestCalcTimeoutL2Root(t *testing.T) {
-	router := testStartRouter(t)
-	list := []string{"11", "22"}
-	router.calcTimeoutL2Root(list)
-}
-
-func TestFetchSigns(t *testing.T) {
-	router := testStartRouter(t)
-	router.fetchSigns(1)
-
-}
-
 //func TestInterchainRouter_AddUnionPier(t *testing.T) {
 //	router := testStartRouter(t)
 //

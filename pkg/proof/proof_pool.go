@@ -253,10 +253,6 @@ func (pl *VerifyPool) getAppchain(chainID string) (*appchainMgr.Appchain, error)
 	return app, nil
 }
 
-func (pl *VerifyPool) putProof(proofHash types.Hash, proof []byte) {
-	pl.proofs.Store(proofHash, proof)
-}
-
 func (pl *VerifyPool) GetProof(txHash types.Hash) ([]byte, bool) {
 	proof, ok := pl.proofs.Load(txHash)
 	if !ok {

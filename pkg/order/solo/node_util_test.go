@@ -43,10 +43,7 @@ func mockSoloNode(t *testing.T, enableTimed bool) (*Node, error) {
 		mempoolConf.IsTimed = true
 	}
 
-	mempoolInst, err := mempool.NewMempool(mempoolConf)
-	if err != nil {
-		return nil, err
-	}
+	mempoolInst := mempool.NewMemPool(mempoolConf)
 	batchC := make(chan *raftproto.RequestBatch)
 	getTxC := make(chan *mempool.GetTxReq)
 	ctx, cancel := context.WithCancel(context.Background())

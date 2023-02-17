@@ -65,7 +65,7 @@ func (n *Node) SendTransaction(targetID uint64, request []byte) {
 
 func (n *Node) Nodes() []uint64 {
 	nodes := make([]uint64, 0)
-	for id, _ := range n.peerMgr.OrderPeers() {
+	for id := range n.peerMgr.OrderPeers() {
 		nodes = append(nodes, id)
 	}
 	sort.Slice(nodes, func(i, j int) bool {

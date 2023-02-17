@@ -14,6 +14,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const (
+	cpu     = "cpu"
+	runtime = "runtime"
+)
+
 type Pprof struct {
 	repoRoot string
 	config   *repo.PProf
@@ -47,7 +52,7 @@ func (p *Pprof) init() {
 func (p *Pprof) Start() error {
 	if p.config.Enable {
 		switch p.config.PType {
-		case "runtime":
+		case runtime:
 			go p.runtimePProf()
 		case "http":
 			go p.httpPProf()
@@ -62,7 +67,7 @@ func (p *Pprof) Start() error {
 func (p *Pprof) Stop() error {
 	if p.config.Enable {
 		switch p.config.PType {
-		case "runtime":
+		case runtime:
 			p.logger.Info("Stop runtime profile")
 			p.cancel()
 		case "http":
@@ -89,7 +94,7 @@ func (p *Pprof) runtimePProf() {
 	}
 
 	var cpuFile *os.File
-	if p.config.Mode == "cpu" {
+	if p.config.Mode == cpu {
 		subPath := fmt.Sprint("cpu-", time.Now().Format("20060102-15:04:05"))
 		cpuPath := filepath.Join(rootPath, subPath)
 		cpuFile, _ = os.Create(cpuPath)
@@ -99,7 +104,7 @@ func (p *Pprof) runtimePProf() {
 		select {
 		case <-tick.C:
 			switch p.config.Mode {
-			case "cpu":
+			case cpu:
 				pprof.StopCPUProfile()
 				_ = cpuFile.Close()
 				subPath := fmt.Sprint("cpu-", time.Now().Format("20060102-15:04:05"))
@@ -114,7 +119,7 @@ func (p *Pprof) runtimePProf() {
 				_ = memFile.Close()
 			}
 		case <-p.ctx.Done():
-			if p.config.Mode == "cpu" {
+			if p.config.Mode == cpu {
 				pprof.StopCPUProfile()
 			}
 			return
@@ -159,10 +164,7 @@ func (p *Pprof) ReConfig(config *repo.Config) error {
 func fileExist(path string) bool {
 	_, err := os.Stat(path)
 	if err != nil {
-		if os.IsExist(err) {
-			return true
-		}
-		return false
+		return os.IsExist(err)
 	}
 	return true
 }
