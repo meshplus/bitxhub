@@ -237,7 +237,6 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, bool, *bol
 			// now isBatch identifies the dst service support pier transmit batch IBTP to dst appChain
 			isBatch, targetError = x.checkTargetAvailability(srcChainService, dstChainService, ibtp.Type)
 
-			// abandon it because of all service must be ordered
 			if !isBatch {
 				if err := checkIndex(interchain.InterchainCounter[dstChainService.getFullServiceId()]+1, ibtp.Index); err != nil {
 					return nil, isBatch, nil, err
@@ -273,9 +272,10 @@ func (x *InterchainManager) checkIBTP(ibtp *pb.IBTP) (*pb.Interchain, bool, *bol
 				return nil, isBatch, nil, boltvm.BError(boltvm.InterchainInvalidIBTPNotInCurBXHCode, fmt.Sprintf(string(boltvm.InterchainInvalidIBTPNotInCurBXHMsg), ibtp.ID()))
 			}
 		}
-		// todo(lrx): adapt receipt batch
-		if err := checkIndex(interchain.ReceiptCounter[dstChainService.getFullServiceId()]+1, ibtp.Index); err != nil {
-			return nil, isBatch, nil, err
+		if !isBatch {
+			if err := checkIndex(interchain.ReceiptCounter[dstChainService.getFullServiceId()]+1, ibtp.Index); err != nil {
+				return nil, isBatch, nil, err
+			}
 		}
 	} else {
 		return nil, isBatch, nil, boltvm.BError(boltvm.InterchainInvalidIBTPIllegalTypeCode, fmt.Sprintf(string(boltvm.InterchainInvalidIBTPIllegalTypeMsg), ibtp.Type))
