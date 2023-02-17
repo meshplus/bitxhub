@@ -21,13 +21,13 @@ func (cbs *ChainBrokerService) GetInfo(ctx context.Context, req *pb.Request) (*p
 	}
 }
 
-func (cbs *ChainBrokerService) GetTPS(ctx context.Context, req *pb.GetTPSRequest) (*pb.Response, error) {
+func (cbs *ChainBrokerService) GetTPS(ctx context.Context, req *pb.GetTPSRequest) (*pb.GetTPSResponse, error) {
 	tps, err := cbs.api.Chain().TPS(req.Begin, req.End)
 	if err != nil {
 		return nil, fmt.Errorf("get tps between %d and %d failed: %w", req.Begin, req.End, err)
 	}
 
-	return &pb.Response{Data: []byte(tps)}, nil
+	return tps, nil
 }
 
 func (cbs *ChainBrokerService) GetChainID(ctx context.Context, empty *pb.Empty) (*pb.Response, error) {
