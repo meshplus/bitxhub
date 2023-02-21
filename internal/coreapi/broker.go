@@ -117,6 +117,10 @@ func (b *BrokerAPI) GetBlock(mode string, value string) (*pb.Block, error) {
 			return nil, fmt.Errorf("invalid format of block hash for querying block")
 		}
 		return b.bxh.Ledger.GetBlockByHash(hash)
+	case "LATEST":
+		meta := b.bxh.Ledger.GetChainMeta()
+		height := meta.Height
+		return b.bxh.Ledger.GetBlock(height)
 	default:
 		return nil, fmt.Errorf("wrong args about getting block: %s", mode)
 	}
@@ -167,6 +171,10 @@ func (b *BrokerAPI) OrderReady() error {
 }
 
 func (b *BrokerAPI) FetchSignsFromOtherPeers(req *pb.GetSignsRequest) map[string][]byte {
+	// if type is solo, needn't fetch sign from others
+	if b.bxh.GetSoloType() {
+		return nil
+	}
 	var (
 		result = make(map[string][]byte)
 		wg     = sync.WaitGroup{}
@@ -407,7 +415,7 @@ func (b *BrokerAPI) handleMultiSignsBurnReq(hash string) (string, []byte, error)
 		return "", nil, fmt.Errorf("not found burn log:%v", receipt.TxHash.Hash)
 	}
 
-	//abi.encodePacked
+	// abi.encodePacked
 	abiHash := solsha3.SoliditySHA3(
 		solsha3.Address(burn.AppToken.String()),
 		solsha3.Address(burn.Burner.String()),

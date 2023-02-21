@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"encoding/base64"
 	"encoding/binary"
@@ -238,4 +239,20 @@ func IsTssReq(req *pb.GetSignsRequest) bool {
 	default:
 		return false
 	}
+}
+
+func PrettyPrint(v interface{}) {
+	b, err := json.Marshal(v)
+	if err != nil {
+		fmt.Println(v)
+		return
+	}
+
+	var out bytes.Buffer
+	err = json.Indent(&out, b, "", "  ")
+	if err != nil {
+		fmt.Println(v)
+		return
+	}
+	fmt.Println(out.String())
 }

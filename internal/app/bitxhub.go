@@ -432,3 +432,7 @@ func (bxh *BitXHub) raiseUlimit(limitNew uint64) error {
 func (bxh *BitXHub) GetPrivKey() *repo.Key {
 	return bxh.repo.Key
 }
+
+func (bxh *BitXHub) GetSoloType() bool {
+	return bxh.repo.Config.Solo
+}
