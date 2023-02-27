@@ -113,10 +113,17 @@ mod:
 linter:
 	golangci-lint run
 
-## make cluster: Run cluster including 4 nodes
+## make cluster: Run cluster including 4 nodes(including compile and clean storage)
 cluster:install${TAGS}
 	@cd scripts && bash cluster.sh TAGS=${TAGS}
 
+## make cluster-restart: Restart cluster including 4 nodes without compile and clean storage
+cluster-restart:
+	@cd scripts && bash cluster_restart.sh TAGS=${TAGS}
+
+## clean nodes storage
+clean-storage:
+	@cd scripts && bash clean_storage.sh
 ## make solo: Run one node in solo mode
 solo:install${TAGS}
 	@cd scripts && bash solo.sh TAGS=${TAGS}

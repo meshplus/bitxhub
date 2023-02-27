@@ -4,7 +4,10 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
+
+	"github.com/meshplus/bitxhub/pkg/tssmgr"
 
 	"github.com/Rican7/retry"
 	"github.com/Rican7/retry/strategy"
@@ -94,17 +97,33 @@ func (bxh *BitXHub) listenEvent() {
 					bxh.TssMgr.SetOrderReadyPeers(id)
 					return
 				default:
-					if bxh.TssMgr.GetTssStatus() {
-						bxh.logger.Debugf("keygen task is done")
-						return
-					}
-					bxh.logger.Debugf("get tss msg to put")
+					bxh.logger.Debug("get tss msg to put")
 					wireMsg := &message.WireMessage{}
 					if err := json.Unmarshal(msg.Data, wireMsg); err != nil {
 						bxh.logger.Errorf(fmt.Sprintf("unmarshal wire msg error: %v", err))
-					} else {
-						bxh.TssMgr.PutTssMsg(msg, wireMsg.MsgID)
+						return
 					}
+					// check if msgID tss round done
+					done, err := bxh.TssMgr.IsTssRoundDone(wireMsg.MsgID)
+					if err != nil {
+						if strings.Contains(err.Error(), tssmgr.GetInfoErr) {
+							bxh.logger.WithFields(logrus.Fields{"done": done, "err": err}).Warning("check tss round done")
+							return
+						}
+					}
+					if done {
+						bxh.logger.Debugf("tss round done msgID:%s", wireMsg.MsgID)
+						return
+					}
+
+					if wireMsg.MsgType == message.TSSTaskDone {
+						//bxh.logger.Errorf("==========start set tss round done")
+						err := bxh.TssMgr.SetTssRoundDone(wireMsg.MsgID, false)
+						if err != nil {
+							bxh.logger.Errorf("set tss round done err:%s", err)
+						}
+					}
+					bxh.TssMgr.PutTssMsg(msg, wireMsg.MsgID)
 				}
 			}()
 		case ev := <-blockCh:

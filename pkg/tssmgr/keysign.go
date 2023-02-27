@@ -18,14 +18,14 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// return :
+// KeySign return :
 // - signature data
 // - blame nodes id list
 // - error
-func (t *TssMgr) Keysign(signers []string, msgs []string, randomN string) ([]byte, []string, error) {
-	t.keyRoundDone.Store(false)
-	defer t.keyRoundDone.Store(true)
-	// 1. get pool pubkey
+func (t *TssMgr) KeySign(signers []string, msgs []string, randomN string) ([]byte, []string, error) {
+	//t.keyRoundDone.Store(false)
+	//defer t.keyRoundDone.Store(true)
+	// 1. get pool pubKey
 	_, pk, err := t.GetTssPubkey()
 	if err != nil {
 		return nil, nil, fmt.Errorf("get tss pubkey error: %w", err)
@@ -61,6 +61,10 @@ func (t *TssMgr) Keysign(signers []string, msgs []string, randomN string) ([]byt
 	if err != nil {
 		return nil, nil, fmt.Errorf("tss init error: %v", err)
 	}
+
+	// for this msgID, start key sign round
+	t.keyRoundDone.Add(msgID, &KeyRoundDoneInfo{ParitiesIDLen: len(signers), RemoteDoneIDLen: 0})
+
 	_, ok := t.tssInstances.Load(msgID)
 	if ok {
 		return nil, nil, fmt.Errorf("repeated msgID: %s", msgID)
@@ -73,7 +77,7 @@ func (t *TssMgr) Keysign(signers []string, msgs []string, randomN string) ([]byt
 		if errors.Is(err, tss.ErrNotActiveSigner) {
 			return nil, nil, err
 		} else if resp != nil && len(resp.Blame.BlameNodes) != 0 {
-			culpritIDs := []string{}
+			culpritIDs := make([]string, 0)
 			for _, node := range resp.Blame.BlameNodes {
 				culpritIDs = append(culpritIDs, node.PartyID)
 			}

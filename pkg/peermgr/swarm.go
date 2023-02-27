@@ -551,6 +551,10 @@ func (swarm *Swarm) ReConfig(config interface{}) error {
 	return nil
 }
 
+func (swarm *Swarm) GetLocalID() uint64 {
+	return swarm.localID
+}
+
 func (swarm *Swarm) SubscribeTssMessage(ch chan<- *pb.Message) event.Subscription {
 	return swarm.tssMessageFeed.Subscribe(ch)
 }

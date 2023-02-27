@@ -498,6 +498,20 @@ func (mr *MockBrokerAPIMockRecorder) RemovePier(pierID interface{}) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemovePier", reflect.TypeOf((*MockBrokerAPI)(nil).RemovePier), pierID)
 }
 
+// SetTssNotParties mocks base method.
+func (m *MockBrokerAPI) SetTssNotParties(tssReq *pb.GetSignsRequest, singers []string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetTssNotParties", tssReq, singers)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetTssNotParties indicates an expected call of SetTssNotParties.
+func (mr *MockBrokerAPIMockRecorder) SetTssNotParties(tssReq, singers interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetTssNotParties", reflect.TypeOf((*MockBrokerAPI)(nil).SetTssNotParties), tssReq, singers)
+}
+
 // MockNetworkAPI is a mock of NetworkAPI interface.
 type MockNetworkAPI struct {
 	ctrl     *gomock.Controller
@@ -519,6 +533,20 @@ func NewMockNetworkAPI(ctrl *gomock.Controller) *MockNetworkAPI {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockNetworkAPI) EXPECT() *MockNetworkAPIMockRecorder {
 	return m.recorder
+}
+
+// LocalPeerID mocks base method.
+func (m *MockNetworkAPI) LocalPeerID() uint64 {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LocalPeerID")
+	ret0, _ := ret[0].(uint64)
+	return ret0
+}
+
+// LocalPeerID indicates an expected call of LocalPeerID.
+func (mr *MockNetworkAPIMockRecorder) LocalPeerID() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LocalPeerID", reflect.TypeOf((*MockNetworkAPI)(nil).LocalPeerID))
 }
 
 // OtherPeers mocks base method.

@@ -20,7 +20,6 @@ func (t *TssMgr) Keygen(isAddNodeReq bool) error {
 	t.logger.Infof("============== Keygen start, %v", isAddNodeReq)
 	t.keyGenLocker.Lock()
 	defer t.keyGenLocker.Unlock()
-	t.keyRoundDone.Store(false)
 	// 如果是因为新增节点收到了keygen req,不需要检查本地tss信息，直接keygen
 	if !isAddNodeReq {
 		// 1. 获取本地持久化公钥信息
@@ -102,6 +101,17 @@ func (t *TssMgr) Keygen(isAddNodeReq bool) error {
 			}).Warnf("repeated msgID tss")
 			return fmt.Errorf("repeated msgID: %s", msgID)
 		}
+
+		// Get parties info
+		partiesID, _, err := conversion.GetParties(keygenReq.Pubkeys, t.localPubK, t.peerMgr.Peers())
+		if err != nil {
+			return fmt.Errorf("fail to get keygen parties: %w", err)
+		}
+
+		// for this msgID, start key generate round
+		t.keyRoundDone.Add(msgID, &KeyRoundDoneInfo{ParitiesIDLen: len(partiesID), RemoteDoneIDLen: 0})
+
+		// store msgID ensure no repeat msg
 		t.tssInstances.Store(msgID, tssInstance)
 		defer t.tssInstances.Delete(msgID)
 		resp, err := tssInstance.Keygen(keygenReq)
@@ -125,7 +135,6 @@ func (t *TssMgr) Keygen(isAddNodeReq bool) error {
 		}).Errorf("tss keygen failed")
 		return fmt.Errorf("tss keygen failed: %v", err)
 	}
-	t.keyRoundDone.Store(true)
 	return nil
 }
 

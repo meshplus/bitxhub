@@ -14,7 +14,7 @@ type TssManager interface {
 
 	Keygen(isKeygenReq bool) error
 
-	Keysign(signers []string, msgs []string, randomN string) ([]byte, []string, error)
+	KeySign(signers []string, msgs []string, randomN string) ([]byte, []string, error)
 
 	PutTssMsg(msg *pb.Message, msgID string)
 
@@ -29,4 +29,9 @@ type TssManager interface {
 	UpdateThreshold(threshold uint64)
 
 	GetThreshold() uint64
+}
+
+type KeyRoundDoneInfo struct {
+	ParitiesIDLen   int // this keyRound parties length
+	RemoteDoneIDLen int // receive tssTaskDone msg length
 }

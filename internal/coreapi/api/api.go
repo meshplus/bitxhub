@@ -51,6 +51,8 @@ type BrokerAPI interface {
 
 	FetchSignsFromOtherPeers(req *pb.GetSignsRequest) map[string][]byte
 	FetchTssInfoFromOtherPeers() []*pb.TssInfo
+	SetTssNotParties(tssReq *pb.GetSignsRequest, singers []string) error
+
 	GetSign(req *pb.GetSignsRequest, signers []string) (string, []byte, []string, error)
 	GetBlockHeaders(start uint64, end uint64) ([]*pb.BlockHeader, error)
 	GetQuorum() uint64
@@ -63,6 +65,7 @@ type NetworkAPI interface {
 	PeerInfo() ([]byte, error)
 	PierManager() peermgr.PierManager
 	OtherPeers() map[uint64]*peer.AddrInfo
+	LocalPeerID() uint64
 }
 
 type ChainAPI interface {
