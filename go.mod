@@ -79,3 +79,5 @@ replace github.com/agl/ed25519 => github.com/binance-chain/edwards25519 v0.0.0-2
 replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4
 
 replace github.com/golang/protobuf => github.com/golang/protobuf v1.3.2
+
+replace github.com/karalabe/usb => github.com/karalabe/usb v0.0.2
