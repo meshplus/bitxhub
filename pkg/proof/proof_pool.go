@@ -146,24 +146,26 @@ func (pl *VerifyPool) verifyProof(ibtp *pb.IBTP, proof []byte) (bool, error) {
 		return verifyMultiSign(app, ibtp, proof)
 	}
 
-	validateAddr := validator.FabricRuleAddr
-	rl := &contracts.Rule{}
-	ok, data = pl.getAccountState(constant.RuleManagerContractAddr, contracts.RuleKey(from))
-	if ok {
-		if err := json.Unmarshal(data, rl); err != nil {
-			return false, fmt.Errorf("unmarshal rule data error: %w", err)
-		}
-		validateAddr = rl.Address
-	} else {
-		if app.ChainType != appchainMgr.FabricType {
-			return false, fmt.Errorf("appchain didn't register rule")
-		}
-	}
+	// ignore rule validation
+	//validateAddr := validator.FabricRuleAddr
+	//rl := &contracts.Rule{}
+	//ok, data = pl.getAccountState(constant.RuleManagerContractAddr, contracts.RuleKey(from))
+	//if ok {
+	//	if err := json.Unmarshal(data, rl); err != nil {
+	//		return false, fmt.Errorf("unmarshal rule data error: %w", err)
+	//	}
+	//	validateAddr = rl.Address
+	//} else {
+	//	if app.ChainType != appchainMgr.FabricType {
+	//		return false, fmt.Errorf("appchain didn't register rule")
+	//	}
+	//}
+	//
+	//ok, err = pl.ve.Validate(validateAddr, from, proof, ibtp.Payload, app.Validators) // ibtp.From
+	//if err != nil {
+	//	return false, err
+	//}
 
-	ok, err = pl.ve.Validate(validateAddr, from, proof, ibtp.Payload, app.Validators) // ibtp.From
-	if err != nil {
-		return false, err
-	}
 	return ok, nil
 }
 
