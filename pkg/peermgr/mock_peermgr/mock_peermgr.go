@@ -117,6 +117,20 @@ func (mr *MockPeerManagerMockRecorder) Disconnect(vpInfos interface{}) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Disconnect", reflect.TypeOf((*MockPeerManager)(nil).Disconnect), vpInfos)
 }
 
+// GetLocalID mocks base method.
+func (m *MockPeerManager) GetLocalID() uint64 {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetLocalID")
+	ret0, _ := ret[0].(uint64)
+	return ret0
+}
+
+// GetLocalID indicates an expected call of GetLocalID.
+func (mr *MockPeerManagerMockRecorder) GetLocalID() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLocalID", reflect.TypeOf((*MockPeerManager)(nil).GetLocalID))
+}
+
 // OrderPeers mocks base method.
 func (m *MockPeerManager) OrderPeers() map[uint64]*pb.VpInfo {
 	m.ctrl.T.Helper()

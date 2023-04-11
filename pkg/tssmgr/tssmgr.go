@@ -10,12 +10,12 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/Rican7/retry"
 	"github.com/Rican7/retry/strategy"
 	bkg "github.com/binance-chain/tss-lib/ecdsa/keygen"
+	lru "github.com/hashicorp/golang-lru"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	peer_mgr "github.com/meshplus/bitxhub-core/peer-mgr"
 	"github.com/meshplus/bitxhub-core/tss"
@@ -29,6 +29,11 @@ import (
 
 var _ TssManager = (*TssMgr)(nil)
 
+const (
+	cacheSize  = 1024
+	GetInfoErr = "get tss round Done val err"
+)
+
 type TssMgr struct {
 	localID    uint64
 	localPrivK crypto.PrivKey
@@ -41,7 +46,7 @@ type TssMgr struct {
 	tssRepo         string
 	orderReadyPeers map[uint64]bool
 	lock            sync.Mutex
-	keyRoundDone    *atomic.Value
+	keyRoundDone    *lru.Cache
 
 	keygenPreParams  *bkg.LocalPreParams
 	keygenLocalState *storage.KeygenLocalState
@@ -95,9 +100,12 @@ func NewTssMgr(
 			return new(tss.TssInstance)
 		},
 	}
+
+	keyRoundDone, err := lru.New(cacheSize)
+	if err != nil {
+		return nil, err
+	}
 	ctx, cancel := context.WithCancel(context.Background())
-	keyRoundDone := &atomic.Value{}
-	keyRoundDone.Store(false)
 	return &TssMgr{
 		localID:         netConf.ID,
 		localPrivK:      privKey,
@@ -127,8 +135,42 @@ func (t *TssMgr) SetOrderReadyPeers(id uint64) {
 	t.orderReadyPeers[id] = true
 }
 
-func (t *TssMgr) GetTssStatus() bool {
-	return t.keyRoundDone.Load().(bool)
+func (t *TssMgr) IsTssRoundDone(msgID string) (bool, error) {
+	if t.keyRoundDone == nil {
+		return false, fmt.Errorf("init tss manager is not finished")
+	}
+	val, ok := t.keyRoundDone.Get(msgID)
+	if !ok {
+		return false, fmt.Errorf("there is no process of tss with the msgID:%s", msgID)
+	}
+	info, ok := val.(*KeyRoundDoneInfo)
+	if !ok {
+		return false, fmt.Errorf("%s:[val:%v]", GetInfoErr, val)
+	}
+
+	return info.RemoteDoneIDLen == info.ParitiesIDLen-1, nil
+}
+
+func (t *TssMgr) SetTssRoundDone(msgID string, notParties bool) error {
+	// if this tss node is not parties, ignore tss msg
+	if notParties {
+		info := &KeyRoundDoneInfo{ParitiesIDLen: 1, RemoteDoneIDLen: 0}
+		t.keyRoundDone.Add(msgID, info)
+		t.logger.WithFields(logrus.Fields{"msgId": msgID, "info": info}).Debugf("set not Parties Tss Round done")
+		return nil
+	}
+	val, ok := t.keyRoundDone.Get(msgID)
+	if !ok {
+		return fmt.Errorf("there is no process of tss with the msgID:%s", msgID)
+	}
+	info, ok := val.(*KeyRoundDoneInfo)
+	if !ok {
+		return fmt.Errorf("get tss round Done val err:[val:%v]", val)
+	}
+	info.RemoteDoneIDLen++
+	t.logger.WithFields(logrus.Fields{"msgId": msgID, "info": info}).Debugf("set Tss Round done")
+	t.keyRoundDone.Add(msgID, info)
+	return nil
 }
 
 func (t *TssMgr) CountOrderReadyPeers() int {
@@ -138,11 +180,9 @@ func (t *TssMgr) CountOrderReadyPeers() int {
 func (t *TssMgr) Start(threshold uint64) {
 	// 1. set threshold
 	// 2. load tss local state
-
 	t.UpdateThreshold(threshold)
 
 	// 1. get pool addr from file
-
 	if err := t.loadTssLocalState(); err != nil {
 		t.logger.Warn("load tss info error: %v", err)
 		if checkeErr := retry.Retry(func(attempt uint) error {
@@ -184,7 +224,7 @@ func (t *TssMgr) sendOrderReady() error {
 	return nil
 }
 
-// make sure bitxhub have t+1 connected nodes
+// CheckThreshold make sure bitxhub have t+1 connected nodes
 func (t *TssMgr) CheckThreshold() error {
 	var (
 		err          error
@@ -248,7 +288,7 @@ func (t *TssMgr) PutTssMsg(msg *pb.Message, msgID string) {
 				return fmt.Errorf("wire msg unmarshal error: %v", err)
 			}
 
-			t.logger.WithFields(logrus.Fields{"msgID": wireMsg.MsgID, "type": wireMsg.MsgType}).Debug("wrong tss msg")
+			t.logger.WithFields(logrus.Fields{"msgID": wireMsg.MsgID, "type": wireMsg.MsgType}).Debug("load tss instance err")
 			return fmt.Errorf("tss instance not found, msgID: %s", msgID)
 		} else {
 			instance.(*tss.TssInstance).PutTssMsg(msg)

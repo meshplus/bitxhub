@@ -15,7 +15,9 @@ import (
 	"github.com/Rican7/retry"
 	"github.com/Rican7/retry/strategy"
 	"github.com/ethereum/go-ethereum/crypto"
+	crypto3 "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/meshplus/bitxhub-core/tss/conversion"
+	"github.com/meshplus/bitxhub-core/tss/keysign"
 	crypto2 "github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/constant"
@@ -65,7 +67,7 @@ func GetIBTPSign(ledger *ledger.Ledger, id string, isReq bool, privKey crypto2.P
 	return addr.String(), sign, nil
 }
 
-// return :
+// GetIBTPTssSign return:
 // - signature data
 // - blame nodes id list
 // - error
@@ -75,12 +77,60 @@ func GetIBTPTssSign(tssMgr *tssmgr.TssMgr, ledger *ledger.Ledger, content string
 		return nil, nil, fmt.Errorf("get msg to sign err: %w", err)
 	}
 
-	return tssMgr.Keysign(signers, msgs, randomN)
+	return tssMgr.KeySign(signers, msgs, randomN)
+}
+
+func NotifyNotTssParties(tssMgr *tssmgr.TssMgr, ledger *ledger.Ledger, content string, isReq bool, signers []string, randomN string) error {
+	msgID, err := getTssMsgID(tssMgr, ledger, content, isReq, signers, randomN)
+	if err != nil {
+		return fmt.Errorf("get tss msg id err: %w", err)
+	}
+	err = tssMgr.SetTssRoundDone(msgID, true)
+	return err
+}
+
+func getTssMsgID(tssMgr *tssmgr.TssMgr, ledger *ledger.Ledger, content string, isReq bool, signers []string, randomN string) (string, error) {
+	msgs, err := getMsgToSign(ledger, content, isReq)
+	if err != nil {
+		return "", fmt.Errorf("get msg to sign err: %w", err)
+	}
+
+	// 1. get pool pubKey
+	_, pk, err := tssMgr.GetTssPubkey()
+	if err != nil {
+		return "", fmt.Errorf("get tss pubkey error: %w", err)
+	}
+
+	// 2. get signers pk
+	tssInfo, err := tssMgr.GetTssInfo()
+	if err != nil {
+		return "", fmt.Errorf("fail to get keygen parties pk map error: %w", err)
+	}
+	signersPk := make([]crypto3.PubKey, 0)
+	for _, id := range signers {
+		data, ok := tssInfo.PartiesPkMap[id]
+		if !ok {
+			return "", fmt.Errorf("party %s is not keygen party", id)
+		}
+		pk, err := conversion.GetPubKeyFromPubKeyData(data)
+		if err != nil {
+			return "", fmt.Errorf("fail to conversion pubkeydata to pubkey: %w", err)
+		}
+		signersPk = append(signersPk, pk)
+	}
+
+	// 3, new req to sign
+	keysignReq := keysign.NewRequest(pk, msgs, signersPk, randomN)
+	msgID, err := keysignReq.RequestToMsgId()
+	if err != nil {
+		return "", err
+	}
+	return msgID, nil
 }
 
 func getMsgToSign(ledger *ledger.Ledger, content string, isReq bool) ([]string, error) {
 	ids := strings.Split(strings.Replace(content, " ", "", -1), ",")
-	msgs := []string{}
+	msgs := make([]string, 0)
 	for _, id := range ids {
 		ibtp, err := GetIBTP(ledger, id, isReq)
 		if err != nil {
@@ -311,4 +361,28 @@ func PrettyPrint(v interface{}) {
 		return
 	}
 	fmt.Println(out.String())
+}
+
+func FindUnmatched(child []string, all []string) []string {
+	childMap := make(map[string]bool)
+	for _, val := range child {
+		childMap[val] = true
+	}
+
+	var unmatched []string
+	for _, val := range all {
+		if _, ok := childMap[val]; !ok {
+			unmatched = append(unmatched, val)
+		}
+	}
+	return unmatched
+}
+
+func IsContained(child string, all []string) bool {
+	for _, val := range all {
+		if val == child {
+			return true
+		}
+	}
+	return false
 }

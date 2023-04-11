@@ -170,6 +170,17 @@ func (b *BrokerAPI) OrderReady() error {
 	return b.bxh.Order.Ready()
 }
 
+func (b *BrokerAPI) convertTssID(str string) []uint64 {
+	peers := make([]uint64, 0)
+	for _, id := range strings.Split(str, ",") {
+		idInt, _ := strconv.ParseUint(id, 10, 64)
+		if _, ok := b.bxh.PeerMgr.OtherPeers()[idInt]; ok {
+			peers = append(peers, idInt)
+		}
+	}
+	return peers
+}
+
 func (b *BrokerAPI) FetchSignsFromOtherPeers(req *pb.GetSignsRequest) map[string][]byte {
 	// if type is solo, needn't fetch sign from others
 	if b.bxh.GetSoloType() {
@@ -180,17 +191,28 @@ func (b *BrokerAPI) FetchSignsFromOtherPeers(req *pb.GetSignsRequest) map[string
 		wg     = sync.WaitGroup{}
 		lock   = sync.Mutex{}
 	)
-
-	signerStr := strings.Split(string(req.Extra), "-")[0]
-	signers := []uint64{}
-	for _, id := range strings.Split(signerStr, ",") {
-		idInt, _ := strconv.ParseUint(id, 10, 64)
-		if _, ok := b.bxh.PeerMgr.OtherPeers()[idInt]; ok {
-			signers = append(signers, idInt)
+	if req.Type == pb.GetSignsRequest_TSS_IBTP_REQUEST || req.Type == pb.GetSignsRequest_TSS_IBTP_RESPONSE {
+		// req.Extra: <tssSigners>-<random>-<notParties>
+		notParties := b.convertTssID(strings.Split(string(req.Extra), "-")[2])
+		wg.Add(len(notParties))
+		for _, pid := range notParties {
+			go func(pid uint64, wg *sync.WaitGroup) {
+				defer wg.Done()
+				err := b.notifyPeerNotParties(pid, req)
+				if err != nil {
+					b.logger.WithFields(logrus.Fields{
+						"pid": pid,
+						"err": err.Error(),
+					}).Warnf("notify other peers not belong to parties with error")
+				}
+			}(pid, &wg)
 		}
+		wg.Wait()
 	}
 
-	// TODO: calculate threshold
+	// tss req.Extra: <tssSigners>-<random>-<notParties>
+	// multi req.Extra: <multiSigners>
+	signers := b.convertTssID(strings.Split(string(req.Extra), "-")[0])
 	wg.Add(len(signers))
 	for _, pid := range signers {
 		go func(pid uint64, result map[string][]byte, wg *sync.WaitGroup, lock *sync.Mutex) {
@@ -257,6 +279,28 @@ func (b *BrokerAPI) requestIBTPSignPeer(pid uint64, id string, typ pb.GetSignsRe
 	}
 
 	return data.Address, data.Signature, nil
+}
+
+func (b *BrokerAPI) notifyPeerNotParties(pid uint64, req *pb.GetSignsRequest) error {
+	keysignReqData, err := req.Marshal()
+	if err != nil {
+		return fmt.Errorf("GetSignsRequest marshal error: %w", err)
+	}
+
+	msg := pb.Message{
+		Type: pb.Message_Tss_KEYSIGN_NOT_PARTIES,
+		Data: keysignReqData,
+	}
+
+	resp, err := b.bxh.PeerMgr.Send(pid, &msg)
+	if err != nil {
+		return fmt.Errorf("send message to %d failed: %w", pid, err)
+	}
+
+	if string(resp.Data) != "ok" {
+		return fmt.Errorf("remote node: %d to handle tss not partied failed", pid)
+	}
+	return nil
 }
 
 func (b *BrokerAPI) requestIBTPTssSignPeer(pid uint64, req *pb.GetSignsRequest) error {
@@ -339,15 +383,17 @@ func (b *BrokerAPI) GetSign(req *pb.GetSignsRequest, signers []string) (string, 
 	case pb.GetSignsRequest_MULTI_IBTP_RESPONSE:
 		addr, signData, err = utils.GetIBTPSign(b.bxh.Ledger, req.Content, false, b.bxh.GetPrivKey().PrivKey)
 	case pb.GetSignsRequest_TSS_IBTP_REQUEST:
+		// req.Extra: <tssSigners>-<random>-<notParties>
 		signInfo := strings.Split(string(req.Extra), "-")
-		if len(signInfo) != 2 {
+		if len(signInfo) != 3 {
 			err = fmt.Errorf("wrong tss req extra: %s", string(req.Extra))
 		} else {
 			signData, culpritIDs, err = utils.GetIBTPTssSign(b.bxh.TssMgr, b.bxh.Ledger, req.Content, true, signers, signInfo[1])
 		}
 	case pb.GetSignsRequest_TSS_IBTP_RESPONSE:
+		// req.Extra: <tssSigners>-<random>-<notParties>
 		signInfo := strings.Split(string(req.Extra), "-")
-		if len(signInfo) != 2 {
+		if len(signInfo) != 3 {
 			err = fmt.Errorf("wrong tss req extra: %s", string(req.Extra))
 		} else {
 			signData, culpritIDs, err = utils.GetIBTPTssSign(b.bxh.TssMgr, b.bxh.Ledger, req.Content, false, signers, signInfo[1])
@@ -359,7 +405,7 @@ func (b *BrokerAPI) GetSign(req *pb.GetSignsRequest, signers []string) (string, 
 		}
 		signData, err = b.bxh.Ledger.GetBlockSign(height)
 		if err != nil {
-			return "", nil, nil, fmt.Errorf("get block header sign: %w", err)
+			return "", nil, nil, fmt.Errorf("get block sign: %w", err)
 		}
 	case pb.GetSignsRequest_MULTI_BURN:
 		addr, signData, err = b.handleMultiSignsBurnReq(req.Content)
@@ -445,7 +491,7 @@ func (b *BrokerAPI) GetPendingNonceByAccount(account string) uint64 {
 	return b.bxh.Order.GetPendingNonceByAccount(account)
 }
 
-func (b *BrokerAPI) GetPendingTransactions(_ int) []pb.Transaction {
+func (b *BrokerAPI) GetPendingTransactions(max int) []pb.Transaction {
 	// TODO
 	return nil
 }
@@ -516,4 +562,14 @@ func (b *BrokerAPI) requestTssInfo(pid uint64) (*pb.TssInfo, error) {
 	} else {
 		return info, nil
 	}
+}
+
+func (b *BrokerAPI) SetTssNotParties(tssReq *pb.GetSignsRequest, singers []string) error {
+	var isReq bool
+	if tssReq.Type == pb.GetSignsRequest_TSS_IBTP_REQUEST {
+		isReq = true
+	}
+	signInfo := strings.Split(string(tssReq.Extra), "-")
+	// req.Extra: <tssSigners>-<random>-<notParties>
+	return utils.NotifyNotTssParties(b.bxh.TssMgr, b.bxh.Ledger, tssReq.Content, isReq, singers, signInfo[1])
 }

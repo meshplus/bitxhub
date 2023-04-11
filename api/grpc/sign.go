@@ -102,11 +102,25 @@ func (cbs *ChainBrokerService) GetTssSigns(ctx context.Context, req *pb.GetSigns
 		go func() {
 			defer wg.Done()
 			result = cbs.getRemoteTssSign(tssReq, poolPk)
-			cbs.logger.WithFields(logrus.Fields{"result": result}).Info("get remote tss sign")
+			cbs.logger.WithFields(logrus.Fields{"content": tssReq.Content}).Info("get remote tss sign success")
 		}()
 
-		// 7. get sign by ourself
-		culprits, sign, keysignErr := cbs.getLocalTssSign(tssFlag, tssReq, tssSigners)
+		// 7. get sign by ourselves, if this node is contained in tssSigners
+		var (
+			culprits []string
+			sign     []byte
+			signErr  error
+		)
+		if utils.IsContained(fmt.Sprintf("%d", cbs.api.Network().LocalPeerID()), tssSigners) {
+			culprits, sign, signErr = cbs.getLocalTssSign(tssFlag, tssReq, tssSigners)
+		} else {
+			// if not contained in tssSigners, ignore tss msg
+			cbs.logger.Debugf("notifyNotParties in local %d", cbs.api.Network().LocalPeerID())
+			err = cbs.notifyTssNotParties(tssFlag, tssReq, tssSigners)
+			if err != nil {
+				cbs.logger.Errorf("notifyNotParties in local %d err: %s", cbs.api.Network().LocalPeerID(), err)
+			}
+		}
 		wg.Wait()
 
 		// 8. get a verified signature from others, return
@@ -118,7 +132,7 @@ func (cbs *ChainBrokerService) GetTssSigns(ctx context.Context, req *pb.GetSigns
 			}, nil
 		}
 		// 9. get a signature by myself, return
-		if tssFlag && keysignErr == nil {
+		if tssFlag && signErr == nil {
 			// 是tss节点
 			return &pb.SignResponse{
 				Sign: map[string][]byte{
@@ -246,8 +260,10 @@ func (cbs *ChainBrokerService) randomSignerRequest(signersALL []string) ([]strin
 	}
 	cbs.logger.Infof("====================== tss all signers: %s, signers: %s", strings.Join(signersALL, ","),
 		strings.Join(tssSigners, ","))
+	notPartiesIDs := utils.FindUnmatched(tssSigners, signersALL)
+
 	randomN := rand.New(rand.NewSource(time.Now().UnixNano())).Int()
-	extra := []byte(fmt.Sprintf("%s-%s", strings.Join(tssSigners, ","), strconv.Itoa(randomN)))
+	extra := []byte(fmt.Sprintf("%s-%s-%s", strings.Join(tssSigners, ","), strconv.Itoa(randomN), strings.Join(notPartiesIDs, ",")))
 	return tssSigners, extra
 }
 
@@ -339,4 +355,12 @@ func getConsensusTssInfoParties(infos []*pb.TssInfo, quorum uint64) ([]string, [
 	pk := strings.Split(consensusInfo, "-")[1]
 
 	return idsAddr, []byte(pk), nil
+}
+
+func (cbs *ChainBrokerService) notifyTssNotParties(tssFlag bool, tssReq *pb.GetSignsRequest, singers []string) error {
+	if tssFlag {
+		err := cbs.api.Broker().SetTssNotParties(tssReq, singers)
+		return err
+	}
+	return nil
 }

@@ -39,3 +39,7 @@ func (network *NetworkAPI) PierManager() peermgr.PierManager {
 func (network *NetworkAPI) OtherPeers() map[uint64]*peer.AddrInfo {
 	return network.bxh.PeerMgr.OtherPeers()
 }
+
+func (network *NetworkAPI) LocalPeerID() uint64 {
+	return network.bxh.PeerMgr.GetLocalID()
+}
