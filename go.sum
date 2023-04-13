@@ -582,6 +582,8 @@ github.com/jwilder/encoding v0.0.0-20170811194829-b4e1701a28ef/go.mod h1:Ct9fl0F
 github.com/kami-zh/go-capturer v0.0.0-20171211120116-e492ea43421d/go.mod h1:P2viExyCEfeWGU259JnaQ34Inuec4R38JCyBx2edgD0=
 github.com/karalabe/usb v0.0.0-20190919080040-51dc0efba356 h1:I/yrLt2WilKxlQKCM52clh5rGzTKpVctGT1lH4Dc8Jw=
 github.com/karalabe/usb v0.0.0-20190919080040-51dc0efba356/go.mod h1:Od972xHfMJowv7NGVDiWVxk2zxnWgjLlJzE+F4F7AGU=
+github.com/karalabe/usb v0.0.2 h1:M6QQBNxF+CQ8OFvxrT90BA0qBOXymndZnk5q235mFc4=
+github.com/karalabe/usb v0.0.2/go.mod h1:Od972xHfMJowv7NGVDiWVxk2zxnWgjLlJzE+F4F7AGU=
 github.com/karrick/godirwalk v1.16.1 h1:DynhcF+bztK8gooS0+NDJFrdNZjJ3gzVzC545UNA9iw=
 github.com/karrick/godirwalk v1.16.1/go.mod h1:j4mkqPuvaLI8mp1DroR3P6ad7cyYd4c1qeJ3RV7ULlk=
 github.com/kisielk/errcheck v1.2.0/go.mod h1:/BMXB+zMLi60iA8Vv6Ksmxu/1UDYcXs4uQLJ+jE2L00=
@@ -845,6 +847,8 @@ github.com/meshplus/bitxhub-core v1.3.1-0.20230113085923-64d8298ac1d9 h1:RdAaHu2
 github.com/meshplus/bitxhub-core v1.3.1-0.20230113085923-64d8298ac1d9/go.mod h1:IBuvd602vQr37BgXxCJeSQVp8lnKAj5flBoZ9uf2PeA=
 github.com/meshplus/bitxhub-core v1.28.0 h1:QIp5aM7EYvxS+ORE2TLTeBRv7uUoXvyNupULA2N8A6s=
 github.com/meshplus/bitxhub-core v1.28.0/go.mod h1:uqQTX6LOoVVyTmJmW5fVJ64qcse6IyXrtmn2jHGDx4w=
+github.com/meshplus/bitxhub-core v1.28.1 h1:OGbC6UmCa/zAaaqHQpxj8n5xt+nBTMBqLlAtxsgjmDs=
+github.com/meshplus/bitxhub-core v1.28.1/go.mod h1:uqQTX6LOoVVyTmJmW5fVJ64qcse6IyXrtmn2jHGDx4w=
 github.com/meshplus/bitxhub-kit v1.0.0-rc1/go.mod h1:ra/AhOkPvpElI+wXrB9G6DjdcrdxFU3vMwA5MYKr9D0=
 github.com/meshplus/bitxhub-kit v1.0.0/go.mod h1:7cWyhXWZfrQ3+EaxkRoXfuiG3Y5R9DXYJomeZKkETW8=
 github.com/meshplus/bitxhub-kit v1.1.1/go.mod h1:r4l4iqn0RPJreb/OmoYKfjCjQJrXpZX++6Qc31VG/1k=

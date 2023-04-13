@@ -33,7 +33,7 @@ require (
 	github.com/libp2p/go-libp2p-swarm v0.2.4
 	github.com/looplab/fsm v0.2.0
 	github.com/magiconair/properties v1.8.5
-	github.com/meshplus/bitxhub-core v1.28.0
+	github.com/meshplus/bitxhub-core v1.28.1
 	github.com/meshplus/bitxhub-kit v1.28.0
 	github.com/meshplus/bitxhub-model v1.28.0
 	github.com/meshplus/consensus v0.0.0-20211228075008-5f469b198531
@@ -79,3 +79,5 @@ replace github.com/agl/ed25519 => github.com/binance-chain/edwards25519 v0.0.0-2
 replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4
 
 replace github.com/golang/protobuf => github.com/golang/protobuf v1.3.2
+
+replace github.com/karalabe/usb => github.com/karalabe/usb v0.0.2
