@@ -49,7 +49,7 @@ func (sr ServiceResolver) SetServDomainData(name string, coinTyp uint64, addr st
 }
 
 func (sr ServiceResolver) GetServDomainData(name string) *boltvm.Response {
-	if !sr.checkDomainAvaliable(name) {
+	if !sr.checkDomainAvailable(name) {
 		return boltvm.Error(boltvm.BnsErrCode, "The domain id must be registered")
 	}
 	servDomainData, err := sr.getDataByDomain(name)
@@ -146,7 +146,7 @@ func (sr ServiceResolver) GetReverseName(serviceName string) *boltvm.Response {
 }
 
 func (sr ServiceResolver) GetServiceName(name string) *boltvm.Response {
-	if !sr.checkDomainAvaliable(name) {
+	if !sr.checkDomainAvailable(name) {
 		return boltvm.Error(boltvm.BnsErrCode, "The domain id must be registered")
 	}
 	servDomainData, err := sr.getDataByDomain(name)
@@ -218,7 +218,7 @@ func (sr ServiceResolver) authorised(name string) bool {
 	return owner == caller || isApprove
 }
 
-func (sr ServiceResolver) checkDomainAvaliable(name string) bool {
+func (sr ServiceResolver) checkDomainAvailable(name string) bool {
 	res := sr.CrossInvoke(constant.ServiceRegistryContractAddr.Address().String(), "Owner",
 		pb.String(name))
 	return res.Ok
