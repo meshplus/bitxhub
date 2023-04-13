@@ -30,7 +30,7 @@ type ServDomainData struct {
 
 func (sr ServiceResolver) SetServDomainData(name string, coinTyp uint64, addr string, serviceName string, des string, dids string) *boltvm.Response {
 	/*if !checkBxhAddress(addr) {
-		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf("The address is not valid"))
+		return boltvm.Error(boltvm.BnsErrCode,   fmt.Sprintf("The address is not valid")))
 	}*/
 	if !sr.authorised(name) {
 		return boltvm.Error(boltvm.BnsErrCode, "The domain name does not belong to you")
@@ -49,10 +49,14 @@ func (sr ServiceResolver) SetServDomainData(name string, coinTyp uint64, addr st
 }
 
 func (sr ServiceResolver) GetServDomainData(name string) *boltvm.Response {
-	if !sr.checkDomainAvailable(name) {
+	if !sr.checkDomainAvaliable(name) {
 		return boltvm.Error(boltvm.BnsErrCode, "The domain id must be registered")
 	}
-	servDomainData := sr.getDataByDomain(name)
+	servDomainData, err := sr.getDataByDomain(name)
+	if err != nil {
+		return boltvm.Error(boltvm.BnsErrCode, "there is not exist key")
+	}
+
 	servDomainBytes, err := json.Marshal(servDomainData)
 	if err != nil {
 		return boltvm.Error(boltvm.BnsErrCode, fmt.Sprintf("marshal servDomainData error: %v", err))
@@ -64,23 +68,30 @@ func (sr ServiceResolver) SetAddr(name string, coinTyp uint64, addr string) *bol
 	if !sr.authorised(name) {
 		return boltvm.Error(boltvm.BnsErrCode, "The domain name does not belong to you")
 	}
-	servDomainData := sr.getDataByDomain(name)
+	servDomainData, err := sr.getDataByDomain(name)
+	if err != nil {
+		return boltvm.Error(boltvm.BnsErrCode, "there is not exist key")
+	}
 	servDomainData.Addr[coinTyp] = addr
 	sr.SetObject(name, servDomainData)
 	return boltvm.Success(nil)
 }
 
-func (sr ServiceResolver) SetServiceName(name string, serviceName string, reverse bool) *boltvm.Response {
+func (sr ServiceResolver) SetServiceName(name string, serviceName string, reverse uint64) *boltvm.Response {
 	if !sr.authorised(name) {
 		return boltvm.Error(boltvm.BnsErrCode, "The domain name does not belong to you")
 	}
-	if serviceName == "" {
-		return boltvm.Error(boltvm.BnsErrCode, "The serviceName can not be an empty string")
+	servDomainData, err := sr.getDataByDomain(name)
+	if err != nil {
+		return boltvm.Error(boltvm.BnsErrCode, "there is not exist key")
 	}
-	servDomainData := sr.getDataByDomain(name)
+	originName := servDomainData.ServiceName
+	if originName != "" {
+		sr.removeReverse(name, originName)
+	}
 	servDomainData.ServiceName = serviceName
 	sr.SetObject(name, servDomainData)
-	if reverse {
+	if reverse == 1 && serviceName != "" {
 		sr.setReverseName(serviceName, name)
 	}
 	return boltvm.Success(nil)
@@ -90,7 +101,10 @@ func (sr ServiceResolver) SetServiceDes(name string, des string) *boltvm.Respons
 	if !sr.authorised(name) {
 		return boltvm.Error(boltvm.BnsErrCode, "The domain name does not belong to you")
 	}
-	servDomainData := sr.getDataByDomain(name)
+	servDomainData, err := sr.getDataByDomain(name)
+	if err != nil {
+		return boltvm.Error(boltvm.BnsErrCode, "there is not exist key")
+	}
 	servDomainData.Des = des
 	sr.SetObject(name, servDomainData)
 	return boltvm.Success(nil)
@@ -101,7 +115,10 @@ func (sr ServiceResolver) SetDids(name string, dids string) *boltvm.Response {
 		return boltvm.Error(boltvm.BnsErrCode, "The domain name does not belong to you")
 	}
 	didArr := strings.Split(dids, ",")
-	servDomainData := sr.getDataByDomain(name)
+	servDomainData, err := sr.getDataByDomain(name)
+	if err != nil {
+		return boltvm.Error(boltvm.BnsErrCode, "there is not exist key")
+	}
 	servDomainData.Dids = didArr
 	sr.SetObject(name, servDomainData)
 	return boltvm.Success(nil)
@@ -129,10 +146,13 @@ func (sr ServiceResolver) GetReverseName(serviceName string) *boltvm.Response {
 }
 
 func (sr ServiceResolver) GetServiceName(name string) *boltvm.Response {
-	if !sr.checkDomainAvailable(name) {
+	if !sr.checkDomainAvaliable(name) {
 		return boltvm.Error(boltvm.BnsErrCode, "The domain id must be registered")
 	}
-	servDomainData := sr.getDataByDomain(name)
+	servDomainData, err := sr.getDataByDomain(name)
+	if err != nil {
+		return boltvm.Error(boltvm.BnsErrCode, "there is not exist key")
+	}
 	return boltvm.Success([]byte(servDomainData.ServiceName))
 }
 
@@ -144,30 +164,23 @@ func (sr ServiceResolver) DeleteServDomainData(name string) *boltvm.Response {
 	if len(nameArr) != 3 {
 		return boltvm.Error(boltvm.BnsErrCode, "The domain name must be second")
 	}
-	servDomainData := sr.getDataByDomain(name)
+	servDomainData, err := sr.getDataByDomain(name)
+	if err != nil {
+		return boltvm.Error(boltvm.BnsErrCode, "there is not exist key")
+	}
 	serviceName := servDomainData.ServiceName
 	sr.Delete(name)
-	reverseName := make(map[string][]string)
-	sr.GetObject(ReverseMap, &reverseName)
-	reverseNameArr := reverseName[serviceName]
-	index := -1
-	for i, v := range reverseNameArr {
-		if v == name {
-			index = i
-			break
-		}
-	}
-	if index != -1 {
-		reverseNameArr = append(reverseNameArr[:index], reverseNameArr[(index+1):]...)
-	}
-	sr.SetObject(ReverseMap, reverseName)
+	sr.removeReverse(name, serviceName)
 	return boltvm.Success(nil)
 }
 
-func (sr ServiceResolver) getDataByDomain(name string) ServDomainData {
+func (sr ServiceResolver) getDataByDomain(name string) (ServDomainData, error) {
 	servDomainData := ServDomainData{}
-	sr.GetObject(name, &servDomainData)
-	return servDomainData
+	exist := sr.GetObject(name, &servDomainData)
+	if !exist {
+		return servDomainData, fmt.Errorf("name servDomainData not exist ")
+	}
+	return servDomainData, nil
 }
 
 func (sr ServiceResolver) setReverseName(serviceName string, name string) {
@@ -205,10 +218,28 @@ func (sr ServiceResolver) authorised(name string) bool {
 	return owner == caller || isApprove
 }
 
-func (sr ServiceResolver) checkDomainAvailable(name string) bool {
+func (sr ServiceResolver) checkDomainAvaliable(name string) bool {
 	res := sr.CrossInvoke(constant.ServiceRegistryContractAddr.Address().String(), "Owner",
 		pb.String(name))
 	return res.Ok
+}
+
+func (sr ServiceResolver) removeReverse(name string, serviceName string) {
+	reverseName := make(map[string][]string)
+	sr.GetObject(ReverseMap, &reverseName)
+	reverseNameArr := reverseName[serviceName]
+	index := -1
+	for i, v := range reverseNameArr {
+		if v == name {
+			index = i
+			break
+		}
+	}
+	if index != -1 {
+		reverseNameArr = append(reverseNameArr[:index], reverseNameArr[(index+1):]...)
+	}
+	reverseName[serviceName] = reverseNameArr
+	sr.SetObject(ReverseMap, reverseName)
 }
 
 func isContain(items []string, item string) bool {

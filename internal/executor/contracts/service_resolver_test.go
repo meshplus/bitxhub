@@ -32,8 +32,8 @@ func TestGetServDomainData(t *testing.T) {
 
 	var data ServDomainData
 	res := sr.GetServDomainData(key0)
-	json.Unmarshal(res.Result, &data)
-
+	err := json.Unmarshal(res.Result, &data)
+	assert.Nil(t, err)
 	assert.True(t, res.Ok)
 	assert.Equal(t, data.Addr[1], "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997")
 
@@ -60,12 +60,13 @@ func TestSetAddr(t *testing.T) {
 		pb.String(string(constant.ServiceRegistryContractAddr)), pb.String(string(constant.ServiceResolverContractAddr))).Return(
 		boltvm.Success([]byte("true"))).Times(1)
 	reverseName := make(map[string][]string)
+	reverseName["1356:xxx:xxxx"] = []string{"appchain.hub"}
 
-	mockStub.EXPECT().GetObject("reverseMap", gomock.Any()).SetArg(1, reverseName).Return(true)
+	mockStub.EXPECT().GetObject(ReverseMap, gomock.Any()).SetArg(1, reverseName).Return(true).AnyTimes()
 
 	sr := &ServiceResolver{mockStub}
 
-	res := sr.SetServiceName("appchain.hub", "1356:xxx:xxxx", true)
+	res := sr.SetServiceName("appchain.hub", "1356:xxx:xxxx", 1)
 	assert.True(t, res.Ok)
 }
 

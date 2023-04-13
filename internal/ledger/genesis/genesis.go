@@ -177,5 +177,12 @@ func initBNSData(lg *ledger.Ledger) error {
 	}
 	lg.SetState(constant.ServiceRegistryContractAddr.Address(), []byte(contracts.PermissionController), permissionControllerBytes, nil)
 
+	reverseName := make(map[string][]string)
+	reverseNameBytes, err := json.Marshal(reverseName)
+	if err != nil {
+		return fmt.Errorf("marshal node account map data error: %w", err)
+	}
+	lg.SetState(constant.ServiceResolverContractAddr.Address(), []byte(contracts.ReverseMap), reverseNameBytes, nil)
+
 	return nil
 }
