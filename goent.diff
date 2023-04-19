@@ -1,7 +1,7 @@
-    github.com/bitxhub/parallel-executor v0.0.0-20220824125722-9ad69f249cda
-	github.com/bitxhub/bitxhub-order-rbft v0.2.8
-    github.com/bitxhub/license v0.0.0-20210721031301-66d44925f5f9
-    github.com/bitxhub/crypto-gm v0.0.0-20230412081854-c0970bfda7fc
+    git.hyperchain.cn/dmlab/parallel-executor v1.28.0
+    git.hyperchain.cn/dmlab/bitxhub-order-rbft v1.28.0
+    git.hyperchain.cn/dmlab/bxh-license v1.28.0
+    git.hyperchain.cn/dmlab/bxh-crypto-gm v1.28.0
 
 replace github.com/ultramesh/rbft => git.hyperchain.cn/dmlab/rbft v0.1.5-0.20221229082044-64ea3680807c
 

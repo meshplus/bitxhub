@@ -3,8 +3,8 @@
 package imports
 
 import (
-	_ "github.com/bitxhub/license"
-    _ "github.com/bitxhub/parallel-executor"
-	_ "github.com/bitxhub/bitxhub-order-rbft/rbft"
-	_ "github.com/bitxhub/crypto-gm"
+	_ "git.hyperchain.cn/dmlab/bxh-license"
+    _ "git.hyperchain.cn/dmlab/parallel-executor"
+	_ "git.hyperchain.cn/dmlab/bitxhub-order-rbft/rbft"
+	_ "git.hyperchain.cn/dmlab/bxh-crypto-gm"
 )
