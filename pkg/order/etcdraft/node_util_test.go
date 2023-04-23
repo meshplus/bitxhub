@@ -91,10 +91,8 @@ func mockRaftNode(t *testing.T) (*Node, error) {
 		IsTimed:      raftConfig.TimedGenBlock.Enable,
 		BlockTimeout: raftConfig.TimedGenBlock.BlockTimeout,
 	}
-	mempoolInst, err := mempool.NewMemPool(mempoolConf)
-	if err != nil {
-		return nil, err
-	}
+	mempoolInst := mempool.NewMemPool(mempoolConf)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	node := &Node{
 		id:               uint64(1),
