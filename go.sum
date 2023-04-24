@@ -112,6 +112,9 @@ github.com/beorn7/perks v1.0.0/go.mod h1:KWe93zE9D1o94FZ5RNwFwVgaQK1VOXiVxmqh+Ce
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
 github.com/bgentry/speakeasy v0.1.0/go.mod h1:+zsyZBPWlz7T6j88CTgSN5bM796AkVf0kBD4zp0CCIs=
+github.com/bitxhub/bitxid v0.2.1-0.20210202065509-f41026693054/go.mod h1:fOr+il1qUap5OTo6p4krM3Hsk4OZkGxC30BIjjwNz2c=
+github.com/bitxhub/did-method-registry v0.0.0-20220325100300-203d968dc9af h1:2i0/s7cTFUfNbzQ3J3ON1pEQL/PE1aFxeiHinAEjPQY=
+github.com/bitxhub/did-method-registry v0.0.0-20220325100300-203d968dc9af/go.mod h1:waZFHWC6jAod/gI2sm0Vxm30Ge5fK+O5lrN7w0Krfhs=
 github.com/bketelsen/crypt v0.0.3-0.20200106085610-5cbc8cc4026c/go.mod h1:MKsuJmJgSg28kpZDP6UIiPt0e0Oz0kqKNGyRaWEPv84=
 github.com/bketelsen/crypt v0.0.4/go.mod h1:aI6NrJ0pMGgvZKL1iVgXLnfIFJtfV+bKCoqOes/6LfM=
 github.com/bmizerany/pat v0.0.0-20170815010413-6226ea591a40/go.mod h1:8rLXio+WjiTceGBHIoTvn60HIbs7Hm7bcHjyrSqYB9c=
@@ -796,6 +799,7 @@ github.com/mattn/go-sqlite3 v1.11.0/go.mod h1:FPy6KqzDD04eiIsT53CuJW3U88zkxoIYsO
 github.com/mattn/go-tty v0.0.0-20180907095812-13ff1204f104/go.mod h1:XPvLUNfbS4fJH25nqRHfWLMa1ONC8Amw+mIA639KxkE=
 github.com/matttproud/golang_protobuf_extensions v1.0.1 h1:4hp9jkHxhMHkqkrB3Ix0jegS5sx/RkqARlsWZ6pIwiU=
 github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5Ld7szi9bcBfOoFv/3dc6xSMkL2PC0=
+github.com/meshplus/bitxhub-core v1.3.1-0.20220325095524-2e5a0b113f8d/go.mod h1:DdG+dfeNS57Wi+0bcDA4iel3sZgHNY9oDmNSDVj4ZME=
 github.com/meshplus/bitxhub-core v1.3.1-0.20230424025821-8fc1c683e9d7 h1:3OR2xQRblNYSaYzSVmIdMQVPESO+wPEAPRZjogkpmpI=
 github.com/meshplus/bitxhub-core v1.3.1-0.20230424025821-8fc1c683e9d7/go.mod h1:cIlgfjjVO/Z/65m89Ejb7LCGcTUB0VlmNOU7UjNkayM=
 github.com/meshplus/bitxhub-kit v1.0.1/go.mod h1:r4l4iqn0RPJreb/OmoYKfjCjQJrXpZX++6Qc31VG/1k=
@@ -806,6 +810,7 @@ github.com/meshplus/bitxhub-kit v1.2.1-0.20220111092827-0ad7ba507bd3 h1:1D1EMLVu
 github.com/meshplus/bitxhub-kit v1.2.1-0.20220111092827-0ad7ba507bd3/go.mod h1:wrEdhHp1tktzdwcWb4bOxYsVc+KkcrYL18IYWYeumPQ=
 github.com/meshplus/bitxhub-model v1.2.1-0.20210805020100-41c27414badf/go.mod h1:IjgoQrsn1wthW7XcKRqgaZqCSlqNy0SBwF/7lmGSqXc=
 github.com/meshplus/bitxhub-model v1.2.1-0.20211122062102-4e6856663e73/go.mod h1:sPko8fD+G3MYOnH/44Ju4T4jD/tlEU3IJDIJ4hjrzxg=
+github.com/meshplus/bitxhub-model v1.2.1-0.20211123070317-3b13985e1d7f/go.mod h1:3utNvxpP8ZLJ8SOmxAXOBGuV2vGAPuErfVyGgZpl/k4=
 github.com/meshplus/bitxhub-model v1.2.1-0.20220325023033-9e1457fc1474 h1:9gh2MG3INPkwQvsQvPy3yqbHCl/25LjBcT+HDOBM6GU=
 github.com/meshplus/bitxhub-model v1.2.1-0.20220325023033-9e1457fc1474/go.mod h1:zzijAAEfekoP16ybi1EAgZrvQSnZCMWaaALjB6eGkDA=
 github.com/meshplus/bitxid v0.0.0-20211224091228-07079626b122 h1:OwH18vtVL+kRNX2V7+Xqv7AKBDUT0zsjvRHOf7oCKIA=
@@ -816,6 +821,7 @@ github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd h1:/8ydT0P
 github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd/go.mod h1:rS4AYMqKypLn2IPEnHICP//V2v16SZo4CWUbwMdihl0=
 github.com/meshplus/go-lightp2p v0.0.0-20220117071358-c37ba4e6dcbc h1:i/VwmBoNxMuQEyWaT6/1m/LpracPLtBgqtqzWcnDuhQ=
 github.com/meshplus/go-lightp2p v0.0.0-20220117071358-c37ba4e6dcbc/go.mod h1:ARRXc4Oo0iZjsj5CB+LTmcMNxK2c1fug7XsEZ7yPJvg=
+github.com/meshplus/wasmer-go v1.0.5-0.20210817103436-19ec68f8bfe2/go.mod h1:0gzVdSfg6pysA6QVp6iVRPTagC6Wq9pOE8J86WKb2Fk=
 github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b/go.mod h1:01TrycV0kFyexm33Z7vhZRXopbI8J3TDReVlkTgMUxE=
 github.com/miekg/dns v1.0.14/go.mod h1:W1PPwlIAgtquWBMBEV9nkV9Cazfe8ScdGz/Lj7v3Nrg=
 github.com/miekg/dns v1.1.12/go.mod h1:W1PPwlIAgtquWBMBEV9nkV9Cazfe8ScdGz/Lj7v3Nrg=
@@ -1122,6 +1128,8 @@ github.com/tklauser/numcpus v0.2.2/go.mod h1:x3qojaO3uyYt0i56EW/VUYs7uBvdl2fkfZF
 github.com/tmc/grpc-websocket-proxy v0.0.0-20170815181823-89b8d40f7ca8/go.mod h1:ncp9v5uamzpCO7NfCPTXjqaC+bZgJeR0sMTm6dMHP7U=
 github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5 h1:LnC5Kc/wtumK+WB441p7ynQJzVuNRJiqddSIE3IlSEQ=
 github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5/go.mod h1:ncp9v5uamzpCO7NfCPTXjqaC+bZgJeR0sMTm6dMHP7U=
+github.com/treasersimplifies/cstr v0.0.0-20201216143046-7ec53ac8c37b h1:SZLvBxCeCLicUNrO1qVECNxenz+nMg39xy3uhb5AY/8=
+github.com/treasersimplifies/cstr v0.0.0-20201216143046-7ec53ac8c37b/go.mod h1:vDeqle3kbbevUDgoxyM/SG6xkJI5gnprSwDGaZC0zRc=
 github.com/tyler-smith/go-bip39 v1.0.1-0.20181017060643-dbb3b84ba2ef h1:wHSqTBrZW24CsNJDfeh9Ex6Pm0Rcpc7qrgKBiL44vF4=
 github.com/tyler-smith/go-bip39 v1.0.1-0.20181017060643-dbb3b84ba2ef/go.mod h1:sJ5fKU0s6JVwZjjcUEX2zFOnvq0ASQ2K9Zr6cf67kNs=
 github.com/ugorji/go/codec v0.0.0-20181204163529-d75b2dcb6bc8/go.mod h1:VFNgLljTbGfSG7qAOspJ7OScBnGdDN/yBr0sguwnwf0=

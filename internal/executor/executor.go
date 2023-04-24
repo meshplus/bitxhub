@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	_ "github.com/bitxhub/did-method-registry"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/meshplus/bitxhub-core/agency"
