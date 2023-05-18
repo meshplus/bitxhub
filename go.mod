@@ -6,7 +6,7 @@ require (
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
 	github.com/Rican7/retry v0.1.0
 	github.com/bitxhub/did-method-registry v0.0.0-20220325100300-203d968dc9af
-	github.com/bytecodealliance/wasmtime-go v0.35.0
+	github.com/bytecodealliance/wasmtime-go v0.37.0
 	github.com/cbergoon/merkletree v0.2.0
 	github.com/cheynewallace/tabby v1.1.1
 	github.com/common-nighthawk/go-figure v0.0.0-20190529165535-67e0ed34491a
