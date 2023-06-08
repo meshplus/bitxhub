@@ -13,7 +13,6 @@ import (
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/executor/contracts"
 	"github.com/meshplus/bitxhub/internal/ledger/mock_ledger"
@@ -31,28 +30,6 @@ func TestVerifyPool_CheckProof(t *testing.T) {
 	mockLedger := mock_ledger.NewMockLedger(mockCtl)
 	mockEngine := mock_validator.NewMockEngine(mockCtl)
 
-	chain := &appchainMgr.Appchain{
-		ID:            from,
-		Name:          "appchain A",
-		Validators:    "",
-		ConsensusType: "rbft",
-		ChainType:     "fabric",
-		Desc:          "",
-		Version:       "",
-		PublicKey:     "11111",
-	}
-
-	chainData, err := json.Marshal(chain)
-	require.Nil(t, err)
-
-	rl := &contracts.Rule{
-		Address: contract,
-	}
-	rlData, err := json.Marshal(rl)
-	require.Nil(t, err)
-
-	mockLedger.EXPECT().GetState(constant.AppchainMgrContractAddr.Address(), gomock.Any()).Return(true, chainData)
-	mockLedger.EXPECT().GetState(constant.RuleManagerContractAddr.Address(), gomock.Any()).Return(false, rlData)
 	mockEngine.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil).AnyTimes()
 
 	vp := New(mockLedger, log.NewWithModule("test_verify"))
@@ -188,7 +165,6 @@ func TestVerifyPool_CheckProof3(t *testing.T) {
 	mockLedger := mock_ledger.NewMockLedger(mockCtl)
 	mockEngine := mock_validator.NewMockEngine(mockCtl)
 
-	mockLedger.EXPECT().GetState(constant.AppchainMgrContractAddr.Address(), gomock.Any()).Return(true, []byte("123"))
 	mockEngine.EXPECT().Validate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil).AnyTimes()
 
 	vp := VerifyPool{

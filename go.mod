@@ -17,14 +17,12 @@ require (
 	github.com/gobuffalo/packr v1.30.1
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/mock v1.5.0
-	github.com/golang/protobuf v1.4.3
 	github.com/google/btree v1.0.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d
 	github.com/hokaccha/go-prettyjson v0.0.0-20190818114111-108c894c2c0e
-	github.com/hyperledger/fabric v2.0.1+incompatible
 	github.com/juju/ratelimit v1.0.1
 	github.com/libp2p/go-libp2p-core v0.5.6
 	github.com/magiconair/properties v1.8.4
@@ -80,3 +78,5 @@ replace github.com/mitchellh/mapstructure v1.4.1 => github.com/mitchellh/mapstru
 replace gopkg.in/ini.v1 v1.62.0 => gopkg.in/ini.v1 v1.51.0
 
 replace golang.org/x/net => golang.org/x/net v0.0.0-20210220033124-5f55cee0dc0d
+
+replace github.com/cespare/xxhash/v2 => github.com/cespare/xxhash/v2 v2.2.0
