@@ -17,7 +17,7 @@ func blockCMD() cli.Command {
 
 func getBlock(ctx *cli.Context) error {
 	if ctx.NArg() < 1 {
-		return fmt.Errorf("please input block height or block hash")
+		return getLatestBlock(ctx)
 	}
 
 	input := ctx.Args().Get(0)
@@ -41,7 +41,7 @@ func getBlockByHeight(ctx *cli.Context, height uint64) error {
 		return fmt.Errorf("httpGet from url %s failed: %w", url, err)
 	}
 
-	fmt.Println(string(data))
+	fmt.Println(prettyJson(string(data)))
 
 	return nil
 }
@@ -53,7 +53,17 @@ func getBlockByHash(ctx *cli.Context, hash string) error {
 		return fmt.Errorf("httpGet from url %s failed: %w", url, err)
 	}
 
-	fmt.Println(string(data))
+	fmt.Println(prettyJson(string(data)))
+	return nil
+}
 
+func getLatestBlock(ctx *cli.Context) error {
+	url := getURL(ctx, "block?type=2")
+	data, err := httpGet(ctx, url)
+	if err != nil {
+		return fmt.Errorf("httpGet from url %s failed: %w", url, err)
+	}
+
+	fmt.Println(prettyJson(string(data)))
 	return nil
 }

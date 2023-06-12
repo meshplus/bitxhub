@@ -96,7 +96,7 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	// this block is not in ledger
 	txList := blockWrapper.block.Transactions.Transactions
 	bxhId := strconv.FormatUint(exec.config.ChainID, 10)
-	err = exec.setTimeoutList(exec.currentHeight, txList, invalidTxHashMap, recordFailTxHashMap, bxhId)
+	err = exec.setTimeoutList(block.BlockHeader.Number, txList, invalidTxHashMap, recordFailTxHashMap, bxhId)
 	if err != nil {
 		exec.logger.Errorf("setTimeoutList err: %s", err)
 	}
@@ -521,7 +521,7 @@ func (exec *BlockExecutor) applyBxhTransaction(i int, tx *pb.BxhTransaction, inv
 	}
 
 	if tx.IsIBTP() {
-		ctx := vm.NewContext(tx, uint64(i), nil, exec.currentHeight, exec.ledger, exec.logger)
+		ctx := vm.NewContext(tx, uint64(i), nil, exec.currentHeight+1, exec.ledger, exec.logger)
 		instance := boltvm.New(ctx, exec.validationEngine, exec.evm, exec.getContracts(opt))
 		ret, err := instance.HandleIBTP(tx.GetIBTP(), exec.interchainManager)
 		return ret, GasBVMTx, err
@@ -719,7 +719,7 @@ func (exec *BlockExecutor) payGasFee(tx pb.Transaction, gasUsed uint64) error {
 	fees := new(big.Int).Mul(new(big.Int).SetUint64(gasUsed), exec.bxhGasPrice)
 	have := exec.ledger.GetBalance(tx.GetFrom())
 	if have.Cmp(fees) < 0 {
-		return fmt.Errorf("insufficeient balance: address %v have %v want %v", tx.GetFrom().String(), have, fees)
+		return fmt.Errorf("insufficient balance: address %v have %v want %v", tx.GetFrom().String(), have, fees)
 	}
 	exec.ledger.SetBalance(tx.GetFrom(), new(big.Int).Sub(have, fees))
 	exec.payAdmins(fees)
@@ -819,8 +819,9 @@ func (exec *BlockExecutor) setTimeoutList(height uint64, txList []pb.Transaction
 			if pb.IBTP_REQUEST == ibtp.Category() {
 				// record timeout height
 				var timeoutHeight uint64
+				// timeoutHeight illegal, not record it
 				if ibtp.TimeoutHeight <= 0 || uint64(ibtp.TimeoutHeight) >= math.MaxUint64-height {
-					timeoutHeight = math.MaxUint64
+					continue
 				} else {
 					timeoutHeight = height + uint64(ibtp.TimeoutHeight)
 				}
@@ -847,7 +848,7 @@ func (exec *BlockExecutor) setTimeoutList(height uint64, txList []pb.Transaction
 					return err
 				}
 
-				// The  , don't execute timeoutRollback
+				// The fail receipt had already rollback, don't execute timeoutRollback
 				if ibtp.Type == pb.IBTP_RECEIPT_FAILURE && record.Status == pb.TransactionStatus_FAILURE {
 					continue
 				}
