@@ -30,3 +30,4 @@ imports/imports.go
 goent.mod
 goent.sum
 dist
+.history

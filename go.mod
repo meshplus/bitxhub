@@ -2,6 +2,26 @@ module github.com/meshplus/bitxhub
 
 go 1.14
 
+replace (
+	github.com/meshplus/bitxhub-core => github.com/TaiChiChain/bitxhub-core v1.3.1-0.20230625070128-e24beb3d491e
+	github.com/meshplus/bitxhub-kit => github.com/TaiChiChain/bitxhub-kit v1.20.1-0.20230625064843-b7ae66571e52
+	github.com/meshplus/bitxhub-model => github.com/TaiChiChain/bitxhub-model v1.20.2-0.20230625065636-b5b1ab540d61
+	github.com/meshplus/eth-kit => github.com/TaiChiChain/eth-kit v0.0.0-20230625070739-4544d20b14b2
+	github.com/meshplus/go-libp2p-cert => github.com/TaiChiChain/go-libp2p-cert v0.0.0-20230625062152-44e7041e4770
+	github.com/meshplus/go-lightp2p => github.com/TaiChiChain/go-lightp2p v0.0.0-20230625064042-335b4532a750
+)
+
+replace (
+	github.com/agl/ed25519 => github.com/binance-chain/edwards25519 v0.0.0-20200305024217-f36fc4b53d43
+	github.com/binance-chain/tss-lib => github.com/dawn-to-dusk/tss-lib v1.3.2-0.20220422023240-5ddc16a330ed
+	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4
+	github.com/golang/protobuf => github.com/golang/protobuf v1.3.2
+	github.com/hyperledger/fabric => github.com/hyperledger/fabric v2.0.1+incompatible
+	golang.org/x/net => golang.org/x/net v0.0.0-20200520004742-59133d7f0dd7
+	google.golang.org/genproto => google.golang.org/genproto v0.0.0-20200218151345-dad8c97a84f5
+	google.golang.org/grpc => google.golang.org/grpc v1.33.0
+)
+
 require (
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
 	github.com/Rican7/retry v0.1.0
@@ -20,7 +40,6 @@ require (
 	github.com/gobuffalo/packr v1.30.1
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/mock v1.6.0
-	github.com/golang/protobuf v1.5.2
 	github.com/google/btree v1.0.0
 	github.com/gorilla/mux v1.8.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
@@ -37,7 +56,6 @@ require (
 	github.com/meshplus/bitxhub-core v1.3.1-0.20220701090824-788a823e6049
 	github.com/meshplus/bitxhub-kit v1.2.1-0.20220610092251-68e35ef37b7a
 	github.com/meshplus/bitxhub-model v1.2.1-0.20220705090611-2a1e897ee1f7
-	github.com/meshplus/consensus v0.0.0-20211228075008-5f469b198531
 	github.com/meshplus/eth-kit v0.0.0-20220628031226-4b30a994a2a6
 	github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd
 	github.com/meshplus/go-lightp2p v0.0.0-20220117071358-c37ba4e6dcbc
@@ -61,22 +79,6 @@ require (
 	github.com/willf/bitset v1.1.11 // indirect
 	github.com/willf/bloom v2.0.3+incompatible
 	go.uber.org/atomic v1.7.0
-	go.uber.org/zap v1.19.0
+	go.uber.org/zap v1.19.0 // indirect
 	google.golang.org/grpc v1.35.0
 )
-
-replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20200218151345-dad8c97a84f5
-
-replace google.golang.org/grpc => google.golang.org/grpc v1.33.0
-
-replace github.com/hyperledger/fabric => github.com/hyperledger/fabric v2.0.1+incompatible
-
-replace golang.org/x/net => golang.org/x/net v0.0.0-20200520004742-59133d7f0dd7
-
-replace github.com/binance-chain/tss-lib => github.com/dawn-to-dusk/tss-lib v1.3.2-0.20220422023240-5ddc16a330ed
-
-replace github.com/agl/ed25519 => github.com/binance-chain/edwards25519 v0.0.0-20200305024217-f36fc4b53d43
-
-replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4
-
-replace github.com/golang/protobuf => github.com/golang/protobuf v1.3.2
