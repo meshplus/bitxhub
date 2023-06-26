@@ -246,7 +246,7 @@ func DefaultConfig() (*Config, error) {
 			BatchTimeout: 500 * time.Millisecond,
 		},
 		Order: Order{
-			Type: "raft",
+			Type: "rbft",
 		},
 		Executor: Executor{
 			Type: "serial",
