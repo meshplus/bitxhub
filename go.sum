@@ -57,8 +57,6 @@ github.com/TaiChiChain/bitxhub-kit v1.20.1-0.20230625064843-b7ae66571e52 h1:aXGX
 github.com/TaiChiChain/bitxhub-kit v1.20.1-0.20230625064843-b7ae66571e52/go.mod h1:wrEdhHp1tktzdwcWb4bOxYsVc+KkcrYL18IYWYeumPQ=
 github.com/TaiChiChain/bitxhub-model v1.20.2-0.20230625065636-b5b1ab540d61 h1:r89Hj95XhOh8A4wp7OXyIFt1asxd7xvo9u+u5zZnkmQ=
 github.com/TaiChiChain/bitxhub-model v1.20.2-0.20230625065636-b5b1ab540d61/go.mod h1:/6Y5RhjhAneAE6LG/FIH4yZp92mC9o2xbZpLYBd/Cww=
-github.com/TaiChiChain/bitxhub-order-rbft v1.23.1-0.20230626102047-c95878631d6b h1:dDowsK1vP9rvySIeQyRLqdgj/lbnL9/RK1oUIIq5s5I=
-github.com/TaiChiChain/bitxhub-order-rbft v1.23.1-0.20230626102047-c95878631d6b/go.mod h1:+fHHShocmGfxnD3y5QAqcbgRDU37Wp8ivuaHoLBaGsI=
 github.com/TaiChiChain/eth-kit v0.0.0-20230625070739-4544d20b14b2 h1:Ur1DujPTyRsJ4c5OV+s2t6vBGjMScueKy1TxnCQjGCQ=
 github.com/TaiChiChain/eth-kit v0.0.0-20230625070739-4544d20b14b2/go.mod h1:UFDr+CUIWSzE15MUlKBURe9ErNn8XKCiLadvn7klgYs=
 github.com/TaiChiChain/go-libp2p-cert v0.0.0-20230625062152-44e7041e4770 h1:pFfZ08LXcB2Zu18Z1SHO9mfnZvnG6+UF+GzyW9xd4RE=

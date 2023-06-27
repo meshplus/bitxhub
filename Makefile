@@ -29,8 +29,6 @@ GREEN=\033[0;32m
 BLUE=\033[0;34m
 NC=\033[0m
 
-MODS = $(shell cat goent.diff | grep '^[^replace]' | tr '\n' '@')
-
 help: Makefile
 	@printf "${BLUE}Choose a command run:${NC}\n"
 	@sed -n 's/^##//p' $< | column -t -s ':' | sed -e 's/^/    /'
@@ -58,45 +56,20 @@ tester:
 ## make install: Go install the project
 install:
 	cd internal/repo && packr
-	rm -f imports/imports.go
 	$(GO) install -ldflags '${GOLDFLAGS}' ./cmd/${APP_NAME}
 	@printf "${GREEN}Install bitxhub successfully!${NC}\n"
 
+## make build: Go build the project
 build:
 	cd internal/repo && packr
 	@mkdir -p bin
-	rm -f imports/imports.go
 	$(GO) build -ldflags '${GOLDFLAGS}' ./cmd/${APP_NAME}
 	@mv ./bitxhub bin
 	@printf "${GREEN}Build bitxhub successfully!${NC}\n"
 
-# !!NOTICE: if using GO1.16+, the one of new features is don't automatically modify go.mod and go.sum
-# using the cmd to solve it: ` go env -w GOFLAGS="-mod=mod" `
-installent:
-	cd internal/repo && packr
-	cp imports/imports.go.template imports/imports.go
-	@sed "s?)?$(MODS))?" go.mod  | tr '@' '\n' > goent.mod
-	@cat goent.diff | grep '^replace' >> goent.mod
-	$(GO) install -tags ent -ldflags '${GOLDFLAGS}' -modfile goent.mod ./cmd/${APP_NAME}
-	@printf "${GREEN}Install bitxhub ent successfully!${NC}\n"
-
-buildent:
-	cd internal/repo && packr
-	@mkdir -p bin
-	cp imports/imports.go.template imports/imports.go
-	@sed "s?)?$(MODS))?" go.mod  | tr '@' '\n' > goent.mod
-	@cat goent.diff | grep '^replace' >> goent.mod
-	$(GO) build -tags ent -ldflags '${GOLDFLAGS}' -modfile goent.mod ./cmd/${APP_NAME}
-	@mv ./bitxhub bin
-	@printf "${GREEN}Build bitxhub ent successfully!${NC}\n"
-
 ## make release: Build release before push
 release-binary:
 	@cd scripts && bash release_binary.sh
-
-mod:
-	@sed "s?)?$(MODS))?" go.mod  | tr '@' '\n' > goent.mod
-	@cat goent.diff | grep '^replace' >> goent.mod
 
 ## make linter: Run golanci-lint
 linter:
