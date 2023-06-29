@@ -111,6 +111,10 @@ type (
 		address *types.Address
 		slot    *types.Hash
 	}
+	transientStorageChange struct {
+		account       *types.Address
+		key, prevalue []byte
+	}
 )
 
 func (ch createObjectChange) revert(l *SimpleLedger) {
@@ -223,5 +227,13 @@ func (ch addLogChange) revert(l *SimpleLedger) {
 }
 
 func (ch addLogChange) dirtied() *types.Address {
+	return nil
+}
+
+func (ch transientStorageChange) revert(l *SimpleLedger) {
+	l.setTransientState(*ch.account, ch.key, ch.prevalue)
+}
+
+func (ch transientStorageChange) dirtied() *types.Address {
 	return nil
 }

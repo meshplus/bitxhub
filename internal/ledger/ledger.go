@@ -4,10 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/trie"
 	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/meshplus/bitxhub-kit/storage/blockfile"
 	"github.com/meshplus/bitxhub-kit/storage/leveldb"
@@ -48,25 +45,26 @@ func New(repo *repo.Repo, blockchainStore storage.Storage, ldb stateStorage, bf 
 			return nil, fmt.Errorf("init state ledger failed: %w", err)
 		}
 	case ethdb.Database:
-		db := state.NewDatabaseWithConfig(ldb.(ethdb.Database), &trie.Config{
-			Cache:     256,
-			Journal:   "",
-			Preimages: true,
-		})
+		// db := state.NewDatabaseWithConfig(ldb.(ethdb.Database), &trie.Config{
+		// 	Cache:     256,
+		// 	Journal:   "",
+		// 	Preimages: true,
+		// })
 
-		root := &types.Hash{}
-		if meta.Height > 0 {
-			block, err := chainLedger.GetBlock(meta.Height)
-			if err != nil {
-				return nil, fmt.Errorf("get block with height %d failed: %w", meta.Height, err)
-			}
-			root = block.BlockHeader.StateRoot
-		}
+		// root := &types.Hash{}
+		// if meta.Height > 0 {
+		// 	block, err := chainLedger.GetBlock(meta.Height)
+		// 	if err != nil {
+		// 		return nil, fmt.Errorf("get block with height %d failed: %w", meta.Height, err)
+		// 	}
+		// 	root = block.BlockHeader.StateRoot
+		// }
 
-		stateLedger, err = ledger.New(root, db, logger)
-		if err != nil {
-			return nil, fmt.Errorf("init state ledger failed: %w", err)
-		}
+		// stateLedger, err = ledger.New(root, db, logger)
+		// if err != nil {
+		// 	return nil, fmt.Errorf("init state ledger failed: %w", err)
+		// }
+		return nil, fmt.Errorf("unknow storage type %T, expect simple or historical", v)
 	default:
 		return nil, fmt.Errorf("unknow storage type %T, expect simple or historical", v)
 	}
@@ -133,10 +131,11 @@ func OpenStateDB(file string, typ string) (stateStorage, error) {
 			return nil, fmt.Errorf("init leveldb failed: %w", err)
 		}
 	} else if typ == "complex" {
-		storage, err = rawdb.NewLevelDBDatabase(file, 0, 0, "", false)
-		if err != nil {
-			return nil, fmt.Errorf("init rawdb failed: %w", err)
-		}
+		// storage, err = rawdb.NewLevelDBDatabase(file, 0, 0, "", false)
+		// if err != nil {
+		// 	return nil, fmt.Errorf("init rawdb failed: %w", err)
+		// }
+		return nil, fmt.Errorf("unknow storage type %s, expect simple or complex", typ)
 	} else {
 		return nil, fmt.Errorf("unknow storage type %s, expect simple or complex", typ)
 	}

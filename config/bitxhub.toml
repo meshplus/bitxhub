@@ -49,14 +49,14 @@ solo = false
   eth_header_path="appchain/eth_header.json"
 
 [log]
-  level = "info"
+  level = "debug"
   dir = "logs"
   filename = "bitxhub.log"
   report_caller = false
   [log.module]
     p2p = "info"
     consensus = "info"
-    executor = "info"
+    executor = "debug"
     router = "info"
     api = "info"
     coreapi = "info"

@@ -18,7 +18,6 @@ import (
 
 	"github.com/cbergoon/merkletree"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/meshplus/bitxhub-core/agency"
@@ -466,8 +465,8 @@ func (exec *BlockExecutor) applyTransaction(i int, tx pb.Transaction, invalidRea
 		Version: tx.GetVersion(),
 		TxHash:  tx.GetHash(),
 	}
-
-	exec.ledger.PrepareEVM(common.BytesToHash(tx.GetHash().Bytes()), i)
+	exec.logger.Debugf("tx gas: %v", tx.GetGas())
+	exec.logger.Debugf("tx gas price: %v", tx.GetGasPrice())
 
 	switch tx.(type) {
 	case *pb.BxhTransaction:
@@ -586,13 +585,13 @@ func (exec *BlockExecutor) applyEthTransaction(i int, tx *types2.EthTransaction)
 		TxHash:  tx.GetHash(),
 	}
 
-	gp := new(core.GasPool).AddGas(exec.gasLimit)
+	gp := new(vm1.GasPool).AddGas(exec.gasLimit)
 	msg := tx.ToMessage()
 	statedb := exec.ledger.StateLedger
 	txContext := vm1.NewEVMTxContext(msg)
 	snapshot := statedb.Snapshot()
 	exec.evm.Reset(txContext, exec.ledger.StateLedger)
-	exec.logger.Debugf("msg gas: %v", msg.Gas())
+	exec.logger.Debugf("msg gas: %v", msg.GasPrice)
 	result, err := vm1.ApplyMessage(exec.evm, msg, gp)
 	if err != nil {
 		exec.logger.Errorf("apply msg failed: %s", err.Error())
@@ -618,7 +617,7 @@ func (exec *BlockExecutor) applyEthTransaction(i int, tx *types2.EthTransaction)
 	receipt.TxHash = tx.GetHash()
 	receipt.GasUsed = result.UsedGas
 	exec.ledger.Finalise(true)
-	if msg.To() == nil || bytes.Equal(msg.To().Bytes(), common.Address{}.Bytes()) {
+	if msg.To == nil || bytes.Equal(msg.To.Bytes(), common.Address{}.Bytes()) {
 		receipt.ContractAddress = types.NewAddress(crypto.CreateAddress(exec.evm.TxContext.Origin, tx.GetNonce()).Bytes())
 	}
 

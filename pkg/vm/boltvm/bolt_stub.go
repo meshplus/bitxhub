@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core"
 	"github.com/meshplus/bitxhub-core/boltvm"
 	"github.com/meshplus/bitxhub-core/validator"
 	"github.com/meshplus/bitxhub-kit/types"
@@ -181,10 +180,9 @@ func (b *BoltStubImpl) CrossInvokeEVM(address string, data []byte) *boltvm.Respo
 		Signature:       ctx.Tx.GetSignature(),
 		Extra:           ctx.Tx.GetExtra(),
 	}
-	gp := new(core.GasPool).AddGas(10000000)
+	gp := new(vm1.GasPool).AddGas(10000000)
 	msg := ledger.NewMessageFromBxh(tx)
 	statedb := ctx.Ledger.StateLedger
-	statedb.PrepareEVM(common.BytesToHash(ctx.Tx.GetHash().Bytes()), int(ctx.TransactionIndex))
 	snapshot := statedb.Snapshot()
 	txContext := vm1.NewEVMTxContext(msg)
 	b.bvm.evm.Reset(txContext, statedb)

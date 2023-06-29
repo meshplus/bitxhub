@@ -276,25 +276,7 @@ func (api *PublicEthereumAPI) SendRawTransaction(data hexutil.Bytes) (common.Has
 }
 
 func (api *PublicEthereumAPI) getStateLedgerAt(blockNum rpctypes.BlockNumber) (ledger2.StateLedger, error) {
-	if api.config.Ledger.Type == "simple" {
-		return api.api.Broker().GetStateLedger(), nil
-	}
-
-	if blockNum == rpctypes.PendingBlockNumber || blockNum == rpctypes.LatestBlockNumber {
-		meta, err := api.api.Chain().Meta()
-		if err != nil {
-			return nil, err
-		}
-
-		blockNum = rpctypes.BlockNumber(meta.Height)
-	}
-
-	block, err := api.api.Broker().GetBlock("HEIGHT", fmt.Sprintf("%d", blockNum))
-	if err != nil {
-		return nil, err
-	}
-
-	return api.api.Broker().GetStateLedger().(*ledger2.ComplexStateLedger).StateAt(block.BlockHeader.StateRoot)
+	return api.api.Broker().GetStateLedger(), nil
 }
 
 func (api *PublicEthereumAPI) checkTransaction(tx *types2.EthTransaction) error {
@@ -335,6 +317,7 @@ func (api *PublicEthereumAPI) checkTransaction(tx *types2.EthTransaction) error 
 }
 
 func (api *PublicEthereumAPI) sendTransaction(tx *types2.EthTransaction) (common.Hash, error) {
+	fmt.Println(tx.GetGasPrice().String())
 	if err := tx.VerifySignature(); err != nil {
 		return [32]byte{}, err
 	}
@@ -410,7 +393,7 @@ func (api *PublicEthereumAPI) Call(args types2.CallArgs, blockNr rpc.BlockNumber
 // EstimateGas returns an estimate of gas usage for the given smart contract call.
 // It adds 2,000 gas to the returned value instead of using the gas adjustment
 // param from the SDK.
-func (api *PublicEthereumAPI) EstimateGas(args types2.CallArgs) (hexutil.Uint64, error) {
+func (api *PublicEthereumAPI) EstimateGas(args types2.CallArgs, blockHeight *rpc.BlockNumberOrHash) (hexutil.Uint64, error) {
 	api.logger.Debugf("eth_estimateGas, args: %s", args)
 
 	// Determine the highest gas limit can be used during the estimation.

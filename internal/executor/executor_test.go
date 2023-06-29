@@ -195,7 +195,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	stateLedger.EXPECT().Finalise(gomock.Any()).AnyTimes()
 	stateLedger.EXPECT().Snapshot().Return(1).AnyTimes()
 	stateLedger.EXPECT().RevertToSnapshot(1).AnyTimes()
-	stateLedger.EXPECT().PrepareEVM(gomock.Any(), gomock.Any()).AnyTimes()
+	stateLedger.EXPECT().PrepareEVM(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	stateLedger.EXPECT().Close().AnyTimes()
 	chainLedger.EXPECT().Close().AnyTimes()
 
@@ -423,7 +423,7 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 	chainLedger.EXPECT().LoadChainMeta().Return(chainMeta).AnyTimes()
 	stateLedger.EXPECT().GetLogs(gomock.Any()).Return(nil).AnyTimes()
 	chainLedger.EXPECT().GetBlock(gomock.Any()).Return(mockBlock(10, nil), nil).AnyTimes()
-	stateLedger.EXPECT().PrepareEVM(gomock.Any(), gomock.Any()).AnyTimes()
+	stateLedger.EXPECT().PrepareEVM(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	stateLedger.EXPECT().PrepareBlock(gomock.Any(), gomock.Any()).AnyTimes()
 	stateLedger.EXPECT().GetBalance(gomock.Any()).Return(big.NewInt(10000000000000)).AnyTimes()
 	stateLedger.EXPECT().SetBalance(gomock.Any(), gomock.Any()).AnyTimes()

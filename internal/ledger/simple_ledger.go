@@ -50,6 +50,8 @@ type SimpleLedger struct {
 	preimages  map[types.Hash][]byte
 	refund     uint64
 	logs       *evmLogs
+
+	transientStorage transientStorage
 }
 
 func (l *SimpleLedger) Copy() ledger.StateLedger {

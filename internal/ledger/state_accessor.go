@@ -9,6 +9,7 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/eth-kit/ledger"
@@ -113,6 +114,10 @@ func (l *SimpleLedger) AddBalance(addr *types.Address, value *big.Int) {
 func (l *SimpleLedger) GetState(addr *types.Address, key []byte) (bool, []byte) {
 	account := l.GetOrCreateAccount(addr)
 	return account.GetState(key)
+}
+
+func (l *SimpleLedger) setTransientState(addr types.Address, key, value []byte) {
+	l.transientStorage.Set(addr, common.BytesToHash(key), common.BytesToHash(value))
 }
 
 func (l *SimpleLedger) GetCommittedState(addr *types.Address, key []byte) []byte {
