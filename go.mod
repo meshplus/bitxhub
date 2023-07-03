@@ -9,7 +9,7 @@ replace (
 	github.com/meshplus/eth-kit => github.com/TaiChiChain/eth-kit v0.0.0-20230625070739-4544d20b14b2
 	github.com/meshplus/go-libp2p-cert => github.com/TaiChiChain/go-libp2p-cert v0.0.0-20230625062152-44e7041e4770
 	github.com/meshplus/go-lightp2p => github.com/TaiChiChain/go-lightp2p v0.0.0-20230625064042-335b4532a750
-	github.com/ultramesh/rbft => github.com/TaiChiChain/rbft v0.1.5-0.20230626100454-1073fdf40e6d
+	github.com/ultramesh/rbft => github.com/TaiChiChain/rbft v0.1.5-0.20230703101940-35c10f80be39
 )
 
 replace (
@@ -18,6 +18,7 @@ replace (
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4
 	github.com/golang/protobuf => github.com/golang/protobuf v1.3.2
 	github.com/hyperledger/fabric => github.com/hyperledger/fabric v2.0.1+incompatible
+	github.com/karalabe/usb => github.com/karalabe/usb v0.0.2
 	golang.org/x/net => golang.org/x/net v0.0.0-20200520004742-59133d7f0dd7
 	google.golang.org/genproto => google.golang.org/genproto v0.0.0-20200218151345-dad8c97a84f5
 	google.golang.org/grpc => google.golang.org/grpc v1.33.0
@@ -27,7 +28,7 @@ require (
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
 	github.com/Rican7/retry v0.1.0
 	github.com/binance-chain/tss-lib v1.3.3-0.20210411025750-fffb56b30511
-	github.com/bytecodealliance/wasmtime-go v0.34.0
+	github.com/bytecodealliance/wasmtime-go v0.37.0
 	github.com/cbergoon/merkletree v0.2.0
 	github.com/cheynewallace/tabby v1.1.1
 	github.com/common-nighthawk/go-figure v0.0.0-20190529165535-67e0ed34491a
