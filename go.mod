@@ -79,8 +79,6 @@ require (
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5
 	github.com/ultramesh/rbft v0.0.0-00010101000000-000000000000
 	github.com/urfave/cli v1.22.1
-	github.com/willf/bitset v1.1.11 // indirect
-	github.com/willf/bloom v2.0.3+incompatible
 	go.uber.org/atomic v1.7.0
 	go.uber.org/zap v1.19.0 // indirect
 	google.golang.org/grpc v1.35.0

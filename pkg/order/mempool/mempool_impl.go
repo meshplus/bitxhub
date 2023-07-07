@@ -13,7 +13,7 @@ import (
 	"github.com/meshplus/bitxhub-kit/storage/leveldb"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
-	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
+	"github.com/meshplus/bitxhub/pkg/order/mempool/proto"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -61,7 +61,7 @@ func newMempoolImpl(config *Config) (*mempoolImpl, error) {
 	return mpi, nil
 }
 
-func (mpi *mempoolImpl) ProcessTransactions(txs []pb.Transaction, isLeader, isLocal bool) *raftproto.RequestBatch {
+func (mpi *mempoolImpl) ProcessTransactions(txs []pb.Transaction, isLeader, isLocal bool) *proto.RequestBatch {
 	validTxs := make(map[string][]pb.Transaction)
 	validTxList := make([]pb.Transaction, 0)
 
@@ -138,7 +138,7 @@ func (mpi *mempoolImpl) processDirtyAccount(dirtyAccounts map[string]bool) {
 
 // getBlock fetches next block of transactions for consensus,
 // batchedTx are all txs sent to consensus but were not committed yet, mempool should filter out such txs.
-func (mpi *mempoolImpl) generateBlock() (*raftproto.RequestBatch, error) {
+func (mpi *mempoolImpl) generateBlock() (*proto.RequestBatch, error) {
 	// tx which has lower timestamp will be observed first in priority index iterator.
 	// and if first seen tx's nonce isn't the required nonce for the account,
 	// it will be stored in skip DS first.
@@ -207,7 +207,7 @@ func (mpi *mempoolImpl) generateBlock() (*raftproto.RequestBatch, error) {
 	}
 	mpi.batchSeqNo++
 	batchSeqNo := mpi.batchSeqNo
-	batch := &raftproto.RequestBatch{
+	batch := &proto.RequestBatch{
 		TxList:    &pb.Transactions{Transactions: txList},
 		Height:    batchSeqNo,
 		Timestamp: time.Now().UnixNano(),

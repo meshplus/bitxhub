@@ -16,7 +16,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/loggers"
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/bitxhub/internal/router"
-	"github.com/meshplus/bitxhub/pkg/order/etcdraft"
+	"github.com/meshplus/bitxhub/pkg/order/rbft"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -93,7 +93,7 @@ func newTesterBitXHub(rep *repo.Repo) (*app.BitXHub, error) {
 
 	m := rep.NetworkConfig.GetVpInfos()
 
-	order, err := etcdraft.NewNode(
+	order, err := rbft.NewNode(
 		order.WithRepoRoot(repoRoot),
 		order.WithStoragePath(repo.GetStoragePath(repoRoot, "order")),
 		order.WithNodes(m),

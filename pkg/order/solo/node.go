@@ -12,22 +12,21 @@ import (
 	orderPeerMgr "github.com/meshplus/bitxhub-core/peer-mgr"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/pkg/order/etcdraft"
-	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
 	"github.com/meshplus/bitxhub/pkg/order/mempool"
+	"github.com/meshplus/bitxhub/pkg/order/mempool/proto"
 	"github.com/sirupsen/logrus"
 )
 
 type Node struct {
 	ID           uint64
 	isTimed      bool
-	commitC      chan *pb.CommitEvent         // block channel
-	logger       logrus.FieldLogger           // logger
-	mempool      mempool.MemPool              // transaction pool
-	proposeC     chan *raftproto.RequestBatch // proposed listenReadyBlock, input channel
+	commitC      chan *pb.CommitEvent     // block channel
+	logger       logrus.FieldLogger       // logger
+	mempool      mempool.MemPool          // transaction pool
+	proposeC     chan *proto.RequestBatch // proposed listenReadyBlock, input channel
 	stateC       chan *mempool.ChainState
 	txCache      *mempool.TxCache // cache the transactions received from api
-	batchMgr     *etcdraft.BatchTimer
+	batchMgr     *BatchTimer
 	blockTimeout time.Duration                 // generate block period
 	lastExec     uint64                        // the index of the last-applied block
 	packSize     int                           // maximum number of transaction packages
@@ -132,13 +131,13 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 		TxSliceSize:    memConfig.TxSliceSize,
 		TxSliceTimeout: memConfig.TxSliceTimeout,
 	}
-	batchC := make(chan *raftproto.RequestBatch)
+	batchC := make(chan *proto.RequestBatch)
 	mempoolInst, err := mempool.NewMempool(mempoolConf)
 	if err != nil {
 		return nil, fmt.Errorf("create mempool instance: %w", err)
 	}
 	txCache := mempool.NewTxCache(mempoolConf.TxSliceTimeout, mempoolConf.TxSliceSize, config.Logger)
-	batchTimerMgr := etcdraft.NewTimer(batchTimeout, config.Logger)
+	batchTimerMgr := NewTimer(batchTimeout, config.Logger)
 
 	soloNode := &Node{
 		ID:           config.ID,
@@ -253,6 +252,6 @@ func (n *Node) listenReadyBlock() {
 	}
 }
 
-func (n *Node) postProposal(batch *raftproto.RequestBatch) {
+func (n *Node) postProposal(batch *proto.RequestBatch) {
 	n.proposeC <- batch
 }

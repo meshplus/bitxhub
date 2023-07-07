@@ -8,7 +8,7 @@ import (
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
-	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
+	"github.com/meshplus/bitxhub/pkg/order/mempool/proto"
 )
 
 var (
@@ -25,7 +25,7 @@ func mockGetAccountNonce(address *types.Address) uint64 {
 	return 0
 }
 
-func mockMempoolImpl(path string) (*mempoolImpl, chan *raftproto.Ready) {
+func mockMempoolImpl(path string) (*mempoolImpl, chan *proto.Ready) {
 	config := &Config{
 		ID:              1,
 		ChainHeight:     DefaultTestChainHeight,
@@ -37,7 +37,7 @@ func mockMempoolImpl(path string) (*mempoolImpl, chan *raftproto.Ready) {
 		StoragePath:     path,
 		GetAccountNonce: mockGetAccountNonce,
 	}
-	proposalC := make(chan *raftproto.Ready)
+	proposalC := make(chan *proto.Ready)
 	mempool, _ := NewMempool(config)
 	mempoolImpl, ok := mempool.(*mempoolImpl)
 	if !ok {

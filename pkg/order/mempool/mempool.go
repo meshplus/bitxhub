@@ -6,17 +6,17 @@ import (
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
-	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
+	"github.com/meshplus/bitxhub/pkg/order/mempool/proto"
 )
 
 var _ MemPool = (*mempoolImpl)(nil)
 
 type MemPool interface {
 	// ProcessTransactions process transaction from api and other vp nodes.
-	ProcessTransactions(txs []pb.Transaction, isLeader, isLocal bool) *raftproto.RequestBatch
+	ProcessTransactions(txs []pb.Transaction, isLeader, isLocal bool) *proto.RequestBatch
 
 	// GenerateBlock generate a block
-	GenerateBlock() *raftproto.RequestBatch
+	GenerateBlock() *proto.RequestBatch
 
 	// CommitTransactions Remove removes the committed transactions from mempool
 	CommitTransactions(state *ChainState)
@@ -57,7 +57,7 @@ func NewMempool(config *Config) (MemPool, error) {
 
 // GenerateBlock generates a transaction batch and post it
 // to outside if there are transactions in txPool.
-func (mpi *mempoolImpl) GenerateBlock() *raftproto.RequestBatch {
+func (mpi *mempoolImpl) GenerateBlock() *proto.RequestBatch {
 	if !mpi.isTimed && mpi.txStore.priorityNonBatchSize == 0 {
 		mpi.logger.Debug("Mempool is empty")
 		return nil
