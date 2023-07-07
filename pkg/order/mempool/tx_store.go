@@ -49,7 +49,7 @@ func newTransactionStore(f GetAccountNonceFunc, logger logrus.FieldLogger) *tran
 }
 
 func (txStore *transactionStore) insertTxs(txs map[string][]pb.Transaction, isLocal bool) map[string]bool {
-	now := time.Now().UnixNano()
+	now := time.Now().Unix()
 	dirtyAccounts := make(map[string]bool)
 	for account, list := range txs {
 		for _, tx := range list {
@@ -62,9 +62,9 @@ func (txStore *transactionStore) insertTxs(txs map[string][]pb.Transaction, isLo
 			txList, ok := txStore.allTxs[account]
 			if !ok {
 				// if this is new account to send tx, create a new txSortedMap
-				txStore.allTxs[account] = newTxSortedMap()
+				txList = newTxSortedMap()
+				txStore.allTxs[account] = txList
 			}
-			txList = txStore.allTxs[account]
 			txItem := &txItem{
 				account: account,
 				tx:      tx,

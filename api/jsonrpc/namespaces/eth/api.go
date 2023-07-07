@@ -318,8 +318,8 @@ func (api *PublicEthereumAPI) checkTransaction(tx *types2.EthTransaction) error 
 		}
 	}
 
-	if tx.GetTimeStamp() < time.Now().UnixNano()-10*time.Minute.Nanoseconds() ||
-		tx.GetTimeStamp() > time.Now().UnixNano()+10*time.Minute.Nanoseconds() {
+	if tx.GetTimeStamp() < time.Now().Unix()-10*60 ||
+		tx.GetTimeStamp() > time.Now().Unix()+10*60 {
 		return fmt.Errorf("timestamp is illegal")
 	}
 

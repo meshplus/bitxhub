@@ -35,7 +35,7 @@ func (timer *BatchTimer) StartBatchTimer() {
 	// stop old timer
 	timer.StopBatchTimer()
 	timer.logger.Debug("Leader start batch timer")
-	timestamp := time.Now().UnixNano()
+	timestamp := time.Now().Unix()
 	key := strconv.FormatInt(timestamp, 10)
 	timer.isActive.Set(key, true)
 

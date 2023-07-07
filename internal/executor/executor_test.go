@@ -630,7 +630,7 @@ func mockTransferTx(t *testing.T) pb.Transaction {
 	tx := &pb.BxhTransaction{
 		From:      from,
 		To:        to,
-		Timestamp: time.Now().UnixNano(),
+		Timestamp: time.Now().Unix(),
 		Payload:   data,
 		Amount:    "1",
 	}
@@ -735,7 +735,7 @@ func genContractTransaction(vmType pb.TransactionData_VMType, privateKey crypto.
 		From:      from,
 		To:        address,
 		Payload:   pld,
-		Timestamp: time.Now().UnixNano(),
+		Timestamp: time.Now().Unix(),
 		Nonce:     nonce,
 	}
 

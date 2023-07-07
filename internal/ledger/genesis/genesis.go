@@ -110,7 +110,7 @@ func Initialize(genesis *repo.Genesis, nodes []*repo.NetworkNodes, primaryN uint
 			ReceiptRoot: &types.Hash{},
 			ParentHash:  &types.Hash{},
 			Bloom:       &types.Bloom{},
-			Timestamp:   time.Now().UnixNano(),
+			Timestamp:   time.Now().Unix(),
 		},
 		Transactions: &pb.Transactions{},
 	}

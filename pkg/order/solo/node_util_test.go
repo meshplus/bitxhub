@@ -74,7 +74,7 @@ func generateTx() pb.Transaction {
 	tx := &pb.BxhTransaction{
 		From:      from,
 		To:        types.NewAddressByStr(to),
-		Timestamp: time.Now().UnixNano(),
+		Timestamp: time.Now().Unix(),
 		Nonce:     0,
 	}
 	_ = tx.Sign(privKey)
