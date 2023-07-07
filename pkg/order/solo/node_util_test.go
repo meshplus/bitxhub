@@ -2,18 +2,18 @@ package solo
 
 import (
 	"context"
+	"testing"
+	"time"
+
 	"github.com/golang/mock/gomock"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/pkg/order/etcdraft"
-	raftproto "github.com/meshplus/bitxhub/pkg/order/etcdraft/proto"
 	"github.com/meshplus/bitxhub/pkg/order/mempool"
+	"github.com/meshplus/bitxhub/pkg/order/mempool/proto"
 	"github.com/meshplus/bitxhub/pkg/peermgr/mock_peermgr"
-	"testing"
-	"time"
 )
 
 func mockSoloNode(t *testing.T, enableTimed bool) (*Node, error) {
@@ -21,7 +21,7 @@ func mockSoloNode(t *testing.T, enableTimed bool) (*Node, error) {
 	txCache := mempool.NewTxCache(25*time.Millisecond, uint64(2), logger)
 	repoRoot := "./testdata/"
 	batchTimeout, memConfig, timedGenBlock, _ := generateSoloConfig(repoRoot)
-	batchTimerMgr := etcdraft.NewTimer(batchTimeout, logger)
+	batchTimerMgr := NewTimer(batchTimeout, logger)
 	mockCtl := gomock.NewController(t)
 	mockPeermgr := mock_peermgr.NewMockPeerManager(mockCtl)
 	mempoolConf := &mempool.Config{
@@ -46,7 +46,7 @@ func mockSoloNode(t *testing.T, enableTimed bool) (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	batchC := make(chan *raftproto.RequestBatch)
+	batchC := make(chan *proto.RequestBatch)
 	ctx, cancel := context.WithCancel(context.Background())
 
 	soloNode := &Node{

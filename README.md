@@ -26,8 +26,7 @@ git clone git@github.com:meshplus/bitxhub.git
 BitXHub also relies on some small tools, use commands below to install:
 
 ```shell
-cd bitxhub
-bash scripts/prepare.sh 
+make prepare
 ```
 
 Finally, run the following commands to start a four nodes relay-chain.
