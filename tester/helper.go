@@ -43,7 +43,7 @@ func genTransferTransaction(privateKey crypto.PrivateKey, nonce uint64, address 
 		From:      from,
 		To:        address,
 		Payload:   payload,
-		Timestamp: time.Now().UnixNano(),
+		Timestamp: time.Now().Unix(),
 		Nonce:     nonce,
 	}
 
@@ -93,7 +93,7 @@ func genIBTPTransaction(privateKey crypto.PrivateKey, ibtp *pb.IBTP, nonce uint6
 		From:      from,
 		To:        constant.InterchainContractAddr.Address(),
 		Payload:   payload,
-		Timestamp: time.Now().UnixNano(),
+		Timestamp: time.Now().Unix(),
 		Nonce:     nonce,
 		IBTP:      ibtp,
 	}
@@ -177,7 +177,7 @@ func genContractTransaction(vmType pb.TransactionData_VMType, privateKey crypto.
 		From:      from,
 		To:        address,
 		Payload:   payload,
-		Timestamp: time.Now().UnixNano(),
+		Timestamp: time.Now().Unix(),
 		Nonce:     nonce,
 	}
 
@@ -210,7 +210,7 @@ func deployContract(api api.CoreAPI, privateKey crypto.PrivateKey, nonce uint64,
 	tx := &pb.BxhTransaction{
 		From:      from,
 		Payload:   payload,
-		Timestamp: time.Now().UnixNano(),
+		Timestamp: time.Now().Unix(),
 		Nonce:     nonce,
 	}
 

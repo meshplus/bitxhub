@@ -60,7 +60,7 @@ func constructTx(nonce uint64, privKey *crypto.PrivateKey) pb.Transaction {
 	pubKey := privK.PublicKey()
 	addr, _ := pubKey.Address()
 	tx := &pb.BxhTransaction{Nonce: nonce}
-	tx.Timestamp = time.Now().UnixNano()
+	tx.Timestamp = time.Now().Unix()
 	tx.From = addr
 	sig, _ := privK.Sign(tx.SignHash().Bytes())
 	tx.Signature = sig

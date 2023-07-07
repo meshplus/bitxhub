@@ -100,7 +100,7 @@ func sendTxOrView(ctx *cli.Context, sendType, toString string, amount *big.Int, 
 	tx := &pb.BxhTransaction{
 		From:      from,
 		To:        to,
-		Timestamp: time.Now().UnixNano(),
+		Timestamp: time.Now().Unix(),
 		Nonce:     nonce,
 		Payload:   payload,
 	}

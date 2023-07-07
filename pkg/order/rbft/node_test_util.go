@@ -213,7 +213,7 @@ func constructBlock(blockHashStr string, height uint64) *pb.Block {
 	header := &pb.BlockHeader{
 		Number:     height,
 		ParentHash: blockHash,
-		Timestamp:  time.Now().UnixNano(),
+		Timestamp:  time.Now().Unix(),
 	}
 	return &pb.Block{
 		BlockHash:    blockHash,

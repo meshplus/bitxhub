@@ -1,7 +1,6 @@
 package mempool
 
 import (
-	"math"
 	"os"
 	"sync"
 	"time"
@@ -210,7 +209,7 @@ func (mpi *mempoolImpl) generateBlock() (*proto.RequestBatch, error) {
 	batch := &proto.RequestBatch{
 		TxList:    &pb.Transactions{Transactions: txList},
 		Height:    batchSeqNo,
-		Timestamp: time.Now().UnixNano(),
+		Timestamp: time.Now().Unix(),
 	}
 	if mpi.txStore.priorityNonBatchSize >= uint64(len(txList)) {
 		mpi.txStore.priorityNonBatchSize = mpi.txStore.priorityNonBatchSize - uint64(len(txList))
@@ -290,8 +289,8 @@ func (mpi *mempoolImpl) processCommitTransactions(state *ChainState) {
 func (mpi *mempoolImpl) GetTimeoutTransactions(rebroadcastDuration time.Duration) [][]pb.Transaction {
 	// all the tx whose live time is less than lowBoundTime should be rebroadcast
 	mpi.logger.Debugf("Start gathering timeout txs, ttl index len is %d", mpi.txStore.ttlIndex.index.Len())
-	currentTime := time.Now().UnixNano()
-	if currentTime < mpi.txStore.earliestTimestamp+rebroadcastDuration.Nanoseconds() {
+	currentTime := time.Now().Unix()
+	if currentTime < mpi.txStore.earliestTimestamp+int64(rebroadcastDuration.Seconds()) {
 		// if the latest incoming tx has not exceeded the timeout limit, then none will be timeout
 		return [][]pb.Transaction{}
 	}
@@ -299,13 +298,8 @@ func (mpi *mempoolImpl) GetTimeoutTransactions(rebroadcastDuration time.Duration
 	timeoutItems := make([]*orderedTimeoutKey, 0)
 	mpi.txStore.ttlIndex.index.Ascend(func(i btree.Item) bool {
 		item := i.(*orderedTimeoutKey)
-		if item.timestamp > math.MaxInt64 {
-			// TODO(tyx): if this tx has rebroadcast many times and exceeded a final limit,
-			// it is expired and will be removed from mempool
-			return true
-		}
 		// if this tx has not exceeded the rebroadcast duration, break iteration
-		timeoutTime := item.timestamp + rebroadcastDuration.Nanoseconds()
+		timeoutTime := item.timestamp + int64(rebroadcastDuration.Seconds())
 		_, ok := mpi.txStore.allTxs[item.account]
 		if !ok || currentTime < timeoutTime {
 			return false
@@ -331,7 +325,7 @@ func (txStore *transactionStore) getPoolTxByTxnPointer(account string, nonce uin
 
 // RemoveAliveTimeoutTxs remove the remained local txs in timeoutIndex and removeTxs in memPool by tolerance time.
 func (mpi *mempoolImpl) RemoveAliveTimeoutTxs(removeDuration time.Duration) uint64 {
-	now := time.Now().UnixNano()
+	now := time.Now().Unix()
 	removedTxs := make(map[string][]pb.Transaction)
 	var removeCnt uint64
 
@@ -343,7 +337,7 @@ func (mpi *mempoolImpl) RemoveAliveTimeoutTxs(removeDuration time.Duration) uint
 			return true
 		}
 		// if this tx has not exceeded the remove duration, break iteration
-		if (now - item.timestamp) > removeDuration.Nanoseconds() {
+		if (now - item.timestamp) > int64(removeDuration.Seconds()) {
 			orderedKey := &orderedTimeoutKey{txIt.account, txIt.tx.GetNonce(),
 				txIt.tx.GetTimeStamp()}
 			// for those batched txs, we don't need to add removedTxs temporarily.

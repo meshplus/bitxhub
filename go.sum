@@ -57,14 +57,12 @@ github.com/TaiChiChain/bitxhub-kit v1.20.1-0.20230625064843-b7ae66571e52 h1:aXGX
 github.com/TaiChiChain/bitxhub-kit v1.20.1-0.20230625064843-b7ae66571e52/go.mod h1:wrEdhHp1tktzdwcWb4bOxYsVc+KkcrYL18IYWYeumPQ=
 github.com/TaiChiChain/bitxhub-model v1.20.2-0.20230625065636-b5b1ab540d61 h1:r89Hj95XhOh8A4wp7OXyIFt1asxd7xvo9u+u5zZnkmQ=
 github.com/TaiChiChain/bitxhub-model v1.20.2-0.20230625065636-b5b1ab540d61/go.mod h1:/6Y5RhjhAneAE6LG/FIH4yZp92mC9o2xbZpLYBd/Cww=
-github.com/TaiChiChain/eth-kit v0.0.0-20230625070739-4544d20b14b2 h1:Ur1DujPTyRsJ4c5OV+s2t6vBGjMScueKy1TxnCQjGCQ=
-github.com/TaiChiChain/eth-kit v0.0.0-20230625070739-4544d20b14b2/go.mod h1:UFDr+CUIWSzE15MUlKBURe9ErNn8XKCiLadvn7klgYs=
+github.com/TaiChiChain/eth-kit v0.0.0-20230707085233-79e2e9caa315 h1:0r+mFby0lj8hM3Nk7i34RVYiEEvPoVFuNoKOMagm/hI=
+github.com/TaiChiChain/eth-kit v0.0.0-20230707085233-79e2e9caa315/go.mod h1:UFDr+CUIWSzE15MUlKBURe9ErNn8XKCiLadvn7klgYs=
 github.com/TaiChiChain/go-libp2p-cert v0.0.0-20230625062152-44e7041e4770 h1:pFfZ08LXcB2Zu18Z1SHO9mfnZvnG6+UF+GzyW9xd4RE=
 github.com/TaiChiChain/go-libp2p-cert v0.0.0-20230625062152-44e7041e4770/go.mod h1:rS4AYMqKypLn2IPEnHICP//V2v16SZo4CWUbwMdihl0=
 github.com/TaiChiChain/go-lightp2p v0.0.0-20230625064042-335b4532a750 h1:Xp4xABX6JZ5lWez35X9HhzvNMzf9iByA409wCooI7OQ=
 github.com/TaiChiChain/go-lightp2p v0.0.0-20230625064042-335b4532a750/go.mod h1:1pD5x/r4Ljpdhd1C39yElWjT4cBpks6HsP/gJPHn2p4=
-github.com/TaiChiChain/rbft v0.1.5-0.20230626100454-1073fdf40e6d h1:TX8zRb61BBiSX78QqIHZRNp/t+D4EdpZSR4fykqhfl4=
-github.com/TaiChiChain/rbft v0.1.5-0.20230626100454-1073fdf40e6d/go.mod h1:/PD85rMcLdQjA7iUmGLUixe/rC3M0rRIsBjUIHGWMXA=
 github.com/TaiChiChain/rbft v0.1.5-0.20230703101940-35c10f80be39 h1:eMn8VBYdu8sG7dfkxJeQnc6fzHXiU/l6aVbrO94RZbA=
 github.com/TaiChiChain/rbft v0.1.5-0.20230703101940-35c10f80be39/go.mod h1:/PD85rMcLdQjA7iUmGLUixe/rC3M0rRIsBjUIHGWMXA=
 github.com/VictoriaMetrics/fastcache v1.5.7/go.mod h1:ptDBkNMQI4RtmVo8VS/XwRY6RoTu1dAWCbrk+6WsEM8=

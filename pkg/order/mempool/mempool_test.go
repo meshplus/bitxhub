@@ -112,7 +112,7 @@ func TestCommitTransactions(t *testing.T) {
 		Height:     uint64(2),
 	}
 	mpi.CommitTransactions(state)
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(1000 * time.Millisecond)
 	ast.Equal(0, mpi.txStore.priorityIndex.size())
 	ast.Equal(1, mpi.txStore.parkingLotIndex.size())
 }
@@ -266,7 +266,7 @@ func TestUnorderedIncomingTxs(t *testing.T) {
 		Height:     2,
 	}
 	mpi.processCommitTransactions(ready)
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(2000 * time.Millisecond)
 
 	ast.Equal(uint64(1), mpi.txStore.priorityNonBatchSize)
 	ast.Equal(1, mpi.txStore.priorityIndex.size())
@@ -330,7 +330,7 @@ func TestGetTimeoutTransaction(t *testing.T) {
 	ast.Nil(batch)
 
 	// set another incoming list for timeout
-	time.Sleep(150 * time.Millisecond)
+	time.Sleep(1500 * time.Millisecond)
 	nonceArr = []uint64{0, 1}
 	for _, i := range nonceArr {
 		tx1 := constructTx(i, &privKey1)
@@ -361,7 +361,7 @@ func TestGetTimeoutTransaction(t *testing.T) {
 	ast.NotNil(batch)
 
 	// tx4,tx5 should be timeout
-	timeoutList := mpi.GetTimeoutTransactions(100 * time.Millisecond)
+	timeoutList := mpi.GetTimeoutTransactions(1000 * time.Millisecond)
 	ast.NotNil(timeoutList)
 	ast.Equal(2, len(timeoutList))
 	ast.Equal(3, len(timeoutList[0]))
@@ -370,8 +370,8 @@ func TestGetTimeoutTransaction(t *testing.T) {
 
 	// wait another 150 millisecond, tx3 be timeout too.
 	// though tx1,tx2 has wait a long time, they are not local and they won't be broadcast
-	time.Sleep(150 * time.Millisecond)
-	timeoutList = mpi.GetTimeoutTransactions(100 * time.Millisecond)
+	time.Sleep(1500 * time.Millisecond)
+	timeoutList = mpi.GetTimeoutTransactions(1000 * time.Millisecond)
 	ast.NotNil(timeoutList)
 	ast.Equal(2, len(timeoutList))
 	ast.Equal(3, len(timeoutList[0]))
@@ -385,7 +385,7 @@ func TestGetTimeoutTransaction(t *testing.T) {
 		Height:     uint64(2),
 	}
 	mpi.CommitTransactions(state)
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(1000 * time.Millisecond)
 	ast.Equal(0, mpi.txStore.ttlIndex.index.Len())
 	ast.Equal(0, mpi.txStore.removeTimeoutIndex.index.Len())
 	ast.Equal(0, len(mpi.txStore.ttlIndex.items))
@@ -428,9 +428,9 @@ func TestRemoveAliveTimeoutTxs(t *testing.T) {
 	ast.Equal(6, len(mpi.txStore.txHashMap))
 	ast.Equal(6, mpi.txStore.removeTimeoutIndex.index.Len())
 
-	time.Sleep(110 * time.Millisecond)
+	time.Sleep(2100 * time.Millisecond)
 	// tx3,tx4,tx5,tx8 should be timeout
-	timeoutTxsLen := mpi.RemoveAliveTimeoutTxs(100 * time.Millisecond)
+	timeoutTxsLen := mpi.RemoveAliveTimeoutTxs(1000 * time.Millisecond)
 	ast.NotNil(timeoutTxsLen)
 	ast.Equal(4, int(timeoutTxsLen))
 	ast.Equal(2, mpi.txStore.ttlIndex.index.Len())
@@ -483,7 +483,7 @@ func TestRestore(t *testing.T) {
 		Height:     uint64(2),
 	}
 	mpi.CommitTransactions(state)
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(1000 * time.Millisecond)
 	ast.Equal(0, mpi.txStore.priorityIndex.size())
 	ast.Equal(1, mpi.txStore.parkingLotIndex.size())
 

@@ -118,7 +118,7 @@ func TestExecute(t *testing.T) {
 	ast.Nil(err)
 	txs := make([]pb.Transaction, 0)
 	txs = append(txs, &pb.BxhTransaction{Nonce: uint64(1)}, &pb.BxhTransaction{Nonce: uint64(2)})
-	node.stack.Execute(txs, []bool{true}, uint64(2), time.Now().UnixNano())
+	node.stack.Execute(txs, []bool{true}, uint64(2), time.Now().Unix())
 	block := <-node.blockC
 	ast.Equal(uint64(2), block.Block.Height())
 }

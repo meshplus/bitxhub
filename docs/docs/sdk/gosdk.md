@@ -316,7 +316,7 @@ func TestChainClient_SendTransactionWithReceipt(t *testing.T) {
       Data: &pb.TransactionData{
          Amount: 10,
       },
-      Timestamp: time.Now().UnixNano(),
+      Timestamp: time.Now().Unix(),
       Nonce:     rand.Int63(),
    }
 
@@ -532,7 +532,7 @@ func TestChainClient_Subscribe(t *testing.T) {
       tx := &pb.Transaction{
          From:      from,
          To:        from,
-         Timestamp: time.Now().UnixNano(),
+         Timestamp: time.Now().Unix(),
          Nonce:     rand.Int63(),
       }
 

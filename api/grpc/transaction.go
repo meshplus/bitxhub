@@ -90,8 +90,8 @@ func (cbs *ChainBrokerService) checkTransaction(tx *pb.BxhTransaction) error {
 		return fmt.Errorf("can't deploy empty contract")
 	}
 
-	if tx.Timestamp < time.Now().UnixNano()-30*time.Minute.Nanoseconds() ||
-		tx.Timestamp > time.Now().UnixNano()+5*time.Minute.Nanoseconds() {
+	if tx.Timestamp < time.Now().Unix()-30*60 ||
+		tx.Timestamp > time.Now().Unix()+5*60 {
 		return fmt.Errorf("timestamp is illegal")
 	}
 

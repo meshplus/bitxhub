@@ -83,7 +83,7 @@ func TestNode_Start(t *testing.T) {
 	tx := &pb.BxhTransaction{
 		From:      from,
 		To:        types.NewAddressByStr(to),
-		Timestamp: time.Now().UnixNano(),
+		Timestamp: time.Now().Unix(),
 		Nonce:     0,
 	}
 	tx.TransactionHash = tx.Hash()
