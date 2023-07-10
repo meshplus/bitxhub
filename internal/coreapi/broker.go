@@ -1,6 +1,7 @@
 package coreapi
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
@@ -23,6 +24,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/model"
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/bitxhub/pkg/utils"
+	"github.com/meshplus/eth-kit/evm"
 	"github.com/meshplus/eth-kit/ledger"
 	solsha3 "github.com/miguelmota/go-solidity-sha3"
 	"github.com/sirupsen/logrus"
@@ -445,6 +447,14 @@ func (b BrokerAPI) GetPoolTransaction(hash *types.Hash) pb.Transaction {
 
 func (b BrokerAPI) GetStateLedger() ledger.StateLedger {
 	return b.bxh.Ledger.StateLedger
+}
+
+func (b BrokerAPI) GetEvm(ctx context.Context, mes *vm.Message, vmConfig *vm.Config, blockCtx *vm.BlockContext) *vm.EVM {
+	if vmConfig == nil {
+		vmConfig = new(vm.Config)
+	}
+	txContext := vm.NewEVMTxContext(mes)
+	return b.bxh.BlockExecutor.GetEvm(txContext, *vmConfig, blockCtx)
 }
 
 func (b *BrokerAPI) FetchTssInfoFromOtherPeers() []*pb.TssInfo {

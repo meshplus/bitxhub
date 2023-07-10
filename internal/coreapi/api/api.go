@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"crypto/ecdsa"
 
 	"github.com/ethereum/go-ethereum/event"
@@ -10,6 +11,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
+	vm "github.com/meshplus/eth-kit/evm"
 	"github.com/meshplus/eth-kit/ledger"
 )
 
@@ -35,6 +37,7 @@ type BrokerAPI interface {
 	GetPendingTransactions(max int) []pb.Transaction
 	GetPoolTransaction(hash *types.Hash) pb.Transaction
 	GetStateLedger() ledger.StateLedger
+	GetEvm(ctx context.Context, mes *vm.Message, vmConfig *vm.Config, blockCtx *vm.BlockContext) *vm.EVM
 
 	// AddPier
 	AddPier(pierID string) (chan *pb.InterchainTxWrappers, error)
