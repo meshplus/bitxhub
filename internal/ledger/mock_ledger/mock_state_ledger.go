@@ -707,6 +707,18 @@ func (mr *MockStateLedgerMockRecorder) SetState(arg0, arg1, arg2 interface{}) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetState", reflect.TypeOf((*MockStateLedger)(nil).SetState), arg0, arg1, arg2)
 }
 
+// SetTxContext mocks base method.
+func (m *MockStateLedger) SetTxContext(thash *types0.Hash, txIndex int) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetTxContext", thash, txIndex)
+}
+
+// SetTxContext indicates an expected call of SetTxContext.
+func (mr *MockStateLedgerMockRecorder) SetTxContext(thash, txIndex interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetTxContext", reflect.TypeOf((*MockStateLedger)(nil).SetTxContext), thash, txIndex)
+}
+
 // SlotInEVMAceessList mocks base method.
 func (m *MockStateLedger) SlotInEVMAceessList(addr common.Address, slot common.Hash) (bool, bool) {
 	m.ctrl.T.Helper()
@@ -1010,6 +1022,18 @@ func (m *MockStateAccessor) SetState(arg0 *types0.Address, arg1, arg2 []byte) {
 func (mr *MockStateAccessorMockRecorder) SetState(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetState", reflect.TypeOf((*MockStateAccessor)(nil).SetState), arg0, arg1, arg2)
+}
+
+// SetTxContext mocks base method.
+func (m *MockStateAccessor) SetTxContext(thash *types0.Hash, txIndex int) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetTxContext", thash, txIndex)
+}
+
+// SetTxContext indicates an expected call of SetTxContext.
+func (mr *MockStateAccessorMockRecorder) SetTxContext(thash, txIndex interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetTxContext", reflect.TypeOf((*MockStateAccessor)(nil).SetTxContext), thash, txIndex)
 }
 
 // MockIAccount is a mock of IAccount interface.

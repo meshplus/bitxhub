@@ -3,12 +3,12 @@ module github.com/meshplus/bitxhub
 go 1.18
 
 replace (
-	// github.com/meshplus/bitxhub-core => github.com/TaiChiChain/bitxhub-core v1.3.1-0.20230625070128-e24beb3d491e
-	github.com/meshplus/bitxhub-core => ../bitxhub-core
+	github.com/meshplus/bitxhub-core => github.com/TaiChiChain/bitxhub-core v1.3.1-0.20230712061424-b0292d7d945e
+	// github.com/meshplus/bitxhub-core => ../bitxhub-core
 	github.com/meshplus/bitxhub-kit => github.com/TaiChiChain/bitxhub-kit v1.20.1-0.20230625064843-b7ae66571e52
-	// github.com/meshplus/bitxhub-model => github.com/TaiChiChain/bitxhub-model v1.20.2-0.20230625065636-b5b1ab540d61
-	github.com/meshplus/bitxhub-model => ../bitxhub-model
-	github.com/meshplus/eth-kit => ../eth-kit
+	github.com/meshplus/bitxhub-model => github.com/TaiChiChain/bitxhub-model v1.20.2-0.20230625065636-b5b1ab540d61
+	// github.com/meshplus/bitxhub-model => ../bitxhub-model
+	github.com/meshplus/eth-kit => github.com/TaiChiChain/eth-kit v0.0.0-20230712060904-2c2825d9ca88
 	github.com/meshplus/go-libp2p-cert => github.com/TaiChiChain/go-libp2p-cert v0.0.0-20230625062152-44e7041e4770
 	github.com/meshplus/go-lightp2p => github.com/TaiChiChain/go-lightp2p v0.0.0-20230625064042-335b4532a750
 	github.com/ultramesh/rbft => github.com/TaiChiChain/rbft v0.1.5-0.20230703101940-35c10f80be39
@@ -31,10 +31,8 @@ replace (
 require (
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
 	github.com/Rican7/retry v0.1.0
-	github.com/binance-chain/tss-lib v1.3.3-0.20210411025750-fffb56b30511
-	github.com/bytecodealliance/wasmtime-go v0.37.0
 	github.com/binance-chain/tss-lib v1.3.3
-	github.com/bytecodealliance/wasmtime-go v0.34.0
+	github.com/bytecodealliance/wasmtime-go v0.37.0
 	github.com/cbergoon/merkletree v0.2.0
 	github.com/cheynewallace/tabby v1.1.1
 	github.com/common-nighthawk/go-figure v0.0.0-20190529165535-67e0ed34491a
@@ -82,7 +80,6 @@ require (
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5
 	github.com/ultramesh/rbft v0.0.0-00010101000000-000000000000
 	github.com/urfave/cli v1.22.1
-	github.com/willf/bloom v2.0.3+incompatible
 	go.uber.org/atomic v1.7.0
 	google.golang.org/grpc v1.48.0
 )
@@ -227,7 +224,6 @@ require (
 	github.com/tklauser/numcpus v0.2.2 // indirect
 	github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1 // indirect
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7 // indirect
-	github.com/willf/bitset v1.1.3 // indirect
 	go.opencensus.io v0.23.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.17.0 // indirect

@@ -317,7 +317,6 @@ func (api *PublicEthereumAPI) checkTransaction(tx *types2.EthTransaction) error 
 }
 
 func (api *PublicEthereumAPI) sendTransaction(tx *types2.EthTransaction) (common.Hash, error) {
-	fmt.Println(tx.GetGasPrice().String())
 	if err := tx.VerifySignature(); err != nil {
 		return [32]byte{}, err
 	}
@@ -501,7 +500,7 @@ func (api *PublicEthereumAPI) GetEthTransactionByHash(hash *types.Hash) (*types2
 		tx, err = api.api.Broker().GetTransaction(hash)
 		if err != nil {
 			api.logger.Debugf("tx %s is not in ledger", hash.String())
-			return nil, nil, fmt.Errorf("get tx from ledger: %w", err)
+			return nil, nil, nil
 		}
 
 		meta, err = api.api.Broker().GetTransactionMeta(hash)
@@ -576,9 +575,9 @@ func (api *PublicEthereumAPI) GetTransactionReceipt(hash common.Hash) (map[strin
 
 	txHash := types.NewHash(hash.Bytes())
 	tx, meta, err := api.GetEthTransactionByHash(txHash)
-	if err != nil {
+	if err != nil || tx == nil {
 		api.logger.Debugf("no tx found for hash %s", txHash.String())
-		return nil, err
+		return nil, nil
 	}
 
 	receipt, err := api.api.Broker().GetReceipt(txHash)

@@ -65,7 +65,10 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 		txHashList = append(txHashList, tx.GetHash())
 	}
 
+	//TODO: REMOVE VERIFY PROOF?
 	exec.verifyProofs(blockWrapper)
+
+	//TODO: CHANGE COINBASE ADDRESSS
 	exec.evm = newEvm(block.Height(), uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateLedger, exec.ledger.ChainLedger, exec.admins[0])
 	exec.ledger.PrepareBlock(block.BlockHash, block.Height())
 	receipts := exec.txsExecutor.ApplyTransactions(block.Transactions.Transactions, blockWrapper.invalidTx)
@@ -467,6 +470,8 @@ func (exec *BlockExecutor) applyTransaction(i int, tx pb.Transaction, invalidRea
 	}
 	exec.logger.Debugf("tx gas: %v", tx.GetGas())
 	exec.logger.Debugf("tx gas price: %v", tx.GetGasPrice())
+
+	exec.ledger.SetTxContext(tx.GetHash(), i)
 
 	switch tx.(type) {
 	case *pb.BxhTransaction:

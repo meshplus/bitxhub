@@ -38,6 +38,8 @@ type SimpleLedger struct {
 	prevJnlHash   *types.Hash
 	repo          *repo.Repo
 	blockHeight   uint64
+	thash         *types.Hash
+	txIndex       int
 
 	journalMutex sync.RWMutex
 	lock         sync.RWMutex
@@ -103,6 +105,11 @@ func NewSimpleLedger(repo *repo.Repo, ldb storage.Storage, accountCache *Account
 
 func (l *SimpleLedger) AccountCache() *AccountCache {
 	return l.accountCache
+}
+
+func (l *SimpleLedger) SetTxContext(thash *types.Hash, ti int) {
+	l.thash = thash
+	l.txIndex = ti
 }
 
 // removeJournalsBeforeBlock removes ledger journals whose block number < height
