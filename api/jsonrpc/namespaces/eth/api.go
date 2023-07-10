@@ -317,7 +317,6 @@ func (api *PublicEthereumAPI) checkTransaction(tx *types2.EthTransaction) error 
 }
 
 func (api *PublicEthereumAPI) sendTransaction(tx *types2.EthTransaction) (common.Hash, error) {
-	fmt.Println(tx.GetGasPrice().String())
 	if err := tx.VerifySignature(); err != nil {
 		return [32]byte{}, err
 	}
