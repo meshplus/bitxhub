@@ -112,7 +112,6 @@ func TestCommitTransactions(t *testing.T) {
 		Height:     uint64(2),
 	}
 	mpi.CommitTransactions(state)
-	time.Sleep(1000 * time.Millisecond)
 	ast.Equal(0, mpi.txStore.priorityIndex.size())
 	ast.Equal(1, mpi.txStore.parkingLotIndex.size())
 }
@@ -240,15 +239,18 @@ func TestUnorderedIncomingTxs(t *testing.T) {
 	tx8 := constructTx(uint64(4), &privKey2)
 	txList = make([]pb.Transaction, 0)
 	txList = append(txList, tx7, tx8)
+	// batchList: privKey1 => tx{0,1,2,3} and privKey2 => tx{0,1}
+	mpi.batchSize = 6
 	batch = mpi.ProcessTransactions(txList, true, true)
 	ast.NotNil(batch)
 
 	var hashes []types.Hash
 	// this batch will contain tx{1,2,3} for privKey1 and tx{1,2} for privKey2
-	ast.Equal(5, len(batch.TxList.Transactions))
+	ast.Equal(6, len(batch.TxList.Transactions))
 	ast.Equal(uint64(2), batch.Height)
-	ast.Equal(uint64(1), mpi.txStore.priorityNonBatchSize)
+	ast.Equal(uint64(0), mpi.txStore.priorityNonBatchSize)
 	ast.Equal(6, mpi.txStore.priorityIndex.size())
+	// privKey1 => tx{3} and privKey2 => tx{3,4}
 	ast.Equal(3, mpi.txStore.parkingLotIndex.size(), "delete parkingLot until finishing executor")
 	ast.Equal(8, len(mpi.txStore.txHashMap))
 	ast.Equal(4, mpi.txStore.allTxs[account1.String()].index.size())
@@ -266,12 +268,11 @@ func TestUnorderedIncomingTxs(t *testing.T) {
 		Height:     2,
 	}
 	mpi.processCommitTransactions(ready)
-	time.Sleep(10000 * time.Millisecond)
 
-	ast.Equal(uint64(1), mpi.txStore.priorityNonBatchSize)
-	ast.Equal(1, mpi.txStore.priorityIndex.size())
+	ast.Equal(uint64(0), mpi.txStore.priorityNonBatchSize)
+	ast.Equal(0, mpi.txStore.priorityIndex.size())
 	ast.Equal(2, mpi.txStore.parkingLotIndex.size(), "delete parkingLot until finishing executor")
-	ast.Equal(3, len(mpi.txStore.txHashMap))
+	ast.Equal(2, len(mpi.txStore.txHashMap))
 	ast.Equal(0, mpi.txStore.allTxs[account1.String()].index.size())
 	ast.Equal(2, mpi.txStore.allTxs[account2.String()].index.size())
 	ast.Equal(uint64(4), mpi.txStore.nonceCache.getPendingNonce(account1.String()))
@@ -292,13 +293,18 @@ func TestUnorderedIncomingTxs(t *testing.T) {
 	}
 	batch = mpi.ProcessTransactions(txList, true, true)
 	ast.NotNil(batch)
-	ast.Equal(uint64(2), mpi.txStore.priorityNonBatchSize)
-	ast.Equal(7, mpi.txStore.priorityIndex.size())
-	ast.Equal(3, mpi.txStore.parkingLotIndex.size(), "delete parkingLot until finishing executor")
-	ast.Equal(7, len(mpi.txStore.txHashMap))
-	ast.Equal(3, mpi.txStore.allTxs[account1.String()].index.size())
+	ast.Equal(uint64(0), mpi.txStore.priorityNonBatchSize)
+	ast.Equal(6, mpi.txStore.priorityIndex.size())
+	// account2 => tx{3,4}
+	ast.Equal(2, mpi.txStore.parkingLotIndex.size(), "delete parkingLot until finishing executor")
+	// account1 => tx{4,5}, account2 => tx{2,3,4,5}
+	ast.Equal(6, len(mpi.txStore.txHashMap))
+	// account1 => tx{4,5}
+	ast.Equal(2, mpi.txStore.allTxs[account1.String()].index.size())
+	// account2 => tx{2,3,4,5}
 	ast.Equal(4, mpi.txStore.allTxs[account2.String()].index.size())
-	ast.Equal(uint64(3), mpi.txStore.nonceCache.getCommitNonce(account1.String()))
+	// just processCommitTransactions change CommitNonce
+	ast.Equal(uint64(4), mpi.txStore.nonceCache.getCommitNonce(account1.String()))
 	ast.Equal(uint64(6), mpi.txStore.nonceCache.getPendingNonce(account1.String()))
 	ast.Equal(uint64(2), mpi.txStore.nonceCache.getCommitNonce(account2.String()))
 	ast.Equal(uint64(6), mpi.txStore.nonceCache.getPendingNonce(account2.String()))
@@ -370,7 +376,7 @@ func TestGetTimeoutTransaction(t *testing.T) {
 
 	// wait another 150 millisecond, tx3 be timeout too.
 	// though tx1,tx2 has wait a long time, they are not local and they won't be broadcast
-	time.Sleep(1500 * time.Millisecond)
+	time.Sleep(2 * time.Second)
 	timeoutList = mpi.GetTimeoutTransactions(1000 * time.Millisecond)
 	ast.NotNil(timeoutList)
 	ast.Equal(2, len(timeoutList))
@@ -385,7 +391,7 @@ func TestGetTimeoutTransaction(t *testing.T) {
 		Height:     uint64(2),
 	}
 	mpi.CommitTransactions(state)
-	time.Sleep(1000 * time.Millisecond)
+	time.Sleep(1 * time.Second)
 	ast.Equal(0, mpi.txStore.ttlIndex.index.Len())
 	ast.Equal(0, mpi.txStore.removeTimeoutIndex.index.Len())
 	ast.Equal(0, len(mpi.txStore.ttlIndex.items))
@@ -483,7 +489,6 @@ func TestRestore(t *testing.T) {
 		Height:     uint64(2),
 	}
 	mpi.CommitTransactions(state)
-	time.Sleep(1000 * time.Millisecond)
 	ast.Equal(0, mpi.txStore.priorityIndex.size())
 	ast.Equal(1, mpi.txStore.parkingLotIndex.size())
 
