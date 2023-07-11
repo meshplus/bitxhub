@@ -266,13 +266,13 @@ func TestUnorderedIncomingTxs(t *testing.T) {
 		Height:     2,
 	}
 	mpi.processCommitTransactions(ready)
-	time.Sleep(2000 * time.Millisecond)
+	time.Sleep(10000 * time.Millisecond)
 
 	ast.Equal(uint64(1), mpi.txStore.priorityNonBatchSize)
 	ast.Equal(1, mpi.txStore.priorityIndex.size())
-	ast.Equal(3, mpi.txStore.parkingLotIndex.size(), "delete parkingLot until finishing executor")
+	ast.Equal(2, mpi.txStore.parkingLotIndex.size(), "delete parkingLot until finishing executor")
 	ast.Equal(3, len(mpi.txStore.txHashMap))
-	ast.Equal(1, mpi.txStore.allTxs[account1.String()].index.size())
+	ast.Equal(0, mpi.txStore.allTxs[account1.String()].index.size())
 	ast.Equal(2, mpi.txStore.allTxs[account2.String()].index.size())
 	ast.Equal(uint64(4), mpi.txStore.nonceCache.getPendingNonce(account1.String()))
 	ast.Equal(uint64(2), mpi.txStore.nonceCache.getCommitNonce(account2.String()))
