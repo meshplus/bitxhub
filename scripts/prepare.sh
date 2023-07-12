@@ -25,7 +25,7 @@ if ! type golangci-lint >/dev/null 2>&1; then
   print_blue "===> 2. Install golangci-lint"
   version=$(go env GOVERSION)
   if [[ ! "$version" < "go1.16" ]];then
-      go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.50.1
+      go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.53.3
   else
       go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.23.0
   fi
