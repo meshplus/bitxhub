@@ -189,6 +189,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	stateLedger.EXPECT().SetCode(gomock.Any(), gomock.Any()).AnyTimes()
 	stateLedger.EXPECT().GetCode(gomock.Any()).Return([]byte("10")).AnyTimes()
 	stateLedger.EXPECT().GetLogs(gomock.Any()).Return(nil).AnyTimes()
+	stateLedger.EXPECT().SetTxContext(gomock.Any(), gomock.Any()).AnyTimes()
 	chainLedger.EXPECT().PersistExecutionResult(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	stateLedger.EXPECT().FlushDirtyData().Return(make(map[string]ledger2.IAccount), &types.Hash{}).AnyTimes()
 	stateLedger.EXPECT().PrepareBlock(gomock.Any(), gomock.Any()).AnyTimes()
@@ -420,6 +421,7 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 	stateLedger.EXPECT().Finalise(gomock.Any()).AnyTimes()
 	stateLedger.EXPECT().Snapshot().Return(1).AnyTimes()
 	stateLedger.EXPECT().RevertToSnapshot(1).AnyTimes()
+	stateLedger.EXPECT().SetTxContext(gomock.Any(), gomock.Any()).AnyTimes()
 	chainLedger.EXPECT().LoadChainMeta().Return(chainMeta).AnyTimes()
 	stateLedger.EXPECT().GetLogs(gomock.Any()).Return(nil).AnyTimes()
 	chainLedger.EXPECT().GetBlock(gomock.Any()).Return(mockBlock(10, nil), nil).AnyTimes()
@@ -471,6 +473,7 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 	stateLedger.EXPECT().AddEVMBalance(gomock.Any(), gomock.Any()).AnyTimes()
 	stateLedger.EXPECT().GetEVMCode(gomock.Any()).AnyTimes()
 	stateLedger.EXPECT().GetEVMRefund().AnyTimes()
+	stateLedger.EXPECT().GetEVMCodeHash(gomock.Any()).AnyTimes()
 	var txs3 []pb.Transaction
 	txs3 = append(txs3, tx4)
 	types2.InitEIP155Signer(big.NewInt(1))
