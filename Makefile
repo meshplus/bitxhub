@@ -72,7 +72,7 @@ build: prepare
 	@mv ./bitxhub bin
 	@printf "${GREEN}Build bitxhub successfully!${NC}\n"
 
-## make release: Build release before push
+## make release-binary: Build release before push
 release-binary:
 	@cd scripts && bash release_binary.sh
 

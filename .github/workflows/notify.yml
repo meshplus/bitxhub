@@ -1,0 +1,21 @@
+name: notify
+
+on:
+  pull_request:
+    branches:
+      - main
+      - release*
+
+jobs:
+  notify:
+    name: Lark notify
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Lark notify
+        uses: zhecks/lark-pr-notify-action@master
+        with:
+          template_id: ${{ secrets.TEMPLATE_ID }}
+          users: ${{ secrets.USERS }}
+          reviewers: ${{ secrets.REVIEWERS }}
+          webhook: ${{ secrets.WEBHOOK }}
+          secret: ${{ secrets.SIGNATURE_SECRET}}

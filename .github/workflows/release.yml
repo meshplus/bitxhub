@@ -1,0 +1,39 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+env:
+  GO_VERSION: 1.20.5
+
+permissions:
+  contents: write
+
+jobs:
+  release-binary:
+    name: Release binary on Linux and Macos
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ macos-12, ubuntu-20.04 ]
+    steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v3
+
+      - name: Set up Go${{ env.GO_VERSION }}
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: false
+
+      - name: Build binary
+        run: make release-binary
+
+      - name: Release binary
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/**.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN }}

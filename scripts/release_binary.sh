@@ -10,15 +10,11 @@ APP_VERSION=$(if [ "$(git rev-parse --abbrev-ref HEAD)" == "HEAD" ]; then git de
 
 rm -rf "$BUILD_PATH"
 mkdir -p "$BUILD_PATH"
-print_blue "===> 1. Install packr"
-if ! type packr >/dev/null 2>&1; then
-  go get -u github.com/gobuffalo/packr/packr
-fi
 
-print_blue "===> 2. Build bitxhub"
+print_blue "===> 1. Build bitxhub"
 cd "${PROJECT_PATH}" && make build
 
-print_blue "===> 3. Pack binary"
+print_blue "===> 2. Pack binary"
 cd "${PROJECT_PATH}" || (echo "project path is not exist" && return)
 cp ./bin/bitxhub "${BUILD_PATH}"/bitxhub
 if [ "$(uname)" == "Darwin" ]; then
@@ -30,7 +26,7 @@ else
 fi
 
 if [ "$(uname)" = "Linux" ]; then
-  print_blue "===> 4. Generating $N nodes configuration"
+  print_blue "===> 3. Generating $N nodes configuration"
   for ((i = 1; i < N + 1; i = i + 1)); do
     root=${BUILD_PATH}/node${i}
     mkdir -p "${root}"
