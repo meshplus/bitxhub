@@ -9,6 +9,7 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/eth-kit/ledger"
@@ -113,6 +114,10 @@ func (l *SimpleLedger) AddBalance(addr *types.Address, value *big.Int) {
 func (l *SimpleLedger) GetState(addr *types.Address, key []byte) (bool, []byte) {
 	account := l.GetOrCreateAccount(addr)
 	return account.GetState(key)
+}
+
+func (l *SimpleLedger) setTransientState(addr types.Address, key, value []byte) {
+	l.transientStorage.Set(addr, common.BytesToHash(key), common.BytesToHash(value))
 }
 
 func (l *SimpleLedger) GetCommittedState(addr *types.Address, key []byte) []byte {
@@ -526,13 +531,15 @@ func (l *SimpleLedger) PrepareBlock(hash *types.Hash, height uint64) {
 }
 
 func (l *SimpleLedger) AddLog(log *pb.EvmLog) {
-	l.changer.append(addLogChange{txHash: l.logs.thash})
+	l.changer.append(addLogChange{txHash: log.TransactionHash})
 
-	log.TransactionHash = l.logs.thash
 	log.BlockHash = l.logs.bhash
-	log.TransactionIndex = uint64(l.logs.txIndex)
 	log.LogIndex = uint64(l.logs.logSize)
-	l.logs.logs[*l.logs.thash] = append(l.logs.logs[*l.logs.thash], log)
+	if _, ok := l.logs.logs[*log.TransactionHash]; !ok {
+		l.logs.logs[*log.TransactionHash] = make([]*pb.EvmLog, 0)
+	}
+
+	l.logs.logs[*log.TransactionHash] = append(l.logs.logs[*log.TransactionHash], log)
 	l.logs.logSize++
 }
 

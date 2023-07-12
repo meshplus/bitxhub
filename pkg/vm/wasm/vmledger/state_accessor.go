@@ -187,7 +187,6 @@ func setString(caller *wasmtime.Caller, store *wasmtime.Store, str string) (int3
 	}
 
 	memory[i] = 0
-	fmt.Println(inputPointer)
 
 	return inputPointer, nil
 }

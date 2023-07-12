@@ -3,20 +3,11 @@ package appchain
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
-	"path/filepath"
 	"sort"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/consensus/clique"
-	"github.com/ethereum/go-ethereum/consensus/ethash"
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/ethdb/leveldb"
-	"github.com/ethereum/go-ethereum/les"
 	"github.com/ethereum/go-ethereum/light"
-	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/trie"
 	"github.com/sirupsen/logrus"
@@ -45,57 +36,57 @@ const (
 var MinConfirmNum uint64 = 15
 
 // TODO: need to start with special header height
-func NewRinkebyOracle(storagePath string, logger logrus.FieldLogger) (*EthLightChainOracle, error) {
-	appchainBlockHeaderPath := filepath.Join(storagePath, "eth_rinkeby")
-	db, err := leveldb.New(appchainBlockHeaderPath, 256, 0, "", false)
-	if err != nil {
-		return nil, err
-	}
-	database := rawdb.NewDatabase(db)
-	core.DefaultRinkebyGenesisBlock().MustCommit(database)
-	lc, err := light.NewLightChain(les.NewLesOdr(database, light.DefaultServerIndexerConfig, nil, nil),
-		core.DefaultRinkebyGenesisBlock().Config, clique.New(params.RinkebyChainConfig.Clique, database), params.RinkebyTrustedCheckpoint)
-	if err != nil {
-		return nil, err
-	}
-	return &EthLightChainOracle{lc: lc, logger: logger}, nil
-}
+// func NewRinkebyOracle(storagePath string, logger logrus.FieldLogger) (*EthLightChainOracle, error) {
+// 	appchainBlockHeaderPath := filepath.Join(storagePath, "eth_rinkeby")
+// 	db, err := leveldb.New(appchainBlockHeaderPath, 256, 0, "", false)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	database := rawdb.NewDatabase(db)
+// 	core.DefaultRinkebyGenesisBlock().MustCommit(database)
+// 	lc, err := light.NewLightChain(les.NewLesOdr(database, light.DefaultServerIndexerConfig, nil, nil),
+// 		core.DefaultRinkebyGenesisBlock().Config, clique.New(params.RinkebyChainConfig.Clique, database), params.RinkebyTrustedCheckpoint)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	return &EthLightChainOracle{lc: lc, logger: logger}, nil
+// }
 
 // NewRopstenOracle inits with ropsten block 10105112, receives above the 10105112 headers
-func NewRopstenOracle(ropstenPath string, storagePath string, readOnly bool, logger logrus.FieldLogger) (*EthLightChainOracle, error) {
-	db, err := leveldb.New(storagePath, 16, 0, "", readOnly)
-	if err != nil {
-		return nil, err
-	}
-	database := rawdb.NewDatabase(db)
+// func NewRopstenOracle(ropstenPath string, storagePath string, readOnly bool, logger logrus.FieldLogger) (*EthLightChainOracle, error) {
+// 	db, err := leveldb.New(storagePath, 16, 0, "", readOnly)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	database := rawdb.NewDatabase(db)
 
-	headerData, err := ioutil.ReadFile(ropstenPath)
-	if err != nil {
-		return nil, err
-	}
-	header := types.Header{}
-	err = header.UnmarshalJSON(headerData)
-	if err != nil {
-		return nil, err
-	}
-	if head := rawdb.ReadHeadHeaderHash(database); head == (common.Hash{}) {
-		core.DefaultRopstenGenesisBlock().MustCommit(database)
-		rawdb.WriteHeader(database, &header)
-		rawdb.WriteTd(database, header.Hash(), header.Number.Uint64(), header.Difficulty)
-		rawdb.WriteCanonicalHash(database, header.Hash(), header.Number.Uint64())
-		rawdb.WriteHeadBlockHash(database, header.Hash())
-		rawdb.WriteHeadFastBlockHash(database, header.Hash())
-		rawdb.WriteHeadHeaderHash(database, header.Hash())
-	}
+// 	headerData, err := ioutil.ReadFile(ropstenPath)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	header := types.Header{}
+// 	err = header.UnmarshalJSON(headerData)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	if head := rawdb.ReadHeadHeaderHash(database); head == (common.Hash{}) {
+// 		core.DefaultRopstenGenesisBlock().MustCommit(database)
+// 		rawdb.WriteHeader(database, &header)
+// 		rawdb.WriteTd(database, header.Hash(), header.Number.Uint64(), header.Difficulty)
+// 		rawdb.WriteCanonicalHash(database, header.Hash(), header.Number.Uint64())
+// 		rawdb.WriteHeadBlockHash(database, header.Hash())
+// 		rawdb.WriteHeadFastBlockHash(database, header.Hash())
+// 		rawdb.WriteHeadHeaderHash(database, header.Hash())
+// 	}
 
-	lc, err := light.NewLightChain(les.NewLesOdr(database, light.DefaultServerIndexerConfig, nil, nil),
-		core.DefaultRopstenGenesisBlock().Config, ethash.New(ethash.Config{}, nil, false), params.RopstenTrustedCheckpoint)
-	if err != nil {
-		return nil, fmt.Errorf("new light client error:%v", err)
-	}
+// 	lc, err := light.NewLightChain(les.NewLesOdr(database, light.DefaultServerIndexerConfig, nil, nil),
+// 		core.DefaultRopstenGenesisBlock().Config, ethash.New(ethash.Config{}, nil, false), params.RopstenTrustedCheckpoint)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("new light client error:%v", err)
+// 	}
 
-	return &EthLightChainOracle{lc: lc, logger: logger}, nil
-}
+// 	return &EthLightChainOracle{lc: lc, logger: logger}, nil
+// }
 
 // InsertBlockHeaders attempts to insert the given header chain in to the local
 // chain, possibly creating a reorg. If an error is returned, it will return the
@@ -113,7 +104,7 @@ func (oracle *EthLightChainOracle) InsertBlockHeaders(headers []*types.Header) (
 		"start": headers[0].Number.Uint64(),
 		"end":   headers[len(headers)-1].Number.Uint64(),
 	}).Debugf("insert ethereum block headers")
-	return oracle.lc.InsertHeaderChain(headers, 0)
+	return oracle.lc.InsertHeaderChain(headers)
 }
 
 // CurrentHeader retrieves the current head header of the canonical chain.

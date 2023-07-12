@@ -38,7 +38,7 @@ func Test(t *testing.T) {
 	stateLedger.EXPECT().QueryByPrefix(gomock.Any(), gomock.Any()).AnyTimes()
 	stateLedger.EXPECT().AddEvent(gomock.Any()).AnyTimes()
 	stateLedger.EXPECT().GetOrCreateAccount(gomock.Any()).AnyTimes()
-	stateLedger.EXPECT().PrepareEVM(gomock.Any(), gomock.Any()).AnyTimes()
+	stateLedger.EXPECT().PrepareEVM(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	stateLedger.EXPECT().Snapshot().AnyTimes()
 
 	boltStub := BoltStubImpl{
