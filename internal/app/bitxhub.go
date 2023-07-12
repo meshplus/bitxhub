@@ -36,7 +36,6 @@ import (
 	"github.com/meshplus/bitxhub/internal/storages"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
 	"github.com/meshplus/bitxhub/pkg/tssmgr"
-	ledger2 "github.com/meshplus/eth-kit/ledger"
 	"github.com/sirupsen/logrus"
 )
 
@@ -166,12 +165,12 @@ func GenerateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 	}
 
 	appchainClient := &appchain.Client{}
-	if rep.Config.Appchain.Enable {
-		appchainClient, err = appchain.NewAppchainClient(filepath.Join(repoRoot, rep.Config.Appchain.EthHeaderPath), repo.GetStoragePath(repoRoot, "appchain_client"), loggers.Logger(loggers.Executor))
-		if err != nil {
-			return nil, fmt.Errorf("initialize appchain client failed: %w", err)
-		}
-	}
+	// if rep.Config.Appchain.Enable {
+	// 	appchainClient, err = appchain.NewAppchainClient(filepath.Join(repoRoot, rep.Config.Appchain.EthHeaderPath), repo.GetStoragePath(repoRoot, "appchain_client"), loggers.Logger(loggers.Executor))
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("initialize appchain client failed: %w", err)
+	// 	}
+	// }
 
 	// 0. load ledger
 	rwLdg, err := ledger.New(rep, bcStorage, stateStorage, bf, nil, loggers.Logger(loggers.Executor))
@@ -189,7 +188,8 @@ func GenerateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 			return nil, fmt.Errorf("create readonly ledger: %w", err)
 		}
 	} else {
-		viewLdg.StateLedger = rwLdg.StateLedger.(*ledger2.ComplexStateLedger).Copy()
+		// viewLdg.StateLedger = rwLdg.StateLedger.(*ledger2.ComplexStateLedger).Copy()
+		return nil, fmt.Errorf("ledger type not support")
 	}
 
 	// 1. create executor and view executor

@@ -49,7 +49,7 @@ solo = false
   eth_header_path="appchain/eth_header.json"
 
 [log]
-  level = "info"
+  level = "debug"
   dir = "logs"
   filename = "bitxhub.log"
   report_caller = false

@@ -276,25 +276,7 @@ func (api *PublicEthereumAPI) SendRawTransaction(data hexutil.Bytes) (common.Has
 }
 
 func (api *PublicEthereumAPI) getStateLedgerAt(blockNum rpctypes.BlockNumber) (ledger2.StateLedger, error) {
-	if api.config.Ledger.Type == "simple" {
-		return api.api.Broker().GetStateLedger(), nil
-	}
-
-	if blockNum == rpctypes.PendingBlockNumber || blockNum == rpctypes.LatestBlockNumber {
-		meta, err := api.api.Chain().Meta()
-		if err != nil {
-			return nil, err
-		}
-
-		blockNum = rpctypes.BlockNumber(meta.Height)
-	}
-
-	block, err := api.api.Broker().GetBlock("HEIGHT", fmt.Sprintf("%d", blockNum))
-	if err != nil {
-		return nil, err
-	}
-
-	return api.api.Broker().GetStateLedger().(*ledger2.ComplexStateLedger).StateAt(block.BlockHeader.StateRoot)
+	return api.api.Broker().GetStateLedger(), nil
 }
 
 func (api *PublicEthereumAPI) checkTransaction(tx *types2.EthTransaction) error {
@@ -410,7 +392,7 @@ func (api *PublicEthereumAPI) Call(args types2.CallArgs, blockNr rpc.BlockNumber
 // EstimateGas returns an estimate of gas usage for the given smart contract call.
 // It adds 2,000 gas to the returned value instead of using the gas adjustment
 // param from the SDK.
-func (api *PublicEthereumAPI) EstimateGas(args types2.CallArgs) (hexutil.Uint64, error) {
+func (api *PublicEthereumAPI) EstimateGas(args types2.CallArgs, blockHeight *rpc.BlockNumberOrHash) (hexutil.Uint64, error) {
 	api.logger.Debugf("eth_estimateGas, args: %s", args)
 
 	// Determine the highest gas limit can be used during the estimation.
@@ -518,7 +500,7 @@ func (api *PublicEthereumAPI) GetEthTransactionByHash(hash *types.Hash) (*types2
 		tx, err = api.api.Broker().GetTransaction(hash)
 		if err != nil {
 			api.logger.Debugf("tx %s is not in ledger", hash.String())
-			return nil, nil, fmt.Errorf("get tx from ledger: %w", err)
+			return nil, nil, nil
 		}
 
 		meta, err = api.api.Broker().GetTransactionMeta(hash)
@@ -593,9 +575,9 @@ func (api *PublicEthereumAPI) GetTransactionReceipt(hash common.Hash) (map[strin
 
 	txHash := types.NewHash(hash.Bytes())
 	tx, meta, err := api.GetEthTransactionByHash(txHash)
-	if err != nil {
+	if err != nil || tx == nil {
 		api.logger.Debugf("no tx found for hash %s", txHash.String())
-		return nil, err
+		return nil, nil
 	}
 
 	receipt, err := api.api.Broker().GetReceipt(txHash)

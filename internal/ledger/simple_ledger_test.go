@@ -348,7 +348,7 @@ func TestChainLedger_EVMAccessor(t *testing.T) {
 	isSlotIn, _ := ledger.StateLedger.(*SimpleLedger).SlotInEVMAceessList(account, hash)
 	assert.Equal(t, isSlotIn, true)
 	ledger.StateLedger.(*SimpleLedger).AddEVMPreimage(hash, []byte("1111"))
-	ledger.StateLedger.(*SimpleLedger).PrepareEVM(hash, 1)
+	// ledger.StateLedger.(*SimpleLedger).PrepareEVM(hash, 1)
 	ledger.StateLedger.(*SimpleLedger).StateDB()
 	ledger.StateLedger.(*SimpleLedger).AddEVMLog(&etherTypes.Log{})
 }

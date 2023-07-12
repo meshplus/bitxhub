@@ -10,6 +10,7 @@ import (
 
 	common "github.com/ethereum/go-ethereum/common"
 	types "github.com/ethereum/go-ethereum/core/types"
+	params "github.com/ethereum/go-ethereum/params"
 	gomock "github.com/golang/mock/gomock"
 	types0 "github.com/meshplus/bitxhub-kit/types"
 	pb "github.com/meshplus/bitxhub-model/pb"
@@ -460,6 +461,20 @@ func (mr *MockStateLedgerMockRecorder) GetEVMState(arg0, arg1 interface{}) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEVMState", reflect.TypeOf((*MockStateLedger)(nil).GetEVMState), arg0, arg1)
 }
 
+// GetEVMTransientState mocks base method.
+func (m *MockStateLedger) GetEVMTransientState(addr common.Address, key common.Hash) common.Hash {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetEVMTransientState", addr, key)
+	ret0, _ := ret[0].(common.Hash)
+	return ret0
+}
+
+// GetEVMTransientState indicates an expected call of GetEVMTransientState.
+func (mr *MockStateLedgerMockRecorder) GetEVMTransientState(addr, key interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEVMTransientState", reflect.TypeOf((*MockStateLedger)(nil).GetEVMTransientState), addr, key)
+}
+
 // GetLogs mocks base method.
 func (m *MockStateLedger) GetLogs(arg0 types0.Hash) []*pb.EvmLog {
 	m.ctrl.T.Helper()
@@ -544,27 +559,15 @@ func (mr *MockStateLedgerMockRecorder) PrepareBlock(arg0, arg1 interface{}) *gom
 }
 
 // PrepareEVM mocks base method.
-func (m *MockStateLedger) PrepareEVM(arg0 common.Hash, arg1 int) {
+func (m *MockStateLedger) PrepareEVM(rules params.Rules, sender, coinbase common.Address, dest *common.Address, precompiles []common.Address, txAccesses types.AccessList) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "PrepareEVM", arg0, arg1)
+	m.ctrl.Call(m, "PrepareEVM", rules, sender, coinbase, dest, precompiles, txAccesses)
 }
 
 // PrepareEVM indicates an expected call of PrepareEVM.
-func (mr *MockStateLedgerMockRecorder) PrepareEVM(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockStateLedgerMockRecorder) PrepareEVM(rules, sender, coinbase, dest, precompiles, txAccesses interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PrepareEVM", reflect.TypeOf((*MockStateLedger)(nil).PrepareEVM), arg0, arg1)
-}
-
-// PrepareEVMAccessList mocks base method.
-func (m *MockStateLedger) PrepareEVMAccessList(sender common.Address, dest *common.Address, precompiles []common.Address, txAccesses types.AccessList) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "PrepareEVMAccessList", sender, dest, precompiles, txAccesses)
-}
-
-// PrepareEVMAccessList indicates an expected call of PrepareEVMAccessList.
-func (mr *MockStateLedgerMockRecorder) PrepareEVMAccessList(sender, dest, precompiles, txAccesses interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PrepareEVMAccessList", reflect.TypeOf((*MockStateLedger)(nil).PrepareEVMAccessList), sender, dest, precompiles, txAccesses)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PrepareEVM", reflect.TypeOf((*MockStateLedger)(nil).PrepareEVM), rules, sender, coinbase, dest, precompiles, txAccesses)
 }
 
 // QueryByPrefix mocks base method.
@@ -668,6 +671,18 @@ func (mr *MockStateLedgerMockRecorder) SetEVMState(arg0, arg1, arg2 interface{})
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetEVMState", reflect.TypeOf((*MockStateLedger)(nil).SetEVMState), arg0, arg1, arg2)
 }
 
+// SetEVMTransientState mocks base method.
+func (m *MockStateLedger) SetEVMTransientState(addr common.Address, key, value common.Hash) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetEVMTransientState", addr, key, value)
+}
+
+// SetEVMTransientState indicates an expected call of SetEVMTransientState.
+func (mr *MockStateLedgerMockRecorder) SetEVMTransientState(addr, key, value interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetEVMTransientState", reflect.TypeOf((*MockStateLedger)(nil).SetEVMTransientState), addr, key, value)
+}
+
 // SetNonce mocks base method.
 func (m *MockStateLedger) SetNonce(arg0 *types0.Address, arg1 uint64) {
 	m.ctrl.T.Helper()
@@ -690,6 +705,18 @@ func (m *MockStateLedger) SetState(arg0 *types0.Address, arg1, arg2 []byte) {
 func (mr *MockStateLedgerMockRecorder) SetState(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetState", reflect.TypeOf((*MockStateLedger)(nil).SetState), arg0, arg1, arg2)
+}
+
+// SetTxContext mocks base method.
+func (m *MockStateLedger) SetTxContext(thash *types0.Hash, txIndex int) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetTxContext", thash, txIndex)
+}
+
+// SetTxContext indicates an expected call of SetTxContext.
+func (mr *MockStateLedgerMockRecorder) SetTxContext(thash, txIndex interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetTxContext", reflect.TypeOf((*MockStateLedger)(nil).SetTxContext), thash, txIndex)
 }
 
 // SlotInEVMAceessList mocks base method.
@@ -995,6 +1022,18 @@ func (m *MockStateAccessor) SetState(arg0 *types0.Address, arg1, arg2 []byte) {
 func (mr *MockStateAccessorMockRecorder) SetState(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetState", reflect.TypeOf((*MockStateAccessor)(nil).SetState), arg0, arg1, arg2)
+}
+
+// SetTxContext mocks base method.
+func (m *MockStateAccessor) SetTxContext(thash *types0.Hash, txIndex int) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetTxContext", thash, txIndex)
+}
+
+// SetTxContext indicates an expected call of SetTxContext.
+func (mr *MockStateAccessorMockRecorder) SetTxContext(thash, txIndex interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetTxContext", reflect.TypeOf((*MockStateAccessor)(nil).SetTxContext), thash, txIndex)
 }
 
 // MockIAccount is a mock of IAccount interface.
@@ -1519,6 +1558,20 @@ func (mr *MockStateDBMockRecorder) GetEVMState(arg0, arg1 interface{}) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEVMState", reflect.TypeOf((*MockStateDB)(nil).GetEVMState), arg0, arg1)
 }
 
+// GetEVMTransientState mocks base method.
+func (m *MockStateDB) GetEVMTransientState(addr common.Address, key common.Hash) common.Hash {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetEVMTransientState", addr, key)
+	ret0, _ := ret[0].(common.Hash)
+	return ret0
+}
+
+// GetEVMTransientState indicates an expected call of GetEVMTransientState.
+func (mr *MockStateDBMockRecorder) GetEVMTransientState(addr, key interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEVMTransientState", reflect.TypeOf((*MockStateDB)(nil).GetEVMTransientState), addr, key)
+}
+
 // HasSuisideEVM mocks base method.
 func (m *MockStateDB) HasSuisideEVM(arg0 common.Address) bool {
 	m.ctrl.T.Helper()
@@ -1534,27 +1587,15 @@ func (mr *MockStateDBMockRecorder) HasSuisideEVM(arg0 interface{}) *gomock.Call 
 }
 
 // PrepareEVM mocks base method.
-func (m *MockStateDB) PrepareEVM(arg0 common.Hash, arg1 int) {
+func (m *MockStateDB) PrepareEVM(rules params.Rules, sender, coinbase common.Address, dest *common.Address, precompiles []common.Address, txAccesses types.AccessList) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "PrepareEVM", arg0, arg1)
+	m.ctrl.Call(m, "PrepareEVM", rules, sender, coinbase, dest, precompiles, txAccesses)
 }
 
 // PrepareEVM indicates an expected call of PrepareEVM.
-func (mr *MockStateDBMockRecorder) PrepareEVM(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockStateDBMockRecorder) PrepareEVM(rules, sender, coinbase, dest, precompiles, txAccesses interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PrepareEVM", reflect.TypeOf((*MockStateDB)(nil).PrepareEVM), arg0, arg1)
-}
-
-// PrepareEVMAccessList mocks base method.
-func (m *MockStateDB) PrepareEVMAccessList(sender common.Address, dest *common.Address, precompiles []common.Address, txAccesses types.AccessList) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "PrepareEVMAccessList", sender, dest, precompiles, txAccesses)
-}
-
-// PrepareEVMAccessList indicates an expected call of PrepareEVMAccessList.
-func (mr *MockStateDBMockRecorder) PrepareEVMAccessList(sender, dest, precompiles, txAccesses interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PrepareEVMAccessList", reflect.TypeOf((*MockStateDB)(nil).PrepareEVMAccessList), sender, dest, precompiles, txAccesses)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PrepareEVM", reflect.TypeOf((*MockStateDB)(nil).PrepareEVM), rules, sender, coinbase, dest, precompiles, txAccesses)
 }
 
 // RevertToSnapshot mocks base method.
@@ -1603,6 +1644,18 @@ func (m *MockStateDB) SetEVMState(arg0 common.Address, arg1, arg2 common.Hash) {
 func (mr *MockStateDBMockRecorder) SetEVMState(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetEVMState", reflect.TypeOf((*MockStateDB)(nil).SetEVMState), arg0, arg1, arg2)
+}
+
+// SetEVMTransientState mocks base method.
+func (m *MockStateDB) SetEVMTransientState(addr common.Address, key, value common.Hash) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetEVMTransientState", addr, key, value)
+}
+
+// SetEVMTransientState indicates an expected call of SetEVMTransientState.
+func (mr *MockStateDBMockRecorder) SetEVMTransientState(addr, key, value interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetEVMTransientState", reflect.TypeOf((*MockStateDB)(nil).SetEVMTransientState), addr, key, value)
 }
 
 // SlotInEVMAceessList mocks base method.

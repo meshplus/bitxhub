@@ -24,7 +24,6 @@ import (
 	"github.com/meshplus/bitxhub/pkg/proof"
 	"github.com/meshplus/bitxhub/pkg/vm/boltvm"
 	vm "github.com/meshplus/eth-kit/evm"
-	ledger2 "github.com/meshplus/eth-kit/ledger"
 	"github.com/sirupsen/logrus"
 )
 
@@ -207,19 +206,20 @@ func (exec *BlockExecutor) ApplyReadonlyTransactions(txs []pb.Transaction) []*pb
 		return nil
 	}
 
-	switch sl := exec.ledger.StateLedger.(type) {
-	case *ledger2.ComplexStateLedger:
-		newSl, err := sl.StateAt(block.BlockHeader.StateRoot)
-		if err != nil {
-			exec.logger.Errorf("fail to new state ledger at %s: %v", meta.BlockHash.String(), err.Error())
-			return nil
-		}
-		exec.ledger.StateLedger = newSl
-	}
+	// switch sl := exec.ledger.StateLedger.(type) {
+	// case *ledger2.ComplexStateLedger:
+	// 	newSl, err := sl.StateAt(block.BlockHeader.StateRoot)
+	// 	if err != nil {
+	// 		exec.logger.Errorf("fail to new state ledger at %s: %v", meta.BlockHash.String(), err.Error())
+	// 		return nil
+	// 	}
+	// 	exec.ledger.StateLedger = newSl
+	// }
 
 	exec.ledger.PrepareBlock(meta.BlockHash, meta.Height)
 	exec.evm = newEvm(meta.Height, uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateLedger, exec.ledger.ChainLedger, exec.admins[0])
 	for i, tx := range txs {
+		exec.ledger.SetTxContext(tx.GetHash(), i)
 		receipt := exec.applyTransaction(i, tx, "", nil)
 
 		receipts = append(receipts, receipt)
@@ -420,17 +420,28 @@ func (exec *BlockExecutor) registerBoltContracts() map[string]agency.Contract {
 }
 
 func newEVMChainCfg(config *repo.Config) *params.ChainConfig {
+	shanghaiTime := uint64(0)
+	CancunTime := uint64(0)
+	PragueTime := uint64(0)
+
 	return &params.ChainConfig{
-		ChainID:             big.NewInt(int64(config.ChainID)),
-		HomesteadBlock:      big.NewInt(0),
-		EIP150Block:         big.NewInt(0),
-		EIP155Block:         big.NewInt(0),
-		EIP158Block:         big.NewInt(0),
-		ByzantiumBlock:      big.NewInt(0),
-		ConstantinopleBlock: big.NewInt(0),
-		PetersburgBlock:     big.NewInt(0),
-		IstanbulBlock:       big.NewInt(0),
-		// MuirGlacierBlock:    big.NewInt(0),
-		// BerlinBlock:         big.NewInt(0),
+		ChainID:                 big.NewInt(int64(config.ChainID)),
+		HomesteadBlock:          big.NewInt(0),
+		EIP150Block:             big.NewInt(0),
+		EIP155Block:             big.NewInt(0),
+		EIP158Block:             big.NewInt(0),
+		ByzantiumBlock:          big.NewInt(0),
+		ConstantinopleBlock:     big.NewInt(0),
+		PetersburgBlock:         big.NewInt(0),
+		IstanbulBlock:           big.NewInt(0),
+		MuirGlacierBlock:        big.NewInt(0),
+		BerlinBlock:             big.NewInt(0),
+		LondonBlock:             big.NewInt(0),
+		ArrowGlacierBlock:       big.NewInt(0),
+		MergeNetsplitBlock:      big.NewInt(0),
+		TerminalTotalDifficulty: big.NewInt(0),
+		ShanghaiTime:            &shanghaiTime,
+		CancunTime:              &CancunTime,
+		PragueTime:              &PragueTime,
 	}
 }
