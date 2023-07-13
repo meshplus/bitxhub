@@ -13,10 +13,6 @@ import (
 
 // RPC namespaces and API version
 const (
-	BlockChainNamespace  = "blockhain"
-	BitxhubNamespace     = "bitxhub"
-	TransactionNamespace = "transaction"
-
 	Web3Namespace = "web3"
 	EthNamespace  = "eth"
 	NetNamespace  = "net"
@@ -30,7 +26,7 @@ func GetAPIs(config *repo.Config, api api.CoreAPI, logger logrus.FieldLogger) ([
 
 	apis = append(apis,
 		rpc.API{
-			Namespace: BlockChainNamespace,
+			Namespace: EthNamespace,
 			Version:   apiVersion,
 			Service:   eth.NewBlockChainAPI(config, api, logger),
 			Public:    true,
@@ -39,7 +35,7 @@ func GetAPIs(config *repo.Config, api api.CoreAPI, logger logrus.FieldLogger) ([
 
 	apis = append(apis,
 		rpc.API{
-			Namespace: BitxhubNamespace,
+			Namespace: EthNamespace,
 			Version:   apiVersion,
 			Service:   eth.NewBitxhubAPI(config, api, logger),
 			Public:    true,
@@ -57,7 +53,7 @@ func GetAPIs(config *repo.Config, api api.CoreAPI, logger logrus.FieldLogger) ([
 
 	apis = append(apis,
 		rpc.API{
-			Namespace: TransactionNamespace,
+			Namespace: EthNamespace,
 			Version:   apiVersion,
 			Service:   eth.NewTransactionAPI(config, api, logger),
 			Public:    true,

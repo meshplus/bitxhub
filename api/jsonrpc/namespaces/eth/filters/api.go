@@ -489,6 +489,7 @@ func (args *FilterCriteria) UnmarshalJSON(data []byte) error {
 			return fmt.Errorf("cannot specify both BlockHash and FromBlock/ToBlock, choose one or the other")
 		}
 		args.BlockHash = raw.BlockHash
+
 	} else {
 		if raw.FromBlock != nil {
 			args.FromBlock = big.NewInt(raw.FromBlock.Int64())

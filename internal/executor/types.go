@@ -38,5 +38,5 @@ type Executor interface {
 
 	GetBoltContracts() map[string]agency.Contract
 
-	GetEvm(txCtx vm.TxContext, vmConfig vm.Config, blockCtx *vm.BlockContext) *vm.EVM
+	GetEvm(txCtx vm.TxContext, vmConfig vm.Config) *vm.EVM
 }

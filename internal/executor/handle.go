@@ -719,19 +719,15 @@ func newEvm(number uint64, timestamp uint64, chainCfg *params.ChainConfig, db le
 	return vm1.NewEVM(blkCtx, vm1.TxContext{}, db, chainCfg, vm1.Config{})
 }
 
-func (exec *BlockExecutor) GetEvm(txCtx vm1.TxContext, vmConfig vm1.Config, blockCtx *vm1.BlockContext) *vm1.EVM {
+func (exec *BlockExecutor) GetEvm(txCtx vm1.TxContext, vmConfig vm1.Config) *vm1.EVM {
 	var blkCtx vm1.BlockContext
-	if blockCtx != nil {
-		blkCtx = *blockCtx
-	} else {
-		meta := exec.ledger.GetChainMeta()
-		block, err := exec.ledger.GetBlock(meta.Height)
-		if err != nil {
-			exec.logger.Errorf("fail to get block at %d: %v", meta.Height, err.Error())
-			return nil
-		}
-		blkCtx = vm1.NewEVMBlockContext(meta.Height, uint64(block.BlockHeader.Timestamp), exec.ledger.StateLedger, exec.ledger.ChainLedger, exec.admins[0])
+	meta := exec.ledger.GetChainMeta()
+	block, err := exec.ledger.GetBlock(meta.Height)
+	if err != nil {
+		exec.logger.Errorf("fail to get block at %d: %v", meta.Height, err.Error())
+		return nil
 	}
+	blkCtx = vm1.NewEVMBlockContext(meta.Height, uint64(block.BlockHeader.Timestamp), exec.ledger.StateLedger, exec.ledger.ChainLedger, exec.admins[0])
 	return vm1.NewEVM(blkCtx, txCtx, exec.ledger.StateLedger, exec.evmChainCfg, vmConfig)
 }
 

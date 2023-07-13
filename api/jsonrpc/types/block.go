@@ -23,11 +23,19 @@ func (bnh *BlockNumberOrHash) UnmarshalJSON(data []byte) error {
 	e := erased{}
 	err := json.Unmarshal(data, &e)
 	if err == nil {
-		if e.BlockNumber != nil && e.BlockHash != nil {
+		if e.BlockNumber == nil && e.BlockHash != nil {
+			return fmt.Errorf("only support blockNumber")
+		}
+		if e.BlockNumber != nil && *e.BlockNumber != LatestBlockNumber && *e.BlockNumber != PendingBlockNumber {
+			return fmt.Errorf("only support latest and pending")
+		}
+		bnh.BlockNumber = e.BlockNumber
+
+		/*if e.BlockNumber != nil && e.BlockHash != nil {
 			return fmt.Errorf("cannot specify both BlockHash and BlockNumber, choose one or the other")
 		}
 		bnh.BlockNumber = e.BlockNumber
-		bnh.BlockHash = e.BlockHash
+		bnh.BlockHash = e.BlockHash*/
 		return nil
 	}
 	var input string
@@ -36,10 +44,10 @@ func (bnh *BlockNumberOrHash) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	switch input {
-	case "earliest":
-		bn := EarliestBlockNumber
-		bnh.BlockNumber = &bn
-		return nil
+	// case "earliest":
+	// 	bn := EarliestBlockNumber
+	// 	bnh.BlockNumber = &bn
+	// 	return nil
 	case "latest":
 		bn := LatestBlockNumber
 		bnh.BlockNumber = &bn
@@ -49,26 +57,28 @@ func (bnh *BlockNumberOrHash) UnmarshalJSON(data []byte) error {
 		bnh.BlockNumber = &bn
 		return nil
 	default:
-		if len(input) == 66 {
-			hash := common.Hash{}
-			err := hash.UnmarshalText([]byte(input))
-			if err != nil {
-				return err
-			}
-			bnh.BlockHash = &hash
-			return nil
-		} else {
-			blckNum, err := hexutil.DecodeUint64(input)
-			if err != nil {
-				return err
-			}
-			if blckNum > math.MaxInt64 {
-				return fmt.Errorf("blocknumber too high")
-			}
-			bn := BlockNumber(blckNum)
-			bnh.BlockNumber = &bn
-			return nil
-		}
+		return fmt.Errorf("only support latest and pending")
+
+		// if len(input) == 66 {
+		// 	hash := common.Hash{}
+		// 	err := hash.UnmarshalText([]byte(input))
+		// 	if err != nil {
+		// 		return err
+		// 	}
+		// 	bnh.BlockHash = &hash
+		// 	return nil
+		// } else {
+		// 	blckNum, err := hexutil.DecodeUint64(input)
+		// 	if err != nil {
+		// 		return err
+		// 	}
+		// 	if blckNum > math.MaxInt64 {
+		// 		return fmt.Errorf("blocknumber too high")
+		// 	}
+		// 	bn := BlockNumber(blckNum)
+		// 	bnh.BlockNumber = &bn
+		// 	return nil
+		// }
 	}
 }
 

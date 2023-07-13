@@ -1,7 +1,6 @@
 package coreapi
 
 import (
-	"context"
 	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
@@ -449,12 +448,12 @@ func (b BrokerAPI) GetStateLedger() ledger.StateLedger {
 	return b.bxh.Ledger.StateLedger
 }
 
-func (b BrokerAPI) GetEvm(ctx context.Context, mes *vm.Message, vmConfig *vm.Config, blockCtx *vm.BlockContext) *vm.EVM {
+func (b BrokerAPI) GetEvm(mes *vm.Message, vmConfig *vm.Config) *vm.EVM {
 	if vmConfig == nil {
 		vmConfig = new(vm.Config)
 	}
 	txContext := vm.NewEVMTxContext(mes)
-	return b.bxh.BlockExecutor.GetEvm(txContext, *vmConfig, blockCtx)
+	return b.bxh.BlockExecutor.GetEvm(txContext, *vmConfig)
 }
 
 func (b *BrokerAPI) FetchTssInfoFromOtherPeers() []*pb.TssInfo {

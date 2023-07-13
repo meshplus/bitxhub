@@ -7,9 +7,11 @@ import (
 	"fmt"
 	"math"
 	"math/big"
-	"strings"
 	"time"
 
+	"github.com/Rican7/retry"
+	"github.com/Rican7/retry/backoff"
+	"github.com/Rican7/retry/strategy"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -30,6 +32,10 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+var (
+	NotSupportApiError = fmt.Errorf("unsupported interface")
+)
+
 // BlockChain API provides an API for accessing blockchain data
 type BlockChainAPI struct {
 	ctx    context.Context
@@ -41,7 +47,7 @@ type BlockChainAPI struct {
 
 func NewBlockChainAPI(config *repo.Config, api api.CoreAPI, logger logrus.FieldLogger) *BlockChainAPI {
 	ctx, cancel := context.WithCancel(context.Background())
-	return &BlockChainAPI{ctx: ctx, cancel: cancel, api: api, logger: logger}
+	return &BlockChainAPI{ctx: ctx, cancel: cancel, config: config, api: api, logger: logger}
 }
 
 // ChainId returns the chain's identifier in hex format
@@ -94,9 +100,8 @@ type StorageResult struct {
 
 // todo
 // GetProof returns the Merkle-proof for a given account and optionally some storage keys.
-// there is no MPT present
 func (api *BlockChainAPI) GetProof(address common.Address, storageKeys []string, blockNrOrHash rpctypes.BlockNumberOrHash) (*AccountResult, error) {
-	return nil, errors.New("not support api")
+	return nil, NotSupportApiError
 }
 
 // GetBlockByNumber returns the block identified by number.
@@ -199,7 +204,6 @@ func (api *BlockChainAPI) Call(args types2.CallArgs, blockNrOrHash *rpctypes.Blo
 	// }
 }
 
-// todo add blockNumOrHash
 func DoCall(ctx context.Context, api api.CoreAPI, args types2.CallArgs, timeout time.Duration, globalGasCap uint64, logger logrus.FieldLogger) (*vm1.ExecutionResult, error) {
 	defer func(start time.Time) { logger.Debug("Executing EVM call finished", "runtime", time.Since(start)) }(time.Now())
 
@@ -212,12 +216,18 @@ func DoCall(ctx context.Context, api api.CoreAPI, args types2.CallArgs, timeout 
 	defer cancel()
 
 	//GET EVM Instance
-	//todo Replace the latest block data with the specified block data
 	msg, err := args.ToMessage(globalGasCap, big.NewInt(0))
 	if err != nil {
 		return nil, err
 	}
-	evm := api.Broker().GetEvm(ctx, msg, &vm1.Config{NoBaseFee: true}, nil)
+
+	leger := api.Broker().GetStateLedger()
+	meta, err := api.Chain().Meta()
+	if err != nil {
+		return nil, err
+	}
+	leger.PrepareBlock(meta.BlockHash, meta.Height)
+	evm := api.Broker().GetEvm(msg, &vm1.Config{NoBaseFee: true})
 	if err != nil {
 		return nil, fmt.Errorf("error get evm")
 	}
@@ -229,6 +239,8 @@ func DoCall(ctx context.Context, api api.CoreAPI, args types2.CallArgs, timeout 
 
 	gp := new(vm1.GasPool).AddGas(math.MaxUint64)
 	result, err := vm1.ApplyMessage(evm, msg, gp)
+
+	leger.Clear()
 
 	// If the timer caused an abort, return an appropriate error message
 	if evm.Cancelled() {
@@ -259,10 +271,10 @@ func (api *BlockChainAPI) EstimateGas(args types2.CallArgs, blockNrOrHash rpctyp
 		hi  uint64
 		cap uint64
 	)
-	if uint64(*args.Gas) >= params.TxGas {
+	if args.Gas != nil && uint64(*args.Gas) >= params.TxGas {
 		hi = uint64(*args.Gas)
 	} else {
-		//todo use block gasLimit instead of confi gasLimit
+		//todo use block gasLimit instead of config gasLimit
 		hi = api.config.GasLimit
 	}
 
@@ -309,7 +321,7 @@ func (api *BlockChainAPI) EstimateGas(args types2.CallArgs, blockNrOrHash rpctyp
 	cap = hi
 
 	// Create a helper to check if a gas allowance results in an executable transaction
-	executable := func(gas uint64) (bool, []byte, error) {
+	executable := func(gas uint64) (bool, *vm1.ExecutionResult, error) {
 		args.Gas = (*hexutil.Uint64)(&gas)
 
 		result, err := DoCall(api.ctx, api.api, args, api.config.RPCEVMTimeout, api.config.RPCGasCap, api.logger)
@@ -319,7 +331,7 @@ func (api *BlockChainAPI) EstimateGas(args types2.CallArgs, blockNrOrHash rpctyp
 			}
 			return false, nil, err
 		}
-		return result.Failed(), result.ReturnData, nil
+		return result.Failed(), result, nil
 
 		// tx := &types2.EthTransaction{}
 		// args.Gas = (*hexutil.Uint64)(&gas)
@@ -334,11 +346,11 @@ func (api *BlockChainAPI) EstimateGas(args types2.CallArgs, blockNrOrHash rpctyp
 	// Execute the binary search and hone in on an executable gas limit
 	for lo+1 < hi {
 		mid := (hi + lo) / 2
-		ok, _, err := executable(mid)
+		failed, _, err := executable(mid)
 		if err != nil {
 			return 0, err
 		}
-		if !ok {
+		if failed {
 			lo = mid
 		} else {
 			hi = mid
@@ -346,13 +358,16 @@ func (api *BlockChainAPI) EstimateGas(args types2.CallArgs, blockNrOrHash rpctyp
 	}
 	// Reject the transaction as invalid if it still fails at the highest allowance
 	if hi == cap {
-		ok, ret, err := executable(hi)
+		failed, ret, err := executable(hi)
 		if err != nil {
 			return 0, err
 		}
-		if !ok {
-			if ret != nil {
-				return 0, errors.New(string(ret))
+		if failed {
+			if ret != nil && ret.Err != vm1.ErrOutOfGas {
+				if len(ret.Revert()) > 0 {
+					return 0, newRevertError(ret.Revert())
+				}
+				return 0, ret.Err
 			}
 			return 0, errors.New("gas required exceeds allowance or always failing transaction")
 		}
@@ -370,7 +385,7 @@ type accessListResult struct {
 }
 
 func (s *BlockChainAPI) CreateAccessList(args types2.CallArgs, blockNrOrHash *rpctypes.BlockNumberOrHash) (*accessListResult, error) {
-	return nil, fmt.Errorf("create accessList not support")
+	return nil, NotSupportApiError
 }
 
 // BitxhubAPI provides an API to get related info
@@ -384,7 +399,7 @@ type BitxhubAPI struct {
 
 func NewBitxhubAPI(config *repo.Config, api api.CoreAPI, logger logrus.FieldLogger) *BitxhubAPI {
 	ctx, cancel := context.WithCancel(context.Background())
-	return &BitxhubAPI{ctx: ctx, cancel: cancel, api: api, logger: logger}
+	return &BitxhubAPI{ctx: ctx, cancel: cancel, config: config, api: api, logger: logger}
 }
 
 // GasPrice returns the current gas price based on Ethermint's gas price oracle.
@@ -413,7 +428,7 @@ type feeHistoryResult struct {
 // todo Supplementary feeHsitory
 func (api *BitxhubAPI) FeeHistory(blockCount rpctypes.DecimalOrHex, lastBlock rpc.BlockNumber, rewardPercentiles []float64) (*feeHistoryResult, error) {
 	api.logger.Debug("eth_feeHistory")
-	return &feeHistoryResult{}, nil
+	return nil, NotSupportApiError
 }
 
 // Syncing returns whether or not the current node is syncing with other peers. Returns false if not, or a struct
@@ -448,7 +463,7 @@ type TransactionAPI struct {
 
 func NewTransactionAPI(config *repo.Config, api api.CoreAPI, logger logrus.FieldLogger) *TransactionAPI {
 	ctx, cancel := context.WithCancel(context.Background())
-	return &TransactionAPI{ctx: ctx, cancel: cancel, api: api, logger: logger}
+	return &TransactionAPI{ctx: ctx, cancel: cancel, config: config, api: api, logger: logger}
 }
 
 // GetBlockTransactionCountByNumber returns the number of transactions in the block identified by its height.
@@ -549,7 +564,16 @@ func (api *TransactionAPI) GetTransactionReceipt(hash common.Hash) (map[string]i
 	api.logger.Debugf("eth_getTransactionReceipt, hash: %s", hash.String())
 
 	txHash := types.NewHash(hash.Bytes())
-	tx, meta, err := getEthTransactionByHash(api.config, api.api, api.logger, txHash)
+	//tx, meta, err := getEthTransactionByHash(api.config, api.api, api.logger, txHash)
+	tx, err := api.api.Broker().GetTransaction(txHash)
+	if err != nil {
+		return nil, nil
+	}
+
+	meta, err := api.api.Broker().GetTransactionMeta(txHash)
+	if err != nil {
+		return nil, fmt.Errorf("get tx meta from ledger: %w", err)
+	}
 	if err != nil {
 		api.logger.Debugf("no tx found for hash %s", txHash.String())
 		return nil, err
@@ -721,9 +745,8 @@ func checkTransaction(logger logrus.FieldLogger, tx *types2.EthTransaction) erro
 			return fmt.Errorf("from can`t be the same as to")
 		}
 	}
-
-	if tx.GetTimeStamp() < time.Now().UnixNano()-10*time.Minute.Nanoseconds() ||
-		tx.GetTimeStamp() > time.Now().UnixNano()+10*time.Minute.Nanoseconds() {
+	if tx.GetTimeStamp() < time.Now().Unix()-10*60 ||
+		tx.GetTimeStamp() > time.Now().Unix()+10*60 {
 		return fmt.Errorf("timestamp is illegal")
 	}
 
@@ -778,12 +801,17 @@ func getEthTransactionByHash(config *repo.Config, api api.CoreAPI, logger logrus
 		}
 	} else {
 		logger.Debugf("tx %s is found in mempool", hash.String())
-		if strings.Contains(strings.ToLower(config.Order.Type), "rbft") {
+		err = retry.Retry(func(attempt uint) error {
 			meta, err = api.Broker().GetTransactionMeta(hash)
 			if err != nil {
 				logger.Debugf("tx meta for %s is not found", hash.String())
-				meta = &pb.TransactionMeta{}
+				return err
 			}
+			return nil
+		}, strategy.Limit(5), strategy.Backoff(backoff.Fibonacci(200*time.Millisecond)))
+		if err != nil {
+			meta = &pb.TransactionMeta{}
+			return nil, meta, err
 		}
 	}
 
