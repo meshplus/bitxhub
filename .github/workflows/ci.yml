@@ -1,0 +1,84 @@
+name: ci
+
+on:
+  pull_request:
+    branches:
+      - main
+      - release*
+
+env:
+  GO_VERSION: 1.20.5
+
+jobs:
+  golanci-lint:
+    name: Run golangci-lint
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v3
+
+      - name: Set up Go${{ env.GO_VERSION }}
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: false
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: v1.53.3
+          args: --timeout=5m 
+          only-new-issues: true
+
+  build:
+    name: Build project
+    runs-on: ubuntu-20.04
+    needs: golanci-lint
+    steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v3
+
+      - name: Set up Go${{ env.GO_VERSION }}
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Go build project
+        run: make build
+
+  unit-test:
+    name: Run unit test
+    runs-on: ubuntu-20.04
+    needs: build
+    steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v3
+
+      - name: Set up Go${{ env.GO_VERSION }}
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Run unit test
+        run: make test-coverage
+      
+      - name: Upload coverage report to CodeCov
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage.txt
+  
+  smoke-test:
+    name: Run smoke test
+    runs-on: ubuntu-20.04
+    needs: unit-test
+    steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v3
+
+      - name: Set up Go${{ env.GO_VERSION }}
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Run smoke test
+        run: make smoke-test BRANCH=${{ github.base_ref }}

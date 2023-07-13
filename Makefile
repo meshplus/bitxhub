@@ -38,36 +38,41 @@ prepare:
 	@cd scripts && bash prepare.sh
 
 ## make test: Run go unittest
-test:
+test: prepare
 	go generate ./...
 	@$(GO) test -timeout 300s ${TEST_PKGS} -count=1
 
 ## make test-coverage: Test project with cover
-test-coverage:
+test-coverage: prepare
 	go generate ./...
 	@go test -timeout 300s -short -coverprofile cover.out -covermode=atomic ${TEST_PKGS2}
 	@cat cover.out | grep -v "pb.go" >> coverage.txt
+
 
 ## make tester: Run integration test
 tester:
 	go generate ./...
 	cd tester && $(GO) test -v -run TestTester
 
+## make smoke-test: Run smoke test
+smoke-test: prepare
+	cd scripts && bash smoke_test.sh -b ${BRANCH}
+
 ## make install: Go install the project
-install:
-	cd internal/repo && packr
+install: prepare
+	cd internal/repo && packr2
 	$(GO) install -ldflags '${GOLDFLAGS}' ./cmd/${APP_NAME}
 	@printf "${GREEN}Install bitxhub successfully!${NC}\n"
 
 ## make build: Go build the project
-build:
-	cd internal/repo && packr
+build: prepare
+	cd internal/repo && packr2
 	@mkdir -p bin
 	$(GO) build -ldflags '${GOLDFLAGS}' ./cmd/${APP_NAME}
 	@mv ./bitxhub bin
 	@printf "${GREEN}Build bitxhub successfully!${NC}\n"
 
-## make release: Build release before push
+## make release-binary: Build release before push
 release-binary:
 	@cd scripts && bash release_binary.sh
 

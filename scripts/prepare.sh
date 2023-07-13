@@ -7,65 +7,31 @@ function print_blue() {
   printf "${BLUE}%s${NC}\n" "$1"
 }
 
-print_blue "===> 1. Install packr"
-if ! type packr >/dev/null 2>&1; then
-  go get -u github.com/gobuffalo/packr/packr
-fi
-
-print_blue "===> 2. Install golangci-lint"
-if ! type golanci-lint >/dev/null 2>&1; then
-  go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.23.0
-fi
-
-print_blue "===> 3. Install go mock tool"
-if ! type gomock >/dev/null 2>&1; then
-  go get github.com/golang/mock/gomock
-fi
-if ! type mockgen >/dev/null 2>&1; then
-  go get github.com/golang/mock/mockgen
-fi
-
-function Get_PM_Name()
-{
-  PM=''
-  if [ "$(uname)" == "Darwin" ]; then
-    DISTRO='MacOS'
-    PM='brew'
-  elif grep -Eqii "CentOS" /etc/issue || grep -Eq "CentOS" /etc/*-release; then
-    DISTRO='CentOS'
-    PM='yum'
-  elif grep -Eqi "Red Hat Enterprise Linux Server" /etc/issue || grep -Eq "Red Hat Enterprise Linux Server" /etc/*-release; then
-    DISTRO='RHEL'
-    PM='yum'
-  elif grep -Eqi "Aliyun" /etc/issue || grep -Eq "Aliyun" /etc/*-release; then
-    DISTRO='Aliyun'
-    PM='yum'
-  elif grep -Eqi "Fedora" /etc/issue || grep -Eq "Fedora" /etc/*-release; then
-    DISTRO='Fedora'
-    PM='yum'
-  elif grep -Eqi "Debian" /etc/issue || grep -Eq "Debian" /etc/*-release; then
-    DISTRO='Debian'
-    PM='apt-get'
-  elif grep -Eqi "Ubuntu" /etc/issue || grep -Eq "Ubuntu" /etc/*-release; then
-    DISTRO='Ubuntu'
-    PM='apt-get'
-  elif grep -Eqi "Raspbian" /etc/issue || grep -Eq "Raspbian" /etc/*-release; then
-    DISTRO='Raspbian'
-    PM='apt-get'
+function go_install() {
+  version=$(go env GOVERSION)
+  if [[ ! "$version" < "go1.16" ]];then
+      go install "$@"
   else
-    DISTRO='unknow'
+      go get "$@"
   fi
-  print_blue "Your OS distribution is detected as: "$DISTRO;
-  eval "$1=$PM"
 }
 
-print_blue "===> 4. Install tmux with package manager"
-PM_NAME=''
-Get_PM_Name PM_NAME
-if [ -n "$PM_NAME" ]; then
-  if [ "$PM_NAME" == "brew" ]; then
-    $PM_NAME install tmux
+if ! type packr2 >/dev/null 2>&1; then
+  print_blue "===> 1. Install packr2"
+  go_install github.com/gobuffalo/packr/v2/packr2@v2.8.3
+fi
+
+if ! type golangci-lint >/dev/null 2>&1; then
+  print_blue "===> 2. Install golangci-lint"
+  version=$(go env GOVERSION)
+  if [[ ! "$version" < "go1.16" ]];then
+      go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.53.3
   else
-    sudo $PM_NAME install -y tmux
+      go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.23.0
   fi
+fi
+
+if ! type mockgen >/dev/null 2>&1; then
+  print_blue "===> 3. Install mockgen"
+  go_install github.com/golang/mock/mockgen@v1.6.0
 fi

@@ -1,20 +1,21 @@
-name: Notify
+name: notify
 
 on:
   pull_request:
-    types: [opened, reopened]
+    branches:
+      - main
+      - release*
 
 jobs:
   notify:
-    name: notify on DingTalk
-    runs-on: ubuntu-latest
+    name: Lark notify
+    runs-on: ubuntu-20.04
     steps:
-      - name: Check out code
-        uses: actions/checkout@v2
-
-      - name: Ding Talk PR Notify
-        uses: lijinke666/ding-talk-pr-notify@main
+      - name: Lark notify
+        uses: zhecks/lark-pr-notify-action@master
         with:
-          ding_talk_token: ${{ secrets.DING_TALK_ACCESS_TOKEN }}
-          repo_url: https://github.com/meshplus/bitxhub/pull
-          at_all: false
+          template_id: ${{ secrets.TEMPLATE_ID }}
+          users: ${{ secrets.USERS }}
+          reviewers: ${{ secrets.REVIEWERS }}
+          webhook: ${{ secrets.WEBHOOK }}
+          secret: ${{ secrets.SIGNATURE_SECRET}}
