@@ -14,7 +14,7 @@ jobs:
       - name: Lark notify
         uses: zhecks/lark-pr-notify-action@master
         with:
-          template_id: ${{ secrets.TEMPLATE_ID }}
+          template_id: ${{ secrets.PR_TEMPLATE_ID }}
           users: ${{ secrets.USERS }}
           reviewers: ${{ secrets.REVIEWERS }}
           webhook: ${{ secrets.WEBHOOK }}
