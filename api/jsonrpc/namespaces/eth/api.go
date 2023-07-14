@@ -71,7 +71,7 @@ func (api *BlockChainAPI) BlockNumber() (hexutil.Uint64, error) {
 func (api *BlockChainAPI) GetBalance(address common.Address, blockNrOrHash rpctypes.BlockNumberOrHash) (*hexutil.Big, error) {
 	api.logger.Debugf("eth_getBalance, address: %s, block number : %d", address.String())
 
-	stateLedger, err := getStateLedgerAt(api.config, api.api, blockNrOrHash)
+	stateLedger, err := getStateLedgerAt(api.api)
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +139,7 @@ func (api *BlockChainAPI) GetBlockByHash(hash common.Hash, fullTx bool) (map[str
 func (api *BlockChainAPI) GetCode(address common.Address, blockNrOrHash rpctypes.BlockNumberOrHash) (hexutil.Bytes, error) {
 	api.logger.Debugf("eth_getCode, address: %s", address.String())
 
-	stateLedger, err := getStateLedgerAt(api.config, api.api, blockNrOrHash)
+	stateLedger, err := getStateLedgerAt(api.api)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +153,7 @@ func (api *BlockChainAPI) GetCode(address common.Address, blockNrOrHash rpctypes
 func (api *BlockChainAPI) GetStorageAt(address common.Address, key string, blockNrOrHash rpctypes.BlockNumberOrHash) (hexutil.Bytes, error) {
 	api.logger.Debugf("eth_getStorageAt, address: %s, key: %s", address, key)
 
-	stateLedger, err := getStateLedgerAt(api.config, api.api, blockNrOrHash)
+	stateLedger, err := getStateLedgerAt(api.api)
 	if err != nil {
 		return nil, err
 	}
@@ -289,7 +289,7 @@ func (api *BlockChainAPI) EstimateGas(args types2.CallArgs, blockNrOrHash rpctyp
 		feeCap = common.Big0
 	}
 	if feeCap.BitLen() != 0 {
-		stateLedger, err := getStateLedgerAt(api.config, api.api, blockNrOrHash)
+		stateLedger, err := getStateLedgerAt(api.api)
 		if err != nil {
 			return 0, err
 		}
@@ -308,6 +308,8 @@ func (api *BlockChainAPI) EstimateGas(args types2.CallArgs, blockNrOrHash rpctyp
 			if transfer == nil {
 				transfer = new(hexutil.Big)
 			}
+			api.logger.Warn("Gas estimation capped by limited funds", "original", hi, "balance", balance,
+				"sent", transfer.ToInt(), "maxFeePerGas", feeCap, "fundable", allowance)
 			hi = allowance.Uint64()
 		}
 	}
@@ -537,7 +539,7 @@ func (api *TransactionAPI) GetTransactionCount(address common.Address, blockNrOr
 		return (*hexutil.Uint64)(&nonce), nil
 	}
 
-	stateLedger, err := getStateLedgerAt(api.config, api.api, blockNrOrHash)
+	stateLedger, err := getStateLedgerAt(api.api)
 	if err != nil {
 		return nil, err
 	}
@@ -551,7 +553,7 @@ func (api *TransactionAPI) GetTransactionCount(address common.Address, blockNrOr
 func (api *TransactionAPI) GetTransactionByHash(hash common.Hash) (*rpctypes.RPCTransaction, error) {
 	api.logger.Debugf("eth_getTransactionByHash, hash: %s", hash.String())
 
-	ethTx, meta, err := getEthTransactionByHash(api.config, api.api, api.logger, types.NewHash(hash.Bytes()))
+	ethTx, meta, err := getEthTransactionByHash(api.api, api.logger, types.NewHash(hash.Bytes()))
 	if err != nil {
 		return nil, err
 	}
@@ -694,7 +696,11 @@ func (api *TransactionAPI) SendRawTransaction(data hexutil.Bytes) (common.Hash, 
 // 	return receipt.EvmLogs, nil
 // }
 
-func getStateLedgerAt(config *repo.Config, api api.CoreAPI, blockNrOrHash rpctypes.BlockNumberOrHash) (ledger2.StateLedger, error) {
+func getStateLedgerAt(api api.CoreAPI) (ledger2.StateLedger, error) {
+	leger := api.Broker().GetStateLedger()
+	if leger == nil {
+		return nil, fmt.Errorf("GetStateLedger error")
+	}
 	return api.Broker().GetStateLedger(), nil
 	// todo
 	// supplementary block height and block hash processing
@@ -781,7 +787,7 @@ func newRevertError(data []byte) *revertError {
 	}
 }
 
-func getEthTransactionByHash(config *repo.Config, api api.CoreAPI, logger logrus.FieldLogger, hash *types.Hash) (*types2.EthTransaction, *pb.TransactionMeta, error) {
+func getEthTransactionByHash(api api.CoreAPI, logger logrus.FieldLogger, hash *types.Hash) (*types2.EthTransaction, *pb.TransactionMeta, error) {
 	var err error
 	meta := &pb.TransactionMeta{}
 

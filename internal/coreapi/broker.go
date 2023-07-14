@@ -23,7 +23,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/model"
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/bitxhub/pkg/utils"
-	"github.com/meshplus/eth-kit/evm"
+	vm "github.com/meshplus/eth-kit/evm"
 	"github.com/meshplus/eth-kit/ledger"
 	solsha3 "github.com/miguelmota/go-solidity-sha3"
 	"github.com/sirupsen/logrus"
