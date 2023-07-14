@@ -62,6 +62,7 @@ type Config struct {
 	PProf    `json:"pprof"`
 	Monitor  `json:"monitor"`
 	Limiter  `json:"limiter"`
+	JLimiter `json:"jlimiter"`
 	Appchain `json:"appchain"`
 	Gateway  `json:"gateway"`
 	Ping     `json:"ping"`
@@ -107,6 +108,12 @@ type PProf struct {
 }
 
 type Limiter struct {
+	Interval time.Duration `toml:"interval" json:"interval"`
+	Quantum  int64         `toml:"quantum" json:"quantum"`
+	Capacity int64         `toml:"capacity" json:"capacity"`
+}
+
+type JLimiter struct {
 	Interval time.Duration `toml:"interval" json:"interval"`
 	Quantum  int64         `toml:"quantum" json:"quantum"`
 	Capacity int64         `toml:"capacity" json:"capacity"`
