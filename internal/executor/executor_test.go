@@ -33,6 +33,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/ledger/mock_ledger"
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/internal/repo"
+	vm1 "github.com/meshplus/eth-kit/evm"
 	ledger2 "github.com/meshplus/eth-kit/ledger"
 	types2 "github.com/meshplus/eth-kit/types"
 	types3 "github.com/meshplus/eth-kit/types"
@@ -109,6 +110,40 @@ func TestNew(t *testing.T) {
 	assert.NotNil(t, executor.validationEngine)
 	assert.Equal(t, chainMeta.BlockHash, executor.currentBlockHash)
 	assert.Equal(t, chainMeta.Height, executor.currentHeight)
+}
+
+func TestGetEvm(t *testing.T) {
+	config := generateMockConfig(t)
+	mockCtl := gomock.NewController(t)
+	chainLedger := mock_ledger.NewMockChainLedger(mockCtl)
+	stateLedger := mock_ledger.NewMockStateLedger(mockCtl)
+	mockLedger := &ledger.Ledger{
+		ChainLedger: chainLedger,
+		StateLedger: stateLedger,
+	}
+
+	// mock data for ledger
+	chainMeta := &pb.ChainMeta{
+		Height:    1,
+		BlockHash: types.NewHashByStr(from),
+	}
+	// mock block for ledger
+	chainLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
+	chainLedger.EXPECT().GetBlock(gomock.Any()).Return(mockBlock(1, nil), nil).Times(1)
+
+	logger := log.NewWithModule("executor")
+	executor, err := New(mockLedger, logger, &appchain.Client{}, config, big.NewInt(5000000))
+	assert.Nil(t, err)
+	assert.NotNil(t, executor)
+
+	txCtx := vm1.TxContext{}
+	evm := executor.GetEvm(txCtx, vm1.Config{NoBaseFee: true})
+	assert.NotNil(t, evm)
+
+	chainLedger.EXPECT().GetBlock(gomock.Any()).Return(nil, fmt.Errorf("get block error")).Times(1)
+	evmErr := executor.GetEvm(txCtx, vm1.Config{NoBaseFee: true})
+	assert.Nil(t, evmErr)
+
 }
 
 func TestGetBoltContracts(t *testing.T) {
