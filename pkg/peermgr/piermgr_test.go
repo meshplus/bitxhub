@@ -38,7 +38,7 @@ func TestSwarm_Piers(t *testing.T) {
 
 	err := swarms[0].PierManager().Piers().SetMaster("0xmaster", "1", 300)
 	require.Nil(t, err)
-	ret := swarms[0].PierManager().Piers().CheckMaster("0xmaster")
+	ret := swarms[0].PierManager().Piers().CheckMaster2("0xmaster")
 	require.True(t, ret)
 	res := swarms[0].PierManager().Piers().HasPier("0xmaster")
 	require.True(t, res)

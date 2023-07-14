@@ -62,5 +62,5 @@ type PeerManager interface {
 type PierManager interface {
 	Piers() *Piers
 
-	AskPierMaster(string) (bool, error)
+	AskPierMaster(string) ([]string, error)
 }

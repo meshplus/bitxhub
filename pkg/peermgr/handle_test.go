@@ -238,7 +238,7 @@ func TestSwarm_CheckMasterPier(t *testing.T) {
 	piers2 := newPiers()
 	piers1 := newPiers()
 
-	err = piers2.pierMap.setMaster(pierName, "pier-index", 300)
+	_, err = piers2.pierMap.setMaster(pierName, "pier-index", 300)
 	require.Nil(t, err)
 
 	swarms[0].piers = piers1

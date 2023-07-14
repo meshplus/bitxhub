@@ -312,20 +312,18 @@ func (swarm *Swarm) handleGetBlocksPack(s network.Stream, msg *pb.Message) error
 
 func (swarm *Swarm) handleAskPierMaster(s network.Stream, data []byte) {
 	address := string(data)
-	resp := &pb.CheckPierResponse{}
-	if swarm.piers.pierChan.checkAddress(address) {
-		resp.Status = pb.CheckPierResponse_HAS_MASTER
-	} else {
-		if !swarm.piers.pierMap.hasPier(address) {
-			return
-		}
-		if swarm.piers.pierMap.checkMaster(address) {
-			resp.Status = pb.CheckPierResponse_HAS_MASTER
-		} else {
-			resp.Status = pb.CheckPierResponse_NO_MASTER
-		}
+	resp := &pb.CheckPierResponse{
+		Address: address,
+		Status:  pb.CheckPierResponse_NO_MASTER,
+		Index:   constant.NoMaster,
 	}
-	resp.Address = address
+	master, exist := swarm.piers.pierMap.checkMaster(address)
+	if exist {
+		resp.Index = master
+		resp.Status = pb.CheckPierResponse_HAS_MASTER
+	}
+	swarm.logger.Infof("receive ask pier master, master: %s", resp.Index)
+
 	msgData, err := resp.Marshal()
 	if err != nil {
 		swarm.logger.Errorf("marshal ask pier master response: %s", err)

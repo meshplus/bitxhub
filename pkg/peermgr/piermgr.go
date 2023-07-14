@@ -3,6 +3,8 @@ package peermgr
 import (
 	"context"
 	"fmt"
+	"github.com/meshplus/bitxhub-model/constant"
+	"sort"
 	"sync"
 	"time"
 
@@ -17,51 +19,58 @@ func (swarm *Swarm) Piers() *Piers {
 	return swarm.piers
 }
 
-func (swarm *Swarm) AskPierMaster(address string) (bool, error) {
+func (swarm *Swarm) AskPierMaster(address string) ([]string, error) {
 	message := &pb.Message{
 		Data: []byte(address),
 		Type: pb.Message_CHECK_MASTER_PIER,
 	}
 
 	if swarm.piers.pierChan.checkAddress(address) {
-		return false, fmt.Errorf("is checking pier master")
+		return nil, fmt.Errorf("is checking pier master")
 	}
 
 	ch := swarm.piers.pierChan.newChan(address)
 
+	var resps []string
+	var n int
 	for id := range swarm.Peers() {
 		if err := swarm.AsyncSend(id, message); err != nil {
 			swarm.logger.Debugf("send tx to:%d %s", id, err.Error())
 			continue
 		}
+		n++
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), askTimeout)
+BreakLoop:
 	for {
 		select {
 		case resp, ok := <-ch:
 			if !ok {
 				cancel()
-				return false, fmt.Errorf("channel closed unexpectedly")
+				return nil, fmt.Errorf("channel closed unexpectedly")
 			}
-			if resp.Status == pb.CheckPierResponse_HAS_MASTER {
-				swarm.logger.Infoln("get p2p response")
-				swarm.piers.pierChan.closeChan(address)
-				cancel()
-				return true, nil
-			}
-			if resp.Status == pb.CheckPierResponse_NO_MASTER {
-				swarm.piers.pierChan.closeChan(address)
-				cancel()
-				return false, nil
+			swarm.logger.Infoln("get p2p response")
+			resps = append(resps, resp.Index)
+			if len(resps) == n {
+				break BreakLoop
 			}
 		case <-ctx.Done():
-			// swarm.logger.Infoln("timeout!")
-			swarm.piers.pierChan.closeChan(address)
-			cancel()
-			return false, nil
+			swarm.logger.Infoln("timeout!")
+			break BreakLoop
 		}
 	}
+	swarm.piers.pierChan.closeChan(address)
+	cancel()
+
+	var masterIDs []string
+	for _, m := range resps {
+		if m != constant.NoMaster {
+			masterIDs = append(masterIDs, m)
+		}
+	}
+	sort.Strings(masterIDs)
+	return masterIDs, nil
 }
 
 type Piers struct {
@@ -92,19 +101,30 @@ func (p *Piers) HasPier(address string) bool {
 	return p.pierMap.hasPier(address)
 }
 
-func (p *Piers) CheckMaster(address string) bool {
-	res := p.pierMap.checkMaster(address)
+func (p *Piers) CheckMaster2(address string) bool {
+	_, res := p.pierMap.checkMaster(address)
 	if !res {
 		p.pierMap.rmPier(address)
 	}
 	return res
 }
 
-func (p *Piers) SetMaster(address string, index string, timeout int64) error {
+// CheckMaster func.
+// 检查address下是否存在其他主节点，若存在，返回其ID，若不存在，返回一个特殊字符串。
+func (p *Piers) CheckMaster(address string) string {
+	id, exist := p.pierMap.checkMaster(address)
+	if !exist {
+		p.pierMap.rmPier(address)
+		return constant.NoMaster
+	}
+	return id
+}
+
+func (p *Piers) SetMaster(address string, index string, timeout int64) (string, error) {
 	return p.pierMap.setMaster(address, index, timeout)
 }
 
-func (p *Piers) HeartBeat(address string, index string) error {
+func (p *Piers) HeartBeat(address string, index string) (string, error) {
 	return p.pierMap.heartBeat(address, index)
 }
 
@@ -112,6 +132,17 @@ func newPierMap() *pierMap {
 	return &pierMap{
 		statusMap: make(map[string]*pierStatus),
 	}
+}
+
+func (pm *pierMap) getMaster(address string) string {
+	pm.RLock()
+	defer pm.RUnlock()
+
+	m := pm.statusMap[address]
+	if m != nil {
+		return m.index
+	}
+	return constant.NoMaster
 }
 
 func (pm *pierMap) hasPier(address string) bool {
@@ -129,20 +160,21 @@ func (pm *pierMap) rmPier(address string) {
 	delete(pm.statusMap, address)
 }
 
-func (pm *pierMap) checkMaster(address string) bool {
+func (pm *pierMap) checkMaster(address string) (string, bool) {
 	pm.RLock()
 	defer pm.RUnlock()
 
 	return pm.cmpOffset(address)
 }
 
-func (pm *pierMap) setMaster(address string, index string, timeout int64) error {
+func (pm *pierMap) setMaster(address string, index string, timeout int64) (string, error) {
 	pm.Lock()
 	defer pm.Unlock()
 
-	if pm.cmpOffset(address) {
-		if pm.statusMap[address].index != index {
-			return fmt.Errorf("already has master pier")
+	id, exist := pm.cmpOffset(address)
+	if exist {
+		if id < index {
+			return id, fmt.Errorf("already has master pier")
 		}
 	}
 
@@ -151,31 +183,31 @@ func (pm *pierMap) setMaster(address string, index string, timeout int64) error 
 		lastActive: time.Now(),
 		timeout:    timeout,
 	}
-	return nil
+	return index, nil
 }
 
-func (pm *pierMap) heartBeat(address string, index string) error {
+func (pm *pierMap) heartBeat(address string, index string) (string, error) {
 	pm.RLock()
 	defer pm.RUnlock()
 
 	p, ok := pm.statusMap[address]
 	if !ok {
-		return fmt.Errorf("no master pier")
+		return constant.NoMaster, fmt.Errorf("no master pier")
 	}
 	if p.index != index {
-		return fmt.Errorf("wrong pier heart beat")
+		return p.index, fmt.Errorf("wrong pier heart beat")
 	}
 	p.lastActive = time.Now()
-	return nil
+	return p.index, nil
 }
 
-func (pm *pierMap) cmpOffset(address string) bool {
+func (pm *pierMap) cmpOffset(address string) (string, bool) {
+	// 是否存在主节点，且主节点是否已超时
 	p, ok := pm.statusMap[address]
-	if !ok {
-		return false
+	if !ok || p.timeout > time.Now().Unix()-p.lastActive.Unix() {
+		return constant.NoMaster, false
 	}
-	offset := time.Now().Unix() - p.lastActive.Unix()
-	return p.timeout > offset
+	return pm.statusMap[address].index, true
 }
 
 type pierChan struct {
