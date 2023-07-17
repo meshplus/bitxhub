@@ -10,6 +10,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
+	vm "github.com/meshplus/eth-kit/evm"
 	"github.com/meshplus/eth-kit/ledger"
 )
 
@@ -35,6 +36,7 @@ type BrokerAPI interface {
 	GetPendingTransactions(max int) []pb.Transaction
 	GetPoolTransaction(hash *types.Hash) pb.Transaction
 	GetStateLedger() ledger.StateLedger
+	GetEvm(mes *vm.Message, vmConfig *vm.Config) *vm.EVM
 
 	// AddPier
 	AddPier(pierID string) (chan *pb.InterchainTxWrappers, error)

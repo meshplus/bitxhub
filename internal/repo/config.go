@@ -55,28 +55,30 @@ const (
 )
 
 type Config struct {
-	RepoRoot string `json:"repo_root"`
-	Title    string `json:"title"`
-	Solo     bool   `json:"solo"`
-	Port     `json:"port"`
-	PProf    `json:"pprof"`
-	Monitor  `json:"monitor"`
-	Limiter  `json:"limiter"`
-	JLimiter `json:"jlimiter"`
-	Appchain `json:"appchain"`
-	Gateway  `json:"gateway"`
-	Ping     `json:"ping"`
-	Log      `json:"log"`
-	Cert     `json:"cert"`
-	Txpool   `json:"txpool"`
-	Order    `json:"order"`
-	Executor `json:"executor"`
-	Ledger   `json:"ledger"`
-	Genesis  `json:"genesis"`
-	Security Security      `toml:"security" json:"security"`
-	License  License       `toml:"license" json:"license"`
-	Crypto   Crypto        `toml:"crypto" json:"crypto"`
-	Tss      tss.TssConfig `toml:"tss" json:"tss"`
+	RepoRoot      string        `json:"repo_root"`
+	Title         string        `json:"title"`
+	Solo          bool          `json:"solo"`
+	RPCGasCap     uint64        `json:"rpc_gas_cap"`
+	RPCEVMTimeout time.Duration `json:"rpc_evm_timeout"`
+	Port          `json:"port"`
+	PProf         `json:"pprof"`
+	Monitor       `json:"monitor"`
+	Limiter       `json:"limiter"`
+  JLimiter `json:"jlimiter"`
+	Appchain      `json:"appchain"`
+	Gateway       `json:"gateway"`
+	Ping          `json:"ping"`
+	Log           `json:"log"`
+	Cert          `json:"cert"`
+	Txpool        `json:"txpool"`
+	Order         `json:"order"`
+	Executor      `json:"executor"`
+	Ledger        `json:"ledger"`
+	Genesis       `json:"genesis"`
+	Security      Security      `toml:"security" json:"security"`
+	License       License       `toml:"license" json:"license"`
+	Crypto        Crypto        `toml:"crypto" json:"crypto"`
+	Tss           tss.TssConfig `toml:"tss" json:"tss"`
 }
 
 // Security are files used to setup connection with tls
@@ -225,9 +227,11 @@ func DefaultConfig() (*Config, error) {
 			PProf:   53121,
 			Monitor: 40011,
 		},
-		PProf:   PProf{Enable: false},
-		Ping:    Ping{Enable: false},
-		Gateway: Gateway{AllowedOrigins: []string{"*"}},
+		RPCGasCap:     50000000,
+		RPCEVMTimeout: 5 * time.Second,
+		PProf:         PProf{Enable: false},
+		Ping:          Ping{Enable: false},
+		Gateway:       Gateway{AllowedOrigins: []string{"*"}},
 		Log: Log{
 			Level:    "info",
 			Dir:      "logs",

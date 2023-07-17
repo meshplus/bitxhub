@@ -23,6 +23,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/model"
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/bitxhub/pkg/utils"
+	vm "github.com/meshplus/eth-kit/evm"
 	"github.com/meshplus/eth-kit/ledger"
 	solsha3 "github.com/miguelmota/go-solidity-sha3"
 	"github.com/sirupsen/logrus"
@@ -445,6 +446,14 @@ func (b BrokerAPI) GetPoolTransaction(hash *types.Hash) pb.Transaction {
 
 func (b BrokerAPI) GetStateLedger() ledger.StateLedger {
 	return b.bxh.Ledger.StateLedger
+}
+
+func (b BrokerAPI) GetEvm(mes *vm.Message, vmConfig *vm.Config) *vm.EVM {
+	if vmConfig == nil {
+		vmConfig = new(vm.Config)
+	}
+	txContext := vm.NewEVMTxContext(mes)
+	return b.bxh.BlockExecutor.GetEvm(txContext, *vmConfig)
 }
 
 func (b *BrokerAPI) FetchTssInfoFromOtherPeers() []*pb.TssInfo {

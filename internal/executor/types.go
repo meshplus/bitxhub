@@ -5,6 +5,7 @@ import (
 	"github.com/meshplus/bitxhub-core/agency"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/model/events"
+	vm "github.com/meshplus/eth-kit/evm"
 )
 
 type Executor interface {
@@ -36,4 +37,6 @@ type Executor interface {
 	SubscribeAuditEvent(chan<- *pb.AuditTxInfo) event.Subscription
 
 	GetBoltContracts() map[string]agency.Contract
+
+	GetEvm(txCtx vm.TxContext, vmConfig vm.Config) *vm.EVM
 }

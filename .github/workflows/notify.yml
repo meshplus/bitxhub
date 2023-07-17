@@ -19,3 +19,4 @@ jobs:
           reviewers: ${{ secrets.REVIEWERS }}
           webhook: ${{ secrets.WEBHOOK }}
           secret: ${{ secrets.SIGNATURE_SECRET}}
+          token: ${{ secrets.TOKEN }}

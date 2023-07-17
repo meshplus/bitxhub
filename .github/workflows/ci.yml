@@ -66,6 +66,7 @@ jobs:
         uses: codecov/codecov-action@v3
         with:
           files: ./coverage.txt
+          fail_ci_if_error : true
   
   smoke-test:
     name: Run smoke test
