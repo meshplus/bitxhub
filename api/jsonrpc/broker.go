@@ -74,7 +74,6 @@ func (cbs *ChainBrokerService) init() error {
 
 func (cbs *ChainBrokerService) Start() error {
 	router := mux.NewRouter()
-	// router.Handle("/", cbs.server)
 	handler := cbs.tokenBucketMiddleware(cbs.server)
 	router.Handle("/", handler)
 
