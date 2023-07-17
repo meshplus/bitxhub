@@ -98,6 +98,7 @@ func NewBitXHub(rep *repo.Repo, orderPath string) (*BitXHub, error) {
 		order.WithRepoRoot(orderRoot),
 		order.WithStoragePath(repo.GetStoragePath(repoRoot, "order")),
 		order.WithOrderType(rep.Config.Order.Type),
+		order.WithPrivKey(rep.Key.PrivKey),
 		order.WithNodes(m),
 		order.WithID(rep.NetworkConfig.ID),
 		order.WithIsNew(rep.NetworkConfig.New),

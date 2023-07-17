@@ -33,3 +33,5 @@ goent.sum
 dist
 .history
 storage
+go.work
+go.work.sum

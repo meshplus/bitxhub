@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/meshplus/bitxhub"
-	"github.com/meshplus/bitxhub-core/agency"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub/api/gateway"
 	"github.com/meshplus/bitxhub/api/grpc"
@@ -89,10 +88,6 @@ func start(ctx *cli.Context) error {
 
 	printVersion()
 
-	if err := checkLicense(repo); err != nil {
-		return fmt.Errorf("verify license fail:%v", err)
-	}
-
 	bxh, err := app.NewBitXHub(repo, orderPath)
 	if err != nil {
 		return fmt.Errorf("init bitxhub failed: %w", err)
@@ -153,7 +148,6 @@ func start(ctx *cli.Context) error {
 
 	var wg sync.WaitGroup
 	wg.Add(1)
-	handleLicenceCheck(bxh, repo, &wg)
 	handleShutdown(bxh, &wg)
 
 	if err := bxh.Start(); err != nil {
@@ -165,16 +159,6 @@ func start(ctx *cli.Context) error {
 	return nil
 }
 
-func checkLicense(rep *repo.Repo) error {
-	licenseCon, err := agency.GetLicenseConstructor("license")
-	if err != nil {
-		return nil
-	}
-	license := rep.Config.License
-	licenseVerifier := licenseCon(license.Key, license.Verifier)
-	return licenseVerifier.Verify(rep.Config.RepoRoot)
-}
-
 func printVersion() {
 	fmt.Printf("BitXHub version: %s-%s-%s\n", bitxhub.CurrentVersion, bitxhub.CurrentBranch, bitxhub.CurrentCommit)
 	fmt.Printf("App build date: %s\n", bitxhub.BuildDate)
@@ -183,25 +167,6 @@ func printVersion() {
 	fmt.Println()
 }
 
-func handleLicenceCheck(node *app.BitXHub, repo *repo.Repo, wg *sync.WaitGroup) {
-	go func() {
-		ticker := time.NewTicker(time.Minute)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ticker.C:
-				if err := checkLicense(repo); err != nil {
-					fmt.Printf("verify license fail:%v", err)
-					if err := node.Stop(); err != nil {
-						panic(err)
-					}
-					wg.Done()
-					os.Exit(0)
-				}
-			}
-		}
-	}()
-}
 func handleShutdown(node *app.BitXHub, wg *sync.WaitGroup) {
 	var stop = make(chan os.Signal)
 	signal.Notify(stop, syscall.SIGTERM)

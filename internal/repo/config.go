@@ -75,7 +75,6 @@ type Config struct {
 	Ledger        `json:"ledger"`
 	Genesis       `json:"genesis"`
 	Security      Security      `toml:"security" json:"security"`
-	License       License       `toml:"license" json:"license"`
 	Crypto        Crypto        `toml:"crypto" json:"crypto"`
 	Tss           tss.TssConfig `toml:"tss" json:"tss"`
 }
@@ -190,11 +189,6 @@ type Executor struct {
 
 type Ledger struct {
 	Type string `toml:"type" json:"type"`
-}
-
-type License struct {
-	Key      string `toml:"key" json:"key"`
-	Verifier string `toml:"verifier" json:"verifier"`
 }
 
 type Crypto struct {

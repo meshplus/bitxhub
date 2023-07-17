@@ -86,8 +86,14 @@ func (bxh *BitXHub) listenEvent() {
 			go bxh.Router.PutBlockAndMeta(ev.Block, ev.InterchainMeta)
 		case ev := <-orderMsgCh:
 			go func() {
-				if err := bxh.Order.Step(ev.Data); err != nil {
-					bxh.logger.Error(err)
+				if ev.IsTxsFromRemote {
+					if err := bxh.Order.SubmitTxsFromRemote(ev.Txs); err != nil {
+						bxh.logger.Error(err)
+					}
+				} else {
+					if err := bxh.Order.Step(ev.Data); err != nil {
+						bxh.logger.Error(err)
+					}
 				}
 			}()
 		case ev := <-nodeCh:

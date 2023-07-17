@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
-	"strconv"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/meshplus/bitxhub-kit/types"
@@ -65,8 +65,9 @@ func (cbs *ChainBrokerService) GetPendingNonceByAccount(ctx context.Context, req
 	if !types.IsValidAddressByte([]byte(req.Address)) {
 		return nil, fmt.Errorf("invalid account address: %v", req.Address)
 	}
-	nonce := cbs.api.Broker().GetPendingNonceByAccount(req.Address)
-	return &pb.Response{
-		Data: []byte(strconv.FormatUint(nonce, 10)),
-	}, nil
+	return nil, errors.New("unsupported api for new rbft")
+	// nonce := cbs.api.Broker().GetPendingNonceByAccount(req.Address)
+	// return &pb.Response{
+	// 	Data: []byte(strconv.FormatUint(nonce, 10)),
+	// }, nil
 }
