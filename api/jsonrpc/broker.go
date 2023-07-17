@@ -15,8 +15,8 @@ import (
 )
 
 type ChainBrokerService struct {
-	config      *repo.Config
-	genesis     *repo.Genesis
+	config *repo.Config
+	// genesis     *repo.Genesis
 	api         api.CoreAPI
 	server      *rpc.Server
 	logger      logrus.FieldLogger
@@ -29,14 +29,13 @@ type ChainBrokerService struct {
 func NewChainBrokerService(coreAPI api.CoreAPI, config *repo.Config) (*ChainBrokerService, error) {
 	logger := loggers.Logger(loggers.API)
 
-	ctx, cancel := context.WithCancel(context.Background())
-
 	jLimiter := config.JLimiter
 	rateLimiter, err := ratelimiter.NewJRateLimiterWithQuantum(jLimiter.Interval, jLimiter.Capacity, jLimiter.Quantum)
 	if err != nil {
 		return nil, fmt.Errorf("create rate limiter failed: %w", err)
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
 	cbs := &ChainBrokerService{
 		logger:      logger,
 		config:      config,
@@ -47,6 +46,7 @@ func NewChainBrokerService(coreAPI api.CoreAPI, config *repo.Config) (*ChainBrok
 	}
 
 	if err := cbs.init(); err != nil {
+		cancel()
 		return nil, fmt.Errorf("init chain broker service failed: %w", err)
 	}
 
@@ -74,7 +74,7 @@ func (cbs *ChainBrokerService) init() error {
 
 func (cbs *ChainBrokerService) Start() error {
 	router := mux.NewRouter()
-	// router.Handle("/", cbs.server)
+
 	handler := cbs.tokenBucketMiddleware(cbs.server)
 	router.Handle("/", handler)
 
