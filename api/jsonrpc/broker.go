@@ -125,13 +125,13 @@ func (cbs *ChainBrokerService) ReConfig(config *repo.Config) error {
 
 func (cbs *ChainBrokerService) tokenBucketMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// 在处理请求之前等待直到获取到一个令牌
+		// Wait until a token is obtained before processing the request
 		if cbs.rateLimiter.JLimit() {
 			http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
 			return
 		}
 
-		// 继续处理下一个中间件或请求处理程序
+		// Continue processing to the next middleware or request handler
 		next.ServeHTTP(w, r)
 	})
 }
