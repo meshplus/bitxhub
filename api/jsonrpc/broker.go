@@ -10,15 +10,17 @@ import (
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
 	"github.com/meshplus/bitxhub/internal/loggers"
 	"github.com/meshplus/bitxhub/internal/repo"
+	"github.com/meshplus/bitxhub/pkg/ratelimiter"
 	"github.com/sirupsen/logrus"
 )
 
 type ChainBrokerService struct {
-	config  *repo.Config
-	genesis *repo.Genesis
-	api     api.CoreAPI
-	server  *rpc.Server
-	logger  logrus.FieldLogger
+	config *repo.Config
+	// genesis     *repo.Genesis
+	api         api.CoreAPI
+	server      *rpc.Server
+	logger      logrus.FieldLogger
+	rateLimiter *ratelimiter.JRateLimiter
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -27,17 +29,24 @@ type ChainBrokerService struct {
 func NewChainBrokerService(coreAPI api.CoreAPI, config *repo.Config) (*ChainBrokerService, error) {
 	logger := loggers.Logger(loggers.API)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	jLimiter := config.JLimiter
+	rateLimiter, err := ratelimiter.NewJRateLimiterWithQuantum(jLimiter.Interval, jLimiter.Capacity, jLimiter.Quantum)
+	if err != nil {
+		return nil, fmt.Errorf("create rate limiter failed: %w", err)
+	}
 
+	ctx, cancel := context.WithCancel(context.Background())
 	cbs := &ChainBrokerService{
-		logger: logger,
-		config: config,
-		api:    coreAPI,
-		ctx:    ctx,
-		cancel: cancel,
+		logger:      logger,
+		config:      config,
+		api:         coreAPI,
+		ctx:         ctx,
+		cancel:      cancel,
+		rateLimiter: rateLimiter,
 	}
 
 	if err := cbs.init(); err != nil {
+		cancel()
 		return nil, fmt.Errorf("init chain broker service failed: %w", err)
 	}
 
@@ -64,7 +73,9 @@ func (cbs *ChainBrokerService) init() error {
 
 func (cbs *ChainBrokerService) Start() error {
 	router := mux.NewRouter()
-	router.Handle("/", cbs.server)
+
+	handler := cbs.tokenBucketMiddleware(cbs.server)
+	router.Handle("/", handler)
 
 	go func() {
 		cbs.logger.WithFields(logrus.Fields{
@@ -110,4 +121,17 @@ func (cbs *ChainBrokerService) ReConfig(config *repo.Config) error {
 	}
 
 	return nil
+}
+
+func (cbs *ChainBrokerService) tokenBucketMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Wait until a token is obtained before processing the request
+		if cbs.rateLimiter.JLimit() {
+			http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
+			return
+		}
+
+		// Continue processing to the next middleware or request handler
+		next.ServeHTTP(w, r)
+	})
 }

@@ -44,6 +44,11 @@ solo = false
   quantum= 500
   capacity= 10000
 
+[jlimiter]
+  interval= "50ms"
+  quantum= 500
+  capacity= 10000
+
 [appchain]
   enable = false
   eth_header_path="appchain/eth_header.json"
