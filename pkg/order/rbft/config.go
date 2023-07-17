@@ -5,12 +5,15 @@ import (
 	"sort"
 	"time"
 
+	rbft "github.com/hyperchain/go-hpc-rbft/v2"
+	"github.com/hyperchain/go-hpc-rbft/v2/common/metrics/disabled"
+	"github.com/hyperchain/go-hpc-rbft/v2/txpool"
+	rbfttypes "github.com/hyperchain/go-hpc-rbft/v2/types"
 	"github.com/meshplus/bitxhub-core/order"
 	"github.com/meshplus/bitxhub-model/pb"
+	ethtypes "github.com/meshplus/eth-kit/types"
 	"github.com/sirupsen/logrus"
-	"github.com/ultramesh/rbft"
-	"github.com/ultramesh/rbft/mempool"
-	"github.com/ultramesh/rbft/rbftpb"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type RBFTConfig struct {
@@ -52,27 +55,43 @@ type Timeout struct {
 	Set              time.Duration `mapstructure:"set"`
 }
 
-func defaultRbftConfig() rbft.Config {
-	return rbft.Config{
-		SetSize:                 1000,
+func defaultRbftConfig() rbft.Config[ethtypes.EthTransaction, *ethtypes.EthTransaction] {
+	return rbft.Config[ethtypes.EthTransaction, *ethtypes.EthTransaction]{
+		ID:        0,
+		Hash:      "",
+		Hostname:  "",
+		EpochInit: 1,
+		LatestConfig: &rbfttypes.MetaState{
+			Height: 0,
+			Digest: "",
+		},
+		Peers:                   []*rbfttypes.Peer{},
 		IsNew:                   false,
+		Applied:                 0,
 		K:                       10,
 		LogMultiplier:           4,
-		VCPeriod:                0,
-		CheckPoolTimeout:        100 * time.Second,
-		CheckPoolRemoveTimeout:  1000 * time.Second,
-		SyncStateTimeout:        3 * time.Second,
-		SyncStateRestartTimeout: 40 * time.Second,
-		RecoveryTimeout:         10 * time.Second,
-		FirstRequestTimeout:     30 * time.Second,
+		SetSize:                 1000,
+		SetTimeout:              100 * time.Millisecond,
 		BatchTimeout:            200 * time.Millisecond,
 		RequestTimeout:          6 * time.Second,
 		NullRequestTimeout:      9 * time.Second,
-		NewViewTimeout:          1 * time.Second,
+		VCPeriod:                0,
 		VcResendTimeout:         8 * time.Second,
 		CleanVCTimeout:          60 * time.Second,
-		UpdateTimeout:           4 * time.Second,
-		SetTimeout:              100 * time.Millisecond,
+		NewViewTimeout:          1 * time.Second,
+		SyncStateTimeout:        3 * time.Second,
+		SyncStateRestartTimeout: 40 * time.Second,
+		FetchCheckpointTimeout:  5 * time.Second,
+		FetchViewTimeout:        1 * time.Second,
+		CheckPoolTimeout:        100 * time.Second,
+		External:                nil,
+		RequestPool:             nil,
+		FlowControl:             false,
+		FlowControlMaxMem:       0,
+		MetricsProv:             &disabled.Provider{},
+		Tracer:                  trace.NewNoopTracerProvider().Tracer("bitxhub"),
+		DelFlag:                 make(chan bool, 10),
+		Logger:                  nil,
 	}
 }
 
@@ -83,26 +102,30 @@ func defaultTimedConfig() TimedGenBlock {
 	}
 }
 
-func generateRbftConfig(repoRoot string, config *order.Config) (rbft.Config, error) {
+func generateRbftConfig(repoRoot string, config *order.Config) (rbft.Config[ethtypes.EthTransaction, *ethtypes.EthTransaction], txpool.Config, error) {
 	readConfig, err := readConfig(repoRoot)
 	if err != nil {
-		return rbft.Config{}, nil
+		return rbft.Config[ethtypes.EthTransaction, *ethtypes.EthTransaction]{}, txpool.Config{}, nil
 	}
-	timedGenBlock := readConfig.TimedGenBlock
 
 	defaultConfig := defaultRbftConfig()
 	defaultConfig.ID = config.ID
-	defaultConfig.Logger = &Logger{config.Logger}
+	defaultConfig.Hash = config.Nodes[config.ID].Pid
+	defaultConfig.Hostname = config.Nodes[config.ID].Pid
+	defaultConfig.EpochInit = 1
+	defaultConfig.LatestConfig = &rbfttypes.MetaState{
+		Height: 0,
+		Digest: "",
+	}
 	defaultConfig.Peers, err = generateRbftPeers(config)
 	if err != nil {
-		return rbft.Config{}, err
+		return rbft.Config[ethtypes.EthTransaction, *ethtypes.EthTransaction]{}, txpool.Config{}, err
 	}
+	defaultConfig.IsNew = config.IsNew
+	defaultConfig.Applied = config.Applied
 
 	if readConfig.Rbft.CheckInterval > 0 {
 		defaultConfig.CheckPoolTimeout = readConfig.Rbft.CheckInterval
-	}
-	if readConfig.Rbft.ToleranceRemoveTime > 0 {
-		defaultConfig.CheckPoolRemoveTimeout = readConfig.Rbft.ToleranceRemoveTime
 	}
 	if readConfig.Rbft.SetSize > 0 {
 		defaultConfig.SetSize = readConfig.Rbft.SetSize
@@ -115,12 +138,6 @@ func generateRbftConfig(repoRoot string, config *order.Config) (rbft.Config, err
 	}
 	if readConfig.Rbft.Timeout.SyncInterval > 0 {
 		defaultConfig.SyncStateRestartTimeout = readConfig.Rbft.Timeout.SyncInterval
-	}
-	if readConfig.Rbft.Timeout.Recovery > 0 {
-		defaultConfig.RecoveryTimeout = readConfig.Rbft.Timeout.Recovery
-	}
-	if readConfig.Rbft.Timeout.FirstRequest > 0 {
-		defaultConfig.FirstRequestTimeout = readConfig.Rbft.Timeout.FirstRequest
 	}
 	if readConfig.Rbft.Timeout.Batch > 0 {
 		defaultConfig.BatchTimeout = readConfig.Rbft.Timeout.Batch
@@ -140,49 +157,38 @@ func generateRbftConfig(repoRoot string, config *order.Config) (rbft.Config, err
 	if readConfig.Rbft.Timeout.CleanViewChange > 0 {
 		defaultConfig.CleanVCTimeout = readConfig.Rbft.Timeout.CleanViewChange
 	}
-	if readConfig.Rbft.Timeout.Update > 0 {
-		defaultConfig.UpdateTimeout = readConfig.Rbft.Timeout.Update
-	}
 	if readConfig.Rbft.Timeout.Set > 0 {
 		defaultConfig.SetTimeout = readConfig.Rbft.Timeout.Set
 	}
-	defaultConfig.Applied = config.Applied
-	defaultConfig.GetBlockByHeight = config.GetBlockByHeight
 
-	defaultConfig.IsNew = config.IsNew
-
-	mempoolConf := mempool.Config{
-		ID:                  config.ID,
-		Logger:              defaultConfig.Logger,
-		BatchSize:           readConfig.Rbft.BatchSize,
-		PoolSize:            readConfig.Rbft.PoolSize,
-		BatchMemLimit:       readConfig.Rbft.BatchMemLimit,
-		BatchMaxMem:         readConfig.Rbft.BatchMaxMem,
-		ToleranceTime:       readConfig.Rbft.ToleranceTime,
-		ToleranceRemoveTime: readConfig.Rbft.ToleranceRemoveTime,
-		GetAccountNonce:     config.GetAccountNonce,
-		IsTimed:             timedGenBlock.Enable,
-		BlockTimeout:        timedGenBlock.BlockTimeout,
-	}
-	defaultConfig.PoolConfig = mempoolConf
-	return defaultConfig, nil
+	defaultConfig.Logger = &Logger{config.Logger}
+	return defaultConfig, txpool.Config{
+		K:             int(defaultConfig.K),
+		PoolSize:      int(readConfig.Rbft.PoolSize),
+		BatchSize:     int(readConfig.Rbft.BatchSize),
+		BatchMemLimit: readConfig.Rbft.BatchMemLimit,
+		BatchMaxMem:   uint(readConfig.Rbft.BatchMaxMem),
+		ToleranceTime: readConfig.Rbft.ToleranceTime,
+		MetricsProv:   defaultConfig.MetricsProv,
+		Logger:        defaultConfig.Logger,
+	}, nil
 }
 
-func generateRbftPeers(config *order.Config) ([]*rbftpb.Peer, error) {
+func generateRbftPeers(config *order.Config) ([]*rbfttypes.Peer, error) {
 	return sortPeers(config.Nodes)
 }
 
-func sortPeers(nodes map[uint64]*pb.VpInfo) ([]*rbftpb.Peer, error) {
-	peers := make([]*rbftpb.Peer, 0, len(nodes))
+func sortPeers(nodes map[uint64]*pb.VpInfo) ([]*rbfttypes.Peer, error) {
+	peers := make([]*rbfttypes.Peer, 0, len(nodes))
 	for id, vpInfo := range nodes {
-		vpIngoBytes, err := vpInfo.Marshal()
-		if err != nil {
-			return nil, err
-		}
-		peers = append(peers, &rbftpb.Peer{Id: id, Context: vpIngoBytes})
+		peers = append(peers, &rbfttypes.Peer{
+			ID:       id,
+			Hostname: vpInfo.Pid,
+			Hash:     vpInfo.Pid,
+		})
 	}
 	sort.Slice(peers, func(i, j int) bool {
-		return peers[i].Id < peers[j].Id
+		return peers[i].ID < peers[j].ID
 	})
 	return peers, nil
 }
@@ -196,6 +202,11 @@ func checkConfig(config *RBFTConfig) error {
 
 type Logger struct {
 	logrus.FieldLogger
+}
+
+// Trace implements rbft.Logger.
+func (lg *Logger) Trace(name string, stage string, content interface{}) {
+	lg.Info(name, stage, content)
 }
 
 func (lg *Logger) Critical(v ...interface{}) {

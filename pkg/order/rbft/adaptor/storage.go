@@ -1,4 +1,4 @@
-package rbft
+package adaptor
 
 import (
 	"bytes"
@@ -11,12 +11,12 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/errors"
 )
 
-type Storage struct {
+type storageWrapper struct {
 	DB   storage.Storage
 	File *minifile.MiniFile
 }
 
-func NewStorage(path string) (*Storage, error) {
+func newStorageWrapper(path string) (*storageWrapper, error) {
 	db, err := leveldb.New(path)
 	if err != nil {
 		return nil, err
@@ -27,26 +27,26 @@ func NewStorage(path string) (*Storage, error) {
 		return nil, err
 	}
 
-	return &Storage{
+	return &storageWrapper{
 		DB:   db,
 		File: file,
 	}, nil
 }
 
 // StoreState stores a key,value pair to the database with the given namespace
-func (s *Stack) StoreState(key string, value []byte) error {
+func (s *RBFTAdaptor) StoreState(key string, value []byte) error {
 	s.store.DB.Put([]byte("consensus."+key), value)
 	return nil
 }
 
 // DelState removes a key,value pair from the database with the given namespace
-func (s *Stack) DelState(key string) error {
+func (s *RBFTAdaptor) DelState(key string) error {
 	s.store.DB.Delete([]byte("consensus." + key))
 	return nil
 }
 
 // ReadState retrieves a value to a key from the database with the given namespace
-func (s *Stack) ReadState(key string) ([]byte, error) {
+func (s *RBFTAdaptor) ReadState(key string) ([]byte, error) {
 	b := s.store.DB.Get([]byte("consensus." + key))
 	if b == nil {
 		return nil, errors.ErrNotFound
@@ -55,7 +55,7 @@ func (s *Stack) ReadState(key string) ([]byte, error) {
 }
 
 // ReadStateSet retrieves all key-value pairs where the key starts with prefix from the database with the given namespace
-func (s *Stack) ReadStateSet(prefix string) (map[string][]byte, error) {
+func (s *RBFTAdaptor) ReadStateSet(prefix string) (map[string][]byte, error) {
 	prefixRaw := []byte("consensus." + prefix)
 
 	ret := make(map[string][]byte)
@@ -81,29 +81,29 @@ func (s *Stack) ReadStateSet(prefix string) (map[string][]byte, error) {
 	return ret, nil
 }
 
-func (s *Stack) Destroy() error {
-	// TODO (xcc): Destroy db
+// Notice: not used
+func (s *RBFTAdaptor) Destroy(key string) error {
 	_ = s.store.DB.Close()
 	_ = s.DeleteAllBatchState()
 	return nil
 }
 
-func (s *Stack) StoreBatchState(key string, value []byte) error {
+func (s *RBFTAdaptor) StoreBatchState(key string, value []byte) error {
 	return s.store.File.Put(key, value)
 }
 
-func (s *Stack) DelBatchState(key string) error {
+func (s *RBFTAdaptor) DelBatchState(key string) error {
 	return s.store.File.Delete(key)
 }
 
-func (s *Stack) ReadBatchState(key string) ([]byte, error) {
+func (s *RBFTAdaptor) ReadBatchState(key string) ([]byte, error) {
 	return s.store.File.Get(key)
 }
 
-func (s *Stack) ReadAllBatchState() (map[string][]byte, error) {
+func (s *RBFTAdaptor) ReadAllBatchState() (map[string][]byte, error) {
 	return s.store.File.GetAll()
 }
 
-func (s *Stack) DeleteAllBatchState() error {
+func (s *RBFTAdaptor) DeleteAllBatchState() error {
 	return s.store.File.DeleteAll()
 }

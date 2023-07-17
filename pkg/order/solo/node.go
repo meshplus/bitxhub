@@ -158,6 +158,10 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 	return soloNode, nil
 }
 
+func (n *Node) SubmitTxsFromRemote(tsx [][]byte) error {
+	return nil
+}
+
 // Schedule to collect txs to the listenReadyBlock channel
 func (n *Node) listenReadyBlock() {
 	var blockTicker <-chan time.Time

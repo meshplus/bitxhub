@@ -40,7 +40,19 @@ func (swarm *Swarm) handleMessage(s network.Stream, data []byte) {
 		case pb.Message_FETCH_TSS_INFO:
 			return swarm.handleFetchTssInfo(s)
 		case pb.Message_CONSENSUS:
-			go swarm.orderMessageFeed.Send(orderPeerMgr.OrderMessageEvent{Data: m.Data})
+			go swarm.orderMessageFeed.Send(orderPeerMgr.OrderMessageEvent{
+				IsTxsFromRemote: false,
+				Data:            m.Data,
+			})
+		case pb.Message_PUSH_TXS:
+			tsx := &pb.PushTxs{}
+			if err := tsx.Unmarshal(m.Data); err != nil {
+				return fmt.Errorf("unmarshal PushTxs error: %v", err)
+			}
+			go swarm.orderMessageFeed.Send(orderPeerMgr.OrderMessageEvent{
+				IsTxsFromRemote: true,
+				Txs:             tsx.Data,
+			})
 		case pb.Message_FETCH_BLOCK_SIGN:
 			swarm.handleFetchBlockSignMessage(s, m.Data)
 		case pb.Message_FETCH_IBTP_REQUEST_SIGN:

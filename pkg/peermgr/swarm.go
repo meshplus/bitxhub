@@ -238,8 +238,15 @@ func (swarm *Swarm) AsyncSend(id orderPeerMgr.KeyType, msg *pb.Message) error {
 		addr string
 		err  error
 	)
-	if addr, err = swarm.findPeer(id.(uint64)); err != nil {
-		return fmt.Errorf("p2p send: %w", err)
+	switch to := id.(type) {
+	case uint64:
+		if addr, err = swarm.findPeer(to); err != nil {
+			return fmt.Errorf("p2p asyncSend check peer id type: %w", err)
+		}
+	case string:
+		addr = to
+	default:
+		return fmt.Errorf("p2p unsupported peer id type: %v", id)
 	}
 
 	data, err := msg.Marshal()
@@ -263,8 +270,15 @@ func (swarm *Swarm) Send(id orderPeerMgr.KeyType, msg *pb.Message) (*pb.Message,
 		addr string
 		err  error
 	)
-	if addr, err = swarm.findPeer(id.(uint64)); err != nil {
-		return nil, fmt.Errorf("check id: %w", err)
+	switch to := id.(type) {
+	case uint64:
+		if addr, err = swarm.findPeer(to); err != nil {
+			return nil, fmt.Errorf("p2p send check peer id type: %w", err)
+		}
+	case string:
+		addr = to
+	default:
+		return nil, fmt.Errorf("p2p unsupported peer id type: %v", id)
 	}
 
 	data, err := msg.Marshal()

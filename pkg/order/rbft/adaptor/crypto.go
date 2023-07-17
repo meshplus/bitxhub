@@ -1,0 +1,26 @@
+package adaptor
+
+func (s *RBFTAdaptor) Sign(msg []byte) ([]byte, error) {
+	return []byte{}, nil
+	// h := sha256.Sum256(msg)
+	// return s.priv.Sign(h[:])
+}
+
+func (s *RBFTAdaptor) Verify(peerID string, signature []byte, msg []byte) error {
+	// h := sha256.Sum256(msg)
+	// id, ok := s.nodePIDToID[peerID]
+	// if !ok {
+	// 	return fmt.Errorf("not found peerID mapping: %v", peerID)
+	// }
+	// addr := types.NewAddressByStr(s.Nodes[id].Account)
+	// ret, err := asym.Verify(crypto.Secp256k1, signature, h[:], *addr)
+	// if err != nil {
+	// 	return err
+	// }
+
+	// if !ret {
+	// 	return fmt.Errorf("verify error")
+	// }
+
+	return nil
+}
