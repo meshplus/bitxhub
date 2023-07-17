@@ -1,8 +1,6 @@
 package jsonrpc
 
 import (
-	"fmt"
-
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/meshplus/bitxhub/api/jsonrpc/namespaces/eth"
 	"github.com/meshplus/bitxhub/api/jsonrpc/namespaces/eth/filters"
@@ -26,16 +24,20 @@ const (
 func GetAPIs(config *repo.Config, api api.CoreAPI, logger logrus.FieldLogger) ([]rpc.API, error) {
 	var apis []rpc.API
 
-	ethAPI, err := eth.NewAPI(config, api, logger)
-	if err != nil {
-		return nil, fmt.Errorf("init ethereum api failed: %w", err)
-	}
+	apis = append(apis,
+		rpc.API{
+			Namespace: EthNamespace,
+			Version:   apiVersion,
+			Service:   eth.NewBlockChainAPI(config, api, logger),
+			Public:    true,
+		},
+	)
 
 	apis = append(apis,
 		rpc.API{
 			Namespace: EthNamespace,
 			Version:   apiVersion,
-			Service:   ethAPI,
+			Service:   eth.NewBitxhubAPI(config, api, logger),
 			Public:    true,
 		},
 	)
@@ -45,6 +47,15 @@ func GetAPIs(config *repo.Config, api api.CoreAPI, logger logrus.FieldLogger) ([
 			Namespace: EthNamespace,
 			Version:   apiVersion,
 			Service:   filters.NewAPI(api, logger),
+			Public:    true,
+		},
+	)
+
+	apis = append(apis,
+		rpc.API{
+			Namespace: EthNamespace,
+			Version:   apiVersion,
+			Service:   eth.NewTransactionAPI(config, api, logger),
 			Public:    true,
 		},
 	)

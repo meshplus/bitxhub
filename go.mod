@@ -55,6 +55,7 @@ require (
 	github.com/iancoleman/orderedmap v0.2.0
 	github.com/juju/ratelimit v1.0.1
 	github.com/libp2p/go-libp2p-core v0.5.6
+	github.com/libp2p/go-libp2p-kad-dht v0.8.2 // indirect
 	github.com/libp2p/go-libp2p-swarm v0.2.4
 	github.com/looplab/fsm v0.2.0
 	github.com/magiconair/properties v1.8.5
@@ -159,7 +160,6 @@ require (
 	github.com/libp2p/go-libp2p-connmgr v0.2.3 // indirect
 	github.com/libp2p/go-libp2p-crypto v0.1.0 // indirect
 	github.com/libp2p/go-libp2p-discovery v0.4.0 // indirect
-	github.com/libp2p/go-libp2p-kad-dht v0.8.2 // indirect
 	github.com/libp2p/go-libp2p-kbucket v0.4.2 // indirect
 	github.com/libp2p/go-libp2p-loggables v0.1.0 // indirect
 	github.com/libp2p/go-libp2p-mplex v0.2.3 // indirect
