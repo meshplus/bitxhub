@@ -265,6 +265,11 @@ func DefaultConfig() (*Config, error) {
 		},
 		Ledger: Ledger{Type: "complex"},
 		Crypto: Crypto{Algorithms: []string{"Secp256k1"}},
+		JLimiter: JLimiter{
+			Interval: 50,
+			Quantum:  500,
+			Capacity: 10000,
+		},
 	}, nil
 }
 

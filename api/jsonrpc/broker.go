@@ -68,7 +68,6 @@ func (cbs *ChainBrokerService) init() error {
 		}
 	}
 
-	rpc.NewServer()
 	return nil
 }
 
