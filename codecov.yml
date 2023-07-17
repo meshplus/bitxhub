@@ -1,6 +1,10 @@
 coverage:
+  allow_pseudo_compare: False
   status:
     project:
       default:
         target: 70%
         threshold: 0%
+    patch: 
+      default:
+        target: 100%
