@@ -64,7 +64,7 @@ type Config struct {
 	PProf         `json:"pprof"`
 	Monitor       `json:"monitor"`
 	Limiter       `json:"limiter"`
-  JLimiter `json:"jlimiter"`
+	JLimiter      `json:"jlimiter"`
 	Appchain      `json:"appchain"`
 	Gateway       `json:"gateway"`
 	Ping          `json:"ping"`
