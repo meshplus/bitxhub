@@ -10,7 +10,6 @@ replace (
 	github.com/meshplus/eth-kit => github.com/TaiChiChain/eth-kit v0.0.0-20230717014715-f1a01947ba95
 	github.com/meshplus/go-libp2p-cert => github.com/TaiChiChain/go-libp2p-cert v0.0.0-20230625062152-44e7041e4770
 	github.com/meshplus/go-lightp2p => github.com/TaiChiChain/go-lightp2p v0.0.0-20230625064042-335b4532a750
-	github.com/ultramesh/rbft => github.com/TaiChiChain/rbft v0.1.5-0.20230703101940-35c10f80be39
 )
 
 replace (
