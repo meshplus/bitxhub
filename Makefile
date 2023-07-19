@@ -48,12 +48,6 @@ test-coverage: prepare
 	@go test -timeout 300s -short -coverprofile cover.out -covermode=atomic ${TEST_PKGS2}
 	@cat cover.out | grep -v "pb.go" >> coverage.txt
 
-
-## make tester: Run integration test
-tester:
-	go generate ./...
-	cd tester && $(GO) test -v -run TestTester
-
 ## make smoke-test: Run smoke test
 smoke-test: prepare
 	cd scripts && bash smoke_test.sh -b ${BRANCH}
@@ -78,7 +72,7 @@ release-binary:
 
 ## make linter: Run golanci-lint
 linter:
-	golangci-lint run
+	golangci-lint run --timeout=5m --new-from-rev=HEAD~1 -v
 
 ## make cluster: Run cluster including 4 nodes
 cluster:install${TAGS}
@@ -88,4 +82,6 @@ cluster:install${TAGS}
 solo:install${TAGS}
 	@cd scripts && bash solo.sh TAGS=${TAGS}
 
-.PHONY: tester build
+precommit: test-coverage linter
+
+.PHONY: build

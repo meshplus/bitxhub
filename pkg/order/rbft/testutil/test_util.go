@@ -7,12 +7,12 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/meshplus/bitxhub-core/order"
-	"github.com/meshplus/bitxhub-core/peer-mgr/mock_orderPeermgr"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub/pkg/order"
+	"github.com/meshplus/bitxhub/pkg/peermgr/mock_peermgr"
 	"github.com/sirupsen/logrus"
 )
 
@@ -36,8 +36,8 @@ func ConstructBlock(blockHashStr string, height uint64) *pb.Block {
 	}
 }
 
-func MockMiniPeerManager(ctrl *gomock.Controller) *mock_orderPeermgr.MockOrderPeerManager {
-	mock := mock_orderPeermgr.NewMockOrderPeerManager(ctrl)
+func MockMiniPeerManager(ctrl *gomock.Controller) *mock_peermgr.MockOrderPeerManager {
+	mock := mock_peermgr.NewMockOrderPeerManager(ctrl)
 	mock.EXPECT().Broadcast(gomock.Any()).Return(nil).AnyTimes()
 	mock.EXPECT().AsyncSend(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	mock.EXPECT().AddNode(gomock.Any(), gomock.Any()).Return().AnyTimes()
