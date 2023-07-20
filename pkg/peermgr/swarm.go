@@ -14,11 +14,9 @@ import (
 	"github.com/libp2p/go-libp2p-core/connmgr"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
-	orderPeerMgr "github.com/meshplus/bitxhub-core/peer-mgr"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/repo"
-	"github.com/meshplus/bitxhub/pkg/tssmgr"
 	libp2pcert "github.com/meshplus/go-libp2p-cert"
 	network "github.com/meshplus/go-lightp2p"
 	ma "github.com/multiformats/go-multiaddr"
@@ -36,24 +34,18 @@ type Swarm struct {
 	localID uint64
 	p2p     network.Network
 	logger  logrus.FieldLogger
-	Tss     *tssmgr.TssMgr
 
 	routers        map[uint64]*pb.VpInfo // trace the vp nodes
 	multiAddrs     map[uint64]*peer.AddrInfo
 	connectedPeers sync.Map
 	notifiee       *notifiee
-	piers          *Piers
 	gater          connmgr.ConnectionGater
 
-	ledger            *ledger.Ledger
-	orderMessageFeed  event.Feed
-	tssMessageFeed    event.Feed
-	tssSignResultFeed event.Feed
-	tssCulpritsFeed   event.Feed
-	tssKeygenReqFeed  event.Feed
-	enablePing        bool
-	pingTimeout       time.Duration
-	pingC             chan *repo.Ping
+	ledger           *ledger.Ledger
+	orderMessageFeed event.Feed
+	enablePing       bool
+	pingTimeout      time.Duration
+	pingC            chan *repo.Ping
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -128,9 +120,6 @@ func (swarm *Swarm) init() error {
 	swarm.pingC = make(chan *repo.Ping)
 	swarm.routers = routers
 	swarm.multiAddrs = multiAddrs
-	if swarm.piers == nil {
-		swarm.piers = newPiers()
-	}
 	swarm.connectedPeers = sync.Map{}
 	swarm.notifiee = notifiee
 	swarm.gater = gater
@@ -233,7 +222,7 @@ func (swarm *Swarm) Ping() {
 	}
 }
 
-func (swarm *Swarm) AsyncSend(id orderPeerMgr.KeyType, msg *pb.Message) error {
+func (swarm *Swarm) AsyncSend(id KeyType, msg *pb.Message) error {
 	var (
 		addr string
 		err  error
@@ -265,7 +254,7 @@ func (swarm *Swarm) SendWithStream(s network.Stream, msg *pb.Message) error {
 	return s.AsyncSend(data)
 }
 
-func (swarm *Swarm) Send(id orderPeerMgr.KeyType, msg *pb.Message) (*pb.Message, error) {
+func (swarm *Swarm) Send(id KeyType, msg *pb.Message) (*pb.Message, error) {
 	var (
 		addr string
 		err  error
@@ -353,7 +342,7 @@ func (swarm *Swarm) OtherPeers() map[uint64]*peer.AddrInfo {
 	return addrInfos
 }
 
-func (swarm *Swarm) SubscribeOrderMessage(ch chan<- orderPeerMgr.OrderMessageEvent) event.Subscription {
+func (swarm *Swarm) SubscribeOrderMessage(ch chan<- OrderMessageEvent) event.Subscription {
 	return swarm.orderMessageFeed.Subscribe(ch)
 }
 
@@ -401,13 +390,6 @@ func (swarm *Swarm) AddNode(newNodeID uint64, vpInfo *pb.VpInfo) {
 		swarm.notifiee.newPeer = ""
 	} else if swarm.notifiee.newPeer != "" {
 		swarm.logger.Warningf("Received vpInfo %v, but it doesn't equal to  notifiee newPeer %s", vpInfo, swarm.notifiee.newPeer)
-	}
-
-	// 4. send tss keygen req
-	if swarm.repo.Config.Tss.EnableTSS && newNodeID != swarm.localID {
-		swarm.tssKeygenReqFeed.Send(&pb.Message{
-			Type: pb.Message_TSS_KEYGEN_REQ,
-		})
 	}
 }
 
@@ -530,10 +512,6 @@ func constructMultiaddr(vpInfo *pb.VpInfo) (*peer.AddrInfo, error) {
 	return addrInfo, nil
 }
 
-func (swarm *Swarm) PierManager() PierManager {
-	return swarm
-}
-
 func (swarm *Swarm) ReConfig(config interface{}) error {
 	switch config.(type) {
 	case *repo.Config:
@@ -553,20 +531,4 @@ func (swarm *Swarm) ReConfig(config interface{}) error {
 		}
 	}
 	return nil
-}
-
-func (swarm *Swarm) SubscribeTssMessage(ch chan<- *pb.Message) event.Subscription {
-	return swarm.tssMessageFeed.Subscribe(ch)
-}
-
-func (swarm *Swarm) SubscribeTssSignRes(ch chan<- *pb.Message) event.Subscription {
-	return swarm.tssSignResultFeed.Subscribe(ch)
-}
-
-func (swarm *Swarm) SubscribeTssCulprits(ch chan<- *pb.Message) event.Subscription {
-	return swarm.tssCulpritsFeed.Subscribe(ch)
-}
-
-func (swarm *Swarm) SubscribeTssKeygenReq(ch chan<- *pb.Message) event.Subscription {
-	return swarm.tssKeygenReqFeed.Subscribe(ch)
 }

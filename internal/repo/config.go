@@ -11,7 +11,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/fsnotify/fsnotify"
-	"github.com/meshplus/bitxhub-core/tss"
 	"github.com/mitchellh/go-homedir"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/spf13/viper"
@@ -75,9 +74,8 @@ type Config struct {
 	Executor      `json:"executor"`
 	Ledger        `json:"ledger"`
 	Genesis       `json:"genesis"`
-	Security      Security      `toml:"security" json:"security"`
-	Crypto        Crypto        `toml:"crypto" json:"crypto"`
-	Tss           tss.TssConfig `toml:"tss" json:"tss"`
+	Security      Security `toml:"security" json:"security"`
+	Crypto        Crypto   `toml:"crypto" json:"crypto"`
 }
 
 // Security are files used to setup connection with tls

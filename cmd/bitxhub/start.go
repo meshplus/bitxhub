@@ -13,8 +13,6 @@ import (
 
 	"github.com/meshplus/bitxhub"
 	"github.com/meshplus/bitxhub-kit/log"
-	"github.com/meshplus/bitxhub/api/gateway"
-	"github.com/meshplus/bitxhub/api/grpc"
 	"github.com/meshplus/bitxhub/api/jsonrpc"
 	"github.com/meshplus/bitxhub/internal/app"
 	"github.com/meshplus/bitxhub/internal/coreapi"
@@ -115,16 +113,6 @@ func start(ctx *cli.Context) error {
 		return err
 	}
 
-	// start grpc service
-	b, err := grpc.NewChainBrokerService(api, repo.Config, &repo.Config.Genesis, bxh.Ledger)
-	if err != nil {
-		return err
-	}
-
-	if err := b.Start(); err != nil {
-		return fmt.Errorf("start chain broker service failed: %w", err)
-	}
-
 	// start json-rpc service
 	cbs, err := jsonrpc.NewChainBrokerService(api, repo.Config)
 	if err != nil {
@@ -135,16 +123,9 @@ func start(ctx *cli.Context) error {
 		return fmt.Errorf("start chain broker service failed: %w", err)
 	}
 
-	gw := gateway.NewGateway(repo.Config)
-	if err := gw.Start(); err != nil {
-		fmt.Println(err)
-	}
-
 	bxh.Monitor = monitor
 	bxh.Pprof = pprof
-	bxh.Grpc = b
 	bxh.Jsonrpc = cbs
-	bxh.Gateway = gw
 
 	var wg sync.WaitGroup
 	wg.Add(1)

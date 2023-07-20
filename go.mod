@@ -4,7 +4,6 @@ go 1.18
 
 replace (
 	github.com/hyperchain/go-hpc-rbft/v2 => github.com/TaiChiChain/go-hpc-rbft/v2 v2.3.1-0.20230717014025-28b74f257e5a
-	github.com/meshplus/bitxhub-core => github.com/TaiChiChain/bitxhub-core v1.3.1-0.20230717014531-86765ad27633
 	github.com/meshplus/bitxhub-kit => github.com/TaiChiChain/bitxhub-kit v1.20.1-0.20230625064843-b7ae66571e52
 	github.com/meshplus/bitxhub-model => github.com/TaiChiChain/bitxhub-model v1.20.2-0.20230717013620-c1253dc64023
 	github.com/meshplus/eth-kit => github.com/TaiChiChain/eth-kit v0.0.0-20230717014715-f1a01947ba95
@@ -14,13 +13,10 @@ replace (
 
 replace (
 	github.com/agl/ed25519 => github.com/binance-chain/edwards25519 v0.0.0-20200305024217-f36fc4b53d43
-	// github.com/binance-chain/tss-lib => github.com/dawn-to-dusk/tss-lib v1.3.2-0.20220422023240-5ddc16a330ed
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4
 	github.com/golang/protobuf => github.com/golang/protobuf v1.5.2
 	github.com/hyperledger/fabric => github.com/hyperledger/fabric v2.0.1+incompatible
 	github.com/karalabe/usb => github.com/karalabe/usb v0.0.2
-	// github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.5.0
-	// github.com/prometheus/common => github.com/prometheus/common v0.10.0
 	golang.org/x/net => golang.org/x/net v0.0.0-20200520004742-59133d7f0dd7
 	google.golang.org/genproto => google.golang.org/genproto v0.0.0-20200218151345-dad8c97a84f5
 	google.golang.org/grpc => google.golang.org/grpc v1.33.0
@@ -30,13 +26,10 @@ require (
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
 	github.com/Rican7/retry v0.1.0
 	github.com/binance-chain/tss-lib v1.3.3
-	github.com/bytecodealliance/wasmtime-go v0.37.0
 	github.com/cbergoon/merkletree v0.2.0
-	github.com/cheynewallace/tabby v1.1.1
 	github.com/common-nighthawk/go-figure v0.0.0-20190529165535-67e0ed34491a
 	github.com/coreos/etcd v3.3.18+incompatible
 	github.com/ethereum/go-ethereum v1.12.0
-	github.com/fatih/color v1.7.0
 	github.com/fsnotify/fsnotify v1.6.0
 	github.com/gobuffalo/packd v1.0.0
 	github.com/gobuffalo/packr v1.30.1
@@ -45,33 +38,24 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/google/btree v1.0.0
 	github.com/gorilla/mux v1.8.0
-	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
-	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
-	github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d
 	github.com/hokaccha/go-prettyjson v0.0.0-20190818114111-108c894c2c0e
 	github.com/hyperchain/go-hpc-rbft/v2 v2.0.0-00010101000000-000000000000
-	github.com/iancoleman/orderedmap v0.2.0
 	github.com/juju/ratelimit v1.0.1
 	github.com/libp2p/go-libp2p-core v0.5.6
-	github.com/libp2p/go-libp2p-kad-dht v0.8.2 // indirect
 	github.com/libp2p/go-libp2p-swarm v0.2.4
-	github.com/looplab/fsm v0.2.0
 	github.com/magiconair/properties v1.8.5
-	github.com/meshplus/bitxhub-core v1.3.1-0.20220701090824-788a823e6049
 	github.com/meshplus/bitxhub-kit v1.28.0
 	github.com/meshplus/bitxhub-model v1.28.0
 	github.com/meshplus/eth-kit v0.0.0-20220628031226-4b30a994a2a6
 	github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd
 	github.com/meshplus/go-lightp2p v0.0.0-20220117071358-c37ba4e6dcbc
-	github.com/miguelmota/go-solidity-sha3 v0.1.1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-multiaddr v0.3.1
 	github.com/orcaman/concurrent-map v0.0.0-20210501183033-44dafcb38ecc
 	github.com/pelletier/go-toml v1.9.3
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.14.0
-	github.com/rs/cors v1.7.0
 	github.com/samber/lo v1.38.1
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cast v1.3.1
@@ -79,7 +63,6 @@ require (
 	github.com/stretchr/testify v1.8.2
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	github.com/tidwall/gjson v1.6.8
-	github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5
 	github.com/urfave/cli v1.22.1
 	go.opentelemetry.io/otel/trace v1.14.0
 	go.uber.org/atomic v1.7.0
@@ -106,10 +89,10 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/davidlazar/go-crypto v0.0.0-20190912175916-7055855a373f // indirect
-	github.com/deckarep/golang-set v0.0.0-20180603214616-504e848d77ea // indirect
 	github.com/deckarep/golang-set/v2 v2.1.0 // indirect
 	github.com/decred/dcrd/dcrec/edwards/v2 v2.0.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
+	github.com/fatih/color v1.7.0 // indirect
 	github.com/flynn/noise v0.0.0-20180327030543-2492fe189ae6 // indirect
 	github.com/getsentry/sentry-go v0.18.0 // indirect
 	github.com/go-ole/go-ole v1.2.1 // indirect
@@ -122,15 +105,13 @@ require (
 	github.com/google/gopacket v1.1.17 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
+	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
 	github.com/hashicorp/errwrap v1.0.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/holiman/bloomfilter/v2 v2.0.3 // indirect
 	github.com/holiman/uint256 v1.2.2-0.20230321075855-87b91420868c // indirect
 	github.com/huin/goupnp v1.0.3 // indirect
-	github.com/hyperledger/fabric v2.1.1+incompatible // indirect
-	github.com/hyperledger/fabric-amcl v0.0.0-20210603140002-2670f91851c8 // indirect
-	github.com/hyperledger/fabric-protos-go v0.0.0-20201028172056-a3136dde2354 // indirect
 	github.com/ipfs/go-cid v0.0.7 // indirect
 	github.com/ipfs/go-datastore v0.4.4 // indirect
 	github.com/ipfs/go-ipfs-util v0.0.1 // indirect
@@ -160,6 +141,7 @@ require (
 	github.com/libp2p/go-libp2p-connmgr v0.2.3 // indirect
 	github.com/libp2p/go-libp2p-crypto v0.1.0 // indirect
 	github.com/libp2p/go-libp2p-discovery v0.4.0 // indirect
+	github.com/libp2p/go-libp2p-kad-dht v0.8.2 // indirect
 	github.com/libp2p/go-libp2p-kbucket v0.4.2 // indirect
 	github.com/libp2p/go-libp2p-loggables v0.1.0 // indirect
 	github.com/libp2p/go-libp2p-mplex v0.2.3 // indirect
@@ -188,7 +170,6 @@ require (
 	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
-	github.com/miekg/pkcs11 v1.0.3 // indirect
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1 // indirect
 	github.com/minio/sha256-simd v0.1.1 // indirect
 	github.com/mitchellh/mapstructure v1.4.1 // indirect
@@ -222,7 +203,6 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/subosito/gotenv v1.2.0 // indirect
-	github.com/sykesm/zap-logfmt v0.0.4 // indirect
 	github.com/tidwall/match v1.0.3 // indirect
 	github.com/tidwall/pretty v1.0.2 // indirect
 	github.com/tklauser/go-sysconf v0.3.5 // indirect

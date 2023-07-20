@@ -1,15 +1,11 @@
 package api
 
 import (
-	"crypto/ecdsa"
-
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/model/events"
-	"github.com/meshplus/bitxhub/internal/repo"
-	"github.com/meshplus/bitxhub/pkg/peermgr"
 	vm "github.com/meshplus/eth-kit/evm"
 	"github.com/meshplus/eth-kit/ledger"
 )
@@ -21,7 +17,6 @@ type CoreAPI interface {
 	Chain() ChainAPI
 	Feed() FeedAPI
 	Account() AccountAPI
-	Audit() AuditAPI
 }
 
 type BrokerAPI interface {
@@ -37,33 +32,13 @@ type BrokerAPI interface {
 	GetPoolTransaction(hash *types.Hash) pb.Transaction
 	GetStateLedger() ledger.StateLedger
 	GetEvm(mes *vm.Message, vmConfig *vm.Config) *vm.EVM
-
-	// AddPier
-	AddPier(pierID string) (chan *pb.InterchainTxWrappers, error)
-
-	// RemovePier
-	RemovePier(pierID string)
-
-	GetBlockHeader(begin, end uint64, ch chan<- *pb.BlockHeader) error
-
-	GetInterchainTxWrappers(did string, begin, end uint64, ch chan<- *pb.InterchainTxWrappers) error
-
 	// OrderReady
 	OrderReady() error
-
-	FetchSignsFromOtherPeers(req *pb.GetSignsRequest) map[string][]byte
-	FetchTssInfoFromOtherPeers() []*pb.TssInfo
-	GetSign(req *pb.GetSignsRequest, signers []string) (string, []byte, []string, error)
 	GetBlockHeaders(start uint64, end uint64) ([]*pb.BlockHeader, error)
-	GetQuorum() uint64
-	GetTssPubkey() (string, *ecdsa.PublicKey, error)
-	GetTssInfo() (*pb.TssInfo, error)
-	GetPrivKey() *repo.Key
 }
 
 type NetworkAPI interface {
 	PeerInfo() ([]byte, error)
-	PierManager() peermgr.PierManager
 	OtherPeers() map[uint64]*peer.AddrInfo
 }
 
@@ -77,16 +52,9 @@ type FeedAPI interface {
 	SubscribeLogsEvent(chan<- []*pb.EvmLog) event.Subscription
 	SubscribeNewTxEvent(chan<- pb.Transactions) event.Subscription
 	SubscribeNewBlockEvent(chan<- events.ExecutedEvent) event.Subscription
-	SubscribeTssSignRes(ch chan<- *pb.Message) event.Subscription
-	SubscribeTssCulprits(ch chan<- *pb.Message) event.Subscription
 	BloomStatus() (uint64, uint64)
 }
 
 type AccountAPI interface {
 	GetAccount(addr *types.Address) ledger.IAccount
-}
-
-type AuditAPI interface {
-	HandleAuditNodeSubscription(dataCh chan<- *pb.AuditTxInfo, auditNodeID string, blockStart uint64) error
-	SubscribeAuditEvent(chan<- *pb.AuditTxInfo) event.Subscription
 }
