@@ -62,8 +62,8 @@ github.com/TaiChiChain/bitxhub-kit v0.0.0-20230625064843-b7ae66571e52 h1:aLvktIJ
 github.com/TaiChiChain/bitxhub-kit v0.0.0-20230625064843-b7ae66571e52/go.mod h1:wrEdhHp1tktzdwcWb4bOxYsVc+KkcrYL18IYWYeumPQ=
 github.com/TaiChiChain/bitxhub-model v0.0.0-20230717013620-c1253dc64023 h1:Y9u7BdQTYyySShO+maVpo3Tgs+jpf9FqGP7OhEVcsLo=
 github.com/TaiChiChain/bitxhub-model v0.0.0-20230717013620-c1253dc64023/go.mod h1:Ns2yD6HQBOX/06U6Nj40sK0E4z87u+UA4R72JmSzXyM=
-github.com/TaiChiChain/eth-kit v0.0.0-20230717014715-f1a01947ba95 h1:fs6WZFHNcaLYHovzGVx7WS0in9rDJkS4NAVpsmJxh2A=
-github.com/TaiChiChain/eth-kit v0.0.0-20230717014715-f1a01947ba95/go.mod h1:qAefUrgA83KDMu+NkUoOb5LSpFVpcFAmehL8gGVvYmM=
+github.com/TaiChiChain/eth-kit v0.0.0-20230721054126-816faf0d068a h1:SIkE5JwFpjTGBbKDvivXmqOFopU1A0I3uZZlgjpJ4Vs=
+github.com/TaiChiChain/eth-kit v0.0.0-20230721054126-816faf0d068a/go.mod h1:qAefUrgA83KDMu+NkUoOb5LSpFVpcFAmehL8gGVvYmM=
 github.com/TaiChiChain/go-hpc-rbft/v2 v2.3.1-0.20230717014025-28b74f257e5a h1:xPYkJLfT8QSRjaPTAFLEXtkzbDV0nCG4GsG5Sb5jsFo=
 github.com/TaiChiChain/go-hpc-rbft/v2 v2.3.1-0.20230717014025-28b74f257e5a/go.mod h1:LoEUfeYGHWrbFA8gA0Uiclyv/+EZXKnswWIqWDeRTdA=
 github.com/TaiChiChain/go-libp2p-cert v0.0.0-20230625062152-44e7041e4770 h1:pFfZ08LXcB2Zu18Z1SHO9mfnZvnG6+UF+GzyW9xd4RE=
