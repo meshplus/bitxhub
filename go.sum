@@ -58,10 +58,10 @@ github.com/Shopify/sarama v1.19.0/go.mod h1:FVkBWblsNy7DGZRfXLU0O9RCGt5g3g3yEuWX
 github.com/Shopify/toxiproxy v2.1.4+incompatible/go.mod h1:OXgGpZ6Cli1/URJOF1DMxUHB2q5Ap20/P/eIdh4G0pI=
 github.com/StackExchange/wmi v0.0.0-20180116203802-5d049714c4a6 h1:fLjPD/aNc3UIOA6tDi6QXUemppXK3P9BI7mr2hd6gx8=
 github.com/StackExchange/wmi v0.0.0-20180116203802-5d049714c4a6/go.mod h1:3eOhrUMpNV+6aFIbp5/iudMxNCF27Vw2OZgy4xEx0Fg=
-github.com/TaiChiChain/bitxhub-kit v1.20.1-0.20230625064843-b7ae66571e52 h1:aXGXGHbbbbEGgy+aLfEpAym3zJDs5cUKE4Te0CqJBuE=
-github.com/TaiChiChain/bitxhub-kit v1.20.1-0.20230625064843-b7ae66571e52/go.mod h1:wrEdhHp1tktzdwcWb4bOxYsVc+KkcrYL18IYWYeumPQ=
-github.com/TaiChiChain/bitxhub-model v1.20.2-0.20230717013620-c1253dc64023 h1:VnVTdTHA4GMr5Ze8vTY7BuNohaNF15B6q8a9/YrCz2s=
-github.com/TaiChiChain/bitxhub-model v1.20.2-0.20230717013620-c1253dc64023/go.mod h1:Ns2yD6HQBOX/06U6Nj40sK0E4z87u+UA4R72JmSzXyM=
+github.com/TaiChiChain/bitxhub-kit v0.0.0-20230625064843-b7ae66571e52 h1:aLvktIJMY1p8Q3xcq05/GgkB+FNCHklI0f99WZzgrzg=
+github.com/TaiChiChain/bitxhub-kit v0.0.0-20230625064843-b7ae66571e52/go.mod h1:wrEdhHp1tktzdwcWb4bOxYsVc+KkcrYL18IYWYeumPQ=
+github.com/TaiChiChain/bitxhub-model v0.0.0-20230717013620-c1253dc64023 h1:Y9u7BdQTYyySShO+maVpo3Tgs+jpf9FqGP7OhEVcsLo=
+github.com/TaiChiChain/bitxhub-model v0.0.0-20230717013620-c1253dc64023/go.mod h1:Ns2yD6HQBOX/06U6Nj40sK0E4z87u+UA4R72JmSzXyM=
 github.com/TaiChiChain/eth-kit v0.0.0-20230717014715-f1a01947ba95 h1:fs6WZFHNcaLYHovzGVx7WS0in9rDJkS4NAVpsmJxh2A=
 github.com/TaiChiChain/eth-kit v0.0.0-20230717014715-f1a01947ba95/go.mod h1:qAefUrgA83KDMu+NkUoOb5LSpFVpcFAmehL8gGVvYmM=
 github.com/TaiChiChain/go-hpc-rbft/v2 v2.3.1-0.20230717014025-28b74f257e5a h1:xPYkJLfT8QSRjaPTAFLEXtkzbDV0nCG4GsG5Sb5jsFo=
