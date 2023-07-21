@@ -90,7 +90,7 @@ func (l *ChainLedgerImpl) GetBlockHash(height uint64) *types.Hash {
 	if hash == nil {
 		return &types.Hash{}
 	}
-	return types.NewHash(hash)
+	return types.NewHashByStr(string(hash))
 }
 
 // GetBlockSign get the signature of block
