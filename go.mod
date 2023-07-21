@@ -4,8 +4,8 @@ go 1.18
 
 replace (
 	github.com/hyperchain/go-hpc-rbft/v2 => github.com/TaiChiChain/go-hpc-rbft/v2 v2.3.1-0.20230717014025-28b74f257e5a
-	github.com/meshplus/bitxhub-kit => github.com/TaiChiChain/bitxhub-kit v1.20.1-0.20230625064843-b7ae66571e52
-	github.com/meshplus/bitxhub-model => github.com/TaiChiChain/bitxhub-model v1.20.2-0.20230717013620-c1253dc64023
+	github.com/meshplus/bitxhub-kit => github.com/TaiChiChain/bitxhub-kit v0.0.0-20230625064843-b7ae66571e52
+	github.com/meshplus/bitxhub-model => github.com/TaiChiChain/bitxhub-model v0.0.0-20230717013620-c1253dc64023
 	github.com/meshplus/eth-kit => github.com/TaiChiChain/eth-kit v0.0.0-20230717014715-f1a01947ba95
 	github.com/meshplus/go-libp2p-cert => github.com/TaiChiChain/go-libp2p-cert v0.0.0-20230625062152-44e7041e4770
 	github.com/meshplus/go-lightp2p => github.com/TaiChiChain/go-lightp2p v0.0.0-20230625064042-335b4532a750
