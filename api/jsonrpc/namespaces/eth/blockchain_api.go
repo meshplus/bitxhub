@@ -13,7 +13,6 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
-	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	rpctypes "github.com/meshplus/bitxhub/api/jsonrpc/types"
@@ -93,15 +92,15 @@ func (api *BlockChainAPI) GetProof(address common.Address, storageKeys []string,
 }
 
 // GetBlockByNumber returns the block identified by number.
-func (api *BlockChainAPI) GetBlockByNumber(blockNum rpc.BlockNumber, fullTx bool) (map[string]interface{}, error) {
+func (api *BlockChainAPI) GetBlockByNumber(blockNum rpctypes.BlockNumber, fullTx bool) (map[string]interface{}, error) {
 	api.logger.Debugf("eth_getBlockByNumber, number: %d, full: %v", blockNum, fullTx)
 
-	if blockNum == rpc.PendingBlockNumber || blockNum == rpc.LatestBlockNumber {
+	if blockNum == rpctypes.PendingBlockNumber || blockNum == rpctypes.LatestBlockNumber {
 		meta, err := api.api.Chain().Meta()
 		if err != nil {
 			return nil, err
 		}
-		blockNum = rpc.BlockNumber(meta.Height)
+		blockNum = rpctypes.BlockNumber(meta.Height)
 	}
 
 	block, err := api.api.Broker().GetBlock("HEIGHT", fmt.Sprintf("%d", blockNum))
