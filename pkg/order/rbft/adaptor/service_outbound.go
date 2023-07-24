@@ -6,8 +6,8 @@ import (
 
 	"github.com/Rican7/retry"
 	"github.com/Rican7/retry/strategy"
-	"github.com/hyperchain/go-hpc-rbft/v2/common/consensus"
-	rbfttypes "github.com/hyperchain/go-hpc-rbft/v2/types"
+	"github.com/hyperchain/go-hpc-rbft/common/consensus"
+	rbfttypes "github.com/hyperchain/go-hpc-rbft/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	ethtypes "github.com/meshplus/eth-kit/types"
 	"github.com/sirupsen/logrus"

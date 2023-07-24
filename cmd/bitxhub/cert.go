@@ -20,7 +20,7 @@ import (
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub/internal/repo"
-	libp2pcert "github.com/meshplus/go-libp2p-cert"
+	libp2pcert "github.com/meshplus/go-lightp2p/cert"
 	"github.com/urfave/cli"
 )
 

@@ -30,7 +30,7 @@ import (
 	vm1 "github.com/meshplus/eth-kit/evm"
 	ledger2 "github.com/meshplus/eth-kit/ledger"
 	types2 "github.com/meshplus/eth-kit/types"
-	libp2pcert "github.com/meshplus/go-libp2p-cert"
+	libp2pcert "github.com/meshplus/go-lightp2p/cert"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -3,12 +3,11 @@ module github.com/meshplus/bitxhub
 go 1.18
 
 replace (
-	github.com/hyperchain/go-hpc-rbft/v2 => github.com/TaiChiChain/go-hpc-rbft/v2 v2.3.1-0.20230717014025-28b74f257e5a
-	github.com/meshplus/bitxhub-kit => github.com/TaiChiChain/bitxhub-kit v0.0.0-20230625064843-b7ae66571e52
-	github.com/meshplus/bitxhub-model => github.com/TaiChiChain/bitxhub-model v0.0.0-20230717013620-c1253dc64023
-	github.com/meshplus/eth-kit => github.com/TaiChiChain/eth-kit v0.0.0-20230721054126-816faf0d068a
-	github.com/meshplus/go-libp2p-cert => github.com/TaiChiChain/go-libp2p-cert v0.0.0-20230625062152-44e7041e4770
-	github.com/meshplus/go-lightp2p => github.com/TaiChiChain/go-lightp2p v0.0.0-20230625064042-335b4532a750
+	github.com/hyperchain/go-hpc-rbft => github.com/TaiChiChain/go-hpc-rbft v0.0.1
+	github.com/meshplus/bitxhub-kit => github.com/TaiChiChain/bitxhub-kit v0.0.1
+	github.com/meshplus/bitxhub-model => github.com/TaiChiChain/bitxhub-model v0.0.1
+	github.com/meshplus/eth-kit => github.com/TaiChiChain/eth-kit v0.0.1
+	github.com/meshplus/go-lightp2p => github.com/TaiChiChain/go-lightp2p v0.0.1
 )
 
 replace (
@@ -40,31 +39,30 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d
 	github.com/hokaccha/go-prettyjson v0.0.0-20190818114111-108c894c2c0e
-	github.com/hyperchain/go-hpc-rbft/v2 v2.0.0-00010101000000-000000000000
+	github.com/hyperchain/go-hpc-rbft v0.0.1
 	github.com/juju/ratelimit v1.0.1
 	github.com/libp2p/go-libp2p-core v0.5.6
 	github.com/libp2p/go-libp2p-swarm v0.2.4
 	github.com/magiconair/properties v1.8.5
-	github.com/meshplus/bitxhub-kit v1.28.0
-	github.com/meshplus/bitxhub-model v1.28.0
-	github.com/meshplus/eth-kit v0.0.0-20220628031226-4b30a994a2a6
-	github.com/meshplus/go-libp2p-cert v0.0.0-20210125114242-7d9ed2eaaccd
-	github.com/meshplus/go-lightp2p v0.0.0-20220117071358-c37ba4e6dcbc
+	github.com/meshplus/bitxhub-kit v1.2.1-0.20210902085548-07f4fa85bfc9
+	github.com/meshplus/bitxhub-model v1.2.1-0.20210805020100-41c27414badf
+	github.com/meshplus/eth-kit v0.0.1
+	github.com/meshplus/go-lightp2p v0.0.1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-multiaddr v0.3.1
 	github.com/orcaman/concurrent-map v0.0.0-20210501183033-44dafcb38ecc
 	github.com/pelletier/go-toml v1.9.3
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.14.0
+	github.com/prometheus/client_golang v1.16.0
 	github.com/samber/lo v1.38.1
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cast v1.3.1
 	github.com/spf13/viper v1.8.1
-	github.com/stretchr/testify v1.8.2
+	github.com/stretchr/testify v1.8.4
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	github.com/tidwall/gjson v1.6.8
 	github.com/urfave/cli v1.22.1
-	go.opentelemetry.io/otel/trace v1.14.0
+	go.opentelemetry.io/otel/trace v1.16.0
 	go.uber.org/atomic v1.7.0
 	google.golang.org/grpc v1.48.0
 )
@@ -93,14 +91,14 @@ require (
 	github.com/decred/dcrd/dcrec/edwards/v2 v2.0.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
 	github.com/fatih/color v1.7.0 // indirect
-	github.com/flynn/noise v0.0.0-20180327030543-2492fe189ae6 // indirect
+	github.com/flynn/noise v1.0.0 // indirect
 	github.com/getsentry/sentry-go v0.18.0 // indirect
 	github.com/go-ole/go-ole v1.2.1 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/gobuffalo/envy v1.7.0 // indirect
 	github.com/gobuffalo/logger v1.0.0 // indirect
 	github.com/gofrs/flock v0.8.1 // indirect
-	github.com/golang/protobuf v1.5.2 // indirect
+	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.5-0.20220116011046-fa5810519dcb // indirect
 	github.com/google/gopacket v1.1.17 // indirect
 	github.com/google/uuid v1.3.0 // indirect
@@ -186,15 +184,13 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/opentracing/opentracing-go v1.1.0 // indirect
 	github.com/otiai10/primes v0.0.0-20180210170552-f6d2a1ba97c4 // indirect
-	github.com/pingcap/errors v0.11.4 // indirect
-	github.com/pingcap/failpoint v0.0.0-20220801062533-2eaa32854a6c // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.3.0 // indirect
-	github.com/prometheus/common v0.39.0 // indirect
-	github.com/prometheus/procfs v0.9.0 // indirect
+	github.com/prometheus/common v0.42.0 // indirect
+	github.com/prometheus/procfs v0.10.1 // indirect
 	github.com/prometheus/tsdb v0.10.0 // indirect
 	github.com/rifflock/lfshook v0.0.0-20180920164130-b9218ef580f5 // indirect
-	github.com/rogpeppe/go-internal v1.9.0 // indirect
+	github.com/rogpeppe/go-internal v1.11.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/shirou/gopsutil v3.21.4-0.20210419000835-c7a38de76ee5+incompatible // indirect
 	github.com/spacemonkeygo/spacelog v0.0.0-20180420211403-2296661a0572 // indirect
@@ -210,18 +206,20 @@ require (
 	github.com/whyrusleeping/go-keyspace v0.0.0-20160322163242-5b898ac5add1 // indirect
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7 // indirect
 	go.opencensus.io v0.23.0 // indirect
-	go.opentelemetry.io/otel v1.14.0 // indirect
+	go.opentelemetry.io/otel v1.16.0 // indirect
+	go.uber.org/goleak v1.1.10 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.17.0 // indirect
-	golang.org/x/crypto v0.1.0 // indirect
+	golang.org/x/crypto v0.11.0 // indirect
 	golang.org/x/exp v0.0.0-20230206171751-46f607a40771 // indirect
-	golang.org/x/net v0.8.0 // indirect
-	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/sys v0.7.0 // indirect
-	golang.org/x/term v0.1.0 // indirect
-	golang.org/x/text v0.8.0 // indirect
+	golang.org/x/mod v0.9.0 // indirect
+	golang.org/x/net v0.10.0 // indirect
+	golang.org/x/sync v0.2.0 // indirect
+	golang.org/x/sys v0.10.0 // indirect
+	golang.org/x/term v0.10.0 // indirect
+	golang.org/x/text v0.11.0 // indirect
 	google.golang.org/genproto v0.0.0-20220407144326-9054f6ed7bac // indirect
-	google.golang.org/protobuf v1.28.1 // indirect
+	google.golang.org/protobuf v1.30.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect

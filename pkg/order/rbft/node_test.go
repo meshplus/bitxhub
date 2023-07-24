@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
-	rbft "github.com/hyperchain/go-hpc-rbft/v2"
-	"github.com/hyperchain/go-hpc-rbft/v2/common/consensus"
-	rbfttypes "github.com/hyperchain/go-hpc-rbft/v2/types"
+	rbft "github.com/hyperchain/go-hpc-rbft"
+	"github.com/hyperchain/go-hpc-rbft/common/consensus"
+	rbfttypes "github.com/hyperchain/go-hpc-rbft/types"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"

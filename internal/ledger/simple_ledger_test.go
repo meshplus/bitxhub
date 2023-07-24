@@ -13,7 +13,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	etherTypes "github.com/ethereum/go-ethereum/core/types"
 	crypto1 "github.com/ethereum/go-ethereum/crypto"
-	"github.com/meshplus/bitxhub-kit/bytesutil"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/storage"
@@ -24,7 +23,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/eth-kit/ledger"
 	ledger1 "github.com/meshplus/eth-kit/ledger"
-	libp2pcert "github.com/meshplus/go-libp2p-cert"
+	libp2pcert "github.com/meshplus/go-lightp2p/cert"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -141,7 +140,7 @@ func TestChainLedger_PersistBlockData(t *testing.T) {
 	ledger, _ := initLedger(t, "")
 
 	// create an account
-	account := types.NewAddress(bytesutil.LeftPadBytes([]byte{100}, 20))
+	account := types.NewAddress(LeftPadBytes([]byte{100}, 20))
 
 	ledger.SetState(account, []byte("a"), []byte("b"))
 	accounts, journal := ledger.FlushDirtyData()
@@ -152,7 +151,7 @@ func TestChainLedger_Commit(t *testing.T) {
 	ledger, repoRoot := initLedger(t, "")
 
 	// create an account
-	account := types.NewAddress(bytesutil.LeftPadBytes([]byte{100}, 20))
+	account := types.NewAddress(LeftPadBytes([]byte{100}, 20))
 
 	ledger.SetState(account, []byte("a"), []byte("b"))
 	accounts, stateRoot := ledger.FlushDirtyData()
@@ -185,7 +184,7 @@ func TestChainLedger_Commit(t *testing.T) {
 	assert.Equal(t, uint64(4), ledger.Version())
 	assert.Equal(t, "0xC179056204BA33eD6CFC0bfE94ca03319BEb522fd7B0773A589899817B49ec08", stateRoot.String())
 
-	code := bytesutil.RightPadBytes([]byte{100}, 100)
+	code := RightPadBytes([]byte{100}, 100)
 	ledger.SetCode(account, code)
 	ledger.SetState(account, []byte("b"), []byte("3"))
 	ledger.SetState(account, []byte("c"), []byte("2"))
@@ -301,7 +300,7 @@ func TestChainLedger_EVMAccessor(t *testing.T) {
 
 	hash := common.HexToHash("0xe9FC370DD36C9BD5f67cCfbc031C909F53A3d8bC7084C01362c55f2D42bA841c")
 	// create an account
-	account := common.BytesToAddress(bytesutil.LeftPadBytes([]byte{100}, 20))
+	account := common.BytesToAddress(LeftPadBytes([]byte{100}, 20))
 
 	ledger.StateLedger.(*SimpleLedger).CreateEVMAccount(account)
 	ledger.StateLedger.(*SimpleLedger).AddEVMBalance(account, big.NewInt(2))
@@ -355,8 +354,8 @@ func TestChainLedger_Rollback(t *testing.T) {
 	stateLedger := ledger.StateLedger.(*SimpleLedger)
 
 	// create an addr0
-	addr0 := types.NewAddress(bytesutil.LeftPadBytes([]byte{100}, 20))
-	addr1 := types.NewAddress(bytesutil.LeftPadBytes([]byte{101}, 20))
+	addr0 := types.NewAddress(LeftPadBytes([]byte{100}, 20))
+	addr1 := types.NewAddress(LeftPadBytes([]byte{101}, 20))
 
 	hash0 := types.Hash{}
 	assert.Equal(t, &hash0, stateLedger.prevJnlHash)
@@ -476,7 +475,7 @@ func TestChainLedger_Rollback(t *testing.T) {
 func TestChainLedger_QueryByPrefix(t *testing.T) {
 	ledger, _ := initLedger(t, "")
 
-	addr := types.NewAddress(bytesutil.LeftPadBytes([]byte{1}, 20))
+	addr := types.NewAddress(LeftPadBytes([]byte{1}, 20))
 	key0 := []byte{100, 100}
 	key1 := []byte{100, 101}
 	key2 := []byte{100, 102}
@@ -511,8 +510,8 @@ func TestChainLedger_QueryByPrefix(t *testing.T) {
 func TestChainLedger_GetAccount(t *testing.T) {
 	ledger, _ := initLedger(t, "")
 
-	addr := types.NewAddress(bytesutil.LeftPadBytes([]byte{1}, 20))
-	code := bytesutil.LeftPadBytes([]byte{1}, 120)
+	addr := types.NewAddress(LeftPadBytes([]byte{1}, 20))
+	code := LeftPadBytes([]byte{1}, 120)
 	key0 := []byte{100, 100}
 	key1 := []byte{100, 101}
 
@@ -569,8 +568,8 @@ func TestChainLedger_GetAccount(t *testing.T) {
 func TestChainLedger_GetCode(t *testing.T) {
 	ledger, _ := initLedger(t, "")
 
-	addr := types.NewAddress(bytesutil.LeftPadBytes([]byte{1}, 20))
-	code := bytesutil.LeftPadBytes([]byte{10}, 120)
+	addr := types.NewAddress(LeftPadBytes([]byte{1}, 20))
+	code := LeftPadBytes([]byte{10}, 120)
 
 	code0 := ledger.GetCode(addr)
 	assert.Nil(t, code0)
@@ -596,10 +595,10 @@ func TestChainLedger_AddAccountsToCache(t *testing.T) {
 	ledger, _ := initLedger(t, "")
 	stateLedger := ledger.StateLedger.(*SimpleLedger)
 
-	addr := types.NewAddress(bytesutil.LeftPadBytes([]byte{1}, 20))
+	addr := types.NewAddress(LeftPadBytes([]byte{1}, 20))
 	key := []byte{1}
 	val := []byte{2}
-	code := bytesutil.RightPadBytes([]byte{1, 2, 3, 4}, 100)
+	code := RightPadBytes([]byte{1, 2, 3, 4}, 100)
 
 	ledger.SetBalance(addr, new(big.Int).SetInt64(100))
 	ledger.SetNonce(addr, 1)
@@ -661,7 +660,7 @@ func TestChainLedger_GetInterchainMeta(t *testing.T) {
 	ledger, _ := initLedger(t, "")
 
 	// create an account
-	account := types.NewAddress(bytesutil.LeftPadBytes([]byte{100}, 20))
+	account := types.NewAddress(LeftPadBytes([]byte{100}, 20))
 	ledger.SetState(account, []byte("a"), []byte("b"))
 	accounts, journal := ledger.FlushDirtyData()
 
@@ -698,7 +697,7 @@ func TestChainLedger_GetInterchainMeta(t *testing.T) {
 func TestChainLedger_AddState(t *testing.T) {
 	ledger, _ := initLedger(t, "")
 
-	account := types.NewAddress(bytesutil.LeftPadBytes([]byte{100}, 20))
+	account := types.NewAddress(LeftPadBytes([]byte{100}, 20))
 	key0 := "100"
 	value0 := []byte{100}
 	ledger.AddState(account, []byte(key0), value0)
@@ -989,4 +988,27 @@ func initLedger(t *testing.T, repoRoot string) (*Ledger, string) {
 	require.Nil(t, err)
 
 	return ledger, repoRoot
+}
+
+// LeftPadBytes zero-pads slice to the left up to length l.
+func LeftPadBytes(slice []byte, l int) []byte {
+	if l <= len(slice) {
+		return slice
+	}
+
+	padded := make([]byte, l)
+	copy(padded[l-len(slice):], slice)
+
+	return padded
+}
+
+func RightPadBytes(slice []byte, l int) []byte {
+	if l <= len(slice) {
+		return slice
+	}
+
+	padded := make([]byte, l)
+	copy(padded, slice)
+
+	return padded
 }

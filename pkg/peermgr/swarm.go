@@ -17,8 +17,8 @@ import (
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/repo"
-	libp2pcert "github.com/meshplus/go-libp2p-cert"
 	network "github.com/meshplus/go-lightp2p"
+	libp2pcert "github.com/meshplus/go-lightp2p/cert"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/sirupsen/logrus"
 )

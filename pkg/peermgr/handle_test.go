@@ -22,7 +22,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/ledger/mock_ledger"
 	"github.com/meshplus/bitxhub/internal/repo"
-	libp2pcert "github.com/meshplus/go-libp2p-cert"
+	libp2pcert "github.com/meshplus/go-lightp2p/cert"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
