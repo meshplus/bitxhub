@@ -8,7 +8,7 @@ import (
 
 	"github.com/Knetic/govaluate"
 	"github.com/ethereum/go-ethereum/event"
-	libp2pcert "github.com/meshplus/go-libp2p-cert"
+	libp2pcert "github.com/meshplus/go-lightp2p/cert"
 	"github.com/spf13/viper"
 )
 

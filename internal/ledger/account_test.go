@@ -6,8 +6,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/meshplus/bitxhub-kit/bytesutil"
-	"github.com/meshplus/bitxhub-kit/hexutil"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/storage/blockfile"
 	"github.com/meshplus/bitxhub-kit/storage/leveldb"
@@ -31,8 +29,7 @@ func TestAccount_GetState(t *testing.T) {
 	ledger, err := New(createMockRepo(t), blockStorage, ldb, blockFile, accountCache, log.NewWithModule("ChainLedger"))
 	assert.Nil(t, err)
 
-	h := hexutil.Encode(bytesutil.LeftPadBytes([]byte{11}, 20))
-	addr := types.NewAddressByStr(h)
+	addr := types.NewAddressByStr("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")
 	stateLedger := ledger.StateLedger.(*SimpleLedger)
 	account := newAccount(stateLedger.ldb, stateLedger.accountCache, addr, newChanger())
 
@@ -75,8 +72,7 @@ func TestAccount_AccountBalance(t *testing.T) {
 	ledger, err := New(createMockRepo(t), blockStorage, ldb, blockFile, accountCache, log.NewWithModule("ChainLedger"))
 	assert.Nil(t, err)
 
-	h := hexutil.Encode(bytesutil.LeftPadBytes([]byte{11}, 20))
-	addr := types.NewAddressByStr(h)
+	addr := types.NewAddressByStr("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")
 	stateLedger := ledger.StateLedger.(*SimpleLedger)
 	account := newAccount(stateLedger.ldb, stateLedger.accountCache, addr, newChanger())
 

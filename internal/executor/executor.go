@@ -2,27 +2,17 @@ package executor
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"math/big"
 	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/params"
-	"github.com/meshplus/bitxhub-core/agency"
-	service_mgr "github.com/meshplus/bitxhub-core/service-mgr"
-	"github.com/meshplus/bitxhub-core/validator"
 	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/internal/executor/contracts"
-	"github.com/meshplus/bitxhub/internal/executor/oracle/appchain"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/internal/repo"
-	"github.com/meshplus/bitxhub/pkg/proof"
-	"github.com/meshplus/bitxhub/pkg/vm/boltvm"
 	vm "github.com/meshplus/eth-kit/evm"
 	"github.com/sirupsen/logrus"
 )
@@ -30,31 +20,22 @@ import (
 const (
 	blockChanNumber   = 1024
 	persistChanNumber = 1024
-
-	maxGroup = 5
 )
 
 var _ Executor = (*BlockExecutor)(nil)
 
 // BlockExecutor executes block from order
 type BlockExecutor struct {
-	client             *appchain.Client
 	ledger             *ledger.Ledger
 	logger             logrus.FieldLogger
 	blockC             chan *BlockWrapper
 	preBlockC          chan *pb.CommitEvent
 	persistC           chan *ledger.BlockData
-	ibtpVerify         proof.Verify
-	validationEngine   validator.Engine
-	interchainManager  *contracts.InterchainManager
 	currentHeight      uint64
 	currentBlockHash   *types.Hash
-	txsExecutor        agency.TxsExecutor
 	blockFeed          event.Feed
 	blockFeedForRemote event.Feed
 	logsFeed           event.Feed
-	nodeFeed           event.Feed
-	auditFeed          event.Feed
 	ctx                context.Context
 	cancel             context.CancelFunc
 
@@ -67,40 +48,25 @@ type BlockExecutor struct {
 	admins      []string
 }
 
-func (exec *BlockExecutor) GetBoltContracts() map[string]agency.Contract {
-	return exec.txsExecutor.GetBoltContracts()
-}
-
 // New creates executor instance
-func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, client *appchain.Client, config *repo.Config, gasPrice *big.Int) (*BlockExecutor, error) {
-	ibtpVerify := proof.New(chainLedger, logger, config.ChainID, config.GasLimit)
-
-	txsExecutor, err := agency.GetExecutorConstructor(config.Executor.Type)
-	if err != nil {
-		return nil, fmt.Errorf("get executor constructor failed: %w", err)
-	}
-
+func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, config *repo.Config, gasPrice *big.Int) (*BlockExecutor, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	blockExecutor := &BlockExecutor{
-		client:            client,
-		ledger:            chainLedger,
-		logger:            logger,
-		ctx:               ctx,
-		cancel:            cancel,
-		blockC:            make(chan *BlockWrapper, blockChanNumber),
-		preBlockC:         make(chan *pb.CommitEvent, blockChanNumber),
-		persistC:          make(chan *ledger.BlockData, persistChanNumber),
-		ibtpVerify:        ibtpVerify,
-		validationEngine:  ibtpVerify.ValidationEngine(),
-		currentHeight:     chainLedger.GetChainMeta().Height,
-		currentBlockHash:  chainLedger.GetChainMeta().BlockHash,
-		evmChainCfg:       newEVMChainCfg(config),
-		interchainManager: &contracts.InterchainManager{},
-		config:            *config,
-		bxhGasPrice:       gasPrice,
-		gasLimit:          config.GasLimit,
-		lock:              &sync.Mutex{},
+		ledger:           chainLedger,
+		logger:           logger,
+		ctx:              ctx,
+		cancel:           cancel,
+		blockC:           make(chan *BlockWrapper, blockChanNumber),
+		preBlockC:        make(chan *pb.CommitEvent, blockChanNumber),
+		persistC:         make(chan *ledger.BlockData, persistChanNumber),
+		currentHeight:    chainLedger.GetChainMeta().Height,
+		currentBlockHash: chainLedger.GetChainMeta().BlockHash,
+		evmChainCfg:      newEVMChainCfg(config),
+		config:           *config,
+		bxhGasPrice:      gasPrice,
+		gasLimit:         config.GasLimit,
+		lock:             &sync.Mutex{},
 	}
 
 	for _, admin := range config.Genesis.Admins {
@@ -109,29 +75,7 @@ func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, client *appchain
 
 	blockExecutor.evm = newEvm(1, uint64(0), blockExecutor.evmChainCfg, blockExecutor.ledger, blockExecutor.ledger.ChainLedger, blockExecutor.admins[0])
 
-	blockExecutor.txsExecutor = txsExecutor(blockExecutor.applyTx, blockExecutor.registerBoltContracts, logger)
-
 	return blockExecutor, nil
-}
-
-func (exec *BlockExecutor) loadServiceCache() error {
-	ok, value := exec.ledger.Copy().QueryByPrefix(constant.ServiceMgrContractAddr.Address(), service_mgr.ServicePrefix)
-	if !ok {
-		exec.logger.Debug("loadServiceCache return nil")
-		return nil
-	}
-
-	for _, data := range value {
-		service := &service_mgr.Service{}
-		if err := json.Unmarshal(data, service); err != nil {
-			exec.logger.Errorf("unmarshal service error:%v", err)
-			return fmt.Errorf("unmarshal service error:%v", err)
-		}
-		chainServiceID := fmt.Sprintf("%s:%s", service.ChainID, service.ServiceID)
-		exec.interchainManager.SetServiceCache(chainServiceID, service)
-		exec.logger.WithFields(logrus.Fields{"key": chainServiceID, "service": service}).Infof("succefful store service fron leader")
-	}
-	return nil
 }
 
 // Start starts executor
@@ -142,15 +86,9 @@ func (exec *BlockExecutor) Start() error {
 
 	go exec.persistData()
 
-	err := exec.loadServiceCache()
-	if err != nil {
-		return fmt.Errorf("executor load serviceCache from ledger failed, err:%s", err)
-	}
-
 	exec.logger.WithFields(logrus.Fields{
 		"height": exec.currentHeight,
 		"hash":   exec.currentBlockHash.String(),
-		"desc":   exec.txsExecutor.GetDescription(),
 	}).Infof("BlockExecutor started")
 
 	return nil
@@ -184,14 +122,6 @@ func (exec *BlockExecutor) SubscribeLogsEvent(ch chan<- []*pb.EvmLog) event.Subs
 	return exec.logsFeed.Subscribe(ch)
 }
 
-func (exec *BlockExecutor) SubscribeNodeEvent(ch chan<- events.NodeEvent) event.Subscription {
-	return exec.nodeFeed.Subscribe(ch)
-}
-
-func (exec *BlockExecutor) SubscribeAuditEvent(ch chan<- *pb.AuditTxInfo) event.Subscription {
-	return exec.auditFeed.Subscribe(ch)
-}
-
 func (exec *BlockExecutor) ApplyReadonlyTransactions(txs []pb.Transaction) []*pb.Receipt {
 	current := time.Now()
 	receipts := make([]*pb.Receipt, 0, len(txs))
@@ -220,7 +150,7 @@ func (exec *BlockExecutor) ApplyReadonlyTransactions(txs []pb.Transaction) []*pb
 	exec.evm = newEvm(meta.Height, uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateLedger, exec.ledger.ChainLedger, exec.admins[0])
 	for i, tx := range txs {
 		exec.ledger.SetTxContext(tx.GetHash(), i)
-		receipt := exec.applyTransaction(i, tx, "", nil)
+		receipt := exec.applyTransaction(i, tx, "")
 
 		receipts = append(receipts, receipt)
 		// clear potential write to ledger
@@ -247,67 +177,6 @@ func (exec *BlockExecutor) listenExecuteEvent() {
 	}
 }
 
-func (exec *BlockExecutor) verifyProofs(blockWrapper *BlockWrapper) {
-	block := blockWrapper.block
-
-	if block.BlockHeader.Number == 1 {
-		return
-	}
-	if block.Extra != nil {
-		block.Extra = nil
-		return
-	}
-
-	var (
-		wg   sync.WaitGroup
-		lock sync.Mutex
-	)
-	txs := block.Transactions.Transactions
-
-	groupNum := maxGroup
-	if len(txs) == 0 {
-		return
-	}
-	if len(txs) < maxGroup {
-		groupNum = len(txs)
-	}
-	groupLen := len(txs) / groupNum
-	wg.Add(groupNum)
-	for i := 0; i < groupNum; i++ {
-		go func(i int) {
-			defer wg.Done()
-			groupInvalidTx := make([]int, 0)
-			groupErrM := make(map[int]string)
-			if i == groupNum-1 {
-				for j, tx := range txs[i*groupLen:] {
-					ok, gasUsed, err := exec.ibtpVerify.CheckProof(tx)
-					if !ok {
-						groupInvalidTx = append(groupInvalidTx, i*groupLen+j)
-						groupErrM[i*groupLen+j] = err.Error()
-					}
-					exec.logger.WithField("gasUsed", gasUsed).Debug("Verify proofs")
-				}
-			} else {
-				for j, tx := range txs[i*groupLen : (i+1)*groupLen] {
-					ok, gasUsed, err := exec.ibtpVerify.CheckProof(tx)
-					if !ok {
-						groupInvalidTx = append(groupInvalidTx, i*groupLen+j)
-						groupErrM[i*groupLen+j] = err.Error()
-					}
-					exec.logger.WithField("gasUsed", gasUsed).Debug("Verify proofs")
-				}
-			}
-			lock.Lock()
-			defer lock.Unlock()
-
-			for _, index := range groupInvalidTx {
-				blockWrapper.invalidTx[index] = agency.InvalidReason(groupErrM[index])
-			}
-		}(i)
-	}
-	wg.Wait()
-}
-
 func (exec *BlockExecutor) persistData() {
 	for data := range exec.persistC {
 		now := time.Now()
@@ -322,101 +191,6 @@ func (exec *BlockExecutor) persistData() {
 		}).Info("Persisted block")
 	}
 	exec.ledger.Close()
-}
-
-func (exec *BlockExecutor) registerBoltContracts() map[string]agency.Contract {
-	boltContracts := []*boltvm.BoltContract{
-		{
-			Enabled:  true,
-			Name:     "interchain manager contract",
-			Address:  constant.InterchainContractAddr.Address().String(),
-			Contract: &contracts.InterchainManager{},
-		},
-		{
-			Enabled:  true,
-			Name:     "store service",
-			Address:  constant.StoreContractAddr.Address().String(),
-			Contract: &contracts.Store{},
-		},
-		{
-			Enabled:  true,
-			Name:     "rule manager service",
-			Address:  constant.RuleManagerContractAddr.Address().String(),
-			Contract: &contracts.RuleManager{},
-		},
-		{
-			Enabled:  true,
-			Name:     "role manager service",
-			Address:  constant.RoleContractAddr.Address().String(),
-			Contract: &contracts.RoleManager{},
-		},
-		{
-			Enabled:  true,
-			Name:     "appchain manager service",
-			Address:  constant.AppchainMgrContractAddr.Address().String(),
-			Contract: &contracts.AppchainManager{},
-		},
-		{
-			Enabled:  true,
-			Name:     "transaction manager service",
-			Address:  constant.TransactionMgrContractAddr.Address().String(),
-			Contract: &contracts.TransactionManager{},
-		},
-		{
-			Enabled:  true,
-			Name:     "governance service",
-			Address:  constant.GovernanceContractAddr.Address().String(),
-			Contract: &contracts.Governance{},
-		},
-		{
-			Enabled:  exec.config.Appchain.Enable,
-			Name:     "ethereum header service",
-			Address:  constant.EthHeaderMgrContractAddr.Address().String(),
-			Contract: contracts.NewEthHeaderManager(exec.client.EthOracle),
-		},
-		{
-			Enabled:  true,
-			Name:     "node manager service",
-			Address:  constant.NodeManagerContractAddr.Address().String(),
-			Contract: &contracts.NodeManager{},
-		},
-		{
-			Enabled:  true,
-			Name:     "inter broker service",
-			Address:  constant.InterBrokerContractAddr.Address().String(),
-			Contract: &contracts.InterBroker{},
-		},
-		{
-			Enabled:  true,
-			Name:     "service manager service",
-			Address:  constant.ServiceMgrContractAddr.Address().String(),
-			Contract: &contracts.ServiceManager{},
-		},
-		{
-			Enabled:  true,
-			Name:     "dapp manager service",
-			Address:  constant.DappMgrContractAddr.Address().String(),
-			Contract: &contracts.DappManager{},
-		},
-		{
-			Enabled:  true,
-			Name:     "proposal strategy manager service",
-			Address:  constant.ProposalStrategyMgrContractAddr.Address().String(),
-			Contract: &contracts.GovStrategy{},
-		},
-	}
-
-	ContractsInfo := agency.GetRegisteredContractInfo()
-	for addr, info := range ContractsInfo {
-		boltContracts = append(boltContracts, &boltvm.BoltContract{
-			Enabled:  true,
-			Name:     info.Name,
-			Address:  addr,
-			Contract: info.Constructor(),
-		})
-	}
-
-	return boltvm.Register(boltContracts)
 }
 
 func newEVMChainCfg(config *repo.Config) *params.ChainConfig {

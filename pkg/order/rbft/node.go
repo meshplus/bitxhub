@@ -10,16 +10,15 @@ import (
 	"github.com/Rican7/retry"
 	"github.com/Rican7/retry/strategy"
 	"github.com/ethereum/go-ethereum/event"
-	rbft "github.com/hyperchain/go-hpc-rbft/v2"
-	"github.com/hyperchain/go-hpc-rbft/v2/common/consensus"
-	"github.com/hyperchain/go-hpc-rbft/v2/txpool"
-	rbfttypes "github.com/hyperchain/go-hpc-rbft/v2/types"
-	"github.com/meshplus/bitxhub-core/agency"
-	"github.com/meshplus/bitxhub-core/order"
-	orderPeerMgr "github.com/meshplus/bitxhub-core/peer-mgr"
+	rbft "github.com/hyperchain/go-hpc-rbft"
+	"github.com/hyperchain/go-hpc-rbft/common/consensus"
+	"github.com/hyperchain/go-hpc-rbft/txpool"
+	rbfttypes "github.com/hyperchain/go-hpc-rbft/types"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub/pkg/order"
 	"github.com/meshplus/bitxhub/pkg/order/rbft/adaptor"
+	"github.com/meshplus/bitxhub/pkg/peermgr"
 	ethtypes "github.com/meshplus/eth-kit/types"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -32,17 +31,13 @@ type Node struct {
 	stack   *adaptor.RBFTAdaptor
 	blockC  chan *pb.CommitEvent
 	logger  logrus.FieldLogger
-	peerMgr orderPeerMgr.OrderPeerManager
+	peerMgr peermgr.OrderPeerManager
 
 	ctx     context.Context
 	cancel  context.CancelFunc
 	txCache *TxCache
 
 	txFeed event.Feed
-}
-
-func init() {
-	agency.RegisterOrderConstructor("rbft", NewNode)
 }
 
 func NewNode(opts ...order.Option) (order.Order, error) {

@@ -1,8 +1,6 @@
 package peermgr
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"strings"
@@ -15,21 +13,17 @@ import (
 	crypto2 "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	swarm "github.com/libp2p/go-libp2p-swarm"
-	"github.com/meshplus/bitxhub-core/governance"
-	node_mgr "github.com/meshplus/bitxhub-core/node-mgr"
-	peer_mgr "github.com/meshplus/bitxhub-core/peer-mgr"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/crypto/asym/ecdsa"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub-model/constant"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/ledger/mock_ledger"
 	"github.com/meshplus/bitxhub/internal/repo"
 	ethtypes "github.com/meshplus/eth-kit/types"
-	libp2pcert "github.com/meshplus/go-libp2p-cert"
+	libp2pcert "github.com/meshplus/go-lightp2p/cert"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -119,40 +113,8 @@ func NewSwarms(t *testing.T, peerCnt int) []*Swarm {
 	tx := &pb.BxhTransaction{IBTP: ibtp}
 	chainLedger.EXPECT().GetBlockSign(gomock.Any()).Return([]byte("sign"), nil).AnyTimes()
 	chainLedger.EXPECT().GetTransaction(gomock.Any()).Return(tx, nil).AnyTimes()
-	hash, err := json.Marshal(tx.Hash())
-	require.Nil(t, err)
 	stateLedger.EXPECT().Copy().Return(stateLedger).AnyTimes()
 	stateLedger.EXPECT().GetState(gomock.Any(), gomock.Any()).DoAndReturn(func(addr *types.Address, key []byte) (bool, []byte) {
-		switch addr.String() {
-		case constant.InterchainContractAddr.Address().String():
-			return true, hash
-		case constant.TransactionMgrContractAddr.Address().String():
-			record := pb.TransactionRecord{
-				Status: pb.TransactionStatus_SUCCESS,
-			}
-			data, err := json.Marshal(record)
-			require.Nil(t, err)
-			return true, data
-		case constant.NodeManagerContractAddr.Address().String():
-			for i := 0; i < peerCnt; i++ {
-				node := &node_mgr.Node{
-					Account:  accounts[i],
-					VPNodeId: uint64(i),
-					Pid:      pids[i],
-					Status:   governance.GovernanceAvailable,
-				}
-				nodeData, err := json.Marshal(node)
-				require.Nil(t, err)
-				if bytes.Equal(key, []byte(node_mgr.NodeKey(accounts[i]))) {
-					return true, nodeData
-				}
-				if bytes.Equal(key, []byte(node_mgr.VpNodePidKey(pids[i]))) {
-					return true, []byte(accounts[i])
-				}
-			}
-			return false, []byte(fmt.Sprintf("error, key: %s", string(key)))
-		}
-
 		return false, nil
 	}).AnyTimes()
 
@@ -185,6 +147,10 @@ func NewSwarms(t *testing.T, peerCnt int) []*Swarm {
 				Ping: repo.Ping{
 					Enable:   true,
 					Duration: 2 * time.Second,
+				},
+				P2pLimit: repo.P2pLimiter{
+					Limit: 5,
+					Burst: 5,
 				},
 			},
 		}
@@ -414,41 +380,6 @@ func TestSwarm_Gater(t *testing.T) {
 
 }
 
-func TestSwarm_CheckMasterPier(t *testing.T) {
-	peerCnt := 4
-	swarms := NewSwarms(t, peerCnt)
-	defer stopSwarms(t, swarms)
-
-	for swarms[0].CountConnectedPeers() != 3 {
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	msg := &pb.Message{
-		Type: pb.Message_CHECK_MASTER_PIER,
-		Data: []byte("0x111111122222222333333333"),
-	}
-	res, err := swarms[0].Send(uint64(2), msg)
-	require.NotNil(t, err)
-	require.Contains(t, err.Error(), "wait msg timeout")
-	require.Nil(t, res)
-
-	pierName := "0x2222233333444444"
-	piers2 := newPiers()
-	piers1 := newPiers()
-
-	err = piers2.pierMap.setMaster(pierName, "pier-index", 300)
-	require.Nil(t, err)
-
-	swarms[0].piers = piers1
-	swarms[0].piers.pierChan.newChan(pierName)
-	swarms[1].piers = piers2
-	msg.Data = []byte(pierName)
-	swarms[0].Send(uint64(2), msg)
-	time.Sleep(500 * time.Millisecond)
-	require.NotNil(t, swarms[0].piers.pierChan.checkAddress(pierName))
-
-}
-
 func TestSwarm_Send(t *testing.T) {
 	peerCnt := 4
 	swarms := NewSwarms(t, peerCnt)
@@ -558,7 +489,7 @@ func TestSwarm_AsyncSend(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	orderMsgCh := make(chan peer_mgr.OrderMessageEvent)
+	orderMsgCh := make(chan OrderMessageEvent)
 	orderMsgSub := swarms[2].SubscribeOrderMessage(orderMsgCh)
 
 	defer orderMsgSub.Unsubscribe()

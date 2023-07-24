@@ -16,26 +16,21 @@ import (
 	bkg "github.com/binance-chain/tss-lib/ecdsa/keygen"
 	"github.com/common-nighthawk/go-figure"
 	"github.com/ethereum/go-ethereum/common/fdlimit"
-	"github.com/meshplus/bitxhub-core/agency"
-	"github.com/meshplus/bitxhub-core/order"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/meshplus/bitxhub-kit/storage/blockfile"
-	"github.com/meshplus/bitxhub/api/gateway"
-	"github.com/meshplus/bitxhub/api/grpc"
 	"github.com/meshplus/bitxhub/api/jsonrpc"
-	_ "github.com/meshplus/bitxhub/imports"
 	"github.com/meshplus/bitxhub/internal/executor"
-	"github.com/meshplus/bitxhub/internal/executor/oracle/appchain"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/ledger/genesis"
 	"github.com/meshplus/bitxhub/internal/loggers"
 	"github.com/meshplus/bitxhub/internal/profile"
 	"github.com/meshplus/bitxhub/internal/repo"
-	"github.com/meshplus/bitxhub/internal/router"
 	"github.com/meshplus/bitxhub/internal/storages"
+	"github.com/meshplus/bitxhub/pkg/order"
+	"github.com/meshplus/bitxhub/pkg/order/rbft"
+	"github.com/meshplus/bitxhub/pkg/order/solo"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
-	"github.com/meshplus/bitxhub/pkg/tssmgr"
 	"github.com/sirupsen/logrus"
 )
 
@@ -43,10 +38,8 @@ type BitXHub struct {
 	Ledger        *ledger.Ledger
 	BlockExecutor executor.Executor
 	ViewExecutor  executor.Executor
-	Router        router.Router
 	Order         order.Order
 	PeerMgr       peermgr.PeerManager
-	TssMgr        *tssmgr.TssMgr
 
 	repo   *repo.Repo
 	logger logrus.FieldLogger
@@ -54,8 +47,6 @@ type BitXHub struct {
 	Monitor       *profile.Monitor
 	Pprof         *profile.Pprof
 	LoggerWrapper *loggers.LoggerWrapper
-	Gateway       *gateway.Gateway
-	Grpc          *grpc.ChainBrokerService
 	Jsonrpc       *jsonrpc.ChainBrokerService
 
 	Ctx    context.Context
@@ -88,10 +79,15 @@ func NewBitXHub(rep *repo.Repo, orderPath string) (*BitXHub, error) {
 
 	m := rep.NetworkConfig.GetVpInfos()
 
+	var orderCon func(opt ...order.Option) (order.Order, error)
 	//Get the order constructor according to different order type.
-	orderCon, err := agency.GetOrderConstructor(rep.Config.Order.Type)
-	if err != nil {
-		return nil, fmt.Errorf("get order %s failed: %w", rep.Config.Order.Type, err)
+	switch rep.Config.Order.Type {
+	case "solo":
+		orderCon = solo.NewNode
+	case "rbft":
+		orderCon = rbft.NewNode
+	default:
+		return nil, fmt.Errorf("unsupport order type: %s", rep.Config.Order.Type)
 	}
 
 	order, err := orderCon(
@@ -114,17 +110,11 @@ func NewBitXHub(rep *repo.Repo, orderPath string) (*BitXHub, error) {
 		return nil, fmt.Errorf("initialize order failed: %w", err)
 	}
 
-	r, err := router.New(loggers.Logger(loggers.Router), rep, bxh.Ledger, bxh.PeerMgr, order.Quorum())
-	if err != nil {
-		return nil, fmt.Errorf("create InterchainRouter: %w", err)
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
 
 	bxh.Ctx = ctx
 	bxh.Cancel = cancel
 	bxh.Order = order
-	bxh.Router = r
 
 	return bxh, nil
 }
@@ -165,14 +155,6 @@ func GenerateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 		return nil, fmt.Errorf("blockfile initialize: %w", err)
 	}
 
-	appchainClient := &appchain.Client{}
-	// if rep.Config.Appchain.Enable {
-	// 	appchainClient, err = appchain.NewAppchainClient(filepath.Join(repoRoot, rep.Config.Appchain.EthHeaderPath), repo.GetStoragePath(repoRoot, "appchain_client"), loggers.Logger(loggers.Executor))
-	// 	if err != nil {
-	// 		return nil, fmt.Errorf("initialize appchain client failed: %w", err)
-	// 	}
-	// }
-
 	// 0. load ledger
 	rwLdg, err := ledger.New(rep, bcStorage, stateStorage, bf, nil, loggers.Logger(loggers.Executor))
 	if err != nil {
@@ -194,7 +176,7 @@ func GenerateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 	}
 
 	// 1. create executor and view executor
-	viewExec, err := executor.New(viewLdg, loggers.Logger(loggers.Executor), appchainClient, rep.Config, big.NewInt(0))
+	viewExec, err := executor.New(viewLdg, loggers.Logger(loggers.Executor), rep.Config, big.NewInt(0))
 	if err != nil {
 		return nil, fmt.Errorf("create ViewExecutor: %w", err)
 	}
@@ -208,7 +190,7 @@ func GenerateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 		}).Info("Initialize genesis")
 	}
 
-	txExec, err := executor.New(rwLdg, loggers.Logger(loggers.Executor), appchainClient, rep.Config, big.NewInt(int64(rep.Config.Genesis.BvmGasPrice)))
+	txExec, err := executor.New(rwLdg, loggers.Logger(loggers.Executor), rep.Config, big.NewInt(int64(rep.Config.Genesis.BvmGasPrice)))
 	if err != nil {
 		return nil, fmt.Errorf("create BlockExecutor: %w", err)
 	}
@@ -218,27 +200,6 @@ func GenerateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 		return nil, fmt.Errorf("create peer manager: %w", err)
 	}
 
-	tssMgr := &tssmgr.TssMgr{}
-	if rep.Config.Tss.EnableTSS {
-		preParams, err := getPreparams(repoRoot)
-		if err != nil {
-			return nil, fmt.Errorf("get preparams error: %w", err)
-		}
-
-		var preParam *bkg.LocalPreParams
-		if len(preParams) <= int(rep.NetworkConfig.ID) {
-			preParam = nil
-		} else {
-			preParam = preParams[rep.NetworkConfig.ID-1]
-		}
-
-		tssMgr, err = tssmgr.NewTssMgr(rep.Key.Libp2pPrivKey, rep.Config.Tss, rep.NetworkConfig, repoRoot, preParam, peerMgr, loggers.Logger(loggers.TSS))
-		if err != nil {
-			return nil, fmt.Errorf("create tss manager: %w, %v", err, rep.Config.Tss.PreParamTimeout)
-		}
-		peerMgr.Tss = tssMgr
-	}
-
 	return &BitXHub{
 		repo:          rep,
 		logger:        logger,
@@ -246,7 +207,6 @@ func GenerateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 		BlockExecutor: txExec,
 		ViewExecutor:  viewExec,
 		PeerMgr:       peerMgr,
-		TssMgr:        tssMgr,
 	}, nil
 }
 
@@ -296,25 +256,9 @@ func (bxh *BitXHub) Start() error {
 		return fmt.Errorf("view executor start: %w", err)
 	}
 
-	if err := bxh.Router.Start(); err != nil {
-		return fmt.Errorf("router start: %w", err)
-	}
-
 	bxh.start()
 
 	bxh.printLogo()
-
-	if bxh.repo.Config.Tss.EnableTSS {
-		bxh.TssMgr.Start(bxh.Order.Quorum() - 1)
-		time1 := time.Now()
-		bxh.logger.Debugf("...... tss start key gen")
-		if err := bxh.TssMgr.Keygen(false); err != nil {
-			bxh.logger.Errorf("tss key generate error: %v", err)
-			return fmt.Errorf("tss key generate: %w", err)
-		}
-		timeKeygen := time.Since(time1)
-		bxh.logger.Infof("=============================keygen time: %v", timeKeygen)
-	}
 
 	return nil
 }
@@ -328,10 +272,6 @@ func (bxh *BitXHub) Stop() error {
 		return fmt.Errorf("view executor stop: %w", err)
 	}
 
-	if err := bxh.Router.Stop(); err != nil {
-		return fmt.Errorf("InterchainRouter stop: %w", err)
-	}
-
 	if !bxh.repo.Config.Solo {
 		if err := bxh.PeerMgr.Stop(); err != nil {
 			return fmt.Errorf("network stop: %w", err)
@@ -339,10 +279,6 @@ func (bxh *BitXHub) Stop() error {
 	}
 
 	bxh.Order.Stop()
-
-	if bxh.repo.Config.Tss.EnableTSS {
-		bxh.TssMgr.Stop()
-	}
 
 	bxh.Cancel()
 
@@ -358,14 +294,6 @@ func (bxh *BitXHub) ReConfig(repo *repo.Repo) {
 
 		if err := bxh.Jsonrpc.ReConfig(config); err != nil {
 			bxh.logger.Errorf("reconfig json rpc failed: %v", err)
-		}
-
-		if err := bxh.Grpc.ReConfig(config); err != nil {
-			bxh.logger.Errorf("reconfig grpc failed: %v", err)
-		}
-
-		if err := bxh.Gateway.ReConfig(config); err != nil {
-			bxh.logger.Errorf("reconfig gateway failed: %v", err)
 		}
 
 		if err := bxh.PeerMgr.ReConfig(config); err != nil {

@@ -49,6 +49,10 @@ solo = false
   quantum= 500
   capacity= 10000
 
+[p2p_limiter]
+  limit= 10000
+  burst= 10000
+
 [appchain]
   enable = false
   eth_header_path="appchain/eth_header.json"

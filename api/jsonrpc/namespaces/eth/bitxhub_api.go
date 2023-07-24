@@ -6,7 +6,6 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/rpc"
 	rpctypes "github.com/meshplus/bitxhub/api/jsonrpc/types"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
 	"github.com/meshplus/bitxhub/internal/repo"
@@ -43,15 +42,15 @@ func (api *BitxhubAPI) MaxPriorityFeePerGas(ctx context.Context) (*hexutil.Big, 
 }
 
 type feeHistoryResult struct {
-	OldestBlock  rpc.BlockNumber  `json:"oldestBlock"`
-	Reward       [][]*hexutil.Big `json:"reward,omitempty"`
-	BaseFee      []*hexutil.Big   `json:"baseFeePerGas,omitempty"`
-	GasUsedRatio []float64        `json:"gasUsedRatio"`
+	OldestBlock  rpctypes.BlockNumber `json:"oldestBlock"`
+	Reward       [][]*hexutil.Big     `json:"reward,omitempty"`
+	BaseFee      []*hexutil.Big       `json:"baseFeePerGas,omitempty"`
+	GasUsedRatio []float64            `json:"gasUsedRatio"`
 }
 
 // FeeHistory return feeHistory
 // todo Supplementary feeHsitory
-func (api *BitxhubAPI) FeeHistory(blockCount rpctypes.DecimalOrHex, lastBlock rpc.BlockNumber, rewardPercentiles []float64) (*feeHistoryResult, error) {
+func (api *BitxhubAPI) FeeHistory(blockCount rpctypes.DecimalOrHex, lastBlock rpctypes.BlockNumber, rewardPercentiles []float64) (*feeHistoryResult, error) {
 	api.logger.Debug("eth_feeHistory")
 	return nil, NotSupportApiError
 }
