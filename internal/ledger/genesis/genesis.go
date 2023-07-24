@@ -1,6 +1,7 @@
 package genesis
 
 import (
+	"math/big"
 	"time"
 
 	"github.com/meshplus/bitxhub-kit/types"
@@ -13,6 +14,11 @@ import (
 // Initialize initialize block
 func Initialize(genesis *repo.Genesis, nodes []*repo.NetworkNodes, primaryN uint64, lg *ledger.Ledger, executor executor.Executor) error {
 	lg.PrepareBlock(nil, 1)
+
+	balance, _ := new(big.Int).SetString(genesis.Balance, 10)
+	for _, admin := range genesis.Admins {
+		lg.SetBalance(types.NewAddressByStr(admin.Address), balance)
+	}
 
 	accounts, stateRoot := lg.FlushDirtyData()
 
