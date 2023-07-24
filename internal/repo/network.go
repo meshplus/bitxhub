@@ -13,7 +13,7 @@ import (
 	crypto2 "github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
-	libp2pcert "github.com/meshplus/go-libp2p-cert"
+	libp2pcert "github.com/meshplus/go-lightp2p/cert"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/pelletier/go-toml"
 	"github.com/spf13/viper"

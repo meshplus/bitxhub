@@ -4,8 +4,8 @@ import (
 	"context"
 	"strconv"
 
-	"github.com/hyperchain/go-hpc-rbft/v2/external"
-	rbfttypes "github.com/hyperchain/go-hpc-rbft/v2/types"
+	"github.com/hyperchain/go-hpc-rbft/external"
+	rbfttypes "github.com/hyperchain/go-hpc-rbft/types"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/pkg/order"
