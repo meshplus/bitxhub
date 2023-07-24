@@ -57,7 +57,11 @@ func (bnh *BlockNumberOrHash) UnmarshalJSON(data []byte) error {
 		bnh.BlockNumber = &bn
 		return nil
 	default:
-		return fmt.Errorf("only support latest and pending")
+		//todo Default to use the LatestBlockNumber
+		//	   Improved after modifying the accounting module
+		bn := LatestBlockNumber
+		bnh.BlockNumber = &bn
+		return nil
 
 		// if len(input) == 66 {
 		// 	hash := common.Hash{}
@@ -125,13 +129,11 @@ type BlockNumber int64
 
 const (
 	// LatestBlockNumber mapping from "latest" to 0 for tm query
-	LatestBlockNumber = BlockNumber(0)
-
-	// EarliestBlockNumber mapping from "earliest" to 1 for tm query (earliest query not supported)
-	EarliestBlockNumber = BlockNumber(1)
-
+	LatestBlockNumber = BlockNumber(-2)
 	// PendingBlockNumber mapping from "pending" to -1 for tm query
 	PendingBlockNumber = BlockNumber(-1)
+	// EarliestBlockNumber mapping from "earliest" to 1 for tm query (earliest query not supported)
+	EarliestBlockNumber = BlockNumber(1)
 )
 
 // NewBlockNumber creates a new BlockNumber instance.

@@ -10,11 +10,355 @@ import (
 	event "github.com/ethereum/go-ethereum/event"
 	gomock "github.com/golang/mock/gomock"
 	peer "github.com/libp2p/go-libp2p-core/peer"
-	peer_mgr "github.com/meshplus/bitxhub-core/peer-mgr"
 	pb "github.com/meshplus/bitxhub-model/pb"
 	peermgr "github.com/meshplus/bitxhub/pkg/peermgr"
 	network "github.com/meshplus/go-lightp2p"
 )
+
+// MockKeyType is a mock of KeyType interface.
+type MockKeyType struct {
+	ctrl     *gomock.Controller
+	recorder *MockKeyTypeMockRecorder
+}
+
+// MockKeyTypeMockRecorder is the mock recorder for MockKeyType.
+type MockKeyTypeMockRecorder struct {
+	mock *MockKeyType
+}
+
+// NewMockKeyType creates a new mock instance.
+func NewMockKeyType(ctrl *gomock.Controller) *MockKeyType {
+	mock := &MockKeyType{ctrl: ctrl}
+	mock.recorder = &MockKeyTypeMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockKeyType) EXPECT() *MockKeyTypeMockRecorder {
+	return m.recorder
+}
+
+// MockBasicPeerManager is a mock of BasicPeerManager interface.
+type MockBasicPeerManager struct {
+	ctrl     *gomock.Controller
+	recorder *MockBasicPeerManagerMockRecorder
+}
+
+// MockBasicPeerManagerMockRecorder is the mock recorder for MockBasicPeerManager.
+type MockBasicPeerManagerMockRecorder struct {
+	mock *MockBasicPeerManager
+}
+
+// NewMockBasicPeerManager creates a new mock instance.
+func NewMockBasicPeerManager(ctrl *gomock.Controller) *MockBasicPeerManager {
+	mock := &MockBasicPeerManager{ctrl: ctrl}
+	mock.recorder = &MockBasicPeerManagerMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockBasicPeerManager) EXPECT() *MockBasicPeerManagerMockRecorder {
+	return m.recorder
+}
+
+// AsyncSend mocks base method.
+func (m *MockBasicPeerManager) AsyncSend(arg0 peermgr.KeyType, arg1 *pb.Message) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AsyncSend", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AsyncSend indicates an expected call of AsyncSend.
+func (mr *MockBasicPeerManagerMockRecorder) AsyncSend(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AsyncSend", reflect.TypeOf((*MockBasicPeerManager)(nil).AsyncSend), arg0, arg1)
+}
+
+// CountConnectedPeers mocks base method.
+func (m *MockBasicPeerManager) CountConnectedPeers() uint64 {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CountConnectedPeers")
+	ret0, _ := ret[0].(uint64)
+	return ret0
+}
+
+// CountConnectedPeers indicates an expected call of CountConnectedPeers.
+func (mr *MockBasicPeerManagerMockRecorder) CountConnectedPeers() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountConnectedPeers", reflect.TypeOf((*MockBasicPeerManager)(nil).CountConnectedPeers))
+}
+
+// Peers mocks base method.
+func (m *MockBasicPeerManager) Peers() map[string]*peer.AddrInfo {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Peers")
+	ret0, _ := ret[0].(map[string]*peer.AddrInfo)
+	return ret0
+}
+
+// Peers indicates an expected call of Peers.
+func (mr *MockBasicPeerManagerMockRecorder) Peers() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Peers", reflect.TypeOf((*MockBasicPeerManager)(nil).Peers))
+}
+
+// Send mocks base method.
+func (m *MockBasicPeerManager) Send(arg0 peermgr.KeyType, arg1 *pb.Message) (*pb.Message, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Send", arg0, arg1)
+	ret0, _ := ret[0].(*pb.Message)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Send indicates an expected call of Send.
+func (mr *MockBasicPeerManagerMockRecorder) Send(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Send", reflect.TypeOf((*MockBasicPeerManager)(nil).Send), arg0, arg1)
+}
+
+// Start mocks base method.
+func (m *MockBasicPeerManager) Start() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Start")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Start indicates an expected call of Start.
+func (mr *MockBasicPeerManagerMockRecorder) Start() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Start", reflect.TypeOf((*MockBasicPeerManager)(nil).Start))
+}
+
+// Stop mocks base method.
+func (m *MockBasicPeerManager) Stop() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Stop")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Stop indicates an expected call of Stop.
+func (mr *MockBasicPeerManagerMockRecorder) Stop() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Stop", reflect.TypeOf((*MockBasicPeerManager)(nil).Stop))
+}
+
+// MockOrderPeerManager is a mock of OrderPeerManager interface.
+type MockOrderPeerManager struct {
+	ctrl     *gomock.Controller
+	recorder *MockOrderPeerManagerMockRecorder
+}
+
+// MockOrderPeerManagerMockRecorder is the mock recorder for MockOrderPeerManager.
+type MockOrderPeerManagerMockRecorder struct {
+	mock *MockOrderPeerManager
+}
+
+// NewMockOrderPeerManager creates a new mock instance.
+func NewMockOrderPeerManager(ctrl *gomock.Controller) *MockOrderPeerManager {
+	mock := &MockOrderPeerManager{ctrl: ctrl}
+	mock.recorder = &MockOrderPeerManagerMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockOrderPeerManager) EXPECT() *MockOrderPeerManagerMockRecorder {
+	return m.recorder
+}
+
+// AddNode mocks base method.
+func (m *MockOrderPeerManager) AddNode(newNodeID uint64, vpInfo *pb.VpInfo) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "AddNode", newNodeID, vpInfo)
+}
+
+// AddNode indicates an expected call of AddNode.
+func (mr *MockOrderPeerManagerMockRecorder) AddNode(newNodeID, vpInfo interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddNode", reflect.TypeOf((*MockOrderPeerManager)(nil).AddNode), newNodeID, vpInfo)
+}
+
+// AsyncSend mocks base method.
+func (m *MockOrderPeerManager) AsyncSend(arg0 peermgr.KeyType, arg1 *pb.Message) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AsyncSend", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AsyncSend indicates an expected call of AsyncSend.
+func (mr *MockOrderPeerManagerMockRecorder) AsyncSend(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AsyncSend", reflect.TypeOf((*MockOrderPeerManager)(nil).AsyncSend), arg0, arg1)
+}
+
+// Broadcast mocks base method.
+func (m *MockOrderPeerManager) Broadcast(arg0 *pb.Message) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Broadcast", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Broadcast indicates an expected call of Broadcast.
+func (mr *MockOrderPeerManagerMockRecorder) Broadcast(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Broadcast", reflect.TypeOf((*MockOrderPeerManager)(nil).Broadcast), arg0)
+}
+
+// CountConnectedPeers mocks base method.
+func (m *MockOrderPeerManager) CountConnectedPeers() uint64 {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CountConnectedPeers")
+	ret0, _ := ret[0].(uint64)
+	return ret0
+}
+
+// CountConnectedPeers indicates an expected call of CountConnectedPeers.
+func (mr *MockOrderPeerManagerMockRecorder) CountConnectedPeers() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountConnectedPeers", reflect.TypeOf((*MockOrderPeerManager)(nil).CountConnectedPeers))
+}
+
+// DelNode mocks base method.
+func (m *MockOrderPeerManager) DelNode(delID uint64) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "DelNode", delID)
+}
+
+// DelNode indicates an expected call of DelNode.
+func (mr *MockOrderPeerManagerMockRecorder) DelNode(delID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DelNode", reflect.TypeOf((*MockOrderPeerManager)(nil).DelNode), delID)
+}
+
+// Disconnect mocks base method.
+func (m *MockOrderPeerManager) Disconnect(vpInfos map[uint64]*pb.VpInfo) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "Disconnect", vpInfos)
+}
+
+// Disconnect indicates an expected call of Disconnect.
+func (mr *MockOrderPeerManagerMockRecorder) Disconnect(vpInfos interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Disconnect", reflect.TypeOf((*MockOrderPeerManager)(nil).Disconnect), vpInfos)
+}
+
+// OrderPeers mocks base method.
+func (m *MockOrderPeerManager) OrderPeers() map[uint64]*pb.VpInfo {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "OrderPeers")
+	ret0, _ := ret[0].(map[uint64]*pb.VpInfo)
+	return ret0
+}
+
+// OrderPeers indicates an expected call of OrderPeers.
+func (mr *MockOrderPeerManagerMockRecorder) OrderPeers() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OrderPeers", reflect.TypeOf((*MockOrderPeerManager)(nil).OrderPeers))
+}
+
+// OtherPeers mocks base method.
+func (m *MockOrderPeerManager) OtherPeers() map[uint64]*peer.AddrInfo {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "OtherPeers")
+	ret0, _ := ret[0].(map[uint64]*peer.AddrInfo)
+	return ret0
+}
+
+// OtherPeers indicates an expected call of OtherPeers.
+func (mr *MockOrderPeerManagerMockRecorder) OtherPeers() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OtherPeers", reflect.TypeOf((*MockOrderPeerManager)(nil).OtherPeers))
+}
+
+// Peers mocks base method.
+func (m *MockOrderPeerManager) Peers() map[string]*peer.AddrInfo {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Peers")
+	ret0, _ := ret[0].(map[string]*peer.AddrInfo)
+	return ret0
+}
+
+// Peers indicates an expected call of Peers.
+func (mr *MockOrderPeerManagerMockRecorder) Peers() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Peers", reflect.TypeOf((*MockOrderPeerManager)(nil).Peers))
+}
+
+// Send mocks base method.
+func (m *MockOrderPeerManager) Send(arg0 peermgr.KeyType, arg1 *pb.Message) (*pb.Message, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Send", arg0, arg1)
+	ret0, _ := ret[0].(*pb.Message)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Send indicates an expected call of Send.
+func (mr *MockOrderPeerManagerMockRecorder) Send(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Send", reflect.TypeOf((*MockOrderPeerManager)(nil).Send), arg0, arg1)
+}
+
+// Start mocks base method.
+func (m *MockOrderPeerManager) Start() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Start")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Start indicates an expected call of Start.
+func (mr *MockOrderPeerManagerMockRecorder) Start() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Start", reflect.TypeOf((*MockOrderPeerManager)(nil).Start))
+}
+
+// Stop mocks base method.
+func (m *MockOrderPeerManager) Stop() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Stop")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Stop indicates an expected call of Stop.
+func (mr *MockOrderPeerManagerMockRecorder) Stop() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Stop", reflect.TypeOf((*MockOrderPeerManager)(nil).Stop))
+}
+
+// SubscribeOrderMessage mocks base method.
+func (m *MockOrderPeerManager) SubscribeOrderMessage(ch chan<- peermgr.OrderMessageEvent) event.Subscription {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SubscribeOrderMessage", ch)
+	ret0, _ := ret[0].(event.Subscription)
+	return ret0
+}
+
+// SubscribeOrderMessage indicates an expected call of SubscribeOrderMessage.
+func (mr *MockOrderPeerManagerMockRecorder) SubscribeOrderMessage(ch interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubscribeOrderMessage", reflect.TypeOf((*MockOrderPeerManager)(nil).SubscribeOrderMessage), ch)
+}
+
+// UpdateRouter mocks base method.
+func (m *MockOrderPeerManager) UpdateRouter(vpInfos map[uint64]*pb.VpInfo, isNew bool) bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateRouter", vpInfos, isNew)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// UpdateRouter indicates an expected call of UpdateRouter.
+func (mr *MockOrderPeerManagerMockRecorder) UpdateRouter(vpInfos, isNew interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateRouter", reflect.TypeOf((*MockOrderPeerManager)(nil).UpdateRouter), vpInfos, isNew)
+}
 
 // MockPeerManager is a mock of PeerManager interface.
 type MockPeerManager struct {
@@ -52,7 +396,7 @@ func (mr *MockPeerManagerMockRecorder) AddNode(newNodeID, vpInfo interface{}) *g
 }
 
 // AsyncSend mocks base method.
-func (m *MockPeerManager) AsyncSend(arg0 peer_mgr.KeyType, arg1 *pb.Message) error {
+func (m *MockPeerManager) AsyncSend(arg0 peermgr.KeyType, arg1 *pb.Message) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AsyncSend", arg0, arg1)
 	ret0, _ := ret[0].(error)
@@ -159,20 +503,6 @@ func (mr *MockPeerManagerMockRecorder) Peers() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Peers", reflect.TypeOf((*MockPeerManager)(nil).Peers))
 }
 
-// PierManager mocks base method.
-func (m *MockPeerManager) PierManager() peermgr.PierManager {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PierManager")
-	ret0, _ := ret[0].(peermgr.PierManager)
-	return ret0
-}
-
-// PierManager indicates an expected call of PierManager.
-func (mr *MockPeerManagerMockRecorder) PierManager() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PierManager", reflect.TypeOf((*MockPeerManager)(nil).PierManager))
-}
-
 // ReConfig mocks base method.
 func (m *MockPeerManager) ReConfig(config interface{}) error {
 	m.ctrl.T.Helper()
@@ -188,7 +518,7 @@ func (mr *MockPeerManagerMockRecorder) ReConfig(config interface{}) *gomock.Call
 }
 
 // Send mocks base method.
-func (m *MockPeerManager) Send(arg0 peer_mgr.KeyType, arg1 *pb.Message) (*pb.Message, error) {
+func (m *MockPeerManager) Send(arg0 peermgr.KeyType, arg1 *pb.Message) (*pb.Message, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Send", arg0, arg1)
 	ret0, _ := ret[0].(*pb.Message)
@@ -245,7 +575,7 @@ func (mr *MockPeerManagerMockRecorder) Stop() *gomock.Call {
 }
 
 // SubscribeOrderMessage mocks base method.
-func (m *MockPeerManager) SubscribeOrderMessage(ch chan<- peer_mgr.OrderMessageEvent) event.Subscription {
+func (m *MockPeerManager) SubscribeOrderMessage(ch chan<- peermgr.OrderMessageEvent) event.Subscription {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SubscribeOrderMessage", ch)
 	ret0, _ := ret[0].(event.Subscription)
@@ -256,62 +586,6 @@ func (m *MockPeerManager) SubscribeOrderMessage(ch chan<- peer_mgr.OrderMessageE
 func (mr *MockPeerManagerMockRecorder) SubscribeOrderMessage(ch interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubscribeOrderMessage", reflect.TypeOf((*MockPeerManager)(nil).SubscribeOrderMessage), ch)
-}
-
-// SubscribeTssCulprits mocks base method.
-func (m *MockPeerManager) SubscribeTssCulprits(ch chan<- *pb.Message) event.Subscription {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SubscribeTssCulprits", ch)
-	ret0, _ := ret[0].(event.Subscription)
-	return ret0
-}
-
-// SubscribeTssCulprits indicates an expected call of SubscribeTssCulprits.
-func (mr *MockPeerManagerMockRecorder) SubscribeTssCulprits(ch interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubscribeTssCulprits", reflect.TypeOf((*MockPeerManager)(nil).SubscribeTssCulprits), ch)
-}
-
-// SubscribeTssKeygenReq mocks base method.
-func (m *MockPeerManager) SubscribeTssKeygenReq(ch chan<- *pb.Message) event.Subscription {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SubscribeTssKeygenReq", ch)
-	ret0, _ := ret[0].(event.Subscription)
-	return ret0
-}
-
-// SubscribeTssKeygenReq indicates an expected call of SubscribeTssKeygenReq.
-func (mr *MockPeerManagerMockRecorder) SubscribeTssKeygenReq(ch interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubscribeTssKeygenReq", reflect.TypeOf((*MockPeerManager)(nil).SubscribeTssKeygenReq), ch)
-}
-
-// SubscribeTssMessage mocks base method.
-func (m *MockPeerManager) SubscribeTssMessage(ch chan<- *pb.Message) event.Subscription {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SubscribeTssMessage", ch)
-	ret0, _ := ret[0].(event.Subscription)
-	return ret0
-}
-
-// SubscribeTssMessage indicates an expected call of SubscribeTssMessage.
-func (mr *MockPeerManagerMockRecorder) SubscribeTssMessage(ch interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubscribeTssMessage", reflect.TypeOf((*MockPeerManager)(nil).SubscribeTssMessage), ch)
-}
-
-// SubscribeTssSignRes mocks base method.
-func (m *MockPeerManager) SubscribeTssSignRes(ch chan<- *pb.Message) event.Subscription {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SubscribeTssSignRes", ch)
-	ret0, _ := ret[0].(event.Subscription)
-	return ret0
-}
-
-// SubscribeTssSignRes indicates an expected call of SubscribeTssSignRes.
-func (mr *MockPeerManagerMockRecorder) SubscribeTssSignRes(ch interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubscribeTssSignRes", reflect.TypeOf((*MockPeerManager)(nil).SubscribeTssSignRes), ch)
 }
 
 // UpdateRouter mocks base method.
@@ -326,56 +600,4 @@ func (m *MockPeerManager) UpdateRouter(vpInfos map[uint64]*pb.VpInfo, isNew bool
 func (mr *MockPeerManagerMockRecorder) UpdateRouter(vpInfos, isNew interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateRouter", reflect.TypeOf((*MockPeerManager)(nil).UpdateRouter), vpInfos, isNew)
-}
-
-// MockPierManager is a mock of PierManager interface.
-type MockPierManager struct {
-	ctrl     *gomock.Controller
-	recorder *MockPierManagerMockRecorder
-}
-
-// MockPierManagerMockRecorder is the mock recorder for MockPierManager.
-type MockPierManagerMockRecorder struct {
-	mock *MockPierManager
-}
-
-// NewMockPierManager creates a new mock instance.
-func NewMockPierManager(ctrl *gomock.Controller) *MockPierManager {
-	mock := &MockPierManager{ctrl: ctrl}
-	mock.recorder = &MockPierManagerMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockPierManager) EXPECT() *MockPierManagerMockRecorder {
-	return m.recorder
-}
-
-// AskPierMaster mocks base method.
-func (m *MockPierManager) AskPierMaster(arg0 string) (bool, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AskPierMaster", arg0)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// AskPierMaster indicates an expected call of AskPierMaster.
-func (mr *MockPierManagerMockRecorder) AskPierMaster(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AskPierMaster", reflect.TypeOf((*MockPierManager)(nil).AskPierMaster), arg0)
-}
-
-// Piers mocks base method.
-func (m *MockPierManager) Piers() *peermgr.Piers {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Piers")
-	ret0, _ := ret[0].(*peermgr.Piers)
-	return ret0
-}
-
-// Piers indicates an expected call of Piers.
-func (mr *MockPierManagerMockRecorder) Piers() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Piers", reflect.TypeOf((*MockPierManager)(nil).Piers))
 }
