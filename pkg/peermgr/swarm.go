@@ -21,6 +21,7 @@ import (
 	libp2pcert "github.com/meshplus/go-lightp2p/cert"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/time/rate"
 )
 
 const (
@@ -46,6 +47,8 @@ type Swarm struct {
 	enablePing       bool
 	pingTimeout      time.Duration
 	pingC            chan *repo.Ping
+
+	msgPushLimiter *rate.Limiter
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -123,6 +126,9 @@ func (swarm *Swarm) init() error {
 	swarm.connectedPeers = sync.Map{}
 	swarm.notifiee = notifiee
 	swarm.gater = gater
+
+	// Initialize the message limiter and set the number of messages allowed per second to LIMIT
+	swarm.msgPushLimiter = rate.NewLimiter(rate.Limit(swarm.repo.Config.P2pLimit.Limit), int(swarm.repo.Config.P2pLimit.Burst))
 	return nil
 }
 

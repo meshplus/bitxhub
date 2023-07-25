@@ -38,13 +38,19 @@ func (swarm *Swarm) handleMessage(s network.Stream, data []byte) {
 				Data:            m.Data,
 			})
 		case pb.Message_PUSH_TXS:
-			tsx := &pb.PushTxs{}
-			if err := tsx.Unmarshal(m.Data); err != nil {
+			if !swarm.msgPushLimiter.Allow() {
+				// rate limit exceeded, refuse to process the message
+				swarm.logger.Warnf("Node received too many PUSH_TXS messages. Rate limiting in effect.")
+				return nil
+			}
+
+			tx := &pb.PushTxs{}
+			if err := tx.Unmarshal(m.Data); err != nil {
 				return fmt.Errorf("unmarshal PushTxs error: %v", err)
 			}
 			go swarm.orderMessageFeed.Send(OrderMessageEvent{
 				IsTxsFromRemote: true,
-				Txs:             tsx.Data,
+				Txs:             tx.Data,
 			})
 		case pb.Message_FETCH_BLOCK_SIGN:
 			swarm.handleFetchBlockSignMessage(s, m.Data)

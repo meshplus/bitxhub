@@ -22,6 +22,7 @@ import (
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/ledger/mock_ledger"
 	"github.com/meshplus/bitxhub/internal/repo"
+	ethtypes "github.com/meshplus/eth-kit/types"
 	libp2pcert "github.com/meshplus/go-lightp2p/cert"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -147,6 +148,10 @@ func NewSwarms(t *testing.T, peerCnt int) []*Swarm {
 					Enable:   true,
 					Duration: 2 * time.Second,
 				},
+				P2pLimit: repo.P2pLimiter{
+					Limit: 5,
+					Burst: 5,
+				},
 			},
 		}
 
@@ -190,6 +195,67 @@ func TestSwarm_GetBlockPack(t *testing.T) {
 		err = swarms[i].Stop()
 		require.Nil(t, err)
 	}
+}
+
+func TestSwarm_PushTxs(t *testing.T) {
+	peerCnt := 4
+	swarms := NewSwarms(t, peerCnt)
+	defer stopSwarms(t, swarms)
+
+	for swarms[0].CountConnectedPeers() != 3 {
+		time.Sleep(100 * time.Millisecond)
+	}
+	requests := [][]byte{generateEthTx(t)}
+	pushMsg := &pb.PushTxs{
+		Data: requests,
+	}
+	pushData, err := pushMsg.Marshal()
+	require.Nil(t, err)
+	msg := &pb.Message{
+		Type: pb.Message_PUSH_TXS,
+		Data: pushData,
+	}
+	orderMsgCh := make(chan peer_mgr.OrderMessageEvent)
+	orderMsgSub := swarms[2].SubscribeOrderMessage(orderMsgCh)
+
+	defer func() {
+		orderMsgSub.Unsubscribe()
+		close(orderMsgCh)
+	}()
+
+	// Send 10 messages every 1 second, total 50 messages
+	totalMessages := 50
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	for i := 0; i < totalMessages; i += 10 {
+		for j := 0; j < 10; j++ {
+			err = retry.Retry(func(attempt uint) error {
+				err = swarms[0].AsyncSend(uint64(3), msg)
+				if err != nil {
+					swarms[0].logger.Errorf(err.Error())
+					return err
+				}
+				return nil
+			}, strategy.Wait(50*time.Millisecond))
+			require.Nil(t, err)
+			msgData := <-orderMsgCh
+			require.True(t, msgData.IsTxsFromRemote)
+		}
+		<-ticker.C
+	}
+}
+
+func generateEthTx(t *testing.T) []byte {
+	tx := ethtypes.EthTransaction{
+		Inner: &ethtypes.DynamicFeeTx{
+			Nonce: 0,
+		},
+		Time: time.Time{},
+	}
+	raw, err := tx.RbftMarshal()
+	require.Nil(t, err)
+	return raw
 }
 
 func TestMessage_FETCH_P2P_PUBKEY(t *testing.T) {

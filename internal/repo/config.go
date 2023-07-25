@@ -64,6 +64,7 @@ type Config struct {
 	Monitor       `json:"monitor"`
 	Limiter       `json:"limiter"`
 	JLimiter      `json:"jlimiter"`
+	P2pLimit      P2pLimiter `toml:"p2p_limiter" json:"p2p_limiter"`
 	Appchain      `json:"appchain"`
 	Gateway       `json:"gateway"`
 	Ping          `json:"ping"`
@@ -116,6 +117,11 @@ type JLimiter struct {
 	Interval time.Duration `toml:"interval" json:"interval"`
 	Quantum  int64         `toml:"quantum" json:"quantum"`
 	Capacity int64         `toml:"capacity" json:"capacity"`
+}
+
+type P2pLimiter struct {
+	Limit int64 `toml:"limit" json:"limit"`
+	Burst int64 `toml:"burst" json:"burst"`
 }
 
 type Appchain struct {
@@ -265,6 +271,10 @@ func DefaultConfig() (*Config, error) {
 			Interval: 50,
 			Quantum:  500,
 			Capacity: 10000,
+		},
+		P2pLimit: P2pLimiter{
+			Limit: 10000,
+			Burst: 10000,
 		},
 	}, nil
 }
