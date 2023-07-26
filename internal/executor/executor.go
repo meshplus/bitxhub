@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/meshplus/bitxhub-kit/types"
+	"github.com/meshplus/bitxhub/internal/executor/system"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/internal/repo"
@@ -73,6 +74,9 @@ func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, config *repo.Con
 	}
 
 	blockExecutor.evm = newEvm(1, uint64(0), blockExecutor.evmChainCfg, blockExecutor.ledger, blockExecutor.ledger.ChainLedger, blockExecutor.admins[0])
+
+	// initialize system contract
+	system.Initialize(logger)
 
 	return blockExecutor, nil
 }
