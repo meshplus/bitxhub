@@ -22,8 +22,8 @@ type RBFTConfig struct {
 }
 
 type TimedGenBlock struct {
-	Enable       bool          `toml:"enable" json:"enable"`
-	BlockTimeout time.Duration `mapstructure:"block_timeout" json:"block_timeout"`
+	Enable           bool          `toml:"enable" json:"enable"`
+	NoTxBatchTimeout time.Duration `mapstructure:"no_tx_batch_timeout" json:"no_tx_batch_timeout"`
 }
 
 type RBFT struct {
@@ -97,8 +97,8 @@ func defaultRbftConfig() rbft.Config[ethtypes.EthTransaction, *ethtypes.EthTrans
 
 func defaultTimedConfig() TimedGenBlock {
 	return TimedGenBlock{
-		Enable:       true,
-		BlockTimeout: 2 * time.Second,
+		Enable:           true,
+		NoTxBatchTimeout: 2 * time.Second,
 	}
 }
 
@@ -194,7 +194,7 @@ func sortPeers(nodes map[uint64]*pb.VpInfo) ([]*rbfttypes.Peer, error) {
 }
 
 func checkConfig(config *RBFTConfig) error {
-	if config.TimedGenBlock.BlockTimeout <= 0 {
+	if config.TimedGenBlock.NoTxBatchTimeout <= 0 {
 		return fmt.Errorf("Illegal parameter, blockTimeout must be a positive number. ")
 	}
 	return nil

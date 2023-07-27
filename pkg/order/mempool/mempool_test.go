@@ -534,3 +534,26 @@ func TestGenerateBlock(t *testing.T) {
 	ast.Equal(uint64(0), mpi.txStore.priorityNonBatchSize)
 	ast.Equal(3, len(blockBatches.TxList.Transactions))
 }
+
+func TestGetTransaction(t *testing.T) {
+	ast := assert.New(t)
+	storePath, err := ioutil.TempDir("", "mempool")
+	ast.Nil(err)
+	defer os.RemoveAll(storePath)
+	mpi, _ := mockMempoolImpl(storePath)
+	privKey1 := genPrivKey()
+	account1, _ := privKey1.PublicKey().Address()
+	nonce := mpi.GetPendingNonceByAccount(account1.String())
+	ast.Equal(uint64(0), nonce)
+	tx1 := constructTx(uint64(0), &privKey1)
+	tx2 := constructTx(uint64(1), &privKey1)
+	txList := []pb.Transaction{tx1}
+	batches := mpi.ProcessTransactions(txList, true, true)
+	ast.Nil(batches)
+
+	tx := mpi.GetTransaction(tx1.GetHash())
+	ast.Equal(tx1, tx)
+
+	tx = mpi.GetTransaction(tx2.GetHash())
+	ast.Nil(tx)
+}

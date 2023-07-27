@@ -10,8 +10,8 @@ import (
 
 func defaultTimedConfig() TimedGenBlock {
 	return TimedGenBlock{
-		Enable:       true,
-		BlockTimeout: 2 * time.Second,
+		Enable:           true,
+		NoTxBatchTimeout: 2 * time.Second,
 	}
 }
 
@@ -54,8 +54,8 @@ func readConfig(repoRoot string) (*SOLOConfig, error) {
 }
 
 func checkConfig(config *SOLOConfig) error {
-	if config.TimedGenBlock.BlockTimeout.Nanoseconds() <= 0 {
-		return fmt.Errorf("Illegal parameter, blockTimeout must be a positive number. ")
+	if config.TimedGenBlock.NoTxBatchTimeout.Nanoseconds() <= 0 {
+		return fmt.Errorf("Illegal parameter, noTxBatchTimeout must be a positive number. ")
 	}
 	return nil
 }

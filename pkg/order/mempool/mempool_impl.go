@@ -1,19 +1,14 @@
 package mempool
 
 import (
-	"os"
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/google/btree"
-	"github.com/meshplus/bitxhub-kit/storage"
-	"github.com/meshplus/bitxhub-kit/storage/leveldb"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/pkg/order/mempool/proto"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -213,6 +208,8 @@ func (mpi *mempoolImpl) generateBlock() (*proto.RequestBatch, error) {
 	}
 	if mpi.txStore.priorityNonBatchSize >= uint64(len(txList)) {
 		mpi.txStore.priorityNonBatchSize = mpi.txStore.priorityNonBatchSize - uint64(len(txList))
+	} else {
+		mpi.txStore.priorityNonBatchSize = 0
 	}
 	mpi.logger.Debugf("Leader generate a batch with %d txs, which height is %d, and now there are %d pending txs.", len(txList), batchSeqNo, mpi.txStore.priorityNonBatchSize)
 	return batch, nil
@@ -405,16 +402,6 @@ func (mpi *mempoolImpl) RemoveAliveTimeoutTxs(removeDuration time.Duration) uint
 	return removeCnt
 }
 
-func (mpi *mempoolImpl) GetPendingTransactions(max int) []pb.Transaction {
-	if max < 0 {
-		max = int(mpi.txStore.priorityNonBatchSize)
-	}
-
-	// TODO：Not implemented yet
-
-	return nil
-}
-
 func (mpi *mempoolImpl) GetTransaction(hash *types.Hash) pb.Transaction {
 	key, ok := mpi.txStore.txHashMap[hash.String()]
 	if !ok {
@@ -460,15 +447,6 @@ func (mpi *mempoolImpl) shardTxList(timeoutItems []*orderedTimeoutKey, batchLen 
 		shardedLists = append(shardedLists, shardedList)
 	}
 	return shardedLists
-}
-
-func loadOrCreateStorage(memPoolDir string) (storage.Storage, error) {
-	if !fileutil.Exist(memPoolDir) {
-		if err := os.MkdirAll(memPoolDir, os.ModePerm); err != nil {
-			return nil, errors.Errorf("failed to mkdir '%s' for mem pool: %s", memPoolDir, err)
-		}
-	}
-	return leveldb.New(memPoolDir)
 }
 
 func (mpi *mempoolImpl) SubscribeTxEvent(ch chan<- pb.Transactions) event.Subscription {
