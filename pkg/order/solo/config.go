@@ -8,28 +8,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-type SOLOConfig struct {
-	SOLO          SOLO
-	TimedGenBlock TimedGenBlock `mapstructure:"timed_gen_block"`
-}
-
-type SOLO struct {
-	BatchTimeout  time.Duration `mapstructure:"batch_timeout"`
-	MempoolConfig MempoolConfig `mapstructure:"mempool"`
-}
-
-type MempoolConfig struct {
-	BatchSize      uint64        `mapstructure:"batch_size"`
-	PoolSize       uint64        `mapstructure:"pool_size"`
-	TxSliceSize    uint64        `mapstructure:"tx_slice_size"`
-	TxSliceTimeout time.Duration `mapstructure:"tx_slice_timeout"`
-}
-
-type TimedGenBlock struct {
-	Enable       bool          `toml:"enable" json:"enable"`
-	BlockTimeout time.Duration `mapstructure:"block_timeout" json:"block_timeout"`
-}
-
 func defaultTimedConfig() TimedGenBlock {
 	return TimedGenBlock{
 		Enable:       true,

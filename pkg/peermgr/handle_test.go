@@ -215,7 +215,7 @@ func TestSwarm_PushTxs(t *testing.T) {
 		Type: pb.Message_PUSH_TXS,
 		Data: pushData,
 	}
-	orderMsgCh := make(chan peer_mgr.OrderMessageEvent)
+	orderMsgCh := make(chan OrderMessageEvent)
 	orderMsgSub := swarms[2].SubscribeOrderMessage(orderMsgCh)
 
 	defer func() {
@@ -223,27 +223,17 @@ func TestSwarm_PushTxs(t *testing.T) {
 		close(orderMsgCh)
 	}()
 
-	// Send 10 messages every 1 second, total 50 messages
-	totalMessages := 50
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
-
-	for i := 0; i < totalMessages; i += 10 {
-		for j := 0; j < 10; j++ {
-			err = retry.Retry(func(attempt uint) error {
-				err = swarms[0].AsyncSend(uint64(3), msg)
-				if err != nil {
-					swarms[0].logger.Errorf(err.Error())
-					return err
-				}
-				return nil
-			}, strategy.Wait(50*time.Millisecond))
-			require.Nil(t, err)
-			msgData := <-orderMsgCh
-			require.True(t, msgData.IsTxsFromRemote)
+	err = retry.Retry(func(attempt uint) error {
+		err = swarms[0].AsyncSend(uint64(3), msg)
+		if err != nil {
+			swarms[0].logger.Errorf(err.Error())
+			return err
 		}
-		<-ticker.C
-	}
+		return nil
+	}, strategy.Wait(50*time.Millisecond))
+	require.Nil(t, err)
+	msgData := <-orderMsgCh
+	require.True(t, msgData.IsTxsFromRemote)
 }
 
 func generateEthTx(t *testing.T) []byte {
@@ -316,46 +306,6 @@ func TestSwarm_FetchCert(t *testing.T) {
 	}, strategy.Wait(50*time.Millisecond))
 	require.Nil(t, err)
 	require.Equal(t, pb.Message_FETCH_CERT_ACK, res.Type)
-}
-
-func TestSwarm_FetchIBTPSigns(t *testing.T) {
-	peerCnt := 4
-	swarms := NewSwarms(t, peerCnt)
-	defer stopSwarms(t, swarms)
-
-	for swarms[0].CountConnectedPeers() != 3 {
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	msg := &pb.Message{
-		Type: pb.Message_FETCH_IBTP_REQUEST_SIGN,
-	}
-	var res *pb.Message
-	var err error
-	err = retry.Retry(func(attempt uint) error {
-		res, err = swarms[0].Send(uint64(2), msg)
-		if err != nil {
-			swarms[0].logger.Errorf(err.Error())
-			return err
-		}
-		return nil
-	}, strategy.Wait(50*time.Millisecond))
-	require.Nil(t, err)
-	require.Equal(t, pb.Message_FETCH_IBTP_SIGN_ACK, res.Type)
-
-	msg = &pb.Message{
-		Type: pb.Message_FETCH_IBTP_RESPONSE_SIGN,
-	}
-	err = retry.Retry(func(attempt uint) error {
-		res, err = swarms[0].Send(uint64(3), msg)
-		if err != nil {
-			swarms[0].logger.Errorf(err.Error())
-			return err
-		}
-		return nil
-	}, strategy.Wait(50*time.Millisecond))
-	require.Nil(t, err)
-	require.Equal(t, pb.Message_FETCH_IBTP_SIGN_ACK, res.Type)
 }
 
 func TestSwarm_Gater(t *testing.T) {

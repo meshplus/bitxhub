@@ -65,7 +65,7 @@ solo = false
   [log.module]
     p2p = "info"
     consensus = "info"
-    executor = "debug"
+    executor = "info"
     router = "info"
     api = "info"
     coreapi = "info"
