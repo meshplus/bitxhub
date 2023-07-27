@@ -8,13 +8,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type BatchTimer struct {
-	logger        logrus.FieldLogger
-	timeout       time.Duration      // default timeout of this timer
-	isActive      cmap.ConcurrentMap // track all the timers with this timerName if it is active now
-	timeoutEventC chan bool
-}
-
 // NewTimer news a timer with default timeout.
 func NewTimer(d time.Duration, logger logrus.FieldLogger) *BatchTimer {
 	return &BatchTimer{

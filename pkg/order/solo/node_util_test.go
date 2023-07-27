@@ -12,7 +12,6 @@ import (
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/pkg/order/mempool"
-	"github.com/meshplus/bitxhub/pkg/order/mempool/proto"
 	"github.com/meshplus/bitxhub/pkg/peermgr/mock_peermgr"
 )
 
@@ -46,7 +45,6 @@ func mockSoloNode(t *testing.T, enableTimed bool) (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	batchC := make(chan *proto.RequestBatch)
 	ctx, cancel := context.WithCancel(context.Background())
 
 	soloNode := &Node{
@@ -60,7 +58,7 @@ func mockSoloNode(t *testing.T, enableTimed bool) (*Node, error) {
 		txCache:      txCache,
 		batchMgr:     batchTimerMgr,
 		peerMgr:      mockPeermgr,
-		proposeC:     batchC,
+		recvCh:       make(chan consensusEvent),
 		logger:       logger,
 		ctx:          ctx,
 		cancel:       cancel,
