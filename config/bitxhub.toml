@@ -8,6 +8,7 @@ solo = false
   gateway = 9091
   pprof = 53121
   monitor = 40011
+  websocket = 9092
 
 [pprof]
   enable = true

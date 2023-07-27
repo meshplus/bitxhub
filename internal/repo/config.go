@@ -89,11 +89,12 @@ type Security struct {
 }
 
 type Port struct {
-	JsonRpc int64 `toml:"jsonrpc" json:"jsonrpc"`
-	Grpc    int64 `toml:"grpc" json:"grpc"`
-	Gateway int64 `toml:"gateway" json:"gateway"`
-	PProf   int64 `toml:"pprof" json:"pprof"`
-	Monitor int64 `toml:"monitor" json:"monitor"`
+	JsonRpc   int64 `toml:"jsonrpc" json:"jsonrpc"`
+	Grpc      int64 `toml:"grpc" json:"grpc"`
+	Gateway   int64 `toml:"gateway" json:"gateway"`
+	PProf     int64 `toml:"pprof" json:"pprof"`
+	Monitor   int64 `toml:"monitor" json:"monitor"`
+	WebSocket int64 `toml:"websocket" json:"websocket"`
 }
 
 type Monitor struct {
@@ -220,10 +221,11 @@ func DefaultConfig() (*Config, error) {
 		Title: "BitXHub configuration file",
 		Solo:  false,
 		Port: Port{
-			Grpc:    60011,
-			Gateway: 9091,
-			PProf:   53121,
-			Monitor: 40011,
+			Grpc:      60011,
+			Gateway:   9091,
+			PProf:     53121,
+			Monitor:   40011,
+			WebSocket: 9092,
 		},
 		RPCGasCap:     50000000,
 		RPCEVMTimeout: 5 * time.Second,
