@@ -59,33 +59,30 @@ type Config struct {
 	Solo          bool          `json:"solo"`
 	RPCGasCap     uint64        `json:"rpc_gas_cap"`
 	RPCEVMTimeout time.Duration `json:"rpc_evm_timeout"`
-	Port          `json:"port"`
-	PProf         `json:"pprof"`
-	Monitor       `json:"monitor"`
-	Limiter       `json:"limiter"`
-	JLimiter      `json:"jlimiter"`
-	P2pLimit      P2pLimiter `toml:"p2p_limiter" json:"p2p_limiter"`
-	Appchain      `json:"appchain"`
-	Gateway       `json:"gateway"`
-	Ping          `json:"ping"`
-	Log           `json:"log"`
-	Cert          `json:"cert"`
-	Txpool        `json:"txpool"`
-	Order         `json:"order"`
-	Executor      `json:"executor"`
-	Ledger        `json:"ledger"`
-	Genesis       `json:"genesis"`
-	Security      Security `toml:"security" json:"security"`
-	Crypto        Crypto   `toml:"crypto" json:"crypto"`
+	Port          Port          `json:"port"`
+	PProf         PProf         `json:"pprof"`
+	Monitor       Monitor       `json:"monitor"`
+	JLimiter      JLimiter      `json:"jlimiter"`
+	P2pLimit      P2pLimiter    `toml:"p2p_limiter" json:"p2p_limiter"`
+	Ping          Ping          `json:"ping"`
+	Log           Log           `json:"log"`
+	Txpool        Txpool        `json:"txpool"`
+	Order         Order         `json:"order"`
+	Executor      Executor      `json:"executor"`
+	Ledger        Ledger        `json:"ledger"`
+	Genesis       Genesis       `json:"genesis"`
+	Security      Security      `toml:"security" json:"security"`
+	Crypto        Crypto        `toml:"crypto" json:"crypto"`
+}
+
+type Monitor struct {
+	Enable bool
 }
 
 // Security are files used to setup connection with tls
 type Security struct {
-	EnableTLS       bool   `mapstructure:"enable_tls"`
-	PemFilePath     string `mapstructure:"pem_file_path" json:"pem_file_path"`
-	ServerKeyPath   string `mapstructure:"server_key_path" json:"server_key_path"`
-	GatewayCertPath string `mapstructure:"gateway_cert_path" json:"gateway_cert_path"`
-	GatewayKeyPath  string `mapstructure:"gateway_key_path" json:"gateway_key_path"`
+	EnableTLS   bool   `mapstructure:"enable_tls"`
+	PemFilePath string `mapstructure:"pem_file_path" json:"pem_file_path"`
 }
 
 type Port struct {
@@ -97,21 +94,11 @@ type Port struct {
 	WebSocket int64 `toml:"websocket" json:"websocket"`
 }
 
-type Monitor struct {
-	Enable bool
-}
-
 type PProf struct {
 	Enable   bool          `toml:"enbale" json:"enable"`
 	PType    string        `toml:"ptype" json:"ptype"`
 	Mode     string        `toml:"mode" json:"mode"`
 	Duration time.Duration `toml:"duration" json:"duration"`
-}
-
-type Limiter struct {
-	Interval time.Duration `toml:"interval" json:"interval"`
-	Quantum  int64         `toml:"quantum" json:"quantum"`
-	Capacity int64         `toml:"capacity" json:"capacity"`
 }
 
 type JLimiter struct {
@@ -123,15 +110,6 @@ type JLimiter struct {
 type P2pLimiter struct {
 	Limit int64 `toml:"limit" json:"limit"`
 	Burst int64 `toml:"burst" json:"burst"`
-}
-
-type Appchain struct {
-	Enable        bool   `toml:"enable" json:"enable"`
-	EthHeaderPath string `mapstructure:"eth_header_path"`
-}
-
-type Gateway struct {
-	AllowedOrigins []string `mapstructure:"allowed_origins"`
 }
 
 type Ping struct {
@@ -160,34 +138,20 @@ type LogModule struct {
 	Finance   string `toml:"finance" json:"finance"`
 }
 
-type Strategy struct {
-	Module string `json:"module" toml:"module"`
-	Typ    string `json:"typ" toml:"typ"`
-	Extra  string `json:"extra" toml:"extra"`
-}
-
 type Genesis struct {
-	ChainID       uint64      `json:"chainid" toml:"chainid"`
-	GasLimit      uint64      `mapstructure:"gas_limit" json:"gas_limit" toml:"gas_limit"`
-	GasPrice      uint64      `mapstructure:"gas_price" json:"gas_price"`
-	MaxGasPrice   uint64      `mapstructure:"max_gas_price" json:"max_gas_price"`
-	MinGasPrice   uint64      `mapstructure:"min_gas_price" json:"min_gas_price"`
-	GasChangeRate float64     `mapstructure:"gas_change_rate" json:"gas_change_rate"`
-	Balance       string      `json:"balance" toml:"balance"`
-	Admins        []*Admin    `json:"admins" toml:"admins"`
-	Strategy      []*Strategy `json:"strategy" toml:"strategy"`
+	ChainID       uint64   `json:"chainid" toml:"chainid"`
+	GasLimit      uint64   `mapstructure:"gas_limit" json:"gas_limit" toml:"gas_limit"`
+	GasPrice      uint64   `mapstructure:"gas_price" json:"gas_price"`
+	MaxGasPrice   uint64   `mapstructure:"max_gas_price" json:"max_gas_price"`
+	MinGasPrice   uint64   `mapstructure:"min_gas_price" json:"min_gas_price"`
+	GasChangeRate float64  `mapstructure:"gas_change_rate" json:"gas_change_rate"`
+	Balance       string   `json:"balance" toml:"balance"`
+	Admins        []*Admin `json:"admins" toml:"admins"`
 }
 
 type Admin struct {
 	Address string `json:"address" toml:"address"`
 	Weight  uint64 `json:"weight" toml:"weight"`
-}
-
-type Cert struct {
-	Verify         bool   `toml:"verify" json:"verify"`
-	NodeCertPath   string `mapstructure:"node_cert_path" json:"node_cert_path"`
-	AgencyCertPath string `mapstructure:"agency_cert_path" json:"agency_cert_path"`
-	CACertPath     string `mapstructure:"ca_cert_path" json:"ca_cert_path"`
 }
 
 type Txpool struct {
@@ -231,11 +195,10 @@ func DefaultConfig() (*Config, error) {
 			Monitor:   40011,
 			WebSocket: 9092,
 		},
-		RPCGasCap:     50000000,
+		RPCGasCap:     300000000,
 		RPCEVMTimeout: 5 * time.Second,
 		PProf:         PProf{Enable: false},
 		Ping:          Ping{Enable: false},
-		Gateway:       Gateway{AllowedOrigins: []string{"*"}},
 		Log: Log{
 			Level:    "info",
 			Dir:      "logs",
@@ -249,12 +212,6 @@ func DefaultConfig() (*Config, error) {
 				CoreAPI:   "info",
 				TSS:       "info",
 			},
-		},
-		Cert: Cert{
-			Verify:         true,
-			NodeCertPath:   "certs/node.cert",
-			AgencyCertPath: "certs/agency.cert",
-			CACertPath:     "certs/ca.cert",
 		},
 		Txpool: Txpool{
 			BatchSize:    500,

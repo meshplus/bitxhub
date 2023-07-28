@@ -5,7 +5,6 @@ import (
 
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
 	"github.com/sirupsen/logrus"
 )
@@ -19,11 +18,11 @@ type Config struct {
 	PeerMgr          peermgr.OrderPeerManager
 	PrivKey          crypto.PrivateKey
 	Logger           logrus.FieldLogger
-	Nodes            map[uint64]*pb.VpInfo
+	Nodes            map[uint64]*types.VpInfo
 	Applied          uint64
 	Digest           string
-	GetChainMetaFunc func() *pb.ChainMeta
-	GetBlockByHeight func(height uint64) (*pb.Block, error)
+	GetChainMetaFunc func() *types.ChainMeta
+	GetBlockByHeight func(height uint64) (*types.Block, error)
 	GetAccountNonce  func(address *types.Address) uint64
 }
 
@@ -77,7 +76,7 @@ func WithLogger(logger logrus.FieldLogger) Option {
 	}
 }
 
-func WithNodes(nodes map[uint64]*pb.VpInfo) Option {
+func WithNodes(nodes map[uint64]*types.VpInfo) Option {
 	return func(config *Config) {
 		config.Nodes = nodes
 	}
@@ -95,13 +94,13 @@ func WithDigest(digest string) Option {
 	}
 }
 
-func WithGetChainMetaFunc(f func() *pb.ChainMeta) Option {
+func WithGetChainMetaFunc(f func() *types.ChainMeta) Option {
 	return func(config *Config) {
 		config.GetChainMetaFunc = f
 	}
 }
 
-func WithGetBlockByHeightFunc(f func(height uint64) (*pb.Block, error)) Option {
+func WithGetBlockByHeightFunc(f func(height uint64) (*types.Block, error)) Option {
 	return func(config *Config) {
 		config.GetBlockByHeight = f
 	}

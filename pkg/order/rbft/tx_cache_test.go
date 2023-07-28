@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/meshplus/bitxhub-kit/log"
-	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -16,11 +16,11 @@ func TestAppendTx(t *testing.T) {
 	txCache := newTxCache(sliceTimeout, 2, logger)
 	go txCache.listenEvent()
 
-	tx := &pb.BxhTransaction{}
+	tx := &types.Transaction{}
 	txCache.appendTx(nil)
 	ast.Equal(0, len(txCache.txSet), "nil transaction")
 
-	tx = &pb.BxhTransaction{Nonce: 1}
+	tx = &types.Transaction{}
 	// start txSetTimer
 	txCache.appendTx(tx)
 	select {
@@ -31,8 +31,8 @@ func TestAppendTx(t *testing.T) {
 	txCache.stopTxSetTimer()
 
 	txCache.txSetTick = 1 * time.Second
-	tx1 := &pb.BxhTransaction{Nonce: 2}
-	tx2 := &pb.BxhTransaction{Nonce: 3}
+	tx1 := &types.Transaction{}
+	tx2 := &types.Transaction{}
 	go txCache.appendTx(tx1)
 	go txCache.appendTx(tx2)
 	select {

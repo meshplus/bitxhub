@@ -8,11 +8,8 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
-	"github.com/meshplus/bitxhub-kit/crypto"
-	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/bitxhub/pkg/order"
 	"github.com/meshplus/bitxhub/pkg/peermgr/mock_peermgr"
@@ -42,11 +39,11 @@ func TestNode_Start(t *testing.T) {
 
 	mockCtl := gomock.NewController(t)
 	mockPeermgr := mock_peermgr.NewMockPeerManager(mockCtl)
-	peers := make(map[uint64]*pb.VpInfo)
+	peers := make(map[uint64]*types.VpInfo)
 	mockPeermgr.EXPECT().OrderPeers().Return(peers).AnyTimes()
 
-	nodes := make(map[uint64]*pb.VpInfo)
-	vpInfo := &pb.VpInfo{
+	nodes := make(map[uint64]*types.VpInfo)
+	vpInfo := &types.VpInfo{
 		Id:      uint64(1),
 		Account: types.NewAddressByStr("000000000000000000000000000000000000000a").String(),
 	}
@@ -67,27 +64,14 @@ func TestNode_Start(t *testing.T) {
 	)
 	require.Nil(t, err)
 
-	_ = solo.Start()
+	err = solo.Start()
 	require.Nil(t, err)
 
 	var msg []byte
 	require.Nil(t, solo.Step(msg))
 	require.Equal(t, uint64(1), solo.Quorum())
 
-	privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
-	require.Nil(t, err)
-
-	from, err := privKey.PublicKey().Address()
-	require.Nil(t, err)
-
-	tx := &pb.BxhTransaction{
-		From:      from,
-		To:        types.NewAddressByStr(to),
-		Timestamp: time.Now().Unix(),
-		Nonce:     0,
-	}
-	tx.TransactionHash = tx.Hash()
-	err = tx.Sign(privKey)
+	tx, err := types.GenerateEmptyTransactionAndSigner()
 	require.Nil(t, err)
 
 	for {
@@ -103,10 +87,10 @@ func TestNode_Start(t *testing.T) {
 
 	commitEvent := <-solo.Commit()
 	require.Equal(t, uint64(2), commitEvent.Block.BlockHeader.Number)
-	require.Equal(t, 1, len(commitEvent.Block.Transactions.Transactions))
+	require.Equal(t, 1, len(commitEvent.Block.Transactions))
 
 	txHashList := make([]*types.Hash, 0)
-	txHashList = append(txHashList, tx.TransactionHash)
+	txHashList = append(txHashList, tx.GetHash())
 	solo.ReportState(commitEvent.Block.Height(), commitEvent.Block.BlockHash, txHashList)
 	solo.Stop()
 }
@@ -126,6 +110,7 @@ func TestGetPendingNonceByAccount(t *testing.T) {
 	nonce := node.GetPendingNonceByAccount("account1")
 	ast.Equal(uint64(0), nonce)
 	err = node.DelNode(uint64(1))
+	ast.Nil(err)
 }
 
 func TestGetpendingTxByHash(t *testing.T) {
@@ -141,7 +126,9 @@ func TestGetpendingTxByHash(t *testing.T) {
 	err = node.Start()
 	ast.Nil(err)
 
-	tx := generateTx()
+	tx, err := types.GenerateEmptyTransactionAndSigner()
+	require.Nil(t, err)
+
 	err = node.Prepare(tx)
 	ast.Nil(err)
 	time.Sleep(200 * time.Millisecond)
@@ -188,6 +175,6 @@ func TestTimedBlock(t *testing.T) {
 	ast.Nil(err)
 	event := <-node.commitC
 	ast.NotNil(event)
-	ast.Equal(len(event.Block.Transactions.Transactions), 0)
+	ast.Equal(len(event.Block.Transactions), 0)
 
 }

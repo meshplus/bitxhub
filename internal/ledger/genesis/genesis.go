@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/executor"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/repo"
@@ -22,25 +21,24 @@ func Initialize(genesis *repo.Genesis, nodes []*repo.NetworkNodes, primaryN uint
 
 	accounts, stateRoot := lg.FlushDirtyData()
 
-	block := &pb.Block{
-		BlockHeader: &pb.BlockHeader{
+	block := &types.Block{
+		BlockHeader: &types.BlockHeader{
 			Number:      1,
 			StateRoot:   stateRoot,
 			TxRoot:      &types.Hash{},
 			ReceiptRoot: &types.Hash{},
 			ParentHash:  &types.Hash{},
-			Bloom:       &types.Bloom{},
 			Timestamp:   time.Now().Unix(),
 			GasPrice:    int64(genesis.GasPrice),
+			Version:     []byte{},
+			Bloom:       new(types.Bloom),
 		},
-		Transactions: &pb.Transactions{},
+		Transactions: []*types.Transaction{},
 	}
 	block.BlockHash = block.Hash()
 	blockData := &ledger.BlockData{
-		Block:          block,
-		Receipts:       nil,
-		Accounts:       accounts,
-		InterchainMeta: &pb.InterchainMeta{},
+		Block:    block,
+		Accounts: accounts,
 	}
 
 	lg.PersistBlockData(blockData)

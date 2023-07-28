@@ -7,14 +7,14 @@ import (
 	"github.com/hyperchain/go-hpc-rbft/external"
 	rbfttypes "github.com/hyperchain/go-hpc-rbft/types"
 	"github.com/meshplus/bitxhub-kit/crypto"
-	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub-kit/types"
+	"github.com/meshplus/bitxhub-kit/types/pb"
 	"github.com/meshplus/bitxhub/pkg/order"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
-	ethtypes "github.com/meshplus/eth-kit/types"
 	"github.com/sirupsen/logrus"
 )
 
-var _ external.ExternalStack[ethtypes.EthTransaction, *ethtypes.EthTransaction] = (*RBFTAdaptor)(nil)
+var _ external.ExternalStack[types.Transaction, *types.Transaction] = (*RBFTAdaptor)(nil)
 var _ external.Storage = (*RBFTAdaptor)(nil)
 var _ external.Network = (*RBFTAdaptor)(nil)
 var _ external.Crypto = (*RBFTAdaptor)(nil)
@@ -26,12 +26,12 @@ type RBFTAdaptor struct {
 	store             *storageWrapper
 	peerMgr           peermgr.OrderPeerManager
 	priv              crypto.PrivateKey
-	Nodes             map[uint64]*pb.VpInfo
+	Nodes             map[uint64]*types.VpInfo
 	nodePIDToID       map[string]uint64
 	ReadyC            chan *Ready
-	BlockC            chan *pb.CommitEvent
+	BlockC            chan *types.CommitEvent
 	logger            logrus.FieldLogger
-	getChainMetaFunc  func() *pb.ChainMeta
+	getChainMetaFunc  func() *types.ChainMeta
 	StateUpdating     bool
 	StateUpdateHeight uint64
 	applyConfChange   func(cc *rbfttypes.ConfState)
@@ -41,13 +41,13 @@ type RBFTAdaptor struct {
 }
 
 type Ready struct {
-	TXs       []pb.Transaction
+	TXs       []*types.Transaction
 	LocalList []bool
 	Height    uint64
 	Timestamp int64
 }
 
-func NewRBFTAdaptor(config *order.Config, blockC chan *pb.CommitEvent, cancel context.CancelFunc, isNew bool) (*RBFTAdaptor, error) {
+func NewRBFTAdaptor(config *order.Config, blockC chan *types.CommitEvent, cancel context.CancelFunc, isNew bool) (*RBFTAdaptor, error) {
 	store, err := newStorageWrapper(config.StoragePath)
 	if err != nil {
 		return nil, err
@@ -80,7 +80,7 @@ func (s *RBFTAdaptor) SetApplyConfChange(applyConfChange func(cc *rbfttypes.Conf
 	s.applyConfChange = applyConfChange
 }
 
-func (s *RBFTAdaptor) getBlock(id uint64, i int) (*pb.Block, error) {
+func (s *RBFTAdaptor) getBlock(id uint64, i int) (*types.Block, error) {
 	m := &pb.Message{
 		Type: pb.Message_GET_BLOCK,
 		Data: []byte(strconv.Itoa(i)),
@@ -91,7 +91,7 @@ func (s *RBFTAdaptor) getBlock(id uint64, i int) (*pb.Block, error) {
 		return nil, err
 	}
 
-	block := &pb.Block{}
+	block := &types.Block{}
 	if err := block.Unmarshal(res.Data); err != nil {
 		return nil, err
 	}

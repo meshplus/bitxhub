@@ -2,7 +2,6 @@ package eth
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -13,14 +12,11 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	types3 "github.com/ethereum/go-ethereum/core/types"
 	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub-model/pb"
 	rpctypes "github.com/meshplus/bitxhub/api/jsonrpc/types"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
 	"github.com/meshplus/bitxhub/internal/repo"
-	types2 "github.com/meshplus/eth-kit/types"
+	"github.com/samber/lo"
 	"github.com/sirupsen/logrus"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 // TransactionAPI provide apis to get and create transaction
@@ -51,7 +47,7 @@ func (api *TransactionAPI) GetBlockTransactionCountByNumber(blockNum rpctypes.Bl
 		return nil
 	}
 
-	count := uint(len(block.Transactions.Transactions))
+	count := uint(len(block.Transactions))
 
 	return (*hexutil.Uint)(&count)
 }
@@ -66,7 +62,7 @@ func (api *TransactionAPI) GetBlockTransactionCountByHash(hash common.Hash) *hex
 		return nil
 	}
 
-	count := uint(len(block.Transactions.Transactions))
+	count := uint(len(block.Transactions))
 
 	return (*hexutil.Uint)(&count)
 }
@@ -127,7 +123,7 @@ func (api *TransactionAPI) GetTransactionByHash(hash common.Hash) (*rpctypes.RPC
 		return nil, err
 	}
 
-	return newRPCTransaction(ethTx, common.BytesToHash(meta.BlockHash), meta.BlockHeight, meta.Index), nil
+	return newRPCTransaction(ethTx, common.BytesToHash(meta.BlockHash.Bytes()), meta.BlockHeight, meta.Index), nil
 }
 
 // GetTransactionReceipt returns the transaction receipt identified by hash.
@@ -172,7 +168,7 @@ func (api *TransactionAPI) GetTransactionReceipt(hash common.Hash) (map[string]i
 		"cumulativeGasUsed": hexutil.Uint64(cumulativeGasUsed),
 		"transactionHash":   hash,
 		"gasUsed":           hexutil.Uint64(receipt.GasUsed),
-		"blockHash":         common.BytesToHash(meta.BlockHash),
+		"blockHash":         common.BytesToHash(meta.BlockHash.Bytes()),
 		"blockNumber":       hexutil.Uint64(meta.BlockHeight),
 		"transactionIndex":  hexutil.Uint64(meta.Index),
 		"from":              common.BytesToAddress(tx.GetFrom().Bytes()),
@@ -184,25 +180,28 @@ func (api *TransactionAPI) GetTransactionReceipt(hash common.Hash) (map[string]i
 	}
 	ethLogs := make([]*types3.Log, 0)
 	for _, log := range receipt.EvmLogs {
-		ethLog := &types3.Log{}
-		data, err := json.Marshal(log)
-		if err != nil {
-			return nil, err
+		ethLog := &types3.Log{
+			Address: log.Address.ETHAddress(),
+			Topics: lo.Map(log.Topics, func(item *types.Hash, index int) common.Hash {
+				return item.ETHHash()
+			}),
+			Data:        log.Data,
+			BlockNumber: log.BlockNumber,
+			TxHash:      log.TransactionHash.ETHHash(),
+			TxIndex:     uint(log.TransactionIndex),
+			BlockHash:   log.BlockHash.ETHHash(),
+			Index:       uint(log.LogIndex),
+			Removed:     log.Removed,
 		}
-		err = json.Unmarshal(data, ethLog)
-		if err != nil {
-			api.logger.Errorf("unmarshal ethLog err:%s", err)
-			return nil, err
-		}
-		api.logger.WithFields(logrus.Fields{"ethLog": ethLog}).Debug("get eth log")
 		ethLogs = append(ethLogs, ethLog)
 	}
 	fields["logs"] = ethLogs
 
-	if receipt.Status == pb.Receipt_SUCCESS {
+	if receipt.Status == types.ReceiptSUCCESS {
 		fields["status"] = hexutil.Uint(1)
 	} else {
 		fields["status"] = hexutil.Uint(0)
+		// TODO: need process
 		if receipt.Ret != nil {
 
 		}
@@ -225,7 +224,7 @@ func (api *TransactionAPI) GetTransactionReceipt(hash common.Hash) (map[string]i
 func (api *TransactionAPI) SendRawTransaction(data hexutil.Bytes) (common.Hash, error) {
 	api.logger.Debugf("eth_sendRawTransaction, data: %s", data.String())
 
-	tx := &types2.EthTransaction{}
+	tx := &types.Transaction{}
 	if err := tx.Unmarshal(data); err != nil {
 		return [32]byte{}, err
 	}
@@ -237,11 +236,11 @@ func (api *TransactionAPI) SendRawTransaction(data hexutil.Bytes) (common.Hash, 
 
 	err := api.api.Broker().OrderReady()
 	if err != nil {
-		return [32]byte{}, status.Newf(codes.Internal, "the system is temporarily unavailable %s", err.Error()).Err()
+		return [32]byte{}, fmt.Errorf("the system is temporarily unavailable %s", err.Error())
 	}
 
 	if err := checkTransaction(api.logger, tx); err != nil {
-		return [32]byte{}, status.Newf(codes.InvalidArgument, "check transaction fail for %s", err.Error()).Err()
+		return [32]byte{}, fmt.Errorf("check transaction fail for %s", err.Error())
 	}
 
 	return sendTransaction(api.api, tx)
@@ -253,24 +252,21 @@ func getTxByBlockInfoAndIndex(api api.CoreAPI, mode string, key string, idx hexu
 		return nil, err
 	}
 
-	if int(idx) >= len(block.Transactions.Transactions) {
+	if int(idx) >= len(block.Transactions) {
 		return nil, fmt.Errorf("index beyond block transactions' size")
 	}
 
-	ethTx, ok := block.Transactions.Transactions[idx].(*types2.EthTransaction)
-	if !ok {
-		return nil, fmt.Errorf("tx is not in eth format")
-	}
+	tx := block.Transactions[idx]
 
-	meta, err := api.Broker().GetTransactionMeta(ethTx.GetHash())
+	meta, err := api.Broker().GetTransactionMeta(tx.GetHash())
 	if err != nil {
 		return nil, err
 	}
 
-	return newRPCTransaction(ethTx, common.BytesToHash(meta.BlockHash), meta.BlockHeight, meta.Index), nil
+	return newRPCTransaction(tx, common.BytesToHash(meta.BlockHash.Bytes()), meta.BlockHeight, meta.Index), nil
 }
 
-func checkTransaction(logger logrus.FieldLogger, tx *types2.EthTransaction) error {
+func checkTransaction(logger logrus.FieldLogger, tx *types.Transaction) error {
 	if tx.GetFrom() == nil {
 		return fmt.Errorf("tx from address is nil")
 	}
@@ -302,7 +298,7 @@ func checkTransaction(logger logrus.FieldLogger, tx *types2.EthTransaction) erro
 	return nil
 }
 
-func sendTransaction(api api.CoreAPI, tx *types2.EthTransaction) (common.Hash, error) {
+func sendTransaction(api api.CoreAPI, tx *types.Transaction) (common.Hash, error) {
 	if err := tx.VerifySignature(); err != nil {
 		return [32]byte{}, err
 	}
@@ -311,12 +307,12 @@ func sendTransaction(api api.CoreAPI, tx *types2.EthTransaction) (common.Hash, e
 		return common.Hash{}, err
 	}
 
-	return tx.GetHash().RawHash, nil
+	return tx.GetHash().ETHHash(), nil
 }
 
-func getEthTransactionByHash(api api.CoreAPI, logger logrus.FieldLogger, hash *types.Hash) (*types2.EthTransaction, *pb.TransactionMeta, error) {
+func getEthTransactionByHash(api api.CoreAPI, logger logrus.FieldLogger, hash *types.Hash) (*types.Transaction, *types.TransactionMeta, error) {
 	var err error
-	meta := &pb.TransactionMeta{}
+	meta := &types.TransactionMeta{}
 
 	tx := api.Broker().GetPoolTransaction(hash)
 	if tx == nil {
@@ -343,15 +339,10 @@ func getEthTransactionByHash(api api.CoreAPI, logger logrus.FieldLogger, hash *t
 			return nil
 		}, strategy.Limit(5), strategy.Backoff(backoff.Fibonacci(200*time.Millisecond)))
 		if err != nil {
-			meta = &pb.TransactionMeta{}
+			meta = &types.TransactionMeta{}
 			return nil, meta, err
 		}
 	}
 
-	ethTx, ok := tx.(*types2.EthTransaction)
-	if !ok {
-		return nil, nil, fmt.Errorf("tx is not in eth format")
-	}
-
-	return ethTx, meta, nil
+	return tx, meta, nil
 }

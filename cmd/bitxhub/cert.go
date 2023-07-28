@@ -20,65 +20,34 @@ import (
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub/internal/repo"
-	libp2pcert "github.com/meshplus/go-lightp2p/cert"
 	"github.com/urfave/cli"
 )
 
-var certCMD = cli.Command{
-	Name:  "cert",
-	Usage: "Certification tools",
-	Subcommands: cli.Commands{
-		caCMD,
-		csrCMD,
-		issueCMD,
-		parseCMD,
-		privCMD,
-		verifyCMD,
-	},
+func certCMD() cli.Command {
+	return cli.Command{
+		Name:  "cert",
+		Usage: "Certification tools",
+		Subcommands: cli.Commands{
+			caCMD,
+			csrCMD,
+			issueCMD,
+			parseCMD,
+			privCMD,
+			verifyCMD,
+		},
+	}
 }
 
 var caCMD = cli.Command{
 	Name:  "ca",
-	Usage: "Generate ca cert and private key",
+	Usage: "Generate private key",
 	Action: func(ctx *cli.Context) error {
-		privKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		_, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 		if err != nil {
 			return fmt.Errorf("generate key failed: %w", err)
 		}
 
-		priKeyEncode, err := x509.MarshalECPrivateKey(privKey)
-		if err != nil {
-			return fmt.Errorf("marshal EC private key error: %w", err)
-		}
-
-		f, err := os.Create("./ca.priv")
-		if err != nil {
-			return fmt.Errorf("create ./ca.priv failed: %w", err)
-		}
-		defer f.Close()
-
-		err = pem.Encode(f, &pem.Block{Type: "EC PRIVATE KEY", Bytes: priKeyEncode})
-		if err != nil {
-			return fmt.Errorf("pem encode error: %w", err)
-		}
-
-		c, err := libp2pcert.GenerateCert(privKey, true, "Hyperchain")
-		if err != nil {
-			return fmt.Errorf("generate cert failed: %w", err)
-		}
-
-		x509certEncode, err := x509.CreateCertificate(rand.Reader, c, c, privKey.Public(), privKey)
-		if err != nil {
-			return fmt.Errorf("create X.509v3 certificate failed: %w", err)
-		}
-
-		f, err = os.Create("./ca.cert")
-		if err != nil {
-			return fmt.Errorf("create ./ca.cert failed: %w", err)
-		}
-		defer f.Close()
-
-		return pem.Encode(f, &pem.Block{Type: "CERTIFICATE", Bytes: x509certEncode})
+		return nil
 	},
 }
 

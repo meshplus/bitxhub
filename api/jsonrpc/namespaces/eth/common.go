@@ -7,18 +7,17 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
-	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub-kit/types"
 	rpctypes "github.com/meshplus/bitxhub/api/jsonrpc/types"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
-	ledger2 "github.com/meshplus/eth-kit/ledger"
-	types2 "github.com/meshplus/eth-kit/types"
+	"github.com/meshplus/eth-kit/ledger"
 )
 
 var (
 	NotSupportApiError = fmt.Errorf("unsupported interface")
 )
 
-func getStateLedgerAt(api api.CoreAPI) (ledger2.StateLedger, error) {
+func getStateLedgerAt(api api.CoreAPI) (ledger.StateLedger, error) {
 	leger := api.Broker().GetStateLedger()
 	if leger == nil {
 		return nil, fmt.Errorf("GetStateLedger error")
@@ -54,7 +53,7 @@ func getStateLedgerAt(api api.CoreAPI) (ledger2.StateLedger, error) {
 }
 
 // newRPCTransaction returns a transaction that will serialize to the RPC representation
-func newRPCTransaction(tx pb.Transaction, blockHash common.Hash, blockNumber uint64, index uint64) *rpctypes.RPCTransaction {
+func newRPCTransaction(tx *types.Transaction, blockHash common.Hash, blockNumber uint64, index uint64) *rpctypes.RPCTransaction {
 	from := common.BytesToAddress(tx.GetFrom().Bytes())
 	var to *common.Address
 	if tx.GetTo() != nil {
@@ -67,7 +66,7 @@ func newRPCTransaction(tx pb.Transaction, blockHash common.Hash, blockNumber uin
 		From:     from,
 		Gas:      hexutil.Uint64(tx.GetGas()),
 		GasPrice: (*hexutil.Big)(tx.GetGasPrice()),
-		Hash:     tx.GetHash().RawHash,
+		Hash:     tx.GetHash().ETHHash(),
 		Input:    hexutil.Bytes(tx.GetPayload()),
 		Nonce:    hexutil.Uint64(tx.GetNonce()),
 		To:       to,
@@ -84,15 +83,15 @@ func newRPCTransaction(tx pb.Transaction, blockHash common.Hash, blockNumber uin
 
 	switch tx.GetType() {
 	case ethtypes.AccessListTxType:
-		al := tx.(*types2.EthTransaction).GetInner().GetAccessList()
+		al := tx.GetInner().GetAccessList()
 		result.Accesses = &al
 		result.ChainID = (*hexutil.Big)(tx.GetChainID())
 	case ethtypes.DynamicFeeTxType:
-		al := tx.(*types2.EthTransaction).GetInner().GetAccessList()
+		al := tx.GetInner().GetAccessList()
 		result.Accesses = &al
 		result.ChainID = (*hexutil.Big)(tx.GetChainID())
-		result.GasFeeCap = (*hexutil.Big)(tx.(*types2.EthTransaction).GetInner().GetGasFeeCap())
-		result.GasTipCap = (*hexutil.Big)(tx.(*types2.EthTransaction).GetInner().GetGasTipCap())
+		result.GasFeeCap = (*hexutil.Big)(tx.GetInner().GetGasFeeCap())
+		result.GasTipCap = (*hexutil.Big)(tx.GetInner().GetGasTipCap())
 		result.GasPrice = result.GasFeeCap
 	}
 
@@ -100,9 +99,9 @@ func newRPCTransaction(tx pb.Transaction, blockHash common.Hash, blockNumber uin
 }
 
 // GetBlockCumulativeGas returns the cumulative gas used on a block up to a given transaction index (inclusive)
-func getBlockCumulativeGas(api api.CoreAPI, block *pb.Block, idx uint64) (uint64, error) {
+func getBlockCumulativeGas(api api.CoreAPI, block *types.Block, idx uint64) (uint64, error) {
 	var gasUsed uint64
-	txs := block.Transactions.Transactions
+	txs := block.Transactions
 
 	for i := 0; i <= int(idx) && i < len(txs); i++ {
 		receipt, err := api.Broker().GetReceipt(txs[i].GetHash())
@@ -110,7 +109,7 @@ func getBlockCumulativeGas(api api.CoreAPI, block *pb.Block, idx uint64) (uint64
 			return 0, err
 		}
 
-		gasUsed += receipt.GetGasUsed()
+		gasUsed += receipt.GasUsed
 	}
 
 	return gasUsed, nil

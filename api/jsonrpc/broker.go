@@ -146,12 +146,12 @@ func (cbs *ChainBrokerService) Stop() error {
 }
 
 func (cbs *ChainBrokerService) ReConfig(config *repo.Config) error {
-	if cbs.config.JsonRpc != config.JsonRpc {
+	if cbs.config.Port.JsonRpc != config.Port.JsonRpc {
 		if err := cbs.Stop(); err != nil {
 			return fmt.Errorf("stop chain broker service failed: %w", err)
 		}
 
-		cbs.config.JsonRpc = config.JsonRpc
+		cbs.config.Port.JsonRpc = config.Port.JsonRpc
 
 		if err := cbs.init(); err != nil {
 			return fmt.Errorf("init chain broker service failed: %w", err)

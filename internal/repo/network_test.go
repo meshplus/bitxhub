@@ -3,7 +3,7 @@ package repo
 import (
 	"testing"
 
-	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )
@@ -50,27 +50,27 @@ func TestNetworkConfig(t *testing.T) {
 }
 
 func TestRewriteNetworkConfig(t *testing.T) {
-	infos := make(map[uint64]*pb.VpInfo, 0)
+	infos := make(map[uint64]*types.VpInfo, 0)
 	{
-		infos[1] = &pb.VpInfo{
+		infos[1] = &types.VpInfo{
 			Id:      1,
 			Hosts:   []string{"/ip4/127.0.0.1/tcp/4001/p2p/"},
 			Pid:     "QmQUcDYCtqbpn5Nhaw4FAGxQaSSNvdWfAFcpQT9SPiezbS",
 			Account: "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013",
 		}
-		infos[2] = &pb.VpInfo{
+		infos[2] = &types.VpInfo{
 			Id:      2,
 			Hosts:   []string{"/ip4/127.0.0.1/tcp/4002/p2p/"},
 			Pid:     "QmQW3bFn8XX1t4W14Pmn37bPJUpUVBrBjnPuBZwPog3Qdy",
 			Account: "0x79a1215469FaB6f9c63c1816b45183AD3624bE34",
 		}
-		infos[3] = &pb.VpInfo{
+		infos[3] = &types.VpInfo{
 			Id:      3,
 			Hosts:   []string{"/ip4/127.0.0.1/tcp/4003/p2p/"},
 			Pid:     "QmXi58fp9ZczF3Z5iz1yXAez3Hy5NYo1R8STHWKEM9XnTL",
 			Account: "0x97c8B516D19edBf575D72a172Af7F418BE498C37",
 		}
-		infos[4] = &pb.VpInfo{
+		infos[4] = &types.VpInfo{
 			Id:      4,
 			Hosts:   []string{"/ip4/127.0.0.1/tcp/4004/p2p/"},
 			Pid:     "QmbmD1kzdsxRiawxu7bRrteDgW1ituXupR8GH6E2EUAHY4",

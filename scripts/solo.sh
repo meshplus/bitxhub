@@ -37,5 +37,4 @@ function start() {
 
 prepare
 config
-compile
 start

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub-kit/types/pb"
 	"github.com/meshplus/bitxhub/internal/model"
 	network "github.com/meshplus/go-lightp2p"
 	"github.com/sirupsen/logrus"
@@ -12,7 +12,7 @@ import (
 
 func (swarm *Swarm) handleMessage(s network.Stream, data []byte) {
 	m := &pb.Message{}
-	if err := m.Unmarshal(data); err != nil {
+	if err := m.UnmarshalVT(data); err != nil {
 		swarm.logger.Errorf("unmarshal message error: %s", err.Error())
 		return
 	}
@@ -28,8 +28,6 @@ func (swarm *Swarm) handleMessage(s network.Stream, data []byte) {
 			return swarm.handleGetBlockHeadersPack(s, m)
 		case pb.Message_GET_BLOCKS:
 			return swarm.handleGetBlocksPack(s, m)
-		case pb.Message_FETCH_CERT:
-			return swarm.handleFetchCertMessage(s)
 		case pb.Message_FETCH_P2P_PUBKEY:
 			return swarm.handleFetchP2PPubkey(s)
 		case pb.Message_CONSENSUS:
@@ -44,13 +42,13 @@ func (swarm *Swarm) handleMessage(s network.Stream, data []byte) {
 				return nil
 			}
 
-			tx := &pb.PushTxs{}
-			if err := tx.Unmarshal(m.Data); err != nil {
+			tx := &pb.BytesSlice{}
+			if err := tx.UnmarshalVT(m.Data); err != nil {
 				return fmt.Errorf("unmarshal PushTxs error: %v", err)
 			}
 			go swarm.orderMessageFeed.Send(OrderMessageEvent{
 				IsTxsFromRemote: true,
-				Txs:             tx.Data,
+				Txs:             tx.Slice,
 			})
 		case pb.Message_FETCH_BLOCK_SIGN:
 			swarm.handleFetchBlockSignMessage(s, m.Data)
@@ -102,21 +100,25 @@ func (swarm *Swarm) handleGetBlockPack(s network.Stream, msg *pb.Message) error 
 
 func (swarm *Swarm) handleGetBlockHeadersPack(s network.Stream, msg *pb.Message) error {
 	req := &pb.GetBlockHeadersRequest{}
-	if err := req.Unmarshal(msg.Data); err != nil {
+	if err := req.UnmarshalVT(msg.Data); err != nil {
 		return fmt.Errorf("unmarshal get block headers request error: %w", err)
 	}
 
 	res := &pb.GetBlockHeadersResponse{}
-	blockHeaders := make([]*pb.BlockHeader, 0)
+	blockHeaders := make([][]byte, 0)
 	for i := req.Start; i <= req.End; i++ {
 		block, err := swarm.ledger.GetBlock(i)
 		if err != nil {
 			return fmt.Errorf("get block with height %d from ledger failed: %w", i, err)
 		}
-		blockHeaders = append(blockHeaders, block.BlockHeader)
+		raw, err := block.BlockHeader.Marshal()
+		if err != nil {
+			return fmt.Errorf("marshal block with height %d failed: %w", i, err)
+		}
+		blockHeaders = append(blockHeaders, raw)
 	}
 	res.BlockHeaders = blockHeaders
-	v, err := res.Marshal()
+	v, err := res.MarshalVT()
 	if err != nil {
 		return fmt.Errorf("marshal get block headers response error: %w", err)
 	}
@@ -127,30 +129,6 @@ func (swarm *Swarm) handleGetBlockHeadersPack(s network.Stream, msg *pb.Message)
 
 	if err := swarm.SendWithStream(s, m); err != nil {
 		return fmt.Errorf("send %s with stream failed: %w", m.String(), err)
-	}
-
-	return nil
-}
-
-func (swarm *Swarm) handleFetchCertMessage(s network.Stream) error {
-	certs := &model.CertsMessage{
-		AgencyCert: swarm.repo.Certs.AgencyCertData,
-		NodeCert:   swarm.repo.Certs.NodeCertData,
-	}
-
-	data, err := certs.Marshal()
-	if err != nil {
-		return fmt.Errorf("marshal certs: %w", err)
-	}
-
-	msg := &pb.Message{
-		Type: pb.Message_FETCH_CERT_ACK,
-		Data: data,
-	}
-
-	err = swarm.SendWithStream(s, msg)
-	if err != nil {
-		return fmt.Errorf("send msg: %w", err)
 	}
 
 	return nil
@@ -221,21 +199,25 @@ func (swarm *Swarm) handleFetchBlockSignMessage(s network.Stream, data []byte) {
 
 func (swarm *Swarm) handleGetBlocksPack(s network.Stream, msg *pb.Message) error {
 	req := &pb.GetBlocksRequest{}
-	if err := req.Unmarshal(msg.Data); err != nil {
+	if err := req.UnmarshalVT(msg.Data); err != nil {
 		return fmt.Errorf("unmarshal get blcoks request error: %w", err)
 	}
 
 	res := &pb.GetBlocksResponse{}
-	blocks := make([]*pb.Block, 0)
+	blocks := make([][]byte, 0)
 	for i := req.Start; i <= req.End; i++ {
 		block, err := swarm.ledger.GetBlock(i)
 		if err != nil {
 			return fmt.Errorf("get block with height %d from ledger failed: %w", i, err)
 		}
-		blocks = append(blocks, block)
+		raw, err := block.Marshal()
+		if err != nil {
+			return fmt.Errorf("marshal block with height %d failed: %w", i, err)
+		}
+		blocks = append(blocks, raw)
 	}
 	res.Blocks = blocks
-	v, err := res.Marshal()
+	v, err := res.MarshalVT()
 	if err != nil {
 		return fmt.Errorf("marshal get blocks response error: %w", err)
 	}

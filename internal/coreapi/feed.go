@@ -2,7 +2,7 @@ package coreapi
 
 import (
 	"github.com/ethereum/go-ethereum/event"
-	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
 	"github.com/meshplus/bitxhub/internal/model/events"
 )
@@ -11,7 +11,7 @@ type FeedAPI CoreAPI
 
 var _ api.FeedAPI = (*FeedAPI)(nil)
 
-func (api *FeedAPI) SubscribeNewTxEvent(ch chan<- pb.Transactions) event.Subscription {
+func (api *FeedAPI) SubscribeNewTxEvent(ch chan<- []*types.Transaction) event.Subscription {
 	return api.bxh.Order.SubscribeTxEvent(ch)
 }
 
@@ -19,7 +19,7 @@ func (api *FeedAPI) SubscribeNewBlockEvent(ch chan<- events.ExecutedEvent) event
 	return api.bxh.BlockExecutor.SubscribeBlockEventForRemote(ch)
 }
 
-func (api *FeedAPI) SubscribeLogsEvent(ch chan<- []*pb.EvmLog) event.Subscription {
+func (api *FeedAPI) SubscribeLogsEvent(ch chan<- []*types.EvmLog) event.Subscription {
 	return api.bxh.BlockExecutor.SubscribeLogsEvent(ch)
 }
 

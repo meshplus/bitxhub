@@ -9,9 +9,8 @@ import (
 	"github.com/hyperchain/go-hpc-rbft/common/metrics/disabled"
 	"github.com/hyperchain/go-hpc-rbft/txpool"
 	rbfttypes "github.com/hyperchain/go-hpc-rbft/types"
-	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub/pkg/order"
-	ethtypes "github.com/meshplus/eth-kit/types"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -36,7 +35,7 @@ type RBFT struct {
 	BatchMemLimit       bool          `mapstructure:"batch_mem_limit"`
 	BatchMaxMem         uint64        `mapstructure:"batch_max_mem"`
 	VCPeriod            uint64        `mapstructure:"vc_period"`
-	GetBlockByHeight    func(height uint64) (*pb.Block, error)
+	GetBlockByHeight    func(height uint64) (*types.Block, error)
 	Timeout
 }
 
@@ -55,8 +54,8 @@ type Timeout struct {
 	Set              time.Duration `mapstructure:"set"`
 }
 
-func defaultRbftConfig() rbft.Config[ethtypes.EthTransaction, *ethtypes.EthTransaction] {
-	return rbft.Config[ethtypes.EthTransaction, *ethtypes.EthTransaction]{
+func defaultRbftConfig() rbft.Config[types.Transaction, *types.Transaction] {
+	return rbft.Config[types.Transaction, *types.Transaction]{
 		ID:        0,
 		Hash:      "",
 		Hostname:  "",
@@ -102,10 +101,10 @@ func defaultTimedConfig() TimedGenBlock {
 	}
 }
 
-func generateRbftConfig(repoRoot string, config *order.Config) (rbft.Config[ethtypes.EthTransaction, *ethtypes.EthTransaction], txpool.Config, error) {
+func generateRbftConfig(repoRoot string, config *order.Config) (rbft.Config[types.Transaction, *types.Transaction], txpool.Config, error) {
 	readConfig, err := readConfig(repoRoot)
 	if err != nil {
-		return rbft.Config[ethtypes.EthTransaction, *ethtypes.EthTransaction]{}, txpool.Config{}, nil
+		return rbft.Config[types.Transaction, *types.Transaction]{}, txpool.Config{}, nil
 	}
 
 	defaultConfig := defaultRbftConfig()
@@ -119,7 +118,7 @@ func generateRbftConfig(repoRoot string, config *order.Config) (rbft.Config[etht
 	}
 	defaultConfig.Peers, err = generateRbftPeers(config)
 	if err != nil {
-		return rbft.Config[ethtypes.EthTransaction, *ethtypes.EthTransaction]{}, txpool.Config{}, err
+		return rbft.Config[types.Transaction, *types.Transaction]{}, txpool.Config{}, err
 	}
 	defaultConfig.IsNew = config.IsNew
 	defaultConfig.Applied = config.Applied
@@ -178,7 +177,7 @@ func generateRbftPeers(config *order.Config) ([]*rbfttypes.Peer, error) {
 	return sortPeers(config.Nodes)
 }
 
-func sortPeers(nodes map[uint64]*pb.VpInfo) ([]*rbfttypes.Peer, error) {
+func sortPeers(nodes map[uint64]*types.VpInfo) ([]*rbfttypes.Peer, error) {
 	peers := make([]*rbfttypes.Peer, 0, len(nodes))
 	for id, vpInfo := range nodes {
 		peers = append(peers, &rbfttypes.Peer{

@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/hyperchain/go-hpc-rbft/common/consensus"
-	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub-kit/types/pb"
 )
 
 func (s *RBFTAdaptor) Broadcast(ctx context.Context, msg *consensus.ConsensusMessage) error {

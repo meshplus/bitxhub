@@ -10,7 +10,7 @@ import (
 
 type stateChange interface {
 	// revert undoes the state changes by this entry
-	revert(*SimpleLedger)
+	revert(*StateLedger)
 
 	// dirted returns the address modified by this state entry
 	dirtied() *types.Address
@@ -39,7 +39,7 @@ func (s *stateChanger) append(change stateChange) {
 	}
 }
 
-func (s *stateChanger) revert(ledger *SimpleLedger, snapshot int) {
+func (s *stateChanger) revert(ledger *StateLedger, snapshot int) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -117,7 +117,7 @@ type (
 	}
 )
 
-func (ch createObjectChange) revert(l *SimpleLedger) {
+func (ch createObjectChange) revert(l *StateLedger) {
 	delete(l.accounts, ch.account.String())
 	l.accountCache.rmAccount(ch.account)
 }
@@ -126,15 +126,17 @@ func (ch createObjectChange) dirtied() *types.Address {
 	return ch.account
 }
 
-func (ch resetObjectChange) revert(l *SimpleLedger) {
+// nolint
+func (ch resetObjectChange) revert(l *StateLedger) {
 	l.setAccount(ch.prev)
 }
 
+// nolint
 func (ch resetObjectChange) dirtied() *types.Address {
 	return nil
 }
 
-func (ch suicideChange) revert(l *SimpleLedger) {
+func (ch suicideChange) revert(l *StateLedger) {
 	acc := l.GetOrCreateAccount(ch.account)
 	account := acc.(*SimpleAccount)
 	account.suicided = ch.prev
@@ -145,14 +147,15 @@ func (ch suicideChange) dirtied() *types.Address {
 	return ch.account
 }
 
-func (ch touchChange) revert(l *SimpleLedger) {
+// nolint
+func (ch touchChange) revert(l *StateLedger) {
 }
 
 func (ch touchChange) dirtied() *types.Address {
 	return ch.account
 }
 
-func (ch balanceChange) revert(l *SimpleLedger) {
+func (ch balanceChange) revert(l *StateLedger) {
 	l.GetOrCreateAccount(ch.account).(*SimpleAccount).setBalance(ch.prev)
 }
 
@@ -160,7 +163,7 @@ func (ch balanceChange) dirtied() *types.Address {
 	return ch.account
 }
 
-func (ch nonceChange) revert(l *SimpleLedger) {
+func (ch nonceChange) revert(l *StateLedger) {
 	l.GetOrCreateAccount(ch.account).(*SimpleAccount).setNonce(ch.prev)
 }
 
@@ -168,7 +171,7 @@ func (ch nonceChange) dirtied() *types.Address {
 	return ch.account
 }
 
-func (ch codeChange) revert(l *SimpleLedger) {
+func (ch codeChange) revert(l *StateLedger) {
 	l.GetOrCreateAccount(ch.account).(*SimpleAccount).setCodeAndHash(ch.prevcode)
 }
 
@@ -176,7 +179,7 @@ func (ch codeChange) dirtied() *types.Address {
 	return ch.account
 }
 
-func (ch storageChange) revert(l *SimpleLedger) {
+func (ch storageChange) revert(l *StateLedger) {
 	l.GetOrCreateAccount(ch.account).(*SimpleAccount).setState(ch.key, ch.prevalue)
 }
 
@@ -184,7 +187,7 @@ func (ch storageChange) dirtied() *types.Address {
 	return ch.account
 }
 
-func (ch refundChange) revert(l *SimpleLedger) {
+func (ch refundChange) revert(l *StateLedger) {
 	l.refund = ch.prev
 }
 
@@ -192,7 +195,7 @@ func (ch refundChange) dirtied() *types.Address {
 	return nil
 }
 
-func (ch addPreimageChange) revert(l *SimpleLedger) {
+func (ch addPreimageChange) revert(l *StateLedger) {
 	delete(l.preimages, ch.hash)
 }
 
@@ -200,7 +203,7 @@ func (ch addPreimageChange) dirtied() *types.Address {
 	return nil
 }
 
-func (ch accessListAddAccountChange) revert(l *SimpleLedger) {
+func (ch accessListAddAccountChange) revert(l *StateLedger) {
 	l.accessList.DeleteAddress(*ch.address)
 }
 
@@ -208,7 +211,7 @@ func (ch accessListAddAccountChange) dirtied() *types.Address {
 	return nil
 }
 
-func (ch accessListAddSlotChange) revert(l *SimpleLedger) {
+func (ch accessListAddSlotChange) revert(l *StateLedger) {
 	l.accessList.DeleteSlot(*ch.address, *ch.slot)
 }
 
@@ -216,7 +219,7 @@ func (ch accessListAddSlotChange) dirtied() *types.Address {
 	return nil
 }
 
-func (ch addLogChange) revert(l *SimpleLedger) {
+func (ch addLogChange) revert(l *StateLedger) {
 	logs := l.logs.logs[*ch.txHash]
 	if len(logs) == 1 {
 		delete(l.logs.logs, *ch.txHash)
@@ -230,7 +233,7 @@ func (ch addLogChange) dirtied() *types.Address {
 	return nil
 }
 
-func (ch transientStorageChange) revert(l *SimpleLedger) {
+func (ch transientStorageChange) revert(l *StateLedger) {
 	l.setTransientState(*ch.account, ch.key, ch.prevalue)
 }
 

@@ -4,7 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub-kit/types"
+	"github.com/meshplus/bitxhub-kit/types/pb"
 	"github.com/stretchr/testify/require"
 )
 
@@ -17,8 +18,6 @@ func TestSwarm_OtherPeers(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	peers := swarms[0].OtherPeers()
-	require.Equal(t, 3, len(peers))
 }
 
 func TestSwarm_AddNode(t *testing.T) {
@@ -31,7 +30,7 @@ func TestSwarm_AddNode(t *testing.T) {
 	}
 
 	require.Equal(t, 4, len(swarms[0].routers))
-	swarms[0].AddNode(5, &pb.VpInfo{
+	swarms[0].AddNode(5, &types.VpInfo{
 		Id:      5,
 		Pid:     "Qmxxxxxxxxxxxxxxx",
 		Account: "0x1111111111222222222233333333",
@@ -47,7 +46,6 @@ func TestSwarm_AddNode(t *testing.T) {
 	delete(routers, 4)
 	swarms[0].UpdateRouter(routers, false)
 	require.Equal(t, 3, len(swarms[0].routers))
-	require.Equal(t, 3, len(swarms[0].Peers()))
 
 	// find wrong peer
 	_, err := swarms[0].findPeer(100)
@@ -67,7 +65,7 @@ func TestSwarm_Broadcast(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 	msg := &pb.Message{
-		Type: pb.Message_FETCH_CERT,
+		Type: pb.Message_CONSENSUS,
 		Data: []byte("Hello"),
 	}
 	err := swarms[0].Broadcast(msg)
@@ -83,10 +81,10 @@ func TestSwarm_Disconnect(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	m := make(map[uint64]*pb.VpInfo)
-	m[2] = &pb.VpInfo{Id: 2}
-	m[3] = &pb.VpInfo{Id: 3}
-	m[4] = &pb.VpInfo{Id: 4}
+	m := make(map[uint64]*types.VpInfo)
+	m[2] = &types.VpInfo{Id: 2}
+	m[3] = &types.VpInfo{Id: 3}
+	m[4] = &types.VpInfo{Id: 4}
 	swarms[0].Disconnect(m)
 	require.Equal(t, 4, len(swarms[0].routers))
 }

@@ -3,7 +3,6 @@ package order
 import (
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub-model/pb"
 )
 
 //go:generate mockgen -destination mock_order/mock_order.go -package mock_order -source order.go
@@ -15,12 +14,12 @@ type Order interface {
 	Stop()
 
 	// Prepare means send transaction to the consensus engine
-	Prepare(tx pb.Transaction) error
+	Prepare(tx *types.Transaction) error
 
 	SubmitTxsFromRemote(tsx [][]byte) error
 
 	// Commit recv blocks form Order and commit it by order
-	Commit() chan *pb.CommitEvent
+	Commit() chan *types.CommitEvent
 
 	// Step send msg to the consensus engine
 	Step(msg []byte) error
@@ -37,10 +36,10 @@ type Order interface {
 	// GetPendingNonceByAccount will return the latest pending nonce of a given account
 	GetPendingNonceByAccount(account string) uint64
 
-	GetPendingTxByHash(hash *types.Hash) pb.Transaction
+	GetPendingTxByHash(hash *types.Hash) *types.Transaction
 
 	// DelNode sends a delete vp request by given id.
 	DelNode(delID uint64) error
 
-	SubscribeTxEvent(events chan<- pb.Transactions) event.Subscription
+	SubscribeTxEvent(events chan<- []*types.Transaction) event.Subscription
 }

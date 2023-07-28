@@ -8,12 +8,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/peer"
 	crypto2 "github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub-model/pb"
-	libp2pcert "github.com/meshplus/go-lightp2p/cert"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/pelletier/go-toml"
 	"github.com/spf13/viper"
@@ -75,10 +73,10 @@ func loadNetworkConfig(viper *viper.Viper, repoRoot string, genesis Genesis) (*N
 }
 
 // GetVpInfos gets vp info from network config
-func (config *NetworkConfig) GetVpInfos() map[uint64]*pb.VpInfo {
-	vpNodes := make(map[uint64]*pb.VpInfo)
+func (config *NetworkConfig) GetVpInfos() map[uint64]*types.VpInfo {
+	vpNodes := make(map[uint64]*types.VpInfo)
 	for _, node := range config.Nodes {
-		vpInfo := &pb.VpInfo{
+		vpInfo := &types.VpInfo{
 			Id:      node.ID,
 			Pid:     node.Pid,
 			Account: node.Account,
@@ -135,7 +133,7 @@ func (config *NetworkConfig) GetNetworkPeers() (map[uint64]*peer.AddrInfo, error
 	return peers, nil
 }
 
-func RewriteNetworkConfig(repoRoot string, infos map[uint64]*pb.VpInfo, isNew bool) error {
+func RewriteNetworkConfig(repoRoot string, infos map[uint64]*types.VpInfo, isNew bool) error {
 	networkConfig := &NetworkConfig{}
 	v := viper.New()
 	v.SetConfigFile(filepath.Join(repoRoot, "network.toml"))
@@ -148,7 +146,7 @@ func RewriteNetworkConfig(repoRoot string, infos map[uint64]*pb.VpInfo, isNew bo
 	}
 
 	nodes := make([]*NetworkNodes, 0, len(infos))
-	routers := make([]*pb.VpInfo, 0, len(nodes))
+	routers := make([]*types.VpInfo, 0, len(nodes))
 	for _, info := range infos {
 		routers = append(routers, info)
 	}
@@ -184,7 +182,7 @@ func GetPidFromPrivFile(privPath string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("read private key error: %w", err)
 	}
-	privKey, err := libp2pcert.ParsePrivateKey(data, crypto2.ECDSA_P256)
+	privKey, err := ParsePrivateKey(data, crypto2.ECDSA_P256)
 	if err != nil {
 		return "", fmt.Errorf("parse private key failed: %w", err)
 	}

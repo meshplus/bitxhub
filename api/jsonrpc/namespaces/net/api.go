@@ -15,7 +15,7 @@ type PublicNetAPI struct {
 func NewAPI(config *repo.Config) *PublicNetAPI {
 	// parse the chainID from a integer string
 	return &PublicNetAPI{
-		networkVersion: config.ChainID,
+		networkVersion: config.Genesis.ChainID,
 	}
 }
 

@@ -8,7 +8,6 @@ import (
 
 	"github.com/Knetic/govaluate"
 	"github.com/ethereum/go-ethereum/event"
-	libp2pcert "github.com/meshplus/go-lightp2p/cert"
 	"github.com/spf13/viper"
 )
 
@@ -16,7 +15,6 @@ type Repo struct {
 	Config           *Config
 	NetworkConfig    *NetworkConfig
 	Key              *Key
-	Certs            *libp2pcert.Certs
 	ConfigChangeFeed event.Feed
 }
 
@@ -55,11 +53,6 @@ func Load(repoRoot string, passwd string, configPath string, networkPath string)
 		return nil, fmt.Errorf("load network config: %w", err)
 	}
 
-	certs, err := libp2pcert.LoadCerts(repoRoot, config.NodeCertPath, config.AgencyCertPath, config.CACertPath)
-	if err != nil {
-		return nil, fmt.Errorf("load certs failed: %w", err)
-	}
-
 	key, err := loadPrivKey(repoRoot, passwd)
 	if err != nil {
 		return nil, fmt.Errorf("load private key: %w", err)
@@ -69,7 +62,6 @@ func Load(repoRoot string, passwd string, configPath string, networkPath string)
 		Config:        config,
 		NetworkConfig: networkConfig,
 		Key:           key,
-		Certs:         certs,
 	}
 
 	// watch bitxhub.toml on changed
@@ -97,12 +89,6 @@ func checkConfig(config *Config) error {
 		return fmt.Errorf("set up at least one super administrator in genesis config")
 	}
 
-	// check strategy
-	for _, s := range config.Genesis.Strategy {
-		if err := CheckStrategyInfo(s.Typ, s.Module, s.Extra, len(config.Genesis.Admins)); err != nil {
-			return err
-		}
-	}
 	return nil
 }
 

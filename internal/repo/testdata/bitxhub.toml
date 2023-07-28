@@ -8,6 +8,7 @@ grpc = 60011
 gateway = 9091
 pprof = 53121
 monitor = 40011
+websocket = 9092
 
 [pprof]
 enable = true
@@ -18,19 +19,13 @@ duration = "30s" # only required for runtime ptype, every duration will generati
 [monitor]
 enable = true
 
-[gateway]
-allowed_origins = ["*"]
-
 [ping]
 enable = false
 duration = "15s"
 
 [security]
 enable_tls = false
-pem_file_path = "certs/node.cert"
-server_key_path = "certs/node.priv"
-gateway_cert_path = "certs/gateway.cert"
-gateway_key_path = "certs/gateway.priv"
+node_key_path = "certs/node.priv"
 
 [tss]
 enable_tss = false
@@ -39,23 +34,14 @@ key_sign_timeout = "90s"
 pre_param_timeout = "100s"
 tss_conf_path = "tss"
 
-[limiter]
+[jlimiter]
 interval = "50ms"
 quantum = 500
 capacity = 10000
 
-[jlimiter]
-  interval= "50ms"
-  quantum= 500
-  capacity= 10000
-
 [p2p_limiter]
-  limit= 10000
-  burst= 10000
-
-[appchain]
-enable = false
-eth_header_path = "appchain/eth_header.json"
+limit = 10000
+burst = 10000
 
 [log]
 level = "debug"
@@ -73,12 +59,6 @@ storage = "info"
 profile = "info"
 tss = "info"
 finance = "info"
-
-[cert]
-verify = true
-node_cert_path = "certs/node.cert"
-agency_cert_path = "certs/agency.cert"
-ca_cert_path = "certs/ca.cert"
 
 [order]
 type = "rbft"
@@ -102,7 +82,7 @@ min_gas_price = 1000
 balance = "1000000000000000000"
 [[genesis.admins]]
 address = "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013"
-weight = 2                                             # 1：General Administrator 2: Super Administrator (Genesis Administrator)
+weight = 2                                          
 [[genesis.admins]]
 address = "0x79a1215469FaB6f9c63c1816b45183AD3624bE34"
 weight = 2
@@ -112,31 +92,9 @@ weight = 2
 [[genesis.admins]]
 address = "0xc0Ff2e0b3189132D815b8eb325bE17285AC898f8"
 weight = 2
-[[genesis.strategy]]
-module = "appchain_mgr"
-typ = "SimpleMajority"
-extra = "a > 0.5 * t"
-[[genesis.strategy]]
-module = "proposal_strategy_mgr"
-typ = "SimpleMajority"
-extra = "a > 0.5 * t"
-[[genesis.strategy]]
-module = "rule_mgr"
-typ = "SimpleMajority"
-extra = "a > 0.5 * t"
-[[genesis.strategy]]
-module = "node_mgr"
-typ = "SimpleMajority"
-extra = "a > 0.5 * t"
-[[genesis.strategy]]
-module = "service_mgr"
-typ = "SimpleMajority"
-extra = "a > 0.5 * t"
-[[genesis.strategy]]
-module = "role_mgr"
-typ = "SimpleMajority"
-extra = "a > 0.5 * t"
-[[genesis.strategy]]
-module = "dapp_mgr"
-typ = "SimpleMajority"
-extra = "a > 0.5 * t"
+[[genesis.admins]]
+address = "0xcDE046e7a987D6928dE0a129A82534DB2cF9C6dd"
+weight = 2
+[[genesis.admins]]
+address = "0x565C9c8a0816F3b6B7396Ba85243905443e9ab3B"
+weight = 2

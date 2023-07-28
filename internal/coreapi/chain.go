@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
 	"go.uber.org/atomic"
 )
@@ -23,7 +23,7 @@ func (api *ChainAPI) Status() string {
 	return "normal"
 }
 
-func (api *ChainAPI) Meta() (*pb.ChainMeta, error) {
+func (api *ChainAPI) Meta() (*types.ChainMeta, error) {
 	return api.bxh.Ledger.GetChainMeta(), nil
 }
 
@@ -63,7 +63,7 @@ func (api *ChainAPI) TPS(begin, end uint64) (uint64, error) {
 		if err != nil {
 			errCount.Inc()
 		} else {
-			total.Add(uint64(len(block.Transactions.Transactions)))
+			total.Add(uint64(len(block.Transactions)))
 			startTime = block.BlockHeader.Timestamp
 		}
 	}()
@@ -73,7 +73,7 @@ func (api *ChainAPI) TPS(begin, end uint64) (uint64, error) {
 		if err != nil {
 			errCount.Inc()
 		} else {
-			total.Add(uint64(len(block.Transactions.Transactions)))
+			total.Add(uint64(len(block.Transactions)))
 			endTime = block.BlockHeader.Timestamp
 		}
 	}()

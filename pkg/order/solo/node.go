@@ -8,10 +8,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/pkg/order"
 	"github.com/meshplus/bitxhub/pkg/order/mempool"
-	"github.com/meshplus/bitxhub/pkg/order/mempool/proto"
 	"github.com/meshplus/bitxhub/pkg/peermgr"
 	"github.com/sirupsen/logrus"
 )
@@ -19,11 +17,11 @@ import (
 type Node struct {
 	ID               uint64
 	isTimed          bool
-	commitC          chan *pb.CommitEvent   // block channel
-	logger           logrus.FieldLogger     // logger
-	mempool          mempool.MemPool        // transaction pool
-	recvCh           chan consensusEvent    // receive message from consensus engine
-	batchTimeoutCh   chan batchTimeoutEvent // receive batch timeout message from consensus engine
+	commitC          chan *types.CommitEvent // block channel
+	logger           logrus.FieldLogger      // logger
+	mempool          mempool.MemPool         // transaction pool
+	recvCh           chan consensusEvent     // receive message from consensus engine
+	batchTimeoutCh   chan batchTimeoutEvent  // receive batch timeout message from consensus engine
 	stateC           chan *mempool.ChainState
 	txCache          *mempool.TxCache // cache the transactions received from api
 	batchMgr         *timerManager
@@ -37,10 +35,10 @@ type Node struct {
 	sync.RWMutex
 }
 
-func (n *Node) GetPendingTxByHash(hash *types.Hash) pb.Transaction {
+func (n *Node) GetPendingTxByHash(hash *types.Hash) *types.Transaction {
 	getTxReq := &mempool.GetTxReq{
 		Hash: hash,
-		Tx:   make(chan pb.Transaction),
+		Tx:   make(chan *types.Transaction),
 	}
 	n.recvCh <- getTxReq
 
@@ -71,7 +69,7 @@ func (n *Node) DelNode(uint64) error {
 	return nil
 }
 
-func (n *Node) Prepare(tx pb.Transaction) error {
+func (n *Node) Prepare(tx *types.Transaction) error {
 	if err := n.Ready(); err != nil {
 		return fmt.Errorf("node get ready failed: %w", err)
 	}
@@ -84,7 +82,7 @@ func (n *Node) Prepare(tx pb.Transaction) error {
 	return nil
 }
 
-func (n *Node) Commit() chan *pb.CommitEvent {
+func (n *Node) Commit() chan *types.CommitEvent {
 	return n.commitC
 }
 
@@ -109,7 +107,7 @@ func (n *Node) Quorum() uint64 {
 	return 1
 }
 
-func (n *Node) SubscribeTxEvent(ch chan<- pb.Transactions) event.Subscription {
+func (n *Node) SubscribeTxEvent(ch chan<- []*types.Transaction) event.Subscription {
 	return n.mempool.SubscribeTxEvent(ch)
 }
 
@@ -152,7 +150,7 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 		isTimed:          mempoolConf.IsTimed,
 		noTxBatchTimeout: mempoolConf.NoTxBatchTimeout,
 		batchTimeout:     batchTimeout,
-		commitC:          make(chan *pb.CommitEvent, 1024),
+		commitC:          make(chan *types.CommitEvent, 1024),
 		stateC:           make(chan *mempool.ChainState),
 		recvCh:           make(chan consensusEvent),
 		batchTimeoutCh:   batchTimeoutCh,
@@ -179,10 +177,10 @@ func (n *Node) listenReadyBlock() {
 			select {
 			case ev := <-n.recvCh:
 				switch e := ev.(type) {
-				case *proto.RequestBatch:
+				case *mempool.RequestBatch:
 					n.logger.WithFields(logrus.Fields{
 						"proposal_height": e.Height,
-						"tx_count":        len(e.TxList.Transactions),
+						"tx_count":        len(e.TxList),
 					}).Debugf("Receive proposal from mempool")
 
 					if e.Height != n.lastExec+1 {
@@ -190,19 +188,19 @@ func (n *Node) listenReadyBlock() {
 						continue
 					}
 					n.logger.Infof("======== Call execute, height=%d", e.Height)
-					block := &pb.Block{
-						BlockHeader: &pb.BlockHeader{
+					block := &types.Block{
+						BlockHeader: &types.BlockHeader{
 							Version:   []byte("1.0.0"),
 							Number:    e.Height,
 							Timestamp: e.Timestamp,
 						},
 						Transactions: e.TxList,
 					}
-					localList := make([]bool, len(e.TxList.Transactions))
-					for i := 0; i < len(e.TxList.Transactions); i++ {
+					localList := make([]bool, len(e.TxList))
+					for i := 0; i < len(e.TxList); i++ {
 						localList[i] = true
 					}
-					executeEvent := &pb.CommitEvent{
+					executeEvent := &types.CommitEvent{
 						Block:     block,
 						LocalList: localList,
 					}
@@ -231,7 +229,7 @@ func (n *Node) listenReadyBlock() {
 			if !n.batchMgr.isTimerActive(Batch) {
 				n.batchMgr.startTimer(Batch)
 			}
-			if batch := n.mempool.ProcessTransactions([]pb.Transaction{txWithResp.Tx}, true, true); batch != nil {
+			if batch := n.mempool.ProcessTransactions([]*types.Transaction{txWithResp.Tx}, true, true); batch != nil {
 				n.batchMgr.stopTimer(Batch)
 				n.recvCh <- batch
 				// start no-tx batch timer when this node handle the last transaction
@@ -290,6 +288,6 @@ func (n *Node) listenReadyBlock() {
 	}
 }
 
-func (n *Node) postProposal(batch *proto.RequestBatch) {
+func (n *Node) postProposal(batch *mempool.RequestBatch) {
 	n.recvCh <- batch
 }

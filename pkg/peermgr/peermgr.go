@@ -2,8 +2,9 @@ package peermgr
 
 import (
 	"github.com/ethereum/go-ethereum/event"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/meshplus/bitxhub-kit/types"
+	"github.com/meshplus/bitxhub-kit/types/pb"
 	network "github.com/meshplus/go-lightp2p"
 )
 
@@ -33,7 +34,7 @@ type BasicPeerManager interface {
 	CountConnectedPeers() uint64
 
 	// Peers return all peers including local peer.
-	Peers() map[string]*peer.AddrInfo
+	Peers() []peer.AddrInfo
 }
 
 type OrderPeerManager interface {
@@ -43,25 +44,22 @@ type OrderPeerManager interface {
 	SubscribeOrderMessage(ch chan<- OrderMessageEvent) event.Subscription
 
 	// AddNode adds a vp peer.
-	AddNode(newNodeID uint64, vpInfo *pb.VpInfo)
+	AddNode(newNodeID uint64, vpInfo *types.VpInfo)
 
 	// DelNode deletes a vp peer.
 	DelNode(delID uint64)
 
 	// UpdateRouter update the local router to quorum router.
-	UpdateRouter(vpInfos map[uint64]*pb.VpInfo, isNew bool) bool
-
-	// OtherPeers return peers except local peer.
-	OtherPeers() map[uint64]*peer.AddrInfo
+	UpdateRouter(vpInfos map[uint64]*types.VpInfo, isNew bool) bool
 
 	// Broadcast message to all node
 	Broadcast(*pb.Message) error
 
 	// Disconnect disconnect with all vp peers.
-	Disconnect(vpInfos map[uint64]*pb.VpInfo)
+	Disconnect(vpInfos map[uint64]*types.VpInfo)
 
 	// OrderPeers return all OrderPeers include account and id.
-	OrderPeers() map[uint64]*pb.VpInfo
+	OrderPeers() map[uint64]*types.VpInfo
 }
 
 //go:generate mockgen -destination mock_peermgr/mock_peermgr.go -package mock_peermgr -source peermgr.go

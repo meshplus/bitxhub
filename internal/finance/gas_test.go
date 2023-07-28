@@ -1,7 +1,6 @@
 package finance
 
 import (
-	"fmt"
 	"math/rand"
 	"path/filepath"
 	"testing"
@@ -9,11 +8,11 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/meshplus/bitxhub-kit/log"
-	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub/internal/ledger"
-	"github.com/meshplus/bitxhub/internal/ledger/mock_ledger"
 	"github.com/meshplus/bitxhub/internal/loggers"
 	"github.com/meshplus/bitxhub/internal/repo"
+	"github.com/meshplus/eth-kit/ledger/mock_ledger"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -54,9 +53,8 @@ func TestMockTxsGasPriceChange(t *testing.T) {
 			down += 250 - txs
 		}
 		parentGasPrice = GasPriceBySize(t, txs, int64(parentGasPrice), nil)
-		fmt.Println(parentGasPrice)
 	}
-	fmt.Printf("larger than 250: %d, up: %d, down: %d\n", count, up, down)
+	t.Logf("larger than 250: %d, up: %d, down: %d\n", count, up, down)
 }
 
 func GasPriceBySize(t *testing.T, size int, parentGasPrice int64, expectErr error) uint64 {
@@ -70,21 +68,19 @@ func GasPriceBySize(t *testing.T, size int, parentGasPrice int64, expectErr erro
 	chainLedger.EXPECT().Close().AnyTimes()
 	stateLedger.EXPECT().Close().AnyTimes()
 	defer mockLedger.Close()
-	chainMeta := &pb.ChainMeta{
+	chainMeta := &types.ChainMeta{
 		Height: 1,
 	}
 	// mock block for ledger
 	chainLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
-	block := &pb.Block{
-		BlockHeader:  &pb.BlockHeader{GasPrice: parentGasPrice},
-		Transactions: &pb.Transactions{},
+	block := &types.Block{
+		BlockHeader:  &types.BlockHeader{GasPrice: parentGasPrice},
+		Transactions: []*types.Transaction{},
 	}
-	prepareTxs := func(size int) *pb.Transactions {
-		txs := &pb.Transactions{}
+	prepareTxs := func(size int) []*types.Transaction {
+		txs := []*types.Transaction{}
 		for i := 0; i < size; i++ {
-			txs.Transactions = append(txs.Transactions, &pb.BxhTransaction{
-				Version: []byte{},
-			})
+			txs = append(txs, &types.Transaction{})
 		}
 		return txs
 	}
@@ -123,14 +119,14 @@ func initializeLog(t *testing.T, repo *repo.Repo) {
 	loggers.Initialize(repo.Config)
 }
 
-func checkResult(t *testing.T, block *pb.Block, config *repo.Repo, parentGasPrice int64, gas uint64) uint64 {
-	percentage := (float64(len(block.Transactions.Transactions)) - float64(config.Config.BatchSize)/2) / float64(config.Config.BatchSize)
-	actualGas := uint64(float64(parentGasPrice) * (1 + percentage*config.Config.GasChangeRate))
-	if actualGas > config.Config.MaxGasPrice {
-		actualGas = config.Config.MaxGasPrice
+func checkResult(t *testing.T, block *types.Block, config *repo.Repo, parentGasPrice int64, gas uint64) uint64 {
+	percentage := (float64(len(block.Transactions)) - float64(config.Config.Txpool.BatchSize)/2) / float64(config.Config.Txpool.BatchSize)
+	actualGas := uint64(float64(parentGasPrice) * (1 + percentage*config.Config.Genesis.GasChangeRate))
+	if actualGas > config.Config.Genesis.MaxGasPrice {
+		actualGas = config.Config.Genesis.MaxGasPrice
 	}
-	if actualGas < config.Config.MinGasPrice {
-		actualGas = config.Config.MinGasPrice
+	if actualGas < config.Config.Genesis.MinGasPrice {
+		actualGas = config.Config.Genesis.MinGasPrice
 	}
 	assert.Equal(t, uint64(actualGas), gas, "Gas price is not correct")
 	return gas
