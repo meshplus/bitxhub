@@ -246,7 +246,6 @@ func DoCall(ctx context.Context, api api.CoreAPI, args types2.CallArgs, timeout 
 // param from the SDK.
 func (api *BlockChainAPI) EstimateGas(args types2.CallArgs, blockNrOrHash rpctypes.BlockNumberOrHash) (hexutil.Uint64, error) {
 	api.logger.Debugf("eth_estimateGas, args: %s", args)
-
 	// Determine the highest gas limit can be used during the estimation.
 	// if args.Gas == nil || uint64(*args.Gas) < params.TxGas {
 	// 	// Retrieve the block to act as the gas ceiling

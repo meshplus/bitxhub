@@ -5,7 +5,7 @@ go 1.18
 replace (
 	github.com/hyperchain/go-hpc-rbft => github.com/TaiChiChain/go-hpc-rbft v0.0.1
 	github.com/meshplus/bitxhub-kit => github.com/TaiChiChain/bitxhub-kit v0.0.1
-	github.com/meshplus/bitxhub-model => github.com/TaiChiChain/bitxhub-model v0.0.1
+	github.com/meshplus/bitxhub-model => github.com/TaiChiChain/bitxhub-model v0.0.2-0.20230728063810-fb23825ce4ad
 	github.com/meshplus/eth-kit => github.com/TaiChiChain/eth-kit v0.0.1
 	github.com/meshplus/go-lightp2p => github.com/TaiChiChain/go-lightp2p v0.0.1
 )
@@ -44,7 +44,6 @@ require (
 	github.com/libp2p/go-libp2p-core v0.5.6
 	github.com/libp2p/go-libp2p-swarm v0.2.4
 	github.com/magiconair/properties v1.8.5
-	github.com/meshplus/bitxhub-core v1.28.1
 	github.com/meshplus/bitxhub-kit v1.28.0
 	github.com/meshplus/bitxhub-model v1.28.0
 	github.com/meshplus/eth-kit v0.0.1
@@ -69,17 +68,12 @@ require (
 )
 
 require (
-	github.com/bytecodealliance/wasmtime-go v0.37.0 // indirect
 	github.com/fjl/memsize v0.0.0-20190710130421-bcb5799ab5e5 // indirect
 	github.com/golang-jwt/jwt/v4 v4.3.0 // indirect
 	github.com/hashicorp/go-bexpr v0.1.10 // indirect
-	github.com/hyperledger/fabric v2.1.1+incompatible // indirect
-	github.com/hyperledger/fabric-amcl v0.0.0-20210603140002-2670f91851c8 // indirect
-	github.com/hyperledger/fabric-protos-go v0.0.0-20201028172056-a3136dde2354 // indirect
-	github.com/miekg/pkcs11 v1.0.3 // indirect
 	github.com/mitchellh/pointerstructure v1.2.0 // indirect
+	github.com/otiai10/mint v1.3.1 // indirect
 	github.com/rs/cors v1.7.0 // indirect
-	github.com/sykesm/zap-logfmt v0.0.4 // indirect
 	github.com/urfave/cli/v2 v2.17.2-0.20221006022127-8f469abc00aa // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect

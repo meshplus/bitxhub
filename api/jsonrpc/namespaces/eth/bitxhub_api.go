@@ -26,11 +26,14 @@ func NewBitxhubAPI(config *repo.Config, api api.CoreAPI, logger logrus.FieldLogg
 	return &BitxhubAPI{ctx: ctx, cancel: cancel, config: config, api: api, logger: logger}
 }
 
-// GasPrice returns the current gas price based on Ethermint's gas price oracle.
-// todo Supplementary gas price
+// GasPrice returns the current gas price based on dynamic adjustment strategy.
 func (api *BitxhubAPI) GasPrice() *hexutil.Big {
 	api.logger.Debug("eth_gasPrice")
-	out := big.NewInt(int64(api.config.Genesis.BvmGasPrice))
+	gasPrice, err := api.api.Gas().GetGasPrice()
+	if err != nil {
+		api.logger.Errorf("get gas price err: %v", err)
+	}
+	out := big.NewInt(int64(gasPrice))
 	return (*hexutil.Big)(out)
 }
 

@@ -21,6 +21,7 @@ import (
 	"github.com/meshplus/bitxhub-kit/storage/blockfile"
 	"github.com/meshplus/bitxhub/api/jsonrpc"
 	"github.com/meshplus/bitxhub/internal/executor"
+	"github.com/meshplus/bitxhub/internal/finance"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/ledger/genesis"
 	"github.com/meshplus/bitxhub/internal/loggers"
@@ -48,6 +49,8 @@ type BitXHub struct {
 	Pprof         *profile.Pprof
 	LoggerWrapper *loggers.LoggerWrapper
 	Jsonrpc       *jsonrpc.ChainBrokerService
+
+	Gas *finance.Gas
 
 	Ctx    context.Context
 	Cancel context.CancelFunc
@@ -176,7 +179,9 @@ func GenerateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 	}
 
 	// 1. create executor and view executor
-	viewExec, err := executor.New(viewLdg, loggers.Logger(loggers.Executor), rep.Config, big.NewInt(0))
+	viewExec, err := executor.New(viewLdg, loggers.Logger(loggers.Executor), rep.Config, func() (*big.Int, error) {
+		return big.NewInt(0), nil
+	})
 	if err != nil {
 		return nil, fmt.Errorf("create ViewExecutor: %w", err)
 	}
@@ -190,7 +195,18 @@ func GenerateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 		}).Info("Initialize genesis")
 	}
 
-	txExec, err := executor.New(rwLdg, loggers.Logger(loggers.Executor), rep.Config, big.NewInt(int64(rep.Config.Genesis.BvmGasPrice)))
+	gas := finance.NewGas(rep, viewLdg)
+	getGasPrice := func() (*big.Int, error) {
+		result := new(big.Int)
+		gas, err := gas.GetGasPrice()
+		if err != nil {
+			return nil, err
+		}
+		result.SetUint64(gas)
+		return result, nil
+	}
+
+	txExec, err := executor.New(rwLdg, loggers.Logger(loggers.Executor), rep.Config, getGasPrice)
 	if err != nil {
 		return nil, fmt.Errorf("create BlockExecutor: %w", err)
 	}
@@ -207,6 +223,7 @@ func GenerateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 		BlockExecutor: txExec,
 		ViewExecutor:  viewExec,
 		PeerMgr:       peerMgr,
+		Gas:           gas,
 	}, nil
 }
 

@@ -89,12 +89,12 @@ func checkConfig(config *Config) error {
 		if admin.Weight == SuperAdminWeight {
 			hasSuperAdmin = true
 		} else if admin.Weight != NormalAdminWeight {
-			return fmt.Errorf("Illegal admin weight in genesis config!")
+			return fmt.Errorf("illegal admin weight in genesis config")
 		}
 	}
 
 	if !hasSuperAdmin {
-		return fmt.Errorf("Set up at least one super administrator in genesis config!")
+		return fmt.Errorf("set up at least one super administrator in genesis config")
 	}
 
 	// check strategy

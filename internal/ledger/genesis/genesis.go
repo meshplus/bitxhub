@@ -31,6 +31,7 @@ func Initialize(genesis *repo.Genesis, nodes []*repo.NetworkNodes, primaryN uint
 			ParentHash:  &types.Hash{},
 			Bloom:       &types.Bloom{},
 			Timestamp:   time.Now().Unix(),
+			GasPrice:    int64(genesis.GasPrice),
 		},
 		Transactions: &pb.Transactions{},
 	}
