@@ -88,7 +88,9 @@ func TestNew(t *testing.T) {
 	chainLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
 
 	logger := log.NewWithModule("executor")
-	executor, err := New(mockLedger, logger, config, big.NewInt(5000000))
+	executor, err := New(mockLedger, logger, config, func() (*big.Int, error) {
+		return big.NewInt(5000), nil
+	})
 	assert.Nil(t, err)
 	assert.NotNil(t, executor)
 
@@ -121,7 +123,9 @@ func TestGetEvm(t *testing.T) {
 	chainLedger.EXPECT().GetBlock(gomock.Any()).Return(mockBlock(1, nil), nil).Times(1)
 
 	logger := log.NewWithModule("executor")
-	executor, err := New(mockLedger, logger, config, big.NewInt(5000000))
+	executor, err := New(mockLedger, logger, config, func() (*big.Int, error) {
+		return big.NewInt(5000), nil
+	})
 	assert.Nil(t, err)
 	assert.NotNil(t, executor)
 
@@ -243,7 +247,9 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 		}).AnyTimes()
 	logger := log.NewWithModule("executor")
 
-	exec, err := New(mockLedger, logger, config, big.NewInt(5000000))
+	exec, err := New(mockLedger, logger, config, func() (*big.Int, error) {
+		return big.NewInt(5000), nil
+	})
 	assert.Nil(t, err)
 
 	// mock data for block
@@ -354,7 +360,9 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 	stateLedger.EXPECT().SetBalance(gomock.Any(), gomock.Any()).AnyTimes()
 	logger := log.NewWithModule("executor")
 
-	exec, err := New(mockLedger, logger, config, big.NewInt(5000000))
+	exec, err := New(mockLedger, logger, config, func() (*big.Int, error) {
+		return big.NewInt(5000), nil
+	})
 	assert.Nil(t, err)
 
 	rawTx := "0xf86c8085147d35700082520894f927bb571eaab8c9a361ab405c9e4891c5024380880de0b6b3a76400008025a00b8e3b66c1e7ae870802e3ef75f1ec741f19501774bd5083920ce181c2140b99a0040c122b7ebfb3d33813927246cbbad1c6bf210474f5d28053990abff0fd4f53"
@@ -447,14 +455,16 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 
 	_, from := loadAdminKey(t)
 
-	ldg.SetBalance(from, new(big.Int).SetInt64(21000*5000000*3+4))
+	ldg.SetBalance(from, new(big.Int).SetInt64(21000*5000*3+4))
 	account, journal := ldg.FlushDirtyData()
 	err = ldg.Commit(1, account, journal)
 	require.Nil(t, err)
 	err = ldg.PersistExecutionResult(mockBlock(1, nil), nil, &pb.InterchainMeta{})
 	require.Nil(t, err)
 
-	executor, err := New(ldg, log.NewWithModule("executor"), config, big.NewInt(5000000))
+	executor, err := New(ldg, log.NewWithModule("executor"), config, func() (*big.Int, error) {
+		return big.NewInt(5000), nil
+	})
 	require.Nil(t, err)
 	err = executor.Start()
 	require.Nil(t, err)
@@ -479,7 +489,9 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 	viewLedger, err := ledger.New(createMockRepo(t), blockchainStorage, ldb, blockFile, accountCache, log.NewWithModule("ledger"))
 	require.Nil(t, err)
 
-	exec, err := New(viewLedger, log.NewWithModule("executor"), config, big.NewInt(0))
+	exec, err := New(viewLedger, log.NewWithModule("executor"), config, func() (*big.Int, error) {
+		return big.NewInt(0), nil
+	})
 	require.Nil(t, err)
 
 	tx := mockTransferTx(t)
@@ -585,6 +597,8 @@ func executor_start(t *testing.T) *BlockExecutor {
 	chainLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
 
 	logger := log.NewWithModule("executor")
-	executor, _ := New(mockLedger, logger, config, big.NewInt(5000000))
+	executor, _ := New(mockLedger, logger, config, func() (*big.Int, error) {
+		return big.NewInt(5000), nil
+	})
 	return executor
 }

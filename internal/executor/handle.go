@@ -19,6 +19,7 @@ import (
 	vm1 "github.com/meshplus/eth-kit/evm"
 	ledger2 "github.com/meshplus/eth-kit/ledger"
 	ethtypes "github.com/meshplus/eth-kit/types"
+	"github.com/pkg/errors"
 	"github.com/samber/lo"
 	"github.com/sirupsen/logrus"
 )
@@ -91,6 +92,11 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	block.BlockHeader.ReceiptRoot = receiptRoot
 	block.BlockHeader.ParentHash = exec.currentBlockHash
 	block.BlockHeader.Bloom = ledger.CreateBloom(receipts)
+	gasPrice, err := exec.GasPrice()
+	if err != nil {
+		panic(err)
+	}
+	block.BlockHeader.GasPrice = gasPrice.Int64()
 
 	accounts, journalHash := exec.ledger.FlushDirtyData()
 
@@ -124,10 +130,11 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	exec.postBlockEvent(data.Block, data.InterchainMeta, data.TxHashList)
 	exec.postLogsEvent(data.Receipts)
 	exec.logger.WithFields(logrus.Fields{
-		"height": data.Block.BlockHeader.Number,
-		"hash":   data.Block.BlockHash.String(),
-		"count":  len(data.Block.Transactions.Transactions),
-		"elapse": time.Since(now),
+		"gasPrice": data.Block.BlockHeader.GasPrice,
+		"height":   data.Block.BlockHeader.Number,
+		"hash":     data.Block.BlockHash.String(),
+		"count":    len(data.Block.Transactions.Transactions),
+		"elapse":   time.Since(now),
 	}).Info("Persisted block")
 
 	exec.currentHeight = block.BlockHeader.Number
@@ -246,13 +253,13 @@ func (exec *BlockExecutor) applyTransaction(i int, tx pb.Transaction, _ InvalidR
 
 	ethTx, ok := tx.(*ethtypes.EthTransaction)
 	if ok {
-		receipt := exec.applyEthTransaction(i, ethTx)
-		return receipt
+		receipt = exec.applyEthTransaction(i, ethTx)
+	} else {
+		receipt.Status = pb.Receipt_FAILED
+		receipt.GasUsed = GasFailedTx
+		receipt.Ret = []byte(fmt.Errorf("unknown tx type").Error())
 	}
 
-	receipt.Status = pb.Receipt_FAILED
-	receipt.GasUsed = GasFailedTx
-	receipt.Ret = []byte(fmt.Errorf("unknown tx type").Error())
 	if err := exec.payGasFee(tx, receipt.GasUsed); err != nil {
 		receipt.Ret = []byte(err.Error())
 		exec.payLeftAsGasFee(tx)
@@ -286,10 +293,9 @@ func (exec *BlockExecutor) applyEthTransaction(_ int, tx *ethtypes.EthTransactio
 	if result.Failed() {
 		exec.logger.Warnf("execute tx failed: %s", result.Err.Error())
 		receipt.Status = pb.Receipt_FAILED
+		receipt.Ret = []byte(result.Err.Error())
 		if strings.HasPrefix(result.Err.Error(), vm1.ErrExecutionReverted.Error()) {
-			receipt.Ret = append([]byte(result.Err.Error()), common.CopyBytes(result.ReturnData)...)
-		} else {
-			receipt.Ret = []byte(result.Err.Error())
+			receipt.Ret = append(receipt.Ret, common.CopyBytes(result.ReturnData)...)
 		}
 	} else {
 		receipt.Status = pb.Receipt_SUCCESS
@@ -361,7 +367,11 @@ func (exec *BlockExecutor) GetEvm(txCtx vm1.TxContext, vmConfig vm1.Config) *vm1
 }
 
 func (exec *BlockExecutor) payGasFee(tx pb.Transaction, gasUsed uint64) error {
-	fees := new(big.Int).Mul(new(big.Int).SetUint64(gasUsed), exec.bxhGasPrice)
+	gasPrice, err := exec.GasPrice()
+	if err != nil {
+		return errors.Wrap(err, "pay gas fee failed")
+	}
+	fees := new(big.Int).Mul(new(big.Int).SetUint64(gasUsed), gasPrice)
 	have := exec.ledger.GetBalance(tx.GetFrom())
 	if have.Cmp(fees) < 0 {
 		return fmt.Errorf("insufficeient balance: address %v have %v want %v", tx.GetFrom().String(), have, fees)

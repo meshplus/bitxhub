@@ -157,6 +157,7 @@ type LogModule struct {
 	Storage   string `toml:"storage" json:"storage"`
 	Profile   string `toml:"profile" json:"profile"`
 	TSS       string `toml:"tss" json:"tss"`
+	Finance   string `toml:"finance" json:"finance"`
 }
 
 type Strategy struct {
@@ -166,12 +167,15 @@ type Strategy struct {
 }
 
 type Genesis struct {
-	ChainID     uint64      `json:"chainid" toml:"chainid"`
-	GasLimit    uint64      `mapstructure:"gas_limit" json:"gas_limit" toml:"gas_limit"`
-	BvmGasPrice uint64      `mapstructure:"bvm_gas_price" json:"bvm_gas_price" toml:"bvm_gas_price"`
-	Balance     string      `json:"balance" toml:"balance"`
-	Admins      []*Admin    `json:"admins" toml:"admins"`
-	Strategy    []*Strategy `json:"strategy" toml:"strategy"`
+	ChainID       uint64      `json:"chainid" toml:"chainid"`
+	GasLimit      uint64      `mapstructure:"gas_limit" json:"gas_limit" toml:"gas_limit"`
+	GasPrice      uint64      `mapstructure:"gas_price" json:"gas_price"`
+	MaxGasPrice   uint64      `mapstructure:"max_gas_price" json:"max_gas_price"`
+	MinGasPrice   uint64      `mapstructure:"min_gas_price" json:"min_gas_price"`
+	GasChangeRate float64     `mapstructure:"gas_change_rate" json:"gas_change_rate"`
+	Balance       string      `json:"balance" toml:"balance"`
+	Admins        []*Admin    `json:"admins" toml:"admins"`
+	Strategy      []*Strategy `json:"strategy" toml:"strategy"`
 }
 
 type Admin struct {
@@ -263,9 +267,13 @@ func DefaultConfig() (*Config, error) {
 			Type: "serial",
 		},
 		Genesis: Genesis{
-			ChainID:  1,
-			GasLimit: 0x5f5e100,
-			Balance:  "100000000000000000000000000000000000",
+			ChainID:       1,
+			GasLimit:      0x5f5e100,
+			GasChangeRate: 0.125,
+			MaxGasPrice:   10000,
+			MinGasPrice:   1000,
+			GasPrice:      5000,
+			Balance:       "1000000000000000000",
 		},
 		Ledger: Ledger{Type: "complex"},
 		Crypto: Crypto{Algorithms: []string{"Secp256k1"}},
@@ -366,7 +374,7 @@ func WatchNetworkConfig(viper *viper.Viper, feed *event.Feed) {
 			if _, ok := checkReaptAddr[node.Hosts[0]]; !ok {
 				checkReaptAddr[node.Hosts[0]] = node.ID
 			} else {
-				err := fmt.Errorf("reapt address with Node: nodeID = %d,Host = %s \n",
+				err := fmt.Errorf("reapt address with Node: nodeID = %d,Host = %s",
 					checkReaptAddr[node.Hosts[0]], node.Hosts[0])
 				panic(err)
 			}

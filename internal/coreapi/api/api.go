@@ -17,6 +17,7 @@ type CoreAPI interface {
 	Chain() ChainAPI
 	Feed() FeedAPI
 	Account() AccountAPI
+	Gas() GasAPI
 }
 
 type BrokerAPI interface {
@@ -57,4 +58,8 @@ type FeedAPI interface {
 
 type AccountAPI interface {
 	GetAccount(addr *types.Address) ledger.IAccount
+}
+
+type GasAPI interface {
+	GetGasPrice() (uint64, error)
 }

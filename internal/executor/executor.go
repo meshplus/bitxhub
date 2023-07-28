@@ -43,13 +43,13 @@ type BlockExecutor struct {
 	evmChainCfg *params.ChainConfig
 	gasLimit    uint64
 	config      repo.Config
-	bxhGasPrice *big.Int
+	GasPrice    func() (*big.Int, error)
 	lock        *sync.Mutex
 	admins      []string
 }
 
 // New creates executor instance
-func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, config *repo.Config, gasPrice *big.Int) (*BlockExecutor, error) {
+func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, config *repo.Config, gasPrice func() (*big.Int, error)) (*BlockExecutor, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	blockExecutor := &BlockExecutor{
@@ -64,7 +64,7 @@ func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, config *repo.Con
 		currentBlockHash: chainLedger.GetChainMeta().BlockHash,
 		evmChainCfg:      newEVMChainCfg(config),
 		config:           *config,
-		bxhGasPrice:      gasPrice,
+		GasPrice:         gasPrice,
 		gasLimit:         config.GasLimit,
 		lock:             &sync.Mutex{},
 	}
