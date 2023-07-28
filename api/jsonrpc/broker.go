@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/gorilla/mux"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
@@ -19,6 +20,7 @@ type ChainBrokerService struct {
 	// genesis     *repo.Genesis
 	api         api.CoreAPI
 	server      *rpc.Server
+	wsServer    *rpc.Server
 	logger      logrus.FieldLogger
 	rateLimiter *ratelimiter.JRateLimiter
 
@@ -50,6 +52,11 @@ func NewChainBrokerService(coreAPI api.CoreAPI, config *repo.Config) (*ChainBrok
 		return nil, fmt.Errorf("init chain broker service failed: %w", err)
 	}
 
+	if err := cbs.initWS(); err != nil {
+		cancel()
+		return nil, fmt.Errorf("init chain broker websocket service failed: %w", err)
+	}
+
 	return cbs, nil
 }
 
@@ -71,11 +78,33 @@ func (cbs *ChainBrokerService) init() error {
 	return nil
 }
 
+func (cbs *ChainBrokerService) initWS() error {
+	cbs.wsServer = rpc.NewServer()
+
+	apis, err := GetAPIs(cbs.config, cbs.api, cbs.logger)
+	if err != nil {
+		return fmt.Errorf("get apis failed: %w", err)
+	}
+
+	// Register all the APIs exposed by the namespace services
+	for _, api := range apis {
+		if err := cbs.wsServer.RegisterName(api.Namespace, api.Service); err != nil {
+			return fmt.Errorf("register name %s for service %v failed: %w", api.Namespace, api.Service, err)
+		}
+	}
+
+	return nil
+}
+
 func (cbs *ChainBrokerService) Start() error {
 	router := mux.NewRouter()
 
 	handler := cbs.tokenBucketMiddleware(cbs.server)
 	router.Handle("/", handler)
+
+	wsRouter := mux.NewRouter()
+	wsHandler := node.NewWSHandlerStack(cbs.wsServer.WebsocketHandler([]string{"*"}), []byte(""))
+	wsRouter.Handle("/", wsHandler)
 
 	go func() {
 		cbs.logger.WithFields(logrus.Fields{
@@ -86,6 +115,19 @@ func (cbs *ChainBrokerService) Start() error {
 			cbs.logger.WithFields(logrus.Fields{
 				"error": err.Error(),
 			}).Errorf("Failed to start JSON_RPC service: %s", err.Error())
+			return
+		}
+	}()
+
+	go func() {
+		cbs.logger.WithFields(logrus.Fields{
+			"port": cbs.config.Port.WebSocket,
+		}).Info("Websocket service started")
+
+		if err := http.ListenAndServe(fmt.Sprintf(":%d", cbs.config.Port.WebSocket), wsRouter); err != nil {
+			cbs.logger.WithFields(logrus.Fields{
+				"error": err.Error(),
+			}).Errorf("Failed to start websocket service: %s", err.Error())
 			return
 		}
 	}()
