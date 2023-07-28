@@ -4,7 +4,6 @@ import (
 	"time"
 
 	cmap "github.com/orcaman/concurrent-map"
-	"github.com/sirupsen/logrus"
 )
 
 type SOLOConfig struct {
@@ -25,15 +24,16 @@ type MempoolConfig struct {
 }
 
 type TimedGenBlock struct {
-	Enable       bool          `toml:"enable" json:"enable"`
-	BlockTimeout time.Duration `mapstructure:"block_timeout" json:"block_timeout"`
+	Enable           bool          `toml:"enable" json:"enable"`
+	NoTxBatchTimeout time.Duration `mapstructure:"no_tx_batch_timeout" json:"no_tx_batch_timeout"`
 }
 
-type BatchTimer struct {
-	logger        logrus.FieldLogger
-	timeout       time.Duration      // default timeout of this timer
-	isActive      cmap.ConcurrentMap // track all the timers with this timerName if it is active now
-	timeoutEventC chan bool
+// singleTimer manages timer with the same timer name, which, we allow different timer with the same timer name, such as:
+// we allow several request timers at the same time, each timer started after received a new request batch
+type singleTimer struct {
+	timerName string             // the unique timer name
+	timeout   time.Duration      // default timeout of this timer
+	isActive  cmap.ConcurrentMap // track all the timers with this timerName if it is active now
 }
 
 // consensusEvent is a type meant to clearly convey that the return type or parameter to a function will be supplied to/from an events.Manager

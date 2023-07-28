@@ -1,6 +1,6 @@
 [timed_gen_block]
 enable = false
-block_timeout = "-1s"
+no_tx_batch_timeout = "-1s"
 
 [solo]
 batch_timeout          = "0.3s"  # Block packaging time period.

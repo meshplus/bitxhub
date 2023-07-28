@@ -20,14 +20,17 @@ func mockSoloNode(t *testing.T, enableTimed bool) (*Node, error) {
 	txCache := mempool.NewTxCache(25*time.Millisecond, uint64(2), logger)
 	repoRoot := "./testdata/"
 	batchTimeout, memConfig, timedGenBlock, _ := generateSoloConfig(repoRoot)
-	batchTimerMgr := NewTimer(batchTimeout, logger)
+	eventCh := make(chan batchTimeoutEvent)
+	batchTimerMgr := NewTimerManager(eventCh, logger)
+	batchTimerMgr.newTimer(Batch, batchTimeout)
+	batchTimerMgr.newTimer(NoTxBatch, timedGenBlock.NoTxBatchTimeout)
 	mockCtl := gomock.NewController(t)
 	mockPeermgr := mock_peermgr.NewMockPeerManager(mockCtl)
 	mempoolConf := &mempool.Config{
-		ID:           uint64(1),
-		IsTimed:      timedGenBlock.Enable,
-		BlockTimeout: timedGenBlock.BlockTimeout,
-		Logger:       logger,
+		ID:               uint64(1),
+		IsTimed:          timedGenBlock.Enable,
+		NoTxBatchTimeout: timedGenBlock.NoTxBatchTimeout,
+		Logger:           logger,
 
 		BatchSize:      memConfig.BatchSize,
 		PoolSize:       memConfig.PoolSize,
@@ -48,20 +51,22 @@ func mockSoloNode(t *testing.T, enableTimed bool) (*Node, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	soloNode := &Node{
-		ID:           uint64(1),
-		lastExec:     uint64(0),
-		isTimed:      mempoolConf.IsTimed,
-		blockTimeout: mempoolConf.BlockTimeout,
-		commitC:      make(chan *pb.CommitEvent, 1024),
-		stateC:       make(chan *mempool.ChainState),
-		mempool:      mempoolInst,
-		txCache:      txCache,
-		batchMgr:     batchTimerMgr,
-		peerMgr:      mockPeermgr,
-		recvCh:       make(chan consensusEvent),
-		logger:       logger,
-		ctx:          ctx,
-		cancel:       cancel,
+		ID:               uint64(1),
+		lastExec:         uint64(0),
+		isTimed:          mempoolConf.IsTimed,
+		noTxBatchTimeout: mempoolConf.NoTxBatchTimeout,
+		batchTimeout:     batchTimeout,
+		commitC:          make(chan *pb.CommitEvent, 1024),
+		stateC:           make(chan *mempool.ChainState),
+		mempool:          mempoolInst,
+		txCache:          txCache,
+		batchTimeoutCh:   eventCh,
+		batchMgr:         batchTimerMgr,
+		peerMgr:          mockPeermgr,
+		recvCh:           make(chan consensusEvent),
+		logger:           logger,
+		ctx:              ctx,
+		cancel:           cancel,
 	}
 	return soloNode, nil
 }

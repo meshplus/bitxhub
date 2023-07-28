@@ -8,46 +8,97 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// NewTimer news a timer with default timeout.
-func NewTimer(d time.Duration, logger logrus.FieldLogger) *BatchTimer {
-	return &BatchTimer{
-		timeout:       d,
-		isActive:      cmap.New(),
-		timeoutEventC: make(chan bool),
-		logger:        logger,
+const (
+	Batch     = "Batch"
+	NoTxBatch = "NoTxBatch"
+)
+
+type batchTimeoutEvent string
+
+func (tt *singleTimer) clear() {
+	tt.isActive.Clear()
+}
+
+func (tt *singleTimer) isTimerActive() bool {
+	return tt.isActive.Count() > 0
+}
+
+// timerManager manages consensus used timers.
+type timerManager struct {
+	timersM   map[string]*singleTimer
+	eventChan chan<- batchTimeoutEvent
+	logger    logrus.FieldLogger
+}
+
+// NewTimerManager news a timer with default timeout.
+func NewTimerManager(ch chan batchTimeoutEvent, logger logrus.FieldLogger) *timerManager {
+	return &timerManager{
+		timersM:   make(map[string]*singleTimer),
+		logger:    logger,
+		eventChan: ch,
 	}
 }
 
-func (timer *BatchTimer) IsBatchTimerActive() bool {
-	return !timer.isActive.IsEmpty()
+func (tm *timerManager) newTimer(name string, d time.Duration) {
+	if d == 0 {
+		switch name {
+		case Batch:
+			d = 500 * time.Millisecond
+		case NoTxBatch:
+			d = 2 * time.Second
+		}
+	}
+	tm.timersM[name] = &singleTimer{
+		timerName: name,
+		isActive:  cmap.New(),
+		timeout:   d,
+	}
 }
 
-// StartBatchTimer starts the batch timer and reset the batchTimerActive to true.
-// TODO (YH): add restartTimer???
-func (timer *BatchTimer) StartBatchTimer() {
-	// stop old timer
-	timer.StopBatchTimer()
-	timer.logger.Debug("Leader start batch timer")
-	timestamp := time.Now().Unix()
-	key := strconv.FormatInt(timestamp, 10)
-	timer.isActive.Set(key, true)
+// Stop stops all timers managed by timerManager
+func (tm *timerManager) Stop() {
+	for timerName := range tm.timersM {
+		tm.stopTimer(timerName)
+	}
+}
 
-	time.AfterFunc(timer.timeout, func() {
-		if timer.isActive.Has(key) {
-			timer.timeoutEventC <- true
+// stopTimer stops all timers with the same timerName.
+func (tm *timerManager) stopTimer(timerName string) {
+	if !tm.containsTimer(timerName) {
+		return
+	}
+
+	tm.timersM[timerName].clear()
+}
+
+// containsTimer returns true if there exists a timer named timerName
+func (tm *timerManager) containsTimer(timerName string) bool {
+	if t, ok := tm.timersM[timerName]; ok {
+		return t.isTimerActive()
+	}
+	return false
+}
+
+// startTimer starts the timer with the given name and default timeout, then sets the event which will be triggered
+// after this timeout
+func (tm *timerManager) startTimer(name string) {
+	tm.stopTimer(name)
+
+	event := batchTimeoutEvent(name)
+
+	timestamp := time.Now().UnixNano()
+	key := strconv.FormatInt(timestamp, 10)
+	tm.timersM[name].isActive.Set(key, true)
+	time.AfterFunc(tm.timersM[name].timeout, func() {
+		if tm.timersM[name].isActive.Has(key) {
+			tm.eventChan <- event
 		}
 	})
 }
 
-// StopBatchTimer stops the batch timer and reset the batchTimerActive to false.
-func (timer *BatchTimer) StopBatchTimer() {
-	if timer.isActive.IsEmpty() {
-		return
+func (tm *timerManager) isTimerActive(name string) bool {
+	if t, ok := tm.timersM[name]; ok {
+		return t.isTimerActive()
 	}
-	timer.logger.Debugf("Leader stop batch timer")
-	timer.isActive = cmap.New()
-}
-
-func (timer *BatchTimer) BatchTimeoutEvent() chan bool {
-	return timer.timeoutEventC
+	return false
 }

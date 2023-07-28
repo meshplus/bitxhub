@@ -17,18 +17,20 @@ import (
 )
 
 type Node struct {
-	ID           uint64
-	isTimed      bool
-	commitC      chan *pb.CommitEvent // block channel
-	logger       logrus.FieldLogger   // logger
-	mempool      mempool.MemPool      // transaction pool
-	recvCh       chan consensusEvent  // receive message from consensus engine
-	stateC       chan *mempool.ChainState
-	txCache      *mempool.TxCache // cache the transactions received from api
-	batchMgr     *BatchTimer
-	blockTimeout time.Duration            // generate block period
-	lastExec     uint64                   // the index of the last-applied block
-	peerMgr      peermgr.OrderPeerManager // network manager
+	ID               uint64
+	isTimed          bool
+	commitC          chan *pb.CommitEvent   // block channel
+	logger           logrus.FieldLogger     // logger
+	mempool          mempool.MemPool        // transaction pool
+	recvCh           chan consensusEvent    // receive message from consensus engine
+	batchTimeoutCh   chan batchTimeoutEvent // receive batch timeout message from consensus engine
+	stateC           chan *mempool.ChainState
+	txCache          *mempool.TxCache // cache the transactions received from api
+	batchMgr         *timerManager
+	noTxBatchTimeout time.Duration            // generate no-tx block period
+	batchTimeout     time.Duration            // generate block period
+	lastExec         uint64                   // the index of the last-applied block
+	peerMgr          peermgr.OrderPeerManager // network manager
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -47,6 +49,10 @@ func (n *Node) GetPendingTxByHash(hash *types.Hash) pb.Transaction {
 
 func (n *Node) Start() error {
 	n.ctx, n.cancel = context.WithCancel(context.Background())
+	n.logger.Info("consensus started")
+	if n.isTimed {
+		n.batchMgr.startTimer(NoTxBatch)
+	}
 	go n.txCache.ListenEvent(n.ctx)
 	go n.listenReadyBlock()
 	return nil
@@ -117,13 +123,13 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 		return nil, fmt.Errorf("generate solo txpool config: %w", err)
 	}
 	mempoolConf := &mempool.Config{
-		ID:              config.ID,
-		IsTimed:         timedGenBlock.Enable,
-		BlockTimeout:    timedGenBlock.BlockTimeout,
-		ChainHeight:     config.Applied,
-		Logger:          config.Logger,
-		StoragePath:     config.StoragePath,
-		GetAccountNonce: config.GetAccountNonce,
+		ID:               config.ID,
+		IsTimed:          timedGenBlock.Enable,
+		NoTxBatchTimeout: timedGenBlock.NoTxBatchTimeout,
+		ChainHeight:      config.Applied,
+		Logger:           config.Logger,
+		StoragePath:      config.StoragePath,
+		GetAccountNonce:  config.GetAccountNonce,
 
 		BatchSize:      memConfig.BatchSize,
 		PoolSize:       memConfig.PoolSize,
@@ -135,21 +141,27 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 		return nil, fmt.Errorf("create mempool instance: %w", err)
 	}
 	txCache := mempool.NewTxCache(mempoolConf.TxSliceTimeout, mempoolConf.TxSliceSize, config.Logger)
-	batchTimerMgr := NewTimer(batchTimeout, config.Logger)
+	// init batch timer manager
+	batchTimeoutCh := make(chan batchTimeoutEvent, 1024)
+	batchTimerMgr := NewTimerManager(batchTimeoutCh, config.Logger)
+	batchTimerMgr.newTimer(Batch, batchTimeout)
+	batchTimerMgr.newTimer(NoTxBatch, mempoolConf.NoTxBatchTimeout)
 
 	soloNode := &Node{
-		ID:           config.ID,
-		isTimed:      mempoolConf.IsTimed,
-		blockTimeout: mempoolConf.BlockTimeout,
-		commitC:      make(chan *pb.CommitEvent, 1024),
-		stateC:       make(chan *mempool.ChainState),
-		recvCh:       make(chan consensusEvent),
-		lastExec:     config.Applied,
-		mempool:      mempoolInst,
-		txCache:      txCache,
-		batchMgr:     batchTimerMgr,
-		peerMgr:      config.PeerMgr,
-		logger:       config.Logger,
+		ID:               config.ID,
+		isTimed:          mempoolConf.IsTimed,
+		noTxBatchTimeout: mempoolConf.NoTxBatchTimeout,
+		batchTimeout:     batchTimeout,
+		commitC:          make(chan *pb.CommitEvent, 1024),
+		stateC:           make(chan *mempool.ChainState),
+		recvCh:           make(chan consensusEvent),
+		batchTimeoutCh:   batchTimeoutCh,
+		lastExec:         config.Applied,
+		mempool:          mempoolInst,
+		txCache:          txCache,
+		batchMgr:         batchTimerMgr,
+		peerMgr:          config.PeerMgr,
+		logger:           config.Logger,
 	}
 	soloNode.logger.Infof("SOLO lastExec = %d", soloNode.lastExec)
 	soloNode.logger.Infof("SOLO batch timeout = %v", batchTimeout)
@@ -162,10 +174,6 @@ func (n *Node) SubmitTxsFromRemote(tsx [][]byte) error {
 
 // Schedule to collect txs to the listenReadyBlock channel
 func (n *Node) listenReadyBlock() {
-	var blockTicker <-chan time.Time
-	if n.isTimed && blockTicker == nil {
-		blockTicker = time.Tick(n.blockTimeout)
-	}
 	go func() {
 		for {
 			select {
@@ -211,24 +219,27 @@ func (n *Node) listenReadyBlock() {
 	}()
 
 	for {
-
 		select {
 		case <-n.ctx.Done():
 			n.logger.Info("----- Exit listen ready block loop -----")
 			return
 
 		case txWithResp := <-n.txCache.TxRespC:
-			if !n.isTimed {
-				// start batch timer when this node receives the first transaction
-				if !n.batchMgr.IsBatchTimerActive() {
-					n.batchMgr.StartBatchTimer()
+			// stop no-tx batch timer when this node receives the first transaction
+			n.batchMgr.stopTimer(NoTxBatch)
+			// start batch timer when this node receives the first transaction
+			if !n.batchMgr.isTimerActive(Batch) {
+				n.batchMgr.startTimer(Batch)
+			}
+			if batch := n.mempool.ProcessTransactions([]pb.Transaction{txWithResp.Tx}, true, true); batch != nil {
+				n.batchMgr.stopTimer(Batch)
+				n.recvCh <- batch
+				// start no-tx batch timer when this node handle the last transaction
+				if n.isTimed && !n.mempool.HasPendingRequest() {
+					if !n.batchMgr.isTimerActive(NoTxBatch) {
+						n.batchMgr.startTimer(NoTxBatch)
+					}
 				}
-				if batch := n.mempool.ProcessTransactions([]pb.Transaction{txWithResp.Tx}, true, true); batch != nil {
-					n.batchMgr.StopBatchTimer()
-					n.recvCh <- batch
-				}
-			} else {
-				n.mempool.ProcessTransactions([]pb.Transaction{txWithResp.Tx}, true, true)
 			}
 			txWithResp.Ch <- true
 		case state := <-n.stateC:
@@ -240,24 +251,41 @@ func (n *Node) listenReadyBlock() {
 			}
 			n.mempool.CommitTransactions(state)
 
-		case <-n.batchMgr.BatchTimeoutEvent():
-			n.batchMgr.StopBatchTimer()
-			n.logger.Debug("Batch timer expired, try to create a batch")
-			if n.mempool.HasPendingRequest() {
-				if batch := n.mempool.GenerateBlock(); batch != nil {
-					n.postProposal(batch)
-					n.batchMgr.StartBatchTimer()
-				}
-			} else {
-				n.logger.Debug("The length of priorityIndex is 0, skip the batch timer")
-			}
+		case event := <-n.batchTimeoutCh:
+			switch event {
+			case Batch:
+				n.batchMgr.stopTimer(Batch)
+				n.logger.Debug("Batch timer expired, try to create a batch")
+				if n.mempool.HasPendingRequest() {
+					if batch := n.mempool.GenerateBlock(); batch != nil {
+						n.postProposal(batch)
+						n.batchMgr.startTimer(Batch)
 
-		case <-blockTicker:
-			if !n.mempool.HasPendingRequest() {
-				n.logger.Debug("start create empty block")
+						// check if there is no tx in the mempool, start the no tx batch timer
+						if n.isTimed && !n.mempool.HasPendingRequest() {
+							if !n.batchMgr.isTimerActive(NoTxBatch) {
+								n.batchMgr.startTimer(NoTxBatch)
+							}
+						}
+					}
+				} else {
+					n.logger.Debug("The length of priorityIndex is 0, skip the batch timer")
+				}
+			case NoTxBatch:
+				if !n.isTimed {
+					n.logger.Warningf("The node is not support the no-tx batch, skip the timer")
+					continue
+				}
+				if !n.mempool.HasPendingRequest() {
+					n.batchMgr.stopTimer(NoTxBatch)
+					n.logger.Debug("start create empty block")
+					batch := n.mempool.GenerateBlock()
+					n.postProposal(batch)
+					if !n.batchMgr.isTimerActive(NoTxBatch) {
+						n.batchMgr.startTimer(NoTxBatch)
+					}
+				}
 			}
-			batch := n.mempool.GenerateBlock()
-			n.postProposal(batch)
 		}
 	}
 }
