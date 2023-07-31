@@ -8,6 +8,7 @@ import (
 	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/meshplus/bitxhub-kit/storage/blockfile"
 	"github.com/meshplus/bitxhub-kit/storage/leveldb"
+	"github.com/meshplus/bitxhub-kit/storage/pebble"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/eth-kit/ledger"
@@ -118,23 +119,26 @@ func (l *Ledger) Close() {
 
 type stateStorage interface{}
 
-func OpenStateDB(file string, typ string) (stateStorage, error) {
+func OpenStateDB(file string, typ string, kv string) (stateStorage, error) {
 	var storage stateStorage
 	var err error
 
 	if typ == "simple" {
-		storage, err = leveldb.New(file)
-		if err != nil {
-			return nil, fmt.Errorf("init leveldb failed: %w", err)
+		if kv == "leveldb" {
+			storage, err = leveldb.New(file)
+			if err != nil {
+				return nil, fmt.Errorf("init leveldb failed: %w", err)
+			}
+		} else if kv == "pebble" {
+			storage, err = pebble.New(file)
+			if err != nil {
+				return nil, fmt.Errorf("init pebble failed: %w", err)
+			}
+		} else {
+			return nil, fmt.Errorf("unknow kv type %s, expect leveldb or pebble", kv)
 		}
-	} else if typ == "complex" {
-		// storage, err = rawdb.NewLevelDBDatabase(file, 0, 0, "", false)
-		// if err != nil {
-		// 	return nil, fmt.Errorf("init rawdb failed: %w", err)
-		// }
-		return nil, fmt.Errorf("unknow storage type %s, expect simple or complex", typ)
 	} else {
-		return nil, fmt.Errorf("unknow storage type %s, expect simple or complex", typ)
+		return nil, fmt.Errorf("unknow storage type %s, expect simple", typ)
 	}
 
 	return storage, nil

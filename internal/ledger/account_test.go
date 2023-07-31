@@ -7,8 +7,10 @@ import (
 	"testing"
 
 	"github.com/meshplus/bitxhub-kit/log"
+	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/meshplus/bitxhub-kit/storage/blockfile"
 	"github.com/meshplus/bitxhub-kit/storage/leveldb"
+	"github.com/meshplus/bitxhub-kit/storage/pebble"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/stretchr/testify/assert"
 )
@@ -16,40 +18,58 @@ import (
 func TestAccount_GetState(t *testing.T) {
 	repoRoot, err := ioutil.TempDir("", "ledger_commit")
 	assert.Nil(t, err)
-	blockStorage, err := leveldb.New(filepath.Join(repoRoot, "storage"))
-	assert.Nil(t, err)
-	ldb, err := leveldb.New(filepath.Join(repoRoot, "ledger"))
-	assert.Nil(t, err)
 
-	accountCache, err := NewAccountCache()
+	lBlockStorage, err := leveldb.New(filepath.Join(repoRoot, "lStorage"))
 	assert.Nil(t, err)
-	logger := log.NewWithModule("account_test")
-	blockFile, err := blockfile.NewBlockFile(repoRoot, logger)
+	lStateStorage, err := leveldb.New(filepath.Join(repoRoot, "lLedger"))
 	assert.Nil(t, err)
-	ledger, err := New(createMockRepo(t), blockStorage, ldb, blockFile, accountCache, log.NewWithModule("ChainLedger"))
+	pBlockStorage, err := pebble.New(filepath.Join(repoRoot, "pStorage"))
+	assert.Nil(t, err)
+	pStateStorage, err := pebble.New(filepath.Join(repoRoot, "pLedger"))
 	assert.Nil(t, err)
 
-	addr := types.NewAddressByStr("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")
-	stateLedger := ledger.StateLedger.(*StateLedger)
-	account := newAccount(stateLedger.ldb, stateLedger.accountCache, addr, newChanger())
+	testcase := map[string]struct {
+		blockStorage storage.Storage
+		stateStorage stateStorage
+	}{
+		"leveldb": {blockStorage: lBlockStorage, stateStorage: lStateStorage},
+		"pebble":  {blockStorage: pBlockStorage, stateStorage: pStateStorage},
+	}
 
-	addr1 := account.GetAddress()
-	assert.Equal(t, addr, addr1)
+	for name, tc := range testcase {
+		t.Run(name, func(t *testing.T) {
+			accountCache, err := NewAccountCache()
+			assert.Nil(t, err)
+			logger := log.NewWithModule("account_test")
+			blockFile, err := blockfile.NewBlockFile(filepath.Join(repoRoot, name), logger)
+			assert.Nil(t, err)
+			ledger, err := New(createMockRepo(t), tc.blockStorage, tc.stateStorage, blockFile, accountCache, log.NewWithModule("ChainLedger"))
+			assert.Nil(t, err)
 
-	account.SetState([]byte("a"), []byte("b"))
-	ok, v := account.GetState([]byte("a"))
-	assert.True(t, ok)
-	assert.Equal(t, []byte("b"), v)
+			addr := types.NewAddressByStr("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")
+			stateLedger := ledger.StateLedger.(*StateLedger)
+			account := newAccount(stateLedger.ldb, stateLedger.accountCache, addr, newChanger())
 
-	ok, v = account.GetState([]byte("a"))
-	assert.True(t, ok)
-	assert.Equal(t, []byte("b"), v)
+			addr1 := account.GetAddress()
+			assert.Equal(t, addr, addr1)
 
-	account.SetState([]byte("a"), nil)
-	ok, v = account.GetState([]byte("a"))
-	assert.False(t, ok)
-	assert.Nil(t, v)
-	account.GetCommittedState([]byte("a"))
+			account.SetState([]byte("a"), []byte("b"))
+			ok, v := account.GetState([]byte("a"))
+			assert.True(t, ok)
+			assert.Equal(t, []byte("b"), v)
+
+			ok, v = account.GetState([]byte("a"))
+			assert.True(t, ok)
+			assert.Equal(t, []byte("b"), v)
+
+			account.SetState([]byte("a"), nil)
+			ok, v = account.GetState([]byte("a"))
+			assert.False(t, ok)
+			assert.Nil(t, v)
+			account.GetCommittedState([]byte("a"))
+		})
+	}
+
 }
 
 func TestAccount_AddState(t *testing.T) {
@@ -59,30 +79,47 @@ func TestAccount_AddState(t *testing.T) {
 func TestAccount_AccountBalance(t *testing.T) {
 	repoRoot, err := ioutil.TempDir("", "ledger_commit")
 	assert.Nil(t, err)
-	blockStorage, err := leveldb.New(filepath.Join(repoRoot, "storage"))
-	assert.Nil(t, err)
-	ldb, err := leveldb.New(filepath.Join(repoRoot, "ledger"))
-	assert.Nil(t, err)
 
-	accountCache, err := NewAccountCache()
+	lBlockStorage, err := leveldb.New(filepath.Join(repoRoot, "lStorage"))
 	assert.Nil(t, err)
-	logger := log.NewWithModule("account_test")
-	blockFile, err := blockfile.NewBlockFile(repoRoot, logger)
+	lStateStorage, err := leveldb.New(filepath.Join(repoRoot, "lLedger"))
 	assert.Nil(t, err)
-	ledger, err := New(createMockRepo(t), blockStorage, ldb, blockFile, accountCache, log.NewWithModule("ChainLedger"))
+	pBlockStorage, err := pebble.New(filepath.Join(repoRoot, "pStorage"))
+	assert.Nil(t, err)
+	pStateStorage, err := pebble.New(filepath.Join(repoRoot, "pLedger"))
 	assert.Nil(t, err)
 
-	addr := types.NewAddressByStr("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")
-	stateLedger := ledger.StateLedger.(*StateLedger)
-	account := newAccount(stateLedger.ldb, stateLedger.accountCache, addr, newChanger())
+	testcase := map[string]struct {
+		blockStorage storage.Storage
+		stateStorage stateStorage
+	}{
+		"leveldb": {blockStorage: lBlockStorage, stateStorage: lStateStorage},
+		"pebble":  {blockStorage: pBlockStorage, stateStorage: pStateStorage},
+	}
 
-	account.AddBalance(big.NewInt(1))
-	account.SubBalance(big.NewInt(1))
+	for name, tc := range testcase {
+		t.Run(name, func(t *testing.T) {
+			accountCache, err := NewAccountCache()
+			assert.Nil(t, err)
+			logger := log.NewWithModule("account_test")
+			blockFile, err := blockfile.NewBlockFile(filepath.Join(repoRoot, name), logger)
+			assert.Nil(t, err)
+			ledger, err := New(createMockRepo(t), tc.blockStorage, tc.stateStorage, blockFile, accountCache, log.NewWithModule("ChainLedger"))
+			assert.Nil(t, err)
 
-	account.SubBalance(big.NewInt(0))
+			addr := types.NewAddressByStr("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")
+			stateLedger := ledger.StateLedger.(*StateLedger)
+			account := newAccount(stateLedger.ldb, stateLedger.accountCache, addr, newChanger())
 
-	account.setCodeAndHash([]byte{'1'})
-	account.dirtyAccount = nil
-	account.setBalance(big.NewInt(1))
+			account.AddBalance(big.NewInt(1))
+			account.SubBalance(big.NewInt(1))
+
+			account.SubBalance(big.NewInt(0))
+
+			account.setCodeAndHash([]byte{'1'})
+			account.dirtyAccount = nil
+			account.setBalance(big.NewInt(1))
+		})
+	}
 
 }

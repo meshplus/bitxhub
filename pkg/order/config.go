@@ -14,6 +14,7 @@ type Config struct {
 	IsNew            bool
 	RepoRoot         string
 	StoragePath      string
+	StorageType      string
 	OrderType        string
 	PeerMgr          peermgr.OrderPeerManager
 	PrivKey          crypto.PrivateKey
@@ -49,6 +50,12 @@ func WithRepoRoot(path string) Option {
 func WithStoragePath(path string) Option {
 	return func(config *Config) {
 		config.StoragePath = path
+	}
+}
+
+func WithStorageType(typ string) Option {
+	return func(config *Config) {
+		config.StorageType = typ
 	}
 }
 

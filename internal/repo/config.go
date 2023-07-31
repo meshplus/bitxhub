@@ -169,6 +169,7 @@ type Executor struct {
 
 type Ledger struct {
 	Type string `toml:"type" json:"type"`
+	Kv   string `toml:"kv" json:"kv"`
 }
 
 type Crypto struct {

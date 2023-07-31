@@ -12,8 +12,10 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/meshplus/bitxhub-kit/hexutil"
 	"github.com/meshplus/bitxhub-kit/log"
+	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/meshplus/bitxhub-kit/storage/blockfile"
 	"github.com/meshplus/bitxhub-kit/storage/leveldb"
+	"github.com/meshplus/bitxhub-kit/storage/pebble"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/model/events"
@@ -370,50 +372,66 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 	repoRoot, err := ioutil.TempDir("", "executor")
 	require.Nil(t, err)
 
-	blockchainStorage, err := leveldb.New(filepath.Join(repoRoot, "storage"))
-	require.Nil(t, err)
-	ldb, err := leveldb.New(filepath.Join(repoRoot, "ledger"))
-	require.Nil(t, err)
-
-	accountCache, err := ledger.NewAccountCache()
+	lBlockStorage, err := leveldb.New(filepath.Join(repoRoot, "lStorage"))
 	assert.Nil(t, err)
-	logger := log.NewWithModule("executor_test")
-	blockFile, err := blockfile.NewBlockFile(repoRoot, logger)
+	lStateStorage, err := leveldb.New(filepath.Join(repoRoot, "lLedger"))
 	assert.Nil(t, err)
-	ldg, err := ledger.New(createMockRepo(t), blockchainStorage, ldb, blockFile, accountCache, log.NewWithModule("ledger"))
-	require.Nil(t, err)
+	pBlockStorage, err := pebble.New(filepath.Join(repoRoot, "pStorage"))
+	assert.Nil(t, err)
+	pStateStorage, err := pebble.New(filepath.Join(repoRoot, "pLedger"))
+	assert.Nil(t, err)
 
-	from, err := types.GenerateSigner()
-	require.Nil(t, err)
-	to := types.NewAddressByStr("0xdAC17F958D2ee523a2206206994597C13D831ec7")
+	testcase := map[string]struct {
+		blockStorage storage.Storage
+		stateStorage interface{}
+	}{
+		"leveldb": {blockStorage: lBlockStorage, stateStorage: lStateStorage},
+		"pebble":  {blockStorage: pBlockStorage, stateStorage: pStateStorage},
+	}
 
-	ldg.SetBalance(from.Addr, new(big.Int).SetInt64(21000*5000000*1000000))
-	account, journal := ldg.FlushDirtyData()
-	err = ldg.Commit(1, account, journal)
-	require.Nil(t, err)
-	err = ldg.PersistExecutionResult(mockBlock(1, nil), nil)
-	require.Nil(t, err)
+	for name, tc := range testcase {
+		t.Run(name, func(t *testing.T) {
+			accountCache, err := ledger.NewAccountCache()
+			assert.Nil(t, err)
+			logger := log.NewWithModule("executor_test")
+			blockFile, err := blockfile.NewBlockFile(filepath.Join(repoRoot, name), logger)
+			assert.Nil(t, err)
+			ldg, err := ledger.New(createMockRepo(t), tc.blockStorage, tc.stateStorage, blockFile, accountCache, log.NewWithModule("ledger"))
+			require.Nil(t, err)
 
-	executor, err := New(ldg, log.NewWithModule("executor"), config, func() (*big.Int, error) {
-		return big.NewInt(5), nil
-	})
-	require.Nil(t, err)
-	err = executor.Start()
-	require.Nil(t, err)
+			from, err := types.GenerateSigner()
+			require.Nil(t, err)
+			to := types.NewAddressByStr("0xdAC17F958D2ee523a2206206994597C13D831ec7")
 
-	ch := make(chan events.ExecutedEvent)
-	sub := executor.SubscribeBlockEvent(ch)
-	defer sub.Unsubscribe()
+			ldg.SetBalance(from.Addr, new(big.Int).SetInt64(21000*5000000*1000000))
+			account, journal := ldg.FlushDirtyData()
+			err = ldg.Commit(1, account, journal)
+			require.Nil(t, err)
+			err = ldg.PersistExecutionResult(mockBlock(1, nil), nil)
+			require.Nil(t, err)
 
-	tx1 := mockTransferTx(t, from, to, 0, 1)
-	tx2 := mockTransferTx(t, from, to, 1, 1)
-	tx3 := mockTransferTx(t, from, to, 2, 1)
-	commitEvent := mockCommitEvent(2, []*types.Transaction{tx1, tx2, tx3})
-	executor.ExecuteBlock(commitEvent)
+			executor, err := New(ldg, log.NewWithModule("executor"), config, func() (*big.Int, error) {
+				return big.NewInt(5), nil
+			})
+			require.Nil(t, err)
+			err = executor.Start()
+			require.Nil(t, err)
 
-	block := <-ch
-	require.EqualValues(t, 2, block.Block.Height())
-	require.EqualValues(t, 3, ldg.GetBalance(to).Uint64())
+			ch := make(chan events.ExecutedEvent)
+			sub := executor.SubscribeBlockEvent(ch)
+			defer sub.Unsubscribe()
+
+			tx1 := mockTransferTx(t, from, to, 0, 1)
+			tx2 := mockTransferTx(t, from, to, 1, 1)
+			tx3 := mockTransferTx(t, from, to, 2, 1)
+			commitEvent := mockCommitEvent(2, []*types.Transaction{tx1, tx2, tx3})
+			executor.ExecuteBlock(commitEvent)
+
+			block := <-ch
+			require.EqualValues(t, 2, block.Block.Height())
+			require.EqualValues(t, 3, ldg.GetBalance(to).Uint64())
+		})
+	}
 }
 
 func mockTransferTx(t *testing.T, s *types.Signer, to *types.Address, nonce, amount int) *types.Transaction {

@@ -16,6 +16,7 @@ import (
 	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/meshplus/bitxhub-kit/storage/blockfile"
 	"github.com/meshplus/bitxhub-kit/storage/leveldb"
+	"github.com/meshplus/bitxhub-kit/storage/pebble"
 	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/eth-kit/ledger"
@@ -26,108 +27,220 @@ import (
 func TestNew001(t *testing.T) {
 	repoRoot := t.TempDir()
 
-	blockStorage, err := leveldb.New(filepath.Join(repoRoot, "storage"))
+	lBlockStorage, err := leveldb.New(filepath.Join(repoRoot, "lStorage"))
 	assert.Nil(t, err)
-	ldb, err := leveldb.New(filepath.Join(repoRoot, "ledger"))
+	lStateStorage, err := leveldb.New(filepath.Join(repoRoot, "lLedger"))
+	assert.Nil(t, err)
+	pBlockStorage, err := pebble.New(filepath.Join(repoRoot, "pStorage"))
+	assert.Nil(t, err)
+	pStateStorage, err := pebble.New(filepath.Join(repoRoot, "pLedger"))
 	assert.Nil(t, err)
 
-	logger := log.NewWithModule("account_test")
-	blockFile, err := blockfile.NewBlockFile(repoRoot, logger)
-	assert.Nil(t, err)
-	lg, err := New(createMockRepo(t), blockStorage, ldb, blockFile, nil, log.NewWithModule("executor"))
-	require.Nil(t, err)
-	require.NotNil(t, lg)
+	testcase := map[string]struct {
+		blockStorage storage.Storage
+		stateStorage stateStorage
+	}{
+		"leveldb": {blockStorage: lBlockStorage, stateStorage: lStateStorage},
+		"pebble":  {blockStorage: pBlockStorage, stateStorage: pStateStorage},
+	}
+
+	for name, tc := range testcase {
+		t.Run(name, func(t *testing.T) {
+			logger := log.NewWithModule("account_test")
+			blockFile, err := blockfile.NewBlockFile(filepath.Join(repoRoot, name), logger)
+			assert.Nil(t, err)
+			l, err := New(createMockRepo(t), tc.blockStorage, tc.stateStorage, blockFile, nil, log.NewWithModule("executor"))
+			require.Nil(t, err)
+			require.NotNil(t, l)
+		})
+	}
 }
 
 func TestNew002(t *testing.T) {
 	repoRoot := t.TempDir()
 
-	blockStorage, err := leveldb.New(filepath.Join(repoRoot, "storage"))
+	lBlockStorage, err := leveldb.New(filepath.Join(repoRoot, "lStorage"))
 	assert.Nil(t, err)
-	ldb, err := leveldb.New(filepath.Join(repoRoot, "ledger"))
+	lStateStorage, err := leveldb.New(filepath.Join(repoRoot, "lLedger"))
+	assert.Nil(t, err)
+	pBlockStorage, err := pebble.New(filepath.Join(repoRoot, "pStorage"))
+	assert.Nil(t, err)
+	pStateStorage, err := pebble.New(filepath.Join(repoRoot, "pLedger"))
 	assert.Nil(t, err)
 
-	blockStorage.Put([]byte(chainMetaKey), []byte{1})
+	testcase := map[string]struct {
+		blockStorage storage.Storage
+		stateStorage stateStorage
+	}{
+		"leveldb": {blockStorage: lBlockStorage, stateStorage: lStateStorage},
+		"pebble":  {blockStorage: pBlockStorage, stateStorage: pStateStorage},
+	}
 
-	accountCache, err := NewAccountCache()
-	assert.Nil(t, err)
-	logger := log.NewWithModule("account_test")
-	blockFile, err := blockfile.NewBlockFile(repoRoot, logger)
-	assert.Nil(t, err)
-	lg, err := New(createMockRepo(t), blockStorage, ldb, blockFile, accountCache, log.NewWithModule("executor"))
-	require.NotNil(t, err)
-	require.Nil(t, lg)
+	for name, tc := range testcase {
+		t.Run(name, func(t *testing.T) {
+			tc.blockStorage.Put([]byte(chainMetaKey), []byte{1})
+			accountCache, err := NewAccountCache()
+			assert.Nil(t, err)
+			logger := log.NewWithModule("account_test")
+			blockFile, err := blockfile.NewBlockFile(filepath.Join(repoRoot, name), logger)
+			assert.Nil(t, err)
+			l, err := New(createMockRepo(t), tc.blockStorage, tc.stateStorage, blockFile, accountCache, log.NewWithModule("executor"))
+			require.NotNil(t, err)
+			require.Nil(t, l)
+		})
+	}
 }
 
 func TestNew003(t *testing.T) {
 	repoRoot := t.TempDir()
 
-	blockStorage, err := leveldb.New(filepath.Join(repoRoot, "storage"))
+	lBlockStorage, err := leveldb.New(filepath.Join(repoRoot, "lStorage"))
 	assert.Nil(t, err)
-	ldb, err := leveldb.New(filepath.Join(repoRoot, "ledger"))
+	lStateStorage, err := leveldb.New(filepath.Join(repoRoot, "lLedger"))
+	assert.Nil(t, err)
+	pBlockStorage, err := pebble.New(filepath.Join(repoRoot, "pStorage"))
+	assert.Nil(t, err)
+	pStateStorage, err := pebble.New(filepath.Join(repoRoot, "pLedger"))
 	assert.Nil(t, err)
 
-	ldb.Put(compositeKey(journalKey, maxHeightStr), marshalHeight(1))
+	testcase := map[string]struct {
+		blockStorage storage.Storage
+		stateStorage stateStorage
+	}{
+		"leveldb": {blockStorage: lBlockStorage, stateStorage: lStateStorage},
+		"pebble":  {blockStorage: pBlockStorage, stateStorage: pStateStorage},
+	}
 
-	logger := log.NewWithModule("account_test")
-	blockFile, err := blockfile.NewBlockFile(repoRoot, logger)
-	assert.Nil(t, err)
-	lg, err := New(createMockRepo(t), blockStorage, ldb, blockFile, nil, log.NewWithModule("executor"))
-	require.NotNil(t, err)
-	require.Nil(t, lg)
+	for name, tc := range testcase {
+		t.Run(name, func(t *testing.T) {
+			tc.stateStorage.(storage.Storage).Put(compositeKey(journalKey, maxHeightStr), marshalHeight(1))
+			logger := log.NewWithModule("account_test")
+			blockFile, err := blockfile.NewBlockFile(filepath.Join(repoRoot, name), logger)
+			assert.Nil(t, err)
+			l, err := New(createMockRepo(t), tc.blockStorage, tc.stateStorage, blockFile, nil, log.NewWithModule("executor"))
+			require.NotNil(t, err)
+			require.Nil(t, l)
+		})
+	}
 }
 
 func TestNew004(t *testing.T) {
 	repoRoot := t.TempDir()
 
-	blockStorage, err := leveldb.New(filepath.Join(repoRoot, "storage"))
+	lBlockStorage, err := leveldb.New(filepath.Join(repoRoot, "lStorage"))
 	assert.Nil(t, err)
-	ldb, err := leveldb.New(filepath.Join(repoRoot, "ledger"))
+	lStateStorage, err := leveldb.New(filepath.Join(repoRoot, "lLedger"))
 	assert.Nil(t, err)
-
-	ldb.Put(compositeKey(journalKey, maxHeightStr), marshalHeight(1))
-
-	journal := &BlockJournal{}
-	data, err := json.Marshal(journal)
+	pBlockStorage, err := pebble.New(filepath.Join(repoRoot, "pStorage"))
+	assert.Nil(t, err)
+	pStateStorage, err := pebble.New(filepath.Join(repoRoot, "pLedger"))
 	assert.Nil(t, err)
 
-	ldb.Put(compositeKey(journalKey, 1), data)
+	testcase := map[string]struct {
+		blockStorage storage.Storage
+		stateStorage stateStorage
+	}{
+		"leveldb": {blockStorage: lBlockStorage, stateStorage: lStateStorage},
+		"pebble":  {blockStorage: pBlockStorage, stateStorage: pStateStorage},
+	}
 
-	logger := log.NewWithModule("account_test")
-	blockFile, err := blockfile.NewBlockFile(repoRoot, logger)
-	assert.Nil(t, err)
-	lg, err := New(createMockRepo(t), blockStorage, ldb, blockFile, nil, log.NewWithModule("executor"))
-	require.Nil(t, err)
-	require.NotNil(t, lg)
+	for name, tc := range testcase {
+		t.Run(name, func(t *testing.T) {
+			kvdb := tc.stateStorage.(storage.Storage)
+			kvdb.Put(compositeKey(journalKey, maxHeightStr), marshalHeight(1))
+
+			journal := &BlockJournal{}
+			data, err := json.Marshal(journal)
+			assert.Nil(t, err)
+
+			kvdb.Put(compositeKey(journalKey, 1), data)
+
+			logger := log.NewWithModule("account_test")
+			blockFile, err := blockfile.NewBlockFile(filepath.Join(repoRoot, name), logger)
+			assert.Nil(t, err)
+			l, err := New(createMockRepo(t), tc.blockStorage, kvdb, blockFile, nil, log.NewWithModule("executor"))
+			require.Nil(t, err)
+			require.NotNil(t, l)
+		})
+	}
 }
 
 func TestNew005(t *testing.T) {
 	repoRoot := t.TempDir()
 
-	blockStorage, err := leveldb.New(filepath.Join(repoRoot, "storage"))
+	lBlockStorage, err := leveldb.New(filepath.Join(repoRoot, "lStorage"))
 	assert.Nil(t, err)
-	ldb, err := leveldb.New(filepath.Join(repoRoot, "ledger"))
+	lStateStorage, err := leveldb.New(filepath.Join(repoRoot, "lLedger"))
 	assert.Nil(t, err)
-
-	ldb.Put(compositeKey(journalKey, maxHeightStr), marshalHeight(5))
-	ldb.Put(compositeKey(journalKey, minHeightStr), marshalHeight(3))
-
-	journal := &BlockJournal{}
-	data, err := json.Marshal(journal)
+	pBlockStorage, err := pebble.New(filepath.Join(repoRoot, "pStorage"))
+	assert.Nil(t, err)
+	pStateStorage, err := pebble.New(filepath.Join(repoRoot, "pLedger"))
 	assert.Nil(t, err)
 
-	ldb.Put(compositeKey(journalKey, 5), data)
+	testcase := map[string]struct {
+		blockStorage storage.Storage
+		stateStorage stateStorage
+	}{
+		"leveldb": {blockStorage: lBlockStorage, stateStorage: lStateStorage},
+		"pebble":  {blockStorage: pBlockStorage, stateStorage: pStateStorage},
+	}
 
-	logger := log.NewWithModule("account_test")
-	blockFile, err := blockfile.NewBlockFile(repoRoot, logger)
-	assert.Nil(t, err)
-	lg, err := New(createMockRepo(t), blockStorage, ldb, blockFile, nil, log.NewWithModule("executor"))
-	require.NotNil(t, err)
-	require.Nil(t, lg)
+	for name, tc := range testcase {
+		t.Run(name, func(t *testing.T) {
+			kvdb := tc.stateStorage.(storage.Storage)
+			kvdb.Put(compositeKey(journalKey, maxHeightStr), marshalHeight(5))
+			kvdb.Put(compositeKey(journalKey, minHeightStr), marshalHeight(3))
+
+			journal := &BlockJournal{}
+			data, err := json.Marshal(journal)
+			assert.Nil(t, err)
+
+			kvdb.Put(compositeKey(journalKey, 5), data)
+
+			logger := log.NewWithModule("account_test")
+			blockFile, err := blockfile.NewBlockFile(filepath.Join(repoRoot, name), logger)
+			assert.Nil(t, err)
+			l, err := New(createMockRepo(t), tc.blockStorage, kvdb, blockFile, nil, log.NewWithModule("executor"))
+			require.NotNil(t, err)
+			require.Nil(t, l)
+		})
+	}
 }
 
-func TestChainLedger_PersistBlockData(t *testing.T) {
-	ledger, _ := initLedger(t, "")
+func Test_KV_Compatibility(t *testing.T) {
+	testcase := map[string]struct {
+		kvType string
+	}{
+		"leveldb": {kvType: "leveldb"},
+		"pebble":  {kvType: "pebble"},
+	}
+
+	for name, tc := range testcase {
+		t.Run(name, func(t *testing.T) {
+			testChainLedger_PersistBlockData(t, tc.kvType)
+			testChainLedger_Commit(t, tc.kvType)
+			testChainLedger_EVMAccessor(t, tc.kvType)
+			testChainLedger_Rollback(t, tc.kvType)
+			testChainLedger_QueryByPrefix(t, tc.kvType)
+			testChainLedger_GetAccount(t, tc.kvType)
+			testChainLedger_GetCode(t, tc.kvType)
+			testChainLedger_AddAccountsToCache(t, tc.kvType)
+			testChainLedger_AddState(t, tc.kvType)
+			testChainLedger_AddEvent(t, tc.kvType)
+			testGetBlockSign(t, tc.kvType)
+			testGetBlockByHash(t, tc.kvType)
+			testGetTransaction(t, tc.kvType)
+			testGetTransaction1(t, tc.kvType)
+			testGetTransactionMeta(t, tc.kvType)
+			testGetReceipt(t, tc.kvType)
+			testGetReceipt1(t, tc.kvType)
+			testPrepare(t, tc.kvType)
+		})
+	}
+}
+
+func testChainLedger_PersistBlockData(t *testing.T, kv string) {
+	ledger, _ := initLedger(t, "", kv)
 
 	// create an account
 	account := types.NewAddress(LeftPadBytes([]byte{100}, 20))
@@ -137,8 +250,8 @@ func TestChainLedger_PersistBlockData(t *testing.T) {
 	ledger.PersistBlockData(genBlockData(1, accounts, journal))
 }
 
-func TestChainLedger_Commit(t *testing.T) {
-	lg, repoRoot := initLedger(t, "")
+func testChainLedger_Commit(t *testing.T, kv string) {
+	lg, repoRoot := initLedger(t, "", kv)
 
 	// create an account
 	account := types.NewAddress(LeftPadBytes([]byte{100}, 20))
@@ -247,7 +360,7 @@ func TestChainLedger_Commit(t *testing.T) {
 	lg.Close()
 
 	// load ChainLedger from db, rollback to height 0 since no chain meta stored
-	ldg, _ := initLedger(t, repoRoot)
+	ldg, _ := initLedger(t, repoRoot, kv)
 	stateLedger = ldg.StateLedger.(*StateLedger)
 	assert.Equal(t, uint64(0), stateLedger.maxJnlHeight)
 	assert.Equal(t, &types.Hash{}, stateLedger.prevJnlHash)
@@ -270,23 +383,48 @@ func TestChainLedger_Commit(t *testing.T) {
 }
 
 func TestChainLedger_OpenStateDB(t *testing.T) {
-	repoRoot := t.TempDir()
-
-	logger := log.NewWithModule("opendb_test")
-	ldb, err := OpenStateDB(repoRoot, "simple")
-	assert.Nil(t, err)
-	blockFile, err := blockfile.NewBlockFile("", logger)
-	assert.NotNil(t, err)
-	blockStorage, err := leveldb.New(filepath.Join(repoRoot, "ledger"))
-	assert.Nil(t, err)
-	accountCache, err := NewAccountCache()
-	assert.Nil(t, err)
-	_, err = New(createMockRepo(t), blockStorage, ldb, blockFile, accountCache, log.NewWithModule("executor"))
-	assert.Nil(t, err)
+	testcase := map[string]struct {
+		kvType string
+	}{
+		"leveldb": {kvType: "leveldb"},
+		"pebble":  {kvType: "pebble"},
+	}
+	for name, tc := range testcase {
+		t.Run(name, func(t *testing.T) {
+			repoRoot := t.TempDir()
+			ss, err := OpenStateDB(filepath.Join(repoRoot, tc.kvType), "simple", tc.kvType)
+			assert.Nil(t, err)
+			assert.NotNil(t, ss)
+			ss, err = OpenStateDB(filepath.Join(repoRoot, tc.kvType), "simple", tc.kvType)
+			assert.NotNil(t, err)
+			assert.Nil(t, ss)
+			assert.Contains(t, err.Error(), "init "+tc.kvType+" failed")
+		})
+	}
 }
 
-func TestChainLedger_EVMAccessor(t *testing.T) {
-	ledger, _ := initLedger(t, "")
+func TestChainLedger_OpenStateDB_WrongType(t *testing.T) {
+	testcase := map[string]struct {
+		ledgerType string
+		kvType     string
+		expected   string
+	}{
+		"wrongLedgerType": {ledgerType: "none", kvType: "leveldb", expected: "unknow storage type"},
+		"wrongKvType":     {ledgerType: "simple", kvType: "none", expected: "unknow kv type"},
+	}
+	for name, tc := range testcase {
+		t.Run(name, func(t *testing.T) {
+			repoRoot := t.TempDir()
+			ss, err := OpenStateDB(filepath.Join(repoRoot, tc.kvType), tc.ledgerType, tc.kvType)
+			assert.NotNil(t, err)
+			assert.Nil(t, ss)
+			assert.Contains(t, err.Error(), tc.expected)
+		})
+	}
+}
+
+func testChainLedger_EVMAccessor(t *testing.T, kvType string) {
+	ledger, _ := initLedger(t, "", kvType)
 
 	hash := common.HexToHash("0xe9FC370DD36C9BD5f67cCfbc031C909F53A3d8bC7084C01362c55f2D42bA841c")
 	// create an account
@@ -339,8 +477,8 @@ func TestChainLedger_EVMAccessor(t *testing.T) {
 	ledger.StateLedger.(*StateLedger).AddEVMLog(&etherTypes.Log{})
 }
 
-func TestChainLedger_Rollback(t *testing.T) {
-	ledger, repoRoot := initLedger(t, "")
+func testChainLedger_Rollback(t *testing.T, kvType string) {
+	ledger, repoRoot := initLedger(t, "", kvType)
 	stateLedger := ledger.StateLedger.(*StateLedger)
 
 	// create an addr0
@@ -454,7 +592,7 @@ func TestChainLedger_Rollback(t *testing.T) {
 	ledger.GetChainMeta()
 	ledger.Close()
 
-	ledger, _ = initLedger(t, repoRoot)
+	ledger, _ = initLedger(t, repoRoot, kvType)
 	assert.Equal(t, uint64(1), stateLedger.minJnlHeight)
 	assert.Equal(t, uint64(2), stateLedger.maxJnlHeight)
 
@@ -467,8 +605,8 @@ func TestChainLedger_Rollback(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
-func TestChainLedger_QueryByPrefix(t *testing.T) {
-	ledger, _ := initLedger(t, "")
+func testChainLedger_QueryByPrefix(t *testing.T, kvType string) {
+	ledger, _ := initLedger(t, "", kvType)
 
 	addr := types.NewAddress(LeftPadBytes([]byte{1}, 20))
 	key0 := []byte{100, 100}
@@ -502,8 +640,8 @@ func TestChainLedger_QueryByPrefix(t *testing.T) {
 
 }
 
-func TestChainLedger_GetAccount(t *testing.T) {
-	ledger, _ := initLedger(t, "")
+func testChainLedger_GetAccount(t *testing.T, kvType string) {
+	ledger, _ := initLedger(t, "", kvType)
 
 	addr := types.NewAddress(LeftPadBytes([]byte{1}, 20))
 	code := LeftPadBytes([]byte{1}, 120)
@@ -560,8 +698,8 @@ func TestChainLedger_GetAccount(t *testing.T) {
 	assert.Nil(t, val2)
 }
 
-func TestChainLedger_GetCode(t *testing.T) {
-	ledger, _ := initLedger(t, "")
+func testChainLedger_GetCode(t *testing.T, kvType string) {
+	ledger, _ := initLedger(t, "", kvType)
 
 	addr := types.NewAddress(LeftPadBytes([]byte{1}, 20))
 	code := LeftPadBytes([]byte{10}, 120)
@@ -586,8 +724,8 @@ func TestChainLedger_GetCode(t *testing.T) {
 	assert.Equal(t, code, vals)
 }
 
-func TestChainLedger_AddAccountsToCache(t *testing.T) {
-	ledger, _ := initLedger(t, "")
+func testChainLedger_AddAccountsToCache(t *testing.T, kvType string) {
+	ledger, _ := initLedger(t, "", kvType)
 	stateLedger := ledger.StateLedger.(*StateLedger)
 
 	addr := types.NewAddress(LeftPadBytes([]byte{1}, 20))
@@ -650,8 +788,8 @@ func TestChainLedger_AddAccountsToCache(t *testing.T) {
 	assert.True(t, ok)
 }
 
-func TestChainLedger_AddState(t *testing.T) {
-	ledger, _ := initLedger(t, "")
+func testChainLedger_AddState(t *testing.T, kvType string) {
+	ledger, _ := initLedger(t, "", kvType)
 
 	account := types.NewAddress(LeftPadBytes([]byte{100}, 20))
 	key0 := "100"
@@ -685,8 +823,8 @@ func TestChainLedger_AddState(t *testing.T) {
 	assert.Equal(t, value1, val)
 }
 
-func TestChainLedger_AddEvent(t *testing.T) {
-	ledger, _ := initLedger(t, "")
+func testChainLedger_AddEvent(t *testing.T, kvType string) {
+	ledger, _ := initLedger(t, "", kvType)
 
 	hash0 := types.NewHash([]byte{1})
 	hash1 := types.NewHash([]byte{2})
@@ -719,14 +857,14 @@ func TestChainLedger_AddEvent(t *testing.T) {
 	assert.Equal(t, 0, len(events))
 }
 
-func TestGetBlockSign(t *testing.T) {
-	ledger, _ := initLedger(t, "")
+func testGetBlockSign(t *testing.T, kvType string) {
+	ledger, _ := initLedger(t, "", kvType)
 	_, err := ledger.GetBlockSign(uint64(0))
 	assert.NotNil(t, err)
 }
 
-func TestGetBlockByHash(t *testing.T) {
-	ledger, _ := initLedger(t, "")
+func testGetBlockByHash(t *testing.T, kvType string) {
+	ledger, _ := initLedger(t, "", kvType)
 	_, err := ledger.GetBlockByHash(types.NewHash([]byte("1")))
 	assert.Equal(t, storage.ErrorNotFound, err)
 	ledger.ChainLedger.(*ChainLedger).blockchainStore.Put(compositeKey(blockHashKey, types.NewHash([]byte("1")).String()), []byte("1"))
@@ -734,8 +872,8 @@ func TestGetBlockByHash(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
-func TestGetTransaction(t *testing.T) {
-	ledger, _ := initLedger(t, "")
+func testGetTransaction(t *testing.T, kvType string) {
+	ledger, _ := initLedger(t, "", kvType)
 	_, err := ledger.GetTransaction(types.NewHash([]byte("1")))
 	assert.Equal(t, storage.ErrorNotFound, err)
 	ledger.ChainLedger.(*ChainLedger).blockchainStore.Put(compositeKey(transactionMetaKey, types.NewHash([]byte("1")).String()), []byte("1"))
@@ -747,8 +885,8 @@ func TestGetTransaction(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
-func TestGetTransaction1(t *testing.T) {
-	ledger, _ := initLedger(t, "")
+func testGetTransaction1(t *testing.T, kvType string) {
+	ledger, _ := initLedger(t, "", kvType)
 	_, err := ledger.GetTransaction(types.NewHash([]byte("1")))
 	assert.Equal(t, storage.ErrorNotFound, err)
 	meta := types.TransactionMeta{
@@ -765,8 +903,8 @@ func TestGetTransaction1(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
-func TestGetTransactionMeta(t *testing.T) {
-	ledger, _ := initLedger(t, "")
+func testGetTransactionMeta(t *testing.T, kvType string) {
+	ledger, _ := initLedger(t, "", kvType)
 	_, err := ledger.GetTransactionMeta(types.NewHash([]byte("1")))
 	assert.Equal(t, storage.ErrorNotFound, err)
 	ledger.ChainLedger.(*ChainLedger).blockchainStore.Put(compositeKey(transactionMetaKey, types.NewHash([]byte("1")).String()), []byte("1"))
@@ -778,8 +916,8 @@ func TestGetTransactionMeta(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
-func TestGetReceipt(t *testing.T) {
-	ledger, _ := initLedger(t, "")
+func testGetReceipt(t *testing.T, kvType string) {
+	ledger, _ := initLedger(t, "", kvType)
 	_, err := ledger.GetReceipt(types.NewHash([]byte("1")))
 	assert.Equal(t, storage.ErrorNotFound, err)
 	ledger.ChainLedger.(*ChainLedger).blockchainStore.Put(compositeKey(transactionMetaKey, types.NewHash([]byte("1")).String()), []byte("0"))
@@ -791,8 +929,8 @@ func TestGetReceipt(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
-func TestGetReceipt1(t *testing.T) {
-	ledger, _ := initLedger(t, "")
+func testGetReceipt1(t *testing.T, kvType string) {
+	ledger, _ := initLedger(t, "", kvType)
 	_, err := ledger.GetTransaction(types.NewHash([]byte("1")))
 	assert.Equal(t, storage.ErrorNotFound, err)
 	meta := types.TransactionMeta{
@@ -809,8 +947,8 @@ func TestGetReceipt1(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
-func TestPrepare(t *testing.T) {
-	ledger, _ := initLedger(t, "")
+func testPrepare(t *testing.T, kvType string) {
+	ledger, _ := initLedger(t, "", kvType)
 	batch := ledger.ChainLedger.(*ChainLedger).blockchainStore.NewBatch()
 	transactions := []*types.Transaction{}
 	transaction, err := types.GenerateEmptyTransactionAndSigner()
@@ -888,24 +1026,35 @@ func createMockRepo(t *testing.T) *repo.Repo {
 	}
 }
 
-func initLedger(t *testing.T, repoRoot string) (*Ledger, string) {
+func initLedger(t *testing.T, repoRoot string, kv string) (*Ledger, string) {
 	if repoRoot == "" {
 		repoRoot = t.TempDir()
 	}
-	blockStorage, err := leveldb.New(filepath.Join(repoRoot, "storage"))
-	assert.Nil(t, err)
-	ldb, err := leveldb.New(filepath.Join(repoRoot, "ledger"))
-	assert.Nil(t, err)
+
+	var blockStorage storage.Storage
+	var stateStorage stateStorage
+	var err error
+	if kv == "leveldb" {
+		blockStorage, err = leveldb.New(filepath.Join(repoRoot, "storage"))
+		assert.Nil(t, err)
+		stateStorage, err = leveldb.New(filepath.Join(repoRoot, "ledger"))
+		assert.Nil(t, err)
+	} else if kv == "pebble" {
+		blockStorage, err = pebble.New(filepath.Join(repoRoot, "storage"))
+		assert.Nil(t, err)
+		stateStorage, err = pebble.New(filepath.Join(repoRoot, "ledger"))
+		assert.Nil(t, err)
+	}
 
 	accountCache, err := NewAccountCache()
 	assert.Nil(t, err)
 	logger := log.NewWithModule("account_test")
 	blockFile, err := blockfile.NewBlockFile(repoRoot, logger)
 	assert.Nil(t, err)
-	lg, err := New(createMockRepo(t), blockStorage, ldb, blockFile, accountCache, log.NewWithModule("executor"))
+	l, err := New(createMockRepo(t), blockStorage, stateStorage, blockFile, accountCache, log.NewWithModule("executor"))
 	require.Nil(t, err)
 
-	return lg, repoRoot
+	return l, repoRoot
 }
 
 // LeftPadBytes zero-pads slice to the left up to length l.

@@ -91,6 +91,7 @@ func NewBitXHub(rep *repo.Repo, orderPath string) (*BitXHub, error) {
 	order, err := orderCon(
 		order.WithRepoRoot(orderRoot),
 		order.WithStoragePath(repo.GetStoragePath(repoRoot, "order")),
+		order.WithStorageType(rep.Config.Ledger.Kv),
 		order.WithOrderType(rep.Config.Order.Type),
 		order.WithPrivKey(rep.Key.PrivKey),
 		order.WithNodes(m),
@@ -134,7 +135,7 @@ func GenerateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 	printType = fmt.Sprintf("%s\n", printType)
 	fmt.Println(printType)
 
-	if err := storages.Initialize(repoRoot); err != nil {
+	if err := storages.Initialize(repoRoot, rep.Config.Ledger.Kv); err != nil {
 		return nil, fmt.Errorf("storages initialize: %w", err)
 	}
 
@@ -143,9 +144,9 @@ func GenerateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 		return nil, fmt.Errorf("create blockchain storage: %w", err)
 	}
 
-	stateStorage, err := ledger.OpenStateDB(repo.GetStoragePath(repoRoot, "ledger"), rep.Config.Ledger.Type)
+	stateStorage, err := ledger.OpenStateDB(repo.GetStoragePath(repoRoot, "ledger"), rep.Config.Ledger.Type, rep.Config.Ledger.Kv)
 	if err != nil {
-		return nil, fmt.Errorf("create tm-leveldb: %w", err)
+		return nil, fmt.Errorf("create stateDB: %w", err)
 	}
 
 	bf, err := blockfile.NewBlockFile(repoRoot, loggers.Logger(loggers.Storage))
