@@ -13,6 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/meshplus/bitxhub-kit/types"
+	"github.com/meshplus/bitxhub/internal/executor/system"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/eth-kit/adaptor"
@@ -258,14 +259,26 @@ func (exec *BlockExecutor) applyEthTransaction(_ int, tx *types.Transaction) *ty
 		TxHash:  tx.GetHash(),
 	}
 
-	gp := new(vm1.GasPool).AddGas(exec.gasLimit)
+	var result *vm1.ExecutionResult
+	var err error
+
 	msg := adaptor.TransactionToMessage(tx)
 	statedb := exec.ledger.StateLedger
-	txContext := vm1.NewEVMTxContext(msg)
 	snapshot := statedb.Snapshot()
-	exec.evm.Reset(txContext, exec.ledger.StateLedger)
-	exec.logger.Debugf("msg gas: %v", msg.GasPrice)
-	result, err := vm1.ApplyMessage(exec.evm, msg, gp)
+	contract, ok := system.GetSystemContract(tx.GetTo())
+	if ok {
+		// execute built contract
+		contract.Reset(statedb)
+		result, err = contract.Run(msg)
+	} else {
+		// execute evm
+		gp := new(vm1.GasPool).AddGas(exec.gasLimit)
+		txContext := vm1.NewEVMTxContext(msg)
+		exec.evm.Reset(txContext, exec.ledger.StateLedger)
+		exec.logger.Debugf("msg gas: %v", msg.GasPrice)
+		result, err = vm1.ApplyMessage(exec.evm, msg, gp)
+	}
+
 	if err != nil {
 		exec.logger.Errorf("apply msg failed: %s", err.Error())
 		statedb.RevertToSnapshot(snapshot)

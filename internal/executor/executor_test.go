@@ -15,6 +15,8 @@ import (
 	"github.com/meshplus/bitxhub-kit/storage/blockfile"
 	"github.com/meshplus/bitxhub-kit/storage/leveldb"
 	"github.com/meshplus/bitxhub-kit/types"
+	"github.com/meshplus/bitxhub/internal/executor/system"
+	"github.com/meshplus/bitxhub/internal/executor/system/governance"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/internal/repo"
@@ -325,11 +327,25 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 	var txs3 []*types.Transaction
 	tx5, _, err := types.GenerateTransactionAndSigner(uint64(0), types.NewAddressByStr("0xdAC17F958D2ee523a2206206994597C13D831ec7"), big.NewInt(1), nil)
 	assert.Nil(t, err)
-	txs3 = append(txs3, tx4, tx5)
+	// test system contract
+	gabi, err := governance.GetABI()
+	assert.Nil(t, err)
+
+	title := "title"
+	desc := "desc"
+	blockNumber := uint64(1000)
+	extra := []byte("hello")
+	data, err := gabi.Pack(governance.ProposalMethod, uint8(governance.NodeUpdate), title, desc, blockNumber, extra)
+	assert.Nil(t, err)
+	tx6, _, err := types.GenerateTransactionAndSigner(uint64(1), types.NewAddressByStr(system.NodeManagerContractAddr), big.NewInt(0), data)
+	assert.Nil(t, err)
+
+	txs3 = append(txs3, tx4, tx5, tx6)
 	res := exec.ApplyReadonlyTransactions(txs3)
-	assert.Equal(t, 2, len(res))
+	assert.Equal(t, 3, len(res))
 	assert.Equal(t, types.ReceiptSUCCESS, res[0].Status)
 	assert.Equal(t, types.ReceiptSUCCESS, res[1].Status)
+	assert.Equal(t, types.ReceiptSUCCESS, res[2].Status)
 }
 
 func mockCommitEvent(blockNumber uint64, txs []*types.Transaction) *types.CommitEvent {
