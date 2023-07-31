@@ -13,13 +13,13 @@ import (
 
 	"github.com/meshplus/bitxhub"
 	"github.com/meshplus/bitxhub-kit/log"
+	types2 "github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub/api/jsonrpc"
 	"github.com/meshplus/bitxhub/internal/app"
 	"github.com/meshplus/bitxhub/internal/coreapi"
 	"github.com/meshplus/bitxhub/internal/loggers"
 	"github.com/meshplus/bitxhub/internal/profile"
 	"github.com/meshplus/bitxhub/internal/repo"
-	types2 "github.com/meshplus/eth-kit/types"
 	"github.com/urfave/cli"
 )
 
@@ -82,7 +82,7 @@ func start(ctx *cli.Context) error {
 
 	loggers.Initialize(repo.Config)
 
-	types2.InitEIP155Signer(big.NewInt(int64(repo.Config.ChainID)))
+	types2.InitEIP155Signer(big.NewInt(int64(repo.Config.Genesis.ChainID)))
 
 	printVersion()
 

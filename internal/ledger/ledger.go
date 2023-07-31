@@ -9,7 +9,6 @@ import (
 	"github.com/meshplus/bitxhub-kit/storage/blockfile"
 	"github.com/meshplus/bitxhub-kit/storage/leveldb"
 	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/meshplus/eth-kit/ledger"
 	"github.com/sirupsen/logrus"
@@ -21,11 +20,10 @@ type Ledger struct {
 }
 
 type BlockData struct {
-	Block          *pb.Block
-	Receipts       []*pb.Receipt
-	Accounts       map[string]ledger.IAccount
-	InterchainMeta *pb.InterchainMeta
-	TxHashList     []*types.Hash
+	Block      *types.Block
+	Receipts   []*types.Receipt
+	Accounts   map[string]ledger.IAccount
+	TxHashList []*types.Hash
 }
 
 func New(repo *repo.Repo, blockchainStore storage.Storage, ldb stateStorage, bf *blockfile.BlockFile, accountCache *AccountCache, logger logrus.FieldLogger) (*Ledger, error) {
@@ -87,14 +85,13 @@ func (l *Ledger) PersistBlockData(blockData *BlockData) {
 	block := blockData.Block
 	receipts := blockData.Receipts
 	accounts := blockData.Accounts
-	meta := blockData.InterchainMeta
 
 	err := l.StateLedger.Commit(block.BlockHeader.Number, accounts, block.BlockHeader.StateRoot)
 	if err != nil {
 		panic(err)
 	}
 
-	if err := l.ChainLedger.PersistExecutionResult(block, receipts, meta); err != nil {
+	if err := l.ChainLedger.PersistExecutionResult(block, receipts); err != nil {
 		panic(err)
 	}
 

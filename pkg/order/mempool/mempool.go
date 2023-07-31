@@ -5,18 +5,16 @@ import (
 
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/pkg/order/mempool/proto"
 )
 
 var _ MemPool = (*mempoolImpl)(nil)
 
 type MemPool interface {
 	// ProcessTransactions process transaction from api and other vp nodes.
-	ProcessTransactions(txs []pb.Transaction, isLeader, isLocal bool) *proto.RequestBatch
+	ProcessTransactions(txs []*types.Transaction, isLeader, isLocal bool) *RequestBatch
 
 	// GenerateBlock generate a block
-	GenerateBlock() *proto.RequestBatch
+	GenerateBlock() *RequestBatch
 
 	// CommitTransactions Remove removes the committed transactions from mempool
 	CommitTransactions(state *ChainState)
@@ -26,12 +24,12 @@ type MemPool interface {
 
 	SetBatchSeqNo(batchSeq uint64)
 
-	GetTimeoutTransactions(rebroadcastDuration time.Duration) [][]pb.Transaction
+	GetTimeoutTransactions(rebroadcastDuration time.Duration) [][]*types.Transaction
 
 	// RemoveAliveTimeoutTxs get the remained local txs in timeoutIndex and removeTxs in memPool by tolerance time.
 	RemoveAliveTimeoutTxs(removeDuration time.Duration) uint64
 
-	SubscribeTxEvent(chan<- pb.Transactions) event.Subscription
+	SubscribeTxEvent(chan<- []*types.Transaction) event.Subscription
 
 	External
 }
@@ -42,7 +40,7 @@ type External interface {
 	// GetPendingNonceByAccount will return the latest pending nonce of a given account
 	GetPendingNonceByAccount(account string) uint64
 
-	GetTransaction(hash *types.Hash) pb.Transaction
+	GetTransaction(hash *types.Hash) *types.Transaction
 
 	// IsPoolFull check if memPool has exceeded the limited txSize.
 	IsPoolFull() bool
@@ -55,7 +53,7 @@ func NewMempool(config *Config) (MemPool, error) {
 
 // GenerateBlock generates a transaction batch and post it
 // to outside if there are transactions in txPool.
-func (mpi *mempoolImpl) GenerateBlock() *proto.RequestBatch {
+func (mpi *mempoolImpl) GenerateBlock() *RequestBatch {
 	if !mpi.isTimed && mpi.txStore.priorityNonBatchSize == 0 {
 		mpi.logger.Debug("Mempool is empty")
 		return nil

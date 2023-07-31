@@ -9,7 +9,6 @@ import (
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/ledger"
 	"github.com/meshplus/bitxhub/internal/model/events"
 	"github.com/meshplus/bitxhub/internal/repo"
@@ -29,7 +28,7 @@ type BlockExecutor struct {
 	ledger             *ledger.Ledger
 	logger             logrus.FieldLogger
 	blockC             chan *BlockWrapper
-	preBlockC          chan *pb.CommitEvent
+	preBlockC          chan *types.CommitEvent
 	persistC           chan *ledger.BlockData
 	currentHeight      uint64
 	currentBlockHash   *types.Hash
@@ -58,14 +57,14 @@ func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, config *repo.Con
 		ctx:              ctx,
 		cancel:           cancel,
 		blockC:           make(chan *BlockWrapper, blockChanNumber),
-		preBlockC:        make(chan *pb.CommitEvent, blockChanNumber),
+		preBlockC:        make(chan *types.CommitEvent, blockChanNumber),
 		persistC:         make(chan *ledger.BlockData, persistChanNumber),
 		currentHeight:    chainLedger.GetChainMeta().Height,
 		currentBlockHash: chainLedger.GetChainMeta().BlockHash,
 		evmChainCfg:      newEVMChainCfg(config),
 		config:           *config,
 		GasPrice:         gasPrice,
-		gasLimit:         config.GasLimit,
+		gasLimit:         config.Genesis.GasLimit,
 		lock:             &sync.Mutex{},
 	}
 
@@ -104,7 +103,7 @@ func (exec *BlockExecutor) Stop() error {
 }
 
 // ExecuteBlock executes block from order
-func (exec *BlockExecutor) ExecuteBlock(block *pb.CommitEvent) {
+func (exec *BlockExecutor) ExecuteBlock(block *types.CommitEvent) {
 	exec.preBlockC <- block
 }
 
@@ -118,13 +117,13 @@ func (exec *BlockExecutor) SubscribeBlockEventForRemote(ch chan<- events.Execute
 	return exec.blockFeedForRemote.Subscribe(ch)
 }
 
-func (exec *BlockExecutor) SubscribeLogsEvent(ch chan<- []*pb.EvmLog) event.Subscription {
+func (exec *BlockExecutor) SubscribeLogsEvent(ch chan<- []*types.EvmLog) event.Subscription {
 	return exec.logsFeed.Subscribe(ch)
 }
 
-func (exec *BlockExecutor) ApplyReadonlyTransactions(txs []pb.Transaction) []*pb.Receipt {
+func (exec *BlockExecutor) ApplyReadonlyTransactions(txs []*types.Transaction) []*types.Receipt {
 	current := time.Now()
-	receipts := make([]*pb.Receipt, 0, len(txs))
+	receipts := make([]*types.Receipt, 0, len(txs))
 
 	exec.lock.Lock()
 	defer exec.lock.Unlock()
@@ -181,12 +180,12 @@ func (exec *BlockExecutor) persistData() {
 	for data := range exec.persistC {
 		now := time.Now()
 		exec.ledger.PersistBlockData(data)
-		exec.postBlockEvent(data.Block, data.InterchainMeta, data.TxHashList)
+		exec.postBlockEvent(data.Block, data.TxHashList)
 		exec.postLogsEvent(data.Receipts)
 		exec.logger.WithFields(logrus.Fields{
 			"height": data.Block.BlockHeader.Number,
 			"hash":   data.Block.BlockHash.String(),
-			"count":  len(data.Block.Transactions.Transactions),
+			"count":  len(data.Block.Transactions),
 			"elapse": time.Since(now),
 		}).Info("Persisted block")
 	}
@@ -199,7 +198,7 @@ func newEVMChainCfg(config *repo.Config) *params.ChainConfig {
 	PragueTime := uint64(0)
 
 	return &params.ChainConfig{
-		ChainID:                 big.NewInt(int64(config.ChainID)),
+		ChainID:                 big.NewInt(int64(config.Genesis.ChainID)),
 		HomesteadBlock:          big.NewInt(0),
 		EIP150Block:             big.NewInt(0),
 		EIP155Block:             big.NewInt(0),

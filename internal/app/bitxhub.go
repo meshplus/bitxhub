@@ -2,18 +2,13 @@ package app
 
 import (
 	"context"
-	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"math/big"
-	"path"
 	"path/filepath"
-	"strings"
 	"syscall"
 	"time"
 
-	bkg "github.com/binance-chain/tss-lib/ecdsa/keygen"
 	"github.com/common-nighthawk/go-figure"
 	"github.com/ethereum/go-ethereum/common/fdlimit"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
@@ -225,28 +220,6 @@ func GenerateBitXHubWithoutOrder(rep *repo.Repo) (*BitXHub, error) {
 		PeerMgr:       peerMgr,
 		Gas:           gas,
 	}, nil
-}
-
-func getPreparams(repoRoot string) ([]*bkg.LocalPreParams, error) {
-	const (
-		preParamTestFile = "preParam_test.data"
-	)
-	var preParamArray []*bkg.LocalPreParams
-	buf, err := ioutil.ReadFile(path.Join(repoRoot, preParamTestFile))
-	if err != nil {
-		return nil, fmt.Errorf("get preparams error: %v", err)
-	}
-	preParamsStr := strings.Split(string(buf), "\n")
-	for _, item := range preParamsStr {
-		var preParam bkg.LocalPreParams
-		val, err := hex.DecodeString(item)
-		if err != nil {
-			return nil, fmt.Errorf("get preparams error: %v", err)
-		}
-		err = json.Unmarshal(val, &preParam)
-		preParamArray = append(preParamArray, &preParam)
-	}
-	return preParamArray, nil
 }
 
 func (bxh *BitXHub) Start() error {

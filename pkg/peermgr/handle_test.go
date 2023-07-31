@@ -2,7 +2,6 @@ package peermgr
 
 import (
 	"fmt"
-	"io/ioutil"
 	"strings"
 	"testing"
 	"time"
@@ -10,20 +9,17 @@ import (
 	"github.com/Rican7/retry"
 	"github.com/Rican7/retry/strategy"
 	"github.com/golang/mock/gomock"
-	crypto2 "github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/peer"
-	swarm "github.com/libp2p/go-libp2p-swarm"
+	crypto2 "github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/meshplus/bitxhub-kit/crypto"
 	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/crypto/asym/ecdsa"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub-kit/types/pb"
 	"github.com/meshplus/bitxhub/internal/ledger"
-	"github.com/meshplus/bitxhub/internal/ledger/mock_ledger"
 	"github.com/meshplus/bitxhub/internal/repo"
-	ethtypes "github.com/meshplus/eth-kit/types"
-	libp2pcert "github.com/meshplus/go-lightp2p/cert"
+	"github.com/meshplus/eth-kit/ledger/mock_ledger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -103,32 +99,18 @@ func NewSwarms(t *testing.T, peerCnt int) []*Swarm {
 		StateLedger: stateLedger,
 	}
 
-	chainLedger.EXPECT().GetBlock(gomock.Any()).Return(&pb.Block{
-		BlockHeader: &pb.BlockHeader{
+	chainLedger.EXPECT().GetBlock(gomock.Any()).Return(&types.Block{
+		BlockHeader: &types.BlockHeader{
 			Number: 1,
 		},
 	}, nil).AnyTimes()
 
-	ibtp := &pb.IBTP{}
-	tx := &pb.BxhTransaction{IBTP: ibtp}
 	chainLedger.EXPECT().GetBlockSign(gomock.Any()).Return([]byte("sign"), nil).AnyTimes()
-	chainLedger.EXPECT().GetTransaction(gomock.Any()).Return(tx, nil).AnyTimes()
+	chainLedger.EXPECT().GetTransaction(gomock.Any()).Return(&types.Transaction{}, nil).AnyTimes()
 	stateLedger.EXPECT().Copy().Return(stateLedger).AnyTimes()
 	stateLedger.EXPECT().GetState(gomock.Any(), gomock.Any()).DoAndReturn(func(addr *types.Address, key []byte) (bool, []byte) {
 		return false, nil
 	}).AnyTimes()
-
-	agencyData, err := ioutil.ReadFile("testdata/agency.cert")
-	require.Nil(t, err)
-
-	nodeData, err := ioutil.ReadFile("testdata/node.cert")
-	require.Nil(t, err)
-
-	caData, err := ioutil.ReadFile("testdata/ca.cert")
-	require.Nil(t, err)
-
-	cert, err := libp2pcert.ParseCert(caData)
-	require.Nil(t, err)
 
 	for i := 0; i < peerCnt; i++ {
 		repo := &repo.Repo{
@@ -137,11 +119,7 @@ func NewSwarms(t *testing.T, peerCnt int) []*Swarm {
 				N:  uint64(peerCnt),
 				ID: uint64(i + 1),
 			},
-			Certs: &libp2pcert.Certs{
-				NodeCertData:   nodeData,
-				AgencyCertData: agencyData,
-				CACert:         cert,
-			},
+
 			Config: &repo.Config{
 				RepoRoot: "testdata",
 				Ping: repo.Ping{
@@ -206,10 +184,10 @@ func TestSwarm_PushTxs(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 	requests := [][]byte{generateEthTx(t)}
-	pushMsg := &pb.PushTxs{
-		Data: requests,
+	pushMsg := &pb.BytesSlice{
+		Slice: requests,
 	}
-	pushData, err := pushMsg.Marshal()
+	pushData, err := pushMsg.MarshalVT()
 	require.Nil(t, err)
 	msg := &pb.Message{
 		Type: pb.Message_PUSH_TXS,
@@ -237,8 +215,8 @@ func TestSwarm_PushTxs(t *testing.T) {
 }
 
 func generateEthTx(t *testing.T) []byte {
-	tx := ethtypes.EthTransaction{
-		Inner: &ethtypes.DynamicFeeTx{
+	tx := types.Transaction{
+		Inner: &types.DynamicFeeTx{
 			Nonce: 0,
 		},
 		Time: time.Time{},
@@ -282,32 +260,6 @@ func stopSwarms(t *testing.T, swarms []*Swarm) error {
 	return nil
 }
 
-func TestSwarm_FetchCert(t *testing.T) {
-	peerCnt := 4
-	swarms := NewSwarms(t, peerCnt)
-	defer stopSwarms(t, swarms)
-
-	for swarms[0].CountConnectedPeers() != 3 {
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	msg := &pb.Message{
-		Type: pb.Message_FETCH_CERT,
-	}
-	var res *pb.Message
-	var err error
-	err = retry.Retry(func(attempt uint) error {
-		res, err = swarms[0].Send(uint64(2), msg)
-		if err != nil {
-			swarms[0].logger.Errorf(err.Error())
-			return err
-		}
-		return nil
-	}, strategy.Wait(50*time.Millisecond))
-	require.Nil(t, err)
-	require.Equal(t, pb.Message_FETCH_CERT_ACK, res.Type)
-}
-
 func TestSwarm_Gater(t *testing.T) {
 	peerCnt := 4
 	swarms := NewSwarms(t, peerCnt)
@@ -319,15 +271,7 @@ func TestSwarm_Gater(t *testing.T) {
 	gater := newConnectionGater(swarms[0].logger, swarms[0].ledger)
 	require.True(t, gater.InterceptPeerDial(peer.ID("1")))
 	require.True(t, gater.InterceptAddrDial("1", swarms[1].multiAddrs[1].Addrs[0]))
-	require.True(t, gater.InterceptAccept(new(swarm.Conn)))
-
-	n := newNotifiee(swarms[0].routers, swarms[0].logger)
-	n.Listen(&swarm.Swarm{}, swarms[1].multiAddrs[1].Addrs[0])
-	n.ListenClose(&swarm.Swarm{}, swarms[1].multiAddrs[1].Addrs[0])
-	n.Disconnected(&swarm.Swarm{}, new(swarm.Conn))
-	n.OpenedStream(&swarm.Swarm{}, &swarm.Stream{})
-	n.ClosedStream(&swarm.Swarm{}, &swarm.Stream{})
-
+	require.True(t, gater.InterceptAccept(nil))
 }
 
 func TestSwarm_Send(t *testing.T) {
@@ -355,7 +299,7 @@ func TestSwarm_Send(t *testing.T) {
 	}, strategy.Wait(50*time.Millisecond))
 	require.Nil(t, err)
 	require.Equal(t, pb.Message_GET_BLOCK_ACK, res.Type)
-	var block pb.Block
+	var block types.Block
 	err = block.Unmarshal(res.Data)
 	require.Nil(t, err)
 	require.Equal(t, uint64(1), block.BlockHeader.Number)
@@ -364,7 +308,7 @@ func TestSwarm_Send(t *testing.T) {
 		Start: 1,
 		End:   1,
 	}
-	data, err := req.Marshal()
+	data, err := req.MarshalVT()
 	require.Nil(t, err)
 
 	fetchBlocksMsg := &pb.Message{
@@ -382,7 +326,7 @@ func TestSwarm_Send(t *testing.T) {
 	require.Nil(t, err)
 	require.Equal(t, pb.Message_GET_BLOCKS_ACK, res.Type)
 	var getBlocksRes pb.GetBlocksResponse
-	err = getBlocksRes.Unmarshal(res.Data)
+	err = getBlocksRes.UnmarshalVT(res.Data)
 	require.Nil(t, err)
 	require.Equal(t, 1, len(getBlocksRes.Blocks))
 
@@ -390,7 +334,7 @@ func TestSwarm_Send(t *testing.T) {
 		Start: 1,
 		End:   1,
 	}
-	data, err = getBlockHeadersReq.Marshal()
+	data, err = getBlockHeadersReq.MarshalVT()
 	require.Nil(t, err)
 
 	fetchBlockHeadersMsg := &pb.Message{
@@ -409,7 +353,7 @@ func TestSwarm_Send(t *testing.T) {
 	require.Equal(t, pb.Message_GET_BLOCK_HEADERS_ACK, res.Type)
 
 	var getBlockHeaderssRes pb.GetBlockHeadersResponse
-	err = getBlockHeaderssRes.Unmarshal(res.Data)
+	err = getBlockHeaderssRes.UnmarshalVT(res.Data)
 	require.Nil(t, err)
 	require.Equal(t, 1, len(getBlockHeaderssRes.BlockHeaders))
 

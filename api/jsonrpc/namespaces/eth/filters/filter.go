@@ -22,17 +22,16 @@ import (
 	"fmt"
 	"math/big"
 
-	types2 "github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
 )
 
 // Filter can be used to retrieve and filter logs.
 type Filter struct {
 	api       api.CoreAPI
-	addresses []*types2.Address
-	topics    [][]*types2.Hash
-	block     *types2.Hash // Block hash if filtering a single block
+	addresses []*types.Address
+	topics    [][]*types.Hash
+	block     *types.Hash // Block hash if filtering a single block
 	begin     int64
 	end       int64 // Range interval if filtering multiple blocks
 }
@@ -43,7 +42,7 @@ type bytesBacked interface {
 
 // NewRangeFilter creates a new filter which uses a bloom filter on blocks to
 // figure out whether a particular block is interesting or not.
-func NewRangeFilter(api api.CoreAPI, begin, end int64, addresses []*types2.Address, topics [][]*types2.Hash) *Filter {
+func NewRangeFilter(api api.CoreAPI, begin, end int64, addresses []*types.Address, topics [][]*types.Hash) *Filter {
 	// Flatten the address and topic filter clauses into a single bloombits filter
 	// system. Since the bloombits are not positional, nil topics are permitted,
 	// which get flattened into a nil byte slice.
@@ -74,7 +73,7 @@ func NewRangeFilter(api api.CoreAPI, begin, end int64, addresses []*types2.Addre
 
 // NewBlockFilter creates a new filter which directly inspects the contents of
 // a block to figure out whether it is interesting or not.
-func NewBlockFilter(api api.CoreAPI, block *types2.Hash, addresses []*types2.Address, topics [][]*types2.Hash) *Filter {
+func NewBlockFilter(api api.CoreAPI, block *types.Hash, addresses []*types.Address, topics [][]*types.Hash) *Filter {
 	// Create a generic filter and convert it into a block filter
 	filter := newFilter(api, addresses, topics)
 	filter.block = block
@@ -83,7 +82,7 @@ func NewBlockFilter(api api.CoreAPI, block *types2.Hash, addresses []*types2.Add
 
 // newFilter creates a generic filter that can either filter based on a block hash,
 // or based on range queries. The search criteria needs to be explicitly set.
-func newFilter(api api.CoreAPI, addresses []*types2.Address, topics [][]*types2.Hash) *Filter {
+func newFilter(api api.CoreAPI, addresses []*types.Address, topics [][]*types.Hash) *Filter {
 	return &Filter{
 		api:       api,
 		addresses: addresses,
@@ -93,7 +92,7 @@ func newFilter(api api.CoreAPI, addresses []*types2.Address, topics [][]*types2.
 
 // Logs searches the blockchain for matching log entries, returning all from the
 // first block that contains matches, updating the start of the filter accordingly.
-func (f *Filter) Logs(ctx context.Context) ([]*pb.EvmLog, error) {
+func (f *Filter) Logs(ctx context.Context) ([]*types.EvmLog, error) {
 	// If we're doing singleton block filtering, execute and return
 	if f.block != nil {
 		block, err := f.api.Broker().GetBlock("HASH", f.block.String())
@@ -126,8 +125,8 @@ func (f *Filter) Logs(ctx context.Context) ([]*pb.EvmLog, error) {
 
 // unindexedLogs returns the logs matching the filter criteria based on raw block
 // iteration and bloom matching.
-func (f *Filter) unindexedLogs(ctx context.Context, end uint64) ([]*pb.EvmLog, error) {
-	var logs []*pb.EvmLog
+func (f *Filter) unindexedLogs(ctx context.Context, end uint64) ([]*types.EvmLog, error) {
+	var logs []*types.EvmLog
 
 	for ; f.begin <= int64(end); f.begin++ {
 		headers, err := f.api.Broker().GetBlockHeaders(uint64(f.begin), uint64(f.begin))
@@ -145,7 +144,7 @@ func (f *Filter) unindexedLogs(ctx context.Context, end uint64) ([]*pb.EvmLog, e
 }
 
 // blockLogs returns the logs matching the filter criteria within a single block.
-func (f *Filter) blockLogs(ctx context.Context, header *pb.BlockHeader) (logs []*pb.EvmLog, err error) {
+func (f *Filter) blockLogs(ctx context.Context, header *types.BlockHeader) (logs []*types.EvmLog, err error) {
 	if bloomFilter(header.Bloom, f.addresses, f.topics) {
 		found, err := f.checkMatches(ctx, header.Number)
 		if err != nil {
@@ -158,29 +157,29 @@ func (f *Filter) blockLogs(ctx context.Context, header *pb.BlockHeader) (logs []
 
 // checkMatches checks if the receipts belonging to the given header contain any log events that
 // match the filter criteria. This function is called when the bloom filter signals a potential match.
-func (f *Filter) checkMatches(ctx context.Context, blockNum uint64) (logs []*pb.EvmLog, err error) {
+func (f *Filter) checkMatches(_ context.Context, blockNum uint64) (logs []*types.EvmLog, err error) {
 	// Get the logs of the block
 	receipts, err := f.getBlockReceipts(blockNum)
 	if err != nil {
 		return nil, err
 	}
 
-	var unfiltered []*pb.EvmLog
+	var unfiltered []*types.EvmLog
 	for _, receipt := range receipts {
 		unfiltered = append(unfiltered, receipt.EvmLogs...)
 	}
 	return FilterLogs(unfiltered, nil, nil, f.addresses, f.topics), nil
 }
 
-func (f *Filter) getBlockReceipts(blockNum uint64) ([]*pb.Receipt, error) {
-	var receipts []*pb.Receipt
+func (f *Filter) getBlockReceipts(blockNum uint64) ([]*types.Receipt, error) {
+	var receipts []*types.Receipt
 
 	block, err := f.api.Broker().GetBlock("HEIGHT", fmt.Sprintf("%d", blockNum))
 	if err != nil {
 		return nil, err
 	}
 
-	for _, tx := range block.Transactions.Transactions {
+	for _, tx := range block.Transactions {
 		receipt, err := f.api.Broker().GetReceipt(tx.GetHash())
 		if err != nil {
 			return nil, err
@@ -192,7 +191,7 @@ func (f *Filter) getBlockReceipts(blockNum uint64) ([]*pb.Receipt, error) {
 	return receipts, nil
 }
 
-func includes(addresses []*types2.Address, a *types2.Address) bool {
+func includes(addresses []*types.Address, a *types.Address) bool {
 	for _, addr := range addresses {
 		if addr.String() == a.String() {
 			return true
@@ -203,8 +202,8 @@ func includes(addresses []*types2.Address, a *types2.Address) bool {
 }
 
 // FilterLogs creates a slice of logs matching the given criteria.
-func FilterLogs(logs []*pb.EvmLog, fromBlock, toBlock *big.Int, addresses []*types2.Address, topics [][]*types2.Hash) []*pb.EvmLog {
-	var ret []*pb.EvmLog
+func FilterLogs(logs []*types.EvmLog, fromBlock, toBlock *big.Int, addresses []*types.Address, topics [][]*types.Hash) []*types.EvmLog {
+	var ret []*types.EvmLog
 Logs:
 	for _, log := range logs {
 		if fromBlock != nil && fromBlock.Int64() >= 0 && fromBlock.Uint64() > log.BlockNumber {
@@ -238,7 +237,7 @@ Logs:
 	return ret
 }
 
-func bloomFilter(bloom *types2.Bloom, addresses []*types2.Address, topics [][]*types2.Hash) bool {
+func bloomFilter(bloom *types.Bloom, addresses []*types.Address, topics [][]*types.Hash) bool {
 	if len(addresses) > 0 {
 		var included bool
 		for _, addr := range addresses {
@@ -268,6 +267,6 @@ func bloomFilter(bloom *types2.Bloom, addresses []*types2.Address, topics [][]*t
 }
 
 // BloomLookup is a convenience-method to check presence int he bloom filter
-func BloomLookup(bin *types2.Bloom, topic bytesBacked) bool {
+func BloomLookup(bin *types.Bloom, topic bytesBacked) bool {
 	return bin.Test(topic.Bytes())
 }

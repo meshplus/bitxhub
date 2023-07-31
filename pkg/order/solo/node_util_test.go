@@ -6,11 +6,8 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
-	"github.com/meshplus/bitxhub-kit/crypto"
-	"github.com/meshplus/bitxhub-kit/crypto/asym"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/pkg/order/mempool"
 	"github.com/meshplus/bitxhub/pkg/peermgr/mock_peermgr"
 )
@@ -56,7 +53,7 @@ func mockSoloNode(t *testing.T, enableTimed bool) (*Node, error) {
 		isTimed:          mempoolConf.IsTimed,
 		noTxBatchTimeout: mempoolConf.NoTxBatchTimeout,
 		batchTimeout:     batchTimeout,
-		commitC:          make(chan *pb.CommitEvent, 1024),
+		commitC:          make(chan *types.CommitEvent, 1024),
 		stateC:           make(chan *mempool.ChainState),
 		mempool:          mempoolInst,
 		txCache:          txCache,
@@ -69,18 +66,4 @@ func mockSoloNode(t *testing.T, enableTimed bool) (*Node, error) {
 		cancel:           cancel,
 	}
 	return soloNode, nil
-}
-
-func generateTx() pb.Transaction {
-	privKey, _ := asym.GenerateKeyPair(crypto.Secp256k1)
-	from, _ := privKey.PublicKey().Address()
-	tx := &pb.BxhTransaction{
-		From:      from,
-		To:        types.NewAddressByStr(to),
-		Timestamp: time.Now().Unix(),
-		Nonce:     0,
-	}
-	_ = tx.Sign(privKey)
-	tx.TransactionHash = tx.Hash()
-	return tx
 }

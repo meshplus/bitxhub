@@ -5,7 +5,6 @@ import (
 	"strconv"
 
 	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
 	vm "github.com/meshplus/eth-kit/evm"
 	"github.com/meshplus/eth-kit/ledger"
@@ -16,7 +15,7 @@ type BrokerAPI CoreAPI
 
 var _ api.BrokerAPI = (*BrokerAPI)(nil)
 
-func (b *BrokerAPI) HandleTransaction(tx pb.Transaction) error {
+func (b *BrokerAPI) HandleTransaction(tx *types.Transaction) error {
 	if tx.GetHash() == nil {
 		return fmt.Errorf("transaction hash is nil")
 	}
@@ -33,7 +32,7 @@ func (b *BrokerAPI) HandleTransaction(tx pb.Transaction) error {
 	return nil
 }
 
-func (b *BrokerAPI) HandleView(tx pb.Transaction) (*pb.Receipt, error) {
+func (b *BrokerAPI) HandleView(tx *types.Transaction) (*types.Receipt, error) {
 	if tx.GetHash() == nil {
 		return nil, fmt.Errorf("transaction hash is nil")
 	}
@@ -42,24 +41,24 @@ func (b *BrokerAPI) HandleView(tx pb.Transaction) (*pb.Receipt, error) {
 		"hash": tx.GetHash().String(),
 	}).Debugf("Receive view")
 
-	receipts := b.bxh.ViewExecutor.ApplyReadonlyTransactions([]pb.Transaction{tx})
+	receipts := b.bxh.ViewExecutor.ApplyReadonlyTransactions([]*types.Transaction{tx})
 
 	return receipts[0], nil
 }
 
-func (b *BrokerAPI) GetTransaction(hash *types.Hash) (pb.Transaction, error) {
+func (b *BrokerAPI) GetTransaction(hash *types.Hash) (*types.Transaction, error) {
 	return b.bxh.Ledger.GetTransaction(hash)
 }
 
-func (b *BrokerAPI) GetTransactionMeta(hash *types.Hash) (*pb.TransactionMeta, error) {
+func (b *BrokerAPI) GetTransactionMeta(hash *types.Hash) (*types.TransactionMeta, error) {
 	return b.bxh.Ledger.GetTransactionMeta(hash)
 }
 
-func (b *BrokerAPI) GetReceipt(hash *types.Hash) (*pb.Receipt, error) {
+func (b *BrokerAPI) GetReceipt(hash *types.Hash) (*types.Receipt, error) {
 	return b.bxh.Ledger.GetReceipt(hash)
 }
 
-func (b *BrokerAPI) GetBlock(mode string, value string) (*pb.Block, error) {
+func (b *BrokerAPI) GetBlock(mode string, value string) (*types.Block, error) {
 	switch mode {
 	case "HEIGHT":
 		height, err := strconv.ParseUint(value, 10, 64)
@@ -78,10 +77,10 @@ func (b *BrokerAPI) GetBlock(mode string, value string) (*pb.Block, error) {
 	}
 }
 
-func (b *BrokerAPI) GetBlocks(start uint64, end uint64) ([]*pb.Block, error) {
+func (b *BrokerAPI) GetBlocks(start uint64, end uint64) ([]*types.Block, error) {
 	meta := b.bxh.Ledger.GetChainMeta()
 
-	var blocks []*pb.Block
+	var blocks []*types.Block
 	if meta.Height < end {
 		end = meta.Height
 	}
@@ -96,10 +95,10 @@ func (b *BrokerAPI) GetBlocks(start uint64, end uint64) ([]*pb.Block, error) {
 	return blocks, nil
 }
 
-func (b *BrokerAPI) GetBlockHeaders(start uint64, end uint64) ([]*pb.BlockHeader, error) {
+func (b *BrokerAPI) GetBlockHeaders(start uint64, end uint64) ([]*types.BlockHeader, error) {
 	meta := b.bxh.Ledger.GetChainMeta()
 
-	var blockHeaders []*pb.BlockHeader
+	var blockHeaders []*types.BlockHeader
 	if meta.Height < end {
 		end = meta.Height
 	}
@@ -122,12 +121,12 @@ func (b BrokerAPI) GetPendingNonceByAccount(account string) uint64 {
 	return b.bxh.Order.GetPendingNonceByAccount(account)
 }
 
-func (b BrokerAPI) GetPendingTransactions(max int) []pb.Transaction {
+func (b BrokerAPI) GetPendingTransactions(max int) []*types.Transaction {
 	// TODO
 	return nil
 }
 
-func (b BrokerAPI) GetPoolTransaction(hash *types.Hash) pb.Transaction {
+func (b BrokerAPI) GetPoolTransaction(hash *types.Hash) *types.Transaction {
 	return b.bxh.Order.GetPendingTxByHash(hash)
 }
 

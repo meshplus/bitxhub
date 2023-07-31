@@ -9,8 +9,9 @@ import (
 
 	event "github.com/ethereum/go-ethereum/event"
 	gomock "github.com/golang/mock/gomock"
-	peer "github.com/libp2p/go-libp2p-core/peer"
-	pb "github.com/meshplus/bitxhub-model/pb"
+	peer "github.com/libp2p/go-libp2p/core/peer"
+	types "github.com/meshplus/bitxhub-kit/types"
+	pb "github.com/meshplus/bitxhub-kit/types/pb"
 	peermgr "github.com/meshplus/bitxhub/pkg/peermgr"
 	network "github.com/meshplus/go-lightp2p"
 )
@@ -90,10 +91,10 @@ func (mr *MockBasicPeerManagerMockRecorder) CountConnectedPeers() *gomock.Call {
 }
 
 // Peers mocks base method.
-func (m *MockBasicPeerManager) Peers() map[string]*peer.AddrInfo {
+func (m *MockBasicPeerManager) Peers() []peer.AddrInfo {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Peers")
-	ret0, _ := ret[0].(map[string]*peer.AddrInfo)
+	ret0, _ := ret[0].([]peer.AddrInfo)
 	return ret0
 }
 
@@ -170,7 +171,7 @@ func (m *MockOrderPeerManager) EXPECT() *MockOrderPeerManagerMockRecorder {
 }
 
 // AddNode mocks base method.
-func (m *MockOrderPeerManager) AddNode(newNodeID uint64, vpInfo *pb.VpInfo) {
+func (m *MockOrderPeerManager) AddNode(newNodeID uint64, vpInfo *types.VpInfo) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "AddNode", newNodeID, vpInfo)
 }
@@ -236,7 +237,7 @@ func (mr *MockOrderPeerManagerMockRecorder) DelNode(delID interface{}) *gomock.C
 }
 
 // Disconnect mocks base method.
-func (m *MockOrderPeerManager) Disconnect(vpInfos map[uint64]*pb.VpInfo) {
+func (m *MockOrderPeerManager) Disconnect(vpInfos map[uint64]*types.VpInfo) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "Disconnect", vpInfos)
 }
@@ -248,10 +249,10 @@ func (mr *MockOrderPeerManagerMockRecorder) Disconnect(vpInfos interface{}) *gom
 }
 
 // OrderPeers mocks base method.
-func (m *MockOrderPeerManager) OrderPeers() map[uint64]*pb.VpInfo {
+func (m *MockOrderPeerManager) OrderPeers() map[uint64]*types.VpInfo {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "OrderPeers")
-	ret0, _ := ret[0].(map[uint64]*pb.VpInfo)
+	ret0, _ := ret[0].(map[uint64]*types.VpInfo)
 	return ret0
 }
 
@@ -261,25 +262,11 @@ func (mr *MockOrderPeerManagerMockRecorder) OrderPeers() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OrderPeers", reflect.TypeOf((*MockOrderPeerManager)(nil).OrderPeers))
 }
 
-// OtherPeers mocks base method.
-func (m *MockOrderPeerManager) OtherPeers() map[uint64]*peer.AddrInfo {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "OtherPeers")
-	ret0, _ := ret[0].(map[uint64]*peer.AddrInfo)
-	return ret0
-}
-
-// OtherPeers indicates an expected call of OtherPeers.
-func (mr *MockOrderPeerManagerMockRecorder) OtherPeers() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OtherPeers", reflect.TypeOf((*MockOrderPeerManager)(nil).OtherPeers))
-}
-
 // Peers mocks base method.
-func (m *MockOrderPeerManager) Peers() map[string]*peer.AddrInfo {
+func (m *MockOrderPeerManager) Peers() []peer.AddrInfo {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Peers")
-	ret0, _ := ret[0].(map[string]*peer.AddrInfo)
+	ret0, _ := ret[0].([]peer.AddrInfo)
 	return ret0
 }
 
@@ -347,7 +334,7 @@ func (mr *MockOrderPeerManagerMockRecorder) SubscribeOrderMessage(ch interface{}
 }
 
 // UpdateRouter mocks base method.
-func (m *MockOrderPeerManager) UpdateRouter(vpInfos map[uint64]*pb.VpInfo, isNew bool) bool {
+func (m *MockOrderPeerManager) UpdateRouter(vpInfos map[uint64]*types.VpInfo, isNew bool) bool {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateRouter", vpInfos, isNew)
 	ret0, _ := ret[0].(bool)
@@ -384,7 +371,7 @@ func (m *MockPeerManager) EXPECT() *MockPeerManagerMockRecorder {
 }
 
 // AddNode mocks base method.
-func (m *MockPeerManager) AddNode(newNodeID uint64, vpInfo *pb.VpInfo) {
+func (m *MockPeerManager) AddNode(newNodeID uint64, vpInfo *types.VpInfo) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "AddNode", newNodeID, vpInfo)
 }
@@ -450,7 +437,7 @@ func (mr *MockPeerManagerMockRecorder) DelNode(delID interface{}) *gomock.Call {
 }
 
 // Disconnect mocks base method.
-func (m *MockPeerManager) Disconnect(vpInfos map[uint64]*pb.VpInfo) {
+func (m *MockPeerManager) Disconnect(vpInfos map[uint64]*types.VpInfo) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "Disconnect", vpInfos)
 }
@@ -462,10 +449,10 @@ func (mr *MockPeerManagerMockRecorder) Disconnect(vpInfos interface{}) *gomock.C
 }
 
 // OrderPeers mocks base method.
-func (m *MockPeerManager) OrderPeers() map[uint64]*pb.VpInfo {
+func (m *MockPeerManager) OrderPeers() map[uint64]*types.VpInfo {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "OrderPeers")
-	ret0, _ := ret[0].(map[uint64]*pb.VpInfo)
+	ret0, _ := ret[0].(map[uint64]*types.VpInfo)
 	return ret0
 }
 
@@ -475,25 +462,11 @@ func (mr *MockPeerManagerMockRecorder) OrderPeers() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OrderPeers", reflect.TypeOf((*MockPeerManager)(nil).OrderPeers))
 }
 
-// OtherPeers mocks base method.
-func (m *MockPeerManager) OtherPeers() map[uint64]*peer.AddrInfo {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "OtherPeers")
-	ret0, _ := ret[0].(map[uint64]*peer.AddrInfo)
-	return ret0
-}
-
-// OtherPeers indicates an expected call of OtherPeers.
-func (mr *MockPeerManagerMockRecorder) OtherPeers() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OtherPeers", reflect.TypeOf((*MockPeerManager)(nil).OtherPeers))
-}
-
 // Peers mocks base method.
-func (m *MockPeerManager) Peers() map[string]*peer.AddrInfo {
+func (m *MockPeerManager) Peers() []peer.AddrInfo {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Peers")
-	ret0, _ := ret[0].(map[string]*peer.AddrInfo)
+	ret0, _ := ret[0].([]peer.AddrInfo)
 	return ret0
 }
 
@@ -589,7 +562,7 @@ func (mr *MockPeerManagerMockRecorder) SubscribeOrderMessage(ch interface{}) *go
 }
 
 // UpdateRouter mocks base method.
-func (m *MockPeerManager) UpdateRouter(vpInfos map[uint64]*pb.VpInfo, isNew bool) bool {
+func (m *MockPeerManager) UpdateRouter(vpInfos map[uint64]*types.VpInfo, isNew bool) bool {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateRouter", vpInfos, isNew)
 	ret0, _ := ret[0].(bool)

@@ -8,15 +8,15 @@ import (
 	"github.com/Rican7/retry/strategy"
 	"github.com/hyperchain/go-hpc-rbft/common/consensus"
 	rbfttypes "github.com/hyperchain/go-hpc-rbft/types"
-	"github.com/meshplus/bitxhub-model/pb"
-	ethtypes "github.com/meshplus/eth-kit/types"
+	"github.com/meshplus/bitxhub-kit/types"
+	ethtypes "github.com/meshplus/bitxhub-kit/types"
 	"github.com/sirupsen/logrus"
 )
 
 func (s *RBFTAdaptor) Execute(requests [][]byte, localList []bool, seqNo uint64, timestamp int64) {
-	var txs []pb.Transaction
+	var txs []*types.Transaction
 	for _, request := range requests {
-		var tx ethtypes.EthTransaction
+		var tx ethtypes.Transaction
 		if err := tx.Unmarshal(request); err != nil {
 			// TODO: fix
 			panic(fmt.Sprintf("failed to unmarshal transaction from rbft: %v", err))
@@ -32,7 +32,7 @@ func (s *RBFTAdaptor) Execute(requests [][]byte, localList []bool, seqNo uint64,
 	}
 }
 
-// TODO: process epoch update and verify checkpoints
+// TODO: process epoch update and checkpoints
 func (s *RBFTAdaptor) StateUpdate(seqNo uint64, digest string, checkpoints []*consensus.SignedCheckpoint, epochChanges ...*consensus.QuorumCheckpoint) {
 	s.StateUpdating = true
 	s.StateUpdateHeight = seqNo
@@ -51,7 +51,7 @@ func (s *RBFTAdaptor) StateUpdate(seqNo uint64, digest string, checkpoints []*co
 		"current":      chain.Height,
 		"current_hash": chain.BlockHash.String(),
 	}).Info("State Update")
-	get := func(peers []uint64, i int) (block *pb.Block, err error) {
+	get := func(peers []uint64, i int) (block *types.Block, err error) {
 		for _, id := range peers {
 			block, err = s.getBlock(id, i)
 			if err != nil {
@@ -65,8 +65,8 @@ func (s *RBFTAdaptor) StateUpdate(seqNo uint64, digest string, checkpoints []*co
 		return nil, fmt.Errorf("can't get block from all peers")
 	}
 
-	blockCache := make([]*pb.Block, seqNo-chain.Height)
-	var block *pb.Block
+	blockCache := make([]*types.Block, seqNo-chain.Height)
+	var block *types.Block
 	for i := seqNo; i > chain.Height; i-- {
 		if err := retry.Retry(func(attempt uint) (err error) {
 			block, err = get(peers, int(i))
@@ -98,11 +98,11 @@ func (s *RBFTAdaptor) StateUpdate(seqNo uint64, digest string, checkpoints []*co
 			s.logger.Error("Receive a nil block")
 			return
 		}
-		localList := make([]bool, len(block.Transactions.Transactions))
-		for i := 0; i < len(block.Transactions.Transactions); i++ {
+		localList := make([]bool, len(block.Transactions))
+		for i := 0; i < len(block.Transactions); i++ {
 			localList[i] = false
 		}
-		commitEvent := &pb.CommitEvent{
+		commitEvent := &types.CommitEvent{
 			Block:     block,
 			LocalList: localList,
 		}

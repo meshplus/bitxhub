@@ -7,7 +7,6 @@ import (
 
 	"github.com/google/btree"
 	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/sirupsen/logrus"
 )
 
@@ -48,7 +47,7 @@ func newTransactionStore(f GetAccountNonceFunc, logger logrus.FieldLogger) *tran
 	}
 }
 
-func (txStore *transactionStore) insertTxs(txs map[string][]pb.Transaction, isLocal bool) map[string]bool {
+func (txStore *transactionStore) insertTxs(txs map[string][]*types.Transaction, isLocal bool) map[string]bool {
 	now := time.Now().Unix()
 	dirtyAccounts := make(map[string]bool)
 	for account, list := range txs {
@@ -84,7 +83,7 @@ func (txStore *transactionStore) insertTxs(txs map[string][]pb.Transaction, isLo
 }
 
 // Get transaction by account address + nonce
-func (txStore *transactionStore) getTxByOrderKey(account string, seqNo uint64) pb.Transaction {
+func (txStore *transactionStore) getTxByOrderKey(account string, seqNo uint64) *types.Transaction {
 	if list, ok := txStore.allTxs[account]; ok {
 		res := list.items[seqNo]
 		if res == nil {
@@ -117,8 +116,8 @@ func newTxSortedMap() *txSortedMap {
 	}
 }
 
-func (m *txSortedMap) filterReady(demandNonce uint64) ([]pb.Transaction, []pb.Transaction, uint64) {
-	var readyTxs, nonReadyTxs []pb.Transaction
+func (m *txSortedMap) filterReady(demandNonce uint64) ([]*types.Transaction, []*types.Transaction, uint64) {
+	var readyTxs, nonReadyTxs []*types.Transaction
 	if m.index.data.Len() == 0 {
 		return nil, nil, demandNonce
 	}
@@ -139,8 +138,8 @@ func (m *txSortedMap) filterReady(demandNonce uint64) ([]pb.Transaction, []pb.Tr
 
 // forward removes all allTxs from the map with a nonce lower than the
 // provided commitNonce.
-func (m *txSortedMap) forward(commitNonce uint64) map[string][]pb.Transaction {
-	removedTxs := make(map[string][]pb.Transaction)
+func (m *txSortedMap) forward(commitNonce uint64) map[string][]*types.Transaction {
+	removedTxs := make(map[string][]*types.Transaction)
 	commitNonceKey := makeSortedNonceKey(commitNonce)
 	m.index.data.AscendLessThan(commitNonceKey, func(i btree.Item) bool {
 		// delete tx from map.
@@ -148,7 +147,7 @@ func (m *txSortedMap) forward(commitNonce uint64) map[string][]pb.Transaction {
 		txItem := m.items[nonce]
 		account := txItem.account
 		if _, ok := removedTxs[account]; !ok {
-			removedTxs[account] = make([]pb.Transaction, 0)
+			removedTxs[account] = make([]*types.Transaction, 0)
 		}
 		removedTxs[account] = append(removedTxs[account], txItem.tx)
 		delete(m.items, nonce)
@@ -247,7 +246,7 @@ func (tlm *txLiveTimeMap) insertByTtlKey(account string, nonce uint64, liveTime 
 	tlm.items[makeAccountNonceKey(account, nonce)] = liveTime
 }
 
-func (tlm *txLiveTimeMap) removeByTtlKey(txs map[string][]pb.Transaction) {
+func (tlm *txLiveTimeMap) removeByTtlKey(txs map[string][]*types.Transaction) {
 	for account, list := range txs {
 		for _, tx := range list {
 			liveTime, ok := tlm.items[makeAccountNonceKey(account, tx.GetNonce())]
@@ -293,7 +292,7 @@ func (tam *txArrivedTimeMap) insertByTtlKey(account string, nonce uint64, liveTi
 	tam.items[makeAccountNonceKey(account, nonce)] = liveTime
 }
 
-func (tam *txArrivedTimeMap) removeByTtlKey(txs map[string][]pb.Transaction) {
+func (tam *txArrivedTimeMap) removeByTtlKey(txs map[string][]*types.Transaction) {
 	for account, list := range txs {
 		for _, tx := range list {
 			liveTime, ok := tam.items[makeAccountNonceKey(account, tx.GetNonce())]

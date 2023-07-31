@@ -9,6 +9,12 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+var (
+	ErrTxsOutOfRange = errors.New("current txs is out of range")
+
+	ErrGasOutOfRange = errors.New("parent gas price is out of range")
+)
+
 type Gas struct {
 	repo   *repo.Repo
 	ledger *ledger.Ledger
@@ -34,19 +40,19 @@ func (gas *Gas) GetGasPrice() (uint64, error) {
 		return 0, errors.New("fail to get block")
 	}
 	gas.logger.Debugf("get %dth gas info: %v", latest, block.BlockHeader.GasPrice)
-	max := gas.repo.Config.MaxGasPrice
-	min := gas.repo.Config.MinGasPrice
+	max := gas.repo.Config.Genesis.MaxGasPrice
+	min := gas.repo.Config.Genesis.MinGasPrice
 	parentGasPrice := block.BlockHeader.GasPrice
 	if uint64(parentGasPrice) < min || uint64(parentGasPrice) > max {
 		gas.logger.Errorf("gas price is out of range, parent gas price is %d, min is %d, max is %d", parentGasPrice, min, max)
 		return 0, ErrGasOutOfRange
 	}
-	total := gas.repo.Config.BatchSize
-	currentTxs := len(block.Transactions.Transactions)
+	total := gas.repo.Config.Txpool.BatchSize
+	currentTxs := len(block.Transactions)
 	if currentTxs > total {
 		return 0, ErrTxsOutOfRange
 	}
-	percentage := float64(currentTxs-total/2) / float64(total) * gas.repo.Config.GasChangeRate
+	percentage := float64(currentTxs-total/2) / float64(total) * gas.repo.Config.Genesis.GasChangeRate
 	currentPrice := uint64(float64(parentGasPrice) * (1 + percentage))
 	if currentPrice > max {
 		gas.logger.Warningf("gas price is touching ceiling, current price is %d, max is %d", currentPrice, max)

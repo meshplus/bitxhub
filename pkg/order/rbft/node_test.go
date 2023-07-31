@@ -10,11 +10,9 @@ import (
 	rbfttypes "github.com/hyperchain/go-hpc-rbft/types"
 	"github.com/meshplus/bitxhub-kit/log"
 	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/pkg/order"
 	"github.com/meshplus/bitxhub/pkg/order/rbft/adaptor"
 	"github.com/meshplus/bitxhub/pkg/order/rbft/testutil"
-	ethtypes "github.com/meshplus/eth-kit/types"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -70,10 +68,10 @@ func WithGetAccountNonceFunc() order.Option {
 }
 
 func withNodes() order.Option {
-	nodes := make(map[uint64]*pb.VpInfo)
-	nodes[1] = &pb.VpInfo{Id: uint64(1)}
-	nodes[2] = &pb.VpInfo{Id: uint64(2)}
-	nodes[3] = &pb.VpInfo{Id: uint64(3)}
+	nodes := make(map[uint64]*types.VpInfo)
+	nodes[1] = &types.VpInfo{Id: uint64(1)}
+	nodes[2] = &types.VpInfo{Id: uint64(2)}
+	nodes[3] = &types.VpInfo{Id: uint64(3)}
 	return func(config *order.Config) {
 		config.Nodes = nodes
 	}
@@ -95,8 +93,8 @@ func TestPrepare(t *testing.T) {
 	ast := assert.New(t)
 	ctrl := gomock.NewController(t)
 	order := mockNode(ctrl, t)
-	tx1 := &ethtypes.EthTransaction{
-		Inner: &ethtypes.DynamicFeeTx{},
+	tx1 := &types.Transaction{
+		Inner: &types.DynamicFeeTx{},
 		Time:  time.Now(),
 	}
 	err := order.Prepare(tx1)
@@ -205,21 +203,21 @@ func TestQuorum(t *testing.T) {
 	ast := assert.New(t)
 	ctrl := gomock.NewController(t)
 	node := mockNode(ctrl, t)
-	node.stack.Nodes = make(map[uint64]*pb.VpInfo)
-	node.stack.Nodes[1] = &pb.VpInfo{Id: uint64(1)}
-	node.stack.Nodes[2] = &pb.VpInfo{Id: uint64(2)}
-	node.stack.Nodes[3] = &pb.VpInfo{Id: uint64(3)}
-	node.stack.Nodes[4] = &pb.VpInfo{Id: uint64(4)}
+	node.stack.Nodes = make(map[uint64]*types.VpInfo)
+	node.stack.Nodes[1] = &types.VpInfo{Id: uint64(1)}
+	node.stack.Nodes[2] = &types.VpInfo{Id: uint64(2)}
+	node.stack.Nodes[3] = &types.VpInfo{Id: uint64(3)}
+	node.stack.Nodes[4] = &types.VpInfo{Id: uint64(4)}
 	// N = 3f + 1, f=1
 	quorum := node.Quorum()
 	ast.Equal(uint64(3), quorum)
 
-	node.stack.Nodes[5] = &pb.VpInfo{Id: uint64(5)}
+	node.stack.Nodes[5] = &types.VpInfo{Id: uint64(5)}
 	// N = 3f + 2, f=1
 	quorum = node.Quorum()
 	ast.Equal(uint64(4), quorum)
 
-	node.stack.Nodes[6] = &pb.VpInfo{Id: uint64(6)}
+	node.stack.Nodes[6] = &types.VpInfo{Id: uint64(6)}
 	// N = 3f + 3, f=1
 	quorum = node.Quorum()
 	ast.Equal(uint64(4), quorum)

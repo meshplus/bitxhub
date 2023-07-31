@@ -11,14 +11,13 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/eth-kit/ledger"
 )
 
-var _ ledger.StateLedger = (*SimpleLedger)(nil)
+var _ ledger.StateLedger = (*StateLedger)(nil)
 
 // GetOrCreateAccount get the account, if not exist, create a new account
-func (l *SimpleLedger) GetOrCreateAccount(addr *types.Address) ledger.IAccount {
+func (l *StateLedger) GetOrCreateAccount(addr *types.Address) ledger.IAccount {
 	account := l.GetAccount(addr)
 	if account == nil {
 		account = newAccount(l.ldb, l.accountCache, addr, l.changer)
@@ -33,7 +32,7 @@ func (l *SimpleLedger) GetOrCreateAccount(addr *types.Address) ledger.IAccount {
 }
 
 // GetAccount get account info using account Address, if not found, create a new account
-func (l *SimpleLedger) GetAccount(address *types.Address) ledger.IAccount {
+func (l *StateLedger) GetAccount(address *types.Address) ledger.IAccount {
 	addr := address.String()
 
 	l.lock.RLock()
@@ -80,47 +79,48 @@ func (l *SimpleLedger) GetAccount(address *types.Address) ledger.IAccount {
 	return nil
 }
 
-func (l *SimpleLedger) setAccount(account ledger.IAccount) {
+// nolint
+func (l *StateLedger) setAccount(account ledger.IAccount) {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 	l.accounts[account.GetAddress().String()] = account
 }
 
 // GetBalanec get account balance using account Address
-func (l *SimpleLedger) GetBalance(addr *types.Address) *big.Int {
+func (l *StateLedger) GetBalance(addr *types.Address) *big.Int {
 	account := l.GetOrCreateAccount(addr)
 	return account.GetBalance()
 }
 
 // SetBalance set account balance
-func (l *SimpleLedger) SetBalance(addr *types.Address, value *big.Int) {
+func (l *StateLedger) SetBalance(addr *types.Address, value *big.Int) {
 	account := l.GetOrCreateAccount(addr)
 	account.SetBalance(value)
 }
 
-func (l *SimpleLedger) SubBalance(addr *types.Address, value *big.Int) {
+func (l *StateLedger) SubBalance(addr *types.Address, value *big.Int) {
 	account := l.GetOrCreateAccount(addr)
 	if !account.IsEmpty() {
 		account.SubBalance(value)
 	}
 }
 
-func (l *SimpleLedger) AddBalance(addr *types.Address, value *big.Int) {
+func (l *StateLedger) AddBalance(addr *types.Address, value *big.Int) {
 	account := l.GetOrCreateAccount(addr)
 	account.AddBalance(value)
 }
 
 // GetState get account state value using account Address and key
-func (l *SimpleLedger) GetState(addr *types.Address, key []byte) (bool, []byte) {
+func (l *StateLedger) GetState(addr *types.Address, key []byte) (bool, []byte) {
 	account := l.GetOrCreateAccount(addr)
 	return account.GetState(key)
 }
 
-func (l *SimpleLedger) setTransientState(addr types.Address, key, value []byte) {
+func (l *StateLedger) setTransientState(addr types.Address, key, value []byte) {
 	l.transientStorage.Set(addr, common.BytesToHash(key), common.BytesToHash(value))
 }
 
-func (l *SimpleLedger) GetCommittedState(addr *types.Address, key []byte) []byte {
+func (l *StateLedger) GetCommittedState(addr *types.Address, key []byte) []byte {
 	account := l.GetOrCreateAccount(addr)
 	if account.IsEmpty() {
 		return (&types.Hash{}).Bytes()
@@ -129,30 +129,30 @@ func (l *SimpleLedger) GetCommittedState(addr *types.Address, key []byte) []byte
 }
 
 // SetState set account state value using account Address and key
-func (l *SimpleLedger) SetState(addr *types.Address, key []byte, v []byte) {
+func (l *StateLedger) SetState(addr *types.Address, key []byte, v []byte) {
 	account := l.GetOrCreateAccount(addr)
 	account.SetState(key, v)
 }
 
 // AddState add account state value using account Address and key
-func (l *SimpleLedger) AddState(addr *types.Address, key []byte, v []byte) {
+func (l *StateLedger) AddState(addr *types.Address, key []byte, v []byte) {
 	account := l.GetOrCreateAccount(addr)
 	account.AddState(key, v)
 }
 
 // SetCode set contract code
-func (l *SimpleLedger) SetCode(addr *types.Address, code []byte) {
+func (l *StateLedger) SetCode(addr *types.Address, code []byte) {
 	account := l.GetOrCreateAccount(addr)
 	account.SetCodeAndHash(code)
 }
 
 // GetCode get contract code
-func (l *SimpleLedger) GetCode(addr *types.Address) []byte {
+func (l *StateLedger) GetCode(addr *types.Address) []byte {
 	account := l.GetOrCreateAccount(addr)
 	return account.Code()
 }
 
-func (l *SimpleLedger) GetCodeHash(addr *types.Address) *types.Hash {
+func (l *StateLedger) GetCodeHash(addr *types.Address) *types.Hash {
 	account := l.GetOrCreateAccount(addr)
 	if account.IsEmpty() {
 		return &types.Hash{}
@@ -160,7 +160,7 @@ func (l *SimpleLedger) GetCodeHash(addr *types.Address) *types.Hash {
 	return types.NewHash(account.CodeHash())
 }
 
-func (l *SimpleLedger) GetCodeSize(addr *types.Address) int {
+func (l *StateLedger) GetCodeSize(addr *types.Address) int {
 	account := l.GetOrCreateAccount(addr)
 	if !account.IsEmpty() {
 		if code := account.Code(); code != nil {
@@ -170,7 +170,7 @@ func (l *SimpleLedger) GetCodeSize(addr *types.Address) int {
 	return 0
 }
 
-func (l *SimpleLedger) AddRefund(gas uint64) {
+func (l *StateLedger) AddRefund(gas uint64) {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 
@@ -178,7 +178,7 @@ func (l *SimpleLedger) AddRefund(gas uint64) {
 	l.refund += gas
 }
 
-func (l *SimpleLedger) SubRefund(gas uint64) {
+func (l *StateLedger) SubRefund(gas uint64) {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 
@@ -189,7 +189,7 @@ func (l *SimpleLedger) SubRefund(gas uint64) {
 	l.refund -= gas
 }
 
-func (l *SimpleLedger) GetRefund() uint64 {
+func (l *StateLedger) GetRefund() uint64 {
 	l.lock.RLock()
 	defer l.lock.RUnlock()
 
@@ -197,24 +197,24 @@ func (l *SimpleLedger) GetRefund() uint64 {
 }
 
 // GetNonce get account nonce
-func (l *SimpleLedger) GetNonce(addr *types.Address) uint64 {
+func (l *StateLedger) GetNonce(addr *types.Address) uint64 {
 	account := l.GetOrCreateAccount(addr)
 	return account.GetNonce()
 }
 
 // SetNonce set account nonce
-func (l *SimpleLedger) SetNonce(addr *types.Address, nonce uint64) {
+func (l *StateLedger) SetNonce(addr *types.Address, nonce uint64) {
 	account := l.GetOrCreateAccount(addr)
 	account.SetNonce(nonce)
 }
 
 // QueryByPrefix query value using key
-func (l *SimpleLedger) QueryByPrefix(addr *types.Address, prefix string) (bool, [][]byte) {
+func (l *StateLedger) QueryByPrefix(addr *types.Address, prefix string) (bool, [][]byte) {
 	account := l.GetOrCreateAccount(addr)
 	return account.Query(prefix)
 }
 
-func (l *SimpleLedger) Clear() {
+func (l *StateLedger) Clear() {
 	l.events = sync.Map{}
 
 	l.lock.Lock()
@@ -223,7 +223,7 @@ func (l *SimpleLedger) Clear() {
 }
 
 // FlushDirtyData gets dirty accounts and computes block journal
-func (l *SimpleLedger) FlushDirtyData() (map[string]ledger.IAccount, *types.Hash) {
+func (l *StateLedger) FlushDirtyData() (map[string]ledger.IAccount, *types.Hash) {
 	dirtyAccounts := make(map[string]ledger.IAccount)
 	var dirtyAccountData []byte
 	var journals []*blockJournalEntry
@@ -263,7 +263,7 @@ func (l *SimpleLedger) FlushDirtyData() (map[string]ledger.IAccount, *types.Hash
 }
 
 // Commit commit the state
-func (l *SimpleLedger) Commit(height uint64, accounts map[string]ledger.IAccount, stateRoot *types.Hash) error {
+func (l *StateLedger) Commit(height uint64, accounts map[string]ledger.IAccount, stateRoot *types.Hash) error {
 	ldbBatch := l.ldb.NewBatch()
 
 	for _, acc := range accounts {
@@ -356,14 +356,14 @@ func (l *SimpleLedger) Commit(height uint64, accounts map[string]ledger.IAccount
 }
 
 // Version returns the current version
-func (l *SimpleLedger) Version() uint64 {
+func (l *StateLedger) Version() uint64 {
 	l.journalMutex.RLock()
 	defer l.journalMutex.RUnlock()
 
 	return l.maxJnlHeight
 }
 
-func (l *SimpleLedger) RollbackState(height uint64) error {
+func (l *StateLedger) RollbackState(height uint64) error {
 	l.journalMutex.Lock()
 	defer l.journalMutex.Unlock()
 
@@ -412,7 +412,7 @@ func (l *SimpleLedger) RollbackState(height uint64) error {
 	return nil
 }
 
-func (l *SimpleLedger) Suiside(addr *types.Address) bool {
+func (l *StateLedger) Suiside(addr *types.Address) bool {
 	account := l.GetAccount(addr).(*SimpleAccount)
 	l.changer.append(suicideChange{
 		account:     addr,
@@ -425,7 +425,7 @@ func (l *SimpleLedger) Suiside(addr *types.Address) bool {
 	return true
 }
 
-func (l *SimpleLedger) HasSuiside(addr *types.Address) bool {
+func (l *StateLedger) HasSuiside(addr *types.Address) bool {
 	account := l.GetOrCreateAccount(addr)
 	if account.IsEmpty() {
 		return false
@@ -433,22 +433,22 @@ func (l *SimpleLedger) HasSuiside(addr *types.Address) bool {
 	return account.Suicided()
 }
 
-func (l *SimpleLedger) Exist(addr *types.Address) bool {
+func (l *StateLedger) Exist(addr *types.Address) bool {
 	return !l.GetOrCreateAccount(addr).IsEmpty()
 }
 
-func (l *SimpleLedger) Empty(addr *types.Address) bool {
+func (l *StateLedger) Empty(addr *types.Address) bool {
 	return l.GetOrCreateAccount(addr).IsEmpty()
 }
 
-func (l *SimpleLedger) Snapshot() int {
+func (l *StateLedger) Snapshot() int {
 	id := l.nextRevisionId
 	l.nextRevisionId++
 	l.validRevisions = append(l.validRevisions, revision{id, l.changer.length()})
 	return id
 }
 
-func (l *SimpleLedger) RevertToSnapshot(revid int) {
+func (l *StateLedger) RevertToSnapshot(revid int) {
 	idx := sort.Search(len(l.validRevisions), func(i int) bool {
 		return l.validRevisions[i].id >= revid
 	})
@@ -461,7 +461,7 @@ func (l *SimpleLedger) RevertToSnapshot(revid int) {
 	l.validRevisions = l.validRevisions[:idx]
 }
 
-func (l *SimpleLedger) ClearChangerAndRefund() {
+func (l *StateLedger) ClearChangerAndRefund() {
 	if len(l.changer.changes) > 0 {
 		l.changer = newChanger()
 		l.refund = 0
@@ -470,13 +470,13 @@ func (l *SimpleLedger) ClearChangerAndRefund() {
 	l.nextRevisionId = 0
 }
 
-func (l *SimpleLedger) AddAddressToAccessList(addr types.Address) {
+func (l *StateLedger) AddAddressToAccessList(addr types.Address) {
 	if l.accessList.AddAddress(addr) {
 		l.changer.append(accessListAddAccountChange{&addr})
 	}
 }
 
-func (l *SimpleLedger) AddSlotToAccessList(addr types.Address, slot types.Hash) {
+func (l *StateLedger) AddSlotToAccessList(addr types.Address, slot types.Hash) {
 	addrMod, slotMod := l.accessList.AddSlot(addr, slot)
 	if addrMod {
 		l.changer.append(accessListAddAccountChange{&addr})
@@ -489,7 +489,7 @@ func (l *SimpleLedger) AddSlotToAccessList(addr types.Address, slot types.Hash) 
 	}
 }
 
-func (l *SimpleLedger) PrepareAccessList(sender types.Address, dst *types.Address, precompiles []types.Address, list ledger.AccessTupleList) {
+func (l *StateLedger) PrepareAccessList(sender types.Address, dst *types.Address, precompiles []types.Address, list ledger.AccessTupleList) {
 	l.AddAddressToAccessList(sender)
 
 	if dst != nil {
@@ -507,15 +507,15 @@ func (l *SimpleLedger) PrepareAccessList(sender types.Address, dst *types.Addres
 	}
 }
 
-func (l *SimpleLedger) AddressInAccessList(addr types.Address) bool {
+func (l *StateLedger) AddressInAccessList(addr types.Address) bool {
 	return l.accessList.ContainsAddress(addr)
 }
 
-func (l *SimpleLedger) SlotInAccessList(addr types.Address, slot types.Hash) (bool, bool) {
+func (l *StateLedger) SlotInAccessList(addr types.Address, slot types.Hash) (bool, bool) {
 	return l.accessList.Contains(addr, slot)
 }
 
-func (l *SimpleLedger) AddPreimage(hash types.Hash, preimage []byte) {
+func (l *StateLedger) AddPreimage(hash types.Hash, preimage []byte) {
 	if _, ok := l.preimages[hash]; !ok {
 		l.changer.append(addPreimageChange{hash: hash})
 		pi := make([]byte, len(preimage))
@@ -524,31 +524,31 @@ func (l *SimpleLedger) AddPreimage(hash types.Hash, preimage []byte) {
 	}
 }
 
-func (l *SimpleLedger) PrepareBlock(hash *types.Hash, height uint64) {
+func (l *StateLedger) PrepareBlock(hash *types.Hash, height uint64) {
 	l.logs = NewEvmLogs()
 	l.logs.bhash = hash
 	l.blockHeight = height
 }
 
-func (l *SimpleLedger) AddLog(log *pb.EvmLog) {
+func (l *StateLedger) AddLog(log *types.EvmLog) {
 	l.changer.append(addLogChange{txHash: log.TransactionHash})
 
 	log.BlockHash = l.logs.bhash
 	log.LogIndex = uint64(l.logs.logSize)
 	if _, ok := l.logs.logs[*log.TransactionHash]; !ok {
-		l.logs.logs[*log.TransactionHash] = make([]*pb.EvmLog, 0)
+		l.logs.logs[*log.TransactionHash] = make([]*types.EvmLog, 0)
 	}
 
 	l.logs.logs[*log.TransactionHash] = append(l.logs.logs[*log.TransactionHash], log)
 	l.logs.logSize++
 }
 
-func (l *SimpleLedger) GetLogs(hash types.Hash) []*pb.EvmLog {
+func (l *StateLedger) GetLogs(hash types.Hash) []*types.EvmLog {
 	return l.logs.logs[hash]
 }
 
-func (l *SimpleLedger) Logs() []*pb.EvmLog {
-	var logs []*pb.EvmLog
+func (l *StateLedger) Logs() []*types.EvmLog {
+	var logs []*types.EvmLog
 	for _, lgs := range l.logs.logs {
 		logs = append(logs, lgs...)
 	}

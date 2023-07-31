@@ -30,7 +30,7 @@ func TestAccount_GetState(t *testing.T) {
 	assert.Nil(t, err)
 
 	addr := types.NewAddressByStr("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")
-	stateLedger := ledger.StateLedger.(*SimpleLedger)
+	stateLedger := ledger.StateLedger.(*StateLedger)
 	account := newAccount(stateLedger.ldb, stateLedger.accountCache, addr, newChanger())
 
 	addr1 := account.GetAddress()
@@ -73,7 +73,7 @@ func TestAccount_AccountBalance(t *testing.T) {
 	assert.Nil(t, err)
 
 	addr := types.NewAddressByStr("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")
-	stateLedger := ledger.StateLedger.(*SimpleLedger)
+	stateLedger := ledger.StateLedger.(*StateLedger)
 	account := newAccount(stateLedger.ldb, stateLedger.accountCache, addr, newChanger())
 
 	account.AddBalance(big.NewInt(1))

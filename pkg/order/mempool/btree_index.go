@@ -3,9 +3,8 @@ package mempool
 import (
 	"fmt"
 
-	"github.com/meshplus/bitxhub-model/pb"
-
 	"github.com/google/btree"
+	"github.com/meshplus/bitxhub-kit/types"
 )
 
 // the key of priorityIndex and parkingLotIndex.
@@ -51,14 +50,14 @@ func (otk *orderedTimeoutKey) Less(than btree.Item) bool {
 	return otk.nonce < other.nonce
 }
 
-func makeOrderedIndexKey(account string, tx pb.Transaction) *orderedIndexKey {
+func makeOrderedIndexKey(account string, tx *types.Transaction) *orderedIndexKey {
 	return &orderedIndexKey{
 		account: account,
 		nonce:   tx.GetNonce(),
 	}
 }
 
-func makeTimeoutKey(account string, tx pb.Transaction) *orderedTimeoutKey {
+func makeTimeoutKey(account string, tx *types.Transaction) *orderedTimeoutKey {
 	return &orderedTimeoutKey{
 		account:   account,
 		nonce:     tx.GetNonce(),
@@ -86,11 +85,11 @@ func newBtreeIndex() *btreeIndex {
 	}
 }
 
-func (idx *btreeIndex) insertBySortedNonceKey(tx pb.Transaction) {
+func (idx *btreeIndex) insertBySortedNonceKey(tx *types.Transaction) {
 	idx.data.ReplaceOrInsert(makeSortedNonceKey(tx.GetNonce()))
 }
 
-func (idx *btreeIndex) removeBySortedNonceKey(txs map[string][]pb.Transaction) {
+func (idx *btreeIndex) removeBySortedNonceKey(txs map[string][]*types.Transaction) {
 	for _, list := range txs {
 		for _, tx := range list {
 			idx.data.Delete(makeSortedNonceKey(tx.GetNonce()))
@@ -98,11 +97,11 @@ func (idx *btreeIndex) removeBySortedNonceKey(txs map[string][]pb.Transaction) {
 	}
 }
 
-func (idx *btreeIndex) insertByOrderedQueueKey(account string, tx pb.Transaction) {
+func (idx *btreeIndex) insertByOrderedQueueKey(account string, tx *types.Transaction) {
 	idx.data.ReplaceOrInsert(makeOrderedIndexKey(account, tx))
 }
 
-func (idx *btreeIndex) removeByOrderedQueueKey(txs map[string][]pb.Transaction) {
+func (idx *btreeIndex) removeByOrderedQueueKey(txs map[string][]*types.Transaction) {
 	for account, list := range txs {
 		for _, tx := range list {
 			idx.data.Delete(makeOrderedIndexKey(account, tx))
@@ -110,11 +109,11 @@ func (idx *btreeIndex) removeByOrderedQueueKey(txs map[string][]pb.Transaction) 
 	}
 }
 
-func (idx *btreeIndex) insertByTimeoutKey(account string, tx pb.Transaction) {
+func (idx *btreeIndex) insertByTimeoutKey(account string, tx *types.Transaction) {
 	idx.data.ReplaceOrInsert(makeTimeoutKey(account, tx))
 }
 
-func (idx *btreeIndex) removeByTimeoutKey(txs map[string][]pb.Transaction) {
+func (idx *btreeIndex) removeByTimeoutKey(txs map[string][]*types.Transaction) {
 	for account, list := range txs {
 		for _, tx := range list {
 			idx.data.Delete(makeTimeoutKey(account, tx))

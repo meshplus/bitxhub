@@ -30,9 +30,8 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/rpc"
-	types2 "github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub-model/pb"
-	"github.com/meshplus/bitxhub/api/jsonrpc/types"
+	"github.com/meshplus/bitxhub-kit/types"
+	rpctypes "github.com/meshplus/bitxhub/api/jsonrpc/types"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
 	"github.com/sirupsen/logrus"
 )
@@ -42,9 +41,9 @@ import (
 type filter struct {
 	typ      Type
 	deadline *time.Timer // filter is inactiv when deadline triggers
-	hashes   []*types2.Hash
+	hashes   []*types.Hash
 	crit     FilterQuery
-	logs     []*pb.EvmLog
+	logs     []*types.EvmLog
 	s        *Subscription // associated subscription in event system
 }
 
@@ -67,7 +66,7 @@ func NewAPI(api api.CoreAPI, logger logrus.FieldLogger) *FilterAPI {
 		api:     api,
 		events:  NewEventSystem(api, false),
 		filters: make(map[rpc.ID]*filter),
-		timeout: types.Deadline,
+		timeout: rpctypes.Deadline,
 		logger:  logger,
 	}
 	go filterAPI.timeoutLoop()
@@ -114,12 +113,12 @@ func (api *FilterAPI) timeoutLoop() {
 // https://eth.wiki/json-rpc/API#eth_newpendingtransactionfilter
 func (api *FilterAPI) NewPendingTransactionFilter() rpc.ID {
 	var (
-		pendingTxs   = make(chan []*types2.Hash)
+		pendingTxs   = make(chan []*types.Hash)
 		pendingTxSub = api.events.SubscribePendingTxs(pendingTxs)
 	)
 
 	api.filtersMu.Lock()
-	api.filters[pendingTxSub.ID] = &filter{typ: PendingTransactionsSubscription, deadline: time.NewTimer(api.timeout), hashes: make([]*types2.Hash, 0), s: pendingTxSub}
+	api.filters[pendingTxSub.ID] = &filter{typ: PendingTransactionsSubscription, deadline: time.NewTimer(api.timeout), hashes: make([]*types.Hash, 0), s: pendingTxSub}
 	api.filtersMu.Unlock()
 
 	go func() {
@@ -154,7 +153,7 @@ func (api *FilterAPI) NewPendingTransactions(ctx context.Context) (*rpc.Subscrip
 	rpcSub := notifier.CreateSubscription()
 
 	go func() {
-		txHashes := make(chan []*types2.Hash, 128)
+		txHashes := make(chan []*types.Hash, 128)
 		pendingTxSub := api.events.SubscribePendingTxs(txHashes)
 
 		for {
@@ -184,12 +183,12 @@ func (api *FilterAPI) NewPendingTransactions(ctx context.Context) (*rpc.Subscrip
 // https://eth.wiki/json-rpc/API#eth_newblockfilter
 func (api *FilterAPI) NewBlockFilter() rpc.ID {
 	var (
-		headers   = make(chan *pb.BlockHeader)
+		headers   = make(chan *types.BlockHeader)
 		headerSub = api.events.SubscribeNewHeads(headers)
 	)
 
 	api.filtersMu.Lock()
-	api.filters[headerSub.ID] = &filter{typ: BlocksSubscription, deadline: time.NewTimer(api.timeout), hashes: make([]*types2.Hash, 0), s: headerSub}
+	api.filters[headerSub.ID] = &filter{typ: BlocksSubscription, deadline: time.NewTimer(api.timeout), hashes: make([]*types.Hash, 0), s: headerSub}
 	api.filtersMu.Unlock()
 
 	go func() {
@@ -223,7 +222,7 @@ func (api *FilterAPI) NewHeads(ctx context.Context) (*rpc.Subscription, error) {
 	rpcSub := notifier.CreateSubscription()
 
 	go func() {
-		headers := make(chan *pb.BlockHeader)
+		headers := make(chan *types.BlockHeader)
 		headersSub := api.events.SubscribeNewHeads(headers)
 
 		for {
@@ -252,7 +251,7 @@ func (api *FilterAPI) Logs(ctx context.Context, crit FilterCriteria) (*rpc.Subsc
 
 	var (
 		rpcSub      = notifier.CreateSubscription()
-		matchedLogs = make(chan []*pb.EvmLog)
+		matchedLogs = make(chan []*types.EvmLog)
 	)
 
 	logsSub, err := api.events.SubscribeLogs(crit.toBxhFilterQuery(), matchedLogs)
@@ -299,14 +298,14 @@ type FilterCriteria ethereum.FilterQuery
 //
 // https://eth.wiki/json-rpc/API#eth_newfilter
 func (api *FilterAPI) NewFilter(crit FilterCriteria) (rpc.ID, error) {
-	logs := make(chan []*pb.EvmLog)
+	logs := make(chan []*types.EvmLog)
 	logsSub, err := api.events.SubscribeLogs(crit.toBxhFilterQuery(), logs)
 	if err != nil {
 		return "", err
 	}
 
 	api.filtersMu.Lock()
-	api.filters[logsSub.ID] = &filter{typ: LogsSubscription, crit: crit.toBxhFilterQuery(), deadline: time.NewTimer(api.timeout), logs: make([]*pb.EvmLog, 0), s: logsSub}
+	api.filters[logsSub.ID] = &filter{typ: LogsSubscription, crit: crit.toBxhFilterQuery(), deadline: time.NewTimer(api.timeout), logs: make([]*types.EvmLog, 0), s: logsSub}
 	api.filtersMu.Unlock()
 
 	go func() {
@@ -333,7 +332,7 @@ func (api *FilterAPI) NewFilter(crit FilterCriteria) (rpc.ID, error) {
 // GetLogs returns logs matching the given argument that are stored within the state.
 //
 // https://eth.wiki/json-rpc/API#eth_getlogs
-func (api *FilterAPI) GetLogs(ctx context.Context, ethCrit FilterCriteria) ([]*pb.EvmLog, error) {
+func (api *FilterAPI) GetLogs(ctx context.Context, ethCrit FilterCriteria) ([]*types.EvmLog, error) {
 	api.logger.Debugf("eth_getLogs: ethCrit: %s", ethCrit)
 	var filter *Filter
 	crit := ethCrit.toBxhFilterQuery()
@@ -382,7 +381,7 @@ func (api *FilterAPI) UninstallFilter(id rpc.ID) bool {
 // If the filter could not be found an empty array of logs is returned.
 //
 // https://eth.wiki/json-rpc/API#eth_getfilterlogs
-func (api *FilterAPI) GetFilterLogs(ctx context.Context, id rpc.ID) ([]*pb.EvmLog, error) {
+func (api *FilterAPI) GetFilterLogs(ctx context.Context, id rpc.ID) ([]*types.EvmLog, error) {
 	api.filtersMu.Lock()
 	f, found := api.filters[id]
 	api.filtersMu.Unlock()
@@ -452,18 +451,18 @@ func (api *FilterAPI) GetFilterChanges(id rpc.ID) (interface{}, error) {
 
 // returnHashes is a helper that will return an empty hash array case the given hash array is nil,
 // otherwise the given hashes array is returned.
-func returnHashes(hashes []*types2.Hash) []*types2.Hash {
+func returnHashes(hashes []*types.Hash) []*types.Hash {
 	if hashes == nil {
-		return []*types2.Hash{}
+		return []*types.Hash{}
 	}
 	return hashes
 }
 
 // returnLogs is a helper that will return an empty log array in case the given logs array is nil,
 // otherwise the given logs array is returned.
-func returnLogs(logs []*pb.EvmLog) []*pb.EvmLog {
+func returnLogs(logs []*types.EvmLog) []*types.EvmLog {
 	if logs == nil {
-		return []*pb.EvmLog{}
+		return []*types.EvmLog{}
 	}
 	return logs
 }
@@ -595,17 +594,17 @@ func (fc *FilterCriteria) toBxhFilterQuery() FilterQuery {
 	}
 
 	if fc.BlockHash != nil {
-		fq.BlockHash = types2.NewHash(fc.BlockHash.Bytes())
+		fq.BlockHash = types.NewHash(fc.BlockHash.Bytes())
 	}
 
 	for _, addr := range fc.Addresses {
-		fq.Addresses = append(fq.Addresses, types2.NewAddress(addr.Bytes()))
+		fq.Addresses = append(fq.Addresses, types.NewAddress(addr.Bytes()))
 	}
 
 	for _, topicList := range fc.Topics {
-		var topics []*types2.Hash
+		var topics []*types.Hash
 		for _, topic := range topicList {
-			topics = append(topics, types2.NewHash(topic.Bytes()))
+			topics = append(topics, types.NewHash(topic.Bytes()))
 		}
 		fq.Topics = append(fq.Topics, topics)
 	}

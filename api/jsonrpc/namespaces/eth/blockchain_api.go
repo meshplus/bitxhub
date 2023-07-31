@@ -14,12 +14,11 @@ import (
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub-model/pb"
 	rpctypes "github.com/meshplus/bitxhub/api/jsonrpc/types"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
 	"github.com/meshplus/bitxhub/internal/repo"
-	vm1 "github.com/meshplus/eth-kit/evm"
-	types2 "github.com/meshplus/eth-kit/types"
+	"github.com/meshplus/eth-kit/adaptor"
+	vm "github.com/meshplus/eth-kit/evm"
 	"github.com/sirupsen/logrus"
 )
 
@@ -154,7 +153,7 @@ func (api *BlockChainAPI) GetStorageAt(address common.Address, key string, block
 }
 
 // Call performs a raw contract call.
-func (api *BlockChainAPI) Call(args types2.CallArgs, blockNrOrHash *rpctypes.BlockNumberOrHash, _ *map[common.Address]rpctypes.Account) (hexutil.Bytes, error) {
+func (api *BlockChainAPI) Call(args types.CallArgs, blockNrOrHash *rpctypes.BlockNumberOrHash, _ *map[common.Address]rpctypes.Account) (hexutil.Bytes, error) {
 	api.logger.Debugf("eth_call, args: %v", args)
 
 	// Determine the highest gas limit can be used during call.
@@ -163,7 +162,7 @@ func (api *BlockChainAPI) Call(args types2.CallArgs, blockNrOrHash *rpctypes.Blo
 	// 	args.Gas = (*hexutil.Uint64)(&api.config.GasLimit)
 	// }
 
-	// tx := &types2.EthTransaction{}
+	// tx := &types.EthTransaction{}
 	// tx.FromCallArgs(args)
 
 	// receipt, err := api.api.Broker().HandleView(tx)
@@ -191,7 +190,7 @@ func (api *BlockChainAPI) Call(args types2.CallArgs, blockNrOrHash *rpctypes.Blo
 	// }
 }
 
-func DoCall(ctx context.Context, api api.CoreAPI, args types2.CallArgs, timeout time.Duration, globalGasCap uint64, logger logrus.FieldLogger) (*vm1.ExecutionResult, error) {
+func DoCall(ctx context.Context, api api.CoreAPI, args types.CallArgs, timeout time.Duration, globalGasCap uint64, logger logrus.FieldLogger) (*vm.ExecutionResult, error) {
 	defer func(start time.Time) { logger.Debug("Executing EVM call finished", "runtime", time.Since(start)) }(time.Now())
 
 	var cancel context.CancelFunc
@@ -203,7 +202,7 @@ func DoCall(ctx context.Context, api api.CoreAPI, args types2.CallArgs, timeout 
 	defer cancel()
 
 	//GET EVM Instance
-	msg, err := args.ToMessage(globalGasCap, big.NewInt(0))
+	msg, err := adaptor.CallArgsToMessage(&args, globalGasCap, big.NewInt(0))
 	if err != nil {
 		return nil, err
 	}
@@ -214,7 +213,7 @@ func DoCall(ctx context.Context, api api.CoreAPI, args types2.CallArgs, timeout 
 		return nil, err
 	}
 	leger.PrepareBlock(meta.BlockHash, meta.Height)
-	evm := api.Broker().GetEvm(msg, &vm1.Config{NoBaseFee: true})
+	evm := api.Broker().GetEvm(msg, &vm.Config{NoBaseFee: true})
 	if err != nil {
 		return nil, fmt.Errorf("error get evm")
 	}
@@ -224,8 +223,8 @@ func DoCall(ctx context.Context, api api.CoreAPI, args types2.CallArgs, timeout 
 		evm.Cancel()
 	}()
 
-	gp := new(vm1.GasPool).AddGas(math.MaxUint64)
-	result, err := vm1.ApplyMessage(evm, msg, gp)
+	gp := new(vm.GasPool).AddGas(math.MaxUint64)
+	result, err := vm.ApplyMessage(evm, msg, gp)
 
 	leger.Clear()
 
@@ -244,7 +243,7 @@ func DoCall(ctx context.Context, api api.CoreAPI, args types2.CallArgs, timeout 
 // EstimateGas returns an estimate of gas usage for the given smart contract call.
 // It adds 2,000 gas to the returned value instead of using the gas adjustment
 // param from the SDK.
-func (api *BlockChainAPI) EstimateGas(args types2.CallArgs, blockNrOrHash rpctypes.BlockNumberOrHash) (hexutil.Uint64, error) {
+func (api *BlockChainAPI) EstimateGas(args types.CallArgs, blockNrOrHash rpctypes.BlockNumberOrHash) (hexutil.Uint64, error) {
 	api.logger.Debugf("eth_estimateGas, args: %s", args)
 	// Determine the highest gas limit can be used during the estimation.
 	// if args.Gas == nil || uint64(*args.Gas) < params.TxGas {
@@ -261,7 +260,7 @@ func (api *BlockChainAPI) EstimateGas(args types2.CallArgs, blockNrOrHash rpctyp
 		hi = uint64(*args.Gas)
 	} else {
 		//todo use block gasLimit instead of config gasLimit
-		hi = api.config.GasLimit
+		hi = api.config.Genesis.GasLimit
 	}
 
 	var feeCap *big.Int
@@ -309,7 +308,7 @@ func (api *BlockChainAPI) EstimateGas(args types2.CallArgs, blockNrOrHash rpctyp
 	cap = hi
 
 	// Create a helper to check if a gas allowance results in an executable transaction
-	executable := func(gas uint64) (bool, *vm1.ExecutionResult, error) {
+	executable := func(gas uint64) (bool, *vm.ExecutionResult, error) {
 		args.Gas = (*hexutil.Uint64)(&gas)
 
 		result, err := DoCall(api.ctx, api.api, args, api.config.RPCEVMTimeout, api.config.RPCGasCap, api.logger)
@@ -321,7 +320,7 @@ func (api *BlockChainAPI) EstimateGas(args types2.CallArgs, blockNrOrHash rpctyp
 		}
 		return result.Failed(), result, nil
 
-		// tx := &types2.EthTransaction{}
+		// tx := &types.EthTransaction{}
 		// args.Gas = (*hexutil.Uint64)(&gas)
 		// tx.FromCallArgs(args)
 
@@ -351,7 +350,7 @@ func (api *BlockChainAPI) EstimateGas(args types2.CallArgs, blockNrOrHash rpctyp
 			return 0, err
 		}
 		if failed {
-			if ret != nil && ret.Err != vm1.ErrOutOfGas {
+			if ret != nil && ret.Err != vm.ErrOutOfGas {
 				if len(ret.Revert()) > 0 {
 					return 0, newRevertError(ret.Revert())
 				}
@@ -372,27 +371,27 @@ type accessListResult struct {
 	GasUsed    hexutil.Uint64       `json:"gasUsed"`
 }
 
-func (s *BlockChainAPI) CreateAccessList(args types2.CallArgs, blockNrOrHash *rpctypes.BlockNumberOrHash) (*accessListResult, error) {
+func (s *BlockChainAPI) CreateAccessList(args types.CallArgs, blockNrOrHash *rpctypes.BlockNumberOrHash) (*accessListResult, error) {
 	return nil, NotSupportApiError
 }
 
 // FormatBlock creates an ethereum block from a tendermint header and ethereum-formatted
 // transactions.
-func formatBlock(api api.CoreAPI, config *repo.Config, block *pb.Block, fullTx bool) (map[string]interface{}, error) {
-	cumulativeGas, err := getBlockCumulativeGas(api, block, uint64(len(block.Transactions.Transactions)-1))
+func formatBlock(api api.CoreAPI, config *repo.Config, block *types.Block, fullTx bool) (map[string]interface{}, error) {
+	cumulativeGas, err := getBlockCumulativeGas(api, block, uint64(len(block.Transactions)-1))
 	if err != nil {
 		return nil, err
 	}
 
-	formatTx := func(tx pb.Transaction, index uint64) (interface{}, error) {
+	formatTx := func(tx *types.Transaction, index uint64) (interface{}, error) {
 		return tx.GetHash(), nil
 	}
 	if fullTx {
-		formatTx = func(tx pb.Transaction, index uint64) (interface{}, error) {
+		formatTx = func(tx *types.Transaction, index uint64) (interface{}, error) {
 			return newRPCTransaction(tx, common.BytesToHash(block.BlockHash.Bytes()), block.Height(), index), nil
 		}
 	}
-	txs := block.Transactions.Transactions
+	txs := block.Transactions
 	transactions := make([]interface{}, len(txs))
 	for i, tx := range txs {
 		if transactions[i], err = formatTx(tx, uint64(i)); err != nil {
@@ -414,7 +413,7 @@ func formatBlock(api api.CoreAPI, config *repo.Config, block *pb.Block, fullTx b
 		"totalDifficulty":  (*hexutil.Big)(big.NewInt(0)),
 		"extraData":        []byte{},
 		"size":             hexutil.Uint64(block.Size()),
-		"gasLimit":         hexutil.Uint64(config.GasLimit), // Static gas limit
+		"gasLimit":         hexutil.Uint64(config.Genesis.GasLimit), // Static gas limit
 		"gasUsed":          hexutil.Uint64(cumulativeGas),
 		"timestamp":        hexutil.Uint64(block.BlockHeader.Timestamp),
 		"transactions":     transactions,

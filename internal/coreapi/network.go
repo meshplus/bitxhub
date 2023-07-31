@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/meshplus/bitxhub/internal/coreapi/api"
 )
 
@@ -29,8 +28,4 @@ func (network *NetworkAPI) DelVPNode(pid string) ([]byte, error) {
 		return nil, fmt.Errorf("pid is null")
 	}
 	return nil, nil
-}
-
-func (network *NetworkAPI) OtherPeers() map[uint64]*peer.AddrInfo {
-	return network.bxh.PeerMgr.OtherPeers()
 }

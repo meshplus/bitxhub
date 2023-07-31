@@ -5,7 +5,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/meshplus/bitxhub/cmd/bitxhub/client"
 	"github.com/urfave/cli"
 )
 
@@ -33,8 +32,7 @@ func main() {
 		startCMD(),
 		keyCMD(),
 		versionCMD(),
-		certCMD,
-		client.LoadClientCMD(),
+		certCMD(),
 	}
 
 	err := app.Run(os.Args)

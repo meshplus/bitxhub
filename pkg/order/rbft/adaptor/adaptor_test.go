@@ -9,15 +9,14 @@ import (
 	"github.com/hyperchain/go-hpc-rbft/common/consensus"
 	rbfttypes "github.com/hyperchain/go-hpc-rbft/types"
 	"github.com/meshplus/bitxhub-kit/log"
-	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/meshplus/bitxhub/pkg/order/rbft/testutil"
-	ethtypes "github.com/meshplus/eth-kit/types"
 	"github.com/stretchr/testify/assert"
 )
 
 func mockAdaptor(ctrl *gomock.Controller, t *testing.T) *RBFTAdaptor {
 	logger := log.NewWithModule("order")
-	blockC := make(chan *pb.CommitEvent, 1024)
+	blockC := make(chan *types.CommitEvent, 1024)
 	_, cancel := context.WithCancel(context.Background())
 	stack, err := NewRBFTAdaptor(testutil.MockOrderConfig(logger, ctrl, t), blockC, cancel, false)
 	assert.Nil(t, err)
@@ -45,8 +44,8 @@ func TestExecute(t *testing.T) {
 	adaptor := mockAdaptor(ctrl, t)
 
 	txs := make([][]byte, 0)
-	tx := ethtypes.EthTransaction{
-		Inner: &ethtypes.DynamicFeeTx{
+	tx := &types.Transaction{
+		Inner: &types.DynamicFeeTx{
 			Nonce: 0,
 		},
 		Time: time.Time{},

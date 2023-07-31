@@ -4,21 +4,21 @@ import (
 	"context"
 	"time"
 
-	"github.com/meshplus/bitxhub-model/pb"
+	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/sirupsen/logrus"
 )
 
 type TxWithResp struct {
-	Tx pb.Transaction
+	Tx *types.Transaction
 	Ch chan bool
 }
 
 type TxCache struct {
-	TxSetC  chan *pb.Transactions
-	RecvTxC chan pb.Transaction
+	TxSetC  chan []*types.Transaction
+	RecvTxC chan *types.Transaction
 	TxRespC chan *TxWithResp
 
-	txSet      []pb.Transaction
+	txSet      []*types.Transaction
 	timerC     chan bool
 	stopTimerC chan bool
 	txSetTick  time.Duration
@@ -28,12 +28,12 @@ type TxCache struct {
 
 func NewTxCache(txSliceTimeout time.Duration, txSetSize uint64, logger logrus.FieldLogger) *TxCache {
 	txCache := &TxCache{}
-	txCache.RecvTxC = make(chan pb.Transaction, DefaultTxCacheSize)
-	txCache.TxSetC = make(chan *pb.Transactions)
+	txCache.RecvTxC = make(chan *types.Transaction, DefaultTxCacheSize)
+	txCache.TxSetC = make(chan []*types.Transaction)
 	txCache.TxRespC = make(chan *TxWithResp)
 	txCache.timerC = make(chan bool)
 	txCache.stopTimerC = make(chan bool)
-	txCache.txSet = make([]pb.Transaction, 0)
+	txCache.txSet = make([]*types.Transaction, 0)
 	txCache.logger = logger
 	if txSliceTimeout == 0 {
 		txCache.txSetTick = DefaultTxSetTick
@@ -65,7 +65,7 @@ func (tc *TxCache) ListenEvent(ctx context.Context) {
 	}
 }
 
-func (tc *TxCache) appendTx(tx pb.Transaction) {
+func (tc *TxCache) appendTx(tx *types.Transaction) {
 	if tx == nil {
 		tc.logger.Errorf("Transaction is nil")
 		return
@@ -81,13 +81,10 @@ func (tc *TxCache) appendTx(tx pb.Transaction) {
 }
 
 func (tc *TxCache) postTxSet() {
-	dst := make([]pb.Transaction, len(tc.txSet))
+	dst := make([]*types.Transaction, len(tc.txSet))
 	copy(dst, tc.txSet)
-	txSet := &pb.Transactions{
-		Transactions: dst,
-	}
-	tc.TxSetC <- txSet
-	tc.txSet = make([]pb.Transaction, 0)
+	tc.TxSetC <- dst
+	tc.txSet = make([]*types.Transaction, 0)
 }
 
 func (tc *TxCache) IsFull() bool {

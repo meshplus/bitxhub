@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/sirupsen/logrus"
 )
 
@@ -39,7 +38,7 @@ type Config struct {
 
 type txItem struct {
 	account string
-	tx      pb.Transaction
+	tx      *types.Transaction
 	local   bool
 }
 
@@ -51,5 +50,16 @@ type ChainState struct {
 
 type GetTxReq struct {
 	Hash *types.Hash
-	Tx   chan pb.Transaction
+	Tx   chan *types.Transaction
+}
+type RequestBatch struct {
+	Digest    string
+	TxList    []*types.Transaction
+	Height    uint64
+	Timestamp int64
+}
+
+type Ready struct {
+	TxHashes []*types.Hash
+	Height   uint64
 }

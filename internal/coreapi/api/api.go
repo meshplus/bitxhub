@@ -2,9 +2,7 @@ package api
 
 import (
 	"github.com/ethereum/go-ethereum/event"
-	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub-model/pb"
 	"github.com/meshplus/bitxhub/internal/model/events"
 	vm "github.com/meshplus/eth-kit/evm"
 	"github.com/meshplus/eth-kit/ledger"
@@ -21,37 +19,36 @@ type CoreAPI interface {
 }
 
 type BrokerAPI interface {
-	HandleTransaction(tx pb.Transaction) error
-	HandleView(tx pb.Transaction) (*pb.Receipt, error)
-	GetTransaction(*types.Hash) (pb.Transaction, error)
-	GetTransactionMeta(*types.Hash) (*pb.TransactionMeta, error)
-	GetReceipt(*types.Hash) (*pb.Receipt, error)
-	GetBlock(mode string, key string) (*pb.Block, error)
-	GetBlocks(start uint64, end uint64) ([]*pb.Block, error)
+	HandleTransaction(tx *types.Transaction) error
+	HandleView(tx *types.Transaction) (*types.Receipt, error)
+	GetTransaction(*types.Hash) (*types.Transaction, error)
+	GetTransactionMeta(*types.Hash) (*types.TransactionMeta, error)
+	GetReceipt(*types.Hash) (*types.Receipt, error)
+	GetBlock(mode string, key string) (*types.Block, error)
+	GetBlocks(start uint64, end uint64) ([]*types.Block, error)
 	GetPendingNonceByAccount(account string) uint64
-	GetPendingTransactions(max int) []pb.Transaction
-	GetPoolTransaction(hash *types.Hash) pb.Transaction
+	GetPendingTransactions(max int) []*types.Transaction
+	GetPoolTransaction(hash *types.Hash) *types.Transaction
 	GetStateLedger() ledger.StateLedger
 	GetEvm(mes *vm.Message, vmConfig *vm.Config) *vm.EVM
 	// OrderReady
 	OrderReady() error
-	GetBlockHeaders(start uint64, end uint64) ([]*pb.BlockHeader, error)
+	GetBlockHeaders(start uint64, end uint64) ([]*types.BlockHeader, error)
 }
 
 type NetworkAPI interface {
 	PeerInfo() ([]byte, error)
-	OtherPeers() map[uint64]*peer.AddrInfo
 }
 
 type ChainAPI interface {
 	Status() string
-	Meta() (*pb.ChainMeta, error)
+	Meta() (*types.ChainMeta, error)
 	TPS(begin, end uint64) (uint64, error)
 }
 
 type FeedAPI interface {
-	SubscribeLogsEvent(chan<- []*pb.EvmLog) event.Subscription
-	SubscribeNewTxEvent(chan<- pb.Transactions) event.Subscription
+	SubscribeLogsEvent(chan<- []*types.EvmLog) event.Subscription
+	SubscribeNewTxEvent(chan<- []*types.Transaction) event.Subscription
 	SubscribeNewBlockEvent(chan<- events.ExecutedEvent) event.Subscription
 	BloomStatus() (uint64, uint64)
 }
