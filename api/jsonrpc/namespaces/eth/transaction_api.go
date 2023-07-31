@@ -174,9 +174,10 @@ func (api *TransactionAPI) GetTransactionReceipt(hash common.Hash) (map[string]i
 		"from":              common.BytesToAddress(tx.GetFrom().Bytes()),
 	}
 	if receipt.Bloom == nil {
-		fields["logsBloom"] = types.Bloom{}
+		emptyBloom := types.Bloom{}
+		fields["logsBloom"] = emptyBloom.ETHBloom()
 	} else {
-		fields["logsBloom"] = *receipt.Bloom
+		fields["logsBloom"] = receipt.Bloom.ETHBloom()
 	}
 	ethLogs := make([]*types3.Log, 0)
 	for _, log := range receipt.EvmLogs {
