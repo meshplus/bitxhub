@@ -54,7 +54,7 @@ func (api *BlockChainAPI) BlockNumber() (hexutil.Uint64, error) {
 }
 
 // GetBalance returns the provided account's balance, blockNum is ignored.
-func (api *BlockChainAPI) GetBalance(address common.Address, blockNrOrHash rpctypes.BlockNumberOrHash) (*hexutil.Big, error) {
+func (api *BlockChainAPI) GetBalance(address common.Address, blockNrOrHash *rpctypes.BlockNumberOrHash) (*hexutil.Big, error) {
 	api.logger.Debugf("eth_getBalance, address: %s, block number : %d", address.String())
 
 	stateLedger, err := getStateLedgerAt(api.api)
@@ -86,8 +86,8 @@ type StorageResult struct {
 
 // todo
 // GetProof returns the Merkle-proof for a given account and optionally some storage keys.
-func (api *BlockChainAPI) GetProof(address common.Address, storageKeys []string, blockNrOrHash rpctypes.BlockNumberOrHash) (*AccountResult, error) {
-	return nil, NotSupportApiError
+func (api *BlockChainAPI) GetProof(address common.Address, storageKeys []string, blockNrOrHash *rpctypes.BlockNumberOrHash) (*AccountResult, error) {
+	return nil, ErrNotSupportApiError
 }
 
 // GetBlockByNumber returns the block identified by number.
@@ -122,7 +122,7 @@ func (api *BlockChainAPI) GetBlockByHash(hash common.Hash, fullTx bool) (map[str
 }
 
 // GetCode returns the contract code at the given address, blockNum is ignored.
-func (api *BlockChainAPI) GetCode(address common.Address, blockNrOrHash rpctypes.BlockNumberOrHash) (hexutil.Bytes, error) {
+func (api *BlockChainAPI) GetCode(address common.Address, blockNrOrHash *rpctypes.BlockNumberOrHash) (hexutil.Bytes, error) {
 	api.logger.Debugf("eth_getCode, address: %s", address.String())
 
 	stateLedger, err := getStateLedgerAt(api.api)
@@ -136,7 +136,7 @@ func (api *BlockChainAPI) GetCode(address common.Address, blockNrOrHash rpctypes
 }
 
 // GetStorageAt returns the contract storage at the given address and key, blockNum is ignored.
-func (api *BlockChainAPI) GetStorageAt(address common.Address, key string, blockNrOrHash rpctypes.BlockNumberOrHash) (hexutil.Bytes, error) {
+func (api *BlockChainAPI) GetStorageAt(address common.Address, key string, blockNrOrHash *rpctypes.BlockNumberOrHash) (hexutil.Bytes, error) {
 	api.logger.Debugf("eth_getStorageAt, address: %s, key: %s", address, key)
 
 	stateLedger, err := getStateLedgerAt(api.api)
@@ -243,7 +243,7 @@ func DoCall(ctx context.Context, api api.CoreAPI, args types.CallArgs, timeout t
 // EstimateGas returns an estimate of gas usage for the given smart contract call.
 // It adds 2,000 gas to the returned value instead of using the gas adjustment
 // param from the SDK.
-func (api *BlockChainAPI) EstimateGas(args types.CallArgs, blockNrOrHash rpctypes.BlockNumberOrHash) (hexutil.Uint64, error) {
+func (api *BlockChainAPI) EstimateGas(args types.CallArgs, blockNrOrHash *rpctypes.BlockNumberOrHash) (hexutil.Uint64, error) {
 	api.logger.Debugf("eth_estimateGas, args: %s", args)
 	// Determine the highest gas limit can be used during the estimation.
 	// if args.Gas == nil || uint64(*args.Gas) < params.TxGas {
@@ -372,7 +372,7 @@ type accessListResult struct {
 }
 
 func (s *BlockChainAPI) CreateAccessList(args types.CallArgs, blockNrOrHash *rpctypes.BlockNumberOrHash) (*accessListResult, error) {
-	return nil, NotSupportApiError
+	return nil, ErrNotSupportApiError
 }
 
 // FormatBlock creates an ethereum block from a tendermint header and ethereum-formatted

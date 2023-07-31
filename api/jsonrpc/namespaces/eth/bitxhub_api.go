@@ -55,7 +55,7 @@ type feeHistoryResult struct {
 // todo Supplementary feeHsitory
 func (api *BitxhubAPI) FeeHistory(blockCount rpctypes.DecimalOrHex, lastBlock rpctypes.BlockNumber, rewardPercentiles []float64) (*feeHistoryResult, error) {
 	api.logger.Debug("eth_feeHistory")
-	return nil, NotSupportApiError
+	return nil, ErrNotSupportApiError
 }
 
 // Syncing returns whether or not the current node is syncing with other peers. Returns false if not, or a struct

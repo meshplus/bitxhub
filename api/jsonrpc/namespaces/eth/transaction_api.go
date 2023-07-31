@@ -96,14 +96,14 @@ func (api *TransactionAPI) GetTransactionByBlockHashAndIndex(hash common.Hash, i
 }
 
 // GetTransactionCount returns the number of transactions at the given address, blockNum is ignored.
-func (api *TransactionAPI) GetTransactionCount(address common.Address, blockNrOrHash rpctypes.BlockNumberOrHash) (*hexutil.Uint64, error) {
+func (api *TransactionAPI) GetTransactionCount(address common.Address, blockNrOrHash *rpctypes.BlockNumberOrHash) (*hexutil.Uint64, error) {
 	api.logger.Debugf("eth_getTransactionCount, address: %s", address)
-
-	if blockNumber, ok := blockNrOrHash.Number(); ok && blockNumber == rpctypes.PendingBlockNumber {
-		nonce := api.api.Broker().GetPendingNonceByAccount(address.String())
-		return (*hexutil.Uint64)(&nonce), nil
+	if blockNrOrHash != nil {
+		if blockNumber, ok := blockNrOrHash.Number(); ok && blockNumber == rpctypes.PendingBlockNumber {
+			nonce := api.api.Broker().GetPendingNonceByAccount(address.String())
+			return (*hexutil.Uint64)(&nonce), nil
+		}
 	}
-
 	stateLedger, err := getStateLedgerAt(api.api)
 	if err != nil {
 		return nil, err
