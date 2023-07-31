@@ -8,6 +8,7 @@ import (
 	"github.com/meshplus/bitxhub-kit/storage"
 	"github.com/meshplus/bitxhub-kit/storage/leveldb"
 	"github.com/meshplus/bitxhub-kit/storage/minifile"
+	"github.com/meshplus/bitxhub-kit/storage/pebble"
 	"github.com/syndtr/goleveldb/leveldb/errors"
 )
 
@@ -16,10 +17,21 @@ type storageWrapper struct {
 	File *minifile.MiniFile
 }
 
-func newStorageWrapper(path string) (*storageWrapper, error) {
-	db, err := leveldb.New(path)
-	if err != nil {
-		return nil, err
+func newStorageWrapper(path, typ string) (*storageWrapper, error) {
+	var db storage.Storage
+	var err error
+	if typ == "leveldb" {
+		db, err = leveldb.New(path)
+		if err != nil {
+			return nil, err
+		}
+	} else if typ == "pebble" {
+		db, err = pebble.New(path)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, fmt.Errorf("unknow kv type %s, expect leveldb or pebble", typ)
 	}
 
 	file, err := minifile.New(filepath.Join(path, "file"))

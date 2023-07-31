@@ -17,7 +17,7 @@ import (
 )
 
 func mockNode(ctrl *gomock.Controller, t *testing.T) *Node {
-	order, err := newNode(withID(), withIsNew(), withRepoRoot(), withStoragePath(t),
+	order, err := newNode(withID(), withIsNew(), withRepoRoot(), withStoragePath(t), withStorageType("leveldb"),
 		withLogger(), withNodes(), withApplied(), withDigest(), withPeerManager(ctrl), WithGetAccountNonceFunc())
 	assert.Nil(t, err)
 	return order
@@ -44,6 +44,12 @@ func withRepoRoot() order.Option {
 func withStoragePath(t *testing.T) order.Option {
 	return func(config *order.Config) {
 		config.StoragePath = t.TempDir()
+	}
+}
+
+func withStorageType(kvType string) order.Option {
+	return func(config *order.Config) {
+		config.StorageType = kvType
 	}
 }
 
@@ -139,7 +145,7 @@ func TestReadConfig(t *testing.T) {
 	ast := assert.New(t)
 	ctrl := gomock.NewController(t)
 	logger := log.NewWithModule("order")
-	rbftConf, txpoolConfig, err := generateRbftConfig("./testdata/", testutil.MockOrderConfig(logger, ctrl, t))
+	rbftConf, txpoolConfig, err := generateRbftConfig("./testdata/", testutil.MockOrderConfig(logger, ctrl, "leveldb", t))
 	ast.Nil(err)
 	rbftConf.Logger.Critical()
 	rbftConf.Logger.Criticalf("test critical")

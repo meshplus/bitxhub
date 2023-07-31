@@ -48,7 +48,7 @@ type Ready struct {
 }
 
 func NewRBFTAdaptor(config *order.Config, blockC chan *types.CommitEvent, cancel context.CancelFunc, isNew bool) (*RBFTAdaptor, error) {
-	store, err := newStorageWrapper(config.StoragePath)
+	store, err := newStorageWrapper(config.StoragePath, config.StorageType)
 	if err != nil {
 		return nil, err
 	}

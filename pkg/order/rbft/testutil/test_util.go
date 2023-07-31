@@ -66,7 +66,7 @@ func GenPrivKey() crypto.PrivateKey {
 	return privKey
 }
 
-func MockOrderConfig(logger logrus.FieldLogger, ctrl *gomock.Controller, t *testing.T) *order.Config {
+func MockOrderConfig(logger logrus.FieldLogger, ctrl *gomock.Controller, kvType string, t *testing.T) *order.Config {
 	nodes := make(map[uint64]*types.VpInfo)
 	priv := GenPrivKey()
 	account, _ := priv.PublicKey().Address()
@@ -80,6 +80,7 @@ func MockOrderConfig(logger logrus.FieldLogger, ctrl *gomock.Controller, t *test
 
 	conf := &order.Config{
 		StoragePath:      t.TempDir(),
+		StorageType:      kvType,
 		ID:               uint64(1),
 		Nodes:            nodes,
 		IsNew:            false,

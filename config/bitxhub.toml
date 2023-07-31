@@ -70,7 +70,8 @@ type = "serial" # opensource version only supports serial type, commercial versi
 algorithms = ["Secp256k1", "ECDSA_P256", "ECDSA_P384", "ECDSA_P521"]
 
 [ledger]
-type = "simple"
+type = "simple" # support "simple" ledger
+kv = "leveldb" # support "leveldb" and "pebble" as kv storage backend
 
 [genesis]
 chainid = 1356
