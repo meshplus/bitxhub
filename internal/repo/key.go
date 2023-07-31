@@ -7,10 +7,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	crypto2 "github.com/axiomesh/axiom-kit/crypto"
+	"github.com/axiomesh/axiom-kit/crypto/asym"
+	ecdsa2 "github.com/axiomesh/axiom-kit/crypto/asym/ecdsa"
 	"github.com/libp2p/go-libp2p/core/crypto"
-	crypto2 "github.com/meshplus/bitxhub-kit/crypto"
-	"github.com/meshplus/bitxhub-kit/crypto/asym"
-	ecdsa2 "github.com/meshplus/bitxhub-kit/crypto/asym/ecdsa"
 )
 
 type Key struct {

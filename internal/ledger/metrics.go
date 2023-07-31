@@ -4,7 +4,7 @@ import "github.com/prometheus/client_golang/prometheus"
 
 var (
 	PersistBlockDuration = prometheus.NewHistogram(prometheus.HistogramOpts{
-		Namespace: "bitxhub",
+		Namespace: "axiom",
 		Subsystem: "ledger",
 		Name:      "persist_block_duration_second",
 		Help:      "The total latency of block persist",

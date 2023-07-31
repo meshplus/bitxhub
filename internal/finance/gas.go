@@ -3,9 +3,9 @@ package finance
 import (
 	"errors"
 
-	"github.com/meshplus/bitxhub/internal/ledger"
-	"github.com/meshplus/bitxhub/internal/loggers"
-	"github.com/meshplus/bitxhub/internal/repo"
+	"github.com/axiomesh/axiom/internal/ledger"
+	"github.com/axiomesh/axiom/internal/loggers"
+	"github.com/axiomesh/axiom/internal/repo"
 	"github.com/sirupsen/logrus"
 )
 

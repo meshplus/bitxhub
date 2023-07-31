@@ -5,12 +5,12 @@ import (
 	"sort"
 	"time"
 
-	rbft "github.com/hyperchain/go-hpc-rbft"
-	"github.com/hyperchain/go-hpc-rbft/common/metrics/disabled"
-	"github.com/hyperchain/go-hpc-rbft/txpool"
-	rbfttypes "github.com/hyperchain/go-hpc-rbft/types"
-	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub/pkg/order"
+	rbft "github.com/axiomesh/axiom-bft"
+	"github.com/axiomesh/axiom-bft/common/metrics/disabled"
+	"github.com/axiomesh/axiom-bft/txpool"
+	rbfttypes "github.com/axiomesh/axiom-bft/types"
+	"github.com/axiomesh/axiom-kit/types"
+	"github.com/axiomesh/axiom/pkg/order"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -88,7 +88,7 @@ func defaultRbftConfig() rbft.Config[types.Transaction, *types.Transaction] {
 		FlowControl:             false,
 		FlowControlMaxMem:       0,
 		MetricsProv:             &disabled.Provider{},
-		Tracer:                  trace.NewNoopTracerProvider().Tracer("bitxhub"),
+		Tracer:                  trace.NewNoopTracerProvider().Tracer("axiom"),
 		DelFlag:                 make(chan bool, 10),
 		Logger:                  nil,
 	}

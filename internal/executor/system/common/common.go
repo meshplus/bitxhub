@@ -1,8 +1,8 @@
 package common
 
 import (
-	vm "github.com/meshplus/eth-kit/evm"
-	"github.com/meshplus/eth-kit/ledger"
+	vm "github.com/axiomesh/eth-kit/evm"
+	"github.com/axiomesh/eth-kit/ledger"
 )
 
 type SystemContract interface {

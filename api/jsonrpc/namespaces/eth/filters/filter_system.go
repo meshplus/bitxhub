@@ -24,12 +24,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/axiomesh/axiom-kit/types"
+	"github.com/axiomesh/axiom/internal/coreapi/api"
+	events2 "github.com/axiomesh/axiom/internal/model/events"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub/internal/coreapi/api"
-	events2 "github.com/meshplus/bitxhub/internal/model/events"
 )
 
 // Type determines the kind of filter and is used to put the filter in to

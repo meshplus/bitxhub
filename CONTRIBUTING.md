@@ -5,15 +5,15 @@
 ### <a name="submit-pr"></a> Submitting a Pull Request (PR)
 Before you submit your Pull Request (PR) consider the following guidelines:
 
-1. Search [GitHub](https://github.com/meshplus/bitxhub/pulls) for an open or closed PR
+1. Search [GitHub](https://github.com/axiomesh/axiom/pulls) for an open or closed PR
   that relates to your submission. You don't want to duplicate effort.
 1. Be sure that an issue describes the problem you're fixing, or documents the design for the feature you'd like to add.
   Discussing the design up front helps to ensure that we're ready to accept your work.
-1. Fork the meshplus/bitxhub repo.
+1. Fork the axiomesh/axiom repo.
 1. Make your changes in a new git branch:
 
      ```shell
-     git checkout -b my-fix-branch master
+     git checkout -b my-fix-branch main
      ```
 
 1. Create your patch, **including appropriate test cases**.
@@ -35,7 +35,7 @@ Before you submit your Pull Request (PR) consider the following guidelines:
     git push origin my-fix-branch
     ```
 
-1. In GitHub, send a pull request to `bitxhub:master`.
+1. In GitHub, send a pull request to `axiom:main`.
 
 * If we suggest changes then:
   * Make the required updates.
@@ -43,7 +43,7 @@ Before you submit your Pull Request (PR) consider the following guidelines:
   * Rebase your branch and force push to your GitHub repository (this will update your Pull Request):
 
     ```shell
-    git rebase master -i
+    git rebase main -i
     git push -f
     ```
 
@@ -60,10 +60,10 @@ from the main (upstream) repository:
     git push origin --delete my-fix-branch
     ```
 
-* Check out the master branch:
+* Check out the main branch:
 
     ```shell
-    git checkout master -f
+    git checkout main -f
     ```
 
 * Delete the local branch:
@@ -72,10 +72,10 @@ from the main (upstream) repository:
     git branch -D my-fix-branch
     ```
 
-* Update your master with the latest upstream version:
+* Update your main with the latest upstream version:
 
     ```shell
-    git pull --ff upstream master
+    git pull --ff upstream main
     ```
 
 ## <a name="commit"> Commit Message Guidelines

@@ -3,8 +3,8 @@ package mempool
 import (
 	"fmt"
 
+	"github.com/axiomesh/axiom-kit/types"
 	"github.com/google/btree"
-	"github.com/meshplus/bitxhub-kit/types"
 )
 
 // the key of priorityIndex and parkingLotIndex.

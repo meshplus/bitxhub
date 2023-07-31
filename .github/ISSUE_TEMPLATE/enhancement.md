@@ -1,6 +1,6 @@
 ---
 name: 'Development Task'
-about: 'As a BitXHub developer, I want to record a development task.'
+about: 'As a Axiom developer, I want to record a development task.'
 labels: enhancement
 ---
 

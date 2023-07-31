@@ -16,12 +16,12 @@ func TestGetStoragePath(t *testing.T) {
 	_, err := Load("testdata", "", "", "")
 	require.Nil(t, err)
 
-	_, err = Load("testdata", "", "../../config/bitxhub.toml", "../../config/network.toml")
+	_, err = Load("testdata", "", "../../config/axiom.toml", "../../config/network.toml")
 	require.Nil(t, err)
 
 	_, err = Load("testdata", "", "../../config/bitxh", "../../config/network.toml")
 	require.NotNil(t, err)
-	_, err = Load("testdata", "", "../../config/bitxhub.toml", "../../config/netwl")
+	_, err = Load("testdata", "", "../../config/axiom.toml", "../../config/netwl")
 	require.NotNil(t, err)
 	_, err = GetAPI("testdata")
 	require.Nil(t, err)

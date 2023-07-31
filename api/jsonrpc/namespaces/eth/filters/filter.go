@@ -22,8 +22,8 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub/internal/coreapi/api"
+	"github.com/axiomesh/axiom-kit/types"
+	"github.com/axiomesh/axiom/internal/coreapi/api"
 )
 
 // Filter can be used to retrieve and filter logs.

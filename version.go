@@ -1,4 +1,4 @@
-package bitxhub
+package axiom
 
 import (
 	"fmt"

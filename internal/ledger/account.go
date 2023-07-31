@@ -8,10 +8,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/axiomesh/axiom-kit/storage"
+	"github.com/axiomesh/axiom-kit/types"
+	"github.com/axiomesh/eth-kit/ledger"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/meshplus/bitxhub-kit/storage"
-	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/eth-kit/ledger"
 )
 
 var _ ledger.IAccount = (*SimpleAccount)(nil)

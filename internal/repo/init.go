@@ -6,9 +6,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/axiomesh/axiom-kit/fileutil"
 	"github.com/gobuffalo/packd"
 	"github.com/gobuffalo/packr"
-	"github.com/meshplus/bitxhub-kit/fileutil"
 )
 
 const (

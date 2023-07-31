@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/meshplus/bitxhub-kit/log"
-	"github.com/meshplus/bitxhub-kit/types"
+	"github.com/axiomesh/axiom-kit/log"
+	"github.com/axiomesh/axiom-kit/types"
 	"github.com/stretchr/testify/assert"
 )
 

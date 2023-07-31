@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub-kit/types/pb"
+	"github.com/axiomesh/axiom-kit/types"
+	"github.com/axiomesh/axiom-kit/types/pb"
 	"github.com/stretchr/testify/require"
 )
 

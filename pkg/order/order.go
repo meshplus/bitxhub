@@ -1,8 +1,8 @@
 package order
 
 import (
+	"github.com/axiomesh/axiom-kit/types"
 	"github.com/ethereum/go-ethereum/event"
-	"github.com/meshplus/bitxhub-kit/types"
 )
 
 //go:generate mockgen -destination mock_order/mock_order.go -package mock_order -source order.go

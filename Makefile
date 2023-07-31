@@ -1,11 +1,11 @@
 
 SHELL := /bin/bash
 CURRENT_PATH = $(shell pwd)
-APP_NAME = bitxhub
+APP_NAME = axiom
 export GODEBUG=x509ignoreCN=0
 
 # build with verison infos
-VERSION_DIR = github.com/meshplus/${APP_NAME}
+VERSION_DIR = github.com/axiomesh/${APP_NAME}
 BUILD_DATE = $(shell date +%FT%T)
 GIT_COMMIT = $(shell git log --pretty=format:'%h' -n 1)
 GIT_BRANCH = $(shell git rev-parse --abbrev-ref HEAD)
@@ -56,15 +56,15 @@ smoke-test: prepare
 install: prepare
 	cd internal/repo && packr2
 	$(GO) install -ldflags '${GOLDFLAGS}' ./cmd/${APP_NAME}
-	@printf "${GREEN}Install bitxhub successfully!${NC}\n"
+	@printf "${GREEN}Install ${APP_NAME} successfully!${NC}\n"
 
 ## make build: Go build the project
 build: prepare
 	cd internal/repo && packr2
 	@mkdir -p bin
 	$(GO) build -ldflags '${GOLDFLAGS}' ./cmd/${APP_NAME}
-	@mv ./bitxhub bin
-	@printf "${GREEN}Build bitxhub successfully!${NC}\n"
+	@mv ./${APP_NAME} bin
+	@printf "${GREEN}Build ${APP_NAME} successfully!${NC}\n"
 
 ## make release-binary: Build release before push
 release-binary:

@@ -3,8 +3,8 @@ package adaptor
 import (
 	"context"
 
-	"github.com/hyperchain/go-hpc-rbft/common/consensus"
-	"github.com/meshplus/bitxhub-kit/types/pb"
+	"github.com/axiomesh/axiom-bft/common/consensus"
+	"github.com/axiomesh/axiom-kit/types/pb"
 )
 
 func (s *RBFTAdaptor) Broadcast(ctx context.Context, msg *consensus.ConsensusMessage) error {

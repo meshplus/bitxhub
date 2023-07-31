@@ -3,7 +3,7 @@ package net
 import (
 	"fmt"
 
-	"github.com/meshplus/bitxhub/internal/repo"
+	"github.com/axiomesh/axiom/internal/repo"
 )
 
 // PublicNetAPI is the eth_ prefixed set of APIs in the Web3 JSON-RPC spec.

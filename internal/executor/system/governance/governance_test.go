@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/axiomesh/axiom-kit/types"
+	vm "github.com/axiomesh/eth-kit/evm"
 	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/meshplus/bitxhub-kit/types"
-	vm "github.com/meshplus/eth-kit/evm"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
@@ -72,27 +72,27 @@ func TestGovernance_ParseErrorArgs(t *testing.T) {
 	}{
 		{
 			method: "proposal",
-			data : []byte{1},
+			data:   []byte{1},
 		},
 		{
 			method: "proposal",
-			data: []byte{1, 2, 3, 4},
+			data:   []byte{1, 2, 3, 4},
 		},
 		{
 			method: "proposal",
-			data: []byte{1, 2, 3, 4, 5, 6, 7, 8},
+			data:   []byte{1, 2, 3, 4, 5, 6, 7, 8},
 		},
 		{
 			method: "proposal",
-			data: []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36},
+			data:   []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36},
 		},
 		{
 			method: "test method",
-			data: truedata,
+			data:   truedata,
 		},
 		{
 			method: "proposal",
-			data : truedata,
+			data:   truedata,
 		},
 	}
 

@@ -3,10 +3,10 @@ package governance
 import (
 	"testing"
 
+	"github.com/axiomesh/axiom/internal/ledger"
+	vm "github.com/axiomesh/eth-kit/evm"
+	"github.com/axiomesh/eth-kit/ledger/mock_ledger"
 	"github.com/golang/mock/gomock"
-	"github.com/meshplus/bitxhub/internal/ledger"
-	vm "github.com/meshplus/eth-kit/evm"
-	"github.com/meshplus/eth-kit/ledger/mock_ledger"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )

@@ -3,8 +3,8 @@ package mempool
 import (
 	"time"
 
+	"github.com/axiomesh/axiom-kit/types"
 	"github.com/ethereum/go-ethereum/event"
-	"github.com/meshplus/bitxhub-kit/types"
 )
 
 var _ MemPool = (*mempoolImpl)(nil)

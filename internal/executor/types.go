@@ -1,10 +1,10 @@
 package executor
 
 import (
+	"github.com/axiomesh/axiom-kit/types"
+	"github.com/axiomesh/axiom/internal/model/events"
+	vm "github.com/axiomesh/eth-kit/evm"
 	"github.com/ethereum/go-ethereum/event"
-	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub/internal/model/events"
-	vm "github.com/meshplus/eth-kit/evm"
 )
 
 type Executor interface {

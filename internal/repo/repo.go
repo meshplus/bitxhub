@@ -27,11 +27,11 @@ func Load(repoRoot string, passwd string, configPath string, networkPath string)
 	nViper := viper.New()
 	config, err := UnmarshalConfig(bViper, repoRoot, configPath)
 	if err != nil {
-		return nil, fmt.Errorf("unmarshal bitxhub config error: %w", err)
+		return nil, fmt.Errorf("unmarshal axiom config error: %w", err)
 	}
 
 	if err := checkConfig(config); err != nil {
-		return nil, fmt.Errorf("check bitxhub config failed: %w", err)
+		return nil, fmt.Errorf("check axiom config failed: %w", err)
 	}
 
 	var networkConfig *NetworkConfig
@@ -64,8 +64,8 @@ func Load(repoRoot string, passwd string, configPath string, networkPath string)
 		Key:           key,
 	}
 
-	// watch bitxhub.toml on changed
-	WatchBitxhubConfig(bViper, &repo.ConfigChangeFeed)
+	// watch axiom.toml on changed
+	WatchAxiomConfig(bViper, &repo.ConfigChangeFeed)
 
 	// watch network.toml on changed
 	WatchNetworkConfig(nViper, &repo.ConfigChangeFeed)

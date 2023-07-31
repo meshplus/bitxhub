@@ -1,7 +1,7 @@
 package events
 
 import (
-	"github.com/meshplus/bitxhub-kit/types"
+	"github.com/axiomesh/axiom-kit/types"
 )
 
 type NewTxsEvent struct {

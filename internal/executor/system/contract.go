@@ -1,9 +1,9 @@
 package system
 
 import (
-	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub/internal/executor/system/common"
-	"github.com/meshplus/bitxhub/internal/executor/system/governance"
+	"github.com/axiomesh/axiom-kit/types"
+	"github.com/axiomesh/axiom/internal/executor/system/common"
+	"github.com/axiomesh/axiom/internal/executor/system/governance"
 	"github.com/sirupsen/logrus"
 )
 

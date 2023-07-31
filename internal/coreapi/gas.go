@@ -1,6 +1,6 @@
 package coreapi
 
-import "github.com/meshplus/bitxhub/internal/coreapi/api"
+import "github.com/axiomesh/axiom/internal/coreapi/api"
 
 type GasAPI CoreAPI
 

@@ -4,8 +4,8 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/eth-kit/ledger"
+	"github.com/axiomesh/axiom-kit/types"
+	"github.com/axiomesh/eth-kit/ledger"
 )
 
 type stateChange interface {

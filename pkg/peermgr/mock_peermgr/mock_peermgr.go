@@ -7,13 +7,13 @@ package mock_peermgr
 import (
 	reflect "reflect"
 
+	types "github.com/axiomesh/axiom-kit/types"
+	pb "github.com/axiomesh/axiom-kit/types/pb"
+	network "github.com/axiomesh/axiom-p2p"
+	peermgr "github.com/axiomesh/axiom/pkg/peermgr"
 	event "github.com/ethereum/go-ethereum/event"
 	gomock "github.com/golang/mock/gomock"
 	peer "github.com/libp2p/go-libp2p/core/peer"
-	types "github.com/meshplus/bitxhub-kit/types"
-	pb "github.com/meshplus/bitxhub-kit/types/pb"
-	peermgr "github.com/meshplus/bitxhub/pkg/peermgr"
-	network "github.com/meshplus/go-lightp2p"
 )
 
 // MockKeyType is a mock of KeyType interface.

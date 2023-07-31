@@ -1,0 +1,101 @@
+title = "Axiom configuration file"
+
+solo = false
+
+[port]
+jsonrpc = 8881
+grpc = 60011
+gateway = 9091
+pprof = 53121
+monitor = 40011
+websocket = 9092
+
+[pprof]
+enable = true
+ptype = "http"   # including two types: runtime (recommended for use during the development phase) and http
+mode = "memory"  # only required for runtime ptype, including two modes: cpu、memory
+duration = "30s" # only required for runtime ptype, every duration will generation a profile.
+
+[monitor]
+enable = true
+
+[ping]
+enable = false
+duration = "15s"
+
+[security]
+enable_tls = false
+node_key_path = "certs/node.priv"
+
+[tss]
+enable_tss = false
+key_gen_timeout = "90s"
+key_sign_timeout = "90s"
+pre_param_timeout = "100s"
+tss_conf_path = "tss"
+
+[jlimiter]
+interval = "50ms"
+quantum = 500
+capacity = 10000
+
+[p2p_limiter]
+limit = 10000
+burst = 10000
+
+[log]
+level = "debug"
+dir = "logs"
+filename = "axiom.log"
+report_caller = false
+[log.module]
+p2p = "info"
+consensus = "info"
+executor = "info"
+router = "info"
+api = "info"
+coreapi = "info"
+storage = "info"
+profile = "info"
+tss = "info"
+finance = "info"
+
+[order]
+type = "rbft"
+
+[executor]
+type = "serial" # opensource version only supports serial type, commercial version supports serial and parallel types
+
+[crypto]
+algorithms = ["Secp256k1", "ECDSA_P256", "ECDSA_P384", "ECDSA_P521"]
+
+[ledger]
+type = "simple" # support "simple" ledger
+kv = "leveldb" # support "leveldb" and "pebble" as kv storage backend
+
+[genesis]
+chainid = 1356
+gas_limit = 0x5f5e100
+gas_price = 5000
+gas_change_rate = 0.125
+max_gas_price = 10000
+min_gas_price = 1000
+balance = "1000000000000000000"
+[[genesis.admins]]
+address = "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013"
+weight = 2                                          
+[[genesis.admins]]
+address = "0x79a1215469FaB6f9c63c1816b45183AD3624bE34"
+weight = 2
+[[genesis.admins]]
+address = "0x97c8B516D19edBf575D72a172Af7F418BE498C37"
+weight = 2
+[[genesis.admins]]
+address = "0xc0Ff2e0b3189132D815b8eb325bE17285AC898f8"
+weight = 2
+[[genesis.admins]]
+address = "0xcDE046e7a987D6928dE0a129A82534DB2cF9C6dd"
+weight = 2
+[[genesis.admins]]
+address = "0x565C9c8a0816F3b6B7396Ba85243905443e9ab3B"
+weight = 2
