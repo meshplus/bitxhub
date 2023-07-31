@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	NotSupportApiError = fmt.Errorf("unsupported interface")
+	ErrNotSupportApiError = fmt.Errorf("unsupported interface")
 )
 
 func getStateLedgerAt(api api.CoreAPI) (ledger.StateLedger, error) {
