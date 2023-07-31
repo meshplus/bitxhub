@@ -384,7 +384,7 @@ func formatBlock(api api.CoreAPI, config *repo.Config, block *types.Block, fullT
 	}
 
 	formatTx := func(tx *types.Transaction, index uint64) (interface{}, error) {
-		return tx.GetHash(), nil
+		return tx.GetHash().ETHHash(), nil
 	}
 	if fullTx {
 		formatTx = func(tx *types.Transaction, index uint64) (interface{}, error) {
@@ -401,12 +401,12 @@ func formatBlock(api api.CoreAPI, config *repo.Config, block *types.Block, fullT
 
 	return map[string]interface{}{
 		"number":           (*hexutil.Big)(big.NewInt(int64(block.Height()))),
-		"hash":             block.BlockHash,
-		"parentHash":       block.BlockHeader.ParentHash,
+		"hash":             block.BlockHash.ETHHash(),
+		"parentHash":       block.BlockHeader.ParentHash.ETHHash(),
 		"nonce":            ethtypes.BlockNonce{}, // PoW specific
-		"logsBloom":        block.BlockHeader.Bloom,
-		"transactionsRoot": block.BlockHeader.TxRoot,
-		"stateRoot":        block.BlockHeader.StateRoot,
+		"logsBloom":        block.BlockHeader.Bloom.ETHBloom(),
+		"transactionsRoot": block.BlockHeader.TxRoot.ETHHash(),
+		"stateRoot":        block.BlockHeader.StateRoot.ETHHash(),
 		"miner":            common.Address{},
 		"mixHash":          common.Hash{},
 		"difficulty":       (*hexutil.Big)(big.NewInt(0)),
@@ -417,7 +417,7 @@ func formatBlock(api api.CoreAPI, config *repo.Config, block *types.Block, fullT
 		"gasUsed":          hexutil.Uint64(cumulativeGas),
 		"timestamp":        hexutil.Uint64(block.BlockHeader.Timestamp),
 		"transactions":     transactions,
-		"receiptsRoot":     block.BlockHeader.ReceiptRoot,
+		"receiptsRoot":     block.BlockHeader.ReceiptRoot.ETHHash(),
 	}, nil
 }
 

@@ -4,7 +4,7 @@ go 1.20
 
 replace (
 	github.com/hyperchain/go-hpc-rbft => github.com/TaiChiChain/go-hpc-rbft v0.0.1
-	github.com/meshplus/bitxhub-kit => github.com/TaiChiChain/bitxhub-kit v0.0.2-0.20230728095523-fe7608504aab
+	github.com/meshplus/bitxhub-kit => github.com/TaiChiChain/bitxhub-kit v0.0.2-0.20230731081553-7aadf379b48d
 	github.com/meshplus/eth-kit => github.com/TaiChiChain/eth-kit v0.0.2-0.20230731011818-a3088be3ed4c
 	github.com/meshplus/go-lightp2p => github.com/TaiChiChain/go-lightp2p v0.0.2-0.20230727013005-8c98bc7b3d7c
 )

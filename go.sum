@@ -54,8 +54,8 @@ github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible/go
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
 github.com/Rican7/retry v0.1.0 h1:FqK94z34ly8Baa6K+G8Mmza9rYWTKOJk+yckIBB5qVk=
 github.com/Rican7/retry v0.1.0/go.mod h1:FgOROf8P5bebcC1DS0PdOQiqGUridaZvikzUmkFW6gg=
-github.com/TaiChiChain/bitxhub-kit v0.0.2-0.20230728095523-fe7608504aab h1:OTMQGA2nsuxOrGNDmS79z8+DXaigxkqi6qAYj44q+wQ=
-github.com/TaiChiChain/bitxhub-kit v0.0.2-0.20230728095523-fe7608504aab/go.mod h1:cgTSxXTyIiiuNtPKm7YULvPZgGVRTBU3WM5UUvvt4m0=
+github.com/TaiChiChain/bitxhub-kit v0.0.2-0.20230731081553-7aadf379b48d h1:usVYL9AQdUBIiCzVM29r9CLL06teydp/JfnraRHu7BM=
+github.com/TaiChiChain/bitxhub-kit v0.0.2-0.20230731081553-7aadf379b48d/go.mod h1:cgTSxXTyIiiuNtPKm7YULvPZgGVRTBU3WM5UUvvt4m0=
 github.com/TaiChiChain/eth-kit v0.0.2-0.20230731011818-a3088be3ed4c h1:HYYiDiKdoyv7yn5gX6R5LC1TtgPR3oI6belVYQZHKdE=
 github.com/TaiChiChain/eth-kit v0.0.2-0.20230731011818-a3088be3ed4c/go.mod h1:iBIl8pAgdJ9oWfm+1OY/mnWh8KVKEiCM/awWl67JN7c=
 github.com/TaiChiChain/go-hpc-rbft v0.0.1 h1:IFEMBm3xlD4D4jg/RHkZ4R7tEAgbrVDKvnv0ti/Z4vM=
