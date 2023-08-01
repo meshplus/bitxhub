@@ -59,7 +59,7 @@ func (gas *Gas) GetGasPrice() (uint64, error) {
 		currentPrice = max
 	}
 	if currentPrice < min {
-		gas.logger.Warningf("gas price is touching floor, current price is %d, min is %d", currentPrice, max)
+		gas.logger.Warningf("gas price is touching floor, current price is %d, min is %d", currentPrice, min)
 		currentPrice = min
 	}
 	return currentPrice, nil
