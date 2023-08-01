@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"math/big"
 
+	rpctypes "github.com/axiomesh/axiom/api/jsonrpc/types"
+	"github.com/axiomesh/axiom/internal/coreapi/api"
+	"github.com/axiomesh/axiom/internal/repo"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	rpctypes "github.com/meshplus/bitxhub/api/jsonrpc/types"
-	"github.com/meshplus/bitxhub/internal/coreapi/api"
-	"github.com/meshplus/bitxhub/internal/repo"
 	"github.com/sirupsen/logrus"
 )
 
-// BitxhubAPI provides an API to get related info
-type BitxhubAPI struct {
+// AxiomAPI provides an API to get related info
+type AxiomAPI struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	config *repo.Config
@@ -21,13 +21,13 @@ type BitxhubAPI struct {
 	logger logrus.FieldLogger
 }
 
-func NewBitxhubAPI(config *repo.Config, api api.CoreAPI, logger logrus.FieldLogger) *BitxhubAPI {
+func NewAxiomAPI(config *repo.Config, api api.CoreAPI, logger logrus.FieldLogger) *AxiomAPI {
 	ctx, cancel := context.WithCancel(context.Background())
-	return &BitxhubAPI{ctx: ctx, cancel: cancel, config: config, api: api, logger: logger}
+	return &AxiomAPI{ctx: ctx, cancel: cancel, config: config, api: api, logger: logger}
 }
 
 // GasPrice returns the current gas price based on dynamic adjustment strategy.
-func (api *BitxhubAPI) GasPrice() *hexutil.Big {
+func (api *AxiomAPI) GasPrice() *hexutil.Big {
 	api.logger.Debug("eth_gasPrice")
 	gasPrice, err := api.api.Gas().GetGasPrice()
 	if err != nil {
@@ -39,7 +39,7 @@ func (api *BitxhubAPI) GasPrice() *hexutil.Big {
 
 // MaxPriorityFeePerGas returns a suggestion for a gas tip cap for dynamic transactions.
 // todo Supplementary gas fee
-func (api *BitxhubAPI) MaxPriorityFeePerGas(ctx context.Context) (*hexutil.Big, error) {
+func (api *AxiomAPI) MaxPriorityFeePerGas(ctx context.Context) (*hexutil.Big, error) {
 	api.logger.Debug("eth_maxPriorityFeePerGas")
 	return (*hexutil.Big)(new(big.Int)), nil
 }
@@ -53,14 +53,14 @@ type feeHistoryResult struct {
 
 // FeeHistory return feeHistory
 // todo Supplementary feeHsitory
-func (api *BitxhubAPI) FeeHistory(blockCount rpctypes.DecimalOrHex, lastBlock rpctypes.BlockNumber, rewardPercentiles []float64) (*feeHistoryResult, error) {
+func (api *AxiomAPI) FeeHistory(blockCount rpctypes.DecimalOrHex, lastBlock rpctypes.BlockNumber, rewardPercentiles []float64) (*feeHistoryResult, error) {
 	api.logger.Debug("eth_feeHistory")
 	return nil, ErrNotSupportApiError
 }
 
 // Syncing returns whether or not the current node is syncing with other peers. Returns false if not, or a struct
 // outlining the state of the sync if it is.
-func (api *BitxhubAPI) Syncing() (interface{}, error) {
+func (api *AxiomAPI) Syncing() (interface{}, error) {
 	api.logger.Debug("eth_syncing")
 
 	// TODO

@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/axiomesh/axiom-kit/types"
+	vm "github.com/axiomesh/eth-kit/evm"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/meshplus/bitxhub-kit/types"
-	vm "github.com/meshplus/eth-kit/evm"
 	"github.com/sirupsen/logrus"
 )
 

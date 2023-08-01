@@ -19,20 +19,20 @@ function config() {
 }
 
 function compile() {
-  print_blue "===> Compileing bitxhub"
+  print_blue "===> Compileing axiom"
   cd "${PROJECT_PATH}"
   make install${TAGS}
 
 }
 
 function start() {
-  print_blue "===> Start solo bitxhub"
-  bitxhub --repo="${BUILD_PATH}" init
-  cd ${BUILD_PATH} && bitxhub key gen
-  bitxhubConfig=${BUILD_PATH}/bitxhub.toml
-  x_replace "s/solo = false/solo = true/g" "${bitxhubConfig}"
-  x_replace "s/rbft/solo/g" "${bitxhubConfig}"
-  bitxhub --repo="${BUILD_PATH}" start
+  print_blue "===> Start solo axiom"
+  axiom --repo="${BUILD_PATH}" init
+  cd ${BUILD_PATH} && axiom key gen
+  axiomConfig=${BUILD_PATH}/axiom.toml
+  x_replace "s/solo = false/solo = true/g" "${axiomConfig}"
+  x_replace "s/rbft/solo/g" "${axiomConfig}"
+  axiom --repo="${BUILD_PATH}" start
 }
 
 prepare

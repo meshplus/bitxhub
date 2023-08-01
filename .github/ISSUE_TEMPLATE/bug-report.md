@@ -16,4 +16,4 @@ Please answer these questions before submitting your issue. Thanks!
 
 ### 3. What did you see instead?
 
-### 4. What version of BitXHub are you using? (`bitxhub version` on BitXHub)
+### 4. What version of Axiom are you using? (`Axiom version` on Axiom)

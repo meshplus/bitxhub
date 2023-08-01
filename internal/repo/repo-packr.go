@@ -5,4 +5,4 @@
 // and any other packr generated files.
 package repo
 
-import _ "github.com/meshplus/bitxhub/internal/repo/packrd"
+import _ "github.com/axiomesh/axiom/internal/repo/packrd"

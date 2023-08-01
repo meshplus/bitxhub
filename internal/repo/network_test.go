@@ -3,7 +3,7 @@ package repo
 import (
 	"testing"
 
-	"github.com/meshplus/bitxhub-kit/types"
+	"github.com/axiomesh/axiom-kit/types"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )

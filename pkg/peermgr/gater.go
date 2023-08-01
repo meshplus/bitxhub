@@ -1,10 +1,10 @@
 package peermgr
 
 import (
+	"github.com/axiomesh/axiom/internal/ledger"
 	"github.com/libp2p/go-libp2p/core/control"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/meshplus/bitxhub/internal/ledger"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/sirupsen/logrus"
 )

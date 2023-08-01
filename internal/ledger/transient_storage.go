@@ -1,9 +1,9 @@
 package ledger
 
 import (
+	"github.com/axiomesh/axiom-kit/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
-	"github.com/meshplus/bitxhub-kit/types"
 )
 
 // transientStorage is a representation of EIP-1153 "Transient Storage".

@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/meshplus/bitxhub-kit/types/pb"
-	"github.com/meshplus/bitxhub/internal/model"
-	network "github.com/meshplus/go-lightp2p"
+	"github.com/axiomesh/axiom-kit/types/pb"
+	network "github.com/axiomesh/axiom-p2p"
+	"github.com/axiomesh/axiom/internal/model"
 	"github.com/sirupsen/logrus"
 )
 

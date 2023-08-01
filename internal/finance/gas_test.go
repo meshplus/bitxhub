@@ -6,13 +6,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/axiomesh/axiom-kit/log"
+	"github.com/axiomesh/axiom-kit/types"
+	"github.com/axiomesh/axiom/internal/ledger"
+	"github.com/axiomesh/axiom/internal/loggers"
+	"github.com/axiomesh/axiom/internal/repo"
+	"github.com/axiomesh/eth-kit/ledger/mock_ledger"
 	"github.com/golang/mock/gomock"
-	"github.com/meshplus/bitxhub-kit/log"
-	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub/internal/ledger"
-	"github.com/meshplus/bitxhub/internal/loggers"
-	"github.com/meshplus/bitxhub/internal/repo"
-	"github.com/meshplus/eth-kit/ledger/mock_ledger"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -100,7 +100,7 @@ func GasPriceBySize(t *testing.T, size int, parentGasPrice int64, expectErr erro
 }
 
 func generateMockConfig(t *testing.T) *repo.Repo {
-	repo, err := repo.Load(repoRoot, "", "../../config/bitxhub.toml", "../../config/network.toml")
+	repo, err := repo.Load(repoRoot, "", "../../config/axiom.toml", "../../config/network.toml")
 	assert.Nil(t, err)
 	return repo
 }

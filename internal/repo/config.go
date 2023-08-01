@@ -18,13 +18,13 @@ import (
 
 const (
 	// defaultPathName is the default config dir name
-	defaultPathName = ".bitxhub"
+	defaultPathName = ".axiom"
 	// defaultPathRoot is the path to the default config dir location.
 	defaultPathRoot = "~/" + defaultPathName
 	// envDir is the environment variable used to change the path root.
-	envDir = "BITXHUB_PATH"
+	envDir = "AXIOM_PATH"
 	// Config name
-	configName = "bitxhub.toml"
+	configName = "axiom.toml"
 	// key name
 	KeyName = "key.json"
 	// API name
@@ -187,7 +187,7 @@ func (c *Config) Bytes() ([]byte, error) {
 
 func DefaultConfig() (*Config, error) {
 	return &Config{
-		Title: "BitXHub configuration file",
+		Title: "Axiom configuration file",
 		Solo:  false,
 		Port: Port{
 			Grpc:      60011,
@@ -203,7 +203,7 @@ func DefaultConfig() (*Config, error) {
 		Log: Log{
 			Level:    "info",
 			Dir:      "logs",
-			Filename: "bitxhub.log",
+			Filename: "axiom.log",
 			Module: LogModule{
 				P2P:       "info",
 				Consensus: "debug",
@@ -254,16 +254,16 @@ func UnmarshalConfig(viper *viper.Viper, repoRoot string, configPath string) (*C
 		viper.SetConfigFile(configPath)
 		fileData, err := ioutil.ReadFile(configPath)
 		if err != nil {
-			return nil, fmt.Errorf("read bitxhub config error: %w", err)
+			return nil, fmt.Errorf("read axiom config error: %w", err)
 		}
 		err = ioutil.WriteFile(filepath.Join(repoRoot, configName), fileData, 0644)
 		if err != nil {
-			return nil, fmt.Errorf("write bitxhub config failed: %w", err)
+			return nil, fmt.Errorf("write axiom config failed: %w", err)
 		}
 	}
 	viper.SetConfigType("toml")
 	viper.AutomaticEnv()
-	viper.SetEnvPrefix("BITXHUB")
+	viper.SetEnvPrefix("AXIOM")
 	replacer := strings.NewReplacer(".", "_")
 	viper.SetEnvKeyReplacer(replacer)
 	if err := viper.ReadInConfig(); err != nil {
@@ -283,10 +283,10 @@ func UnmarshalConfig(viper *viper.Viper, repoRoot string, configPath string) (*C
 	return config, nil
 }
 
-func WatchBitxhubConfig(viper *viper.Viper, feed *event.Feed) {
+func WatchAxiomConfig(viper *viper.Viper, feed *event.Feed) {
 	viper.WatchConfig()
 	viper.OnConfigChange(func(in fsnotify.Event) {
-		fmt.Println("bitxhub config file changed: ", in.String())
+		fmt.Println("axiom config file changed: ", in.String())
 
 		config, err := DefaultConfig()
 		if err != nil {

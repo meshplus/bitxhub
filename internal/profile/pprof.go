@@ -9,8 +9,8 @@ import (
 	"runtime/pprof"
 	"time"
 
-	"github.com/meshplus/bitxhub/internal/loggers"
-	"github.com/meshplus/bitxhub/internal/repo"
+	"github.com/axiomesh/axiom/internal/loggers"
+	"github.com/axiomesh/axiom/internal/repo"
 	"github.com/sirupsen/logrus"
 )
 

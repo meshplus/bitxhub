@@ -5,12 +5,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/axiomesh/axiom-bft/common/consensus"
+	rbfttypes "github.com/axiomesh/axiom-bft/types"
+	"github.com/axiomesh/axiom-kit/log"
+	"github.com/axiomesh/axiom-kit/types"
+	"github.com/axiomesh/axiom/pkg/order/rbft/testutil"
 	"github.com/golang/mock/gomock"
-	"github.com/hyperchain/go-hpc-rbft/common/consensus"
-	rbfttypes "github.com/hyperchain/go-hpc-rbft/types"
-	"github.com/meshplus/bitxhub-kit/log"
-	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub/pkg/order/rbft/testutil"
 	"github.com/stretchr/testify/assert"
 )
 

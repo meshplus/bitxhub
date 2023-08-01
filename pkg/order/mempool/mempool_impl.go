@@ -5,9 +5,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/axiomesh/axiom-kit/types"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/google/btree"
-	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/sirupsen/logrus"
 )
 

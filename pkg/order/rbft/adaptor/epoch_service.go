@@ -3,7 +3,7 @@ package adaptor
 import (
 	"fmt"
 
-	"github.com/hyperchain/go-hpc-rbft/common/consensus"
+	"github.com/axiomesh/axiom-bft/common/consensus"
 )
 
 // TODO: implement it

@@ -29,7 +29,7 @@ func TestReadConfig(t *testing.T) {
 	_, err := DefaultConfig()
 	require.Nil(t, err)
 
-	path := "../../config/bitxhub.toml"
+	path := "../../config/axiom.toml"
 	cfg := &Config{}
 	v := viper.New()
 	err = ReadConfig(v, path, "toml", cfg)
@@ -42,7 +42,7 @@ func TestReadConfig(t *testing.T) {
 	require.Nil(t, err)
 	_, err = UnmarshalConfig(v, "../../config", "path")
 	require.NotNil(t, err)
-	_, err = UnmarshalConfig(v, "../../config", "../../config/bitxhub.toml")
+	_, err = UnmarshalConfig(v, "../../config", "../../config/axiom.toml")
 	require.Nil(t, err)
 	pathRoot, err := PathRoot()
 	require.Nil(t, err)

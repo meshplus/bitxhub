@@ -5,14 +5,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/axiomesh/axiom-kit/crypto"
+	"github.com/axiomesh/axiom-kit/crypto/asym"
+	"github.com/axiomesh/axiom-kit/types"
+	"github.com/axiomesh/axiom-kit/types/pb"
+	"github.com/axiomesh/axiom/pkg/order"
+	"github.com/axiomesh/axiom/pkg/peermgr/mock_peermgr"
 	"github.com/golang/mock/gomock"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/meshplus/bitxhub-kit/crypto"
-	"github.com/meshplus/bitxhub-kit/crypto/asym"
-	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub-kit/types/pb"
-	"github.com/meshplus/bitxhub/pkg/order"
-	"github.com/meshplus/bitxhub/pkg/peermgr/mock_peermgr"
 	"github.com/sirupsen/logrus"
 )
 

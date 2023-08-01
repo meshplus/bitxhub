@@ -1,9 +1,9 @@
 package coreapi
 
 import (
-	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub/internal/coreapi/api"
-	"github.com/meshplus/eth-kit/ledger"
+	"github.com/axiomesh/axiom-kit/types"
+	"github.com/axiomesh/axiom/internal/coreapi/api"
+	"github.com/axiomesh/eth-kit/ledger"
 )
 
 type AccountAPI CoreAPI

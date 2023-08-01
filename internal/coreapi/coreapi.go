@@ -1,20 +1,20 @@
 package coreapi
 
 import (
-	"github.com/meshplus/bitxhub/internal/app"
-	"github.com/meshplus/bitxhub/internal/coreapi/api"
-	"github.com/meshplus/bitxhub/internal/loggers"
+	"github.com/axiomesh/axiom/internal/app"
+	"github.com/axiomesh/axiom/internal/coreapi/api"
+	"github.com/axiomesh/axiom/internal/loggers"
 	"github.com/sirupsen/logrus"
 )
 
 var _ api.CoreAPI = (*CoreAPI)(nil)
 
 type CoreAPI struct {
-	bxh    *app.BitXHub
+	bxh    *app.Axiom
 	logger logrus.FieldLogger
 }
 
-func New(bxh *app.BitXHub) (*CoreAPI, error) {
+func New(bxh *app.Axiom) (*CoreAPI, error) {
 	return &CoreAPI{
 		bxh:    bxh,
 		logger: loggers.Logger(loggers.CoreAPI),

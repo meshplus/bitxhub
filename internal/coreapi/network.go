@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/meshplus/bitxhub/internal/coreapi/api"
+	"github.com/axiomesh/axiom/internal/coreapi/api"
 )
 
 type NetworkAPI CoreAPI

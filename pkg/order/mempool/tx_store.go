@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/axiomesh/axiom-kit/types"
 	"github.com/google/btree"
-	"github.com/meshplus/bitxhub-kit/types"
 	"github.com/sirupsen/logrus"
 )
 

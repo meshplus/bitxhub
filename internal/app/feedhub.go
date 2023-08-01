@@ -1,13 +1,13 @@
 package app
 
 import (
-	"github.com/meshplus/bitxhub/internal/model/events"
-	"github.com/meshplus/bitxhub/internal/repo"
-	"github.com/meshplus/bitxhub/pkg/peermgr"
+	"github.com/axiomesh/axiom/internal/model/events"
+	"github.com/axiomesh/axiom/internal/repo"
+	"github.com/axiomesh/axiom/pkg/peermgr"
 	"github.com/sirupsen/logrus"
 )
 
-func (bxh *BitXHub) start() {
+func (bxh *Axiom) start() {
 	go bxh.listenEvent()
 
 	go func() {
@@ -26,7 +26,7 @@ func (bxh *BitXHub) start() {
 	}()
 }
 
-func (bxh *BitXHub) listenEvent() {
+func (bxh *Axiom) listenEvent() {
 	blockCh := make(chan events.ExecutedEvent)
 	orderMsgCh := make(chan peermgr.OrderMessageEvent)
 	configCh := make(chan *repo.Repo)

@@ -4,10 +4,10 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub/internal/executor"
-	"github.com/meshplus/bitxhub/internal/ledger"
-	"github.com/meshplus/bitxhub/internal/repo"
+	"github.com/axiomesh/axiom-kit/types"
+	"github.com/axiomesh/axiom/internal/executor"
+	"github.com/axiomesh/axiom/internal/ledger"
+	"github.com/axiomesh/axiom/internal/repo"
 )
 
 // Initialize initialize block

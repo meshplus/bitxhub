@@ -1,9 +1,9 @@
 package governance
 
 import (
-	"github.com/meshplus/bitxhub/internal/executor/system/common"
-	vm "github.com/meshplus/eth-kit/evm"
-	"github.com/meshplus/eth-kit/ledger"
+	"github.com/axiomesh/axiom/internal/executor/system/common"
+	vm "github.com/axiomesh/eth-kit/evm"
+	"github.com/axiomesh/eth-kit/ledger"
 	"github.com/sirupsen/logrus"
 )
 

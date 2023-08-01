@@ -87,21 +87,21 @@ function prepare() {
     cp -rf "${CONFIG_PATH}"/* "${root}"
 
     echo " #!/usr/bin/env bash" >"${root}"/start.sh
-    echo "./bitxhub --repo \$(pwd)" start >>"${root}"/start.sh
+    echo "./axiom --repo \$(pwd)" start >>"${root}"/start.sh
 
-    bitxhubConfig=${root}/bitxhub.toml
+    axiomConfig=${root}/axiom.toml
     networkConfig=${root}/network.toml
-    x_replace "s/60011/6001${i}/g" "${bitxhubConfig}"
-    x_replace "s/9091/909${i}/g" "${bitxhubConfig}"
-    x_replace "s/53121/5312${i}/g" "${bitxhubConfig}"
-    x_replace "s/40011/4001${i}/g" "${bitxhubConfig}"
-    x_replace "s/8881/888${i}/g" "${bitxhubConfig}"
+    x_replace "s/60011/6001${i}/g" "${axiomConfig}"
+    x_replace "s/9091/909${i}/g" "${axiomConfig}"
+    x_replace "s/53121/5312${i}/g" "${axiomConfig}"
+    x_replace "s/40011/4001${i}/g" "${axiomConfig}"
+    x_replace "s/8881/888${i}/g" "${axiomConfig}"
     x_replace "1s/1/${i}/" "${networkConfig}"
   done
 }
 
 function compile() {
-  print_blue "===> Compiling bitxhub"
+  print_blue "===> Compiling axiom"
   cd "${PROJECT_PATH}"
   make install${TAGS}
 }
@@ -116,7 +116,7 @@ function splitWindow() {
 function start() {
   print_blue "===> Staring cluster"
   #osascript ${PROJECT_PATH}/scripts/split.scpt ${N} ${DUMP_PATH}/cluster/node
-  tmux new -d -s bitxhub || (tmux kill-session -t bitxhub && tmux new -d -s bitxhub)
+  tmux new -d -s axiom || (tmux kill-session -t axiom && tmux new -d -s axiom)
 
   for ((i = 0; i < N / 4; i = i + 1)); do
     splitWindow
@@ -126,15 +126,15 @@ function start() {
   for ((i = 0; i < N; i = i + 1)); do
     tmux selectw -t $(($i / 4))
     tmux selectp -t $(($i % 4))
-    tmux send-keys "bitxhub --repo=${BUILD_PATH}/node$(($i + 1)) start" C-m
+    tmux send-keys "axiom --repo=${BUILD_PATH}/node$(($i + 1)) start" C-m
   done
   tmux selectw -t 0
-  tmux attach-session -t bitxhub
+  tmux attach-session -t axiom
 }
 
 function clear_config() {
   for ((i = 1; i < N + 1; i = i + 1)); do
-    rm -rf ~/bitxhub${i}
+    rm -rf ~/axiom${i}
   done
 }
 

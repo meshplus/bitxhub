@@ -1,11 +1,11 @@
 package peermgr
 
 import (
+	"github.com/axiomesh/axiom-kit/types"
+	"github.com/axiomesh/axiom-kit/types/pb"
+	network "github.com/axiomesh/axiom-p2p"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub-kit/types/pb"
-	network "github.com/meshplus/go-lightp2p"
 )
 
 // TODO: refactor

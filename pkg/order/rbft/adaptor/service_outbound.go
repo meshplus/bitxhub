@@ -6,10 +6,10 @@ import (
 
 	"github.com/Rican7/retry"
 	"github.com/Rican7/retry/strategy"
-	"github.com/hyperchain/go-hpc-rbft/common/consensus"
-	rbfttypes "github.com/hyperchain/go-hpc-rbft/types"
-	"github.com/meshplus/bitxhub-kit/types"
-	ethtypes "github.com/meshplus/bitxhub-kit/types"
+	"github.com/axiomesh/axiom-bft/common/consensus"
+	rbfttypes "github.com/axiomesh/axiom-bft/types"
+	"github.com/axiomesh/axiom-kit/types"
+	ethtypes "github.com/axiomesh/axiom-kit/types"
 	"github.com/sirupsen/logrus"
 )
 

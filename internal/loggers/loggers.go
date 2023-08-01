@@ -1,8 +1,8 @@
 package loggers
 
 import (
-	"github.com/meshplus/bitxhub-kit/log"
-	"github.com/meshplus/bitxhub/internal/repo"
+	"github.com/axiomesh/axiom-kit/log"
+	"github.com/axiomesh/axiom/internal/repo"
 	"github.com/sirupsen/logrus"
 )
 

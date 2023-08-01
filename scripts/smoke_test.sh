@@ -11,18 +11,18 @@ function printHelp() {
 }
 
 function start_bxh_solo() {
-    print_blue "===> 1. Start solo bitxhub"
+    print_blue "===> 1. Start solo axiom"
     echo "$CURRENT_PATH"
     cd ../ && make install && cd scripts
     nohup bash solo.sh 2>gc.log 1>solo.log &
     sleep 10
 }
 
-function bitxhub_tester() {
+function axiom_tester() {
     print_blue "===> 2. Start git clone snake"
     echo "$BRANCH_NAME"
     cd ../
-    git clone -b "$BRANCH_NAME" https://github.com/TaiChiChain/snake.git
+    git clone -b "$BRANCH_NAME" https://github.com/axiomesh/snake.git
     cd snake
     print_blue "Start test"
     print_blue "===> 3. Start smoke test"
@@ -31,7 +31,7 @@ function bitxhub_tester() {
 
 function bxh_test() {
     start_bxh_solo
-    bitxhub_tester
+    axiom_tester
 }
 BRANCH_NAME="main"
 while getopts "h?b:" opt; do

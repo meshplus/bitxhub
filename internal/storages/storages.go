@@ -3,10 +3,10 @@ package storages
 import (
 	"fmt"
 
-	"github.com/meshplus/bitxhub-kit/storage"
-	"github.com/meshplus/bitxhub-kit/storage/leveldb"
-	"github.com/meshplus/bitxhub-kit/storage/pebble"
-	"github.com/meshplus/bitxhub/internal/repo"
+	"github.com/axiomesh/axiom-kit/storage"
+	"github.com/axiomesh/axiom-kit/storage/leveldb"
+	"github.com/axiomesh/axiom-kit/storage/pebble"
+	"github.com/axiomesh/axiom/internal/repo"
 )
 
 const (

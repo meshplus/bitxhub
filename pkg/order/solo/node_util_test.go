@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/axiomesh/axiom-kit/log"
+	"github.com/axiomesh/axiom-kit/types"
+	"github.com/axiomesh/axiom/pkg/order/mempool"
+	"github.com/axiomesh/axiom/pkg/peermgr/mock_peermgr"
 	"github.com/golang/mock/gomock"
-	"github.com/meshplus/bitxhub-kit/log"
-	"github.com/meshplus/bitxhub-kit/types"
-	"github.com/meshplus/bitxhub/pkg/order/mempool"
-	"github.com/meshplus/bitxhub/pkg/peermgr/mock_peermgr"
 )
 
 func mockSoloNode(t *testing.T, enableTimed bool) (*Node, error) {
