@@ -202,10 +202,6 @@ func (api *TransactionAPI) GetTransactionReceipt(hash common.Hash) (map[string]i
 		fields["status"] = hexutil.Uint(1)
 	} else {
 		fields["status"] = hexutil.Uint(0)
-		// TODO: need process
-		if receipt.Ret != nil {
-
-		}
 	}
 
 	if receipt.ContractAddress != nil {
