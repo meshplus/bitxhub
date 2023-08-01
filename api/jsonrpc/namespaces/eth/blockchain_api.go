@@ -408,9 +408,6 @@ func formatBlock(api api.CoreAPI, config *repo.Config, block *types.Block, fullT
 		"transactionsRoot": block.BlockHeader.TxRoot.ETHHash(),
 		"stateRoot":        block.BlockHeader.StateRoot.ETHHash(),
 		"miner":            common.Address{},
-		"mixHash":          common.Hash{},
-		"difficulty":       (*hexutil.Big)(big.NewInt(0)),
-		"totalDifficulty":  (*hexutil.Big)(big.NewInt(0)),
 		"extraData":        []byte{},
 		"size":             hexutil.Uint64(block.Size()),
 		"gasLimit":         hexutil.Uint64(config.Genesis.GasLimit), // Static gas limit
@@ -418,6 +415,11 @@ func formatBlock(api api.CoreAPI, config *repo.Config, block *types.Block, fullT
 		"timestamp":        hexutil.Uint64(block.BlockHeader.Timestamp),
 		"transactions":     transactions,
 		"receiptsRoot":     block.BlockHeader.ReceiptRoot.ETHHash(),
+		//todo delete non-existent fields
+		"sha3Uncles": ethtypes.EmptyUncleHash, // No uncles in raft/rbft
+		"uncles":     []string{},
+		"mixHash":    common.Hash{},
+		"difficulty": (*hexutil.Big)(big.NewInt(0)),
 	}, nil
 }
 
