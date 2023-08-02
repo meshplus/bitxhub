@@ -7,6 +7,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/axiomesh/axiom-kit/types"
+	"github.com/axiomesh/axiom-kit/types/pb"
+	network "github.com/axiomesh/axiom-p2p"
+	"github.com/axiomesh/axiom/internal/ledger"
+	"github.com/axiomesh/axiom/pkg/repo"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/libp2p/go-libp2p/core/connmgr"
 	p2pnetwork "github.com/libp2p/go-libp2p/core/network"
@@ -14,16 +19,10 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/time/rate"
-
-	"github.com/axiomesh/axiom-kit/types"
-	"github.com/axiomesh/axiom-kit/types/pb"
-	network "github.com/axiomesh/axiom-p2p"
-	"github.com/axiomesh/axiom/internal/ledger"
-	"github.com/axiomesh/axiom/pkg/repo"
 )
 
 const (
-	protocolID string = "/B1txHu6/1.0.0" // magic protocol
+	protocolID string = "/axiom/1.0.0" // magic protocol
 )
 
 var _ PeerManager = (*Swarm)(nil)
@@ -35,8 +34,7 @@ type Swarm struct {
 	logger  logrus.FieldLogger
 
 	// added by
-	routers map[uint64]*types.VpInfo // trace the vp nodes
-
+	routers        map[uint64]*types.VpInfo // trace the vp nodes
 	multiAddrs     map[uint64]*peer.AddrInfo
 	connectedPeers sync.Map
 	gater          connmgr.ConnectionGater
@@ -48,6 +46,7 @@ type Swarm struct {
 	pingC            chan *repo.Ping
 
 	msgPushLimiter *rate.Limiter
+	enableLimiter  bool
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -124,6 +123,7 @@ func (swarm *Swarm) init() error {
 	swarm.gater = gater
 
 	// Initialize the message limiter and set the number of messages allowed per second to LIMIT
+	swarm.enableLimiter = swarm.repo.Config.P2P.Limit.Enable
 	swarm.msgPushLimiter = rate.NewLimiter(rate.Limit(swarm.repo.Config.P2P.Limit.Limit), int(swarm.repo.Config.P2P.Limit.Burst))
 	return nil
 }

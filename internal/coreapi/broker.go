@@ -117,24 +117,19 @@ func (b *BrokerAPI) OrderReady() error {
 	return b.bxh.Order.Ready()
 }
 
-func (b BrokerAPI) GetPendingNonceByAccount(account string) uint64 {
+func (b *BrokerAPI) GetPendingNonceByAccount(account string) uint64 {
 	return b.bxh.Order.GetPendingNonceByAccount(account)
 }
 
-func (b BrokerAPI) GetPendingTransactions(max int) []*types.Transaction {
-	// TODO
-	return nil
-}
-
-func (b BrokerAPI) GetPoolTransaction(hash *types.Hash) *types.Transaction {
+func (b *BrokerAPI) GetPoolTransaction(hash *types.Hash) *types.Transaction {
 	return b.bxh.Order.GetPendingTxByHash(hash)
 }
 
-func (b BrokerAPI) GetStateLedger() ledger.StateLedger {
+func (b *BrokerAPI) GetStateLedger() ledger.StateLedger {
 	return b.bxh.Ledger.StateLedger
 }
 
-func (b BrokerAPI) GetEvm(mes *vm.Message, vmConfig *vm.Config) *vm.EVM {
+func (b *BrokerAPI) GetEvm(mes *vm.Message, vmConfig *vm.Config) *vm.EVM {
 	if vmConfig == nil {
 		vmConfig = new(vm.Config)
 	}

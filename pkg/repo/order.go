@@ -42,6 +42,7 @@ type RBFT struct {
 	BatchMemLimit       bool        `mapstructure:"batch_mem_limit" toml:"batch_mem_limit"`
 	BatchMaxMem         uint64      `mapstructure:"batch_max_mem" toml:"batch_max_mem"`
 	VCPeriod            uint64      `mapstructure:"vc_period" toml:"vc_period"`
+	CheckpointPeriod    uint64      `mapstructure:"checkpoint_period" toml:"checkpoint_period"`
 	Timeout             RBFTTimeout `mapstructure:"timeout" toml:"timeout"`
 }
 
@@ -76,6 +77,7 @@ func DefaultOrderConfig() *OrderConfig {
 			BatchMemLimit:       false,
 			BatchMaxMem:         10000,
 			VCPeriod:            0,
+			CheckpointPeriod:    uint64(10),
 			Timeout: RBFTTimeout{
 				SyncState:        Duration(3 * time.Second),
 				SyncInterval:     Duration(1 * time.Minute),

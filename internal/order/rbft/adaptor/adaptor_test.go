@@ -19,7 +19,7 @@ func mockAdaptor(ctrl *gomock.Controller, kvType string, t *testing.T) *RBFTAdap
 	logger := log.NewWithModule("order")
 	blockC := make(chan *types.CommitEvent, 1024)
 	_, cancel := context.WithCancel(context.Background())
-	stack, err := NewRBFTAdaptor(testutil.MockOrderConfig(logger, ctrl, kvType, t), blockC, cancel, false)
+	stack, err := NewRBFTAdaptor(testutil.MockOrderConfig(logger, ctrl, kvType, t), blockC, cancel)
 	assert.Nil(t, err)
 	return stack
 }

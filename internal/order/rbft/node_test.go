@@ -1,10 +1,15 @@
 package rbft
 
 import (
+	"context"
+	"math/big"
 	"testing"
 	"time"
 
+	mocknode "github.com/axiomesh/axiom-bft/mock/mock_node"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/golang/mock/gomock"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 
 	rbft "github.com/axiomesh/axiom-bft"
@@ -18,112 +23,129 @@ import (
 	"github.com/axiomesh/axiom/pkg/repo"
 )
 
-func mockNode(ctrl *gomock.Controller, t *testing.T) *Node {
-	order, err := newNode(withID(), withIsNew(), withConfig(), withStoragePath(t), withStorageType("leveldb"),
-		withLogger(), withNodes(), withApplied(), withDigest(), withPeerManager(ctrl), WithGetAccountNonceFunc())
-	assert.Nil(t, err)
-	return order
-}
-
-func withID() order.Option {
-	return func(config *order.Config) {
-		config.ID = uint64(1)
-	}
-}
-
-func withIsNew() order.Option {
-	return func(config *order.Config) {
-		config.IsNew = false
-	}
-}
-
-func withConfig() order.Option {
-	return func(config *order.Config) {
-		config.Config = repo.DefaultOrderConfig()
-	}
-}
-
-func withStoragePath(t *testing.T) order.Option {
-	return func(config *order.Config) {
-		config.StoragePath = t.TempDir()
-	}
-}
-
-func withStorageType(kvType string) order.Option {
-	return func(config *order.Config) {
-		config.StorageType = kvType
-	}
-}
-
-func withLogger() order.Option {
-	return func(config *order.Config) {
-		config.Logger = log.NewWithModule("order")
-	}
-}
-
-func withPeerManager(ctrl *gomock.Controller) order.Option {
-	return func(config *order.Config) {
-		config.PeerMgr = testutil.MockMiniPeerManager(ctrl)
-	}
-}
-
-func WithGetAccountNonceFunc() order.Option {
-	return func(config *order.Config) {
-		config.GetAccountNonce = func(address *types.Address) uint64 {
+func MockMinNode[T any, Constraint consensus.TXConstraint[T]](ctrl *gomock.Controller, t *testing.T) *Node {
+	mockRbft := mocknode.NewMockMinimalNode[T, Constraint](ctrl)
+	mockRbft.EXPECT().Status().Return(rbft.NodeStatus{
+		ID:     uint64(1),
+		View:   uint64(1),
+		Epoch:  uint64(0),
+		Status: rbft.Normal,
+	}).AnyTimes()
+	logger := log.NewWithModule("order")
+	logger.Logger.SetLevel(logrus.DebugLevel)
+	orderConf := &order.Config{
+		ID:          uint64(1),
+		IsNew:       false,
+		Config:      repo.DefaultOrderConfig(),
+		StoragePath: t.TempDir(),
+		StorageType: "leveldb",
+		OrderType:   "rbft",
+		Nodes: map[uint64]*types.VpInfo{
+			1: {Id: uint64(1)},
+			2: {Id: uint64(2)},
+			3: {Id: uint64(3)},
+		},
+		Logger:  logger,
+		PeerMgr: testutil.MockMiniPeerManager(ctrl),
+		Applied: uint64(1),
+		Digest:  "digest",
+		GetAccountNonce: func(address *types.Address) uint64 {
 			return 0
-		}
+		},
 	}
-}
 
-func withNodes() order.Option {
-	nodes := make(map[uint64]*types.VpInfo)
-	nodes[1] = &types.VpInfo{Id: uint64(1)}
-	nodes[2] = &types.VpInfo{Id: uint64(2)}
-	nodes[3] = &types.VpInfo{Id: uint64(3)}
-	return func(config *order.Config) {
-		config.Nodes = nodes
-	}
-}
+	blockC := make(chan *types.CommitEvent, 1024)
+	ctx, cancel := context.WithCancel(context.Background())
+	rbftAdaptor, err := adaptor.NewRBFTAdaptor(orderConf, blockC, cancel)
+	assert.Nil(t, err)
 
-func withApplied() order.Option {
-	return func(config *order.Config) {
-		config.Applied = uint64(1)
+	rbftConfig, _, err := generateRbftConfig(orderConf)
+	assert.Nil(t, err)
+	rbftConfig.External = rbftAdaptor
+	node := &Node{
+		id:         rbftConfig.ID,
+		n:          mockRbft,
+		memPool:    rbftConfig.RequestPool,
+		logger:     logger,
+		stack:      rbftAdaptor,
+		blockC:     blockC,
+		ctx:        ctx,
+		cancel:     cancel,
+		txCache:    newTxCache(rbftConfig.SetTimeout, uint64(rbftConfig.SetSize), orderConf.Logger),
+		peerMgr:    orderConf.PeerMgr,
+		checkpoint: orderConf.Config.Rbft.CheckpointPeriod,
 	}
-}
-
-func withDigest() order.Option {
-	return func(config *order.Config) {
-		config.Digest = "digest"
-	}
+	return node
 }
 
 func TestPrepare(t *testing.T) {
 	ast := assert.New(t)
 	ctrl := gomock.NewController(t)
-	order := mockNode(ctrl, t)
-	tx1 := &types.Transaction{
-		Inner: &types.DynamicFeeTx{},
-		Time:  time.Now(),
-	}
-	err := order.Prepare(tx1)
-	ast.NotNil(err)
-	ast.Equal("system is in pending state", err.Error())
+	order := MockMinNode[types.Transaction](ctrl, t)
+
+	txCache := make(map[string][]byte)
+	nonceCache := make(map[string]uint64)
+	order.n.(*mocknode.MockNode[types.Transaction, *types.Transaction]).EXPECT().Propose(gomock.Any()).Do(func(set *consensus.RequestSet) {
+		for _, val := range set.Requests {
+			tx := &types.Transaction{}
+			err := tx.RbftUnmarshal(val)
+			ast.Nil(err)
+			txCache[tx.RbftGetTxHash()] = val
+			if _, ok := nonceCache[tx.GetFrom().String()]; !ok {
+				nonceCache[tx.GetFrom().String()] = tx.GetNonce()
+			} else if nonceCache[tx.GetFrom().String()] < tx.GetNonce() {
+				nonceCache[tx.GetFrom().String()] = tx.GetNonce()
+			}
+		}
+	}).Return(nil).AnyTimes()
+
+	order.n.(*mocknode.MockNode[types.Transaction, *types.Transaction]).EXPECT().GetPendingNonceByAccount(gomock.Any()).DoAndReturn(func(addr string) uint64 {
+		return nonceCache[addr]
+	}).AnyTimes()
+
+	order.n.(*mocknode.MockNode[types.Transaction, *types.Transaction]).EXPECT().GetPendingTxByHash(gomock.Any()).DoAndReturn(func(hash string) []byte {
+		data := txCache[hash]
+		return data
+	}).AnyTimes()
+
+	sk, err := crypto.GenerateKey()
+	ast.Nil(err)
+
+	toAddr := crypto.PubkeyToAddress(sk.PublicKey)
+	tx1, singer, err := types.GenerateTransactionAndSigner(uint64(0), types.NewAddressByStr(toAddr.String()), big.NewInt(0), []byte("hello"))
+	ast.Nil(err)
 
 	err = order.Start()
 	ast.Nil(err)
 	err = order.Prepare(tx1)
 	ast.Nil(err)
 
-	// TODO: impl it
-	// pendingNonce := order.GetPendingNonceByAccount(tx1.GetFrom().String())
-	pendingNonce := order.GetPendingNonceByAccount("")
-	ast.Equal(uint64(0), pendingNonce)
+	t.Run("GetPendingNonceByAccount", func(t *testing.T) {
+		pendingNonce := order.GetPendingNonceByAccount(tx1.GetFrom().String())
+		ast.Equal(uint64(0), pendingNonce)
+		tx2, err := types.GenerateTransactionWithSigner(uint64(1), types.NewAddressByStr(toAddr.String()), big.NewInt(0), []byte("hello"), singer)
+		ast.Nil(err)
+		err = order.Prepare(tx2)
+		ast.Nil(err)
+		pendingNonce = order.GetPendingNonceByAccount(tx1.GetFrom().String())
+		ast.Equal(uint64(1), pendingNonce)
+	})
+
+	t.Run("GetPendingTxByHash", func(t *testing.T) {
+		tx := order.GetPendingTxByHash(tx1.GetHash())
+		ast.NotNil(tx.Inner)
+		ast.Equal(tx1.GetHash().String(), tx.GetHash().String())
+	})
+}
+
+func TestNode_GetPendingNonceByAccount(t *testing.T) {
+
 }
 
 func TestStop(t *testing.T) {
 	ast := assert.New(t)
 	ctrl := gomock.NewController(t)
-	node := mockNode(ctrl, t)
+	node := MockMinNode[types.Transaction](ctrl, t)
 
 	// test start
 	err := node.Start()
@@ -147,24 +169,24 @@ func TestReadConfig(t *testing.T) {
 	ast := assert.New(t)
 	ctrl := gomock.NewController(t)
 	logger := log.NewWithModule("order")
-	rbftConf, txpoolConfig, err := generateRbftConfig(testutil.MockOrderConfig(logger, ctrl, "leveldb", t))
+	rbftConf, mempoolConfig, err := generateRbftConfig(testutil.MockOrderConfig(logger, ctrl, "leveldb", t))
 	ast.Nil(err)
 	rbftConf.Logger.Critical()
 	rbftConf.Logger.Criticalf("test critical")
 	rbftConf.Logger.Notice()
 	rbftConf.Logger.Noticef("test critical")
 	ast.Equal(25, rbftConf.SetSize)
-	ast.Equal(500, txpoolConfig.BatchSize)
-	ast.Equal(50000, txpoolConfig.PoolSize)
+	ast.Equal(uint64(500), mempoolConfig.BatchSize)
+	ast.Equal(uint64(50000), mempoolConfig.PoolSize)
 	ast.Equal(500*time.Millisecond, rbftConf.BatchTimeout)
 	ast.Equal(3*time.Minute, rbftConf.CheckPoolTimeout)
-	ast.Equal(5*time.Minute, txpoolConfig.ToleranceTime)
+	ast.Equal(5*time.Minute, mempoolConfig.ToleranceTime)
 }
 
 func TestStep(t *testing.T) {
 	ast := assert.New(t)
 	ctrl := gomock.NewController(t)
-	node := mockNode(ctrl, t)
+	node := MockMinNode[types.Transaction](ctrl, t)
 	err := node.Step([]byte("test"))
 	ast.NotNil(err)
 	msg := &consensus.ConsensusMessage{}
@@ -176,7 +198,7 @@ func TestStep(t *testing.T) {
 func TestDelNode(t *testing.T) {
 	ast := assert.New(t)
 	ctrl := gomock.NewController(t)
-	node := mockNode(ctrl, t)
+	node := MockMinNode[types.Transaction](ctrl, t)
 	err := node.DelNode(uint64(2))
 	ast.Error(err)
 }
@@ -184,7 +206,7 @@ func TestDelNode(t *testing.T) {
 func TestReportState(t *testing.T) {
 	ast := assert.New(t)
 	ctrl := gomock.NewController(t)
-	node := mockNode(ctrl, t)
+	node := MockMinNode[types.Transaction](ctrl, t)
 
 	block := testutil.ConstructBlock("blockHash", uint64(20))
 	node.stack.StateUpdating = true
@@ -210,7 +232,7 @@ func TestReportState(t *testing.T) {
 func TestQuorum(t *testing.T) {
 	ast := assert.New(t)
 	ctrl := gomock.NewController(t)
-	node := mockNode(ctrl, t)
+	node := MockMinNode[types.Transaction](ctrl, t)
 	node.stack.Nodes = make(map[uint64]*types.VpInfo)
 	node.stack.Nodes[1] = &types.VpInfo{Id: uint64(1)}
 	node.stack.Nodes[2] = &types.VpInfo{Id: uint64(2)}

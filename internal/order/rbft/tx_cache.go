@@ -11,7 +11,7 @@ import (
 const (
 	DefaultTxCacheSize = 10000
 	DefaultTxSetTick   = 100 * time.Millisecond
-	DefaultTxSetSize   = 10
+	DefaultTxSetSize   = 25
 )
 
 type TxCache struct {

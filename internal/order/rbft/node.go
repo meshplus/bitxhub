@@ -8,28 +8,28 @@ import (
 
 	"github.com/Rican7/retry"
 	"github.com/Rican7/retry/strategy"
-	"github.com/ethereum/go-ethereum/event"
-	"github.com/sirupsen/logrus"
-
 	rbft "github.com/axiomesh/axiom-bft"
 	"github.com/axiomesh/axiom-bft/common/consensus"
-	"github.com/axiomesh/axiom-bft/txpool"
+	"github.com/axiomesh/axiom-bft/mempool"
 	rbfttypes "github.com/axiomesh/axiom-bft/types"
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom-kit/types/pb"
 	"github.com/axiomesh/axiom/internal/order"
 	"github.com/axiomesh/axiom/internal/order/rbft/adaptor"
 	"github.com/axiomesh/axiom/internal/peermgr"
+	"github.com/ethereum/go-ethereum/event"
+	"github.com/sirupsen/logrus"
 )
 
 type Node struct {
-	id      uint64
-	n       rbft.Node[types.Transaction, *types.Transaction]
-	txPool  txpool.TxPool[types.Transaction, *types.Transaction]
-	stack   *adaptor.RBFTAdaptor
-	blockC  chan *types.CommitEvent
-	logger  logrus.FieldLogger
-	peerMgr peermgr.OrderPeerManager
+	id         uint64
+	n          rbft.Node[types.Transaction, *types.Transaction]
+	memPool    mempool.MemPool[types.Transaction, *types.Transaction]
+	stack      *adaptor.RBFTAdaptor
+	blockC     chan *types.CommitEvent
+	logger     logrus.FieldLogger
+	peerMgr    peermgr.OrderPeerManager
+	checkpoint uint64
 
 	ctx     context.Context
 	cancel  context.CancelFunc
@@ -52,24 +52,20 @@ func newNode(opts ...order.Option) (*Node, error) {
 		return nil, fmt.Errorf("generate config: %w", err)
 	}
 
-	rbftConfig, txpoolConfig, err := generateRbftConfig(config)
+	rbftConfig, mempoolConfig, err := generateRbftConfig(config)
 	if err != nil {
-		return nil, fmt.Errorf("generate rbft config: %w", err)
+		return nil, fmt.Errorf("generate rbft txpool config: %w", err)
 	}
 	blockC := make(chan *types.CommitEvent, 1024)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	rbftAdaptor, err := adaptor.NewRBFTAdaptor(config, blockC, cancel, rbftConfig.IsNew)
+	rbftAdaptor, err := adaptor.NewRBFTAdaptor(config, blockC, cancel)
 	if err != nil {
 		return nil, err
 	}
 	rbftConfig.External = rbftAdaptor
 
-	rbftTXPoolAdaptor, err := adaptor.NewRBFTTXPoolAdaptor()
-	if err != nil {
-		return nil, err
-	}
-	rbftConfig.RequestPool = txpool.NewTxPool[types.Transaction, *types.Transaction]("global", rbftTXPoolAdaptor, txpoolConfig)
+	rbftConfig.RequestPool = mempool.NewMempool[types.Transaction, *types.Transaction](mempoolConfig)
 
 	n, err := rbft.NewNode(rbftConfig)
 	if err != nil {
@@ -86,16 +82,17 @@ func newNode(opts ...order.Option) (*Node, error) {
 		Epoch: rbftConfig.EpochInit,
 	})
 	return &Node{
-		id:      rbftConfig.ID,
-		n:       n,
-		txPool:  rbftConfig.RequestPool,
-		logger:  config.Logger,
-		stack:   rbftAdaptor,
-		blockC:  blockC,
-		ctx:     ctx,
-		cancel:  cancel,
-		txCache: newTxCache(0, 0, config.Logger),
-		peerMgr: config.PeerMgr,
+		id:         rbftConfig.ID,
+		n:          n,
+		memPool:    rbftConfig.RequestPool,
+		logger:     config.Logger,
+		stack:      rbftAdaptor,
+		blockC:     blockC,
+		ctx:        ctx,
+		cancel:     cancel,
+		txCache:    newTxCache(rbftConfig.SetTimeout, uint64(rbftConfig.SetSize), config.Logger),
+		peerMgr:    config.PeerMgr,
+		checkpoint: config.Config.Rbft.CheckpointPeriod,
 	}, nil
 }
 
@@ -114,6 +111,37 @@ func (n *Node) Start() error {
 	}
 
 	go n.txCache.listenEvent()
+
+	go func() {
+		for {
+			select {
+			case txWithResp := <-n.txCache.TxRespC:
+				var requests [][]byte
+				tx := txWithResp.Tx
+				raw, err := tx.RbftMarshal()
+				if err != nil {
+					n.logger.Error(err)
+				} else {
+					requests = append(requests, raw)
+				}
+
+				if len(requests) != 0 {
+					_ = n.n.Propose(&consensus.RequestSet{
+						Requests: requests,
+						Local:    true,
+					})
+					go n.txFeed.Send([]*types.Transaction{txWithResp.Tx})
+				}
+
+				txWithResp.Ch <- true
+
+			case <-n.ctx.Done():
+				n.n.Stop()
+				return
+			}
+		}
+	}()
+
 	go func() {
 		for {
 			select {
@@ -164,26 +192,6 @@ func (n *Node) Start() error {
 				if err != nil {
 					n.logger.Errorf("failed to broadcast mempool txs: %v", err)
 				}
-
-			case txWithResp := <-n.txCache.TxRespC:
-				var requests [][]byte
-				tx := txWithResp.Tx
-				raw, err := tx.RbftMarshal()
-				if err != nil {
-					n.logger.Error(err)
-				} else {
-					requests = append(requests, raw)
-				}
-
-				if len(requests) != 0 {
-					_ = n.n.Propose(&consensus.RequestSet{
-						Requests: requests,
-						Local:    true,
-					})
-					go n.txFeed.Send([]*types.Transaction{txWithResp.Tx})
-				}
-
-				txWithResp.Ch <- true
 
 			case <-n.ctx.Done():
 				n.n.Stop()
@@ -263,14 +271,18 @@ func (n *Node) Ready() error {
 	return nil
 }
 
-// TODO: implement it
 func (n *Node) GetPendingNonceByAccount(account string) uint64 {
-	return 0
+	return n.n.GetPendingNonceByAccount(account)
 }
 
-// TODO: implement it
 func (n *Node) GetPendingTxByHash(hash *types.Hash) *types.Transaction {
-	return nil
+	txData := n.n.GetPendingTxByHash(hash.String())
+	tx := &types.Transaction{}
+	err := tx.RbftUnmarshal(txData)
+	if err != nil {
+		n.logger.Errorf("GetPendingTxByHash unmarshall err: %s", err)
+	}
+	return tx
 }
 
 func (n *Node) DelNode(delID uint64) error {
@@ -288,7 +300,7 @@ func (n *Node) ReportState(height uint64, blockHash *types.Hash, txHashList []*t
 				Height: height,
 				Digest: blockHash.String(),
 			},
-			Epoch: 0,
+			Epoch: 1,
 		}
 		n.n.ReportStateUpdated(state)
 		n.stack.StateUpdating = false
@@ -296,7 +308,7 @@ func (n *Node) ReportState(height uint64, blockHash *types.Hash, txHashList []*t
 	}
 
 	// TODO: read from cfg
-	if height%10 == 0 {
+	if height%n.checkpoint == 0 {
 		n.logger.WithFields(logrus.Fields{
 			"height": height,
 		}).Info("Report checkpoint")
@@ -307,7 +319,7 @@ func (n *Node) ReportState(height uint64, blockHash *types.Hash, txHashList []*t
 			Height: height,
 			Digest: blockHash.String(),
 		},
-		Epoch: 0,
+		Epoch: 1,
 	}
 	n.n.ReportExecuted(state)
 }
