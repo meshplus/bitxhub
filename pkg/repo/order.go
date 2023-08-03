@@ -63,7 +63,7 @@ type RBFTTimeout struct {
 func DefaultOrderConfig() *OrderConfig {
 	return &OrderConfig{
 		TimedGenBlock: TimedGenBlock{
-			Enable:           true,
+			Enable:           false,
 			NoTxBatchTimeout: Duration(2 * time.Second),
 		},
 		Rbft: RBFT{

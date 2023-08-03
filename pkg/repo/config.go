@@ -272,7 +272,7 @@ func DefaultConfig(repoRoot string) *Config {
 			RotationTime: Duration(24 * time.Hour),
 			Module: LogModule{
 				P2P:       "info",
-				Consensus: "debug",
+				Consensus: "info",
 				Executor:  "info",
 				Router:    "info",
 				API:       "info",

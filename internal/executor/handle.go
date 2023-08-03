@@ -2,7 +2,6 @@ package executor
 
 import (
 	"bytes"
-	"fmt"
 	"math/big"
 	"strings"
 	"sync"
@@ -12,7 +11,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
-	"github.com/pkg/errors"
 	"github.com/samber/lo"
 	"github.com/sirupsen/logrus"
 
@@ -240,16 +238,9 @@ func (exec *BlockExecutor) applyTransaction(i int, tx *types.Transaction, _ Inva
 		exec.ledger.Finalise(true)
 	}()
 
-	exec.logger.Debugf("tx gas: %v", tx.GetGas())
-	exec.logger.Debugf("tx gas price: %v", tx.GetGasPrice())
-
 	exec.ledger.SetTxContext(tx.GetHash(), i)
-
 	receipt := exec.applyEthTransaction(i, tx)
-	if err := exec.payGasFee(tx, receipt.GasUsed); err != nil {
-		receipt.Ret = []byte(err.Error())
-		exec.payLeftAsGasFee(tx)
-	}
+	exec.payGasFee(tx, receipt.GasUsed)
 
 	return receipt
 }
@@ -264,6 +255,15 @@ func (exec *BlockExecutor) applyEthTransaction(_ int, tx *types.Transaction) *ty
 	var err error
 
 	msg := adaptor.TransactionToMessage(tx)
+	msg.GasPrice, err = exec.getCurrentGasPrice()
+	if err != nil {
+		receipt.Status = types.ReceiptFAILED
+		receipt.Ret = []byte(err.Error())
+		return receipt
+	}
+
+	exec.logger.Debugf("tx gas: %v", tx.GetGas())
+	exec.logger.Debugf("tx gas price: %v", tx.GetGasPrice())
 	statedb := exec.ledger.StateLedger
 	snapshot := statedb.Snapshot()
 	contract, ok := system.GetSystemContract(tx.GetTo())
@@ -375,32 +375,7 @@ func (exec *BlockExecutor) getCurrentGasPrice() (*big.Int, error) {
 	return big.NewInt(block.BlockHeader.GasPrice), nil
 }
 
-func (exec *BlockExecutor) payGasFee(tx *types.Transaction, gasUsed uint64) error {
-	gasPrice, err := exec.getCurrentGasPrice()
-	if err != nil {
-		return errors.Wrap(err, "pay gas fee failed")
-	}
-	fees := new(big.Int).Mul(new(big.Int).SetUint64(gasUsed), gasPrice)
-	have := exec.ledger.GetBalance(tx.GetFrom())
-	if have.Cmp(fees) < 0 {
-		return fmt.Errorf("insufficeient balance: address %v have %v want %v", tx.GetFrom().String(), have, fees)
-	}
-	exec.ledger.SetBalance(tx.GetFrom(), new(big.Int).Sub(have, fees))
-	exec.payAdmins(fees)
-	return nil
-}
-
-func (exec *BlockExecutor) payLeftAsGasFee(tx *types.Transaction) {
-	have := exec.ledger.GetBalance(tx.GetFrom())
-	exec.ledger.SetBalance(tx.GetFrom(), big.NewInt(0))
-	exec.payAdmins(have)
-}
-
-func (exec *BlockExecutor) payAdmins(fees *big.Int) {
-	fee := new(big.Int).Div(fees, big.NewInt(int64(len(exec.admins))))
-	for _, admin := range exec.admins {
-		addr := types.NewAddressByStr(admin)
-		balance := exec.ledger.GetBalance(addr)
-		exec.ledger.SetBalance(addr, new(big.Int).Add(balance, fee))
-	}
+// payGasFee share the revenue to nodes, now it is empty
+// leave the function for the future use.
+func (exec *BlockExecutor) payGasFee(tx *types.Transaction, gasUsed uint64) {
 }
