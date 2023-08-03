@@ -2,32 +2,14 @@
 
 set -e
 
+source x.sh
+
 CURRENT_PATH=$(pwd)
 PROJECT_PATH=$(dirname "${CURRENT_PATH}")
 CONFIG_PATH=${PROJECT_PATH}/config
 BUILD_PATH=${CURRENT_PATH}/build
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-NC='\033[0m'
 N=4
 
-function print_blue() {
-  printf "${BLUE}%s${NC}\n" "$1"
-}
-
-# The sed commend with system judging
-# Examples:
-# sed -i 's/a/b/g' bob.txt => x_replace 's/a/b/g' bob.txt
-function x_replace() {
-  system=$(uname)
-
-  if [ "${system}" = "Linux" ]; then
-    sed -i "$@"
-  else
-    sed -i '' "$@"
-  fi
-}
 
 function Get_PM_Name() {
   PM=''
@@ -81,29 +63,20 @@ function prepare() {
   mkdir "${BUILD_PATH}"
   for ((i = 1; i < N + 1; i = i + 1)); do
     root=${BUILD_PATH}/node${i}
-    mkdir -p "${root}"
 
-    cp -rf "${CURRENT_PATH}"/certs/node${i}/* "${root}"
-    cp -rf "${CONFIG_PATH}"/* "${root}"
+    axiom --repo="${root}" config generate --default-node-index ${i}
 
     echo " #!/usr/bin/env bash" >"${root}"/start.sh
     echo "./axiom --repo \$(pwd)" start >>"${root}"/start.sh
 
     axiomConfig=${root}/axiom.toml
     networkConfig=${root}/network.toml
-    x_replace "s/60011/6001${i}/g" "${axiomConfig}"
-    x_replace "s/9091/909${i}/g" "${axiomConfig}"
+    x_replace "s/8881/888${i}/g" "${axiomConfig}"
+    x_replace "s/9991/909${i}/g" "${axiomConfig}"
     x_replace "s/53121/5312${i}/g" "${axiomConfig}"
     x_replace "s/40011/4001${i}/g" "${axiomConfig}"
-    x_replace "s/8881/888${i}/g" "${axiomConfig}"
     x_replace "1s/1/${i}/" "${networkConfig}"
   done
-}
-
-function compile() {
-  print_blue "===> Compiling axiom"
-  cd "${PROJECT_PATH}"
-  make install${TAGS}
 }
 
 function splitWindow() {

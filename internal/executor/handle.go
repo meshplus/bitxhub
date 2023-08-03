@@ -8,13 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/axiomesh/axiom-kit/types"
-	"github.com/axiomesh/axiom/internal/executor/system"
-	"github.com/axiomesh/axiom/internal/ledger"
-	"github.com/axiomesh/axiom/internal/model/events"
-	"github.com/axiomesh/eth-kit/adaptor"
-	vm1 "github.com/axiomesh/eth-kit/evm"
-	ledger2 "github.com/axiomesh/eth-kit/ledger"
 	"github.com/cbergoon/merkletree"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -22,6 +15,14 @@ import (
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
 	"github.com/sirupsen/logrus"
+
+	"github.com/axiomesh/axiom-kit/types"
+	"github.com/axiomesh/axiom/internal/executor/system"
+	"github.com/axiomesh/axiom/internal/ledger"
+	"github.com/axiomesh/axiom/pkg/model/events"
+	"github.com/axiomesh/eth-kit/adaptor"
+	vm1 "github.com/axiomesh/eth-kit/evm"
+	ledger2 "github.com/axiomesh/eth-kit/ledger"
 )
 
 const (
@@ -65,7 +66,7 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 		txHashList = append(txHashList, tx.GetHash())
 	}
 
-	//TODO: CHANGE COINBASE ADDRESSS
+	// TODO: CHANGE COINBASE ADDRESSS
 	exec.evm = newEvm(block.Height(), uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateLedger, exec.ledger.ChainLedger, exec.admins[0])
 	exec.ledger.PrepareBlock(block.BlockHash, block.Height())
 	receipts := exec.applyTransactions(block.Transactions, blockWrapper.invalidTx)

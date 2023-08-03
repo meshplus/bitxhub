@@ -1,10 +1,11 @@
 package app
 
 import (
-	"github.com/axiomesh/axiom/internal/model/events"
-	"github.com/axiomesh/axiom/internal/repo"
-	"github.com/axiomesh/axiom/pkg/peermgr"
 	"github.com/sirupsen/logrus"
+
+	"github.com/axiomesh/axiom/internal/peermgr"
+	"github.com/axiomesh/axiom/pkg/model/events"
+	"github.com/axiomesh/axiom/pkg/repo"
 )
 
 func (bxh *Axiom) start() {

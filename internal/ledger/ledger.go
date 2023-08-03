@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/axiomesh/axiom-kit/storage"
 	"github.com/axiomesh/axiom-kit/storage/blockfile"
 	"github.com/axiomesh/axiom-kit/storage/leveldb"
 	"github.com/axiomesh/axiom-kit/storage/pebble"
 	"github.com/axiomesh/axiom-kit/types"
-	"github.com/axiomesh/axiom/internal/repo"
+	"github.com/axiomesh/axiom/pkg/repo"
 	"github.com/axiomesh/eth-kit/ledger"
-	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/sirupsen/logrus"
 )
 
 type Ledger struct {
@@ -27,7 +27,7 @@ type BlockData struct {
 	TxHashList []*types.Hash
 }
 
-func New(repo *repo.Repo, blockchainStore storage.Storage, ldb stateStorage, bf *blockfile.BlockFile, accountCache *AccountCache, logger logrus.FieldLogger) (*Ledger, error) {
+func New(repo *repo.Repo, blockchainStore storage.Storage, ldb storage.Storage, bf *blockfile.BlockFile, accountCache *AccountCache, logger logrus.FieldLogger) (*Ledger, error) {
 	chainLedger, err := NewChainLedgerImpl(blockchainStore, bf, repo, logger)
 	if err != nil {
 		return nil, fmt.Errorf("init chain ledger failed: %w", err)
@@ -37,37 +37,10 @@ func New(repo *repo.Repo, blockchainStore storage.Storage, ldb stateStorage, bf 
 
 	var stateLedger ledger.StateLedger
 
-	switch v := ldb.(type) {
-	case storage.Storage:
-		stateLedger, err = NewSimpleLedger(repo, ldb.(storage.Storage), accountCache, logger)
-		if err != nil {
-			return nil, fmt.Errorf("init state ledger failed: %w", err)
-		}
-	case ethdb.Database:
-		// db := state.NewDatabaseWithConfig(ldb.(ethdb.Database), &trie.Config{
-		// 	Cache:     256,
-		// 	Journal:   "",
-		// 	Preimages: true,
-		// })
-
-		// root := &types.Hash{}
-		// if meta.Height > 0 {
-		// 	block, err := chainLedger.GetBlock(meta.Height)
-		// 	if err != nil {
-		// 		return nil, fmt.Errorf("get block with height %d failed: %w", meta.Height, err)
-		// 	}
-		// 	root = block.BlockHeader.StateRoot
-		// }
-
-		// stateLedger, err = ledger.New(root, db, logger)
-		// if err != nil {
-		// 	return nil, fmt.Errorf("init state ledger failed: %w", err)
-		// }
-		return nil, fmt.Errorf("unknow storage type %T, expect simple or historical", v)
-	default:
-		return nil, fmt.Errorf("unknow storage type %T, expect simple or historical", v)
+	stateLedger, err = NewSimpleLedger(repo, ldb, accountCache, logger)
+	if err != nil {
+		return nil, fmt.Errorf("init state ledger failed: %w", err)
 	}
-
 	ledger := &Ledger{
 		ChainLedger: chainLedger,
 		StateLedger: stateLedger,
@@ -117,28 +90,22 @@ func (l *Ledger) Close() {
 	l.StateLedger.Close()
 }
 
-type stateStorage interface{}
-
-func OpenStateDB(file string, typ string, kv string) (stateStorage, error) {
-	var storage stateStorage
+func OpenStateDB(file string, kv string) (storage.Storage, error) {
+	var storage storage.Storage
 	var err error
 
-	if typ == "simple" {
-		if kv == "leveldb" {
-			storage, err = leveldb.New(file)
-			if err != nil {
-				return nil, fmt.Errorf("init leveldb failed: %w", err)
-			}
-		} else if kv == "pebble" {
-			storage, err = pebble.New(file)
-			if err != nil {
-				return nil, fmt.Errorf("init pebble failed: %w", err)
-			}
-		} else {
-			return nil, fmt.Errorf("unknow kv type %s, expect leveldb or pebble", kv)
+	if kv == "leveldb" {
+		storage, err = leveldb.New(file)
+		if err != nil {
+			return nil, fmt.Errorf("init leveldb failed: %w", err)
+		}
+	} else if kv == "pebble" {
+		storage, err = pebble.New(file)
+		if err != nil {
+			return nil, fmt.Errorf("init pebble failed: %w", err)
 		}
 	} else {
-		return nil, fmt.Errorf("unknow storage type %s, expect simple", typ)
+		return nil, fmt.Errorf("unknow kv type %s, expect leveldb or pebble", kv)
 	}
 
 	return storage, nil

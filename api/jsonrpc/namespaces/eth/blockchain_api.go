@@ -8,18 +8,19 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/axiomesh/axiom-kit/types"
-	rpctypes "github.com/axiomesh/axiom/api/jsonrpc/types"
-	"github.com/axiomesh/axiom/internal/coreapi/api"
-	"github.com/axiomesh/axiom/internal/repo"
-	"github.com/axiomesh/eth-kit/adaptor"
-	vm "github.com/axiomesh/eth-kit/evm"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/sirupsen/logrus"
+
+	"github.com/axiomesh/axiom-kit/types"
+	rpctypes "github.com/axiomesh/axiom/api/jsonrpc/types"
+	"github.com/axiomesh/axiom/internal/coreapi/api"
+	"github.com/axiomesh/axiom/pkg/repo"
+	"github.com/axiomesh/eth-kit/adaptor"
+	vm "github.com/axiomesh/eth-kit/evm"
 )
 
 // BlockChain API provides an API for accessing blockchain data
@@ -91,7 +92,7 @@ func (api *BlockChainAPI) GetProof(address common.Address, storageKeys []string,
 }
 
 // GetBlockByNumber returns the block identified by number.
-func (api *BlockChainAPI) GetBlockByNumber(blockNum rpctypes.BlockNumber, fullTx bool) (map[string]interface{}, error) {
+func (api *BlockChainAPI) GetBlockByNumber(blockNum rpctypes.BlockNumber, fullTx bool) (map[string]any, error) {
 	api.logger.Debugf("eth_getBlockByNumber, number: %d, full: %v", blockNum, fullTx)
 
 	if blockNum == rpctypes.PendingBlockNumber || blockNum == rpctypes.LatestBlockNumber {
@@ -111,7 +112,7 @@ func (api *BlockChainAPI) GetBlockByNumber(blockNum rpctypes.BlockNumber, fullTx
 }
 
 // GetBlockByHash returns the block identified by hash.
-func (api *BlockChainAPI) GetBlockByHash(hash common.Hash, fullTx bool) (map[string]interface{}, error) {
+func (api *BlockChainAPI) GetBlockByHash(hash common.Hash, fullTx bool) (map[string]any, error) {
 	api.logger.Debugf("eth_getBlockByHash, hash: %s, full: %v", hash.String(), fullTx)
 
 	block, err := api.api.Broker().GetBlock("HASH", hash.String())
@@ -170,7 +171,7 @@ func (api *BlockChainAPI) Call(args types.CallArgs, blockNrOrHash *rpctypes.Bloc
 	// 	return nil, err
 	// }
 
-	receipt, err := DoCall(api.ctx, api.api, args, api.config.RPCEVMTimeout, api.config.RPCGasCap, api.logger)
+	receipt, err := DoCall(api.ctx, api.api, args, api.config.JsonRPC.EVMTimeout.ToDuration(), api.config.JsonRPC.GasCap, api.logger)
 	if err != nil {
 		return nil, err
 	}
@@ -201,7 +202,7 @@ func DoCall(ctx context.Context, api api.CoreAPI, args types.CallArgs, timeout t
 	}
 	defer cancel()
 
-	//GET EVM Instance
+	// GET EVM Instance
 	msg, err := adaptor.CallArgsToMessage(&args, globalGasCap, big.NewInt(0))
 	if err != nil {
 		return nil, err
@@ -215,7 +216,7 @@ func DoCall(ctx context.Context, api api.CoreAPI, args types.CallArgs, timeout t
 	leger.PrepareBlock(meta.BlockHash, meta.Height)
 	evm := api.Broker().GetEvm(msg, &vm.Config{NoBaseFee: true})
 	if err != nil {
-		return nil, fmt.Errorf("error get evm")
+		return nil, errors.New("error get evm")
 	}
 
 	go func() {
@@ -259,7 +260,7 @@ func (api *BlockChainAPI) EstimateGas(args types.CallArgs, blockNrOrHash *rpctyp
 	if args.Gas != nil && uint64(*args.Gas) >= params.TxGas {
 		hi = uint64(*args.Gas)
 	} else {
-		//todo use block gasLimit instead of config gasLimit
+		// todo use block gasLimit instead of config gasLimit
 		hi = api.config.Genesis.GasLimit
 	}
 
@@ -299,7 +300,7 @@ func (api *BlockChainAPI) EstimateGas(args types.CallArgs, blockNrOrHash *rpctyp
 		}
 	}
 
-	gasCap := api.config.RPCGasCap
+	gasCap := api.config.JsonRPC.GasCap
 	if gasCap != 0 && hi > gasCap {
 		api.logger.Warn("Caller gas above allowance, capping", "requested", hi, "cap", gasCap)
 		hi = gasCap
@@ -311,7 +312,7 @@ func (api *BlockChainAPI) EstimateGas(args types.CallArgs, blockNrOrHash *rpctyp
 	executable := func(gas uint64) (bool, *vm.ExecutionResult, error) {
 		args.Gas = (*hexutil.Uint64)(&gas)
 
-		result, err := DoCall(api.ctx, api.api, args, api.config.RPCEVMTimeout, api.config.RPCGasCap, api.logger)
+		result, err := DoCall(api.ctx, api.api, args, api.config.JsonRPC.EVMTimeout.ToDuration(), api.config.JsonRPC.GasCap, api.logger)
 		if err != nil {
 			if errors.Is(err, errors.New("intrinsic gas too low")) {
 				return true, nil, nil // Special case, raise gas limit
@@ -377,29 +378,29 @@ func (s *BlockChainAPI) CreateAccessList(args types.CallArgs, blockNrOrHash *rpc
 
 // FormatBlock creates an ethereum block from a tendermint header and ethereum-formatted
 // transactions.
-func formatBlock(api api.CoreAPI, config *repo.Config, block *types.Block, fullTx bool) (map[string]interface{}, error) {
+func formatBlock(api api.CoreAPI, config *repo.Config, block *types.Block, fullTx bool) (map[string]any, error) {
 	cumulativeGas, err := getBlockCumulativeGas(api, block, uint64(len(block.Transactions)-1))
 	if err != nil {
 		return nil, err
 	}
 
-	formatTx := func(tx *types.Transaction, index uint64) (interface{}, error) {
+	formatTx := func(tx *types.Transaction, index uint64) (any, error) {
 		return tx.GetHash().ETHHash(), nil
 	}
 	if fullTx {
-		formatTx = func(tx *types.Transaction, index uint64) (interface{}, error) {
+		formatTx = func(tx *types.Transaction, index uint64) (any, error) {
 			return newRPCTransaction(tx, common.BytesToHash(block.BlockHash.Bytes()), block.Height(), index), nil
 		}
 	}
 	txs := block.Transactions
-	transactions := make([]interface{}, len(txs))
+	transactions := make([]any, len(txs))
 	for i, tx := range txs {
 		if transactions[i], err = formatTx(tx, uint64(i)); err != nil {
 			return nil, err
 		}
 	}
 
-	return map[string]interface{}{
+	return map[string]any{
 		"number":           (*hexutil.Big)(big.NewInt(int64(block.Height()))),
 		"hash":             block.BlockHash.ETHHash(),
 		"parentHash":       block.BlockHeader.ParentHash.ETHHash(),
@@ -437,7 +438,7 @@ func (e *revertError) ErrorCode() int {
 }
 
 // ErrorData returns the hex encoded revert reason.
-func (e *revertError) ErrorData() interface{} {
+func (e *revertError) ErrorData() any {
 	return e.reason
 }
 

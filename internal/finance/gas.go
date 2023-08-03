@@ -3,10 +3,11 @@ package finance
 import (
 	"errors"
 
-	"github.com/axiomesh/axiom/internal/ledger"
-	"github.com/axiomesh/axiom/internal/loggers"
-	"github.com/axiomesh/axiom/internal/repo"
 	"github.com/sirupsen/logrus"
+
+	"github.com/axiomesh/axiom/internal/ledger"
+	"github.com/axiomesh/axiom/pkg/loggers"
+	"github.com/axiomesh/axiom/pkg/repo"
 )
 
 var (
@@ -47,7 +48,7 @@ func (gas *Gas) GetGasPrice() (uint64, error) {
 		gas.logger.Errorf("gas price is out of range, parent gas price is %d, min is %d, max is %d", parentGasPrice, min, max)
 		return 0, ErrGasOutOfRange
 	}
-	total := gas.repo.Config.Txpool.BatchSize
+	total := gas.repo.Config.Order.Txpool.BatchSize
 	currentTxs := len(block.Transactions)
 	if currentTxs > total {
 		return 0, ErrTxsOutOfRange

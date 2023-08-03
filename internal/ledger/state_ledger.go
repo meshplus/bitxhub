@@ -1,23 +1,25 @@
 package ledger
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/axiomesh/axiom-kit/storage"
 	"github.com/axiomesh/axiom-kit/types"
-	"github.com/axiomesh/axiom/internal/repo"
+	"github.com/axiomesh/axiom/pkg/repo"
 	"github.com/axiomesh/eth-kit/ledger"
-	"github.com/sirupsen/logrus"
 )
 
 var _ ledger.StateLedger = (*StateLedger)(nil)
 
 var (
-	ErrorRollbackToHigherNumber  = fmt.Errorf("rollback to higher blockchain height")
-	ErrorRollbackWithoutJournal  = fmt.Errorf("rollback to blockchain height without journal")
-	ErrorRollbackTooMuch         = fmt.Errorf("rollback too much block")
-	ErrorRemoveJournalOutOfRange = fmt.Errorf("remove journal out of range")
+	ErrorRollbackToHigherNumber  = errors.New("rollback to higher blockchain height")
+	ErrorRollbackWithoutJournal  = errors.New("rollback to blockchain height without journal")
+	ErrorRollbackTooMuch         = errors.New("rollback too much block")
+	ErrorRemoveJournalOutOfRange = errors.New("remove journal out of range")
 )
 
 type revision struct {

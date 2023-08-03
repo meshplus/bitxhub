@@ -7,7 +7,7 @@ import (
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/internal/executor"
 	"github.com/axiomesh/axiom/internal/ledger"
-	"github.com/axiomesh/axiom/internal/repo"
+	"github.com/axiomesh/axiom/pkg/repo"
 )
 
 // Initialize initialize block

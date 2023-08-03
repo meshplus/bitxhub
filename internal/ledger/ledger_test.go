@@ -9,19 +9,20 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/common"
+	etherTypes "github.com/ethereum/go-ethereum/core/types"
+	crypto1 "github.com/ethereum/go-ethereum/crypto"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/axiomesh/axiom-kit/log"
 	"github.com/axiomesh/axiom-kit/storage"
 	"github.com/axiomesh/axiom-kit/storage/blockfile"
 	"github.com/axiomesh/axiom-kit/storage/leveldb"
 	"github.com/axiomesh/axiom-kit/storage/pebble"
 	"github.com/axiomesh/axiom-kit/types"
-	"github.com/axiomesh/axiom/internal/repo"
+	"github.com/axiomesh/axiom/pkg/repo"
 	"github.com/axiomesh/eth-kit/ledger"
-	"github.com/ethereum/go-ethereum/common"
-	etherTypes "github.com/ethereum/go-ethereum/core/types"
-	crypto1 "github.com/ethereum/go-ethereum/crypto"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestNew001(t *testing.T) {
@@ -38,7 +39,7 @@ func TestNew001(t *testing.T) {
 
 	testcase := map[string]struct {
 		blockStorage storage.Storage
-		stateStorage stateStorage
+		stateStorage storage.Storage
 	}{
 		"leveldb": {blockStorage: lBlockStorage, stateStorage: lStateStorage},
 		"pebble":  {blockStorage: pBlockStorage, stateStorage: pStateStorage},
@@ -70,7 +71,7 @@ func TestNew002(t *testing.T) {
 
 	testcase := map[string]struct {
 		blockStorage storage.Storage
-		stateStorage stateStorage
+		stateStorage storage.Storage
 	}{
 		"leveldb": {blockStorage: lBlockStorage, stateStorage: lStateStorage},
 		"pebble":  {blockStorage: pBlockStorage, stateStorage: pStateStorage},
@@ -105,7 +106,7 @@ func TestNew003(t *testing.T) {
 
 	testcase := map[string]struct {
 		blockStorage storage.Storage
-		stateStorage stateStorage
+		stateStorage storage.Storage
 	}{
 		"leveldb": {blockStorage: lBlockStorage, stateStorage: lStateStorage},
 		"pebble":  {blockStorage: pBlockStorage, stateStorage: pStateStorage},
@@ -113,7 +114,7 @@ func TestNew003(t *testing.T) {
 
 	for name, tc := range testcase {
 		t.Run(name, func(t *testing.T) {
-			tc.stateStorage.(storage.Storage).Put(compositeKey(journalKey, maxHeightStr), marshalHeight(1))
+			tc.stateStorage.Put(compositeKey(journalKey, maxHeightStr), marshalHeight(1))
 			logger := log.NewWithModule("account_test")
 			blockFile, err := blockfile.NewBlockFile(filepath.Join(repoRoot, name), logger)
 			assert.Nil(t, err)
@@ -138,7 +139,7 @@ func TestNew004(t *testing.T) {
 
 	testcase := map[string]struct {
 		blockStorage storage.Storage
-		stateStorage stateStorage
+		stateStorage storage.Storage
 	}{
 		"leveldb": {blockStorage: lBlockStorage, stateStorage: lStateStorage},
 		"pebble":  {blockStorage: pBlockStorage, stateStorage: pStateStorage},
@@ -146,7 +147,7 @@ func TestNew004(t *testing.T) {
 
 	for name, tc := range testcase {
 		t.Run(name, func(t *testing.T) {
-			kvdb := tc.stateStorage.(storage.Storage)
+			kvdb := tc.stateStorage
 			kvdb.Put(compositeKey(journalKey, maxHeightStr), marshalHeight(1))
 
 			journal := &BlockJournal{}
@@ -179,7 +180,7 @@ func TestNew005(t *testing.T) {
 
 	testcase := map[string]struct {
 		blockStorage storage.Storage
-		stateStorage stateStorage
+		stateStorage storage.Storage
 	}{
 		"leveldb": {blockStorage: lBlockStorage, stateStorage: lStateStorage},
 		"pebble":  {blockStorage: pBlockStorage, stateStorage: pStateStorage},
@@ -187,7 +188,7 @@ func TestNew005(t *testing.T) {
 
 	for name, tc := range testcase {
 		t.Run(name, func(t *testing.T) {
-			kvdb := tc.stateStorage.(storage.Storage)
+			kvdb := tc.stateStorage
 			kvdb.Put(compositeKey(journalKey, maxHeightStr), marshalHeight(5))
 			kvdb.Put(compositeKey(journalKey, minHeightStr), marshalHeight(3))
 
@@ -295,7 +296,7 @@ func testChainLedger_Commit(t *testing.T, kv string) {
 	err = lg.Commit(5, accounts, stateRoot)
 	assert.Nil(t, err)
 	assert.Equal(t, uint64(5), lg.Version())
-	//assert.Equal(t, uint64(5), ledger.maxJnlHeight)
+	// assert.Equal(t, uint64(5), ledger.maxJnlHeight)
 
 	stateLedger := lg.StateLedger.(*StateLedger)
 	minHeight, maxHeight := getJournalRange(stateLedger.ldb)
@@ -379,7 +380,6 @@ func testChainLedger_Commit(t *testing.T, kv string) {
 
 	ver := ldg.Version()
 	assert.Equal(t, uint64(0), ver)
-
 }
 
 func TestChainLedger_OpenStateDB(t *testing.T) {
@@ -392,10 +392,10 @@ func TestChainLedger_OpenStateDB(t *testing.T) {
 	for name, tc := range testcase {
 		t.Run(name, func(t *testing.T) {
 			repoRoot := t.TempDir()
-			ss, err := OpenStateDB(filepath.Join(repoRoot, tc.kvType), "simple", tc.kvType)
+			ss, err := OpenStateDB(filepath.Join(repoRoot, tc.kvType), tc.kvType)
 			assert.Nil(t, err)
 			assert.NotNil(t, ss)
-			ss, err = OpenStateDB(filepath.Join(repoRoot, tc.kvType), "simple", tc.kvType)
+			ss, err = OpenStateDB(filepath.Join(repoRoot, tc.kvType), tc.kvType)
 			assert.NotNil(t, err)
 			assert.Nil(t, ss)
 			assert.Contains(t, err.Error(), "init "+tc.kvType+" failed")
@@ -405,17 +405,15 @@ func TestChainLedger_OpenStateDB(t *testing.T) {
 
 func TestChainLedger_OpenStateDB_WrongType(t *testing.T) {
 	testcase := map[string]struct {
-		ledgerType string
-		kvType     string
-		expected   string
+		kvType   string
+		expected string
 	}{
-		"wrongLedgerType": {ledgerType: "none", kvType: "leveldb", expected: "unknow storage type"},
-		"wrongKvType":     {ledgerType: "simple", kvType: "none", expected: "unknow kv type"},
+		"wrongKvType": {kvType: "none", expected: "unknow kv type"},
 	}
 	for name, tc := range testcase {
 		t.Run(name, func(t *testing.T) {
 			repoRoot := t.TempDir()
-			ss, err := OpenStateDB(filepath.Join(repoRoot, tc.kvType), tc.ledgerType, tc.kvType)
+			ss, err := OpenStateDB(filepath.Join(repoRoot, tc.kvType), tc.kvType)
 			assert.NotNil(t, err)
 			assert.Nil(t, ss)
 			assert.Contains(t, err.Error(), tc.expected)
@@ -550,12 +548,12 @@ func testChainLedger_Rollback(t *testing.T, kvType string) {
 	assert.Equal(t, uint64(3), meta.Height)
 
 	//
-	//err = ledger.Rollback(0)
-	//assert.Equal(t, ErrorRollbackTooMuch, err)
+	// err = ledger.Rollback(0)
+	// assert.Equal(t, ErrorRollbackTooMuch, err)
 	//
-	//err = ledger.Rollback(1)
-	//assert.Equal(t, ErrorRollbackTooMuch, err)
-	//assert.Equal(t, uint64(3), ledger.GetChainMeta().Height)
+	// err = ledger.Rollback(1)
+	// assert.Equal(t, ErrorRollbackTooMuch, err)
+	// assert.Equal(t, uint64(3), ledger.GetChainMeta().Height)
 
 	err = ledger.Rollback(3)
 	assert.Nil(t, err)
@@ -637,7 +635,6 @@ func testChainLedger_QueryByPrefix(t *testing.T, kvType string) {
 	assert.Equal(t, []byte("0"), vals[0])
 	assert.Equal(t, []byte("1"), vals[1])
 	assert.Equal(t, []byte("2"), vals[2])
-
 }
 
 func testChainLedger_GetAccount(t *testing.T, kvType string) {
@@ -1002,28 +999,9 @@ func genBlockData(height uint64, accounts map[string]ledger.IAccount, stateRoot 
 }
 
 func createMockRepo(t *testing.T) *repo.Repo {
-	k, err := repo.GeneratePrivateKey()
+	r, err := repo.Default(t.TempDir())
 	require.Nil(t, err)
-	return &repo.Repo{
-		Key: k,
-		Config: &repo.Config{
-			RepoRoot: "",
-			Title:    "",
-			Solo:     false,
-			Port:     repo.Port{},
-			PProf:    repo.PProf{},
-			Ping:     repo.Ping{},
-			Log:      repo.Log{},
-			Txpool:   repo.Txpool{},
-			Order:    repo.Order{},
-			Executor: repo.Executor{},
-			Ledger: repo.Ledger{
-				Type: "simple",
-			},
-			Genesis:  repo.Genesis{},
-			Security: repo.Security{},
-		},
-	}
+	return r
 }
 
 func initLedger(t *testing.T, repoRoot string, kv string) (*Ledger, string) {
@@ -1032,7 +1010,7 @@ func initLedger(t *testing.T, repoRoot string, kv string) (*Ledger, string) {
 	}
 
 	var blockStorage storage.Storage
-	var stateStorage stateStorage
+	var stateStorage storage.Storage
 	var err error
 	if kv == "leveldb" {
 		blockStorage, err = leveldb.New(filepath.Join(repoRoot, "storage"))

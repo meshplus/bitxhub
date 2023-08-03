@@ -1,14 +1,15 @@
 package jsonrpc
 
 import (
+	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/sirupsen/logrus"
+
 	"github.com/axiomesh/axiom/api/jsonrpc/namespaces/eth"
 	"github.com/axiomesh/axiom/api/jsonrpc/namespaces/eth/filters"
 	"github.com/axiomesh/axiom/api/jsonrpc/namespaces/net"
 	"github.com/axiomesh/axiom/api/jsonrpc/namespaces/web3"
 	"github.com/axiomesh/axiom/internal/coreapi/api"
-	"github.com/axiomesh/axiom/internal/repo"
-	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/sirupsen/logrus"
+	"github.com/axiomesh/axiom/pkg/repo"
 )
 
 // RPC namespaces and API version

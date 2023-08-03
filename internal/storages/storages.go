@@ -1,12 +1,13 @@
 package storages
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/axiomesh/axiom-kit/storage"
 	"github.com/axiomesh/axiom-kit/storage/leveldb"
 	"github.com/axiomesh/axiom-kit/storage/pebble"
-	"github.com/axiomesh/axiom/internal/repo"
+	"github.com/axiomesh/axiom/pkg/repo"
 )
 
 const (
@@ -24,12 +25,12 @@ type wrapper struct {
 func Initialize(repoRoot string, typ string) error {
 	var bcStorage storage.Storage
 	var err error
-	if typ == "leveldb" {
+	if typ == repo.KVStorageTypeLeveldb {
 		bcStorage, err = leveldb.New(repo.GetStoragePath(repoRoot, BlockChain))
 		if err != nil {
 			return fmt.Errorf("create blockchain storage: %w", err)
 		}
-	} else if typ == "pebble" {
+	} else if typ == repo.KVStorageTypePebble {
 		bcStorage, err = pebble.New(repo.GetStoragePath(repoRoot, BlockChain))
 		if err != nil {
 			return fmt.Errorf("create blockchain storage: %w", err)
@@ -46,7 +47,7 @@ func Initialize(repoRoot string, typ string) error {
 func Get(name string) (storage.Storage, error) {
 	storage, ok := s.storages[name]
 	if !ok {
-		return nil, fmt.Errorf("wrong storage name")
+		return nil, errors.New("wrong storage name")
 	}
 
 	return storage, nil

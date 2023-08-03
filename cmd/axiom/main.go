@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
 func main() {
@@ -20,19 +20,28 @@ func main() {
 
 	// global flags
 	app.Flags = []cli.Flag{
-		cli.StringFlag{
+		&cli.StringFlag{
 			Name:  "repo",
 			Usage: "Axiom storage repo path",
 		},
 	}
 
-	app.Commands = []cli.Command{
-		configCMD(),
-		initCMD(),
-		startCMD(),
-		keyCMD(),
-		versionCMD(),
-		certCMD(),
+	app.Commands = []*cli.Command{
+		configCMD,
+		{
+			Name:   "start",
+			Usage:  "Start a long-running daemon process",
+			Action: start,
+		},
+		{
+			Name:    "version",
+			Aliases: []string{"v"},
+			Usage:   "Axiom version",
+			Action: func(ctx *cli.Context) error {
+				printVersion()
+				return nil
+			},
+		},
 	}
 
 	err := app.Run(os.Args)

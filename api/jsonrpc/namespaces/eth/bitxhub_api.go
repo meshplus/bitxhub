@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"math/big"
 
-	rpctypes "github.com/axiomesh/axiom/api/jsonrpc/types"
-	"github.com/axiomesh/axiom/internal/coreapi/api"
-	"github.com/axiomesh/axiom/internal/repo"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/sirupsen/logrus"
+
+	rpctypes "github.com/axiomesh/axiom/api/jsonrpc/types"
+	"github.com/axiomesh/axiom/internal/coreapi/api"
+	"github.com/axiomesh/axiom/pkg/repo"
 )
 
 // AxiomAPI provides an API to get related info
@@ -60,7 +61,7 @@ func (api *AxiomAPI) FeeHistory(blockCount rpctypes.DecimalOrHex, lastBlock rpct
 
 // Syncing returns whether or not the current node is syncing with other peers. Returns false if not, or a struct
 // outlining the state of the sync if it is.
-func (api *AxiomAPI) Syncing() (interface{}, error) {
+func (api *AxiomAPI) Syncing() (any, error) {
 	api.logger.Debug("eth_syncing")
 
 	// TODO

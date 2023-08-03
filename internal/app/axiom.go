@@ -2,32 +2,30 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"io/ioutil"
 	"math/big"
-	"path/filepath"
 	"syscall"
 	"time"
 
-	"github.com/axiomesh/axiom-kit/crypto/asym"
-	"github.com/axiomesh/axiom-kit/storage"
+	"github.com/common-nighthawk/go-figure"
+	"github.com/ethereum/go-ethereum/common/fdlimit"
+	"github.com/sirupsen/logrus"
+
 	"github.com/axiomesh/axiom-kit/storage/blockfile"
 	"github.com/axiomesh/axiom/api/jsonrpc"
 	"github.com/axiomesh/axiom/internal/executor"
 	"github.com/axiomesh/axiom/internal/finance"
 	"github.com/axiomesh/axiom/internal/ledger"
 	"github.com/axiomesh/axiom/internal/ledger/genesis"
-	"github.com/axiomesh/axiom/internal/loggers"
-	"github.com/axiomesh/axiom/internal/profile"
-	"github.com/axiomesh/axiom/internal/repo"
+	"github.com/axiomesh/axiom/internal/order"
+	"github.com/axiomesh/axiom/internal/order/rbft"
+	"github.com/axiomesh/axiom/internal/order/solo"
+	"github.com/axiomesh/axiom/internal/peermgr"
 	"github.com/axiomesh/axiom/internal/storages"
-	"github.com/axiomesh/axiom/pkg/order"
-	"github.com/axiomesh/axiom/pkg/order/rbft"
-	"github.com/axiomesh/axiom/pkg/order/solo"
-	"github.com/axiomesh/axiom/pkg/peermgr"
-	"github.com/common-nighthawk/go-figure"
-	"github.com/ethereum/go-ethereum/common/fdlimit"
-	"github.com/sirupsen/logrus"
+	"github.com/axiomesh/axiom/pkg/loggers"
+	"github.com/axiomesh/axiom/pkg/profile"
+	"github.com/axiomesh/axiom/pkg/repo"
 )
 
 type Axiom struct {
@@ -49,23 +47,8 @@ type Axiom struct {
 	Cancel context.CancelFunc
 }
 
-func NewAxiom(rep *repo.Repo, orderPath string) (*Axiom, error) {
+func NewAxiom(rep *repo.Repo) (*Axiom, error) {
 	repoRoot := rep.Config.RepoRoot
-	var orderRoot string
-	if len(orderPath) == 0 {
-		orderRoot = repoRoot
-	} else {
-		orderRoot = filepath.Dir(orderPath)
-		fileData, err := ioutil.ReadFile(orderPath)
-		if err != nil {
-			return nil, fmt.Errorf("read order config error: %w", err)
-		}
-		err = ioutil.WriteFile(filepath.Join(repoRoot, "order.toml"), fileData, 0644)
-		if err != nil {
-			return nil, fmt.Errorf("write order.toml failed: %w", err)
-		}
-	}
-
 	bxh, err := GenerateAxiomWithoutOrder(rep)
 	if err != nil {
 		return nil, fmt.Errorf("generate axiom without order failed: %w", err)
@@ -76,22 +59,22 @@ func NewAxiom(rep *repo.Repo, orderPath string) (*Axiom, error) {
 	m := rep.NetworkConfig.GetVpInfos()
 
 	var orderCon func(opt ...order.Option) (order.Order, error)
-	//Get the order constructor according to different order type.
+	// Get the order constructor according to different order type.
 	switch rep.Config.Order.Type {
-	case "solo":
+	case repo.OrderTypeSolo:
 		orderCon = solo.NewNode
-	case "rbft":
+	case repo.OrderTypeRbft:
 		orderCon = rbft.NewNode
 	default:
 		return nil, fmt.Errorf("unsupport order type: %s", rep.Config.Order.Type)
 	}
 
 	order, err := orderCon(
-		order.WithRepoRoot(orderRoot),
+		order.WithConfig(rep.OrderConfig),
 		order.WithStoragePath(repo.GetStoragePath(repoRoot, "order")),
 		order.WithStorageType(rep.Config.Ledger.Kv),
 		order.WithOrderType(rep.Config.Order.Type),
-		order.WithPrivKey(rep.Key.PrivKey),
+		order.WithPrivKey(rep.NodeKey),
 		order.WithNodes(m),
 		order.WithID(rep.NetworkConfig.ID),
 		order.WithIsNew(rep.NetworkConfig.New),
@@ -120,19 +103,6 @@ func GenerateAxiomWithoutOrder(rep *repo.Repo) (*Axiom, error) {
 	repoRoot := rep.Config.RepoRoot
 	logger := loggers.Logger(loggers.App)
 
-	err := asym.ConfiguredKeyType(rep.Config.Crypto.Algorithms)
-	if err != nil {
-		return nil, fmt.Errorf("set configured key type failed: %w", err)
-	}
-
-	supportCryptoTypeToName := asym.GetConfiguredKeyType()
-	printType := "Supported crypto type:"
-	for _, name := range supportCryptoTypeToName {
-		printType = fmt.Sprintf("%s%s ", printType, name)
-	}
-	printType = fmt.Sprintf("%s\n", printType)
-	fmt.Println(printType)
-
 	if err := storages.Initialize(repoRoot, rep.Config.Ledger.Kv); err != nil {
 		return nil, fmt.Errorf("storages initialize: %w", err)
 	}
@@ -142,7 +112,7 @@ func GenerateAxiomWithoutOrder(rep *repo.Repo) (*Axiom, error) {
 		return nil, fmt.Errorf("create blockchain storage: %w", err)
 	}
 
-	stateStorage, err := ledger.OpenStateDB(repo.GetStoragePath(repoRoot, "ledger"), rep.Config.Ledger.Type, rep.Config.Ledger.Kv)
+	stateStorage, err := ledger.OpenStateDB(repo.GetStoragePath(repoRoot, "ledger"), rep.Config.Ledger.Kv)
 	if err != nil {
 		return nil, fmt.Errorf("create stateDB: %w", err)
 	}
@@ -161,15 +131,10 @@ func GenerateAxiomWithoutOrder(rep *repo.Repo) (*Axiom, error) {
 	viewLdg := &ledger.Ledger{
 		ChainLedger: rwLdg.ChainLedger,
 	}
-	if rep.Config.Ledger.Type == "simple" {
-		// create read only ledger
-		viewLdg.StateLedger, err = ledger.NewSimpleLedger(rep, stateStorage.(storage.Storage), nil, loggers.Logger(loggers.Executor))
-		if err != nil {
-			return nil, fmt.Errorf("create readonly ledger: %w", err)
-		}
-	} else {
-		// viewLdg.StateLedger = rwLdg.StateLedger.(*ledger2.ComplexStateLedger).Copy()
-		return nil, fmt.Errorf("ledger type not support")
+	// create read only ledger
+	viewLdg.StateLedger, err = ledger.NewSimpleLedger(rep, stateStorage, nil, loggers.Logger(loggers.Executor))
+	if err != nil {
+		return nil, fmt.Errorf("create readonly ledger: %w", err)
 	}
 
 	// 1. create executor and view executor
@@ -221,12 +186,11 @@ func GenerateAxiomWithoutOrder(rep *repo.Repo) (*Axiom, error) {
 }
 
 func (bxh *Axiom) Start() error {
-
 	if err := bxh.raiseUlimit(2048); err != nil {
 		return fmt.Errorf("raise ulimit: %w", err)
 	}
 
-	if !bxh.repo.Config.Solo {
+	if bxh.repo.Config.Order.Type != repo.OrderTypeSolo {
 		if err := bxh.PeerMgr.Start(); err != nil {
 			return fmt.Errorf("peer manager start: %w", err)
 		}
@@ -260,7 +224,7 @@ func (bxh *Axiom) Stop() error {
 		return fmt.Errorf("view executor stop: %w", err)
 	}
 
-	if !bxh.repo.Config.Solo {
+	if bxh.repo.Config.Order.Type != repo.OrderTypeSolo {
 		if err := bxh.PeerMgr.Stop(); err != nil {
 			return fmt.Errorf("network stop: %w", err)
 		}
@@ -336,7 +300,7 @@ func (bxh *Axiom) raiseUlimit(limitNew uint64) error {
 	}
 
 	if limit.Cur != limitNew && limit.Cur != limit.Max {
-		return fmt.Errorf("failed to raise ulimit")
+		return errors.New("failed to raise ulimit")
 	}
 
 	bxh.logger.WithFields(logrus.Fields{
@@ -344,8 +308,4 @@ func (bxh *Axiom) raiseUlimit(limitNew uint64) error {
 	}).Infof("Ulimit raised")
 
 	return nil
-}
-
-func (bxh *Axiom) GetPrivKey() *repo.Key {
-	return bxh.repo.Key
 }

@@ -2,12 +2,17 @@ package executor
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
-	"io/ioutil"
 	"math/big"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/axiomesh/axiom-kit/hexutil"
 	"github.com/axiomesh/axiom-kit/log"
@@ -19,14 +24,11 @@ import (
 	"github.com/axiomesh/axiom/internal/executor/system"
 	"github.com/axiomesh/axiom/internal/executor/system/governance"
 	"github.com/axiomesh/axiom/internal/ledger"
-	"github.com/axiomesh/axiom/internal/model/events"
-	"github.com/axiomesh/axiom/internal/repo"
+	"github.com/axiomesh/axiom/pkg/model/events"
+	"github.com/axiomesh/axiom/pkg/repo"
 	vm1 "github.com/axiomesh/eth-kit/evm"
 	ledger2 "github.com/axiomesh/eth-kit/ledger"
 	"github.com/axiomesh/eth-kit/ledger/mock_ledger"
-	"github.com/golang/mock/gomock"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -43,27 +45,25 @@ const (
 	bxhID          = "1356"
 )
 
+//	func TestSign(t *testing.T) {
+//		privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
+//		assert.Nil(t, err)
+//		pubKey := privKey.PublicKey()
+//		from,err := pubKey.Address()
+//		pubKeyBytes, err := ecdsa.Ecrecover(digest, sig)
+//		if err != nil {
+//			return false, err
+//		}
+//		pubkey, err := ecdsa.UnmarshalPublicKey(pubKeyBytes, opt)
+//		if err != nil {
+//			return false, err
+//		}
 //
-//func TestSign(t *testing.T) {
-//	privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
-//	assert.Nil(t, err)
-//	pubKey := privKey.PublicKey()
-//	from,err := pubKey.Address()
-//	pubKeyBytes, err := ecdsa.Ecrecover(digest, sig)
-//	if err != nil {
-//		return false, err
+//		expected, err := pubkey.Address()
+//		if err != nil {
+//			return false, err
+//		}
 //	}
-//	pubkey, err := ecdsa.UnmarshalPublicKey(pubKeyBytes, opt)
-//	if err != nil {
-//		return false, err
-//	}
-//
-//	expected, err := pubkey.Address()
-//	if err != nil {
-//		return false, err
-//	}
-//}
-
 func TestNew(t *testing.T) {
 	config := generateMockConfig(t)
 	mockCtl := gomock.NewController(t)
@@ -127,10 +127,9 @@ func TestGetEvm(t *testing.T) {
 	evm := executor.GetEvm(txCtx, vm1.Config{NoBaseFee: true})
 	assert.NotNil(t, evm)
 
-	chainLedger.EXPECT().GetBlock(gomock.Any()).Return(nil, fmt.Errorf("get block error")).Times(1)
+	chainLedger.EXPECT().GetBlock(gomock.Any()).Return(nil, errors.New("get block error")).Times(1)
 	evmErr := executor.GetEvm(txCtx, vm1.Config{NoBaseFee: true})
 	assert.Nil(t, evmErr)
-
 }
 
 func TestSubscribeLogsEvent(t *testing.T) {
@@ -219,9 +218,8 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	stateLedger.EXPECT().AddEVMBalance(gomock.Any(), gomock.Any()).AnyTimes()
 
 	stateLedger.EXPECT().SetState(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
-		func(addr *types.Address, key []byte, value []byte) {
-
-		}).AnyTimes()
+		func(addr *types.Address, key []byte, value []byte) {},
+	).AnyTimes()
 	stateLedger.EXPECT().GetState(gomock.Any(), gomock.Any()).DoAndReturn(
 		func(addr *types.Address, key []byte) (bool, []byte) {
 			return true, []byte("10")
@@ -264,7 +262,6 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	assert.Equal(t, 2, len(blockRes2.TxHashList))
 
 	assert.Nil(t, exec.Stop())
-
 }
 
 func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
@@ -391,7 +388,7 @@ func mockTx(t *testing.T) *types.Transaction {
 
 func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 	config := generateMockConfig(t)
-	repoRoot, err := ioutil.TempDir("", "executor")
+	repoRoot, err := os.MkdirTemp("", "executor")
 	require.Nil(t, err)
 
 	lBlockStorage, err := leveldb.New(filepath.Join(repoRoot, "lStorage"))
@@ -405,7 +402,7 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 
 	testcase := map[string]struct {
 		blockStorage storage.Storage
-		stateStorage interface{}
+		stateStorage storage.Storage
 	}{
 		"leveldb": {blockStorage: lBlockStorage, stateStorage: lStateStorage},
 		"pebble":  {blockStorage: pBlockStorage, stateStorage: pStateStorage},
@@ -463,22 +460,20 @@ func mockTransferTx(t *testing.T, s *types.Signer, to *types.Address, nonce, amo
 }
 
 func createMockRepo(t *testing.T) *repo.Repo {
-	k, err := repo.GeneratePrivateKey()
-	require.Nil(t, err)
+	r, err := repo.Default(t.TempDir())
+	assert.Nil(t, err)
 
-	return &repo.Repo{
-		Key: k,
-	}
+	return r
 }
 
 func generateMockConfig(t *testing.T) *repo.Config {
-	config, err := repo.DefaultConfig()
+	r, err := repo.Default(t.TempDir())
 	assert.Nil(t, err)
+	config := r.Config
 
 	for i := 0; i < 4; i++ {
 		config.Genesis.Admins = append(config.Genesis.Admins, &repo.Admin{
 			Address: types.NewAddress([]byte{byte(1)}).String(),
-			Weight:  2,
 		})
 	}
 

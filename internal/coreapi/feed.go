@@ -1,10 +1,11 @@
 package coreapi
 
 import (
+	"github.com/ethereum/go-ethereum/event"
+
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/internal/coreapi/api"
-	"github.com/axiomesh/axiom/internal/model/events"
-	"github.com/ethereum/go-ethereum/event"
+	"github.com/axiomesh/axiom/pkg/model/events"
 )
 
 type FeedAPI CoreAPI

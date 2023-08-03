@@ -1,11 +1,12 @@
 package api
 
 import (
+	"github.com/ethereum/go-ethereum/event"
+
 	"github.com/axiomesh/axiom-kit/types"
-	"github.com/axiomesh/axiom/internal/model/events"
+	"github.com/axiomesh/axiom/pkg/model/events"
 	vm "github.com/axiomesh/eth-kit/evm"
 	"github.com/axiomesh/eth-kit/ledger"
-	"github.com/ethereum/go-ethereum/event"
 )
 
 //go:generate mockgen -destination mock_api/mock_api.go -package mock_api -source api.go
@@ -31,8 +32,10 @@ type BrokerAPI interface {
 	GetPoolTransaction(hash *types.Hash) *types.Transaction
 	GetStateLedger() ledger.StateLedger
 	GetEvm(mes *vm.Message, vmConfig *vm.Config) *vm.EVM
+
 	// OrderReady
 	OrderReady() error
+
 	GetBlockHeaders(start uint64, end uint64) ([]*types.BlockHeader, error)
 }
 

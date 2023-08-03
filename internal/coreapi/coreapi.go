@@ -1,10 +1,11 @@
 package coreapi
 
 import (
+	"github.com/sirupsen/logrus"
+
 	"github.com/axiomesh/axiom/internal/app"
 	"github.com/axiomesh/axiom/internal/coreapi/api"
-	"github.com/axiomesh/axiom/internal/loggers"
-	"github.com/sirupsen/logrus"
+	"github.com/axiomesh/axiom/pkg/loggers"
 )
 
 var _ api.CoreAPI = (*CoreAPI)(nil)
