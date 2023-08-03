@@ -363,8 +363,19 @@ func (exec *BlockExecutor) GetEvm(txCtx vm1.TxContext, vmConfig vm1.Config) *vm1
 	return vm1.NewEVM(blkCtx, txCtx, exec.ledger.StateLedger, exec.evmChainCfg, vmConfig)
 }
 
+// getCurrentGasPrice returns the current block's gas price, which is
+// stored in the last block's blockheader
+func (exec *BlockExecutor) getCurrentGasPrice() (*big.Int, error) {
+	latestHeight := exec.ledger.ChainLedger.GetChainMeta().Height
+	block, err := exec.ledger.GetBlock(latestHeight)
+	if err != nil {
+		return nil, err
+	}
+	return big.NewInt(block.BlockHeader.GasPrice), nil
+}
+
 func (exec *BlockExecutor) payGasFee(tx *types.Transaction, gasUsed uint64) error {
-	gasPrice, err := exec.GasPrice()
+	gasPrice, err := exec.getCurrentGasPrice()
 	if err != nil {
 		return errors.Wrap(err, "pay gas fee failed")
 	}

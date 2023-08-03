@@ -7,5 +7,10 @@ type GasAPI CoreAPI
 var _ api.ChainAPI = (*ChainAPI)(nil)
 
 func (gas *GasAPI) GetGasPrice() (uint64, error) {
-	return gas.bxh.Gas.GetGasPrice()
+	lastestHeight := gas.bxh.Ledger.ChainLedger.GetChainMeta().Height
+	block, err := gas.bxh.Ledger.ChainLedger.GetBlock(lastestHeight)
+	if err != nil {
+		return 0, err
+	}
+	return uint64(block.BlockHeader.GasPrice), nil
 }

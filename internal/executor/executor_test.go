@@ -155,6 +155,11 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 		Height:    1,
 		BlockHash: types.NewHash([]byte(from)),
 	}
+	block := &types.Block{
+		BlockHeader: &types.BlockHeader{
+			GasPrice: 5000,
+		},
+	}
 
 	evs := make([]*types.Event, 0)
 	m := make(map[string]uint64)
@@ -181,6 +186,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	stateLedger.EXPECT().Copy().Return(stateLedger).AnyTimes()
 	stateLedger.EXPECT().QueryByPrefix(gomock.Any(), gomock.Any()).Return(false, nil).AnyTimes()
 	chainLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
+	chainLedger.EXPECT().GetBlock(gomock.Any()).Return(block, nil).AnyTimes()
 	stateLedger.EXPECT().Events(gomock.Any()).Return(evs).AnyTimes()
 	stateLedger.EXPECT().Commit(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	stateLedger.EXPECT().Clear().AnyTimes()

@@ -45,8 +45,6 @@ type Axiom struct {
 	LoggerWrapper *loggers.LoggerWrapper
 	Jsonrpc       *jsonrpc.ChainBrokerService
 
-	Gas *finance.Gas
-
 	Ctx    context.Context
 	Cancel context.CancelFunc
 }
@@ -219,7 +217,6 @@ func GenerateAxiomWithoutOrder(rep *repo.Repo) (*Axiom, error) {
 		BlockExecutor: txExec,
 		ViewExecutor:  viewExec,
 		PeerMgr:       peerMgr,
-		Gas:           gas,
 	}, nil
 }
 
