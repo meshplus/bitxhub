@@ -2,18 +2,16 @@ package finance
 
 import (
 	"math/rand"
-	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/axiomesh/axiom-kit/log"
-	"github.com/axiomesh/axiom-kit/types"
-	"github.com/axiomesh/axiom/internal/ledger"
-	"github.com/axiomesh/axiom/internal/loggers"
-	"github.com/axiomesh/axiom/internal/repo"
-	"github.com/axiomesh/eth-kit/ledger/mock_ledger"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/axiomesh/axiom-kit/types"
+	"github.com/axiomesh/axiom/internal/ledger"
+	"github.com/axiomesh/axiom/pkg/repo"
+	"github.com/axiomesh/eth-kit/ledger/mock_ledger"
 )
 
 const repoRoot = "testdata"
@@ -87,8 +85,6 @@ func GasPriceBySize(t *testing.T, size int, parentGasPrice int64, expectErr erro
 	block.Transactions = prepareTxs(size)
 	chainLedger.EXPECT().GetBlock(uint64(1)).Return(block, nil).AnyTimes()
 	config := generateMockConfig(t)
-	initializeLog(t, config)
-
 	gasPrice := NewGas(config, mockLedger)
 	gas, err := gasPrice.GetGasPrice()
 	if expectErr != nil {
@@ -100,27 +96,13 @@ func GasPriceBySize(t *testing.T, size int, parentGasPrice int64, expectErr erro
 }
 
 func generateMockConfig(t *testing.T) *repo.Repo {
-	repo, err := repo.Load(repoRoot, "", "../../config/axiom.toml", "../../config/network.toml")
+	repo, err := repo.Default(t.TempDir())
 	assert.Nil(t, err)
 	return repo
 }
 
-func initializeLog(t *testing.T, repo *repo.Repo) {
-	err := log.Initialize(
-		log.WithReportCaller(repo.Config.Log.ReportCaller),
-		log.WithPersist(true),
-		log.WithFilePath(filepath.Join(repoRoot, repo.Config.Log.Dir)),
-		log.WithFileName(repo.Config.Log.Filename),
-		log.WithMaxAge(90*24*time.Hour),
-		log.WithRotationTime(24*time.Hour),
-	)
-	assert.Nil(t, err)
-
-	loggers.Initialize(repo.Config)
-}
-
 func checkResult(t *testing.T, block *types.Block, config *repo.Repo, parentGasPrice int64, gas uint64) uint64 {
-	percentage := (float64(len(block.Transactions)) - float64(config.Config.Txpool.BatchSize)/2) / float64(config.Config.Txpool.BatchSize)
+	percentage := (float64(len(block.Transactions)) - float64(config.Config.Order.Txpool.BatchSize)/2) / float64(config.Config.Order.Txpool.BatchSize)
 	actualGas := uint64(float64(parentGasPrice) * (1 + percentage*config.Config.Genesis.GasChangeRate))
 	if actualGas > config.Config.Genesis.MaxGasPrice {
 		actualGas = config.Config.Genesis.MaxGasPrice

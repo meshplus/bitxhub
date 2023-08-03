@@ -2,17 +2,19 @@ package ledger
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"sync"
 	"time"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/axiomesh/axiom-kit/storage"
 	"github.com/axiomesh/axiom-kit/storage/blockfile"
 	"github.com/axiomesh/axiom-kit/types"
-	"github.com/axiomesh/axiom/internal/repo"
+	"github.com/axiomesh/axiom/pkg/repo"
 	"github.com/axiomesh/eth-kit/ledger"
-	"github.com/sirupsen/logrus"
 )
 
 var _ ledger.ChainLedger = (*ChainLedger)(nil)
@@ -57,7 +59,7 @@ func (l *ChainLedger) GetBlock(height uint64) (*types.Block, error) {
 
 	txHashesData := l.blockchainStore.Get(compositeKey(blockTxSetKey, height))
 	if txHashesData == nil {
-		return nil, fmt.Errorf("cannot get tx hashes of block")
+		return nil, errors.New("cannot get tx hashes of block")
 	}
 	txHashes := make([]*types.Hash, 0)
 	if err := json.Unmarshal(txHashesData, &txHashes); err != nil {
@@ -136,7 +138,7 @@ func (l *ChainLedger) GetTransaction(hash *types.Hash) (*types.Transaction, erro
 func (l *ChainLedger) GetTransactionCount(height uint64) (uint64, error) {
 	txHashesData := l.blockchainStore.Get(compositeKey(blockTxSetKey, height))
 	if txHashesData == nil {
-		return 0, fmt.Errorf("cannot get tx hashes of block")
+		return 0, errors.New("cannot get tx hashes of block")
 	}
 	txHashes := make([]types.Hash, 0)
 	if err := json.Unmarshal(txHashesData, &txHashes); err != nil {
@@ -189,7 +191,7 @@ func (l *ChainLedger) PersistExecutionResult(block *types.Block, receipts []*typ
 	current := time.Now()
 
 	if block == nil {
-		return fmt.Errorf("empty block data")
+		return errors.New("empty block data")
 	}
 
 	batcher := l.blockchainStore.NewBatch()
@@ -294,7 +296,7 @@ func (l *ChainLedger) prepareTransactions(batcher storage.Batch, block *types.Bl
 func (l *ChainLedger) prepareBlock(batcher storage.Batch, block *types.Block) ([]byte, error) {
 	// Generate block header signature
 	if block.Signature == nil {
-		signed, err := l.repo.Key.PrivKey.Sign(block.BlockHash.Bytes())
+		signed, err := l.repo.NodeKeySign(block.BlockHash.Bytes())
 		if err != nil {
 			return nil, fmt.Errorf("sign block %s failed: %w", block.BlockHash.String(), err)
 		}

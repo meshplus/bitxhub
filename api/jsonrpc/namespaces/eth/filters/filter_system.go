@@ -19,17 +19,18 @@
 package filters
 
 import (
-	"fmt"
+	"errors"
 	"math/big"
 	"sync"
 	"time"
 
-	"github.com/axiomesh/axiom-kit/types"
-	"github.com/axiomesh/axiom/internal/coreapi/api"
-	events2 "github.com/axiomesh/axiom/internal/model/events"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rpc"
+
+	"github.com/axiomesh/axiom-kit/types"
+	"github.com/axiomesh/axiom/internal/coreapi/api"
+	events2 "github.com/axiomesh/axiom/pkg/model/events"
 )
 
 // Type determines the kind of filter and is used to put the filter in to
@@ -39,17 +40,23 @@ type Type byte
 const (
 	// UnknownSubscription indicates an unknown subscription type
 	UnknownSubscription Type = iota
+
 	// LogsSubscription queries for new or removed (chain reorg) logs
 	LogsSubscription
+
 	// PendingLogsSubscription queries for logs in pending blocks
 	PendingLogsSubscription
+
 	// MinedAndPendingLogsSubscription queries for logs in mined and pending blocks.
 	MinedAndPendingLogsSubscription
+
 	// PendingTransactionsSubscription queries tx hashes for pending
 	// transactions entering the pending state
 	PendingTransactionsSubscription
+
 	// BlocksSubscription queries hashes for blocks that are imported
 	BlocksSubscription
+
 	// LastSubscription keeps track of the last index
 	LastIndexSubscription
 )
@@ -58,10 +65,13 @@ const (
 	// txChanSize is the size of channel listening to NewTxsEvent.
 	// The number is referenced from the size of tx pool.
 	txChanSize = 4096
+
 	// rmLogsChanSize is the size of channel listening to RemovedLogsEvent.
 	rmLogsChanSize = 10
+
 	// logsChanSize is the size of channel listening to LogsEvent.
 	logsChanSize = 10
+
 	// chainEvChanSize is the size of channel listening to ChainEvent.
 	chainEvChanSize = 10
 )
@@ -91,22 +101,28 @@ type FilterQuery struct {
 type EventSystem struct {
 	api       api.CoreAPI
 	lightMode bool
+
 	// nolint
 	lastHead *types.BlockHeader
 
 	// Subscriptions
-	txsSub  event.Subscription // Subscription for new transaction event
+	txsSub event.Subscription // Subscription for new transaction event
+
 	logsSub event.Subscription // Subscription for new log event
-	//pendingLogsSub event.Subscription // Subscription for pending log event
+
+	// pendingLogsSub event.Subscription // Subscription for pending log event
 	chainSub event.Subscription // Subscription for new chain event
 
 	// Channels
-	install   chan *subscription        // install filter for event notification
+	install chan *subscription // install filter for event notification
+
 	uninstall chan *subscription        // remove filter for event notification
 	txsCh     chan []*types.Transaction // Channel to receive new transactions event
 	logsCh    chan []*types.EvmLog      // Channel to receive new log event
-	//pendingLogsCh chan []*types.EvmLog          // Channel to receive new log event
+
+	// pendingLogsCh chan []*types.EvmLog          // Channel to receive new log event
 	chainCh chan events2.ExecutedEvent // Channel to receive new chain event
+
 }
 
 // NewEventSystem creates a new manager that listens for event on the given mux,
@@ -123,7 +139,7 @@ func NewEventSystem(api api.CoreAPI, lightMode bool) *EventSystem {
 		uninstall: make(chan *subscription),
 		txsCh:     make(chan []*types.Transaction, txChanSize),
 		logsCh:    make(chan []*types.EvmLog, logsChanSize),
-		//pendingLogsCh: make(chan []*types.EvmLog, logsChanSize),
+		// pendingLogsCh: make(chan []*types.EvmLog, logsChanSize),
 		chainCh: make(chan events2.ExecutedEvent, chainEvChanSize),
 	}
 
@@ -131,7 +147,7 @@ func NewEventSystem(api api.CoreAPI, lightMode bool) *EventSystem {
 	m.txsSub = m.api.Feed().SubscribeNewTxEvent(m.txsCh)
 	m.logsSub = m.api.Feed().SubscribeLogsEvent(m.logsCh)
 	m.chainSub = m.api.Feed().SubscribeNewBlockEvent(m.chainCh)
-	//m.pendingLogsSub = m.api.SubscribePendingLogsEvent(m.pendingLogsCh)
+	// m.pendingLogsSub = m.api.SubscribePendingLogsEvent(m.pendingLogsCh)
 
 	// Make sure none of the subscriptions are empty
 	if m.txsSub == nil || m.logsSub == nil || m.chainSub == nil {
@@ -223,7 +239,7 @@ func (es *EventSystem) SubscribeLogs(crit FilterQuery, logs chan []*types.EvmLog
 	if from >= 0 && to == rpc.LatestBlockNumber {
 		return es.subscribeLogs(crit, logs), nil
 	}
-	return nil, fmt.Errorf("invalid from and to block combination: from > to")
+	return nil, errors.New("invalid from and to block combination: from > to")
 }
 
 // subscribeMinedPendingLogs creates a subscription that returned mined and
@@ -358,7 +374,7 @@ func (es *EventSystem) eventLoop() {
 	defer func() {
 		es.txsSub.Unsubscribe()
 		es.logsSub.Unsubscribe()
-		//es.pendingLogsSub.Unsubscribe()
+		// es.pendingLogsSub.Unsubscribe()
 		es.chainSub.Unsubscribe()
 	}()
 
@@ -373,7 +389,7 @@ func (es *EventSystem) eventLoop() {
 			es.handleTxsEvent(index, ev)
 		case ev := <-es.logsCh:
 			es.handleLogs(index, ev)
-		//case ev := <-es.pendingLogsCh:
+		// case ev := <-es.pendingLogsCh:
 		//	es.handlePendingLogs(index, ev)
 		case ev := <-es.chainCh:
 			es.handleChainEvent(index, ev)

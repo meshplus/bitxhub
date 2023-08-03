@@ -9,7 +9,8 @@ import (
 	"path/filepath"
 	"sync"
 	"syscall"
-	"time"
+
+	"github.com/urfave/cli/v2"
 
 	"github.com/axiomesh/axiom"
 	"github.com/axiomesh/axiom-kit/log"
@@ -17,79 +18,45 @@ import (
 	"github.com/axiomesh/axiom/api/jsonrpc"
 	"github.com/axiomesh/axiom/internal/app"
 	"github.com/axiomesh/axiom/internal/coreapi"
-	"github.com/axiomesh/axiom/internal/loggers"
-	"github.com/axiomesh/axiom/internal/profile"
-	"github.com/axiomesh/axiom/internal/repo"
-	"github.com/urfave/cli"
+	"github.com/axiomesh/axiom/pkg/loggers"
+	"github.com/axiomesh/axiom/pkg/profile"
+	"github.com/axiomesh/axiom/pkg/repo"
 )
 
-func startCMD() cli.Command {
-	return cli.Command{
-		Name:  "start",
-		Usage: "Start a long-running daemon process",
-		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name:  "config",
-				Usage: "Specify Axiom config path",
-			},
-			cli.StringFlag{
-				Name:  "network",
-				Usage: "Specify Axiom network config path",
-			},
-			cli.StringFlag{
-				Name:  "order",
-				Usage: "Specify Axiom order config path",
-			},
-			cli.StringFlag{
-				Name:     "passwd",
-				Usage:    "Specify Axiom node private key password",
-				Required: false,
-			},
-		},
-		Action: start,
-	}
-}
-
 func start(ctx *cli.Context) error {
-	repoRoot, err := repo.PathRootWithDefault(ctx.GlobalString("repo"))
+	p, err := getRootPath(ctx)
 	if err != nil {
-		return fmt.Errorf("get repo path: %w", err)
+		return err
 	}
-
-	passwd := ctx.String("passwd")
-	configPath := ctx.String("config")
-	networkPath := ctx.String("network")
-	orderPath := ctx.String("order")
-
-	repo, err := repo.Load(repoRoot, passwd, configPath, networkPath)
+	r, err := repo.Load(p)
 	if err != nil {
-		return fmt.Errorf("repo load: %w", err)
+		return err
 	}
 
 	err = log.Initialize(
-		log.WithReportCaller(repo.Config.Log.ReportCaller),
+		log.WithReportCaller(r.Config.Log.ReportCaller),
 		log.WithPersist(true),
-		log.WithFilePath(filepath.Join(repoRoot, repo.Config.Log.Dir)),
-		log.WithFileName(repo.Config.Log.Filename),
-		log.WithMaxAge(90*24*time.Hour),
-		log.WithRotationTime(24*time.Hour),
+		log.WithFilePath(filepath.Join(r.Config.RepoRoot, repo.LogsDirName)),
+		log.WithFileName(r.Config.Log.Filename),
+		log.WithMaxAge(r.Config.Log.MaxAge.ToDuration()),
+		log.WithRotationTime(r.Config.Log.RotationTime.ToDuration()),
 	)
 	if err != nil {
 		return fmt.Errorf("log initialize: %w", err)
 	}
 
-	loggers.Initialize(repo.Config)
+	loggers.Initialize(r.Config)
 
-	types2.InitEIP155Signer(big.NewInt(int64(repo.Config.Genesis.ChainID)))
+	types2.InitEIP155Signer(big.NewInt(int64(r.Config.Genesis.ChainID)))
 
 	printVersion()
 
-	bxh, err := app.NewAxiom(repo, orderPath)
+	bxh, err := app.NewAxiom(r)
 	if err != nil {
 		return fmt.Errorf("init axiom failed: %w", err)
 	}
 
-	monitor, err := profile.NewMonitor(repo.Config)
+	monitor, err := profile.NewMonitor(r.Config)
 	if err != nil {
 		return err
 	}
@@ -97,7 +64,7 @@ func start(ctx *cli.Context) error {
 		return err
 	}
 
-	pprof, err := profile.NewPprof(repo.Config)
+	pprof, err := profile.NewPprof(r.Config)
 	if err != nil {
 		return err
 	}
@@ -112,7 +79,7 @@ func start(ctx *cli.Context) error {
 	}
 
 	// start json-rpc service
-	cbs, err := jsonrpc.NewChainBrokerService(api, repo.Config)
+	cbs, err := jsonrpc.NewChainBrokerService(api, r.Config)
 	if err != nil {
 		return err
 	}

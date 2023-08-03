@@ -2,21 +2,23 @@ package eth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/Rican7/retry"
 	"github.com/Rican7/retry/backoff"
 	"github.com/Rican7/retry/strategy"
-	"github.com/axiomesh/axiom-kit/types"
-	rpctypes "github.com/axiomesh/axiom/api/jsonrpc/types"
-	"github.com/axiomesh/axiom/internal/coreapi/api"
-	"github.com/axiomesh/axiom/internal/repo"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	types3 "github.com/ethereum/go-ethereum/core/types"
 	"github.com/samber/lo"
 	"github.com/sirupsen/logrus"
+
+	"github.com/axiomesh/axiom-kit/types"
+	rpctypes "github.com/axiomesh/axiom/api/jsonrpc/types"
+	"github.com/axiomesh/axiom/internal/coreapi/api"
+	"github.com/axiomesh/axiom/pkg/repo"
 )
 
 // TransactionAPI provide apis to get and create transaction
@@ -74,7 +76,7 @@ func (api *TransactionAPI) GetTransactionByBlockNumberAndIndex(blockNum rpctypes
 	height := uint64(0)
 
 	switch blockNum {
-	//Latest and Pending type return current block height
+	// Latest and Pending type return current block height
 	case rpctypes.LatestBlockNumber, rpctypes.PendingBlockNumber:
 		meta, err := api.api.Chain().Meta()
 		if err != nil {
@@ -127,11 +129,11 @@ func (api *TransactionAPI) GetTransactionByHash(hash common.Hash) (*rpctypes.RPC
 }
 
 // GetTransactionReceipt returns the transaction receipt identified by hash.
-func (api *TransactionAPI) GetTransactionReceipt(hash common.Hash) (map[string]interface{}, error) {
+func (api *TransactionAPI) GetTransactionReceipt(hash common.Hash) (map[string]any, error) {
 	api.logger.Debugf("eth_getTransactionReceipt, hash: %s", hash.String())
 
 	txHash := types.NewHash(hash.Bytes())
-	//tx, meta, err := getEthTransactionByHash(api.config, api.api, api.logger, txHash)
+	// tx, meta, err := getEthTransactionByHash(api.config, api.api, api.logger, txHash)
 	tx, err := api.api.Broker().GetTransaction(txHash)
 	if err != nil {
 		return nil, nil
@@ -163,7 +165,7 @@ func (api *TransactionAPI) GetTransactionReceipt(hash common.Hash) (map[string]i
 		return nil, err
 	}
 
-	fields := map[string]interface{}{
+	fields := map[string]any{
 		"type":              hexutil.Uint(tx.GetType()),
 		"cumulativeGasUsed": hexutil.Uint64(cumulativeGasUsed),
 		"transactionHash":   hash,
@@ -228,7 +230,7 @@ func (api *TransactionAPI) SendRawTransaction(data hexutil.Bytes) (common.Hash, 
 	api.logger.Debugf("get new eth tx: %s", tx.GetHash().String())
 
 	if tx.GetFrom() == nil {
-		return [32]byte{}, fmt.Errorf("verify signature failed")
+		return [32]byte{}, errors.New("verify signature failed")
 	}
 
 	err := api.api.Broker().OrderReady()
@@ -250,7 +252,7 @@ func getTxByBlockInfoAndIndex(api api.CoreAPI, mode string, key string, idx hexu
 	}
 
 	if int(idx) >= len(block.Transactions) {
-		return nil, fmt.Errorf("index beyond block transactions' size")
+		return nil, errors.New("index beyond block transactions' size")
 	}
 
 	tx := block.Transactions[idx]
@@ -265,31 +267,31 @@ func getTxByBlockInfoAndIndex(api api.CoreAPI, mode string, key string, idx hexu
 
 func checkTransaction(logger logrus.FieldLogger, tx *types.Transaction) error {
 	if tx.GetFrom() == nil {
-		return fmt.Errorf("tx from address is nil")
+		return errors.New("tx from address is nil")
 	}
 	logger.Debugf("from address: %s, nonce: %d", tx.GetFrom().String(), tx.GetNonce())
 
 	emptyAddress := &types.Address{}
 	if tx.GetFrom().String() == emptyAddress.String() {
-		return fmt.Errorf("from can't be empty")
+		return errors.New("from can't be empty")
 	}
 
 	if tx.GetTo() == nil {
 		if len(tx.GetPayload()) == 0 {
-			return fmt.Errorf("can't deploy empty contract")
+			return errors.New("can't deploy empty contract")
 		}
 	} else {
 		if tx.GetFrom().String() == tx.GetTo().String() {
-			return fmt.Errorf("from can`t be the same as to")
+			return errors.New("from can`t be the same as to")
 		}
 	}
 	if tx.GetTimeStamp() < time.Now().Unix()-10*60 ||
 		tx.GetTimeStamp() > time.Now().Unix()+10*60 {
-		return fmt.Errorf("timestamp is illegal")
+		return errors.New("timestamp is illegal")
 	}
 
 	if len(tx.GetSignature()) == 0 {
-		return fmt.Errorf("signature can't be empty")
+		return errors.New("signature can't be empty")
 	}
 
 	return nil

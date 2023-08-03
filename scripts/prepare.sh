@@ -16,11 +16,6 @@ function go_install() {
   fi
 }
 
-if ! type packr2 >/dev/null 2>&1; then
-  print_blue "===> 1. Install packr2"
-  go_install github.com/gobuffalo/packr/v2/packr2@v2.8.3
-fi
-
 if ! type golangci-lint >/dev/null 2>&1; then
   print_blue "===> 2. Install golangci-lint"
   version=$(go env GOVERSION)

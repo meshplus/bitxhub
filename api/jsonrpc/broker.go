@@ -5,20 +5,23 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/axiomesh/axiom/internal/coreapi/api"
-	"github.com/axiomesh/axiom/internal/loggers"
-	"github.com/axiomesh/axiom/internal/repo"
-	"github.com/axiomesh/axiom/pkg/ratelimiter"
 	"github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+
+	"github.com/axiomesh/axiom/internal/coreapi/api"
+	"github.com/axiomesh/axiom/pkg/loggers"
+	"github.com/axiomesh/axiom/pkg/ratelimiter"
+	"github.com/axiomesh/axiom/pkg/repo"
 )
 
 type ChainBrokerService struct {
 	config *repo.Config
+
 	// genesis     *repo.Genesis
-	api         api.CoreAPI
+	api api.CoreAPI
+
 	server      *rpc.Server
 	wsServer    *rpc.Server
 	logger      logrus.FieldLogger
@@ -31,8 +34,8 @@ type ChainBrokerService struct {
 func NewChainBrokerService(coreAPI api.CoreAPI, config *repo.Config) (*ChainBrokerService, error) {
 	logger := loggers.Logger(loggers.API)
 
-	jLimiter := config.JLimiter
-	rateLimiter, err := ratelimiter.NewJRateLimiterWithQuantum(jLimiter.Interval, jLimiter.Capacity, jLimiter.Quantum)
+	jLimiter := config.JsonRPC.Limiter
+	rateLimiter, err := ratelimiter.NewJRateLimiterWithQuantum(jLimiter.Interval.ToDuration(), jLimiter.Capacity, jLimiter.Quantum)
 	if err != nil {
 		return nil, fmt.Errorf("create rate limiter failed: %w", err)
 	}

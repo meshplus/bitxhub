@@ -1,10 +1,12 @@
 package ledger
 
 import (
-	"io/ioutil"
 	"math/big"
+	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/axiomesh/axiom-kit/log"
 	"github.com/axiomesh/axiom-kit/storage"
@@ -12,11 +14,10 @@ import (
 	"github.com/axiomesh/axiom-kit/storage/leveldb"
 	"github.com/axiomesh/axiom-kit/storage/pebble"
 	"github.com/axiomesh/axiom-kit/types"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestAccount_GetState(t *testing.T) {
-	repoRoot, err := ioutil.TempDir("", "ledger_commit")
+	repoRoot, err := os.MkdirTemp("", "ledger_commit")
 	assert.Nil(t, err)
 
 	lBlockStorage, err := leveldb.New(filepath.Join(repoRoot, "lStorage"))
@@ -30,7 +31,7 @@ func TestAccount_GetState(t *testing.T) {
 
 	testcase := map[string]struct {
 		blockStorage storage.Storage
-		stateStorage stateStorage
+		stateStorage storage.Storage
 	}{
 		"leveldb": {blockStorage: lBlockStorage, stateStorage: lStateStorage},
 		"pebble":  {blockStorage: pBlockStorage, stateStorage: pStateStorage},
@@ -69,15 +70,12 @@ func TestAccount_GetState(t *testing.T) {
 			account.GetCommittedState([]byte("a"))
 		})
 	}
-
 }
 
-func TestAccount_AddState(t *testing.T) {
-
-}
+func TestAccount_AddState(t *testing.T) {}
 
 func TestAccount_AccountBalance(t *testing.T) {
-	repoRoot, err := ioutil.TempDir("", "ledger_commit")
+	repoRoot, err := os.MkdirTemp("", "ledger_commit")
 	assert.Nil(t, err)
 
 	lBlockStorage, err := leveldb.New(filepath.Join(repoRoot, "lStorage"))
@@ -91,7 +89,7 @@ func TestAccount_AccountBalance(t *testing.T) {
 
 	testcase := map[string]struct {
 		blockStorage storage.Storage
-		stateStorage stateStorage
+		stateStorage storage.Storage
 	}{
 		"leveldb": {blockStorage: lBlockStorage, stateStorage: lStateStorage},
 		"pebble":  {blockStorage: pBlockStorage, stateStorage: pStateStorage},
@@ -121,5 +119,4 @@ func TestAccount_AccountBalance(t *testing.T) {
 			account.setBalance(big.NewInt(1))
 		})
 	}
-
 }
