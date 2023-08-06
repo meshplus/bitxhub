@@ -5,7 +5,25 @@ import (
 	"github.com/axiomesh/eth-kit/ledger"
 )
 
+const (
+	// ProposalIDContractAddr is the contract to used to generate the proposal ID
+	ProposalIDContractAddr = "0x0000000000000000000000000000000000001000"
+	// system contract address range 0x1001-0xffff
+	NodeManagerContractAddr    = "0x0000000000000000000000000000000000001001"
+	CouncilManagerContractAddr = "0x0000000000000000000000000000000000001002"
+)
+
 type SystemContract interface {
-	Reset(ledger.StateDB)
+	Reset(ledger.StateLedger)
 	Run(*vm.Message) (*vm.ExecutionResult, error)
+}
+
+func IsInSlice[T ~uint8 | ~string](value T, slice []T) bool {
+	for _, v := range slice {
+		if v == value {
+			return true
+		}
+	}
+
+	return false
 }

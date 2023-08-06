@@ -33,7 +33,7 @@ type SimpleAccount struct {
 	suicided bool
 }
 
-func newAccount(ldb storage.Storage, cache *AccountCache, addr *types.Address, changer *stateChanger) *SimpleAccount {
+func NewAccount(ldb storage.Storage, cache *AccountCache, addr *types.Address, changer *stateChanger) *SimpleAccount {
 	return &SimpleAccount{
 		Addr:     addr,
 		ldb:      ldb,

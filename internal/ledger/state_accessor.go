@@ -20,7 +20,7 @@ var _ ledger.StateLedger = (*StateLedger)(nil)
 func (l *StateLedger) GetOrCreateAccount(addr *types.Address) ledger.IAccount {
 	account := l.GetAccount(addr)
 	if account == nil {
-		account = newAccount(l.ldb, l.accountCache, addr, l.changer)
+		account = NewAccount(l.ldb, l.accountCache, addr, l.changer)
 		l.changer.append(createObjectChange{account: addr})
 
 		l.lock.Lock()
@@ -42,7 +42,7 @@ func (l *StateLedger) GetAccount(address *types.Address) ledger.IAccount {
 		return value
 	}
 
-	account := newAccount(l.ldb, l.accountCache, address, l.changer)
+	account := NewAccount(l.ldb, l.accountCache, address, l.changer)
 
 	if innerAccount, ok := l.accountCache.getInnerAccount(address); ok {
 		account.originAccount = innerAccount
@@ -463,7 +463,7 @@ func (l *StateLedger) RevertToSnapshot(revid int) {
 
 func (l *StateLedger) ClearChangerAndRefund() {
 	if len(l.changer.changes) > 0 {
-		l.changer = newChanger()
+		l.changer = NewChanger()
 		l.refund = 0
 	}
 	l.validRevisions = l.validRevisions[:0]

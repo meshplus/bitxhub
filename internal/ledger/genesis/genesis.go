@@ -1,11 +1,14 @@
 package genesis
 
 import (
+	"encoding/json"
 	"math/big"
 	"time"
 
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/internal/executor"
+	"github.com/axiomesh/axiom/internal/executor/system/common"
+	"github.com/axiomesh/axiom/internal/executor/system/governance"
 	"github.com/axiomesh/axiom/internal/ledger"
 	"github.com/axiomesh/axiom/pkg/repo"
 )
@@ -15,9 +18,21 @@ func Initialize(genesis *repo.Genesis, nodes []*repo.NetworkNodes, primaryN uint
 	lg.PrepareBlock(nil, 1)
 
 	balance, _ := new(big.Int).SetString(genesis.Balance, 10)
+	council := &governance.Council{}
 	for _, admin := range genesis.Admins {
 		lg.SetBalance(types.NewAddressByStr(admin.Address), balance)
+
+		council.Members = append(council.Members, &governance.CouncilMember{
+			Address: admin.Address,
+			Weight:  admin.Weight,
+		})
 	}
+	account := lg.GetOrCreateAccount(types.NewAddressByStr(common.CouncilManagerContractAddr))
+	b, err := json.Marshal(council)
+	if err != nil {
+		return err
+	}
+	account.SetState([]byte(governance.CouncilKey), b)
 
 	accounts, stateRoot := lg.FlushDirtyData()
 

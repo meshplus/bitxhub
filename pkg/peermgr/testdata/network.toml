@@ -1,0 +1,15 @@
+id = 1
+n = 2
+new = false
+
+[[nodes]]
+  account = "0x5c1d534f417b0761DD46200E123A35f05187331e"
+  hosts = ["/ip4/127.0.0.1/tcp/5002/p2p/"]
+  id = 2
+  pid = "QmPtntbtoWQwfihfEQZSYkQpeeAusscZKMbeM9RVHH3o73"
+
+[[nodes]]
+  account = "0x24D0644D1eb9Fcf05625AFE03C50BfD61eF82767"
+  hosts = ["/ip4/127.0.0.1/tcp/5003/p2p/"]
+  id = 3
+  pid = "QmbvHnnHoWUyNYJQSyC9Q5YGdLhUUG9ZASMvmuMJmxHogb"

@@ -21,7 +21,7 @@ import (
 	"github.com/axiomesh/axiom-kit/storage/leveldb"
 	"github.com/axiomesh/axiom-kit/storage/pebble"
 	"github.com/axiomesh/axiom-kit/types"
-	"github.com/axiomesh/axiom/internal/executor/system"
+	"github.com/axiomesh/axiom/internal/executor/system/common"
 	"github.com/axiomesh/axiom/internal/executor/system/governance"
 	"github.com/axiomesh/axiom/internal/ledger"
 	"github.com/axiomesh/axiom/pkg/model/events"
@@ -286,6 +286,14 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 	val, err := json.Marshal(hash)
 	assert.Nil(t, err)
 
+	accountCache, err := ledger.NewAccountCache()
+	assert.Nil(t, err)
+	repoRoot, err := os.MkdirTemp("", "leveldb_tmp")
+	assert.Nil(t, err)
+	ld, err := leveldb.New(filepath.Join(repoRoot, "executor"))
+	assert.Nil(t, err)
+	account := ledger.NewAccount(ld, accountCache, types.NewAddressByStr(common.NodeManagerContractAddr), ledger.NewChanger())
+
 	contractAddr := types.NewAddressByStr("0xdac17f958d2ee523a2206206994597c13d831ec7")
 	chainLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
 	stateLedger.EXPECT().Events(gomock.Any()).Return(nil).AnyTimes()
@@ -317,6 +325,7 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 	stateLedger.EXPECT().GetEVMCode(gomock.Any()).AnyTimes()
 	stateLedger.EXPECT().GetEVMRefund().AnyTimes()
 	stateLedger.EXPECT().GetEVMCodeHash(gomock.Any()).AnyTimes()
+	stateLedger.EXPECT().GetOrCreateAccount(gomock.Any()).Return(account).AnyTimes()
 
 	logger := log.NewWithModule("executor")
 
@@ -340,9 +349,9 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 	desc := "desc"
 	blockNumber := uint64(1000)
 	extra := []byte("hello")
-	data, err := gabi.Pack(governance.ProposalMethod, uint8(governance.NodeUpdate), title, desc, blockNumber, extra)
+	data, err := gabi.Pack(governance.ProposeMethod, uint8(governance.NodeUpdate), title, desc, blockNumber, extra)
 	assert.Nil(t, err)
-	tx6, _, err := types.GenerateTransactionAndSigner(uint64(1), types.NewAddressByStr(system.NodeManagerContractAddr), big.NewInt(0), data)
+	tx6, _, err := types.GenerateTransactionAndSigner(uint64(1), types.NewAddressByStr(common.NodeManagerContractAddr), big.NewInt(0), data)
 	assert.Nil(t, err)
 
 	txs3 = append(txs3, tx4, tx5, tx6)
