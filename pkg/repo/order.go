@@ -9,10 +9,17 @@ import (
 	"github.com/axiomesh/axiom-kit/fileutil"
 )
 
+type ReceiveMsgLimiter struct {
+	Enable bool  `mapstructure:"enable" toml:"enable"`
+	Limit  int64 `mapstructure:"limit" toml:"limit"`
+	Burst  int64 `mapstructure:"burst" toml:"burst"`
+}
+
 type OrderConfig struct {
-	TimedGenBlock TimedGenBlock `mapstructure:"timed_gen_block" toml:"timed_gen_block"`
-	Rbft          RBFT          `mapstructure:"rbft" toml:"rbft"`
-	Solo          Solo          `mapstructure:"solo" toml:"solo"`
+	TimedGenBlock TimedGenBlock     `mapstructure:"timed_gen_block" toml:"timed_gen_block"`
+	Limit         ReceiveMsgLimiter `mapstructure:"limit" toml:"limit"`
+	Rbft          RBFT              `mapstructure:"rbft" toml:"rbft"`
+	Solo          Solo              `mapstructure:"solo" toml:"solo"`
 }
 
 type TimedGenBlock struct {
@@ -66,6 +73,11 @@ func DefaultOrderConfig() *OrderConfig {
 		TimedGenBlock: TimedGenBlock{
 			Enable:           false,
 			NoTxBatchTimeout: Duration(2 * time.Second),
+		},
+		Limit: ReceiveMsgLimiter{
+			Enable: false,
+			Limit:  10000,
+			Burst:  10000,
 		},
 		Rbft: RBFT{
 			SetSize:             25,

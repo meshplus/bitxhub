@@ -5,15 +5,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/mock/gomock"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom-kit/types/pb"
 	"github.com/axiomesh/axiom/internal/order"
 	"github.com/axiomesh/axiom/internal/peermgr/mock_peermgr"
 	"github.com/axiomesh/axiom/pkg/repo"
-	"github.com/golang/mock/gomock"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/sirupsen/logrus"
-	"github.com/stretchr/testify/assert"
 )
 
 func ConstructBlock(blockHashStr string, height uint64) *types.Block {
@@ -36,13 +37,15 @@ func ConstructBlock(blockHashStr string, height uint64) *types.Block {
 	}
 }
 
-func MockMiniPeerManager(ctrl *gomock.Controller) *mock_peermgr.MockOrderPeerManager {
-	mock := mock_peermgr.NewMockOrderPeerManager(ctrl)
-	mock.EXPECT().Broadcast(gomock.Any()).Return(nil).AnyTimes()
-	mock.EXPECT().AsyncSend(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-	mock.EXPECT().AddNode(gomock.Any(), gomock.Any()).Return().AnyTimes()
-	mock.EXPECT().DelNode(gomock.Any()).Return().AnyTimes()
-	mock.EXPECT().UpdateRouter(gomock.Any(), gomock.Any()).Return(false).AnyTimes()
+func MockMiniPeerManager(ctrl *gomock.Controller) *mock_peermgr.MockPeerManager {
+	mock := mock_peermgr.NewMockPeerManager(ctrl)
+
+	mockPipe := mock_peermgr.NewMockPipe(ctrl)
+	mockPipe.EXPECT().Send(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	mockPipe.EXPECT().Broadcast(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	mockPipe.EXPECT().Receive(gomock.Any()).Return(nil).AnyTimes()
+
+	mock.EXPECT().CreatePipe(gomock.Any(), gomock.Any()).Return(mockPipe, nil).AnyTimes()
 
 	block := ConstructBlock("block2", uint64(2))
 	blockBytes, _ := block.Marshal()
@@ -56,7 +59,6 @@ func MockMiniPeerManager(ctrl *gomock.Controller) *mock_peermgr.MockOrderPeerMan
 	N := len(nodes)
 	f := (N - 1) / 3
 	mock.EXPECT().OrderPeers().Return(nodes).AnyTimes()
-	mock.EXPECT().Disconnect(gomock.Any()).Return().AnyTimes()
 	mock.EXPECT().CountConnectedPeers().Return(uint64((N + f + 2) / 2)).AnyTimes()
 	return mock
 }

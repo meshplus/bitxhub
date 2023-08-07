@@ -248,22 +248,12 @@ func (bxh *Axiom) ReConfig(repo *repo.Repo) {
 			bxh.logger.Errorf("reconfig json rpc failed: %v", err)
 		}
 
-		if err := bxh.PeerMgr.ReConfig(config); err != nil {
-			bxh.logger.Errorf("reconfig PeerMgr failed: %v", err)
-		}
-
 		if err := bxh.Monitor.ReConfig(config); err != nil {
 			bxh.logger.Errorf("reconfig Monitor failed: %v", err)
 		}
 
 		if err := bxh.Pprof.ReConfig(config); err != nil {
 			bxh.logger.Errorf("reconfig Pprof failed: %v", err)
-		}
-	}
-	if repo.NetworkConfig != nil {
-		config := repo.NetworkConfig
-		if err := bxh.PeerMgr.ReConfig(config); err != nil {
-			bxh.logger.Errorf("reconfig PeerMgr failed: %v", err)
 		}
 	}
 }

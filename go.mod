@@ -6,7 +6,7 @@ require (
 	github.com/Rican7/retry v0.1.0
 	github.com/axiomesh/axiom-bft v0.0.2-0.20230804072848-7d44ef514752
 	github.com/axiomesh/axiom-kit v0.0.2-0.20230731140325-e1c65a89cd36
-	github.com/axiomesh/axiom-p2p v0.0.2-0.20230731141720-be81e1311468
+	github.com/axiomesh/axiom-p2p v0.0.2-0.20230807023318-0fa482e5783f
 	github.com/axiomesh/eth-kit v0.0.2-0.20230731143227-313ee73ed597
 	github.com/cbergoon/merkletree v0.2.0
 	github.com/common-nighthawk/go-figure v0.0.0-20190529165535-67e0ed34491a
@@ -83,6 +83,7 @@ require (
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-bexpr v0.1.10 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
+	github.com/hashicorp/golang-lru/v2 v2.0.2 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/holiman/bloomfilter/v2 v2.0.3 // indirect
 	github.com/holiman/uint256 v1.2.3 // indirect
@@ -109,6 +110,7 @@ require (
 	github.com/libp2p/go-libp2p-asn-util v0.3.0 // indirect
 	github.com/libp2p/go-libp2p-kad-dht v0.24.2 // indirect
 	github.com/libp2p/go-libp2p-kbucket v0.6.3 // indirect
+	github.com/libp2p/go-libp2p-pubsub v0.9.3 // indirect
 	github.com/libp2p/go-libp2p-record v0.2.0 // indirect
 	github.com/libp2p/go-msgio v0.3.0 // indirect
 	github.com/libp2p/go-nat v0.1.0 // indirect

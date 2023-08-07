@@ -11,6 +11,7 @@ import (
 	rbfttypes "github.com/axiomesh/axiom-bft/types"
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom-kit/types/pb"
+	network "github.com/axiomesh/axiom-p2p"
 	"github.com/axiomesh/axiom/internal/order"
 	"github.com/axiomesh/axiom/internal/peermgr"
 )
@@ -25,7 +26,8 @@ var _ external.EpochService = (*RBFTAdaptor)(nil)
 type RBFTAdaptor struct {
 	localID           uint64
 	store             *storageWrapper
-	peerMgr           peermgr.OrderPeerManager
+	peerMgr           peermgr.PeerManager
+	msgPipe           network.Pipe
 	priv              *ecdsa.PrivateKey
 	Nodes             map[uint64]*types.VpInfo
 	nodePIDToID       map[string]uint64
@@ -75,6 +77,10 @@ func NewRBFTAdaptor(config *order.Config, blockC chan *types.CommitEvent, cancel
 	}
 
 	return stack, nil
+}
+
+func (s *RBFTAdaptor) SetMsgPipe(msgPipe network.Pipe) {
+	s.msgPipe = msgPipe
 }
 
 func (s *RBFTAdaptor) SetApplyConfChange(applyConfChange func(cc *rbfttypes.ConfState)) {

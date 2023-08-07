@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	mocknode "github.com/axiomesh/axiom-bft/mock/mock_node"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
@@ -14,6 +13,7 @@ import (
 
 	rbft "github.com/axiomesh/axiom-bft"
 	"github.com/axiomesh/axiom-bft/common/consensus"
+	mocknode "github.com/axiomesh/axiom-bft/mock/mock_node"
 	rbfttypes "github.com/axiomesh/axiom-bft/types"
 	"github.com/axiomesh/axiom-kit/log"
 	"github.com/axiomesh/axiom-kit/types"
@@ -138,9 +138,7 @@ func TestPrepare(t *testing.T) {
 	})
 }
 
-func TestNode_GetPendingNonceByAccount(t *testing.T) {
-
-}
+func TestNode_GetPendingNonceByAccount(t *testing.T) {}
 
 func TestStop(t *testing.T) {
 	ast := assert.New(t)

@@ -7,18 +7,17 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/event"
+	"github.com/libp2p/go-libp2p/core/connmgr"
+	p2pnetwork "github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/sirupsen/logrus"
+
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom-kit/types/pb"
 	network "github.com/axiomesh/axiom-p2p"
 	"github.com/axiomesh/axiom/internal/ledger"
 	"github.com/axiomesh/axiom/pkg/repo"
-	"github.com/ethereum/go-ethereum/event"
-	"github.com/libp2p/go-libp2p/core/connmgr"
-	p2pnetwork "github.com/libp2p/go-libp2p/core/network"
-	"github.com/libp2p/go-libp2p/core/peer"
-	ma "github.com/multiformats/go-multiaddr"
-	"github.com/sirupsen/logrus"
-	"golang.org/x/time/rate"
 )
 
 const (
@@ -34,7 +33,8 @@ type Swarm struct {
 	logger  logrus.FieldLogger
 
 	// added by
-	routers        map[uint64]*types.VpInfo // trace the vp nodes
+	routers map[uint64]*types.VpInfo // trace the vp nodes
+
 	multiAddrs     map[uint64]*peer.AddrInfo
 	connectedPeers sync.Map
 	gater          connmgr.ConnectionGater
@@ -45,11 +45,10 @@ type Swarm struct {
 	pingTimeout      time.Duration
 	pingC            chan *repo.Ping
 
-	msgPushLimiter *rate.Limiter
-	enableLimiter  bool
-
 	ctx    context.Context
 	cancel context.CancelFunc
+
+	network.PipeManager
 }
 
 func New(repoConfig *repo.Repo, logger logrus.FieldLogger, ledger *ledger.Ledger) (*Swarm, error) {
@@ -93,6 +92,18 @@ func (swarm *Swarm) init() error {
 		securityType = network.SecurityNoise
 	}
 
+	var pipeBroadcastType network.PipeBroadcastType
+	switch swarm.repo.Config.P2P.Pipe.BroadcastType {
+	case repo.P2PPipeBroadcastSimple:
+		pipeBroadcastType = network.PipeBroadcastSimple
+	case repo.P2PPipeBroadcastGossip:
+		pipeBroadcastType = network.PipeBroadcastGossip
+	case repo.P2PPipeBroadcastFlood:
+		pipeBroadcastType = network.PipeBroadcastFloodSub
+	default:
+		return fmt.Errorf("unsupported p2p pipe broadcast type: %v", swarm.repo.Config.P2P.Pipe.BroadcastType)
+	}
+
 	gater := newConnectionGater(swarm.logger, swarm.ledger)
 	opts := []network.Option{
 		network.WithLocalAddr(swarm.repo.NetworkConfig.LocalAddr),
@@ -101,6 +112,8 @@ func (swarm *Swarm) init() error {
 		network.WithLogger(swarm.logger),
 		network.WithTimeout(10*time.Second, swarm.repo.Config.P2P.SendTimeout.ToDuration(), swarm.repo.Config.P2P.ReadTimeout.ToDuration()),
 		network.WithSecurity(securityType),
+		network.WithPipeBroadcastType(pipeBroadcastType),
+		network.WithPipeReceiveMsgCacheSize(swarm.repo.Config.P2P.Pipe.ReceiveMsgCacheSize),
 		// enable discovery
 		network.WithBootstrap(bootstrap),
 		network.WithConnectionGater(gater),
@@ -121,10 +134,7 @@ func (swarm *Swarm) init() error {
 	swarm.multiAddrs = multiAddrs
 	swarm.connectedPeers = sync.Map{}
 	swarm.gater = gater
-
-	// Initialize the message limiter and set the number of messages allowed per second to LIMIT
-	swarm.enableLimiter = swarm.repo.Config.P2P.Limit.Enable
-	swarm.msgPushLimiter = rate.NewLimiter(rate.Limit(swarm.repo.Config.P2P.Limit.Limit), int(swarm.repo.Config.P2P.Limit.Burst))
+	swarm.PipeManager = p2p
 	return nil
 }
 
@@ -205,29 +215,6 @@ func (swarm *Swarm) Ping() {
 	}
 }
 
-func (swarm *Swarm) AsyncSend(id KeyType, msg *pb.Message) error {
-	var (
-		addr string
-		err  error
-	)
-	switch to := id.(type) {
-	case uint64:
-		if addr, err = swarm.findPeer(to); err != nil {
-			return fmt.Errorf("p2p asyncSend check peer id type: %w", err)
-		}
-	case string:
-		addr = to
-	default:
-		return fmt.Errorf("p2p unsupported peer id type: %v", id)
-	}
-
-	data, err := msg.MarshalVT()
-	if err != nil {
-		return fmt.Errorf("marshal message error: %w", err)
-	}
-	return swarm.p2p.AsyncSend(addr, data)
-}
-
 func (swarm *Swarm) SendWithStream(s network.Stream, msg *pb.Message) error {
 	data, err := msg.MarshalVT()
 	if err != nil {
@@ -271,23 +258,6 @@ func (swarm *Swarm) Send(id KeyType, msg *pb.Message) (*pb.Message, error) {
 	return m, nil
 }
 
-func (swarm *Swarm) Broadcast(msg *pb.Message) error {
-	addrs := make([]string, 0, len(swarm.routers))
-	for _, router := range swarm.routers {
-		if router.Id == swarm.localID {
-			continue
-		}
-		addrs = append(addrs, router.Pid)
-	}
-
-	data, err := msg.MarshalVT()
-	if err != nil {
-		return fmt.Errorf("marshal message error: %w", err)
-	}
-
-	return swarm.p2p.Broadcast(addrs, data)
-}
-
 func (swarm *Swarm) Peers() []peer.AddrInfo {
 	return swarm.p2p.GetPeers()
 }
@@ -296,117 +266,11 @@ func (swarm *Swarm) OrderPeers() map[uint64]*types.VpInfo {
 	return swarm.routers
 }
 
-func (swarm *Swarm) SubscribeOrderMessage(ch chan<- OrderMessageEvent) event.Subscription {
-	return swarm.orderMessageFeed.Subscribe(ch)
-}
-
 func (swarm *Swarm) findPeer(id uint64) (string, error) {
 	if swarm.routers[id] != nil {
 		return swarm.routers[id].Pid, nil
 	}
 	return "", fmt.Errorf("wrong id: %d", id)
-}
-
-// TODO: refactor
-func (swarm *Swarm) AddNode(newNodeID uint64, vpInfo *types.VpInfo) {
-	if _, ok := swarm.routers[newNodeID]; ok {
-		swarm.logger.Warningf("VP[ID: %d, Pid: %s] has already exist in routing table", newNodeID, vpInfo.Pid)
-		return
-	}
-	swarm.logger.Infof("Add vp[ID: %d, Pid: %s] into routing table", newNodeID, vpInfo.Pid)
-	// 1. update routers and connectedPeers
-	swarm.routers[newNodeID] = vpInfo
-	addInfo, err := constructMultiaddr(vpInfo)
-	if err != nil {
-		swarm.logger.Errorf("Construct AddrInfo failed: %s", err.Error())
-		return
-	}
-	swarm.connectedPeers.Store(newNodeID, addInfo)
-
-	// 2. persist routers
-	if err := repo.RewriteNetworkConfig(swarm.repo.Config.RepoRoot, swarm.repo.NetworkConfig, swarm.routers); err != nil {
-		swarm.logger.Errorf("Persist routing table failed, err: %s", err.Error())
-		return
-	}
-}
-
-func (swarm *Swarm) DelNode(delID uint64) {
-	var (
-		delNode *types.VpInfo
-		ok      bool
-	)
-	if delNode, ok = swarm.routers[delID]; !ok {
-		swarm.logger.Warningf("Can't find vp node %d from routing table ", delID)
-		return
-	}
-	swarm.logger.Infof("Delete node [ID: %d, peerInfo: %v] ", delID, delNode)
-	// 1. update routing table, multiAddrs and connectedPeers
-	delete(swarm.routers, delID)
-	delete(swarm.multiAddrs, delID)
-	swarm.connectedPeers.Delete(delID)
-
-	// 2. persist routers
-	if err := repo.RewriteNetworkConfig(swarm.repo.Config.RepoRoot, swarm.repo.NetworkConfig, swarm.routers); err != nil {
-		swarm.logger.Errorf("Persist routing table failed, err: %s", err.Error())
-		return
-	}
-	for id, p := range swarm.routers {
-		swarm.logger.Debugf("=====ID: %d, Addr: %v=====", id, p)
-	}
-
-	// TODO: exit self
-	// 4. deleted node itself will exit the cluster
-	if delID == swarm.localID {
-		swarm.reset()
-		_ = swarm.p2p.Stop()
-		_ = swarm.Stop()
-		return
-	}
-}
-
-func (swarm *Swarm) UpdateRouter(vpInfos map[uint64]*types.VpInfo, isNew bool) bool {
-	swarm.logger.Infof("Update router: %+v", vpInfos)
-	// 1. update routing table, multiAddrs and connectedPeers
-	oldRouters := swarm.routers
-	swarm.routers = vpInfos
-	for id := range oldRouters {
-		if _, ok := vpInfos[id]; !ok {
-			delete(swarm.multiAddrs, id)
-			swarm.connectedPeers.Delete(id)
-		}
-	}
-
-	// 2. persist routers
-	if err := repo.RewriteNetworkConfig(swarm.repo.Config.RepoRoot, swarm.repo.NetworkConfig, swarm.routers); err != nil {
-		swarm.logger.Errorf("Persist routing table failed, err: %s", err.Error())
-		return false
-	}
-
-	// 4. check if a restart node is exist in the routing table, if not, then exit the cluster
-	var isExist bool
-	for id := range vpInfos {
-		if id == swarm.localID {
-			isExist = true
-			break
-		}
-	}
-	// deleted node itself will exit the cluster
-	if !isExist && !isNew {
-		swarm.reset()
-		_ = swarm.p2p.Stop()
-		_ = swarm.Stop()
-		return true
-	}
-	return false
-}
-
-func (swarm *Swarm) Disconnect(vpInfos map[uint64]*types.VpInfo) {
-	for id, info := range vpInfos {
-		if err := swarm.p2p.Disconnect(info.Pid); err != nil {
-			swarm.logger.Errorf("Disconnect peer %s failed, err: %s", err.Error())
-		}
-		swarm.logger.Infof("Disconnect peer [ID: %d, Pid: %s]", id, info.Pid)
-	}
 }
 
 func (swarm *Swarm) CountConnectedPeers() uint64 {
@@ -418,47 +282,6 @@ func (swarm *Swarm) CountConnectedPeers() uint64 {
 	return counter
 }
 
-func (swarm *Swarm) reset() {
-	swarm.routers = nil
-	swarm.multiAddrs = nil
-	swarm.connectedPeers = sync.Map{}
-}
-
-func constructMultiaddr(vpInfo *types.VpInfo) (*peer.AddrInfo, error) {
-	addrs := make([]ma.Multiaddr, 0)
-	if len(vpInfo.Hosts) == 0 {
-		return nil, fmt.Errorf("no hosts found by node:%d", vpInfo.Id)
-	}
-	for _, host := range vpInfo.Hosts {
-		addr, err := ma.NewMultiaddr(fmt.Sprintf("%s%s", host, vpInfo.Pid))
-		if err != nil {
-			return nil, fmt.Errorf("new Multiaddr error:%w", err)
-		}
-		addrs = append(addrs, addr)
-	}
-
-	addrInfo, err := peer.AddrInfoFromP2pAddr(addrs[0])
-	if err != nil {
-		return nil, fmt.Errorf("convert multiaddr to addrinfo failed: %w", err)
-	}
-	return addrInfo, nil
-}
-
-func (swarm *Swarm) ReConfig(config any) error {
-	switch config := config.(type) {
-	case *repo.Config:
-		swarm.pingC <- &config.P2P.Ping
-	case *repo.NetworkConfig:
-		if err := swarm.Stop(); err != nil {
-			return fmt.Errorf("stop swarm failed: %w", err)
-		}
-		swarm.repo.NetworkConfig = config
-		if err := swarm.init(); err != nil {
-			return fmt.Errorf("init swarm failed: %w", err)
-		}
-		if err := swarm.Start(); err != nil {
-			return fmt.Errorf("start swarm failed: %w", err)
-		}
-	}
-	return nil
+func (swarm *Swarm) PeerID() string {
+	return swarm.p2p.PeerID()
 }

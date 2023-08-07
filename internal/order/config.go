@@ -19,7 +19,7 @@ type Config struct {
 	StoragePath      string
 	StorageType      string
 	OrderType        string
-	PeerMgr          peermgr.OrderPeerManager
+	PeerMgr          peermgr.PeerManager
 	PrivKey          *ecdsa.PrivateKey
 	Logger           logrus.FieldLogger
 	Nodes            map[uint64]*types.VpInfo
@@ -68,7 +68,7 @@ func WithOrderType(typ string) Option {
 	}
 }
 
-func WithPeerManager(peerMgr peermgr.OrderPeerManager) Option {
+func WithPeerManager(peerMgr peermgr.PeerManager) Option {
 	return func(config *Config) {
 		config.PeerMgr = peerMgr
 	}

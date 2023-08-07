@@ -29,10 +29,10 @@ type Node struct {
 	stateC           chan *mempool.ChainState
 	txCache          *mempool.TxCache // cache the transactions received from api
 	batchMgr         *timerManager
-	noTxBatchTimeout time.Duration            // generate no-tx block period
-	batchTimeout     time.Duration            // generate block period
-	lastExec         uint64                   // the index of the last-applied block
-	peerMgr          peermgr.OrderPeerManager // network manager
+	noTxBatchTimeout time.Duration       // generate no-tx block period
+	batchTimeout     time.Duration       // generate block period
+	lastExec         uint64              // the index of the last-applied block
+	peerMgr          peermgr.PeerManager // network manager
 
 	ctx    context.Context
 	cancel context.CancelFunc
