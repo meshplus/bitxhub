@@ -1,6 +1,6 @@
 [timed_gen_block]
 enable = false
-block_timeout = "2s"
+no_tx_batch_timeout = "2s"
 
 [rbft]        #RBFT configurations
 set_size                = 25    # How many transactions should the node broadcast at once
@@ -12,6 +12,7 @@ tolerance_time          = "5m"  # The max tolerance time duration (in seconds) o
 tolerance_remove_time   = "15m"  # The max tolerance remove time duration (in seconds) of tx alive in mempool
 batch_mem_limit         = false # Indicates whether limit batch mem size or not
 batch_max_mem           = 10000 # The max memory size of one batch
+checkpoint_period       = 10    # The checkpoint period
 
     [rbft.timeout]
     	sync_state        = "3s"  # How long to wait quorum sync state response

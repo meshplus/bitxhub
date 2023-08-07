@@ -4,21 +4,20 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/sirupsen/logrus"
-
 	"github.com/axiomesh/axiom-kit/types/pb"
 	network "github.com/axiomesh/axiom-p2p"
 	"github.com/axiomesh/axiom/pkg/model"
+	"github.com/sirupsen/logrus"
 )
 
 func (swarm *Swarm) handleMessage(s network.Stream, data []byte) {
-	m := &pb.Message{}
+
 	handler := func() error {
+		m := &pb.Message{}
 		if err := m.UnmarshalVT(data); err != nil {
 			swarm.logger.Errorf("unmarshal message error: %s", err.Error())
 			return err
 		}
-
 		if m.Type != pb.Message_CONSENSUS {
 			swarm.logger.Debugf("handle msg: %s", m.Type)
 		}
@@ -32,12 +31,12 @@ func (swarm *Swarm) handleMessage(s network.Stream, data []byte) {
 		case pb.Message_FETCH_P2P_PUBKEY:
 			return swarm.handleFetchP2PPubkey(s)
 		case pb.Message_CONSENSUS:
-			go swarm.orderMessageFeed.Send(OrderMessageEvent{
+			swarm.orderMessageFeed.Send(OrderMessageEvent{
 				IsTxsFromRemote: false,
 				Data:            m.Data,
 			})
 		case pb.Message_PUSH_TXS:
-			if !swarm.msgPushLimiter.Allow() {
+			if swarm.enableLimiter && !swarm.msgPushLimiter.Allow() {
 				// rate limit exceeded, refuse to process the message
 				swarm.logger.Warnf("Node received too many PUSH_TXS messages. Rate limiting in effect.")
 				return nil
@@ -47,7 +46,7 @@ func (swarm *Swarm) handleMessage(s network.Stream, data []byte) {
 			if err := tx.UnmarshalVT(m.Data); err != nil {
 				return fmt.Errorf("unmarshal PushTxs error: %v", err)
 			}
-			go swarm.orderMessageFeed.Send(OrderMessageEvent{
+			swarm.orderMessageFeed.Send(OrderMessageEvent{
 				IsTxsFromRemote: true,
 				Txs:             tx.Slice,
 			})
@@ -57,7 +56,7 @@ func (swarm *Swarm) handleMessage(s network.Stream, data []byte) {
 			swarm.logger.WithField("module", "p2p").Errorf("can't handle msg[type: %v]", m.Type)
 			return nil
 		}
-
+		swarm.p2p.ReleaseStream(s)
 		return nil
 	}
 
@@ -65,7 +64,6 @@ func (swarm *Swarm) handleMessage(s network.Stream, data []byte) {
 		if err := handler(); err != nil {
 			swarm.logger.WithFields(logrus.Fields{
 				"error": err,
-				"type":  m.Type.String(),
 			}).Error("Handle message")
 		}
 	}()

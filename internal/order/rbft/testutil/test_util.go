@@ -5,16 +5,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/mock/gomock"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/sirupsen/logrus"
-	"github.com/stretchr/testify/assert"
-
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom-kit/types/pb"
 	"github.com/axiomesh/axiom/internal/order"
 	"github.com/axiomesh/axiom/internal/peermgr/mock_peermgr"
 	"github.com/axiomesh/axiom/pkg/repo"
+	"github.com/golang/mock/gomock"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
 )
 
 func ConstructBlock(blockHashStr string, height uint64) *types.Block {

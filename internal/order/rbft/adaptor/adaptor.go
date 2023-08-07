@@ -48,7 +48,7 @@ type Ready struct {
 	Timestamp int64
 }
 
-func NewRBFTAdaptor(config *order.Config, blockC chan *types.CommitEvent, cancel context.CancelFunc, isNew bool) (*RBFTAdaptor, error) {
+func NewRBFTAdaptor(config *order.Config, blockC chan *types.CommitEvent, cancel context.CancelFunc) (*RBFTAdaptor, error) {
 	store, err := newStorageWrapper(config.StoragePath, config.StorageType)
 	if err != nil {
 		return nil, err
@@ -70,7 +70,7 @@ func NewRBFTAdaptor(config *order.Config, blockC chan *types.CommitEvent, cancel
 		getChainMetaFunc: config.GetChainMetaFunc,
 		BlockC:           blockC,
 		cancel:           cancel,
-		isNew:            isNew,
+		isNew:            config.IsNew,
 		config:           config,
 	}
 

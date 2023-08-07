@@ -4,15 +4,14 @@ import (
 	"sort"
 	"time"
 
-	"github.com/sirupsen/logrus"
-	"go.opentelemetry.io/otel/trace"
-
 	rbft "github.com/axiomesh/axiom-bft"
 	"github.com/axiomesh/axiom-bft/common/metrics/disabled"
-	"github.com/axiomesh/axiom-bft/txpool"
+	"github.com/axiomesh/axiom-bft/mempool"
 	rbfttypes "github.com/axiomesh/axiom-bft/types"
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/internal/order"
+	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/otel/trace"
 )
 
 func defaultRbftConfig() rbft.Config[types.Transaction, *types.Transaction] {
@@ -44,6 +43,7 @@ func defaultRbftConfig() rbft.Config[types.Transaction, *types.Transaction] {
 		FetchCheckpointTimeout:  5 * time.Second,
 		FetchViewTimeout:        1 * time.Second,
 		CheckPoolTimeout:        100 * time.Second,
+		CheckPoolRemoveTimeout:  30 * time.Minute,
 		External:                nil,
 		RequestPool:             nil,
 		FlowControl:             false,
@@ -55,7 +55,7 @@ func defaultRbftConfig() rbft.Config[types.Transaction, *types.Transaction] {
 	}
 }
 
-func generateRbftConfig(config *order.Config) (rbft.Config[types.Transaction, *types.Transaction], txpool.Config, error) {
+func generateRbftConfig(config *order.Config) (rbft.Config[types.Transaction, *types.Transaction], mempool.Config, error) {
 	var err error
 	readConfig := config.Config
 
@@ -70,13 +70,21 @@ func generateRbftConfig(config *order.Config) (rbft.Config[types.Transaction, *t
 	}
 	defaultConfig.Peers, err = generateRbftPeers(config)
 	if err != nil {
-		return rbft.Config[types.Transaction, *types.Transaction]{}, txpool.Config{}, err
+		return rbft.Config[types.Transaction, *types.Transaction]{}, mempool.Config{}, err
 	}
 	defaultConfig.IsNew = config.IsNew
 	defaultConfig.Applied = config.Applied
+	defaultConfig.Logger = &Logger{config.Logger}
+	defaultConfig.IsTimed = readConfig.TimedGenBlock.Enable
 
+	if readConfig.TimedGenBlock.NoTxBatchTimeout > 0 {
+		defaultConfig.NoTxBatchTimeout = readConfig.TimedGenBlock.NoTxBatchTimeout.ToDuration()
+	}
 	if readConfig.Rbft.CheckInterval > 0 {
 		defaultConfig.CheckPoolTimeout = readConfig.Rbft.CheckInterval.ToDuration()
+	}
+	if readConfig.Rbft.ToleranceRemoveTime > 0 {
+		defaultConfig.CheckPoolRemoveTimeout = readConfig.Rbft.ToleranceRemoveTime.ToDuration()
 	}
 	if readConfig.Rbft.SetSize > 0 {
 		defaultConfig.SetSize = readConfig.Rbft.SetSize
@@ -86,6 +94,9 @@ func generateRbftConfig(config *order.Config) (rbft.Config[types.Transaction, *t
 	}
 	if readConfig.Rbft.Timeout.SyncState > 0 {
 		defaultConfig.SyncStateTimeout = readConfig.Rbft.Timeout.SyncState.ToDuration()
+	}
+	if readConfig.Rbft.CheckpointPeriod > 0 {
+		defaultConfig.K = readConfig.Rbft.CheckpointPeriod
 	}
 	if readConfig.Rbft.Timeout.SyncInterval > 0 {
 		defaultConfig.SyncStateRestartTimeout = readConfig.Rbft.Timeout.SyncInterval.ToDuration()
@@ -111,18 +122,22 @@ func generateRbftConfig(config *order.Config) (rbft.Config[types.Transaction, *t
 	if readConfig.Rbft.Timeout.Set > 0 {
 		defaultConfig.SetTimeout = readConfig.Rbft.Timeout.Set.ToDuration()
 	}
-
-	defaultConfig.Logger = &Logger{FieldLogger: config.Logger}
-	return defaultConfig, txpool.Config{
-		K:             int(defaultConfig.K),
-		PoolSize:      int(readConfig.Rbft.PoolSize),
-		BatchSize:     int(readConfig.Rbft.BatchSize),
-		BatchMemLimit: readConfig.Rbft.BatchMemLimit,
-		BatchMaxMem:   uint(readConfig.Rbft.BatchMaxMem),
-		ToleranceTime: readConfig.Rbft.ToleranceTime.ToDuration(),
-		MetricsProv:   defaultConfig.MetricsProv,
-		Logger:        defaultConfig.Logger,
-	}, nil
+	fn := func(addr string) uint64 {
+		return config.GetAccountNonce(types.NewAddressByStr(addr))
+	}
+	mempoolConf := mempool.Config{
+		ID:                  config.ID,
+		Logger:              defaultConfig.Logger,
+		BatchSize:           readConfig.Rbft.BatchSize,
+		PoolSize:            readConfig.Rbft.PoolSize,
+		BatchMemLimit:       readConfig.Rbft.BatchMemLimit,
+		BatchMaxMem:         readConfig.Rbft.BatchMaxMem,
+		ToleranceTime:       readConfig.Rbft.ToleranceTime.ToDuration(),
+		ToleranceRemoveTime: readConfig.Rbft.ToleranceRemoveTime.ToDuration(),
+		GetAccountNonce:     fn,
+		IsTimed:             readConfig.TimedGenBlock.Enable,
+	}
+	return defaultConfig, mempoolConf, nil
 }
 
 func generateRbftPeers(config *order.Config) ([]*rbfttypes.Peer, error) {

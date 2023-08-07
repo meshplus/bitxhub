@@ -40,6 +40,7 @@ quantum = 500
 capacity = 10000
 
 [p2p_limiter]
+enable = true
 limit = 10000
 burst = 10000
 
