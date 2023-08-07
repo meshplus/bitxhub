@@ -1,7 +1,6 @@
 package governance
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -24,8 +23,7 @@ func TestNodeManager_Run(t *testing.T) {
 
 	accountCache, err := ledger.NewAccountCache()
 	assert.Nil(t, err)
-	repoRoot, err := os.MkdirTemp("", "leveldb_tmp")
-	assert.Nil(t, err)
+	repoRoot := t.TempDir()
 	ld, err := leveldb.New(filepath.Join(repoRoot, "node_manager"))
 	assert.Nil(t, err)
 	account := ledger.NewAccount(ld, accountCache, types.NewAddressByStr(common.NodeManagerContractAddr), ledger.NewChanger())

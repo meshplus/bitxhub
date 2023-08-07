@@ -2,7 +2,6 @@ package ledger
 
 import (
 	"math/big"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -17,8 +16,7 @@ import (
 )
 
 func TestAccount_GetState(t *testing.T) {
-	repoRoot, err := os.MkdirTemp("", "ledger_commit")
-	assert.Nil(t, err)
+	repoRoot := t.TempDir()
 
 	lBlockStorage, err := leveldb.New(filepath.Join(repoRoot, "lStorage"))
 	assert.Nil(t, err)
@@ -75,8 +73,7 @@ func TestAccount_GetState(t *testing.T) {
 func TestAccount_AddState(t *testing.T) {}
 
 func TestAccount_AccountBalance(t *testing.T) {
-	repoRoot, err := os.MkdirTemp("", "ledger_commit")
-	assert.Nil(t, err)
+	repoRoot := t.TempDir()
 
 	lBlockStorage, err := leveldb.New(filepath.Join(repoRoot, "lStorage"))
 	assert.Nil(t, err)

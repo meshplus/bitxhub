@@ -10,6 +10,7 @@ import (
 	vm "github.com/axiomesh/eth-kit/evm"
 	"github.com/axiomesh/eth-kit/ledger"
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/samber/lo"
 	"github.com/sirupsen/logrus"
 )
 
@@ -56,22 +57,6 @@ type CouncilProposal struct {
 // Council is storage of council
 type Council struct {
 	Members []*CouncilMember
-}
-
-func (c *Council) getMemberAddresses() []string {
-	addresses := make([]string, len(c.Members))
-	for i, member := range c.Members {
-		addresses[i] = member.Address
-	}
-	return addresses
-}
-
-func (c *Council) getWeightSum() uint64 {
-	var sum uint64 = 0
-	for _, member := range c.Members {
-		sum += member.Weight
-	}
-	return sum
 }
 
 type CouncilMember struct {
@@ -169,12 +154,16 @@ func (cm *CouncilManager) propose(addr ethcommon.Address, args *CouncilProposalA
 		return nil, err
 	}
 	// check addr if is exist in council
-	isExist = common.IsInSlice[string](addr.String(), council.getMemberAddresses())
+	isExist = common.IsInSlice[string](addr.String(), lo.Map[*CouncilMember, string](council.Members, func(item *CouncilMember, index int) string {
+		return item.Address
+	}))
 	if !isExist {
 		return nil, ErrNotFoundCouncilMember
 	}
 
-	proposal.TotalVotes = council.getWeightSum()
+	proposal.TotalVotes = lo.Sum[uint64](lo.Map[*CouncilMember, uint64](council.Members, func(item *CouncilMember, index int) uint64 {
+		return item.Weight
+	}))
 	proposal.Candidates = args.Candidates
 
 	b, err := json.Marshal(proposal)

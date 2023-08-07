@@ -2,7 +2,6 @@ package governance
 
 import (
 	"encoding/json"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -43,8 +42,7 @@ func TestRunForPropose(t *testing.T) {
 
 	accountCache, err := ledger.NewAccountCache()
 	assert.Nil(t, err)
-	repoRoot, err := os.MkdirTemp("", "leveldb_tmp")
-	assert.Nil(t, err)
+	repoRoot := t.TempDir()
 	ld, err := leveldb.New(filepath.Join(repoRoot, "node_manager"))
 	assert.Nil(t, err)
 	account := ledger.NewAccount(ld, accountCache, types.NewAddressByStr(common.NodeManagerContractAddr), ledger.NewChanger())
@@ -150,7 +148,7 @@ func TestRunForVote(t *testing.T) {
 
 	accountCache, err := ledger.NewAccountCache()
 	assert.Nil(t, err)
-	repoRoot, err := os.MkdirTemp("", "leveldb_tmp")
+	repoRoot := t.TempDir()
 	assert.Nil(t, err)
 	ld, err := leveldb.New(filepath.Join(repoRoot, "node_manager"))
 	assert.Nil(t, err)

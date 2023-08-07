@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -288,7 +287,7 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 
 	accountCache, err := ledger.NewAccountCache()
 	assert.Nil(t, err)
-	repoRoot, err := os.MkdirTemp("", "leveldb_tmp")
+	repoRoot := t.TempDir()
 	assert.Nil(t, err)
 	ld, err := leveldb.New(filepath.Join(repoRoot, "executor"))
 	assert.Nil(t, err)
@@ -397,8 +396,7 @@ func mockTx(t *testing.T) *types.Transaction {
 
 func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 	config := generateMockConfig(t)
-	repoRoot, err := os.MkdirTemp("", "executor")
-	require.Nil(t, err)
+	repoRoot := t.TempDir()
 
 	lBlockStorage, err := leveldb.New(filepath.Join(repoRoot, "lStorage"))
 	assert.Nil(t, err)
