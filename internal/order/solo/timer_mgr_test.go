@@ -1,6 +1,7 @@
 package solo
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -11,7 +12,7 @@ import (
 
 func TestBatchTimer_StartBatchTimer(t *testing.T) {
 	logger := log.NewWithModule("consensus")
-	eventCh := make(chan batchTimeoutEvent)
+	eventCh := make(chan consensusEvent, maxChanSize)
 	tm := NewTimerManager(eventCh, logger)
 
 	var (
@@ -34,11 +35,15 @@ func TestBatchTimer_StartBatchTimer(t *testing.T) {
 	}()
 	tm.startTimer(Batch)
 	tm.startTimer(NoTxBatch)
+
+	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
 		for {
 			select {
+			case <-ctx.Done():
+				return
 			case e := <-eventCh:
-				switch e {
+				switch e.(batchTimeoutEvent) {
 				case Batch:
 					batchEnd = time.Since(start)
 					batchEventCh <- struct{}{}
@@ -51,13 +56,14 @@ func TestBatchTimer_StartBatchTimer(t *testing.T) {
 	}()
 	<-batchEventCh
 	<-noTxBatchEventCh
+	cancel()
 	require.True(t, batchEnd >= batchTimeout)
 	require.True(t, noTxBatchEnd >= noTxBatchTimeout)
 }
 
 func TestBatchTimer_StopBatchTimer(t *testing.T) {
 	logger := log.NewWithModule("consensus")
-	eventCh := make(chan batchTimeoutEvent)
+	eventCh := make(chan consensusEvent, maxChanSize)
 	batchTimer := NewTimerManager(eventCh, logger)
 	batchTimeout := 200 * time.Millisecond
 	noTxBatchTimeout := 2 * time.Second
@@ -74,7 +80,7 @@ func TestBatchTimer_StopBatchTimer(t *testing.T) {
 	go func() {
 		select {
 		case e := <-eventCh:
-			switch e {
+			switch e.(batchTimeoutEvent) {
 			case Batch:
 				require.Fail(t, "batch timer should not be triggered")
 			case NoTxBatch:

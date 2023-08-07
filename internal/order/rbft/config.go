@@ -10,7 +10,6 @@ import (
 	rbfttypes "github.com/axiomesh/axiom-bft/types"
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/internal/order"
-	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -74,7 +73,7 @@ func generateRbftConfig(config *order.Config) (rbft.Config[types.Transaction, *t
 	}
 	defaultConfig.IsNew = config.IsNew
 	defaultConfig.Applied = config.Applied
-	defaultConfig.Logger = &Logger{config.Logger}
+	defaultConfig.Logger = &order.Logger{FieldLogger: config.Logger}
 	defaultConfig.IsTimed = readConfig.TimedGenBlock.Enable
 
 	if readConfig.TimedGenBlock.NoTxBatchTimeout > 0 {
@@ -157,29 +156,4 @@ func sortPeers(nodes map[uint64]*types.VpInfo) ([]*rbfttypes.Peer, error) {
 		return peers[i].ID < peers[j].ID
 	})
 	return peers, nil
-}
-
-type Logger struct {
-	logrus.FieldLogger
-}
-
-// Trace implements rbft.Logger.
-func (lg *Logger) Trace(name string, stage string, content any) {
-	lg.Info(name, stage, content)
-}
-
-func (lg *Logger) Critical(v ...any) {
-	lg.Info(v...)
-}
-
-func (lg *Logger) Criticalf(format string, v ...any) {
-	lg.Infof(format, v...)
-}
-
-func (lg *Logger) Notice(v ...any) {
-	lg.Info(v...)
-}
-
-func (lg *Logger) Noticef(format string, v ...any) {
-	lg.Infof(format, v...)
 }

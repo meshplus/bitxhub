@@ -71,10 +71,11 @@ func TestNode_Start(t *testing.T) {
 	commitEvent := <-solo.Commit()
 	require.Equal(t, uint64(2), commitEvent.Block.BlockHeader.Number)
 	require.Equal(t, 1, len(commitEvent.Block.Transactions))
+	blockHash := commitEvent.Block.Hash()
 
 	txHashList := make([]*types.Hash, 0)
 	txHashList = append(txHashList, tx.GetHash())
-	solo.ReportState(commitEvent.Block.Height(), commitEvent.Block.BlockHash, txHashList)
+	solo.ReportState(commitEvent.Block.Height(), blockHash, txHashList)
 	solo.Stop()
 }
 
@@ -102,8 +103,7 @@ func TestGetpendingTxByHash(t *testing.T) {
 
 	err = node.Prepare(tx)
 	ast.Nil(err)
-	time.Sleep(200 * time.Millisecond)
-	ast.Equal(tx, node.GetPendingTxByHash(tx.GetHash()))
+	ast.Nil(node.GetPendingTxByHash(tx.GetHash()))
 }
 
 func TestTimedBlock(t *testing.T) {

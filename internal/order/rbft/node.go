@@ -22,6 +22,7 @@ import (
 	network "github.com/axiomesh/axiom-p2p"
 	"github.com/axiomesh/axiom/internal/order"
 	"github.com/axiomesh/axiom/internal/order/rbft/adaptor"
+	"github.com/axiomesh/axiom/internal/order/txcache"
 	"github.com/axiomesh/axiom/internal/peermgr"
 )
 
@@ -44,7 +45,7 @@ type Node struct {
 
 	ctx     context.Context
 	cancel  context.CancelFunc
-	txCache *TxCache
+	txCache *txcache.TxCache
 
 	txFeed event.Feed
 }
@@ -107,7 +108,7 @@ func newNode(opts ...order.Option) (*Node, error) {
 		receiveMsgLimiter: receiveMsgLimiter,
 		ctx:               ctx,
 		cancel:            cancel,
-		txCache:           newTxCache(rbftConfig.SetTimeout, uint64(rbftConfig.SetSize), config.Logger),
+		txCache:    txcache.NewTxCache(rbftConfig.SetTimeout, uint64(rbftConfig.SetSize), config.Logger),
 		peerMgr:           config.PeerMgr,
 		checkpoint:        config.Config.Rbft.CheckpointPeriod,
 	}, nil
@@ -133,7 +134,7 @@ func (n *Node) Start() error {
 		n.logger.Error(err)
 	}
 
-	go n.txCache.listenEvent()
+	go n.txCache.ListenEvent()
 
 	go n.listenNewTxToSubmit()
 	go n.listenExecutedBlockToReport()
@@ -285,8 +286,8 @@ func (n *Node) listenBatchMemTxsToBroadcast() {
 
 func (n *Node) Stop() {
 	n.cancel()
-	if n.txCache.close != nil {
-		close(n.txCache.close)
+	if n.txCache.CloseC != nil {
+		close(n.txCache.CloseC)
 	}
 	n.n.Stop()
 }
@@ -299,12 +300,12 @@ func (n *Node) Prepare(tx *types.Transaction) error {
 		return errors.New("transaction cache are full, we will drop this transaction")
 	}
 
-	txWithResp := &TxWithResp{
+	txWithResp := &txcache.TxWithResp{
 		Tx: tx,
 		Ch: make(chan bool),
 	}
 	n.txCache.TxRespC <- txWithResp
-	n.txCache.recvTxC <- tx
+	n.txCache.RecvTxC <- tx
 
 	<-txWithResp.Ch
 	return nil
