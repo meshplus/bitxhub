@@ -53,7 +53,7 @@ func (gas *Gas) GetGasPrice() (uint64, error) {
 	if currentTxs > total {
 		return 0, ErrTxsOutOfRange
 	}
-	percentage := float64(currentTxs-total/2) / float64(total) * gas.repo.Config.Genesis.GasChangeRate
+	percentage := 2 * float64(currentTxs-total/2) / float64(total) * gas.repo.Config.Genesis.GasChangeRate
 	currentPrice := uint64(float64(parentGasPrice) * (1 + percentage))
 	if currentPrice > max {
 		gas.logger.Warningf("gas price is touching ceiling, current price is %d, max is %d", currentPrice, max)

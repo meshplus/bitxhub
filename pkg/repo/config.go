@@ -235,11 +235,11 @@ func DefaultConfig(repoRoot string) *Config {
 		Genesis: Genesis{
 			ChainID:       1356,
 			GasLimit:      0x5f5e100,
-			GasPrice:      5000,
-			MaxGasPrice:   10000,
-			MinGasPrice:   1000,
+			GasPrice:      5000000000000,
+			MaxGasPrice:   10000000000000,
+			MinGasPrice:   1000000000000,
 			GasChangeRate: 0.125,
-			Balance:       "1000000000000000000",
+			Balance:       "1000000000000000000000000000",
 			Admins: []*Admin{
 				{
 					Address: "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013",
@@ -273,7 +273,7 @@ func DefaultConfig(repoRoot string) *Config {
 			Module: LogModule{
 				P2P:       "info",
 				Consensus: "info",
-				Executor:  "info",
+				Executor:  "debug",
 				Router:    "info",
 				API:       "info",
 				CoreAPI:   "info",

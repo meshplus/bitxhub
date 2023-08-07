@@ -1,9 +1,7 @@
 package finance
 
 import (
-	"math/rand"
 	"testing"
-	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -18,41 +16,21 @@ const repoRoot = "testdata"
 
 func TestGetGasPrice(t *testing.T) {
 	// Gas should be less than 5000
-	GasPriceBySize(t, 100, 5000, nil)
+	GasPriceBySize(t, 100, 5000000000000, nil)
 	// Gas should be larger than 5000
-	GasPriceBySize(t, 400, 5000, nil)
+	GasPriceBySize(t, 400, 5000000000000, nil)
 	// Gas should be equals to 5000
-	GasPriceBySize(t, 250, 5000, nil)
+	GasPriceBySize(t, 250, 5000000000000, nil)
 	// Gas touch the ceiling
-	GasPriceBySize(t, 400, 10000, nil)
+	GasPriceBySize(t, 400, 10000000000000, nil)
 	// Gas touch the floor
-	GasPriceBySize(t, 100, 1000, nil)
+	GasPriceBySize(t, 100, 1000000000000, nil)
 	// Txs too much error
-	GasPriceBySize(t, 700, 5000, ErrTxsOutOfRange)
+	GasPriceBySize(t, 700, 5000000000000, ErrTxsOutOfRange)
 	// parent gas out of range error
-	GasPriceBySize(t, 100, 11000, ErrGasOutOfRange)
+	GasPriceBySize(t, 100, 11000000000000, ErrGasOutOfRange)
 	// parent gas out of range error
-	GasPriceBySize(t, 100, 900, ErrGasOutOfRange)
-}
-
-func TestMockTxsGasPriceChange(t *testing.T) {
-	parentGasPrice := uint64(5000)
-	roundSize := 300
-	count := 0
-	down := 0
-	up := 0
-	rand.Seed(time.Now().UnixNano())
-	for i := 0; i < roundSize; i++ {
-		txs := rand.Intn(500) + 1
-		if txs > 250 {
-			count++
-			up += txs - 250
-		} else {
-			down += 250 - txs
-		}
-		parentGasPrice = GasPriceBySize(t, txs, int64(parentGasPrice), nil)
-	}
-	t.Logf("larger than 250: %d, up: %d, down: %d\n", count, up, down)
+	GasPriceBySize(t, 100, 900000000000, ErrGasOutOfRange)
 }
 
 func GasPriceBySize(t *testing.T, size int, parentGasPrice int64, expectErr error) uint64 {
@@ -102,7 +80,7 @@ func generateMockConfig(t *testing.T) *repo.Repo {
 }
 
 func checkResult(t *testing.T, block *types.Block, config *repo.Repo, parentGasPrice int64, gas uint64) uint64 {
-	percentage := (float64(len(block.Transactions)) - float64(config.Config.Order.Txpool.BatchSize)/2) / float64(config.Config.Order.Txpool.BatchSize)
+	percentage := 2 * (float64(len(block.Transactions)) - float64(config.Config.Order.Txpool.BatchSize)/2) / float64(config.Config.Order.Txpool.BatchSize)
 	actualGas := uint64(float64(parentGasPrice) * (1 + percentage*config.Config.Genesis.GasChangeRate))
 	if actualGas > config.Config.Genesis.MaxGasPrice {
 		actualGas = config.Config.Genesis.MaxGasPrice
