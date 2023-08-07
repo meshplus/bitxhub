@@ -108,7 +108,7 @@ func newNode(opts ...order.Option) (*Node, error) {
 		receiveMsgLimiter: receiveMsgLimiter,
 		ctx:               ctx,
 		cancel:            cancel,
-		txCache:    txcache.NewTxCache(rbftConfig.SetTimeout, uint64(rbftConfig.SetSize), config.Logger),
+		txCache:           txcache.NewTxCache(rbftConfig.SetTimeout, uint64(rbftConfig.SetSize), config.Logger),
 		peerMgr:           config.PeerMgr,
 		checkpoint:        config.Config.Rbft.CheckpointPeriod,
 	}, nil
@@ -238,7 +238,7 @@ func (n *Node) listenExecutedBlockToReport() {
 func (n *Node) listenBatchMemTxsToBroadcast() {
 	for {
 		select {
-		case txSet := <-n.txCache.txSetC:
+		case txSet := <-n.txCache.TxSetC:
 			var requests [][]byte
 			for _, tx := range txSet {
 				raw, err := tx.RbftMarshal()

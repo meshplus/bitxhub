@@ -29,7 +29,6 @@ type Node struct {
 	mempool          mempool.MemPool[types.Transaction, *types.Transaction]                // transaction pool
 	recvCh           chan consensusEvent                                                   // receive message from consensus engine
 	blockCh          chan *mempool.RequestHashBatch[types.Transaction, *types.Transaction] // receive batch from mempool
-	stateC           chan *chainState
 	batchMgr         *timerManager
 	noTxBatchTimeout time.Duration       // generate no-tx block period
 	batchTimeout     time.Duration       // generate block period
@@ -127,8 +126,8 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 	mempoolConf := mempool.Config{
 		ID:              config.ID,
 		Logger:          &order.Logger{FieldLogger: config.Logger},
-		BatchSize:       config.Config.Solo.Mempool.BatchSize,
-		PoolSize:        config.Config.Solo.Mempool.PoolSize,
+		BatchSize:       config.Config.Mempool.BatchSize,
+		PoolSize:        config.Config.Mempool.PoolSize,
 		GetAccountNonce: fn,
 		IsTimed:         config.Config.TimedGenBlock.Enable,
 	}
@@ -136,14 +135,14 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 	// init batch timer manager
 	recvCh := make(chan consensusEvent, maxChanSize)
 	batchTimerMgr := NewTimerManager(recvCh, config.Logger)
-	batchTimerMgr.newTimer(Batch, config.Config.Solo.Mempool.BatchTimeout.ToDuration())
+	batchTimerMgr.newTimer(Batch, config.Config.Mempool.BatchTimeout.ToDuration())
 	batchTimerMgr.newTimer(NoTxBatch, config.Config.TimedGenBlock.NoTxBatchTimeout.ToDuration())
 
 	soloNode := &Node{
 		ID:               config.ID,
 		isTimed:          mempoolConf.IsTimed,
 		noTxBatchTimeout: config.Config.TimedGenBlock.NoTxBatchTimeout.ToDuration(),
-		batchTimeout:     config.Config.Solo.Mempool.BatchTimeout.ToDuration(),
+		batchTimeout:     config.Config.Mempool.BatchTimeout.ToDuration(),
 		blockCh:          make(chan *mempool.RequestHashBatch[types.Transaction, *types.Transaction], maxChanSize),
 		commitC:          make(chan *types.CommitEvent, maxChanSize),
 		recvCh:           recvCh,
@@ -155,9 +154,9 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 	}
 	soloNode.logger.Infof("SOLO lastExec = %d", soloNode.lastExec)
 	soloNode.logger.Infof("SOLO no-tx batch timeout = %v", config.Config.TimedGenBlock.NoTxBatchTimeout.ToDuration())
-	soloNode.logger.Infof("SOLO batch timeout = %v", config.Config.Solo.Mempool.BatchTimeout.ToDuration())
-	soloNode.logger.Infof("SOLO batch size = %d", config.Config.Solo.Mempool.BatchSize)
-	soloNode.logger.Infof("SOLO pool size = %d", config.Config.Solo.Mempool.PoolSize)
+	soloNode.logger.Infof("SOLO batch timeout = %v", config.Config.Mempool.BatchTimeout.ToDuration())
+	soloNode.logger.Infof("SOLO batch size = %d", config.Config.Mempool.BatchSize)
+	soloNode.logger.Infof("SOLO pool size = %d", config.Config.Mempool.PoolSize)
 	return soloNode, nil
 }
 

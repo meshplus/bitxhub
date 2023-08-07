@@ -85,6 +85,8 @@ func TestGetPendingNonceByAccount(t *testing.T) {
 	ast.Nil(err)
 	err = node.Start()
 	ast.Nil(err)
+	defer node.Stop()
+
 	nonce := node.GetPendingNonceByAccount("account1")
 	ast.Equal(uint64(0), nonce)
 	err = node.DelNode(uint64(1))
@@ -97,6 +99,7 @@ func TestGetpendingTxByHash(t *testing.T) {
 	ast.Nil(err)
 	err = node.Start()
 	ast.Nil(err)
+	defer node.Stop()
 
 	tx, err := types.GenerateEmptyTransactionAndSigner()
 	require.Nil(t, err)
@@ -114,6 +117,8 @@ func TestTimedBlock(t *testing.T) {
 
 	err = node.Start()
 	ast.Nil(err)
+	defer node.Stop()
+
 	event := <-node.commitC
 	ast.NotNil(event)
 	ast.Equal(len(event.Block.Transactions), 0)

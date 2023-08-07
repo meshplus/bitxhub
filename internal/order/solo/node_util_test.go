@@ -25,15 +25,15 @@ func mockSoloNode(t *testing.T, enableTimed bool) (*Node, error) {
 
 	recvCh := make(chan consensusEvent, maxChanSize)
 	batchTimerMgr := NewTimerManager(recvCh, logger)
-	batchTimerMgr.newTimer(Batch, cfg.Solo.Mempool.BatchTimeout.ToDuration())
+	batchTimerMgr.newTimer(Batch, cfg.Mempool.BatchTimeout.ToDuration())
 	mockCtl := gomock.NewController(t)
 	mockPeermgr := mock_peermgr.NewMockPeerManager(mockCtl)
 	mempoolConf := mempool.Config{
 		ID:        uint64(1),
 		IsTimed:   cfg.TimedGenBlock.Enable,
 		Logger:    &order.Logger{FieldLogger: logger},
-		BatchSize: cfg.Solo.Mempool.BatchSize,
-		PoolSize:  cfg.Solo.Mempool.PoolSize,
+		BatchSize: cfg.Mempool.BatchSize,
+		PoolSize:  cfg.Mempool.PoolSize,
 		GetAccountNonce: func(address string) uint64 {
 			return 0
 		},
@@ -55,9 +55,8 @@ func mockSoloNode(t *testing.T, enableTimed bool) (*Node, error) {
 		lastExec:         uint64(0),
 		isTimed:          mempoolConf.IsTimed,
 		noTxBatchTimeout: noTxBatchTimeout,
-		batchTimeout:     cfg.Solo.Mempool.BatchTimeout.ToDuration(),
+		batchTimeout:     cfg.Mempool.BatchTimeout.ToDuration(),
 		commitC:          make(chan *types.CommitEvent, maxChanSize),
-		stateC:           make(chan *chainState),
 		blockCh:          make(chan *mempool.RequestHashBatch[types.Transaction, *types.Transaction], maxChanSize),
 		mempool:          mempoolInst,
 		batchMgr:         batchTimerMgr,
