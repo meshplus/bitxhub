@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/axiomesh/axiom/internal/order/txcache"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
@@ -71,7 +72,7 @@ func MockMinNode[T any, Constraint consensus.TXConstraint[T]](ctrl *gomock.Contr
 		blockC:     blockC,
 		ctx:        ctx,
 		cancel:     cancel,
-		txCache:    newTxCache(rbftConfig.SetTimeout, uint64(rbftConfig.SetSize), orderConf.Logger),
+		txCache:    txcache.NewTxCache(rbftConfig.SetTimeout, uint64(rbftConfig.SetSize), orderConf.Logger),
 		peerMgr:    orderConf.PeerMgr,
 		checkpoint: orderConf.Config.Rbft.CheckpointPeriod,
 	}
@@ -159,7 +160,7 @@ func TestStop(t *testing.T) {
 	// test stop
 	node.Stop()
 	time.Sleep(1 * time.Second)
-	_, ok := <-node.txCache.close
+	_, ok := <-node.txCache.CloseC
 	ast.Equal(false, ok)
 }
 

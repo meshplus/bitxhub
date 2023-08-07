@@ -1,4 +1,4 @@
-package rbft
+package txcache
 
 import (
 	"time"
@@ -15,10 +15,10 @@ const (
 )
 
 type TxCache struct {
-	txSetC  chan []*types.Transaction
-	recvTxC chan *types.Transaction
+	TxSetC  chan []*types.Transaction
+	RecvTxC chan *types.Transaction
 	TxRespC chan *TxWithResp
-	close   chan bool
+	CloseC  chan bool
 
 	txSet      []*types.Transaction
 	logger     logrus.FieldLogger
@@ -33,12 +33,12 @@ type TxWithResp struct {
 	Ch chan bool
 }
 
-func newTxCache(txSliceTimeout time.Duration, txSetSize uint64, logger logrus.FieldLogger) *TxCache {
+func NewTxCache(txSliceTimeout time.Duration, txSetSize uint64, logger logrus.FieldLogger) *TxCache {
 	txCache := &TxCache{}
-	txCache.recvTxC = make(chan *types.Transaction, DefaultTxCacheSize)
-	txCache.txSetC = make(chan []*types.Transaction)
+	txCache.RecvTxC = make(chan *types.Transaction, DefaultTxCacheSize)
+	txCache.TxSetC = make(chan []*types.Transaction)
 	txCache.TxRespC = make(chan *TxWithResp)
-	txCache.close = make(chan bool)
+	txCache.CloseC = make(chan bool)
 	txCache.timerC = make(chan bool)
 	txCache.stopTimerC = make(chan bool)
 	txCache.txSet = make([]*types.Transaction, 0)
@@ -56,14 +56,14 @@ func newTxCache(txSliceTimeout time.Duration, txSetSize uint64, logger logrus.Fi
 	return txCache
 }
 
-func (tc *TxCache) listenEvent() {
+func (tc *TxCache) ListenEvent() {
 	for {
 		select {
-		case <-tc.close:
+		case <-tc.CloseC:
 			tc.logger.Info("Transaction cache stopped!")
 			return
 
-		case tx := <-tc.recvTxC:
+		case tx := <-tc.RecvTxC:
 			tc.appendTx(tx)
 
 		case <-tc.timerC:
@@ -91,12 +91,12 @@ func (tc *TxCache) appendTx(tx *types.Transaction) {
 func (tc *TxCache) postTxSet() {
 	dst := make([]*types.Transaction, len(tc.txSet))
 	copy(dst, tc.txSet)
-	tc.txSetC <- dst
+	tc.TxSetC <- dst
 	tc.txSet = make([]*types.Transaction, 0)
 }
 
 func (tc *TxCache) IsFull() bool {
-	return len(tc.recvTxC) == DefaultTxCacheSize
+	return len(tc.RecvTxC) == DefaultTxCacheSize
 }
 
 func (tc *TxCache) startTxSetTimer() {

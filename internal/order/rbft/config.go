@@ -10,7 +10,6 @@ import (
 	rbfttypes "github.com/axiomesh/axiom-bft/types"
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/internal/order"
-	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -74,7 +73,7 @@ func generateRbftConfig(config *order.Config) (rbft.Config[types.Transaction, *t
 	}
 	defaultConfig.IsNew = config.IsNew
 	defaultConfig.Applied = config.Applied
-	defaultConfig.Logger = &Logger{config.Logger}
+	defaultConfig.Logger = &order.Logger{FieldLogger: config.Logger}
 	defaultConfig.IsTimed = readConfig.TimedGenBlock.Enable
 
 	if readConfig.TimedGenBlock.NoTxBatchTimeout > 0 {
@@ -83,11 +82,11 @@ func generateRbftConfig(config *order.Config) (rbft.Config[types.Transaction, *t
 	if readConfig.Rbft.CheckInterval > 0 {
 		defaultConfig.CheckPoolTimeout = readConfig.Rbft.CheckInterval.ToDuration()
 	}
-	if readConfig.Rbft.ToleranceRemoveTime > 0 {
-		defaultConfig.CheckPoolRemoveTimeout = readConfig.Rbft.ToleranceRemoveTime.ToDuration()
+	if readConfig.Mempool.ToleranceRemoveTime > 0 {
+		defaultConfig.CheckPoolRemoveTimeout = readConfig.Mempool.ToleranceRemoveTime.ToDuration()
 	}
-	if readConfig.Rbft.SetSize > 0 {
-		defaultConfig.SetSize = readConfig.Rbft.SetSize
+	if readConfig.TxCache.SetSize > 0 {
+		defaultConfig.SetSize = readConfig.TxCache.SetSize
 	}
 	if readConfig.Rbft.VCPeriod > 0 {
 		defaultConfig.VCPeriod = readConfig.Rbft.VCPeriod
@@ -101,8 +100,8 @@ func generateRbftConfig(config *order.Config) (rbft.Config[types.Transaction, *t
 	if readConfig.Rbft.Timeout.SyncInterval > 0 {
 		defaultConfig.SyncStateRestartTimeout = readConfig.Rbft.Timeout.SyncInterval.ToDuration()
 	}
-	if readConfig.Rbft.Timeout.Batch > 0 {
-		defaultConfig.BatchTimeout = readConfig.Rbft.Timeout.Batch.ToDuration()
+	if readConfig.Mempool.BatchTimeout > 0 {
+		defaultConfig.BatchTimeout = readConfig.Mempool.BatchTimeout.ToDuration()
 	}
 	if readConfig.Rbft.Timeout.Request > 0 {
 		defaultConfig.RequestTimeout = readConfig.Rbft.Timeout.Request.ToDuration()
@@ -119,8 +118,8 @@ func generateRbftConfig(config *order.Config) (rbft.Config[types.Transaction, *t
 	if readConfig.Rbft.Timeout.CleanViewChange > 0 {
 		defaultConfig.CleanVCTimeout = readConfig.Rbft.Timeout.CleanViewChange.ToDuration()
 	}
-	if readConfig.Rbft.Timeout.Set > 0 {
-		defaultConfig.SetTimeout = readConfig.Rbft.Timeout.Set.ToDuration()
+	if readConfig.TxCache.SetTimeout > 0 {
+		defaultConfig.SetTimeout = readConfig.TxCache.SetTimeout.ToDuration()
 	}
 	fn := func(addr string) uint64 {
 		return config.GetAccountNonce(types.NewAddressByStr(addr))
@@ -128,12 +127,12 @@ func generateRbftConfig(config *order.Config) (rbft.Config[types.Transaction, *t
 	mempoolConf := mempool.Config{
 		ID:                  config.ID,
 		Logger:              defaultConfig.Logger,
-		BatchSize:           readConfig.Rbft.BatchSize,
-		PoolSize:            readConfig.Rbft.PoolSize,
-		BatchMemLimit:       readConfig.Rbft.BatchMemLimit,
-		BatchMaxMem:         readConfig.Rbft.BatchMaxMem,
-		ToleranceTime:       readConfig.Rbft.ToleranceTime.ToDuration(),
-		ToleranceRemoveTime: readConfig.Rbft.ToleranceRemoveTime.ToDuration(),
+		BatchSize:           readConfig.Mempool.BatchSize,
+		PoolSize:            readConfig.Mempool.PoolSize,
+		BatchMemLimit:       readConfig.Mempool.BatchMemLimit,
+		BatchMaxMem:         readConfig.Mempool.BatchMaxMem,
+		ToleranceTime:       readConfig.Mempool.ToleranceTime.ToDuration(),
+		ToleranceRemoveTime: readConfig.Mempool.ToleranceRemoveTime.ToDuration(),
 		GetAccountNonce:     fn,
 		IsTimed:             readConfig.TimedGenBlock.Enable,
 	}
@@ -157,29 +156,4 @@ func sortPeers(nodes map[uint64]*types.VpInfo) ([]*rbfttypes.Peer, error) {
 		return peers[i].ID < peers[j].ID
 	})
 	return peers, nil
-}
-
-type Logger struct {
-	logrus.FieldLogger
-}
-
-// Trace implements rbft.Logger.
-func (lg *Logger) Trace(name string, stage string, content any) {
-	lg.Info(name, stage, content)
-}
-
-func (lg *Logger) Critical(v ...any) {
-	lg.Info(v...)
-}
-
-func (lg *Logger) Criticalf(format string, v ...any) {
-	lg.Infof(format, v...)
-}
-
-func (lg *Logger) Notice(v ...any) {
-	lg.Info(v...)
-}
-
-func (lg *Logger) Noticef(format string, v ...any) {
-	lg.Infof(format, v...)
 }

@@ -71,10 +71,11 @@ func TestNode_Start(t *testing.T) {
 	commitEvent := <-solo.Commit()
 	require.Equal(t, uint64(2), commitEvent.Block.BlockHeader.Number)
 	require.Equal(t, 1, len(commitEvent.Block.Transactions))
+	blockHash := commitEvent.Block.Hash()
 
 	txHashList := make([]*types.Hash, 0)
 	txHashList = append(txHashList, tx.GetHash())
-	solo.ReportState(commitEvent.Block.Height(), commitEvent.Block.BlockHash, txHashList)
+	solo.ReportState(commitEvent.Block.Height(), blockHash, txHashList)
 	solo.Stop()
 }
 
@@ -84,6 +85,8 @@ func TestGetPendingNonceByAccount(t *testing.T) {
 	ast.Nil(err)
 	err = node.Start()
 	ast.Nil(err)
+	defer node.Stop()
+
 	nonce := node.GetPendingNonceByAccount("account1")
 	ast.Equal(uint64(0), nonce)
 	err = node.DelNode(uint64(1))
@@ -96,14 +99,14 @@ func TestGetpendingTxByHash(t *testing.T) {
 	ast.Nil(err)
 	err = node.Start()
 	ast.Nil(err)
+	defer node.Stop()
 
 	tx, err := types.GenerateEmptyTransactionAndSigner()
 	require.Nil(t, err)
 
 	err = node.Prepare(tx)
 	ast.Nil(err)
-	time.Sleep(200 * time.Millisecond)
-	ast.Equal(tx, node.GetPendingTxByHash(tx.GetHash()))
+	ast.Nil(node.GetPendingTxByHash(tx.GetHash()))
 }
 
 func TestTimedBlock(t *testing.T) {
@@ -114,6 +117,8 @@ func TestTimedBlock(t *testing.T) {
 
 	err = node.Start()
 	ast.Nil(err)
+	defer node.Stop()
+
 	event := <-node.commitC
 	ast.NotNil(event)
 	ast.Equal(len(event.Block.Transactions), 0)

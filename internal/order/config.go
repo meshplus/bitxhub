@@ -142,3 +142,28 @@ func GenerateConfig(opts ...Option) (*Config, error) {
 
 	return config, nil
 }
+
+type Logger struct {
+	logrus.FieldLogger
+}
+
+// Trace implements rbft.Logger.
+func (lg *Logger) Trace(name string, stage string, content any) {
+	lg.Info(name, stage, content)
+}
+
+func (lg *Logger) Critical(v ...any) {
+	lg.Info(v...)
+}
+
+func (lg *Logger) Criticalf(format string, v ...any) {
+	lg.Infof(format, v...)
+}
+
+func (lg *Logger) Notice(v ...any) {
+	lg.Info(v...)
+}
+
+func (lg *Logger) Noticef(format string, v ...any) {
+	lg.Infof(format, v...)
+}

@@ -34,12 +34,12 @@ func (tt *singleTimer) isTimerActive() bool {
 // timerManager manages consensus used timers.
 type timerManager struct {
 	timersM   map[string]*singleTimer
-	eventChan chan<- batchTimeoutEvent
+	eventChan chan<- consensusEvent
 	logger    logrus.FieldLogger
 }
 
 // NewTimerManager news a timer with default timeout.
-func NewTimerManager(ch chan batchTimeoutEvent, logger logrus.FieldLogger) *timerManager {
+func NewTimerManager(ch chan consensusEvent, logger logrus.FieldLogger) *timerManager {
 	return &timerManager{
 		timersM:   make(map[string]*singleTimer),
 		logger:    logger,
