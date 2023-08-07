@@ -39,6 +39,10 @@ const (
 	PprofModeCpu     = "cpu"
 	PprofTypeHTTP    = "http"
 	PprofTypeRuntime = "runtime"
+
+	P2PPipeBroadcastSimple = "simple"
+	P2PPipeBroadcastGossip = "gossip"
+	P2PPipeBroadcastFlood  = "flood"
 )
 
 var (

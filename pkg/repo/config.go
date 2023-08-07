@@ -90,12 +90,17 @@ type JsonRPC struct {
 	Limiter    JLimiter `mapstructure:"limiter" toml:"limiter"`
 }
 
+type P2PPipe struct {
+	BroadcastType       string `mapstructure:"broadcast_type" toml:"broadcast_type"`
+	ReceiveMsgCacheSize int    `mapstructure:"receive_msg_cache_size" toml:"receive_msg_cache_size"`
+}
+
 type P2P struct {
-	Security    string     `mapstructure:"security" toml:"security"`
-	SendTimeout Duration   `mapstructure:"send_timeout" toml:"send_timeout"`
-	ReadTimeout Duration   `mapstructure:"read_timeout" toml:"read_timeout"`
-	Limit       P2pLimiter `mapstructure:"limiter" toml:"limiter"`
-	Ping        Ping       `mapstructure:"ping" toml:"ping"`
+	Security    string   `mapstructure:"security" toml:"security"`
+	SendTimeout Duration `mapstructure:"send_timeout" toml:"send_timeout"`
+	ReadTimeout Duration `mapstructure:"read_timeout" toml:"read_timeout"`
+	Ping        Ping     `mapstructure:"ping" toml:"ping"`
+	Pipe        P2PPipe  `mapstructure:"pipe" toml:"pipe"`
 }
 
 type Monitor struct {
@@ -113,12 +118,6 @@ type JLimiter struct {
 	Interval Duration `mapstructure:"interval" toml:"interval"`
 	Quantum  int64    `mapstructure:"quantum" toml:"quantum"`
 	Capacity int64    `mapstructure:"capacity" toml:"capacity"`
-}
-
-type P2pLimiter struct {
-	Enable bool  `mapstructure:"enable" toml:"enable"`
-	Limit  int64 `mapstructure:"limit" toml:"limit"`
-	Burst  int64 `mapstructure:"burst" toml:"burst"`
 }
 
 type Ping struct {
@@ -211,14 +210,13 @@ func DefaultConfig(repoRoot string) *Config {
 			Security:    P2PSecurityTLS,
 			SendTimeout: Duration(5 * time.Second),
 			ReadTimeout: Duration(5 * time.Second),
-			Limit: P2pLimiter{
-				Enable: false,
-				Limit:  10000,
-				Burst:  10000,
-			},
 			Ping: Ping{
 				Enable:   false,
 				Duration: Duration(15 * time.Second),
+			},
+			Pipe: P2PPipe{
+				BroadcastType:       P2PPipeBroadcastGossip,
+				ReceiveMsgCacheSize: 100,
 			},
 		},
 		Order: Order{

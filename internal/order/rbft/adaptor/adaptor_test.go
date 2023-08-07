@@ -21,6 +21,8 @@ func mockAdaptor(ctrl *gomock.Controller, kvType string, t *testing.T) *RBFTAdap
 	_, cancel := context.WithCancel(context.Background())
 	stack, err := NewRBFTAdaptor(testutil.MockOrderConfig(logger, ctrl, kvType, t), blockC, cancel)
 	assert.Nil(t, err)
+	stack.msgPipe, err = stack.config.PeerMgr.CreatePipe(context.Background(), "test_pipe")
+	assert.Nil(t, err)
 	return stack
 }
 

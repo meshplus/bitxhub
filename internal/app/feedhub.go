@@ -33,11 +33,9 @@ func (bxh *Axiom) listenEvent() {
 	configCh := make(chan *repo.Repo)
 
 	blockSub := bxh.BlockExecutor.SubscribeBlockEvent(blockCh)
-	orderMsgSub := bxh.PeerMgr.SubscribeOrderMessage(orderMsgCh)
 	configSub := bxh.repo.SubscribeConfigChange(configCh)
 
 	defer blockSub.Unsubscribe()
-	defer orderMsgSub.Unsubscribe()
 	defer configSub.Unsubscribe()
 
 	for {
