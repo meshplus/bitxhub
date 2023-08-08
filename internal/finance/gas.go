@@ -48,7 +48,7 @@ func (gas *Gas) GetGasPrice() (uint64, error) {
 		gas.logger.Errorf("gas price is out of range, parent gas price is %d, min is %d, max is %d", parentGasPrice, min, max)
 		return 0, ErrGasOutOfRange
 	}
-	total := gas.repo.Config.Order.Txpool.BatchSize
+	total := int(gas.repo.OrderConfig.Mempool.BatchSize)
 	currentTxs := len(block.Transactions)
 	if currentTxs > total {
 		return 0, ErrTxsOutOfRange

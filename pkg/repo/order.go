@@ -34,8 +34,6 @@ type Mempool struct {
 	BatchSize           uint64   `mapstructure:"batch_size" toml:"batch_size"`
 	ToleranceTime       Duration `mapstructure:"tolerance_time" toml:"tolerance_time"`
 	ToleranceRemoveTime Duration `mapstructure:"tolerance_remove_time" toml:"tolerance_remove_time"`
-	BatchMemLimit       bool     `mapstructure:"batch_mem_limit" toml:"batch_mem_limit"`
-	BatchMaxMem         uint64   `mapstructure:"batch_max_mem" toml:"batch_max_mem"`
 }
 
 type TxCache struct {
