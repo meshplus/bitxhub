@@ -36,3 +36,4 @@ dist
 storage
 go.work
 go.work.sum
+.env

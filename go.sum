@@ -64,8 +64,8 @@ github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kd
 github.com/armon/circbuf v0.0.0-20150827004946-bbbad097214e/go.mod h1:3U/XgcO3hCbHZ8TKRvWD2dDTCfh9M9ya+I9JpbB7O8o=
 github.com/armon/go-metrics v0.0.0-20180917152333-f0300d1749da/go.mod h1:Q73ZrmVTwzkszR9V5SSuryQ31EELlFMUz1kKyl939pY=
 github.com/armon/go-radix v0.0.0-20180808171621-7fddfc383310/go.mod h1:ufUuZ+zHj4x4TnLV4JWEpy2hxWSpsRywHrMgIH9cCH8=
-github.com/axiomesh/axiom-bft v0.0.2-0.20230804072848-7d44ef514752 h1:AszdRfdf2IbmsHr+6k6H4W5XQwjS+oWub4owzgkAT4o=
-github.com/axiomesh/axiom-bft v0.0.2-0.20230804072848-7d44ef514752/go.mod h1:j/sHRBiupxvBACdzkponz8JLkw1SdyZYSyggrPyi4Qc=
+github.com/axiomesh/axiom-bft v0.0.2-0.20230807082613-73ab93091eb9 h1:G73QJENe+t7JuturYFOgZn4W2nbBGgM2XwBEPWWt1CE=
+github.com/axiomesh/axiom-bft v0.0.2-0.20230807082613-73ab93091eb9/go.mod h1:j/sHRBiupxvBACdzkponz8JLkw1SdyZYSyggrPyi4Qc=
 github.com/axiomesh/axiom-kit v0.0.2-0.20230731140325-e1c65a89cd36 h1:epot9TdqnNwnVLro0XbhYvMrEt9qoA7zEQRrBGffOko=
 github.com/axiomesh/axiom-kit v0.0.2-0.20230731140325-e1c65a89cd36/go.mod h1:94RyUIr77+S+npW85SP51rZc4SnOqSqWjmg5PgNFiKo=
 github.com/axiomesh/axiom-p2p v0.0.2-0.20230807023318-0fa482e5783f h1:uxYsTdZbLj2l9ndBFkMewZj4hek22KaHp+2316GBZPc=
