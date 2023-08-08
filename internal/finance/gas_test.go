@@ -80,7 +80,7 @@ func generateMockConfig(t *testing.T) *repo.Repo {
 }
 
 func checkResult(t *testing.T, block *types.Block, config *repo.Repo, parentGasPrice int64, gas uint64) uint64 {
-	percentage := 2 * (float64(len(block.Transactions)) - float64(config.Config.Order.Txpool.BatchSize)/2) / float64(config.Config.Order.Txpool.BatchSize)
+	percentage := 2 * (float64(len(block.Transactions)) - float64(config.OrderConfig.Mempool.BatchSize)/2) / float64(config.OrderConfig.Mempool.BatchSize)
 	actualGas := uint64(float64(parentGasPrice) * (1 + percentage*config.Config.Genesis.GasChangeRate))
 	if actualGas > config.Config.Genesis.MaxGasPrice {
 		actualGas = config.Config.Genesis.MaxGasPrice

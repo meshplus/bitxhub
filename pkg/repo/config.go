@@ -168,8 +168,7 @@ type Txpool struct {
 }
 
 type Order struct {
-	Type   string `mapstructure:"type" toml:"type"`
-	Txpool Txpool `mapstructure:"txpool" toml:"txpool"`
+	Type string `mapstructure:"type" toml:"type"`
 }
 
 type Ledger struct {
@@ -221,10 +220,6 @@ func DefaultConfig(repoRoot string) *Config {
 		},
 		Order: Order{
 			Type: "rbft",
-			Txpool: Txpool{
-				BatchSize:    500,
-				BatchTimeout: Duration(500 * time.Millisecond),
-			},
 		},
 		Ledger: Ledger{
 			Kv: "leveldb",
