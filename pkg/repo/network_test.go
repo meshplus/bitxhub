@@ -19,6 +19,8 @@ func TestNetworkConfig(t *testing.T) {
 	}
 	cfg, err := LoadNetworkConfig(path, genesis)
 	require.Nil(t, err)
+	err = cfg.updateLocalAddr()
+	require.Nil(t, err)
 	peers, err := cfg.GetNetworkPeers()
 	require.Nil(t, err)
 	require.Equal(t, 4, len(peers))

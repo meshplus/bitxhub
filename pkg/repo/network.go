@@ -70,43 +70,13 @@ func LoadNetworkConfig(repoRoot string, genesis Genesis) (*NetworkConfig, error)
 		cfgPath := path.Join(repoRoot, networkCfgFileName)
 		existConfig := fileutil.Exist(cfgPath)
 		if !existConfig {
-			if err := writeConfig(cfgPath, cfg); err != nil {
+			if err := writeConfigWithEnv(cfgPath, cfg); err != nil {
 				return nil, errors.Wrap(err, "failed to build default network config")
 			}
 		} else {
-			if err := readConfig(cfgPath, cfg); err != nil {
+			if err := readConfigFromFile(cfgPath, cfg); err != nil {
 				return nil, err
 			}
-			checkReaptAddr := make(map[string]uint64)
-			for _, node := range cfg.Nodes {
-				if node.ID == cfg.ID {
-					if len(node.Hosts) == 0 {
-						return nil, fmt.Errorf("no hosts found by node:%d", node.ID)
-					}
-					cfg.LocalAddr = node.Hosts[0]
-					addr, err := ma.NewMultiaddr(fmt.Sprintf("%s%s", node.Hosts[0], node.Pid))
-					if err != nil {
-						return nil, fmt.Errorf("new multiaddr: %w", err)
-					}
-					cfg.LocalAddr = strings.ReplaceAll(cfg.LocalAddr, ma.Split(addr)[0].String(), "/ip4/0.0.0.0")
-				}
-				if _, ok := checkReaptAddr[node.Hosts[0]]; !ok {
-					checkReaptAddr[node.Hosts[0]] = node.ID
-				} else {
-					return nil, errors.New("reapt address")
-				}
-			}
-
-			if cfg.LocalAddr == "" {
-				return nil, errors.New("lack of local address")
-			}
-
-			idx := strings.LastIndex(cfg.LocalAddr, "/p2p/")
-			if idx == -1 {
-				return nil, errors.New("pid is not existed in bootstrap")
-			}
-
-			cfg.LocalAddr = cfg.LocalAddr[:idx]
 		}
 
 		return cfg, nil
@@ -116,6 +86,40 @@ func LoadNetworkConfig(repoRoot string, genesis Genesis) (*NetworkConfig, error)
 	}
 	cfg.Genesis = genesis
 	return cfg, nil
+}
+
+func (config *NetworkConfig) updateLocalAddr() error {
+	checkReaptAddr := make(map[string]uint64)
+	for _, node := range config.Nodes {
+		if node.ID == config.ID {
+			if len(node.Hosts) == 0 {
+				return fmt.Errorf("no hosts found by node:%d", node.ID)
+			}
+			config.LocalAddr = node.Hosts[0]
+			addr, err := ma.NewMultiaddr(fmt.Sprintf("%s%s", node.Hosts[0], node.Pid))
+			if err != nil {
+				return fmt.Errorf("new multiaddr: %w", err)
+			}
+			config.LocalAddr = strings.ReplaceAll(config.LocalAddr, ma.Split(addr)[0].String(), "/ip4/0.0.0.0")
+		}
+		if _, ok := checkReaptAddr[node.Hosts[0]]; !ok {
+			checkReaptAddr[node.Hosts[0]] = node.ID
+		} else {
+			return errors.New("reapt address")
+		}
+	}
+
+	if config.LocalAddr == "" {
+		return errors.New("lack of local address")
+	}
+
+	idx := strings.LastIndex(config.LocalAddr, "/p2p/")
+	if idx == -1 {
+		return errors.New("pid is not existed in bootstrap")
+	}
+
+	config.LocalAddr = config.LocalAddr[:idx]
+	return nil
 }
 
 // GetVpInfos gets vp info from network config
@@ -198,5 +202,5 @@ func RewriteNetworkConfig(repoRoot string, networkConfig *NetworkConfig, infos m
 		nodes = append(nodes, node)
 	}
 	networkConfig.Nodes = nodes
-	return writeConfig(path.Join(repoRoot, networkCfgFileName), networkConfig)
+	return writeConfigWithEnv(path.Join(repoRoot, networkCfgFileName), networkConfig)
 }
