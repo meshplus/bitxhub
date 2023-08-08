@@ -41,9 +41,13 @@ type Node struct {
 	txFeed event.Feed
 }
 
-// GetPendingTxByHash mempool is always empty in solo
-func (n *Node) GetPendingTxByHash(_ *types.Hash) *types.Transaction {
-	return nil
+func (n *Node) GetPendingTxByHash(hash *types.Hash) *types.Transaction {
+	request := &getTxReq{
+		Hash: hash.String(),
+		Resp: make(chan *types.Transaction),
+	}
+	n.recvCh <- request
+	return <-request.Resp
 }
 
 func (n *Node) Start() error {
@@ -229,6 +233,16 @@ func (n *Node) listenEvent() {
 					n.logger.Errorf("Process batch timeout failed: %v", err)
 					continue
 				}
+			case *getTxReq:
+				txData := n.mempool.GetPendingTxByHash(e.Hash)
+				tx := &types.Transaction{}
+				if txData != nil {
+					if err := tx.RbftUnmarshal(txData); err != nil {
+						n.logger.Errorf("Unmarshal tx failed: %v", err)
+						continue
+					}
+				}
+				e.Resp <- tx
 			}
 		}
 	}

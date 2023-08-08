@@ -7,3 +7,8 @@ type chainState struct {
 	BlockHash  *types.Hash
 	TxHashList []*types.Hash
 }
+
+type getTxReq struct {
+	Hash string
+	Resp chan *types.Transaction
+}
