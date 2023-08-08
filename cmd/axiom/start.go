@@ -13,6 +13,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/axiomesh/axiom"
+	"github.com/axiomesh/axiom-kit/fileutil"
 	"github.com/axiomesh/axiom-kit/log"
 	types2 "github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/api/jsonrpc"
@@ -28,9 +29,17 @@ func start(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	existConfig := fileutil.Exist(p)
 	r, err := repo.Load(p)
 	if err != nil {
 		return err
+	}
+	if !existConfig {
+		// not generate config, start by solo
+		r.Config.Order.Type = repo.OrderTypeSolo
+		if err := r.Flush(); err != nil {
+			return err
+		}
 	}
 
 	err = log.Initialize(

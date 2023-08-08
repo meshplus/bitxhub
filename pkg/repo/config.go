@@ -2,19 +2,13 @@ package repo
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path"
-	"path/filepath"
 	"reflect"
-	"strconv"
-	"strings"
 	"time"
 
-	"github.com/mitchellh/go-homedir"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
-	"github.com/spf13/viper"
 
 	"github.com/axiomesh/axiom-kit/fileutil"
 )
@@ -295,14 +289,14 @@ func LoadConfig(repoRoot string) (*Config, error) {
 				return nil, errors.Wrap(err, "failed to build default config")
 			}
 
-			if err := writeConfig(cfgPath, cfg); err != nil {
+			if err := writeConfigWithEnv(cfgPath, cfg); err != nil {
 				return nil, errors.Wrap(err, "failed to build default config")
 			}
 		} else {
 			if err := CheckWritable(rootPath); err != nil {
 				return nil, err
 			}
-			if err = readConfig(cfgPath, cfg); err != nil {
+			if err = readConfigFromFile(cfgPath, cfg); err != nil {
 				return nil, err
 			}
 		}
@@ -313,94 +307,4 @@ func LoadConfig(repoRoot string) (*Config, error) {
 		return nil, errors.Wrap(err, "failed to load config")
 	}
 	return cfg, nil
-}
-
-func LoadRepoRootFromEnv(repoRoot string) (string, error) {
-	if repoRoot != "" {
-		return repoRoot, nil
-	}
-	repoRoot = os.Getenv(rootPathEnvVar)
-	var err error
-	if len(repoRoot) == 0 {
-		repoRoot, err = homedir.Expand(defaultRepoRoot)
-	}
-	return repoRoot, err
-}
-
-func readConfig(cfgFilePath string, config any) error {
-	vp := viper.New()
-	vp.SetConfigFile(cfgFilePath)
-	vp.SetConfigType("toml")
-	vp.AutomaticEnv()
-	vp.SetEnvPrefix("AXIOM")
-	replacer := strings.NewReplacer(".", "_")
-	vp.SetEnvKeyReplacer(replacer)
-	err := vp.ReadInConfig()
-	if err != nil {
-		return err
-	}
-
-	if err := vp.Unmarshal(config, viper.DecodeHook(mapstructure.ComposeDecodeHookFunc(
-		StringToTimeDurationHookFunc(),
-		mapstructure.StringToSliceHookFunc(";"),
-	))); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func WritePid(rootPath string) error {
-	pid := os.Getpid()
-	pidStr := strconv.Itoa(pid)
-	if err := os.WriteFile(filepath.Join(rootPath, pidFileName), []byte(pidStr), 0755); err != nil {
-		return errors.Wrap(err, "failed to write pid file")
-	}
-	return nil
-}
-
-func RemovePID(rootPath string) error {
-	return os.Remove(filepath.Join(rootPath, pidFileName))
-}
-
-func WriteDebugInfo(rootPath string, debugInfo any) error {
-	p := filepath.Join(rootPath, debugFileName)
-	_ = os.Remove(p)
-
-	raw, err := json.Marshal(debugInfo)
-	if err != nil {
-		return err
-	}
-	if err := os.WriteFile(p, raw, 0755); err != nil {
-		return errors.Wrap(err, "failed to write debug info file")
-	}
-	return nil
-}
-
-func CheckWritable(dir string) error {
-	_, err := os.Stat(dir)
-	if err == nil {
-		// dir exists, make sure we can write to it
-		testfile := filepath.Join(dir, "test")
-		fi, err := os.Create(testfile)
-		if err != nil {
-			if os.IsPermission(err) {
-				return fmt.Errorf("%s is not writeable by the current user", dir)
-			}
-			return fmt.Errorf("unexpected error while checking writeablility of repo root: %s", err)
-		}
-		fi.Close()
-		return os.Remove(testfile)
-	}
-
-	if os.IsNotExist(err) {
-		// dir doesn't exist, check that we can create it
-		return os.Mkdir(dir, 0775)
-	}
-
-	if os.IsPermission(err) {
-		return fmt.Errorf("cannot write to %s, incorrect permissions", err)
-	}
-
-	return err
 }

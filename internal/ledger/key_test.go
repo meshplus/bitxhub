@@ -3,7 +3,7 @@ package ledger
 import (
 	"testing"
 
-	"github.com/magiconair/properties/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCompositeKey(t *testing.T) {

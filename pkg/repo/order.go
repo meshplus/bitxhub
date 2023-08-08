@@ -109,11 +109,11 @@ func LoadOrderConfig(repoRoot string) (*OrderConfig, error) {
 		cfgPath := path.Join(repoRoot, orderCfgFileName)
 		existConfig := fileutil.Exist(cfgPath)
 		if !existConfig {
-			if err := writeConfig(cfgPath, cfg); err != nil {
+			if err := writeConfigWithEnv(cfgPath, cfg); err != nil {
 				return nil, errors.Wrap(err, "failed to build default order config")
 			}
 		} else {
-			if err := readConfig(cfgPath, cfg); err != nil {
+			if err := readConfigFromFile(cfgPath, cfg); err != nil {
 				return nil, err
 			}
 		}
