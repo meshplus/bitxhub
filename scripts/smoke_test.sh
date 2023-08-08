@@ -1,6 +1,6 @@
 set -e
 source x.sh
-
+source smoke_env.sh
 
 CURRENT_PATH=$(pwd)
 function printHelp() {
