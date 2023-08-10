@@ -1,6 +1,7 @@
 package solo
 
 import (
+	"math/big"
 	"testing"
 	"time"
 
@@ -124,4 +125,93 @@ func TestTimedBlock(t *testing.T) {
 	event := <-node.commitC
 	ast.NotNil(event)
 	ast.Equal(len(event.Block.Transactions), 0)
+}
+
+func TestNode_ReportState(t *testing.T) {
+	ast := assert.New(t)
+	node, err := mockSoloNode(t, false)
+	ast.Nil(err)
+
+	err = node.Start()
+	ast.Nil(err)
+	defer node.Stop()
+	node.batchDigestM[10] = "test"
+	node.ReportState(10, types.NewHashByStr("0x123"), []*types.Hash{})
+	time.Sleep(10 * time.Millisecond)
+	ast.Equal(0, len(node.batchDigestM))
+
+	txList, signer := prepareMultiTx(t, 10)
+	ast.Equal(10, len(txList))
+	for _, tx := range txList {
+		err = node.Prepare(tx)
+		ast.Nil(err)
+		// sleep to make sure the tx is generated to the batch
+		time.Sleep(batchTimeout + 10*time.Millisecond)
+	}
+	t.Run("test pool full", func(t *testing.T) {
+		ast.Equal(10, len(node.batchDigestM))
+		tx11, err := types.GenerateTransactionWithSigner(uint64(11),
+			types.NewAddressByStr("0xdAC17F958D2ee523a2206206994597C13D831ec7"), big.NewInt(0), nil, signer)
+
+		ast.Nil(err)
+		err = node.Prepare(tx11)
+		ast.Nil(err)
+		time.Sleep(100 * time.Millisecond)
+		ast.True(node.isPoolFull())
+		ast.Equal(10, len(node.batchDigestM), "the pool should be full, tx11 is not add in mempool successfully")
+
+		tx12, err := types.GenerateTransactionWithSigner(uint64(12),
+			types.NewAddressByStr("0xdAC17F958D2ee523a2206206994597C13D831ec7"), big.NewInt(0), nil, signer)
+
+		err = node.Prepare(tx12)
+		ast.NotNil(err)
+		ast.Contains(err.Error(), ErrPoolFull)
+	})
+
+	ast.NotNil(node.mempool.GetPendingTxByHash(txList[9].RbftGetTxHash()), "tx10 should be in mempool")
+	// trigger the report state
+	node.ReportState(10, types.NewHashByStr("0x123"), []*types.Hash{txList[9].GetHash()})
+	time.Sleep(50 * time.Millisecond)
+	ast.Equal(0, len(node.batchDigestM))
+	ast.Nil(node.mempool.GetPendingTxByHash(txList[9].RbftGetTxHash()), "tx10 should be removed from mempool")
+
+}
+
+func prepareMultiTx(t *testing.T, count int) ([]*types.Transaction, *types.Signer) {
+	signer, err := types.GenerateSigner()
+	require.Nil(t, err)
+	txList := make([]*types.Transaction, 0)
+	for i := 0; i < count; i++ {
+		tx, err := types.GenerateTransactionWithSigner(uint64(i),
+			types.NewAddressByStr("0xdAC17F958D2ee523a2206206994597C13D831ec7"), big.NewInt(0), nil, signer)
+		require.Nil(t, err)
+		txList = append(txList, tx)
+	}
+	return txList, signer
+}
+
+func TestNode_RemoveTxFromPool(t *testing.T) {
+	ast := assert.New(t)
+	node, err := mockSoloNode(t, false)
+	ast.Nil(err)
+
+	err = node.Start()
+	ast.Nil(err)
+	defer node.Stop()
+
+	txList, _ := prepareMultiTx(t, 10)
+	// remove the first tx
+	txList = txList[1:]
+	ast.Equal(9, len(txList))
+	for _, tx := range txList {
+		err = node.Prepare(tx)
+		ast.Nil(err)
+	}
+	// lack nonce 0, so the txs will not be generated to the batch
+	ast.Equal(0, len(node.batchDigestM))
+	ast.NotNil(node.mempool.GetPendingTxByHash(txList[8].RbftGetTxHash()), "tx9 should be in mempool")
+	// sleep to make sure trigger the remove tx from pool
+	time.Sleep(2*removeTxTimeout + 50*time.Millisecond)
+
+	ast.Nil(node.mempool.GetPendingTxByHash(txList[8].RbftGetTxHash()), "tx9 should be removed from mempool")
 }

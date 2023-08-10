@@ -110,7 +110,7 @@ func newNode(opts ...order.Option) (*Node, error) {
 		cancel:            cancel,
 		txCache:           txcache.NewTxCache(rbftConfig.SetTimeout, uint64(rbftConfig.SetSize), config.Logger),
 		peerMgr:           config.PeerMgr,
-		checkpoint:        config.Config.Rbft.CheckpointPeriod,
+		checkpoint:        config.Config.Mempool.CheckpointPeriod,
 	}, nil
 }
 

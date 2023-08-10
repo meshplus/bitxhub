@@ -34,6 +34,7 @@ type Mempool struct {
 	BatchSize           uint64   `mapstructure:"batch_size" toml:"batch_size"`
 	ToleranceTime       Duration `mapstructure:"tolerance_time" toml:"tolerance_time"`
 	ToleranceRemoveTime Duration `mapstructure:"tolerance_remove_time" toml:"tolerance_remove_time"`
+	CheckpointPeriod    uint64   `mapstructure:"checkpoint_period" toml:"checkpoint_period"`
 }
 
 type TxCache struct {
@@ -42,10 +43,9 @@ type TxCache struct {
 }
 
 type RBFT struct {
-	CheckInterval    Duration    `mapstructure:"check_interval" toml:"check_interval"`
-	VCPeriod         uint64      `mapstructure:"vc_period" toml:"vc_period"`
-	CheckpointPeriod uint64      `mapstructure:"checkpoint_period" toml:"checkpoint_period"`
-	Timeout          RBFTTimeout `mapstructure:"timeout" toml:"timeout"`
+	CheckInterval Duration    `mapstructure:"check_interval" toml:"check_interval"`
+	VCPeriod      uint64      `mapstructure:"vc_period" toml:"vc_period"`
+	Timeout       RBFTTimeout `mapstructure:"timeout" toml:"timeout"`
 }
 
 type RBFTTimeout struct {
@@ -78,15 +78,15 @@ func DefaultOrderConfig() *OrderConfig {
 			BatchSize:           500,
 			ToleranceTime:       Duration(5 * time.Minute),
 			ToleranceRemoveTime: Duration(15 * time.Minute),
+			CheckpointPeriod:    10,
 		},
 		TxCache: TxCache{
 			SetSize:    25,
 			SetTimeout: Duration(100 * time.Millisecond),
 		},
 		Rbft: RBFT{
-			CheckInterval:    Duration(3 * time.Minute),
-			VCPeriod:         0,
-			CheckpointPeriod: uint64(10),
+			CheckInterval: Duration(3 * time.Minute),
+			VCPeriod:      0,
 			Timeout: RBFTTimeout{
 				SyncState:        Duration(3 * time.Second),
 				SyncInterval:     Duration(1 * time.Minute),

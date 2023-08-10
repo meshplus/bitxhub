@@ -9,8 +9,9 @@ import (
 )
 
 const (
-	Batch     = "Batch"
-	NoTxBatch = "NoTxBatch"
+	Batch     batchTimeoutEvent = "Batch"
+	NoTxBatch batchTimeoutEvent = "NoTxBatch"
+	RemoveTx  batchTimeoutEvent = "RemoveTx"
 )
 
 type batchTimeoutEvent string
@@ -18,7 +19,7 @@ type batchTimeoutEvent string
 // singleTimer manages timer with the same timer name, which, we allow different timer with the same timer name, such as:
 // we allow several request timers at the same time, each timer started after received a new request batch
 type singleTimer struct {
-	timerName string             // the unique timer name
+	timerName batchTimeoutEvent  // the unique timer name
 	timeout   time.Duration      // default timeout of this timer
 	isActive  cmap.ConcurrentMap // track all the timers with this timerName if it is active now
 }
@@ -33,7 +34,7 @@ func (tt *singleTimer) isTimerActive() bool {
 
 // timerManager manages consensus used timers.
 type timerManager struct {
-	timersM   map[string]*singleTimer
+	timersM   map[batchTimeoutEvent]*singleTimer
 	eventChan chan<- consensusEvent
 	logger    logrus.FieldLogger
 }
@@ -41,19 +42,21 @@ type timerManager struct {
 // NewTimerManager news a timer with default timeout.
 func NewTimerManager(ch chan consensusEvent, logger logrus.FieldLogger) *timerManager {
 	return &timerManager{
-		timersM:   make(map[string]*singleTimer),
+		timersM:   make(map[batchTimeoutEvent]*singleTimer),
 		logger:    logger,
 		eventChan: ch,
 	}
 }
 
-func (tm *timerManager) newTimer(name string, d time.Duration) {
+func (tm *timerManager) newTimer(name batchTimeoutEvent, d time.Duration) {
 	if d == 0 {
 		switch name {
 		case Batch:
 			d = 500 * time.Millisecond
 		case NoTxBatch:
 			d = 2 * time.Second
+		case RemoveTx:
+			d = 15 * time.Minute
 		}
 	}
 	tm.timersM[name] = &singleTimer{
@@ -71,16 +74,15 @@ func (tm *timerManager) Stop() {
 }
 
 // stopTimer stops all timers with the same timerName.
-func (tm *timerManager) stopTimer(timerName string) {
-	if !tm.containsTimer(timerName) {
-		return
+func (tm *timerManager) stopTimer(timerName batchTimeoutEvent) {
+	if tm.containsTimer(timerName) {
+		tm.timersM[timerName].clear()
+		tm.logger.Debugf("timer %s stopped", timerName)
 	}
-
-	tm.timersM[timerName].clear()
 }
 
 // containsTimer returns true if there exists a timer named timerName
-func (tm *timerManager) containsTimer(timerName string) bool {
+func (tm *timerManager) containsTimer(timerName batchTimeoutEvent) bool {
 	if t, ok := tm.timersM[timerName]; ok {
 		return t.isTimerActive()
 	}
@@ -89,22 +91,21 @@ func (tm *timerManager) containsTimer(timerName string) bool {
 
 // startTimer starts the timer with the given name and default timeout, then sets the event which will be triggered
 // after this timeout
-func (tm *timerManager) startTimer(name string) {
+func (tm *timerManager) startTimer(name batchTimeoutEvent) {
 	tm.stopTimer(name)
-
-	event := batchTimeoutEvent(name)
 
 	timestamp := time.Now().UnixNano()
 	key := strconv.FormatInt(timestamp, 10)
 	tm.timersM[name].isActive.Set(key, true)
 	time.AfterFunc(tm.timersM[name].timeout, func() {
 		if tm.timersM[name].isActive.Has(key) {
-			tm.eventChan <- event
+			tm.eventChan <- name
 		}
 	})
+	tm.logger.Debugf("timer %s started", name)
 }
 
-func (tm *timerManager) isTimerActive(name string) bool {
+func (tm *timerManager) isTimerActive(name batchTimeoutEvent) bool {
 	if t, ok := tm.timersM[name]; ok {
 		return t.isTimerActive()
 	}
