@@ -281,8 +281,8 @@ func (api *FilterAPI) Logs(ctx context.Context, crit FilterCriteria) (*rpc.Subsc
 			select {
 			case logs := <-matchedLogs:
 				for _, log := range logs {
-					//ethLog := formatEthLogs(log)
-					notifier.Notify(rpcSub.ID, &log)
+					ethLog := formatEthLogs(log)
+					notifier.Notify(rpcSub.ID, &ethLog)
 				}
 			case <-rpcSub.Err(): // client send an unsubscribe request
 				logsSub.Unsubscribe()

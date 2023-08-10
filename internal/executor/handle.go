@@ -36,11 +36,11 @@ type BlockWrapper struct {
 	invalidTx map[int]InvalidReason
 }
 
-func (exec *BlockExecutor) applyTransactions(txs []*types.Transaction, invalidTxs map[int]InvalidReason, height uint64, blockHash *types.Hash) []*types.Receipt {
+func (exec *BlockExecutor) applyTransactions(txs []*types.Transaction, invalidTxs map[int]InvalidReason) []*types.Receipt {
 	receipts := make([]*types.Receipt, 0, len(txs))
 
 	for i, tx := range txs {
-		receipts = append(receipts, exec.applyTransaction(i, tx, invalidTxs[i], height, blockHash))
+		receipts = append(receipts, exec.applyTransaction(i, tx, invalidTxs[i]))
 	}
 
 	exec.logger.Debugf("executor executed %d txs", len(txs))
@@ -67,7 +67,7 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	// TODO: CHANGE COINBASE ADDRESSS
 	exec.evm = newEvm(block.Height(), uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateLedger, exec.ledger.ChainLedger, exec.admins[0])
 	exec.ledger.PrepareBlock(block.BlockHash, block.Height())
-	receipts := exec.applyTransactions(block.Transactions, blockWrapper.invalidTx, block.Height(), block.BlockHash)
+	receipts := exec.applyTransactions(block.Transactions, blockWrapper.invalidTx)
 	applyTxsDuration.Observe(float64(time.Since(current)) / float64(time.Second))
 	exec.logger.WithFields(logrus.Fields{
 		"time":  time.Since(current),
@@ -109,6 +109,8 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	}).Debug("block meta")
 	calcBlockSize.Observe(float64(block.Size()))
 	executeBlockDuration.Observe(float64(time.Since(current)) / float64(time.Second))
+
+	exec.getLogsForReceipt(receipts, block.Height(), block.BlockHash)
 
 	data := &ledger.BlockData{
 		Block:      block,
@@ -232,20 +234,20 @@ func (exec *BlockExecutor) postLogsEvent(receipts []*types.Receipt) {
 }
 
 // TODO: process invalidReason
-func (exec *BlockExecutor) applyTransaction(i int, tx *types.Transaction, _ InvalidReason, height uint64, blockHash *types.Hash) *types.Receipt {
+func (exec *BlockExecutor) applyTransaction(i int, tx *types.Transaction, _ InvalidReason) *types.Receipt {
 	defer func() {
 		exec.ledger.SetNonce(tx.GetFrom(), tx.GetNonce()+1)
 		exec.ledger.Finalise(true)
 	}()
 
 	exec.ledger.SetTxContext(tx.GetHash(), i)
-	receipt := exec.applyEthTransaction(i, tx, height, blockHash)
+	receipt := exec.applyEthTransaction(i, tx)
 	exec.payGasFee(tx, receipt.GasUsed)
 
 	return receipt
 }
 
-func (exec *BlockExecutor) applyEthTransaction(_ int, tx *types.Transaction, height uint64, blockHash *types.Hash) *types.Receipt {
+func (exec *BlockExecutor) applyEthTransaction(_ int, tx *types.Transaction) *types.Receipt {
 	receipt := &types.Receipt{
 		Version: tx.GetVersion(),
 		TxHash:  tx.GetHash(),
@@ -307,7 +309,7 @@ func (exec *BlockExecutor) applyEthTransaction(_ int, tx *types.Transaction, hei
 		receipt.ContractAddress = types.NewAddress(crypto.CreateAddress(exec.evm.TxContext.Origin, tx.GetNonce()).Bytes())
 	}
 
-	receipt.EvmLogs = exec.ledger.GetLogs(*tx.GetHash(), height, blockHash)
+	// receipt.EvmLogs = exec.ledger.GetLogs(*tx.GetHash(), height, blockHash)
 	receipt.Bloom = ledger.CreateBloom(ledger.EvmReceipts{receipt})
 	return receipt
 }
@@ -378,4 +380,10 @@ func (exec *BlockExecutor) getCurrentGasPrice() (*big.Int, error) {
 // payGasFee share the revenue to nodes, now it is empty
 // leave the function for the future use.
 func (exec *BlockExecutor) payGasFee(tx *types.Transaction, gasUsed uint64) {
+}
+
+func (exec *BlockExecutor) getLogsForReceipt(receipts []*types.Receipt, height uint64, hash *types.Hash) {
+	for _, receipt := range receipts {
+		receipt.EvmLogs = exec.ledger.GetLogs(*receipt.TxHash, height, hash)
+	}
 }

@@ -154,7 +154,7 @@ func (exec *BlockExecutor) ApplyReadonlyTransactions(txs []*types.Transaction) [
 	exec.evm = newEvm(meta.Height, uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateLedger, exec.ledger.ChainLedger, exec.admins[0])
 	for i, tx := range txs {
 		exec.ledger.SetTxContext(tx.GetHash(), i)
-		receipt := exec.applyTransaction(i, tx, "", block.Height(), block.BlockHash)
+		receipt := exec.applyTransaction(i, tx, "")
 
 		receipts = append(receipts, receipt)
 		// clear potential write to ledger
