@@ -79,11 +79,14 @@ func (n *Node) Prepare(tx *types.Transaction) error {
 		return fmt.Errorf("node get ready failed: %w", err)
 	}
 	txWithResp := &txcache.TxWithResp{
-		Tx: tx,
-		Ch: make(chan bool),
+		Tx:     tx,
+		RespCh: make(chan txcache.TxResp),
 	}
 	n.recvCh <- txWithResp
-	<-txWithResp.Ch
+	resp := <-txWithResp.RespCh
+	if !resp.Status {
+		return fmt.Errorf(resp.ErrorMsg)
+	}
 	return nil
 }
 
@@ -155,7 +158,7 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 		blockCh:          make(chan *mempool.RequestHashBatch[types.Transaction, *types.Transaction], maxChanSize),
 		commitC:          make(chan *types.CommitEvent, maxChanSize),
 		batchDigestM:     make(map[uint64]string),
-		checkpoint:       config.Config.Mempool.CheckpointPeriod,
+		checkpoint:       config.Config.Solo.CheckpointPeriod,
 		poolFull:         0,
 		recvCh:           recvCh,
 		lastExec:         config.Applied,
@@ -214,6 +217,11 @@ func (n *Node) listenEvent() {
 				if n.mempool.IsPoolFull() {
 					n.logger.Warn("Mempool is full")
 					n.setPoolFull()
+					e.RespCh <- txcache.TxResp{
+						Status:   false,
+						ErrorMsg: ErrPoolFull,
+					}
+					continue
 				}
 				// stop no-tx batch timer when this node receives the first transaction
 				n.batchMgr.stopTimer(NoTxBatch)
@@ -244,7 +252,7 @@ func (n *Node) listenEvent() {
 						}
 					}
 				}
-				e.Ch <- true
+				e.RespCh <- txcache.TxResp{Status: true}
 
 			// handle timeout event
 			case batchTimeoutEvent:

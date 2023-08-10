@@ -21,6 +21,7 @@ type OrderConfig struct {
 	Mempool       Mempool           `mapstructure:"mempool" toml:"mempool"`
 	TxCache       TxCache           `mapstructure:"tx_cache" toml:"tx_cache"`
 	Rbft          RBFT              `mapstructure:"rbft" toml:"rbft"`
+	Solo          Solo              `mapstructure:"solo" toml:"solo"`
 }
 
 type TimedGenBlock struct {
@@ -34,7 +35,6 @@ type Mempool struct {
 	BatchSize           uint64   `mapstructure:"batch_size" toml:"batch_size"`
 	ToleranceTime       Duration `mapstructure:"tolerance_time" toml:"tolerance_time"`
 	ToleranceRemoveTime Duration `mapstructure:"tolerance_remove_time" toml:"tolerance_remove_time"`
-	CheckpointPeriod    uint64   `mapstructure:"checkpoint_period" toml:"checkpoint_period"`
 }
 
 type TxCache struct {
@@ -43,9 +43,10 @@ type TxCache struct {
 }
 
 type RBFT struct {
-	CheckInterval Duration    `mapstructure:"check_interval" toml:"check_interval"`
-	VCPeriod      uint64      `mapstructure:"vc_period" toml:"vc_period"`
-	Timeout       RBFTTimeout `mapstructure:"timeout" toml:"timeout"`
+	CheckInterval    Duration    `mapstructure:"check_interval" toml:"check_interval"`
+	VCPeriod         uint64      `mapstructure:"vc_period" toml:"vc_period"`
+	Timeout          RBFTTimeout `mapstructure:"timeout" toml:"timeout"`
+	CheckpointPeriod uint64      `mapstructure:"checkpoint_period" toml:"checkpoint_period"`
 }
 
 type RBFTTimeout struct {
@@ -59,6 +60,10 @@ type RBFTTimeout struct {
 	ResendViewChange Duration `mapstructure:"resend_viewchange" toml:"resend_viewchange"`
 	CleanViewChange  Duration `mapstructure:"clean_viewchange" toml:"clean_viewchange"`
 	Update           Duration `mapstructure:"update" toml:"update"`
+}
+
+type Solo struct {
+	CheckpointPeriod uint64 `mapstructure:"checkpoint_period" toml:"checkpoint_period"`
 }
 
 func DefaultOrderConfig() *OrderConfig {
@@ -78,15 +83,15 @@ func DefaultOrderConfig() *OrderConfig {
 			BatchSize:           500,
 			ToleranceTime:       Duration(5 * time.Minute),
 			ToleranceRemoveTime: Duration(15 * time.Minute),
-			CheckpointPeriod:    10,
 		},
 		TxCache: TxCache{
 			SetSize:    25,
 			SetTimeout: Duration(100 * time.Millisecond),
 		},
 		Rbft: RBFT{
-			CheckInterval: Duration(3 * time.Minute),
-			VCPeriod:      0,
+			CheckInterval:    Duration(3 * time.Minute),
+			VCPeriod:         0,
+			CheckpointPeriod: 10,
 			Timeout: RBFTTimeout{
 				SyncState:        Duration(3 * time.Second),
 				SyncInterval:     Duration(1 * time.Minute),
@@ -99,6 +104,9 @@ func DefaultOrderConfig() *OrderConfig {
 				CleanViewChange:  Duration(60 * time.Second),
 				Update:           Duration(4 * time.Second),
 			},
+		},
+		Solo: Solo{
+			CheckpointPeriod: 10,
 		},
 	}
 }

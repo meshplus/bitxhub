@@ -29,8 +29,13 @@ type TxCache struct {
 }
 
 type TxWithResp struct {
-	Tx *types.Transaction
-	Ch chan bool
+	Tx     *types.Transaction
+	RespCh chan TxResp
+}
+
+type TxResp struct {
+	Status   bool
+	ErrorMsg string
 }
 
 func NewTxCache(txSliceTimeout time.Duration, txSetSize uint64, logger logrus.FieldLogger) *TxCache {

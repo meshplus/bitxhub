@@ -155,7 +155,8 @@ func TestNode_ReportState(t *testing.T) {
 
 		ast.Nil(err)
 		err = node.Prepare(tx11)
-		ast.Nil(err)
+		ast.NotNil(err)
+		ast.Contains(err.Error(), ErrPoolFull)
 		time.Sleep(100 * time.Millisecond)
 		ast.True(node.isPoolFull())
 		ast.Equal(10, len(node.batchDigestM), "the pool should be full, tx11 is not add in mempool successfully")

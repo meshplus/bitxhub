@@ -74,7 +74,7 @@ func MockMinNode[T any, Constraint consensus.TXConstraint[T]](ctrl *gomock.Contr
 		cancel:     cancel,
 		txCache:    txcache.NewTxCache(rbftConfig.SetTimeout, uint64(rbftConfig.SetSize), orderConf.Logger),
 		peerMgr:    orderConf.PeerMgr,
-		checkpoint: orderConf.Config.Mempool.CheckpointPeriod,
+		checkpoint: orderConf.Config.Rbft.CheckpointPeriod,
 	}
 	return node
 }

@@ -94,8 +94,8 @@ func generateRbftConfig(config *order.Config) (rbft.Config[types.Transaction, *t
 	if readConfig.Rbft.Timeout.SyncState > 0 {
 		defaultConfig.SyncStateTimeout = readConfig.Rbft.Timeout.SyncState.ToDuration()
 	}
-	if readConfig.Mempool.CheckpointPeriod > 0 {
-		defaultConfig.K = readConfig.Mempool.CheckpointPeriod
+	if readConfig.Rbft.CheckpointPeriod > 0 {
+		defaultConfig.K = readConfig.Rbft.CheckpointPeriod
 	}
 	if readConfig.Rbft.Timeout.SyncInterval > 0 {
 		defaultConfig.SyncStateRestartTimeout = readConfig.Rbft.Timeout.SyncInterval.ToDuration()
