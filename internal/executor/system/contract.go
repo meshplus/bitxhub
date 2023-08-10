@@ -10,14 +10,10 @@ import (
 // Addr2Contract is address to system contract
 var Addr2Contract map[types.Address]common.SystemContract
 
-const (
-	// system contract address range 0x1000-0xffff
-	NodeManagerContractAddr = "0x0000000000000000000000000000000000001000"
-)
-
 func Initialize(logger logrus.FieldLogger) {
 	Addr2Contract = map[types.Address]common.SystemContract{
-		*types.NewAddressByStr(NodeManagerContractAddr): governance.NewNodeManager(logger),
+		*types.NewAddressByStr(common.NodeManagerContractAddr):    governance.NewNodeManager(logger),
+		*types.NewAddressByStr(common.CouncilManagerContractAddr): governance.NewCouncilManager(logger),
 	}
 }
 

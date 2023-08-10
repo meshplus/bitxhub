@@ -154,6 +154,7 @@ type Genesis struct {
 
 type Admin struct {
 	Address string `mapstructure:"address" toml:"address"`
+	Weight  uint64 `mapstructure:"weight" toml:"weight"`
 }
 
 type Txpool struct {

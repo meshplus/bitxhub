@@ -1,15 +1,13 @@
 package storages
 
 import (
-	"io/ioutil"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestInitialize(t *testing.T) {
-	dir, err := ioutil.TempDir("", "TestInitialize")
-	require.Nil(t, err)
+	dir := t.TempDir()
 
 	testcase := map[string]struct {
 		kvType string
@@ -20,7 +18,7 @@ func TestInitialize(t *testing.T) {
 
 	for name, tc := range testcase {
 		t.Run(name, func(t *testing.T) {
-			err = Initialize(dir+tc.kvType, tc.kvType)
+			err := Initialize(dir+tc.kvType, tc.kvType)
 			require.Nil(t, err)
 
 			// Initialize twice
@@ -32,16 +30,14 @@ func TestInitialize(t *testing.T) {
 }
 
 func TestInitializeWrongType(t *testing.T) {
-	dir, err := ioutil.TempDir("", "TestInitializeWrongType")
-	require.Nil(t, err)
-	err = Initialize(dir, "unsupport")
+	dir := t.TempDir()
+	err := Initialize(dir, "unsupport")
 	require.NotNil(t, err)
 	require.Contains(t, err.Error(), "unknow kv type unsupport")
 }
 
 func TestGet(t *testing.T) {
-	dir, err := ioutil.TempDir("", "TestGet")
-	require.Nil(t, err)
+	dir := t.TempDir()
 
 	testcase := map[string]struct {
 		kvType string
@@ -52,7 +48,7 @@ func TestGet(t *testing.T) {
 
 	for name, tc := range testcase {
 		t.Run(name, func(t *testing.T) {
-			err = Initialize(dir+tc.kvType, tc.kvType)
+			err := Initialize(dir+tc.kvType, tc.kvType)
 			require.Nil(t, err)
 
 			s, err := Get(BlockChain)

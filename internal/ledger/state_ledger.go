@@ -96,7 +96,7 @@ func NewSimpleLedger(repo *repo.Repo, ldb storage.Storage, accountCache *Account
 		accountCache: accountCache,
 		prevJnlHash:  prevJnlHash,
 		preimages:    make(map[types.Hash][]byte),
-		changer:      newChanger(),
+		changer:      NewChanger(),
 		accessList:   ledger.NewAccessList(),
 		logs:         NewEvmLogs(),
 	}

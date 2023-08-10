@@ -2,7 +2,6 @@ package ledger
 
 import (
 	"math/big"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -17,8 +16,7 @@ import (
 )
 
 func TestAccount_GetState(t *testing.T) {
-	repoRoot, err := os.MkdirTemp("", "ledger_commit")
-	assert.Nil(t, err)
+	repoRoot := t.TempDir()
 
 	lBlockStorage, err := leveldb.New(filepath.Join(repoRoot, "lStorage"))
 	assert.Nil(t, err)
@@ -49,7 +47,7 @@ func TestAccount_GetState(t *testing.T) {
 
 			addr := types.NewAddressByStr("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")
 			stateLedger := ledger.StateLedger.(*StateLedger)
-			account := newAccount(stateLedger.ldb, stateLedger.accountCache, addr, newChanger())
+			account := NewAccount(stateLedger.ldb, stateLedger.accountCache, addr, NewChanger())
 
 			addr1 := account.GetAddress()
 			assert.Equal(t, addr, addr1)
@@ -75,8 +73,7 @@ func TestAccount_GetState(t *testing.T) {
 func TestAccount_AddState(t *testing.T) {}
 
 func TestAccount_AccountBalance(t *testing.T) {
-	repoRoot, err := os.MkdirTemp("", "ledger_commit")
-	assert.Nil(t, err)
+	repoRoot := t.TempDir()
 
 	lBlockStorage, err := leveldb.New(filepath.Join(repoRoot, "lStorage"))
 	assert.Nil(t, err)
@@ -107,7 +104,7 @@ func TestAccount_AccountBalance(t *testing.T) {
 
 			addr := types.NewAddressByStr("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")
 			stateLedger := ledger.StateLedger.(*StateLedger)
-			account := newAccount(stateLedger.ldb, stateLedger.accountCache, addr, newChanger())
+			account := NewAccount(stateLedger.ldb, stateLedger.accountCache, addr, NewChanger())
 
 			account.AddBalance(big.NewInt(1))
 			account.SubBalance(big.NewInt(1))
