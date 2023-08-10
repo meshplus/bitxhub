@@ -333,7 +333,7 @@ func testChainLedger_Commit(t *testing.T, kv string) {
 	lg.StateLedger.(*StateLedger).AddLog(&types.EvmLog{
 		TransactionHash: lg.StateLedger.(*StateLedger).logs.thash,
 	})
-	lg.StateLedger.(*StateLedger).GetLogs(*lg.StateLedger.(*StateLedger).logs.thash)
+	lg.StateLedger.(*StateLedger).GetLogs(*lg.StateLedger.(*StateLedger).logs.thash, 1, hash)
 	lg.StateLedger.(*StateLedger).GetCodeHash(account)
 	lg.StateLedger.(*StateLedger).GetCodeSize(account)
 	currentAccount := lg.StateLedger.(*StateLedger).GetAccount(account)
