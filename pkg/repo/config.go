@@ -231,15 +231,19 @@ func DefaultConfig(repoRoot string) *Config {
 			Admins: []*Admin{
 				{
 					Address: "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013",
+					Weight:  1,
 				},
 				{
 					Address: "0x79a1215469FaB6f9c63c1816b45183AD3624bE34",
+					Weight:  1,
 				},
 				{
 					Address: "0x97c8B516D19edBf575D72a172Af7F418BE498C37",
+					Weight:  1,
 				},
 				{
 					Address: "0xc0Ff2e0b3189132D815b8eb325bE17285AC898f8",
+					Weight:  1,
 				},
 			},
 		},

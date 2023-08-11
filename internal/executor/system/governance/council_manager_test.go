@@ -5,6 +5,11 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/golang/mock/gomock"
+	"github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/axiomesh/axiom-kit/storage/leveldb"
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/internal/executor/system/common"
@@ -12,9 +17,6 @@ import (
 	vm "github.com/axiomesh/eth-kit/evm"
 	ethledger "github.com/axiomesh/eth-kit/ledger"
 	"github.com/axiomesh/eth-kit/ledger/mock_ledger"
-	"github.com/golang/mock/gomock"
-	"github.com/sirupsen/logrus"
-	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -23,6 +25,17 @@ const (
 	admin3 = "0x1230000000000000000000000000000000000000"
 	admin4 = "0x1240000000000000000000000000000000000000"
 )
+
+type TestCouncilProposal struct {
+	ID          uint64
+	Type        ProposalType
+	Proposer    string
+	TotalVotes  uint64
+	PassVotes   []string
+	RejectVotes []string
+	Status      ProposalStatus
+	Candidates  []*CouncilMember
+}
 
 func initializeCouncil(t *testing.T, lg ethledger.StateLedger, admins []*CouncilMember) {
 	council := &Council{}
@@ -48,6 +61,7 @@ func TestRunForPropose(t *testing.T) {
 	account := ledger.NewAccount(ld, accountCache, types.NewAddressByStr(common.NodeManagerContractAddr), ledger.NewChanger())
 
 	stateLedger.EXPECT().GetOrCreateAccount(gomock.Any()).Return(account).AnyTimes()
+	stateLedger.EXPECT().AddLog(gomock.Any()).AnyTimes()
 
 	initializeCouncil(t, stateLedger, []*CouncilMember{
 		{
@@ -96,6 +110,29 @@ func TestRunForPropose(t *testing.T) {
 			}),
 			Expected: vm.ExecutionResult{
 				UsedGas: CouncilProposalGas,
+				ReturnData: generateReturnData(t, &TestCouncilProposal{
+					ID:          1,
+					Type:        CouncilElect,
+					Proposer:    admin1,
+					TotalVotes:  4,
+					PassVotes:   []string{},
+					RejectVotes: []string{},
+					Status:      Voting,
+					Candidates: []*CouncilMember{
+						{
+							Address: admin1,
+							Weight:  1,
+						},
+						{
+							Address: admin2,
+							Weight:  1,
+						},
+						{
+							Address: admin3,
+							Weight:  1,
+						},
+					},
+				}),
 			},
 			Err: nil,
 		},
@@ -134,9 +171,17 @@ func TestRunForPropose(t *testing.T) {
 		if result != nil {
 			assert.Equal(t, nil, result.Err)
 			assert.Equal(t, test.Expected.UsedGas, result.UsedGas)
+
+			expectedCouncil := &Council{}
+			err = json.Unmarshal(test.Expected.ReturnData, expectedCouncil)
+			assert.Nil(t, err)
+
+			actualCouncil := &Council{}
+			err = json.Unmarshal(result.ReturnData, actualCouncil)
+			assert.Nil(t, err)
+			assert.Equal(t, *expectedCouncil, *actualCouncil)
 		}
 	}
-
 }
 
 func TestRunForVote(t *testing.T) {
@@ -155,6 +200,7 @@ func TestRunForVote(t *testing.T) {
 	account := ledger.NewAccount(ld, accountCache, types.NewAddressByStr(common.NodeManagerContractAddr), ledger.NewChanger())
 
 	stateLedger.EXPECT().GetOrCreateAccount(gomock.Any()).Return(account).AnyTimes()
+	stateLedger.EXPECT().AddLog(gomock.Any()).AnyTimes()
 
 	initializeCouncil(t, stateLedger, []*CouncilMember{
 		{
@@ -183,15 +229,15 @@ func TestRunForVote(t *testing.T) {
 			Candidates: []*CouncilMember{
 				{
 					Address: admin1,
-					Weight:  1,
+					Weight:  2,
 				},
 				{
 					Address: admin2,
-					Weight:  1,
+					Weight:  2,
 				},
 				{
 					Address: admin3,
-					Weight:  1,
+					Weight:  2,
 				},
 			},
 		},
@@ -208,6 +254,29 @@ func TestRunForVote(t *testing.T) {
 			Data:   generateVoteData(t, globalProposalID.GetID()-1, Pass),
 			Expected: vm.ExecutionResult{
 				UsedGas: CouncilVoteGas,
+				ReturnData: generateReturnData(t, &TestCouncilProposal{
+					ID:          1,
+					Type:        CouncilElect,
+					Proposer:    admin1,
+					TotalVotes:  3,
+					PassVotes:   []string{admin1},
+					RejectVotes: []string{},
+					Status:      Voting,
+					Candidates: []*CouncilMember{
+						{
+							Address: admin1,
+							Weight:  2,
+						},
+						{
+							Address: admin2,
+							Weight:  2,
+						},
+						{
+							Address: admin3,
+							Weight:  2,
+						},
+					},
+				}),
 			},
 			Err: nil,
 		},
@@ -216,6 +285,29 @@ func TestRunForVote(t *testing.T) {
 			Data:   generateVoteData(t, globalProposalID.GetID()-1, Pass),
 			Expected: vm.ExecutionResult{
 				UsedGas: CouncilVoteGas,
+				ReturnData: generateReturnData(t, &TestCouncilProposal{
+					ID:          1,
+					Type:        CouncilElect,
+					Proposer:    admin1,
+					TotalVotes:  3,
+					PassVotes:   []string{admin1, admin2},
+					RejectVotes: []string{},
+					Status:      Approved,
+					Candidates: []*CouncilMember{
+						{
+							Address: admin1,
+							Weight:  2,
+						},
+						{
+							Address: admin2,
+							Weight:  2,
+						},
+						{
+							Address: admin3,
+							Weight:  2,
+						},
+					},
+				}),
 			},
 			Err: nil,
 		},
@@ -231,8 +323,50 @@ func TestRunForVote(t *testing.T) {
 		if result != nil {
 			assert.Equal(t, nil, result.Err)
 			assert.Equal(t, test.Expected.UsedGas, result.UsedGas)
+			expectedCouncil := &Council{}
+			err = json.Unmarshal(test.Expected.ReturnData, expectedCouncil)
+			assert.Nil(t, err)
+
+			actualCouncil := &Council{}
+			err = json.Unmarshal(result.ReturnData, actualCouncil)
+			assert.Nil(t, err)
+			assert.Equal(t, *expectedCouncil, *actualCouncil)
 		}
 	}
+}
+
+func TestEstimateGas(t *testing.T) {
+	logger := logrus.New()
+	cm := NewCouncilManager(logger)
+
+	from := types.NewAddressByStr(admin1).ETHAddress()
+	to := types.NewAddressByStr(common.CouncilManagerContractAddr).ETHAddress()
+	data := hexutil.Bytes(generateProposeData(t, CouncilExtraArgs{
+		Candidates: []*CouncilMember{
+			{
+				Address: admin1,
+				Weight:  1,
+			},
+		},
+	}))
+	// test propose
+	gas, err := cm.EstimateGas(&types.CallArgs{
+		From: &from,
+		To:   &to,
+		Data: &data,
+	})
+	assert.Nil(t, err)
+	assert.Equal(t, CouncilProposalGas, gas)
+
+	// test vote
+	data = hexutil.Bytes(generateVoteData(t, 1, Pass))
+	gas, err = cm.EstimateGas(&types.CallArgs{
+		From: &from,
+		To:   &to,
+		Data: &data,
+	})
+	assert.Nil(t, err)
+	assert.Equal(t, CouncilVoteGas, gas)
 }
 
 func generateProposeData(t *testing.T, extraArgs CouncilExtraArgs) []byte {
@@ -256,4 +390,28 @@ func generateVoteData(t *testing.T, proposalID uint64, voteResult VoteResult) []
 	assert.Nil(t, err)
 
 	return data
+}
+
+func generateReturnData(t *testing.T, testProposal *TestCouncilProposal) []byte {
+	proposal := &CouncilProposal{
+		BaseProposal: BaseProposal{
+			ID:          testProposal.ID,
+			Type:        testProposal.Type,
+			Strategy:    NowProposalStrategy,
+			Proposer:    testProposal.Proposer,
+			Title:       "title",
+			Desc:        "desc",
+			BlockNumber: uint64(1000),
+			TotalVotes:  testProposal.TotalVotes,
+			PassVotes:   testProposal.PassVotes,
+			RejectVotes: testProposal.RejectVotes,
+			Status:      testProposal.Status,
+		},
+		Candidates: testProposal.Candidates,
+	}
+
+	b, err := json.Marshal(proposal)
+	assert.Nil(t, err)
+
+	return b
 }
