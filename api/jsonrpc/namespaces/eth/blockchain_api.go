@@ -15,6 +15,7 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/sirupsen/logrus"
 
+	axiomhex "github.com/axiomesh/axiom-kit/hexutil"
 	"github.com/axiomesh/axiom-kit/types"
 	rpctypes "github.com/axiomesh/axiom/api/jsonrpc/types"
 	"github.com/axiomesh/axiom/internal/coreapi/api"
@@ -145,7 +146,12 @@ func (api *BlockChainAPI) GetStorageAt(address common.Address, key string, block
 		return nil, err
 	}
 
-	ok, val := stateLedger.GetState(types.NewAddress(address.Bytes()), []byte(key))
+	hash, err := axiomhex.DecodeHash(key)
+	if err != nil {
+		return nil, err
+	}
+
+	ok, val := stateLedger.GetState(types.NewAddress(address.Bytes()), hash.Bytes())
 	if !ok {
 		return nil, nil
 	}
@@ -400,16 +406,22 @@ func formatBlock(api api.CoreAPI, config *repo.Config, block *types.Block, fullT
 		}
 	}
 
+	gasPrice, err := api.Gas().GetCurrentGasPrice(block.Height())
+	if err != nil {
+		return nil, err
+	}
+
 	return map[string]any{
 		"number":           (*hexutil.Big)(big.NewInt(int64(block.Height()))),
 		"hash":             block.BlockHash.ETHHash(),
+		"baseFeePerGas":    hexutil.Uint64(gasPrice),
 		"parentHash":       block.BlockHeader.ParentHash.ETHHash(),
 		"nonce":            ethtypes.BlockNonce{}, // PoW specific
 		"logsBloom":        block.BlockHeader.Bloom.ETHBloom(),
 		"transactionsRoot": block.BlockHeader.TxRoot.ETHHash(),
 		"stateRoot":        block.BlockHeader.StateRoot.ETHHash(),
 		"miner":            common.Address{},
-		"extraData":        []byte{},
+		"extraData":        hexutil.Bytes{},
 		"size":             hexutil.Uint64(block.Size()),
 		"gasLimit":         hexutil.Uint64(config.Genesis.GasLimit), // Static gas limit
 		"gasUsed":          hexutil.Uint64(cumulativeGas),

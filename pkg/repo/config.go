@@ -261,7 +261,7 @@ func DefaultConfig(repoRoot string) *Config {
 			Module: LogModule{
 				P2P:       "info",
 				Consensus: "info",
-				Executor:  "debug",
+				Executor:  "info",
 				Router:    "info",
 				API:       "info",
 				CoreAPI:   "info",
