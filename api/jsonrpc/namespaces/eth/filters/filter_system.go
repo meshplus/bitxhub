@@ -77,11 +77,12 @@ const (
 )
 
 type subscription struct {
-	id        rpc.ID
-	typ       Type
-	created   time.Time
-	logsCrit  FilterQuery
-	logs      chan []*types.EvmLog
+	id       rpc.ID
+	typ      Type
+	created  time.Time
+	logsCrit FilterQuery
+	logs     chan []*types.EvmLog
+	//todo use Transaction instead of Hash
 	hashes    chan []*types.Hash
 	headers   chan *types.BlockHeader
 	installed chan struct{} // closed when the filter is installed

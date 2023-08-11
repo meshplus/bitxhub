@@ -110,6 +110,8 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	calcBlockSize.Observe(float64(block.Size()))
 	executeBlockDuration.Observe(float64(time.Since(current)) / float64(time.Second))
 
+	exec.getLogsForReceipt(receipts, block.Height(), block.BlockHash)
+
 	data := &ledger.BlockData{
 		Block:      block,
 		Receipts:   receipts,
@@ -307,7 +309,7 @@ func (exec *BlockExecutor) applyEthTransaction(_ int, tx *types.Transaction) *ty
 		receipt.ContractAddress = types.NewAddress(crypto.CreateAddress(exec.evm.TxContext.Origin, tx.GetNonce()).Bytes())
 	}
 
-	receipt.EvmLogs = exec.ledger.GetLogs(*tx.GetHash())
+	// receipt.EvmLogs = exec.ledger.GetLogs(*tx.GetHash(), height, blockHash)
 	receipt.Bloom = ledger.CreateBloom(ledger.EvmReceipts{receipt})
 	return receipt
 }
@@ -378,4 +380,10 @@ func (exec *BlockExecutor) getCurrentGasPrice() (*big.Int, error) {
 // payGasFee share the revenue to nodes, now it is empty
 // leave the function for the future use.
 func (exec *BlockExecutor) payGasFee(tx *types.Transaction, gasUsed uint64) {
+}
+
+func (exec *BlockExecutor) getLogsForReceipt(receipts []*types.Receipt, height uint64, hash *types.Hash) {
+	for _, receipt := range receipts {
+		receipt.EvmLogs = exec.ledger.GetLogs(*receipt.TxHash, height, hash)
+	}
 }
