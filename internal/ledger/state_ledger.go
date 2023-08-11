@@ -167,3 +167,7 @@ func (l *StateLedger) Events(txHash string) []*types.Event {
 func (l *StateLedger) Close() {
 	l.ldb.Close()
 }
+
+func (l *StateLedger) GetStorage() storage.Storage {
+	return l.ldb
+}

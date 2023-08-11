@@ -129,7 +129,7 @@ func (b *BrokerAPI) GetStateLedger() ledger.StateLedger {
 	return b.bxh.Ledger.StateLedger
 }
 
-func (b *BrokerAPI) GetEvm(mes *vm.Message, vmConfig *vm.Config) *vm.EVM {
+func (b *BrokerAPI) GetEvm(mes *vm.Message, vmConfig *vm.Config) (*vm.EVM, error) {
 	if vmConfig == nil {
 		vmConfig = new(vm.Config)
 	}

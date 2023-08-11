@@ -123,12 +123,14 @@ func TestGetEvm(t *testing.T) {
 	assert.NotNil(t, executor)
 
 	txCtx := vm1.TxContext{}
-	evm := executor.GetEvm(txCtx, vm1.Config{NoBaseFee: true})
+	evm, err := executor.GetEvm(txCtx, vm1.Config{NoBaseFee: true})
 	assert.NotNil(t, evm)
+	assert.Nil(t, err)
 
 	chainLedger.EXPECT().GetBlock(gomock.Any()).Return(nil, errors.New("get block error")).Times(1)
-	evmErr := executor.GetEvm(txCtx, vm1.Config{NoBaseFee: true})
+	evmErr, err := executor.GetEvm(txCtx, vm1.Config{NoBaseFee: true})
 	assert.Nil(t, evmErr)
+	assert.NotNil(t, err)
 }
 
 func TestSubscribeLogsEvent(t *testing.T) {
