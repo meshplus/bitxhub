@@ -61,4 +61,5 @@ type AccountAPI interface {
 
 type GasAPI interface {
 	GetGasPrice() (uint64, error)
+	GetCurrentGasPrice(blockHeight uint64) (uint64, error)
 }
