@@ -2,11 +2,7 @@ package governance
 
 import (
 	"encoding/json"
-<<<<<<< HEAD
 
-	"fmt"
-=======
->>>>>>> 4038987 (update executor test)
 	"path/filepath"
 	"testing"
 
@@ -71,7 +67,6 @@ func TestNodeManager_Run(t *testing.T) {
 	})
 
 	assert.Nil(t, err)
-<<<<<<< HEAD
 
 	assert.Equal(t, uint64(1000), res.UsedGas)
 }
@@ -83,10 +78,6 @@ func generateNodeAddVoteData(t *testing.T, proposalID uint64, voteResult VoteRes
 	assert.Nil(t, err)
 
 	return data
-=======
->>>>>>> 4038987 (update executor test)
-
-	assert.Equal(t, uint64(1000), res.UsedGas)
 }
 
 func TestNodeManager_EstimateGas(t *testing.T) {
