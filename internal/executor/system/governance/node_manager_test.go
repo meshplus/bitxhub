@@ -34,15 +34,13 @@ func TestNodeManager_Run(t *testing.T) {
 	account := ledger.NewAccount(ld, accountCache, types.NewAddressByStr(common.NodeManagerContractAddr), ledger.NewChanger())
 
 	stateLedger.EXPECT().GetOrCreateAccount(gomock.Any()).Return(account).AnyTimes()
+
 	initializeNode(t, stateLedger, []*NodeMember{
 		{
 			NodeId: "16Uiu2HAmJ38LwfY6pfgDWNvk3ypjcpEMSePNTE6Ma2NCLqjbZJSF",
 		},
 	})
 	nm.Reset(stateLedger)
-
-	// gabi, err := GetABI()
-	// assert.Nil(t, err)
 
 	testcases := []struct {
 		Caller   string
@@ -82,6 +80,7 @@ func generateNodeAddVoteData(t *testing.T, proposalID uint64, voteResult VoteRes
 	assert.Nil(t, err)
 
 	return data
+
 }
 
 func TestNodeManager_EstimateGas(t *testing.T) {
@@ -139,9 +138,9 @@ func TestRunForNodePropose(t *testing.T) {
 	accountCache, err := ledger.NewAccountCache()
 	assert.Nil(t, err)
 	repoRoot := t.TempDir()
-	ld, err := leveldb.New(filepath.Join(repoRoot, "node_manager"))
+	ld, err := leveldb.New(filepath.Join(repoRoot, "node_member"))
 	assert.Nil(t, err)
-	account := ledger.NewAccount(ld, accountCache, types.NewAddressByStr(common.NodeManagerContractAddr), ledger.NewChanger())
+	account := ledger.NewAccount(ld, accountCache, types.NewAddressByStr(common.NodeMemberContractAddr), ledger.NewChanger())
 
 	stateLedger.EXPECT().GetOrCreateAccount(gomock.Any()).Return(account).AnyTimes()
 
