@@ -30,7 +30,7 @@ type BrokerAPI interface {
 	GetPendingNonceByAccount(account string) uint64
 	GetPoolTransaction(hash *types.Hash) *types.Transaction
 	GetStateLedger() ledger.StateLedger
-	GetEvm(mes *vm.Message, vmConfig *vm.Config) *vm.EVM
+	GetEvm(mes *vm.Message, vmConfig *vm.Config) (*vm.EVM, error)
 
 	// OrderReady
 	OrderReady() error

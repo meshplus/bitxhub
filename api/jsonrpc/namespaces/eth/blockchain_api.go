@@ -220,7 +220,7 @@ func DoCall(ctx context.Context, api api.CoreAPI, args types.CallArgs, timeout t
 		return nil, err
 	}
 	leger.PrepareBlock(meta.BlockHash, meta.Height)
-	evm := api.Broker().GetEvm(msg, &vm.Config{NoBaseFee: true})
+	evm, err := api.Broker().GetEvm(msg, &vm.Config{NoBaseFee: true})
 	if err != nil {
 		return nil, errors.New("error get evm")
 	}
