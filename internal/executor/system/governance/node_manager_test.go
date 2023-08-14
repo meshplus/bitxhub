@@ -2,6 +2,8 @@ package governance
 
 import (
 	"encoding/json"
+
+	"fmt"
 	"path/filepath"
 	"testing"
 
@@ -73,6 +75,50 @@ func TestNodeManager_Run(t *testing.T) {
 	assert.Equal(t, uint64(1000), res.UsedGas)
 }
 
+func generateNodeAddVoteData(t *testing.T, proposalID uint64, voteResult VoteResult) []byte {
+	gabi, err := GetABI()
+
+	data, err := gabi.Pack(ProposeMethod, uint8(NodeAdd), "title", "desc", uint64(1000), []byte(""))
+	assert.Nil(t, err)
+
+	return data
+}
+
+func TestNodeManager_EstimateGas(t *testing.T) {
+	nm := NewNodeManager(logrus.New())
+
+	gabi, err := GetABI()
+	assert.Nil(t, err)
+
+	data, err := gabi.Pack(ProposeMethod, uint8(NodeAdd), "title", "desc", uint64(1000), []byte(""))
+	assert.Nil(t, err)
+
+	from := types.NewAddressByStr(admin1).ETHAddress()
+	to := types.NewAddressByStr(common.NodeManagerContractAddr).ETHAddress()
+	dataBytes := hexutil.Bytes(data)
+
+	// test propose
+	gas, err := nm.EstimateGas(&types.CallArgs{
+		From: &from,
+		To:   &to,
+		Data: &dataBytes,
+	})
+	assert.Nil(t, err)
+	assert.Equal(t, NodeManagementProposalGas, gas)
+
+	// test vote
+	data, err = gabi.Pack(VoteMethod, uint64(1), uint8(Pass), []byte(""))
+	dataBytes = hexutil.Bytes(data)
+	assert.Nil(t, err)
+	gas, err = nm.EstimateGas(&types.CallArgs{
+		From: &from,
+		To:   &to,
+		Data: &dataBytes,
+	})
+	assert.Nil(t, err)
+	assert.Equal(t, NodeManagementVoteGas, gas)
+}
+
 func initializeNode(t *testing.T, lg ethledger.StateLedger, admins []*NodeMember) {
 	node := &Node{}
 	node.Members = admins
@@ -95,7 +141,7 @@ func TestRunForNodePropose(t *testing.T) {
 	repoRoot := t.TempDir()
 	ld, err := leveldb.New(filepath.Join(repoRoot, "node_manager"))
 	assert.Nil(t, err)
-	account := ledger.NewAccount(ld, accountCache, types.NewAddressByStr(common.NodeMemberContractAddr), ledger.NewChanger())
+	account := ledger.NewAccount(ld, accountCache, types.NewAddressByStr(common.NodeManagerContractAddr), ledger.NewChanger())
 
 	stateLedger.EXPECT().GetOrCreateAccount(gomock.Any()).Return(account).AnyTimes()
 
@@ -153,53 +199,7 @@ func generateNodeAddProposeData(t *testing.T, extraArgs NodeExtraArgs) []byte {
 	assert.Nil(t, err)
 	data, err := gabi.Pack(ProposeMethod, uint8(NodeAdd), title, desc, blockNumber, extra)
 	assert.Nil(t, err)
+
+	fmt.Println(data)
 	return data
-}
-
-func generateNodeAddVoteData(t *testing.T, proposalID uint64, voteResult VoteResult) []byte {
-	gabi, err := GetABI()
-
-	data, err := gabi.Pack(ProposeMethod, uint8(NodeAdd), "title", "desc", uint64(1000), []byte(""))
-	assert.Nil(t, err)
-	res, err := nm.Run(&vm.Message{
-		Data: data,
-	})
-	assert.Nil(t, err)
-
-	return data
-}
-
-func TestNodeManager_EstimateGas(t *testing.T) {
-	nm := NewNodeManager(logrus.New())
-
-	gabi, err := GetABI()
-	assert.Nil(t, err)
-
-	data, err := gabi.Pack(ProposeMethod, uint8(NodeAdd), "title", "desc", uint64(1000), []byte(""))
-	assert.Nil(t, err)
-
-	from := types.NewAddressByStr(admin1).ETHAddress()
-	to := types.NewAddressByStr(common.NodeManagerContractAddr).ETHAddress()
-	dataBytes := hexutil.Bytes(data)
-
-	// test propose
-	gas, err := nm.EstimateGas(&types.CallArgs{
-		From: &from,
-		To:   &to,
-		Data: &dataBytes,
-	})
-	assert.Nil(t, err)
-	assert.Equal(t, NodeManagementProposalGas, gas)
-
-	// test vote
-	data, err = gabi.Pack(VoteMethod, uint64(1), uint8(Pass), []byte(""))
-	dataBytes = hexutil.Bytes(data)
-	assert.Nil(t, err)
-	gas, err = nm.EstimateGas(&types.CallArgs{
-		From: &from,
-		To:   &to,
-		Data: &dataBytes,
-	})
-	assert.Nil(t, err)
-	assert.Equal(t, NodeManagementVoteGas, gas)
 }

@@ -3,7 +3,10 @@ package governance
 import (
 	"encoding/json"
 	"errors"
+
 	"fmt"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/internal/executor/system/common"
@@ -11,12 +14,19 @@ import (
 	"github.com/axiomesh/eth-kit/ledger"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/samber/lo"
-	"github.com/sirupsen/logrus"
 )
 
 const (
 	NodeManagementProposalGas uint64 = 30000
 	NodeManagementVoteGas     uint64 = 21600
+	// NodeProposalKey is key for NodeProposal storage
+	NodeProposalKey = "councilProposalKey"
+	// TODO: set used gas
+	// NodeProposalGas is used gas for node proposal
+	NodeProposalGas = 1000
+
+	// NodeVoteGas is used gas for node vote
+	NodeVoteGas = 100
 )
 
 var (
@@ -25,18 +35,6 @@ var (
 	ErrNodeExtraArgs           = errors.New("unmarshal node extra arguments error")
 	ErrNodeProposalNumberLimit = errors.New("node proposal number limit, only allow one node proposal")
 	ErrNotFoundNodeProposal    = errors.New("node proposal not found for the id")
-)
-
-const (
-	// NodeProposalKey is key for NodeProposal storage
-	NodeProposalKey = "councilProposalKey"
-
-	// TODO: set used gas
-	// NodeProposalGas is used gas for node proposal
-	NodeProposalGas = 1000
-
-	// NodeVoteGas is used gas for node vote
-	NodeVoteGas = 100
 )
 
 // NodeExtraArgs is Node proposal extra arguments
@@ -248,5 +246,5 @@ func (nm *NodeManager) EstimateGas(callArgs *types.CallArgs) (uint64, error) {
 		return 0, errors.New("unknown proposal args")
 	}
 
-  return gas, nil
+	return gas, nil
 }
