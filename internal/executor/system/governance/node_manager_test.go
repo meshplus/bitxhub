@@ -33,18 +33,50 @@ func TestNodeManager_Run(t *testing.T) {
 
 	stateLedger.EXPECT().GetOrCreateAccount(gomock.Any()).Return(account).AnyTimes()
 
+	initializeNode(t, stateLedger, []*NodeMember{
+		{
+			NodeId: "16Uiu2HAmJ38LwfY6pfgDWNvk3ypjcpEMSePNTE6Ma2NCLqjbZJSF",
+		},
+	})
 	nm.Reset(stateLedger)
 
-	gabi, err := GetABI()
+	// gabi, err := GetABI()
 	assert.Nil(t, err)
 
-	data, err := gabi.Pack(ProposeMethod, "title", "desc", 1000, []byte(""))
-	res, err := nm.Run(&vm.Message{
-		Data: data,
-	})
-	assert.Nil(t, err)
+	testcases := []struct {
+		Caller   string
+		Data     []byte
+		Expected vm.ExecutionResult
+		Err      error
+	}{
+		{
+			Caller: admin1,
+			Data: generateNodeAddProposeData(t, NodeExtraArgs{
+				Nodes: []*NodeMember{
+					{
+						NodeId: "16Uiu2HAmJ38LwfY6pfgDWNvk3ypjcpEMSePNTE6Ma2NCLqjbZJSF",
+					},
+				},
+			}),
+			Expected: vm.ExecutionResult{
+				UsedGas: NodeProposalGas,
+			},
+			Err: nil,
+		},
+	}
 
-	assert.Equal(t, uint64(0), res.UsedGas)
+	for _, test := range testcases {
+		result, err := nm.Run(&vm.Message{
+			From: types.NewAddressByStr(test.Caller).ETHAddress(),
+			Data: test.Data,
+		})
+
+		if result != nil {
+			assert.Nil(t, err)
+			assert.Equal(t, uint64(1000), result.UsedGas)
+		}
+	}
+
 }
 
 func initializeNode(t *testing.T, lg ethledger.StateLedger, admins []*NodeMember) {
@@ -67,9 +99,9 @@ func TestRunForNodePropose(t *testing.T) {
 	accountCache, err := ledger.NewAccountCache()
 	assert.Nil(t, err)
 	repoRoot := t.TempDir()
-	ld, err := leveldb.New(filepath.Join(repoRoot, "node_manager"))
+	ld, err := leveldb.New(filepath.Join(repoRoot, "node_member"))
 	assert.Nil(t, err)
-	account := ledger.NewAccount(ld, accountCache, types.NewAddressByStr(common.NodeManagerContractAddr), ledger.NewChanger())
+	account := ledger.NewAccount(ld, accountCache, types.NewAddressByStr(common.NodeMemberContractAddr), ledger.NewChanger())
 
 	stateLedger.EXPECT().GetOrCreateAccount(gomock.Any()).Return(account).AnyTimes()
 
