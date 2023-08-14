@@ -252,6 +252,14 @@ func DoCall(ctx context.Context, api api.CoreAPI, args types.CallArgs, timeout t
 // param from the SDK.
 func (api *BlockChainAPI) EstimateGas(args types.CallArgs, blockNrOrHash *rpctypes.BlockNumberOrHash) (hexutil.Uint64, error) {
 	api.logger.Debugf("eth_estimateGas, args: %s", args)
+
+	// Judge whether this is system contract
+	systemContract, ok := api.api.Broker().GetSystemContract(args.To)
+	if ok {
+		gas, err := systemContract.EstimateGas(&args)
+		return hexutil.Uint64(gas), err
+	}
+
 	// Determine the highest gas limit can be used during the estimation.
 	// if args.Gas == nil || uint64(*args.Gas) < params.TxGas {
 	// 	// Retrieve the block to act as the gas ceiling
@@ -428,7 +436,7 @@ func formatBlock(api api.CoreAPI, config *repo.Config, block *types.Block, fullT
 		"timestamp":        hexutil.Uint64(block.BlockHeader.Timestamp),
 		"transactions":     transactions,
 		"receiptsRoot":     block.BlockHeader.ReceiptRoot.ETHHash(),
-		//todo delete non-existent fields
+		// todo delete non-existent fields
 		"sha3Uncles": ethtypes.EmptyUncleHash, // No uncles in raft/rbft
 		"uncles":     []string{},
 		"mixHash":    common.Hash{},

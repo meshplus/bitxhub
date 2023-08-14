@@ -10,6 +10,7 @@ import (
 	"github.com/axiomesh/axiom/internal/ledger"
 	vm "github.com/axiomesh/eth-kit/evm"
 	"github.com/axiomesh/eth-kit/ledger/mock_ledger"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -35,11 +36,47 @@ func TestNodeManager_Run(t *testing.T) {
 	gabi, err := GetABI()
 	assert.Nil(t, err)
 
-	data, err := gabi.Pack(ProposeMethod, "title", "desc", 1000, []byte(""))
+	data, err := gabi.Pack(ProposeMethod, uint8(NodeAdd), "title", "desc", uint64(1000), []byte(""))
+	assert.Nil(t, err)
 	res, err := nm.Run(&vm.Message{
 		Data: data,
 	})
 	assert.Nil(t, err)
 
 	assert.Equal(t, uint64(0), res.UsedGas)
+}
+
+func TestNodeManager_EstimateGas(t *testing.T) {
+	nm := NewNodeManager(logrus.New())
+
+	gabi, err := GetABI()
+	assert.Nil(t, err)
+
+	data, err := gabi.Pack(ProposeMethod, uint8(NodeAdd), "title", "desc", uint64(1000), []byte(""))
+	assert.Nil(t, err)
+
+	from := types.NewAddressByStr(admin1).ETHAddress()
+	to := types.NewAddressByStr(common.NodeManagerContractAddr).ETHAddress()
+	dataBytes := hexutil.Bytes(data)
+
+	// test propose
+	gas, err := nm.EstimateGas(&types.CallArgs{
+		From: &from,
+		To:   &to,
+		Data: &dataBytes,
+	})
+	assert.Nil(t, err)
+	assert.Equal(t, NodeManagementProposalGas, gas)
+
+	// test vote
+	data, err = gabi.Pack(VoteMethod, uint64(1), uint8(Pass), []byte(""))
+	dataBytes = hexutil.Bytes(data)
+	assert.Nil(t, err)
+	gas, err = nm.EstimateGas(&types.CallArgs{
+		From: &from,
+		To:   &to,
+		Data: &dataBytes,
+	})
+	assert.Nil(t, err)
+	assert.Equal(t, NodeManagementVoteGas, gas)
 }

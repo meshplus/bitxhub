@@ -1,9 +1,11 @@
 package api
 
 import (
+	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"
 
 	"github.com/axiomesh/axiom-kit/types"
+	"github.com/axiomesh/axiom/internal/executor/system/common"
 	"github.com/axiomesh/axiom/pkg/model/events"
 	vm "github.com/axiomesh/eth-kit/evm"
 	"github.com/axiomesh/eth-kit/ledger"
@@ -31,6 +33,7 @@ type BrokerAPI interface {
 	GetPoolTransaction(hash *types.Hash) *types.Transaction
 	GetStateLedger() ledger.StateLedger
 	GetEvm(mes *vm.Message, vmConfig *vm.Config) (*vm.EVM, error)
+	GetSystemContract(addr *ethcommon.Address) (common.SystemContract, bool)
 
 	// OrderReady
 	OrderReady() error
