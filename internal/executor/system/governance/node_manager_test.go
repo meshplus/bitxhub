@@ -2,8 +2,11 @@ package governance
 
 import (
 	"encoding/json"
+<<<<<<< HEAD
 
 	"fmt"
+=======
+>>>>>>> 4038987 (update executor test)
 	"path/filepath"
 	"testing"
 
@@ -34,7 +37,6 @@ func TestNodeManager_Run(t *testing.T) {
 	account := ledger.NewAccount(ld, accountCache, types.NewAddressByStr(common.NodeManagerContractAddr), ledger.NewChanger())
 
 	stateLedger.EXPECT().GetOrCreateAccount(gomock.Any()).Return(account).AnyTimes()
-
 	initializeNode(t, stateLedger, []*NodeMember{
 		{
 			NodeId: "16Uiu2HAmJ38LwfY6pfgDWNvk3ypjcpEMSePNTE6Ma2NCLqjbZJSF",
@@ -69,6 +71,7 @@ func TestNodeManager_Run(t *testing.T) {
 	})
 
 	assert.Nil(t, err)
+<<<<<<< HEAD
 
 	assert.Equal(t, uint64(1000), res.UsedGas)
 }
@@ -80,7 +83,10 @@ func generateNodeAddVoteData(t *testing.T, proposalID uint64, voteResult VoteRes
 	assert.Nil(t, err)
 
 	return data
+=======
+>>>>>>> 4038987 (update executor test)
 
+	assert.Equal(t, uint64(1000), res.UsedGas)
 }
 
 func TestNodeManager_EstimateGas(t *testing.T) {
@@ -138,7 +144,7 @@ func TestRunForNodePropose(t *testing.T) {
 	accountCache, err := ledger.NewAccountCache()
 	assert.Nil(t, err)
 	repoRoot := t.TempDir()
-	ld, err := leveldb.New(filepath.Join(repoRoot, "node_member"))
+	ld, err := leveldb.New(filepath.Join(repoRoot, "node_manager"))
 	assert.Nil(t, err)
 	account := ledger.NewAccount(ld, accountCache, types.NewAddressByStr(common.NodeMemberContractAddr), ledger.NewChanger())
 
@@ -198,7 +204,5 @@ func generateNodeAddProposeData(t *testing.T, extraArgs NodeExtraArgs) []byte {
 	assert.Nil(t, err)
 	data, err := gabi.Pack(ProposeMethod, uint8(NodeAdd), title, desc, blockNumber, extra)
 	assert.Nil(t, err)
-
-	fmt.Println(data)
 	return data
 }
