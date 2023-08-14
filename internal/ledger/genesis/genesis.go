@@ -34,6 +34,12 @@ func Initialize(genesis *repo.Genesis, nodes []*repo.NetworkNodes, primaryN uint
 	}
 	account.SetState([]byte(governance.CouncilKey), b)
 
+	//read member config, write to Ledger
+	c, err := json.Marshal(genesis.Members)
+	if err != nil {
+		return err
+	}
+	lg.SetState(types.NewAddressByStr(common.NodeMemberContractAddr), []byte(common.NodeMemberContractAddr), c)
 	accounts, stateRoot := lg.FlushDirtyData()
 
 	block := &types.Block{

@@ -100,3 +100,11 @@ weight = 2
 [[genesis.admins]]
 address = "0x565C9c8a0816F3b6B7396Ba85243905443e9ab3B"
 weight = 2
+[[genesis.members]]
+nodeId = "16Uiu2HAmJ38LwfY6pfgDWNvk3ypjcpEMSePNTE6Ma2NCLqjbZJSF"
+[[genesis.members]]
+nodeId = "16Uiu2HAmRypzJbdbUNYsCV2VVgv9UryYS5d7wejTJXT73mNLJ8AK"
+[[genesis.members]]
+nodeId = "16Uiu2HAmTwEET536QC9MZmYFp1NUshjRuaq5YSH1sLjW65WasvRk"
+[[genesis.members]]
+nodeId = "16Uiu2HAmQBFTnRr84M3xNhi3EcWmgZnnBsDgewk4sNtpA3smBsHJ"

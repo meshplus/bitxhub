@@ -34,12 +34,12 @@ const jsondata = `
 
 const (
 	ProposeMethod = "propose"
-	VoteMethod     = "vote"
+	VoteMethod    = "vote"
 )
 
 var method2Sig = map[string]string{
 	ProposeMethod: "propose(uint8,string,string,uint64,bytes)",
-	VoteMethod:     "vote(uint64,uint8,bytes)",
+	VoteMethod:    "vote(uint64,uint8,bytes)",
 }
 
 type ProposalType uint8

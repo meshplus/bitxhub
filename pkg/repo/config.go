@@ -142,14 +142,15 @@ type LogModule struct {
 }
 
 type Genesis struct {
-	ChainID       uint64   `mapstructure:"chainid" toml:"chainid"`
-	GasLimit      uint64   `mapstructure:"gas_limit" toml:"gas_limit"`
-	GasPrice      uint64   `mapstructure:"gas_price" toml:"gas_price"`
-	MaxGasPrice   uint64   `mapstructure:"max_gas_price" toml:"max_gas_price"`
-	MinGasPrice   uint64   `mapstructure:"min_gas_price" toml:"min_gas_price"`
-	GasChangeRate float64  `mapstructure:"gas_change_rate" toml:"gas_change_rate"`
-	Balance       string   `mapstructure:"balance" toml:"balance"`
-	Admins        []*Admin `mapstructure:"admins" toml:"admins"`
+	ChainID       uint64    `mapstructure:"chainid" toml:"chainid"`
+	GasLimit      uint64    `mapstructure:"gas_limit" toml:"gas_limit"`
+	GasPrice      uint64    `mapstructure:"gas_price" toml:"gas_price"`
+	MaxGasPrice   uint64    `mapstructure:"max_gas_price" toml:"max_gas_price"`
+	MinGasPrice   uint64    `mapstructure:"min_gas_price" toml:"min_gas_price"`
+	GasChangeRate float64   `mapstructure:"gas_change_rate" toml:"gas_change_rate"`
+	Balance       string    `mapstructure:"balance" toml:"balance"`
+	Admins        []*Admin  `mapstructure:"admins" toml:"admins"`
+	Members       []*Member `mapstructure:"members" toml:"members"`
 }
 
 type Admin struct {
@@ -171,6 +172,10 @@ type Ledger struct {
 }
 
 type Executor struct {
+}
+
+type Member struct {
+	NodeId string `mapstructure:"node_id" toml:"node_id"`
 }
 
 func (c *Config) Bytes() ([]byte, error) {
@@ -240,6 +245,20 @@ func DefaultConfig(repoRoot string) *Config {
 				},
 				{
 					Address: "0xc0Ff2e0b3189132D815b8eb325bE17285AC898f8",
+				},
+			},
+			Members: []*Member{
+				{
+					NodeId: "16Uiu2HAmJ38LwfY6pfgDWNvk3ypjcpEMSePNTE6Ma2NCLqjbZJSF",
+				},
+				{
+					NodeId: "16Uiu2HAmRypzJbdbUNYsCV2VVgv9UryYS5d7wejTJXT73mNLJ8AK",
+				},
+				{
+					NodeId: "16Uiu2HAmTwEET536QC9MZmYFp1NUshjRuaq5YSH1sLjW65WasvRk",
+				},
+				{
+					NodeId: "16Uiu2HAmQBFTnRr84M3xNhi3EcWmgZnnBsDgewk4sNtpA3smBsHJ",
 				},
 			},
 		},
