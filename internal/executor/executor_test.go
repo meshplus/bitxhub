@@ -123,12 +123,14 @@ func TestGetEvm(t *testing.T) {
 	assert.NotNil(t, executor)
 
 	txCtx := vm1.TxContext{}
-	evm := executor.GetEvm(txCtx, vm1.Config{NoBaseFee: true})
+	evm, err := executor.GetEvm(txCtx, vm1.Config{NoBaseFee: true})
 	assert.NotNil(t, evm)
+	assert.Nil(t, err)
 
 	chainLedger.EXPECT().GetBlock(gomock.Any()).Return(nil, errors.New("get block error")).Times(1)
-	evmErr := executor.GetEvm(txCtx, vm1.Config{NoBaseFee: true})
+	evmErr, err := executor.GetEvm(txCtx, vm1.Config{NoBaseFee: true})
 	assert.Nil(t, evmErr)
+	assert.NotNil(t, err)
 }
 
 func TestSubscribeLogsEvent(t *testing.T) {
@@ -196,7 +198,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	stateLedger.EXPECT().GetNonce(gomock.Any()).Return(uint64(0)).AnyTimes()
 	stateLedger.EXPECT().SetCode(gomock.Any(), gomock.Any()).AnyTimes()
 	stateLedger.EXPECT().GetCode(gomock.Any()).Return([]byte("10")).AnyTimes()
-	stateLedger.EXPECT().GetLogs(gomock.Any()).Return(nil).AnyTimes()
+	stateLedger.EXPECT().GetLogs(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	stateLedger.EXPECT().SetTxContext(gomock.Any(), gomock.Any()).AnyTimes()
 	chainLedger.EXPECT().PersistExecutionResult(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	stateLedger.EXPECT().FlushDirtyData().Return(make(map[string]ledger2.IAccount), &types.Hash{}).AnyTimes()
@@ -317,7 +319,7 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 	stateLedger.EXPECT().RevertToSnapshot(1).AnyTimes()
 	stateLedger.EXPECT().SetTxContext(gomock.Any(), gomock.Any()).AnyTimes()
 	chainLedger.EXPECT().LoadChainMeta().Return(chainMeta, nil).AnyTimes()
-	stateLedger.EXPECT().GetLogs(gomock.Any()).Return(nil).AnyTimes()
+	stateLedger.EXPECT().GetLogs(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	chainLedger.EXPECT().GetBlock(gomock.Any()).Return(mockBlock(10, nil), nil).AnyTimes()
 	stateLedger.EXPECT().PrepareEVM(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 	stateLedger.EXPECT().PrepareBlock(gomock.Any(), gomock.Any()).AnyTimes()

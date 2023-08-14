@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/axiomesh/axiom/internal/executor/system/common"
-	vm "github.com/axiomesh/eth-kit/evm"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/sirupsen/logrus"
+
+	"github.com/axiomesh/axiom/internal/executor/system/common"
+	vm "github.com/axiomesh/eth-kit/evm"
 )
 
 var (
@@ -20,7 +21,9 @@ var (
 	ErrProposalType = errors.New("proposal type is invalid")
 	ErrUser         = errors.New("user is invalid")
 	ErrTitle        = errors.New("title is invalid")
+	ErrTooLongTitle = errors.New("title is too long, max is 200 characters")
 	ErrDesc         = errors.New("description is invalid")
+	ErrTooLongDesc  = errors.New("description is too long, max is 10000 characters")
 	ErrBlockNumber  = errors.New("block number is invalid")
 	ErrProposalID   = errors.New("proposal id is invalid")
 )
@@ -35,6 +38,9 @@ const jsondata = `
 const (
 	ProposeMethod = "propose"
 	VoteMethod    = "vote"
+
+	MaxTitleLength = 200
+	MaxDescLength  = 10000
 )
 
 var method2Sig = map[string]string{
@@ -47,10 +53,13 @@ type ProposalType uint8
 const (
 	// CouncilElect is a proposal for elect the council
 	CouncilElect ProposalType = iota
+
 	// NodeUpdate is a proposal for update or upgrade the node
 	NodeUpdate
+
 	// NodeAdd is a proposal for adding a new node
 	NodeAdd
+
 	// NodeRemove is a proposal for removing a node
 	NodeRemove
 )
@@ -89,7 +98,7 @@ type Governance struct {
 	logger        logrus.FieldLogger
 
 	gabi       *abi.ABI
-	method2Sig map[string]string
+	method2Sig map[string][]byte
 }
 
 func NewGov(proposalTypes []ProposalType, logger logrus.FieldLogger) (*Governance, error) {
@@ -102,7 +111,7 @@ func NewGov(proposalTypes []ProposalType, logger logrus.FieldLogger) (*Governanc
 		proposalTypes: proposalTypes,
 		logger:        logger,
 		gabi:          gabi,
-		method2Sig:    method2Sig,
+		method2Sig:    initMethodSignature(),
 	}, nil
 }
 
@@ -115,14 +124,22 @@ func GetABI() (*abi.ABI, error) {
 	return &gabi, nil
 }
 
+func initMethodSignature() map[string][]byte {
+	m2sig := make(map[string][]byte)
+	for methodName, methodSig := range method2Sig {
+		m2sig[methodName] = crypto.Keccak256([]byte(methodSig))
+	}
+	return m2sig
+}
+
 // GetMethodName quickly returns the name of a method.
 // This is a quick way to get the name of a method.
 // The method name is the first 4 bytes of the keccak256 hash of the method signature.
 // If the method name is not found, the empty string is returned.
 func (g *Governance) GetMethodName(data []byte) (string, error) {
 	for methodName, methodSig := range g.method2Sig {
-		id := crypto.Keccak256([]byte(methodSig))[:4]
-		g.logger.Infof("method id: %v, get method id: %v", id, data[:4])
+		id := methodSig[:4]
+		g.logger.Debugf("method id: %v, get method id: %v", id, data[:4])
 		if bytes.Equal(id, data[:4]) {
 			return methodName, nil
 		}
@@ -132,7 +149,7 @@ func (g *Governance) GetMethodName(data []byte) (string, error) {
 }
 
 // ParseArgs parse the arguments to specified interface by method name
-func (g *Governance) ParseArgs(msg *vm.Message, methodName string, ret interface{}) error {
+func (g *Governance) ParseArgs(msg *vm.Message, methodName string, ret any) error {
 	if len(msg.Data) < 4 {
 		return fmt.Errorf("msg data length is not improperly formatted: %q - Bytes: %+v", msg.Data, msg.Data)
 	}
@@ -160,7 +177,7 @@ func (g *Governance) ParseArgs(msg *vm.Message, methodName string, ret interface
 }
 
 // GetArgs get system contract arguments from a message
-func (g *Governance) GetArgs(msg *vm.Message) (interface{}, error) {
+func (g *Governance) GetArgs(msg *vm.Message) (any, error) {
 	data := msg.Data
 	if data == nil {
 		return nil, vm.ErrExecutionReverted
@@ -199,12 +216,20 @@ func (g *Governance) checkBeforePropose(user *ethcommon.Address, proposalType Pr
 		return false, ErrProposalType
 	}
 
-	if title == "" {
-		return false, ErrTitle
+	if title == "" || len(title) > MaxTitleLength {
+		if title == "" {
+			return false, ErrTitle
+		}
+		return false, ErrTooLongTitle
 	}
-	if desc == "" {
-		return false, ErrDesc
+
+	if desc == "" || len(desc) > MaxDescLength {
+		if desc == "" {
+			return false, ErrDesc
+		}
+		return false, ErrTooLongDesc
 	}
+
 	if deadlineBlockNumber == 0 {
 		return false, ErrBlockNumber
 	}

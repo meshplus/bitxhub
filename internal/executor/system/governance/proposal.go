@@ -36,14 +36,16 @@ type BaseProposal struct {
 	Title       string
 	Desc        string
 	BlockNumber uint64
+
 	// totalVotes is total votes for this proposal
 	// attention: some users may not vote for this proposal
 	TotalVotes uint64
+
 	// passVotes record user address for passed vote
-	PassVotes    []string
-	RejectVotes  []string
-	AbstainVotes []string
-	Status       ProposalStatus
+	PassVotes []string
+
+	RejectVotes []string
+	Status      ProposalStatus
 }
 
 type ProposalID struct {

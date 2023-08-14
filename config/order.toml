@@ -8,11 +8,11 @@ limit = 10000
 burst = 10000
 
 [mempool]
-pool_size = 50000   # How many transactions could the txPool stores in total
-batch_timeout = '500ms'     # Primary generate a batch, although batchsize isn't reached yet
-batch_size = 500        # How many transactions should the primary pack when generating a batch
-tolerance_time = '5m0s'     # The max tolerance time duration (in seconds) of out-of-date
-tolerance_remove_time = '15m0s' # The max tolerance remove time duration (in seconds) of tx alive in mempool
+pool_size = 50000               # How many transactions could the txPool stores in total, it should be greater than the batch_size * checkpoint_period
+batch_timeout = '500ms'         # Primary generate a batch, although batchsize isn't reached yet
+batch_size = 500                # How many transactions should the primary pack when generating a batch
+tolerance_time = '5m0s'         # The max tolerance time duration (in seconds) of out-of-date
+tolerance_remove_time = '15m0s' # The max tolerance remove time duration (in seconds) of tx alive in mempool, it should be greater than tolerance_time
 
 [tx_cache]
 set_size = 25               # How many transactions should the node broadcast at once
@@ -22,7 +22,7 @@ set_timeout = '100ms'       # Node broadcasts transactions if there are cached t
 [rbft]
 check_interval = '3m0s'     # interval of the check loop
 vc_period = 0               # After how many checkpoint periods( Blocks = 10 * vcperiod ) the primary gets cycled automatically. ( Set 0 to disable )
-checkpoint_period = 10      # The checkpoint period (in blocks)
+checkpoint_period = 10          # The checkpoint period (in blocks)
 
     [rbft.timeout]
     sync_state = '3s'           # How long to wait quorum sync state response
@@ -35,3 +35,6 @@ checkpoint_period = 10      # The checkpoint period (in blocks)
     resend_viewchange = '10s'   # How long to wait for a view change quorum before resending (the same) view change
     clean_viewchange = '1m0s'   # How long to clean out-of-data view change message
     update = '4s'               # How long may a update-n take
+
+[solo]
+    checkpoint_pierod = 10      # The checkpoint period (in blocks, which means mempool will be clean in 10 blocks per period)

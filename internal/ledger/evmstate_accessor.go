@@ -189,15 +189,13 @@ func (l *StateLedger) AddEVMLog(log *etherTypes.Log) {
 		topics = append(topics, types.NewHash(topic.Bytes()))
 	}
 	logs := &types.EvmLog{
-		Address:          types.NewAddress(log.Address.Bytes()),
-		Topics:           topics,
-		Data:             log.Data,
-		BlockNumber:      log.BlockNumber,
-		TransactionHash:  l.thash,
-		TransactionIndex: uint64(l.txIndex),
-		BlockHash:        types.NewHash(log.BlockHash.Bytes()),
-		LogIndex:         uint64(log.Index),
-		Removed:          log.Removed,
+		Address:     types.NewAddress(log.Address.Bytes()),
+		Topics:      topics,
+		Data:        log.Data,
+		BlockNumber: log.BlockNumber,
+		BlockHash:   types.NewHash(log.BlockHash.Bytes()),
+		LogIndex:    uint64(log.Index),
+		Removed:     log.Removed,
 	}
 	l.AddLog(logs)
 }

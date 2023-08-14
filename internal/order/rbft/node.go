@@ -205,7 +205,7 @@ func (n *Node) listenNewTxToSubmit() {
 				go n.txFeed.Send([]*types.Transaction{txWithResp.Tx})
 			}
 
-			txWithResp.Ch <- true
+			txWithResp.RespCh <- txcache.TxResp{Status: true}
 		case <-n.ctx.Done():
 			return
 		}
@@ -301,13 +301,16 @@ func (n *Node) Prepare(tx *types.Transaction) error {
 	}
 
 	txWithResp := &txcache.TxWithResp{
-		Tx: tx,
-		Ch: make(chan bool),
+		Tx:     tx,
+		RespCh: make(chan txcache.TxResp),
 	}
 	n.txCache.TxRespC <- txWithResp
 	n.txCache.RecvTxC <- tx
 
-	<-txWithResp.Ch
+	resp := <-txWithResp.RespCh
+	if !resp.Status {
+		return fmt.Errorf(resp.ErrorMsg)
+	}
 	return nil
 }
 

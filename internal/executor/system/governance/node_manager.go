@@ -14,6 +14,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const (
+	NodeManagementProposalGas uint64 = 30000
+	NodeManagementVoteGas     uint64 = 21600
+)
+
 var (
 	ErrNodeNumber              = errors.New("node members total count can't bigger than candidates count")
 	ErrNotFoundNodeMember      = errors.New("node member is not found")
@@ -225,4 +230,23 @@ func (nm *NodeManager) vote(user ethcommon.Address, voteArgs *NodeVoteArgs) (*vm
 	// return updated proposal
 	result.ReturnData = b
 	return result, nil
+}
+
+func (nm *NodeManager) EstimateGas(callArgs *types.CallArgs) (uint64, error) {
+	args, err := nm.gov.GetArgs(&vm.Message{Data: *callArgs.Data})
+	if err != nil {
+		return 0, err
+	}
+
+	var gas uint64
+	switch args.(type) {
+	case *ProposalArgs:
+		gas = NodeManagementProposalGas
+	case *VoteArgs:
+		gas = NodeManagementVoteGas
+	default:
+		return 0, errors.New("unknown proposal args")
+	}
+
+  return gas, nil
 }

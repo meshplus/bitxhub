@@ -4,11 +4,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/axiomesh/axiom-kit/types"
-	vm "github.com/axiomesh/eth-kit/evm"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/axiomesh/axiom-kit/types"
+	vm "github.com/axiomesh/eth-kit/evm"
 )
 
 func TestGovernance_GetABI(t *testing.T) {
@@ -253,6 +254,5 @@ func TestGovernance_Vote(t *testing.T) {
 
 		proposal.PassVotes = nil
 		proposal.RejectVotes = nil
-		proposal.AbstainVotes = nil
 	}
 }

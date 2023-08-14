@@ -1,14 +1,19 @@
 package coreapi
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 
+	ethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/sirupsen/logrus"
+
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/internal/coreapi/api"
+	"github.com/axiomesh/axiom/internal/executor/system"
+	"github.com/axiomesh/axiom/internal/executor/system/common"
 	vm "github.com/axiomesh/eth-kit/evm"
 	"github.com/axiomesh/eth-kit/ledger"
-	"github.com/sirupsen/logrus"
 )
 
 type BrokerAPI CoreAPI
@@ -17,7 +22,7 @@ var _ api.BrokerAPI = (*BrokerAPI)(nil)
 
 func (b *BrokerAPI) HandleTransaction(tx *types.Transaction) error {
 	if tx.GetHash() == nil {
-		return fmt.Errorf("transaction hash is nil")
+		return errors.New("transaction hash is nil")
 	}
 
 	b.logger.WithFields(logrus.Fields{
@@ -34,7 +39,7 @@ func (b *BrokerAPI) HandleTransaction(tx *types.Transaction) error {
 
 func (b *BrokerAPI) HandleView(tx *types.Transaction) (*types.Receipt, error) {
 	if tx.GetHash() == nil {
-		return nil, fmt.Errorf("transaction hash is nil")
+		return nil, errors.New("transaction hash is nil")
 	}
 
 	b.logger.WithFields(logrus.Fields{
@@ -69,7 +74,7 @@ func (b *BrokerAPI) GetBlock(mode string, value string) (*types.Block, error) {
 	case "HASH":
 		hash := types.NewHashByStr(value)
 		if hash == nil {
-			return nil, fmt.Errorf("invalid format of block hash for querying block")
+			return nil, errors.New("invalid format of block hash for querying block")
 		}
 		return b.bxh.Ledger.GetBlockByHash(hash)
 	default:
@@ -129,10 +134,17 @@ func (b *BrokerAPI) GetStateLedger() ledger.StateLedger {
 	return b.bxh.Ledger.StateLedger
 }
 
-func (b *BrokerAPI) GetEvm(mes *vm.Message, vmConfig *vm.Config) *vm.EVM {
+func (b *BrokerAPI) GetEvm(mes *vm.Message, vmConfig *vm.Config) (*vm.EVM, error) {
 	if vmConfig == nil {
 		vmConfig = new(vm.Config)
 	}
 	txContext := vm.NewEVMTxContext(mes)
 	return b.bxh.BlockExecutor.GetEvm(txContext, *vmConfig)
+}
+
+func (b *BrokerAPI) GetSystemContract(addr *ethcommon.Address) (common.SystemContract, bool) {
+	if addr == nil {
+		return nil, false
+	}
+	return system.GetSystemContract(types.NewAddress(addr.Bytes()))
 }

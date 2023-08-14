@@ -8,6 +8,7 @@ import (
 	"github.com/axiomesh/axiom-bft/mempool"
 	"github.com/axiomesh/axiom/internal/order"
 	"github.com/golang/mock/gomock"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
 	"github.com/axiomesh/axiom-kit/log"
@@ -16,8 +17,15 @@ import (
 	"github.com/axiomesh/axiom/pkg/repo"
 )
 
+const (
+	poolSize        = 10
+	batchTimeout    = 50 * time.Millisecond
+	removeTxTimeout = 1 * time.Second
+)
+
 func mockSoloNode(t *testing.T, enableTimed bool) (*Node, error) {
 	logger := log.NewWithModule("consensus")
+	logger.Logger.SetLevel(logrus.DebugLevel)
 	repoRoot := t.TempDir()
 	r, err := repo.Load(repoRoot)
 	require.Nil(t, err)
@@ -25,15 +33,16 @@ func mockSoloNode(t *testing.T, enableTimed bool) (*Node, error) {
 
 	recvCh := make(chan consensusEvent, maxChanSize)
 	batchTimerMgr := NewTimerManager(recvCh, logger)
-	batchTimerMgr.newTimer(Batch, cfg.Mempool.BatchTimeout.ToDuration())
+	batchTimerMgr.newTimer(Batch, batchTimeout)
 	mockCtl := gomock.NewController(t)
 	mockPeermgr := mock_peermgr.NewMockPeerManager(mockCtl)
 	mempoolConf := mempool.Config{
-		ID:        uint64(1),
-		IsTimed:   cfg.TimedGenBlock.Enable,
-		Logger:    &order.Logger{FieldLogger: logger},
-		BatchSize: cfg.Mempool.BatchSize,
-		PoolSize:  cfg.Mempool.PoolSize,
+		ID:                  uint64(1),
+		IsTimed:             cfg.TimedGenBlock.Enable,
+		Logger:              &order.Logger{FieldLogger: logger},
+		BatchSize:           cfg.Mempool.BatchSize,
+		PoolSize:            poolSize,
+		ToleranceRemoveTime: removeTxTimeout,
 		GetAccountNonce: func(address string) uint64 {
 			return 0
 		},
@@ -47,6 +56,7 @@ func mockSoloNode(t *testing.T, enableTimed bool) (*Node, error) {
 		noTxBatchTimeout = cfg.TimedGenBlock.NoTxBatchTimeout.ToDuration()
 	}
 	batchTimerMgr.newTimer(NoTxBatch, noTxBatchTimeout)
+	batchTimerMgr.newTimer(RemoveTx, mempoolConf.ToleranceRemoveTime)
 	mempoolInst := mempool.NewMempool[types.Transaction, *types.Transaction](mempoolConf)
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -61,6 +71,8 @@ func mockSoloNode(t *testing.T, enableTimed bool) (*Node, error) {
 		mempool:          mempoolInst,
 		batchMgr:         batchTimerMgr,
 		peerMgr:          mockPeermgr,
+		batchDigestM:     make(map[uint64]string),
+		checkpoint:       10,
 		recvCh:           recvCh,
 		logger:           logger,
 		ctx:              ctx,

@@ -1,17 +1,19 @@
 package governance
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
+
+	ethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/samber/lo"
+	"github.com/sirupsen/logrus"
 
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/internal/executor/system/common"
 	vm "github.com/axiomesh/eth-kit/evm"
 	"github.com/axiomesh/eth-kit/ledger"
-	ethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/samber/lo"
-	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -31,10 +33,10 @@ const (
 
 	// TODO: set used gas
 	// CouncilProposalGas is used gas for council proposal
-	CouncilProposalGas = 1000
+	CouncilProposalGas uint64 = 30000
 
 	// CouncilVoteGas is used gas for council vote
-	CouncilVoteGas = 100
+	CouncilVoteGas uint64 = 21600
 )
 
 // CouncilExtraArgs is council proposal extra arguments
@@ -74,7 +76,9 @@ var _ common.SystemContract = (*CouncilManager)(nil)
 type CouncilManager struct {
 	gov *Governance
 
-	account ledger.IAccount
+	account     ledger.IAccount
+	stateLedger ledger.StateLedger
+	currentLog  *common.Log
 }
 
 func NewCouncilManager(logger logrus.FieldLogger) *CouncilManager {
@@ -89,18 +93,33 @@ func NewCouncilManager(logger logrus.FieldLogger) *CouncilManager {
 }
 
 func (cm *CouncilManager) Reset(stateLedger ledger.StateLedger) {
-	cm.account = stateLedger.GetOrCreateAccount(types.NewAddressByStr(common.CouncilManagerContractAddr))
+	addr := types.NewAddressByStr(common.CouncilManagerContractAddr)
+	cm.account = stateLedger.GetOrCreateAccount(addr)
+	cm.stateLedger = stateLedger
+	cm.currentLog = &common.Log{
+		Address: addr,
+	}
 	globalProposalID = GetInstanceOfProposalID(stateLedger)
 }
 
-func (cm *CouncilManager) Run(msg *vm.Message) (*vm.ExecutionResult, error) {
+func (cm *CouncilManager) Run(msg *vm.Message) (result *vm.ExecutionResult, err error) {
+	defer func() {
+		if cm.currentLog.Data != nil {
+			cm.stateLedger.AddLog(&types.EvmLog{
+				Address: cm.currentLog.Address,
+				Topics:  cm.currentLog.Topics,
+				Data:    cm.currentLog.Data,
+				Removed: cm.currentLog.Removed,
+			})
+		}
+	}()
+
 	// parse method and arguments from msg payload
 	args, err := cm.gov.GetArgs(msg)
 	if err != nil {
 		return nil, err
 	}
 
-	var result *vm.ExecutionResult
 	switch v := args.(type) {
 	case *ProposalArgs:
 		councilArgs := &CouncilProposalArgs{
@@ -171,6 +190,16 @@ func (cm *CouncilManager) propose(addr ethcommon.Address, args *CouncilProposalA
 	// save proposal
 	cm.account.SetState([]byte(fmt.Sprintf("%s%d", CouncilProposalKey, proposal.ID)), b)
 
+	// set method signature, proposal id, proposal type, proposer as log topic for index
+	idhash := make([]byte, 8)
+	binary.BigEndian.PutUint64(idhash, proposal.ID)
+	typeHash := make([]byte, 2)
+	binary.BigEndian.PutUint16(typeHash, uint16(proposal.Type))
+	cm.currentLog.Topics = append(cm.currentLog.Topics, types.NewHash(cm.gov.method2Sig[ProposeMethod]),
+		types.NewHash(idhash), types.NewHash(typeHash), types.NewHash([]byte(proposal.Proposer)))
+	cm.currentLog.Data = b
+	cm.currentLog.Removed = false
+
 	return &vm.ExecutionResult{
 		UsedGas:    CouncilProposalGas,
 		ReturnData: b,
@@ -227,7 +256,36 @@ func (cm *CouncilManager) vote(user ethcommon.Address, voteArgs *CouncilVoteArgs
 		cm.account.SetState([]byte(CouncilKey), cb)
 	}
 
+	// set method signature, proposal id, proposal type, voter address as log topic for index
+	idhash := make([]byte, 8)
+	binary.BigEndian.PutUint64(idhash, proposal.ID)
+	typeHash := make([]byte, 2)
+	binary.BigEndian.PutUint16(typeHash, uint16(proposal.Type))
+	cm.currentLog.Topics = append(cm.currentLog.Topics, types.NewHash(cm.gov.method2Sig[ProposeMethod]),
+		types.NewHash(idhash), types.NewHash(typeHash), types.NewHash([]byte(user.String())))
+	cm.currentLog.Data = b
+	cm.currentLog.Removed = false
+
 	// return updated proposal
 	result.ReturnData = b
 	return result, nil
+}
+
+func (cm *CouncilManager) EstimateGas(callArgs *types.CallArgs) (uint64, error) {
+	args, err := cm.gov.GetArgs(&vm.Message{Data: *callArgs.Data})
+	if err != nil {
+		return 0, err
+	}
+
+	var gas uint64
+	switch args.(type) {
+	case *ProposalArgs:
+		gas = CouncilProposalGas
+	case *VoteArgs:
+		gas = CouncilVoteGas
+	default:
+		return 0, errors.New("unknown proposal args")
+	}
+
+	return gas, nil
 }

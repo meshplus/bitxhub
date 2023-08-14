@@ -531,6 +531,12 @@ func (l *StateLedger) PrepareBlock(hash *types.Hash, height uint64) {
 }
 
 func (l *StateLedger) AddLog(log *types.EvmLog) {
+	if log.TransactionHash == nil {
+		log.TransactionHash = l.thash
+	}
+
+	log.TransactionIndex = uint64(l.txIndex)
+
 	l.changer.append(addLogChange{txHash: log.TransactionHash})
 
 	log.BlockHash = l.logs.bhash
@@ -543,8 +549,13 @@ func (l *StateLedger) AddLog(log *types.EvmLog) {
 	l.logs.logSize++
 }
 
-func (l *StateLedger) GetLogs(hash types.Hash) []*types.EvmLog {
-	return l.logs.logs[hash]
+func (l *StateLedger) GetLogs(hash types.Hash, height uint64, blockHash *types.Hash) []*types.EvmLog {
+	logs := l.logs.logs[hash]
+	for _, l := range logs {
+		l.BlockNumber = height
+		l.BlockHash = blockHash
+	}
+	return logs
 }
 
 func (l *StateLedger) Logs() []*types.EvmLog {
