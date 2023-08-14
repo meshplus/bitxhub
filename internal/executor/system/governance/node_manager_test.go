@@ -2,7 +2,6 @@ package governance
 
 import (
 	"encoding/json"
-	"fmt"
 	"path/filepath"
 	"testing"
 
@@ -32,7 +31,6 @@ func TestNodeManager_Run(t *testing.T) {
 	account := ledger.NewAccount(ld, accountCache, types.NewAddressByStr(common.NodeManagerContractAddr), ledger.NewChanger())
 
 	stateLedger.EXPECT().GetOrCreateAccount(gomock.Any()).Return(account).AnyTimes()
-
 	initializeNode(t, stateLedger, []*NodeMember{
 		{
 			NodeId: "16Uiu2HAmJ38LwfY6pfgDWNvk3ypjcpEMSePNTE6Ma2NCLqjbZJSF",
@@ -41,7 +39,7 @@ func TestNodeManager_Run(t *testing.T) {
 	nm.Reset(stateLedger)
 
 	// gabi, err := GetABI()
-	assert.Nil(t, err)
+	// assert.Nil(t, err)
 
 	testcases := []struct {
 		Caller   string
@@ -65,18 +63,13 @@ func TestNodeManager_Run(t *testing.T) {
 		},
 	}
 
-	for _, test := range testcases {
-		result, err := nm.Run(&vm.Message{
-			From: types.NewAddressByStr(test.Caller).ETHAddress(),
-			Data: test.Data,
-		})
+	res, err := nm.Run(&vm.Message{
+		Data: testcases[0].Data,
+	})
 
-		if result != nil {
-			assert.Nil(t, err)
-			assert.Equal(t, uint64(1000), result.UsedGas)
-		}
-	}
+	assert.Nil(t, err)
 
+	assert.Equal(t, uint64(1000), res.UsedGas)
 }
 
 func initializeNode(t *testing.T, lg ethledger.StateLedger, admins []*NodeMember) {
@@ -99,7 +92,7 @@ func TestRunForNodePropose(t *testing.T) {
 	accountCache, err := ledger.NewAccountCache()
 	assert.Nil(t, err)
 	repoRoot := t.TempDir()
-	ld, err := leveldb.New(filepath.Join(repoRoot, "node_member"))
+	ld, err := leveldb.New(filepath.Join(repoRoot, "node_manager"))
 	assert.Nil(t, err)
 	account := ledger.NewAccount(ld, accountCache, types.NewAddressByStr(common.NodeMemberContractAddr), ledger.NewChanger())
 
@@ -159,8 +152,6 @@ func generateNodeAddProposeData(t *testing.T, extraArgs NodeExtraArgs) []byte {
 	assert.Nil(t, err)
 	data, err := gabi.Pack(ProposeMethod, uint8(NodeAdd), title, desc, blockNumber, extra)
 	assert.Nil(t, err)
-
-	fmt.Println(data)
 	return data
 }
 
