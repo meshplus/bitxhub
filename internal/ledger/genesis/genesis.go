@@ -7,6 +7,7 @@ import (
 
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/internal/executor"
+	"github.com/axiomesh/axiom/internal/executor/system"
 	"github.com/axiomesh/axiom/internal/executor/system/common"
 	"github.com/axiomesh/axiom/internal/executor/system/governance"
 	"github.com/axiomesh/axiom/internal/ledger"
@@ -34,12 +35,11 @@ func Initialize(genesis *repo.Genesis, nodes []*repo.NetworkNodes, primaryN uint
 	}
 	account.SetState([]byte(governance.CouncilKey), b)
 
-	//read member config, write to Ledger
-	c, err := json.Marshal(genesis.Members)
+	err = system.SetNodeMember(genesis, lg)
 	if err != nil {
 		return err
 	}
-	lg.SetState(types.NewAddressByStr(common.NodeManagerContractAddr), []byte(common.NodeManagerContractAddr), c)
+
 	accounts, stateRoot := lg.FlushDirtyData()
 
 	block := &types.Block{

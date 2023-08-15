@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"strings"
 	"sync"
 	"time"
 
@@ -17,7 +16,7 @@ import (
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom-kit/types/pb"
 	network "github.com/axiomesh/axiom-p2p"
-	"github.com/axiomesh/axiom/internal/executor/system/common"
+	"github.com/axiomesh/axiom/internal/executor/system"
 	"github.com/axiomesh/axiom/internal/ledger"
 	"github.com/axiomesh/axiom/pkg/repo"
 )
@@ -165,21 +164,12 @@ func (swarm *Swarm) onConnected(net p2pnetwork.Network, conn p2pnetwork.Conn) er
 		}
 	}
 
-	var IsExist = false
-	success, data := swarm.ledger.GetState(types.NewAddressByStr(common.NodeManagerContractAddr), []byte(common.NodeManagerContractAddr))
-	if success {
-		stringData := strings.Split(string(data), ",")
-		for _, nodeID := range stringData {
-			if peerID == nodeID {
-				IsExist = true
-				break
-			}
-		}
-	} else {
-		return fmt.Errorf("get nodeMember err")
+	isExist, err := system.IsExistNodeMember(peerID, swarm.ledger)
+	if err != nil {
+		return err
 	}
 
-	if !IsExist {
+	if !isExist {
 		swarm.onDisconnected(peerID)
 	}
 
