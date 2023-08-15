@@ -377,7 +377,7 @@ func (api *FilterAPI) NewFilter(crit FilterCriteria) (rpc.ID, error) {
 // GetLogs returns logs matching the given argument that are stored within the state.
 //
 // https://eth.wiki/json-rpc/API#eth_getlogs
-func (api *FilterAPI) GetLogs(ctx context.Context, ethCrit FilterCriteria) ([]*types.EvmLog, error) {
+func (api *FilterAPI) GetLogs(ctx context.Context, ethCrit FilterCriteria) ([]*ethereumTypes.Log, error) {
 	api.logger.Debugf("eth_getLogs: ethCrit: %s", ethCrit)
 	var filter *Filter
 	crit := ethCrit.toBxhFilterQuery()
@@ -402,7 +402,11 @@ func (api *FilterAPI) GetLogs(ctx context.Context, ethCrit FilterCriteria) ([]*t
 	if err != nil {
 		return nil, err
 	}
-	return returnLogs(logs), err
+	res := make([]*ethereumTypes.Log, len(logs))
+	for i := 0; i < len(logs); i++ {
+		res[i] = formatEthLogs(logs[i])
+	}
+	return res, err
 }
 
 // UninstallFilter removes the filter with the given filter id.
