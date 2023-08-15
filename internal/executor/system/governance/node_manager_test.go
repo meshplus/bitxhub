@@ -56,7 +56,7 @@ func TestNodeManager_Run(t *testing.T) {
 				},
 			}),
 			Expected: vm.ExecutionResult{
-				UsedGas: NodeProposalGas,
+				UsedGas: NodeManagementProposalGas,
 			},
 			Err: nil,
 		},
@@ -68,7 +68,7 @@ func TestNodeManager_Run(t *testing.T) {
 
 	assert.Nil(t, err)
 
-	assert.Equal(t, uint64(1000), res.UsedGas)
+	assert.Equal(t, uint64(NodeManagementProposalGas), res.UsedGas)
 }
 
 func generateNodeAddVoteData(t *testing.T, proposalID uint64, voteResult VoteResult) []byte {
@@ -116,12 +116,12 @@ func TestNodeManager_EstimateGas(t *testing.T) {
 }
 
 func initializeNode(t *testing.T, lg ethledger.StateLedger, admins []*NodeMember) {
-	node := &Node{}
-	node.Members = admins
-	account := lg.GetOrCreateAccount(types.NewAddressByStr(common.NodeMemberContractAddr))
-	b, err := json.Marshal(node)
+	// node := &Node{}
+	// node.Members = admins
+	account := lg.GetOrCreateAccount(types.NewAddressByStr(common.NodeManagerContractAddr))
+	b, err := json.Marshal(admins)
 	assert.Nil(t, err)
-	account.SetState([]byte(common.NodeMemberContractAddr), b)
+	account.SetState([]byte(common.NodeManagerContractAddr), b)
 }
 
 func TestRunForNodePropose(t *testing.T) {
@@ -137,7 +137,7 @@ func TestRunForNodePropose(t *testing.T) {
 	repoRoot := t.TempDir()
 	ld, err := leveldb.New(filepath.Join(repoRoot, "node_manager"))
 	assert.Nil(t, err)
-	account := ledger.NewAccount(ld, accountCache, types.NewAddressByStr(common.NodeMemberContractAddr), ledger.NewChanger())
+	account := ledger.NewAccount(ld, accountCache, types.NewAddressByStr(common.NodeManagerContractAddr), ledger.NewChanger())
 
 	stateLedger.EXPECT().GetOrCreateAccount(gomock.Any()).Return(account).AnyTimes()
 
@@ -164,7 +164,7 @@ func TestRunForNodePropose(t *testing.T) {
 				},
 			}),
 			Expected: vm.ExecutionResult{
-				UsedGas: NodeProposalGas,
+				UsedGas: NodeManagementProposalGas,
 			},
 			Err: nil,
 		},

@@ -166,7 +166,7 @@ func (swarm *Swarm) onConnected(net p2pnetwork.Network, conn p2pnetwork.Conn) er
 	}
 
 	var IsExist = false
-	success, data := swarm.ledger.GetState(types.NewAddressByStr(common.NodeMemberContractAddr), []byte(common.NodeMemberContractAddr))
+	success, data := swarm.ledger.GetState(types.NewAddressByStr(common.NodeManagerContractAddr), []byte(common.NodeManagerContractAddr))
 	if success {
 		stringData := strings.Split(string(data), ",")
 		for _, nodeID := range stringData {

@@ -294,15 +294,14 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 	ld, err := leveldb.New(filepath.Join(repoRoot, "executor"))
 	assert.Nil(t, err)
 	account := ledger.NewAccount(ld, accountCache, types.NewAddressByStr(common.NodeManagerContractAddr), ledger.NewChanger())
-	node := &Node{}
-	node.Members = []*NodeMember{
+	var members = []*NodeMember{
 		{
 			NodeId: "16Uiu2HAmJ38LwfY6pfgDWNvk3ypjcpEMSePNTE6Ma2NCLqjbZJSF",
 		},
 	}
-	b, err := json.Marshal(node)
+	b, err := json.Marshal(members)
 	assert.Nil(t, err)
-	account.SetState([]byte(common.NodeMemberContractAddr), b)
+	account.SetState([]byte(common.NodeManagerContractAddr), b)
 
 	contractAddr := types.NewAddressByStr("0xdac17f958d2ee523a2206206994597c13d831ec7")
 	chainLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
@@ -405,10 +404,6 @@ type NodeExtraArgs struct {
 
 type NodeMember struct {
 	NodeId string
-}
-
-type Node struct {
-	Members []*NodeMember
 }
 
 func mockCommitEvent(blockNumber uint64, txs []*types.Transaction) *types.CommitEvent {

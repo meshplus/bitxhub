@@ -39,7 +39,7 @@ func Initialize(genesis *repo.Genesis, nodes []*repo.NetworkNodes, primaryN uint
 	if err != nil {
 		return err
 	}
-	lg.SetState(types.NewAddressByStr(common.NodeMemberContractAddr), []byte(common.NodeMemberContractAddr), c)
+	lg.SetState(types.NewAddressByStr(common.NodeManagerContractAddr), []byte(common.NodeManagerContractAddr), c)
 	accounts, stateRoot := lg.FlushDirtyData()
 
 	block := &types.Block{

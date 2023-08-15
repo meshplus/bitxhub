@@ -13,7 +13,6 @@ import (
 	vm "github.com/axiomesh/eth-kit/evm"
 	"github.com/axiomesh/eth-kit/ledger"
 	ethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/samber/lo"
 )
 
 const (
@@ -21,12 +20,6 @@ const (
 	NodeManagementVoteGas     uint64 = 21600
 	// NodeProposalKey is key for NodeProposal storage
 	NodeProposalKey = "councilProposalKey"
-	// TODO: set used gas
-	// NodeProposalGas is used gas for node proposal
-	NodeProposalGas = 1000
-
-	// NodeVoteGas is used gas for node vote
-	NodeVoteGas = 100
 )
 
 var (
@@ -143,25 +136,18 @@ func (nm *NodeManager) propose(addr ethcommon.Address, args *NodeProposalArgs) (
 	}
 	proposal.ID = id
 	// check nodeMember if is exist
-	isExist, data := nm.account.GetState([]byte(common.NodeMemberContractAddr))
+	isExist, data := nm.account.GetState([]byte(common.NodeManagerContractAddr))
 	if !isExist {
 		return nil, errors.New("council should be initialized in genesis")
 	}
-	node := &Node{}
-	if err = json.Unmarshal(data, node); err != nil {
+
+	var members []NodeMember
+	if err := json.Unmarshal(data, &members); err != nil {
 		return nil, err
 	}
 
-	council := &Council{}
-	if err = json.Unmarshal(data, council); err != nil {
-		return nil, err
-	}
-
-	// TODO check addr if is exist in council
-
-	proposal.TotalVotes = lo.Sum[uint64](lo.Map[*CouncilMember, uint64](council.Members, func(item *CouncilMember, index int) uint64 {
-		return item.Weight
-	}))
+	// // TODO check addr if is exist in council
+	// // TODO get TotalVotes
 	proposal.Nodes = args.Nodes
 
 	b, err := json.Marshal(proposal)
@@ -170,7 +156,7 @@ func (nm *NodeManager) propose(addr ethcommon.Address, args *NodeProposalArgs) (
 	nm.account.SetState([]byte(fmt.Sprintf("%s%d", NodeProposalKey, proposal.ID)), b)
 
 	return &vm.ExecutionResult{
-		UsedGas:    NodeProposalGas,
+		UsedGas:    NodeManagementProposalGas,
 		ReturnData: b,
 		Err:        err,
 	}, nil
@@ -178,8 +164,7 @@ func (nm *NodeManager) propose(addr ethcommon.Address, args *NodeProposalArgs) (
 
 // Vote a proposal, return vote status
 func (nm *NodeManager) vote(user ethcommon.Address, voteArgs *NodeVoteArgs) (*vm.ExecutionResult, error) {
-	result := &vm.ExecutionResult{UsedGas: NodeVoteGas}
-
+	result := &vm.ExecutionResult{UsedGas: NodeManagementVoteGas}
 	// get proposal
 	isExist, data := nm.account.GetState([]byte(fmt.Sprintf("%s%d", NodeProposalKey, voteArgs.ProposalId)))
 	if !isExist {
@@ -213,16 +198,13 @@ func (nm *NodeManager) vote(user ethcommon.Address, voteArgs *NodeVoteArgs) (*vm
 	// if proposal is approved, update the node members
 	// TODO: need check block number
 	if proposal.Status == Approved {
-		node := &Node{
-			Members: proposal.Nodes,
-		}
 
 		// save council
-		cb, err := json.Marshal(node)
+		cb, err := json.Marshal(proposal.Nodes)
 		if err != nil {
 			return nil, err
 		}
-		nm.account.SetState([]byte(common.NodeMemberContractAddr), cb)
+		nm.account.SetState([]byte(common.NodeManagerContractAddr), cb)
 	}
 
 	// return updated proposal

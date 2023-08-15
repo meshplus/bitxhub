@@ -13,8 +13,6 @@ const (
 	// system contract address range 0x1001-0xffff
 	NodeManagerContractAddr    = "0x0000000000000000000000000000000000001001"
 	CouncilManagerContractAddr = "0x0000000000000000000000000000000000001002"
-	// node members address, used for admitting connections between nodes
-	NodeMemberContractAddr = "0x0000000000000000000000000000000000001003"
 )
 
 type SystemContract interface {
