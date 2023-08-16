@@ -355,7 +355,7 @@ func checkInCouncil(account ledger.IAccount, addr string) (bool, *Council) {
 	if err := json.Unmarshal(data, council); err != nil {
 		return false, nil
 	}
-	
+
 	// check addr if is exist in council
 	isExist = common.IsInSlice[string](addr, lo.Map[*CouncilMember, string](council.Members, func(item *CouncilMember, index int) string {
 		return item.Address
