@@ -19,11 +19,13 @@ import (
 )
 
 var (
-	ErrCouncilNumber              = errors.New("council members total count can't bigger than candidates count")
-	ErrNotFoundCouncilMember      = errors.New("council member is not found")
-	ErrCouncilExtraArgs           = errors.New("unmarshal council extra arguments error")
-	ErrCouncilProposalNumberLimit = errors.New("council proposal number limit, only allow one council proposal")
-	ErrNotFoundCouncilProposal    = errors.New("council proposal not found for the id")
+	ErrCouncilNumber            = errors.New("council members total count can't bigger than candidates count")
+	ErrMinCouncilMembersCount   = errors.New("council members count can't less than 4")
+	ErrRepeatedAddress          = errors.New("council member address repeated")
+	ErrNotFoundCouncilMember    = errors.New("council member is not found")
+	ErrCouncilExtraArgs         = errors.New("unmarshal council extra arguments error")
+	ErrNotFoundCouncilProposal  = errors.New("council proposal not found for the id")
+	ErrExistNotFinishedProposal = errors.New("exist not finished proposal, must finished all proposal then propose council proposal")
 )
 
 const (
@@ -32,6 +34,9 @@ const (
 
 	// CouncilKey is key for council storage
 	CouncilKey = "councilKey"
+
+	// MinCouncilMembersCount is min council members count
+	MinCouncilMembersCount = 4
 
 	// TODO: set used gas
 	// CouncilProposalGas is used gas for council proposal
@@ -155,32 +160,37 @@ func (cm *CouncilManager) propose(addr ethcommon.Address, args *CouncilProposalA
 		return nil, err
 	}
 
-	id, err := globalProposalID.GetAndAddID()
-	if err != nil {
-		return nil, err
+	// check proposal council member num
+	if len(args.Candidates) < MinCouncilMembersCount {
+		return nil, ErrMinCouncilMembersCount
+	}
+
+	// check proposal candidates has repeated address
+	if len(lo.Uniq[string](lo.Map[*CouncilMember, string](args.Candidates, func(item *CouncilMember, index int) string {
+		return item.Address
+	}))) != len(args.Candidates) {
+		return nil, ErrRepeatedAddress
 	}
 
 	// set proposal id
 	proposal := &CouncilProposal{
 		BaseProposal: *baseProposal,
 	}
-	proposal.ID = id
-	// check council if is exist
-	isExist, data := cm.account.GetState([]byte(CouncilKey))
-	if !isExist {
-		return nil, errors.New("council should be initialized in genesis")
-	}
-	council := &Council{}
-	if err = json.Unmarshal(data, council); err != nil {
-		return nil, err
-	}
-	// check addr if is exist in council
-	isExist = common.IsInSlice[string](addr.String(), lo.Map[*CouncilMember, string](council.Members, func(item *CouncilMember, index int) string {
-		return item.Address
-	}))
+
+	isExist, council := checkInCouncil(cm.account, addr.String())
 	if !isExist {
 		return nil, ErrNotFoundCouncilMember
 	}
+
+	if !cm.checkFinishedAllProposal() {
+		return nil, ErrExistNotFinishedProposal
+	}
+
+	id, err := globalProposalID.GetAndAddID()
+	if err != nil {
+		return nil, err
+	}
+	proposal.ID = id
 
 	proposal.TotalVotes = lo.Sum[uint64](lo.Map[*CouncilMember, uint64](council.Members, func(item *CouncilMember, index int) uint64 {
 		return item.Weight
@@ -213,6 +223,12 @@ func (cm *CouncilManager) propose(addr ethcommon.Address, args *CouncilProposalA
 func (cm *CouncilManager) vote(user ethcommon.Address, voteArgs *CouncilVoteArgs) (*vm.ExecutionResult, error) {
 	result := &vm.ExecutionResult{UsedGas: CouncilVoteGas}
 
+	// check user can vote
+	isExist, _ := checkInCouncil(cm.account, user.String())
+	if !isExist {
+		return nil, ErrNotFoundCouncilMember
+	}
+
 	// get proposal
 	isExist, data := cm.account.GetState([]byte(fmt.Sprintf("%s%d", CouncilProposalKey, voteArgs.ProposalId)))
 	if !isExist {
@@ -234,7 +250,6 @@ func (cm *CouncilManager) vote(user ethcommon.Address, voteArgs *CouncilVoteArgs
 	proposal.Status = proposalStatus
 
 	// TODO: check user can vote
-	// check user if is already voted
 
 	b, err := json.Marshal(proposal)
 	if err != nil {
@@ -310,4 +325,44 @@ func InitCouncilMembers(lg ledger.StateLedger, admins []*repo.Admin, initBlance 
 	}
 	account.SetState([]byte(CouncilKey), b)
 	return nil
+}
+
+func (cm *CouncilManager) checkFinishedAllProposal() bool {
+	if isExist, data := cm.account.Query(CouncilProposalKey); isExist {
+		for _, proposalData := range data {
+			proposal := &CouncilProposal{}
+			if err := json.Unmarshal(proposalData, proposal); err != nil {
+				return false
+			}
+
+			if proposal.Status == Voting {
+				return false
+			}
+		}
+	}
+
+	// TODO: add other proposals status check
+	return true
+}
+
+func checkInCouncil(account ledger.IAccount, addr string) (bool, *Council) {
+	// check council if is exist
+	isExist, data := account.GetState([]byte(CouncilKey))
+	if !isExist {
+		return false, nil
+	}
+	council := &Council{}
+	if err := json.Unmarshal(data, council); err != nil {
+		return false, nil
+	}
+
+	// check addr if is exist in council
+	isExist = common.IsInSlice[string](addr, lo.Map[*CouncilMember, string](council.Members, func(item *CouncilMember, index int) string {
+		return item.Address
+	}))
+	if !isExist {
+		return false, nil
+	}
+
+	return true, council
 }

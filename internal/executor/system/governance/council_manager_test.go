@@ -108,6 +108,56 @@ func TestRunForPropose(t *testing.T) {
 					},
 				},
 			}),
+			Expected: vm.ExecutionResult{},
+			Err:      ErrMinCouncilMembersCount,
+		},
+		{
+			Caller: admin1,
+			Data: generateProposeData(t, CouncilExtraArgs{
+				Candidates: []*CouncilMember{
+					{
+						Address: admin1,
+						Weight:  1,
+					},
+					{
+						Address: admin1,
+						Weight:  1,
+					},
+					{
+						Address: admin3,
+						Weight:  1,
+					},
+					{
+						Address: admin4,
+						Weight:  1,
+					},
+				},
+			}),
+			Expected: vm.ExecutionResult{},
+			Err:      ErrRepeatedAddress,
+		},
+		{
+			Caller: admin1,
+			Data: generateProposeData(t, CouncilExtraArgs{
+				Candidates: []*CouncilMember{
+					{
+						Address: admin1,
+						Weight:  1,
+					},
+					{
+						Address: admin2,
+						Weight:  1,
+					},
+					{
+						Address: admin3,
+						Weight:  1,
+					},
+					{
+						Address: admin4,
+						Weight:  1,
+					},
+				},
+			}),
 			Expected: vm.ExecutionResult{
 				UsedGas: CouncilProposalGas,
 				ReturnData: generateReturnData(t, &TestCouncilProposal{
@@ -131,6 +181,10 @@ func TestRunForPropose(t *testing.T) {
 							Address: admin3,
 							Weight:  1,
 						},
+						{
+							Address: admin4,
+							Weight:  1,
+						},
 					},
 				}),
 			},
@@ -150,6 +204,10 @@ func TestRunForPropose(t *testing.T) {
 					},
 					{
 						Address: admin3,
+						Weight:  1,
+					},
+					{
+						Address: admin4,
 						Weight:  1,
 					},
 				},
@@ -215,6 +273,10 @@ func TestRunForVote(t *testing.T) {
 			Address: admin3,
 			Weight:  1,
 		},
+		{
+			Address: admin4,
+			Weight:  1,
+		},
 	})
 
 	cm.Reset(stateLedger)
@@ -237,6 +299,10 @@ func TestRunForVote(t *testing.T) {
 				},
 				{
 					Address: admin3,
+					Weight:  2,
+				},
+				{
+					Address: admin4,
 					Weight:  2,
 				},
 			},
@@ -275,6 +341,10 @@ func TestRunForVote(t *testing.T) {
 							Address: admin3,
 							Weight:  2,
 						},
+						{
+							Address: admin4,
+							Weight:  2,
+						},
 					},
 				}),
 			},
@@ -306,10 +376,20 @@ func TestRunForVote(t *testing.T) {
 							Address: admin3,
 							Weight:  2,
 						},
+						{
+							Address: admin4,
+							Weight:  2,
+						},
 					},
 				}),
 			},
 			Err: nil,
+		},
+		{
+			Caller:   "0xfff0000000000000000000000000000000000000",
+			Data:     generateVoteData(t, globalProposalID.GetID()-1, Pass),
+			Expected: vm.ExecutionResult{},
+			Err:      ErrNotFoundCouncilMember,
 		},
 	}
 
