@@ -90,11 +90,20 @@ func TestGetPendingNonceByAccount(t *testing.T) {
 
 	nonce := node.GetPendingNonceByAccount("account1")
 	ast.Equal(uint64(0), nonce)
+
+	tx, err := types.GenerateEmptyTransactionAndSigner()
+	require.Nil(t, err)
+	ast.Equal(uint64(0), node.GetPendingNonceByAccount(tx.RbftGetFrom()))
+
+	err = node.Prepare(tx)
+	ast.Nil(err)
+	ast.Equal(uint64(1), node.GetPendingNonceByAccount(tx.RbftGetFrom()))
+
 	err = node.DelNode(uint64(1))
 	ast.Nil(err)
 }
 
-func TestGetpendingTxByHash(t *testing.T) {
+func TestGetPendingTxByHash(t *testing.T) {
 	ast := assert.New(t)
 	node, err := mockSoloNode(t, false)
 	ast.Nil(err)

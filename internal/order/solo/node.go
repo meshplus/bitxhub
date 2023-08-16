@@ -67,7 +67,12 @@ func (n *Node) Stop() {
 }
 
 func (n *Node) GetPendingNonceByAccount(account string) uint64 {
-	return n.mempool.GetPendingNonceByAccount(account)
+	request := &getNonceReq{
+		account: account,
+		Resp:    make(chan uint64),
+	}
+	n.recvCh <- request
+	return <-request.Resp
 }
 
 func (n *Node) DelNode(uint64) error {
@@ -270,6 +275,8 @@ func (n *Node) listenEvent() {
 					}
 				}
 				e.Resp <- tx
+			case *getNonceReq:
+				e.Resp <- n.mempool.GetPendingNonceByAccount(e.account)
 			}
 		}
 	}

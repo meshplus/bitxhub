@@ -22,3 +22,9 @@ type getTxReq struct {
 	Hash string
 	Resp chan *types.Transaction
 }
+
+// getNonceReq is a type for api request getTransactionCount
+type getNonceReq struct {
+	account string
+	Resp    chan uint64
+}
