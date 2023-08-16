@@ -294,6 +294,14 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 	ld, err := leveldb.New(filepath.Join(repoRoot, "executor"))
 	assert.Nil(t, err)
 	account := ledger.NewAccount(ld, accountCache, types.NewAddressByStr(common.NodeManagerContractAddr), ledger.NewChanger())
+	var members = []*NodeMember{
+		{
+			NodeId: "16Uiu2HAmJ38LwfY6pfgDWNvk3ypjcpEMSePNTE6Ma2NCLqjbZJSF",
+		},
+	}
+	b, err := json.Marshal(members)
+	assert.Nil(t, err)
+	account.SetState([]byte(common.NodeManagerContractAddr), b)
 
 	contractAddr := types.NewAddressByStr("0xdac17f958d2ee523a2206206994597c13d831ec7")
 	chainLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
@@ -343,15 +351,25 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 	tx5, _, err := types.GenerateTransactionAndSigner(uint64(0), types.NewAddressByStr("0xdAC17F958D2ee523a2206206994597C13D831ec7"), big.NewInt(1), nil)
 	assert.Nil(t, err)
 	// test system contract
-	gabi, err := governance.GetABI()
-	assert.Nil(t, err)
+	testcases := []struct {
+		Data []byte
+		Err  error
+	}{
+		{
+			Data: generateNodeAddProposeData(t, NodeExtraArgs{
+				Nodes: []*NodeMember{
+					{
+						NodeId: "16Uiu2HAmJ38LwfY6pfgDWNvk3ypjcpEMSePNTE6Ma2NCLqjbZJSF",
+					},
+				},
+			}),
+			Err: nil,
+		},
+	}
 
-	title := "title"
-	desc := "desc"
-	blockNumber := uint64(1000)
-	extra := []byte("hello")
-	data, err := gabi.Pack(governance.ProposeMethod, uint8(governance.NodeUpdate), title, desc, blockNumber, extra)
+	data := testcases[0].Data
 	assert.Nil(t, err)
+	fmt.Println(data)
 	tx6, _, err := types.GenerateTransactionAndSigner(uint64(1), types.NewAddressByStr(common.NodeManagerContractAddr), big.NewInt(0), data)
 	assert.Nil(t, err)
 
@@ -361,6 +379,31 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 	assert.Equal(t, types.ReceiptSUCCESS, res[0].Status)
 	assert.Equal(t, types.ReceiptSUCCESS, res[1].Status)
 	assert.Equal(t, types.ReceiptSUCCESS, res[2].Status)
+}
+
+func generateNodeAddProposeData(t *testing.T, extraArgs NodeExtraArgs) []byte {
+	// test system contract
+	gabi, err := governance.GetABI()
+	assert.Nil(t, err)
+
+	title := "title"
+	desc := "desc"
+	blockNumber := uint64(1000)
+
+	extra, err := json.Marshal(extraArgs)
+	assert.Nil(t, err)
+	data, err := gabi.Pack(governance.ProposeMethod, uint8(governance.NodeUpdate), title, desc, blockNumber, extra)
+	assert.Nil(t, err)
+	return data
+}
+
+// NodeExtraArgs is Node proposal extra arguments
+type NodeExtraArgs struct {
+	Nodes []*NodeMember
+}
+
+type NodeMember struct {
+	NodeId string
 }
 
 func mockCommitEvent(blockNumber uint64, txs []*types.Transaction) *types.CommitEvent {

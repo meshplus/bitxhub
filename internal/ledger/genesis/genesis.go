@@ -7,6 +7,7 @@ import (
 
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/internal/executor"
+	"github.com/axiomesh/axiom/internal/executor/system"
 	"github.com/axiomesh/axiom/internal/executor/system/common"
 	"github.com/axiomesh/axiom/internal/executor/system/governance"
 	"github.com/axiomesh/axiom/internal/ledger"
@@ -33,6 +34,11 @@ func Initialize(genesis *repo.Genesis, nodes []*repo.NetworkNodes, primaryN uint
 		return err
 	}
 	account.SetState([]byte(governance.CouncilKey), b)
+
+	err = system.SetNodeMember(genesis, lg)
+	if err != nil {
+		return err
+	}
 
 	accounts, stateRoot := lg.FlushDirtyData()
 

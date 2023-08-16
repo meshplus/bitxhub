@@ -36,9 +36,8 @@ const jsondata = `
 `
 
 const (
-	ProposeMethod = "propose"
-	VoteMethod    = "vote"
-
+	ProposeMethod  = "propose"
+	VoteMethod     = "vote"
 	MaxTitleLength = 200
 	MaxDescLength  = 10000
 )

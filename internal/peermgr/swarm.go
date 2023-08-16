@@ -16,6 +16,7 @@ import (
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom-kit/types/pb"
 	network "github.com/axiomesh/axiom-p2p"
+	"github.com/axiomesh/axiom/internal/executor/system"
 	"github.com/axiomesh/axiom/internal/ledger"
 	"github.com/axiomesh/axiom/pkg/repo"
 )
@@ -161,6 +162,15 @@ func (swarm *Swarm) onConnected(net p2pnetwork.Network, conn p2pnetwork.Conn) er
 		if vp.Pid == peerID {
 			swarm.connectedPeers.Store(id, swarm.multiAddrs[id])
 		}
+	}
+
+	isExist, err := system.IsExistNodeMember(peerID, swarm.ledger)
+	if err != nil {
+		return err
+	}
+
+	if !isExist {
+		swarm.onDisconnected(peerID)
 	}
 
 	return nil
