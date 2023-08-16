@@ -190,12 +190,11 @@ func (n *Node) listenEvent() {
 			switch e := ev.(type) {
 			// handle report state
 			case *chainState:
-				n.logger.WithFields(logrus.Fields{
-					"height": e.Height,
-					"hash":   e.BlockHash.String(),
-				}).Info("Report checkpoint")
-
 				if e.Height%n.checkpoint == 0 {
+					n.logger.WithFields(logrus.Fields{
+						"height": e.Height,
+						"hash":   e.BlockHash.String(),
+					}).Info("Report checkpoint")
 					digestList := make([]string, 0)
 					for i := e.Height; i > e.Height-n.checkpoint; i-- {
 						for h, d := range n.batchDigestM {
