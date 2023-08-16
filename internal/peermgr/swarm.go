@@ -11,12 +11,13 @@ import (
 	"github.com/libp2p/go-libp2p/core/connmgr"
 	p2pnetwork "github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/samber/lo"
 	"github.com/sirupsen/logrus"
 
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom-kit/types/pb"
 	network "github.com/axiomesh/axiom-p2p"
-	"github.com/axiomesh/axiom/internal/executor/system"
+	"github.com/axiomesh/axiom/internal/executor/system/governance"
 	"github.com/axiomesh/axiom/internal/ledger"
 	"github.com/axiomesh/axiom/pkg/repo"
 )
@@ -164,12 +165,14 @@ func (swarm *Swarm) onConnected(net p2pnetwork.Network, conn p2pnetwork.Conn) er
 		}
 	}
 
-	isExist, err := system.IsExistNodeMember(peerID, swarm.ledger)
+	members, err := governance.GetNodeMembers(swarm.ledger)
 	if err != nil {
 		return err
 	}
-
-	if !isExist {
+	if !lo.ContainsBy(members, func(item *repo.Member) bool {
+		return item.NodeId == peerID
+	}) {
+		swarm.logger.Warn()
 		swarm.onDisconnected(peerID)
 	}
 

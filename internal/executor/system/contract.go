@@ -1,16 +1,13 @@
 package system
 
 import (
-	"encoding/json"
-	"fmt"
-	"strings"
+	"github.com/sirupsen/logrus"
 
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/internal/executor/system/common"
 	"github.com/axiomesh/axiom/internal/executor/system/governance"
 	"github.com/axiomesh/axiom/internal/ledger"
 	"github.com/axiomesh/axiom/pkg/repo"
-	"github.com/sirupsen/logrus"
 )
 
 // Addr2Contract is address to system contract
@@ -36,31 +33,13 @@ func GetSystemContract(addr *types.Address) (common.SystemContract, bool) {
 	return nil, false
 }
 
-func SetNodeMember(genesis *repo.Genesis, lg *ledger.Ledger) error {
-	//read member config, write to Ledger
-	c, err := json.Marshal(genesis.Members)
-	if err != nil {
+func InitGenesisData(genesis *repo.Genesis, lg *ledger.Ledger) error {
+	if err := governance.InitCouncilMembers(lg, genesis.Admins, genesis.Balance); err != nil {
 		return err
 	}
-	lg.SetState(types.NewAddressByStr(common.NodeManagerContractAddr), []byte(common.NodeManagerContractAddr), c)
-
-	return nil
-}
-
-func IsExistNodeMember(peerID string, lg *ledger.Ledger) (bool, error) {
-	var isExist = false
-	success, data := lg.GetState(types.NewAddressByStr(common.NodeManagerContractAddr), []byte(common.NodeManagerContractAddr))
-	if success {
-		stringData := strings.Split(string(data), ",")
-		for _, nodeID := range stringData {
-			if peerID == nodeID {
-				isExist = true
-				break
-			}
-		}
-	} else {
-		return isExist, fmt.Errorf("get nodeMember err")
+	if err := governance.InitNodeMembers(lg, genesis.Members); err != nil {
+		return err
 	}
 
-	return isExist, nil
+	return nil
 }

@@ -20,6 +20,7 @@ var (
 	ErrVoteResult   = errors.New("vote result is invalid")
 	ErrProposalType = errors.New("proposal type is invalid")
 	ErrUser         = errors.New("user is invalid")
+	ErrUseHasVoted  = errors.New("user has already voted")
 	ErrTitle        = errors.New("title is invalid")
 	ErrTooLongTitle = errors.New("title is too long, max is 200 characters")
 	ErrDesc         = errors.New("description is invalid")
@@ -255,12 +256,12 @@ func (g *Governance) Propose(user *ethcommon.Address, proposalType ProposalType,
 	return proposal, nil
 }
 
-func (g *Governance) checkBeforeVote(user *ethcommon.Address, proposalID uint64, voteResult VoteResult) (bool, error) {
+func (g *Governance) checkBeforeVote(user *ethcommon.Address, proposal *BaseProposal, voteResult VoteResult) (bool, error) {
 	if user == nil {
 		return false, ErrUser
 	}
 
-	if proposalID == 0 {
+	if proposal.ID == 0 {
 		return false, ErrProposalID
 	}
 
@@ -268,12 +269,17 @@ func (g *Governance) checkBeforeVote(user *ethcommon.Address, proposalID uint64,
 		return false, ErrVoteResult
 	}
 
+	// check if user has voted
+	if common.IsInSlice[string](user.String(), proposal.PassVotes) || common.IsInSlice[string](user.String(), proposal.RejectVotes) {
+		return false, ErrUseHasVoted
+	}
+
 	return true, nil
 }
 
 // Vote a proposal, return vote status
 func (g *Governance) Vote(user *ethcommon.Address, proposal *BaseProposal, voteResult VoteResult) (ProposalStatus, error) {
-	if _, err := g.checkBeforeVote(user, proposal.ID, voteResult); err != nil {
+	if _, err := g.checkBeforeVote(user, proposal, voteResult); err != nil {
 		return Voting, err
 	}
 
