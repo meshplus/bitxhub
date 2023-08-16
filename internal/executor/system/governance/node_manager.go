@@ -3,23 +3,27 @@ package governance
 import (
 	"encoding/json"
 	"errors"
-
 	"fmt"
 
+	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/sirupsen/logrus"
 
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/internal/executor/system/common"
+	"github.com/axiomesh/axiom/pkg/repo"
 	vm "github.com/axiomesh/eth-kit/evm"
 	"github.com/axiomesh/eth-kit/ledger"
-	ethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 const (
 	NodeManagementProposalGas uint64 = 30000
 	NodeManagementVoteGas     uint64 = 21600
+
 	// NodeProposalKey is key for NodeProposal storage
-	NodeProposalKey = "councilProposalKey"
+	NodeProposalKey = "nodeProposalKey"
+
+	// CouncilKey is key for council storage
+	NodeMembersKey = "nodeMembersKey"
 )
 
 var (
@@ -116,7 +120,6 @@ func (nm *NodeManager) Run(msg *vm.Message) (*vm.ExecutionResult, error) {
 	}
 
 	return result, err
-
 }
 
 func (nm *NodeManager) propose(addr ethcommon.Address, args *NodeProposalArgs) (*vm.ExecutionResult, error) {
@@ -198,13 +201,12 @@ func (nm *NodeManager) vote(user ethcommon.Address, voteArgs *NodeVoteArgs) (*vm
 	// if proposal is approved, update the node members
 	// TODO: need check block number
 	if proposal.Status == Approved {
-
 		// save council
 		cb, err := json.Marshal(proposal.Nodes)
 		if err != nil {
 			return nil, err
 		}
-		nm.account.SetState([]byte(common.NodeManagerContractAddr), cb)
+		nm.account.SetState([]byte(NodeMembersKey), cb)
 	}
 
 	// return updated proposal
@@ -229,4 +231,28 @@ func (nm *NodeManager) EstimateGas(callArgs *types.CallArgs) (uint64, error) {
 	}
 
 	return gas, nil
+}
+
+func InitNodeMembers(lg ledger.StateLedger, members []*repo.Member) error {
+	// read member config, write to Ledger
+	c, err := json.Marshal(members)
+	if err != nil {
+		return err
+	}
+	account := lg.GetOrCreateAccount(types.NewAddressByStr(common.NodeManagerContractAddr))
+	account.SetState([]byte(NodeMembersKey), c)
+	return nil
+}
+
+func GetNodeMembers(lg ledger.StateLedger) ([]*repo.Member, error) {
+	account := lg.GetOrCreateAccount(types.NewAddressByStr(common.NodeManagerContractAddr))
+	success, data := account.GetState([]byte(NodeMembersKey))
+	if success {
+		var members []*repo.Member
+		if err := json.Unmarshal(data, &members); err != nil {
+			return nil, err
+		}
+		return members, nil
+	}
+	return nil, errors.New("get nodeMember err")
 }

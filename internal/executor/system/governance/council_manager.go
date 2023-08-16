@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/samber/lo"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/internal/executor/system/common"
+	"github.com/axiomesh/axiom/pkg/repo"
 	vm "github.com/axiomesh/eth-kit/evm"
 	"github.com/axiomesh/eth-kit/ledger"
 )
@@ -288,4 +290,24 @@ func (cm *CouncilManager) EstimateGas(callArgs *types.CallArgs) (uint64, error) 
 	}
 
 	return gas, nil
+}
+
+func InitCouncilMembers(lg ledger.StateLedger, admins []*repo.Admin, initBlance string) error {
+	balance, _ := new(big.Int).SetString(initBlance, 10)
+	council := &Council{}
+	for _, admin := range admins {
+		lg.SetBalance(types.NewAddressByStr(admin.Address), balance)
+
+		council.Members = append(council.Members, &CouncilMember{
+			Address: admin.Address,
+			Weight:  admin.Weight,
+		})
+	}
+	account := lg.GetOrCreateAccount(types.NewAddressByStr(common.CouncilManagerContractAddr))
+	b, err := json.Marshal(council)
+	if err != nil {
+		return err
+	}
+	account.SetState([]byte(CouncilKey), b)
+	return nil
 }
