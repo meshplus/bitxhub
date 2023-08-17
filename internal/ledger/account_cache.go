@@ -6,9 +6,10 @@ import (
 	"strings"
 	"sync"
 
+	lru "github.com/hashicorp/golang-lru"
+
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/eth-kit/ledger"
-	lru "github.com/hashicorp/golang-lru"
 )
 
 type AccountCache struct {
@@ -75,7 +76,7 @@ func (ac *AccountCache) addToReadCache(accounts map[string]ledger.IAccount) erro
 			stateCache = cache
 		}
 
-		account.dirtyState.Range(func(key, value interface{}) bool {
+		account.dirtyState.Range(func(key, value any) bool {
 			stateCache.Add(key, value)
 			return true
 		})
@@ -115,7 +116,7 @@ func (ac *AccountCache) addToWriteBuffer(accounts map[string]ledger.IAccount) {
 			stateMap = make(map[string][]byte)
 		}
 
-		account.dirtyState.Range(func(key, value interface{}) bool {
+		account.dirtyState.Range(func(key, value any) bool {
 			stateMap[key.(string)] = value.([]byte)
 			return true
 		})
@@ -151,7 +152,7 @@ func (ac *AccountCache) remove(accounts map[string]ledger.IAccount) {
 		}
 
 		if stateMap, ok := ac.states[addr]; ok {
-			account.dirtyState.Range(func(key, value interface{}) bool {
+			account.dirtyState.Range(func(key, value any) bool {
 				if v, ok := stateMap[key.(string)]; ok {
 					if bytes.Equal(v, value.([]byte)) {
 						delete(stateMap, key.(string))

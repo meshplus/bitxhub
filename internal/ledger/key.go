@@ -21,7 +21,7 @@ const (
 	journalKey         = "journal-"
 )
 
-func compositeKey(prefix string, value interface{}) []byte {
+func compositeKey(prefix string, value any) []byte {
 	return append([]byte(prefix), []byte(fmt.Sprintf("%v", value))...)
 }
 

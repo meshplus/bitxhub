@@ -5,8 +5,11 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
+	"github.com/samber/lo"
 	"github.com/sirupsen/logrus"
 
+	rbft "github.com/axiomesh/axiom-bft"
+	"github.com/axiomesh/axiom/internal/executor/system/base"
 	"github.com/axiomesh/axiom/internal/ledger"
 )
 
@@ -24,6 +27,21 @@ func newConnectionGater(logger logrus.FieldLogger, ledger *ledger.Ledger) *conne
 }
 
 func (g *connectionGater) InterceptPeerDial(p peer.ID) (allow bool) {
+	peerID := p.String()
+	// Use the latest EpochInfo for node connection
+	epoch, err := base.GetNextEpochInfo(g.ledger)
+	if err != nil {
+		g.logger.Errorf("InterceptSecured, auth node %s failed, get node members error: %v", peerID, err)
+		return false
+	}
+	if !lo.ContainsBy(epoch.ValidatorSet, func(item *rbft.NodeInfo) bool {
+		return item.P2PNodeID == peerID
+	}) && !lo.ContainsBy(epoch.CandidateSet, func(item *rbft.NodeInfo) bool {
+		return item.P2PNodeID == peerID
+	}) {
+		g.logger.Warnf("InterceptSecured, auth node %s failed, unavailable node", peerID)
+		return false
+	}
 	return true
 }
 
@@ -35,33 +53,7 @@ func (g *connectionGater) InterceptAccept(addr network.ConnMultiaddrs) (allow bo
 	return true
 }
 
-// TODO: support distributed CA
 func (g *connectionGater) InterceptSecured(d network.Direction, p peer.ID, addr network.ConnMultiaddrs) (allow bool) {
-	// lg := g.ledger.Copy()
-	// ok, nodeAccount := lg.GetState(constant.NodeManagerContractAddr.Address(), []byte(node_mgr.VpNodePidKey(p.String())))
-	// if !ok {
-	// 	g.logger.Infof("Intercept a connection with an unavailable node(get node err: %s), peer.Pid: %s", string(nodeAccount), p.String())
-	// 	return false
-	// }
-	// nodeAccountStr := strings.Trim(string(nodeAccount), "\"")
-	// ok, nodeData := lg.GetState(constant.NodeManagerContractAddr.Address(), []byte(node_mgr.NodeKey(nodeAccountStr)))
-	// if !ok {
-	// 	g.logger.Errorf("InterceptSecured, node pid %s exist but node %s not exist: %v", p.String(), nodeAccountStr, string(nodeData))
-	// 	return false
-	// }
-
-	// node := &node_mgr.Node{}
-	// if err := json.Unmarshal(nodeData, node); err != nil {
-	// 	g.logger.Errorf("InterceptSecured, unmarshal node error: %v, nodeData: %s, pid: %s, account: %s", err, string(nodeData), p.String(), nodeAccountStr)
-	// 	return false
-	// }
-
-	// if node.IsAvailable() {
-	// 	g.logger.Infof("Connect with an available node, peer.Pid: %s, peer.Id: %d, peer.status: %s", p.String(), node.VPNodeId, node.Status)
-	// 	return true
-	// }
-
-	// g.logger.Infof("Intercept a connection with an unavailable node, peer.Pid: %s, peer.Id: %d, peer.status: %s", p.String(), node.VPNodeId, node.Status)
 	return true
 }
 

@@ -6,7 +6,6 @@ import (
 
 	"github.com/libp2p/go-libp2p/core/peer"
 
-	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom-kit/types/pb"
 	network "github.com/axiomesh/axiom-p2p"
 )
@@ -28,7 +27,7 @@ type BasicPeerManager interface {
 	Stop() error
 
 	// Send sends message waiting response
-	Send(KeyType, *pb.Message) (*pb.Message, error)
+	Send(string, *pb.Message) (*pb.Message, error)
 
 	// SendWithStream sends message using existed stream
 	SendWithStream(network.Stream, *pb.Message) error
@@ -40,9 +39,6 @@ type BasicPeerManager interface {
 
 	// Peers return all peers including local peer.
 	Peers() []peer.AddrInfo
-
-	// OrderPeers return all OrderPeers include account and id.
-	OrderPeers() map[uint64]*types.VpInfo
 }
 
 // ony used for mock
@@ -53,7 +49,7 @@ type Pipe interface {
 	Receive(ctx context.Context) *network.PipeMsg
 }
 
-//go:generate mockgen -destination mock_peermgr/mock_peermgr.go -package mock_peermgr -source peermgr.go
+//go:generate mockgen -destination mock_peermgr/mock_peermgr.go -package mock_peermgr -source peermgr.go -typed
 type PeerManager interface {
 	network.PipeManager
 

@@ -8,16 +8,18 @@ import (
 
 	"github.com/Rican7/retry"
 	"github.com/Rican7/retry/strategy"
-	"github.com/golang/mock/gomock"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
 	"github.com/axiomesh/axiom"
+	rbft "github.com/axiomesh/axiom-bft"
 	"github.com/axiomesh/axiom-kit/log"
 	"github.com/axiomesh/axiom-kit/storage/leveldb"
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom-kit/types/pb"
+	"github.com/axiomesh/axiom/internal/executor/system/base"
 	"github.com/axiomesh/axiom/internal/executor/system/common"
 	"github.com/axiomesh/axiom/internal/ledger"
 	"github.com/axiomesh/axiom/pkg/repo"
@@ -52,17 +54,25 @@ func NewSwarms(t *testing.T, peerCnt int, versionChange bool) []*Swarm {
 	repoRoot := t.TempDir()
 	ld, err := leveldb.New(filepath.Join(repoRoot, "peermgr"))
 	assert.Nil(t, err)
-	account := ledger.NewAccount(ld, accountCache, types.NewAddressByStr(common.NodeManagerContractAddr), ledger.NewChanger())
+	account := ledger.NewAccount(ld, accountCache, types.NewAddressByStr(common.EpochManagerContractAddr), ledger.NewChanger())
 	stateLedger.EXPECT().GetOrCreateAccount(gomock.Any()).Return(account).AnyTimes()
 
+	epochInfo := repo.GenesisEpochInfo()
+	epochInfo.CandidateSet = append(epochInfo.CandidateSet, &rbft.NodeInfo{
+		ID:        5,
+		P2PNodeID: "16Uiu2HAmJ3bjAhtYc7QabCWWUKagY9RLddypDPXhFYkmFxSwzHQd",
+	})
+	err = base.InitEpochInfo(mockLedger, epochInfo)
+	assert.Nil(t, err)
+
 	for i := 0; i < peerCnt; i++ {
-		repo, err := repo.DefaultWithNodeIndex(t.TempDir(), i)
+		rep, err := repo.DefaultWithNodeIndex(t.TempDir(), i)
 		require.Nil(t, err)
 		if versionChange && i == peerCnt-1 {
 			axiom.VersionSecret = "Shanghai"
 		}
 
-		swarm, err := New(repo, log.NewWithModule(fmt.Sprintf("swarm%d", i)), mockLedger)
+		swarm, err := New(rep, log.NewWithModule(fmt.Sprintf("swarm%d", i)), mockLedger)
 		require.Nil(t, err)
 		err = swarm.Start()
 		require.Nil(t, err)
@@ -86,10 +96,10 @@ func TestSwarm_GetBlockPack(t *testing.T) {
 		Data: []byte("aaa"),
 	}
 	var err error
-	_, err = swarms[0].Send(uint64(2), msg)
+	_, err = swarms[0].Send(swarms[1].PeerID(), msg)
 	require.NotNil(t, err)
 	msg.Type = 100
-	_, err = swarms[0].Send(uint64(2), msg)
+	_, err = swarms[0].Send(swarms[1].PeerID(), msg)
 	require.NotNil(t, err)
 	for i := 0; i < len(swarms); i++ {
 		err = swarms[i].Stop()
@@ -114,8 +124,17 @@ func TestSwarm_Gater(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 	gater := newConnectionGater(swarms[0].logger, swarms[0].ledger)
-	require.True(t, gater.InterceptPeerDial(peer.ID("1")))
-	require.True(t, gater.InterceptAddrDial("1", swarms[1].multiAddrs[1].Addrs[0]))
+	require.False(t, gater.InterceptPeerDial("1"))
+	for _, validator := range swarms[0].repo.EpochInfo.ValidatorSet {
+		peerID, err := peer.Decode(validator.P2PNodeID)
+		require.Nil(t, err)
+		require.True(t, gater.InterceptPeerDial(peerID))
+	}
+	for _, candidate := range swarms[0].repo.EpochInfo.CandidateSet {
+		peerID, err := peer.Decode(candidate.P2PNodeID)
+		require.Nil(t, err)
+		require.True(t, gater.InterceptPeerDial(peerID))
+	}
 	require.True(t, gater.InterceptAccept(nil))
 }
 
@@ -135,7 +154,7 @@ func TestSwarm_Send(t *testing.T) {
 	var res *pb.Message
 	var err error
 	err = retry.Retry(func(attempt uint) error {
-		res, err = swarms[0].Send(uint64(2), msg)
+		res, err = swarms[0].Send(swarms[1].PeerID(), msg)
 		if err != nil {
 			swarms[0].logger.Errorf(err.Error())
 			return err

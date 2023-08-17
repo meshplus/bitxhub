@@ -5,14 +5,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/mock/gomock"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
 
+	rbft "github.com/axiomesh/axiom-bft"
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom-kit/types/pb"
-	"github.com/axiomesh/axiom/internal/order"
+	"github.com/axiomesh/axiom/internal/order/common"
 	"github.com/axiomesh/axiom/internal/peermgr/mock_peermgr"
 	"github.com/axiomesh/axiom/pkg/repo"
 )
@@ -52,42 +53,41 @@ func MockMiniPeerManager(ctrl *gomock.Controller) *mock_peermgr.MockPeerManager 
 	res := &pb.Message{Data: blockBytes}
 	mock.EXPECT().Send(gomock.Any(), gomock.Any()).Return(res, nil).AnyTimes()
 
-	nodes := make(map[uint64]*types.VpInfo)
-	nodes[1] = &types.VpInfo{Id: uint64(1)}
-	nodes[2] = &types.VpInfo{Id: uint64(2)}
-	nodes[3] = &types.VpInfo{Id: uint64(3)}
-	N := len(nodes)
+	N := 3
 	f := (N - 1) / 3
-	mock.EXPECT().OrderPeers().Return(nodes).AnyTimes()
 	mock.EXPECT().CountConnectedPeers().Return(uint64((N + f + 2) / 2)).AnyTimes()
 	return mock
 }
 
-func MockOrderConfig(logger logrus.FieldLogger, ctrl *gomock.Controller, kvType string, t *testing.T) *order.Config {
-	nodes := make(map[uint64]*types.VpInfo)
+func MockOrderConfig(logger logrus.FieldLogger, ctrl *gomock.Controller, kvType string, t *testing.T) *common.Config {
 	s, err := types.GenerateSigner()
 	assert.Nil(t, err)
-	nodes[0] = &types.VpInfo{Id: uint64(1), Account: s.Addr.String(), Pid: "1"}
-	nodes[1] = &types.VpInfo{Id: uint64(2), Pid: "2"}
-	nodes[2] = &types.VpInfo{Id: uint64(3), Pid: "3"}
-	nodes[3] = &types.VpInfo{Id: uint64(4), Pid: "4"}
 
 	peerMgr := MockMiniPeerManager(ctrl)
 	peerMgr.EXPECT().Peers().Return([]peer.AddrInfo{}).AnyTimes()
 
-	conf := &order.Config{
-		StoragePath:      t.TempDir(),
-		Config:           repo.DefaultOrderConfig(),
-		StorageType:      kvType,
-		ID:               uint64(1),
-		Nodes:            nodes,
-		IsNew:            false,
-		Logger:           logger,
-		PeerMgr:          peerMgr,
-		PrivKey:          s.Sk,
+	genesisEpochInfo := repo.GenesisEpochInfo()
+	conf := &common.Config{
+		Config:             repo.DefaultOrderConfig(),
+		Logger:             logger,
+		StoragePath:        t.TempDir(),
+		StorageType:        kvType,
+		OrderType:          "",
+		PrivKey:            s.Sk,
+		SelfAccountAddress: genesisEpochInfo.ValidatorSet[0].AccountAddress,
+		GenesisEpochInfo:   genesisEpochInfo,
+		PeerMgr:            peerMgr,
+		Applied:            0,
+		Digest:             "",
+		GetEpochInfoFromEpochMgrContractFunc: func(epoch uint64) (*rbft.EpochInfo, error) {
+			return genesisEpochInfo, nil
+		},
 		GetChainMetaFunc: GetChainMetaFunc,
 		GetAccountNonce: func(address *types.Address) uint64 {
 			return 0
+		},
+		GetCurrentEpochInfoFromEpochMgrContractFunc: func() (*rbft.EpochInfo, error) {
+			return genesisEpochInfo, nil
 		},
 	}
 	return conf

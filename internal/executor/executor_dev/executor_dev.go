@@ -4,19 +4,20 @@ import (
 	"context"
 	"time"
 
-	"github.com/axiomesh/axiom-kit/types"
-	"github.com/axiomesh/axiom/internal/executor"
-	"github.com/axiomesh/axiom/pkg/model/events"
+	"github.com/ethereum/go-ethereum/event"
 	"github.com/sirupsen/logrus"
 
+	"github.com/axiomesh/axiom-kit/types"
+	"github.com/axiomesh/axiom/internal/executor"
+	"github.com/axiomesh/axiom/internal/order/common"
+	"github.com/axiomesh/axiom/pkg/model/events"
 	vm "github.com/axiomesh/eth-kit/evm"
-	"github.com/ethereum/go-ethereum/event"
 )
 
 var _ executor.Executor = (*ExecutorDev)(nil)
 
 type ExecutorDev struct {
-	blockC             chan *types.CommitEvent
+	blockC             chan *common.CommitEvent
 	blockFeed          event.Feed
 	blockFeedForRemote event.Feed
 	logsFeed           event.Feed
@@ -30,7 +31,7 @@ type ExecutorDev struct {
 func New(logger logrus.FieldLogger) (*ExecutorDev, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &ExecutorDev{
-		blockC: make(chan *types.CommitEvent),
+		blockC: make(chan *common.CommitEvent),
 		ctx:    ctx,
 		cancel: cancel,
 		logger: logger,
@@ -52,7 +53,7 @@ func (exec *ExecutorDev) Start() error {
 	return nil
 }
 
-func (exec *ExecutorDev) processExecuteEvent(commitEvent *types.CommitEvent) {
+func (exec *ExecutorDev) processExecuteEvent(commitEvent *common.CommitEvent) {
 	var txHashList []*types.Hash
 	current := time.Now()
 	block := commitEvent.Block
@@ -79,7 +80,7 @@ func (exec *ExecutorDev) Stop() error {
 	return nil
 }
 
-func (exec *ExecutorDev) ExecuteBlock(commitEvent *types.CommitEvent) {
+func (exec *ExecutorDev) ExecuteBlock(commitEvent *common.CommitEvent) {
 	exec.blockC <- commitEvent
 }
 
@@ -93,7 +94,6 @@ func (exec *ExecutorDev) SubscribeBlockEvent(ch chan<- events.ExecutedEvent) eve
 
 func (exec *ExecutorDev) SubscribeBlockEventForRemote(ch chan<- events.ExecutedEvent) event.Subscription {
 	return exec.blockFeedForRemote.Subscribe(ch)
-
 }
 
 func (exec *ExecutorDev) SubscribeLogsEvent(c chan<- []*types.EvmLog) event.Subscription {

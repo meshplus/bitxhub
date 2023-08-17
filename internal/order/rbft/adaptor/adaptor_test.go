@@ -5,23 +5,26 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
 
 	"github.com/axiomesh/axiom-bft/common/consensus"
 	rbfttypes "github.com/axiomesh/axiom-bft/types"
 	"github.com/axiomesh/axiom-kit/log"
 	"github.com/axiomesh/axiom-kit/types"
+	"github.com/axiomesh/axiom/internal/order/common"
 	"github.com/axiomesh/axiom/internal/order/rbft/testutil"
 )
 
 func mockAdaptor(ctrl *gomock.Controller, kvType string, t *testing.T) *RBFTAdaptor {
 	logger := log.NewWithModule("order")
-	blockC := make(chan *types.CommitEvent, 1024)
+	blockC := make(chan *common.CommitEvent, 1024)
 	_, cancel := context.WithCancel(context.Background())
 	stack, err := NewRBFTAdaptor(testutil.MockOrderConfig(logger, ctrl, kvType, t), blockC, cancel)
 	assert.Nil(t, err)
 	stack.msgPipe, err = stack.config.PeerMgr.CreatePipe(context.Background(), "test_pipe")
+	assert.Nil(t, err)
+	err = stack.UpdateEpoch()
 	assert.Nil(t, err)
 	return stack
 }
@@ -46,7 +49,7 @@ func TestSignAndVerify(t *testing.T) {
 			// err = adaptor.Verify(adaptor.Nodes[0].Pid, msgSign, []byte("wrong sign"))
 			// ast.NotNil(err)
 
-			err = adaptor.Verify(adaptor.Nodes[0].Pid, msgSign, []byte("test sign"))
+			err = adaptor.Verify(adaptor.config.GenesisEpochInfo.ValidatorSet[0].P2PNodeID, msgSign, []byte("test sign"))
 			ast.Nil(err)
 		})
 	}
@@ -66,17 +69,16 @@ func TestExecute(t *testing.T) {
 	for name, tc := range testcase {
 		t.Run(name, func(t *testing.T) {
 			adaptor := mockAdaptor(ctrl, tc.kvType, t)
-			txs := make([][]byte, 0)
+			txs := make([]*types.Transaction, 0)
 			tx := &types.Transaction{
 				Inner: &types.DynamicFeeTx{
 					Nonce: 0,
 				},
 				Time: time.Time{},
 			}
-			raw, err := tx.RbftMarshal()
-			ast.Nil(err)
-			txs = append(txs, raw, raw)
-			adaptor.Execute(txs, []bool{true}, uint64(2), time.Now().Unix())
+
+			txs = append(txs, tx, tx)
+			adaptor.Execute(txs, []bool{true}, uint64(2), time.Now().Unix(), "")
 			ready := <-adaptor.ReadyC
 			ast.Equal(uint64(2), ready.Height)
 		})
@@ -125,10 +127,7 @@ func TestNetwork(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			adaptor := mockAdaptor(ctrl, tc.kvType, t)
 			msg := &consensus.ConsensusMessage{}
-			to := uint64(1)
-			err := adaptor.Unicast(context.Background(), msg, to)
-			ast.Nil(err)
-			err = adaptor.UnicastByHostname(context.Background(), msg, "1")
+			err := adaptor.Unicast(context.Background(), msg, "1")
 			ast.Nil(err)
 
 			err = adaptor.Broadcast(context.Background(), msg)
@@ -153,30 +152,13 @@ func TestEpochService(t *testing.T) {
 	for name, tc := range testcase {
 		t.Run(name, func(t *testing.T) {
 			adaptor := mockAdaptor(ctrl, tc.kvType, t)
-			r := adaptor.Reconfiguration()
-			ast.Equal(uint64(0), r)
-
-			nodes := adaptor.GetNodeInfos()
-			ast.Equal(4, len(nodes))
-
-			v := adaptor.GetAlgorithmVersion()
-			ast.Equal("RBFT", v)
-
-			e := adaptor.GetEpoch()
-			ast.Equal(uint64(1), e)
-
-			c := adaptor.IsConfigBlock(1)
-			ast.Equal(false, c)
-
-			checkpoint := adaptor.GetLastCheckpoint()
-			ast.Equal(uint64(0), checkpoint.Checkpoint.Epoch)
-			ast.Equal(uint64(0), checkpoint.Checkpoint.ExecuteState.Height)
-
-			_, err := adaptor.GetCheckpointOfEpoch(0)
-			ast.Error(err)
-
-			err = adaptor.VerifyEpochChangeProof(nil, nil)
+			e, err := adaptor.GetEpochInfo(1)
 			ast.Nil(err)
+			ast.Equal(uint64(1), e.Epoch)
+
+			e, err = adaptor.GetCurrentEpochInfo()
+			ast.Nil(err)
+			ast.Equal(uint64(1), e.Epoch)
 		})
 	}
 }

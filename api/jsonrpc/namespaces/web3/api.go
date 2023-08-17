@@ -3,9 +3,10 @@ package web3
 import (
 	"fmt"
 
-	"github.com/axiomesh/axiom"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
+
+	"github.com/axiomesh/axiom"
 )
 
 // PublicWeb3API is the web3_ prefixed set of APIs in the Web3 JSON-RPC spec.

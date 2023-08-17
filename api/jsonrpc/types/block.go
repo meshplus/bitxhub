@@ -2,7 +2,7 @@ package types
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"math"
 	"math/big"
 	"strconv"
@@ -24,10 +24,10 @@ func (bnh *BlockNumberOrHash) UnmarshalJSON(data []byte) error {
 	err := json.Unmarshal(data, &e)
 	if err == nil {
 		if e.BlockNumber == nil && e.BlockHash != nil {
-			return fmt.Errorf("only support blockNumber")
+			return errors.New("only support blockNumber")
 		}
 		if e.BlockNumber != nil && *e.BlockNumber != LatestBlockNumber && *e.BlockNumber != PendingBlockNumber {
-			return fmt.Errorf("only support latest and pending")
+			return errors.New("only support latest and pending")
 		}
 		bnh.BlockNumber = e.BlockNumber
 
@@ -57,7 +57,7 @@ func (bnh *BlockNumberOrHash) UnmarshalJSON(data []byte) error {
 		bnh.BlockNumber = &bn
 		return nil
 	default:
-		//todo Default to use the LatestBlockNumber
+		// todo Default to use the LatestBlockNumber
 		//	   Improved after modifying the accounting module
 		bn := LatestBlockNumber
 		bnh.BlockNumber = &bn
@@ -130,8 +130,10 @@ type BlockNumber int64
 const (
 	// LatestBlockNumber mapping from "latest" to 0 for tm query
 	LatestBlockNumber = BlockNumber(-2)
+
 	// PendingBlockNumber mapping from "pending" to -1 for tm query
 	PendingBlockNumber = BlockNumber(-1)
+
 	// EarliestBlockNumber mapping from "earliest" to 1 for tm query (earliest query not supported)
 	EarliestBlockNumber = BlockNumber(1)
 )
@@ -170,7 +172,7 @@ func (bn *BlockNumber) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	if blckNum > math.MaxInt64 {
-		return fmt.Errorf("blocknumber too high")
+		return errors.New("blocknumber too high")
 	}
 
 	// get FirstBlock

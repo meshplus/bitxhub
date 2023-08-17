@@ -25,10 +25,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/axiomesh/axiom-kit/types"
-	"github.com/axiomesh/axiom/api/jsonrpc/namespaces/eth"
-	rpctypes "github.com/axiomesh/axiom/api/jsonrpc/types"
-	"github.com/axiomesh/axiom/internal/coreapi/api"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -36,6 +32,11 @@ import (
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/sirupsen/logrus"
+
+	"github.com/axiomesh/axiom-kit/types"
+	"github.com/axiomesh/axiom/api/jsonrpc/namespaces/eth"
+	rpctypes "github.com/axiomesh/axiom/api/jsonrpc/types"
+	"github.com/axiomesh/axiom/internal/coreapi/api"
 )
 
 // filter is a helper struct that holds meta information over the filter type
@@ -178,7 +179,6 @@ func (api *FilterAPI) NewPendingTransactions(ctx context.Context, fullTx *bool) 
 							api.logger.Warn("notifier notify error", err)
 						}
 					}
-
 				}
 			case <-rpcSub.Err():
 				pendingTxSub.Unsubscribe()
@@ -295,7 +295,6 @@ func (api *FilterAPI) Logs(ctx context.Context, crit FilterCriteria) (*rpc.Subsc
 	}
 
 	go func() {
-
 		for {
 			select {
 			case logs := <-matchedLogs:
@@ -335,7 +334,6 @@ func formatEthLogs(evmlog *types.EvmLog) *ethereumTypes.Log {
 		Index:       uint(evmlog.LogIndex),
 		Removed:     evmlog.Removed,
 	}
-
 }
 
 // FilterCriteria represents a request to create a new filter.
@@ -450,7 +448,7 @@ func (api *FilterAPI) GetFilterLogs(ctx context.Context, id rpc.ID) ([]*types.Ev
 	api.filtersMu.Unlock()
 
 	if !found || f.typ != LogsSubscription {
-		return nil, fmt.Errorf("filter not found")
+		return nil, errors.New("filter not found")
 	}
 
 	var filter *Filter
@@ -485,7 +483,7 @@ func (api *FilterAPI) GetFilterLogs(ctx context.Context, id rpc.ID) ([]*types.Ev
 // (pending)Log filters return []Log.
 //
 // https://eth.wiki/json-rpc/API#eth_getfilterchanges
-func (api *FilterAPI) GetFilterChanges(id rpc.ID) (interface{}, error) {
+func (api *FilterAPI) GetFilterChanges(id rpc.ID) (any, error) {
 	api.filtersMu.Lock()
 	defer api.filtersMu.Unlock()
 
@@ -509,7 +507,7 @@ func (api *FilterAPI) GetFilterChanges(id rpc.ID) (interface{}, error) {
 		}
 	}
 
-	return []interface{}{}, fmt.Errorf("filter not found")
+	return []any{}, errors.New("filter not found")
 }
 
 // returnHashes is a helper that will return an empty hash array case the given hash array is nil,
@@ -536,8 +534,8 @@ func (args *FilterCriteria) UnmarshalJSON(data []byte) error {
 		BlockHash *common.Hash     `json:"blockHash"`
 		FromBlock *rpc.BlockNumber `json:"fromBlock"`
 		ToBlock   *rpc.BlockNumber `json:"toBlock"`
-		Addresses interface{}      `json:"address"`
-		Topics    []interface{}    `json:"topics"`
+		Addresses any              `json:"address"`
+		Topics    []any            `json:"topics"`
 	}
 
 	var raw input
@@ -548,10 +546,9 @@ func (args *FilterCriteria) UnmarshalJSON(data []byte) error {
 	if raw.BlockHash != nil {
 		if raw.FromBlock != nil || raw.ToBlock != nil {
 			// BlockHash is mutually exclusive with FromBlock/ToBlock criteria
-			return fmt.Errorf("cannot specify both BlockHash and FromBlock/ToBlock, choose one or the other")
+			return errors.New("cannot specify both BlockHash and FromBlock/ToBlock, choose one or the other")
 		}
 		args.BlockHash = raw.BlockHash
-
 	} else {
 		if raw.FromBlock != nil {
 			args.FromBlock = big.NewInt(raw.FromBlock.Int64())
@@ -567,7 +564,7 @@ func (args *FilterCriteria) UnmarshalJSON(data []byte) error {
 	if raw.Addresses != nil {
 		// raw.Address can contain a single address or an array of addresses
 		switch rawAddr := raw.Addresses.(type) {
-		case []interface{}:
+		case []any:
 			for i, addr := range rawAddr {
 				if strAddr, ok := addr.(string); ok {
 					addr, err := decodeAddress(strAddr)
@@ -607,7 +604,7 @@ func (args *FilterCriteria) UnmarshalJSON(data []byte) error {
 				}
 				args.Topics[i] = []common.Hash{top}
 
-			case []interface{}:
+			case []any:
 				// or case e.g. [null, "topic0", "topic1"]
 				for _, rawTopic := range topic {
 					if rawTopic == nil {
@@ -622,11 +619,11 @@ func (args *FilterCriteria) UnmarshalJSON(data []byte) error {
 						}
 						args.Topics[i] = append(args.Topics[i], parsed)
 					} else {
-						return fmt.Errorf("invalid topic(s)")
+						return errors.New("invalid topic(s)")
 					}
 				}
 			default:
-				return fmt.Errorf("invalid topic(s)")
+				return errors.New("invalid topic(s)")
 			}
 		}
 	}

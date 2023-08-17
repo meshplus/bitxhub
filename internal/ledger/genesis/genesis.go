@@ -1,6 +1,7 @@
 package genesis
 
 import (
+	"math/big"
 	"time"
 
 	"github.com/axiomesh/axiom-kit/types"
@@ -11,9 +12,13 @@ import (
 )
 
 // Initialize initialize block
-func Initialize(genesis *repo.Genesis, nodes []*repo.NetworkNodes, primaryN uint64, lg *ledger.Ledger, executor executor.Executor) error {
+func Initialize(genesis *repo.Genesis, lg *ledger.Ledger, executor executor.Executor) error {
 	lg.PrepareBlock(nil, 1)
 
+	balance, _ := new(big.Int).SetString(genesis.Balance, 10)
+	for _, addr := range genesis.Accounts {
+		lg.SetBalance(types.NewAddressByStr(addr), balance)
+	}
 	err := system.InitGenesisData(genesis, lg)
 	if err != nil {
 		return err
@@ -30,7 +35,7 @@ func Initialize(genesis *repo.Genesis, nodes []*repo.NetworkNodes, primaryN uint
 			ParentHash:  &types.Hash{},
 			Timestamp:   time.Now().Unix(),
 			GasPrice:    int64(genesis.GasPrice),
-			Version:     []byte{},
+			Epoch:       genesis.EpochInfo.Epoch,
 			Bloom:       new(types.Bloom),
 		},
 		Transactions: []*types.Transaction{},

@@ -1,13 +1,14 @@
 package coreapi
 
 import (
-	"fmt"
+	"errors"
 	"sync"
 	"time"
 
+	"go.uber.org/atomic"
+
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/internal/coreapi/api"
-	"go.uber.org/atomic"
 )
 
 type ChainAPI CoreAPI
@@ -37,11 +38,11 @@ func (api *ChainAPI) TPS(begin, end uint64) (uint64, error) {
 	)
 
 	if int(begin) <= 0 {
-		return 0, fmt.Errorf("begin number should be greater than zero")
+		return 0, errors.New("begin number should be greater than zero")
 	}
 
 	if int(begin) >= int(end) {
-		return 0, fmt.Errorf("begin number should be smaller than end number")
+		return 0, errors.New("begin number should be smaller than end number")
 	}
 
 	wg.Add(int(end - begin + 1))
@@ -80,13 +81,13 @@ func (api *ChainAPI) TPS(begin, end uint64) (uint64, error) {
 	wg.Wait()
 
 	if errCount.Load() != 0 {
-		return 0, fmt.Errorf("error during get block TPS")
+		return 0, errors.New("error during get block TPS")
 	}
 
 	elapsed := (endTime - startTime) / int64(time.Second)
 
 	if elapsed <= 0 {
-		return 0, fmt.Errorf("incorrect block timestamp")
+		return 0, errors.New("incorrect block timestamp")
 	}
 	return total.Load() / uint64(elapsed), nil
 }

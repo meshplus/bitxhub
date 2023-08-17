@@ -5,21 +5,18 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"math"
+	"strings"
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/event"
 	"github.com/libp2p/go-libp2p/core/connmgr"
 	p2pnetwork "github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/samber/lo"
 	"github.com/sirupsen/logrus"
 
 	"github.com/axiomesh/axiom"
-	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom-kit/types/pb"
 	network "github.com/axiomesh/axiom-p2p"
-	"github.com/axiomesh/axiom/internal/executor/system/governance"
 	"github.com/axiomesh/axiom/internal/ledger"
 	"github.com/axiomesh/axiom/pkg/repo"
 )
@@ -28,32 +25,20 @@ const (
 	protocolID string = "/axiom/1.0.0" // magic protocol
 )
 
-// var errVersionNotMatch error = errors.New("error versions")
-
 var _ PeerManager = (*Swarm)(nil)
 
 type Swarm struct {
-	repo    *repo.Repo
-	localID uint64
-	p2p     network.Network
-	logger  logrus.FieldLogger
-
-	// added by
-	routers map[uint64]*types.VpInfo // trace the vp nodes
-
-	multiAddrs     map[uint64]*peer.AddrInfo
+	repo           *repo.Repo
+	ledger         *ledger.Ledger
+	p2p            network.Network
+	logger         logrus.FieldLogger
 	connectedPeers sync.Map
+	enablePing     bool
+	pingTimeout    time.Duration
+	pingC          chan *repo.Ping
+	ctx            context.Context
+	cancel         context.CancelFunc
 	gater          connmgr.ConnectionGater
-
-	ledger           *ledger.Ledger
-	orderMessageFeed event.Feed
-	enablePing       bool
-	pingTimeout      time.Duration
-	pingC            chan *repo.Ping
-
-	ctx    context.Context
-	cancel context.CancelFunc
-
 	network.PipeManager
 }
 
@@ -61,7 +46,7 @@ func New(repoConfig *repo.Repo, logger logrus.FieldLogger, ledger *ledger.Ledger
 	ctx, cancel := context.WithCancel(context.Background())
 	swarm := &Swarm{repo: repoConfig, logger: logger, ledger: ledger, ctx: ctx, cancel: cancel}
 	if err := swarm.init(); err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	return swarm, nil
@@ -69,23 +54,11 @@ func New(repoConfig *repo.Repo, logger logrus.FieldLogger, ledger *ledger.Ledger
 
 func (swarm *Swarm) init() error {
 	// init peers with ips and hosts
-	routers := swarm.repo.NetworkConfig.GetVpInfos()
 	bootstrap := make([]string, 0)
-	for _, p := range routers {
-		if p.Id == swarm.repo.NetworkConfig.ID {
-			continue
+	for _, a := range swarm.repo.Config.Genesis.EpochInfo.P2PBootstrapNodeAddresses {
+		if !strings.Contains(a, swarm.repo.P2PID) {
+			bootstrap = append(bootstrap, a)
 		}
-		addr := fmt.Sprintf("%s%s", p.Hosts[0], p.Pid)
-		bootstrap = append(bootstrap, addr)
-	}
-
-	multiAddrs := make(map[uint64]*peer.AddrInfo)
-	p2pPeers, _ := swarm.repo.NetworkConfig.GetNetworkPeers()
-	for id, node := range p2pPeers {
-		if id == swarm.repo.NetworkConfig.ID {
-			continue
-		}
-		multiAddrs[id] = node
 	}
 
 	var securityType network.SecurityType
@@ -113,7 +86,7 @@ func (swarm *Swarm) init() error {
 	protocolIDWithVersion := fmt.Sprintf("%s-%x", protocolID, sha256.Sum256([]byte(axiom.VersionSecret)))
 	gater := newConnectionGater(swarm.logger, swarm.ledger)
 	opts := []network.Option{
-		network.WithLocalAddr(swarm.repo.NetworkConfig.LocalAddr),
+		network.WithLocalAddr(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", swarm.repo.Config.Port.P2P)),
 		network.WithPrivateKey(swarm.repo.P2PKey),
 		network.WithProtocolID(protocolIDWithVersion),
 		network.WithLogger(swarm.logger),
@@ -132,13 +105,10 @@ func (swarm *Swarm) init() error {
 	}
 	p2p.SetConnectCallback(swarm.onConnected)
 	p2p.SetDisconnectCallback(swarm.onDisconnected)
-	swarm.localID = swarm.repo.NetworkConfig.ID
 	swarm.p2p = p2p
 	swarm.enablePing = swarm.repo.Config.P2P.Ping.Enable
 	swarm.pingTimeout = swarm.repo.Config.P2P.Ping.Duration.ToDuration()
 	swarm.pingC = make(chan *repo.Ping)
-	swarm.routers = routers
-	swarm.multiAddrs = multiAddrs
 	swarm.connectedPeers = sync.Map{}
 	swarm.gater = gater
 	swarm.PipeManager = p2p
@@ -164,32 +134,13 @@ func (swarm *Swarm) Stop() error {
 
 func (swarm *Swarm) onConnected(net p2pnetwork.Network, conn p2pnetwork.Conn) error {
 	peerID := conn.RemotePeer().String()
-	for id, vp := range swarm.routers {
-		if vp.Pid == peerID {
-			swarm.connectedPeers.Store(id, swarm.multiAddrs[id])
-		}
-	}
-
-	members, err := governance.GetNodeMembers(swarm.ledger)
-	if err != nil {
-		return err
-	}
-	if !lo.ContainsBy(members, func(item *governance.NodeMember) bool {
-		return item.NodeId == peerID
-	}) {
-		swarm.logger.Warn()
-		swarm.onDisconnected(peerID)
-	}
+	swarm.connectedPeers.Store(peerID, nil)
 
 	return nil
 }
 
 func (swarm *Swarm) onDisconnected(peerID string) {
-	for id, vp := range swarm.routers {
-		if vp.Pid == peerID {
-			swarm.connectedPeers.Delete(id)
-		}
-	}
+	swarm.connectedPeers.Delete(peerID)
 }
 
 func (swarm *Swarm) Ping() {
@@ -202,19 +153,18 @@ func (swarm *Swarm) Ping() {
 		case <-ticker.C:
 			fields := logrus.Fields{}
 			swarm.connectedPeers.Range(func(key, value any) bool {
-				info := value.(*peer.AddrInfo)
 				ctx, cancel := context.WithCancel(context.Background())
 				defer cancel()
 
-				pingCh, err := swarm.p2p.Ping(ctx, info.ID.String())
+				pingCh, err := swarm.p2p.Ping(ctx, key.(string))
 				if err != nil {
 					return true
 				}
 				select {
 				case res := <-pingCh:
-					fields[fmt.Sprintf("%d", key.(uint64))] = res.RTT
+					fields[fmt.Sprintf("%v", key)] = res.RTT
 				case <-time.After(time.Second * 5):
-					swarm.logger.Errorf("ping to node %d timeout", key.(uint64))
+					swarm.logger.Errorf("ping to node v timeout", key)
 				}
 				return true
 			})
@@ -242,28 +192,13 @@ func (swarm *Swarm) SendWithStream(s network.Stream, msg *pb.Message) error {
 	return s.AsyncSend(data)
 }
 
-func (swarm *Swarm) Send(id KeyType, msg *pb.Message) (*pb.Message, error) {
-	var (
-		addr string
-		err  error
-	)
-	switch to := id.(type) {
-	case uint64:
-		if addr, err = swarm.findPeer(to); err != nil {
-			return nil, fmt.Errorf("p2p send check peer id type: %w", err)
-		}
-	case string:
-		addr = to
-	default:
-		return nil, fmt.Errorf("p2p unsupported peer id type: %v", id)
-	}
-
+func (swarm *Swarm) Send(to string, msg *pb.Message) (*pb.Message, error) {
 	data, err := msg.MarshalVT()
 	if err != nil {
 		return nil, fmt.Errorf("marshal message error: %w", err)
 	}
 
-	ret, err := swarm.p2p.Send(addr, data)
+	ret, err := swarm.p2p.Send(to, data)
 	if err != nil {
 		return nil, fmt.Errorf("sync send: %w", err)
 	}
@@ -278,17 +213,6 @@ func (swarm *Swarm) Send(id KeyType, msg *pb.Message) (*pb.Message, error) {
 
 func (swarm *Swarm) Peers() []peer.AddrInfo {
 	return swarm.p2p.GetPeers()
-}
-
-func (swarm *Swarm) OrderPeers() map[uint64]*types.VpInfo {
-	return swarm.routers
-}
-
-func (swarm *Swarm) findPeer(id uint64) (string, error) {
-	if swarm.routers[id] != nil {
-		return swarm.routers[id].Pid, nil
-	}
-	return "", fmt.Errorf("wrong id: %d", id)
 }
 
 func (swarm *Swarm) CountConnectedPeers() uint64 {

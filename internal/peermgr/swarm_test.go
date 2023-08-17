@@ -8,14 +8,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
+
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom-kit/types/pb"
 	"github.com/axiomesh/axiom/internal/executor/system/common"
 	"github.com/axiomesh/axiom/internal/ledger"
 	"github.com/axiomesh/axiom/pkg/repo"
 	"github.com/axiomesh/eth-kit/ledger/mock_ledger"
-	"github.com/golang/mock/gomock"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestSwarm_OtherPeers(t *testing.T) {
@@ -62,20 +63,18 @@ func TestSwarm_OnConnected(t *testing.T) {
 	}
 	chainLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
 
-	jsonBytes, err := json.Marshal(config.Genesis.Members)
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
+	jsonBytes, err := json.Marshal(config.Genesis.EpochInfo)
+	assert.Nil(t, err)
+
 	stateLedger.EXPECT().GetState(gomock.Any(), gomock.Any()).DoAndReturn(func(addr *types.Address, key []byte) (bool, []byte) {
-		return true, []byte(jsonBytes)
+		return true, jsonBytes
 	}).AnyTimes()
 
 	stateLedger.EXPECT().SetState(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
 		func(addr *types.Address, key []byte, value []byte) {},
 	).AnyTimes()
 
-	mockLedger.SetState(types.NewAddressByStr(common.NodeManagerContractAddr), []byte(common.NodeManagerContractAddr), []byte(jsonBytes))
+	mockLedger.SetState(types.NewAddressByStr(common.NodeManagerContractAddr), []byte(common.NodeManagerContractAddr), jsonBytes)
 
 	var peerID = "16Uiu2HAmRypzJbdbUNYsCV2VVgv9UryYS5d7wejTJXT73mNLJ8AK"
 
@@ -91,7 +90,6 @@ func TestSwarm_OnConnected(t *testing.T) {
 	} else {
 		fmt.Println("get nodeMember err")
 	}
-
 }
 
 func generateMockConfig(t *testing.T) *repo.Config {

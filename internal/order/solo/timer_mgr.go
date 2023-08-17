@@ -77,7 +77,7 @@ func (tm *timerManager) Stop() {
 func (tm *timerManager) stopTimer(timerName batchTimeoutEvent) {
 	if tm.containsTimer(timerName) {
 		tm.timersM[timerName].clear()
-		tm.logger.Debugf("timer %s stopped", timerName)
+		tm.logger.Debugf("Timer %s stopped", timerName)
 	}
 }
 
@@ -102,7 +102,7 @@ func (tm *timerManager) startTimer(name batchTimeoutEvent) {
 			tm.eventChan <- name
 		}
 	})
-	tm.logger.Debugf("timer %s started", name)
+	tm.logger.Debugf("Timer %s started", name)
 }
 
 func (tm *timerManager) isTimerActive(name batchTimeoutEvent) bool {

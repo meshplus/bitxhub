@@ -2,20 +2,21 @@ package solo
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/axiomesh/axiom/internal/order/precheck"
-	"github.com/axiomesh/axiom/pkg/repo"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/sirupsen/logrus"
 
 	"github.com/axiomesh/axiom-bft/mempool"
 	"github.com/axiomesh/axiom-kit/types"
-	"github.com/axiomesh/axiom/internal/order"
+	"github.com/axiomesh/axiom/internal/order/common"
+	"github.com/axiomesh/axiom/internal/order/precheck"
 	"github.com/axiomesh/axiom/internal/peermgr"
+	"github.com/axiomesh/axiom/pkg/repo"
 )
 
 func init() {
@@ -23,9 +24,9 @@ func init() {
 }
 
 type Node struct {
-	ID               uint64
+	config           *common.Config
 	isTimed          bool
-	commitC          chan *types.CommitEvent                                               // block channel
+	commitC          chan *common.CommitEvent                                              // block channel
 	logger           logrus.FieldLogger                                                    // logger
 	mempool          mempool.MemPool[types.Transaction, *types.Transaction]                // transaction pool
 	batchDigestM     map[uint64]string                                                     // mapping blockHeight to batch digest
@@ -46,6 +47,60 @@ type Node struct {
 	txFeed event.Feed
 }
 
+func NewNode(config *common.Config) (*Node, error) {
+	fn := func(addr string) uint64 {
+		account := types.NewAddressByStr(addr)
+		return config.GetAccountNonce(account)
+	}
+
+	mempoolConf := mempool.Config{
+		Logger:              &common.Logger{FieldLogger: config.Logger},
+		BatchSize:           config.GenesisEpochInfo.ConsensusParams.BlockMaxTxNum,
+		PoolSize:            config.Config.Mempool.PoolSize,
+		GetAccountNonce:     fn,
+		IsTimed:             config.GenesisEpochInfo.ConsensusParams.EnableTimedGenEmptyBlock,
+		ToleranceRemoveTime: config.Config.Mempool.ToleranceRemoveTime.ToDuration(),
+	}
+	mempoolInst := mempool.NewMempool[types.Transaction, *types.Transaction](mempoolConf)
+	// init batch timer manager
+	recvCh := make(chan consensusEvent)
+	batchTimerMgr := NewTimerManager(recvCh, config.Logger)
+	batchTimerMgr.newTimer(Batch, config.Config.Mempool.BatchTimeout.ToDuration())
+	batchTimerMgr.newTimer(NoTxBatch, config.Config.TimedGenBlock.NoTxBatchTimeout.ToDuration())
+	batchTimerMgr.newTimer(RemoveTx, config.Config.Mempool.ToleranceRemoveTime.ToDuration())
+
+	ctx, cancel := context.WithCancel(context.Background())
+	soloNode := &Node{
+		config:           config,
+		isTimed:          mempoolConf.IsTimed,
+		noTxBatchTimeout: config.Config.TimedGenBlock.NoTxBatchTimeout.ToDuration(),
+		batchTimeout:     config.Config.Mempool.BatchTimeout.ToDuration(),
+		blockCh:          make(chan *mempool.RequestHashBatch[types.Transaction, *types.Transaction], maxChanSize),
+		commitC:          make(chan *common.CommitEvent, maxChanSize),
+		batchDigestM:     make(map[uint64]string),
+		checkpoint:       config.Config.Solo.CheckpointPeriod,
+		poolFull:         0,
+		recvCh:           recvCh,
+		lastExec:         config.Applied,
+		mempool:          mempoolInst,
+		batchMgr:         batchTimerMgr,
+		peerMgr:          config.PeerMgr,
+		ctx:              ctx,
+		cancel:           cancel,
+		txPreCheck:       precheck.NewTxPreCheckMgr(ctx, config.Logger, config.GetAccountBalance),
+		logger:           config.Logger,
+	}
+	soloNode.logger.Infof("SOLO lastExec = %d", soloNode.lastExec)
+	soloNode.logger.Infof("SOLO epoch period = %d", config.GenesisEpochInfo.EpochPeriod)
+	soloNode.logger.Infof("SOLO checkpoint period = %d", config.GenesisEpochInfo.ConsensusParams.CheckpointPeriod)
+	soloNode.logger.Infof("SOLO enable timed gen empty block = %v", config.GenesisEpochInfo.ConsensusParams.EnableTimedGenEmptyBlock)
+	soloNode.logger.Infof("SOLO no-tx batch timeout = %v", config.Config.TimedGenBlock.NoTxBatchTimeout.ToDuration())
+	soloNode.logger.Infof("SOLO batch timeout = %v", config.Config.Mempool.BatchTimeout.ToDuration())
+	soloNode.logger.Infof("SOLO batch size = %d", config.GenesisEpochInfo.ConsensusParams.BlockMaxTxNum)
+	soloNode.logger.Infof("SOLO pool size = %d", config.Config.Mempool.PoolSize)
+	return soloNode, nil
+}
+
 func (n *Node) GetPendingTxByHash(hash *types.Hash) *types.Transaction {
 	request := &getTxReq{
 		Hash: hash.String(),
@@ -56,7 +111,7 @@ func (n *Node) GetPendingTxByHash(hash *types.Hash) *types.Transaction {
 }
 
 func (n *Node) Start() error {
-	n.logger.Info("consensus started")
+	n.logger.Info("Consensus started")
 	if n.isTimed {
 		n.batchMgr.startTimer(NoTxBatch)
 	}
@@ -70,7 +125,7 @@ func (n *Node) Start() error {
 
 func (n *Node) Stop() {
 	n.cancel()
-	n.logger.Info("consensus stopped")
+	n.logger.Info("Consensus stopped")
 }
 
 func (n *Node) GetPendingNonceByAccount(account string) uint64 {
@@ -82,17 +137,13 @@ func (n *Node) GetPendingNonceByAccount(account string) uint64 {
 	return <-request.Resp
 }
 
-func (n *Node) DelNode(uint64) error {
-	return nil
-}
-
 func (n *Node) Prepare(tx *types.Transaction) error {
 	if err := n.Ready(); err != nil {
 		return fmt.Errorf("node get ready failed: %w", err)
 	}
-	txWithResp := &order.TxWithResp{
+	txWithResp := &common.TxWithResp{
 		Tx:     tx,
-		RespCh: make(chan *order.TxResp),
+		RespCh: make(chan *common.TxResp),
 	}
 	n.recvCh <- txWithResp
 	resp := <-txWithResp.RespCh
@@ -102,7 +153,7 @@ func (n *Node) Prepare(tx *types.Transaction) error {
 	return nil
 }
 
-func (n *Node) Commit() chan *types.CommitEvent {
+func (n *Node) Commit() chan *common.CommitEvent {
 	return n.commitC
 }
 
@@ -132,63 +183,6 @@ func (n *Node) Quorum() uint64 {
 
 func (n *Node) SubscribeTxEvent(events chan<- []*types.Transaction) event.Subscription {
 	return n.txFeed.Subscribe(events)
-}
-
-func NewNode(opts ...order.Option) (order.Order, error) {
-	config, err := order.GenerateConfig(opts...)
-	if err != nil {
-		return nil, fmt.Errorf("generate config: %w", err)
-	}
-
-	fn := func(addr string) uint64 {
-		account := types.NewAddressByStr(addr)
-		return config.GetAccountNonce(account)
-	}
-
-	mempoolConf := mempool.Config{
-		ID:                  config.ID,
-		Logger:              &order.Logger{FieldLogger: config.Logger},
-		BatchSize:           config.Config.Mempool.BatchSize,
-		PoolSize:            config.Config.Mempool.PoolSize,
-		GetAccountNonce:     fn,
-		IsTimed:             config.Config.TimedGenBlock.Enable,
-		ToleranceRemoveTime: config.Config.Mempool.ToleranceRemoveTime.ToDuration(),
-	}
-	mempoolInst := mempool.NewMempool[types.Transaction, *types.Transaction](mempoolConf)
-	// init batch timer manager
-	recvCh := make(chan consensusEvent)
-	batchTimerMgr := NewTimerManager(recvCh, config.Logger)
-	batchTimerMgr.newTimer(Batch, config.Config.Mempool.BatchTimeout.ToDuration())
-	batchTimerMgr.newTimer(NoTxBatch, config.Config.TimedGenBlock.NoTxBatchTimeout.ToDuration())
-	batchTimerMgr.newTimer(RemoveTx, config.Config.Mempool.ToleranceRemoveTime.ToDuration())
-
-	ctx, cancel := context.WithCancel(context.Background())
-	soloNode := &Node{
-		ID:               config.ID,
-		isTimed:          mempoolConf.IsTimed,
-		noTxBatchTimeout: config.Config.TimedGenBlock.NoTxBatchTimeout.ToDuration(),
-		batchTimeout:     config.Config.Mempool.BatchTimeout.ToDuration(),
-		blockCh:          make(chan *mempool.RequestHashBatch[types.Transaction, *types.Transaction], maxChanSize),
-		commitC:          make(chan *types.CommitEvent, maxChanSize),
-		batchDigestM:     make(map[uint64]string),
-		checkpoint:       config.Config.Solo.CheckpointPeriod,
-		poolFull:         0,
-		recvCh:           recvCh,
-		lastExec:         config.Applied,
-		mempool:          mempoolInst,
-		batchMgr:         batchTimerMgr,
-		peerMgr:          config.PeerMgr,
-		ctx:              ctx,
-		cancel:           cancel,
-		txPreCheck:       precheck.NewTxPreCheckMgr(ctx, config.Logger, config.GetAccountBalance),
-		logger:           config.Logger,
-	}
-	soloNode.logger.Infof("SOLO lastExec = %d", soloNode.lastExec)
-	soloNode.logger.Infof("SOLO no-tx batch timeout = %v", config.Config.TimedGenBlock.NoTxBatchTimeout.ToDuration())
-	soloNode.logger.Infof("SOLO batch timeout = %v", config.Config.Mempool.BatchTimeout.ToDuration())
-	soloNode.logger.Infof("SOLO batch size = %d", config.Config.Mempool.BatchSize)
-	soloNode.logger.Infof("SOLO pool size = %d", config.Config.Mempool.PoolSize)
-	return soloNode, nil
 }
 
 func (n *Node) SubmitTxsFromRemote(_ [][]byte) error {
@@ -228,9 +222,9 @@ func (n *Node) listenEvent() {
 				}
 
 			// receive tx from api
-			case *order.TxWithResp:
-				unCheckedEv := &order.UncheckedTxEvent{
-					EventType: order.LocalTxEvent,
+			case *common.TxWithResp:
+				unCheckedEv := &common.UncheckedTxEvent{
+					EventType: common.LocalTxEvent,
 					Event:     e,
 				}
 				n.txPreCheck.PostUncheckedTxEvent(unCheckedEv)
@@ -243,7 +237,7 @@ func (n *Node) listenEvent() {
 				if n.mempool.IsPoolFull() {
 					n.logger.Warn("Mempool is full")
 					n.setPoolFull()
-					e.LocalRespCh <- &order.TxResp{
+					e.LocalRespCh <- &common.TxResp{
 						Status:   false,
 						ErrorMsg: ErrPoolFull,
 					}
@@ -260,18 +254,10 @@ func (n *Node) listenEvent() {
 					n.logger.Warningf("Receive wrong txs length from local, expect:%d, actual:%d", singleTx, len(e.Txs))
 				}
 
-				rawTx, err := e.Txs[0].RbftMarshal()
-				if err != nil {
-					e.LocalRespCh <- &order.TxResp{
-						Status:   false,
-						ErrorMsg: err.Error(),
-					}
-					continue
-				}
-				if batches, _ := n.mempool.AddNewRequests([][]byte{rawTx}, true, true, false); batches != nil {
+				if batches, _ := n.mempool.AddNewRequests(e.Txs, true, true, false); batches != nil {
 					n.batchMgr.stopTimer(Batch)
 					if len(batches) != 1 {
-						n.logger.Errorf("batch size is not 1, actual: %d", len(batches))
+						n.logger.Errorf("Batch size is not 1, actual: %d", len(batches))
 						continue
 					}
 					n.postProposal(batches[0])
@@ -283,7 +269,7 @@ func (n *Node) listenEvent() {
 
 				// post tx event to websocket
 				go n.txFeed.Send(e.Txs)
-				e.LocalRespCh <- &order.TxResp{Status: true}
+				e.LocalRespCh <- &common.TxResp{Status: true}
 
 			// handle timeout event
 			case batchTimeoutEvent:
@@ -292,17 +278,7 @@ func (n *Node) listenEvent() {
 					continue
 				}
 			case *getTxReq:
-				txData := n.mempool.GetPendingTxByHash(e.Hash)
-				tx := &types.Transaction{}
-				if txData == nil {
-					e.Resp <- nil
-					continue
-				}
-				if err := tx.RbftUnmarshal(txData); err != nil {
-					n.logger.Errorf("Unmarshal tx failed: %v", err)
-					continue
-				}
-				e.Resp <- tx
+				e.Resp <- n.mempool.GetPendingTxByHash(e.Hash)
 			case *getNonceReq:
 				e.Resp <- n.mempool.GetPendingNonceByAccount(e.account)
 			}
@@ -334,14 +310,14 @@ func (n *Node) processBatchTimeout(e batchTimeoutEvent) error {
 		}
 	case NoTxBatch:
 		if !n.isTimed {
-			return fmt.Errorf("the node is not support the no-tx batch, skip the timer")
+			return errors.New("the node is not support the no-tx batch, skip the timer")
 		}
 		if !n.mempool.HasPendingRequestInPool() {
 			n.batchMgr.stopTimer(NoTxBatch)
-			n.logger.Debug("start create empty block")
+			n.logger.Debug("Start create empty block")
 			batches := n.mempool.GenerateRequestBatch()
 			if batches == nil {
-				return fmt.Errorf("create empty block failed, the length of batches is 0")
+				return errors.New("create empty block failed, the length of batches is 0")
 			}
 			if len(batches) != 1 {
 				return fmt.Errorf("create empty block failed, the expect length of batches is 1, but actual is %d", len(batches))
@@ -362,26 +338,25 @@ func (n *Node) processBatchTimeout(e batchTimeoutEvent) error {
 // processNeedRemoveReqs process the checkPoolRemove timeout requests in requestPool, get the remained reqs from pool,
 // then remove these txs in local pool
 func (n *Node) processNeedRemoveReqs() {
-	n.logger.Info("removeTx timer expired, start remove tx in local memPool")
+	n.logger.Info("RemoveTx timer expired, start remove tx in local memPool")
 	reqLen, err := n.mempool.RemoveTimeoutRequests()
 	if err != nil {
-		n.logger.Warningf("node get the remained reqs failed, error: %v", err)
+		n.logger.Warningf("Node get the remained reqs failed, error: %v", err)
 	}
 
 	if reqLen == 0 {
-		n.logger.Infof("node in normal finds 0 tx to remove")
+		n.logger.Infof("Node in normal finds 0 tx to remove")
 		return
 	}
 
 	if !n.mempool.IsPoolFull() {
 		n.setPoolNotFull()
 	}
-	n.logger.Warningf("node successful remove %d tx in local memPool ", reqLen)
+	n.logger.Warningf("Node successful remove %d tx in local memPool ", reqLen)
 }
 
 // Schedule to collect txs to the listenReadyBlock channel
 func (n *Node) listenReadyBlock() {
-
 	for {
 		select {
 		case <-n.ctx.Done():
@@ -394,29 +369,20 @@ func (n *Node) listenReadyBlock() {
 			}).Debugf("Receive proposal from txcache")
 			n.logger.Infof("======== Call execute, height=%d", n.lastExec+1)
 
-			txs := make([]*types.Transaction, 0, len(e.TxList))
-			for _, data := range e.TxList {
-				tx := &types.Transaction{}
-				if err := tx.Unmarshal(data); err != nil {
-					n.logger.Errorf("Unmarshal tx failed: %v", err)
-					continue
-				}
-				txs = append(txs, tx)
-			}
-
 			block := &types.Block{
 				BlockHeader: &types.BlockHeader{
-					Version:   []byte("1.0.0"),
-					Number:    n.lastExec + 1,
-					Timestamp: e.Timestamp,
+					Epoch:           1,
+					Number:          n.lastExec + 1,
+					Timestamp:       e.Timestamp,
+					ProposerAccount: n.config.SelfAccountAddress,
 				},
-				Transactions: txs,
+				Transactions: e.TxList,
 			}
 			localList := make([]bool, len(e.TxList))
 			for i := 0; i < len(e.TxList); i++ {
 				localList[i] = true
 			}
-			executeEvent := &types.CommitEvent{
+			executeEvent := &common.CommitEvent{
 				Block:     block,
 				LocalList: localList,
 			}

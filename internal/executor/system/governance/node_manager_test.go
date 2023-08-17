@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
 
 	"github.com/axiomesh/axiom-kit/storage/leveldb"
 	"github.com/axiomesh/axiom-kit/types"
@@ -59,7 +59,7 @@ func TestNodeManager_RunForPropose(t *testing.T) {
 		},
 	}, "10")
 	assert.Nil(t, err)
-	err = InitNodeMembers(stateLedger, []*repo.Member{
+	err = InitNodeMembers(stateLedger, []*NodeMember{
 		{
 			NodeId: "16Uiu2HAmJ38LwfY6pfgDWNvk3ypjcpEMSePNTE6Ma2NCLqjbZJSF",
 		},
@@ -175,7 +175,7 @@ func TestNodeManager_RunForVote(t *testing.T) {
 		},
 	}, "10")
 	assert.Nil(t, err)
-	err = InitNodeMembers(stateLedger, []*repo.Member{
+	err = InitNodeMembers(stateLedger, []*NodeMember{
 		{
 			NodeId: "16Uiu2HAmJ38LwfY6pfgDWNvk3ypjcpEMSePNTE6Ma2NCLqjbZJSF",
 		},

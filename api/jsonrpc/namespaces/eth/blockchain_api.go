@@ -402,7 +402,7 @@ func formatBlock(api api.CoreAPI, config *repo.Config, block *types.Block, fullT
 		"logsBloom":        block.BlockHeader.Bloom.ETHBloom(),
 		"transactionsRoot": block.BlockHeader.TxRoot.ETHHash(),
 		"stateRoot":        block.BlockHeader.StateRoot.ETHHash(),
-		"miner":            common.Address{},
+		"miner":            block.BlockHeader.ProposerAccount,
 		"extraData":        hexutil.Bytes{},
 		"size":             hexutil.Uint64(block.Size()),
 		"gasLimit":         hexutil.Uint64(config.Genesis.GasLimit), // Static gas limit

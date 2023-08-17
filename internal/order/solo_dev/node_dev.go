@@ -1,18 +1,16 @@
 package solo_dev
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
-	"github.com/axiomesh/axiom-kit/types"
-	"github.com/axiomesh/axiom/internal/order"
-	"github.com/axiomesh/axiom/pkg/repo"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/sirupsen/logrus"
-)
 
-var _ order.Order = (*NodeDev)(nil)
+	"github.com/axiomesh/axiom-kit/types"
+	"github.com/axiomesh/axiom/internal/order/common"
+	"github.com/axiomesh/axiom/pkg/repo"
+)
 
 const checkpoint = 10
 
@@ -23,24 +21,21 @@ func init() {
 }
 
 type NodeDev struct {
-	persistDoneC    chan struct{}           // signal of tx had been persisted
-	commitC         chan *types.CommitEvent // block channel
-	lastExec        uint64                  // the index of the last-applied block
+	config          *common.Config
+	persistDoneC    chan struct{}            // signal of tx had been persisted
+	commitC         chan *common.CommitEvent // block channel
+	lastExec        uint64                   // the index of the last-applied block
 	mutex           sync.Mutex
 	logger          logrus.FieldLogger // logger
 	GetAccountNonce GetAccountNonceFunc
 	txFeed          event.Feed
 }
 
-func NewNode(opts ...order.Option) (order.Order, error) {
-	config, err := order.GenerateConfig(opts...)
-	if err != nil {
-		return nil, fmt.Errorf("generate config: %w", err)
-	}
-
+func NewNode(config *common.Config) (*NodeDev, error) {
 	return &NodeDev{
+		config:          config,
 		persistDoneC:    make(chan struct{}),
-		commitC:         make(chan *types.CommitEvent),
+		commitC:         make(chan *common.CommitEvent),
 		lastExec:        config.Applied,
 		logger:          config.Logger,
 		GetAccountNonce: config.GetAccountNonce,
@@ -61,13 +56,14 @@ func (n *NodeDev) Prepare(tx *types.Transaction) error {
 	defer n.mutex.Unlock()
 	block := &types.Block{
 		BlockHeader: &types.BlockHeader{
-			Version:   []byte("1.0.0"),
-			Number:    n.lastExec + 1,
-			Timestamp: time.Now().Unix(),
+			Epoch:           1,
+			Number:          n.lastExec + 1,
+			Timestamp:       time.Now().Unix(),
+			ProposerAccount: n.config.SelfAccountAddress,
 		},
 		Transactions: []*types.Transaction{tx},
 	}
-	n.commitC <- &types.CommitEvent{
+	n.commitC <- &common.CommitEvent{
 		Block:     block,
 		LocalList: []bool{true},
 	}
@@ -81,7 +77,7 @@ func (n *NodeDev) SubmitTxsFromRemote(_ [][]byte) error {
 	return nil
 }
 
-func (n *NodeDev) Commit() chan *types.CommitEvent {
+func (n *NodeDev) Commit() chan *common.CommitEvent {
 	return n.commitC
 }
 

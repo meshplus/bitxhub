@@ -5,16 +5,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/axiomesh/axiom-bft/mempool"
-	"github.com/axiomesh/axiom/internal/order"
-	"github.com/axiomesh/axiom/internal/order/precheck"
-	"github.com/axiomesh/axiom/internal/order/precheck/mock_precheck"
-	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
+	"github.com/axiomesh/axiom-bft/mempool"
 	"github.com/axiomesh/axiom-kit/log"
 	"github.com/axiomesh/axiom-kit/types"
+	"github.com/axiomesh/axiom/internal/order/common"
+	"github.com/axiomesh/axiom/internal/order/precheck"
+	"github.com/axiomesh/axiom/internal/order/precheck/mock_precheck"
 	"github.com/axiomesh/axiom/internal/peermgr/mock_peermgr"
 	"github.com/axiomesh/axiom/pkg/repo"
 )
@@ -44,10 +44,9 @@ func mockSoloNode(t *testing.T, enableTimed bool) (*Node, error) {
 	mockPrecheck := mock_precheck.NewMockMinPreCheck(mockCtl, validTxsCh)
 
 	mempoolConf := mempool.Config{
-		ID:                  uint64(1),
-		IsTimed:             cfg.TimedGenBlock.Enable,
-		Logger:              &order.Logger{FieldLogger: logger},
-		BatchSize:           cfg.Mempool.BatchSize,
+		IsTimed:             r.Config.Genesis.EpochInfo.ConsensusParams.EnableTimedGenEmptyBlock,
+		Logger:              &common.Logger{FieldLogger: logger},
+		BatchSize:           r.Config.Genesis.EpochInfo.ConsensusParams.BlockMaxTxNum,
 		PoolSize:            poolSize,
 		ToleranceRemoveTime: removeTxTimeout,
 		GetAccountNonce: func(address string) uint64 {
@@ -68,12 +67,14 @@ func mockSoloNode(t *testing.T, enableTimed bool) (*Node, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	soloNode := &Node{
-		ID:               uint64(1),
+		config: &common.Config{
+			Config: r.OrderConfig,
+		},
 		lastExec:         uint64(0),
 		isTimed:          mempoolConf.IsTimed,
 		noTxBatchTimeout: noTxBatchTimeout,
 		batchTimeout:     cfg.Mempool.BatchTimeout.ToDuration(),
-		commitC:          make(chan *types.CommitEvent, maxChanSize),
+		commitC:          make(chan *common.CommitEvent, maxChanSize),
 		blockCh:          make(chan *mempool.RequestHashBatch[types.Transaction, *types.Transaction], maxChanSize),
 		mempool:          mempoolInst,
 		batchMgr:         batchTimerMgr,

@@ -4,6 +4,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/axiomesh/axiom-kit/types"
+	"github.com/axiomesh/axiom/internal/executor/system/base"
 	"github.com/axiomesh/axiom/internal/executor/system/common"
 	"github.com/axiomesh/axiom/internal/executor/system/governance"
 	"github.com/axiomesh/axiom/internal/ledger"
@@ -16,6 +17,8 @@ var Addr2Contract map[types.Address]common.SystemContract
 
 func Initialize(logger logrus.FieldLogger) {
 	Addr2Contract = map[types.Address]common.SystemContract{
+		*types.NewAddressByStr(common.EpochManagerContractAddr): base.NewEpochManager(logger),
+
 		*types.NewAddressByStr(common.NodeManagerContractAddr):    governance.NewNodeManager(logger),
 		*types.NewAddressByStr(common.CouncilManagerContractAddr): governance.NewCouncilManager(logger),
 	}
@@ -35,13 +38,12 @@ func GetSystemContract(addr *types.Address) (common.SystemContract, bool) {
 }
 
 func InitGenesisData(genesis *repo.Genesis, lg *ledger.Ledger) error {
+	if err := base.InitEpochInfo(lg, genesis.EpochInfo); err != nil {
+		return err
+	}
 	if err := governance.InitCouncilMembers(lg, genesis.Admins, genesis.Balance); err != nil {
 		return err
 	}
-	if err := governance.InitNodeMembers(lg, genesis.Members); err != nil {
-		return err
-	}
-
 	return nil
 }
 

@@ -16,7 +16,9 @@ import (
 
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/internal/executor/system"
+	"github.com/axiomesh/axiom/internal/executor/system/base"
 	"github.com/axiomesh/axiom/internal/ledger"
+	ordercommon "github.com/axiomesh/axiom/internal/order/common"
 	"github.com/axiomesh/axiom/pkg/model/events"
 	"github.com/axiomesh/eth-kit/adaptor"
 	ethvm "github.com/axiomesh/eth-kit/evm"
@@ -48,7 +50,7 @@ func (exec *BlockExecutor) applyTransactions(txs []*types.Transaction) []*types.
 	return receipts
 }
 
-func (exec *BlockExecutor) processExecuteEvent(commitEvent *types.CommitEvent) {
+func (exec *BlockExecutor) processExecuteEvent(commitEvent *ordercommon.CommitEvent) {
 	var txHashList []*types.Hash
 	current := time.Now()
 	block := commitEvent.Block
@@ -64,10 +66,20 @@ func (exec *BlockExecutor) processExecuteEvent(commitEvent *types.CommitEvent) {
 		txHashList = append(txHashList, tx.GetHash())
 	}
 
-	// TODO: CHANGE COINBASE ADDRESSS
-	exec.evm = newEvm(block.Height(), uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateLedger, exec.ledger.ChainLedger, exec.admins[0])
+	exec.evm = newEvm(block.Height(), uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateLedger, exec.ledger.ChainLedger, block.BlockHeader.ProposerAccount)
 	exec.ledger.PrepareBlock(block.BlockHash, block.Height())
 	receipts := exec.applyTransactions(block.Transactions)
+
+	// check need turn into NewEpoch
+	epochInfo := exec.rep.EpochInfo
+	if block.BlockHeader.Number == (epochInfo.StartBlock + epochInfo.EpochPeriod - 1) {
+		newEpoch, err := base.TurnIntoNewEpoch(exec.ledger)
+		if err != nil {
+			panic(err)
+		}
+		exec.rep.EpochInfo = newEpoch
+	}
+
 	applyTxsDuration.Observe(float64(time.Since(current)) / float64(time.Second))
 	exec.logger.WithFields(logrus.Fields{
 		"time":  time.Since(current),
@@ -105,10 +117,11 @@ func (exec *BlockExecutor) processExecuteEvent(commitEvent *types.CommitEvent) {
 	block.BlockHash = block.Hash()
 
 	exec.logger.WithFields(logrus.Fields{
+		"coinbase":     block.BlockHeader.ProposerAccount,
 		"tx_root":      block.BlockHeader.TxRoot.String(),
 		"receipt_root": block.BlockHeader.ReceiptRoot.String(),
 		"state_root":   block.BlockHeader.StateRoot.String(),
-	}).Debug("block meta")
+	}).Debug("Block meta")
 	calcBlockSize.Observe(float64(block.Size()))
 	executeBlockDuration.Observe(float64(time.Since(current)) / float64(time.Second))
 
@@ -194,8 +207,7 @@ func (exec *BlockExecutor) applyTransaction(i int, tx *types.Transaction) *types
 
 func (exec *BlockExecutor) applyEthTransaction(_ int, tx *types.Transaction) *types.Receipt {
 	receipt := &types.Receipt{
-		Version: tx.GetVersion(),
-		TxHash:  tx.GetHash(),
+		TxHash: tx.GetHash(),
 	}
 
 	var result *ethvm.ExecutionResult
@@ -295,8 +307,12 @@ func calcMerkleRoot(contents []merkletree.Content) (*types.Hash, error) {
 	return types.NewHash(tree.MerkleRoot()), nil
 }
 
-func newEvm(number uint64, timestamp uint64, chainCfg *params.ChainConfig, db ethledger.StateLedger, chainLedger ethledger.ChainLedger, admin string) *ethvm.EVM {
-	blkCtx := ethvm.NewEVMBlockContext(number, timestamp, db, chainLedger, admin)
+func newEvm(number uint64, timestamp uint64, chainCfg *params.ChainConfig, db ethledger.StateLedger, chainLedger ethledger.ChainLedger, coinbase string) *ethvm.EVM {
+	if coinbase == "" {
+		coinbase = "0x0000000000000000000000000000000000000000"
+	}
+
+	blkCtx := ethvm.NewEVMBlockContext(number, timestamp, db, chainLedger, coinbase)
 
 	return ethvm.NewEVM(blkCtx, ethvm.TxContext{}, db, chainCfg, ethvm.Config{})
 }
@@ -310,7 +326,7 @@ func (exec *BlockExecutor) GetEvm(txCtx ethvm.TxContext, vmConfig ethvm.Config) 
 		return nil, err
 	}
 
-	blkCtx = ethvm.NewEVMBlockContext(meta.Height, uint64(block.BlockHeader.Timestamp), exec.ledger.StateLedger, exec.ledger.ChainLedger, exec.admins[0])
+	blkCtx = ethvm.NewEVMBlockContext(meta.Height, uint64(block.BlockHeader.Timestamp), exec.ledger.StateLedger, exec.ledger.ChainLedger, "")
 	return ethvm.NewEVM(blkCtx, txCtx, exec.ledger.StateLedger, exec.evmChainCfg, vmConfig), nil
 }
 

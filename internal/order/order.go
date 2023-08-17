@@ -1,12 +1,19 @@
 package order
 
 import (
+	"fmt"
+
 	"github.com/ethereum/go-ethereum/event"
 
 	"github.com/axiomesh/axiom-kit/types"
+	"github.com/axiomesh/axiom/internal/order/common"
+	"github.com/axiomesh/axiom/internal/order/rbft"
+	"github.com/axiomesh/axiom/internal/order/solo"
+	"github.com/axiomesh/axiom/internal/order/solo_dev"
+	"github.com/axiomesh/axiom/pkg/repo"
 )
 
-//go:generate mockgen -destination mock_order/mock_order.go -package mock_order -source order.go
+//go:generate mockgen -destination mock_order/mock_order.go -package mock_order -source order.go -typed
 type Order interface {
 	// Start the order service.
 	Start() error
@@ -18,7 +25,7 @@ type Order interface {
 	Prepare(tx *types.Transaction) error
 
 	// Commit recv blocks form Order and commit it by order
-	Commit() chan *types.CommitEvent
+	Commit() chan *common.CommitEvent
 
 	// Step send msg to the consensus engine
 	Step(msg []byte) error
@@ -37,8 +44,24 @@ type Order interface {
 
 	GetPendingTxByHash(hash *types.Hash) *types.Transaction
 
-	// DelNode sends a delete vp request by given id.
-	DelNode(delID uint64) error
-
 	SubscribeTxEvent(events chan<- []*types.Transaction) event.Subscription
+}
+
+func New(orderType string, opts ...common.Option) (Order, error) {
+	config, err := common.GenerateConfig(opts...)
+	if err != nil {
+		return nil, fmt.Errorf("generate config: %w", err)
+	}
+
+	// Get the order constructor according to different order type.
+	switch orderType {
+	case repo.OrderTypeSolo:
+		return solo.NewNode(config)
+	case repo.OrderTypeRbft:
+		return rbft.NewNode(config)
+	case repo.OrderTypeSoloDev:
+		return solo_dev.NewNode(config)
+	default:
+		return nil, fmt.Errorf("unsupport order type: %s", orderType)
+	}
 }

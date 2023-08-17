@@ -2,16 +2,17 @@ package main
 
 import (
 	"crypto/ecdsa"
+	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"strings"
 
-	"github.com/axiomesh/axiom/pkg/repo"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/urfave/cli/v2"
+
+	"github.com/axiomesh/axiom/pkg/repo"
 )
 
 const fileName = "account.key"
@@ -61,7 +62,7 @@ func parseAccount(ctx *cli.Context) error {
 	if fromPath == "" {
 		fromPath = fileName
 	}
-	content, err := ioutil.ReadFile(fromPath)
+	content, err := os.ReadFile(fromPath)
 	if err != nil {
 		return err
 	}
@@ -99,7 +100,7 @@ func writeAccountToFile(savePath string, key *ecdsa.PrivateKey) error {
 			return err
 		}
 		if choice != "yes" {
-			return fmt.Errorf("interrupt by user")
+			return errors.New("interrupt by user")
 		}
 	}
 

@@ -8,10 +8,11 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/ethereum/go-ethereum/crypto"
+
 	"github.com/axiomesh/axiom-kit/storage"
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/eth-kit/ledger"
-	"github.com/ethereum/go-ethereum/crypto"
 )
 
 var _ ledger.IAccount = (*SimpleAccount)(nil)
@@ -269,7 +270,7 @@ func (o *SimpleAccount) Query(prefix string) (bool, [][]byte) {
 		stored[key] = val
 	}
 
-	o.dirtyState.Range(func(key, value interface{}) bool {
+	o.dirtyState.Range(func(key, value any) bool {
 		if strings.HasPrefix(key.(string), prefix) {
 			stored[key.(string)] = value.([]byte)
 		}
@@ -321,7 +322,7 @@ func (o *SimpleAccount) getStateJournalAndComputeHash() map[string][]byte {
 	var dirtyStateKeys []string
 	var dirtyStateData []byte
 
-	o.dirtyState.Range(func(key, value interface{}) bool {
+	o.dirtyState.Range(func(key, value any) bool {
 		origVal, ok := o.originState.Load(key)
 		var origValBytes []byte
 		if ok {
@@ -369,7 +370,7 @@ func (o *SimpleAccount) SetSuicided(suicided bool) {
 }
 
 func (o *SimpleAccount) IsEmpty() bool {
-	return o.GetBalance().Sign() == 0 && o.GetNonce() == 0 && o.Code() == nil && o.suicided == false
+	return o.GetBalance().Sign() == 0 && o.GetNonce() == 0 && o.Code() == nil && !o.suicided
 }
 
 func (o *SimpleAccount) Suicided() bool {

@@ -4,15 +4,14 @@ go 1.20
 
 require (
 	github.com/Rican7/retry v0.1.0
-	github.com/axiomesh/axiom-bft v0.0.3-0.20230824012453-8ed8aa3beb5e
+	github.com/axiomesh/axiom-bft v0.0.3-0.20230826072249-db3e925ea5d7
 	github.com/axiomesh/axiom-kit v0.0.3-0.20230823051744-70c297280fd7
 	github.com/axiomesh/axiom-p2p v0.0.2
-	github.com/axiomesh/eth-kit v0.0.2
+	github.com/axiomesh/eth-kit v0.0.3-0.20230824120858-0328f1de558d
 	github.com/cbergoon/merkletree v0.2.0
 	github.com/common-nighthawk/go-figure v0.0.0-20190529165535-67e0ed34491a
 	github.com/ethereum/go-ethereum v1.12.0
 	github.com/gammazero/workerpool v1.1.3
-	github.com/golang/mock v1.7.0-rc.1
 	github.com/gorilla/mux v1.8.0
 	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d
 	github.com/juju/ratelimit v1.0.1
@@ -33,6 +32,7 @@ require (
 	github.com/urfave/cli/v2 v2.17.2-0.20221006022127-8f469abc00aa
 	go.opentelemetry.io/otel/trace v1.16.0
 	go.uber.org/atomic v1.11.0
+	go.uber.org/mock v0.2.0
 	golang.org/x/time v0.3.0
 )
 
@@ -74,6 +74,7 @@ require (
 	github.com/gofrs/flock v0.8.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v4 v4.3.0 // indirect
+	github.com/golang/mock v1.7.0-rc.1 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.5-0.20220116011046-fa5810519dcb // indirect
 	github.com/google/btree v1.1.2 // indirect

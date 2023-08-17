@@ -5,11 +5,12 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/axiomesh/axiom-kit/log"
-	"github.com/axiomesh/axiom-kit/types"
-	"github.com/axiomesh/axiom/internal/order"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/sirupsen/logrus"
+
+	"github.com/axiomesh/axiom-kit/log"
+	"github.com/axiomesh/axiom-kit/types"
+	common2 "github.com/axiomesh/axiom/internal/order/common"
 )
 
 const (
@@ -48,19 +49,19 @@ func getBalance(address string) *big.Int {
 	return val
 }
 
-func createLocalTxEvent(tx *types.Transaction) *order.UncheckedTxEvent {
-	return &order.UncheckedTxEvent{
-		EventType: order.LocalTxEvent,
-		Event: &order.TxWithResp{
+func createLocalTxEvent(tx *types.Transaction) *common2.UncheckedTxEvent {
+	return &common2.UncheckedTxEvent{
+		EventType: common2.LocalTxEvent,
+		Event: &common2.TxWithResp{
 			Tx:     tx,
-			RespCh: make(chan *order.TxResp),
+			RespCh: make(chan *common2.TxResp),
 		},
 	}
 }
 
-func createRemoteTxEvent(txs []*types.Transaction) *order.UncheckedTxEvent {
-	return &order.UncheckedTxEvent{
-		EventType: order.RemoteTxEvent,
+func createRemoteTxEvent(txs []*types.Transaction) *common2.UncheckedTxEvent {
+	return &common2.UncheckedTxEvent{
+		EventType: common2.RemoteTxEvent,
 		Event:     txs,
 	}
 }

@@ -30,10 +30,6 @@ func (api *CoreAPI) Broker() api.BrokerAPI {
 	return (*BrokerAPI)(api)
 }
 
-func (api *CoreAPI) Network() api.NetworkAPI {
-	return (*NetworkAPI)(api)
-}
-
 func (api *CoreAPI) Chain() api.ChainAPI {
 	return (*ChainAPI)(api)
 }

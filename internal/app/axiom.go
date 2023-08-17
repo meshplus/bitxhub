@@ -7,21 +7,21 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/axiomesh/axiom-kit/types"
-	"github.com/axiomesh/axiom/internal/executor/executor_dev"
-	"github.com/axiomesh/axiom/internal/order/solo_dev"
 	"github.com/common-nighthawk/go-figure"
 	"github.com/ethereum/go-ethereum/common/fdlimit"
 	"github.com/sirupsen/logrus"
 
+	rbft "github.com/axiomesh/axiom-bft"
 	"github.com/axiomesh/axiom-kit/storage/blockfile"
+	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/api/jsonrpc"
 	"github.com/axiomesh/axiom/internal/executor"
+	"github.com/axiomesh/axiom/internal/executor/executor_dev"
+	"github.com/axiomesh/axiom/internal/executor/system/base"
 	"github.com/axiomesh/axiom/internal/ledger"
 	"github.com/axiomesh/axiom/internal/ledger/genesis"
 	"github.com/axiomesh/axiom/internal/order"
-	"github.com/axiomesh/axiom/internal/order/rbft"
-	"github.com/axiomesh/axiom/internal/order/solo"
+	"github.com/axiomesh/axiom/internal/order/common"
 	"github.com/axiomesh/axiom/internal/peermgr"
 	"github.com/axiomesh/axiom/internal/storages"
 	"github.com/axiomesh/axiom/pkg/loggers"
@@ -57,45 +57,35 @@ func NewAxiom(rep *repo.Repo) (*Axiom, error) {
 
 	chainMeta := axm.Ledger.GetChainMeta()
 
-	m := rep.NetworkConfig.GetVpInfos()
-
-	var orderCon func(opt ...order.Option) (order.Order, error)
-	// Get the order constructor according to different order type.
-	switch rep.Config.Order.Type {
-	case repo.OrderTypeSolo:
-		orderCon = solo.NewNode
-	case repo.OrderTypeRbft:
-		orderCon = rbft.NewNode
-	case repo.OrderTypeSoloDev:
-		orderCon = solo_dev.NewNode
-	default:
-		return nil, fmt.Errorf("unsupport order type: %s", rep.Config.Order.Type)
-	}
-
 	var getNonceFunc func(address *types.Address) uint64
-
 	if rep.Config.Order.Type == repo.OrderTypeSoloDev {
 		getNonceFunc = axm.Ledger.GetNonce
 	} else {
 		getNonceFunc = axm.Ledger.Copy().GetNonce
 	}
 
-	order, err := orderCon(
-		order.WithConfig(rep.OrderConfig),
-		order.WithStoragePath(repo.GetStoragePath(repoRoot, "order")),
-		order.WithStorageType(rep.Config.Ledger.Kv),
-		order.WithOrderType(rep.Config.Order.Type),
-		order.WithPrivKey(rep.NodeKey),
-		order.WithNodes(m),
-		order.WithID(rep.NetworkConfig.ID),
-		order.WithIsNew(rep.NetworkConfig.New),
-		order.WithPeerManager(axm.PeerMgr),
-		order.WithLogger(loggers.Logger(loggers.Order)),
-		order.WithApplied(chainMeta.Height),
-		order.WithDigest(chainMeta.BlockHash.String()),
-		order.WithGetChainMetaFunc(axm.Ledger.GetChainMeta),
-		order.WithGetAccountBalanceFunc(axm.Ledger.GetBalance),
-		order.WithGetAccountNonceFunc(getNonceFunc),
+	order, err := order.New(
+		rep.Config.Order.Type,
+		common.WithConfig(rep.OrderConfig),
+		common.WithSelfAccountAddress(rep.NodeAddress),
+		common.WithGenesisEpochInfo(rep.Config.Genesis.EpochInfo.Clone()),
+		common.WithStoragePath(repo.GetStoragePath(repoRoot, "order")),
+		common.WithStorageType(rep.Config.Ledger.Kv),
+		common.WithOrderType(rep.Config.Order.Type),
+		common.WithPrivKey(rep.NodeKey),
+		common.WithPeerManager(axm.PeerMgr),
+		common.WithLogger(loggers.Logger(loggers.Order)),
+		common.WithApplied(chainMeta.Height),
+		common.WithDigest(chainMeta.BlockHash.String()),
+		common.WithGetChainMetaFunc(axm.Ledger.GetChainMeta),
+		common.WithGetAccountBalanceFunc(axm.Ledger.Copy().GetBalance),
+		common.WithGetAccountNonceFunc(getNonceFunc),
+		common.WithGetEpochInfoFromEpochMgrContractFunc(func(epoch uint64) (*rbft.EpochInfo, error) {
+			return base.GetEpochInfo(axm.Ledger, epoch)
+		}),
+		common.WithGetCurrentEpochInfoFromEpochMgrContractFunc(func() (*rbft.EpochInfo, error) {
+			return base.GetCurrentEpochInfo(axm.Ledger)
+		}),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("initialize order failed: %w", err)
@@ -159,7 +149,7 @@ func GenerateAxiomWithoutOrder(rep *repo.Repo) (*Axiom, error) {
 	}
 
 	if rwLdg.ChainLedger.GetChainMeta().Height == 0 {
-		if err := genesis.Initialize(&rep.Config.Genesis, rep.NetworkConfig.Nodes, rep.NetworkConfig.N, rwLdg, viewExec); err != nil {
+		if err := genesis.Initialize(&rep.Config.Genesis, rwLdg, viewExec); err != nil {
 			return nil, err
 		}
 		logger.WithFields(logrus.Fields{
@@ -194,6 +184,13 @@ func GenerateAxiomWithoutOrder(rep *repo.Repo) (*Axiom, error) {
 }
 
 func (axm *Axiom) Start() error {
+	var err error
+	// read current epoch info from ledger
+	axm.repo.EpochInfo, err = base.GetCurrentEpochInfo(axm.Ledger)
+	if err != nil {
+		return err
+	}
+
 	if repo.SupportMultiNode[axm.repo.Config.Order.Type] {
 		if err := axm.PeerMgr.Start(); err != nil {
 			return fmt.Errorf("peer manager start: %w", err)

@@ -7,87 +7,81 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/axiomesh/axiom-bft/external"
-	rbfttypes "github.com/axiomesh/axiom-bft/types"
+	rbft "github.com/axiomesh/axiom-bft"
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom-kit/types/pb"
 	network "github.com/axiomesh/axiom-p2p"
-	"github.com/axiomesh/axiom/internal/order"
+	"github.com/axiomesh/axiom/internal/order/common"
 	"github.com/axiomesh/axiom/internal/peermgr"
 )
 
-var _ external.ExternalStack[types.Transaction, *types.Transaction] = (*RBFTAdaptor)(nil)
-var _ external.Storage = (*RBFTAdaptor)(nil)
-var _ external.Network = (*RBFTAdaptor)(nil)
-var _ external.Crypto = (*RBFTAdaptor)(nil)
-var _ external.ServiceOutbound = (*RBFTAdaptor)(nil)
-var _ external.EpochService = (*RBFTAdaptor)(nil)
+var _ rbft.ExternalStack[types.Transaction, *types.Transaction] = (*RBFTAdaptor)(nil)
+var _ rbft.Storage = (*RBFTAdaptor)(nil)
+var _ rbft.Network = (*RBFTAdaptor)(nil)
+var _ rbft.Crypto = (*RBFTAdaptor)(nil)
+var _ rbft.ServiceOutbound[types.Transaction, *types.Transaction] = (*RBFTAdaptor)(nil)
+var _ rbft.EpochService = (*RBFTAdaptor)(nil)
 
 type RBFTAdaptor struct {
-	localID           uint64
 	store             *storageWrapper
+	priv              *ecdsa.PrivateKey
 	peerMgr           peermgr.PeerManager
 	msgPipe           network.Pipe
-	priv              *ecdsa.PrivateKey
-	Nodes             map[uint64]*types.VpInfo
-	nodePIDToID       map[string]uint64
 	ReadyC            chan *Ready
-	BlockC            chan *types.CommitEvent
+	BlockC            chan *common.CommitEvent
 	logger            logrus.FieldLogger
 	getChainMetaFunc  func() *types.ChainMeta
 	StateUpdating     bool
 	StateUpdateHeight uint64
-	applyConfChange   func(cc *rbfttypes.ConfState)
 	cancel            context.CancelFunc
-	isNew             bool
-	config            *order.Config
+	config            *common.Config
+
+	EpochInfo *rbft.EpochInfo
 }
 
 type Ready struct {
-	TXs       []*types.Transaction
-	LocalList []bool
-	Height    uint64
-	Timestamp int64
+	TXs             []*types.Transaction
+	LocalList       []bool
+	Height          uint64
+	Timestamp       int64
+	ProposerAccount string
 }
 
-func NewRBFTAdaptor(config *order.Config, blockC chan *types.CommitEvent, cancel context.CancelFunc) (*RBFTAdaptor, error) {
+func NewRBFTAdaptor(config *common.Config, blockC chan *common.CommitEvent, cancel context.CancelFunc) (*RBFTAdaptor, error) {
 	store, err := newStorageWrapper(config.StoragePath, config.StorageType)
 	if err != nil {
 		return nil, err
 	}
 
-	nodePIDToID := make(map[string]uint64)
-	for k, v := range config.Nodes {
-		nodePIDToID[v.Pid] = k
-	}
 	stack := &RBFTAdaptor{
-		localID:          config.ID,
 		store:            store,
-		peerMgr:          config.PeerMgr,
 		priv:             config.PrivKey,
-		Nodes:            config.Nodes,
-		nodePIDToID:      nodePIDToID,
+		peerMgr:          config.PeerMgr,
 		ReadyC:           make(chan *Ready, 1024),
+		BlockC:           blockC,
 		logger:           config.Logger,
 		getChainMetaFunc: config.GetChainMetaFunc,
-		BlockC:           blockC,
 		cancel:           cancel,
-		isNew:            config.IsNew,
 		config:           config,
 	}
 
 	return stack, nil
 }
 
+func (s *RBFTAdaptor) UpdateEpoch() error {
+	e, err := s.config.GetCurrentEpochInfoFromEpochMgrContractFunc()
+	if err != nil {
+		return err
+	}
+	s.EpochInfo = e
+	return nil
+}
+
 func (s *RBFTAdaptor) SetMsgPipe(msgPipe network.Pipe) {
 	s.msgPipe = msgPipe
 }
 
-func (s *RBFTAdaptor) SetApplyConfChange(applyConfChange func(cc *rbfttypes.ConfState)) {
-	s.applyConfChange = applyConfChange
-}
-
-func (s *RBFTAdaptor) getBlock(id uint64, i int) (*types.Block, error) {
+func (s *RBFTAdaptor) getBlock(id string, i int) (*types.Block, error) {
 	m := &pb.Message{
 		Type: pb.Message_GET_BLOCK,
 		Data: []byte(strconv.Itoa(i)),

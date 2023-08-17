@@ -2,6 +2,7 @@ package repo
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path"
 	"reflect"
@@ -10,7 +11,9 @@ import (
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
+	"github.com/samber/lo"
 
+	rbft "github.com/axiomesh/axiom-bft"
 	"github.com/axiomesh/axiom-kit/fileutil"
 )
 
@@ -76,6 +79,7 @@ type Config struct {
 type Port struct {
 	JsonRpc   int64 `mapstructure:"jsonrpc" toml:"jsonrpc"`
 	WebSocket int64 `mapstructure:"websocket" toml:"websocket"`
+	P2P       int64 `mapstructure:"p2p" toml:"p2p"`
 	PProf     int64 `mapstructure:"pprof" toml:"pprof"`
 	Monitor   int64 `mapstructure:"monitor" toml:"monitor"`
 }
@@ -144,15 +148,16 @@ type LogModule struct {
 }
 
 type Genesis struct {
-	ChainID       uint64    `mapstructure:"chainid" toml:"chainid"`
-	GasLimit      uint64    `mapstructure:"gas_limit" toml:"gas_limit"`
-	GasPrice      uint64    `mapstructure:"gas_price" toml:"gas_price"`
-	MaxGasPrice   uint64    `mapstructure:"max_gas_price" toml:"max_gas_price"`
-	MinGasPrice   uint64    `mapstructure:"min_gas_price" toml:"min_gas_price"`
-	GasChangeRate float64   `mapstructure:"gas_change_rate" toml:"gas_change_rate"`
-	Balance       string    `mapstructure:"balance" toml:"balance"`
-	Admins        []*Admin  `mapstructure:"admins" toml:"admins"`
-	Members       []*Member `mapstructure:"members" toml:"members"`
+	ChainID       uint64          `mapstructure:"chainid" toml:"chainid"`
+	GasLimit      uint64          `mapstructure:"gas_limit" toml:"gas_limit"`
+	GasPrice      uint64          `mapstructure:"gas_price" toml:"gas_price"`
+	MaxGasPrice   uint64          `mapstructure:"max_gas_price" toml:"max_gas_price"`
+	MinGasPrice   uint64          `mapstructure:"min_gas_price" toml:"min_gas_price"`
+	GasChangeRate float64         `mapstructure:"gas_change_rate" toml:"gas_change_rate"`
+	Balance       string          `mapstructure:"balance" toml:"balance"`
+	Admins        []*Admin        `mapstructure:"admins" toml:"admins"`
+	Accounts      []string        `mapstructure:"accounts" toml:"accounts"`
+	EpochInfo     *rbft.EpochInfo `mapstructure:"epoch_info" toml:"epoch_info"`
 }
 
 type Admin struct {
@@ -178,10 +183,6 @@ type Executor struct {
 	Type string `mapstructure:"type" toml:"type"`
 }
 
-type Member struct {
-	NodeId string `mapstructure:"node_id" toml:"node_id"`
-}
-
 var SupportMultiNode = make(map[string]bool)
 var registrationMutex sync.Mutex
 
@@ -200,6 +201,36 @@ func (c *Config) Bytes() ([]byte, error) {
 	return ret, nil
 }
 
+func GenesisEpochInfo() *rbft.EpochInfo {
+	return &rbft.EpochInfo{
+		Version:     1,
+		Epoch:       1,
+		EpochPeriod: 40,
+		StartBlock:  1,
+		P2PBootstrapNodeAddresses: lo.Map(defaultNodeIDs, func(item string, idx int) string {
+			return fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/p2p/%s", 4001+idx, item)
+		}),
+		ConsensusParams: &rbft.ConsensusParams{
+			CheckpointPeriod:              5,
+			HighWatermarkCheckpointPeriod: 4,
+			MaxValidatorNum:               20,
+			BlockMaxTxNum:                 500,
+			EnableTimedGenEmptyBlock:      false,
+			NotActiveWeight:               1,
+			ExcludeView:                   100,
+		},
+		CandidateSet: []*rbft.NodeInfo{},
+		ValidatorSet: lo.Map(DefaultNodeAddrs, func(item string, idx int) *rbft.NodeInfo {
+			return &rbft.NodeInfo{
+				ID:                   uint64(idx + 1),
+				AccountAddress:       DefaultNodeAddrs[idx],
+				P2PNodeID:            defaultNodeIDs[idx],
+				ConsensusVotingPower: 1000,
+			}
+		}),
+	}
+}
+
 func DefaultConfig(repoRoot string) *Config {
 	return &Config{
 		RepoRoot: repoRoot,
@@ -207,6 +238,7 @@ func DefaultConfig(repoRoot string) *Config {
 		Port: Port{
 			JsonRpc:   8881,
 			WebSocket: 9991,
+			P2P:       4001,
 			PProf:     53121,
 			Monitor:   40011,
 		},
@@ -249,42 +281,36 @@ func DefaultConfig(repoRoot string) *Config {
 			MinGasPrice:   1000000000000,
 			GasChangeRate: 0.125,
 			Balance:       "1000000000000000000000000000",
-			Admins: []*Admin{
-				{
-					Address: "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013",
+			Admins: lo.Map(DefaultNodeAddrs, func(item string, idx int) *Admin {
+				return &Admin{
+					Address: item,
 					Weight:  1,
-					Name:    "King",
-				},
-				{
-					Address: "0x79a1215469FaB6f9c63c1816b45183AD3624bE34",
-					Weight:  1,
-					Name:    "Red",
-				},
-				{
-					Address: "0x97c8B516D19edBf575D72a172Af7F418BE498C37",
-					Weight:  1,
-					Name:    "Apple",
-				},
-				{
-					Address: "0xc0Ff2e0b3189132D815b8eb325bE17285AC898f8",
-					Weight:  1,
-					Name:    "Cat",
-				},
+					Name:    DefaultNodeNames[idx],
+				}
+			}),
+			Accounts: []string{
+				"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+				"0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+				"0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+				"0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+				"0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
+				"0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc",
+				"0x976EA74026E726554dB657fA54763abd0C3a0aa9",
+				"0x14dC79964da2C08b23698B3D3cc7Ca32193d9955",
+				"0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f",
+				"0xa0Ee7A142d267C1f36714E4a8F75612F20a79720",
+				"0xBcd4042DE499D14e55001CcbB24a551F3b954096",
+				"0x71bE63f3384f5fb98995898A86B02Fb2426c5788",
+				"0xFABB0ac9d68B0B445fB7357272Ff202C5651694a",
+				"0x1CBd3b2770909D4e10f157cABC84C7264073C9Ec",
+				"0xdF3e18d64BC6A983f673Ab319CCaE4f1a57C7097",
+				"0xcd3B766CCDd6AE721141F452C550Ca635964ce71",
+				"0x2546BcD3c84621e976D8185a91A922aE77ECEc30",
+				"0xbDA5747bFD65F08deb54cb465eB87D40e51B197E",
+				"0xdD2FD4581271e230360230F9337D5c0430Bf44C0",
+				"0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199",
 			},
-			Members: []*Member{
-				{
-					NodeId: "16Uiu2HAmJ38LwfY6pfgDWNvk3ypjcpEMSePNTE6Ma2NCLqjbZJSF",
-				},
-				{
-					NodeId: "16Uiu2HAmRypzJbdbUNYsCV2VVgv9UryYS5d7wejTJXT73mNLJ8AK",
-				},
-				{
-					NodeId: "16Uiu2HAmTwEET536QC9MZmYFp1NUshjRuaq5YSH1sLjW65WasvRk",
-				},
-				{
-					NodeId: "16Uiu2HAmQBFTnRr84M3xNhi3EcWmgZnnBsDgewk4sNtpA3smBsHJ",
-				},
-			},
+			EpochInfo: GenesisEpochInfo(),
 		},
 		PProf: PProf{
 			Enable:   true,
@@ -319,16 +345,11 @@ func DefaultConfig(repoRoot string) *Config {
 
 func LoadConfig(repoRoot string) (*Config, error) {
 	cfg, err := func() (*Config, error) {
-		rootPath, err := LoadRepoRootFromEnv(repoRoot)
-		if err != nil {
-			return nil, err
-		}
-		cfg := DefaultConfig(rootPath)
-
-		cfgPath := path.Join(repoRoot, CfgFileName)
+		cfg := DefaultConfig(repoRoot)
+		cfgPath := path.Join(repoRoot, cfgFileName)
 		existConfig := fileutil.Exist(cfgPath)
 		if !existConfig {
-			err := os.MkdirAll(rootPath, 0755)
+			err := os.MkdirAll(repoRoot, 0755)
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to build default config")
 			}
@@ -337,10 +358,10 @@ func LoadConfig(repoRoot string) (*Config, error) {
 				return nil, errors.Wrap(err, "failed to build default config")
 			}
 		} else {
-			if err := CheckWritable(rootPath); err != nil {
+			if err := CheckWritable(repoRoot); err != nil {
 				return nil, err
 			}
-			if err = readConfigFromFile(cfgPath, cfg); err != nil {
+			if err := readConfigFromFile(cfgPath, cfg); err != nil {
 				return nil, err
 			}
 		}

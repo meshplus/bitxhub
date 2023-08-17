@@ -11,7 +11,6 @@ import (
 
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/internal/executor/system/common"
-	"github.com/axiomesh/axiom/pkg/repo"
 	vm "github.com/axiomesh/eth-kit/evm"
 	"github.com/axiomesh/eth-kit/ledger"
 )
@@ -322,6 +321,7 @@ func (nm *NodeManager) voteNodeAddRemove(user ethcommon.Address, proposal *NodeP
 	// if proposal is approved, update the node members
 	// TODO: need check block number
 	if proposal.Status == Approved {
+		// TODO: update to epoch
 		// save council
 		cb, err := json.Marshal(proposal.Nodes)
 		if err != nil {
@@ -443,7 +443,7 @@ func (nm *NodeManager) CheckAndUpdateState(lastHeight uint64, stateLedger ledger
 	}
 }
 
-func InitNodeMembers(lg ledger.StateLedger, members []*repo.Member) error {
+func InitNodeMembers(lg ledger.StateLedger, members []*NodeMember) error {
 	// read member config, write to Ledger
 	c, err := json.Marshal(members)
 	if err != nil {

@@ -1,26 +1,27 @@
 package eth
 
 import (
-	"fmt"
+	"errors"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/axiomesh/axiom-kit/types"
 	rpctypes "github.com/axiomesh/axiom/api/jsonrpc/types"
 	"github.com/axiomesh/axiom/internal/coreapi/api"
 	"github.com/axiomesh/eth-kit/ledger"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	ethtypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 var (
-	ErrNotSupportApiError = fmt.Errorf("unsupported interface")
+	ErrNotSupportApiError = errors.New("unsupported interface")
 )
 
 func getStateLedgerAt(api api.CoreAPI) (ledger.StateLedger, error) {
 	leger := api.Broker().GetStateLedger()
 	if leger == nil {
-		return nil, fmt.Errorf("GetStateLedger error")
+		return nil, errors.New("GetStateLedger error")
 	}
 	return api.Broker().GetStateLedger(), nil
 	// todo
@@ -49,7 +50,7 @@ func getStateLedgerAt(api api.CoreAPI) (ledger.StateLedger, error) {
 	// 	}
 	// 	return api.Broker().GetStateLedger().(*ethledger.ComplexStateLedger).StateAt(block.BlockHeader.StateRoot)
 	// }
-	//return nil, errors.New("invalid arguments; neither block nor hash specified")
+	// return nil, errors.New("invalid arguments; neither block nor hash specified")
 }
 
 // NewRPCTransaction returns a transaction that will serialize to the RPC representation

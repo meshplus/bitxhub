@@ -5,15 +5,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/axiomesh/axiom-kit/log"
-	"github.com/axiomesh/axiom/internal/order"
-	"github.com/axiomesh/axiom/internal/peermgr/mock_peermgr"
-	"github.com/axiomesh/axiom/pkg/repo"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
+	"github.com/axiomesh/axiom-kit/log"
 	"github.com/axiomesh/axiom-kit/types"
+	"github.com/axiomesh/axiom/internal/order/common"
+	"github.com/axiomesh/axiom/internal/peermgr/mock_peermgr"
+	"github.com/axiomesh/axiom/pkg/repo"
 )
 
 func TestNode_Start(t *testing.T) {
@@ -23,32 +23,25 @@ func TestNode_Start(t *testing.T) {
 
 	mockCtl := gomock.NewController(t)
 	mockPeermgr := mock_peermgr.NewMockPeerManager(mockCtl)
-	peers := make(map[uint64]*types.VpInfo)
-	mockPeermgr.EXPECT().OrderPeers().Return(peers).AnyTimes()
 
-	nodes := make(map[uint64]*types.VpInfo)
-	vpInfo := &types.VpInfo{
-		Id:      uint64(1),
-		Account: types.NewAddressByStr("000000000000000000000000000000000000000a").String(),
-	}
-	nodes[1] = vpInfo
-
-	solo, err := NewNode(
-		order.WithConfig(r.OrderConfig),
-		order.WithStoragePath(repo.GetStoragePath(repoRoot, "order")),
-		order.WithLogger(log.NewWithModule("consensus")),
-		order.WithApplied(1),
-		order.WithPeerManager(mockPeermgr),
-		order.WithID(1),
-		order.WithNodes(nodes),
-		order.WithApplied(1),
-		order.WithGetAccountNonceFunc(func(address *types.Address) uint64 {
+	config, err := common.GenerateConfig(
+		common.WithConfig(r.OrderConfig),
+		common.WithGenesisEpochInfo(r.Config.Genesis.EpochInfo),
+		common.WithStoragePath(repo.GetStoragePath(repoRoot, "order")),
+		common.WithLogger(log.NewWithModule("consensus")),
+		common.WithApplied(1),
+		common.WithPeerManager(mockPeermgr),
+		common.WithApplied(1),
+		common.WithGetAccountNonceFunc(func(address *types.Address) uint64 {
 			return 0
 		}),
-		order.WithGetAccountBalanceFunc(func(address *types.Address) *big.Int {
+		common.WithGetAccountBalanceFunc(func(address *types.Address) *big.Int {
 			return big.NewInt(adminBalance)
 		}),
 	)
+	require.Nil(t, err)
+
+	solo, err := NewNode(config)
 	require.Nil(t, err)
 
 	err = solo.Start()
@@ -101,9 +94,6 @@ func TestGetPendingNonceByAccount(t *testing.T) {
 	err = node.Prepare(tx)
 	ast.Nil(err)
 	ast.Equal(uint64(1), node.GetPendingNonceByAccount(tx.RbftGetFrom()))
-
-	err = node.DelNode(uint64(1))
-	ast.Nil(err)
 }
 
 func TestGetPendingTxByHash(t *testing.T) {
@@ -190,7 +180,6 @@ func TestNode_ReportState(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 	ast.Equal(0, len(node.batchDigestM))
 	ast.Nil(node.mempool.GetPendingTxByHash(txList[9].RbftGetTxHash()), "tx10 should be removed from mempool")
-
 }
 
 func prepareMultiTx(t *testing.T, count int) ([]*types.Transaction, *types.Signer) {

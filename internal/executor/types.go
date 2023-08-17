@@ -4,6 +4,7 @@ import (
 	"github.com/ethereum/go-ethereum/event"
 
 	"github.com/axiomesh/axiom-kit/types"
+	"github.com/axiomesh/axiom/internal/order/common"
 	"github.com/axiomesh/axiom/pkg/model/events"
 	vm "github.com/axiomesh/eth-kit/evm"
 )
@@ -16,7 +17,7 @@ type Executor interface {
 	Stop() error
 
 	// ExecutorBlock
-	ExecuteBlock(commitEvent *types.CommitEvent)
+	ExecuteBlock(commitEvent *common.CommitEvent)
 
 	// ApplyReadonlyTransactions execute readonly tx
 	ApplyReadonlyTransactions(txs []*types.Transaction) []*types.Receipt

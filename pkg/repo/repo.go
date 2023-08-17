@@ -21,17 +21,25 @@ import (
 	"github.com/pelletier/go-toml/v2"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
+
+	rbft "github.com/axiomesh/axiom-bft"
 )
 
 type Repo struct {
-	Config        *Config
-	NetworkConfig *NetworkConfig
-	OrderConfig   *OrderConfig
-	NodeKey       *ecdsa.PrivateKey
-	P2PKey        libp2pcrypto.PrivKey
-	NodeAddress   string
+	Config      *Config
+	OrderConfig *OrderConfig
+	NodeKey     *ecdsa.PrivateKey
+	P2PKey      libp2pcrypto.PrivKey
+	P2PID       string
+
+	// TODO: use another account
+	NodeAddress string
 
 	ConfigChangeFeed event.Feed
+
+	// TODO: Move to epoch manager service
+	// Track current epoch info, will be updated bt executor
+	EpochInfo *rbft.EpochInfo
 }
 
 type signerOpts struct {
@@ -55,9 +63,6 @@ func (r *Repo) SubscribeConfigChange(ch chan *Repo) event.Subscription {
 func (r *Repo) Flush() error {
 	if err := writeConfigWithEnv(path.Join(r.Config.RepoRoot, CfgFileName), r.Config); err != nil {
 		return errors.Wrap(err, "failed to write config")
-	}
-	if err := writeConfigWithEnv(path.Join(r.Config.RepoRoot, networkCfgFileName), r.NetworkConfig); err != nil {
-		return errors.Wrap(err, "failed to write network config")
 	}
 	if err := writeConfigWithEnv(path.Join(r.Config.RepoRoot, orderCfgFileName), r.OrderConfig); err != nil {
 		return errors.Wrap(err, "failed to write order config")
@@ -130,38 +135,33 @@ func DefaultWithNodeIndex(repoRoot string, nodeIndex int) (*Repo, error) {
 		return nil, fmt.Errorf("failed to convert ecdsa key : %w", err)
 	}
 	addr := ethcrypto.PubkeyToAddress(key.PublicKey)
+	id, err := KeyToNodeID(key)
+	if err != nil {
+		return nil, err
+	}
 
 	cfg := DefaultConfig(repoRoot)
-	networkCfg := DefaultNetworkConfig()
-	networkCfg.Genesis = cfg.Genesis
-	networkCfg.ID = uint64(nodeIndex + 1)
-	networkCfg.LocalAddr = fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", 4001+nodeIndex)
+	cfg.Port.P2P = int64(4001 + nodeIndex)
+
 	return &Repo{
-		Config:        cfg,
-		NetworkConfig: networkCfg,
-		OrderConfig:   DefaultOrderConfig(),
-		NodeKey:       key,
-		P2PKey:        p2pKey,
-		NodeAddress:   addr.String(),
+		Config:      cfg,
+		OrderConfig: DefaultOrderConfig(),
+		NodeKey:     key,
+		P2PKey:      p2pKey,
+		P2PID:       id,
+		NodeAddress: addr.String(),
+		EpochInfo:   cfg.Genesis.EpochInfo,
 	}, nil
 }
 
 // load config from the repo, which is automatically initialized when the repo is empty
 func Load(repoRoot string) (*Repo, error) {
-	cfg, err := LoadConfig(repoRoot)
-	if err != nil {
-		return nil, err
-	}
-	networkCfg, err := LoadNetworkConfig(cfg.RepoRoot, cfg.Genesis)
-	if err != nil {
-		return nil, err
-	}
-	orderCfg, err := LoadOrderConfig(repoRoot)
+	repoRoot, err := LoadRepoRootFromEnv(repoRoot)
 	if err != nil {
 		return nil, err
 	}
 
-	key, err := LoadNodeKey(cfg.RepoRoot)
+	key, err := LoadNodeKey(repoRoot)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load node key: %w", err)
 	}
@@ -174,24 +174,26 @@ func Load(repoRoot string) (*Repo, error) {
 	if err != nil {
 		return nil, err
 	}
-	networkCfg.Nodes[networkCfg.ID-1].Pid = id
-	networkCfg.Nodes[networkCfg.ID-1].Account = addr.String()
 
-	if err := networkCfg.updateLocalAddr(); err != nil {
+	cfg, err := LoadConfig(repoRoot)
+	if err != nil {
 		return nil, err
 	}
 
-	if err := writeConfigWithEnv(path.Join(repoRoot, networkCfgFileName), networkCfg); err != nil {
-		return nil, errors.Wrap(err, "failed to write network config")
+	orderCfg, err := LoadOrderConfig(repoRoot)
+	if err != nil {
+		return nil, err
 	}
 
 	repo := &Repo{
-		Config:        cfg,
-		NetworkConfig: networkCfg,
-		OrderConfig:   orderCfg,
-		NodeKey:       key,
-		P2PKey:        p2pKey,
-		NodeAddress:   addr.String(),
+		Config:           cfg,
+		OrderConfig:      orderCfg,
+		NodeKey:          key,
+		P2PKey:           p2pKey,
+		P2PID:            id,
+		NodeAddress:      addr.String(),
+		ConfigChangeFeed: event.Feed{},
+		EpochInfo:        cfg.Genesis.EpochInfo,
 	}
 
 	return repo, nil

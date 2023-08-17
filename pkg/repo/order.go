@@ -25,14 +25,12 @@ type OrderConfig struct {
 }
 
 type TimedGenBlock struct {
-	Enable           bool     `mapstructure:"enable" toml:"enable"`
 	NoTxBatchTimeout Duration `mapstructure:"no_tx_batch_timeout" toml:"no_tx_batch_timeout"`
 }
 
 type Mempool struct {
 	PoolSize            uint64   `mapstructure:"pool_size" toml:"pool_size"`
 	BatchTimeout        Duration `mapstructure:"batch_timeout" toml:"batch_timeout"`
-	BatchSize           uint64   `mapstructure:"batch_size" toml:"batch_size"`
 	ToleranceTime       Duration `mapstructure:"tolerance_time" toml:"tolerance_time"`
 	ToleranceRemoveTime Duration `mapstructure:"tolerance_remove_time" toml:"tolerance_remove_time"`
 }
@@ -43,10 +41,8 @@ type TxCache struct {
 }
 
 type RBFT struct {
-	CheckInterval    Duration    `mapstructure:"check_interval" toml:"check_interval"`
-	VCPeriod         uint64      `mapstructure:"vc_period" toml:"vc_period"`
-	Timeout          RBFTTimeout `mapstructure:"timeout" toml:"timeout"`
-	CheckpointPeriod uint64      `mapstructure:"checkpoint_period" toml:"checkpoint_period"`
+	CheckInterval Duration    `mapstructure:"check_interval" toml:"check_interval"`
+	Timeout       RBFTTimeout `mapstructure:"timeout" toml:"timeout"`
 }
 
 type RBFTTimeout struct {
@@ -69,7 +65,6 @@ type Solo struct {
 func DefaultOrderConfig() *OrderConfig {
 	return &OrderConfig{
 		TimedGenBlock: TimedGenBlock{
-			Enable:           false,
 			NoTxBatchTimeout: Duration(2 * time.Second),
 		},
 		Limit: ReceiveMsgLimiter{
@@ -80,7 +75,6 @@ func DefaultOrderConfig() *OrderConfig {
 		Mempool: Mempool{
 			PoolSize:            50000,
 			BatchTimeout:        Duration(500 * time.Millisecond),
-			BatchSize:           500,
 			ToleranceTime:       Duration(5 * time.Minute),
 			ToleranceRemoveTime: Duration(15 * time.Minute),
 		},
@@ -89,9 +83,7 @@ func DefaultOrderConfig() *OrderConfig {
 			SetTimeout: Duration(100 * time.Millisecond),
 		},
 		Rbft: RBFT{
-			CheckInterval:    Duration(3 * time.Minute),
-			VCPeriod:         0,
-			CheckpointPeriod: 10,
+			CheckInterval: Duration(3 * time.Minute),
 			Timeout: RBFTTimeout{
 				SyncState:        Duration(3 * time.Second),
 				SyncInterval:     Duration(1 * time.Minute),

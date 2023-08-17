@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
 	"github.com/axiomesh/axiom-kit/hexutil"
 	"github.com/axiomesh/axiom-kit/log"
@@ -23,6 +23,7 @@ import (
 	"github.com/axiomesh/axiom/internal/executor/system/common"
 	"github.com/axiomesh/axiom/internal/executor/system/governance"
 	"github.com/axiomesh/axiom/internal/ledger"
+	ordercommon "github.com/axiomesh/axiom/internal/order/common"
 	"github.com/axiomesh/axiom/pkg/model/events"
 	"github.com/axiomesh/axiom/pkg/repo"
 	ethvm "github.com/axiomesh/eth-kit/evm"
@@ -38,7 +39,9 @@ const (
 )
 
 func TestNew(t *testing.T) {
-	config := generateMockConfig(t)
+	r, err := repo.Default(t.TempDir())
+	assert.Nil(t, err)
+
 	mockCtl := gomock.NewController(t)
 	chainLedger := mock_ledger.NewMockChainLedger(mockCtl)
 	stateLedger := mock_ledger.NewMockStateLedger(mockCtl)
@@ -55,7 +58,7 @@ func TestNew(t *testing.T) {
 	chainLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
 
 	logger := log.NewWithModule("executor")
-	executor, err := New(mockLedger, logger, config)
+	executor, err := New(mockLedger, logger, r)
 	assert.Nil(t, err)
 	assert.NotNil(t, executor)
 
@@ -66,7 +69,9 @@ func TestNew(t *testing.T) {
 }
 
 func TestGetEvm(t *testing.T) {
-	config := generateMockConfig(t)
+	r, err := repo.Default(t.TempDir())
+	assert.Nil(t, err)
+
 	mockCtl := gomock.NewController(t)
 	chainLedger := mock_ledger.NewMockChainLedger(mockCtl)
 	stateLedger := mock_ledger.NewMockStateLedger(mockCtl)
@@ -85,7 +90,7 @@ func TestGetEvm(t *testing.T) {
 	chainLedger.EXPECT().GetBlock(gomock.Any()).Return(mockBlock(1, nil), nil).Times(1)
 
 	logger := log.NewWithModule("executor")
-	executor, err := New(mockLedger, logger, config)
+	executor, err := New(mockLedger, logger, r)
 	assert.Nil(t, err)
 	assert.NotNil(t, executor)
 
@@ -108,7 +113,9 @@ func TestSubscribeLogsEvent(t *testing.T) {
 }
 
 func TestBlockExecutor_ExecuteBlock(t *testing.T) {
-	config := generateMockConfig(t)
+	r, err := repo.Default(t.TempDir())
+	assert.Nil(t, err)
+
 	mockCtl := gomock.NewController(t)
 	chainLedger := mock_ledger.NewMockChainLedger(mockCtl)
 	stateLedger := mock_ledger.NewMockStateLedger(mockCtl)
@@ -204,7 +211,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 
 	logger := log.NewWithModule("executor")
 
-	exec, err := New(mockLedger, logger, config)
+	exec, err := New(mockLedger, logger, r)
 	assert.Nil(t, err)
 
 	var txs []*types.Transaction
@@ -253,7 +260,9 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 }
 
 func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
-	config := generateMockConfig(t)
+	r, err := repo.Default(t.TempDir())
+	assert.Nil(t, err)
+	repoRoot := r.Config.RepoRoot
 	mockCtl := gomock.NewController(t)
 	chainLedger := mock_ledger.NewMockChainLedger(mockCtl)
 	stateLedger := mock_ledger.NewMockStateLedger(mockCtl)
@@ -277,7 +286,6 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 
 	accountCache, err := ledger.NewAccountCache()
 	assert.Nil(t, err)
-	repoRoot := t.TempDir()
 	ld, err := leveldb.New(filepath.Join(repoRoot, "executor"))
 	assert.Nil(t, err)
 	account := ledger.NewAccount(ld, accountCache, types.NewAddressByStr(common.NodeManagerContractAddr), ledger.NewChanger())
@@ -341,7 +349,7 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 		},
 	}, "1000000")
 	assert.Nil(t, err)
-	err = governance.InitNodeMembers(stateLedger, []*repo.Member{
+	err = governance.InitNodeMembers(stateLedger, []*governance.NodeMember{
 		{
 			NodeId: "16Uiu2HAmJ38LwfY6pfgDWNvk3ypjcpEMSePNTE6Ma2NCLqjbZJSF",
 		},
@@ -350,12 +358,13 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 
 	logger := log.NewWithModule("executor")
 
-	exec, err := New(mockLedger, logger, config)
+	exec, err := New(mockLedger, logger, r)
 	assert.Nil(t, err)
 
 	rawTx := "0xf86c8085147d35700082520894f927bb571eaab8c9a361ab405c9e4891c5024380880de0b6b3a76400008025a00b8e3b66c1e7ae870802e3ef75f1ec741f19501774bd5083920ce181c2140b99a0040c122b7ebfb3d33813927246cbbad1c6bf210474f5d28053990abff0fd4f53"
 	tx4 := &types.Transaction{}
-	tx4.Unmarshal(hexutil.Decode(rawTx))
+	err = tx4.Unmarshal(hexutil.Decode(rawTx))
+	assert.Nil(t, err)
 
 	var txs3 []*types.Transaction
 	tx5, _, err := types.GenerateTransactionAndSigner(uint64(0), types.NewAddressByStr("0xdAC17F958D2ee523a2206206994597C13D831ec7"), big.NewInt(1), nil)
@@ -369,7 +378,6 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 		},
 	})
 	assert.Nil(t, err)
-	fmt.Println(data)
 	tx6, err := types.GenerateTransactionWithSigner(uint64(1), types.NewAddressByStr(common.NodeManagerContractAddr), big.NewInt(0), data, signer)
 	assert.Nil(t, err)
 
@@ -406,13 +414,13 @@ type NodeMember struct {
 	NodeId string
 }
 
-func mockCommitEvent(blockNumber uint64, txs []*types.Transaction) *types.CommitEvent {
+func mockCommitEvent(blockNumber uint64, txs []*types.Transaction) *ordercommon.CommitEvent {
 	block := mockBlock(blockNumber, txs)
 	localList := make([]bool, len(block.Transactions))
 	for i := 0; i < len(block.Transactions); i++ {
 		localList[i] = false
 	}
-	return &types.CommitEvent{
+	return &ordercommon.CommitEvent{
 		Block:     block,
 		LocalList: localList,
 	}
@@ -440,8 +448,9 @@ func mockTx(t *testing.T) *types.Transaction {
 }
 
 func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
-	config := generateMockConfig(t)
-	repoRoot := t.TempDir()
+	r, err := repo.Default(t.TempDir())
+	assert.Nil(t, err)
+	repoRoot := r.Config.RepoRoot
 
 	lBlockStorage, err := leveldb.New(filepath.Join(repoRoot, "lStorage"))
 	assert.Nil(t, err)
@@ -489,7 +498,7 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 			}
 			ldg.UpdateChainMeta(chainMeta)
 
-			executor, err := New(ldg, log.NewWithModule("executor"), config)
+			executor, err := New(ldg, log.NewWithModule("executor"), r)
 			require.Nil(t, err)
 			err = executor.Start()
 			require.Nil(t, err)
@@ -524,21 +533,10 @@ func createMockRepo(t *testing.T) *repo.Repo {
 	return r
 }
 
-func generateMockConfig(t *testing.T) *repo.Repo {
+func executor_start(t *testing.T) *BlockExecutor {
 	r, err := repo.Default(t.TempDir())
 	assert.Nil(t, err)
 
-	for i := 0; i < 4; i++ {
-		r.Config.Genesis.Admins = append(r.Config.Genesis.Admins, &repo.Admin{
-			Address: types.NewAddress([]byte{byte(1)}).String(),
-		})
-	}
-
-	return r
-}
-
-func executor_start(t *testing.T) *BlockExecutor {
-	config := generateMockConfig(t)
 	mockCtl := gomock.NewController(t)
 	chainLedger := mock_ledger.NewMockChainLedger(mockCtl)
 	stateLedger := mock_ledger.NewMockStateLedger(mockCtl)
@@ -555,6 +553,6 @@ func executor_start(t *testing.T) *BlockExecutor {
 	chainLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
 
 	logger := log.NewWithModule("executor")
-	executor, _ := New(mockLedger, logger, config)
+	executor, _ := New(mockLedger, logger, r)
 	return executor
 }

@@ -2,7 +2,6 @@ package adaptor
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/Rican7/retry"
@@ -12,22 +11,12 @@ import (
 	"github.com/axiomesh/axiom-bft/common/consensus"
 	rbfttypes "github.com/axiomesh/axiom-bft/types"
 	"github.com/axiomesh/axiom-kit/types"
-	ethtypes "github.com/axiomesh/axiom-kit/types"
+	"github.com/axiomesh/axiom/internal/order/common"
 )
 
-func (s *RBFTAdaptor) Execute(requests [][]byte, localList []bool, seqNo uint64, timestamp int64) {
-	var txs []*types.Transaction
-	for _, request := range requests {
-		var tx ethtypes.Transaction
-		if err := tx.Unmarshal(request); err != nil {
-			// TODO: fix
-			panic(fmt.Sprintf("failed to unmarshal transaction from rbft: %v", err))
-		}
-		txs = append(txs, &tx)
-	}
-
+func (s *RBFTAdaptor) Execute(requests []*types.Transaction, localList []bool, seqNo uint64, timestamp int64, proposerAccount string) {
 	s.ReadyC <- &Ready{
-		TXs:       txs,
+		TXs:       requests,
 		LocalList: localList,
 		Height:    seqNo,
 		Timestamp: timestamp,
@@ -39,10 +28,10 @@ func (s *RBFTAdaptor) StateUpdate(seqNo uint64, digest string, checkpoints []*co
 	s.StateUpdating = true
 	s.StateUpdateHeight = seqNo
 
-	var peers []uint64
-	for id := range s.Nodes {
-		if id != s.localID {
-			peers = append(peers, id)
+	var peers []string
+	for _, v := range s.EpochInfo.ValidatorSet {
+		if v.AccountAddress != s.config.SelfAccountAddress {
+			peers = append(peers, v.P2PNodeID)
 		}
 	}
 
@@ -53,7 +42,7 @@ func (s *RBFTAdaptor) StateUpdate(seqNo uint64, digest string, checkpoints []*co
 		"current":      chain.Height,
 		"current_hash": chain.BlockHash.String(),
 	}).Info("State Update")
-	get := func(peers []uint64, i int) (block *types.Block, err error) {
+	get := func(peers []string, i int) (block *types.Block, err error) {
 		for _, id := range peers {
 			block, err = s.getBlock(id, i)
 			if err != nil {
@@ -104,7 +93,7 @@ func (s *RBFTAdaptor) StateUpdate(seqNo uint64, digest string, checkpoints []*co
 		for i := 0; i < len(block.Transactions); i++ {
 			localList[i] = false
 		}
-		commitEvent := &types.CommitEvent{
+		commitEvent := &common.CommitEvent{
 			Block:     block,
 			LocalList: localList,
 		}

@@ -6,8 +6,6 @@ const (
 	// CfgFileName is the default config name
 	CfgFileName = "axiom.toml"
 
-	networkCfgFileName = "network.toml"
-
 	orderCfgFileName = "order.toml"
 
 	// defaultRepoRoot is the path to the default config dir location.
@@ -45,11 +43,18 @@ const (
 	P2PPipeBroadcastGossip = "gossip"
 	P2PPipeBroadcastFlood  = "flood"
 
-	ExecTypeNative = "exec_native"
-	ExecTypeDev    = "exec_dev"
+	ExecTypeNative = "native"
+	ExecTypeDev    = "dev"
 )
 
 var (
+	DefaultNodeNames = []string{
+		"King",
+		"Red",
+		"Apple",
+		"Cat",
+	}
+
 	DefaultNodeKeys = []string{
 		"b6477143e17f889263044f6cf463dc37177ac4526c4c39a7a344198457024a2f",
 		"05c3708d30c2c72c4b36314a41f30073ab18ea226cf8c6b9f566720bfe2e8631",
@@ -70,4 +75,8 @@ var (
 		"16Uiu2HAmTwEET536QC9MZmYFp1NUshjRuaq5YSH1sLjW65WasvRk",
 		"16Uiu2HAmQBFTnRr84M3xNhi3EcWmgZnnBsDgewk4sNtpA3smBsHJ",
 	}
+)
+
+const (
+	P2PMsgV1 uint64 = 1
 )

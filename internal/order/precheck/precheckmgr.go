@@ -6,13 +6,14 @@ import (
 	"math/big"
 	"runtime"
 
-	"github.com/axiomesh/axiom-kit/types"
-	"github.com/axiomesh/axiom/internal/order"
-	vm "github.com/axiomesh/eth-kit/evm"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/gammazero/workerpool"
 	"github.com/sirupsen/logrus"
+
+	"github.com/axiomesh/axiom-kit/types"
+	"github.com/axiomesh/axiom/internal/order/common"
+	vm "github.com/axiomesh/eth-kit/evm"
 )
 
 const (
@@ -27,12 +28,12 @@ var concurrencyLimit = runtime.NumCPU()
 type ValidTxs struct {
 	Local       bool
 	Txs         []*types.Transaction
-	LocalRespCh chan *order.TxResp
+	LocalRespCh chan *common.TxResp
 }
 
 type TxPreCheckMgr struct {
-	uncheckedCh  chan *order.UncheckedTxEvent
-	verifyDataCh chan *order.UncheckedTxEvent
+	uncheckedCh  chan *common.UncheckedTxEvent
+	verifyDataCh chan *common.UncheckedTxEvent
 	validTxsCh   chan *ValidTxs
 	logger       logrus.FieldLogger
 
@@ -42,7 +43,7 @@ type TxPreCheckMgr struct {
 	ctx context.Context
 }
 
-func (tp *TxPreCheckMgr) PostUncheckedTxEvent(ev *order.UncheckedTxEvent) {
+func (tp *TxPreCheckMgr) PostUncheckedTxEvent(ev *common.UncheckedTxEvent) {
 	tp.uncheckedCh <- ev
 }
 
@@ -52,8 +53,8 @@ func (tp *TxPreCheckMgr) CommitValidTxs() chan *ValidTxs {
 
 func NewTxPreCheckMgr(ctx context.Context, logger logrus.FieldLogger, fn func(address *types.Address) *big.Int) *TxPreCheckMgr {
 	return &TxPreCheckMgr{
-		uncheckedCh:  make(chan *order.UncheckedTxEvent, defaultTxPreCheckSize),
-		verifyDataCh: make(chan *order.UncheckedTxEvent, defaultTxPreCheckSize),
+		uncheckedCh:  make(chan *common.UncheckedTxEvent, defaultTxPreCheckSize),
+		verifyDataCh: make(chan *common.UncheckedTxEvent, defaultTxPreCheckSize),
 		validTxsCh:   make(chan *ValidTxs, defaultTxPreCheckSize),
 		logger:       logger,
 		ctx:          ctx,
@@ -80,8 +81,8 @@ func (tp *TxPreCheckMgr) dispatchTxEvent() {
 		case ev := <-tp.uncheckedCh:
 			wp.Submit(func() {
 				switch ev.EventType {
-				case order.LocalTxEvent:
-					txWithResp, ok := ev.Event.(*order.TxWithResp)
+				case common.LocalTxEvent:
+					txWithResp, ok := ev.Event.(*common.TxWithResp)
 					if !ok {
 						tp.logger.Errorf("%s:%s", ErrParseTxEventType, "receive invalid local TxEvent")
 						return
@@ -89,13 +90,13 @@ func (tp *TxPreCheckMgr) dispatchTxEvent() {
 					if tp.verifySignature(txWithResp.Tx) {
 						tp.verifyDataCh <- ev
 					} else {
-						txWithResp.RespCh <- &order.TxResp{
+						txWithResp.RespCh <- &common.TxResp{
 							Status:   false,
 							ErrorMsg: ErrTxSign,
 						}
 					}
 
-				case order.RemoteTxEvent:
+				case common.RemoteTxEvent:
 					txSet, ok := ev.Event.([]*types.Transaction)
 					if !ok {
 						tp.logger.Errorf("%s:%s", ErrParseTxEventType, "receive invalid remote TxEvent")
@@ -113,7 +114,6 @@ func (tp *TxPreCheckMgr) dispatchTxEvent() {
 					tp.logger.Errorf(ErrTxEventType)
 					return
 				}
-
 			})
 		}
 	}
@@ -130,10 +130,10 @@ func (tp *TxPreCheckMgr) dispatchVerifyDataEvent() {
 		case ev := <-tp.verifyDataCh:
 			wp.Submit(func() {
 				switch ev.EventType {
-				case order.LocalTxEvent:
-					txWithResp := ev.Event.(*order.TxWithResp)
+				case common.LocalTxEvent:
+					txWithResp := ev.Event.(*common.TxWithResp)
 					if err := tp.verifyData(txWithResp.Tx); err != nil {
-						txWithResp.RespCh <- &order.TxResp{
+						txWithResp.RespCh <- &common.TxResp{
 							Status:   false,
 							ErrorMsg: err.Error(),
 						}
@@ -145,7 +145,7 @@ func (tp *TxPreCheckMgr) dispatchVerifyDataEvent() {
 						}
 					}
 
-				case order.RemoteTxEvent:
+				case common.RemoteTxEvent:
 					txSet, ok := ev.Event.([]*types.Transaction)
 					if !ok {
 						tp.logger.Errorf("receive invalid remote TxEvent")

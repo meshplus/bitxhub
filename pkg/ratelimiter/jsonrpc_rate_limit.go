@@ -1,7 +1,7 @@
 package ratelimiter
 
 import (
-	"fmt"
+	"errors"
 	"time"
 
 	"github.com/juju/ratelimit"
@@ -29,16 +29,16 @@ func NewJRateLimiter(fillInterval time.Duration, capacity int64) (*JRateLimiter,
 // allows the specification of the quantum size - quantum tokens are added every fillInterval.
 func NewJRateLimiterWithQuantum(fillInterval time.Duration, capacity, quantum int64) (*JRateLimiter, error) {
 	if fillInterval == 0 {
-		return nil, fmt.Errorf("invalid interval value to init rate_limit")
+		return nil, errors.New("invalid interval value to init rate_limit")
 	}
 	if capacity <= 0 {
-		return nil, fmt.Errorf("invalid capacity value to init rate_limit")
+		return nil, errors.New("invalid capacity value to init rate_limit")
 	}
 	if quantum <= 0 {
-		return nil, fmt.Errorf("invalid quantum value to init rate_limit")
+		return nil, errors.New("invalid quantum value to init rate_limit")
 	}
 
-	return &JRateLimiter{*ratelimit.NewBucketWithQuantum(fillInterval, capacity, quantum)}, nil
+	return &JRateLimiter{Bucket: *ratelimit.NewBucketWithQuantum(fillInterval, capacity, quantum)}, nil
 }
 
 func (l *JRateLimiter) JLimit() bool {

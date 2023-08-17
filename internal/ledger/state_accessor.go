@@ -9,9 +9,10 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/ethereum/go-ethereum/common"
+
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/eth-kit/ledger"
-	"github.com/ethereum/go-ethereum/common"
 )
 
 var _ ledger.StateLedger = (*StateLedger)(nil)
@@ -296,7 +297,7 @@ func (l *StateLedger) Commit(height uint64, accounts map[string]ledger.IAccount,
 			}
 		}
 
-		account.dirtyState.Range(func(key, value interface{}) bool {
+		account.dirtyState.Range(func(key, value any) bool {
 			valBytes := value.([]byte)
 			origVal, ok := account.originState.Load(key)
 			var origValBytes []byte
@@ -444,7 +445,7 @@ func (l *StateLedger) Empty(addr *types.Address) bool {
 func (l *StateLedger) Snapshot() int {
 	id := l.nextRevisionId
 	l.nextRevisionId++
-	l.validRevisions = append(l.validRevisions, revision{id, l.changer.length()})
+	l.validRevisions = append(l.validRevisions, revision{id: id, changerIndex: l.changer.length()})
 	return id
 }
 
@@ -472,14 +473,14 @@ func (l *StateLedger) ClearChangerAndRefund() {
 
 func (l *StateLedger) AddAddressToAccessList(addr types.Address) {
 	if l.accessList.AddAddress(addr) {
-		l.changer.append(accessListAddAccountChange{&addr})
+		l.changer.append(accessListAddAccountChange{address: &addr})
 	}
 }
 
 func (l *StateLedger) AddSlotToAccessList(addr types.Address, slot types.Hash) {
 	addrMod, slotMod := l.accessList.AddSlot(addr, slot)
 	if addrMod {
-		l.changer.append(accessListAddAccountChange{&addr})
+		l.changer.append(accessListAddAccountChange{address: &addr})
 	}
 	if slotMod {
 		l.changer.append(accessListAddSlotChange{

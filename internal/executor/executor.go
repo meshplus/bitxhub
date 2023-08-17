@@ -14,6 +14,7 @@ import (
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/internal/executor/system"
 	"github.com/axiomesh/axiom/internal/ledger"
+	"github.com/axiomesh/axiom/internal/order/common"
 	"github.com/axiomesh/axiom/pkg/model/events"
 	"github.com/axiomesh/axiom/pkg/repo"
 	vm "github.com/axiomesh/eth-kit/evm"
@@ -30,7 +31,7 @@ var _ Executor = (*BlockExecutor)(nil)
 type BlockExecutor struct {
 	ledger             *ledger.Ledger
 	logger             logrus.FieldLogger
-	blockC             chan *types.CommitEvent
+	blockC             chan *common.CommitEvent
 	gas                *finance.Gas
 	currentHeight      uint64
 	currentBlockHash   *types.Hash
@@ -43,13 +44,12 @@ type BlockExecutor struct {
 	evm         *vm.EVM
 	evmChainCfg *params.ChainConfig
 	gasLimit    uint64
-	config      repo.Config
+	rep         *repo.Repo
 	lock        *sync.Mutex
-	admins      []string
 }
 
 // New creates executor instance
-func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, config *repo.Repo) (*BlockExecutor, error) {
+func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, rep *repo.Repo) (*BlockExecutor, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	blockExecutor := &BlockExecutor{
@@ -57,21 +57,17 @@ func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, config *repo.Rep
 		logger:           logger,
 		ctx:              ctx,
 		cancel:           cancel,
-		gas:              finance.NewGas(config),
-		blockC:           make(chan *types.CommitEvent, blockChanNumber),
+		blockC:           make(chan *common.CommitEvent, blockChanNumber),
+		gas:              finance.NewGas(rep),
 		currentHeight:    chainLedger.GetChainMeta().Height,
 		currentBlockHash: chainLedger.GetChainMeta().BlockHash,
-		evmChainCfg:      newEVMChainCfg(config.Config),
-		config:           *config.Config,
-		gasLimit:         config.Config.Genesis.GasLimit,
+		evmChainCfg:      newEVMChainCfg(rep.Config),
+		rep:              rep,
+		gasLimit:         rep.Config.Genesis.GasLimit,
 		lock:             &sync.Mutex{},
 	}
 
-	for _, admin := range config.Config.Genesis.Admins {
-		blockExecutor.admins = append(blockExecutor.admins, admin.Address)
-	}
-
-	blockExecutor.evm = newEvm(1, uint64(0), blockExecutor.evmChainCfg, blockExecutor.ledger, blockExecutor.ledger.ChainLedger, blockExecutor.admins[0])
+	blockExecutor.evm = newEvm(1, uint64(0), blockExecutor.evmChainCfg, blockExecutor.ledger, blockExecutor.ledger.ChainLedger, "")
 
 	// initialize system contract
 	system.Initialize(logger)
@@ -101,7 +97,7 @@ func (exec *BlockExecutor) Stop() error {
 }
 
 // ExecuteBlock executes block from order
-func (exec *BlockExecutor) ExecuteBlock(block *types.CommitEvent) {
+func (exec *BlockExecutor) ExecuteBlock(block *common.CommitEvent) {
 	exec.blockC <- block
 }
 
@@ -110,7 +106,7 @@ func (exec *BlockExecutor) SubscribeBlockEvent(ch chan<- events.ExecutedEvent) e
 	return exec.blockFeed.Subscribe(ch)
 }
 
-// SubscribeBlockEvent registers a subscription of ExecutedEvent.
+// SubscribeBlockEventForRemote registers a subscription of ExecutedEvent.
 func (exec *BlockExecutor) SubscribeBlockEventForRemote(ch chan<- events.ExecutedEvent) event.Subscription {
 	return exec.blockFeedForRemote.Subscribe(ch)
 }
@@ -144,7 +140,7 @@ func (exec *BlockExecutor) ApplyReadonlyTransactions(txs []*types.Transaction) [
 	// }
 
 	exec.ledger.PrepareBlock(meta.BlockHash, meta.Height)
-	exec.evm = newEvm(meta.Height, uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateLedger, exec.ledger.ChainLedger, exec.admins[0])
+	exec.evm = newEvm(meta.Height, uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateLedger, exec.ledger.ChainLedger, "")
 	for i, tx := range txs {
 		exec.ledger.SetTxContext(tx.GetHash(), i)
 		receipt := exec.applyTransaction(i, tx)

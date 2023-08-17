@@ -68,49 +68,62 @@ type (
 	createObjectChange struct {
 		account *types.Address
 	}
+
 	resetObjectChange struct {
 		prev ledger.IAccount
 	}
+
 	suicideChange struct {
 		account     *types.Address
 		prev        bool
 		prevbalance *big.Int
 	}
+
 	balanceChange struct {
 		account *types.Address
 		prev    *big.Int
 	}
+
 	nonceChange struct {
 		account *types.Address
 		prev    uint64
 	}
+
 	storageChange struct {
 		account       *types.Address
 		key, prevalue []byte
 	}
+
 	codeChange struct {
 		account  *types.Address
 		prevcode []byte
 	}
+
 	refundChange struct {
 		prev uint64
 	}
+
 	addLogChange struct {
 		txHash *types.Hash
 	}
+
 	addPreimageChange struct {
 		hash types.Hash
 	}
+
 	touchChange struct {
 		account *types.Address
 	}
+
 	accessListAddAccountChange struct {
 		address *types.Address
 	}
+
 	accessListAddSlotChange struct {
 		address *types.Address
 		slot    *types.Hash
 	}
+
 	transientStorageChange struct {
 		account       *types.Address
 		key, prevalue []byte
@@ -148,8 +161,7 @@ func (ch suicideChange) dirtied() *types.Address {
 }
 
 // nolint
-func (ch touchChange) revert(l *StateLedger) {
-}
+func (ch touchChange) revert(l *StateLedger) {}
 
 func (ch touchChange) dirtied() *types.Address {
 	return ch.account

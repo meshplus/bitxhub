@@ -48,11 +48,6 @@ var configCMD = &cli.Command{
 			Action: show,
 		},
 		{
-			Name:   "show-network",
-			Usage:  "Show the complete network config processed by the environment variable",
-			Action: showNetwork,
-		},
-		{
 			Name:   "show-order",
 			Usage:  "Show the complete order config processed by the environment variable",
 			Action: showOrder,
@@ -148,7 +143,7 @@ func p2pAddr(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(r.NetworkConfig.LocalAddr)
+	fmt.Printf("/ip4/0.0.0.0/tcp/%d/p2p/%s\n", r.Config.Port.P2P, r.P2PID)
 	return nil
 }
 
@@ -168,29 +163,6 @@ func show(ctx *cli.Context) error {
 		return err
 	}
 	str, err := repo.MarshalConfig(r.Config)
-	if err != nil {
-		return err
-	}
-	fmt.Println(str)
-	return nil
-}
-
-func showNetwork(ctx *cli.Context) error {
-	p, err := getRootPath(ctx)
-	if err != nil {
-		return err
-	}
-	existConfig := fileutil.Exist(p)
-	if !existConfig {
-		fmt.Println("axiom repo not exist")
-		return nil
-	}
-
-	r, err := repo.Load(p)
-	if err != nil {
-		return err
-	}
-	str, err := repo.MarshalConfig(r.NetworkConfig)
 	if err != nil {
 		return err
 	}

@@ -1,4 +1,4 @@
-package order
+package common
 
 import "github.com/axiomesh/axiom-kit/types"
 
@@ -10,7 +10,7 @@ const (
 // UncheckedTxEvent represents misc event sent by local modules
 type UncheckedTxEvent struct {
 	EventType int
-	Event     interface{}
+	Event     any
 }
 
 type TxWithResp struct {
@@ -21,4 +21,9 @@ type TxWithResp struct {
 type TxResp struct {
 	Status   bool
 	ErrorMsg string
+}
+
+type CommitEvent struct {
+	Block     *types.Block
+	LocalList []bool
 }

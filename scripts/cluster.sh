@@ -81,12 +81,10 @@ function prepare() {
     echo "./axiom --repo \$(pwd)" start >>"${root}"/start.sh
 
     axiomConfig=${root}/axiom.toml
-    networkConfig=${root}/network.toml
     x_replace "s/8881/888${i}/g" "${axiomConfig}"
     x_replace "s/9991/909${i}/g" "${axiomConfig}"
     x_replace "s/53121/5312${i}/g" "${axiomConfig}"
     x_replace "s/40011/4001${i}/g" "${axiomConfig}"
-    x_replace "1s/1/${i}/" "${networkConfig}"
   done
 }
 

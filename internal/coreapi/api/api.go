@@ -11,10 +11,9 @@ import (
 	"github.com/axiomesh/eth-kit/ledger"
 )
 
-//go:generate mockgen -destination mock_api/mock_api.go -package mock_api -source api.go
+//go:generate mockgen -destination mock_api/mock_api.go -package mock_api -source api.go -typed
 type CoreAPI interface {
 	Broker() BrokerAPI
-	Network() NetworkAPI
 	Chain() ChainAPI
 	Feed() FeedAPI
 	Account() AccountAPI

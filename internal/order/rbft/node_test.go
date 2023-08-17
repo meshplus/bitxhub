@@ -6,83 +6,62 @@ import (
 	"testing"
 	"time"
 
-	"github.com/axiomesh/axiom/internal/order/precheck"
-	"github.com/axiomesh/axiom/internal/order/precheck/mock_precheck"
-	"github.com/axiomesh/axiom/internal/order/txcache"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/golang/mock/gomock"
+	"github.com/ethereum/go-ethereum/event"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
 
 	rbft "github.com/axiomesh/axiom-bft"
 	"github.com/axiomesh/axiom-bft/common/consensus"
-	mocknode "github.com/axiomesh/axiom-bft/mock/mock_node"
 	rbfttypes "github.com/axiomesh/axiom-bft/types"
 	"github.com/axiomesh/axiom-kit/log"
 	"github.com/axiomesh/axiom-kit/types"
-	"github.com/axiomesh/axiom/internal/order"
+	"github.com/axiomesh/axiom/internal/order/common"
+	"github.com/axiomesh/axiom/internal/order/precheck"
+	"github.com/axiomesh/axiom/internal/order/precheck/mock_precheck"
 	"github.com/axiomesh/axiom/internal/order/rbft/adaptor"
 	"github.com/axiomesh/axiom/internal/order/rbft/testutil"
+	"github.com/axiomesh/axiom/internal/order/txcache"
 	"github.com/axiomesh/axiom/pkg/repo"
 )
 
 var validTxsCh = make(chan *precheck.ValidTxs, 1024)
 
-func MockMinNode[T any, Constraint consensus.TXConstraint[T]](ctrl *gomock.Controller, t *testing.T) *Node {
-	mockRbft := mocknode.NewMockMinimalNode[T, Constraint](ctrl)
+func MockMinNode(ctrl *gomock.Controller, t *testing.T) *Node {
+	mockRbft := rbft.NewMockMinimalNode[types.Transaction, *types.Transaction](ctrl)
 	mockRbft.EXPECT().Status().Return(rbft.NodeStatus{
 		ID:     uint64(1),
 		View:   uint64(1),
-		Epoch:  uint64(0),
 		Status: rbft.Normal,
 	}).AnyTimes()
 	logger := log.NewWithModule("order")
 	logger.Logger.SetLevel(logrus.DebugLevel)
-	orderConf := &order.Config{
-		ID:          uint64(1),
-		IsNew:       false,
-		Config:      repo.DefaultOrderConfig(),
-		StoragePath: t.TempDir(),
-		StorageType: "leveldb",
-		OrderType:   "rbft",
-		Nodes: map[uint64]*types.VpInfo{
-			1: {Id: uint64(1)},
-			2: {Id: uint64(2)},
-			3: {Id: uint64(3)},
-		},
-		Logger:  logger,
-		PeerMgr: testutil.MockMiniPeerManager(ctrl),
-		Applied: uint64(1),
-		Digest:  "digest",
-		GetAccountNonce: func(address *types.Address) uint64 {
-			return 0
-		},
-	}
+	orderConf := testutil.MockOrderConfig(logger, ctrl, repo.KVStorageTypePebble, t)
 
-	blockC := make(chan *types.CommitEvent, 1024)
+	blockC := make(chan *common.CommitEvent, 1024)
 	ctx, cancel := context.WithCancel(context.Background())
 	rbftAdaptor, err := adaptor.NewRBFTAdaptor(orderConf, blockC, cancel)
 	assert.Nil(t, err)
+	err = rbftAdaptor.UpdateEpoch()
+	assert.Nil(t, err)
 
-	mockCtl := gomock.NewController(t)
-	mockPrecheckMgr := mock_precheck.NewMockMinPreCheck(mockCtl, validTxsCh)
+	mockPrecheckMgr := mock_precheck.NewMockMinPreCheck(ctrl, validTxsCh)
 
 	rbftConfig, _, err := generateRbftConfig(orderConf)
 	assert.Nil(t, err)
-	rbftConfig.External = rbftAdaptor
 	node := &Node{
-		id:         rbftConfig.ID,
+		config:     orderConf,
 		n:          mockRbft,
-		memPool:    rbftConfig.RequestPool,
-		logger:     logger,
 		stack:      rbftAdaptor,
 		blockC:     blockC,
+		logger:     logger,
+		peerMgr:    orderConf.PeerMgr,
 		ctx:        ctx,
 		cancel:     cancel,
 		txCache:    txcache.NewTxCache(rbftConfig.SetTimeout, uint64(rbftConfig.SetSize), orderConf.Logger),
+		txFeed:     event.Feed{},
 		txPreCheck: mockPrecheckMgr,
-		peerMgr:    orderConf.PeerMgr,
-		checkpoint: orderConf.Config.Rbft.CheckpointPeriod,
 	}
 	return node
 }
@@ -90,29 +69,27 @@ func MockMinNode[T any, Constraint consensus.TXConstraint[T]](ctrl *gomock.Contr
 func TestPrepare(t *testing.T) {
 	ast := assert.New(t)
 	ctrl := gomock.NewController(t)
-	order := MockMinNode[types.Transaction](ctrl, t)
+	order := MockMinNode(ctrl, t)
 
-	txCache := make(map[string][]byte)
+	txCache := make(map[string]*types.Transaction)
 	nonceCache := make(map[string]uint64)
-	order.n.(*mocknode.MockNode[types.Transaction, *types.Transaction]).EXPECT().Propose(gomock.Any()).Do(func(set *consensus.RequestSet) {
-		for _, val := range set.Requests {
-			tx := &types.Transaction{}
-			err := tx.RbftUnmarshal(val)
-			ast.Nil(err)
-			txCache[tx.RbftGetTxHash()] = val
+	order.n.(*rbft.MockNode[types.Transaction, *types.Transaction]).EXPECT().Propose(gomock.Any(), gomock.Any()).Do(func(requests []*types.Transaction, local bool) error {
+		for _, tx := range requests {
+			txCache[tx.RbftGetTxHash()] = tx
 			if _, ok := nonceCache[tx.GetFrom().String()]; !ok {
 				nonceCache[tx.GetFrom().String()] = tx.GetNonce()
 			} else if nonceCache[tx.GetFrom().String()] < tx.GetNonce() {
 				nonceCache[tx.GetFrom().String()] = tx.GetNonce()
 			}
 		}
+		return nil
 	}).Return(nil).AnyTimes()
 
-	order.n.(*mocknode.MockNode[types.Transaction, *types.Transaction]).EXPECT().GetPendingNonceByAccount(gomock.Any()).DoAndReturn(func(addr string) uint64 {
+	order.n.(*rbft.MockNode[types.Transaction, *types.Transaction]).EXPECT().GetPendingNonceByAccount(gomock.Any()).DoAndReturn(func(addr string) uint64 {
 		return nonceCache[addr]
 	}).AnyTimes()
 
-	order.n.(*mocknode.MockNode[types.Transaction, *types.Transaction]).EXPECT().GetPendingTxByHash(gomock.Any()).DoAndReturn(func(hash string) []byte {
+	order.n.(*rbft.MockNode[types.Transaction, *types.Transaction]).EXPECT().GetPendingTxByHash(gomock.Any()).DoAndReturn(func(hash string) *types.Transaction {
 		data := txCache[hash]
 		return data
 	}).AnyTimes()
@@ -154,7 +131,7 @@ func TestNode_GetPendingNonceByAccount(t *testing.T) {}
 func TestStop(t *testing.T) {
 	ast := assert.New(t)
 	ctrl := gomock.NewController(t)
-	node := MockMinNode[types.Transaction](ctrl, t)
+	node := MockMinNode(ctrl, t)
 
 	// test start
 	err := node.Start()
@@ -195,7 +172,7 @@ func TestReadConfig(t *testing.T) {
 func TestStep(t *testing.T) {
 	ast := assert.New(t)
 	ctrl := gomock.NewController(t)
-	node := MockMinNode[types.Transaction](ctrl, t)
+	node := MockMinNode(ctrl, t)
 	err := node.Step([]byte("test"))
 	ast.NotNil(err)
 	msg := &consensus.ConsensusMessage{}
@@ -204,18 +181,10 @@ func TestStep(t *testing.T) {
 	ast.Nil(err)
 }
 
-func TestDelNode(t *testing.T) {
-	ast := assert.New(t)
-	ctrl := gomock.NewController(t)
-	node := MockMinNode[types.Transaction](ctrl, t)
-	err := node.DelNode(uint64(2))
-	ast.Error(err)
-}
-
 func TestReportState(t *testing.T) {
 	ast := assert.New(t)
 	ctrl := gomock.NewController(t)
-	node := MockMinNode[types.Transaction](ctrl, t)
+	node := MockMinNode(ctrl, t)
 
 	block := testutil.ConstructBlock("blockHash", uint64(20))
 	node.stack.StateUpdating = true
@@ -241,22 +210,23 @@ func TestReportState(t *testing.T) {
 func TestQuorum(t *testing.T) {
 	ast := assert.New(t)
 	ctrl := gomock.NewController(t)
-	node := MockMinNode[types.Transaction](ctrl, t)
-	node.stack.Nodes = make(map[uint64]*types.VpInfo)
-	node.stack.Nodes[1] = &types.VpInfo{Id: uint64(1)}
-	node.stack.Nodes[2] = &types.VpInfo{Id: uint64(2)}
-	node.stack.Nodes[3] = &types.VpInfo{Id: uint64(3)}
-	node.stack.Nodes[4] = &types.VpInfo{Id: uint64(4)}
+	node := MockMinNode(ctrl, t)
+	node.stack.EpochInfo.ValidatorSet = []*rbft.NodeInfo{}
+	node.stack.EpochInfo.ValidatorSet = append(node.stack.EpochInfo.ValidatorSet, &rbft.NodeInfo{ID: 1})
+	node.stack.EpochInfo.ValidatorSet = append(node.stack.EpochInfo.ValidatorSet, &rbft.NodeInfo{ID: 2})
+	node.stack.EpochInfo.ValidatorSet = append(node.stack.EpochInfo.ValidatorSet, &rbft.NodeInfo{ID: 3})
+	node.stack.EpochInfo.ValidatorSet = append(node.stack.EpochInfo.ValidatorSet, &rbft.NodeInfo{ID: 4})
+
 	// N = 3f + 1, f=1
 	quorum := node.Quorum()
 	ast.Equal(uint64(3), quorum)
 
-	node.stack.Nodes[5] = &types.VpInfo{Id: uint64(5)}
+	node.stack.EpochInfo.ValidatorSet = append(node.stack.EpochInfo.ValidatorSet, &rbft.NodeInfo{ID: 5})
 	// N = 3f + 2, f=1
 	quorum = node.Quorum()
 	ast.Equal(uint64(4), quorum)
 
-	node.stack.Nodes[6] = &types.VpInfo{Id: uint64(6)}
+	node.stack.EpochInfo.ValidatorSet = append(node.stack.EpochInfo.ValidatorSet, &rbft.NodeInfo{ID: 6})
 	// N = 3f + 3, f=1
 	quorum = node.Quorum()
 	ast.Equal(uint64(4), quorum)

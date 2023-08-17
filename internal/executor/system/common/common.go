@@ -7,6 +7,10 @@ import (
 )
 
 const (
+	// internal contract
+	// EpochManagerContractAddr is the contract to used to manager chain epoch info
+	EpochManagerContractAddr = "0x0000000000000000000000000000000000000001"
+
 	// ProposalIDContractAddr is the contract to used to generate the proposal ID
 	ProposalIDContractAddr = "0x0000000000000000000000000000000000001000"
 

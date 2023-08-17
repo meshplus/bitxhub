@@ -1,4 +1,4 @@
-package order
+package common
 
 import (
 	"crypto/ecdsa"
@@ -8,46 +8,42 @@ import (
 
 	"github.com/sirupsen/logrus"
 
+	rbft "github.com/axiomesh/axiom-bft"
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/internal/peermgr"
 	"github.com/axiomesh/axiom/pkg/repo"
 )
 
 type Config struct {
-	ID                uint64
-	IsNew             bool
-	Config            *repo.OrderConfig
-	StoragePath       string
-	StorageType       string
-	OrderType         string
-	PeerMgr           peermgr.PeerManager
-	PrivKey           *ecdsa.PrivateKey
-	Logger            logrus.FieldLogger
-	Nodes             map[uint64]*types.VpInfo
-	Applied           uint64
-	Digest            string
-	GetChainMetaFunc  func() *types.ChainMeta
-	GetAccountBalance func(address *types.Address) *big.Int
-	GetAccountNonce   func(address *types.Address) uint64
+	Config                                      *repo.OrderConfig
+	Logger                                      logrus.FieldLogger
+	StoragePath                                 string
+	StorageType                                 string
+	OrderType                                   string
+	PrivKey                                     *ecdsa.PrivateKey
+	SelfAccountAddress                          string
+	GenesisEpochInfo                            *rbft.EpochInfo
+	PeerMgr                                     peermgr.PeerManager
+	Applied                                     uint64
+	Digest                                      string
+	GetCurrentEpochInfoFromEpochMgrContractFunc func() (*rbft.EpochInfo, error)
+	GetEpochInfoFromEpochMgrContractFunc        func(epoch uint64) (*rbft.EpochInfo, error)
+	GetChainMetaFunc                            func() *types.ChainMeta
+	GetAccountBalance                           func(address *types.Address) *big.Int
+	GetAccountNonce                             func(address *types.Address) uint64
 }
 
 type Option func(*Config)
 
-func WithID(id uint64) Option {
-	return func(config *Config) {
-		config.ID = id
-	}
-}
-
-func WithIsNew(isNew bool) Option {
-	return func(config *Config) {
-		config.IsNew = isNew
-	}
-}
-
 func WithConfig(cfg *repo.OrderConfig) Option {
 	return func(config *Config) {
 		config.Config = cfg
+	}
+}
+
+func WithGenesisEpochInfo(genesisEpochInfo *rbft.EpochInfo) Option {
+	return func(config *Config) {
+		config.GenesisEpochInfo = genesisEpochInfo
 	}
 }
 
@@ -75,6 +71,12 @@ func WithPeerManager(peerMgr peermgr.PeerManager) Option {
 	}
 }
 
+func WithSelfAccountAddress(selfAccountAddress string) Option {
+	return func(config *Config) {
+		config.SelfAccountAddress = selfAccountAddress
+	}
+}
+
 func WithPrivKey(privKey *ecdsa.PrivateKey) Option {
 	return func(config *Config) {
 		config.PrivKey = privKey
@@ -84,12 +86,6 @@ func WithPrivKey(privKey *ecdsa.PrivateKey) Option {
 func WithLogger(logger logrus.FieldLogger) Option {
 	return func(config *Config) {
 		config.Logger = logger
-	}
-}
-
-func WithNodes(nodes map[uint64]*types.VpInfo) Option {
-	return func(config *Config) {
-		config.Nodes = nodes
 	}
 }
 
@@ -120,6 +116,18 @@ func WithGetAccountBalanceFunc(f func(address *types.Address) *big.Int) Option {
 func WithGetAccountNonceFunc(f func(address *types.Address) uint64) Option {
 	return func(config *Config) {
 		config.GetAccountNonce = f
+	}
+}
+
+func WithGetEpochInfoFromEpochMgrContractFunc(f func(epoch uint64) (*rbft.EpochInfo, error)) Option {
+	return func(config *Config) {
+		config.GetEpochInfoFromEpochMgrContractFunc = f
+	}
+}
+
+func WithGetCurrentEpochInfoFromEpochMgrContractFunc(f func() (*rbft.EpochInfo, error)) Option {
+	return func(config *Config) {
+		config.GetCurrentEpochInfoFromEpochMgrContractFunc = f
 	}
 }
 

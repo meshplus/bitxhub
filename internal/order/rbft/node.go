@@ -8,10 +8,7 @@ import (
 
 	"github.com/Rican7/retry"
 	"github.com/Rican7/retry/strategy"
-	"github.com/axiomesh/axiom/internal/order/precheck"
-	"github.com/axiomesh/axiom/pkg/repo"
 	"github.com/ethereum/go-ethereum/event"
-	"github.com/samber/lo"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/time/rate"
 
@@ -22,10 +19,12 @@ import (
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom-kit/types/pb"
 	network "github.com/axiomesh/axiom-p2p"
-	"github.com/axiomesh/axiom/internal/order"
+	"github.com/axiomesh/axiom/internal/order/common"
+	"github.com/axiomesh/axiom/internal/order/precheck"
 	"github.com/axiomesh/axiom/internal/order/rbft/adaptor"
 	"github.com/axiomesh/axiom/internal/order/txcache"
 	"github.com/axiomesh/axiom/internal/peermgr"
+	"github.com/axiomesh/axiom/pkg/repo"
 )
 
 const (
@@ -37,17 +36,14 @@ func init() {
 }
 
 type Node struct {
-	id                uint64
+	config            *common.Config
 	n                 rbft.Node[types.Transaction, *types.Transaction]
-	memPool           mempool.MemPool[types.Transaction, *types.Transaction]
 	stack             *adaptor.RBFTAdaptor
-	blockC            chan *types.CommitEvent
+	blockC            chan *common.CommitEvent
 	logger            logrus.FieldLogger
 	peerMgr           peermgr.PeerManager
 	msgPipe           network.Pipe
 	receiveMsgLimiter *rate.Limiter
-
-	checkpoint uint64
 
 	ctx        context.Context
 	cancel     context.CancelFunc
@@ -57,58 +53,40 @@ type Node struct {
 	txFeed event.Feed
 }
 
-func NewNode(opts ...order.Option) (order.Order, error) {
-	node, err := newNode(opts...)
+func NewNode(config *common.Config) (*Node, error) {
+	node, err := newNode(config)
 	if err != nil {
 		return nil, err
 	}
 	return node, nil
 }
 
-func newNode(opts ...order.Option) (*Node, error) {
-	config, err := order.GenerateConfig(opts...)
-	if err != nil {
-		return nil, fmt.Errorf("generate config: %w", err)
-	}
-
+func newNode(config *common.Config) (*Node, error) {
 	rbftConfig, mempoolConfig, err := generateRbftConfig(config)
 	if err != nil {
 		return nil, fmt.Errorf("generate rbft txpool config: %w", err)
 	}
-	blockC := make(chan *types.CommitEvent, 1024)
+	blockC := make(chan *common.CommitEvent, 1024)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	rbftAdaptor, err := adaptor.NewRBFTAdaptor(config, blockC, cancel)
 	if err != nil {
 		return nil, err
 	}
-	rbftConfig.External = rbftAdaptor
 
-	rbftConfig.RequestPool = mempool.NewMempool[types.Transaction, *types.Transaction](mempoolConfig)
-
-	n, err := rbft.NewNode(rbftConfig)
+	mp := mempool.NewMempool[types.Transaction, *types.Transaction](mempoolConfig)
+	n, err := rbft.NewNode[types.Transaction, *types.Transaction](rbftConfig, rbftAdaptor, mp)
 	if err != nil {
 		return nil, err
 	}
-	rbftAdaptor.SetApplyConfChange(n.ApplyConfChange)
-
-	n.ReportExecuted(&rbfttypes.ServiceState{
-		MetaState: &rbfttypes.MetaState{
-			Height: config.Applied,
-			Digest: config.Digest,
-		},
-		// TODO: should read from ledger
-		Epoch: rbftConfig.EpochInit,
-	})
 
 	var receiveMsgLimiter *rate.Limiter
 	if config.Config.Limit.Enable {
 		receiveMsgLimiter = rate.NewLimiter(rate.Limit(config.Config.Limit.Limit), int(config.Config.Limit.Burst))
 	}
 	return &Node{
-		id:                rbftConfig.ID,
+		config:            config,
 		n:                 n,
-		memPool:           rbftConfig.RequestPool,
 		logger:            config.Logger,
 		stack:             rbftAdaptor,
 		blockC:            blockC,
@@ -116,14 +94,25 @@ func newNode(opts ...order.Option) (*Node, error) {
 		ctx:               ctx,
 		cancel:            cancel,
 		txCache:           txcache.NewTxCache(rbftConfig.SetTimeout, uint64(rbftConfig.SetSize), config.Logger),
+		peerMgr:           config.PeerMgr,
 		txPreCheck:        precheck.NewTxPreCheckMgr(ctx, config.Logger, config.GetAccountBalance),
-
-		peerMgr:    config.PeerMgr,
-		checkpoint: config.Config.Rbft.CheckpointPeriod,
 	}, nil
 }
 
 func (n *Node) Start() error {
+	err := n.stack.UpdateEpoch()
+	if err != nil {
+		return err
+	}
+
+	n.n.ReportExecuted(&rbfttypes.ServiceState{
+		MetaState: &rbfttypes.MetaState{
+			Height: n.config.Applied,
+			Digest: n.config.Digest,
+		},
+		Epoch: n.stack.EpochInfo.Epoch,
+	})
+
 	pipe, err := n.peerMgr.CreatePipe(n.ctx, pipeID)
 	if err != nil {
 		return err
@@ -172,10 +161,7 @@ func (n *Node) listenValidTxs() {
 				requests = append(requests, raw)
 			}
 
-			if err := n.n.Propose(&consensus.RequestSet{
-				Requests: requests,
-				Local:    validTxs.Local,
-			}); err != nil {
+			if err := n.n.Propose(validTxs.Txs, validTxs.Local); err != nil {
 				n.logger.WithField("err", err).Warn("Propose tx failed")
 			}
 
@@ -184,7 +170,7 @@ func (n *Node) listenValidTxs() {
 
 			// send successful response to api
 			if validTxs.Local {
-				validTxs.LocalRespCh <- &order.TxResp{Status: true}
+				validTxs.LocalRespCh <- &common.TxResp{Status: true}
 			}
 		}
 	}
@@ -233,8 +219,8 @@ func (n *Node) listenNewTxToSubmit() {
 			return
 
 		case txWithResp := <-n.txCache.TxRespC:
-			ev := &order.UncheckedTxEvent{
-				EventType: order.LocalTxEvent,
+			ev := &common.UncheckedTxEvent{
+				EventType: common.LocalTxEvent,
 				Event:     txWithResp,
 			}
 			n.txPreCheck.PostUncheckedTxEvent(ev)
@@ -248,13 +234,14 @@ func (n *Node) listenExecutedBlockToReport() {
 		case r := <-n.stack.ReadyC:
 			block := &types.Block{
 				BlockHeader: &types.BlockHeader{
-					Version:   []byte("1.0.0"),
-					Number:    r.Height,
-					Timestamp: r.Timestamp,
+					Epoch:           n.stack.EpochInfo.Epoch,
+					Number:          r.Height,
+					Timestamp:       r.Timestamp,
+					ProposerAccount: r.ProposerAccount,
 				},
 				Transactions: r.TXs,
 			}
-			commitEvent := &types.CommitEvent{
+			commitEvent := &common.CommitEvent{
 				Block:     block,
 				LocalList: r.LocalList,
 			}
@@ -292,7 +279,7 @@ func (n *Node) listenBatchMemTxsToBroadcast() {
 				p2pmsg := &pb.Message{
 					Type:    pb.Message_PUSH_TXS,
 					Data:    data,
-					Version: []byte("0.1.0"),
+					Version: repo.P2PMsgV1,
 				}
 
 				msgData, err := p2pmsg.MarshalVT()
@@ -300,9 +287,7 @@ func (n *Node) listenBatchMemTxsToBroadcast() {
 					return err
 				}
 
-				return n.msgPipe.Broadcast(context.TODO(), lo.MapToSlice(n.peerMgr.OrderPeers(), func(k uint64, v *types.VpInfo) string {
-					return v.Pid
-				}), msgData)
+				return n.msgPipe.Broadcast(context.TODO(), nil, msgData)
 			}()
 			if err != nil {
 				n.logger.Errorf("failed to broadcast mempool txs: %v", err)
@@ -330,9 +315,9 @@ func (n *Node) Prepare(tx *types.Transaction) error {
 		return errors.New("transaction cache are full, we will drop this transaction")
 	}
 
-	txWithResp := &order.TxWithResp{
+	txWithResp := &common.TxWithResp{
 		Tx:     tx,
-		RespCh: make(chan *order.TxResp),
+		RespCh: make(chan *common.TxResp),
 	}
 	n.txCache.TxRespC <- txWithResp
 	n.txCache.RecvTxC <- tx
@@ -355,14 +340,14 @@ func (n *Node) submitTxsFromRemote(txs [][]byte) {
 		requests = append(requests, tx)
 	}
 
-	ev := &order.UncheckedTxEvent{
-		EventType: order.RemoteTxEvent,
+	ev := &common.UncheckedTxEvent{
+		EventType: common.RemoteTxEvent,
 		Event:     requests,
 	}
 	n.txPreCheck.PostUncheckedTxEvent(ev)
 }
 
-func (n *Node) Commit() chan *types.CommitEvent {
+func (n *Node) Commit() chan *common.CommitEvent {
 	return n.blockC
 }
 
@@ -390,59 +375,49 @@ func (n *Node) GetPendingNonceByAccount(account string) uint64 {
 }
 
 func (n *Node) GetPendingTxByHash(hash *types.Hash) *types.Transaction {
-	txData := n.n.GetPendingTxByHash(hash.String())
-	if txData == nil {
-		return nil
-	}
-	tx := &types.Transaction{}
-	err := tx.RbftUnmarshal(txData)
-	if err != nil {
-		n.logger.Errorf("GetPendingTxByHash unmarshall err: %s", err)
-	}
-	return tx
+	return n.n.GetPendingTxByHash(hash.String())
 }
 
-func (n *Node) DelNode(_ uint64) error {
-	return errors.New("unsupported api")
-}
-
-func (n *Node) ReportState(height uint64, blockHash *types.Hash, _ []*types.Hash) {
+func (n *Node) ReportState(height uint64, blockHash *types.Hash, txHashList []*types.Hash) {
 	if n.stack.StateUpdating && n.stack.StateUpdateHeight != height {
 		return
 	}
 
+	currentEpoch := n.stack.EpochInfo.Epoch
+
+	// need update cached epoch info
+	epochInfo := n.stack.EpochInfo
+	if height == (epochInfo.StartBlock + epochInfo.EpochPeriod - 1) {
+		err := n.stack.UpdateEpoch()
+		if err != nil {
+			panic(err)
+		}
+	}
 	if n.stack.StateUpdating {
 		state := &rbfttypes.ServiceState{
 			MetaState: &rbfttypes.MetaState{
 				Height: height,
 				Digest: blockHash.String(),
 			},
-			Epoch: 1,
+			Epoch: currentEpoch,
 		}
 		n.n.ReportStateUpdated(state)
 		n.stack.StateUpdating = false
 		return
 	}
 
-	// TODO: read from cfg
-	if height%n.checkpoint == 0 {
-		n.logger.WithFields(logrus.Fields{
-			"height": height,
-		}).Info("Report checkpoint")
-		n.n.ReportStableCheckpointFinished(height)
-	}
 	state := &rbfttypes.ServiceState{
 		MetaState: &rbfttypes.MetaState{
 			Height: height,
 			Digest: blockHash.String(),
 		},
-		Epoch: 1,
+		Epoch: currentEpoch,
 	}
 	n.n.ReportExecuted(state)
 }
 
 func (n *Node) Quorum() uint64 {
-	N := uint64(len(n.stack.Nodes))
+	N := uint64(len(n.stack.EpochInfo.ValidatorSet))
 	f := (N - 1) / 3
 	return (N + f + 2) / 2
 }
