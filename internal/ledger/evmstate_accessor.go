@@ -4,7 +4,7 @@ import (
 	"math/big"
 
 	"github.com/axiomesh/axiom-kit/types"
-	ledger2 "github.com/axiomesh/eth-kit/ledger"
+	ethledger "github.com/axiomesh/eth-kit/ledger"
 	"github.com/ethereum/go-ethereum/common"
 	etherTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
@@ -117,13 +117,13 @@ func (l *StateLedger) PrepareEVMAccessList(sender common.Address, dest *common.A
 	for _, compile := range preEVMcompiles {
 		precompiles = append(precompiles, *types.NewAddress(compile.Bytes()))
 	}
-	var txAccesses ledger2.AccessTupleList
+	var txAccesses ethledger.AccessTupleList
 	for _, list := range txEVMAccesses {
 		var storageKeys []types.Hash
 		for _, keys := range list.StorageKeys {
 			storageKeys = append(storageKeys, *types.NewHash(keys.Bytes()))
 		}
-		txAccesses = append(txAccesses, ledger2.AccessTuple{Address: *types.NewAddress(list.Address.Bytes()), StorageKeys: storageKeys})
+		txAccesses = append(txAccesses, ethledger.AccessTuple{Address: *types.NewAddress(list.Address.Bytes()), StorageKeys: storageKeys})
 	}
 	l.PrepareAccessList(*types.NewAddress(sender.Bytes()), types.NewAddress(dest.Bytes()), precompiles, txAccesses)
 }
@@ -151,10 +151,10 @@ func (l *StateLedger) AddEVMPreimage(hash common.Hash, data []byte) {
 func (l *StateLedger) PrepareEVM(rules params.Rules, sender, coinbase common.Address, dst *common.Address, precompiles []common.Address, list etherTypes.AccessList) {
 	// l.logs.thash = types.NewHash(hash.Bytes())
 	// l.logs.txIndex = index
-	l.accessList = ledger2.NewAccessList()
+	l.accessList = ethledger.NewAccessList()
 	if rules.IsBerlin {
 		// Clear out any leftover from previous executions
-		al := ledger2.NewAccessList()
+		al := ethledger.NewAccessList()
 		l.accessList = al
 
 		al.AddAddress(*types.NewAddress(sender.Bytes()))
@@ -179,7 +179,7 @@ func (l *StateLedger) PrepareEVM(rules params.Rules, sender, coinbase common.Add
 	l.transientStorage = newTransientStorage()
 }
 
-func (l *StateLedger) StateDB() ledger2.StateDB {
+func (l *StateLedger) StateDB() ethledger.StateDB {
 	return l
 }
 

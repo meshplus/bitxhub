@@ -141,7 +141,7 @@ func (exec *BlockExecutor) ApplyReadonlyTransactions(txs []*types.Transaction) [
 	}
 
 	// switch sl := exec.ledger.StateLedger.(type) {
-	// case *ledger2.ComplexStateLedger:
+	// case *ethledger.ComplexStateLedger:
 	// 	newSl, err := sl.StateAt(block.BlockHeader.StateRoot)
 	// 	if err != nil {
 	// 		exec.logger.Errorf("fail to new state ledger at %s: %v", meta.BlockHash.String(), err.Error())

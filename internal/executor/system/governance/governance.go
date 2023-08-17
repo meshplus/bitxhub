@@ -27,6 +27,7 @@ var (
 	ErrTooLongDesc  = errors.New("description is too long, max is 10000 characters")
 	ErrBlockNumber  = errors.New("block number is invalid")
 	ErrProposalID   = errors.New("proposal id is invalid")
+	ErrProposalFinished = errors.New("proposal has already finished")
 )
 
 const jsondata = `
@@ -272,6 +273,11 @@ func (g *Governance) checkBeforeVote(user *ethcommon.Address, proposal *BaseProp
 	// check if user has voted
 	if common.IsInSlice[string](user.String(), proposal.PassVotes) || common.IsInSlice[string](user.String(), proposal.RejectVotes) {
 		return false, ErrUseHasVoted
+	}
+
+	// check proposal status
+	if proposal.Status == Approved || proposal.Status == Rejected {
+		return false, ErrProposalFinished
 	}
 
 	return true, nil
