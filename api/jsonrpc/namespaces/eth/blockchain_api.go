@@ -211,7 +211,7 @@ func DoCall(ctx context.Context, api api.CoreAPI, args types.CallArgs, timeout t
 		return nil, fmt.Errorf("execution aborted (timeout = %v)", timeout)
 	}
 	if err != nil {
-		logger.Errorf("err: %w (supplied gas %d)", err, msg.GasLimit)
+		//logger.Errorf("err: %w (supplied gas %d)", err, msg.GasLimit)
 		return result, err
 	}
 
@@ -301,7 +301,7 @@ func (api *BlockChainAPI) EstimateGas(args types.CallArgs, blockNrOrHash *rpctyp
 			if errors.Is(err, core.ErrIntrinsicGas) {
 				return true, nil, nil // Special case, raise gas limit
 			}
-			return false, nil, err
+			return true, nil, err
 		}
 		return result.Failed(), result, nil
 	}
