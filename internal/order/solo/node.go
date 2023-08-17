@@ -267,11 +267,13 @@ func (n *Node) listenEvent() {
 			case *getTxReq:
 				txData := n.mempool.GetPendingTxByHash(e.Hash)
 				tx := &types.Transaction{}
-				if txData != nil {
-					if err := tx.RbftUnmarshal(txData); err != nil {
-						n.logger.Errorf("Unmarshal tx failed: %v", err)
-						continue
-					}
+				if txData == nil {
+					e.Resp <- nil
+					continue
+				}
+				if err := tx.RbftUnmarshal(txData); err != nil {
+					n.logger.Errorf("Unmarshal tx failed: %v", err)
+					continue
 				}
 				e.Resp <- tx
 			case *getNonceReq:

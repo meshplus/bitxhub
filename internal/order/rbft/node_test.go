@@ -136,6 +136,8 @@ func TestPrepare(t *testing.T) {
 		tx := order.GetPendingTxByHash(tx1.GetHash())
 		ast.NotNil(tx.Inner)
 		ast.Equal(tx1.GetHash().String(), tx.GetHash().String())
+		wrongTx := order.GetPendingTxByHash(types.NewHashByStr("0x123"))
+		ast.Nil(wrongTx)
 	})
 }
 
