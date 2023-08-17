@@ -361,6 +361,9 @@ func (n *Node) GetPendingNonceByAccount(account string) uint64 {
 
 func (n *Node) GetPendingTxByHash(hash *types.Hash) *types.Transaction {
 	txData := n.n.GetPendingTxByHash(hash.String())
+	if txData == nil {
+		return nil
+	}
 	tx := &types.Transaction{}
 	err := tx.RbftUnmarshal(txData)
 	if err != nil {

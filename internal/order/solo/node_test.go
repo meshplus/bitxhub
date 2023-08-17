@@ -119,6 +119,9 @@ func TestGetPendingTxByHash(t *testing.T) {
 	tx1 := node.GetPendingTxByHash(tx.GetHash())
 	ast.NotNil(tx1.GetPayload())
 	ast.Equal(tx.GetPayload(), tx1.GetPayload())
+
+	tx2 := node.GetPendingTxByHash(types.NewHashByStr("0x123"))
+	ast.Nil(tx2)
 }
 
 func TestTimedBlock(t *testing.T) {
