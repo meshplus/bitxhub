@@ -2,7 +2,6 @@ package executor
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
 	"path/filepath"
@@ -113,7 +112,6 @@ func TestGetEvm(t *testing.T) {
 	}
 	// mock block for ledger
 	chainLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
-	chainLedger.EXPECT().GetBlock(gomock.Any()).Return(mockBlock(1, nil), nil).Times(1)
 
 	logger := log.NewWithModule("executor")
 	executor, err := New(mockLedger, logger, config, func() (*big.Int, error) {
@@ -126,11 +124,6 @@ func TestGetEvm(t *testing.T) {
 	evm, err := executor.GetEvm(txCtx, ethvm.Config{NoBaseFee: true})
 	assert.NotNil(t, evm)
 	assert.Nil(t, err)
-
-	chainLedger.EXPECT().GetBlock(gomock.Any()).Return(nil, errors.New("get block error")).Times(1)
-	evmErr, err := executor.GetEvm(txCtx, ethvm.Config{NoBaseFee: true})
-	assert.Nil(t, evmErr)
-	assert.NotNil(t, err)
 }
 
 func TestSubscribeLogsEvent(t *testing.T) {

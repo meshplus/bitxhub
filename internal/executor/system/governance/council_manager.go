@@ -86,6 +86,7 @@ type CouncilManager struct {
 	account     ledger.IAccount
 	stateLedger ledger.StateLedger
 	currentLog  *common.Log
+	proposalID  *ProposalID
 }
 
 func NewCouncilManager(logger logrus.FieldLogger) *CouncilManager {
@@ -106,7 +107,7 @@ func (cm *CouncilManager) Reset(stateLedger ledger.StateLedger) {
 	cm.currentLog = &common.Log{
 		Address: addr,
 	}
-	globalProposalID = GetInstanceOfProposalID(stateLedger)
+	cm.proposalID = NewProposalID(stateLedger)
 }
 
 func (cm *CouncilManager) Run(msg *vm.Message) (result *vm.ExecutionResult, err error) {
@@ -186,7 +187,7 @@ func (cm *CouncilManager) propose(addr ethcommon.Address, args *CouncilProposalA
 		return nil, ErrExistNotFinishedProposal
 	}
 
-	id, err := globalProposalID.GetAndAddID()
+	id, err := cm.proposalID.GetAndAddID()
 	if err != nil {
 		return nil, err
 	}

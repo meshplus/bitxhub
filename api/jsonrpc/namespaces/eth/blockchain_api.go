@@ -193,6 +193,16 @@ func DoCall(ctx context.Context, api api.CoreAPI, args types.CallArgs, timeout t
 		return nil, err
 	}
 
+	// use copy state ledger to call
+	stateLedger := api.Broker().GetStateLedger().Copy()
+	stateLedger.SetTxContext(types.NewHash([]byte("mockTx")), 0)
+	// check if call system contract
+	systemContract, ok := api.Broker().GetSystemContract(msg.To)
+	if ok {
+		systemContract.Reset(stateLedger)
+		return systemContract.Run(msg)
+	}
+
 	evm, err := api.Broker().GetEvm(msg, &vm.Config{NoBaseFee: true})
 	if err != nil {
 		return nil, errors.New("error get evm")
@@ -203,6 +213,8 @@ func DoCall(ctx context.Context, api api.CoreAPI, args types.CallArgs, timeout t
 		evm.Cancel()
 	}()
 
+	txContext := vm.NewEVMTxContext(msg)
+	evm.Reset(txContext, stateLedger)
 	gp := new(vm.GasPool).AddGas(math.MaxUint64)
 	result, err := vm.ApplyMessage(evm, msg, gp)
 

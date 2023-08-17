@@ -57,8 +57,16 @@ type StateLedger struct {
 	transientStorage transientStorage
 }
 
+// Copy copy state ledger
+// Attention this is shallow copy
 func (l *StateLedger) Copy() ledger.StateLedger {
-	return l
+	copyLedger, err := NewSimpleLedger(&repo.Repo{Config: l.repo.Config}, l.ldb, nil, l.logger)
+	if err != nil {
+		l.logger.Errorf("copy ledger error: %w", err)
+		return nil
+	}
+
+	return copyLedger
 }
 
 func (l *StateLedger) Finalise(b bool) {

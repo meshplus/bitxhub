@@ -68,7 +68,8 @@ var _ common.SystemContract = (*NodeManager)(nil)
 type NodeManager struct {
 	gov *Governance
 
-	account ledger.IAccount
+	account    ledger.IAccount
+	proposalID *ProposalID
 }
 
 func NewNodeManager(logger logrus.FieldLogger) *NodeManager {
@@ -84,7 +85,7 @@ func NewNodeManager(logger logrus.FieldLogger) *NodeManager {
 
 func (nm *NodeManager) Reset(stateLedger ledger.StateLedger) {
 	nm.account = stateLedger.GetOrCreateAccount(types.NewAddressByStr(common.NodeManagerContractAddr))
-	globalProposalID = GetInstanceOfProposalID(stateLedger)
+	nm.proposalID = NewProposalID(stateLedger)
 }
 
 func (nm *NodeManager) Run(msg *vm.Message) (*vm.ExecutionResult, error) {
@@ -128,7 +129,7 @@ func (nm *NodeManager) propose(addr ethcommon.Address, args *NodeProposalArgs) (
 		return nil, err
 	}
 
-	id, err := globalProposalID.GetAndAddID()
+	id, err := nm.proposalID.GetAndAddID()
 	if err != nil {
 		return nil, err
 	}

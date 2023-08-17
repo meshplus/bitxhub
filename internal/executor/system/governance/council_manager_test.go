@@ -82,8 +82,6 @@ func TestRunForPropose(t *testing.T) {
 		},
 	})
 
-	cm.Reset(stateLedger)
-
 	testcases := []struct {
 		Caller   string
 		Data     []byte
@@ -220,6 +218,8 @@ func TestRunForPropose(t *testing.T) {
 	}
 
 	for _, test := range testcases {
+		cm.Reset(stateLedger)
+
 		result, err := cm.Run(&vm.Message{
 			From: types.NewAddressByStr(test.Caller).ETHAddress(),
 			Data: test.Data,
@@ -280,6 +280,7 @@ func TestRunForVote(t *testing.T) {
 	})
 
 	cm.Reset(stateLedger)
+
 	cm.propose(types.NewAddressByStr(admin1).ETHAddress(), &CouncilProposalArgs{
 		BaseProposalArgs: BaseProposalArgs{
 			ProposalType: uint8(CouncilElect),
@@ -317,7 +318,7 @@ func TestRunForVote(t *testing.T) {
 	}{
 		{
 			Caller: admin1,
-			Data:   generateVoteData(t, globalProposalID.GetID()-1, Pass),
+			Data:   generateVoteData(t, cm.proposalID.GetID()-1, Pass),
 			Expected: vm.ExecutionResult{
 				UsedGas: CouncilVoteGas,
 				ReturnData: generateReturnData(t, &TestCouncilProposal{
@@ -352,7 +353,7 @@ func TestRunForVote(t *testing.T) {
 		},
 		{
 			Caller: admin2,
-			Data:   generateVoteData(t, globalProposalID.GetID()-1, Pass),
+			Data:   generateVoteData(t, cm.proposalID.GetID()-1, Pass),
 			Expected: vm.ExecutionResult{
 				UsedGas: CouncilVoteGas,
 				ReturnData: generateReturnData(t, &TestCouncilProposal{
@@ -387,13 +388,15 @@ func TestRunForVote(t *testing.T) {
 		},
 		{
 			Caller:   "0xfff0000000000000000000000000000000000000",
-			Data:     generateVoteData(t, globalProposalID.GetID()-1, Pass),
+			Data:     generateVoteData(t, cm.proposalID.GetID()-1, Pass),
 			Expected: vm.ExecutionResult{},
 			Err:      ErrNotFoundCouncilMember,
 		},
 	}
 
 	for _, test := range testcases {
+		cm.Reset(stateLedger)
+
 		result, err := cm.Run(&vm.Message{
 			From: types.NewAddressByStr(test.Caller).ETHAddress(),
 			Data: test.Data,
