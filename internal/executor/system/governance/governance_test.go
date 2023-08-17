@@ -198,18 +198,113 @@ func TestGovernance_Propose(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, gov)
 
-	addr := types.NewAddressByStr("0x10000000000000000000000000000000000000000")
-	title := "test title"
-	desc := "test desc"
-	blockNumber := uint64(10000)
-	ethaddr := addr.ETHAddress()
-	proposal, err := gov.Propose(&ethaddr, NodeUpdate, title, desc, blockNumber)
-	assert.Nil(t, err)
-	assert.NotNil(t, proposal)
-	assert.Equal(t, proposal.Type, NodeUpdate)
-	assert.Equal(t, proposal.Title, title)
-	assert.Equal(t, proposal.Desc, desc)
-	assert.Equal(t, proposal.BlockNumber, blockNumber)
+	testcases := []struct {
+		input struct {
+			user         string
+			proposalType ProposalType
+			title        string
+			desc         string
+			blockNumber  uint64
+		}
+		err error
+	}{
+		{
+			input: struct {
+				user         string
+				proposalType ProposalType
+				title        string
+				desc         string
+				blockNumber  uint64
+			}{
+				user:         "0x1000000000000000000000000000000000000000",
+				proposalType: NodeUpdate,
+				title:        "test title",
+				desc:         "test desc",
+				blockNumber:  10000,
+			},
+			err: nil,
+		},
+		{
+			input: struct {
+				user         string
+				proposalType ProposalType
+				title        string
+				desc         string
+				blockNumber  uint64
+			}{
+				user:         "0x1000000000000000000000000000000000000000",
+				proposalType: ProposalType(250),
+				title:        "test title",
+				desc:         "test desc",
+				blockNumber:  10000,
+			},
+			err: ErrProposalType,
+		},
+		{
+			input: struct {
+				user         string
+				proposalType ProposalType
+				title        string
+				desc         string
+				blockNumber  uint64
+			}{
+				user:         "0x1000000000000000000000000000000000000000",
+				proposalType: NodeUpdate,
+				title:        "",
+				desc:         "test desc",
+				blockNumber:  10000,
+			},
+			err: ErrTitle,
+		},
+		{
+			input: struct {
+				user         string
+				proposalType ProposalType
+				title        string
+				desc         string
+				blockNumber  uint64
+			}{
+				user:         "0x1000000000000000000000000000000000000000",
+				proposalType: NodeUpdate,
+				title:        "test title",
+				desc:         "",
+				blockNumber:  10000,
+			},
+			err: ErrDesc,
+		},
+		{
+			input: struct {
+				user         string
+				proposalType ProposalType
+				title        string
+				desc         string
+				blockNumber  uint64
+			}{
+				user:         "0x1000000000000000000000000000000000000000",
+				proposalType: NodeUpdate,
+				title:        "test title",
+				desc:         "test desc",
+				blockNumber:  0,
+			},
+			err: ErrBlockNumber,
+		},
+	}
+
+	for _, test := range testcases {
+		addr := types.NewAddressByStr(test.input.user)
+		ethaddr := addr.ETHAddress()
+
+		proposal, err := gov.Propose(&ethaddr, test.input.proposalType, test.input.title, test.input.desc, test.input.blockNumber)
+		if err != nil {
+			assert.Equal(t, test.err, err)
+		} else {
+			assert.Equal(t, test.input.user, proposal.Proposer)
+			assert.Equal(t, test.input.proposalType, proposal.Type)
+			assert.Equal(t, test.input.title, proposal.Title)
+			assert.Equal(t, test.input.desc, proposal.Desc)
+			assert.Equal(t, test.input.blockNumber, proposal.BlockNumber)
+		}
+	}
 }
 
 func TestGovernance_Vote(t *testing.T) {

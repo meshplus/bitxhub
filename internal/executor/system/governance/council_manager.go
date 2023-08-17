@@ -1,7 +1,6 @@
 package governance
 
 import (
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -111,16 +110,7 @@ func (cm *CouncilManager) Reset(stateLedger ledger.StateLedger) {
 }
 
 func (cm *CouncilManager) Run(msg *vm.Message) (result *vm.ExecutionResult, err error) {
-	defer func() {
-		if cm.currentLog.Data != nil {
-			cm.stateLedger.AddLog(&types.EvmLog{
-				Address: cm.currentLog.Address,
-				Topics:  cm.currentLog.Topics,
-				Data:    cm.currentLog.Data,
-				Removed: cm.currentLog.Removed,
-			})
-		}
-	}()
+	defer cm.gov.SaveLog(cm.stateLedger, cm.currentLog)
 
 	// parse method and arguments from msg payload
 	args, err := cm.gov.GetArgs(msg)
@@ -203,15 +193,8 @@ func (cm *CouncilManager) propose(addr ethcommon.Address, args *CouncilProposalA
 	// save proposal
 	cm.account.SetState([]byte(fmt.Sprintf("%s%d", CouncilProposalKey, proposal.ID)), b)
 
-	// set method signature, proposal id, proposal type, proposer as log topic for index
-	idhash := make([]byte, 8)
-	binary.BigEndian.PutUint64(idhash, proposal.ID)
-	typeHash := make([]byte, 2)
-	binary.BigEndian.PutUint16(typeHash, uint16(proposal.Type))
-	cm.currentLog.Topics = append(cm.currentLog.Topics, types.NewHash(cm.gov.method2Sig[ProposeMethod]),
-		types.NewHash(idhash), types.NewHash(typeHash), types.NewHash([]byte(proposal.Proposer)))
-	cm.currentLog.Data = b
-	cm.currentLog.Removed = false
+	// record log
+	cm.gov.RecordLog(cm.currentLog, ProposeMethod, &proposal.BaseProposal, b)
 
 	return &vm.ExecutionResult{
 		UsedGas:    CouncilProposalGas,
@@ -245,12 +228,9 @@ func (cm *CouncilManager) vote(user ethcommon.Address, voteArgs *CouncilVoteArgs
 	res := VoteResult(voteArgs.VoteResult)
 	proposalStatus, err := cm.gov.Vote(&user, &proposal.BaseProposal, res)
 	if err != nil {
-		result.Err = err
-		return result, nil
+		return nil, err
 	}
 	proposal.Status = proposalStatus
-
-	// TODO: check user can vote
 
 	b, err := json.Marshal(proposal)
 	if err != nil {
@@ -274,15 +254,7 @@ func (cm *CouncilManager) vote(user ethcommon.Address, voteArgs *CouncilVoteArgs
 		cm.account.SetState([]byte(CouncilKey), cb)
 	}
 
-	// set method signature, proposal id, proposal type, voter address as log topic for index
-	idhash := make([]byte, 8)
-	binary.BigEndian.PutUint64(idhash, proposal.ID)
-	typeHash := make([]byte, 2)
-	binary.BigEndian.PutUint16(typeHash, uint16(proposal.Type))
-	cm.currentLog.Topics = append(cm.currentLog.Topics, types.NewHash(cm.gov.method2Sig[ProposeMethod]),
-		types.NewHash(idhash), types.NewHash(typeHash), types.NewHash([]byte(user.String())))
-	cm.currentLog.Data = b
-	cm.currentLog.Removed = false
+	cm.gov.RecordLog(cm.currentLog, VoteMethod, &proposal.BaseProposal, b)
 
 	// return updated proposal
 	result.ReturnData = b

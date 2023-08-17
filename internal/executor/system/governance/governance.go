@@ -2,6 +2,7 @@ package governance
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"strings"
@@ -11,8 +12,10 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/sirupsen/logrus"
 
+	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/internal/executor/system/common"
 	vm "github.com/axiomesh/eth-kit/evm"
+	"github.com/axiomesh/eth-kit/ledger"
 )
 
 var (
@@ -297,4 +300,29 @@ func (g *Governance) Vote(user *ethcommon.Address, proposal *BaseProposal, voteR
 	}
 
 	return CalcProposalStatus(proposal.Strategy, proposal.TotalVotes, uint64(len(proposal.PassVotes)), uint64(len(proposal.RejectVotes))), nil
+}
+
+// RecordLog record execution log for governance
+func (g *Governance) RecordLog(currentLog *common.Log, method string, proposal *BaseProposal, data []byte) {
+	// set method signature, proposal id, proposal type, proposer as log topic for index
+	idhash := make([]byte, 8)
+	binary.BigEndian.PutUint64(idhash, proposal.ID)
+	typeHash := make([]byte, 2)
+	binary.BigEndian.PutUint16(typeHash, uint16(proposal.Type))
+	currentLog.Topics = append(currentLog.Topics, types.NewHash(g.method2Sig[method]),
+		types.NewHash(idhash), types.NewHash(typeHash), types.NewHash([]byte(proposal.Proposer)))
+	currentLog.Data = data
+	currentLog.Removed = false
+}
+
+// SaveLog save log
+func (g *Governance) SaveLog(stateLedger ledger.StateLedger, currentLog *common.Log) {
+	if currentLog.Data != nil {
+		stateLedger.AddLog(&types.EvmLog{
+			Address: currentLog.Address,
+			Topics:  currentLog.Topics,
+			Data:    currentLog.Data,
+			Removed: currentLog.Removed,
+		})
+	}
 }

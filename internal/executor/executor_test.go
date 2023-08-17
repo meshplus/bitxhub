@@ -2,6 +2,7 @@ package executor
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"path/filepath"
@@ -112,6 +113,7 @@ func TestGetEvm(t *testing.T) {
 	}
 	// mock block for ledger
 	chainLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
+	chainLedger.EXPECT().GetBlock(gomock.Any()).Return(mockBlock(1, nil), nil).Times(1)
 
 	logger := log.NewWithModule("executor")
 	executor, err := New(mockLedger, logger, config, func() (*big.Int, error) {
@@ -124,6 +126,11 @@ func TestGetEvm(t *testing.T) {
 	evm, err := executor.GetEvm(txCtx, ethvm.Config{NoBaseFee: true})
 	assert.NotNil(t, evm)
 	assert.Nil(t, err)
+
+	chainLedger.EXPECT().GetBlock(gomock.Any()).Return(nil, errors.New("get block error")).Times(1)
+	evmErr, err := executor.GetEvm(txCtx, ethvm.Config{NoBaseFee: true})
+	assert.Nil(t, evmErr)
+	assert.NotNil(t, err)
 }
 
 func TestSubscribeLogsEvent(t *testing.T) {
@@ -287,14 +294,6 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 	ld, err := leveldb.New(filepath.Join(repoRoot, "executor"))
 	assert.Nil(t, err)
 	account := ledger.NewAccount(ld, accountCache, types.NewAddressByStr(common.NodeManagerContractAddr), ledger.NewChanger())
-	var members = []*NodeMember{
-		{
-			NodeId: "16Uiu2HAmJ38LwfY6pfgDWNvk3ypjcpEMSePNTE6Ma2NCLqjbZJSF",
-		},
-	}
-	b, err := json.Marshal(members)
-	assert.Nil(t, err)
-	account.SetState([]byte(common.NodeManagerContractAddr), b)
 
 	contractAddr := types.NewAddressByStr("0xdac17f958d2ee523a2206206994597c13d831ec7")
 	chainLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
@@ -328,6 +327,35 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 	stateLedger.EXPECT().GetEVMRefund().AnyTimes()
 	stateLedger.EXPECT().GetEVMCodeHash(gomock.Any()).AnyTimes()
 	stateLedger.EXPECT().GetOrCreateAccount(gomock.Any()).Return(account).AnyTimes()
+	stateLedger.EXPECT().AddLog(gomock.Any()).AnyTimes()
+
+	signer, err := types.GenerateSigner()
+	assert.Nil(t, err)
+	err = governance.InitCouncilMembers(stateLedger, []*repo.Admin{
+		{
+			Address: signer.Addr.String(),
+			Weight:  1,
+		},
+		{
+			Address: "0x1220000000000000000000000000000000000000",
+			Weight:  1,
+		},
+		{
+			Address: "0x1230000000000000000000000000000000000000",
+			Weight:  1,
+		},
+		{
+			Address: "0x1240000000000000000000000000000000000000",
+			Weight:  1,
+		},
+	}, "1000000")
+	assert.Nil(t, err)
+	err = governance.InitNodeMembers(stateLedger, []*repo.Member{
+		{
+			NodeId: "16Uiu2HAmJ38LwfY6pfgDWNvk3ypjcpEMSePNTE6Ma2NCLqjbZJSF",
+		},
+	})
+	assert.Nil(t, err)
 
 	logger := log.NewWithModule("executor")
 
@@ -344,26 +372,16 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 	tx5, _, err := types.GenerateTransactionAndSigner(uint64(0), types.NewAddressByStr("0xdAC17F958D2ee523a2206206994597C13D831ec7"), big.NewInt(1), nil)
 	assert.Nil(t, err)
 	// test system contract
-	testcases := []struct {
-		Data []byte
-		Err  error
-	}{
-		{
-			Data: generateNodeAddProposeData(t, NodeExtraArgs{
-				Nodes: []*NodeMember{
-					{
-						NodeId: "16Uiu2HAmJ38LwfY6pfgDWNvk3ypjcpEMSePNTE6Ma2NCLqjbZJSF",
-					},
-				},
-			}),
-			Err: nil,
+	data := generateNodeAddProposeData(t, NodeExtraArgs{
+		Nodes: []*NodeMember{
+			{
+				NodeId: "16Uiu2HAmJ38LwfY6pfgDWNvk3ypjcpEMSePNTE6Ma2NCLqjbZJSF",
+			},
 		},
-	}
-
-	data := testcases[0].Data
+	})
 	assert.Nil(t, err)
 	fmt.Println(data)
-	tx6, _, err := types.GenerateTransactionAndSigner(uint64(1), types.NewAddressByStr(common.NodeManagerContractAddr), big.NewInt(0), data)
+	tx6, err := types.GenerateTransactionWithSigner(uint64(1), types.NewAddressByStr(common.NodeManagerContractAddr), big.NewInt(0), data, signer)
 	assert.Nil(t, err)
 
 	txs3 = append(txs3, tx4, tx5, tx6)
