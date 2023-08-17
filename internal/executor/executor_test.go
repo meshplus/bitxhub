@@ -25,8 +25,8 @@ import (
 	"github.com/axiomesh/axiom/internal/ledger"
 	"github.com/axiomesh/axiom/pkg/model/events"
 	"github.com/axiomesh/axiom/pkg/repo"
-	vm1 "github.com/axiomesh/eth-kit/evm"
-	ledger2 "github.com/axiomesh/eth-kit/ledger"
+	ethvm "github.com/axiomesh/eth-kit/evm"
+	ethledger "github.com/axiomesh/eth-kit/ledger"
 	"github.com/axiomesh/eth-kit/ledger/mock_ledger"
 )
 
@@ -122,13 +122,13 @@ func TestGetEvm(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, executor)
 
-	txCtx := vm1.TxContext{}
-	evm, err := executor.GetEvm(txCtx, vm1.Config{NoBaseFee: true})
+	txCtx := ethvm.TxContext{}
+	evm, err := executor.GetEvm(txCtx, ethvm.Config{NoBaseFee: true})
 	assert.NotNil(t, evm)
 	assert.Nil(t, err)
 
 	chainLedger.EXPECT().GetBlock(gomock.Any()).Return(nil, errors.New("get block error")).Times(1)
-	evmErr, err := executor.GetEvm(txCtx, vm1.Config{NoBaseFee: true})
+	evmErr, err := executor.GetEvm(txCtx, ethvm.Config{NoBaseFee: true})
 	assert.Nil(t, evmErr)
 	assert.NotNil(t, err)
 }
@@ -201,7 +201,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	stateLedger.EXPECT().GetLogs(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	stateLedger.EXPECT().SetTxContext(gomock.Any(), gomock.Any()).AnyTimes()
 	chainLedger.EXPECT().PersistExecutionResult(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-	stateLedger.EXPECT().FlushDirtyData().Return(make(map[string]ledger2.IAccount), &types.Hash{}).AnyTimes()
+	stateLedger.EXPECT().FlushDirtyData().Return(make(map[string]ethledger.IAccount), &types.Hash{}).AnyTimes()
 	stateLedger.EXPECT().PrepareBlock(gomock.Any(), gomock.Any()).AnyTimes()
 	stateLedger.EXPECT().Finalise(gomock.Any()).AnyTimes()
 	stateLedger.EXPECT().Snapshot().Return(1).AnyTimes()
@@ -310,7 +310,7 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 	stateLedger.EXPECT().Clear().AnyTimes()
 	stateLedger.EXPECT().GetState(contractAddr, []byte(fmt.Sprintf("index-tx-%s", id))).Return(true, val).AnyTimes()
 	chainLedger.EXPECT().PersistExecutionResult(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-	stateLedger.EXPECT().FlushDirtyData().Return(make(map[string]ledger2.IAccount), &types.Hash{}).AnyTimes()
+	stateLedger.EXPECT().FlushDirtyData().Return(make(map[string]ethledger.IAccount), &types.Hash{}).AnyTimes()
 	stateLedger.EXPECT().GetNonce(gomock.Any()).Return(uint64(0)).AnyTimes()
 	stateLedger.EXPECT().SetNonce(gomock.Any(), gomock.Any()).AnyTimes()
 	stateLedger.EXPECT().Finalise(gomock.Any()).AnyTimes()

@@ -39,7 +39,7 @@ func getStateLedgerAt(api api.CoreAPI) (ledger.StateLedger, error) {
 	// 	if err != nil {
 	// 		return nil, err
 	// 	}
-	// 	return api.Broker().GetStateLedger().(*ledger2.ComplexStateLedger).StateAt(block.BlockHeader.StateRoot)
+	// 	return api.Broker().GetStateLedger().(*ethledger.ComplexStateLedger).StateAt(block.BlockHeader.StateRoot)
 	// }
 
 	// if hash, ok := blockNrOrHash.Hash(); ok {
@@ -47,7 +47,7 @@ func getStateLedgerAt(api api.CoreAPI) (ledger.StateLedger, error) {
 	// 	if err != nil {
 	// 		return nil, err
 	// 	}
-	// 	return api.Broker().GetStateLedger().(*ledger2.ComplexStateLedger).StateAt(block.BlockHeader.StateRoot)
+	// 	return api.Broker().GetStateLedger().(*ethledger.ComplexStateLedger).StateAt(block.BlockHeader.StateRoot)
 	// }
 	//return nil, errors.New("invalid arguments; neither block nor hash specified")
 }
