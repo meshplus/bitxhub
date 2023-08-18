@@ -52,8 +52,8 @@ func getStateLedgerAt(api api.CoreAPI) (ledger.StateLedger, error) {
 	//return nil, errors.New("invalid arguments; neither block nor hash specified")
 }
 
-// newRPCTransaction returns a transaction that will serialize to the RPC representation
-func newRPCTransaction(tx *types.Transaction, blockHash common.Hash, blockNumber uint64, index uint64) *rpctypes.RPCTransaction {
+// NewRPCTransaction returns a transaction that will serialize to the RPC representation
+func NewRPCTransaction(tx *types.Transaction, blockHash common.Hash, blockNumber uint64, index uint64) *rpctypes.RPCTransaction {
 	from := common.BytesToAddress(tx.GetFrom().Bytes())
 	var to *common.Address
 	if tx.GetTo() != nil {

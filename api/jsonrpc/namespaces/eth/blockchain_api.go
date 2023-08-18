@@ -364,7 +364,7 @@ func formatBlock(api api.CoreAPI, config *repo.Config, block *types.Block, fullT
 	}
 	if fullTx {
 		formatTx = func(tx *types.Transaction, index uint64) (any, error) {
-			return newRPCTransaction(tx, common.BytesToHash(block.BlockHash.Bytes()), block.Height(), index), nil
+			return NewRPCTransaction(tx, common.BytesToHash(block.BlockHash.Bytes()), block.Height(), index), nil
 		}
 	}
 	txs := block.Transactions
