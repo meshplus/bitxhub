@@ -61,8 +61,8 @@ github.com/allegro/bigcache v1.2.1-0.20190218064605-e24eb225f156/go.mod h1:Cb/ax
 github.com/anmitsu/go-shlex v0.0.0-20161002113705-648efa622239/go.mod h1:2FmKhYUyUczH0OGQWaF5ceTx0UBShxjsH6f8oGKYe2c=
 github.com/axiomesh/axiom-bft v0.0.2 h1:0C8sa8toBclsGRK19X60+Jm9RV5sdDT8qfQmc54A82U=
 github.com/axiomesh/axiom-bft v0.0.2/go.mod h1:j/sHRBiupxvBACdzkponz8JLkw1SdyZYSyggrPyi4Qc=
-github.com/axiomesh/axiom-kit v0.0.2 h1:AdPXinVBu7dFbOk92HaY2jxGJNQoSKeRbWAcjXSGMdI=
-github.com/axiomesh/axiom-kit v0.0.2/go.mod h1:94RyUIr77+S+npW85SP51rZc4SnOqSqWjmg5PgNFiKo=
+github.com/axiomesh/axiom-kit v0.0.3-0.20230821083532-7f380e8e82cd h1:EP49Ja2a8qiL/QfHXOeOOtmeGwOsFufndxrXegEOUlE=
+github.com/axiomesh/axiom-kit v0.0.3-0.20230821083532-7f380e8e82cd/go.mod h1:94RyUIr77+S+npW85SP51rZc4SnOqSqWjmg5PgNFiKo=
 github.com/axiomesh/axiom-p2p v0.0.2 h1:Ok6HFg80uIl4jrcH1oJ3hqyCn5FFzLUkOZPlf9jgNzU=
 github.com/axiomesh/axiom-p2p v0.0.2/go.mod h1:vtnxQhuTYOOAtIUuZiEwdr/BIvgUtIvfKN34tytMdqQ=
 github.com/axiomesh/eth-kit v0.0.2 h1:gRW6/JJ2oIQl43jSpfI9P23vRjS8HQqroaQP7YxJfGk=
@@ -172,6 +172,10 @@ github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMo
 github.com/fsnotify/fsnotify v1.4.9/go.mod h1:znqG4EE+3YCdAaPaxE2ZRY/06pZUdp0tY4IgpuI1SZQ=
 github.com/fsnotify/fsnotify v1.6.0 h1:n+5WquG0fcWoWp6xPWfHdbskMCQaFnG6PfBrh1Ky4HY=
 github.com/fsnotify/fsnotify v1.6.0/go.mod h1:sl3t1tCWJFWoRz9R8WJCbQihKKwmorjAbSClcnxKAGw=
+github.com/gammazero/deque v0.2.0 h1:SkieyNB4bg2/uZZLxvya0Pq6diUlwx7m2TeT7GAIWaA=
+github.com/gammazero/deque v0.2.0/go.mod h1:LFroj8x4cMYCukHJDbxFCkT+r9AndaJnFMuZDV34tuU=
+github.com/gammazero/workerpool v1.1.3 h1:WixN4xzukFoN0XSeXF6puqEqFTl2mECI9S6W44HWy9Q=
+github.com/gammazero/workerpool v1.1.3/go.mod h1:wPjyBLDbyKnUn2XwwyD3EEwo9dHutia9/fwNmSHWACc=
 github.com/getsentry/sentry-go v0.22.0 h1:XNX9zKbv7baSEI65l+H1GEJgSeIC1c7EN5kluWaP6dM=
 github.com/getsentry/sentry-go v0.22.0/go.mod h1:lc76E2QywIyW8WuBnwl8Lc4bkmQH4+w1gwTf25trprY=
 github.com/ghodss/yaml v1.0.0/go.mod h1:4dBDuWmgqj2HViK6kFavaiC9ZROes6MMH2rRYeMEF04=

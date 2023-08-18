@@ -3,6 +3,7 @@ package solo
 import "github.com/axiomesh/axiom-kit/types"
 
 const (
+	singleTx    = 1
 	maxChanSize = 1024
 	ErrPoolFull = "mempool is full"
 )

@@ -3,7 +3,6 @@ package app
 import (
 	"github.com/sirupsen/logrus"
 
-	"github.com/axiomesh/axiom/internal/peermgr"
 	"github.com/axiomesh/axiom/pkg/model/events"
 	"github.com/axiomesh/axiom/pkg/repo"
 )
@@ -29,7 +28,6 @@ func (bxh *Axiom) start() {
 
 func (bxh *Axiom) listenEvent() {
 	blockCh := make(chan events.ExecutedEvent)
-	orderMsgCh := make(chan peermgr.OrderMessageEvent)
 	configCh := make(chan *repo.Repo)
 
 	blockSub := bxh.BlockExecutor.SubscribeBlockEvent(blockCh)
@@ -42,18 +40,6 @@ func (bxh *Axiom) listenEvent() {
 		select {
 		case ev := <-blockCh:
 			go bxh.Order.ReportState(ev.Block.BlockHeader.Number, ev.Block.BlockHash, ev.TxHashList)
-		case ev := <-orderMsgCh:
-			go func() {
-				if ev.IsTxsFromRemote {
-					if err := bxh.Order.SubmitTxsFromRemote(ev.Txs); err != nil {
-						bxh.logger.Error(err)
-					}
-				} else {
-					if err := bxh.Order.Step(ev.Data); err != nil {
-						bxh.logger.Error(err)
-					}
-				}
-			}()
 		case config := <-configCh:
 			bxh.ReConfig(config)
 		case <-bxh.Ctx.Done():

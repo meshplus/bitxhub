@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
+	"math/big"
 
 	"github.com/sirupsen/logrus"
 
@@ -13,21 +14,21 @@ import (
 )
 
 type Config struct {
-	ID               uint64
-	IsNew            bool
-	Config           *repo.OrderConfig
-	StoragePath      string
-	StorageType      string
-	OrderType        string
-	PeerMgr          peermgr.PeerManager
-	PrivKey          *ecdsa.PrivateKey
-	Logger           logrus.FieldLogger
-	Nodes            map[uint64]*types.VpInfo
-	Applied          uint64
-	Digest           string
-	GetChainMetaFunc func() *types.ChainMeta
-	GetBlockByHeight func(height uint64) (*types.Block, error)
-	GetAccountNonce  func(address *types.Address) uint64
+	ID                uint64
+	IsNew             bool
+	Config            *repo.OrderConfig
+	StoragePath       string
+	StorageType       string
+	OrderType         string
+	PeerMgr           peermgr.PeerManager
+	PrivKey           *ecdsa.PrivateKey
+	Logger            logrus.FieldLogger
+	Nodes             map[uint64]*types.VpInfo
+	Applied           uint64
+	Digest            string
+	GetChainMetaFunc  func() *types.ChainMeta
+	GetAccountBalance func(address *types.Address) *big.Int
+	GetAccountNonce   func(address *types.Address) uint64
 }
 
 type Option func(*Config)
@@ -110,9 +111,9 @@ func WithGetChainMetaFunc(f func() *types.ChainMeta) Option {
 	}
 }
 
-func WithGetBlockByHeightFunc(f func(height uint64) (*types.Block, error)) Option {
+func WithGetAccountBalanceFunc(f func(address *types.Address) *big.Int) Option {
 	return func(config *Config) {
-		config.GetBlockByHeight = f
+		config.GetAccountBalance = f
 	}
 }
 

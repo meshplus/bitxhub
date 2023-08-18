@@ -115,11 +115,11 @@ func Default(repoRoot string) (*Repo, error) {
 func DefaultWithNodeIndex(repoRoot string, nodeIndex int) (*Repo, error) {
 	var key *ecdsa.PrivateKey
 	var err error
-	if nodeIndex < 0 || nodeIndex > len(defaultNodeKeys)-1 {
+	if nodeIndex < 0 || nodeIndex > len(DefaultNodeKeys)-1 {
 		key, err = GenerateKey()
 		nodeIndex = 0
 	} else {
-		key, err = ParseKey([]byte(defaultNodeKeys[nodeIndex]))
+		key, err = ParseKey([]byte(DefaultNodeKeys[nodeIndex]))
 	}
 	if err != nil {
 		return nil, err

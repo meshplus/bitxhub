@@ -5,12 +5,13 @@ go 1.20
 require (
 	github.com/Rican7/retry v0.1.0
 	github.com/axiomesh/axiom-bft v0.0.2
-	github.com/axiomesh/axiom-kit v0.0.2
+	github.com/axiomesh/axiom-kit v0.0.3-0.20230821083532-7f380e8e82cd
 	github.com/axiomesh/axiom-p2p v0.0.2
 	github.com/axiomesh/eth-kit v0.0.2
 	github.com/cbergoon/merkletree v0.2.0
 	github.com/common-nighthawk/go-figure v0.0.0-20190529165535-67e0ed34491a
 	github.com/ethereum/go-ethereum v1.12.0
+	github.com/gammazero/workerpool v1.1.3
 	github.com/golang/mock v1.7.0-rc.1
 	github.com/gorilla/mux v1.8.0
 	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d
@@ -60,6 +61,7 @@ require (
 	github.com/flynn/noise v1.0.0 // indirect
 	github.com/francoispqt/gojay v1.2.13 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
+	github.com/gammazero/deque v0.2.0 // indirect
 	github.com/getsentry/sentry-go v0.22.0 // indirect
 	github.com/go-logr/logr v1.2.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect

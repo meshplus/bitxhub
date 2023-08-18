@@ -17,8 +17,6 @@ type Order interface {
 	// Prepare means send transaction to the consensus engine
 	Prepare(tx *types.Transaction) error
 
-	SubmitTxsFromRemote(tsx [][]byte) error
-
 	// Commit recv blocks form Order and commit it by order
 	Commit() chan *types.CommitEvent
 

@@ -30,7 +30,6 @@ func (b *BrokerAPI) HandleTransaction(tx *types.Transaction) error {
 	}).Debugf("Receive tx")
 
 	if err := b.bxh.Order.Prepare(tx); err != nil {
-		b.logger.Errorf("order prepare for tx %s failed: %s", tx.GetHash().String(), err.Error())
 		return fmt.Errorf("order prepare for tx %s failed: %w", tx.GetHash().String(), err)
 	}
 

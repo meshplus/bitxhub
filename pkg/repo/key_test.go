@@ -24,11 +24,11 @@ func TestKey(t *testing.T) {
 }
 
 func TestDefaultKeys(t *testing.T) {
-	for i, key := range defaultNodeKeys {
+	for i, key := range DefaultNodeKeys {
 		k, err := ParseKey([]byte(key))
 		assert.Nil(t, err)
 		addr := ethcrypto.PubkeyToAddress(k.PublicKey)
-		assert.Equal(t, defaultNodeAddrs[i], addr.String())
+		assert.Equal(t, DefaultNodeAddrs[i], addr.String())
 		nodeID, err := KeyToNodeID(k)
 		assert.Nil(t, err)
 		assert.Equal(t, defaultNodeIDs[i], nodeID)

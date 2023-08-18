@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/axiomesh/axiom/internal/order/precheck"
+	"github.com/axiomesh/axiom/internal/order/precheck/mock_precheck"
 	"github.com/axiomesh/axiom/internal/order/txcache"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/golang/mock/gomock"
@@ -23,6 +25,8 @@ import (
 	"github.com/axiomesh/axiom/internal/order/rbft/testutil"
 	"github.com/axiomesh/axiom/pkg/repo"
 )
+
+var validTxsCh = make(chan *precheck.ValidTxs, 1024)
 
 func MockMinNode[T any, Constraint consensus.TXConstraint[T]](ctrl *gomock.Controller, t *testing.T) *Node {
 	mockRbft := mocknode.NewMockMinimalNode[T, Constraint](ctrl)
@@ -60,6 +64,9 @@ func MockMinNode[T any, Constraint consensus.TXConstraint[T]](ctrl *gomock.Contr
 	rbftAdaptor, err := adaptor.NewRBFTAdaptor(orderConf, blockC, cancel)
 	assert.Nil(t, err)
 
+	mockCtl := gomock.NewController(t)
+	mockPrecheckMgr := mock_precheck.NewMockMinPreCheck(mockCtl, validTxsCh)
+
 	rbftConfig, _, err := generateRbftConfig(orderConf)
 	assert.Nil(t, err)
 	rbftConfig.External = rbftAdaptor
@@ -73,6 +80,7 @@ func MockMinNode[T any, Constraint consensus.TXConstraint[T]](ctrl *gomock.Contr
 		ctx:        ctx,
 		cancel:     cancel,
 		txCache:    txcache.NewTxCache(rbftConfig.SetTimeout, uint64(rbftConfig.SetSize), orderConf.Logger),
+		txPreCheck: mockPrecheckMgr,
 		peerMgr:    orderConf.PeerMgr,
 		checkpoint: orderConf.Config.Rbft.CheckpointPeriod,
 	}

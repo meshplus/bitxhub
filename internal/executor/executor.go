@@ -29,8 +29,7 @@ var _ Executor = (*BlockExecutor)(nil)
 type BlockExecutor struct {
 	ledger             *ledger.Ledger
 	logger             logrus.FieldLogger
-	blockC             chan *BlockWrapper
-	preBlockC          chan *types.CommitEvent
+	blockC             chan *types.CommitEvent
 	persistC           chan *ledger.BlockData
 	currentHeight      uint64
 	currentBlockHash   *types.Hash
@@ -58,8 +57,7 @@ func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, config *repo.Con
 		logger:           logger,
 		ctx:              ctx,
 		cancel:           cancel,
-		blockC:           make(chan *BlockWrapper, blockChanNumber),
-		preBlockC:        make(chan *types.CommitEvent, blockChanNumber),
+		blockC:           make(chan *types.CommitEvent, blockChanNumber),
 		persistC:         make(chan *ledger.BlockData, persistChanNumber),
 		currentHeight:    chainLedger.GetChainMeta().Height,
 		currentBlockHash: chainLedger.GetChainMeta().BlockHash,
@@ -86,8 +84,6 @@ func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, config *repo.Con
 func (exec *BlockExecutor) Start() error {
 	go exec.listenExecuteEvent()
 
-	go exec.listenPreExecuteEvent()
-
 	go exec.persistData()
 
 	exec.logger.WithFields(logrus.Fields{
@@ -109,7 +105,7 @@ func (exec *BlockExecutor) Stop() error {
 
 // ExecuteBlock executes block from order
 func (exec *BlockExecutor) ExecuteBlock(block *types.CommitEvent) {
-	exec.preBlockC <- block
+	exec.blockC <- block
 }
 
 // SubscribeBlockEvent registers a subscription of ExecutedEvent.
@@ -154,7 +150,7 @@ func (exec *BlockExecutor) ApplyReadonlyTransactions(txs []*types.Transaction) [
 	exec.evm = newEvm(meta.Height, uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateLedger, exec.ledger.ChainLedger, exec.admins[0])
 	for i, tx := range txs {
 		exec.ledger.SetTxContext(tx.GetHash(), i)
-		receipt := exec.applyTransaction(i, tx, "")
+		receipt := exec.applyTransaction(i, tx)
 
 		receipts = append(receipts, receipt)
 		// clear potential write to ledger
@@ -172,8 +168,8 @@ func (exec *BlockExecutor) ApplyReadonlyTransactions(txs []*types.Transaction) [
 func (exec *BlockExecutor) listenExecuteEvent() {
 	for {
 		select {
-		case blockWrapper := <-exec.blockC:
-			exec.processExecuteEvent(blockWrapper)
+		case commitEvent := <-exec.blockC:
+			exec.processExecuteEvent(commitEvent)
 		case <-exec.ctx.Done():
 			close(exec.persistC)
 			return

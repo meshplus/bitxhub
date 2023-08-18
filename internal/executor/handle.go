@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/cbergoon/merkletree"
@@ -40,11 +39,11 @@ type BlockWrapper struct {
 	invalidTx map[int]InvalidReason
 }
 
-func (exec *BlockExecutor) applyTransactions(txs []*types.Transaction, invalidTxs map[int]InvalidReason) []*types.Receipt {
+func (exec *BlockExecutor) applyTransactions(txs []*types.Transaction) []*types.Receipt {
 	receipts := make([]*types.Receipt, 0, len(txs))
 
 	for i, tx := range txs {
-		receipts = append(receipts, exec.applyTransaction(i, tx, invalidTxs[i]))
+		receipts = append(receipts, exec.applyTransaction(i, tx))
 	}
 
 	exec.logger.Debugf("executor executed %d txs", len(txs))
@@ -52,16 +51,16 @@ func (exec *BlockExecutor) applyTransactions(txs []*types.Transaction, invalidTx
 	return receipts
 }
 
-func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledger.BlockData {
+func (exec *BlockExecutor) processExecuteEvent(commitEvent *types.CommitEvent) {
 	var txHashList []*types.Hash
 	current := time.Now()
-	block := blockWrapper.block
+	block := commitEvent.Block
 
 	// check executor handle the right block
 	if block.BlockHeader.Number != exec.currentHeight+1 {
 		exec.logger.WithFields(logrus.Fields{"block height": block.BlockHeader.Number,
 			"matchedHeight": exec.currentHeight + 1}).Warning("current block height is not matched")
-		return nil
+		return
 	}
 
 	for _, tx := range block.Transactions {
@@ -71,7 +70,7 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	// TODO: CHANGE COINBASE ADDRESSS
 	exec.evm = newEvm(block.Height(), uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateLedger, exec.ledger.ChainLedger, exec.admins[0])
 	exec.ledger.PrepareBlock(block.BlockHash, block.Height())
-	receipts := exec.applyTransactions(block.Transactions, blockWrapper.invalidTx)
+	receipts := exec.applyTransactions(block.Transactions)
 	applyTxsDuration.Observe(float64(time.Since(current)) / float64(time.Second))
 	exec.logger.WithFields(logrus.Fields{
 		"time":  time.Since(current),
@@ -124,8 +123,8 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	}
 
 	exec.logger.WithFields(logrus.Fields{
-		"height": blockWrapper.block.BlockHeader.Number,
-		"count":  len(blockWrapper.block.Transactions),
+		"height": commitEvent.Block.BlockHeader.Number,
+		"count":  len(commitEvent.Block.Transactions),
 		"elapse": time.Since(current),
 	}).Info("Executed block")
 
@@ -144,26 +143,6 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	exec.currentHeight = block.BlockHeader.Number
 	exec.currentBlockHash = block.BlockHash
 	exec.clear()
-
-	return nil
-}
-
-func (exec *BlockExecutor) listenPreExecuteEvent() {
-	for {
-		select {
-		case commitEvent := <-exec.preBlockC:
-			now := time.Now()
-			blockWrapper := exec.verifySign(commitEvent)
-			exec.logger.WithFields(logrus.Fields{
-				"height": commitEvent.Block.BlockHeader.Number,
-				"count":  len(commitEvent.Block.Transactions),
-				"elapse": time.Since(now),
-			}).Debug("Verified signature")
-			exec.blockC <- blockWrapper
-		case <-exec.ctx.Done():
-			return
-		}
-	}
 }
 
 func (exec *BlockExecutor) buildTxMerkleTree(txs []*types.Transaction) (*types.Hash, error) {
@@ -175,44 +154,6 @@ func (exec *BlockExecutor) buildTxMerkleTree(txs []*types.Transaction) (*types.H
 	}
 
 	return hash, nil
-}
-
-func (exec *BlockExecutor) verifySign(commitEvent *types.CommitEvent) *BlockWrapper {
-	blockWrapper := &BlockWrapper{
-		block:     commitEvent.Block,
-		invalidTx: make(map[int]InvalidReason),
-	}
-
-	if commitEvent.Block.BlockHeader.Number == 1 {
-		return blockWrapper
-	}
-
-	var (
-		wg    sync.WaitGroup
-		mutex sync.Mutex
-	)
-	txs := commitEvent.Block.Transactions
-	txsLen := len(commitEvent.LocalList)
-	wg.Add(len(txs))
-	for i, tx := range txs {
-		// if the tx is received from api, we will pass the verify.
-		if txsLen > i && commitEvent.LocalList[i] {
-			wg.Done()
-			continue
-		}
-		go func(i int, tx *types.Transaction) {
-			defer wg.Done()
-			err := tx.VerifySignature()
-			if err != nil {
-				mutex.Lock()
-				defer mutex.Unlock()
-				blockWrapper.invalidTx[i] = InvalidReason(err.Error())
-			}
-		}(i, tx)
-	}
-	wg.Wait()
-
-	return blockWrapper
 }
 
 func (exec *BlockExecutor) postBlockEvent(block *types.Block, txHashList []*types.Hash) {
@@ -238,7 +179,7 @@ func (exec *BlockExecutor) postLogsEvent(receipts []*types.Receipt) {
 }
 
 // TODO: process invalidReason
-func (exec *BlockExecutor) applyTransaction(i int, tx *types.Transaction, _ InvalidReason) *types.Receipt {
+func (exec *BlockExecutor) applyTransaction(i int, tx *types.Transaction) *types.Receipt {
 	defer func() {
 		exec.ledger.SetNonce(tx.GetFrom(), tx.GetNonce()+1)
 		exec.ledger.Finalise(true)

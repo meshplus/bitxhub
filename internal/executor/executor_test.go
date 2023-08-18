@@ -89,7 +89,6 @@ func TestNew(t *testing.T) {
 
 	assert.Equal(t, mockLedger, executor.ledger)
 	assert.Equal(t, logger, executor.logger)
-	assert.NotNil(t, executor.preBlockC)
 	assert.NotNil(t, executor.blockC)
 	assert.NotNil(t, executor.persistC)
 	assert.Equal(t, chainMeta.BlockHash, executor.currentBlockHash)

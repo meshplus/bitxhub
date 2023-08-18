@@ -5,15 +5,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/axiomesh/axiom-kit/log"
+	"github.com/axiomesh/axiom/internal/order"
+	"github.com/axiomesh/axiom/internal/peermgr/mock_peermgr"
+	"github.com/axiomesh/axiom/pkg/repo"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/axiomesh/axiom-kit/log"
 	"github.com/axiomesh/axiom-kit/types"
-	"github.com/axiomesh/axiom/internal/order"
-	"github.com/axiomesh/axiom/internal/peermgr/mock_peermgr"
-	"github.com/axiomesh/axiom/pkg/repo"
 )
 
 func TestNode_Start(t *testing.T) {
@@ -44,6 +44,9 @@ func TestNode_Start(t *testing.T) {
 		order.WithApplied(1),
 		order.WithGetAccountNonceFunc(func(address *types.Address) uint64 {
 			return 0
+		}),
+		order.WithGetAccountBalanceFunc(func(address *types.Address) *big.Int {
+			return big.NewInt(adminBalance)
 		}),
 	)
 	require.Nil(t, err)

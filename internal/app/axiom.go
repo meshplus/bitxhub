@@ -83,7 +83,7 @@ func NewAxiom(rep *repo.Repo) (*Axiom, error) {
 		order.WithApplied(chainMeta.Height),
 		order.WithDigest(chainMeta.BlockHash.String()),
 		order.WithGetChainMetaFunc(bxh.Ledger.GetChainMeta),
-		order.WithGetBlockByHeightFunc(bxh.Ledger.GetBlock),
+		order.WithGetAccountBalanceFunc(bxh.Ledger.Copy().GetBalance),
 		order.WithGetAccountNonceFunc(bxh.Ledger.Copy().GetNonce),
 	)
 	if err != nil {
