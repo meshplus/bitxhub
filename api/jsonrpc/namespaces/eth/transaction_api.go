@@ -6,9 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Rican7/retry"
-	"github.com/Rican7/retry/backoff"
-	"github.com/Rican7/retry/strategy"
+	"github.com/axiomesh/axiom-kit/storage"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	types3 "github.com/ethereum/go-ethereum/core/types"
@@ -120,12 +118,25 @@ func (api *TransactionAPI) GetTransactionCount(address common.Address, blockNrOr
 func (api *TransactionAPI) GetTransactionByHash(hash common.Hash) (*rpctypes.RPCTransaction, error) {
 	api.logger.Debugf("eth_getTransactionByHash, hash: %s", hash.String())
 
-	ethTx, meta, err := getEthTransactionByHash(api.api, api.logger, types.NewHash(hash.Bytes()))
-	if err != nil {
+	typesHash := types.NewHash(hash.Bytes())
+	tx, err := api.api.Broker().GetTransaction(typesHash)
+	if err != nil && err != storage.ErrorNotFound {
 		return nil, err
 	}
+	if tx != nil {
+		meta, err := api.api.Broker().GetTransactionMeta(typesHash)
+		if err != nil {
+			return nil, fmt.Errorf("get tx meta from ledger: %w", err)
+		}
+		return NewRPCTransaction(tx, common.BytesToHash(meta.BlockHash.Bytes()), meta.BlockHeight, meta.Index), nil
+	}
 
-	return newRPCTransaction(ethTx, common.BytesToHash(meta.BlockHash.Bytes()), meta.BlockHeight, meta.Index), nil
+	// retrieve tx from the pool
+	if poolTx := api.api.Broker().GetPoolTransaction(typesHash); poolTx != nil {
+		return NewRPCTransaction(tx, common.Hash{}, 0, 0), nil
+	}
+
+	return nil, nil
 }
 
 // GetTransactionReceipt returns the transaction receipt identified by hash.
@@ -262,7 +273,7 @@ func getTxByBlockInfoAndIndex(api api.CoreAPI, mode string, key string, idx hexu
 		return nil, err
 	}
 
-	return newRPCTransaction(tx, common.BytesToHash(meta.BlockHash.Bytes()), meta.BlockHeight, meta.Index), nil
+	return NewRPCTransaction(tx, common.BytesToHash(meta.BlockHash.Bytes()), meta.BlockHeight, meta.Index), nil
 }
 
 func checkTransaction(logger logrus.FieldLogger, tx *types.Transaction) error {
@@ -307,41 +318,4 @@ func sendTransaction(api api.CoreAPI, tx *types.Transaction) (common.Hash, error
 	}
 
 	return tx.GetHash().ETHHash(), nil
-}
-
-func getEthTransactionByHash(api api.CoreAPI, logger logrus.FieldLogger, hash *types.Hash) (*types.Transaction, *types.TransactionMeta, error) {
-	var err error
-	meta := &types.TransactionMeta{}
-
-	tx := api.Broker().GetPoolTransaction(hash)
-	if tx == nil {
-		logger.Debugf("tx %s is not in mempool", hash.String())
-		tx, err = api.Broker().GetTransaction(hash)
-		if err != nil {
-			logger.Debugf("tx %s is not in ledger", hash.String())
-			return nil, nil, fmt.Errorf("get tx from ledger: %w", err)
-		}
-
-		meta, err = api.Broker().GetTransactionMeta(hash)
-		if err != nil {
-			logger.Debugf("tx meta for %s is not found", hash.String())
-			return nil, nil, fmt.Errorf("get tx meta from ledger: %w", err)
-		}
-	} else {
-		logger.Debugf("tx %s is found in mempool", hash.String())
-		err = retry.Retry(func(attempt uint) error {
-			meta, err = api.Broker().GetTransactionMeta(hash)
-			if err != nil {
-				logger.Debugf("tx meta for %s is not found", hash.String())
-				return err
-			}
-			return nil
-		}, strategy.Limit(5), strategy.Backoff(backoff.Fibonacci(200*time.Millisecond)))
-		if err != nil {
-			meta = &types.TransactionMeta{}
-			return nil, meta, err
-		}
-	}
-
-	return tx, meta, nil
 }

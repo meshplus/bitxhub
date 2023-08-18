@@ -50,7 +50,7 @@ const (
 	// MinedAndPendingLogsSubscription queries for logs in mined and pending blocks.
 	MinedAndPendingLogsSubscription
 
-	// PendingTransactionsSubscription queries tx hashes for pending
+	// PendingTransactionsSubscription queries for pending
 	// transactions entering the pending state
 	PendingTransactionsSubscription
 
@@ -77,13 +77,12 @@ const (
 )
 
 type subscription struct {
-	id       rpc.ID
-	typ      Type
-	created  time.Time
-	logsCrit FilterQuery
-	logs     chan []*types.EvmLog
-	//todo use Transaction instead of Hash
-	hashes    chan []*types.Hash
+	id        rpc.ID
+	typ       Type
+	created   time.Time
+	logsCrit  FilterQuery
+	logs      chan []*types.EvmLog
+	txs       chan []*types.Transaction
 	headers   chan *types.BlockHeader
 	installed chan struct{} // closed when the filter is installed
 	err       chan error    // closed when the filter is uninstalled
@@ -177,7 +176,7 @@ func (sub *Subscription) Unsubscribe() {
 	sub.unsubOnce.Do(func() {
 	uninstallLoop:
 		for {
-			// write uninstall request and consume logs/hashes. This prevents
+			// write uninstall request and consume logs/txs. This prevents
 			// the eventLoop broadcast method to deadlock when writing to the
 			// filter event channel while the subscription loop is waiting for
 			// this method to return (and thus not reading these events).
@@ -185,7 +184,7 @@ func (sub *Subscription) Unsubscribe() {
 			case sub.es.uninstall <- sub.f:
 				break uninstallLoop
 			case <-sub.f.logs:
-			case <-sub.f.hashes:
+			case <-sub.f.txs:
 			case <-sub.f.headers:
 			}
 		}
@@ -252,7 +251,7 @@ func (es *EventSystem) subscribeMinedPendingLogs(crit FilterQuery, logs chan []*
 		logsCrit:  crit,
 		created:   time.Now(),
 		logs:      logs,
-		hashes:    make(chan []*types.Hash),
+		txs:       make(chan []*types.Transaction),
 		headers:   make(chan *types.BlockHeader),
 		installed: make(chan struct{}),
 		err:       make(chan error),
@@ -269,7 +268,7 @@ func (es *EventSystem) subscribeLogs(crit FilterQuery, logs chan []*types.EvmLog
 		logsCrit:  crit,
 		created:   time.Now(),
 		logs:      logs,
-		hashes:    make(chan []*types.Hash),
+		txs:       make(chan []*types.Transaction),
 		headers:   make(chan *types.BlockHeader),
 		installed: make(chan struct{}),
 		err:       make(chan error),
@@ -277,7 +276,7 @@ func (es *EventSystem) subscribeLogs(crit FilterQuery, logs chan []*types.EvmLog
 	return es.subscribe(sub)
 }
 
-// subscribePendingLogs creates a subscription that writes transaction hashes for
+// subscribePendingLogs creates a subscription that writes transaction txs for
 // transactions that enter the transaction pool.
 func (es *EventSystem) subscribePendingLogs(crit FilterQuery, logs chan []*types.EvmLog) *Subscription {
 	sub := &subscription{
@@ -286,7 +285,7 @@ func (es *EventSystem) subscribePendingLogs(crit FilterQuery, logs chan []*types
 		logsCrit:  crit,
 		created:   time.Now(),
 		logs:      logs,
-		hashes:    make(chan []*types.Hash),
+		txs:       make(chan []*types.Transaction),
 		headers:   make(chan *types.BlockHeader),
 		installed: make(chan struct{}),
 		err:       make(chan error),
@@ -302,7 +301,7 @@ func (es *EventSystem) SubscribeNewHeads(headers chan *types.BlockHeader) *Subsc
 		typ:       BlocksSubscription,
 		created:   time.Now(),
 		logs:      make(chan []*types.EvmLog),
-		hashes:    make(chan []*types.Hash),
+		txs:       make(chan []*types.Transaction),
 		headers:   headers,
 		installed: make(chan struct{}),
 		err:       make(chan error),
@@ -310,15 +309,15 @@ func (es *EventSystem) SubscribeNewHeads(headers chan *types.BlockHeader) *Subsc
 	return es.subscribe(sub)
 }
 
-// SubscribePendingTxs creates a subscription that writes transaction hashes for
+// SubscribePendingTxs creates a subscription that writes transaction txs for
 // transactions that enter the transaction pool.
-func (es *EventSystem) SubscribePendingTxs(hashes chan []*types.Hash) *Subscription {
+func (es *EventSystem) SubscribePendingTxs(txs chan []*types.Transaction) *Subscription {
 	sub := &subscription{
 		id:        rpc.NewID(),
 		typ:       PendingTransactionsSubscription,
 		created:   time.Now(),
 		logs:      make(chan []*types.EvmLog),
-		hashes:    hashes,
+		txs:       txs,
 		headers:   make(chan *types.BlockHeader),
 		installed: make(chan struct{}),
 		err:       make(chan error),
@@ -354,12 +353,8 @@ func (es *EventSystem) handlePendingLogs(filters filterIndex, ev []*types.EvmLog
 }
 
 func (es *EventSystem) handleTxsEvent(filters filterIndex, ev []*types.Transaction) {
-	hashes := make([]*types.Hash, 0, len(ev))
-	for _, tx := range ev {
-		hashes = append(hashes, tx.GetHash())
-	}
 	for _, f := range filters[PendingTransactionsSubscription] {
-		f.hashes <- hashes
+		f.txs <- ev
 	}
 }
 

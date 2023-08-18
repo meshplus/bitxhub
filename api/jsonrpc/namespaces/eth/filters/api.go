@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/axiomesh/axiom-kit/types"
+	"github.com/axiomesh/axiom/api/jsonrpc/namespaces/eth"
 	rpctypes "github.com/axiomesh/axiom/api/jsonrpc/types"
 	"github.com/axiomesh/axiom/internal/coreapi/api"
 	"github.com/ethereum/go-ethereum"
@@ -43,6 +44,8 @@ type filter struct {
 	typ      Type
 	deadline *time.Timer // filter is inactiv when deadline triggers
 	hashes   []*types.Hash
+	fullTx   bool
+	txs      []*types.Transaction
 	crit     FilterQuery
 	logs     []*types.EvmLog
 	s        *Subscription // associated subscription in event system
@@ -105,21 +108,21 @@ func (api *FilterAPI) timeoutLoop() {
 	}
 }
 
-// NewPendingTransactionFilter creates a filter that fetches pending transaction hashes
+// NewPendingTransactionFilter creates a filter that fetches pending transaction txs
 // as transactions enter the pending state.
 //
 // It is part of the filter package because this filter can be used through the
 // `eth_getFilterChanges` polling method that is also used for log filters.
 //
 // https://eth.wiki/json-rpc/API#eth_newpendingtransactionfilter
-func (api *FilterAPI) NewPendingTransactionFilter() rpc.ID {
+func (api *FilterAPI) NewPendingTransactionFilter(fullTx *bool) rpc.ID {
 	var (
-		pendingTxs   = make(chan []*types.Hash)
+		pendingTxs   = make(chan []*types.Transaction)
 		pendingTxSub = api.events.SubscribePendingTxs(pendingTxs)
 	)
 
 	api.filtersMu.Lock()
-	api.filters[pendingTxSub.ID] = &filter{typ: PendingTransactionsSubscription, deadline: time.NewTimer(api.timeout), hashes: make([]*types.Hash, 0), s: pendingTxSub}
+	api.filters[pendingTxSub.ID] = &filter{typ: PendingTransactionsSubscription, fullTx: fullTx != nil && *fullTx, deadline: time.NewTimer(api.timeout), txs: make([]*types.Transaction, 0), s: pendingTxSub}
 	api.filtersMu.Unlock()
 
 	go func() {
@@ -128,7 +131,7 @@ func (api *FilterAPI) NewPendingTransactionFilter() rpc.ID {
 			case ph := <-pendingTxs:
 				api.filtersMu.Lock()
 				if f, found := api.filters[pendingTxSub.ID]; found {
-					f.hashes = append(f.hashes, ph...)
+					f.txs = append(f.txs, ph...)
 				}
 				api.filtersMu.Unlock()
 			case <-pendingTxSub.Err():
@@ -145,7 +148,7 @@ func (api *FilterAPI) NewPendingTransactionFilter() rpc.ID {
 
 // NewPendingTransactions creates a subscription that is triggered each time a transaction
 // enters the transaction pool and was signed from one of the transactions this nodes manages.
-func (api *FilterAPI) NewPendingTransactions(ctx context.Context) (*rpc.Subscription, error) {
+func (api *FilterAPI) NewPendingTransactions(ctx context.Context, fullTx *bool) (*rpc.Subscription, error) {
 	notifier, supported := rpc.NotifierFromContext(ctx)
 	if !supported {
 		return &rpc.Subscription{}, rpc.ErrNotificationsUnsupported
@@ -154,19 +157,28 @@ func (api *FilterAPI) NewPendingTransactions(ctx context.Context) (*rpc.Subscrip
 	rpcSub := notifier.CreateSubscription()
 
 	go func() {
-		txHashes := make(chan []*types.Hash, 128)
-		pendingTxSub := api.events.SubscribePendingTxs(txHashes)
+		txs := make(chan []*types.Transaction, 128)
+		pendingTxSub := api.events.SubscribePendingTxs(txs)
 
 		for {
 			select {
-			case hashes := <-txHashes:
+			case txs := <-txs:
 				// To keep the original behaviour, send a single tx hash in one notification.
-				// TODO(rjl493456442) Send a batch of tx hashes in one notification
-				for _, h := range hashes {
-					err := notifier.Notify(rpcSub.ID, h.ETHHash())
-					if err != nil {
-						api.logger.Warn("notifier notify error", err)
+				// TODO(rjl493456442) Send a batch of tx txs in one notification
+				for _, tx := range txs {
+					if fullTx != nil && *fullTx {
+						rpcTx := eth.NewRPCTransaction(tx, common.Hash{}, 0, 0)
+						err := notifier.Notify(rpcSub.ID, rpcTx)
+						if err != nil {
+							api.logger.Warn("notifier notify error", err)
+						}
+					} else {
+						err := notifier.Notify(rpcSub.ID, tx.GetHash().ETHHash())
+						if err != nil {
+							api.logger.Warn("notifier notify error", err)
+						}
 					}
+
 				}
 			case <-rpcSub.Err():
 				pendingTxSub.Unsubscribe()
