@@ -256,6 +256,7 @@ func (n *Node) listenEvent() {
 						}
 					}
 				}
+				go n.txFeed.Send([]*types.Transaction{tx})
 				e.RespCh <- txcache.TxResp{Status: true}
 
 			// handle timeout event
