@@ -2,19 +2,13 @@ package repo
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path"
-	"path/filepath"
 	"reflect"
-	"strconv"
-	"strings"
 	"time"
 
-	"github.com/mitchellh/go-homedir"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
-	"github.com/spf13/viper"
 
 	"github.com/axiomesh/axiom-kit/fileutil"
 )
@@ -148,18 +142,20 @@ type LogModule struct {
 }
 
 type Genesis struct {
-	ChainID       uint64   `mapstructure:"chainid" toml:"chainid"`
-	GasLimit      uint64   `mapstructure:"gas_limit" toml:"gas_limit"`
-	GasPrice      uint64   `mapstructure:"gas_price" toml:"gas_price"`
-	MaxGasPrice   uint64   `mapstructure:"max_gas_price" toml:"max_gas_price"`
-	MinGasPrice   uint64   `mapstructure:"min_gas_price" toml:"min_gas_price"`
-	GasChangeRate float64  `mapstructure:"gas_change_rate" toml:"gas_change_rate"`
-	Balance       string   `mapstructure:"balance" toml:"balance"`
-	Admins        []*Admin `mapstructure:"admins" toml:"admins"`
+	ChainID       uint64    `mapstructure:"chainid" toml:"chainid"`
+	GasLimit      uint64    `mapstructure:"gas_limit" toml:"gas_limit"`
+	GasPrice      uint64    `mapstructure:"gas_price" toml:"gas_price"`
+	MaxGasPrice   uint64    `mapstructure:"max_gas_price" toml:"max_gas_price"`
+	MinGasPrice   uint64    `mapstructure:"min_gas_price" toml:"min_gas_price"`
+	GasChangeRate float64   `mapstructure:"gas_change_rate" toml:"gas_change_rate"`
+	Balance       string    `mapstructure:"balance" toml:"balance"`
+	Admins        []*Admin  `mapstructure:"admins" toml:"admins"`
+	Members       []*Member `mapstructure:"members" toml:"members"`
 }
 
 type Admin struct {
 	Address string `mapstructure:"address" toml:"address"`
+	Weight  uint64 `mapstructure:"weight" toml:"weight"`
 }
 
 type Txpool struct {
@@ -168,8 +164,7 @@ type Txpool struct {
 }
 
 type Order struct {
-	Type   string `mapstructure:"type" toml:"type"`
-	Txpool Txpool `mapstructure:"txpool" toml:"txpool"`
+	Type string `mapstructure:"type" toml:"type"`
 }
 
 type Ledger struct {
@@ -177,6 +172,10 @@ type Ledger struct {
 }
 
 type Executor struct {
+}
+
+type Member struct {
+	NodeId string `mapstructure:"node_id" toml:"node_id"`
 }
 
 func (c *Config) Bytes() ([]byte, error) {
@@ -221,10 +220,6 @@ func DefaultConfig(repoRoot string) *Config {
 		},
 		Order: Order{
 			Type: "rbft",
-			Txpool: Txpool{
-				BatchSize:    500,
-				BatchTimeout: Duration(500 * time.Millisecond),
-			},
 		},
 		Ledger: Ledger{
 			Kv: "leveldb",
@@ -241,15 +236,33 @@ func DefaultConfig(repoRoot string) *Config {
 			Admins: []*Admin{
 				{
 					Address: "0xc7F999b83Af6DF9e67d0a37Ee7e900bF38b3D013",
+					Weight:  1,
 				},
 				{
 					Address: "0x79a1215469FaB6f9c63c1816b45183AD3624bE34",
+					Weight:  1,
 				},
 				{
 					Address: "0x97c8B516D19edBf575D72a172Af7F418BE498C37",
+					Weight:  1,
 				},
 				{
 					Address: "0xc0Ff2e0b3189132D815b8eb325bE17285AC898f8",
+					Weight:  1,
+				},
+			},
+			Members: []*Member{
+				{
+					NodeId: "16Uiu2HAmJ38LwfY6pfgDWNvk3ypjcpEMSePNTE6Ma2NCLqjbZJSF",
+				},
+				{
+					NodeId: "16Uiu2HAmRypzJbdbUNYsCV2VVgv9UryYS5d7wejTJXT73mNLJ8AK",
+				},
+				{
+					NodeId: "16Uiu2HAmTwEET536QC9MZmYFp1NUshjRuaq5YSH1sLjW65WasvRk",
+				},
+				{
+					NodeId: "16Uiu2HAmQBFTnRr84M3xNhi3EcWmgZnnBsDgewk4sNtpA3smBsHJ",
 				},
 			},
 		},
@@ -271,7 +284,7 @@ func DefaultConfig(repoRoot string) *Config {
 			Module: LogModule{
 				P2P:       "info",
 				Consensus: "info",
-				Executor:  "debug",
+				Executor:  "info",
 				Router:    "info",
 				API:       "info",
 				CoreAPI:   "info",
@@ -300,14 +313,14 @@ func LoadConfig(repoRoot string) (*Config, error) {
 				return nil, errors.Wrap(err, "failed to build default config")
 			}
 
-			if err := writeConfig(cfgPath, cfg); err != nil {
+			if err := writeConfigWithEnv(cfgPath, cfg); err != nil {
 				return nil, errors.Wrap(err, "failed to build default config")
 			}
 		} else {
 			if err := CheckWritable(rootPath); err != nil {
 				return nil, err
 			}
-			if err = readConfig(cfgPath, cfg); err != nil {
+			if err = readConfigFromFile(cfgPath, cfg); err != nil {
 				return nil, err
 			}
 		}
@@ -318,94 +331,4 @@ func LoadConfig(repoRoot string) (*Config, error) {
 		return nil, errors.Wrap(err, "failed to load config")
 	}
 	return cfg, nil
-}
-
-func LoadRepoRootFromEnv(repoRoot string) (string, error) {
-	if repoRoot != "" {
-		return repoRoot, nil
-	}
-	repoRoot = os.Getenv(rootPathEnvVar)
-	var err error
-	if len(repoRoot) == 0 {
-		repoRoot, err = homedir.Expand(defaultRepoRoot)
-	}
-	return repoRoot, err
-}
-
-func readConfig(cfgFilePath string, config any) error {
-	vp := viper.New()
-	vp.SetConfigFile(cfgFilePath)
-	vp.SetConfigType("toml")
-	vp.AutomaticEnv()
-	vp.SetEnvPrefix("AXIOM")
-	replacer := strings.NewReplacer(".", "_")
-	vp.SetEnvKeyReplacer(replacer)
-	err := vp.ReadInConfig()
-	if err != nil {
-		return err
-	}
-
-	if err := vp.Unmarshal(config, viper.DecodeHook(mapstructure.ComposeDecodeHookFunc(
-		StringToTimeDurationHookFunc(),
-		mapstructure.StringToSliceHookFunc(";"),
-	))); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func WritePid(rootPath string) error {
-	pid := os.Getpid()
-	pidStr := strconv.Itoa(pid)
-	if err := os.WriteFile(filepath.Join(rootPath, pidFileName), []byte(pidStr), 0755); err != nil {
-		return errors.Wrap(err, "failed to write pid file")
-	}
-	return nil
-}
-
-func RemovePID(rootPath string) error {
-	return os.Remove(filepath.Join(rootPath, pidFileName))
-}
-
-func WriteDebugInfo(rootPath string, debugInfo any) error {
-	p := filepath.Join(rootPath, debugFileName)
-	_ = os.Remove(p)
-
-	raw, err := json.Marshal(debugInfo)
-	if err != nil {
-		return err
-	}
-	if err := os.WriteFile(p, raw, 0755); err != nil {
-		return errors.Wrap(err, "failed to write debug info file")
-	}
-	return nil
-}
-
-func CheckWritable(dir string) error {
-	_, err := os.Stat(dir)
-	if err == nil {
-		// dir exists, make sure we can write to it
-		testfile := filepath.Join(dir, "test")
-		fi, err := os.Create(testfile)
-		if err != nil {
-			if os.IsPermission(err) {
-				return fmt.Errorf("%s is not writeable by the current user", dir)
-			}
-			return fmt.Errorf("unexpected error while checking writeablility of repo root: %s", err)
-		}
-		fi.Close()
-		return os.Remove(testfile)
-	}
-
-	if os.IsNotExist(err) {
-		// dir doesn't exist, check that we can create it
-		return os.Mkdir(dir, 0775)
-	}
-
-	if os.IsPermission(err) {
-		return fmt.Errorf("cannot write to %s, incorrect permissions", err)
-	}
-
-	return err
 }

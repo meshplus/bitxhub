@@ -129,8 +129,6 @@ func generateRbftConfig(config *order.Config) (rbft.Config[types.Transaction, *t
 		Logger:              defaultConfig.Logger,
 		BatchSize:           readConfig.Mempool.BatchSize,
 		PoolSize:            readConfig.Mempool.PoolSize,
-		BatchMemLimit:       readConfig.Mempool.BatchMemLimit,
-		BatchMaxMem:         readConfig.Mempool.BatchMaxMem,
 		ToleranceTime:       readConfig.Mempool.ToleranceTime.ToDuration(),
 		ToleranceRemoveTime: readConfig.Mempool.ToleranceRemoveTime.ToDuration(),
 		GetAccountNonce:     fn,

@@ -1,11 +1,11 @@
 package genesis
 
 import (
-	"math/big"
 	"time"
 
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/internal/executor"
+	"github.com/axiomesh/axiom/internal/executor/system"
 	"github.com/axiomesh/axiom/internal/ledger"
 	"github.com/axiomesh/axiom/pkg/repo"
 )
@@ -14,9 +14,9 @@ import (
 func Initialize(genesis *repo.Genesis, nodes []*repo.NetworkNodes, primaryN uint64, lg *ledger.Ledger, executor executor.Executor) error {
 	lg.PrepareBlock(nil, 1)
 
-	balance, _ := new(big.Int).SetString(genesis.Balance, 10)
-	for _, admin := range genesis.Admins {
-		lg.SetBalance(types.NewAddressByStr(admin.Address), balance)
+	err := system.InitGenesisData(genesis, lg)
+	if err != nil {
+		return err
 	}
 
 	accounts, stateRoot := lg.FlushDirtyData()

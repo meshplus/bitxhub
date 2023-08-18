@@ -6,40 +6,63 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/axiomesh/axiom-kit/types"
-	vm "github.com/axiomesh/eth-kit/evm"
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/sirupsen/logrus"
+
+	"github.com/axiomesh/axiom/internal/executor/system/common"
+	vm "github.com/axiomesh/eth-kit/evm"
 )
 
 var (
-	ErrMethodName = errors.New("no this method")
-	ErrVoteResult = errors.New("vote result is invalid")
+	ErrMethodName       = errors.New("no this method")
+	ErrVoteResult       = errors.New("vote result is invalid")
+	ErrProposalType     = errors.New("proposal type is invalid")
+	ErrUser             = errors.New("user is invalid")
+	ErrUseHasVoted      = errors.New("user has already voted")
+	ErrTitle            = errors.New("title is invalid")
+	ErrTooLongTitle     = errors.New("title is too long, max is 200 characters")
+	ErrDesc             = errors.New("description is invalid")
+	ErrTooLongDesc      = errors.New("description is too long, max is 10000 characters")
+	ErrBlockNumber      = errors.New("block number is invalid")
+	ErrProposalID       = errors.New("proposal id is invalid")
+	ErrProposalFinished = errors.New("proposal has already finished")
 )
 
 const jsondata = `
 [
-	{"type": "function", "name": "proposal", "inputs": [{"name": "proposalType", "type": "uint8"}, {"name": "title", "type": "string"}, {"name": "desc", "type": "string"}, {"name": "blockNumber", "type": "uint64"}, {"name": "extra", "type": "bytes"}], "outputs": [{"name": "proposalId", "type": "uint64"}]},
+	{"type": "function", "name": "propose", "inputs": [{"name": "proposalType", "type": "uint8"}, {"name": "title", "type": "string"}, {"name": "desc", "type": "string"}, {"name": "blockNumber", "type": "uint64"}, {"name": "extra", "type": "bytes"}], "outputs": [{"name": "proposalId", "type": "uint64"}]},
 	{"type": "function", "name": "vote", "inputs": [{"name": "proposalId", "type": "uint64"}, {"name": "voteResult", "type": "uint8"}, {"name": "extra", "type": "bytes"}]}
 ]
 `
 
 const (
-	ProposalMethod = "proposal"
+	ProposeMethod  = "propose"
 	VoteMethod     = "vote"
+	MaxTitleLength = 200
+	MaxDescLength  = 10000
 )
 
 var method2Sig = map[string]string{
-	ProposalMethod: "proposal(uint8,string,string,uint64,bytes)",
-	VoteMethod:     "vote(uint64,uint8,bytes)",
+	ProposeMethod: "propose(uint8,string,string,uint64,bytes)",
+	VoteMethod:    "vote(uint64,uint8,bytes)",
 }
 
 type ProposalType uint8
 
 const (
-	// NodeUpdate is a proposal for update and upgrade the node
-	NodeUpdate ProposalType = iota
+	// CouncilElect is a proposal for elect the council
+	CouncilElect ProposalType = iota
+
+	// NodeUpdate is a proposal for update or upgrade the node
+	NodeUpdate
+
+	// NodeAdd is a proposal for adding a new node
+	NodeAdd
+
+	// NodeRemove is a proposal for removing a node
+	NodeRemove
 )
 
 type VoteResult uint8
@@ -47,42 +70,49 @@ type VoteResult uint8
 const (
 	Pass VoteResult = iota
 	Reject
-	Abstain
 )
 
-type ProposalArg struct {
+type BaseProposalArgs struct {
 	ProposalType uint8
 	Title        string
 	Desc         string
 	BlockNumber  uint64
-	Extra        []byte
 }
 
-type VoteArg struct {
+type ProposalArgs struct {
+	BaseProposalArgs
+	Extra []byte
+}
+
+type BaseVoteArgs struct {
 	ProposalId uint64
 	VoteResult uint8
-	Extra      []byte
+}
+
+type VoteArgs struct {
+	BaseVoteArgs
+	Extra []byte
 }
 
 type Governance struct {
-	proposalType ProposalType
-	logger       logrus.FieldLogger
+	proposalTypes []ProposalType
+	logger        logrus.FieldLogger
 
 	gabi       *abi.ABI
-	method2Sig map[string]string
+	method2Sig map[string][]byte
 }
 
-func NewGov(proposalType ProposalType, logger logrus.FieldLogger) (*Governance, error) {
+func NewGov(proposalTypes []ProposalType, logger logrus.FieldLogger) (*Governance, error) {
 	gabi, err := GetABI()
 	if err != nil {
 		return nil, err
 	}
 
 	return &Governance{
-		proposalType: proposalType,
-		logger:       logger,
-		gabi:         gabi,
-		method2Sig:   method2Sig,
+		proposalTypes: proposalTypes,
+		logger:        logger,
+		gabi:          gabi,
+		method2Sig:    initMethodSignature(),
 	}, nil
 }
 
@@ -95,14 +125,22 @@ func GetABI() (*abi.ABI, error) {
 	return &gabi, nil
 }
 
+func initMethodSignature() map[string][]byte {
+	m2sig := make(map[string][]byte)
+	for methodName, methodSig := range method2Sig {
+		m2sig[methodName] = crypto.Keccak256([]byte(methodSig))
+	}
+	return m2sig
+}
+
 // GetMethodName quickly returns the name of a method.
 // This is a quick way to get the name of a method.
 // The method name is the first 4 bytes of the keccak256 hash of the method signature.
 // If the method name is not found, the empty string is returned.
 func (g *Governance) GetMethodName(data []byte) (string, error) {
 	for methodName, methodSig := range g.method2Sig {
-		id := crypto.Keccak256([]byte(methodSig))[:4]
-		g.logger.Infof("method id: %v, get method id: %v", id, data[:4])
+		id := methodSig[:4]
+		g.logger.Debugf("method id: %v, get method id: %v", id, data[:4])
 		if bytes.Equal(id, data[:4]) {
 			return methodName, nil
 		}
@@ -112,7 +150,7 @@ func (g *Governance) GetMethodName(data []byte) (string, error) {
 }
 
 // ParseArgs parse the arguments to specified interface by method name
-func (g *Governance) ParseArgs(msg *vm.Message, methodName string, ret interface{}) error {
+func (g *Governance) ParseArgs(msg *vm.Message, methodName string, ret any) error {
 	if len(msg.Data) < 4 {
 		return fmt.Errorf("msg data length is not improperly formatted: %q - Bytes: %+v", msg.Data, msg.Data)
 	}
@@ -140,7 +178,7 @@ func (g *Governance) ParseArgs(msg *vm.Message, methodName string, ret interface
 }
 
 // GetArgs get system contract arguments from a message
-func (g *Governance) GetArgs(msg *vm.Message) (interface{}, error) {
+func (g *Governance) GetArgs(msg *vm.Message) (any, error) {
 	data := msg.Data
 	if data == nil {
 		return nil, vm.ErrExecutionReverted
@@ -152,48 +190,111 @@ func (g *Governance) GetArgs(msg *vm.Message) (interface{}, error) {
 	}
 
 	switch method {
-	case ProposalMethod:
-		proposalArg := &ProposalArg{}
-		if err := g.ParseArgs(msg, ProposalMethod, proposalArg); err != nil {
+	case ProposeMethod:
+		proposalArgs := &ProposalArgs{}
+		if err := g.ParseArgs(msg, ProposeMethod, proposalArgs); err != nil {
 			return nil, err
 		}
-		return proposalArg, nil
+		return proposalArgs, nil
 	case VoteMethod:
-		voteArg := &VoteArg{}
-		if err := g.ParseArgs(msg, VoteMethod, voteArg); err != nil {
+		voteArgs := &VoteArgs{}
+		if err := g.ParseArgs(msg, VoteMethod, voteArgs); err != nil {
 			return nil, err
 		}
-		return voteArg, nil
+		return voteArgs, nil
 	default:
 		return nil, ErrMethodName
 	}
 }
 
-func (g *Governance) Proposal(user types.Address, title, desc string, deadlineBlockNumber uint64) (*BaseProposal, error) {
+func (g *Governance) checkBeforePropose(user *ethcommon.Address, proposalType ProposalType, title, desc string, deadlineBlockNumber uint64) (bool, error) {
+	if user == nil {
+		return false, ErrUser
+	}
+
+	isVaildProposalType := common.IsInSlice[ProposalType](proposalType, g.proposalTypes)
+	if !isVaildProposalType {
+		return false, ErrProposalType
+	}
+
+	if title == "" || len(title) > MaxTitleLength {
+		if title == "" {
+			return false, ErrTitle
+		}
+		return false, ErrTooLongTitle
+	}
+
+	if desc == "" || len(desc) > MaxDescLength {
+		if desc == "" {
+			return false, ErrDesc
+		}
+		return false, ErrTooLongDesc
+	}
+
+	if deadlineBlockNumber == 0 {
+		return false, ErrBlockNumber
+	}
+
+	return true, nil
+}
+
+func (g *Governance) Propose(user *ethcommon.Address, proposalType ProposalType, title, desc string, deadlineBlockNumber uint64) (*BaseProposal, error) {
+	_, err := g.checkBeforePropose(user, proposalType, title, desc, deadlineBlockNumber)
+	if err != nil {
+		return nil, err
+	}
+
 	proposal := &BaseProposal{
-		Type:        g.proposalType,
+		Type:        proposalType,
 		Strategy:    NowProposalStrategy,
 		Proposer:    user.String(),
 		Title:       title,
 		Desc:        desc,
 		BlockNumber: deadlineBlockNumber,
+		Status:      Voting,
 	}
 
 	return proposal, nil
 }
 
+func (g *Governance) checkBeforeVote(user *ethcommon.Address, proposal *BaseProposal, voteResult VoteResult) (bool, error) {
+	if user == nil {
+		return false, ErrUser
+	}
+
+	if proposal.ID == 0 {
+		return false, ErrProposalID
+	}
+
+	if voteResult != Pass && voteResult != Reject {
+		return false, ErrVoteResult
+	}
+
+	// check if user has voted
+	if common.IsInSlice[string](user.String(), proposal.PassVotes) || common.IsInSlice[string](user.String(), proposal.RejectVotes) {
+		return false, ErrUseHasVoted
+	}
+
+	// check proposal status
+	if proposal.Status == Approved || proposal.Status == Rejected {
+		return false, ErrProposalFinished
+	}
+
+	return true, nil
+}
+
 // Vote a proposal, return vote status
-func (g *Governance) Vote(user types.Address, proposal *BaseProposal, voteResult VoteResult) (ProposalStatus, error) {
+func (g *Governance) Vote(user *ethcommon.Address, proposal *BaseProposal, voteResult VoteResult) (ProposalStatus, error) {
+	if _, err := g.checkBeforeVote(user, proposal, voteResult); err != nil {
+		return Voting, err
+	}
+
 	switch voteResult {
 	case Pass:
 		proposal.PassVotes = append(proposal.PassVotes, user.String())
 	case Reject:
 		proposal.RejectVotes = append(proposal.RejectVotes, user.String())
-	case Abstain:
-		proposal.AbstainVotes = append(proposal.AbstainVotes, user.String())
-	default:
-		return Rejected, ErrVoteResult
 	}
 
-	return CalcProposalStatus(proposal.Strategy, proposal.TotalVotes, uint32(len(proposal.PassVotes)), uint32(len(proposal.RejectVotes)), uint32(len(proposal.AbstainVotes))), nil
+	return CalcProposalStatus(proposal.Strategy, proposal.TotalVotes, uint64(len(proposal.PassVotes)), uint64(len(proposal.RejectVotes))), nil
 }

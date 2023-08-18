@@ -52,9 +52,19 @@ var configCMD = &cli.Command{
 			Action: showNetwork,
 		},
 		{
+			Name:   "show-order",
+			Usage:  "Show the complete order config processed by the environment variable",
+			Action: showOrder,
+		},
+		{
 			Name:   "check",
 			Usage:  "Check if the config file is valid",
 			Action: check,
+		},
+		{
+			Name:   "rewrite-with-env",
+			Usage:  "Rewrite config with env",
+			Action: rewriteWithEnv,
 		},
 	},
 }
@@ -184,6 +194,29 @@ func showNetwork(ctx *cli.Context) error {
 	return nil
 }
 
+func showOrder(ctx *cli.Context) error {
+	p, err := getRootPath(ctx)
+	if err != nil {
+		return err
+	}
+	existConfig := fileutil.Exist(p)
+	if !existConfig {
+		fmt.Println("axiom repo not exist")
+		return nil
+	}
+
+	r, err := repo.Load(p)
+	if err != nil {
+		return err
+	}
+	str, err := repo.MarshalConfig(r.OrderConfig)
+	if err != nil {
+		return err
+	}
+	fmt.Println(str)
+	return nil
+}
+
 func check(ctx *cli.Context) error {
 	p, err := getRootPath(ctx)
 	if err != nil {
@@ -202,6 +235,27 @@ func check(ctx *cli.Context) error {
 		return nil
 	}
 
+	return nil
+}
+
+func rewriteWithEnv(ctx *cli.Context) error {
+	p, err := getRootPath(ctx)
+	if err != nil {
+		return err
+	}
+	existConfig := fileutil.Exist(p)
+	if !existConfig {
+		fmt.Println("axiom repo not exist")
+		return nil
+	}
+
+	r, err := repo.Load(p)
+	if err != nil {
+		return err
+	}
+	if err := r.Flush(); err != nil {
+		return err
+	}
 	return nil
 }
 

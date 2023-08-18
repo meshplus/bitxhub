@@ -137,7 +137,7 @@ func GenerateConfig(opts ...Option) (*Config, error) {
 	}
 
 	if err := checkConfig(config); err != nil {
-		return nil, fmt.Errorf("create p2p: %w", err)
+		return nil, fmt.Errorf("create order: %w", err)
 	}
 
 	return config, nil

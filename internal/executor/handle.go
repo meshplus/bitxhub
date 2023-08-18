@@ -2,6 +2,7 @@ package executor
 
 import (
 	"bytes"
+	"fmt"
 	"math/big"
 	"strings"
 	"sync"
@@ -14,13 +15,16 @@ import (
 	"github.com/samber/lo"
 	"github.com/sirupsen/logrus"
 
+	"github.com/axiomesh/axiom-kit/storage"
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/internal/executor/system"
 	"github.com/axiomesh/axiom/internal/ledger"
 	"github.com/axiomesh/axiom/pkg/model/events"
+	"github.com/axiomesh/axiom/pkg/repo"
 	"github.com/axiomesh/eth-kit/adaptor"
-	vm1 "github.com/axiomesh/eth-kit/evm"
-	ledger2 "github.com/axiomesh/eth-kit/ledger"
+	ethvm "github.com/axiomesh/eth-kit/evm"
+	ethledger "github.com/axiomesh/eth-kit/ledger"
+	"github.com/axiomesh/eth-kit/ledger/mock_ledger"
 )
 
 const (
@@ -109,6 +113,8 @@ func (exec *BlockExecutor) processExecuteEvent(blockWrapper *BlockWrapper) *ledg
 	}).Debug("block meta")
 	calcBlockSize.Observe(float64(block.Size()))
 	executeBlockDuration.Observe(float64(time.Since(current)) / float64(time.Second))
+
+	exec.getLogsForReceipt(receipts, block.Height(), block.BlockHash)
 
 	data := &ledger.BlockData{
 		Block:      block,
@@ -251,7 +257,7 @@ func (exec *BlockExecutor) applyEthTransaction(_ int, tx *types.Transaction) *ty
 		TxHash:  tx.GetHash(),
 	}
 
-	var result *vm1.ExecutionResult
+	var result *ethvm.ExecutionResult
 	var err error
 
 	msg := adaptor.TransactionToMessage(tx)
@@ -273,11 +279,11 @@ func (exec *BlockExecutor) applyEthTransaction(_ int, tx *types.Transaction) *ty
 		result, err = contract.Run(msg)
 	} else {
 		// execute evm
-		gp := new(vm1.GasPool).AddGas(exec.gasLimit)
-		txContext := vm1.NewEVMTxContext(msg)
+		gp := new(ethvm.GasPool).AddGas(exec.gasLimit)
+		txContext := ethvm.NewEVMTxContext(msg)
 		exec.evm.Reset(txContext, exec.ledger.StateLedger)
 		exec.logger.Debugf("msg gas: %v", msg.GasPrice)
-		result, err = vm1.ApplyMessage(exec.evm, msg, gp)
+		result, err = ethvm.ApplyMessage(exec.evm, msg, gp)
 	}
 
 	if err != nil {
@@ -292,7 +298,7 @@ func (exec *BlockExecutor) applyEthTransaction(_ int, tx *types.Transaction) *ty
 		exec.logger.Warnf("execute tx failed: %s", result.Err.Error())
 		receipt.Status = types.ReceiptFAILED
 		receipt.Ret = []byte(result.Err.Error())
-		if strings.HasPrefix(result.Err.Error(), vm1.ErrExecutionReverted.Error()) {
+		if strings.HasPrefix(result.Err.Error(), ethvm.ErrExecutionReverted.Error()) {
 			receipt.Ret = append(receipt.Ret, common.CopyBytes(result.ReturnData)...)
 		}
 	} else {
@@ -307,7 +313,7 @@ func (exec *BlockExecutor) applyEthTransaction(_ int, tx *types.Transaction) *ty
 		receipt.ContractAddress = types.NewAddress(crypto.CreateAddress(exec.evm.TxContext.Origin, tx.GetNonce()).Bytes())
 	}
 
-	receipt.EvmLogs = exec.ledger.GetLogs(*tx.GetHash())
+	// receipt.EvmLogs = exec.ledger.GetLogs(*tx.GetHash(), height, blockHash)
 	receipt.Bloom = ledger.CreateBloom(ledger.EvmReceipts{receipt})
 	return receipt
 }
@@ -346,22 +352,36 @@ func calcMerkleRoot(contents []merkletree.Content) (*types.Hash, error) {
 	return types.NewHash(tree.MerkleRoot()), nil
 }
 
-func newEvm(number uint64, timestamp uint64, chainCfg *params.ChainConfig, db ledger2.StateLedger, chainLedger ledger2.ChainLedger, admin string) *vm1.EVM {
-	blkCtx := vm1.NewEVMBlockContext(number, timestamp, db, chainLedger, admin)
+func newEvm(number uint64, timestamp uint64, chainCfg *params.ChainConfig, db ethledger.StateLedger, chainLedger ethledger.ChainLedger, admin string) *ethvm.EVM {
+	blkCtx := ethvm.NewEVMBlockContext(number, timestamp, db, chainLedger, admin)
 
-	return vm1.NewEVM(blkCtx, vm1.TxContext{}, db, chainCfg, vm1.Config{})
+	return ethvm.NewEVM(blkCtx, ethvm.TxContext{}, db, chainCfg, ethvm.Config{})
 }
 
-func (exec *BlockExecutor) GetEvm(txCtx vm1.TxContext, vmConfig vm1.Config) *vm1.EVM {
-	var blkCtx vm1.BlockContext
+func (exec *BlockExecutor) GetEvm(txCtx ethvm.TxContext, vmConfig ethvm.Config) (*ethvm.EVM, error) {
+	var blkCtx ethvm.BlockContext
 	meta := exec.ledger.GetChainMeta()
 	block, err := exec.ledger.GetBlock(meta.Height)
 	if err != nil {
 		exec.logger.Errorf("fail to get block at %d: %v", meta.Height, err.Error())
-		return nil
+		return nil, err
 	}
-	blkCtx = vm1.NewEVMBlockContext(meta.Height, uint64(block.BlockHeader.Timestamp), exec.ledger.StateLedger, exec.ledger.ChainLedger, exec.admins[0])
-	return vm1.NewEVM(blkCtx, txCtx, exec.ledger.StateLedger, exec.evmChainCfg, vmConfig)
+	var ldb storage.Storage
+	switch exec.ledger.StateLedger.(type) {
+	case *ledger.StateLedger:
+		ldb = exec.ledger.StateLedger.(*ledger.StateLedger).GetStorage()
+	case *mock_ledger.MockStateLedger:
+		return &ethvm.EVM{}, nil
+	default:
+		return nil, fmt.Errorf("unsupported stateLedger type: %T", exec.ledger.StateLedger)
+	}
+	stateLedger, err := ledger.NewSimpleLedger(&repo.Repo{Config: &exec.config}, ldb, nil, exec.logger)
+	if err != nil {
+		return nil, err
+	}
+	stateLedger.SetTxContext(types.NewHash([]byte("mockTx")), 0)
+	blkCtx = ethvm.NewEVMBlockContext(meta.Height, uint64(block.BlockHeader.Timestamp), stateLedger, exec.ledger.ChainLedger, exec.admins[0])
+	return ethvm.NewEVM(blkCtx, txCtx, stateLedger, exec.evmChainCfg, vmConfig), nil
 }
 
 // getCurrentGasPrice returns the current block's gas price, which is
@@ -378,4 +398,10 @@ func (exec *BlockExecutor) getCurrentGasPrice() (*big.Int, error) {
 // payGasFee share the revenue to nodes, now it is empty
 // leave the function for the future use.
 func (exec *BlockExecutor) payGasFee(tx *types.Transaction, gasUsed uint64) {
+}
+
+func (exec *BlockExecutor) getLogsForReceipt(receipts []*types.Receipt, height uint64, hash *types.Hash) {
+	for _, receipt := range receipts {
+		receipt.EvmLogs = exec.ledger.GetLogs(*receipt.TxHash, height, hash)
+	}
 }

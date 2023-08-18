@@ -15,7 +15,7 @@ func TestLoadWriteOrderConfig(t *testing.T) {
 	cnf.Mempool.PoolSize = 100
 	cnf.Rbft.CheckpointPeriod = 20
 	cnf.TxCache.SetTimeout = Duration(200 * time.Millisecond)
-	err = writeConfig(path.Join(repoPath, orderCfgFileName), cnf)
+	err = writeConfigWithEnv(path.Join(repoPath, orderCfgFileName), cnf)
 	require.Nil(t, err)
 	cnf2, err := LoadOrderConfig(repoPath)
 	require.Nil(t, err)

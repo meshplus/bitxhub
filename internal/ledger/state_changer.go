@@ -23,7 +23,7 @@ type stateChanger struct {
 	lock sync.RWMutex
 }
 
-func newChanger() *stateChanger {
+func NewChanger() *stateChanger {
 	return &stateChanger{
 		dirties: make(map[types.Address]int),
 	}

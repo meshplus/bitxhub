@@ -20,7 +20,7 @@ var _ ledger.StateLedger = (*StateLedger)(nil)
 func (l *StateLedger) GetOrCreateAccount(addr *types.Address) ledger.IAccount {
 	account := l.GetAccount(addr)
 	if account == nil {
-		account = newAccount(l.ldb, l.accountCache, addr, l.changer)
+		account = NewAccount(l.ldb, l.accountCache, addr, l.changer)
 		l.changer.append(createObjectChange{account: addr})
 
 		l.lock.Lock()
@@ -42,7 +42,7 @@ func (l *StateLedger) GetAccount(address *types.Address) ledger.IAccount {
 		return value
 	}
 
-	account := newAccount(l.ldb, l.accountCache, address, l.changer)
+	account := NewAccount(l.ldb, l.accountCache, address, l.changer)
 
 	if innerAccount, ok := l.accountCache.getInnerAccount(address); ok {
 		account.originAccount = innerAccount
@@ -463,7 +463,7 @@ func (l *StateLedger) RevertToSnapshot(revid int) {
 
 func (l *StateLedger) ClearChangerAndRefund() {
 	if len(l.changer.changes) > 0 {
-		l.changer = newChanger()
+		l.changer = NewChanger()
 		l.refund = 0
 	}
 	l.validRevisions = l.validRevisions[:0]
@@ -531,6 +531,12 @@ func (l *StateLedger) PrepareBlock(hash *types.Hash, height uint64) {
 }
 
 func (l *StateLedger) AddLog(log *types.EvmLog) {
+	if log.TransactionHash == nil {
+		log.TransactionHash = l.thash
+	}
+
+	log.TransactionIndex = uint64(l.txIndex)
+
 	l.changer.append(addLogChange{txHash: log.TransactionHash})
 
 	log.BlockHash = l.logs.bhash
@@ -543,8 +549,13 @@ func (l *StateLedger) AddLog(log *types.EvmLog) {
 	l.logs.logSize++
 }
 
-func (l *StateLedger) GetLogs(hash types.Hash) []*types.EvmLog {
-	return l.logs.logs[hash]
+func (l *StateLedger) GetLogs(hash types.Hash, height uint64, blockHash *types.Hash) []*types.EvmLog {
+	logs := l.logs.logs[hash]
+	for _, l := range logs {
+		l.BlockNumber = height
+		l.BlockHash = blockHash
+	}
+	return logs
 }
 
 func (l *StateLedger) Logs() []*types.EvmLog {

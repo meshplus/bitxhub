@@ -96,7 +96,7 @@ func NewSimpleLedger(repo *repo.Repo, ldb storage.Storage, accountCache *Account
 		accountCache: accountCache,
 		prevJnlHash:  prevJnlHash,
 		preimages:    make(map[types.Hash][]byte),
-		changer:      newChanger(),
+		changer:      NewChanger(),
 		accessList:   ledger.NewAccessList(),
 		logs:         NewEvmLogs(),
 	}
@@ -166,4 +166,8 @@ func (l *StateLedger) Events(txHash string) []*types.Event {
 // Close close the ledger instance
 func (l *StateLedger) Close() {
 	l.ldb.Close()
+}
+
+func (l *StateLedger) GetStorage() storage.Storage {
+	return l.ldb
 }

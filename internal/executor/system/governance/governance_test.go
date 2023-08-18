@@ -4,11 +4,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/axiomesh/axiom-kit/types"
-	vm "github.com/axiomesh/eth-kit/evm"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/axiomesh/axiom-kit/types"
+	vm "github.com/axiomesh/eth-kit/evm"
 )
 
 func TestGovernance_GetABI(t *testing.T) {
@@ -16,29 +17,29 @@ func TestGovernance_GetABI(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, gabi)
 
-	data, err := gabi.Pack(ProposalMethod, uint8(NodeUpdate), "title", "desc", uint64(1000), []byte(""))
+	data, err := gabi.Pack(ProposeMethod, uint8(NodeUpdate), "title", "desc", uint64(1000), []byte(""))
 	assert.Nil(t, err)
 	assert.NotNil(t, data)
 }
 
 func TestGovernance_GetMethodName(t *testing.T) {
 	logger := logrus.New()
-	gov, err := NewGov(NodeUpdate, logger)
+	gov, err := NewGov([]ProposalType{NodeUpdate}, logger)
 	assert.Nil(t, err)
 	assert.NotNil(t, gov)
 
-	data, err := gov.gabi.Pack(ProposalMethod, uint8(NodeUpdate), "title", "desc", uint64(1000), []byte(""))
+	data, err := gov.gabi.Pack(ProposeMethod, uint8(NodeUpdate), "title", "desc", uint64(1000), []byte(""))
 	assert.Nil(t, err)
 
 	methodName, err := gov.GetMethodName(data)
 	assert.Nil(t, err)
 
-	assert.Equal(t, ProposalMethod, methodName)
+	assert.Equal(t, ProposeMethod, methodName)
 }
 
 func TestGovernance_GetErrMethodName(t *testing.T) {
 	logger := logrus.New()
-	gov, err := NewGov(NodeUpdate, logger)
+	gov, err := NewGov([]ProposalType{NodeUpdate}, logger)
 	assert.Nil(t, err)
 	assert.NotNil(t, gov)
 
@@ -60,30 +61,30 @@ func TestGovernance_GetErrMethodName(t *testing.T) {
 
 func TestGovernance_ParseErrorArgs(t *testing.T) {
 	logger := logrus.New()
-	gov, err := NewGov(NodeUpdate, logger)
+	gov, err := NewGov([]ProposalType{NodeUpdate}, logger)
 	assert.Nil(t, err)
 	assert.NotNil(t, gov)
 
-	truedata, err := gov.gabi.Pack(ProposalMethod, uint8(NodeUpdate), "title", "desc", uint64(1000), []byte(""))
+	truedata, err := gov.gabi.Pack(ProposeMethod, uint8(NodeUpdate), "title", "desc", uint64(1000), []byte(""))
 	assert.Nil(t, err)
 	testcases := []struct {
 		method string
 		data   []byte
 	}{
 		{
-			method: "proposal",
+			method: "propose",
 			data:   []byte{1},
 		},
 		{
-			method: "proposal",
+			method: "propose",
 			data:   []byte{1, 2, 3, 4},
 		},
 		{
-			method: "proposal",
+			method: "propose",
 			data:   []byte{1, 2, 3, 4, 5, 6, 7, 8},
 		},
 		{
-			method: "proposal",
+			method: "propose",
 			data:   []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36},
 		},
 		{
@@ -91,7 +92,7 @@ func TestGovernance_ParseErrorArgs(t *testing.T) {
 			data:   truedata,
 		},
 		{
-			method: "proposal",
+			method: "propose",
 			data:   truedata,
 		},
 	}
@@ -106,7 +107,7 @@ func TestGovernance_ParseErrorArgs(t *testing.T) {
 
 func TestGovernance_GetArgsForProposal(t *testing.T) {
 	logger := logrus.New()
-	gov, err := NewGov(NodeUpdate, logger)
+	gov, err := NewGov([]ProposalType{NodeUpdate}, logger)
 	assert.Nil(t, err)
 	assert.NotNil(t, gov)
 
@@ -114,7 +115,7 @@ func TestGovernance_GetArgsForProposal(t *testing.T) {
 	desc := "desc"
 	blockNumber := uint64(1000)
 	extra := []byte("hello")
-	data, err := gov.gabi.Pack(ProposalMethod, uint8(NodeUpdate), title, desc, blockNumber, extra)
+	data, err := gov.gabi.Pack(ProposeMethod, uint8(NodeUpdate), title, desc, blockNumber, extra)
 	assert.Nil(t, err)
 
 	arg, err := gov.GetArgs(&vm.Message{
@@ -122,7 +123,7 @@ func TestGovernance_GetArgsForProposal(t *testing.T) {
 	})
 	assert.Nil(t, err)
 
-	proposalArg, ok := arg.(*ProposalArg)
+	proposalArg, ok := arg.(*ProposalArgs)
 	assert.True(t, ok)
 
 	assert.Equal(t, NodeUpdate, ProposalType(proposalArg.ProposalType))
@@ -134,7 +135,7 @@ func TestGovernance_GetArgsForProposal(t *testing.T) {
 
 func TestGovernance_GetArgsForVote(t *testing.T) {
 	logger := logrus.New()
-	gov, err := NewGov(NodeUpdate, logger)
+	gov, err := NewGov([]ProposalType{NodeUpdate}, logger)
 	assert.Nil(t, err)
 	assert.NotNil(t, gov)
 
@@ -149,7 +150,7 @@ func TestGovernance_GetArgsForVote(t *testing.T) {
 	})
 	assert.Nil(t, err)
 
-	voteArg, ok := arg.(*VoteArg)
+	voteArg, ok := arg.(*VoteArgs)
 	assert.True(t, ok)
 
 	assert.Equal(t, proposalId, voteArg.ProposalId)
@@ -158,7 +159,7 @@ func TestGovernance_GetArgsForVote(t *testing.T) {
 }
 
 func TestGovernance_GetErrArgs(t *testing.T) {
-	gov, err := NewGov(NodeUpdate, logrus.New())
+	gov, err := NewGov([]ProposalType{NodeUpdate}, logrus.New())
 	assert.Nil(t, err)
 	assert.NotNil(t, gov)
 
@@ -191,9 +192,9 @@ func TestGovernance_GetErrArgs(t *testing.T) {
 	}
 }
 
-func TestGovernance_Proposal(t *testing.T) {
+func TestGovernance_Propose(t *testing.T) {
 	logger := logrus.New()
-	gov, err := NewGov(NodeUpdate, logger)
+	gov, err := NewGov([]ProposalType{NodeUpdate}, logger)
 	assert.Nil(t, err)
 	assert.NotNil(t, gov)
 
@@ -201,7 +202,8 @@ func TestGovernance_Proposal(t *testing.T) {
 	title := "test title"
 	desc := "test desc"
 	blockNumber := uint64(10000)
-	proposal, err := gov.Proposal(*addr, title, desc, blockNumber)
+	ethaddr := addr.ETHAddress()
+	proposal, err := gov.Propose(&ethaddr, NodeUpdate, title, desc, blockNumber)
 	assert.Nil(t, err)
 	assert.NotNil(t, proposal)
 	assert.Equal(t, proposal.Type, NodeUpdate)
@@ -212,13 +214,15 @@ func TestGovernance_Proposal(t *testing.T) {
 
 func TestGovernance_Vote(t *testing.T) {
 	logger := logrus.New()
-	gov, err := NewGov(NodeUpdate, logger)
+	gov, err := NewGov([]ProposalType{NodeUpdate}, logger)
 	assert.Nil(t, err)
 	assert.NotNil(t, gov)
 
 	addr := types.NewAddressByStr("0x1000000000000000000000000000000000000000")
 	anotherAddr := types.NewAddressByStr("0x2000000000000000000000000000000000000000")
-	proposal, err := gov.Proposal(*addr, "test title", "test desc", uint64(10000))
+	ethAddr := addr.ETHAddress()
+	anotherEthAddr := anotherAddr.ETHAddress()
+	proposal, err := gov.Propose(&ethAddr, NodeUpdate, "test title", "test desc", uint64(10000))
 	assert.Nil(t, err)
 	assert.NotNil(t, proposal)
 
@@ -234,26 +238,21 @@ func TestGovernance_Vote(t *testing.T) {
 			expected: Rejected,
 		},
 		{
-			result:   Abstain,
-			expected: Rejected,
-		},
-		{
 			result:   Pass,
 			expected: Approved,
 		},
 	}
 
 	for _, test := range testcases {
-		status, err := gov.Vote(*addr, proposal, test.result)
+		status, err := gov.Vote(&ethAddr, proposal, test.result)
 		assert.Nil(t, err)
 		assert.Equal(t, Voting, status)
 
-		status, err = gov.Vote(*anotherAddr, proposal, test.result)
+		status, err = gov.Vote(&anotherEthAddr, proposal, test.result)
 		assert.Nil(t, err)
 		assert.Equal(t, test.expected, status)
 
 		proposal.PassVotes = nil
 		proposal.RejectVotes = nil
-		proposal.AbstainVotes = nil
 	}
 }

@@ -31,6 +31,7 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	ethereumTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/sirupsen/logrus"
@@ -162,7 +163,10 @@ func (api *FilterAPI) NewPendingTransactions(ctx context.Context) (*rpc.Subscrip
 				// To keep the original behaviour, send a single tx hash in one notification.
 				// TODO(rjl493456442) Send a batch of tx hashes in one notification
 				for _, h := range hashes {
-					notifier.Notify(rpcSub.ID, h)
+					err := notifier.Notify(rpcSub.ID, h.ETHHash())
+					if err != nil {
+						api.logger.Warn("notifier notify error", err)
+					}
 				}
 			case <-rpcSub.Err():
 				pendingTxSub.Unsubscribe()
@@ -228,7 +232,11 @@ func (api *FilterAPI) NewHeads(ctx context.Context) (*rpc.Subscription, error) {
 		for {
 			select {
 			case h := <-headers:
-				notifier.Notify(rpcSub.ID, h)
+				ethHeader := formatEthHeader(h)
+				err := notifier.Notify(rpcSub.ID, ethHeader)
+				if err != nil {
+					api.logger.Warn("notifier notify error", err)
+				}
 			case <-rpcSub.Err():
 				headersSub.Unsubscribe()
 				return
@@ -240,6 +248,20 @@ func (api *FilterAPI) NewHeads(ctx context.Context) (*rpc.Subscription, error) {
 	}()
 
 	return rpcSub, nil
+}
+
+func formatEthHeader(h *types.BlockHeader) *ethereumTypes.Header {
+	bloom := ethereumTypes.Bloom{}
+	bloom.Add(h.Bloom.Bytes())
+	return &ethereumTypes.Header{
+		ParentHash:  h.ParentHash.ETHHash(),
+		Root:        h.StateRoot.ETHHash(),
+		TxHash:      h.TxRoot.ETHHash(),
+		ReceiptHash: h.ReceiptRoot.ETHHash(),
+		Bloom:       bloom,
+		Number:      big.NewInt(0).SetUint64(h.Number),
+		Time:        uint64(h.Timestamp),
+	}
 }
 
 // Logs creates a subscription that fires for all new log that match the given filter criteria.
@@ -265,7 +287,11 @@ func (api *FilterAPI) Logs(ctx context.Context, crit FilterCriteria) (*rpc.Subsc
 			select {
 			case logs := <-matchedLogs:
 				for _, log := range logs {
-					notifier.Notify(rpcSub.ID, &log)
+					ethLog := formatEthLogs(log)
+					err := notifier.Notify(rpcSub.ID, &ethLog)
+					if err != nil {
+						api.logger.Warn("notifier notify error", err)
+					}
 				}
 			case <-rpcSub.Err(): // client send an unsubscribe request
 				logsSub.Unsubscribe()
@@ -278,6 +304,25 @@ func (api *FilterAPI) Logs(ctx context.Context, crit FilterCriteria) (*rpc.Subsc
 	}()
 
 	return rpcSub, nil
+}
+
+func formatEthLogs(evmlog *types.EvmLog) *ethereumTypes.Log {
+	topics := make([]common.Hash, 0)
+	for _, topic := range evmlog.Topics {
+		topics = append(topics, topic.ETHHash())
+	}
+	return &ethereumTypes.Log{
+		Address:     evmlog.Address.ETHAddress(),
+		Topics:      topics,
+		Data:        evmlog.Data,
+		BlockNumber: evmlog.BlockNumber,
+		TxHash:      evmlog.TransactionHash.ETHHash(),
+		TxIndex:     uint(evmlog.TransactionIndex),
+		BlockHash:   evmlog.BlockHash.ETHHash(),
+		Index:       uint(evmlog.LogIndex),
+		Removed:     evmlog.Removed,
+	}
+
 }
 
 // FilterCriteria represents a request to create a new filter.
@@ -332,7 +377,7 @@ func (api *FilterAPI) NewFilter(crit FilterCriteria) (rpc.ID, error) {
 // GetLogs returns logs matching the given argument that are stored within the state.
 //
 // https://eth.wiki/json-rpc/API#eth_getlogs
-func (api *FilterAPI) GetLogs(ctx context.Context, ethCrit FilterCriteria) ([]*types.EvmLog, error) {
+func (api *FilterAPI) GetLogs(ctx context.Context, ethCrit FilterCriteria) ([]*ethereumTypes.Log, error) {
 	api.logger.Debugf("eth_getLogs: ethCrit: %s", ethCrit)
 	var filter *Filter
 	crit := ethCrit.toBxhFilterQuery()
@@ -357,7 +402,11 @@ func (api *FilterAPI) GetLogs(ctx context.Context, ethCrit FilterCriteria) ([]*t
 	if err != nil {
 		return nil, err
 	}
-	return returnLogs(logs), err
+	res := make([]*ethereumTypes.Log, len(logs))
+	for i := 0; i < len(logs); i++ {
+		res[i] = formatEthLogs(logs[i])
+	}
+	return res, err
 }
 
 // UninstallFilter removes the filter with the given filter id.

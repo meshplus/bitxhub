@@ -21,6 +21,7 @@ type OrderConfig struct {
 	Mempool       Mempool           `mapstructure:"mempool" toml:"mempool"`
 	TxCache       TxCache           `mapstructure:"tx_cache" toml:"tx_cache"`
 	Rbft          RBFT              `mapstructure:"rbft" toml:"rbft"`
+	Solo          Solo              `mapstructure:"solo" toml:"solo"`
 }
 
 type TimedGenBlock struct {
@@ -34,8 +35,6 @@ type Mempool struct {
 	BatchSize           uint64   `mapstructure:"batch_size" toml:"batch_size"`
 	ToleranceTime       Duration `mapstructure:"tolerance_time" toml:"tolerance_time"`
 	ToleranceRemoveTime Duration `mapstructure:"tolerance_remove_time" toml:"tolerance_remove_time"`
-	BatchMemLimit       bool     `mapstructure:"batch_mem_limit" toml:"batch_mem_limit"`
-	BatchMaxMem         uint64   `mapstructure:"batch_max_mem" toml:"batch_max_mem"`
 }
 
 type TxCache struct {
@@ -46,8 +45,8 @@ type TxCache struct {
 type RBFT struct {
 	CheckInterval    Duration    `mapstructure:"check_interval" toml:"check_interval"`
 	VCPeriod         uint64      `mapstructure:"vc_period" toml:"vc_period"`
-	CheckpointPeriod uint64      `mapstructure:"checkpoint_period" toml:"checkpoint_period"`
 	Timeout          RBFTTimeout `mapstructure:"timeout" toml:"timeout"`
+	CheckpointPeriod uint64      `mapstructure:"checkpoint_period" toml:"checkpoint_period"`
 }
 
 type RBFTTimeout struct {
@@ -61,6 +60,10 @@ type RBFTTimeout struct {
 	ResendViewChange Duration `mapstructure:"resend_viewchange" toml:"resend_viewchange"`
 	CleanViewChange  Duration `mapstructure:"clean_viewchange" toml:"clean_viewchange"`
 	Update           Duration `mapstructure:"update" toml:"update"`
+}
+
+type Solo struct {
+	CheckpointPeriod uint64 `mapstructure:"checkpoint_period" toml:"checkpoint_period"`
 }
 
 func DefaultOrderConfig() *OrderConfig {
@@ -88,7 +91,7 @@ func DefaultOrderConfig() *OrderConfig {
 		Rbft: RBFT{
 			CheckInterval:    Duration(3 * time.Minute),
 			VCPeriod:         0,
-			CheckpointPeriod: uint64(10),
+			CheckpointPeriod: 10,
 			Timeout: RBFTTimeout{
 				SyncState:        Duration(3 * time.Second),
 				SyncInterval:     Duration(1 * time.Minute),
@@ -102,6 +105,9 @@ func DefaultOrderConfig() *OrderConfig {
 				Update:           Duration(4 * time.Second),
 			},
 		},
+		Solo: Solo{
+			CheckpointPeriod: 10,
+		},
 	}
 }
 
@@ -111,11 +117,11 @@ func LoadOrderConfig(repoRoot string) (*OrderConfig, error) {
 		cfgPath := path.Join(repoRoot, orderCfgFileName)
 		existConfig := fileutil.Exist(cfgPath)
 		if !existConfig {
-			if err := writeConfig(cfgPath, cfg); err != nil {
+			if err := writeConfigWithEnv(cfgPath, cfg); err != nil {
 				return nil, errors.Wrap(err, "failed to build default order config")
 			}
 		} else {
-			if err := readConfig(cfgPath, cfg); err != nil {
+			if err := readConfigFromFile(cfgPath, cfg); err != nil {
 				return nil, err
 			}
 		}

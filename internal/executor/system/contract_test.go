@@ -4,12 +4,13 @@ import (
 	"testing"
 
 	"github.com/axiomesh/axiom-kit/types"
+	"github.com/axiomesh/axiom/internal/executor/system/common"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
 var systemContractAddrs = []string{
-	NodeManagerContractAddr,
+	common.NodeManagerContractAddr,
 }
 
 var notSystemContractAddrs = []string{

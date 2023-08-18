@@ -1,23 +1,22 @@
 package system
 
 import (
+	"github.com/sirupsen/logrus"
+
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/internal/executor/system/common"
 	"github.com/axiomesh/axiom/internal/executor/system/governance"
-	"github.com/sirupsen/logrus"
+	"github.com/axiomesh/axiom/internal/ledger"
+	"github.com/axiomesh/axiom/pkg/repo"
 )
 
 // Addr2Contract is address to system contract
 var Addr2Contract map[types.Address]common.SystemContract
 
-const (
-	// system contract address range 0x1000-0xffff
-	NodeManagerContractAddr = "0x0000000000000000000000000000000000001000"
-)
-
 func Initialize(logger logrus.FieldLogger) {
 	Addr2Contract = map[types.Address]common.SystemContract{
-		*types.NewAddressByStr(NodeManagerContractAddr): governance.NewNodeManager(logger),
+		*types.NewAddressByStr(common.NodeManagerContractAddr):    governance.NewNodeManager(logger),
+		*types.NewAddressByStr(common.CouncilManagerContractAddr): governance.NewCouncilManager(logger),
 	}
 }
 
@@ -32,4 +31,15 @@ func GetSystemContract(addr *types.Address) (common.SystemContract, bool) {
 		return contract, true
 	}
 	return nil, false
+}
+
+func InitGenesisData(genesis *repo.Genesis, lg *ledger.Ledger) error {
+	if err := governance.InitCouncilMembers(lg, genesis.Admins, genesis.Balance); err != nil {
+		return err
+	}
+	if err := governance.InitNodeMembers(lg, genesis.Members); err != nil {
+		return err
+	}
+
+	return nil
 }
