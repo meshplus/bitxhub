@@ -236,9 +236,6 @@ func CreateBloom(receipts EvmReceipts) *types.Bloom {
 				bin.Add(b.Bytes())
 			}
 		}
-		if receipt.Bloom != nil {
-			bin.OrBloom(receipt.Bloom)
-		}
 	}
 	return &bin
 }

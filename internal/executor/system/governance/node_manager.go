@@ -331,7 +331,7 @@ func (nm *NodeManager) voteNodeAddRemove(user ethcommon.Address, proposal *NodeP
 	}
 
 	// record log
-	nm.gov.RecordLog(nm.currentLog, ProposeMethod, &proposal.BaseProposal, b)
+	nm.gov.RecordLog(nm.currentLog, VoteMethod, &proposal.BaseProposal, b)
 
 	return b, nil
 }
@@ -357,7 +357,7 @@ func (nm *NodeManager) voteUpgrade(user ethcommon.Address, proposal *NodeProposa
 
 	// record log
 	// if approved, guardian sync log, then update node and restart
-	nm.gov.RecordLog(nm.currentLog, ProposeMethod, &proposal.BaseProposal, b)
+	nm.gov.RecordLog(nm.currentLog, VoteMethod, &proposal.BaseProposal, b)
 
 	return b, nil
 }
