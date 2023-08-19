@@ -199,6 +199,10 @@ func (exec *BlockExecutor) applyEthTransaction(_ int, tx *types.Transaction) *ty
 	exec.logger.Debugf("tx gas price: %v", tx.GetGasPrice())
 	statedb := exec.ledger.StateLedger
 	snapshot := statedb.Snapshot()
+
+	// check and update system contract state
+	system.CheckAndUpdateAllState(exec.currentHeight, statedb)
+
 	contract, ok := system.GetSystemContract(tx.GetTo())
 	if ok {
 		// execute built contract
@@ -309,8 +313,7 @@ func (exec *BlockExecutor) getCurrentGasPrice() *big.Int {
 
 // payGasFee share the revenue to nodes, now it is empty
 // leave the function for the future use.
-func (exec *BlockExecutor) payGasFee(tx *types.Transaction, gasUsed uint64) {
-}
+func (exec *BlockExecutor) payGasFee(tx *types.Transaction, gasUsed uint64) {}
 
 func (exec *BlockExecutor) getLogsForReceipt(receipts []*types.Receipt, height uint64, hash *types.Hash) {
 	for _, receipt := range receipts {

@@ -3,6 +3,7 @@ package governance
 import (
 	"encoding/binary"
 	"errors"
+	"strings"
 	"sync"
 
 	"github.com/axiomesh/axiom-kit/types"
@@ -20,6 +21,9 @@ const (
 
 const (
 	ProposalIDKey = "proposalIDKey"
+
+	Addr2NameSystemAddrKey = "addrKey"
+	Addr2NameSystemNameKey = "nameKey"
 )
 
 var (
@@ -94,4 +98,51 @@ func (pid *ProposalID) GetAndAddID() (uint64, error) {
 	pid.account.SetState([]byte(ProposalIDKey), data)
 
 	return oldID, nil
+}
+
+type Addr2NameSystem struct {
+	account ledger.IAccount
+}
+
+func NewAddr2NameSystem(stateLedger ledger.StateLedger) *Addr2NameSystem {
+	addr2NameSystem := &Addr2NameSystem{}
+
+	addr2NameSystem.account = stateLedger.GetOrCreateAccount(types.NewAddressByStr(common.Addr2NameContractAddr))
+
+	return addr2NameSystem
+}
+
+func (ans *Addr2NameSystem) SetName(addr, name string) {
+	// address already set name
+	ak := addrKey(addr)
+	if ok, _ := ans.account.GetState(ak); ok {
+		return
+	}
+
+	// name already set
+	nk := nameKey(name)
+	if ok, _ := ans.account.GetState(nk); ok {
+		return
+	}
+
+	ans.account.SetState(ak, []byte(name))
+	ans.account.SetState(nk, []byte(addr))
+}
+
+func (ans *Addr2NameSystem) GetName(addr string) (bool, string) {
+	isExist, name := ans.account.GetState(addrKey(addr))
+	return isExist, string(name)
+}
+
+func (ans *Addr2NameSystem) GetAddr(name string) (bool, string) {
+	isExist, addr := ans.account.GetState(nameKey(name))
+	return isExist, string(addr)
+}
+
+func addrKey(addr string) []byte {
+	return []byte(strings.Join([]string{Addr2NameSystemAddrKey, addr}, "-"))
+}
+
+func nameKey(name string) []byte {
+	return []byte(strings.Join([]string{Addr2NameSystemNameKey, name}, "-"))
 }

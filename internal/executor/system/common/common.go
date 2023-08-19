@@ -13,6 +13,9 @@ const (
 	// system contract address range 0x1001-0xffff
 	NodeManagerContractAddr    = "0x0000000000000000000000000000000000001001"
 	CouncilManagerContractAddr = "0x0000000000000000000000000000000000001002"
+
+	// Addr2NameContractAddr for unique name mapping to address
+	Addr2NameContractAddr = "0x0000000000000000000000000000000000001003"
 )
 
 type SystemContract interface {
@@ -24,6 +27,9 @@ type SystemContract interface {
 
 	// EstimateGas estimate the gas cost of the system contract
 	EstimateGas(*types.CallArgs) (uint64, error)
+
+	// CheckAndUpdateState check and update state
+	CheckAndUpdateState(uint64, ledger.StateLedger)
 }
 
 func IsInSlice[T ~uint8 | ~string](value T, slice []T) bool {

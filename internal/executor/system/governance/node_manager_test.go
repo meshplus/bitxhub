@@ -40,18 +40,22 @@ func TestNodeManager_RunForPropose(t *testing.T) {
 		{
 			Address: admin1,
 			Weight:  1,
+			Name:    "111",
 		},
 		{
 			Address: admin2,
 			Weight:  1,
+			Name:    "222",
 		},
 		{
 			Address: admin3,
 			Weight:  1,
+			Name:    "333",
 		},
 		{
 			Address: admin4,
 			Weight:  1,
+			Name:    "444",
 		},
 	}, "10")
 	assert.Nil(t, err)
@@ -152,18 +156,22 @@ func TestNodeManager_RunForVote(t *testing.T) {
 		{
 			Address: admin1,
 			Weight:  1,
+			Name:    "111",
 		},
 		{
 			Address: admin2,
 			Weight:  1,
+			Name:    "222",
 		},
 		{
 			Address: admin3,
 			Weight:  1,
+			Name:    "333",
 		},
 		{
 			Address: admin4,
 			Weight:  1,
+			Name:    "444",
 		},
 	}, "10")
 	assert.Nil(t, err)

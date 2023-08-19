@@ -8,6 +8,7 @@ import (
 	"github.com/axiomesh/axiom/internal/executor/system/governance"
 	"github.com/axiomesh/axiom/internal/ledger"
 	"github.com/axiomesh/axiom/pkg/repo"
+	ethledger "github.com/axiomesh/eth-kit/ledger"
 )
 
 // Addr2Contract is address to system contract
@@ -42,4 +43,11 @@ func InitGenesisData(genesis *repo.Genesis, lg *ledger.Ledger) error {
 	}
 
 	return nil
+}
+
+// CheckAndUpdateAllState check and update all system contract state if need
+func CheckAndUpdateAllState(lastHeight uint64, stateLedger ethledger.StateLedger) {
+	for _, contract := range Addr2Contract {
+		contract.CheckAndUpdateState(lastHeight, stateLedger)
+	}
 }

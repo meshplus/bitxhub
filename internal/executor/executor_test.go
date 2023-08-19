@@ -192,6 +192,15 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 		func(addr *types.Address, key []byte) (bool, []byte) {
 			return true, []byte("10")
 		}).AnyTimes()
+
+	accountCache, err := ledger.NewAccountCache()
+	assert.Nil(t, err)
+	repoRoot := t.TempDir()
+	ld, err := leveldb.New(filepath.Join(repoRoot, "executor"))
+	assert.Nil(t, err)
+	account := ledger.NewAccount(ld, accountCache, types.NewAddressByStr(common.NodeManagerContractAddr), ledger.NewChanger())
+	stateLedger.EXPECT().GetOrCreateAccount(gomock.Any()).Return(account).AnyTimes()
+
 	logger := log.NewWithModule("executor")
 
 	exec, err := New(mockLedger, logger, config)
@@ -300,18 +309,22 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 		{
 			Address: signer.Addr.String(),
 			Weight:  1,
+			Name:    "111",
 		},
 		{
 			Address: "0x1220000000000000000000000000000000000000",
 			Weight:  1,
+			Name:    "222",
 		},
 		{
 			Address: "0x1230000000000000000000000000000000000000",
 			Weight:  1,
+			Name:    "333",
 		},
 		{
 			Address: "0x1240000000000000000000000000000000000000",
 			Weight:  1,
+			Name:    "444",
 		},
 	}, "1000000")
 	assert.Nil(t, err)

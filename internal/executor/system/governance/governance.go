@@ -210,7 +210,7 @@ func (g *Governance) GetArgs(msg *vm.Message) (any, error) {
 	}
 }
 
-func (g *Governance) checkBeforePropose(user *ethcommon.Address, proposalType ProposalType, title, desc string, deadlineBlockNumber uint64) (bool, error) {
+func (g *Governance) checkBeforePropose(user *ethcommon.Address, proposalType ProposalType, title, desc string, blockNumber uint64) (bool, error) {
 	if user == nil {
 		return false, ErrUser
 	}
@@ -234,15 +234,15 @@ func (g *Governance) checkBeforePropose(user *ethcommon.Address, proposalType Pr
 		return false, ErrTooLongDesc
 	}
 
-	if deadlineBlockNumber == 0 {
+	if blockNumber == 0 {
 		return false, ErrBlockNumber
 	}
 
 	return true, nil
 }
 
-func (g *Governance) Propose(user *ethcommon.Address, proposalType ProposalType, title, desc string, deadlineBlockNumber uint64) (*BaseProposal, error) {
-	_, err := g.checkBeforePropose(user, proposalType, title, desc, deadlineBlockNumber)
+func (g *Governance) Propose(user *ethcommon.Address, proposalType ProposalType, title, desc string, blockNumber uint64) (*BaseProposal, error) {
+	_, err := g.checkBeforePropose(user, proposalType, title, desc, blockNumber)
 	if err != nil {
 		return nil, err
 	}
@@ -253,7 +253,7 @@ func (g *Governance) Propose(user *ethcommon.Address, proposalType ProposalType,
 		Proposer:    user.String(),
 		Title:       title,
 		Desc:        desc,
-		BlockNumber: deadlineBlockNumber,
+		BlockNumber: blockNumber,
 		Status:      Voting,
 	}
 
