@@ -90,8 +90,10 @@ func TestNodeManager_RunForPropose(t *testing.T) {
 					},
 				},
 			}),
-			Expected: vm.ExecutionResult{},
-			Err:      ErrNotFoundCouncilMember,
+			Expected: vm.ExecutionResult{
+				Err: ErrNotFoundCouncilMember,
+			},
+			Err: nil,
 		},
 		{
 			Caller: admin1,
@@ -105,8 +107,10 @@ func TestNodeManager_RunForPropose(t *testing.T) {
 					},
 				},
 			}),
-			Expected: vm.ExecutionResult{},
-			Err:      ErrRepeatedNodeID,
+			Expected: vm.ExecutionResult{
+				Err: ErrRepeatedNodeID,
+			},
+			Err: nil,
 		},
 	}
 
@@ -121,6 +125,7 @@ func TestNodeManager_RunForPropose(t *testing.T) {
 		assert.Equal(t, test.Err, err)
 		if res != nil {
 			assert.Equal(t, uint64(NodeManagementProposalGas), res.UsedGas)
+			assert.Equal(t, test.Expected.Err, res.Err)
 		}
 	}
 }
@@ -201,16 +206,18 @@ func TestNodeManager_RunForVote(t *testing.T) {
 			Data:   generateNodeAddVoteData(t, nm.proposalID.GetID()-1, Pass),
 			Expected: vm.ExecutionResult{
 				UsedGas: NodeManagementVoteGas,
+				Err:     ErrUseHasVoted,
 			},
-			Err: ErrUseHasVoted,
+			Err: nil,
 		},
 		{
 			Caller: "0x1000000000000000000000000000000000000000",
 			Data:   generateNodeAddVoteData(t, nm.proposalID.GetID()-1, Pass),
 			Expected: vm.ExecutionResult{
 				UsedGas: NodeManagementVoteGas,
+				Err:     ErrNotFoundCouncilMember,
 			},
-			Err: ErrNotFoundCouncilMember,
+			Err: nil,
 		},
 	}
 
@@ -226,6 +233,7 @@ func TestNodeManager_RunForVote(t *testing.T) {
 
 		if result != nil {
 			assert.Equal(t, test.Expected.UsedGas, result.UsedGas)
+			assert.Equal(t, test.Expected.Err, result.Err)
 		}
 	}
 }

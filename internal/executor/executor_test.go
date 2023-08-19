@@ -366,7 +366,7 @@ func generateNodeAddProposeData(t *testing.T, extraArgs NodeExtraArgs) []byte {
 
 	extra, err := json.Marshal(extraArgs)
 	assert.Nil(t, err)
-	data, err := gabi.Pack(governance.ProposeMethod, uint8(governance.NodeUpdate), title, desc, blockNumber, extra)
+	data, err := gabi.Pack(governance.ProposeMethod, uint8(governance.NodeUpgrade), title, desc, blockNumber, extra)
 	assert.Nil(t, err)
 	return data
 }
