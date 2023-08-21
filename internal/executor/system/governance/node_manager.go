@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/samber/lo"
 	"github.com/sirupsen/logrus"
 
 	"github.com/axiomesh/axiom-kit/types"
@@ -22,7 +23,7 @@ const (
 	// NodeProposalKey is key for NodeProposal storage
 	NodeProposalKey = "nodeProposalKey"
 
-	// CouncilKey is key for council storage
+	// NodeMembersKey is key for node member storage
 	NodeMembersKey = "nodeMembersKey"
 )
 
@@ -32,6 +33,7 @@ var (
 	ErrNodeExtraArgs           = errors.New("unmarshal node extra arguments error")
 	ErrNodeProposalNumberLimit = errors.New("node proposal number limit, only allow one node proposal")
 	ErrNotFoundNodeProposal    = errors.New("node proposal not found for the id")
+	ErrRepeatedNodeID          = errors.New("repeated node id")
 )
 
 // NodeExtraArgs is Node proposal extra arguments
@@ -68,7 +70,10 @@ var _ common.SystemContract = (*NodeManager)(nil)
 type NodeManager struct {
 	gov *Governance
 
-	account ledger.IAccount
+	account     ledger.IAccount
+	stateLedger ledger.StateLedger
+	currentLog  *common.Log
+	proposalID  *ProposalID
 }
 
 func NewNodeManager(logger logrus.FieldLogger) *NodeManager {
@@ -83,11 +88,18 @@ func NewNodeManager(logger logrus.FieldLogger) *NodeManager {
 }
 
 func (nm *NodeManager) Reset(stateLedger ledger.StateLedger) {
-	nm.account = stateLedger.GetOrCreateAccount(types.NewAddressByStr(common.NodeManagerContractAddr))
-	globalProposalID = GetInstanceOfProposalID(stateLedger)
+	addr := types.NewAddressByStr(common.NodeManagerContractAddr)
+	nm.account = stateLedger.GetOrCreateAccount(addr)
+	nm.stateLedger = stateLedger
+	nm.currentLog = &common.Log{
+		Address: addr,
+	}
+	nm.proposalID = NewProposalID(stateLedger)
 }
 
 func (nm *NodeManager) Run(msg *vm.Message) (*vm.ExecutionResult, error) {
+	defer nm.gov.SaveLog(nm.stateLedger, nm.currentLog)
+
 	// parse method and arguments from msg payload
 	args, err := nm.gov.GetArgs(msg)
 	if err != nil {
@@ -128,35 +140,41 @@ func (nm *NodeManager) propose(addr ethcommon.Address, args *NodeProposalArgs) (
 		return nil, err
 	}
 
-	id, err := globalProposalID.GetAndAddID()
-	if err != nil {
-		return nil, err
+	// check proposal has repeated nodes
+	if len(lo.Uniq[string](lo.Map[*NodeMember, string](args.Nodes, func(item *NodeMember, index int) string {
+		return item.NodeId
+	}))) != len(args.Nodes) {
+		return nil, ErrRepeatedNodeID
+	}
+
+	// check addr if is exist in council
+	isExist, council := checkInCouncil(nm.account, addr.String())
+	if !isExist {
+		return nil, ErrNotFoundCouncilMember
 	}
 
 	// set proposal id
 	proposal := &NodeProposal{
 		BaseProposal: *baseProposal,
 	}
-	proposal.ID = id
-	// check nodeMember if is exist
-	isExist, data := nm.account.GetState([]byte(common.NodeManagerContractAddr))
-	if !isExist {
-		return nil, errors.New("council should be initialized in genesis")
-	}
 
-	var members []NodeMember
-	if err := json.Unmarshal(data, &members); err != nil {
+	id, err := nm.proposalID.GetAndAddID()
+	if err != nil {
 		return nil, err
 	}
-
-	// // TODO check addr if is exist in council
-	// // TODO get TotalVotes
+	proposal.ID = id
 	proposal.Nodes = args.Nodes
+	proposal.TotalVotes = lo.Sum[uint64](lo.Map[*CouncilMember, uint64](council.Members, func(item *CouncilMember, index int) uint64 {
+		return item.Weight
+	}))
 
 	b, err := json.Marshal(proposal)
 
 	// save proposal
 	nm.account.SetState([]byte(fmt.Sprintf("%s%d", NodeProposalKey, proposal.ID)), b)
+
+	// record log
+	nm.gov.RecordLog(nm.currentLog, ProposeMethod, &proposal.BaseProposal, b)
 
 	return &vm.ExecutionResult{
 		UsedGas:    NodeManagementProposalGas,
@@ -168,6 +186,13 @@ func (nm *NodeManager) propose(addr ethcommon.Address, args *NodeProposalArgs) (
 // Vote a proposal, return vote status
 func (nm *NodeManager) vote(user ethcommon.Address, voteArgs *NodeVoteArgs) (*vm.ExecutionResult, error) {
 	result := &vm.ExecutionResult{UsedGas: NodeManagementVoteGas}
+
+	// check user can vote
+	isExist, _ := checkInCouncil(nm.account, user.String())
+	if !isExist {
+		return nil, ErrNotFoundCouncilMember
+	}
+
 	// get proposal
 	isExist, data := nm.account.GetState([]byte(fmt.Sprintf("%s%d", NodeProposalKey, voteArgs.ProposalId)))
 	if !isExist {
@@ -183,13 +208,9 @@ func (nm *NodeManager) vote(user ethcommon.Address, voteArgs *NodeVoteArgs) (*vm
 	res := VoteResult(voteArgs.VoteResult)
 	proposalStatus, err := nm.gov.Vote(&user, &proposal.BaseProposal, res)
 	if err != nil {
-		result.Err = err
-		return result, nil
+		return nil, err
 	}
 	proposal.Status = proposalStatus
-
-	// TODO: check user can vote
-	// check user if is already voted
 
 	b, err := json.Marshal(proposal)
 	if err != nil {
@@ -208,6 +229,9 @@ func (nm *NodeManager) vote(user ethcommon.Address, voteArgs *NodeVoteArgs) (*vm
 		}
 		nm.account.SetState([]byte(NodeMembersKey), cb)
 	}
+
+	// record log
+	nm.gov.RecordLog(nm.currentLog, ProposeMethod, &proposal.BaseProposal, b)
 
 	// return updated proposal
 	result.ReturnData = b
@@ -244,15 +268,15 @@ func InitNodeMembers(lg ledger.StateLedger, members []*repo.Member) error {
 	return nil
 }
 
-func GetNodeMembers(lg ledger.StateLedger) ([]*repo.Member, error) {
+func GetNodeMembers(lg ledger.StateLedger) ([]*NodeMember, error) {
 	account := lg.GetOrCreateAccount(types.NewAddressByStr(common.NodeManagerContractAddr))
 	success, data := account.GetState([]byte(NodeMembersKey))
 	if success {
-		var members []*repo.Member
+		var members []*NodeMember
 		if err := json.Unmarshal(data, &members); err != nil {
 			return nil, err
 		}
 		return members, nil
 	}
-	return nil, errors.New("get nodeMember err")
+	return nil, errors.New("node member should be initialized in genesis")
 }

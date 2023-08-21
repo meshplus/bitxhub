@@ -14,8 +14,8 @@ import (
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/internal/executor/system/common"
 	"github.com/axiomesh/axiom/internal/ledger"
+	"github.com/axiomesh/axiom/pkg/repo"
 	vm "github.com/axiomesh/eth-kit/evm"
-	ethledger "github.com/axiomesh/eth-kit/ledger"
 	"github.com/axiomesh/eth-kit/ledger/mock_ledger"
 )
 
@@ -37,15 +37,6 @@ type TestCouncilProposal struct {
 	Candidates  []*CouncilMember
 }
 
-func initializeCouncil(t *testing.T, lg ethledger.StateLedger, admins []*CouncilMember) {
-	council := &Council{}
-	council.Members = admins
-	account := lg.GetOrCreateAccount(types.NewAddressByStr(common.CouncilManagerContractAddr))
-	b, err := json.Marshal(council)
-	assert.Nil(t, err)
-	account.SetState([]byte(CouncilKey), b)
-}
-
 func TestRunForPropose(t *testing.T) {
 	logger := logrus.New()
 	cm := NewCouncilManager(logger)
@@ -62,8 +53,9 @@ func TestRunForPropose(t *testing.T) {
 
 	stateLedger.EXPECT().GetOrCreateAccount(gomock.Any()).Return(account).AnyTimes()
 	stateLedger.EXPECT().AddLog(gomock.Any()).AnyTimes()
+	stateLedger.EXPECT().SetBalance(gomock.Any(), gomock.Any()).AnyTimes()
 
-	initializeCouncil(t, stateLedger, []*CouncilMember{
+	err = InitCouncilMembers(stateLedger, []*repo.Admin{
 		{
 			Address: admin1,
 			Weight:  1,
@@ -80,9 +72,8 @@ func TestRunForPropose(t *testing.T) {
 			Address: admin4,
 			Weight:  1,
 		},
-	})
-
-	cm.Reset(stateLedger)
+	}, "10")
+	assert.Nil(t, err)
 
 	testcases := []struct {
 		Caller   string
@@ -220,6 +211,8 @@ func TestRunForPropose(t *testing.T) {
 	}
 
 	for _, test := range testcases {
+		cm.Reset(stateLedger)
+
 		result, err := cm.Run(&vm.Message{
 			From: types.NewAddressByStr(test.Caller).ETHAddress(),
 			Data: test.Data,
@@ -259,8 +252,9 @@ func TestRunForVote(t *testing.T) {
 
 	stateLedger.EXPECT().GetOrCreateAccount(gomock.Any()).Return(account).AnyTimes()
 	stateLedger.EXPECT().AddLog(gomock.Any()).AnyTimes()
+	stateLedger.EXPECT().SetBalance(gomock.Any(), gomock.Any()).AnyTimes()
 
-	initializeCouncil(t, stateLedger, []*CouncilMember{
+	err = InitCouncilMembers(stateLedger, []*repo.Admin{
 		{
 			Address: admin1,
 			Weight:  1,
@@ -277,9 +271,11 @@ func TestRunForVote(t *testing.T) {
 			Address: admin4,
 			Weight:  1,
 		},
-	})
+	}, "10000000")
+	assert.Nil(t, err)
 
 	cm.Reset(stateLedger)
+
 	cm.propose(types.NewAddressByStr(admin1).ETHAddress(), &CouncilProposalArgs{
 		BaseProposalArgs: BaseProposalArgs{
 			ProposalType: uint8(CouncilElect),
@@ -317,7 +313,7 @@ func TestRunForVote(t *testing.T) {
 	}{
 		{
 			Caller: admin1,
-			Data:   generateVoteData(t, globalProposalID.GetID()-1, Pass),
+			Data:   generateVoteData(t, cm.proposalID.GetID()-1, Pass),
 			Expected: vm.ExecutionResult{
 				UsedGas: CouncilVoteGas,
 				ReturnData: generateReturnData(t, &TestCouncilProposal{
@@ -352,7 +348,7 @@ func TestRunForVote(t *testing.T) {
 		},
 		{
 			Caller: admin2,
-			Data:   generateVoteData(t, globalProposalID.GetID()-1, Pass),
+			Data:   generateVoteData(t, cm.proposalID.GetID()-1, Pass),
 			Expected: vm.ExecutionResult{
 				UsedGas: CouncilVoteGas,
 				ReturnData: generateReturnData(t, &TestCouncilProposal{
@@ -387,13 +383,15 @@ func TestRunForVote(t *testing.T) {
 		},
 		{
 			Caller:   "0xfff0000000000000000000000000000000000000",
-			Data:     generateVoteData(t, globalProposalID.GetID()-1, Pass),
+			Data:     generateVoteData(t, cm.proposalID.GetID()-1, Pass),
 			Expected: vm.ExecutionResult{},
 			Err:      ErrNotFoundCouncilMember,
 		},
 	}
 
 	for _, test := range testcases {
+		cm.Reset(stateLedger)
+
 		result, err := cm.Run(&vm.Message{
 			From: types.NewAddressByStr(test.Caller).ETHAddress(),
 			Data: test.Data,

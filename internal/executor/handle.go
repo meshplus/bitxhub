@@ -2,7 +2,6 @@ package executor
 
 import (
 	"bytes"
-	"fmt"
 	"math/big"
 	"strings"
 	"sync"
@@ -15,16 +14,13 @@ import (
 	"github.com/samber/lo"
 	"github.com/sirupsen/logrus"
 
-	"github.com/axiomesh/axiom-kit/storage"
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/internal/executor/system"
 	"github.com/axiomesh/axiom/internal/ledger"
 	"github.com/axiomesh/axiom/pkg/model/events"
-	"github.com/axiomesh/axiom/pkg/repo"
 	"github.com/axiomesh/eth-kit/adaptor"
 	ethvm "github.com/axiomesh/eth-kit/evm"
 	ethledger "github.com/axiomesh/eth-kit/ledger"
-	"github.com/axiomesh/eth-kit/ledger/mock_ledger"
 )
 
 const (
@@ -366,22 +362,9 @@ func (exec *BlockExecutor) GetEvm(txCtx ethvm.TxContext, vmConfig ethvm.Config) 
 		exec.logger.Errorf("fail to get block at %d: %v", meta.Height, err.Error())
 		return nil, err
 	}
-	var ldb storage.Storage
-	switch exec.ledger.StateLedger.(type) {
-	case *ledger.StateLedger:
-		ldb = exec.ledger.StateLedger.(*ledger.StateLedger).GetStorage()
-	case *mock_ledger.MockStateLedger:
-		return &ethvm.EVM{}, nil
-	default:
-		return nil, fmt.Errorf("unsupported stateLedger type: %T", exec.ledger.StateLedger)
-	}
-	stateLedger, err := ledger.NewSimpleLedger(&repo.Repo{Config: &exec.config}, ldb, nil, exec.logger)
-	if err != nil {
-		return nil, err
-	}
-	stateLedger.SetTxContext(types.NewHash([]byte("mockTx")), 0)
-	blkCtx = ethvm.NewEVMBlockContext(meta.Height, uint64(block.BlockHeader.Timestamp), stateLedger, exec.ledger.ChainLedger, exec.admins[0])
-	return ethvm.NewEVM(blkCtx, txCtx, stateLedger, exec.evmChainCfg, vmConfig), nil
+
+	blkCtx = ethvm.NewEVMBlockContext(meta.Height, uint64(block.BlockHeader.Timestamp), exec.ledger.StateLedger, exec.ledger.ChainLedger, exec.admins[0])
+	return ethvm.NewEVM(blkCtx, txCtx, exec.ledger.StateLedger, exec.evmChainCfg, vmConfig), nil
 }
 
 // getCurrentGasPrice returns the current block's gas price, which is

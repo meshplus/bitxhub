@@ -26,8 +26,6 @@ var (
 	ErrNilProposalAccount = errors.New("ProposalID must be reset then use")
 )
 
-var globalProposalID *ProposalID
-
 type BaseProposal struct {
 	ID          uint64
 	Type        ProposalType
@@ -55,24 +53,21 @@ type ProposalID struct {
 	account ledger.IAccount
 }
 
-// GetInstanceOfProposalID get instance of the global proposal id
-func GetInstanceOfProposalID(stateLedger ledger.StateLedger) *ProposalID {
+// NewProposalID new proposal id from ledger
+func NewProposalID(stateLedger ledger.StateLedger) *ProposalID {
+	proposalID := &ProposalID{}
 	// id is not initialized
-	if globalProposalID == nil {
-		globalProposalID = &ProposalID{}
-
-		account := stateLedger.GetOrCreateAccount(types.NewAddressByStr(common.ProposalIDContractAddr))
-		isExist, data := account.GetState([]byte(ProposalIDKey))
-		if !isExist {
-			globalProposalID.ID = 1
-		} else {
-			globalProposalID.ID = binary.BigEndian.Uint64(data)
-		}
-
-		globalProposalID.account = account
+	account := stateLedger.GetOrCreateAccount(types.NewAddressByStr(common.ProposalIDContractAddr))
+	isExist, data := account.GetState([]byte(ProposalIDKey))
+	if !isExist {
+		proposalID.ID = 1
+	} else {
+		proposalID.ID = binary.BigEndian.Uint64(data)
 	}
 
-	return globalProposalID
+	proposalID.account = account
+
+	return proposalID
 }
 
 func (pid *ProposalID) GetID() uint64 {

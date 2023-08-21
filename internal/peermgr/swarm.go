@@ -169,7 +169,7 @@ func (swarm *Swarm) onConnected(net p2pnetwork.Network, conn p2pnetwork.Conn) er
 	if err != nil {
 		return err
 	}
-	if !lo.ContainsBy(members, func(item *repo.Member) bool {
+	if !lo.ContainsBy(members, func(item *governance.NodeMember) bool {
 		return item.NodeId == peerID
 	}) {
 		swarm.logger.Warn()
