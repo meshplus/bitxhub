@@ -11,7 +11,7 @@ func TestNetworkConfig(t *testing.T) {
 	path := t.TempDir()
 
 	genesis := Genesis{
-		Admins: lo.Map(defaultNodeAddrs, func(item string, i int) *Admin {
+		Admins: lo.Map(DefaultNodeAddrs, func(item string, i int) *Admin {
 			return &Admin{
 				Address: item,
 			}

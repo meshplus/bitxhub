@@ -18,7 +18,6 @@ coverage.out
 pid
 scripts/prepare
 logs
-mock_*/
 !mock_peermgr
 !mock_ledger
 .fabric-samples

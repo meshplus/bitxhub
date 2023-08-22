@@ -309,9 +309,6 @@ func checkTransaction(logger logrus.FieldLogger, tx *types.Transaction) error {
 }
 
 func sendTransaction(api api.CoreAPI, tx *types.Transaction) (common.Hash, error) {
-	if err := tx.VerifySignature(); err != nil {
-		return [32]byte{}, err
-	}
 	err := api.Broker().HandleTransaction(tx)
 	if err != nil {
 		return common.Hash{}, err

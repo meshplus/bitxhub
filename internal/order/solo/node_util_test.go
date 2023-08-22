@@ -7,6 +7,8 @@ import (
 
 	"github.com/axiomesh/axiom-bft/mempool"
 	"github.com/axiomesh/axiom/internal/order"
+	"github.com/axiomesh/axiom/internal/order/precheck"
+	"github.com/axiomesh/axiom/internal/order/precheck/mock_precheck"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -19,9 +21,12 @@ import (
 
 const (
 	poolSize        = 10
+	adminBalance    = 100000000000000000
 	batchTimeout    = 50 * time.Millisecond
 	removeTxTimeout = 1 * time.Second
 )
+
+var validTxsCh = make(chan *precheck.ValidTxs, maxChanSize)
 
 func mockSoloNode(t *testing.T, enableTimed bool) (*Node, error) {
 	logger := log.NewWithModule("consensus")
@@ -36,6 +41,8 @@ func mockSoloNode(t *testing.T, enableTimed bool) (*Node, error) {
 	batchTimerMgr.newTimer(Batch, batchTimeout)
 	mockCtl := gomock.NewController(t)
 	mockPeermgr := mock_peermgr.NewMockPeerManager(mockCtl)
+	mockPrecheck := mock_precheck.NewMockMinPreCheck(mockCtl, validTxsCh)
+
 	mempoolConf := mempool.Config{
 		ID:                  uint64(1),
 		IsTimed:             cfg.TimedGenBlock.Enable,
@@ -77,6 +84,7 @@ func mockSoloNode(t *testing.T, enableTimed bool) (*Node, error) {
 		logger:           logger,
 		ctx:              ctx,
 		cancel:           cancel,
+		txPreCheck:       mockPrecheck,
 	}
 	return soloNode, nil
 }

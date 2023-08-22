@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/axiomesh/axiom/internal/order/txcache"
+	"github.com/axiomesh/axiom/internal/order/precheck"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/sirupsen/logrus"
 
@@ -33,6 +33,7 @@ type Node struct {
 	lastExec         uint64              // the index of the last-applied block
 	peerMgr          peermgr.PeerManager // network manager
 	checkpoint       uint64
+	txPreCheck       precheck.PreCheck
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -50,12 +51,13 @@ func (n *Node) GetPendingTxByHash(hash *types.Hash) *types.Transaction {
 }
 
 func (n *Node) Start() error {
-	n.ctx, n.cancel = context.WithCancel(context.Background())
 	n.logger.Info("consensus started")
 	if n.isTimed {
 		n.batchMgr.startTimer(NoTxBatch)
 	}
 	n.batchMgr.startTimer(RemoveTx)
+	n.txPreCheck.Start()
+	go n.listenValidTxs()
 	go n.listenEvent()
 	go n.listenReadyBlock()
 	return nil
@@ -83,9 +85,9 @@ func (n *Node) Prepare(tx *types.Transaction) error {
 	if err := n.Ready(); err != nil {
 		return fmt.Errorf("node get ready failed: %w", err)
 	}
-	txWithResp := &txcache.TxWithResp{
+	txWithResp := &order.TxWithResp{
 		Tx:     tx,
-		RespCh: make(chan txcache.TxResp),
+		RespCh: make(chan *order.TxResp),
 	}
 	n.recvCh <- txWithResp
 	resp := <-txWithResp.RespCh
@@ -155,6 +157,7 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 	batchTimerMgr.newTimer(NoTxBatch, config.Config.TimedGenBlock.NoTxBatchTimeout.ToDuration())
 	batchTimerMgr.newTimer(RemoveTx, config.Config.Mempool.ToleranceRemoveTime.ToDuration())
 
+	ctx, cancel := context.WithCancel(context.Background())
 	soloNode := &Node{
 		ID:               config.ID,
 		isTimed:          mempoolConf.IsTimed,
@@ -170,6 +173,9 @@ func NewNode(opts ...order.Option) (order.Order, error) {
 		mempool:          mempoolInst,
 		batchMgr:         batchTimerMgr,
 		peerMgr:          config.PeerMgr,
+		ctx:              ctx,
+		cancel:           cancel,
+		txPreCheck:       precheck.NewTxPreCheckMgr(ctx, config.Logger, config.GetAccountBalance),
 		logger:           config.Logger,
 	}
 	soloNode.logger.Infof("SOLO lastExec = %d", soloNode.lastExec)
@@ -217,11 +223,22 @@ func (n *Node) listenEvent() {
 				}
 
 			// receive tx from api
-			case *txcache.TxWithResp:
+			case *order.TxWithResp:
+				unCheckedEv := &order.UncheckedTxEvent{
+					EventType: order.LocalTxEvent,
+					Event:     e,
+				}
+				n.txPreCheck.PostUncheckedTxEvent(unCheckedEv)
+
+			case *precheck.ValidTxs:
+				if !e.Local {
+					n.logger.Errorf("Receive remote type tx")
+					continue
+				}
 				if n.mempool.IsPoolFull() {
 					n.logger.Warn("Mempool is full")
 					n.setPoolFull()
-					e.RespCh <- txcache.TxResp{
+					e.LocalRespCh <- &order.TxResp{
 						Status:   false,
 						ErrorMsg: ErrPoolFull,
 					}
@@ -233,31 +250,35 @@ func (n *Node) listenEvent() {
 				if !n.batchMgr.isTimerActive(Batch) {
 					n.batchMgr.startTimer(Batch)
 				}
-				var requests [][]byte
-				tx := e.Tx
-				raw, err := tx.RbftMarshal()
-				if err != nil {
-					n.logger.Error(err)
-				} else {
-					requests = append(requests, raw)
+
+				if len(e.Txs) != singleTx {
+					n.logger.Warningf("Receive wrong txs length from local, expect:%d, actual:%d", singleTx, len(e.Txs))
 				}
 
-				if len(requests) != 0 {
-					if batches, _ := n.mempool.AddNewRequests(requests, true, true, false); batches != nil {
-						n.batchMgr.stopTimer(Batch)
-						if len(batches) != 1 {
-							n.logger.Errorf("batch size is not 1, actual: %d", len(batches))
-							continue
-						}
-						n.postProposal(batches[0])
-						// start no-tx batch timer when this node handle the last transaction
-						if n.isTimed && !n.mempool.HasPendingRequestInPool() {
-							n.batchMgr.startTimer(NoTxBatch)
-						}
+				rawTx, err := e.Txs[0].RbftMarshal()
+				if err != nil {
+					e.LocalRespCh <- &order.TxResp{
+						Status:   false,
+						ErrorMsg: err.Error(),
+					}
+					continue
+				}
+				if batches, _ := n.mempool.AddNewRequests([][]byte{rawTx}, true, true, false); batches != nil {
+					n.batchMgr.stopTimer(Batch)
+					if len(batches) != 1 {
+						n.logger.Errorf("batch size is not 1, actual: %d", len(batches))
+						continue
+					}
+					n.postProposal(batches[0])
+					// start no-tx batch timer when this node handle the last transaction
+					if n.isTimed && !n.mempool.HasPendingRequestInPool() {
+						n.batchMgr.startTimer(NoTxBatch)
 					}
 				}
-				go n.txFeed.Send([]*types.Transaction{tx})
-				e.RespCh <- txcache.TxResp{Status: true}
+
+				// post tx event to websocket
+				go n.txFeed.Send(e.Txs)
+				e.LocalRespCh <- &order.TxResp{Status: true}
 
 			// handle timeout event
 			case batchTimeoutEvent:
@@ -403,6 +424,21 @@ func (n *Node) listenReadyBlock() {
 
 func (n *Node) postProposal(batch *mempool.RequestHashBatch[types.Transaction, *types.Transaction]) {
 	n.blockCh <- batch
+}
+
+func (n *Node) listenValidTxs() {
+	for {
+		select {
+		case <-n.ctx.Done():
+			return
+		case requests := <-n.txPreCheck.CommitValidTxs():
+			n.postValidTx(requests)
+		}
+	}
+}
+
+func (n *Node) postValidTx(txs *precheck.ValidTxs) {
+	n.recvCh <- txs
 }
 
 func (n *Node) isPoolFull() bool {

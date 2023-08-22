@@ -8,6 +8,7 @@ import (
 
 	"github.com/Rican7/retry"
 	"github.com/Rican7/retry/strategy"
+	"github.com/axiomesh/axiom/internal/order/precheck"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/samber/lo"
 	"github.com/sirupsen/logrus"
@@ -43,9 +44,10 @@ type Node struct {
 
 	checkpoint uint64
 
-	ctx     context.Context
-	cancel  context.CancelFunc
-	txCache *txcache.TxCache
+	ctx        context.Context
+	cancel     context.CancelFunc
+	txCache    *txcache.TxCache
+	txPreCheck precheck.PreCheck
 
 	txFeed event.Feed
 }
@@ -109,8 +111,10 @@ func newNode(opts ...order.Option) (*Node, error) {
 		ctx:               ctx,
 		cancel:            cancel,
 		txCache:           txcache.NewTxCache(rbftConfig.SetTimeout, uint64(rbftConfig.SetSize), config.Logger),
-		peerMgr:           config.PeerMgr,
-		checkpoint:        config.Config.Rbft.CheckpointPeriod,
+		txPreCheck:        precheck.NewTxPreCheckMgr(ctx, config.Logger, config.GetAccountBalance),
+
+		peerMgr:    config.PeerMgr,
+		checkpoint: config.Config.Rbft.CheckpointPeriod,
 	}, nil
 }
 
@@ -134,8 +138,10 @@ func (n *Node) Start() error {
 		n.logger.Error(err)
 	}
 
+	n.txPreCheck.Start()
 	go n.txCache.ListenEvent()
 
+	go n.listenValidTxs()
 	go n.listenNewTxToSubmit()
 	go n.listenExecutedBlockToReport()
 	go n.listenBatchMemTxsToBroadcast()
@@ -143,6 +149,40 @@ func (n *Node) Start() error {
 
 	n.logger.Info("=====Order started=========")
 	return n.n.Start()
+}
+
+func (n *Node) listenValidTxs() {
+	for {
+		select {
+		case <-n.ctx.Done():
+			return
+		case validTxs := <-n.txPreCheck.CommitValidTxs():
+			var requests [][]byte
+			for _, tx := range validTxs.Txs {
+				raw, err := tx.RbftMarshal()
+				if err != nil {
+					n.logger.Error(err)
+					continue
+				}
+				requests = append(requests, raw)
+			}
+
+			if err := n.n.Propose(&consensus.RequestSet{
+				Requests: requests,
+				Local:    validTxs.Local,
+			}); err != nil {
+				n.logger.WithField("err", err).Warn("Propose tx failed")
+			}
+
+			// post tx event to websocket
+			go n.txFeed.Send(validTxs.Txs)
+
+			// send successful response to api
+			if validTxs.Local {
+				validTxs.LocalRespCh <- &order.TxResp{Status: true}
+			}
+		}
+	}
 }
 
 func (n *Node) listenP2PMsg() {
@@ -176,10 +216,7 @@ func (n *Node) listenP2PMsg() {
 				n.logger.WithField("err", err).Warn("Unmarshal txs message failed")
 				continue
 			}
-			if err := n.SubmitTxsFromRemote(tx.Slice); err != nil {
-				n.logger.WithField("err", err).Warn("Process order message failed")
-				continue
-			}
+			n.submitTxsFromRemote(tx.Slice)
 		}
 	}
 }
@@ -187,27 +224,15 @@ func (n *Node) listenP2PMsg() {
 func (n *Node) listenNewTxToSubmit() {
 	for {
 		select {
-		case txWithResp := <-n.txCache.TxRespC:
-			var requests [][]byte
-			tx := txWithResp.Tx
-			raw, err := tx.RbftMarshal()
-			if err != nil {
-				n.logger.Error(err)
-			} else {
-				requests = append(requests, raw)
-			}
-
-			if len(requests) != 0 {
-				_ = n.n.Propose(&consensus.RequestSet{
-					Requests: requests,
-					Local:    true,
-				})
-				go n.txFeed.Send([]*types.Transaction{txWithResp.Tx})
-			}
-
-			txWithResp.RespCh <- txcache.TxResp{Status: true}
 		case <-n.ctx.Done():
 			return
+
+		case txWithResp := <-n.txCache.TxRespC:
+			ev := &order.UncheckedTxEvent{
+				EventType: order.LocalTxEvent,
+				Event:     txWithResp,
+			}
+			n.txPreCheck.PostUncheckedTxEvent(ev)
 		}
 	}
 }
@@ -300,9 +325,9 @@ func (n *Node) Prepare(tx *types.Transaction) error {
 		return errors.New("transaction cache are full, we will drop this transaction")
 	}
 
-	txWithResp := &txcache.TxWithResp{
+	txWithResp := &order.TxWithResp{
 		Tx:     tx,
-		RespCh: make(chan txcache.TxResp),
+		RespCh: make(chan *order.TxResp),
 	}
 	n.txCache.TxRespC <- txWithResp
 	n.txCache.RecvTxC <- tx
@@ -314,9 +339,9 @@ func (n *Node) Prepare(tx *types.Transaction) error {
 	return nil
 }
 
-func (n *Node) SubmitTxsFromRemote(tsx [][]byte) error {
+func (n *Node) submitTxsFromRemote(txs [][]byte) {
 	var requests []*types.Transaction
-	for _, item := range tsx {
+	for _, item := range txs {
 		tx := &types.Transaction{}
 		if err := tx.RbftUnmarshal(item); err != nil {
 			n.logger.Error(err)
@@ -324,12 +349,12 @@ func (n *Node) SubmitTxsFromRemote(tsx [][]byte) error {
 		}
 		requests = append(requests, tx)
 	}
-	go n.txFeed.Send(requests)
 
-	return n.n.Propose(&consensus.RequestSet{
-		Requests: tsx,
-		Local:    false,
-	})
+	ev := &order.UncheckedTxEvent{
+		EventType: order.RemoteTxEvent,
+		Event:     requests,
+	}
+	n.txPreCheck.PostUncheckedTxEvent(ev)
 }
 
 func (n *Node) Commit() chan *types.CommitEvent {
@@ -372,11 +397,11 @@ func (n *Node) GetPendingTxByHash(hash *types.Hash) *types.Transaction {
 	return tx
 }
 
-func (n *Node) DelNode(delID uint64) error {
+func (n *Node) DelNode(_ uint64) error {
 	return errors.New("unsupported api")
 }
 
-func (n *Node) ReportState(height uint64, blockHash *types.Hash, txHashList []*types.Hash) {
+func (n *Node) ReportState(height uint64, blockHash *types.Hash, _ []*types.Hash) {
 	if n.stack.StateUpdating && n.stack.StateUpdateHeight != height {
 		return
 	}

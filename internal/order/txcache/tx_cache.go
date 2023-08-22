@@ -3,6 +3,7 @@ package txcache
 import (
 	"time"
 
+	"github.com/axiomesh/axiom/internal/order"
 	"github.com/sirupsen/logrus"
 
 	"github.com/axiomesh/axiom-kit/types"
@@ -17,7 +18,7 @@ const (
 type TxCache struct {
 	TxSetC  chan []*types.Transaction
 	RecvTxC chan *types.Transaction
-	TxRespC chan *TxWithResp
+	TxRespC chan *order.TxWithResp
 	CloseC  chan bool
 
 	txSet      []*types.Transaction
@@ -28,21 +29,11 @@ type TxCache struct {
 	txSetSize  uint64
 }
 
-type TxWithResp struct {
-	Tx     *types.Transaction
-	RespCh chan TxResp
-}
-
-type TxResp struct {
-	Status   bool
-	ErrorMsg string
-}
-
 func NewTxCache(txSliceTimeout time.Duration, txSetSize uint64, logger logrus.FieldLogger) *TxCache {
 	txCache := &TxCache{}
 	txCache.RecvTxC = make(chan *types.Transaction, DefaultTxCacheSize)
 	txCache.TxSetC = make(chan []*types.Transaction)
-	txCache.TxRespC = make(chan *TxWithResp)
+	txCache.TxRespC = make(chan *order.TxWithResp)
 	txCache.CloseC = make(chan bool)
 	txCache.timerC = make(chan bool)
 	txCache.stopTimerC = make(chan bool)
