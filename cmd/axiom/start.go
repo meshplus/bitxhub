@@ -24,6 +24,26 @@ import (
 	"github.com/axiomesh/axiom/pkg/repo"
 )
 
+const (
+	full          = "full"
+	mockConsensus = "mockConsensus"
+	mockExecutor  = "mockExecutor"
+)
+
+var startCMD = &cli.Command{
+	Name:  "start",
+	Usage: "Start a long-running daemon process",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "mode",
+			Usage:    "start axiom in specified mode",
+			Required: false,
+			Value:    full,
+		},
+	},
+	Action: start,
+}
+
 func start(ctx *cli.Context) error {
 	p, err := getRootPath(ctx)
 	if err != nil {
@@ -34,12 +54,21 @@ func start(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
+
 	if !existConfig {
 		// not generate config, start by solo
 		r.Config.Order.Type = repo.OrderTypeSolo
 		if err := r.Flush(); err != nil {
 			return err
 		}
+	}
+	mode := ctx.String("mode")
+	if mode == mockConsensus {
+		r.Config.Order.Type = repo.OrderTypeSoloDev
+	}
+
+	if mode == mockExecutor {
+		r.Config.Executor.Type = repo.ExecTypeDev
 	}
 
 	err = log.Initialize(

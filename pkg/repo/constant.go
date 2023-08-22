@@ -26,8 +26,9 @@ const (
 )
 
 const (
-	OrderTypeSolo = "solo"
-	OrderTypeRbft = "rbft"
+	OrderTypeSolo    = "solo"
+	OrderTypeRbft    = "rbft"
+	OrderTypeSoloDev = "solo_dev"
 
 	KVStorageTypeLeveldb = "leveldb"
 	KVStorageTypePebble  = "pebble"
@@ -43,6 +44,9 @@ const (
 	P2PPipeBroadcastSimple = "simple"
 	P2PPipeBroadcastGossip = "gossip"
 	P2PPipeBroadcastFlood  = "flood"
+
+	ExecTypeNative = "exec_native"
+	ExecTypeDev    = "exec_dev"
 )
 
 var (

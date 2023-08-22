@@ -7,6 +7,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/axiomesh/axiom-kit/types"
+	"github.com/axiomesh/axiom/internal/executor/executor_dev"
+	"github.com/axiomesh/axiom/internal/order/solo_dev"
 	"github.com/common-nighthawk/go-figure"
 	"github.com/ethereum/go-ethereum/common/fdlimit"
 	"github.com/sirupsen/logrus"
@@ -63,8 +66,18 @@ func NewAxiom(rep *repo.Repo) (*Axiom, error) {
 		orderCon = solo.NewNode
 	case repo.OrderTypeRbft:
 		orderCon = rbft.NewNode
+	case repo.OrderTypeSoloDev:
+		orderCon = solo_dev.NewNode
 	default:
 		return nil, fmt.Errorf("unsupport order type: %s", rep.Config.Order.Type)
+	}
+
+	var getNonceFunc func(address *types.Address) uint64
+
+	if rep.Config.Order.Type == repo.OrderTypeSoloDev {
+		getNonceFunc = bxh.Ledger.GetNonce
+	} else {
+		getNonceFunc = bxh.Ledger.Copy().GetNonce
 	}
 
 	order, err := orderCon(
@@ -81,8 +94,8 @@ func NewAxiom(rep *repo.Repo) (*Axiom, error) {
 		order.WithApplied(chainMeta.Height),
 		order.WithDigest(chainMeta.BlockHash.String()),
 		order.WithGetChainMetaFunc(bxh.Ledger.GetChainMeta),
-		order.WithGetAccountBalanceFunc(bxh.Ledger.Copy().GetBalance),
-		order.WithGetAccountNonceFunc(bxh.Ledger.Copy().GetNonce),
+		order.WithGetAccountBalanceFunc(bxh.Ledger.GetBalance),
+		order.WithGetAccountNonceFunc(getNonceFunc),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("initialize order failed: %w", err)
@@ -93,6 +106,10 @@ func NewAxiom(rep *repo.Repo) (*Axiom, error) {
 	bxh.Ctx = ctx
 	bxh.Cancel = cancel
 	bxh.Order = order
+
+	if err := bxh.raiseUlimit(rep.Config.Ulimit); err != nil {
+		return nil, fmt.Errorf("raise ulimit: %w", err)
+	}
 
 	return bxh, nil
 }
@@ -150,7 +167,13 @@ func GenerateAxiomWithoutOrder(rep *repo.Repo) (*Axiom, error) {
 		}).Info("Initialize genesis")
 	}
 
-	txExec, err := executor.New(rwLdg, loggers.Logger(loggers.Executor), rep.Config)
+	var txExec executor.Executor
+	log := loggers.Logger(loggers.Executor)
+	if rep.Config.Executor.Type == repo.ExecTypeDev {
+		txExec, err = executor_dev.New(log)
+	} else {
+		txExec, err = executor.New(rwLdg, log, rep.Config)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("create BlockExecutor: %w", err)
 	}
@@ -171,11 +194,7 @@ func GenerateAxiomWithoutOrder(rep *repo.Repo) (*Axiom, error) {
 }
 
 func (bxh *Axiom) Start() error {
-	if err := bxh.raiseUlimit(2048); err != nil {
-		return fmt.Errorf("raise ulimit: %w", err)
-	}
-
-	if bxh.repo.Config.Order.Type != repo.OrderTypeSolo {
+	if repo.SupportMultiNode[bxh.repo.Config.Order.Type] {
 		if err := bxh.PeerMgr.Start(); err != nil {
 			return fmt.Errorf("peer manager start: %w", err)
 		}

@@ -10,6 +10,17 @@ CONFIG_PATH=${PROJECT_PATH}/config
 BUILD_PATH=${CURRENT_PATH}/build
 N=4
 
+BLUE='\033[0;34m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+function print_blue() {
+  printf "${BLUE}%s${NC}\n" "$1"
+}
+
+function print_red() {
+    printf "${RED}%s${NC}\n" "$1"
+}
 
 function Get_PM_Name() {
   PM=''
@@ -99,7 +110,16 @@ function start() {
   for ((i = 0; i < N; i = i + 1)); do
     tmux selectw -t $(($i / 4))
     tmux selectp -t $(($i % 4))
-    tmux send-keys "axiom --repo=${BUILD_PATH}/node$(($i + 1)) start" C-m
+    if [ -n "$TAGS" ]; then
+      if [ "$TAGS" = "mockExecutor" ]; then
+        tmux send-keys "axiom --repo=${BUILD_PATH}/node$(($i + 1)) start --mode=${TAGS}" C-m
+      else
+        print_red "TAGS should be mockExecutor"
+        exit 1
+      fi
+    else
+      tmux send-keys "axiom --repo=${BUILD_PATH}/node$(($i + 1)) start" C-m
+    fi
   done
   tmux selectw -t 0
   tmux attach-session -t axiom

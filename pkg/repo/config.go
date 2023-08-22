@@ -5,6 +5,7 @@ import (
 	"os"
 	"path"
 	"reflect"
+	"sync"
 	"time"
 
 	"github.com/mitchellh/mapstructure"
@@ -59,6 +60,7 @@ func (d *Duration) String() string {
 type Config struct {
 	RepoRoot string `mapstructure:"-" toml:"-"`
 
+	Ulimit   uint64   `mapstructure:"ulimit" toml:"ulimit"`
 	Port     Port     `mapstructure:"port" toml:"port"`
 	JsonRPC  JsonRPC  `mapstructure:"jsonrpc" toml:"jsonrpc"`
 	P2P      P2P      `mapstructure:"p2p" toml:"p2p"`
@@ -172,10 +174,20 @@ type Ledger struct {
 }
 
 type Executor struct {
+	Type string `mapstructure:"type" toml:"type"`
 }
 
 type Member struct {
 	NodeId string `mapstructure:"node_id" toml:"node_id"`
+}
+
+var SupportMultiNode = make(map[string]bool)
+var registrationMutex sync.Mutex
+
+func Register(orderType string, isSupported bool) {
+	registrationMutex.Lock()
+	defer registrationMutex.Unlock()
+	SupportMultiNode[orderType] = isSupported
 }
 
 func (c *Config) Bytes() ([]byte, error) {
@@ -190,6 +202,7 @@ func (c *Config) Bytes() ([]byte, error) {
 func DefaultConfig(repoRoot string) *Config {
 	return &Config{
 		RepoRoot: repoRoot,
+		Ulimit:   2048,
 		Port: Port{
 			JsonRpc:   8881,
 			WebSocket: 9991,
@@ -214,17 +227,19 @@ func DefaultConfig(repoRoot string) *Config {
 				Duration: Duration(15 * time.Second),
 			},
 			Pipe: P2PPipe{
-				BroadcastType:       P2PPipeBroadcastGossip,
+				BroadcastType:       P2PPipeBroadcastSimple,
 				ReceiveMsgCacheSize: 100,
 			},
 		},
 		Order: Order{
-			Type: "rbft",
+			Type: OrderTypeRbft,
 		},
 		Ledger: Ledger{
-			Kv: "leveldb",
+			Kv: KVStorageTypeLeveldb,
 		},
-		Executor: Executor{},
+		Executor: Executor{
+			Type: ExecTypeNative,
+		},
 		Genesis: Genesis{
 			ChainID:       1356,
 			GasLimit:      0x5f5e100,

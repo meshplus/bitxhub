@@ -79,11 +79,14 @@ fmt:
 	gofmt -s -w ./*.go
 
 ## make cluster: Run cluster including 4 nodes
-cluster:install${TAGS}
+## make cluster TAGS=mockExecutor: Run cluster including 4 nodes with mockExecutor
+cluster:install
 	cd scripts && bash cluster.sh TAGS=${TAGS}
 
 ## make solo: Run one node in solo mode
-solo:install${TAGS}
+## make solo TAGS=mockExecutor: Run one node in solo mode with mockExecutor
+## make solo TAGS=mockConsensus: Run one node in solo mode with mockConsensus
+solo:install
 	cd scripts && bash solo.sh TAGS=${TAGS}
 
 ## make precommit: Check code like CI

@@ -2,6 +2,8 @@ title = "Axiom configuration file"
 
 solo = false
 
+ulimit = 2048
+
 [port]
 jsonrpc = 8881
 grpc = 60011

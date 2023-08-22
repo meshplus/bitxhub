@@ -28,6 +28,7 @@ func main() {
 
 	app.Commands = []*cli.Command{
 		configCMD,
+		startCMD,
 		{
 			Name:   "start",
 			Usage:  "Start a long-running daemon process",
