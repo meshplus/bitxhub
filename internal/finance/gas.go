@@ -5,7 +5,6 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/axiomesh/axiom/internal/ledger"
 	"github.com/axiomesh/axiom/pkg/loggers"
 	"github.com/axiomesh/axiom/pkg/repo"
 )
@@ -18,42 +17,33 @@ var (
 
 type Gas struct {
 	repo   *repo.Repo
-	ledger *ledger.Ledger
 	logger logrus.FieldLogger
 }
 
-func NewGas(repo *repo.Repo, ledger *ledger.Ledger) *Gas {
+func NewGas(repo *repo.Repo) *Gas {
 	logger := loggers.Logger(loggers.Finance)
-	return &Gas{repo: repo, ledger: ledger, logger: logger}
+	return &Gas{repo: repo, logger: logger}
 }
 
-// GetGasPrice returns the current block gas price, based on the formula:
+// CalNextGasPrice returns the current block gas price, based on the formula:
 //
 // G_c = G_p * (1 + (0.5 * (MaxBatchSize - TxsCount) / MaxBatchSize))
 //
 // if G_c <= minGasPrice, G_c = minGasPrice
 //
 // if G_c >= maxGasPrice, G_c = maxGasPrice
-func (gas *Gas) GetGasPrice() (uint64, error) {
-	latest := gas.ledger.ChainLedger.GetChainMeta().Height
-	block, err := gas.ledger.ChainLedger.GetBlock(latest)
-	if err != nil {
-		return 0, errors.New("fail to get block")
-	}
-	gas.logger.Debugf("get %dth gas info: %v", latest, block.BlockHeader.GasPrice)
+func (gas *Gas) CalNextGasPrice(parentGasPrice uint64, txs int) (uint64, error) {
 	max := gas.repo.Config.Genesis.MaxGasPrice
 	min := gas.repo.Config.Genesis.MinGasPrice
-	parentGasPrice := block.BlockHeader.GasPrice
 	if uint64(parentGasPrice) < min || uint64(parentGasPrice) > max {
 		gas.logger.Errorf("gas price is out of range, parent gas price is %d, min is %d, max is %d", parentGasPrice, min, max)
 		return 0, ErrGasOutOfRange
 	}
 	total := int(gas.repo.OrderConfig.Mempool.BatchSize)
-	currentTxs := len(block.Transactions)
-	if currentTxs > total {
+	if txs > total {
 		return 0, ErrTxsOutOfRange
 	}
-	percentage := 2 * float64(currentTxs-total/2) / float64(total) * gas.repo.Config.Genesis.GasChangeRate
+	percentage := 2 * float64(txs-total/2) / float64(total) * gas.repo.Config.Genesis.GasChangeRate
 	currentPrice := uint64(float64(parentGasPrice) * (1 + percentage))
 	if currentPrice > max {
 		gas.logger.Warningf("gas price is touching ceiling, current price is %d, max is %d", currentPrice, max)

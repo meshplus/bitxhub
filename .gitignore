@@ -18,8 +18,11 @@ coverage.out
 pid
 scripts/prepare
 logs
+
+mock*
 !mock_peermgr
-!mock_ledger
+!mock_precheck
+
 .fabric-samples
 coverage.txt
 docs/.vuepress/dist

@@ -15,7 +15,7 @@ type ChainAPI CoreAPI
 var _ api.ChainAPI = (*ChainAPI)(nil)
 
 func (api *ChainAPI) Status() string {
-	err := api.bxh.Order.Ready()
+	err := api.axiom.Order.Ready()
 	if err != nil {
 		return "abnormal"
 	}
@@ -24,7 +24,7 @@ func (api *ChainAPI) Status() string {
 }
 
 func (api *ChainAPI) Meta() (*types.ChainMeta, error) {
-	return api.bxh.Ledger.GetChainMeta(), nil
+	return api.axiom.Ledger.GetChainMeta(), nil
 }
 
 func (api *ChainAPI) TPS(begin, end uint64) (uint64, error) {
@@ -48,7 +48,7 @@ func (api *ChainAPI) TPS(begin, end uint64) (uint64, error) {
 	for i := begin + 1; i <= end-1; i++ {
 		go func(height uint64, wg *sync.WaitGroup) {
 			defer wg.Done()
-			count, err := api.bxh.Ledger.GetTransactionCount(height)
+			count, err := api.axiom.Ledger.GetTransactionCount(height)
 			if err != nil {
 				errCount.Inc()
 			} else {
@@ -59,7 +59,7 @@ func (api *ChainAPI) TPS(begin, end uint64) (uint64, error) {
 
 	go func() {
 		defer wg.Done()
-		block, err := api.bxh.Ledger.GetBlock(begin)
+		block, err := api.axiom.Ledger.GetBlock(begin)
 		if err != nil {
 			errCount.Inc()
 		} else {
@@ -69,7 +69,7 @@ func (api *ChainAPI) TPS(begin, end uint64) (uint64, error) {
 	}()
 	go func() {
 		defer wg.Done()
-		block, err := api.bxh.Ledger.GetBlock(end)
+		block, err := api.axiom.Ledger.GetBlock(end)
 		if err != nil {
 			errCount.Inc()
 		} else {

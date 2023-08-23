@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"strconv"
 	"sync"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/axiomesh/axiom-kit/storage"
 	"github.com/axiomesh/axiom-kit/storage/blockfile"
 	"github.com/axiomesh/axiom-kit/types"
+	"github.com/axiomesh/axiom/internal/finance"
 	"github.com/axiomesh/axiom/pkg/repo"
 	"github.com/axiomesh/eth-kit/ledger"
 )
@@ -25,6 +27,7 @@ type ChainLedger struct {
 	repo            *repo.Repo
 	chainMeta       *types.ChainMeta
 	chainMutex      sync.RWMutex
+	gas             *finance.Gas
 	logger          logrus.FieldLogger
 }
 
@@ -35,6 +38,7 @@ func NewChainLedgerImpl(blockchainStore storage.Storage, bf *blockfile.BlockFile
 		repo:            repo,
 		chainMutex:      sync.RWMutex{},
 		logger:          logger,
+		gas:             finance.NewGas(repo),
 	}
 
 	chainMeta, err := c.LoadChainMeta()
@@ -201,6 +205,19 @@ func (l *ChainLedger) PersistExecutionResult(block *types.Block, receipts []*typ
 		return fmt.Errorf("preapare receipts failed: %w", err)
 	}
 
+	parentChainMeta := l.GetChainMeta()
+	var gasPrice uint64
+	if parentChainMeta.GasPrice == nil {
+		gasPrice = l.repo.Config.Genesis.GasPrice
+	} else {
+		gasPrice, err = l.gas.CalNextGasPrice(parentChainMeta.GasPrice.Uint64(), len(block.Transactions))
+		if err != nil {
+			return fmt.Errorf("calculate current gas failed: %w", err)
+		}
+	}
+
+	block.BlockHeader.GasPrice = int64(gasPrice)
+
 	ts, err := l.prepareTransactions(batcher, block)
 	if err != nil {
 		return fmt.Errorf("prepare transactions failed: %w", err)
@@ -213,8 +230,15 @@ func (l *ChainLedger) PersistExecutionResult(block *types.Block, receipts []*typ
 
 	meta := &types.ChainMeta{
 		Height:    block.BlockHeader.Number,
+		GasPrice:  new(big.Int).SetUint64(gasPrice),
 		BlockHash: block.BlockHash,
 	}
+
+	l.logger.WithFields(logrus.Fields{
+		"Height":    meta.Height,
+		"GasPrice":  meta.GasPrice,
+		"BlockHash": meta.BlockHash,
+	}).Debug("prepare chain meta")
 
 	if err := l.bf.AppendBlock(l.chainMeta.Height, block.BlockHash.Bytes(), b, rs, ts); err != nil {
 		return fmt.Errorf("append block with height %d to blockfile failed: %w", l.chainMeta.Height, err)
@@ -238,6 +262,7 @@ func (l *ChainLedger) UpdateChainMeta(meta *types.ChainMeta) {
 	l.chainMutex.Lock()
 	defer l.chainMutex.Unlock()
 	l.chainMeta.Height = meta.Height
+	l.chainMeta.GasPrice = meta.GasPrice
 	l.chainMeta.BlockHash = meta.BlockHash
 }
 
@@ -248,6 +273,7 @@ func (l *ChainLedger) GetChainMeta() *types.ChainMeta {
 
 	return &types.ChainMeta{
 		Height:    l.chainMeta.Height,
+		GasPrice:  l.chainMeta.GasPrice,
 		BlockHash: l.chainMeta.BlockHash,
 	}
 }
@@ -399,6 +425,7 @@ func (l *ChainLedger) RollbackBlockChain(height uint64) error {
 		}
 		meta = &types.ChainMeta{
 			Height:    block.BlockHeader.Number,
+			GasPrice:  big.NewInt(block.BlockHeader.GasPrice),
 			BlockHash: block.BlockHash,
 		}
 

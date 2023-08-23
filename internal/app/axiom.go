@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/big"
 	"syscall"
 	"time"
 
@@ -15,7 +14,6 @@ import (
 	"github.com/axiomesh/axiom-kit/storage/blockfile"
 	"github.com/axiomesh/axiom/api/jsonrpc"
 	"github.com/axiomesh/axiom/internal/executor"
-	"github.com/axiomesh/axiom/internal/finance"
 	"github.com/axiomesh/axiom/internal/ledger"
 	"github.com/axiomesh/axiom/internal/ledger/genesis"
 	"github.com/axiomesh/axiom/internal/order"
@@ -138,9 +136,7 @@ func GenerateAxiomWithoutOrder(rep *repo.Repo) (*Axiom, error) {
 	}
 
 	// 1. create executor and view executor
-	viewExec, err := executor.New(viewLdg, loggers.Logger(loggers.Executor), rep.Config, func() (*big.Int, error) {
-		return big.NewInt(0), nil
-	})
+	viewExec, err := executor.New(viewLdg, loggers.Logger(loggers.Executor), rep.Config)
 	if err != nil {
 		return nil, fmt.Errorf("create ViewExecutor: %w", err)
 	}
@@ -154,18 +150,7 @@ func GenerateAxiomWithoutOrder(rep *repo.Repo) (*Axiom, error) {
 		}).Info("Initialize genesis")
 	}
 
-	gas := finance.NewGas(rep, viewLdg)
-	getGasPrice := func() (*big.Int, error) {
-		result := new(big.Int)
-		gas, err := gas.GetGasPrice()
-		if err != nil {
-			return nil, err
-		}
-		result.SetUint64(gas)
-		return result, nil
-	}
-
-	txExec, err := executor.New(rwLdg, loggers.Logger(loggers.Executor), rep.Config, getGasPrice)
+	txExec, err := executor.New(rwLdg, loggers.Logger(loggers.Executor), rep.Config)
 	if err != nil {
 		return nil, fmt.Errorf("create BlockExecutor: %w", err)
 	}

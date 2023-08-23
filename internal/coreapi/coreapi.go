@@ -11,13 +11,13 @@ import (
 var _ api.CoreAPI = (*CoreAPI)(nil)
 
 type CoreAPI struct {
-	bxh    *app.Axiom
+	axiom  *app.Axiom
 	logger logrus.FieldLogger
 }
 
-func New(bxh *app.Axiom) (*CoreAPI, error) {
+func New(axiom *app.Axiom) (*CoreAPI, error) {
 	return &CoreAPI{
-		bxh:    bxh,
+		axiom:  axiom,
 		logger: loggers.Logger(loggers.CoreAPI),
 	}, nil
 }

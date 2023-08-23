@@ -13,15 +13,15 @@ type FeedAPI CoreAPI
 var _ api.FeedAPI = (*FeedAPI)(nil)
 
 func (api *FeedAPI) SubscribeNewTxEvent(ch chan<- []*types.Transaction) event.Subscription {
-	return api.bxh.Order.SubscribeTxEvent(ch)
+	return api.axiom.Order.SubscribeTxEvent(ch)
 }
 
 func (api *FeedAPI) SubscribeNewBlockEvent(ch chan<- events.ExecutedEvent) event.Subscription {
-	return api.bxh.BlockExecutor.SubscribeBlockEventForRemote(ch)
+	return api.axiom.BlockExecutor.SubscribeBlockEventForRemote(ch)
 }
 
 func (api *FeedAPI) SubscribeLogsEvent(ch chan<- []*types.EvmLog) event.Subscription {
-	return api.bxh.BlockExecutor.SubscribeLogsEvent(ch)
+	return api.axiom.BlockExecutor.SubscribeLogsEvent(ch)
 }
 
 // TODO: check it
