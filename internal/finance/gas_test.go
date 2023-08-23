@@ -3,16 +3,11 @@ package finance
 import (
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/axiomesh/axiom-kit/types"
-	"github.com/axiomesh/axiom/internal/ledger"
 	"github.com/axiomesh/axiom/pkg/repo"
-	"github.com/axiomesh/eth-kit/ledger/mock_ledger"
 )
-
-const repoRoot = "testdata"
 
 func TestGetGasPrice(t *testing.T) {
 	// Gas should be less than 5000
@@ -34,21 +29,7 @@ func TestGetGasPrice(t *testing.T) {
 }
 
 func GasPriceBySize(t *testing.T, size int, parentGasPrice int64, expectErr error) uint64 {
-	mockCtl := gomock.NewController(t)
-	chainLedger := mock_ledger.NewMockChainLedger(mockCtl)
-	stateLedger := mock_ledger.NewMockStateLedger(mockCtl)
-	mockLedger := &ledger.Ledger{
-		ChainLedger: chainLedger,
-		StateLedger: stateLedger,
-	}
-	chainLedger.EXPECT().Close().AnyTimes()
-	stateLedger.EXPECT().Close().AnyTimes()
-	defer mockLedger.Close()
-	chainMeta := &types.ChainMeta{
-		Height: 1,
-	}
 	// mock block for ledger
-	chainLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
 	block := &types.Block{
 		BlockHeader:  &types.BlockHeader{GasPrice: parentGasPrice},
 		Transactions: []*types.Transaction{},
@@ -61,10 +42,9 @@ func GasPriceBySize(t *testing.T, size int, parentGasPrice int64, expectErr erro
 		return txs
 	}
 	block.Transactions = prepareTxs(size)
-	chainLedger.EXPECT().GetBlock(uint64(1)).Return(block, nil).AnyTimes()
 	config := generateMockConfig(t)
-	gasPrice := NewGas(config, mockLedger)
-	gas, err := gasPrice.GetGasPrice()
+	gasPrice := NewGas(config)
+	gas, err := gasPrice.CalNextGasPrice(uint64(parentGasPrice), size)
 	if expectErr != nil {
 		assert.EqualError(t, err, expectErr.Error())
 		return 0

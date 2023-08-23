@@ -90,11 +90,6 @@ func (exec *BlockExecutor) processExecuteEvent(commitEvent *types.CommitEvent) {
 	block.BlockHeader.ReceiptRoot = receiptRoot
 	block.BlockHeader.ParentHash = exec.currentBlockHash
 	block.BlockHeader.Bloom = ledger.CreateBloom(receipts)
-	gasPrice, err := exec.GasPrice()
-	if err != nil {
-		panic(err)
-	}
-	block.BlockHeader.GasPrice = gasPrice.Int64()
 
 	accounts, journalHash := exec.ledger.FlushDirtyData()
 
@@ -198,12 +193,7 @@ func (exec *BlockExecutor) applyEthTransaction(_ int, tx *types.Transaction) *ty
 	var err error
 
 	msg := adaptor.TransactionToMessage(tx)
-	msg.GasPrice, err = exec.getCurrentGasPrice()
-	if err != nil {
-		receipt.Status = types.ReceiptFAILED
-		receipt.Ret = []byte(err.Error())
-		return receipt
-	}
+	msg.GasPrice = exec.getCurrentGasPrice()
 
 	exec.logger.Debugf("tx gas: %v", tx.GetGas())
 	exec.logger.Debugf("tx gas price: %v", tx.GetGasPrice())
@@ -216,6 +206,11 @@ func (exec *BlockExecutor) applyEthTransaction(_ int, tx *types.Transaction) *ty
 		result, err = contract.Run(msg)
 	} else {
 		// execute evm
+		curGasPrice := exec.ledger.GetChainMeta().GasPrice
+		if msg.GasPrice.Cmp(curGasPrice) != 0 {
+			exec.logger.Warnf("msg gas price %v not equals to current gas price %v, will adjust msg.GasPrice automatically", msg.GasPrice, curGasPrice)
+			msg.GasPrice = curGasPrice
+		}
 		gp := new(ethvm.GasPool).AddGas(exec.gasLimit)
 		txContext := ethvm.NewEVMTxContext(msg)
 		exec.evm.Reset(txContext, exec.ledger.StateLedger)
@@ -310,13 +305,8 @@ func (exec *BlockExecutor) GetEvm(txCtx ethvm.TxContext, vmConfig ethvm.Config) 
 
 // getCurrentGasPrice returns the current block's gas price, which is
 // stored in the last block's blockheader
-func (exec *BlockExecutor) getCurrentGasPrice() (*big.Int, error) {
-	latestHeight := exec.ledger.ChainLedger.GetChainMeta().Height
-	block, err := exec.ledger.GetBlock(latestHeight)
-	if err != nil {
-		return nil, err
-	}
-	return big.NewInt(block.BlockHeader.GasPrice), nil
+func (exec *BlockExecutor) getCurrentGasPrice() *big.Int {
+	return exec.ledger.GetChainMeta().GasPrice
 }
 
 // payGasFee share the revenue to nodes, now it is empty

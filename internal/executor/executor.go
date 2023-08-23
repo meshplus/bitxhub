@@ -30,7 +30,6 @@ type BlockExecutor struct {
 	ledger             *ledger.Ledger
 	logger             logrus.FieldLogger
 	blockC             chan *types.CommitEvent
-	persistC           chan *ledger.BlockData
 	currentHeight      uint64
 	currentBlockHash   *types.Hash
 	blockFeed          event.Feed
@@ -43,13 +42,12 @@ type BlockExecutor struct {
 	evmChainCfg *params.ChainConfig
 	gasLimit    uint64
 	config      repo.Config
-	GasPrice    func() (*big.Int, error)
 	lock        *sync.Mutex
 	admins      []string
 }
 
 // New creates executor instance
-func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, config *repo.Config, gasPrice func() (*big.Int, error)) (*BlockExecutor, error) {
+func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, config *repo.Config) (*BlockExecutor, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	blockExecutor := &BlockExecutor{
@@ -58,12 +56,10 @@ func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, config *repo.Con
 		ctx:              ctx,
 		cancel:           cancel,
 		blockC:           make(chan *types.CommitEvent, blockChanNumber),
-		persistC:         make(chan *ledger.BlockData, persistChanNumber),
 		currentHeight:    chainLedger.GetChainMeta().Height,
 		currentBlockHash: chainLedger.GetChainMeta().BlockHash,
 		evmChainCfg:      newEVMChainCfg(config),
 		config:           *config,
-		GasPrice:         gasPrice,
 		gasLimit:         config.Genesis.GasLimit,
 		lock:             &sync.Mutex{},
 	}
@@ -83,8 +79,6 @@ func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, config *repo.Con
 // Start starts executor
 func (exec *BlockExecutor) Start() error {
 	go exec.listenExecuteEvent()
-
-	go exec.persistData()
 
 	exec.logger.WithFields(logrus.Fields{
 		"height": exec.currentHeight,
@@ -171,26 +165,10 @@ func (exec *BlockExecutor) listenExecuteEvent() {
 		case commitEvent := <-exec.blockC:
 			exec.processExecuteEvent(commitEvent)
 		case <-exec.ctx.Done():
-			close(exec.persistC)
+			close(exec.blockC)
 			return
 		}
 	}
-}
-
-func (exec *BlockExecutor) persistData() {
-	for data := range exec.persistC {
-		now := time.Now()
-		exec.ledger.PersistBlockData(data)
-		exec.postBlockEvent(data.Block, data.TxHashList)
-		exec.postLogsEvent(data.Receipts)
-		exec.logger.WithFields(logrus.Fields{
-			"height": data.Block.BlockHeader.Number,
-			"hash":   data.Block.BlockHash.String(),
-			"count":  len(data.Block.Transactions),
-			"elapse": time.Since(now),
-		}).Info("Persisted block")
-	}
-	exec.ledger.Close()
 }
 
 func newEVMChainCfg(config *repo.Config) *params.ChainConfig {

@@ -9,12 +9,8 @@ type GasAPI CoreAPI
 var _ api.ChainAPI = (*ChainAPI)(nil)
 
 func (gas *GasAPI) GetGasPrice() (uint64, error) {
-	lastestHeight := gas.bxh.Ledger.ChainLedger.GetChainMeta().Height
-	block, err := gas.bxh.Ledger.ChainLedger.GetBlock(lastestHeight)
-	if err != nil {
-		return 0, err
-	}
-	return uint64(block.BlockHeader.GasPrice), nil
+	gasPrice := gas.axiom.Ledger.ChainLedger.GetChainMeta().GasPrice
+	return gasPrice.Uint64(), nil
 }
 
 func (gas *GasAPI) GetCurrentGasPrice(blockHeight uint64) (uint64, error) {
@@ -22,7 +18,7 @@ func (gas *GasAPI) GetCurrentGasPrice(blockHeight uint64) (uint64, error) {
 	if blockHeight != 1 {
 		blockHeight--
 	}
-	block, err := gas.bxh.Ledger.ChainLedger.GetBlock(blockHeight)
+	block, err := gas.axiom.Ledger.ChainLedger.GetBlock(blockHeight)
 	if err != nil {
 		return 0, err
 	}

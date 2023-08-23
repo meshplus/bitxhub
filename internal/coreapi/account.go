@@ -11,5 +11,5 @@ type AccountAPI CoreAPI
 var _ api.AccountAPI = (*AccountAPI)(nil)
 
 func (api *AccountAPI) GetAccount(addr *types.Address) ledger.IAccount {
-	return api.bxh.Ledger.Copy().GetOrCreateAccount(addr)
+	return api.axiom.Ledger.Copy().GetOrCreateAccount(addr)
 }
