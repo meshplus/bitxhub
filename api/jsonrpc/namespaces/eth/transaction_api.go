@@ -133,7 +133,7 @@ func (api *TransactionAPI) GetTransactionByHash(hash common.Hash) (*rpctypes.RPC
 
 	// retrieve tx from the pool
 	if poolTx := api.api.Broker().GetPoolTransaction(typesHash); poolTx != nil {
-		return NewRPCTransaction(tx, common.Hash{}, 0, 0), nil
+		return NewRPCTransaction(poolTx, common.Hash{}, 0, 0), nil
 	}
 
 	return nil, nil
