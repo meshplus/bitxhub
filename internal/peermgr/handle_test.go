@@ -2,6 +2,7 @@ package peermgr
 
 import (
 	"fmt"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -12,15 +13,18 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/axiomesh/axiom"
 	"github.com/axiomesh/axiom-kit/log"
+	"github.com/axiomesh/axiom-kit/storage/leveldb"
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom-kit/types/pb"
+	"github.com/axiomesh/axiom/internal/executor/system/common"
 	"github.com/axiomesh/axiom/internal/ledger"
 	"github.com/axiomesh/axiom/pkg/repo"
 	"github.com/axiomesh/eth-kit/ledger/mock_ledger"
 )
 
-func NewSwarms(t *testing.T, peerCnt int) []*Swarm {
+func NewSwarms(t *testing.T, peerCnt int, versionChange bool) []*Swarm {
 	var swarms []*Swarm
 	mockCtl := gomock.NewController(t)
 	chainLedger := mock_ledger.NewMockChainLedger(mockCtl)
@@ -43,9 +47,20 @@ func NewSwarms(t *testing.T, peerCnt int) []*Swarm {
 		return false, nil
 	}).AnyTimes()
 
+	accountCache, err := ledger.NewAccountCache()
+	assert.Nil(t, err)
+	repoRoot := t.TempDir()
+	ld, err := leveldb.New(filepath.Join(repoRoot, "peermgr"))
+	assert.Nil(t, err)
+	account := ledger.NewAccount(ld, accountCache, types.NewAddressByStr(common.NodeManagerContractAddr), ledger.NewChanger())
+	stateLedger.EXPECT().GetOrCreateAccount(gomock.Any()).Return(account).AnyTimes()
+
 	for i := 0; i < peerCnt; i++ {
 		repo, err := repo.DefaultWithNodeIndex(t.TempDir(), i)
 		require.Nil(t, err)
+		if versionChange && i == peerCnt-1 {
+			axiom.VersionSecret = "Shanghai"
+		}
 
 		swarm, err := New(repo, log.NewWithModule(fmt.Sprintf("swarm%d", i)), mockLedger)
 		require.Nil(t, err)
@@ -59,7 +74,7 @@ func NewSwarms(t *testing.T, peerCnt int) []*Swarm {
 
 func TestSwarm_GetBlockPack(t *testing.T) {
 	peerCnt := 4
-	swarms := NewSwarms(t, peerCnt)
+	swarms := NewSwarms(t, peerCnt, false)
 	defer stopSwarms(t, swarms)
 
 	for swarms[0].CountConnectedPeers() != 3 {
@@ -92,7 +107,7 @@ func stopSwarms(t *testing.T, swarms []*Swarm) error {
 
 func TestSwarm_Gater(t *testing.T) {
 	peerCnt := 4
-	swarms := NewSwarms(t, peerCnt)
+	swarms := NewSwarms(t, peerCnt, false)
 	defer stopSwarms(t, swarms)
 
 	for swarms[0].CountConnectedPeers() != 3 {
@@ -106,7 +121,7 @@ func TestSwarm_Gater(t *testing.T) {
 
 func TestSwarm_Send(t *testing.T) {
 	peerCnt := 4
-	swarms := NewSwarms(t, peerCnt)
+	swarms := NewSwarms(t, peerCnt, false)
 	defer stopSwarms(t, swarms)
 
 	for swarms[0].CountConnectedPeers() != 3 {
