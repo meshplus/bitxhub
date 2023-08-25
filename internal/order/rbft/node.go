@@ -9,6 +9,7 @@ import (
 	"github.com/Rican7/retry"
 	"github.com/Rican7/retry/strategy"
 	"github.com/axiomesh/axiom/internal/order/precheck"
+	"github.com/axiomesh/axiom/pkg/repo"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/samber/lo"
 	"github.com/sirupsen/logrus"
@@ -30,6 +31,10 @@ import (
 const (
 	pipeID = "order"
 )
+
+func init() {
+	repo.Register(repo.OrderTypeRbft, true)
+}
 
 type Node struct {
 	id                uint64

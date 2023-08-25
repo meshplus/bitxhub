@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/axiomesh/axiom/internal/order/precheck"
+	"github.com/axiomesh/axiom/pkg/repo"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/sirupsen/logrus"
 
@@ -16,6 +17,10 @@ import (
 	"github.com/axiomesh/axiom/internal/order"
 	"github.com/axiomesh/axiom/internal/peermgr"
 )
+
+func init() {
+	repo.Register(repo.OrderTypeSolo, false)
+}
 
 type Node struct {
 	ID               uint64

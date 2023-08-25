@@ -24,6 +24,26 @@ import (
 	"github.com/axiomesh/axiom/pkg/repo"
 )
 
+const (
+	full          = "full"
+	mockConsensus = "mockConsensus"
+	mockExecutor  = "mockExecutor"
+)
+
+var startCMD = &cli.Command{
+	Name:  "start",
+	Usage: "Start a long-running daemon process",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "mode",
+			Usage:    "start axiom in specified mode",
+			Required: false,
+			Value:    full,
+		},
+	},
+	Action: start,
+}
+
 func start(ctx *cli.Context) error {
 	p, err := getRootPath(ctx)
 	if err != nil {
@@ -34,12 +54,21 @@ func start(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
+
 	if !existConfig {
 		// not generate config, start by solo
 		r.Config.Order.Type = repo.OrderTypeSolo
 		if err := r.Flush(); err != nil {
 			return err
 		}
+	}
+	mode := ctx.String("mode")
+	if mode == mockConsensus {
+		r.Config.Order.Type = repo.OrderTypeSoloDev
+	}
+
+	if mode == mockExecutor {
+		r.Config.Executor.Type = repo.ExecTypeDev
 	}
 
 	err = log.Initialize(
@@ -60,7 +89,7 @@ func start(ctx *cli.Context) error {
 
 	printVersion()
 
-	bxh, err := app.NewAxiom(r)
+	axm, err := app.NewAxiom(r)
 	if err != nil {
 		return fmt.Errorf("init axiom failed: %w", err)
 	}
@@ -82,7 +111,7 @@ func start(ctx *cli.Context) error {
 	}
 
 	// coreapi
-	api, err := coreapi.New(bxh)
+	api, err := coreapi.New(axm)
 	if err != nil {
 		return err
 	}
@@ -97,15 +126,15 @@ func start(ctx *cli.Context) error {
 		return fmt.Errorf("start chain broker service failed: %w", err)
 	}
 
-	bxh.Monitor = monitor
-	bxh.Pprof = pprof
-	bxh.Jsonrpc = cbs
+	axm.Monitor = monitor
+	axm.Pprof = pprof
+	axm.Jsonrpc = cbs
 
 	var wg sync.WaitGroup
 	wg.Add(1)
-	handleShutdown(bxh, &wg)
+	handleShutdown(axm, &wg)
 
-	if err := bxh.Start(); err != nil {
+	if err := axm.Start(); err != nil {
 		return fmt.Errorf("start axiom failed: %w", err)
 	}
 
