@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/gorilla/mux"
+	"github.com/rs/cors"
 	"github.com/sirupsen/logrus"
 
 	"github.com/axiomesh/axiom/internal/coreapi/api"
@@ -101,7 +102,6 @@ func (cbs *ChainBrokerService) initWS() error {
 
 func (cbs *ChainBrokerService) Start() error {
 	router := mux.NewRouter()
-
 	handler := cbs.tokenBucketMiddleware(cbs.server)
 	router.Handle("/", handler)
 
@@ -114,7 +114,7 @@ func (cbs *ChainBrokerService) Start() error {
 			"port": cbs.config.Port.JsonRpc,
 		}).Info("JSON-RPC service started")
 
-		if err := http.ListenAndServe(fmt.Sprintf(":%d", cbs.config.Port.JsonRpc), router); err != nil {
+		if err := http.ListenAndServe(fmt.Sprintf(":%d", cbs.config.Port.JsonRpc), cors.Default().Handler(router)); err != nil {
 			cbs.logger.WithFields(logrus.Fields{
 				"error": err.Error(),
 			}).Errorf("Failed to start JSON_RPC service: %s", err.Error())
@@ -127,7 +127,7 @@ func (cbs *ChainBrokerService) Start() error {
 			"port": cbs.config.Port.WebSocket,
 		}).Info("Websocket service started")
 
-		if err := http.ListenAndServe(fmt.Sprintf(":%d", cbs.config.Port.WebSocket), wsRouter); err != nil {
+		if err := http.ListenAndServe(fmt.Sprintf(":%d", cbs.config.Port.WebSocket), cors.Default().Handler(wsRouter)); err != nil {
 			cbs.logger.WithFields(logrus.Fields{
 				"error": err.Error(),
 			}).Errorf("Failed to start websocket service: %s", err.Error())
