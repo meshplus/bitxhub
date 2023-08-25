@@ -23,6 +23,7 @@ import (
 	"math/big"
 
 	"github.com/axiomesh/axiom-kit/types"
+	rpctypes "github.com/axiomesh/axiom/api/jsonrpc/types"
 	"github.com/axiomesh/axiom/internal/coreapi/api"
 )
 
@@ -111,12 +112,12 @@ func (f *Filter) Logs(ctx context.Context) ([]*types.EvmLog, error) {
 	}
 
 	head := meta.Height
-	if f.begin == -1 {
+	if f.begin == rpctypes.PendingBlockNumber.Int64() || f.begin == rpctypes.LatestBlockNumber.Int64() {
 		f.begin = int64(head)
 	}
 
 	end := uint64(f.end)
-	if f.end == -1 {
+	if f.end == rpctypes.PendingBlockNumber.Int64() || f.end == rpctypes.LatestBlockNumber.Int64() {
 		end = head
 	}
 

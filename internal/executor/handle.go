@@ -89,7 +89,6 @@ func (exec *BlockExecutor) processExecuteEvent(commitEvent *types.CommitEvent) {
 	block.BlockHeader.TxRoot = txRoot
 	block.BlockHeader.ReceiptRoot = receiptRoot
 	block.BlockHeader.ParentHash = exec.currentBlockHash
-	block.BlockHeader.Bloom = ledger.CreateBloom(receipts)
 
 	accounts, journalHash := exec.ledger.FlushDirtyData()
 
@@ -105,6 +104,7 @@ func (exec *BlockExecutor) processExecuteEvent(commitEvent *types.CommitEvent) {
 	executeBlockDuration.Observe(float64(time.Since(current)) / float64(time.Second))
 
 	exec.getLogsForReceipt(receipts, block.Height(), block.BlockHash)
+	block.BlockHeader.Bloom = ledger.CreateBloom(receipts)
 
 	data := &ledger.BlockData{
 		Block:      block,
@@ -245,8 +245,6 @@ func (exec *BlockExecutor) applyEthTransaction(_ int, tx *types.Transaction) *ty
 		receipt.ContractAddress = types.NewAddress(crypto.CreateAddress(exec.evm.TxContext.Origin, tx.GetNonce()).Bytes())
 	}
 
-	// receipt.EvmLogs = exec.ledger.GetLogs(*tx.GetHash(), height, blockHash)
-	receipt.Bloom = ledger.CreateBloom(ledger.EvmReceipts{receipt})
 	return receipt
 }
 
@@ -317,5 +315,6 @@ func (exec *BlockExecutor) payGasFee(tx *types.Transaction, gasUsed uint64) {
 func (exec *BlockExecutor) getLogsForReceipt(receipts []*types.Receipt, height uint64, hash *types.Hash) {
 	for _, receipt := range receipts {
 		receipt.EvmLogs = exec.ledger.GetLogs(*receipt.TxHash, height, hash)
+		receipt.Bloom = ledger.CreateBloom(ledger.EvmReceipts{receipt})
 	}
 }

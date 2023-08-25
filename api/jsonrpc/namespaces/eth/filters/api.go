@@ -278,6 +278,7 @@ func formatEthHeader(h *types.BlockHeader) *ethereumTypes.Header {
 
 // Logs creates a subscription that fires for all new log that match the given filter criteria.
 func (api *FilterAPI) Logs(ctx context.Context, crit FilterCriteria) (*rpc.Subscription, error) {
+	api.logger.Debugf("eth_logs: crit: %s", crit)
 	notifier, supported := rpc.NotifierFromContext(ctx)
 	if !supported {
 		return &rpc.Subscription{}, rpc.ErrNotificationsUnsupported
@@ -414,6 +415,7 @@ func (api *FilterAPI) GetLogs(ctx context.Context, ethCrit FilterCriteria) ([]*e
 	if err != nil {
 		return nil, err
 	}
+
 	res := make([]*ethereumTypes.Log, len(logs))
 	for i := 0; i < len(logs); i++ {
 		res[i] = formatEthLogs(logs[i])

@@ -17,18 +17,18 @@ func TestGovernance_GetABI(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, gabi)
 
-	data, err := gabi.Pack(ProposeMethod, uint8(NodeUpdate), "title", "desc", uint64(1000), []byte(""))
+	data, err := gabi.Pack(ProposeMethod, uint8(NodeUpgrade), "title", "desc", uint64(1000), []byte(""))
 	assert.Nil(t, err)
 	assert.NotNil(t, data)
 }
 
 func TestGovernance_GetMethodName(t *testing.T) {
 	logger := logrus.New()
-	gov, err := NewGov([]ProposalType{NodeUpdate}, logger)
+	gov, err := NewGov([]ProposalType{NodeUpgrade}, logger)
 	assert.Nil(t, err)
 	assert.NotNil(t, gov)
 
-	data, err := gov.gabi.Pack(ProposeMethod, uint8(NodeUpdate), "title", "desc", uint64(1000), []byte(""))
+	data, err := gov.gabi.Pack(ProposeMethod, uint8(NodeUpgrade), "title", "desc", uint64(1000), []byte(""))
 	assert.Nil(t, err)
 
 	methodName, err := gov.GetMethodName(data)
@@ -39,12 +39,12 @@ func TestGovernance_GetMethodName(t *testing.T) {
 
 func TestGovernance_GetErrMethodName(t *testing.T) {
 	logger := logrus.New()
-	gov, err := NewGov([]ProposalType{NodeUpdate}, logger)
+	gov, err := NewGov([]ProposalType{NodeUpgrade}, logger)
 	assert.Nil(t, err)
 	assert.NotNil(t, gov)
 
 	errMethod := "no_this_method"
-	data, err := gov.gabi.Pack(errMethod, uint8(NodeUpdate), "title", "desc", uint64(1000), []byte(""))
+	data, err := gov.gabi.Pack(errMethod, uint8(NodeUpgrade), "title", "desc", uint64(1000), []byte(""))
 	assert.NotNil(t, err)
 
 	test_jsondata := `[
@@ -52,7 +52,7 @@ func TestGovernance_GetErrMethodName(t *testing.T) {
 	]`
 	newAbi, err := abi.JSON(strings.NewReader(strings.ReplaceAll(test_jsondata, "___", errMethod)))
 	assert.Nil(t, err)
-	data, err = newAbi.Pack(errMethod, NodeUpdate, "title", "desc", uint64(1000), []byte(""))
+	data, err = newAbi.Pack(errMethod, NodeUpgrade, "title", "desc", uint64(1000), []byte(""))
 	assert.Nil(t, err)
 
 	_, err = gov.GetMethodName(data)
@@ -61,11 +61,11 @@ func TestGovernance_GetErrMethodName(t *testing.T) {
 
 func TestGovernance_ParseErrorArgs(t *testing.T) {
 	logger := logrus.New()
-	gov, err := NewGov([]ProposalType{NodeUpdate}, logger)
+	gov, err := NewGov([]ProposalType{NodeUpgrade}, logger)
 	assert.Nil(t, err)
 	assert.NotNil(t, gov)
 
-	truedata, err := gov.gabi.Pack(ProposeMethod, uint8(NodeUpdate), "title", "desc", uint64(1000), []byte(""))
+	truedata, err := gov.gabi.Pack(ProposeMethod, uint8(NodeUpgrade), "title", "desc", uint64(1000), []byte(""))
 	assert.Nil(t, err)
 	testcases := []struct {
 		method string
@@ -107,7 +107,7 @@ func TestGovernance_ParseErrorArgs(t *testing.T) {
 
 func TestGovernance_GetArgsForProposal(t *testing.T) {
 	logger := logrus.New()
-	gov, err := NewGov([]ProposalType{NodeUpdate}, logger)
+	gov, err := NewGov([]ProposalType{NodeUpgrade}, logger)
 	assert.Nil(t, err)
 	assert.NotNil(t, gov)
 
@@ -115,7 +115,7 @@ func TestGovernance_GetArgsForProposal(t *testing.T) {
 	desc := "desc"
 	blockNumber := uint64(1000)
 	extra := []byte("hello")
-	data, err := gov.gabi.Pack(ProposeMethod, uint8(NodeUpdate), title, desc, blockNumber, extra)
+	data, err := gov.gabi.Pack(ProposeMethod, uint8(NodeUpgrade), title, desc, blockNumber, extra)
 	assert.Nil(t, err)
 
 	arg, err := gov.GetArgs(&vm.Message{
@@ -126,7 +126,7 @@ func TestGovernance_GetArgsForProposal(t *testing.T) {
 	proposalArg, ok := arg.(*ProposalArgs)
 	assert.True(t, ok)
 
-	assert.Equal(t, NodeUpdate, ProposalType(proposalArg.ProposalType))
+	assert.Equal(t, NodeUpgrade, ProposalType(proposalArg.ProposalType))
 	assert.Equal(t, title, proposalArg.Title)
 	assert.Equal(t, desc, proposalArg.Desc)
 	assert.Equal(t, blockNumber, proposalArg.BlockNumber)
@@ -135,7 +135,7 @@ func TestGovernance_GetArgsForProposal(t *testing.T) {
 
 func TestGovernance_GetArgsForVote(t *testing.T) {
 	logger := logrus.New()
-	gov, err := NewGov([]ProposalType{NodeUpdate}, logger)
+	gov, err := NewGov([]ProposalType{NodeUpgrade}, logger)
 	assert.Nil(t, err)
 	assert.NotNil(t, gov)
 
@@ -159,7 +159,7 @@ func TestGovernance_GetArgsForVote(t *testing.T) {
 }
 
 func TestGovernance_GetErrArgs(t *testing.T) {
-	gov, err := NewGov([]ProposalType{NodeUpdate}, logrus.New())
+	gov, err := NewGov([]ProposalType{NodeUpgrade}, logrus.New())
 	assert.Nil(t, err)
 	assert.NotNil(t, gov)
 
@@ -172,11 +172,11 @@ func TestGovernance_GetErrArgs(t *testing.T) {
 	gov.gabi = &gabi
 
 	errMethod := "no_this_method"
-	errMethodData, err := gov.gabi.Pack(errMethod, uint8(NodeUpdate), "title", "desc", uint64(1000), []byte(""))
+	errMethodData, err := gov.gabi.Pack(errMethod, uint8(NodeUpgrade), "title", "desc", uint64(1000), []byte(""))
 	assert.NotNil(t, err)
 
 	thisMethod := "this_method"
-	thisMethodData, err := gov.gabi.Pack(thisMethod, uint8(NodeUpdate), "title", "desc", uint64(1000), []byte(""))
+	thisMethodData, err := gov.gabi.Pack(thisMethod, uint8(NodeUpgrade), "title", "desc", uint64(1000), []byte(""))
 	assert.Nil(t, err)
 
 	testcases := [][]byte{
@@ -194,7 +194,7 @@ func TestGovernance_GetErrArgs(t *testing.T) {
 
 func TestGovernance_Propose(t *testing.T) {
 	logger := logrus.New()
-	gov, err := NewGov([]ProposalType{NodeUpdate}, logger)
+	gov, err := NewGov([]ProposalType{NodeUpgrade}, logger)
 	assert.Nil(t, err)
 	assert.NotNil(t, gov)
 
@@ -217,7 +217,7 @@ func TestGovernance_Propose(t *testing.T) {
 				blockNumber  uint64
 			}{
 				user:         "0x1000000000000000000000000000000000000000",
-				proposalType: NodeUpdate,
+				proposalType: NodeUpgrade,
 				title:        "test title",
 				desc:         "test desc",
 				blockNumber:  10000,
@@ -249,7 +249,7 @@ func TestGovernance_Propose(t *testing.T) {
 				blockNumber  uint64
 			}{
 				user:         "0x1000000000000000000000000000000000000000",
-				proposalType: NodeUpdate,
+				proposalType: NodeUpgrade,
 				title:        "",
 				desc:         "test desc",
 				blockNumber:  10000,
@@ -265,7 +265,7 @@ func TestGovernance_Propose(t *testing.T) {
 				blockNumber  uint64
 			}{
 				user:         "0x1000000000000000000000000000000000000000",
-				proposalType: NodeUpdate,
+				proposalType: NodeUpgrade,
 				title:        "test title",
 				desc:         "",
 				blockNumber:  10000,
@@ -281,7 +281,7 @@ func TestGovernance_Propose(t *testing.T) {
 				blockNumber  uint64
 			}{
 				user:         "0x1000000000000000000000000000000000000000",
-				proposalType: NodeUpdate,
+				proposalType: NodeUpgrade,
 				title:        "test title",
 				desc:         "test desc",
 				blockNumber:  0,
@@ -309,7 +309,7 @@ func TestGovernance_Propose(t *testing.T) {
 
 func TestGovernance_Vote(t *testing.T) {
 	logger := logrus.New()
-	gov, err := NewGov([]ProposalType{NodeUpdate}, logger)
+	gov, err := NewGov([]ProposalType{NodeUpgrade}, logger)
 	assert.Nil(t, err)
 	assert.NotNil(t, gov)
 
@@ -317,7 +317,7 @@ func TestGovernance_Vote(t *testing.T) {
 	anotherAddr := types.NewAddressByStr("0x2000000000000000000000000000000000000000")
 	ethAddr := addr.ETHAddress()
 	anotherEthAddr := anotherAddr.ETHAddress()
-	proposal, err := gov.Propose(&ethAddr, NodeUpdate, "test title", "test desc", uint64(10000))
+	proposal, err := gov.Propose(&ethAddr, NodeUpgrade, "test title", "test desc", uint64(10000))
 	assert.Nil(t, err)
 	assert.NotNil(t, proposal)
 

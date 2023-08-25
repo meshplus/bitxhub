@@ -58,8 +58,8 @@ const (
 	// CouncilElect is a proposal for elect the council
 	CouncilElect ProposalType = iota
 
-	// NodeUpdate is a proposal for update or upgrade the node
-	NodeUpdate
+	// NodeUpgrade is a proposal for update or upgrade the node
+	NodeUpgrade
 
 	// NodeAdd is a proposal for adding a new node
 	NodeAdd
