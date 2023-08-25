@@ -7,31 +7,31 @@ import (
 	"github.com/axiomesh/axiom/pkg/repo"
 )
 
-func (bxh *Axiom) start() {
-	go bxh.listenEvent()
+func (ax *Axiom) start() {
+	go ax.listenEvent()
 
 	go func() {
 		for {
 			select {
-			case commitEvent := <-bxh.Order.Commit():
-				bxh.logger.WithFields(logrus.Fields{
+			case commitEvent := <-ax.Order.Commit():
+				ax.logger.WithFields(logrus.Fields{
 					"height": commitEvent.Block.BlockHeader.Number,
 					"count":  len(commitEvent.Block.Transactions),
 				}).Info("Generated block")
-				bxh.BlockExecutor.ExecuteBlock(commitEvent)
-			case <-bxh.Ctx.Done():
+				ax.BlockExecutor.ExecuteBlock(commitEvent)
+			case <-ax.Ctx.Done():
 				return
 			}
 		}
 	}()
 }
 
-func (bxh *Axiom) listenEvent() {
+func (ax *Axiom) listenEvent() {
 	blockCh := make(chan events.ExecutedEvent)
 	configCh := make(chan *repo.Repo)
 
-	blockSub := bxh.BlockExecutor.SubscribeBlockEvent(blockCh)
-	configSub := bxh.repo.SubscribeConfigChange(configCh)
+	blockSub := ax.BlockExecutor.SubscribeBlockEvent(blockCh)
+	configSub := ax.repo.SubscribeConfigChange(configCh)
 
 	defer blockSub.Unsubscribe()
 	defer configSub.Unsubscribe()
@@ -39,10 +39,10 @@ func (bxh *Axiom) listenEvent() {
 	for {
 		select {
 		case ev := <-blockCh:
-			go bxh.Order.ReportState(ev.Block.BlockHeader.Number, ev.Block.BlockHash, ev.TxHashList)
+			go ax.Order.ReportState(ev.Block.BlockHeader.Number, ev.Block.BlockHash, ev.TxHashList)
 		case config := <-configCh:
-			bxh.ReConfig(config)
-		case <-bxh.Ctx.Done():
+			ax.ReConfig(config)
+		case <-ax.Ctx.Done():
 			return
 		}
 	}

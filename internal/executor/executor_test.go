@@ -31,38 +31,11 @@ import (
 )
 
 const (
-	keyPassword = "bitxhub"
-	srcMethod   = "did:axiom:addr1:."
-	dstMethod   = "did:axiom:addr2:."
-	from        = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
-
-	fromServiceID  = "1:chain0:0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
-	toServiceID    = "1:chain1:0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
-	PREFIX         = "tx"
-	TIMEOUT_PREFIX = "timeout"
-	HappyRuleAddr  = "0x00000000000000000000000000000000000000a2"
-	bxhID          = "1356"
+	srcMethod = "did:axiom:addr1:."
+	dstMethod = "did:axiom:addr2:."
+	from      = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
 )
 
-//	func TestSign(t *testing.T) {
-//		privKey, err := asym.GenerateKeyPair(crypto.Secp256k1)
-//		assert.Nil(t, err)
-//		pubKey := privKey.PublicKey()
-//		from,err := pubKey.Address()
-//		pubKeyBytes, err := ecdsa.Ecrecover(digest, sig)
-//		if err != nil {
-//			return false, err
-//		}
-//		pubkey, err := ecdsa.UnmarshalPublicKey(pubKeyBytes, opt)
-//		if err != nil {
-//			return false, err
-//		}
-//
-//		expected, err := pubkey.Address()
-//		if err != nil {
-//			return false, err
-//		}
-//	}
 func TestNew(t *testing.T) {
 	config := generateMockConfig(t)
 	mockCtl := gomock.NewController(t)

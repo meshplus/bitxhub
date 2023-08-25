@@ -288,7 +288,7 @@ func (api *FilterAPI) Logs(ctx context.Context, crit FilterCriteria) (*rpc.Subsc
 		matchedLogs = make(chan []*types.EvmLog)
 	)
 
-	logsSub, err := api.events.SubscribeLogs(crit.toBxhFilterQuery(), matchedLogs)
+	logsSub, err := api.events.SubscribeLogs(crit.toAxmFilterQuery(), matchedLogs)
 	if err != nil {
 		return nil, err
 	}
@@ -356,13 +356,13 @@ type FilterCriteria ethereum.FilterQuery
 // https://eth.wiki/json-rpc/API#eth_newfilter
 func (api *FilterAPI) NewFilter(crit FilterCriteria) (rpc.ID, error) {
 	logs := make(chan []*types.EvmLog)
-	logsSub, err := api.events.SubscribeLogs(crit.toBxhFilterQuery(), logs)
+	logsSub, err := api.events.SubscribeLogs(crit.toAxmFilterQuery(), logs)
 	if err != nil {
 		return "", err
 	}
 
 	api.filtersMu.Lock()
-	api.filters[logsSub.ID] = &filter{typ: LogsSubscription, crit: crit.toBxhFilterQuery(), deadline: time.NewTimer(api.timeout), logs: make([]*types.EvmLog, 0), s: logsSub}
+	api.filters[logsSub.ID] = &filter{typ: LogsSubscription, crit: crit.toAxmFilterQuery(), deadline: time.NewTimer(api.timeout), logs: make([]*types.EvmLog, 0), s: logsSub}
 	api.filtersMu.Unlock()
 
 	go func() {
@@ -392,7 +392,7 @@ func (api *FilterAPI) NewFilter(crit FilterCriteria) (rpc.ID, error) {
 func (api *FilterAPI) GetLogs(ctx context.Context, ethCrit FilterCriteria) ([]*ethereumTypes.Log, error) {
 	api.logger.Debugf("eth_getLogs: ethCrit: %s", ethCrit)
 	var filter *Filter
-	crit := ethCrit.toBxhFilterQuery()
+	crit := ethCrit.toAxmFilterQuery()
 	if crit.BlockHash != nil {
 		// Block filter requested, construct a single-shot filter
 		filter = NewBlockFilter(api.api, crit.BlockHash, crit.Addresses, crit.Topics)
@@ -648,7 +648,7 @@ func decodeTopic(s string) (common.Hash, error) {
 	return common.BytesToHash(b), err
 }
 
-func (fc *FilterCriteria) toBxhFilterQuery() FilterQuery {
+func (fc *FilterCriteria) toAxmFilterQuery() FilterQuery {
 	fq := FilterQuery{
 		FromBlock: fc.FromBlock,
 		ToBlock:   fc.ToBlock,

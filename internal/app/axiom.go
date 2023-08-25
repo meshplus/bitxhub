@@ -50,12 +50,12 @@ type Axiom struct {
 
 func NewAxiom(rep *repo.Repo) (*Axiom, error) {
 	repoRoot := rep.Config.RepoRoot
-	bxh, err := GenerateAxiomWithoutOrder(rep)
+	axm, err := GenerateAxiomWithoutOrder(rep)
 	if err != nil {
 		return nil, fmt.Errorf("generate axiom without order failed: %w", err)
 	}
 
-	chainMeta := bxh.Ledger.GetChainMeta()
+	chainMeta := axm.Ledger.GetChainMeta()
 
 	m := rep.NetworkConfig.GetVpInfos()
 
@@ -75,9 +75,9 @@ func NewAxiom(rep *repo.Repo) (*Axiom, error) {
 	var getNonceFunc func(address *types.Address) uint64
 
 	if rep.Config.Order.Type == repo.OrderTypeSoloDev {
-		getNonceFunc = bxh.Ledger.GetNonce
+		getNonceFunc = axm.Ledger.GetNonce
 	} else {
-		getNonceFunc = bxh.Ledger.Copy().GetNonce
+		getNonceFunc = axm.Ledger.Copy().GetNonce
 	}
 
 	order, err := orderCon(
@@ -89,12 +89,12 @@ func NewAxiom(rep *repo.Repo) (*Axiom, error) {
 		order.WithNodes(m),
 		order.WithID(rep.NetworkConfig.ID),
 		order.WithIsNew(rep.NetworkConfig.New),
-		order.WithPeerManager(bxh.PeerMgr),
+		order.WithPeerManager(axm.PeerMgr),
 		order.WithLogger(loggers.Logger(loggers.Order)),
 		order.WithApplied(chainMeta.Height),
 		order.WithDigest(chainMeta.BlockHash.String()),
-		order.WithGetChainMetaFunc(bxh.Ledger.GetChainMeta),
-		order.WithGetAccountBalanceFunc(bxh.Ledger.GetBalance),
+		order.WithGetChainMetaFunc(axm.Ledger.GetChainMeta),
+		order.WithGetAccountBalanceFunc(axm.Ledger.GetBalance),
 		order.WithGetAccountNonceFunc(getNonceFunc),
 	)
 	if err != nil {
@@ -103,15 +103,15 @@ func NewAxiom(rep *repo.Repo) (*Axiom, error) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	bxh.Ctx = ctx
-	bxh.Cancel = cancel
-	bxh.Order = order
+	axm.Ctx = ctx
+	axm.Cancel = cancel
+	axm.Order = order
 
-	if err := bxh.raiseUlimit(rep.Config.Ulimit); err != nil {
+	if err := axm.raiseUlimit(rep.Config.Ulimit); err != nil {
 		return nil, fmt.Errorf("raise ulimit: %w", err)
 	}
 
-	return bxh, nil
+	return axm, nil
 }
 
 func GenerateAxiomWithoutOrder(rep *repo.Repo) (*Axiom, error) {
@@ -193,82 +193,82 @@ func GenerateAxiomWithoutOrder(rep *repo.Repo) (*Axiom, error) {
 	}, nil
 }
 
-func (bxh *Axiom) Start() error {
-	if repo.SupportMultiNode[bxh.repo.Config.Order.Type] {
-		if err := bxh.PeerMgr.Start(); err != nil {
+func (axm *Axiom) Start() error {
+	if repo.SupportMultiNode[axm.repo.Config.Order.Type] {
+		if err := axm.PeerMgr.Start(); err != nil {
 			return fmt.Errorf("peer manager start: %w", err)
 		}
 	}
 
-	if err := bxh.Order.Start(); err != nil {
+	if err := axm.Order.Start(); err != nil {
 		return fmt.Errorf("order start: %w", err)
 	}
 
-	if err := bxh.BlockExecutor.Start(); err != nil {
+	if err := axm.BlockExecutor.Start(); err != nil {
 		return fmt.Errorf("block executor start: %w", err)
 	}
 
-	if err := bxh.ViewExecutor.Start(); err != nil {
+	if err := axm.ViewExecutor.Start(); err != nil {
 		return fmt.Errorf("view executor start: %w", err)
 	}
 
-	bxh.start()
+	axm.start()
 
-	bxh.printLogo()
+	axm.printLogo()
 
 	return nil
 }
 
-func (bxh *Axiom) Stop() error {
-	if err := bxh.BlockExecutor.Stop(); err != nil {
+func (axm *Axiom) Stop() error {
+	if err := axm.BlockExecutor.Stop(); err != nil {
 		return fmt.Errorf("block executor stop: %w", err)
 	}
 
-	if err := bxh.ViewExecutor.Stop(); err != nil {
+	if err := axm.ViewExecutor.Stop(); err != nil {
 		return fmt.Errorf("view executor stop: %w", err)
 	}
 
-	if bxh.repo.Config.Order.Type != repo.OrderTypeSolo {
-		if err := bxh.PeerMgr.Stop(); err != nil {
+	if axm.repo.Config.Order.Type != repo.OrderTypeSolo {
+		if err := axm.PeerMgr.Stop(); err != nil {
 			return fmt.Errorf("network stop: %w", err)
 		}
 	}
 
-	bxh.Order.Stop()
+	axm.Order.Stop()
 
-	bxh.Cancel()
+	axm.Cancel()
 
-	bxh.logger.Info("Axiom stopped")
+	axm.logger.Info("Axiom stopped")
 
 	return nil
 }
 
-func (bxh *Axiom) ReConfig(repo *repo.Repo) {
+func (axm *Axiom) ReConfig(repo *repo.Repo) {
 	if repo.Config != nil {
 		config := repo.Config
 		loggers.ReConfig(config)
 
-		if err := bxh.Jsonrpc.ReConfig(config); err != nil {
-			bxh.logger.Errorf("reconfig json rpc failed: %v", err)
+		if err := axm.Jsonrpc.ReConfig(config); err != nil {
+			axm.logger.Errorf("reconfig json rpc failed: %v", err)
 		}
 
-		if err := bxh.Monitor.ReConfig(config); err != nil {
-			bxh.logger.Errorf("reconfig Monitor failed: %v", err)
+		if err := axm.Monitor.ReConfig(config); err != nil {
+			axm.logger.Errorf("reconfig Monitor failed: %v", err)
 		}
 
-		if err := bxh.Pprof.ReConfig(config); err != nil {
-			bxh.logger.Errorf("reconfig Pprof failed: %v", err)
+		if err := axm.Pprof.ReConfig(config); err != nil {
+			axm.logger.Errorf("reconfig Pprof failed: %v", err)
 		}
 	}
 }
 
-func (bxh *Axiom) printLogo() {
+func (axm *Axiom) printLogo() {
 	for {
 		time.Sleep(100 * time.Millisecond)
-		err := bxh.Order.Ready()
+		err := axm.Order.Ready()
 		if err == nil {
-			bxh.logger.WithFields(logrus.Fields{
-				"order_type": bxh.repo.Config.Order.Type,
+			axm.logger.WithFields(logrus.Fields{
+				"order_type": axm.repo.Config.Order.Type,
 			}).Info("Order is ready")
 			fmt.Println()
 			fmt.Println("=======================================================")
@@ -282,7 +282,7 @@ func (bxh *Axiom) printLogo() {
 	}
 }
 
-func (bxh *Axiom) raiseUlimit(limitNew uint64) error {
+func (axm *Axiom) raiseUlimit(limitNew uint64) error {
 	_, err := fdlimit.Raise(limitNew)
 	if err != nil {
 		return fmt.Errorf("set limit failed: %w", err)
@@ -297,7 +297,7 @@ func (bxh *Axiom) raiseUlimit(limitNew uint64) error {
 		return errors.New("failed to raise ulimit")
 	}
 
-	bxh.logger.WithFields(logrus.Fields{
+	axm.logger.WithFields(logrus.Fields{
 		"ulimit": limit.Cur,
 	}).Infof("Ulimit raised")
 
