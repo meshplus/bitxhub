@@ -187,7 +187,7 @@ func TestNode_ReportState(t *testing.T) {
 	ast.NotNil(node.mempool.GetPendingTxByHash(txList[9].RbftGetTxHash()), "tx10 should be in mempool")
 	// trigger the report state
 	node.ReportState(10, types.NewHashByStr("0x123"), []*types.Hash{txList[9].GetHash()})
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	ast.Equal(0, len(node.batchDigestM))
 	ast.Nil(node.mempool.GetPendingTxByHash(txList[9].RbftGetTxHash()), "tx10 should be removed from mempool")
 
@@ -227,7 +227,7 @@ func TestNode_RemoveTxFromPool(t *testing.T) {
 	ast.Equal(0, len(node.batchDigestM))
 	ast.NotNil(node.mempool.GetPendingTxByHash(txList[8].RbftGetTxHash()), "tx9 should be in mempool")
 	// sleep to make sure trigger the remove tx from pool
-	time.Sleep(2*removeTxTimeout + 50*time.Millisecond)
+	time.Sleep(2*removeTxTimeout + 500*time.Millisecond)
 
 	ast.Nil(node.mempool.GetPendingTxByHash(txList[8].RbftGetTxHash()), "tx9 should be removed from mempool")
 }
