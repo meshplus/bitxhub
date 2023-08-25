@@ -2,6 +2,7 @@ package peermgr
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"math"
 	"sync"
@@ -14,6 +15,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/sirupsen/logrus"
 
+	"github.com/axiomesh/axiom"
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom-kit/types/pb"
 	network "github.com/axiomesh/axiom-p2p"
@@ -25,6 +27,8 @@ import (
 const (
 	protocolID string = "/axiom/1.0.0" // magic protocol
 )
+
+// var errVersionNotMatch error = errors.New("error versions")
 
 var _ PeerManager = (*Swarm)(nil)
 
@@ -106,11 +110,12 @@ func (swarm *Swarm) init() error {
 		return fmt.Errorf("unsupported p2p pipe broadcast type: %v", swarm.repo.Config.P2P.Pipe.BroadcastType)
 	}
 
+	protocolIDWithVersion := fmt.Sprintf("%s-%x", protocolID, sha256.Sum256([]byte(axiom.VersionSecret)))
 	gater := newConnectionGater(swarm.logger, swarm.ledger)
 	opts := []network.Option{
 		network.WithLocalAddr(swarm.repo.NetworkConfig.LocalAddr),
 		network.WithPrivateKey(swarm.repo.P2PKey),
-		network.WithProtocolID(protocolID),
+		network.WithProtocolID(protocolIDWithVersion),
 		network.WithLogger(swarm.logger),
 		network.WithTimeout(10*time.Second, swarm.repo.Config.P2P.SendTimeout.ToDuration(), swarm.repo.Config.P2P.ReadTimeout.ToDuration()),
 		network.WithSecurity(securityType),

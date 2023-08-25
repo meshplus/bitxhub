@@ -18,4 +18,6 @@ var (
 	GoVersion = runtime.Version()
 	// Platform info
 	Platform = fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH)
+
+	VersionSecret = "Hangzhou"
 )

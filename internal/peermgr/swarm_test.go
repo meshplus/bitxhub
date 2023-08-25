@@ -3,11 +3,13 @@ package peermgr
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/axiomesh/axiom-kit/types"
+	"github.com/axiomesh/axiom-kit/types/pb"
 	"github.com/axiomesh/axiom/internal/executor/system/common"
 	"github.com/axiomesh/axiom/internal/ledger"
 	"github.com/axiomesh/axiom/pkg/repo"
@@ -18,12 +20,29 @@ import (
 
 func TestSwarm_OtherPeers(t *testing.T) {
 	peerCnt := 4
-	swarms := NewSwarms(t, peerCnt)
+	swarms := NewSwarms(t, peerCnt, false)
 	defer stopSwarms(t, swarms)
 
 	for swarms[0].CountConnectedPeers() != 3 {
 		time.Sleep(100 * time.Millisecond)
 	}
+}
+
+func TestVersionCheck(t *testing.T) {
+	peerCnt := 4
+	// pass true to change the last Node's version
+	swarms := NewSwarms(t, peerCnt, true)
+	defer stopSwarms(t, swarms)
+	time.Sleep(time.Second)
+	msg := &pb.Message{Type: pb.Message_GET_BLOCK, Data: []byte(strconv.Itoa(1))}
+
+	_, err := swarms[0].Send(swarms[1].PeerID(), msg)
+	assert.Nil(t, err)
+
+	_, err = swarms[0].Send(swarms[peerCnt-1].PeerID(), msg)
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "protocols not supported",
+		"err should be protocols not supported")
 }
 
 func TestSwarm_OnConnected(t *testing.T) {
