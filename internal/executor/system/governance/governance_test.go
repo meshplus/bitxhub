@@ -204,7 +204,7 @@ func TestGovernance_Propose(t *testing.T) {
 			proposalType ProposalType
 			title        string
 			desc         string
-			blockNumber  uint64
+			BlockNumber  uint64
 		}
 		err error
 	}{
@@ -214,13 +214,13 @@ func TestGovernance_Propose(t *testing.T) {
 				proposalType ProposalType
 				title        string
 				desc         string
-				blockNumber  uint64
+				BlockNumber  uint64
 			}{
 				user:         "0x1000000000000000000000000000000000000000",
 				proposalType: NodeUpgrade,
 				title:        "test title",
 				desc:         "test desc",
-				blockNumber:  10000,
+				BlockNumber:  10000,
 			},
 			err: nil,
 		},
@@ -230,13 +230,13 @@ func TestGovernance_Propose(t *testing.T) {
 				proposalType ProposalType
 				title        string
 				desc         string
-				blockNumber  uint64
+				BlockNumber  uint64
 			}{
 				user:         "0x1000000000000000000000000000000000000000",
 				proposalType: ProposalType(250),
 				title:        "test title",
 				desc:         "test desc",
-				blockNumber:  10000,
+				BlockNumber:  10000,
 			},
 			err: ErrProposalType,
 		},
@@ -246,13 +246,13 @@ func TestGovernance_Propose(t *testing.T) {
 				proposalType ProposalType
 				title        string
 				desc         string
-				blockNumber  uint64
+				BlockNumber  uint64
 			}{
 				user:         "0x1000000000000000000000000000000000000000",
 				proposalType: NodeUpgrade,
 				title:        "",
 				desc:         "test desc",
-				blockNumber:  10000,
+				BlockNumber:  10000,
 			},
 			err: ErrTitle,
 		},
@@ -262,13 +262,13 @@ func TestGovernance_Propose(t *testing.T) {
 				proposalType ProposalType
 				title        string
 				desc         string
-				blockNumber  uint64
+				BlockNumber  uint64
 			}{
 				user:         "0x1000000000000000000000000000000000000000",
 				proposalType: NodeUpgrade,
 				title:        "test title",
 				desc:         "",
-				blockNumber:  10000,
+				BlockNumber:  10000,
 			},
 			err: ErrDesc,
 		},
@@ -278,13 +278,13 @@ func TestGovernance_Propose(t *testing.T) {
 				proposalType ProposalType
 				title        string
 				desc         string
-				blockNumber  uint64
+				BlockNumber  uint64
 			}{
 				user:         "0x1000000000000000000000000000000000000000",
 				proposalType: NodeUpgrade,
 				title:        "test title",
 				desc:         "test desc",
-				blockNumber:  0,
+				BlockNumber:  0,
 			},
 			err: ErrBlockNumber,
 		},
@@ -294,7 +294,7 @@ func TestGovernance_Propose(t *testing.T) {
 		addr := types.NewAddressByStr(test.input.user)
 		ethaddr := addr.ETHAddress()
 
-		proposal, err := gov.Propose(&ethaddr, test.input.proposalType, test.input.title, test.input.desc, test.input.blockNumber)
+		proposal, err := gov.Propose(&ethaddr, test.input.proposalType, test.input.title, test.input.desc, test.input.BlockNumber)
 		if err != nil {
 			assert.Equal(t, test.err, err)
 		} else {
@@ -302,7 +302,7 @@ func TestGovernance_Propose(t *testing.T) {
 			assert.Equal(t, test.input.proposalType, proposal.Type)
 			assert.Equal(t, test.input.title, proposal.Title)
 			assert.Equal(t, test.input.desc, proposal.Desc)
-			assert.Equal(t, test.input.blockNumber, proposal.BlockNumber)
+			assert.Equal(t, test.input.BlockNumber, proposal.BlockNumber)
 		}
 	}
 }

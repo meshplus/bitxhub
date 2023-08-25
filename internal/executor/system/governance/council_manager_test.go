@@ -59,18 +59,22 @@ func TestRunForPropose(t *testing.T) {
 		{
 			Address: admin1,
 			Weight:  1,
+			Name:    "111",
 		},
 		{
 			Address: admin2,
 			Weight:  1,
+			Name:    "222",
 		},
 		{
 			Address: admin3,
 			Weight:  1,
+			Name:    "333",
 		},
 		{
 			Address: admin4,
 			Weight:  1,
+			Name:    "444",
 		},
 	}, "10")
 	assert.Nil(t, err)
@@ -88,14 +92,17 @@ func TestRunForPropose(t *testing.T) {
 					{
 						Address: admin1,
 						Weight:  1,
+						Name:    "111",
 					},
 					{
 						Address: admin2,
 						Weight:  1,
+						Name:    "222",
 					},
 					{
 						Address: admin3,
 						Weight:  1,
+						Name:    "333",
 					},
 				},
 			}),
@@ -109,18 +116,22 @@ func TestRunForPropose(t *testing.T) {
 					{
 						Address: admin1,
 						Weight:  1,
+						Name:    "111",
 					},
 					{
 						Address: admin1,
 						Weight:  1,
+						Name:    "222",
 					},
 					{
 						Address: admin3,
 						Weight:  1,
+						Name:    "333",
 					},
 					{
 						Address: admin4,
 						Weight:  1,
+						Name:    "444",
 					},
 				},
 			}),
@@ -134,18 +145,22 @@ func TestRunForPropose(t *testing.T) {
 					{
 						Address: admin1,
 						Weight:  1,
+						Name:    "111",
 					},
 					{
 						Address: admin2,
 						Weight:  1,
+						Name:    "222",
 					},
 					{
 						Address: admin3,
 						Weight:  1,
+						Name:    "333",
 					},
 					{
 						Address: admin4,
 						Weight:  1,
+						Name:    "444",
 					},
 				},
 			}),
@@ -163,18 +178,22 @@ func TestRunForPropose(t *testing.T) {
 						{
 							Address: admin1,
 							Weight:  1,
+							Name:    "111",
 						},
 						{
 							Address: admin2,
 							Weight:  1,
+							Name:    "222",
 						},
 						{
 							Address: admin3,
 							Weight:  1,
+							Name:    "333",
 						},
 						{
 							Address: admin4,
 							Weight:  1,
+							Name:    "444",
 						},
 					},
 				}),
@@ -188,18 +207,22 @@ func TestRunForPropose(t *testing.T) {
 					{
 						Address: admin1,
 						Weight:  1,
+						Name:    "111",
 					},
 					{
 						Address: admin2,
 						Weight:  1,
+						Name:    "222",
 					},
 					{
 						Address: admin3,
 						Weight:  1,
+						Name:    "333",
 					},
 					{
 						Address: admin4,
 						Weight:  1,
+						Name:    "444",
 					},
 				},
 			}),
@@ -258,18 +281,22 @@ func TestRunForVote(t *testing.T) {
 		{
 			Address: admin1,
 			Weight:  1,
+			Name:    "111",
 		},
 		{
 			Address: admin2,
 			Weight:  1,
+			Name:    "222",
 		},
 		{
 			Address: admin3,
 			Weight:  1,
+			Name:    "333",
 		},
 		{
 			Address: admin4,
 			Weight:  1,
+			Name:    "444",
 		},
 	}, "10000000")
 	assert.Nil(t, err)
@@ -281,25 +308,29 @@ func TestRunForVote(t *testing.T) {
 			ProposalType: uint8(CouncilElect),
 			Title:        "council elect",
 			Desc:         "desc",
-			BlockNumber:  1,
+			BlockNumber:  2,
 		},
 		CouncilExtraArgs: CouncilExtraArgs{
 			Candidates: []*CouncilMember{
 				{
 					Address: admin1,
 					Weight:  2,
+					Name:    "111",
 				},
 				{
 					Address: admin2,
 					Weight:  2,
+					Name:    "222",
 				},
 				{
 					Address: admin3,
 					Weight:  2,
+					Name:    "333",
 				},
 				{
 					Address: admin4,
 					Weight:  2,
+					Name:    "444",
 				},
 			},
 		},
@@ -328,18 +359,22 @@ func TestRunForVote(t *testing.T) {
 						{
 							Address: admin1,
 							Weight:  2,
+							Name:    "111",
 						},
 						{
 							Address: admin2,
 							Weight:  2,
+							Name:    "222",
 						},
 						{
 							Address: admin3,
 							Weight:  2,
+							Name:    "333",
 						},
 						{
 							Address: admin4,
 							Weight:  2,
+							Name:    "444",
 						},
 					},
 				}),
@@ -363,18 +398,22 @@ func TestRunForVote(t *testing.T) {
 						{
 							Address: admin1,
 							Weight:  2,
+							Name:    "111",
 						},
 						{
 							Address: admin2,
 							Weight:  2,
+							Name:    "222",
 						},
 						{
 							Address: admin3,
 							Weight:  2,
+							Name:    "333",
 						},
 						{
 							Address: admin4,
 							Weight:  2,
+							Name:    "444",
 						},
 					},
 				}),

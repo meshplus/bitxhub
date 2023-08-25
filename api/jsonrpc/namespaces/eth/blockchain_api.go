@@ -196,6 +196,7 @@ func DoCall(ctx context.Context, api api.CoreAPI, args types.CallArgs, timeout t
 	// use copy state ledger to call
 	stateLedger := api.Broker().GetStateLedger().Copy()
 	stateLedger.SetTxContext(types.NewHash([]byte("mockTx")), 0)
+
 	// check if call system contract
 	systemContract, ok := api.Broker().GetSystemContract(msg.To)
 	if ok {
@@ -223,7 +224,7 @@ func DoCall(ctx context.Context, api api.CoreAPI, args types.CallArgs, timeout t
 		return nil, fmt.Errorf("execution aborted (timeout = %v)", timeout)
 	}
 	if err != nil {
-		//logger.Errorf("err: %w (supplied gas %d)", err, msg.GasLimit)
+		// logger.Errorf("err: %w (supplied gas %d)", err, msg.GasLimit)
 		return result, err
 	}
 

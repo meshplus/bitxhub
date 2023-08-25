@@ -292,11 +292,11 @@ func (nm *NodeManager) vote(user ethcommon.Address, voteArgs *VoteArgs) (*vm.Exe
 	}
 
 	if proposal.Type == NodeUpgrade {
-		result.ReturnData, result.Err = nm.voteUpgrade(user, proposal, &NodeVoteArgs{voteArgs.BaseVoteArgs})
+		result.ReturnData, result.Err = nm.voteUpgrade(user, proposal, &NodeVoteArgs{BaseVoteArgs: voteArgs.BaseVoteArgs})
 		return result, nil
 	}
 
-	result.ReturnData, result.Err = nm.voteNodeAddRemove(user, proposal, &NodeVoteArgs{voteArgs.BaseVoteArgs})
+	result.ReturnData, result.Err = nm.voteNodeAddRemove(user, proposal, &NodeVoteArgs{BaseVoteArgs: voteArgs.BaseVoteArgs})
 	return result, nil
 }
 
@@ -404,6 +404,34 @@ func (nm *NodeManager) EstimateGas(callArgs *types.CallArgs) (uint64, error) {
 	}
 
 	return gas, nil
+}
+
+func (nm *NodeManager) CheckAndUpdateState(lastHeight uint64, stateLedger ledger.StateLedger) {
+	nm.Reset(stateLedger)
+
+	if isExist, data := nm.account.Query(NodeProposalKey); isExist {
+		for _, proposalData := range data {
+			proposal := &NodeProposal{}
+			if err := json.Unmarshal(proposalData, proposal); err != nil {
+				nm.gov.logger.Errorf("unmarshal council proposal error: %s", err)
+				return
+			}
+
+			if proposal.BlockNumber != 0 && proposal.BlockNumber <= lastHeight {
+				// means proposal is out of deadline,status change to rejected
+				proposal.Status = Rejected
+
+				// remove node is special, proposal should be auto approved when out of deadline
+				if proposal.Type == NodeRemove {
+					proposal.Status = Approved
+				}
+
+				if _, err := nm.saveNodeProposal(proposal); err != nil {
+					nm.gov.logger.Errorf("unmarshal node proposal error: %s", err)
+				}
+			}
+		}
+	}
 }
 
 func InitNodeMembers(lg ledger.StateLedger, members []*repo.Member) error {
