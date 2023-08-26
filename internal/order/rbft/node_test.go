@@ -48,8 +48,7 @@ func MockMinNode(ctrl *gomock.Controller, t *testing.T) *Node {
 
 	mockPrecheckMgr := mock_precheck.NewMockMinPreCheck(ctrl, validTxsCh)
 
-	rbftConfig, _, err := generateRbftConfig(orderConf)
-	assert.Nil(t, err)
+	rbftConfig, _ := generateRbftConfig(orderConf)
 	node := &Node{
 		config:     orderConf,
 		n:          mockRbft,
@@ -155,8 +154,7 @@ func TestReadConfig(t *testing.T) {
 	ast := assert.New(t)
 	ctrl := gomock.NewController(t)
 	logger := log.NewWithModule("order")
-	rbftConf, mempoolConfig, err := generateRbftConfig(testutil.MockOrderConfig(logger, ctrl, "leveldb", t))
-	ast.Nil(err)
+	rbftConf, mempoolConfig := generateRbftConfig(testutil.MockOrderConfig(logger, ctrl, "leveldb", t))
 	rbftConf.Logger.Critical()
 	rbftConf.Logger.Criticalf("test critical")
 	rbftConf.Logger.Notice()

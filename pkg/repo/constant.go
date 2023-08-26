@@ -76,7 +76,3 @@ var (
 		"16Uiu2HAmQBFTnRr84M3xNhi3EcWmgZnnBsDgewk4sNtpA3smBsHJ",
 	}
 )
-
-const (
-	P2PMsgV1 uint64 = 1
-)

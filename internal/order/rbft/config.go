@@ -39,7 +39,7 @@ func defaultRbftConfig() rbft.Config {
 	}
 }
 
-func generateRbftConfig(config *common.Config) (rbft.Config, mempool.Config, error) {
+func generateRbftConfig(config *common.Config) (rbft.Config, mempool.Config) {
 	readConfig := config.Config
 
 	defaultConfig := defaultRbftConfig()
@@ -100,5 +100,5 @@ func generateRbftConfig(config *common.Config) (rbft.Config, mempool.Config, err
 		GetAccountNonce:     fn,
 		IsTimed:             defaultConfig.GenesisEpochInfo.ConsensusParams.EnableTimedGenEmptyBlock,
 	}
-	return defaultConfig, mempoolConf, nil
+	return defaultConfig, mempoolConf
 }

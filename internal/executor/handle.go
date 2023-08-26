@@ -326,7 +326,7 @@ func (exec *BlockExecutor) GetEvm(txCtx ethvm.TxContext, vmConfig ethvm.Config) 
 		return nil, err
 	}
 
-	blkCtx = ethvm.NewEVMBlockContext(meta.Height, uint64(block.BlockHeader.Timestamp), exec.ledger.StateLedger, exec.ledger.ChainLedger, "")
+	blkCtx = ethvm.NewEVMBlockContext(meta.Height, uint64(block.BlockHeader.Timestamp), exec.ledger.StateLedger, exec.ledger.ChainLedger, exec.rep.NodeAddress)
 	return ethvm.NewEVM(blkCtx, txCtx, exec.ledger.StateLedger, exec.evmChainCfg, vmConfig), nil
 }
 

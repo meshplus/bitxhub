@@ -9,6 +9,7 @@ import (
 	"github.com/Rican7/retry"
 	"github.com/Rican7/retry/strategy"
 	"github.com/ethereum/go-ethereum/event"
+	"github.com/samber/lo"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/time/rate"
 
@@ -28,7 +29,8 @@ import (
 )
 
 const (
-	pipeID = "order"
+	rbftMsgPipeID         = "rbft_msg_pipe_v1"
+	txsBroadcastMsgPipeID = "txs_broadcast_msg_pipe_v1"
 )
 
 func init() {
@@ -36,14 +38,15 @@ func init() {
 }
 
 type Node struct {
-	config            *common.Config
-	n                 rbft.Node[types.Transaction, *types.Transaction]
-	stack             *adaptor.RBFTAdaptor
-	blockC            chan *common.CommitEvent
-	logger            logrus.FieldLogger
-	peerMgr           peermgr.PeerManager
-	msgPipe           network.Pipe
-	receiveMsgLimiter *rate.Limiter
+	config              *common.Config
+	n                   rbft.Node[types.Transaction, *types.Transaction]
+	stack               *adaptor.RBFTAdaptor
+	blockC              chan *common.CommitEvent
+	logger              logrus.FieldLogger
+	peerMgr             peermgr.PeerManager
+	rbftMsgPipe         network.Pipe
+	txsBroadcastMsgPipe network.Pipe
+	receiveMsgLimiter   *rate.Limiter
 
 	ctx        context.Context
 	cancel     context.CancelFunc
@@ -62,10 +65,7 @@ func NewNode(config *common.Config) (*Node, error) {
 }
 
 func newNode(config *common.Config) (*Node, error) {
-	rbftConfig, mempoolConfig, err := generateRbftConfig(config)
-	if err != nil {
-		return nil, fmt.Errorf("generate rbft txpool config: %w", err)
-	}
+	rbftConfig, mempoolConfig := generateRbftConfig(config)
 	blockC := make(chan *common.CommitEvent, 1024)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -113,12 +113,18 @@ func (n *Node) Start() error {
 		Epoch: n.stack.EpochInfo.Epoch,
 	})
 
-	pipe, err := n.peerMgr.CreatePipe(n.ctx, pipeID)
+	rbftMsgPipe, err := n.peerMgr.CreatePipe(n.ctx, rbftMsgPipeID)
 	if err != nil {
 		return err
 	}
-	n.msgPipe = pipe
-	n.stack.SetMsgPipe(pipe)
+	n.rbftMsgPipe = rbftMsgPipe
+	n.stack.SetMsgPipe(rbftMsgPipe)
+
+	txsBroadcastMsgPipe, err := n.peerMgr.CreatePipe(n.ctx, txsBroadcastMsgPipeID)
+	if err != nil {
+		return err
+	}
+	n.txsBroadcastMsgPipe = txsBroadcastMsgPipe
 
 	if err := retry.Retry(func(attempt uint) error {
 		err := n.checkQuorum()
@@ -132,14 +138,15 @@ func (n *Node) Start() error {
 		n.logger.Error(err)
 	}
 
-	n.txPreCheck.Start()
+	go n.txPreCheck.Start()
 	go n.txCache.ListenEvent()
 
 	go n.listenValidTxs()
 	go n.listenNewTxToSubmit()
 	go n.listenExecutedBlockToReport()
 	go n.listenBatchMemTxsToBroadcast()
-	go n.listenP2PMsg()
+	go n.listenRbftMsg()
+	go n.listenTxsBroadcastMsg()
 
 	n.logger.Info("=====Order started=========")
 	return n.n.Start()
@@ -176,39 +183,39 @@ func (n *Node) listenValidTxs() {
 	}
 }
 
-func (n *Node) listenP2PMsg() {
+func (n *Node) listenRbftMsg() {
 	for {
-		msg := n.msgPipe.Receive(n.ctx)
+		msg := n.rbftMsgPipe.Receive(n.ctx)
 		if msg == nil {
 			return
 		}
 
-		m := &pb.Message{}
-		if err := m.UnmarshalVT(msg.Data); err != nil {
-			n.logger.WithField("err", err).Warn("Unmarshal order message failed")
+		if err := n.Step(msg.Data); err != nil {
+			n.logger.WithField("err", err).Warn("Process order message failed")
 			continue
 		}
-		switch m.Type {
-		case pb.Message_CONSENSUS:
-			if err := n.Step(m.Data); err != nil {
-				n.logger.WithField("err", err).Warn("Process order message failed")
-				continue
-			}
+	}
+}
 
-		case pb.Message_PUSH_TXS:
-			if n.receiveMsgLimiter != nil && !n.receiveMsgLimiter.Allow() {
-				// rate limit exceeded, refuse to process the message
-				n.logger.Warn("Node received too many PUSH_TXS messages. Rate limiting in effect")
-				continue
-			}
-
-			tx := &pb.BytesSlice{}
-			if err := tx.UnmarshalVT(m.Data); err != nil {
-				n.logger.WithField("err", err).Warn("Unmarshal txs message failed")
-				continue
-			}
-			n.submitTxsFromRemote(tx.Slice)
+func (n *Node) listenTxsBroadcastMsg() {
+	for {
+		msg := n.txsBroadcastMsgPipe.Receive(n.ctx)
+		if msg == nil {
+			return
 		}
+
+		if n.receiveMsgLimiter != nil && !n.receiveMsgLimiter.Allow() {
+			// rate limit exceeded, refuse to process the message
+			n.logger.Warn("Node received too many PUSH_TXS messages. Rate limiting in effect")
+			continue
+		}
+
+		tx := &pb.BytesSlice{}
+		if err := tx.UnmarshalVT(msg.Data); err != nil {
+			n.logger.WithField("err", err).Warn("Unmarshal txs message failed")
+			continue
+		}
+		n.submitTxsFromRemote(tx.Slice)
 	}
 }
 
@@ -276,18 +283,9 @@ func (n *Node) listenBatchMemTxsToBroadcast() {
 					return err
 				}
 
-				p2pmsg := &pb.Message{
-					Type:    pb.Message_PUSH_TXS,
-					Data:    data,
-					Version: repo.P2PMsgV1,
-				}
-
-				msgData, err := p2pmsg.MarshalVT()
-				if err != nil {
-					return err
-				}
-
-				return n.msgPipe.Broadcast(context.TODO(), nil, msgData)
+				return n.txsBroadcastMsgPipe.Broadcast(context.TODO(), lo.Map(lo.Flatten([][]*rbft.NodeInfo{n.stack.EpochInfo.ValidatorSet, n.stack.EpochInfo.CandidateSet}), func(item *rbft.NodeInfo, index int) string {
+					return item.P2PNodeID
+				}), data)
 			}()
 			if err != nil {
 				n.logger.Errorf("failed to broadcast mempool txs: %v", err)

@@ -75,7 +75,7 @@ linter:
 
 ## make fmt: Formats go source code
 fmt:
-	go_fmt -local github.com/axiomesh -mi ./...
+	go_fmt -local github.com/axiomesh -mi
 	gofmt -s -w ./*.go
 
 ## make cluster: Run cluster including 4 nodes
