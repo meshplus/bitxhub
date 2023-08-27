@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/urfave/cli/v2"
 
@@ -74,14 +75,17 @@ func generate(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	existConfig := fileutil.Exist(p)
+	existConfig := fileutil.Exist(filepath.Join(p, repo.CfgFileName))
 	if existConfig {
 		fmt.Println("axiom repo already exists")
 		return nil
 	}
-	err = os.MkdirAll(p, 0755)
-	if err != nil {
-		return err
+
+	if !fileutil.Exist(p) {
+		err = os.MkdirAll(p, 0755)
+		if err != nil {
+			return err
+		}
 	}
 
 	nodeIndex := ctx.Int("default-node-index")

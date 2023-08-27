@@ -8,6 +8,7 @@ CURRENT_PATH=$(pwd)
 PROJECT_PATH=$(dirname "${CURRENT_PATH}")
 CONFIG_PATH=${PROJECT_PATH}/config
 PACKAGE_PATH=${CURRENT_PATH}/package
+APP_NAME=axiom
 
 BLUE='\033[0;34m'
 RED='\033[0;31m'
@@ -22,20 +23,10 @@ function print_red() {
 }
 
 function prepare() {
-  print_blue "===> Generating nodes configuration"
-  rm -rf "${PACKAGE_PATH}"
+  print_blue "===> Generating ${APP_NAME} package"
   root=${PACKAGE_PATH}
 
-  axiom --repo="${root}" config generate
-
-  echo " #!/usr/bin/env bash" >"${root}"/start.sh
-  echo "./axiom --repo \$(pwd)" start >>"${root}"/start.sh
-  cp ${PROJECT_PATH}/bin/axiom ${root}
-  cp ${PROJECT_PATH}/scripts/restart.sh ${root}
-  cp ${PROJECT_PATH}/scripts/version.sh ${root}
-  
-  axiomConfig=${root}/axiom.toml
-  networkConfig=${root}/network.toml
+  cp ${PROJECT_PATH}/bin/${APP_NAME} ${root}
 }
 
 function package() {
@@ -45,9 +36,9 @@ function package() {
     cd ${root}
     if [ -n "$VERSION" ]; then
         echo "=== version is ${VERSION}"
-        tar -zcvf axiom-${VERSION}.tar.gz *
+        tar -zcvf axiom-${VERSION}.tar.gz ${APP_NAME} *.sh
     else
-        tar -zcvf axiom-dev.tar.gz *
+        tar -zcvf axiom-dev.tar.gz ${APP_NAME} *.sh
     fi
     print_blue "=== Package is under path: ${root}"
 }

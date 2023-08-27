@@ -24,8 +24,8 @@ func calcProposalStatusBySimpleStrategy(totalVotes, passVotes, rejectVotes uint6
 		return Approved
 	}
 
-	// reject votes is more than half of total votes, rejected
-	if rejectVotes*2 > totalVotes {
+	// reject votes is more than or equal to half of total votes, rejected
+	if rejectVotes*2 >= totalVotes {
 		return Rejected
 	}
 

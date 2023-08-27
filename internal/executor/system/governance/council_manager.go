@@ -309,13 +309,22 @@ func (cm *CouncilManager) CheckAndUpdateState(lastHeight uint64, stateLedger led
 				return
 			}
 
+			if proposal.Status == Approved || proposal.Status == Rejected {
+				// proposal is finnished, no need update
+				continue
+			}
+
 			if proposal.BlockNumber != 0 && proposal.BlockNumber <= lastHeight {
 				// means proposal is out of deadline,status change to rejected
 				proposal.Status = Rejected
 
-				if _, err := cm.saveProposal(proposal); err != nil {
+				b, err := cm.saveProposal(proposal)
+				if err != nil {
 					cm.gov.logger.Errorf("save proposal error: %s", err)
 				}
+
+				cm.gov.RecordLog(cm.currentLog, VoteMethod, &proposal.BaseProposal, b)
+				cm.gov.SaveLog(stateLedger, cm.currentLog)
 			}
 		}
 	}

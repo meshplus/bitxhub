@@ -12,6 +12,7 @@ pkg/order/build
 pkg/order/storage
 scripts/build
 build_solo
+scripts/package/axiom*
 build*.tar.gz
 cover.out
 coverage.out

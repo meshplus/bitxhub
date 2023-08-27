@@ -417,6 +417,11 @@ func (nm *NodeManager) CheckAndUpdateState(lastHeight uint64, stateLedger ledger
 				return
 			}
 
+			if proposal.Status == Approved || proposal.Status == Rejected {
+				// proposal is finnished, no need update
+				continue
+			}
+
 			if proposal.BlockNumber != 0 && proposal.BlockNumber <= lastHeight {
 				// means proposal is out of deadline,status change to rejected
 				proposal.Status = Rejected
@@ -426,9 +431,13 @@ func (nm *NodeManager) CheckAndUpdateState(lastHeight uint64, stateLedger ledger
 					proposal.Status = Approved
 				}
 
-				if _, err := nm.saveNodeProposal(proposal); err != nil {
+				b, err := nm.saveNodeProposal(proposal)
+				if err != nil {
 					nm.gov.logger.Errorf("unmarshal node proposal error: %s", err)
 				}
+
+				nm.gov.RecordLog(nm.currentLog, VoteMethod, &proposal.BaseProposal, b)
+				nm.gov.SaveLog(stateLedger, nm.currentLog)
 			}
 		}
 	}

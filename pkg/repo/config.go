@@ -325,7 +325,7 @@ func LoadConfig(repoRoot string) (*Config, error) {
 		}
 		cfg := DefaultConfig(rootPath)
 
-		cfgPath := path.Join(repoRoot, cfgFileName)
+		cfgPath := path.Join(repoRoot, CfgFileName)
 		existConfig := fileutil.Exist(cfgPath)
 		if !existConfig {
 			err := os.MkdirAll(rootPath, 0755)
