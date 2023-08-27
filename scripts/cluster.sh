@@ -80,6 +80,9 @@ function prepare() {
     echo " #!/usr/bin/env bash" >"${root}"/start.sh
     echo "./axiom --repo \$(pwd)" start >>"${root}"/start.sh
 
+    cp ${PROJECT_PATH}/scripts/restart.sh ${root}
+    cp ${PROJECT_PATH}/scripts/version.sh ${root}
+
     axiomConfig=${root}/axiom.toml
     networkConfig=${root}/network.toml
     x_replace "s/8881/888${i}/g" "${axiomConfig}"

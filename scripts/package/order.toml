@@ -1,0 +1,39 @@
+[timed_gen_block]
+  enable = false
+  no_tx_batch_timeout = '2s'
+
+[limit]
+  enable = false
+  limit = 10000
+  burst = 10000
+
+[mempool]
+  pool_size = 50000
+  batch_timeout = '500ms'
+  batch_size = 500
+  tolerance_time = '5m0s'
+  tolerance_remove_time = '15m0s'
+
+[tx_cache]
+  set_size = 25
+  set_timeout = '100ms'
+
+[rbft]
+  check_interval = '3m0s'
+  vc_period = 0
+  checkpoint_period = 10
+
+  [rbft.timeout]
+    sync_state = '3s'
+    sync_interval = '1m0s'
+    recovery = '15s'
+    first_request = '30s'
+    request = '6s'
+    null_request = '9s'
+    viewchange = '8s'
+    resend_viewchange = '10s'
+    clean_viewchange = '1m0s'
+    update = '4s'
+
+[solo]
+  checkpoint_period = 10

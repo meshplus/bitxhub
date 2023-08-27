@@ -23,7 +23,15 @@ function print_red() {
 function start() {
   print_blue "===> Start solo axiom"
   rm -rf "${BUILD_PATH}"
+  root=${BUILD_PATH}
   axiom --repo="${BUILD_PATH}" config generate --solo
+
+  echo " #!/usr/bin/env bash" >"${root}"/start.sh
+  echo "./axiom --repo \$(pwd)" start >>"${root}"/start.sh
+
+  cp ${PROJECT_PATH}/scripts/restart.sh ${root}
+  cp ${PROJECT_PATH}/scripts/version.sh ${root}
+
   if [ -n "$TAGS" ]; then
     if [ "$TAGS" = "mockConsensus" ] || [ "$TAGS" = "mockExecutor" ]; then
       axiom --repo="${BUILD_PATH}" start --mode="${TAGS}"
