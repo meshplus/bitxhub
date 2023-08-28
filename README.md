@@ -2,12 +2,12 @@
 [![codecov](https://codecov.io/gh/axiomesh/axiom/branch/main/graph/badge.svg)](https://codecov.io/gh/axiomesh/axiom)
 [![Go Report Card](https://goreportcard.com/badge/github.com/axiomesh/axiom)](https://goreportcard.com/report/github.com/axiomesh/axiom)
 
-Axiom is high performance open permission blockchain.
+`Axiomesh` is a blockchain infrastructure with high scalability, privacy, security and composability. `AxiomLedger` is the consensus layer of Axiomesh ecosystem.
 
 ## Start
 
-Axiom start script relies on [golang](https://golang.org/) and [tmux](https://github.com/tmux/tmux/wiki). Please
-install the software before start.
+`AxiomLedger` start script relies on [golang](https://golang.org/) and [tmux](https://github.com/tmux/tmux/wiki). Please
+install the software before started.
 
 Use commands below to clone the project:
 
@@ -15,13 +15,13 @@ Use commands below to clone the project:
 git clone git@github.com:axiomesh/axiom.git
 ```
 
-Axiom also relies on some small tools, use commands below to install:
+`AxiomLedger` also relies on some additional tools, use commands below to install:
 
 ```shell
 make prepare
 ```
 
-Finally, run the following commands to start a four nodes relay-chain.
+Finally, run the following commands to start a minmal nodes testnet.
 
 ```shell
 make cluster
@@ -35,6 +35,6 @@ See [CONTRIBUTING.md](https://github.com/axiomesh/axiom/blob/main/CONTRIBUTING.m
 
 ## License
 
-The Axiom library (i.e. all code outside of the cmd and internal directory) is licensed under the GNU Lesser General Public License v3.0, also included in our repository in the COPYING.LESSER file.
+The `AxiomLeger` library (i.e. all code outside of the cmd and internal directory) is licensed under the GNU Lesser General Public License v3.0, also included in our repository in the COPYING.LESSER file.
 
-The Axiom binaries (i.e. all code inside of the cmd and internal directory) is licensed under the GNU General Public License v3.0, also included in our repository in the COPYING file.
+The `AxiomLedger` binaries (i.e. all code inside of the cmd and internal directory) is licensed under the GNU General Public License v3.0, also included in our repository in the COPYING file.
