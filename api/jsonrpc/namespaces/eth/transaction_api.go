@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/axiomesh/axiom-kit/storage"
 	"github.com/ethereum/go-ethereum/common"
@@ -240,16 +239,12 @@ func (api *TransactionAPI) SendRawTransaction(data hexutil.Bytes) (common.Hash, 
 	}
 	api.logger.Debugf("get new eth tx: %s", tx.GetHash().String())
 
-	if tx.GetFrom() == nil {
-		return [32]byte{}, errors.New("verify signature failed")
-	}
-
 	err := api.api.Broker().OrderReady()
 	if err != nil {
 		return [32]byte{}, fmt.Errorf("the system is temporarily unavailable %s", err.Error())
 	}
 
-	if err := checkTransaction(api.logger, tx); err != nil {
+	if err := checkTransaction(tx); err != nil {
 		return [32]byte{}, fmt.Errorf("check transaction fail for %s", err.Error())
 	}
 
@@ -276,29 +271,11 @@ func getTxByBlockInfoAndIndex(api api.CoreAPI, mode string, key string, idx hexu
 	return NewRPCTransaction(tx, common.BytesToHash(meta.BlockHash.Bytes()), meta.BlockHeight, meta.Index), nil
 }
 
-func checkTransaction(logger logrus.FieldLogger, tx *types.Transaction) error {
-	if tx.GetFrom() == nil {
-		return errors.New("tx from address is nil")
-	}
-	logger.Debugf("from address: %s, nonce: %d", tx.GetFrom().String(), tx.GetNonce())
-
-	emptyAddress := &types.Address{}
-	if tx.GetFrom().String() == emptyAddress.String() {
-		return errors.New("from can't be empty")
-	}
-
+func checkTransaction(tx *types.Transaction) error {
 	if tx.GetTo() == nil {
 		if len(tx.GetPayload()) == 0 {
 			return errors.New("can't deploy empty contract")
 		}
-	} else {
-		if tx.GetFrom().String() == tx.GetTo().String() {
-			return errors.New("from can`t be the same as to")
-		}
-	}
-	if tx.GetTimeStamp() < time.Now().Unix()-10*60 ||
-		tx.GetTimeStamp() > time.Now().Unix()+10*60 {
-		return errors.New("timestamp is illegal")
 	}
 
 	if len(tx.GetSignature()) == 0 {

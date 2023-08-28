@@ -170,7 +170,17 @@ func (tp *TxPreCheckMgr) dispatchVerifyDataEvent() {
 }
 
 func (tp *TxPreCheckMgr) verifySignature(tx *types.Transaction) bool {
-	return tx.VerifySignature() == nil
+	if err := tx.VerifySignature(); err != nil {
+		return false
+	}
+
+	if tx.GetTo() != nil {
+		if tx.GetFrom().String() == tx.GetTo().String() {
+			tp.logger.Errorf("tx from and to address is same")
+			return false
+		}
+	}
+	return true
 }
 
 func (tp *TxPreCheckMgr) verifyData(tx *types.Transaction) error {
