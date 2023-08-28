@@ -83,6 +83,10 @@ fmt:
 cluster:install
 	cd scripts && bash cluster.sh TAGS=${TAGS}
 
+
+stop:
+	cd scripts && bash stop.sh
+
 ## make solo: Run one node in solo mode
 ## make solo TAGS=mockExecutor: Run one node in solo mode with mockExecutor
 ## make solo TAGS=mockConsensus: Run one node in solo mode with mockConsensus
