@@ -414,11 +414,7 @@ func (api *FilterAPI) GetLogs(ctx context.Context, ethCrit FilterCriteria) ([]*e
 		return nil, err
 	}
 
-	res := make([]*ethereumTypes.Log, len(logs))
-	for i := 0; i < len(logs); i++ {
-		res[i] = formatEthLogs(logs[i])
-	}
-	return res, err
+	return returnLogs(logs), err
 }
 
 // UninstallFilter removes the filter with the given filter id.
@@ -442,7 +438,7 @@ func (api *FilterAPI) UninstallFilter(id rpc.ID) bool {
 // If the filter could not be found an empty array of logs is returned.
 //
 // https://eth.wiki/json-rpc/API#eth_getfilterlogs
-func (api *FilterAPI) GetFilterLogs(ctx context.Context, id rpc.ID) ([]*types.EvmLog, error) {
+func (api *FilterAPI) GetFilterLogs(ctx context.Context, id rpc.ID) ([]*ethereumTypes.Log, error) {
 	api.filtersMu.Lock()
 	f, found := api.filters[id]
 	api.filtersMu.Unlock()
@@ -521,11 +517,16 @@ func returnHashes(hashes []*types.Hash) []*types.Hash {
 
 // returnLogs is a helper that will return an empty log array in case the given logs array is nil,
 // otherwise the given logs array is returned.
-func returnLogs(logs []*types.EvmLog) []*types.EvmLog {
+func returnLogs(logs []*types.EvmLog) []*ethereumTypes.Log {
 	if logs == nil {
-		return []*types.EvmLog{}
+		return []*ethereumTypes.Log{}
 	}
-	return logs
+
+	res := make([]*ethereumTypes.Log, len(logs))
+	for i := 0; i < len(logs); i++ {
+		res[i] = formatEthLogs(logs[i])
+	}
+	return res
 }
 
 // UnmarshalJSON sets *args fields with given data.
