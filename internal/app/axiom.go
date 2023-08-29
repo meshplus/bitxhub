@@ -153,7 +153,7 @@ func GenerateAxiomWithoutOrder(rep *repo.Repo) (*Axiom, error) {
 	}
 
 	// 1. create executor and view executor
-	viewExec, err := executor.New(viewLdg, loggers.Logger(loggers.Executor), rep.Config)
+	viewExec, err := executor.New(viewLdg, loggers.Logger(loggers.Executor), rep)
 	if err != nil {
 		return nil, fmt.Errorf("create ViewExecutor: %w", err)
 	}
@@ -172,7 +172,7 @@ func GenerateAxiomWithoutOrder(rep *repo.Repo) (*Axiom, error) {
 	if rep.Config.Executor.Type == repo.ExecTypeDev {
 		txExec, err = executor_dev.New(log)
 	} else {
-		txExec, err = executor.New(rwLdg, log, rep.Config)
+		txExec, err = executor.New(rwLdg, log, rep)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("create BlockExecutor: %w", err)

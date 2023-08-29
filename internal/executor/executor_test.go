@@ -31,9 +31,10 @@ import (
 )
 
 const (
-	srcMethod = "did:axiom:addr1:."
-	dstMethod = "did:axiom:addr2:."
-	from      = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
+	srcMethod   = "did:axiom:addr1:."
+	dstMethod   = "did:axiom:addr2:."
+	from        = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
+	minGasPrice = 1000000000000
 )
 
 func TestNew(t *testing.T) {
@@ -119,12 +120,12 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	// mock data for ledger
 	chainMeta := &types.ChainMeta{
 		Height:    1,
-		GasPrice:  big.NewInt(5000),
+		GasPrice:  big.NewInt(minGasPrice),
 		BlockHash: types.NewHash([]byte(from)),
 	}
 	block := &types.Block{
 		BlockHeader: &types.BlockHeader{
-			GasPrice: 5000,
+			GasPrice: minGasPrice,
 		},
 	}
 
@@ -217,8 +218,13 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	assert.Nil(t, exec.Start())
 
 	ch := make(chan events.ExecutedEvent)
+	remoteCh := make(chan events.ExecutedEvent)
 	blockSub := exec.SubscribeBlockEvent(ch)
-	defer blockSub.Unsubscribe()
+	remoteBlockSub := exec.SubscribeBlockEventForRemote(remoteCh)
+	defer func() {
+		blockSub.Unsubscribe()
+		remoteBlockSub.Unsubscribe()
+	}()
 
 	// send blocks to executor
 	commitEvent1 := mockCommitEvent(uint64(2), nil)
@@ -231,10 +237,17 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	assert.EqualValues(t, 2, blockRes1.Block.BlockHeader.Number)
 	assert.Equal(t, 0, len(blockRes1.Block.Transactions))
 	assert.Equal(t, 0, len(blockRes1.TxHashList))
+
+	remoteBlockRes1 := <-remoteCh
+	assert.Equal(t, blockRes1, remoteBlockRes1)
+
 	blockRes2 := <-ch
 	assert.EqualValues(t, 3, blockRes2.Block.BlockHeader.Number)
 	assert.Equal(t, 2, len(blockRes2.Block.Transactions))
 	assert.Equal(t, 2, len(blockRes2.TxHashList))
+
+	remoteBlockRes2 := <-remoteCh
+	assert.Equal(t, blockRes2, remoteBlockRes2)
 
 	assert.Nil(t, exec.Stop())
 }
@@ -252,7 +265,7 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 	// mock data for ledger
 	chainMeta := &types.ChainMeta{
 		Height:    1,
-		GasPrice:  big.NewInt(5000),
+		GasPrice:  big.NewInt(minGasPrice),
 		BlockHash: types.NewHashByStr(from),
 	}
 
@@ -457,16 +470,24 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 			ldg, err := ledger.New(createMockRepo(t), tc.blockStorage, tc.stateStorage, blockFile, accountCache, log.NewWithModule("ledger"))
 			require.Nil(t, err)
 
-			from, err := types.GenerateSigner()
+			signer, err := types.GenerateSigner()
 			require.Nil(t, err)
 			to := types.NewAddressByStr("0xdAC17F958D2ee523a2206206994597C13D831ec7")
 
-			ldg.SetBalance(from.Addr, new(big.Int).Mul(big.NewInt(5000000000000), big.NewInt(21000*10000)))
+			ldg.SetBalance(signer.Addr, new(big.Int).Mul(big.NewInt(5000000000000), big.NewInt(21000*10000)))
 			account, journal := ldg.FlushDirtyData()
 			err = ldg.Commit(1, account, journal)
 			require.Nil(t, err)
 			err = ldg.PersistExecutionResult(mockBlock(1, nil), nil)
 			require.Nil(t, err)
+
+			// mock data for ledger
+			chainMeta := &types.ChainMeta{
+				Height:    1,
+				GasPrice:  big.NewInt(minGasPrice),
+				BlockHash: types.NewHash([]byte(from)),
+			}
+			ldg.UpdateChainMeta(chainMeta)
 
 			executor, err := New(ldg, log.NewWithModule("executor"), config)
 			require.Nil(t, err)
@@ -477,9 +498,9 @@ func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 			sub := executor.SubscribeBlockEvent(ch)
 			defer sub.Unsubscribe()
 
-			tx1 := mockTransferTx(t, from, to, 0, 1)
-			tx2 := mockTransferTx(t, from, to, 1, 1)
-			tx3 := mockTransferTx(t, from, to, 2, 1)
+			tx1 := mockTransferTx(t, signer, to, 0, 1)
+			tx2 := mockTransferTx(t, signer, to, 1, 1)
+			tx3 := mockTransferTx(t, signer, to, 2, 1)
 			commitEvent := mockCommitEvent(2, []*types.Transaction{tx1, tx2, tx3})
 			executor.ExecuteBlock(commitEvent)
 
@@ -503,18 +524,17 @@ func createMockRepo(t *testing.T) *repo.Repo {
 	return r
 }
 
-func generateMockConfig(t *testing.T) *repo.Config {
+func generateMockConfig(t *testing.T) *repo.Repo {
 	r, err := repo.Default(t.TempDir())
 	assert.Nil(t, err)
-	config := r.Config
 
 	for i := 0; i < 4; i++ {
-		config.Genesis.Admins = append(config.Genesis.Admins, &repo.Admin{
+		r.Config.Genesis.Admins = append(r.Config.Genesis.Admins, &repo.Admin{
 			Address: types.NewAddress([]byte{byte(1)}).String(),
 		})
 	}
 
-	return config
+	return r
 }
 
 func executor_start(t *testing.T) *BlockExecutor {

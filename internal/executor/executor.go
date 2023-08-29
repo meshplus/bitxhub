@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/axiomesh/axiom/internal/finance"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/sirupsen/logrus"
@@ -30,6 +31,7 @@ type BlockExecutor struct {
 	ledger             *ledger.Ledger
 	logger             logrus.FieldLogger
 	blockC             chan *types.CommitEvent
+	gas                *finance.Gas
 	currentHeight      uint64
 	currentBlockHash   *types.Hash
 	blockFeed          event.Feed
@@ -47,7 +49,7 @@ type BlockExecutor struct {
 }
 
 // New creates executor instance
-func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, config *repo.Config) (*BlockExecutor, error) {
+func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, config *repo.Repo) (*BlockExecutor, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	blockExecutor := &BlockExecutor{
@@ -55,16 +57,17 @@ func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, config *repo.Con
 		logger:           logger,
 		ctx:              ctx,
 		cancel:           cancel,
+		gas:              finance.NewGas(config),
 		blockC:           make(chan *types.CommitEvent, blockChanNumber),
 		currentHeight:    chainLedger.GetChainMeta().Height,
 		currentBlockHash: chainLedger.GetChainMeta().BlockHash,
-		evmChainCfg:      newEVMChainCfg(config),
-		config:           *config,
-		gasLimit:         config.Genesis.GasLimit,
+		evmChainCfg:      newEVMChainCfg(config.Config),
+		config:           *config.Config,
+		gasLimit:         config.Config.Genesis.GasLimit,
 		lock:             &sync.Mutex{},
 	}
 
-	for _, admin := range config.Genesis.Admins {
+	for _, admin := range config.Config.Genesis.Admins {
 		blockExecutor.admins = append(blockExecutor.admins, admin.Address)
 	}
 
