@@ -27,11 +27,11 @@ function start_axiom_rbft() {
 }
 
 function axiom_tester() {
-    print_blue "===> 2. Clone snake"
+    print_blue "===> 2. Clone axiom-tester"
     echo "$BRANCH_NAME"
     cd ../
-    git clone -b "$BRANCH_NAME" https://github.com/axiomesh/snake.git
-    cd snake
+    git clone -b "$BRANCH_NAME" https://github.com/axiomesh/axiom-tester.git
+    cd axiom-tester
     print_blue "Start test"
     print_blue "===> 3. Start smoke test"
     npm install && npm run smoke-test
