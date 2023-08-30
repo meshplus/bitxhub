@@ -14,7 +14,6 @@ import (
 	"github.com/axiomesh/axiom-kit/storage"
 	"github.com/axiomesh/axiom-kit/storage/blockfile"
 	"github.com/axiomesh/axiom-kit/types"
-	"github.com/axiomesh/axiom/internal/finance"
 	"github.com/axiomesh/axiom/pkg/repo"
 	"github.com/axiomesh/eth-kit/ledger"
 )
@@ -27,7 +26,6 @@ type ChainLedger struct {
 	repo            *repo.Repo
 	chainMeta       *types.ChainMeta
 	chainMutex      sync.RWMutex
-	gas             *finance.Gas
 	logger          logrus.FieldLogger
 }
 
@@ -38,7 +36,6 @@ func NewChainLedgerImpl(blockchainStore storage.Storage, bf *blockfile.BlockFile
 		repo:            repo,
 		chainMutex:      sync.RWMutex{},
 		logger:          logger,
-		gas:             finance.NewGas(repo),
 	}
 
 	chainMeta, err := c.LoadChainMeta()
@@ -205,19 +202,6 @@ func (l *ChainLedger) PersistExecutionResult(block *types.Block, receipts []*typ
 		return fmt.Errorf("preapare receipts failed: %w", err)
 	}
 
-	parentChainMeta := l.GetChainMeta()
-	var gasPrice uint64
-	if parentChainMeta.GasPrice == nil {
-		gasPrice = l.repo.Config.Genesis.GasPrice
-	} else {
-		gasPrice, err = l.gas.CalNextGasPrice(parentChainMeta.GasPrice.Uint64(), len(block.Transactions))
-		if err != nil {
-			return fmt.Errorf("calculate current gas failed: %w", err)
-		}
-	}
-
-	block.BlockHeader.GasPrice = int64(gasPrice)
-
 	ts, err := l.prepareTransactions(batcher, block)
 	if err != nil {
 		return fmt.Errorf("prepare transactions failed: %w", err)
@@ -230,7 +214,7 @@ func (l *ChainLedger) PersistExecutionResult(block *types.Block, receipts []*typ
 
 	meta := &types.ChainMeta{
 		Height:    block.BlockHeader.Number,
-		GasPrice:  new(big.Int).SetUint64(gasPrice),
+		GasPrice:  big.NewInt(block.BlockHeader.GasPrice),
 		BlockHash: block.BlockHash,
 	}
 

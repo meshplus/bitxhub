@@ -2,6 +2,7 @@ package executor
 
 import (
 	"bytes"
+	"fmt"
 	"math/big"
 	"strings"
 	"time"
@@ -89,6 +90,14 @@ func (exec *BlockExecutor) processExecuteEvent(commitEvent *types.CommitEvent) {
 	block.BlockHeader.TxRoot = txRoot
 	block.BlockHeader.ReceiptRoot = receiptRoot
 	block.BlockHeader.ParentHash = exec.currentBlockHash
+
+	parentChainMeta := exec.ledger.GetChainMeta()
+	gasPrice, err := exec.gas.CalNextGasPrice(parentChainMeta.GasPrice.Uint64(), len(block.Transactions))
+	if err != nil {
+		panic(fmt.Errorf("calculate current gas failed: %w", err))
+	}
+
+	block.BlockHeader.GasPrice = int64(gasPrice)
 
 	accounts, journalHash := exec.ledger.FlushDirtyData()
 
