@@ -24,23 +24,9 @@ import (
 	"github.com/axiomesh/axiom/pkg/repo"
 )
 
-const (
-	full          = "full"
-	mockConsensus = "mockConsensus"
-	mockExecutor  = "mockExecutor"
-)
-
 var startCMD = &cli.Command{
-	Name:  "start",
-	Usage: "Start a long-running daemon process",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:     "mode",
-			Usage:    "start axiom in specified mode",
-			Required: false,
-			Value:    full,
-		},
-	},
+	Name:   "start",
+	Usage:  "Start a long-running daemon process",
 	Action: start,
 }
 
@@ -62,17 +48,10 @@ func start(ctx *cli.Context) error {
 			return err
 		}
 	}
-	mode := ctx.String("mode")
-	if mode == mockConsensus {
-		r.Config.Order.Type = repo.OrderTypeSoloDev
-	}
-
-	if mode == mockExecutor {
-		r.Config.Executor.Type = repo.ExecTypeDev
-	}
 
 	err = log.Initialize(
 		log.WithReportCaller(r.Config.Log.ReportCaller),
+		log.WithEnableColor(r.Config.Log.EnableColor),
 		log.WithPersist(true),
 		log.WithFilePath(filepath.Join(r.Config.RepoRoot, repo.LogsDirName)),
 		log.WithFileName(r.Config.Log.Filename),

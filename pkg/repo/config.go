@@ -129,6 +129,7 @@ type Log struct {
 	Level        string    `mapstructure:"level" toml:"level"`
 	Filename     string    `mapstructure:"filename" toml:"filename"`
 	ReportCaller bool      `mapstructure:"report_caller" toml:"report_caller"`
+	EnableColor  bool      `mapstructure:"enable_color" toml:"enable_color"`
 	MaxAge       Duration  `mapstructure:"max_age" toml:"max_age"`
 	RotationTime Duration  `mapstructure:"rotation_time" toml:"rotation_time"`
 	Module       LogModule `mapstructure:"module" toml:"module"`
@@ -166,11 +167,6 @@ type Admin struct {
 	Name    string `mapstructure:"name" toml:"name"`
 }
 
-type Txpool struct {
-	BatchSize    int      `mapstructure:"batch_size" toml:"batch_size"`
-	BatchTimeout Duration `mapstructure:"batch_timeout" toml:"batch_timeout"`
-}
-
 type Order struct {
 	Type string `mapstructure:"type" toml:"type"`
 }
@@ -205,19 +201,20 @@ func GenesisEpochInfo() *rbft.EpochInfo {
 	return &rbft.EpochInfo{
 		Version:     1,
 		Epoch:       1,
-		EpochPeriod: 40,
+		EpochPeriod: 10000000,
 		StartBlock:  1,
 		P2PBootstrapNodeAddresses: lo.Map(defaultNodeIDs, func(item string, idx int) string {
 			return fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/p2p/%s", 4001+idx, item)
 		}),
 		ConsensusParams: &rbft.ConsensusParams{
-			CheckpointPeriod:              5,
+			CheckpointPeriod:              10,
 			HighWatermarkCheckpointPeriod: 4,
 			MaxValidatorNum:               20,
 			BlockMaxTxNum:                 500,
 			EnableTimedGenEmptyBlock:      false,
 			NotActiveWeight:               1,
 			ExcludeView:                   100,
+			ProposerElectionType:          rbft.ProposerElectionTypeRotating,
 		},
 		CandidateSet: []*rbft.NodeInfo{},
 		ValidatorSet: lo.Map(DefaultNodeAddrs, func(item string, idx int) *rbft.NodeInfo {
@@ -325,6 +322,7 @@ func DefaultConfig(repoRoot string) *Config {
 			Level:        "info",
 			Filename:     "axiom.log",
 			ReportCaller: false,
+			EnableColor:  true,
 			MaxAge:       Duration(90 * 24 * time.Hour),
 			RotationTime: Duration(24 * time.Hour),
 			Module: LogModule{
@@ -346,7 +344,7 @@ func DefaultConfig(repoRoot string) *Config {
 func LoadConfig(repoRoot string) (*Config, error) {
 	cfg, err := func() (*Config, error) {
 		cfg := DefaultConfig(repoRoot)
-		cfgPath := path.Join(repoRoot, cfgFileName)
+		cfgPath := path.Join(repoRoot, CfgFileName)
 		existConfig := fileutil.Exist(cfgPath)
 		if !existConfig {
 			err := os.MkdirAll(repoRoot, 0755)

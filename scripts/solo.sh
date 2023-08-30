@@ -24,17 +24,7 @@ function start() {
   print_blue "===> Start solo axiom"
   rm -rf "${BUILD_PATH}"
   axiom --repo="${BUILD_PATH}" config generate --solo
-
-  if [ -n "$TAGS" ]; then
-    if [ "$TAGS" = "mockConsensus" ] || [ "$TAGS" = "mockExecutor" ]; then
-      axiom --repo="${BUILD_PATH}" start --mode="${TAGS}"
-    else
-      print_red "TAGS should be mockConsensus or mockExecutor"
-      exit 1
-    fi
-  else
-    axiom --repo="${BUILD_PATH}" start
-  fi
+  axiom --repo="${BUILD_PATH}" start
 }
 
 start

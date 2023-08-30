@@ -59,10 +59,10 @@ github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf/go.mod h1:ybxpYRF
 github.com/allegro/bigcache v1.2.1-0.20190218064605-e24eb225f156 h1:eMwmnE/GDgah4HI848JfFxHt+iPb26b4zyfspmqY0/8=
 github.com/allegro/bigcache v1.2.1-0.20190218064605-e24eb225f156/go.mod h1:Cb/ax3seSYIx7SuZdm2G2xzfwmv3TPSk2ucNfQESPXM=
 github.com/anmitsu/go-shlex v0.0.0-20161002113705-648efa622239/go.mod h1:2FmKhYUyUczH0OGQWaF5ceTx0UBShxjsH6f8oGKYe2c=
-github.com/axiomesh/axiom-bft v0.0.3-0.20230828022828-2b603fc3947f h1:QPzpkaltwlhgT2F4ppUvg83itBehkUmEG4PkgU4SBVU=
-github.com/axiomesh/axiom-bft v0.0.3-0.20230828022828-2b603fc3947f/go.mod h1:bCN92X0b2rmbEIUM4b+BG2WcxesDsLk/mT6z/YJKyHU=
-github.com/axiomesh/axiom-kit v0.0.3-0.20230826144330-bd42fac4f6f6 h1:NTGlDMO7fN/NBUZD4WXSBiwaTCzIIzdaBNduismjufQ=
-github.com/axiomesh/axiom-kit v0.0.3-0.20230826144330-bd42fac4f6f6/go.mod h1:94RyUIr77+S+npW85SP51rZc4SnOqSqWjmg5PgNFiKo=
+github.com/axiomesh/axiom-bft v0.0.3-0.20230830065620-970b5c07a332 h1:j8GEzkJgGbtEvWck6U1ckMdHz2mZEJVchnY794iWHm8=
+github.com/axiomesh/axiom-bft v0.0.3-0.20230830065620-970b5c07a332/go.mod h1:bCN92X0b2rmbEIUM4b+BG2WcxesDsLk/mT6z/YJKyHU=
+github.com/axiomesh/axiom-kit v0.0.3-0.20230830030136-14cc11474634 h1:xowLJD+5uO2sPBfAdTf7WgS4otBC33Y3W16Nyse6sz8=
+github.com/axiomesh/axiom-kit v0.0.3-0.20230830030136-14cc11474634/go.mod h1:94RyUIr77+S+npW85SP51rZc4SnOqSqWjmg5PgNFiKo=
 github.com/axiomesh/axiom-p2p v0.0.2 h1:Ok6HFg80uIl4jrcH1oJ3hqyCn5FFzLUkOZPlf9jgNzU=
 github.com/axiomesh/axiom-p2p v0.0.2/go.mod h1:vtnxQhuTYOOAtIUuZiEwdr/BIvgUtIvfKN34tytMdqQ=
 github.com/axiomesh/eth-kit v0.0.3-0.20230824120858-0328f1de558d h1:ka3kkO0nIvOvwiKguR4fUk/OSxFxKhYG85oqjeFpSno=

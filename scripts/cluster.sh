@@ -1,26 +1,12 @@
 #!/usr/bin/env bash
 
 set -e
-
 source x.sh
 
 CURRENT_PATH=$(pwd)
 PROJECT_PATH=$(dirname "${CURRENT_PATH}")
-CONFIG_PATH=${PROJECT_PATH}/config
 BUILD_PATH=${CURRENT_PATH}/build
 N=4
-
-BLUE='\033[0;34m'
-RED='\033[0;31m'
-NC='\033[0m'
-
-function print_blue() {
-  printf "${BLUE}%s${NC}\n" "$1"
-}
-
-function print_red() {
-    printf "${RED}%s${NC}\n" "$1"
-}
 
 function Get_PM_Name() {
   PM=''
@@ -78,7 +64,7 @@ function prepare() {
     axiom --repo="${root}" config generate --default-node-index ${i}
 
     echo " #!/usr/bin/env bash" >"${root}"/start.sh
-    echo "./axiom --repo \$(pwd)" start >>"${root}"/start.sh
+    echo "axiom --repo \$(pwd)" start >>"${root}"/start.sh
 
     axiomConfig=${root}/axiom.toml
     x_replace "s/8881/888${i}/g" "${axiomConfig}"
@@ -97,7 +83,6 @@ function splitWindow() {
 
 function start() {
   print_blue "===> Staring cluster"
-  #osascript ${PROJECT_PATH}/scripts/split.scpt ${N} ${DUMP_PATH}/cluster/node
   tmux new -d -s axiom || (tmux kill-session -t axiom && tmux new -d -s axiom)
 
   for ((i = 0; i < N / 4; i = i + 1)); do
@@ -108,25 +93,10 @@ function start() {
   for ((i = 0; i < N; i = i + 1)); do
     tmux selectw -t $(($i / 4))
     tmux selectp -t $(($i % 4))
-    if [ -n "$TAGS" ]; then
-      if [ "$TAGS" = "mockExecutor" ]; then
-        tmux send-keys "axiom --repo=${BUILD_PATH}/node$(($i + 1)) start --mode=${TAGS}" C-m
-      else
-        print_red "TAGS should be mockExecutor"
-        exit 1
-      fi
-    else
-      tmux send-keys "axiom --repo=${BUILD_PATH}/node$(($i + 1)) start" C-m
-    fi
+    tmux send-keys "axiom --repo=${BUILD_PATH}/node$(($i + 1)) start" C-m
   done
   tmux selectw -t 0
   tmux attach-session -t axiom
-}
-
-function clear_config() {
-  for ((i = 1; i < N + 1; i = i + 1)); do
-    rm -rf ~/axiom${i}
-  done
 }
 
 prepare

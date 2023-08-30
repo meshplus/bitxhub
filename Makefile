@@ -81,21 +81,19 @@ fmt:
 ## make cluster: Run cluster including 4 nodes
 ## make cluster TAGS=mockExecutor: Run cluster including 4 nodes with mockExecutor
 cluster:install
-	cd scripts && bash cluster.sh TAGS=${TAGS}
+	cd scripts && bash cluster.sh
 
 
 stop:
 	cd scripts && bash stop.sh
 
 ## make solo: Run one node in solo mode
-## make solo TAGS=mockExecutor: Run one node in solo mode with mockExecutor
-## make solo TAGS=mockConsensus: Run one node in solo mode with mockConsensus
 solo:install
-	cd scripts && bash solo.sh TAGS=${TAGS}
+	cd scripts && bash solo.sh
 
 ## make rebuild-cluster: Run cluster including 4 nodes
 rebuild-cluster:
-	cd scripts && bash cluster.sh TAGS=${TAGS}
+	cd scripts && bash cluster.sh
 
 package: build
 	cd scripts && bash package.sh VERSION=${APP_VERSION}
