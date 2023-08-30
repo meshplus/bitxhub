@@ -17,7 +17,7 @@ func TestConfig(t *testing.T) {
 	cnf.Order.Type = "solo"
 	cnf.JsonRPC.Limiter.Capacity = 100
 	cnf.P2P.Ping.Enable = true
-	err = writeConfigWithEnv(path.Join(repoPath, cfgFileName), cnf)
+	err = writeConfigWithEnv(path.Join(repoPath, CfgFileName), cnf)
 	require.Nil(t, err)
 	cnf2, err := LoadConfig(repoPath)
 	require.Nil(t, err)

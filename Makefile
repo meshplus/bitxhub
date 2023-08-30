@@ -93,6 +93,9 @@ stop:
 solo:install
 	cd scripts && bash solo.sh TAGS=${TAGS}
 
+package: build
+	cd scripts && bash package.sh VERSION=${APP_VERSION}
+
 ## make precommit: Check code like CI
 precommit: fmt test-coverage linter
 

@@ -3,8 +3,8 @@ package repo
 const (
 	AppName = "Axiom"
 
-	// cfgFileName is the default config name
-	cfgFileName = "axiom.toml"
+	// CfgFileName is the default config name
+	CfgFileName = "axiom.toml"
 
 	networkCfgFileName = "network.toml"
 

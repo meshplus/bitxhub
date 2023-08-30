@@ -134,11 +134,19 @@ func start(ctx *cli.Context) error {
 	wg.Add(1)
 	handleShutdown(axm, &wg)
 
+	if err := repo.WritePid(r.Config.RepoRoot); err != nil {
+		return fmt.Errorf("write pid error: %s", err)
+	}
+
 	if err := axm.Start(); err != nil {
 		return fmt.Errorf("start axiom failed: %w", err)
 	}
 
 	wg.Wait()
+
+	if err := repo.RemovePID(r.Config.RepoRoot); err != nil {
+		return fmt.Errorf("remove pid error: %s", err)
+	}
 
 	return nil
 }

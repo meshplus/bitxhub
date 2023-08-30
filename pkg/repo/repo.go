@@ -53,7 +53,7 @@ func (r *Repo) SubscribeConfigChange(ch chan *Repo) event.Subscription {
 }
 
 func (r *Repo) Flush() error {
-	if err := writeConfigWithEnv(path.Join(r.Config.RepoRoot, cfgFileName), r.Config); err != nil {
+	if err := writeConfigWithEnv(path.Join(r.Config.RepoRoot, CfgFileName), r.Config); err != nil {
 		return errors.Wrap(err, "failed to write config")
 	}
 	if err := writeConfigWithEnv(path.Join(r.Config.RepoRoot, networkCfgFileName), r.NetworkConfig); err != nil {
