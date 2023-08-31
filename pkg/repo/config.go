@@ -91,8 +91,12 @@ type JsonRPC struct {
 }
 
 type P2PPipe struct {
-	BroadcastType       string `mapstructure:"broadcast_type" toml:"broadcast_type"`
-	ReceiveMsgCacheSize int    `mapstructure:"receive_msg_cache_size" toml:"receive_msg_cache_size"`
+	ReceiveMsgCacheSize             int      `mapstructure:"receive_msg_cache_size" toml:"receive_msg_cache_size"`
+	BroadcastType                   string   `mapstructure:"broadcast_type" toml:"broadcast_type"`
+	BroadcastWorkerCacheSize        int      `mapstructure:"broadcast_worker_cache_size" toml:"broadcast_worker_cache_size"`
+	BroadcastWorkerConcurrencyLimit int      `mapstructure:"broadcast_worker_concurrency_limit" toml:"broadcast_worker_concurrency_limit"`
+	BroadcastRetryNumber            int      `mapstructure:"broadcast_retry_number" toml:"broadcast_retry_number"`
+	BroadcastRetryBaseTime          Duration `mapstructure:"broadcast_retry_base_time" toml:"broadcast_retry_base_time"`
 }
 
 type P2P struct {
@@ -208,7 +212,7 @@ func GenesisEpochInfo() *rbft.EpochInfo {
 		}),
 		ConsensusParams: &rbft.ConsensusParams{
 			CheckpointPeriod:              10,
-			HighWatermarkCheckpointPeriod: 4,
+			HighWatermarkCheckpointPeriod: 1,
 			MaxValidatorNum:               20,
 			BlockMaxTxNum:                 500,
 			EnableTimedGenEmptyBlock:      false,
@@ -257,8 +261,12 @@ func DefaultConfig(repoRoot string) *Config {
 				Duration: Duration(15 * time.Second),
 			},
 			Pipe: P2PPipe{
-				BroadcastType:       P2PPipeBroadcastSimple,
-				ReceiveMsgCacheSize: 100,
+				ReceiveMsgCacheSize:             100,
+				BroadcastType:                   P2PPipeBroadcastSimple,
+				BroadcastWorkerCacheSize:        10000,
+				BroadcastWorkerConcurrencyLimit: 100,
+				BroadcastRetryNumber:            5,
+				BroadcastRetryBaseTime:          Duration(100 * time.Millisecond),
 			},
 		},
 		Order: Order{

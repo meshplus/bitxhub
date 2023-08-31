@@ -92,9 +92,12 @@ func (swarm *Swarm) init() error {
 		network.WithLogger(swarm.logger),
 		network.WithTimeout(10*time.Second, swarm.repo.Config.P2P.SendTimeout.ToDuration(), swarm.repo.Config.P2P.ReadTimeout.ToDuration()),
 		network.WithSecurity(securityType),
-		network.WithPipeBroadcastType(pipeBroadcastType),
 		network.WithPipeReceiveMsgCacheSize(swarm.repo.Config.P2P.Pipe.ReceiveMsgCacheSize),
-		// enable discovery
+		network.WithPipeBroadcastType(pipeBroadcastType),
+		network.WithPipeBroadcastWorkerCacheSize(swarm.repo.Config.P2P.Pipe.BroadcastWorkerCacheSize),
+		network.WithPipeBroadcastWorkerConcurrencyLimit(swarm.repo.Config.P2P.Pipe.BroadcastWorkerConcurrencyLimit),
+		network.WithPipeBroadcastRetryNumber(swarm.repo.Config.P2P.Pipe.BroadcastRetryNumber),
+		network.WithPipeBroadcastRetryBaseTime(swarm.repo.Config.P2P.Pipe.BroadcastRetryBaseTime.ToDuration()),
 		network.WithBootstrap(bootstrap),
 		network.WithConnectionGater(gater),
 	}

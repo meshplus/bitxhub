@@ -49,8 +49,8 @@ github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym
 github.com/DataDog/zstd v1.5.5 h1:oWf5W7GtOLgp6bciQYDmhHHjdhYkALu6S/5Ni9ZgSvQ=
 github.com/DataDog/zstd v1.5.5/go.mod h1:g4AWEaM3yOg3HYfnJ3YIawPnVdXJh9QME85blwSAmyw=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
-github.com/Rican7/retry v0.1.0 h1:FqK94z34ly8Baa6K+G8Mmza9rYWTKOJk+yckIBB5qVk=
-github.com/Rican7/retry v0.1.0/go.mod h1:FgOROf8P5bebcC1DS0PdOQiqGUridaZvikzUmkFW6gg=
+github.com/Rican7/retry v0.3.1 h1:scY4IbO8swckzoA/11HgBwaZRJEyY9vaNJshcdhp1Mc=
+github.com/Rican7/retry v0.3.1/go.mod h1:CxSDrhAyXmTMeEuRAnArMu1FHu48vtfjLREWqVl7Vw0=
 github.com/VictoriaMetrics/fastcache v1.12.1 h1:i0mICQuojGDL3KblA7wUNlY5lOK6a4bwt3uRKnkZU40=
 github.com/VictoriaMetrics/fastcache v1.12.1/go.mod h1:tX04vaqcNoQeGLD+ra5pU5sWkuxnzWhEzLwhP9w653o=
 github.com/aead/siphash v1.0.1/go.mod h1:Nywa3cDsYNNK3gaciGTWPwHt0wlpNV15vwmswBAUSII=
@@ -63,8 +63,8 @@ github.com/axiomesh/axiom-bft v0.0.3-0.20230901061307-dc9d182156fd h1:JMDzEYJCbr
 github.com/axiomesh/axiom-bft v0.0.3-0.20230901061307-dc9d182156fd/go.mod h1:bCN92X0b2rmbEIUM4b+BG2WcxesDsLk/mT6z/YJKyHU=
 github.com/axiomesh/axiom-kit v0.0.3-0.20230830030136-14cc11474634 h1:xowLJD+5uO2sPBfAdTf7WgS4otBC33Y3W16Nyse6sz8=
 github.com/axiomesh/axiom-kit v0.0.3-0.20230830030136-14cc11474634/go.mod h1:94RyUIr77+S+npW85SP51rZc4SnOqSqWjmg5PgNFiKo=
-github.com/axiomesh/axiom-p2p v0.0.3-0.20230831030159-d742dde6869c h1:0ywgroW4LoAUAbmpyGpnu8nRE9fc8/S0sJWO4xcxECM=
-github.com/axiomesh/axiom-p2p v0.0.3-0.20230831030159-d742dde6869c/go.mod h1:vtnxQhuTYOOAtIUuZiEwdr/BIvgUtIvfKN34tytMdqQ=
+github.com/axiomesh/axiom-p2p v0.0.3-0.20230831105130-cfd278558ab8 h1:WQcLQe5GRScS1qKtaCm9NzS6tAnHyYwidDjaxV2L7/Q=
+github.com/axiomesh/axiom-p2p v0.0.3-0.20230831105130-cfd278558ab8/go.mod h1:Pdfpl39l2C4iXpBUTp7QDKjJfwrBDQSIw2eKj49BAeU=
 github.com/axiomesh/eth-kit v0.0.3-0.20230824120858-0328f1de558d h1:ka3kkO0nIvOvwiKguR4fUk/OSxFxKhYG85oqjeFpSno=
 github.com/axiomesh/eth-kit v0.0.3-0.20230824120858-0328f1de558d/go.mod h1:3lh5eW+SoV+51Ige/ahQGetUQM7DkgIFOevnwkMp8FA=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
