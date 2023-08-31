@@ -28,15 +28,16 @@ func Initialize(genesis *repo.Genesis, lg *ledger.Ledger, executor executor.Exec
 
 	block := &types.Block{
 		BlockHeader: &types.BlockHeader{
-			Number:      1,
-			StateRoot:   stateRoot,
-			TxRoot:      &types.Hash{},
-			ReceiptRoot: &types.Hash{},
-			ParentHash:  &types.Hash{},
-			Timestamp:   time.Now().Unix(),
-			GasPrice:    int64(genesis.GasPrice),
-			Epoch:       genesis.EpochInfo.Epoch,
-			Bloom:       new(types.Bloom),
+			Number:          1,
+			StateRoot:       stateRoot,
+			TxRoot:          &types.Hash{},
+			ReceiptRoot:     &types.Hash{},
+			ParentHash:      &types.Hash{},
+			Timestamp:       time.Now().Unix(),
+			GasPrice:        int64(genesis.GasPrice),
+			Epoch:           genesis.EpochInfo.Epoch,
+			Bloom:           new(types.Bloom),
+			ProposerAccount: "0x0000000000000000000000000000000000000000",
 		},
 		Transactions: []*types.Transaction{},
 	}

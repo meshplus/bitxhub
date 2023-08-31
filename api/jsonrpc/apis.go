@@ -1,6 +1,7 @@
 package jsonrpc
 
 import (
+	"github.com/axiomesh/axiom/api/jsonrpc/namespaces/axm"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/sirupsen/logrus"
 
@@ -17,6 +18,7 @@ const (
 	Web3Namespace = "web3"
 	EthNamespace  = "eth"
 	NetNamespace  = "net"
+	AxmNamespace  = "axm"
 
 	apiVersion = "1.0"
 )
@@ -24,6 +26,15 @@ const (
 // GetAPIs returns the list of all APIs from the Ethereum namespaces
 func GetAPIs(config *repo.Config, api api.CoreAPI, logger logrus.FieldLogger) ([]rpc.API, error) {
 	var apis []rpc.API
+
+	apis = append(apis,
+		rpc.API{
+			Namespace: AxmNamespace,
+			Version:   apiVersion,
+			Service:   axm.NewAxmAPI(config, api, logger),
+			Public:    true,
+		},
+	)
 
 	apis = append(apis,
 		rpc.API{

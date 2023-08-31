@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/sirupsen/logrus"
 
@@ -68,14 +69,21 @@ func (api *AxiomAPI) Syncing() (any, error) {
 	// Supplementary data
 	syncBlock := make(map[string]string)
 	meta, err := api.api.Chain().Meta()
-
 	if err != nil {
-		syncBlock["result"] = "false"
-		return syncBlock, err
+		return false, nil
 	}
 
 	syncBlock["startingBlock"] = fmt.Sprintf("%d", hexutil.Uint64(1))
 	syncBlock["highestBlock"] = fmt.Sprintf("%d", hexutil.Uint64(meta.Height))
 	syncBlock["currentBlock"] = syncBlock["highestBlock"]
 	return syncBlock, nil
+}
+
+func (api *AxiomAPI) Accounts() ([]common.Address, error) {
+	accounts := api.config.Genesis.Accounts
+	res := make([]common.Address, 0)
+	for _, account := range accounts {
+		res = append(res, common.HexToAddress(account))
+	}
+	return res, nil
 }
