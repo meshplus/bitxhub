@@ -117,11 +117,17 @@ func (exec *BlockExecutor) processExecuteEvent(commitEvent *ordercommon.CommitEv
 	block.BlockHash = block.Hash()
 
 	exec.logger.WithFields(logrus.Fields{
+		"hash":         block.BlockHash.String(),
+		"height":       block.BlockHeader.Number,
+		"epoch":        block.BlockHeader.Epoch,
 		"coinbase":     block.BlockHeader.ProposerAccount,
+		"gas_price":    block.BlockHeader.GasPrice,
+		"parent_hash":  block.BlockHeader.ParentHash.String(),
 		"tx_root":      block.BlockHeader.TxRoot.String(),
 		"receipt_root": block.BlockHeader.ReceiptRoot.String(),
 		"state_root":   block.BlockHeader.StateRoot.String(),
-	}).Debug("Block meta")
+	}).Info("Block meta")
+
 	calcBlockSize.Observe(float64(block.Size()))
 	executeBlockDuration.Observe(float64(time.Since(current)) / float64(time.Second))
 
