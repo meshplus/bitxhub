@@ -343,7 +343,7 @@ func TestRunForVote(t *testing.T) {
 		Err      error
 	}{
 		{
-			Caller: admin1,
+			Caller: admin2,
 			Data:   generateVoteData(t, cm.proposalID.GetID()-1, Pass),
 			Expected: vm.ExecutionResult{
 				UsedGas: CouncilVoteGas,
@@ -352,7 +352,7 @@ func TestRunForVote(t *testing.T) {
 					Type:        CouncilElect,
 					Proposer:    admin1,
 					TotalVotes:  3,
-					PassVotes:   []string{admin1},
+					PassVotes:   []string{admin1, admin2},
 					RejectVotes: []string{},
 					Status:      Voting,
 					Candidates: []*CouncilMember{
@@ -382,7 +382,7 @@ func TestRunForVote(t *testing.T) {
 			Err: nil,
 		},
 		{
-			Caller: admin2,
+			Caller: admin3,
 			Data:   generateVoteData(t, cm.proposalID.GetID()-1, Pass),
 			Expected: vm.ExecutionResult{
 				UsedGas: CouncilVoteGas,
@@ -391,7 +391,7 @@ func TestRunForVote(t *testing.T) {
 					Type:        CouncilElect,
 					Proposer:    admin1,
 					TotalVotes:  3,
-					PassVotes:   []string{admin1, admin2},
+					PassVotes:   []string{admin1, admin2, admin3},
 					RejectVotes: []string{},
 					Status:      Approved,
 					Candidates: []*CouncilMember{

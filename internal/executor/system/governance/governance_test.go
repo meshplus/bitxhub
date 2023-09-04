@@ -323,10 +323,13 @@ func TestGovernance_Vote(t *testing.T) {
 
 	proposal.ID = 10000
 	proposal.TotalVotes = 3
+	proposal.PassVotes = nil
+	proposal.RejectVotes = nil
 
 	testcases := []struct {
 		result   VoteResult
 		expected ProposalStatus
+		err      error
 	}{
 		{
 			result:   Reject,
