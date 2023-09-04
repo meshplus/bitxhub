@@ -24,6 +24,11 @@ GOLDFLAGS += -X "${VERSION_DIR}.CurrentCommit=${GIT_COMMIT}"
 GOLDFLAGS += -X "${VERSION_DIR}.CurrentBranch=${GIT_BRANCH}"
 GOLDFLAGS += -X "${VERSION_DIR}.CurrentVersion=${APP_VERSION}"
 
+ifneq ($(secret),)
+    # specify version: add a flag
+    GOLDFLAGS += -X "${VERSION_DIR}.VersionSecret=$(secret)"
+endif
+
 COVERAGE_TEST_PKGS := $(shell ${GO_BIN} list ./... | grep -v 'syncer' | grep -v 'vm' | grep -v 'proof' | grep -v 'repo' | grep -v 'mock_*' | grep -v 'tester' | grep -v 'proto' | grep -v 'cmd'| grep -v 'api')
 
 RED=\033[0;31m
