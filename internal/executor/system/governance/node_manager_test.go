@@ -206,11 +206,20 @@ func TestNodeManager_RunForVote(t *testing.T) {
 			Data:   generateNodeAddVoteData(t, nm.proposalID.GetID()-1, Pass),
 			Expected: vm.ExecutionResult{
 				UsedGas: NodeManagementVoteGas,
+				Err: ErrUseHasVoted,
 			},
 			Err: nil,
 		},
 		{
-			Caller: admin1,
+			Caller: admin2,
+			Data:   generateNodeAddVoteData(t, nm.proposalID.GetID()-1, Pass),
+			Expected: vm.ExecutionResult{
+				UsedGas: NodeManagementVoteGas,
+			},
+			Err: nil,
+		},
+		{
+			Caller: admin2,
 			Data:   generateNodeAddVoteData(t, nm.proposalID.GetID()-1, Pass),
 			Expected: vm.ExecutionResult{
 				UsedGas: NodeManagementVoteGas,

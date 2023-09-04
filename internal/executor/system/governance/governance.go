@@ -257,6 +257,9 @@ func (g *Governance) Propose(user *ethcommon.Address, proposalType ProposalType,
 		Status:      Voting,
 	}
 
+	// proposer vote pass by default
+	proposal.PassVotes = []string{user.String()}
+
 	return proposal, nil
 }
 
