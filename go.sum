@@ -59,12 +59,12 @@ github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf/go.mod h1:ybxpYRF
 github.com/allegro/bigcache v1.2.1-0.20190218064605-e24eb225f156 h1:eMwmnE/GDgah4HI848JfFxHt+iPb26b4zyfspmqY0/8=
 github.com/allegro/bigcache v1.2.1-0.20190218064605-e24eb225f156/go.mod h1:Cb/ax3seSYIx7SuZdm2G2xzfwmv3TPSk2ucNfQESPXM=
 github.com/anmitsu/go-shlex v0.0.0-20161002113705-648efa622239/go.mod h1:2FmKhYUyUczH0OGQWaF5ceTx0UBShxjsH6f8oGKYe2c=
-github.com/axiomesh/axiom-bft v0.0.3-0.20230901061307-dc9d182156fd h1:JMDzEYJCbrRuQqbFuSx+GsqzbZaQz/31YprbYa85kds=
-github.com/axiomesh/axiom-bft v0.0.3-0.20230901061307-dc9d182156fd/go.mod h1:bCN92X0b2rmbEIUM4b+BG2WcxesDsLk/mT6z/YJKyHU=
+github.com/axiomesh/axiom-bft v0.0.3-0.20230904035223-aa5cc1220bc3 h1:sOeSjXLlI8RO9nuGLxUFRs2+fZqXmkK5lc8rpx4k5Gw=
+github.com/axiomesh/axiom-bft v0.0.3-0.20230904035223-aa5cc1220bc3/go.mod h1:bCN92X0b2rmbEIUM4b+BG2WcxesDsLk/mT6z/YJKyHU=
 github.com/axiomesh/axiom-kit v0.0.3-0.20230830030136-14cc11474634 h1:xowLJD+5uO2sPBfAdTf7WgS4otBC33Y3W16Nyse6sz8=
 github.com/axiomesh/axiom-kit v0.0.3-0.20230830030136-14cc11474634/go.mod h1:94RyUIr77+S+npW85SP51rZc4SnOqSqWjmg5PgNFiKo=
-github.com/axiomesh/axiom-p2p v0.0.3-0.20230831105130-cfd278558ab8 h1:WQcLQe5GRScS1qKtaCm9NzS6tAnHyYwidDjaxV2L7/Q=
-github.com/axiomesh/axiom-p2p v0.0.3-0.20230831105130-cfd278558ab8/go.mod h1:Pdfpl39l2C4iXpBUTp7QDKjJfwrBDQSIw2eKj49BAeU=
+github.com/axiomesh/axiom-p2p v0.0.3-0.20230904041028-414e44b0a871 h1:oLTEaQiLqxZPTZv0OlI+dOHlV8d9ttTFVWBA4TjjekM=
+github.com/axiomesh/axiom-p2p v0.0.3-0.20230904041028-414e44b0a871/go.mod h1:Pdfpl39l2C4iXpBUTp7QDKjJfwrBDQSIw2eKj49BAeU=
 github.com/axiomesh/eth-kit v0.0.3-0.20230824120858-0328f1de558d h1:ka3kkO0nIvOvwiKguR4fUk/OSxFxKhYG85oqjeFpSno=
 github.com/axiomesh/eth-kit v0.0.3-0.20230824120858-0328f1de558d/go.mod h1:3lh5eW+SoV+51Ige/ahQGetUQM7DkgIFOevnwkMp8FA=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
