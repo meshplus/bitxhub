@@ -231,13 +231,11 @@ func (api *TransactionAPI) GetTransactionReceipt(hash common.Hash) (map[string]a
 
 // SendRawTransaction send a raw Ethereum transaction.
 func (api *TransactionAPI) SendRawTransaction(data hexutil.Bytes) (common.Hash, error) {
-	api.logger.Debugf("eth_sendRawTransaction, data: %s", data.String())
-
 	tx := &types.Transaction{}
 	if err := tx.Unmarshal(data); err != nil {
 		return [32]byte{}, err
 	}
-	api.logger.Debugf("get new eth tx: %s", tx.GetHash().String())
+	api.logger.Debugf("Receive new eth tx: %s", tx.GetHash().String())
 
 	err := api.api.Broker().OrderReady()
 	if err != nil {

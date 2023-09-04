@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"strconv"
 
+	"github.com/samber/lo"
 	"github.com/sirupsen/logrus"
 
 	rbft "github.com/axiomesh/axiom-bft"
@@ -26,7 +27,7 @@ type RBFTAdaptor struct {
 	store             *storageWrapper
 	priv              *ecdsa.PrivateKey
 	peerMgr           peermgr.PeerManager
-	msgPipe           network.Pipe
+	msgPipes          map[int32]network.Pipe
 	ReadyC            chan *Ready
 	BlockC            chan *common.CommitEvent
 	logger            logrus.FieldLogger
@@ -36,7 +37,8 @@ type RBFTAdaptor struct {
 	cancel            context.CancelFunc
 	config            *common.Config
 
-	EpochInfo *rbft.EpochInfo
+	EpochInfo      *rbft.EpochInfo
+	broadcastNodes []string
 }
 
 type Ready struct {
@@ -74,11 +76,14 @@ func (s *RBFTAdaptor) UpdateEpoch() error {
 		return err
 	}
 	s.EpochInfo = e
+	s.broadcastNodes = lo.Map(lo.Flatten([][]*rbft.NodeInfo{s.EpochInfo.ValidatorSet, s.EpochInfo.CandidateSet}), func(item *rbft.NodeInfo, index int) string {
+		return item.P2PNodeID
+	})
 	return nil
 }
 
-func (s *RBFTAdaptor) SetMsgPipe(msgPipe network.Pipe) {
-	s.msgPipe = msgPipe
+func (s *RBFTAdaptor) SetMsgPipes(msgPipes map[int32]network.Pipe) {
+	s.msgPipes = msgPipes
 }
 
 func (s *RBFTAdaptor) getBlock(id string, i int) (*types.Block, error) {

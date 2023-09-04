@@ -34,7 +34,10 @@ func TestVersionCheck(t *testing.T) {
 	// pass true to change the last Node's version
 	swarms := NewSwarms(t, peerCnt, true)
 	defer stopSwarms(t, swarms)
-	time.Sleep(time.Second)
+	for swarms[0].CountConnectedPeers() != 3 {
+		time.Sleep(100 * time.Millisecond)
+	}
+
 	msg := &pb.Message{Type: pb.Message_GET_BLOCK, Data: []byte(strconv.Itoa(1))}
 
 	_, err := swarms[0].Send(swarms[1].PeerID(), msg)

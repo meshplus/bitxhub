@@ -1,6 +1,7 @@
 package loggers
 
 import (
+	ethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/sirupsen/logrus"
 
 	"github.com/axiomesh/axiom-kit/log"
@@ -39,6 +40,34 @@ type LoggerWrapper struct {
 	loggers map[string]*logrus.Entry
 }
 
+type ethHandler struct {
+	logger *logrus.Entry
+}
+
+func (e *ethHandler) Log(r *ethlog.Record) error {
+	fields := logrus.Fields{}
+	fields["ctx"] = r.Ctx
+	switch r.Lvl {
+	case ethlog.LvlCrit:
+		e.logger.WithFields(fields).Fatal(r.Msg)
+	case ethlog.LvlError:
+		e.logger.WithFields(fields).Error(r.Msg)
+	case ethlog.LvlWarn:
+		e.logger.WithFields(fields).Warning(r.Msg)
+	case ethlog.LvlInfo:
+		e.logger.WithFields(fields).Info(r.Msg)
+	case ethlog.LvlDebug:
+		e.logger.WithFields(fields).Debug(r.Msg)
+	case ethlog.LvlTrace:
+		e.logger.WithFields(fields).Trace(r.Msg)
+	}
+	return nil
+}
+
+func InitializeEthLog(logger *logrus.Entry) {
+	ethlog.Root().SetHandler(&ethHandler{logger: logger})
+}
+
 func Initialize(config *repo.Config) {
 	m := make(map[string]*logrus.Entry)
 	m[P2P] = log.NewWithModule(P2P)
@@ -63,6 +92,7 @@ func Initialize(config *repo.Config) {
 	m[Finance].Logger.SetLevel(log.ParseLevel(config.Log.Module.Finance))
 
 	w = &LoggerWrapper{loggers: m}
+	InitializeEthLog(m[API])
 }
 
 func ReConfig(config *repo.Config) {

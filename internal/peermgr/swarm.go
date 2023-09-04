@@ -84,6 +84,7 @@ func (swarm *Swarm) init() error {
 	}
 
 	protocolIDWithVersion := fmt.Sprintf("%s-%x", protocolID, sha256.Sum256([]byte(axiom.VersionSecret)))
+
 	gater := newConnectionGater(swarm.logger, swarm.ledger)
 	opts := []network.Option{
 		network.WithLocalAddr(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", swarm.repo.Config.Port.P2P)),
