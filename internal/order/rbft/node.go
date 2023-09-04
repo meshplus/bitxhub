@@ -29,8 +29,8 @@ import (
 )
 
 const (
-	rbftMsgPipeID         = "rbft_msg_pipe_v1"
-	txsBroadcastMsgPipeID = "txs_broadcast_msg_pipe_v1"
+	consensusMsgPipeIDPrefix = "consensus_msg_pipe_v1_"
+	txsBroadcastMsgPipeID    = "txs_broadcast_msg_pipe_v1"
 )
 
 func init() {
@@ -44,7 +44,7 @@ type Node struct {
 	blockC              chan *common.CommitEvent
 	logger              logrus.FieldLogger
 	peerMgr             peermgr.PeerManager
-	rbftMsgPipe         network.Pipe
+	consensusMsgPipes   map[int32]network.Pipe
 	txsBroadcastMsgPipe network.Pipe
 	receiveMsgLimiter   *rate.Limiter
 
@@ -99,6 +99,20 @@ func newNode(config *common.Config) (*Node, error) {
 	}, nil
 }
 
+func (n *Node) initConsensusMsgPipes() error {
+	n.consensusMsgPipes = make(map[int32]network.Pipe, len(consensus.Type_name))
+	for id, name := range consensus.Type_name {
+		msgPipe, err := n.peerMgr.CreatePipe(n.ctx, consensusMsgPipeIDPrefix+name)
+		if err != nil {
+			return err
+		}
+		n.consensusMsgPipes[id] = msgPipe
+	}
+
+	n.stack.SetMsgPipes(n.consensusMsgPipes)
+	return nil
+}
+
 func (n *Node) Start() error {
 	err := n.stack.UpdateEpoch()
 	if err != nil {
@@ -113,12 +127,9 @@ func (n *Node) Start() error {
 		Epoch: n.stack.EpochInfo.Epoch,
 	})
 
-	rbftMsgPipe, err := n.peerMgr.CreatePipe(n.ctx, rbftMsgPipeID)
-	if err != nil {
+	if err := n.initConsensusMsgPipes(); err != nil {
 		return err
 	}
-	n.rbftMsgPipe = rbftMsgPipe
-	n.stack.SetMsgPipe(rbftMsgPipe)
 
 	txsBroadcastMsgPipe, err := n.peerMgr.CreatePipe(n.ctx, txsBroadcastMsgPipeID)
 	if err != nil {
@@ -145,7 +156,7 @@ func (n *Node) Start() error {
 	go n.listenNewTxToSubmit()
 	go n.listenExecutedBlockToReport()
 	go n.listenBatchMemTxsToBroadcast()
-	go n.listenRbftMsg()
+	go n.listenConsensusMsg()
 	go n.listenTxsBroadcastMsg()
 
 	n.logger.Info("=====Order started=========")
@@ -183,17 +194,22 @@ func (n *Node) listenValidTxs() {
 	}
 }
 
-func (n *Node) listenRbftMsg() {
-	for {
-		msg := n.rbftMsgPipe.Receive(n.ctx)
-		if msg == nil {
-			return
-		}
+func (n *Node) listenConsensusMsg() {
+	for _, pipe := range n.consensusMsgPipes {
+		pipe := pipe
+		go func() {
+			for {
+				msg := pipe.Receive(n.ctx)
+				if msg == nil {
+					return
+				}
 
-		if err := n.Step(msg.Data); err != nil {
-			n.logger.WithField("err", err).Warn("Process order message failed")
-			continue
-		}
+				if err := n.Step(msg.Data); err != nil {
+					n.logger.WithField("err", err).Warn("Process order message failed")
+					continue
+				}
+			}
+		}()
 	}
 }
 

@@ -12,6 +12,7 @@ import (
 	rbfttypes "github.com/axiomesh/axiom-bft/types"
 	"github.com/axiomesh/axiom-kit/log"
 	"github.com/axiomesh/axiom-kit/types"
+	network "github.com/axiomesh/axiom-p2p"
 	"github.com/axiomesh/axiom/internal/order/common"
 	"github.com/axiomesh/axiom/internal/order/rbft/testutil"
 )
@@ -22,7 +23,16 @@ func mockAdaptor(ctrl *gomock.Controller, kvType string, t *testing.T) *RBFTAdap
 	_, cancel := context.WithCancel(context.Background())
 	stack, err := NewRBFTAdaptor(testutil.MockOrderConfig(logger, ctrl, kvType, t), blockC, cancel)
 	assert.Nil(t, err)
-	stack.msgPipe, err = stack.config.PeerMgr.CreatePipe(context.Background(), "test_pipe")
+
+	consensusMsgPipes := make(map[int32]network.Pipe, len(consensus.Type_name))
+	for id, name := range consensus.Type_name {
+		msgPipe, err := stack.config.PeerMgr.CreatePipe(context.Background(), "test_pipe_"+name)
+		if err != nil {
+			assert.Nil(t, err)
+		}
+		consensusMsgPipes[id] = msgPipe
+	}
+	stack.msgPipes = consensusMsgPipes
 	assert.Nil(t, err)
 	err = stack.UpdateEpoch()
 	assert.Nil(t, err)
@@ -130,8 +140,14 @@ func TestNetwork(t *testing.T) {
 			err := adaptor.Unicast(context.Background(), msg, "1")
 			ast.Nil(err)
 
+			err = adaptor.Unicast(context.Background(), &consensus.ConsensusMessage{Type: consensus.Type(-1)}, "1")
+			ast.Error(err)
+
 			err = adaptor.Broadcast(context.Background(), msg)
 			ast.Nil(err)
+
+			err = adaptor.Broadcast(context.Background(), &consensus.ConsensusMessage{Type: consensus.Type(-1)})
+			ast.Error(err)
 
 			adaptor.SendFilterEvent(rbfttypes.InformTypeFilterFinishRecovery)
 		})
