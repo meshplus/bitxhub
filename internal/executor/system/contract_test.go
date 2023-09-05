@@ -1,6 +1,12 @@
 package system
 
 import (
+	"github.com/axiomesh/axiom-kit/storage/leveldb"
+	"github.com/axiomesh/axiom/internal/ledger"
+	"github.com/axiomesh/axiom/pkg/repo"
+	"github.com/axiomesh/eth-kit/ledger/mock_ledger"
+	"go.uber.org/mock/gomock"
+	"path/filepath"
 	"testing"
 
 	"github.com/sirupsen/logrus"
@@ -45,4 +51,27 @@ func TestContract_GetSystemContract(t *testing.T) {
 	contract, ok = GetSystemContract(&types.Address{})
 	assert.False(t, ok)
 	assert.Nil(t, contract)
+}
+
+func TestContractInitGenesisData(t *testing.T) {
+	mockCtl := gomock.NewController(t)
+	chainLedger := mock_ledger.NewMockChainLedger(mockCtl)
+	stateLedger := mock_ledger.NewMockStateLedger(mockCtl)
+	mockLedger := &ledger.Ledger{
+		ChainLedger: chainLedger,
+		StateLedger: stateLedger,
+	}
+
+	repoRoot := t.TempDir()
+	genesis := repo.DefaultConfig(repoRoot)
+	accountCache, err := ledger.NewAccountCache()
+	assert.Nil(t, err)
+	ld, err := leveldb.New(filepath.Join(repoRoot, "executor"))
+	assert.Nil(t, err)
+	account := ledger.NewAccount(ld, accountCache, types.NewAddressByStr(common.NodeManagerContractAddr), ledger.NewChanger())
+	stateLedger.EXPECT().GetOrCreateAccount(gomock.Any()).Return(account).AnyTimes()
+	stateLedger.EXPECT().SetBalance(gomock.Any(), gomock.Any()).AnyTimes()
+
+	err = InitGenesisData(&genesis.Genesis, mockLedger)
+	assert.Nil(t, err)
 }
