@@ -25,6 +25,9 @@ type singleTimer struct {
 }
 
 func (tt *singleTimer) clear() {
+	for _, timer := range tt.isActive.Items() {
+		timer.(*time.Timer).Stop()
+	}
 	tt.isActive.Clear()
 }
 
@@ -96,12 +99,13 @@ func (tm *timerManager) startTimer(name batchTimeoutEvent) {
 
 	timestamp := time.Now().UnixNano()
 	key := strconv.FormatInt(timestamp, 10)
-	tm.timersM[name].isActive.Set(key, true)
-	time.AfterFunc(tm.timersM[name].timeout, func() {
+	fn := func() {
 		if tm.timersM[name].isActive.Has(key) {
 			tm.eventChan <- name
 		}
-	})
+	}
+	afterTimer := time.AfterFunc(tm.timersM[name].timeout, fn)
+	tm.timersM[name].isActive.Set(key, afterTimer)
 	tm.logger.Debugf("Timer %s started", name)
 }
 
