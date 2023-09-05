@@ -1,10 +1,10 @@
 package jsonrpc
 
 import (
-	"github.com/axiomesh/axiom/api/jsonrpc/namespaces/axm"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/sirupsen/logrus"
 
+	"github.com/axiomesh/axiom/api/jsonrpc/namespaces/axm"
 	"github.com/axiomesh/axiom/api/jsonrpc/namespaces/eth"
 	"github.com/axiomesh/axiom/api/jsonrpc/namespaces/eth/filters"
 	"github.com/axiomesh/axiom/api/jsonrpc/namespaces/net"

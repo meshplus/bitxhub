@@ -9,6 +9,7 @@ import (
 	"github.com/Rican7/retry"
 	"github.com/Rican7/retry/strategy"
 	"github.com/libp2p/go-libp2p/core/peer"
+	ma "github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -19,12 +20,26 @@ import (
 	"github.com/axiomesh/axiom-kit/storage/leveldb"
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom-kit/types/pb"
+	network "github.com/axiomesh/axiom-p2p"
 	"github.com/axiomesh/axiom/internal/executor/system/base"
 	"github.com/axiomesh/axiom/internal/executor/system/common"
 	"github.com/axiomesh/axiom/internal/ledger"
 	"github.com/axiomesh/axiom/pkg/repo"
 	"github.com/axiomesh/eth-kit/ledger/mock_ledger"
 )
+
+func getAddr(p2p network.Network) (peer.AddrInfo, error) {
+	realAddr := fmt.Sprintf("%s/p2p/%s", p2p.LocalAddr(), p2p.PeerID())
+	multiaddr, err := ma.NewMultiaddr(realAddr)
+	if err != nil {
+		return peer.AddrInfo{}, err
+	}
+	addrInfo, err := peer.AddrInfoFromP2pAddr(multiaddr)
+	if err != nil {
+		return peer.AddrInfo{}, err
+	}
+	return *addrInfo, nil
+}
 
 func NewSwarms(t *testing.T, peerCnt int, versionChange bool) []*Swarm {
 	var swarms []*Swarm
@@ -65,6 +80,7 @@ func NewSwarms(t *testing.T, peerCnt int, versionChange bool) []*Swarm {
 	err = base.InitEpochInfo(mockLedger, epochInfo)
 	assert.Nil(t, err)
 
+	var addrs []peer.AddrInfo
 	for i := 0; i < peerCnt; i++ {
 		rep, err := repo.DefaultWithNodeIndex(t.TempDir(), i)
 		require.Nil(t, err)
@@ -72,13 +88,29 @@ func NewSwarms(t *testing.T, peerCnt int, versionChange bool) []*Swarm {
 			axiom.VersionSecret = "Shanghai"
 		}
 
+		rep.Config.Port.P2P = 0
+		rep.Config.Genesis.EpochInfo.P2PBootstrapNodeAddresses = []string{}
+		rep.EpochInfo.P2PBootstrapNodeAddresses = []string{}
 		swarm, err := New(rep, log.NewWithModule(fmt.Sprintf("swarm%d", i)), mockLedger)
 		require.Nil(t, err)
 		err = swarm.Start()
 		require.Nil(t, err)
 
 		swarms = append(swarms, swarm)
+		addr, err := getAddr(swarm.p2p)
+		require.Nil(t, err)
+		addrs = append(addrs, addr)
 	}
+
+	for i := 0; i < peerCnt; i++ {
+		for j := 0; j < peerCnt; j++ {
+			if i != j {
+				err = swarms[i].p2p.Connect(addrs[j])
+				require.Nil(t, err)
+			}
+		}
+	}
+
 	return swarms
 }
 
