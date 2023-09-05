@@ -259,10 +259,10 @@ func (n *Node) listenExecutedBlockToReport() {
 				BlockHeader: &types.BlockHeader{
 					Epoch:           n.stack.EpochInfo.Epoch,
 					Number:          r.Height,
-					Timestamp:       r.Timestamp,
+					Timestamp:       r.Timestamp / int64(time.Second),
 					ProposerAccount: r.ProposerAccount,
 				},
-				Transactions: r.TXs,
+				Transactions: r.Txs,
 			}
 			commitEvent := &common.CommitEvent{
 				Block:     block,

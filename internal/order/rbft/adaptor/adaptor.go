@@ -42,7 +42,7 @@ type RBFTAdaptor struct {
 }
 
 type Ready struct {
-	TXs             []*types.Transaction
+	Txs             []*types.Transaction
 	LocalList       []bool
 	Height          uint64
 	Timestamp       int64
