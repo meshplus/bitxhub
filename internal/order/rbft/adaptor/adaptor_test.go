@@ -88,7 +88,7 @@ func TestExecute(t *testing.T) {
 			}
 
 			txs = append(txs, tx, tx)
-			adaptor.Execute(txs, []bool{true}, uint64(2), time.Now().Unix(), "")
+			adaptor.Execute(txs, []bool{true}, uint64(2), time.Now().UnixNano(), "")
 			ready := <-adaptor.ReadyC
 			ast.Equal(uint64(2), ready.Height)
 		})

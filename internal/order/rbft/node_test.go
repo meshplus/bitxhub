@@ -125,8 +125,6 @@ func TestPrepare(t *testing.T) {
 	})
 }
 
-func TestNode_GetPendingNonceByAccount(t *testing.T) {}
-
 func TestStop(t *testing.T) {
 	ast := assert.New(t)
 	ctrl := gomock.NewController(t)
@@ -137,11 +135,14 @@ func TestStop(t *testing.T) {
 	ast.Nil(err)
 	ast.Nil(node.checkQuorum())
 
+	now := time.Now()
 	node.stack.ReadyC <- &adaptor.Ready{
-		Height: uint64(2),
+		Height:    uint64(2),
+		Timestamp: now.UnixNano(),
 	}
 	block := <-node.Commit()
 	ast.Equal(uint64(2), block.Block.Height())
+	ast.Equal(now.Unix(), block.Block.BlockHeader.Timestamp, "convert nano to second")
 
 	// test stop
 	node.Stop()

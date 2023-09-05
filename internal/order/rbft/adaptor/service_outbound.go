@@ -16,7 +16,7 @@ import (
 
 func (s *RBFTAdaptor) Execute(requests []*types.Transaction, localList []bool, seqNo uint64, timestamp int64, proposerAccount string) {
 	s.ReadyC <- &Ready{
-		TXs:             requests,
+		Txs:             requests,
 		LocalList:       localList,
 		Height:          seqNo,
 		Timestamp:       timestamp,
