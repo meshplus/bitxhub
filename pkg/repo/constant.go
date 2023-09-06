@@ -49,10 +49,10 @@ const (
 
 var (
 	DefaultNodeNames = []string{
-		"King",
-		"Red",
-		"Apple",
-		"Cat",
+		"S2luZw==", // base64 encode King
+		"UmVk",     // base64 encode Red
+		"QXBwbGU=", // base64 encode Apple
+		"Q2F0",     // base64 encode Cat
 	}
 
 	DefaultNodeKeys = []string{
