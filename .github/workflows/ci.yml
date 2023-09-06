@@ -10,33 +10,12 @@ env:
   GO_VERSION: 1.20.5
 
 jobs:
-  golanci-lint:
-    name: Run golangci-lint
+  base-check:
+    name: Run base-check
     runs-on: ubuntu-20.04
     steps:
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v3
-
-      - name: Set up Go${{ env.GO_VERSION }}
-        uses: actions/setup-go@v4
-        with:
-          go-version: ${{ env.GO_VERSION }}
-          cache: false
-
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v3
-        with:
-          version: v1.53.3
-          args: --timeout=5m 
-          only-new-issues: true
-
-  build:
-    name: Build project
-    runs-on: ubuntu-20.04
-    needs: golanci-lint
-    steps:
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Set up Go${{ env.GO_VERSION }}
         uses: actions/setup-go@v4
@@ -46,41 +25,117 @@ jobs:
       - name: Go build project
         run: make build
 
-  unit-test:
-    name: Run unit test
-    runs-on: ubuntu-20.04
-    needs: build
-    steps:
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v3
-
-      - name: Set up Go${{ env.GO_VERSION }}
-        uses: actions/setup-go@v4
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v3
         with:
-          go-version: ${{ env.GO_VERSION }}
+          version: v1.53.3
+          args: --timeout=5m
+          only-new-issues: true
+          skip-cache: true
 
       - name: Run unit test
         run: make test-coverage
-      
+
       - name: Upload coverage report to CodeCov
         uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.txt
+          flags: unittests
           fail_ci_if_error : true
-  
+
   smoke-test:
-    name: Run smoke test
+    name: Run smoke-test
     runs-on: ubuntu-20.04
-    needs: unit-test
     steps:
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Set up Go${{ env.GO_VERSION }}
         uses: actions/setup-go@v4
         with:
           go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: "./go.sum"
 
       - name: Run smoke test
         run: make smoke-test BRANCH=${{ github.base_ref }}
+
+  analyze:
+    name: Analyze
+    runs-on: ci
+#     runs-on: ubuntu-20.04
+    timeout-minutes: 360
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'go' ]
+        # CodeQL supports [ 'cpp', 'csharp', 'go', 'java', 'javascript', 'python', 'ruby', 'swift' ]
+        # Use only 'java' to analyze code written in Java, Kotlin or both
+        # Use only 'javascript' to analyze code written in JavaScript, TypeScript or both
+        # Learn more about CodeQL language support at https://aka.ms/codeql-docs/language-support
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        ssh-key: ${{ secrets.SSH_KEY }}
+
+    # Initializes the CodeQL tools for scanning.
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v2
+      with:
+        languages: ${{ matrix.language }}
+        threads: 8
+
+        # If you wish to specify custom queries, you can do so here or in a config file.
+        # By default, queries listed here will override any specified in a config file.
+        # Prefix the list here with "+" to use these queries and those in the config file.
+
+        # For more details on CodeQL's query packs, refer to: https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/configuring-code-scanning#using-queries-in-ql-packs
+        # queries: security-extended,security-and-quality
+
+
+    # Autobuild attempts to build any compiled languages (C/C++, C#, Go, Java, or Swift).
+    # If this step fails, then you should remove it and run the build manually (see below)
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v2
+
+    # ℹ️ Command-line programs to run using the OS shell.
+    # 📚 See https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstepsrun
+
+    #   If the Autobuild fails above, remove it and uncomment the following three lines.
+    #   modify them (or add more) to build your code if your project, please refer to the EXAMPLE below for guidance.
+
+    # - run: |
+    #     echo "Run, Build Application using script"
+    #     ./location_of_script_within_repo/buildscript.sh
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v2
+      with:
+        category: "/language:${{ matrix.language }}"
+
+  notify:
+    name: Lark notify
+    runs-on: ubuntu-20.04
+    # make self can be canceled: https://github.com/orgs/community/discussions/26303
+    if: always() && (contains(needs.*.result, 'cancelled') && fromjson('throw') || !cancelled())
+    needs: [base-check, smoke-test, analyze]
+    steps:
+      - name: Lark notify
+        uses: axiomesh/lark-pr-notify-action@master
+        with:
+          template_id: ${{ secrets.PR_TEMPLATE_ID }}
+          users: ${{ secrets.USERS }}
+          reviewers: ${{ secrets.REVIEWERS }}
+          webhook: ${{ secrets.WEBHOOK }}
+          secret: ${{ secrets.SIGNATURE_SECRET}}
+          token: ${{ secrets.TOKEN }}
+          # timeout: 8 minutes
+          timeout: 480
+          job_name: Lark notify

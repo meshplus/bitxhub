@@ -69,6 +69,23 @@ func TestPrepare(t *testing.T) {
 	ast := assert.New(t)
 	ctrl := gomock.NewController(t)
 	order := MockMinNode(ctrl, t)
+	mockRbft := rbft.NewMockMinimalNode[types.Transaction, *types.Transaction](ctrl)
+	order.n = mockRbft
+
+	err := order.Start()
+	ast.Nil(err)
+
+	mockRbft.EXPECT().Status().Return(rbft.NodeStatus{
+		Status: rbft.InViewChange,
+	}).Times(1)
+	err = order.Ready()
+	ast.Error(err)
+
+	mockRbft.EXPECT().Status().Return(rbft.NodeStatus{
+		Status: rbft.Normal,
+	}).AnyTimes()
+	err = order.Ready()
+	ast.Nil(err)
 
 	txCache := make(map[string]*types.Transaction)
 	nonceCache := make(map[string]uint64)

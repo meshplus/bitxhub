@@ -25,12 +25,6 @@ import (
 	ethledger "github.com/axiomesh/eth-kit/ledger"
 )
 
-const (
-	GasNormalTx = 21000
-	GasFailedTx = 21000
-	GasBVMTx    = 21000 * 10
-)
-
 type InvalidReason string
 
 type BlockWrapper struct {

@@ -38,7 +38,7 @@ func GetSystemContract(addr *types.Address) (common.SystemContract, bool) {
 }
 
 func InitGenesisData(genesis *repo.Genesis, lg *ledger.Ledger) error {
-	if err := base.InitEpochInfo(lg, genesis.EpochInfo); err != nil {
+	if err := base.InitEpochInfo(lg, genesis.EpochInfo.Clone()); err != nil {
 		return err
 	}
 	if err := governance.InitCouncilMembers(lg, genesis.Admins, genesis.Balance); err != nil {

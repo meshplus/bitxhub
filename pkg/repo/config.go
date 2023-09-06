@@ -85,9 +85,10 @@ type Port struct {
 }
 
 type JsonRPC struct {
-	GasCap     uint64   `mapstructure:"gas_cap" toml:"gas_cap"`
-	EVMTimeout Duration `mapstructure:"evm_timeout" toml:"evm_timeout"`
-	Limiter    JLimiter `mapstructure:"limiter" toml:"limiter"`
+	GasCap                       uint64   `mapstructure:"gas_cap" toml:"gas_cap"`
+	EVMTimeout                   Duration `mapstructure:"evm_timeout" toml:"evm_timeout"`
+	Limiter                      JLimiter `mapstructure:"limiter" toml:"limiter"`
+	RejectTxsIfConsensusAbnormal bool     `mapstructure:"reject_txs_if_consensus_abnormal" toml:"reject_txs_if_consensus_abnormal"`
 }
 
 type P2PPipe struct {
@@ -251,6 +252,7 @@ func DefaultConfig(repoRoot string) *Config {
 				Quantum:  500,
 				Capacity: 10000,
 			},
+			RejectTxsIfConsensusAbnormal: false,
 		},
 		P2P: P2P{
 			Security:    P2PSecurityTLS,

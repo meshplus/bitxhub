@@ -29,7 +29,6 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: ${{ env.GO_VERSION }}
-          cache: false
 
       - name: Build binary
         run: make release-binary
@@ -54,7 +53,7 @@ jobs:
     steps:
       - name: Lark release notify
         if: always()
-        uses: zhecks/lark-release-notify-action@master
+        uses: axiomesh/lark-release-notify-action@master
         with:
           status: ${{ needs.release-binary.outputs.status }}
           template_id: ${{ secrets.RELEASE_TEMPLATE_ID }}
