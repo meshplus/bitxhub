@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/Rican7/retry v0.3.1
-	github.com/axiomesh/axiom-bft v0.0.3-0.20230906155856-3cf1859be8a2
+	github.com/axiomesh/axiom-bft v0.0.3-0.20230907013208-275063b4fc6c
 	github.com/axiomesh/axiom-kit v0.0.3-0.20230905030137-88b1577e3290
 	github.com/axiomesh/axiom-p2p v0.0.3-0.20230904041028-414e44b0a871
 	github.com/axiomesh/eth-kit v0.0.3-0.20230824120858-0328f1de558d
@@ -29,7 +29,7 @@ require (
 	github.com/spf13/viper v1.16.0
 	github.com/stretchr/testify v1.8.4
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
-	github.com/urfave/cli/v2 v2.25.7
+	github.com/urfave/cli/v2 v2.17.2-0.20221006022127-8f469abc00aa
 	go.opentelemetry.io/otel/trace v1.16.0
 	go.uber.org/atomic v1.11.0
 	go.uber.org/mock v0.2.0

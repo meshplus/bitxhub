@@ -41,6 +41,7 @@ type TxCache struct {
 }
 
 type RBFT struct {
+	EnableMetrics bool        `mapstructure:"enable_metrics" toml:"enable_metrics"`
 	CheckInterval Duration    `mapstructure:"check_interval" toml:"check_interval"`
 	Timeout       RBFTTimeout `mapstructure:"timeout" toml:"timeout"`
 }
@@ -83,6 +84,7 @@ func DefaultOrderConfig() *OrderConfig {
 			SetTimeout: Duration(100 * time.Millisecond),
 		},
 		Rbft: RBFT{
+			EnableMetrics: false,
 			CheckInterval: Duration(3 * time.Minute),
 			Timeout: RBFTTimeout{
 				SyncState:        Duration(3 * time.Second),
