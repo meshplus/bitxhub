@@ -91,16 +91,25 @@ type JsonRPC struct {
 	RejectTxsIfConsensusAbnormal bool     `mapstructure:"reject_txs_if_consensus_abnormal" toml:"reject_txs_if_consensus_abnormal"`
 }
 
+type P2PPipeGossipsub struct {
+	SubBufferSize          int      `mapstructure:"sub_buffer_size" toml:"sub_buffer_size"`
+	PeerOutboundBufferSize int      `mapstructure:"peer_outbound_buffer_size" toml:"peer_outbound_buffer_size"`
+	ValidateBufferSize     int      `mapstructure:"validate_buffer_size" toml:"validate_buffer_size"`
+	SeenMessagesTTL        Duration `mapstructure:"seen_messages_ttl" toml:"seen_messages_ttl"`
+}
+
+type P2PPipeSimpleBroadcast struct {
+	WorkerCacheSize        int      `mapstructure:"worker_cache_size" toml:"worker_cache_size"`
+	WorkerConcurrencyLimit int      `mapstructure:"worker_concurrency_limit" toml:"worker_concurrency_limit"`
+	RetryNumber            int      `mapstructure:"retry_number" toml:"retry_number"`
+	RetryBaseTime          Duration `mapstructure:"retry_base_time" toml:"retry_base_time"`
+}
+
 type P2PPipe struct {
-	ReceiveMsgCacheSize             int      `mapstructure:"receive_msg_cache_size" toml:"receive_msg_cache_size"`
-	BroadcastType                   string   `mapstructure:"broadcast_type" toml:"broadcast_type"`
-	BroadcastWorkerCacheSize        int      `mapstructure:"broadcast_worker_cache_size" toml:"broadcast_worker_cache_size"`
-	BroadcastWorkerConcurrencyLimit int      `mapstructure:"broadcast_worker_concurrency_limit" toml:"broadcast_worker_concurrency_limit"`
-	BroadcastRetryNumber            int      `mapstructure:"broadcast_retry_number" toml:"broadcast_retry_number"`
-	BroadcastRetryBaseTime          Duration `mapstructure:"broadcast_retry_base_time" toml:"broadcast_retry_base_time"`
-	GossipSubBufferSize             int      `mapstructure:"gossip_sub_buffer_size" toml:"gossip_sub_buffer_size"`
-	GossipPeerOutboundBufferSize    int      `mapstructure:"gossip_peer_outbound_buffer_size" toml:"gossip_peer_outbound_buffer_size"`
-	GossipValidateBufferSize        int      `mapstructure:"gossip_validate_buffer_size" toml:"gossip_validate_buffer_size"`
+	ReceiveMsgCacheSize int                    `mapstructure:"receive_msg_cache_size" toml:"receive_msg_cache_size"`
+	BroadcastType       string                 `mapstructure:"broadcast_type" toml:"broadcast_type"`
+	SimpleBroadcast     P2PPipeSimpleBroadcast `mapstructure:"simple_broadcast" toml:"simple_broadcast"`
+	Gossipsub           P2PPipeGossipsub       `mapstructure:"gossipsub" toml:"gossipsub"`
 }
 
 type P2P struct {
@@ -266,15 +275,20 @@ func DefaultConfig(repoRoot string) *Config {
 				Duration: Duration(15 * time.Second),
 			},
 			Pipe: P2PPipe{
-				ReceiveMsgCacheSize:             1024,
-				BroadcastType:                   P2PPipeBroadcastSimple,
-				BroadcastWorkerCacheSize:        10000,
-				BroadcastWorkerConcurrencyLimit: 100,
-				BroadcastRetryNumber:            5,
-				BroadcastRetryBaseTime:          Duration(100 * time.Millisecond),
-				GossipSubBufferSize:             1024,
-				GossipPeerOutboundBufferSize:    1024,
-				GossipValidateBufferSize:        1024,
+				ReceiveMsgCacheSize: 1024,
+				BroadcastType:       P2PPipeBroadcastGossip,
+				SimpleBroadcast: P2PPipeSimpleBroadcast{
+					WorkerCacheSize:        1024,
+					WorkerConcurrencyLimit: 20,
+					RetryNumber:            5,
+					RetryBaseTime:          Duration(100 * time.Millisecond),
+				},
+				Gossipsub: P2PPipeGossipsub{
+					SubBufferSize:          1024,
+					PeerOutboundBufferSize: 1024,
+					ValidateBufferSize:     1024,
+					SeenMessagesTTL:        Duration(120 * time.Second),
+				},
 			},
 		},
 		Order: Order{

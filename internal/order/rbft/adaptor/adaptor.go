@@ -28,6 +28,7 @@ type RBFTAdaptor struct {
 	priv              *ecdsa.PrivateKey
 	peerMgr           peermgr.PeerManager
 	msgPipes          map[int32]network.Pipe
+	globalMsgPipe     network.Pipe
 	ReadyC            chan *Ready
 	BlockC            chan *common.CommitEvent
 	logger            logrus.FieldLogger
@@ -36,9 +37,8 @@ type RBFTAdaptor struct {
 	StateUpdateHeight uint64
 	cancel            context.CancelFunc
 	config            *common.Config
-
-	EpochInfo      *rbft.EpochInfo
-	broadcastNodes []string
+	EpochInfo         *rbft.EpochInfo
+	broadcastNodes    []string
 }
 
 type Ready struct {
@@ -82,8 +82,9 @@ func (s *RBFTAdaptor) UpdateEpoch() error {
 	return nil
 }
 
-func (s *RBFTAdaptor) SetMsgPipes(msgPipes map[int32]network.Pipe) {
+func (s *RBFTAdaptor) SetMsgPipes(msgPipes map[int32]network.Pipe, globalMsgPipe network.Pipe) {
 	s.msgPipes = msgPipes
+	s.globalMsgPipe = globalMsgPipe
 }
 
 func (s *RBFTAdaptor) getBlock(id string, i int) (*types.Block, error) {

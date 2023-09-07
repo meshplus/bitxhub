@@ -41,9 +41,10 @@ type TxCache struct {
 }
 
 type RBFT struct {
-	EnableMetrics bool        `mapstructure:"enable_metrics" toml:"enable_metrics"`
-	CheckInterval Duration    `mapstructure:"check_interval" toml:"check_interval"`
-	Timeout       RBFTTimeout `mapstructure:"timeout" toml:"timeout"`
+	EnableMultiPipes bool        `mapstructure:"enable_multi_pipes" toml:"enable_multi_pipes"`
+	EnableMetrics    bool        `mapstructure:"enable_metrics" toml:"enable_metrics"`
+	CheckInterval    Duration    `mapstructure:"check_interval" toml:"check_interval"`
+	Timeout          RBFTTimeout `mapstructure:"timeout" toml:"timeout"`
 }
 
 type RBFTTimeout struct {
@@ -80,12 +81,13 @@ func DefaultOrderConfig() *OrderConfig {
 			ToleranceRemoveTime: Duration(15 * time.Minute),
 		},
 		TxCache: TxCache{
-			SetSize:    25,
+			SetSize:    50,
 			SetTimeout: Duration(100 * time.Millisecond),
 		},
 		Rbft: RBFT{
-			EnableMetrics: false,
-			CheckInterval: Duration(3 * time.Minute),
+			EnableMultiPipes: false,
+			EnableMetrics:    false,
+			CheckInterval:    Duration(3 * time.Minute),
 			Timeout: RBFTTimeout{
 				SyncState:        Duration(3 * time.Second),
 				SyncInterval:     Duration(1 * time.Minute),

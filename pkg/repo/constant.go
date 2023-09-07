@@ -41,7 +41,6 @@ const (
 
 	P2PPipeBroadcastSimple = "simple"
 	P2PPipeBroadcastGossip = "gossip"
-	P2PPipeBroadcastFlood  = "flood"
 
 	ExecTypeNative = "native"
 	ExecTypeDev    = "dev"

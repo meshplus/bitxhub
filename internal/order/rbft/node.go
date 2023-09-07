@@ -38,15 +38,16 @@ func init() {
 }
 
 type Node struct {
-	config              *common.Config
-	n                   rbft.Node[types.Transaction, *types.Transaction]
-	stack               *adaptor.RBFTAdaptor
-	blockC              chan *common.CommitEvent
-	logger              logrus.FieldLogger
-	peerMgr             peermgr.PeerManager
-	consensusMsgPipes   map[int32]network.Pipe
-	txsBroadcastMsgPipe network.Pipe
-	receiveMsgLimiter   *rate.Limiter
+	config                 *common.Config
+	n                      rbft.Node[types.Transaction, *types.Transaction]
+	stack                  *adaptor.RBFTAdaptor
+	blockC                 chan *common.CommitEvent
+	logger                 logrus.FieldLogger
+	peerMgr                peermgr.PeerManager
+	consensusMsgPipes      map[int32]network.Pipe
+	consensusGlobalMsgPipe network.Pipe
+	txsBroadcastMsgPipe    network.Pipe
+	receiveMsgLimiter      *rate.Limiter
 
 	ctx        context.Context
 	cancel     context.CancelFunc
@@ -101,15 +102,23 @@ func newNode(config *common.Config) (*Node, error) {
 
 func (n *Node) initConsensusMsgPipes() error {
 	n.consensusMsgPipes = make(map[int32]network.Pipe, len(consensus.Type_name))
-	for id, name := range consensus.Type_name {
-		msgPipe, err := n.peerMgr.CreatePipe(n.ctx, consensusMsgPipeIDPrefix+name)
+	if n.config.Config.Rbft.EnableMultiPipes {
+		for id, name := range consensus.Type_name {
+			msgPipe, err := n.peerMgr.CreatePipe(n.ctx, consensusMsgPipeIDPrefix+name)
+			if err != nil {
+				return err
+			}
+			n.consensusMsgPipes[id] = msgPipe
+		}
+	} else {
+		globalMsgPipe, err := n.peerMgr.CreatePipe(n.ctx, consensusMsgPipeIDPrefix+"global")
 		if err != nil {
 			return err
 		}
-		n.consensusMsgPipes[id] = msgPipe
+		n.consensusGlobalMsgPipe = globalMsgPipe
 	}
 
-	n.stack.SetMsgPipes(n.consensusMsgPipes)
+	n.stack.SetMsgPipes(n.consensusMsgPipes, n.consensusGlobalMsgPipe)
 	return nil
 }
 
@@ -211,6 +220,20 @@ func (n *Node) listenConsensusMsg() {
 			}
 		}()
 	}
+
+	go func() {
+		for {
+			msg := n.consensusGlobalMsgPipe.Receive(n.ctx)
+			if msg == nil {
+				return
+			}
+
+			if err := n.Step(msg.Data); err != nil {
+				n.logger.WithField("err", err).Warn("Process order message failed")
+				continue
+			}
+		}
+	}()
 }
 
 func (n *Node) listenTxsBroadcastMsg() {
