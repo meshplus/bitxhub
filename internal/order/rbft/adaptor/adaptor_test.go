@@ -27,13 +27,12 @@ func mockAdaptor(ctrl *gomock.Controller, kvType string, t *testing.T) *RBFTAdap
 	consensusMsgPipes := make(map[int32]network.Pipe, len(consensus.Type_name))
 	for id, name := range consensus.Type_name {
 		msgPipe, err := stack.config.PeerMgr.CreatePipe(context.Background(), "test_pipe_"+name)
-		if err != nil {
-			assert.Nil(t, err)
-		}
+		assert.Nil(t, err)
 		consensusMsgPipes[id] = msgPipe
 	}
-	stack.msgPipes = consensusMsgPipes
+	globalMsgPipe, err := stack.config.PeerMgr.CreatePipe(context.Background(), "test_pipe_global")
 	assert.Nil(t, err)
+	stack.SetMsgPipes(consensusMsgPipes, globalMsgPipe)
 	err = stack.UpdateEpoch()
 	assert.Nil(t, err)
 	return stack
@@ -136,8 +135,16 @@ func TestNetwork(t *testing.T) {
 	for name, tc := range testcase {
 		t.Run(name, func(t *testing.T) {
 			adaptor := mockAdaptor(ctrl, tc.kvType, t)
+			adaptor.config.Config.Rbft.EnableMultiPipes = false
 			msg := &consensus.ConsensusMessage{}
 			err := adaptor.Unicast(context.Background(), msg, "1")
+			ast.Nil(err)
+			err = adaptor.Broadcast(context.Background(), msg)
+			ast.Nil(err)
+
+			adaptor.config.Config.Rbft.EnableMultiPipes = true
+			msg = &consensus.ConsensusMessage{}
+			err = adaptor.Unicast(context.Background(), msg, "1")
 			ast.Nil(err)
 
 			err = adaptor.Unicast(context.Background(), &consensus.ConsensusMessage{Type: consensus.Type(-1)}, "1")

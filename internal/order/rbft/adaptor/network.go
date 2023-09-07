@@ -2,6 +2,7 @@ package adaptor
 
 import (
 	"context"
+
 	"github.com/pkg/errors"
 
 	"github.com/axiomesh/axiom-bft/common/consensus"

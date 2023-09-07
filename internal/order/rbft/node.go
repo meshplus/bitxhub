@@ -221,19 +221,21 @@ func (n *Node) listenConsensusMsg() {
 		}()
 	}
 
-	go func() {
-		for {
-			msg := n.consensusGlobalMsgPipe.Receive(n.ctx)
-			if msg == nil {
-				return
-			}
+	if n.consensusGlobalMsgPipe != nil {
+		go func() {
+			for {
+				msg := n.consensusGlobalMsgPipe.Receive(n.ctx)
+				if msg == nil {
+					return
+				}
 
-			if err := n.Step(msg.Data); err != nil {
-				n.logger.WithField("err", err).Warn("Process order message failed")
-				continue
+				if err := n.Step(msg.Data); err != nil {
+					n.logger.WithField("err", err).Warn("Process order message failed")
+					continue
+				}
 			}
-		}
-	}()
+		}()
+	}
 }
 
 func (n *Node) listenTxsBroadcastMsg() {
