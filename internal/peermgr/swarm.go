@@ -99,6 +99,9 @@ func (swarm *Swarm) init() error {
 		network.WithPipeBroadcastWorkerConcurrencyLimit(swarm.repo.Config.P2P.Pipe.BroadcastWorkerConcurrencyLimit),
 		network.WithPipeBroadcastRetryNumber(swarm.repo.Config.P2P.Pipe.BroadcastRetryNumber),
 		network.WithPipeBroadcastRetryBaseTime(swarm.repo.Config.P2P.Pipe.BroadcastRetryBaseTime.ToDuration()),
+		network.WithPipeGossipSubBufferSize(swarm.repo.Config.P2P.Pipe.GossipSubBufferSize),
+		network.WithPipeGossipPeerOutboundBufferSize(swarm.repo.Config.P2P.Pipe.GossipPeerOutboundBufferSize),
+		network.WithPipeGossipValidateBufferSize(swarm.repo.Config.P2P.Pipe.GossipValidateBufferSize),
 		network.WithBootstrap(bootstrap),
 		network.WithConnectionGater(gater),
 	}
