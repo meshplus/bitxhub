@@ -112,18 +112,10 @@ func NewAddr2NameSystem(stateLedger ledger.StateLedger) *Addr2NameSystem {
 	return addr2NameSystem
 }
 
+// SetName set address to new name
 func (ans *Addr2NameSystem) SetName(addr, name string) {
-	// address already set name
 	ak := addrKey(addr)
-	if ok, _ := ans.account.GetState(ak); ok {
-		return
-	}
-
-	// name already set
 	nk := nameKey(name)
-	if ok, _ := ans.account.GetState(nk); ok {
-		return
-	}
 
 	ans.account.SetState(ak, []byte(name))
 	ans.account.SetState(nk, []byte(addr))

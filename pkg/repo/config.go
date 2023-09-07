@@ -144,16 +144,17 @@ type Log struct {
 }
 
 type LogModule struct {
-	P2P       string `mapstructure:"p2p" toml:"p2p"`
-	Consensus string `mapstructure:"consensus" toml:"consensus"`
-	Executor  string `mapstructure:"executor" toml:"executor"`
-	Router    string `mapstructure:"router" toml:"router"`
-	API       string `mapstructure:"api" toml:"api"`
-	CoreAPI   string `mapstructure:"coreapi" toml:"coreapi"`
-	Storage   string `mapstructure:"storage" toml:"storage"`
-	Profile   string `mapstructure:"profile" toml:"profile"`
-	TSS       string `mapstructure:"tss" toml:"tss"`
-	Finance   string `mapstructure:"finance" toml:"finance"`
+	P2P        string `mapstructure:"p2p" toml:"p2p"`
+	Consensus  string `mapstructure:"consensus" toml:"consensus"`
+	Executor   string `mapstructure:"executor" toml:"executor"`
+	Governance string `mapstructure:"governance" toml:"governance"`
+	Router     string `mapstructure:"router" toml:"router"`
+	API        string `mapstructure:"api" toml:"api"`
+	CoreAPI    string `mapstructure:"coreapi" toml:"coreapi"`
+	Storage    string `mapstructure:"storage" toml:"storage"`
+	Profile    string `mapstructure:"profile" toml:"profile"`
+	TSS        string `mapstructure:"tss" toml:"tss"`
+	Finance    string `mapstructure:"finance" toml:"finance"`
 }
 
 type Genesis struct {
@@ -342,16 +343,17 @@ func DefaultConfig(repoRoot string) *Config {
 			MaxAge:       Duration(90 * 24 * time.Hour),
 			RotationTime: Duration(24 * time.Hour),
 			Module: LogModule{
-				P2P:       "info",
-				Consensus: "info",
-				Executor:  "info",
-				Router:    "info",
-				API:       "info",
-				CoreAPI:   "info",
-				Storage:   "info",
-				Profile:   "info",
-				TSS:       "info",
-				Finance:   "info",
+				P2P:        "info",
+				Consensus:  "info",
+				Executor:   "info",
+				Governance: "info",
+				Router:     "info",
+				API:        "info",
+				CoreAPI:    "info",
+				Storage:    "info",
+				Profile:    "info",
+				TSS:        "info",
+				Finance:    "info",
 			},
 		},
 	}

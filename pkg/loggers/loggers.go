@@ -9,30 +9,32 @@ import (
 )
 
 const (
-	P2P      = "p2p"
-	Order    = "order"
-	Executor = "executor"
-	Router   = "router"
-	App      = "app"
-	API      = "api"
-	CoreAPI  = "coreapi"
-	Storage  = "storage"
-	Profile  = "profile"
-	Finance  = "finance"
+	P2P        = "p2p"
+	Order      = "order"
+	Executor   = "executor"
+	Governance = "governance"
+	Router     = "router"
+	App        = "app"
+	API        = "api"
+	CoreAPI    = "coreapi"
+	Storage    = "storage"
+	Profile    = "profile"
+	Finance    = "finance"
 )
 
 var w = &LoggerWrapper{
 	loggers: map[string]*logrus.Entry{
-		P2P:      log.NewWithModule(P2P),
-		Order:    log.NewWithModule(Order),
-		Executor: log.NewWithModule(Executor),
-		Router:   log.NewWithModule(Router),
-		App:      log.NewWithModule(App),
-		API:      log.NewWithModule(API),
-		CoreAPI:  log.NewWithModule(CoreAPI),
-		Storage:  log.NewWithModule(Storage),
-		Profile:  log.NewWithModule(Profile),
-		Finance:  log.NewWithModule(Finance),
+		P2P:        log.NewWithModule(P2P),
+		Order:      log.NewWithModule(Order),
+		Executor:   log.NewWithModule(Executor),
+		Governance: log.NewWithModule(Governance),
+		Router:     log.NewWithModule(Router),
+		App:        log.NewWithModule(App),
+		API:        log.NewWithModule(API),
+		CoreAPI:    log.NewWithModule(CoreAPI),
+		Storage:    log.NewWithModule(Storage),
+		Profile:    log.NewWithModule(Profile),
+		Finance:    log.NewWithModule(Finance),
 	},
 }
 
@@ -76,6 +78,8 @@ func Initialize(config *repo.Config) {
 	m[Order].Logger.SetLevel(log.ParseLevel(config.Log.Module.Consensus))
 	m[Executor] = log.NewWithModule(Executor)
 	m[Executor].Logger.SetLevel(log.ParseLevel(config.Log.Module.Executor))
+	m[Governance] = log.NewWithModule(Governance)
+	m[Governance].Logger.SetLevel(log.ParseLevel(config.Log.Module.Governance))
 	m[Router] = log.NewWithModule(Router)
 	m[Router].Logger.SetLevel(log.ParseLevel(config.Log.Module.Router))
 	m[App] = log.NewWithModule(App)
