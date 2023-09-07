@@ -254,7 +254,7 @@ func (n *Node) listenEvent() {
 					n.logger.Warningf("Receive wrong txs length from local, expect:%d, actual:%d", singleTx, len(e.Txs))
 				}
 
-				if batches, _ := n.mempool.AddNewRequests(e.Txs, true, true, false); batches != nil {
+				if batches, _ := n.mempool.AddNewRequests(e.Txs, true, true, false, true); batches != nil {
 					n.batchMgr.stopTimer(Batch)
 					if len(batches) != 1 {
 						n.logger.Errorf("Batch size is not 1, actual: %d", len(batches))
