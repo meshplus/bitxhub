@@ -151,6 +151,10 @@ func (cm *CouncilManager) Run(msg *vm.Message) (result *vm.ExecutionResult, err 
 }
 
 func (cm *CouncilManager) propose(addr ethcommon.Address, args *CouncilProposalArgs) (*vm.ExecutionResult, error) {
+	cm.gov.logger.Infof("Propose council election, addr: %s, args: %+v", addr.String(), args)
+	for i, candidate := range args.Candidates {
+		cm.gov.logger.Infof("candidate %d: %+v", i, *candidate)
+	}
 	baseProposal, err := cm.gov.Propose(&addr, ProposalType(args.ProposalType), args.Title, args.Desc, args.BlockNumber)
 	if err != nil {
 		return nil, err
@@ -176,6 +180,9 @@ func (cm *CouncilManager) propose(addr ethcommon.Address, args *CouncilProposalA
 	isExist, council := checkInCouncil(cm.account, addr.String())
 	if !isExist {
 		return nil, ErrNotFoundCouncilMember
+	}
+	for i, member := range council.Members {
+		cm.gov.logger.Infof("now council member %d, %+v", i, *member)
 	}
 
 	if !checkAddr2Name(cm.addr2NameSystem, args.Candidates) {
@@ -214,12 +221,16 @@ func (cm *CouncilManager) propose(addr ethcommon.Address, args *CouncilProposalA
 
 // Vote a proposal, return vote status
 func (cm *CouncilManager) vote(user ethcommon.Address, voteArgs *CouncilVoteArgs) (*vm.ExecutionResult, error) {
+	cm.gov.logger.Infof("Vote council election, addr: %s, args: %+v", user.String(), voteArgs)
 	result := &vm.ExecutionResult{UsedGas: CouncilVoteGas}
 
 	// check user can vote
-	isExist, _ := checkInCouncil(cm.account, user.String())
+	isExist, council := checkInCouncil(cm.account, user.String())
 	if !isExist {
 		return nil, ErrNotFoundCouncilMember
+	}
+	for i, member := range council.Members {
+		cm.gov.logger.Infof("now council member %d, %+v", i, *member)
 	}
 
 	// get proposal
@@ -259,6 +270,10 @@ func (cm *CouncilManager) vote(user ethcommon.Address, voteArgs *CouncilVoteArgs
 			return nil, err
 		}
 		cm.account.SetState([]byte(CouncilKey), cb)
+
+		for i, member := range council.Members {
+			cm.gov.logger.Infof("after vote, now council member %d, %+v", i, *member)
+		}
 	}
 
 	cm.gov.RecordLog(cm.currentLog, VoteMethod, &proposal.BaseProposal, b)
