@@ -151,9 +151,9 @@ func (cm *CouncilManager) Run(msg *vm.Message) (result *vm.ExecutionResult, err 
 }
 
 func (cm *CouncilManager) propose(addr ethcommon.Address, args *CouncilProposalArgs) (*vm.ExecutionResult, error) {
-	cm.gov.logger.Infof("Propose council election, addr: %s, args: %+v", addr.String(), args)
+	cm.gov.logger.Debugf("Propose council election, addr: %s, args: %+v", addr.String(), args)
 	for i, candidate := range args.Candidates {
-		cm.gov.logger.Infof("candidate %d: %+v", i, *candidate)
+		cm.gov.logger.Debugf("candidate %d: %+v", i, *candidate)
 	}
 	baseProposal, err := cm.gov.Propose(&addr, ProposalType(args.ProposalType), args.Title, args.Desc, args.BlockNumber)
 	if err != nil {
@@ -181,11 +181,8 @@ func (cm *CouncilManager) propose(addr ethcommon.Address, args *CouncilProposalA
 	if !isExist {
 		return nil, ErrNotFoundCouncilMember
 	}
-	for i, member := range council.Members {
-		cm.gov.logger.Infof("now council member %d, %+v", i, *member)
-	}
 
-	if !checkAddr2Name(cm.addr2NameSystem, args.Candidates) {
+	if !checkAddr2Name(args.Candidates) {
 		return nil, ErrRepeatedName
 	}
 
@@ -206,9 +203,6 @@ func (cm *CouncilManager) propose(addr ethcommon.Address, args *CouncilProposalA
 
 	b, err := cm.saveProposal(proposal)
 
-	// set name
-	setName(cm.addr2NameSystem, proposal.Candidates)
-
 	// record log
 	cm.gov.RecordLog(cm.currentLog, ProposeMethod, &proposal.BaseProposal, b)
 
@@ -221,16 +215,13 @@ func (cm *CouncilManager) propose(addr ethcommon.Address, args *CouncilProposalA
 
 // Vote a proposal, return vote status
 func (cm *CouncilManager) vote(user ethcommon.Address, voteArgs *CouncilVoteArgs) (*vm.ExecutionResult, error) {
-	cm.gov.logger.Infof("Vote council election, addr: %s, args: %+v", user.String(), voteArgs)
+	cm.gov.logger.Debugf("Vote council election, addr: %s, args: %+v", user.String(), voteArgs)
 	result := &vm.ExecutionResult{UsedGas: CouncilVoteGas}
 
 	// check user can vote
-	isExist, council := checkInCouncil(cm.account, user.String())
+	isExist, _ := checkInCouncil(cm.account, user.String())
 	if !isExist {
 		return nil, ErrNotFoundCouncilMember
-	}
-	for i, member := range council.Members {
-		cm.gov.logger.Infof("now council member %d, %+v", i, *member)
 	}
 
 	// get proposal
@@ -271,8 +262,11 @@ func (cm *CouncilManager) vote(user ethcommon.Address, voteArgs *CouncilVoteArgs
 		}
 		cm.account.SetState([]byte(CouncilKey), cb)
 
+		// set name when proposal approved
+		setName(cm.addr2NameSystem, council.Members)
+
 		for i, member := range council.Members {
-			cm.gov.logger.Infof("after vote, now council member %d, %+v", i, *member)
+			cm.gov.logger.Debugf("after vote, now council member %d, %+v", i, *member)
 		}
 	}
 
@@ -412,20 +406,12 @@ func checkInCouncil(account ledger.IAccount, addr string) (bool, *Council) {
 	return true, council
 }
 
-func checkAddr2Name(addr2NameSystem *Addr2NameSystem, members []*CouncilMember) bool {
+func checkAddr2Name(members []*CouncilMember) bool {
 	// repeated name return false
 	if len(lo.Uniq[string](lo.Map[*CouncilMember, string](members, func(item *CouncilMember, index int) string {
 		return item.Name
 	}))) != len(members) {
 		return false
-	}
-
-	for _, member := range members {
-		if ok, oldAddr := addr2NameSystem.GetAddr(member.Name); ok {
-			if oldAddr != member.Address {
-				return false
-			}
-		}
 	}
 
 	return true

@@ -18,6 +18,7 @@ import (
 	"github.com/axiomesh/axiom/pkg/model/events"
 	"github.com/axiomesh/axiom/pkg/repo"
 	vm "github.com/axiomesh/eth-kit/evm"
+	"github.com/axiomesh/axiom/pkg/loggers"
 )
 
 const (
@@ -70,7 +71,7 @@ func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, rep *repo.Repo) 
 	blockExecutor.evm = newEvm(1, uint64(0), blockExecutor.evmChainCfg, blockExecutor.ledger, blockExecutor.ledger.ChainLedger, "")
 
 	// initialize system contract
-	system.Initialize(logger)
+	system.Initialize(loggers.Logger(loggers.Governance))
 
 	return blockExecutor, nil
 }
