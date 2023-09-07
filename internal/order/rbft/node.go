@@ -322,8 +322,8 @@ func (n *Node) Stop() {
 }
 
 func (n *Node) Prepare(tx *types.Transaction) error {
-	if n.txCache.IsFull() && n.n.Status().Status == rbft.PoolFull {
-		return errors.New("transaction cache are full, we will drop this transaction")
+	if n.n.Status().Status == rbft.PoolFull {
+		return errors.New("mempool is full, we will drop this transaction")
 	}
 
 	txWithResp := &common.TxWithResp{
