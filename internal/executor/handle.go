@@ -145,6 +145,10 @@ func (exec *BlockExecutor) processExecuteEvent(commitEvent *ordercommon.CommitEv
 	exec.ledger.PersistBlockData(data)
 	exec.postBlockEvent(data.Block, data.TxHashList)
 	exec.postLogsEvent(data.Receipts)
+
+	// metrics for cal tx tps
+	txCounter.Add(float64(len(data.Block.Transactions)))
+
 	exec.logger.WithFields(logrus.Fields{
 		"gasPrice": data.Block.BlockHeader.GasPrice,
 		"height":   data.Block.BlockHeader.Number,

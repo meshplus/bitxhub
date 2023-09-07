@@ -7,6 +7,7 @@ import (
 
 	rbft "github.com/axiomesh/axiom-bft"
 	"github.com/axiomesh/axiom-bft/common/metrics/disabled"
+	"github.com/axiomesh/axiom-bft/common/metrics/prometheus"
 	"github.com/axiomesh/axiom-bft/mempool"
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/internal/order/common"
@@ -87,6 +88,11 @@ func generateRbftConfig(config *common.Config) (rbft.Config, mempool.Config) {
 	}
 	if readConfig.TxCache.SetTimeout > 0 {
 		defaultConfig.SetTimeout = readConfig.TxCache.SetTimeout.ToDuration()
+	}
+	if readConfig.Rbft.EnableMetrics {
+		defaultConfig.MetricsProv = &prometheus.Provider{
+			Name: "rbft",
+		}
 	}
 	fn := func(addr string) uint64 {
 		return config.GetAccountNonce(types.NewAddressByStr(addr))

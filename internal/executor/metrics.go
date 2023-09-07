@@ -31,6 +31,12 @@ var (
 		Help:      "The size of current block calc",
 		Buckets:   prometheus.ExponentialBuckets(1024, 2, 12),
 	})
+	txCounter = prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: "axiom",
+		Subsystem: "executor",
+		Name:      "tx_counter",
+		Help:      "the total number of transactions in axiom",
+	})
 )
 
 func init() {
@@ -38,4 +44,5 @@ func init() {
 	prometheus.MustRegister(calcMerkleDuration)
 	prometheus.MustRegister(calcBlockSize)
 	prometheus.MustRegister(executeBlockDuration)
+	prometheus.MustRegister(txCounter)
 }
