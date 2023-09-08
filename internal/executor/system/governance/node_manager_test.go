@@ -118,6 +118,51 @@ func TestNodeManager_RunForPropose(t *testing.T) {
 			},
 			Err: nil,
 		},
+		{
+			Caller: admin1,
+			Data: generateNodeRemoveProposeData(t, NodeExtraArgs{
+				Nodes: []*NodeMember{
+					{
+						NodeId: "16Uiu2HAmJ38LwfY6pfgDWNvk3ypjcpEMSePNTE6Ma2NCLqjbZJSF",
+					},
+				},
+			}),
+			Expected: vm.ExecutionResult{
+				UsedGas: NodeManagementProposalGas,
+			},
+			Err: nil,
+		},
+		{
+			Caller: "0x1000000000000000000000000000000000000000",
+			Data: generateNodeRemoveProposeData(t, NodeExtraArgs{
+				Nodes: []*NodeMember{
+					{
+						NodeId: "16Uiu2HAmJ38LwfY6pfgDWNvk3ypjcpEMSePNTE6Ma2NCLqjbZJSF",
+					},
+				},
+			}),
+			Expected: vm.ExecutionResult{
+				Err: ErrNotFoundCouncilMember,
+			},
+			Err: nil,
+		},
+		{
+			Caller: admin1,
+			Data: generateNodeRemoveProposeData(t, NodeExtraArgs{
+				Nodes: []*NodeMember{
+					{
+						NodeId: "16Uiu2HAmJ38LwfY6pfgDWNvk3ypjcpEMSePNTE6Ma2NCLqjbZJSF",
+					},
+					{
+						NodeId: "16Uiu2HAmJ38LwfY6pfgDWNvk3ypjcpEMSePNTE6Ma2NCLqjbZJSF",
+					},
+				},
+			}),
+			Expected: vm.ExecutionResult{
+				Err: ErrRepeatedNodeID,
+			},
+			Err: nil,
+		},
 	}
 
 	for _, test := range testcases {
@@ -316,5 +361,19 @@ func generateNodeAddVoteData(t *testing.T, proposalID uint64, voteResult VoteRes
 	data, err := gabi.Pack(VoteMethod, proposalID, uint8(voteResult), []byte(""))
 	assert.Nil(t, err)
 
+	return data
+}
+
+func generateNodeRemoveProposeData(t *testing.T, extraArgs NodeExtraArgs) []byte {
+	gabi, err := GetABI()
+	assert.Nil(t, err)
+
+	title := "title"
+	desc := "desc"
+	blockNumber := uint64(1000)
+	extra, err := json.Marshal(extraArgs)
+	assert.Nil(t, err)
+	data, err := gabi.Pack(ProposeMethod, uint8(NodeRemove), title, desc, blockNumber, extra)
+	assert.Nil(t, err)
 	return data
 }

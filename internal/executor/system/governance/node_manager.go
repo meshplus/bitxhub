@@ -27,7 +27,7 @@ const (
 
 var (
 	ErrNodeNumber              = errors.New("node members total count can't bigger than candidates count")
-	ErrNotFoundNodeMember      = errors.New("node member is not found")
+	ErrNotFoundNodeID          = errors.New("node id is not found")
 	ErrNodeExtraArgs           = errors.New("unmarshal node extra arguments error")
 	ErrNodeProposalNumberLimit = errors.New("node proposal number limit, only allow one node proposal")
 	ErrNotFoundNodeProposal    = errors.New("node proposal not found for the id")
@@ -318,11 +318,29 @@ func (nm *NodeManager) voteNodeAddRemove(user ethcommon.Address, proposal *NodeP
 	}
 
 	// if proposal is approved, update the node members
-	// TODO: need check block number
 	if proposal.Status == Approved {
-		// TODO: update to epoch
-		// save council
-		cb, err := json.Marshal(proposal.Nodes)
+
+		members, err := GetNodeMembers(nm.stateLedger)
+		if err != nil {
+			return nil, err
+		}
+
+		if proposal.Type == NodeAdd {
+			members = append(members, proposal.Nodes...)
+		}
+
+		if proposal.Type == NodeRemove {
+			for _, node := range proposal.Nodes {
+				for i, member := range members {
+					if member.NodeId == node.NodeId {
+						members = append(members[:i], members[i+1:]...)
+						break
+					}
+				}
+			}
+		}
+
+		cb, err := json.Marshal(members)
 		if err != nil {
 			return nil, err
 		}
