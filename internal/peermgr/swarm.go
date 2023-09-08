@@ -77,8 +77,6 @@ func (swarm *Swarm) init() error {
 		pipeBroadcastType = network.PipeBroadcastSimple
 	case repo.P2PPipeBroadcastGossip:
 		pipeBroadcastType = network.PipeBroadcastGossip
-	case repo.P2PPipeBroadcastFlood:
-		pipeBroadcastType = network.PipeBroadcastFloodSub
 	default:
 		return fmt.Errorf("unsupported p2p pipe broadcast type: %v", swarm.repo.Config.P2P.Pipe.BroadcastType)
 	}
@@ -93,15 +91,22 @@ func (swarm *Swarm) init() error {
 		network.WithLogger(swarm.logger),
 		network.WithTimeout(10*time.Second, swarm.repo.Config.P2P.SendTimeout.ToDuration(), swarm.repo.Config.P2P.ReadTimeout.ToDuration()),
 		network.WithSecurity(securityType),
-		network.WithPipeReceiveMsgCacheSize(swarm.repo.Config.P2P.Pipe.ReceiveMsgCacheSize),
-		network.WithPipeBroadcastType(pipeBroadcastType),
-		network.WithPipeBroadcastWorkerCacheSize(swarm.repo.Config.P2P.Pipe.BroadcastWorkerCacheSize),
-		network.WithPipeBroadcastWorkerConcurrencyLimit(swarm.repo.Config.P2P.Pipe.BroadcastWorkerConcurrencyLimit),
-		network.WithPipeBroadcastRetryNumber(swarm.repo.Config.P2P.Pipe.BroadcastRetryNumber),
-		network.WithPipeBroadcastRetryBaseTime(swarm.repo.Config.P2P.Pipe.BroadcastRetryBaseTime.ToDuration()),
-		network.WithPipeGossipSubBufferSize(swarm.repo.Config.P2P.Pipe.GossipSubBufferSize),
-		network.WithPipeGossipPeerOutboundBufferSize(swarm.repo.Config.P2P.Pipe.GossipPeerOutboundBufferSize),
-		network.WithPipeGossipValidateBufferSize(swarm.repo.Config.P2P.Pipe.GossipValidateBufferSize),
+		network.WithPipe(network.PipeConfig{
+			BroadcastType:       pipeBroadcastType,
+			ReceiveMsgCacheSize: swarm.repo.Config.P2P.Pipe.ReceiveMsgCacheSize,
+			SimpleBroadcast: network.PipeSimpleConfig{
+				WorkerCacheSize:        swarm.repo.Config.P2P.Pipe.SimpleBroadcast.WorkerCacheSize,
+				WorkerConcurrencyLimit: swarm.repo.Config.P2P.Pipe.SimpleBroadcast.WorkerConcurrencyLimit,
+				RetryNumber:            swarm.repo.Config.P2P.Pipe.SimpleBroadcast.RetryNumber,
+				RetryBaseTime:          swarm.repo.Config.P2P.Pipe.SimpleBroadcast.RetryBaseTime.ToDuration(),
+			},
+			Gossipsub: network.PipeGossipsubConfig{
+				SubBufferSize:          swarm.repo.Config.P2P.Pipe.Gossipsub.SubBufferSize,
+				PeerOutboundBufferSize: swarm.repo.Config.P2P.Pipe.Gossipsub.PeerOutboundBufferSize,
+				ValidateBufferSize:     swarm.repo.Config.P2P.Pipe.Gossipsub.ValidateBufferSize,
+				SeenMessagesTTL:        swarm.repo.Config.P2P.Pipe.Gossipsub.SeenMessagesTTL.ToDuration(),
+			},
+		}),
 		network.WithBootstrap(bootstrap),
 		network.WithConnectionGater(gater),
 	}

@@ -65,6 +65,20 @@ func MockMinNode(ctrl *gomock.Controller, t *testing.T) *Node {
 	return node
 }
 
+func TestInit(t *testing.T) {
+	ast := assert.New(t)
+	ctrl := gomock.NewController(t)
+	order := MockMinNode(ctrl, t)
+
+	order.config.Config.Rbft.EnableMultiPipes = false
+	err := order.initConsensusMsgPipes()
+	ast.Nil(err)
+
+	order.config.Config.Rbft.EnableMultiPipes = true
+	err = order.initConsensusMsgPipes()
+	ast.Nil(err)
+}
+
 func TestPrepare(t *testing.T) {
 	ast := assert.New(t)
 	ctrl := gomock.NewController(t)
@@ -177,7 +191,7 @@ func TestReadConfig(t *testing.T) {
 	rbftConf.Logger.Criticalf("test critical")
 	rbftConf.Logger.Notice()
 	rbftConf.Logger.Noticef("test critical")
-	ast.Equal(25, rbftConf.SetSize)
+	ast.Equal(50, rbftConf.SetSize)
 	ast.Equal(uint64(500), mempoolConfig.BatchSize)
 	ast.Equal(uint64(50000), mempoolConfig.PoolSize)
 	ast.Equal(500*time.Millisecond, rbftConf.BatchTimeout)
