@@ -18,6 +18,10 @@ import (
 
 type BrokerAPI CoreAPI
 
+func (b *BrokerAPI) GetTotalPendingTxCount() uint64 {
+	return b.axiom.Order.GetTotalPendingTxCount()
+}
+
 var _ api.BrokerAPI = (*BrokerAPI)(nil)
 
 func (b *BrokerAPI) HandleTransaction(tx *types.Transaction) error {
@@ -121,8 +125,8 @@ func (b *BrokerAPI) OrderReady() error {
 	return b.axiom.Order.Ready()
 }
 
-func (b *BrokerAPI) GetPendingNonceByAccount(account string) uint64 {
-	return b.axiom.Order.GetPendingNonceByAccount(account)
+func (b *BrokerAPI) GetPendingTxCountByAccount(account string) uint64 {
+	return b.axiom.Order.GetPendingTxCountByAccount(account)
 }
 
 func (b *BrokerAPI) GetPoolTransaction(hash *types.Hash) *types.Transaction {

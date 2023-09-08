@@ -78,44 +78,6 @@ func (c *OrderCommitCall) DoAndReturn(f func() chan *common.CommitEvent) *OrderC
 	return c
 }
 
-// GetPendingNonceByAccount mocks base method.
-func (m *MockOrder) GetPendingNonceByAccount(account string) uint64 {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetPendingNonceByAccount", account)
-	ret0, _ := ret[0].(uint64)
-	return ret0
-}
-
-// GetPendingNonceByAccount indicates an expected call of GetPendingNonceByAccount.
-func (mr *MockOrderMockRecorder) GetPendingNonceByAccount(account any) *OrderGetPendingNonceByAccountCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPendingNonceByAccount", reflect.TypeOf((*MockOrder)(nil).GetPendingNonceByAccount), account)
-	return &OrderGetPendingNonceByAccountCall{Call: call}
-}
-
-// OrderGetPendingNonceByAccountCall wrap *gomock.Call
-type OrderGetPendingNonceByAccountCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *OrderGetPendingNonceByAccountCall) Return(arg0 uint64) *OrderGetPendingNonceByAccountCall {
-	c.Call = c.Call.Return(arg0)
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *OrderGetPendingNonceByAccountCall) Do(f func(string) uint64) *OrderGetPendingNonceByAccountCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *OrderGetPendingNonceByAccountCall) DoAndReturn(f func(string) uint64) *OrderGetPendingNonceByAccountCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
 // GetPendingTxByHash mocks base method.
 func (m *MockOrder) GetPendingTxByHash(hash *types.Hash) *types.Transaction {
 	m.ctrl.T.Helper()
@@ -150,6 +112,82 @@ func (c *OrderGetPendingTxByHashCall) Do(f func(*types.Hash) *types.Transaction)
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *OrderGetPendingTxByHashCall) DoAndReturn(f func(*types.Hash) *types.Transaction) *OrderGetPendingTxByHashCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// GetPendingTxCountByAccount mocks base method.
+func (m *MockOrder) GetPendingTxCountByAccount(account string) uint64 {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPendingTxCountByAccount", account)
+	ret0, _ := ret[0].(uint64)
+	return ret0
+}
+
+// GetPendingTxCountByAccount indicates an expected call of GetPendingTxCountByAccount.
+func (mr *MockOrderMockRecorder) GetPendingTxCountByAccount(account any) *OrderGetPendingTxCountByAccountCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPendingTxCountByAccount", reflect.TypeOf((*MockOrder)(nil).GetPendingTxCountByAccount), account)
+	return &OrderGetPendingTxCountByAccountCall{Call: call}
+}
+
+// OrderGetPendingTxCountByAccountCall wrap *gomock.Call
+type OrderGetPendingTxCountByAccountCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *OrderGetPendingTxCountByAccountCall) Return(arg0 uint64) *OrderGetPendingTxCountByAccountCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *OrderGetPendingTxCountByAccountCall) Do(f func(string) uint64) *OrderGetPendingTxCountByAccountCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *OrderGetPendingTxCountByAccountCall) DoAndReturn(f func(string) uint64) *OrderGetPendingTxCountByAccountCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// GetTotalPendingTxCount mocks base method.
+func (m *MockOrder) GetTotalPendingTxCount() uint64 {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTotalPendingTxCount")
+	ret0, _ := ret[0].(uint64)
+	return ret0
+}
+
+// GetTotalPendingTxCount indicates an expected call of GetTotalPendingTxCount.
+func (mr *MockOrderMockRecorder) GetTotalPendingTxCount() *OrderGetTotalPendingTxCountCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTotalPendingTxCount", reflect.TypeOf((*MockOrder)(nil).GetTotalPendingTxCount))
+	return &OrderGetTotalPendingTxCountCall{Call: call}
+}
+
+// OrderGetTotalPendingTxCountCall wrap *gomock.Call
+type OrderGetTotalPendingTxCountCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *OrderGetTotalPendingTxCountCall) Return(arg0 uint64) *OrderGetTotalPendingTxCountCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *OrderGetTotalPendingTxCountCall) Do(f func() uint64) *OrderGetTotalPendingTxCountCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *OrderGetTotalPendingTxCountCall) DoAndReturn(f func() uint64) *OrderGetTotalPendingTxCountCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

@@ -115,13 +115,20 @@ func TestPrepare(t *testing.T) {
 		return nil
 	}).Return(nil).AnyTimes()
 
-	order.n.(*rbft.MockNode[types.Transaction, *types.Transaction]).EXPECT().GetPendingNonceByAccount(gomock.Any()).DoAndReturn(func(addr string) uint64 {
-		return nonceCache[addr]
+	order.n.(*rbft.MockNode[types.Transaction, *types.Transaction]).EXPECT().GetPendingTxCountByAccount(gomock.Any()).DoAndReturn(func(addr string) uint64 {
+		if _, ok := nonceCache[addr]; !ok {
+			return 0
+		}
+		return nonceCache[addr] + 1
 	}).AnyTimes()
 
 	order.n.(*rbft.MockNode[types.Transaction, *types.Transaction]).EXPECT().GetPendingTxByHash(gomock.Any()).DoAndReturn(func(hash string) *types.Transaction {
 		data := txCache[hash]
 		return data
+	}).AnyTimes()
+
+	order.n.(*rbft.MockNode[types.Transaction, *types.Transaction]).EXPECT().GetTotalPendingTxCount().DoAndReturn(func() uint64 {
+		return uint64(len(txCache))
 	}).AnyTimes()
 
 	sk, err := crypto.GenerateKey()
@@ -135,16 +142,14 @@ func TestPrepare(t *testing.T) {
 	ast.Nil(err)
 	err = order.Prepare(tx1)
 	ast.Nil(err)
+	tx2, err := types.GenerateTransactionWithSigner(uint64(1), types.NewAddressByStr(toAddr.String()), big.NewInt(0), []byte("hello"), singer)
+	ast.Nil(err)
+	err = order.Prepare(tx2)
+	ast.Nil(err)
 
-	t.Run("GetPendingNonceByAccount", func(t *testing.T) {
-		pendingNonce := order.GetPendingNonceByAccount(tx1.GetFrom().String())
-		ast.Equal(uint64(0), pendingNonce)
-		tx2, err := types.GenerateTransactionWithSigner(uint64(1), types.NewAddressByStr(toAddr.String()), big.NewInt(0), []byte("hello"), singer)
-		ast.Nil(err)
-		err = order.Prepare(tx2)
-		ast.Nil(err)
-		pendingNonce = order.GetPendingNonceByAccount(tx1.GetFrom().String())
-		ast.Equal(uint64(1), pendingNonce)
+	t.Run("GetPendingTxCountByAccount", func(t *testing.T) {
+		pendingNonce := order.GetPendingTxCountByAccount(tx1.GetFrom().String())
+		ast.Equal(uint64(2), pendingNonce)
 	})
 
 	t.Run("GetPendingTxByHash", func(t *testing.T) {
@@ -153,6 +158,11 @@ func TestPrepare(t *testing.T) {
 		ast.Equal(tx1.GetHash().String(), tx.GetHash().String())
 		wrongTx := order.GetPendingTxByHash(types.NewHashByStr("0x123"))
 		ast.Nil(wrongTx)
+	})
+
+	t.Run("GetTotalPendingTxCount", func(t *testing.T) {
+		count := order.GetTotalPendingTxCount()
+		ast.Equal(uint64(2), count)
 	})
 }
 
