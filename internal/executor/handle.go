@@ -185,14 +185,12 @@ func (exec *BlockExecutor) postBlockEvent(block *types.Block, txHashList []*type
 }
 
 func (exec *BlockExecutor) postLogsEvent(receipts []*types.Receipt) {
-	go func() {
-		logs := make([]*types.EvmLog, 0)
-		for _, receipt := range receipts {
-			logs = append(logs, receipt.EvmLogs...)
-		}
+	logs := make([]*types.EvmLog, 0)
+	for _, receipt := range receipts {
+		logs = append(logs, receipt.EvmLogs...)
+	}
 
-		exec.logsFeed.Send(logs)
-	}()
+	exec.logsFeed.Send(logs)
 }
 
 // TODO: process invalidReason

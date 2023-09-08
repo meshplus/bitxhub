@@ -105,11 +105,11 @@ func (exec *ExecutorDev) GetEvm(txCtx vm.TxContext, vmConfig vm.Config) (*vm.EVM
 }
 
 func (exec *ExecutorDev) postBlockEvent(block *types.Block, txHashList []*types.Hash) {
-	go exec.blockFeed.Send(events.ExecutedEvent{
+	exec.blockFeed.Send(events.ExecutedEvent{
 		Block:      block,
 		TxHashList: txHashList,
 	})
-	go exec.blockFeedForRemote.Send(events.ExecutedEvent{
+	exec.blockFeedForRemote.Send(events.ExecutedEvent{
 		Block:      block,
 		TxHashList: txHashList,
 	})
