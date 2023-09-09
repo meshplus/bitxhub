@@ -41,5 +41,5 @@ func (s *RBFTAdaptor) Unicast(ctx context.Context, msg *consensus.ConsensusMessa
 		return pipe.Send(ctx, to, data)
 	}
 
-	return s.globalMsgPipe.Broadcast(ctx, s.broadcastNodes, data)
+	return s.globalMsgPipe.Send(ctx, to, data)
 }
