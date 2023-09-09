@@ -1,6 +1,10 @@
 package loggers
 
 import (
+	"context"
+	"fmt"
+	"path/filepath"
+
 	ethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/sirupsen/logrus"
 
@@ -70,7 +74,23 @@ func InitializeEthLog(logger *logrus.Entry) {
 	ethlog.Root().SetHandler(&ethHandler{logger: logger})
 }
 
-func Initialize(config *repo.Config) {
+func Initialize(ctx context.Context, config *repo.Config) error {
+	err := log.Initialize(
+		log.WithCtx(ctx),
+		log.WithEnableCompress(config.Log.EnableCompress),
+		log.WithReportCaller(config.Log.ReportCaller),
+		log.WithEnableColor(config.Log.EnableColor),
+		log.WithPersist(true),
+		log.WithFilePath(filepath.Join(config.RepoRoot, repo.LogsDirName)),
+		log.WithFileName(config.Log.Filename),
+		log.WithMaxAge(int(config.Log.MaxAge)),
+		log.WithMaxSize(int(config.Log.MaxSize)),
+		log.WithRotationTime(config.Log.RotationTime.ToDuration()),
+	)
+	if err != nil {
+		return fmt.Errorf("log initialize: %w", err)
+	}
+
 	m := make(map[string]*logrus.Entry)
 	m[P2P] = log.NewWithModule(P2P)
 	m[P2P].Logger.SetLevel(log.ParseLevel(config.Log.Module.P2P))
@@ -97,6 +117,7 @@ func Initialize(config *repo.Config) {
 
 	w = &LoggerWrapper{loggers: m}
 	InitializeEthLog(m[API])
+	return nil
 }
 
 func ReConfig(config *repo.Config) {

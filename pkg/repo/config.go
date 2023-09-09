@@ -143,11 +143,18 @@ type Ping struct {
 }
 
 type Log struct {
-	Level        string    `mapstructure:"level" toml:"level"`
-	Filename     string    `mapstructure:"filename" toml:"filename"`
-	ReportCaller bool      `mapstructure:"report_caller" toml:"report_caller"`
-	EnableColor  bool      `mapstructure:"enable_color" toml:"enable_color"`
-	MaxAge       Duration  `mapstructure:"max_age" toml:"max_age"`
+	Level          string `mapstructure:"level" toml:"level"`
+	Filename       string `mapstructure:"filename" toml:"filename"`
+	ReportCaller   bool   `mapstructure:"report_caller" toml:"report_caller"`
+	EnableCompress bool   `mapstructure:"enable_compress" toml:"enable_compress"`
+	EnableColor    bool   `mapstructure:"enable_color" toml:"enable_color"`
+
+	// unit: day
+	MaxAge uint `mapstructure:"max_age" toml:"max_age"`
+
+	// unit: MB
+	MaxSize uint `mapstructure:"max_size" toml:"max_size"`
+
 	RotationTime Duration  `mapstructure:"rotation_time" toml:"rotation_time"`
 	Module       LogModule `mapstructure:"module" toml:"module"`
 }
@@ -350,12 +357,14 @@ func DefaultConfig(repoRoot string) *Config {
 			Enable: true,
 		},
 		Log: Log{
-			Level:        "info",
-			Filename:     "axiom.log",
-			ReportCaller: false,
-			EnableColor:  true,
-			MaxAge:       Duration(90 * 24 * time.Hour),
-			RotationTime: Duration(24 * time.Hour),
+			Level:          "info",
+			Filename:       "axiom",
+			ReportCaller:   false,
+			EnableCompress: false,
+			EnableColor:    true,
+			MaxAge:         30,
+			MaxSize:        128,
+			RotationTime:   Duration(24 * time.Hour),
 			Module: LogModule{
 				P2P:        "info",
 				Consensus:  "info",

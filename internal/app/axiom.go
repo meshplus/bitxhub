@@ -48,12 +48,14 @@ type Axiom struct {
 	Cancel context.CancelFunc
 }
 
-func NewAxiom(rep *repo.Repo) (*Axiom, error) {
+func NewAxiom(rep *repo.Repo, ctx context.Context, cancel context.CancelFunc) (*Axiom, error) {
 	repoRoot := rep.Config.RepoRoot
 	axm, err := GenerateAxiomWithoutOrder(rep)
 	if err != nil {
 		return nil, fmt.Errorf("generate axiom without order failed: %w", err)
 	}
+	axm.Ctx = ctx
+	axm.Cancel = cancel
 
 	chainMeta := axm.Ledger.GetChainMeta()
 
@@ -91,10 +93,6 @@ func NewAxiom(rep *repo.Repo) (*Axiom, error) {
 		return nil, fmt.Errorf("initialize order failed: %w", err)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-
-	axm.Ctx = ctx
-	axm.Cancel = cancel
 	axm.Order = order
 
 	if err := axm.raiseUlimit(rep.Config.Ulimit); err != nil {
