@@ -1,12 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"sync"
 	"syscall"
 
@@ -14,7 +14,6 @@ import (
 
 	"github.com/axiomesh/axiom"
 	"github.com/axiomesh/axiom-kit/fileutil"
-	"github.com/axiomesh/axiom-kit/log"
 	types2 "github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/api/jsonrpc"
 	"github.com/axiomesh/axiom/internal/app"
@@ -49,26 +48,17 @@ func start(ctx *cli.Context) error {
 		}
 	}
 
-	err = log.Initialize(
-		log.WithReportCaller(r.Config.Log.ReportCaller),
-		log.WithEnableColor(r.Config.Log.EnableColor),
-		log.WithPersist(true),
-		log.WithFilePath(filepath.Join(r.Config.RepoRoot, repo.LogsDirName)),
-		log.WithFileName(r.Config.Log.Filename),
-		log.WithMaxAge(r.Config.Log.MaxAge.ToDuration()),
-		log.WithRotationTime(r.Config.Log.RotationTime.ToDuration()),
-	)
-	if err != nil {
-		return fmt.Errorf("log initialize: %w", err)
+	appCtx, cancel := context.WithCancel(ctx.Context)
+	if err := loggers.Initialize(appCtx, r.Config); err != nil {
+		cancel()
+		return err
 	}
-
-	loggers.Initialize(r.Config)
 
 	types2.InitEIP155Signer(big.NewInt(int64(r.Config.Genesis.ChainID)))
 
 	printVersion()
 
-	axm, err := app.NewAxiom(r)
+	axm, err := app.NewAxiom(r, appCtx, cancel)
 	if err != nil {
 		return fmt.Errorf("init axiom failed: %w", err)
 	}
