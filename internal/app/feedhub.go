@@ -39,7 +39,7 @@ func (ax *Axiom) listenEvent() {
 	for {
 		select {
 		case ev := <-blockCh:
-			go ax.Order.ReportState(ev.Block.BlockHeader.Number, ev.Block.BlockHash, ev.TxHashList)
+			ax.Order.ReportState(ev.Block.BlockHeader.Number, ev.Block.BlockHash, ev.TxHashList)
 		case config := <-configCh:
 			ax.ReConfig(config)
 		case <-ax.Ctx.Done():

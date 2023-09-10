@@ -42,7 +42,7 @@ func (s *RBFTAdaptor) StateUpdate(seqNo uint64, digest string, checkpoints []*co
 		"target_hash":  digest,
 		"current":      chain.Height,
 		"current_hash": chain.BlockHash.String(),
-	}).Info("State Update")
+	}).Info("State update start")
 	get := func(peers []string, i int) (block *types.Block, err error) {
 		for _, id := range peers {
 			block, err = s.getBlock(id, i)
@@ -72,7 +72,7 @@ func (s *RBFTAdaptor) StateUpdate(seqNo uint64, digest string, checkpoints []*co
 					"required": digest,
 					"received": block.BlockHash.String(),
 					"height":   i,
-				}).Error("block hash is inconsistent in state update state")
+				}).Error("Block hash is inconsistent in state update state")
 				return err
 			}
 
@@ -100,6 +100,11 @@ func (s *RBFTAdaptor) StateUpdate(seqNo uint64, digest string, checkpoints []*co
 		}
 		s.BlockC <- commitEvent
 	}
+
+	s.logger.WithFields(logrus.Fields{
+		"target":      seqNo,
+		"target_hash": digest,
+	}).Info("State update finished fetch blocks")
 }
 
 func (s *RBFTAdaptor) SendFilterEvent(informType rbfttypes.InformType, message ...any) {

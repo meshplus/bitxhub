@@ -415,30 +415,40 @@ func (n *Node) GetPendingTxByHash(hash *types.Hash) *types.Transaction {
 }
 
 func (n *Node) ReportState(height uint64, blockHash *types.Hash, txHashList []*types.Hash) {
-	if n.stack.StateUpdating && n.stack.StateUpdateHeight != height {
-		return
-	}
-
-	currentEpoch := n.stack.EpochInfo.Epoch
-
 	// need update cached epoch info
 	epochInfo := n.stack.EpochInfo
+	epochChanged := false
 	if height == (epochInfo.StartBlock + epochInfo.EpochPeriod - 1) {
 		err := n.stack.UpdateEpoch()
 		if err != nil {
 			panic(err)
 		}
+		epochChanged = true
+		n.logger.Debugf("Finished execute block %d, update epoch to %d", height, n.stack.EpochInfo.Epoch)
 	}
+	currentEpoch := n.stack.EpochInfo.Epoch
+
+	// skip the block before the target height
 	if n.stack.StateUpdating {
-		state := &rbfttypes.ServiceState{
-			MetaState: &rbfttypes.MetaState{
-				Height: height,
-				Digest: blockHash.String(),
-			},
-			Epoch: currentEpoch,
+		if epochChanged || n.stack.StateUpdateHeight == height {
+			// notify consensus update epoch and accept epoch proof
+			state := &rbfttypes.ServiceSyncState{
+				ServiceState: rbfttypes.ServiceState{
+					MetaState: &rbfttypes.MetaState{
+						Height: height,
+						Digest: blockHash.String(),
+					},
+					Epoch: currentEpoch,
+				},
+				EpochChanged: epochChanged,
+			}
+			n.n.ReportStateUpdated(state)
 		}
-		n.n.ReportStateUpdated(state)
-		n.stack.StateUpdating = false
+
+		if n.stack.StateUpdateHeight == height {
+			n.stack.StateUpdating = false
+		}
+
 		return
 	}
 
@@ -450,6 +460,10 @@ func (n *Node) ReportState(height uint64, blockHash *types.Hash, txHashList []*t
 		Epoch: currentEpoch,
 	}
 	n.n.ReportExecuted(state)
+
+	if n.stack.StateUpdateHeight == height {
+		n.stack.StateUpdating = false
+	}
 }
 
 func (n *Node) Quorum() uint64 {
