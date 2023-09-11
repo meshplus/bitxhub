@@ -36,3 +36,5 @@ storage
 go.work
 go.work.sum
 .env.sh
+node.key
+order.toml

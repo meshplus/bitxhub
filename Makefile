@@ -13,10 +13,15 @@ VERSION_DIR = github.com/axiomesh/${APP_NAME}
 BUILD_DATE = $(shell date +%FT%T)
 GIT_COMMIT = $(shell git log --pretty=format:'%h' -n 1)
 GIT_BRANCH = $(shell git rev-parse --abbrev-ref HEAD)
-ifeq (${GIT_BRANCH},HEAD)
-  APP_VERSION = $(shell git describe --tags HEAD)
+ifeq ($(version),)
+	# not specify version: make install
+	APP_VERSION = $(shell git describe --abbrev=0 --tag)
+	ifeq ($(APP_VERSION),)
+		APP_VERSION = dev
+	endif
 else
-  APP_VERSION = dev
+	# specify version: make install version=v0.6.1-dev
+	APP_VERSION = $(version)
 endif
 
 GOLDFLAGS += -X "${VERSION_DIR}.BuildDate=${BUILD_DATE}"
@@ -65,7 +70,7 @@ smoke-test: prepare
 build: prepare
 	@mkdir -p bin
 	${GO_BIN} build -ldflags '${GOLDFLAGS}' ./cmd/${APP_NAME}
-	@mv ./${APP_NAME} bin
+	@cp -f ./${APP_NAME} bin
 	@printf "${GREEN}Build ${APP_NAME} successfully!${NC}\n"
 
 ## make install: Go install the project
@@ -100,8 +105,9 @@ solo:install
 rebuild-cluster:
 	cd scripts && bash cluster.sh
 
-package: build
-	cd scripts && bash package.sh VERSION=${APP_VERSION}
+package:build
+	cp -f ./bin/${APP_NAME} ./scripts/package/tools/bin/${APP_NAME}
+	tar czvf ./${APP_NAME}-${APP_VERSION}.tar.gz -C ./scripts/package/ .
 
 ## make precommit: Check code like CI
 precommit: fmt test-coverage linter

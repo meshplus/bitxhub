@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -240,7 +241,23 @@ func readConfig(vp *viper.Viper, config any) error {
 
 	if err := vp.Unmarshal(config, viper.DecodeHook(mapstructure.ComposeDecodeHookFunc(
 		StringToTimeDurationHookFunc(),
-		mapstructure.StringToSliceHookFunc(";"),
+		func(
+			f reflect.Kind,
+			t reflect.Kind,
+			data interface{}) (interface{}, error) {
+			if f != reflect.String || t != reflect.Slice {
+				return data, nil
+			}
+
+			raw := data.(string)
+			if raw == "" {
+				return []string{}, nil
+			}
+			raw = strings.TrimPrefix(raw, ";")
+			raw = strings.TrimSuffix(raw, ";")
+
+			return strings.Split(raw, ";"), nil
+		},
 	))); err != nil {
 		return err
 	}

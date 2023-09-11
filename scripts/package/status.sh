@@ -8,4 +8,4 @@ if [ -f ${env_file} ]; then
 fi
 export AXIOM_PATH=${base_dir}
 
-${base_dir}/tools/control.sh start
+${base_dir}/tools/control.sh status
