@@ -80,7 +80,7 @@ func NewAxiom(rep *repo.Repo, ctx context.Context, cancel context.CancelFunc) (*
 		common.WithApplied(chainMeta.Height),
 		common.WithDigest(chainMeta.BlockHash.String()),
 		common.WithGetChainMetaFunc(axm.Ledger.GetChainMeta),
-		common.WithGetAccountBalanceFunc(axm.Ledger.Copy().GetBalance),
+		common.WithGetAccountBalanceFunc(axm.Ledger.GetBalance),
 		common.WithGetAccountNonceFunc(getNonceFunc),
 		common.WithGetEpochInfoFromEpochMgrContractFunc(func(epoch uint64) (*rbft.EpochInfo, error) {
 			return base.GetEpochInfo(axm.Ledger, epoch)
