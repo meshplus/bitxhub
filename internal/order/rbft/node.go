@@ -178,16 +178,6 @@ func (n *Node) listenValidTxs() {
 		case <-n.ctx.Done():
 			return
 		case validTxs := <-n.txPreCheck.CommitValidTxs():
-			var requests [][]byte
-			for _, tx := range validTxs.Txs {
-				raw, err := tx.RbftMarshal()
-				if err != nil {
-					n.logger.Error(err)
-					continue
-				}
-				requests = append(requests, raw)
-			}
-
 			if err := n.n.Propose(validTxs.Txs, validTxs.Local); err != nil {
 				n.logger.WithField("err", err).Warn("Propose tx failed")
 			}
@@ -406,12 +396,16 @@ func (n *Node) Ready() error {
 	return nil
 }
 
-func (n *Node) GetPendingNonceByAccount(account string) uint64 {
-	return n.n.GetPendingNonceByAccount(account)
+func (n *Node) GetPendingTxCountByAccount(account string) uint64 {
+	return n.n.GetPendingTxCountByAccount(account)
 }
 
 func (n *Node) GetPendingTxByHash(hash *types.Hash) *types.Transaction {
 	return n.n.GetPendingTxByHash(hash.String())
+}
+
+func (n *Node) GetTotalPendingTxCount() uint64 {
+	return n.n.GetTotalPendingTxCount()
 }
 
 func (n *Node) ReportState(height uint64, blockHash *types.Hash, txHashList []*types.Hash) {

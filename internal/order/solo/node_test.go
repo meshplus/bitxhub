@@ -76,7 +76,7 @@ func TestNode_Start(t *testing.T) {
 	solo.Stop()
 }
 
-func TestGetPendingNonceByAccount(t *testing.T) {
+func TestGetPendingTxCountByAccount(t *testing.T) {
 	ast := assert.New(t)
 	node, err := mockSoloNode(t, false)
 	ast.Nil(err)
@@ -84,16 +84,16 @@ func TestGetPendingNonceByAccount(t *testing.T) {
 	ast.Nil(err)
 	defer node.Stop()
 
-	nonce := node.GetPendingNonceByAccount("account1")
+	nonce := node.GetPendingTxCountByAccount("account1")
 	ast.Equal(uint64(0), nonce)
 
 	tx, err := types.GenerateEmptyTransactionAndSigner()
 	require.Nil(t, err)
-	ast.Equal(uint64(0), node.GetPendingNonceByAccount(tx.RbftGetFrom()))
+	ast.Equal(uint64(0), node.GetPendingTxCountByAccount(tx.RbftGetFrom()))
 
 	err = node.Prepare(tx)
 	ast.Nil(err)
-	ast.Equal(uint64(1), node.GetPendingNonceByAccount(tx.RbftGetFrom()))
+	ast.Equal(uint64(1), node.GetPendingTxCountByAccount(tx.RbftGetFrom()))
 }
 
 func TestGetPendingTxByHash(t *testing.T) {
@@ -219,4 +219,24 @@ func TestNode_RemoveTxFromPool(t *testing.T) {
 	time.Sleep(2*removeTxTimeout + 500*time.Millisecond)
 
 	ast.Nil(node.mempool.GetPendingTxByHash(txList[8].RbftGetTxHash()), "tx9 should be removed from mempool")
+}
+
+func TestNode_GetTotalPendingTxCount(t *testing.T) {
+	ast := assert.New(t)
+	node, err := mockSoloNode(t, false)
+	ast.Nil(err)
+
+	err = node.Start()
+	ast.Nil(err)
+	defer node.Stop()
+
+	txList, _ := prepareMultiTx(t, 10)
+	// remove the first tx, ensure mempool don't generated a batch
+	txList = txList[1:]
+	ast.Equal(9, len(txList))
+	for _, tx := range txList {
+		err = node.Prepare(tx)
+		ast.Nil(err)
+	}
+	ast.Equal(uint64(9), node.GetTotalPendingTxCount())
 }

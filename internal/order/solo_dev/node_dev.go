@@ -105,9 +105,8 @@ func (n *NodeDev) Quorum() uint64 {
 	return 1
 }
 
-func (n *NodeDev) GetPendingNonceByAccount(account string) uint64 {
+func (n *NodeDev) GetPendingTxCountByAccount(account string) uint64 {
 	nonce := n.GetAccountNonce(types.NewAddressByStr(account))
-	n.logger.Debugf("GetPendingNonceByAccount", nonce)
 	return nonce
 }
 
@@ -121,4 +120,8 @@ func (n *NodeDev) DelNode(_ uint64) error {
 
 func (n *NodeDev) SubscribeTxEvent(events chan<- []*types.Transaction) event.Subscription {
 	return n.txFeed.Subscribe(events)
+}
+
+func (n *NodeDev) GetTotalPendingTxCount() uint64 {
+	return 0
 }

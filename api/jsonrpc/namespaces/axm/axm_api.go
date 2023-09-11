@@ -26,10 +26,14 @@ func (api *AxmAPI) Status() any {
 	syncStatus := make(map[string]string)
 	err := api.api.Broker().OrderReady()
 	if err != nil {
-		syncStatus["result"] = "abnormal"
-		syncStatus["orderStatus"] = err.Error()
+		syncStatus["status"] = "abnormal"
+		syncStatus["error_msg"] = err.Error()
 		return syncStatus
 	}
-	syncStatus["result"] = "normal"
+	syncStatus["status"] = "normal"
 	return syncStatus
+}
+
+func (api *AxmAPI) GetTotalPendingTxCount() any {
+	return api.api.Broker().GetTotalPendingTxCount()
 }

@@ -99,7 +99,7 @@ func (api *TransactionAPI) GetTransactionCount(address common.Address, blockNrOr
 	api.logger.Debugf("eth_getTransactionCount, address: %s", address)
 	if blockNrOrHash != nil {
 		if blockNumber, ok := blockNrOrHash.Number(); ok && blockNumber == rpctypes.PendingBlockNumber {
-			nonce := api.api.Broker().GetPendingNonceByAccount(address.String())
+			nonce := api.api.Broker().GetPendingTxCountByAccount(address.String())
 			return (*hexutil.Uint64)(&nonce), nil
 		}
 	}

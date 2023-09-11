@@ -110,6 +110,14 @@ func (n *Node) GetPendingTxByHash(hash *types.Hash) *types.Transaction {
 	return <-request.Resp
 }
 
+func (n *Node) GetTotalPendingTxCount() uint64 {
+	req := &GetTotalPendingTxCountReq{
+		Resp: make(chan uint64),
+	}
+	n.recvCh <- req
+	return <-req.Resp
+}
+
 func (n *Node) Start() error {
 	n.logger.Info("Consensus started")
 	if n.isTimed {
@@ -128,7 +136,7 @@ func (n *Node) Stop() {
 	n.logger.Info("Consensus stopped")
 }
 
-func (n *Node) GetPendingNonceByAccount(account string) uint64 {
+func (n *Node) GetPendingTxCountByAccount(account string) uint64 {
 	request := &getNonceReq{
 		account: account,
 		Resp:    make(chan uint64),
@@ -280,7 +288,9 @@ func (n *Node) listenEvent() {
 			case *getTxReq:
 				e.Resp <- n.mempool.GetPendingTxByHash(e.Hash)
 			case *getNonceReq:
-				e.Resp <- n.mempool.GetPendingNonceByAccount(e.account)
+				e.Resp <- n.mempool.GetPendingTxCountByAccount(e.account)
+			case *GetTotalPendingTxCountReq:
+				e.Resp <- n.mempool.GetTotalPendingTxCount()
 			}
 		}
 	}

@@ -69,7 +69,8 @@ func (l *Ledger) PersistBlockData(blockData *BlockData) {
 		panic(err)
 	}
 
-	PersistBlockDuration.Observe(float64(time.Since(current)) / float64(time.Second))
+	persistBlockDuration.Observe(float64(time.Since(current)) / float64(time.Second))
+	blockHeightMetric.Set(float64(block.BlockHeader.Number))
 }
 
 // Rollback rollback ledger to history version
@@ -82,6 +83,7 @@ func (l *Ledger) Rollback(height uint64) error {
 		return fmt.Errorf("rollback block to height %d failed: %w", height, err)
 	}
 
+	blockHeightMetric.Set(float64(height))
 	return nil
 }
 

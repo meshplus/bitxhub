@@ -39,10 +39,14 @@ type Order interface {
 	// Quorum means minimum number of nodes in the cluster that can work
 	Quorum() uint64
 
-	// GetPendingNonceByAccount will return the latest pending nonce of a given account
-	GetPendingNonceByAccount(account string) uint64
+	// GetPendingTxCountByAccount will return the pending tx count by account in mempool
+	GetPendingTxCountByAccount(account string) uint64
 
+	// GetPendingTxByHash will return the pending tx by hash in mempool
 	GetPendingTxByHash(hash *types.Hash) *types.Transaction
+
+	// GetTotalPendingTxCount will return the number of pending txs in mempool
+	GetTotalPendingTxCount() uint64
 
 	SubscribeTxEvent(events chan<- []*types.Transaction) event.Subscription
 }

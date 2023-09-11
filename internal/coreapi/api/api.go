@@ -28,7 +28,8 @@ type BrokerAPI interface {
 	GetReceipt(*types.Hash) (*types.Receipt, error)
 	GetBlock(mode string, key string) (*types.Block, error)
 	GetBlocks(start uint64, end uint64) ([]*types.Block, error)
-	GetPendingNonceByAccount(account string) uint64
+	GetPendingTxCountByAccount(account string) uint64
+	GetTotalPendingTxCount() uint64
 	GetPoolTransaction(hash *types.Hash) *types.Transaction
 	GetStateLedger() ledger.StateLedger
 	GetEvm(mes *vm.Message, vmConfig *vm.Config) (*vm.EVM, error)

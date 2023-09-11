@@ -29,3 +29,8 @@ type getNonceReq struct {
 	account string
 	Resp    chan uint64
 }
+
+// GetTotalPendingTxCountReq is a type for api request GetTotalPendingTxCount
+type GetTotalPendingTxCountReq struct {
+	Resp chan uint64
+}
