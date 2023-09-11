@@ -121,7 +121,7 @@ type P2P struct {
 }
 
 type Monitor struct {
-	Enable bool
+	Enable bool `mapstructure:"enable" toml:"enable"`
 }
 
 type PProf struct {

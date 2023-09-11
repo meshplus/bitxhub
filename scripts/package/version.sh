@@ -1,2 +1,6 @@
-#!/usr/bin/env bash
-./axiom version
+#! /bin/bash
+set -e
+
+base_dir=$(cd $(dirname ${BASH_SOURCE[0]}); pwd)
+
+${base_dir}/axiom version

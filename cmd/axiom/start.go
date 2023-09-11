@@ -103,12 +103,12 @@ func start(ctx *cli.Context) error {
 	wg.Add(1)
 	handleShutdown(axm, &wg)
 
-	if err := repo.WritePid(r.Config.RepoRoot); err != nil {
-		return fmt.Errorf("write pid error: %s", err)
-	}
-
 	if err := axm.Start(); err != nil {
 		return fmt.Errorf("start axiom failed: %w", err)
+	}
+
+	if err := repo.WritePid(r.Config.RepoRoot); err != nil {
+		return fmt.Errorf("write pid error: %s", err)
 	}
 
 	wg.Wait()
@@ -125,7 +125,6 @@ func printVersion() {
 	fmt.Printf("App build date: %s\n", axiom.BuildDate)
 	fmt.Printf("System version: %s\n", axiom.Platform)
 	fmt.Printf("Golang version: %s\n", axiom.GoVersion)
-	fmt.Println()
 }
 
 func handleShutdown(node *app.Axiom, wg *sync.WaitGroup) {

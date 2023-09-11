@@ -1,14 +1,11 @@
-#!/usr/bin/env bash
+#! /bin/bash
 set -e
 
 base_dir=$(cd $(dirname ${BASH_SOURCE[0]}); pwd)
-
-bash stop.sh
-
-if [ -n "$1" ]; then
-    mv axiom axiom.bak
-    # $1 is new axiom path
-    cp $1 axiom
+env_file=${base_dir}/.env.sh
+if [ -f ${env_file} ]; then
+  source ${env_file}
 fi
+export AXIOM_PATH=${base_dir}
 
-nohup bash start.sh > /dev/null 2>&1 &
+${base_dir}/tools/control.sh restart
