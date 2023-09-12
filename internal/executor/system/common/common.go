@@ -9,6 +9,9 @@ import (
 )
 
 const (
+	// ZeroAddress is a special address, no one has control
+	ZeroAddress = "0x0000000000000000000000000000000000000000"
+
 	// internal contract
 	// EpochManagerContractAddr is the contract to used to manager chain epoch info
 	EpochManagerContractAddr = "0x0000000000000000000000000000000000000001"

@@ -17,6 +17,7 @@ import (
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/internal/executor/system"
 	"github.com/axiomesh/axiom/internal/executor/system/base"
+	syscommon "github.com/axiomesh/axiom/internal/executor/system/common"
 	"github.com/axiomesh/axiom/internal/ledger"
 	ordercommon "github.com/axiomesh/axiom/internal/order/common"
 	"github.com/axiomesh/axiom/pkg/model/events"
@@ -311,7 +312,7 @@ func calcMerkleRoot(contents []merkletree.Content) (*types.Hash, error) {
 
 func newEvm(number uint64, timestamp uint64, chainCfg *params.ChainConfig, db ethledger.StateLedger, chainLedger ethledger.ChainLedger, coinbase string) *ethvm.EVM {
 	if coinbase == "" {
-		coinbase = "0x0000000000000000000000000000000000000000"
+		coinbase = syscommon.ZeroAddress
 	}
 
 	blkCtx := ethvm.NewEVMBlockContext(number, timestamp, db, chainLedger, coinbase)

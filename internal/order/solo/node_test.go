@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -47,6 +48,9 @@ func TestNode_Start(t *testing.T) {
 	err = solo.Start()
 	require.Nil(t, err)
 
+	err = solo.SubmitTxsFromRemote(nil)
+	require.Nil(t, err)
+
 	var msg []byte
 	require.Nil(t, solo.Step(msg))
 	require.Equal(t, uint64(1), solo.Quorum())
@@ -62,8 +66,19 @@ func TestNode_Start(t *testing.T) {
 		}
 	}
 
+	txSubscribeCh := make(chan []*types.Transaction)
+	sub := solo.SubscribeTxEvent(txSubscribeCh)
+	defer sub.Unsubscribe()
+
 	err = solo.Prepare(tx)
 	require.Nil(t, err)
+	select {
+	case subTxs := <-txSubscribeCh:
+		require.EqualValues(t, 1, len(subTxs))
+		require.EqualValues(t, tx, subTxs[0])
+	case <-time.After(50 * time.Millisecond):
+		require.Nil(t, errors.New("not received subscribe tx"))
+	}
 
 	commitEvent := <-solo.Commit()
 	require.Equal(t, uint64(2), commitEvent.Block.BlockHeader.Number)

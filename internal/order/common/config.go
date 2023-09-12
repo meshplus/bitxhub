@@ -26,6 +26,7 @@ type Config struct {
 	PeerMgr                                     peermgr.PeerManager
 	Applied                                     uint64
 	Digest                                      string
+	GenesisDigest                               string
 	GetCurrentEpochInfoFromEpochMgrContractFunc func() (*rbft.EpochInfo, error)
 	GetEpochInfoFromEpochMgrContractFunc        func(epoch uint64) (*rbft.EpochInfo, error)
 	GetChainMetaFunc                            func() *types.ChainMeta
@@ -98,6 +99,12 @@ func WithApplied(height uint64) Option {
 func WithDigest(digest string) Option {
 	return func(config *Config) {
 		config.Digest = digest
+	}
+}
+
+func WithGenesisDigest(digest string) Option {
+	return func(config *Config) {
+		config.GenesisDigest = digest
 	}
 }
 
