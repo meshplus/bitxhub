@@ -38,8 +38,9 @@ type TestCouncilProposal struct {
 }
 
 func TestRunForPropose(t *testing.T) {
-	logger := logrus.New()
-	cm := NewCouncilManager(logger)
+	cm := NewCouncilManager(&common.SystemContractConfig{
+		Logger: logrus.New(),
+	})
 
 	mockCtl := gomock.NewController(t)
 	stateLedger := mock_ledger.NewMockStateLedger(mockCtl)
@@ -259,8 +260,9 @@ func TestRunForPropose(t *testing.T) {
 }
 
 func TestRunForVote(t *testing.T) {
-	logger := logrus.New()
-	cm := NewCouncilManager(logger)
+	cm := NewCouncilManager(&common.SystemContractConfig{
+		Logger: logrus.New(),
+	})
 
 	mockCtl := gomock.NewController(t)
 	stateLedger := mock_ledger.NewMockStateLedger(mockCtl)
@@ -453,8 +455,9 @@ func TestRunForVote(t *testing.T) {
 }
 
 func TestEstimateGas(t *testing.T) {
-	logger := logrus.New()
-	cm := NewCouncilManager(logger)
+	cm := NewCouncilManager(&common.SystemContractConfig{
+		Logger: logrus.New(),
+	})
 
 	from := types.NewAddressByStr(admin1).ETHAddress()
 	to := types.NewAddressByStr(common.CouncilManagerContractAddr).ETHAddress()

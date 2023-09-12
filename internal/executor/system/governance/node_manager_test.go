@@ -20,7 +20,9 @@ import (
 )
 
 func TestNodeManager_RunForPropose(t *testing.T) {
-	nm := NewNodeManager(logrus.New())
+	nm := NewNodeManager(&common.SystemContractConfig{
+		Logger: logrus.New(),
+	})
 
 	mockCtl := gomock.NewController(t)
 	stateLedger := mock_ledger.NewMockStateLedger(mockCtl)
@@ -135,8 +137,9 @@ func TestNodeManager_RunForPropose(t *testing.T) {
 }
 
 func TestNodeManager_RunForVote(t *testing.T) {
-	logger := logrus.New()
-	nm := NewNodeManager(logger)
+	nm := NewNodeManager(&common.SystemContractConfig{
+		Logger: logrus.New(),
+	})
 
 	mockCtl := gomock.NewController(t)
 	stateLedger := mock_ledger.NewMockStateLedger(mockCtl)
@@ -256,7 +259,9 @@ func TestNodeManager_RunForVote(t *testing.T) {
 }
 
 func TestNodeManager_EstimateGas(t *testing.T) {
-	nm := NewNodeManager(logrus.New())
+	nm := NewNodeManager(&common.SystemContractConfig{
+		Logger: logrus.New(),
+	})
 
 	gabi, err := GetABI()
 	assert.Nil(t, err)

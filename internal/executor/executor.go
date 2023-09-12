@@ -15,15 +15,14 @@ import (
 	"github.com/axiomesh/axiom/internal/finance"
 	"github.com/axiomesh/axiom/internal/ledger"
 	"github.com/axiomesh/axiom/internal/order/common"
+	"github.com/axiomesh/axiom/pkg/loggers"
 	"github.com/axiomesh/axiom/pkg/model/events"
 	"github.com/axiomesh/axiom/pkg/repo"
 	vm "github.com/axiomesh/eth-kit/evm"
-	"github.com/axiomesh/axiom/pkg/loggers"
 )
 
 const (
-	blockChanNumber   = 1024
-	persistChanNumber = 1024
+	blockChanNumber = 1024
 )
 
 var _ Executor = (*BlockExecutor)(nil)

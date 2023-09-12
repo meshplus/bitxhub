@@ -8,7 +8,6 @@ import (
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/samber/lo"
-	"github.com/sirupsen/logrus"
 
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/internal/executor/system/common"
@@ -92,8 +91,8 @@ type CouncilManager struct {
 	addr2NameSystem *Addr2NameSystem
 }
 
-func NewCouncilManager(logger logrus.FieldLogger) *CouncilManager {
-	gov, err := NewGov([]ProposalType{CouncilElect}, logger)
+func NewCouncilManager(cfg *common.SystemContractConfig) *CouncilManager {
+	gov, err := NewGov([]ProposalType{CouncilElect}, cfg.Logger)
 	if err != nil {
 		panic(err)
 	}

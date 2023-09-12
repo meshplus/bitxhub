@@ -1,6 +1,8 @@
 package common
 
 import (
+	"github.com/sirupsen/logrus"
+
 	"github.com/axiomesh/axiom-kit/types"
 	vm "github.com/axiomesh/eth-kit/evm"
 	"github.com/axiomesh/eth-kit/ledger"
@@ -21,6 +23,12 @@ const (
 	// Addr2NameContractAddr for unique name mapping to address
 	Addr2NameContractAddr = "0x0000000000000000000000000000000000001003"
 )
+
+type SystemContractConfig struct {
+	Logger logrus.FieldLogger
+}
+
+type SystemContractConstruct func(cfg *SystemContractConfig) SystemContract
 
 type SystemContract interface {
 	// Reset the state of the system contract

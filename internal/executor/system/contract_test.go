@@ -75,3 +75,27 @@ func TestContractInitGenesisData(t *testing.T) {
 	err = InitGenesisData(&genesis.Genesis, mockLedger)
 	assert.Nil(t, err)
 }
+
+func TestContractCheckAndUpdateAllState(t *testing.T) {
+	mockCtl := gomock.NewController(t)
+	chainLedger := mock_ledger.NewMockChainLedger(mockCtl)
+	stateLedger := mock_ledger.NewMockStateLedger(mockCtl)
+	mockLedger := &ledger.Ledger{
+		ChainLedger: chainLedger,
+		StateLedger: stateLedger,
+	}
+
+	repoRoot := t.TempDir()
+	accountCache, err := ledger.NewAccountCache()
+	assert.Nil(t, err)
+	ld, err := leveldb.New(filepath.Join(repoRoot, "executor"))
+	assert.Nil(t, err)
+	account := ledger.NewAccount(ld, accountCache, types.NewAddressByStr(common.NodeManagerContractAddr), ledger.NewChanger())
+	stateLedger.EXPECT().GetOrCreateAccount(gomock.Any()).Return(account).AnyTimes()
+	stateLedger.EXPECT().SetBalance(gomock.Any(), gomock.Any()).AnyTimes()
+
+	CheckAndUpdateAllState(1, mockLedger)
+	assert.Nil(t, err)
+	exist, _ := account.Query("")
+	assert.False(t, exist)
+}
