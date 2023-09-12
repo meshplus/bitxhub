@@ -86,7 +86,7 @@ func DefaultOrderConfig() *OrderConfig {
 		},
 		Rbft: RBFT{
 			EnableMultiPipes: false,
-			EnableMetrics:    false,
+			EnableMetrics:    true,
 			CheckInterval:    Duration(3 * time.Minute),
 			Timeout: RBFTTimeout{
 				SyncState:        Duration(3 * time.Second),

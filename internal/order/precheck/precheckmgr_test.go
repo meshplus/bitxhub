@@ -173,6 +173,26 @@ func TestTxPreCheckMgr_VerifySign(t *testing.T) {
 		require.False(t, resp.Status)
 		require.Contains(t, resp.ErrorMsg, core.ErrInsufficientFunds.Error())
 	})
+
+	t.Run("test precheck illegal to address", func(t *testing.T) {
+		signer, err := types.GenerateSigner()
+		require.Nil(t, err)
+		tx, err := types.GenerateTransactionWithSigner(0, signer.Addr, big.NewInt(0), []byte{}, signer)
+		require.Nil(t, err)
+		require.Equal(t, tx.GetFrom(), tx.GetTo())
+
+		event := &common2.UncheckedTxEvent{
+			EventType: common2.LocalTxEvent,
+			Event: &common2.TxWithResp{
+				Tx:     tx,
+				RespCh: make(chan *common2.TxResp),
+			},
+		}
+		tp.PostUncheckedTxEvent(event)
+		resp := <-event.Event.(*common2.TxWithResp).RespCh
+		require.False(t, resp.Status)
+		require.Contains(t, resp.ErrorMsg, ErrTo)
+	})
 }
 
 func TestTxPreCheckMgr_VerifyData(t *testing.T) {
