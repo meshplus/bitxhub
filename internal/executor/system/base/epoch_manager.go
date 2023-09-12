@@ -22,20 +22,21 @@ const (
 var _ common.SystemContract = (*EpochManager)(nil)
 
 type EpochManager struct {
+	logger  logrus.FieldLogger
 	account ledger.IAccount
 }
 
-func NewEpochManager(logger logrus.FieldLogger) *EpochManager {
-	return &EpochManager{}
+func NewEpochManager(cfg *common.SystemContractConfig) *EpochManager {
+	return &EpochManager{
+		logger: cfg.Logger,
+	}
 }
 
 func (m *EpochManager) Reset(stateLedger ledger.StateLedger) {
 	m.account = stateLedger.GetOrCreateAccount(types.NewAddressByStr(common.EpochManagerContractAddr))
 }
 
-func (m *EpochManager) CheckAndUpdateState(uint64, ledger.StateLedger) {
-	// TODO: support
-}
+func (m *EpochManager) CheckAndUpdateState(uint64, ledger.StateLedger) {}
 
 func (m *EpochManager) Run(msg *vm.Message) (*vm.ExecutionResult, error) {
 	// TODO: add query method
@@ -52,6 +53,7 @@ func historyEpochInfoKey(epoch uint64) []byte {
 
 func InitEpochInfo(lg ledger.StateLedger, epochInfo *rbft.EpochInfo) error {
 	account := lg.GetOrCreateAccount(types.NewAddressByStr(common.EpochManagerContractAddr))
+	epochInfo = epochInfo.Clone()
 
 	c, err := json.Marshal(epochInfo)
 	if err != nil {

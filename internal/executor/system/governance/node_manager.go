@@ -7,7 +7,6 @@ import (
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/samber/lo"
-	"github.com/sirupsen/logrus"
 
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/internal/executor/system/common"
@@ -91,8 +90,8 @@ type NodeManager struct {
 	proposalID     *ProposalID
 }
 
-func NewNodeManager(logger logrus.FieldLogger) *NodeManager {
-	gov, err := NewGov([]ProposalType{NodeUpgrade, NodeAdd, NodeRemove}, logger)
+func NewNodeManager(cfg *common.SystemContractConfig) *NodeManager {
+	gov, err := NewGov([]ProposalType{NodeUpgrade, NodeAdd, NodeRemove}, cfg.Logger)
 	if err != nil {
 		panic(err)
 	}

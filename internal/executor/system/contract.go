@@ -12,16 +12,29 @@ import (
 	ethledger "github.com/axiomesh/eth-kit/ledger"
 )
 
-// Addr2Contract is address to system contract
-var Addr2Contract map[types.Address]common.SystemContract
+// addr2ContractConstruct is address to system contract
+var addr2ContractConstruct map[types.Address]common.SystemContractConstruct
+
+var globalCfg = &common.SystemContractConfig{
+	Logger: logrus.New(),
+}
+
+func init() {
+	addr2ContractConstruct = map[types.Address]common.SystemContractConstruct{
+		*types.NewAddressByStr(common.EpochManagerContractAddr): func(cfg *common.SystemContractConfig) common.SystemContract {
+			return base.NewEpochManager(cfg)
+		},
+		*types.NewAddressByStr(common.NodeManagerContractAddr): func(cfg *common.SystemContractConfig) common.SystemContract {
+			return governance.NewNodeManager(cfg)
+		},
+		*types.NewAddressByStr(common.CouncilManagerContractAddr): func(cfg *common.SystemContractConfig) common.SystemContract {
+			return governance.NewCouncilManager(cfg)
+		},
+	}
+}
 
 func Initialize(logger logrus.FieldLogger) {
-	Addr2Contract = map[types.Address]common.SystemContract{
-		*types.NewAddressByStr(common.EpochManagerContractAddr): base.NewEpochManager(logger),
-
-		*types.NewAddressByStr(common.NodeManagerContractAddr):    governance.NewNodeManager(logger),
-		*types.NewAddressByStr(common.CouncilManagerContractAddr): governance.NewCouncilManager(logger),
-	}
+	globalCfg.Logger = logger
 }
 
 // GetSystemContract get system contract
@@ -31,8 +44,8 @@ func GetSystemContract(addr *types.Address) (common.SystemContract, bool) {
 		return nil, false
 	}
 
-	if contract, ok := Addr2Contract[*addr]; ok {
-		return contract, true
+	if contractConstruct, ok := addr2ContractConstruct[*addr]; ok {
+		return contractConstruct(globalCfg), true
 	}
 	return nil, false
 }
@@ -49,7 +62,7 @@ func InitGenesisData(genesis *repo.Genesis, lg *ledger.Ledger) error {
 
 // CheckAndUpdateAllState check and update all system contract state if need
 func CheckAndUpdateAllState(lastHeight uint64, stateLedger ethledger.StateLedger) {
-	for _, contract := range Addr2Contract {
-		contract.CheckAndUpdateState(lastHeight, stateLedger)
+	for _, contractConstruct := range addr2ContractConstruct {
+		contractConstruct(globalCfg).CheckAndUpdateState(lastHeight, stateLedger)
 	}
 }
