@@ -19,6 +19,7 @@ import (
 const (
 	defaultTxPreCheckSize = 10000
 	ErrTxSign             = "tx signature verify failed"
+	ErrTo                 = "tx from and to address is same"
 	ErrTxEventType        = "invalid tx event type"
 	ErrParseTxEventType   = "parse tx event type error"
 )
@@ -87,14 +88,14 @@ func (tp *TxPreCheckMgr) dispatchTxEvent() {
 						tp.logger.Errorf("%s:%s", ErrParseTxEventType, "receive invalid local TxEvent")
 						return
 					}
-					if tp.verifySignature(txWithResp.Tx) {
-						tp.verifyDataCh <- ev
-					} else {
+					if err := tp.verifySignature(txWithResp.Tx); err != nil {
 						txWithResp.RespCh <- &common.TxResp{
 							Status:   false,
-							ErrorMsg: ErrTxSign,
+							ErrorMsg: err.Error(),
 						}
+						return
 					}
+					tp.verifyDataCh <- ev
 
 				case common.RemoteTxEvent:
 					txSet, ok := ev.Event.([]*types.Transaction)
@@ -104,9 +105,10 @@ func (tp *TxPreCheckMgr) dispatchTxEvent() {
 					}
 					validSignTxs := make([]*types.Transaction, 0)
 					for _, tx := range txSet {
-						if tp.verifySignature(tx) {
-							validSignTxs = append(validSignTxs, tx)
+						if err := tp.verifySignature(tx); err != nil {
+							tp.logger.Warningf("verify remote tx err:%s", err)
 						}
+						validSignTxs = append(validSignTxs, tx)
 					}
 					ev.Event = validSignTxs
 					tp.verifyDataCh <- ev
@@ -169,18 +171,19 @@ func (tp *TxPreCheckMgr) dispatchVerifyDataEvent() {
 	}
 }
 
-func (tp *TxPreCheckMgr) verifySignature(tx *types.Transaction) bool {
+func (tp *TxPreCheckMgr) verifySignature(tx *types.Transaction) error {
 	if err := tx.VerifySignature(); err != nil {
-		return false
+		return fmt.Errorf("verify tx err: %s", ErrTxSign)
 	}
 
 	if tx.GetTo() != nil {
 		if tx.GetFrom().String() == tx.GetTo().String() {
-			tp.logger.Errorf("tx from and to address is same")
-			return false
+			err := fmt.Errorf("verify tx err: %s", ErrTo)
+			tp.logger.Errorf(err.Error())
+			return err
 		}
 	}
-	return true
+	return nil
 }
 
 func (tp *TxPreCheckMgr) verifyData(tx *types.Transaction) error {
