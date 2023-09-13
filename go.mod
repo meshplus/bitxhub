@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/Rican7/retry v0.3.1
-	github.com/axiomesh/axiom-bft v0.0.3-0.20230913072059-9da5d81c14c7
+	github.com/axiomesh/axiom-bft v0.0.3-0.20230913094558-26909c6d7f2c
 	github.com/axiomesh/axiom-kit v0.0.3-0.20230909104727-bf3aad5ff80e
 	github.com/axiomesh/axiom-p2p v0.0.3-0.20230907174724-b3175e447038
 	github.com/axiomesh/eth-kit v0.0.3-0.20230824120858-0328f1de558d
