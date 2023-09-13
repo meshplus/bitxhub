@@ -2,6 +2,7 @@ package governance
 
 import (
 	"encoding/json"
+	"fmt"
 	"path/filepath"
 	"testing"
 
@@ -181,6 +182,56 @@ func TestNodeManager_RunForPropose(t *testing.T) {
 	}
 }
 
+func TestNodeManager_GetNodeMembers(t *testing.T) {
+
+	mockCtl := gomock.NewController(t)
+	stateLedger := mock_ledger.NewMockStateLedger(mockCtl)
+
+	accountCache, err := ledger.NewAccountCache()
+	assert.Nil(t, err)
+	repoRoot := t.TempDir()
+	ld, err := leveldb.New(filepath.Join(repoRoot, "node_manager"))
+	assert.Nil(t, err)
+	account := ledger.NewAccount(ld, accountCache, types.NewAddressByStr(common.NodeManagerContractAddr), ledger.NewChanger())
+
+	stateLedger.EXPECT().GetOrCreateAccount(gomock.Any()).Return(account).AnyTimes()
+	stateLedger.EXPECT().SetBalance(gomock.Any(), gomock.Any()).AnyTimes()
+	stateLedger.EXPECT().AddLog(gomock.Any()).AnyTimes()
+
+	err = InitCouncilMembers(stateLedger, []*repo.Admin{
+		{
+			Address: admin1,
+			Weight:  1,
+			Name:    "111",
+		},
+		{
+			Address: admin2,
+			Weight:  1,
+			Name:    "222",
+		},
+		{
+			Address: admin3,
+			Weight:  1,
+			Name:    "333",
+		},
+		{
+			Address: admin4,
+			Weight:  1,
+			Name:    "444",
+		},
+	}, "10")
+	assert.Nil(t, err)
+	err = InitNodeMembers(stateLedger, []*NodeMember{
+		{
+			NodeId: "16Uiu2HAmJ38LwfY6pfgDWNvk3ypjcpEMSePNTE6Ma2NCLqjbZJSF",
+		},
+	})
+
+	members, err := GetNodeMembers(stateLedger)
+	assert.Nil(t, err)
+	fmt.Println("GetNodeMembers-members:", members)
+}
+
 func TestNodeManager_RunForVote(t *testing.T) {
 	nm := NewNodeManager(&common.SystemContractConfig{
 		Logger: logrus.New(),
@@ -251,7 +302,7 @@ func TestNodeManager_RunForVote(t *testing.T) {
 	}{
 		{
 			Caller: admin1,
-			Data:   generateNodeAddVoteData(t, nm.proposalID.GetID()-1, Pass),
+			Data:   generateNodeVoteData(t, nm.proposalID.GetID()-1, Pass),
 			Expected: vm.ExecutionResult{
 				UsedGas: NodeManagementVoteGas,
 				Err:     ErrUseHasVoted,
@@ -260,7 +311,7 @@ func TestNodeManager_RunForVote(t *testing.T) {
 		},
 		{
 			Caller: admin2,
-			Data:   generateNodeAddVoteData(t, nm.proposalID.GetID()-1, Pass),
+			Data:   generateNodeVoteData(t, nm.proposalID.GetID()-1, Pass),
 			Expected: vm.ExecutionResult{
 				UsedGas: NodeManagementVoteGas,
 			},
@@ -268,7 +319,7 @@ func TestNodeManager_RunForVote(t *testing.T) {
 		},
 		{
 			Caller: admin2,
-			Data:   generateNodeAddVoteData(t, nm.proposalID.GetID()-1, Pass),
+			Data:   generateNodeVoteData(t, nm.proposalID.GetID()-1, Pass),
 			Expected: vm.ExecutionResult{
 				UsedGas: NodeManagementVoteGas,
 				Err:     ErrUseHasVoted,
@@ -277,7 +328,7 @@ func TestNodeManager_RunForVote(t *testing.T) {
 		},
 		{
 			Caller: "0x1000000000000000000000000000000000000000",
-			Data:   generateNodeAddVoteData(t, nm.proposalID.GetID()-1, Pass),
+			Data:   generateNodeVoteData(t, nm.proposalID.GetID()-1, Pass),
 			Expected: vm.ExecutionResult{
 				UsedGas: NodeManagementVoteGas,
 				Err:     ErrNotFoundCouncilMember,
@@ -299,6 +350,119 @@ func TestNodeManager_RunForVote(t *testing.T) {
 		if result != nil {
 			assert.Equal(t, test.Expected.UsedGas, result.UsedGas)
 			assert.Equal(t, test.Expected.Err, result.Err)
+		}
+	}
+}
+
+func TestNodeManager_RunForRemoveVote(t *testing.T) {
+	nm := NewNodeManager(&common.SystemContractConfig{
+		Logger: logrus.New(),
+	})
+
+	mockCtl := gomock.NewController(t)
+	stateLedger := mock_ledger.NewMockStateLedger(mockCtl)
+
+	accountCache, err := ledger.NewAccountCache()
+	assert.Nil(t, err)
+	repoRoot := t.TempDir()
+	ld, err := leveldb.New(filepath.Join(repoRoot, "node_manager"))
+	assert.Nil(t, err)
+	account := ledger.NewAccount(ld, accountCache, types.NewAddressByStr(common.NodeManagerContractAddr), ledger.NewChanger())
+
+	stateLedger.EXPECT().GetOrCreateAccount(gomock.Any()).Return(account).AnyTimes()
+	stateLedger.EXPECT().SetBalance(gomock.Any(), gomock.Any()).AnyTimes()
+	stateLedger.EXPECT().AddLog(gomock.Any()).AnyTimes()
+
+	err = InitCouncilMembers(stateLedger, []*repo.Admin{
+		{
+			Address: admin1,
+			Weight:  1,
+			Name:    "111",
+		},
+		{
+			Address: admin2,
+			Weight:  1,
+			Name:    "222",
+		},
+		{
+			Address: admin3,
+			Weight:  1,
+			Name:    "333",
+		},
+		{
+			Address: admin4,
+			Weight:  1,
+			Name:    "444",
+		},
+	}, "10")
+	assert.Nil(t, err)
+	err = InitNodeMembers(stateLedger, []*NodeMember{
+		{
+			NodeId: "16Uiu2HAmJ38LwfY6pfgDWNvk3ypjcpEMSePNTE6Ma2NCLqjbZJSF",
+		},
+	})
+
+	// propose
+	nm.Reset(stateLedger)
+	_, err = nm.Run(&vm.Message{
+		From: types.NewAddressByStr(admin1).ETHAddress(),
+		Data: generateNodeRemoveProposeData(t, NodeExtraArgs{
+			Nodes: []*NodeMember{
+				{
+					NodeId: "16Uiu2HAmJ38LwfY6pfgDWNvk3ypjcpEMSePNTE6Ma2NCLqjbZJSF",
+				},
+			},
+		}),
+	})
+
+	assert.Nil(t, err)
+
+	testcases := []struct {
+		Caller   string
+		Data     []byte
+		Expected vm.ExecutionResult
+		Err      error
+	}{
+		{
+			Caller: admin1,
+			Data:   generateNodeVoteData(t, nm.proposalID.GetID()-1, Pass),
+			Expected: vm.ExecutionResult{
+				UsedGas: NodeManagementVoteGas,
+			},
+			Err: nil,
+		},
+		{
+			Caller: admin1,
+			Data:   generateNodeVoteData(t, nm.proposalID.GetID()-1, Pass),
+			Expected: vm.ExecutionResult{
+				UsedGas: NodeManagementVoteGas,
+				Err:     ErrUseHasVoted,
+			},
+			Err: nil,
+		},
+		{
+			Caller: "0x1000000000000000000000000000000000000000",
+			Data:   generateNodeVoteData(t, nm.proposalID.GetID()-1, Pass),
+			Expected: vm.ExecutionResult{
+				UsedGas: NodeManagementVoteGas,
+				Err:     ErrNotFoundCouncilMember,
+			},
+			Err: nil,
+		},
+	}
+
+	for _, test := range testcases {
+		nm.Reset(stateLedger)
+
+		result, err := runVoteMethod(nm, &vm.Message{
+			From: types.NewAddressByStr(test.Caller).ETHAddress(),
+			Data: test.Data,
+		})
+
+		assert.Equal(t, test.Err, err)
+
+		if result != nil {
+			assert.Equal(t, test.Expected.UsedGas, result.UsedGas)
 		}
 	}
 }
@@ -354,7 +518,7 @@ func generateNodeAddProposeData(t *testing.T, extraArgs NodeExtraArgs) []byte {
 	return data
 }
 
-func generateNodeAddVoteData(t *testing.T, proposalID uint64, voteResult VoteResult) []byte {
+func generateNodeVoteData(t *testing.T, proposalID uint64, voteResult VoteResult) []byte {
 	gabi, err := GetABI()
 	assert.Nil(t, err)
 
@@ -376,4 +540,35 @@ func generateNodeRemoveProposeData(t *testing.T, extraArgs NodeExtraArgs) []byte
 	data, err := gabi.Pack(ProposeMethod, uint8(NodeRemove), title, desc, blockNumber, extra)
 	assert.Nil(t, err)
 	return data
+}
+
+func runVoteMethod(nm *NodeManager, msg *vm.Message) (*vm.ExecutionResult, error) {
+	defer nm.gov.SaveLog(nm.stateLedger, nm.currentLog)
+
+	// parse method and arguments from msg payload
+	args, err := nm.gov.GetArgs(msg)
+	if err != nil {
+		return nil, err
+	}
+
+	voteArgs, ok := args.(*VoteArgs)
+	if !ok {
+		return nil, nil
+	}
+
+	result := &vm.ExecutionResult{UsedGas: NodeManagementVoteGas}
+
+	// get proposal
+	proposal, err := nm.loadNodeProposal(voteArgs.ProposalId)
+	if err != nil {
+		return nil, err
+	}
+
+	if proposal.Type == NodeUpgrade {
+		result.ReturnData, result.Err = nm.voteUpgrade(msg.From, proposal, &NodeVoteArgs{BaseVoteArgs: voteArgs.BaseVoteArgs})
+		return result, nil
+	}
+
+	result.ReturnData, result.Err = nm.voteNodeAddRemove(msg.From, proposal, &NodeVoteArgs{BaseVoteArgs: voteArgs.BaseVoteArgs})
+	return result, nil
 }

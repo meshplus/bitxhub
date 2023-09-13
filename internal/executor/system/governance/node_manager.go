@@ -31,6 +31,7 @@ var (
 	ErrNodeExtraArgs           = errors.New("unmarshal node extra arguments error")
 	ErrNodeProposalNumberLimit = errors.New("node proposal number limit, only allow one node proposal")
 	ErrNotFoundNodeProposal    = errors.New("node proposal not found for the id")
+	ErrUnKnownProposalArgs     = errors.New("unknown proposal args")
 	ErrRepeatedNodeID          = errors.New("repeated node id")
 	ErrUpgradeExtraArgs        = errors.New("unmarshal node upgrade extra arguments error")
 	ErrRepeatedDownloadUrl     = errors.New("repeated download url")
@@ -330,14 +331,19 @@ func (nm *NodeManager) voteNodeAddRemove(user ethcommon.Address, proposal *NodeP
 		}
 
 		if proposal.Type == NodeRemove {
-			for _, node := range proposal.Nodes {
-				for i, member := range members {
-					if member.NodeId == node.NodeId {
-						members = append(members[:i], members[i+1:]...)
-						break
-					}
-				}
-			}
+			//https://github.com/samber/lo
+			//Use the Associate method to create a map with the node's NodeId as the key and the NodeMember object as the value
+			nodeIdToNodeMap := lo.Associate(proposal.Nodes, func(node *NodeMember) (string, *NodeMember) {
+				return node.NodeId, node
+			})
+
+			//The members slice is updated to filteredMembers, which does not contain members with the same NodeId as proposalNodes
+			filteredMembers := lo.Reject(members, func(member *NodeMember, _ int) bool {
+				_, exists := nodeIdToNodeMap[member.NodeId]
+				return exists
+			})
+
+			members = filteredMembers
 		}
 
 		cb, err := json.Marshal(members)
