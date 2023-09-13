@@ -65,6 +65,8 @@ github.com/axiomesh/axiom-bft v0.0.3-0.20230913072059-9da5d81c14c7 h1:1zdzv5mU+L
 github.com/axiomesh/axiom-bft v0.0.3-0.20230913072059-9da5d81c14c7/go.mod h1:26oKvpFCzD4D5M7Kv7zivA6QetKBQkUyRvR7jz9bbbg=
 github.com/axiomesh/axiom-bft v0.0.3-0.20230913094558-26909c6d7f2c h1:fBUROl7D3dXMlDSDjY/wp5RXA8ZLDua+QgX3URaYT1A=
 github.com/axiomesh/axiom-bft v0.0.3-0.20230913094558-26909c6d7f2c/go.mod h1:26oKvpFCzD4D5M7Kv7zivA6QetKBQkUyRvR7jz9bbbg=
+github.com/axiomesh/axiom-bft v0.0.3-0.20230913102152-b7ea7029ab76 h1:zWA/ApcMIxIPm7nCVzPUVZt5i3800WSFUGo6Pnp5tdE=
+github.com/axiomesh/axiom-bft v0.0.3-0.20230913102152-b7ea7029ab76/go.mod h1:26oKvpFCzD4D5M7Kv7zivA6QetKBQkUyRvR7jz9bbbg=
 github.com/axiomesh/axiom-kit v0.0.3-0.20230909104727-bf3aad5ff80e h1:UTJ6qvNXXilV+y0U1W7c30qaoIP9j7+v7h/u8vWNIeg=
 github.com/axiomesh/axiom-kit v0.0.3-0.20230909104727-bf3aad5ff80e/go.mod h1:XuDEVIAtMfrAHhgEnAE9zEnlH/5ehyZwLVZRm4/RzDU=
 github.com/axiomesh/axiom-p2p v0.0.3-0.20230907174724-b3175e447038 h1:ufEkco8XEoYujOVrOAbzAlmM+bqUyOfUZ9RQ9/ScQn8=
