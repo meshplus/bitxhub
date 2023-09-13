@@ -79,6 +79,7 @@ func NewAxiom(rep *repo.Repo, ctx context.Context, cancel context.CancelFunc) (*
 		common.WithLogger(loggers.Logger(loggers.Order)),
 		common.WithApplied(chainMeta.Height),
 		common.WithDigest(chainMeta.BlockHash.String()),
+		common.WithGenesisDigest(axm.Ledger.GetBlockHash(1).String()),
 		common.WithGetChainMetaFunc(axm.Ledger.GetChainMeta),
 		common.WithGetAccountBalanceFunc(axm.Ledger.GetBalance),
 		common.WithGetAccountNonceFunc(getNonceFunc),
@@ -147,7 +148,7 @@ func GenerateAxiomWithoutOrder(rep *repo.Repo) (*Axiom, error) {
 	}
 
 	if rwLdg.ChainLedger.GetChainMeta().Height == 0 {
-		if err := genesis.Initialize(&rep.Config.Genesis, rwLdg, viewExec); err != nil {
+		if err := genesis.Initialize(&rep.Config.Genesis, rwLdg); err != nil {
 			return nil, err
 		}
 		logger.WithFields(logrus.Fields{

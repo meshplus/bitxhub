@@ -225,6 +225,23 @@ func readConfigFromFile(cfgFilePath string, config any) error {
 	vp := viper.New()
 	vp.SetConfigFile(cfgFilePath)
 	vp.SetConfigType("toml")
+
+	// only check types, viper does not have a strong type checking
+	raw, err := os.ReadFile(cfgFilePath)
+	if err != nil {
+		return err
+	}
+	decoder := toml.NewDecoder(bytes.NewBuffer(raw))
+	checker := reflect.New(reflect.TypeOf(config).Elem())
+	if err := decoder.Decode(checker.Interface()); err != nil {
+		var decodeError *toml.DecodeError
+		if errors.As(err, &decodeError) {
+			return errors.Errorf("check config formater failed from %s:\n%s", cfgFilePath, decodeError.String())
+		}
+
+		return errors.Wrapf(err, "check config formater failed from %s", cfgFilePath)
+	}
+
 	return readConfig(vp, config)
 }
 
@@ -244,7 +261,7 @@ func readConfig(vp *viper.Viper, config any) error {
 		func(
 			f reflect.Kind,
 			t reflect.Kind,
-			data interface{}) (interface{}, error) {
+			data any) (any, error) {
 			if f != reflect.String || t != reflect.Slice {
 				return data, nil
 			}

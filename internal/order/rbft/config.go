@@ -47,7 +47,7 @@ func generateRbftConfig(config *common.Config) (rbft.Config, mempool.Config) {
 	defaultConfig.GenesisEpochInfo = config.GenesisEpochInfo
 	defaultConfig.SelfAccountAddress = config.SelfAccountAddress
 	defaultConfig.Applied = config.Applied
-	defaultConfig.AppliedBlockHash = config.Digest
+	defaultConfig.GenesisBlockDigest = config.GenesisDigest
 	defaultConfig.Logger = &common.Logger{FieldLogger: config.Logger}
 
 	if readConfig.TimedGenBlock.NoTxBatchTimeout > 0 {
