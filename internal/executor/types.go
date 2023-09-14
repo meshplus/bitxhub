@@ -31,5 +31,5 @@ type Executor interface {
 	// SubscribeLogEvent
 	SubscribeLogsEvent(chan<- []*types.EvmLog) event.Subscription
 
-	GetEvm(txCtx vm.TxContext, vmConfig vm.Config) (*vm.EVM, error)
+	NewEvmWithViewLedger(txCtx vm.TxContext, vmConfig vm.Config) (*vm.EVM, error)
 }

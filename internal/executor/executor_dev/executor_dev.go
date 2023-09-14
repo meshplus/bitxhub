@@ -100,7 +100,7 @@ func (exec *ExecutorDev) SubscribeLogsEvent(c chan<- []*types.EvmLog) event.Subs
 	return exec.logsFeed.Subscribe(c)
 }
 
-func (exec *ExecutorDev) GetEvm(txCtx vm.TxContext, vmConfig vm.Config) (*vm.EVM, error) {
+func (exec *ExecutorDev) NewEvmWithViewLedger(txCtx vm.TxContext, vmConfig vm.Config) (*vm.EVM, error) {
 	return nil, nil
 }
 

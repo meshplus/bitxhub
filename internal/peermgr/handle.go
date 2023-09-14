@@ -45,7 +45,7 @@ func (swarm *Swarm) handleGetBlockPack(s network.Stream, msg *pb.Message) error 
 		return fmt.Errorf("convert %s string to int failed: %w", string(msg.Data), err)
 	}
 
-	block, err := swarm.ledger.GetBlock(uint64(num))
+	block, err := swarm.ledger.ChainLedger.GetBlock(uint64(num))
 	if err != nil {
 		return fmt.Errorf("get block with height %d failed: %w", num, err)
 	}

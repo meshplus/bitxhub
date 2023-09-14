@@ -10,8 +10,8 @@ import (
 
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/internal/executor/system/common"
+	"github.com/axiomesh/axiom/internal/ledger"
 	vm "github.com/axiomesh/eth-kit/evm"
-	"github.com/axiomesh/eth-kit/ledger"
 )
 
 const (
@@ -467,7 +467,7 @@ func (nm *NodeManager) CheckAndUpdateState(lastHeight uint64, stateLedger ledger
 }
 
 func InitNodeMembers(lg ledger.StateLedger, members []*NodeMember) error {
-	// read member config, write to Ledger
+	// read member config, write to ViewLedger
 	c, err := json.Marshal(members)
 	if err != nil {
 		return err

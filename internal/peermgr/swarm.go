@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"math"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/libp2p/go-libp2p/core/connmgr"
 	p2pnetwork "github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/sirupsen/logrus"
 
 	"github.com/axiomesh/axiom"
@@ -32,7 +32,7 @@ type Swarm struct {
 	ledger         *ledger.Ledger
 	p2p            network.Network
 	logger         logrus.FieldLogger
-	connectedPeers sync.Map
+	connectedPeers cmap.ConcurrentMap[string, bool]
 	enablePing     bool
 	pingTimeout    time.Duration
 	pingC          chan *repo.Ping
@@ -121,7 +121,7 @@ func (swarm *Swarm) init() error {
 	swarm.enablePing = swarm.repo.Config.P2P.Ping.Enable
 	swarm.pingTimeout = swarm.repo.Config.P2P.Ping.Duration.ToDuration()
 	swarm.pingC = make(chan *repo.Ping)
-	swarm.connectedPeers = sync.Map{}
+	swarm.connectedPeers = cmap.New[bool]()
 	swarm.gater = gater
 	swarm.PipeManager = p2p
 	return nil
@@ -146,13 +146,13 @@ func (swarm *Swarm) Stop() error {
 
 func (swarm *Swarm) onConnected(net p2pnetwork.Network, conn p2pnetwork.Conn) error {
 	peerID := conn.RemotePeer().String()
-	swarm.connectedPeers.Store(peerID, nil)
+	swarm.connectedPeers.Set(peerID, true)
 
 	return nil
 }
 
 func (swarm *Swarm) onDisconnected(peerID string) {
-	swarm.connectedPeers.Delete(peerID)
+	swarm.connectedPeers.Remove(peerID)
 }
 
 func (swarm *Swarm) Ping() {
@@ -164,22 +164,23 @@ func (swarm *Swarm) Ping() {
 		select {
 		case <-ticker.C:
 			fields := logrus.Fields{}
-			swarm.connectedPeers.Range(func(key, value any) bool {
-				ctx, cancel := context.WithCancel(context.Background())
-				defer cancel()
+			for key := range swarm.connectedPeers.Items() {
+				func() {
+					ctx, cancel := context.WithCancel(context.Background())
+					defer cancel()
 
-				pingCh, err := swarm.p2p.Ping(ctx, key.(string))
-				if err != nil {
-					return true
-				}
-				select {
-				case res := <-pingCh:
-					fields[fmt.Sprintf("%v", key)] = res.RTT
-				case <-time.After(time.Second * 5):
-					swarm.logger.Errorf("ping to node v timeout", key)
-				}
-				return true
-			})
+					pingCh, err := swarm.p2p.Ping(ctx, key)
+					if err != nil {
+						return
+					}
+					select {
+					case res := <-pingCh:
+						fields[fmt.Sprintf("%v", key)] = res.RTT
+					case <-time.After(time.Second * 5):
+						swarm.logger.Errorf("ping to node v timeout", key)
+					}
+				}()
+			}
 			swarm.logger.WithFields(fields).Info("ping time")
 		case pingConfig := <-swarm.pingC:
 			swarm.enablePing = pingConfig.Enable
@@ -228,12 +229,7 @@ func (swarm *Swarm) Peers() []peer.AddrInfo {
 }
 
 func (swarm *Swarm) CountConnectedPeers() uint64 {
-	var counter uint64
-	swarm.connectedPeers.Range(func(k, v any) bool {
-		counter++
-		return true
-	})
-	return counter
+	return uint64(swarm.connectedPeers.Count())
 }
 
 func (swarm *Swarm) PeerID() string {

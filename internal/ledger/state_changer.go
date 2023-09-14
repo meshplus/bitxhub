@@ -5,12 +5,11 @@ import (
 	"sync"
 
 	"github.com/axiomesh/axiom-kit/types"
-	"github.com/axiomesh/eth-kit/ledger"
 )
 
 type stateChange interface {
 	// revert undoes the state changes by this entry
-	revert(*StateLedger)
+	revert(*StateLedgerImpl)
 
 	// dirted returns the address modified by this state entry
 	dirtied() *types.Address
@@ -39,7 +38,7 @@ func (s *stateChanger) append(change stateChange) {
 	}
 }
 
-func (s *stateChanger) revert(ledger *StateLedger, snapshot int) {
+func (s *stateChanger) revert(ledger *StateLedgerImpl, snapshot int) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -70,7 +69,7 @@ type (
 	}
 
 	resetObjectChange struct {
-		prev ledger.IAccount
+		prev IAccount
 	}
 
 	suicideChange struct {
@@ -130,7 +129,7 @@ type (
 	}
 )
 
-func (ch createObjectChange) revert(l *StateLedger) {
+func (ch createObjectChange) revert(l *StateLedgerImpl) {
 	delete(l.accounts, ch.account.String())
 	l.accountCache.rmAccount(ch.account)
 }
@@ -140,7 +139,7 @@ func (ch createObjectChange) dirtied() *types.Address {
 }
 
 // nolint
-func (ch resetObjectChange) revert(l *StateLedger) {
+func (ch resetObjectChange) revert(l *StateLedgerImpl) {
 	l.setAccount(ch.prev)
 }
 
@@ -149,7 +148,7 @@ func (ch resetObjectChange) dirtied() *types.Address {
 	return nil
 }
 
-func (ch suicideChange) revert(l *StateLedger) {
+func (ch suicideChange) revert(l *StateLedgerImpl) {
 	acc := l.GetOrCreateAccount(ch.account)
 	account := acc.(*SimpleAccount)
 	account.suicided = ch.prev
@@ -161,13 +160,13 @@ func (ch suicideChange) dirtied() *types.Address {
 }
 
 // nolint
-func (ch touchChange) revert(l *StateLedger) {}
+func (ch touchChange) revert(l *StateLedgerImpl) {}
 
 func (ch touchChange) dirtied() *types.Address {
 	return ch.account
 }
 
-func (ch balanceChange) revert(l *StateLedger) {
+func (ch balanceChange) revert(l *StateLedgerImpl) {
 	l.GetOrCreateAccount(ch.account).(*SimpleAccount).setBalance(ch.prev)
 }
 
@@ -175,7 +174,7 @@ func (ch balanceChange) dirtied() *types.Address {
 	return ch.account
 }
 
-func (ch nonceChange) revert(l *StateLedger) {
+func (ch nonceChange) revert(l *StateLedgerImpl) {
 	l.GetOrCreateAccount(ch.account).(*SimpleAccount).setNonce(ch.prev)
 }
 
@@ -183,7 +182,7 @@ func (ch nonceChange) dirtied() *types.Address {
 	return ch.account
 }
 
-func (ch codeChange) revert(l *StateLedger) {
+func (ch codeChange) revert(l *StateLedgerImpl) {
 	l.GetOrCreateAccount(ch.account).(*SimpleAccount).setCodeAndHash(ch.prevcode)
 }
 
@@ -191,7 +190,7 @@ func (ch codeChange) dirtied() *types.Address {
 	return ch.account
 }
 
-func (ch storageChange) revert(l *StateLedger) {
+func (ch storageChange) revert(l *StateLedgerImpl) {
 	l.GetOrCreateAccount(ch.account).(*SimpleAccount).setState(ch.key, ch.prevalue)
 }
 
@@ -199,7 +198,7 @@ func (ch storageChange) dirtied() *types.Address {
 	return ch.account
 }
 
-func (ch refundChange) revert(l *StateLedger) {
+func (ch refundChange) revert(l *StateLedgerImpl) {
 	l.refund = ch.prev
 }
 
@@ -207,7 +206,7 @@ func (ch refundChange) dirtied() *types.Address {
 	return nil
 }
 
-func (ch addPreimageChange) revert(l *StateLedger) {
+func (ch addPreimageChange) revert(l *StateLedgerImpl) {
 	delete(l.preimages, ch.hash)
 }
 
@@ -215,7 +214,7 @@ func (ch addPreimageChange) dirtied() *types.Address {
 	return nil
 }
 
-func (ch accessListAddAccountChange) revert(l *StateLedger) {
+func (ch accessListAddAccountChange) revert(l *StateLedgerImpl) {
 	l.accessList.DeleteAddress(*ch.address)
 }
 
@@ -223,7 +222,7 @@ func (ch accessListAddAccountChange) dirtied() *types.Address {
 	return nil
 }
 
-func (ch accessListAddSlotChange) revert(l *StateLedger) {
+func (ch accessListAddSlotChange) revert(l *StateLedgerImpl) {
 	l.accessList.DeleteSlot(*ch.address, *ch.slot)
 }
 
@@ -231,7 +230,7 @@ func (ch accessListAddSlotChange) dirtied() *types.Address {
 	return nil
 }
 
-func (ch addLogChange) revert(l *StateLedger) {
+func (ch addLogChange) revert(l *StateLedgerImpl) {
 	logs := l.logs.logs[*ch.txHash]
 	if len(logs) == 1 {
 		delete(l.logs.logs, *ch.txHash)
@@ -245,7 +244,7 @@ func (ch addLogChange) dirtied() *types.Address {
 	return nil
 }
 
-func (ch transientStorageChange) revert(l *StateLedger) {
+func (ch transientStorageChange) revert(l *StateLedgerImpl) {
 	l.setTransientState(*ch.account, ch.key, ch.prevalue)
 }
 

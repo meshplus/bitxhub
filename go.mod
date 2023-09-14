@@ -7,19 +7,19 @@ require (
 	github.com/axiomesh/axiom-bft v0.0.3-0.20230913102152-b7ea7029ab76
 	github.com/axiomesh/axiom-kit v0.0.3-0.20230914063832-f90aa21d635e
 	github.com/axiomesh/axiom-p2p v0.0.3-0.20230907174724-b3175e447038
-	github.com/axiomesh/eth-kit v0.0.3-0.20230824120858-0328f1de558d
+	github.com/axiomesh/eth-kit v0.0.3-0.20230914073203-e09bfbf492c9
 	github.com/cbergoon/merkletree v0.2.0
 	github.com/common-nighthawk/go-figure v0.0.0-20190529165535-67e0ed34491a
 	github.com/ethereum/go-ethereum v1.12.0
 	github.com/gammazero/workerpool v1.1.3
 	github.com/gorilla/mux v1.8.0
-	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d
+	github.com/hashicorp/golang-lru/v2 v2.0.6
 	github.com/juju/ratelimit v1.0.1
 	github.com/libp2p/go-libp2p v0.27.7
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/multiformats/go-multiaddr v0.9.0
-	github.com/orcaman/concurrent-map v0.0.0-20210501183033-44dafcb38ecc
+	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pelletier/go-toml/v2 v2.0.8
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.16.0
@@ -86,7 +86,7 @@ require (
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-bexpr v0.1.10 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
-	github.com/hashicorp/golang-lru/v2 v2.0.2 // indirect
+	github.com/hashicorp/golang-lru v1.0.2 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/holiman/bloomfilter/v2 v2.0.3 // indirect
 	github.com/holiman/uint256 v1.2.3 // indirect

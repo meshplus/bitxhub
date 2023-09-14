@@ -194,7 +194,7 @@ func DoCall(ctx context.Context, api api.CoreAPI, args types.CallArgs, timeout t
 	}
 
 	// use copy state ledger to call
-	stateLedger := api.Broker().GetStateLedger().Copy()
+	stateLedger := api.Broker().GetViewStateLedger().Copy()
 	stateLedger.SetTxContext(types.NewHash([]byte("mockTx")), 0)
 
 	// check if call system contract

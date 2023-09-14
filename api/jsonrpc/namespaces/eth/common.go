@@ -11,7 +11,7 @@ import (
 	"github.com/axiomesh/axiom-kit/types"
 	rpctypes "github.com/axiomesh/axiom/api/jsonrpc/types"
 	"github.com/axiomesh/axiom/internal/coreapi/api"
-	"github.com/axiomesh/eth-kit/ledger"
+	"github.com/axiomesh/axiom/internal/ledger"
 )
 
 var (
@@ -19,38 +19,12 @@ var (
 )
 
 func getStateLedgerAt(api api.CoreAPI) (ledger.StateLedger, error) {
-	leger := api.Broker().GetStateLedger()
+	leger := api.Broker().GetViewStateLedger().Copy()
 	if leger == nil {
-		return nil, errors.New("GetStateLedger error")
+		return nil, errors.New("GetViewStateLedger error")
 	}
-	return api.Broker().GetStateLedger(), nil
-	// todo
-	// supplementary block height and block hash processing
-
-	// if blockNr, ok := blockNrOrHash.Number(); ok {
-	// 	if blockNr == rpctypes.PendingBlockNumber || blockNr == rpctypes.LatestBlockNumber {
-	// 		meta, err := api.Chain().Meta()
-	// 		if err != nil {
-	// 			return nil, err
-	// 		}
-
-	// 		blockNr = rpctypes.BlockNumber(meta.Height)
-	// 	}
-	// 	block, err := api.Broker().GetBlock("HEIGHT", fmt.Sprintf("%d", blockNr))
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	return api.Broker().GetStateLedger().(*ethledger.ComplexStateLedger).StateAt(block.BlockHeader.StateRoot)
-	// }
-
-	// if hash, ok := blockNrOrHash.Hash(); ok {
-	// 	block, err := api.Broker().GetBlock("Hash", fmt.Sprintf("%d", hash))
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	return api.Broker().GetStateLedger().(*ethledger.ComplexStateLedger).StateAt(block.BlockHeader.StateRoot)
-	// }
-	// return nil, errors.New("invalid arguments; neither block nor hash specified")
+	return leger, nil
+	// todo: supplementary block height and block hash processing
 }
 
 // NewRPCTransaction returns a transaction that will serialize to the RPC representation

@@ -12,8 +12,8 @@ import (
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/internal/executor/system/common"
 	"github.com/axiomesh/axiom/internal/ledger"
+	"github.com/axiomesh/axiom/internal/ledger/mock_ledger"
 	"github.com/axiomesh/axiom/pkg/repo"
-	"github.com/axiomesh/eth-kit/ledger/mock_ledger"
 )
 
 var systemContractAddrs = []string{
@@ -72,7 +72,7 @@ func TestContractInitGenesisData(t *testing.T) {
 	stateLedger.EXPECT().GetOrCreateAccount(gomock.Any()).Return(account).AnyTimes()
 	stateLedger.EXPECT().SetBalance(gomock.Any(), gomock.Any()).AnyTimes()
 
-	err = InitGenesisData(&genesis.Genesis, mockLedger)
+	err = InitGenesisData(&genesis.Genesis, mockLedger.StateLedger)
 	assert.Nil(t, err)
 }
 
@@ -94,7 +94,7 @@ func TestContractCheckAndUpdateAllState(t *testing.T) {
 	stateLedger.EXPECT().GetOrCreateAccount(gomock.Any()).Return(account).AnyTimes()
 	stateLedger.EXPECT().SetBalance(gomock.Any(), gomock.Any()).AnyTimes()
 
-	CheckAndUpdateAllState(1, mockLedger)
+	CheckAndUpdateAllState(1, mockLedger.StateLedger)
 	assert.Nil(t, err)
 	exist, _ := account.Query("")
 	assert.False(t, exist)

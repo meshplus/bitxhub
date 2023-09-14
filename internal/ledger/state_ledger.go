@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"sync"
 
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/sirupsen/logrus"
 
 	"github.com/axiomesh/axiom-kit/storage"
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/pkg/repo"
-	"github.com/axiomesh/eth-kit/ledger"
 )
 
-var _ ledger.StateLedger = (*StateLedger)(nil)
+var _ StateLedger = (*StateLedgerImpl)(nil)
 
 var (
 	ErrorRollbackToHigherNumber  = errors.New("rollback to higher blockchain height")
@@ -27,15 +27,14 @@ type revision struct {
 	changerIndex int
 }
 
-type StateLedger struct {
+type StateLedgerImpl struct {
 	logger        logrus.FieldLogger
 	ldb           storage.Storage
 	minJnlHeight  uint64
 	maxJnlHeight  uint64
-	events        sync.Map
-	accounts      map[string]ledger.IAccount
+	accounts      map[string]IAccount
 	accountCache  *AccountCache
-	blockJournals sync.Map
+	blockJournals cmap.ConcurrentMap[string, *BlockJournal]
 	prevJnlHash   *types.Hash
 	repo          *repo.Repo
 	blockHeight   uint64
@@ -49,7 +48,7 @@ type StateLedger struct {
 	nextRevisionId int
 	changer        *stateChanger
 
-	accessList *ledger.AccessList
+	accessList *AccessList
 	preimages  map[types.Hash][]byte
 	refund     uint64
 	logs       *evmLogs
@@ -59,7 +58,8 @@ type StateLedger struct {
 
 // Copy copy state ledger
 // Attention this is shallow copy
-func (l *StateLedger) Copy() ledger.StateLedger {
+func (l *StateLedgerImpl) Copy() StateLedger {
+	// TODO: if readonly, not need cache, opt it
 	copyLedger, err := NewSimpleLedger(&repo.Repo{Config: l.repo.Config}, l.ldb, nil, l.logger)
 	if err != nil {
 		l.logger.Errorf("copy ledger error: %w", err)
@@ -69,12 +69,12 @@ func (l *StateLedger) Copy() ledger.StateLedger {
 	return copyLedger
 }
 
-func (l *StateLedger) Finalise(b bool) {
+func (l *StateLedgerImpl) Finalise(b bool) {
 	l.ClearChangerAndRefund()
 }
 
 // New create a new ledger instance
-func NewSimpleLedger(repo *repo.Repo, ldb storage.Storage, accountCache *AccountCache, logger logrus.FieldLogger) (ledger.StateLedger, error) {
+func NewSimpleLedger(repo *repo.Repo, ldb storage.Storage, accountCache *AccountCache, logger logrus.FieldLogger) (StateLedger, error) {
 	var err error
 	minJnlHeight, maxJnlHeight := getJournalRange(ldb)
 
@@ -94,35 +94,36 @@ func NewSimpleLedger(repo *repo.Repo, ldb storage.Storage, accountCache *Account
 		}
 	}
 
-	ledger := &StateLedger{
-		repo:         repo,
-		logger:       logger,
-		ldb:          ldb,
-		minJnlHeight: minJnlHeight,
-		maxJnlHeight: maxJnlHeight,
-		accounts:     make(map[string]ledger.IAccount),
-		accountCache: accountCache,
-		prevJnlHash:  prevJnlHash,
-		preimages:    make(map[types.Hash][]byte),
-		changer:      NewChanger(),
-		accessList:   ledger.NewAccessList(),
-		logs:         NewEvmLogs(),
+	ledger := &StateLedgerImpl{
+		repo:          repo,
+		logger:        logger,
+		ldb:           ldb,
+		minJnlHeight:  minJnlHeight,
+		maxJnlHeight:  maxJnlHeight,
+		accounts:      make(map[string]IAccount),
+		accountCache:  accountCache,
+		prevJnlHash:   prevJnlHash,
+		preimages:     make(map[types.Hash][]byte),
+		changer:       NewChanger(),
+		accessList:    NewAccessList(),
+		logs:          NewEvmLogs(),
+		blockJournals: cmap.New[*BlockJournal](),
 	}
 
 	return ledger, nil
 }
 
-func (l *StateLedger) AccountCache() *AccountCache {
+func (l *StateLedgerImpl) AccountCache() *AccountCache {
 	return l.accountCache
 }
 
-func (l *StateLedger) SetTxContext(thash *types.Hash, ti int) {
+func (l *StateLedgerImpl) SetTxContext(thash *types.Hash, ti int) {
 	l.thash = thash
 	l.txIndex = ti
 }
 
 // removeJournalsBeforeBlock removes ledger journals whose block number < height
-func (l *StateLedger) removeJournalsBeforeBlock(height uint64) error {
+func (l *StateLedgerImpl) removeJournalsBeforeBlock(height uint64) error {
 	l.journalMutex.Lock()
 	defer l.journalMutex.Unlock()
 
@@ -146,36 +147,7 @@ func (l *StateLedger) removeJournalsBeforeBlock(height uint64) error {
 	return nil
 }
 
-// AddEvent add ledger event
-func (l *StateLedger) AddEvent(event *types.Event) {
-	var events []*types.Event
-	hash := event.TxHash
-	if hash == nil {
-		hash = l.logs.thash
-	}
-
-	value, ok := l.events.Load(hash.String())
-	if ok {
-		events = value.([]*types.Event)
-	}
-	events = append(events, event)
-	l.events.Store(hash.String(), events)
-}
-
-// Events return ledger events
-func (l *StateLedger) Events(txHash string) []*types.Event {
-	events, ok := l.events.Load(txHash)
-	if !ok {
-		return nil
-	}
-	return events.([]*types.Event)
-}
-
 // Close close the ledger instance
-func (l *StateLedger) Close() {
+func (l *StateLedgerImpl) Close() {
 	l.ldb.Close()
-}
-
-func (l *StateLedger) GetStorage() storage.Storage {
-	return l.ldb
 }

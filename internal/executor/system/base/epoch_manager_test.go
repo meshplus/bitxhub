@@ -12,8 +12,8 @@ import (
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/internal/executor/system/common"
 	"github.com/axiomesh/axiom/internal/ledger"
+	"github.com/axiomesh/axiom/internal/ledger/mock_ledger"
 	"github.com/axiomesh/axiom/pkg/repo"
-	"github.com/axiomesh/eth-kit/ledger/mock_ledger"
 )
 
 func TestEpochManager(t *testing.T) {

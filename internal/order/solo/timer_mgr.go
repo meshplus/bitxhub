@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"time"
 
-	cmap "github.com/orcaman/concurrent-map"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/sirupsen/logrus"
 )
 
@@ -19,14 +19,14 @@ type batchTimeoutEvent string
 // singleTimer manages timer with the same timer name, which, we allow different timer with the same timer name, such as:
 // we allow several request timers at the same time, each timer started after received a new request batch
 type singleTimer struct {
-	timerName batchTimeoutEvent  // the unique timer name
-	timeout   time.Duration      // default timeout of this timer
-	isActive  cmap.ConcurrentMap // track all the timers with this timerName if it is active now
+	timerName batchTimeoutEvent                       // the unique timer name
+	timeout   time.Duration                           // default timeout of this timer
+	isActive  cmap.ConcurrentMap[string, *time.Timer] // track all the timers with this timerName if it is active now
 }
 
 func (tt *singleTimer) clear() {
 	for _, timer := range tt.isActive.Items() {
-		timer.(*time.Timer).Stop()
+		timer.Stop()
 	}
 	tt.isActive.Clear()
 }
@@ -64,7 +64,7 @@ func (tm *timerManager) newTimer(name batchTimeoutEvent, d time.Duration) {
 	}
 	tm.timersM[name] = &singleTimer{
 		timerName: name,
-		isActive:  cmap.New(),
+		isActive:  cmap.New[*time.Timer](),
 		timeout:   d,
 	}
 }

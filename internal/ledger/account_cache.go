@@ -3,198 +3,97 @@ package ledger
 import (
 	"bytes"
 	"fmt"
-	"strings"
-	"sync"
 
-	lru "github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru/v2"
 
 	"github.com/axiomesh/axiom-kit/types"
-	"github.com/axiomesh/eth-kit/ledger"
+)
+
+const (
+	accCacheSize      = 1024        // innerAccountCache,stateCache,codeCache layer1 size(1KB)
+	accStateCacheSize = 1024 * 1024 // stateCache layer2 size(1MB)
 )
 
 type AccountCache struct {
-	innerAccounts     map[string]*ledger.InnerAccount
-	states            map[string]map[string][]byte
-	codes             map[string][]byte
-	innerAccountCache *lru.Cache
-	stateCache        *lru.Cache
-	codeCache         *lru.Cache
-	rwLock            sync.RWMutex
+	innerAccountCache *lru.Cache[string, *InnerAccount]
+
+	// 2 layer cache: accountAddr -> stateKey -> stateValue
+	stateCache *lru.Cache[string, *lru.Cache[string, []byte]]
+
+	codeCache *lru.Cache[string, []byte]
 }
 
 func NewAccountCache() (*AccountCache, error) {
-	innerAccountCache, err := lru.New(1024 * 1024)
+	innerAccountCache, err := lru.New[string, *InnerAccount](accCacheSize)
 	if err != nil {
 		return nil, fmt.Errorf("init innerAccountCache failed: %w", err)
 	}
 
-	stateCache, err := lru.New(1024 * 1024)
+	stateCache, err := lru.New[string, *lru.Cache[string, []byte]](accCacheSize)
 	if err != nil {
 		return nil, fmt.Errorf("init stateCache failed: %w", err)
 	}
 
-	codeCache, err := lru.New(1024 * 1024)
+	codeCache, err := lru.New[string, []byte](accCacheSize)
 	if err != nil {
 		return nil, fmt.Errorf("init codeCache failed: %w", err)
 	}
 
 	return &AccountCache{
-		innerAccounts:     make(map[string]*ledger.InnerAccount),
-		states:            make(map[string]map[string][]byte),
-		codes:             make(map[string][]byte),
 		innerAccountCache: innerAccountCache,
 		stateCache:        stateCache,
 		codeCache:         codeCache,
-		rwLock:            sync.RWMutex{},
 	}, nil
 }
 
-func (ac *AccountCache) add(accounts map[string]ledger.IAccount) error {
-	ac.addToWriteBuffer(accounts)
-	if err := ac.addToReadCache(accounts); err != nil {
-		return fmt.Errorf("add accounts to read cache failed: %w", err)
-	}
-	return nil
-}
-
-func (ac *AccountCache) addToReadCache(accounts map[string]ledger.IAccount) error {
+func (ac *AccountCache) add(accounts map[string]IAccount) error {
 	for addr, acc := range accounts {
 		account := acc.(*SimpleAccount)
-		var stateCache *lru.Cache
+		var stateCache *lru.Cache[string, []byte]
 
 		if account.dirtyAccount != nil {
 			ac.innerAccountCache.Add(addr, account.dirtyAccount)
 		}
-		value, ok := ac.stateCache.Get(addr)
-		if ok {
-			stateCache = value.(*lru.Cache)
-		} else {
-			cache, err := lru.New(1024 * 1024)
-			if err != nil {
-				return fmt.Errorf("init lru cache failed: %w", err)
+
+		if account.dirtyState.Count() != 0 {
+			value, ok := ac.stateCache.Get(addr)
+			if ok {
+				stateCache = value
+			} else {
+				cache, err := lru.New[string, []byte](accStateCacheSize)
+				if err != nil {
+					return fmt.Errorf("init lru cache failed: %w", err)
+				}
+				stateCache = cache
+				ac.stateCache.Add(addr, stateCache)
 			}
-			stateCache = cache
-		}
 
-		account.dirtyState.Range(func(key, value any) bool {
-			stateCache.Add(key, value)
-			return true
-		})
-
-		if !ok && stateCache.Len() != 0 {
-			ac.stateCache.Add(addr, stateCache)
+			for key, value := range account.dirtyState.Items() {
+				stateCache.Add(key, value)
+			}
 		}
 
 		if !bytes.Equal(account.originCode, account.dirtyCode) {
-			if !bytes.Equal(account.originCode, account.dirtyCode) {
-				if account.dirtyAccount != nil {
-					if account.originAccount != nil {
-						if !bytes.Equal(account.dirtyAccount.CodeHash, account.originAccount.CodeHash) {
-							ac.codeCache.Add(addr, account.dirtyCode)
-						}
-					} else {
-						ac.codeCache.Add(addr, account.dirtyCode)
-					}
-				}
-			}
+			ac.codeCache.Add(addr, account.dirtyCode)
 		}
 	}
 	return nil
 }
 
-func (ac *AccountCache) addToWriteBuffer(accounts map[string]ledger.IAccount) {
-	ac.rwLock.Lock()
-	defer ac.rwLock.Unlock()
-
-	for addr, acc := range accounts {
-		account := acc.(*SimpleAccount)
-		if account.dirtyAccount != nil {
-			ac.innerAccounts[addr] = account.dirtyAccount
-		}
-		stateMap, ok := ac.states[addr]
-		if !ok {
-			stateMap = make(map[string][]byte)
-		}
-
-		account.dirtyState.Range(func(key, value any) bool {
-			stateMap[key.(string)] = value.([]byte)
-			return true
-		})
-
-		if !ok && len(stateMap) != 0 {
-			ac.states[addr] = stateMap
-		}
-
-		if !bytes.Equal(account.originCode, account.dirtyCode) {
-			if account.dirtyAccount != nil {
-				if account.originAccount != nil {
-					if !bytes.Equal(account.dirtyAccount.CodeHash, account.originAccount.CodeHash) {
-						ac.codes[addr] = account.dirtyCode
-					}
-				} else {
-					ac.codes[addr] = account.dirtyCode
-				}
-			}
-		}
-	}
-}
-
-func (ac *AccountCache) remove(accounts map[string]ledger.IAccount) {
-	ac.rwLock.Lock()
-	defer ac.rwLock.Unlock()
-
-	for addr, acc := range accounts {
-		account := acc.(*SimpleAccount)
-		if innerAccount, ok := ac.innerAccounts[addr]; ok {
-			if !ledger.InnerAccountChanged(innerAccount, account.dirtyAccount) {
-				delete(ac.innerAccounts, addr)
-			}
-		}
-
-		if stateMap, ok := ac.states[addr]; ok {
-			account.dirtyState.Range(func(key, value any) bool {
-				if v, ok := stateMap[key.(string)]; ok {
-					if bytes.Equal(v, value.([]byte)) {
-						delete(stateMap, key.(string))
-					}
-				}
-				return true
-			})
-			if len(stateMap) == 0 {
-				delete(ac.states, addr)
-			}
-		}
-
-		if !bytes.Equal(account.dirtyCode, account.originCode) {
-			if code, ok := ac.codes[addr]; ok {
-				if bytes.Equal(code, account.dirtyCode) {
-					delete(ac.codes, addr)
-				}
-			}
-		}
-	}
-}
-
 func (ac *AccountCache) rmAccount(addr *types.Address) {
-	ac.rwLock.Lock()
-	defer ac.rwLock.Unlock()
-
-	delete(ac.innerAccounts, addr.String())
 	ac.innerAccountCache.Remove(addr.String())
+	ac.codeCache.Remove(addr.String())
+	ac.stateCache.Remove(addr.String())
 }
 
-func (ac *AccountCache) getInnerAccount(addr *types.Address) (*ledger.InnerAccount, bool) {
-	if ia, ok := ac.innerAccountCache.Get(addr.String()); ok {
-		return ia.(*ledger.InnerAccount), true
-	}
-
-	return nil, false
+func (ac *AccountCache) getInnerAccount(addr *types.Address) (*InnerAccount, bool) {
+	return ac.innerAccountCache.Get(addr.String())
 }
 
 func (ac *AccountCache) getState(addr *types.Address, key string) ([]byte, bool) {
 	if value, ok := ac.stateCache.Get(addr.String()); ok {
-		if val, ok := value.(*lru.Cache).Get(key); ok {
-			return val.([]byte), true
+		if val, ok := value.Get(key); ok {
+			return val, true
 		}
 	}
 
@@ -202,36 +101,10 @@ func (ac *AccountCache) getState(addr *types.Address, key string) ([]byte, bool)
 }
 
 func (ac *AccountCache) getCode(addr *types.Address) ([]byte, bool) {
-	if code, ok := ac.codeCache.Get(addr.String()); ok {
-		return code.([]byte), true
-	}
-
-	return nil, false
-}
-
-func (ac *AccountCache) query(addr *types.Address, prefix string) map[string][]byte {
-	ac.rwLock.RLock()
-	defer ac.rwLock.RUnlock()
-
-	ret := make(map[string][]byte)
-
-	if stateMap, ok := ac.states[addr.String()]; ok {
-		for key, val := range stateMap {
-			if strings.HasPrefix(key, prefix) {
-				ret[key] = val
-			}
-		}
-	}
-	return ret
+	return ac.codeCache.Get(addr.String())
 }
 
 func (ac *AccountCache) clear() {
-	ac.rwLock.Lock()
-	defer ac.rwLock.Unlock()
-
-	ac.innerAccounts = make(map[string]*ledger.InnerAccount)
-	ac.states = make(map[string]map[string][]byte)
-	ac.codes = make(map[string][]byte)
 	ac.innerAccountCache.Purge()
 	ac.stateCache.Purge()
 	ac.codeCache.Purge()

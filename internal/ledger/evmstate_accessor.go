@@ -8,67 +8,67 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 
 	"github.com/axiomesh/axiom-kit/types"
-	ethledger "github.com/axiomesh/eth-kit/ledger"
+	vm "github.com/axiomesh/eth-kit/evm"
 )
 
-func (l *StateLedger) CreateEVMAccount(addr common.Address) {
+func (l *StateLedgerImpl) CreateEVMAccount(addr common.Address) {
 	l.GetOrCreateAccount(types.NewAddress(addr.Bytes()))
 }
 
-func (l *StateLedger) SubEVMBalance(addr common.Address, amount *big.Int) {
+func (l *StateLedgerImpl) SubEVMBalance(addr common.Address, amount *big.Int) {
 	l.SubBalance(types.NewAddress(addr.Bytes()), amount)
 }
 
-func (l *StateLedger) AddEVMBalance(addr common.Address, amount *big.Int) {
+func (l *StateLedgerImpl) AddEVMBalance(addr common.Address, amount *big.Int) {
 	l.AddBalance(types.NewAddress(addr.Bytes()), amount)
 }
 
-func (l *StateLedger) GetEVMBalance(addr common.Address) *big.Int {
+func (l *StateLedgerImpl) GetEVMBalance(addr common.Address) *big.Int {
 	return l.GetBalance(types.NewAddress(addr.Bytes()))
 }
 
-func (l *StateLedger) GetEVMNonce(addr common.Address) uint64 {
+func (l *StateLedgerImpl) GetEVMNonce(addr common.Address) uint64 {
 	return l.GetNonce(types.NewAddress(addr.Bytes()))
 }
 
-func (l *StateLedger) SetEVMNonce(addr common.Address, nonce uint64) {
+func (l *StateLedgerImpl) SetEVMNonce(addr common.Address, nonce uint64) {
 	l.SetNonce(types.NewAddress(addr.Bytes()), nonce)
 }
 
-func (l *StateLedger) GetEVMCodeHash(addr common.Address) common.Hash {
+func (l *StateLedgerImpl) GetEVMCodeHash(addr common.Address) common.Hash {
 	return common.BytesToHash(l.GetCodeHash(types.NewAddress(addr.Bytes())).Bytes())
 }
 
-func (l *StateLedger) GetEVMCode(addr common.Address) []byte {
+func (l *StateLedgerImpl) GetEVMCode(addr common.Address) []byte {
 	return l.GetCode(types.NewAddress(addr.Bytes()))
 }
 
-func (l *StateLedger) SetEVMCode(addr common.Address, code []byte) {
+func (l *StateLedgerImpl) SetEVMCode(addr common.Address, code []byte) {
 	l.SetCode(types.NewAddress(addr.Bytes()), code)
 }
 
-func (l *StateLedger) GetEVMCodeSize(addr common.Address) int {
+func (l *StateLedgerImpl) GetEVMCodeSize(addr common.Address) int {
 	return l.GetCodeSize(types.NewAddress(addr.Bytes()))
 }
 
-func (l *StateLedger) AddEVMRefund(gas uint64) {
+func (l *StateLedgerImpl) AddEVMRefund(gas uint64) {
 	l.AddRefund(gas)
 }
 
-func (l *StateLedger) SubEVMRefund(gas uint64) {
+func (l *StateLedgerImpl) SubEVMRefund(gas uint64) {
 	l.SubRefund(gas)
 }
 
-func (l *StateLedger) GetEVMRefund() uint64 {
+func (l *StateLedgerImpl) GetEVMRefund() uint64 {
 	return l.GetRefund()
 }
 
-func (l *StateLedger) GetEVMCommittedState(addr common.Address, hash common.Hash) common.Hash {
+func (l *StateLedgerImpl) GetEVMCommittedState(addr common.Address, hash common.Hash) common.Hash {
 	ret := l.GetCommittedState(types.NewAddress(addr.Bytes()), hash.Bytes())
 	return common.BytesToHash(ret)
 }
 
-func (l *StateLedger) GetEVMState(addr common.Address, hash common.Hash) common.Hash {
+func (l *StateLedgerImpl) GetEVMState(addr common.Address, hash common.Hash) common.Hash {
 	ok, ret := l.GetState(types.NewAddress(addr.Bytes()), hash.Bytes())
 	if !ok {
 		return common.Hash{}
@@ -76,11 +76,11 @@ func (l *StateLedger) GetEVMState(addr common.Address, hash common.Hash) common.
 	return common.BytesToHash(ret)
 }
 
-func (l *StateLedger) SetEVMState(addr common.Address, key, value common.Hash) {
+func (l *StateLedgerImpl) SetEVMState(addr common.Address, key, value common.Hash) {
 	l.SetState(types.NewAddress(addr.Bytes()), key.Bytes(), value.Bytes())
 }
 
-func (l *StateLedger) SetEVMTransientState(addr common.Address, key, value common.Hash) {
+func (l *StateLedgerImpl) SetEVMTransientState(addr common.Address, key, value common.Hash) {
 	prev := l.GetEVMTransientState(addr, key)
 	if prev == value {
 		return
@@ -93,69 +93,69 @@ func (l *StateLedger) SetEVMTransientState(addr common.Address, key, value commo
 	l.setTransientState(*types.NewAddress(addr.Bytes()), key.Bytes(), value.Bytes())
 }
 
-func (l *StateLedger) GetEVMTransientState(addr common.Address, key common.Hash) common.Hash {
+func (l *StateLedgerImpl) GetEVMTransientState(addr common.Address, key common.Hash) common.Hash {
 	return l.transientStorage.Get(*types.NewAddress(addr.Bytes()), key)
 }
 
-func (l *StateLedger) SuisideEVM(addr common.Address) bool {
-	return l.Suiside(types.NewAddress(addr.Bytes()))
+func (l *StateLedgerImpl) SuicideEVM(addr common.Address) bool {
+	return l.Suicide(types.NewAddress(addr.Bytes()))
 }
 
-func (l *StateLedger) HasSuisideEVM(addr common.Address) bool {
-	return l.HasSuiside(types.NewAddress(addr.Bytes()))
+func (l *StateLedgerImpl) HasSuicideEVM(addr common.Address) bool {
+	return l.HasSuicide(types.NewAddress(addr.Bytes()))
 }
 
-func (l *StateLedger) ExistEVM(addr common.Address) bool {
+func (l *StateLedgerImpl) ExistEVM(addr common.Address) bool {
 	return l.Exist(types.NewAddress(addr.Bytes()))
 }
 
-func (l *StateLedger) EmptyEVM(addr common.Address) bool {
+func (l *StateLedgerImpl) EmptyEVM(addr common.Address) bool {
 	return l.Empty(types.NewAddress(addr.Bytes()))
 }
 
-func (l *StateLedger) PrepareEVMAccessList(sender common.Address, dest *common.Address, preEVMcompiles []common.Address, txEVMAccesses etherTypes.AccessList) {
+func (l *StateLedgerImpl) PrepareEVMAccessList(sender common.Address, dest *common.Address, preEVMcompiles []common.Address, txEVMAccesses etherTypes.AccessList) {
 	var precompiles []types.Address
 	for _, compile := range preEVMcompiles {
 		precompiles = append(precompiles, *types.NewAddress(compile.Bytes()))
 	}
-	var txAccesses ethledger.AccessTupleList
+	var txAccesses AccessTupleList
 	for _, list := range txEVMAccesses {
 		var storageKeys []types.Hash
 		for _, keys := range list.StorageKeys {
 			storageKeys = append(storageKeys, *types.NewHash(keys.Bytes()))
 		}
-		txAccesses = append(txAccesses, ethledger.AccessTuple{Address: *types.NewAddress(list.Address.Bytes()), StorageKeys: storageKeys})
+		txAccesses = append(txAccesses, AccessTuple{Address: *types.NewAddress(list.Address.Bytes()), StorageKeys: storageKeys})
 	}
 	l.PrepareAccessList(*types.NewAddress(sender.Bytes()), types.NewAddress(dest.Bytes()), precompiles, txAccesses)
 }
 
-func (l *StateLedger) AddressInEVMAccessList(addr common.Address) bool {
+func (l *StateLedgerImpl) AddressInEVMAccessList(addr common.Address) bool {
 	return l.AddressInAccessList(*types.NewAddress(addr.Bytes()))
 }
 
-func (l *StateLedger) SlotInEVMAceessList(addr common.Address, slot common.Hash) (bool, bool) {
+func (l *StateLedgerImpl) SlotInEVMAceessList(addr common.Address, slot common.Hash) (bool, bool) {
 	return l.SlotInAccessList(*types.NewAddress(addr.Bytes()), *types.NewHash(slot.Bytes()))
 }
 
-func (l *StateLedger) AddAddressToEVMAccessList(addr common.Address) {
+func (l *StateLedgerImpl) AddAddressToEVMAccessList(addr common.Address) {
 	l.AddAddressToAccessList(*types.NewAddress(addr.Bytes()))
 }
 
-func (l *StateLedger) AddSlotToEVMAccessList(addr common.Address, slot common.Hash) {
+func (l *StateLedgerImpl) AddSlotToEVMAccessList(addr common.Address, slot common.Hash) {
 	l.AddSlotToAccessList(*types.NewAddress(addr.Bytes()), *types.NewHash(slot.Bytes()))
 }
 
-func (l *StateLedger) AddEVMPreimage(hash common.Hash, data []byte) {
+func (l *StateLedgerImpl) AddEVMPreimage(hash common.Hash, data []byte) {
 	l.AddPreimage(*types.NewHash(hash.Bytes()), data)
 }
 
-func (l *StateLedger) PrepareEVM(rules params.Rules, sender, coinbase common.Address, dst *common.Address, precompiles []common.Address, list etherTypes.AccessList) {
+func (l *StateLedgerImpl) PrepareEVM(rules params.Rules, sender, coinbase common.Address, dst *common.Address, precompiles []common.Address, list etherTypes.AccessList) {
 	// l.logs.thash = types.NewHash(hash.Bytes())
 	// l.logs.txIndex = index
-	l.accessList = ethledger.NewAccessList()
+	l.accessList = NewAccessList()
 	if rules.IsBerlin {
 		// Clear out any leftover from previous executions
-		al := ethledger.NewAccessList()
+		al := NewAccessList()
 		l.accessList = al
 
 		al.AddAddress(*types.NewAddress(sender.Bytes()))
@@ -180,11 +180,11 @@ func (l *StateLedger) PrepareEVM(rules params.Rules, sender, coinbase common.Add
 	l.transientStorage = newTransientStorage()
 }
 
-func (l *StateLedger) StateDB() ethledger.StateDB {
+func (l *StateLedgerImpl) StateDB() vm.StateDB {
 	return l
 }
 
-func (l *StateLedger) AddEVMLog(log *etherTypes.Log) {
+func (l *StateLedgerImpl) AddEVMLog(log *etherTypes.Log) {
 	var topics []*types.Hash
 	for _, topic := range log.Topics {
 		topics = append(topics, types.NewHash(topic.Bytes()))

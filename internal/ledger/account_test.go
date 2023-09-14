@@ -1,8 +1,10 @@
 package ledger
 
 import (
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"math/big"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,6 +16,40 @@ import (
 	"github.com/axiomesh/axiom-kit/storage/pebble"
 	"github.com/axiomesh/axiom-kit/types"
 )
+
+func TestAccountCache_clear(t *testing.T) {
+	accountCache, err := NewAccountCache()
+	assert.Nil(t, err)
+
+	code := []byte{1}
+	addr := &types.Address{}
+	err = accountCache.add(map[string]IAccount{
+		addr.String(): &SimpleAccount{
+			Addr:           &types.Address{},
+			originAccount:  &InnerAccount{},
+			dirtyAccount:   &InnerAccount{},
+			originState:    cmap.New[[]byte](),
+			dirtyState:     cmap.New[[]byte](),
+			originCode:     nil,
+			dirtyCode:      code,
+			dirtyStateHash: &types.Hash{},
+			ldb:            nil,
+			cache:          nil,
+			lock:           sync.RWMutex{},
+			changer:        &stateChanger{},
+			suicided:       false,
+		},
+	})
+	assert.Nil(t, err)
+
+	c, ok := accountCache.getCode(addr)
+	assert.True(t, ok)
+	assert.EqualValues(t, code, c)
+
+	accountCache.clear()
+	_, ok = accountCache.getCode(addr)
+	assert.False(t, ok)
+}
 
 func TestAccount_GetState(t *testing.T) {
 	repoRoot := t.TempDir()
@@ -42,11 +78,11 @@ func TestAccount_GetState(t *testing.T) {
 			logger := log.NewWithModule("account_test")
 			blockFile, err := blockfile.NewBlockFile(filepath.Join(repoRoot, name), logger)
 			assert.Nil(t, err)
-			ledger, err := New(createMockRepo(t), tc.blockStorage, tc.stateStorage, blockFile, accountCache, log.NewWithModule("ChainLedger"))
+			ledger, err := New(createMockRepo(t), tc.blockStorage, tc.stateStorage, blockFile, accountCache, log.NewWithModule("ChainLedgerImpl"))
 			assert.Nil(t, err)
 
 			addr := types.NewAddressByStr("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")
-			stateLedger := ledger.StateLedger.(*StateLedger)
+			stateLedger := ledger.StateLedger.(*StateLedgerImpl)
 			account := NewAccount(stateLedger.ldb, stateLedger.accountCache, addr, NewChanger())
 
 			addr1 := account.GetAddress()
@@ -69,8 +105,6 @@ func TestAccount_GetState(t *testing.T) {
 		})
 	}
 }
-
-func TestAccount_AddState(t *testing.T) {}
 
 func TestAccount_AccountBalance(t *testing.T) {
 	repoRoot := t.TempDir()
@@ -99,11 +133,11 @@ func TestAccount_AccountBalance(t *testing.T) {
 			logger := log.NewWithModule("account_test")
 			blockFile, err := blockfile.NewBlockFile(filepath.Join(repoRoot, name), logger)
 			assert.Nil(t, err)
-			ledger, err := New(createMockRepo(t), tc.blockStorage, tc.stateStorage, blockFile, accountCache, log.NewWithModule("ChainLedger"))
+			ledger, err := New(createMockRepo(t), tc.blockStorage, tc.stateStorage, blockFile, accountCache, log.NewWithModule("ChainLedgerImpl"))
 			assert.Nil(t, err)
 
 			addr := types.NewAddressByStr("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")
-			stateLedger := ledger.StateLedger.(*StateLedger)
+			stateLedger := ledger.StateLedger.(*StateLedgerImpl)
 			account := NewAccount(stateLedger.ldb, stateLedger.accountCache, addr, NewChanger())
 
 			account.AddBalance(big.NewInt(1))

@@ -6,9 +6,9 @@ import (
 
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/internal/executor/system/common"
+	"github.com/axiomesh/axiom/internal/ledger"
 	"github.com/axiomesh/axiom/pkg/model/events"
 	vm "github.com/axiomesh/eth-kit/evm"
-	"github.com/axiomesh/eth-kit/ledger"
 )
 
 //go:generate mockgen -destination mock_api/mock_api.go -package mock_api -source api.go -typed
@@ -22,7 +22,6 @@ type CoreAPI interface {
 
 type BrokerAPI interface {
 	HandleTransaction(tx *types.Transaction) error
-	HandleView(tx *types.Transaction) (*types.Receipt, error)
 	GetTransaction(*types.Hash) (*types.Transaction, error)
 	GetTransactionMeta(*types.Hash) (*types.TransactionMeta, error)
 	GetReceipt(*types.Hash) (*types.Receipt, error)
@@ -31,7 +30,7 @@ type BrokerAPI interface {
 	GetPendingTxCountByAccount(account string) uint64
 	GetTotalPendingTxCount() uint64
 	GetPoolTransaction(hash *types.Hash) *types.Transaction
-	GetStateLedger() ledger.StateLedger
+	GetViewStateLedger() ledger.StateLedger
 	GetEvm(mes *vm.Message, vmConfig *vm.Config) (*vm.EVM, error)
 	GetSystemContract(addr *ethcommon.Address) (common.SystemContract, bool)
 

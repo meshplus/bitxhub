@@ -6,7 +6,6 @@ import (
 
 	"github.com/axiomesh/axiom-kit/storage"
 	"github.com/axiomesh/axiom-kit/types"
-	"github.com/axiomesh/eth-kit/ledger"
 )
 
 var (
@@ -21,7 +20,7 @@ type BlockJournal struct {
 
 type blockJournalEntry struct {
 	Address        *types.Address
-	PrevAccount    *ledger.InnerAccount
+	PrevAccount    *InnerAccount
 	AccountChanged bool
 	PrevStates     map[string][]byte
 	PrevCode       []byte

@@ -12,7 +12,7 @@ import (
 	"github.com/axiomesh/axiom/pkg/repo"
 )
 
-func initializeGenesisConfig(genesis *repo.Genesis, lg *ledger.Ledger) error {
+func initializeGenesisConfig(genesis *repo.Genesis, lg ledger.StateLedger) error {
 	account := lg.GetOrCreateAccount(types.NewAddressByStr(common.ZeroAddress))
 
 	genesisCfg, err := json.Marshal(genesis)
@@ -25,22 +25,22 @@ func initializeGenesisConfig(genesis *repo.Genesis, lg *ledger.Ledger) error {
 
 // Initialize initialize block
 func Initialize(genesis *repo.Genesis, lg *ledger.Ledger) error {
-	lg.PrepareBlock(nil, 1)
+	lg.StateLedger.PrepareBlock(nil, 1)
 
-	if err := initializeGenesisConfig(genesis, lg); err != nil {
+	if err := initializeGenesisConfig(genesis, lg.StateLedger); err != nil {
 		return err
 	}
 
 	balance, _ := new(big.Int).SetString(genesis.Balance, 10)
 	for _, addr := range genesis.Accounts {
-		lg.SetBalance(types.NewAddressByStr(addr), balance)
+		lg.StateLedger.SetBalance(types.NewAddressByStr(addr), balance)
 	}
-	err := system.InitGenesisData(genesis, lg)
+	err := system.InitGenesisData(genesis, lg.StateLedger)
 	if err != nil {
 		return err
 	}
 
-	accounts, stateRoot := lg.FlushDirtyData()
+	accounts, stateRoot := lg.StateLedger.FlushDirtyData()
 
 	block := &types.Block{
 		BlockHeader: &types.BlockHeader{

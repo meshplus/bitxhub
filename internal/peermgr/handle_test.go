@@ -24,8 +24,8 @@ import (
 	"github.com/axiomesh/axiom/internal/executor/system/base"
 	"github.com/axiomesh/axiom/internal/executor/system/common"
 	"github.com/axiomesh/axiom/internal/ledger"
+	"github.com/axiomesh/axiom/internal/ledger/mock_ledger"
 	"github.com/axiomesh/axiom/pkg/repo"
-	"github.com/axiomesh/eth-kit/ledger/mock_ledger"
 )
 
 func getAddr(p2p network.Network) (peer.AddrInfo, error) {
@@ -77,7 +77,7 @@ func NewSwarms(t *testing.T, peerCnt int, versionChange bool) []*Swarm {
 		ID:        5,
 		P2PNodeID: "16Uiu2HAmJ3bjAhtYc7QabCWWUKagY9RLddypDPXhFYkmFxSwzHQd",
 	})
-	err = base.InitEpochInfo(mockLedger, epochInfo)
+	err = base.InitEpochInfo(mockLedger.StateLedger, epochInfo)
 	assert.Nil(t, err)
 
 	var addrs []peer.AddrInfo

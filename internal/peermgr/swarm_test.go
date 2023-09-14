@@ -15,8 +15,8 @@ import (
 	"github.com/axiomesh/axiom-kit/types/pb"
 	"github.com/axiomesh/axiom/internal/executor/system/common"
 	"github.com/axiomesh/axiom/internal/ledger"
+	"github.com/axiomesh/axiom/internal/ledger/mock_ledger"
 	"github.com/axiomesh/axiom/pkg/repo"
-	"github.com/axiomesh/eth-kit/ledger/mock_ledger"
 )
 
 func TestSwarm_OtherPeers(t *testing.T) {
@@ -77,11 +77,11 @@ func TestSwarm_OnConnected(t *testing.T) {
 		func(addr *types.Address, key []byte, value []byte) {},
 	).AnyTimes()
 
-	mockLedger.SetState(types.NewAddressByStr(common.NodeManagerContractAddr), []byte(common.NodeManagerContractAddr), jsonBytes)
+	mockLedger.StateLedger.SetState(types.NewAddressByStr(common.NodeManagerContractAddr), []byte(common.NodeManagerContractAddr), jsonBytes)
 
 	var peerID = "16Uiu2HAmRypzJbdbUNYsCV2VVgv9UryYS5d7wejTJXT73mNLJ8AK"
 
-	success, data := mockLedger.GetState(types.NewAddressByStr(common.NodeManagerContractAddr), []byte(common.NodeManagerContractAddr))
+	success, data := mockLedger.StateLedger.GetState(types.NewAddressByStr(common.NodeManagerContractAddr), []byte(common.NodeManagerContractAddr))
 	if success {
 		stringData := strings.Split(string(data), ",")
 		for _, nodeID := range stringData {

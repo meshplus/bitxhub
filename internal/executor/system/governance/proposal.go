@@ -8,7 +8,7 @@ import (
 
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/internal/executor/system/common"
-	"github.com/axiomesh/eth-kit/ledger"
+	"github.com/axiomesh/axiom/internal/ledger"
 )
 
 type ProposalStatus uint8

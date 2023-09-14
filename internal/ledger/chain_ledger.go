@@ -15,12 +15,11 @@ import (
 	"github.com/axiomesh/axiom-kit/storage/blockfile"
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom/pkg/repo"
-	"github.com/axiomesh/eth-kit/ledger"
 )
 
-var _ ledger.ChainLedger = (*ChainLedger)(nil)
+var _ ChainLedger = (*ChainLedgerImpl)(nil)
 
-type ChainLedger struct {
+type ChainLedgerImpl struct {
 	blockchainStore storage.Storage
 	bf              *blockfile.BlockFile
 	repo            *repo.Repo
@@ -29,8 +28,8 @@ type ChainLedger struct {
 	logger          logrus.FieldLogger
 }
 
-func NewChainLedgerImpl(blockchainStore storage.Storage, bf *blockfile.BlockFile, repo *repo.Repo, logger logrus.FieldLogger) (*ChainLedger, error) {
-	c := &ChainLedger{
+func NewChainLedgerImpl(blockchainStore storage.Storage, bf *blockfile.BlockFile, repo *repo.Repo, logger logrus.FieldLogger) (*ChainLedgerImpl, error) {
+	c := &ChainLedgerImpl{
 		blockchainStore: blockchainStore,
 		bf:              bf,
 		repo:            repo,
@@ -47,7 +46,7 @@ func NewChainLedgerImpl(blockchainStore storage.Storage, bf *blockfile.BlockFile
 }
 
 // GetBlock get block with height
-func (l *ChainLedger) GetBlock(height uint64) (*types.Block, error) {
+func (l *ChainLedgerImpl) GetBlock(height uint64) (*types.Block, error) {
 	data, err := l.bf.Get(blockfile.BlockFileBodiesTable, height)
 	if err != nil {
 		return nil, fmt.Errorf("get bodies with height %d from blockfile failed: %w", height, err)
@@ -81,7 +80,7 @@ func (l *ChainLedger) GetBlock(height uint64) (*types.Block, error) {
 	return block, nil
 }
 
-func (l *ChainLedger) GetBlockHash(height uint64) *types.Hash {
+func (l *ChainLedgerImpl) GetBlockHash(height uint64) *types.Hash {
 	hash := l.blockchainStore.Get(compositeKey(blockHeightKey, height))
 	if hash == nil {
 		return &types.Hash{}
@@ -90,7 +89,7 @@ func (l *ChainLedger) GetBlockHash(height uint64) *types.Hash {
 }
 
 // GetBlockSign get the signature of block
-func (l *ChainLedger) GetBlockSign(height uint64) ([]byte, error) {
+func (l *ChainLedgerImpl) GetBlockSign(height uint64) ([]byte, error) {
 	block, err := l.GetBlock(height)
 	if err != nil {
 		return nil, fmt.Errorf("get block with height %d failed: %w", height, err)
@@ -100,7 +99,7 @@ func (l *ChainLedger) GetBlockSign(height uint64) ([]byte, error) {
 }
 
 // GetBlockByHash get the block using block hash
-func (l *ChainLedger) GetBlockByHash(hash *types.Hash) (*types.Block, error) {
+func (l *ChainLedgerImpl) GetBlockByHash(hash *types.Hash) (*types.Block, error) {
 	data := l.blockchainStore.Get(compositeKey(blockHashKey, hash.String()))
 	if data == nil {
 		return nil, storage.ErrorNotFound
@@ -115,7 +114,7 @@ func (l *ChainLedger) GetBlockByHash(hash *types.Hash) (*types.Block, error) {
 }
 
 // GetTransaction get the transaction using transaction hash
-func (l *ChainLedger) GetTransaction(hash *types.Hash) (*types.Transaction, error) {
+func (l *ChainLedgerImpl) GetTransaction(hash *types.Hash) (*types.Transaction, error) {
 	metaBytes := l.blockchainStore.Get(compositeKey(transactionMetaKey, hash.String()))
 	if metaBytes == nil {
 		return nil, storage.ErrorNotFound
@@ -136,7 +135,7 @@ func (l *ChainLedger) GetTransaction(hash *types.Hash) (*types.Transaction, erro
 	return txs[meta.Index], nil
 }
 
-func (l *ChainLedger) GetTransactionCount(height uint64) (uint64, error) {
+func (l *ChainLedgerImpl) GetTransactionCount(height uint64) (uint64, error) {
 	txHashesData := l.blockchainStore.Get(compositeKey(blockTxSetKey, height))
 	if txHashesData == nil {
 		return 0, errors.New("cannot get tx hashes of block")
@@ -150,7 +149,7 @@ func (l *ChainLedger) GetTransactionCount(height uint64) (uint64, error) {
 }
 
 // GetTransactionMeta get the transaction meta data
-func (l *ChainLedger) GetTransactionMeta(hash *types.Hash) (*types.TransactionMeta, error) {
+func (l *ChainLedgerImpl) GetTransactionMeta(hash *types.Hash) (*types.TransactionMeta, error) {
 	data := l.blockchainStore.Get(compositeKey(transactionMetaKey, hash.String()))
 	if data == nil {
 		return nil, storage.ErrorNotFound
@@ -165,7 +164,7 @@ func (l *ChainLedger) GetTransactionMeta(hash *types.Hash) (*types.TransactionMe
 }
 
 // GetReceipt get the transaction receipt
-func (l *ChainLedger) GetReceipt(hash *types.Hash) (*types.Receipt, error) {
+func (l *ChainLedgerImpl) GetReceipt(hash *types.Hash) (*types.Receipt, error) {
 	metaBytes := l.blockchainStore.Get(compositeKey(transactionMetaKey, hash.String()))
 	if metaBytes == nil {
 		return nil, storage.ErrorNotFound
@@ -188,7 +187,7 @@ func (l *ChainLedger) GetReceipt(hash *types.Hash) (*types.Receipt, error) {
 }
 
 // PersistExecutionResult persist the execution result
-func (l *ChainLedger) PersistExecutionResult(block *types.Block, receipts []*types.Receipt) error {
+func (l *ChainLedgerImpl) PersistExecutionResult(block *types.Block, receipts []*types.Receipt) error {
 	current := time.Now()
 
 	if block == nil {
@@ -242,7 +241,7 @@ func (l *ChainLedger) PersistExecutionResult(block *types.Block, receipts []*typ
 }
 
 // UpdateChainMeta update the chain meta data
-func (l *ChainLedger) UpdateChainMeta(meta *types.ChainMeta) {
+func (l *ChainLedgerImpl) UpdateChainMeta(meta *types.ChainMeta) {
 	l.chainMutex.Lock()
 	defer l.chainMutex.Unlock()
 	l.chainMeta.Height = meta.Height
@@ -251,7 +250,7 @@ func (l *ChainLedger) UpdateChainMeta(meta *types.ChainMeta) {
 }
 
 // GetChainMeta get chain meta data
-func (l *ChainLedger) GetChainMeta() *types.ChainMeta {
+func (l *ChainLedgerImpl) GetChainMeta() *types.ChainMeta {
 	l.chainMutex.RLock()
 	defer l.chainMutex.RUnlock()
 
@@ -263,7 +262,7 @@ func (l *ChainLedger) GetChainMeta() *types.ChainMeta {
 }
 
 // LoadChainMeta load chain meta data
-func (l *ChainLedger) LoadChainMeta() (*types.ChainMeta, error) {
+func (l *ChainLedgerImpl) LoadChainMeta() (*types.ChainMeta, error) {
 	ok := l.blockchainStore.Has([]byte(chainMetaKey))
 
 	chain := &types.ChainMeta{
@@ -280,11 +279,11 @@ func (l *ChainLedger) LoadChainMeta() (*types.ChainMeta, error) {
 	return chain, nil
 }
 
-func (l *ChainLedger) prepareReceipts(_ storage.Batch, _ *types.Block, receipts []*types.Receipt) ([]byte, error) {
+func (l *ChainLedgerImpl) prepareReceipts(_ storage.Batch, _ *types.Block, receipts []*types.Receipt) ([]byte, error) {
 	return types.MarshalReceipts(receipts)
 }
 
-func (l *ChainLedger) prepareTransactions(batcher storage.Batch, block *types.Block) ([]byte, error) {
+func (l *ChainLedgerImpl) prepareTransactions(batcher storage.Batch, block *types.Block) ([]byte, error) {
 	for i, tx := range block.Transactions {
 		meta := &types.TransactionMeta{
 			BlockHeight: block.BlockHeader.Number,
@@ -303,7 +302,7 @@ func (l *ChainLedger) prepareTransactions(batcher storage.Batch, block *types.Bl
 	return types.MarshalTransactions(block.Transactions)
 }
 
-func (l *ChainLedger) prepareBlock(batcher storage.Batch, block *types.Block) ([]byte, error) {
+func (l *ChainLedgerImpl) prepareBlock(batcher storage.Batch, block *types.Block) ([]byte, error) {
 	// Generate block header signature
 	if block.Signature == nil {
 		signed, err := l.repo.NodeKeySign(block.BlockHash.Bytes())
@@ -347,7 +346,7 @@ func (l *ChainLedger) prepareBlock(batcher storage.Batch, block *types.Block) ([
 	return bs, nil
 }
 
-func (l *ChainLedger) persistChainMeta(batcher storage.Batch, meta *types.ChainMeta) error {
+func (l *ChainLedgerImpl) persistChainMeta(batcher storage.Batch, meta *types.ChainMeta) error {
 	data, err := meta.Marshal()
 	if err != nil {
 		return fmt.Errorf("marshal chain meta error: %w", err)
@@ -358,7 +357,7 @@ func (l *ChainLedger) persistChainMeta(batcher storage.Batch, meta *types.ChainM
 	return nil
 }
 
-func (l *ChainLedger) removeChainDataOnBlock(batch storage.Batch, height uint64) error {
+func (l *ChainLedgerImpl) removeChainDataOnBlock(batch storage.Batch, height uint64) error {
 	block, err := l.GetBlock(height)
 	if err != nil {
 		return fmt.Errorf("get block with height %d failed: %w", height, err)
@@ -379,7 +378,7 @@ func (l *ChainLedger) removeChainDataOnBlock(batch storage.Batch, height uint64)
 	return nil
 }
 
-func (l *ChainLedger) RollbackBlockChain(height uint64) error {
+func (l *ChainLedgerImpl) RollbackBlockChain(height uint64) error {
 	meta := l.GetChainMeta()
 
 	if meta.Height < height {
@@ -425,7 +424,7 @@ func (l *ChainLedger) RollbackBlockChain(height uint64) error {
 	return nil
 }
 
-func (l *ChainLedger) Close() {
+func (l *ChainLedgerImpl) Close() {
 	l.blockchainStore.Close()
 	l.bf.Close()
 }

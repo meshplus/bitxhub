@@ -29,7 +29,7 @@ func newConnectionGater(logger logrus.FieldLogger, ledger *ledger.Ledger) *conne
 func (g *connectionGater) InterceptPeerDial(p peer.ID) (allow bool) {
 	peerID := p.String()
 	// Use the latest EpochInfo for node connection
-	epoch, err := base.GetNextEpochInfo(g.ledger)
+	epoch, err := base.GetNextEpochInfo(g.ledger.StateLedger)
 	if err != nil {
 		g.logger.Errorf("InterceptSecured, auth node %s failed, get node members error: %v", peerID, err)
 		return false

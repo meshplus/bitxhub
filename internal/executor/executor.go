@@ -49,25 +49,25 @@ type BlockExecutor struct {
 }
 
 // New creates executor instance
-func New(chainLedger *ledger.Ledger, logger logrus.FieldLogger, rep *repo.Repo) (*BlockExecutor, error) {
+func New(ledger *ledger.Ledger, logger logrus.FieldLogger, rep *repo.Repo) (*BlockExecutor, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	blockExecutor := &BlockExecutor{
-		ledger:           chainLedger,
+		ledger:           ledger,
 		logger:           logger,
 		ctx:              ctx,
 		cancel:           cancel,
 		blockC:           make(chan *common.CommitEvent, blockChanNumber),
 		gas:              finance.NewGas(rep),
-		currentHeight:    chainLedger.GetChainMeta().Height,
-		currentBlockHash: chainLedger.GetChainMeta().BlockHash,
+		currentHeight:    ledger.ChainLedger.GetChainMeta().Height,
+		currentBlockHash: ledger.ChainLedger.GetChainMeta().BlockHash,
 		evmChainCfg:      newEVMChainCfg(rep.Config),
 		rep:              rep,
 		gasLimit:         rep.Config.Genesis.GasLimit,
 		lock:             &sync.Mutex{},
 	}
 
-	blockExecutor.evm = newEvm(1, uint64(0), blockExecutor.evmChainCfg, blockExecutor.ledger, blockExecutor.ledger.ChainLedger, "")
+	blockExecutor.evm = newEvm(1, uint64(0), blockExecutor.evmChainCfg, blockExecutor.ledger.StateLedger, blockExecutor.ledger.ChainLedger, "")
 
 	// initialize system contract
 	system.Initialize(loggers.Logger(loggers.Governance))
@@ -122,32 +122,22 @@ func (exec *BlockExecutor) ApplyReadonlyTransactions(txs []*types.Transaction) [
 	exec.lock.Lock()
 	defer exec.lock.Unlock()
 
-	meta := exec.ledger.GetChainMeta()
-	block, err := exec.ledger.GetBlock(meta.Height)
+	meta := exec.ledger.ChainLedger.GetChainMeta()
+	block, err := exec.ledger.ChainLedger.GetBlock(meta.Height)
 	if err != nil {
 		exec.logger.Errorf("fail to get block at %d: %v", meta.Height, err.Error())
 		return nil
 	}
 
-	// switch sl := exec.ledger.StateLedger.(type) {
-	// case *ethledger.ComplexStateLedger:
-	// 	newSl, err := sl.StateAt(block.BlockHeader.StateRoot)
-	// 	if err != nil {
-	// 		exec.logger.Errorf("fail to new state ledger at %s: %v", meta.BlockHash.String(), err.Error())
-	// 		return nil
-	// 	}
-	// 	exec.ledger.StateLedger = newSl
-	// }
-
-	exec.ledger.PrepareBlock(meta.BlockHash, meta.Height)
+	exec.ledger.StateLedger.PrepareBlock(meta.BlockHash, meta.Height)
 	exec.evm = newEvm(meta.Height, uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateLedger, exec.ledger.ChainLedger, "")
 	for i, tx := range txs {
-		exec.ledger.SetTxContext(tx.GetHash(), i)
+		exec.ledger.StateLedger.SetTxContext(tx.GetHash(), i)
 		receipt := exec.applyTransaction(i, tx)
 
 		receipts = append(receipts, receipt)
 		// clear potential write to ledger
-		exec.ledger.Clear()
+		exec.ledger.StateLedger.Clear()
 	}
 
 	exec.logger.WithFields(logrus.Fields{

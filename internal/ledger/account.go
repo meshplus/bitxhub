@@ -9,20 +9,20 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum/crypto"
+	cmap "github.com/orcaman/concurrent-map/v2"
 
 	"github.com/axiomesh/axiom-kit/storage"
 	"github.com/axiomesh/axiom-kit/types"
-	"github.com/axiomesh/eth-kit/ledger"
 )
 
-var _ ledger.IAccount = (*SimpleAccount)(nil)
+var _ IAccount = (*SimpleAccount)(nil)
 
 type SimpleAccount struct {
 	Addr           *types.Address
-	originAccount  *ledger.InnerAccount
-	dirtyAccount   *ledger.InnerAccount
-	originState    sync.Map
-	dirtyState     sync.Map
+	originAccount  *InnerAccount
+	dirtyAccount   *InnerAccount
+	originState    cmap.ConcurrentMap[string, []byte]
+	dirtyState     cmap.ConcurrentMap[string, []byte]
 	originCode     []byte
 	dirtyCode      []byte
 	dirtyStateHash *types.Hash
@@ -36,11 +36,13 @@ type SimpleAccount struct {
 
 func NewAccount(ldb storage.Storage, cache *AccountCache, addr *types.Address, changer *stateChanger) *SimpleAccount {
 	return &SimpleAccount{
-		Addr:     addr,
-		ldb:      ldb,
-		cache:    cache,
-		changer:  changer,
-		suicided: false,
+		Addr:        addr,
+		originState: cmap.New[[]byte](),
+		dirtyState:  cmap.New[[]byte](),
+		ldb:         ldb,
+		cache:       cache,
+		changer:     changer,
+		suicided:    false,
 	}
 }
 
@@ -50,13 +52,11 @@ func (o *SimpleAccount) GetAddress() *types.Address {
 
 // GetState Get state from local cache, if not found, then get it from DB
 func (o *SimpleAccount) GetState(key []byte) (bool, []byte) {
-	if val, exist := o.dirtyState.Load(string(key)); exist {
-		value := val.([]byte)
+	if value, exist := o.dirtyState.Get(string(key)); exist {
 		return value != nil, value
 	}
 
-	if val, exist := o.originState.Load(string(key)); exist {
-		value := val.([]byte)
+	if value, exist := o.originState.Get(string(key)); exist {
 		return value != nil, value
 	}
 
@@ -65,15 +65,14 @@ func (o *SimpleAccount) GetState(key []byte) (bool, []byte) {
 		val = o.ldb.Get(composeStateKey(o.Addr, key))
 	}
 
-	o.originState.Store(string(key), val)
+	o.originState.Set(string(key), val)
 
 	return val != nil, val
 }
 
 func (o *SimpleAccount) GetCommittedState(key []byte) []byte {
-	if val, exist := o.originState.Load(string(key)); exist {
-		value := val.([]byte)
-		if val != nil {
+	if value, exist := o.originState.Get(string(key)); exist {
+		if value == nil {
 			return (&types.Hash{}).Bytes()
 		}
 		return value
@@ -84,9 +83,9 @@ func (o *SimpleAccount) GetCommittedState(key []byte) []byte {
 		val = o.ldb.Get(composeStateKey(o.Addr, key))
 	}
 
-	o.originState.Store(string(key), val)
+	o.originState.Set(string(key), val)
 
-	if val != nil {
+	if val == nil {
 		return (&types.Hash{}).Bytes()
 	}
 	return val
@@ -95,7 +94,7 @@ func (o *SimpleAccount) GetCommittedState(key []byte) []byte {
 // SetState Set account state
 func (o *SimpleAccount) SetState(key []byte, value []byte) {
 	_, prev := o.GetState(key)
-	o.dirtyState.Store(string(key), value)
+	o.dirtyState.Set(string(key), value)
 
 	o.changer.append(storageChange{
 		account:  o.Addr,
@@ -105,12 +104,12 @@ func (o *SimpleAccount) SetState(key []byte, value []byte) {
 }
 
 func (o *SimpleAccount) setState(key []byte, value []byte) {
-	o.dirtyState.Store(string(key), value)
+	o.dirtyState.Set(string(key), value)
 }
 
 // AddState Add account state
 func (o *SimpleAccount) AddState(key []byte, value []byte) {
-	o.dirtyState.Store(string(key), value)
+	o.dirtyState.Set(string(key), value)
 }
 
 // SetCodeAndHash Set the contract code and hash
@@ -121,7 +120,7 @@ func (o *SimpleAccount) SetCodeAndHash(code []byte) {
 		prevcode: o.Code(),
 	})
 	if o.dirtyAccount == nil {
-		o.dirtyAccount = ledger.CopyOrNewIfEmpty(o.originAccount)
+		o.dirtyAccount = CopyOrNewIfEmpty(o.originAccount)
 	}
 	o.dirtyAccount.CodeHash = ret.Bytes()
 	o.dirtyCode = code
@@ -130,7 +129,7 @@ func (o *SimpleAccount) SetCodeAndHash(code []byte) {
 func (o *SimpleAccount) setCodeAndHash(code []byte) {
 	ret := crypto.Keccak256Hash(code)
 	if o.dirtyAccount == nil {
-		o.dirtyAccount = ledger.CopyOrNewIfEmpty(o.originAccount)
+		o.dirtyAccount = CopyOrNewIfEmpty(o.originAccount)
 	}
 	o.dirtyAccount.CodeHash = ret.Bytes()
 	o.dirtyCode = code
@@ -181,14 +180,14 @@ func (o *SimpleAccount) SetNonce(nonce uint64) {
 		prev:    o.GetNonce(),
 	})
 	if o.dirtyAccount == nil {
-		o.dirtyAccount = ledger.CopyOrNewIfEmpty(o.originAccount)
+		o.dirtyAccount = CopyOrNewIfEmpty(o.originAccount)
 	}
 	o.dirtyAccount.Nonce = nonce
 }
 
 func (o *SimpleAccount) setNonce(nonce uint64) {
 	if o.dirtyAccount == nil {
-		o.dirtyAccount = ledger.CopyOrNewIfEmpty(o.originAccount)
+		o.dirtyAccount = CopyOrNewIfEmpty(o.originAccount)
 	}
 	o.dirtyAccount.Nonce = nonce
 }
@@ -222,14 +221,14 @@ func (o *SimpleAccount) SetBalance(balance *big.Int) {
 		prev:    new(big.Int).Set(o.GetBalance()),
 	})
 	if o.dirtyAccount == nil {
-		o.dirtyAccount = ledger.CopyOrNewIfEmpty(o.originAccount)
+		o.dirtyAccount = CopyOrNewIfEmpty(o.originAccount)
 	}
 	o.dirtyAccount.Balance = balance
 }
 
 func (o *SimpleAccount) setBalance(balance *big.Int) {
 	if o.dirtyAccount == nil {
-		o.dirtyAccount = ledger.CopyOrNewIfEmpty(o.originAccount)
+		o.dirtyAccount = CopyOrNewIfEmpty(o.originAccount)
 	}
 	o.dirtyAccount.Balance = balance
 }
@@ -253,8 +252,6 @@ func (o *SimpleAccount) Query(prefix string) (bool, [][]byte) {
 	var ret [][]byte
 	stored := make(map[string][]byte)
 
-	cached := o.cache.query(o.Addr, prefix)
-
 	begin, end := bytesPrefix(append(o.Addr.Bytes(), prefix...))
 	it := o.ldb.Iterator(begin, end)
 
@@ -266,16 +263,11 @@ func (o *SimpleAccount) Query(prefix string) (bool, [][]byte) {
 		stored[string(key)] = val
 	}
 
-	for key, val := range cached {
-		stored[key] = val
-	}
-
-	o.dirtyState.Range(func(key, value any) bool {
-		if strings.HasPrefix(key.(string), prefix) {
-			stored[key.(string)] = value.([]byte)
+	for key, value := range o.dirtyState.Items() {
+		if strings.HasPrefix(key, prefix) {
+			stored[key] = value
 		}
-		return true
-	})
+	}
 
 	for _, val := range stored {
 		ret = append(ret, val)
@@ -291,7 +283,7 @@ func (o *SimpleAccount) Query(prefix string) (bool, [][]byte) {
 func (o *SimpleAccount) getJournalIfModified() *blockJournalEntry {
 	entry := &blockJournalEntry{Address: o.Addr}
 
-	if ledger.InnerAccountChanged(o.originAccount, o.dirtyAccount) {
+	if InnerAccountChanged(o.originAccount, o.dirtyAccount) {
 		entry.AccountChanged = true
 		entry.PrevAccount = o.originAccount
 	}
@@ -322,26 +314,20 @@ func (o *SimpleAccount) getStateJournalAndComputeHash() map[string][]byte {
 	var dirtyStateKeys []string
 	var dirtyStateData []byte
 
-	o.dirtyState.Range(func(key, value any) bool {
-		origVal, ok := o.originState.Load(key)
-		var origValBytes []byte
-		if ok {
-			origValBytes = origVal.([]byte)
+	for key, value := range o.dirtyState.Items() {
+		origVal, _ := o.originState.Get(key)
+		if !bytes.Equal(origVal, value) {
+			prevStates[key] = origVal
+			dirtyStateKeys = append(dirtyStateKeys, key)
 		}
-		valBytes := value.([]byte)
-		if !bytes.Equal(origValBytes, valBytes) {
-			prevStates[key.(string)] = origValBytes
-			dirtyStateKeys = append(dirtyStateKeys, key.(string))
-		}
-		return true
-	})
+	}
 
 	sort.Strings(dirtyStateKeys)
 
 	for _, key := range dirtyStateKeys {
 		dirtyStateData = append(dirtyStateData, key...)
-		dirtyVal, _ := o.dirtyState.Load(key)
-		dirtyStateData = append(dirtyStateData, dirtyVal.([]byte)...)
+		dirtyVal, _ := o.dirtyState.Get(key)
+		dirtyStateData = append(dirtyStateData, dirtyVal...)
 	}
 	hash := sha256.Sum256(dirtyStateData)
 	o.dirtyStateHash = types.NewHash(hash[:])

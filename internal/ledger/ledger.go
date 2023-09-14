@@ -1,114 +1,168 @@
 package ledger
 
 import (
-	"fmt"
-	"time"
+	"math/big"
 
-	"github.com/sirupsen/logrus"
-
-	"github.com/axiomesh/axiom-kit/storage"
-	"github.com/axiomesh/axiom-kit/storage/blockfile"
-	"github.com/axiomesh/axiom-kit/storage/leveldb"
-	"github.com/axiomesh/axiom-kit/storage/pebble"
 	"github.com/axiomesh/axiom-kit/types"
-	"github.com/axiomesh/axiom/pkg/repo"
-	"github.com/axiomesh/eth-kit/ledger"
+	vm "github.com/axiomesh/eth-kit/evm"
 )
 
-type Ledger struct {
-	ledger.ChainLedger
-	ledger.StateLedger
+//go:generate mockgen -destination mock_ledger/mock_ledger.go -package mock_ledger -source ledger.go -typed
+
+// ChainLedgerImpl handles block, transaction and receipt data.
+type ChainLedger interface {
+	// GetBlock get block with height
+	GetBlock(height uint64) (*types.Block, error)
+
+	// GetBlockSign get the signature of block
+	GetBlockSign(height uint64) ([]byte, error)
+
+	// GetBlockByHash get the block using block hash
+	GetBlockByHash(hash *types.Hash) (*types.Block, error)
+
+	// GetTransaction get the transaction using transaction hash
+	GetTransaction(hash *types.Hash) (*types.Transaction, error)
+
+	// GetTransactionMeta get the transaction meta data
+	GetTransactionMeta(hash *types.Hash) (*types.TransactionMeta, error)
+
+	// GetReceipt get the transaction receipt
+	GetReceipt(hash *types.Hash) (*types.Receipt, error)
+
+	// PersistExecutionResult persist the execution result
+	PersistExecutionResult(block *types.Block, receipts []*types.Receipt) error
+
+	// GetChainMeta get chain meta data
+	GetChainMeta() *types.ChainMeta
+
+	// UpdateChainMeta update the chain meta data
+	UpdateChainMeta(*types.ChainMeta)
+
+	// LoadChainMeta get chain meta data
+	LoadChainMeta() (*types.ChainMeta, error)
+
+	// GetTransactionCount get the transaction count in a block
+	GetTransactionCount(height uint64) (uint64, error)
+
+	RollbackBlockChain(height uint64) error
+
+	GetBlockHash(height uint64) *types.Hash
+
+	Close()
 }
 
-type BlockData struct {
-	Block      *types.Block
-	Receipts   []*types.Receipt
-	Accounts   map[string]ledger.IAccount
-	TxHashList []*types.Hash
+type StateLedger interface {
+	StateAccessor
+
+	vm.StateDB
+
+	AddLog(log *types.EvmLog)
+
+	GetLogs(types.Hash, uint64, *types.Hash) []*types.EvmLog
+
+	// Rollback
+	RollbackState(height uint64) error
+
+	PrepareBlock(*types.Hash, uint64)
+
+	ClearChangerAndRefund()
+
+	// Close release resource
+	Close()
+
+	Copy() StateLedger
+
+	Finalise(bool)
+
+	// Version
+	Version() uint64
 }
 
-func New(repo *repo.Repo, blockchainStore storage.Storage, ldb storage.Storage, bf *blockfile.BlockFile, accountCache *AccountCache, logger logrus.FieldLogger) (*Ledger, error) {
-	chainLedger, err := NewChainLedgerImpl(blockchainStore, bf, repo, logger)
-	if err != nil {
-		return nil, fmt.Errorf("init chain ledger failed: %w", err)
-	}
+// StateAccessor manipulates the state data
+type StateAccessor interface {
+	// GetOrCreateAccount
+	GetOrCreateAccount(*types.Address) IAccount
 
-	meta := chainLedger.GetChainMeta()
+	// GetAccount
+	GetAccount(*types.Address) IAccount
 
-	var stateLedger ledger.StateLedger
+	// GetBalance
+	GetBalance(*types.Address) *big.Int
 
-	stateLedger, err = NewSimpleLedger(repo, ldb, accountCache, logger)
-	if err != nil {
-		return nil, fmt.Errorf("init state ledger failed: %w", err)
-	}
-	ledger := &Ledger{
-		ChainLedger: chainLedger,
-		StateLedger: stateLedger,
-	}
+	// SetBalance
+	SetBalance(*types.Address, *big.Int)
 
-	if err := ledger.Rollback(meta.Height); err != nil {
-		return nil, fmt.Errorf("rollback ledger to height %d failed: %w", meta.Height, err)
-	}
+	// GetState
+	GetState(*types.Address, []byte) (bool, []byte)
 
-	return ledger, nil
+	// SetState
+	SetState(*types.Address, []byte, []byte)
+
+	// AddState
+	AddState(*types.Address, []byte, []byte)
+
+	// SetCode
+	SetCode(*types.Address, []byte)
+
+	// GetCode
+	GetCode(*types.Address) []byte
+
+	// SetNonce
+	SetNonce(*types.Address, uint64)
+
+	// GetNonce
+	GetNonce(*types.Address) uint64
+
+	// QueryByPrefix
+	QueryByPrefix(address *types.Address, prefix string) (bool, [][]byte)
+
+	// Commit commits the state data
+	Commit(height uint64, accounts map[string]IAccount, stateRoot *types.Hash) error
+
+	// FlushDirtyData flushes the dirty data
+	FlushDirtyData() (map[string]IAccount, *types.Hash)
+
+	// Set tx context for state db
+	SetTxContext(thash *types.Hash, txIndex int)
+
+	// Clear
+	Clear()
 }
 
-// PersistBlockData persists block data
-func (l *Ledger) PersistBlockData(blockData *BlockData) {
-	current := time.Now()
-	block := blockData.Block
-	receipts := blockData.Receipts
-	accounts := blockData.Accounts
+type IAccount interface {
+	GetAddress() *types.Address
 
-	err := l.StateLedger.Commit(block.BlockHeader.Number, accounts, block.BlockHeader.StateRoot)
-	if err != nil {
-		panic(err)
-	}
+	GetState(key []byte) (bool, []byte)
 
-	if err := l.ChainLedger.PersistExecutionResult(block, receipts); err != nil {
-		panic(err)
-	}
+	GetCommittedState(key []byte) []byte
 
-	persistBlockDuration.Observe(float64(time.Since(current)) / float64(time.Second))
-	blockHeightMetric.Set(float64(block.BlockHeader.Number))
-}
+	SetState(key []byte, value []byte)
 
-// Rollback rollback ledger to history version
-func (l *Ledger) Rollback(height uint64) error {
-	if err := l.StateLedger.RollbackState(height); err != nil {
-		return fmt.Errorf("rollback state to height %d failed: %w", height, err)
-	}
+	AddState(key []byte, value []byte)
 
-	if err := l.ChainLedger.RollbackBlockChain(height); err != nil {
-		return fmt.Errorf("rollback block to height %d failed: %w", height, err)
-	}
+	SetCodeAndHash(code []byte)
 
-	blockHeightMetric.Set(float64(height))
-	return nil
-}
+	Code() []byte
 
-func (l *Ledger) Close() {
-	l.ChainLedger.Close()
-	l.StateLedger.Close()
-}
+	CodeHash() []byte
 
-func OpenStateDB(file string, kv string) (storage.Storage, error) {
-	var storage storage.Storage
-	var err error
+	SetNonce(nonce uint64)
 
-	if kv == "leveldb" {
-		storage, err = leveldb.New(file)
-		if err != nil {
-			return nil, fmt.Errorf("init leveldb failed: %w", err)
-		}
-	} else if kv == "pebble" {
-		storage, err = pebble.New(file)
-		if err != nil {
-			return nil, fmt.Errorf("init pebble failed: %w", err)
-		}
-	} else {
-		return nil, fmt.Errorf("unknow kv type %s, expect leveldb or pebble", kv)
-	}
+	GetNonce() uint64
 
-	return storage, nil
+	GetBalance() *big.Int
+
+	SetBalance(balance *big.Int)
+
+	SubBalance(amount *big.Int)
+
+	AddBalance(amount *big.Int)
+
+	Query(prefix string) (bool, [][]byte)
+
+	IsEmpty() bool
+
+	Suicided() bool
+
+	SetSuicided(bool)
 }

@@ -23,7 +23,6 @@ import (
 	"github.com/axiomesh/axiom/pkg/model/events"
 	"github.com/axiomesh/eth-kit/adaptor"
 	ethvm "github.com/axiomesh/eth-kit/evm"
-	ethledger "github.com/axiomesh/eth-kit/ledger"
 )
 
 type InvalidReason string
@@ -62,13 +61,13 @@ func (exec *BlockExecutor) processExecuteEvent(commitEvent *ordercommon.CommitEv
 	}
 
 	exec.evm = newEvm(block.Height(), uint64(block.BlockHeader.Timestamp), exec.evmChainCfg, exec.ledger.StateLedger, exec.ledger.ChainLedger, block.BlockHeader.ProposerAccount)
-	exec.ledger.PrepareBlock(block.BlockHash, block.Height())
+	exec.ledger.StateLedger.PrepareBlock(block.BlockHash, block.Height())
 	receipts := exec.applyTransactions(block.Transactions)
 
 	// check need turn into NewEpoch
 	epochInfo := exec.rep.EpochInfo
 	if block.BlockHeader.Number == (epochInfo.StartBlock + epochInfo.EpochPeriod - 1) {
-		newEpoch, err := base.TurnIntoNewEpoch(exec.ledger)
+		newEpoch, err := base.TurnIntoNewEpoch(exec.ledger.StateLedger)
 		if err != nil {
 			panic(err)
 		}
@@ -98,7 +97,7 @@ func (exec *BlockExecutor) processExecuteEvent(commitEvent *ordercommon.CommitEv
 	block.BlockHeader.ReceiptRoot = receiptRoot
 	block.BlockHeader.ParentHash = exec.currentBlockHash
 
-	parentChainMeta := exec.ledger.GetChainMeta()
+	parentChainMeta := exec.ledger.ChainLedger.GetChainMeta()
 	gasPrice, err := exec.gas.CalNextGasPrice(parentChainMeta.GasPrice.Uint64(), len(block.Transactions))
 	if err != nil {
 		panic(fmt.Errorf("calculate current gas failed: %w", err))
@@ -106,7 +105,7 @@ func (exec *BlockExecutor) processExecuteEvent(commitEvent *ordercommon.CommitEv
 
 	block.BlockHeader.GasPrice = int64(gasPrice)
 
-	accounts, journalHash := exec.ledger.FlushDirtyData()
+	accounts, journalHash := exec.ledger.StateLedger.FlushDirtyData()
 
 	block.BlockHeader.StateRoot = journalHash
 	block.BlockHash = block.Hash()
@@ -194,21 +193,14 @@ func (exec *BlockExecutor) postLogsEvent(receipts []*types.Receipt) {
 	exec.logsFeed.Send(logs)
 }
 
-// TODO: process invalidReason
 func (exec *BlockExecutor) applyTransaction(i int, tx *types.Transaction) *types.Receipt {
 	defer func() {
-		exec.ledger.SetNonce(tx.GetFrom(), tx.GetNonce()+1)
-		exec.ledger.Finalise(true)
+		exec.ledger.StateLedger.SetNonce(tx.GetFrom(), tx.GetNonce()+1)
+		exec.ledger.StateLedger.Finalise(true)
 	}()
 
-	exec.ledger.SetTxContext(tx.GetHash(), i)
-	receipt := exec.applyEthTransaction(i, tx)
-	exec.payGasFee(tx, receipt.GasUsed)
+	exec.ledger.StateLedger.SetTxContext(tx.GetHash(), i)
 
-	return receipt
-}
-
-func (exec *BlockExecutor) applyEthTransaction(_ int, tx *types.Transaction) *types.Receipt {
 	receipt := &types.Receipt{
 		TxHash: tx.GetHash(),
 	}
@@ -234,7 +226,7 @@ func (exec *BlockExecutor) applyEthTransaction(_ int, tx *types.Transaction) *ty
 		result, err = contract.Run(msg)
 	} else {
 		// execute evm
-		curGasPrice := exec.ledger.GetChainMeta().GasPrice
+		curGasPrice := exec.ledger.ChainLedger.GetChainMeta().GasPrice
 		if msg.GasPrice.Cmp(curGasPrice) != 0 {
 			exec.logger.Warnf("msg gas price %v not equals to current gas price %v, will adjust msg.GasPrice automatically", msg.GasPrice, curGasPrice)
 			msg.GasPrice = curGasPrice
@@ -251,7 +243,6 @@ func (exec *BlockExecutor) applyEthTransaction(_ int, tx *types.Transaction) *ty
 		statedb.RevertToSnapshot(snapshot)
 		receipt.Status = types.ReceiptFAILED
 		receipt.Ret = []byte(err.Error())
-		exec.ledger.Finalise(true)
 		return receipt
 	}
 	if result.Failed() {
@@ -268,7 +259,6 @@ func (exec *BlockExecutor) applyEthTransaction(_ int, tx *types.Transaction) *ty
 
 	receipt.TxHash = tx.GetHash()
 	receipt.GasUsed = result.UsedGas
-	exec.ledger.Finalise(true)
 	if msg.To == nil || bytes.Equal(msg.To.Bytes(), common.Address{}.Bytes()) {
 		receipt.ContractAddress = types.NewAddress(crypto.CreateAddress(exec.evm.TxContext.Origin, tx.GetNonce()).Bytes())
 	}
@@ -277,7 +267,7 @@ func (exec *BlockExecutor) applyEthTransaction(_ int, tx *types.Transaction) *ty
 }
 
 func (exec *BlockExecutor) clear() {
-	exec.ledger.Clear()
+	exec.ledger.StateLedger.Clear()
 }
 
 func (exec *BlockExecutor) calcReceiptMerkleRoot(receipts []*types.Receipt) (*types.Hash, error) {
@@ -310,42 +300,49 @@ func calcMerkleRoot(contents []merkletree.Content) (*types.Hash, error) {
 	return types.NewHash(tree.MerkleRoot()), nil
 }
 
-func newEvm(number uint64, timestamp uint64, chainCfg *params.ChainConfig, db ethledger.StateLedger, chainLedger ethledger.ChainLedger, coinbase string) *ethvm.EVM {
+func getBlockHashFunc(chainLedger ledger.ChainLedger) ethvm.GetHashFunc {
+	return func(n uint64) common.Hash {
+		hash := chainLedger.GetBlockHash(n)
+		if hash == nil {
+			return common.Hash{}
+		}
+		return common.BytesToHash(hash.Bytes())
+	}
+}
+
+func newEvm(number uint64, timestamp uint64, chainCfg *params.ChainConfig, db ledger.StateLedger, chainLedger ledger.ChainLedger, coinbase string) *ethvm.EVM {
 	if coinbase == "" {
 		coinbase = syscommon.ZeroAddress
 	}
 
-	blkCtx := ethvm.NewEVMBlockContext(number, timestamp, db, chainLedger, coinbase)
+	blkCtx := ethvm.NewEVMBlockContext(number, timestamp, coinbase, getBlockHashFunc(chainLedger))
 
 	return ethvm.NewEVM(blkCtx, ethvm.TxContext{}, db, chainCfg, ethvm.Config{})
 }
 
-func (exec *BlockExecutor) GetEvm(txCtx ethvm.TxContext, vmConfig ethvm.Config) (*ethvm.EVM, error) {
+func (exec *BlockExecutor) NewEvmWithViewLedger(txCtx ethvm.TxContext, vmConfig ethvm.Config) (*ethvm.EVM, error) {
 	var blkCtx ethvm.BlockContext
-	meta := exec.ledger.GetChainMeta()
-	block, err := exec.ledger.GetBlock(meta.Height)
+	meta := exec.ledger.ChainLedger.GetChainMeta()
+	block, err := exec.ledger.ChainLedger.GetBlock(meta.Height)
 	if err != nil {
 		exec.logger.Errorf("fail to get block at %d: %v", meta.Height, err.Error())
 		return nil, err
 	}
 
-	blkCtx = ethvm.NewEVMBlockContext(meta.Height, uint64(block.BlockHeader.Timestamp), exec.ledger.StateLedger, exec.ledger.ChainLedger, exec.rep.NodeAddress)
-	return ethvm.NewEVM(blkCtx, txCtx, exec.ledger.StateLedger, exec.evmChainCfg, vmConfig), nil
+	lg := exec.ledger.Copy()
+	blkCtx = ethvm.NewEVMBlockContext(meta.Height, uint64(block.BlockHeader.Timestamp), exec.rep.NodeAddress, getBlockHashFunc(exec.ledger.ChainLedger))
+	return ethvm.NewEVM(blkCtx, txCtx, lg.StateLedger, exec.evmChainCfg, vmConfig), nil
 }
 
 // getCurrentGasPrice returns the current block's gas price, which is
 // stored in the last block's blockheader
 func (exec *BlockExecutor) getCurrentGasPrice() *big.Int {
-	return exec.ledger.GetChainMeta().GasPrice
+	return exec.ledger.ChainLedger.GetChainMeta().GasPrice
 }
-
-// payGasFee share the revenue to nodes, now it is empty
-// leave the function for the future use.
-func (exec *BlockExecutor) payGasFee(tx *types.Transaction, gasUsed uint64) {}
 
 func (exec *BlockExecutor) getLogsForReceipt(receipts []*types.Receipt, height uint64, hash *types.Hash) {
 	for _, receipt := range receipts {
-		receipt.EvmLogs = exec.ledger.GetLogs(*receipt.TxHash, height, hash)
+		receipt.EvmLogs = exec.ledger.StateLedger.GetLogs(*receipt.TxHash, height, hash)
 		receipt.Bloom = ledger.CreateBloom(ledger.EvmReceipts{receipt})
 	}
 }

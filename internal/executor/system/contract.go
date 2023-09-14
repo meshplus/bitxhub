@@ -9,7 +9,6 @@ import (
 	"github.com/axiomesh/axiom/internal/executor/system/governance"
 	"github.com/axiomesh/axiom/internal/ledger"
 	"github.com/axiomesh/axiom/pkg/repo"
-	ethledger "github.com/axiomesh/eth-kit/ledger"
 )
 
 // addr2ContractConstruct is address to system contract
@@ -50,7 +49,7 @@ func GetSystemContract(addr *types.Address) (common.SystemContract, bool) {
 	return nil, false
 }
 
-func InitGenesisData(genesis *repo.Genesis, lg *ledger.Ledger) error {
+func InitGenesisData(genesis *repo.Genesis, lg ledger.StateLedger) error {
 	if err := base.InitEpochInfo(lg, genesis.EpochInfo.Clone()); err != nil {
 		return err
 	}
@@ -61,7 +60,7 @@ func InitGenesisData(genesis *repo.Genesis, lg *ledger.Ledger) error {
 }
 
 // CheckAndUpdateAllState check and update all system contract state if need
-func CheckAndUpdateAllState(lastHeight uint64, stateLedger ethledger.StateLedger) {
+func CheckAndUpdateAllState(lastHeight uint64, stateLedger ledger.StateLedger) {
 	for _, contractConstruct := range addr2ContractConstruct {
 		contractConstruct(globalCfg).CheckAndUpdateState(lastHeight, stateLedger)
 	}

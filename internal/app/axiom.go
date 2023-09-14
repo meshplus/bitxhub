@@ -30,9 +30,8 @@ import (
 )
 
 type Axiom struct {
-	Ledger        *ledger.Ledger
+	ViewLedger    *ledger.Ledger
 	BlockExecutor executor.Executor
-	ViewExecutor  executor.Executor
 	Order         order.Order
 	PeerMgr       peermgr.PeerManager
 
@@ -57,13 +56,13 @@ func NewAxiom(rep *repo.Repo, ctx context.Context, cancel context.CancelFunc) (*
 	axm.Ctx = ctx
 	axm.Cancel = cancel
 
-	chainMeta := axm.Ledger.GetChainMeta()
+	chainMeta := axm.ViewLedger.ChainLedger.GetChainMeta()
 
 	var getNonceFunc func(address *types.Address) uint64
 	if rep.Config.Order.Type == repo.OrderTypeSoloDev {
-		getNonceFunc = axm.Ledger.GetNonce
+		getNonceFunc = axm.ViewLedger.StateLedger.GetNonce
 	} else {
-		getNonceFunc = axm.Ledger.Copy().GetNonce
+		getNonceFunc = axm.ViewLedger.Copy().StateLedger.GetNonce
 	}
 
 	order, err := order.New(
@@ -79,15 +78,15 @@ func NewAxiom(rep *repo.Repo, ctx context.Context, cancel context.CancelFunc) (*
 		common.WithLogger(loggers.Logger(loggers.Order)),
 		common.WithApplied(chainMeta.Height),
 		common.WithDigest(chainMeta.BlockHash.String()),
-		common.WithGenesisDigest(axm.Ledger.GetBlockHash(1).String()),
-		common.WithGetChainMetaFunc(axm.Ledger.GetChainMeta),
-		common.WithGetAccountBalanceFunc(axm.Ledger.GetBalance),
+		common.WithGenesisDigest(axm.ViewLedger.ChainLedger.GetBlockHash(1).String()),
+		common.WithGetChainMetaFunc(axm.ViewLedger.ChainLedger.GetChainMeta),
+		common.WithGetAccountBalanceFunc(axm.ViewLedger.StateLedger.GetBalance),
 		common.WithGetAccountNonceFunc(getNonceFunc),
 		common.WithGetEpochInfoFromEpochMgrContractFunc(func(epoch uint64) (*rbft.EpochInfo, error) {
-			return base.GetEpochInfo(axm.Ledger, epoch)
+			return base.GetEpochInfo(axm.ViewLedger.StateLedger, epoch)
 		}),
 		common.WithGetCurrentEpochInfoFromEpochMgrContractFunc(func() (*rbft.EpochInfo, error) {
-			return base.GetCurrentEpochInfo(axm.Ledger)
+			return base.GetCurrentEpochInfo(axm.ViewLedger.StateLedger)
 		}),
 	)
 	if err != nil {
@@ -132,21 +131,6 @@ func GenerateAxiomWithoutOrder(rep *repo.Repo) (*Axiom, error) {
 		return nil, fmt.Errorf("create RW ledger: %w", err)
 	}
 
-	viewLdg := &ledger.Ledger{
-		ChainLedger: rwLdg.ChainLedger,
-	}
-	// create read only ledger
-	viewLdg.StateLedger, err = ledger.NewSimpleLedger(rep, stateStorage, nil, loggers.Logger(loggers.Executor))
-	if err != nil {
-		return nil, fmt.Errorf("create readonly ledger: %w", err)
-	}
-
-	// 1. create executor and view executor
-	viewExec, err := executor.New(viewLdg, loggers.Logger(loggers.Executor), rep)
-	if err != nil {
-		return nil, fmt.Errorf("create ViewExecutor: %w", err)
-	}
-
 	if rwLdg.ChainLedger.GetChainMeta().Height == 0 {
 		if err := genesis.Initialize(&rep.Config.Genesis, rwLdg); err != nil {
 			return nil, err
@@ -175,9 +159,8 @@ func GenerateAxiomWithoutOrder(rep *repo.Repo) (*Axiom, error) {
 	return &Axiom{
 		repo:          rep,
 		logger:        logger,
-		Ledger:        rwLdg,
+		ViewLedger:    rwLdg.Copy(),
 		BlockExecutor: txExec,
-		ViewExecutor:  viewExec,
 		PeerMgr:       peerMgr,
 	}, nil
 }
@@ -185,7 +168,7 @@ func GenerateAxiomWithoutOrder(rep *repo.Repo) (*Axiom, error) {
 func (axm *Axiom) Start() error {
 	var err error
 	// read current epoch info from ledger
-	axm.repo.EpochInfo, err = base.GetCurrentEpochInfo(axm.Ledger)
+	axm.repo.EpochInfo, err = base.GetCurrentEpochInfo(axm.ViewLedger.StateLedger)
 	if err != nil {
 		return err
 	}
@@ -204,10 +187,6 @@ func (axm *Axiom) Start() error {
 		return fmt.Errorf("block executor start: %w", err)
 	}
 
-	if err := axm.ViewExecutor.Start(); err != nil {
-		return fmt.Errorf("view executor start: %w", err)
-	}
-
 	axm.start()
 
 	axm.printLogo()
@@ -218,10 +197,6 @@ func (axm *Axiom) Start() error {
 func (axm *Axiom) Stop() error {
 	if err := axm.BlockExecutor.Stop(); err != nil {
 		return fmt.Errorf("block executor stop: %w", err)
-	}
-
-	if err := axm.ViewExecutor.Stop(); err != nil {
-		return fmt.Errorf("view executor stop: %w", err)
 	}
 
 	if axm.repo.Config.Order.Type != repo.OrderTypeSolo {
