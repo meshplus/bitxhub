@@ -211,18 +211,19 @@ func (exec *BlockExecutor) applyTransaction(i int, tx *types.Transaction) *types
 	msg := adaptor.TransactionToMessage(tx)
 	msg.GasPrice = exec.getCurrentGasPrice()
 
-	exec.logger.Debugf("tx gas: %v", tx.GetGas())
-	exec.logger.Debugf("tx gas price: %v", tx.GetGasPrice())
 	statedb := exec.ledger.StateLedger
+	// TODO: Move to system contract
 	snapshot := statedb.Snapshot()
 
 	// check and update system contract state
+	// TODO: Remove
 	system.CheckAndUpdateAllState(exec.currentHeight, statedb)
 
 	contract, ok := system.GetSystemContract(tx.GetTo())
 	if ok {
 		// execute built contract
 		contract.Reset(statedb)
+		// TODO: Move the error section to result
 		result, err = contract.Run(msg)
 	} else {
 		// execute evm
@@ -234,12 +235,11 @@ func (exec *BlockExecutor) applyTransaction(i int, tx *types.Transaction) *types
 		gp := new(ethvm.GasPool).AddGas(exec.gasLimit)
 		txContext := ethvm.NewEVMTxContext(msg)
 		exec.evm.Reset(txContext, exec.ledger.StateLedger)
-		exec.logger.Debugf("msg gas: %v", msg.GasPrice)
 		result, err = ethvm.ApplyMessage(exec.evm, msg, gp)
 	}
 
 	if err != nil {
-		exec.logger.Errorf("apply msg failed: %s", err.Error())
+		exec.logger.Errorf("apply tx failed: %s", err.Error())
 		statedb.RevertToSnapshot(snapshot)
 		receipt.Status = types.ReceiptFAILED
 		receipt.Ret = []byte(err.Error())

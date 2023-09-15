@@ -12,7 +12,7 @@ env:
 jobs:
   base-check:
     name: Run base-check
-    runs-on: ubuntu-20.04
+    runs-on: ci
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -47,7 +47,7 @@ jobs:
 
   smoke-test:
     name: Run smoke-test
-    runs-on: ubuntu-20.04
+    runs-on: ci
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -123,7 +123,7 @@ jobs:
 
   notify:
     name: Lark notify
-    runs-on: ubuntu-20.04
+    runs-on: ci
     # make self can be canceled: https://github.com/orgs/community/discussions/26303
     if: always() && (contains(needs.*.result, 'cancelled') && fromjson('throw') || !cancelled())
     needs: [base-check, smoke-test, analyze]
