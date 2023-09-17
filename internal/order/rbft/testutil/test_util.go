@@ -66,7 +66,7 @@ func MockOrderConfig(logger logrus.FieldLogger, ctrl *gomock.Controller, kvType 
 	peerMgr := MockMiniPeerManager(ctrl)
 	peerMgr.EXPECT().Peers().Return([]peer.AddrInfo{}).AnyTimes()
 
-	genesisEpochInfo := repo.GenesisEpochInfo()
+	genesisEpochInfo := repo.GenesisEpochInfo(false)
 	conf := &common.Config{
 		Config:             repo.DefaultOrderConfig(),
 		Logger:             logger,

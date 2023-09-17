@@ -131,32 +131,6 @@ func (p *Pprof) httpPProf() {
 	}
 }
 
-// ReConfig reconfigure prometheus monitor
-func (p *Pprof) ReConfig(config *repo.Config) error {
-	if p.config.Enable != config.PProf.Enable ||
-		p.config.Duration != config.PProf.Duration ||
-		p.config.Mode != config.PProf.Mode ||
-		p.config.PType != config.PProf.PType ||
-		p.port != config.Port.PProf {
-		if err := p.Stop(); err != nil {
-			return err
-		}
-		p.config.Enable = config.PProf.Enable
-		p.config.Duration = config.PProf.Duration
-		p.config.Mode = config.PProf.Mode
-		p.config.PType = config.PProf.PType
-		p.port = config.Port.PProf
-
-		p.init()
-
-		if err := p.Start(); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 func fileExist(path string) bool {
 	_, err := os.Stat(path)
 	if err != nil {

@@ -5,7 +5,6 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/rand"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path"
@@ -15,8 +14,6 @@ import (
 	"strings"
 
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/event"
-	libp2pcrypto "github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/mitchellh/go-homedir"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pelletier/go-toml/v2"
@@ -27,20 +24,25 @@ import (
 )
 
 type Repo struct {
-	Config      *Config
-	OrderConfig *OrderConfig
-	NodeKey     *ecdsa.PrivateKey
-	P2PKey      libp2pcrypto.PrivKey
-	P2PID       string
-
-	// TODO: use another account
-	NodeAddress string
-
-	ConfigChangeFeed event.Feed
+	Config         *Config
+	OrderConfig    *OrderConfig
+	AccountKey     *ecdsa.PrivateKey
+	AccountAddress string
+	P2PKey         *ecdsa.PrivateKey
+	P2PID          string
 
 	// TODO: Move to epoch manager service
 	// Track current epoch info, will be updated bt executor
 	EpochInfo *rbft.EpochInfo
+}
+
+func (r *Repo) PrintNodeInfo() {
+	fmt.Printf("%s-repo: %s\n", AppName, r.Config.RepoRoot)
+	fmt.Println("account-addr:", r.AccountAddress)
+	fmt.Println("account-key:", KeyString(r.AccountKey))
+	fmt.Println("p2p-id:", r.P2PID)
+	fmt.Println("p2p-key:", KeyString(r.P2PKey))
+	fmt.Printf("p2p-addr: /ip4/0.0.0.0/tcp/%d/p2p/%s\n", r.Config.Port.P2P, r.P2PID)
 }
 
 type signerOpts struct {
@@ -52,13 +54,8 @@ func (*signerOpts) HashFunc() crypto.Hash {
 
 var signOpt = &signerOpts{}
 
-func (r *Repo) NodeKeySign(data []byte) ([]byte, error) {
-	return r.NodeKey.Sign(rand.Reader, data, signOpt)
-}
-
-// TODO: need support? remove it
-func (r *Repo) SubscribeConfigChange(ch chan *Repo) event.Subscription {
-	return r.ConfigChangeFeed.Subscribe(ch)
+func (r *Repo) AccountKeySign(data []byte) ([]byte, error) {
+	return r.AccountKey.Sign(rand.Reader, data, signOpt)
 }
 
 func (r *Repo) Flush() error {
@@ -68,7 +65,10 @@ func (r *Repo) Flush() error {
 	if err := writeConfigWithEnv(path.Join(r.Config.RepoRoot, orderCfgFileName), r.OrderConfig); err != nil {
 		return errors.Wrap(err, "failed to write order config")
 	}
-	if err := WriteKey(path.Join(r.Config.RepoRoot, nodeKeyFileName), r.NodeKey); err != nil {
+	if err := WriteKey(path.Join(r.Config.RepoRoot, p2pKeyFileName), r.P2PKey); err != nil {
+		return errors.Wrap(err, "failed to write node key")
+	}
+	if err := WriteKey(path.Join(r.Config.RepoRoot, AccountKeyFileName), r.AccountKey); err != nil {
 		return errors.Wrap(err, "failed to write node key")
 	}
 	return nil
@@ -115,43 +115,46 @@ func MarshalConfig(config any) (string, error) {
 }
 
 func Default(repoRoot string) (*Repo, error) {
-	return DefaultWithNodeIndex(repoRoot, 0)
+	return DefaultWithNodeIndex(repoRoot, 0, false)
 }
 
-func DefaultWithNodeIndex(repoRoot string, nodeIndex int) (*Repo, error) {
-	var key *ecdsa.PrivateKey
+func DefaultWithNodeIndex(repoRoot string, nodeIndex int, epochEnable bool) (*Repo, error) {
+	var p2pKey, accountKey *ecdsa.PrivateKey
 	var err error
 	if nodeIndex < 0 || nodeIndex > len(DefaultNodeKeys)-1 {
-		key, err = GenerateKey()
+		p2pKey, err = GenerateKey()
+		if err != nil {
+			return nil, err
+		}
+		accountKey, err = GenerateKey()
+		if err != nil {
+			return nil, err
+		}
 		nodeIndex = 0
 	} else {
-		key, err = ParseKey([]byte(DefaultNodeKeys[nodeIndex]))
+		p2pKey, err = ParseKey([]byte(DefaultNodeKeys[nodeIndex]))
+		if err != nil {
+			return nil, err
+		}
+		accountKey = p2pKey
 	}
+
+	id, err := KeyToNodeID(p2pKey)
 	if err != nil {
 		return nil, err
 	}
 
-	p2pKey, err := P2PKeyFromECDSAKey(key)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert ecdsa key : %w", err)
-	}
-	addr := ethcrypto.PubkeyToAddress(key.PublicKey)
-	id, err := KeyToNodeID(key)
-	if err != nil {
-		return nil, err
-	}
-
-	cfg := DefaultConfig(repoRoot)
+	cfg := DefaultConfig(repoRoot, epochEnable)
 	cfg.Port.P2P = int64(4001 + nodeIndex)
 
 	return &Repo{
-		Config:      cfg,
-		OrderConfig: DefaultOrderConfig(),
-		NodeKey:     key,
-		P2PKey:      p2pKey,
-		P2PID:       id,
-		NodeAddress: addr.String(),
-		EpochInfo:   cfg.Genesis.EpochInfo,
+		Config:         cfg,
+		OrderConfig:    DefaultOrderConfig(),
+		AccountKey:     accountKey,
+		AccountAddress: ethcrypto.PubkeyToAddress(accountKey.PublicKey).String(),
+		P2PKey:         p2pKey,
+		P2PID:          id,
+		EpochInfo:      cfg.Genesis.EpochInfo,
 	}, nil
 }
 
@@ -162,18 +165,17 @@ func Load(repoRoot string) (*Repo, error) {
 		return nil, err
 	}
 
-	key, err := LoadNodeKey(repoRoot)
+	p2pKey, err := LoadP2PKey(repoRoot)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load node key: %w", err)
+		return nil, fmt.Errorf("failed to load node p2pKey: %w", err)
 	}
-	p2pKey, err := P2PKeyFromECDSAKey(key)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert ecdsa key : %w", err)
-	}
-	addr := ethcrypto.PubkeyToAddress(key.PublicKey)
-	id, err := KeyToNodeID(key)
+	id, err := KeyToNodeID(p2pKey)
 	if err != nil {
 		return nil, err
+	}
+	accountKey, err := LoadAccountKey(repoRoot)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load node p2pKey: %w", err)
 	}
 
 	cfg, err := LoadConfig(repoRoot)
@@ -187,14 +189,13 @@ func Load(repoRoot string) (*Repo, error) {
 	}
 
 	repo := &Repo{
-		Config:           cfg,
-		OrderConfig:      orderCfg,
-		NodeKey:          key,
-		P2PKey:           p2pKey,
-		P2PID:            id,
-		NodeAddress:      addr.String(),
-		ConfigChangeFeed: event.Feed{},
-		EpochInfo:        cfg.Genesis.EpochInfo,
+		Config:         cfg,
+		OrderConfig:    orderCfg,
+		AccountKey:     accountKey,
+		AccountAddress: ethcrypto.PubkeyToAddress(accountKey.PublicKey).String(),
+		P2PKey:         p2pKey,
+		P2PID:          id,
+		EpochInfo:      cfg.Genesis.EpochInfo,
 	}
 
 	return repo, nil
@@ -295,20 +296,6 @@ func RemovePID(rootPath string) error {
 	return os.Remove(filepath.Join(rootPath, pidFileName))
 }
 
-func WriteDebugInfo(rootPath string, debugInfo any) error {
-	p := filepath.Join(rootPath, debugFileName)
-	_ = os.Remove(p)
-
-	raw, err := json.Marshal(debugInfo)
-	if err != nil {
-		return err
-	}
-	if err := os.WriteFile(p, raw, 0755); err != nil {
-		return errors.Wrap(err, "failed to write debug info file")
-	}
-	return nil
-}
-
 func CheckWritable(dir string) error {
 	_, err := os.Stat(dir)
 	if err == nil {
@@ -321,7 +308,7 @@ func CheckWritable(dir string) error {
 			}
 			return fmt.Errorf("unexpected error while checking writeablility of repo root: %s", err)
 		}
-		fi.Close()
+		_ = fi.Close()
 		return os.Remove(testfile)
 	}
 

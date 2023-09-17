@@ -120,19 +120,6 @@ func Initialize(ctx context.Context, config *repo.Config) error {
 	return nil
 }
 
-func ReConfig(config *repo.Config) {
-	m := w.loggers
-	m[P2P].Logger.SetLevel(log.ParseLevel(config.Log.Module.P2P))
-	m[Order].Logger.SetLevel(log.ParseLevel(config.Log.Module.Consensus))
-	m[Executor].Logger.SetLevel(log.ParseLevel(config.Log.Module.Executor))
-	m[Router].Logger.SetLevel(log.ParseLevel(config.Log.Module.Router))
-	m[App].Logger.SetLevel(log.ParseLevel(config.Log.Level))
-	m[API].Logger.SetLevel(log.ParseLevel(config.Log.Module.API))
-	m[CoreAPI].Logger.SetLevel(log.ParseLevel(config.Log.Module.CoreAPI))
-	m[Storage].Logger.SetLevel(log.ParseLevel(config.Log.Module.Storage))
-	m[Profile].Logger.SetLevel(log.ParseLevel(config.Log.Module.Profile))
-}
-
 func Logger(name string) logrus.FieldLogger {
 	return w.loggers[name]
 }

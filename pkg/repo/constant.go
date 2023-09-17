@@ -14,13 +14,13 @@ const (
 	// rootPathEnvVar is the environment variable used to change the path root.
 	rootPathEnvVar = "AXIOM_PATH"
 
-	nodeKeyFileName = "node.key"
+	p2pKeyFileName = "p2p.key"
+
+	AccountKeyFileName = "account.key"
 
 	pidFileName = "axiom.pid"
 
 	LogsDirName = "logs"
-
-	debugFileName = "axiom.debug.json"
 )
 
 const (

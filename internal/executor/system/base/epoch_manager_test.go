@@ -37,7 +37,7 @@ func TestEpochManager(t *testing.T) {
 	assert.Error(t, err)
 	epochMgr.CheckAndUpdateState(0, stateLedger)
 
-	g := repo.GenesisEpochInfo()
+	g := repo.GenesisEpochInfo(false)
 	g.EpochPeriod = 100
 	g.StartBlock = 1
 	err = InitEpochInfo(stateLedger, g)

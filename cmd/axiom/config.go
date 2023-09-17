@@ -3,8 +3,11 @@ package main
 import (
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 
 	"github.com/axiomesh/axiom-kit/fileutil"
@@ -17,7 +20,7 @@ var configCMD = &cli.Command{
 	Subcommands: []*cli.Command{
 		{
 			Name:   "generate",
-			Usage:  "Generate default config and node private key",
+			Usage:  "Generate default config and node private key(if not exist)",
 			Action: generate,
 			Flags: []cli.Flag{
 				&cli.IntFlag{
@@ -30,17 +33,22 @@ var configCMD = &cli.Command{
 					Usage:    "generate solo config if specified",
 					Required: false,
 				},
+				&cli.BoolFlag{
+					Name:     "epoch-enable",
+					Usage:    "generate epoch and wrf enabled config if specified",
+					Required: false,
+				},
 			},
 		},
 		{
-			Name:   "p2p-addr",
-			Usage:  "Show p2p connection address",
-			Action: p2pAddr,
+			Name:   "generate-account-key",
+			Usage:  "Generate account private key",
+			Action: generateAccountKey,
 		},
 		{
-			Name:   "node-id",
-			Usage:  "show node id",
-			Action: nodeID,
+			Name:   "node-info",
+			Usage:  "show node info",
+			Action: nodeInfo,
 		},
 		{
 			Name:   "show",
@@ -70,8 +78,7 @@ func generate(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	existConfig := fileutil.Exist(filepath.Join(p, repo.CfgFileName))
-	if existConfig {
+	if fileutil.Exist(filepath.Join(p, repo.CfgFileName)) {
 		fmt.Println("axiom repo already exists")
 		return nil
 	}
@@ -83,8 +90,9 @@ func generate(ctx *cli.Context) error {
 		}
 	}
 
+	epochEnable := ctx.Bool("epoch-enable")
 	nodeIndex := ctx.Int("default-node-index")
-	r, err := repo.DefaultWithNodeIndex(p, nodeIndex-1)
+	r, err := repo.DefaultWithNodeIndex(p, nodeIndex-1, epochEnable)
 	if err != nil {
 		return err
 	}
@@ -95,23 +103,50 @@ func generate(ctx *cli.Context) error {
 		return err
 	}
 
-	id, err := repo.KeyToNodeID(r.NodeKey)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("initializing axiom at %s\n", p)
-	fmt.Println("generate node-id:", id)
+	r.PrintNodeInfo()
 	return nil
 }
 
-func nodeID(ctx *cli.Context) error {
+func generateAccountKey(ctx *cli.Context) error {
 	p, err := getRootPath(ctx)
 	if err != nil {
 		return err
 	}
-	existConfig := fileutil.Exist(p)
-	if !existConfig {
+	if !fileutil.Exist(p) {
+		fmt.Println("axiom repo not exist")
+		return nil
+	}
+
+	keyPath := path.Join(p, repo.AccountKeyFileName)
+	if fileutil.Exist(keyPath) {
+		fmt.Printf("%s exists, do you want to overwrite it? y/n\n", keyPath)
+		var choice string
+		if _, err := fmt.Scanln(&choice); err != nil {
+			return err
+		}
+		if choice != "y" {
+			return errors.New("interrupt by user")
+		}
+	}
+	key, err := repo.GenerateKey()
+	if err != nil {
+		return err
+	}
+	if err := repo.WriteKey(keyPath, key); err != nil {
+		return err
+	}
+	fmt.Println("generate account-addr:", ethcrypto.PubkeyToAddress(key.PublicKey).String())
+	fmt.Println("generate account-key:", repo.KeyString(key))
+
+	return nil
+}
+
+func nodeInfo(ctx *cli.Context) error {
+	p, err := getRootPath(ctx)
+	if err != nil {
+		return err
+	}
+	if !fileutil.Exist(p) {
 		fmt.Println("axiom repo not exist")
 		return nil
 	}
@@ -120,30 +155,8 @@ func nodeID(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	id, err := repo.KeyToNodeID(r.NodeKey)
-	if err != nil {
-		return err
-	}
-	fmt.Println(id)
-	return nil
-}
 
-func p2pAddr(ctx *cli.Context) error {
-	p, err := getRootPath(ctx)
-	if err != nil {
-		return err
-	}
-	existConfig := fileutil.Exist(p)
-	if !existConfig {
-		fmt.Println("axiom repo not exist")
-		return nil
-	}
-
-	r, err := repo.Load(p)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("/ip4/0.0.0.0/tcp/%d/p2p/%s\n", r.Config.Port.P2P, r.P2PID)
+	r.PrintNodeInfo()
 	return nil
 }
 
@@ -152,8 +165,7 @@ func show(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	existConfig := fileutil.Exist(p)
-	if !existConfig {
+	if !fileutil.Exist(p) {
 		fmt.Println("axiom repo not exist")
 		return nil
 	}
@@ -175,8 +187,7 @@ func showOrder(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	existConfig := fileutil.Exist(p)
-	if !existConfig {
+	if !fileutil.Exist(p) {
 		fmt.Println("axiom repo not exist")
 		return nil
 	}
@@ -198,8 +209,7 @@ func check(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	existConfig := fileutil.Exist(p)
-	if !existConfig {
+	if !fileutil.Exist(p) {
 		fmt.Println("axiom repo not exist")
 		return nil
 	}
@@ -219,8 +229,7 @@ func rewriteWithEnv(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	existConfig := fileutil.Exist(p)
-	if !existConfig {
+	if !fileutil.Exist(p) {
 		fmt.Println("axiom repo not exist")
 		return nil
 	}

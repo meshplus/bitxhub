@@ -6,6 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/axiomesh/axiom"
 	"github.com/axiomesh/axiom-kit/fileutil"
 )
 
@@ -65,6 +66,11 @@ type Solo struct {
 }
 
 func DefaultOrderConfig() *OrderConfig {
+	if axiom.Net == AriesTestnetName {
+		return AriesOrderConfig()
+	}
+
+	// nolint
 	return &OrderConfig{
 		TimedGenBlock: TimedGenBlock{
 			NoTxBatchTimeout: Duration(2 * time.Second),

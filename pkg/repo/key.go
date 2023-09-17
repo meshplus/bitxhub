@@ -6,17 +6,16 @@ import (
 	"os"
 	"path"
 
-	"github.com/ethereum/go-ethereum/crypto"
-	ic "github.com/libp2p/go-libp2p/core/crypto"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
+	libp2pcrypto "github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/axiomesh/axiom-kit/fileutil"
 )
 
-func LoadNodeKey(repoRoot string) (*ecdsa.PrivateKey, error) {
-	keyPath := path.Join(repoRoot, nodeKeyFileName)
-	existConfig := fileutil.Exist(keyPath)
-	if !existConfig {
+func loadKey(repoRoot string, keyFileName string) (*ecdsa.PrivateKey, error) {
+	keyPath := path.Join(repoRoot, keyFileName)
+	if !fileutil.Exist(keyPath) {
 		key, err := GenerateKey()
 		if err != nil {
 			return nil, err
@@ -29,17 +28,25 @@ func LoadNodeKey(repoRoot string) (*ecdsa.PrivateKey, error) {
 	return ReadKey(keyPath)
 }
 
-// GenerateKey: use secp256k1
-func GenerateKey() (*ecdsa.PrivateKey, error) {
-	return crypto.GenerateKey()
+func LoadP2PKey(repoRoot string) (*ecdsa.PrivateKey, error) {
+	return loadKey(repoRoot, p2pKeyFileName)
 }
 
-func P2PKeyFromECDSAKey(sk *ecdsa.PrivateKey) (ic.PrivKey, error) {
-	return ic.UnmarshalSecp256k1PrivateKey(crypto.FromECDSA(sk))
+func LoadAccountKey(repoRoot string) (*ecdsa.PrivateKey, error) {
+	return loadKey(repoRoot, AccountKeyFileName)
+}
+
+// GenerateKey use secp256k1
+func GenerateKey() (*ecdsa.PrivateKey, error) {
+	return ethcrypto.GenerateKey()
+}
+
+func Libp2pKeyFromECDSAKey(sk *ecdsa.PrivateKey) (libp2pcrypto.PrivKey, error) {
+	return libp2pcrypto.UnmarshalSecp256k1PrivateKey(ethcrypto.FromECDSA(sk))
 }
 
 func KeyToNodeID(sk *ecdsa.PrivateKey) (string, error) {
-	pk, err := P2PKeyFromECDSAKey(sk)
+	pk, err := Libp2pKeyFromECDSAKey(sk)
 	if err != nil {
 		return "", err
 	}
@@ -51,13 +58,16 @@ func KeyToNodeID(sk *ecdsa.PrivateKey) (string, error) {
 	return id.String(), nil
 }
 
+func KeyString(key *ecdsa.PrivateKey) string {
+	return hex.EncodeToString(ethcrypto.FromECDSA(key))
+}
+
 func WriteKey(keyPath string, key *ecdsa.PrivateKey) error {
-	keyBytes := hex.EncodeToString(crypto.FromECDSA(key))
-	return os.WriteFile(keyPath, []byte(keyBytes), 0600)
+	return os.WriteFile(keyPath, []byte(KeyString(key)), 0600)
 }
 
 func ParseKey(keyBytes []byte) (*ecdsa.PrivateKey, error) {
-	return crypto.HexToECDSA(string(keyBytes))
+	return ethcrypto.HexToECDSA(string(keyBytes))
 }
 
 func ReadKey(keyPath string) (*ecdsa.PrivateKey, error) {

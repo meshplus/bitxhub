@@ -12,6 +12,7 @@ import (
 	p2pnetwork "github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	cmap "github.com/orcaman/concurrent-map/v2"
+	"github.com/samber/lo"
 	"github.com/sirupsen/logrus"
 
 	"github.com/axiomesh/axiom"
@@ -55,7 +56,7 @@ func New(repoConfig *repo.Repo, logger logrus.FieldLogger, ledger *ledger.Ledger
 func (swarm *Swarm) init() error {
 	// init peers with ips and hosts
 	bootstrap := make([]string, 0)
-	for _, a := range swarm.repo.Config.Genesis.EpochInfo.P2PBootstrapNodeAddresses {
+	for _, a := range lo.Uniq(append(swarm.repo.Config.Genesis.EpochInfo.P2PBootstrapNodeAddresses, swarm.repo.Config.P2P.BootstrapNodeAddresses...)) {
 		if !strings.Contains(a, swarm.repo.P2PID) {
 			bootstrap = append(bootstrap, a)
 		}
@@ -81,12 +82,16 @@ func (swarm *Swarm) init() error {
 		return fmt.Errorf("unsupported p2p pipe broadcast type: %v", swarm.repo.Config.P2P.Pipe.BroadcastType)
 	}
 
+	libp2pKey, err := repo.Libp2pKeyFromECDSAKey(swarm.repo.P2PKey)
+	if err != nil {
+		return fmt.Errorf("failed to convert ecdsa p2pKey: %w", err)
+	}
 	protocolIDWithVersion := fmt.Sprintf("%s-%x", protocolID, sha256.Sum256([]byte(axiom.VersionSecret)))
 
 	gater := newConnectionGater(swarm.logger, swarm.ledger)
 	opts := []network.Option{
 		network.WithLocalAddr(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", swarm.repo.Config.Port.P2P)),
-		network.WithPrivateKey(swarm.repo.P2PKey),
+		network.WithPrivateKey(libp2pKey),
 		network.WithProtocolID(protocolIDWithVersion),
 		network.WithLogger(swarm.logger),
 		network.WithTimeout(10*time.Second, swarm.repo.Config.P2P.SendTimeout.ToDuration(), swarm.repo.Config.P2P.ReadTimeout.ToDuration()),

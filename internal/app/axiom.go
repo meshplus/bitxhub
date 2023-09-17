@@ -62,12 +62,12 @@ func NewAxiom(rep *repo.Repo, ctx context.Context, cancel context.CancelFunc) (*
 	order, err := order.New(
 		rep.Config.Order.Type,
 		common.WithConfig(rep.OrderConfig),
-		common.WithSelfAccountAddress(rep.NodeAddress),
+		common.WithSelfAccountAddress(rep.AccountAddress),
 		common.WithGenesisEpochInfo(rep.Config.Genesis.EpochInfo.Clone()),
 		common.WithStoragePath(repo.GetStoragePath(repoRoot, "order")),
 		common.WithStorageType(rep.Config.Ledger.Kv),
 		common.WithOrderType(rep.Config.Order.Type),
-		common.WithPrivKey(rep.NodeKey),
+		common.WithPrivKey(rep.AccountKey),
 		common.WithPeerManager(axm.PeerMgr),
 		common.WithLogger(loggers.Logger(loggers.Order)),
 		common.WithApplied(chainMeta.Height),
@@ -210,25 +210,6 @@ func (axm *Axiom) Stop() error {
 	axm.logger.Info("Axiom stopped")
 
 	return nil
-}
-
-func (axm *Axiom) ReConfig(repo *repo.Repo) {
-	if repo.Config != nil {
-		config := repo.Config
-		loggers.ReConfig(config)
-
-		if err := axm.Jsonrpc.ReConfig(config); err != nil {
-			axm.logger.Errorf("reconfig json rpc failed: %v", err)
-		}
-
-		if err := axm.Monitor.ReConfig(config); err != nil {
-			axm.logger.Errorf("reconfig Monitor failed: %v", err)
-		}
-
-		if err := axm.Pprof.ReConfig(config); err != nil {
-			axm.logger.Errorf("reconfig Pprof failed: %v", err)
-		}
-	}
 }
 
 func (axm *Axiom) printLogo() {
