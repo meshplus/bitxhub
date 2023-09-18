@@ -16,7 +16,6 @@ type CoreAPI interface {
 	Broker() BrokerAPI
 	Chain() ChainAPI
 	Feed() FeedAPI
-	Account() AccountAPI
 	Gas() GasAPI
 }
 
@@ -55,10 +54,6 @@ type FeedAPI interface {
 	SubscribeNewTxEvent(chan<- []*types.Transaction) event.Subscription
 	SubscribeNewBlockEvent(chan<- events.ExecutedEvent) event.Subscription
 	BloomStatus() (uint64, uint64)
-}
-
-type AccountAPI interface {
-	GetAccount(addr *types.Address) ledger.IAccount
 }
 
 type GasAPI interface {

@@ -65,7 +65,6 @@ func TestNew001(t *testing.T) {
 			assert.Empty(t, d2)
 
 			assert.NotEqual(t, h1, h2)
-
 		})
 	}
 }

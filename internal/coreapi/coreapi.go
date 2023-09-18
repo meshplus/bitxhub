@@ -22,10 +22,6 @@ func New(axiom *app.Axiom) (*CoreAPI, error) {
 	}, nil
 }
 
-func (api *CoreAPI) Account() api.AccountAPI {
-	return (*AccountAPI)(api)
-}
-
 func (api *CoreAPI) Broker() api.BrokerAPI {
 	return (*BrokerAPI)(api)
 }

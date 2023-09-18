@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
 	"syscall"
 	"time"
 
@@ -58,13 +59,6 @@ func NewAxiom(rep *repo.Repo, ctx context.Context, cancel context.CancelFunc) (*
 
 	chainMeta := axm.ViewLedger.ChainLedger.GetChainMeta()
 
-	var getNonceFunc func(address *types.Address) uint64
-	if rep.Config.Order.Type == repo.OrderTypeSoloDev {
-		getNonceFunc = axm.ViewLedger.StateLedger.GetNonce
-	} else {
-		getNonceFunc = axm.ViewLedger.Copy().StateLedger.GetNonce
-	}
-
 	order, err := order.New(
 		rep.Config.Order.Type,
 		common.WithConfig(rep.OrderConfig),
@@ -80,13 +74,17 @@ func NewAxiom(rep *repo.Repo, ctx context.Context, cancel context.CancelFunc) (*
 		common.WithDigest(chainMeta.BlockHash.String()),
 		common.WithGenesisDigest(axm.ViewLedger.ChainLedger.GetBlockHash(1).String()),
 		common.WithGetChainMetaFunc(axm.ViewLedger.ChainLedger.GetChainMeta),
-		common.WithGetAccountBalanceFunc(axm.ViewLedger.StateLedger.GetBalance),
-		common.WithGetAccountNonceFunc(getNonceFunc),
+		common.WithGetAccountBalanceFunc(func(address *types.Address) *big.Int {
+			return axm.ViewLedger.Copy().StateLedger.GetBalance(address)
+		}),
+		common.WithGetAccountNonceFunc(func(address *types.Address) uint64 {
+			return axm.ViewLedger.Copy().StateLedger.GetNonce(address)
+		}),
 		common.WithGetEpochInfoFromEpochMgrContractFunc(func(epoch uint64) (*rbft.EpochInfo, error) {
-			return base.GetEpochInfo(axm.ViewLedger.StateLedger, epoch)
+			return base.GetEpochInfo(axm.ViewLedger.Copy().StateLedger, epoch)
 		}),
 		common.WithGetCurrentEpochInfoFromEpochMgrContractFunc(func() (*rbft.EpochInfo, error) {
-			return base.GetCurrentEpochInfo(axm.ViewLedger.StateLedger)
+			return base.GetCurrentEpochInfo(axm.ViewLedger.Copy().StateLedger)
 		}),
 	)
 	if err != nil {
@@ -151,7 +149,7 @@ func GenerateAxiomWithoutOrder(rep *repo.Repo) (*Axiom, error) {
 		return nil, fmt.Errorf("create BlockExecutor: %w", err)
 	}
 
-	peerMgr, err := peermgr.New(rep, loggers.Logger(loggers.P2P), rwLdg)
+	peerMgr, err := peermgr.New(rep, loggers.Logger(loggers.P2P), rwLdg.Copy())
 	if err != nil {
 		return nil, fmt.Errorf("create peer manager: %w", err)
 	}
