@@ -16,11 +16,20 @@ import (
 var _ IAccount = (*SimpleAccount)(nil)
 
 type SimpleAccount struct {
-	Addr           *types.Address
-	originAccount  *InnerAccount
-	dirtyAccount   *InnerAccount
-	originState    map[string][]byte
-	dirtyState     map[string][]byte
+	Addr          *types.Address
+	originAccount *InnerAccount
+	dirtyAccount  *InnerAccount
+
+	// TODO: use []byte as key
+	// The confirmed state of the previous block
+	originState map[string][]byte
+
+	// Modified state of previous transactions in the current block
+	pendingState map[string][]byte
+
+	// The latest state of the current transaction
+	dirtyState map[string][]byte
+
 	originCode     []byte
 	dirtyCode      []byte
 	dirtyStateHash *types.Hash
@@ -33,13 +42,14 @@ type SimpleAccount struct {
 
 func NewAccount(ldb storage.Storage, cache *AccountCache, addr *types.Address, changer *stateChanger) *SimpleAccount {
 	return &SimpleAccount{
-		Addr:        addr,
-		originState: make(map[string][]byte),
-		dirtyState:  make(map[string][]byte),
-		ldb:         ldb,
-		cache:       cache,
-		changer:     changer,
-		suicided:    false,
+		Addr:         addr,
+		originState:  make(map[string][]byte),
+		pendingState: make(map[string][]byte),
+		dirtyState:   make(map[string][]byte),
+		ldb:          ldb,
+		cache:        cache,
+		changer:      changer,
+		suicided:     false,
 	}
 }
 
@@ -50,6 +60,10 @@ func (o *SimpleAccount) GetAddress() *types.Address {
 // GetState Get state from local cache, if not found, then get it from DB
 func (o *SimpleAccount) GetState(key []byte) (bool, []byte) {
 	if value, exist := o.dirtyState[string(key)]; exist {
+		return value != nil, value
+	}
+
+	if value, exist := o.pendingState[string(key)]; exist {
 		return value != nil, value
 	}
 
@@ -68,6 +82,13 @@ func (o *SimpleAccount) GetState(key []byte) (bool, []byte) {
 }
 
 func (o *SimpleAccount) GetCommittedState(key []byte) []byte {
+	if value, exist := o.pendingState[string(key)]; exist {
+		if value == nil {
+			return (&types.Hash{}).Bytes()
+		}
+		return value
+	}
+
 	if value, exist := o.originState[string(key)]; exist {
 		if value == nil {
 			return (&types.Hash{}).Bytes()
@@ -91,12 +112,12 @@ func (o *SimpleAccount) GetCommittedState(key []byte) []byte {
 // SetState Set account state
 func (o *SimpleAccount) SetState(key []byte, value []byte) {
 	_, prev := o.GetState(key)
-	o.dirtyState[string(key)] = value
 	o.changer.append(storageChange{
 		account:  o.Addr,
 		key:      key,
 		prevalue: prev,
 	})
+	o.setState(key, value)
 }
 
 func (o *SimpleAccount) setState(key []byte, value []byte) {
@@ -266,6 +287,13 @@ func (o *SimpleAccount) Query(prefix string) (bool, [][]byte) {
 	})
 
 	return len(ret) != 0, ret
+}
+
+// Finalise moves all dirty states into the pending states.
+func (o *SimpleAccount) Finalise() {
+	for key, value := range o.dirtyState {
+		o.pendingState[key] = value
+	}
 }
 
 func (o *SimpleAccount) getJournalIfModified() *blockJournalEntry {

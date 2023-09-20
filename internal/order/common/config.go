@@ -169,11 +169,11 @@ func (lg *Logger) Trace(name string, stage string, content any) {
 }
 
 func (lg *Logger) Critical(v ...any) {
-	lg.Info(v...)
+	lg.Error(v...)
 }
 
 func (lg *Logger) Criticalf(format string, v ...any) {
-	lg.Infof(format, v...)
+	lg.Errorf(format, v...)
 }
 
 func (lg *Logger) Notice(v ...any) {

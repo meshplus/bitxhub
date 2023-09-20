@@ -27,6 +27,7 @@ func TestAccountCache_clear(t *testing.T) {
 			originAccount:  &InnerAccount{},
 			dirtyAccount:   &InnerAccount{},
 			originState:    make(map[string][]byte),
+			pendingState:   make(map[string][]byte),
 			dirtyState:     make(map[string][]byte),
 			originCode:     nil,
 			dirtyCode:      code,

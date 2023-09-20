@@ -155,6 +155,8 @@ type IAccount interface {
 
 	Query(prefix string) (bool, [][]byte)
 
+	Finalise()
+
 	IsEmpty() bool
 
 	Suicided() bool

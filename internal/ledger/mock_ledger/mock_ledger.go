@@ -3363,6 +3363,42 @@ func (c *IAccountCodeHashCall) DoAndReturn(f func() []byte) *IAccountCodeHashCal
 	return c
 }
 
+// Finalise mocks base method.
+func (m *MockIAccount) Finalise() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "Finalise")
+}
+
+// Finalise indicates an expected call of Finalise.
+func (mr *MockIAccountMockRecorder) Finalise() *IAccountFinaliseCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Finalise", reflect.TypeOf((*MockIAccount)(nil).Finalise))
+	return &IAccountFinaliseCall{Call: call}
+}
+
+// IAccountFinaliseCall wrap *gomock.Call
+type IAccountFinaliseCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *IAccountFinaliseCall) Return() *IAccountFinaliseCall {
+	c.Call = c.Call.Return()
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *IAccountFinaliseCall) Do(f func()) *IAccountFinaliseCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *IAccountFinaliseCall) DoAndReturn(f func()) *IAccountFinaliseCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // GetAddress mocks base method.
 func (m *MockIAccount) GetAddress() *types.Address {
 	m.ctrl.T.Helper()

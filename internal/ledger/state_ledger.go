@@ -65,6 +65,9 @@ func (l *StateLedgerImpl) Copy() StateLedger {
 }
 
 func (l *StateLedgerImpl) Finalise() {
+	for _, account := range l.accounts {
+		account.Finalise()
+	}
 	l.ClearChangerAndRefund()
 }
 
