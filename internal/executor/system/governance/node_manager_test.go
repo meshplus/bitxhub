@@ -269,7 +269,6 @@ func TestNodeManager_RunForNodeUpgradePropose(t *testing.T) {
 }
 
 func TestNodeManager_GetNodeMembers(t *testing.T) {
-
 	mockCtl := gomock.NewController(t)
 	stateLedger := mock_ledger.NewMockStateLedger(mockCtl)
 

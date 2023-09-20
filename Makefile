@@ -34,6 +34,12 @@ ifneq ($(secret),)
     GOLDFLAGS += -X "${VERSION_DIR}.VersionSecret=$(secret)"
 endif
 
+ifneq ($(net),)
+    # specify version: add a flag
+    GOLDFLAGS += -X "${VERSION_DIR}.Net=$(net)"
+endif
+
+
 COVERAGE_TEST_PKGS := $(shell ${GO_BIN} list ./... | grep -v 'syncer' | grep -v 'vm' | grep -v 'proof' | grep -v 'repo' | grep -v 'mock_*' | grep -v 'tester' | grep -v 'proto' | grep -v 'cmd'| grep -v 'api')
 
 RED=\033[0;31m

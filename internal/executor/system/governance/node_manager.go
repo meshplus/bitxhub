@@ -320,7 +320,6 @@ func (nm *NodeManager) voteNodeAddRemove(user ethcommon.Address, proposal *NodeP
 
 	// if proposal is approved, update the node members
 	if proposal.Status == Approved {
-
 		members, err := GetNodeMembers(nm.stateLedger)
 		if err != nil {
 			return nil, err
@@ -331,13 +330,13 @@ func (nm *NodeManager) voteNodeAddRemove(user ethcommon.Address, proposal *NodeP
 		}
 
 		if proposal.Type == NodeRemove {
-			//https://github.com/samber/lo
-			//Use the Associate method to create a map with the node's NodeId as the key and the NodeMember object as the value
+			// https://github.com/samber/lo
+			// Use the Associate method to create a map with the node's NodeId as the key and the NodeMember object as the value
 			nodeIdToNodeMap := lo.Associate(proposal.Nodes, func(node *NodeMember) (string, *NodeMember) {
 				return node.NodeId, node
 			})
 
-			//The members slice is updated to filteredMembers, which does not contain members with the same NodeId as proposalNodes
+			// The members slice is updated to filteredMembers, which does not contain members with the same NodeId as proposalNodes
 			filteredMembers := lo.Reject(members, func(member *NodeMember, _ int) bool {
 				_, exists := nodeIdToNodeMap[member.NodeId]
 				return exists

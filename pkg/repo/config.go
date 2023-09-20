@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
 
+	"github.com/axiomesh/axiom"
 	rbft "github.com/axiomesh/axiom-bft"
 	"github.com/axiomesh/axiom-kit/fileutil"
 )
@@ -113,11 +114,12 @@ type P2PPipe struct {
 }
 
 type P2P struct {
-	Security    string   `mapstructure:"security" toml:"security"`
-	SendTimeout Duration `mapstructure:"send_timeout" toml:"send_timeout"`
-	ReadTimeout Duration `mapstructure:"read_timeout" toml:"read_timeout"`
-	Ping        Ping     `mapstructure:"ping" toml:"ping"`
-	Pipe        P2PPipe  `mapstructure:"pipe" toml:"pipe"`
+	BootstrapNodeAddresses []string `mapstructure:"bootstrap_node_addresses" toml:"bootstrap_node_addresses"`
+	Security               string   `mapstructure:"security" toml:"security"`
+	SendTimeout            Duration `mapstructure:"send_timeout" toml:"send_timeout"`
+	ReadTimeout            Duration `mapstructure:"read_timeout" toml:"read_timeout"`
+	Ping                   Ping     `mapstructure:"ping" toml:"ping"`
+	Pipe                   P2PPipe  `mapstructure:"pipe" toml:"pipe"`
 }
 
 type Monitor struct {
@@ -222,24 +224,35 @@ func (c *Config) Bytes() ([]byte, error) {
 	return ret, nil
 }
 
-func GenesisEpochInfo() *rbft.EpochInfo {
+func GenesisEpochInfo(epochEnable bool) *rbft.EpochInfo {
+	var epochPeriod uint64 = 10000000
+	var checkpointPeriod uint64 = 10
+	var highWatermarkCheckpointPeriod uint64 = 4
+	var proposerElectionType = rbft.ProposerElectionTypeRotating
+	if epochEnable {
+		epochPeriod = 100
+		checkpointPeriod = 1
+		highWatermarkCheckpointPeriod = 40
+		proposerElectionType = rbft.ProposerElectionTypeWRF
+	}
+
 	return &rbft.EpochInfo{
 		Version:     1,
 		Epoch:       1,
-		EpochPeriod: 10000000,
+		EpochPeriod: epochPeriod,
 		StartBlock:  1,
 		P2PBootstrapNodeAddresses: lo.Map(defaultNodeIDs, func(item string, idx int) string {
 			return fmt.Sprintf("/ip4/127.0.0.1/tcp/%d/p2p/%s", 4001+idx, item)
 		}),
 		ConsensusParams: &rbft.ConsensusParams{
-			CheckpointPeriod:              10,
-			HighWatermarkCheckpointPeriod: 1,
+			CheckpointPeriod:              checkpointPeriod,
+			HighWatermarkCheckpointPeriod: highWatermarkCheckpointPeriod,
 			MaxValidatorNum:               20,
 			BlockMaxTxNum:                 500,
 			EnableTimedGenEmptyBlock:      false,
 			NotActiveWeight:               1,
 			ExcludeView:                   100,
-			ProposerElectionType:          rbft.ProposerElectionTypeRotating,
+			ProposerElectionType:          proposerElectionType,
 		},
 		CandidateSet: []*rbft.NodeInfo{},
 		ValidatorSet: lo.Map(DefaultNodeAddrs, func(item string, idx int) *rbft.NodeInfo {
@@ -253,10 +266,13 @@ func GenesisEpochInfo() *rbft.EpochInfo {
 	}
 }
 
-func DefaultConfig(repoRoot string) *Config {
+func DefaultConfig(repoRoot string, epochEnable bool) *Config {
+	if axiom.Net == AriesTestnetName {
+		return AriesConfig(repoRoot)
+	}
 	return &Config{
 		RepoRoot: repoRoot,
-		Ulimit:   2048,
+		Ulimit:   65535,
 		Port: Port{
 			JsonRpc:   8881,
 			WebSocket: 9991,
@@ -303,7 +319,7 @@ func DefaultConfig(repoRoot string) *Config {
 			Type: OrderTypeRbft,
 		},
 		Ledger: Ledger{
-			Kv: KVStorageTypeLeveldb,
+			Kv: KVStorageTypePebble,
 		},
 		Executor: Executor{
 			Type: ExecTypeNative,
@@ -345,7 +361,7 @@ func DefaultConfig(repoRoot string) *Config {
 				"0xdD2FD4581271e230360230F9337D5c0430Bf44C0",
 				"0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199",
 			},
-			EpochInfo: GenesisEpochInfo(),
+			EpochInfo: GenesisEpochInfo(epochEnable),
 		},
 		PProf: PProf{
 			Enable:   true,
@@ -384,7 +400,7 @@ func DefaultConfig(repoRoot string) *Config {
 
 func LoadConfig(repoRoot string) (*Config, error) {
 	cfg, err := func() (*Config, error) {
-		cfg := DefaultConfig(repoRoot)
+		cfg := DefaultConfig(repoRoot, false)
 		cfgPath := path.Join(repoRoot, CfgFileName)
 		existConfig := fileutil.Exist(cfgPath)
 		if !existConfig {

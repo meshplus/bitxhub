@@ -297,7 +297,7 @@ func (l *ChainLedgerImpl) prepareTransactions(batcher storage.Batch, block *type
 func (l *ChainLedgerImpl) prepareBlock(batcher storage.Batch, block *types.Block) ([]byte, error) {
 	// Generate block header signature
 	if block.Signature == nil {
-		signed, err := l.repo.NodeKeySign(block.BlockHash.Bytes())
+		signed, err := l.repo.AccountKeySign(block.BlockHash.Bytes())
 		if err != nil {
 			return nil, fmt.Errorf("sign block %s failed: %w", block.BlockHash.String(), err)
 		}

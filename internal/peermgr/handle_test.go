@@ -72,7 +72,7 @@ func NewSwarms(t *testing.T, peerCnt int, versionChange bool) []*Swarm {
 	account := ledger.NewAccount(ld, accountCache, types.NewAddressByStr(common.EpochManagerContractAddr), ledger.NewChanger())
 	stateLedger.EXPECT().GetOrCreateAccount(gomock.Any()).Return(account).AnyTimes()
 
-	epochInfo := repo.GenesisEpochInfo()
+	epochInfo := repo.GenesisEpochInfo(false)
 	epochInfo.CandidateSet = append(epochInfo.CandidateSet, &rbft.NodeInfo{
 		ID:        5,
 		P2PNodeID: "16Uiu2HAmJ3bjAhtYc7QabCWWUKagY9RLddypDPXhFYkmFxSwzHQd",
@@ -82,7 +82,7 @@ func NewSwarms(t *testing.T, peerCnt int, versionChange bool) []*Swarm {
 
 	var addrs []peer.AddrInfo
 	for i := 0; i < peerCnt; i++ {
-		rep, err := repo.DefaultWithNodeIndex(t.TempDir(), i)
+		rep, err := repo.DefaultWithNodeIndex(t.TempDir(), i, true)
 		require.Nil(t, err)
 		if versionChange && i == peerCnt-1 {
 			axiom.VersionSecret = "Shanghai"

@@ -23,12 +23,6 @@ import (
 	"github.com/axiomesh/axiom/pkg/repo"
 )
 
-var startCMD = &cli.Command{
-	Name:   "start",
-	Usage:  "Start a long-running daemon process",
-	Action: start,
-}
-
 func start(ctx *cli.Context) error {
 	p, err := getRootPath(ctx)
 	if err != nil {
@@ -57,6 +51,7 @@ func start(ctx *cli.Context) error {
 	types2.InitEIP155Signer(big.NewInt(int64(r.Config.Genesis.ChainID)))
 
 	printVersion()
+	r.PrintNodeInfo()
 
 	axm, err := app.NewAxiom(r, appCtx, cancel)
 	if err != nil {

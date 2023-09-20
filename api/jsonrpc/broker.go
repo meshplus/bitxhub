@@ -148,26 +148,6 @@ func (cbs *ChainBrokerService) Stop() error {
 	return nil
 }
 
-func (cbs *ChainBrokerService) ReConfig(config *repo.Config) error {
-	if cbs.config.Port.JsonRpc != config.Port.JsonRpc {
-		if err := cbs.Stop(); err != nil {
-			return fmt.Errorf("stop chain broker service failed: %w", err)
-		}
-
-		cbs.config.Port.JsonRpc = config.Port.JsonRpc
-
-		if err := cbs.init(); err != nil {
-			return fmt.Errorf("init chain broker service failed: %w", err)
-		}
-
-		if err := cbs.Start(); err != nil {
-			return fmt.Errorf("start chain broker service failed: %w", err)
-		}
-	}
-
-	return nil
-}
-
 func (cbs *ChainBrokerService) tokenBucketMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Wait until a token is obtained before processing the request

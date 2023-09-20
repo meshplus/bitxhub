@@ -68,22 +68,3 @@ func (m *Monitor) Stop() error {
 
 	return nil
 }
-
-// ReConfig reconfigure prometheus monitor
-func (m *Monitor) ReConfig(config *repo.Config) error {
-	if m.enable != config.Monitor.Enable || m.port != config.Port.Monitor {
-		if err := m.Stop(); err != nil {
-			return err
-		}
-		m.enable = config.Monitor.Enable
-		m.port = config.Port.Monitor
-
-		m.init()
-
-		if err := m.Start(); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
