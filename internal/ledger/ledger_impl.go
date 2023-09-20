@@ -99,16 +99,16 @@ func (l *Ledger) Copy() *Ledger {
 }
 
 func OpenStateDB(file string, kv string) (storage.Storage, error) {
-	var storage storage.Storage
+	var s storage.Storage
 	var err error
 
 	if kv == "leveldb" {
-		storage, err = leveldb.New(file)
+		s, err = leveldb.New(file)
 		if err != nil {
 			return nil, fmt.Errorf("init leveldb failed: %w", err)
 		}
 	} else if kv == "pebble" {
-		storage, err = pebble.New(file)
+		s, err = pebble.New(file)
 		if err != nil {
 			return nil, fmt.Errorf("init pebble failed: %w", err)
 		}
@@ -116,5 +116,5 @@ func OpenStateDB(file string, kv string) (storage.Storage, error) {
 		return nil, fmt.Errorf("unknow kv type %s, expect leveldb or pebble", kv)
 	}
 
-	return storage, nil
+	return s, nil
 }

@@ -6,10 +6,8 @@ import (
 	"math/big"
 	"sort"
 	"strings"
-	"sync"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	cmap "github.com/orcaman/concurrent-map/v2"
 
 	"github.com/axiomesh/axiom-kit/storage"
 	"github.com/axiomesh/axiom-kit/types"
@@ -21,14 +19,13 @@ type SimpleAccount struct {
 	Addr           *types.Address
 	originAccount  *InnerAccount
 	dirtyAccount   *InnerAccount
-	originState    cmap.ConcurrentMap[string, []byte]
-	dirtyState     cmap.ConcurrentMap[string, []byte]
+	originState    map[string][]byte
+	dirtyState     map[string][]byte
 	originCode     []byte
 	dirtyCode      []byte
 	dirtyStateHash *types.Hash
 	ldb            storage.Storage
 	cache          *AccountCache
-	lock           sync.RWMutex
 
 	changer  *stateChanger
 	suicided bool
@@ -37,8 +34,8 @@ type SimpleAccount struct {
 func NewAccount(ldb storage.Storage, cache *AccountCache, addr *types.Address, changer *stateChanger) *SimpleAccount {
 	return &SimpleAccount{
 		Addr:        addr,
-		originState: cmap.New[[]byte](),
-		dirtyState:  cmap.New[[]byte](),
+		originState: make(map[string][]byte),
+		dirtyState:  make(map[string][]byte),
 		ldb:         ldb,
 		cache:       cache,
 		changer:     changer,
@@ -52,11 +49,11 @@ func (o *SimpleAccount) GetAddress() *types.Address {
 
 // GetState Get state from local cache, if not found, then get it from DB
 func (o *SimpleAccount) GetState(key []byte) (bool, []byte) {
-	if value, exist := o.dirtyState.Get(string(key)); exist {
+	if value, exist := o.dirtyState[string(key)]; exist {
 		return value != nil, value
 	}
 
-	if value, exist := o.originState.Get(string(key)); exist {
+	if value, exist := o.originState[string(key)]; exist {
 		return value != nil, value
 	}
 
@@ -65,13 +62,13 @@ func (o *SimpleAccount) GetState(key []byte) (bool, []byte) {
 		val = o.ldb.Get(composeStateKey(o.Addr, key))
 	}
 
-	o.originState.Set(string(key), val)
+	o.originState[string(key)] = val
 
 	return val != nil, val
 }
 
 func (o *SimpleAccount) GetCommittedState(key []byte) []byte {
-	if value, exist := o.originState.Get(string(key)); exist {
+	if value, exist := o.originState[string(key)]; exist {
 		if value == nil {
 			return (&types.Hash{}).Bytes()
 		}
@@ -83,7 +80,7 @@ func (o *SimpleAccount) GetCommittedState(key []byte) []byte {
 		val = o.ldb.Get(composeStateKey(o.Addr, key))
 	}
 
-	o.originState.Set(string(key), val)
+	o.originState[string(key)] = val
 
 	if val == nil {
 		return (&types.Hash{}).Bytes()
@@ -94,8 +91,7 @@ func (o *SimpleAccount) GetCommittedState(key []byte) []byte {
 // SetState Set account state
 func (o *SimpleAccount) SetState(key []byte, value []byte) {
 	_, prev := o.GetState(key)
-	o.dirtyState.Set(string(key), value)
-
+	o.dirtyState[string(key)] = value
 	o.changer.append(storageChange{
 		account:  o.Addr,
 		key:      key,
@@ -104,12 +100,7 @@ func (o *SimpleAccount) SetState(key []byte, value []byte) {
 }
 
 func (o *SimpleAccount) setState(key []byte, value []byte) {
-	o.dirtyState.Set(string(key), value)
-}
-
-// AddState Add account state
-func (o *SimpleAccount) AddState(key []byte, value []byte) {
-	o.dirtyState.Set(string(key), value)
+	o.dirtyState[string(key)] = value
 }
 
 // SetCodeAndHash Set the contract code and hash
@@ -137,9 +128,6 @@ func (o *SimpleAccount) setCodeAndHash(code []byte) {
 
 // Code return the contract code
 func (o *SimpleAccount) Code() []byte {
-	o.lock.Lock()
-	defer o.lock.Unlock()
-
 	if o.dirtyCode != nil {
 		return o.dirtyCode
 	}
@@ -263,7 +251,7 @@ func (o *SimpleAccount) Query(prefix string) (bool, [][]byte) {
 		stored[string(key)] = val
 	}
 
-	for key, value := range o.dirtyState.Items() {
+	for key, value := range o.dirtyState {
 		if strings.HasPrefix(key, prefix) {
 			stored[key] = value
 		}
@@ -314,8 +302,8 @@ func (o *SimpleAccount) getStateJournalAndComputeHash() map[string][]byte {
 	var dirtyStateKeys []string
 	var dirtyStateData []byte
 
-	for key, value := range o.dirtyState.Items() {
-		origVal, _ := o.originState.Get(key)
+	for key, value := range o.dirtyState {
+		origVal := o.originState[key]
 		if !bytes.Equal(origVal, value) {
 			prevStates[key] = origVal
 			dirtyStateKeys = append(dirtyStateKeys, key)
@@ -326,7 +314,7 @@ func (o *SimpleAccount) getStateJournalAndComputeHash() map[string][]byte {
 
 	for _, key := range dirtyStateKeys {
 		dirtyStateData = append(dirtyStateData, key...)
-		dirtyVal, _ := o.dirtyState.Get(key)
+		dirtyVal := o.dirtyState[key]
 		dirtyStateData = append(dirtyStateData, dirtyVal...)
 	}
 	hash := sha256.Sum256(dirtyStateData)

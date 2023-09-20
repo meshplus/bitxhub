@@ -3,10 +3,8 @@ package ledger
 import (
 	"math/big"
 	"path/filepath"
-	"sync"
 	"testing"
 
-	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/axiomesh/axiom-kit/log"
@@ -28,14 +26,13 @@ func TestAccountCache_clear(t *testing.T) {
 			Addr:           &types.Address{},
 			originAccount:  &InnerAccount{},
 			dirtyAccount:   &InnerAccount{},
-			originState:    cmap.New[[]byte](),
-			dirtyState:     cmap.New[[]byte](),
+			originState:    make(map[string][]byte),
+			dirtyState:     make(map[string][]byte),
 			originCode:     nil,
 			dirtyCode:      code,
 			dirtyStateHash: &types.Hash{},
 			ldb:            nil,
 			cache:          nil,
-			lock:           sync.RWMutex{},
 			changer:        &stateChanger{},
 			suicided:       false,
 		},

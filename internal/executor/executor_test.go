@@ -184,7 +184,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	chainLedger.EXPECT().PersistExecutionResult(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	stateLedger.EXPECT().FlushDirtyData().Return(make(map[string]ledger.IAccount), &types.Hash{}).AnyTimes()
 	stateLedger.EXPECT().PrepareBlock(gomock.Any(), gomock.Any()).AnyTimes()
-	stateLedger.EXPECT().Finalise(gomock.Any()).AnyTimes()
+	stateLedger.EXPECT().Finalise().AnyTimes()
 	stateLedger.EXPECT().Snapshot().Return(1).AnyTimes()
 	stateLedger.EXPECT().RevertToSnapshot(1).AnyTimes()
 	stateLedger.EXPECT().PrepareEVM(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
@@ -307,7 +307,7 @@ func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 	stateLedger.EXPECT().FlushDirtyData().Return(make(map[string]ledger.IAccount), &types.Hash{}).AnyTimes()
 	stateLedger.EXPECT().GetNonce(gomock.Any()).Return(uint64(0)).AnyTimes()
 	stateLedger.EXPECT().SetNonce(gomock.Any(), gomock.Any()).AnyTimes()
-	stateLedger.EXPECT().Finalise(gomock.Any()).AnyTimes()
+	stateLedger.EXPECT().Finalise().AnyTimes()
 	stateLedger.EXPECT().Snapshot().Return(1).AnyTimes()
 	stateLedger.EXPECT().RevertToSnapshot(1).AnyTimes()
 	stateLedger.EXPECT().SetTxContext(gomock.Any(), gomock.Any()).AnyTimes()
@@ -423,13 +423,9 @@ type NodeMember struct {
 
 func mockCommitEvent(blockNumber uint64, txs []*types.Transaction) *ordercommon.CommitEvent {
 	block := mockBlock(blockNumber, txs)
-	localList := make([]bool, len(block.Transactions))
-	for i := 0; i < len(block.Transactions); i++ {
-		localList[i] = false
-	}
 	return &ordercommon.CommitEvent{
-		Block:     block,
-		LocalList: localList,
+		Block:     mockBlock(blockNumber, txs),
+		LocalList: make([]bool, len(block.Transactions)),
 	}
 }
 

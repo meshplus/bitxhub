@@ -55,8 +55,8 @@ func TestNew001(t *testing.T) {
 
 			l.StateLedger.SetNonce(&types.Address{}, 2)
 			c := l.Copy()
-			l.StateLedger.Finalise(true)
-			c.StateLedger.Finalise(true)
+			l.StateLedger.Finalise()
+			c.StateLedger.Finalise()
 
 			d1, h1 := l.StateLedger.FlushDirtyData()
 			assert.Equal(t, 1, len(d1))
@@ -801,7 +801,7 @@ func testChainLedger_AddState(t *testing.T, kvType string) {
 	account := types.NewAddress(LeftPadBytes([]byte{100}, 20))
 	key0 := "100"
 	value0 := []byte{100}
-	ledger.StateLedger.AddState(account, []byte(key0), value0)
+	ledger.StateLedger.SetState(account, []byte(key0), value0)
 	accounts, journal := ledger.StateLedger.FlushDirtyData()
 
 	ledger.PersistBlockData(genBlockData(1, accounts, journal))
@@ -815,7 +815,7 @@ func testChainLedger_AddState(t *testing.T, kvType string) {
 	value0 = []byte{99}
 	value1 := []byte{101}
 	ledger.StateLedger.SetState(account, []byte(key0), value0)
-	ledger.StateLedger.AddState(account, []byte(key1), value1)
+	ledger.StateLedger.SetState(account, []byte(key1), value1)
 	accounts, journal = ledger.StateLedger.FlushDirtyData()
 
 	ledger.PersistBlockData(genBlockData(2, accounts, journal))

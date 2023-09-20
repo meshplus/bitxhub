@@ -196,7 +196,7 @@ func (exec *BlockExecutor) postLogsEvent(receipts []*types.Receipt) {
 func (exec *BlockExecutor) applyTransaction(i int, tx *types.Transaction) *types.Receipt {
 	defer func() {
 		exec.ledger.StateLedger.SetNonce(tx.GetFrom(), tx.GetNonce()+1)
-		exec.ledger.StateLedger.Finalise(true)
+		exec.ledger.StateLedger.Finalise()
 	}()
 
 	exec.ledger.StateLedger.SetTxContext(tx.GetHash(), i)

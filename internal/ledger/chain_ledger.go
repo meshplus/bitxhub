@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math/big"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -24,7 +23,6 @@ type ChainLedgerImpl struct {
 	bf              *blockfile.BlockFile
 	repo            *repo.Repo
 	chainMeta       *types.ChainMeta
-	chainMutex      sync.RWMutex
 	logger          logrus.FieldLogger
 }
 
@@ -33,7 +31,6 @@ func NewChainLedgerImpl(blockchainStore storage.Storage, bf *blockfile.BlockFile
 		blockchainStore: blockchainStore,
 		bf:              bf,
 		repo:            repo,
-		chainMutex:      sync.RWMutex{},
 		logger:          logger,
 	}
 
@@ -242,8 +239,6 @@ func (l *ChainLedgerImpl) PersistExecutionResult(block *types.Block, receipts []
 
 // UpdateChainMeta update the chain meta data
 func (l *ChainLedgerImpl) UpdateChainMeta(meta *types.ChainMeta) {
-	l.chainMutex.Lock()
-	defer l.chainMutex.Unlock()
 	l.chainMeta.Height = meta.Height
 	l.chainMeta.GasPrice = meta.GasPrice
 	l.chainMeta.BlockHash = meta.BlockHash
@@ -251,9 +246,6 @@ func (l *ChainLedgerImpl) UpdateChainMeta(meta *types.ChainMeta) {
 
 // GetChainMeta get chain meta data
 func (l *ChainLedgerImpl) GetChainMeta() *types.ChainMeta {
-	l.chainMutex.RLock()
-	defer l.chainMutex.RUnlock()
-
 	return &types.ChainMeta{
 		Height:    l.chainMeta.Height,
 		GasPrice:  l.chainMeta.GasPrice,

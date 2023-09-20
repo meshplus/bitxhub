@@ -3,9 +3,7 @@ package ledger
 import (
 	"errors"
 	"fmt"
-	"sync"
 
-	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/sirupsen/logrus"
 
 	"github.com/axiomesh/axiom-kit/storage"
@@ -34,15 +32,12 @@ type StateLedgerImpl struct {
 	maxJnlHeight  uint64
 	accounts      map[string]IAccount
 	accountCache  *AccountCache
-	blockJournals cmap.ConcurrentMap[string, *BlockJournal]
+	blockJournals map[string]*BlockJournal
 	prevJnlHash   *types.Hash
 	repo          *repo.Repo
 	blockHeight   uint64
 	thash         *types.Hash
 	txIndex       int
-
-	journalMutex sync.RWMutex
-	lock         sync.RWMutex
 
 	validRevisions []revision
 	nextRevisionId int
@@ -69,11 +64,11 @@ func (l *StateLedgerImpl) Copy() StateLedger {
 	return copyLedger
 }
 
-func (l *StateLedgerImpl) Finalise(b bool) {
+func (l *StateLedgerImpl) Finalise() {
 	l.ClearChangerAndRefund()
 }
 
-// New create a new ledger instance
+// NewSimpleLedger create a new ledger instance
 func NewSimpleLedger(repo *repo.Repo, ldb storage.Storage, accountCache *AccountCache, logger logrus.FieldLogger) (StateLedger, error) {
 	var err error
 	minJnlHeight, maxJnlHeight := getJournalRange(ldb)
@@ -107,7 +102,7 @@ func NewSimpleLedger(repo *repo.Repo, ldb storage.Storage, accountCache *Account
 		changer:       NewChanger(),
 		accessList:    NewAccessList(),
 		logs:          NewEvmLogs(),
-		blockJournals: cmap.New[*BlockJournal](),
+		blockJournals: make(map[string]*BlockJournal),
 	}
 
 	return ledger, nil
@@ -124,9 +119,6 @@ func (l *StateLedgerImpl) SetTxContext(thash *types.Hash, ti int) {
 
 // removeJournalsBeforeBlock removes ledger journals whose block number < height
 func (l *StateLedgerImpl) removeJournalsBeforeBlock(height uint64) error {
-	l.journalMutex.Lock()
-	defer l.journalMutex.Unlock()
-
 	if height > l.maxJnlHeight {
 		return ErrorRemoveJournalOutOfRange
 	}
@@ -149,5 +141,5 @@ func (l *StateLedgerImpl) removeJournalsBeforeBlock(height uint64) error {
 
 // Close close the ledger instance
 func (l *StateLedgerImpl) Close() {
-	l.ldb.Close()
+	_ = l.ldb.Close()
 }

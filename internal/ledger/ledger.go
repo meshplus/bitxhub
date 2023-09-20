@@ -72,7 +72,7 @@ type StateLedger interface {
 
 	Copy() StateLedger
 
-	Finalise(bool)
+	Finalise()
 
 	// Version
 	Version() uint64
@@ -97,9 +97,6 @@ type StateAccessor interface {
 
 	// SetState
 	SetState(*types.Address, []byte, []byte)
-
-	// AddState
-	AddState(*types.Address, []byte, []byte)
 
 	// SetCode
 	SetCode(*types.Address, []byte)
@@ -137,8 +134,6 @@ type IAccount interface {
 	GetCommittedState(key []byte) []byte
 
 	SetState(key []byte, value []byte)
-
-	AddState(key []byte, value []byte)
 
 	SetCodeAndHash(code []byte)
 

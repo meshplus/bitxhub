@@ -9,7 +9,6 @@ import (
 	"sort"
 
 	"github.com/ethereum/go-ethereum/common"
-	cmap "github.com/orcaman/concurrent-map/v2"
 
 	"github.com/axiomesh/axiom-kit/types"
 )
@@ -22,10 +21,7 @@ func (l *StateLedgerImpl) GetOrCreateAccount(addr *types.Address) IAccount {
 	if account == nil {
 		account = NewAccount(l.ldb, l.accountCache, addr, l.changer)
 		l.changer.append(createObjectChange{account: addr})
-
-		l.lock.Lock()
 		l.accounts[addr.String()] = account
-		l.lock.Unlock()
 	}
 
 	return account
@@ -35,9 +31,7 @@ func (l *StateLedgerImpl) GetOrCreateAccount(addr *types.Address) IAccount {
 func (l *StateLedgerImpl) GetAccount(address *types.Address) IAccount {
 	addr := address.String()
 
-	l.lock.RLock()
 	value, ok := l.accounts[addr]
-	l.lock.RUnlock()
 	if ok {
 		return value
 	}
@@ -54,9 +48,7 @@ func (l *StateLedgerImpl) GetAccount(address *types.Address) IAccount {
 			account.originCode = code
 			account.dirtyCode = code
 		}
-		l.lock.Lock()
 		l.accounts[addr] = account
-		l.lock.Unlock()
 		return account
 	}
 
@@ -70,23 +62,18 @@ func (l *StateLedgerImpl) GetAccount(address *types.Address) IAccount {
 			account.originCode = code
 			account.dirtyCode = code
 		}
-		l.lock.Lock()
 		l.accounts[addr] = account
-		l.lock.Unlock()
 		return account
 	}
-
 	return nil
 }
 
 // nolint
 func (l *StateLedgerImpl) setAccount(account IAccount) {
-	l.lock.Lock()
-	defer l.lock.Unlock()
 	l.accounts[account.GetAddress().String()] = account
 }
 
-// GetBalanec get account balance using account Address
+// GetBalance get account balance using account Address
 func (l *StateLedgerImpl) GetBalance(addr *types.Address) *big.Int {
 	account := l.GetOrCreateAccount(addr)
 	return account.GetBalance()
@@ -134,12 +121,6 @@ func (l *StateLedgerImpl) SetState(addr *types.Address, key []byte, v []byte) {
 	account.SetState(key, v)
 }
 
-// AddState add account state value using account Address and key
-func (l *StateLedgerImpl) AddState(addr *types.Address, key []byte, v []byte) {
-	account := l.GetOrCreateAccount(addr)
-	account.AddState(key, v)
-}
-
 // SetCode set contract code
 func (l *StateLedgerImpl) SetCode(addr *types.Address, code []byte) {
 	account := l.GetOrCreateAccount(addr)
@@ -171,17 +152,11 @@ func (l *StateLedgerImpl) GetCodeSize(addr *types.Address) int {
 }
 
 func (l *StateLedgerImpl) AddRefund(gas uint64) {
-	l.lock.Lock()
-	defer l.lock.Unlock()
-
 	l.changer.append(refundChange{prev: l.refund})
 	l.refund += gas
 }
 
 func (l *StateLedgerImpl) SubRefund(gas uint64) {
-	l.lock.Lock()
-	defer l.lock.Unlock()
-
 	l.changer.append(refundChange{prev: l.refund})
 	if gas > l.refund {
 		panic(fmt.Sprintf("Refund counter below zero (gas: %d > refund: %d)", gas, l.refund))
@@ -190,9 +165,6 @@ func (l *StateLedgerImpl) SubRefund(gas uint64) {
 }
 
 func (l *StateLedgerImpl) GetRefund() uint64 {
-	l.lock.RLock()
-	defer l.lock.RUnlock()
-
 	return l.refund
 }
 
@@ -215,9 +187,7 @@ func (l *StateLedgerImpl) QueryByPrefix(addr *types.Address, prefix string) (boo
 }
 
 func (l *StateLedgerImpl) Clear() {
-	l.lock.Lock()
 	l.accounts = make(map[string]IAccount)
-	l.lock.Unlock()
 }
 
 // FlushDirtyData gets dirty accounts and computes block journal
@@ -228,7 +198,6 @@ func (l *StateLedgerImpl) FlushDirtyData() (map[string]IAccount, *types.Hash) {
 	var sortedAddr []string
 	accountData := make(map[string][]byte)
 
-	l.lock.RLock()
 	for addr, acc := range l.accounts {
 		account := acc.(*SimpleAccount)
 		journal := account.getJournalIfModified()
@@ -239,7 +208,6 @@ func (l *StateLedgerImpl) FlushDirtyData() (map[string]IAccount, *types.Hash) {
 			dirtyAccounts[addr] = account
 		}
 	}
-	l.lock.RUnlock()
 
 	sort.Strings(sortedAddr)
 	for _, addr := range sortedAddr {
@@ -252,7 +220,7 @@ func (l *StateLedgerImpl) FlushDirtyData() (map[string]IAccount, *types.Hash) {
 		Journals:    journals,
 		ChangedHash: types.NewHash(journalHash[:]),
 	}
-	l.blockJournals.Set(blockJournal.ChangedHash.String(), blockJournal)
+	l.blockJournals[blockJournal.ChangedHash.String()] = blockJournal
 	l.prevJnlHash = blockJournal.ChangedHash
 	l.Clear()
 	if err := l.accountCache.add(dirtyAccounts); err != nil {
@@ -296,8 +264,8 @@ func (l *StateLedgerImpl) Commit(height uint64, accounts map[string]IAccount, st
 			}
 		}
 
-		for key, valBytes := range account.dirtyState.Items() {
-			origValBytes, _ := account.originState.Get(key)
+		for key, valBytes := range account.dirtyState {
+			origValBytes := account.originState[key]
 
 			if !bytes.Equal(origValBytes, valBytes) {
 				if valBytes != nil {
@@ -309,7 +277,7 @@ func (l *StateLedgerImpl) Commit(height uint64, accounts map[string]IAccount, st
 		}
 	}
 
-	blockJournal, ok := l.blockJournals.Get(stateRoot.String())
+	blockJournal, ok := l.blockJournals[stateRoot.String()]
 	if !ok {
 		return fmt.Errorf("cannot get block journal for block %d", height)
 	}
@@ -322,8 +290,6 @@ func (l *StateLedgerImpl) Commit(height uint64, accounts map[string]IAccount, st
 	ldbBatch.Put(compositeKey(journalKey, height), data)
 	ldbBatch.Put(compositeKey(journalKey, maxHeightStr), marshalHeight(height))
 
-	l.journalMutex.Lock()
-
 	if l.minJnlHeight == 0 {
 		l.minJnlHeight = height
 		ldbBatch.Put(compositeKey(journalKey, minHeightStr), marshalHeight(height))
@@ -333,30 +299,22 @@ func (l *StateLedgerImpl) Commit(height uint64, accounts map[string]IAccount, st
 
 	l.maxJnlHeight = height
 
-	l.journalMutex.Unlock()
-
 	if height > 10 {
 		if err := l.removeJournalsBeforeBlock(height - 10); err != nil {
 			return fmt.Errorf("remove journals before block %d failed: %w", height-10, err)
 		}
 	}
-	l.blockJournals = cmap.New[*BlockJournal]()
+	l.blockJournals = make(map[string]*BlockJournal)
 
 	return nil
 }
 
 // Version returns the current version
 func (l *StateLedgerImpl) Version() uint64 {
-	l.journalMutex.RLock()
-	defer l.journalMutex.RUnlock()
-
 	return l.maxJnlHeight
 }
 
 func (l *StateLedgerImpl) RollbackState(height uint64) error {
-	l.journalMutex.Lock()
-	defer l.journalMutex.Unlock()
-
 	if l.maxJnlHeight < height {
 		return ErrorRollbackToHigherNumber
 	}

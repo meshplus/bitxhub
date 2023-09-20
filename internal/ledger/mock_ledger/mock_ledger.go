@@ -854,42 +854,6 @@ func (c *StateLedgerAddSlotToEVMAccessListCall) DoAndReturn(f func(common.Addres
 	return c
 }
 
-// AddState mocks base method.
-func (m *MockStateLedger) AddState(arg0 *types.Address, arg1, arg2 []byte) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "AddState", arg0, arg1, arg2)
-}
-
-// AddState indicates an expected call of AddState.
-func (mr *MockStateLedgerMockRecorder) AddState(arg0, arg1, arg2 any) *StateLedgerAddStateCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddState", reflect.TypeOf((*MockStateLedger)(nil).AddState), arg0, arg1, arg2)
-	return &StateLedgerAddStateCall{Call: call}
-}
-
-// StateLedgerAddStateCall wrap *gomock.Call
-type StateLedgerAddStateCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *StateLedgerAddStateCall) Return() *StateLedgerAddStateCall {
-	c.Call = c.Call.Return()
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *StateLedgerAddStateCall) Do(f func(*types.Address, []byte, []byte)) *StateLedgerAddStateCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *StateLedgerAddStateCall) DoAndReturn(f func(*types.Address, []byte, []byte)) *StateLedgerAddStateCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
 // AddressInEVMAccessList mocks base method.
 func (m *MockStateLedger) AddressInEVMAccessList(addr common.Address) bool {
 	m.ctrl.T.Helper()
@@ -1225,15 +1189,15 @@ func (c *StateLedgerExistEVMCall) DoAndReturn(f func(common.Address) bool) *Stat
 }
 
 // Finalise mocks base method.
-func (m *MockStateLedger) Finalise(arg0 bool) {
+func (m *MockStateLedger) Finalise() {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Finalise", arg0)
+	m.ctrl.Call(m, "Finalise")
 }
 
 // Finalise indicates an expected call of Finalise.
-func (mr *MockStateLedgerMockRecorder) Finalise(arg0 any) *StateLedgerFinaliseCall {
+func (mr *MockStateLedgerMockRecorder) Finalise() *StateLedgerFinaliseCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Finalise", reflect.TypeOf((*MockStateLedger)(nil).Finalise), arg0)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Finalise", reflect.TypeOf((*MockStateLedger)(nil).Finalise))
 	return &StateLedgerFinaliseCall{Call: call}
 }
 
@@ -1249,13 +1213,13 @@ func (c *StateLedgerFinaliseCall) Return() *StateLedgerFinaliseCall {
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *StateLedgerFinaliseCall) Do(f func(bool)) *StateLedgerFinaliseCall {
+func (c *StateLedgerFinaliseCall) Do(f func()) *StateLedgerFinaliseCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *StateLedgerFinaliseCall) DoAndReturn(f func(bool)) *StateLedgerFinaliseCall {
+func (c *StateLedgerFinaliseCall) DoAndReturn(f func()) *StateLedgerFinaliseCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -2703,42 +2667,6 @@ func (m *MockStateAccessor) EXPECT() *MockStateAccessorMockRecorder {
 	return m.recorder
 }
 
-// AddState mocks base method.
-func (m *MockStateAccessor) AddState(arg0 *types.Address, arg1, arg2 []byte) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "AddState", arg0, arg1, arg2)
-}
-
-// AddState indicates an expected call of AddState.
-func (mr *MockStateAccessorMockRecorder) AddState(arg0, arg1, arg2 any) *StateAccessorAddStateCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddState", reflect.TypeOf((*MockStateAccessor)(nil).AddState), arg0, arg1, arg2)
-	return &StateAccessorAddStateCall{Call: call}
-}
-
-// StateAccessorAddStateCall wrap *gomock.Call
-type StateAccessorAddStateCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *StateAccessorAddStateCall) Return() *StateAccessorAddStateCall {
-	c.Call = c.Call.Return()
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *StateAccessorAddStateCall) Do(f func(*types.Address, []byte, []byte)) *StateAccessorAddStateCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *StateAccessorAddStateCall) DoAndReturn(f func(*types.Address, []byte, []byte)) *StateAccessorAddStateCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
 // Clear mocks base method.
 func (m *MockStateAccessor) Clear() {
 	m.ctrl.T.Helper()
@@ -3355,42 +3283,6 @@ func (c *IAccountAddBalanceCall) Do(f func(*big.Int)) *IAccountAddBalanceCall {
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *IAccountAddBalanceCall) DoAndReturn(f func(*big.Int)) *IAccountAddBalanceCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
-// AddState mocks base method.
-func (m *MockIAccount) AddState(key, value []byte) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "AddState", key, value)
-}
-
-// AddState indicates an expected call of AddState.
-func (mr *MockIAccountMockRecorder) AddState(key, value any) *IAccountAddStateCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddState", reflect.TypeOf((*MockIAccount)(nil).AddState), key, value)
-	return &IAccountAddStateCall{Call: call}
-}
-
-// IAccountAddStateCall wrap *gomock.Call
-type IAccountAddStateCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *IAccountAddStateCall) Return() *IAccountAddStateCall {
-	c.Call = c.Call.Return()
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *IAccountAddStateCall) Do(f func([]byte, []byte)) *IAccountAddStateCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *IAccountAddStateCall) DoAndReturn(f func([]byte, []byte)) *IAccountAddStateCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
