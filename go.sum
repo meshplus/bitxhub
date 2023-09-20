@@ -62,8 +62,8 @@ github.com/axiomesh/axiom-bft v0.0.3-0.20230913102152-b7ea7029ab76 h1:zWA/ApcMIx
 github.com/axiomesh/axiom-bft v0.0.3-0.20230913102152-b7ea7029ab76/go.mod h1:26oKvpFCzD4D5M7Kv7zivA6QetKBQkUyRvR7jz9bbbg=
 github.com/axiomesh/axiom-kit v0.0.3-0.20230914063832-f90aa21d635e h1:jao6ZXmErb7pUAVDf+uOzX4H1OsA/8UHCyLAhmIv/Tk=
 github.com/axiomesh/axiom-kit v0.0.3-0.20230914063832-f90aa21d635e/go.mod h1:XuDEVIAtMfrAHhgEnAE9zEnlH/5ehyZwLVZRm4/RzDU=
-github.com/axiomesh/axiom-p2p v0.0.3-0.20230919102816-81fe1d778141 h1:vvhaWXop4IZZ338YfCy/aD3MCJRh3Pc3ACsG9oPUl0s=
-github.com/axiomesh/axiom-p2p v0.0.3-0.20230919102816-81fe1d778141/go.mod h1:DJDA6xsh6LiAXbtOkpnWVBvFNVd0Af7YD3stPZbpeVM=
+github.com/axiomesh/axiom-p2p v0.0.3-0.20230920082140-9db1e192260a h1:h54tg7ca0aoE/3n82oF0qyD06VNm6lVJ1Cx4Li8NDF0=
+github.com/axiomesh/axiom-p2p v0.0.3-0.20230920082140-9db1e192260a/go.mod h1:DJDA6xsh6LiAXbtOkpnWVBvFNVd0Af7YD3stPZbpeVM=
 github.com/axiomesh/eth-kit v0.0.3-0.20230914073203-e09bfbf492c9 h1:qzBhOT7ibUXghI7hN1qwZEIgLdFGtSoCVvNo+Alckps=
 github.com/axiomesh/eth-kit v0.0.3-0.20230914073203-e09bfbf492c9/go.mod h1:3lh5eW+SoV+51Ige/ahQGetUQM7DkgIFOevnwkMp8FA=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
