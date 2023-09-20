@@ -106,6 +106,7 @@ func (swarm *Swarm) init() error {
 				RetryBaseTime:          swarm.repo.Config.P2P.Pipe.SimpleBroadcast.RetryBaseTime.ToDuration(),
 			},
 			Gossipsub: network.PipeGossipsubConfig{
+				UseCustomMsgIDFunc:     !swarm.repo.Config.P2P.Pipe.Gossipsub.DisableCustomMsgIDFn,
 				SubBufferSize:          swarm.repo.Config.P2P.Pipe.Gossipsub.SubBufferSize,
 				PeerOutboundBufferSize: swarm.repo.Config.P2P.Pipe.Gossipsub.PeerOutboundBufferSize,
 				ValidateBufferSize:     swarm.repo.Config.P2P.Pipe.Gossipsub.ValidateBufferSize,

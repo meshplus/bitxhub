@@ -93,6 +93,7 @@ type JsonRPC struct {
 }
 
 type P2PPipeGossipsub struct {
+	DisableCustomMsgIDFn   bool     `mapstructure:"disable_custom_msg_id_fn" toml:"disable_custom_msg_id_fn"`
 	SubBufferSize          int      `mapstructure:"sub_buffer_size" toml:"sub_buffer_size"`
 	PeerOutboundBufferSize int      `mapstructure:"peer_outbound_buffer_size" toml:"peer_outbound_buffer_size"`
 	ValidateBufferSize     int      `mapstructure:"validate_buffer_size" toml:"validate_buffer_size"`
@@ -308,6 +309,7 @@ func DefaultConfig(repoRoot string, epochEnable bool) *Config {
 					RetryBaseTime:          Duration(100 * time.Millisecond),
 				},
 				Gossipsub: P2PPipeGossipsub{
+					DisableCustomMsgIDFn:   false,
 					SubBufferSize:          1024,
 					PeerOutboundBufferSize: 1024,
 					ValidateBufferSize:     1024,
