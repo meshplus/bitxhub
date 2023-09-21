@@ -1,4 +1,4 @@
-module github.com/axiomesh/axiom
+module github.com/axiomesh/axiom-ledger
 
 go 1.20
 

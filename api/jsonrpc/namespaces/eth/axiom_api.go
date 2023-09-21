@@ -9,9 +9,9 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/sirupsen/logrus"
 
-	rpctypes "github.com/axiomesh/axiom/api/jsonrpc/types"
-	"github.com/axiomesh/axiom/internal/coreapi/api"
-	"github.com/axiomesh/axiom/pkg/repo"
+	rpctypes "github.com/axiomesh/axiom-ledger/api/jsonrpc/types"
+	"github.com/axiomesh/axiom-ledger/internal/coreapi/api"
+	"github.com/axiomesh/axiom-ledger/pkg/repo"
 )
 
 // AxiomAPI provides an API to get related info

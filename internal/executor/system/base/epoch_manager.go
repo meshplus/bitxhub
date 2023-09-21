@@ -9,8 +9,8 @@ import (
 
 	rbft "github.com/axiomesh/axiom-bft"
 	"github.com/axiomesh/axiom-kit/types"
-	"github.com/axiomesh/axiom/internal/executor/system/common"
-	"github.com/axiomesh/axiom/internal/ledger"
+	"github.com/axiomesh/axiom-ledger/internal/executor/system/common"
+	"github.com/axiomesh/axiom-ledger/internal/ledger"
 	vm "github.com/axiomesh/eth-kit/evm"
 )
 

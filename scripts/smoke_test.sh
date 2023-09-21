@@ -2,45 +2,38 @@ set -e
 source x.sh
 source smoke_env.sh
 
-CURRENT_PATH=$(pwd)
+CURRENT_PATH=$(cd $(dirname ${BASH_SOURCE[0]}); pwd)
+cd $CURRENT_PATH
+
 function printHelp() {
     print_blue "Usage:  "
-    echo "  axiom_test.sh [-b <BRANCH_NAME>] [-t <TEST_NAME>]"
+    echo "  smoke_test.sh [-b <BRANCH_NAME>]"
     echo "  -'b' - the branch of base ref"
-    echo "  axiom_test.sh -h (print this message)"
+    echo "  smoke_test.sh -h (print this message)"
 }
 
-function start_axiom_solo() {
-    print_blue "===> 1. Start solo axiom"
-    echo "$CURRENT_PATH"
-    cd ../ && make install && cd scripts
-    nohup bash solo.sh 2>gc.log 1>solo.log &
-    sleep 10
+function start_solo() {
+    print_blue "===> 1. Start solo axiom-ledger"
+    cd ../ && make build && cd scripts
+    nohup bash solo.sh 2>error.log 1>solo.log &
 }
 
-function start_axiom_rbft() {
-    print_blue "===> 1. Start rbft axiom"
-    echo "$CURRENT_PATH"
-    cd ../ && make install && cd scripts
-    nohup bash cluster.sh 2>gc.log 1>cluster.log &
-    sleep 15
+function start_rbft() {
+    print_blue "===> 1. Start rbft axiom-ledger"
+    cd ../ && make build && cd scripts
+    bash cluster.sh background
 }
 
-function axiom_tester() {
-    print_blue "===> 2. Clone axiom-tester"
+function start_tester() {
+    print_blue "===> 2. Clone tester"
     echo "$BRANCH_NAME"
     cd ../
     git clone -b "$BRANCH_NAME" https://github.com/axiomesh/axiom-tester.git
     cd axiom-tester
-    print_blue "Start test"
     print_blue "===> 3. Start smoke test"
     npm install && npm run smoke-test
 }
 
-function axiom_test() {
-    start_axiom_rbft
-    axiom_tester
-}
 BRANCH_NAME="main"
 while getopts "h?b:" opt; do
   case "$opt" in
@@ -54,4 +47,5 @@ while getopts "h?b:" opt; do
   esac
 done
 
-axiom_test
+start_rbft
+start_tester

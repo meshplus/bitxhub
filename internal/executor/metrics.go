@@ -4,38 +4,38 @@ import "github.com/prometheus/client_golang/prometheus"
 
 var (
 	applyTxsDuration = prometheus.NewHistogram(prometheus.HistogramOpts{
-		Namespace: "axiom",
+		Namespace: "axiom_ledger",
 		Subsystem: "executor",
 		Name:      "apply_transactions_duration_seconds",
 		Help:      "The total latency of transactions apply",
 		Buckets:   prometheus.ExponentialBuckets(0.001, 2, 14),
 	})
 	executeBlockDuration = prometheus.NewHistogram(prometheus.HistogramOpts{
-		Namespace: "axiom",
+		Namespace: "axiom_ledger",
 		Subsystem: "executor",
 		Name:      "execute_block_duration_second",
 		Help:      "The total latency of block execute",
 		Buckets:   prometheus.ExponentialBuckets(0.001, 2, 10),
 	})
 	calcMerkleDuration = prometheus.NewHistogram(prometheus.HistogramOpts{
-		Namespace: "axiom",
+		Namespace: "axiom_ledger",
 		Subsystem: "executor",
 		Name:      "calc_merkle_duration_seconds",
 		Help:      "The total latency of merkle calc",
 		Buckets:   prometheus.ExponentialBuckets(0.001, 2, 10),
 	})
 	calcBlockSize = prometheus.NewHistogram(prometheus.HistogramOpts{
-		Namespace: "axiom",
+		Namespace: "axiom_ledger",
 		Subsystem: "executor",
 		Name:      "calc_block_size",
 		Help:      "The size of current block calc",
 		Buckets:   prometheus.ExponentialBuckets(1024, 2, 12),
 	})
 	txCounter = prometheus.NewCounter(prometheus.CounterOpts{
-		Namespace: "axiom",
+		Namespace: "axiom_ledger",
 		Subsystem: "executor",
 		Name:      "tx_counter",
-		Help:      "the total number of transactions in axiom",
+		Help:      "the total number of transactions",
 	})
 )
 

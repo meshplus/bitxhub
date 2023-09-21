@@ -13,7 +13,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
 
-	"github.com/axiomesh/axiom"
 	rbft "github.com/axiomesh/axiom-bft"
 	"github.com/axiomesh/axiom-kit/fileutil"
 )
@@ -268,7 +267,7 @@ func GenesisEpochInfo(epochEnable bool) *rbft.EpochInfo {
 }
 
 func DefaultConfig(repoRoot string, epochEnable bool) *Config {
-	if axiom.Net == AriesTestnetName {
+	if BuildNet == AriesTestnetName {
 		return AriesConfig(repoRoot)
 	}
 	return &Config{
@@ -375,7 +374,7 @@ func DefaultConfig(repoRoot string, epochEnable bool) *Config {
 		},
 		Log: Log{
 			Level:          "info",
-			Filename:       "axiom",
+			Filename:       "axiom-ledger",
 			ReportCaller:   false,
 			EnableCompress: false,
 			EnableColor:    true,

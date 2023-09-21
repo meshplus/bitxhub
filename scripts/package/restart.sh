@@ -6,6 +6,6 @@ env_file=${base_dir}/.env.sh
 if [ -f ${env_file} ]; then
   source ${env_file}
 fi
-export AXIOM_PATH=${base_dir}
+export AXIOM_LEDGER_PATH=${base_dir}
 
 ${base_dir}/tools/control.sh restart

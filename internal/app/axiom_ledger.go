@@ -13,24 +13,25 @@ import (
 	"github.com/sirupsen/logrus"
 
 	rbft "github.com/axiomesh/axiom-bft"
+	"github.com/axiomesh/axiom-kit/log"
 	"github.com/axiomesh/axiom-kit/storage/blockfile"
 	"github.com/axiomesh/axiom-kit/types"
-	"github.com/axiomesh/axiom/api/jsonrpc"
-	"github.com/axiomesh/axiom/internal/executor"
-	"github.com/axiomesh/axiom/internal/executor/executor_dev"
-	"github.com/axiomesh/axiom/internal/executor/system/base"
-	"github.com/axiomesh/axiom/internal/ledger"
-	"github.com/axiomesh/axiom/internal/ledger/genesis"
-	"github.com/axiomesh/axiom/internal/order"
-	"github.com/axiomesh/axiom/internal/order/common"
-	"github.com/axiomesh/axiom/internal/peermgr"
-	"github.com/axiomesh/axiom/internal/storages"
-	"github.com/axiomesh/axiom/pkg/loggers"
-	"github.com/axiomesh/axiom/pkg/profile"
-	"github.com/axiomesh/axiom/pkg/repo"
+	"github.com/axiomesh/axiom-ledger/api/jsonrpc"
+	"github.com/axiomesh/axiom-ledger/internal/executor"
+	"github.com/axiomesh/axiom-ledger/internal/executor/executor_dev"
+	"github.com/axiomesh/axiom-ledger/internal/executor/system/base"
+	"github.com/axiomesh/axiom-ledger/internal/ledger"
+	"github.com/axiomesh/axiom-ledger/internal/ledger/genesis"
+	"github.com/axiomesh/axiom-ledger/internal/order"
+	"github.com/axiomesh/axiom-ledger/internal/order/common"
+	"github.com/axiomesh/axiom-ledger/internal/peermgr"
+	"github.com/axiomesh/axiom-ledger/internal/storages"
+	"github.com/axiomesh/axiom-ledger/pkg/loggers"
+	"github.com/axiomesh/axiom-ledger/pkg/profile"
+	"github.com/axiomesh/axiom-ledger/pkg/repo"
 )
 
-type Axiom struct {
+type AxiomLedger struct {
 	ViewLedger    *ledger.Ledger
 	BlockExecutor executor.Executor
 	Order         order.Order
@@ -48,11 +49,11 @@ type Axiom struct {
 	Cancel context.CancelFunc
 }
 
-func NewAxiom(rep *repo.Repo, ctx context.Context, cancel context.CancelFunc) (*Axiom, error) {
+func NewAxiomLedger(rep *repo.Repo, ctx context.Context, cancel context.CancelFunc) (*AxiomLedger, error) {
 	repoRoot := rep.Config.RepoRoot
 	axm, err := GenerateAxiomWithoutOrder(rep)
 	if err != nil {
-		return nil, fmt.Errorf("generate axiom without order failed: %w", err)
+		return nil, fmt.Errorf("generate axiom-ledger without order failed: %w", err)
 	}
 	axm.Ctx = ctx
 	axm.Cancel = cancel
@@ -100,7 +101,7 @@ func NewAxiom(rep *repo.Repo, ctx context.Context, cancel context.CancelFunc) (*
 	return axm, nil
 }
 
-func GenerateAxiomWithoutOrder(rep *repo.Repo) (*Axiom, error) {
+func GenerateAxiomWithoutOrder(rep *repo.Repo) (*AxiomLedger, error) {
 	repoRoot := rep.Config.RepoRoot
 	logger := loggers.Logger(loggers.App)
 
@@ -154,7 +155,7 @@ func GenerateAxiomWithoutOrder(rep *repo.Repo) (*Axiom, error) {
 		return nil, fmt.Errorf("create peer manager: %w", err)
 	}
 
-	return &Axiom{
+	return &AxiomLedger{
 		repo:          rep,
 		logger:        logger,
 		ViewLedger:    rwLdg.Copy(),
@@ -163,7 +164,7 @@ func GenerateAxiomWithoutOrder(rep *repo.Repo) (*Axiom, error) {
 	}, nil
 }
 
-func (axm *Axiom) Start() error {
+func (axm *AxiomLedger) Start() error {
 	var err error
 	// read current epoch info from ledger
 	axm.repo.EpochInfo, err = base.GetCurrentEpochInfo(axm.ViewLedger.StateLedger)
@@ -192,7 +193,7 @@ func (axm *Axiom) Start() error {
 	return nil
 }
 
-func (axm *Axiom) Stop() error {
+func (axm *AxiomLedger) Stop() error {
 	if err := axm.BlockExecutor.Stop(); err != nil {
 		return fmt.Errorf("block executor stop: %w", err)
 	}
@@ -207,12 +208,12 @@ func (axm *Axiom) Stop() error {
 
 	axm.Cancel()
 
-	axm.logger.Info("Axiom stopped")
+	axm.logger.Infof("%s stopped", repo.AppName)
 
 	return nil
 }
 
-func (axm *Axiom) printLogo() {
+func (axm *AxiomLedger) printLogo() {
 	for {
 		time.Sleep(100 * time.Millisecond)
 		err := axm.Order.Ready()
@@ -220,19 +221,14 @@ func (axm *Axiom) printLogo() {
 			axm.logger.WithFields(logrus.Fields{
 				"order_type": axm.repo.Config.Order.Type,
 			}).Info("Order is ready")
-			fmt.Println()
-			fmt.Println("=======================================================")
-			fig := figure.NewFigure("Axiom", "slant", true)
-			fig.Print()
-			fmt.Println()
-			fmt.Println("=======================================================")
-			fmt.Println()
+			fig := figure.NewFigure(repo.AppName, "slant", true)
+			axm.logger.WithField(log.OnlyWriteMsgWithoutFormatterField, nil).Infof("=======================================================\n%s\n=======================================================", fig.String())
 			return
 		}
 	}
 }
 
-func (axm *Axiom) raiseUlimit(limitNew uint64) error {
+func (axm *AxiomLedger) raiseUlimit(limitNew uint64) error {
 	_, err := fdlimit.Raise(limitNew)
 	if err != nil {
 		return fmt.Errorf("set limit failed: %w", err)

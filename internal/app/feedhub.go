@@ -3,10 +3,10 @@ package app
 import (
 	"github.com/sirupsen/logrus"
 
-	"github.com/axiomesh/axiom/pkg/model/events"
+	"github.com/axiomesh/axiom-ledger/pkg/model/events"
 )
 
-func (axm *Axiom) start() {
+func (axm *AxiomLedger) start() {
 	go axm.listenEvent()
 
 	go func() {
@@ -25,7 +25,7 @@ func (axm *Axiom) start() {
 	}()
 }
 
-func (axm *Axiom) listenEvent() {
+func (axm *AxiomLedger) listenEvent() {
 	blockCh := make(chan events.ExecutedEvent)
 	blockSub := axm.BlockExecutor.SubscribeBlockEvent(blockCh)
 	defer blockSub.Unsubscribe()

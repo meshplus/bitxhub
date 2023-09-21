@@ -34,9 +34,9 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/axiomesh/axiom-kit/types"
-	"github.com/axiomesh/axiom/api/jsonrpc/namespaces/eth"
-	rpctypes "github.com/axiomesh/axiom/api/jsonrpc/types"
-	"github.com/axiomesh/axiom/internal/coreapi/api"
+	"github.com/axiomesh/axiom-ledger/api/jsonrpc/namespaces/eth"
+	rpctypes "github.com/axiomesh/axiom-ledger/api/jsonrpc/types"
+	"github.com/axiomesh/axiom-ledger/internal/coreapi/api"
 )
 
 // filter is a helper struct that holds meta information over the filter type

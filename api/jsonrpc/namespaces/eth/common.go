@@ -9,9 +9,9 @@ import (
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/axiomesh/axiom-kit/types"
-	rpctypes "github.com/axiomesh/axiom/api/jsonrpc/types"
-	"github.com/axiomesh/axiom/internal/coreapi/api"
-	"github.com/axiomesh/axiom/internal/ledger"
+	rpctypes "github.com/axiomesh/axiom-ledger/api/jsonrpc/types"
+	"github.com/axiomesh/axiom-ledger/internal/coreapi/api"
+	"github.com/axiomesh/axiom-ledger/internal/ledger"
 )
 
 var (

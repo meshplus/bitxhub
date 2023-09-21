@@ -3,9 +3,9 @@ set -e
 
 shell_dir=$(cd $(dirname ${BASH_SOURCE[0]}); pwd)
 base_dir=`dirname ${shell_dir}`
-app_name=axiom
+app_name=axiom-ledger
 bin_path=${shell_dir}/bin/${app_name}
-pid_file=${base_dir}/axiom.pid
+pid_file=${base_dir}/running.pid
 wait_process_exit_check_time=50
 wait_process_exit_check_interval=0.2
 

@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/axiomesh/axiom-kit/types"
-	"github.com/axiomesh/axiom/pkg/repo"
+	"github.com/axiomesh/axiom-ledger/pkg/repo"
 )
 
 func TestGetGasPrice(t *testing.T) {

@@ -11,7 +11,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/axiomesh/axiom-kit/fileutil"
-	"github.com/axiomesh/axiom/pkg/repo"
+	"github.com/axiomesh/axiom-ledger/pkg/repo"
 )
 
 var configCMD = &cli.Command{
@@ -65,11 +65,6 @@ var configCMD = &cli.Command{
 			Usage:  "Check if the config file is valid",
 			Action: check,
 		},
-		{
-			Name:   "rewrite-with-env",
-			Usage:  "Rewrite config with env",
-			Action: rewriteWithEnv,
-		},
 	},
 }
 
@@ -79,7 +74,7 @@ func generate(ctx *cli.Context) error {
 		return err
 	}
 	if fileutil.Exist(filepath.Join(p, repo.CfgFileName)) {
-		fmt.Println("axiom repo already exists")
+		fmt.Println("axiom-ledger repo already exists")
 		return nil
 	}
 
@@ -112,8 +107,8 @@ func generateAccountKey(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	if !fileutil.Exist(p) {
-		fmt.Println("axiom repo not exist")
+	if !fileutil.Exist(filepath.Join(p, repo.CfgFileName)) {
+		fmt.Println("axiom-ledger repo not exist")
 		return nil
 	}
 
@@ -146,8 +141,8 @@ func nodeInfo(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	if !fileutil.Exist(p) {
-		fmt.Println("axiom repo not exist")
+	if !fileutil.Exist(filepath.Join(p, repo.CfgFileName)) {
+		fmt.Println("axiom-ledger repo not exist")
 		return nil
 	}
 
@@ -165,8 +160,8 @@ func show(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	if !fileutil.Exist(p) {
-		fmt.Println("axiom repo not exist")
+	if !fileutil.Exist(filepath.Join(p, repo.CfgFileName)) {
+		fmt.Println("axiom-ledger repo not exist")
 		return nil
 	}
 
@@ -187,8 +182,8 @@ func showOrder(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	if !fileutil.Exist(p) {
-		fmt.Println("axiom repo not exist")
+	if !fileutil.Exist(filepath.Join(p, repo.CfgFileName)) {
+		fmt.Println("axiom-ledger repo not exist")
 		return nil
 	}
 
@@ -209,8 +204,8 @@ func check(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	if !fileutil.Exist(p) {
-		fmt.Println("axiom repo not exist")
+	if !fileutil.Exist(filepath.Join(p, repo.CfgFileName)) {
+		fmt.Println("axiom-ledger repo not exist")
 		return nil
 	}
 
@@ -221,26 +216,6 @@ func check(ctx *cli.Context) error {
 		return nil
 	}
 
-	return nil
-}
-
-func rewriteWithEnv(ctx *cli.Context) error {
-	p, err := getRootPath(ctx)
-	if err != nil {
-		return err
-	}
-	if !fileutil.Exist(p) {
-		fmt.Println("axiom repo not exist")
-		return nil
-	}
-
-	r, err := repo.Load(p)
-	if err != nil {
-		return err
-	}
-	if err := r.Flush(); err != nil {
-		return err
-	}
 	return nil
 }
 

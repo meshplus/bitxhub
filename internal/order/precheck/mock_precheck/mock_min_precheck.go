@@ -4,8 +4,8 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/axiomesh/axiom-kit/types"
-	"github.com/axiomesh/axiom/internal/order/common"
-	"github.com/axiomesh/axiom/internal/order/precheck"
+	"github.com/axiomesh/axiom-ledger/internal/order/common"
+	"github.com/axiomesh/axiom-ledger/internal/order/precheck"
 )
 
 func NewMockMinPreCheck(mockCtl *gomock.Controller, validTxsCh chan *precheck.ValidTxs) *MockPreCheck {

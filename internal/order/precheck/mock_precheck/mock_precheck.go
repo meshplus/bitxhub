@@ -11,8 +11,8 @@ package mock_precheck
 import (
 	reflect "reflect"
 
-	common "github.com/axiomesh/axiom/internal/order/common"
-	precheck "github.com/axiomesh/axiom/internal/order/precheck"
+	common "github.com/axiomesh/axiom-ledger/internal/order/common"
+	precheck "github.com/axiomesh/axiom-ledger/internal/order/precheck"
 	gomock "go.uber.org/mock/gomock"
 )
 

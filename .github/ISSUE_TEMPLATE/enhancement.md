@@ -1,6 +1,6 @@
 ---
 name: 'Development Task'
-about: 'As a Axiom developer, I want to record a development task.'
+about: 'As a axiom-ledger developer, I want to record a development task.'
 labels: enhancement
 ---
 

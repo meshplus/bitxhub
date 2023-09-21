@@ -15,15 +15,14 @@ import (
 	"github.com/samber/lo"
 	"github.com/sirupsen/logrus"
 
-	"github.com/axiomesh/axiom"
 	"github.com/axiomesh/axiom-kit/types/pb"
+	"github.com/axiomesh/axiom-ledger/internal/ledger"
+	"github.com/axiomesh/axiom-ledger/pkg/repo"
 	network "github.com/axiomesh/axiom-p2p"
-	"github.com/axiomesh/axiom/internal/ledger"
-	"github.com/axiomesh/axiom/pkg/repo"
 )
 
 const (
-	protocolID string = "/axiom/1.0.0" // magic protocol
+	protocolID string = "/axiom-ledger/1.0.0" // magic protocol
 )
 
 var _ PeerManager = (*Swarm)(nil)
@@ -86,7 +85,7 @@ func (swarm *Swarm) init() error {
 	if err != nil {
 		return fmt.Errorf("failed to convert ecdsa p2pKey: %w", err)
 	}
-	protocolIDWithVersion := fmt.Sprintf("%s-%x", protocolID, sha256.Sum256([]byte(axiom.VersionSecret)))
+	protocolIDWithVersion := fmt.Sprintf("%s-%x", protocolID, sha256.Sum256([]byte(repo.BuildVersionSecret)))
 
 	gater := newConnectionGater(swarm.logger, swarm.ledger)
 	opts := []network.Option{

@@ -1,24 +1,24 @@
 package repo
 
 const (
-	AppName = "Axiom"
+	AppName = "AxiomLedger"
 
 	// CfgFileName is the default config name
-	CfgFileName = "axiom.toml"
+	CfgFileName = "config.toml"
 
 	orderCfgFileName = "order.toml"
 
 	// defaultRepoRoot is the path to the default config dir location.
-	defaultRepoRoot = "~/.axiom"
+	defaultRepoRoot = "~/.axiom-ledger"
 
 	// rootPathEnvVar is the environment variable used to change the path root.
-	rootPathEnvVar = "AXIOM_PATH"
+	rootPathEnvVar = "AXIOM_LEDGER_PATH"
 
 	p2pKeyFileName = "p2p.key"
 
 	AccountKeyFileName = "account.key"
 
-	pidFileName = "axiom.pid"
+	pidFileName = "running.pid"
 
 	LogsDirName = "logs"
 )

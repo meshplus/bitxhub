@@ -10,17 +10,17 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
+	ethhexutil "github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/sirupsen/logrus"
 
-	axiomhex "github.com/axiomesh/axiom-kit/hexutil"
+	"github.com/axiomesh/axiom-kit/hexutil"
 	"github.com/axiomesh/axiom-kit/types"
-	rpctypes "github.com/axiomesh/axiom/api/jsonrpc/types"
-	"github.com/axiomesh/axiom/internal/coreapi/api"
-	"github.com/axiomesh/axiom/pkg/repo"
+	rpctypes "github.com/axiomesh/axiom-ledger/api/jsonrpc/types"
+	"github.com/axiomesh/axiom-ledger/internal/coreapi/api"
+	"github.com/axiomesh/axiom-ledger/pkg/repo"
 	"github.com/axiomesh/eth-kit/adaptor"
 	vm "github.com/axiomesh/eth-kit/evm"
 )
@@ -40,24 +40,24 @@ func NewBlockChainAPI(config *repo.Config, api api.CoreAPI, logger logrus.FieldL
 }
 
 // ChainId returns the chain's identifier in hex format
-func (api *BlockChainAPI) ChainId() (hexutil.Uint, error) { // nolint
+func (api *BlockChainAPI) ChainId() (ethhexutil.Uint, error) { // nolint
 	api.logger.Debug("eth_chainId")
-	return hexutil.Uint(api.config.Genesis.ChainID), nil
+	return ethhexutil.Uint(api.config.Genesis.ChainID), nil
 }
 
 // BlockNumber returns the current block number.
-func (api *BlockChainAPI) BlockNumber() (hexutil.Uint64, error) {
+func (api *BlockChainAPI) BlockNumber() (ethhexutil.Uint64, error) {
 	api.logger.Debug("eth_blockNumber")
 	meta, err := api.api.Chain().Meta()
 	if err != nil {
 		return 0, err
 	}
 
-	return hexutil.Uint64(meta.Height), nil
+	return ethhexutil.Uint64(meta.Height), nil
 }
 
 // GetBalance returns the provided account's balance, blockNum is ignored.
-func (api *BlockChainAPI) GetBalance(address common.Address, blockNrOrHash *rpctypes.BlockNumberOrHash) (*hexutil.Big, error) {
+func (api *BlockChainAPI) GetBalance(address common.Address, blockNrOrHash *rpctypes.BlockNumberOrHash) (*ethhexutil.Big, error) {
 	api.logger.Debugf("eth_getBalance, address: %s, block number : %d", address.String())
 
 	stateLedger, err := getStateLedgerAt(api.api)
@@ -68,23 +68,23 @@ func (api *BlockChainAPI) GetBalance(address common.Address, blockNrOrHash *rpct
 	balance := stateLedger.GetBalance(types.NewAddress(address.Bytes()))
 	api.logger.Debugf("balance: %d", balance)
 
-	return (*hexutil.Big)(balance), nil
+	return (*ethhexutil.Big)(balance), nil
 }
 
 type AccountResult struct {
-	Address      common.Address  `json:"address"`
-	AccountProof []string        `json:"accountProof"`
-	Balance      *hexutil.Big    `json:"balance"`
-	CodeHash     common.Hash     `json:"codeHash"`
-	Nonce        hexutil.Uint64  `json:"nonce"`
-	StorageHash  common.Hash     `json:"storageHash"`
-	StorageProof []StorageResult `json:"storageProof"`
+	Address      common.Address    `json:"address"`
+	AccountProof []string          `json:"accountProof"`
+	Balance      *ethhexutil.Big   `json:"balance"`
+	CodeHash     common.Hash       `json:"codeHash"`
+	Nonce        ethhexutil.Uint64 `json:"nonce"`
+	StorageHash  common.Hash       `json:"storageHash"`
+	StorageProof []StorageResult   `json:"storageProof"`
 }
 
 type StorageResult struct {
-	Key   string       `json:"key"`
-	Value *hexutil.Big `json:"value"`
-	Proof []string     `json:"proof"`
+	Key   string          `json:"key"`
+	Value *ethhexutil.Big `json:"value"`
+	Proof []string        `json:"proof"`
 }
 
 // todo
@@ -125,7 +125,7 @@ func (api *BlockChainAPI) GetBlockByHash(hash common.Hash, fullTx bool) (map[str
 }
 
 // GetCode returns the contract code at the given address, blockNum is ignored.
-func (api *BlockChainAPI) GetCode(address common.Address, blockNrOrHash *rpctypes.BlockNumberOrHash) (hexutil.Bytes, error) {
+func (api *BlockChainAPI) GetCode(address common.Address, blockNrOrHash *rpctypes.BlockNumberOrHash) (ethhexutil.Bytes, error) {
 	api.logger.Debugf("eth_getCode, address: %s", address.String())
 
 	stateLedger, err := getStateLedgerAt(api.api)
@@ -139,7 +139,7 @@ func (api *BlockChainAPI) GetCode(address common.Address, blockNrOrHash *rpctype
 }
 
 // GetStorageAt returns the contract storage at the given address and key, blockNum is ignored.
-func (api *BlockChainAPI) GetStorageAt(address common.Address, key string, blockNrOrHash *rpctypes.BlockNumberOrHash) (hexutil.Bytes, error) {
+func (api *BlockChainAPI) GetStorageAt(address common.Address, key string, blockNrOrHash *rpctypes.BlockNumberOrHash) (ethhexutil.Bytes, error) {
 	api.logger.Debugf("eth_getStorageAt, address: %s, key: %s", address, key)
 
 	stateLedger, err := getStateLedgerAt(api.api)
@@ -147,7 +147,7 @@ func (api *BlockChainAPI) GetStorageAt(address common.Address, key string, block
 		return nil, err
 	}
 
-	hash, err := axiomhex.DecodeHash(key)
+	hash, err := hexutil.DecodeHash(key)
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +161,7 @@ func (api *BlockChainAPI) GetStorageAt(address common.Address, key string, block
 }
 
 // Call performs a raw contract call.
-func (api *BlockChainAPI) Call(args types.CallArgs, blockNrOrHash *rpctypes.BlockNumberOrHash, _ *map[common.Address]rpctypes.Account) (hexutil.Bytes, error) {
+func (api *BlockChainAPI) Call(args types.CallArgs, blockNrOrHash *rpctypes.BlockNumberOrHash, _ *map[common.Address]rpctypes.Account) (ethhexutil.Bytes, error) {
 	api.logger.Debugf("eth_call, args: %v", args)
 
 	receipt, err := DoCall(api.ctx, api.api, args, api.config.JsonRPC.EVMTimeout.ToDuration(), api.config.JsonRPC.GasCap, api.logger)
@@ -234,20 +234,20 @@ func DoCall(ctx context.Context, api api.CoreAPI, args types.CallArgs, timeout t
 // EstimateGas returns an estimate of gas usage for the given smart contract call.
 // It adds 2,000 gas to the returned value instead of using the gas adjustment
 // param from the SDK.
-func (api *BlockChainAPI) EstimateGas(args types.CallArgs, blockNrOrHash *rpctypes.BlockNumberOrHash) (hexutil.Uint64, error) {
+func (api *BlockChainAPI) EstimateGas(args types.CallArgs, blockNrOrHash *rpctypes.BlockNumberOrHash) (ethhexutil.Uint64, error) {
 	api.logger.Debugf("eth_estimateGas, args: %s", args)
 
 	// Judge whether this is system contract
 	systemContract, ok := api.api.Broker().GetSystemContract(args.To)
 	if ok {
 		gas, err := systemContract.EstimateGas(&args)
-		return hexutil.Uint64(gas), err
+		return ethhexutil.Uint64(gas), err
 	}
 
 	// Determine the highest gas limit can be used during the estimation.
 	// if args.Gas == nil || uint64(*args.Gas) < params.TxGas {
 	// 	// Retrieve the block to act as the gas ceiling
-	// 	args.Gas = (*hexutil.Uint64)(&api.config.GasLimit)
+	// 	args.Gas = (*ethhexutil.Uint64)(&api.config.GasLimit)
 	// }
 	// Determine the lowest and highest possible gas limits to binary search in between
 	var (
@@ -289,7 +289,7 @@ func (api *BlockChainAPI) EstimateGas(args types.CallArgs, blockNrOrHash *rpctyp
 		if allowance.IsUint64() && hi > allowance.Uint64() {
 			transfer := args.Value
 			if transfer == nil {
-				transfer = new(hexutil.Big)
+				transfer = new(ethhexutil.Big)
 			}
 			api.logger.Warn("Gas estimation capped by limited funds", "original", hi, "balance", balance,
 				"sent", transfer.ToInt(), "maxFeePerGas", feeCap, "fundable", allowance)
@@ -307,7 +307,7 @@ func (api *BlockChainAPI) EstimateGas(args types.CallArgs, blockNrOrHash *rpctyp
 
 	// Create a helper to check if a gas allowance results in an executable transaction
 	executable := func(gas uint64) (bool, *vm.ExecutionResult, error) {
-		args.Gas = (*hexutil.Uint64)(&gas)
+		args.Gas = (*ethhexutil.Uint64)(&gas)
 
 		result, err := DoCall(api.ctx, api.api, args, api.config.JsonRPC.EVMTimeout.ToDuration(), api.config.JsonRPC.GasCap, api.logger)
 		if err != nil {
@@ -348,7 +348,7 @@ func (api *BlockChainAPI) EstimateGas(args types.CallArgs, blockNrOrHash *rpctyp
 			return 0, fmt.Errorf("gas required exceeds allowance (%d)", cap)
 		}
 	}
-	return hexutil.Uint64(hi), nil
+	return ethhexutil.Uint64(hi), nil
 }
 
 // accessListResult returns an optional accesslist
@@ -357,7 +357,7 @@ func (api *BlockChainAPI) EstimateGas(args types.CallArgs, blockNrOrHash *rpctyp
 type accessListResult struct {
 	Accesslist *ethtypes.AccessList `json:"accessList"`
 	Error      string               `json:"error,omitempty"`
-	GasUsed    hexutil.Uint64       `json:"gasUsed"`
+	GasUsed    ethhexutil.Uint64    `json:"gasUsed"`
 }
 
 func (s *BlockChainAPI) CreateAccessList(args types.CallArgs, blockNrOrHash *rpctypes.BlockNumberOrHash) (*accessListResult, error) {
@@ -394,27 +394,27 @@ func formatBlock(api api.CoreAPI, config *repo.Config, block *types.Block, fullT
 	}
 
 	return map[string]any{
-		"number":           (*hexutil.Big)(big.NewInt(int64(block.Height()))),
+		"number":           (*ethhexutil.Big)(big.NewInt(int64(block.Height()))),
 		"hash":             block.BlockHash.ETHHash(),
-		"baseFeePerGas":    hexutil.Uint64(gasPrice),
+		"baseFeePerGas":    ethhexutil.Uint64(gasPrice),
 		"parentHash":       block.BlockHeader.ParentHash.ETHHash(),
 		"nonce":            ethtypes.BlockNonce{}, // PoW specific
 		"logsBloom":        block.BlockHeader.Bloom.ETHBloom(),
 		"transactionsRoot": block.BlockHeader.TxRoot.ETHHash(),
 		"stateRoot":        block.BlockHeader.StateRoot.ETHHash(),
 		"miner":            block.BlockHeader.ProposerAccount,
-		"extraData":        hexutil.Bytes{},
-		"size":             hexutil.Uint64(block.Size()),
-		"gasLimit":         hexutil.Uint64(config.Genesis.GasLimit), // Static gas limit
-		"gasUsed":          hexutil.Uint64(cumulativeGas),
-		"timestamp":        hexutil.Uint64(block.BlockHeader.Timestamp),
+		"extraData":        ethhexutil.Bytes{},
+		"size":             ethhexutil.Uint64(block.Size()),
+		"gasLimit":         ethhexutil.Uint64(config.Genesis.GasLimit), // Static gas limit
+		"gasUsed":          ethhexutil.Uint64(cumulativeGas),
+		"timestamp":        ethhexutil.Uint64(block.BlockHeader.Timestamp),
 		"transactions":     transactions,
 		"receiptsRoot":     block.BlockHeader.ReceiptRoot.ETHHash(),
 		// todo delete non-existent fields
 		"sha3Uncles": ethtypes.EmptyUncleHash, // No uncles in raft/rbft
 		"uncles":     []string{},
 		"mixHash":    common.Hash{},
-		"difficulty": (*hexutil.Big)(big.NewInt(0)),
+		"difficulty": (*ethhexutil.Big)(big.NewInt(0)),
 	}, nil
 }
 
@@ -444,6 +444,6 @@ func newRevertError(data []byte) *revertError {
 	}
 	return &revertError{
 		error:  err,
-		reason: hexutil.Encode(data),
+		reason: ethhexutil.Encode(data),
 	}
 }

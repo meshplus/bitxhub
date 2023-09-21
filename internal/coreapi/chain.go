@@ -8,7 +8,7 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/axiomesh/axiom-kit/types"
-	"github.com/axiomesh/axiom/internal/coreapi/api"
+	"github.com/axiomesh/axiom-ledger/internal/coreapi/api"
 )
 
 type ChainAPI CoreAPI
@@ -16,7 +16,7 @@ type ChainAPI CoreAPI
 var _ api.ChainAPI = (*ChainAPI)(nil)
 
 func (api *ChainAPI) Status() string {
-	err := api.axiom.Order.Ready()
+	err := api.axiomLedger.Order.Ready()
 	if err != nil {
 		return "abnormal"
 	}
@@ -25,7 +25,7 @@ func (api *ChainAPI) Status() string {
 }
 
 func (api *ChainAPI) Meta() (*types.ChainMeta, error) {
-	return api.axiom.ViewLedger.ChainLedger.GetChainMeta(), nil
+	return api.axiomLedger.ViewLedger.ChainLedger.GetChainMeta(), nil
 }
 
 func (api *ChainAPI) TPS(begin, end uint64) (uint64, error) {
@@ -49,7 +49,7 @@ func (api *ChainAPI) TPS(begin, end uint64) (uint64, error) {
 	for i := begin + 1; i <= end-1; i++ {
 		go func(height uint64, wg *sync.WaitGroup) {
 			defer wg.Done()
-			count, err := api.axiom.ViewLedger.ChainLedger.GetTransactionCount(height)
+			count, err := api.axiomLedger.ViewLedger.ChainLedger.GetTransactionCount(height)
 			if err != nil {
 				errCount.Inc()
 			} else {
@@ -60,7 +60,7 @@ func (api *ChainAPI) TPS(begin, end uint64) (uint64, error) {
 
 	go func() {
 		defer wg.Done()
-		block, err := api.axiom.ViewLedger.ChainLedger.GetBlock(begin)
+		block, err := api.axiomLedger.ViewLedger.ChainLedger.GetBlock(begin)
 		if err != nil {
 			errCount.Inc()
 		} else {
@@ -70,7 +70,7 @@ func (api *ChainAPI) TPS(begin, end uint64) (uint64, error) {
 	}()
 	go func() {
 		defer wg.Done()
-		block, err := api.axiom.ViewLedger.ChainLedger.GetBlock(end)
+		block, err := api.axiomLedger.ViewLedger.ChainLedger.GetBlock(end)
 		if err != nil {
 			errCount.Inc()
 		} else {
