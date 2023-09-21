@@ -6,7 +6,7 @@ require (
 	github.com/Rican7/retry v0.3.1
 	github.com/axiomesh/axiom-bft v0.0.3-0.20230913102152-b7ea7029ab76
 	github.com/axiomesh/axiom-kit v0.0.3-0.20230914063832-f90aa21d635e
-	github.com/axiomesh/axiom-p2p v0.0.3-0.20230920082140-9db1e192260a
+	github.com/axiomesh/axiom-p2p v0.0.3-0.20230921022827-eb95438e52ce
 	github.com/axiomesh/eth-kit v0.0.3-0.20230914073203-e09bfbf492c9
 	github.com/cbergoon/merkletree v0.2.0
 	github.com/common-nighthawk/go-figure v0.0.0-20190529165535-67e0ed34491a
@@ -127,6 +127,7 @@ require (
 	github.com/miekg/dns v1.1.54 // indirect
 	github.com/mikioh/tcpinfo v0.0.0-20190314235526-30a79bb1804b // indirect
 	github.com/mikioh/tcpopt v0.0.0-20190314235656-172688c1accc // indirect
+	github.com/minio/highwayhash v1.0.2 // indirect
 	github.com/minio/sha256-simd v1.0.1 // indirect
 	github.com/mitchellh/pointerstructure v1.2.0 // indirect
 	github.com/mr-tron/base58 v1.2.0 // indirect

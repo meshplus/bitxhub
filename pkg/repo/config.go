@@ -309,7 +309,6 @@ func DefaultConfig(repoRoot string, epochEnable bool) *Config {
 					RetryBaseTime:          Duration(100 * time.Millisecond),
 				},
 				Gossipsub: P2PPipeGossipsub{
-					DisableCustomMsgIDFn:   false,
 					SubBufferSize:          1024,
 					PeerOutboundBufferSize: 1024,
 					ValidateBufferSize:     1024,
