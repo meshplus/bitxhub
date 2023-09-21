@@ -107,15 +107,73 @@ func TestStateUpdate(t *testing.T) {
 	for name, tc := range testcase {
 		t.Run(name, func(t *testing.T) {
 			adaptor := mockAdaptor(ctrl, tc.kvType, t)
-			block := testutil.ConstructBlock("block3", uint64(3))
-			adaptor.StateUpdate(block.BlockHeader.Number, block.BlockHash.String(), nil)
+			block2 := testutil.ConstructBlock("block2", uint64(2))
+			testutil.SetMockBlockLedger(block2, false)
+			defer testutil.ResetMockBlockLedger()
+
+			adaptor.StateUpdate(0, block2.BlockHeader.Number, block2.BlockHash.String(), nil, nil)
 			ast.Equal(true, adaptor.StateUpdating)
 
-			block = testutil.ConstructBlock("block2", uint64(2))
-			adaptor.StateUpdate(block.BlockHeader.Number, block.BlockHash.String(), nil)
 			targetB := <-adaptor.BlockC
 			ast.Equal(uint64(2), targetB.Block.BlockHeader.Number)
 			ast.Equal(true, adaptor.StateUpdating)
+
+			block3 := testutil.ConstructBlock("block3", uint64(3))
+			testutil.SetMockBlockLedger(block3, false)
+
+			ckp := &consensus.Checkpoint{
+				ExecuteState: &consensus.Checkpoint_ExecuteState{
+					Height: block3.Height(),
+					Digest: block3.BlockHash.String(),
+				},
+			}
+			signCkp := &consensus.SignedCheckpoint{
+				Checkpoint: ckp,
+			}
+
+			peerSet := []string{"1", "2", "3", "4"}
+			epochChange := &consensus.EpochChange{
+				Checkpoint: &consensus.QuorumCheckpoint{Checkpoint: ckp},
+				Validators: peerSet,
+			}
+
+			t.Run("StateUpdate with checkpoint and epoch change", func(t *testing.T) {
+				adaptor.StateUpdate(0, block3.BlockHeader.Number, block3.BlockHash.String(),
+					[]*consensus.SignedCheckpoint{signCkp}, epochChange)
+
+				target2 := <-adaptor.BlockC
+				ast.Equal(uint64(2), target2.Block.BlockHeader.Number)
+				ast.Equal(block2.BlockHash.String(), target2.Block.BlockHash.String())
+
+				target3 := <-adaptor.BlockC
+				ast.Equal(uint64(3), target3.Block.BlockHeader.Number)
+				ast.Equal(block3.BlockHash.String(), target3.Block.BlockHash.String())
+				ast.Equal(true, adaptor.StateUpdating)
+			})
+
+			t.Run("StateUpdate with rollback", func(t *testing.T) {
+				block4 := testutil.ConstructBlock("block4", uint64(4))
+				testutil.SetMockChainMeta(&types.ChainMeta{Height: uint64(4), BlockHash: block4.BlockHash})
+				defer testutil.ResetMockChainMeta()
+
+				testutil.SetMockBlockLedger(block3, true)
+				defer testutil.ResetMockBlockLedger()
+				adaptor.StateUpdate(2, block3.BlockHeader.Number, block3.BlockHash.String(),
+					[]*consensus.SignedCheckpoint{signCkp}, nil)
+				ast.Equal(false, adaptor.StateUpdating)
+
+				wrongBlock3 := testutil.ConstructBlock("wrong_block3", uint64(3))
+				testutil.SetMockBlockLedger(wrongBlock3, true)
+				defer testutil.ResetMockBlockLedger()
+
+				adaptor.StateUpdate(2, block3.BlockHeader.Number, block3.BlockHash.String(),
+					[]*consensus.SignedCheckpoint{signCkp}, nil)
+
+				target := <-adaptor.BlockC
+				ast.Equal(uint64(3), target.Block.BlockHeader.Number, "low watermark is 2, we should rollback to 2, and then sync to 3")
+				ast.Equal(block3.BlockHash.String(), target.Block.BlockHash.String())
+				ast.Equal(true, adaptor.StateUpdating)
+			})
 		})
 	}
 }

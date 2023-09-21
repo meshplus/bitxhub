@@ -15,6 +15,8 @@ import (
 
 var _ StateLedger = (*StateLedgerImpl)(nil)
 
+const MinJournalHeight = 10
+
 // GetOrCreateAccount get the account, if not exist, create a new account
 func (l *StateLedgerImpl) GetOrCreateAccount(addr *types.Address) IAccount {
 	account := l.GetAccount(addr)
@@ -299,14 +301,21 @@ func (l *StateLedgerImpl) Commit(height uint64, accounts map[string]IAccount, st
 
 	l.maxJnlHeight = height
 
-	if height > 10 {
-		if err := l.removeJournalsBeforeBlock(height - 10); err != nil {
-			return fmt.Errorf("remove journals before block %d failed: %w", height-10, err)
+	if height > l.getJnlHeightSize() {
+		if err := l.removeJournalsBeforeBlock(height - l.getJnlHeightSize()); err != nil {
+			return fmt.Errorf("remove journals before block %d failed: %w", height-l.getJnlHeightSize(), err)
 		}
 	}
 	l.blockJournals = make(map[string]*BlockJournal)
 
 	return nil
+}
+
+func (l *StateLedgerImpl) getJnlHeightSize() uint64 {
+	if l.repo.EpochInfo.ConsensusParams.CheckpointPeriod < MinJournalHeight {
+		return MinJournalHeight
+	}
+	return l.repo.EpochInfo.ConsensusParams.CheckpointPeriod
 }
 
 // Version returns the current version

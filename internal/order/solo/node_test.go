@@ -87,7 +87,7 @@ func TestNode_Start(t *testing.T) {
 
 	txHashList := make([]*types.Hash, 0)
 	txHashList = append(txHashList, tx.GetHash())
-	solo.ReportState(commitEvent.Block.Height(), blockHash, txHashList)
+	solo.ReportState(commitEvent.Block.Height(), blockHash, txHashList, nil)
 	solo.Stop()
 }
 
@@ -156,7 +156,7 @@ func TestNode_ReportState(t *testing.T) {
 	ast.Nil(err)
 	defer node.Stop()
 	node.batchDigestM[10] = "test"
-	node.ReportState(10, types.NewHashByStr("0x123"), []*types.Hash{})
+	node.ReportState(10, types.NewHashByStr("0x123"), []*types.Hash{}, nil)
 	time.Sleep(10 * time.Millisecond)
 	ast.Equal(0, len(node.batchDigestM))
 
@@ -191,7 +191,7 @@ func TestNode_ReportState(t *testing.T) {
 
 	ast.NotNil(node.mempool.GetPendingTxByHash(txList[9].RbftGetTxHash()), "tx10 should be in mempool")
 	// trigger the report state
-	node.ReportState(10, types.NewHashByStr("0x123"), []*types.Hash{txList[9].GetHash()})
+	node.ReportState(10, types.NewHashByStr("0x123"), []*types.Hash{txList[9].GetHash()}, nil)
 	time.Sleep(100 * time.Millisecond)
 	ast.Equal(0, len(node.batchDigestM))
 	ast.Nil(node.mempool.GetPendingTxByHash(txList[9].RbftGetTxHash()), "tx10 should be removed from mempool")
@@ -254,4 +254,24 @@ func TestNode_GetTotalPendingTxCount(t *testing.T) {
 		ast.Nil(err)
 	}
 	ast.Equal(uint64(9), node.GetTotalPendingTxCount())
+}
+
+func TestNode_GetLowWatermark(t *testing.T) {
+	ast := assert.New(t)
+	node, err := mockSoloNode(t, false)
+	ast.Nil(err)
+
+	err = node.Start()
+	ast.Nil(err)
+	defer node.Stop()
+
+	ast.Equal(uint64(0), node.GetLowWatermark())
+
+	tx, err := types.GenerateEmptyTransactionAndSigner()
+	require.Nil(t, err)
+	err = node.Prepare(tx)
+	ast.Nil(err)
+	commitEvent := <-node.commitC
+	ast.NotNil(commitEvent)
+	ast.Equal(commitEvent.Block.Height(), node.GetLowWatermark())
 }

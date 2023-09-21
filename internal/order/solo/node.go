@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/axiomesh/axiom-bft/common/consensus"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/sirupsen/logrus"
 
@@ -98,6 +99,9 @@ func NewNode(config *common.Config) (*Node, error) {
 	soloNode.logger.Infof("SOLO batch timeout = %v", config.Config.Mempool.BatchTimeout.ToDuration())
 	soloNode.logger.Infof("SOLO batch size = %d", config.GenesisEpochInfo.ConsensusParams.BlockMaxTxNum)
 	soloNode.logger.Infof("SOLO pool size = %d", config.Config.Mempool.PoolSize)
+	soloNode.logger.Infof("SOLO tolerance time = %v", config.Config.Mempool.ToleranceTime.ToDuration())
+	soloNode.logger.Infof("SOLO tolerance remove time = %v", config.Config.Mempool.ToleranceRemoveTime.ToDuration())
+	soloNode.logger.Infof("SOLO tolerance nonce gap = %d", config.Config.Mempool.ToleranceNonceGap)
 	return soloNode, nil
 }
 
@@ -111,7 +115,15 @@ func (n *Node) GetPendingTxByHash(hash *types.Hash) *types.Transaction {
 }
 
 func (n *Node) GetTotalPendingTxCount() uint64 {
-	req := &GetTotalPendingTxCountReq{
+	req := &getTotalPendingTxCountReq{
+		Resp: make(chan uint64),
+	}
+	n.recvCh <- req
+	return <-req.Resp
+}
+
+func (n *Node) GetLowWatermark() uint64 {
+	req := &getLowWatermarkReq{
 		Resp: make(chan uint64),
 	}
 	n.recvCh <- req
@@ -176,7 +188,7 @@ func (n *Node) Ready() error {
 	return nil
 }
 
-func (n *Node) ReportState(height uint64, blockHash *types.Hash, txHashList []*types.Hash) {
+func (n *Node) ReportState(height uint64, blockHash *types.Hash, txHashList []*types.Hash, _ *consensus.Checkpoint) {
 	state := &chainState{
 		Height:     height,
 		BlockHash:  blockHash,
@@ -289,8 +301,10 @@ func (n *Node) listenEvent() {
 				e.Resp <- n.mempool.GetPendingTxByHash(e.Hash)
 			case *getNonceReq:
 				e.Resp <- n.mempool.GetPendingTxCountByAccount(e.account)
-			case *GetTotalPendingTxCountReq:
+			case *getTotalPendingTxCountReq:
 				e.Resp <- n.mempool.GetTotalPendingTxCount()
+			case *getLowWatermarkReq:
+				e.Resp <- n.lastExec
 			}
 		}
 	}
@@ -393,8 +407,7 @@ func (n *Node) listenReadyBlock() {
 				localList[i] = true
 			}
 			executeEvent := &common.CommitEvent{
-				Block:     block,
-				LocalList: localList,
+				Block: block,
 			}
 			n.commitC <- executeEvent
 			n.batchDigestM[block.Height()] = e.BatchHash

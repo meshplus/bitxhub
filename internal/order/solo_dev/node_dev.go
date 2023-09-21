@@ -4,6 +4,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/axiomesh/axiom-bft/common/consensus"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/sirupsen/logrus"
 
@@ -64,8 +65,7 @@ func (n *NodeDev) Prepare(tx *types.Transaction) error {
 		Transactions: []*types.Transaction{tx},
 	}
 	n.commitC <- &common.CommitEvent{
-		Block:     block,
-		LocalList: []bool{true},
+		Block: block,
 	}
 	n.lastExec++
 	// ensure this tx had been persist
@@ -89,7 +89,7 @@ func (n *NodeDev) Ready() error {
 	return nil
 }
 
-func (n *NodeDev) ReportState(height uint64, blockHash *types.Hash, txHashList []*types.Hash) {
+func (n *NodeDev) ReportState(height uint64, blockHash *types.Hash, txHashList []*types.Hash, _ *consensus.Checkpoint) {
 	if height%checkpoint == 0 {
 		n.logger.WithFields(logrus.Fields{
 			"height": height,
@@ -124,4 +124,8 @@ func (n *NodeDev) SubscribeTxEvent(events chan<- []*types.Transaction) event.Sub
 
 func (n *NodeDev) GetTotalPendingTxCount() uint64 {
 	return 0
+}
+
+func (n *NodeDev) GetLowWatermark() uint64 {
+	return n.lastExec
 }

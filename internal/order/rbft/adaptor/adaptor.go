@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"strconv"
+	"sync"
 
 	"github.com/samber/lo"
 	"github.com/sirupsen/logrus"
@@ -33,12 +34,15 @@ type RBFTAdaptor struct {
 	BlockC            chan *common.CommitEvent
 	logger            logrus.FieldLogger
 	getChainMetaFunc  func() *types.ChainMeta
+	getBlockFunc      func(uint64) (*types.Block, error)
 	StateUpdating     bool
 	StateUpdateHeight uint64
 	cancel            context.CancelFunc
 	config            *common.Config
 	EpochInfo         *rbft.EpochInfo
 	broadcastNodes    []string
+
+	lock sync.Mutex
 }
 
 type Ready struct {
@@ -63,6 +67,7 @@ func NewRBFTAdaptor(config *common.Config, blockC chan *common.CommitEvent, canc
 		BlockC:           blockC,
 		logger:           config.Logger,
 		getChainMetaFunc: config.GetChainMetaFunc,
+		getBlockFunc:     config.GetBlockFunc,
 		cancel:           cancel,
 		config:           config,
 	}
@@ -70,30 +75,30 @@ func NewRBFTAdaptor(config *common.Config, blockC chan *common.CommitEvent, canc
 	return stack, nil
 }
 
-func (s *RBFTAdaptor) UpdateEpoch() error {
-	e, err := s.config.GetCurrentEpochInfoFromEpochMgrContractFunc()
+func (a *RBFTAdaptor) UpdateEpoch() error {
+	e, err := a.config.GetCurrentEpochInfoFromEpochMgrContractFunc()
 	if err != nil {
 		return err
 	}
-	s.EpochInfo = e
-	s.broadcastNodes = lo.Map(lo.Flatten([][]*rbft.NodeInfo{s.EpochInfo.ValidatorSet, s.EpochInfo.CandidateSet}), func(item *rbft.NodeInfo, index int) string {
+	a.EpochInfo = e
+	a.broadcastNodes = lo.Map(lo.Flatten([][]*rbft.NodeInfo{a.EpochInfo.ValidatorSet, a.EpochInfo.CandidateSet}), func(item *rbft.NodeInfo, index int) string {
 		return item.P2PNodeID
 	})
 	return nil
 }
 
-func (s *RBFTAdaptor) SetMsgPipes(msgPipes map[int32]network.Pipe, globalMsgPipe network.Pipe) {
-	s.msgPipes = msgPipes
-	s.globalMsgPipe = globalMsgPipe
+func (a *RBFTAdaptor) SetMsgPipes(msgPipes map[int32]network.Pipe, globalMsgPipe network.Pipe) {
+	a.msgPipes = msgPipes
+	a.globalMsgPipe = globalMsgPipe
 }
 
-func (s *RBFTAdaptor) getBlock(id string, i int) (*types.Block, error) {
+func (a *RBFTAdaptor) getBlock(id string, i int) (*types.Block, error) {
 	m := &pb.Message{
 		Type: pb.Message_GET_BLOCK,
 		Data: []byte(strconv.Itoa(i)),
 	}
 
-	res, err := s.peerMgr.Send(id, m)
+	res, err := a.peerMgr.Send(id, m)
 	if err != nil {
 		return nil, err
 	}

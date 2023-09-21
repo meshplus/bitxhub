@@ -280,8 +280,7 @@ func (n *Node) listenExecutedBlockToReport() {
 				Transactions: r.Txs,
 			}
 			commitEvent := &common.CommitEvent{
-				Block:     block,
-				LocalList: r.LocalList,
+				Block: block,
 			}
 			n.blockC <- commitEvent
 		case <-n.ctx.Done():
@@ -408,7 +407,11 @@ func (n *Node) GetTotalPendingTxCount() uint64 {
 	return n.n.GetTotalPendingTxCount()
 }
 
-func (n *Node) ReportState(height uint64, blockHash *types.Hash, txHashList []*types.Hash) {
+func (n *Node) GetLowWatermark() uint64 {
+	return n.n.GetLowWatermark()
+}
+
+func (n *Node) ReportState(height uint64, blockHash *types.Hash, txHashList []*types.Hash, ckp *consensus.Checkpoint) {
 	// need update cached epoch info
 	epochInfo := n.stack.EpochInfo
 	epochChanged := false
@@ -425,6 +428,13 @@ func (n *Node) ReportState(height uint64, blockHash *types.Hash, txHashList []*t
 	// skip the block before the target height
 	if n.stack.StateUpdating {
 		if epochChanged || n.stack.StateUpdateHeight == height {
+			// when we end state updating, we need to verify the checkpoint from quorum nodes
+			if n.stack.StateUpdateHeight == height && ckp != nil {
+				if err := n.verifyStateUpdatedCheckpoint(ckp); err != nil {
+					n.logger.WithField("err", err).Errorf("verify state updated checkpoint failed")
+					panic(err)
+				}
+			}
 			// notify consensus update epoch and accept epoch proof
 			state := &rbfttypes.ServiceSyncState{
 				ServiceState: rbfttypes.ServiceState{
@@ -458,6 +468,19 @@ func (n *Node) ReportState(height uint64, blockHash *types.Hash, txHashList []*t
 	if n.stack.StateUpdateHeight == height {
 		n.stack.StateUpdating = false
 	}
+}
+
+func (n *Node) verifyStateUpdatedCheckpoint(checkpoint *consensus.Checkpoint) error {
+	height := checkpoint.Height()
+	localBlock, err := n.config.GetBlockFunc(height)
+	if err != nil || localBlock == nil {
+		return fmt.Errorf("get local block failed: %w", err)
+	}
+	if localBlock.BlockHash.String() != checkpoint.GetExecuteState().GetDigest() {
+		return fmt.Errorf("local block [hash %s, height: %d] not equal to checkpoint digest %s",
+			localBlock.BlockHash.String(), height, checkpoint.GetExecuteState().GetDigest())
+	}
+	return nil
 }
 
 func (n *Node) Quorum() uint64 {

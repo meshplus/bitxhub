@@ -33,6 +33,7 @@ type Mempool struct {
 	BatchTimeout        Duration `mapstructure:"batch_timeout" toml:"batch_timeout"`
 	ToleranceTime       Duration `mapstructure:"tolerance_time" toml:"tolerance_time"`
 	ToleranceRemoveTime Duration `mapstructure:"tolerance_remove_time" toml:"tolerance_remove_time"`
+	ToleranceNonceGap   uint64   `mapstructure:"tolerance_nonce_gap" toml:"tolerance_nonce_gap"`
 }
 
 type TxCache struct {
@@ -84,6 +85,7 @@ func DefaultOrderConfig() *OrderConfig {
 			BatchTimeout:        Duration(500 * time.Millisecond),
 			ToleranceTime:       Duration(5 * time.Minute),
 			ToleranceRemoveTime: Duration(15 * time.Minute),
+			ToleranceNonceGap:   1000,
 		},
 		TxCache: TxCache{
 			SetSize:    50,

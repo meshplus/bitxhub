@@ -131,17 +131,23 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 		StateLedger: stateLedger,
 	}
 
-	// mock data for ledger
-	chainMeta := &types.ChainMeta{
-		Height:    1,
-		GasPrice:  big.NewInt(minGasPrice),
+	genesisBlock := &types.Block{
+		BlockHeader: &types.BlockHeader{
+			Number: 1,
+		},
 		BlockHash: types.NewHash([]byte(from)),
 	}
-	block := &types.Block{
-		BlockHeader: &types.BlockHeader{
-			GasPrice: minGasPrice,
-		},
+	// mock data for ledger
+	chainMeta := &types.ChainMeta{
+		Height:    genesisBlock.Height(),
+		GasPrice:  big.NewInt(minGasPrice),
+		BlockHash: genesisBlock.BlockHash,
 	}
+	//block := &types.Block{
+	//	BlockHeader: &types.BlockHeader{
+	//		GasPrice: minGasPrice,
+	//	},
+	//}
 
 	evs := make([]*types.Event, 0)
 	m := make(map[string]uint64)
@@ -168,7 +174,6 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	stateLedger.EXPECT().NewView().Return(stateLedger).AnyTimes()
 	stateLedger.EXPECT().QueryByPrefix(gomock.Any(), gomock.Any()).Return(false, nil).AnyTimes()
 	chainLedger.EXPECT().GetChainMeta().Return(chainMeta).AnyTimes()
-	chainLedger.EXPECT().GetBlock(gomock.Any()).Return(block, nil).AnyTimes()
 	stateLedger.EXPECT().Commit(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	stateLedger.EXPECT().Clear().AnyTimes()
 	stateLedger.EXPECT().GetEVMNonce(gomock.Any()).Return(uint64(0)).AnyTimes()
@@ -263,6 +268,64 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 
 	remoteBlockRes2 := <-remoteCh
 	assert.Equal(t, blockRes2, remoteBlockRes2)
+
+	t.Run("test rollback block", func(t *testing.T) {
+		// send bigger block to executor
+		oldHeight := exec.currentHeight
+		biggerCommitEvent := mockCommitEvent(uint64(5), nil)
+		exec.processExecuteEvent(biggerCommitEvent)
+		assert.Equal(t, oldHeight, exec.currentHeight, "ignore illegal block")
+
+		chainLedger.EXPECT().RollbackBlockChain(gomock.Any()).Return(nil).AnyTimes()
+		stateLedger.EXPECT().RollbackState(gomock.Any()).Return(nil).Times(1)
+		chainLedger.EXPECT().GetBlock(gomock.Any()).Return(genesisBlock, nil).Times(1)
+
+		oldBlock := blockRes1.Block
+		// send rollback block to executor
+		rollbackCommitEvent := mockCommitEvent(uint64(2), txs)
+		exec.ExecuteBlock(rollbackCommitEvent)
+
+		blockRes := <-ch
+		assert.EqualValues(t, 2, blockRes.Block.BlockHeader.Number)
+		assert.Equal(t, len(txs), len(blockRes.Block.Transactions))
+		assert.Equal(t, genesisBlock.BlockHash.String(), blockRes.Block.BlockHeader.ParentHash.String())
+		assert.NotEqual(t, oldBlock.BlockHash.String(), blockRes.Block.BlockHash.String())
+
+		remoteBlockRes := <-remoteCh
+		assert.Equal(t, blockRes, remoteBlockRes)
+
+		errorRollbackStateLedger := fmt.Errorf("rollback state ledger err")
+		stateLedger.EXPECT().RollbackState(gomock.Any()).Return(errorRollbackStateLedger).Times(1)
+
+		// handle panic error
+		defer func() {
+			if r := recover(); r != nil {
+				assert.NotNil(t, r)
+				assert.Contains(t, fmt.Sprintf("%v", r), errorRollbackStateLedger.Error())
+			}
+		}()
+
+		// send rollback block to executor, but rollback error
+		rollbackCommitEvent1 := mockCommitEvent(uint64(1), nil)
+		exec.processExecuteEvent(rollbackCommitEvent1)
+	})
+
+	t.Run("test rollback block with error", func(t *testing.T) {
+		chainLedger.EXPECT().RollbackBlockChain(gomock.Any()).Return(nil).AnyTimes()
+		stateLedger.EXPECT().RollbackState(gomock.Any()).Return(nil).Times(1)
+		errorGetBlock := fmt.Errorf("get block error")
+		chainLedger.EXPECT().GetBlock(gomock.Any()).Return(nil, errorGetBlock).Times(1)
+		// handle panic error
+		defer func() {
+			if r := recover(); r != nil {
+				assert.NotNil(t, r)
+				assert.Contains(t, fmt.Sprintf("%v", r), errorGetBlock.Error())
+			}
+		}()
+		// send rollback block to executor, but rollback error
+		rollbackCommitEvent1 := mockCommitEvent(uint64(1), nil)
+		exec.processExecuteEvent(rollbackCommitEvent1)
+	})
 
 	assert.Nil(t, exec.Stop())
 }
@@ -422,10 +485,8 @@ type NodeMember struct {
 }
 
 func mockCommitEvent(blockNumber uint64, txs []*types.Transaction) *ordercommon.CommitEvent {
-	block := mockBlock(blockNumber, txs)
 	return &ordercommon.CommitEvent{
-		Block:     mockBlock(blockNumber, txs),
-		LocalList: make([]bool, len(block.Transactions)),
+		Block: mockBlock(blockNumber, txs),
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/axiomesh/axiom-bft/common/consensus"
 	"github.com/cbergoon/merkletree"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -44,6 +45,39 @@ func (exec *BlockExecutor) applyTransactions(txs []*types.Transaction) []*types.
 	return receipts
 }
 
+func (exec *BlockExecutor) rollbackBlocks(newBlock *types.Block) error {
+	// rollback from stateLedger、chainLedger and blockFile
+	err := exec.ledger.Rollback(newBlock.Height() - 1)
+	if err != nil {
+		exec.logger.WithFields(logrus.Fields{
+			"begin height": newBlock.Height() - 1,
+			"end height":   exec.currentHeight,
+			"err":          err.Error(),
+		}).Errorf("rollback block error")
+		return err
+	}
+
+	// query last checked block for generating right parent blockHash
+	lastCheckedBlock, err := exec.ledger.ChainLedger.GetBlock(newBlock.Height() - 1)
+	if err != nil {
+		exec.logger.WithFields(logrus.Fields{
+			"height": lastCheckedBlock.Height(),
+			"err":    err.Error(),
+		}).Errorf("get last checked block from ledger error")
+		return err
+	}
+	// rollback currentHeight and currentBlockHash
+	exec.currentHeight = newBlock.Height() - 1
+	exec.currentBlockHash = lastCheckedBlock.BlockHash
+
+	exec.logger.WithFields(logrus.Fields{
+		"height": lastCheckedBlock.Height(),
+		"hash":   lastCheckedBlock.BlockHash.String(),
+	}).Infof("rollback block success")
+
+	return nil
+}
+
 func (exec *BlockExecutor) processExecuteEvent(commitEvent *ordercommon.CommitEvent) {
 	var txHashList []*types.Hash
 	current := time.Now()
@@ -53,7 +87,15 @@ func (exec *BlockExecutor) processExecuteEvent(commitEvent *ordercommon.CommitEv
 	if block.BlockHeader.Number != exec.currentHeight+1 {
 		exec.logger.WithFields(logrus.Fields{"block height": block.BlockHeader.Number,
 			"matchedHeight": exec.currentHeight + 1}).Warning("current block height is not matched")
-		return
+		if block.BlockHeader.Number <= exec.currentHeight {
+			err := exec.rollbackBlocks(block)
+			if err != nil {
+				exec.logger.WithError(err).Error("rollback blocks failed")
+				panic(err)
+			}
+		} else {
+			return
+		}
 	}
 
 	for _, tx := range block.Transactions {
@@ -143,8 +185,6 @@ func (exec *BlockExecutor) processExecuteEvent(commitEvent *ordercommon.CommitEv
 
 	now := time.Now()
 	exec.ledger.PersistBlockData(data)
-	exec.postBlockEvent(data.Block, data.TxHashList)
-	exec.postLogsEvent(data.Receipts)
 
 	// metrics for cal tx tps
 	txCounter.Add(float64(len(data.Block.Transactions)))
@@ -159,6 +199,9 @@ func (exec *BlockExecutor) processExecuteEvent(commitEvent *ordercommon.CommitEv
 
 	exec.currentHeight = block.BlockHeader.Number
 	exec.currentBlockHash = block.BlockHash
+
+	exec.postBlockEvent(data.Block, data.TxHashList, commitEvent.StateUpdatedCheckpoint)
+	exec.postLogsEvent(data.Receipts)
 	exec.clear()
 }
 
@@ -173,10 +216,11 @@ func (exec *BlockExecutor) buildTxMerkleTree(txs []*types.Transaction) (*types.H
 	return hash, nil
 }
 
-func (exec *BlockExecutor) postBlockEvent(block *types.Block, txHashList []*types.Hash) {
+func (exec *BlockExecutor) postBlockEvent(block *types.Block, txHashList []*types.Hash, ckp *consensus.Checkpoint) {
 	exec.blockFeed.Send(events.ExecutedEvent{
-		Block:      block,
-		TxHashList: txHashList,
+		Block:                  block,
+		TxHashList:             txHashList,
+		StateUpdatedCheckpoint: ckp,
 	})
 	exec.blockFeedForRemote.Send(events.ExecutedEvent{
 		Block:      block,

@@ -2,6 +2,8 @@ package testutil
 
 import (
 	"encoding/hex"
+	"fmt"
+	"strconv"
 	"testing"
 	"time"
 
@@ -17,6 +19,41 @@ import (
 	"github.com/axiomesh/axiom-ledger/internal/peermgr/mock_peermgr"
 	"github.com/axiomesh/axiom-ledger/pkg/repo"
 )
+
+var (
+	mockBlockLedger      = make(map[uint64]*types.Block)
+	mockLocalBlockLedger = make(map[uint64]*types.Block)
+	mockChainMeta        *types.ChainMeta
+)
+
+func SetMockChainMeta(chainMeta *types.ChainMeta) {
+	mockChainMeta = chainMeta
+}
+
+func ResetMockChainMeta() {
+	block := ConstructBlock("block1", uint64(1))
+	mockChainMeta = &types.ChainMeta{Height: uint64(1), BlockHash: block.BlockHash}
+}
+
+func SetMockBlockLedger(block *types.Block, local bool) {
+	if local {
+		mockLocalBlockLedger[block.Height()] = block
+	} else {
+		mockBlockLedger[block.Height()] = block
+	}
+}
+
+func getMockBlockLedger(height uint64) (*types.Block, error) {
+	if block, ok := mockBlockLedger[height]; ok {
+		return block, nil
+	}
+	return nil, fmt.Errorf("block not found")
+}
+
+func ResetMockBlockLedger() {
+	mockBlockLedger = make(map[uint64]*types.Block)
+	mockLocalBlockLedger = make(map[uint64]*types.Block)
+}
 
 func ConstructBlock(blockHashStr string, height uint64) *types.Block {
 	from := make([]byte, 0)
@@ -48,10 +85,26 @@ func MockMiniPeerManager(ctrl *gomock.Controller) *mock_peermgr.MockPeerManager 
 
 	mock.EXPECT().CreatePipe(gomock.Any(), gomock.Any()).Return(mockPipe, nil).AnyTimes()
 
-	block := ConstructBlock("block2", uint64(2))
-	blockBytes, _ := block.Marshal()
-	res := &pb.Message{Data: blockBytes}
-	mock.EXPECT().Send(gomock.Any(), gomock.Any()).Return(res, nil).AnyTimes()
+	mock.EXPECT().Send(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(to string, msg *pb.Message) (*pb.Message, error) {
+			if msg.Type == pb.Message_GET_BLOCK {
+				num, err := strconv.Atoi(string(msg.Data))
+				if err != nil {
+					return nil, fmt.Errorf("convert %s string to int failed: %w", string(msg.Data), err)
+				}
+				block, err := getMockBlockLedger(uint64(num))
+				if err != nil {
+					return nil, fmt.Errorf("get block with height %d failed: %w", num, err)
+				}
+				v, err := block.Marshal()
+				if err != nil {
+					return nil, fmt.Errorf("marshal block with height %d failed: %w", num, err)
+				}
+				res := &pb.Message{Type: pb.Message_GET_BLOCK_ACK, Data: v}
+				return res, nil
+			}
+			return nil, nil
+		}).AnyTimes()
 
 	N := 3
 	f := (N - 1) / 3
@@ -83,6 +136,13 @@ func MockOrderConfig(logger logrus.FieldLogger, ctrl *gomock.Controller, kvType 
 			return genesisEpochInfo, nil
 		},
 		GetChainMetaFunc: GetChainMetaFunc,
+		GetBlockFunc: func(height uint64) (*types.Block, error) {
+			if block, ok := mockLocalBlockLedger[height]; ok {
+				return block, nil
+			} else {
+				return nil, fmt.Errorf("block not found")
+			}
+		},
 		GetAccountNonce: func(address *types.Address) uint64 {
 			return 0
 		},
@@ -94,6 +154,8 @@ func MockOrderConfig(logger logrus.FieldLogger, ctrl *gomock.Controller, kvType 
 }
 
 func GetChainMetaFunc() *types.ChainMeta {
-	block := ConstructBlock("block1", uint64(1))
-	return &types.ChainMeta{Height: uint64(1), BlockHash: block.BlockHash}
+	if mockChainMeta == nil {
+		ResetMockChainMeta()
+	}
+	return mockChainMeta
 }

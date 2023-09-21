@@ -103,6 +103,7 @@ func generateRbftConfig(config *common.Config) (rbft.Config, mempool.Config) {
 		PoolSize:            readConfig.Mempool.PoolSize,
 		ToleranceTime:       readConfig.Mempool.ToleranceTime.ToDuration(),
 		ToleranceRemoveTime: readConfig.Mempool.ToleranceRemoveTime.ToDuration(),
+		ToleranceNonceGap:   readConfig.Mempool.ToleranceNonceGap,
 		GetAccountNonce:     fn,
 		IsTimed:             defaultConfig.GenesisEpochInfo.ConsensusParams.EnableTimedGenEmptyBlock,
 	}

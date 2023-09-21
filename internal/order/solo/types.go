@@ -30,7 +30,12 @@ type getNonceReq struct {
 	Resp    chan uint64
 }
 
-// GetTotalPendingTxCountReq is a type for api request GetTotalPendingTxCount
-type GetTotalPendingTxCountReq struct {
+// getTotalPendingTxCountReq is a type for api request GetTotalPendingTxCount
+type getTotalPendingTxCountReq struct {
+	Resp chan uint64
+}
+
+// getLowWatermarkReq is a type for syncer request GetLowWatermark
+type getLowWatermarkReq struct {
 	Resp chan uint64
 }

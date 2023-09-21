@@ -30,6 +30,7 @@ type Config struct {
 	GetCurrentEpochInfoFromEpochMgrContractFunc func() (*rbft.EpochInfo, error)
 	GetEpochInfoFromEpochMgrContractFunc        func(epoch uint64) (*rbft.EpochInfo, error)
 	GetChainMetaFunc                            func() *types.ChainMeta
+	GetBlockFunc                                func(height uint64) (*types.Block, error)
 	GetAccountBalance                           func(address *types.Address) *big.Int
 	GetAccountNonce                             func(address *types.Address) uint64
 }
@@ -111,6 +112,12 @@ func WithGenesisDigest(digest string) Option {
 func WithGetChainMetaFunc(f func() *types.ChainMeta) Option {
 	return func(config *Config) {
 		config.GetChainMetaFunc = f
+	}
+}
+
+func WithGetBlockFunc(f func(height uint64) (*types.Block, error)) Option {
+	return func(config *Config) {
+		config.GetBlockFunc = f
 	}
 }
 

@@ -3,6 +3,7 @@ package order
 import (
 	"fmt"
 
+	"github.com/axiomesh/axiom-bft/common/consensus"
 	"github.com/ethereum/go-ethereum/event"
 
 	"github.com/axiomesh/axiom-kit/types"
@@ -13,7 +14,6 @@ import (
 	"github.com/axiomesh/axiom-ledger/pkg/repo"
 )
 
-//go:generate mockgen -destination mock_order/mock_order.go -package mock_order -source order.go -typed
 type Order interface {
 	// Start the order service.
 	Start() error
@@ -34,7 +34,7 @@ type Order interface {
 	Ready() error
 
 	// ReportState means block was persisted and report it to the consensus engine
-	ReportState(height uint64, blockHash *types.Hash, txHashList []*types.Hash)
+	ReportState(height uint64, blockHash *types.Hash, txHashList []*types.Hash, stateUpdatedCheckpoint *consensus.Checkpoint)
 
 	// Quorum means minimum number of nodes in the cluster that can work
 	Quorum() uint64
@@ -47,6 +47,9 @@ type Order interface {
 
 	// GetTotalPendingTxCount will return the number of pending txs in mempool
 	GetTotalPendingTxCount() uint64
+
+	// GetLowWatermark will return the low watermark of consensus engine
+	GetLowWatermark() uint64
 
 	SubscribeTxEvent(events chan<- []*types.Transaction) event.Subscription
 }

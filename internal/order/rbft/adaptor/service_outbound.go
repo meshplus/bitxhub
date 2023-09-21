@@ -1,7 +1,8 @@
 package adaptor
 
 import (
-	"errors"
+	"fmt"
+	"sync"
 	"time"
 
 	"github.com/Rican7/retry"
@@ -14,8 +15,8 @@ import (
 	"github.com/axiomesh/axiom-ledger/internal/order/common"
 )
 
-func (s *RBFTAdaptor) Execute(requests []*types.Transaction, localList []bool, seqNo uint64, timestamp int64, proposerAccount string) {
-	s.ReadyC <- &Ready{
+func (a *RBFTAdaptor) Execute(requests []*types.Transaction, localList []bool, seqNo uint64, timestamp int64, proposerAccount string) {
+	a.ReadyC <- &Ready{
 		Txs:             requests,
 		LocalList:       localList,
 		Height:          seqNo,
@@ -24,89 +25,135 @@ func (s *RBFTAdaptor) Execute(requests []*types.Transaction, localList []bool, s
 	}
 }
 
-// TODO: process epoch update and checkpoints
-func (s *RBFTAdaptor) StateUpdate(seqNo uint64, digest string, checkpoints []*consensus.SignedCheckpoint, epochChanges ...*consensus.QuorumCheckpoint) {
-	s.StateUpdating = true
-	s.StateUpdateHeight = seqNo
+func (a *RBFTAdaptor) StateUpdate(lowWatermark, seqNo uint64, digest string, checkpoints []*consensus.SignedCheckpoint, epochChanges ...*consensus.EpochChange) {
+	a.StateUpdating = true
+	a.StateUpdateHeight = seqNo
 
 	var peers []string
-	for _, v := range s.EpochInfo.ValidatorSet {
-		if v.AccountAddress != s.config.SelfAccountAddress {
+
+	// get the validator set of the remote latest epoch
+	if len(epochChanges) != 0 {
+		peers = epochChanges[len(epochChanges)-1].GetValidators()
+	}
+
+	for _, v := range a.EpochInfo.ValidatorSet {
+		if v.AccountAddress != a.config.SelfAccountAddress {
 			peers = append(peers, v.P2PNodeID)
 		}
 	}
 
-	chain := s.getChainMetaFunc()
-	s.logger.WithFields(logrus.Fields{
-		"target":       seqNo,
-		"target_hash":  digest,
-		"current":      chain.Height,
-		"current_hash": chain.BlockHash.String(),
-	}).Info("State update start")
-	get := func(peers []string, i int) (block *types.Block, err error) {
-		for _, id := range peers {
-			block, err = s.getBlock(id, i)
-			if err != nil {
-				s.logger.Error(err)
-				continue
-			}
+	chain := a.getChainMetaFunc()
 
-			return block, nil
+	startHeight := chain.Height + 1
+
+	if chain.Height >= seqNo {
+		localBlock, err := a.getBlockFunc(seqNo)
+		if err != nil {
+			panic("get local block failed")
 		}
-
-		return nil, errors.New("can't get block from all peers")
+		if localBlock.BlockHash.String() != digest {
+			a.logger.WithFields(logrus.Fields{
+				"remote": digest,
+				"local":  localBlock.BlockHash.String(),
+				"height": seqNo,
+			}).Warningf("Block hash is inconsistent in state update state, we need rollback")
+			// rollback to the lowWatermark height
+			startHeight = lowWatermark + 1
+		} else {
+			a.logger.WithFields(logrus.Fields{
+				"remote": digest,
+				"local":  localBlock.BlockHash.String(),
+				"height": seqNo,
+			}).Info("state update is ignored, because we have the same block")
+			a.StateUpdating = false
+			return
+		}
 	}
 
-	blockCache := make([]*types.Block, seqNo-chain.Height)
-	var block *types.Block
-	for i := seqNo; i > chain.Height; i-- {
-		if err := retry.Retry(func(attempt uint) (err error) {
-			block, err = get(peers, int(i))
-			if err != nil {
-				s.logger.Info(err)
-				return err
-			}
+	a.logger.WithFields(logrus.Fields{
+		"target":      a.StateUpdateHeight,
+		"target_hash": digest,
+		"start":       startHeight,
+	}).Info("State update start")
 
-			if digest != block.BlockHash.String() {
-				s.logger.WithFields(logrus.Fields{
-					"required": digest,
-					"received": block.BlockHash.String(),
-					"height":   i,
-				}).Error("Block hash is inconsistent in state update state")
-				return err
-			}
+	syncSize := a.StateUpdateHeight - startHeight + 1
 
-			digest = block.BlockHeader.ParentHash.String()
-			blockCache[i-chain.Height-1] = block
-
-			return nil
-		}, strategy.Wait(200*time.Millisecond)); err != nil {
-			s.logger.Error(err)
-		}
+	blockCache := a.getBlockFromOthers(peers, int(syncSize), a.StateUpdateHeight)
+	lastBlock := blockCache[len(blockCache)-1]
+	if lastBlock.Height() != a.StateUpdateHeight || lastBlock.BlockHash.String() != digest {
+		panic(fmt.Errorf("sync block failed: require[height:%d, hash:%s], actual[height:%d, hash:%s]",
+			a.StateUpdateHeight, digest, lastBlock.Height(), lastBlock.BlockHash.String()))
 	}
 
 	for _, block := range blockCache {
 		if block == nil {
-			s.logger.Error("Receive a nil block")
+			a.logger.Error("Receive a nil block")
 			return
 		}
 		localList := make([]bool, len(block.Transactions))
 		for i := 0; i < len(block.Transactions); i++ {
 			localList[i] = false
 		}
-		commitEvent := &common.CommitEvent{
-			Block:     block,
-			LocalList: localList,
+
+		// todo(lrx): verify sign of each checkpoint?
+		var stateUpdatedCheckpoint *consensus.Checkpoint
+		if len(checkpoints) != 0 {
+			stateUpdatedCheckpoint = checkpoints[0].GetCheckpoint()
 		}
-		s.BlockC <- commitEvent
+
+		commitEvent := &common.CommitEvent{
+			Block:                  block,
+			StateUpdatedCheckpoint: stateUpdatedCheckpoint,
+		}
+		a.BlockC <- commitEvent
 	}
 
-	s.logger.WithFields(logrus.Fields{
+	a.logger.WithFields(logrus.Fields{
 		"target":      seqNo,
 		"target_hash": digest,
 	}).Info("State update finished fetch blocks")
 }
 
-func (s *RBFTAdaptor) SendFilterEvent(informType rbfttypes.InformType, message ...any) {
+func (a *RBFTAdaptor) get(peers []string, i int) (block *types.Block, err error) {
+	for _, id := range peers {
+		block, err = a.getBlock(id, i)
+		if err != nil {
+			a.logger.Error(err)
+			continue
+		}
+		return block, nil
+	}
+
+	return nil, fmt.Errorf("can't get block from all peers")
+}
+
+func (a *RBFTAdaptor) getBlockFromOthers(peers []string, size int, seqNo uint64) []*types.Block {
+	blockCache := make([]*types.Block, size)
+	wg := &sync.WaitGroup{}
+	wg.Add(size)
+	for i := 0; i < size; i++ {
+		go func(i int) {
+			defer wg.Done()
+			if err := retry.Retry(func(attempt uint) (err error) {
+				curHeight := int(seqNo) - i
+				block, err := a.get(peers, curHeight)
+				if err != nil {
+					a.logger.Info(err)
+					return err
+				}
+				a.lock.Lock()
+				blockCache[size-i-1] = block
+				a.lock.Unlock()
+				return nil
+			}, strategy.Wait(200*time.Millisecond)); err != nil {
+				a.logger.Error(err)
+			}
+		}(i)
+	}
+	wg.Wait()
+	return blockCache
+}
+
+func (a *RBFTAdaptor) SendFilterEvent(informType rbfttypes.InformType, message ...any) {
 	// TODO: add implement
 }

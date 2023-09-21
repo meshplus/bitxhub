@@ -47,20 +47,20 @@ func newStorageWrapper(path, typ string) (*storageWrapper, error) {
 }
 
 // StoreState stores a key,value pair to the database with the given namespace
-func (s *RBFTAdaptor) StoreState(key string, value []byte) error {
-	s.store.DB.Put([]byte("consensus."+key), value)
+func (a *RBFTAdaptor) StoreState(key string, value []byte) error {
+	a.store.DB.Put([]byte("consensus."+key), value)
 	return nil
 }
 
 // DelState removes a key,value pair from the database with the given namespace
-func (s *RBFTAdaptor) DelState(key string) error {
-	s.store.DB.Delete([]byte("consensus." + key))
+func (a *RBFTAdaptor) DelState(key string) error {
+	a.store.DB.Delete([]byte("consensus." + key))
 	return nil
 }
 
 // ReadState retrieves a value to a key from the database with the given namespace
-func (s *RBFTAdaptor) ReadState(key string) ([]byte, error) {
-	b := s.store.DB.Get([]byte("consensus." + key))
+func (a *RBFTAdaptor) ReadState(key string) ([]byte, error) {
+	b := a.store.DB.Get([]byte("consensus." + key))
 	if b == nil {
 		return nil, errors.ErrNotFound
 	}
@@ -68,17 +68,17 @@ func (s *RBFTAdaptor) ReadState(key string) ([]byte, error) {
 }
 
 // ReadStateSet retrieves all key-value pairs where the key starts with prefix from the database with the given namespace
-func (s *RBFTAdaptor) ReadStateSet(prefix string) (map[string][]byte, error) {
+func (a *RBFTAdaptor) ReadStateSet(prefix string) (map[string][]byte, error) {
 	prefixRaw := []byte("consensus." + prefix)
 
 	ret := make(map[string][]byte)
-	it := s.store.DB.Prefix(prefixRaw)
+	it := a.store.DB.Prefix(prefixRaw)
 	if it == nil {
 		return nil, errors.New("can't get Iterator")
 	}
 
 	if !it.Seek(prefixRaw) {
-		err := fmt.Errorf("can not find key with %s in database", prefixRaw)
+		err := fmt.Errorf("can not find key with %v in database", prefixRaw)
 		return nil, err
 	}
 
@@ -94,28 +94,28 @@ func (s *RBFTAdaptor) ReadStateSet(prefix string) (map[string][]byte, error) {
 }
 
 // Notice: not used
-func (s *RBFTAdaptor) Destroy(key string) error {
-	_ = s.store.DB.Close()
-	_ = s.DeleteAllBatchState()
+func (a *RBFTAdaptor) Destroy(key string) error {
+	_ = a.store.DB.Close()
+	_ = a.DeleteAllBatchState()
 	return nil
 }
 
-func (s *RBFTAdaptor) StoreBatchState(key string, value []byte) error {
-	return s.store.File.Put(key, value)
+func (a *RBFTAdaptor) StoreBatchState(key string, value []byte) error {
+	return a.store.File.Put(key, value)
 }
 
-func (s *RBFTAdaptor) DelBatchState(key string) error {
-	return s.store.File.Delete(key)
+func (a *RBFTAdaptor) DelBatchState(key string) error {
+	return a.store.File.Delete(key)
 }
 
-func (s *RBFTAdaptor) ReadBatchState(key string) ([]byte, error) {
-	return s.store.File.Get(key)
+func (a *RBFTAdaptor) ReadBatchState(key string) ([]byte, error) {
+	return a.store.File.Get(key)
 }
 
-func (s *RBFTAdaptor) ReadAllBatchState() (map[string][]byte, error) {
-	return s.store.File.GetAll()
+func (a *RBFTAdaptor) ReadAllBatchState() (map[string][]byte, error) {
+	return a.store.File.GetAll()
 }
 
-func (s *RBFTAdaptor) DeleteAllBatchState() error {
-	return s.store.File.DeleteAll()
+func (a *RBFTAdaptor) DeleteAllBatchState() error {
+	return a.store.File.DeleteAll()
 }

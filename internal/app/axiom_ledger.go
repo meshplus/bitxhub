@@ -75,6 +75,7 @@ func NewAxiomLedger(rep *repo.Repo, ctx context.Context, cancel context.CancelFu
 		common.WithDigest(chainMeta.BlockHash.String()),
 		common.WithGenesisDigest(axm.ViewLedger.ChainLedger.GetBlockHash(1).String()),
 		common.WithGetChainMetaFunc(axm.ViewLedger.ChainLedger.GetChainMeta),
+		common.WithGetBlockFunc(axm.ViewLedger.ChainLedger.GetBlock),
 		common.WithGetAccountBalanceFunc(func(address *types.Address) *big.Int {
 			return axm.ViewLedger.NewView().StateLedger.GetBalance(address)
 		}),

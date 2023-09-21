@@ -1,6 +1,9 @@
 package common
 
-import "github.com/axiomesh/axiom-kit/types"
+import (
+	"github.com/axiomesh/axiom-bft/common/consensus"
+	"github.com/axiomesh/axiom-kit/types"
+)
 
 const (
 	LocalTxEvent = iota
@@ -24,6 +27,6 @@ type TxResp struct {
 }
 
 type CommitEvent struct {
-	Block     *types.Block
-	LocalList []bool
+	Block                  *types.Block
+	StateUpdatedCheckpoint *consensus.Checkpoint
 }

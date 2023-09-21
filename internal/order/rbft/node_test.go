@@ -14,7 +14,6 @@ import (
 
 	rbft "github.com/axiomesh/axiom-bft"
 	"github.com/axiomesh/axiom-bft/common/consensus"
-	rbfttypes "github.com/axiomesh/axiom-bft/types"
 	"github.com/axiomesh/axiom-kit/log"
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom-ledger/internal/order/common"
@@ -164,6 +163,14 @@ func TestPrepare(t *testing.T) {
 		count := order.GetTotalPendingTxCount()
 		ast.Equal(uint64(2), count)
 	})
+
+	t.Run("GetLowWatermark", func(t *testing.T) {
+		order.n.(*rbft.MockNode[types.Transaction, *types.Transaction]).EXPECT().GetLowWatermark().DoAndReturn(func() uint64 {
+			return 1
+		}).AnyTimes()
+		lowWatermark := order.GetLowWatermark()
+		ast.Equal(uint64(1), lowWatermark)
+	})
 }
 
 func TestStop(t *testing.T) {
@@ -229,22 +236,31 @@ func TestReportState(t *testing.T) {
 	block := testutil.ConstructBlock("blockHash", uint64(20))
 	node.stack.StateUpdating = true
 	node.stack.StateUpdateHeight = 20
-	node.ReportState(uint64(10), block.BlockHash, nil)
+	node.ReportState(uint64(10), block.BlockHash, nil, nil)
 	ast.Equal(true, node.stack.StateUpdating)
 
-	state := &rbfttypes.ServiceState{
-		MetaState: &rbfttypes.MetaState{
-			Height: 20,
-			Digest: block.BlockHash.String(),
-		},
-		Epoch: 0,
-	}
-	node.n.ReportExecuted(state)
-	node.ReportState(uint64(20), block.BlockHash, nil)
+	node.ReportState(uint64(20), block.BlockHash, nil, nil)
 	ast.Equal(false, node.stack.StateUpdating)
 
-	node.ReportState(uint64(21), block.BlockHash, nil)
+	node.ReportState(uint64(21), block.BlockHash, nil, nil)
 	ast.Equal(false, node.stack.StateUpdating)
+
+	t.Run("ReportStateUpdating with checkpoint", func(t *testing.T) {
+		node.stack.StateUpdating = true
+		node.stack.StateUpdateHeight = 30
+		block30 := testutil.ConstructBlock("blockHash", uint64(30))
+		testutil.SetMockBlockLedger(block30, true)
+		defer testutil.ResetMockBlockLedger()
+
+		ckp := &consensus.Checkpoint{
+			ExecuteState: &consensus.Checkpoint_ExecuteState{
+				Height: 30,
+				Digest: block30.BlockHash.String(),
+			},
+		}
+		node.ReportState(uint64(30), block.BlockHash, nil, ckp)
+		ast.Equal(false, node.stack.StateUpdating)
+	})
 }
 
 func TestQuorum(t *testing.T) {
