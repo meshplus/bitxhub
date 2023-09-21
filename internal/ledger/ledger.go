@@ -70,12 +70,12 @@ type StateLedger interface {
 	// Close release resource
 	Close()
 
-	Copy() StateLedger
-
 	Finalise()
 
 	// Version
 	Version() uint64
+
+	NewView() StateLedger
 }
 
 // StateAccessor manipulates the state data

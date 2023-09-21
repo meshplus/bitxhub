@@ -54,7 +54,7 @@ func TestNew001(t *testing.T) {
 			require.NotNil(t, l)
 
 			l.StateLedger.SetNonce(&types.Address{}, 2)
-			c := l.Copy()
+			c := l.NewView()
 			l.StateLedger.Finalise()
 			c.StateLedger.Finalise()
 

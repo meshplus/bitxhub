@@ -58,7 +58,7 @@ func NewSwarms(t *testing.T, peerCnt int, versionChange bool) []*Swarm {
 
 	chainLedger.EXPECT().GetBlockSign(gomock.Any()).Return([]byte("sign"), nil).AnyTimes()
 	chainLedger.EXPECT().GetTransaction(gomock.Any()).Return(&types.Transaction{}, nil).AnyTimes()
-	stateLedger.EXPECT().Copy().Return(stateLedger).AnyTimes()
+	stateLedger.EXPECT().NewView().Return(stateLedger).AnyTimes()
 	stateLedger.EXPECT().GetState(gomock.Any(), gomock.Any()).DoAndReturn(func(addr *types.Address, key []byte) (bool, []byte) {
 		return false, nil
 	}).AnyTimes()

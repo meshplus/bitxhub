@@ -329,7 +329,7 @@ func (exec *BlockExecutor) NewEvmWithViewLedger(txCtx ethvm.TxContext, vmConfig 
 		return nil, err
 	}
 
-	lg := exec.ledger.Copy()
+	lg := exec.ledger.NewView()
 	blkCtx = ethvm.NewEVMBlockContext(meta.Height, uint64(block.BlockHeader.Timestamp), exec.rep.AccountAddress, getBlockHashFunc(exec.ledger.ChainLedger))
 	return ethvm.NewEVM(blkCtx, txCtx, lg.StateLedger, exec.evmChainCfg, vmConfig), nil
 }

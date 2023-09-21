@@ -51,17 +51,23 @@ type StateLedgerImpl struct {
 	transientStorage transientStorage
 }
 
-// Copy copy state ledger
-// Attention this is shallow copy
-func (l *StateLedgerImpl) Copy() StateLedger {
-	// TODO: if readonly, not need cache, opt it
-	copyLedger, err := NewSimpleLedger(&repo.Repo{Config: l.repo.Config}, l.ldb, nil, l.logger)
-	if err != nil {
-		l.logger.Errorf("copy ledger error: %w", err)
-		return nil
+// NewView get a view
+func (l *StateLedgerImpl) NewView() StateLedger {
+	return &StateLedgerImpl{
+		repo:          l.repo,
+		logger:        l.logger,
+		ldb:           l.ldb,
+		minJnlHeight:  l.minJnlHeight,
+		maxJnlHeight:  l.maxJnlHeight,
+		accounts:      make(map[string]IAccount),
+		accountCache:  l.accountCache,
+		prevJnlHash:   l.prevJnlHash,
+		preimages:     make(map[types.Hash][]byte),
+		changer:       NewChanger(),
+		accessList:    NewAccessList(),
+		logs:          NewEvmLogs(),
+		blockJournals: make(map[string]*BlockJournal),
 	}
-
-	return copyLedger
 }
 
 func (l *StateLedgerImpl) Finalise() {

@@ -76,16 +76,16 @@ func NewAxiomLedger(rep *repo.Repo, ctx context.Context, cancel context.CancelFu
 		common.WithGenesisDigest(axm.ViewLedger.ChainLedger.GetBlockHash(1).String()),
 		common.WithGetChainMetaFunc(axm.ViewLedger.ChainLedger.GetChainMeta),
 		common.WithGetAccountBalanceFunc(func(address *types.Address) *big.Int {
-			return axm.ViewLedger.Copy().StateLedger.GetBalance(address)
+			return axm.ViewLedger.NewView().StateLedger.GetBalance(address)
 		}),
 		common.WithGetAccountNonceFunc(func(address *types.Address) uint64 {
-			return axm.ViewLedger.Copy().StateLedger.GetNonce(address)
+			return axm.ViewLedger.NewView().StateLedger.GetNonce(address)
 		}),
 		common.WithGetEpochInfoFromEpochMgrContractFunc(func(epoch uint64) (*rbft.EpochInfo, error) {
-			return base.GetEpochInfo(axm.ViewLedger.Copy().StateLedger, epoch)
+			return base.GetEpochInfo(axm.ViewLedger.NewView().StateLedger, epoch)
 		}),
 		common.WithGetCurrentEpochInfoFromEpochMgrContractFunc(func() (*rbft.EpochInfo, error) {
-			return base.GetCurrentEpochInfo(axm.ViewLedger.Copy().StateLedger)
+			return base.GetCurrentEpochInfo(axm.ViewLedger.NewView().StateLedger)
 		}),
 	)
 	if err != nil {
@@ -150,7 +150,7 @@ func GenerateAxiomWithoutOrder(rep *repo.Repo) (*AxiomLedger, error) {
 		return nil, fmt.Errorf("create BlockExecutor: %w", err)
 	}
 
-	peerMgr, err := peermgr.New(rep, loggers.Logger(loggers.P2P), rwLdg.Copy())
+	peerMgr, err := peermgr.New(rep, loggers.Logger(loggers.P2P), rwLdg.NewView())
 	if err != nil {
 		return nil, fmt.Errorf("create peer manager: %w", err)
 	}
@@ -158,7 +158,7 @@ func GenerateAxiomWithoutOrder(rep *repo.Repo) (*AxiomLedger, error) {
 	return &AxiomLedger{
 		repo:          rep,
 		logger:        logger,
-		ViewLedger:    rwLdg.Copy(),
+		ViewLedger:    rwLdg.NewView(),
 		BlockExecutor: txExec,
 		PeerMgr:       peerMgr,
 	}, nil
@@ -222,7 +222,11 @@ func (axm *AxiomLedger) printLogo() {
 				"order_type": axm.repo.Config.Order.Type,
 			}).Info("Order is ready")
 			fig := figure.NewFigure(repo.AppName, "slant", true)
-			axm.logger.WithField(log.OnlyWriteMsgWithoutFormatterField, nil).Infof("=======================================================\n%s\n=======================================================", fig.String())
+			axm.logger.WithField(log.OnlyWriteMsgWithoutFormatterField, nil).Infof(`
+=========================================================================================
+%s
+=========================================================================================
+`, fig.String())
 			return
 		}
 	}
