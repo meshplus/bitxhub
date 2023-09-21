@@ -1038,44 +1038,6 @@ func (c *StateLedgerCommitCall) DoAndReturn(f func(uint64, map[string]ledger.IAc
 	return c
 }
 
-// Copy mocks base method.
-func (m *MockStateLedger) Copy() ledger.StateLedger {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Copy")
-	ret0, _ := ret[0].(ledger.StateLedger)
-	return ret0
-}
-
-// Copy indicates an expected call of Copy.
-func (mr *MockStateLedgerMockRecorder) Copy() *StateLedgerCopyCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Copy", reflect.TypeOf((*MockStateLedger)(nil).Copy))
-	return &StateLedgerCopyCall{Call: call}
-}
-
-// StateLedgerCopyCall wrap *gomock.Call
-type StateLedgerCopyCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *StateLedgerCopyCall) Return(arg0 ledger.StateLedger) *StateLedgerCopyCall {
-	c.Call = c.Call.Return(arg0)
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *StateLedgerCopyCall) Do(f func() ledger.StateLedger) *StateLedgerCopyCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *StateLedgerCopyCall) DoAndReturn(f func() ledger.StateLedger) *StateLedgerCopyCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
 // CreateEVMAccount mocks base method.
 func (m *MockStateLedger) CreateEVMAccount(arg0 common.Address) {
 	m.ctrl.T.Helper()
@@ -1906,6 +1868,44 @@ func (c *StateLedgerHasSuicideEVMCall) Do(f func(common.Address) bool) *StateLed
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *StateLedgerHasSuicideEVMCall) DoAndReturn(f func(common.Address) bool) *StateLedgerHasSuicideEVMCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// NewView mocks base method.
+func (m *MockStateLedger) NewView() ledger.StateLedger {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NewView")
+	ret0, _ := ret[0].(ledger.StateLedger)
+	return ret0
+}
+
+// NewView indicates an expected call of NewView.
+func (mr *MockStateLedgerMockRecorder) NewView() *StateLedgerNewViewCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewView", reflect.TypeOf((*MockStateLedger)(nil).NewView))
+	return &StateLedgerNewViewCall{Call: call}
+}
+
+// StateLedgerNewViewCall wrap *gomock.Call
+type StateLedgerNewViewCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *StateLedgerNewViewCall) Return(arg0 ledger.StateLedger) *StateLedgerNewViewCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *StateLedgerNewViewCall) Do(f func() ledger.StateLedger) *StateLedgerNewViewCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *StateLedgerNewViewCall) DoAndReturn(f func() ledger.StateLedger) *StateLedgerNewViewCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

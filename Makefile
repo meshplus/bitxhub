@@ -81,7 +81,7 @@ smoke-test: prepare
 	cd scripts && bash smoke_test.sh -b ${BRANCH}
 
 ## make build: Go build the project
-build: prepare
+build:
 	@mkdir -p bin
 	${GO_BIN} build -ldflags '${GOLDFLAGS}' ./cmd/${APP_NAME}
 	@cp -f ./${APP_NAME} bin

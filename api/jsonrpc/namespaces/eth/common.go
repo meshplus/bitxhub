@@ -19,7 +19,7 @@ var (
 )
 
 func getStateLedgerAt(api api.CoreAPI) (ledger.StateLedger, error) {
-	leger := api.Broker().GetViewStateLedger().Copy()
+	leger := api.Broker().GetViewStateLedger().NewView()
 	if leger == nil {
 		return nil, errors.New("GetViewStateLedger error")
 	}

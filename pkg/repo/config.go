@@ -319,7 +319,7 @@ func DefaultConfig(repoRoot string, epochEnable bool) *Config {
 			Type: OrderTypeRbft,
 		},
 		Ledger: Ledger{
-			Kv: KVStorageTypePebble,
+			Kv: KVStorageTypeLeveldb,
 		},
 		Executor: Executor{
 			Type: ExecTypeNative,

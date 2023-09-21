@@ -91,10 +91,10 @@ func (l *Ledger) Close() {
 	l.StateLedger.Close()
 }
 
-func (l *Ledger) Copy() *Ledger {
+func (l *Ledger) NewView() *Ledger {
 	return &Ledger{
 		ChainLedger: l.ChainLedger,
-		StateLedger: l.StateLedger.Copy(),
+		StateLedger: l.StateLedger.NewView(),
 	}
 }
 
