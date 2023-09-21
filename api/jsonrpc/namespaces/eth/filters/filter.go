@@ -23,8 +23,8 @@ import (
 	"math/big"
 
 	"github.com/axiomesh/axiom-kit/types"
-	rpctypes "github.com/axiomesh/axiom/api/jsonrpc/types"
-	"github.com/axiomesh/axiom/internal/coreapi/api"
+	rpctypes "github.com/axiomesh/axiom-ledger/api/jsonrpc/types"
+	"github.com/axiomesh/axiom-ledger/internal/coreapi/api"
 )
 
 // Filter can be used to retrieve and filter logs.

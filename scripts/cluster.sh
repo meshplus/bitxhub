@@ -3,12 +3,12 @@
 set -e
 source x.sh
 
-CURRENT_PATH=$(pwd)
+CURRENT_PATH=$(cd $(dirname ${BASH_SOURCE[0]}); pwd)
 PROJECT_PATH=$(dirname "${CURRENT_PATH}")
 BUILD_PATH=${CURRENT_PATH}/build
 N=4
 
-function Get_PM_Name() {
+function GetPMName() {
   PM=''
   if [ "$(uname)" == "Darwin" ]; then
     DISTRO='MacOS'
@@ -41,36 +41,36 @@ function Get_PM_Name() {
   eval "$1=$PM"
 }
 
-function prepare() {
-  if ! type tmux >/dev/null 2>&1; then
-    print_blue "===> Install tmux with package manager"
-    PM_NAME=''
-    Get_PM_Name PM_NAME
-    if [ -n "$PM_NAME" ]; then
-      if [ "$PM_NAME" == "brew" ]; then
-        $PM_NAME install tmux
-      else
-        sudo $PM_NAME install -y tmux
+function install_tmux(){
+    if ! type tmux >/dev/null 2>&1; then
+      print_blue "===> Install tmux with package manager"
+      PM_NAME=''
+      GetPMName PM_NAME
+      if [ -n "$PM_NAME" ]; then
+        if [ "$PM_NAME" == "brew" ]; then
+          $PM_NAME install tmux
+        else
+          sudo $PM_NAME install -y tmux
+        fi
       fi
     fi
-  fi
+}
 
+function prepare() {
   print_blue "===> Generating $N nodes configuration"
   rm -rf "${BUILD_PATH}"
   mkdir "${BUILD_PATH}"
   for ((i = 1; i < N + 1; i = i + 1)); do
     root=${BUILD_PATH}/node${i}
-
-    axiom --repo="${root}" config generate --default-node-index ${i}
-
-    echo " #!/usr/bin/env bash" >"${root}"/start.sh
-    echo "axiom --repo \$(pwd)" start >>"${root}"/start.sh
-
-    axiomConfig=${root}/axiom.toml
-    x_replace "s/8881/888${i}/g" "${axiomConfig}"
-    x_replace "s/9991/909${i}/g" "${axiomConfig}"
-    x_replace "s/53121/5312${i}/g" "${axiomConfig}"
-    x_replace "s/40011/4001${i}/g" "${axiomConfig}"
+    mkdir ${root}
+    cp -rf ${CURRENT_PATH}/package/* ${root}/
+    cp -f ${PROJECT_PATH}/bin/axiom-ledger ${root}/tools/bin/
+    echo "export AXIOM_LEDGER_PORT_JSONRPC=888${i}" >> ${root}/.env.sh
+    echo "export AXIOM_LEDGER_PORT_WEBSOCKET=999${i}" >> ${root}/.env.sh
+    echo "export AXIOM_LEDGER_PORT_P2P=400${i}" >> ${root}/.env.sh
+    echo "export AXIOM_LEDGER_PORT_PPROF=5312${i}" >> ${root}/.env.sh
+    echo "export AXIOM_LEDGER_PORT_MONITOR=4001${i}" >> ${root}/.env.sh
+    ${root}/axiom-ledger config generate --default-node-index ${i}
   done
 }
 
@@ -81,9 +81,9 @@ function splitWindow() {
   tmux splitw -h -p 50
 }
 
-function start() {
+function start_by_tmux() {
   print_blue "===> Staring cluster"
-  tmux new -d -s axiom || (tmux kill-session -t axiom && tmux new -d -s axiom)
+  tmux new -d -s axiom-ledger || (tmux kill-session -t axiom-ledger && tmux new -d -s axiom-ledger)
 
   for ((i = 0; i < N / 4; i = i + 1)); do
     splitWindow
@@ -93,11 +93,26 @@ function start() {
   for ((i = 0; i < N; i = i + 1)); do
     tmux selectw -t $(($i / 4))
     tmux selectp -t $(($i % 4))
-    tmux send-keys "axiom --repo=${BUILD_PATH}/node$(($i + 1)) start" C-m
+    tmux send-keys "${BUILD_PATH}/node$(($i + 1))/axiom-ledger start" C-m
   done
   tmux selectw -t 0
-  tmux attach-session -t axiom
+  tmux attach-session -t axiom-ledger
 }
 
-prepare
-start
+function start_by_nohup() {
+  print_blue "===> Staring cluster"
+  for ((i = 0; i < N; i = i + 1)); do
+    ${BUILD_PATH}/node$(($i + 1))/start.sh
+  done
+}
+
+if [ "$1" = "background" ]; then
+  prepare
+  start_by_nohup
+else
+  install_tmux
+  prepare
+  start_by_tmux
+fi
+
+

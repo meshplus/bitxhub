@@ -20,20 +20,20 @@ import (
 	"github.com/axiomesh/axiom-kit/storage/leveldb"
 	"github.com/axiomesh/axiom-kit/storage/pebble"
 	"github.com/axiomesh/axiom-kit/types"
-	"github.com/axiomesh/axiom/internal/executor/system/base"
-	"github.com/axiomesh/axiom/internal/executor/system/common"
-	"github.com/axiomesh/axiom/internal/executor/system/governance"
-	"github.com/axiomesh/axiom/internal/ledger"
-	"github.com/axiomesh/axiom/internal/ledger/mock_ledger"
-	ordercommon "github.com/axiomesh/axiom/internal/order/common"
-	"github.com/axiomesh/axiom/pkg/model/events"
-	"github.com/axiomesh/axiom/pkg/repo"
+	"github.com/axiomesh/axiom-ledger/internal/executor/system/base"
+	"github.com/axiomesh/axiom-ledger/internal/executor/system/common"
+	"github.com/axiomesh/axiom-ledger/internal/executor/system/governance"
+	"github.com/axiomesh/axiom-ledger/internal/ledger"
+	"github.com/axiomesh/axiom-ledger/internal/ledger/mock_ledger"
+	ordercommon "github.com/axiomesh/axiom-ledger/internal/order/common"
+	"github.com/axiomesh/axiom-ledger/pkg/model/events"
+	"github.com/axiomesh/axiom-ledger/pkg/repo"
 	ethvm "github.com/axiomesh/eth-kit/evm"
 )
 
 const (
-	srcMethod   = "did:axiom:addr1:."
-	dstMethod   = "did:axiom:addr2:."
+	srcMethod   = "did:axiom-ledger:addr1:."
+	dstMethod   = "did:axiom-ledger:addr2:."
 	from        = "0x3f9d18f7c3a6e5e4c0b877fe3e688ab08840b997"
 	minGasPrice = 1000000000000
 )

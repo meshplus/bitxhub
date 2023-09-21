@@ -2,7 +2,6 @@ package peermgr
 
 import (
 	"encoding/json"
-	"fmt"
 	"strconv"
 	"strings"
 	"testing"
@@ -13,10 +12,10 @@ import (
 
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom-kit/types/pb"
-	"github.com/axiomesh/axiom/internal/executor/system/common"
-	"github.com/axiomesh/axiom/internal/ledger"
-	"github.com/axiomesh/axiom/internal/ledger/mock_ledger"
-	"github.com/axiomesh/axiom/pkg/repo"
+	"github.com/axiomesh/axiom-ledger/internal/executor/system/common"
+	"github.com/axiomesh/axiom-ledger/internal/ledger"
+	"github.com/axiomesh/axiom-ledger/internal/ledger/mock_ledger"
+	"github.com/axiomesh/axiom-ledger/pkg/repo"
 )
 
 func TestSwarm_OtherPeers(t *testing.T) {
@@ -86,12 +85,12 @@ func TestSwarm_OnConnected(t *testing.T) {
 		stringData := strings.Split(string(data), ",")
 		for _, nodeID := range stringData {
 			if peerID == nodeID {
-				fmt.Println("exist nodeMembernodeID: " + nodeID)
+				t.Log("exist nodeMembernodeID: " + nodeID)
 				break
 			}
 		}
 	} else {
-		fmt.Println("get nodeMember err")
+		t.Log("get nodeMember err")
 	}
 }
 

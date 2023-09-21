@@ -14,18 +14,17 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	"github.com/axiomesh/axiom"
 	rbft "github.com/axiomesh/axiom-bft"
 	"github.com/axiomesh/axiom-kit/log"
 	"github.com/axiomesh/axiom-kit/storage/leveldb"
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom-kit/types/pb"
+	"github.com/axiomesh/axiom-ledger/internal/executor/system/base"
+	"github.com/axiomesh/axiom-ledger/internal/executor/system/common"
+	"github.com/axiomesh/axiom-ledger/internal/ledger"
+	"github.com/axiomesh/axiom-ledger/internal/ledger/mock_ledger"
+	"github.com/axiomesh/axiom-ledger/pkg/repo"
 	network "github.com/axiomesh/axiom-p2p"
-	"github.com/axiomesh/axiom/internal/executor/system/base"
-	"github.com/axiomesh/axiom/internal/executor/system/common"
-	"github.com/axiomesh/axiom/internal/ledger"
-	"github.com/axiomesh/axiom/internal/ledger/mock_ledger"
-	"github.com/axiomesh/axiom/pkg/repo"
 )
 
 func getAddr(p2p network.Network) (peer.AddrInfo, error) {
@@ -85,7 +84,7 @@ func NewSwarms(t *testing.T, peerCnt int, versionChange bool) []*Swarm {
 		rep, err := repo.DefaultWithNodeIndex(t.TempDir(), i, true)
 		require.Nil(t, err)
 		if versionChange && i == peerCnt-1 {
-			axiom.VersionSecret = "Shanghai"
+			repo.BuildVersionSecret = "Shanghai"
 		}
 
 		rep.Config.Port.P2P = 0

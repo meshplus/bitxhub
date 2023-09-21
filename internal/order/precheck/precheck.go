@@ -1,7 +1,7 @@
 package precheck
 
 import (
-	"github.com/axiomesh/axiom/internal/order/common"
+	"github.com/axiomesh/axiom-ledger/internal/order/common"
 )
 
 //go:generate mockgen -destination mock_precheck/mock_precheck.go -package mock_precheck -source precheck.go -typed

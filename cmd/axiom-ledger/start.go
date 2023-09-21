@@ -7,20 +7,20 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"sync"
 	"syscall"
 
 	"github.com/urfave/cli/v2"
 
-	"github.com/axiomesh/axiom"
 	"github.com/axiomesh/axiom-kit/fileutil"
 	types2 "github.com/axiomesh/axiom-kit/types"
-	"github.com/axiomesh/axiom/api/jsonrpc"
-	"github.com/axiomesh/axiom/internal/app"
-	"github.com/axiomesh/axiom/internal/coreapi"
-	"github.com/axiomesh/axiom/pkg/loggers"
-	"github.com/axiomesh/axiom/pkg/profile"
-	"github.com/axiomesh/axiom/pkg/repo"
+	"github.com/axiomesh/axiom-ledger/api/jsonrpc"
+	"github.com/axiomesh/axiom-ledger/internal/app"
+	"github.com/axiomesh/axiom-ledger/internal/coreapi"
+	"github.com/axiomesh/axiom-ledger/pkg/loggers"
+	"github.com/axiomesh/axiom-ledger/pkg/profile"
+	"github.com/axiomesh/axiom-ledger/pkg/repo"
 )
 
 func start(ctx *cli.Context) error {
@@ -28,18 +28,15 @@ func start(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	existConfig := fileutil.Exist(p)
+
+	if !fileutil.Exist(filepath.Join(p, repo.CfgFileName)) {
+		fmt.Println("axiom-ledger is not initialized, please execute 'init.sh' first")
+		return nil
+	}
+
 	r, err := repo.Load(p)
 	if err != nil {
 		return err
-	}
-
-	if !existConfig {
-		// not generate config, start by solo
-		r.Config.Order.Type = repo.OrderTypeSolo
-		if err := r.Flush(); err != nil {
-			return err
-		}
 	}
 
 	appCtx, cancel := context.WithCancel(ctx.Context)
@@ -53,9 +50,9 @@ func start(ctx *cli.Context) error {
 	printVersion()
 	r.PrintNodeInfo()
 
-	axm, err := app.NewAxiom(r, appCtx, cancel)
+	axm, err := app.NewAxiomLedger(r, appCtx, cancel)
 	if err != nil {
-		return fmt.Errorf("init axiom failed: %w", err)
+		return fmt.Errorf("init axiom-ledger failed: %w", err)
 	}
 
 	monitor, err := profile.NewMonitor(r.Config)
@@ -99,7 +96,7 @@ func start(ctx *cli.Context) error {
 	handleShutdown(axm, &wg)
 
 	if err := axm.Start(); err != nil {
-		return fmt.Errorf("start axiom failed: %w", err)
+		return fmt.Errorf("start axiom-ledger failed: %w", err)
 	}
 
 	if err := repo.WritePid(r.Config.RepoRoot); err != nil {
@@ -116,13 +113,13 @@ func start(ctx *cli.Context) error {
 }
 
 func printVersion() {
-	fmt.Printf("Axiom version: %s-%s-%s\n", axiom.CurrentVersion, axiom.CurrentBranch, axiom.CurrentCommit)
-	fmt.Printf("App build date: %s\n", axiom.BuildDate)
-	fmt.Printf("System version: %s\n", axiom.Platform)
-	fmt.Printf("Golang version: %s\n", axiom.GoVersion)
+	fmt.Printf("%s version: %s-%s-%s\n", repo.AppName, repo.BuildVersion, repo.BuildBranch, repo.BuildCommit)
+	fmt.Printf("App build date: %s\n", repo.BuildDate)
+	fmt.Printf("System version: %s\n", repo.Platform)
+	fmt.Printf("Golang version: %s\n", repo.GoVersion)
 }
 
-func handleShutdown(node *app.Axiom, wg *sync.WaitGroup) {
+func handleShutdown(node *app.AxiomLedger, wg *sync.WaitGroup) {
 	var stop = make(chan os.Signal, 2)
 	signal.Notify(stop, syscall.SIGTERM)
 	signal.Notify(stop, syscall.SIGINT)

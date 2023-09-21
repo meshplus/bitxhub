@@ -10,7 +10,7 @@ import (
 	"github.com/axiomesh/axiom-bft/common/metrics/prometheus"
 	"github.com/axiomesh/axiom-bft/mempool"
 	"github.com/axiomesh/axiom-kit/types"
-	"github.com/axiomesh/axiom/internal/order/common"
+	"github.com/axiomesh/axiom-ledger/internal/order/common"
 )
 
 func defaultRbftConfig() rbft.Config {
@@ -32,7 +32,7 @@ func defaultRbftConfig() rbft.Config {
 		FlowControl:             false,
 		FlowControlMaxMem:       0,
 		MetricsProv:             &disabled.Provider{},
-		Tracer:                  trace.NewNoopTracerProvider().Tracer("axiom"),
+		Tracer:                  trace.NewNoopTracerProvider().Tracer("axiom-ledger"),
 		DelFlag:                 make(chan bool, 10),
 		Logger:                  nil,
 		NoTxBatchTimeout:        0,

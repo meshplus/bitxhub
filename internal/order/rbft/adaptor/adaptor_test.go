@@ -12,9 +12,9 @@ import (
 	rbfttypes "github.com/axiomesh/axiom-bft/types"
 	"github.com/axiomesh/axiom-kit/log"
 	"github.com/axiomesh/axiom-kit/types"
+	"github.com/axiomesh/axiom-ledger/internal/order/common"
+	"github.com/axiomesh/axiom-ledger/internal/order/rbft/testutil"
 	network "github.com/axiomesh/axiom-p2p"
-	"github.com/axiomesh/axiom/internal/order/common"
-	"github.com/axiomesh/axiom/internal/order/rbft/testutil"
 )
 
 func mockAdaptor(ctrl *gomock.Controller, kvType string, t *testing.T) *RBFTAdaptor {

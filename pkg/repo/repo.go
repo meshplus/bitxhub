@@ -248,7 +248,7 @@ func readConfigFromFile(cfgFilePath string, config any) error {
 
 func readConfig(vp *viper.Viper, config any) error {
 	vp.AutomaticEnv()
-	vp.SetEnvPrefix("AXIOM")
+	vp.SetEnvPrefix("AXIOM_LEDGER")
 	replacer := strings.NewReplacer(".", "_")
 	vp.SetEnvKeyReplacer(replacer)
 

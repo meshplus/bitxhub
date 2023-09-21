@@ -7,8 +7,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 
-	"github.com/axiomesh/axiom/pkg/loggers"
-	"github.com/axiomesh/axiom/pkg/repo"
+	"github.com/axiomesh/axiom-ledger/pkg/loggers"
+	"github.com/axiomesh/axiom-ledger/pkg/repo"
 )
 
 type Monitor struct {
@@ -51,7 +51,7 @@ func (m *Monitor) Start() error {
 		go func() {
 			err := m.server.ListenAndServe()
 			if err != nil {
-				fmt.Println(err)
+				m.logger.Errorf("Start monitor failed, err: %s", err.Error())
 			}
 		}()
 	}

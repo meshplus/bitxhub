@@ -4,7 +4,7 @@ set -e
 
 source x.sh
 
-CURRENT_PATH=$(pwd)
+CURRENT_PATH=$(cd $(dirname ${BASH_SOURCE[0]}); pwd)
 PROJECT_PATH=$(dirname "${CURRENT_PATH}")
 BUILD_PATH=${CURRENT_PATH}/build_solo
 
@@ -21,10 +21,12 @@ function print_red() {
 }
 
 function start() {
-  print_blue "===> Start solo axiom"
-  rm -rf "${BUILD_PATH}"
-  axiom --repo="${BUILD_PATH}" config generate --solo
-  axiom --repo="${BUILD_PATH}" start
+  print_blue "===> Start solo axiom-ledger"
+  rm -rf "${BUILD_PATH}" && mkdir ${BUILD_PATH}
+  cp -rf ${CURRENT_PATH}/package/* ${BUILD_PATH}/
+  cp -f ${PROJECT_PATH}/bin/axiom-ledger ${BUILD_PATH}/tools/bin/
+  ${BUILD_PATH}/axiom-ledger config generate --solo
+  ${BUILD_PATH}/axiom-ledger start
 }
 
 start

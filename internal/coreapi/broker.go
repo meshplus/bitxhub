@@ -9,17 +9,17 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/axiomesh/axiom-kit/types"
-	"github.com/axiomesh/axiom/internal/coreapi/api"
-	"github.com/axiomesh/axiom/internal/executor/system"
-	"github.com/axiomesh/axiom/internal/executor/system/common"
-	"github.com/axiomesh/axiom/internal/ledger"
+	"github.com/axiomesh/axiom-ledger/internal/coreapi/api"
+	"github.com/axiomesh/axiom-ledger/internal/executor/system"
+	"github.com/axiomesh/axiom-ledger/internal/executor/system/common"
+	"github.com/axiomesh/axiom-ledger/internal/ledger"
 	vm "github.com/axiomesh/eth-kit/evm"
 )
 
 type BrokerAPI CoreAPI
 
 func (b *BrokerAPI) GetTotalPendingTxCount() uint64 {
-	return b.axiom.Order.GetTotalPendingTxCount()
+	return b.axiomLedger.Order.GetTotalPendingTxCount()
 }
 
 var _ api.BrokerAPI = (*BrokerAPI)(nil)
@@ -33,7 +33,7 @@ func (b *BrokerAPI) HandleTransaction(tx *types.Transaction) error {
 		"hash": tx.GetHash().String(),
 	}).Debugf("Receive tx")
 
-	if err := b.axiom.Order.Prepare(tx); err != nil {
+	if err := b.axiomLedger.Order.Prepare(tx); err != nil {
 		return fmt.Errorf("order prepare for tx %s failed: %w", tx.GetHash().String(), err)
 	}
 
@@ -41,15 +41,15 @@ func (b *BrokerAPI) HandleTransaction(tx *types.Transaction) error {
 }
 
 func (b *BrokerAPI) GetTransaction(hash *types.Hash) (*types.Transaction, error) {
-	return b.axiom.ViewLedger.ChainLedger.GetTransaction(hash)
+	return b.axiomLedger.ViewLedger.ChainLedger.GetTransaction(hash)
 }
 
 func (b *BrokerAPI) GetTransactionMeta(hash *types.Hash) (*types.TransactionMeta, error) {
-	return b.axiom.ViewLedger.ChainLedger.GetTransactionMeta(hash)
+	return b.axiomLedger.ViewLedger.ChainLedger.GetTransactionMeta(hash)
 }
 
 func (b *BrokerAPI) GetReceipt(hash *types.Hash) (*types.Receipt, error) {
-	return b.axiom.ViewLedger.ChainLedger.GetReceipt(hash)
+	return b.axiomLedger.ViewLedger.ChainLedger.GetReceipt(hash)
 }
 
 func (b *BrokerAPI) GetBlock(mode string, value string) (*types.Block, error) {
@@ -59,20 +59,20 @@ func (b *BrokerAPI) GetBlock(mode string, value string) (*types.Block, error) {
 		if err != nil {
 			return nil, fmt.Errorf("wrong block number: %s", value)
 		}
-		return b.axiom.ViewLedger.ChainLedger.GetBlock(height)
+		return b.axiomLedger.ViewLedger.ChainLedger.GetBlock(height)
 	case "HASH":
 		hash := types.NewHashByStr(value)
 		if hash == nil {
 			return nil, errors.New("invalid format of block hash for querying block")
 		}
-		return b.axiom.ViewLedger.ChainLedger.GetBlockByHash(hash)
+		return b.axiomLedger.ViewLedger.ChainLedger.GetBlockByHash(hash)
 	default:
 		return nil, fmt.Errorf("wrong args about getting block: %s", mode)
 	}
 }
 
 func (b *BrokerAPI) GetBlocks(start uint64, end uint64) ([]*types.Block, error) {
-	meta := b.axiom.ViewLedger.ChainLedger.GetChainMeta()
+	meta := b.axiomLedger.ViewLedger.ChainLedger.GetChainMeta()
 
 	var blocks []*types.Block
 	if meta.Height < end {
@@ -90,7 +90,7 @@ func (b *BrokerAPI) GetBlocks(start uint64, end uint64) ([]*types.Block, error) 
 }
 
 func (b *BrokerAPI) GetBlockHeaders(start uint64, end uint64) ([]*types.BlockHeader, error) {
-	meta := b.axiom.ViewLedger.ChainLedger.GetChainMeta()
+	meta := b.axiomLedger.ViewLedger.ChainLedger.GetChainMeta()
 
 	var blockHeaders []*types.BlockHeader
 	if meta.Height < end {
@@ -108,19 +108,19 @@ func (b *BrokerAPI) GetBlockHeaders(start uint64, end uint64) ([]*types.BlockHea
 }
 
 func (b *BrokerAPI) OrderReady() error {
-	return b.axiom.Order.Ready()
+	return b.axiomLedger.Order.Ready()
 }
 
 func (b *BrokerAPI) GetPendingTxCountByAccount(account string) uint64 {
-	return b.axiom.Order.GetPendingTxCountByAccount(account)
+	return b.axiomLedger.Order.GetPendingTxCountByAccount(account)
 }
 
 func (b *BrokerAPI) GetPoolTransaction(hash *types.Hash) *types.Transaction {
-	return b.axiom.Order.GetPendingTxByHash(hash)
+	return b.axiomLedger.Order.GetPendingTxByHash(hash)
 }
 
 func (b *BrokerAPI) GetViewStateLedger() ledger.StateLedger {
-	return b.axiom.ViewLedger.StateLedger
+	return b.axiomLedger.ViewLedger.StateLedger
 }
 
 func (b *BrokerAPI) GetEvm(mes *vm.Message, vmConfig *vm.Config) (*vm.EVM, error) {
@@ -128,7 +128,7 @@ func (b *BrokerAPI) GetEvm(mes *vm.Message, vmConfig *vm.Config) (*vm.EVM, error
 		vmConfig = new(vm.Config)
 	}
 	txContext := vm.NewEVMTxContext(mes)
-	return b.axiom.BlockExecutor.NewEvmWithViewLedger(txContext, *vmConfig)
+	return b.axiomLedger.BlockExecutor.NewEvmWithViewLedger(txContext, *vmConfig)
 }
 
 func (b *BrokerAPI) GetSystemContract(addr *ethcommon.Address) (common.SystemContract, bool) {

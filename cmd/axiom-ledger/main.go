@@ -6,11 +6,13 @@ import (
 	"time"
 
 	"github.com/urfave/cli/v2"
+
+	"github.com/axiomesh/axiom-ledger/pkg/repo"
 )
 
 func main() {
 	app := cli.NewApp()
-	app.Name = "Axiom"
+	app.Name = repo.AppName
 	app.Usage = "A leading inter-blockchain platform"
 	app.Compiled = time.Now()
 
@@ -22,7 +24,7 @@ func main() {
 	app.Flags = []cli.Flag{
 		&cli.StringFlag{
 			Name:  "repo",
-			Usage: "Axiom storage repo path",
+			Usage: "Work path",
 		},
 	}
 
@@ -36,7 +38,7 @@ func main() {
 		{
 			Name:    "version",
 			Aliases: []string{"v"},
-			Usage:   "Axiom version",
+			Usage:   "Show code version",
 			Action: func(ctx *cli.Context) error {
 				printVersion()
 				return nil

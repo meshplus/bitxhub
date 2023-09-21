@@ -11,8 +11,8 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/axiomesh/axiom/pkg/loggers"
-	"github.com/axiomesh/axiom/pkg/repo"
+	"github.com/axiomesh/axiom-ledger/pkg/loggers"
+	"github.com/axiomesh/axiom-ledger/pkg/repo"
 )
 
 type Pprof struct {
@@ -84,7 +84,7 @@ func (p *Pprof) runtimePProf() {
 	if !exist {
 		err := os.Mkdir(rootPath, os.ModePerm)
 		if err != nil {
-			fmt.Printf("----- runtimePProf start failed, err: %s -----\n", err.Error())
+			p.logger.Errorf("Start runtimePProf failed, err: %s", err.Error())
 			return
 		}
 	}
@@ -127,7 +127,7 @@ func (p *Pprof) httpPProf() {
 	p.logger.WithField("port", p.port).Info("Start http pprof")
 	err := p.server.ListenAndServe()
 	if err != nil {
-		fmt.Println(err)
+		p.logger.Errorf("Start httpPProf failed, err: %s", err.Error())
 	}
 }
 

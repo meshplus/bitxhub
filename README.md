@@ -1,6 +1,6 @@
-![build](https://github.com/axiomesh/axiom/workflows/build/badge.svg)
-[![codecov](https://codecov.io/gh/axiomesh/axiom/branch/main/graph/badge.svg)](https://codecov.io/gh/axiomesh/axiom)
-[![Go Report Card](https://goreportcard.com/badge/github.com/axiomesh/axiom)](https://goreportcard.com/report/github.com/axiomesh/axiom)
+![ci](https://github.com/axiomesh/axiom-ledger/workflows/ci/badge.svg)
+[![codecov](https://codecov.io/gh/axiomesh/axiom-ledger/branch/main/graph/badge.svg)](https://codecov.io/gh/axiomesh/axiom-ledger)
+[![Go Report Card](https://goreportcard.com/badge/github.com/axiomesh/axiom-ledger)](https://goreportcard.com/report/github.com/axiomesh/axiom-ledger)
 
 `Axiomesh` is a blockchain infrastructure with high scalability, privacy, security and composability. `AxiomLedger` is the consensus layer of Axiomesh ecosystem.
 
@@ -12,7 +12,7 @@ install the software before started.
 Use commands below to clone the project:
 
 ```shell
-git clone git@github.com:axiomesh/axiom.git
+git clone git@github.com:axiomesh/axiom-ledger.git
 ```
 
 `AxiomLedger` also relies on some additional tools, use commands below to install:
@@ -31,7 +31,7 @@ make cluster
 
 ## Contributing
 
-See [CONTRIBUTING.md](https://github.com/axiomesh/axiom/blob/main/CONTRIBUTING.md).
+See [CONTRIBUTING.md](https://github.com/axiomesh/axiom-ledger/blob/main/CONTRIBUTING.md).
 
 ## License
 

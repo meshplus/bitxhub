@@ -6,7 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 
-	"github.com/axiomesh/axiom"
+	"github.com/axiomesh/axiom-ledger/pkg/repo"
 )
 
 // PublicWeb3API is the web3_ prefixed set of APIs in the Web3 JSON-RPC spec.
@@ -19,7 +19,7 @@ func NewAPI() *PublicWeb3API {
 
 // ClientVersion returns the client version in the Web3 user agent format.
 func (PublicWeb3API) ClientVersion() string {
-	return fmt.Sprintf("%s-%s-%s", axiom.CurrentVersion, axiom.CurrentBranch, axiom.CurrentCommit)
+	return fmt.Sprintf("%s-%s-%s", repo.BuildVersion, repo.BuildBranch, repo.BuildCommit)
 }
 
 // Sha3 returns the keccak-256 hash of the passed-in input.

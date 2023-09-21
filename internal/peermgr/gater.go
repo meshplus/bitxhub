@@ -9,8 +9,8 @@ import (
 	"github.com/sirupsen/logrus"
 
 	rbft "github.com/axiomesh/axiom-bft"
-	"github.com/axiomesh/axiom/internal/executor/system/base"
-	"github.com/axiomesh/axiom/internal/ledger"
+	"github.com/axiomesh/axiom-ledger/internal/executor/system/base"
+	"github.com/axiomesh/axiom-ledger/internal/ledger"
 )
 
 // ConnectionGater

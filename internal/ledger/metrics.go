@@ -4,7 +4,7 @@ import "github.com/prometheus/client_golang/prometheus"
 
 var (
 	persistBlockDuration = prometheus.NewHistogram(prometheus.HistogramOpts{
-		Namespace: "axiom",
+		Namespace: "axiom_ledger",
 		Subsystem: "ledger",
 		Name:      "persist_block_duration_second",
 		Help:      "The total latency of block persist",
@@ -12,10 +12,10 @@ var (
 	})
 
 	blockHeightMetric = prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace: "axiom",
+		Namespace: "axiom_ledger",
 		Subsystem: "ledger",
 		Name:      "block_height",
-		Help:      "the latest block height in axiom",
+		Help:      "the latest block height",
 	})
 )
 

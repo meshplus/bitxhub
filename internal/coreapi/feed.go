@@ -4,8 +4,8 @@ import (
 	"github.com/ethereum/go-ethereum/event"
 
 	"github.com/axiomesh/axiom-kit/types"
-	"github.com/axiomesh/axiom/internal/coreapi/api"
-	"github.com/axiomesh/axiom/pkg/model/events"
+	"github.com/axiomesh/axiom-ledger/internal/coreapi/api"
+	"github.com/axiomesh/axiom-ledger/pkg/model/events"
 )
 
 type FeedAPI CoreAPI
@@ -13,15 +13,15 @@ type FeedAPI CoreAPI
 var _ api.FeedAPI = (*FeedAPI)(nil)
 
 func (api *FeedAPI) SubscribeNewTxEvent(ch chan<- []*types.Transaction) event.Subscription {
-	return api.axiom.Order.SubscribeTxEvent(ch)
+	return api.axiomLedger.Order.SubscribeTxEvent(ch)
 }
 
 func (api *FeedAPI) SubscribeNewBlockEvent(ch chan<- events.ExecutedEvent) event.Subscription {
-	return api.axiom.BlockExecutor.SubscribeBlockEventForRemote(ch)
+	return api.axiomLedger.BlockExecutor.SubscribeBlockEventForRemote(ch)
 }
 
 func (api *FeedAPI) SubscribeLogsEvent(ch chan<- []*types.EvmLog) event.Subscription {
-	return api.axiom.BlockExecutor.SubscribeLogsEvent(ch)
+	return api.axiomLedger.BlockExecutor.SubscribeLogsEvent(ch)
 }
 
 // TODO: check it

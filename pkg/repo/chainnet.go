@@ -157,7 +157,7 @@ func AriesConfig(repoRoot string) *Config {
 		},
 		Log: Log{
 			Level:          "info",
-			Filename:       "axiom",
+			Filename:       "axiom-ledger",
 			ReportCaller:   false,
 			EnableCompress: false,
 			EnableColor:    true,

@@ -3,22 +3,22 @@ package coreapi
 import (
 	"github.com/sirupsen/logrus"
 
-	"github.com/axiomesh/axiom/internal/app"
-	"github.com/axiomesh/axiom/internal/coreapi/api"
-	"github.com/axiomesh/axiom/pkg/loggers"
+	"github.com/axiomesh/axiom-ledger/internal/app"
+	"github.com/axiomesh/axiom-ledger/internal/coreapi/api"
+	"github.com/axiomesh/axiom-ledger/pkg/loggers"
 )
 
 var _ api.CoreAPI = (*CoreAPI)(nil)
 
 type CoreAPI struct {
-	axiom  *app.Axiom
-	logger logrus.FieldLogger
+	axiomLedger *app.AxiomLedger
+	logger      logrus.FieldLogger
 }
 
-func New(axiom *app.Axiom) (*CoreAPI, error) {
+func New(axiomLedger *app.AxiomLedger) (*CoreAPI, error) {
 	return &CoreAPI{
-		axiom:  axiom,
-		logger: loggers.Logger(loggers.CoreAPI),
+		axiomLedger: axiomLedger,
+		logger:      loggers.Logger(loggers.CoreAPI),
 	}, nil
 }
 
