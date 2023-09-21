@@ -62,8 +62,8 @@ github.com/axiomesh/axiom-bft v0.0.3-0.20230913102152-b7ea7029ab76 h1:zWA/ApcMIx
 github.com/axiomesh/axiom-bft v0.0.3-0.20230913102152-b7ea7029ab76/go.mod h1:26oKvpFCzD4D5M7Kv7zivA6QetKBQkUyRvR7jz9bbbg=
 github.com/axiomesh/axiom-kit v0.0.3-0.20230914063832-f90aa21d635e h1:jao6ZXmErb7pUAVDf+uOzX4H1OsA/8UHCyLAhmIv/Tk=
 github.com/axiomesh/axiom-kit v0.0.3-0.20230914063832-f90aa21d635e/go.mod h1:XuDEVIAtMfrAHhgEnAE9zEnlH/5ehyZwLVZRm4/RzDU=
-github.com/axiomesh/axiom-p2p v0.0.3-0.20230920082140-9db1e192260a h1:h54tg7ca0aoE/3n82oF0qyD06VNm6lVJ1Cx4Li8NDF0=
-github.com/axiomesh/axiom-p2p v0.0.3-0.20230920082140-9db1e192260a/go.mod h1:DJDA6xsh6LiAXbtOkpnWVBvFNVd0Af7YD3stPZbpeVM=
+github.com/axiomesh/axiom-p2p v0.0.3-0.20230921022827-eb95438e52ce h1:CwVPSj9ryOQ/ER0hFll8CMPonGIRbVf2zI3HFOaHfy0=
+github.com/axiomesh/axiom-p2p v0.0.3-0.20230921022827-eb95438e52ce/go.mod h1:2fdcrufQztAOvXeUGU+IEFDGp2k605NAABNZeYogwZU=
 github.com/axiomesh/eth-kit v0.0.3-0.20230914073203-e09bfbf492c9 h1:qzBhOT7ibUXghI7hN1qwZEIgLdFGtSoCVvNo+Alckps=
 github.com/axiomesh/eth-kit v0.0.3-0.20230914073203-e09bfbf492c9/go.mod h1:3lh5eW+SoV+51Ige/ahQGetUQM7DkgIFOevnwkMp8FA=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
@@ -478,6 +478,8 @@ github.com/mikioh/tcpinfo v0.0.0-20190314235526-30a79bb1804b/go.mod h1:lxPUiZwKo
 github.com/mikioh/tcpopt v0.0.0-20190314235656-172688c1accc h1:PTfri+PuQmWDqERdnNMiD9ZejrlswWrCpBEZgWOiTrc=
 github.com/mikioh/tcpopt v0.0.0-20190314235656-172688c1accc/go.mod h1:cGKTAVKx4SxOuR/czcZ/E2RSJ3sfHs8FpHhQ5CWMf9s=
 github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1/go.mod h1:pD8RvIylQ358TN4wwqatJ8rNavkEINozVn9DtGI3dfQ=
+github.com/minio/highwayhash v1.0.2 h1:Aak5U0nElisjDCfPSG79Tgzkn2gl66NxOMspRrKnA/g=
+github.com/minio/highwayhash v1.0.2/go.mod h1:BQskDq+xkJ12lmlUUi7U0M5Swg3EWR+dLTk+kldvVxY=
 github.com/minio/sha256-simd v0.1.1-0.20190913151208-6de447530771/go.mod h1:B5e1o+1/KgNmWrSQK08Y6Z1Vb5pwIktudl0J58iy0KM=
 github.com/minio/sha256-simd v1.0.1 h1:6kaan5IFmwTNynnKKpDHe6FWHohJOHhCPchzK49dzMM=
 github.com/minio/sha256-simd v1.0.1/go.mod h1:Pz6AKMiUdngCLpeTL/RJY1M9rUuPMYujV5xJjtbRSN8=
@@ -889,6 +891,7 @@ golang.org/x/sys v0.0.0-20180905080454-ebe1bf3edb33/go.mod h1:STP8DvDyc/dI5b8T5h
 golang.org/x/sys v0.0.0-20180909124046-d0be0721c37e/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20181029174526-d69651ed3497/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20181116152217-5ac8a444bdc5/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
+golang.org/x/sys v0.0.0-20190130150945-aca44879d564/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20190215142949-d0b11bdaac8a/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20190228124157-a34e9553db1e/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20190312061237-fead79001313/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
