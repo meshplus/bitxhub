@@ -176,7 +176,7 @@ func (l *StateLedgerImpl) PrepareEVM(rules params.Rules, sender, coinbase common
 		// 	al.AddAddress(coinbase)
 		// }
 	}
-	// Reset transient storagemgr at the beginning of transaction execution
+	// Reset transient storage at the beginning of transaction execution
 	l.transientStorage = newTransientStorage()
 }
 

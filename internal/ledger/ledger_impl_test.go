@@ -950,12 +950,12 @@ func initLedger(t *testing.T, repoRoot string, kv string) (*Ledger, string) {
 	var stateStorage storage.Storage
 	var err error
 	if kv == "leveldb" {
-		blockStorage, err = leveldb.New(filepath.Join(repoRoot, "storagemgr"))
+		blockStorage, err = leveldb.New(filepath.Join(repoRoot, "storage"))
 		assert.Nil(t, err)
 		stateStorage, err = leveldb.New(filepath.Join(repoRoot, "ledger"))
 		assert.Nil(t, err)
 	} else if kv == "pebble" {
-		blockStorage, err = pebble.New(filepath.Join(repoRoot, "storagemgr"))
+		blockStorage, err = pebble.New(filepath.Join(repoRoot, "storage"))
 		assert.Nil(t, err)
 		stateStorage, err = pebble.New(filepath.Join(repoRoot, "ledger"))
 		assert.Nil(t, err)

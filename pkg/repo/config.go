@@ -66,6 +66,7 @@ type Config struct {
 	JsonRPC   JsonRPC   `mapstructure:"jsonrpc" toml:"jsonrpc"`
 	P2P       P2P       `mapstructure:"p2p" toml:"p2p"`
 	Consensus Consensus `mapstructure:"consensus" toml:"consensus"`
+	Storage   Storage   `mapstructure:"storage" toml:"storage"`
 	Ledger    Ledger    `mapstructure:"ledger" toml:"ledger"`
 	Executor  Executor  `mapstructure:"executor" toml:"executor"`
 	Genesis   Genesis   `mapstructure:"genesis" toml:"genesis"`
@@ -167,7 +168,7 @@ type LogModule struct {
 	Router     string `mapstructure:"router" toml:"router"`
 	API        string `mapstructure:"api" toml:"api"`
 	CoreAPI    string `mapstructure:"coreapi" toml:"coreapi"`
-	Storage    string `mapstructure:"storagemgr" toml:"storagemgr"`
+	Storage    string `mapstructure:"storage" toml:"storage"`
 	Profile    string `mapstructure:"profile" toml:"profile"`
 	TSS        string `mapstructure:"tss" toml:"tss"`
 	Finance    string `mapstructure:"finance" toml:"finance"`
@@ -196,8 +197,11 @@ type Consensus struct {
 	Type string `mapstructure:"type" toml:"type"`
 }
 
+type Storage struct {
+	KvType string `mapstructure:"kv_type" toml:"kv_type"`
+}
+
 type Ledger struct {
-	Kv string `mapstructure:"kv" toml:"kv"`
 }
 
 type Executor struct {
@@ -315,9 +319,10 @@ func DefaultConfig(epochEnable bool) *Config {
 		Consensus: Consensus{
 			Type: ConsensusTypeRbft,
 		},
-		Ledger: Ledger{
-			Kv: KVStorageTypeLeveldb,
+		Storage: Storage{
+			KvType: KVStorageTypeLeveldb,
 		},
+		Ledger: Ledger{},
 		Executor: Executor{
 			Type: ExecTypeNative,
 		},
