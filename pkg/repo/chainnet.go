@@ -10,10 +10,19 @@ const (
 	AriesTestnetName = "aries"
 )
 
-func AriesConfig(repoRoot string) *Config {
+var (
+	TestNetConfigBuilderMap = map[string]func() *Config{
+		AriesTestnetName: AriesConfig,
+	}
+
+	TestNetConsensusConfigBuilderMap = map[string]func() *ConsensusConfig{
+		AriesTestnetName: AriesConsensusConfig,
+	}
+)
+
+func AriesConfig() *Config {
 	return &Config{
-		RepoRoot: repoRoot,
-		Ulimit:   65535,
+		Ulimit: 65535,
 		Port: Port{
 			JsonRpc:   8881,
 			WebSocket: 9991,
@@ -56,8 +65,8 @@ func AriesConfig(repoRoot string) *Config {
 				},
 			},
 		},
-		Order: Order{
-			Type: OrderTypeRbft,
+		Consensus: Consensus{
+			Type: ConsensusTypeRbft,
 		},
 		Ledger: Ledger{
 			Kv: KVStorageTypeLeveldb,
@@ -181,9 +190,9 @@ func AriesConfig(repoRoot string) *Config {
 	}
 }
 
-func AriesOrderConfig() *OrderConfig {
+func AriesConsensusConfig() *ConsensusConfig {
 	// nolint
-	return &OrderConfig{
+	return &ConsensusConfig{
 		TimedGenBlock: TimedGenBlock{
 			NoTxBatchTimeout: Duration(2 * time.Second),
 		},
@@ -192,7 +201,7 @@ func AriesOrderConfig() *OrderConfig {
 			Limit:  10000,
 			Burst:  10000,
 		},
-		Mempool: Mempool{
+		TxPool: TxPool{
 			PoolSize:            50000,
 			BatchTimeout:        Duration(500 * time.Millisecond),
 			ToleranceTime:       Duration(5 * time.Minute),

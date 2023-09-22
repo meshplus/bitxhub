@@ -393,45 +393,6 @@ func testChainLedger_Commit(t *testing.T, kv string) {
 	assert.Equal(t, uint64(0), ver)
 }
 
-func TestChainLedger_OpenStateDB(t *testing.T) {
-	testcase := map[string]struct {
-		kvType string
-	}{
-		"leveldb": {kvType: "leveldb"},
-		"pebble":  {kvType: "pebble"},
-	}
-	for name, tc := range testcase {
-		t.Run(name, func(t *testing.T) {
-			repoRoot := t.TempDir()
-			ss, err := OpenStateDB(filepath.Join(repoRoot, tc.kvType), tc.kvType)
-			assert.Nil(t, err)
-			assert.NotNil(t, ss)
-			ss, err = OpenStateDB(filepath.Join(repoRoot, tc.kvType), tc.kvType)
-			assert.NotNil(t, err)
-			assert.Nil(t, ss)
-			assert.Contains(t, err.Error(), "init "+tc.kvType+" failed")
-		})
-	}
-}
-
-func TestChainLedger_OpenStateDB_WrongType(t *testing.T) {
-	testcase := map[string]struct {
-		kvType   string
-		expected string
-	}{
-		"wrongKvType": {kvType: "none", expected: "unknow kv type"},
-	}
-	for name, tc := range testcase {
-		t.Run(name, func(t *testing.T) {
-			repoRoot := t.TempDir()
-			ss, err := OpenStateDB(filepath.Join(repoRoot, tc.kvType), tc.kvType)
-			assert.NotNil(t, err)
-			assert.Nil(t, ss)
-			assert.Contains(t, err.Error(), tc.expected)
-		})
-	}
-}
-
 func testChainLedger_EVMAccessor(t *testing.T, kvType string) {
 	ledger, _ := initLedger(t, "", kvType)
 
@@ -989,12 +950,12 @@ func initLedger(t *testing.T, repoRoot string, kv string) (*Ledger, string) {
 	var stateStorage storage.Storage
 	var err error
 	if kv == "leveldb" {
-		blockStorage, err = leveldb.New(filepath.Join(repoRoot, "storage"))
+		blockStorage, err = leveldb.New(filepath.Join(repoRoot, "storagemgr"))
 		assert.Nil(t, err)
 		stateStorage, err = leveldb.New(filepath.Join(repoRoot, "ledger"))
 		assert.Nil(t, err)
 	} else if kv == "pebble" {
-		blockStorage, err = pebble.New(filepath.Join(repoRoot, "storage"))
+		blockStorage, err = pebble.New(filepath.Join(repoRoot, "storagemgr"))
 		assert.Nil(t, err)
 		stateStorage, err = pebble.New(filepath.Join(repoRoot, "ledger"))
 		assert.Nil(t, err)

@@ -11,12 +11,12 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/axiomesh/axiom-kit/types"
+	"github.com/axiomesh/axiom-ledger/internal/consensus/common"
 	"github.com/axiomesh/axiom-ledger/internal/executor/system"
 	"github.com/axiomesh/axiom-ledger/internal/finance"
 	"github.com/axiomesh/axiom-ledger/internal/ledger"
-	"github.com/axiomesh/axiom-ledger/internal/order/common"
+	"github.com/axiomesh/axiom-ledger/pkg/events"
 	"github.com/axiomesh/axiom-ledger/pkg/loggers"
-	"github.com/axiomesh/axiom-ledger/pkg/model/events"
 	"github.com/axiomesh/axiom-ledger/pkg/repo"
 	vm "github.com/axiomesh/eth-kit/evm"
 )
@@ -27,7 +27,7 @@ const (
 
 var _ Executor = (*BlockExecutor)(nil)
 
-// BlockExecutor executes block from order
+// BlockExecutor executes block from consensus
 type BlockExecutor struct {
 	ledger             *ledger.Ledger
 	logger             logrus.FieldLogger
@@ -96,7 +96,7 @@ func (exec *BlockExecutor) Stop() error {
 	return nil
 }
 
-// ExecuteBlock executes block from order
+// ExecuteBlock executes block from consensus
 func (exec *BlockExecutor) ExecuteBlock(block *common.CommitEvent) {
 	exec.blockC <- block
 }

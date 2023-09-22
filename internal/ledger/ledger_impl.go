@@ -8,8 +8,6 @@ import (
 
 	"github.com/axiomesh/axiom-kit/storage"
 	"github.com/axiomesh/axiom-kit/storage/blockfile"
-	"github.com/axiomesh/axiom-kit/storage/leveldb"
-	"github.com/axiomesh/axiom-kit/storage/pebble"
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom-ledger/pkg/repo"
 )
@@ -96,25 +94,4 @@ func (l *Ledger) NewView() *Ledger {
 		ChainLedger: l.ChainLedger,
 		StateLedger: l.StateLedger.NewView(),
 	}
-}
-
-func OpenStateDB(file string, kv string) (storage.Storage, error) {
-	var s storage.Storage
-	var err error
-
-	if kv == "leveldb" {
-		s, err = leveldb.New(file)
-		if err != nil {
-			return nil, fmt.Errorf("init leveldb failed: %w", err)
-		}
-	} else if kv == "pebble" {
-		s, err = pebble.New(file)
-		if err != nil {
-			return nil, fmt.Errorf("init pebble failed: %w", err)
-		}
-	} else {
-		return nil, fmt.Errorf("unknow kv type %s, expect leveldb or pebble", kv)
-	}
-
-	return s, nil
 }

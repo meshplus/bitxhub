@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/axiomesh/axiom-bft/common/consensus"
 	"github.com/cbergoon/merkletree"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -15,13 +14,14 @@ import (
 	"github.com/samber/lo"
 	"github.com/sirupsen/logrus"
 
+	"github.com/axiomesh/axiom-bft/common/consensus"
 	"github.com/axiomesh/axiom-kit/types"
+	consensuscommon "github.com/axiomesh/axiom-ledger/internal/consensus/common"
 	"github.com/axiomesh/axiom-ledger/internal/executor/system"
 	"github.com/axiomesh/axiom-ledger/internal/executor/system/base"
 	syscommon "github.com/axiomesh/axiom-ledger/internal/executor/system/common"
 	"github.com/axiomesh/axiom-ledger/internal/ledger"
-	ordercommon "github.com/axiomesh/axiom-ledger/internal/order/common"
-	"github.com/axiomesh/axiom-ledger/pkg/model/events"
+	"github.com/axiomesh/axiom-ledger/pkg/events"
 	"github.com/axiomesh/eth-kit/adaptor"
 	ethvm "github.com/axiomesh/eth-kit/evm"
 )
@@ -78,7 +78,7 @@ func (exec *BlockExecutor) rollbackBlocks(newBlock *types.Block) error {
 	return nil
 }
 
-func (exec *BlockExecutor) processExecuteEvent(commitEvent *ordercommon.CommitEvent) {
+func (exec *BlockExecutor) processExecuteEvent(commitEvent *consensuscommon.CommitEvent) {
 	var txHashList []*types.Hash
 	current := time.Now()
 	block := commitEvent.Block

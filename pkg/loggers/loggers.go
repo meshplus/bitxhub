@@ -14,14 +14,14 @@ import (
 
 const (
 	P2P        = "p2p"
-	Order      = "order"
+	Consensus  = "consensus"
 	Executor   = "executor"
 	Governance = "governance"
 	Router     = "router"
 	App        = "app"
 	API        = "api"
 	CoreAPI    = "coreapi"
-	Storage    = "storage"
+	Storage    = "storagemgr"
 	Profile    = "profile"
 	Finance    = "finance"
 )
@@ -29,7 +29,7 @@ const (
 var w = &LoggerWrapper{
 	loggers: map[string]*logrus.Entry{
 		P2P:        log.NewWithModule(P2P),
-		Order:      log.NewWithModule(Order),
+		Consensus:  log.NewWithModule(Consensus),
 		Executor:   log.NewWithModule(Executor),
 		Governance: log.NewWithModule(Governance),
 		Router:     log.NewWithModule(Router),
@@ -74,14 +74,15 @@ func InitializeEthLog(logger *logrus.Entry) {
 	ethlog.Root().SetHandler(&ethHandler{logger: logger})
 }
 
-func Initialize(ctx context.Context, config *repo.Config) error {
+func Initialize(ctx context.Context, rep *repo.Repo) error {
+	config := rep.Config
 	err := log.Initialize(
 		log.WithCtx(ctx),
 		log.WithEnableCompress(config.Log.EnableCompress),
 		log.WithReportCaller(config.Log.ReportCaller),
 		log.WithEnableColor(config.Log.EnableColor),
 		log.WithPersist(true),
-		log.WithFilePath(filepath.Join(config.RepoRoot, repo.LogsDirName)),
+		log.WithFilePath(filepath.Join(rep.RepoRoot, repo.LogsDirName)),
 		log.WithFileName(config.Log.Filename),
 		log.WithMaxAge(int(config.Log.MaxAge)),
 		log.WithMaxSize(int(config.Log.MaxSize)),
@@ -94,8 +95,8 @@ func Initialize(ctx context.Context, config *repo.Config) error {
 	m := make(map[string]*logrus.Entry)
 	m[P2P] = log.NewWithModule(P2P)
 	m[P2P].Logger.SetLevel(log.ParseLevel(config.Log.Module.P2P))
-	m[Order] = log.NewWithModule(Order)
-	m[Order].Logger.SetLevel(log.ParseLevel(config.Log.Module.Consensus))
+	m[Consensus] = log.NewWithModule(Consensus)
+	m[Consensus].Logger.SetLevel(log.ParseLevel(config.Log.Module.Consensus))
 	m[Executor] = log.NewWithModule(Executor)
 	m[Executor].Logger.SetLevel(log.ParseLevel(config.Log.Module.Executor))
 	m[Governance] = log.NewWithModule(Governance)

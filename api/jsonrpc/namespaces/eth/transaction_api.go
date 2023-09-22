@@ -240,7 +240,7 @@ func (api *TransactionAPI) SendRawTransaction(data hexutil.Bytes) (common.Hash, 
 		return [32]byte{}, fmt.Errorf("check transaction fail for %s", err.Error())
 	}
 
-	if err := api.api.Broker().OrderReady(); err != nil {
+	if err := api.api.Broker().ConsensusReady(); err != nil {
 		if api.config.JsonRPC.RejectTxsIfConsensusAbnormal {
 			return [32]byte{}, fmt.Errorf("the system is temporarily unavailable %s, tx: %s", err.Error(), tx.GetHash().String())
 		}

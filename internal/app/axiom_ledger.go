@@ -17,60 +17,54 @@ import (
 	"github.com/axiomesh/axiom-kit/storage/blockfile"
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom-ledger/api/jsonrpc"
+	"github.com/axiomesh/axiom-ledger/internal/consensus"
+	"github.com/axiomesh/axiom-ledger/internal/consensus/common"
 	"github.com/axiomesh/axiom-ledger/internal/executor"
-	"github.com/axiomesh/axiom-ledger/internal/executor/executor_dev"
+	"github.com/axiomesh/axiom-ledger/internal/executor/dev"
 	"github.com/axiomesh/axiom-ledger/internal/executor/system/base"
 	"github.com/axiomesh/axiom-ledger/internal/ledger"
 	"github.com/axiomesh/axiom-ledger/internal/ledger/genesis"
-	"github.com/axiomesh/axiom-ledger/internal/order"
-	"github.com/axiomesh/axiom-ledger/internal/order/common"
-	"github.com/axiomesh/axiom-ledger/internal/peermgr"
-	"github.com/axiomesh/axiom-ledger/internal/storages"
+	"github.com/axiomesh/axiom-ledger/internal/network"
+	"github.com/axiomesh/axiom-ledger/internal/storagemgr"
 	"github.com/axiomesh/axiom-ledger/pkg/loggers"
 	"github.com/axiomesh/axiom-ledger/pkg/profile"
 	"github.com/axiomesh/axiom-ledger/pkg/repo"
 )
 
 type AxiomLedger struct {
+	Ctx           context.Context
+	Cancel        context.CancelFunc
+	repo          *repo.Repo
+	logger        logrus.FieldLogger
 	ViewLedger    *ledger.Ledger
 	BlockExecutor executor.Executor
-	Order         order.Order
-	PeerMgr       peermgr.PeerManager
-
-	repo   *repo.Repo
-	logger logrus.FieldLogger
-
+	Consensus     consensus.Consensus
+	Network       network.Network
 	Monitor       *profile.Monitor
 	Pprof         *profile.Pprof
 	LoggerWrapper *loggers.LoggerWrapper
 	Jsonrpc       *jsonrpc.ChainBrokerService
-
-	Ctx    context.Context
-	Cancel context.CancelFunc
 }
 
 func NewAxiomLedger(rep *repo.Repo, ctx context.Context, cancel context.CancelFunc) (*AxiomLedger, error) {
-	repoRoot := rep.Config.RepoRoot
-	axm, err := GenerateAxiomWithoutOrder(rep)
+	axm, err := GenerateAxiomLedgerWithoutConsensus(rep)
 	if err != nil {
-		return nil, fmt.Errorf("generate axiom-ledger without order failed: %w", err)
+		return nil, fmt.Errorf("generate axiom-ledger without consensus failed: %w", err)
 	}
 	axm.Ctx = ctx
 	axm.Cancel = cancel
 
 	chainMeta := axm.ViewLedger.ChainLedger.GetChainMeta()
 
-	order, err := order.New(
-		rep.Config.Order.Type,
-		common.WithConfig(rep.OrderConfig),
+	axm.Consensus, err = consensus.New(
+		rep.Config.Consensus.Type,
+		common.WithConfig(rep.ConsensusConfig),
 		common.WithSelfAccountAddress(rep.AccountAddress),
 		common.WithGenesisEpochInfo(rep.Config.Genesis.EpochInfo.Clone()),
-		common.WithStoragePath(repo.GetStoragePath(repoRoot, "order")),
-		common.WithStorageType(rep.Config.Ledger.Kv),
-		common.WithOrderType(rep.Config.Order.Type),
+		common.WithConsensusType(rep.Config.Consensus.Type),
 		common.WithPrivKey(rep.AccountKey),
-		common.WithPeerManager(axm.PeerMgr),
-		common.WithLogger(loggers.Logger(loggers.Order)),
+		common.WithNetwork(axm.Network),
+		common.WithLogger(loggers.Logger(loggers.Consensus)),
 		common.WithApplied(chainMeta.Height),
 		common.WithDigest(chainMeta.BlockHash.String()),
 		common.WithGenesisDigest(axm.ViewLedger.ChainLedger.GetBlockHash(1).String()),
@@ -90,10 +84,8 @@ func NewAxiomLedger(rep *repo.Repo, ctx context.Context, cancel context.CancelFu
 		}),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("initialize order failed: %w", err)
+		return nil, fmt.Errorf("initialize consensus failed: %w", err)
 	}
-
-	axm.Order = order
 
 	if err := axm.raiseUlimit(rep.Config.Ulimit); err != nil {
 		return nil, fmt.Errorf("raise ulimit: %w", err)
@@ -102,20 +94,20 @@ func NewAxiomLedger(rep *repo.Repo, ctx context.Context, cancel context.CancelFu
 	return axm, nil
 }
 
-func GenerateAxiomWithoutOrder(rep *repo.Repo) (*AxiomLedger, error) {
-	repoRoot := rep.Config.RepoRoot
+func GenerateAxiomLedgerWithoutConsensus(rep *repo.Repo) (*AxiomLedger, error) {
+	repoRoot := rep.RepoRoot
 	logger := loggers.Logger(loggers.App)
 
-	if err := storages.Initialize(repoRoot, rep.Config.Ledger.Kv); err != nil {
-		return nil, fmt.Errorf("storages initialize: %w", err)
+	if err := storagemgr.Initialize(repoRoot, rep.Config.Ledger.Kv); err != nil {
+		return nil, fmt.Errorf("storagemgr initialize: %w", err)
 	}
 
-	bcStorage, err := storages.Get(storages.BlockChain)
+	bcStorage, err := storagemgr.Open(storagemgr.BlockChain)
 	if err != nil {
-		return nil, fmt.Errorf("create blockchain storage: %w", err)
+		return nil, fmt.Errorf("create blockchain storagemgr: %w", err)
 	}
 
-	stateStorage, err := ledger.OpenStateDB(repo.GetStoragePath(repoRoot, "ledger"), rep.Config.Ledger.Kv)
+	stateStorage, err := storagemgr.Open(storagemgr.Ledger)
 	if err != nil {
 		return nil, fmt.Errorf("create stateDB: %w", err)
 	}
@@ -141,17 +133,16 @@ func GenerateAxiomWithoutOrder(rep *repo.Repo) (*AxiomLedger, error) {
 	}
 
 	var txExec executor.Executor
-	log := loggers.Logger(loggers.Executor)
 	if rep.Config.Executor.Type == repo.ExecTypeDev {
-		txExec, err = executor_dev.New(log)
+		txExec, err = dev.New(loggers.Logger(loggers.Executor))
 	} else {
-		txExec, err = executor.New(rwLdg, log, rep)
+		txExec, err = executor.New(rwLdg, loggers.Logger(loggers.Executor), rep)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("create BlockExecutor: %w", err)
 	}
 
-	peerMgr, err := peermgr.New(rep, loggers.Logger(loggers.P2P), rwLdg.NewView())
+	net, err := network.New(rep, loggers.Logger(loggers.P2P), rwLdg.NewView())
 	if err != nil {
 		return nil, fmt.Errorf("create peer manager: %w", err)
 	}
@@ -161,7 +152,7 @@ func GenerateAxiomWithoutOrder(rep *repo.Repo) (*AxiomLedger, error) {
 		logger:        logger,
 		ViewLedger:    rwLdg.NewView(),
 		BlockExecutor: txExec,
-		PeerMgr:       peerMgr,
+		Network:       net,
 	}, nil
 }
 
@@ -173,14 +164,14 @@ func (axm *AxiomLedger) Start() error {
 		return err
 	}
 
-	if repo.SupportMultiNode[axm.repo.Config.Order.Type] {
-		if err := axm.PeerMgr.Start(); err != nil {
+	if repo.SupportMultiNode[axm.repo.Config.Consensus.Type] {
+		if err := axm.Network.Start(); err != nil {
 			return fmt.Errorf("peer manager start: %w", err)
 		}
 	}
 
-	if err := axm.Order.Start(); err != nil {
-		return fmt.Errorf("order start: %w", err)
+	if err := axm.Consensus.Start(); err != nil {
+		return fmt.Errorf("consensus start: %w", err)
 	}
 
 	if err := axm.BlockExecutor.Start(); err != nil {
@@ -199,13 +190,13 @@ func (axm *AxiomLedger) Stop() error {
 		return fmt.Errorf("block executor stop: %w", err)
 	}
 
-	if axm.repo.Config.Order.Type != repo.OrderTypeSolo {
-		if err := axm.PeerMgr.Stop(); err != nil {
+	if axm.repo.Config.Consensus.Type != repo.ConsensusTypeSolo {
+		if err := axm.Network.Stop(); err != nil {
 			return fmt.Errorf("network stop: %w", err)
 		}
 	}
 
-	axm.Order.Stop()
+	axm.Consensus.Stop()
 
 	axm.Cancel()
 
@@ -217,11 +208,11 @@ func (axm *AxiomLedger) Stop() error {
 func (axm *AxiomLedger) printLogo() {
 	for {
 		time.Sleep(100 * time.Millisecond)
-		err := axm.Order.Ready()
+		err := axm.Consensus.Ready()
 		if err == nil {
 			axm.logger.WithFields(logrus.Fields{
-				"order_type": axm.repo.Config.Order.Type,
-			}).Info("Order is ready")
+				"consensus_type": axm.repo.Config.Consensus.Type,
+			}).Info("Consensus is ready")
 			fig := figure.NewFigure(repo.AppName, "slant", true)
 			axm.logger.WithField(log.OnlyWriteMsgWithoutFormatterField, nil).Infof(`
 =========================================================================================

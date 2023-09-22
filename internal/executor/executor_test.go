@@ -20,13 +20,13 @@ import (
 	"github.com/axiomesh/axiom-kit/storage/leveldb"
 	"github.com/axiomesh/axiom-kit/storage/pebble"
 	"github.com/axiomesh/axiom-kit/types"
+	consensuscommon "github.com/axiomesh/axiom-ledger/internal/consensus/common"
 	"github.com/axiomesh/axiom-ledger/internal/executor/system/base"
 	"github.com/axiomesh/axiom-ledger/internal/executor/system/common"
 	"github.com/axiomesh/axiom-ledger/internal/executor/system/governance"
 	"github.com/axiomesh/axiom-ledger/internal/ledger"
 	"github.com/axiomesh/axiom-ledger/internal/ledger/mock_ledger"
-	ordercommon "github.com/axiomesh/axiom-ledger/internal/order/common"
-	"github.com/axiomesh/axiom-ledger/pkg/model/events"
+	"github.com/axiomesh/axiom-ledger/pkg/events"
 	"github.com/axiomesh/axiom-ledger/pkg/repo"
 	ethvm "github.com/axiomesh/eth-kit/evm"
 )
@@ -143,11 +143,11 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 		GasPrice:  big.NewInt(minGasPrice),
 		BlockHash: genesisBlock.BlockHash,
 	}
-	//block := &types.Block{
+	// block := &types.Block{
 	//	BlockHeader: &types.BlockHeader{
 	//		GasPrice: minGasPrice,
 	//	},
-	//}
+	// }
 
 	evs := make([]*types.Event, 0)
 	m := make(map[string]uint64)
@@ -294,7 +294,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 		remoteBlockRes := <-remoteCh
 		assert.Equal(t, blockRes, remoteBlockRes)
 
-		errorRollbackStateLedger := fmt.Errorf("rollback state ledger err")
+		errorRollbackStateLedger := errors.New("rollback state ledger err")
 		stateLedger.EXPECT().RollbackState(gomock.Any()).Return(errorRollbackStateLedger).Times(1)
 
 		// handle panic error
@@ -313,7 +313,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 	t.Run("test rollback block with error", func(t *testing.T) {
 		chainLedger.EXPECT().RollbackBlockChain(gomock.Any()).Return(nil).AnyTimes()
 		stateLedger.EXPECT().RollbackState(gomock.Any()).Return(nil).Times(1)
-		errorGetBlock := fmt.Errorf("get block error")
+		errorGetBlock := errors.New("get block error")
 		chainLedger.EXPECT().GetBlock(gomock.Any()).Return(nil, errorGetBlock).Times(1)
 		// handle panic error
 		defer func() {
@@ -333,7 +333,7 @@ func TestBlockExecutor_ExecuteBlock(t *testing.T) {
 func TestBlockExecutor_ApplyReadonlyTransactions(t *testing.T) {
 	r, err := repo.Default(t.TempDir())
 	assert.Nil(t, err)
-	repoRoot := r.Config.RepoRoot
+	repoRoot := r.RepoRoot
 	mockCtl := gomock.NewController(t)
 	chainLedger := mock_ledger.NewMockChainLedger(mockCtl)
 	stateLedger := mock_ledger.NewMockStateLedger(mockCtl)
@@ -484,8 +484,8 @@ type NodeMember struct {
 	NodeId string
 }
 
-func mockCommitEvent(blockNumber uint64, txs []*types.Transaction) *ordercommon.CommitEvent {
-	return &ordercommon.CommitEvent{
+func mockCommitEvent(blockNumber uint64, txs []*types.Transaction) *consensuscommon.CommitEvent {
+	return &consensuscommon.CommitEvent{
 		Block: mockBlock(blockNumber, txs),
 	}
 }
@@ -514,7 +514,7 @@ func mockTx(t *testing.T) *types.Transaction {
 func TestBlockExecutor_ExecuteBlock_Transfer(t *testing.T) {
 	r, err := repo.Default(t.TempDir())
 	assert.Nil(t, err)
-	repoRoot := r.Config.RepoRoot
+	repoRoot := r.RepoRoot
 
 	lBlockStorage, err := leveldb.New(filepath.Join(repoRoot, "lStorage"))
 	assert.Nil(t, err)

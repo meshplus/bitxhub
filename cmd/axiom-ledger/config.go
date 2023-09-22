@@ -56,9 +56,9 @@ var configCMD = &cli.Command{
 			Action: show,
 		},
 		{
-			Name:   "show-order",
-			Usage:  "Show the complete order config processed by the environment variable",
-			Action: showOrder,
+			Name:   "show-consensus",
+			Usage:  "Show the complete consensus config processed by the environment variable",
+			Action: showConsensus,
 		},
 		{
 			Name:   "check",
@@ -92,7 +92,7 @@ func generate(ctx *cli.Context) error {
 		return err
 	}
 	if ctx.Bool("solo") {
-		r.Config.Order.Type = repo.OrderTypeSolo
+		r.Config.Consensus.Type = repo.ConsensusTypeSolo
 	}
 	if err := r.Flush(); err != nil {
 		return err
@@ -177,7 +177,7 @@ func show(ctx *cli.Context) error {
 	return nil
 }
 
-func showOrder(ctx *cli.Context) error {
+func showConsensus(ctx *cli.Context) error {
 	p, err := getRootPath(ctx)
 	if err != nil {
 		return err
@@ -191,7 +191,7 @@ func showOrder(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	str, err := repo.MarshalConfig(r.OrderConfig)
+	str, err := repo.MarshalConfig(r.ConsensusConfig)
 	if err != nil {
 		return err
 	}

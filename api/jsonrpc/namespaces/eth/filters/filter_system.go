@@ -30,7 +30,7 @@ import (
 
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom-ledger/internal/coreapi/api"
-	events2 "github.com/axiomesh/axiom-ledger/pkg/model/events"
+	events2 "github.com/axiomesh/axiom-ledger/pkg/events"
 )
 
 // Type determines the kind of filter and is used to put the filter in to

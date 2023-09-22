@@ -8,8 +8,6 @@ bin/*
 datastore
 node_modules
 dump
-pkg/order/build
-pkg/order/storage
 scripts/build
 build_solo
 scripts/package/axiom*
@@ -32,9 +30,9 @@ goent.mod
 goent.sum
 dist
 .history
-storage
 go.work
 go.work.sum
 .env.sh
-node.key
-order.toml
+account.key
+p2p.key
+consensus.toml

@@ -6,7 +6,7 @@ const (
 	// CfgFileName is the default config name
 	CfgFileName = "config.toml"
 
-	orderCfgFileName = "order.toml"
+	consensusCfgFileName = "consensus.toml"
 
 	// defaultRepoRoot is the path to the default config dir location.
 	defaultRepoRoot = "~/.axiom-ledger"
@@ -24,9 +24,9 @@ const (
 )
 
 const (
-	OrderTypeSolo    = "solo"
-	OrderTypeRbft    = "rbft"
-	OrderTypeSoloDev = "solo_dev"
+	ConsensusTypeSolo    = "solo"
+	ConsensusTypeRbft    = "rbft"
+	ConsensusTypeSoloDev = "solo_dev"
 
 	KVStorageTypeLeveldb = "leveldb"
 	KVStorageTypePebble  = "pebble"

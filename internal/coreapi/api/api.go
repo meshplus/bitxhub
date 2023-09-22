@@ -7,7 +7,7 @@ import (
 	"github.com/axiomesh/axiom-kit/types"
 	"github.com/axiomesh/axiom-ledger/internal/executor/system/common"
 	"github.com/axiomesh/axiom-ledger/internal/ledger"
-	"github.com/axiomesh/axiom-ledger/pkg/model/events"
+	"github.com/axiomesh/axiom-ledger/pkg/events"
 	vm "github.com/axiomesh/eth-kit/evm"
 )
 
@@ -32,10 +32,7 @@ type BrokerAPI interface {
 	GetViewStateLedger() ledger.StateLedger
 	GetEvm(mes *vm.Message, vmConfig *vm.Config) (*vm.EVM, error)
 	GetSystemContract(addr *ethcommon.Address) (common.SystemContract, bool)
-
-	// OrderReady
-	OrderReady() error
-
+	ConsensusReady() error
 	GetBlockHeaders(start uint64, end uint64) ([]*types.BlockHeader, error)
 }
 

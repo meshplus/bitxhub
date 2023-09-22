@@ -25,17 +25,17 @@ type Pprof struct {
 	cancel   context.CancelFunc
 }
 
-func NewPprof(config *repo.Config) (*Pprof, error) {
-	pprof := &Pprof{
-		repoRoot: config.RepoRoot,
-		config:   &config.PProf,
-		port:     config.Port.PProf,
+func NewPprof(rep *repo.Repo) (*Pprof, error) {
+	p := &Pprof{
+		repoRoot: rep.RepoRoot,
+		config:   &rep.Config.PProf,
+		port:     rep.Config.Port.PProf,
 		logger:   loggers.Logger(loggers.Profile),
 	}
 
-	pprof.init()
+	p.init()
 
-	return pprof, nil
+	return p, nil
 }
 
 func (p *Pprof) init() {
