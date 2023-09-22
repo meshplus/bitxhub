@@ -29,10 +29,10 @@ var (
 )
 
 const (
-	// CouncilProposalKey is key for CouncilProposal storagemgr
+	// CouncilProposalKey is key for CouncilProposal storage
 	CouncilProposalKey = "councilProposalKey"
 
-	// CouncilKey is key for council storagemgr
+	// CouncilKey is key for council storage
 	CouncilKey = "councilKey"
 
 	// MinCouncilMembersCount is min council members count
@@ -57,13 +57,13 @@ type CouncilProposalArgs struct {
 	CouncilExtraArgs
 }
 
-// CouncilProposal is storagemgr of council proposal
+// CouncilProposal is storage of council proposal
 type CouncilProposal struct {
 	BaseProposal
 	Candidates []*CouncilMember
 }
 
-// Council is storagemgr of council
+// Council is storage of council
 type Council struct {
 	Members []*CouncilMember
 }

@@ -15,7 +15,7 @@ func newTransientStorage() transientStorage {
 	return make(transientStorage)
 }
 
-// Set sets the transient-storagemgr `value` for `key` at the given `addr`.
+// Set sets the transient-storage `value` for `key` at the given `addr`.
 func (t transientStorage) Set(addr types.Address, key, value common.Hash) {
 	if _, ok := t[addr]; !ok {
 		t[addr] = make(state.Storage)
@@ -23,7 +23,7 @@ func (t transientStorage) Set(addr types.Address, key, value common.Hash) {
 	t[addr][key] = value
 }
 
-// Get gets the transient storagemgr for `key` at the given `addr`.
+// Get gets the transient storage for `key` at the given `addr`.
 func (t transientStorage) Get(addr types.Address, key common.Hash) common.Hash {
 	val, ok := t[addr]
 	if !ok {

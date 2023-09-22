@@ -205,7 +205,7 @@ func Load(repoRoot string) (*Repo, error) {
 }
 
 func GetStoragePath(repoRoot string, subPath ...string) string {
-	p := filepath.Join(repoRoot, "storagemgr")
+	p := filepath.Join(repoRoot, "storage")
 	for _, s := range subPath {
 		p = filepath.Join(p, s)
 	}

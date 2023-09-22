@@ -21,7 +21,7 @@ const (
 	App        = "app"
 	API        = "api"
 	CoreAPI    = "coreapi"
-	Storage    = "storagemgr"
+	Storage    = "storage"
 	Profile    = "profile"
 	Finance    = "finance"
 )

@@ -68,8 +68,10 @@ func AriesConfig() *Config {
 		Consensus: Consensus{
 			Type: ConsensusTypeRbft,
 		},
+		Storage: Storage{
+			KvType: KVStorageTypeLeveldb,
+		},
 		Ledger: Ledger{
-			Kv: KVStorageTypeLeveldb,
 		},
 		Executor: Executor{
 			Type: ExecTypeNative,

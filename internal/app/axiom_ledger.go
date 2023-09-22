@@ -98,13 +98,13 @@ func GenerateAxiomLedgerWithoutConsensus(rep *repo.Repo) (*AxiomLedger, error) {
 	repoRoot := rep.RepoRoot
 	logger := loggers.Logger(loggers.App)
 
-	if err := storagemgr.Initialize(repoRoot, rep.Config.Ledger.Kv); err != nil {
+	if err := storagemgr.Initialize(repoRoot, rep.Config.Storage.KvType); err != nil {
 		return nil, fmt.Errorf("storagemgr initialize: %w", err)
 	}
 
 	bcStorage, err := storagemgr.Open(storagemgr.BlockChain)
 	if err != nil {
-		return nil, fmt.Errorf("create blockchain storagemgr: %w", err)
+		return nil, fmt.Errorf("create blockchain storage: %w", err)
 	}
 
 	stateStorage, err := storagemgr.Open(storagemgr.Ledger)
