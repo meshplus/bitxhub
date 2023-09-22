@@ -3,7 +3,7 @@ package app
 import (
 	"github.com/sirupsen/logrus"
 
-	"github.com/axiomesh/axiom-ledger/pkg/model/events"
+	"github.com/axiomesh/axiom-ledger/pkg/events"
 )
 
 func (axm *AxiomLedger) start() {
@@ -12,7 +12,7 @@ func (axm *AxiomLedger) start() {
 	go func() {
 		for {
 			select {
-			case commitEvent := <-axm.Order.Commit():
+			case commitEvent := <-axm.Consensus.Commit():
 				axm.logger.WithFields(logrus.Fields{
 					"height": commitEvent.Block.BlockHeader.Number,
 					"count":  len(commitEvent.Block.Transactions),
@@ -33,7 +33,7 @@ func (axm *AxiomLedger) listenEvent() {
 	for {
 		select {
 		case ev := <-blockCh:
-			axm.Order.ReportState(ev.Block.BlockHeader.Number, ev.Block.BlockHash, ev.TxHashList, ev.StateUpdatedCheckpoint)
+			axm.Consensus.ReportState(ev.Block.BlockHeader.Number, ev.Block.BlockHash, ev.TxHashList, ev.StateUpdatedCheckpoint)
 		case <-axm.Ctx.Done():
 			return
 		}

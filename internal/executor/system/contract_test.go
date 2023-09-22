@@ -63,7 +63,7 @@ func TestContractInitGenesisData(t *testing.T) {
 	}
 
 	repoRoot := t.TempDir()
-	genesis := repo.DefaultConfig(repoRoot, false)
+	genesis := repo.DefaultConfig(false)
 	accountCache, err := ledger.NewAccountCache()
 	assert.Nil(t, err)
 	ld, err := leveldb.New(filepath.Join(repoRoot, "executor"))

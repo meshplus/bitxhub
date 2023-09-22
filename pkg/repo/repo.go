@@ -24,12 +24,13 @@ import (
 )
 
 type Repo struct {
-	Config         *Config
-	OrderConfig    *OrderConfig
-	AccountKey     *ecdsa.PrivateKey
-	AccountAddress string
-	P2PKey         *ecdsa.PrivateKey
-	P2PID          string
+	RepoRoot        string
+	Config          *Config
+	ConsensusConfig *ConsensusConfig
+	AccountKey      *ecdsa.PrivateKey
+	AccountAddress  string
+	P2PKey          *ecdsa.PrivateKey
+	P2PID           string
 
 	// TODO: Move to epoch manager service
 	// Track current epoch info, will be updated bt executor
@@ -37,7 +38,7 @@ type Repo struct {
 }
 
 func (r *Repo) PrintNodeInfo() {
-	fmt.Printf("%s-repo: %s\n", AppName, r.Config.RepoRoot)
+	fmt.Printf("%s-repo: %s\n", AppName, r.RepoRoot)
 	fmt.Println("account-addr:", r.AccountAddress)
 	fmt.Println("account-key:", KeyString(r.AccountKey))
 	fmt.Println("p2p-id:", r.P2PID)
@@ -59,16 +60,16 @@ func (r *Repo) AccountKeySign(data []byte) ([]byte, error) {
 }
 
 func (r *Repo) Flush() error {
-	if err := writeConfigWithEnv(path.Join(r.Config.RepoRoot, CfgFileName), r.Config); err != nil {
+	if err := writeConfigWithEnv(path.Join(r.RepoRoot, CfgFileName), r.Config); err != nil {
 		return errors.Wrap(err, "failed to write config")
 	}
-	if err := writeConfigWithEnv(path.Join(r.Config.RepoRoot, orderCfgFileName), r.OrderConfig); err != nil {
-		return errors.Wrap(err, "failed to write order config")
+	if err := writeConfigWithEnv(path.Join(r.RepoRoot, consensusCfgFileName), r.ConsensusConfig); err != nil {
+		return errors.Wrap(err, "failed to write consensus config")
 	}
-	if err := WriteKey(path.Join(r.Config.RepoRoot, p2pKeyFileName), r.P2PKey); err != nil {
+	if err := WriteKey(path.Join(r.RepoRoot, p2pKeyFileName), r.P2PKey); err != nil {
 		return errors.Wrap(err, "failed to write node key")
 	}
-	if err := WriteKey(path.Join(r.Config.RepoRoot, AccountKeyFileName), r.AccountKey); err != nil {
+	if err := WriteKey(path.Join(r.RepoRoot, AccountKeyFileName), r.AccountKey); err != nil {
 		return errors.Wrap(err, "failed to write node key")
 	}
 	return nil
@@ -144,17 +145,18 @@ func DefaultWithNodeIndex(repoRoot string, nodeIndex int, epochEnable bool) (*Re
 		return nil, err
 	}
 
-	cfg := DefaultConfig(repoRoot, epochEnable)
+	cfg := DefaultConfig(epochEnable)
 	cfg.Port.P2P = int64(4001 + nodeIndex)
 
 	return &Repo{
-		Config:         cfg,
-		OrderConfig:    DefaultOrderConfig(),
-		AccountKey:     accountKey,
-		AccountAddress: ethcrypto.PubkeyToAddress(accountKey.PublicKey).String(),
-		P2PKey:         p2pKey,
-		P2PID:          id,
-		EpochInfo:      cfg.Genesis.EpochInfo,
+		RepoRoot:        repoRoot,
+		Config:          cfg,
+		ConsensusConfig: DefaultConsensusConfig(),
+		AccountKey:      accountKey,
+		AccountAddress:  ethcrypto.PubkeyToAddress(accountKey.PublicKey).String(),
+		P2PKey:          p2pKey,
+		P2PID:           id,
+		EpochInfo:       cfg.Genesis.EpochInfo,
 	}, nil
 }
 
@@ -183,26 +185,27 @@ func Load(repoRoot string) (*Repo, error) {
 		return nil, err
 	}
 
-	orderCfg, err := LoadOrderConfig(repoRoot)
+	consensusCfg, err := LoadConsensusConfig(repoRoot)
 	if err != nil {
 		return nil, err
 	}
 
 	repo := &Repo{
-		Config:         cfg,
-		OrderConfig:    orderCfg,
-		AccountKey:     accountKey,
-		AccountAddress: ethcrypto.PubkeyToAddress(accountKey.PublicKey).String(),
-		P2PKey:         p2pKey,
-		P2PID:          id,
-		EpochInfo:      cfg.Genesis.EpochInfo,
+		RepoRoot:        repoRoot,
+		Config:          cfg,
+		ConsensusConfig: consensusCfg,
+		AccountKey:      accountKey,
+		AccountAddress:  ethcrypto.PubkeyToAddress(accountKey.PublicKey).String(),
+		P2PKey:          p2pKey,
+		P2PID:           id,
+		EpochInfo:       cfg.Genesis.EpochInfo,
 	}
 
 	return repo, nil
 }
 
 func GetStoragePath(repoRoot string, subPath ...string) string {
-	p := filepath.Join(repoRoot, "storage")
+	p := filepath.Join(repoRoot, "storagemgr")
 	for _, s := range subPath {
 		p = filepath.Join(p, s)
 	}

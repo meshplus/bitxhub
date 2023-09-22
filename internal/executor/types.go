@@ -4,8 +4,8 @@ import (
 	"github.com/ethereum/go-ethereum/event"
 
 	"github.com/axiomesh/axiom-kit/types"
-	"github.com/axiomesh/axiom-ledger/internal/order/common"
-	"github.com/axiomesh/axiom-ledger/pkg/model/events"
+	"github.com/axiomesh/axiom-ledger/internal/consensus/common"
+	"github.com/axiomesh/axiom-ledger/pkg/events"
 	vm "github.com/axiomesh/eth-kit/evm"
 )
 

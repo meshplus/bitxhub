@@ -24,7 +24,7 @@ func NewAxmAPI(config *repo.Config, api api.CoreAPI, logger logrus.FieldLogger) 
 
 func (api *AxmAPI) Status() any {
 	syncStatus := make(map[string]string)
-	err := api.api.Broker().OrderReady()
+	err := api.api.Broker().ConsensusReady()
 	if err != nil {
 		syncStatus["status"] = "abnormal"
 		syncStatus["error_msg"] = err.Error()

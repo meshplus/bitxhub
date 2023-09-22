@@ -19,7 +19,7 @@ import (
 type BrokerAPI CoreAPI
 
 func (b *BrokerAPI) GetTotalPendingTxCount() uint64 {
-	return b.axiomLedger.Order.GetTotalPendingTxCount()
+	return b.axiomLedger.Consensus.GetTotalPendingTxCount()
 }
 
 var _ api.BrokerAPI = (*BrokerAPI)(nil)
@@ -33,8 +33,8 @@ func (b *BrokerAPI) HandleTransaction(tx *types.Transaction) error {
 		"hash": tx.GetHash().String(),
 	}).Debugf("Receive tx")
 
-	if err := b.axiomLedger.Order.Prepare(tx); err != nil {
-		return fmt.Errorf("order prepare for tx %s failed: %w", tx.GetHash().String(), err)
+	if err := b.axiomLedger.Consensus.Prepare(tx); err != nil {
+		return fmt.Errorf("consensus prepare for tx %s failed: %w", tx.GetHash().String(), err)
 	}
 
 	return nil
@@ -107,16 +107,16 @@ func (b *BrokerAPI) GetBlockHeaders(start uint64, end uint64) ([]*types.BlockHea
 	return blockHeaders, nil
 }
 
-func (b *BrokerAPI) OrderReady() error {
-	return b.axiomLedger.Order.Ready()
+func (b *BrokerAPI) ConsensusReady() error {
+	return b.axiomLedger.Consensus.Ready()
 }
 
 func (b *BrokerAPI) GetPendingTxCountByAccount(account string) uint64 {
-	return b.axiomLedger.Order.GetPendingTxCountByAccount(account)
+	return b.axiomLedger.Consensus.GetPendingTxCountByAccount(account)
 }
 
 func (b *BrokerAPI) GetPoolTransaction(hash *types.Hash) *types.Transaction {
-	return b.axiomLedger.Order.GetPendingTxByHash(hash)
+	return b.axiomLedger.Consensus.GetPendingTxByHash(hash)
 }
 
 func (b *BrokerAPI) GetViewStateLedger() ledger.StateLedger {

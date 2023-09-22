@@ -61,19 +61,17 @@ func (d *Duration) String() string {
 }
 
 type Config struct {
-	RepoRoot string `mapstructure:"-" toml:"-"`
-
-	Ulimit   uint64   `mapstructure:"ulimit" toml:"ulimit"`
-	Port     Port     `mapstructure:"port" toml:"port"`
-	JsonRPC  JsonRPC  `mapstructure:"jsonrpc" toml:"jsonrpc"`
-	P2P      P2P      `mapstructure:"p2p" toml:"p2p"`
-	Order    Order    `mapstructure:"order" toml:"order"`
-	Ledger   Ledger   `mapstructure:"ledger" toml:"ledger"`
-	Executor Executor `mapstructure:"executor" toml:"executor"`
-	Genesis  Genesis  `mapstructure:"genesis" toml:"genesis"`
-	PProf    PProf    `mapstructure:"pprof" toml:"pprof"`
-	Monitor  Monitor  `mapstructure:"monitor" toml:"monitor"`
-	Log      Log      `mapstructure:"log" toml:"log"`
+	Ulimit    uint64    `mapstructure:"ulimit" toml:"ulimit"`
+	Port      Port      `mapstructure:"port" toml:"port"`
+	JsonRPC   JsonRPC   `mapstructure:"jsonrpc" toml:"jsonrpc"`
+	P2P       P2P       `mapstructure:"p2p" toml:"p2p"`
+	Consensus Consensus `mapstructure:"consensus" toml:"consensus"`
+	Ledger    Ledger    `mapstructure:"ledger" toml:"ledger"`
+	Executor  Executor  `mapstructure:"executor" toml:"executor"`
+	Genesis   Genesis   `mapstructure:"genesis" toml:"genesis"`
+	PProf     PProf     `mapstructure:"pprof" toml:"pprof"`
+	Monitor   Monitor   `mapstructure:"monitor" toml:"monitor"`
+	Log       Log       `mapstructure:"log" toml:"log"`
 }
 
 type Port struct {
@@ -169,7 +167,7 @@ type LogModule struct {
 	Router     string `mapstructure:"router" toml:"router"`
 	API        string `mapstructure:"api" toml:"api"`
 	CoreAPI    string `mapstructure:"coreapi" toml:"coreapi"`
-	Storage    string `mapstructure:"storage" toml:"storage"`
+	Storage    string `mapstructure:"storagemgr" toml:"storagemgr"`
 	Profile    string `mapstructure:"profile" toml:"profile"`
 	TSS        string `mapstructure:"tss" toml:"tss"`
 	Finance    string `mapstructure:"finance" toml:"finance"`
@@ -194,7 +192,7 @@ type Admin struct {
 	Name    string `mapstructure:"name" toml:"name"`
 }
 
-type Order struct {
+type Consensus struct {
 	Type string `mapstructure:"type" toml:"type"`
 }
 
@@ -209,10 +207,10 @@ type Executor struct {
 var SupportMultiNode = make(map[string]bool)
 var registrationMutex sync.Mutex
 
-func Register(orderType string, isSupported bool) {
+func Register(consensusType string, isSupported bool) {
 	registrationMutex.Lock()
 	defer registrationMutex.Unlock()
-	SupportMultiNode[orderType] = isSupported
+	SupportMultiNode[consensusType] = isSupported
 }
 
 func (c *Config) Bytes() ([]byte, error) {
@@ -266,13 +264,12 @@ func GenesisEpochInfo(epochEnable bool) *rbft.EpochInfo {
 	}
 }
 
-func DefaultConfig(repoRoot string, epochEnable bool) *Config {
-	if BuildNet == AriesTestnetName {
-		return AriesConfig(repoRoot)
+func DefaultConfig(epochEnable bool) *Config {
+	if testNetConfigBuilder, ok := TestNetConfigBuilderMap[BuildNet]; ok {
+		return testNetConfigBuilder()
 	}
 	return &Config{
-		RepoRoot: repoRoot,
-		Ulimit:   65535,
+		Ulimit: 65535,
 		Port: Port{
 			JsonRpc:   8881,
 			WebSocket: 9991,
@@ -315,8 +312,8 @@ func DefaultConfig(repoRoot string, epochEnable bool) *Config {
 				},
 			},
 		},
-		Order: Order{
-			Type: OrderTypeRbft,
+		Consensus: Consensus{
+			Type: ConsensusTypeRbft,
 		},
 		Ledger: Ledger{
 			Kv: KVStorageTypeLeveldb,
@@ -400,7 +397,7 @@ func DefaultConfig(repoRoot string, epochEnable bool) *Config {
 
 func LoadConfig(repoRoot string) (*Config, error) {
 	cfg, err := func() (*Config, error) {
-		cfg := DefaultConfig(repoRoot, false)
+		cfg := DefaultConfig(false)
 		cfgPath := path.Join(repoRoot, CfgFileName)
 		existConfig := fileutil.Exist(cfgPath)
 		if !existConfig {

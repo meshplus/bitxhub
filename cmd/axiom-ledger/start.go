@@ -40,7 +40,7 @@ func start(ctx *cli.Context) error {
 	}
 
 	appCtx, cancel := context.WithCancel(ctx.Context)
-	if err := loggers.Initialize(appCtx, r.Config); err != nil {
+	if err := loggers.Initialize(appCtx, r); err != nil {
 		cancel()
 		return err
 	}
@@ -63,7 +63,7 @@ func start(ctx *cli.Context) error {
 		return err
 	}
 
-	pprof, err := profile.NewPprof(r.Config)
+	pprof, err := profile.NewPprof(r)
 	if err != nil {
 		return err
 	}
@@ -99,13 +99,13 @@ func start(ctx *cli.Context) error {
 		return fmt.Errorf("start axiom-ledger failed: %w", err)
 	}
 
-	if err := repo.WritePid(r.Config.RepoRoot); err != nil {
+	if err := repo.WritePid(r.RepoRoot); err != nil {
 		return fmt.Errorf("write pid error: %s", err)
 	}
 
 	wg.Wait()
 
-	if err := repo.RemovePID(r.Config.RepoRoot); err != nil {
+	if err := repo.RemovePID(r.RepoRoot); err != nil {
 		return fmt.Errorf("remove pid error: %s", err)
 	}
 

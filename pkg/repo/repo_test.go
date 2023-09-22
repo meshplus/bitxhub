@@ -10,10 +10,11 @@ import (
 )
 
 func TestRepoLoad(t *testing.T) {
-	cfg, err := LoadConfig(t.TempDir())
+	repoRoot := t.TempDir()
+	cfg, err := LoadConfig(repoRoot)
 	assert.Nil(t, err)
 
-	cfg2, err := LoadConfig(cfg.RepoRoot)
+	cfg2, err := LoadConfig(repoRoot)
 	assert.Nil(t, err)
 	assert.EqualValues(t, cfg, cfg2)
 
@@ -49,7 +50,7 @@ func TestRepoLoad(t *testing.T) {
 	}
 	for idx, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			errorCfgPath := path.Join(cfg.RepoRoot, fmt.Sprintf("errorCfg_%d.toml", idx))
+			errorCfgPath := path.Join(repoRoot, fmt.Sprintf("errorCfg_%d.toml", idx))
 			err = os.WriteFile(errorCfgPath, []byte(tt.cfg), 0755)
 			assert.Nil(t, err)
 			err = readConfigFromFile(errorCfgPath, &Config{})

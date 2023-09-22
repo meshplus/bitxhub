@@ -88,7 +88,7 @@ type StorageResult struct {
 }
 
 // todo
-// GetProof returns the Merkle-proof for a given account and optionally some storage keys.
+// GetProof returns the Merkle-proof for a given account and optionally some storagemgr keys.
 func (api *BlockChainAPI) GetProof(address common.Address, storageKeys []string, blockNrOrHash *rpctypes.BlockNumberOrHash) (*AccountResult, error) {
 	return nil, ErrNotSupportApiError
 }
@@ -138,7 +138,7 @@ func (api *BlockChainAPI) GetCode(address common.Address, blockNrOrHash *rpctype
 	return code, nil
 }
 
-// GetStorageAt returns the contract storage at the given address and key, blockNum is ignored.
+// GetStorageAt returns the contract storagemgr at the given address and key, blockNum is ignored.
 func (api *BlockChainAPI) GetStorageAt(address common.Address, key string, blockNrOrHash *rpctypes.BlockNumberOrHash) (ethhexutil.Bytes, error) {
 	api.logger.Debugf("eth_getStorageAt, address: %s, key: %s", address, key)
 

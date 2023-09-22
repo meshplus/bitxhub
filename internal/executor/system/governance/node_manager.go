@@ -18,10 +18,10 @@ const (
 	NodeManagementProposalGas uint64 = 30000
 	NodeManagementVoteGas     uint64 = 21600
 
-	// NodeProposalKey is key for NodeProposal storage
+	// NodeProposalKey is key for NodeProposal storagemgr
 	NodeProposalKey = "nodeProposalKey"
 
-	// NodeMembersKey is key for node member storage
+	// NodeMembersKey is key for node member storagemgr
 	NodeMembersKey = "nodeMembersKey"
 )
 
@@ -49,7 +49,7 @@ type NodeProposalArgs struct {
 	NodeExtraArgs
 }
 
-// NodeProposal is storage of node proposal
+// NodeProposal is storagemgr of node proposal
 type NodeProposal struct {
 	BaseProposal
 	NodeExtraArgs
