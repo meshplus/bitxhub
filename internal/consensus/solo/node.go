@@ -397,7 +397,7 @@ func (n *Node) listenReadyBlock() {
 				BlockHeader: &types.BlockHeader{
 					Epoch:           1,
 					Number:          n.lastExec + 1,
-					Timestamp:       e.Timestamp,
+					Timestamp:       e.Timestamp / int64(time.Second),
 					ProposerAccount: n.config.SelfAccountAddress,
 				},
 				Transactions: e.TxList,
