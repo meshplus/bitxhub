@@ -25,6 +25,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/axiomesh/axiom-ledger/pkg/repo"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -55,6 +56,7 @@ type filter struct {
 // FilterAPI offers support to create and manage filters. This will allow external clients to retrieve various
 // information related to the Ethereum protocol such als blocks, transactions and logs.
 type FilterAPI struct {
+	config    *repo.Config
 	api       api.CoreAPI
 	mux       *event.TypeMux
 	quit      chan struct{}
@@ -66,8 +68,9 @@ type FilterAPI struct {
 }
 
 // NewPublicFilterAPI returns a new PublicFilterAPI instance.
-func NewAPI(api api.CoreAPI, logger logrus.FieldLogger) *FilterAPI {
+func NewAPI(config *repo.Config, api api.CoreAPI, logger logrus.FieldLogger) *FilterAPI {
 	filterAPI := &FilterAPI{
+		config:  config,
 		api:     api,
 		events:  NewEventSystem(api, false),
 		filters: make(map[rpc.ID]*filter),
@@ -400,6 +403,9 @@ func (api *FilterAPI) GetLogs(ctx context.Context, ethCrit FilterCriteria) ([]*e
 		begin := rpc.LatestBlockNumber.Int64()
 		if crit.FromBlock != nil {
 			begin = crit.FromBlock.Int64()
+			if crit.FromBlock.Int64() == rpc.EarliestBlockNumber.Int64() {
+				begin = int64(api.config.Genesis.EpochInfo.StartBlock)
+			}
 		}
 		end := rpc.LatestBlockNumber.Int64()
 		if crit.ToBlock != nil {
@@ -456,6 +462,9 @@ func (api *FilterAPI) GetFilterLogs(ctx context.Context, id rpc.ID) ([]*ethereum
 		begin := rpc.LatestBlockNumber.Int64()
 		if f.crit.FromBlock != nil {
 			begin = f.crit.FromBlock.Int64()
+			if f.crit.FromBlock.Int64() == rpc.EarliestBlockNumber.Int64() {
+				begin = int64(api.config.Genesis.EpochInfo.StartBlock)
+			}
 		}
 		end := rpc.LatestBlockNumber.Int64()
 		if f.crit.ToBlock != nil {
