@@ -58,7 +58,7 @@ func GetAPIs(config *repo.Config, api api.CoreAPI, logger logrus.FieldLogger) ([
 		rpc.API{
 			Namespace: EthNamespace,
 			Version:   apiVersion,
-			Service:   filters.NewAPI(api, logger),
+			Service:   filters.NewAPI(config, api, logger),
 			Public:    true,
 		},
 	)
