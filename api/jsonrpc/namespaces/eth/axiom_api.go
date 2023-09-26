@@ -21,6 +21,7 @@ type AxiomAPI struct {
 	config *repo.Config
 	api    api.CoreAPI
 	logger logrus.FieldLogger
+	abc    int
 }
 
 func NewAxiomAPI(config *repo.Config, api api.CoreAPI, logger logrus.FieldLogger) *AxiomAPI {
