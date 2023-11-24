@@ -201,6 +201,7 @@ func (x *InterchainManager) setInterchain(id string, interchain *pb.Interchain) 
 }
 
 func (x *InterchainManager) GetInterchainInfo(chainId string) *boltvm.Response {
+	x.Logger().Infof("param chainID: %s", chainId)
 	interchain, ok := x.getInterchain(chainId)
 	info := &InterchainInfo{
 		ChainId:            chainId,
@@ -218,12 +219,20 @@ func (x *InterchainManager) GetInterchainInfo(chainId string) *boltvm.Response {
 	for _, counter := range interchain.InterchainCounter {
 		info.InterchainCounter += counter
 	}
+	x.Logger().Infof("info.InterchainCounter: %d", info.InterchainCounter)
 
 	for _, counter := range interchain.ReceiptCounter {
 		info.ReceiptCounter += counter
 	}
+	x.Logger().Infof("info.ReceiptCounter: %d", info.ReceiptCounter)
 	x.GetObject(x.indexSendInterchainMeta(chainId), &info.SendInterchains)
+	for i, si := range info.SendInterchains {
+		x.Logger().Infof("info.SendInterchains[%d]: %v", i, *si)
+	}
 	x.GetObject(x.indexReceiptInterchainMeta(chainId), &info.ReceiptInterchains)
+	for j, ri := range info.ReceiptInterchains {
+		x.Logger().Infof("info.ReceiptInterchains[%d]: %v", j, *ri)
+	}
 	data, err := json.Marshal(&info)
 	if err != nil {
 		return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), err.Error()))
@@ -440,9 +449,10 @@ func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *pb.Interchain
 			Timestamp:   x.GetTxTimeStamp(),
 		}
 		x.setInterchainMeta(x.indexSendInterchainMeta(ibtp.From), meta)
-
+		x.Logger().Infof("[from-side] put %s:%v into ledger", x.indexSendInterchainMeta(ibtp.From), *meta)
 		meta.TargetChain = ibtp.From
 		x.setInterchainMeta(x.indexReceiptInterchainMeta(ibtp.To), meta)
+		x.Logger().Infof("[to-side] put %s:%v into ledger", x.indexReceiptInterchainMeta(ibtp.To), *meta)
 	} else {
 		interchain.ReceiptCounter[ibtp.To] = ibtp.Index
 		x.setInterchain(ibtp.From, interchain)
