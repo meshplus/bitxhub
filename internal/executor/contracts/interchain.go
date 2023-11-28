@@ -444,15 +444,15 @@ func (x *InterchainManager) ProcessIBTP(ibtp *pb.IBTP, interchain *pb.Interchain
 		x.setInterchain(ibtp.To, ic)
 
 		meta := &InterchainMeta{
-			TargetChain: ibtp.To,
+			TargetChain: dstChainService.ChainId,
 			TxHash:      x.GetTxHash().String(),
 			Timestamp:   x.GetTxTimeStamp(),
 		}
-		x.setInterchainMeta(x.indexSendInterchainMeta(ibtp.From), meta)
-		x.Logger().Infof("[from-side] put %s:%v into ledger", x.indexSendInterchainMeta(ibtp.From), *meta)
-		meta.TargetChain = ibtp.From
-		x.setInterchainMeta(x.indexReceiptInterchainMeta(ibtp.To), meta)
-		x.Logger().Infof("[to-side] put %s:%v into ledger", x.indexReceiptInterchainMeta(ibtp.To), *meta)
+		x.setInterchainMeta(x.indexSendInterchainMeta(srcChainService.ChainId), meta)
+		x.Logger().Infof("[from-side] put %s:%v into ledger", x.indexSendInterchainMeta(srcChainService.ChainId), *meta)
+		meta.TargetChain = srcChainService.ChainId
+		x.setInterchainMeta(x.indexReceiptInterchainMeta(dstChainService.ChainId), meta)
+		x.Logger().Infof("[to-side] put %s:%v into ledger", x.indexReceiptInterchainMeta(dstChainService.ChainId), *meta)
 	} else {
 		interchain.ReceiptCounter[ibtp.To] = ibtp.Index
 		x.setInterchain(ibtp.From, interchain)
