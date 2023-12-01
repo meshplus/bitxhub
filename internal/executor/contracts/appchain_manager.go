@@ -654,10 +654,48 @@ func (am *AppchainManager) UpdateAppchain(id, name, desc string, trustRoot []byt
 	return getGovernanceRet(string(res.Result), nil)
 }
 
+type BasicAppChainInfoView struct {
+	ChainInfo  *appchainMgr.Appchain `json:"chain"`
+	MasterRule *ruleMgr.Rule
+}
+
 // =========== FreezeAppchain freezes appchain
 func (am *AppchainManager) FreezeAppchain(id, reason string) *boltvm.Response {
 	am.AppchainManager.Persister = am.Stub
-	res := am.basicGovernance(id, reason, []string{string(PermissionAdmin)}, governance.EventFreeze)
+	// getChainInfo
+	chain, err := am.AppchainManager.QueryById(id, nil)
+	if err != nil {
+		return boltvm.Error(boltvm.AppchainNonexistentChainCode, fmt.Sprintf(string(boltvm.AppchainNonexistentChainMsg), id, err.Error()))
+	}
+	// get masterRule
+	var masterRule ruleMgr.Rule
+	ruleRes := am.CrossInvoke(constant.RuleManagerContractAddr.Address().String(), "GetMasterRule", pb.String(id))
+	if ruleRes.Ok {
+		err = json.Unmarshal(ruleRes.Result, &masterRule)
+		// whether error occur or not, rule can be directly used
+		if err != nil {
+			am.Logger().Warnf("appchain masterRule unmarshal error: %s", err.Error())
+		}
+	} else {
+		am.Logger().Infof("appchain has no masterRule")
+	}
+	// getAdmins
+	var admins []string
+	exist := am.GetObject(appchainMgr.AppAdminsChainKey(chain.(*appchainMgr.Appchain).ID), admins)
+	if !exist {
+		am.Logger().Infof("appchain has no admins")
+	}
+
+	// use `RegisterAppchainInfo` as view object
+	extra, err := json.Marshal(&RegisterAppchainInfo{
+		ChainInfo:  chain.(*appchainMgr.Appchain),
+		MasterRule: &masterRule,
+		AdminAddrs: strings.Join(admins, ","),
+	})
+	if err != nil {
+		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf("chainID: %s, error: %s", id, err.Error()))
+	}
+	res := am.basicGovernance(id, reason, []string{string(PermissionAdmin)}, governance.EventFreeze, extra)
 	if !res.Ok {
 		return res
 	}
@@ -674,6 +712,11 @@ func (am *AppchainManager) ActivateAppchain(id, reason string) *boltvm.Response 
 	am.AppchainManager.Persister = am.Stub
 	event := governance.EventActivate
 
+	// getChainInfo
+	chain, err := am.AppchainManager.QueryById(id, nil)
+	if err != nil {
+		return boltvm.Error(boltvm.AppchainNonexistentChainCode, fmt.Sprintf(string(boltvm.AppchainNonexistentChainMsg), id, err.Error()))
+	}
 	// check rule
 	res := am.CrossInvoke(constant.RuleManagerContractAddr.Address().String(), "GetMasterRule", pb.String(id))
 	if !res.Ok {
@@ -686,8 +729,24 @@ func (am *AppchainManager) ActivateAppchain(id, reason string) *boltvm.Response 
 	if rule.Status != governance.GovernanceAvailable {
 		return boltvm.Error(boltvm.AppchainRuleUpdatingCode, fmt.Sprintf(string(boltvm.AppchainRuleUpdatingMsg), rule.Address, string(event), id))
 	}
+	// getAdmins
+	var admins []string
+	exist := am.GetObject(appchainMgr.AppAdminsChainKey(chain.(*appchainMgr.Appchain).ID), admins)
+	if !exist {
+		am.Logger().Infof("appchain has no admins")
+	}
 
-	res = am.basicGovernance(id, reason, []string{string(PermissionSelf), string(PermissionAdmin)}, event)
+	// use `RegisterAppchainInfo` as view object
+	extra, err := json.Marshal(&RegisterAppchainInfo{
+		ChainInfo:  chain.(*appchainMgr.Appchain),
+		MasterRule: rule,
+		AdminAddrs: strings.Join(admins, ","),
+	})
+	if err != nil {
+		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf("chainID: %s, error: %s", id, err.Error()))
+	}
+
+	res = am.basicGovernance(id, reason, []string{string(PermissionSelf), string(PermissionAdmin)}, event, extra)
 	if !res.Ok {
 		return res
 	}
@@ -702,7 +761,42 @@ func (am *AppchainManager) ActivateAppchain(id, reason string) *boltvm.Response 
 // =========== LogoutAppchain logouts appchain
 func (am *AppchainManager) LogoutAppchain(id, reason string) *boltvm.Response {
 	am.AppchainManager.Persister = am.Stub
-	governanceRes := am.basicGovernance(id, reason, []string{string(PermissionSelf)}, governance.EventLogout)
+
+	// getChainInfo
+	chain, err := am.AppchainManager.QueryById(id, nil)
+	if err != nil {
+		return boltvm.Error(boltvm.AppchainNonexistentChainCode, fmt.Sprintf(string(boltvm.AppchainNonexistentChainMsg), id, err.Error()))
+	}
+	// get masterRule
+	var masterRule ruleMgr.Rule
+	ruleRes := am.CrossInvoke(constant.RuleManagerContractAddr.Address().String(), "GetMasterRule", pb.String(id))
+	if ruleRes.Ok {
+		err = json.Unmarshal(ruleRes.Result, &masterRule)
+		// whether error occur or not, rule can be directly used
+		if err != nil {
+			am.Logger().Warnf("appchain masterRule unmarshal error: %s", err.Error())
+		}
+	} else {
+		am.Logger().Infof("appchain has no masterRule")
+	}
+	// getAdmins
+	var admins []string
+	exist := am.GetObject(appchainMgr.AppAdminsChainKey(chain.(*appchainMgr.Appchain).ID), admins)
+	if !exist {
+		am.Logger().Infof("appchain has no admins")
+	}
+
+	// use `RegisterAppchainInfo` as view object
+	extra, err := json.Marshal(&RegisterAppchainInfo{
+		ChainInfo:  chain.(*appchainMgr.Appchain),
+		MasterRule: &masterRule,
+		AdminAddrs: strings.Join(admins, ","),
+	})
+	if err != nil {
+		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf("chainID: %s, error: %s", id, err.Error()))
+	}
+
+	governanceRes := am.basicGovernance(id, reason, []string{string(PermissionSelf)}, governance.EventLogout, extra)
 	if !governanceRes.Ok {
 		return governanceRes
 	}
@@ -721,7 +815,7 @@ func (am *AppchainManager) LogoutAppchain(id, reason string) *boltvm.Response {
 	return governanceRes
 }
 
-func (am *AppchainManager) basicGovernance(id, reason string, permissions []string, event governance.EventType) *boltvm.Response {
+func (am *AppchainManager) basicGovernance(id, reason string, permissions []string, event governance.EventType, extra []byte) *boltvm.Response {
 	// 1. check permission
 	if err := am.checkPermission(permissions, id, am.CurrentCaller(), nil); err != nil {
 		return boltvm.Error(boltvm.AppchainNoPermissionCode, fmt.Sprintf(string(boltvm.AppchainNoPermissionMsg), am.CurrentCaller(), err.Error()))
@@ -742,7 +836,7 @@ func (am *AppchainManager) basicGovernance(id, reason string, permissions []stri
 		pb.String(id),
 		pb.String(string(chainInfo.Status)),
 		pb.String(reason),
-		pb.Bytes(nil),
+		pb.Bytes(extra),
 	)
 	if !res.Ok {
 		return boltvm.Error(boltvm.AppchainInternalErrCode, fmt.Sprintf(string(boltvm.AppchainInternalErrMsg), fmt.Sprintf("submit proposal error: %s", string(res.Result))))
