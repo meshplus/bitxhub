@@ -221,7 +221,7 @@ func (x *InterchainManager) GetInterchainInfo(chainId string) *boltvm.Response {
 	} else {
 		x.Logger().Infof("get serviceIDList: %v", idList)
 		for _, serviceID := range idList {
-			fullServiceID := fmt.Sprintf("%s:%s:%s", bxhId, chainId, serviceID)
+			fullServiceID := fmt.Sprintf("%s:%s", bxhId, serviceID)
 			interchain, ok := x.getInterchain(fullServiceID)
 			if !ok {
 				x.Logger().Infof("getInterchain for service[%s] got empty result", fullServiceID)
