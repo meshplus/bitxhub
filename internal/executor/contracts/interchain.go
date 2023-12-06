@@ -210,10 +210,11 @@ func (x *InterchainManager) GetInterchainInfo(chainId string) *boltvm.Response {
 	}
 	if !ok {
 		interchain = &pb.Interchain{
-			ID:                   chainId,
-			InterchainCounter:    make(map[string]uint64),
-			ReceiptCounter:       make(map[string]uint64),
-			SourceReceiptCounter: make(map[string]uint64),
+			ID:                      chainId,
+			InterchainCounter:       make(map[string]uint64),
+			ReceiptCounter:          make(map[string]uint64),
+			SourceInterchainCounter: make(map[string]uint64),
+			SourceReceiptCounter:    make(map[string]uint64),
 		}
 	}
 	for _, counter := range interchain.InterchainCounter {
@@ -221,10 +222,10 @@ func (x *InterchainManager) GetInterchainInfo(chainId string) *boltvm.Response {
 	}
 	x.Logger().Infof("info.InterchainCounter: %d", info.InterchainCounter)
 
-	for _, counter := range interchain.ReceiptCounter {
+	for _, counter := range interchain.SourceInterchainCounter {
 		info.ReceiptCounter += counter
 	}
-	x.Logger().Infof("info.ReceiptCounter: %d", info.ReceiptCounter)
+	x.Logger().Infof("info.SourceInterchainCounter: %d", info.ReceiptCounter)
 	x.GetObject(x.indexSendInterchainMeta(chainId), &info.SendInterchains)
 	for i, si := range info.SendInterchains {
 		x.Logger().Infof("info.SendInterchains[%d]: %v", i, *si)
@@ -233,7 +234,7 @@ func (x *InterchainManager) GetInterchainInfo(chainId string) *boltvm.Response {
 	for j, ri := range info.ReceiptInterchains {
 		x.Logger().Infof("info.ReceiptInterchains[%d]: %v", j, *ri)
 	}
-	data, err := json.Marshal(&info)
+	data, err := json.Marshal(info)
 	if err != nil {
 		return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), err.Error()))
 	}
