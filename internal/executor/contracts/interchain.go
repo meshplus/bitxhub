@@ -201,31 +201,55 @@ func (x *InterchainManager) setInterchain(id string, interchain *pb.Interchain) 
 }
 
 func (x *InterchainManager) GetInterchainInfo(chainId string) *boltvm.Response {
+	bxhId, err := x.getBitXHubID()
+	if err != nil {
+		return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), fmt.Sprintf("get bitxhubID error: %s", err.Error())))
+	}
+	x.Logger().Infof("bitxhubID: %s", bxhId)
 	x.Logger().Infof("param chainID: %s", chainId)
-	interchain, ok := x.getInterchain(chainId)
+	var (
+		interchainCounter, srcInterchainCounter uint64
+	)
+	resp := x.CrossInvoke(constant.ServiceMgrContractAddr.Address().String(), "GetServiceIDsByAppchainID", pb.String(chainId))
+	if !resp.Ok {
+		return boltvm.Error(boltvm.InterchainInternalErrCode, fmt.Sprintf(string(boltvm.InterchainInternalErrMsg), fmt.Sprintf("cross invoke ServiceManager error: %s", err.Error())))
+	}
+	var idList []string
+	umerr := json.Unmarshal(resp.Result, &idList)
+	if umerr != nil {
+		x.Logger().Warnf("unmarshal ServiceManager returned idList error: %s", umerr.Error())
+	} else {
+		x.Logger().Infof("get serviceIDList: %v", idList)
+		for _, serviceID := range idList {
+			fullServiceID := fmt.Sprintf("%s:%s:%s", bxhId, chainId, serviceID)
+			interchain, ok := x.getInterchain(fullServiceID)
+			if !ok {
+				x.Logger().Infof("getInterchain for service[%s] got empty result", fullServiceID)
+			} else {
+				var (
+					serviceICounter, serviceSrcICounter uint64
+				)
+				for _, counter := range interchain.InterchainCounter {
+					serviceICounter += counter
+				}
+				for _, counter := range interchain.SourceInterchainCounter {
+					serviceSrcICounter += counter
+				}
+				x.Logger().Infof("getInterchain for service[%s] got interchainCounter: %d, srcIntercahinCounter: %d",
+					fullServiceID, serviceICounter, serviceSrcICounter)
+				interchainCounter += serviceICounter
+				srcInterchainCounter += serviceSrcICounter
+			}
+		}
+	}
+	x.Logger().Infof("total interchainCounter: %d, srcIntercahinCounter: %d", interchainCounter, srcInterchainCounter)
 	info := &InterchainInfo{
 		ChainId:            chainId,
+		InterchainCounter:  interchainCounter,
+		ReceiptCounter:     srcInterchainCounter,
 		SendInterchains:    []*InterchainMeta{},
 		ReceiptInterchains: []*InterchainMeta{},
 	}
-	if !ok {
-		interchain = &pb.Interchain{
-			ID:                      chainId,
-			InterchainCounter:       make(map[string]uint64),
-			ReceiptCounter:          make(map[string]uint64),
-			SourceInterchainCounter: make(map[string]uint64),
-			SourceReceiptCounter:    make(map[string]uint64),
-		}
-	}
-	for _, counter := range interchain.InterchainCounter {
-		info.InterchainCounter += counter
-	}
-	x.Logger().Infof("info.InterchainCounter: %d", info.InterchainCounter)
-
-	for _, counter := range interchain.SourceInterchainCounter {
-		info.ReceiptCounter += counter
-	}
-	x.Logger().Infof("info.SourceInterchainCounter: %d", info.ReceiptCounter)
 	x.GetObject(x.indexSendInterchainMeta(chainId), &info.SendInterchains)
 	for i, si := range info.SendInterchains {
 		x.Logger().Infof("info.SendInterchains[%d]: %v", i, *si)

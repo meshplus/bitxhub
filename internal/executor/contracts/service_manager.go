@@ -843,6 +843,19 @@ func (sm *ServiceManager) GetPermissionServices(chainServiceId string) *boltvm.R
 	return boltvm.Success(data)
 }
 
+func (sm *ServiceManager) GetServiceIDsByAppchainID(chainID string) *boltvm.Response {
+	sm.ServiceManager.Persister = sm.Stub
+	idList, err := sm.ServiceManager.GetIDListByChainID(chainID)
+	if err != nil {
+		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), err.Error()))
+	}
+	data, err := json.Marshal(idList)
+	if err != nil {
+		return boltvm.Error(boltvm.ServiceInternalErrCode, fmt.Sprintf(string(boltvm.ServiceInternalErrMsg), err.Error()))
+	}
+	return boltvm.Success(data)
+}
+
 // GetServicesByAppchainID return services of an appchain
 func (sm *ServiceManager) GetServicesByAppchainID(chainID string) *boltvm.Response {
 	sm.ServiceManager.Persister = sm.Stub
